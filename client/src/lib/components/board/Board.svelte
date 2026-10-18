@@ -51,9 +51,11 @@
     reflowGrid,
     seatControlsLegalTarget,
     seatHasAttackersOn,
+    stackTargetSeatIDs,
     type SeatDecision,
     type SeatSignals,
   } from "../../expansion";
+  import { createSettleGate } from "../../settleGate";
   import { settings } from "../../settings";
   import { opponentsInARow } from "../../tableLayout";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
@@ -3303,6 +3305,16 @@
   // row's columns. It follows the active seat, so it changes on a turn
   // boundary, and a seat an open prompt needs is never an avatar card.
   const opponentColumns: SeatPosition[] = ["next", "across", "across_next"];
+  // ADR 0077 as amended 2026-10-18 (#4115): a seat a stack item targets
+  // is a full board beside the active one, so the target can be seen.
+  // It is a table event, so it goes through the settle gate: the row
+  // changes only once no pointer button is down and the pointer is still.
+  const stackTargetKey = $derived([...stackTargetSeatIDs(view)].sort().join(" "));
+  let shownTargetKey = $state("");
+  const targetGate = createSettleGate<string>((k) => (shownTargetKey = k));
+  onDestroy(() => targetGate.destroy());
+  $effect(() => targetGate.request(stackTargetKey));
+  const shownTargetSeats = $derived(new Set(shownTargetKey.split(" ").filter(Boolean)));
   const reflow = $derived.by(() => {
     if (!placements) return null;
     const table = { spectator: isSpectator, combatMode };
@@ -3315,6 +3327,7 @@
         id: seat.id,
         isActiveSeat: sig.isActiveSeat,
         needsBoard: interactionReason(sig, table) !== null,
+        targeted: shownTargetSeats.has(seat.id),
       });
     }
     return decideReflow(opponents, {
@@ -3787,6 +3800,7 @@
           class="slot"
           class:reflow-avatar={avatarCard}
           class:reflow-focus={reflow?.focusSeatID === seat.id}
+          class:reflow-targeted={reflow !== null && !avatarCard && shownTargetSeats.has(seat.id)}
           class:reflow-animate={reflow !== null && overlayMotion}
           class:reflow-odd={view.turn.number % 2 === 1}
           data-pos={pos}
@@ -4654,6 +4668,19 @@
   .slot.reflow-animate.reflow-odd.reflow-focus {
     animation-name: reflow-in-odd;
   }
+  /* #4115: a targeted seat's board comes in with the same fade, under
+     its own name so it starts when the seat leaves the avatar column. */
+  .slot.reflow-animate.reflow-targeted {
+    animation: reflow-target-in 160ms var(--ease);
+  }
+  @keyframes reflow-target-in {
+    from {
+      opacity: 0.4;
+    }
+    to {
+      opacity: 1;
+    }
+  }
   @keyframes reflow-in {
     from {
       opacity: 0.4;
@@ -4674,7 +4701,8 @@
     .slot.reflow-animate.reflow-avatar,
     .slot.reflow-animate.reflow-focus,
     .slot.reflow-animate.reflow-odd.reflow-avatar,
-    .slot.reflow-animate.reflow-odd.reflow-focus {
+    .slot.reflow-animate.reflow-odd.reflow-focus,
+    .slot.reflow-animate.reflow-targeted {
       animation: none;
     }
   }
