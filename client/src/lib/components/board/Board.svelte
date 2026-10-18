@@ -47,7 +47,8 @@
     expansionSettingsFor,
     interactionReason,
     legalDefenderIDs,
-    reflowColumns,
+    reflowAvatarOrder,
+    reflowGrid,
     seatControlsLegalTarget,
     seatHasAttackersOn,
     type SeatDecision,
@@ -3323,11 +3324,44 @@
       spectator: isSpectator,
     });
   });
-  const reflowGridColumns = $derived.by(() => {
+  // ADR 0077 as amended 2026-10-17 (#4102): the avatar cards stack in one
+  // column at the row's left end, in the order the seats play after the
+  // active one, each with a chip naming who plays right before it. Both
+  // are expansion.ts's: reflowAvatarOrder sorts, reflowGrid lays out.
+  const reflowOrder = $derived.by(() => {
+    if (!reflow) return [];
+    return reflowAvatarOrder(view.seats, reflow.focusSeatID, viewerID, reflow.avatarSeatIDs);
+  });
+  const reflowChips = $derived(new Map(reflowOrder.map((o) => [o.id, o.chip])));
+  const reflowLayout = $derived.by(() => {
     if (!reflow || !placements) return null;
     const p = placements;
-    const ids = opponentColumns.flatMap((pos) => (p[pos] ? [p[pos].id] : []));
-    return reflowColumns(ids, reflow);
+    const cells = opponentColumns.flatMap((pos) => (p[pos] ? [{ id: p[pos].id, area: pos }] : []));
+    // The quadrant layout keeps its shorter top row (0.7 / 1.3); the
+    // row layout splits the table evenly (#4066).
+    const split: [number, number] =
+      $settings.display.tableLayout === "quadrant" ? [0.7, 1.3] : [1, 1];
+    return reflowGrid(
+      cells,
+      reflowOrder.map((o) => o.id),
+      reflow,
+      split,
+    );
+  });
+  // DOM order is visual order under a reflow (the amendment): the avatar
+  // cards top to bottom, then the full boards left to right, then yours,
+  // so a screen reader meets the cards in the order they play.
+  const slotPositions = $derived.by((): SeatPosition[] => {
+    if (!reflow || !placements) return positions;
+    const p = placements;
+    const posOf = new Map<string, SeatPosition>();
+    for (const pos of opponentColumns) if (p[pos]) posOf.set(p[pos].id, pos);
+    const avatars = reflowOrder.flatMap((o) => {
+      const pos = posOf.get(o.id);
+      return pos ? [pos] : [];
+    });
+    const boards = opponentColumns.filter((pos) => p[pos] && !reflow.avatarSeatIDs.has(p[pos].id));
+    return [...avatars, ...boards, "self"];
   });
 
   // ---- The expanded board (ADR 0120) ----------------------------------
@@ -3486,7 +3520,11 @@
     // so its board opens below it; the box kept clear is the whole
     // identity (its name, life chip and badges), not just the disc.
     const below = av?.closest(".panel")?.classList.contains("flipped") ?? false;
-    const r = av ? avatarClearBox(av, below) : undefined;
+    // ADR 0077 as amended 2026-10-17 (call 8): a reflow avatar card is
+    // kept clear whole, its chip and read-out with the disc, so its
+    // board opens to the card's right and never covers it.
+    const card = av?.closest<HTMLElement>("[data-seat-stand-in]");
+    const r = card ? card.getBoundingClientRect() : av ? avatarClearBox(av, below) : undefined;
     if (!r || (r.width === 0 && r.height === 0) || b.width === 0) {
       overlaySpan = null;
       return;
@@ -3730,20 +3768,27 @@
   data-opp-count={opponentCount}
   data-seat-count={view.seats.length}
   data-reflow={reflow ? "" : undefined}
-  style:grid-template-columns={reflowGridColumns}
+  style:grid-template-columns={reflowLayout?.columns}
+  style:grid-template-rows={reflowLayout?.rows}
+  style:grid-template-areas={reflowLayout?.areas}
   bind:this={boardEl}
 >
   {#if placements}
-    {#each positions as pos (pos)}
+    {#each slotPositions as pos (pos)}
       {@const seat = placements[pos]}
       {#if seat}
         {@const decision = renderingFor(seat, pos)}
         {@const avatarCard = reflow?.avatarSeatIDs.has(seat.id) ?? false}
+        <!-- The fade restarts on every turn (the amendment: the cards
+             reorder at once and fade in over 160ms, no glide): the two
+             keyframes are the same, and switching between them by the
+             turn's parity starts the animation again. -->
         <div
           class="slot"
           class:reflow-avatar={avatarCard}
           class:reflow-focus={reflow?.focusSeatID === seat.id}
           class:reflow-animate={reflow !== null && overlayMotion}
+          class:reflow-odd={view.turn.number % 2 === 1}
           data-pos={pos}
           style:grid-area={pos}
         >
@@ -3768,6 +3813,7 @@
               considering={seat.id === consideringSeatID}
               {legalGate}
               {avatarCard}
+              turnChip={avatarCard ? (reflowChips.get(seat.id) ?? null) : null}
             />
           {:else}
             {@render expandButton(seat)}
@@ -4601,7 +4647,22 @@
   .slot.reflow-animate.reflow-focus {
     animation: reflow-in 160ms var(--ease);
   }
+  /* #4102: the same fade under a second name, swapped in on odd turns,
+     so a turn change restarts it on cards that stay avatar cards and
+     only move in the column. */
+  .slot.reflow-animate.reflow-odd.reflow-avatar,
+  .slot.reflow-animate.reflow-odd.reflow-focus {
+    animation-name: reflow-in-odd;
+  }
   @keyframes reflow-in {
+    from {
+      opacity: 0.4;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes reflow-in-odd {
     from {
       opacity: 0.4;
     }
@@ -4611,7 +4672,9 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .slot.reflow-animate.reflow-avatar,
-    .slot.reflow-animate.reflow-focus {
+    .slot.reflow-animate.reflow-focus,
+    .slot.reflow-animate.reflow-odd.reflow-avatar,
+    .slot.reflow-animate.reflow-odd.reflow-focus {
       animation: none;
     }
   }

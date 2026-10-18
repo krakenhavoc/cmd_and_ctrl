@@ -370,6 +370,10 @@ html {
 :root {
   --card-scale: 1;
   --card-scale-opponent: 1;
+  /* ADR 0077 as amended 2026-10-17 (#4102): the reflow's column of
+     avatar cards at the left end of the opponents' row, wide enough for
+     each card's read-out (expansion.ts, REFLOW_AVATAR_COLUMN). */
+  --reflow-avatar-w: 176px;
 }
 :root[data-card-size="small"] {
   --card-scale: 0.75;

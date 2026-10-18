@@ -8,8 +8,11 @@ import {
   interactionReason,
   legalDefenderIDs,
   REFLOW_AVATAR_COLUMN,
-  reflowColumns,
+  reflowAvatarOrder,
+  reflowGrid,
+  type ReflowCell,
   type ReflowContext,
+  type TurnOrderSeat,
   type ReflowSeat,
   seatControlsLegalTarget,
   seatHasAttackersOn,
@@ -278,22 +281,163 @@ describe("decideReflow", () => {
   });
 });
 
-describe("reflowColumns", () => {
-  it("gives the focus the row less the avatar cards' fixed columns", () => {
+// ADR 0077 as amended 2026-10-17 (#4102): one column of avatar cards at
+// the row's left end, stacked in play order, the full boards to its right.
+describe("reflowGrid", () => {
+  // Bob sits next, Cat across, Dee across_next: the row's turn order.
+  const cells: ReflowCell[] = [
+    { id: "bob", area: "next" },
+    { id: "cat", area: "across" },
+    { id: "dee", area: "across_next" },
+  ];
+
+  it("stacks two avatar cards in one left column, each half the row, the focus beside them", () => {
     const r = { focusSeatID: "bob", avatarSeatIDs: new Set(["cat", "dee"]) };
-    expect(reflowColumns(["bob", "cat", "dee"], r)).toBe(
-      `minmax(0, 2fr) ${REFLOW_AVATAR_COLUMN} ${REFLOW_AVATAR_COLUMN}`,
-    );
-    expect(reflowColumns(["cat", "bob", "dee"], r)).toBe(
-      `${REFLOW_AVATAR_COLUMN} minmax(0, 2fr) ${REFLOW_AVATAR_COLUMN}`,
+    const g = reflowGrid(cells, ["cat", "dee"], r);
+    expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 2fr)`);
+    expect(g.rows).toBe("minmax(0, 0.5fr) minmax(0, 0.5fr) minmax(0, 1fr)");
+    expect(g.areas).toBe('"across next" "across_next next" "self self"');
+  });
+
+  it("puts the column on the left whatever seat is active, in the order given", () => {
+    const r = { focusSeatID: "dee", avatarSeatIDs: new Set(["bob", "cat"]) };
+    const g = reflowGrid(cells, ["bob", "cat"], r);
+    expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 2fr)`);
+    expect(g.areas).toBe('"next across_next" "across across_next" "self self"');
+    // The order is the caller's (reflowAvatarOrder's), not the row's.
+    expect(reflowGrid(cells, ["cat", "bob"], r).areas).toBe(
+      '"across across_next" "next across_next" "self self"',
     );
   });
 
-  it("gives a board a prompt needs one share beside the focus's two", () => {
-    const r = { focusSeatID: "dee", avatarSeatIDs: new Set(["bob"]) };
-    expect(reflowColumns(["bob", "cat", "dee"], r)).toBe(
-      `${REFLOW_AVATAR_COLUMN} minmax(0, 1fr) minmax(0, 2fr)`,
+  it("gives one avatar card the whole row's height, and keeps the layout's split", () => {
+    const two: ReflowCell[] = [
+      { id: "bob", area: "next" },
+      { id: "cat", area: "across" },
+    ];
+    const r = { focusSeatID: "cat", avatarSeatIDs: new Set(["bob"]) };
+    const g = reflowGrid(two, ["bob"], r, [0.7, 1.3]);
+    expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 2fr)`);
+    expect(g.rows).toBe("minmax(0, 0.7fr) minmax(0, 1.3fr)");
+    expect(g.areas).toBe('"next across" "self self"');
+    // The quadrant split, shared by two cards.
+    const r3 = { focusSeatID: "bob", avatarSeatIDs: new Set(["cat", "dee"]) };
+    expect(reflowGrid(cells, ["cat", "dee"], r3, [0.7, 1.3]).rows).toBe(
+      "minmax(0, 0.35fr) minmax(0, 0.35fr) minmax(0, 1.3fr)",
     );
+  });
+
+  it("keeps a board a prompt needs beside the focus, in turn order, one share", () => {
+    const r = { focusSeatID: "dee", avatarSeatIDs: new Set(["bob"]) };
+    const g = reflowGrid(cells, ["bob"], r);
+    expect(g.columns).toBe(`${REFLOW_AVATAR_COLUMN} minmax(0, 1fr) minmax(0, 2fr)`);
+    expect(g.areas).toBe('"next across across_next" "self self self"');
+  });
+
+  it("has no column when no seat is an avatar card", () => {
+    const r = { focusSeatID: "bob", avatarSeatIDs: new Set<string>() };
+    const g = reflowGrid(cells, [], r);
+    expect(g.columns).toBe("minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr)");
+    expect(g.rows).toBe("minmax(0, 1fr) minmax(0, 1fr)");
+    expect(g.areas).toBe('"next across across_next" "self self self"');
+  });
+});
+
+describe("reflowAvatarOrder", () => {
+  // You, Bot 1, Bot 2 and Bot 3, seated (and so playing) in that order.
+  const table = (out: string[] = []): TurnOrderSeat[] =>
+    [
+      { id: "me", name: "You" },
+      { id: "b1", name: "Bot 1" },
+      { id: "b2", name: "Bot 2" },
+      { id: "b3", name: "Bot 3" },
+    ].map((s) => ({ ...s, eliminated: out.includes(s.id) }));
+  const others = (active: string, ids = ["b1", "b2", "b3"]) => ids.filter((id) => id !== active);
+  const read = (o: ReturnType<typeof reflowAvatarOrder>) =>
+    o.map((c) => `${c.id}:${c.out ? "out" : c.chip}`);
+
+  it("on Bot 1's turn: Bot 2 is next up, then Bot 3 after Bot 2", () => {
+    expect(read(reflowAvatarOrder(table(), "b1", "me", others("b1")))).toEqual([
+      "b2:Next up",
+      "b3:After Bot 2",
+    ]);
+  });
+
+  it("on Bot 2's turn: Bot 3 is next up, then Bot 1 after you (the amendment's example)", () => {
+    expect(read(reflowAvatarOrder(table(), "b2", "me", others("b2")))).toEqual([
+      "b3:Next up",
+      "b1:After you",
+    ]);
+  });
+
+  it("on Bot 3's turn: Bot 1 after you, then Bot 2 after Bot 1 (the amendment's example)", () => {
+    expect(read(reflowAvatarOrder(table(), "b3", "me", others("b3")))).toEqual([
+      "b1:After you",
+      "b2:After Bot 1",
+    ]);
+  });
+
+  it("at three players: the one card is next up or after you", () => {
+    const three = table().slice(0, 3);
+    expect(read(reflowAvatarOrder(three, "b1", "me", ["b2"]))).toEqual(["b2:Next up"]);
+    expect(read(reflowAvatarOrder(three, "b2", "me", ["b1"]))).toEqual(["b1:After you"]);
+  });
+
+  it("sorts the viewer's seat anywhere at the table, not only first", () => {
+    // The viewer is Bot 2's neighbour: seated third.
+    const seats: TurnOrderSeat[] = [
+      { id: "b1", name: "Bot 1" },
+      { id: "b2", name: "Bot 2" },
+      { id: "me", name: "You" },
+      { id: "b3", name: "Bot 3" },
+    ];
+    expect(read(reflowAvatarOrder(seats, "b1", "me", ["b2", "b3"]))).toEqual([
+      "b2:Next up",
+      "b3:After you",
+    ]);
+    expect(read(reflowAvatarOrder(seats, "b3", "me", ["b1", "b2"]))).toEqual([
+      "b1:Next up",
+      "b2:After Bot 1",
+    ]);
+  });
+
+  it("sorts an eliminated opponent last, with no chip, and skips it when naming who plays before", () => {
+    // Bot 1 is out: on Bot 3's turn, Bot 2 now plays straight after you.
+    expect(read(reflowAvatarOrder(table(["b1"]), "b3", "me", others("b3")))).toEqual([
+      "b2:After you",
+      "b1:out",
+    ]);
+    // Bot 2 is out: on Bot 1's turn, Bot 3 is next up.
+    expect(read(reflowAvatarOrder(table(["b2"]), "b1", "me", others("b1")))).toEqual([
+      "b3:Next up",
+      "b2:out",
+    ]);
+  });
+
+  it("skips an eliminated viewer, who plays no turn, so no card reads after you", () => {
+    expect(read(reflowAvatarOrder(table(["me"]), "b3", "me", others("b3")))).toEqual([
+      "b1:Next up",
+      "b2:After Bot 1",
+    ]);
+    expect(read(reflowAvatarOrder(table(["me"]), "b2", "me", others("b2")))).toEqual([
+      "b3:Next up",
+      "b1:After Bot 3",
+    ]);
+  });
+
+  it("with no viewer seat (a spectator), names every seat before by its name", () => {
+    expect(read(reflowAvatarOrder(table(), "b3", null, ["me", "b1", "b2"]))).toEqual([
+      "me:Next up",
+      "b1:After You",
+      "b2:After Bot 1",
+    ]);
+  });
+
+  it("drops the active seat and seats not at the table", () => {
+    expect(read(reflowAvatarOrder(table(), "b1", "me", ["b1", "zz", "b2"]))).toEqual([
+      "b2:Next up",
+    ]);
+    expect(reflowAvatarOrder(table(), "zz", "me", ["b1"])).toEqual([]);
   });
 });
 
