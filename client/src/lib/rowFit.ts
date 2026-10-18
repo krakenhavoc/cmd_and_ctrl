@@ -79,6 +79,25 @@ export function stripOpen(spread: number, packed: number, available: number): nu
 }
 
 /**
+ * stripContent is the width of the land strip's piles from the list's
+ * own left edge: from the first pile's left edge less its left margin,
+ * to the last pile's right edge, plus the list's right padding. #4122:
+ * measured from the first pile's box instead, it left out the margin a
+ * tapped first pile carries for its turned overhang, so a strip capped
+ * at that width (`--strip-spread`) was that much too narrow for its own
+ * piles and scrolled. A negative margin (an overlapped pile) counts as
+ * none: the first pile never overlaps anything.
+ */
+export function stripContent(
+  firstLeft: number,
+  firstMarginLeft: number,
+  lastRight: number,
+  padRight: number,
+): number {
+  return lastRight - firstLeft + Math.max(0, firstMarginLeft) + padRight;
+}
+
+/**
  * tappedRoom is the extra width, in px, a tapped card needs on EACH side
  * of its box (#2442). A card turns 90 degrees about its centre, so its
  * box keeps the upright width `cardW` while the painted card is `cardH`
@@ -386,7 +405,11 @@ export function fitRow(
       const first = piles[0];
       const last = piles[piles.length - 1];
       const padR = parseFloat(style.paddingRight) || 0;
-      const content = (): number => last.offsetLeft + last.offsetWidth - first.offsetLeft + padR;
+      // #4122: from the list's edge, not the first pile's, so a tapped
+      // first pile's margin (its turned overhang) is counted.
+      const lead = parseFloat(getComputedStyle(first).marginLeft) || 0;
+      const content = (): number =>
+        stripContent(first.offsetLeft, lead, last.offsetLeft + last.offsetWidth, padR);
       node.style.setProperty("--strip-k", "0");
       spread = content();
       node.style.setProperty("--strip-k", "1");

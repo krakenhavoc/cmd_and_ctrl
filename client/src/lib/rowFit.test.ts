@@ -14,6 +14,7 @@ import {
   overrideStale,
   rowDemand,
   scaleForLines,
+  stripContent,
   stripOpen,
   tappedRoom,
   type RowShape,
@@ -37,6 +38,26 @@ describe("stripOpen", () => {
   it("is steady for a lone pile and an unmeasured row", () => {
     expect(stripOpen(88, 88, 50)).toBe(1);
     expect(stripOpen(616, 360, 0)).toBe(0);
+  });
+});
+
+// #4122: an all-tapped strip's first pile carries its turned overhang as
+// a left margin; the strip's width must include it, or the row capped
+// at that width scrolls.
+describe("stripContent", () => {
+  it("counts a tapped first pile's margin", () => {
+    // A 225px land, 161px wide: the margin is (225 - 161) / 2 = 32.
+    const lead = tappedRoom(161, 225);
+    // The first pile's box starts after its margin, at 32.
+    expect(stripContent(32, lead, 32 + 161, 45)).toBe(32 + 161 + 45);
+  });
+
+  it("is the piles' span plus the padding when the first is upright", () => {
+    expect(stripContent(0, 0, 300, 20)).toBe(320);
+  });
+
+  it("never counts a negative margin", () => {
+    expect(stripContent(0, -40, 300, 20)).toBe(320);
   });
 });
 

@@ -91,6 +91,7 @@
   import CompanionSlot from "./CompanionSlot.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import Icon from "../Icon.svelte";
   import { seatColor } from "../../colors";
   import { settings } from "../../settings";
   import { playmatShownFor, playmatSrc } from "../../playmat";
@@ -230,7 +231,19 @@
     // must stay unique. Its cards open the ability popover on the
     // `expanded` surface. Read once, at mount: a panel is the overlay's
     // or the table's for its whole life.
+    //
+    // ADR 0120 as amended 2026-10-18 (#4122): it is also laid out as a
+    // reading surface rather than a table panel. A header names the seat
+    // (its one identity, `PlayerIdentity` `header`), every battlefield
+    // group draws at one card size capped at 240px, the command zone is
+    // the back row's last group, and the piles and the hand sit in a
+    // short strip along the bottom.
     expanded?: boolean;
+    // ADR 0120 as amended 2026-10-18: the reflow turn chip (NEXT UP,
+    // AFTER YOU, AFTER <NAME>) for a seat that is an avatar card, shown
+    // in the expanded header. Null shows none; the table's panel never
+    // shows it (its avatar card does).
+    turnChip?: string | null;
   }
 
   const {
@@ -268,6 +281,7 @@
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     expanded = false,
+    turnChip = null,
   }: Props = $props();
 
   // ADR 0120 §3: the expanded copy is upright, and leaves the dock's
@@ -691,9 +705,12 @@
       const tracks = cs.gridTemplateRows.split(/\s+/).map((t) => parseFloat(t) || 0);
       if (tracks.length < 3) return;
       const hand = flip ? tracks[0] : tracks[tracks.length - 1];
+      // ADR 0120 as amended 2026-10-18: the expanded panel's first track
+      // is its header, which the rows do not get either.
+      const head = node.classList.contains("expanded") && tracks.length > 3 ? tracks[0] : 0;
       const gap = parseFloat(cs.rowGap) || 0;
       const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-      const h = node.clientHeight - pad - hand - gap * (tracks.length - 1);
+      const h = node.clientHeight - pad - hand - head - gap * (tracks.length - 1);
       if (Math.abs(h - fieldH) > 0.5) fieldH = Math.max(0, h);
     };
     const schedule = () => {
@@ -701,8 +718,10 @@
     };
     const ro = new ResizeObserver(schedule);
     ro.observe(node);
-    const bottom = node.querySelector(":scope > .grid-bottom");
-    if (bottom) ro.observe(bottom);
+    for (const sel of [":scope > .grid-bottom", ":scope > .head"]) {
+      const el = node.querySelector(sel);
+      if (el) ro.observe(el);
+    }
     schedule();
     return {
       update(f: boolean) {
@@ -1087,6 +1106,22 @@
       />
     </div>
   {/if}
+  {#if expanded}
+    <!-- ADR 0120 as amended 2026-10-18 (#4122): the header names the
+         seat. It holds the seat's one identity (call 12), so the
+         avatar's target, attack and peek handlers and its data-seat-id
+         are here, and the reflow turn chip when the seat has one. The
+         overlay's pin sits over its right end (Board.svelte). Not a
+         heading: the overlay region already carries the name. -->
+    <div class="head">
+      {@render identity(true)}
+      {#if turnChip && !seat.eliminated}
+        <span class="turn-chip" class:next={turnChip === L.reflowNextUp} title={turnChip}
+          >{turnChip}</span
+        >
+      {/if}
+    </div>
+  {/if}
   <div class="grid-creatures">
     <BattlefieldRow
       label={L.creatures}
@@ -1164,6 +1199,13 @@
         {@render backZone(z)}
       {/each}
     </div>
+    {#if expanded && !isSelf}
+      <!-- ADR 0120 as amended 2026-10-18 (call 10): in the overlay the
+           command zone is the back row's last group, at the one card
+           size, with its revealed companion; not tucked by the hand. -->
+      <CommandStrip {seat} row />
+      <CompanionSlot {seat} />
+    {/if}
   </div>
   {#snippet backZone(z: BackZone)}
     <!-- #4087: one zone per permanent type, drawn only while it holds
@@ -1200,6 +1242,30 @@
       legalGate={rowGate}
       onSpecialAction={sendSpecialAction}
       onGroupClick={(k) => (openGroupKey = k)}
+    />
+  {/snippet}
+  <!-- The seat's identity: seated at its hand's edge on the table
+       (ADR 0204), or in the expanded overlay's header (ADR 0120 as
+       amended 2026-10-18). Drawn once either way. -->
+  {#snippet identity(header: boolean)}
+    <PlayerIdentity
+      {seat}
+      {commanderScryfallID}
+      {isSelf}
+      {isActive}
+      {hasPriority}
+      {attackTargetable}
+      {isMonarch}
+      {isInitiative}
+      {sendAction}
+      {onDeclareAttack}
+      {onTargetPlayer}
+      {considering}
+      seated={!header}
+      {header}
+      handCount={!header && !isSelf && $settings.display.showOpponentHandCount
+        ? seat.hand.count
+        : null}
     />
   {/snippet}
   <div class="grid-bottom">
@@ -1258,11 +1324,24 @@
       />
     {/if}
     {#if !isSelf}
-      <!-- #2349: this seat's commander, beside its hand, where yours
-           is beside yours. -->
-      <CommandStrip {seat} />
-      <!-- ADR 0172 §8: and its revealed companion, view only. -->
-      <CompanionSlot {seat} />
+      {#if expanded}
+        {#if $settings.display.showOpponentHandCount}
+          <!-- ADR 0120 as amended 2026-10-18: no avatar rides the fan in
+               the overlay's strip, so the count sits beside it. -->
+          <span
+            class="strip-hand-count"
+            title={`${seat.hand.count} ${seat.hand.count === 1 ? "card" : "cards"} in hand`}
+            aria-label={`${seat.hand.count} ${seat.hand.count === 1 ? "card" : "cards"} in hand`}
+            ><Icon name="hand" size={11} />{seat.hand.count}</span
+          >
+        {/if}
+      {:else}
+        <!-- #2349: this seat's commander, beside its hand, where yours
+             is beside yours. -->
+        <CommandStrip {seat} />
+        <!-- ADR 0172 §8: and its revealed companion, view only. -->
+        <CompanionSlot {seat} />
+      {/if}
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
     {#if docked}
@@ -1277,22 +1356,9 @@
        it stops above the bottom row, whose right end is the action
        dock's (ADR 0111 owner decision 1). -->
   <div class="rail">
-    <PlayerIdentity
-      {seat}
-      {commanderScryfallID}
-      {isSelf}
-      {isActive}
-      {hasPriority}
-      {attackTargetable}
-      {isMonarch}
-      {isInitiative}
-      {sendAction}
-      {onDeclareAttack}
-      {onTargetPlayer}
-      {considering}
-      seated
-      handCount={!isSelf && $settings.display.showOpponentHandCount ? seat.hand.count : null}
-    />
+    {#if !expanded}
+      {@render identity(false)}
+    {/if}
     <div class="rail-gap"></div>
     <PileBar
       {seat}
@@ -1579,14 +1645,6 @@
      .panel.opponent.spectator (three) outright, so this can never
      lose to either regardless of source order. */
   .panel.opponent.flipped.spectator {
-    --card-h-max: 100cqh;
-  }
-  /* ADR 0120 §3: the expanded overlay's copy of a board caps its cards
-     as your own board's are, for every seat, as on a spectator's
-     panel: no fixed ceiling (#3028). An expanded panel is never
-     flipped, so only .panel.opponent's ceiling has to be beaten. The floor and slope are
-     the seat's own; the overlay's height does the rest. */
-  .panel.opponent.expanded {
     --card-h-max: 100cqh;
   }
   /* The creature area is the grid's minmax(0, 1fr) row, so on a short
@@ -2177,5 +2235,168 @@
   }
   .flipped .rail :global(.pile .label) {
     display: none;
+  }
+
+  /* ADR 0120 as amended 2026-10-18 (#4122): the expanded overlay's copy
+     of a board is a reading surface, not a table panel. A table panel's
+     sizes are shares of its height made for 300–400px (the creature at
+     52cqh, the back row half that, the commander 0.42), and in a 900px
+     overlay they drew 450px creatures over small lands. Here:
+
+     - a header names the seat (.head, its one identity, call 12);
+     - every battlefield group is one card size (call 9): what two rows
+       of cards get once the header, the strip and the rows' labels,
+       padding and gaps (~100px) are placed, never over 240px, times the
+       viewer's own card-size setting for every seat (call 16);
+     - the command zone is the back row's last group at that size
+       (call 10);
+     - the piles and the hand sit in a short strip along the bottom
+       (call 13), the hand's cards sized so their peek is the strip.
+
+     Every width: the overlay keeps this layout on a phone too (§5).
+     The :not(.flipped) is always true here (an expanded panel is never
+     flipped); it weighs these rules as much as the seated layout's
+     .panel:not(.flipped):not(.docked), which they come after.
+
+     The floor is rowFit's MIN_CARD_H (56px), not a table panel's: the
+     overlay stops above the dock (§2), so with a request open it can be
+     under 400px tall, and a higher floor made the rows taller than the
+     panel, so the back row ran down under the strip and the hand's
+     cards took its clicks (#4122's branch E2E). */
+  .panel.expanded:not(.flipped) {
+    --x-strip-h: clamp(64px, 10cqh, 96px);
+    --card-h: clamp(
+      56px,
+      calc((100cqh - 52px - var(--x-strip-h) - 100px) / 2 * var(--card-scale, 1)),
+      calc(240px * var(--card-scale, 1))
+    );
+    --card-h-sm: var(--card-h);
+    --hand-peek: 0.55;
+    --thumb-h: calc(var(--x-strip-h) - 14px);
+    --thumb-w: calc(var(--thumb-h) * 5 / 7);
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(var(--creature-min, 0px), auto) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head      head"
+      "creatures creatures"
+      "middle    middle"
+      "piles     bottom";
+  }
+  /* The back row never reaches past its track into the strip: should
+     the cards still not fit (the card-size setting at "large" in a short
+     overlay), it is cut at the strip's hairline rather than drawn under
+     the hand, whose cards would take its clicks. The table's back row
+     keeps its min-content minimum (#3893). */
+  .panel.expanded:not(.flipped) .grid-middle {
+    min-height: 0;
+  }
+  .panel.expanded:not(.flipped) .rail {
+    display: contents;
+  }
+  .panel.expanded:not(.flipped) .rail-gap {
+    display: none;
+  }
+  /* The header: the identity in one line, the turn chip after it, and
+     room at the right end for the overlay's pin (Board.svelte), on the
+     seat's wash so whose board it is reads before the name. */
+  .head {
+    grid-area: head;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 52px;
+    box-sizing: border-box;
+    padding: 4px 44px 0 6px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 9%, transparent);
+  }
+  .turn-chip {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 40%, transparent);
+    background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 8%, transparent);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .turn-chip.next {
+    color: var(--bg);
+    background: var(--seat-color, var(--fg));
+    border-color: transparent;
+  }
+  /* The back row's command group (call 10) and a revealed companion
+     draw at the one card size, top-aligned with the zones beside them. */
+  .panel.expanded:not(.flipped) .grid-middle :global(.command-strip),
+  .panel.expanded:not(.flipped) .grid-middle :global(.companion-slot) {
+    --strip-h: var(--card-h);
+    align-self: flex-start;
+  }
+  .panel.expanded:not(.flipped) .grid-middle :global(.companion-slot) {
+    padding-top: 18px;
+  }
+  /* The strip (call 13): the piles at the left and the hand beside
+     them, under a hairline, its height fixed. */
+  .panel.expanded:not(.flipped) .grid-bottom,
+  .panel.expanded:not(.flipped) .rail > :global(.pile-bar) {
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+  /* Everything in the strip that peeks as the hand does (the hand, your
+     castable strip) is sized so its peek is the strip's height. */
+  .panel.expanded:not(.flipped) .grid-bottom {
+    --card-h: calc(var(--x-strip-h) / var(--hand-peek));
+    --card-w: calc(var(--card-h) * 5 / 7);
+    align-items: center;
+  }
+  .panel.expanded:not(.flipped) .hand-zone {
+    height: var(--x-strip-h);
+  }
+  /* The fan's tops are clipped at the strip's hairline, not held over
+     the back row: at rest nothing of the hand rises into the board.
+     Your own hand still lifts whole on hover. */
+  .panel.expanded:not(.flipped) .hand-zone > :global(.hand:not(.opponent):not(.scroll)) {
+    --hand-headroom: 0px;
+  }
+  .strip-hand-count {
+    flex: none;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  /* The piles, one row of three, each a thumbnail with its label and
+     count beside it, since the strip has the room the seated layout
+     does not. */
+  .panel.expanded:not(.flipped) .rail > :global(.pile-bar) {
+    --pile-col: 1000px;
+    grid-area: piles;
+    grid-template-columns: repeat(3, auto);
+    width: auto;
+    align-self: stretch;
+    align-content: center;
+  }
+  .panel.expanded:not(.flipped) .rail :global(.pile) {
+    flex-direction: row;
+    gap: 6px;
+    padding: 3px 8px 3px 3px;
+  }
+  .panel.expanded:not(.flipped) .rail :global(.pile .label) {
+    display: inline-block;
   }
 </style>

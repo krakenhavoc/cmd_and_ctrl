@@ -3695,6 +3695,7 @@
       isSelf={false}
       spectator={true}
       {expanded}
+      turnChip={expanded ? (reflowChips.get(seat.id) ?? null) : null}
       isActive={seat.id === activeSeatID}
       hasPriority={seat.id === prioritySeatID}
       {viewerID}
@@ -3726,6 +3727,7 @@
         ? pos !== "self"
         : pos === "across" || pos === "across_next"}
       {expanded}
+      turnChip={expanded ? (reflowChips.get(seat.id) ?? null) : null}
       isActive={seat.id === activeSeatID}
       hasPriority={seat.id === prioritySeatID}
       {viewerID}
@@ -4800,11 +4802,13 @@
     }
   }
 
-  /* §4: the pin toggle, top right of the overlay, over its panel's rail. */
+  /* §4: the pin toggle, at the right end of the overlay panel's header
+     (ADR 0120 as amended 2026-10-18): centred on its 52px, inside the
+     panel's 8px padding, where the header keeps its right end clear. */
   .pin-board {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 22px;
+    right: 16px;
     z-index: 20;
     display: inline-flex;
     align-items: center;

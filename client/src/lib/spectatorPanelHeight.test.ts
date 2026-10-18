@@ -154,15 +154,19 @@ describe("the .panel --card-h-max ceiling", () => {
     expect(resolve(["panel", "opponent", "flipped", "spectator"], "--card-h-max")).toBe("100cqh");
   });
 
-  // ADR 0120 §3: the expanded overlay's copy of a board. PlayerPanel
-  // never sets `flipped` alongside `expanded`, so these are the two
-  // class sets it can carry.
-  it("matches self's for an expanded opponent panel, as on a spectator's", () => {
-    expect(resolve(["panel", "opponent", "expanded"], "--card-h-max")).toBe("100cqh");
-  });
-
-  it("is the panel's height for the viewer's own expanded panel", () => {
-    expect(resolve(["panel", "self", "expanded"], "--card-h-max")).toBe("100cqh");
+  // ADR 0120 as amended 2026-10-18 (#4122, call 9): the expanded
+  // overlay's copy of a board no longer takes a table panel's ceiling.
+  // Its own rule sizes every group at one card size capped at 240px
+  // times the card-size setting, for every seat; the opponent ceiling
+  // and scale never reach it.
+  it("is replaced by the expanded panel's own 240px cap", () => {
+    const at = panelSvelte.indexOf("  .panel.expanded:not(.flipped) {");
+    expect(at).toBeGreaterThan(0);
+    const block = panelSvelte.slice(at, panelSvelte.indexOf("\n  }", at));
+    expect(block).toMatch(/--card-h: clamp\(/);
+    expect(block).toContain("calc(240px * var(--card-scale, 1))");
+    expect(block).not.toContain("--card-h-max");
+    expect(block).not.toContain("--card-scale-opponent");
   });
 
   it("leaves the opponent formula's floor and slope untouched", () => {
