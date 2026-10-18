@@ -3459,6 +3459,21 @@
     }
     return null;
   }
+  // The box the overlay keeps clear of: the disc beside it, or, below a
+  // top-row avatar, everything the seated identity draws under it.
+  function avatarClearBox(
+    av: HTMLElement,
+    below: boolean,
+  ): { left: number; top: number; width: number; height: number } {
+    const disc = av.getBoundingClientRect();
+    const id = below ? av.closest<HTMLElement>("[data-seat-identity]") : null;
+    if (!id) return disc;
+    let bottom = Math.max(disc.bottom, id.getBoundingClientRect().bottom);
+    for (const el of id.querySelectorAll<HTMLElement>(".life-row, .seat-keywords")) {
+      bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+    }
+    return { left: disc.left, top: disc.top, width: disc.width, height: bottom - disc.top };
+  }
   function measureOverlay(): void {
     const e = expanded;
     if (!e || !boardEl || onPhone()) {
@@ -3467,7 +3482,11 @@
     }
     const av = tableAvatar(e.seatID);
     const b = boardEl.getBoundingClientRect();
-    const r = av?.getBoundingClientRect();
+    // ADR 0204 §4: a top-row seat's avatar is at the top of its panel,
+    // so its board opens below it; the box kept clear is the whole
+    // identity (its name, life chip and badges), not just the disc.
+    const below = av?.closest(".panel")?.classList.contains("flipped") ?? false;
+    const r = av ? avatarClearBox(av, below) : undefined;
     if (!r || (r.width === 0 && r.height === 0) || b.width === 0) {
       overlaySpan = null;
       return;
@@ -3479,10 +3498,17 @@
         // ADR 0119's pile publishes its width here; unset is 0.
         leftClear: parsePx(getComputedStyle(boardEl).getPropertyValue("--stack-pile-clear")),
         edge: 6,
+        below,
       },
     );
     const cur = overlaySpan;
-    if (!cur || cur.left !== next.left || cur.width !== next.width || cur.side !== next.side) {
+    if (
+      !cur ||
+      cur.left !== next.left ||
+      cur.width !== next.width ||
+      cur.side !== next.side ||
+      cur.top !== next.top
+    ) {
       overlaySpan = next;
     }
   }
@@ -3775,6 +3801,7 @@
       role="region"
       aria-label={expandedRegionName(expandedSeat)}
       style:left={overlaySpan ? `${overlaySpan.left}px` : null}
+      style:top={overlaySpan?.top !== undefined ? `${overlaySpan.top}px` : null}
       style:width={overlaySpan ? `${overlaySpan.width}px` : null}
       bind:this={overlayEl}
       onpointerenter={() => dispatchExpand({ type: "overlay-enter" })}
@@ -4719,7 +4746,10 @@
     /* #2995: clear of the opponent's commander, which sits at the top
        left of their panel (CommandStrip, 42% of a card tall). */
     left: 196px;
-    width: min(512px, calc(50% - 252px));
+    /* ADR 0204 §4: and short of the middle of the board, where an
+       opponent across the table now sits (their avatar and its hand
+       count, 62px left of centre). */
+    width: min(512px, calc(50% - 270px));
     max-height: calc(100% - 20px);
     display: flex;
     flex-direction: column;

@@ -60,14 +60,17 @@ beforeEach(() => {
       } as DOMRect;
     }
     const top = this.hasAttribute("data-instance-id") ? 700 : 10;
+    // ADR 0204 §4: the seats' avatars, at the board's right edge, away
+    // from the pile's column, which keeps clear of any it overlaps.
+    const left = this.hasAttribute("data-seat-identity") ? 1290 : 10;
     return {
-      left: 10,
+      left,
       top,
       width: 100,
       height: 140,
-      right: 110,
+      right: left + 100,
       bottom: top + 140,
-      x: 10,
+      x: left,
       y: top,
       toJSON: () => ({}),
     } as DOMRect;

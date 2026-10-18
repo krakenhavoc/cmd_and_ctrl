@@ -249,6 +249,11 @@ export interface PlacementOptions {
   maxWidth?: number;
   /** The inset from the board's edges (its padding). */
   edge?: number;
+  /**
+   * ADR 0204 §4: the avatar is a top-row seat's, at the top of the board,
+   * so the overlay opens below it, toward the table's centre.
+   */
+  below?: boolean;
 }
 
 export const OVERLAY_GAP = 8;
@@ -259,6 +264,8 @@ export interface Span {
   left: number;
   width: number;
   side: "left" | "right";
+  /** Board-relative top, when the overlay opens below the avatar (ADR 0204 §4). */
+  top?: number;
 }
 
 /**
@@ -272,6 +279,20 @@ export function placeOverlay(avatar: Box, opts: PlacementOptions): Span {
   const edge = opts.edge ?? 0;
   const leftEdge = edge + Math.max(0, opts.leftClear ?? 0);
   const rightEdge = opts.boardWidth - edge;
+
+  if (opts.below) {
+    // ADR 0204 §4 (call 5): below the avatar by the gap, in the wider of
+    // the two halves the avatar splits the board into, each taking the
+    // avatar's own column (the overlay is under it, not beside it) and
+    // hugging it, so the pointer crosses only the gap.
+    const top = avatar.top + avatar.height + gap;
+    const leftW = Math.min(cap, Math.max(0, avatar.left + avatar.width - leftEdge));
+    const rightW = Math.min(cap, Math.max(0, rightEdge - avatar.left));
+    if (leftW >= rightW) {
+      return { left: avatar.left + avatar.width - leftW, width: leftW, side: "left", top };
+    }
+    return { left: avatar.left, width: rightW, side: "right", top };
+  }
 
   const leftRoom = Math.max(0, avatar.left - gap - leftEdge);
   const rightRoom = Math.max(0, rightEdge - (avatar.left + avatar.width + gap));

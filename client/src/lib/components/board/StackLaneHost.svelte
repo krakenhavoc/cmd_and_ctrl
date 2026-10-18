@@ -64,9 +64,11 @@
     bottomLeftFixtureTop,
     cascadeInward,
     pileBounds,
+    pileColumn,
     pileFit,
     pileLeft,
     pileTop,
+    seatAvatarClamps,
     seatSlots,
     stripContentBottom,
     sameSpan,
@@ -274,6 +276,11 @@
   let stripBottom = $state<number | null>(null);
   let fixtureTop = $state<number | null>(null);
 
+  const maxOf = (a: number | null, b: number | null): number | null =>
+    a === null ? b : b === null ? a : Math.max(a, b);
+  const minOf = (a: number | null, b: number | null): number | null =>
+    a === null ? b : b === null ? a : Math.min(a, b);
+
   function measure(): void {
     if (!boardEl) return;
     const b = boardEl.getBoundingClientRect();
@@ -289,11 +296,18 @@
     laneH = laneEl?.offsetHeight ?? 0;
     laneW = laneEl?.offsetWidth ?? 0;
     if (style === "pile") {
-      stripBottom = stripContentBottom(boardEl);
       const left =
         pileLeft({ boardW: b.width, pileW: laneW, seamX: seams.seamX, dock: seams.dock }) ??
         PILE_INSET;
-      fixtureTop = bottomLeftFixtureTop(boardEl, left + laneW, left);
+      // ADR 0204 §4: the default spot keeps clear of the seats' avatars
+      // too, above and below; a pile the viewer has moved is where they
+      // put it, avatar or not.
+      const column = pileColumn(b.width, b.height, seams.seamX, seams.dock);
+      const avatars = move.placed
+        ? { above: null, below: null }
+        : seatAvatarClamps(boardEl, seams.seamY, column.left, column.right);
+      stripBottom = maxOf(stripContentBottom(boardEl), avatars.above);
+      fixtureTop = minOf(bottomLeftFixtureTop(boardEl, left + laneW, left), avatars.below);
     } else {
       stripBottom = null;
       fixtureTop = null;
@@ -308,6 +322,9 @@
     void style;
     void collapsed;
     void model.items.length;
+    // ADR 0204 §4: moving the pile, or resetting it, changes whether
+    // the avatars clamp it.
+    void move.placed;
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => measure());
