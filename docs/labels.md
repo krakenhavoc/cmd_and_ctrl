@@ -174,3 +174,4 @@ registered, or when this file is stale.
 | `awayConcede` | `Concede for <name>` (starts with `Concede for `) | button | text | `lib/away.ts` | the away offer's concession, made for the away player |
 | `awayWait` | `Keep waiting` | button | text | `lib/away.ts` | the away offer's third answer: hide the offer for another away time |
 | `takeBackSeat` | `Take it back` | button | text | `lib/components/board/StandInBanner.svelte` | the banner a player sees on their own seat while a bot plays it: they play it again (ADR 0177 §6) |
+| `holdShiftToFlip` | `Hold Shift to flip` | note | text | `lib/components/board/HoverZoomOverlay.svelte` | the hover zoom's hint under a two-faced card's inset, on pointer devices only (#4106): holding Shift shows the other face big |

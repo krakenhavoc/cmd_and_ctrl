@@ -9,7 +9,8 @@
  * once a different face is chosen?
  */
 
-import type { CardView, CastSurfaceView } from "./protocol";
+import type { CardMeta } from "./cardMetaCache";
+import type { CardFaceView, CardView, CastSurfaceView } from "./protocol";
 
 /** Scryfall's layout for a modal double-faced card. */
 export const LAYOUT_MODAL_DFC = "modal_dfc";
@@ -337,4 +338,110 @@ export function castableFaceIndex(
 ): number {
   const i = castableFaces(card, zone).findIndex(isCastable);
   return i === -1 ? 0 : i;
+}
+
+/**
+ * Layouts whose halves are printed on ONE side of one card, in one
+ * image: a split card (CR 709.1, #3518), an adventurer card (CR 715.1)
+ * and a prepare card. There is no other side to turn to, so the hover
+ * panel's other-face section and its hold-Shift flip (#4106) leave
+ * them alone. A flip card is one image too, but its upside-down half is
+ * a set of alternative characteristics the card can take (CR 710.1), so
+ * it is not on this list: the panel shows that half as the same image
+ * turned.
+ */
+const ONE_SIDED_LAYOUTS = new Set([LAYOUT_SPLIT, LAYOUT_ADVENTURE, "prepare"]);
+
+/**
+ * otherSideIndex is the face of a two-faced card that is NOT up — the
+ * back of a transform or modal DFC whose front is up, the front of one
+ * whose back is up, the other half of a flip card — or null when there
+ * is no such face to show (#4106).
+ *
+ * Null for a face-down card even when this viewer may look at it: a
+ * face-down object has only the characteristics the rule that turned it
+ * face down lists (CR 708.2), and the panel says nothing more about it.
+ * A card the viewer does not know arrives with its faces already
+ * redacted by the server, so it answers null too.
+ */
+export function otherSideIndex(
+  card: Pick<CardView, "faces" | "layout" | "active_face" | "face_down"> | null | undefined,
+): number | null {
+  if (!card || card.face_down) return null;
+  if ((card.faces?.length ?? 0) < 2) return null;
+  if (ONE_SIDED_LAYOUTS.has(card.layout ?? "")) return null;
+  return (card.active_face ?? 0) === 0 ? 1 : 0;
+}
+
+/**
+ * otherSideHeading names the face otherSideIndex picked, for the hover
+ * panel's section heading. A double-faced card's other face is its
+ * "Back face", or its "Front face" once the back is up. A flip card has
+ * no back face (CR 710.1: its other half is printed upside down on the
+ * same side), so its halves are "Flipped" and "Unflipped".
+ */
+export function otherSideHeading(card: Pick<CardView, "layout" | "active_face">): string {
+  const backUp = (card.active_face ?? 0) !== 0;
+  if (card.layout === LAYOUT_FLIP) return backUp ? "Unflipped" : "Flipped";
+  return backUp ? "Front face" : "Back face";
+}
+
+/**
+ * PrintedFace is one face's printed characteristics as the hover panel
+ * lists them: what the face is, not what the permanent is doing.
+ */
+export interface PrintedFace {
+  name: string;
+  mana_cost?: string;
+  type_line?: string;
+  oracle_text?: string;
+  /** "3/3", "◈ 5" (starting loyalty) or "defense 5"; absent for none. */
+  stats?: string;
+  /** What `stats` is, for its tooltip. */
+  statsTitle?: string;
+}
+
+/** One entry of GET /cards/{id}'s card_faces. */
+export type MetaFace = NonNullable<CardMeta["card_faces"]>[number];
+
+/**
+ * printedFace merges a face as the game sends it (CardView.faces, or a
+ * meld card's melds_into) with the same face from GET /cards/{id}.
+ *
+ * The wire face arrives with the card, so the panel never waits on a
+ * fetch for the name, type line, cost and text. The Scryfall face is
+ * read for what the wire lacks: loyalty and defense, and printed P/T as
+ * strings, which keep a "*" and a 0 that the wire's omitempty ints
+ * drop. It is used only when its name matches, so a mismatched printing
+ * never lends one face another's stats.
+ */
+export function printedFace(
+  face: Pick<
+    CardFaceView,
+    "name" | "type_line" | "mana_cost" | "oracle_text" | "power" | "toughness"
+  >,
+  metaFace?: MetaFace | null,
+): PrintedFace {
+  const m = metaFace && metaFace.name === face.name ? metaFace : null;
+  const out: PrintedFace = { name: face.name };
+  const mana = face.mana_cost || m?.mana_cost;
+  const type = face.type_line || m?.type_line;
+  const text = face.oracle_text || m?.oracle_text;
+  if (mana) out.mana_cost = mana;
+  if (type) out.type_line = type;
+  if (text) out.oracle_text = text;
+  if (m?.power && m?.toughness) {
+    out.stats = `${m.power}/${m.toughness}`;
+    out.statsTitle = "printed power/toughness";
+  } else if (m?.loyalty) {
+    out.stats = `◈ ${m.loyalty}`;
+    out.statsTitle = "starting loyalty";
+  } else if (m?.defense) {
+    out.stats = `defense ${m.defense}`;
+    out.statsTitle = "starting defense";
+  } else if (face.power != null || face.toughness != null) {
+    out.stats = `${face.power ?? 0}/${face.toughness ?? 0}`;
+    out.statsTitle = "printed power/toughness";
+  }
+  return out;
 }

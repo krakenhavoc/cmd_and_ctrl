@@ -19,7 +19,16 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
-  import { isFlippedFlipCard, isSidewaysArt, LAYOUT_FLIP } from "../../faces";
+  import {
+    isFlippedFlipCard,
+    isSidewaysArt,
+    LAYOUT_FLIP,
+    otherSideHeading,
+    otherSideIndex,
+    printedFace,
+    type PrintedFace,
+  } from "../../faces";
+  import { L } from "../../labels";
   import { cardArt } from "../../cardArt";
   import { isToken } from "../../tokenGroups";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
@@ -179,31 +188,162 @@
   const livePT = $derived.by(() => {
     if (!card || card.power == null || card.toughness == null) return null;
     const live = `${card.power}/${card.toughness}`;
-    const printed =
-      meta?.power != null && meta?.toughness != null ? `${meta.power}/${meta.toughness}` : null;
+    const printed = upFace
+      ? upFace.statsTitle === "printed power/toughness"
+        ? (upFace.stats ?? null)
+        : null
+      : meta?.power != null && meta?.toughness != null
+        ? `${meta.power}/${meta.toughness}`
+        : null;
     return printed !== null && printed !== live ? `${live} (${printed})` : live;
   });
+
+  // #4106 — the two sides of a two-faced card, as text. Scryfall leaves
+  // the top level of a double-faced or flip card with the joined name
+  // ("A // B") and no rules text at all, so for these cards the panel
+  // reads each face on its own: the face that is up in the usual place,
+  // and the other one in a section below it. That section is what makes
+  // the back readable without a key, on touch and to a screen reader.
+  // A split or adventurer card is one side and stays as it was (#3518);
+  // a face-down card shows nothing more (otherSideIndex).
+  const otherIdx = $derived(otherSideIndex(card));
+  const upFace = $derived.by((): PrintedFace | null => {
+    if (otherIdx === null || !card?.faces) return null;
+    const i = card.active_face ?? 0;
+    const face = card.faces[i];
+    return face ? printedFace(face, meta?.card_faces?.[i]) : null;
+  });
+  // A meld card's other side is the permanent it melds into (ADR 0145):
+  // its back is half of that card's face (CR 712.1), so the section
+  // names it by what it becomes.
+  const meldsInto = $derived(card && !card.face_down ? card.melds_into : undefined);
+  const otherSide = $derived.by((): { heading: string; face: PrintedFace } | null => {
+    if (!card) return null;
+    if (otherIdx !== null && card.faces?.[otherIdx]) {
+      return {
+        heading: otherSideHeading(card),
+        face: printedFace(card.faces[otherIdx], meta?.card_faces?.[otherIdx]),
+      };
+    }
+    if (meldsInto?.name) return { heading: "Melds into", face: printedFace(meldsInto) };
+    return null;
+  });
+
+  // The name, type line and cost of the face that is up: the face's own
+  // for a two-faced card, the card's for everything else.
+  const upName = $derived(upFace?.name ?? meta?.name ?? card?.name ?? "");
+  const upType = $derived(upFace ? upFace.type_line : meta?.type_line);
+  const upCost = $derived(upFace ? upFace.mana_cost : meta?.mana_cost);
+  const upText = $derived(upFace ? upFace.oracle_text : meta?.oracle_text);
+  const upLoyalty = $derived(
+    upFace
+      ? upFace.statsTitle === "starting loyalty"
+        ? upFace.stats
+        : undefined
+      : meta?.loyalty
+        ? `◈ ${meta.loyalty}`
+        : undefined,
+  );
+
+  // #4106 — hold Shift to see the other side big. While Shift is down
+  // the big image shows the face that is NOT up and the inset the one
+  // that is; letting go swaps them back. Only the images swap: the text
+  // above already lists both sides. A key typed into a text field (chat,
+  // a deck name, an X value) is not a request to flip anything, and the
+  // flag drops whenever the window loses the key's release: blur, a tab
+  // switch, or a pointer event that reports Shift up.
+  let shiftHeld = $state(false);
+  const NON_TEXT_INPUTS = new Set([
+    "button",
+    "checkbox",
+    "color",
+    "file",
+    "image",
+    "radio",
+    "range",
+    "reset",
+    "submit",
+  ]);
+  function typingIn(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true;
+    if (target instanceof HTMLInputElement) return !NON_TEXT_INPUTS.has(target.type);
+    return (
+      target.isContentEditable ||
+      target.closest('[contenteditable]:not([contenteditable="false"])') !== null
+    );
+  }
+  function onKeyDown(e: KeyboardEvent): void {
+    if (e.key !== "Shift") {
+      if (!e.shiftKey) shiftHeld = false;
+      return;
+    }
+    if (e.repeat || typingIn(e.target)) return;
+    shiftHeld = true;
+  }
+  function onKeyUp(e: KeyboardEvent): void {
+    if (e.key === "Shift" || !e.shiftKey) shiftHeld = false;
+  }
+  function releaseShift(): void {
+    shiftHeld = false;
+  }
+  function onPointerMove(e: PointerEvent): void {
+    if (shiftHeld && !e.shiftKey) shiftHeld = false;
+  }
+
+  // What the flip swaps in: the other face of a two-faced card (a flip
+  // card's is the same image turned the other way), or the permanent a
+  // meld card melds into. Null for every card with no other side, so
+  // Shift does nothing to them.
+  const flipSide = $derived.by((): { src: string; name: string; turned: boolean } | null => {
+    if (otherFace?.src && otherSide && otherIdx !== null) {
+      return { src: otherFace.src, name: otherSide.face.name, turned: otherFace.turned };
+    }
+    if (meldsInto?.image) return { src: meldsInto.image, name: meldsInto.name, turned: false };
+    return null;
+  });
+  const flipped = $derived(shiftHeld && flipSide !== null && imgSrc !== null);
+  const bigSrc = $derived(flipped && flipSide ? flipSide.src : imgSrc);
+  const bigAlt = $derived(flipped && flipSide ? flipSide.name : upName);
+  const bigTurned = $derived(flipped && flipSide ? flipSide.turned : flippedArt);
+  // The face that is up, for the inset while the flip is held.
+  const upInset = $derived(
+    flipped && imgSrc ? { src: imgSrc, name: upName, turned: flippedArt } : null,
+  );
 </script>
 
+<svelte:window
+  onkeydowncapture={onKeyDown}
+  onkeyupcapture={onKeyUp}
+  onblur={releaseShift}
+  onpointermovecapture={onPointerMove}
+/>
+<svelte:document onvisibilitychange={releaseShift} />
+
 {#if card}
-  <div class="overlay" aria-hidden="true">
+  <!-- #4106: no longer aria-hidden. The panel is still non-interactive
+       (pointer-events: none) and takes no focus, but its text is how a
+       screen reader reaches a card's other face, so it stays in the
+       accessibility tree and its images are named for the face each
+       one shows. -->
+  <div class="overlay" class:two-sided={otherSide !== null}>
     <div class="scan" class:sideways>
-      {#if imgSrc}
+      {#if bigSrc}
         <!-- keyed so a new card never shows the previous card's scan
              while its own image is still loading. The failure pip
-             is display-only here: the panel is pointer-events: none
-             and aria-hidden, and it closes as soon as the pointer
-             leaves the card it previews. fetchpriority (#33): the
-             panel exists to be read the moment it opens; the small
-             other-face inset below does not need the hint. -->
-        {#key imgSrc}
+             is display-only here: the panel is pointer-events: none,
+             and it closes as soon as the pointer leaves the card it
+             previews. fetchpriority (#33): the panel exists to be read
+             the moment it opens; the small other-face inset below does
+             not need the hint. -->
+        {#key bigSrc}
           <img
-            src={imgSrc}
-            alt=""
-            class:flipped={flippedArt}
+            src={bigSrc}
+            alt={bigAlt}
+            class:flipped={bigTurned}
             class:sideways
             fetchpriority="high"
-            use:cardArt={{ url: imgSrc, interactive: false }}
+            use:cardArt={{ url: bigSrc, interactive: false }}
           />
         {/key}
       {:else}
@@ -212,46 +352,68 @@
       <!-- ADR 0034: the other printed face. A modal DFC in hand is
            two playable objects, and the half you are NOT looking at
            is exactly the information the hover panel exists to
-           supply. Absent for every single-faced card. -->
+           supply. Absent for every single-faced card. While Shift is
+           held (#4106) the big image and the inset trade places, so
+           the inset is then the face that is up. -->
       {#if meldInsets.length > 0}
         <div class="meld-insets">
-          {#each meldInsets as inset (inset.src)}
-            <div class="other-face meld-inset" title={inset.title}>
-              <img
-                src={inset.src}
-                alt={inset.name}
-                use:cardArt={{ url: inset.src, interactive: false }}
-              />
+          {#if upInset && meldsInto}
+            <div class="other-face meld-inset" title={upInset.name}>
+              {#key upInset.src}
+                <img
+                  src={upInset.src}
+                  alt={upInset.name}
+                  use:cardArt={{ url: upInset.src, interactive: false }}
+                />
+              {/key}
             </div>
-          {/each}
+          {:else}
+            {#each meldInsets as inset (inset.src)}
+              <div class="other-face meld-inset" title={inset.title}>
+                <img
+                  src={inset.src}
+                  alt={inset.name}
+                  use:cardArt={{ url: inset.src, interactive: false }}
+                />
+              </div>
+            {/each}
+          {/if}
+          {#if flipSide}<span class="flip-hint">{L.holdShiftToFlip}</span>{/if}
         </div>
       {/if}
       {#if otherFace?.src}
-        <div class="other-face" title={otherFace.face.name}>
-          {#key otherFace.src}
-            <img
-              src={otherFace.src}
-              alt={otherFace.face.name}
-              class:flipped={otherFace.turned}
-              use:cardArt={{ url: otherFace.src, interactive: false }}
-            />
-          {/key}
+        {@const inset = upInset ?? {
+          src: otherFace.src,
+          name: otherFace.face.name,
+          turned: otherFace.turned,
+        }}
+        <div class="inset-col">
+          <div class="other-face" title={inset.name}>
+            {#key inset.src}
+              <img
+                src={inset.src}
+                alt={inset.name}
+                class:flipped={inset.turned}
+                use:cardArt={{ url: inset.src, interactive: false }}
+              />
+            {/key}
+          </div>
+          {#if flipSide}<span class="flip-hint">{L.holdShiftToFlip}</span>{/if}
         </div>
       {/if}
     </div>
     <div class="info">
       <header class="info-head">
-        <span class="title">{meta?.name ?? card.name}</span>
+        <span class="title">{upName}</span>
         {#if livePT}
           <span class="pt" title="live power/toughness (printed in parens)">{livePT}</span>
-        {:else if meta?.loyalty}
-          <span class="pt" title="starting loyalty">◈ {meta.loyalty}</span>
+        {:else if upLoyalty}
+          <span class="pt" title="starting loyalty">{upLoyalty}</span>
         {/if}
       </header>
       <div class="type-line">
-        {#if meta?.type_line}<span>{meta.type_line}</span>{/if}
-        {#if meta?.mana_cost}<span class="cost"><ManaCost cost={meta.mana_cost} size={13} /></span
-          >{/if}
+        {#if upType}<span>{upType}</span>{/if}
+        {#if upCost}<span class="cost"><ManaCost cost={upCost} size={13} /></span>{/if}
       </div>
       <!-- ADR 0160: an exchanged text box. The oracle text below is
            what the card prints, which is no longer what it does. -->
@@ -267,9 +429,9 @@
           Text changed: {card.text_changes.join(", ")}
         </div>
       {/if}
-      {#if meta?.oracle_text}
-        <div class="oracle">{meta.oracle_text}</div>
-      {:else if meta === null}
+      {#if upText}
+        <div class="oracle">{upText}</div>
+      {:else if meta === null && !upFace}
         <div class="oracle dim">…</div>
       {/if}
       <!-- ADR 0093 Decision 8: the abilities OTHER permanents gave this
@@ -293,6 +455,32 @@
            the other half of the question here. -->
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
+      {/if}
+      <!-- #4106: the other side of a two-faced card, always listed, so
+           the back is readable without the Shift flip: on touch, and
+           to a screen reader. Printed text only — what the face would
+           be, not what the permanent is doing now. -->
+      {#if otherSide}
+        <section class="other-side">
+          <h3 class="other-head">{otherSide.heading}</h3>
+          <div class="info-head">
+            <span class="title other-title">{otherSide.face.name}</span>
+            {#if otherSide.face.stats}
+              <span class="pt" title={otherSide.face.statsTitle}>{otherSide.face.stats}</span>
+            {/if}
+          </div>
+          {#if otherSide.face.type_line || otherSide.face.mana_cost}
+            <div class="type-line">
+              {#if otherSide.face.type_line}<span>{otherSide.face.type_line}</span>{/if}
+              {#if otherSide.face.mana_cost}<span class="cost"
+                  ><ManaCost cost={otherSide.face.mana_cost} size={13} /></span
+                >{/if}
+            </div>
+          {/if}
+          {#if otherSide.face.oracle_text}
+            <div class="oracle other-oracle">{otherSide.face.oracle_text}</div>
+          {/if}
+        </section>
       {/if}
       {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
         <footer class="info-foot">
@@ -502,6 +690,86 @@
   .meld-inset {
     position: static;
     width: 100%;
+  }
+
+  /* #4106: the other face's inset with its hold-Shift hint under it,
+     in the same corner the inset always had. */
+  .inset-col {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .inset-col .other-face {
+    position: static;
+    width: 100%;
+  }
+  /* A key only a keyboard has, so the hint is for pointer devices only;
+     on touch the info panel's other-face section is the way to read the
+     back. Wider than the inset, so it hangs left from its right edge. */
+  .flip-hint {
+    display: none;
+    align-self: flex-end;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    padding: 1px 7px;
+    border-radius: 999px;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  @media (hover: hover) {
+    .flip-hint {
+      display: block;
+    }
+  }
+
+  /* #4106: the other side's text. The same shape as the face that is
+     up, one step quieter: a hairline above, a mono label, and the rules
+     text in the muted ink. */
+  .other-side {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .other-head {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--fg-muted);
+  }
+  .other-title {
+    font-size: 13px;
+  }
+  .oracle.other-oracle {
+    max-height: clamp(60px, 14vh, 180px);
+    margin-top: 2px;
+    color: var(--fg-muted);
+  }
+  /* Two faces of text below the scan: the scan gives up a little width
+     so both fit at a laptop's height, and when they still don't, the
+     other side's text is the one that shortens (it fades at the cut),
+     never the face that is up. */
+  .overlay.two-sided .scan:not(.sideways) {
+    width: min(200px, 100%);
+  }
+  .overlay.two-sided .info > .oracle {
+    flex-shrink: 0;
   }
   img {
     width: 100%;
