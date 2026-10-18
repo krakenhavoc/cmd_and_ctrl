@@ -92,7 +92,16 @@
     align-self: flex-start;
     gap: 8px;
     padding: 18px 6px 6px;
+    /* As much as a zone other than the lands asks for (PlayerPanel's
+       #4087 min-width), so its label shows. */
+    min-width: 72px;
+    box-sizing: border-box;
   }
+  /* #4122: never wider than the group. With small cards (a short
+     overlay) "Command 1" is wider than one commander, and an absolute
+     label past the group's edge was scroll overflow in the back row,
+     which then scrolled sideways. A long label ends in "…", as the
+     zones' labels do (BattlefieldRow). */
   .row-label {
     position: absolute;
     top: 1px;
@@ -100,6 +109,7 @@
     display: inline-flex;
     align-items: baseline;
     gap: 6px;
+    max-width: calc(100% - 12px);
     font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.01em;
@@ -108,7 +118,13 @@
     white-space: nowrap;
     pointer-events: none;
   }
+  .row-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .row-count {
+    flex: none;
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 600;

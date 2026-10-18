@@ -585,6 +585,22 @@ describe("the overlay's layout (#4122)", () => {
   // click meant for a card in it. The floor is rowFit's MIN_CARD_H, the
   // back row's track may shrink to nothing, and the back row is cut at
   // its track rather than reaching under the strip.
+  // #4122's branch E2E: at 1024×768 with a dock request open, "Command 1"
+  // was wider than its one small commander, and the absolute label past
+  // the group's edge made the back row scroll sideways by 2px. It is kept
+  // inside the group, as BattlefieldRow keeps the zones' labels.
+  it("keeps the command group's label inside the group", () => {
+    const src = readFileSync("src/lib/components/board/CommandStrip.svelte", "utf8");
+    const rule = (sel: string) => {
+      const at = src.indexOf(`  ${sel} {`);
+      expect(at, sel).toBeGreaterThan(0);
+      return src.slice(at, src.indexOf("\n  }", at));
+    };
+    expect(rule(".row-label")).toContain("max-width: calc(100% - 12px);");
+    expect(rule(".row-name")).toContain("text-overflow: ellipsis;");
+    expect(rule(".command-strip.row")).toContain("min-width: 72px;");
+  });
+
   it("never lets the back row reach under the strip", () => {
     const src = readFileSync("src/lib/components/board/PlayerPanel.svelte", "utf8");
     const at = src.indexOf("  .panel.expanded:not(.flipped) {");

@@ -242,10 +242,16 @@ test.describe("expanded board (#2208)", () => {
       expect(m.covered, `${width}×${height}`).toEqual([]);
       const label = `${width}×${height}`;
       expect(m.heights.length, label).toBeGreaterThanOrEqual(2);
-      expect(
-        Math.max(...m.heights) - Math.min(...m.heights),
-        label,
-      ).toBeLessThanOrEqual(1);
+      // One size, give or take 2%: each back-row zone shrink-fits its own
+      // width (rowFit, #3028), so in a back row right at the edge of
+      // fitting, one zone can settle a pixel or two smaller than the
+      // rest. The bug this guards against was a 2:1 spread.
+      const tallest = Math.max(...m.heights);
+      expect(tallest - Math.min(...m.heights), label).toBeLessThanOrEqual(
+        Math.max(1, Math.ceil(tallest * 0.02)),
+      );
+      // Exact: a real sideways overflow (a label past its group's edge
+      // was one) is a scrollbar on screen however small.
       expect(m.scrolls, label).toEqual([]);
       for (const top of m.handTops)
         expect(top, label).toBeGreaterThanOrEqual(m.strip - 1);
