@@ -341,6 +341,17 @@ keeps its four lines in that order, and the zones line folds into one
 - **Seat-tinted glass:** the frame took the seat colour as a top wash and an
   edge. The avatar ring is solid, bots' too; the turn rings keep their own.
   NEXT UP is filled in the seat colour, and the bot tag shrank to a badge.
+- **Mana symbols (#4120):** the mana tile became a full-width strip under the
+  other three tiles. It draws one mana symbol per group of sources, with the
+  group's mana in a corner badge, and leaves out colours with nothing. The owner
+  chose how sources are grouped:
+  - a source of one colour shows that colour's symbol;
+  - a two-colour source shows its hybrid symbol (a Watery Grave is `{U/B}`);
+  - three or more colours, or any colour, show one WUBRG rainbow disc;
+  - colourless or generic mana shows `{C}`.
+
+  This also stops a dual land being counted as only its first colour. The
+  summary's own mana row (§5) is unchanged.
 Text uses the mono voice for labels and counts, and `--fg-muted`, never
 `--fg-dim`, for anything a player reads to act (DESIGN.md §2).
 

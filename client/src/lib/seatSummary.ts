@@ -44,7 +44,34 @@ export interface ManaAvailability {
   flexible: number;
   /** Untapped permanents with at least one usable mana ability. */
   sources: number;
+  /**
+   * The same mana grouped by what each source can make (#4120), in
+   * MANA_GROUP_ORDER. Empty groups are left out.
+   */
+  groups: ManaGroup[];
 }
+
+/**
+ * ManaGroup is the mana from every source that can make exactly the
+ * same colours (#4120): one colour ("U"), a two-colour pair as its
+ * hybrid symbol ("U/B"), three or more colours or any colour as
+ * "WUBRG", and colourless or generic only as "C". `key` is a ManaSymbol
+ * symbol, and `amount` is the mana those sources make together.
+ */
+export interface ManaGroup {
+  key: string;
+  amount: number;
+  sources: number;
+}
+
+const COLORS = ["W", "U", "B", "R", "G"] as const;
+
+// The ten two-colour pairs as printed hybrid symbols write them: allied
+// pairs, then enemy pairs.
+const PAIRS = ["W/U", "U/B", "B/R", "R/G", "G/W", "W/B", "U/R", "B/G", "R/W", "G/U"];
+
+/** Display order of the mana groups: colours, pairs, rainbow, colourless. */
+export const MANA_GROUP_ORDER: readonly string[] = [...COLORS, ...PAIRS, "WUBRG", "C"];
 
 export interface CreatureStats {
   total: number;
@@ -174,11 +201,17 @@ function manaFromProduced(produced: string | undefined, into: ManaAvailability):
  * at least this much" is reading it right.
  */
 export function manaAvailable(controlledCards: readonly CardView[]): ManaAvailability {
-  const out: ManaAvailability = { byColor: {}, flexible: 0, sources: 0 };
+  const out: ManaAvailability = { byColor: {}, flexible: 0, sources: 0, groups: [] };
+  const groups = new Map<string, ManaGroup>();
   for (const c of controlledCards) {
     const abilities = usableManaAbilities(c);
     if (abilities.length === 0) continue;
     out.sources += 1;
+    const { key, amount } = sourceGroup(abilities.map((a) => a.produced));
+    const g = groups.get(key) ?? { key, amount: 0, sources: 0 };
+    g.amount += amount;
+    g.sources += 1;
+    groups.set(key, g);
     // One source, one activation. A land with three mana abilities can
     // only be tapped once, so the summary counts its BEST-KNOWN entry
     // rather than summing every printed option — summing would report
@@ -191,7 +224,87 @@ export function manaAvailable(controlledCards: readonly CardView[]): ManaAvailab
     const named = abilities.find((a) => hasNamedSymbol(a.produced));
     manaFromProduced((named ?? abilities[0]).produced, out);
   }
+  out.groups = MANA_GROUP_ORDER.flatMap((k) => {
+    const g = groups.get(k);
+    return g ? [g] : [];
+  });
   return out;
+}
+
+const COLOR_WORDS: Record<string, string> = {
+  W: "white",
+  U: "blue",
+  B: "black",
+  R: "red",
+  G: "green",
+};
+
+/**
+ * manaGroupTitle says what a mana group's symbol and badge mean, for
+ * its tooltip: "2 blue or black mana from 2 sources".
+ */
+export function manaGroupTitle(g: ManaGroup): string {
+  const kind =
+    g.key === "WUBRG"
+      ? "mana of three or more colours, or any colour,"
+      : g.key === "C"
+        ? "colourless mana"
+        : `${g.key
+            .split("/")
+            .map((c) => COLOR_WORDS[c] ?? c)
+            .join(" or ")} mana`;
+  return `${g.amount} ${kind} from ${g.sources} ${g.sources === 1 ? "source" : "sources"}`;
+}
+
+/**
+ * sourceGroup reads one source's mana abilities as the group it belongs
+ * to (#4120). The colours are every colour any of its abilities can
+ * make, since its controller picks the ability; the amount is the most
+ * one activation makes, since the source taps once.
+ *
+ * The `produced` grammar: each brace is one mana, "|" separates the
+ * colours it may be ("{W|U}"), a trailing count makes that many
+ * ("{W3|U3}", "{2}"), and ":N" is N mana of different colours. Prose
+ * ("any color") or an absent string can be any colour, so it reads as
+ * the rainbow, as three or more colours do.
+ */
+function sourceGroup(produced: readonly (string | undefined)[]): {
+  key: string;
+  amount: number;
+} {
+  const colors = new Set<string>();
+  let any = false;
+  let amount = 0;
+  for (const p of produced) {
+    let made = 0;
+    let matched = false;
+    for (const m of (p ?? "").matchAll(SYMBOL)) {
+      matched = true;
+      const [body, distinct] = m[1].toUpperCase().split(":");
+      let n = distinct ? Math.max(1, Number(distinct) || 1) : 1;
+      for (const option of body.split(/[|/]/)) {
+        const om = /^([A-Z]*)(\d*)$/.exec(option);
+        if (!om) continue;
+        const count = om[2] ? Number(om[2]) : 1;
+        if (!distinct && count > n) n = count;
+        if (om[1] === "" || om[1] === "C" || om[1] === "P") continue;
+        for (const ch of om[1]) if ((COLORS as readonly string[]).includes(ch)) colors.add(ch);
+      }
+      made += n;
+    }
+    if (!matched) {
+      any = true;
+      made = 1;
+    }
+    amount = Math.max(amount, made);
+  }
+  const picked = COLORS.filter((c) => colors.has(c));
+  if (any || picked.length >= 3) return { key: "WUBRG", amount };
+  if (picked.length === 2) {
+    const pair = PAIRS.find((p) => p.split("/").every((c) => colors.has(c)));
+    return { key: pair ?? "WUBRG", amount };
+  }
+  return { key: picked[0] ?? "C", amount };
 }
 
 function hasNamedSymbol(produced: string | undefined): boolean {
@@ -363,7 +476,7 @@ export function buildSeatSummary(
       handCount: 0,
       libraryCount: seat.library?.count ?? 0,
       graveyardCount: seat.graveyard?.count ?? 0,
-      mana: { byColor: {}, flexible: 0, sources: 0 },
+      mana: { byColor: {}, flexible: 0, sources: 0, groups: [] },
       creatures: { total: 0, untapped: 0, tapped: 0, power: 0, untappedPower: 0 },
       creatureCards: [],
       structural: [],
