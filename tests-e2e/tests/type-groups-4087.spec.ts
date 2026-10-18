@@ -185,10 +185,20 @@ for (const seats of [2, 3, 4]) {
               }),
             }));
             const mid = p.querySelector<HTMLElement>(".grid-middle");
+            // ADR 0204 §3: the seat's avatar and what hangs beside it.
+            const seatEl = p.querySelector<HTMLElement>("[data-seat-identity]");
+            const seatBoxes = seatEl
+              ? [seatEl, ...seatEl.querySelectorAll<HTMLElement>("*")]
+                  .map((e) => e.getBoundingClientRect())
+                  .filter((b) => b.width > 0 && b.height > 0)
+              : [];
+            const seatLeft = Math.min(...seatBoxes.map((b) => b.left));
+            const seatRight = Math.max(...seatBoxes.map((b) => b.right));
             return {
               box: r(p.getBoundingClientRect()),
               rows,
               midHidden: mid ? mid.scrollWidth - mid.clientWidth : 0,
+              seat: seatBoxes.length ? { left: seatLeft, right: seatRight } : null,
             };
           });
         });
@@ -234,9 +244,17 @@ for (const seats of [2, 3, 4]) {
           const allowed = size.width >= 600 ? cardW : 96;
           for (let i = 1; i < back.length; i++) {
             const gap = back[i].left - back[i - 1].right;
+            // ADR 0204 §3 (call 3): your back row may part around your
+            // avatar, leaving it a clear notch. The one gap that straddles
+            // the avatar may be as wide as the avatar and what hangs
+            // beside it, plus the usual allowance.
+            const seat = panel.seat;
+            const straddles =
+              seat !== null && back[i - 1].right < seat.right && back[i].left > seat.left;
+            const allowedHere = straddles ? seat.right - seat.left + allowed : allowed;
             expect
               .soft(gap, `${where}: gap between ${back[i - 1].zone} and ${back[i].zone}`)
-              .toBeLessThanOrEqual(allowed);
+              .toBeLessThanOrEqual(allowedHere);
           }
           const count = (z: string) => panel.rows.find((r) => r.zone === z)?.cards.length ?? 0;
           expect(count("planeswalkers"), `${where}: walkers`).toBe(WALKERS.length);

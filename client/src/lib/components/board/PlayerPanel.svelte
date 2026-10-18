@@ -55,6 +55,7 @@
   import {
     BACK_ZONES,
     ZONE_LABEL,
+    ZONE_WEIGHT,
     backRowShares,
     isSpreadZone,
     type BackZone,
@@ -101,6 +102,7 @@
   import {
     backRowSplit,
     handNotch,
+    partBackRow,
     seatOverhang,
     type BackRowSplit,
     type HandNotch,
@@ -484,14 +486,29 @@
     other: 0,
   });
   const backZones = $derived(BACK_ZONES.filter((z) => buckets[z].length > 0));
-  const shares = $derived(
-    backRowShares(
-      landPiles,
-      Object.fromEntries(backZones.map((z) => [z, zonePiles[z]])) as Partial<
-        Record<BackZone, number>
-      >,
-    ),
+  // Your back row parted around your avatar (backRowSplit), where the
+  // two share height; null elsewhere.
+  let backSplit = $state<BackRowSplit | null>(null);
+  const pilesOf = (zones: readonly BackZone[]) =>
+    Object.fromEntries(zones.map((z) => [z, zonePiles[z]])) as Partial<Record<BackZone, number>>;
+  // ADR 0204 §3: where your back row parts around your avatar (backSplit,
+  // below), its groups are shared between the part left of the avatar and
+  // the part right of it by the room each has, and each part shares its
+  // width among its own groups. Otherwise it is one part, as before.
+  const backParts = $derived(
+    backSplit
+      ? partBackRow(
+          landPiles,
+          backZones.map((z) => ({ zone: z, weight: zonePiles[z] * ZONE_WEIGHT[z] })),
+          backSplit.left,
+          backSplit.zones,
+        )
+      : { left: backZones, right: [] as BackZone[] },
   );
+  const sharesLeft = $derived(backRowShares(landPiles, pilesOf(backParts.left)));
+  const sharesRight = $derived(backRowShares(0, pilesOf(backParts.right)));
+  const shareOf = (z: BackZone): number =>
+    backParts.right.includes(z) ? sharesRight[z] : sharesLeft[z];
 
   // #3044: the height the creature row and the back row share, and
   // what each asks of it (rowFit.ts rowDemand). A crowded row may wrap
@@ -532,12 +549,15 @@
   // zero and null where the identity is not seated (a phone's rail).
   let seatNotch = $state(0);
   let ownHandNotch = $state<HandNotch | null>(null);
-  // Your back row parted around your avatar (backRowSplit), where the
-  // two share height; null elsewhere.
-  let backSplit = $state<BackRowSplit | null>(null);
   function sameSplit(a: BackRowSplit | null, b: BackRowSplit | null): boolean {
     return (
-      a === b || (!!a && !!b && a.lands === b.lands && a.notch === b.notch && a.right === b.right)
+      a === b ||
+      (!!a &&
+        !!b &&
+        a.left === b.left &&
+        a.notch === b.notch &&
+        a.zones === b.zones &&
+        a.right === b.right)
     );
   }
   function sameNotch(a: HandNotch | null, b: HandNotch | null): boolean {
@@ -566,17 +586,24 @@
       const kw = id.querySelector(".seat-keywords")?.getBoundingClientRect();
       const lowest = Math.max(ir.bottom, life?.bottom ?? 0, kw?.bottom ?? 0);
       const br = bottom.getBoundingClientRect();
-      // Your own back row parts around your avatar where the two share
-      // height (backRowSplit): on a wide board, and on a short one whose
-      // back row spills into the dock's row. Then no band is kept, and
-      // your creatures keep their height.
+      // Every seat keeps the band its avatar reaches into clear, yours
+      // included (call 3): the back row is laid out as it always was, so
+      // its groups shrink-fit their width and nothing scrolls, and the
+      // rows' height budget gives up the band. Only on a short narrow
+      // board, whose back row already spills into the dock's row the
+      // avatar stands in, can no band clear it; there your back row parts
+      // around your avatar instead (backRowSplit).
       const docked = node.classList.contains("docked");
       const wide = docked && node.clientWidth - 16 >= 1100;
       const mid = node.querySelector<HTMLElement>(":scope > .grid-middle");
       const spacer = bottom
         .querySelector<HTMLElement>(":scope > .dock-spacer")
         ?.getBoundingClientRect();
-      const rows = mid ? [...mid.children].map((e) => e.getBoundingClientRect().bottom) : [];
+      const rows = mid
+        ? [...mid.querySelectorAll<HTMLElement>(".row")].map(
+            (e) => e.getBoundingClientRect().bottom,
+          )
+        : [];
       const tight = Math.max(0, ...rows) > br.top + 1;
       const split = docked && !!mid && !!spacer && (wide || tight);
       const v = split
@@ -1022,7 +1049,7 @@
   style:--creature-min={creatureDemand?.used ? `${creatureDemand.used}px` : undefined}
   style:--seat-notch={seatNotch ? `${seatNotch}px` : undefined}
   class:back-split={backSplit !== null}
-  style:--seat-split-lands={backSplit ? `${backSplit.lands}px` : undefined}
+  style:--seat-split-left={backSplit ? `${backSplit.left}px` : undefined}
   style:--seat-split-notch={backSplit ? `${backSplit.notch}px` : undefined}
   style:--seat-split-right={backSplit ? `${backSplit.right}px` : undefined}
   role={expanded ? "group" : "region"}
@@ -1094,55 +1121,23 @@
        both shrink-wrapped and centred as one group so the row grows
        out from the middle like the creature row above it. -->
   <div class="grid-middle">
-    <BattlefieldRow
-      bind:pileCount={landPiles}
-      label={L.lands}
-      {attachmentsByHost}
-      {curseTargets}
-      {takenFrom}
-      {ringBearers}
-      {cantAttack}
-      cards={buckets.land}
-      budget={budgets[1]}
-      bind:demand={landDemand}
-      compact
-      strip
-      {viewerID}
-      {selectedCombatCardID}
-      {stagedAttackers}
-      onCardClick={handleCardClick}
-      onActivateManaAbility={activateManaAbility}
-      onRawTap={activateManaAbility ? onTapToggle : undefined}
-      {view}
-      {clickInert}
-      {onActivateAbility}
-      sorcerySpeedBlocked={rowTimingWords}
-      {payerLife}
-      legal={rowLegal}
-      combat={rings}
-      legalGate={rowGate}
-      onSpecialAction={sendSpecialAction}
-      onGroupClick={(k) => (openGroupKey = k)}
-    />
-    {#each backZones as z (z)}
-      <!-- #4087: one zone per permanent type, drawn only while it holds
-           a card. Planeswalkers and battles never overlap or fold into
-           a pile (BattlefieldRow `spread`), so two walkers cannot hide
-           each other's loyalty. -->
+    <!-- ADR 0204 §3: the back row's two parts either side of your
+         avatar's notch, where it parts (`back-split`); otherwise
+         `display: contents`, one row as before. -->
+    <div class="back-part back-left">
       <BattlefieldRow
-        bind:pileCount={zonePiles[z]}
-        label={ZONE_LABEL[z]}
+        bind:pileCount={landPiles}
+        label={L.lands}
         {attachmentsByHost}
         {curseTargets}
         {takenFrom}
         {ringBearers}
         {cantAttack}
-        cards={buckets[z]}
+        cards={buckets.land}
         budget={budgets[1]}
-        bind:demand={zoneDemand[z]}
-        share={shares[z]}
+        bind:demand={landDemand}
         compact
-        spread={isSpreadZone(z)}
+        strip
         {viewerID}
         {selectedCombatCardID}
         {stagedAttackers}
@@ -1160,8 +1155,53 @@
         onSpecialAction={sendSpecialAction}
         onGroupClick={(k) => (openGroupKey = k)}
       />
-    {/each}
+      {#each backParts.left as z (z)}
+        {@render backZone(z)}
+      {/each}
+    </div>
+    <div class="back-part back-right">
+      {#each backParts.right as z (z)}
+        {@render backZone(z)}
+      {/each}
+    </div>
   </div>
+  {#snippet backZone(z: BackZone)}
+    <!-- #4087: one zone per permanent type, drawn only while it holds
+           a card. Planeswalkers and battles never overlap or fold into
+           a pile (BattlefieldRow `spread`), so two walkers cannot hide
+           each other's loyalty. -->
+    <BattlefieldRow
+      bind:pileCount={zonePiles[z]}
+      label={ZONE_LABEL[z]}
+      {attachmentsByHost}
+      {curseTargets}
+      {takenFrom}
+      {ringBearers}
+      {cantAttack}
+      cards={buckets[z]}
+      budget={budgets[1]}
+      bind:demand={zoneDemand[z]}
+      share={shareOf(z)}
+      compact
+      spread={isSpreadZone(z)}
+      {viewerID}
+      {selectedCombatCardID}
+      {stagedAttackers}
+      onCardClick={handleCardClick}
+      onActivateManaAbility={activateManaAbility}
+      onRawTap={activateManaAbility ? onTapToggle : undefined}
+      {view}
+      {clickInert}
+      {onActivateAbility}
+      sorcerySpeedBlocked={rowTimingWords}
+      {payerLife}
+      legal={rowLegal}
+      combat={rings}
+      legalGate={rowGate}
+      onSpecialAction={sendSpecialAction}
+      onGroupClick={(k) => (openGroupKey = k)}
+    />
+  {/snippet}
   <div class="grid-bottom">
     {#if coached}
       <!-- ADR 0076 §2.3: the coach card's cell. Empty on purpose, like
@@ -1578,6 +1618,9 @@
   .flipped .grid-middle {
     align-items: flex-end;
   }
+  .back-part {
+    display: contents;
+  }
   .grid-middle {
     grid-area: middle;
     /* #3893: the back row's track never takes less than the back row
@@ -1600,7 +1643,8 @@
   /* Each back-row zone takes the width of its cards, no more, so the
      two read as one centred group. An empty zone keeps enough width
      to show its label. */
-  .grid-middle > :global(.row) {
+  .grid-middle > :global(.row),
+  .back-part > :global(.row) {
     flex: 0 1 auto;
     min-width: 112px;
     max-width: 100%;
@@ -1608,7 +1652,8 @@
   /* #4087: with a zone per permanent type the back row can hold up to
      six, so a zone other than the lands asks for just enough to show
      its label ("enchantments" and its count). */
-  .grid-middle > :global(.row:not(.strip)) {
+  .grid-middle > :global(.row:not(.strip)),
+  .back-part > :global(.row:not(.strip)) {
     min-width: 72px;
   }
   /* A phone-wide panel has about 245px beside the player rail: let each
@@ -1616,7 +1661,9 @@
      once and the rest scroll, instead of the lands taking all of it. */
   @container (max-width: 480px) {
     .grid-middle > :global(.row),
-    .grid-middle > :global(.row:not(.strip)) {
+    .back-part > :global(.row),
+    .grid-middle > :global(.row:not(.strip)),
+    .back-part > :global(.row:not(.strip)) {
       min-width: 88px;
     }
   }
@@ -1624,7 +1671,8 @@
      instead of shrink-wrapping its overlapped cards. fitRow then opens
      the strip (--strip-k) until the lands sit edge to edge, and
      overlaps them only when they no longer fit. */
-  .grid-middle > :global(.row.strip) {
+  .grid-middle > :global(.row.strip),
+  .back-part > :global(.row.strip) {
     flex: 1 1 0;
     /* #4090: but no wider than its lands laid edge to edge (fitRow
        publishes --strip-spread), so the zones beside it sit against it
@@ -1638,7 +1686,8 @@
      count (--row-share, set on the row from backRow.ts), so a long
      artifact row shrinks its own cards instead of crushing the lands.
      #4087: that holds for each of the zones, one per permanent type. */
-  .grid-middle > :global(.row:not(.strip)) {
+  .grid-middle > :global(.row:not(.strip)),
+  .back-part > :global(.row:not(.strip)) {
     max-width: calc(var(--row-share, 1) * 100%);
   }
   .grid-bottom {
@@ -1838,7 +1887,8 @@
     .panel.opponent.flipped .grid-middle {
       direction: rtl;
     }
-    .panel.opponent.flipped .grid-middle > :global(.row) {
+    .panel.opponent.flipped .grid-middle > :global(.row),
+    .panel.opponent.flipped .back-part > :global(.row) {
       direction: ltr;
     }
     .panel.opponent.flipped .grid-bottom {
@@ -1879,15 +1929,18 @@
     }
     /* Room for "Enchant / artifact 3" when the panel has it; under that
        the label ends in "…" rather than scrolling the row. */
-    .panel.opponent.flipped .grid-middle > :global(.row) {
+    .panel.opponent.flipped .grid-middle > :global(.row),
+    .panel.opponent.flipped .back-part > :global(.row) {
       min-width: min(88px, 44%);
     }
     /* #4087: up to five other zones sit beside the lands, so they ask
        for no more than their label ("enchantments" ends in "…"). */
-    .panel.opponent.flipped .grid-middle > :global(.row:not(.strip)) {
+    .panel.opponent.flipped .grid-middle > :global(.row:not(.strip)),
+    .panel.opponent.flipped .back-part > :global(.row:not(.strip)) {
       min-width: 72px;
     }
-    .panel.opponent.flipped .grid-middle > :global(.row.strip) {
+    .panel.opponent.flipped .grid-middle > :global(.row.strip),
+    .panel.opponent.flipped .back-part > :global(.row.strip) {
       min-width: 64px;
     }
   }
@@ -2063,40 +2116,35 @@
         bottom: calc(8px + var(--card-h) * var(--hand-peek, 0.4) - var(--seat-dip));
       }
     }
-    /* Call 3: where your back row shares height with your avatar (a wide
-       board, or a short one whose back row spills into the dock's row),
-       it parts around it rather than giving the creatures' height to a
-       band: the lands left of the avatar, the other permanents right of
-       it up to the dock, and a clear notch between, the width of the
-       avatar and its steppers (backRowSplit, measured). The lands take
-       the column left of the notch and sit against its right end; the
-       notch is an empty ::before; the rest follow it. */
+    /* Call 3: on a short narrow board of your own the back row already
+       spills into the dock's row your avatar stands in, so no band can
+       clear it. There it parts around the avatar instead (backRowSplit,
+       measured): a part left of the avatar, a clear notch the width of
+       the avatar and its steppers, and a part right of it up to the dock.
+       The groups are shared between the parts by the room each has
+       (partBackRow), and each part shrink-fits its own, as the one row
+       does elsewhere. */
     .panel.self.docked.back-split .grid-middle {
-      justify-content: flex-start;
-      gap: 14px;
+      display: grid;
+      grid-template-columns: var(--seat-split-left) var(--seat-split-notch) minmax(0, 1fr);
+      column-gap: 0;
+      align-items: start;
       padding-right: var(--seat-split-right);
     }
-    .panel.self.docked.back-split .grid-middle::before {
-      content: "";
-      order: 1;
-      flex: 0 0 calc(var(--seat-split-notch) - 28px);
-    }
-    .panel.self.docked.back-split .grid-middle > :global(.row) {
-      order: 2;
-      max-width: none;
-    }
-    .panel.self.docked.back-split .grid-middle > :global(.row.strip) {
-      order: 0;
-      flex: 0 0 var(--seat-split-lands);
+    .panel.self.docked.back-split .back-part {
+      grid-row: 1;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
       min-width: 0;
-      max-width: none;
     }
-    .panel.self.docked.back-split .grid-middle > :global(.row.strip .row-cards) {
+    .panel.self.docked.back-split .back-left {
+      grid-column: 1;
       justify-content: flex-end;
     }
-    .panel.self.docked.back-split .grid-middle > :global(.row.strip .row-label) {
-      left: auto;
-      right: 6px;
+    .panel.self.docked.back-split .back-right {
+      grid-column: 3;
+      justify-content: flex-start;
     }
   }
   /* A narrow self panel (the quadrant's bottom right): the dock is

@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   SEAT_BACK_GAP,
   SEAT_CLEARANCE,
+  PANEL_PAD,
   backRowSplit,
+  partBackRow,
   handNotch,
   seatOverhang,
   slotDips,
@@ -95,40 +97,70 @@ describe("slotDips", () => {
 });
 
 describe("backRowSplit (§3, call 3)", () => {
-  it("parts the back row around the avatar: lands left, the rest up to the dock", () => {
-    // A 1409px board: the avatar and its steppers at 475..634, the dock at 1035.
+  it("parts the back row around the avatar: a part each side, the right one up to the dock", () => {
+    // A 1008px board: the avatar and its steppers at 312..471, the dock at 684.
     const s = backRowSplit({
-      panelW: 1409,
+      panelW: 1008,
       start: 8,
-      avatar: { left: 475, right: 634 },
-      dockLeft: 1035,
+      avatar: { left: 312, right: 471 },
+      dockLeft: 684,
     });
     expect(s).toEqual({
-      lands: 475 - SEAT_BACK_GAP - 8,
-      notch: 634 + SEAT_BACK_GAP - (475 - SEAT_BACK_GAP),
-      right: 1409 - 1035,
+      left: 312 - SEAT_BACK_GAP - 8,
+      notch: 471 + SEAT_BACK_GAP - (312 - SEAT_BACK_GAP),
+      zones: 684 - PANEL_PAD - (471 + SEAT_BACK_GAP),
+      right: 1008 - 684,
     });
   });
 
-  it("starts the lands after the coach card's room", () => {
+  it("starts the left part after the coach card's room", () => {
     const s = backRowSplit({
-      panelW: 1409,
-      start: 8 + 280,
-      avatar: { left: 475, right: 634 },
-      dockLeft: 1035,
+      panelW: 1008,
+      start: 8 + 200,
+      avatar: { left: 312, right: 471 },
+      dockLeft: 684,
     });
-    expect(s.lands).toBe(475 - SEAT_BACK_GAP - 288);
+    expect(s.left).toBe(312 - SEAT_BACK_GAP - 208);
   });
 
-  it("never sizes a column below zero", () => {
+  it("never sizes a part below zero", () => {
     const s = backRowSplit({
       panelW: 600,
       start: 200,
       avatar: { left: 100, right: 250 },
-      dockLeft: 700,
+      dockLeft: 240,
     });
-    expect(s.lands).toBe(0);
+    expect(s.left).toBe(0);
     expect(s.notch).toBe(250 + SEAT_BACK_GAP - 200);
-    expect(s.right).toBe(0);
+    expect(s.zones).toBe(0);
+  });
+});
+
+describe("partBackRow (§3, call 3)", () => {
+  const zones = [
+    { zone: "planeswalker", weight: 8 },
+    { zone: "battle", weight: 2 },
+    { zone: "artifact", weight: 3 },
+    { zone: "enchantment", weight: 3 },
+  ];
+
+  it("shares the groups by room, in order, the lands always left", () => {
+    // 1 land pile of 17 in all; the left part has 54% of the room.
+    const p = partBackRow(1, zones, 430, 362);
+    expect(p).toEqual({ left: ["planeswalker"], right: ["battle", "artifact", "enchantment"] });
+  });
+
+  it("keeps everything left when the right part has no room", () => {
+    expect(partBackRow(1, zones, 400, 0)).toEqual({
+      left: ["planeswalker", "battle", "artifact", "enchantment"],
+      right: [],
+    });
+  });
+
+  it("sends everything right when the left part has none", () => {
+    expect(partBackRow(0, zones, 0, 400)).toEqual({
+      left: [],
+      right: ["planeswalker", "battle", "artifact", "enchantment"],
+    });
   });
 });

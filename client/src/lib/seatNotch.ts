@@ -94,11 +94,13 @@ export const SEAT_BACK_GAP = 16;
 
 /** The viewer's back row parted around their avatar: its grid columns and right padding, in px. */
 export interface BackRowSplit {
-  /** The lands' column, from the back row's left edge to the notch. */
-  lands: number;
+  /** The left part's width, from the back row's left edge to the notch. */
+  left: number;
   /** The clear notch under the avatar and its steppers. */
   notch: number;
-  /** The back row's right padding: the other permanents end at the dock. */
+  /** The right part's width, from the notch to the dock. */
+  zones: number;
+  /** The back row's right padding: the right part ends at the dock. */
   right: number;
 }
 
@@ -114,21 +116,69 @@ export interface BackRowSplitInput {
 
 /**
  * backRowSplit (ADR 0204 §3, call 3) parts the viewer's back row around
- * their avatar where the two share height: on a wide board, where the
- * avatar straddles the line above the hand, and on a short one, where the
- * back row spills into the dock's row the avatar stands in. The lands go
- * left of the avatar, the other permanents right of it up to the dock,
- * and the notch between stays clear, so no permanent is under the avatar
- * and the creatures keep their height.
+ * their avatar on a short narrow board, where the back row already spills
+ * into the dock's row the avatar stands in, so no band above the avatar
+ * can clear it (everywhere else the back row keeps a band clear and is
+ * laid out as before). The lands go left of the avatar, the other
+ * permanents right of it up to the dock, and the notch between stays
+ * clear, so no permanent is under the avatar.
  */
 export function backRowSplit({ panelW, start, avatar, dockLeft }: BackRowSplitInput): BackRowSplit {
   const notchLeft = avatar.left - SEAT_BACK_GAP;
   const notchRight = avatar.right + SEAT_BACK_GAP;
   return {
-    lands: Math.max(0, Math.round(notchLeft - start)),
+    left: Math.max(0, Math.round(notchLeft - start)),
     notch: Math.max(0, Math.round(notchRight - Math.max(start, notchLeft))),
+    zones: Math.max(0, Math.round(dockLeft - PANEL_PAD - notchRight)),
     right: Math.max(0, Math.round(panelW - dockLeft)),
   };
+}
+
+/** The panel's padding: where the back row's area ends short of the dock's edge. */
+export const PANEL_PAD = 8;
+
+/** Which of the back row's zones go left of the notch, and which right. */
+export interface BackRowParts<Z extends string> {
+  left: Z[];
+  right: Z[];
+}
+
+/**
+ * partBackRow shares the parted back row's groups between its two parts
+ * by the room each part has (backRow.ts weights: lands one per pile, a
+ * walker or battle pile two). The lands always go left, and the groups
+ * keep their order: the first ones go left while the left part's share
+ * of the weight stays within its share of the width, the rest right, so
+ * each part shrink-fits a fair load and none has to scroll.
+ */
+export function partBackRow<Z extends string>(
+  landWeight: number,
+  zones: readonly { zone: Z; weight: number }[],
+  leftWidth: number,
+  rightWidth: number,
+): BackRowParts<Z> {
+  const total = Math.max(0, landWeight) + zones.reduce((a, z) => a + Math.max(0, z.weight), 0);
+  const room = leftWidth + rightWidth;
+  const leftShare = room > 0 ? leftWidth / room : 0.5;
+  const left: Z[] = [];
+  const right: Z[] = [];
+  let weight = Math.max(0, landWeight);
+  for (const z of zones) {
+    const next = weight + Math.max(0, z.weight);
+    // Take the group left if that leaves the left part nearer its share
+    // than leaving it out would.
+    if (
+      right.length === 0 &&
+      total > 0 &&
+      Math.abs(next / total - leftShare) <= Math.abs(weight / total - leftShare)
+    ) {
+      left.push(z.zone);
+      weight = next;
+    } else {
+      right.push(z.zone);
+    }
+  }
+  return { left, right };
 }
 
 /**
