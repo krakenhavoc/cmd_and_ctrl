@@ -329,11 +329,12 @@
 {/snippet}
 
 {#if avatarCard}
-  <!-- ADR 0077 as amended 2026-10-17 (#4102): one card in the reflow's
-       column. Its turn chip and the expand control on top, the identity,
-       then four read-out lines: in hand, mana, creatures, piles. The card
-       is a size container: a short one steps the avatar down to 56px and
-       folds the piles into one line (the container queries below). -->
+  <!-- ADR 0077 as amended 2026-10-17 (#4102) and 2026-10-18 (#4118): one
+       card in the reflow's column. Its turn chip and the expand control on
+       top, the identity, then the read-out as four stat tiles (in hand,
+       untapped creatures, their power, mana) over a footer of the piles.
+       The card is a size container: a short one steps the avatar down to
+       56px and lays the tiles in one row (the container queries below). -->
   <div
     class="summary seat-panel avatar-card"
     style:--seat-color={seatColor(seat.seat)}
@@ -359,24 +360,65 @@
       <p class="out">out</p>
     {:else}
       <div class="readout" data-dice-avoid>
-        <p class="line hand"><strong>{summary.handCount}</strong> in hand</p>
-        <div class="line mana" role="group" aria-label={manaLabel(summary.mana)}>
-          {@render manaRead()}
+        <!-- Each tile is a number over its label. The spoken form is the
+             sentence the label shortens ("4 in hand", "1 of 2 creatures
+             untapped"), so a screen reader hears no bare "1/2". -->
+        <div class="tiles">
+          <p class="tile hand">
+            <strong class="num" aria-hidden="true">{summary.handCount}</strong>
+            <span class="lbl" aria-hidden="true">hand</span>
+            <span class="sr-only">{summary.handCount} in hand</span>
+          </p>
+          <p class="tile creatures" title="untapped creatures of all its creatures">
+            <strong class="num" aria-hidden="true"
+              >{summary.creatures.untapped}<span class="of">/{summary.creatures.total}</span
+              ></strong
+            >
+            <span class="lbl" aria-hidden="true">ready</span>
+            <span class="sr-only"
+              >{summary.creatures.untapped} of {summary.creatures.total} creatures untapped</span
+            >
+          </p>
+          <p class="tile power" title="power of its untapped creatures">
+            <strong class="num" aria-hidden="true">{summary.creatures.untappedPower}</strong>
+            <span class="lbl" aria-hidden="true">power</span>
+            <span class="sr-only">{summary.creatures.untappedPower} untapped power</span>
+          </p>
+          <div class="tile mana" role="group" aria-label={manaLabel(summary.mana)}>
+            {#if summary.mana.sources === 0}
+              <strong class="num none">0</strong>
+            {:else}
+              <span class="pips">{@render manaRead()}</span>
+            {/if}
+            <span class="lbl" aria-hidden="true">mana</span>
+          </div>
         </div>
-        <p class="line creatures">
-          <span class="keep"
-            ><strong>{summary.creatures.untapped}</strong> untapped of
-            <strong>{summary.creatures.total}</strong></span
+        <div class="zones">
+          <span class="zone deck" title="library"
+            ><span class="lbl">deck</span> <strong>{summary.libraryCount}</strong></span
           >
-          <span class="keep">· <strong>{summary.creatures.untappedPower}</strong> power</span>
-        </p>
-        <div class="line zones">
-          <span class="zone deck" title="library">deck <strong>{summary.libraryCount}</strong></span
+          <button
+            class="zone pile-cell"
+            type="button"
+            aria-label={pileLabel("grave", summary.graveyardCount)}
+            title={`grave · ${summary.graveyardCount}`}
+            onclick={openGraveyard}
+            ><span class="lbl">gy</span> <strong>{summary.graveyardCount}</strong></button
           >
-          <span class="sep fold" aria-hidden="true">·</span>
-          {@render graveButton()}
-          <span class="sep" aria-hidden="true">·</span>
-          {@render exileButton()}
+          <button
+            class="zone pile-cell"
+            type="button"
+            aria-label={exileHeld > 0
+              ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
+              : pileLabel("exile", exileCount)}
+            title={exileHeld > 0
+              ? `exile · ${exileCount} · ${exileHeld} theirs to play`
+              : `exile · ${exileCount}`}
+            onclick={openExile}
+            ><span class="lbl">ex</span> <strong>{exileCount}</strong>{#if exileHeld > 0}<span
+                class="held">+{exileHeld}</span
+              >{/if}</button
+          >
         </div>
       </div>
     {/if}
@@ -512,14 +554,32 @@
   .summary.eliminated {
     opacity: 0.55;
   }
-  /* The reflow's avatar card (ADR 0077 as amended 2026-10-17, #4102):
-     a size container in the 176px column (--reflow-avatar-w). Labels and
-     counts are the mono voice; what a player reads to act is --fg-muted
-     or --fg, never --fg-dim (DESIGN.md §2). */
+  /* The reflow's avatar card (ADR 0077 as amended 2026-10-17, #4102, and
+     2026-10-18, #4118): a size container in the 176px column
+     (--reflow-avatar-w). Seat-tinted glass: the seat colour washes down
+     from the top, edges the card and rings the avatar, so whose card it
+     is reads before the name. Labels and counts are the mono voice; what
+     a player reads to act is --fg-muted or --fg, never --fg-dim
+     (DESIGN.md §2). */
   .avatar-card {
     container: avatar-card / size;
-    gap: 3px;
-    padding: 5px 8px 6px;
+    gap: 6px;
+    padding: 6px 8px 8px;
+    background:
+      radial-gradient(
+        120% 55% at 50% 0%,
+        color-mix(in srgb, var(--seat-color, var(--fg-dim)) 16%, transparent),
+        transparent 75%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--surface-raised) 60%, var(--surface)),
+        color-mix(in srgb, var(--surface) 75%, var(--bg))
+      );
+  }
+  /* The turn's gold edge (.seat-turn) still wins over the seat's. */
+  .avatar-card:not(.seat-turn) {
+    border-color: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 35%, var(--border));
   }
   .card-head {
     display: flex;
@@ -535,26 +595,38 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: 999px;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-sunken);
+    border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 40%, transparent);
+    background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 8%, transparent);
     color: var(--fg-muted);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     line-height: 1.3;
     text-transform: uppercase;
   }
-  /* The seat that plays next reads a step brighter than the rest. */
+  /* The seat that plays next wears its seat colour, filled. */
   .turn-chip.next {
-    color: var(--fg);
-    border-color: color-mix(in srgb, var(--fg) 45%, transparent);
+    color: #10141c;
+    background: var(--seat-color, var(--fg));
+    border-color: transparent;
   }
   .avatar-card .expand {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
     color: var(--fg-muted);
-    padding: 3px 6px;
+    transition: background 120ms var(--ease);
+  }
+  .avatar-card .expand:hover {
+    color: var(--fg);
+    background: color-mix(in srgb, var(--overlay-ink) 8%, transparent);
   }
   .card-identity {
     --avatar-size-base: 84px;
@@ -562,6 +634,9 @@
     justify-content: center;
     min-width: 0;
     flex: 0 0 auto;
+    /* The identity and the read-out sit together, centred in the room
+       under the head. */
+    margin-top: auto;
   }
   /* The identity takes the card's width, so its name and tags (BOT,
      considering…, offline) share one wrapping line, as a seated identity
@@ -574,121 +649,224 @@
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 2px 4px;
+    gap: 2px 5px;
     max-width: 100%;
   }
   .card-identity :global(.name-line > .tag) {
     margin-top: 0;
     margin-bottom: 0;
+    padding: 1px 5px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
   }
   .card-identity :global(.core-row) {
     gap: 0;
   }
-  /* The identity and the read-out sit together, centred in the room
-     under the head. */
-  .card-identity {
-    margin-top: auto;
+  /* A solid ring in the seat colour with a soft halo, on bots too: the
+     BOT tag already says it is a bot, and the dashes read as noise. The
+     colour and halo stand down for PlayerIdentity's state rings (turn,
+     priority, a target), which keep their own. */
+  .avatar-card .card-identity :global(.identity .avatar-wrap) {
+    border-style: solid;
+  }
+  .card-identity
+    :global(
+      .identity:not(.active, .priority, .targetable, .cast-targetable, .cast-picked) .avatar-wrap
+    ) {
+    border-color: color-mix(in srgb, var(--seat-color, #888) 80%, var(--surface));
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--seat-color, #888) 14%, transparent),
+      0 8px 20px rgba(0, 0, 0, 0.45);
   }
   .readout {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
-    margin-top: 4px;
     margin-bottom: auto;
     font-family: var(--font-mono);
-    font-size: 10.5px;
-    line-height: 1.3;
     color: var(--fg-muted);
     font-variant-numeric: tabular-nums;
   }
-  .line {
+  /* The tiles and the footer are segmented: cells on a 1px gap over a
+     border-coloured ground, so the rules between them are the gap. */
+  .tiles,
+  .zones {
+    display: grid;
+    gap: 1px;
+    border-radius: 9px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 18%, var(--border));
+    border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 18%, var(--border));
+  }
+  .tiles {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tile {
     margin: 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px 4px;
+    gap: 1px;
     min-width: 0;
-    text-align: center;
+    padding: 6px 4px 5px;
+    background: color-mix(in srgb, var(--surface) 82%, var(--bg));
   }
-  .line strong {
+  .tile .num {
     color: var(--fg);
+    font-size: 18px;
     font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
   }
-  /* "N untapped of M" and "· P power" break between them, not inside. */
-  .line .keep {
-    white-space: nowrap;
+  .tile .num .of {
+    color: var(--fg-muted);
+    font-size: 0.7em;
+    font-weight: 600;
+  }
+  .tile .num.none {
+    color: var(--fg-muted);
+  }
+  .lbl {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .tile .pips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px;
+    min-height: 20px;
+    align-items: center;
   }
   .readout .mana-pip {
     font-family: var(--font-mono);
     font-size: 10.5px;
     padding: 1px 4px;
     min-width: 16px;
+    border-radius: 999px;
   }
-  .readout .quiet {
-    color: var(--fg-muted);
+  .zones {
+    grid-template-columns: 1.3fr 1fr 1fr;
+  }
+  .zone {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 4px 2px;
+    background: color-mix(in srgb, var(--surface) 82%, var(--bg));
     font-size: 11px;
+    white-space: nowrap;
   }
-  /* The piles: the deck on a line of its own and the two openable piles
-     under it on a tall card, folded into one "deck · gy · ex" line on a
-     short one, before anything is dropped. */
-  .zones .sep {
-    color: var(--fg-muted);
-  }
-  .zones .deck {
-    flex-basis: 100%;
-  }
-  .zones .sep.fold {
-    display: none;
-  }
-  .readout .pile {
-    color: var(--fg-muted);
-    font-family: var(--font-mono);
-  }
-  .readout .pile:hover {
+  .zone strong {
     color: var(--fg);
+    font-weight: 700;
+  }
+  .pile-cell {
+    border: none;
+    border-radius: 0;
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: background 120ms var(--ease);
+  }
+  .pile-cell:hover,
+  .pile-cell:focus-visible {
+    background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 14%, var(--surface));
+  }
+  .pile-cell .held {
+    color: var(--accent);
+    font-size: 9.5px;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
   @container avatar-card (max-height: 239px) {
+    .avatar-card {
+      gap: 4px;
+    }
     .card-identity {
       --avatar-size-base: 56px;
     }
-    .avatar-card .readout {
-      gap: 3px;
-      margin-top: 2px;
+    .card-identity
+      :global(
+        .identity:not(.active, .priority, .targetable, .cast-targetable, .cast-picked) .avatar-wrap
+      ) {
+      box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--seat-color, #888) 14%, transparent),
+        0 6px 14px rgba(0, 0, 0, 0.45);
     }
-    .zones .deck {
-      flex-basis: auto;
+    /* One row of four tiles instead of two rows of two: the same four
+       facts, half the height. Mana gets the widest cell for its pips. */
+    .tiles {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.5fr);
     }
-    .zones .sep.fold {
-      display: inline;
+    .tile {
+      padding: 3px 2px;
+      gap: 0;
+    }
+    .tile .num {
+      font-size: 14px;
+    }
+    .lbl {
+      font-size: 7.5px;
+      letter-spacing: 0.08em;
+    }
+    .tile .pips {
+      min-height: 17px;
+      gap: 1px;
+    }
+    .readout .mana-pip {
+      font-size: 9.5px;
+      padding: 0 3px;
+      min-width: 13px;
+    }
+    .zone {
+      padding: 2px;
+      font-size: 10px;
     }
   }
   /* The shortest step (two cards on a 1024×768 board are about 170px):
-     the same four lines, packed tighter. */
+     the same tiles, packed tighter. */
   @container avatar-card (max-height: 199px) {
+    .avatar-card {
+      gap: 2px;
+      padding: 4px 6px 5px;
+    }
     .card-head {
       min-height: 16px;
     }
     .turn-chip {
       padding: 1px 6px;
-      font-size: 9px;
+      font-size: 8.5px;
     }
     .avatar-card .expand {
-      padding: 1px 5px;
+      width: 18px;
+      height: 18px;
       font-size: 12px;
     }
     .card-identity :global(.identity) {
       gap: 1px;
     }
-    .avatar-card .readout {
-      gap: 1px;
-      margin-top: 0;
-      line-height: 1.2;
+    .readout {
+      gap: 3px;
     }
-    .readout .mana-pip {
-      padding: 0 4px;
-      line-height: 1.25;
+    .tile .num {
+      font-size: 13px;
     }
   }
   .top {

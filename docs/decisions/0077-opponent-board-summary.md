@@ -331,6 +331,16 @@ The card is a size container. On a short card (a 1024×768 board gives each of
 two cards about 170px) the avatar steps down from 84px to 56px. The read-out
 keeps its four lines in that order, and the zones line folds into one
 `deck · gy · ex` line before anything is dropped. The ⤢ expand button stays.
+
+*Restyled 2026-10-18 (#4118), at the owner's request; the facts are unchanged.*
+- **Stat tiles:** the four lines became four tiles, each a number over a small
+  mono label: hand, ready (untapped of all creatures, as `N/M`), power and mana.
+  They sit in a 2×2 grid, and a short card lays them in one row instead. The
+  piles became a segmented `deck · gy · ex` footer, with graveyard and exile
+  still buttons.
+- **Seat-tinted glass:** the frame took the seat colour as a top wash and an
+  edge. The avatar ring is solid, bots' too; the turn rings keep their own.
+  NEXT UP is filled in the seat colour, and the bot tag shrank to a badge.
 Text uses the mono voice for labels and counts, and `--fg-muted`, never
 `--fg-dim`, for anything a player reads to act (DESIGN.md §2).
 
