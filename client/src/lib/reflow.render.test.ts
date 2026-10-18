@@ -264,7 +264,12 @@ describe("reflow on an opponent's turn", () => {
     expect(num(tiles[2])).toBe("2");
     expect(spoken(tiles[2])).toBe("2 untapped power");
     expect(tiles[3].getAttribute("aria-label")).toBe("1 mana from 1 source");
-    expect(tiles[3].querySelectorAll(".mana-pip")).toHaveLength(1);
+    // #4120: the Forest is one green symbol with a 1 in its badge.
+    const syms = [...tiles[3].querySelectorAll<HTMLElement>(".sym")];
+    expect(syms.map((s) => s.dataset.manaGroup)).toEqual(["G"]);
+    expect(syms[0].querySelector('.mana-symbol[data-symbol="G"]')).not.toBeNull();
+    expect(text(syms[0].querySelector(".badge")!)).toBe("1");
+    expect(syms[0].title).toBe("1 green mana from 1 source");
     const zones = card.querySelector<HTMLElement>(".readout > .zones")!;
     expect(text(zones.querySelector(".deck")!)).toBe("deck 87");
     // The piles are buttons with PileButton's names.
@@ -273,7 +278,7 @@ describe("reflow on an opponent's turn", () => {
     // Dee has no mana: a 0, and the summary's spoken "no mana" form.
     const deeMana = region("Dee")!.querySelector(".tile.mana")!;
     expect(num(deeMana)).toBe("0");
-    expect(deeMana.querySelectorAll(".mana-pip")).toHaveLength(0);
+    expect(deeMana.querySelectorAll(".sym")).toHaveLength(0);
   });
 
   // The card is a size container: jsdom lays nothing out, so this pins
@@ -288,11 +293,13 @@ describe("reflow on an opponent's turn", () => {
     const src = (await import("./components/board/SeatSummary.svelte?raw")).default as string;
     expect(src).toMatch(/\.avatar-card \{[^}]*container: avatar-card \/ size;/);
     expect(src).toMatch(/--avatar-size-base: 84px;/);
-    expect(src).toMatch(/\.tiles \{\s*grid-template-columns: 1fr 1fr;/);
+    // Hand, ready and power in a row, mana a full-width strip (#4120).
+    expect(src).toMatch(/\.tiles \{\s*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+    expect(src).toMatch(/\.tile\.mana \{\s*grid-column: 1 \/ -1;/);
     const short = src.slice(src.indexOf("(max-height: 239px)"));
     expect(short).toMatch(/^[^@]*\.card-identity \{\s*--avatar-size-base: 56px;/);
-    // A short card lays the four tiles in one row.
-    expect(short).toMatch(/^[^@]*\.tiles \{\s*grid-template-columns: repeat\(3,/);
+    // A short card lays the mana strip on one line.
+    expect(short).toMatch(/^[^@]*\.tile\.mana \{\s*flex-direction: row-reverse;/);
   });
 
   it("applies under summaries too: the active opponent is a full board", () => {

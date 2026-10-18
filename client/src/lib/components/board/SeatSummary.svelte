@@ -43,7 +43,8 @@
   import type { ActionPayload, ActionType, CardView, GameView, PlayerView } from "../../protocol";
   import { defendingPlayerOf } from "../../attackTargets";
   import { NO_LEGAL_ACTIONS, attackTargetOpen, type LegalActions } from "../../legalActions";
-  import { buildSeatSummary, manaLabel, MANA_ORDER } from "../../seatSummary";
+  import { buildSeatSummary, manaGroupTitle, manaLabel, MANA_ORDER } from "../../seatSummary";
+  import ManaSymbol from "./ManaSymbol.svelte";
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openZoneBrowser } from "../../zoneBrowser";
@@ -388,7 +389,16 @@
             {#if summary.mana.sources === 0}
               <strong class="num none">0</strong>
             {:else}
-              <span class="pips">{@render manaRead()}</span>
+              <!-- #4120: one symbol per group of sources that make the same
+                   colours, its mana in the corner badge. -->
+              <span class="pips">
+                {#each summary.mana.groups as g (g.key)}
+                  <span class="sym" title={manaGroupTitle(g)} data-mana-group={g.key}>
+                    <ManaSymbol symbol={g.key} size={18} />
+                    <span class="badge" aria-hidden="true">{g.amount}</span>
+                  </span>
+                {/each}
+              </span>
             {/if}
             <span class="lbl" aria-hidden="true">mana</span>
           </div>
@@ -699,8 +709,13 @@
     background: color-mix(in srgb, var(--seat-color, var(--fg-dim)) 18%, var(--border));
     border: 1px solid color-mix(in srgb, var(--seat-color, var(--fg-dim)) 18%, var(--border));
   }
+  /* Hand, ready and power in a row, mana a full-width strip under them:
+     its symbols and their badges need the width (#4120). */
   .tiles {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tile.mana {
+    grid-column: 1 / -1;
   }
   .tile {
     margin: 0;
@@ -739,16 +754,34 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 2px;
+    gap: 4px 10px;
     min-height: 20px;
     align-items: center;
+    padding-right: 4px;
   }
-  .readout .mana-pip {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    padding: 1px 4px;
-    min-width: 16px;
+  /* A symbol with its mana in a badge at the top-right corner. */
+  .sym {
+    position: relative;
+    display: inline-flex;
+    line-height: 0;
+  }
+  .sym .badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2px;
+    box-sizing: border-box;
     border-radius: 999px;
+    background: var(--fg);
+    color: var(--bg);
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--surface) 82%, var(--bg));
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
   }
   .zones {
     grid-template-columns: 1.3fr 1fr 1fr;
@@ -810,10 +843,12 @@
         0 0 0 3px color-mix(in srgb, var(--seat-color, #888) 14%, transparent),
         0 6px 14px rgba(0, 0, 0, 0.45);
     }
-    /* One row of four tiles instead of two rows of two: the same four
-       facts, half the height. Mana gets the widest cell for its pips. */
-    .tiles {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.5fr);
+    /* Mana stays a full-width strip but lies on one line, label first,
+       so the four facts take two short rows. */
+    .tile.mana {
+      flex-direction: row-reverse;
+      justify-content: center;
+      gap: 6px;
     }
     .tile {
       padding: 3px 2px;
@@ -828,12 +863,19 @@
     }
     .tile .pips {
       min-height: 17px;
-      gap: 1px;
+      gap: 2px 9px;
     }
-    .readout .mana-pip {
-      font-size: 9.5px;
-      padding: 0 3px;
-      min-width: 13px;
+    .sym :global(.mana-symbol) {
+      width: 14px;
+      height: 14px;
+    }
+    .sym .badge {
+      top: -3px;
+      right: -5px;
+      min-width: 10px;
+      height: 10px;
+      font-size: 7.5px;
+      line-height: 10px;
     }
     .zone {
       padding: 2px;
@@ -865,8 +907,19 @@
     .readout {
       gap: 3px;
     }
+    /* The mana strip's extra row is paid for with a smaller avatar and
+       tighter tiles (#4120). */
+    .card-identity {
+      --avatar-size-base: 44px;
+    }
+    .tile {
+      padding: 1px 2px;
+    }
     .tile .num {
-      font-size: 13px;
+      font-size: 12px;
+    }
+    .tile .pips {
+      min-height: 15px;
     }
   }
   .top {

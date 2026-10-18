@@ -6,6 +6,7 @@ import {
   creatureStats,
   graveyardHostLabels,
   manaAvailable,
+  manaGroupTitle,
   manaLabel,
   structuralPermanents,
 } from "./seatSummary";
@@ -207,21 +208,90 @@ describe("manaAvailable", () => {
 
   it("reports nothing for a board with no mana sources", () => {
     const mana = manaAvailable([creature("bear", 2)]);
-    expect(mana).toEqual({ byColor: {}, flexible: 0, sources: 0 });
+    expect(mana).toEqual({ byColor: {}, flexible: 0, sources: 0, groups: [] });
+  });
+});
+
+// #4120: the avatar card's mana symbols, one per group of sources that
+// make the same colours.
+describe("manaAvailable groups", () => {
+  const groups = (cards: CardView[]) =>
+    manaAvailable(cards).groups.map((g) => `${g.key}:${g.amount}/${g.sources}`);
+
+  it("groups mono sources by colour and leaves out colours with nothing", () => {
+    expect(groups([land("i1", "{U}"), land("i2", "{U}"), land("m", "{R}")])).toEqual([
+      "U:2/2",
+      "R:1/1",
+    ]);
+  });
+
+  it("draws a two-colour source as its hybrid pair, in printed order", () => {
+    // A shock land: two abilities, one per colour.
+    const grave = card({
+      instance_id: "grave",
+      type_line: "Land",
+      mana_abilities: [
+        { index: 0, produced: "{U}", tap_cost: true },
+        { index: 1, produced: "{B}", tap_cost: true },
+      ],
+    });
+    expect(groups([grave, land("plateau", "{R|W}")])).toEqual(["U/B:1/1", "R/W:1/1"]);
+  });
+
+  it("reads three or more colours, or any colour, as the rainbow", () => {
+    expect(
+      groups([
+        land("triome", "{U|B|R}"),
+        land("tower", "{W|U|B|R|G}"),
+        land("prose", "any color"),
+        land("pair", "{W|U|B|R|G:2}"),
+      ]),
+    ).toEqual(["WUBRG:5/4"]);
+  });
+
+  it("reads colourless and generic as C, with its amount", () => {
+    expect(groups([land("sol", "{C}{C}"), land("coffers", "{3}")])).toEqual(["C:5/2"]);
+  });
+
+  it("counts the most one activation makes, not every ability summed", () => {
+    const shrine = card({
+      instance_id: "s",
+      type_line: "Artifact",
+      mana_abilities: [
+        { index: 0, produced: "{G}", tap_cost: true },
+        { index: 1, produced: "{G3|U3}", tap_cost: true },
+      ],
+    });
+    expect(groups([shrine])).toEqual(["G/U:3/1"]);
+  });
+
+  it("titles a group in words", () => {
+    const [pair, rainbow] = manaAvailable([
+      land("plateau", "{R|W}"),
+      land("tower", "{W|U|B|R|G}"),
+    ]).groups;
+    expect(manaGroupTitle(pair)).toBe("1 red or white mana from 1 source");
+    expect(manaGroupTitle(rainbow)).toBe(
+      "1 mana of three or more colours, or any colour, from 1 source",
+    );
   });
 });
 
 describe("manaLabel", () => {
   it("says nothing rather than zero for an empty board", () => {
-    expect(manaLabel({ byColor: {}, flexible: 0, sources: 0 })).toBe("no mana");
+    expect(manaLabel({ byColor: {}, flexible: 0, sources: 0, groups: [] })).toBe("no mana");
   });
 
   it("counts flexible mana into the total and names the source count", () => {
-    expect(manaLabel({ byColor: { G: 2 }, flexible: 1, sources: 3 })).toBe("3 mana from 3 sources");
+    expect(manaLabel({ byColor: { G: 2 }, flexible: 1, sources: 3, groups: [] })).toBe(
+      "3 mana from 3 sources",
+    );
   });
 
   it("uses the singular for one source", () => {
-    expect(manaLabel({ byColor: { U: 1 }, flexible: 0, sources: 1 })).toBe("1 mana from 1 source");
+    expect(manaLabel({ byColor: { U: 1 }, flexible: 0, sources: 1, groups: [] })).toBe(
+      "1 mana from 1 source",
+    );
   });
 });
 
