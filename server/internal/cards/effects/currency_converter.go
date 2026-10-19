@@ -124,11 +124,12 @@ func currencyConverterPutAwayAnExiledCard(g *game.Game, item *game.StackItem) er
 				if !landed {
 					return nil
 				}
-				ctx := NewContext(g, item)
+				// One token, a Treasure or a Rogue: one instruction.
+				template := TokenCard("2/2 black Rogue")
 				if isLand {
-					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
+					template = TreasureToken()
 				}
-				return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 black Rogue"), N: 1}.Apply(ctx)
+				return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(NewContext(g, item))
 			})
 		},
 	})

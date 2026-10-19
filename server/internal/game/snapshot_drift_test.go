@@ -213,6 +213,8 @@ var gameFields = plan(
 	"pausedModeWalk", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
+	// #4163: what an earlier step handed a later one.
+	"stepRecords", carried, "",
 	"stepSites", dropped, "not game state: which step sequences may park, set and cleared around the one call that runs each (#4019, step_walk.go), so it is zero between actions",
 	// #3613: the end of that resolution, parked behind the same prompt.
 	"pausedResolutionTail", carried, "",

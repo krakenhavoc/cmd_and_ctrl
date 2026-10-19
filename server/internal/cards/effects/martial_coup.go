@@ -27,16 +27,26 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			tokens, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("1/1 white Soldier")), x, game.TokenEntryOptions{})
-			if err != nil {
+		// The sweep waits for a prompt the tokens ask (a CR 616 order of
+		// two token replacements; CR 608.2c, #4163), so the tokens it
+		// spares are the ones that were really made: every Soldier the
+		// caster created after the step's record of the event log.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				ctx.RecordStep(martialCoupRecord, nil, int(b25LastEventSeq(ctx.Game)))
+				_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("1/1 white Soldier")), ctx.X(), game.TokenEntryOptions{})
 				return err
-			}
-			if x < 5 {
-				return nil
-			}
-			return DestroyAllMatching{Match: Except(Creature(), b10OneOf(tokens))}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.X() < 5 {
+					return nil
+				}
+				made := b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(ctx.StepRecord(martialCoupRecord).N()))
+				return DestroyAllMatching{Match: Except(Creature(), b10OneOf(made))}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// martialCoupRecord is the last event logged before the Soldiers.
+const martialCoupRecord = "martial-coup/before-tokens"

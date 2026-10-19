@@ -3981,7 +3981,9 @@ CR 616 ordering prompt and a prevention follow-up's question, and it
 survives a restore. A `Do` called from inside a closure
 (`Do(...)(g, item)`) cannot wait, and neither can plain statements in a
 closure. If a later instruction must read the ANSWER, not just come
-after it, it still goes in the asking primitive's `Then`.
+after it, it still goes in the asking primitive's `Then`, and that
+`Then` can wait in turn when it is written as continuation steps
+(`RegisterThenSteps`, below).
 
 The same holds in two more places since #4019 (`effects/do_walk.go`):
 
@@ -3999,9 +4001,27 @@ each call that can ask something (damage, counters, a draw, a life
 change, a scry): one `Instruction` per piece. Each piece runs whole, and
 the walk can stop between pieces. A piece must not pass anything to the
 next through a Go variable, because a restore between them would lose
-it. Read what the earlier piece did from the game instead. A `Do` wrapped
-by `InterveningIf` keeps its steps visible to the walk (Imoen, Mystic
-Trickster).
+it. Read what the earlier piece did from the game instead. When the game
+keeps no record of it (a count discarded, the tokens just made, a number
+a player chose), the earlier piece writes one, `ctx.RecordStep(name, ids,
+n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). A
+record lives for one resolution. For something an instruction's own
+prompt decides (which tokens it really made, who really drew), record
+the event log's last sequence number (`b25LastEventSeq`) before it and
+read the events after it in the next piece (Martial Coup, Cut a Deal). A
+`Do` wrapped by `InterveningIf` keeps its steps visible to the walk
+(Imoen, Mystic Trickster).
+
+A continuation with more than one instruction (a `Then`, an `OnYes`, the
+callback of a `...ThenForEffect` method) is written as continuation steps
+(#4162): `var x = RegisterThenSteps("then-steps/<card>-<what>", step, …)`
+at package level, and the closure calls `x.Run(ctx)`. Record what the
+steps need from the closure first (the number chosen, the creature
+sacrificed). A chain that asks the next player from its last step (Braids,
+Arisen Nightmare, Court of Ambition) refers to itself, so register it in
+the card's `init` instead of a package-level initialiser, which Go would
+reject as an initialisation cycle. The key is an on-disk identity: append
+it to the ledger with `-update-effect-keys` and never rename it.
 
 Which bodies still run whole is a scan, not a guess (#4155):
 `TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written
@@ -4019,10 +4039,11 @@ Khârn the Betrayer's question, and a restore when the prompt is data
 A Spree bullet with more than one instruction is `SpreeModeSteps(label, cost,
 targets, step, …)` (Insatiable Avarice). A scanned card you leave as it is goes
 in `stepsSkipped` with the reason, and `TestSkippedBodiesAreStillFlagged` fails
-when the entry goes stale. The reasons so far: arms of one switch that cannot
-both run, a reveal or a random pick that asks nothing, one damage instance, a
-`Then` continuation (a step walk cannot park inside one, #4162), and a count or
-a list of ids the next step needs that the game keeps no record of (#4163).
+when the entry goes stale. The reasons so far: arms of one `if` that cannot
+both run (a switch's arms are not scanned as a sequence), a reveal or a random
+pick that asks nothing, one damage instance, and statements that act on
+different players. A continuation and a carried count are not reasons: write
+them as continuation steps and a step record (above).
 
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to

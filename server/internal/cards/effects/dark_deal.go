@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Dark Deal — Sorcery {2}{B} (EDHREC rank 1457):
 //
 //	"Each player discards all the cards in their hand, then draws
@@ -19,22 +17,39 @@ func init() {
 		OracleID:     "c527eb80-ccac-40b8-8377-c31121613128",
 		Name:         "Dark Deal",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			players := tablePlayers(ctx)
-			draws := make([]int, len(players))
-			for i, id := range players {
-				n, err := discardWholeHand(ctx.Game, id)
-				if err != nil {
-					return err
+		// The draws wait for a prompt a discard asks (a madness offer;
+		// CR 608.2c), and read each player's count from the step record
+		// (#4163).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				players := tablePlayers(ctx)
+				draws := make([]int, len(players))
+				for i, id := range players {
+					n, err := discardWholeHand(ctx.Game, id)
+					if err != nil {
+						return err
+					}
+					draws[i] = n - 1
 				}
-				draws[i] = n - 1
-			}
-			for i, id := range players {
-				if err := (DrawCards{Player: id, N: draws[i]}).Apply(ctx); err != nil {
-					return err
+				ctx.RecordStep(darkDealRecord, players, draws...)
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				r := ctx.StepRecord(darkDealRecord)
+				for i, id := range r.IDs {
+					if i >= len(r.Ns) {
+						break
+					}
+					if err := (DrawCards{Player: id, N: r.Ns[i]}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }
+
+// darkDealRecord is each player, and the cards they draw (the hand
+// they discarded, less one).
+const darkDealRecord = "dark-deal/draws"

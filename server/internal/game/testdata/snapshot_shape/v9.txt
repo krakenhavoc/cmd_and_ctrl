@@ -3239,8 +3239,11 @@ pausedStepWalk.item.trigger.Object.Types[]	string
 pausedStepWalk.item.uncopyable	bool
 pausedStepWalk.item.xValue	number:int
 pausedStepWalk.key	string
+pausedStepWalk.occ	number:int
+pausedStepWalk.outer	recursive(game.stepWalkSnapshot)
 pausedStepWalk.path	array
 pausedStepWalk.path[]	number:int
+pausedStepWalk.then	string
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
@@ -8155,6 +8158,15 @@ stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string
+stepRecords	array
+stepRecords[]	object
+stepRecords[].item	custom(uuid.UUID)
+stepRecords[].key	string
+stepRecords[].record	object
+stepRecords[].record.ids	array
+stepRecords[].record.ids[]	custom(uuid.UUID)
+stepRecords[].record.ns	array
+stepRecords[].record.ns[]	number:int
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
 turn	object

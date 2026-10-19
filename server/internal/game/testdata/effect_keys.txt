@@ -6,7 +6,8 @@
 # on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
 # key with game.EffectAlias(old, new), which keeps the old one resolving.
 # "pick <key>" is a revealed-hand pick's continuation (#2115), which
-# has no alias: never rename one.
+# has no alias: never rename one. "steps <key>" is a continuation
+# written as steps (#4162, effects.RegisterThenSteps), likewise.
 #
 # Append new keys with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
@@ -296,3 +297,16 @@ option option-pick/acererak-the-archlich-zombie-or-sacrifice
 body destroy/the-object-unless-it-attacked
 body explosion-of-riches/damage
 option option-pick/explosion-of-riches-draw
+steps then-steps/arcane-denial-draws
+steps then-steps/bonehoard-dracosaur-tokens
+steps then-steps/braids-arisen-nightmare-consequence
+steps then-steps/court-of-ambition-loss
+steps then-steps/forgotten-ancient-move
+steps then-steps/gain-then-draw-sacrificed-power
+steps then-steps/midnight-clock-draw-then-exile
+steps then-steps/replicating-ring-replicate
+steps then-steps/scavenging-ooze-grow
+steps then-steps/seize-the-spotlight-fortune
+steps then-steps/sylvan-library-pay
+steps then-steps/transpose-after-discard
+steps then-steps/twilight-prophet-drain
