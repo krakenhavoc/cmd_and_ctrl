@@ -19,14 +19,23 @@ import (
 // No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "c7371040-160c-4502-b7f9-77b7f54cc020",
-		Name:         "Hama Pashar, Ruin Seeker",
-		Completeness: CompletenessFull,
-		TriggerDoublers: []game.TriggerDoubler{{
-			Label: "Hama Pashar, Ruin Seeker — room abilities trigger an additional time",
-			Applies: func(_ *game.Game, q game.TriggerDoublingQuery) bool {
-				return strings.HasPrefix(q.Source.OracleID, game.DungeonKeyPrefix) && q.Source.Owner == q.Doubler.Controller
-			},
-		}},
+		OracleID:        "c7371040-160c-4502-b7f9-77b7f54cc020",
+		Name:            "Hama Pashar, Ruin Seeker",
+		Completeness:    CompletenessFull,
+		TriggerDoublers: []game.TriggerDoubler{roomAbilitiesOfDungeonsYouOwnDoubler("Hama Pashar, Ruin Seeker — room abilities trigger an additional time")},
 	})
+}
+
+// roomAbilitiesOfDungeonsYouOwnDoubler is "Room abilities of dungeons you
+// own trigger an additional time": the doubler Hama Pashar prints and
+// Dungeon Delver grants (#4137). "You" is the doubler's controller, which
+// for a granted copy is the recipient's.
+func roomAbilitiesOfDungeonsYouOwnDoubler(label string) game.TriggerDoubler {
+	return game.TriggerDoubler{
+		Label:    label,
+		RowLabel: "Room abilities of dungeons you own trigger an additional time.",
+		Applies: func(_ *game.Game, q game.TriggerDoublingQuery) bool {
+			return strings.HasPrefix(q.Source.OracleID, game.DungeonKeyPrefix) && q.Source.Owner == q.Doubler.Controller
+		},
+	}
 }

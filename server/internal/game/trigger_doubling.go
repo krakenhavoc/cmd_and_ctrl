@@ -168,8 +168,32 @@ func (g *Game) hasTriggerModifierLocked() bool {
 		if CatalogTriggerDoublers != nil && len(CatalogTriggerDoublers(key)) > 0 {
 			return true
 		}
+		// #4137: a doubler can be GRANTED (Dungeon Delver). Its recipient's
+		// layered grant list is exactly what is stale here, so look at the
+		// grantor instead: a permanent whose static grants a bundle that
+		// carries a doubler makes the entry worth a recompute.
+		if grantsTriggerDoubler(key) {
+			return true
+		}
 		if CatalogTriggerSuppressors != nil && len(CatalogTriggerSuppressors(key)) > 0 {
 			return true
+		}
+	}
+	return false
+}
+
+// grantsTriggerDoubler reports whether the card under key has a static
+// that grants an ability bundle carrying a CR 603.2d doubler (#4137).
+func grantsTriggerDoubler(key string) bool {
+	d := catalogDef(key)
+	if d == nil {
+		return false
+	}
+	for i := range d.Static {
+		for _, name := range d.Static[i].GrantAbilities {
+			if bundle := catalogDef(GrantKey(name)); bundle != nil && len(bundle.TriggerDoublers) > 0 {
+				return true
+			}
 		}
 	}
 	return false

@@ -111,6 +111,18 @@ type AbilityGrant struct {
 	// a newer removal took, and not one an older removal could not.
 	GameEndGates []game.GameEndGate
 
+	// TriggerDoublers is a granted CR 603.2d doubler — Dungeon Delver's
+	// "Commander creatures you own have 'Room abilities of dungeons you
+	// own trigger an additional time.'" (#4137, ADR 0018's trigger
+	// doubling addendum, amended 2026-10-19). Not a layer effect: the
+	// harvest's doubler scan reads doublers off each permanent's composite
+	// key (game.CatalogTriggerDoublers via CatalogAbilityKey), so the
+	// doubler's "you" is the RECIPIENT's controller (TriggerDoublingQuery.
+	// Doubler is the recipient), a recipient that loses its abilities
+	// loses it, and each recipient is one more instance: two commander
+	// creatures are two additional triggers (CR 603.2d: doublers add).
+	TriggerDoublers []game.TriggerDoubler
+
 	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
 	// as for every bundle before #3233. A hand, graveyard or exile bundle
 	// ("each creature card in your hand has ninjutsu {2}{U}{B}") is given
@@ -176,6 +188,8 @@ func buildGrantDef(gr AbilityGrant) *game.CardDef {
 		DealtDamageCantBeRegenerated: gr.DealtDamageCantBeRegenerated,
 
 		GameEndGates: gr.GameEndGates,
+
+		TriggerDoublers: gr.TriggerDoublers,
 	}
 }
 
@@ -255,7 +269,7 @@ func checkGrants(name string, grants []AbilityGrant) {
 			panic("effects.Register: " + name + " declares an ability grant with no Key — the recipient has no name to carry")
 		}
 		if len(gr.Triggered) == 0 && len(gr.Static) == 0 && len(gr.Activated) == 0 && len(gr.Mana) == 0 && len(gr.LegendRuleExempt) == 0 && len(gr.AttackLimits) == 0 &&
-			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 {
+			len(gr.DealtDamageCantBeRegenerated) == 0 && len(gr.GameEndGates) == 0 && len(gr.TriggerDoublers) == 0 {
 			panic("effects.Register: " + name + " declares the ability grant " + gr.Key + " with no abilities — a grant gives an ability or nothing")
 		}
 		if gr.Text == "" {
@@ -315,6 +329,14 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 			panic(where("static", i) + " borrows abilities — a granted ability that lends others is not modelled")
 		}
 	}
+	for i, d := range gr.TriggerDoublers {
+		if d.ActiveWhen.IsGate() {
+			panic(where("trigger doubler", i) + " declares ActiveWhen — a designation is the host's; gate the grantor's static instead")
+		}
+		if d.Applies == nil {
+			panic(where("trigger doubler", i) + " has no Applies — it would never double anything")
+		}
+	}
 	for i, a := range gr.Activated {
 		if a.ActiveWhen.IsGate() {
 			panic(where("activated ability", i) + " declares ActiveWhen — a designation is the host's; gate the grantor's static instead")
@@ -344,7 +366,7 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s — %s", name, gr.Key, gr.Zone, why))
 	}
 	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 ||
-		len(gr.DealtDamageCantBeRegenerated) > 0 || len(gr.GameEndGates) > 0 {
+		len(gr.DealtDamageCantBeRegenerated) > 0 || len(gr.GameEndGates) > 0 || len(gr.TriggerDoublers) > 0 {
 		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s but declares more than activated abilities — only an activated ability is modelled on a card off the battlefield", name, gr.Key, gr.Zone))
 	}
 	for i, a := range gr.Activated {
