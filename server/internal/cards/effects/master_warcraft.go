@@ -59,12 +59,12 @@ func init() {
 }
 
 // beforeAttackersDeclaredThisTurn reports whether no declare attackers
-// step has begun this turn (CR 506.8a, 506.8d), read off the turn
-// tally, which counts each step as it begins. A turn that reached its
-// postcombat main phase or its end without one skipped its combat, and
-// then the window closed with the precombat main phase (CR 506.8e).
+// step has begun this turn (CR 506.8a, 506.8d; #4062's turn-tally read).
+// A turn that reached its postcombat main phase or its end without one
+// skipped its combat, and then the window closed with the precombat
+// main phase (CR 506.8e).
 func beforeAttackersDeclaredThisTurn(g *game.Game) bool {
-	if g.TurnTally.StepsBegun[game.StepDeclareAttackers] > 0 {
+	if g.DeclareAttackersHasBegunThisTurnForEffect() {
 		return false
 	}
 	switch game.PhaseOf(g.Turn.Step) {
