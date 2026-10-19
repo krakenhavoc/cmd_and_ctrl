@@ -94,7 +94,7 @@ func TestADeckRequestRecordsTheCardsItsIssueListed(t *testing.T) {
 func (s *deckStack) requestKey(t *testing.T) string {
 	t.Helper()
 	var key string
-	if err := s.dbase.DB.QueryRow(`SELECT deck_key FROM deck_requests`).Scan(&key); err != nil {
+	if err := s.dbase.QueryRow(`SELECT deck_key FROM deck_requests`).Scan(&key); err != nil {
 		t.Fatalf("reading the request's deck key: %v", err)
 	}
 	return key
@@ -240,7 +240,7 @@ func TestARequestFromBeforeCardsWereRememberedFallsBackAndIsCarried(t *testing.T
 	tok, _ := s.person(t, "111", "Alice")
 	id := s.saveNeedy(t, tok)
 	s.requestSaved(t, tok, id)
-	if _, err := s.dbase.DB.Exec(`DELETE FROM deck_request_cards`); err != nil {
+	if _, err := s.dbase.Exec(`DELETE FROM deck_request_cards`); err != nil {
 		t.Fatal(err)
 	}
 
