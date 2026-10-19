@@ -310,3 +310,168 @@ Tests: `game/combat_control_test.go`, `actions/controlled_combat_test.go`,
 `actions/controlled_stage_test.go`, `aiseat/controlled_combat_test.go`,
 `protocol/combat_control_view_test.go`, `cards/effects/secret_of_bloodbending_test.go`,
 `client/src/lib/playingAs.test.ts`.
+
+## Amendment (2026-10-19, #4154) — choosing another player's attackers or blockers
+
+Master Warcraft: "Cast this spell only before attackers are declared.
+You choose which creatures attack this turn. You choose which creatures
+block this turn and how those creatures block." Odric, Master Tactician
+("whenever Odric and at least three other creatures attack, you choose
+which creatures block this combat and how those creatures block") and
+Brutal Hordechief ("creatures your opponents control block this turn if
+able, and you choose how those creatures block") and Melee ("you choose
+which creatures block this combat and how those creatures block") say
+the same about blocks. §4's ruling already names the card: "If an effect causes another
+player to make decisions that the affected player would normally make
+(such as Master Warcraft does), that effect takes precedence."
+
+**The rulings** (Scryfall, read 2026-10-19): "the person who cast Master
+Warcraft first chooses the complete group of creatures that are going to
+attack. Then, for each of those creatures, the active player chooses who
+or what it's going to attack"; "You choose attackers and make blocking
+assignments regardless of whether it's your turn and regardless of
+whether the creatures are attacking you. Your choices must be legal within
+the normal rules for attacking and blocking"; "You can decide that a
+creature won't block"; and Odric's "If there's a cost associated with
+having a creature block and you choose for that creature to block, its
+controller can choose to pay that cost or not. If that player decides to
+not pay that cost, you must propose a new set of blocking creatures."
+CR 508.1b has the active player announce what each attacker attacks, and
+CR 508.1g-j make the costs to attack theirs.
+
+**A separate record, projected as a stage.** This is not player control:
+nobody controls the active player or the defenders, who keep every other
+decision, their mana and what they can see. A new stage of the
+`PlayerControls` list would have been wrong in three places at once: a
+record per controlled player when one effect covers every player, a
+lifetime (the turn) that is not when it applies (one declaration at a
+time), and §5's visibility, which a declarer must not get. So the effect
+is its own record, `Game.DeclarationControls []DeclarationControl
+{Declarer, Source, SourceName, Attackers, Blockers, TurnSeq, ThisCombat}`
+(`game/declaration_control.go`), and only while one of its declarations
+is being made is it **projected** onto the player-control seam, as stage
+`ControlDeclaring` with until `declarations`:
+
+- over the active player in the declare attackers step, while the
+  declarer's half of the attack declaration is open;
+- over each defending player other than the declarer whose block
+  declaration is pending.
+
+`ControllerOfPlayerLocked` asks the projection before any record, which
+is the ruling's precedence, and answers with whoever makes the
+declarer's decisions (CR 723.5: a player controlling the declarer's turn
+makes this choice too). `ControlStageOfPlayerLocked`,
+`ControlUntilOfPlayerLocked` and `LivePlayerControlsLocked` follow it, so
+routing, the enumerator's controlled moves, the bots' split and the
+client's "Playing as" board all work as they do for a control, and
+nothing else does: `ControlUntil.PlaysForThem` is false for
+`declarations`, so the cast gate, the sandbox closure and the cast stamps
+are untouched, and `FilterViewFor` adds no knower for it. The verb row
+for `ControlDeclaring` (`actions/controlled_player.go`, `declaringVerbs`)
+is `declare_attacker`, `declare_attackers`, `pass_priority`,
+`declare_blocker`, `declare_blockers` and `finish_blocks`.
+
+The newest record that applies wins, as CR 723.1a has it for control. A
+"this turn" record ends at the rotation seam; a "this combat" one where a
+combat-phase control ends (the cursor leaving the phase). A declarer who
+has left the game chooses nothing.
+
+**Attacks: two halves** (`Game.AttackHandoff`, cleared with combat):
+
+1. *The declarer's.* The active player holds priority as always in this
+   engine's declare attackers step, but the decisions are the declarer's.
+   The declarer stages attackers with the ordinary verbs, naming a target
+   for each as a proposal; eligibility, restrictions, count limits and
+   requirements (CR 508.1c-d) are checked as always. Nothing is paid and
+   nothing is exerted: those are costs, and costs are the active
+   player's (exert refused with `ErrDeclarerCantExert`). The declarer's
+   pass, sent as the active player, is not a pass: it runs the CR 508.1d
+   checkpoint and finishes the half (`finishDeclarerAttacksLocked`). With
+   no attackers the declaration is over and the active player may add
+   none (`ErrAttackersChosen`).
+2. *The active player's* (stage `targets`). They decide for themselves
+   again: `declare_attacker` on a chosen attacker re-points it and charges
+   nothing; on any other creature it is refused. They finish with
+   `declare_attackers` naming every chosen attacker (`confirmAttackTargetsLocked`:
+   targets, exerts and the whole attack tax at once), or with a pass,
+   which accepts the targets as they stand and declines every cost. A
+   creature may be left out (or is declined by the pass) only when it has
+   no free target; a pass is refused (`ErrAttackCostsUndecided`) while a
+   taxed attacker could be pointed somewhere free. A declined creature is
+   taken out of the declaration (untapped, `Declined`), can't be chosen
+   again this combat, asks no CR 508.1d requirement, and the declaration
+   goes back to the declarer: Odric's "propose a new set". Because no
+   cost is ever paid before the set is final, a declaration that goes
+   back owes nobody a refund, which is the CR 733 reversal this engine
+   could not otherwise make.
+
+The lock-in (`commitAttackDeclarationLocked`) waits for both halves, so
+the attack triggers name the targets the active player chose. A
+sandbox `advance_step` out of an unfinished chosen declaration is refused
+(`ErrAttackDeclarationOpen`), and a standing "end the turn by passing"
+waits for the declarer and then accepts the targets.
+
+**Blocks.** A defender's declaration is already a turn-based action with
+priority parked (ADR 0045's #1501), so the declarer declares and finishes
+each pending defender's declaration on their board, with the ordinary
+verbs and under every restriction and requirement; their own stays
+theirs. The engine has no cost to block, so Odric's third ruling has
+nothing to ask yet.
+
+**Moves and bots.** The declarer's enumeration adds, for each seat whose
+declaration it makes, that seat's attack moves and a finishing pass
+("Done choosing attackers"), or its block moves and `finish_blocks`, each
+with `Player` set to the seat (`legal/declaration_control.go`). In the
+declarer's half the attack moves carry no tax and no exert twin. In the
+active player's half they are offered the re-points, the pass when the
+engine takes it, and the confirmation when the targets cost something
+they can pay. A bot declarer's moves go to `controlledTurnPolicy`: no
+attackers and no blocks, or the required ones, which is legal and, for a
+player choosing an opponent's attacks or the blocks against their own
+attack, what they want. A bot in the active player's half uses
+`attackTargetsPolicy`: accept, else confirm and pay, else a free target.
+
+**Protocol and client.** `player_controls[].until` gains
+`"declarations"`; `GameView.declaration_controls` (the records this turn)
+and `attack_handoff` (`{stage?, declarer, source_name?, declined?}`) are
+new and public. The client's `playsForSeat` includes `declarations`, so
+the declarer's board swaps to the chosen seat with that seat's legal
+actions and End turn closed, and the block verbs carry the seat. The
+banner reads "Choosing Bob's attackers", "Alice is choosing your
+blockers", "Alice chooses which creatures attack and block this turn";
+the active player's half is a dock request (`lib/attackHandoff.ts`) with
+Confirm attacks and, when something costs, Decline the costs; and
+autopass holds in both halves (`owesChosenDeclaration`).
+
+**The snapshot** gains `declarationControls` and `attackHandoff`,
+additive in v9.
+
+**Melee's other sentence**, "whenever a creature attacks and isn't
+blocked this combat, untap it and remove it from combat", is a repeating
+delayed trigger with a stated duration (CR 603.7b) on each defender's
+completed declaration (`EventBlockersDeclared`, CR 509.3g), with an
+each-condition naming every unblocked creature attacking that player, so
+each one triggers on its own. Its duration is `UntilEndOfCombat`, and a
+delayed trigger with that duration is now dropped as the cursor leaves
+its combat phase (`clearEndOfCombatDelayedTriggersLocked`, beside the
+combat-phase control's end), so an additional combat is untouched. The
+existing sweeps ran only at the turn's end and start.
+
+**Also noticed.** A declarer who leaves the game mid-way chooses nothing
+more: the handoff is open from the step's start, and a half whose
+declarer is gone is settled lazily (`settleOrphanedHandoffLocked`): what
+they staged is taken back, untapped, and the active player declares for
+themselves. A declaration with nothing that could attack is over as the
+step begins (`beginChosenAttackDeclarationLocked`), so the declarer is
+never asked to choose from nothing.
+
+**Why not the issue's reading.** #4154 had the declarer choose each
+attacker's defender too. The ruling and CR 508.1b give that to the
+active player, and a declarer who could send every attacker at a third
+player would make the card stronger than printed.
+
+Tests: `game/declaration_control_test.go`, `actions/declaration_control_test.go`,
+`actions/controlled_stage_test.go`, `aiseat/declaration_control_test.go`,
+`protocol/declaration_control_view_test.go`,
+`cards/effects/declaration_control_cards_test.go`,
+`client/src/lib/playingAs.test.ts`, `client/src/lib/attackHandoff.test.ts`.

@@ -87,8 +87,8 @@ const (
 	// TypeDeclareAttackers is the set-shaped attack declaration, offered
 	// only as the confirmation of a declaration another player chose
 	// (#4154): the chosen attackers at their targets, the costs paid.
-	TypeDeclareAttackers    = "declare_attackers"
-	TypeDeclareBlocker      = "declare_blocker"
+	TypeDeclareAttackers = "declare_attackers"
+	TypeDeclareBlocker   = "declare_blocker"
 	// TypeDeclareBlockers is the set-shaped block declaration (#750).
 	// Emitted for a block that is legal only as a GROUP — the two
 	// creatures a menace attacker takes — which cannot be sent as

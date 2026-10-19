@@ -28,6 +28,15 @@ type declarationAttackersPayload struct {
 	PhyrexianLife int            `json:"phyrexian_life,omitempty"`
 }
 
+// chosenAttackTaxCost is a chosen attack's CR 508.1a price as a move's
+// cost, nil when free.
+func chosenAttackTaxCost(mana string) *MoveCost {
+	if mana == "" {
+		return nil
+	}
+	return &MoveCost{Mana: mana}
+}
+
 // controlledDeclarationMoves appends the moves of each declaration e's
 // seat is making for another seat right now. Caller must hold g.mu.
 func (e *enumerator) controlledDeclarationMoves() {
@@ -97,7 +106,7 @@ func (e *enumerator) attackTargetsMoves() {
 				Kind:   KindAttack,
 				Label:  attackMoveLabel(g, t, c.Name, price),
 				Source: c.InstanceID,
-				Cost:   withAttackTax(nil, price.Cost),
+				Cost:   chosenAttackTaxCost(price.Cost),
 				Params: mustJSON(attackParams{
 					Attacker: c.InstanceID.String(),
 					Target:   t.ID.String(),
@@ -131,7 +140,7 @@ func (e *enumerator) attackTargetsMoves() {
 		Kind:   KindAttack,
 		Label:  "Confirm the attacks (pays " + price.Cost + ")" + attackLifeLabel(phyLife),
 		Source: uuid.Nil,
-		Cost:   withPhyrexianLife(withAttackTax(nil, price.Cost), phyLife),
+		Cost:   withPhyrexianLife(chosenAttackTaxCost(price.Cost), phyLife),
 		Params: mustJSON(payload),
 		// The pass is refused while a cost could be avoided by a free
 		// re-point; this is then an answer nothing else can refuse.

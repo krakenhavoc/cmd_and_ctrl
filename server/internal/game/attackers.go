@@ -86,7 +86,12 @@ func (g *Game) commitAttackDeclarationLocked() {
 		return
 	}
 	// #4154: a declaration another player is choosing is locked in once
-	// both halves are done, never midway (declaration_control.go).
+	// both halves are done, never midway (declaration_control.go). One
+	// whose declarer left is taken back first.
+	g.settleOrphanedHandoffLocked()
+	if !g.attackDeclarationPendingLocked() {
+		return
+	}
 	if g.attackHandoffOpenLocked() {
 		return
 	}

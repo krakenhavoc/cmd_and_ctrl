@@ -455,6 +455,60 @@ func (g *Game) finishDeclarerAttacksLocked() error {
 	return nil
 }
 
+// beginChosenAttackDeclarationLocked runs as a declare attackers step
+// begins: when the declarer's half opens over an active player with no
+// creature that could attack, there is nothing to choose, so the
+// declaration is over at once (none), as a defender with no legal block
+// has declared none (block_completion.go). Nothing can give the active
+// player an attacker before the declaration: nobody has priority yet.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) beginChosenAttackDeclarationLocked() {
+	if !g.attackDeclarerPhaseLiveLocked() {
+		return
+	}
+	// The handoff is open from the first moment, so a declarer who
+	// leaves mid-way leaves a record of it (settleOrphanedHandoffLocked).
+	if g.AttackHandoff == nil {
+		r, _ := g.declarationRecordLocked(true)
+		g.setAttackHandoffLocked(AttackHandoff{Declarer: r.Declarer, Source: r.Source, SourceName: r.SourceName})
+	}
+	g.RecomputeLayersIfStaleLocked()
+	ap := g.activeSeatIDLocked()
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if AttackerEligible(c, ap) && !g.attackDeclinedLocked(c.InstanceID) &&
+			len(g.AttackTargetsForAttackerForEffect(c)) > 0 {
+			return
+		}
+	}
+	_ = g.finishDeclarerAttacksLocked()
+}
+
+// settleOrphanedHandoffLocked ends a declarer's half whose declarer can
+// no longer choose (they left the game): the effect is over, so the
+// active player declares for themselves, from nothing. What the declarer
+// staged is taken back (untapped), because none of it was the active
+// player's choice and none of its costs were paid. A no-op otherwise.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) settleOrphanedHandoffLocked() {
+	h := g.AttackHandoff
+	if h == nil || h.Stage != AttackHandoffDeclarer || g.Turn.Step != StepDeclareAttackers {
+		return
+	}
+	if g.attackDeclarerPhaseLiveLocked() {
+		return
+	}
+	for _, c := range g.stagedAttackersLocked() {
+		g.removeFromCombatLocked(c)
+		if !HasKeyword(c, "vigilance") {
+			c.Tapped = false
+		}
+	}
+	g.AttackHandoff = nil
+}
+
 // freeAttackAvailableLocked reports whether c could be pointed at some
 // target without paying anything (CR 508.1a's tax): a target it may
 // attack, that no count limit or requirement refuses it, at no price.
@@ -527,6 +581,7 @@ func (g *Game) attackHandoffPassLocked() (handled bool, err error) {
 	if g.State != StateActive || g.Turn.Step != StepDeclareAttackers || g.Turn.PriorityHolder != g.Turn.ActiveSeat {
 		return false, nil
 	}
+	g.settleOrphanedHandoffLocked()
 	if g.attackDeclarerPhaseLiveLocked() {
 		return true, g.finishDeclarerAttacksLocked()
 	}

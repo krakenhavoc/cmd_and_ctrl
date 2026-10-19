@@ -1836,8 +1836,10 @@ func (g *Game) advanceCursorLocked() {
 		if wasCombat && (PhaseOf(g.Turn.Step) != PhaseCombat || g.Turn.PhaseID != leaving) {
 			g.endCombatControlsLocked()
 			// #4154: and a "this combat" declaration control (Odric,
-			// Melee) with it.
+			// Melee) with it, and a delayed trigger whose stated
+			// duration is this combat (Melee's, CR 603.7b, 511.3).
 			g.endDeclarationControlsLocked(false)
+			g.clearEndOfCombatDelayedTriggersLocked()
 		}
 		return
 	}
@@ -2239,6 +2241,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepDeclareAttackers:
+		// #4154: a declaration another player chooses, over an active
+		// player with nothing that could attack, is over as it begins.
+		g.beginChosenAttackDeclarationLocked()
 	case StepDeclareBlockers:
 		// #1279 / CR 509.1: the declaration is taken as the step
 		// begins. A defending player with no legal block has nothing

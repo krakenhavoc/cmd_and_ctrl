@@ -17,6 +17,7 @@ const (
 	masterWarcraftOracle       = "f9bca7af-29b6-46ba-b847-56715d09d1da"
 	odricMasterTacticianOracle = "ade898df-14a5-460b-94f6-1f3f74d3ff95"
 	brutalHordechiefOracle     = "e70cac5e-674e-4df7-94c7-77f8801e3941"
+	meleeOracle                = "93fc1ff8-6ef0-42a2-b090-ba95b6f3c98e"
 )
 
 // castMasterWarcraft puts Master Warcraft in seat's hand and casts it.
@@ -169,6 +170,77 @@ func TestBrutalHordechiefDrainsAndChoosesHowTheyBlock(t *testing.T) {
 	}
 	if err := g.FinishBlocks(opp.ID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// castMelee puts Melee in seat's hand and casts it.
+func castMelee(t *testing.T, g *game.Game, seat *game.Player) (uuid.UUID, error) {
+	t.Helper()
+	id := uuid.New()
+	seat.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Melee", TypeLine: "Instant",
+		ManaCost: "{4}{R}", OracleID: meleeOracle, Owner: seat.ID, Controller: seat.ID,
+	})
+	return id, g.CastSpell(seat.ID, id, game.CastSpellParams{})
+}
+
+// Melee: cast during its caster's combat before blockers, it makes this
+// combat's blocks theirs, and each attacker nothing blocks is untapped
+// and removed from combat.
+func TestMeleeChoosesTheBlocksAndPullsTheUnblockedOut(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	elk := b12Creature(g, me.ID, "Elk", "Creature — Elk", 3, 3)
+	wall := b12Creature(g, opp.ID, "Wall", "Creature — Wall", 0, 4)
+	advanceTo(t, g, game.StepPrecombatMain)
+	if _, err := castMelee(t, g, me); err == nil {
+		t.Fatal("Melee was cast before combat")
+	}
+	advanceTo(t, g, game.StepDeclareAttackers)
+	for _, id := range []uuid.UUID{bear, elk} {
+		if err := g.DeclareAttacker(id, opp.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := castMelee(t, g, me); err != nil {
+		t.Fatalf("casting Melee in the declare attackers step: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	recs := declarationRecords(g)
+	if len(recs) != 1 || recs[0].Declarer != me.ID || !recs[0].Blockers || recs[0].Attackers || !recs[0].ThisCombat {
+		t.Fatalf("records = %+v, want this combat's blockers chosen by the caster", recs)
+	}
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if got := g.ControllerOfPlayer(opp.ID); got != me.ID {
+		t.Fatalf("the defender's blocks are made by %v, want the caster", got)
+	}
+	if err := g.DeclareBlocker(wall, elk); err != nil {
+		t.Fatalf("the caster's block: %v", err)
+	}
+	if err := g.FinishBlocks(opp.ID); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if c := mustBattlefieldCard(t, g, bear); c.Tapped || c.AttackingTarget != uuid.Nil {
+		t.Fatalf("the unblocked bear is tapped=%v attacking=%v, want untapped and out of combat", c.Tapped, c.AttackingTarget)
+	}
+	if c := mustBattlefieldCard(t, g, elk); c.AttackingTarget == uuid.Nil {
+		t.Fatal("the blocked elk was removed from combat")
+	}
+	before := opp.Life
+	advanceTo(t, g, game.StepEndCombat)
+	if opp.Life != before {
+		t.Fatalf("the defender lost %d life; the only unblocked attacker was removed", before-opp.Life)
+	}
+	advanceTo(t, g, game.StepPostcombatMain)
+	if n := len(declarationRecords(g)); n != 0 {
+		t.Fatalf("records after the combat: %d", n)
+	}
+	var left int
+	g.ReadSnapshot(func() { left = len(g.DelayedTriggers) })
+	if left != 0 {
+		t.Fatalf("%d delayed triggers outlived the combat", left)
 	}
 }
 

@@ -132,7 +132,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		ScheduledPlayerControls: []ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
 		DeclarationControls:     []DeclarationControlView{{Declarer: ownerID, SourceName: "Master Warcraft", Attackers: true, Blockers: true, Scope: "turn"}},
 		AttackHandoff:           &AttackHandoffView{Stage: "targets", Declarer: ownerID, SourceName: "Master Warcraft"},
-		Outcome:                &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+		Outcome:                 &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
 	}
 	v.controlledLegalActionsBySeat = map[string]map[string]*LegalActionsView{
 		ownerID: {oppID: {Pass: true}},

@@ -151,6 +151,23 @@ func TestDeclarationControlChoosingNoAttackersClosesTheDeclaration(t *testing.T)
 	advanceIntoStep(t, g, StepEndCombat)
 }
 
+// With nothing that could attack there is nothing to choose: the
+// declaration is over as the step begins, and the active player is
+// never handed to the declarer.
+func TestDeclarationControlNothingToChooseEndsTheDeclarationAtOnce(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	chooseDeclarations(t, g, 1, true, false, false)
+	tapped := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	findCard(g, tapped).Tapped = true
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	if got := handoffStage(g); got != AttackHandoffChosen {
+		t.Fatalf("handoff stage = %q at the step's start, want %q", got, AttackHandoffChosen)
+	}
+	if got := controllerOfSeat(g, 0); got != 0 {
+		t.Fatalf("seat 0 decided by seat %d with nothing to choose", got)
+	}
+}
+
 // CR 508.1d still binds the declarer: their pass is refused while a
 // creature that must attack is left home.
 func TestDeclarationControlTheDeclarerObeysAttackRequirements(t *testing.T) {
@@ -160,7 +177,7 @@ func TestDeclarationControlTheDeclarerObeysAttackRequirements(t *testing.T) {
 	advanceIntoStep(t, g, StepDeclareAttackers)
 
 	requirementErr(t, g.PassPriority())
-	if got := handoffStage(g); got != "<nil>" {
+	if got := handoffStage(g); got != AttackHandoffDeclarer {
 		t.Fatalf("a refused finish moved the handoff to %q", got)
 	}
 	if err := g.DeclareAttacker(zurgo, g.Seats[1].ID); err != nil {
@@ -549,11 +566,43 @@ func TestDeclarationControlCloneCarriesTheHandoff(t *testing.T) {
 	if err := g.PassPriority(); err != nil {
 		t.Fatal(err)
 	}
-	if before.AttackHandoff != nil {
-		t.Fatalf("the clone shares the live handoff: %+v", before.AttackHandoff)
+	if got := handoffStage(before); got != AttackHandoffDeclarer {
+		t.Fatalf("the clone shares the live handoff: stage %q", got)
 	}
 	g.RestoreFrom(before)
-	if g.AttackHandoff != nil || controllerOfSeat(g, 0) != 1 {
-		t.Fatalf("after the undo: handoff %+v, seat 0 decided by %d", g.AttackHandoff, controllerOfSeat(g, 0))
+	if got := handoffStage(g); got != AttackHandoffDeclarer || controllerOfSeat(g, 0) != 1 {
+		t.Fatalf("after the undo: handoff %q, seat 0 decided by %d", got, controllerOfSeat(g, 0))
+	}
+}
+
+// A declarer who leaves mid-way chooses nothing more: what they staged
+// is taken back, and the active player declares for themselves.
+func TestDeclarationControlADeclarerWhoLeavesMidwayHandsTheDeclarationBack(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	chooseDeclarations(t, g, 1, true, false, false)
+	bear := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	other := pushKeywordCreature(t, g, g.Seats[0], 2, 2)
+	advanceIntoStep(t, g, StepDeclareAttackers)
+	registerTimedTax(t, g, g.Seats[2].ID, "{2}")
+	if err := g.DeclareAttacker(bear, g.Seats[2].ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Concede(g.Seats[1].ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := controllerOfSeat(g, 0); got != 0 {
+		t.Fatalf("seat 0 decided by seat %d after the declarer left", got)
+	}
+	if err := g.DeclareAttacker(other, g.Seats[3].ID); err != nil {
+		t.Fatalf("the active player's own declaration: %v", err)
+	}
+	if c := findCard(g, bear); c.AttackingTarget != uuid.Nil || c.Tapped {
+		t.Fatalf("the departed declarer's unpaid choice is still attacking=%v tapped=%v", c.AttackingTarget, c.Tapped)
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatal(err)
+	}
+	if evs := declaredAttackEvents(g, other); len(evs) != 1 {
+		t.Fatalf("EventAttack = %+v, want the active player's own attack", evs)
 	}
 }

@@ -167,6 +167,28 @@ export function owesAttackRequirement(
   return (snap.battlefield?.cards ?? []).some((c) => c.controller === viewerID && !!c.must_attack);
 }
 
+// owesChosenDeclaration reports whether `seatID` is in the middle of an
+// attack or block declaration another player chooses (#4154, Master
+// Warcraft): the seat whose declaration is being chosen (its pass is
+// the chooser's "done", never the seat's own), or the active player
+// pointing the attackers another player chose (their pass declines
+// the costs). Either way a pass is a decision a person makes, so
+// autopass holds.
+export function owesChosenDeclaration(
+  snap: GameView | null | undefined,
+  seatID: string | null,
+): boolean {
+  if (!snap || !seatID) return false;
+  const step = snap.turn?.step;
+  if (step !== "declare_attackers" && step !== "declare_blockers") return false;
+  if (snap.player_controls?.some((pc) => pc.until === "declarations" && pc.controlled === seatID)) {
+    return true;
+  }
+  if (step !== "declare_attackers" || snap.attack_handoff?.stage !== "targets") return false;
+  const active = snap.turn?.active_seat ?? -1;
+  return active >= 0 && snap.seats?.[active]?.id === seatID;
+}
+
 // owesFreeCast reports whether the viewer holds a pass-closed free cast
 // they can make right now (#3490): a rebound, suspend, discover or
 // cascade card in exile whose grant the holder's next pass ends

@@ -9672,7 +9672,9 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			}
 			// #4154: another player choosing the attackers
 			// (declaration_control.go) — the declarer stages, the
-			// active player only re-points.
+			// active player only re-points. A declarer who left
+			// chooses nothing more.
+			g.settleOrphanedHandoffLocked()
 			if err := g.attackHandoffRefusalLocked(card, one.Exert); err != nil {
 				return err
 			}
@@ -9881,7 +9883,8 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// #4154: under a declaration another player chose
 	// (declaration_control.go), the active player's half is this verb
 	// naming the chosen attackers, and once both halves are done
-	// nothing more attacks.
+	// nothing more attacks. A declarer who left chooses nothing more.
+	g.settleOrphanedHandoffLocked()
 	if g.attackTargetsPhaseLocked() {
 		return g.confirmAttackTargetsLocked(decls, params)
 	}
