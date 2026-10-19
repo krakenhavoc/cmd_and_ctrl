@@ -449,13 +449,35 @@ func TestDeleteAccountAfterATableEndedButTheRowStillSaysActive(t *testing.T) {
 	meta, signed, _ := s.startTableWith(t, uid, aliceIdentity(), "Just ended")
 	s.concede(t, meta.ID, signed)
 
-	// Put back the state watchEnd had not yet written.
+	// watchEnd writes the end to the lobby entry and the games row in
+	// its own goroutine. Put the stale state back only after it has
+	// finished (#3986): a write-back that races it can be overwritten
+	// in memory but not in the row, or the reverse, and then the row
+	// says "active" while the entry says "ended". endedAt only climbs
+	// from nil, so it is a monotone latch for "watchEnd is done".
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		s.lobby.mu.Lock()
+		done := s.lobby.games[meta.ID].endedAt != nil
+		s.lobby.mu.Unlock()
+		if done {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("setup: watchEnd never recorded the end of the conceded table")
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	// Put back the state watchEnd had written. watchEnd has returned, so
+	// nothing writes the row again until the deletion check syncs it.
 	s.lobby.mu.Lock()
 	e := s.lobby.games[meta.ID]
 	e.meta.State = string(game.StateActive)
 	e.endedAt = nil
+	_, err := s.db.Exec(`UPDATE games SET state = 'active', ended_at = NULL WHERE id = ?`, meta.ID.String())
 	s.lobby.mu.Unlock()
-	if _, err := s.db.Exec(`UPDATE games SET state = 'active', ended_at = NULL WHERE id = ?`, meta.ID.String()); err != nil {
+	if err != nil {
 		t.Fatal(err)
 	}
 

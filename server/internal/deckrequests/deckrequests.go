@@ -6,7 +6,7 @@
 //
 // Two Store implementations, the decklibrary pattern:
 //
-//   - SQLStore, over internal/db (migration 0006), whenever
+//   - SQLStore, over internal/db (migrations 0006 and 0028), whenever
 //     CMDCTRL_DATA_DIR is set.
 //   - NoStore, for a deployment with no database. The route refuses to
 //     file without a store, because the rate limit and the
@@ -37,6 +37,18 @@ type Request struct {
 	CreatedAt time.Time
 }
 
+// Card is one card a deck request listed: one deck_request_cards row.
+type Card struct {
+	// Key is the card's oracle id, or "name:<lower-case name>" when the
+	// card index could not resolve it. It is how two reports of one
+	// deck are compared.
+	Key string
+	// Name is the card's name as the issue printed it.
+	Name string
+	// IssueNumber is the GitHub issue that listed the card.
+	IssueNumber int
+}
+
 // Store reads and writes deck requests. Implementations are safe for
 // concurrent use.
 type Store interface {
@@ -53,6 +65,16 @@ type Store interface {
 	HasAsked(ctx context.Context, deckKey, requester string, since time.Time) (bool, error)
 	// RecordAsk remembers one ask.
 	RecordAsk(ctx context.Context, deckKey, requester string, at time.Time) error
+	// RecordCards remembers that issueNumber lists cards for deckKey.
+	// A card the deck already has a row for is left as it was, so the
+	// issue that first listed it keeps the credit.
+	RecordCards(ctx context.Context, deckKey string, issueNumber int, cards []Card) error
+	// CardsOf returns the cards recorded for deckKey, in a stable order.
+	CardsOf(ctx context.Context, deckKey string) ([]Card, error)
+	// CopyCards gives toKey every card fromKey has a row for that toKey
+	// has not. A deck whose key changes in an update inherits its
+	// history this way.
+	CopyCards(ctx context.Context, fromKey, toKey string) error
 }
 
 // NoStore is the Store for a deployment with no database.
@@ -72,5 +94,14 @@ func (NoStore) HasAsked(context.Context, string, string, time.Time) (bool, error
 
 // RecordAsk always fails.
 func (NoStore) RecordAsk(context.Context, string, string, time.Time) error { return ErrNoStore }
+
+// RecordCards always fails.
+func (NoStore) RecordCards(context.Context, string, int, []Card) error { return ErrNoStore }
+
+// CardsOf always returns no cards.
+func (NoStore) CardsOf(context.Context, string) ([]Card, error) { return nil, nil }
+
+// CopyCards always fails.
+func (NoStore) CopyCards(context.Context, string, string) error { return ErrNoStore }
 
 var _ Store = NoStore{}

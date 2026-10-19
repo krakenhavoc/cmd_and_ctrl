@@ -82,8 +82,14 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * 27 (#3671) adds decks.power_level: an admin's estimate of a saved
  * deck's power, shown at the table. It is about the deck, goes with
  * the deck row, and the "Your decks" row now names it.
+ *
+ * 28 (#4135) adds deck_request_cards: which cards each deck's GitHub
+ * issue lists, under a deck key and an issue number. It names no person
+ * (the requester is in deck_request_asks, which account deletion
+ * removes) and is kept, like deck_requests; the "Deck requests" row now
+ * says the server remembers the cards an issue listed.
  */
-export const PRIVACY_SCHEMA_VERSION = 27;
+export const PRIVACY_SCHEMA_VERSION = 28;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

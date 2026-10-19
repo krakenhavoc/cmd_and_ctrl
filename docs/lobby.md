@@ -3302,10 +3302,12 @@ are listed and never block the update, as for a save), `live_tables`
 ```
 
 `new_cards` are the new version's `manual` and `unreviewed` cards that
-the deck's earlier request does not already list: a card counts as
-already requested when the **old** version was missing it and the old
-version's deck key has a request row, or when the new version is a pasted
-list that has a request row of its own. `available` is false, with a
+the deck's earlier requests do not already list: the cards recorded for the
+old or the new deck key (`deck_request_cards`, migration 0028, filled when a
+request is filed or extended and carried to the new key at every update,
+asked for or not). A request filed before that migration has no recorded
+cards and is read by the older rule: the old version's missing cards, or,
+for a pasted list with a request row of its own, all of its. `available` is false, with a
 `reason`, when this server files no requests or the caller has no Discord
 identity.
 

@@ -443,18 +443,41 @@ different deck key, so the old issue's cards were asked for a second time.
    request does, and its failure or refusal is reported beside a successful update and never undoes
    it.
 
-### What this does not do
+### What this did not do, and the 2026-10-19 follow-up (#4135)
 
-The rule reads the request rows ADR 0095 §3 already keeps; it does not remember which cards each
-issue listed. It is exact for an update after a request, and for a deck whose latest version was the
-one requested. If a player declines to request at one update and then updates again, the cards the
-first issue listed but the second version's key never had are offered again, and a comment can list
-a card already checked off on that issue. Keeping the requested card set per issue would close it,
-at the price of a table that stores card names per request; that was left until it is seen to matter.
+The first version of item 6 read the request rows ADR 0095 §3 already keeps, not the cards each issue
+listed. If a player declined to request at one update and then updated again, the cards the first
+issue listed but the second version's key never had were offered again, a comment could list a card
+already checked off on that issue, and a link deck (whose key does not change) read a declined
+update's missing card as already requested and never asked for it.
+
+Migration 0028 closes it with `deck_request_cards (deck_key, card_key, card_name, issue_number)`, one
+row per card a request listed:
+
+- **Filled** when a request lists cards: the deck checker's filed issue (its manual and unreviewed
+  cards), an update's comment on the open issue, and an update's new issue (the new cards only).
+  The checker's "also requested by" comment lists no cards and records none. `card_key` is the oracle
+  id, else `name:<lower-case name>`.
+- **Read** by an update: a card is already requested when a row for the old or the new deck key
+  names it. This replaces the old-version rule. A key with a request row and no card rows (a request
+  filed before the migration) falls back to the old rule, and an update writes that guess out as
+  rows when it carries them.
+- **Carried** at every update that changes the deck's key, whether or not the player asked: the new
+  key inherits the old key's rows (`CopyCards`), and, if it had no request row of its own, is pointed
+  at the issue that tracked the old one. A pasted list's key is its content, so without this a
+  declined update would lose the deck's history.
+- Rows are never removed. A closed issue's cards stay recorded for the deck (an update after a closed
+  issue still asks for only what the earlier request did not list, as before).
 
 ### Privacy
 
-Nothing about a person is newly stored. A previewed list is held **in memory** for 15 minutes (at
+Update (#4135): migration 0028's `deck_request_cards` stores a deck key, a card and an issue number. It
+names no person (the requester is only in `deck_request_asks`, which account deletion removes), it
+describes a public GitHub issue, and it is kept on deletion like `deck_requests`; it is in
+`accountdelete.Inventory` as not personal and the privacy notice's "Deck requests" row says so
+(`PRIVACY_SCHEMA_VERSION` 28).
+
+Nothing about a person is newly stored by the update flow. A previewed list is held **in memory** for 15 minutes (at
 most 128, one per person and deck) and dropped on use, on expiry or on restart; it is never written
 to the database or a log. A saved deck's list, link and counts were already stored under the
 account (ADR 0051), and are deleted with it (ADR 0149); an update changes their values, not what is
