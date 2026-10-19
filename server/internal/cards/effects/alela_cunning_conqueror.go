@@ -34,16 +34,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // combat if able and attacks a player other than Alela's controller
 // if able (CR 701.15b), judged with every other CR 508.1d requirement
 // (game/attack_requirements.go). The
-// target clause is Trygon Predator's shape: a target predicate is
-// not handed the trigger's event, so it admits any creature of a
-// player one of the controller's Faeries dealt combat damage to this
-// turn, and the body re-checks the specific player the firing Faerie
-// hit — a pick under some other hit player's control does nothing.
-// That set is the per-turn tally's, recorded at the damage (#1009):
-// the Faerie Rogue tokens Alela makes are the commonest thing to
-// connect and then trade, and CR 704.5d takes a dead token out of the
-// graveyard, so a set computed later by looking the dealer up would
-// lose exactly the player the goad is for.
+// target clause is Trygon Predator's shape, ControlledByThatPlayer
+// (#3946): it is judged against the player the firing Faerie hit, as
+// named by the trigger's own event (which also covers the Faerie Rogue
+// tokens Alela makes, the commonest thing to connect and then trade).
 //
 // A creature already goaded by someone else keeps that goad too: since
 // #1598 the marker holds every goader (Card.Goads), each ending as its
@@ -67,7 +61,7 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					return b33FaerieYouControlDealtCombatDamageToPlayer(ev, source, g)
 				},
-				Targets: TargetCreature("target creature that player controls", b33CreatureOfPlayerHitByYourFaeries),
+				Targets: ControlledByThatPlayer(TargetCreature("target creature that player controls")),
 				Key:     b33AlelaGoadLabel,
 				Effect:  b33AlelaGoadChosen,
 			},

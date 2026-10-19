@@ -135,7 +135,6 @@ var textWordHelperArgs = map[string][]int{
 	"b27CreatureTypesPlusShapeshifter":                      {1},
 	"b28GraveyardHasCreatureCardOfSubtype":                  {2},
 	"b29SpiritsControlled":                                  {2},
-	"b33PlayersDealtCombatDamageThisTurnByYourFaeries":      {2},
 	"b34GoblinsEnteredUnderYourControlThisTurn":             {2},
 	"b38FaeriesYouControl":                                  {2},
 	"b42CountCreaturesWithSubtype":                          {1},

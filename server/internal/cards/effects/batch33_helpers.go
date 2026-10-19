@@ -122,42 +122,6 @@ func b33CountersPlacedDelta(ev game.Event, kind string, g *game.Game) int {
 	return ev.Amount - before
 }
 
-// b33PlayersDealtCombatDamageThisTurnByYourFaeries is the set of
-// players a Faerie under `controller`'s control dealt combat damage
-// to this turn — b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed
-// with a subtype where that reads a name. Alela's goad clause narrows
-// "target creature THAT PLAYER controls" through it, because a target
-// predicate is not handed the trigger's event.
-//
-// The per-turn tally's damage-source cell (#1009), and this is the
-// reader #596 was about: the event-log scan looked the dealing Faerie
-// up wherever it had since landed, and a Faerie TOKEN that traded in
-// combat is nowhere — CR 704.5d takes it out of the graveyard at the
-// next state-based check, one check after the damage that killed it.
-// The player it hit dropped silently out of the set, which is the
-// commonest case Alela is printed for, since she makes the Faeries
-// herself. The tally records the subtype AT THE DAMAGE, while the
-// Faerie is still on the battlefield, so a traded token counts and a
-// changeling counts. `faerie` is the creature type as the asking
-// object's text now reads it (CR 612.2, #3984).
-func b33PlayersDealtCombatDamageThisTurnByYourFaeries(g *game.Game, controller uuid.UUID, faerie string) map[uuid.UUID]bool {
-	return g.PlayersDealtCombatDamageThisTurnBySubtype(controller, faerie)
-}
-
-// b33CreatureOfPlayerHitByYourFaeries is Alela's target predicate: a
-// creature controlled by a player one of the caster's Faeries dealt
-// combat damage to this turn. The trigger's body re-checks the
-// specific damaged player, so with Faeries connecting with two
-// players in one combat each trigger's pick is still validated
-// against its own victim.
-func b33CreatureOfPlayerHitByYourFaeries(g *game.Game, caster uuid.UUID, c game.Card) bool {
-	if !c.IsCreature() {
-		return false
-	}
-	// The targeting walk lends the source's text (LentSubtype).
-	return b33PlayersDealtCombatDamageThisTurnByYourFaeries(g, caster, c.LentSubtype("Faerie"))[c.Controller]
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b33FaerieYouControlDealtCombatDamageToPlayer is Alela's condition
@@ -650,26 +614,19 @@ func b33ClearListedGoads(g *game.Game, _ *game.StackItem) error {
 }
 
 // b33AlelaGoadChosen is Alela's body: the chosen creature is goaded
-// by the controller if it is still legal and still controlled by the
-// player the Faeries hit — read back off the item's carried trigger
-// event (item.Trigger, #1379, ADR 0041 P9) rather than captured at
-// trigger time — and a delayed trigger clears the marker at the
-// beginning of the controller's next turn (CR 701.15a's "until your
-// next turn"). A pick under some other player's control — possible
-// when Faeries connected with two players in one combat and the
-// clause offered both players' creatures — does nothing.
+// by the controller if it is still legal, and a delayed trigger clears
+// the marker at the beginning of the controller's next turn (CR
+// 701.15a's "until your next turn"). "Controlled by that player" is
+// the clause's own ControlledByThatPlayer (#3946), judged against the
+// trigger's event at the picker, at announce and again at resolution
+// (CR 608.2b), so this body re-checks nothing about the victim.
 func b33AlelaGoadChosen(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
-	var victim uuid.UUID
-	if item.Trigger != nil {
-		victim = item.Trigger.Event.Target
-	}
-	c, found := g.LookupCardForEffect(id)
-	if !found || c.Controller != victim || !onBattlefield(g, id) {
+	if !onBattlefield(g, id) {
 		return nil
 	}
 	b33Goad(g, id, item.Controller)

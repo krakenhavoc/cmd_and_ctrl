@@ -71,12 +71,15 @@ func init() {
 				Purpose: ForTargets(DamageToTarget(0, 13)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					// CR 608.2b: a target that left in response is
-					// skipped. The life gain is its own sentence.
-					if legal := ctx.LegalTargets(); len(legal) > 0 {
-						if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: 13}).Apply(ctx); err != nil {
-							return err
-						}
+					// CR 608.2b: with its only target gone the ability does
+					// nothing at all, life gain included (#4082). A prevented
+					// damage still gains the life.
+					legal := ctx.LegalTargets()
+					if len(legal) == 0 {
+						return nil
+					}
+					if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: 13}).Apply(ctx); err != nil {
+						return err
 					}
 					return GainLife{Player: item.Controller, Amount: 13}.Apply(ctx)
 				},
