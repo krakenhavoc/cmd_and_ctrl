@@ -31,6 +31,8 @@
     boardChoicePick,
     isBoardPickable,
     isBoardPicked,
+    pickOnBoard,
+    pileToggleID,
     type BoardChoicePick,
   } from "../../boardChoicePick";
   import { fitRow, MIN_CARD_H, type RowReport } from "../../rowFit";
@@ -322,6 +324,17 @@
   // A pile's click: fanned out while blockers are declared (#3898), its
   // member list otherwise.
   function groupClick(groupKey: string, members: readonly CardView[]): void {
+    // #4028: while a choice is picked on the board, a click on a pile of
+    // identical tokens picks (or puts back) one of them, as a click on a
+    // single permanent does.
+    const pickID = pileToggleID(
+      $boardChoicePick,
+      members.map((m) => m.instance_id),
+    );
+    if (pickID !== null) {
+      pickOnBoard(pickID);
+      return;
+    }
     if (fansOnClick($blockBoard, members)) {
       fannedPiles.update((s) => fanPile(s, groupKey));
       return;

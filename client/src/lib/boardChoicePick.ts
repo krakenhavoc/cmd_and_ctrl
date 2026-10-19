@@ -147,6 +147,22 @@ export function toggleBoardPick(s: BoardChoicePick, id: string): BoardChoicePick
   return { ...s, selected: next };
 }
 
+// pileToggleID is the member a click on a pile of identical permanents
+// (a token group, #1724) stands for while a choice is open, or null when
+// none is. Members share their highlight, so a pile is all picked or all
+// not: a click puts one back when they are picked, and picks one when
+// they are not. A pile the choice does not offer answers with its first
+// member, which toggleBoardPick swallows. #4028: the click picks it
+// directly, instead of opening the pile's member list.
+export function pileToggleID(s: BoardChoicePick | null, members: readonly string[]): string | null {
+  if (s === null || members.length === 0) return null;
+  return (
+    members.find((id) => s.selected.has(id)) ??
+    members.find((id) => s.eligible.has(id)) ??
+    members[0]
+  );
+}
+
 // sameSelection compares two selections as sets.
 export function sameSelection(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
   if (a.size !== b.size) return false;
