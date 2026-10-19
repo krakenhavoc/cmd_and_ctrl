@@ -3485,3 +3485,33 @@ target clause's lenient reading (a pick with no key conflicts with nothing) is u
 not beside `EachOf`. A mana ability, a cast's additional cost (whose payability check counts candidates) and an optional
 or alternative cost each have payers or offer checks of their own that this change does not teach, so they refuse it
 until a printed card needs it there. Transmutation Font ships Full.
+
+## Amendment 2026-10-19 ([#4062](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4062)): "Activate only during your turn, before attackers are declared"
+
+About thirty Commander-legal cards (Diaochan, Artful Beauty and the Portal Three Kingdoms creatures) print this window,
+and Nettling Imp, Norritt and Arcum's Whistle print variants of it. It is an activation condition (CR 602.1b), and the one
+fact it needed already existed.
+
+1. **The fact is the turn tally's step count.** `Game.DeclareAttackersHasBegunThisTurnForEffect` reads
+   `TurnTally.StepsBegun[StepDeclareAttackers] > 0`. `noteStepBegunLocked` stamps that count as a step really begins (a
+   step the turn does not have, or one a replacement cancelled, is never counted), the snapshot already carries it,
+   `derivePrePlanOrdinalsLocked` rebuilds it for a restore point older than the turn plan, and every turn change empties
+   it. No new state, no snapshot change.
+2. **First combat, not each combat.** Diaochan's ruling: "If a turn has multiple combat phases, the ability can only be
+   activated before the beginning of the declare attackers step of the first combat phase in that turn." The first
+   declare attackers step to begin is the first combat's, so once any has begun the window is shut for the rest of the
+   turn, an extra combat's included. A turn whose combat is skipped never begins the step, and the window stays open all
+   turn, which is what the rule says. The beginning of combat step is still inside the window.
+3. **Builders.** `effects.BeforeAttackersAreDeclared()` (the fact alone, for Arcum's Whistle and Norritt, which name no
+   turn), `DuringYourTurnBeforeAttackersAreDeclared()` (`AllConditions(DuringYourTurn(), …)`, the printed pair) and
+   `DuringAnOpponentsTurnBeforeAttackersAreDeclared()` (Nettling Imp). The view's `condition_unmet` and the legal
+   enumerator read the same closure, so the ability greys out when the window shuts and a bot never offers it.
+4. **Cast restrictions use the same fact.** Siren's Call's `CastCondition` calls the same method. Master Warcraft's
+   "cast only before attackers are declared" needs the window too, but its effect (the spell's controller declares every
+   attack and block) is a seam of its own, #4154.
+
+Cards: Alaborn Veteran, Apprentice Sorcerer, Capricious Sorcerer, Cao Cao Lord of Wei, Coastal Wizard, Cunning Advisor,
+Diaochan, Fire Bowman, Goblin Firestarter, Hua Tuo, King's Assassin, Lady Sun, Loyal Retainers, Lu Su, Norwood Priestess,
+Pang Tong, Shu Farmer, Steam Catapult, Stern Marshal, Stone Catapult, Talas Researcher, Temple Elder, Wu Longbowman,
+Xiahou Dun, Xun Yu and Zhuge Jin (all Full), and the forced-attack family (Nettling Imp, Norritt, Arcum's Whistle,
+Siren's Call; `forced_attack_helpers.go`).

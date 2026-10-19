@@ -86,6 +86,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
+  - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -11172,6 +11173,31 @@ and the engine call site that reads it. Add a per-slot
 `game.CatalogX` variable only if a game-package test needs to stub
 that slot without importing the catalog; the existing ones default to
 reading the `CardDef` and are not set by the catalog any more.
+
+### "Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)
+
+- **The window.** `Condition: DuringYourTurnBeforeAttackersAreDeclared()` is "Activate only during your turn, before
+  attackers are declared" (Diaochan, Artful Beauty and the Portal Three Kingdoms creatures). `BeforeAttackersAreDeclared()`
+  alone is "Activate only before attackers are declared" (Norritt, Arcum's Whistle, no turn named) and
+  `DuringAnOpponentsTurnBeforeAttackersAreDeclared()` is Nettling Imp's. All read
+  `Game.DeclareAttackersHasBegunThisTurnForEffect`, the turn tally's step count: true once ANY declare attackers step has
+  begun, so an extra combat does not reopen the window. A cast restriction uses the same method in its `CastCondition`
+  (Siren's Call). ADR 0020's amendment of 2026-10-19.
+- **"Attacks this turn if able, destroy it at the beginning of the next end step if it didn't"** is
+  `forced_attack_helpers.go`: `forcedAttackTarget()` is "target non-Wall creature the active player has controlled
+  continuously since the beginning of the turn", `forceTheChosenCreature(label)` is the whole Effect, and
+  `mustAttackOrBeDestroyed` is the shared body (an attack-requirement scoped effect until end of turn, and a delayed
+  trigger on `destroyUnlessItAttackedBody`).
+- **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
+  2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
+  (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the
+  untap record on the stack item (`StackItem.SourceUntapped`) is honoured for you. A card that builds a duration from
+  `Game.ForAsLongAsSourceTappedDuration` directly must also refuse on `sourceUntappedSinceActivation(ctx)`, as Old Man of
+  the Sea does.
+- **"Each other player may draw a card"** is a keyed option pick per player in turn order (`OptionPickThen`, `Carry` the
+  players still to ask), and "whenever a card is drawn this way" is one reflexive trigger per card that reached a hand
+  (`len(Game.DrawnThisTurn[player])` before and after), its clause `ChosenAtRandom(TargetPlayer("…", Opponent()))` on the
+  `ReflexiveBody`. Explosion of Riches.
 
 ### When in doubt
 

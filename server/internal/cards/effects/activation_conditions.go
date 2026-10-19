@@ -68,6 +68,37 @@ func DuringStep(step game.Step) ActivationCondition {
 	}
 }
 
+// BeforeAttackersAreDeclared — "Activate only before attackers are
+// declared" (Arcum's Whistle, Norritt) and, paired with DuringYourTurn
+// or an opponent's-turn gate, "Activate only during your turn, before
+// attackers are declared" (Diaochan, Artful Beauty and the Portal Three
+// Kingdoms creatures; #4062).
+//
+// True until the first declare attackers step of the turn begins
+// (Game.DeclareAttackersHasBegunThisTurnForEffect), then false for the
+// rest of the turn: the ruling on Diaochan is that with several combat
+// phases the ability "can only be activated before the beginning of the
+// declare attackers step of the first combat phase in that turn". So the
+// beginning of combat step is still inside the window and the declare
+// attackers step is not. On a turn with no combat the window never
+// closes.
+//
+// It says nothing about whose turn it is: pair it with DuringYourTurn
+// (DuringYourTurnBeforeAttackersAreDeclared) when the card prints that, as
+// every card but Arcum's Whistle and Norritt does.
+func BeforeAttackersAreDeclared() ActivationCondition {
+	return func(g *game.Game, _, _ uuid.UUID) bool {
+		return !g.DeclareAttackersHasBegunThisTurnForEffect()
+	}
+}
+
+// DuringYourTurnBeforeAttackersAreDeclared is "Activate only during
+// your turn, before attackers are declared": DuringYourTurn and
+// BeforeAttackersAreDeclared together (#4062).
+func DuringYourTurnBeforeAttackersAreDeclared() ActivationCondition {
+	return AllConditions(DuringYourTurn(), BeforeAttackersAreDeclared())
+}
+
 // countControlled counts the battlefield permanents `player` controls
 // that match.
 func countControlled(g *game.Game, player uuid.UUID, match func(game.Card) bool) int {

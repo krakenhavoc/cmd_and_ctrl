@@ -293,3 +293,6 @@ choose choose-cards/yorion-sky-nomad-exile
 option option-pick/tomb-of-annihilation-sandfall-cell
 option option-pick/tomb-of-annihilation-veils-of-fear
 option option-pick/acererak-the-archlich-zombie-or-sacrifice
+body destroy/the-object-unless-it-attacked
+body explosion-of-riches/damage
+option option-pick/explosion-of-riches-draw

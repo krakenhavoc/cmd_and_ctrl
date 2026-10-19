@@ -523,6 +523,29 @@ func (g *Game) IsFirstCombatPhaseForEffect() bool {
 	return g.Turn.Phase == PhaseCombat && g.Turn.PhaseOrdinal <= 1
 }
 
+// DeclareAttackersHasBegunThisTurnForEffect is "a declare attackers
+// step has begun this turn" (#4062): the fact behind "Activate only
+// during your turn, before attackers are declared" (Diaochan, Artful
+// Beauty and the Portal Three Kingdoms cards). The ruling reads it
+// from the FIRST combat's step - "before the beginning of the declare
+// attackers step of the first combat phase in that turn" - and the
+// first such step to begin is that one, so once any has begun the
+// window is shut for the rest of the turn, an extra combat's included.
+//
+// It is read off the step tally noteStepBegunLocked keeps, which is
+// stamped as a step really begins (a step the turn does not have, or
+// one a replacement cancelled, is never counted) and is already
+// carried by the snapshot, rebuilt for a restore point that pre-dates
+// it (derivePrePlanOrdinalsLocked), and emptied at every turn change.
+// So no new state was added for it. A turn whose combat is skipped
+// never begins the step, and the window stays open for the whole turn,
+// which is what the rule says.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DeclareAttackersHasBegunThisTurnForEffect() bool {
+	return g.TurnTally.StepsBegun[StepDeclareAttackers] > 0
+}
+
 // IsFirstStepOfItsKindForEffect is "if it's the first <step> of the
 // turn" (Y'shtola Rhul's "first end step"): the step in progress has
 // not begun before this turn.
