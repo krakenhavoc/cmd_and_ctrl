@@ -143,11 +143,6 @@ test("#4043 a storm under a response offers its ability on the lower card's stri
         if (process.env.SHOT_ONLY === "1") continue;
         // One bolt button, on the storm's strip, inside the viewport.
         await expect(btn).toHaveCount(1);
-        if (size.width < 768) {
-          // #4150: at phone width the stack overlay sits under the avatar
-          // panels, so only its presence is checked here, not a tap.
-          continue;
-        }
         await expect(btn).toBeVisible();
         const box = (await btn.boundingBox())!;
         expect(box.x).toBeGreaterThanOrEqual(0);
@@ -162,6 +157,17 @@ test("#4043 a storm under a response offers its ability on the lower card's stri
           );
         });
         expect(top).toBe(true);
+        // #4150: and a real tap lands on it (a phone used to leave the
+        // strip zero-wide, the button in the DOM under the life chip).
+        const hit = await btn.evaluate((e) => {
+          const r = e.getBoundingClientRect();
+          const at = document.elementFromPoint(
+            r.x + r.width / 2,
+            r.y + r.height / 2,
+          );
+          return !!at && (at === e || e.contains(at));
+        });
+        expect(hit).toBe(true);
         // The caster's name on the top card is not cut to an initial.
         const who = page.locator(".who-row .caster").first();
         if (await who.count()) {

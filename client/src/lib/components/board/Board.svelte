@@ -4917,6 +4917,19 @@
     left: calc(33.333% + 190px);
     width: min(512px, calc(33.333% - 252px));
   }
+  /* #4150: a phone has no spare column (the offsets above go to zero or
+     negative width under 540px, which hid the docked stack card and left
+     its buttons covered by the seats). The strip spans the board between
+     two gutters, over the seat panels like a tablet's strip does. */
+  @media (max-width: 599px) {
+    .strip,
+    :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
+    :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
+      left: 8px;
+      right: 8px;
+      width: auto;
+    }
+  }
 
   /* Quadrant templates per opponent count. The bottom row (next +
      self) always gets more vertical real estate than the top row
