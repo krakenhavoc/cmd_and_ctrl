@@ -2,7 +2,7 @@
   // VotingPanel is the council's-dilemma modal that opens for every
   // player when view.vote is set. Each player sees the topic, the
   // options, the live tally, and a button to cast / re-cast their
-  // ballot. Initiator (or any seated player) can close the vote.
+  // ballot. Only the initiator can close the vote (#4131).
   //
   // ADR 0111 PR 7: the "start a vote" launcher that sat in the board's
   // top-left corner is "Call a vote…" in the action dock's ⋯ menu now
@@ -10,6 +10,7 @@
   // launcher needed a seat.
 
   import type { ActionPayload, ActionType, GameView } from "../../protocol";
+  import { mayEndVote } from "../../choiceDock";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -37,6 +38,9 @@
     }
     return counts;
   });
+
+  // #4131: only the player who called the vote ends it.
+  const canEnd = $derived(vote ? mayEndVote(vote, viewerID, view.seats) : false);
 
   const myBallot = $derived(viewerID && vote ? (vote.ballots?.[viewerID] ?? null) : null);
 
@@ -80,7 +84,9 @@
       {/each}
     </ol>
     <footer class="foot">
-      <button type="button" class="end" onclick={endVote}>end vote</button>
+      {#if canEnd}
+        <button type="button" class="end" onclick={endVote}>end vote</button>
+      {/if}
     </footer>
   </div>
 {/if}

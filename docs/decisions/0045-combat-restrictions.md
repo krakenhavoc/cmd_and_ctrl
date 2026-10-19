@@ -4465,7 +4465,7 @@ A defender with nothing to block with is never waited on: completion point 1
 has declared none for them, and when every defender is in that position the
 step does not park at all. A disconnected defender stalls the step exactly as
 a disconnected priority holder stalls any other. The way out is the same:
-`advance_step`, which any seated player may send, completes every pending
+`advance_step`, which the active player may send (any seated player could, until #4131 narrowed it to the active player and the priority holder; priority is parked here, so it is the active player), completes every pending
 declaration as whatever is staged.
 
 **Completion point 3 survives, narrowed.** A declaring defender's

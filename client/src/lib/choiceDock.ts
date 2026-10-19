@@ -682,6 +682,21 @@ export interface VoteRequestInput {
   secretMine?: number[];
 }
 
+// mayEndVote mirrors the server's end_vote gate (#4131): the player who
+// called the vote ends it, and any seat may once that player has left
+// the table (eliminated or no longer seated), so a vote never sits open
+// for ever. Everyone else gets no "end vote" button.
+export function mayEndVote(
+  vote: VoteView,
+  viewerID: string | null,
+  seats: Pick<PlayerView, "id" | "eliminated">[],
+): boolean {
+  if (!viewerID) return false;
+  if (vote.initiator === viewerID) return true;
+  const initiator = seats.find((s) => s.id === vote.initiator);
+  return !initiator || initiator.eliminated === true;
+}
+
 export function voteRequest(input: VoteRequestInput): DockRequest {
   const { vote, viewerID, seats, onCast, onEnd } = input;
   let counts = input.tally;

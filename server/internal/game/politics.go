@@ -26,9 +26,9 @@ type PromiseKey struct {
 // (no nested votes — if a card needs that, end the outer vote first).
 //
 // The Initiator is recorded so the UI can show "Alice called this"
-// and so EndVote can surface a permission gate later if needed
-// (today any seated player may end any vote, mirroring the
-// "clear_combat is loose" sandbox posture).
+// and so the action layer can gate end_vote on it: since #4131 only the
+// initiator ends a vote, or any seat once the initiator has left
+// (actions.requireVoteInitiator).
 type Vote struct {
 	ID        uuid.UUID
 	Topic     string

@@ -163,6 +163,7 @@
     gameOverRequest,
     inlineRefusal,
     voteRequest,
+    mayEndVote,
   } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { showChoiceAsList } from "../lib/boardAnsweredChoice";
@@ -2503,7 +2504,10 @@
           viewerID,
           seats: view.seats,
           onCast: (option) => sendAction("cast_vote", { option }, viewerID ?? undefined),
-          onEnd: () => sendAction("end_vote"),
+          // #4131: only the player who called the vote may end it.
+          onEnd: mayEndVote(view.vote, viewerID, view.seats)
+            ? () => sendAction("end_vote")
+            : undefined,
         })
       : null,
   );
