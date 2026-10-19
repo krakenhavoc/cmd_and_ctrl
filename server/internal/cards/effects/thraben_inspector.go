@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // activated ability.
 func init() {
 	Register(Spec{
-		OracleID: "caa02547-66e3-4e27-a2d3-5e94f3e7a069",
-		Name:     "Thraben Inspector",
-		Purpose:  game.Purpose{Tokens: 1},
+		OracleID:     "caa02547-66e3-4e27-a2d3-5e94f3e7a069",
+		Name:         "Thraben Inspector",
+		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Tokens: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Thraben Inspector — investigate", Do(CreateToken{
 				Template: ClueToken(),

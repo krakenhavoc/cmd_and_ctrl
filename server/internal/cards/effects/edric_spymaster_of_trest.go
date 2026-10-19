@@ -23,8 +23,9 @@ import (
 // the combat-damage event carries in Actor.
 func init() {
 	Register(Spec{
-		OracleID: "9a1de7e4-9930-4db3-a8f3-d146d0abf38b",
-		Name:     "Edric, Spymaster of Trest",
+		OracleID:     "9a1de7e4-9930-4db3-a8f3-d146d0abf38b",
+		Name:         "Edric, Spymaster of Trest",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{MayDraw(game.TriggeredAbility{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

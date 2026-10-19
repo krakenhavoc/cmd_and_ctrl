@@ -48,6 +48,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "4308a020-48cf-45fe-8074-dd5d0ac6d12d",
 		Name:            "Uril, the Miststalker",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"hexproof"},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,

@@ -10,8 +10,9 @@ package effects
 // no picker, the same shape as Sol Ring's two.
 func init() {
 	Register(Spec{
-		OracleID: "a699c663-8131-4045-9265-a83e86609374",
-		Name:     "Thran Dynamo",
+		OracleID:     "a699c663-8131-4045-9265-a83e86609374",
+		Name:         "Thran Dynamo",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}{C}",

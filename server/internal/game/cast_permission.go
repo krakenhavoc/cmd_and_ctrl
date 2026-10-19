@@ -520,6 +520,17 @@ type CastPermission struct {
 	// Grim Captain's Locker's four.
 	ExileOtherFromGraveyard int `json:"exileOtherFromGraveyard,omitempty"`
 
+	// GraveyardsAreYours is the last sentence of Shaman's Trance, "You may
+	// play lands and cast spells from other players' graveyards this turn
+	// as though those cards were in your graveyard" (#4177). While this
+	// STORED permission is live, every permission its holder has over
+	// "your graveyard" (Underworld Breach's escape, Yawgmoth's Will,
+	// Lurrus, Muldrotha, a flashback grant) reaches every graveyard, as
+	// permissionReachesPileLocked reads it. Set on the Trance's own
+	// grants, one per other seat, so a resolved Trance stores no new
+	// record; an older binary drops the key.
+	GraveyardsAreYours bool `json:"graveyardsAreYours,omitempty"`
+
 	// DiscardLandCard is retrace's "discarding a land card in addition
 	// to paying its other costs" (CR 702.81a), Six's grant. It makes
 	// the synthesised offer pay the card's PRINTED mana cost (this
@@ -1425,9 +1436,27 @@ func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone 
 				out := *perm
 				return &out
 			}
+			// #4177: and a permission a permanent of the caster's gives
+			// (Underworld Breach's escape) beside a stored one that opens
+			// the same card with no offer of its own (Shaman's Trance's
+			// plain play of another player's graveyard).
+			for _, perm := range g.standingCastPermissionsLocked(p) {
+				if perm.AltCostKey == claim && g.standingPermissionOpensLocked(p.ID, &perm, card, zone) {
+					out := perm
+					return &out
+				}
+			}
 		}
 	}
 	return g.castPermissionLocked(playerID, card, zone)
+}
+
+// standingPermissionOpensLocked is storedPermissionOpensLocked's test
+// for a permission derived from the battlefield: covering the card, over
+// a pile it reaches, at a position it allows. Caller must hold g.mu.
+func (g *Game) standingPermissionOpensLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
+	return perm.CoversCard(card, zone) && g.permissionReachesPileLocked(holder, perm, card, zone) &&
+		g.permissionPositionOKLocked(holder, perm, card)
 }
 
 // storedPermissionOpensLocked is the test a STORED permission passes to
@@ -1439,11 +1468,11 @@ func (g *Game) CastPermissionForClaimLocked(playerID uuid.UUID, card Card, zone 
 // Caller must hold g.mu.
 func (g *Game) storedPermissionOpensLocked(playerID uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
 	return g.CastPermissionActiveForEffect(perm, playerID) && perm.CoversCard(card, zone) &&
-		permissionReachesPileLocked(playerID, perm, card, zone) &&
+		g.permissionReachesPileLocked(playerID, perm, card, zone) &&
 		g.permissionPositionOKLocked(playerID, perm, card)
 }
 
-// otherGrantedOffersLocked lists the stored permissions BESIDES `grant`
+// otherGrantedOffersLocked lists the stored (and, #4177, the standing) permissions BESIDES `grant`
 // that open this card and price it under a claimable offer of their own
 // — the second permission CastPermissionForClaimLocked describes. One
 // per key, and never the key `grant` itself offers. Copies.
@@ -1466,6 +1495,16 @@ func (g *Game) otherGrantedOffersLocked(playerID uuid.UUID, card Card, zone Zone
 		}
 		seen[perm.AltCostKey] = true
 		cp := *perm
+		out = append(out, &cp)
+	}
+	// #4177: the offers the caster's permanents give (Underworld Breach's
+	// escape), beside a stored permission that opens the card plainly.
+	for _, perm := range g.standingCastPermissionsLocked(p) {
+		if perm.AltCostKey == "" || seen[perm.AltCostKey] || !g.standingPermissionOpensLocked(playerID, &perm, card, zone) {
+			continue
+		}
+		seen[perm.AltCostKey] = true
+		cp := perm
 		out = append(out, &cp)
 	}
 	return out
@@ -1587,7 +1626,7 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		if !perm.CoversCard(card, zone) {
 			continue
 		}
-		if !permissionReachesPileLocked(p.ID, &perm, card, zone) {
+		if !g.permissionReachesPileLocked(p.ID, &perm, card, zone) {
 			continue
 		}
 		if !g.permissionPositionOKLocked(p.ID, &perm, card) {
@@ -1687,7 +1726,7 @@ func (p *CastPermission) PileOwnerFor(holder uuid.UUID) uuid.UUID {
 //
 // Exile needs none of it: it is a shared zone by construction, so
 // "whose exile" is not a question a permission has to answer.
-func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
+func (g *Game) permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Card, zone ZoneKind) bool {
 	if perm.Scope != ScopeStanding {
 		return true
 	}
@@ -1708,7 +1747,16 @@ func permissionReachesPileLocked(holder uuid.UUID, perm *CastPermission, card Ca
 	// pile's owner and no zone scan is needed on a path the view walks
 	// per card per seat. An ownerless card — a token that never had
 	// one — reaches nobody's standing grant.
-	return card.Owner != uuid.Nil && card.Owner == perm.PileOwnerFor(holder)
+	if card.Owner == uuid.Nil {
+		return false
+	}
+	if card.Owner == perm.PileOwnerFor(holder) {
+		return true
+	}
+	// Shaman's Trance (#4177): "as though those cards were in your
+	// graveyard". A permission over the holder's OWN graveyard (it names
+	// no other seat's) opens every graveyard this turn.
+	return zone == ZoneGraveyard && perm.ZoneOwner == uuid.Nil && g.graveyardPermissionsReachAllLocked(holder)
 }
 
 // permissionPositionOKLocked enforces the restrictions that are about
@@ -2209,7 +2257,7 @@ func (g *Game) CastPermissionOnCardForEffect(card Card, zone ZoneKind) *CastPerm
 			// holder's grant over one opponent's graveyard would be
 			// stamped as the public `exile_play` on every card in every
 			// graveyard, the holder's own included.
-			if !perm.CoversCard(card, zone) || !permissionReachesPileLocked(p.ID, perm, card, zone) {
+			if !perm.CoversCard(card, zone) || !g.permissionReachesPileLocked(p.ID, perm, card, zone) {
 				continue
 			}
 			if g.CastPermissionActiveForEffect(perm, p.ID) {
@@ -2257,7 +2305,7 @@ func (g *Game) standingExilePermissionOnLocked(card Card, zone ZoneKind) *CastPe
 			continue
 		}
 		for _, perm := range g.standingCastPermissionsLocked(p) {
-			if perm.CoversCard(card, zone) && permissionReachesPileLocked(p.ID, &perm, card, zone) &&
+			if perm.CoversCard(card, zone) && g.permissionReachesPileLocked(p.ID, &perm, card, zone) &&
 				g.permissionPositionOKLocked(p.ID, &perm, card) {
 				out := perm
 				return &out

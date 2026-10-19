@@ -25,9 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // print "Construct Construct".
 func init() {
 	Register(Spec{
-		OracleID: "53c730c6-2f8c-4af8-b400-b9d573a71e60",
-		Name:     "Adaptive Automaton",
-		AsEnters: ChooseCreatureTypeAsEnters("Adaptive Automaton"),
+		OracleID:     "53c730c6-2f8c-4af8-b400-b9d573a71e60",
+		Name:         "Adaptive Automaton",
+		Completeness: CompletenessFull,
+		AsEnters:     ChooseCreatureTypeAsEnters("Adaptive Automaton"),
 		Static: []game.StaticAbility{
 			IsAlsoTheChosenType(),
 			TribalAnthem(TribeFilter{Chosen: true, Others: true, YoursOnly: true}, 1, 1),

@@ -27,8 +27,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it.
 func init() {
 	Register(Spec{
-		OracleID: "9f2e7533-cfc1-4dd8-a9b8-09cdc712ef2f",
-		Name:     "Hulking Raptor",
+		OracleID:     "9f2e7533-cfc1-4dd8-a9b8-09cdc712ef2f",
+		Name:         "Hulking Raptor",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), "Hulking Raptor — ward {2}"),
 			AtYourPrecombatMain("Hulking Raptor — add {G}{G}", func(g *game.Game, item *game.StackItem) error {

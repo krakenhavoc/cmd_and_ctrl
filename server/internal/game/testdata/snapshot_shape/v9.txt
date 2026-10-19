@@ -4663,6 +4663,7 @@ seats[].castPermissions[].gainsAbilities[]	string
 seats[].castPermissions[].gainsKeywords	array
 seats[].castPermissions[].gainsKeywords[]	string
 seats[].castPermissions[].grantsHaste	bool
+seats[].castPermissions[].graveyardsAreYours	bool
 seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
