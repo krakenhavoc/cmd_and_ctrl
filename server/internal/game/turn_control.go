@@ -232,14 +232,15 @@ func (g *Game) ControlStageOfPlayer(p uuid.UUID) ControlStage {
 
 // TurnControlledByLocked lists the players whose turn controller is
 // playing right now (ADR 0167 §7): each seat whose live control is
-// turn-long and is controller's. Caller must hold g.mu.
+// controller's and plays for them (ControlUntil.PlaysForThem: a whole
+// turn, or one combat phase, #3999). Caller must hold g.mu.
 func (g *Game) TurnControlledByLocked(controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller || p.Eliminated {
 			continue
 		}
-		if g.ControllerOfPlayerLocked(p.ID) == controller && g.ControlUntilOfPlayerLocked(p.ID) == ControlUntilTurn {
+		if g.ControllerOfPlayerLocked(p.ID) == controller && g.ControlUntilOfPlayerLocked(p.ID).PlaysForThem() {
 			out = append(out, p.ID)
 		}
 	}
@@ -247,7 +248,8 @@ func (g *Game) TurnControlledByLocked(controller uuid.UUID) []uuid.UUID {
 }
 
 // ControlsATurn reports whether controller is playing another player's
-// turn right now. Caller must NOT hold g.mu.
+// turn, or one combat phase of it (#3999), right now. Caller must NOT
+// hold g.mu.
 func (g *Game) ControlsATurn(controller uuid.UUID) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -255,12 +257,14 @@ func (g *Game) ControlsATurn(controller uuid.UUID) bool {
 }
 
 // ScheduledPlayerControlsLocked is every turn-long record still waiting
-// for its turn whose players are both in the game, oldest first: the
-// view's scheduled_player_controls (ADR 0167 §8). Caller must hold g.mu.
+// for its turn, and every combat-phase record still waiting for its
+// combat phase (#3999), whose players are both in the game, oldest
+// first: the view's scheduled_player_controls (ADR 0167 §8). Caller must
+// hold g.mu.
 func (g *Game) ScheduledPlayerControlsLocked() []PlayerControl {
 	var out []PlayerControl
 	for _, r := range g.PlayerControls {
-		if r.UntilKind() != ControlUntilTurn || r.Stage != ControlAwaitingTurn {
+		if r.Stage != ControlAwaitingTurn && r.Stage != ControlAwaitingCombat {
 			continue
 		}
 		if !g.playerInGameLocked(r.Controller) || !g.playerInGameLocked(r.Controlled) {

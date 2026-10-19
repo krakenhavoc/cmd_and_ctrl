@@ -1799,7 +1799,15 @@ func (g *Game) advanceCursorLocked() {
 	// ADR 0059 Decision 3: the next step is the head of the turn plan,
 	// which is the template plus every phase and step an effect added.
 	// An empty plan is the end of the turn.
+	leaving := g.Turn.PhaseID
+	wasCombat := PhaseOf(g.Turn.Step) == PhaseCombat
 	if g.popTurnPlanLocked() {
+		// #3999: a combat-phase player control ends as the cursor
+		// leaves the combat phase instance it was for — into the next
+		// phase, or into an additional combat phase straight after.
+		if wasCombat && (PhaseOf(g.Turn.Step) != PhaseCombat || g.Turn.PhaseID != leaving) {
+			g.endCombatControlsLocked()
+		}
 		return
 	}
 	g.beginNextTurnLocked()
@@ -2167,7 +2175,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	}
 	// ADR 0059 Decision 8: the step has really begun, so it counts —
 	// Turn.StepOrdinal, and Turn.PhaseOrdinal when it opens a phase.
-	g.noteStepBegunLocked()
+	opensPhase := g.noteStepBegunLocked()
+	// #3999: a combat-phase player control waiting for this phase
+	// begins with it, before the step is announced, so the phase's
+	// triggers and choices are already the controller's. Only the
+	// phase's first step that really begins opens it, so a record made
+	// mid-combat waits for the next combat phase.
+	if opensPhase && PhaseOf(g.Turn.Step) == PhaseCombat {
+		g.beginCombatControlsLocked()
+	}
 	g.DrawnThisStep = nil
 	// S31 sub-PR 0: announce the step for the public game log, and
 	// since #588 for the trigger harvester too. Placed after the

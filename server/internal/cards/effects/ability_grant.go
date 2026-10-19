@@ -346,6 +346,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		}
 		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
 		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
+		checkExileGrantor(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, true, gr.Zone)
 	}
 	for i, m := range gr.Mana {
 		if offBattlefield(m.Zones) {
@@ -387,6 +388,7 @@ func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, 
 		}
 		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
 		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, false)
+		checkExileGrantor(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a, true, gr.Zone)
 	}
 }
 

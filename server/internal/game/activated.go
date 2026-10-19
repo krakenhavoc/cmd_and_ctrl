@@ -506,6 +506,25 @@ type AbilityCost struct {
 	// (CR 118.3), and a commander is asked CR 903.9b first (ADR 0115).
 	BottomSelf bool
 
+	// ExileGrantor exiles the permanent that GRANTED this ability as
+	// part of the cost (#4000) — The Dominion Bracelet's equipped
+	// creature has "{15}, Exile The Dominion Bracelet: …". The ability
+	// is the recipient's (CR 113.10, ADR 0093), so ExileSelf would
+	// exile the creature; this names the row's grantor instead
+	// (AbilityOrigin.GrantedBy), read when the activation names the row.
+	// Paid at announce like every other component (CR 602.2b, 601.2h),
+	// so the grantor is gone before anyone can respond, and the ability
+	// on the stack is independent of it (CR 113.7a).
+	//
+	// Only on a granted row: effects.Register allows it only in an
+	// AbilityGrant bundle given to battlefield permanents, never on a
+	// card's own ability, and never beside a component that picks
+	// permanents (the grantor would be a pick no list could tell from
+	// another). The activation refuses a row with no grantor, a grantor
+	// no longer on the battlefield, and one the same payment already
+	// moves (CR 118.3). See exile_grantor_cost.go.
+	ExileGrantor bool
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -1634,6 +1653,17 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	if err := validateBottomSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
+	// #4000: "Exile <the permanent that granted this>" (The Dominion
+	// Bracelet). Nothing to choose — the row's grantor IS the payment —
+	// so this reads it off the row's origin and checks it is still on
+	// the battlefield and pays no other component (CR 118.3).
+	grantor, err := g.exileGrantorOfLocked(ab.Cost, origins.At(index))
+	if err != nil {
+		return err
+	}
+	if err := validateExileGrantorCostLocked(grantor, cardID, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
 	// else to check: an exert cost can be paid tapped or untapped, and
 	// again after an earlier exert this turn (CR 701.43b).
@@ -1839,6 +1869,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
 	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf {
 		moving = append(moving, cardID)
+	}
+	// #4000: and the grantor an exile-the-grantor cost moves.
+	if grantor != uuid.Nil {
+		moving = append(moving, grantor)
 	}
 	// #1427: every permanent the payment TAPS — the {T}, the crew,
 	// the tap-another and waterbend picks. Not asked CR 903.9 (a
@@ -2140,6 +2174,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// nothing dies.
 	exiledPermanents, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers)
 	if err != nil {
+		return err
+	}
+	// #4000: the exile-the-grantor half, with the other permanent-moving
+	// components and for the same reasons: the source stays where it is
+	// (only the grantor moves), and the grantor's leaves-triggers sit
+	// above the ability (CR 603.3b).
+	if err := g.payExileGrantorCostLocked(playerID, cardID, grantor, params.commanderAnswers); err != nil {
 		return err
 	}
 	source = nil

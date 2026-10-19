@@ -202,6 +202,9 @@ func (g *Game) closeTurnLocked() {
 	// begins (CR 723.1), and queues the extra turn it owes before the
 	// next turn is chosen below.
 	g.endTurnControlsLocked()
+	// #3999: and a combat-phase control whose phase the turn ended
+	// during (CR 724.1) never reaches the combat phase's own end hook.
+	g.endCombatControlsLocked()
 	// ADR 0108 §6: the turn that is ending is its player's last turn
 	// from here on. Before g.Turn and the tally are replaced.
 	g.recordLastTurnAttacksLocked()

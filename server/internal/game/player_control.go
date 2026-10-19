@@ -170,6 +170,8 @@ func (g *Game) controlLiveLocked(r PlayerControl) bool {
 			g.resolving.card.InstanceID == r.Card
 	case ControlTurn:
 		return r.UntilKind() == ControlUntilTurn && g.Turn.Seq == r.TurnSeq
+	case ControlCombat:
+		return g.combatControlLiveLocked(r)
 	case ControlSearching:
 		return g.searchControlLiveLocked(r)
 	}
@@ -479,7 +481,10 @@ func (g *Game) resolveControlledPlayLocked(idx int, c *PendingChoice, picks []uu
 // its controlled player has left: that turn never begins, so there is
 // neither control nor an extra turn. Every other turn-long record ends
 // at the rotation seam (endTurnControlsLocked), which still owes the
-// extra turn when only the controller has left. Caller must hold g.mu.
+// extra turn when only the controller has left. A combat-phase record
+// (#3999) is treated the same way: pruned only while it waits for a
+// player who has left, otherwise ended by endCombatControlsLocked.
+// Caller must hold g.mu.
 func (g *Game) prunePlayerControlsLocked() {
 	if len(g.PlayerControls) == 0 {
 		return
@@ -490,6 +495,13 @@ func (g *Game) prunePlayerControlsLocked() {
 		switch {
 		case r.UntilKind() == ControlUntilTurn:
 			if r.Stage != ControlAwaitingTurn || g.playerInGameLocked(r.Controlled) {
+				continue
+			}
+		case r.UntilKind() == ControlUntilCombat:
+			// #3999: the same rule for a combat-phase record. A waiting
+			// one goes once its controlled player has left (that
+			// phase never begins); a begun one ends at its own hooks.
+			if r.Stage != ControlAwaitingCombat || g.playerInGameLocked(r.Controlled) {
 				continue
 			}
 		case r.Stage == ControlSearching:

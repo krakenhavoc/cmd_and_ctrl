@@ -1662,6 +1662,14 @@ type OptionalCostView struct {
 	Blight        int               `json:"blight,omitempty"`
 	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
 
+	// TapCost is the waterbend clause of a "you may waterbend {N}" offer
+	// (CR 701.67, #3999): the TapCostView a hand card's own waterbend
+	// ships, sized at the offer's {N}. Taking the offer makes it the
+	// cast's tap cost, so the client opens its tap picker from this when
+	// the offer is chosen and sends the picks as `tap_ids`. Absent on
+	// every other offer.
+	TapCost *TapCostView `json:"tap_cost,omitempty"`
+
 	// TargetMode / LegalTargets / Clauses are the target clause the
 	// spell has WHEN THIS COST IS PAID — a gift's "if the gift was
 	// promised, instead … target …" (CR 702.174m) — in exactly the
@@ -4648,6 +4656,11 @@ type ActivatedAbilityView struct {
 	// like `return_self`: the source is the payment, so nothing is
 	// collected and nothing rides the payload.
 	BottomSelf bool `json:"bottom_self,omitempty"`
+	// ExileGrantor is a granted row's "Exile <the permanent that grants
+	// this>" cost component (#4000): The Dominion Bracelet. Advisory,
+	// like `return_self`: the grantor (`granted_by`) is the payment, so
+	// nothing is collected and nothing rides the payload.
+	ExileGrantor bool `json:"exile_grantor,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -8010,6 +8023,10 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 			v.Blight = oc.Blight
 			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
 		}
+		// #3999: "you may waterbend {N}" — the picker the offer opens.
+		if !oc.Waterbend.Empty() {
+			v.TapCost = viewOfTapCost(g, caster, oc.ManaCost, oc.Waterbend)
+		}
 		if oc.ChoosesOpponent {
 			v.ChoosesOpponent = true
 			// Nobody left to choose serialises as an absent list
@@ -10521,7 +10538,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	// ADR 0166, CR 723.4: a controller sees what the player they
 	// control can see.
 	var controlled []string
-	// ADR 0167 §9: the seats whose whole turn the viewer is playing.
+	// ADR 0167 §9: the seats whose whole turn (or one combat phase of
+	// it, #3999) the viewer is playing.
 	// Their per-seat cast stamps and ability rows reach the viewer as a
 	// fallback for any card the viewer has no answer of their own for,
 	// so the "Playing as" board can announce the controlled player's
@@ -10530,7 +10548,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	for _, pc := range v.PlayerControls {
 		if pc.Controller == viewerID {
 			controlled = append(controlled, pc.Controlled)
-			if pc.Until == string(game.ControlUntilTurn) {
+			if game.ControlUntil(pc.Until).PlaysForThem() {
 				playingFor = append(playingFor, pc.Controlled)
 			}
 		}
@@ -12486,6 +12504,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
 			BottomSelf:    a.Cost.BottomSelf,
+			ExileGrantor:  a.Cost.ExileGrantor,
 			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,

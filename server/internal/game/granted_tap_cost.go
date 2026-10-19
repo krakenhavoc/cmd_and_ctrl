@@ -107,7 +107,14 @@ func (g *Game) TapPermanentsCostForGrantLocked(caster uuid.UUID, card Card, from
 // tapCostForCastParamsLocked is TapPermanentsCostForGrantLocked with the
 // zone and the claimed permission read off a cast's params, for the cast
 // path: the same CastPermissionForClaimLocked lookup the pricer makes.
+//
+// #3999: a chosen optional "you may waterbend {N}" cost is the cast's
+// tap cost (optional_waterbend.go). effects.Register keeps it off a card
+// with a tap cost of its own, so it never displaces one.
 func (g *Game) tapCostForCastParamsLocked(caster uuid.UUID, card Card, params CastSpellParams) *TapPermanentsCost {
+	if tc := g.optionalWaterbendLocked(caster, card, params.OptionalCosts); tc != nil {
+		return tc
+	}
 	from, _ := castZoneFromWire(params.FromZone)
 	var grant *CastPermission
 	if caster != uuid.Nil && from != ZoneHand && from != ZoneCommand {

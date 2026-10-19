@@ -241,3 +241,72 @@ a search prompt plus an exile-and-play replacement on search results
 an optional waterbend additional cost (#3999); The Dominion Bracelet
 needs a cost that exiles the granting Equipment from a granted ability
 (#4000). The "Out of scope" list above is otherwise unchanged.
+
+
+## Amendment (2026-10-19, #3999) — a control for one combat phase
+
+Secret of Bloodbending: "You control target opponent during their next
+combat phase. If this spell's additional cost was paid, you control that
+player during their next turn instead." The paid half is the plain
+turn-long control of the 2026-10-16 amendment. The unpaid half is a
+control that lasts one combat phase (CR 723.2), which §1's two lengths
+could not say.
+
+**The record.** A third length, `Until "combat"`, with two stages of its
+own, `ControlAwaitingCombat` and `ControlCombat` (`game/combat_control.go`).
+`BeginCombatControlForEffect(CombatControl{…})` creates a waiting record,
+refusing what `BeginTurnControlForEffect` refuses, and emits
+`EventPlayerControlScheduled` labelled `combat`. No new field: `TurnSeq`
+holds the turn the phase is in, so the snapshot shape is unchanged and an
+older binary drops such a record the way §8 says it drops one it doesn't
+know.
+
+**When it begins and ends.** The step seams, where §2 used the rotation
+seam:
+
+- **Begins** as a combat phase of the controlled player's begins: the
+  first step of a phase instance that really begins
+  (`noteStepBegunLocked` now reports opening a phase) calls
+  `beginCombatControlsLocked` before the step is announced, so its
+  triggers and choices are already the controller's. An additional
+  combat phase is a combat phase. A record made during a combat phase
+  waits for the next one, and a turn whose combat phase never begins
+  leaves it waiting.
+- **Ends** as the cursor leaves that phase instance, in
+  `advanceCursorLocked` beside CR 511.3's removal from combat: into the
+  next phase, or into an additional combat phase straight after (a new
+  `PhaseID`). A turn that ends during the phase (CR 724.1) never reaches
+  that seam, so `closeTurnLocked` ends it too. Liveness also requires the
+  cursor to be in a combat phase of `TurnSeq` with the controlled player
+  active, so a record no seam ended is never live.
+- **Leaving the game** follows §6: a waiting record whose controlled
+  player left is pruned; a controller who left controls nobody, and the
+  record is still spent on the phase.
+
+**Who decides.** The controller plays the phase as §4 plays a turn.
+`ControlUntil.PlaysForThem` (turn or combat) is the one predicate the cast
+gate, the enumerator's controlled moves, the view's cast stamps, the bots'
+split and `TurnControlledByLocked` read, so the "Playing as" swap, the
+controller's `legal_moves` and `controlled_legal_actions`, and
+`controlledTurnPolicy` all work unchanged. The verb row for
+`ControlCombat` is `combatRulesVerbs`: the turn's rules verbs less
+`end_turn`, which would walk the controlled player's turn on past the
+control, and `discard_selection`, which is never in a combat phase. The
+sandbox is closed to both players for the phase.
+
+**Protocol and client.** `player_controls[].until` gains `"combat"`;
+`scheduled_player_controls[]` gains `until` (absent reads as `"turn"`); the
+three log lines carry `label: "combat"` and read "during Bob's next combat
+phase", "this combat". The client's `lib/playingAs.ts` reads
+`playsForSeat(until)` where it read `until === "turn"`, words its banner
+"combat" for such a control, and hides End turn on the controlled seat's
+board (`endTurnClosed`).
+
+**The waterbend.** "As an additional cost to cast this spell, you may
+waterbend {10}" is ADR 0073's optional cost with a waterbend clause; see
+that ADR's amendment of the same date.
+
+Tests: `game/combat_control_test.go`, `actions/controlled_combat_test.go`,
+`actions/controlled_stage_test.go`, `aiseat/controlled_combat_test.go`,
+`protocol/combat_control_view_test.go`, `cards/effects/secret_of_bloodbending_test.go`,
+`client/src/lib/playingAs.test.ts`.
