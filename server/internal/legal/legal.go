@@ -84,6 +84,10 @@ const (
 	TypeActivateAbility     = "activate_ability"
 	TypeActivateManaAbility = "activate_mana_ability"
 	TypeDeclareAttacker     = "declare_attacker"
+	// TypeDeclareAttackers is the set-shaped attack declaration, offered
+	// only as the confirmation of a declaration another player chose
+	// (#4154): the chosen attackers at their targets, the costs paid.
+	TypeDeclareAttackers    = "declare_attackers"
 	TypeDeclareBlocker      = "declare_blocker"
 	// TypeDeclareBlockers is the set-shaped block declaration (#750).
 	// Emitted for a block that is legal only as a GROUP — the two
@@ -889,7 +893,10 @@ func (e *enumerator) run() {
 		// #1597 / CR 509.1c: the same for a defending player's pass in
 		// declare_blockers, the block declaration's checkpoint — the
 		// required blocks are offered as one AlwaysLegal move.
-		if !attackRequirementOwed(g, seat) && !blockRequirementOwed(g, seat) {
+		// #4154: and the active player's pass in their half of a
+		// declaration another player chose, which the engine refuses
+		// while a chosen attacker could avoid its cost.
+		if !attackRequirementOwed(g, seat) && !blockRequirementOwed(g, seat) && g.AttackTargetsPassRefusalForEffect() == nil {
 			e.leave()
 			e.add(Move{
 				Type:        TypePassPriority,

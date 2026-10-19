@@ -162,6 +162,8 @@ var gameFields = plan(
 	"Promises", carried, "",
 	"Vote", carried, "",
 	"PlayerControls", carried, "",
+	"DeclarationControls", carried, "",
+	"AttackHandoff", carried, "",
 	"PendingChoices", carried, "",
 	// The persisted snapshot copies the log; the undo CLONE shares
 	// its backing array and records the length, and RestoreFrom

@@ -217,6 +217,14 @@ type GameView struct {
 	// grants no visibility; the turn strip and the controlled player's
 	// warning read it.
 	ScheduledPlayerControls []ScheduledPlayerControlView `json:"scheduled_player_controls,omitempty"`
+	// DeclarationControls is every "you choose which creatures attack /
+	// block" effect this turn (#4154, Master Warcraft), oldest first.
+	// Public: the whole table can see who is choosing.
+	DeclarationControls []DeclarationControlView `json:"declaration_controls,omitempty"`
+	// AttackHandoff is this combat's attack declaration under one
+	// (#4154): who chose the attackers, and whether the active player
+	// is choosing their targets. Public.
+	AttackHandoff *AttackHandoffView `json:"attack_handoff,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -5605,6 +5613,9 @@ func ViewOfGame(g *game.Game) GameView {
 		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
+		// #4154: public, who chooses the attackers and blockers.
+		view.DeclarationControls = viewOfDeclarationControls(g)
+		view.AttackHandoff = viewOfAttackHandoff(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -10568,6 +10579,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	var playingFor []string
 	for _, pc := range v.PlayerControls {
 		if pc.Controller == viewerID {
+			// #4154: choosing a player's attackers or blockers is not
+			// controlling them, and shows nothing they can see.
+			if game.ControlUntil(pc.Until) == game.ControlUntilDeclarations {
+				continue
+			}
 			controlled = append(controlled, pc.Controlled)
 			if game.ControlUntil(pc.Until).PlaysForThem() {
 				playingFor = append(playingFor, pc.Controlled)
@@ -10789,6 +10805,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0167 §8: public, and identical for every seat. It grants
 		// no visibility.
 		ScheduledPlayerControls: v.ScheduledPlayerControls,
+		// #4154: public, and identical for every seat. They grant no
+		// visibility.
+		DeclarationControls: v.DeclarationControls,
+		AttackHandoff:       v.AttackHandoff,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,

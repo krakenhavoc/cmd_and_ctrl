@@ -85,6 +85,11 @@ func (g *Game) commitAttackDeclarationLocked() {
 	if !g.attackDeclarationPendingLocked() {
 		return
 	}
+	// #4154: a declaration another player is choosing is locked in once
+	// both halves are done, never midway (declaration_control.go).
+	if g.attackHandoffOpenLocked() {
+		return
+	}
 	// Collect by value first: EmitEvent harvests triggers, whose
 	// Build functions can reallocate the battlefield slice out from
 	// under a *Card.
@@ -189,6 +194,8 @@ func (g *Game) clearAttackAnnouncementsLocked() {
 	// #1364: the last-known defending players describe this combat's
 	// attacks too.
 	g.attackDefenders = nil
+	// #4154: and a chosen declaration's handoff (declaration_control.go).
+	g.AttackHandoff = nil
 }
 
 // stampEntryAttackerLocked makes a permanent that has just landed on

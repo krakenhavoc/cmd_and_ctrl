@@ -150,6 +150,18 @@ func (g *Game) settlePassTurnLocked() {
 		if g.blockingChoiceLocked() != nil || g.LoopNotice != nil || g.choiceOwedByLocked(g.passTurn.Player) {
 			return
 		}
+		// #4154: another player is choosing the attackers. The active
+		// player's standing pass is not that player's choice; once
+		// it is made, the pass accepts the targets as they stand.
+		if g.attackDeclarerPhaseLiveLocked() {
+			return
+		}
+		if handled, err := g.attackHandoffPassLocked(); handled {
+			if err != nil {
+				return
+			}
+			continue
+		}
 		if err := g.passPriorityAsHolderLocked(); err != nil {
 			return
 		}

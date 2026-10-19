@@ -64,6 +64,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -437,6 +438,13 @@ type GameSnapshot struct {
 	// that dropped it would leave a forced play's prompt answerable by
 	// nobody, or the controlled player making their own decisions.
 	PlayerControls []PlayerControl `json:"playerControls,omitempty"`
+
+	// DeclarationControls and AttackHandoff are #4154's "you choose
+	// which creatures attack / block" effects and this combat's attack
+	// declaration under one. Carried: a restore that dropped them would
+	// hand the declaration back to the players mid-way. Additive in v9.
+	DeclarationControls []DeclarationControl `json:"declarationControls,omitempty"`
+	AttackHandoff       *AttackHandoff       `json:"attackHandoff,omitempty"`
 
 	PendingChoices []pendingChoiceSnapshot `json:"pendingChoices,omitempty"`
 
@@ -2202,6 +2210,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		s.Vote = cloneVote(g.Vote)
 	}
 	s.PlayerControls = clonePlayerControls(g.PlayerControls)
+	s.DeclarationControls = slices.Clone(g.DeclarationControls)
+	s.AttackHandoff = cloneAttackHandoff(g.AttackHandoff)
 
 	if len(g.PendingChoices) > 0 {
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
@@ -3259,6 +3269,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.Vote = cloneVote(s.Vote)
 	}
 	g.PlayerControls = clonePlayerControls(s.PlayerControls)
+	g.DeclarationControls = slices.Clone(s.DeclarationControls)
+	g.AttackHandoff = cloneAttackHandoff(s.AttackHandoff)
 
 	if len(s.PendingChoices) > 0 {
 		g.PendingChoices = make([]*PendingChoice, len(s.PendingChoices))

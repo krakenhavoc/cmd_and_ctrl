@@ -130,7 +130,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		LoopRecording:           &LoopRecordingView{Recorder: ownerID, Status: "ready", Steps: 4, MaxIterations: 1000},
 		PlayerControls:          []PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
 		ScheduledPlayerControls: []ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
-		Outcome:                 &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
+		DeclarationControls:     []DeclarationControlView{{Declarer: ownerID, SourceName: "Master Warcraft", Attackers: true, Blockers: true, Scope: "turn"}},
+		AttackHandoff:           &AttackHandoffView{Stage: "targets", Declarer: ownerID, SourceName: "Master Warcraft"},
+		Outcome:                &OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect"},
 	}
 	v.controlledLegalActionsBySeat = map[string]map[string]*LegalActionsView{
 		ownerID: {oppID: {Pass: true}},

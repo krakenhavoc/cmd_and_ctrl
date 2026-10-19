@@ -180,8 +180,23 @@ func (g *Game) controlLiveLocked(r PlayerControl) bool {
 
 // ControllerOfPlayerLocked is the player who makes p's decisions right
 // now: p, unless a player-controlling effect applies (CR 723.5). The
-// newest record wins (CR 723.1a). Caller must hold g.mu (read or write).
+// newest record wins (CR 723.1a).
+//
+// #4154: a "you choose which creatures attack / block" effect making
+// p's declaration right now is asked first (ADR 0167's ruling: such an
+// effect takes precedence over controlling the player), and answers
+// with whoever makes its declarer's decisions. Caller must hold g.mu
+// (read or write).
 func (g *Game) ControllerOfPlayerLocked(p uuid.UUID) uuid.UUID {
+	if r, ok := g.declarationControlOverLocked(p); ok {
+		return g.playerControllerLocked(r.Declarer)
+	}
+	return g.playerControllerLocked(p)
+}
+
+// playerControllerLocked is ControllerOfPlayerLocked over the
+// player-control records alone. Caller must hold g.mu.
+func (g *Game) playerControllerLocked(p uuid.UUID) uuid.UUID {
 	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
 		r := g.PlayerControls[i]
 		if r.Controlled == p && g.controlLiveLocked(r) {

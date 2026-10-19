@@ -132,6 +132,8 @@ var sandboxVerbs = map[Type]struct{}{
 //   - ControlTurn (Emrakul): every rules verb (turnRulesVerbs).
 //   - ControlCombat (Secret of Bloodbending, #3999): the rules verbs of
 //     a combat phase (combatRulesVerbs).
+//   - ControlDeclaring (Master Warcraft, #4154): the attack or block
+//     declaration being chosen for the player (declaringVerbs).
 //
 // No stage allows a sandboxVerbs entry.
 var controlledStageVerbs = map[game.ControlStage]map[Type]struct{}{
@@ -144,6 +146,24 @@ var controlledStageVerbs = map[game.ControlStage]map[Type]struct{}{
 	game.ControlSearching:      {TypeResolveChoice: {}},
 	game.ControlTurn:           turnRulesVerbs,
 	game.ControlCombat:         combatRulesVerbs,
+	game.ControlDeclaring:      declaringVerbs,
+}
+
+// declaringVerbs are what the declarer of a "you choose which creatures
+// attack / block" effect may send as the player whose declaration they
+// are making (#4154, Master Warcraft; ADR 0167's second amendment of
+// 2026-10-19): the declaration verbs, and the pass that finishes an
+// attack declaration (the active player holds priority while it is
+// made, and the engine spends that pass on finishing it). Nothing
+// else: the player is not controlled, only their declaration is
+// chosen for them.
+var declaringVerbs = map[Type]struct{}{
+	TypeDeclareAttacker:  {},
+	TypeDeclareAttackers: {},
+	TypePassPriority:     {},
+	TypeDeclareBlocker:   {},
+	TypeDeclareBlockers:  {},
+	TypeFinishBlocks:     {},
 }
 
 // controlledVerbAllowed reports whether a controller may send a verb of

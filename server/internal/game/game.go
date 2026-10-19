@@ -444,6 +444,13 @@ type Game struct {
 	// player_control.go.
 	PlayerControls []PlayerControl
 
+	// DeclarationControls is the live "you choose which creatures
+	// attack / block" effects (#4154, Master Warcraft), and
+	// AttackHandoff the state of this combat's attack declaration under
+	// one. See declaration_control.go.
+	DeclarationControls []DeclarationControl
+	AttackHandoff       *AttackHandoff
+
 	// PendingChoices is the S14 generic "someone needs to pick"
 	// queue. Populated by effect cards that defer a decision
 	// (Thoughtseize → caster picks from target's revealed hand).
@@ -1613,6 +1620,11 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// wave off Zurgo or a goad: refused while a free addition would
 	// still obey a requirement, with the requirement named.
 	if g.Turn.Step == StepDeclareAttackers {
+		// #4154: nor does it skip a declaration another player is
+		// still choosing (declaration_control.go).
+		if g.attackHandoffOpenLocked() {
+			return g.Turn, ErrAttackDeclarationOpen
+		}
 		if err := g.attackCheckpointLocked(); err != nil {
 			return g.Turn, err
 		}
@@ -1823,6 +1835,9 @@ func (g *Game) advanceCursorLocked() {
 		// phase, or into an additional combat phase straight after.
 		if wasCombat && (PhaseOf(g.Turn.Step) != PhaseCombat || g.Turn.PhaseID != leaving) {
 			g.endCombatControlsLocked()
+			// #4154: and a "this combat" declaration control (Odric,
+			// Melee) with it.
+			g.endDeclarationControlsLocked(false)
 		}
 		return
 	}
