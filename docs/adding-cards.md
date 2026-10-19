@@ -5908,6 +5908,15 @@ so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia).
 
+**Counters that depend on the card picked (#4170, Turntimber Symbiosis):**
+"put a creature card from among them onto the battlefield. If that card has
+mana value 3 or less, it enters with three additional +1/+1 counters" is
+`CountersFor: func(g *game.Game, c game.Card) map[string]int`, called with
+the picked card as it sits in the library and added to `Counters` for that
+entry. It is for a clause that puts exactly one card (`Max: 1`, not `All`):
+`Apply` returns an error for any clause that could put more, because one
+entry batch takes one set of counters.
+
 **An opponent's library (#4128, Lonis, Cryptozoologist):** "target
 opponent reveals the top X cards of their library. You may put a
 nonland permanent card … from among them onto the battlefield under
