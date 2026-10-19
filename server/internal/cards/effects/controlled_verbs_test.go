@@ -60,12 +60,71 @@ func assertControlledVerbs(t *testing.T, g *game.Game, controller, controlled uu
 	}
 }
 
+// firstPermanentOf is the first battlefield card p controls.
+func firstPermanentOf(g *game.Game, p uuid.UUID) uuid.UUID {
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == p {
+			return c.InstanceID
+		}
+	}
+	return uuid.Nil
+}
+
 func joinVerbs(lists ...[]actions.Type) []actions.Type {
 	var out []actions.Type
 	for _, l := range lists {
 		out = append(out, l...)
 	}
 	return out
+}
+
+// assertControllerCannotTouchTheirCards sends, as the CONTROLLER
+// themselves (not as the controlled player), every verb that names a
+// card, against the controlled player's battlefield card and hand card.
+// The card verbs gate on the card's controller (requireCardController),
+// so each must come back ErrCardCallerMismatch while a control is live,
+// and the cards must not move: no path lets the controller edit the
+// controlled player's cards by hand (#4025 follow-up).
+func assertControllerCannotTouchTheirCards(t *testing.T, g *game.Game, controller, controlled *game.Player, onBattlefield, inHand uuid.UUID) {
+	t.Helper()
+	zone := func(kind string, owner uuid.UUID) map[string]string {
+		return map[string]string{"kind": kind, "owner": owner.String()}
+	}
+	bf, hand := onBattlefield.String(), inHand.String()
+	table := []struct {
+		name   string
+		ty     actions.Type
+		params map[string]any
+	}{
+		{"move_card, battlefield to graveyard", actions.TypeMoveCard, map[string]any{"instance_id": bf, "src": zone("battlefield", controlled.ID), "dst": zone("graveyard", controlled.ID)}},
+		{"move_card, hand to battlefield", actions.TypeMoveCard, map[string]any{"instance_id": hand, "src": zone("hand", controlled.ID), "dst": zone("battlefield", controlled.ID)}},
+		{"move_card, battlefield to the controller's hand", actions.TypeMoveCard, map[string]any{"instance_id": bf, "src": zone("battlefield", controlled.ID), "dst": zone("hand", controller.ID)}},
+		{"tap", actions.TypeTap, map[string]any{"instance_id": bf}},
+		{"untap", actions.TypeUntap, map[string]any{"instance_id": bf}},
+		{"add_counter", actions.TypeAddCounter, map[string]any{"instance_id": bf, "name": "+1/+1", "delta": 1}},
+		{"set_battlefield_position", actions.TypeSetBattlefieldPosition, map[string]any{"instance_id": bf, "x": 0.5, "y": 0.5}},
+		{"sacrifice_permanent", actions.TypeSacrificePermanent, map[string]any{"instance_id": bf}},
+		{"mark_damage", actions.TypeMarkDamage, map[string]any{"instance_id": bf, "delta": 1}},
+		{"remove_from_combat", actions.TypeRemoveFromCombat, map[string]any{"instance_id": bf}},
+		{"reveal_card, from the hand", actions.TypeRevealCard, map[string]any{"card_id": hand}},
+	}
+	handSize, bfSize := controlled.Hand.Size(), g.Battlefield.Size()
+	for _, row := range table {
+		raw, _ := json.Marshal(row.params)
+		err := actions.Dispatch(g, actions.Action{Type: row.ty, Player: controller.ID, Caller: controller.ID, Params: raw})
+		if !errors.Is(err, game.ErrCardCallerMismatch) {
+			t.Errorf("%s as the controller: err = %v, want ErrCardCallerMismatch", row.name, err)
+		}
+	}
+	// A player verb that names the controlled player is the stage
+	// table's business, not the card gate's: refused too.
+	if err := actions.Dispatch(g, actions.Action{Type: actions.TypeDrawCard, Player: controlled.ID, Caller: controller.ID}); !errors.Is(err, game.ErrPlayerControlled) {
+		t.Errorf("draw_card naming the controlled player: err = %v, want ErrPlayerControlled", err)
+	}
+	if controlled.Hand.Size() != handSize || g.Battlefield.Size() != bfSize {
+		t.Errorf("cards moved: hand %d -> %d, battlefield %d -> %d",
+			handSize, controlled.Hand.Size(), bfSize, g.Battlefield.Size())
+	}
 }
 
 // Word of Command, the forced play (ControlPlaying): the play, the
@@ -84,6 +143,7 @@ func TestControlledVerbsWhileWordOfCommandForcesThePlay(t *testing.T) {
 	assertControlledVerbs(t, g, caster.ID, victim.ID,
 		joinVerbs(controlledSandboxVerbs, controlledRulesVerbs),
 		[]actions.Type{actions.TypeCastSpell, actions.TypeActivateManaAbility, actions.TypeResolveChoice})
+	assertControllerCannotTouchTheirCards(t, g, caster, victim, firstPermanentOf(g, victim.ID), ids[0])
 }
 
 // Word of Command, the forced spell resolving (ControlSpellResolving):
@@ -91,7 +151,9 @@ func TestControlledVerbsWhileWordOfCommandForcesThePlay(t *testing.T) {
 // open to every verb. Demonic Tutor's search is the prompt.
 func TestControlledVerbsWhileTheForcedSpellResolves(t *testing.T) {
 	tutor := game.Card{Name: "Demonic Tutor", TypeLine: "Sorcery", ManaCost: "{1}{B}", OracleID: demonicTutorOracle}
-	g, caster, victim, ids := wocSetup(t, []string{"Swamp", "Swamp"}, tutor)
+	g, caster, victim, ids := wocSetup(t, []string{"Swamp", "Swamp"}, tutor, wocBolt())
+	spare := ids[1]
+	ids = ids[:1]
 	if err := g.ResolvePendingChoice(openVariant(t, g).ID, caster.ID, ids); err != nil {
 		t.Fatalf("pick: %v", err)
 	}
@@ -117,6 +179,7 @@ func TestControlledVerbsWhileTheForcedSpellResolves(t *testing.T) {
 		joinVerbs(controlledSandboxVerbs, controlledRulesVerbs,
 			[]actions.Type{actions.TypeCastSpell, actions.TypeActivateManaAbility}),
 		[]actions.Type{actions.TypeResolveChoice})
+	assertControllerCannotTouchTheirCards(t, g, caster, victim, firstPermanentOf(g, victim.ID), spare)
 	if victim.Hand.Size() != hand || victim.Life != life {
 		t.Errorf("a refused verb still changed the victim: hand %d -> %d, life %d -> %d",
 			hand, victim.Hand.Size(), life, victim.Life)
@@ -140,4 +203,10 @@ func TestControlledVerbsWhileAnOpponentSearches(t *testing.T) {
 		joinVerbs(controlledSandboxVerbs, controlledRulesVerbs,
 			[]actions.Type{actions.TypeCastSpell, actions.TypeActivateManaAbility}),
 		[]actions.Type{actions.TypeResolveChoice})
+	perm := pushCatalogPermanent(g, searcher.ID, "Grizzly Bears", "Creature — Bear", "", false)
+	var handCard uuid.UUID
+	g.WithWriteLock(func() {
+		handCard = revealHand(searcher, game.Card{Name: "Island", TypeLine: "Basic Land — Island"})[0]
+	})
+	assertControllerCannotTouchTheirCards(t, g, ctl, searcher, perm, handCard)
 }
