@@ -19,12 +19,19 @@
   // not only to a name in the stack panel (planSourceMarks /
   // findSourceMarks / syncSourceMarks).
   //
-  // Renders nothing. Re-syncs on every snapshot and on board resize
-  // (a seat collapsing or expanding remounts its cards), and clears
-  // every mark it set when it is destroyed.
+  // #4114: a target of a divided effect (Armament Dragon's counters,
+  // Fireball's damage) also carries a small badge with its share, in the
+  // ring's colour (lib/stackShares.ts). The badges are fixed-position
+  // elements measured from the target's own rect, so they sit above any
+  // card without touching the card's markup.
+  //
+  // Re-syncs on every snapshot and on board resize (a seat collapsing
+  // or expanding remounts its cards), and clears every mark it set when
+  // it is destroyed.
 
   import { onDestroy, untrack } from "svelte";
-  import type { GameView } from "../../protocol";
+  import { metaFor } from "../../cardMetaCache";
+  import type { CardView, GameView } from "../../protocol";
   import { buildStackLane } from "../../stackLane";
   import {
     findSourceMarks,
@@ -32,6 +39,7 @@
     syncSourceMarks,
     syncTargetMarks,
   } from "../../stackArrows";
+  import { measureShareBadges, type ShareBadge } from "../../stackShares";
 
   interface Props {
     view: GameView;
@@ -40,6 +48,36 @@
   }
 
   const { view, viewerID, boardEl }: Props = $props();
+
+  // #4114: a spell's share badge says "dmg" or "+N" from its card's
+  // oracle text, which is not on the wire. Only a spell that divides
+  // something needs it, so only those printings are asked for (an
+  // ability carries its own text).
+  let oracle = $state<Record<string, string>>({});
+  const dividedPrintings = $derived(
+    (view.stack_items ?? [])
+      .filter((it) => it.kind === "spell" && it.distribution)
+      .map((it) => view.stack.cards.find((c) => c.instance_id === it.id)?.scryfall_id)
+      .filter((id): id is string => !!id)
+      .sort()
+      .join(","),
+  );
+  $effect(() => {
+    const ids = dividedPrintings === "" ? [] : dividedPrintings.split(",");
+    const unsubs = ids.map((id) =>
+      metaFor(id).subscribe((meta) => {
+        const text = meta?.oracle_text;
+        if (!text) return;
+        untrack(() => {
+          if (oracle[id] !== text) oracle = { ...oracle, [id]: text };
+        });
+      }),
+    );
+    return () => unsubs.forEach((u) => u());
+  });
+  function oracleTextFor(card: CardView): string | undefined {
+    return card.scryfall_id ? oracle[card.scryfall_id] : undefined;
+  }
 
   // Only the stack's items, their targets and their casters' colours
   // are read, so the model is built without the summary's inputs.
@@ -54,16 +92,19 @@
       viewerID,
       priorityHolder: null,
       splitSecondActive: false,
+      oracleTextFor,
     }).stackItems,
   );
 
   let marked = new Set<HTMLElement>();
   let sources = new Set<HTMLElement>();
+  let badges = $state.raw<ShareBadge[]>([]);
 
   function sync(): void {
     const board = boardEl;
     marked = syncTargetMarks(marked, board ? findTargetMarks(board, items) : []);
     sources = syncSourceMarks(sources, board ? findSourceMarks(board, items) : []);
+    badges = board ? measureShareBadges(board, items) : [];
   }
 
   const raf: (cb: () => void) => number =
@@ -91,7 +132,12 @@
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(schedule);
     ro.observe(board);
-    return () => ro.disconnect();
+    // A scrolled seat or lane moves its cards without resizing them.
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", schedule, true);
+    };
   });
 
   onDestroy(() => {
@@ -101,7 +147,40 @@
   });
 </script>
 
+{#each badges as b (b.key)}
+  <span
+    class="share-badge"
+    data-stack-share={b.text}
+    title={b.title}
+    style:left="{b.right}px"
+    style:top="{b.top}px"
+    style:--share-color={b.color}>{b.text}</span
+  >
+{/each}
+
 <style>
+  /* #4114: what this target gets of a divided effect. Pinned to the
+     target's top-right corner and nudged out over its edge so it never
+     hides the card's name or art; pointer-events off so the card under
+     it stays clickable. */
+  .share-badge {
+    position: fixed;
+    z-index: 40;
+    transform: translate(-70%, -35%);
+    pointer-events: none;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1.5px solid var(--share-color, var(--accent));
+    background: var(--surface-raised, #1b1b22);
+    color: var(--text, #fff);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+  }
+
   /* The ring. Outline and a drop-shadow rather than box-shadow, so it
      composes with a card's own selection or target ring instead of
      replacing it. */

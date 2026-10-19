@@ -122,9 +122,50 @@ export interface StackLaneTarget {
   stackPosition: number | null;
   /**
    * Viewer-relative words for the target: "your Lightning Bolt",
-   * "Bot 2's Birds of Paradise", "you", "Bot 2".
+   * "Bot 2's Birds of Paradise", "you", "Bot 2". For a target of a
+   * divided effect the share is part of it: "Llanowar Elves (2
+   * counters)" (#4114).
    */
   phrase: string;
+  /**
+   * #4114: how much of a divided or distributed effect this target
+   * gets (Armament Dragon's +1/+1 counters, Fireball's damage), from
+   * the item's `distribution`. Null when the item divides nothing.
+   */
+  share: number | null;
+  /** The share in words, as the phrase has it: "2 counters", "3 damage", "2". Null with no share. */
+  shareText: string | null;
+  /** The share said short for a badge on the target: "+2", "3 dmg", "2". Null with no share. */
+  shareBadge: string | null;
+}
+
+/** What a divided amount counts, read off the text that divides it. */
+export type ShareUnit = "damage" | "counters" | "none";
+
+/**
+ * Damage, counters, or neither (a bare number). Only an item that
+ * divides something reaches this, so the unit is read from the text
+ * that divides it: the word damage, or a counter with a kind in front
+ * of it ("+1/+1 counters", "time counters").
+ */
+export function shareUnit(text: string): ShareUnit {
+  if (/\bdamage\b/i.test(text)) return "damage";
+  if (/\b[\w+/-]+ counters?\b/i.test(text)) return "counters";
+  return "none";
+}
+
+/** "2 damage", "1 counter", "3": the share said in full. */
+export function shareWords(n: number, unit: ShareUnit): string {
+  if (unit === "damage") return `${n} damage`;
+  if (unit === "counters") return `${n} ${n === 1 ? "counter" : "counters"}`;
+  return String(n);
+}
+
+/** The share said short, for a badge on the board. */
+export function shareShort(n: number, unit: ShareUnit): string {
+  if (unit === "damage") return `${n} dmg`;
+  if (unit === "counters") return `+${n}`;
+  return String(n);
 }
 
 export type StackLaneChipTone = "plain" | "flag" | "manual";
@@ -473,14 +514,20 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
   }
 
   // The overlay's old target line, kept byte-for-byte.
-  function targetText(item: StackItemView): string {
+  function targetText(item: StackItemView, text: string): string {
     if (!item.targets || item.targets.length === 0) return "";
+    const unit = shareUnit(text);
     const parts = item.targets
       .map((t) => {
         if (t.kind === "self") return "self";
         if (t.kind === "none") return "—";
-        if (t.kind === "player") return seatByID.get(t.id ?? "")?.name ?? "player";
-        return anyCard.get(t.id ?? "")?.card.name ?? "card";
+        const name =
+          t.kind === "player"
+            ? (seatByID.get(t.id ?? "")?.name ?? "player")
+            : (anyCard.get(t.id ?? "")?.card.name ?? "card");
+        // #4114: a divided effect says what each target gets.
+        const n = item.distribution?.[t.id ?? ""];
+        return typeof n === "number" && n > 0 ? `${name} (${shareWords(n, unit)})` : name;
       })
       .join(" / ");
     return `→ ${parts}`;
@@ -492,15 +539,32 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
     return owner ? `${possessive(owner)} ${thing}` : thing;
   }
 
-  function resolveTargets(item: StackItemView): StackLaneTarget[] {
+  function resolveTargets(item: StackItemView, text: string): StackLaneTarget[] {
     const out: StackLaneTarget[] = [];
+    const unit = shareUnit(text);
+    const dist = item.distribution;
+    const push = (t: Omit<StackLaneTarget, "share" | "shareText" | "shareBadge">): void => {
+      const n = dist?.[t.id];
+      if (typeof n === "number" && n > 0) {
+        const words = shareWords(n, unit);
+        out.push({
+          ...t,
+          phrase: `${t.phrase} (${words})`,
+          share: n,
+          shareText: words,
+          shareBadge: shareShort(n, unit),
+        });
+        return;
+      }
+      out.push({ ...t, share: null, shareText: null, shareBadge: null });
+    };
     for (const t of item.targets ?? []) {
       if (!t.id || t.kind === "self" || t.kind === "none") continue;
       if (t.kind === "player") {
         const p = seatByID.get(t.id);
         const name = p?.name ?? "player";
         const mine = viewerID !== null && t.id === viewerID;
-        out.push({
+        push({
           kind: "player",
           id: t.id,
           name,
@@ -518,7 +582,7 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       if (onStack) {
         const owner = onStack.controller;
         const name = titleFor(onStack);
-        out.push({
+        push({
           kind: "stack",
           id: t.id,
           name,
@@ -538,7 +602,7 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
           ? card.controller || card.owner
           : card.owner || card.controller
         : null;
-      out.push({
+      push({
         // Unresolvable counts as "card": it makes no claim that the
         // target is on the battlefield.
         kind: found?.zone === "battlefield" ? "permanent" : "card",
@@ -683,6 +747,9 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
     const isStack = kind !== "pending";
     const preview = previewableCard(art);
     const name = kind === "pending" ? item.label || "trigger" : titleFor(item);
+    const cardText = (preview && oracleTextFor?.(preview)) || null;
+    // #4114: the text that divides the item, for the unit of a share.
+    const divideText = (item.kind !== "spell" && item.ability_text) || cardText || name;
     return {
       id: item.id,
       kind,
@@ -693,15 +760,15 @@ export function buildStackLane(input: StackLaneInput): StackLaneModel {
       sourceName: sourceName || null,
       artCard: art ?? null,
       previewCard: preview,
-      cardText: (preview && oracleTextFor?.(preview)) || null,
+      cardText,
       casterSeat: item.controller,
       casterName: caster?.name ?? "?",
       casterSeatNum: caster?.seat ?? 0,
       casterColor: seatColor(caster?.seat ?? 0),
       casterIsViewer: viewerID !== null && item.controller === viewerID,
       effect: effectFor(item, item.kind === "spell" ? stackCards.get(item.id) : undefined),
-      targets: resolveTargets(item),
-      targetText: targetText(item),
+      targets: resolveTargets(item, divideText),
+      targetText: targetText(item, divideText),
       isTop: isStack && index === 0,
       position: isStack ? index + 1 : null,
       doubledLabel: doubledTriggerLabel(item.doubled_by, item.doubled_by_name),
