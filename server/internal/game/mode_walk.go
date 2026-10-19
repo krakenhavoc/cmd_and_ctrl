@@ -62,6 +62,10 @@ type modeWalk struct {
 	// splices is the spliced texts still to run after them (ADR 0202,
 	// CR 702.47b), as indexes into item.Spliced, in order.
 	splices []int
+	// inner is the position inside rest[0]'s bullet where its steps
+	// parked (#4019, effects.ModeSteps): that bullet has begun, and
+	// resumes from there. Nil when rest[0] has not begun.
+	inner []int
 }
 
 // spec is the ModeSpec the parked bullets come from.
@@ -81,7 +85,7 @@ func (w *modeWalk) spec() *ModeSpec {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) runModeOccurrencesLocked(item *StackItem, ms *ModeSpec, key string, occs []int) {
-	g.runBodyWalkLocked(item, ms, key, occs, nil)
+	g.runBodyWalkLocked(item, ms, key, occs, nil, nil)
 }
 
 // runSpellBodiesLocked runs a resolving spell's chosen bullets, then its
@@ -103,17 +107,24 @@ func (g *Game) runSpellBodiesLocked(item *StackItem, ms *ModeSpec, key string, o
 	for k := range item.Spliced {
 		splices = append(splices, k)
 	}
-	g.runBodyWalkLocked(item, ms, key, occs, splices)
+	g.runBodyWalkLocked(item, ms, key, occs, splices, nil)
 }
 
 // runBodyWalkLocked is the walk itself: the occurrences, then the
 // spliced texts, parking whatever is left as soon as the resolution is
-// paused on a prompt.
+// paused on a prompt. `inner`, when set, is the position inside occs[0]'s
+// bullet to resume its steps from (#4019).
+//
+// A bullet written as steps (effects.ModeSteps) parks inside itself
+// (ParkBulletStepsForEffect): the walk then parks with that bullet
+// first and the position inside it, so the bullet's later steps run
+// before the next bullet (CR 608.2c).
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) runBodyWalkLocked(item *StackItem, ms *ModeSpec, key string, occs, splices []int) {
+func (g *Game) runBodyWalkLocked(item *StackItem, ms *ModeSpec, key string, occs, splices, inner []int) {
 	for i, occ := range occs {
-		if g.resolutionOpen && g.pausedResolutionChoiceLocked() != nil {
+		resume := i == 0 && inner != nil
+		if !resume && g.resolutionOpen && g.pausedResolutionChoiceLocked() != nil {
 			g.pausedModeWalk = &modeWalk{item: item, key: key, rest: append([]int(nil), occs[i:]...), splices: copyInts(splices)}
 			return
 		}
@@ -125,13 +136,9 @@ func (g *Game) runBodyWalkLocked(item *StackItem, ms *ModeSpec, key string, occs
 		if fn == nil {
 			continue
 		}
-		if err := fn(g, item, occ); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    item.Controller,
-				Source:   item.SourceCardID,
-				ErrorMsg: err.Error(),
-			})
+		if parked := g.runBulletLocked(item, fn, occ, inner, resume); parked != nil {
+			g.pausedModeWalk = &modeWalk{item: item, key: key, rest: append([]int(nil), occs[i:]...), splices: copyInts(splices), inner: parked}
+			return
 		}
 	}
 	for i, k := range splices {
@@ -143,15 +150,55 @@ func (g *Game) runBodyWalkLocked(item *StackItem, ms *ModeSpec, key string, occs
 	}
 }
 
+// runBulletLocked runs one chosen bullet with its step site open
+// (#4019): from its start, or, when `resume`, its steps from the
+// position `inner` names (ResumeBulletSteps). It returns the position
+// inside the bullet where its steps parked, or nil when they did not.
+// An error is logged and the walk goes on, as it always has.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) runBulletLocked(item *StackItem, fn func(*Game, *StackItem, int) error, occ int, inner []int, resume bool) []int {
+	prev := g.stepSites
+	g.stepSites.bullet, g.stepSites.occ, g.stepSites.bulletPark = item.ID, occ, nil
+	var err error
+	switch {
+	case !resume:
+		err = fn(g, item, occ)
+	case ResumeBulletSteps != nil:
+		err = ResumeBulletSteps(g, item, fn, occ, inner)
+	}
+	parked := g.stepSites.bulletPark
+	g.stepSites.bullet, g.stepSites.occ, g.stepSites.bulletPark = prev.bullet, prev.occ, prev.bulletPark
+	if err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Actor:    item.Controller,
+			Source:   item.SourceCardID,
+			ErrorMsg: err.Error(),
+		})
+	}
+	return parked
+}
+
 // resumeModeWalkLocked runs the parked bullets, if any, inside a
 // resolution function so the boundary stays held while they run.
 // Reports whether there was a walk to resume.
+//
+// The prevention follow-ups still owed run first (#4070, ADR 0108): a
+// CR 615.13 announcement (#2047, Selfless Squire) or a follow-up held
+// behind the answered question was owed by an earlier bullet's damage,
+// so it happens before the next bullet (CR 615.5, CR 608.2c), as
+// resumeStepWalkLocked does for the next step. If one of them asks, the
+// walk stays parked behind the new question.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) resumeModeWalkLocked() bool {
 	w := g.pausedModeWalk
 	if w == nil {
 		return false
+	}
+	if g.flushPreventionFollowUpsLocked() {
+		return true
 	}
 	g.pausedModeWalk = nil
 	if g.State != StateActive {
@@ -161,9 +208,9 @@ func (g *Game) resumeModeWalkLocked() bool {
 	defer g.endResolutionLocked()
 	ms := w.spec()
 	if ms == nil {
-		w.rest = nil
+		w.rest, w.inner = nil, nil
 	}
-	g.runBodyWalkLocked(w.item, ms, w.key, w.rest, w.splices)
+	g.runBodyWalkLocked(w.item, ms, w.key, w.rest, w.splices, w.inner)
 	return true
 }
 
@@ -172,7 +219,7 @@ func cloneModeWalk(w *modeWalk) *modeWalk {
 	if w == nil {
 		return nil
 	}
-	return &modeWalk{item: cloneStackItem(w.item), key: w.key, rest: append([]int(nil), w.rest...), splices: copyInts(w.splices)}
+	return &modeWalk{item: cloneStackItem(w.item), key: w.key, rest: append([]int(nil), w.rest...), splices: copyInts(w.splices), inner: copyInts(w.inner)}
 }
 
 // modeWalkSnapshot is Game.pausedModeWalk on disk.
@@ -183,13 +230,17 @@ type modeWalkSnapshot struct {
 	// Splices is modeWalk.splices (ADR 0202): the spliced texts still to
 	// run. Additive within v9; a file without it has none.
 	Splices []int `json:"splices,omitempty"`
+	// Inner is modeWalk.inner (#4019): the position inside the first
+	// parked bullet where its steps parked. Additive within v9; a file
+	// without it parked between bullets, the only kind there was.
+	Inner []int `json:"inner,omitempty"`
 }
 
 func snapshotModeWalk(g *Game, w *modeWalk, cen *ContinuationCensus) *modeWalkSnapshot {
 	if w == nil || w.item == nil {
 		return nil
 	}
-	return &modeWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Key: w.key, Rest: copyInts(w.rest), Splices: copyInts(w.splices)}
+	return &modeWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Key: w.key, Rest: copyInts(w.rest), Splices: copyInts(w.splices), Inner: copyInts(w.inner)}
 }
 
 func restoreModeWalk(s *modeWalkSnapshot) *modeWalk {
@@ -197,5 +248,5 @@ func restoreModeWalk(s *modeWalkSnapshot) *modeWalk {
 		return nil
 	}
 	item, _ := restoreStackItem(&s.Item)
-	return &modeWalk{item: item, key: s.Key, rest: copyInts(s.Rest), splices: copyInts(s.Splices)}
+	return &modeWalk{item: item, key: s.Key, rest: copyInts(s.Rest), splices: copyInts(s.Splices), inner: copyInts(s.Inner)}
 }

@@ -723,3 +723,11 @@ One additive field: `pendingChoices[].declineEndsLoop`, recorded in the v9 shape
 ### Cards
 
 Khârn the Betrayer and Channel Harm ship `full`. Immortal Coil loses its caveat and is `full`.
+
+## Amendment 2026-10-19 — §8: a modal item's next bullet waits for a held announcement (#4070)
+
+**The gap.** Point 7 above holds a CR 615.13 announcement (Selfless Squire) behind an open question, and #4012 made a parked `Do` step run the entries still owed before it resumes (`resumeStepWalkLocked`). The mode walk did not. A modal spell whose first bullet dealt one instance of damage to Khârn the Betrayer and to a player under Selfless Squire's shield ran its second bullet before the held announcement was emitted. A "whenever damage is prevented" trigger was then late relative to the next bullet.
+
+**Decision.** `resumeModeWalkLocked` runs the owed prevention follow-ups (`flushPreventionFollowUpsLocked`) before it resumes the bullets, as the step walk does before the next step. Every entry owed at that point belongs to an earlier bullet's damage, so it happens first (CR 615.5, CR 608.2c). If one of them asks, the walk stays parked behind the new question. A bullet written as steps ([ADR 0065's amendment of 2026-10-19](0065-modal-and-multi-target-clauses.md#amendment-2026-10-19-a-spells-onresolve-and-a-bullets-own-instructions-wait-too-4019)) resumes inside the same call, so it gets the same order.
+
+No snapshot change. Test: `TestModalNextBulletWaitsForTheSquiresAnnouncement` (`effects/resolution_order_test.go`), live and across a strict restore taken while the question is open.

@@ -35,6 +35,11 @@ import (
 type CardDef struct {
 	// Resolve runs the card's OnResolve; nil when it has none.
 	Resolve func(g *Game, item *StackItem) error
+	// ResumeResolve runs the card's OnResolve steps from the position
+	// path names (#4019, step_walk.go). Set only when the OnResolve is a
+	// step sequence (effects.ResolveSteps); nil leaves the spell's
+	// steps unable to park, so they run back to back.
+	ResumeResolve func(g *Game, item *StackItem, path []int) error
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error

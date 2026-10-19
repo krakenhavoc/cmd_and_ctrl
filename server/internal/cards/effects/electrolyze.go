@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Electrolyze — Instant {1}{U}{R} (#1658, unblocked by #1656):
 //
 //	"Electrolyze deals 2 damage divided as you choose among one or
@@ -18,11 +16,9 @@ func init() {
 		Name:         "Electrolyze",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny().WithCount(1, 2).Dividing(Divide(2)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := DealDividedDamage(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-		},
+		// Two steps, so the draw waits for a prompt the damage asks
+		// (Khârn the Betrayer's question, a CR 616 order), CR 608.2c
+		// (#4019).
+		OnResolve: ResolveSteps(Instruction(DealDividedDamage), DrawCards{N: 1}),
 	})
 }

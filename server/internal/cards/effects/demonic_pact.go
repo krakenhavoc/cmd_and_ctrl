@@ -52,15 +52,11 @@ func init() {
 func demonicPactTrigger() game.TriggeredAbility {
 	t := AtYourUpkeep(demonicPactLabel, func(_ *game.Game, _ *game.StackItem) error { return nil })
 	t.Modes = ChooseOneNotChosen(
-		ModeWithPurpose(ModeDoing("This enchantment deals 4 damage to any target and you gain 4 life.", TargetAny(),
-			func(item *game.StackItem, ctx *Context, occ int) error {
-				if t, ok := ModeTarget(ctx, occ); ok {
-					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 4}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
-			}), ForTargets(DamageToTarget(0, 4))),
+		// Two steps, so the life gain waits for a prompt the damage asks
+		// (Khârn the Betrayer's question, a CR 616 order), CR 608.2c
+		// (#4019).
+		ModeWithPurpose(ModeSteps("This enchantment deals 4 damage to any target and you gain 4 life.", TargetAny(),
+			Instruction(demonicPactDamage), GainLife{Amount: 4}), ForTargets(DamageToTarget(0, 4))),
 		ModeDoing("Target opponent discards two cards.", TargetPlayer("target opponent", Opponent()),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				t, ok := ModeTarget(ctx, occ)
@@ -85,4 +81,14 @@ func demonicPactTrigger() game.TriggeredAbility {
 			}),
 	)
 	return t
+}
+
+// demonicPactDamage is the first bullet's damage: 4 to its target, when
+// that target is still legal (CR 608.2b).
+func demonicPactDamage(ctx *Context) error {
+	t, ok := ModeTarget(ctx, ctx.Occurrence())
+	if !ok {
+		return nil
+	}
+	return DealDamage{Source: ctx.Item.SourceCardID, Target: t.ID, Amount: 4}.Apply(ctx)
 }

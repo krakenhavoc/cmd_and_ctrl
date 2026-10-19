@@ -3982,6 +3982,26 @@ survives a restore. A `Do` called from inside a closure
 closure. If a later instruction must read the ANSWER, not just come
 after it, it still goes in the asking primitive's `Then`.
 
+The same holds in two more places since #4019 (`effects/do_walk.go`):
+
+- A spell's OnResolve: write `OnResolve: ResolveSteps(step, step, …)`
+  instead of a closure that runs one instruction after another
+  (Electrolyze, Tune the Narrative).
+- A modal bullet with more than one instruction: write
+  `ModeSteps(label, targets, step, …)` instead of `ModeDoing`. A step
+  reads its own bullet's target with `ModeTarget(ctx, ctx.Occurrence())`
+  (Demonic Pact).
+
+A step that no primitive value spells is a hand-written function wrapped
+as `Instruction(func(ctx *Context) error { … })`. Split the old body at
+each call that can ask something (damage, counters, a draw, a life
+change, a scry): one `Instruction` per piece. Each piece runs whole, and
+the walk can stop between pieces. A piece must not pass anything to the
+next through a Go variable, because a restore between them would lose
+it. Read what the earlier piece did from the game instead. A `Do` wrapped
+by `InterveningIf` keeps its steps visible to the walk (Imoen, Mystic
+Trickster).
+
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
 exclude an actual shared exit (#3417, ADR 0018 amendment). `Event.Batch`

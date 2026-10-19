@@ -326,6 +326,12 @@ func buildDef(spec Spec) *game.CardDef {
 		d.Resolve = func(g *game.Game, item *game.StackItem) error {
 			return onResolve(item, NewContext(g, item))
 		}
+		// #4019: an OnResolve written as steps can be found again from
+		// the spell's key, so its later steps park behind an earlier
+		// step's prompt (do_walk.go).
+		if steps, ok := resolveStepsOf(onResolve); ok && len(steps) > 0 {
+			d.ResumeResolve = resumeResolveSteps(steps)
+		}
 	}
 	// CR 702.174j: an instant or sorcery's gift happens before any of
 	// its other spell abilities.
