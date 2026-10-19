@@ -289,3 +289,4 @@ body initiative/take
 body initiative/venture
 option venture/dungeon
 option venture/room
+choose choose-cards/yorion-sky-nomad-exile
