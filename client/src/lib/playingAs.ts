@@ -20,11 +20,19 @@ import { blockDeclarationPending } from "./priority";
 
 /**
  * playsForSeat says whether a control of this length has the controller
- * play the controlled seat's game on its board: a whole turn (ADR 0167)
- * or one combat phase (#3999). The server's ControlUntil.PlaysForThem.
+ * act on the controlled seat's board: a whole turn (ADR 0167), one
+ * combat phase (#3999), or one attack or block declaration chosen for
+ * that seat (#4154, Master Warcraft). For the last, the server allows
+ * only the declaration verbs and shows the controller nothing hidden;
+ * the board is how the controller picks that seat's creatures.
  */
 export function playsForSeat(until: PlayerControlView["until"] | undefined): boolean {
-  return until === "turn" || until === "combat";
+  return until === "turn" || until === "combat" || until === "declarations";
+}
+
+/** #4154: whether the declaration being chosen is an attack or a block one. */
+function declarationKind(view: GameView): "attackers" | "blockers" {
+  return view.turn?.step === "declare_blockers" ? "blockers" : "attackers";
 }
 
 /**
@@ -58,8 +66,12 @@ export function controllerOfViewer(
 }
 
 // The rules verbs a turn's controller may send as the controlled seat
-// (ADR 0167 §4, actions/controlled_player.go turnRulesVerbs). Every
-// other verb stays the viewer's own: blocks, settings, concede, undo.
+// (ADR 0167 §4, actions/controlled_player.go turnRulesVerbs), and the
+// block verbs a declaration's chooser sends as a defending seat (#4154,
+// declaringVerbs). Every other verb stays the viewer's own: settings,
+// concede, undo. A turn's controlled seat is the active player, who
+// never blocks, so the block verbs only ever carry a defender chosen
+// for.
 const RULES_VERBS: ReadonlySet<string> = new Set([
   "pass_priority",
   "end_turn",
@@ -72,6 +84,9 @@ const RULES_VERBS: ReadonlySet<string> = new Set([
   "declare_attackers",
   "resolve_choice",
   "discard_selection",
+  "declare_blocker",
+  "declare_blockers",
+  "finish_blocks",
 ]);
 
 /**
@@ -94,7 +109,8 @@ export function endTurnClosed(
   actingID: string | null,
 ): boolean {
   const c = controlledByViewer(view, viewerID);
-  return !!c && c.until === "combat" && actingID === c.controlled;
+  // #4154: and while the board only chooses that seat's declaration.
+  return !!c && c.until !== "turn" && actingID === c.controlled;
 }
 
 /** Which of the viewer's two seats the board acts for. */
@@ -135,6 +151,8 @@ export function decisionOwer(
   if (controlledID && (view.discard_pending?.[controlledID] ?? 0) > 0) return controlledID;
   if ((view.discard_pending?.[viewerID] ?? 0) > 0) return viewerID;
   if (blockDeclarationPending(view, viewerID)) return viewerID;
+  // #4154: a defender whose blocks the viewer is choosing.
+  if (controlledID && blockDeclarationPending(view, controlledID)) return controlledID;
   const holder = view.turn ? view.seats[view.turn.priority_holder]?.id : undefined;
   if (holder && (holder === viewerID || holder === controlledID)) return holder;
   return null;
@@ -241,7 +259,10 @@ export interface PlayingAsBannerModel {
   // "controlled": another player controls the viewer this turn.
   // "scheduled": a turn-long control is waiting for its turn.
   // "watching": a spectator's or a bystander's line.
-  kind: "playing" | "viewing" | "controlled" | "scheduled" | "watching";
+  // "choosing" (#4154): who chooses the attackers or blockers this
+  // turn, or that the active player is pointing the attackers another
+  // player chose.
+  kind: "playing" | "viewing" | "controlled" | "scheduled" | "watching" | "choosing";
   text: string;
   // The effect's card, shown after the text.
   source?: string;
@@ -281,10 +302,13 @@ export function playingAsBanner(
       ower && ower !== actingID
         ? { label: ower === mine.controlled ? `Switch to ${bob}` : "Switch to you" }
         : undefined;
+    // #4154: choosing one declaration for Bob, not playing his turn.
+    const declaring = mine.until === "declarations";
+    const kind = declarationKind(view);
     return onBob
       ? {
           kind: "playing",
-          text: `Playing as ${bob}`,
+          text: declaring ? `Choosing ${bob}'s ${kind}` : `Playing as ${bob}`,
           source: mine.source_name,
           toggle: { label: "View my board" },
           switchTo,
@@ -292,9 +316,11 @@ export function playingAsBanner(
         }
       : {
           kind: "viewing",
-          text: `Viewing your board, ${bob}'s ${span} is yours`,
+          text: declaring
+            ? `Viewing your board, ${bob}'s ${kind} are yours to choose`
+            : `Viewing your board, ${bob}'s ${span} is yours`,
           source: mine.source_name,
-          toggle: { label: `Play as ${bob}` },
+          toggle: { label: declaring ? `Choose ${bob}'s ${kind}` : `Play as ${bob}` },
           switchTo,
           seatID: mine.controlled,
         };
@@ -302,6 +328,14 @@ export function playingAsBanner(
   const over = controllerOfViewer(view, viewerID);
   if (over && viewerID) {
     const alice = nameOf(view, over.controller);
+    if (over.until === "declarations") {
+      return {
+        kind: "controlled",
+        text: `${alice} is choosing your ${declarationKind(view)}`,
+        source: over.source_name,
+        seatID: over.controller,
+      };
+    }
     const choosing = view.pending_choices?.some((c) => c.on_behalf_of === viewerID);
     return {
       kind: "controlled",
@@ -313,14 +347,64 @@ export function playingAsBanner(
   }
   const live = view.player_controls?.find((pc) => playsForSeat(pc.until));
   if (live) {
+    const alice = nameOf(view, live.controller);
+    const bob = nameOf(view, live.controlled);
     return {
       kind: "watching",
-      text: `${nameOf(view, live.controller)} controls ${nameOf(view, live.controlled)} this ${live.until === "combat" ? "combat" : "turn"}`,
+      text:
+        live.until === "declarations"
+          ? `${alice} is choosing ${bob}'s ${declarationKind(view)}`
+          : `${alice} controls ${bob} this ${live.until === "combat" ? "combat" : "turn"}`,
       source: live.source_name,
       seatID: live.controller,
     };
   }
-  return scheduledLine(view, viewerID);
+  return (
+    handoffLine(view, viewerID) ?? scheduledLine(view, viewerID) ?? declarationLine(view, viewerID)
+  );
+}
+
+// #4154: the active player's half of a chosen attack declaration.
+function handoffLine(view: GameView, viewerID: string | null): PlayingAsBannerModel | null {
+  const h = view.attack_handoff;
+  if (!h || h.stage !== "targets" || view.turn?.step !== "declare_attackers") return null;
+  const activeID = view.seats[view.turn.active_seat]?.id;
+  if (!activeID) return null;
+  const alice = nameOf(view, h.declarer);
+  if (activeID === viewerID) {
+    return {
+      kind: "choosing",
+      text: `${alice} chose your attackers`,
+      source: h.source_name,
+      note: "Choose what each attacks, then confirm",
+      seatID: h.declarer,
+    };
+  }
+  return {
+    kind: "choosing",
+    text: `${alice} chose ${nameOf(view, activeID)}'s attackers`,
+    source: h.source_name,
+    seatID: h.declarer,
+  };
+}
+
+// #4154: who chooses this turn's (or this combat's) attackers and
+// blockers, while no declaration is being made. The newest effect is the
+// one that works.
+function declarationLine(view: GameView, viewerID: string | null): PlayingAsBannerModel | null {
+  const all = view.declaration_controls ?? [];
+  if (all.length === 0) return null;
+  const last = all[all.length - 1];
+  const what =
+    last.attackers && last.blockers ? "attack and block" : last.attackers ? "attack" : "block";
+  const span = last.scope === "combat" ? "this combat" : "this turn";
+  const who = last.declarer === viewerID ? "You choose" : `${nameOf(view, last.declarer)} chooses`;
+  return {
+    kind: "choosing",
+    text: `${who} which creatures ${what} ${span}`,
+    source: last.source_name,
+    seatID: last.declarer,
+  };
 }
 
 // What a scheduled control waits for, in the banner's words.

@@ -551,11 +551,19 @@ export interface GameView {
   // #3998: or "search" (Opposition Agent: only while the controlled
   // player's search prompt is open). #3999: or "combat" (Secret of
   // Bloodbending: one combat phase, played like a turn).
+  // #4154: or "declarations" (Master Warcraft: only while the
+  // controller is making that player's attack or block declaration;
+  // grants no visibility and allows only the declaration verbs).
   // One entry per controlled player: the effect that applies now.
   player_controls?: PlayerControlView[];
   // ADR 0167 §8: turn-long controls still waiting for the controlled
   // player's next turn. Public; grants no visibility.
   scheduled_player_controls?: ScheduledPlayerControlView[];
+  // #4154: every "you choose which creatures attack / block" effect
+  // this turn (Master Warcraft, Odric), oldest first. Public.
+  declaration_controls?: DeclarationControlView[];
+  // #4154: this combat's attack declaration under one. Public.
+  attack_handoff?: AttackHandoffView;
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -5427,7 +5435,37 @@ export interface PlayerControlView {
   source_name?: string;
   // #3999: "combat" is one combat phase of the controlled player's
   // (Secret of Bloodbending), played like a turn for its length.
-  until: "resolution" | "turn" | "search" | "combat";
+  // #4154: "declarations" is not player control: the controller is
+  // making the controlled player's attack or block declaration, and
+  // nothing else.
+  until: "resolution" | "turn" | "search" | "combat" | "declarations";
+}
+
+/**
+ * #4154: a "you choose which creatures attack / block" effect (Master
+ * Warcraft for the turn, Odric for one combat). Public; grants no
+ * visibility.
+ */
+export interface DeclarationControlView {
+  declarer: string;
+  source_name?: string;
+  attackers?: boolean;
+  blockers?: boolean;
+  scope: "turn" | "combat";
+}
+
+/**
+ * #4154: this combat's attack declaration under a DeclarationControl.
+ * `stage` absent: the declarer is choosing the attackers; "targets": the
+ * active player is choosing what each attacks and whether to pay its
+ * costs; "chosen": both are done. `declined` lists the creatures whose
+ * costs the active player declined this combat.
+ */
+export interface AttackHandoffView {
+  stage?: "targets" | "chosen";
+  declarer: string;
+  source_name?: string;
+  declined?: string[];
 }
 
 /**

@@ -151,6 +151,8 @@ func (e *enumerator) controlledChoiceMoves() bool {
 // holds priority at a time, so the two lists are non-empty together
 // only for prompts, and Player tells them apart. Caller must hold g.mu.
 func (e *enumerator) controlledTurnMoves() {
+	// #4154: and the declarations e's seat is making for another seat.
+	e.controlledDeclarationMoves()
 	for _, seat := range e.g.TurnControlledByLocked(e.seat) {
 		sub := enumeratorAs(e.g, seat, e.opts)
 		if sub == nil {

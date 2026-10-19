@@ -66,3 +66,68 @@ func viewOfScheduledPlayerControls(g *game.Game) []ScheduledPlayerControlView {
 	}
 	return out
 }
+
+// DeclarationControlView is one "you choose which creatures attack /
+// block" effect (#4154): Master Warcraft's "this turn", Odric's and
+// Melee's "this combat". Public, and it grants no visibility.
+type DeclarationControlView struct {
+	Declarer   string `json:"declarer"`
+	SourceName string `json:"source_name,omitempty"`
+	// Attackers and Blockers say which declarations the declarer makes.
+	Attackers bool `json:"attackers,omitempty"`
+	Blockers  bool `json:"blockers,omitempty"`
+	// Scope is "turn" or "combat".
+	Scope string `json:"scope"`
+}
+
+// AttackHandoffView is this combat's attack declaration under a
+// DeclarationControl (#4154). Stage "" means the declarer is choosing
+// the attackers (again, after a declined cost); "targets" that the
+// active player is choosing what each attacks and whether to pay its
+// costs; "chosen" that both are done.
+type AttackHandoffView struct {
+	Stage      string `json:"stage,omitempty"`
+	Declarer   string `json:"declarer"`
+	SourceName string `json:"source_name,omitempty"`
+	// Declined lists the creatures whose costs the active player
+	// declined this combat; they can't be chosen again.
+	Declined []string `json:"declined,omitempty"`
+}
+
+// viewOfDeclarationControls lists this turn's records. Caller must hold
+// g's read lock.
+func viewOfDeclarationControls(g *game.Game) []DeclarationControlView {
+	var out []DeclarationControlView
+	for _, r := range g.DeclarationControlsForEffect() {
+		scope := "turn"
+		if r.ThisCombat {
+			scope = "combat"
+		}
+		out = append(out, DeclarationControlView{
+			Declarer:   r.Declarer.String(),
+			SourceName: r.SourceName,
+			Attackers:  r.Attackers,
+			Blockers:   r.Blockers,
+			Scope:      scope,
+		})
+	}
+	return out
+}
+
+// viewOfAttackHandoff is the handoff, or nil. Caller must hold g's read
+// lock.
+func viewOfAttackHandoff(g *game.Game) *AttackHandoffView {
+	h := g.AttackHandoffForEffect()
+	if h == nil {
+		return nil
+	}
+	out := &AttackHandoffView{
+		Stage:      string(h.Stage),
+		Declarer:   h.Declarer.String(),
+		SourceName: h.SourceName,
+	}
+	for _, id := range h.Declined {
+		out.Declined = append(out.Declined, id.String())
+	}
+	return out
+}

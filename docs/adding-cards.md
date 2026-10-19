@@ -7855,6 +7855,19 @@ of Bloodbending, #3999) is `Game.BeginCombatControlForEffect` with a
 player's next combat phase begins and ends as it ends. The controller
 plays it like a turn, but cannot end the turn from it.
 
+"You choose which creatures attack this turn" and "you choose which
+creatures block this turn (this combat) and how those creatures block"
+(Master Warcraft, Odric, Melee, Brutal Hordechief, #4154) are one
+`Game.BeginDeclarationControlForEffect` with a `DeclarationControl`
+(`Attackers`, `Blockers`, `ThisCombat`; the declarer and the source):
+`game/declaration_control.go`. It is not player control, so nothing else
+changes hands: the declarer makes those declarations on the other
+players' boards, the active player still chooses what each chosen
+attacker attacks and pays its costs, and every restriction and
+requirement applies. A card that also forces the blocks ("block this
+turn if able") adds the requirement itself (Brutal Hordechief's
+rule-scoped `AddBlockRequirementMod`).
+
 A granted ability whose cost exiles the permanent that grants it ("{15},
 Exile The Dominion Bracelet: …" on the equipped creature, #4000) adds
 `ExileTheGrantor()` to the bundle ability's cost with `Plus`; Register

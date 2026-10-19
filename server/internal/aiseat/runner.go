@@ -556,6 +556,25 @@ func (r *Runner) step(ctx context.Context) bool {
 			continue
 		}
 		moves = own
+		// #4154: the active player's half of an attack declaration
+		// another player chose is decided by attackTargetsPolicy, never
+		// by the seat's own (attack_targets.go).
+		if r.room.Game.AttackTargetsOwedBy(r.seat) {
+			ok, applied := r.playWith(ctx, attackTargetsPolicy{inner: r.policy}, moves, started, minThink)
+			if !ok {
+				return false
+			}
+			if applied {
+				rejects = 0
+				r.clearOwed()
+				continue
+			}
+			rejects++
+			if rejects >= r.cfg.MaxConsecutiveRejects {
+				return true
+			}
+			continue
+		}
 		opts, ordering := r.enumerationOrder()
 		if ordering.View.ID != "" {
 			// The policy ordered the expansion, so the list it decides

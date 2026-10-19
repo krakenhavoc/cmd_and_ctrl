@@ -310,3 +310,5 @@ steps then-steps/seize-the-spotlight-fortune
 steps then-steps/sylvan-library-pay
 steps then-steps/transpose-after-discard
 steps then-steps/twilight-prophet-drain
+body combat/untap-and-remove-the-payload
+condition combat/each-attacker-not-blocked

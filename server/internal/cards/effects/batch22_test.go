@@ -144,17 +144,19 @@ func TestBatch22CardsAreRegistered(t *testing.T) {
 			t.Errorf("oracle %s registered as %q, want %q", oracle, spec.Name, name)
 		}
 	}
-	// The three remaining declared skips must NOT be registered —
-	// each has a cost or a trigger the engine cannot express, and a
-	// spec would ship the card stronger than printed.
+	// The two remaining declared skips must NOT be registered —
+	// each has a cost the engine cannot express, and a spec would
+	// ship the card stronger than printed.
 	//
 	// Two cards came OFF this list and are in `want` above: Harsh
 	// Mentor with #1210's opponent-activation watch, and Master
-	// Transmuter with #1213's return-an-artifact cost component.
+	// Transmuter with #1213's return-an-artifact cost component. A
+	// third, Odric, Master Tactician, came off with #4154's
+	// declaration control and is pinned in
+	// declaration_control_cards_test.go.
 	for _, skipped := range []string{
 		"119d719d-e965-45b4-9bc9-ac03211b10c2", // Survival of the Fittest — discard-a-card cost
 		"e38e3723-05f5-4a51-8364-1cda19f9cc49", // Steelbane Hydra — remove-a-counter cost
-		"ade898df-14a5-460b-94f6-1f3f74d3ff95", // Odric, Master Tactician — choose the blocks
 	} {
 		if _, ok := Lookup(skipped); ok {
 			t.Errorf("%s is a declared skip and must not be registered", skipped)
