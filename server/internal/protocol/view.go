@@ -1576,8 +1576,29 @@ type SpliceOfferView struct {
 	Name string `json:"name"`
 	// Label is the ability as printed: "Splice onto Arcane {1}{R}".
 	Label string `json:"label"`
-	// ManaCost is the splice cost.
+	// ManaCost is the splice cost, empty when it is not mana.
 	ManaCost string `json:"mana_cost"`
+	// CostLabel is a splice cost that is not mana as printed, without its
+	// full stop ("Sacrifice two Mountains"). The components below are the
+	// pickers for it, in the shape and with the meaning the additional
+	// cost gives them (#4055, ADR 0202's 2026-10-19 amendment); the picks
+	// ride cast_spell in `splice_payments`, entry k paying `splices[k]`,
+	// on the field of the same name. Only the component the cost has is
+	// present, and the card is offered only when the viewer can pay it.
+	CostLabel        string            `json:"cost_label,omitempty"`
+	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	ExileCostN       int               `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string            `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string          `json:"exile_cost_options,omitempty"`
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	ReturnLabel      string            `json:"return_label,omitempty"`
+	ReturnOptions    *LegalTargetsView `json:"return_options,omitempty"`
+	// ChoosesOpponent marks "An opponent gains N life": the caster names
+	// one of OpponentOptions on `splice_payments[k].opponent`.
+	ChoosesOpponent bool     `json:"chooses_opponent,omitempty"`
+	OpponentOptions []string `json:"opponent_options,omitempty"`
 	// TargetMode, LegalTargets and Clauses are the spliced text's target
 	// clause, judged from the spell (CR 702.47c-d). Absent for a text
 	// with no target.
@@ -13619,6 +13640,33 @@ func viewOfSpliceOffers(g *game.Game, caster uuid.UUID, src game.TargetSource, s
 			Name:     o.Name,
 			Label:    o.Ability.Label(),
 			ManaCost: o.Ability.ManaCost,
+		}
+		// #4055: the splice cost that is not mana, off the engine's own
+		// walks so the picker offers exactly the objects the validator
+		// accepts (#544).
+		if c := o.Ability.Cost; !c.Empty() {
+			v.CostLabel = c.Label
+			if c.Sacrifice != nil {
+				v.SacrificeLabel = c.Sacrifice.Label
+				v.SacrificeOptions = sacrificeCostOptions(g, caster, c.Sacrifice, uuid.Nil, false)
+			}
+			if ec := c.ExileCards; ec != nil {
+				v.ExileCostN = ec.N
+				v.ExileCostLabel = ec.Label
+				v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, spell.InstanceID, ec))
+			}
+			if tc := c.TapOthers; !tc.Empty() {
+				v.TapOthersLabel = tc.Label
+				v.TapOthersOptions = tapOthersCostOptions(g, caster, spell.InstanceID, tc, false)
+			}
+			if rc := c.ReturnToHand; !rc.Empty() {
+				v.ReturnLabel = rc.Label
+				v.ReturnOptions = returnCostOptions(g, caster, spell.InstanceID, rc)
+			}
+			if c.OpponentGainsLife > 0 {
+				v.ChoosesOpponent = true
+				v.OpponentOptions = cardIDStrings(g.SpliceOpponentsLocked(caster))
+			}
 		}
 		if spec := o.Targets; spec != nil {
 			v.TargetMode = spec.Mode

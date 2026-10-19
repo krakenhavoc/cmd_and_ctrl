@@ -1040,3 +1040,42 @@ token's key; Mu Yanling is Full too. Still open from Decision 6's list:
 "whenever a player wins a coin flip" and "flip a coin until you lose a
 flip" (Okaun, Eye of Chaos; Zndrsplt, Eye of Wisdom), and "whenever you
 lose a coin flip" (Karplusan Minotaur).
+
+## Amendment (2026-10-19): "whenever you lose a coin flip" and a coin-flip cumulative upkeep (#4063)
+
+The 2026-10-15 amendment shipped "whenever you win a coin flip" and noted the other half as open. Karplusan Minotaur prints
+both, and a cumulative upkeep whose cost is a flip:
+
+> Cumulative upkeep—Flip a coin.
+> Whenever you win a coin flip, this creature deals 1 damage to any target.
+> Whenever you lose a coin flip, this creature deals 1 damage to any target of an opponent's choice.
+
+**Decisions.**
+
+1. **The matcher.** `effects.YouLostACoinFlip` is an `EventFlipCoin` the source's controller flipped, with `Won` unset **and a
+   `Call` set**. Only a called flip (`FlipCoinForEffect`, the one with a winner) has anything to lose; a face-only flip
+   (`FlipCoinsForEffect`) carries `Won` false and no `Call` and must never read as a loss. The flipper is the event's `Actor`
+   (CR 705.2: only the player who flips the coin wins or loses it), so an opponent's lost flip is not yours. One event per coin,
+   so two lost coins fire the ability twice. `WheneverYouLoseACoinFlip` is the constructor beside `WheneverYouWinACoinFlip`.
+2. **The cost.** "Flip a coin" is an `effects.UpkeepPayment` (`FlipCoinsPayment`): a payment that costs nothing to say yes to
+   (`game.PayActionNothing`) and whose payment is the flips, so `CumulativeUpkeepPaying` queues them from the prompt's
+   `OnPay`. CR 702.24a makes the cost "for each age counter", so the payment scales (`UpkeepPayment.times`): n age counters flip
+   n coins **under one call** (owner decision 4 of this ADR: coins flipped under one call). Saying no sacrifices the permanent,
+   as for any cumulative upkeep.
+3. **Once started, not stopped.** The 2006-07-15 ruling is that you cannot choose to stop once you start flipping. The coin call
+   is queued with `AllowStop: false`, so `stop` is refused; the only way out is to answer no at the upkeep prompt.
+4. **Restores.** Nothing new is stored. The coin is the game's keyed stream (Decision 2), advanced as the call is answered, and
+   a table with the call open is not a restore point (the call holds a continuation, `ContinuationCensus.ChoiceResumeFrames`),
+   so a restore is taken after the flip and the next flip is drawn exactly as the original's would be.
+5. **The targets.** The win ability's target is the controller's. The lose ability's is "of an opponent's choice"
+   ([ADR 0019](0019-structured-targeting.md) 2026-10-16 amendment), so the controller cannot aim the damage.
+
+**Card.** Karplusan Minotaur, `full`.
+
+**Tests.** `cards/effects/karplusan_minotaur_test.go`: the matcher against a won, lost, opponent's, face-only and table flip;
+the win target is the controller's and the lose target an opponent's; unrelated flips start nothing; the upkeep flips one coin
+per age counter and cannot be stopped; a decline sacrifices and flips nothing; the prompt survives a clone; the enumerator offers
+both answers; a restore after the flip replays the next flip.
+
+Back-out: drop the `Call` test from `YouLostACoinFlip` and the face-only assertions fail; drop `OnPay` from the cumulative upkeep
+and no coin call is queued; drop `OfAnOpponentsChoice` from the lose ability and the controller aims it.

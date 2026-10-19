@@ -714,6 +714,11 @@ func dispatch(g *game.Game, a Action) error {
 			// effects happen. A spliced text's targets ride `targets`
 			// with `splice` naming the card (1-based, in this order).
 			Splices []string `json:"splices,omitempty"`
+			// ADR 0202's 2026-10-19 amendment (#4055) — what each
+			// revealed splice card's cost is paid with when it is not
+			// mana: entry k pays `splices[k]`. Absent for a splice
+			// whose cost is mana alone.
+			SplicePayments []splicePaymentWire `json:"splice_payments,omitempty"`
 			// ADR 0100 §2 — which branch of an either/or additional
 			// cost is paid, as an index into the card's branches
 			// ("sacrifice an artifact or discard a card"). Required on
@@ -861,6 +866,13 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("cast_spell splices[%d]: %w", i, err)
 			}
 			params.Splices = append(params.Splices, id)
+		}
+		for i, w := range p.SplicePayments {
+			pay, err := w.toPayment()
+			if err != nil {
+				return fmt.Errorf("cast_spell splice_payments[%d]: %w", i, err)
+			}
+			params.SplicePayments = append(params.SplicePayments, pay)
 		}
 		if p.CostBranch != nil {
 			b := *p.CostBranch
@@ -3001,6 +3013,48 @@ func (t castTargetWire) toCastRef() (game.TargetRef, error) {
 	default:
 		return game.TargetRef{}, fmt.Errorf("unknown target kind %q", t.Kind)
 	}
+}
+
+// splicePaymentWire is what one revealed splice card's non-mana cost is
+// paid with on cast_spell (ADR 0202's 2026-10-19 amendment, #4055): the
+// objects each component spends, and the opponent an "An opponent gains N
+// life" cost is given to.
+type splicePaymentWire struct {
+	SacrificeIDs []string `json:"sacrifice_ids,omitempty"`
+	ExileIDs     []string `json:"exile_ids,omitempty"`
+	TapIDs       []string `json:"tap_ids,omitempty"`
+	ReturnIDs    []string `json:"return_ids,omitempty"`
+	Opponent     string   `json:"opponent,omitempty"`
+}
+
+func (w splicePaymentWire) toPayment() (game.SplicePayment, error) {
+	var out game.SplicePayment
+	for _, l := range []struct {
+		name string
+		raw  []string
+		dst  *[]uuid.UUID
+	}{
+		{"sacrifice_ids", w.SacrificeIDs, &out.SacrificeIDs},
+		{"exile_ids", w.ExileIDs, &out.ExileIDs},
+		{"tap_ids", w.TapIDs, &out.TapIDs},
+		{"return_ids", w.ReturnIDs, &out.ReturnIDs},
+	} {
+		for i, raw := range l.raw {
+			id, err := uuid.Parse(raw)
+			if err != nil {
+				return game.SplicePayment{}, fmt.Errorf("%s[%d]: %w", l.name, i, err)
+			}
+			*l.dst = append(*l.dst, id)
+		}
+	}
+	if w.Opponent != "" {
+		id, err := uuid.Parse(w.Opponent)
+		if err != nil {
+			return game.SplicePayment{}, fmt.Errorf("opponent: %w", err)
+		}
+		out.Opponent = id
+	}
+	return out, nil
 }
 
 // parseUUIDs converts a wire list of IDs, naming the field in any

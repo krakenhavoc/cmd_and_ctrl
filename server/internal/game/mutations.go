@@ -335,6 +335,14 @@ type CastSpellParams struct {
 	// ordinary cast. ADR 0202 (#1989).
 	Splices []uuid.UUID
 
+	// SplicePayments pays the splice costs that are not mana (#4055, ADR
+	// 0202's 2026-10-19 amendment, CR 702.47a): entry k is what Splices[k]
+	// is paid with, so the list is no longer than Splices and a card whose
+	// splice cost is mana alone needs no entry. Kept off the cast's own
+	// flat payment lists, so a splice card's cost never changes which
+	// object pays the spell's.
+	SplicePayments []SplicePayment
+
 	// CostBranch names which branch of an either/or additional cost the
 	// caster is paying (CR 601.2b, ADR 0100 §2) — an index into the
 	// card's AdditionalCost.Either: Demand Answers' "sacrifice an
@@ -1553,6 +1561,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): and each
+	// revealed splice card's cost that is not mana, with every object the
+	// rest of this cast already spends (CR 118.3).
+	if err := g.validateSplicePaymentsLocked(playerID, cardID, spliced, params.SplicePayments, castSpentObjects(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad splice cost payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"splices", len(spliced),
+			"payments", len(params.SplicePayments),
+			"err", err,
+		)
+		return err
+	}
 	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
 	// here with the other announce-time choices and paid further
 	// down once the spell is on the stack, same validate-all-then-pay
@@ -1812,6 +1833,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.ExileFromHandIDs...)
 	// #3536: and the graveyard cards an exile-cards cost takes.
 	moving = append(moving, params.ExileIDs...)
+	// #4055: and every object a splice card's cost spends.
+	spliceSpent := spliceObjectsOf(params.SplicePayments)
+	moving = append(moving, spliceSpent...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1829,6 +1853,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if alt != nil && alt.ReturnToHand != nil {
 		asking = costCommanderMovesTo(ZoneHand, params.AltCostIDs...)
 	}
+	// #4055: and a splice cost's return to hand (Veil of Secrecy).
+	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
@@ -2230,6 +2256,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
 	// with. Nothing moves.
 	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
+	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): the splice
+	// costs that are not mana, in the order the cards were revealed, with
+	// the spell on the stack like every other cost of the cast.
+	if err := g.paySplicePaymentsLocked(playerID, cardID, spliced, params.SplicePayments, params.commanderAnswers); err != nil {
+		slog.Error("cast_spell: splice cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202, CR 702.47a-b: the spliced cards are revealed, all at once,
 	// and stay in the hand.
 	g.revealSplicesLocked(playerID, cardID, card.Name, spliced)

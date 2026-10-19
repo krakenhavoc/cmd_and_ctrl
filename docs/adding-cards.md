@@ -4982,10 +4982,28 @@ after the spell's own text against a view of the item whose `Targets` are
 the spliced text's own. The source is the spell (CR 702.47c), so read the
 target with `firstLegalTarget(ctx)` and deal damage from `ctx.Source()`,
 and name a shield or multiplier by the CARD's name in its `Label`, since
-the source's name is the spell's. `Register` refuses a splice with no mana
-cost (a non-mana splice cost waits on #4055), and a splice card with modes,
-an X, a division or a cost of its own. `TestSpliceMatchesThePrintedSplice`
-holds the declared quality and cost to the printed line.
+the source's name is the spell's. `Register` refuses a splice with no cost,
+and a splice card with modes, an X, a division or a cost of its own.
+`TestSpliceMatchesThePrintedSplice` holds the declared quality and cost to
+the printed line.
+
+A splice cost that is not mana (#4055, ADR 0202's 2026-10-19 amendment) is
+`SpliceOntoArcaneCost` over one of the cost constructors, which take the
+clause without its verb exactly as the additional-cost ones do:
+
+```go
+Splice: SpliceOntoArcaneCost(SpliceSacrifice(2, "two Mountains", Land(), Subtype("Mountain"))),            // Torrent of Stone
+Splice: SpliceOntoArcaneCost(SpliceExileFromGraveyard(4, "four cards")),                                 // Horobi's Whisper
+Splice: SpliceOntoArcaneCost(SpliceTapUntapped("an untapped white creature you control", Creature(), OfColor("W"))), // Hundred-Talon Strike
+Splice: SpliceOntoArcaneCost(SpliceReturnToHand("a blue creature you control", Creature(), OfColor("U"))),          // Veil of Secrecy
+Splice: SpliceOntoArcaneCost(SpliceOpponentGainsLife(5)),                                                // Roar of Jukai
+```
+
+One component per card. The caster names the objects on `cast_spell.splice_payments`
+(entry k pays `splices[k]`), they are paid with the spell on the stack, and a card
+whose cost the caster cannot pay is not offered. A condition in the text is read
+as the spell resolves ("If you control a Swamp": `ControlsA(ctx.TextSubtype("Swamp"))`,
+so the cost is paid whether or not it holds).
 
 **Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
@@ -7057,6 +7075,7 @@ devoid either.
 | "Whenever a spell or ability is put onto the stack" | `EventCast` + `EventSpellCopied` + `EventActivateAbility` + `EventTriggerPlaced` + `EventAbilityCopied` on one ability | The item id is `ev.CardID` for the first two and `ev.StackItemID` for the other three (`putOntoTheStackItem`, Grip of Chaos, #4050). A copy of an ability emits only `EventAbilityCopied` (CR 707.10a), gated on a battlefield watcher like `EventTriggerPlaced`. "If it has a single target" is `StackItemTargetCountForEffect == 1`, checked in `AppliesTo` and again in the effect |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "Whenever you win a coin flip" | `EventFlipCoin` | `YouWonACoinFlip` / `WheneverYouWinACoinFlip` (#3767, ADR 0054 amendment 2026-10-15) — `ev.Won` and `ev.Actor == source.Controller`; one event per coin, so it fires once per won flip. A bare "flip a coin" whose winning only matters to such a trigger is the called `FlipACoin{}` (Setzer, Tavern Scoundrel) |
+| "Whenever you lose a coin flip" | `EventFlipCoin` | `YouLostACoinFlip` / `WheneverYouLoseACoinFlip` (#4063, ADR 0054 amendment 2026-10-19) — `!ev.Won`, a `ev.Call` (only a called flip can be lost; a face-only flip has none) and `ev.Actor == source.Controller`. "Cumulative upkeep—Flip a coin" is `CumulativeUpkeepPaying(label, FlipCoinsPayment(1), "", "")`: yes flips one coin per age counter under one call, no sacrifices (Karplusan Minotaur) |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "Whenever you become the monarch" / "Whenever an opponent becomes the monarch" | `EventMonarchChanged` | `YouBecameTheMonarch` (Custodi Lich, via `WheneverYouBecomeTheMonarch`) / `AnOpponentBecameTheMonarch` (Knights of the Black Rose). Actor is the new monarch, `uuid.Nil` when the crown was cleared; emitted only on a real change of holder, so "become" never fires for a player already wearing it. "You become the monarch" itself is `BecomeTheMonarch{}` / `WhenThisEntersYouBecomeTheMonarch(name)`; "if you're the monarch" is `YoureTheMonarch(g, you)` ([ADR 0096](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
@@ -8298,6 +8317,19 @@ offers and the bot enumerator at once: nothing else asks a budget question.
 `Distinct(...)` clause per type under `Clauses(...)`, each `WithCount(0, 1)`
 (see `uldaros_theorix.go`), so a card with two types fills the one slot the
 player picks it for. See ADR 0066's 2026-10-14 amendment.
+
+"Any number of spells with mana value N or less from among them" over an impulse exile
+(Hazoret's Undying Fury, #4021) is the per-spell cap rather than the running total:
+
+```go
+limit := 5
+ExileTopWithPermission{From: me, GrantTo: me, N: 4, EachManaValueAtMost: &limit}.Apply(ctx)
+```
+
+One pass-closed permission carries `MaxSpellManaValue` and `AnyNumber`, so a cast strikes
+only its own card and the rest stay castable until the holder passes. It takes the same
+options as `TotalManaValueAtMost` refuses, and the two cannot be set together. See ADR
+0066's 2026-10-19 amendment.
 
 ### Adding a hideaway card (S43+, ADR 0091)
 

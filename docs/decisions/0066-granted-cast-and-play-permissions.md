@@ -4279,3 +4279,46 @@ is the banned one; a target that left in response bans nothing.
 
 Back-out: make `CastBanNamed` forbid nothing and the ban test fails; drop the `Named` clause from `Matches` and the
 "another name is not banned" assertion fails; ban `target.Controller` and the owner test fails.
+
+## Amendment (2026-10-19, [#4021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4021)): any number of exiled spells, each with mana value N or less
+
+Hazoret's Undying Fury: "Shuffle your library, then exile the top four cards. You may cast any number of spells with mana value
+5 or less from among them without paying their mana costs." The engine had the two neighbours and not this one. A plain
+`ExileTopWithPermission{Free: true}` with `LapseOnPass` is one pass-closed permission that the first cast spends whole ("a spell
+from among them", weaker than printed), and `TotalManaValueAtMost` (the 2026-10-15 amendment) keeps the permission for the
+rest of the set but caps a running TOTAL, not each spell.
+
+**Decision.**
+
+1. `CastPermission.AnyNumber bool` (`json:"anyNumber,omitempty"`) marks a pass-closed `ScopeCards` permission that a cast does
+   not use up. `spendManaValueBudget`, the one place `consumePassClosedGrantLocked` decides between "remove the permission" and
+   "keep it for the cards not yet cast", now also keeps an `AnyNumber` permission, with the cast card struck from `Cards` (a
+   fresh slice, for the undo snapshots' sake) and no budget to spend. The per-spell ceiling is the field that already existed,
+   `MaxSpellManaValue`, judged by `spellManaValueWithinCap` against the face as it is cast with X at zero, so the cast path, the
+   view's `castable_here` and the bot enumerator refuse the same casts.
+2. `effects.ExileTopWithPermission.EachManaValueAtMost` builds it: the same free (`Cost: "{0}"`), flash-speed, cast-only,
+   `LapseStaysInExile` permission `TotalManaValueAtMost` builds, with `MaxSpellManaValue` and `AnyNumber` in place of the budget.
+   Both forms are one window, so both refuse the options that name another (`Free`, `CastOnly`, `WhileExiled`, `Window`,
+   `FaceDown`, `Condition`, `Filter`), and the two cannot be set together.
+3. The rest is the 2026-10-15 amendment's: a land among the cards is stranded, an uncast card stays in exile, the casts are
+   grants taken with ordinary `cast_spell` actions after the ability resolves (CR 608.2g), and the window closes when the holder
+   passes.
+
+**Rejected: one permission per exiled card** (the way `CopyAndCast` offers one per copy). It gives each card its own window
+that closes on its own pass, and a permission per card is a list the bot enumerator and the view would walk twice for no gain;
+the one permission already names every card.
+
+**Rejected: widening `TotalManaValueAtMost` to carry a per-spell cap.** A running total spends down and a per-spell cap does not;
+one field meaning both is how a total of 5 and a cap of 5 get confused.
+
+**Snapshot.** Additive within v9: `seats[].castPermissions[].anyNumber`, recorded in `testdata/snapshot_shape/v9.txt`. A binary
+from before this change reads the field as absent and offers one cast, which is weaker than printed, never stronger.
+
+**Card.** Hazoret's Undying Fury, `full` (its lands clause shipped with #3995).
+
+**Tests.** `cards/effects/hazorets_undying_fury_test.go`: any number are cast and the mana value 6 card is refused; exactly four
+leave the library after the shuffle; the pass closes the window and the rest stay in exile; the enumerator keeps offering the
+other cards after a cast; the permission survives a restore; the lands are held through the next untap step.
+
+Back-out: drop `perm.AnyNumber = true` in `applyBudgeted` and the second cast, the enumerator and the restore tests fail; drop
+`perm.MaxSpellManaValue` and the mana value 6 card is castable, failing the first.
