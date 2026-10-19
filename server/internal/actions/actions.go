@@ -3057,6 +3057,28 @@ func (w splicePaymentWire) toPayment() (game.SplicePayment, error) {
 	return out, nil
 }
 
+// ParseSplicePayments reads the cast_spell `splice_payments` wire shape
+// from its JSON array, for the auto-tap preview (#4159), which carries it
+// in a query string. An empty string is no payments.
+func ParseSplicePayments(raw string) ([]game.SplicePayment, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	var wire []splicePaymentWire
+	if err := json.Unmarshal([]byte(raw), &wire); err != nil {
+		return nil, fmt.Errorf("splice_payments: %w", err)
+	}
+	out := make([]game.SplicePayment, 0, len(wire))
+	for i, w := range wire {
+		pay, err := w.toPayment()
+		if err != nil {
+			return nil, fmt.Errorf("splice_payments[%d]: %w", i, err)
+		}
+		out = append(out, pay)
+	}
+	return out, nil
+}
+
 // parseUUIDs converts a wire list of IDs, naming the field in any
 // error so a malformed entry is traceable to the key it arrived on.
 // A nil or empty input yields a nil slice, which the scry-family

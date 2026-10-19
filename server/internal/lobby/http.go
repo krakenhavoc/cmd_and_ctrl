@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
@@ -2620,6 +2621,12 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 		return params, err
 	}
 	params.Splices = splices
+	// #4159: and what those cards' non-mana costs spend. They do not
+	// change the price; they change what the auto-tapper may spend on
+	// it, as in CastAutoTapExclusions.
+	if params.SplicePayments, err = actions.ParseSplicePayments(q.Get("splice_payments")); err != nil {
+		return params, httpError(http.StatusBadRequest, err.Error())
+	}
 	ids, err := uuidListParam(q.Get("tap_ids"), "tap_ids")
 	if err != nil {
 		return params, err

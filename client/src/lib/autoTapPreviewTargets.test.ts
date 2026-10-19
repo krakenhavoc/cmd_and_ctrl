@@ -76,6 +76,16 @@ describe("fetchAutoTapPreview targets", () => {
     expect(queryOf(urls[1]).has("targets")).toBe(false);
   });
 
+  it("sends what a splice cost spends as the wire's splice_payments (#4159)", async () => {
+    await fetchAutoTapPreview("g1", "spell", {
+      cast: { splices: ["talon"], splicePayments: [{ tapIDs: ["knight"] }, { opponent: "bob" }] },
+    });
+    expect(JSON.parse(queryOf(urls[0]).get("splice_payments") ?? "null")).toEqual([
+      { tap_ids: ["knight"] },
+      { opponent: "bob" },
+    ]);
+  });
+
   it("does not send targets on the cast branch", async () => {
     await fetchAutoTapPreview("g1", "bolt", { targets: [{ kind: "card", id: "x" }] });
     expect(queryOf(urls[0]).has("targets")).toBe(false);

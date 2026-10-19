@@ -263,13 +263,7 @@ export function applyCastChoices(
   // its cost spends; omitted when no spliced card has a cost that is not
   // mana, which is the server default.
   if (choices.splicePayments !== undefined && choices.splicePayments.some(splicePaymentNames)) {
-    params.splice_payments = choices.splicePayments.map((p) => ({
-      ...(p.sacrificeIDs?.length ? { sacrifice_ids: p.sacrificeIDs } : {}),
-      ...(p.exileIDs?.length ? { exile_ids: p.exileIDs } : {}),
-      ...(p.tapIDs?.length ? { tap_ids: p.tapIDs } : {}),
-      ...(p.returnIDs?.length ? { return_ids: p.returnIDs } : {}),
-      ...(p.opponent ? { opponent: p.opponent } : {}),
-    }));
+    params.splice_payments = splicePaymentsWire(choices.splicePayments);
   }
   // #1267: omitted unless a gift was promised — a stray one is an
   // error server-side, not a no-op.
@@ -586,6 +580,19 @@ export function spliceSteps(card: CardView, choices: CastChoices | undefined): T
     }
   });
   return out;
+}
+
+// splicePaymentsWire is the wire's splice_payments array: one entry per
+// spliced card, each carrying only what its cost spends. The cast_spell
+// payload and the auto-tap preview's query (#4159) both send it.
+export function splicePaymentsWire(payments: SplicePaymentChoice[]): Record<string, unknown>[] {
+  return payments.map((p) => ({
+    ...(p.sacrificeIDs?.length ? { sacrifice_ids: p.sacrificeIDs } : {}),
+    ...(p.exileIDs?.length ? { exile_ids: p.exileIDs } : {}),
+    ...(p.tapIDs?.length ? { tap_ids: p.tapIDs } : {}),
+    ...(p.returnIDs?.length ? { return_ids: p.returnIDs } : {}),
+    ...(p.opponent ? { opponent: p.opponent } : {}),
+  }));
 }
 
 // splicePaymentNames reports whether a splice card's payment names

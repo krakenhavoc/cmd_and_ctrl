@@ -23,7 +23,7 @@
 //     payload back off Game.svelte's per-card stash, which is what
 //     the auto-tap retry has after the server rejected the cast.
 
-import type { CastChoices } from "./targeting";
+import { splicePaymentNames, type CastChoices, type SplicePaymentChoice } from "./targeting";
 
 // AutoTapCastParams is the preview's cast-shaped options, in the
 // camelCase the api.ts fetchers take. api.ts turns them into the
@@ -35,6 +35,9 @@ export interface AutoTapCastParams {
   // ADR 0202: the cards spliced onto the spell. Each one's splice cost
   // joins the total (CR 601.2f).
   splices?: string[];
+  // #4159: what each spliced card's non-mana cost spends, entry k for
+  // `splices[k]`. They change what the auto-tapper may spend, not the price.
+  splicePayments?: SplicePaymentChoice[];
   tapIDs?: string[];
   face?: number;
   // #1242: the cards and permanents named to the additional cost.
@@ -79,6 +82,9 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
     out.optionalCosts = [...choices.optionalCosts];
   }
   if (choices.splices && choices.splices.length > 0) out.splices = [...choices.splices];
+  if (choices.splicePayments && choices.splicePayments.some(splicePaymentNames)) {
+    out.splicePayments = choices.splicePayments.map((p) => ({ ...p }));
+  }
   if (choices.tapIDs && choices.tapIDs.length > 0) out.tapIDs = [...choices.tapIDs];
   if (choices.face) out.face = choices.face;
   if (choices.sacrificeIDs && choices.sacrificeIDs.length > 0) {
@@ -104,6 +110,27 @@ export function castPreviewParams(choices: CastChoices | null | undefined): Auto
 function stringIDs(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
   return v.filter((s): s is string => typeof s === "string" && s !== "");
+}
+
+// splicePaymentsFromPayload reads the wire's splice_payments entries back
+// into choices; undefined when none names anything.
+function splicePaymentsFromPayload(v: unknown): SplicePaymentChoice[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.map((e): SplicePaymentChoice => {
+    const w = (e && typeof e === "object" ? e : {}) as Record<string, unknown>;
+    const p: SplicePaymentChoice = {};
+    const sac = stringIDs(w.sacrifice_ids);
+    if (sac.length > 0) p.sacrificeIDs = sac;
+    const exile = stringIDs(w.exile_ids);
+    if (exile.length > 0) p.exileIDs = exile;
+    const tap = stringIDs(w.tap_ids);
+    if (tap.length > 0) p.tapIDs = tap;
+    const ret = stringIDs(w.return_ids);
+    if (ret.length > 0) p.returnIDs = ret;
+    if (typeof w.opponent === "string" && w.opponent !== "") p.opponent = w.opponent;
+    return p;
+  });
+  return out.some(splicePaymentNames) ? out : undefined;
 }
 
 // castPreviewParamsFromPayload reads the same fields back off a
@@ -134,6 +161,8 @@ export function castPreviewParamsFromPayload(
   }
   const splices = stringIDs(payload.splices);
   if (splices.length > 0) out.splices = splices;
+  const splicePayments = splicePaymentsFromPayload(payload.splice_payments);
+  if (splicePayments) out.splicePayments = splicePayments;
   if (Array.isArray(payload.tap_ids)) {
     const ids = payload.tap_ids.filter((s): s is string => typeof s === "string" && s !== "");
     if (ids.length > 0) out.tapIDs = ids;
