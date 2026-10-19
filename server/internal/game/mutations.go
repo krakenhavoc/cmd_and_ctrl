@@ -1583,9 +1583,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tapCost := g.tapCostForCastParamsLocked(playerID, card, params)
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
+		var chainTotal ParsedCost
+		chainChecked := false
 		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
 			budget = tapPermanentsBudget(tapCost, base, params.XValue)
-			if !tapCost.Empty() && tapCost.InCost {
+			if tapCost.HasChain() {
+				// #4177: a cast that owes more than one tap cost (Hama's
+				// waterbend of a convoke spell). The budget bounds the
+				// list; the split below decides whether each tap pays.
+				untapped := params
+				untapped.TapIDs, untapped.DelveIDs = nil, nil
+				if total, terr := g.costAfterModifiersLocked(base, p, card, untapped); terr == nil {
+					budget = tapChainBudget(tapCost, total, params.XValue)
+					chainTotal, chainChecked = total, true
+				}
+			} else if !tapCost.Empty() && tapCost.InCost {
 				// #3989: a waterbend that IS the cost (Hama's grant)
 				// is measured against the total the modifiers leave,
 				// as an activated ability's is (WaterbendBudget): a
@@ -1607,6 +1619,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				"err", err,
 			)
 			return err
+		}
+		if chainChecked && !g.tapChainPaysLocked(tapCost, chainTotal, params.TapIDs, params.XValue) {
+			slog.Warn("cast_spell rejected: a tapped permanent pays for nothing under the chained tap costs",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"taps_received", len(params.TapIDs),
+			)
+			return ErrInvalidParam
 		}
 	}
 	// ADR 0100 §1, CR 702.66a: the graveyard cards named to delve.
@@ -2212,9 +2232,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if len(params.TapIDs) > 0 && g.tapCostForCastParamsLocked(playerID, card, params).Key == "convoke" {
+	if convoked := g.tapConvokersForCastLocked(p, card, g.tapCostForCastParamsLocked(playerID, card, params), params); len(convoked) > 0 {
 		if item := g.StackMeta[cardID]; item != nil {
-			item.Paid.Convoked = append([]uuid.UUID(nil), params.TapIDs...)
+			item.Paid.Convoked = convoked
 		}
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
@@ -3592,7 +3612,7 @@ func (g *Game) costAfterTapsLocked(cost ParsedCost, p *Player, card Card, params
 		tapCost = TapPermanentsCostFor(CatalogKey(card))
 	}
 	if !tapCost.Empty() {
-		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
+		cost = g.tapPermanentsAdjustedLocked(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
 	return cost
 }

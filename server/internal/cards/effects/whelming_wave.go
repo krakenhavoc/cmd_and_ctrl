@@ -28,8 +28,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the printed text and occasionally a real cost.
 func init() {
 	Register(Spec{
-		OracleID: "e510eaaf-6497-480f-baa8-f4796b5f1086",
-		Name:     "Whelming Wave",
+		OracleID:     "e510eaaf-6497-480f-baa8-f4796b5f1086",
+		Name:         "Whelming Wave",
+		Completeness: CompletenessFull,
 		// ADR 0126 §6: Krakens, Leviathans, Octopuses and Serpents stay.
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

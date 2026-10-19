@@ -12,8 +12,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature its controller has. Mandatory, no prompt.
 func init() {
 	Register(Spec{
-		OracleID: "637c5583-4683-4ae4-8b4e-f5da42a772c7",
-		Name:     "Scroll Thief",
+		OracleID:     "637c5583-4683-4ae4-8b4e-f5da42a772c7",
+		Name:         "Scroll Thief",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Scroll Thief — draw a card", Do(DrawCards{N: 1})),
 		},

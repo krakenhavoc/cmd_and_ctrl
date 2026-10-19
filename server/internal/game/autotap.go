@@ -2131,6 +2131,15 @@ func solveColored(
 		}
 		*deferred--
 	}
+	// #4177, CR 107.4e: a two-mana hybrid no colour slot can pay is two
+	// generic — the pool solver's foldUnpaidTwobrid.
+	if req.isTwobrid() && !req.AnyMana {
+		*deferred += req.NumericAlt
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+			return true
+		}
+		*deferred -= req.NumericAlt
+	}
 	return false
 }
 

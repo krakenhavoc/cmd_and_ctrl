@@ -55,6 +55,33 @@ func (g *Game) CantPlayFromOwnGraveyardThisTurnForEffect(sourceID uuid.UUID, pla
 		mods, g.UntilEndOfTurnDuration(), label)
 }
 
+// graveyardPermissionsReachAllLocked reports whether a live permission of
+// `holder`'s makes their graveyard-casting permissions reach every
+// graveyard: the last sentence of Shaman's Trance, "You may play lands
+// and cast spells from other players' graveyards this turn as though
+// those cards were in your graveyard" (#4177). The flag rides the
+// Trance's own stored grants (CastPermission.GraveyardsAreYours), so the
+// stored state of a resolved Trance gains a key and no record (snapshot
+// fixture v9/shamans_trance.json stays a subset). Underworld Breach's
+// escape, Yawgmoth's Will, Lurrus, Muldrotha and a flashback grant each
+// speak of "your graveyard"; read by permissionReachesPileLocked, the
+// one ownership rule they share.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) graveyardPermissionsReachAllLocked(holder uuid.UUID) bool {
+	p := g.playerByIDLocked(holder)
+	if p == nil {
+		return false
+	}
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.GraveyardsAreYours && g.CastPermissionActiveForEffect(perm, holder) {
+			return true
+		}
+	}
+	return false
+}
+
 // graveyardPlayBanLocked is THE reader: does a live record stop
 // `player` playing `card` out of `zone` right now? Only a card in the
 // player's own graveyard is ever refused. It returns the clause, with

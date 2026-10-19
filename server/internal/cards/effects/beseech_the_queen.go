@@ -18,19 +18,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reading a board nothing can change during a resolution anyway, but
 // the closure makes the timing explicit.
 //
-// # Declared sandbox simplification: THE MONOCOLOUR HYBRID COST
+// # The monocolour hybrid cost
 //
 // {2/B} means "two generic OR one black", three times over, and the
 // card's mana value is 6 regardless (CR 202.3f — game.ParsedCost's
 // ManaValue counts each {2/B} as its larger component, so a Beseech
 // in the library is only findable with six lands). How the cost is
-// PAID is a casting-cost question, not an effect one: the engine's
-// payment path pays each {2/B} with its black half. This file
-// describes what happens on resolution, and that part is complete.
+// PAID is the casting path's: since #4177 the pool solver and the
+// auto-tapper pay each {2/B} with {B} when they can and with two mana
+// of any kind when they cannot (CR 107.4e, 601.2b; tests in
+// game/twobrid_payment_test.go and beseech_twobrid_test.go). This file
+// describes what happens on resolution.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID: "cf94cafc-527e-4b27-8a28-7807435aaccf",
-		Name:     "Beseech the Queen",
+		OracleID:     "cf94cafc-527e-4b27-8a28-7807435aaccf",
+		Name:         "Beseech the Queen",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			lands := 0

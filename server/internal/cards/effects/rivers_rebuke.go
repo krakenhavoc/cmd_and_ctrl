@@ -26,8 +26,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // survives.
 func init() {
 	Register(Spec{
-		OracleID: "c52cfb41-18f3-4e73-b5e7-d75baf74e578",
-		Name:     "River's Rebuke",
+		OracleID:     "c52cfb41-18f3-4e73-b5e7-d75baf74e578",
+		Name:         "River's Rebuke",
+		Completeness: CompletenessFull,
 		// ADR 0126 §6: cast at an opponent.
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce, OpponentsOnly: true}},
 		Targets: TargetPlayer("target player"),

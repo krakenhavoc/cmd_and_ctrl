@@ -1,0 +1,6 @@
+---
+title: "Convoke or improvise on a spell cast for a waterbend cost"
+date: 2026-10-19
+issues: [4172, 4177]
+---
+**Convoke or improvise on a spell cast for a waterbend cost** (#4172, #4177, [ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md) amendment of 2026-10-19) — a cast used to carry one tap cost, so a spell cast through Hama, the Bloodbender's waterbend permission lost its convoke or improvise, and Waterbender's Restoration cast that way dropped its own `waterbend {X}`. `TapPermanentsCost.Also` now chains the other tap costs the cast owes, as `TapCostRef` values rebuilt by `tapCostFromRef` (a cost holds a closure, and a field of its own type would be a second route from `Game` to one). The wire is unchanged: one `tap_ids` list, which `splitTapPayersLocked` shares between the chained costs, so the same split prices the cast, validates it and records who convoked; a waterbend's taps pay only its own `{N}` (CR 701.67b) while convoke and improvise pay any part of the total (CR 702.51a, 702.126a). The view joins the labels and offers the permanents any link accepts. A chosen optional waterbend (#3999) chains in front of whatever else the cast owes. **Cards:** Hama, the Bloodbender, now Full.

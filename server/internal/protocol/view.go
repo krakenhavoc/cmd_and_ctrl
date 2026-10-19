@@ -7649,7 +7649,7 @@ func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarge
 func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.TapPermanentsCost) *TapCostView {
 	v := &TapCostView{
 		Key:         tc.Key,
-		Label:       tc.Label,
+		Label:       tc.ChainLabel(),
 		ColorClause: tc.ColorClause,
 		DemandsX:    tc.DemandsX(),
 	}
@@ -7657,7 +7657,17 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.Tap
 	// permanent for convoke or waterbend doesn't target it, so a
 	// shrouded creature you control is still a legal tapper. The
 	// engine's own check (tap_cost.go) already works this way.
+	//
+	// A cast that owes more than one tap cost (Hama's waterbend of a
+	// convoke spell, #4177) offers the permanents any of them accepts.
 	opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, tc.Spec), tc.Spec)
+	for _, spec := range tc.ChainSpecs()[1:] {
+		for _, id := range viewOfLegalTargets(g.SpecCandidatesForEffect(caster, spec), spec).Cards {
+			if !slices.Contains(opts.Cards, id) {
+				opts.Cards = append(opts.Cards, id)
+			}
+		}
+	}
 	opts.Cards = filterToController(g, opts.Cards, caster)
 	opts.Players = nil
 	opts.Min, opts.Max, opts.CountFromX = 0, 0, false

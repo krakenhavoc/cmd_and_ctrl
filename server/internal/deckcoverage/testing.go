@@ -79,6 +79,12 @@ func TestingIndex(t *testing.T) (*cards.Index, TestingCards) {
 		sort.Slice(found, func(a, b int) bool { return found[a].Name < found[b].Name })
 		return found[0]
 	}
+	// The catalogue is working toward no caveated and no unreviewed card
+	// at all (#4177). When it has none, the test registers a stand-in so
+	// the buckets still have a card to be tested with.
+	for _, want := range []effects.Completeness{effects.CompletenessCaveats, effects.CompletenessUnreviewed} {
+		registerStandIn(want)
+	}
 	for _, p := range []struct {
 		c    effects.Completeness
 		name *string
@@ -99,4 +105,37 @@ func TestingIndex(t *testing.T) (*cards.Index, TestingCards) {
 			OracleText: "{T}: Do what this card does."})
 	}
 	return idx, tc
+}
+
+// registerStandIn makes sure the registry holds a single-faced catalogue
+// card of the given completeness, registering a test-only one when it
+// has none. Idempotent: a stand-in registered by an earlier call is a
+// card of that completeness, so the second call finds it and does nothing.
+func registerStandIn(want effects.Completeness) {
+	have := false
+	for _, e := range catalog.Build(nil).Cards {
+		if e.Completeness == want.String() && effects.Has(e.OracleID) && !effects.Has(e.OracleID+"#1") {
+			if _, err := uuid.Parse(e.OracleID); err == nil && e.Name != "" {
+				have = true
+				break
+			}
+		}
+	}
+	if have {
+		return
+	}
+	switch want {
+	case effects.CompletenessCaveats:
+		effects.Register(effects.Spec{
+			OracleID:     "7e57ed00-0000-4000-8000-000000000001",
+			Name:         "Testing Caveated Engine",
+			Completeness: effects.CompletenessCaveats,
+			Caveats:      []string{"One clause of this test card is not modelled."},
+		})
+	case effects.CompletenessUnreviewed:
+		effects.Register(effects.Spec{
+			OracleID: "7e57ed00-0000-4000-8000-000000000002",
+			Name:     "Testing Unreviewed Engine",
+		})
+	}
 }

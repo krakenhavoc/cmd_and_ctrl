@@ -384,6 +384,8 @@ func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// and a spell that reads a colour spent on X (Soul Burn) has the X
 	// part walk that colour's mana first.
 	deferred, unpaid, xUsed := colouredPassX(p, used, order, cost.requirementRuns(), ctx.favoredOnX())
+	// #4177: a {2/B} no colour paid is two generic (CR 107.4e).
+	unpaid, twobridGeneric := foldUnpaidTwobrid(unpaid)
 	nDeferred := reqRunsTotal(deferred)
 
 	// Step 2 — generic requirement. Total = explicit Generic +
@@ -394,7 +396,7 @@ func (p ManaPool) allocateRest(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need = satAddMana(cost.GenericWithX(xValue), nDeferred)
+	need = satAddMana(satAddMana(cost.GenericWithX(xValue), nDeferred), twobridGeneric)
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
@@ -647,19 +649,26 @@ func spendOrder(pool ManaPool, ctx ManaSpendContext) []int {
 // itself, unallocated, when nothing is widened — every cost with no
 // spend grant.
 func widenedLast(reqs []ColorRequirement) []ColorRequirement {
-	widened := -1
+	special := -1
 	for i, r := range reqs {
-		if r.AnyMana {
-			widened = i
+		if r.AnyMana || r.isTwobrid() {
+			special = i
 			break
 		}
 	}
-	if widened < 0 {
+	if special < 0 {
 		return reqs
 	}
+	// Plain symbols, then the two-mana hybrids (#4177), then the widened
+	// ones: the same order requirementRuns gives the pool solver.
 	out := make([]ColorRequirement, 0, len(reqs))
 	for _, r := range reqs {
-		if !r.AnyMana {
+		if !r.AnyMana && !r.isTwobrid() {
+			out = append(out, r)
+		}
+	}
+	for _, r := range reqs {
+		if !r.AnyMana && r.isTwobrid() {
 			out = append(out, r)
 		}
 	}
@@ -712,11 +721,12 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 	// A long run of one symbol — a folded "spend only black mana on X"
 	// left unpaid is X of them — is named once, with its count (#3904).
 	deferred, unpaid := colouredPass(p, used, order, cost.requirementRuns())
+	unpaid, twobridGeneric := foldUnpaidTwobrid(unpaid)
 	for _, r := range coalesced(unpaid) {
 		missing = appendSymbolRun(missing, "{"+formatRequirement(r.req)+"}", r.n)
 	}
 
-	generic := cost.GenericWithX(xValue)
+	generic := satAddMana(cost.GenericWithX(xValue), twobridGeneric)
 	nDeferred := reqRunsTotal(deferred)
 	need := satAddMana(nDeferred, generic)
 	need -= spendNoGenericSlots(p, used, order, noGenericSlots(cost, nDeferred))

@@ -92,16 +92,30 @@ func appendTaggedReqRun(runs []reqRun, r reqRun) []reqRun {
 // name their colours), without copying reqs or writing the tail out.
 func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 	var out []reqRun
-	widened := false
+	widened, twobrid := false, false
 	for _, r := range reqs {
 		if r.AnyMana {
 			widened = true
+			continue
+		}
+		if r.isTwobrid() {
+			twobrid = true
 			continue
 		}
 		out = appendReqRun(out, r, 1)
 	}
 	if !tail.req.AnyMana {
 		out = appendTaggedReqRun(out, tail)
+	}
+	// #4177: a two-mana hybrid ({2/B}) takes its colour only after every
+	// plain symbol has had its pick, so it never holds the one mana a
+	// plain {B} needed when it could have been paid with two others.
+	if twobrid {
+		for _, r := range reqs {
+			if r.isTwobrid() && !r.AnyMana {
+				out = appendReqRun(out, r, 1)
+			}
+		}
 	}
 	if widened {
 		for _, r := range reqs {
@@ -114,6 +128,29 @@ func requirementRuns(reqs []ColorRequirement, tail reqRun) []reqRun {
 		out = appendTaggedReqRun(out, tail)
 	}
 	return out
+}
+
+// isTwobrid reports whether the slot is a two-mana hybrid ({2/B}): one
+// mana of its colour or N mana of any kind (CR 107.4e). The solvers pay
+// the colour when they can and the N generic when they cannot
+// (foldUnpaidTwobrid, solveColored).
+func (r ColorRequirement) isTwobrid() bool {
+	return r.HasNumericAlt && r.NumericAlt > 1 && !r.Phyrexian
+}
+
+// foldUnpaidTwobrid takes the two-mana hybrids out of a pass's unpaid
+// requirements and returns how much generic mana they owe instead (#4177,
+// CR 107.4e, 601.2b): a {2/B} no black mana paid is two of anything. The
+// rest come back unchanged, still unpaid.
+func foldUnpaidTwobrid(unpaid []reqRun) (rest []reqRun, generic int) {
+	for _, r := range unpaid {
+		if r.req.isTwobrid() {
+			generic = satAddMana(generic, r.n*r.req.NumericAlt)
+			continue
+		}
+		rest = append(rest, r)
+	}
+	return rest, generic
 }
 
 // requirementRuns is the cost's coloured requirements as runs: the
