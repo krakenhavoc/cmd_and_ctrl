@@ -72,6 +72,18 @@ type PutFromLibraryOntoBattlefield struct {
 	// means the resolving item's controller.
 	Player uuid.UUID
 
+	// LibraryOwner is whose library Cards sit in, when that is not the
+	// chooser's own: Lonis, Cryptozoologist's "target opponent reveals
+	// the top X cards of their library. You may put a nonland
+	// permanent card … from among them onto the battlefield under
+	// your control". uuid.Nil (every other card) means the chooser's.
+	// It is the prompt's FromPlayer, which the submit-time zone
+	// re-check reads: without it a pick out of an opponent's library
+	// is refused as "not in your library". The card enters under
+	// Player's control and stays its owner's (CR 108.3), so it dies to
+	// the owner's graveyard.
+	LibraryOwner uuid.UUID
+
 	// Cards are the revealed or looked-at cards, top card first — the
 	// "them" of "from among them". A card that has since left its
 	// library is ignored.
@@ -225,9 +237,10 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 		// Re-checked on submit: every pick must still be in a
 		// library when the answer arrives. The zone's owner is the
 		// FromPlayer, which defaults to the chooser.
-		Zone:     game.ZoneLibrary,
-		Validate: p.Validate,
-		Then:     finish,
+		Zone:       game.ZoneLibrary,
+		FromPlayer: p.LibraryOwner,
+		Validate:   p.Validate,
+		Then:       finish,
 	})
 	return nil
 }
