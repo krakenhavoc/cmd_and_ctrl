@@ -1469,6 +1469,12 @@ func classifyActionError(err error) (code, message string) {
 		return protocol.CodeBadRequest, "you are not the active player"
 	case errors.Is(err, actions.ErrPlayerCallerMismatch):
 		return protocol.CodeBadRequest, "you cannot act on another player's behalf"
+	case errors.Is(err, actions.ErrNotTurnOrPriority):
+		return protocol.CodeBadRequest, "only the active player or the priority holder can do that"
+	case errors.Is(err, actions.ErrNotVoteInitiator):
+		return protocol.CodeBadRequest, "only the player who called the vote can end it"
+	case errors.Is(err, actions.ErrMarkerNotYours):
+		return protocol.CodeBadRequest, "you can only take this marker for yourself, or release it while you hold it"
 	case errors.Is(err, game.ErrCardCallerMismatch):
 		return protocol.CodeBadRequest, "you do not control that card"
 	case errors.Is(err, game.ErrWrongStep):

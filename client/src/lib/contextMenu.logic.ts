@@ -300,6 +300,18 @@ export function findCard(view: GameView, instanceID: string): CardView | null {
   return null;
 }
 
+// mayClearCombat mirrors the server's gate on clear_combat (and
+// advance_step) from #4131: the active player, the priority holder, or
+// the admin.
+export function mayClearCombat(view: GameView, viewerID: string | null, isAdmin: boolean): boolean {
+  if (isAdmin) return true;
+  if (!viewerID || !view.turn) return false;
+  return (
+    view.seats[view.turn.active_seat]?.id === viewerID ||
+    view.seats[view.turn.priority_holder]?.id === viewerID
+  );
+}
+
 // canOverride mirrors the server's requireCardController gate: a
 // seated player may drive their own cards, an admin may drive
 // anyone's. Showing items the server would bounce is worse than
@@ -1825,7 +1837,17 @@ function damageItems(card: CardView): MenuItem[] {
 // combatItems is the card menu's combat section. `gate` is the frame's
 // FULL lookup when the viewer controls the card (the digest is per
 // seat), and the lookup that knows nothing otherwise.
-function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuItem[] {
+//
+// #4131: "Clear ALL combat" wipes the whole table's declarations, so the
+// server gives it to the active player and the priority holder (and the
+// admin). `mayClearCombat` hides the row for a seat that would be
+// refused rather than offering a click that fails.
+function combatItems(
+  view: GameView,
+  card: CardView,
+  gate: LegalActions,
+  mayClearCombat: boolean,
+): MenuItem[] {
   const items: MenuItem[] = [];
   const defenders = view.seats.filter((s) => s.id !== card.controller && !s.eliminated);
   if (defenders.length > 0) {
@@ -1980,13 +2002,15 @@ function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuIt
       action: { type: "remove_from_combat", params: { instance_id: card.instance_id } },
     });
   }
-  items.push({
-    id: "combat-clear",
-    label: "Clear ALL combat",
-    hint: "wipes every attack and block declaration on the table",
-    danger: true,
-    action: { type: "clear_combat" },
-  });
+  if (mayClearCombat) {
+    items.push({
+      id: "combat-clear",
+      label: "Clear ALL combat",
+      hint: "wipes every attack and block declaration on the table",
+      danger: true,
+      action: { type: "clear_combat" },
+    });
+  }
   return items;
 }
 
@@ -2242,7 +2266,7 @@ export function buildMenuSections(
       sections.push({
         id: "combat",
         label: "combat",
-        items: combatItems(view, card, combatGate),
+        items: combatItems(view, card, combatGate, mayClearCombat(view, viewerID, isAdmin)),
       });
     }
   }

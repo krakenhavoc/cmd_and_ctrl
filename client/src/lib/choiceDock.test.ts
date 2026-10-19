@@ -26,6 +26,7 @@ import {
   isAnyPlayerEachLeg,
   isInlineChoice,
   voteRequest,
+  mayEndVote,
 } from "./choiceDock";
 import { dockKeyAction } from "./dock";
 import type { PendingChoiceView } from "./protocol";
@@ -815,5 +816,21 @@ describe("a per-land any-player offer (ADR 0187 §8)", () => {
     expect(anyPlayerWaiting(pu, seats, "Rhystic Tutor")).toBe(
       "Carol is deciding whether to pay {2} (Bob's Rhystic Tutor)",
     );
+  });
+});
+
+// #4131: the server lets the player who called a vote end it, and any seat
+// once that player has left the table.
+describe("mayEndVote", () => {
+  const vote = { id: "v", topic: "?", options: ["a", "b"], initiator: "b", ballots: {} };
+  it("is the initiator's alone while the initiator is at the table", () => {
+    const seats = [{ id: "a" }, { id: "b" }];
+    expect(mayEndVote(vote, "b", seats)).toBe(true);
+    expect(mayEndVote(vote, "a", seats)).toBe(false);
+    expect(mayEndVote(vote, null, seats)).toBe(false);
+  });
+  it("opens to any seat once the initiator is eliminated or gone", () => {
+    expect(mayEndVote(vote, "a", [{ id: "a" }, { id: "b", eliminated: true }])).toBe(true);
+    expect(mayEndVote(vote, "a", [{ id: "a" }])).toBe(true);
   });
 });

@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-09-10 · Branch `feat/admin-context-menu`
 **Amended:** 2026-09-16 · #170 closeout: the stale #164 references corrected, and the two unshipped items handed to their own issues (see the amendment at the end)
+**Amended:** 2026-10-19 · [#4131](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4131): the table-wide sandbox verbs are gated (see the last amendment)
 **Relabelled:** 2026-10-09 · [ADR 0143](0143-gameplay-settings-overhaul.md) §3.2: the "Enable admin overrides" setting (`gameplay.adminOverrides`, unchanged) is now **Manual card controls on right-click**, under Settings → Gameplay → Advanced.
 **Issue:** [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170)
 
@@ -285,3 +286,54 @@ seat a knower of a hand card.
    in its tooltip.
 8. **Bots.** Not enumerated: it is a sandbox verb, so it is absent from
    `internal/legal` and from the `aiseat` allow-list.
+
+## Amendment (2026-10-19): the table-wide sandbox verbs are gated ([#4131](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4131))
+
+§4 says the menu "grants no authority" because every verb it sends passes
+`requireCardController`. That was true of the verbs that name a card. A
+second group took no caller or ownership check at all, on a "sandbox among
+friends" reading, and #4025's review found the one that is not a marker
+flip: `announce_trigger` put a real stack item on the table under a
+controller of the caller's choosing, naming any card as its source.
+
+**Owner decision (Ian, 2026-10-19): gate the risky ones.** Only the
+affected player, or the controller of the affected card, can use them, and
+there is no table-wide override beyond what already exists for the admin
+(`Caller == uuid.Nil`, which keeps every verb below for repairs). The
+rule per verb, in `actions/actions.go` and `actions/table_verb_gates.go`:
+
+| Verb | Who may send it |
+|---|---|
+| `announce_trigger` | As yourself (`Player` is in `playerScopedActions`), with a source you control (`requireCardController`) |
+| `set_commander_damage` | Only with yourself as the damaged player (`to` is the caller) |
+| `mark_damage` | The card's controller, with a negative delta as with a positive one (it used to be open "so opponents can undo") |
+| `set_goaded` | The creature's controller, who may set or clear any goad on it; any other seat only goads as itself (`by` is the caller). Clearing every goad is the controller's alone |
+| `set_promise` | Either end of the pair (`from` or `to`) |
+| `set_monarch`, `set_initiative` | A seat takes the marker for itself, or releases or hands it on while it holds it. Crowning another seat, or clearing a marker you do not hold, is refused (`ErrMarkerNotYours`) |
+| `advance_step`, `clear_combat` | The active player or the priority holder (`ErrNotTurnOrPriority`), who are the two seats that may pass. While priority is parked for a block declaration the active player is the one |
+| `start_vote` | As yourself (`Player` is in `playerScopedActions`) |
+| `end_vote` | The player who called the vote, or any seat once that player is eliminated or gone, so a vote never sits open for ever (`ErrNotVoteInitiator`) |
+| `counter_spell`, `counter_ability` | Unchanged: the priority holder. A counter effect may name any object on the stack, so the object's controller is the wrong test, and the priority holder is the seat casting the counter |
+
+A seated admin (Caller is its seat, `Action.Admin` set, ADR 0110 §3) keeps
+the card overrides, so the card-controller gates read `overrideCaller` as
+before; it also keeps `advance_step` and `clear_combat`. The player gates
+read `Caller`, as every `playerScopedActions` verb does, so a seated admin
+acts as its own seat there.
+
+What does not change: the bot's improvisation dispatches with
+`Caller == uuid.Nil` (ADR 0033 §8), so its four sandbox verbs are
+untouched; the tutorial table sends nothing in this group; the dev-only
+spawner is an HTTP route, not an action. ADR 0167 §4's sandbox list still
+closes all of these to a controlled turn, before any of these gates run.
+
+**The client** hides what a seat can no longer use rather than failing
+silently. The monarch and initiative buttons were already on a seat's own
+identity only, and the promise `+`/`-` already sends `from: viewer`, so the
+menu and panels already matched. The two that did not: "Clear ALL combat"
+in the card menu is offered only to the active player, the priority holder
+and the admin (`mayClearCombat`), and "end vote" shows only to the player
+who called the vote or, once that player has gone, to any seat
+(`mayEndVote`, in the action dock and in `VotingPanel`). The refusals
+reach the client as `bad_request` frames with a sentence a player can read
+(`ws.classifyActionError`).

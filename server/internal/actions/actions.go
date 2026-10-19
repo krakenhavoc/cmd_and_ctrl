@@ -516,8 +516,10 @@ func unmarshalParams(raw json.RawMessage, actionType Type, dest any) error {
 // move_card, add_counter, set_battlefield_position, declare_attacker,
 // declare_blocker) are gated separately via requireCardController
 // against the card's current Controller — see the case branches in
-// Dispatch. clear_combat is intentionally still loose: it's the
-// "combat is wedged" escape hatch and any seated player may invoke it.
+// Dispatch. The table-wide verbs (advance_step, clear_combat, the
+// monarch and initiative markers, votes, promises, goad, commander
+// damage) are gated in table_verb_gates.go and the cases below
+// (#4131).
 var playerScopedActions = map[Type]struct{}{
 	TypeDrawCard:       {},
 	TypePlayCard:       {},
@@ -542,9 +544,9 @@ var playerScopedActions = map[Type]struct{}{
 	TypeForgetTriggerOrder: {},
 	// Poison and energy follow change_life's posture: the affected
 	// player adjusts their own counters in the sandbox. Monarch and
-	// initiative are NOT player-scoped — any seated player may flip
-	// the marker because card effects routinely make someone else
-	// the monarch.
+	// initiative are NOT player-scoped, because their `Player` is the
+	// seat that takes the marker and a holder may hand it on; they have
+	// their own gate (requireMarkerChange, #4131).
 	TypeSetPoison:           {},
 	TypeSetEnergy:           {},
 	TypeAddPlayerCounter:    {},
@@ -557,10 +559,15 @@ var playerScopedActions = map[Type]struct{}{
 	// another seat.
 	TypeSpecialAction: {},
 	// Cast vote on behalf of self only — the seated voter is the
-	// authoritative caller. start_vote is also self-driven (the
-	// initiator is `Player`) but the "any caller may start a vote"
-	// posture matches set_monarch / set_initiative — not scoped.
-	TypeCastVote: {},
+	// authoritative caller. start_vote is self-driven too (the
+	// initiator is `Player`), and #4131 scopes it: a seat can't call a
+	// vote as another seat, whose name the vote would then carry.
+	TypeCastVote:  {},
+	TypeStartVote: {},
+	// #4131: an announced trigger is put on the stack as `Player`, so a
+	// seat announces only as itself; the source must also be one it
+	// controls (see the announce_trigger case).
+	TypeAnnounceTrigger: {},
 	// ADR 0150 §4: a caster withdraws only their own request for help.
 	TypeCancelAssist: {},
 	// #3955: a seat names a card for its own Wish right, never another's.
@@ -1075,6 +1082,7 @@ func dispatch(g *game.Game, a Action) error {
 	case TypeSetCommanderDamage:
 		// `from` is a COMMANDER CARD instance ID since S25 (#77); it
 		// was an opposing player ID before the CR 903.10a rekey.
+		// #4131: the damaged player's own tally, so `to` is the caller.
 		var p struct {
 			From   string `json:"from"`
 			To     string `json:"to"`
@@ -1090,6 +1098,9 @@ func dispatch(g *game.Game, a Action) error {
 		to, err := uuid.Parse(p.To)
 		if err != nil {
 			return fmt.Errorf("set_commander_damage to: %w", err)
+		}
+		if a.Caller != uuid.Nil && to != a.Caller {
+			return ErrPlayerCallerMismatch
 		}
 		return g.SetCommanderDamage(from, to, p.Amount)
 
@@ -1390,6 +1401,12 @@ func dispatch(g *game.Game, a Action) error {
 		return g.FinishBlocks(a.Player)
 
 	case TypeClearCombat:
+		// #4131: the "combat is wedged" escape hatch, no longer open to
+		// every seat: the active player or the priority holder, as
+		// passing is.
+		if err := requireActiveOrPriority(g, overrideCaller(a)); err != nil {
+			return err
+		}
 		return g.ClearCombat()
 
 	case TypeRemoveFromCombat:
@@ -1434,25 +1451,34 @@ func dispatch(g *game.Game, a Action) error {
 	case TypeAdvanceStep:
 		// Sandbox affordance: advance the step cursor by one without
 		// requiring both players to have passed priority. This is the
-		// "done — next step" button. NOT caller-gated — any seated
-		// player (or admin) can advance the cursor; in casual play
-		// the active player is usually the one driving combat
-		// progression. Auto-resolve combat damage still fires when
-		// the cursor lands on combat_damage (handled inside
-		// game.AdvanceStep).
+		// "done — next step" button. #4131: the active player or the
+		// priority holder (or the admin) may advance the cursor, the
+		// same two seats that may pass. Auto-resolve combat damage
+		// still fires when the cursor lands on combat_damage (handled
+		// inside game.AdvanceStep).
+		if err := requireActiveOrPriority(g, overrideCaller(a)); err != nil {
+			return err
+		}
 		_, err := g.AdvanceStep()
 		return err
 
 	case TypeSetMonarch:
-		// Sandbox affordance — any seated player can flip the marker
-		// (no enforcement of "combat damage transfers monarchy"). Empty
-		// player clears the marker.
+		// Sandbox affordance. #4131: a seat takes the crown for itself,
+		// or releases / hands it on while it holds it; it can't crown
+		// another seat or strip a crown it doesn't wear. Empty player
+		// clears the marker.
+		if err := requireMarkerChange(a.Caller, a.Player, holderOfMarker(g, false)); err != nil {
+			return err
+		}
 		if a.Player == uuid.Nil {
 			return g.SetMonarch(uuid.Nil)
 		}
 		return g.SetMonarch(a.Player)
 
 	case TypeSetInitiative:
+		if err := requireMarkerChange(a.Caller, a.Player, holderOfMarker(g, true)); err != nil {
+			return err
+		}
 		if a.Player == uuid.Nil {
 			return g.SetInitiative(uuid.Nil)
 		}
@@ -1475,6 +1501,14 @@ func dispatch(g *game.Game, a Action) error {
 			by, err = uuid.Parse(p.By)
 			if err != nil {
 				return fmt.Errorf("set_goaded by: %w", err)
+			}
+		}
+		// #4131: the creature's controller may set or clear any goad on
+		// it; anyone else only goads as themself, and clearing every
+		// goad (by uuid.Nil) is the controller's alone.
+		if by == uuid.Nil || by != a.Caller {
+			if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
+				return err
 			}
 		}
 		return g.SetGoaded(instanceID, by)
@@ -1520,9 +1554,12 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("set_promise to: %w", err)
 		}
-		// Sandbox: any seated player may flip a promise marker. The
-		// authoritative thing here is the visual reminder; if it
-		// became contentious the playgroup would self-police.
+		// #4131: the marker is a deal between two players, so either
+		// end of it may change it and no third seat may. The admin
+		// bypasses.
+		if a.Caller != uuid.Nil && a.Caller != from && a.Caller != to {
+			return ErrPlayerCallerMismatch
+		}
 		return g.SetPromise(from, to, p.Count)
 
 	case TypeStartVote:
@@ -1552,6 +1589,11 @@ func dispatch(g *game.Game, a Action) error {
 		return g.CastVote(a.Player, p.Option)
 
 	case TypeEndVote:
+		// #4131: the player who called the vote ends it (any seat, once
+		// that player has left the table).
+		if err := requireVoteInitiator(g, a.Caller); err != nil {
+			return err
+		}
 		_, err := g.EndVote()
 		return err
 
@@ -2767,14 +2809,13 @@ func dispatch(g *game.Game, a Action) error {
 		if err != nil {
 			return fmt.Errorf("mark_damage instance_id: %w", err)
 		}
-		// Caller-gate: positive damage requires controller; negative
-		// is allowed without (admin / opponent undoing damage during
-		// resolution flow). Use requireCardController which already
-		// bypasses for admins.
-		if p.Delta > 0 {
-			if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
-				return err
-			}
+		// Caller-gate (#4131): the card's controller, whichever way the
+		// delta points. A negative delta used to be open to every seat
+		// ("an opponent undoing damage"), which let one seat heal
+		// another's creature. requireCardController already bypasses
+		// for admins.
+		if err := requireCardController(g, overrideCaller(a), instanceID); err != nil {
+			return err
 		}
 		return g.MarkDamage(instanceID, p.Delta)
 
@@ -2800,6 +2841,12 @@ func dispatch(g *game.Game, a Action) error {
 		params, err := buildAbilityParams(p.Label, p.Targets, p.Modes, p.XValue, p.Distribution)
 		if err != nil {
 			return fmt.Errorf("announce_trigger: %w", err)
+		}
+		// #4131: as yourself (playerScopedActions), with a source you
+		// control — a trigger is put on the stack under a controller of
+		// the caller's choosing, so neither half may be someone else's.
+		if err := requireCardController(g, overrideCaller(a), srcID); err != nil {
+			return err
 		}
 		return g.AnnounceTrigger(a.Player, srcID, params)
 

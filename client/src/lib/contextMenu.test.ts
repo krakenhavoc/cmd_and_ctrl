@@ -760,6 +760,22 @@ describe("buildMenuSections — combat", () => {
     expect(itemById(sections, "combat-clear")?.action).toEqual({ type: "clear_combat" });
     expect(itemById(sections, "combat-clear")?.danger).toBe(true);
   });
+
+  // #4131: the server gives clear_combat to the active player, the
+  // priority holder and the admin, so the row is not offered to a seat
+  // that would be refused.
+  it("hides Clear ALL combat from a seat that is neither active nor holding priority", () => {
+    const mine = card("c1", "b");
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [mine],
+      step: "combat_damage",
+    });
+    expect(itemById(buildMenuSections(v, mine, "b", false), "combat-clear")).toBeUndefined();
+    // The admin keeps it, and the priority holder gets it.
+    expect(itemById(buildMenuSections(v, mine, "b", true), "combat-clear")).toBeDefined();
+    v.turn!.priority_holder = 1;
+    expect(itemById(buildMenuSections(v, mine, "b", false), "combat-clear")).toBeDefined();
+  });
 });
 
 describe("buildMenuSections — move payloads", () => {
