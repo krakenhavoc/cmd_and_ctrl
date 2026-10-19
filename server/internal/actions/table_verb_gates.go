@@ -130,3 +130,26 @@ func holderOfMarker(g *game.Game, initiative bool) uuid.UUID {
 	})
 	return holder
 }
+
+// requireTriggerSource gates announce_trigger's source (#4131): a
+// permanent's trigger is its controller's. A source that has left the
+// battlefield also admits its owner and the player who controlled it as
+// it last existed there (CR 603.3a, CR 603.10a), so the player whose
+// stolen creature died can still announce its dies trigger. A third
+// seat is refused. uuid.Nil (admin) bypasses, and an unknown card passes
+// through to the mutation's ErrCardNotFound.
+func requireTriggerSource(g *game.Game, caller, sourceID uuid.UUID) error {
+	if caller == uuid.Nil {
+		return nil
+	}
+	claimants, ok := g.TriggerSourceClaimants(sourceID)
+	if !ok {
+		return nil
+	}
+	for _, c := range claimants {
+		if c == caller {
+			return nil
+		}
+	}
+	return game.ErrCardCallerMismatch
+}

@@ -2845,7 +2845,7 @@ func dispatch(g *game.Game, a Action) error {
 		// #4131: as yourself (playerScopedActions), with a source you
 		// control — a trigger is put on the stack under a controller of
 		// the caller's choosing, so neither half may be someone else's.
-		if err := requireCardController(g, overrideCaller(a), srcID); err != nil {
+		if err := requireTriggerSource(g, overrideCaller(a), srcID); err != nil {
 			return err
 		}
 		return g.AnnounceTrigger(a.Player, srcID, params)

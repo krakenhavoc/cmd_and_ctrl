@@ -304,7 +304,7 @@ rule per verb, in `actions/actions.go` and `actions/table_verb_gates.go`:
 
 | Verb | Who may send it |
 |---|---|
-| `announce_trigger` | As yourself (`Player` is in `playerScopedActions`), with a source you control (`requireCardController`) |
+| `announce_trigger` | As yourself (`Player` is in `playerScopedActions`), with a source you control. Once the source has left the battlefield, its owner and the player who controlled it as it last existed there (the last-known controller on its `EventLTB`, CR 603.3a and 603.10a) also qualify, so a stolen creature's dies trigger can still be announced by its thief (`requireTriggerSource`) |
 | `set_commander_damage` | Only with yourself as the damaged player (`to` is the caller) |
 | `mark_damage` | The card's controller, with a negative delta as with a positive one (it used to be open "so opponents can undo") |
 | `set_goaded` | The creature's controller, who may set or clear any goad on it; any other seat only goads as itself (`by` is the caller). Clearing every goad is the controller's alone |
