@@ -9377,6 +9377,22 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceCopyTarget — "you may have this enter as a copy
+		// of ..." (S16.5; Clone, Sakashima the Impostor, Spark Double).
+		// Same shape as the sacrifice picker: the candidate permanents
+		// inlined as Options so the picker renders faces and the board
+		// can highlight them. Battlefield cards are public, so no
+		// redaction concern. #4027: an earlier merge dropped this block,
+		// so the picker never received a candidate and the table could
+		// not copy anything the client had not already drawn.
+		if c.Kind == game.PendingChoiceCopyTarget && len(c.CopyOptions) > 0 {
+			v.Options = make([]CardView, 0, len(c.CopyOptions))
+			for _, id := range c.CopyOptions {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// The scry family — scry, surveil, plain "look at the top
 		// N, put them back in any order", and ADR 0088's
 		// put_in_library — projects the cards, top-first, as Options. All three are "look at", not
@@ -11025,7 +11041,12 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	// same way; its graveyard candidates are public.
 	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand) ||
 		c.Kind == string(game.PendingChoiceRevealedHandPick)
-	keepUnknown := c.Chooser == viewerID && (ownPool || handPool)
+	// #4027: a copy_target's candidates are battlefield permanents, a
+	// public zone whose cards are already on every viewer's wire (a
+	// face-down one as a back). Dropping one the chooser is not a knower
+	// of would leave it on the board and off the picker.
+	publicPool := c.Kind == string(game.PendingChoiceCopyTarget)
+	keepUnknown := c.Chooser == viewerID && (ownPool || handPool || publicPool)
 	out := make([]CardView, 0, len(cards))
 	for _, card := range cards {
 		known := isKnower(card)
