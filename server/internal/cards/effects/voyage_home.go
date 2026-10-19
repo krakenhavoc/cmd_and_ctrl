@@ -17,11 +17,7 @@ func init() {
 		SelfCostModifiers: []game.CostModifier{
 			AffinityFor("Affinity for artifacts", Artifact()),
 		},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: ctx.Controller(), N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: 3}.Apply(ctx)
-		},
+		// The life waits for a prompt the draws ask (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(DrawCards{N: 3}, GainLife{Amount: 3}),
 	})
 }

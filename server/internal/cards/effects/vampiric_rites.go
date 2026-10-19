@@ -16,8 +16,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // CR 701.21a (it must be one they control).
 func init() {
 	Register(Spec{
-		OracleID: "660de988-b6fb-4f36-8006-42af3e7f908d",
-		Name:     "Vampiric Rites",
+		OracleID:     "660de988-b6fb-4f36-8006-42af3e7f908d",
+		Name:         "Vampiric Rites",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice a creature: You gain 1 life and draw a card.",
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet, Draws: 1},

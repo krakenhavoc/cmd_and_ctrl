@@ -4322,3 +4322,28 @@ other cards after a cast; the permission survives a restore; the lands are held 
 
 Back-out: drop `perm.AnyNumber = true` in `applyBudgeted` and the second cast, the enumerator and the restore tests fail; drop
 `perm.MaxSpellManaValue` and the mana value 6 card is castable, failing the first.
+
+## Amendment 2026-10-19: Shaman's Trance's "as though those cards were in your graveyard" reaches the holder's own permissions (#4177, #4173)
+
+Shaman's Trance (#1987) stored one permission per other seat and left the caster's permissions over "your graveyard"
+(Underworld Breach's escape, Yawgmoth's Will, Lurrus, Muldrotha, a flashback grant) reading the caster's own pile only.
+
+`CastPermission.GraveyardsAreYours` is set on the Trance's own stored grants. While one is live
+(`graveyardPermissionsReachAllLocked`), `permissionReachesPileLocked` (now a `Game` method) lets every permission its holder has
+over THEIR OWN graveyard (a `ZoneOwner` of none) reach a card in any graveyard, so the cast path, the enumerator and the view's
+per-holder stamps all agree. The flag rides the stored grants rather than a new scoped record so a resolved Trance stores no new
+record: `v9/shamans_trance.json` stays a subset of a fresh render.
+
+Two more changes make an offer from a derived permission reachable beside a stored plain one, which Trance + Breach needs:
+`CastPermissionForClaimLocked` also looks at the permissions the holder's permanents give (`standingCastPermissionsLocked`) for
+a claimed alternative cost, and `otherGrantedOffersLocked` lists their offers beside the stored grant's. The per-type ranking
+(`perTypeOthersLocked`) counts the cards of every graveyard under the flag.
+
+A card cast that way is still its owner's and returns to its owner's graveyard (CR 400.3); what such a permission asks of "your
+graveyard" (escape's three exiled cards) is paid from the caster's own.
+
+**Snapshot.** Additive within v9: `seats[].castPermissions[].graveyardsAreYours`. A binary from before this change drops the key
+and reads the Trance as it did, which is weaker than printed, never stronger.
+
+Tests: `cards/effects/shamans_trance_reach_test.go`. Back-out: make `permissionReachesPileLocked` ignore the flag and the Breach
+escape, the end-of-turn and the restore tests fail.

@@ -46,6 +46,12 @@ import (
 // Instruction makes a hand-written function one step, so a body that
 // cannot be spelled with primitive values is split at its prompts into
 // steps instead: each runs whole, and the walk can stop between them.
+//
+// A continuation written as steps (RegisterThenSteps, then_steps.go,
+// #4162) is a fourth site, found again by its registered key. Since a
+// continuation can park while another walk is parked, each walk takes a
+// mark as each step begins (game.StepWalkMark) and parks directly above
+// it, so the walks resume in the order their instructions are written.
 
 // ownsItemEffect is isItemEffectSteps, reached through a variable set at
 // init: Do cannot name it directly, because it reads doStepsOf, whose
@@ -71,22 +77,26 @@ func isItemEffectSteps(item *game.StackItem, steps []Applier) bool {
 }
 
 // stepParker parks the rest of a walk at `path` when the resolution is
-// paused on one of its own prompts, and reports whether it did. Each
-// site has its own; nil means the walk cannot park.
-type stepParker func(ctx *Context, path []int) bool
+// paused on one of its own prompts, and reports whether it did. mark is
+// the parked walks as they stood when the step before path began
+// (#4162, game.StepWalkMark). Each site has its own; nil means the walk
+// cannot park.
+type stepParker func(ctx *Context, path []int, mark game.StepWalkMark) bool
 
 // parkItemEffect is the item's own Effect's site.
-func parkItemEffect(ctx *Context, path []int) bool {
-	return ctx.Game.ParkEffectStepsForEffect(ctx.Item, path)
+func parkItemEffect(ctx *Context, path []int, mark game.StepWalkMark) bool {
+	return ctx.Game.ParkEffectStepsForEffect(ctx.Item, path, mark)
 }
 
 // parkSpellSteps is a spell's OnResolve's site (ResolveSteps).
-func parkSpellSteps(ctx *Context, path []int) bool {
-	return ctx.Game.ParkSpellStepsForEffect(ctx.Item, path)
+func parkSpellSteps(ctx *Context, path []int, mark game.StepWalkMark) bool {
+	return ctx.Game.ParkSpellStepsForEffect(ctx.Item, path, mark)
 }
 
-// parkBulletSteps is a modal bullet's site (ModeSteps).
-func parkBulletSteps(ctx *Context, path []int) bool {
+// parkBulletSteps is a modal bullet's site (ModeSteps). The mode walk
+// parks the bullet's position itself (modeWalk.inner), after every step
+// walk, so the mark is not needed.
+func parkBulletSteps(ctx *Context, path []int, _ game.StepWalkMark) bool {
 	return ctx.Game.ParkBulletStepsForEffect(ctx.Item, ctx.Occurrence(), path)
 }
 
@@ -130,6 +140,12 @@ func walkDoSteps(ctx *Context, steps []Applier, from, at []int, park stepParker)
 	if len(from) > 0 {
 		start = from[0]
 	}
+	// The parked walks as the last step began (#4162): a walk this
+	// one parks goes beneath any a step parked, and above the rest.
+	var mark game.StepWalkMark
+	if park != nil {
+		mark = ctx.Game.StepWalkMarkForEffect()
+	}
 	for i := start; i < len(steps); i++ {
 		// Resuming inside this step's own steps: the step has begun,
 		// so neither the pause check nor an If's condition runs again.
@@ -141,9 +157,10 @@ func walkDoSteps(ctx *Context, steps []Applier, from, at []int, park stepParker)
 			}
 			continue
 		}
-		if !inside && park(ctx, here) {
+		if !inside && park(ctx, here, mark) {
 			return true, nil
 		}
+		mark = ctx.Game.StepWalkMarkForEffect()
 		iff, ok := steps[i].(If)
 		if !ok {
 			if err := steps[i].Apply(ctx); err != nil {

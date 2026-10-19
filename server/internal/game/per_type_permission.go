@@ -353,6 +353,16 @@ func (g *Game) perTypeOthersLocked(holder uuid.UUID, grant *CastPermission, exce
 		if z := g.permissionZoneLocked(grant.PileOwnerFor(holder), grant.Zone); z != nil {
 			pile = z.Cards
 		}
+		// Shaman's Trance (#4177): the holder's graveyard permissions
+		// open every graveyard this turn.
+		if grant.Zone == ZoneGraveyard && grant.ZoneOwner == uuid.Nil && g.graveyardPermissionsReachAllLocked(holder) {
+			pile = nil
+			for _, p := range g.Seats {
+				if p != nil && p.Graveyard != nil {
+					pile = append(pile, p.Graveyard.Cards...)
+				}
+			}
+		}
 	} else {
 		for _, ref := range grant.Cards {
 			if z := g.findCardZoneLocked(ref.ID); z != nil && z.Kind == grant.Zone {

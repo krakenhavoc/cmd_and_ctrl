@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/google/uuid"
 
 // Dream Fracture — Instant {1}{U}{U} (EDHREC rank 4390):
 //
@@ -32,22 +28,27 @@ func init() {
 		Name:         "Dream Fracture",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			victim := uuid.Nil
-			if len(item.Targets) > 0 {
-				if si := ctx.Game.StackItemForEffect(item.Targets[0].ID); si != nil {
-					victim = si.Controller
+		OnResolve: ResolveSteps(
+			// Your draw waits for a prompt their draw asks (CR 608.2c, #4155). The
+			// spell's controller is only known before it is countered, so the counter
+			// and their draw are one step.
+			Instruction(func(ctx *Context) error {
+				item := ctx.Item
+				victim := uuid.Nil
+				if len(item.Targets) > 0 {
+					if si := ctx.Game.StackItemForEffect(item.Targets[0].ID); si != nil {
+						victim = si.Controller
+					}
+					if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if err := (CounterTarget{StackID: item.Targets[0].ID}).Apply(ctx); err != nil {
-					return err
+				if victim != uuid.Nil {
+					return DrawCards{Player: victim, N: 1}.Apply(ctx)
 				}
-			}
-			if victim != uuid.Nil {
-				if err := (DrawCards{Player: victim, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+				return nil
+			}),
+			DrawCards{N: 1},
+		),
 	})
 }

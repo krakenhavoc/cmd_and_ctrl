@@ -1583,9 +1583,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tapCost := g.tapCostForCastParamsLocked(playerID, card, params)
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
+		var chainTotal ParsedCost
+		chainChecked := false
 		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
 			budget = tapPermanentsBudget(tapCost, base, params.XValue)
-			if !tapCost.Empty() && tapCost.InCost {
+			if tapCost.HasChain() {
+				// #4177: a cast that owes more than one tap cost (Hama's
+				// waterbend of a convoke spell). The budget bounds the
+				// list; the split below decides whether each tap pays.
+				untapped := params
+				untapped.TapIDs, untapped.DelveIDs = nil, nil
+				if total, terr := g.costAfterModifiersLocked(base, p, card, untapped); terr == nil {
+					budget = tapChainBudget(tapCost, total, params.XValue)
+					chainTotal, chainChecked = total, true
+				}
+			} else if !tapCost.Empty() && tapCost.InCost {
 				// #3989: a waterbend that IS the cost (Hama's grant)
 				// is measured against the total the modifiers leave,
 				// as an activated ability's is (WaterbendBudget): a
@@ -1607,6 +1619,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				"err", err,
 			)
 			return err
+		}
+		if chainChecked && !g.tapChainPaysLocked(tapCost, chainTotal, params.TapIDs, params.XValue) {
+			slog.Warn("cast_spell rejected: a tapped permanent pays for nothing under the chained tap costs",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"taps_received", len(params.TapIDs),
+			)
+			return ErrInvalidParam
 		}
 	}
 	// ADR 0100 §1, CR 702.66a: the graveyard cards named to delve.
@@ -2212,9 +2232,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if len(params.TapIDs) > 0 && g.tapCostForCastParamsLocked(playerID, card, params).Key == "convoke" {
+	if convoked := g.tapConvokersForCastLocked(p, card, g.tapCostForCastParamsLocked(playerID, card, params), params); len(convoked) > 0 {
 		if item := g.StackMeta[cardID]; item != nil {
-			item.Paid.Convoked = append([]uuid.UUID(nil), params.TapIDs...)
+			item.Paid.Convoked = convoked
 		}
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
@@ -3592,7 +3612,7 @@ func (g *Game) costAfterTapsLocked(cost ParsedCost, p *Player, card Card, params
 		tapCost = TapPermanentsCostFor(CatalogKey(card))
 	}
 	if !tapCost.Empty() {
-		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
+		cost = g.tapPermanentsAdjustedLocked(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
 	return cost
 }
@@ -9316,6 +9336,12 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #4154: under a declaration another player is choosing, the
+	// active player's pass finishes a half of it first
+	// (declaration_control.go).
+	if handled, err := g.attackHandoffPassLocked(); handled {
+		return err
+	}
 	return g.passPriorityAsHolderLocked()
 }
 
@@ -9664,6 +9690,14 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if !card.IsCreature() {
 				return ErrNotACreature
 			}
+			// #4154: another player choosing the attackers
+			// (declaration_control.go) — the declarer stages, the
+			// active player only re-points. A declarer who left
+			// chooses nothing more.
+			g.settleOrphanedHandoffLocked()
+			if err := g.attackHandoffRefusalLocked(card, one.Exert); err != nil {
+				return err
+			}
 			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
 			// restrictions ("can't attack its owner") ride the same
 			// check, refused with a sentence naming them.
@@ -9726,9 +9760,13 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
 				return err
 			}
-			price := g.priceAttackDeclarationLocked(decl)
-			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
-				return err
+			// #4154: under a chosen declaration the costs are the
+			// active player's, paid as they confirm the attacks.
+			if !g.attackTaxDeferredLocked() {
+				price := g.priceAttackDeclarationLocked(decl)
+				if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
+					return err
+				}
 			}
 			// Staged, paid at the lock-in. A re-point keeps a choice
 			// already staged; clear_combat or undo is how it is taken
@@ -9862,6 +9900,26 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// has to be judged on the granted keyword, not the printed one.
 	g.RecomputeLayersIfStaleLocked()
 
+	// #4154: under a declaration another player chose
+	// (declaration_control.go), the active player's half is this verb
+	// naming the chosen attackers, and once both halves are done
+	// nothing more attacks. A declarer who left chooses nothing more.
+	g.settleOrphanedHandoffLocked()
+	if g.attackTargetsPhaseLocked() {
+		return g.confirmAttackTargetsLocked(decls, params)
+	}
+	if g.attackChosenLocked() {
+		return nil, ErrAttackersChosen
+	}
+	deferTax := g.attackTaxDeferredLocked()
+	if deferTax {
+		for _, d := range decls {
+			if d.Exert {
+				return nil, ErrDeclarerCantExert
+			}
+		}
+	}
+
 	// ADR 0080 split what used to be one loop into two passes. The
 	// first decides WHICH entries are declarations; the second stages
 	// them. The CR 508.1a payment goes between, because it is priced
@@ -9892,6 +9950,11 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// is the card's own controller because authorization is
 		// enforced one layer up in actions.Dispatch.
 		if !AttackerEligible(card, card.Controller) {
+			continue
+		}
+		// #4154: a creature whose cost to attack was declined this
+		// combat can't be chosen again.
+		if g.attackDeclinedLocked(card.InstanceID) {
 			continue
 		}
 		// S27: the target may be a player, a planeswalker or a
@@ -9947,16 +10010,21 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// That pre-check is exact rather than optimistic: the seats' mana
 	// pools and untapped permanents are disjoint, so nothing one
 	// payment does can change what another can afford.
-	prices := make([]AttackTaxPrice, len(payers))
-	for i, p := range payers {
-		prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
-		if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
-			return nil, err
+	//
+	// #4154: not under a chosen declaration, whose costs the active
+	// player pays as they confirm it (confirmAttackTargetsLocked).
+	if !deferTax {
+		prices := make([]AttackTaxPrice, len(payers))
+		for i, p := range payers {
+			prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
+			if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
+				return nil, err
+			}
 		}
-	}
-	for i, p := range payers {
-		if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
-			return nil, err
+		for i, p := range payers {
+			if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
+				return nil, err
+			}
 		}
 	}
 

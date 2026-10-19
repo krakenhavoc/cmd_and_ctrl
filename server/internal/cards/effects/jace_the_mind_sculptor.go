@@ -70,17 +70,14 @@ func init() {
 			{
 				Label: "0: Draw three cards, then put two cards from your hand on top of your library in any order.",
 				Cost:  LoyaltyCost(0),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-						return err
-					}
-					return PutFromHandOnTopInAnyOrder{
-						Player: item.Controller,
-						N:      2,
-						Label:  "Jace, the Mind Sculptor — put two cards from your hand on top of your library",
-					}.Apply(ctx)
-				},
+				// The put waits for a prompt the draws ask (CR 608.2c, #4155).
+				Effect: Do(
+					DrawCards{N: 3},
+					PutFromHandOnTopInAnyOrder{
+						N:     2,
+						Label: "Jace, the Mind Sculptor — put two cards from your hand on top of your library",
+					},
+				),
 			},
 			{
 				Label:   "−1: Return target creature to its owner's hand.",

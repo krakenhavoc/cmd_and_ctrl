@@ -24,26 +24,27 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Twisted Sewer-Witch — create a Rat token, then a Wicked Role on each Rat you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (CreateToken{Controller: item.Controller, Template: CantBlockRatToken(), N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					// "Rat" is a word of the source's text (CR 612.2, #3984).
-					rat := ctx.TextSubtype("Rat")
-					var rats []game.Card
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(rat) {
-							rats = append(rats, c)
+				Do(
+					// The Roles wait for a prompt the Rat's creation asks (CR 608.2c, #4155).
+					CreateToken{Template: CantBlockRatToken(), N: 1},
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						// "Rat" is a word of the source's text (CR 612.2, #3984).
+						rat := ctx.TextSubtype("Rat")
+						var rats []game.Card
+						for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+							if c.Controller == item.Controller && c.IsCreature() && c.HasSubtype(rat) {
+								rats = append(rats, c)
+							}
 						}
-					}
-					for _, c := range rats {
-						if err := (CreateRoleToken{Role: RoleWicked, Host: c.InstanceID}).Apply(ctx); err != nil {
-							return err
+						for _, c := range rats {
+							if err := (CreateRoleToken{Role: RoleWicked, Host: c.InstanceID}).Apply(ctx); err != nil {
+								return err
+							}
 						}
-					}
-					return nil
-				}),
+						return nil
+					}),
+				)),
 		},
 	})
 }

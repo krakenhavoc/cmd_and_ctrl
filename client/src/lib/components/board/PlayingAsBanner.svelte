@@ -10,6 +10,10 @@
   //     "Alice is choosing for you" while she answers a prompt of his.
   //   - Everyone else, spectators included, and a control still waiting
   //     for its turn: the text only.
+  //   - #4154 (Master Warcraft): "Choosing Bob's attackers" for the
+  //     player choosing them, "Alice is choosing your blockers" for the
+  //     player chosen for, and, tagged "combat", who chooses this turn
+  //     and the active player's "Alice chose your attackers".
   //
   // What it says is lib/playingAs.ts playingAsBanner's; this draws it.
   import type { PlayerView } from "../../protocol";
@@ -36,7 +40,9 @@
           ? "controlled"
           : line.kind === "scheduled"
             ? "next turn"
-            : "control",
+            : line.kind === "choosing"
+              ? "combat"
+              : "control",
   );
 </script>
 

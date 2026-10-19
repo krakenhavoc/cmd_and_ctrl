@@ -21,17 +21,18 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Siegfried, Famed Swordsman — mill three cards, then +1/+1 counters equal to twice the creature cards in your graveyard",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-						return err
-					}
-					x := 2 * b11CreatureCardsInGraveyard(g, item.Controller)
-					if x == 0 {
-						return nil
-					}
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
-				}),
+				Do(
+					// The counters wait for a prompt the mill asks (CR 608.2c, #4155). The
+					// graveyard is counted again for them, after the mill.
+					MillCards{N: 3},
+					Instruction(func(ctx *Context) error {
+						x := 2 * b11CreatureCardsInGraveyard(ctx.Game, ctx.Item.Controller)
+						if x == 0 {
+							return nil
+						}
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

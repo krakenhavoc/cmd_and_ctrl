@@ -50,15 +50,16 @@ func init() {
 			Cost:      game.AbilityCost{Mana: "{3}"},
 			AnyPlayer: true,
 			Purpose:   game.Purpose{Answers: game.AnswerValue, Draws: 1, ControllerLosesLife: 2},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if info, ok := ctx.SourcePermanent(); ok {
-					if err := g.ChangePlayerLifeForEffect(ctx.Source(), info.Controller, -2); err != nil {
-						return err
+			Effect: Do(
+				// The draw waits for a prompt the life loss asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					if info, ok := ctx.SourcePermanent(); ok {
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), info.Controller, -2)
 					}
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
+					return nil
+				}),
+				DrawCards{N: 1},
+			),
 		}},
 	})
 }

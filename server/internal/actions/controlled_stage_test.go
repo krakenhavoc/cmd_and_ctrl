@@ -43,6 +43,11 @@ func TestControlledVerbAllowedPerStage(t *testing.T) {
 			typeSet(TypePassPriority, TypeCastSpell, TypeActivateAbility,
 				TypeActivateLoyalty, TypeActivateManaAbility, TypeSpecialAction, TypeOutsidePlay,
 				TypeDeclareAttacker, TypeDeclareAttackers, TypeResolveChoice)},
+		// #4154: Master Warcraft's declarer makes one declaration for
+		// the player, and nothing else.
+		{"master warcraft, a declaration chosen for the player", game.ControlDeclaring,
+			typeSet(TypeDeclareAttacker, TypeDeclareAttackers, TypePassPriority,
+				TypeDeclareBlocker, TypeDeclareBlockers, TypeFinishBlocks)},
 		{"a stage that is waiting, not live", game.ControlAwaitingTurn, typeSet()},
 		{"a combat stage that is waiting, not live", game.ControlAwaitingCombat, typeSet()},
 		{"no live control", "", typeSet()},

@@ -42,20 +42,30 @@ func init() {
 				TargetPermanent("target enchantment", Enchantment())),
 			Mode("Draw a card. Create a Food token."),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			switch {
-			case ctx.HasMode(0), ctx.HasMode(1):
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				item := ctx.Item
+				if !ctx.HasMode(0) && !ctx.HasMode(1) {
+					return nil
+				}
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
 				return DestroyTarget{Target: item.Targets[0].ID}.Apply(ctx)
-			case ctx.HasMode(2):
-				if err := (DrawCards{Player: ctx.Controller(), N: 1}).Apply(ctx); err != nil {
-					return err
+			}),
+			// The Food waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if ctx.HasMode(0) || ctx.HasMode(1) || !ctx.HasMode(2) {
+					return nil
 				}
-				return CreateToken{Controller: ctx.Controller(), Template: FoodToken(), N: 1}.Apply(ctx)
-			}
-			return nil
-		},
+				return DrawCards{N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.HasMode(0) || ctx.HasMode(1) || !ctx.HasMode(2) {
+					return nil
+				}
+				return CreateToken{Template: FoodToken(), N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

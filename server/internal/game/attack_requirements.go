@@ -278,6 +278,13 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 		if !AttackerEligible(c, ap) {
 			continue
 		}
+		// #4154: a creature whose cost to attack its controller
+		// declined can't attack this combat, and CR 508.1d asks no
+		// requirement of it ("that player is not required to pay
+		// that cost").
+		if g.attackDeclinedLocked(c.InstanceID) {
+			continue
+		}
 		reqs := g.attackRequirementsOfLocked(c)
 		if len(reqs) == 0 {
 			continue

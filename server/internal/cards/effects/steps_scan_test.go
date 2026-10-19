@@ -480,10 +480,18 @@ func scanSequence(sc *stepsScanner, body *ast.BlockStmt, flat bool) []stepsFindi
 				return false
 			case *ast.BlockStmt:
 				if n != body {
+					if clauseList(n) {
+						// A switch's clauses are exclusive arms, not a
+						// sequence (#4162): each is scanned on its own.
+						return true
+					}
 					out = append(out, scanSequence(sc, n, false)...)
 					return false
 				}
 			case *ast.CaseClause:
+				out = append(out, scanSequence(sc, &ast.BlockStmt{List: n.Body}, false)...)
+				return false
+			case *ast.CommClause:
 				out = append(out, scanSequence(sc, &ast.BlockStmt{List: n.Body}, false)...)
 				return false
 			}
@@ -491,6 +499,22 @@ func scanSequence(sc *stepsScanner, body *ast.BlockStmt, flat bool) []stepsFindi
 		})
 	}
 	return out
+}
+
+// clauseList reports whether a block is a switch's or a select's body:
+// a list of clauses, of which one runs.
+func clauseList(b *ast.BlockStmt) bool {
+	if len(b.List) == 0 {
+		return false
+	}
+	for _, st := range b.List {
+		switch st.(type) {
+		case *ast.CaseClause, *ast.CommClause:
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 var stepsPos *token.FileSet
@@ -611,6 +635,27 @@ var stepsConverted = setOf(
 	"Consuming Corruption", "Forge of Heroes", "Valgavoth, Harrower of Souls", "Persistent Constrictor",
 	"Flumph", "Lazotep Plating", "Momentous Fall", "Wan Shi Tong, Librarian", "Wheel of Fortune",
 	"Expropriate", "Will of the Abzan", "Zack Fair",
+	// #4162/#4163: continuations written as steps (#4162) and what one step
+	// hands the next (#4163). Currency Converter's pair was two arms of one
+	// if, now one instruction.
+	"Arcane Denial", "Braids, Arisen Nightmare", "Forgotten Ancient", "Twilight Prophet", "Scavenging Ooze",
+	"Seize the Spotlight", "Disciple of Freyalise", "Disciple of Bolas", "Replicating Ring",
+	"Bonehoard Dracosaur", "Midnight Clock", "Currency Converter", "Court of Ambition", "Transpose",
+	"Sylvan Library", "Martial Coup", "Windfall", "Dark Deal", "Tolarian Winds", "Cut a Deal",
+	// Batch 3.
+	"Finale of Glory", "Lifestream's Blessing", "Beacon of Immortality", "Farmer Cotton",
+	"Xantcha, Sleeper Agent", "Ravenous Squirrel", "Damnable Pact", "Extract from Darkness",
+	"Jace, the Mind Sculptor", "Lord of the Nazgûl", "Bloodgift Demon", "Ambition's Cost",
+	"Tidus, Yuna's Guardian", "Flick a Coin", "Voyage Home", "Reckoner's Bargain",
+	"Teferi, Hero of Dominaria", "Sorin Markov", "Tyvar Kell", "Dark Prophecy", "Sword of Body and Mind",
+	"Moogles' Valor", "Thoughtseize", "Liliana's Triumph", "Compulsive Research", "Cloud, Ex-SOLDIER",
+	"Dream Fracture", "Pawpatch Formation", "Agonasaur Rex", "Fevered Visions", "Nightshade Harvester",
+	"Moria Scavenger", "Rush of Inspiration", "The Wandering Emperor", "Lord Skitter's Blessing",
+	"The Speed Demon", "Curse of Fool's Wisdom", "Great Intelligence's Plan", "Aquitect's Will",
+	"Dreamdew Entrancer", "Siegfried, Famed Swordsman", "Davros, Dalek Creator", "Kiora, the Crashing Wave",
+	"Phlage, Titan of Fire's Fury", "Sorin the Mirthless", "Derelict Attic // Widow's Walk",
+	"Rejoin the Fight", "Meat Locker // Drowned Diner", "Dr. Eggman", "Contaminated Drink",
+	"Twisted Sewer-Witch",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -623,55 +668,48 @@ var stepsConverted = setOf(
 //     asks nothing;
 //   - one batch: both statements are inside one simultaneous damage or draw
 //     instance, which is a single event (CR 120.2);
-//   - disjoint players: the two statements act on different players;
-//   - a Then: the later statement is in a continuation (a Then, a callback)
-//     that no step walk parks inside. The seam is #4162;
-//   - carried: a later step needs a count or ids the earlier one produced, and
-//     the game keeps no record to re-read. The seam is #4163.
+//   - disjoint players: the two statements act on different players.
+//
+// A continuation (a Then, a callback) is written as RegisterThenSteps
+// (#4162), and a count or ids a later step needs goes through the step
+// record (#4163), so neither is a reason any more. The arms of one
+// switch are not scanned as a sequence (clauseList), so a switch needs
+// no entry either.
 //
 // TestSkippedBodiesAreStillFlagged fails if an entry is stale.
 var stepsSkipped = map[string]string{
-	"Arcane Denial":              "a Then: ChooseNumber's Then draws for the victim, then for the caster (#4162)",
-	"Abrade":                     "exclusive arms of one switch",
 	"Herald's Horn":              "no prompt: a reveal, then the bounce, inside a MayChoice's OnYes",
-	"Windfall":                   "carried: the largest hand discarded sets every draw (#4163)",
-	"Dark Deal":                  "carried: each player draws the hand they discarded less one (#4163)",
-	"Tolarian Winds":             "carried: the number of cards discarded is the number drawn (#4163)",
-	"Boros Charm":                "exclusive arms of one switch",
-	"Izzet Charm":                "exclusive arms of one switch",
-	"Archdruid's Charm":          "exclusive arms of one switch",
-	"Sylvan Library":             "the draw is a step now; the pay-life branch is a cost that settles in one step and then chains its next question through a Then (#793, #4162)",
-	"Braids, Arisen Nightmare":   "a Then: the sacrifice's continuation (#4162)",
-	"Forgotten Ancient":          "a Then: the counters' continuation (#4162)",
 	"Geier Reach Sanitarium":     "each player draws and then discards in turn: one loop over the players",
-	"Disciple of Freyalise":      "a Then: the callback of maySacrificeOne (#4162)",
-	"Disciple of Bolas":          "a Then: the callback of the sacrifice (#4162)",
 	"Chandra's Ignition":         "one batch: the damage to each creature and opponent is one instance",
-	"Rip Apart":                  "one batch: one damage instance, and the modes are exclusive",
 	"Tibalt's Trickery":          "no prompt: the number is picked at random",
 	"Tribute to the World Tree":  "exclusive arms: a draw, or the counters",
 	"Plaguecrafter":              "disjoint players: the discards are for players with nothing to sacrifice",
-	"Midnight Clock":             "a Then: the callback of the tuck (#4162)",
 	"Krenko, Tin Street Kingpin": "exclusive arms: Krenko left, or the counter's Then",
-	"Cut a Deal":                 "carried: the caster draws as many cards as the opponents drew (#4163)",
-	"Twilight Prophet":           "a Then: the callback of the ChooseNumber (#4162)",
 	"Sheoldred's Edict":          "exclusive arms of one mode switch",
 	"Painful Quandary":           "exclusive arms: the life loss or the question",
-	"Genesis Wave":               "no prompt: a reveal, and the cards it names are carried (#4163)",
-	"Martial Coup":               "carried: the Soldiers just made are spared by id (#4163)",
-	"Coiling Oracle":             "no prompt: a reveal, and the card is carried (#4163)",
-	"Bonehoard Dracosaur":        "a Then: the callback of the impulse exile (#4162)",
-	"Scavenging Ooze":            "a Then: the counter's continuation (#4162)",
-	"Replicating Ring":           "a Then: the callback of the counter (#4162)",
-	"Seize the Spotlight":        "a Then: the callback of the option pick (#4162)",
+	"Genesis Wave":               "no prompt: a reveal asks nothing, so the cards it names need no step record",
+	"Coiling Oracle":             "no prompt: a reveal asks nothing, so the card needs no step record",
 	"Mogis, God of Slaughter":    "exclusive arms: the sacrifice, or the damage",
-	"Animist's Awakening":        "no prompt: a reveal, and the cards are carried (#4163)",
-	"Currency Converter":         "a Then: the callback of the graveyard move (#4162)",
-	"Thrasios, Triton Hero":      "no prompt: a reveal inside the scry's Then (#4162)",
-	"Court of Ambition":          "a Then: the callbacks of the choice (#4162)",
+	"Animist's Awakening":        "no prompt: a reveal asks nothing, so the cards need no step record",
+	"Thrasios, Triton Hero":      "no prompt: a reveal inside the scry's Then",
 	"Fangs of Kalonia":           "exclusive arms: overloaded, or the target",
-	"Transpose":                  "the draw is a step now; the life loss and the Wizard are in the discard's Then (#4162)",
 	"Cosmos Elixir":              "exclusive arms: a draw, or the life",
+	// Batch 3.
+	"Urza's Bauble":              "no prompt: a random pick from a hand, and a private look",
+	"Exalted Flamer of Tzeentch": "no prompt: the card is picked at random",
+	"Deadbridge Chant":           "no prompt: the card is picked at random",
+	"Twist Reality":              "exclusive arms of one mode switch",
+	"Path of Discovery":          "exclusive arms: the explore by object, or by id",
+	"Vexing Radgull":             "exclusive arms: the rad counters, or the proliferate",
+	"Shelinda, Yevon Acolyte":    "exclusive arms: the counter goes on the smaller of the two",
+	"Ravenous Tyrannosaurus":     "one batch: the damage and its excess to the controller are one instruction (CR 120.4a)",
+	"Fear, Fire, Foes!":          "one batch: one damage instance",
+	"Dragonspark Reactor":        "one batch: one damage instance",
+	"Hell to Pay":                "carried: the Treasures are the excess over lethal damage, a count only the damage step knows (#4163)",
+	"Contest of Claws":           "carried: the discover number is the excess over lethal damage, a count only the damage step knows (#4163)",
+	"Awaken the Erstwhile":       "carried: each player's Zombies are the cards they discarded (#4163)",
+	"Decaying Time Loop":         "carried: the number of cards discarded is the number drawn (#4163)",
+	"Lagomos, Hand of Hatred":    "carried: the delayed sacrifice names the token just made (#4163)",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

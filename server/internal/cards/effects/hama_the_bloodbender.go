@@ -31,17 +31,19 @@ import (
 // picks up is paid with mana (CR 701.67b). A spell with {X} in its cost
 // is cast with X 0 (CR 107.3b).
 //
-// SIMPLIFICATION (weaker than printed): the engine carries one tap cost
-// per cast, so under this permission the waterbend replaces any convoke
-// or improvise the spell would otherwise have.
+// The spell keeps any convoke or improvise it has, its own or granted
+// (#4177, ADR 0073's 2026-10-19 amendment): the waterbend and that tap
+// cost are chained on the one cast (game.TapPermanentsCost.Also), and
+// the engine shares the tapped permanents between them. The waterbend's
+// taps pay only its {N} (CR 701.67b); a convoke or improvise tap pays
+// any other part of the total, a tax for instance (CR 702.51a, 702.126a).
+// A waterbend of the spell's own (Waterbender's Restoration) is still
+// owed beside it. No simplification remains.
 func init() {
 	Register(Spec{
 		OracleID:     "ef80e174-78e8-412d-a6fe-89c7af746669",
 		Name:         "Hama, the Bloodbender",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A spell cast this way can't also use convoke or improvise.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Hama — target opponent mills three cards; exile up to one noncreature, nonland card from their graveyard", hamaEnters),

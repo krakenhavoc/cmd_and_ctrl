@@ -28,8 +28,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // modelled on the shared token (see PowerstoneToken in tokens.go).
 func init() {
 	Register(Spec{
-		OracleID: "8315aa34-08b8-403e-a2e6-796a2d6978ad",
-		Name:     "Stern Lesson",
+		OracleID:     "8315aa34-08b8-403e-a2e6-796a2d6978ad",
+		Name:         "Stern Lesson",
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
 				return err

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Compulsive Research — Sorcery {2}{U} (EDHREC rank 4386):
 //
@@ -53,48 +57,64 @@ func init() {
 		Targets:      TargetPlayer("target player"),
 		// The discard is two cards, or one land card: the printed two.
 		Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 3, Discards: 2}),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		OnResolve: ResolveSteps(
+			// The discard waits for a prompt the draws ask (CR 608.2c, #4155). The hand
+			// is counted again for it: the discard is a choice from what is there.
+			Instruction(func(ctx *Context) error {
+				if who, ok := compulsiveResearchTarget(ctx); ok {
+					return DrawCards{Player: who, N: 3}.Apply(ctx)
+				}
 				return nil
-			}
-			who := item.Targets[0].ID
-			if err := (DrawCards{Player: who, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			p := ctx.Game.PlayerByIDForEffect(who)
-			if p == nil {
-				return nil
-			}
-			switch len(p.Hand.Cards) {
-			case 0:
-				return nil
-			case 1:
-				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			}),
+			Instruction(func(ctx *Context) error {
+				who, ok := compulsiveResearchTarget(ctx)
+				if !ok {
+					return nil
+				}
+				p := ctx.Game.PlayerByIDForEffect(who)
+				if p == nil {
+					return nil
+				}
+				if len(p.Hand.Cards) == 0 {
+					return nil
+				}
+				prompt := game.DiscardPrompt{
 					Player:   who,
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Compulsive Research — discard your last card",
-				})
-			default:
-				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player:   who,
-					Source:   ctx.Source(),
-					N:        2,
-					Min:      1,
-					Question: "Compulsive Research — discard two cards, or one land card",
-					Validate: func(picked []game.Card) bool {
-						switch len(picked) {
-						case 2:
-							return true
-						case 1:
-							return picked[0].IsLand()
-						default:
-							return false
-						}
-					},
-				})
-			}
-			return nil
-		},
+				}
+				if len(p.Hand.Cards) > 1 {
+					prompt = game.DiscardPrompt{
+						Player:   who,
+						Source:   ctx.Source(),
+						N:        2,
+						Min:      1,
+						Question: "Compulsive Research — discard two cards, or one land card",
+						Validate: func(picked []game.Card) bool {
+							switch len(picked) {
+							case 2:
+								return true
+							case 1:
+								return picked[0].IsLand()
+							default:
+								return false
+							}
+						},
+					}
+				}
+				ctx.Game.QueueDiscardChoiceForEffect(prompt)
+				return nil
+			}),
+		),
 	})
+}
+
+// compulsiveResearchTarget is the targeted player, or false when the target is gone.
+func compulsiveResearchTarget(ctx *Context) (uuid.UUID, bool) {
+	item := ctx.Item
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return uuid.Nil, false
+	}
+	return item.Targets[0].ID, true
 }

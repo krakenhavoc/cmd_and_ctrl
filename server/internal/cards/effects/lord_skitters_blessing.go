@@ -38,16 +38,14 @@ func init() {
 					return ev.Actor == source.Controller && controlsEnchantedCreature(g, source.Controller)
 				},
 				Key: "Lord Skitter's Blessing — lose 1 life and draw an additional card",
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if !controlsEnchantedCreature(g, item.Controller) {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					if err := g.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -1); err != nil {
-						return err
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				},
+				// The draw waits for a prompt the life loss asks (CR 608.2c, #4155). The
+				// enchanted creature is checked once, as the ability begins.
+				Effect: Do(If{
+					Cond: CondBoard{Name: "you control an enchanted creature", Test: func(ctx *Context) bool {
+						return controlsEnchantedCreature(ctx.Game, ctx.Item.Controller)
+					}},
+					Then: []Applier{GainLife{Amount: -1}, DrawCards{N: 1}},
+				}),
 			},
 		},
 	})

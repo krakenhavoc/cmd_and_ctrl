@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Tolarian Winds — Instant {1}{U} (EDHREC rank 3152):
 //
 //	"Discard all the cards in your hand, then draw that many cards."
@@ -18,12 +16,20 @@ func init() {
 		OracleID:     "686cce6e-18ec-45b0-8d2e-74fa353a905e",
 		Name:         "Tolarian Winds",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			n, err := discardWholeHand(ctx.Game, item.Controller)
-			if err != nil {
+		// The draw waits for a prompt the discard asks (a madness offer;
+		// CR 608.2c), and reads the count from the step record (#4163).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				n, err := discardWholeHand(ctx.Game, ctx.Controller())
+				ctx.RecordStep(tolarianWindsRecord, nil, n)
 				return err
-			}
-			return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				return DrawCards{N: ctx.StepRecord(tolarianWindsRecord).N()}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// tolarianWindsRecord is the number of cards discarded.
+const tolarianWindsRecord = "tolarian-winds/discarded"

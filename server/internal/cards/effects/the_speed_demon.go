@@ -22,17 +22,16 @@ func init() {
 		PrintedKeywords: []string{"flying", "trample", StartYourEngines},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("The Speed Demon — draw X cards and lose X life, where X is your speed",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					x := YourSpeed(g, item.Controller)
-					if x <= 0 {
-						return nil
-					}
-					if err := (DrawCards{N: x}).Apply(ctx); err != nil {
-						return err
-					}
-					return g.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -x)
-				}),
+				Do(
+					// The life loss waits for a prompt the draws ask (CR 608.2c, #4155). Speed
+					// is read again for it: drawing does not change it.
+					Instruction(func(ctx *Context) error {
+						return DrawCards{N: YourSpeed(ctx.Game, ctx.Item.Controller)}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						return GainLife{Amount: -YourSpeed(ctx.Game, ctx.Item.Controller)}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

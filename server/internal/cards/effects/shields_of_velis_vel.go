@@ -32,6 +32,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "7ad6be4e-5c3c-4633-a641-beb06e4129b9",
 		Name:            "Shields of Velis Vel",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordChangeling},
 		Targets:         TargetPlayer("target player"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

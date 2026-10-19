@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // clone.go gives Game a deep-copy snapshot used by the undo stack
 // and (later) replay machinery. The exported Snapshot already
@@ -196,6 +200,8 @@ func (g *Game) cloneLocked() *Game {
 		out.Vote = cloneVote(g.Vote)
 	}
 	out.PlayerControls = clonePlayerControls(g.PlayerControls)
+	out.DeclarationControls = slices.Clone(g.DeclarationControls)
+	out.AttackHandoff = cloneAttackHandoff(g.AttackHandoff)
 	// PendingChoices: deep-copy pointers.
 	if len(g.PendingChoices) > 0 {
 		out.PendingChoices = make([]*PendingChoice, len(g.PendingChoices))
@@ -542,6 +548,8 @@ func (g *Game) cloneLocked() *Game {
 	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
 	// #4012: the effect steps parked behind that paused prompt.
 	out.pausedStepWalk = cloneStepWalk(g.pausedStepWalk)
+	// #4163: what an earlier step handed a later one.
+	out.stepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of that resolution, parked behind the same prompt.
 	out.pausedResolutionTail = cloneResolutionTail(g.pausedResolutionTail)
 	if len(g.replacementsAppliedThisEvent) > 0 {
@@ -1260,6 +1268,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Promises = src.Promises
 	g.Vote = src.Vote
 	g.PlayerControls = src.PlayerControls
+	g.DeclarationControls = src.DeclarationControls
+	g.AttackHandoff = src.AttackHandoff
 	// The event log is TRUNCATED to the snapshot's length, not
 	// copied back into place: src.Events is the same backing array
 	// this game has been appending to, capped at the length it had
@@ -1339,6 +1349,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
 	g.pausedStepWalk = src.pausedStepWalk
+	g.stepRecords = src.stepRecords
 	g.pausedResolutionTail = src.pausedResolutionTail
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054

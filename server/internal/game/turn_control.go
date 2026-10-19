@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // turn_control.go — controlling another player's whole turn (CR 723.1,
 // ADR 0167, #2164): Emrakul, the Promised End's "you gain control of
@@ -190,6 +194,11 @@ func (g *Game) endTurnControlsLocked() {
 // ControllerOfPlayerLocked reads), or "" when nobody controls p. Caller
 // must hold g.mu (read or write).
 func (g *Game) ControlUntilOfPlayerLocked(p uuid.UUID) ControlUntil {
+	// #4154: a declaration being made for p comes first, as
+	// ControllerOfPlayerLocked has it.
+	if r, ok := g.declarationControlOverLocked(p); ok && g.playerControllerLocked(r.Declarer) != p {
+		return ControlUntilDeclarations
+	}
 	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
 		r := g.PlayerControls[i]
 		if r.Controlled == p && g.controlLiveLocked(r) {
@@ -213,6 +222,9 @@ func (g *Game) ControlUntilOfPlayer(p uuid.UUID) ControlUntil {
 // send as p (CR 723.5b, ADR 0166 amendment of 2026-10-19). Caller must
 // hold g.mu (read or write).
 func (g *Game) ControlStageOfPlayerLocked(p uuid.UUID) ControlStage {
+	if r, ok := g.declarationControlOverLocked(p); ok && g.playerControllerLocked(r.Declarer) != p {
+		return ControlDeclaring
+	}
 	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
 		r := g.PlayerControls[i]
 		if r.Controlled == p && g.controlLiveLocked(r) {
@@ -281,9 +293,15 @@ func (g *Game) ScheduledPlayerControlsLocked() []PlayerControl {
 // the same player (a Word of Command's under it, or a second Emrakul's)
 // is not listed. Caller must hold g.mu.
 func (g *Game) LivePlayerControlsLocked() []PlayerControl {
-	var out []PlayerControl
+	// #4154: a declaration being made for a player is listed for them,
+	// and takes precedence over a record that controls them.
+	declaring := g.declarationControlsLiveLocked()
+	out := declaring
 	for i, r := range g.PlayerControls {
 		if !g.controlLiveLocked(r) {
+			continue
+		}
+		if slices.ContainsFunc(declaring, func(d PlayerControl) bool { return d.Controlled == r.Controlled }) {
 			continue
 		}
 		newer := false

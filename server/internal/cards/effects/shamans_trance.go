@@ -37,19 +37,20 @@ import (
 // abilities of cards in other players' graveyards (unearth, embalm,
 // scavenge) are not opened (the other 2004-10-04 ruling).
 //
-// Simplification, declared: a permission the CASTER holds over "your
-// graveyard" (Underworld Breach's escape, Lurrus, Muldrotha) does not
-// reach the other graveyards. Shaman's Trance itself already lets those
-// cards be cast at their printed cost, so what is lost is the extra
-// price such a permanent would offer. That is the weaker direction.
+// The caster's own permissions over "your graveyard" reach the other
+// graveyards too (#4177): Underworld Breach's escape, Yawgmoth's Will,
+// Lurrus, Muldrotha and a flashback grant each speak of the cards in the
+// caster's graveyard, and a flag on the Trance's own grants
+// (CastPermission.GraveyardsAreYours, read by permissionReachesPileLocked)
+// makes the cards in every graveyard count as theirs. A card cast that
+// way is still its owner's and returns to the owner's graveyard
+// (CR 400.3); what such a permission asks of the caster's own graveyard
+// (escape's exile of other cards) is paid from the caster's own.
 func init() {
 	Register(Spec{
 		OracleID:     shamansTranceOracle,
 		Name:         shamansTranceName,
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Your own cards that give the cards in your graveyard a way to be cast, such as Underworld Breach, don't reach the cards in other players' graveyards.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			shamansTranceResolve(ctx.Game, ctx.Source(), ctx.Controller())
 			return nil
@@ -82,6 +83,9 @@ func shamansTranceResolve(g *game.Game, source, controller uuid.UUID) {
 			ZoneOwner: other,
 			Source:    source,
 			Label:     "Play from other players' graveyards (" + shamansTranceName + ")",
+			// "As though those cards were in your graveyard": your
+			// graveyard permissions reach these piles too (#4177).
+			GraveyardsAreYours: true,
 		})
 	}
 }

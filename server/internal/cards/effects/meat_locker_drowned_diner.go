@@ -30,13 +30,14 @@ func init() {
 		)}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorRight, "Drowned Diner — draw three cards, then discard a card",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := (DrawCards{Player: item.Controller, N: 3}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-					g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: item.Controller, Source: item.SourceCardID, N: 1})
-					return nil
-				}),
+				Do(
+					// The discard waits for a prompt the draws ask (CR 608.2c, #4155).
+					DrawCards{N: 3},
+					Instruction(func(ctx *Context) error {
+						ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: ctx.Item.Controller, Source: ctx.Item.SourceCardID, N: 1})
+						return nil
+					}),
+				)),
 		}},
 	}))
 }

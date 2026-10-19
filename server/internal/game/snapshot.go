@@ -64,6 +64,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -438,6 +439,13 @@ type GameSnapshot struct {
 	// nobody, or the controlled player making their own decisions.
 	PlayerControls []PlayerControl `json:"playerControls,omitempty"`
 
+	// DeclarationControls and AttackHandoff are #4154's "you choose
+	// which creatures attack / block" effects and this combat's attack
+	// declaration under one. Carried: a restore that dropped them would
+	// hand the declaration back to the players mid-way. Additive in v9.
+	DeclarationControls []DeclarationControl `json:"declarationControls,omitempty"`
+	AttackHandoff       *AttackHandoff       `json:"attackHandoff,omitempty"`
+
 	PendingChoices []pendingChoiceSnapshot `json:"pendingChoices,omitempty"`
 
 	Events   []Event `json:"events,omitempty"`
@@ -479,6 +487,12 @@ type GameSnapshot struct {
 	// step queued. A file written before it restores nil, which is the
 	// old behaviour (the later steps had already run). No schema bump.
 	PausedStepWalk *stepWalkSnapshot `json:"pausedStepWalk,omitempty"`
+
+	// StepRecords is Game.stepRecords (#4163, step_record.go): what an
+	// earlier step of the open resolution handed a later one. A file
+	// written before it restores none, which is the old behaviour (no
+	// step read one). No schema bump.
+	StepRecords []stepRecordEntry `json:"stepRecords,omitempty"`
 
 	// PausedResolutionTail is Game.pausedResolutionTail (#3613,
 	// resolution_tail.go): the end of a resolution parked behind one of
@@ -2196,6 +2210,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		s.Vote = cloneVote(g.Vote)
 	}
 	s.PlayerControls = clonePlayerControls(g.PlayerControls)
+	s.DeclarationControls = slices.Clone(g.DeclarationControls)
+	s.AttackHandoff = cloneAttackHandoff(g.AttackHandoff)
 
 	if len(g.PendingChoices) > 0 {
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
@@ -2229,6 +2245,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// #4012: an effect's later steps parked behind one of them
 	// (step_walk.go).
 	s.PausedStepWalk = snapshotStepWalk(g, g.pausedStepWalk, cen)
+	// #4163: what an earlier step handed a later one, plain data.
+	s.StepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
 
@@ -3102,6 +3120,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.resolutionOpen = s.ResolutionOpen
 	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
 	g.pausedStepWalk = restoreStepWalk(s.PausedStepWalk)
+	g.stepRecords = cloneStepRecords(s.StepRecords)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
@@ -3250,6 +3269,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.Vote = cloneVote(s.Vote)
 	}
 	g.PlayerControls = clonePlayerControls(s.PlayerControls)
+	g.DeclarationControls = slices.Clone(s.DeclarationControls)
+	g.AttackHandoff = cloneAttackHandoff(s.AttackHandoff)
 
 	if len(s.PendingChoices) > 0 {
 		g.PendingChoices = make([]*PendingChoice, len(s.PendingChoices))

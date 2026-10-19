@@ -2708,3 +2708,28 @@ undo ring; ADR 0148's load test should be re-run with both.
 Set `CMDCTRL_RESTORE_POINT_INTERVAL=0` to write on every commit again
 (no deploy needed beyond the env). Reverting the change restores the
 whole-file marshal; files written either way read the same.
+
+## Amendment — 2026-10-19: continuation steps and the step record (#4162, #4163)
+
+ADR 0065's amendment of 2026-10-19 (b) holds the mechanism. What it adds
+here, against P3 and P9:
+
+- **A new key class.** A continuation written as steps
+  (`effects.RegisterThenSteps`) is found again by an on-disk key, never by
+  a closure. The key shares the effect-key namespace (`checkEffectKey`) and
+  the ledger, as `steps <key>`. A restore point whose parked walk names a
+  key this binary lacks is refused (`checkEffectKeys`, `ErrUnknownEffectKey`),
+  like an unknown body. The keys are never renamed or reused.
+- **The parked walk is a chain.** `stepWalk.outer` is one new route from
+  `Game` to a func (through the walk's stack item), classed `keyed` like
+  `stepWalk.item`: each item on it names its catalog row (P9), so a restore
+  re-derives its Effect. No `census:` or `transient` ceiling moves.
+- **The step record is plain data.** `Game.stepRecords` holds the IDs and
+  numbers one step hands a later one, keyed by the item and a name. It has
+  no func, so it adds no route. Clone and the snapshot carry it
+  (`GameSnapshot.StepRecords`, additive in v9). It is dropped as each
+  resolution closes, so a restore point holds a record only while a
+  resolution is paused.
+- **Back-out.** Drop `StepRecords` from the restore, and the probe in
+  `effects/then_steps_test.go` draws nothing after a strict restore taken
+  mid-pause.

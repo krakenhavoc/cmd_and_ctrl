@@ -39,7 +39,9 @@ import (
 // "May draw UP TO two" is a real number prompt (ChooseNumber, 0 to 2)
 // asked of the countered spell's controller when the trigger resolves;
 // the caster's own draw follows the answer, so the two draws keep the
-// printed order. A victim who has left the table is not asked.
+// printed order. The draws after the answer are continuation steps
+// (#4162), so the caster's waits for a prompt the victim's draw asks,
+// such as a dredge offer. A victim who has left the table is not asked.
 func init() {
 	Register(Spec{
 		OracleID:     "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37",
@@ -97,12 +99,26 @@ func arcaneDenialDraws(g *game.Game, item *game.StackItem, p game.EffectParams) 
 			return 2
 		},
 		Then: func(ctx *Context, n int) error {
-			if n > 0 {
-				if err := (DrawCards{Player: victim, N: n}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+			ctx.RecordStep(arcaneDenialRecord, []uuid.UUID{victim}, n)
+			return arcaneDenialRest.Run(ctx)
 		},
 	}.Apply(ctx)
 }
+
+// arcaneDenialRecord is what the number prompt's answer hands the
+// draws: the victim, and how many they chose.
+const arcaneDenialRecord = "arcane-denial/chosen"
+
+// arcaneDenialRest is the two draws after the answer, as steps (#4162,
+// CR 608.2c): the caster's draw waits for a prompt the victim's asks,
+// such as a dredge offer.
+var arcaneDenialRest = RegisterThenSteps("then-steps/arcane-denial-draws",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(arcaneDenialRecord)
+		if len(r.IDs) == 0 {
+			return nil
+		}
+		return DrawCards{Player: r.IDs[0], N: r.N()}.Apply(ctx)
+	}),
+	DrawCards{N: 1},
+)

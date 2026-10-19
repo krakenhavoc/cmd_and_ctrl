@@ -206,8 +206,10 @@
     loopNoticeText,
     owesBlockDecision,
     owesAttackRequirement,
+    owesChosenDeclaration,
     owesFreeCast,
   } from "../lib/priority";
+  import { attackHandoffRequest, confirmAttacksParams } from "../lib/attackHandoff";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
@@ -689,8 +691,12 @@
       // one who does it, and a skipped block cannot be undone.
       owesBlockDecision: owesBlockDecision(view, viewerID),
       // #1571: nor a declare-attackers window with a creature the
-      // server marks must_attack — the pass would be refused.
-      owesAttackRequirement: owesAttackRequirement(view, viewerID),
+      // server marks must_attack — the pass would be refused. #4154:
+      // nor a declaration another player is choosing for this seat, or
+      // whose attackers they chose: a pass there finishes or declines
+      // that declaration, which a person decides.
+      owesAttackRequirement:
+        owesAttackRequirement(view, viewerID) || owesChosenDeclaration(view, viewerID),
       // #3490: nor a pass-closed free cast the viewer can make now.
       owesFreeCast: owesFreeCast(view, viewerID),
       // #628 (CR 732): the server has spotted a trigger loop and
@@ -1994,6 +2000,7 @@
       promptOpen:
         !!view?.pending_choices?.some((c) => c.chooser === viewerID) ||
         owesAttackRequirement(view, viewerID) ||
+        owesChosenDeclaration(view, actingID) ||
         combatSelection !== null ||
         attackPickerDefenderID !== null,
     });
@@ -2464,6 +2471,23 @@
   const controlledDockRequest = $derived.by((): DockRequestModel | null => {
     if (!controlledBy || !view || gameEnded) return null;
     const alice = seats.find((s) => s.id === controlledBy.controller)?.name || "Another player";
+    // #4154: only this declaration is theirs (Master Warcraft).
+    if (controlledBy.until === "declarations") {
+      const blocks = view.turn?.step === "declare_blockers";
+      return {
+        rank: "flow",
+        label: "chosen declaration",
+        tag: blocks ? "block" : "attack",
+        tone: "gold",
+        question: `${alice} is choosing your ${blocks ? "blockers" : "attackers"}`,
+        detail: controlledBy.source_name,
+        hint: blocks
+          ? "They decide which of your creatures block and what each blocks."
+          : "They decide which of your creatures attack; you then choose what each attacks.",
+        primary: null,
+        secondary: [],
+      };
+    }
     return {
       rank: "flow",
       label: "controlled turn",
@@ -2476,6 +2500,24 @@
       secondary: [],
     };
   });
+
+  // #4154: the active player's half of an attack declaration another
+  // player chose (Master Warcraft). Confirm sends every chosen attacker
+  // at its target, paying the costs; Decline passes, which declines
+  // them. lib/attackHandoff.ts builds it.
+  const attackHandoffDockRequest = $derived(
+    gameEnded || controlledBy
+      ? null
+      : attackHandoffRequest(
+          view,
+          actingID,
+          (attacks) => {
+            client.sendAction("declare_attackers", actingPlayer, confirmAttacksParams(attacks));
+            play("attack");
+          },
+          () => sendPass(actingPlayer, "declined the costs of the chosen attackers", false),
+        ),
+  );
 
   // ---- Targeting and payment in the action dock (ADR 0111 PR 4) ----
   // The targeting walk's prompt (Done / Cancel), and the insufficient-
@@ -3357,6 +3399,9 @@
         {/if}
         {#if controlledDockRequest}
           <DockRequest request={controlledDockRequest} />
+        {/if}
+        {#if attackHandoffDockRequest}
+          <DockRequest request={attackHandoffDockRequest} />
         {/if}
         <ActionDock
           view={actingView ?? view}

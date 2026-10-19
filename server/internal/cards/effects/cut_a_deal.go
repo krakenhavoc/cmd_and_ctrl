@@ -20,12 +20,32 @@ func init() {
 		OracleID:     "8b5cffd5-5db3-4151-9275-d91387554412",
 		Name:         "Cut a Deal",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			drew, err := b08EachOpponentDraws(ctx.Game, item)
-			if err != nil {
+		// The caster's draw waits for a prompt an opponent's asks (a
+		// dredge offer; CR 608.2c), and counts the opponents who drew
+		// in the event log after the step record (#4163): a draw a
+		// dredge replaced is not one.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				ctx.RecordStep(cutADealRecord, nil, int(b25LastEventSeq(ctx.Game)))
+				_, err := b08EachOpponentDraws(ctx.Game, ctx.Item)
 				return err
-			}
-			return DrawCards{Player: item.Controller, N: drew}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				after := uint64(ctx.StepRecord(cutADealRecord).N())
+				drew := 0
+				for _, opp := range ctx.Opponents() {
+					for _, ev := range ctx.Game.Events {
+						if ev.Seq > after && ev.Kind == game.EventDrawCard && ev.Actor == opp {
+							drew++
+							break
+						}
+					}
+				}
+				return DrawCards{N: drew}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// cutADealRecord is the last event logged before the opponents drew.
+const cutADealRecord = "cut-a-deal/before-draws"

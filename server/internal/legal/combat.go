@@ -89,12 +89,28 @@ func (e *enumerator) combatMoves() {
 		if g.AttackDeclarationOverForEffect() {
 			return
 		}
+		// #4154: another player chose the attackers. In the active
+		// player's half they point the chosen ones and pay; once both
+		// halves are done nothing more attacks.
+		if g.AttackChosenForEffect() {
+			return
+		}
+		if g.AttackTargetsPhaseForEffect() {
+			e.attackTargetsMoves()
+			return
+		}
+		// #4154: in the declarer's half nothing is paid (the costs are
+		// the active player's, at their half) and nothing is exerted.
+		deferTax := g.AttackDeclarerPhaseLiveForEffect()
 		// #1571 / CR 508.1d: while the declaration owes a requirement,
 		// the attacks that would answer it. Nil at every table with no
 		// requirement to meet, which is nearly all of them.
 		owed := g.MustAttackForEffect()
 		for i := range g.Battlefield.Cards {
 			c := &g.Battlefield.Cards[i]
+			if deferTax && g.AttackDeclinedForEffect(c.InstanceID) {
+				continue
+			}
 			// S24: the attacker-side eligibility rule is
 			// game.AttackerEligible and the ENGINE's bulk
 			// DeclareAttackers runs the same function. This list used
@@ -162,6 +178,9 @@ func (e *enumerator) combatMoves() {
 				// three times, and each re-enumeration prices the next
 				// one against the mana the last one left.
 				price := g.PriceAttackDeclarationForEffect(decl)
+				if deferTax {
+					price = game.AttackTaxPrice{}
+				}
 				autoTap, phyLife := false, 0
 				if !price.IsFree() {
 					// #1600: widened as the engine's tax payment
@@ -205,7 +224,7 @@ func (e *enumerator) combatMoves() {
 				// Glorybringer ruling). Never AlwaysLegal: a
 				// requirement is met without paying an optional cost
 				// (CR 508.1d), so the plain move is the owed answer.
-				if g.CanExertAsItAttacksForEffect(c) {
+				if !deferTax && g.CanExertAsItAttacksForEffect(c) {
 					e.add(Move{
 						Type:   TypeDeclareAttacker,
 						Player: e.seat,

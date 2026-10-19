@@ -79,6 +79,7 @@ func init() {
 			AtYourEndStep("Braids, Arisen Nightmare — you may sacrifice a permanent", braidsArisenNightmareResolve),
 		},
 	})
+	braidsConsequence = RegisterThenSteps("then-steps/braids-arisen-nightmare-consequence", braidsConsequenceSteps()...)
 }
 
 // braidsCardTypeFlags is a snapshot of which of the six card types a
@@ -232,11 +233,7 @@ func braidsOpponentsStep(ctx *Context, controller uuid.UUID, types braidsCardTyp
 		}
 		matching := braidsMatchingPermanents(ctx.Game, victim, types)
 		if len(matching) == 0 {
-			if err := braidsApplyConsequence(ctx, controller, victim); err != nil {
-				return err
-			}
-			remaining = rest
-			continue
+			return braidsConsequenceThenNext(ctx, types, victim, rest)
 		}
 		return PickOption{
 			Player:   victim,
@@ -256,21 +253,72 @@ func braidsOpponentsStep(ctx *Context, controller uuid.UUID, types braidsCardTyp
 						},
 					}.Apply(ctx)
 				}
-				if err := braidsApplyConsequence(ctx, controller, victim); err != nil {
-					return err
-				}
-				return braidsOpponentsStep(ctx, controller, types, rest)
+				return braidsConsequenceThenNext(ctx, types, victim, rest)
 			},
 		}.Apply(ctx)
 	}
 	return nil
 }
 
-// braidsApplyConsequence is "that player loses 2 life and you draw a
-// card" for one opponent who didn't sacrifice.
-func braidsApplyConsequence(ctx *Context, controller, victim uuid.UUID) error {
-	if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -2); err != nil {
-		return err
+// braidsConsequenceThenNext is "that player loses 2 life and you draw a
+// card" for one opponent who didn't sacrifice, then the next opponent's
+// question, as continuation steps (#4162, CR 608.2c): the draw waits for
+// a prompt the life loss asks (a CR 616 order), and the next question
+// for one the draw asks (a dredge offer). What the steps need is
+// recorded first: the victim, the opponents still owed a question, and
+// the frozen card types.
+func braidsConsequenceThenNext(ctx *Context, types braidsCardTypeFlags, victim uuid.UUID, rest []uuid.UUID) error {
+	ctx.RecordStep(braidsRecord, append([]uuid.UUID{victim}, rest...), types.bits())
+	return braidsConsequence.Run(ctx)
+}
+
+// braidsRecord is the victim, then the opponents still to ask; and the
+// card types as bits.
+const braidsRecord = "braids-arisen-nightmare/consequence"
+
+// braidsConsequence is registered in init, because its last step asks
+// the next opponent, whose answer runs it again.
+var braidsConsequence ThenSteps
+
+func braidsConsequenceSteps() []Applier {
+	return []Applier{
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(braidsRecord)
+			if len(r.IDs) == 0 {
+				return nil
+			}
+			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), r.IDs[0], -2)
+		}),
+		DrawCards{N: 1},
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(braidsRecord)
+			if len(r.IDs) == 0 {
+				return nil
+			}
+			return braidsOpponentsStep(ctx, ctx.Controller(), braidsFlagsFromBits(r.N()), r.IDs[1:])
+		}),
 	}
-	return DrawCards{Player: controller, N: 1}.Apply(ctx)
+}
+
+// bits packs the flags into a number for a step record.
+func (t braidsCardTypeFlags) bits() int {
+	n := 0
+	for i, on := range []bool{t.artifact, t.creature, t.enchantment, t.land, t.planeswalker, t.battle} {
+		if on {
+			n |= 1 << i
+		}
+	}
+	return n
+}
+
+// braidsFlagsFromBits is bits read back.
+func braidsFlagsFromBits(n int) braidsCardTypeFlags {
+	return braidsCardTypeFlags{
+		artifact:     n&(1<<0) != 0,
+		creature:     n&(1<<1) != 0,
+		enchantment:  n&(1<<2) != 0,
+		land:         n&(1<<3) != 0,
+		planeswalker: n&(1<<4) != 0,
+		battle:       n&(1<<5) != 0,
+	}
 }

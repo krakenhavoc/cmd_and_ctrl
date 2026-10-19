@@ -825,9 +825,10 @@ func TestThoughtseizeQueuesCasterChoice(t *testing.T) {
 	)
 	passPriorityAroundTable(t, g)
 
-	// Life loss fires at resolution; the discard is deferred.
-	if caster.Life != casterLife-2 {
-		t.Errorf("caster life: got %d, want %d", caster.Life, casterLife-2)
+	// The life loss is the instruction after the choice (CR 608.2c, #4155): it
+	// waits for the answer, which is below.
+	if caster.Life != casterLife {
+		t.Errorf("caster life with the choice open: got %d, want %d", caster.Life, casterLife)
 	}
 	// Hand is revealed to the caster.
 	for _, c := range target.Hand.Cards {
@@ -863,6 +864,9 @@ func TestThoughtseizeQueuesCasterChoice(t *testing.T) {
 	if err := g.ResolvePendingChoice(choice.ID, caster.ID, []uuid.UUID{pick}); err != nil {
 		t.Fatalf("ResolvePendingChoice: %v", err)
 	}
+	// The actions layer settles the resolution after every answer; the life loss
+	// behind the choice runs there.
+	g.SettleResolution()
 
 	if target.Hand.Contains(pick) {
 		t.Errorf("picked card still in target hand")
@@ -872,6 +876,9 @@ func TestThoughtseizeQueuesCasterChoice(t *testing.T) {
 	}
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("PendingChoices not drained after resolve: len=%d", len(g.PendingChoices))
+	}
+	if caster.Life != casterLife-2 {
+		t.Errorf("caster life after the choice: got %d, want %d", caster.Life, casterLife-2)
 	}
 }
 

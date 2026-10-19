@@ -411,7 +411,7 @@ var items = []Item{
 	// caveat phrases come from there, so there is one copy of each.
 	{
 		Slug: "trigger-doubling", Name: "Trigger doubling", Kind: KindMechanic, Status: StatusImplemented,
-		Summary:  "Permanents like Panharmonicon make other abilities trigger an additional time.",
+		Summary:  "Permanents like Panharmonicon make other abilities trigger an additional time, and one permanent can hand that doubling to others, as Dungeon Delver does for your commander creatures.",
 		Mechanic: "trigger doubling",
 		Examples: []string{"Panharmonicon"},
 	},
@@ -789,7 +789,7 @@ var items = []Item{
 	{
 		Slug: "cumulative-upkeep", Name: "Cumulative upkeep", Kind: KindMechanic, Status: StatusPartial,
 		Summary: "At your upkeep a permanent with cumulative upkeep gets an age counter, and you pay its cost once per counter or sacrifice it.",
-		Missing: "Mana, a discard and a sacrifice work as the payment; cumulative upkeep that asks for life, mana added, a counter or another action isn't supported yet.",
+		Missing: "Mana, a discard, a sacrifice, life and flipping coins all work as the payment; cumulative upkeep paid another way, such as by exiling cards from the top of your library as Thought Lash's is, isn't supported yet.",
 		Rules:   []string{"702.24"},
 		Issue:   567,
 		// ADR 0109 §7 (#1902): Thought Lash's activated "Exile the top
@@ -909,6 +909,30 @@ var items = []Item{
 		Printed:     printedWords("the Ring tempts you"),
 		Examples:    []string{"Nazgûl", "Call of the Ring", "Sauron, the Dark Lord", "Ringsight"},
 		EngineNotes: "**The tempt and the Ring-bearer ship (ADR 0114 PR 2).** `Game.RingTemptsForEffect` (`game/ring.go`) is CR 701.54a and 701.54c in the reminder card's order: the Ring emblem if the player has none (a fixed key, `game.RingEmblemKey` = `emblem:the-ring`, filed by `effects.registerRulesEmblem` in `cards/effects/the_ring.go`), its count up by one (`Card.RingTemptations` on the emblem, read by the `DesignationRingTempted` gate, `game.RingTempted(n)`), then the choice — none, one chosen automatically and logged (owner decision 2), or the `ring_bearer` prompt (a card-set pick of its own, blocking, `dropDefault` on departure) — then `Card.RingBearer` (one write site; cleared by CR 400.7 and in `materialiseControlLocked`; kept through phasing; not copiable), `EventRingTempted` (CR 701.54d, with or without a creature) and the rest of the sentence. Readers: `game.RingBearerOf`, `game.RingTemptCount`, `game.IsRingBearerOf`. The emblem's first line ships: a layer-4 static making the Ring-bearer legendary, and an emblem block rule (`EmblemSpec.BlockRules`; `forEachBlockRuleLocked` now walks emblems after the battlefield) built from `YourRingBearer()` and `GreaterPowerThanAttacker()` with `CantBeBlockedByComparing`, which Locke, Treasure Hunter now uses too; a refusal names the emblem. Card side: `effects.TheRingTemptsYou{Then}`, `WheneverTheRingTemptsYou`, `WheneverYouChooseARingBearer`, `IfYouChoseAnotherRingBearer`. Wire: `CardView.ring_bearer`, `EmblemView.level` and `lines`, the `ring_tempted` log line. Bot: `legal.Options.OrderRingBearer` and the heuristic's hardest-hitter ordering. **The emblem's other three lines and the deck's five cards ship (ADR 0114 PR 3).** Lines 2 to 4 are emblem triggers in `the_ring.go`, each gated by `game.RingTempted(n)` and reading \"your Ring-bearer\" as the event is harvested: the loot on `EventAttack`, the end-of-combat sacrifice on `EventBlock` (one per blocker, CR 509.3d; a fill-in Build records the blocker's `ObjectEpoch`, and the registered delayed body `the-ring/sacrifice-blocker-at-end-of-combat` has its controller at resolution sacrifice it if it is still that object), and \"each opponent loses 3 life\" on combat `EventDealDamage` (harvested before state-based actions, so a Ring-bearer killed by the same damage still counts). Cards: Call of the Ring, Nazgûl, Ringsight and Sauron, the Dark Lord (Full), and Sauron, Lord of the Rings (its caveat on the `commanders-die` row, #2085, came off with ADR 0115 PR 4). **The table's display ships (ADR 0114 PR 4).** **The rest of the cards ship in pools (ADR 0114 PR 5).** Pool A is 20 cards whose other text is an ordinary spell, an enters, leaves or dies trigger, or a sibling's ability; `ringTemptsYouNext` (`cards/effects/the_ring_after.go`) puts the tempt in the continuation of a destruction, bounce, damage or scry, so a commander waiting on its CR 903.9 answer is never offered as the Ring-bearer. Pool B is 15 more, among them three \"if you chose a creature other than ~\" payoffs and four Sagas; `AtYourEndStepIfACreatureDied` (`the_ring_after.go`) is the shared intervening-if end-step trigger, Frodo Baggins's \"must be blocked if able\" is a `BlockRequirementWhere` switched on by `game.IsRingBearerOf`, and Ringwraiths returns from the graveyard through `InGraveyard(WheneverTheRingTemptsYou(…))`. The last pool ships Boromir, Warden of the Tower (with Vexing Bauble's strict-mana caveat), Elrond, Lord of Rivendell (Victor's `ResolvedThisTurn` count), Samwise the Stouthearted, Scroll of Isildur, There and Back Again (with Smaug, a token with its own dies trigger) and Sauron, the Necromancer (a tapped and attacking Wraith copy, exiled by the registered delayed body `sauron-the-necromancer/exile-token-unless-ring-bearer`; caveat: it always joins Sauron's defender). **Closed:** nothing waits on the Ring itself. The ten cards that need another seam moved to that seam's row: Breaking of the Fellowship (target-depends-on-another-target), Frodo, Adventurous Hobbit (partner-with), Galadriel, Elven-Queen (voting), Frodo, Sauron's Bane (set-creature-types), Lord of the Nazgûl (protection-from-ring-bearers), Rangers of Ithilien (target-relative-to-source), Sauron's Ransom (face-down-piles), Shortcut to Mushrooms (a-permanent-you-controlled-left), Witch-king of Angmar (creatures-that-dealt-combat-damage-to-you) and Aragorn, Company Leader (counters-put-together-by-kind).",
+	},
+	{
+		// #4096, #4100, #4137. Added by the #4171 audit: the engine
+		// shipped this on 2026-10-17 to 2026-10-19 with no row. History in
+		// Closed seams.
+		Slug: "initiative-and-dungeons", Name: "The initiative and dungeons", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:     "Take the initiative and venture into the dungeon: your marker moves room by room through Undercity or one of the three Forgotten Realms dungeons, each room does something, and the last room completes it. The player with the initiative ventures into Undercity at their upkeep, and dealing combat damage to them takes the initiative.",
+		Rules:       []string{"726", "309", "701.49"},
+		Issue:       4096,
+		ADR:         "0203-the-initiative-and-dungeons.md",
+		Printed:     `(?i)\b(?:take the initiative|ventures? into|completed a dungeon)\b`,
+		Examples:    []string{"From the Catacombs", "Avenging Hunter", "Passageway Seer"},
+		EngineNotes: "**Shipped** (#4096, [ADR 0203](decisions/0203-the-initiative-and-dungeons.md); #4100 and #4137, the same ADR's amendment of 2026-10-19). `Game.Initiative` is the designation and CR 726.2's three inherent triggers are sourceless keyed stack items; a dungeon is data (`game.DungeonDef`) whose room abilities are catalog trigger rows under `dungeon:<key>`, entered and advanced by `VentureForEffect`, with Undercity, Lost Mine of Phandelver, Dungeon of the Mad Mage and Tomb of Annihilation registered. 59 cards, all Full (18 with #4096, 41 with #4100), and Dungeon Delver with the granted trigger doubler of #4137. No row waits on it; the seam history is the three fragments `4096-the-initiative-and-dungeons.md`, `4100-the-forgotten-realms-dungeons.md` and `4137-granted-trigger-doublers.md` under docs/engine-seams/closed/.",
+	},
+	{
+		// #3856. Added by the #4171 audit; history in Closed seams.
+		Slug: "restart-the-game", Name: "Restarting the game", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:     "Effects that restart the game, as Karn Liberated's final ability does: every card goes back to its owner's deck, everyone starts again with a new opening hand, and the cards the effect left in exile come back to the battlefield under your control.",
+		Rules:       []string{"727"},
+		Issue:       3856,
+		ADR:         "0201-restarting-the-game.md",
+		Printed:     printedWords("restart the game"),
+		Examples:    []string{"Karn Liberated"},
+		EngineNotes: "**Shipped** (#3856, [ADR 0201](decisions/0201-restarting-the-game.md)): `Game.RestartTheGameForEffect` records `Game.RestartPending` and the CR 704.3 boundary ends the game and begins the new one as a fresh `NewGame` adopted through `RestoreFrom`, with the named carry-over list held complete by `TestRestartClassifiesEveryPlayerField`; the exempted cards wait on `Game.RestartTail` (CR 727.4). Karn Liberated is the one card. History: `3856-restarting-the-game.md` under docs/engine-seams/closed/.",
 	},
 	{
 		Slug: "commanders-die", Name: "Commanders die", Kind: KindSeam, Status: StatusImplemented,
@@ -1260,7 +1284,7 @@ var items = []Item{
 	{
 		Slug: "either-or-additional-cost", Name: "Either/or additional costs", Kind: KindSeam, Status: StatusPartial,
 		Summary:  "Spells that let you choose between two additional costs, like \"sacrifice an artifact or discard a card\", ask which one you're paying as you cast them.",
-		Missing:  "Some choices aren't supported yet: revealing or beholding a card, foraging, and a ward that asks for one cost or another.",
+		Missing:  "Revealing or beholding a card works as one of the choices. Some choices aren't supported yet: foraging, a choice the spell then reads, as Monstrous Emergence reads the power of the creature you choose, and a ward that asks for one cost or another.",
 		Rules:    []string{"601.2b", "601.2f", "601.2h", "118.3"},
 		Issue:    1732,
 		ADR:      "0100-delve-either-or-and-variable-sacrifice-costs.md",
@@ -2278,13 +2302,23 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#3401, ADR 0172). A deck names its companion in a `Companion` section, Moxfield's `companions` board or an Archidekt `Companion` category, and a lone companion card in the sideboard is read as one with a warning. `deck.Validate` checks the condition from a per-card registry keyed by oracle ID (`deck/companion.go`), and the companion's colour identity and legality; a companion with no registered condition is `unsupported_mechanic`. The card seats in `Player.Companion`, a `ZoneOutside` container built like emblems that no `ZoneRef` or card lookup reaches, and is revealed in turn order as the game begins. The {3} is the sixth `special_action` kind, `companion`, at sorcery speed, and once per game because the card never goes back. The other nine companions need only a condition function and a card file each.",
 	},
 	{
-		Slug: "outside-the-game", Name: "A sideboard: cards outside the game", Kind: KindSeam, Status: StatusImplemented,
-		Summary:     "A deck's sideboard is the pool of cards you own from outside the game, and a deck with no sideboard (plain Commander) takes from every card there is, your collection at a casual table. Only an effect that brings a card in can reach it, such as Burning Wish's \"You may reveal a sorcery card you own from outside the game and put it into your hand\" or Extrapolate the Impossible's reveal of two cards, one of which an opponent chooses.",
-		Rules:       []string{"400.11", "400.11c", "903.5e"},
-		Issue:       3506,
-		ADR:         "0191-a-sideboard-is-the-outside-the-game-pool.md",
-		Examples:    []string{"Extrapolate the Impossible", "Burning Wish", "Living Wish", "Mastermind's Acquisition", "Cunning Wish", "Glittering Wish", "Golden Wish", "Death Wish", "Fae of Wishes", "Coax from the Blind Eternities", "Karn, the Great Creator"},
-		EngineNotes: "**Shipped** (#3506, ADR 0191; #3858, ADR 0198). A deck's `Sideboard` section reaches the game as `Player.Sideboard`, a `ZoneOutside` container beside the companion's that no `ZoneRef` or card lookup reaches, up to 15 cards (`deck.MaxSideboard`). Its owner may read it (`PlayerView.sideboard`); everyone else sees a count. `game.QueueOutsidePickForEffect` asks for a card (a `choose_cards` over the container), `RevealOutsideForEffect` shows it and `BringFromOutsideForEffect` moves it into the hand. A deck that seated no sideboard (`Player.HasSideboard` false) is asked an `outside_collection` pick over the card database instead (`game.OutsideCollection`, searched through `GET /games/{id}/outside/cards`), and the named card is minted as a real card it owns. A controller of the owner's turn is offered nothing (CR 723.4). **Still waiting:** Spawnsire of Ulamog's {20} and Wish (casting or playing a card from outside the game), Research // Development (shuffle cards from outside the game into the library) and the learn Lessons. Cunning, Glittering and Golden Wish and Death Wish are the same `TakeFromOutside` with their own clause, and Fae of Wishes // Granted is that clause on an Adventure face (#3525). Coax from the Blind Eternities and Karn, the Great Creator's −2 look in exile first (`TakeFromExileOrOutside`).",
+		Slug: "outside-the-game", Name: "A sideboard: cards outside the game", Kind: KindSeam, Status: StatusPartial,
+		Summary:  "A deck's sideboard is the pool of cards you own from outside the game, and a deck with no sideboard (plain Commander) takes from every card there is, your collection at a casual table. Only an effect that brings a card in can reach it, such as Burning Wish's \"You may reveal a sorcery card you own from outside the game and put it into your hand\", Extrapolate the Impossible's reveal of two cards, one of which an opponent chooses, or Wish and Spawnsire of Ulamog, which cast or play a card from there.",
+		Missing:  "Shuffling cards from outside the game into your library, as Research // Development does, and learn, which reveals a Lesson card from outside the game or lets you rummage, aren't supported yet.",
+		Rules:    []string{"400.11", "400.11c", "903.5e"},
+		Issue:    3525,
+		Tracked:  "#3525 (the sideboard seam is #3506, the card database pool #3858, casting and playing from outside the game #3955)",
+		ADR:      "0191-a-sideboard-is-the-outside-the-game-pool.md",
+		Examples: []string{"Extrapolate the Impossible", "Burning Wish", "Living Wish", "Mastermind's Acquisition", "Cunning Wish", "Glittering Wish", "Golden Wish", "Death Wish", "Fae of Wishes", "Coax from the Blind Eternities", "Karn, the Great Creator", "Wish", "Spawnsire of Ulamog"},
+		Waiting: []string{
+			"Research // Development",
+			"Academic Dispute", "Arcane Subtraction", "Cram Session", "Divide by Zero", "Dream Strix",
+			"Enthusiastic Study", "Eyetwitch", "Field Trip", "First Day of Class", "Gnarled Professor",
+			"Guiding Voice", "Hunt for Specimens", "Igneous Inspiration", "Overgrown Arch", "Poet's Quill",
+			"Pop Quiz", "Professor of Symbology", "Retriever Phoenix", "Rise of Extus", "Sparring Regimen",
+			"Study Break",
+		},
+		EngineNotes: "**Shipped** (#3506, ADR 0191; #3858, ADR 0198). A deck's `Sideboard` section reaches the game as `Player.Sideboard`, a `ZoneOutside` container beside the companion's that no `ZoneRef` or card lookup reaches, up to 15 cards (`deck.MaxSideboard`). Its owner may read it (`PlayerView.sideboard`); everyone else sees a count. `game.QueueOutsidePickForEffect` asks for a card (a `choose_cards` over the container), `RevealOutsideForEffect` shows it and `BringFromOutsideForEffect` moves it into the hand. A deck that seated no sideboard (`Player.HasSideboard` false) is asked an `outside_collection` pick over the card database instead (`game.OutsideCollection`, searched through `GET /games/{id}/outside/cards`), and the named card is minted as a real card it owns. A controller of the owner's turn is offered nothing (CR 723.4). Cunning, Glittering and Golden Wish and Death Wish are the same `TakeFromOutside` with their own clause, and Fae of Wishes // Granted is that clause on an Adventure face (#3525). Coax from the Blind Eternities and Karn, the Great Creator's −2 look in exile first (`TakeFromExileOrOutside`). **Casting and playing from outside the game shipped** (#3955, [ADR 0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md) amendment of 2026-10-16): `effects.PlayFromOutside` and a per-instance `CastPermission` over the outside container, claimed with `cast_spell { from_zone: \"outside\" }` or the `outside_play` action; Spawnsire of Ulamog's {20} and Wish ship Full. **Still waiting** (#3525): Research // Development (shuffle cards from outside the game into the library, a move the other way) and the learn Lessons (a `TakeFromOutside` with a rummage branch).",
 	},
 	{
 		Slug: "timed-attack-tax", Name: "Attack taxes that last for a while", Kind: KindSeam, Status: StatusImplemented,
@@ -2374,12 +2408,11 @@ var items = []Item{
 	},
 	{
 		Slug: "play-from-other-players-graveyards", Name: "Playing cards from other players' graveyards", Kind: KindSeam, Status: StatusImplemented,
-		Summary:          "A permission to play lands and cast spells from other players' graveyards as though they were your own, and a ban on players playing from their own graveyard, such as Shaman's Trance's. A card's own way out of a graveyard, such as flashback, works for you too.",
-		Rules:            []string{"101.2", "305.1", "305.2", "601.2a", "400.3", "514.2"},
-		Issue:            1987,
-		ADR:              "0066-granted-cast-and-play-permissions.md",
-		Printed:          `(?i)\bfrom other players' graveyards\b`,
-		NoCatalogExample: "Its one catalogued card, Shaman's Trance, carries a caveat about your own graveyard permissions reaching the other graveyards, so none is listed as fully automated.",
+		Summary: "A permission to play lands and cast spells from other players' graveyards as though they were your own, and a ban on players playing from their own graveyard, such as Shaman's Trance's. A card's own way out of a graveyard, such as flashback, works for you too.",
+		Rules:   []string{"101.2", "305.1", "305.2", "601.2a", "400.3", "514.2"},
+		Issue:   1987,
+		ADR:     "0066-granted-cast-and-play-permissions.md",
+		Printed: `(?i)\bfrom other players' graveyards\b`,
 	},
 	{
 		Slug: "lose-one-printed-ability", Name: "Losing one of its own abilities", Kind: KindSeam, Status: StatusImplemented,
@@ -2461,7 +2494,7 @@ var items = []Item{
 		Issue:       2567,
 		Tracked:     "#2567 (found building #2046)",
 		Waiting:     []string{"Gideon Jura", "Kytheon, Hero of Akros // Gideon, Battle-Forged"},
-		EngineNotes: "three missing pieces, none of which is a planeswalker rule. (1) `game.AttackRequirement` (attack_requirements.go) is \"attacks each combat\" or \"attacks a player other than X\"; it needs a target field obeyed only by attacking exactly that permanent, counted by the CR 508.1d maximisation and named in the refusal sentence. (2) `DurationUntilYourNextTurn` ends as the named player's next turn BEGINS; \"during target opponent's next turn\" has to end at the end of THAT player's next turn. (3) `ScopeOpponentsCreatures` is every opponent's creatures; Gideon Jura names one opponent's, and in a four-player game another opponent's turn before the target's would wrongly be required to attack him, stronger than printed. It needs a scope or a player parameter for \"creatures that player controls\", read live (CR 611.2c). Kytheon's back face is the same requirement pinned to one creature \"during its controller's next turn\"; his front face also needs \"at end of combat, if Kytheon and at least two other creatures attacked this combat, exile him, then return him transformed\".",
+		EngineNotes: "three missing pieces, none of which is a planeswalker rule. (1) `game.AttackRequirement` (attack_requirements.go) is \"attacks each combat\", \"attacks a player other than X\" (`OtherThan`), \"attacks the opponent with the most life\" (`MostLifeOpponentOf`, #2744) or \"attacks player X\" (`MustAttack`, encore #3172); it needs a target field for a PERMANENT, obeyed only by attacking exactly that permanent, counted by the CR 508.1d maximisation and named in the refusal sentence. (2) `DurationUntilYourNextTurn` ends as the named player's next turn BEGINS; \"during target opponent's next turn\" has to end at the end of THAT player's next turn. (3) `ScopeOpponentsCreatures` is every opponent's creatures; Gideon Jura names one opponent's, and in a four-player game another opponent's turn before the target's would wrongly be required to attack him, stronger than printed. It needs a scope or a player parameter for \"creatures that player controls\", read live (CR 611.2c). Kytheon's back face is the same requirement pinned to one creature \"during its controller's next turn\"; his front face also needs \"at end of combat, if Kytheon and at least two other creatures attacked this combat, exile him, then return him transformed\".",
 	},
 	{
 		Slug: "damage-prevented-triggers", Name: "\"Whenever damage is prevented\"", Kind: KindSeam, Status: StatusImplemented,
@@ -2558,7 +2591,7 @@ var items = []Item{
 	{
 		Slug: "energy-resolution-payments", Name: "Paying energy as a spell or ability resolves", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Spells and abilities that let you pay energy as they resolve, such as Thriving Rhino's \"you may pay {E}{E}. If you do\", Lathnu Hellion's \"unless you pay {E}{E}\" and Harnessed Lightning's \"pay any amount of {E}\".",
-		Missing:     "Paying energy as an ability resolves works, a fixed amount or any amount. The cards still waiting each need something else: see the notes.",
+		Missing:     "Paying energy as an ability resolves works, a fixed amount or any amount. The cards still waiting each need something else on the card, such as copying a creature, making a Vehicle token, a trigger with modes or exiling cards from the top of a library to play them.",
 		Rules:       []string{"118.12", "118.12a", "107.14"},
 		Issue:       1995,
 		Tracked:     "#1995 (ADR 0129 PR 3)",
@@ -3046,26 +3079,27 @@ var items = []Item{
 	{
 		Slug: "costs-only-some-mana-can-pay", Name: "Costs that only some mana can pay", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Costs that say which mana may pay them, such as Crypt Rats' \"Spend only black mana on X\" and Throne of Eldraine's \"Spend only mana of the chosen color to activate this ability\", and mana that may be spent only on spells of exactly one color, or of two or more.",
-		Missing:     "Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" can't be cast with that limit yet: no cost can say that each mana must be a different color.",
+		Missing:     "Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" can't be cast with that limit yet: no cost can say that each mana must be a different color. An alternative cost that only mana from Treasures can pay, as Security Rhox has, isn't supported either.",
 		Rules:       []string{"105.2a", "105.2b", "609.4b"},
-		Issue:       1600,
+		Issue:       2575,
+		Tracked:     "#2575 (found landing #2556; the ability side was #1600)",
 		ADR:         "0040-mana-pipeline.md",
 		Probe:       declaresSpendOnly,
 		Examples:    []string{"Throne of Eldraine", "Crypt Rats", "Crimson Hellkite", "Pillar of the Paruns", "Drain Life", "Imperiosaur"},
-		Waiting:     []string{"Emblazoned Golem"},
+		Waiting:     []string{"Emblazoned Golem", "Security Rhox"},
 		EngineNotes: "**The ability side and the token side shipped** (#1600, [ADR 0040](decisions/0040-mana-pipeline.md)'s 2026-10-03 amendment): `game.AbilityCost.SpendOnly` (`game.ManaSpendOnly{Colors, ChosenColor, XOnly}`, built with `effects.SpendOnlyManaOfTheChosenColor()` / `effects.SpendOnlyOnX(colors...)`), resolved against the source and stamped on the `ParsedCost` by the one ability pricer (`AbilityManaCostForTargetsForEffect`), then FOLDED into coloured requirements by `costAsPaidByLocked` — which now takes the announced X — before the any-colour widening, so the activation, its auto-tap, `internal/legal`'s probe and the auto-tap preview pay it identically and the shown price stays printed. Under Chromatic Orrery any mana pays it (CR 609.4b; the Celestial Dawn rulings). The tag vocabulary gained `monocolored` and `multicolored` (CR 105.2a–b). **The cast side shipped** (#2556, the 2026-10-07 amendment): `Spec.SpendOnly` (`effects.SpellSpendOnlyOnX(colors...)`) is stamped on the `ParsedCost` by the cast pricer (`printedCostLocked`) and folded by `costAsPaidByLocked` like an ability's, so the cast, its auto-tap, `internal/legal` and the preview pay it identically (Drain Life, Consume Spirit, Soul Burn); `Spec.SpendOnlySources` (`game.ManaSourceKinds`, new `ManaSourceBasicLand`) rides `ManaSpendContext.SourceOnly`, refused by the pool (`allowsToken`) and excluded from the auto-tap plan (Imperiosaur, Myr Superion). **Still open:** Emblazoned Golem's \"Spend only colored mana on X. No more than one mana of each color may be spent this way\" is a distinct-colours cap with no shape (and a kicker {X} that is not the printed cost), and Security Rhox's Treasure-only alternative cost needs the source restriction on `AlternativeCost`. Atalya, Samite Master's modal \"{X}, {T}\" ability is now writable with `SpendOnlyOnX(\"W\")` and is not catalogued.",
 	},
 	{
 		Slug: "exile-a-permanent-you-control-cost", Name: "Exiling a permanent you control as a cost", Kind: KindSeam, Status: StatusPartial,
 		Summary:     "Costs that exile a creature or another permanent you control, such as The Soul Stone's \"Exile a creature you control\" and Food Chain's.",
-		Missing:     "Exiling a permanent you control while casting a spell, such as Lunar Hatchling's escape cost, or exiling a number of permanents you choose, doesn't work yet.",
+		Missing:     "Exiling a permanent you control as an additional cost to cast a spell works, as for Soul Exchange. Exiling one as part of an alternative cost, such as Lunar Hatchling's escape cost, or exiling a number of permanents you choose, doesn't work yet.",
 		Rules:       []string{"118.3", "602.2b", "605.3a"},
 		Issue:       1600,
 		ADR:         "0020-activated-abilities.md",
 		Probe:       declaresExilePermanentCost,
 		Examples:    []string{"The Soul Stone", "Food Chain", "City of Shadows"},
 		Waiting:     []string{"Lunar Hatchling", "Fabrication Foundry"},
-		EngineNotes: "**The ability side shipped** (#1600, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-03 amendment): `game.ExilePermanentsCost` (`Count`, `CardType`, `ExcludeSource`, `Label` — data, not a `TargetSpec`, so the ADR 0041 closure ratchet gains no route) on both owners, `AbilityCost.ExilePermanents` and `ManaAbilityShape.ExilePermanents`, built with `effects.ExileACreatureYouControl()` / `effects.ExileAPermanentYouControl(label, cardType)`. One candidate walk (`ExilePermanentsOptionsForEffect`) feeds the view's `exile_permanent_options`, the enumerator and the validator; the picks ride `exile_permanent_ids` on both actions; the payment is the one exit primitive with `MustSettleNow` (leaves-the-battlefield triggers fire, dies and sacrifice triggers do not; a commander is asked CR 903.9 first) and lands on `PaidCost.Exiled`. `PermanentInfo.ManaValue` answers \"the exiled creature's mana value\" as it last existed (Food Chain). The auto-tapper refuses a mana ability with the component. **Still open:** the casting-cost form — Lunar Hatchling's escape cost \"Exile a land you control, Exile five other cards from your graveyard\" is two card-shaped payments, and an alternative cost carries at most one; a VARIABLE count (Fabrication Foundry's \"one or more other artifacts you control with total mana value X\"); and a clause a card type cannot say (Curie, Emergent Intelligence's \"another nontoken artifact creature\", which also needs \"becomes a copy of the exiled creature\"). Craft's two-zone clause shipped as `FromGraveyard` (#2124, ADR 0137).",
+		EngineNotes: "**The ability side shipped** (#1600, [ADR 0020](decisions/0020-activated-abilities.md)'s 2026-10-03 amendment): `game.ExilePermanentsCost` (`Count`, `CardType`, `ExcludeSource`, `Label` — data, not a `TargetSpec`, so the ADR 0041 closure ratchet gains no route) on both owners, `AbilityCost.ExilePermanents` and `ManaAbilityShape.ExilePermanents`, built with `effects.ExileACreatureYouControl()` / `effects.ExileAPermanentYouControl(label, cardType)`. One candidate walk (`ExilePermanentsOptionsForEffect`) feeds the view's `exile_permanent_options`, the enumerator and the validator; the picks ride `exile_permanent_ids` on both actions; the payment is the one exit primitive with `MustSettleNow` (leaves-the-battlefield triggers fire, dies and sacrifice triggers do not; a commander is asked CR 903.9 first) and lands on `PaidCost.Exiled`. `PermanentInfo.ManaValue` answers \"the exiled creature's mana value\" as it last existed (Food Chain). The auto-tapper refuses a mana ability with the component. **The additional-cost form shipped** (#3402): `AdditionalCost.ExilePermanents` on a cast's mandatory slot, Soul Exchange (see the `exile-permanent-additional-cost` row). **Still open:** the alternative-cost form — Lunar Hatchling's escape cost \"Exile a land you control, Exile five other cards from your graveyard\" is two card-shaped payments, and an alternative cost carries at most one; a VARIABLE count (Fabrication Foundry's \"one or more other artifacts you control with total mana value X\"); and a clause a card type cannot say (Curie, Emergent Intelligence's \"another nontoken artifact creature\", which also needs \"becomes a copy of the exiled creature\"). Craft's two-zone clause shipped as `FromGraveyard` (#2124, ADR 0137).",
 	},
 	{
 		Slug: "library-top-type-filters", Name: "Playing artifacts or historic cards from the top of your library", Kind: KindSeam, Status: StatusImplemented,
@@ -3350,13 +3384,13 @@ var items = []Item{
 	},
 	{
 		Slug: "control-another-player", Name: "Controlling another player", Kind: KindSeam, Status: StatusImplemented,
-		Summary:     "Effects that let you control another player for a while and make their decisions for them, such as Word of Command and Emrakul, the Promised End's cast trigger.",
+		Summary:     "Effects that let you control another player for a while and make their decisions for them, such as Word of Command, Emrakul, the Promised End's cast trigger, Mindslaver's whole turn and Secret of Bloodbending's single combat phase.",
 		Rules:       []string{"723.1", "723.2", "723.4", "723.5"},
 		Issue:       2164,
 		Tracked:     "#2164 (S58 tracker #2077)",
 		ADR:         "0166-controlling-another-player-word-of-command.md",
 		Examples:    []string{"Word of Command", "Emrakul, the Promised End", "Opposition Agent"},
-		EngineNotes: "**Shipped** (ADR 0166): `Game.PlayerControls` records who controls whom (`game/player_control.go`), and `ControllerOfPlayerLocked` is the one question (CR 723.5). Prompts keep their real chooser; `actions.routeControlledPlayer` re-addresses a controller's action or `resolve_choice` to the controlled seat (refusing the controlled player everything but `concede`, CR 723.6), the view shows the prompt to the controller (`on_behalf_of`) and `FilterViewFor` shows a controller what the controlled player can see (CR 723.4), and `legal` offers the controlled seat's prompts to the controller and nothing to the controlled seat. Word of Command's forced play is CR 723.2's limited form: a look-only, keep-the-card revealed-hand pick, then a mid-resolution `controlled_play` prompt answered by a `cast_spell` naming it (CR 608.2g: the type's timing is lifted, nobody gets priority) with mana from the controlled player's lands only (`Game.LandManaOnlyLocked`, read by the auto-tapper and `ActivateManaAbility`), or by \"it can't be played\", which a probe `legal` registers accepts only when true. Control applies again while the forced spell resolves. **The engine half of CR 723.1 shipped too** (ADR 0167 PR 1): `Game.BeginTurnControlForEffect` (`game/turn_control.go`) schedules a turn-long record (`Until \"turn\"`) that begins with the controlled player's next turn and ends at the rotation seam, queuing its anchored extra turn (`queueAnchoredExtraTurnLocked`, `extra_turns.go`). Routing lets the controller send every rules verb as that player and closes the sandbox to both, the controller's `legal_moves` carry the controlled seat's moves with `player` set, and a bot plays such a turn passively (`aiseat.controlledTurnPolicy`). **The client half shipped with Emrakul, the Promised End** (ADR 0167 PR 2): `lib/playingAs.ts` and `PlayingAsBanner.svelte` swap the controller's board to the controlled seat (\"Playing as Bob\", auto-switching only at a handoff), and `FilterViewFor` hands the controller the controlled seat's cast stamps and ability rows (`offerFor`). Emrakul's discount is `CardTypesAmongCardsInYourGraveyard` and its cast trigger calls `BeginTurnControlForEffect`. **Opposition Agent shipped too** (#3998, ADR 0166's 2026-10-16 amendment): a record with `Until \"search\"` (`game/search_control.go`) is live only while an opponent's library search prompt is open and the Agent is still there, so the controller answers the search as them and sees what they see for exactly that span; the search primitive exiles what they find, face up, with a play permission for the Agent's controller (any colour of mana), and a bot answers such a search with `aiseat.controlledSearchPolicy`.",
+		EngineNotes: "**Shipped** (ADR 0166): `Game.PlayerControls` records who controls whom (`game/player_control.go`), and `ControllerOfPlayerLocked` is the one question (CR 723.5). Prompts keep their real chooser; `actions.routeControlledPlayer` re-addresses a controller's action or `resolve_choice` to the controlled seat (refusing the controlled player everything but `concede`, CR 723.6), the view shows the prompt to the controller (`on_behalf_of`) and `FilterViewFor` shows a controller what the controlled player can see (CR 723.4), and `legal` offers the controlled seat's prompts to the controller and nothing to the controlled seat. Word of Command's forced play is CR 723.2's limited form: a look-only, keep-the-card revealed-hand pick, then a mid-resolution `controlled_play` prompt answered by a `cast_spell` naming it (CR 608.2g: the type's timing is lifted, nobody gets priority) with mana from the controlled player's lands only (`Game.LandManaOnlyLocked`, read by the auto-tapper and `ActivateManaAbility`), or by \"it can't be played\", which a probe `legal` registers accepts only when true. Control applies again while the forced spell resolves. **The engine half of CR 723.1 shipped too** (ADR 0167 PR 1): `Game.BeginTurnControlForEffect` (`game/turn_control.go`) schedules a turn-long record (`Until \"turn\"`) that begins with the controlled player's next turn and ends at the rotation seam, queuing its anchored extra turn (`queueAnchoredExtraTurnLocked`, `extra_turns.go`). Routing lets the controller send every rules verb as that player and closes the sandbox to both, the controller's `legal_moves` carry the controlled seat's moves with `player` set, and a bot plays such a turn passively (`aiseat.controlledTurnPolicy`). **The client half shipped with Emrakul, the Promised End** (ADR 0167 PR 2): `lib/playingAs.ts` and `PlayingAsBanner.svelte` swap the controller's board to the controlled seat (\"Playing as Bob\", auto-switching only at a handoff), and `FilterViewFor` hands the controller the controlled seat's cast stamps and ability rows (`offerFor`). Emrakul's discount is `CardTypesAmongCardsInYourGraveyard` and its cast trigger calls `BeginTurnControlForEffect`. **Opposition Agent shipped too** (#3998, ADR 0166's 2026-10-16 amendment): a record with `Until \"search\"` (`game/search_control.go`) is live only while an opponent's library search prompt is open and the Agent is still there, so the controller answers the search as them and sees what they see for exactly that span; the search primitive exiles what they find, face up, with a play permission for the Agent's controller (any colour of mana), and a bot answers such a search with `aiseat.controlledSearchPolicy`. **A controlled turn with no extra turn shipped** (#4002: Mindslaver, Worst Fears, Sorin Markov's −7, Construct a Cosmic Cube, Cruel Entertainment) **and so did control for one combat phase** (#3999, #4158, ADR 0167's 2026-10-19 amendment): `Until \"combat\"` (`ControlUntilCombat`, `game/combat_control.go`) begins with the next combat phase that really begins and ends as the cursor leaves it, with `ControlUntil.PlaysForThem` the one predicate the cast gate, the enumerator and the view read. Secret of Bloodbending is Full. Master Warcraft's attack and block declarations are not this seam; see the `choose-attackers-and-blockers` row.",
 	},
 	{
 		Slug: "damage-life-loss-replacement", Name: "Changing the life that damage costs", Kind: KindSeam, Status: StatusImplemented,
@@ -3773,6 +3807,59 @@ var items = []Item{
 		Slug: "exiled-with-and-departed-counters", Name: "\"Exiled with this\" and counters on a departed permanent", Kind: KindSeam, Status: StatusImplemented,
 		Summary:  "Cards that remember what they exiled, and abilities that read the counters a permanent had when it left.",
 		Examples: []string{"The Ozolith", "Valakut Exploration", "Currency Converter"},
+	},
+
+	// ── Added by the #4171 audit ─────────────────────────────────
+	//
+	// Gaps the engine knew about on 2026-10-19 that no row named, and a
+	// mechanic that shipped without one. Each Missing row's card list is
+	// the cards that read the clause and are not in the catalog, or are
+	// there with a caveat.
+	{
+		Slug: "later-instructions-wait", Name: "Later instructions that wait for an earlier choice", Kind: KindSeam, Status: StatusPartial,
+		Summary:     "When a spell or ability asks you something part-way through, such as the order to apply damage, counters or a draw, or an offer to dredge, the instructions printed after it wait for your answer, as in Electrolyze, Demonic Pact and Sylvan Library.",
+		Missing:     "Many older cards still run all their instructions at once, so a question from an early one is asked after the later ones have already happened. They are being converted a batch at a time, most played first.",
+		Rules:       []string{"608.2c"},
+		Issue:       4155,
+		Tracked:     "#4155 (the sequencing is #4012, #4019, #4162 and #4163)",
+		ADR:         "0065-modal-and-multi-target-clauses.md",
+		Examples:    []string{"Electrolyze", "Demonic Pact", "Sylvan Library", "Windfall"},
+		EngineNotes: "**Shipped sites:** a row's own `Do` (#4012), a spell's `OnResolve` as `effects.ResolveSteps` and a bullet as `effects.ModeSteps` (#4019, [ADR 0065 amendment 2026-10-19](decisions/0065-modal-and-multi-target-clauses.md)), and a continuation's later steps plus a per-resolution step record (#4162, #4163, the amendment's part (b)). **Still open (#4155):** every hand-written body that is still one Go function. `TestScanStepsBodies` (`cards/effects/steps_scan_test.go`, run with `-scan-steps=<file>`) lists them ranked by EDHREC: 295 bodies in 292 cards on develop at 8c182fcbd (2026-10-19), after three conversion batches (#4161 47, #4164 57, #4169 51). The recipe is in docs/adding-cards.md (\"ResolveSteps\"): split the body at each call that can ask, one `Instruction` per piece, and re-read anything a later piece needs from the game rather than a Go variable. `stepsSkipped` names the cards looked at and left alone, with the reason.",
+	},
+	{
+		Slug: "choose-attackers-and-blockers", Name: "Choosing which creatures attack and block", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that let you decide which creatures attack and which creatures block, and how they block, for a whole turn, such as Master Warcraft's.",
+		Rules:       []string{"508.1", "509.1"},
+		Issue:       4154,
+		ADR:         "0167-controlling-another-players-turn-emrakul-the-promised-end.md",
+		Examples:    []string{"Master Warcraft"},
+		EngineNotes: "**Shipped** (#4154, #4179, [ADR 0167](decisions/0167-controlling-another-players-turn-emrakul-the-promised-end.md)'s amendment of 2026-10-19): `game.DeclarationControl` (`game/declaration_control.go`) records \"this turn\" or \"this combat\" and is projected onto the player-control seam only while one of the two declarations is being made. Master Warcraft, Odric, Master Tactician, Brutal Hordechief and Melee are Full.",
+	},
+	{
+		Slug: "convoke-and-improvise-with-waterbend", Name: "Convoke or improvise on a spell cast for a waterbend cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "A spell cast for a waterbend cost, such as the card Hama, the Bloodbender lets you cast from exile, can also take help from convoke or improvise if it has them.",
+		Rules:       []string{"701.67", "702.51", "702.126"},
+		Issue:       4172,
+		ADR:         "0073-optional-additional-costs-and-the-cast-gate.md",
+		Printed:     `(?i)\bby waterbending\b`,
+		EngineNotes: "**Shipped** (#4172, #4177, [ADR 0073](decisions/0073-optional-additional-costs-and-the-cast-gate.md)'s amendment of 2026-10-19): `TapPermanentsCost.Also` chains the other tap costs a cast owes as `TapCostRef` values (`game/tap_cost_chain.go`; references, not costs, so the closure ratchet is untouched), and `splitTapPayersLocked` shares the one `tap_ids` list between them, so the same split prices the cast (`tapPermanentsAdjustedLocked`), validates it (`tapChainPaysLocked`) and records who convoked (`tapConvokersForCastLocked`). `TapPermanentsCostForGrantLocked` chains the grant's waterbend with the card's own, a granted or a promised tap cost, and a chosen optional waterbend (#3999) chains in front. Waterbender's Restoration cast through Hama owes its own `waterbend {X}` too. Hama, the Bloodbender is Full. History: `4172-convoke-and-improvise-with-waterbend.md` under docs/engine-seams/closed/.",
+	},
+	{
+		Slug: "granted-graveyard-permissions-reach", Name: "Graveyard permissions that reach other players' graveyards", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Cards that let you cast from your graveyard, such as Underworld Breach's escape and Muldrotha, the Gravetide, working on other players' graveyards while Shaman's Trance lets you use them as your own.",
+		Rules:       []string{"101.2", "400.3"},
+		Issue:       4173,
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Printed:     `(?i)\bas though those cards were in your graveyard\b`,
+		EngineNotes: "**Shipped** (#4173, #4177, [ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)'s amendment of 2026-10-19): `CastPermission.GraveyardsAreYours` is set on Shaman's Trance's own stored grants, and while one is live `permissionReachesPileLocked` (now a `Game` method) lets the holder's permissions over their own graveyard reach every graveyard, so the cast path, the enumerator and the view's per-holder stamps agree. `CastPermissionForClaimLocked` and `otherGrantedOffersLocked` now also read the permissions a permanent gives, so Underworld Breach's escape is claimable beside the Trance's plain grant. A resolved Trance stores no new record. Shaman's Trance is Full. History: `4173-graveyard-permissions-reach-other-graveyards.md` under docs/engine-seams/closed/.",
+	},
+	{
+		Slug: "modal-double-faced-fronts", Name: "Modal double-faced cards", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:     "Cards with a spell or creature on one face and a land on the other, which you choose between as you play them, such as Sea Gate Restoration, Agadeem's Awakening and Valakut Awakening.",
+		Issue:       4170,
+		ADR:         "0034-multi-face-cards.md",
+		Examples:    []string{"Sea Gate Restoration", "Agadeem's Awakening", "Valakut Awakening"},
+		EngineNotes: "**Shipped** (#4170, #4176): every one of the 23 Zendikar Rising modal double-faced cards whose front was missing has its front registered Full beside the land back that `cards/effects/mdfc_lands.go` registers under `<oracle_id>#1`. Not an engine seam: each front is one card file on the existing seams.",
 	},
 }
 

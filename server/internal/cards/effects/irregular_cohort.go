@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "c0636d16-671c-4e80-af8c-67d80d2cd979",
 		Name:            "Irregular Cohort",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordChangeling},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Irregular Cohort — create a Shapeshifter", Do(CreateToken{

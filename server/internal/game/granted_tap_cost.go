@@ -90,18 +90,20 @@ var WaterbendTapCost func(cost string) *TapPermanentsCost
 // (CastPermission.WaterbendManaValue, Hama, the Bloodbender) owes that
 // waterbend: its {N} is what CastCostFor charges for the face being
 // cast, so the tap cost is marked InCost and the taps pay only that
-// {N} (CR 701.67b). It takes the place of any tap cost the card or the
-// board would give the spell, because the engine carries one tap cost
-// per cast; a convoke granted on top is the weaker-than-printed loss.
+// {N} (CR 701.67b). The spell's own tap cost, or one the board or a
+// promise gives it (convoke, improvise, a waterbend of its own), is
+// still owed beside it: the two are chained (tap_cost_chain.go, #4177)
+// and the engine shares the one list of taps between them.
 // Caller must hold g.mu.
 func (g *Game) TapPermanentsCostForGrantLocked(caster uuid.UUID, card Card, from ZoneKind, grant *CastPermission) *TapPermanentsCost {
+	own := g.TapPermanentsCostForCastLocked(caster, card, from)
 	if grant != nil && grant.WaterbendManaValue && WaterbendTapCost != nil && !card.IsLand() {
 		if tc := WaterbendTapCost(WaterbendManaValueCost(card)); !tc.Empty() {
 			tc.InCost = true
-			return tc
+			return tc.WithAlso(own)
 		}
 	}
-	return g.TapPermanentsCostForCastLocked(caster, card, from)
+	return own
 }
 
 // tapCostForCastParamsLocked is TapPermanentsCostForGrantLocked with the
@@ -112,13 +114,16 @@ func (g *Game) TapPermanentsCostForGrantLocked(caster uuid.UUID, card Card, from
 // tap cost (optional_waterbend.go). effects.Register keeps it off a card
 // with a tap cost of its own, so it never displaces one.
 func (g *Game) tapCostForCastParamsLocked(caster uuid.UUID, card Card, params CastSpellParams) *TapPermanentsCost {
-	if tc := g.optionalWaterbendLocked(caster, card, params.OptionalCosts); tc != nil {
-		return tc
-	}
 	from, _ := castZoneFromWire(params.FromZone)
 	var grant *CastPermission
 	if caster != uuid.Nil && from != ZoneHand && from != ZoneCommand {
 		grant = g.CastPermissionForClaimLocked(caster, card, from, params.AlternativeCost)
 	}
-	return g.TapPermanentsCostForGrantLocked(caster, card, from, grant)
+	own := g.TapPermanentsCostForGrantLocked(caster, card, from, grant)
+	if tc := g.optionalWaterbendLocked(caster, card, params.OptionalCosts); tc != nil {
+		// A chosen optional waterbend is a cost beside whatever else
+		// the cast owes (Hama's waterbend, #4177).
+		return tc.WithAlso(own)
+	}
+	return own
 }

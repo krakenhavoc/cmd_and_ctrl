@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Contaminated Drink — Instant {X}{U}{B}:
 //
 //	"Draw X cards, then you get half X rad counters, rounded up."
@@ -15,15 +13,22 @@ func init() {
 		Name:         "Contaminated Drink",
 		Completeness: CompletenessFull,
 		XMatters:     true,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			if x <= 0 {
-				return nil
-			}
-			if err := ctx.Game.DrawNForEffect(ctx.Controller(), x); err != nil {
-				return err
-			}
-			return playerGetsRadCounters(ctx.Game, ctx.Controller(), ctx.Controller(), (x+1)/2)
-		},
+		OnResolve: ResolveSteps(
+			// The rad counters wait for a prompt the draws ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				x := ctx.X()
+				if x <= 0 {
+					return nil
+				}
+				return ctx.Game.DrawNForEffect(ctx.Controller(), x)
+			}),
+			Instruction(func(ctx *Context) error {
+				x := ctx.X()
+				if x <= 0 {
+					return nil
+				}
+				return playerGetsRadCounters(ctx.Game, ctx.Controller(), ctx.Controller(), (x+1)/2)
+			}),
+		),
 	})
 }

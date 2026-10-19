@@ -44,6 +44,7 @@ func init() {
 				courtOfAmbitionUpkeep),
 		},
 	})
+	courtOfAmbitionLoss = RegisterThenSteps("then-steps/court-of-ambition-loss", courtOfAmbitionLossSteps()...)
 }
 
 // courtOfAmbitionUpkeep fixes the price and starts the run of questions.
@@ -75,11 +76,7 @@ func courtOfAmbitionStep(ctx *Context, remaining []uuid.UUID, life, discard int)
 			continue
 		}
 		if p.Hand == nil || p.Hand.Size() < discard {
-			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -life); err != nil {
-				return err
-			}
-			remaining = rest
-			continue
+			return courtOfAmbitionLoseThenNext(ctx, victim, rest, life)
 		}
 		cards := "a card"
 		if discard == 2 {
@@ -116,12 +113,47 @@ func courtOfAmbitionAnswered(victim uuid.UUID, rest []uuid.UUID, life, discard i
 			})
 			return nil
 		case 0:
-			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -life); err != nil {
-				return err
-			}
+			return courtOfAmbitionLoseThenNext(ctx, victim, rest, life)
+		default:
+			// index -1: the player left before the question could be
+			// asked (CR 800.4a); the rest of the run still happens.
+			return courtOfAmbitionStep(ctx, rest, life, discard)
 		}
-		// index -1: the player left before the question could be
-		// asked (CR 800.4a); the rest of the run still happens.
-		return courtOfAmbitionStep(ctx, rest, life, discard)
+	}
+}
+
+// courtOfAmbitionLoseThenNext is one opponent's life loss, then the next
+// opponent's question, as continuation steps (#4162, CR 608.2c): the
+// question waits for a prompt the loss asks (a CR 616 order of two
+// life-loss replacements). The record carries the victim, the opponents
+// still owed a question, and the life (the discard count is a third of
+// it: 1 for 3, 2 for 6).
+func courtOfAmbitionLoseThenNext(ctx *Context, victim uuid.UUID, rest []uuid.UUID, life int) error {
+	ctx.RecordStep(courtOfAmbitionRecord, append([]uuid.UUID{victim}, rest...), life)
+	return courtOfAmbitionLoss.Run(ctx)
+}
+
+const courtOfAmbitionRecord = "court-of-ambition/loss"
+
+// courtOfAmbitionLoss is registered in init, because its last step asks
+// the next opponent, whose answer runs it again.
+var courtOfAmbitionLoss ThenSteps
+
+func courtOfAmbitionLossSteps() []Applier {
+	return []Applier{
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(courtOfAmbitionRecord)
+			if len(r.IDs) == 0 {
+				return nil
+			}
+			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), r.IDs[0], -r.N())
+		}),
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(courtOfAmbitionRecord)
+			if len(r.IDs) == 0 {
+				return nil
+			}
+			return courtOfAmbitionStep(ctx, r.IDs[1:], r.N(), r.N()/3)
+		}),
 	}
 }

@@ -40,6 +40,7 @@ func init() {
 			return seizeTheSpotlightAsk(ctx, ctx.Opponents(), nil, 0)
 		},
 	})
+	seizeTheSpotlightFortuneSteps = RegisterThenSteps("then-steps/seize-the-spotlight-fortune", seizeTheSpotlightFortuneStepList()...)
 }
 
 // seizeTheSpotlightAsk asks the next opponent, accumulating the fame
@@ -61,31 +62,56 @@ func seizeTheSpotlightAsk(ctx *Context, remaining, fame []uuid.UUID, fortune int
 				{Label: "Fortune — its caster draws a card and creates a Treasure token"},
 			},
 			Then: func(ctx *Context, index int) error {
+				// One question asked per answer: the arms are exclusive.
+				nextFame, nextFortune := fame, fortune
 				switch index {
 				case 0:
-					return seizeTheSpotlightAsk(ctx, rest, append(append([]uuid.UUID(nil), fame...), opp), fortune)
+					nextFame = append(append([]uuid.UUID(nil), fame...), opp)
 				case 1:
-					return seizeTheSpotlightAsk(ctx, rest, fame, fortune+1)
+					nextFortune++
 				}
-				return seizeTheSpotlightAsk(ctx, rest, fame, fortune)
+				return seizeTheSpotlightAsk(ctx, rest, nextFame, nextFortune)
 			},
 		}.Apply(ctx)
 	}
 	return seizeTheSpotlightResolve(ctx, fame, fortune)
 }
 
+// seizeTheSpotlightFortune is the fortune half: a card and a Treasure,
+// fortune times, as continuation steps (#4162, CR 608.2c). The Treasure
+// waits for a prompt the draw asks (a dredge offer), and the next card
+// for one the Treasure asks.
+func seizeTheSpotlightFortune(ctx *Context, fortune int) error {
+	if fortune <= 0 {
+		return nil
+	}
+	ctx.RecordStep(seizeTheSpotlightRecord, nil, fortune)
+	return seizeTheSpotlightFortuneSteps.Run(ctx)
+}
+
+// seizeTheSpotlightRecord is how many fortunes are still owed.
+const seizeTheSpotlightRecord = "seize-the-spotlight/fortune"
+
+// seizeTheSpotlightFortuneSteps is registered in init, because its last
+// step runs it again for the next fortune.
+var seizeTheSpotlightFortuneSteps ThenSteps
+
+func seizeTheSpotlightFortuneStepList() []Applier {
+	return []Applier{
+		DrawCards{N: 1},
+		Instruction(func(ctx *Context) error {
+			return CreateToken{Template: TreasureToken(), N: 1}.Apply(ctx)
+		}),
+		Instruction(func(ctx *Context) error {
+			return seizeTheSpotlightFortune(ctx, ctx.StepRecord(seizeTheSpotlightRecord).N()-1)
+		}),
+	}
+}
+
 // seizeTheSpotlightResolve runs the fame half, then the fortune half.
 func seizeTheSpotlightResolve(ctx *Context, fame []uuid.UUID, fortune int) error {
 	fortuneHalf := func(ctx *Context) error {
-		for i := 0; i < fortune; i++ {
-			if err := (DrawCards{Player: ctx.Controller(), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (CreateToken{Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
+		return seizeTheSpotlightFortune(ctx, fortune)
 	}
 	if len(fame) == 0 {
 		return fortuneHalf(ctx)

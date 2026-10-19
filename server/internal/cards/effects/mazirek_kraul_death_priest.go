@@ -29,6 +29,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "e0420f2c-d578-421e-ae75-e7dc5f70661a",
 		Name:            "Mazirek, Kraul Death Priest",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

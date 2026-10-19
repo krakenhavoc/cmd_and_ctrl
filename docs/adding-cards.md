@@ -4012,7 +4012,9 @@ CR 616 ordering prompt and a prevention follow-up's question, and it
 survives a restore. A `Do` called from inside a closure
 (`Do(...)(g, item)`) cannot wait, and neither can plain statements in a
 closure. If a later instruction must read the ANSWER, not just come
-after it, it still goes in the asking primitive's `Then`.
+after it, it still goes in the asking primitive's `Then`, and that
+`Then` can wait in turn when it is written as continuation steps
+(`RegisterThenSteps`, below).
 
 The same holds in two more places since #4019 (`effects/do_walk.go`):
 
@@ -4030,9 +4032,27 @@ each call that can ask something (damage, counters, a draw, a life
 change, a scry): one `Instruction` per piece. Each piece runs whole, and
 the walk can stop between pieces. A piece must not pass anything to the
 next through a Go variable, because a restore between them would lose
-it. Read what the earlier piece did from the game instead. A `Do` wrapped
-by `InterveningIf` keeps its steps visible to the walk (Imoen, Mystic
-Trickster).
+it. Read what the earlier piece did from the game instead. When the game
+keeps no record of it (a count discarded, the tokens just made, a number
+a player chose), the earlier piece writes one, `ctx.RecordStep(name, ids,
+n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). A
+record lives for one resolution. For something an instruction's own
+prompt decides (which tokens it really made, who really drew), record
+the event log's last sequence number (`b25LastEventSeq`) before it and
+read the events after it in the next piece (Martial Coup, Cut a Deal). A
+`Do` wrapped by `InterveningIf` keeps its steps visible to the walk
+(Imoen, Mystic Trickster).
+
+A continuation with more than one instruction (a `Then`, an `OnYes`, the
+callback of a `...ThenForEffect` method) is written as continuation steps
+(#4162): `var x = RegisterThenSteps("then-steps/<card>-<what>", step, …)`
+at package level, and the closure calls `x.Run(ctx)`. Record what the
+steps need from the closure first (the number chosen, the creature
+sacrificed). A chain that asks the next player from its last step (Braids,
+Arisen Nightmare, Court of Ambition) refers to itself, so register it in
+the card's `init` instead of a package-level initialiser, which Go would
+reject as an initialisation cycle. The key is an on-disk identity: append
+it to the ledger with `-update-effect-keys` and never rename it.
 
 Which bodies still run whole is a scan, not a guess (#4155):
 `TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written
@@ -4045,15 +4065,22 @@ name to `stepsConverted` in the same file: `TestConvertedBodiesStayConverted`
 then fails if a later edit makes the body one flat function again. Test the
 card with the prompt open: a dredge offer (Stinkweed Imp in the graveyard) or
 Khârn the Betrayer's question, and a restore when the prompt is data
-(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`).
+(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`,
+`resolution_order_batch3_test.go`). A test that answers a prompt straight on
+the `Game` (not through `actions.Dispatch`) calls `g.SettleResolution()` after
+it, as Dispatch does, or the steps behind the answer never run. The scan reads a
+`switch` with an asking case followed by another case as a pair, though the
+cases are exclusive. In a card you convert, build the prompt in an `if` and
+queue it once, so the converted body is not flagged again.
 
 A Spree bullet with more than one instruction is `SpreeModeSteps(label, cost,
 targets, step, …)` (Insatiable Avarice). A scanned card you leave as it is goes
 in `stepsSkipped` with the reason, and `TestSkippedBodiesAreStillFlagged` fails
-when the entry goes stale. The reasons so far: arms of one switch that cannot
-both run, a reveal or a random pick that asks nothing, one damage instance, a
-`Then` continuation (a step walk cannot park inside one, #4162), and a count or
-a list of ids the next step needs that the game keeps no record of (#4163).
+when the entry goes stale. The reasons so far: arms of one `if` that cannot
+both run (a switch's arms are not scanned as a sequence), a reveal or a random
+pick that asks nothing, one damage instance, and statements that act on
+different players. A continuation and a carried count are not reasons: write
+them as continuation steps and a step record (above).
 
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
@@ -5916,6 +5943,15 @@ as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
 so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia).
+
+**Counters that depend on the card picked (#4170, Turntimber Symbiosis):**
+"put a creature card from among them onto the battlefield. If that card has
+mana value 3 or less, it enters with three additional +1/+1 counters" is
+`CountersFor: func(g *game.Game, c game.Card) map[string]int`, called with
+the picked card as it sits in the library and added to `Counters` for that
+entry. It is for a clause that puts exactly one card (`Max: 1`, not `All`):
+`Apply` returns an error for any clause that could put more, because one
+entry batch takes one set of counters.
 
 **An opponent's library (#4128, Lonis, Cryptozoologist):** "target
 opponent reveals the top X cards of their library. You may put a
@@ -7854,6 +7890,19 @@ of Bloodbending, #3999) is `Game.BeginCombatControlForEffect` with a
 "combat"`, `game/combat_control.go`), which begins as the controlled
 player's next combat phase begins and ends as it ends. The controller
 plays it like a turn, but cannot end the turn from it.
+
+"You choose which creatures attack this turn" and "you choose which
+creatures block this turn (this combat) and how those creatures block"
+(Master Warcraft, Odric, Melee, Brutal Hordechief, #4154) are one
+`Game.BeginDeclarationControlForEffect` with a `DeclarationControl`
+(`Attackers`, `Blockers`, `ThisCombat`; the declarer and the source):
+`game/declaration_control.go`. It is not player control, so nothing else
+changes hands: the declarer makes those declarations on the other
+players' boards, the active player still chooses what each chosen
+attacker attacks and pays its costs, and every restriction and
+requirement applies. A card that also forces the blocks ("block this
+turn if able") adds the requirement itself (Brutal Hordechief's
+rule-scoped `AddBlockRequirementMod`).
 
 A granted ability whose cost exiles the permanent that grants it ("{15},
 Exile The Dominion Bracelet: …" on the equipped creature, #4000) adds

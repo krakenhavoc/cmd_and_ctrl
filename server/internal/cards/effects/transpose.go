@@ -38,25 +38,31 @@ func init() {
 }
 
 // transposeDiscard is the discard, and the life loss and Wizard it leads to.
-// The Then is a continuation, which has no wait of its own (see the scan's skip
-// list).
+// Those two are continuation steps (#4162): the Wizard waits for a prompt the
+// life loss asks (a CR 616 order of two life-loss replacements).
 func transposeDiscard(ctx *Context) error {
-	item, me := ctx.Item, ctx.Controller()
-	fromHand := item.CastFromZone == game.ZoneHand
+	item := ctx.Item
 	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player: me,
+		Player: ctx.Controller(),
 		Source: item.SourceCardID,
 		N:      1,
 		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-			ctx := NewContext(g, item)
-			if err := g.ChangePlayerLifeForEffect(ctx.Source(), me, -1); err != nil {
-				return err
-			}
-			if !fromHand {
-				return nil
-			}
-			return CreateToken{Controller: me, Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
+			return transposeAfterDiscard.Run(NewContext(g, item))
 		},
 	})
 	return nil
 }
+
+// transposeAfterDiscard is "You lose 1 life. If this spell was cast from your
+// hand, create a 0/1 black Wizard creature token …".
+var transposeAfterDiscard = RegisterThenSteps("then-steps/transpose-after-discard",
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
+	}),
+	Instruction(func(ctx *Context) error {
+		if ctx.Item.CastFromZone != game.ZoneHand {
+			return nil
+		}
+		return CreateToken{Controller: ctx.Controller(), Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
+	}),
+)

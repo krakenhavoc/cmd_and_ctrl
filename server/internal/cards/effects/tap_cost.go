@@ -69,6 +69,7 @@ func Improvise() *game.TapPermanentsCost {
 
 func init() {
 	game.ImproviseTapCost = Improvise()
+	game.ConvokeTapCost = Convoke()
 	game.WaterbendTapCost = Waterbend
 }
 

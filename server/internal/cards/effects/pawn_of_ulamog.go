@@ -29,12 +29,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // path with no special-casing here.
 func init() {
 	Register(Spec{
-		OracleID: "9bcaf141-1f1f-491f-aced-13dc093b9e2c",
-		Name:     "Pawn of Ulamog",
+		OracleID:     "9bcaf141-1f1f-491f-aced-13dc093b9e2c",
+		Name:         "Pawn of Ulamog",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
-				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
+				// "This creature OR another NONTOKEN creature": a token
+				// copy of Pawn dying is still "this creature".
+				return ok && leftUnderControlOf(ev, dead) == source.Controller &&
+					(dead.InstanceID == source.InstanceID || !IsToken(dead))
 			}, "Pawn of Ulamog — create a 0/1 Eldrazi Spawn", Do(CreateToken{
 				Template: EldraziSpawnToken(),
 				N:        1,

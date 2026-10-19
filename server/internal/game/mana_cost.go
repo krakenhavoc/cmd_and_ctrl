@@ -34,8 +34,9 @@ import (
 //	                - {W/P}:   Options = {"W"}, Phyrexian = true (pay-W-or-2-life).
 //	                - {W/U/P}: Options = {"W","U"}, Phyrexian = true
 //	                           (pay-W-or-U-or-2-life, CR 107.4f).
-//	              The numeric-alt payment is still unimplemented — the
-//	              auto-tapper treats it as the colour half. The life half
+//	              A numeric-alt symbol is paid with its colour when a
+//	              mana of it can be found and with N mana of any kind
+//	              when not (#4177, foldUnpaidTwobrid, solveColored). The life half
 //	              of a Phyrexian symbol is announced on the cast
 //	              (CastSpellParams.PhyrexianLife, CR 601.2b).
 //	{S}       — snow. Parses but ParsedCost.HasSnow is informational only;
@@ -148,8 +149,9 @@ type ParsedCost struct {
 //	{2/W}    Options {"W"}      NumericAlt 2
 //	{S}      Options {"C"}      Snow
 //
-// The validator and auto-tapper do not read NumericAlt — they pay the
-// coloured half — but the mana value does (CR 202.3f,
+// The pool solver and the auto-tapper pay a NumericAlt symbol with its
+// colour when they can and with N mana of any kind when they cannot
+// (#4177, CR 107.4e), and the mana value reads it too (CR 202.3f,
 // ColorRequirement.ManaValue).
 //
 // Snow (#1190) marks a requirement that was printed as the snow symbol
