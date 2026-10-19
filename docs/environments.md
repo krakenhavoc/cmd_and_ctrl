@@ -1231,6 +1231,23 @@ so everyone who had added one adds it again in Settings › AI opponents.
 `TestMigration0025RollbackByHand` runs exactly this sequence and then rolls
 forward.
 
+Migration 0028 (#4135, the cards each deck request listed) adds one
+table, `deck_request_cards`. An older binary refuses the v28 schema. Drop
+it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE deck_request_cards; DELETE FROM schema_migrations WHERE version = 28;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the memory of which cards each request listed; a deck update
+falls back to the older "what the old version was missing" rule until new
+requests fill it again. `TestMigration0028RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
 Migration 0027 (#3671, a saved deck's estimated power level) adds one
 nullable column, `decks.power_level`. An older binary refuses the v27
 schema. Drop it by hand:

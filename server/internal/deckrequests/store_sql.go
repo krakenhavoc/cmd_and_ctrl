@@ -10,7 +10,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 )
 
-// SQLStore is migration 0006's two tables. Hand-written SQL over
+// SQLStore is migration 0006's two tables and 0028's card table. Hand-written SQL over
 // database/sql, as internal/db asks. Every time column is Unix
 // milliseconds.
 type SQLStore struct {
@@ -100,6 +100,69 @@ func (s *SQLStore) RecordAsk(ctx context.Context, deckKey, requester string, at 
 		`INSERT INTO deck_request_asks (deck_key, requester, at) VALUES (?, ?, ?)`,
 		deckKey, requester, at.UnixMilli()); err != nil {
 		return fmt.Errorf("deckrequests: record ask: %w", err)
+	}
+	return nil
+}
+
+// RecordCards implements Store.
+func (s *SQLStore) RecordCards(ctx context.Context, deckKey string, issueNumber int, cards []Card) error {
+	if deckKey == "" || issueNumber <= 0 {
+		return errors.New("deckrequests: recorded cards need a deck key and an issue number")
+	}
+	if len(cards) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("deckrequests: record cards: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, c := range cards {
+		if c.Key == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT OR IGNORE INTO deck_request_cards (deck_key, card_key, card_name, issue_number) VALUES (?, ?, ?, ?)`,
+			deckKey, c.Key, c.Name, issueNumber); err != nil {
+			return fmt.Errorf("deckrequests: record cards: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("deckrequests: record cards: %w", err)
+	}
+	return nil
+}
+
+// CardsOf implements Store.
+func (s *SQLStore) CardsOf(ctx context.Context, deckKey string) ([]Card, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT card_key, card_name, issue_number FROM deck_request_cards WHERE deck_key = ? ORDER BY card_name, card_key`,
+		deckKey)
+	if err != nil {
+		return nil, fmt.Errorf("deckrequests: cards: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []Card
+	for rows.Next() {
+		var c Card
+		if err := rows.Scan(&c.Key, &c.Name, &c.IssueNumber); err != nil {
+			return nil, fmt.Errorf("deckrequests: scan card: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// CopyCards implements Store.
+func (s *SQLStore) CopyCards(ctx context.Context, fromKey, toKey string) error {
+	if fromKey == "" || toKey == "" || fromKey == toKey {
+		return nil
+	}
+	if _, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO deck_request_cards (deck_key, card_key, card_name, issue_number)
+		 SELECT ?, card_key, card_name, issue_number FROM deck_request_cards WHERE deck_key = ?`,
+		toKey, fromKey); err != nil {
+		return fmt.Errorf("deckrequests: copy cards: %w", err)
 	}
 	return nil
 }

@@ -478,6 +478,7 @@ func (d *deckCheck) confirmUpdate(c Config, w http.ResponseWriter, r *http.Reque
 		Deck: libraryDeckInfo(c, updated, libraryVerdicts(c)),
 		Diff: pend.diff,
 	}
+	d.carryRequestedCards(r.Context(), c, pend)
 	if body.RequestMissing {
 		resp.Request = d.fileUpdateRequest(r.Context(), c, p, pend)
 	}
@@ -519,38 +520,72 @@ func missingCards(r *deckcoverage.Report) []deckcoverage.Card {
 	return append(r.CardsIn(deckcoverage.Manual), r.CardsIn(deckcoverage.Unreviewed)...)
 }
 
+// requestedCards turns report cards into the rows a request records.
+func requestedCards(cards []deckcoverage.Card, issue int) []deckrequests.Card {
+	out := make([]deckrequests.Card, 0, len(cards))
+	for _, card := range cards {
+		out = append(out, deckrequests.Card{Key: missingKey(card), Name: card.Name, IssueNumber: issue})
+	}
+	return out
+}
+
+// requestedSet is the set of cards a deck's requests already list, by
+// missingKey: what updateDelta takes away from the new version's missing
+// cards.
+//
+// A deck key's cards are the ones recorded for it (migration 0028), which
+// are exactly what its issues listed, as filed or as extended by an
+// update, plus whatever an earlier key of the same deck inherited. A key
+// with a request row and no recorded cards is a request filed before
+// those rows were kept, and falls back to the older rule: the old
+// version's key lists what the old version was missing, and a pasted
+// list's own key lists the very list.
+func (d *deckCheck) requestedSet(ctx context.Context, c Config, pend *pendingUpdate) (map[string]bool, error) {
+	requested := map[string]bool{}
+	keys := []string{pend.oldKey}
+	if pend.newKey != pend.oldKey {
+		keys = append(keys, pend.newKey)
+	}
+	for _, key := range keys {
+		recorded, err := c.DeckRequests.CardsOf(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		if len(recorded) > 0 {
+			for _, card := range recorded {
+				requested[card.Key] = true
+			}
+			continue
+		}
+		if _, err := c.DeckRequests.Lookup(ctx, key); errors.Is(err, deckrequests.ErrNotFound) {
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		if key == pend.oldKey {
+			for _, card := range missingCards(pend.oldReport) {
+				requested[missingKey(card)] = true
+			}
+		}
+		if key == pend.newKey && deckcoverage.IsListKey(key) {
+			for _, card := range missingCards(pend.newReport) {
+				requested[missingKey(card)] = true
+			}
+		}
+	}
+	return requested, nil
+}
+
 // updateDelta decides which of the new version's missing cards still
-// need asking for (#2036). A card is already requested when:
-//
-//   - the OLD version's deck key has a request row and the old version
-//     was missing that card (the old key's issue lists it), or
-//   - the new version is a pasted list that has a request row of its own
-//     (a list key is its content, so that issue lists this very list).
-//
-// Everything else the new version misses is new. It returns the new
-// cards and how many were left out as already requested. The rule reads
-// only the request rows ADR 0095 §3 already keeps; it is exact for one
-// update after a request, and for a deck whose request was filed from
-// its latest version. See the amendment for the case it does not cover.
+// need asking for (#2036, #4135): those no request of this deck lists
+// (requestedSet). It returns the new cards and how many were left out as
+// already requested.
 func (d *deckCheck) updateDelta(ctx context.Context, c Config, pend *pendingUpdate) (delta []deckcoverage.Card, already int, err error) {
 	missing := missingCards(pend.newReport)
 	requested := map[string]bool{}
 	if c.DeckRequests != nil {
-		if _, lerr := c.DeckRequests.Lookup(ctx, pend.oldKey); lerr == nil {
-			for _, card := range missingCards(pend.oldReport) {
-				requested[missingKey(card)] = true
-			}
-		} else if !errors.Is(lerr, deckrequests.ErrNotFound) {
-			return nil, 0, lerr
-		}
-		if deckcoverage.IsListKey(pend.newKey) {
-			if _, lerr := c.DeckRequests.Lookup(ctx, pend.newKey); lerr == nil {
-				for _, card := range missing {
-					requested[missingKey(card)] = true
-				}
-			} else if !errors.Is(lerr, deckrequests.ErrNotFound) {
-				return nil, 0, lerr
-			}
+		if requested, err = d.requestedSet(ctx, c, pend); err != nil {
+			return nil, 0, err
 		}
 	}
 	for _, card := range missing {
@@ -561,6 +596,59 @@ func (d *deckCheck) updateDelta(ctx context.Context, c Config, pend *pendingUpda
 		delta = append(delta, card)
 	}
 	return delta, already, nil
+}
+
+// carryRequestedCards runs after an update commits, whether or not the
+// player asked for anything: the deck's new key inherits what the old
+// key's requests listed, so a pasted list's content-derived key does not
+// lose the deck's history at an update where the player declined (#4135).
+// A request with rows from before they were kept is written out as the
+// old rule read it, so it carries too. It never fails the update.
+func (d *deckCheck) carryRequestedCards(ctx context.Context, c Config, pend *pendingUpdate) {
+	if c.DeckRequests == nil || pend.oldKey == pend.newKey {
+		return
+	}
+	d.fileMu.Lock()
+	defer d.fileMu.Unlock()
+	if recorded, err := c.DeckRequests.CardsOf(ctx, pend.oldKey); err == nil && len(recorded) == 0 {
+		if req, lerr := c.DeckRequests.Lookup(ctx, pend.oldKey); lerr == nil {
+			if err := c.DeckRequests.RecordCards(ctx, pend.oldKey, req.IssueNumber, requestedCards(missingCards(pend.oldReport), req.IssueNumber)); err != nil {
+				c.logger().Error("deck update: recording the old version's requested cards failed", "deck", pend.oldKey, "err", err)
+			}
+		}
+	}
+	if recorded, err := c.DeckRequests.CardsOf(ctx, pend.newKey); err == nil && len(recorded) == 0 && deckcoverage.IsListKey(pend.newKey) {
+		// A pasted list that was requested on its own: its issue lists this very list.
+		if req, lerr := c.DeckRequests.Lookup(ctx, pend.newKey); lerr == nil {
+			if err := c.DeckRequests.RecordCards(ctx, pend.newKey, req.IssueNumber, requestedCards(missingCards(pend.newReport), req.IssueNumber)); err != nil {
+				c.logger().Error("deck update: recording the new version's requested cards failed", "deck", pend.newKey, "err", err)
+			}
+		}
+	}
+	if err := c.DeckRequests.CopyCards(ctx, pend.oldKey, pend.newKey); err != nil {
+		c.logger().Error("deck update: carrying requested cards to the new key failed", "deck", pend.newKey, "err", err)
+	}
+	// The updated deck answers to the new key and is tracked by the issue
+	// that tracked it, as when an update's request joins that issue: a
+	// later request or update finds it there, and comments on it, instead
+	// of filing a second issue for one deck.
+	if _, err := c.DeckRequests.Lookup(ctx, pend.newKey); errors.Is(err, deckrequests.ErrNotFound) {
+		if req, lerr := c.DeckRequests.Lookup(ctx, pend.oldKey); lerr == nil {
+			req.DeckKey = pend.newKey
+			if perr := c.DeckRequests.Put(ctx, req); perr != nil {
+				c.logger().Error("deck update: pointing the new key at the issue failed", "deck", pend.newKey, "err", perr)
+			}
+		}
+	}
+}
+
+// recordRequestedCards remembers that issue lists cards for key. A
+// failure is logged and never undoes the request: it costs the
+// de-duplication of those cards on a later update.
+func (d *deckCheck) recordRequestedCards(ctx context.Context, c Config, key string, issue int, cards []deckcoverage.Card) {
+	if err := c.DeckRequests.RecordCards(ctx, key, issue, requestedCards(cards, issue)); err != nil {
+		c.logger().Error("deck request: recording the listed cards failed", "deck", key, "issue", issue, "err", err)
+	}
 }
 
 // previewRequest fills the preview's request block.
@@ -675,6 +763,7 @@ func (d *deckCheck) fileUpdateRequest(ctx context.Context, c Config, p auth.Prin
 			}
 		}
 		d.recordAsk(ctx, c, pend.newKey, requesterKey)
+		d.recordRequestedCards(ctx, c, pend.newKey, existing.IssueNumber, delta)
 		return &updateRequestResult{Status: updateRequestJoined, IssueURL: url, IssueNumber: existing.IssueNumber, NewCards: names, AlreadyRequested: already}
 	}
 
@@ -692,6 +781,7 @@ func (d *deckCheck) fileUpdateRequest(ctx context.Context, c Config, p auth.Prin
 		c.logger().Error("deck update: issue filed but its row was not saved", "deck", pend.newKey, "issue", url, "err", perr)
 	}
 	d.recordAsk(ctx, c, pend.newKey, requesterKey)
+	d.recordRequestedCards(ctx, c, pend.newKey, number, delta)
 	return &updateRequestResult{Status: updateRequestFiled, IssueURL: url, IssueNumber: number, NewCards: names, AlreadyRequested: already}
 }
 

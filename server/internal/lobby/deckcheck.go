@@ -808,6 +808,7 @@ func (d *deckCheck) file(ctx context.Context, c Config, w http.ResponseWriter, k
 		// deck, not the request. Log it loudly and answer success.
 		c.logger().Error("deck request: issue filed but its row was not saved", "deck", key, "issue", url, "err", err)
 	}
+	d.recordRequestedCards(ctx, c, key, number, missingCards(report))
 	d.recordAsk(ctx, c, key, requesterKey)
 	return writeJSON(w, http.StatusCreated, deckRequestResponse{
 		Status: deckRequestFiled, IssueURL: url, IssueNumber: number, Report: report,

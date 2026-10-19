@@ -181,6 +181,7 @@ func seed(t *testing.T) fixture {
 	exec(t, d, `INSERT INTO deck_request_asks (deck_key, requester, at) VALUES ('moxfield:a', ?, 1), ('moxfield:b', ?, 1)`,
 		"discord:"+userSubject, "discord:"+otherSubject)
 	exec(t, d, `INSERT INTO deck_requests (deck_key, issue_number, issue_url, created_at) VALUES ('moxfield:a', 7, 'https://example.test/7', 1)`)
+	exec(t, d, `INSERT INTO deck_request_cards (deck_key, card_key, card_name, issue_number) VALUES ('moxfield:a', 'oracle-1', 'Sol Ring', 7)`)
 
 	exec(t, d, `INSERT INTO games (id, name, created_by, state, created_at, ended_at, winner_seat, outcome, host_player_id, host_discord_id)
 		VALUES (?, 'Friday pod', ?, 'ended', 1, 2, 0, 'win', ?, ?)`, f.endedGame.String(), f.user.String(), f.endedPlayer.String(), userSubject)
@@ -342,6 +343,9 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	}
 	if n := count(t, f.d, `SELECT COUNT(*) FROM deck_requests`); n != 1 {
 		t.Errorf("deck_requests are not personal and stay, got %d", n)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM deck_request_cards`); n != 1 {
+		t.Errorf("deck_request_cards name a deck and a card, not a person, and stay, got %d", n)
 	}
 
 	// The other person is untouched.
