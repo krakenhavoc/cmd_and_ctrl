@@ -51,6 +51,10 @@ export class BugReportDraft {
 
   // Raw, not deep: Files are opaque and the arrays are only ever replaced.
   images = $state.raw<File[]>([]);
+  // #4116: the picture of the board taken with the form's checkbox. It is
+  // also in `images`; this names which one, so unticking removes it and
+  // removing it from the list unticks the box.
+  boardShot = $state.raw<File | null>(null);
   // One object URL per image, index-aligned with `images`.
   previews = $state.raw<string[]>([]);
 
@@ -87,6 +91,7 @@ export class BugReportDraft {
     this.urls.clear();
     this.previews = [];
     this.images = [];
+    this.boardShot = null;
   }
 }
 
