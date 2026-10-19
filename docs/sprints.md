@@ -3856,6 +3856,7 @@ Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a
 
 Opened at the 2026-10-14 triage. Several members already have PRs open: #3584, #3596, #3526 and #3542.
 
+- [ ] [#4126](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4126): fully automate Skrelv, Defector Mite and Umezawa's Jitte for the owner's Squall deck (owner-requested beta follow-up outside the planned mechanic batches)
 - [ ] [#3568](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3568): the remaining incubate cards
 - [ ] [#3591](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3591), [#3592](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3592), [#3593](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3593): the incubate caveats of Assimilate Essence, Brimaz and Corruption of Towashi
 - [ ] [#3511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3511): Incubator token art from double_faced_token printings

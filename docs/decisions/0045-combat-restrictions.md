@@ -4865,3 +4865,21 @@ fails; drop the `used` exclusion in `dackFaydenAsk` and `TestDackFaydenGoadsAndH
 fails.
 
 Tests: `game/goad_rest_of_game_test.go`, `cards/effects/dack_fayden_helping_hand_test.go`.
+
+
+## Amendment — chosen-color evasion (2026-10-19, #4126)
+
+Skrelv, Defector Mite grants a target creature evasion against creatures
+of a color chosen as its ability resolves. This is a floating blocking
+restriction, separate from its hexproof and toxic grants. It uses the
+existing scoped block-rule walk with a new additive mod kind,
+`cantBeBlockedByColor`, whose existing `Colors` field contains one WUBRG
+letter and whose `Text` is the displayed barred set.
+
+The affected creature is pinned at resolution. Blockers' effective
+colors are read when blockers are declared: a multicolored creature
+matches any color it has, a colorless one matches none, and a later
+color change is seen. The validator, legal-move enumerator and UI all
+consume the existing `cant_be_blocked_by` refusal. The record survives
+source departure and snapshots and expires with the same duration as
+the keyword grants. No snapshot fields are retyped or removed.
