@@ -230,6 +230,7 @@ func buildDef(spec Spec) *game.CardDef {
 		DamageCantBePrevented:               spec.DamageCantBePrevented,
 		CantGainLife:                        spec.CantGainLife,
 		DrawLimits:                          spec.DrawLimits,
+		VentureLimits:                       spec.VentureLimits,
 		DamageAsThough:                      spec.DamageAsThough,
 		AnyColorSpend:                       spec.AnyColorSpend,
 		LifeForMana:                         spec.LifeForMana,

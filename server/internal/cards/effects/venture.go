@@ -14,10 +14,13 @@ import (
 // Mine of Phandelver, Dungeon of the Mad Mage and Tomb of Annihilation
 // (dungeons_forgotten_realms.go) — so a card only has to say it:
 //
-//	VentureIntoTheDungeon{}          "venture into the dungeon"
-//	Venture                          the same, as a trigger's Effect
-//	WhenThisEntersVenture(name)      "When this <permanent> enters, venture into the dungeon."
-//	Completed / YouCompletedADungeon "as long as you've completed a dungeon"
+//	VentureIntoTheDungeon{}           "venture into the dungeon"
+//	Venture                           the same, as a whole Effect
+//	Venturing(rest...)                "venture into the dungeon and <rest>"
+//	WhenThisEntersVenture(name)       "When this <permanent> enters, venture into the dungeon."
+//	PumpWhileCompletedADungeon,
+//	KeywordWhileCompletedADungeon     "as long as you've completed a dungeon, …"
+//	IfVentureCond(cond, trigger)      an intervening "if" these cards print (CR 603.4)
 
 // VentureIntoTheDungeon is "<player> ventures into the dungeon" (CR
 // 701.49a). Player defaults to the effect's controller. A player who has

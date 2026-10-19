@@ -390,6 +390,11 @@ type CardDef struct {
 	// Read from the battlefield through CatalogDrawLimits; see
 	// draw_limit.go.
 	DrawLimits []DrawLimitStatic
+	// VentureLimits are this permanent's printed "each opponent can't
+	// venture into the dungeon more than once each turn" statics (#4100).
+	// Read from the battlefield through CatalogVentureLimits; see
+	// venture_limit.go.
+	VentureLimits []VentureLimitStatic
 	// DamageAsThough are this permanent's printed "damage is dealt as
 	// though its source had wither / infect" statics (ADR 0108 §10). Read
 	// from the battlefield through CatalogDamageAsThough, keyed by
@@ -1044,6 +1049,12 @@ func init() {
 	CatalogDrawLimits = func(key string) []DrawLimitStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DrawLimits
+		}
+		return nil
+	}
+	CatalogVentureLimits = func(key string) []VentureLimitStatic {
+		if d := catalogDef(key); d != nil {
+			return d.VentureLimits
 		}
 		return nil
 	}
