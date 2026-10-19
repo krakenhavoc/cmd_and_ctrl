@@ -3801,6 +3801,7 @@ Opened at the 2026-10-14 triage, mostly from player reports and an agent's game 
 - [ ] [#3609](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3609): log lines name a token "a card" once the token is gone
 - [ ] [#3490](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3490): rebound (Quantum Misalignment) prompts but never casts
 - [ ] [#3601](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3601): the arrival ring is measured mid-ETB-pop and drawn shrunk
+- [ ] [#4124](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4124): saved-deck printing picker and Scryfall alternate-title matching (owner follow-up to #3605)
 - [x] [#3605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3605): imported decks lose their printing and default to gimmick reprint art ([ADR 0192](decisions/0192-a-deck-names-its-printing.md))
 - [ ] [#3518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3518): double-faced cards show each face as a whole card
 - [ ] [#3449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3449): after a tied opening roll, show the tie and the first-round dice

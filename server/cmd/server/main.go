@@ -1037,6 +1037,9 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 		_, _ = w.Write([]byte("ok"))
 	})
 	mux.HandleFunc(wsRoute, hub.ServeWS)
+	// Printing metadata is public card data, like /catalog. The scoped
+	// route performs no CDN fetch; the general image proxy keeps auth.
+	mux.Handle("GET /cards/{id}/printings", cards.Handler(cardIdx, imgCache))
 	mux.Handle("/cards/", auth.Middleware(authenticator)(cards.Handler(cardIdx, imgCache)))
 	// The card catalog: a browsable list of every card the engine
 	// actually automates, with each entry's declared completeness.

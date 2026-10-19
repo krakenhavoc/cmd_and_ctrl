@@ -3237,6 +3237,41 @@ deck carries it as `SeatInfo.deck_power`, and the table's seat line
 shows it as a `PWR 3.5` badge ahead of the deck name, which never
 shrinks: on a narrow seat the deck name is what gets cut off.
 
+### `GET /me/decks/{id}/printings` and `PUT /me/decks/{id}/printings` (#4124)
+
+The saved-deck **Choose printings** panel reads the caller's deck as rows
+(`entry`, `name`, `count`, `board`, `printing_id`, `set`,
+`collector_number`) and a `revision` of its stored source. Unresolved
+cards stay in the list with an empty printing UUID. Both routes require
+a signed-in person and share the library's rate bucket; another owner's
+id is a 404, a guest or admin token a 403.
+
+Save explicitly with:
+
+```json
+{"revision":"<revision from GET>","choices":[{"entry":0,"printing_id":"<Scryfall UUID>"}]}
+```
+
+Only available English playable printings of the same oracle identity
+are accepted (400 for a wrong identity, unavailable printing or invalid
+row). A changed source is 409: reopen the picker. All choices are
+validated before an atomic save. The source is rendered as text with
+`(SET) number` suffixes, keeping every row, count and board, including
+unresolved cards. Name, commander summary, card count, source link and
+power rating are preserved. The response is the updated `GET /me/decks`
+entry. Choices apply on the next seating; ongoing games keep their art.
+
+### `GET /cards/{id}/printings` (#4124)
+
+Public, no session required: printing metadata stays outside the Discord
+sign-in gate, like `/catalog`. Returns
+`{"printings":[{"id":"…","name":"…","flavor_name":"…","set":"…","collector_number":"…"}]}`.
+The list contains the loaded English playable printings of the same
+oracle identity, newest release first, then set and collector number.
+Alternate titles are included for filtering; previews use the existing
+`/cards/{id}/image` route. Unknown id: 404. No index: 503. No external
+API requests or database writes occur when browsing.
+
 ### `GET /me/decks/{id}/coverage` (ADR 0110 section 6)
 
 The full ADR 0095 coverage report for one saved deck (the same body as
@@ -5184,6 +5219,13 @@ page at `#rulings`. The client never fetches either site.
 additive, each omitted when empty) are Scryfall's own words for how a
 printing looks. The server reads them to choose the printing that stands
 for a card name when a deck names none; nothing at the table does.
+
+**Alternate printing names.** Deck imports and coverage checks also match
+Scryfall `flavor_name` titles, including face titles. For example,
+`Raph's Jitte` resolves to Umezawa's Jitte with the alternate printing's
+art and the same oracle identity and coverage. This applies when
+re-reading existing saved decks too. Canonical names take precedence
+if an alternate title collides with another card's real name.
 
 **Which printing a deck shows.** A deck's source may name the printing of
 a card: an Archidekt `uid` / `editioncode` / `collectorNumber`, a

@@ -11,7 +11,9 @@
   // at a time); the card owns its menu, its rename field and its
   // confirm, and hands the page the new name or the delete.
 
-  import type { Snippet } from "svelte";
+  import { L } from "../../labels";
+  import PrintingPicker from "./PrintingPicker.svelte";
+  import { tick, type Snippet } from "svelte";
   import Icon from "../Icon.svelte";
   import CommanderArt from "./CommanderArt.svelte";
   import CoverageRing from "./CoverageRing.svelte";
@@ -28,6 +30,7 @@
     /** A rename or delete is in flight somewhere in the library. */
     busy: boolean;
     onReport: () => void;
+    onPrintingSaved: (deck: MyDeckInfo) => void;
     onRequest: () => void;
     /** Resolves to an error message, or "" when the rename landed. */
     onRename: (name: string) => Promise<string>;
@@ -44,6 +47,7 @@
     requestLocked,
     busy,
     onReport,
+    onPrintingSaved,
     onRequest,
     onRename,
     onDelete,
@@ -60,6 +64,13 @@
   const shown = $derived(art.filter((a) => !failed.includes(a.scryfallId)));
 
   let menuOpen = $state(false);
+  let printingsOpen = $state(false);
+  let printingButton = $state<HTMLButtonElement | null>(null);
+
+  function closePrintings(): void {
+    printingsOpen = false;
+    void tick().then(() => printingButton?.focus());
+  }
   let renaming = $state(false);
   let renameValue = $state("");
   let renameError = $state("");
@@ -184,6 +195,14 @@
         </div>
       {:else}
         <div class="actions">
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => (printingsOpen = true)}
+            bind:this={printingButton}
+            aria-expanded={printingsOpen}
+            disabled={busy || printingsOpen}>{L.choosePrintings}</button
+          >
           {#if deck.coverage}
             <button type="button" class="btn sm" onclick={onReport} aria-expanded={reportOpen}>
               {reportOpen ? "Hide report" : "Coverage report"}
@@ -243,6 +262,16 @@
         </div>
       {/if}
 
+      {#if printingsOpen}
+        <PrintingPicker
+          {deck}
+          onclose={closePrintings}
+          onsaved={(updated) => {
+            onPrintingSaved(updated);
+            closePrintings();
+          }}
+        />
+      {/if}
       {@render below?.()}
     </div>
   </article>

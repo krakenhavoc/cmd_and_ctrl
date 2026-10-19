@@ -50,4 +50,23 @@ The library row stores commander names only. `libraryDeckInfo` now reads the pri
 - With no printing named, Raffine renders snc #213. Checked against the 2026-10-05 dump by `TestRealDumpRaffineDefaultsToSNC`, which skips unless `CMDCTRL_SCRYFALL_DUMP` is set.
 - A card whose newest ordinary printing is old now shows that printing instead of a later Secret Lair or promo reprint. That is the intent.
 - The deck checker, coverage report and catalog are keyed by oracle id and name, and are unaffected.
-- Not done: an in-app way to pick a printing for a card in a deck, and printings for tokens (ADR 0078 owns those). A deck from a source that names no printing gets the default; a player who wants a specific art pastes a list with `(SET) number`.
+- The original scope deferred an in-app printing picker (added in the amendment below) and printings for tokens (ADR 0078 owns those). A deck from a source that names no printing gets the default; a player who wants a specific art pastes a list with `(SET) number`.
+
+
+## Amendment — saved-deck printing picker (2026-10-18, #4124)
+
+The owner requested an in-app picker after a saved deck reported nine
+reskinned titles as unknown. The Decks grid now offers **Choose printings**:
+select a saved card row, browse full-card previews, filter by set, number
+or alternate title, then explicitly save or cancel. Choices apply to every
+copy in that source row on its next seating; ongoing games are untouched.
+
+This extends decision 2 using the same stored `(SET) number` suffix. It
+adds no preference table or snapshot field. Ownership is checked before
+reads and writes, all selected printings must match the card's oracle
+identity, and a source revision prevents a stale picker overwriting a
+changed list. An atomic source update preserves metadata and the power
+rating because only art changed. Unresolved names and all board flags
+survive the rewrite. Canonical names and Scryfall `flavor_name` aliases
+both resolve, and an alias selects its corresponding reskinned printing.
+Canonical names take precedence on a title collision.

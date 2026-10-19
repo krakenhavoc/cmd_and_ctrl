@@ -400,3 +400,27 @@ func TestValidPowerLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestPrintingUpdateRejectsConcurrentSourceChanges(t *testing.T) {
+	s, db := openStore(t)
+	ctx := context.Background()
+	owner := mustUser(t, db, "Alice")
+	before, err := s.Upsert(ctx, owner, "Deck", "text", "1 Plains", []string{}, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Upsert(ctx, owner, "Deck", "text", "2 Plains", []string{}, 2); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.UpdatePrintings(ctx, before, "1 Plains (ONE) 1"); !errors.Is(err, ErrSourceChanged) {
+		t.Fatalf("stale source: %v", err)
+	}
+	before.OwnerID = uuid.New()
+	if _, err := s.UpdatePrintings(ctx, before, "1 Plains (ONE) 1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("wrong owner: %v", err)
+	}
+	current, err := s.Get(ctx, before.ID)
+	if err != nil || current.SourceText != "2 Plains" {
+		t.Fatalf("changed deck overwritten: %+v %v", current, err)
+	}
+}

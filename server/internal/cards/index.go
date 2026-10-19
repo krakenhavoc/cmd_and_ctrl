@@ -36,12 +36,15 @@ type Card struct {
 	// effect catalog as the spec key, so a deck importing a set-
 	// specific printing still matches the catalog entry. Added in
 	// S14 sub-PR 4.
-	OracleID    uuid.UUID `json:"oracle_id"`
-	Name        string    `json:"name"`
-	SetCode     string    `json:"set"`
-	SetType     string    `json:"set_type"`
-	CollectorNo string    `json:"collector_number"`
-	Lang        string    `json:"lang"`
+	OracleID uuid.UUID `json:"oracle_id"`
+	Name     string    `json:"name"`
+	// FlavorName is the alternate title printed on a reskinned card.
+	// It is an import alias; Name and OracleID remain the rules identity.
+	FlavorName  string `json:"flavor_name,omitempty"`
+	SetCode     string `json:"set"`
+	SetType     string `json:"set_type"`
+	CollectorNo string `json:"collector_number"`
+	Lang        string `json:"lang"`
 	// Layout is Scryfall's printing layout: "normal", "split",
 	// "transform", "token", "art_series", "double_faced_token", etc.
 	// Carried because the byName index has to demote token /
@@ -310,6 +313,7 @@ type CardFace struct {
 	// double-faced card are often by different artists (#2982).
 	Artist     string            `json:"artist,omitempty"`
 	Name       string            `json:"name"`
+	FlavorName string            `json:"flavor_name,omitempty"`
 	TypeLine   string            `json:"type_line"`
 	OracleText string            `json:"oracle_text"`
 	ImageURIs  map[string]string `json:"image_uris"`
@@ -373,6 +377,8 @@ type Index struct {
 	// front-face name ("Fire") so common deck-list shorthand still
 	// resolves.
 	byName map[string]Card
+	// byAlias keeps printing titles separate so they never shadow real names.
+	byAlias map[string]Card
 	// byOracle resolves an oracle_id — the printing-independent card
 	// identity Scryfall issues once per card — to one representative
 	// printing. The card-effect catalog is keyed by oracle_id
@@ -459,6 +465,7 @@ func NewIndex() *Index {
 	return &Index{
 		byID:     make(map[uuid.UUID]Card),
 		byName:   make(map[string]Card),
+		byAlias:  make(map[string]Card),
 		byOracle: make(map[uuid.UUID]Card),
 		bySetNo:  make(map[string]uuid.UUID),
 	}
@@ -492,6 +499,7 @@ func (i *Index) Load(path string) (int, error) {
 
 	loaded := make(map[uuid.UUID]Card, 40_000) // ballpark for default_cards
 	byName := make(map[string]Card, 40_000)
+	byAlias := make(map[string]Card)
 	byOracle := make(map[uuid.UUID]Card, 40_000)
 	bySetNo := make(map[string]uuid.UUID, 40_000)
 	var tokenPool []Card // ADR 0078 decision 3a/5: one pass, built here
@@ -505,6 +513,7 @@ func (i *Index) Load(path string) (int, error) {
 		}
 		c.AllParts = meldParts(c.AllParts)
 		loaded[c.ID] = c
+		indexAliases(byAlias, c)
 		indexSetNo(bySetNo, loaded, c)
 		if isTokenArtPoolCandidate(c) {
 			tokenPool = append(tokenPool, tokenPoolPrinting(c))
@@ -561,6 +570,7 @@ func (i *Index) Load(path string) (int, error) {
 	i.mu.Lock()
 	i.byID = loaded
 	i.byName = byName
+	i.byAlias = byAlias
 	i.byOracle = byOracle
 	i.bySetNo = bySetNo
 	i.tokenPool = tokenPool
@@ -639,7 +649,10 @@ func (i *Index) EachOracle(fn func(c Card, printings int)) {
 // FindByName resolves a card name to a Card. Matching is case- and
 // whitespace-insensitive; for split / double-faced cards both the
 // full printed name ("Fire // Ice") and the front-face name ("Fire")
-// resolve to the same Card. Returns (zero, false) on miss — the
+// resolve to the same Card. Scryfall flavor_name titles on cards and
+// faces also resolve, keeping the reskinned printing and its canonical
+// identity. Canonical names take precedence over alternate titles.
+// Returns (zero, false) on miss — the
 // deck parser turns that into a structured "unknown card" error.
 //
 // Fallback: if the exact key misses and the input contains a slash
@@ -658,9 +671,15 @@ func (i *Index) FindByName(name string) (Card, bool) {
 	if c, ok := i.byName[key]; ok {
 		return c, true
 	}
+	if c, ok := i.byAlias[key]; ok {
+		return c, true
+	}
 	if slash := strings.IndexByte(key, '/'); slash > 0 {
 		front := strings.TrimRight(key[:slash], " ")
 		if c, ok := i.byName[front]; ok {
+			return c, true
+		}
+		if c, ok := i.byAlias[front]; ok {
 			return c, true
 		}
 	}
@@ -989,6 +1008,10 @@ func (i *Index) Put(c Card) {
 		defer attachMeldResults(i.byID, i.byName, i.byOracle)
 	}
 	i.byID[c.ID] = c
+	if i.byAlias == nil {
+		i.byAlias = make(map[string]Card)
+	}
+	indexAliases(i.byAlias, c)
 	if i.bySetNo == nil {
 		i.bySetNo = make(map[string]uuid.UUID)
 	}
@@ -1021,6 +1044,27 @@ func (i *Index) Put(c Card) {
 		if existing, ok := i.byName[key]; !ok || preferIncoming(existing, c) {
 			i.byName[key] = c
 		}
+	}
+}
+
+// indexAliases retains the printing whose alternate title an export uses.
+// Canonical names are looked up first, independently of insertion order.
+func indexAliases(aliases map[string]Card, c Card) {
+	if !isPlayablePrint(c) {
+		return
+	}
+	put := func(name string) {
+		key := normalizeName(name)
+		if key == "" {
+			return
+		}
+		if old, ok := aliases[key]; !ok || preferIncoming(old, c) {
+			aliases[key] = c
+		}
+	}
+	put(c.FlavorName)
+	for _, face := range c.CardFaces {
+		put(face.FlavorName)
 	}
 }
 

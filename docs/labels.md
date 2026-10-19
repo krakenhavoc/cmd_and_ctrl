@@ -124,6 +124,12 @@ registered, or when this file is stale.
 | `newTable` | `new table` | button | aria | `routes/Lobby.svelte` | the Tables page head's + New table, which opens the new-table form; the lobby.create hint points at it |
 | `suggestTableName` | `suggest a name` | button | aria | `lib/components/NewTableRow.svelte` | the dice next to the Lobby's game-name box: fills it with a generated table name (#2630) |
 | `deckLink` | `deck link` | textbox | aria | `routes/Decks.svelte` | the Decks page's deck-link field; the decks.check hint points at it |
+| `choosePrintings` | `Choose printings` | button | text | `lib/components/decks/DeckCard.svelte` | saved-deck printing picker |
+| `printingPicker` | `card printings` | region | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `printingCard` | `Card to customize` | combobox | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `filterPrintings` | `Filter printings` | searchbox | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `savePrintings` | `Save printings` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `cancelPrintings` | `Cancel printing changes` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
 | `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte` | a signed-in person's saved decks; the decks.library hint points at it |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |

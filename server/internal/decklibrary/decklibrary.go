@@ -31,6 +31,9 @@ import (
 // ErrNotFound is returned by Get for an unknown deck.
 var ErrNotFound = errors.New("decklibrary: not found")
 
+// ErrSourceChanged refuses a printing edit made against an older source.
+var ErrSourceChanged = errors.New("decklibrary: the saved list changed; reopen the printing picker")
+
 // ErrNameTaken is returned by Rename when the owner already has a deck
 // with that name: the upsert rule keys on (owner, name).
 var ErrNameTaken = errors.New("decklibrary: you already have a deck with that name")
@@ -80,6 +83,9 @@ func ValidPowerLevel(level float64) bool {
 // Store reads and writes a person's deck library. Implementations are
 // safe for concurrent use.
 type Store interface {
+	// UpdatePrintings replaces only the stored source, atomically checking
+	// ownership and the source read by the picker. Art changes keep ratings.
+	UpdatePrintings(ctx context.Context, before Deck, sourceText string) (Deck, error)
 	// Upsert saves one deck for owner. The update rule (see ADR 0051
 	// implementation notes, sub-PR 5): a row already owned by owner
 	// with the same name is updated in place — source, commanders and
@@ -171,3 +177,7 @@ func (NoStore) List(context.Context, uuid.UUID) ([]Deck, error) {
 }
 
 var _ Store = NoStore{}
+
+func (NoStore) UpdatePrintings(context.Context, Deck, string) (Deck, error) {
+	return Deck{}, ErrNotFound
+}

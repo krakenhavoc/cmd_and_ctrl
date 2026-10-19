@@ -19,6 +19,9 @@ func TestCatalogIsPublicAndCardsStayGated(t *testing.T) {
 	if got := do(t, srv, "GET", "/catalog/image/00000000-0000-0000-0000-000000000000", "").StatusCode; got != http.StatusNotFound {
 		t.Errorf("GET /catalog/image/{id} signed out = %d, want 404", got)
 	}
+	if got := do(t, srv, "GET", "/cards/00000000-0000-0000-0000-000000000000/printings", "").StatusCode; got != http.StatusNotFound && got != http.StatusServiceUnavailable {
+		t.Errorf("GET printing metadata signed out = %d, want public 404 or 503", got)
+	}
 	if got := do(t, srv, "GET", "/cards/x", "").StatusCode; got != http.StatusUnauthorized {
 		t.Errorf("GET /cards/x signed out = %d, want 401", got)
 	}
