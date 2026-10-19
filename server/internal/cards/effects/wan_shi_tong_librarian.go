@@ -60,30 +60,33 @@ func init() {
 					item.Params.Amount = source.CastX()
 					return item
 				},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					x := item.Params.Amount
-					ctx := NewContext(g, item)
-					if x > 0 {
-						if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}).Apply(ctx); err != nil {
-							return err
+				Effect: Do(
+					// The draw waits for a prompt the counters ask (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						if x := item.Params.Amount; x > 0 {
+							return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
 						}
-					}
+						return nil
+					}),
 					// "Then draw half X cards, rounded down" —
 					// integer division on a non-negative X
 					// (CR 107.3) is exactly floor(X/2), and
 					// DrawCards no-ops on N<=0.
-					return DrawCards{Player: item.Controller, N: x / 2}.Apply(ctx)
-				},
+					Instruction(func(ctx *Context) error {
+						return DrawCards{N: ctx.Item.Params.Amount / 2}.Apply(ctx)
+					}),
+				),
 			},
 			On(game.EventSearchLibrary, AnOpponentSearchesTheirOwnLibrary,
 				"Wan Shi Tong, Librarian — opponent searches: counter and draw",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				}),
+				Do(
+					// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}),
+					DrawCards{N: 1},
+				)),
 		},
 	})
 }

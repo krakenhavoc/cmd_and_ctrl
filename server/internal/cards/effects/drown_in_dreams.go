@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Drown in Dreams — Instant {X}{2}{U} (EDHREC rank 2089):
 //
 //	"Choose one. If you control a commander as you cast this spell,
@@ -32,22 +30,30 @@ func init() {
 			Mode("Target player draws X cards.", TargetPlayer("target player")),
 			Mode("Target player mills twice X cards.", TargetPlayer("target player")),
 		).OrUpToIf(2, YouControlACommander),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
+		OnResolve: ResolveSteps(
+			// The mill waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) {
+					return nil
+				}
 				for _, t := range OptionTargets(ctx, 0) {
 					if err := (DrawCards{Player: t.ID, N: ctx.X()}).Apply(ctx); err != nil {
 						return err
 					}
 				}
-			}
-			if ctx.HasMode(1) {
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
+				}
 				for _, t := range OptionTargets(ctx, 1) {
 					if err := (MillCards{Player: t.ID, N: 2 * ctx.X()}).Apply(ctx); err != nil {
 						return err
 					}
 				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }

@@ -72,14 +72,15 @@ func init() {
 					Params:       game.EffectParams{Amount: half},
 				}
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				half := item.Params.Amount
-				ctx := NewContext(g, item)
-				if err := (GainLife{Player: item.Controller, Amount: half}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: item.Controller, N: half}.Apply(ctx)
-			},
+			Effect: Do(
+				// The draw waits for a prompt the life gain asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return GainLife{Amount: ctx.Item.Params.Amount}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					return DrawCards{N: ctx.Item.Params.Amount}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

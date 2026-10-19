@@ -47,17 +47,11 @@ func init() {
 				Label:   "+1: Create a 2/2 black Zombie creature token. Mill two cards.",
 				Cost:    LoyaltyCost(1),
 				Purpose: game.Purpose{Tokens: 1},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("2/2 black Zombie"),
-						N:          1,
-					}).Apply(ctx); err != nil {
-						return err
-					}
-					return MillCards{N: 2}.Apply(ctx)
-				},
+				Effect: Do(
+					// The mill waits for a prompt the token's creation asks (CR 608.2c, #4155).
+					CreateToken{Template: TokenCard("2/2 black Zombie"), N: 1},
+					MillCards{N: 2},
+				),
 			},
 			{
 				Label:   "−3: Return target creature card from your graveyard to the battlefield. That creature is a black Zombie in addition to its other colors and types.",

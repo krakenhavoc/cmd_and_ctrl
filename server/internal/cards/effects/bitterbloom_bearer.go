@@ -22,16 +22,13 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "flying"},
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Bitterbloom Bearer — lose 1 life, create a Faerie", func(g *game.Game, item *game.StackItem) error {
-				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-					return err
-				}
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("1/1 blue and black Faerie with flying"),
-					N:          1,
-				}.Apply(NewContext(g, item))
-			}),
+			AtYourUpkeep("Bitterbloom Bearer — lose 1 life, create a Faerie", Do(
+				// The Faerie waits for a prompt the life loss asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Controller(), -1)
+				}),
+				CreateToken{Template: TokenCard("1/1 blue and black Faerie with flying"), N: 1},
+			)),
 		},
 	})
 }

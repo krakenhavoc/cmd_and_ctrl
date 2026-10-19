@@ -28,20 +28,25 @@ import (
 // No simplification.
 func init() {
 	t := AtEachOpponentsUpkeep("Persistent Constrictor — they lose 1 life, -1/-1 counter on up to one creature they control",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			player := ctx.Trigger().Event.Actor
-			if player == uuid.Nil {
+		Do(
+			// The counter waits for a prompt the life loss asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				player := ctx.Trigger().Event.Actor
+				if player == uuid.Nil {
+					return nil
+				}
+				return GainLife{Player: player, Amount: -1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.Trigger().Event.Actor == uuid.Nil {
+					return nil
+				}
+				for _, t := range ctx.LegalTargets() {
+					return AddCounter{Target: t.ID, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
+				}
 				return nil
-			}
-			if err := (GainLife{Player: player, Amount: -1}).Apply(ctx); err != nil {
-				return err
-			}
-			for _, t := range ctx.LegalTargets() {
-				return AddCounter{Target: t.ID, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
-			}
-			return nil
-		})
+			}),
+		))
 	t.TargetsFrom = func(tc game.TriggerContext, _ *game.Card, _ *game.Game) *game.TargetSpec {
 		spec := TargetCreature("up to one target creature they control", ControlledBy(tc.Event.Actor))
 		spec.Min = 0

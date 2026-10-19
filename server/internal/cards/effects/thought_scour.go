@@ -19,16 +19,20 @@ func init() {
 		Name:         "Thought Scour",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetPlayer {
-					continue
+		OnResolve: ResolveSteps(
+			// The draw waits for a prompt the mill asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetPlayer {
+						continue
+					}
+					if err := (MillCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if err := (MillCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-		},
+				return nil
+			}),
+			DrawCards{N: 1},
+		),
 	})
 }

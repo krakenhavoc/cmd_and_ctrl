@@ -27,27 +27,30 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			if err := (GainLife{Player: item.Controller, Amount: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
-				Controller: item.Controller,
-				Source:     ctx.Source(),
-				Groups:     []game.TokenGroup{{Template: ctx.TextToken(PhyrexianMiteToken()), Count: x}},
-			}, func(g *game.Game, created []uuid.UUID) error {
-				if x < 5 {
-					return nil
-				}
-				spared := make(map[uuid.UUID]bool, len(created))
-				for _, id := range created {
-					spared[id] = true
-				}
-				return DestroyAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-					return c.IsCreature() && !spared[c.InstanceID]
-				}}.Apply(NewContext(g, item))
-			})
-		},
+		OnResolve: ResolveSteps(
+			// The Mites wait for a prompt the life gain asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return GainLife{Amount: ctx.X()}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				item, x := ctx.Item, ctx.X()
+				return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+					Controller: item.Controller,
+					Source:     ctx.Source(),
+					Groups:     []game.TokenGroup{{Template: ctx.TextToken(PhyrexianMiteToken()), Count: x}},
+				}, func(g *game.Game, created []uuid.UUID) error {
+					if x < 5 {
+						return nil
+					}
+					spared := make(map[uuid.UUID]bool, len(created))
+					for _, id := range created {
+						spared[id] = true
+					}
+					return DestroyAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+						return c.IsCreature() && !spared[c.InstanceID]
+					}}.Apply(NewContext(g, item))
+				})
+			}),
+		),
 	})
 }

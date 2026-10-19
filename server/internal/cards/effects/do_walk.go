@@ -237,6 +237,14 @@ func resumeResolveSteps(steps []Applier) func(*game.Game, *game.StackItem, []int
 	}
 }
 
+// SpreeModeSteps is SpreeMode plus ModeSteps' own body (#4155): a Spree
+// bullet with more than one instruction.
+func SpreeModeSteps(label, cost string, targets *game.TargetSpec, steps ...Applier) game.ModeOption {
+	o := ModeSteps(label, targets, steps...)
+	o.Cost = cost
+	return o
+}
+
 // ModeSteps declares one modal option whose body is a sequence of steps
 // (#4019, CR 608.2c), for a bullet with more than one instruction:
 // Demonic Pact's "This enchantment deals 4 damage to any target and you

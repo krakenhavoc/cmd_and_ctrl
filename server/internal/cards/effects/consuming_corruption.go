@@ -19,15 +19,23 @@ func init() {
 		Name:         "Consuming Corruption",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			x := swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))
-			if err := (DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: x}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life gain waits for a prompt the damage asks (CR 608.2c, #4155). The
+			// Swamps are counted again for it: damage does not change them.
+			Instruction(func(ctx *Context) error {
+				item := ctx.Item
+				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				x := swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))
+				return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: x}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) == 0 || t[0].Kind != game.TargetCard {
+					return nil
+				}
+				return GainLife{Amount: swampsControlledBy(ctx.Game, ctx.Controller(), ctx.TextSubtype("Swamp"))}.Apply(ctx)
+			}),
+		),
 	})
 }

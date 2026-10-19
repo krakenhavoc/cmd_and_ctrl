@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Riot Control — Instant {2}{W}:
 //
 //	"You gain 1 life for each creature your opponents control. Prevent
@@ -17,18 +15,19 @@ func init() {
 		OracleID:     "a189e20f-1072-4608-9e50-da2a9d7a7ee3",
 		Name:         "Riot Control",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ctx.Game.RecomputeLayersIfStaleLocked()
-			n := 0
-			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.IsCreature() && c.Controller != item.Controller {
-					n++
+		OnResolve: ResolveSteps(
+			// The shield waits for a prompt the life gain asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				ctx.Game.RecomputeLayersIfStaleLocked()
+				n := 0
+				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+					if c.IsCreature() && c.Controller != ctx.Controller() {
+						n++
+					}
 				}
-			}
-			if err := (GainLife{Player: item.Controller, Amount: n}).Apply(ctx); err != nil {
-				return err
-			}
-			return PreventDamageFromSource{Protect: ShieldYou}.Apply(ctx)
-		},
+				return GainLife{Amount: n}.Apply(ctx)
+			}),
+			PreventDamageFromSource{Protect: ShieldYou},
+		),
 	})
 }

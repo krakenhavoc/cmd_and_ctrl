@@ -29,15 +29,20 @@ func init() {
 		OracleID:     "ebbd5b9c-07ff-4b42-81c2-ba09539f3a42",
 		Name:         "Breach the Multiverse",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			order := apnapPlayers(ctx.Game)
-			for _, p := range order {
-				if err := (MillCards{Player: p, N: 10}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The picks wait for a prompt the mills ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				for _, p := range apnapPlayers(ctx.Game) {
+					if err := (MillCards{Player: p, N: 10}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return breachAskNext(ctx.Game, item, order, nil)
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				return breachAskNext(ctx.Game, ctx.Item, apnapPlayers(ctx.Game), nil)
+			}),
+		),
 	})
 }
 

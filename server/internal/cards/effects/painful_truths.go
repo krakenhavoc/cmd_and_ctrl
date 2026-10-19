@@ -37,15 +37,14 @@ func init() {
 		ReadsManaSpent:      game.ReadsOwnPayment,
 		Completeness:        CompletenessFull,
 		WantsDistinctColors: true,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := ctx.ColorsSpentCount()
-			if x <= 0 {
-				return nil
-			}
-			if err := (DrawCards{Player: ctx.Controller(), N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: -x}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for a prompt the draws ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return DrawCards{N: ctx.ColorsSpentCount()}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				return GainLife{Amount: -ctx.ColorsSpentCount()}.Apply(ctx)
+			}),
+		),
 	})
 }

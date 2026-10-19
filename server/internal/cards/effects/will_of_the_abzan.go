@@ -45,21 +45,27 @@ func init() {
 			Mode("Return target creature card from your graveyard to the battlefield.",
 				TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature())),
 		).OrUpToIf(2, YouControlACommander),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
+		OnResolve: ResolveSteps(
+			// The return waits for a prompt the sacrifices ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) {
+					return nil
+				}
 				var players []uuid.UUID
 				for _, t := range OptionTargets(ctx, 0) {
 					if t.Kind == game.TargetPlayer {
 						players = append(players, t.ID)
 					}
 				}
-				if len(players) > 0 {
-					if err := b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(ctx.Game, item, players, 3); err != nil {
-						return err
-					}
+				if len(players) == 0 {
+					return nil
 				}
-			}
-			if ctx.HasMode(1) {
+				return b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(ctx.Game, ctx.Item, players, 3)
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
+				}
 				for _, t := range OptionTargets(ctx, 1) {
 					if t.Kind != game.TargetCard {
 						continue
@@ -68,8 +74,8 @@ func init() {
 						return err
 					}
 				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }

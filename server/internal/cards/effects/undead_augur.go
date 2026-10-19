@@ -26,13 +26,13 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b17SelfOrZombieYouControlDied(ev, source, g)
-			}, "Undead Augur — draw a card and lose 1 life", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-			}),
+			}, "Undead Augur — draw a card and lose 1 life", Do(
+				// The life loss waits for a prompt the draw asks (CR 608.2c, #4155).
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Controller(), -1)
+				}),
+			)),
 		},
 	})
 }

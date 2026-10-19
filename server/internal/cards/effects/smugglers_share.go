@@ -24,6 +24,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // weaker for its old one, never stronger.
 //
 // No simplification.
+// smugglersShareCounts are the cards to draw (opponents who drew two or more
+// this turn) and the Treasures to make (opponents who played two or more
+// lands). Both read the turn's record, so each step reads its own.
+func smugglersShareCounts(ctx *Context) (cards, treasures int) {
+	drawn, lands := b15CardsDrawnThisTurn(ctx.Game), b15LandsEnteredThisTurn(ctx.Game)
+	for _, opp := range ctx.Opponents() {
+		if drawn[opp] >= 2 {
+			cards++
+		}
+		if lands[opp] >= 2 {
+			treasures++
+		}
+	}
+	return cards, treasures
+}
+
 func init() {
 	Register(Spec{
 		OracleID:     "17b29350-4f37-4552-8192-4856b15345f9",
@@ -32,26 +48,21 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginEndStep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b15EndStepBegan(ev)
-			}, "Smuggler's Share — a card per greedy opponent, a Treasure per ramping one", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				drawn, lands := b15CardsDrawnThisTurn(g), b15LandsEnteredThisTurn(g)
-				cards, treasures := 0, 0
-				for _, opp := range ctx.Opponents() {
-					if drawn[opp] >= 2 {
-						cards++
+			}, "Smuggler's Share — a card per greedy opponent, a Treasure per ramping one", Do(
+				// The Treasures wait for a prompt the draws ask (CR 608.2c, #4155). Both
+				// counts are about the opponents, so the draw does not change the second.
+				Instruction(func(ctx *Context) error {
+					cards, _ := smugglersShareCounts(ctx)
+					return DrawCards{N: cards}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					_, treasures := smugglersShareCounts(ctx)
+					if treasures == 0 {
+						return nil
 					}
-					if lands[opp] >= 2 {
-						treasures++
-					}
-				}
-				if err := (DrawCards{Player: item.Controller, N: cards}).Apply(ctx); err != nil {
-					return err
-				}
-				if treasures == 0 {
-					return nil
-				}
-				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: treasures}.Apply(ctx)
-			}),
+					return CreateToken{Template: TreasureToken(), N: treasures}.Apply(ctx)
+				}),
+			)),
 		},
 	})
 }

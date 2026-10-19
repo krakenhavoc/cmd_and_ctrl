@@ -45,17 +45,17 @@ func init() {
 				return ok && !spell.IsCreature()
 			},
 			Key: "Kambal — that player loses 2 life, you gain 2 life",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
+			Effect: Do(
 				// Losing life is a negative GainLife, not
 				// damage: Kambal's text says "loses 2 life",
 				// so nothing that prevents or redirects
-				// damage touches it.
-				if err := (GainLife{Player: item.Trigger.Event.Actor, Amount: -2}).Apply(ctx); err != nil {
-					return err
-				}
-				return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-			},
+				// damage touches it. The gain waits for a prompt the loss asks
+				// (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return GainLife{Player: ctx.Item.Trigger.Event.Actor, Amount: -2}.Apply(ctx)
+				}),
+				GainLife{Amount: 2},
+			),
 		}},
 	})
 }

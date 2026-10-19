@@ -25,6 +25,19 @@ import (
 // at announce and again at resolution.
 //
 // No simplification.
+// elspethStormSlayerCreatures are the creatures its controller controls now.
+// The 0 ability reads them in each of its two steps, so a restore between
+// them loses nothing (CR 608.2c, #4155).
+func elspethStormSlayerCreatures(ctx *Context) []uuid.UUID {
+	var ids []uuid.UUID
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if c.Controller == ctx.Controller() && c.IsCreature() {
+			ids = append(ids, c.InstanceID)
+		}
+	}
+	return ids
+}
+
 func init() {
 	Register(Spec{
 		OracleID:        "f78af825-023a-42e9-8374-5c52303a1417",
@@ -41,34 +54,30 @@ func init() {
 			{
 				Label: "0: Put a +1/+1 counter on each creature you control. Those creatures gain flying until your next turn.",
 				Cost:  LoyaltyCost(0),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					var ids []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() {
-							ids = append(ids, c.InstanceID)
+				Effect: Do(
+					// The flying waits for a prompt the counters ask (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						for _, id := range elspethStormSlayerCreatures(ctx) {
+							if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+								return err
+							}
 						}
-					}
-					for _, id := range ids {
-						if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
-							return err
+						return nil
+					}),
+					Instruction(func(ctx *Context) error {
+						for _, id := range elspethStormSlayerCreatures(ctx) {
+							if err := (ScopedEffectFor{
+								Target:   id,
+								Mods:     []game.Mod{game.AddKeywordsMod("flying")},
+								Duration: DurationUntilYourNextTurn(ctx, ctx.Controller()),
+								Label:    "Elspeth, Storm Slayer — flying until your next turn",
+							}).Apply(ctx.asGroupMember()); err != nil {
+								return err
+							}
 						}
-					}
-					for _, id := range ids {
-						if !onBattlefield(g, id) {
-							continue
-						}
-						if err := (ScopedEffectFor{
-							Target:   id,
-							Mods:     []game.Mod{game.AddKeywordsMod("flying")},
-							Duration: DurationUntilYourNextTurn(ctx, item.Controller),
-							Label:    "Elspeth, Storm Slayer — flying until your next turn",
-						}).Apply(ctx.asGroupMember()); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+						return nil
+					}),
+				),
 			},
 			{
 				Label:   "−3: Destroy target creature an opponent controls with mana value 3 or greater.",

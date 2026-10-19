@@ -37,18 +37,19 @@ func init() {
 		OracleID:     "a69265b2-0e37-4d86-866e-e4a923233b4d",
 		Name:         "Expropriate",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (Vote{
+		OnResolve: ResolveSteps(
+			// The exile waits for the vote (CR 608.2c, #4155).
+			Vote{
 				Question:      "Expropriate — vote for time or money",
 				Words:         []string{"time", "money"},
 				ForController: []int{2, 1},
 				ForOpponents:  []int{1, 0},
 				Then:          expropriateVoted,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+			},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }
 

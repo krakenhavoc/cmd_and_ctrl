@@ -25,12 +25,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Skrelv's Hive — lose 1 life and create a Phyrexian Mite",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-						return err
-					}
-					return CreateToken{Controller: item.Controller, Template: PhyrexianMiteToken(), N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(
+					// The Mite waits for a prompt the life loss asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Controller(), -1)
+					}),
+					CreateToken{Template: PhyrexianMiteToken(), N: 1},
+				)),
 		},
 		Static: []game.StaticAbility{
 			KeywordGrant(func(target *game.Card, g *game.Game, source *game.Card) bool {

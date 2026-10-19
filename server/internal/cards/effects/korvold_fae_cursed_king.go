@@ -56,17 +56,13 @@ func init() {
 					return nil
 				},
 			},
-			On(game.EventSacrifice, ByYou, "Korvold — +1/+1 counter and draw a card", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (AddCounter{
-					Target: ctx.Source(),
-					Kind:   game.CounterPlusOne,
-					N:      1,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			}),
+			On(game.EventSacrifice, ByYou, "Korvold — +1/+1 counter and draw a card", Do(
+				// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}),
+				DrawCards{N: 1},
+			)),
 		},
 	})
 }

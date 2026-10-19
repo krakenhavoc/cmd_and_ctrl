@@ -488,6 +488,12 @@ func TestB16CollectorsVaultLootsAndMakesATreasure(t *testing.T) {
 	if discardOwed(g, me.ID) != 1 {
 		t.Errorf("discard owed = %d, want 1", discardOwed(g, me.ID))
 	}
+	// "Draw a card, then discard a card. Create a Treasure token." (CR 608.2c,
+	// #4155): the Treasure waits for the discard's answer.
+	if b16CountNamed(g, "Treasure") != 0 {
+		t.Error("the Treasure was created with the discard still open")
+	}
+	discardFromHand(t, g, me.ID)
 	if b16CountNamed(g, "Treasure") != 1 {
 		t.Error("a Treasure is created")
 	}

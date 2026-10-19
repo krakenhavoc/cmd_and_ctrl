@@ -32,17 +32,19 @@ func init() {
 				}
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsArtifact()
-			}, "Kappa Cannoneer — +1/+1 counter; it can't be blocked this turn", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return RestrictUntilEOT{
-					Target:       ctx.Source(),
-					Restrictions: game.CantBeBlocked,
-					Label:        "Kappa Cannoneer — can't be blocked",
-				}.Apply(ctx)
-			}),
+			}, "Kappa Cannoneer — +1/+1 counter; it can't be blocked this turn", Do(
+				// The restriction waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					return RestrictUntilEOT{
+						Target:       ctx.Source(),
+						Restrictions: game.CantBeBlocked,
+						Label:        "Kappa Cannoneer — can't be blocked",
+					}.Apply(ctx)
+				}),
+			)),
 		},
 	})
 }
