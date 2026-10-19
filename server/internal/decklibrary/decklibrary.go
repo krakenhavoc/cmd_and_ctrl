@@ -86,6 +86,15 @@ type Store interface {
 	// UpdatePrintings replaces only the stored source, atomically checking
 	// ownership and the source read by the picker. Art changes keep ratings.
 	UpdatePrintings(ctx context.Context, before Deck, sourceText string) (Deck, error)
+	// ReplaceContents replaces what a saved deck holds (its list, its
+	// link, its commanders and card count) and keeps what makes it the
+	// same deck: id, owner, name and created_at (#2036). It is atomic
+	// and checks ownership and that the stored list is still the one
+	// before was read from, so an update previewed against an older
+	// list is ErrSourceChanged and never overwrites a newer save. A
+	// changed list drops the power rating, as Save does. An empty
+	// sourceURL clears the link.
+	ReplaceContents(ctx context.Context, before Deck, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, error)
 	// Upsert saves one deck for owner. The update rule (see ADR 0051
 	// implementation notes, sub-PR 5): a row already owned by owner
 	// with the same name is updated in place — source, commanders and
@@ -179,5 +188,9 @@ func (NoStore) List(context.Context, uuid.UUID) ([]Deck, error) {
 var _ Store = NoStore{}
 
 func (NoStore) UpdatePrintings(context.Context, Deck, string) (Deck, error) {
+	return Deck{}, ErrNotFound
+}
+
+func (NoStore) ReplaceContents(context.Context, Deck, string, string, string, []string, int) (Deck, error) {
 	return Deck{}, ErrNotFound
 }

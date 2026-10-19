@@ -22,6 +22,7 @@ import type { MyGame } from "./myGames";
 import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
 import type { CoverageReport, DeckCheckRequest } from "./deckcheck";
 import type { SaveDeckResponse } from "./decksPage";
+import type { DeckUpdateConfirm, DeckUpdateInput, DeckUpdatePreview } from "./deckUpdate";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
@@ -980,6 +981,40 @@ export async function saveMyDeck(req: DeckCheckRequest, name: string): Promise<S
     body: JSON.stringify(n ? { ...req, name: n } : req),
   });
   return (await res.json()) as SaveDeckResponse;
+}
+
+// previewDeckUpdate asks what updating a saved deck would change (POST
+// /me/decks/{id}/update, #2036): from its own link, a new link or a pasted
+// list. It writes nothing; the answer carries the diff, the new coverage
+// and the preview_id confirmDeckUpdate commits. A refusal throws a
+// LobbyApiError whose message the sheet shows as is; its `body.hint` is
+// "paste_list" for a Moxfield link the server cannot fetch.
+export async function previewDeckUpdate(
+  id: string,
+  input: DeckUpdateInput,
+): Promise<DeckUpdatePreview> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/update`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as DeckUpdatePreview;
+}
+
+// confirmDeckUpdate commits a previewed update (POST
+// /me/decks/{id}/update/confirm). requestMissing also files or extends the
+// deck request for the cards the deck's earlier request did not list; the
+// request's outcome rides the answer and never undoes the update. A 410
+// means the preview expired or was used: preview again.
+export async function confirmDeckUpdate(
+  id: string,
+  previewId: string,
+  requestMissing: boolean,
+): Promise<DeckUpdateConfirm> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/update/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ preview_id: previewId, request_missing: requestMissing }),
+  });
+  return (await res.json()) as DeckUpdateConfirm;
 }
 
 // fetchMyDeckCoverage reads one saved deck's full ADR 0095 report.

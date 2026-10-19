@@ -383,3 +383,54 @@ func (s *SQLStore) UpdatePrintings(ctx context.Context, before Deck, sourceText 
 	}
 	return updated, nil
 }
+
+// ReplaceContents implements Store (#2036). Like UpdatePrintings it
+// reads the row inside the transaction and refuses a stale editor, but
+// it replaces the whole list, the link, the commander summary and the
+// card count. The name, id, owner and created_at stay; the rating goes
+// when the list changed.
+func (s *SQLStore) ReplaceContents(ctx context.Context, before Deck, sourceFormat, sourceText, sourceURL string, commanders []string, cardCount int) (Deck, error) {
+	commandersJSON, err := json.Marshal(commanders)
+	if err != nil {
+		return Deck{}, fmt.Errorf("decklibrary: marshal commanders: %w", err)
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Deck{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	current, err := getDeck(ctx, tx, before.ID.String())
+	if err != nil {
+		return Deck{}, err
+	}
+	if current.OwnerID != before.OwnerID {
+		return Deck{}, ErrNotFound
+	}
+	if current.SourceText != before.SourceText || current.SourceFormat != before.SourceFormat {
+		return Deck{}, ErrSourceChanged
+	}
+	var newest int64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(updated_at), 0) FROM decks WHERE owner_id = ?`, before.OwnerID.String()).Scan(&newest); err != nil {
+		return Deck{}, err
+	}
+	stamp := s.now().Truncate(time.Millisecond).UnixMilli()
+	if stamp <= newest {
+		stamp = newest + 1
+	}
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE decks SET power_level = CASE WHEN source_text = ? THEN power_level END,
+		        source_format = ?, source_text = ?, source_url = ?, commanders = ?, card_count = ?, updated_at = ?
+		 WHERE id = ? AND owner_id = ?`,
+		sourceText, sourceFormat, sourceText, nullString(sourceURL), string(commandersJSON), cardCount, stamp,
+		before.ID.String(), before.OwnerID.String()); err != nil {
+		return Deck{}, fmt.Errorf("decklibrary: replace contents: %w", err)
+	}
+	updated, err := getDeck(ctx, tx, before.ID.String())
+	if err != nil {
+		return Deck{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Deck{}, err
+	}
+	return updated, nil
+}

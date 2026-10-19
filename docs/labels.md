@@ -130,6 +130,12 @@ registered, or when this file is stale.
 | `filterPrintings` | `Filter printings` | searchbox | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
 | `savePrintings` | `Save printings` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
 | `cancelPrintings` | `Cancel printing changes` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `updateDeck` | `Update deck` | button | text | `lib/components/decks/DeckCard.svelte` | a saved deck's action that opens the update sheet (#2036) |
+| `deckUpdateSheet` | `update deck` | region | aria | `lib/components/decks/UpdateDeckSheet.svelte` | the sheet that updates a saved deck from its link, a new link or a pasted list (#2036) |
+| `deckUpdateChoices` | `how to update` | group | aria | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's three ways in: re-pull, new link, paste list (#2036) |
+| `previewUpdate` | `Preview changes` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's first step: read the new list and show the diff, writing nothing (#2036) |
+| `saveUpdate` | `Save update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's confirm: commits the previewed list (#2036) |
+| `cancelUpdate` | `Cancel update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | closes the update sheet without saving (#2036) |
 | `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte` | a signed-in person's saved decks; the decks.library hint points at it |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |

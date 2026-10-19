@@ -13,6 +13,8 @@
 
   import { L } from "../../labels";
   import PrintingPicker from "./PrintingPicker.svelte";
+  import UpdateDeckSheet from "./UpdateDeckSheet.svelte";
+  import type { DeckUpdateConfirm } from "../../deckUpdate";
   import { tick, type Snippet } from "svelte";
   import Icon from "../Icon.svelte";
   import CommanderArt from "./CommanderArt.svelte";
@@ -31,6 +33,8 @@
     busy: boolean;
     onReport: () => void;
     onPrintingSaved: (deck: MyDeckInfo) => void;
+    /** An update was saved: the deck as it is now, the diff, the request's outcome. */
+    onUpdated: (res: DeckUpdateConfirm) => void;
     onRequest: () => void;
     /** Resolves to an error message, or "" when the rename landed. */
     onRename: (name: string) => Promise<string>;
@@ -48,6 +52,7 @@
     busy,
     onReport,
     onPrintingSaved,
+    onUpdated,
     onRequest,
     onRename,
     onDelete,
@@ -66,6 +71,13 @@
   let menuOpen = $state(false);
   let printingsOpen = $state(false);
   let printingButton = $state<HTMLButtonElement | null>(null);
+  let updateOpen = $state(false);
+  let updateButton = $state<HTMLButtonElement | null>(null);
+
+  function closeUpdate(): void {
+    updateOpen = false;
+    void tick().then(() => updateButton?.focus());
+  }
 
   function closePrintings(): void {
     printingsOpen = false;
@@ -198,10 +210,24 @@
           <button
             type="button"
             class="btn sm"
-            onclick={() => (printingsOpen = true)}
+            onclick={() => {
+              updateOpen = false;
+              printingsOpen = true;
+            }}
             bind:this={printingButton}
             aria-expanded={printingsOpen}
             disabled={busy || printingsOpen}>{L.choosePrintings}</button
+          >
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => {
+              printingsOpen = false;
+              updateOpen = true;
+            }}
+            bind:this={updateButton}
+            aria-expanded={updateOpen}
+            disabled={busy || updateOpen}>{L.updateDeck}</button
           >
           {#if deck.coverage}
             <button type="button" class="btn sm" onclick={onReport} aria-expanded={reportOpen}>
@@ -269,6 +295,16 @@
           onsaved={(updated) => {
             onPrintingSaved(updated);
             closePrintings();
+          }}
+        />
+      {/if}
+      {#if updateOpen}
+        <UpdateDeckSheet
+          {deck}
+          onclose={closeUpdate}
+          onupdated={(res) => {
+            updateOpen = false;
+            onUpdated(res);
           }}
         />
       {/if}
