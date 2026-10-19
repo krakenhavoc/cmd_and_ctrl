@@ -246,6 +246,22 @@ type StackItem struct {
 	// where every card's count is zero too.
 	SourceTurnOvers int
 
+	// SourceUntapped records that the source untapped after this
+	// ability was put on the stack (#4061, CR 611.2b, CR 701.26b):
+	// "for as long as this creature remains tapped" is checked
+	// continually from the moment the ability is ACTIVATED, so a source
+	// that untaps in response and is tapped again by the time the
+	// ability resolves has still broken the duration, and the effect
+	// never starts (Preacher's and Vedalken Shackles' rulings).
+	//
+	// Written only by untapPermanentLocked, which marks every ability
+	// item of the permanent that is still on the stack at that moment,
+	// and read through SourceUntappedSinceActivationForEffect. A copy
+	// of the ability (CR 707.10) is made while the source is as it is
+	// and carries the flag. False on a spell, and on a delayed trigger
+	// built after the untap. Additive within v9: omitted when false.
+	SourceUntapped bool
+
 	// GrantedBy is the object that GRANTED this ability, for an
 	// activated ability of a layer-6 grant (ADR 0093; ADR 0109 §2,
 	// owner decision 2): the Aura whose "Enchanted planeswalker has

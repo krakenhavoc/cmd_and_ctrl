@@ -2049,6 +2049,7 @@ lastKnownStack[].item.sourceObject	object
 lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
 lastKnownStack[].item.sourceTurnOvers	number:int
+lastKnownStack[].item.sourceUntapped	bool
 lastKnownStack[].item.spliced	array
 lastKnownStack[].item.spliced[]	object
 lastKnownStack[].item.spliced[].cardId	custom(uuid.UUID)
@@ -2483,6 +2484,7 @@ pausedModeWalk.item.sourceObject	object
 pausedModeWalk.item.sourceObject.epoch	number:int
 pausedModeWalk.item.sourceObject.id	custom(uuid.UUID)
 pausedModeWalk.item.sourceTurnOvers	number:int
+pausedModeWalk.item.sourceUntapped	bool
 pausedModeWalk.item.spliced	array
 pausedModeWalk.item.spliced[]	object
 pausedModeWalk.item.spliced[].cardId	custom(uuid.UUID)
@@ -2790,6 +2792,7 @@ pausedResolutionTail.item.sourceObject	object
 pausedResolutionTail.item.sourceObject.epoch	number:int
 pausedResolutionTail.item.sourceObject.id	custom(uuid.UUID)
 pausedResolutionTail.item.sourceTurnOvers	number:int
+pausedResolutionTail.item.sourceUntapped	bool
 pausedResolutionTail.item.spliced	array
 pausedResolutionTail.item.spliced[]	object
 pausedResolutionTail.item.spliced[].cardId	custom(uuid.UUID)
@@ -3091,6 +3094,7 @@ pausedStepWalk.item.sourceObject	object
 pausedStepWalk.item.sourceObject.epoch	number:int
 pausedStepWalk.item.sourceObject.id	custom(uuid.UUID)
 pausedStepWalk.item.sourceTurnOvers	number:int
+pausedStepWalk.item.sourceUntapped	bool
 pausedStepWalk.item.spliced	array
 pausedStepWalk.item.spliced[]	object
 pausedStepWalk.item.spliced[].cardId	custom(uuid.UUID)
@@ -3759,6 +3763,7 @@ pendingTriggers[].sourceObject	object
 pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
 pendingTriggers[].sourceTurnOvers	number:int
+pendingTriggers[].sourceUntapped	bool
 pendingTriggers[].spliced	array
 pendingTriggers[].spliced[]	object
 pendingTriggers[].spliced[].cardId	custom(uuid.UUID)
@@ -8003,6 +8008,7 @@ stackMeta[].sourceObject	object
 stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
 stackMeta[].sourceTurnOvers	number:int
+stackMeta[].sourceUntapped	bool
 stackMeta[].spliced	array
 stackMeta[].spliced[]	object
 stackMeta[].spliced[].cardId	custom(uuid.UUID)

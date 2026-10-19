@@ -220,6 +220,7 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 		// CR 707.10: a copy has the original's source, and CR 701.28e's
 		// reference point with it (ADR 0152 §3).
 		SourceTurnOvers: item.SourceTurnOvers,
+		SourceUntapped:  item.SourceUntapped,
 		// ADR 0109 §2: a copy of a granted ability copies its text, and
 		// the text is the grantor's — a copied Teferi's Talent −12 still
 		// makes the Talent's emblem (CR 707.10, CR 114.2).

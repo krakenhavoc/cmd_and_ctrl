@@ -1,0 +1,6 @@
+---
+title: "Activate only during your turn, before attackers are declared"
+date: 2026-10-19
+issues: [4062]
+---
+**Activate only during your turn, before attackers are declared** (#4062, [ADR 0020](decisions/0020-activated-abilities.md) amendment 2026-10-19, CR 602.1b) — `Game.DeclareAttackersHasBegunThisTurnForEffect` reads the turn tally's step count (no new state), and `effects.BeforeAttackersAreDeclared`, `DuringYourTurnBeforeAttackersAreDeclared` and `DuringAnOpponentsTurnBeforeAttackersAreDeclared` are the activation conditions, so the view and the enumerator grey the ability out once the first declare attackers step of the turn has begun (an extra combat does not reopen it). Siren's Call's cast window uses the same fact. **Cards:** Alaborn Veteran, Apprentice Sorcerer, Capricious Sorcerer, Cao Cao Lord of Wei, Coastal Wizard, Cunning Advisor, Diaochan Artful Beauty, Fire Bowman, Goblin Firestarter, Hua Tuo, King's Assassin, Lady Sun, Loyal Retainers, Lu Su, Norwood Priestess, Pang Tong, Shu Farmer, Steam Catapult, Stern Marshal, Stone Catapult, Talas Researcher, Temple Elder, Wu Longbowman, Xiahou Dun, Xun Yu, Zhuge Jin, and the forced-attack family Nettling Imp, Norritt, Arcum's Whistle and Siren's Call (Full). **Moved to another row:** Master Warcraft (#4154).

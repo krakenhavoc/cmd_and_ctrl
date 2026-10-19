@@ -813,6 +813,12 @@ var stackItemFields = plan(
 	// ADR 0152 §3: the source's Card.TurnOvers when the ability went on
 	// the stack (CR 701.27f / 701.28e). Plain data.
 	"SourceTurnOvers", carried, "",
+	// #4061 (ADR 0109's amendment of 2026-10-19): the source untapped
+	// after the ability went on the stack, which is what "for as long as
+	// this remains tapped" reads at resolution. Plain data, additive in
+	// v9; a restore that lost it would let a Preacher untapped and
+	// tapped again in response keep the creature.
+	"SourceUntapped", carried, "",
 	// ADR 0109 §2: the object that granted an activated ability, so a
 	// restored Teferi's Talent −12 still makes the Talent's emblem.
 	// Carried: the grant may be gone from the restored board.

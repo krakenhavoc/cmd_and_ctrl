@@ -1420,6 +1420,10 @@ type stackItemSnapshot struct {
 	// 701.27f / 701.28e). Absent from earlier files, which restore it
 	// as 0 with every card's TurnOvers.
 	SourceTurnOvers int `json:"sourceTurnOvers,omitempty"`
+	// SourceUntapped is StackItem.SourceUntapped (#4061): the source
+	// untapped after the ability was put on the stack. Additive within
+	// v9: absent from earlier files, which restore it as false.
+	SourceUntapped bool `json:"sourceUntapped,omitempty"`
 	// GrantedBy is StackItem.GrantedBy (ADR 0109 §2): the object that
 	// granted an activated ability. A pointer so it is omitted for every
 	// item that has no grantor — nearly all of them — and a binary that
@@ -2628,6 +2632,7 @@ func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus)
 		SourceEpoch:      s.SourceEpoch,
 		SourceObject:     s.SourceObject.stamped(),
 		SourceTurnOvers:  s.SourceTurnOvers,
+		SourceUntapped:   s.SourceUntapped,
 		GrantedBy:        uuidPtrOrNil(s.GrantedBy),
 		Label:            s.Label,
 		DoubledBy:        s.DoubledBy,
@@ -3618,6 +3623,7 @@ func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 		SourceEpoch:      s.SourceEpoch,
 		SourceObject:     s.SourceObject.value(),
 		SourceTurnOvers:  s.SourceTurnOvers,
+		SourceUntapped:   s.SourceUntapped,
 		GrantedBy:        uuidOrNil(s.GrantedBy),
 		Label:            s.Label,
 		DoubledBy:        s.DoubledBy,

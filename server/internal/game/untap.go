@@ -290,11 +290,43 @@ func (g *Game) untapPermanentLocked(c *Card) {
 		return
 	}
 	c.Tapped = false
+	g.markAbilitiesOfUntappedSourceLocked(c)
 	g.EmitEvent(Event{
 		Kind:   EventUntapCard,
 		Actor:  c.Controller,
 		CardID: c.InstanceID,
 	})
+}
+
+// markAbilitiesOfUntappedSourceLocked stamps StackItem.SourceUntapped on
+// every ability of the permanent `c` that is on the stack as it untaps
+// (#4061): the record "for as long as this remains tapped" reads at
+// resolution. Only an ability of THIS object counts - a card that came
+// back as a new object has abilities of its own (CR 400.7) - and a
+// spell has no "this".
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) markAbilitiesOfUntappedSourceLocked(c *Card) {
+	for _, item := range g.StackMeta {
+		if item == nil || item.Kind == StackItemSpell || item.SourceCardID != c.InstanceID {
+			continue
+		}
+		if item.SourceObject.stamped() != nil && item.SourceObject.Epoch != c.ObjectEpoch {
+			continue
+		}
+		item.SourceUntapped = true
+	}
+}
+
+// SourceUntappedSinceActivationForEffect reports whether the source of
+// `item` has untapped since the ability was put on the stack (#4061,
+// CR 611.2b): the reading "for as long as this remains tapped" takes
+// at resolution, where the source being tapped now is not enough. False
+// for a nil item and for a spell.
+//
+// Caller must hold g.mu.
+func (g *Game) SourceUntappedSinceActivationForEffect(item *StackItem) bool {
+	return item != nil && item.Kind != StackItemSpell && item.SourceUntapped
 }
 
 // SkipNextUntapForEffect adds a deduplicated next-untap marker to a

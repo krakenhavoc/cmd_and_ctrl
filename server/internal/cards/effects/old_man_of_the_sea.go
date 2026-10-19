@@ -43,7 +43,7 @@ func init() {
 func oldManOfTheSeaSteals(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	target := FirstLegalBattlefieldTarget(ctx)
-	if target == uuid.Nil || ctx.isNewSourceObjectAsThis(ctx.Source()) { // #1432
+	if target == uuid.Nil || ctx.isNewSourceObjectAsThis(ctx.Source()) || sourceUntappedSinceActivation(ctx) { // #1432, #4061
 		return nil
 	}
 	d, ok := g.ForAsLongAsSourceTappedAndPowerAtMostDuration(ctx.Source(), target)
