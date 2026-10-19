@@ -11034,9 +11034,17 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	if len(cards) == 0 {
 		return nil
 	}
-	// The pool is the chooser's own when no other seat is named, or
-	// when the named seat IS the chooser.
-	ownPool := c.FromPlayer == "" || c.FromPlayer == c.Chooser
+	// The pool is the chooser's own when the named seat IS the chooser.
+	// A prompt that names no seat carries the zero UUID on the wire, not
+	// "" (viewOfPendingChoices formats c.FromPlayer as is), so both
+	// spellings mean "no source player" (#4148). That says nothing about
+	// whose cards the candidates are, so it is settled card by card
+	// below: a sourceless prompt keeps an unknown candidate for its
+	// chooser only when the chooser owns it. Nothing in a hidden zone
+	// that belongs to another seat is ever kept on the strength of a
+	// missing FromPlayer.
+	sourceless := noSourceSeat(c.FromPlayer)
+	ownPool := c.FromPlayer == c.Chooser
 	// #2115: revealed_hand_pick is the same pool, and was revealed the
 	// same way; its graveyard candidates are public.
 	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand) ||
@@ -11050,12 +11058,19 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	out := make([]CardView, 0, len(cards))
 	for _, card := range cards {
 		known := isKnower(card)
-		if !known && !keepUnknown {
+		if !known && !keepUnknown && !(sourceless && c.Chooser == viewerID && card.Owner == c.Chooser) {
 			continue
 		}
 		out = append(out, redactCardForViewer(card, known))
 	}
 	return out
+}
+
+// noSourceSeat reports whether a PendingChoiceView.FromPlayer names no
+// seat: the empty string, or the zero UUID a prompt with no source
+// player formats to (#4148).
+func noSourceSeat(s string) bool {
+	return s == "" || s == uuid.Nil.String()
 }
 
 // redactZone returns a copy of `z` with every card projected through
