@@ -1055,6 +1055,20 @@ export function tapCostOf(card: CardView): TapCostView | undefined {
   return card.tap_cost;
 }
 
+// tapCostFor is the tap cost the cast being built pays: the card's own
+// convoke / waterbend clause, or (#3999) the picker of a chosen "you may
+// waterbend {N}" offer, which the server makes the cast's tap cost while
+// it is chosen. A cast carries one tap cost, so the first one found is
+// the one.
+export function tapCostFor(card: CardView, choices?: CastChoices): TapCostView | undefined {
+  if (card.tap_cost) return card.tap_cost;
+  for (const index of choices?.optionalCosts ?? []) {
+    const tc = optionalCostsOf(card).find((o) => o.index === index)?.tap_cost;
+    if (tc) return tc;
+  }
+  return undefined;
+}
+
 // tapCostLimit is how many permanents the picker may accept: the cap
 // the server sent, or — for a waterbend {X}, whose size the server
 // couldn't know when it built the snapshot — the X the caster just

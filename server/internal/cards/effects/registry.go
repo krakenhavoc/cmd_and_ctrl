@@ -285,6 +285,8 @@ func Register(spec Spec) {
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
 	checkReplicate(spec)
+	// #3999: an optional "you may waterbend {N}".
+	checkOptionalWaterbend(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -648,6 +650,8 @@ func Register(spec Spec) {
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		checkGrantorOnlyIsGranted(spec.Name, i, ab)
+		// #4000: an exile-the-grantor cost is a granted row's alone.
+		checkExileGrantor(spec.Name, fmt.Sprintf("ability %d", i), ab, false, "")
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a

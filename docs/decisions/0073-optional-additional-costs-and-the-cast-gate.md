@@ -1569,3 +1569,47 @@ Tests: `cards/effects/improvise_test.go`.
 **Native improvise cards (#3654).** The twenty-odd cards that print improvise declare `TapCost: Improvise()` and share the payment
 code above; `effects.SpellsYouCastHaveImprovise` (beside the convoke grant) is the permanent's "noncreature spells you cast have
 improvise" (Ironheart, Clever Champion). Tests: `cards/effects/improvise_cards_test.go`.
+
+
+## Amendment 2026-10-19: an optional waterbend (#3999)
+
+Secret of Bloodbending: "As an additional cost to cast this spell, you may
+waterbend {10}." A waterbend cost (CR 701.67) was a mandatory tap cost on a
+spell (`Spec.TapCost`, Waterbender's Restoration) or an ability's cost; an
+optional one had no shape.
+
+**The shape.** `AdditionalCost.Waterbend`, the tap clause
+(`effects.Waterbend`), on an optional cost keyed `waterbend`
+(`game.WaterbendKey`) whose `ManaCost` is the clause's own {N}. Built with
+`effects.OptionalWaterbend("{10}")`. Chosen, the {N} joins the total at
+CR 601.2f like a kicker's mana, so the modifiers, the auto-tapper, the
+preview and the enumerator already price it.
+
+**The taps.** A cast carries one tap cost and one `tap_ids` list.
+`tapCostForCastParamsLocked` returns a chosen optional waterbend as that
+tap cost, marked `InCost` as Hama's waterbend alternative cost is (#3989):
+its {N} is already in the total, so each tapped artifact or creature pays
+{1} of it, never the printed cost beside it (CR 701.67b), and the budget
+is the waterbend's generic capped at what the modifiers leave. Unchosen,
+the cast has no tap cost and a `tap_ids` is refused like any stray one.
+
+**Register refuses** a waterbend clause in the mandatory slot or on an
+either/or branch, one built by hand (another key, a mana cost that is not
+the clause's, any other component, a repeat, an X), two on one card, one
+beside a card's own tap cost, and an optional cost keyed `waterbend`
+without a clause.
+
+**Wire and client.** `OptionalCostView.tap_cost` is the offer's picker
+(`TapCostView`, sized at {N}). The client's `tapCostFor(card, choices)` is
+the card's own `tap_cost` or the chosen offer's, so the board opens its tap
+picker for a chosen waterbend and sends the picks as `tap_ids`.
+
+**Not covered.** As for convoke, the move enumerator offers the optional
+cost but never offers taps for it; it prices the {N} as mana.
+
+**Snapshot impact.** None: the choice is the existing optional-cost index,
+and the clause is catalog data.
+
+Tests: `cards/effects/secret_of_bloodbending_test.go`,
+`cards/effects/the_dominion_bracelet_test.go` (the refusals),
+`protocol/combat_control_view_test.go`, `client/src/lib/tapCost.test.ts`.

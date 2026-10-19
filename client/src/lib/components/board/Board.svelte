@@ -162,7 +162,7 @@
     altCostPayX,
     castExileCardsCost,
     exileXChoice,
-    tapCostOf,
+    tapCostFor,
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
@@ -951,12 +951,12 @@
   const tapCostOptions = $derived.by(() => {
     const card = tapPromptCard;
     if (!card) return [];
-    const ids = new Set(tapCostOf(card)?.options?.cards ?? []);
+    const ids = new Set(tapCostFor(card, tapPromptChoices)?.options?.cards ?? []);
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
   const tapCostCap = $derived.by(() => {
-    const tc = tapPromptCard ? tapCostOf(tapPromptCard) : undefined;
+    const tc = tapPromptCard ? tapCostFor(tapPromptCard, tapPromptChoices) : undefined;
     if (!tc) return 0;
     return tapCostLimit(tc, tapPromptChoices.xValue);
   });
@@ -1295,7 +1295,8 @@
   }
 
   function afterPhyrexianLife(card: CardView, choices: CastChoices): void {
-    if (tapCostOf(card)) {
+    // #3999: or a chosen "you may waterbend {N}" offer's picker.
+    if (tapCostFor(card, choices)) {
       tapPromptChoices = choices;
       tapPromptCard = card;
       return;
@@ -4533,7 +4534,7 @@
   />
   <TapCostModal
     card={tapPromptCard}
-    cost={tapPromptCard ? (tapCostOf(tapPromptCard) ?? null) : null}
+    cost={tapPromptCard ? (tapCostFor(tapPromptCard, tapPromptChoices) ?? null) : null}
     options={tapCostOptions}
     limit={tapCostCap}
     onConfirm={confirmTapCost}

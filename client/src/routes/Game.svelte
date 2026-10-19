@@ -240,6 +240,7 @@
     actsForSeat,
     controlledByViewer,
     controllerOfViewer,
+    endTurnClosed,
     nextPlayingAs,
     playingAsBanner,
     togglePlayingAs,
@@ -1128,6 +1129,9 @@
   const actingIsActive = $derived(
     actingID !== null && !controlledBy && activePlayer?.id === actingID,
   );
+  // #3999: End turn is closed while the board plays another seat's
+  // combat phase: it would walk that seat's turn on past the control.
+  const canEndTurn = $derived(actingIsActive && !endTurnClosed(view, viewerID, actingID));
   // Autopass passes for whichever of the viewer's two seats holds
   // priority, with the viewer's stops (§9 "Auto-pass").
   const autopassSeatID = $derived(
@@ -1383,7 +1387,8 @@
   // (sandboxPassTurn below).
   function passTurn(): void {
     // ADR 0167 §9: End turn works for the controlled seat as the active
-    // player.
+    // player, except during a controlled combat phase (#3999).
+    if (endTurnClosed(view, viewerID, actingID)) return;
     client.sendAction("end_turn", actingPlayer);
   }
 
@@ -3337,7 +3342,7 @@
         <ActionDock
           view={actingView ?? view}
           viewerHasPriority={actingHasPriority}
-          viewerIsActive={actingIsActive}
+          viewerIsActive={canEndTurn}
           {autopassEnabled}
           {loopNotice}
           {readyActions}

@@ -115,8 +115,8 @@ func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, sta
 }
 
 // splitControlledTurnMoves separates the seat's own moves from those it
-// makes for a seat whose turn it is playing (ADR 0167 §7) or whose
-// search it controls (#3998, controlled_search.go). A move for a seat it
+// makes for a seat whose turn (or combat phase, #3999) it is playing
+// (ADR 0167 §7) or whose search it controls (#3998, controlled_search.go). A move for a seat it
 // controls only during a resolution (Word of Command, ADR 0166) stays
 // with its own: its policy has always answered those.
 func splitControlledTurnMoves(g *game.Game, seat uuid.UUID, moves []legal.Move) (own, controlled []legal.Move) {
@@ -125,7 +125,7 @@ func splitControlledTurnMoves(g *game.Game, seat uuid.UUID, moves []legal.Move) 
 			own = append(own, m)
 			continue
 		}
-		if until := g.ControlUntilOfPlayer(m.Player); until == game.ControlUntilTurn || until == game.ControlUntilSearch {
+		if until := g.ControlUntilOfPlayer(m.Player); until.PlaysForThem() || until == game.ControlUntilSearch {
 			controlled = append(controlled, m)
 			continue
 		}

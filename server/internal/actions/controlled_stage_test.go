@@ -37,7 +37,14 @@ func TestControlledVerbAllowedPerStage(t *testing.T) {
 			typeSet(TypePassPriority, TypeEndTurn, TypeCastSpell, TypeActivateAbility,
 				TypeActivateLoyalty, TypeActivateManaAbility, TypeSpecialAction, TypeOutsidePlay,
 				TypeDeclareAttacker, TypeDeclareAttackers, TypeResolveChoice, TypeDiscardSelection)},
+		// #3999: a combat phase's rules verbs. Not end_turn (it would
+		// walk the turn on past the control) and not the cleanup discard.
+		{"secret of bloodbending, the controlled combat phase", game.ControlCombat,
+			typeSet(TypePassPriority, TypeCastSpell, TypeActivateAbility,
+				TypeActivateLoyalty, TypeActivateManaAbility, TypeSpecialAction, TypeOutsidePlay,
+				TypeDeclareAttacker, TypeDeclareAttackers, TypeResolveChoice)},
 		{"a stage that is waiting, not live", game.ControlAwaitingTurn, typeSet()},
+		{"a combat stage that is waiting, not live", game.ControlAwaitingCombat, typeSet()},
 		{"no live control", "", typeSet()},
 		{"a stage nobody has defined", "from_the_future", typeSet()},
 	}

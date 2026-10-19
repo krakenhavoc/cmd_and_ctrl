@@ -549,7 +549,8 @@ export interface GameView {
   // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
   // whole of a turn another player plays, Emrakul, the Promised End).
   // #3998: or "search" (Opposition Agent: only while the controlled
-  // player's search prompt is open).
+  // player's search prompt is open). #3999: or "combat" (Secret of
+  // Bloodbending: one combat phase, played like a turn).
   // One entry per controlled player: the effect that applies now.
   player_controls?: PlayerControlView[];
   // ADR 0167 §8: turn-long controls still waiting for the controlled
@@ -3028,6 +3029,10 @@ export interface OptionalCostView {
   // cast_spell as `blight_ids`.
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
+  // cast's tap cost: the board opens the tap picker from it and sends
+  // the picks as `tap_ids` (lib/targeting.ts tapCostFor).
+  tap_cost?: TapCostView;
   // #1267: the target clause the spell has WHEN THIS COST IS PAID —
   // Long River's Pull counters any spell once the gift is promised.
   // Same shape and meaning as AlternativeCostView's trio; absent when
@@ -3560,6 +3565,11 @@ export interface ActivatedAbilityView {
   // #2726: "Put this creature on the bottom of its owner's library"
   // (Timestream Navigator). Advisory like `return_self`.
   bottom_self?: boolean;
+  // #4000: "Exile <the permanent that grants this>" on a granted row
+  // (The Dominion Bracelet). Advisory like `return_self`: the grantor
+  // (`granted_by`) is the payment, so nothing is picked and nothing is
+  // sent.
+  exile_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
@@ -5395,14 +5405,21 @@ export interface PlayerControlView {
   controlled: string;
   source?: string;
   source_name?: string;
-  until: "resolution" | "turn" | "search";
+  // #3999: "combat" is one combat phase of the controlled player's
+  // (Secret of Bloodbending), played like a turn for its length.
+  until: "resolution" | "turn" | "search" | "combat";
 }
 
-/** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
+/**
+ * ADR 0167 §8: a control waiting for the controlled player's next turn,
+ * or (#3999, `until: "combat"`) their next combat phase. Absent `until`
+ * reads as "turn".
+ */
 export interface ScheduledPlayerControlView {
   controller: string;
   controlled: string;
   source_name?: string;
+  until?: "turn" | "combat";
 }
 
 // ADR 0127 §3: one of a seat's standing answers, as the server holds it.

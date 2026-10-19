@@ -210,13 +210,16 @@ func (g *Game) popTurnPlanLocked() bool {
 // noteStepBegunLocked stamps the ordinals as a step really begins
 // (ADR 0059 Decision 8): after the CR 500.11 skip window and the
 // mulligan hold, so a skipped step is not counted. The first step to
-// begin in a new phase instance counts a phase of its family.
+// begin in a new phase instance counts a phase of its family, and
+// opensPhase reports it: that is the moment the phase begins (#3999,
+// beginCombatControlsLocked).
 //
 // Caller must hold g.mu.
-func (g *Game) noteStepBegunLocked() {
+func (g *Game) noteStepBegunLocked() (opensPhase bool) {
 	g.ensureTurnPlanLocked()
 	t := &g.TurnTally
 	if g.Turn.PhaseID != t.PhaseStarted {
+		opensPhase = true
 		if t.PhasesBegun == nil {
 			t.PhasesBegun = map[PhaseKind]int{}
 		}
@@ -238,6 +241,7 @@ func (g *Game) noteStepBegunLocked() {
 			p.EndStepTurn = p.TurnsBegun
 		}
 	}
+	return opensPhase
 }
 
 // derivePrePlanOrdinalsLocked fills in the ordinals for a restore

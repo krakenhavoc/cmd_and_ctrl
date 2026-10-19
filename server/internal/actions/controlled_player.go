@@ -28,11 +28,13 @@ import (
 //     checked in the cast branch), their lands' mana abilities (the
 //     engine refuses any other source) and the prompts that raises;
 //     while the forced spell resolves, and while a search is under way,
-//     only the prompts; and while the controller plays a whole turn
-//     (Emrakul, ADR 0167 §4) every rules verb;
+//     only the prompts; while the controller plays a whole turn
+//     (Emrakul, ADR 0167 §4) every rules verb; and while they play one
+//     combat phase (Secret of Bloodbending, #3999) every rules verb of
+//     that phase;
 //   - no stage allows a sandbox verb as the controlled player, and a
-//     controller who plays a whole turn has the sandbox closed as
-//     themselves too (CR 723.5b: those are not choices the rules or an
+//     controller who plays a whole turn or a combat phase has the
+//     sandbox closed as themselves too (CR 723.5b: those are not choices the rules or an
 //     object call for).
 
 // turnRulesVerbs are the verbs a turn's controller may send as the
@@ -54,6 +56,23 @@ var turnRulesVerbs = map[Type]struct{}{
 	TypeResolveChoice:       {},
 	TypeDiscardSelection:    {},
 }
+
+// combatRulesVerbs are the verbs a combat phase's controller may send as
+// the player whose combat phase they control (#3999, Secret of
+// Bloodbending): turnRulesVerbs less the two that reach past the phase.
+// end_turn would walk the controlled player's turn on to its end, after
+// the control is over, and the cleanup discard (CR 514.1) is never in a
+// combat phase.
+var combatRulesVerbs = func() map[Type]struct{} {
+	out := make(map[Type]struct{}, len(turnRulesVerbs))
+	for t := range turnRulesVerbs {
+		if t == TypeEndTurn || t == TypeDiscardSelection {
+			continue
+		}
+		out[t] = struct{}{}
+	}
+	return out
+}()
 
 // sandboxVerbs are the manual table verbs (ADR 0167 §4) closed to both
 // players of a controlled turn for as long as it is played: a sandbox
@@ -111,6 +130,8 @@ var sandboxVerbs = map[Type]struct{}{
 //     a resolution, so no rules verb is a choice either.
 //   - ControlSearching (Opposition Agent): only the search prompt.
 //   - ControlTurn (Emrakul): every rules verb (turnRulesVerbs).
+//   - ControlCombat (Secret of Bloodbending, #3999): the rules verbs of
+//     a combat phase (combatRulesVerbs).
 //
 // No stage allows a sandboxVerbs entry.
 var controlledStageVerbs = map[game.ControlStage]map[Type]struct{}{
@@ -122,6 +143,7 @@ var controlledStageVerbs = map[game.ControlStage]map[Type]struct{}{
 	game.ControlSpellResolving: {TypeResolveChoice: {}},
 	game.ControlSearching:      {TypeResolveChoice: {}},
 	game.ControlTurn:           turnRulesVerbs,
+	game.ControlCombat:         combatRulesVerbs,
 }
 
 // controlledVerbAllowed reports whether a controller may send a verb of
@@ -144,8 +166,9 @@ func routeControlledPlayer(g *game.Game, a Action) (Action, error) {
 		}
 		return a, game.ErrPlayerControlled
 	}
-	// ADR 0167 §4: the sandbox is closed to a turn's controller, as
-	// themselves too, for as long as they play it.
+	// ADR 0167 §4: the sandbox is closed to a turn's (or a combat
+	// phase's, #3999) controller, as themselves too, for as long as
+	// they play it.
 	if _, sandbox := sandboxVerbs[a.Type]; sandbox && g.ControlsATurn(a.Caller) {
 		return a, game.ErrPlayerControlled
 	}

@@ -19,9 +19,18 @@ import type { GameView, PlayerControlView, ScheduledPlayerControlView } from "./
 import { blockDeclarationPending } from "./priority";
 
 /**
- * The turn-long control the viewer holds over another seat right now,
- * or null. A Word of Command control (`until: "resolution"`) is not
- * this: it is played from its own sheet (ADR 0166).
+ * playsForSeat says whether a control of this length has the controller
+ * play the controlled seat's game on its board: a whole turn (ADR 0167)
+ * or one combat phase (#3999). The server's ControlUntil.PlaysForThem.
+ */
+export function playsForSeat(until: PlayerControlView["until"] | undefined): boolean {
+  return until === "turn" || until === "combat";
+}
+
+/**
+ * The turn-long (or combat-phase, #3999) control the viewer holds over
+ * another seat right now, or null. A Word of Command control (`until:
+ * "resolution"`) is not this: it is played from its own sheet (ADR 0166).
  */
 export function controlledByViewer(
   view: GameView | null | undefined,
@@ -30,12 +39,12 @@ export function controlledByViewer(
   if (!view || !viewerID) return null;
   return (
     view.player_controls?.find(
-      (pc) => pc.until === "turn" && pc.controller === viewerID && pc.controlled !== viewerID,
+      (pc) => playsForSeat(pc.until) && pc.controller === viewerID && pc.controlled !== viewerID,
     ) ?? null
   );
 }
 
-/** The turn-long control another player holds over the viewer, or null. */
+/** The turn-long (or combat-phase) control another player holds over the viewer, or null. */
 export function controllerOfViewer(
   view: GameView | null | undefined,
   viewerID: string | null,
@@ -43,7 +52,7 @@ export function controllerOfViewer(
   if (!view || !viewerID) return null;
   return (
     view.player_controls?.find(
-      (pc) => pc.until === "turn" && pc.controlled === viewerID && pc.controller !== viewerID,
+      (pc) => playsForSeat(pc.until) && pc.controlled === viewerID && pc.controller !== viewerID,
     ) ?? null
   );
 }
@@ -71,6 +80,21 @@ const RULES_VERBS: ReadonlySet<string> = new Set([
  */
 export function actsForSeat(type: string): boolean {
   return RULES_VERBS.has(type);
+}
+
+/**
+ * endTurnClosed says whether End turn is closed to a board acting for
+ * another seat: during a combat phase the viewer controls (#3999) it
+ * would walk that seat's turn on past the control, and the server
+ * refuses it (actions/controlled_player.go combatRulesVerbs).
+ */
+export function endTurnClosed(
+  view: GameView | null | undefined,
+  viewerID: string | null,
+  actingID: string | null,
+): boolean {
+  const c = controlledByViewer(view, viewerID);
+  return !!c && c.until === "combat" && actingID === c.controlled;
 }
 
 /** Which of the viewer's two seats the board acts for. */
@@ -188,7 +212,7 @@ export function viewForSeat(
 ): GameView {
   if (!seatID) return view;
   const control = view.player_controls?.find(
-    (pc) => pc.until === "turn" && pc.controlled === seatID && pc.controller !== seatID,
+    (pc) => playsForSeat(pc.until) && pc.controlled === seatID && pc.controller !== seatID,
   );
   if (!control && !view.controlled_legal_actions) return view;
   const moves = view.legal_moves?.filter((m) => !m.player || m.player === seatID);
@@ -250,6 +274,7 @@ export function playingAsBanner(
   const mine = controlledByViewer(view, viewerID);
   if (mine && viewerID) {
     const bob = nameOf(view, mine.controlled);
+    const span = mine.until === "combat" ? "combat" : "turn";
     const ower = decisionOwer(view, viewerID, mine.controlled);
     const onBob = actingID === mine.controlled;
     const switchTo =
@@ -267,7 +292,7 @@ export function playingAsBanner(
         }
       : {
           kind: "viewing",
-          text: `Viewing your board, ${bob}'s turn is yours`,
+          text: `Viewing your board, ${bob}'s ${span} is yours`,
           source: mine.source_name,
           toggle: { label: `Play as ${bob}` },
           switchTo,
@@ -280,22 +305,27 @@ export function playingAsBanner(
     const choosing = view.pending_choices?.some((c) => c.on_behalf_of === viewerID);
     return {
       kind: "controlled",
-      text: `${alice} controls you this turn`,
+      text: `${alice} controls you this ${over.until === "combat" ? "combat" : "turn"}`,
       source: over.source_name,
       note: choosing ? `${alice} is choosing for you` : undefined,
       seatID: over.controller,
     };
   }
-  const live = view.player_controls?.find((pc) => pc.until === "turn");
+  const live = view.player_controls?.find((pc) => playsForSeat(pc.until));
   if (live) {
     return {
       kind: "watching",
-      text: `${nameOf(view, live.controller)} controls ${nameOf(view, live.controlled)} this turn`,
+      text: `${nameOf(view, live.controller)} controls ${nameOf(view, live.controlled)} this ${live.until === "combat" ? "combat" : "turn"}`,
       source: live.source_name,
       seatID: live.controller,
     };
   }
   return scheduledLine(view, viewerID);
+}
+
+// What a scheduled control waits for, in the banner's words.
+function scheduledSpan(s: ScheduledPlayerControlView): string {
+  return s.until === "combat" ? "combat phase" : "turn";
 }
 
 // The last scheduled record over a player is the one that will apply
@@ -309,7 +339,7 @@ function scheduledLine(view: GameView, viewerID: string | null): PlayingAsBanner
   if (overMe) {
     return {
       kind: "scheduled",
-      text: `${nameOf(view, overMe.controller)} will control your next turn`,
+      text: `${nameOf(view, overMe.controller)} will control your next ${scheduledSpan(overMe)}`,
       source: overMe.source_name,
       seatID: overMe.controller,
     };
@@ -318,7 +348,7 @@ function scheduledLine(view: GameView, viewerID: string | null): PlayingAsBanner
   if (byMe) {
     return {
       kind: "scheduled",
-      text: `You will control ${nameOf(view, byMe.controlled)}'s next turn`,
+      text: `You will control ${nameOf(view, byMe.controlled)}'s next ${scheduledSpan(byMe)}`,
       source: byMe.source_name,
       seatID: byMe.controlled,
     };
@@ -326,7 +356,7 @@ function scheduledLine(view: GameView, viewerID: string | null): PlayingAsBanner
   const any = all[all.length - 1];
   return {
     kind: "scheduled",
-    text: `${nameOf(view, any.controller)} will control ${nameOf(view, any.controlled)}'s next turn`,
+    text: `${nameOf(view, any.controller)} will control ${nameOf(view, any.controlled)}'s next ${scheduledSpan(any)}`,
     source: any.source_name,
     seatID: any.controller,
   };

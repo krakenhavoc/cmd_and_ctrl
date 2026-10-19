@@ -123,9 +123,10 @@ func (e *enumerator) controlledChoiceMoves() bool {
 		if e.g.ControllerOfPlayerLocked(p.ID) != e.seat {
 			continue
 		}
-		// ADR 0167 §7: a turn's controller gets the whole of that
-		// seat's run (controlledTurnMoves), prompts included.
-		if e.g.ControlUntilOfPlayerLocked(p.ID) == game.ControlUntilTurn {
+		// ADR 0167 §7: a turn's (or a combat phase's, #3999)
+		// controller gets the whole of that seat's run
+		// (controlledTurnMoves), prompts included.
+		if e.g.ControlUntilOfPlayerLocked(p.ID).PlaysForThem() {
 			continue
 		}
 		sub := enumeratorAs(e.g, p.ID, e.opts)

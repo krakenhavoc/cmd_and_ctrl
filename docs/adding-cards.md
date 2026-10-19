@@ -7771,6 +7771,24 @@ two halves) uses `controlTargetPlayerNextTurn(name)` or
 `controlPlayerNextTurn(g, item, controller, controlled, name)` from
 `cards/effects/turn_control_cards.go`, which set it.
 
+"You control target opponent during their next combat phase" (Secret
+of Bloodbending, #3999) is `Game.BeginCombatControlForEffect` with a
+`CombatControl`: the same record scoped to one combat phase (`Until
+"combat"`, `game/combat_control.go`), which begins as the controlled
+player's next combat phase begins and ends as it ends. The controller
+plays it like a turn, but cannot end the turn from it.
+
+A granted ability whose cost exiles the permanent that grants it ("{15},
+Exile The Dominion Bracelet: …" on the equipped creature, #4000) adds
+`ExileTheGrantor()` to the bundle ability's cost with `Plus`; Register
+allows it only in a battlefield `AbilityGrant`. "This ability costs {X}
+less, where X is this creature's power" is the bundle ability's own
+`CostModifiers`, whose `q.Card` is the creature.
+
+An optional "you may waterbend {N}" additional cost is
+`OptionalCosts: []game.AdditionalCost{OptionalWaterbend("{N}")}`; read
+whether it was paid with `ctx.OptionalCostTimes(game.WaterbendKey) > 0`.
+
 ### Adding a `PendingChoiceKind` (#730, #794)
 
 A new prompt kind owes two answers, and neither has a compiler behind

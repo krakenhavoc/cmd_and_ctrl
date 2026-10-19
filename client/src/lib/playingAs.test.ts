@@ -10,8 +10,10 @@ import {
   controlledByViewer,
   controllerOfViewer,
   decisionOwer,
+  endTurnClosed,
   nextPlayingAs,
   playingAsBanner,
+  playsForSeat,
   togglePlayingAs,
   viewForSeat,
   type PlayingAsState,
@@ -291,5 +293,63 @@ describe("playingAsBanner", () => {
     expect(playingAsBanner(v, ALICE, ALICE)!.text).toBe("You will control Bob's next turn");
     expect(playingAsBanner(v, null, null)!.text).toBe("Alice will control Bob's next turn");
     expect(playingAsBanner(frame(), ALICE, ALICE)).toBeNull();
+  });
+});
+
+// #3999: Secret of Bloodbending's control lasts one combat phase, and
+// the board plays it exactly as it plays a controlled turn.
+describe("a controlled combat phase", () => {
+  const BLOODBENDING: PlayerControlView = {
+    controller: ALICE,
+    controlled: BOB,
+    source_name: "Secret of Bloodbending",
+    until: "combat",
+  };
+  const combat = (priority = 1) => frame({ player_controls: [BLOODBENDING] }, priority);
+
+  it("plays for the seat like a turn, unlike a resolution or a search", () => {
+    expect(playsForSeat("turn")).toBe(true);
+    expect(playsForSeat("combat")).toBe(true);
+    expect(playsForSeat("resolution")).toBe(false);
+    expect(playsForSeat("search")).toBe(false);
+    expect(playsForSeat(undefined)).toBe(false);
+    expect(controlledByViewer(combat(), ALICE)).toEqual(BLOODBENDING);
+    expect(controllerOfViewer(combat(), BOB)).toEqual(BLOODBENDING);
+    expect(actingSeatID(combat(), ALICE, "controlled")).toBe(BOB);
+    expect(nextPlayingAs(NOT_PLAYING_AS, combat(), ALICE).control).toBe(BOB);
+  });
+
+  it("closes End turn on Bob's board only", () => {
+    expect(endTurnClosed(combat(), ALICE, BOB)).toBe(true);
+    expect(endTurnClosed(combat(), ALICE, ALICE)).toBe(false);
+    expect(endTurnClosed(controlled(), ALICE, BOB)).toBe(false);
+    expect(endTurnClosed(frame(), ALICE, ALICE)).toBe(false);
+  });
+
+  it("says combat, not turn, in the banner", () => {
+    expect(playingAsBanner(combat(1), ALICE, ALICE)!.text).toBe(
+      "Viewing your board, Bob's combat is yours",
+    );
+    expect(playingAsBanner(combat(), BOB, BOB)!.text).toBe("Alice controls you this combat");
+    expect(playingAsBanner(combat(), CAROL, CAROL)!.text).toBe("Alice controls Bob this combat");
+    const waiting = frame({
+      scheduled_player_controls: [
+        {
+          controller: ALICE,
+          controlled: BOB,
+          source_name: "Secret of Bloodbending",
+          until: "combat",
+        },
+      ],
+    });
+    expect(playingAsBanner(waiting, BOB, BOB)!.text).toBe(
+      "Alice will control your next combat phase",
+    );
+    expect(playingAsBanner(waiting, ALICE, ALICE)!.text).toBe(
+      "You will control Bob's next combat phase",
+    );
+    expect(playingAsBanner(waiting, null, null)!.text).toBe(
+      "Alice will control Bob's next combat phase",
+    );
   });
 });

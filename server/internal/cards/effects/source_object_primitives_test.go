@@ -661,6 +661,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"yawgmoths_vile_offering.go": true,
 		// "Exile Worst Fears." (#3857)
 		"worst_fears.go": true,
+		// "Exile Secret of Bloodbending." (#3999)
+		"secret_of_bloodbending.go": true,
 		// "Shuffle Beacon of Unrest into its owner's library." (#3209)
 		"beacon_of_unrest.go": true,
 		// "Exile Burning Wish." and "Exile Living Wish." (ADR 0191, #3506)
