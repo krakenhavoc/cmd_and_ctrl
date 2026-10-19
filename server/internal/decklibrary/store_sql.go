@@ -343,3 +343,43 @@ func isBusy(err error) bool {
 }
 
 var _ Store = (*SQLStore)(nil)
+
+// UpdatePrintings implements Store without changing the name, source link,
+// card count, commander summary or power rating. A stale editor never
+// overwrites a more recently saved deck.
+func (s *SQLStore) UpdatePrintings(ctx context.Context, before Deck, sourceText string) (Deck, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Deck{}, err
+	}
+	defer func() { _ = tx.Rollback() }()
+	current, err := getDeck(ctx, tx, before.ID.String())
+	if err != nil {
+		return Deck{}, err
+	}
+	if current.OwnerID != before.OwnerID {
+		return Deck{}, ErrNotFound
+	}
+	if current.SourceText != before.SourceText || current.SourceFormat != before.SourceFormat {
+		return Deck{}, ErrSourceChanged
+	}
+	var newest int64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(updated_at), 0) FROM decks WHERE owner_id = ?`, before.OwnerID.String()).Scan(&newest); err != nil {
+		return Deck{}, err
+	}
+	stamp := s.now().UnixMilli()
+	if stamp <= newest {
+		stamp = newest + 1
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE decks SET source_format = 'text', source_text = ?, updated_at = ? WHERE id = ? AND owner_id = ?`, sourceText, stamp, before.ID.String(), before.OwnerID.String()); err != nil {
+		return Deck{}, err
+	}
+	updated, err := getDeck(ctx, tx, before.ID.String())
+	if err != nil {
+		return Deck{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Deck{}, err
+	}
+	return updated, nil
+}

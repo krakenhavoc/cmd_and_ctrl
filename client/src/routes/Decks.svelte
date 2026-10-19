@@ -804,6 +804,10 @@
                 requestLocked={requesting !== ""}
                 busy={busy !== ""}
                 onReport={() => toggleReport(d)}
+                onPrintingSaved={(updated) => {
+                  decks = decks.map((item) => (item.id === updated.id ? updated : item));
+                  if (reportFor === updated.id) closeReport();
+                }}
                 onRequest={() => requestSaved(d)}
                 onRename={(name) => renameDeck(d, name)}
                 onDelete={() => remove(d)}

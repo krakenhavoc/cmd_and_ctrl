@@ -269,3 +269,23 @@ func TestReportJSONCarriesCopies(t *testing.T) {
 		t.Errorf("unknown_copies = %v", got.UnknownCopies)
 	}
 }
+
+func TestBuildCountsAlternateAndCanonicalTitlesAsTheSameCard(t *testing.T) {
+	idx, tc := TestingIndex(t)
+	c, ok := idx.FindByName(tc.Automated)
+	if !ok {
+		t.Fatal("missing test card")
+	}
+	c.FlavorName = "Alternate printed title"
+	idx.Put(c)
+	report, err := Build(idx, Deck{Entries: []deck.Entry{
+		{Name: tc.Automated, Count: 1},
+		{Name: c.FlavorName, Count: 1},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Unknown) != 0 || report.UnknownCopies != 0 || len(report.Cards) != 1 || report.Cards[0].Name != tc.Automated || report.Cards[0].Count != 2 || report.Copies[Automated] != 2 {
+		t.Fatalf("alternate title changed coverage or identity: %+v", report)
+	}
+}

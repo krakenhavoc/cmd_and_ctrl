@@ -806,6 +806,8 @@ func Handler(c Config) http.Handler {
 	// reads compute coverage, so all four share a 1/s, burst-5 bucket.
 	libraryLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDecks))))
+	mux.Handle("GET /me/decks/{id}/printings", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDeckPrintings))))
+	mux.Handle("PUT /me/decks/{id}/printings", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, putMyDeckPrintings))))
 	mux.Handle("GET /me/decks/{id}/coverage", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, myDeckCoverage))))
 	mux.Handle("PATCH /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, renameMyDeck))))
 	mux.Handle("DELETE /me/decks/{id}", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deleteMyDeck))))
@@ -3938,7 +3940,11 @@ func libraryCommanders(idx *cards.Index, names []string, printings map[string]de
 		}
 		cmd := myDeckCommander{Name: name}
 		if card, ok := idx.FindByName(name); ok {
-			if hint, has := printings[strings.ToLower(strings.TrimSpace(name))]; has {
+			hint, has := printings[strings.ToLower(strings.TrimSpace(name))]
+			if !has {
+				hint, has = printings[strings.ToLower(strings.TrimSpace(card.Name))]
+			}
+			if has {
 				if p, found := idx.FindPrintingOf(card, hint.PrintingID, hint.SetCode, hint.CollectorNo); found {
 					card = p
 				}

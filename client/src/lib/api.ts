@@ -887,6 +887,50 @@ export async function fetchMyDecks(): Promise<MyDecksResponse> {
   return (await res.json()) as MyDecksResponse;
 }
 
+export interface CardPrinting {
+  id: string;
+  name: string;
+  flavor_name?: string;
+  set: string;
+  collector_number: string;
+}
+
+export interface DeckPrintingRow {
+  entry: number;
+  name: string;
+  count: number;
+  board: string;
+  printing_id: string;
+  set: string;
+  collector_number: string;
+}
+
+export interface DeckPrintings {
+  revision: string;
+  cards: DeckPrintingRow[];
+}
+
+export async function fetchDeckPrintings(id: string): Promise<DeckPrintings> {
+  return (await authFetch(`/me/decks/${encodeURIComponent(id)}/printings`)).json();
+}
+
+export async function fetchCardPrintings(id: string): Promise<CardPrinting[]> {
+  const res = await authFetch(`/cards/${encodeURIComponent(id)}/printings`);
+  return (await res.json()).printings;
+}
+
+export async function saveDeckPrintings(
+  id: string,
+  revision: string,
+  choices: { entry: number; printing_id: string }[],
+): Promise<MyDeckInfo> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/printings`, {
+    method: "PUT",
+    body: JSON.stringify({ revision, choices }),
+  });
+  return res.json();
+}
+
 // fetchMyStats reads the signed-in caller's own game statistics (ADR
 // 0165 §7, GET /me/stats). A guest or an admin gets a 403 whose message
 // the page shows.
