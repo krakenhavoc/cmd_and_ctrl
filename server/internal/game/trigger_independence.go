@@ -1328,6 +1328,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
+	ModCantBeBlockedBySubtypes: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1650,7 +1651,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"TargetingRestrictions": defFieldRules, "PlayerKeywords": defFieldRules,
 	"PlayerKeywordsIf":      defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
-	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "DamageAsThough": defFieldRules,
+	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules,

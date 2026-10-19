@@ -1271,6 +1271,14 @@ type Spec struct {
 	// window: a draw the cap forbids is not performed (draw_limit.go).
 	DrawLimits []game.DrawLimitStatic
 
+	// VentureLimits declares this permanent's printed "Each opponent
+	// can't venture into the dungeon more than once each turn" (Keen-Eared
+	// Sentry, #4100). Read from the battlefield through
+	// game.CatalogVentureLimits, keyed by CatalogAbilityKey, as each
+	// venture begins: a venture the limit forbids is not performed
+	// (game/venture_limit.go).
+	VentureLimits []game.VentureLimitStatic
+
 	// DamageAsThough declares this permanent's printed "damage is dealt
 	// as though its source had wither / infect" statics (CR 120.3, 609.4,
 	// ADR 0108 §10):
