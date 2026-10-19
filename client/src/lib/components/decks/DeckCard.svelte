@@ -14,6 +14,7 @@
   import { L } from "../../labels";
   import PrintingPicker from "./PrintingPicker.svelte";
   import UpdateDeckSheet from "./UpdateDeckSheet.svelte";
+  import SideboardList from "./SideboardList.svelte";
   import type { DeckUpdateConfirm } from "../../deckUpdate";
   import { tick, type Snippet } from "svelte";
   import Icon from "../Icon.svelte";
@@ -73,6 +74,14 @@
   let printingButton = $state<HTMLButtonElement | null>(null);
   let updateOpen = $state(false);
   let updateButton = $state<HTMLButtonElement | null>(null);
+  // ADR 0191 (amended 2026-10-19, #3833, #4054): the deck's sideboard, read only.
+  let sideboardOpen = $state(false);
+  let sideboardButton = $state<HTMLButtonElement | null>(null);
+
+  function closeSideboard(): void {
+    sideboardOpen = false;
+    void tick().then(() => sideboardButton?.focus());
+  }
 
   function closeUpdate(): void {
     updateOpen = false;
@@ -212,6 +221,7 @@
             class="btn sm"
             onclick={() => {
               updateOpen = false;
+              sideboardOpen = false;
               printingsOpen = true;
             }}
             bind:this={printingButton}
@@ -223,11 +233,25 @@
             class="btn sm"
             onclick={() => {
               printingsOpen = false;
+              sideboardOpen = false;
               updateOpen = true;
             }}
             bind:this={updateButton}
             aria-expanded={updateOpen}
             disabled={busy || updateOpen}>{L.updateDeck}</button
+          >
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => {
+              printingsOpen = false;
+              updateOpen = false;
+              sideboardOpen = true;
+            }}
+            bind:this={sideboardButton}
+            aria-expanded={sideboardOpen}
+            aria-label={`sideboard of ${deck.name}`}
+            disabled={busy || sideboardOpen}>Sideboard</button
           >
           {#if deck.coverage}
             <button type="button" class="btn sm" onclick={onReport} aria-expanded={reportOpen}>
@@ -297,6 +321,9 @@
             closePrintings();
           }}
         />
+      {/if}
+      {#if sideboardOpen}
+        <SideboardList {deck} onclose={closeSideboard} />
       {/if}
       {#if updateOpen}
         <UpdateDeckSheet

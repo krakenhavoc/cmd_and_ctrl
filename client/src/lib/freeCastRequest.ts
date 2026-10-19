@@ -121,7 +121,7 @@ export const CHOOSE_CAST_FREE_LIBRARY = "cast_free_library";
 // answer leaves the picked cards in the sideboard with a cast permission
 // on each. A database pick names cards that have no instance id until
 // the server creates them, so the request is a flag rather than an id:
-// once the answer lands, Board opens the sideboard tab, where every
+// once the answer lands, Board opens the "outside the game" view, where every
 // granted card carries its cast button.
 export const outsideCastRequest = guardedWritable<boolean>(false, "outsideCastRequest");
 

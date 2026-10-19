@@ -1575,8 +1575,8 @@
   // without paying their mana costs" (Spawnsire of Ulamog) and "you may
   // play a card you own from outside the game this turn" (Wish). Answering
   // the pick left a permission on each chosen card in the viewer's
-  // sideboard; once the frame carrying them arrives, the sideboard tab
-  // opens, where each granted card has its cast button (which hands off to
+  // outside-the-game container; once the frame carrying them arrives, the "outside the game" view
+  // opens (the dock offers it too), where each granted card has its cast button (which hands off to
   // the ordinary cast chain). Nothing granted, nothing opens.
   $effect(() => {
     if (!$outsideCastRequest) return;

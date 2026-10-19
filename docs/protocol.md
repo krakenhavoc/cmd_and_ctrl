@@ -759,7 +759,7 @@ until end of turn at the card's own cost and timing, a land included). The
 free cast closes at the holder's next `pass_priority` and the card stays in
 `sideboard`; a card that is cast or played leaves it (CR 601.2a). Cast moves in
 `legal_moves` carry `from_zone: "outside"` and a label ending "from outside the
-game". The client opens the sideboard tab when it has answered such a pick.
+game". The client opens its "outside the game" view (the cards a live right opens) when it has answered such a pick; there is no sideboard tab or pile (ADR 0191, amended 2026-10-19).
 
 `choose_destination: "manifest"` is "manifest N cards from your hand"
 (Kozilek, the Broken Reality; Scroll of Fate; [ADR 0189](decisions/0189-the-rest-of-face-down-and-manifest-dread.md)
@@ -783,8 +783,8 @@ owns outside the game, public like a hand's size. Both are omitted for a seat
 with none. A card revealed from it (Extrapolate the Impossible) is public from
 then on and rides the ordinary `reveals[]` frame with `from: "outside"`; the
 card an effect brings in arrives in the hand with the same `instance_id`.
-Nothing about the sideboard is a client action: the zone browser's sideboard tab
-is read only.
+Nothing about the sideboard is a client action: the Decks page lists it, read only,
+and the table shows no sideboard of its own.
 
 ### `untap_choice` — the untap step's own determination (#826, CR 502.3)
 

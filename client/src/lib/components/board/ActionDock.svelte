@@ -80,6 +80,7 @@
   import { L } from "../../labels";
   import LoopControl from "./LoopControl.svelte";
   import type { LoopDockProps } from "../../loopShortcut";
+  import type { OutsideDock } from "../../outsideRight";
 
   interface Props {
     view: GameView;
@@ -127,6 +128,11 @@
     // ADR 0193 §9 (CR 732.2): the loop control. Game.svelte builds it;
     // omitted, the dock has none.
     loop?: LoopDockProps;
+    // ADR 0191 (amended 2026-10-19, #3833, #4054): the buttons for a live
+    // right over the cards you own outside the game (Wish's "name a card
+    // to play", the cards a granted cast opens). The sideboard itself is
+    // not on the table. Game.svelte builds it; omitted or empty, none.
+    outside?: OutsideDock;
   }
 
   const {
@@ -151,6 +157,7 @@
     sheetCoversBoard = false,
     menu,
     loop,
+    outside,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -610,6 +617,19 @@
       keyShortcuts={ariaKeys(keys.toggleBluff)}
       locked={preGame}
     />
+    {#each outside?.chips ?? [] as chip (chip.kind)}
+      <!-- The cards you own outside the game are reached only through an
+           effect, so this is here only while one gives you the right. -->
+      <button
+        type="button"
+        class="action hold outside"
+        data-testid={chip.kind === "name" ? "name-outside-card" : "open-outside-cards"}
+        title={chip.title}
+        onclick={() => outside?.onPress(chip.kind)}
+      >
+        {chip.label}
+      </button>
+    {/each}
     <!-- Undo and ⋯ travel together: when the row has to wrap they drop
          to the second row side by side, not one chip alone (#3894). -->
     <div class="dock-tail">
