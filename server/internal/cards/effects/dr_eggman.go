@@ -53,13 +53,13 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Dr. Eggman — draw a card, then each opponent faces a villainous choice",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return FaceVillainousChoice{Players: ctx.Opponents(), Choice: drEggmanChoice}.Apply(ctx)
-				}),
+				// The choice waits for a prompt the draw asks (CR 608.2c, #4155).
+				Do(
+					DrawCards{N: 1},
+					Instruction(func(ctx *Context) error {
+						return FaceVillainousChoice{Players: ctx.Opponents(), Choice: drEggmanChoice}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

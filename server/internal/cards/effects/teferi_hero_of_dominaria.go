@@ -84,18 +84,18 @@ func init() {
 			{
 				Label: "+1: Draw a card. At the beginning of the next end step, untap up to two lands.",
 				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return ScheduleDelayedTrigger{
-						At:         game.StepEnd,
-						Controller: item.Controller,
-						Label:      "Teferi, Hero of Dominaria — untap up to two lands",
-						Body:       teferiUntapLandsBody,
-					}.Apply(ctx)
-				},
+				// The delayed trigger waits for a prompt the draw asks (CR 608.2c, #4155).
+				Effect: Do(
+					DrawCards{N: 1},
+					Instruction(func(ctx *Context) error {
+						return ScheduleDelayedTrigger{
+							At:         game.StepEnd,
+							Controller: ctx.Item.Controller,
+							Label:      "Teferi, Hero of Dominaria — untap up to two lands",
+							Body:       teferiUntapLandsBody,
+						}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "−3: Put target nonland permanent into its owner's library third from the top.",

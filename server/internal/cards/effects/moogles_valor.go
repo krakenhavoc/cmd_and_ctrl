@@ -44,25 +44,25 @@ func init() {
 		OracleID:     "9627ed9a-5ade-412d-bf8d-f0705b1c9405",
 		Name:         "Moogles' Valor",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			n := b04CreaturesControlled(ctx.Game, ctx.Controller())
-			if n > 0 {
-				if err := (CreateToken{
-					Controller: ctx.Controller(),
-					Template:   TokenCard("1/2 white Moogle with lifelink"),
-					N:          n,
-				}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The keyword waits for a prompt the Moogles' creation asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				n := b04CreaturesControlled(ctx.Game, ctx.Controller())
+				if n <= 0 {
+					return nil
 				}
-			}
-			controller := ctx.Controller()
-			return GrantKeywordUntilEOT{
-				Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-					return c.IsCreature() && c.Controller == controller
-				},
-				Keywords: []string{"indestructible"},
-				Label:    "Moogles' Valor — creatures you control gain indestructible",
-			}.Apply(ctx)
-		},
+				return CreateToken{Template: TokenCard("1/2 white Moogle with lifelink"), N: n}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				controller := ctx.Controller()
+				return GrantKeywordUntilEOT{
+					Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+						return c.IsCreature() && c.Controller == controller
+					},
+					Keywords: []string{"indestructible"},
+					Label:    "Moogles' Valor — creatures you control gain indestructible",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

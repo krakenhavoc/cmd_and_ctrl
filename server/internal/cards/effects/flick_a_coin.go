@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Flick a Coin — Instant {2}{R}:
 //
 //	"Flick a Coin deals 1 damage to any target. You create a Treasure
@@ -22,14 +20,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageToTarget(0, 1)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := damageToFirstTarget(1)(item, ctx); err != nil {
-				return err
-			}
-			if err := (CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		// The Treasure and the card wait for a prompt the damage asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error { return damageToFirstTarget(1)(ctx.Item, ctx) }),
+			CreateToken{Template: TreasureToken(), N: 1},
+			DrawCards{N: 1},
+		),
 	})
 }

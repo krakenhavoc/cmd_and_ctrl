@@ -37,13 +37,14 @@ func init() {
 			{
 				Label: "−1: Draw a card. You may play an additional land this turn.",
 				Cost:  LoyaltyCost(-1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-					g.GrantAdditionalLandPlayForEffect(item.Controller, 1)
-					return nil
-				},
+				// The extra land play waits for a prompt the draw asks (CR 608.2c, #4155).
+				Effect: Do(
+					DrawCards{N: 1},
+					Instruction(func(ctx *Context) error {
+						ctx.Game.GrantAdditionalLandPlayForEffect(ctx.Item.Controller, 1)
+						return nil
+					}),
+				),
 			},
 			{
 				Label:  "−5: You get an emblem with \"At the beginning of your end step, create a 9/9 blue Kraken creature token.\"",

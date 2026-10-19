@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Thoughtseize — Sorcery {B}:
 //
 //	"Target player reveals their hand. You choose a nonland card from
@@ -27,15 +25,16 @@ func init() {
 		Name:         "Thoughtseize",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for the choice from the revealed hand (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return ChooseFromRevealedHand{
+					Player: TargetedPlayer(ctx),
+					Filter: Nonland(),
+					Label:  "nonland card",
+				}.Apply(ctx)
+			}),
+			GainLife{Amount: -2},
+		),
 	})
 }

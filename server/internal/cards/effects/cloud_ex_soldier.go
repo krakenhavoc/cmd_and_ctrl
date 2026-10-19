@@ -1,8 +1,6 @@
 package effects
 
-import (
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Cloud, Ex-SOLDIER — Legendary Creature — Human Soldier Mercenary
 // {2}{R}{G}{W}, 4/4 (#3656):
@@ -44,19 +42,22 @@ func init() {
 					}),
 				TargetPermanent("up to one target Equipment you control", HasSubtype("Equipment"), YouControl()).WithCount(0, 1)),
 			WheneverThisAttacks("Cloud, Ex-SOLDIER — draw a card for each equipped attacking creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					n := equippedCreaturesYouControl(g, item.Controller, true)
-					if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-						return err
-					}
-					cloud, ok := g.LookupCardForEffect(item.SourceCardID)
-					power := b31CurrentPowerOf(g, item.SourceCardID)
-					if !ok || !cloud.IsCreature() || power < 7 {
-						return nil
-					}
-					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 2}.Apply(ctx)
-				}),
+				Do(
+					// The Treasures wait for a prompt the draws ask (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						n := equippedCreaturesYouControl(ctx.Game, ctx.Item.Controller, true)
+						return DrawCards{N: n}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						cloud, ok := ctx.Game.LookupCardForEffect(item.SourceCardID)
+						power := b31CurrentPowerOf(ctx.Game, item.SourceCardID)
+						if !ok || !cloud.IsCreature() || power < 7 {
+							return nil
+						}
+						return CreateToken{Template: TreasureToken(), N: 2}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

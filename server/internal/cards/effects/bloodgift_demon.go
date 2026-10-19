@@ -36,17 +36,21 @@ func init() {
 			Targets: TargetPlayer("target player"),
 			Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 1, LifeLoss: 1}),
 			Key:     "Bloodgift Demon — target player draws a card and loses 1 life",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+			Effect: Do(
+				// The life loss waits for a prompt the draw asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					if t := ctx.Item.Targets; len(t) > 0 && t[0].Kind == game.TargetPlayer {
+						return DrawCards{Player: t[0].ID, N: 1}.Apply(ctx)
+					}
 					return nil
-				}
-				victim := item.Targets[0].ID
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: victim, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return GainLife{Player: victim, Amount: -1}.Apply(ctx)
-			},
+				}),
+				Instruction(func(ctx *Context) error {
+					if t := ctx.Item.Targets; len(t) > 0 && t[0].Kind == game.TargetPlayer {
+						return GainLife{Player: t[0].ID, Amount: -1}.Apply(ctx)
+					}
+					return nil
+				}),
+			),
 		}},
 	})
 }

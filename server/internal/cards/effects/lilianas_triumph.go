@@ -36,26 +36,27 @@ func init() {
 		OracleID:     "c2e68ac5-cfff-4b76-8062-25a82fdf9a5c",
 		Name:         "Liliana's Triumph",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (EachPlayerSacrifices{
+		OnResolve: ResolveSteps(
+			// The discards wait for the sacrifices' prompts (CR 608.2c, #4155).
+			EachPlayerSacrifices{
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			if !b42ControlsPlaneswalkerNamed(ctx.Game, ctx.Controller(), "Liliana") {
+			},
+			Instruction(func(ctx *Context) error {
+				if !b42ControlsPlaneswalkerNamed(ctx.Game, ctx.Controller(), "Liliana") {
+					return nil
+				}
+				for _, opp := range ctx.Opponents() {
+					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+						Player:   opp,
+						Source:   ctx.Source(),
+						N:        1,
+						Question: "Liliana's Triumph — discard a card",
+					})
+				}
 				return nil
-			}
-			for _, opp := range ctx.Opponents() {
-				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player:   opp,
-					Source:   ctx.Source(),
-					N:        1,
-					Question: "Liliana's Triumph — discard a card",
-				})
-			}
-			return nil
-		},
+			}),
+		),
 	})
 }

@@ -635,13 +635,27 @@ var stepsConverted = setOf(
 	"Consuming Corruption", "Forge of Heroes", "Valgavoth, Harrower of Souls", "Persistent Constrictor",
 	"Flumph", "Lazotep Plating", "Momentous Fall", "Wan Shi Tong, Librarian", "Wheel of Fortune",
 	"Expropriate", "Will of the Abzan", "Zack Fair",
-	// Batch 3: continuations written as steps (#4162) and what one step
+	// #4162/#4163: continuations written as steps (#4162) and what one step
 	// hands the next (#4163). Currency Converter's pair was two arms of one
 	// if, now one instruction.
 	"Arcane Denial", "Braids, Arisen Nightmare", "Forgotten Ancient", "Twilight Prophet", "Scavenging Ooze",
 	"Seize the Spotlight", "Disciple of Freyalise", "Disciple of Bolas", "Replicating Ring",
 	"Bonehoard Dracosaur", "Midnight Clock", "Currency Converter", "Court of Ambition", "Transpose",
 	"Sylvan Library", "Martial Coup", "Windfall", "Dark Deal", "Tolarian Winds", "Cut a Deal",
+	// Batch 3.
+	"Finale of Glory", "Lifestream's Blessing", "Beacon of Immortality", "Farmer Cotton",
+	"Xantcha, Sleeper Agent", "Ravenous Squirrel", "Damnable Pact", "Extract from Darkness",
+	"Jace, the Mind Sculptor", "Lord of the Nazgûl", "Bloodgift Demon", "Ambition's Cost",
+	"Tidus, Yuna's Guardian", "Flick a Coin", "Voyage Home", "Reckoner's Bargain",
+	"Teferi, Hero of Dominaria", "Sorin Markov", "Tyvar Kell", "Dark Prophecy", "Sword of Body and Mind",
+	"Moogles' Valor", "Thoughtseize", "Liliana's Triumph", "Compulsive Research", "Cloud, Ex-SOLDIER",
+	"Dream Fracture", "Pawpatch Formation", "Agonasaur Rex", "Fevered Visions", "Nightshade Harvester",
+	"Moria Scavenger", "Rush of Inspiration", "The Wandering Emperor", "Lord Skitter's Blessing",
+	"The Speed Demon", "Curse of Fool's Wisdom", "Great Intelligence's Plan", "Aquitect's Will",
+	"Dreamdew Entrancer", "Siegfried, Famed Swordsman", "Davros, Dalek Creator", "Kiora, the Crashing Wave",
+	"Phlage, Titan of Fire's Fury", "Sorin the Mirthless", "Derelict Attic // Widow's Walk",
+	"Rejoin the Fight", "Meat Locker // Drowned Diner", "Dr. Eggman", "Contaminated Drink",
+	"Twisted Sewer-Witch",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -680,6 +694,26 @@ var stepsSkipped = map[string]string{
 	"Thrasios, Triton Hero":      "no prompt: a reveal inside the scry's Then",
 	"Fangs of Kalonia":           "exclusive arms: overloaded, or the target",
 	"Cosmos Elixir":              "exclusive arms: a draw, or the life",
+	// Batch 3.
+	"Urza's Bauble":              "no prompt: a random pick from a hand, and a private look",
+	"Exalted Flamer of Tzeentch": "no prompt: the card is picked at random",
+	"Deadbridge Chant":           "no prompt: the card is picked at random",
+	"Thraben Charm":              "exclusive arms of one mode switch",
+	"Naya Charm":                 "exclusive arms of one mode switch",
+	"Pick Your Poison":           "exclusive arms of one mode switch",
+	"Mastermind's Acquisition":   "exclusive arms of one mode switch",
+	"Twist Reality":              "exclusive arms of one mode switch",
+	"Path of Discovery":          "exclusive arms: the explore by object, or by id",
+	"Vexing Radgull":             "exclusive arms: the rad counters, or the proliferate",
+	"Shelinda, Yevon Acolyte":    "exclusive arms: the counter goes on the smaller of the two",
+	"Ravenous Tyrannosaurus":     "one batch: the damage and its excess to the controller are one instruction (CR 120.4a)",
+	"Fear, Fire, Foes!":          "one batch: one damage instance",
+	"Dragonspark Reactor":        "one batch: one damage instance",
+	"Hell to Pay":                "carried: the Treasures are the excess over lethal damage, a count only the damage step knows (#4163)",
+	"Contest of Claws":           "carried: the discover number is the excess over lethal damage, a count only the damage step knows (#4163)",
+	"Awaken the Erstwhile":       "carried: each player's Zombies are the cards they discarded (#4163)",
+	"Decaying Time Loop":         "carried: the number of cards discarded is the number drawn (#4163)",
+	"Lagomos, Hand of Hatred":    "carried: the delayed sacrifice names the token just made (#4163)",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

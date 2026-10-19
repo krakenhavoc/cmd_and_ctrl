@@ -60,17 +60,22 @@ func tidusCheer() game.TriggeredAbility {
 	t := WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(
 		func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hasCounterOfKind(c, "") },
 		tidusCheerLabel,
-		func(g *game.Game, item *game.StackItem) error {
-			if b28DoneThisTurn(g, item.SourceCardID, tidusCheerDone) {
-				return nil
-			}
-			b28NoteDoneThisTurn(g, item.SourceCardID, tidusCheerDone)
-			ctx := NewContext(g, item)
-			if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return Proliferate{}.Apply(ctx)
-		})
+		// The proliferate waits for a prompt the draw asks (CR 608.2c, #4155). Once
+		// each turn is checked as the ability begins, and the turn's tally is marked
+		// before the draw.
+		Do(If{
+			Cond: CondBoard{Name: "Cheer has not happened this turn", Test: func(ctx *Context) bool {
+				return !b28DoneThisTurn(ctx.Game, ctx.Item.SourceCardID, tidusCheerDone)
+			}},
+			Then: []Applier{
+				Instruction(func(ctx *Context) error {
+					b28NoteDoneThisTurn(ctx.Game, ctx.Item.SourceCardID, tidusCheerDone)
+					return nil
+				}),
+				DrawCards{N: 1},
+				Proliferate{},
+			},
+		}))
 	when := t.AppliesTo
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		return when(ev, source, lki, g) &&

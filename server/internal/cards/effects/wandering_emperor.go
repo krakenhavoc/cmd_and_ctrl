@@ -72,33 +72,38 @@ func init() {
 				Cost:    LoyaltyCost(1),
 				Targets: upToOneCreature(),
 				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
+				Effect: Do(
+					// The first strike waits for a prompt the counter asks (CR 608.2c, #4155).
+					//
 					// "Up to one" with nothing chosen: the ability
 					// resolves and does nothing, which is a
 					// resolution and not an error.
-					if len(item.Targets) == 0 {
-						return nil
-					}
-					target := item.Targets[0].ID
-					if err := (AddCounter{
-						Target: target,
-						Kind:   game.CounterPlusOne,
-						N:      1,
-					}).Apply(ctx); err != nil {
-						return err
-					}
+					Instruction(func(ctx *Context) error {
+						if len(ctx.Item.Targets) == 0 {
+							return nil
+						}
+						return AddCounter{
+							Target: ctx.Item.Targets[0].ID,
+							Kind:   game.CounterPlusOne,
+							N:      1,
+						}.Apply(ctx)
+					}),
 					// Two primitives because they are two layers: a
 					// +1/+1 counter is layer 7d and read off the
 					// card, the keyword grant is layer 6 and
 					// turn-scoped. A single entry cannot sort into
 					// both — see until_end_of_turn.go.
-					return GrantKeywordUntilEOT{
-						Target:   target,
-						Keywords: []string{"first strike"},
-						Label:    "The Wandering Emperor — first strike",
-					}.Apply(ctx)
-				},
+					Instruction(func(ctx *Context) error {
+						if len(ctx.Item.Targets) == 0 {
+							return nil
+						}
+						return GrantKeywordUntilEOT{
+							Target:   ctx.Item.Targets[0].ID,
+							Keywords: []string{"first strike"},
+							Label:    "The Wandering Emperor — first strike",
+						}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "−1: Create a 2/2 white Samurai creature token with vigilance.",

@@ -32,15 +32,17 @@ func init() {
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Actor
 			}, "Curse of Fool's Wisdom — they lose 2 life and you gain 2 life",
-				func(g *game.Game, item *game.StackItem) error {
-					drawer := item.Trigger.Event.Actor
-					if g.PlayerByIDForEffect(drawer) != nil {
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, drawer, -2); err != nil {
-							return err
+				Do(
+					// Your life gain waits for a prompt their life loss asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						drawer := ctx.Item.Trigger.Event.Actor
+						if ctx.Game.PlayerByIDForEffect(drawer) != nil {
+							return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, drawer, -2)
 						}
-					}
-					return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-				}),
+						return nil
+					}),
+					GainLife{Amount: 2},
+				)),
 		},
 	})
 }

@@ -50,24 +50,34 @@ func init() {
 				Label:   "+1: Put a +1/+1 counter on up to one target Elf. Untap it. It gains deathtouch until end of turn.",
 				Cost:    LoyaltyCost(1),
 				Targets: TargetCreature("up to one target Elf", HasSubtype("Elf")).WithCount(0, 1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetCard {
-							continue
+				// The untap and deathtouch wait for a prompt the counter asks (CR 608.2c, #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						for _, t := range ctx.LegalTargets() {
+							if t.Kind != game.TargetCard {
+								continue
+							}
+							if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+								return err
+							}
 						}
-						if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-							return err
+						return nil
+					}),
+					Instruction(func(ctx *Context) error {
+						for _, t := range ctx.LegalTargets() {
+							if t.Kind != game.TargetCard {
+								continue
+							}
+							if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
+								return err
+							}
+							if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"deathtouch"}}).Apply(ctx); err != nil {
+								return err
+							}
 						}
-						if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
-							return err
-						}
-						if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"deathtouch"}}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+						return nil
+					}),
+				),
 			},
 			{
 				Label: "0: Create a 1/1 green Elf Warrior creature token.",
