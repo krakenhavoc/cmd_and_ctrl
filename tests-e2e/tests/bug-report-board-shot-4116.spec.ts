@@ -148,6 +148,20 @@ test("#4116 the report form takes a picture of the board, only when asked", asyn
     const page = players[0].page;
     const posted: Posted[] = [];
     await enableReporting(page, posted);
+    // Record every <img> the picture's source clones: html-to-image clones
+    // each node the filter lets through, so this is the picture's DOM
+    // source, and what is not in it cannot be in the picture.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __cloned: string[] };
+      w.__cloned = [];
+      const orig = Node.prototype.cloneNode;
+      Node.prototype.cloneNode = function (this: Node, deep?: boolean) {
+        if (this instanceof HTMLImageElement) {
+          w.__cloned.push(this.getAttribute("src") ?? "");
+        }
+        return orig.call(this, deep);
+      };
+    });
     await page.reload();
     await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -172,11 +186,27 @@ test("#4116 the report form takes a picture of the board, only when asked", asyn
     await expect(box).not.toBeChecked();
     await expect(form.locator(".shots img")).toHaveCount(0);
 
+    // The reporter's hand is on screen, face up to them.
+    const handSrcs = await page
+      .locator('[aria-label="your hand"] .hand-slot img')
+      .evaluateAll((els) => els.map((e) => e.getAttribute("src") ?? ""));
+    expect(handSrcs.length).toBeGreaterThan(0);
+
     // Ticked: the picture appears among the screenshots.
     await box.check();
     await expect(form.locator(".shots img")).toHaveCount(1, {
       timeout: 30_000,
     });
+
+    // The source of the picture had none of the hand's card images (the
+    // hand is covered as "hidden", and what is inside is dropped), and the
+    // covers are off the live board again.
+    const cloned = await page.evaluate(
+      () => (window as unknown as { __cloned: string[] }).__cloned,
+    );
+    expect(cloned.length).toBeGreaterThan(0);
+    for (const src of handSrcs) expect(cloned).not.toContain(src);
+    await expect(page.locator("[data-board-shot-placeholder]")).toHaveCount(0);
     await expect(box).toBeChecked();
     const thumb = form.locator(".shots img").first();
     expect(

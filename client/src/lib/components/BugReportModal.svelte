@@ -27,9 +27,10 @@
   //
   // #4116: on a table the form can also take a picture of the board,
   // from a checkbox that starts unticked. The picture is made in this
-  // browser from this page's own DOM (lib/boardShot.ts), so it holds what
-  // the reporter's screen holds, their hand included, and it lands in the
-  // list of screenshots below, where it can be looked at and removed like
+  // browser from this page's own DOM (lib/boardShot.ts), with everything
+  // private to them (their hand, face-down cards they may look at, library
+  // tops, open prompts) covered as "hidden", since a report is a public
+  // issue and the game may be live. It lands in the list of screenshots below, where it can be looked at and removed like
   // one they pasted. Ticking the box is the only thing that takes it.
   //
   // Minimize (#4029) closes the modal and keeps the draft. The fields
@@ -495,7 +496,7 @@
                 <span class="muted"
                   >({capturing
                     ? "taking it…"
-                    : "your view of the table, your hand included — you see it here before it is sent"})</span
+                    : "your hand, face-down cards you can look at, library tops and open prompts are covered as “hidden”; you see it here before it is sent"})</span
                 >
                 {#if boardShotOn && !capturing}
                   <button type="button" class="peek" onclick={takeBoardShot} disabled={submitting}>

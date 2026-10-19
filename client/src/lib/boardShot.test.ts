@@ -11,12 +11,15 @@ import { describe, expect, it, vi } from "vitest";
 import { BUG_MAX_IMAGE_BYTES, BUG_MAX_TOTAL_IMAGE_BYTES } from "./bugReport";
 import {
   BOARD_SHOT_ENCODINGS,
+  BOARD_SHOT_PLACEHOLDER_ATTR,
   BOARD_SHOT_MAX_BYTES,
   BOARD_SHOT_SKIP_ATTR,
   BoardShotError,
   boardShotName,
+  boardShotFilter,
   captureBoardShot,
   encodeUnderCap,
+  maskPrivate,
   skipsBoardShot,
 } from "./boardShot";
 
@@ -137,3 +140,85 @@ describe("captureBoardShot", () => {
 // Keeps the static import used, so a rename of the symbol fails here.
 void captureBoardShot;
 void BoardShotError;
+
+// ADR 0017 section 13: what only the reporter may see is covered, not
+// pictured. The filter is what html-to-image is given, so what it drops is
+// what the picture's source lacks.
+describe("covering what is private", () => {
+  const img = (src: string) => `<img src="${src}" alt="x">`;
+  function table(): HTMLElement {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <div class="hand"><div class="hand-slot" id="mine">${img("/cards/hand1/image")}<span>Sol Ring</span></div></div>
+      <div class="hand opponent"><div class="hand-slot" id="theirs">${img("/cards/back/image")}</div></div>
+      <div class="pile" data-pile="library"><span class="thumb" id="libthumb">${img("/cards/top/image")}</span></div>
+      <div data-pile="sideboard" id="side">${img("/cards/side/image")}</div>
+      <div data-library-top-peek><div class="peek-card" id="peek">${img("/cards/peek/image")}</div><button class="pile-action">cast</button></div>
+      <div role="dialog" aria-label="pick" id="prompt">${img("/cards/choice/image")}<span>Black Lotus</span></div>
+      <div class="card" id="morph" data-board-shot-private>${img("/cards/morph/image")}</div>
+      <div class="card" id="public">${img("/cards/public/image")}</div>
+      <div role="dialog" id="form" data-board-shot-skip>${img("/cards/form/image")}</div>`;
+    document.body.appendChild(root);
+    return root;
+  }
+  // Every node html-to-image would keep: the filter is asked of each one.
+  function kept(root: HTMLElement): { imgs: string[]; text: string } {
+    const imgs: string[] = [];
+    let text = "";
+    const walk = (n: Node): void => {
+      if (n !== root && !boardShotFilter(n)) return;
+      if (n instanceof HTMLImageElement) imgs.push(n.getAttribute("src") ?? "");
+      if (n.nodeType === 3) text += n.textContent;
+      n.childNodes.forEach(walk);
+    };
+    walk(root);
+    return { imgs, text };
+  }
+
+  it("keeps public cards and drops every private image and name from the source", () => {
+    const root = table();
+    const unmask = maskPrivate(root);
+    const { imgs, text } = kept(root);
+    expect(imgs.sort()).toEqual(["/cards/back/image", "/cards/public/image"]);
+    expect(text).not.toContain("Sol Ring");
+    expect(text).not.toContain("Black Lotus");
+    // The peek's cast button is not a card: it stays.
+    expect(text).toContain("cast");
+    unmask();
+    root.remove();
+  });
+
+  it("puts a 'hidden' box in each covered element, so the layout stays", () => {
+    const root = table();
+    const unmask = maskPrivate(root);
+    for (const id of ["mine", "libthumb", "side", "peek", "prompt", "morph"]) {
+      const host = root.querySelector(`#${id}`)!;
+      const box = host.querySelector(`[${BOARD_SHOT_PLACEHOLDER_ATTR}]`);
+      expect(box?.textContent, id).toBe("hidden");
+    }
+    // Not an opponent's hand (backs), nor a public card.
+    expect(root.querySelector(`#theirs [${BOARD_SHOT_PLACEHOLDER_ATTR}]`)).toBeNull();
+    expect(root.querySelector(`#public [${BOARD_SHOT_PLACEHOLDER_ATTR}]`)).toBeNull();
+    unmask();
+    root.remove();
+  });
+
+  it("takes the boxes off again and restores what it touched", () => {
+    const root = table();
+    const before = root.innerHTML;
+    maskPrivate(root)();
+    expect(root.innerHTML).toBe(before);
+    root.remove();
+  });
+
+  it("covers only the outermost of nested private elements", () => {
+    const root = document.createElement("div");
+    root.innerHTML = `<div role="dialog" id="outer"><div class="card" data-board-shot-private id="inner">${img("/cards/x/image")}</div></div>`;
+    document.body.appendChild(root);
+    const unmask = maskPrivate(root);
+    expect(root.querySelectorAll(`[${BOARD_SHOT_PLACEHOLDER_ATTR}]`)).toHaveLength(1);
+    expect(root.querySelector(`#outer > [${BOARD_SHOT_PLACEHOLDER_ATTR}]`)).not.toBeNull();
+    unmask();
+    root.remove();
+  });
+});

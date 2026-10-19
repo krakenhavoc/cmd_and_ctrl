@@ -969,6 +969,7 @@
   class:ring-bearer={!!card.ring_bearer}
   class:menu-open={manaMenuOpen}
   data-instance-id={card.instance_id}
+  data-board-shot-private={showFaceDownBadge ? "" : undefined}
   data-tapped={card.tapped ? "true" : "false"}
   style:visibility={striking ? "hidden" : null}
   role={interactive ? "button" : "img"}

@@ -603,13 +603,28 @@ attached beside any image they paste, drop or pick.
   remembered. Nothing is rendered, fetched or held until it is ticked, and
   unticking, or removing the thumbnail, drops the picture. "Retake" replaces it
   with the board as it is then. The form is left out of the picture.
-- **It holds what the reporter's screen holds.** It is made from their own DOM,
-  so it shows their view: their hand face up, an opponent's as backs, and
-  nothing the server did not send them (§4's rule against routing hidden
-  information around the visibility filter is kept: this is not a state dump,
-  it is what they could have screenshotted). The checkbox says "your hand
-  included", and the picture is shown in the form before anything is sent. A
-  public issue's image is public, so the reporter is told, not surprised.
+- **What only the reporter may see is covered, not pictured.** A report is a
+  public issue and the game may still be live, so an opponent could open it
+  and read the reporter's hand off the image. The checkbox's wording is not
+  the protection. Before the picture is taken, each private element gets a
+  neutral "hidden" box of its own size laid over it, and html-to-image's
+  `filter` drops everything inside it from the cloned source, so no card
+  image, name or text of it is part of what is rendered, and the layout stays
+  readable. Covered: the reporter's own hand (an opponent's is card backs
+  and stays); a face-down or foretold card they may look at (CR 708.5,
+  CR 702.143d; `Card` marks itself `data-board-shot-private`); the top of a
+  library, on the pile and on the play peek (#4127); the sideboard pile, the
+  cards they own outside the game; the hover zoom; and any open prompt or
+  dialog, which may list cards only they can see. What is public (the
+  battlefield, the stack, graveyards, exile, the command zone, life, counters,
+  the log) is pictured as the reporter sees it. A new private surface adds
+  itself to `BOARD_SHOT_PRIVATE_SELECTOR` or sets the attribute. This is a
+  list of what is private rather than of what is public because the board is
+  too varied to enumerate the latter; it errs by covering a prompt that was
+  harmless, which costs a reporter a pasted screenshot at most. The boxes are
+  on the live page only while the picture is taken. The form is left out of it
+  too. §4's rule against routing hidden information around the visibility
+  filter is kept.
 - **html-to-image 1.11.13 (MIT, no dependencies), imported on demand.** The
   board is DOM and images, so there are no canvas pixels to copy. The library
   clones the element, inlines its images, fonts and computed styles into an SVG

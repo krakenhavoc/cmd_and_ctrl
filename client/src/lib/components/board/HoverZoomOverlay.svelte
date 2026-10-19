@@ -326,7 +326,7 @@
        screen reader reaches a card's other face, so it stays in the
        accessibility tree and its images are named for the face each
        one shows. -->
-  <div class="overlay" class:two-sided={otherSide !== null}>
+  <div class="overlay" class:two-sided={otherSide !== null} data-board-shot-private>
     <div class="scan" class:sideways>
       {#if bigSrc}
         <!-- keyed so a new card never shows the previous card's scan
