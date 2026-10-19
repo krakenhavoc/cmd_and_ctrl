@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Windfall — Sorcery for {2}{U}:
 //
 //	"Each player discards their hand, then draws cards equal to the
@@ -23,27 +21,36 @@ func init() {
 		OracleID:     "08becc07-28bc-4a2f-a6b0-28a2998d2f50",
 		Name:         "Windfall",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			players := tablePlayers(ctx)
-			most := 0
-			for _, id := range players {
-				n, err := discardWholeHand(ctx.Game, id)
-				if err != nil {
-					return err
+		// The draws wait for a prompt a discard asks (a madness offer;
+		// CR 608.2c), and read the count from the step record (#4163).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				most := 0
+				for _, id := range tablePlayers(ctx) {
+					n, err := discardWholeHand(ctx.Game, id)
+					if err != nil {
+						return err
+					}
+					most = max(most, n)
 				}
-				if n > most {
-					most = n
-				}
-			}
-			if most == 0 {
+				ctx.RecordStep(windfallRecord, nil, most)
 				return nil
-			}
-			for _, id := range players {
-				if err := (DrawCards{Player: id, N: most}).Apply(ctx); err != nil {
-					return err
+			}),
+			Instruction(func(ctx *Context) error {
+				most := ctx.StepRecord(windfallRecord).N()
+				if most == 0 {
+					return nil
 				}
-			}
-			return nil
-		},
+				for _, id := range tablePlayers(ctx) {
+					if err := (DrawCards{Player: id, N: most}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		),
 	})
 }
+
+// windfallRecord is the greatest number of cards a player discarded.
+const windfallRecord = "windfall/most-discarded"

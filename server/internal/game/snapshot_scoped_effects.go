@@ -264,6 +264,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			unknown = append(unknown, "revealed-hand pick destination "+string(c.PickDestination))
 		}
 	}
+	// #4162: a parked continuation names its steps by key. Restored
+	// without them, the rest of the continuation would never run.
+	unknown = append(unknown, unknownThenSteps(s.PausedStepWalk)...)
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

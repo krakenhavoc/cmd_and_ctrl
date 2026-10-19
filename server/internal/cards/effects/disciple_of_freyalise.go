@@ -31,17 +31,12 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power", func(g *game.Game, item *game.StackItem) error {
-				controller := item.Controller
 				return maySacrificeOne(g, item, "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?", Creature(), true,
 					func(ctx *Context, sacrificed uuid.UUID) error {
-						power := departedCreaturePower(ctx.Game, sacrificed)
-						if power <= 0 {
-							return nil
-						}
-						if err := (GainLife{Player: controller, Amount: power}).Apply(ctx); err != nil {
-							return err
-						}
-						return DrawCards{Player: controller, N: power}.Apply(ctx)
+						// The draw waits for a prompt the life gain asks
+						// (#4162, CR 608.2c).
+						ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(ctx.Game, sacrificed))
+						return gainThenDrawSacrificedPower.Run(ctx)
 					})
 			}),
 		},

@@ -39,6 +39,7 @@ func init() {
 			AtYourUpkeep("Forgotten Ancient — move any number of +1/+1 counters onto other creatures", forgottenAncientMove),
 		},
 	})
+	forgottenAncientMoveRest = RegisterThenSteps("then-steps/forgotten-ancient-move", forgottenAncientMoveSteps()...)
 }
 
 func forgottenAncientMove(g *game.Game, item *game.StackItem) error {
@@ -95,20 +96,53 @@ func forgottenAncientMoveOnto(ctx *Context, self uuid.UUID, onto []uuid.UUID) er
 			Question: "Forgotten Ancient — how many +1/+1 counters onto " + name + "?",
 			Unit:     game.PayAmountCounters,
 			Then: func(ctx *Context, n int) error {
-				if n > 0 && onBattlefield(ctx.Game, self) && onBattlefield(ctx.Game, to) {
-					controller := ctx.Controller()
-					if err := ctx.Game.AddCounterByForEffect(controller, to, game.CounterPlusOne, n); err != nil {
-						return err
-					}
-					if err := ctx.Game.AddCounterForEffect(self, game.CounterPlusOne, -n); err != nil {
-						return err
-					}
+				if n <= 0 || !onBattlefield(ctx.Game, self) || !onBattlefield(ctx.Game, to) {
+					n = 0
 				}
-				return forgottenAncientMoveOnto(ctx, self, rest)
+				// The rest of the move, and the next creature's
+				// question, wait for a prompt the counters ask (a
+				// CR 616 order; #4162, CR 608.2c).
+				ctx.RecordStep(forgottenAncientRecord, append([]uuid.UUID{to}, rest...), n)
+				return forgottenAncientMoveRest.Run(ctx)
 			},
 		}.Apply(ctx)
 	}
 	return nil
+}
+
+// forgottenAncientRecord is the creature the counters move onto, then
+// the creatures still to ask about; and how many move (0: none).
+const forgottenAncientRecord = "forgotten-ancient/move"
+
+// forgottenAncientMoveRest is one move, then the next creature. It is
+// registered in init, because its last step asks about the next
+// creature, whose answer runs it again.
+var forgottenAncientMoveRest ThenSteps
+
+func forgottenAncientMoveSteps() []Applier {
+	return []Applier{
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(forgottenAncientRecord)
+			if r.N() <= 0 || len(r.IDs) == 0 {
+				return nil
+			}
+			return ctx.Game.AddCounterByForEffect(ctx.Controller(), r.IDs[0], game.CounterPlusOne, r.N())
+		}),
+		Instruction(func(ctx *Context) error {
+			n, self := ctx.StepRecord(forgottenAncientRecord).N(), ctx.Item.SourceCardID
+			if n <= 0 || !onBattlefield(ctx.Game, self) {
+				return nil
+			}
+			return ctx.Game.AddCounterForEffect(self, game.CounterPlusOne, -n)
+		}),
+		Instruction(func(ctx *Context) error {
+			r := ctx.StepRecord(forgottenAncientRecord)
+			if len(r.IDs) == 0 {
+				return nil
+			}
+			return forgottenAncientMoveOnto(ctx, ctx.Item.SourceCardID, r.IDs[1:])
+		}),
+	}
 }
 
 func forgottenAncientCounters(g *game.Game, id uuid.UUID) int {

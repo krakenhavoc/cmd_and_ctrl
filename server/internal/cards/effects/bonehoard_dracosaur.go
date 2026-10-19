@@ -40,32 +40,47 @@ func init() {
 				// be short or empty right when this needs it most
 				// (#1587).
 				return b12ImpulseExileForTurnThen(g, item, 2, func(g *game.Game, exiled []uuid.UUID) error {
-					land, nonland := false, false
+					land, nonland := 0, 0
 					for _, id := range exiled {
 						c, ok := g.LookupCardForEffect(id)
 						if !ok {
 							continue
 						}
 						if c.IsLand() {
-							land = true
+							land = 1
 						} else {
-							nonland = true
+							nonland = 1
 						}
 					}
+					// The Treasure waits for a prompt the Dinosaur asks
+					// (a CR 616 order of two token replacements; #4162).
 					ctx := NewContext(g, item)
-					if land {
-						if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/1 red Dinosaur"), N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					if nonland {
-						if err := (CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
+					ctx.RecordStep(bonehoardRecord, nil, land, nonland)
+					return bonehoardTokens.Run(ctx)
 				})
 			}),
 		},
 	})
 }
+
+// bonehoardRecord is whether a land and whether a nonland card was
+// exiled, as 0 or 1.
+const bonehoardRecord = "bonehoard-dracosaur/exiled"
+
+// bonehoardTokens is "If you exiled a land card this way, create a 3/1
+// red Dinosaur creature token. If you exiled a nonland card this way,
+// create a Treasure token."
+var bonehoardTokens = RegisterThenSteps("then-steps/bonehoard-dracosaur-tokens",
+	Instruction(func(ctx *Context) error {
+		if r := ctx.StepRecord(bonehoardRecord); len(r.Ns) < 1 || r.Ns[0] == 0 {
+			return nil
+		}
+		return CreateToken{Template: TokenCard("3/1 red Dinosaur"), N: 1}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		if r := ctx.StepRecord(bonehoardRecord); len(r.Ns) < 2 || r.Ns[1] == 0 {
+			return nil
+		}
+		return CreateToken{Template: TreasureToken(), N: 1}.Apply(ctx)
+	}),
+)

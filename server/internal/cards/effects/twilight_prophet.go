@@ -56,7 +56,6 @@ func twilightProphetFlip(g *game.Game, item *game.StackItem) error {
 	if c, ok := g.LookupCardForEffect(revealed[0]); ok {
 		x = c.ManaValue()
 	}
-	source := item.SourceCardID
 	return TakeFromLibraryToHand{
 		Player: player,
 		Cards:  revealed,
@@ -66,15 +65,34 @@ func twilightProphetFlip(g *game.Game, item *game.StackItem) error {
 			if x == 0 {
 				return nil
 			}
-			for _, p := range g.Seats {
-				if p == nil || p.Eliminated || p.ID == player {
-					continue
-				}
-				if err := g.ChangePlayerLifeForEffect(source, p.ID, -x); err != nil {
-					return err
-				}
-			}
-			return g.ChangePlayerLifeForEffect(source, player, x)
+			// The gain waits for a prompt the losses ask (a CR 616
+			// order; #4162, CR 608.2c).
+			ctx := NewContext(g, item)
+			ctx.RecordStep(twilightProphetRecord, nil, x)
+			return twilightProphetDrain.Run(ctx)
 		},
 	}.Apply(ctx)
 }
+
+// twilightProphetRecord is X, the revealed card's mana value.
+const twilightProphetRecord = "twilight-prophet/x"
+
+// twilightProphetDrain is "Each opponent loses X life and you gain X
+// life".
+var twilightProphetDrain = RegisterThenSteps("then-steps/twilight-prophet-drain",
+	Instruction(func(ctx *Context) error {
+		x := ctx.StepRecord(twilightProphetRecord).N()
+		for _, p := range ctx.Game.Seats {
+			if p == nil || p.Eliminated || p.ID == ctx.Controller() {
+				continue
+			}
+			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), p.ID, -x); err != nil {
+				return err
+			}
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), ctx.StepRecord(twilightProphetRecord).N())
+	}),
+)

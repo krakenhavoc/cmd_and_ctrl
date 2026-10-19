@@ -231,6 +231,7 @@ resolvingItem.item                           census:ChoiceResumeFrames          
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
 searchResumeFrame.spec                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec
 stepWalk.item                                keyed                              # Game.pausedStepWalk.item
+stepWalk.outer                               keyed                              # Game.pausedStepWalk.outer
 tokenTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail.then
 triggerResumeFrame.ability                   census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.ability
 triggerResumeFrame.source                    census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.source

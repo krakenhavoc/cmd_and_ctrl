@@ -925,8 +925,16 @@ type Game struct {
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the
-	// persisted snapshot carry it. See step_walk.go.
+	// persisted snapshot carry it. See step_walk.go. Since #4162 it is
+	// the top of a chain (stepWalk.outer): a continuation's parked
+	// steps above the steps they belong to.
 	pausedStepWalk *stepWalk
+
+	// stepRecords is what an earlier step of the resolution handed a
+	// later one (#4163, step_record.go): IDs and numbers, keyed by the
+	// item and a name the card chose. Plain data, dropped as the
+	// resolution closes. Clone and the persisted snapshot carry it.
+	stepRecords []stepRecordEntry
 
 	// stepSites says which step sequences other than an item's own
 	// Effect may park right now (#4019, step_walk.go): the resolving
