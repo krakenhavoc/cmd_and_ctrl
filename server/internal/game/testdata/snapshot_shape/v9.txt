@@ -2324,6 +2324,8 @@ outcome.kind	string
 outcome.source	custom(uuid.UUID)
 outcome.winner	custom(uuid.UUID)
 pausedModeWalk	object
+pausedModeWalk.inner	array
+pausedModeWalk.inner[]	number:int
 pausedModeWalk.item	object
 pausedModeWalk.item.altCost	string
 pausedModeWalk.item.altCostExiles	bool
@@ -3232,6 +3234,7 @@ pausedStepWalk.item.trigger.Object.Types	array
 pausedStepWalk.item.trigger.Object.Types[]	string
 pausedStepWalk.item.uncopyable	bool
 pausedStepWalk.item.xValue	number:int
+pausedStepWalk.key	string
 pausedStepWalk.path	array
 pausedStepWalk.path[]	number:int
 pendingChoices	array

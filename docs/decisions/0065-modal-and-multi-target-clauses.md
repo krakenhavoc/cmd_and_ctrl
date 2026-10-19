@@ -1572,3 +1572,79 @@ strict restore; a scry inside an `If`'s steps across a restore; and a
 first step whose one instance deals damage to Khârn and to a player
 with Selfless Squire's shield, where the next step sees the Squire's
 announcement already made, live and across a strict restore.
+
+## Amendment 2026-10-19: a spell's OnResolve and a bullet's own instructions wait too (#4019)
+
+**The gap.** The 2026-10-16 amendment parked a `Do`'s later steps only
+when the `Do` was the item's own Effect, because only that `Do` could
+be found again from data. Everything else still ran its next instruction
+before an earlier one's answer: a spell's `OnResolve` (Electrolyze drew
+its card while Khârn the Betrayer's question was open), the body of a
+`ModeDoing` bullet (Demonic Pact gained its 4 life before the same
+question was answered, because the mode walk parks between bullets, not
+inside one), a `Do` wrapped by `InterveningIf` (it became one opaque
+step), and an `If` inside any of those.
+
+**Measured.** A scan of the catalog's function literals on 2026-10-19
+found 380 `OnResolve` bodies, 147 trigger and activated `Effect`
+bodies, 31 `ModeDoing` bodies and 70 `Then` bodies with two or more
+statements that call an effect primitive. Almost any primitive can ask
+(a CR 616 order on damage, counters, tokens, life or a draw; a
+prevention follow-up's question; dredge), so each is a candidate. No
+engine change can stop a Go function part-way and resume it after a
+restore. So the fix is two more sites that can park, and a recipe for
+converting rows to them. The rows are converted card by card.
+
+**What changed.**
+
+- **A spell's OnResolve as steps.** `effects.ResolveSteps(steps...)`
+  is an `OnResolve` the registry can read: it answers a probe with its
+  steps, and the registry gives the card's `CardDef` a `ResumeResolve`
+  that runs them from a path. The engine opens the spell's step site
+  while it runs the spell's catalog hook (`runSpellResolverLocked`: the
+  item's ID and the key it resolved under), and
+  `Game.ParkSpellStepsForEffect` parks only inside that site and only
+  when the key can find the steps again. The parked walk records the
+  key (`stepWalk.key`). A spliced text or a fused half finds no site,
+  or a key with no `ResumeResolve`, and runs back to back as before.
+- **A bullet as steps.** `effects.ModeSteps(label, targets, steps...)`
+  is a `ModeOption` whose body answers the same probe. The mode walk
+  opens the bullet's site around that occurrence (`runBulletLocked`).
+  When a step parks (`Game.ParkBulletStepsForEffect`), the walk parks
+  itself with that bullet first and the position inside it
+  (`modeWalk.inner`), and resumes it through `game.ResumeBulletSteps`
+  before the next bullet. A step reads its occurrence with
+  `ctx.Occurrence()`.
+- **A hand-written step.** `effects.Instruction(fn)` makes one function
+  a step. It runs whole, and the walk may stop before or after it. A
+  converted body is split at its asking calls, one `Instruction` per
+  piece. The function belongs to the catalog row, so a resume finds it
+  again. It must not pass anything to the next step through a Go
+  variable.
+- **`InterveningIf` keeps a `Do`'s steps.** A `Do` it wraps becomes the
+  `If`'s `Then` instead of one opaque step, as `IfYouHaveTheInitiative`
+  already did (it now calls `InterveningIf`). A hand-written Effect is
+  still one step.
+- **An `If` inside any site** is walked one level down, as before.
+
+**What it costs.** The step sites are plain data set around one call
+(`Game.stepSites`, dropped by the snapshot because it is zero between
+actions). A parked position is still an item, a key and a path. No
+closure is stored, no census counter rises, and `closure_fields.txt`
+does not change. Two additive fields in schema v9
+(`pausedStepWalk.key`, `pausedModeWalk.inner`). A binary from before
+this change drops them. It would resume a spell's parked steps as the
+item's Effect (a spell has none, so nothing runs) and a parked bullet
+from its start.
+
+**Cards converted.** Electrolyze and Tune the Narrative
+(`ResolveSteps`), Demonic Pact's first bullet (`ModeSteps`), and Imoen,
+Mystic Trickster (its two printed instructions as two steps under
+`InterveningIf`). Every other row behaves as it did before.
+
+Tests: `effects/resolution_order_test.go`. Electrolyze and Demonic Pact
+against Khârn's question, live and across a strict restore; Tune the
+Narrative and Imoen against a dredge offer, live and on an undo (the
+dredge offer is not a restore point), with the census unchanged; an
+`If` inside `ResolveSteps`, and a bullet's later step before the next
+bullet, across a strict restore.

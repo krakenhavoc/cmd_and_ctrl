@@ -1,5 +1,7 @@
 package game
 
+import "github.com/google/uuid"
+
 // step_walk.go — an effect's later steps wait for an earlier step's
 // prompt (#4012, CR 608.2c).
 //
@@ -47,6 +49,27 @@ package game
 // condition is not checked again on resume, because it was already
 // checked as the step began.
 //
+// # Two more sequences the engine can find again (#4019)
+//
+// A resolving spell's OnResolve written as steps (effects.ResolveSteps)
+// is found again through the catalog key the spell resolved under: the
+// walk records the key (stepWalk.key) and resumes through that key's
+// CardDef.ResumeResolve. It parks only while the engine runs that
+// spell's catalog hook (stepSites.spell, runSpellResolverLocked), so the
+// same steps run from anywhere else run on as before.
+//
+// A modal bullet written as steps (effects.ModeSteps) is found again by
+// the mode walk, which already finds the bullet from its key and
+// occurrence. Its steps park through ParkBulletStepsForEffect while the
+// walk runs that occurrence (stepSites.bullet), and the mode walk parks
+// itself with that bullet first and the position inside it
+// (modeWalk.inner, mode_walk.go). The rest of the bullet then runs
+// before the next bullet.
+//
+// The sites are plain data set around one call, and the parked position
+// is still an item, a key and a path, so no closure is stored and the
+// closure ratchet does not move.
+//
 // # What it costs: nothing, for restore points
 //
 // No closure is stored. Clone and the snapshot carry the walk
@@ -64,6 +87,31 @@ type stepWalk struct {
 	// the Effect's steps, and each further index the steps of the
 	// step before it.
 	path []int
+	// key is empty when the steps are item's own Effect. Otherwise it
+	// is the catalog key of the resolving SPELL whose OnResolve is a
+	// step sequence (#4019, effects.ResolveSteps), and the steps are
+	// found again through that key's CardDef.ResumeResolve.
+	key string
+}
+
+// stepSites is the transient half of #4019: which step sequences, other
+// than an item's own Effect, may park right now. The engine sets each
+// around the one call that runs it, so a sequence run from anywhere else
+// (a hand-written closure, a spliced text, a fused half) finds no site
+// and runs on as before.
+type stepSites struct {
+	// spell is the resolving spell's item ID while its catalog OnResolve
+	// runs (runSpellResolverLocked), and spellKey the catalog key that
+	// ran it.
+	spell    uuid.UUID
+	spellKey string
+	// bullet is the item ID whose chosen bullet the mode walk is
+	// running and occ that bullet's occurrence. bulletPark is the
+	// position inside it where the bullet's steps parked (nil when they
+	// did not).
+	bullet     uuid.UUID
+	occ        int
+	bulletPark []int
 }
 
 // ResumeEffectSteps runs the steps of item's Effect from the position
@@ -92,6 +140,71 @@ func (g *Game) ParkEffectStepsForEffect(item *StackItem, path []int) bool {
 	return true
 }
 
+// ParkSpellStepsForEffect is ParkEffectStepsForEffect for the steps of
+// a resolving spell's OnResolve (#4019, effects.ResolveSteps). It parks
+// only while the engine runs that spell's catalog hook, and only when
+// the key it ran can find the steps again (CardDef.ResumeResolve): a
+// fused split spell's composite key cannot, so its halves run on as
+// before.
+//
+// Caller holds g.mu (write).
+func (g *Game) ParkSpellStepsForEffect(item *StackItem, path []int) bool {
+	if item == nil || item.ID != g.stepSites.spell || g.stepSites.spellKey == "" {
+		return false
+	}
+	if d := catalogDef(g.stepSites.spellKey); d == nil || d.ResumeResolve == nil {
+		return false
+	}
+	if !g.ParkEffectStepsForEffect(item, path) {
+		return false
+	}
+	g.pausedStepWalk.key = g.stepSites.spellKey
+	return true
+}
+
+// ParkBulletStepsForEffect parks the rest of one chosen bullet's steps
+// (#4019, effects.ModeSteps) when the resolution is paused on one of its
+// own prompts, and reports whether it did. It parks only while the mode
+// walk runs that occurrence of item's bullets; the walk then parks
+// itself with this occurrence first and the position inside it
+// (modeWalk.inner), so the bullet's later steps run before the next
+// bullet.
+//
+// Caller holds g.mu (write).
+func (g *Game) ParkBulletStepsForEffect(item *StackItem, occurrence int, path []int) bool {
+	s := &g.stepSites
+	if item == nil || s.bullet == uuid.Nil || item.ID != s.bullet || occurrence != s.occ || s.bulletPark != nil {
+		return false
+	}
+	if !g.resolutionOpen || g.pausedResolutionChoiceLocked() == nil {
+		return false
+	}
+	s.bulletPark = copyInts(path)
+	return true
+}
+
+// ResumeBulletSteps runs one chosen bullet's steps from the position
+// path names, parking again if a step pauses. The effects package wires
+// it at init (effects.ModeSteps) and finds the steps from the bullet's
+// own body; nil leaves the bullet with nothing to run.
+var ResumeBulletSteps func(g *Game, item *StackItem, bullet func(*Game, *StackItem, int) error, occurrence int, path []int) error
+
+// runSpellResolverLocked runs a spell's catalog OnResolve with the
+// spell's step site open, so a step sequence it runs may park
+// (ParkSpellStepsForEffect). The previous site comes back after it,
+// which is only ever the empty one.
+//
+// Caller holds g.mu (write).
+func (g *Game) runSpellResolverLocked(item *StackItem, key string, run func() error) error {
+	prevID, prevKey := g.stepSites.spell, g.stepSites.spellKey
+	g.stepSites.spell, g.stepSites.spellKey = uuid.Nil, ""
+	if item != nil {
+		g.stepSites.spell, g.stepSites.spellKey = item.ID, key
+	}
+	defer func() { g.stepSites.spell, g.stepSites.spellKey = prevID, prevKey }()
+	return run()
+}
+
 // resumeStepWalkLocked runs the parked steps, if any, inside a
 // resolution function so the boundary stays held while they run.
 // Reports whether there was a walk to resume.
@@ -114,12 +227,12 @@ func (g *Game) resumeStepWalkLocked() bool {
 		return true
 	}
 	g.pausedStepWalk = nil
-	if g.State != StateActive || ResumeEffectSteps == nil {
+	if g.State != StateActive {
 		return true
 	}
 	g.beginResolutionLocked()
 	defer g.endResolutionLocked()
-	if err := ResumeEffectSteps(g, w.item, w.path); err != nil {
+	if err := g.resumeStepsLocked(w); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    w.item.Controller,
@@ -130,25 +243,52 @@ func (g *Game) resumeStepWalkLocked() bool {
 	return true
 }
 
+// resumeStepsLocked finds the parked steps again from the walk's data
+// and runs them from its path: an item's own Effect through
+// ResumeEffectSteps, a spell's OnResolve through its key's
+// CardDef.ResumeResolve, with the spell's step site open again so a
+// resumed step may park.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) resumeStepsLocked(w *stepWalk) error {
+	if w.key == "" {
+		if ResumeEffectSteps == nil {
+			return nil
+		}
+		return ResumeEffectSteps(g, w.item, w.path)
+	}
+	d := catalogDef(w.key)
+	if d == nil || d.ResumeResolve == nil {
+		return nil
+	}
+	return g.runSpellResolverLocked(w.item, w.key, func() error {
+		return d.ResumeResolve(g, w.item, w.path)
+	})
+}
+
 // cloneStepWalk copies the parked walk for Clone.
 func cloneStepWalk(w *stepWalk) *stepWalk {
 	if w == nil {
 		return nil
 	}
-	return &stepWalk{item: cloneStackItem(w.item), path: copyInts(w.path)}
+	return &stepWalk{item: cloneStackItem(w.item), path: copyInts(w.path), key: w.key}
 }
 
 // stepWalkSnapshot is Game.pausedStepWalk on disk.
 type stepWalkSnapshot struct {
 	Item stackItemSnapshot `json:"item"`
 	Path []int             `json:"path"`
+	// Key is stepWalk.key (#4019): the catalog key of the spell whose
+	// OnResolve steps are parked. Additive within v9: a file without it
+	// parked an item's own Effect, the only kind there was.
+	Key string `json:"key,omitempty"`
 }
 
 func snapshotStepWalk(g *Game, w *stepWalk, cen *ContinuationCensus) *stepWalkSnapshot {
 	if w == nil || w.item == nil {
 		return nil
 	}
-	return &stepWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Path: copyInts(w.path)}
+	return &stepWalkSnapshot{Item: snapshotStackItem(g, w.item, cen), Path: copyInts(w.path), Key: w.key}
 }
 
 func restoreStepWalk(s *stepWalkSnapshot) *stepWalk {
@@ -156,5 +296,5 @@ func restoreStepWalk(s *stepWalkSnapshot) *stepWalk {
 		return nil
 	}
 	item, _ := restoreStackItem(&s.Item)
-	return &stepWalk{item: item, path: copyInts(s.Path)}
+	return &stepWalk{item: item, path: copyInts(s.Path), key: s.Key}
 }

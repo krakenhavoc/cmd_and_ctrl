@@ -996,11 +996,17 @@ var CatalogTriggerDoublers func(oracleID string) []TriggerDoubler
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
+//
+// The spell's step site is open while it runs (#4019), so an OnResolve
+// written as steps (effects.ResolveSteps) parks its later steps behind
+// an earlier step's prompt.
 func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID uuid.UUID) {
 	if EffectResolver == nil || oracleID == "" {
 		return
 	}
-	if err := EffectResolver(g, item, oracleID); err != nil {
+	if err := g.runSpellResolverLocked(item, oracleID, func() error {
+		return EffectResolver(g, item, oracleID)
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,

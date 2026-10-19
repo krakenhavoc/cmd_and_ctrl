@@ -928,6 +928,14 @@ type Game struct {
 	// persisted snapshot carry it. See step_walk.go.
 	pausedStepWalk *stepWalk
 
+	// stepSites says which step sequences other than an item's own
+	// Effect may park right now (#4019, step_walk.go): the resolving
+	// spell's OnResolve while its catalog hook runs, and the modal
+	// bullet the walk is running. Plain data, set and cleared inside
+	// one resolution function, so it is zero between actions and
+	// neither Clone nor the snapshot carries it.
+	stepSites stepSites
+
 	// pausedResolutionTail is the end of a resolution parked behind one
 	// of its own prompts (#3613, CR 608.2n): a spell's exit from the
 	// stack and the log's "resolved" line. Non-nil only while a
