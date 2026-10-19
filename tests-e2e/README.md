@@ -17,6 +17,7 @@ tests-e2e/
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── board-pick-2880.spec.ts # #2880: a sacrifice picked by clicking the creature on the board, confirmed in the dock
+├── bug-report-board-shot-4116.spec.ts # #4116, ADR 0017 §13: the report form's unticked "include a picture of the board" box takes a picture of the table in the browser, leaving the form out, and sends it as an ordinary attachment beside a picked image; unticked, no picture goes
     ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (pay on paper) asks first, casts it paid on paper, logs it
     ├── combat-damage-2956.spec.ts # ADR 0147: a double-blocked trampler's sheet opens on lethal-each-and-the-rest-over, the blockers tick on the board; with Auto-assign on, nothing is asked
     ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s, none with combat motion off; first strike before regular, a double block lunged at once, trample's streak, blockers crumbling
@@ -29,6 +30,7 @@ tests-e2e/
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
     ├── land-menu-2960.spec.ts # #2960: a land's ability menu is visible and clickable at 1280x720 and 1998x716; seven lands each keep a clickable tile
+├── library-top-4127.spec.ts # #4127: a playable library top (Bolas's Citadel) is offered on a card-sized peek raised off the pile, its cast button 26px tall and not under the dev dock, at three viewports; a click starts the cast
     ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
@@ -43,6 +45,7 @@ tests-e2e/
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
     ├── smoke.spec.ts          # router + entry pages + healthz
     ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
+├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold
     └── zone-browser.spec.ts   # graveyard / exile modal behind the pile chips
 ```
