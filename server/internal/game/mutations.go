@@ -6730,20 +6730,29 @@ func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeat
 
 // triggerPlacedWatchedLocked reports whether any permanent on the
 // battlefield has a triggered ability that watches EventTriggerPlaced
-// from there — the same enumeration harvestFromZone walks
-// (triggersOf, so an ability-removing effect or an unmet designation
-// gate counts as no watcher). Only the battlefield: no emblem and no
-// other-zone ability watches the kind, and one that does joins this
-// check in the change that declares it.
+// from there. See battlefieldWatchesLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) triggerPlacedWatchedLocked() bool {
+	return g.battlefieldWatchesLocked(EventTriggerPlaced)
+}
+
+// battlefieldWatchesLocked reports whether any permanent on the
+// battlefield has a triggered ability that watches `kind` from there —
+// the same enumeration harvestFromZone walks (triggersOf, so an
+// ability-removing effect or an unmet designation gate counts as no
+// watcher). Only the battlefield: no emblem and no other-zone ability
+// watches EventTriggerPlaced or EventAbilityCopied, and one that does
+// joins this check in the change that declares it.
+//
+// Caller must hold g.mu.
+func (g *Game) battlefieldWatchesLocked(kind EventKind) bool {
 	if g.Battlefield == nil || CatalogTriggers == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		for _, t := range triggersOf(&g.Battlefield.Cards[i]) {
-			if triggerWatches(t.Watches, EventTriggerPlaced) && TriggerWatchesFromZone(t, ZoneBattlefield) {
+			if triggerWatches(t.Watches, kind) && TriggerWatchesFromZone(t, ZoneBattlefield) {
 				return true
 			}
 		}

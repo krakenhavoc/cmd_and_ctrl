@@ -265,6 +265,19 @@ func (g *Game) createAbilityCopyLocked(item *StackItem, controller uuid.UUID, ta
 	// watching for, and what the ordinary activation path emits at
 	// the same point in its own announcement.
 	g.emitBecameTargetLocked(controller, meta.SourceCardID, meta.ID, meta.Targets)
+
+	// "Whenever a spell or ability is put onto the stack" (Grip of
+	// Chaos, #4050) counts the copy, and neither kind above is for it.
+	// Gated on a watcher so a table without one keeps its event log.
+	if g.battlefieldWatchesLocked(EventAbilityCopied) {
+		g.EmitEvent(Event{
+			Kind:        EventAbilityCopied,
+			Actor:       controller,
+			Source:      meta.SourceCardID,
+			StackItemID: meta.ID,
+			Label:       meta.Label,
+		})
+	}
 }
 
 // copiedPaidCost is the announcement record a CR 707.10 copy carries:
