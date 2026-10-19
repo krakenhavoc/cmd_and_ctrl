@@ -256,17 +256,6 @@
 <svelte:window onkeydown={onWindowKey} />
 
 {#snippet counterButton(item: StackLaneItem, small: boolean)}
-  <!-- #1865: a spell's own stack ability (Lightning Storm) sits beside
-       Counter on the top card. A peek's name line has room for Counter
-       alone; a storm under its own ability is back on top, button and
-       all, before it can resolve. -->
-  {#if !small}
-    <StackAbilityButtons
-      {item}
-      enabled={model.priority.viewerHolds}
-      onActivate={controls.activate}
-    />
-  {/if}
   <button
     type="button"
     class="act counter-btn"
@@ -281,6 +270,22 @@
   >
     Counter
   </button>
+{/snippet}
+
+<!-- #1865, #4043: a spell's own stack ability (Lightning Storm) is open to
+     any player holding priority while the spell is on the stack (CR
+     113.6), under a response as much as on top. The top card's caption
+     has the room for the cost's name, on a row of its own so the caster's
+     name keeps the line to itself; a strip or a "+N more" row has room
+     for Counter alone, so it carries a compact bolt button whose
+     accessible name and tooltip are the full ability. -->
+{#snippet abilityButtons(item: StackLaneItem, compact: boolean)}
+  <StackAbilityButtons
+    {item}
+    {compact}
+    enabled={model.priority.viewerHolds}
+    onActivate={controls.activate}
+  />
 {/snippet}
 
 {#snippet targetButton(item: StackLaneItem)}
@@ -389,6 +394,7 @@
               {/if}
               <span class="peek-caster">{whoOf(item)}</span>
             </span>
+            {@render abilityButtons(item, true)}
             {@render counterButton(item, true)}
           </span>
         </div>
@@ -448,6 +454,9 @@
         <span class="grow"></span>
         {@render counterButton(top, false)}
       </div>
+      {#if top.abilities.length > 0}
+        <div class="ability-row">{@render abilityButtons(top, false)}</div>
+      {/if}
       {#if !topAbility}
         <div class="title top-title">{top.text}</div>
       {/if}
@@ -506,6 +515,7 @@
               onclick={() => controls.target(item)}>Target</button
             >
           {/if}
+          {@render abilityButtons(item, true)}
           {@render counterButton(item, true)}
         </li>
       {/each}
@@ -676,6 +686,15 @@
   .peek-line > .counter-btn {
     margin-left: auto;
     pointer-events: auto;
+  }
+  /* #4043: the compact ability button sits before Counter; it takes
+     pointers itself and pushes both to the strip's end. */
+  .peek-line > :global(.ability-btn) {
+    margin-left: auto;
+    pointer-events: auto;
+  }
+  .peek-line > :global(.ability-btn) + :global(.counter-btn) {
+    margin-left: 0;
   }
   /* The title and caster on a tab of the panel's surface, as narrow as
      they are: the card's own top, dimmed by its step, shows around it,
@@ -902,6 +921,14 @@
   }
   .grow {
     flex: 1 1 auto;
+  }
+  /* #4043: the top card's stack-ability buttons on a line under the
+     caster, so a long name never shares its row with them. */
+  .ability-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
   }
   .seat-dot {
     flex: 0 0 auto;

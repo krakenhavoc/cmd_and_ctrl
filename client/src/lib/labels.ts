@@ -261,6 +261,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}StackAbilityButtons.svelte`],
     doc: "#1865: a spell's ability that works while it is on the stack (Lightning Storm's discard a land card), on every stack surface beside Counter; offered to each seat that may activate it",
   }),
+  stackAbilityGone: dynamicLabel({
+    stem: " left the stack",
+    match: "suffix",
+    shape: "<card name> left the stack",
+    make: (card: string) => `${card} left the stack`,
+    example: ["Lightning Storm"],
+    kind: "text",
+    role: "status",
+    owners: [`${BOARD}Board.svelte`],
+    doc: "#4043: the notice that closes the discard picker when the spell whose stack ability was being announced resolves or is countered first",
+  }),
   attention: label({
     name: "attention",
     kind: "aria",
