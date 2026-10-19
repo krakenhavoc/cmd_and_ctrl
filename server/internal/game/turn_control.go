@@ -207,6 +207,29 @@ func (g *Game) ControlUntilOfPlayer(p uuid.UUID) ControlUntil {
 	return g.ControlUntilOfPlayerLocked(p)
 }
 
+// ControlStageOfPlayerLocked is the stage of the newest live record over
+// p (the one ControllerOfPlayerLocked reads), or "" when nobody controls
+// p. The actions layer reads it to decide which verbs the controller may
+// send as p (CR 723.5b, ADR 0166 amendment of 2026-10-19). Caller must
+// hold g.mu (read or write).
+func (g *Game) ControlStageOfPlayerLocked(p uuid.UUID) ControlStage {
+	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
+		r := g.PlayerControls[i]
+		if r.Controlled == p && g.controlLiveLocked(r) {
+			return r.Stage
+		}
+	}
+	return ""
+}
+
+// ControlStageOfPlayer is ControlStageOfPlayerLocked under the read
+// lock. Caller must NOT hold g.mu.
+func (g *Game) ControlStageOfPlayer(p uuid.UUID) ControlStage {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ControlStageOfPlayerLocked(p)
+}
+
 // TurnControlledByLocked lists the players whose turn controller is
 // playing right now (ADR 0167 §7): each seat whose live control is
 // turn-long and is controller's. Caller must hold g.mu.

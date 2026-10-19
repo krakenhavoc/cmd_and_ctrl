@@ -123,3 +123,22 @@ Nothing about it is resolution-long or turn-long. No stack item owns the control
 **5. Protocol.** `player_controls[].until` gains `"search"`. Nothing else on the wire changes, and nothing is added to the snapshot: `stage`, `until`, `source` and `prompt` are existing fields (an older binary reads the unknown stage as not live and prunes it).
 
 **Out of scope.** CR 723.1a orders Agent records against an Emrakul turn record over the same player by when each record was made, not by the Agent's own timestamp: an Agent's search control made during an Emrakul turn always wins that search. Both orders give the search to one of the two controllers, and this one gives it to the player whose card is about searches.
+
+## Amendment (2026-10-19, #4025) — which verbs the controller may send, per stage
+
+`routeControlledPlayer` restricted the controller in three cases (a turn-long control, a search, Word of Command's forced play) and let every verb through in the rest. Word of Command's second stage, `ControlSpellResolving` (§5), was one of the rest: while the forced spell resolved, the controller could send `draw_card`, `move_card`, `tap`, `change_life` and every other sandbox verb as the controlled player, which moves that player's cards by hand. CR 723.5b says the controller makes the choices the rules or an object call for and no others, and ADR 0167 §4 closed the sandbox for the turn-long case for that reason. The same reasoning covers every stage.
+
+**One table, default closed.** What the controller may send as the controlled player is now a function of the **stage of the newest live record over that player** (`Game.ControlStageOfPlayer`, the stage `ControllerOfPlayerLocked` already resolves by), read from `controlledStageVerbs` in `internal/actions/controlled_player.go`:
+
+| Stage | Control | The controller may send as the controlled player |
+| --- | --- | --- |
+| `playing` | Word of Command, the forced play (§4) | `cast_spell` (the play, checked in the cast branch), `activate_mana_ability` (the engine refuses any source but their lands), `resolve_choice` |
+| `spell_resolving` | Word of Command, the forced spell resolving (§5) | `resolve_choice` only. Nobody holds priority during a resolution, so no rules verb is a choice either |
+| `searching` | Opposition Agent (the 2026-10-16 amendment) | `resolve_choice` only |
+| `turn` | Emrakul, the Promised End (ADR 0167 §4) | every rules verb in `turnRulesVerbs` |
+
+A stage with no row, or no live record, allows nothing, so a stage added later is closed until it is given a row. No row contains a `sandboxVerbs` entry. The controlled player's own verbs are still all refused but `concede` (§2), and a turn's controller still has the sandbox closed as themselves (ADR 0167 §4). Nothing on the wire changes.
+
+**What did not change.** The rules verbs `spell_resolving` refuses are ones the controller could not usefully send anyway (no priority is held), so no legal play is lost: the enumerator offers the controller only the prompts the controlled player owes during a resolution.
+
+**Tests.** `TestControlledVerbAllowedPerStage` tables every action type against every stage, with the allowed sets written out independently of the production table; `TestNoControlledStageAllowsASandboxVerb` and `TestTurnControlEverySandboxVerbIsRefusedAsTheControlledPlayer` pin the sandbox closure; and `controlled_verbs_test.go` drives the three Word of Command and Opposition Agent stages through the real cards and `actions.Dispatch`.
