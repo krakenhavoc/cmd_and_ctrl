@@ -236,7 +236,7 @@ describe("the other face's text", () => {
     expect(otherSide(c)?.querySelector(".title")?.textContent).toBe("Akki Lavarunner");
   });
 
-  it("leaves a split card as it was: no other-face section, no flip hint", () => {
+  it("leaves a split card one image: no inset, no flip hint (its text is listed, #4109)", () => {
     const c = show({
       instance_id: "fi",
       name: "Fire // Ice",
@@ -255,7 +255,6 @@ describe("the other face's text", () => {
         { name: "Ice", type_line: "Instant", oracle_text: "Tap target permanent." },
       ],
     } as unknown as CardView);
-    expect(otherSide(c)).toBeNull();
     expect(c.querySelector(".flip-hint")).toBeNull();
     expect(c.querySelector(".other-face")).toBeNull();
     key("keydown");

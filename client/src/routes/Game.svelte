@@ -106,6 +106,8 @@
     shortenParams,
     type LoopDockProps,
   } from "../lib/loopShortcut";
+  import { outsideDock } from "../lib/outsideRight";
+  import { openZoneBrowser } from "../lib/zoneBrowser";
   import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
@@ -1263,6 +1265,23 @@
           onPropose: () => (loopProposeOpen = true),
         }
       : undefined,
+  );
+  // ADR 0191 (amended 2026-10-19, #3833, #4054): a live right over the cards
+  // you own outside the game puts a shortcut in the dock. The sideboard is
+  // no pile on the table (its tab is in the zone browser); Wish's "name a
+  // card to play" lives here.
+  const outsideDockProps = $derived(
+    outsideDock(view, viewerID, {
+      name: () => sendAction("outside_play", undefined, viewerID ?? undefined),
+      open: () => {
+        if (!viewerSeat) return;
+        openZoneBrowser({
+          zoneKind: "sideboard",
+          ownerID: viewerSeat.id,
+          ownerName: viewerSeat.name,
+        });
+      },
+    }),
   );
   const loopProposal = $derived(view ? loopProposalFor(view, viewerID) : null);
   const loopProposer = $derived(
@@ -3361,6 +3380,7 @@
           onStage={onDockStage}
           menu={menuOptions}
           loop={loopDock}
+          outside={outsideDockProps}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />

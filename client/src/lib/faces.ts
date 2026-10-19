@@ -344,19 +344,34 @@ export function castableFaceIndex(
  * Layouts whose halves are printed on ONE side of one card, in one
  * image: a split card (CR 709.1, #3518), an adventurer card (CR 715.1)
  * and a prepare card. There is no other side to turn to, so the hover
- * panel's other-face section and its hold-Shift flip (#4106) leave
- * them alone. A flip card is one image too, but its upside-down half is
- * a set of alternative characteristics the card can take (CR 710.1), so
- * it is not on this list: the panel shows that half as the same image
- * turned.
+ * panel shows no second image for them (no `?face=1` request, no inset)
+ * and its hold-Shift flip (#4106) leaves them alone; it still LISTS both
+ * halves' text (#4109). A flip card is one image too, but its upside-down
+ * half is a set of alternative characteristics the card can take
+ * (CR 710.1), so it is not on this list: the panel shows that half as
+ * the same image turned.
  */
 const ONE_SIDED_LAYOUTS = new Set([LAYOUT_SPLIT, LAYOUT_ADVENTURE, "prepare"]);
 
 /**
+ * isOneSidedLayout reports whether a card's halves share one image
+ * (ONE_SIDED_LAYOUTS). Such a card has no second scan to fetch.
+ */
+export function isOneSidedLayout(card: Pick<CardView, "layout"> | null | undefined): boolean {
+  return ONE_SIDED_LAYOUTS.has(card?.layout ?? "");
+}
+
+/**
  * otherSideIndex is the face of a two-faced card that is NOT up — the
  * back of a transform or modal DFC whose front is up, the front of one
- * whose back is up, the other half of a flip card — or null when there
- * is no such face to show (#4106).
+ * whose back is up, the other half of a flip card, the Adventure of an
+ * adventurer card, the prepare spell of a prepare card, the other half
+ * of a split card — or null when there is no such face to show (#4106,
+ * #4109).
+ *
+ * Scryfall leaves the top level of all of these without rules text, so
+ * the text is read per face. Whether the two halves also have two IMAGES
+ * is a separate question (isOneSidedLayout).
  *
  * Null for a face-down card even when this viewer may look at it: a
  * face-down object has only the characteristics the rule that turned it
@@ -369,7 +384,6 @@ export function otherSideIndex(
 ): number | null {
   if (!card || card.face_down) return null;
   if ((card.faces?.length ?? 0) < 2) return null;
-  if (ONE_SIDED_LAYOUTS.has(card.layout ?? "")) return null;
   return (card.active_face ?? 0) === 0 ? 1 : 0;
 }
 
@@ -378,11 +392,17 @@ export function otherSideIndex(
  * panel's section heading. A double-faced card's other face is its
  * "Back face", or its "Front face" once the back is up. A flip card has
  * no back face (CR 710.1: its other half is printed upside down on the
- * same side), so its halves are "Flipped" and "Unflipped".
+ * same side), so its halves are "Flipped" and "Unflipped". An
+ * adventurer card's other half is its "Adventure" (CR 715.2), a prepare
+ * card's its "Prepare spell" (CR 722.2a), and a split card's is just its
+ * "Other half".
  */
 export function otherSideHeading(card: Pick<CardView, "layout" | "active_face">): string {
   const backUp = (card.active_face ?? 0) !== 0;
   if (card.layout === LAYOUT_FLIP) return backUp ? "Unflipped" : "Flipped";
+  if (card.layout === LAYOUT_ADVENTURE) return backUp ? "Creature" : "Adventure";
+  if (card.layout === "prepare") return backUp ? "Creature" : "Prepare spell";
+  if (card.layout === LAYOUT_SPLIT) return "Other half";
   return backUp ? "Front face" : "Back face";
 }
 

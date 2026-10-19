@@ -197,3 +197,37 @@ The cards below also read "outside the game" and are not shipped here. Each need
 2. **A controlled player's pool is closed** (§8), and the cards stay **Full**. This is an engine-wide policy for "outside the game" under another player's control (ADR 0167 §5), not a per-card caveat: every card that reads the container behaves the same way, so none declares it.
 3. **The sideboard is not checked against the commander's colour identity or the banlist.** That is fine for the casual Commander pool, and the check is deferred to #2352's format validation, which will know which format a deck is for.
 4. **The owner may see the sideboard at any time**, including in the zone browser during an opponent's turn, which is what the Scryfall ruling says and not a leak.
+
+## Amendment (2026-10-19, #3833, #4054): the sideboard is read on the deck and in a tab, not as a pile
+
+**Status:** Accepted · 2026-10-19 · S73 (these issues carry no milestone; they ride with the client polish in #4109). **Decided by:** the owner, Ian, 2026-10-19, option 1 of the three put on #3833. **Issues:** [#3833](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3833) (the owner's direction of 2026-10-15: "probably shouldn't be a pile on the table"), [#4054](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4054) (a player report: "Sideboard showing on battlefield should only be seen from lobby"). **Numbering:** an amendment, so no number was taken. **Builds on:** [ADR 0198](0198-outside-the-game-is-the-card-database-without-a-sideboard.md) and its 2026-10-16 amendment (#3955: the cast and the Wish right this keeps), [ADR 0158](0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2 (the deck card). It replaces the **pile** half of §10 of this ADR (the client); the zone browser's read-only tab stays.
+
+### Context
+
+§10 gave the owner a sideboard pile in the player rail and a fourth `sideboard` tab in the zone browser, "the evidence the section was read". #3955 then made that tab the place a granted cast or a Wish is used from, and put Wish's "Name a card to play" button in it. The owner's direction since is that a sideboard is a property of the deck, so it belongs with the deck; a player confirmed it by report, because a pile of cards you may not touch, in the rail beside your library, reads as a zone of the game. #3833 put three options to the owner: the lobby plus a read-only in-game tab, the Decks page only, or the lobby and the Decks page with no in-game view. He chose the first.
+
+### Decision
+
+1. **The table shows no sideboard pile.** The pile is gone from `PileBar`. Nothing about the sideboard is drawn on any seat's panel. Opponents saw nothing before (the server sends a count only, §7) and still see nothing.
+2. **The deck lists it, in three places.** All read `GET /me/decks/{id}/printings`, whose rows already name their board (`Sideboard`), so no route or wire field is added:
+   - the **Decks page**: a deck card has a **Sideboard** button that opens a read-only list under the card (each name with its copies, and the total);
+   - the **lobby's deck panel and seat setup**, where a seat picks its deck (`YourDecksPicker`, inside `DeckUploadForm`, which the lobby and the in-game deck modal both use): a **Sideboard** button beside "play <deck>" opens the same list for the deck picked, and closes when another deck is picked. After a deck is seated the line says how many cards it holds outside the game (`sideboard` in the seat response, §3);
+   - a guest's pasted or pre-built deck has no saved page, so it has no list there. A pre-built deck has no sideboard, and a pasted one is told by the "uploaded" line (§3) and read in the game's tab below.
+3. **In a game the owner has a read-only Sideboard tab.** `ZoneBrowserModal` keeps its fourth tab, `sideboard`, offered on the viewer's own seat only, while the sideboard holds cards or a Wish can name one. It lists the **whole** sideboard, so a player can check what a Wish can fetch. It moves nothing: `canManageZone` is false for everyone, no move button renders and `buildMovePayload` returns null (CR 400.11c). The one button a card in it can carry is the cast or play button of a live permission (`castable_here`, #3955), which hands off to the ordinary cast chain. Another seat's browser has no such tab, and its `cardsForZone` is empty. There is no way to open it from the table other than another zone's tabs and the dock chip below.
+4. **The pick prompts are unchanged.** `choose_cards` over the sideboard and `outside_collection` over the database list their candidates when the effect asks, as before.
+5. **The dock keeps two chips, as shortcuts, only while a right is live and only for its owner.** Both are verbs of the player's turn, like Hold and Skip to my turn beside them, and each exists only while a permission is live:
+   - **name a card to play** (`outside_play.can_name`, Wish with the database as its pool) sends `outside_play`. It stays in the dock rather than moving back into the tab: the tab can be empty (a database Wish has nothing to list), and a button the player has to find a tab to press is slower than the dock, where the other turn verbs are. The tab's note says where it is;
+   - **outside the game (N)** opens the Sideboard tab, counting the cards a live permission opens. It is a shortcut, not a second view: the cards themselves, with their cast buttons, are in the tab. Board opens the tab by itself when a pick leaves more than one such card, as before.
+
+   Folding them into the tab was considered and rejected: the tab is one click under another zone, which is too far for a verb that lasts one turn.
+6. **Judgement call 4 stands.** The owner may see the sideboard at any time, including in the zone browser during an opponent's turn. That is no leak, since only the owner's view ever carried the cards.
+
+### Not changed
+
+The server, the wire, the snapshot and the bot are untouched: `sideboard` and `sideboard_count` stay as §7 describes, `outside_play` and `castable_here` as the #3955 amendment does, and `BrowsableZone` keeps its `sideboard` kind.
+
+### Consequences
+
+- The rail shows only library, graveyard and exile again, and the "outside the game" caption that overflowed it (#3832) has nothing left to caption.
+- A player can check a sideboard before the game (the lobby and the Decks page) and during it (the tab) without it being drawn on the table.
+- No server tests change. The client tests pin each of the above in `sideboard.render.test.ts` (no pile, the tab, its cards and cast buttons, who sees it), `outsidePlay.render.test.ts` (the dock chips), `playerTables.render.test.ts` (the lobby list), `deckSideboard.test.ts` (the Decks page) and `tests-e2e/tests/outside-game-3833.spec.ts`.

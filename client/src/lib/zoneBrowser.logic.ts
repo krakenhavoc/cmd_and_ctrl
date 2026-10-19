@@ -24,7 +24,9 @@ export function cardsForZone(view: GameView, zoneKind: BrowsableZone, ownerID: s
   if (zoneKind === "graveyard") return seat.graveyard.cards;
   if (zoneKind === "command") return seat.command.cards;
   // ADR 0191: only the owner's own view carries the cards; everyone
-  // else's seat has none, so a stale open browser shows nothing.
+  // else's seat has none, so a stale open browser shows nothing. The tab
+  // is read only (restored 2026-10-19, #3833): the whole sideboard, so a
+  // Wish's candidates can be checked.
   if (zoneKind === "sideboard") return seat.sideboard ?? [];
   return [];
 }
