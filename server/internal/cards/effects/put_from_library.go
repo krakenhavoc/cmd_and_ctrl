@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -114,6 +116,18 @@ type PutFromLibraryOntoBattlefield struct {
 	// permanent enters and go through the CR 614 counter pipeline.
 	Counters map[string]int
 
+	// CountersFor is Counters decided by the card that is picked: "Put a
+	// creature card from among them onto the battlefield. If that card
+	// has mana value 3 or less, it enters with three additional +1/+1
+	// counters on it" (Turntimber Symbiosis, #4170). It is called with the
+	// picked card as it sits in the library, and what it returns is added
+	// to Counters for that entry. Nil means no per-card counters.
+	//
+	// A clause that puts ONE card (Max 1, not All): the counters belong to
+	// the card, and one entry batch takes one set of options, so Apply
+	// refuses CountersFor on a clause that can put more than one.
+	CountersFor func(g *game.Game, c game.Card) map[string]int
+
 	// Validate is the clause's rule about the picked SET, as opposed
 	// to Match's rule about each card: "any number of nonland
 	// permanent cards with TOTAL MANA VALUE 4 OR LESS from among
@@ -174,6 +188,9 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	source := ctx.Source()
 	cards := append([]uuid.UUID(nil), p.Cards...)
 	then := p.Then
+	if p.CountersFor != nil && (p.All || p.Max != 1) {
+		return fmt.Errorf("PutFromLibraryOntoBattlefield: CountersFor needs a clause that puts exactly one card (Max 1, not All)")
+	}
 	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped, EntersWithCounters: p.Counters}
 	report := func(g *game.Game, entered []uuid.UUID) error {
 		if then == nil {
@@ -198,7 +215,22 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 		// pile. An error still reports whatever did enter and Then
 		// still runs, so the revealed or looked-at rest is never left
 		// on top with its knowers.
-		return g.PutCardsFromLibraryOntoBattlefieldThenForEffect(picked, opts, report)
+		entry := opts
+		if p.CountersFor != nil && len(picked) == 1 {
+			if card, ok := g.LookupCardForEffect(picked[0]); ok {
+				if extra := p.CountersFor(g, card); len(extra) > 0 {
+					merged := make(map[string]int, len(opts.EntersWithCounters)+len(extra))
+					for k, n := range opts.EntersWithCounters {
+						merged[k] += n
+					}
+					for k, n := range extra {
+						merged[k] += n
+					}
+					entry.EntersWithCounters = merged
+				}
+			}
+		}
+		return g.PutCardsFromLibraryOntoBattlefieldThenForEffect(picked, entry, report)
 	}
 
 	candidates := libraryCardsMatching(ctx.Game, player, cards, p.Match)
