@@ -97,6 +97,18 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 		}
 		ids = append(ids, t.ID)
 	}
+	return exileCardsThenScheduleReturn(ctx, ids, label)
+}
+
+// exileCardsThenScheduleReturn is exileTargetsThenScheduleReturn for
+// cards the effect CHOSE rather than targeted (Yorion, Sky Nomad's
+// "exile any number of other nonland permanents you own and control"):
+// the same one exile, and the same delayed trigger over the cards that
+// reached it.
+func exileCardsThenScheduleReturn(ctx *Context, ids []uuid.UUID, label string) error {
+	if len(ids) == 0 {
+		return nil
+	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract massEffect.apply explains.
 	item := ctx.Item

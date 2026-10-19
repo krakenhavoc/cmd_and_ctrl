@@ -35,6 +35,12 @@ type companionCondition struct {
 	// Offenders returns the names of the starting-deck cards that
 	// break the condition, in deck order. Empty means fulfilled.
 	Offenders func(starting []cards.Card) []string
+	// Unmet is the form for a condition about the deck as a whole
+	// rather than about any card in it (Yorion's deck size): it
+	// returns why the starting deck fails, or "" when it passes. The
+	// one violation it produces names the companion. Exactly one of
+	// Offenders and Unmet is set.
+	Unmet func(starting []cards.Card) string
 }
 
 // companionConditions is the registry. One entry per supported
@@ -46,6 +52,32 @@ var companionConditions = map[string]companionCondition{
 		Text:      "no card in your starting deck may have more than one of the same mana symbol in its mana cost",
 		Offenders: offendersEach(repeatsAManaSymbol),
 	},
+	// Yorion, Sky Nomad: "Your starting deck contains at least twenty
+	// cards more than the minimum deck size." A Commander deck's
+	// minimum is also its maximum, exactly 100 (CR 903.5a), so this is
+	// never met (ADR 0172 §9: register it as always failing, with a
+	// clear message).
+	"e15504a7-2b67-4185-b916-172145f10b19": {
+		Text:  fmt.Sprintf("your starting deck must contain at least %d cards, twenty more than the minimum deck size", commanderDeckSize+yorionExtraCards),
+		Unmet: yorionUnmet,
+	},
+}
+
+// commanderDeckSize is the Commander deck size, which is both the
+// minimum and the maximum (CR 903.5a).
+const commanderDeckSize = 100
+
+// yorionExtraCards is how many cards over the minimum Yorion asks for.
+const yorionExtraCards = 20
+
+// yorionUnmet is Yorion's condition. The starting deck is the
+// commanders plus the mainboard; the validator holds that to exactly
+// commanderDeckSize, so the count here can only fall short.
+func yorionUnmet(starting []cards.Card) string {
+	if len(starting) >= commanderDeckSize+yorionExtraCards {
+		return ""
+	}
+	return fmt.Sprintf("a Commander deck has exactly %d cards (CR 903.5a), so it can never be %d over the minimum", commanderDeckSize, yorionExtraCards)
 }
 
 // maxCompanionOffenders caps how many offending cards one failed
@@ -196,6 +228,16 @@ func companionViolations(list *List) []Violation {
 			Card:    c.Name,
 			Message: fmt.Sprintf("%q can't be a companion here yet: its companion condition isn't checked by the server", c.Name),
 		})
+	}
+	if cond.Unmet != nil {
+		if why := cond.Unmet(allCards(list)); why != "" {
+			vs = append(vs, Violation{
+				Code:    CodeCompanionConditionNotMet,
+				Card:    c.Name,
+				Message: fmt.Sprintf("%s's companion condition is not met: %s; %s", c.Name, cond.Text, why),
+			})
+		}
+		return vs
 	}
 	offenders := cond.Offenders(allCards(list))
 	if len(offenders) > maxCompanionOffenders {
