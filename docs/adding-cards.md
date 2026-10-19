@@ -10542,7 +10542,7 @@ the Impossible does (a pair with different names, then an opponent's
 0198](decisions/0198-outside-the-game-is-the-card-database-without-a-sideboard.md)
 amendment of 2026-10-16) is two primitives in `effects/play_from_outside.go`,
 the cast half of the same seam. The cast itself is a `cast_spell` with
-`from_zone: "outside"` from the "outside the game" view the action dock opens.
+`from_zone: "outside"` from the sideboard tab.
 
 ```go
 // a free cast of cards PICKED now: a pass-closed {0} permission per card

@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 //
-// outsidePlay.render.test.ts — #3955, Wish; moved off the table by #3833 and
-// #4054. "You may play a card you own from outside the game this turn" with
-// the card database as the pool: the card is named when it is played, so the
-// right puts a "name a card to play" button in the action dock (the sideboard
-// pile and tab it used to sit in are gone). Pressing it sends the
-// `outside_play` action with no params; the rest of the right is the cards it
-// opens, behind a second button that opens the "outside the game" view.
+// outsidePlay.render.test.ts — #3955, Wish; the pile left the table by #3833
+// and #4054. "You may play a card you own from outside the game this turn"
+// with the card database as the pool: the card is named when it is played, so
+// the right puts a "name a card to play" chip in the action dock, a shortcut
+// that sits with the verbs of the turn. Pressing it sends the `outside_play`
+// action with no params; the rest of the right is the cards it opens, behind
+// a second chip that opens the read-only Sideboard tab of the zone browser,
+// where each such card has its cast button.
 
 import { describe, it, expect, afterEach } from "vitest";
 
@@ -89,7 +90,7 @@ describe("the Wish right's button", () => {
 });
 
 describe("the cards a right opens", () => {
-  it("get a second button, counted, that opens the outside-the-game view", () => {
+  it("get a second button, counted, that opens the sideboard tab", () => {
     const calls = { name: 0, open: 0 };
     const c = mountDock(
       viewWith({ outside_play: { source_name: "Spawnsire of Ulamog" }, sideboard: [granted("a")] }),

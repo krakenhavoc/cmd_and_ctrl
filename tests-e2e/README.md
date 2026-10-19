@@ -38,7 +38,7 @@ tests-e2e/
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
     ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap and show a readable loyalty pip, at 2, 3 and 4 seats and three viewports
     ├── playmat-shape-3934.spec.ts # #3934, ADR 0128 §12: a playmat is shown whole (contain, centred) over a blurred backdrop that is its seat's battlefield box, at 2, 3 and 4 seats and three viewports
-    ├── outside-game-3833.spec.ts # #3833, #4054, #4109: a seated sideboard has no pile in the rail and no tab in the zone browser; hovering an adventurer lists the creature and its Adventure with no ?face=1 scan
+    ├── outside-game-3833.spec.ts # #3833, #4054, #4109: a seated sideboard has no pile in the rail but a read-only Sideboard tab in its owner's zone browser (none for a seat without one); hovering an adventurer lists the creature and its Adventure with no ?face=1 scan
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
     ├── rebound-3490.spec.ts   # #3490: rebound (Quantum Misalignment) end to end on default settings: exiled, the upkeep offer in the upkeep after a discard-ended turn, "Cast it free" opens targeting with nothing passing under it, cast free, into the graveyard
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards

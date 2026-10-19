@@ -13,10 +13,10 @@
 import { type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
 
-// "sideboard" is the viewer's OWN cards outside the game that an effect lets
-// them cast or play (ADR 0191, amended 2026-10-19). It is no pile or tab on
-// the table: the action dock opens it while such a right is live. It moves
-// nothing, and is never offered for another seat.
+// "sideboard" is the viewer's OWN cards outside the game (ADR 0191, amended
+// 2026-10-19): read only, a tab of the zone browser and no pile on the table,
+// never offered for another seat. A card in it moves only through a live
+// permission's cast button.
 export type BrowsableZone = "graveyard" | "exile" | "command" | "stack" | "sideboard";
 
 export interface ZoneBrowserOpen {

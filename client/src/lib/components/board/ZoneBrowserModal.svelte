@@ -158,7 +158,7 @@
       case "stack":
         return "stack";
       case "sideboard":
-        return "outside the game";
+        return "sideboard";
     }
   });
 
@@ -319,16 +319,28 @@
 
   // Tabs switch zones for the same owner without closing (the stack
   // is a shared zone with no owner, so it stays a single view).
-  // The sideboard is no tab (ADR 0191, amended 2026-10-19, #3833 and
-  // #4054): it is not a zone on the table. The "outside the game" view is
-  // opened from the action dock while an effect lets the viewer cast or
-  // play one of those cards, and it stands alone.
-  const tabs: { kind: BrowsableZone; label: string }[] = [
-    { kind: "graveyard", label: "graveyard" },
-    { kind: "exile", label: "exile" },
-    { kind: "command", label: "command" },
-  ];
-  const showTabs = $derived(zoneKind !== "stack" && zoneKind !== "sideboard");
+  // ADR 0191 (restored 2026-10-19, #3833): the viewer's own sideboard is a
+  // fourth tab, offered only on their own seat and only while it holds
+  // cards or a Wish can name one. It is read only: it exists to check what
+  // a Wish can fetch, and a card in it moves only through a live permission
+  // (the cast button below), never by a drag or a menu.
+  const tabs = $derived.by<{ kind: BrowsableZone; label: string }[]>(() => {
+    const base: { kind: BrowsableZone; label: string }[] = [
+      { kind: "graveyard", label: "graveyard" },
+      { kind: "exile", label: "exile" },
+      { kind: "command", label: "command" },
+    ];
+    const own = view.seats.find((s) => s.id === ownerSeat.id);
+    if (
+      viewerID &&
+      viewerID === ownerSeat.id &&
+      ((own?.sideboard?.length ?? 0) > 0 || own?.outside_play?.can_name)
+    ) {
+      base.push({ kind: "sideboard", label: "sideboard" });
+    }
+    return base;
+  });
+  const showTabs = $derived(zoneKind !== "stack");
   function switchZone(kind: BrowsableZone): void {
     if (kind === zoneKind) return;
     openZoneBrowser({ zoneKind: kind, ownerID: ownerSeat.id, ownerName: ownerSeat.name });
@@ -371,7 +383,7 @@
       <h2 id="zone-browser-title">
         {ownerSeat.name}<span class="sep">·</span><span class="zone">{zoneLabel}</span>
         <span class="count">({zoneCards.length})</span>
-        {#if !canManage && zoneKind !== "stack" && zoneKind !== "sideboard"}
+        {#if !canManage && zoneKind !== "stack"}
           <span class="prompt-src" aria-hidden="true">read only</span>
         {/if}
       </h2>
@@ -409,8 +421,9 @@
     {/each}
     {#if zoneKind === "sideboard"}
       <p class="zb-ban" role="note">
-        Cards you own outside the game that an effect lets you cast or play right now (Spawnsire of
-        Ulamog, Wish). Your whole sideboard is on the Decks page.
+        Cards you own outside the game, for you alone: opponents see a count. Only an effect can
+        reach them. One that lets you cast or play a card from here (Spawnsire of Ulamog, Wish) puts
+        a button on that card; a Wish that names any card has its button in the action dock.
       </p>
     {/if}
     {#if zoneCards.length === 0}

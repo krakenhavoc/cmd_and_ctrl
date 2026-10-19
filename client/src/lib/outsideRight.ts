@@ -2,10 +2,12 @@
 // viewer reach the cards they own outside the game (ADR 0191, amended
 // 2026-10-19 for #3833 and #4054).
 //
-// The sideboard is not on the table: it is browsed on the Decks page, and
-// opponents never see it. In a game a card outside the game is reached
-// only through an effect, and two of those effects leave a standing right
-// that needs a place to be used from:
+// The sideboard is no pile on the table. It is read in the lobby's deck
+// panel, on the Decks page and in the zone browser's read-only Sideboard
+// tab; opponents never see it. In a game a card outside the game is
+// reached only through an effect, and two of those effects leave a
+// standing right, so the dock puts a shortcut to each where the verbs of
+// the turn are:
 //
 //   - Wish with the card database as its pool (ADR 0198's #3955
 //     amendment): "you may play a card you own from outside the game this
@@ -14,8 +16,8 @@
 //   - A card in the viewer's outside-the-game container a live permission
 //     opens (Spawnsire of Ulamog's free casts, Wish with a sideboard as its
 //     pool). The server stamps `castable_here` on exactly those, and the
-//     dock offers a button that opens the cards the right lets them cast
-//     or play, each with its own cast button.
+//     dock offers a button that opens the Sideboard tab, where each such
+//     card has its own cast button.
 //
 // NOTHING HERE IS A RULE. Both inputs are server answers on the viewer's
 // own frame, which carries them to the viewer alone.
@@ -63,9 +65,9 @@ export function outsideChips(
     out.push({
       kind: "open",
       label: `outside the game (${castable.length})`,
-      title: `Cards you own outside the game that ${
+      title: `Open your sideboard: ${
         right?.source_name ?? "an effect"
-      } lets you cast or play`,
+      } lets you cast or play some of it now`,
     });
   }
   return out;
@@ -81,7 +83,7 @@ export interface OutsideDock {
  * outsideDock is the action dock's prop for the viewer's live rights over
  * the cards they own outside the game, or undefined when there is none.
  * `name` sends the `outside_play` action (Wish's naming pick); `open`
- * shows the cards the right lets the viewer cast or play.
+ * opens the sideboard tab, where the cards the right opens have buttons.
  */
 export function outsideDock(
   view: GameView | null | undefined,

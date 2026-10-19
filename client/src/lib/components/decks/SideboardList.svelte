@@ -44,8 +44,9 @@
     Sideboard{#if !loading && !error}<span class="count">({total})</span>{/if}
   </h4>
   <p class="note">
-    Cards this deck owns outside the game. At the table they come into play only through an effect
-    that reaches outside the game, such as a Wish. Nobody else sees them.
+    Cards this deck owns outside the game. At the table you can read them in the Sideboard tab of
+    the zone browser, and they come into play only through an effect that reaches outside the game,
+    such as a Wish. Nobody else sees them.
   </p>
   {#if loading}
     <p class="note" role="status">Loading the sideboard…</p>

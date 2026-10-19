@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 //
 // sideboard.render.test.ts — ADR 0191, amended 2026-10-19 (#3833, #4054).
-// A deck's sideboard is the cards you own outside the game. It is not on
-// the table: no pile in the player rail, no tab in the zone browser. The
-// server still sends the cards to their owner alone (a count to everyone
-// else), and in a game only an effect reaches them, so the one view that
-// remains lists the cards a live right lets the owner cast or play. These
-// tests pin what a player would notice: nothing is drawn on the table,
-// the right's view shows only what it opens, and nothing in it can move.
+// A deck's sideboard is the cards you own outside the game. It is no pile
+// on the table, but the owner can read it, read only, in a Sideboard tab of
+// the zone browser, to check what a Wish can fetch. The server sends the
+// cards to their owner alone (a count to everyone else). These tests pin
+// what a player would notice: nothing is drawn in the player rail, the tab
+// is yours alone and lists the whole sideboard, and nothing in it can move.
 
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 
@@ -42,7 +41,10 @@ function sideCard(id: string, name: string, extras: Partial<CardView> = {}): Car
 }
 
 // A card a live right opens, and one it does not.
-const WISH = sideCard("s1", "Burning Wish", { castable_here: true });
+const WISH = sideCard("s1", "Burning Wish", {
+  castable_here: true,
+  exile_play: { player: ME, cost_override: "{0}", cast_only: true } as CardView["exile_play"],
+});
 const BOLT = sideCard("s2", "Lightning Bolt");
 
 function seatOf(id: string, extras: Partial<PlayerView> = {}): PlayerView {
@@ -76,15 +78,10 @@ function gameWith(me: Partial<PlayerView>, them: Partial<PlayerView> = {}): Game
 describe("sideboard zone logic", () => {
   const view = gameWith({ sideboard: [WISH, BOLT], sideboard_count: 2 }, { sideboard_count: 3 });
 
-  it("lists the owner's cards a right opens, not the rest of the sideboard", () => {
-    expect(cardsForZone(view, "sideboard", ME).map((c) => c.instance_id)).toEqual(["s1"]);
+  it("reads the owner's whole sideboard, and nothing for a seat that sent none", () => {
+    expect(cardsForZone(view, "sideboard", ME).map((c) => c.instance_id)).toEqual(["s1", "s2"]);
     // Another seat carries only a count: there is nothing to show.
     expect(cardsForZone(view, "sideboard", THEM)).toEqual([]);
-  });
-
-  it("lists nothing while no right is live", () => {
-    const quiet = gameWith({ sideboard: [BOLT], sideboard_count: 1 });
-    expect(cardsForZone(quiet, "sideboard", ME)).toEqual([]);
   });
 
   it("is read only for everybody, its owner included", () => {
@@ -140,7 +137,7 @@ describe("the player rail", () => {
   });
 });
 
-describe("the zone browser", () => {
+describe("the zone browser's sideboard tab", () => {
   function mountModal(
     view: GameView,
     viewerID: string | null,
@@ -157,6 +154,7 @@ describe("the zone browser", () => {
         ownerSeat: { id: ownerID, name: ownerID === ME ? "Me" : "Them" },
         sendAction: (t: ActionType) => sent.push(t),
         onClose: () => {},
+        onCastCard: () => {},
       } as never,
     );
     return { c: r.container, sent };
@@ -165,23 +163,52 @@ describe("the zone browser", () => {
   const tabsOf = (c: HTMLElement) =>
     [...c.querySelectorAll<HTMLElement>('[role="tab"]')].map((t) => t.textContent?.trim());
 
-  it("lists the cards a right opens, says what they are, and moves nothing", () => {
+  it("lists the whole sideboard, says it is read only and what the zone is, and moves nothing", () => {
     const m = mountModal(gameWith({ sideboard: [WISH, BOLT], sideboard_count: 2 }), ME);
     const text = m.c.textContent ?? "";
+    expect(text).toContain("sideboard");
+    expect(text).toContain("(2)");
+    expect(text).toContain("read only");
     expect(text).toContain("outside the game");
-    expect(text).toContain("(1)");
-    expect(m.c.querySelectorAll(".cell").length).toBe(1);
-    expect(text).not.toContain("Lightning Bolt");
+    expect(text).toContain("Burning Wish");
+    expect(text).toContain("Lightning Bolt");
+    expect(m.c.querySelectorAll(".cell").length).toBe(2);
     // No move buttons: nothing in it can be moved.
     expect(m.c.querySelector("button.move, [data-move]")).toBeNull();
     expect(m.sent).toEqual([]);
   });
 
-  it("is no tab: it stands alone, and no other zone offers it", () => {
+  it("puts a cast button only on a card a live right opens", () => {
+    const m = mountModal(gameWith({ sideboard: [WISH, BOLT], sideboard_count: 2 }), ME);
+    const cells = [...m.c.querySelectorAll<HTMLElement>(".cell")];
+    const castBtn = (cell: HTMLElement) => cell.querySelector("button.act");
+    expect(castBtn(cells.find((c) => c.textContent?.includes("Burning Wish"))!)).not.toBeNull();
+    expect(castBtn(cells.find((c) => c.textContent?.includes("Lightning Bolt"))!)).toBeNull();
+  });
+
+  it("is a fourth tab on your own seat, and every zone offers it", () => {
     const view = gameWith({ sideboard: [WISH], sideboard_count: 1 });
-    expect(tabsOf(mountModal(view, ME).c)).toEqual([]);
+    expect(tabsOf(mountModal(view, ME).c)).toEqual(["graveyard", "exile", "command", "sideboard"]);
     cleanup();
-    expect(tabsOf(mountModal(view, ME, "graveyard").c)).toEqual(["graveyard", "exile", "command"]);
+    expect(tabsOf(mountModal(view, ME, "graveyard").c)).toEqual([
+      "graveyard",
+      "exile",
+      "command",
+      "sideboard",
+    ]);
+  });
+
+  it("is offered to a Wish that names any card, though the sideboard is empty", () => {
+    const view = gameWith({ outside_play: { source_name: "Wish", can_name: true } });
+    expect(tabsOf(mountModal(view, ME, "graveyard").c)).toContain("sideboard");
+  });
+
+  it("is no tab with an empty sideboard and no Wish", () => {
+    expect(tabsOf(mountModal(gameWith({}), ME, "graveyard").c)).toEqual([
+      "graveyard",
+      "exile",
+      "command",
+    ]);
   });
 
   it("carries no Name-a-card button: that is in the dock", () => {
@@ -192,8 +219,15 @@ describe("the zone browser", () => {
     expect(m.c.querySelector('[data-testid="name-outside-card"]')).toBeNull();
   });
 
-  it("shows an opponent nothing of a seat's sideboard", () => {
-    const m = mountModal(gameWith({ sideboard_count: 1 }), THEM, "sideboard", ME);
-    expect(m.c.querySelectorAll(".cell").length).toBe(0);
+  it("is never offered for another seat, and shows an opponent nothing of it", () => {
+    // The same seat seen by an opponent carries a count, no cards: no tab.
+    const view = gameWith({ sideboard_count: 1 });
+    expect(tabsOf(mountModal(view, THEM, "graveyard", ME).c)).toEqual([
+      "graveyard",
+      "exile",
+      "command",
+    ]);
+    cleanup();
+    expect(mountModal(view, THEM, "sideboard", ME).c.querySelectorAll(".cell").length).toBe(0);
   });
 });

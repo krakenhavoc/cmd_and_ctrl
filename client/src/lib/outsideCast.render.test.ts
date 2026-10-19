@@ -2,7 +2,7 @@
 //
 // outsideCast.render.test.ts — #3955. A card the viewer owns outside the
 // game that a permission lets them cast or play carries a button in the
-// outside-the-game view (#3833: no longer a sideboard tab), and clicking it hands the card to the Board's cast chain
+// sideboard tab, and clicking it hands the card to the Board's cast chain
 // with the `outside` source zone.
 
 import { describe, it, expect, afterEach } from "vitest";
@@ -73,7 +73,7 @@ function mount(sideboard: CardView[]) {
   return { c: r.container, cast };
 }
 
-describe("the outside-the-game view's cast button", () => {
+describe("the sideboard tab's cast button", () => {
   it("is on a granted card only, and casts it from outside the game", () => {
     const granted = sideCard("s1", "Ulamog's Crusher", {
       castable_here: true,
@@ -108,8 +108,6 @@ describe("the outside-the-game view's cast button", () => {
   it("offers nothing on a sideboard no permission opens", () => {
     const m = mount([sideCard("s1", "Ulamog's Crusher")]);
     expect(m.c.querySelectorAll(".actions.always button").length).toBe(0);
-    // #3833: nor does the view list it: the sideboard is not on the table.
-    expect(m.c.querySelectorAll(".cell").length).toBe(0);
     expect(m.cast).toEqual([]);
   });
 });

@@ -24,13 +24,10 @@ export function cardsForZone(view: GameView, zoneKind: BrowsableZone, ownerID: s
   if (zoneKind === "graveyard") return seat.graveyard.cards;
   if (zoneKind === "command") return seat.command.cards;
   // ADR 0191: only the owner's own view carries the cards; everyone
-  // else's seat has none, so a stale open browser shows nothing. The
-  // sideboard is not browsable on the table (amended 2026-10-19, #3833):
-  // in a game this view lists the cards a live right lets the owner cast
-  // or play, and nothing else.
-  if (zoneKind === "sideboard") {
-    return (seat.sideboard ?? []).filter((c) => castableFromZone(c, "sideboard"));
-  }
+  // else's seat has none, so a stale open browser shows nothing. The tab
+  // is read only (restored 2026-10-19, #3833): the whole sideboard, so a
+  // Wish's candidates can be checked.
+  if (zoneKind === "sideboard") return seat.sideboard ?? [];
   return [];
 }
 

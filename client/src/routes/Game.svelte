@@ -1267,8 +1267,9 @@
       : undefined,
   );
   // ADR 0191 (amended 2026-10-19, #3833, #4054): a live right over the cards
-  // you own outside the game puts its button in the dock. The sideboard is
-  // not a pile on the table; Wish's "name a card to play" lives here.
+  // you own outside the game puts a shortcut in the dock. The sideboard is
+  // no pile on the table (its tab is in the zone browser); Wish's "name a
+  // card to play" lives here.
   const outsideDockProps = $derived(
     outsideDock(view, viewerID, {
       name: () => sendAction("outside_play", undefined, viewerID ?? undefined),

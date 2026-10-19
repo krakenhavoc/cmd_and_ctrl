@@ -128,10 +128,11 @@
     // ADR 0193 §9 (CR 732.2): the loop control. Game.svelte builds it;
     // omitted, the dock has none.
     loop?: LoopDockProps;
-    // ADR 0191 (amended 2026-10-19, #3833, #4054): the buttons for a live
+    // ADR 0191 (amended 2026-10-19, #3833, #4054): the shortcuts for a live
     // right over the cards you own outside the game (Wish's "name a card
-    // to play", the cards a granted cast opens). The sideboard itself is
-    // not on the table. Game.svelte builds it; omitted or empty, none.
+    // to play", the cards a granted cast opens in the sideboard tab). The
+    // sideboard is no pile on the table. Game.svelte builds it; omitted or
+    // empty, none.
     outside?: OutsideDock;
   }
 
