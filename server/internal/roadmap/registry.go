@@ -2198,13 +2198,11 @@ var items = []Item{
 		Examples: []string{"Chef's Kiss", "Witch Hunt", "Scab-Clan Giant"},
 	},
 	{
-		Slug: "put-onto-the-stack-trigger", Name: "Triggers when a spell or ability is put onto the stack", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that trigger whenever any spell or ability is put onto the stack, such as Grip of Chaos.",
-		Missing:     "Nothing can trigger when a triggered ability is put onto the stack.",
-		Rules:       []string{"603.3", "115.9a"},
-		Issue:       4050,
-		Waiting:     []string{"Grip of Chaos"},
-		EngineNotes: "event: a spell (`EventCast`, `EventSpellCopied`) and an activated ability (`EventActivateAbility`) have watchable events, but a triggered ability going on the stack emits only `EventTrigger`, which the harvester refuses to watch so a trigger cannot re-enter the harvest. Grip of Chaos needs a watchable \"a triggered ability was put on the stack\" event from the drain that places it (CR 603.3), shaped so its own untargeted trigger and two Grips cannot loop. The reselection itself shipped with #1815 (`ReselectTargetsAtRandomForEffect` with no exclusion), and \"if it has a single target\" is CR 115.9a's count of instances, an intervening if (CR 603.4). Found landing #1815.",
+		Slug: "put-onto-the-stack-trigger", Name: "Triggers when a spell or ability is put onto the stack", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that trigger whenever any spell or ability is put onto the stack, such as Grip of Chaos reselecting a single target at random. A spell cast or copied, an ability activated or copied and a triggered ability put on the stack all count.",
+		Rules:    []string{"603.3", "115.9a", "707.10"},
+		Issue:    4050,
+		Examples: []string{"Grip of Chaos"},
 	},
 	{
 		Slug: "random-target-on-activation", Name: "An activated ability's target chosen at random", Kind: KindSeam, Status: StatusMissing,
