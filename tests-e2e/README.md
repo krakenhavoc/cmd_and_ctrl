@@ -42,6 +42,7 @@ tests-e2e/
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
     ├── smoke.spec.ts          # router + entry pages + healthz
+    ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold
     └── zone-browser.spec.ts   # graveyard / exile modal behind the pile chips
 ```

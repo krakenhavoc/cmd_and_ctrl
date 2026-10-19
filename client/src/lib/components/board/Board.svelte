@@ -2164,6 +2164,39 @@
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
   });
 
+  // #4043: a spell's own stack ability (Lightning Storm) is announced
+  // while the spell is on the stack (CR 113.6). If the spell resolves or
+  // is countered while the player is still choosing the land to discard,
+  // the engine would refuse the activation, so the picker closes with a
+  // short notice. The effect remembers that the prompt's source was seen
+  // on the stack, so a hand ability's picker is never touched.
+  let stackPromptSource: string | null = null;
+  let stackGoneTimer: ReturnType<typeof setTimeout> | null = null;
+  let stackGoneNotice = $state<string | null>(null);
+  $effect(() => {
+    const p = abilityDiscardPrompt;
+    const onStack = new Set((view.stack.cards ?? []).map((c) => c.instance_id));
+    if (!p) {
+      stackPromptSource = null;
+      return;
+    }
+    const id = p.card.instance_id;
+    if (onStack.has(id)) {
+      stackPromptSource = id;
+      return;
+    }
+    if (stackPromptSource !== id) return;
+    stackPromptSource = null;
+    abilityDiscardPrompt = null;
+    abilityDiscardIDs = [];
+    stackGoneNotice = L.stackAbilityGone(p.card.name);
+    if (stackGoneTimer) clearTimeout(stackGoneTimer);
+    stackGoneTimer = setTimeout(() => (stackGoneNotice = null), 5000);
+  });
+  onDestroy(() => {
+    if (stackGoneTimer) clearTimeout(stackGoneTimer);
+  });
+
   // The cards the clause admits, resolved out of the seat's hand. The
   // server already filtered them — a cost does not target, so nothing
   // narrows them further here.
@@ -4227,6 +4260,9 @@
       abilityRevealX = undefined;
     }}
   />
+  {#if stackGoneNotice}
+    <p class="stack-gone" role="status">{stackGoneNotice}</p>
+  {/if}
   <!-- #660: the same picker, one cost site over — an activated
        ability's "Discard a creature card" (CR 602.2b). -->
   <DiscardCostModal
@@ -5022,5 +5058,23 @@
   .board.spectator[data-seat-count="4"] {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
+  }
+  /* #4043: the short notice after the discard picker closes because its
+     spell left the stack. */
+  .stack-gone {
+    position: fixed;
+    left: 50%;
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem);
+    transform: translateX(-50%);
+    z-index: 900;
+    margin: 0;
+    max-width: min(28rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--fg);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
   }
 </style>

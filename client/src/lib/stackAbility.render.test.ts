@@ -214,4 +214,68 @@ describe("a spell's ability on the stack (#1865)", () => {
     click(btn!);
     expect(calls).toEqual([["storm", 0]]);
   });
+
+  // #4043: the storm is not on top; a response sits above it.
+  function underResponse(): GameView {
+    const v = view(storm(true));
+    const resp = {
+      instance_id: "resp",
+      name: "Shock",
+      owner: ME,
+      controller: ME,
+      known_by_you: true,
+      type_line: "Instant",
+    } as unknown as CardView;
+    v.stack = zone("stack", undefined, [storm(true), resp]);
+    v.stack_items = [
+      stormItem,
+      {
+        id: "resp",
+        kind: "spell",
+        controller: ME,
+        owner: ME,
+        source_card_id: "resp",
+        targets: [],
+      } as StackItemView,
+    ];
+    return v;
+  }
+
+  it("offers the ability on a card under a response, on its strip", () => {
+    const { c, activated } = controls();
+    const r = render(
+      StackLanePile as never,
+      {
+        model: model(underResponse()),
+        controls: c,
+        styleName: "pile",
+        pile: { cardWidth: 270, shrunk: false },
+      } as never,
+    );
+    const btn = r.container.querySelector<HTMLButtonElement>(`.peek button[aria-label="${NAME}"]`);
+    expect(btn).not.toBeNull();
+    expect(btn!.disabled).toBe(false);
+    // The strip is slim: the button is an icon, the name and tooltip carry the cost.
+    expect(btn!.textContent?.trim()).toBe("");
+    expect(btn!.title).toContain("Discard a land card");
+    click(btn!);
+    expect(activated).toEqual([["storm", 0]]);
+    // The top card (the response) has none.
+    expect(r.container.querySelectorAll(`button[aria-label="${NAME}"]`).length).toBe(1);
+  });
+
+  it("keeps the caster's name on a row of its own, above the top card's ability", () => {
+    const r = render(
+      StackLanePile as never,
+      {
+        model: model(view(storm(true))),
+        controls: controls().c,
+        styleName: "pile",
+        pile: { cardWidth: 270, shrunk: false },
+      } as never,
+    );
+    const btn = r.container.querySelector(`button[aria-label="${NAME}"]`)!;
+    expect(btn.closest(".who-row")).toBeNull();
+    expect(btn.closest(".ability-row")).not.toBeNull();
+  });
 });

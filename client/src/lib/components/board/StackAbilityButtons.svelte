@@ -19,6 +19,7 @@
   // ban) stays greyed with its reason.
   import type { StackLaneItem } from "../../stackLane";
   import { L } from "../../labels";
+  import Icon from "../Icon.svelte";
 
   interface Props {
     item: StackLaneItem;
@@ -27,9 +28,13 @@
     /** Undefined: nothing can announce here (a spectator), so no buttons. */
     onActivate?: (item: StackLaneItem, abilityIndex: number) => void;
     small?: boolean;
+    /** #4043: a bolt icon in place of the cost's name, for a slim row or
+     *  strip (the lower cards of the pile). The accessible name and the
+     *  tooltip stay the full ability, so nothing is lost but width. */
+    compact?: boolean;
   }
 
-  const { item, enabled, onActivate, small = false }: Props = $props();
+  const { item, enabled, onActivate, small = false, compact = false }: Props = $props();
 
   // The cost half of a "cost: effect" row, for the button's name.
   function costOf(label: string | undefined): string {
@@ -52,7 +57,8 @@
     <button
       type="button"
       class="act ability-btn"
-      class:small
+      class:small={small || compact}
+      class:compact
       disabled={why !== ""}
       aria-label={L.stackAbility(item.name, costOf(row.label))}
       title={why === "" ? (row.label ?? "") : `${row.label ?? ""} (${why})`}
@@ -61,7 +67,11 @@
         onActivate(item, row.index);
       }}
     >
-      {costOf(row.label)}
+      {#if compact}
+        <Icon name="bolt" size={12} />
+      {:else}
+        {costOf(row.label)}
+      {/if}
     </button>
   {/each}
 {/if}
@@ -87,6 +97,13 @@
     height: 22px;
     padding: 0 7px;
     font-size: 10.5px;
+  }
+  .ability-btn.compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    padding: 0 6px;
   }
   .ability-btn:hover:not(:disabled) {
     border-color: var(--accent);
