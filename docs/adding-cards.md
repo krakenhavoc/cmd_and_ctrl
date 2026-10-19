@@ -4002,6 +4002,19 @@ it. Read what the earlier piece did from the game instead. A `Do` wrapped
 by `InterveningIf` keeps its steps visible to the walk (Imoen, Mystic
 Trickster).
 
+Which bodies still run whole is a scan, not a guess (#4155):
+`TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written
+body where an earlier statement can open a prompt (a scry, a search, a
+choose, a CR 616 order on damage, counters, tokens, life, a draw or a mill)
+and a later statement has an effect, ranked by EDHREC. Run it from `server/`
+with `CMDCTRL_SCRYFALL_DUMP=… go test ./internal/cards/effects/ -run
+TestScanStepsBodies -scan-steps=<file>`. When you convert a card, add its
+name to `stepsConverted` in the same file: `TestConvertedBodiesStayConverted`
+then fails if a later edit makes the body one flat function again. Test the
+card with the prompt open: a dredge offer (Stinkweed Imp in the graveyard) or
+Khârn the Betrayer's question, and a restore when the prompt is data
+(`resolution_order_batch1_test.go`).
+
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
 exclude an actual shared exit (#3417, ADR 0018 amendment). `Event.Batch`

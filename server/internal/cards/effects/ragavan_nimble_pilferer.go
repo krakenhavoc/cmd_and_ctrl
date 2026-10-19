@@ -43,23 +43,18 @@ func init() {
 				item.Params.Player = ev.Target
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				victim := item.Params.Player
-				ctx := NewContext(g, item)
-				if err := (CreateToken{
-					Controller: item.Controller,
-					Template:   TreasureToken(),
-					N:          1,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				return ExileTopWithPermission{
-					From:     victim,
-					GrantTo:  item.Controller,
-					N:        1,
-					CastOnly: true,
-				}.Apply(ctx)
-			},
+			Effect: Do(
+				// The exile waits for a prompt the Treasure's creation asks (CR 608.2c, #4155).
+				CreateToken{Template: TreasureToken(), N: 1},
+				Instruction(func(ctx *Context) error {
+					return ExileTopWithPermission{
+						From:     ctx.Item.Params.Player,
+						GrantTo:  ctx.Controller(),
+						N:        1,
+						CastOnly: true,
+					}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

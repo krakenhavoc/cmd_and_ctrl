@@ -66,16 +66,17 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: nontokenCreatureEnteredUnderYourControl,
 			Key:       "The Great Henge — put a +1/+1 counter on it and draw a card",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				entered := item.Trigger.Event.CardID
-				if onBattlefield(g, entered) {
-					if err := (AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)); err != nil {
-						return err
+			Effect: Do(
+				// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					entered := ctx.Item.Trigger.Event.CardID
+					if !onBattlefield(ctx.Game, entered) {
+						return nil
 					}
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
+					return AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)
+				}),
+				DrawCards{N: 1},
+			),
 		}},
 	})
 }

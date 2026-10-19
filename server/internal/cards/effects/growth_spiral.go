@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Growth Spiral — Instant {G}{U}:
 //
 //	"Draw a card. You may put a land card from your hand onto the
@@ -33,11 +31,10 @@ func init() {
 		OracleID:     "34bcc217-dd91-45a0-90d7-a94d02f1f317",
 		Name:         "Growth Spiral",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 1}.Apply(ctx)); err != nil {
-				return err
-			}
-			return MayPutALandFromHand("Growth Spiral").Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The land offer waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 1},
+			MayPutALandFromHand("Growth Spiral"),
+		),
 	})
 }

@@ -33,12 +33,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Dreadhorde Invasion — lose 1 life, amass Zombies 1",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-						return err
-					}
-					return Amass{Subtype: "Zombie", N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(
+					// The amass waits for a prompt the life loss asks (CR 608.2c, #4155).
+					GainLife{Amount: -1},
+					Amass{Subtype: "Zombie", N: 1},
+				)),
 			On(game.EventAttack, dreadhordeBigZombieTokenAttacked,
 				"Dreadhorde Invasion — lifelink until end of turn",
 				dreadhordeGrantLifelink),

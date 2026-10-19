@@ -47,15 +47,20 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Key: "Sword of Feast and Famine — discard, untap your lands",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player: item.Trigger.Event.Target,
-					Source: item.SourceCardID,
-					N:      1,
-				})
-				return untapAllLandsControlledBy(g, item.Controller, ctx)
-			},
+			Effect: Do(
+				// The untap waits for the discard (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+						Player: ctx.Item.Trigger.Event.Target,
+						Source: ctx.Source(),
+						N:      1,
+					})
+					return nil
+				}),
+				Instruction(func(ctx *Context) error {
+					return untapAllLandsControlledBy(ctx.Game, ctx.Controller(), ctx)
+				}),
+			),
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

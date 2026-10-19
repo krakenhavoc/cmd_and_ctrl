@@ -29,21 +29,22 @@ func init() {
 		Name:           "Eldritch Evolution",
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := 2 + sacrificedManaValue(ctx)
-			if err := (SearchLibrary{
-				Player: item.Controller,
-				Predicate: func(c game.Card) bool {
-					return c.IsCreature() && c.ManaValue() <= x
-				},
-				Dest:    game.ZoneBattlefield,
-				Limit:   1,
-				Shuffle: true,
-				Reason:  "Eldritch Evolution — a creature card with mana value " + strconv.Itoa(x) + " or less",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ExileTarget{Target: ctx.Source()}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The exile of this spell waits for the search (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				x := 2 + sacrificedManaValue(ctx)
+				return SearchLibrary{
+					Player: ctx.Controller(),
+					Predicate: func(c game.Card) bool {
+						return c.IsCreature() && c.ManaValue() <= x
+					},
+					Dest:    game.ZoneBattlefield,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Eldritch Evolution — a creature card with mana value " + strconv.Itoa(x) + " or less",
+				}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error { return ExileTarget{Target: ctx.Source()}.Apply(ctx) }),
+		),
 	})
 }

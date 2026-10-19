@@ -35,26 +35,28 @@ func init() {
 			Label:   "Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.",
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:    SacrificeACreature(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				fed, ok := b17PermanentSacrificedToPay(g, item)
-				if !ok {
-					return nil
-				}
-				power := departedCreaturePower(g, fed)
-				ctx := NewContext(g, item)
-				if power > 0 {
-					if err := (DrawCards{Player: item.Controller, N: power}).Apply(ctx); err != nil {
-						return err
+			Effect: Do(
+				// The discard waits for a prompt the draw asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					fed, ok := b17PermanentSacrificedToPay(ctx.Game, ctx.Item)
+					if !ok {
+						return nil
 					}
-				}
-				g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-					Player:   item.Controller,
-					Source:   item.SourceCardID,
-					N:        3,
-					Question: "Greater Good — discard three cards",
-				})
-				return nil
-			},
+					return DrawCards{N: departedCreaturePower(ctx.Game, fed)}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					if _, ok := b17PermanentSacrificedToPay(ctx.Game, ctx.Item); !ok {
+						return nil
+					}
+					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+						Player:   ctx.Controller(),
+						Source:   ctx.Source(),
+						N:        3,
+						Question: "Greater Good — discard three cards",
+					})
+					return nil
+				}),
+			),
 		}},
 	})
 }

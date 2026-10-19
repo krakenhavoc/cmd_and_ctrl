@@ -53,31 +53,17 @@ func blackMarketConnectionsTrigger() game.TriggeredAbility {
 	t := AtYourPrecombatMain("Black Market Connections — choose one or more",
 		func(_ *game.Game, _ *game.StackItem) error { return nil })
 	t.Modes = ChooseOneOrMore(
-		ModeDoing("Sell Contraband — Create a Treasure token. You lose 1 life.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := (CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)); err != nil {
-					return err
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -1)
-			}),
-		ModeDoing("Buy Information — Draw a card. You lose 2 life.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := (DrawCards{Player: item.Controller, N: 1}.Apply(ctx)); err != nil {
-					return err
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -2)
-			}),
-		ModeDoing("Hire a Mercenary — Create a 3/2 colorless Shapeshifter creature token with changeling. You lose 3 life.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := (CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("3/2 colorless Shapeshifter with changeling"),
-					N:          1,
-				}.Apply(ctx)); err != nil {
-					return err
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -3)
-			}),
+		// Each bullet is two instructions, so the life loss waits for a
+		// prompt the first one asks (CR 608.2c, #4155).
+		ModeSteps("Sell Contraband — Create a Treasure token. You lose 1 life.", nil,
+			CreateToken{Template: TreasureToken(), N: 1},
+			GainLife{Amount: -1}),
+		ModeSteps("Buy Information — Draw a card. You lose 2 life.", nil,
+			DrawCards{N: 1},
+			GainLife{Amount: -2}),
+		ModeSteps("Hire a Mercenary — Create a 3/2 colorless Shapeshifter creature token with changeling. You lose 3 life.", nil,
+			CreateToken{Template: TokenCard("3/2 colorless Shapeshifter with changeling"), N: 1},
+			GainLife{Amount: -3}),
 	)
 	return t
 }

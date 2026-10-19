@@ -33,19 +33,25 @@ func init() {
 			},
 			Text: "When this creature dies, return it to the battlefield tapped under its owner's control.",
 		}},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			target, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2); err != nil {
-				return err
-			}
-			return GrantAbilitiesFor{
-				Target: target,
-				Keys:   []string{malakirRebirthReturn},
-				Label:  "Malakir Rebirth — until end of turn, it returns when it dies",
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The grant waits for a prompt the life loss asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if _, ok := b16FirstLegalTargetCard(ctx); !ok {
+					return nil
+				}
+				return GainLife{Amount: -2}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				target, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return GrantAbilitiesFor{
+					Target: target,
+					Keys:   []string{malakirRebirthReturn},
+					Label:  "Malakir Rebirth — until end of turn, it returns when it dies",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

@@ -39,8 +39,12 @@ func init() {
 			Mode("Draw cards equal to the greatest power among non-Human creatures you control."),
 			Mode("Non-Human creatures you control get +3/+3 until end of turn."),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
+		OnResolve: ResolveSteps(
+			// The second bullet waits for a prompt the first one's draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) {
+					return nil
+				}
 				best := 0
 				reader := ctx.textReader()
 				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
@@ -51,20 +55,20 @@ func init() {
 						best = p
 					}
 				}
-				if err := (DrawCards{Player: ctx.Controller(), N: best}).Apply(ctx); err != nil {
-					return err
+				return DrawCards{Player: ctx.Controller(), N: best}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
 				}
-			}
-			if ctx.HasMode(1) {
 				return BoostUntilEOT{
 					Match:     nonHumanCreatureYouControl,
 					Power:     3,
 					Toughness: 3,
 					Label:     "Return of the Wildspeaker — non-Human creatures you control get +3/+3",
 				}.Apply(ctx)
-			}
-			return nil
-		},
+			}),
+		),
 	})
 }
 

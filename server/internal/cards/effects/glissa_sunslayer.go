@@ -59,13 +59,13 @@ func b64GlissaTrigger() game.TriggeredAbility {
 	t := WheneverThisDealsCombatDamageToAPlayer("Glissa Sunslayer — choose one",
 		func(g *game.Game, item *game.StackItem) error { return nil })
 	t.Modes = ChooseOne(
-		ModeDoing("You draw a card and lose 1 life.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return ctx.Game.PayLifeForEffect(item.SourceCardID, item.Controller, 1)
-			}),
+		// Two instructions, so the life payment waits for a prompt the
+		// draw asks (CR 608.2c, #4155).
+		ModeSteps("You draw a card and lose 1 life.", nil,
+			DrawCards{N: 1},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), 1)
+			})),
 		ModeDoing("Destroy target enchantment.",
 			TargetPermanent("target enchantment", Enchantment()),
 			DestroyTheModesTarget),

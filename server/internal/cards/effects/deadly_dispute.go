@@ -22,15 +22,10 @@ func init() {
 		Purpose:        game.Purpose{Draws: 2, Tokens: 1},
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact or creature", Or(Artifact(), Creature())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return CreateToken{
-				Controller: ctx.Controller(),
-				Template:   TreasureToken(),
-				N:          1,
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The Treasure waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			CreateToken{Template: TreasureToken(), N: 1},
+		),
 	})
 }

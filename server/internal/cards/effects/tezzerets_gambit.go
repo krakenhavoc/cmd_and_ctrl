@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Tezzeret's Gambit — Sorcery {3}{U/P} (EDHREC top 1,000, #3654):
 //
 //	"({U/P} can be paid with either {U} or 2 life.)
@@ -17,11 +15,10 @@ func init() {
 		OracleID:     "b33d2b77-f068-4fdc-a1a8-0353a35e3973",
 		Name:         "Tezzeret's Gambit",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return Proliferate{}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The proliferate waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			Proliferate{},
+		),
 	})
 }

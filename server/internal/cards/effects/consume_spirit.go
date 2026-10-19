@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Consume Spirit — Sorcery {X}{1}{B}:
 //
 //	"Spend only black mana on X.
@@ -21,14 +19,19 @@ func init() {
 		Completeness: CompletenessFull,
 		SpendOnly:    SpellSpendOnlyOnX("B"),
 		Targets:      TargetAny(),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if t, ok := firstLegalTarget(ctx); ok {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: ctx.X()}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The life gain waits for a prompt the damage asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				t, ok := firstLegalTarget(ctx)
+				if !ok {
+					return nil
 				}
-			}
+				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: ctx.X()}.Apply(ctx)
+			}),
 			// "and you gain X life" is not conditional on the target.
-			return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)
-		},
+			Instruction(func(ctx *Context) error {
+				return GainLife{Player: ctx.Controller(), Amount: ctx.X()}.Apply(ctx)
+			}),
+		),
 	})
 }

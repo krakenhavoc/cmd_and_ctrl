@@ -23,28 +23,26 @@ func init() {
 		OracleID:     "9b9a10ff-5a5d-4df8-88aa-18d84ff9117c",
 		Name:         "Inspiring Call",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			g := ctx.Game
-			n := 0
-			for _, c := range g.BattlefieldCardsForEffect() {
-				if inspiringCallHasCounteredCreature(g, item.Controller, c) {
-					n++
+		OnResolve: ResolveSteps(
+			// The grant waits for a prompt the draw asks (CR 608.2c, #4155). Neither
+			// step hands the count to the other: the grant counts again, and a draw
+			// changes no creature's counters.
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Controller(), N: inspiringCallCount(ctx)}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if inspiringCallCount(ctx) == 0 {
+					return nil
 				}
-			}
-			if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-				return err
-			}
-			if n == 0 {
-				return nil
-			}
-			return GrantKeywordUntilEOT{
-				Match: func(g *game.Game, _ uuid.UUID, c game.Card) bool {
-					return inspiringCallHasCounteredCreature(g, item.Controller, c)
-				},
-				Keywords: []string{"indestructible"},
-				Label:    "Inspiring Call — indestructible until end of turn",
-			}.Apply(ctx)
-		},
+				return GrantKeywordUntilEOT{
+					Match: func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+						return inspiringCallHasCounteredCreature(g, ctx.Controller(), c)
+					},
+					Keywords: []string{"indestructible"},
+					Label:    "Inspiring Call — indestructible until end of turn",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }
 
@@ -52,4 +50,17 @@ func init() {
 // +1/+1 counter on it".
 func inspiringCallHasCounteredCreature(_ *game.Game, controller uuid.UUID, c game.Card) bool {
 	return c.Controller == controller && c.IsCreature() && c.Counters[game.CounterPlusOne] > 0
+}
+
+// inspiringCallCount is how many creatures the draw counts: those with a
+// +1/+1 counter on them under your control. Both of the spell's steps read
+// it from the game, since a piece cannot hand it to the next (#4155).
+func inspiringCallCount(ctx *Context) int {
+	n := 0
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if inspiringCallHasCounteredCreature(ctx.Game, ctx.Controller(), c) {
+			n++
+		}
+	}
+	return n
 }

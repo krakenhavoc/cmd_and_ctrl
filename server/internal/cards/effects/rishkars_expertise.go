@@ -2,8 +2,6 @@ package effects
 
 import (
 	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Rishkar's Expertise — Sorcery {4}{G}{G} (EDHREC rank 243):
@@ -28,14 +26,13 @@ func init() {
 		OracleID:     "97407cd0-2bd2-4074-94d3-4ec3d243fa78",
 		Name:         "Rishkar's Expertise",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			g := ctx.Game
-			n := b42GreatestPowerControlledBy(g, item.Controller)
-			if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-				return err
-			}
-			return rishkarsExpertiseOfferFreeCast(ctx, item.Controller)
-		},
+		OnResolve: ResolveSteps(
+			// The free cast waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Controller(), N: b42GreatestPowerControlledBy(ctx.Game, ctx.Controller())}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error { return rishkarsExpertiseOfferFreeCast(ctx, ctx.Controller()) }),
+		),
 	})
 }
 

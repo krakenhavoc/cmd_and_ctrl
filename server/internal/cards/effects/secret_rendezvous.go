@@ -20,14 +20,15 @@ func init() {
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		// You draw three, and so does the opponent you aim it at.
 		Purpose: game.Purpose{Draws: 3, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 3})},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			return DrawCards{Player: item.Targets[0].ID, N: 3}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The target's draw waits for a prompt the caster's draw asks (CR 608.2c, #4155).
+			DrawCards{N: 3},
+			Instruction(func(ctx *Context) error {
+				if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return DrawCards{Player: ctx.Item.Targets[0].ID, N: 3}.Apply(ctx)
+			}),
+		),
 	})
 }

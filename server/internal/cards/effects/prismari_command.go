@@ -37,24 +37,30 @@ func init() {
 				TargetAny(),
 				DealFixedDamageToModesTarget(2)),
 				ForTargets(DamageToTarget(0, 2))),
-			ModeWithPurpose(ModeDoing("Target player draws two cards, then discards two cards.",
+			// Two instructions, so the discard waits for a prompt the draw
+			// asks (CR 608.2c, #4155).
+			ModeWithPurpose(ModeSteps("Target player draws two cards, then discards two cards.",
 				TargetPlayer("target player"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
-					if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
-						return err
+					return DrawCards{Player: t.ID, N: 2}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetPlayer {
+						return nil
 					}
 					ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 						Player:   t.ID,
-						Source:   item.SourceCardID,
+						Source:   ctx.Source(),
 						N:        2,
 						Question: "Prismari Command — discard two cards",
 					})
 					return nil
-				}),
+				})),
 				ForTargets(game.TargetPurpose{Slot: 0, Draws: 2, Discards: 2})),
 			ModeWithPurpose(ModeDoing("Target player creates a Treasure token.",
 				TargetPlayer("target player"),

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Slip Out the Back — Instant {U}:
 //
 //	"Put a +1/+1 counter on target creature. It phases out. (Treat it
@@ -25,15 +23,22 @@ func init() {
 		Name:         "Slip Out the Back",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			targets := legalTargetCards(item, ctx.Game)
-			if len(targets) == 0 {
-				return nil
-			}
-			if err := (AddCounter{Target: targets[0], Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return PhaseOut{Targets: targets}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The phasing waits for a prompt the counter asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				targets := legalTargetCards(ctx.Item, ctx.Game)
+				if len(targets) == 0 {
+					return nil
+				}
+				return AddCounter{Target: targets[0], Kind: "+1/+1", N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				targets := legalTargetCards(ctx.Item, ctx.Game)
+				if len(targets) == 0 {
+					return nil
+				}
+				return PhaseOut{Targets: targets}.Apply(ctx)
+			}),
+		),
 	})
 }

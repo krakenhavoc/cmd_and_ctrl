@@ -42,13 +42,13 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Key: "Buster Sword — draw a card, then you may cast a spell from your hand for free",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return busterSwordOfferFreeCast(ctx, item.Controller, thatDamage(item))
-			},
+			Effect: Do(
+				// The free cast waits for a prompt the draw asks (CR 608.2c, #4155).
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					return busterSwordOfferFreeCast(ctx, ctx.Controller(), thatDamage(ctx.Item))
+				}),
+			),
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

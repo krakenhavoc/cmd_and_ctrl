@@ -26,13 +26,11 @@ func init() {
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSearchLibrary, AnOpponentSearchesTheirOwnLibrary,
-				"Archivist of Oghma — gain 1 life and draw", func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				}),
+				"Archivist of Oghma — gain 1 life and draw", Do(
+					// The draw waits for a prompt the life gain asks (CR 608.2c, #4155).
+					GainLife{Amount: 1},
+					DrawCards{N: 1},
+				)),
 		},
 	})
 }

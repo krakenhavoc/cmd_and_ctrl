@@ -73,17 +73,24 @@ func init() {
 					item.Params.Player = victim
 					return item
 				},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					victim := item.Params.Player
-					p := g.PlayerByIDForEffect(victim)
-					if p == nil || p.Eliminated {
-						return nil
-					}
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -2); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-				},
+				Effect: Do(
+					// The life gain waits for a prompt the loss asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						victim := ctx.Item.Params.Player
+						p := ctx.Game.PlayerByIDForEffect(victim)
+						if p == nil || p.Eliminated {
+							return nil
+						}
+						return GainLife{Player: victim, Amount: -2}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						p := ctx.Game.PlayerByIDForEffect(ctx.Item.Params.Player)
+						if p == nil || p.Eliminated {
+							return nil
+						}
+						return GainLife{Amount: 2}.Apply(ctx)
+					}),
+				),
 			},
 		},
 	})
