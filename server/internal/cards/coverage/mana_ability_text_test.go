@@ -18,13 +18,6 @@ import (
 // checked against the catalog, card by card. A row that stops applying
 // fails TestManaAbilityTextAgreesWithTheCatalog until it is deleted.
 var knownManaAbilityDisagreements = map[string]string{
-	// The catalog is wrong: these move a card to or from a library, so
-	// CR 605.1a makes each an ordinary activated ability (#3971).
-	"Millikin":             "mill cost; not a mana ability by CR 605.1a (#3971)",
-	"Manakin and Millikin": "mill cost; not a mana ability by CR 605.1a (#3971)",
-	"Deranged Assistant":   "mill cost; not a mana ability by CR 605.1a (#3971)",
-	"Charmed Pendant":      "mill cost; not a mana ability by CR 605.1a (#3971)",
-	"Chromatic Sphere":     "draws a card; not a mana ability by CR 605.1a (#3971)",
 	// The classifier is right, the fixture can't show it: Dryad Arbor's
 	// {T}: Add {G} is its Forest type's (CR 305.6), read off the type
 	// line, which the fixture does not carry, and its reminder text is

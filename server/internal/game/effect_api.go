@@ -1671,7 +1671,7 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellLocked(stackID, nil)
+		return g.counterSpellByEffectLocked(stackID, nil, TuckOptions{}, nil)
 	case StackItemActivated, StackItemTriggered:
 		// #2014: "Spells and abilities can't be countered" (Spider-Punk).
 		// The ability stays a legal target, as a covered spell does.
@@ -1712,7 +1712,7 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellLocked(stackID, &dst)
+		return g.counterSpellByEffectLocked(stackID, &dst, TuckOptions{}, nil)
 	case StackItemActivated, StackItemTriggered:
 		if g.abilityCantBeCounteredLocked(item) {
 			slog.Info("counter had no effect: ability can't be countered",
@@ -1771,7 +1771,7 @@ func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOpti
 		}
 		return tell(g, false)
 	}
-	return g.exitSpellFromStackAtLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, ZoneGraveyard, true, at,
+	return g.counterSpellByEffectLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, at,
 		func(g *Game) error {
 			return tell(g, g.landedInZoneLocked(stackID, ZoneLibrary, uuid.Nil))
 		})
@@ -1928,12 +1928,30 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 //
 // Caller must hold g.mu.
 func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) error {
+	r, err := g.spellExitRouteLocked(spellID, dst, fallback, countered, at, then)
+	if err != nil {
+		return err
+	}
+	_, err = g.routeCardToZoneLocked(r)
+	return err
+}
+
+// spellExitRouteLocked is exitSpellFromStackAtLocked's first half: the
+// route that takes a spell off the stack, destination resolved and
+// every stack-exit override (flashback's CR 702.34a exile, #3863's
+// graveyard-to-exile) applied, but nothing moved. The counter verbs
+// build it, open the CR 614 window on the counter itself
+// (counter_spell.go, #4056) and only then route it, so a replacement of
+// the counter sees the move the counter would have made.
+//
+// Caller must hold g.mu.
+func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) (zoneRoute, error) {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
-		return ErrCardNotOnStack
+		return zoneRoute{}, ErrCardNotOnStack
 	}
 	if g.Stack == nil || !g.Stack.Contains(spellID) {
-		return ErrCardNotOnStack
+		return zoneRoute{}, ErrCardNotOnStack
 	}
 	// Resolve the destination. nil → the fallback at the spell's
 	// owner (a countered spell's graveyard, a returned spell's hand),
@@ -1944,10 +1962,10 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 	destKind, destOwner := fallback, item.Owner
 	if dst != nil {
 		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
-			return ErrInvalidStackDestination
+			return zoneRoute{}, ErrInvalidStackDestination
 		}
 		if g.zoneFromRefLocked(*dst) == nil {
-			return ErrZoneNotFound
+			return zoneRoute{}, ErrZoneNotFound
 		}
 		destKind, destOwner = dst.Kind, dst.Owner
 	}
@@ -1982,8 +2000,7 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 	if destKind == ZoneLibrary {
 		r.ToBottom, r.Depth = at.ToBottom, at.Depth
 	}
-	_, err := g.routeCardToZoneLocked(r)
-	return err
+	return r, nil
 }
 
 // counterAbilityLocked is the lock-free body of CounterAbility, and
