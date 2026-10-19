@@ -1937,6 +1937,18 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // #4134: this is a "you may search", and "Don't search" is a legal answer
+  // right now: {choice_id, apply: false}. It is not "Find nothing": a search
+  // that finds nothing still happens (the library is shuffled and the table
+  // is told), a declined one never does. Absent for a mandatory search, and
+  // while an Opposition Agent's controller is answering (whether to search
+  // was the searcher's to decide before the control began).
+  search_optional?: boolean;
+  // #4134: an optional search opened under a live Opposition Agent, before
+  // the searcher has said whether they search. `options` is withheld; the
+  // answers are {apply: true} (begin the search, then the Agent's controller
+  // picks) and {apply: false} (don't search).
+  search_undecided?: boolean;
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.

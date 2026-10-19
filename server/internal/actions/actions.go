@@ -2392,6 +2392,17 @@ func dispatch(g *game.Game, a Action) error {
 					return g.ResolvePayUnlessWithLife(choiceID, a.Player, *p.OptionalApply, tapIDs, p.PhyrexianLife)
 				}
 				return g.ResolvePayUnlessWithTaps(choiceID, a.Player, *p.OptionalApply, tapIDs)
+			case game.PendingChoiceSearchLibrary:
+				// #4134, CR 701.19: "you may search" — apply:false is
+				// "I don't search" (no look, no shuffle, no search
+				// event), which is not the empty card list: that is a
+				// search that finds nothing. apply:true begins a search
+				// that was waiting on the question (an Opposition
+				// Agent is about to control it).
+				if *p.OptionalApply {
+					return g.BeginSearchLibrary(choiceID, a.Player)
+				}
+				return g.DeclineSearchLibrary(choiceID, a.Player)
 			case game.PendingChoiceMayCast:
 				// S28 cascade: "you may cast it without paying its
 				// mana cost" — apply means "I'll take it", and the

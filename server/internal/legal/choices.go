@@ -719,10 +719,40 @@ func (e *enumerator) choiceMoves() bool {
 			// resolver enforces. The floor is read from the engine,
 			// not re-derived here.
 			floor := g.SearchFloorLocked(c)
+			// #4134: a "you may search" is asked before it looks, with a
+			// way out that is not "fail to find": not searching at all,
+			// which skips the shuffle and the search event. The engine
+			// decides whether it is on the table: only while the prompt
+			// is undecided (once the searcher has looked there is no way
+			// back). It is the AlwaysLegal answer when offered.
+			declineOK := g.SearchDeclineLegalLocked(c)
+			addDecline := func() {
+				if declineOK {
+					no := false
+					p := base()
+					p.Apply = &no
+					e.addAlwaysLegalChoice(c, reason+": don't search", p)
+				}
+			}
+			if c.SearchIsUndecided() {
+				// The searcher has not said yes yet: no card can be
+				// taken until they do (an Opposition Agent's control
+				// begins then).
+				yes := true
+				p := base()
+				p.Apply = &yes
+				e.addChoice(c, reason+": search", p)
+				addDecline()
+				break
+			}
 			if floor == 0 {
 				p := base()
 				p.CardIDs = []string{}
-				e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+				if declineOK {
+					e.addChoice(c, reason+": fail to find", p)
+				} else {
+					e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+				}
 			}
 			// Every offered pick is run past the engine's own
 			// acceptance check first. A search may carry a Validate
@@ -751,6 +781,7 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				e.addChoice(c, label, p)
 			}
+			addDecline()
 
 		case game.PendingChoiceOutsideCollection:
 			// ADR 0198: "a card you own from outside the game", chosen

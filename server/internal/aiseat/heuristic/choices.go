@@ -292,6 +292,17 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return v, "sacrifice the least"
 
 	case choiceSearchLibrary:
+		// #4134: the two answers that are not a pick, on the question an
+		// optional search asks before it looks. "Don't search" skips the
+		// shuffle, which a bot has no use for, so it scores below "find
+		// nothing" (zero) and below any take; "search" beats it, and the
+		// take follows on the prompt that then reveals the list.
+		if cp.Apply != nil {
+			if *cp.Apply {
+				return searchTakeBonus, "search: begin the search"
+			}
+			return -searchTakeBonus, "search: decline (nothing to gain by skipping)"
+		}
 		var v float64
 		for _, id := range cp.CardIDs {
 			v += st.searchValue(p.cfg, lookup(id))

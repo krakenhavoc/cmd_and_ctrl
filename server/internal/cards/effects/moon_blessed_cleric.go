@@ -16,13 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed "you MAY" in the data. "Divine Intervention" is an ability
 // word, so it rides only on the stack label.
 //
-// One engine-wide convention applies, the same one Path to Exile,
-// Assassin's Trophy and Solemn Simulacrum live under: a declined
-// "may search" is answered as a search that finds nothing, and that
-// still shuffles, where a table that declined outright would not. The
-// engine has no separate "decline to search" answer (the search prompt
-// carries card picks only), and the difference is visible only to
-// a player who wanted to keep a library order they already knew.
+// The "may" is a real one (#4134): the prompt carries "Don't search",
+// which skips the search outright (no look, no shuffle, no "whenever a
+// player searches" trigger), as well as "find nothing", which is a search
+// that came up empty and still shuffles (CR 701.19).
 //
 // The card is revealed, so every seat sees what went on top; the
 // shuffle has already buried the rest of the order.

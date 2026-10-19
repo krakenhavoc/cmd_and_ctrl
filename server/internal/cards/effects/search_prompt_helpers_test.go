@@ -32,10 +32,25 @@ func takeSearchPrompts(t *testing.T, g *game.Game) {
 		if open == nil {
 			return
 		}
+		beginSearchIfAsked(t, g, open)
 		n := min(open.SearchMax, len(open.SearchCards))
 		picks := append([]uuid.UUID(nil), open.SearchCards[:n]...)
 		if err := g.ResolveSearchLibrary(open.ID, open.Chooser, picks); err != nil {
 			t.Fatalf("ResolveSearchLibrary: %v", err)
 		}
+	}
+}
+
+// beginSearchIfAsked says "yes, I search" to a "you may search" prompt that
+// is still asking (#4134): candidates are shown, and a pick accepted,
+// only once the searcher has begun. A prompt that is not asking is left
+// alone, so the helpers that answer searches use it unconditionally.
+func beginSearchIfAsked(t *testing.T, g *game.Game, c *game.PendingChoice) {
+	t.Helper()
+	if c == nil || !c.SearchIsUndecided() {
+		return
+	}
+	if err := g.BeginSearchLibrary(c.ID, c.Chooser); err != nil {
+		t.Fatalf("BeginSearchLibrary: %v", err)
 	}
 }

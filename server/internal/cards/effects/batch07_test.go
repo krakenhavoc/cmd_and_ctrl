@@ -722,7 +722,9 @@ func TestB07FieldOfRuinDestroysANonbasicAndEveryoneSearches(t *testing.T) {
 	// Seat 0 and seat 1 hold two basics each, seat 2 holds one, seat 3
 	// holds none. A search for a basic land has a stated quality, so the
 	// player with exactly one basic may still fail to find (CR 701.23b,
-	// #3053): three prompts, not two. Seat 3 searches nothing.
+	// #3053): three prompts with a card to take. Seat 3 holds none and is
+	// asked all the same (#4140): a library with nothing to find looks
+	// like any other to the table, so a fourth prompt, with no cards.
 	wanted := map[uuid.UUID]uuid.UUID{}
 	for _, p := range []*game.Player{me, opp} {
 		wanted[p.ID] = b07LibraryLand(p, "Plains", "Basic Land — Plains")
@@ -750,9 +752,10 @@ func TestB07FieldOfRuinDestroysANonbasicAndEveryoneSearches(t *testing.T) {
 	if g.Battlefield.Contains(only) {
 		t.Error("a player with exactly one basic is still asked: they may find nothing")
 	}
-	if b07OpenSearchPrompts(g) != 3 {
-		t.Fatalf("want a prompt for each of the three players with a basic to find, got %d", b07OpenSearchPrompts(g))
+	if b07OpenSearchPrompts(g) != 4 {
+		t.Fatalf("want a prompt for each of the four players, three with a basic to find, got %d", b07OpenSearchPrompts(g))
 	}
+	answerSearchFailToFind(t, g, g.Seats[3].ID)
 	for _, p := range []*game.Player{me, opp, g.Seats[2]} {
 		answerSearchByID(t, g, p.ID, wanted[p.ID])
 		if card, ok := battlefieldCard(g, wanted[p.ID]); !ok || card.Tapped {
