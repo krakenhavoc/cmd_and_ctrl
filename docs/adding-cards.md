@@ -3850,6 +3850,13 @@ BlockRules: []game.BlockRule{
   ADR 0041 phase 3 tier 3b, #1497) — `Keywords` and `Subtypes` are each
   an any-of, and `Text` is the allowed set as the card prints it, read
   by the refusal sentence.
+- **"Can't be blocked by creatures of that color this turn"** (#4126):
+  put `game.CantBeBlockedByColorMod(color)` in a `ScopedEffectFor` pinned
+  to the recipient, with `DurationUntilEndOfTurn(ctx)`. It may share one
+  record with keyword grants (Skrelv). `color` is one WUBRG letter;
+  blockers' effective colors are read live, and the record is serialized
+  like the other scoped block rules. Do not approximate this with
+  protection: that would also prevent damage and change attachments.
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
 - **"No more than N creatures can block each combat"** (Silent Arbiter,

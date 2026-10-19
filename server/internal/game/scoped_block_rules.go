@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -16,7 +17,7 @@ import (
 // at cleanup. A table holding one was not a restore point
 // (ContinuationCensus.TurnScopedBlockRules).
 //
-// WHAT IT IS NOW. Three mod kinds whose reader is the block-rule walk
+// WHAT IT IS NOW. Mod kinds whose reader is the block-rule walk
 // rather than the layer pass (modKindSpec.reader):
 //
 //   - cantBeBlockedExceptBy — Gingerbrute's activated ability, Departed
@@ -25,6 +26,9 @@ import (
 //     allowed set;
 //   - cantBeBlockedByPlayer — The Black Gate: the pinned attacker, and
 //     the Player whose creatures may not block it (#2172);
+//   - cantBeBlockedByPower — bars blockers at or below Amount;
+//   - cantBeBlockedByColor — Skrelv's chosen-color evasion, reading
+//     the blocker's effective colors against Colors[0];
 //   - limitBlockersPerDefender — Mirri, Weatherlight Duelist's attack
 //     trigger: ScopeOpponentsCreatures, reading Amount.
 //
@@ -64,6 +68,13 @@ func blockRuleModProblem(m Mod) string {
 		}
 		if m.Text == "" {
 			return "a cantBeBlockedByPlayer rule needs Text, the clause the refusal sentence reads"
+		}
+	case ModCantBeBlockedByColor:
+		if len(m.Colors) != 1 || !strings.Contains("WUBRG", m.Colors[0]) || len(m.Colors[0]) != 1 {
+			return "a cantBeBlockedByColor rule needs one WUBRG color"
+		}
+		if m.Text == "" {
+			return "a cantBeBlockedByColor rule needs its printed barred set"
 		}
 	case ModCantBeBlockedByPower:
 		if m.Text == "" {
@@ -112,6 +123,13 @@ func CantBeBlockedByPlayerMod(player uuid.UUID, text string) Mod {
 // power 2 or less").
 func CantBeBlockedByPowerMod(n int, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedByPower, Amount: n, Text: text}
+}
+
+// CantBeBlockedByColorMod bars creatures of the named color from
+// blocking the affected creature. A multicolored blocker matches any
+// one of its colors; colorless blockers do not match.
+func CantBeBlockedByColorMod(color string) Mod {
+	return Mod{Kind: ModCantBeBlockedByColor, Colors: []string{color}, Text: ColorName(color) + " creatures"}
 }
 
 // ---------------------------------------------------------------
@@ -163,6 +181,15 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return blocker != nil && blocker.Controller == barred && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByColor:
+		affected := affectedPredicate(e.Affected)
+		color := m.Colors[0]
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy, Label: m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return blocker != nil && blocker.HasColor(color) && affected(attacker, g, nil)
 			},
 		}
 	case ModCantBeBlockedByPower:
