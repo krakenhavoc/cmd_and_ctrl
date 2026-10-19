@@ -128,3 +128,23 @@ describe("the preview and the cast name the same cast", () => {
     expect(castPreviewParamsFromPayload(payload)).toEqual(castPreviewParams(choices));
   });
 });
+
+describe("splice payments (#4159)", () => {
+  const choices: CastChoices = {
+    splices: ["talon"],
+    splicePayments: [{ tapIDs: ["knight"] }],
+  };
+
+  it("carries what a splice cost spends to the preview, both ways", () => {
+    expect(castPreviewParams(choices).splicePayments).toEqual([{ tapIDs: ["knight"] }]);
+    const payload: Record<string, unknown> = { instance_id: "spell" };
+    applyCastChoices(payload, choices);
+    expect(castPreviewParamsFromPayload(payload)).toEqual(castPreviewParams(choices));
+  });
+
+  it("sends nothing when no spliced card cost names anything", () => {
+    const params = castPreviewParams({ splices: ["a"], splicePayments: [{}] });
+    expect(params.splicePayments).toBeUndefined();
+    expect(castPreviewParamsFromPayload({ splice_payments: [{}] }).splicePayments).toBeUndefined();
+  });
+});

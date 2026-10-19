@@ -16,6 +16,7 @@ import {
   type BugReportContext,
   type BugReportKind,
 } from "./bugReport";
+import { splicePaymentsWire } from "./targeting";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
@@ -1619,6 +1620,10 @@ export async function fetchAutoTapPreview(
     }
     // ADR 0202: the spliced cards, whose splice costs join the total.
     if (cast.splices && cast.splices.length > 0) params.set("splices", cast.splices.join(","));
+    // #4159: and what their costs spend, which the plan must leave alone.
+    if (cast.splicePayments && cast.splicePayments.length > 0) {
+      params.set("splice_payments", JSON.stringify(splicePaymentsWire(cast.splicePayments)));
+    }
     if (cast.tapIDs && cast.tapIDs.length > 0) {
       params.set("tap_ids", cast.tapIDs.join(","));
     }
