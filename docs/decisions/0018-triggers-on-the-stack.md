@@ -4975,3 +4975,44 @@ Built for #3016 as written. The details the amendment left open:
 - **A controlled chooser.** `remember` from a chooser another player controls changes nothing: the order is not
   theirs to teach (CR 723.5), and their prompts are asked by hand anyway.
 - **The agent move.** "The order shown" is the listed order with each row's later copies moved up beside its first.
+
+## Amendment 2026-10-19 — a trigger doubler can be granted to another permanent (#4137) · Accepted · S58
+
+The trigger-doubling addendum above (Decision 1) made a doubler a catalog slot: `Spec.TriggerDoublers`, read from
+the permanent that prints it. Two cards print it on a different object. Dungeon Delver: "Commander creatures you own
+have 'Room abilities of dungeons you own trigger an additional time.'" The Masamune: "Equipped creature has 'If a
+creature dying causes a triggered ability of this creature or an emblem you own to trigger, that ability triggers
+an additional time.'" The doubler belongs to the RECIPIENT (CR 113.10): its "you" is the recipient's controller, a
+recipient that loses all its abilities loses it (CR 613.6), and each recipient is one more doubler, so two commander
+creatures are two additional triggers (CR 603.2d: doublers add, as Decision 3 already counts them).
+
+**1. The declaration.** `effects.AbilityGrant.TriggerDoublers` holds the doublers, as `GameEndGates` holds the
+gates ([ADR 0093](0093-abilities-granted-to-other-permanents.md), amendment 2026-10-15). `buildGrantDef` copies them
+onto the bundle's `CardDef`, and `mergeCatalogParts` appends them to the recipient's composite definition.
+
+**2. The reader needs no change.** `scanTriggerModifiersLocked` already reads
+`CatalogTriggerDoublers(CatalogAbilityKey(c))` for every battlefield permanent, and the recipient's key carries the
+grant. So the doubler is found while the grant is, with `TriggerDoublingQuery.Doubler` the recipient, and it is
+lost the pass the grant is (the grantor leaves, a newer ability removal hits the recipient, the equipment moves).
+The leaving permanent's last-known key carries its grants (CR 603.10a), so a granted doubler counts a trigger of
+the creature that died in the same event. Checked: `TestTheMasamuneDoublesTheEquippedCreaturesDiesTrigger`.
+
+**3. One addition to the reader.** `hasTriggerModifierLocked` decides whether an ENTERING permanent needs the layers
+recomputed before the harvest reads it. It looked at the printed slot only, and a recipient's grants are the stale
+part of a cache that has not yet seen the entry. It now also asks the grantor: a battlefield permanent whose static
+grants a bundle carrying a doubler (`grantsTriggerDoubler`) makes the entry worth the recompute.
+
+**4. Refusals at registration** (`checkGrantAbilities`), the same as for a granted trigger: `ActiveWhen` is the
+host's, so gate the grantor's static instead; and a doubler with no `Applies` would silently double nothing. A
+zone grant still holds activated abilities only (`checkZoneGrantBundle`).
+
+**Cards.** Dungeon Delver and The Masamune, both Full. Hama Pashar's doubler is now a shared constructor
+(`roomAbilitiesOfDungeonsYouOwnDoubler`) with a row label; its behaviour is unchanged. Pinned by
+`granted_trigger_doubler_test.go` (`internal/cards/effects`): no commander, one, two (three Goblins), a
+non-commander and an opponent's commander, an opponent's dungeon, a later ability removal, a stolen commander (the
+thief's dungeons double, mine do not), the Background leaving, the Masamune's host, an unequipped creature, a
+let-go creature, the doubler's own predicate for the host and for an emblem you own, first strike and "must be
+blocked" only while attacking, and the registration refusals.
+
+**Not covered.** A trigger doubler on a TOKEN template's granted bundle (ADR 0093, 2026-10-08) rides the same
+`AbilityGrant` and needs nothing more, but no card needs it yet.
