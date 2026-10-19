@@ -21,13 +21,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisDies("Greedy Freebooter — scry 1 and create a Treasure token",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (Scry{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(ctx)
-				}),
+				Do(
+					// The Treasure waits for the scry's answer (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						return Scry{Player: ctx.Controller(), N: 1}.Apply(ctx)
+					}),
+					CreateToken{Template: TreasureToken(), N: 1},
+				)),
 		},
 	})
 }

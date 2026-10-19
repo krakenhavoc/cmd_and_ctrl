@@ -23,12 +23,13 @@ func init() {
 			Label:   "{2}, {T}: Draw a card, then discard a card. Create a Treasure token.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if err := lootOne(g, item, 1); err != nil {
-					return err
-				}
-				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-			},
+			Effect: Do(
+				// The Treasure waits for the loot's prompts (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return lootOne(ctx.Game, ctx.Item, 1)
+				}),
+				CreateToken{Template: TreasureToken(), N: 1},
+			),
 		}},
 	})
 }

@@ -29,28 +29,34 @@ func init() {
 		Name:            "Transpose",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			me := ctx.Controller()
-			if err := (DrawCards{Player: me, N: 1}).Apply(ctx); err != nil {
+		OnResolve: ResolveSteps(
+			// The discard waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 1},
+			Instruction(transposeDiscard),
+		),
+	})
+}
+
+// transposeDiscard is the discard, and the life loss and Wizard it leads to.
+// The Then is a continuation, which has no wait of its own (see the scan's skip
+// list).
+func transposeDiscard(ctx *Context) error {
+	item, me := ctx.Item, ctx.Controller()
+	fromHand := item.CastFromZone == game.ZoneHand
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: me,
+		Source: item.SourceCardID,
+		N:      1,
+		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
+			ctx := NewContext(g, item)
+			if err := g.ChangePlayerLifeForEffect(ctx.Source(), me, -1); err != nil {
 				return err
 			}
-			fromHand := item.CastFromZone == game.ZoneHand
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: me,
-				Source: item.SourceCardID,
-				N:      1,
-				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-					ctx := NewContext(g, item)
-					if err := g.ChangePlayerLifeForEffect(ctx.Source(), me, -1); err != nil {
-						return err
-					}
-					if !fromHand {
-						return nil
-					}
-					return CreateToken{Controller: me, Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
-				},
-			})
-			return nil
+			if !fromHand {
+				return nil
+			}
+			return CreateToken{Controller: me, Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
 		},
 	})
+	return nil
 }

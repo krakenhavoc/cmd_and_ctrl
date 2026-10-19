@@ -28,17 +28,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisDealsCombatDamageToAPlayer("Ancient Silver Dragon — roll a d20 and draw that many cards", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				results, err := rollDice(ctx, 20, 1)
-				if err != nil || len(results) == 0 {
-					return err
-				}
-				if err := (DrawCards{Player: item.Controller, N: results[0]}).Apply(ctx); err != nil {
-					return err
-				}
-				return g.SetMaxHandSizeForEffect(item.Controller, game.NoMaxHandSize)
-			}),
+			WheneverThisDealsCombatDamageToAPlayer("Ancient Silver Dragon — roll a d20 and draw that many cards", Do(
+				// The hand-size grant waits for a prompt the draw asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					results, err := rollDice(ctx, 20, 1)
+					if err != nil || len(results) == 0 {
+						return err
+					}
+					return DrawCards{N: results[0]}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					return ctx.Game.SetMaxHandSizeForEffect(ctx.Controller(), game.NoMaxHandSize)
+				}),
+			)),
 		},
 	})
 }

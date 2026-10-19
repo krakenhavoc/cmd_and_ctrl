@@ -40,16 +40,21 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(And(Creature(), PowerGE(5)),
 				"Gwenna, Eyes of Gaea — put a +1/+1 counter on Gwenna and untap it",
-				func(g *game.Game, item *game.StackItem) error {
-					if !sourceIsStillThisPermanent(g, item) {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return UntapTarget{Target: item.SourceCardID}.Apply(ctx)
-				}),
+				Do(
+					// The untap waits for a prompt the counter asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+							return nil
+						}
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+							return nil
+						}
+						return UntapTarget{Target: ctx.Item.SourceCardID}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

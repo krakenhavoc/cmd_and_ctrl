@@ -322,14 +322,14 @@ func TestScanStepsBodies(t *testing.T) {
 		cards[f.Oracle+f.Name] = true
 	}
 	fmt.Fprintf(&b, "%d cards. Ordered by EDHREC rank (0 = unranked, last). `flat` = the pair is in the body's own sequence.\n\n", len(cards))
-	b.WriteString("| EDHREC | Card | Site | Where | Earlier (asks) | Later | Shares |\n|---|---|---|---|---|---|---|\n")
+	b.WriteString("| EDHREC | Card | Site | Where | Earlier (asks) | Later | Shares | Skipped because |\n|---|---|---|---|---|---|---|---|\n")
 	for _, f := range out {
 		shape := "flat"
 		if !f.Flat {
 			shape = "nested"
 		}
-		fmt.Fprintf(&b, "| %d | %s | %s %s | %s:%d | L%d %s | L%d | %s |\n", f.Rank, f.Name, f.Site, shape,
-			f.File, f.Line, f.Ask, f.Why, f.Later, strings.Join(f.Shares, ","))
+		fmt.Fprintf(&b, "| %d | %s | %s %s | %s:%d | L%d %s | L%d | %s | %s |\n", f.Rank, f.Name, f.Site, shape,
+			f.File, f.Line, f.Ask, f.Why, f.Later, strings.Join(f.Shares, ","), stepsSkipped[f.Name])
 	}
 	if err := os.WriteFile(*scanStepsOut, []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
@@ -597,7 +597,100 @@ var stepsConverted = setOf(
 	"Sythis, Harvest's Hand", "Secret Rendezvous", "Prismari Command", "Glissa Sunslayer", "Peer into the Abyss",
 	"Last March of the Ents", "Lumra, Bellow of the Woods", "Slip Out the Back", "Grand Crescendo",
 	"Plumb the Forbidden", "Vampiric Rites", "Dreadhorde Invasion", "Lightning Helix", "Consume Spirit",
+	// Batch 2.
+	"Felidar Retreat", "Unbreakable Formation", "Sea Gate Restoration", "Revitalizing Repast", "Seize the Spoils",
+	"Elspeth, Storm Slayer", "Breach the Multiverse", "Descent into Avernus", "Kappa Cannoneer",
+	"Setessan Champion", "Demolition Field", "Insatiable Avarice", "Arachnogenesis",
+	"Kambal, Consul of Allocation", "Finale of Revelation", "Crime Novelist", "Ancient Silver Dragon",
+	"Hydroid Krasis", "Uro, Titan of Nature's Wrath", "Sunscorch Regent", "Inspiring Overseer",
+	"Gwenna, Eyes of Gaea", "Smuggler's Share", "Ugin, Eye of the Storms", "Painful Truths", "Flame of Anor",
+	"Uthros Research Craft", "Blue Sun's Zenith", "Thought Scour", "Collector's Vault", "Undead Augur",
+	"Korvold, Fae-Cursed King", "Bitterbloom Bearer", "Ob Nixilis, the Fallen", "White Sun's Twilight",
+	"Skrelv's Hive", "Eureka Moment", "Liliana, Death's Majesty", "Drown in Dreams", "Galadhrim Ambush",
+	"Rise of the Eldrazi", "Grapple with the Past", "Riot Control", "Circle of Power", "Greedy Freebooter",
+	"Consuming Corruption", "Forge of Heroes", "Valgavoth, Harrower of Souls", "Persistent Constrictor",
+	"Flumph", "Lazotep Plating", "Momentous Fall", "Wan Shi Tong, Librarian", "Wheel of Fortune",
+	"Expropriate", "Will of the Abzan", "Zack Fair",
 )
+
+// stepsSkipped are the cards the scan flags that are not converted, each
+// with the reason, so the list of what is left shrinks honestly (#4155). A
+// reason is one of a few kinds:
+//
+//   - exclusive arms: the two statements are in arms of one switch or if that
+//     cannot both run, so nothing outruns anything;
+//   - no prompt: the earlier statement only reveals, or picks at random, and
+//     asks nothing;
+//   - one batch: both statements are inside one simultaneous damage or draw
+//     instance, which is a single event (CR 120.2);
+//   - disjoint players: the two statements act on different players;
+//   - a Then: the later statement is in a continuation (a Then, a callback)
+//     that no step walk parks inside. The seam is #4162;
+//   - carried: a later step needs a count or ids the earlier one produced, and
+//     the game keeps no record to re-read. The seam is #4163.
+//
+// TestSkippedBodiesAreStillFlagged fails if an entry is stale.
+var stepsSkipped = map[string]string{
+	"Arcane Denial":              "a Then: ChooseNumber's Then draws for the victim, then for the caster (#4162)",
+	"Abrade":                     "exclusive arms of one switch",
+	"Herald's Horn":              "no prompt: a reveal, then the bounce, inside a MayChoice's OnYes",
+	"Windfall":                   "carried: the largest hand discarded sets every draw (#4163)",
+	"Dark Deal":                  "carried: each player draws the hand they discarded less one (#4163)",
+	"Tolarian Winds":             "carried: the number of cards discarded is the number drawn (#4163)",
+	"Boros Charm":                "exclusive arms of one switch",
+	"Izzet Charm":                "exclusive arms of one switch",
+	"Archdruid's Charm":          "exclusive arms of one switch",
+	"Sylvan Library":             "the draw is a step now; the pay-life branch is a cost that settles in one step and then chains its next question through a Then (#793, #4162)",
+	"Braids, Arisen Nightmare":   "a Then: the sacrifice's continuation (#4162)",
+	"Forgotten Ancient":          "a Then: the counters' continuation (#4162)",
+	"Geier Reach Sanitarium":     "each player draws and then discards in turn: one loop over the players",
+	"Disciple of Freyalise":      "a Then: the callback of maySacrificeOne (#4162)",
+	"Disciple of Bolas":          "a Then: the callback of the sacrifice (#4162)",
+	"Chandra's Ignition":         "one batch: the damage to each creature and opponent is one instance",
+	"Rip Apart":                  "one batch: one damage instance, and the modes are exclusive",
+	"Tibalt's Trickery":          "no prompt: the number is picked at random",
+	"Tribute to the World Tree":  "exclusive arms: a draw, or the counters",
+	"Plaguecrafter":              "disjoint players: the discards are for players with nothing to sacrifice",
+	"Midnight Clock":             "a Then: the callback of the tuck (#4162)",
+	"Krenko, Tin Street Kingpin": "exclusive arms: Krenko left, or the counter's Then",
+	"Cut a Deal":                 "carried: the caster draws as many cards as the opponents drew (#4163)",
+	"Twilight Prophet":           "a Then: the callback of the ChooseNumber (#4162)",
+	"Sheoldred's Edict":          "exclusive arms of one mode switch",
+	"Painful Quandary":           "exclusive arms: the life loss or the question",
+	"Genesis Wave":               "no prompt: a reveal, and the cards it names are carried (#4163)",
+	"Martial Coup":               "carried: the Soldiers just made are spared by id (#4163)",
+	"Coiling Oracle":             "no prompt: a reveal, and the card is carried (#4163)",
+	"Bonehoard Dracosaur":        "a Then: the callback of the impulse exile (#4162)",
+	"Scavenging Ooze":            "a Then: the counter's continuation (#4162)",
+	"Replicating Ring":           "a Then: the callback of the counter (#4162)",
+	"Seize the Spotlight":        "a Then: the callback of the option pick (#4162)",
+	"Mogis, God of Slaughter":    "exclusive arms: the sacrifice, or the damage",
+	"Animist's Awakening":        "no prompt: a reveal, and the cards are carried (#4163)",
+	"Currency Converter":         "a Then: the callback of the graveyard move (#4162)",
+	"Thrasios, Triton Hero":      "no prompt: a reveal inside the scry's Then (#4162)",
+	"Court of Ambition":          "a Then: the callbacks of the choice (#4162)",
+	"Fangs of Kalonia":           "exclusive arms: overloaded, or the target",
+	"Transpose":                  "the draw is a step now; the life loss and the Wizard are in the discard's Then (#4162)",
+	"Cosmos Elixir":              "exclusive arms: a draw, or the life",
+}
+
+func TestSkippedBodiesAreStillFlagged(t *testing.T) {
+	findings, names := scanStepsBodies(t, nil)
+	flagged := map[string]bool{}
+	for _, f := range findings {
+		flagged[f.Name] = true
+	}
+	for name, why := range stepsSkipped {
+		switch {
+		case !names[name]:
+			t.Errorf("%q is in stepsSkipped but no catalog row has that name", name)
+		case stepsConverted[name]:
+			t.Errorf("%q is in stepsSkipped and in stepsConverted", name)
+		case !flagged[name]:
+			t.Errorf("%q is in stepsSkipped (%s) but the scan no longer flags it: remove it", name, why)
+		}
+	}
+}
 
 func TestConvertedBodiesStayConverted(t *testing.T) {
 	findings, names := scanStepsBodies(t, nil)

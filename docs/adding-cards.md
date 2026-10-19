@@ -4013,7 +4013,15 @@ name to `stepsConverted` in the same file: `TestConvertedBodiesStayConverted`
 then fails if a later edit makes the body one flat function again. Test the
 card with the prompt open: a dredge offer (Stinkweed Imp in the graveyard) or
 Khârn the Betrayer's question, and a restore when the prompt is data
-(`resolution_order_batch1_test.go`).
+(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`).
+
+A Spree bullet with more than one instruction is `SpreeModeSteps(label, cost,
+targets, step, …)` (Insatiable Avarice). A scanned card you leave as it is goes
+in `stepsSkipped` with the reason, and `TestSkippedBodiesAreStillFlagged` fails
+when the entry goes stale. The reasons so far: arms of one switch that cannot
+both run, a reveal or a random pick that asks nothing, one damage instance, a
+`Then` continuation (a step walk cannot park inside one, #4162), and a count or
+a list of ids the next step needs that the game keeps no record of (#4163).
 
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to

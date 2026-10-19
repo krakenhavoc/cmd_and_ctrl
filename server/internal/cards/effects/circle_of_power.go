@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Circle of Power — Sorcery {3}{B}:
 //
 //	"You draw two cards and you lose 2 life. Create a 0/1 black Wizard
@@ -23,30 +21,23 @@ func init() {
 		OracleID:     "2d41fd1f-4a98-45dd-a3c5-f7c5e0152109",
 		Name:         "Circle of Power",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			me := item.Controller
-			if err := (DrawCards{Player: me, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, me, -2); err != nil {
-				return err
-			}
-			if err := (CreateToken{Controller: me, Template: NoncreatureCastWizardToken(), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			wizards := And(OfCreatureType("Wizard"), YouControl())
-			if err := (BoostUntilEOT{
-				Match: wizards,
+		OnResolve: ResolveSteps(
+			// Each instruction waits for a prompt the one before asks (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Controller(), -2)
+			}),
+			CreateToken{Template: NoncreatureCastWizardToken(), N: 1},
+			BoostUntilEOT{
+				Match: And(OfCreatureType("Wizard"), YouControl()),
 				Power: 1,
 				Label: "Circle of Power — Wizards get +1/+0 until end of turn",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
-				Match:    wizards,
+			},
+			GrantKeywordUntilEOT{
+				Match:    And(OfCreatureType("Wizard"), YouControl()),
 				Keywords: []string{"lifelink"},
 				Label:    "Circle of Power — Wizards gain lifelink until end of turn",
-			}.Apply(ctx)
-		},
+			},
+		),
 	})
 }

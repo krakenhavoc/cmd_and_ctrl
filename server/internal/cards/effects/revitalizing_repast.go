@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Revitalizing Repast // Old-Growth Grove — Modal double-faced card
 // (EDHREC top 1,000, #3654). The front face:
 //
@@ -19,19 +17,26 @@ func init() {
 		Name:         "Revitalizing Repast",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
-				Target:   id,
-				Keywords: []string{"indestructible"},
-				Label:    "Revitalizing Repast — indestructible",
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The keyword waits for a prompt the counter asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return AddCounter{Target: id, Kind: "+1/+1", N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return GrantKeywordUntilEOT{
+					Target:   id,
+					Keywords: []string{"indestructible"},
+					Label:    "Revitalizing Repast — indestructible",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

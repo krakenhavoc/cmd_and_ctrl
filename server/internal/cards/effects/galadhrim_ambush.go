@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Galadhrim Ambush — Instant {3}{G}:
 //
 //	"Create X 1/1 green Elf Warrior creature tokens, where X is the
@@ -20,13 +18,16 @@ func init() {
 		OracleID:     "3b22d21f-e19a-40df-840b-a2b7f11f79c2",
 		Name:         "Galadhrim Ambush",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if n := len(AttackingCreatures(ctx.Game)); n > 0 {
-				if err := (CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: n}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The shield waits for a prompt the Elves' creation asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				n := len(AttackingCreatures(ctx.Game))
+				if n <= 0 {
+					return nil
 				}
-			}
-			return combatShieldAgainstCreatures(exceptSubtypes("Elf")).Apply(ctx)
-		},
+				return CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: n}.Apply(ctx)
+			}),
+			combatShieldAgainstCreatures(exceptSubtypes("Elf")),
+		),
 	})
 }

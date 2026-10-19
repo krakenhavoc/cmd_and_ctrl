@@ -28,18 +28,23 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			drawer := item.Targets[0].ID
-			if err := (DrawCards{Player: drawer, N: ctx.X()}).Apply(ctx); err != nil {
-				return err
-			}
-			owner := item.Owner
-			return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				return g.ShuffleLibraryForEffect(owner)
-			})
-		},
+		OnResolve: ResolveSteps(
+			// The tuck waits for a prompt the draws ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) == 0 || t[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				return DrawCards{Player: ctx.Item.Targets[0].ID, N: ctx.X()}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) == 0 || t[0].Kind != game.TargetPlayer {
+					return nil
+				}
+				owner := ctx.Item.Owner
+				return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
+					return g.ShuffleLibraryForEffect(owner)
+				})
+			}),
+		),
 	})
 }

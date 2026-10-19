@@ -40,40 +40,47 @@ func init() {
 			Label:   "{2}, {T}, Sacrifice this land: Destroy target nonbasic land an opponent controls. Its controller may search for a basic land; you may search for a basic land.",
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Targets: TargetPermanent("target nonbasic land an opponent controls", Land(), b03Nonbasic(), OpponentControls()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				target := item.Targets[0].ID
-				victim, ok := controllerOfTarget(ctx, target)
-				if !ok {
-					return nil
-				}
-				if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (SearchLibrary{
-					Player:    victim,
-					Predicate: IsBasicLand,
-					Dest:      game.ZoneBattlefield,
-					Limit:     1,
-					Shuffle:   true,
-					Optional:  true,
-					Reason:    "Demolition Field — you may search for a basic land",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: IsBasicLand,
-					Dest:      game.ZoneBattlefield,
-					Limit:     1,
-					Shuffle:   true,
-					Optional:  true,
-					Reason:    "Demolition Field — you may search for a basic land",
-				}.Apply(ctx)
-			},
+			Effect: Do(
+				// Its controller's search is open before yours (CR 608.2c, #4155). The
+				// engine has checked the target is legal by the time this runs, so the
+				// second step needs only the target's kind: the land is gone by then.
+				Instruction(func(ctx *Context) error {
+					if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					target := ctx.Item.Targets[0].ID
+					victim, ok := controllerOfTarget(ctx, target)
+					if !ok {
+						return nil
+					}
+					if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
+						return err
+					}
+					return SearchLibrary{
+						Player:    victim,
+						Predicate: IsBasicLand,
+						Dest:      game.ZoneBattlefield,
+						Limit:     1,
+						Shuffle:   true,
+						Optional:  true,
+						Reason:    "Demolition Field — you may search for a basic land",
+					}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetCard {
+						return nil
+					}
+					return SearchLibrary{
+						Player:    ctx.Controller(),
+						Predicate: IsBasicLand,
+						Dest:      game.ZoneBattlefield,
+						Limit:     1,
+						Shuffle:   true,
+						Optional:  true,
+						Reason:    "Demolition Field — you may search for a basic land",
+					}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

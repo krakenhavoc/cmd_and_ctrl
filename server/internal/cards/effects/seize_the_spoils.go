@@ -20,15 +20,10 @@ func init() {
 		Purpose:        game.Purpose{Draws: 2, Tokens: 1},
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return CreateToken{
-				Controller: item.Controller,
-				Template:   TreasureToken(),
-				N:          1,
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The Treasure waits for a prompt the draws ask (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			CreateToken{Template: TreasureToken(), N: 1},
+		),
 	})
 }

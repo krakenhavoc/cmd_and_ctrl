@@ -33,21 +33,24 @@ func init() {
 			TargetPermanent("target permanent"),
 			TargetPlayer("target player"),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) > 0 && ctx.IsTargetLegal(item.Targets[0]) {
-				if err := (DestroyTarget{Target: item.Targets[0].ID}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// Each instruction waits for a prompt the one before asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) > 0 && ctx.IsTargetLegal(t[0]) {
+					return DestroyTarget{Target: t[0].ID}.Apply(ctx)
 				}
-			}
-			if len(item.Targets) > 1 && ctx.IsTargetLegal(item.Targets[1]) {
-				if err := (DrawCards{Player: item.Targets[1].ID, N: 4}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if targets := ctx.Item.Targets; len(targets) > 1 && ctx.IsTargetLegal(targets[1]) {
+					return DrawCards{Player: targets[1].ID, N: 4}.Apply(ctx)
 				}
-			}
-			if err := (TakeExtraTurn{}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+				return nil
+			}),
+			TakeExtraTurn{},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }

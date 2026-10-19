@@ -29,15 +29,17 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12YouSacrificedAnArtifact(ev, source, g)
-			}, "Crime Novelist — a +1/+1 counter, add {R}", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z != nil && z.Kind == game.ZoneBattlefield {
-					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
+			}, "Crime Novelist — a +1/+1 counter, add {R}", Do(
+				// The mana waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					z := ctx.Game.FindCardZoneForEffect(ctx.Item.SourceCardID)
+					if z == nil || z.Kind != game.ZoneBattlefield {
+						return nil
 					}
-				}
-				return AddMana{Produced: "{R}"}.Apply(ctx)
-			}),
+					return AddCounter{Target: ctx.Item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
+				}),
+				AddMana{Produced: "{R}"},
+			)),
 		},
 	})
 }

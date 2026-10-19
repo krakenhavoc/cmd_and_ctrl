@@ -25,16 +25,15 @@ func init() {
 			func(_ *game.StackItem, ctx *Context, _ int) error {
 				return CreateToken{Template: TokenCard("2/2 white Cat Beast"), N: 1}.Apply(ctx)
 			}),
-		ModeDoing("Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := b11PutCounterOnEachCreatureYouControl(ctx.Game, item); err != nil {
-					return err
-				}
-				return GrantKeywordUntilEOT{
-					Match:    And(Creature(), YouControl()),
-					Keywords: []string{"vigilance"},
-					Label:    "Felidar Retreat — vigilance",
-				}.Apply(ctx)
+		ModeSteps("Put a +1/+1 counter on each creature you control. Those creatures gain vigilance until end of turn.", nil,
+			// The vigilance waits for a prompt the counters ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return b11PutCounterOnEachCreatureYouControl(ctx.Game, ctx.Item)
+			}),
+			GrantKeywordUntilEOT{
+				Match:    And(Creature(), YouControl()),
+				Keywords: []string{"vigilance"},
+				Label:    "Felidar Retreat — vigilance",
 			}),
 	)
 	Register(Spec{

@@ -31,16 +31,18 @@ func init() {
 		OracleID:     "4a8d41fe-e04d-484b-a7d1-19be311e6ca7",
 		Name:         "Sea Gate Restoration",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			n := 1
-			if p := ctx.PlayerByID(controller); p != nil && p.Hand != nil {
-				n += p.Hand.Size()
-			}
-			if err := (DrawCards{Player: controller, N: n}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize)
-		},
+		OnResolve: ResolveSteps(
+			// The hand-size grant waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				n := 1
+				if p := ctx.PlayerByID(ctx.Controller()); p != nil && p.Hand != nil {
+					n += p.Hand.Size()
+				}
+				return DrawCards{N: n}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.SetMaxHandSizeForEffect(ctx.Controller(), game.NoMaxHandSize)
+			}),
+		),
 	})
 }

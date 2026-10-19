@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Momentous Fall — Instant {2}{G}{G}:
 //
 //	"As an additional cost to cast this spell, sacrifice a creature.
@@ -21,18 +19,23 @@ func init() {
 		Name:           "Momentous Fall",
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			info, ok := ctx.SacrificedPermanent()
-			if !ok {
-				return nil
-			}
-			if err := (DrawCards{N: info.Power}).Apply(ctx); err != nil {
-				return err
-			}
-			if info.Toughness <= 0 {
-				return nil
-			}
-			return GainLife{Amount: info.Toughness}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life gain waits for a prompt the draw asks (CR 608.2c, #4155). The
+			// sacrificed creature is read from the payment record in each step.
+			Instruction(func(ctx *Context) error {
+				info, ok := ctx.SacrificedPermanent()
+				if !ok {
+					return nil
+				}
+				return DrawCards{N: info.Power}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				info, ok := ctx.SacrificedPermanent()
+				if !ok || info.Toughness <= 0 {
+					return nil
+				}
+				return GainLife{Amount: info.Toughness}.Apply(ctx)
+			}),
+		),
 	})
 }
