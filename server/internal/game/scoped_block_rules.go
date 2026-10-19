@@ -30,7 +30,10 @@ import (
 //   - cantBeBlockedByColor — Skrelv's chosen-color evasion, reading
 //     the blocker's effective colors against Colors[0];
 //   - limitBlockersPerDefender — Mirri, Weatherlight Duelist's attack
-//     trigger: ScopeOpponentsCreatures, reading Amount.
+//     trigger: ScopeOpponentsCreatures, reading Amount;
+//   - cantBeBlockedBySubtypes — Kick in the Door's "can't be blocked
+//     by Walls this turn" (#4100): the pinned attacker, reading
+//     Subtypes (an any-of) and Text.
 //
 // forEachBlockRuleLocked's third walk (forEachScopedBlockRuleLocked)
 // adapts every live record into the BlockRule the pair, count and
@@ -79,6 +82,10 @@ func blockRuleModProblem(m Mod) string {
 	case ModCantBeBlockedByPower:
 		if m.Text == "" {
 			return "a cantBeBlockedByPower rule needs Text, the clause the refusal sentence reads"
+		}
+	case ModCantBeBlockedBySubtypes:
+		if m.Text == "" || len(m.Subtypes) == 0 {
+			return "a cantBeBlockedBySubtypes rule needs Subtypes and Text, the clause the refusal sentence reads"
 		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
@@ -130,6 +137,14 @@ func CantBeBlockedByPowerMod(n int, text string) Mod {
 // one of its colors; colorless blockers do not match.
 func CantBeBlockedByColorMod(color string) Mod {
 	return Mod{Kind: ModCantBeBlockedByColor, Colors: []string{color}, Text: ColorName(color) + " creatures"}
+}
+
+// CantBeBlockedBySubtypesMod is "<creature> can't be blocked by Walls
+// this turn" (Kick in the Door, #4100). `subtypes` is an any-of of
+// creature types; `text` is the barred set as the refusal sentence
+// reads it ("Walls").
+func CantBeBlockedBySubtypesMod(subtypes []string, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedBySubtypes, Subtypes: copyStrings(subtypes), Text: text}
 }
 
 // ---------------------------------------------------------------
@@ -202,6 +217,19 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 				// The power the comparison rules use (CR 208.1,
 				// negative power included), read live.
 				return blocker != nil && blocker.PowerForComparison() <= n && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedBySubtypes:
+		affected := affectedPredicate(e.Affected)
+		// The same subtype test the "except by" kind's allowed set uses,
+		// with no keywords: a blocker of one of these creature types is
+		// barred.
+		barred := blockRuleAllowedPredicate(nil, m.Subtypes)
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return barred(blocker) && affected(attacker, g, nil)
 			},
 		}
 	case ModLimitBlockersPerDefender:

@@ -30,12 +30,11 @@ import (
 // its clause on the row, so CR 603.3d (no legal target: the ability is
 // removed) and CR 608.2b (re-checked at resolution) come for free.
 //
-// Only the Undercity is filed. The three Adventures in the Forgotten
+// The Undercity is filed here. The three Adventures in the Forgotten
 // Realms dungeons (Lost Mine of Phandelver, Dungeon of the Mad Mage,
-// Tomb of Annihilation) are rows of the same table and wait on their
-// own issue, together with the "venture into the dungeon" cards that
-// choose among them: a plain venture with only some of them filed
-// would offer a player fewer dungeons than the rules give them.
+// Tomb of Annihilation) are rows of the same table, filed in
+// dungeons_forgotten_realms.go (#4100): the dungeons a plain "venture
+// into the dungeon" chooses among.
 
 // DungeonRoomSpec is one room of a dungeon.
 type DungeonRoomSpec struct {
@@ -208,14 +207,7 @@ func undercitySecretEntrance(g *game.Game, item *game.StackItem) error {
 }
 
 // undercityForge: put two +1/+1 counters on target creature.
-func undercityForge(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	return AddCounter{Target: id, Kind: "+1/+1", N: 2}.Apply(ctx)
-}
+var undercityForge = dungeonCounterOnTarget(2)
 
 // undercityLostWell: scry 2.
 func undercityLostWell(g *game.Game, item *game.StackItem) error {
