@@ -36,6 +36,8 @@ import (
 //   - AddCounter → RepEventCounter
 //   - runStepEntryHooksLocked → RepEventStepTransition
 //   - popExtraTurnLocked → RepEventExtraTurn (#2529, extra_turns.go)
+//   - the effect counter verbs (CounterTargetForEffect and its two
+//     siblings) → RepEventCounterSpell (#4056, counter_spell.go)
 //
 // The six *ForEffect helpers in effect_api.go route through the same
 // pipeline so catalog-driven mutations fire replacements too.
@@ -62,6 +64,7 @@ import (
 //	"mill"         — RepEventMill    — MillPlayer, MillCount (CR 701.17a)
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 //	"extra_turn"   — RepEventExtraTurn — ExtraTurnSeat, ExtraTurnRef (CR 500.7 / 614.10)
+//	"counter_spell"— RepEventCounterSpell — CounterSpellID, CounterBy, CounterBySource (CR 701.6a / 614.1a)
 type ReplacementEventKind string
 
 const (
@@ -192,6 +195,32 @@ const (
 	// something else ("instead, you may take it as a normal turn") would
 	// have to teach the seam to pause first.
 	RepEventExtraTurn ReplacementEventKind = "extra_turn"
+
+	// RepEventCounterSpell is one SPELL about to be COUNTERED by a spell
+	// or ability (CR 701.6a), opened by the counter verbs after the
+	// "can't be countered" gate and before the spell leaves the stack.
+	// Cancelled, the spell is not countered and stays where it is;
+	// replaced (ExileCounteredSpellInsteadForEffect), it is exiled
+	// instead and is NOT countered, so nothing keyed to "countered" sees
+	// it ("whenever a spell you cast is countered", the Countering
+	// Runner's trigger). Guile's "If a spell or ability you control
+	// would counter a spell, instead exile that spell and you may play
+	// that card without paying its mana cost" is the card that needs it
+	// (#4056). It is not RepEventCounter, which is counters placed on
+	// objects, nor the spell's move to the graveyard, which a replaced
+	// counter never makes.
+	//
+	// It carries WHO is countering (CounterBy, CounterBySource), because
+	// "you control" is judged against the countering spell or ability
+	// and the spell's own controller is the other player. The affected
+	// player, who orders a CR 616.1 prompt, is the countered spell's
+	// controller.
+	//
+	// It can pause: two replacements that disagree on what happens are a
+	// CR 616.1 ordering question put to the spell's controller. Nothing
+	// has moved while the prompt is open, and the resume finishes
+	// exactly as the unpaused path does (finishCounterSpellLocked).
+	RepEventCounterSpell ReplacementEventKind = "counter_spell"
 )
 
 // isExitMove reports whether a kind is a routed move OUT of a zone — an
@@ -1183,6 +1212,27 @@ type ReplacementEvent struct {
 	ExtraTurnSeat int
 	// ExtraTurnRef is the queued turn's ExtraTurn.Ref.
 	ExtraTurnRef int
+
+	// --- RepEventCounterSpell fields (#4056, counter_spell.go) ---
+
+	// CounterSpellID is the stack ID of the spell that would be
+	// countered. Its controller is the AFFECTED player (CR 616.1), and
+	// the move the counter would make (where it goes, the continuation)
+	// rides zoneRoute until the window settles.
+	CounterSpellID uuid.UUID
+	// CounterBy is the controller of the spell or ability that would do
+	// the countering (CR 113.8; the resolving item's controller, so a
+	// stolen permanent's ability is its thief's). "A spell or ability
+	// YOU control would counter a spell" is judged against it. It is
+	// also the event's Actor. CounterBySource is that spell's or
+	// ability's source card, and the event's Source.
+	CounterBy       uuid.UUID
+	CounterBySource uuid.UUID
+	// counterInstead is a replacement's answer: the spell is not
+	// countered and is exiled instead, and a player may play it for free
+	// (Guile). Set only through ExileCounteredSpellInsteadForEffect;
+	// plain data, so a copy for an undo snapshot is a struct copy.
+	counterInstead *counterInstead
 
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked
@@ -2772,6 +2822,16 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// contains the engine-only sentinel EventStepTransition,
 		// which replacements.go exports below.
 		want = EventStepTransition
+	case RepEventCounterSpell:
+		// CR 701.6a / 614.1a. EventCounterSpell is the post-event twin
+		// ("a spell was countered") and it fires after the move, while
+		// this window opens before the spell has left the stack. Reusing
+		// the key rather than minting a sentinel is what RepEventMill
+		// does with EventMill, for the same reason: an EventKind means
+		// "the counter" in a ReplacementEffect.Watches and "a spell was
+		// countered" in a TriggeredAbility.Watches, and no code reads
+		// one as the other. #4056.
+		want = EventCounterSpell
 	case RepEventExtraTurn:
 		// CR 500.7 / 614.10. EventExtraTurnAdded is the twin of QUEUING
 		// the turn, which happens long before this window and under a

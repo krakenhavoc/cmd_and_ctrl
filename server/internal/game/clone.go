@@ -1091,6 +1091,12 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			ev.mill = &t
 		}
 		ev.zoneRoute = cloneZoneRoute(f.ev.zoneRoute)
+		if f.ev.counterInstead != nil {
+			// #4056: a replaced counter's answer, copied so an undone
+			// answer to the ordering prompt cannot see a later change.
+			t := *f.ev.counterInstead
+			ev.counterInstead = &t
+		}
 		if len(f.ev.lifeAfterMove) > 0 {
 			// ADR 0178: the life instructions a replacement declared on
 			// this move. Its own backing array, so an instruction the

@@ -175,9 +175,15 @@ func TestB11MillikinMillsACardForColorlessAndNeedsALibrary(t *testing.T) {
 	millikin := pushCatalogPermanent(g, me.ID, "Millikin", "Artifact Creature — Construct", b11MillikinOracle, false)
 	lib, yard := me.Library.Size(), me.Graveyard.Size()
 
-	if err := g.ActivateManaAbility(me.ID, millikin, 0, game.ManaAbilityParams{}); err != nil {
+	// Not a mana ability (#3971, CR 605.1a): the ability stacks and the
+	// {C} arrives when it resolves.
+	if err := g.ActivateCatalogAbility(me.ID, millikin, 0, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
+	if len(g.StackMeta) != 1 || me.ManaPool.Total() != 0 {
+		t.Fatalf("stack %d, pool %d: want the ability stacked and no mana yet", len(g.StackMeta), me.ManaPool.Total())
+	}
+	passPriorityAroundTable(t, g)
 	if got := batch01PoolColors(me); len(got) != 1 || got[0] != "C" {
 		t.Errorf("pool %v, want [C]", got)
 	}
@@ -192,7 +198,7 @@ func TestB11MillikinMillsACardForColorlessAndNeedsALibrary(t *testing.T) {
 	// cannot be activated and the Myr stays untapped.
 	b02bSetTapped(g, millikin, false)
 	me.Library.Cards = nil
-	if err := g.ActivateManaAbility(me.ID, millikin, 0, game.ManaAbilityParams{}); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, millikin, 0, game.ActivateAbilityParams{}); err == nil {
 		t.Error("Millikin activated with an empty library")
 	}
 	if c, _ := battlefieldCard(g, millikin); c.Tapped {
@@ -204,8 +210,8 @@ func TestB11MillikinIsSummoningSick(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	millikin := pushCatalogPermanent(g, me.ID, "Millikin", "Artifact Creature — Construct", b11MillikinOracle, true)
-	if err := g.ActivateManaAbility(me.ID, millikin, 0, game.ManaAbilityParams{}); err == nil {
-		t.Error("a summoning-sick Millikin tapped for mana")
+	if err := g.ActivateCatalogAbility(me.ID, millikin, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("a summoning-sick Millikin paid its {T}")
 	}
 }
 

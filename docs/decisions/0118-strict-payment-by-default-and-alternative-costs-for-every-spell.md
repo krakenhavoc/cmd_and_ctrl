@@ -340,11 +340,20 @@ up, so a card in a library is judged on its front face (CR 712.8a). It is a copi
 
 `game.HasPrintedManaAbility` reads the stamp whenever the text was read, catalogued card or not, and asks the catalog
 only for a card whose text never was. It does not join the two by "or", as #3860 did for {T} abilities, because here the
-catalog is sometimes wrong by the rules: it runs Millikin's "{T}, Mill a card: Add {C}" and Chromatic Sphere's "Add one
-mana of any color. Draw a card." as mana abilities, and CR 605.1a says neither is one (#3971). For a card in a library the
-printed text is the whole answer, since nothing grants a library card an ability.
+catalog is sometimes wrong by the rules: it ran Millikin's "{T}, Mill a card: Add {C}" and Chromatic Sphere's "Add one
+mana of any color. Draw a card." as mana abilities, and CR 605.1a says neither is one (#3971, fixed 2026-10-19: see
+below). For a card in a library the printed text is the whole answer, since nothing grants a library card an ability.
 
 `TestManaAbilityTextAgreesWithTheCatalog` checks the classifier against every catalogued face (6,437, of which 833
-print a mana ability). Seven disagree, each pinned with its reason: the five CR 605.1a cards (#3971), Filigree Familiar,
+print a mana ability). Seven disagreed, each pinned with its reason: the five CR 605.1a cards (#3971), Filigree Familiar,
 whose catalog entry runs a mana ability the card does not print (#3970), and Dryad Arbor, whose Forest type the fixture
 can't show. Moonsilver Key ships `full`.
+
+## Amendment 2026-10-19 — the five CR 605.1a cards are fixed (#3971)
+
+Millikin, Manakin and Millikin, Deranged Assistant, Charmed Pendant and Chromatic Sphere are ordinary activated
+abilities now ([ADR 0020](0020-activated-abilities.md)'s 2026-10-19 amendment, Decision 67). Their rows are gone from
+`knownManaAbilityDisagreements`, which pins two cards, and the catalog and the classifier agree on every catalogued face
+but those two. A card a future batch writes with a library-moving ability on a `ManaAbilities` row fails the test, and the
+author is sent to that amendment. Nothing in this ADR's payment rules changes: none of the five was ever planned by the
+auto-tapper.

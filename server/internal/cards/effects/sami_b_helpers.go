@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -32,18 +30,4 @@ func samiFoodLifeAbility() ActivatedAbility {
 		Purpose: game.Purpose{Answers: game.AnswerValue}, // ADR 0142
 		Effect:  b36GainLife(3),
 	}
-}
-
-// samiDrawRider is a mana ability's "Draw a card." clause (Chromatic
-// Sphere). A rider is not a cost: it runs inside the same atomic
-// activation, after the mana is added.
-func samiDrawRider(g *game.Game, controller, _ uuid.UUID) error {
-	return g.DrawNForEffect(controller, 1)
-}
-
-// samiAnyColorManaThenDraw is samiAnyColorMana with the draw rider.
-func samiAnyColorManaThenDraw(cost ManaAbilityCost, label string) ManaAbility {
-	m := samiAnyColorMana(cost, label)
-	m.Rider = samiDrawRider
-	return m
 }

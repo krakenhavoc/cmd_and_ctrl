@@ -664,3 +664,48 @@ None to the shape: `EffectParams.Object` already exists. One new on-disk body ke
 ### Tests
 
 `cards/effects/shuffle_itself_from_graveyard_test.go`: killed, discarded, milled and countered, once each; each of the six cards killed; exiled in response (stays in exile, library shuffled); a new object in the graveyard (stays, library shuffled); Rest in Peace (no trigger); lost all abilities on the battlefield (still shuffled in); a JSON restore with the trigger waiting; and each card's other lines. `cards/effects/shuffle_into_library_instead_cards_test.go`: the replacement cards discarded and milled, Darksteel Colossus against Rest in Peace in both orders, a commander Progenitus offered the command zone, and Legacy Weapon's exile.
+
+## Amendment 2026-10-19 — "If a spell or ability you control would counter a spell, instead exile that spell" (#4056)
+
+**Why it lands here.** The previous amendment shipped the Judgment Incarnations and left one out: Guile's middle line, "If a spell or ability you control would counter a spell, instead exile that spell and you may play that card without paying its mana cost", had no event to be a replacement of. It changes no earlier decision.
+
+### What exists, what was missing
+
+- **A window on the move existed.** A countered spell's trip to the graveyard goes through `routeCardToZoneLocked`, so a replacement of the *move* sees it. That is the wrong event. CR 614.1a puts the replacement on the act of countering (CR 701.6a), and a move replacement leaves the spell countered: "can't be countered" and "whenever a spell is countered" would read it wrong, and the move does not know who is countering, which Guile's "you control" and its free play both need.
+- **`RepEventCounter` was no help.** It is counters placed on objects.
+- **Nothing was missing downstream.** The free play is the resolution-time grant every "you may cast it without paying its mana cost" already takes (`free_cast_hand.go`, ADR 0099 §4).
+
+### The rules
+
+- **CR 701.6a.** To counter a spell is to cancel it, removing it from the stack; a countered spell is put into its owner's graveyard. **CR 614.1a.** A replacement effect that uses "instead" replaces the event. The spell is exiled and was never countered, so nothing keyed to "countered" sees it.
+- **CR 616.1.** Two replacements of one event are ordered by the *affected object's controller*: the countered spell's controller, not the player doing the countering. CR 616.1f: after one applies, only effects that would now apply are considered, so a second "instead exile that spell" has no counter left to replace.
+- **A spell that can't be countered** is not countered, so there is nothing to replace (CR 101.2); the window does not open for it. A countered *ability* is not covered: "counter a spell".
+- **CR 903.9.** A commander spell exiled this way may go to the command zone instead; it is not in exile, so no free play is offered.
+
+### Decision
+
+1. **A new replaceable event, `RepEventCounterSpell`** (`"counter_spell"`, `game/counter_spell.go`). It carries the spell (`CounterSpellID`), who is countering (`CounterBy`, also the event's `Actor`, the controller of the resolving spell or ability, CR 113.8) and the countering source (`CounterBySource`). `Watches` it with the existing `EventCounterSpell` key, the way `RepEventMill` watches `EventMill`: no new sentinel. The move the counter would make rides the event's `zoneRoute` (no new field reaches a closure from `Game`, so the closure ratchet does not move).
+2. **It opens in the three effect counter verbs** (`CounterTargetForEffect`, `CounterTargetToZoneForEffect`, `CounterSpellToLibraryThenForEffect`), after the "can't be countered" gate and before the spell leaves the stack. That covers a hard counter, a *declined* "counter unless pays" (the decline calls `CounterTargetForEffect`), a ward, and the destination counters (Hinder, and the cards to come: Remand, Memory Lapse). It does not open for the sandbox's counter action (`Game.CounterSpell`), which is not a spell or ability, nor with nothing resolving.
+3. **It can pause.** Two replacements that disagree are a CR 616.1 ordering prompt, put to the countered spell's controller (`affectedPlayerForEvent`). Nothing has moved while it is open. The resume, the cancel and the abandon each reach the one finisher, `finishCounterSpellLocked`, which is also what the unpaused path runs. A cancel leaves the spell on the stack and tells the caller's continuation it was not countered; an abandoned prompt does the same.
+4. **The answer.** `Game.ExileCounteredSpellInsteadForEffect(ev, mayPlayFreeBy, source, sourceName)` declares, from a Replace callback, that the event is no longer a counter: the spell is exiled without being countered (`exitSpellFromStackLocked` with `countered` false, so flashback's CR 702.34a exile and CR 903.9 still apply), and the named player may cast it free. `ev.CounterSpellStillCounters()` is the `AppliesTo` guard that makes a second answer inapplicable. The free cast is `Game.FreeCastFromExilePermission`: `{0}` (X is 0), any timing (CR 608.2g), cast-only (a spell is never a land), closing on that player's next priority pass with the card staying in exile. It is granted only if the card landed in exile, to the *countering* player.
+5. **Card side.** `effects.ExileSpellsYouWouldCounterInstead()` is the `ReplacementEffect`: `AppliesTo` is `ev.CounterBy == src.Controller` on a still-counter event, so an opponent's counterspell is untouched by your Guile.
+
+### Cards
+
+Guile (Full). It is the only card in the Scryfall dump that replaces the act of countering a spell. The cards that print "If that spell is countered this way, exile it instead" (Dissipate, Syncopate, Devious Cover-Up and the like) are the counterspell's own instruction, not a replacement of someone else's counter, and The Countering Runner's "spells you cast that would counter a spell cost {U}{U} less" is a cost reduction, not a replacement.
+
+### Snapshot impact
+
+None. The event is never persisted; an undo snapshot taken across the ordering prompt copies the answer (`cloneReplacementResume`). No effect key is added.
+
+### Same simplification as every resolution-time free cast
+
+The play is an ordinary `cast_spell` taken after the counterspell finishes resolving, not a frame inside the resolution, and closes on that player's next priority pass (ADR 0066, ADR 0091).
+
+### Tests
+
+`game/counter_spell_test.go`: the window opens for a resolving spell's counter and names who is countering; a cancel leaves the spell on the stack and tells the continuation; nothing resolving opens no window; a spell that can't be countered never opens it; the three verbs exile instead and grant the free cast, with no `EventCounterSpell`; two replacements are ordered by the spell's controller, in both orders, with nothing moved while the prompt is open; an abandoned prompt still tells its continuation. `cards/effects/guile_test.go`: Guile against a real Counterspell, a declined Spell Pierce, a Hinder, an uncounterable Carnage Tyrant, a Guile on the wrong side, and two Guiles.
+
+### Back-out
+
+Replace `counterSpellByEffectLocked` in `CounterTargetForEffect` with `counterSpellLocked` (the old direct route): the Guile tests and `TestAReplacedCounterExilesTheSpellUncounteredAndGrantsTheFreeCast` fail. Drop the `CounterBy == src.Controller` guard in `ExileSpellsYouWouldCounterInstead` and `TestGuileOnTheCounteredSpellsSideChangesNothing` fails.

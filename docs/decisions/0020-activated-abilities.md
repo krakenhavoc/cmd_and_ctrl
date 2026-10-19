@@ -3515,3 +3515,36 @@ Diaochan, Fire Bowman, Goblin Firestarter, Hua Tuo, King's Assassin, Lady Sun, L
 Pang Tong, Shu Farmer, Steam Catapult, Stern Marshal, Stone Catapult, Talas Researcher, Temple Elder, Wu Longbowman,
 Xiahou Dun, Xun Yu and Zhuge Jin (all Full), and the forced-attack family (Nettling Imp, Norritt, Arcum's Whistle,
 Siren's Call; `forced_attack_helpers.go`).
+
+## Amendment 2026-10-19 ([#3971](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3971)): an ability that moves a card to or from a library is not a mana ability
+
+**Why it lands here.** Decisions 65 and 66 put "Mill a card" on `ManaAbilityCost` so Millikin could stay a mana ability, and #3849 did the same for Deranged Assistant, Manakin and Millikin and Charmed Pendant. Chromatic Sphere ran "Draw a card" as a mana ability's rider. None of that checked CR 605.1a, which ADR 0118's 2026-10-16 amendment (#3943) then did, when it built the printed-text classifier. This amendment reverses the *shape* decision 65 made for those five cards and leaves the *component* alone.
+
+**The rule.** CR 605.1a (September 25, 2026): an activated ability is a mana ability only if it doesn't require a target, could add mana when it resolves, is not a loyalty ability, "and its cost and effect don't move any card to or from a library". A mill moves the top card of a library to the graveyard; a draw moves it to the hand. So `{T}, Mill a card: Add {C}` and `{1}, {T}, Sacrifice this artifact: Add one mana of any color. Draw a card` are ordinary activated abilities. The owner's recommendation on the issue (2026-10-16) was to follow the pinned rules.
+
+### Decision 67: the five cards are `Activated`, with `AddMana` on resolution
+
+Millikin, Manakin and Millikin, Deranged Assistant, Charmed Pendant and Chromatic Sphere declare `Spec.Activated`, not `ManaAbilities`. What follows from CR 602, which a mana ability skipped:
+
+- **The stack.** The cost is paid at announce (CR 602.2b): the tap, the mana, the sacrifice and the mill (still last, CR 601.2h). The ability goes on the stack, an opponent may respond, it can be countered (Stifle), and the mana is added on resolution through `AddMana` (CR 106.4, and the CR 106.12b window). Chromatic Sphere sacrifices itself as a cost, so a response cannot save it; it adds the colour (a pick, since the pipe slot asks) and then draws, in the printed order, and the draw waits for the pick (CR 608.2c, the `Do` step walk).
+- **CR 605.3a no longer applies.** They cannot be activated in the middle of paying a cost, so a cast no longer reaches into them. The auto-tapper plans only `ManaAbilities`, so it never taps these either. That is unchanged in effect: the mill and the sacrifice-and-draw were already outside its plans.
+- **Charmed Pendant.** `AbilityCost.Mill` already records the milled card on `PaidCost.Milled` for an activated ability (decision 65's #3849 amendment), and the stack item carries the record, so the effect reads `Context.Paid().Milled` on resolution instead of a `ProducedForPaid` callback. It sees the card wherever it now is (CR 701.17c). A card the effect cannot find adds nothing.
+- **Deck purposes** read `Purpose.Answers` (ADR 0142): each row declares `AnswerValue` (Chromatic Sphere also `Draws: 1`).
+
+`ManaAbilityCost.Mill` and `ManaAbilityShape.MillCost` (decision 65's mana-ability half) stay for now but have no catalogued user, and by CR 605.1a can have none: a mana ability whose cost mills is not a mana ability. Removing them, with the `mana_abilities[i].mill_cost` wire field and the enumerator, view and auto-tapper reads, is its own change, filed as a tech-debt issue. `ProducedForPaid` stays (Black Mana Battery, Bottomless Vault and Food Chain use it). `samiDrawRider` and `samiAnyColorManaThenDraw` had no other user and are deleted.
+
+### The guard that finds the next one
+
+`knownManaAbilityDisagreements` (`cards/coverage/mana_ability_text_test.go`) no longer pins the five. `TestManaAbilityTextAgreesWithTheCatalog` fails on any catalogued card whose `ManaAbilities` row the printed text says is not one, so a card written the old way fails CI. `TestLibraryMovingManaCardsAreNotManaAbilities` pins the five as `Activated` with no `ManaAbilities`.
+
+### Snapshot impact
+
+None to the schema. A mana ability never waits on the stack, so no restore point holds a pending one of the old shape. A stack item names its catalog row (`Activated` index 0); the five cards had no `Activated` row before, so none exists in an old restore point.
+
+### Tests
+
+`cards/effects/mill_cost_cards_test.go`, `batch11_test.go`, `mill_cost_test.go`, `sami_b_test.go`: each card activates, stacks (the pool is empty on the stack), resolves into the pool, mills or draws, refuses an empty library with `ErrCantPayLibraryCost` and a summoning-sick creature, and is never auto-tapped; Charmed Pendant counts coloured symbols, adds nothing for a colourless or costless card, and counts a card Rest in Peace exiled.
+
+### Back-out
+
+Put `ManaAbilities: []ManaAbility{...}` back on Millikin: `TestLibraryMovingManaCardsAreNotManaAbilities` and `TestManaAbilityTextAgreesWithTheCatalog` fail.

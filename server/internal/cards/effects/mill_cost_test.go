@@ -308,7 +308,7 @@ func TestMillikinMillIsReplacedByRestInPeace(t *testing.T) {
 	lib := lcLibrary(g, me, 2)
 	millikin := pushCatalogPermanent(g, me.ID, "Millikin", "Artifact Creature — Construct", b11MillikinOracle, false)
 
-	if err := g.ActivateManaAbility(me.ID, millikin, 0, game.ManaAbilityParams{}); err != nil {
+	if _, err := activateMillMana(t, g, me, millikin); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	if len(me.ManaPool) != 1 {
@@ -319,7 +319,7 @@ func TestMillikinMillIsReplacedByRestInPeace(t *testing.T) {
 	}
 }
 
-// Millikin is a mana ability with a cost the player chooses, so the
+// Millikin is an activated ability with a cost the player chooses, so the
 // auto-tapper never takes it: a spell is not paid for by milling a
 // library behind the player's back.
 func TestMillikinIsNeverAutoTapped(t *testing.T) {

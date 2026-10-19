@@ -37,6 +37,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
+  - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
@@ -3678,6 +3679,36 @@ GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCoun
 - `From` is the card's name, shown on the seat's NO COUNTER badge
   (`counter_shields` on the player view) beside the printed `text`.
 
+### "If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)
+
+Guile. A replacement of the act of countering (CR 614.1a, CR 701.6a),
+not of the spell's move to the graveyard: the spell is never countered,
+so "can't be countered" and "whenever a spell is countered" read it
+right, and the replacement knows who is countering. Declare
+`effects.ExileSpellsYouWouldCounterInstead()` on `Spec.Replacements`.
+
+- **The event is `game.RepEventCounterSpell`**, watched with
+  `game.EventCounterSpell`. Its `CounterBy` (also `Actor`) is the
+  controller of the resolving spell or ability, so "you control" is
+  `ev.CounterBy == src.Controller`; `CounterSpellID` is the spell.
+  Guard `AppliesTo` with `ev.CounterSpellStillCounters()` so a second
+  answer does not apply to an event the first already changed.
+- **It opens in the three effect counter verbs**, after the "can't be
+  countered" gate: a hard counter, a declined "counter unless pays", a
+  ward and the destination counters (Hinder) all reach it. It does not
+  open for the sandbox's counter action, for a spell that can't be
+  countered, or for a countered ability.
+- **Answer with `Game.ExileCounteredSpellInsteadForEffect(ev, who,
+  source, name)`**: exile the spell instead (not countered) and let `who`
+  (the countering player, not the spell's owner) cast it free. The free
+  cast is `FreeCastFromExilePermission`, the same now-or-never grant
+  every resolution-time free cast takes. A different "instead" (to the
+  bottom of a library, to the hand) is a new answer on the same event,
+  not a new event.
+- **It can pause.** Two replacements that disagree are ordered by the
+  countered spell's controller (CR 616.1), with nothing moved while the
+  prompt is open.
+
 ### "Play with their hands revealed" (ADR 0199, #3953)
 
 A permanent whose static reveals hands declares `Spec.HandsRevealed`:
@@ -4337,12 +4368,17 @@ It is not an exile: the cards go through the ordinary mill, so Rest in
 Peace exiles them instead and "whenever you mill" payoffs see them. A
 library of fewer than N cards can't pay it (CR 701.17b), so the ability
 is not offered (the enumerator, the view's `cant_activate` and the
-engine all ask `MillCostShortfall`). A mana ability declares it as
-`ManaAbilityCost{Tap: true, Mill: 1}`; the auto-tapper never pays such
-a row. An ability that also TARGETS is not a mana ability (CR 605.1a):
-declare it on `Activated` with `Plus(TapCost(), MillCardsCost(1))`, as
-The Warring Triad does. Register refuses a mill beside an exile of the
-top of the library.
+engine all ask `MillCostShortfall`). An ability whose cost mills a card
+is NOT a mana ability, however much mana it adds (CR 605.1a: its cost
+and effect may not move a card to or from a library), so declare it on
+`Activated` with `Plus(TapCost(), MillCardsCost(1))` and an `AddMana`
+effect, as Millikin and The Warring Triad do (#3971, ADR 0020's
+2026-10-19 amendment); the mana lands on resolution, and a draw in the
+effect (Chromatic Sphere) takes it out of the mana abilities the same
+way. `TestManaAbilityTextAgreesWithTheCatalog` fails on a `ManaAbilities`
+row the printed text says is not one. The milled card is
+`ctx.Paid().Milled` (Charmed Pendant). Register refuses a mill beside an
+exile of the top of the library.
 
 **A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
 a flag on the clause, never a predicate, because a predicate cannot see

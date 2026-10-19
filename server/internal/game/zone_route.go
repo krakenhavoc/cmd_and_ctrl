@@ -494,6 +494,11 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// Since #762 a token creation threads the rest of its batch
 		// through the same tail.
 		return g.runEntryTailLocked(ev, uuid.Nil)
+	case RepEventCounterSpell:
+		// #4056: an abandoned counter countered nothing — the spell is
+		// still on the stack — and the effect behind it ("if that spell
+		// is countered this way, …") still has to be told it was not.
+		return g.runRouteTailLocked(ev.zoneRoute)
 	case RepEventLife, RepEventDamage:
 		// finishDroppedReplacementLocked settles these two itself, with
 		// their own tails and an amount of zero, and never reaches

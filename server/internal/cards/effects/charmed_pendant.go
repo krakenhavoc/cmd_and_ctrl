@@ -3,8 +3,6 @@ package effects
 import (
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -15,12 +13,14 @@ import (
 //	 instant. For example, if the card's mana cost is {3}{U}{U}{B}, you
 //	 add {U}{U}{B}.)"
 //
-// A mana ability (CR 605.1a: no target, adds mana, not a loyalty
-// ability) whose output depends on what its cost milled. The mill is
-// MillCardsCost's component (ManaAbilityCost.Mill, #3845), and the
-// card it milled is recorded on PaidCost.Milled (#3849, ADR 0020's
-// 2026-10-15 amendment), which ProducedForPaid reads after the cost is
-// paid. The mana is computed from the card in the graveyard.
+// An ordinary activated ability whose output depends on what its cost
+// milled. It is not a mana ability (#3971): the cost mills a card from a
+// library, which CR 605.1a excludes, so it uses the stack and the mana
+// is added on resolution. The mill is MillCardsCost (AbilityCost.Mill,
+// #3845), and the card it milled is recorded on PaidCost.Milled (#3849,
+// ADR 0020's 2026-10-15 amendment), which the resolving item carries
+// (Context.Paid). The mana is computed from that card when the ability
+// resolves, wherever it now is.
 //
 // Symbols: each {W}, {U}, {B}, {R}, {G} adds that colour; generic,
 // colourless ({C}) and {X} symbols add nothing. A Phyrexian symbol
@@ -32,8 +32,8 @@ import (
 // counts: the ability refers to the milled card, and CR 701.17c finds it
 // in whatever public zone it went to, so the mana is added.
 //
-// The auto-tapper never plans the ability (a payment-driven output is
-// opaque to it, and milling to pay a spell is the player's call).
+// The auto-tapper never plans the ability (milling to pay a spell is the
+// player's call).
 //
 // No simplification.
 func init() {
@@ -41,24 +41,28 @@ func init() {
 		OracleID:     "12469cb5-a383-47ab-84cd-414b9ced8a8c",
 		Name:         "Charmed Pendant",
 		Completeness: CompletenessFull,
-		ManaAbilities: []ManaAbility{{
-			Cost:            ManaAbilityCost{Tap: true, Mill: 1},
-			Label:           "{T}, Mill a card: For each colored mana symbol in the milled card's mana cost, add one mana of that color",
-			ProducedForPaid: charmedPendantProduced,
+		Activated: []ActivatedAbility{{
+			Label:   "{T}, Mill a card: For each colored mana symbol in the milled card's mana cost, add one mana of that color",
+			Cost:    Plus(TapCost(), MillCardsCost(1)),
+			Purpose: game.Purpose{Answers: game.AnswerValue}, // ADR 0142: mana answers nothing
+			Effect:  charmedPendantAddMana,
 		}},
 	})
 }
 
-func charmedPendantProduced(g *game.Game, _, _ uuid.UUID, paid game.PaidCost) game.ManaOutput {
+// charmedPendantAddMana adds the mana the milled card's colored symbols
+// name, to the ability's controller, as it resolves.
+func charmedPendantAddMana(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
 	var sb strings.Builder
-	for _, id := range paid.Milled {
+	for _, id := range ctx.Paid().Milled {
 		c, ok := g.LookupCardForEffect(id)
 		if !ok {
 			continue
 		}
 		sb.WriteString(coloredSymbolsAsProduced(c.ManaCost))
 	}
-	return game.ManaOutput{Text: sb.String()}
+	return AddMana{Produced: sb.String()}.Apply(ctx)
 }
 
 // coloredSymbolsAsProduced rewrites a printed mana cost as the mana a
