@@ -873,12 +873,18 @@ describe("the vote, in the dock", () => {
     const yes = buttons(dlg, "yes 1")[0];
     expect(yes).toBeTruthy();
     click(buttons(dlg, "no 0")[0]);
+    // The viewer did not call this vote, so there is no "end vote" (#4131).
+    expect(buttons(dlg, "end vote")).toHaveLength(0);
+    const sent = FakeSocket.last!.actionFrames().map((f) => [f.payload?.type, f.payload?.params]);
+    expect(sent).toEqual([["cast_vote", { option: 1 }]]);
+  });
+
+  it("gives the vote's initiator an end vote button that ends it (#4131)", async () => {
+    const c = await mountGame(table({ vote: { ...vote, initiator: ME, ballots: { [ME]: 0 } } }));
+    const dlg = dialogNamed(dockOf(c), "open vote")!;
     click(buttons(dlg, "end vote")[0]);
     const sent = FakeSocket.last!.actionFrames().map((f) => [f.payload?.type, f.payload?.params]);
-    expect(sent).toEqual([
-      ["cast_vote", { option: 1 }],
-      ["end_vote", undefined],
-    ]);
+    expect(sent).toEqual([["end_vote", undefined]]);
   });
 
   it("marks the viewer's own ballot pressed", async () => {
