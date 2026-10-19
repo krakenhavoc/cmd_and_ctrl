@@ -38,23 +38,29 @@ func init() {
 		SpecialActions: []game.SpecialAction{
 			Foretell("{4}{G}"),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x, ok := ctx.CastValue(lifestreamsBlessingX)
-			if !ok {
-				// A game restored from before the value was recorded:
-				// the best available answer is the board as it resolves.
-				x = b42GreatestPowerControlledBy(ctx.Game, ctx.Controller())
-			}
-			if x < 0 {
-				x = 0
-			}
-			if err := (DrawCards{Player: ctx.Controller(), N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			if item.CastFromZone != game.ZoneExile {
-				return nil
-			}
-			return GainLife{Player: ctx.Controller(), Amount: 2 * x}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life waits for a prompt the draws ask (CR 608.2c, #4155). X is the
+			// cast-time value, read again for the second step.
+			Instruction(func(ctx *Context) error {
+				return DrawCards{N: lifestreamsBlessingValue(ctx)}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.Item.CastFromZone != game.ZoneExile {
+					return nil
+				}
+				return GainLife{Amount: 2 * lifestreamsBlessingValue(ctx)}.Apply(ctx)
+			}),
+		),
 	})
+}
+
+// lifestreamsBlessingValue is X: the value recorded as the spell was cast.
+func lifestreamsBlessingValue(ctx *Context) int {
+	x, ok := ctx.CastValue(lifestreamsBlessingX)
+	if !ok {
+		// A game restored from before the value was recorded:
+		// the best available answer is the board as it resolves.
+		x = b42GreatestPowerControlledBy(ctx.Game, ctx.Controller())
+	}
+	return max(x, 0)
 }

@@ -20,16 +20,17 @@ func init() {
 		Name:         "Aquitect's Will",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target land", Land()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := FloodTargetLand(ctx, "Aquitect's Will"); err != nil {
-				return err
-			}
-			// ControlsAtLeast lends the spell's text, so "Merfolk" follows a
-			// text change (CR 612.2, #3984).
-			if !ControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtypeWord("Merfolk") })(ctx.Game, ctx.Controller(), ctx.Source()) {
-				return nil
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error { return FloodTargetLand(ctx, "Aquitect's Will") }),
+			Instruction(func(ctx *Context) error {
+				// ControlsAtLeast lends the spell's text, so "Merfolk" follows a
+				// text change (CR 612.2, #3984).
+				if !ControlsAtLeast(1, func(c game.Card) bool { return c.HasSubtypeWord("Merfolk") })(ctx.Game, ctx.Controller(), ctx.Source()) {
+					return nil
+				}
+				return DrawCards{N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

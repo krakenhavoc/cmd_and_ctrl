@@ -24,16 +24,16 @@ func init() {
 			Label:   "{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1.",
 			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerMakesBlocker},
 			Cost:    Plus(TapCost(), DiscardACard()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				if card, ok := ctx.DiscardedCard(); ok && card.IsCreature() {
-					return Amass{Subtype: "Orc", N: 1}.Apply(ctx)
-				}
-				return nil
-			},
+			Effect: Do(
+				// The Army waits for a prompt the draw asks (CR 608.2c, #4155).
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					if card, ok := ctx.DiscardedCard(); ok && card.IsCreature() {
+						return Amass{Subtype: "Orc", N: 1}.Apply(ctx)
+					}
+					return nil
+				}),
+			),
 		}},
 	})
 }

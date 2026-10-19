@@ -19,13 +19,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorLeft, "Derelict Attic — you draw two cards and you lose 2 life",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return g.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -2)
-				}),
+				// The life loss waits for a prompt the draws ask (CR 608.2c, #4155).
+				Do(DrawCards{N: 2}, GainLife{Amount: -2})),
 		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

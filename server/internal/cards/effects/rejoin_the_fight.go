@@ -28,12 +28,13 @@ func init() {
 		OracleID:     "d22ea32b-2128-4dcc-8b1c-c4c52f0b2f45",
 		Name:         "Rejoin the Fight",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (MillCards{Player: ctx.Controller(), N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			return rejoinAsk(ctx, opponentsInTurnOrder(ctx.Game, ctx.Controller()), nil)
-		},
+		// The opponents' choices wait for a prompt the mill asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			MillCards{N: 3},
+			Instruction(func(ctx *Context) error {
+				return rejoinAsk(ctx, opponentsInTurnOrder(ctx.Game, ctx.Controller()), nil)
+			}),
+		),
 	})
 }
 

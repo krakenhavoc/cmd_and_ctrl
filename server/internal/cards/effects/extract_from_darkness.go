@@ -29,30 +29,35 @@ func init() {
 		OracleID:     "e597d8a1-3bbc-4001-b642-f4421447970f",
 		Name:         "Extract from Darkness",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := b02EachPlayerMills(ctx.Game, item, 2); err != nil {
-				return err
-			}
-			controller := item.Controller
-			candidates := allGraveyardsCardIDs(ctx, game.Card.IsCreature)
-			if len(candidates) == 0 {
+		OnResolve: ResolveSteps(
+			// The creature choice waits for a prompt the mills ask (CR 608.2c, #4155).
+			// The graveyards are read again for it: it is a choice from what is there.
+			Instruction(func(ctx *Context) error {
+				return b02EachPlayerMills(ctx.Game, ctx.Item, 2)
+			}),
+			Instruction(func(ctx *Context) error {
+				item := ctx.Item
+				controller := item.Controller
+				candidates := allGraveyardsCardIDs(ctx, game.Card.IsCreature)
+				if len(candidates) == 0 {
+					return nil
+				}
+				ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+					Chooser:  controller,
+					Source:   item.SourceCardID,
+					Question: "Extract from Darkness — put a creature card from a graveyard onto the battlefield under your control",
+					Cards:    candidates,
+					Min:      1,
+					Max:      1,
+					Then: func(g *game.Game, picked []uuid.UUID) error {
+						if len(picked) == 0 {
+							return nil
+						}
+						return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneBattlefield, Controller: controller}.Apply(NewContext(g, item))
+					},
+				})
 				return nil
-			}
-			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:  controller,
-				Source:   item.SourceCardID,
-				Question: "Extract from Darkness — put a creature card from a graveyard onto the battlefield under your control",
-				Cards:    candidates,
-				Min:      1,
-				Max:      1,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) == 0 {
-						return nil
-					}
-					return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneBattlefield, Controller: controller}.Apply(NewContext(g, item))
-				},
-			})
-			return nil
-		},
+			}),
+		),
 	})
 }

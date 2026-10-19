@@ -41,21 +41,22 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return instantOrSorceryCastByYou(ev, source, g)
-			}, "Lord of the Nazgûl — create a 3/3 black Wraith with menace", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (CreateToken{Controller: item.Controller, Template: TokenCard("3/3 black Wraith with menace"), N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				// "Wraiths" is a word of the source's text (CR 612.2, #3984).
-				wraith := ctx.TextSubtype("Wraith")
-				isWraith := func(c game.Card) bool { return c.HasSubtype(wraith) }
-				if countControlled(g, item.Controller, isWraith) < 9 {
-					return nil
-				}
-				return untilEndOfTurn(ctx, uuid.Nil, And(Subtype(wraith), ControlledBy(item.Controller)),
-					"Lord of the Nazgûl — Wraiths have base power and toughness 9/9",
-					game.SetBasePowerMod(9), game.SetBaseToughnessMod(9))
-			}),
+			}, "Lord of the Nazgûl — create a 3/3 black Wraith with menace", Do(
+				// The count waits for a prompt the token's creation asks (CR 608.2c, #4155).
+				CreateToken{Template: TokenCard("3/3 black Wraith with menace"), N: 1},
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					// "Wraiths" is a word of the source's text (CR 612.2, #3984).
+					wraith := ctx.TextSubtype("Wraith")
+					isWraith := func(c game.Card) bool { return c.HasSubtype(wraith) }
+					if countControlled(ctx.Game, item.Controller, isWraith) < 9 {
+						return nil
+					}
+					return untilEndOfTurn(ctx, uuid.Nil, And(Subtype(wraith), ControlledBy(item.Controller)),
+						"Lord of the Nazgûl — Wraiths have base power and toughness 9/9",
+						game.SetBasePowerMod(9), game.SetBaseToughnessMod(9))
+				}),
+			)),
 		},
 	})
 }

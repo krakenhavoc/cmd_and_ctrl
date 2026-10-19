@@ -47,19 +47,20 @@ func init() {
 		Name:         "Great Intelligence's Plan",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetPlayer {
-					return FaceVillainousChoice{
-						Players: []uuid.UUID{t.ID},
-						Choice:  greatIntelligencesPlanChoice,
-					}.Apply(ctx)
+		// The choice waits for a prompt the draws ask (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			DrawCards{N: 3},
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetPlayer {
+						return FaceVillainousChoice{
+							Players: []uuid.UUID{t.ID},
+							Choice:  greatIntelligencesPlanChoice,
+						}.Apply(ctx)
+					}
 				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }

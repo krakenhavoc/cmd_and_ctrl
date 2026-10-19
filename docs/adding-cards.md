@@ -4034,7 +4034,13 @@ name to `stepsConverted` in the same file: `TestConvertedBodiesStayConverted`
 then fails if a later edit makes the body one flat function again. Test the
 card with the prompt open: a dredge offer (Stinkweed Imp in the graveyard) or
 Khârn the Betrayer's question, and a restore when the prompt is data
-(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`).
+(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`,
+`resolution_order_batch3_test.go`). A test that answers a prompt straight on
+the `Game` (not through `actions.Dispatch`) calls `g.SettleResolution()` after
+it, as Dispatch does, or the steps behind the answer never run. The scan reads a
+`switch` with an asking case followed by another case as a pair, though the
+cases are exclusive. In a card you convert, build the prompt in an `if` and
+queue it once, so the converted body is not flagged again.
 
 A Spree bullet with more than one instruction is `SpreeModeSteps(label, cost,
 targets, step, …)` (Insatiable Avarice). A scanned card you leave as it is goes

@@ -111,8 +111,17 @@ func TestThoughtseizeOffersOnlyNonlandCards(t *testing.T) {
 	if pick.DiscardLabel != "nonland card" {
 		t.Errorf("label = %q", pick.DiscardLabel)
 	}
+	// The life loss is the instruction after the choice, so it waits for the
+	// answer (CR 608.2c, #4155).
+	if caster.Life != life {
+		t.Errorf("caster life = %d with the pick open, want %d", caster.Life, life)
+	}
+	if err := g.ResolvePendingChoice(pick.ID, caster.ID, []uuid.UUID{ids[2]}); err != nil {
+		t.Fatalf("taking the Bolt: %v", err)
+	}
+	g.SettleResolution()
 	if caster.Life != life-2 {
-		t.Errorf("caster life = %d, want %d", caster.Life, life-2)
+		t.Errorf("caster life = %d after the pick, want %d", caster.Life, life-2)
 	}
 }
 

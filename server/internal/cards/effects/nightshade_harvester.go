@@ -53,19 +53,22 @@ func init() {
 				item.Params.Player = victim
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				victim := item.Params.Player
-				if g.PlayerByIDForEffect(victim) != nil {
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1); err != nil {
-						return err
+			Effect: Do(
+				// The counter waits for a prompt the life loss asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					victim := ctx.Item.Params.Player
+					if ctx.Game.PlayerByIDForEffect(victim) != nil {
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, victim, -1)
 					}
-				}
-				if !b09SourceStillOnBattlefield(g, item) {
 					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-			},
+				}),
+				Instruction(func(ctx *Context) error {
+					if !b09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+						return nil
+					}
+					return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

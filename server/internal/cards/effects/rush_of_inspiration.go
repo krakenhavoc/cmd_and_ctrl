@@ -22,17 +22,16 @@ func init() {
 		Name:         "Rush of Inspiration",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 2},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return PayEnergyUnless{
+		// The energy offer waits for a prompt the draws ask (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			DrawCards{N: 2},
+			PayEnergyUnless{
 				N:        2,
 				Question: "Rush of Inspiration — pay {E}{E}, or discard a card at random?",
 				OnDecline: func(ctx *Context) error {
 					return DiscardCards{N: 1}.Apply(ctx)
 				},
-			}.Apply(ctx)
-		},
+			},
+		),
 	})
 }

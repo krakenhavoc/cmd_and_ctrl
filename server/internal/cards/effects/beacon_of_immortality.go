@@ -20,21 +20,28 @@ func init() {
 		Name:         "Beacon of Immortality",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetPlayer {
-					continue
-				}
-				if p := ctx.Game.PlayerByIDForEffect(t.ID); p != nil && p.Life != 0 {
-					if err := ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, t.ID, p.Life); err != nil {
-						return err
+		OnResolve: ResolveSteps(
+			// The shuffle into the library waits for a prompt the life change asks
+			// (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetPlayer {
+						continue
+					}
+					if p := ctx.Game.PlayerByIDForEffect(t.ID); p != nil && p.Life != 0 {
+						if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, t.ID, p.Life); err != nil {
+							return err
+						}
 					}
 				}
-			}
-			owner := item.Owner
-			return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				return g.ShuffleLibraryForEffect(owner)
-			})
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				owner := ctx.Item.Owner
+				return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
+					return g.ShuffleLibraryForEffect(owner)
+				})
+			}),
+		),
 	})
 }

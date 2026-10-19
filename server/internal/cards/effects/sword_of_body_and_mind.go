@@ -47,17 +47,13 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Key: "Sword of Body and Mind — a 2/2 Wolf, and that player mills ten",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("2/2 green Wolf"),
-					N:          1,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				return MillCards{Player: item.Trigger.Event.Target, N: 10}.Apply(ctx)
-			},
+			Effect: Do(
+				// The mill waits for a prompt the Wolf's creation asks (CR 608.2c, #4155).
+				CreateToken{Template: TokenCard("2/2 green Wolf"), N: 1},
+				Instruction(func(ctx *Context) error {
+					return MillCards{Player: ctx.Item.Trigger.Event.Target, N: 10}.Apply(ctx)
+				}),
+			),
 		}},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),

@@ -54,21 +54,26 @@ func init() {
 				Cost:    LoyaltyCost(2),
 				Targets: TargetAny(),
 				Purpose: ForTargets(DamageToTarget(0, 2)),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
+				// The life gain waits for a prompt the damage asks (CR 608.2c, #4155).
+				Effect: Do(
 					// CR 608.2b: with its only target illegal the ability
 					// does nothing at all, life gain included (#4082).
 					// The life gain is NOT conditional on the damage
 					// landing — a fogged or prevented 2 still gains 2.
-					legal := ctx.LegalTargets()
-					if len(legal) == 0 {
-						return nil
-					}
-					if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-				},
+					Instruction(func(ctx *Context) error {
+						legal := ctx.LegalTargets()
+						if len(legal) == 0 {
+							return nil
+						}
+						return DealDamage{Source: ctx.Item.SourceCardID, Target: legal[0].ID, Amount: 2}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if len(ctx.LegalTargets()) == 0 {
+							return nil
+						}
+						return GainLife{Amount: 2}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "−3: Target opponent's life total becomes 10.",

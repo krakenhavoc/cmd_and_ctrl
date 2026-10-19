@@ -44,21 +44,25 @@ func init() {
 				return ev.Kind == game.EventBeginEndStep
 			},
 			Key: "Fevered Visions — that player draws, and takes 2 with four or more in hand",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				who := item.Trigger.Event.Actor
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				if who == item.Controller {
-					return nil
-				}
-				p := g.PlayerByIDForEffect(who)
-				if p == nil || len(p.Hand.Cards) < 4 {
-					return nil
-				}
-				return DealDamage{Source: item.SourceCardID, Target: who, Amount: 2}.Apply(ctx)
-			},
+			Effect: Do(
+				// The damage waits for a prompt the draw asks (CR 608.2c, #4155). The hand
+				// is counted again for it, after the draw.
+				Instruction(func(ctx *Context) error {
+					return DrawCards{Player: ctx.Item.Trigger.Event.Actor, N: 1}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					who := item.Trigger.Event.Actor
+					if who == item.Controller {
+						return nil
+					}
+					p := ctx.Game.PlayerByIDForEffect(who)
+					if p == nil || len(p.Hand.Cards) < 4 {
+						return nil
+					}
+					return DealDamage{Source: item.SourceCardID, Target: who, Amount: 2}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

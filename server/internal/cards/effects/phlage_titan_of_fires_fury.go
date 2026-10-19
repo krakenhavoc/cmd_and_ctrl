@@ -45,23 +45,25 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			SacrificeThisUnlessItEscaped("Phlage"),
 			TriggerWithPurpose(Targeting(
-				WhenThisEntersOrAttacks("Phlage — 3 damage to any target, gain 3 life", func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if len(item.Targets) > 0 {
-						if err := (DealDamage{
+				WhenThisEntersOrAttacks("Phlage — 3 damage to any target, gain 3 life", Do(
+					// The life waits for a prompt the damage asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						if len(item.Targets) == 0 {
+							return nil
+						}
+						return DealDamage{
 							Source: item.SourceCardID,
 							Target: item.Targets[0].ID,
 							Amount: 3,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
+						}.Apply(ctx)
+					}),
 					// The life is not conditional on the damage — "and
 					// you gain 3 life" is a second instruction, so a
 					// target that left in response costs the damage
 					// and not the life (CR 608.2c).
-					return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
-				}),
+					GainLife{Amount: 3},
+				)),
 				TargetAny(),
 			), ForTargets(DamageToTarget(0, 3))),
 		},

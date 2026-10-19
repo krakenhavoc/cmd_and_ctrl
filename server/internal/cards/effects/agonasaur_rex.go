@@ -46,22 +46,27 @@ func init() {
 			Targeting(
 				InGraveyard(On(game.EventCycle, Self,
 					"Agonasaur Rex — cycled: two +1/+1 counters, trample and indestructible until end of turn",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						ts := ctx.LegalTargets()
-						if len(ts) == 0 {
-							return nil
-						}
-						id := ts[0].ID
-						if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
-							return err
-						}
-						return GrantKeywordUntilEOT{
-							Target:   id,
-							Keywords: []string{"trample", "indestructible"},
-							Label:    "Agonasaur Rex — trample and indestructible",
-						}.Apply(ctx)
-					})),
+					Do(
+						// The keywords wait for a prompt the counters ask (CR 608.2c, #4155).
+						Instruction(func(ctx *Context) error {
+							ts := ctx.LegalTargets()
+							if len(ts) == 0 {
+								return nil
+							}
+							return AddCounter{Target: ts[0].ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+						}),
+						Instruction(func(ctx *Context) error {
+							ts := ctx.LegalTargets()
+							if len(ts) == 0 {
+								return nil
+							}
+							return GrantKeywordUntilEOT{
+								Target:   ts[0].ID,
+								Keywords: []string{"trample", "indestructible"},
+								Label:    "Agonasaur Rex — trample and indestructible",
+							}.Apply(ctx)
+						}),
+					))),
 				TargetPermanent("up to one target creature or Vehicle", Or(Creature(), Subtype("Vehicle"))).WithCount(0, 1),
 			),
 		},
