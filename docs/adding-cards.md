@@ -5821,6 +5821,18 @@ so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia).
 
+**An opponent's library (#4128, Lonis, Cryptozoologist):** "target
+opponent reveals the top X cards of their library. You may put a
+nonland permanent card … from among them onto the battlefield under
+your control" reveals THEIR library (`RevealTopOfLibraryForEffect(victim,
+…)`) and sets `LibraryOwner: victim` on the put. `Player` stays the
+chooser and the controller it enters under; `LibraryOwner` is whose
+library the picks sit in, and it is what the prompt's submit-time
+zone check reads — leave it off and a legal pick comes back as "card
+instance not found in zone". The card stays its owner's (CR 108.3), so
+it dies to their graveyard, and `PutRestOnBottomInRandomOrder` bottoms
+the rest of THEIR library.
+
 **"Put it into your HAND" is the twin, and it is a different door
 (#952).** `effects.TakeFromLibraryToHand` — same fields, same `Then`,
 with a `Reveal` flag for "you may REVEAL a creature card from among
