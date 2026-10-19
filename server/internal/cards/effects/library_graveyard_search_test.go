@@ -118,9 +118,11 @@ func TestTowerWinderWithNoTowerAnywhereStillShuffles(t *testing.T) {
 
 	lgCastTowerWinder(t, g)
 
-	if searchChoiceFor(g, me.ID) != nil {
-		t.Fatal("nothing matches, so there is nothing to prompt")
+	c := searchChoiceFor(g, me.ID)
+	if c == nil || len(c.SearchCards) != 0 {
+		t.Fatalf("nothing matches, so the prompt (#4140) has no candidates: %+v", c)
 	}
+	answerSearchFailToFind(t, g, me.ID)
 	if searchEventCount(g) != 1 {
 		t.Errorf("EventSearchLibrary fired %d times, want 1", searchEventCount(g))
 	}

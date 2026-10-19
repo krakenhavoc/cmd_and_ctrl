@@ -815,6 +815,21 @@ type PendingChoiceView struct {
 	// and library" prompt: every zone is searched, so the library is
 	// shuffled whatever is taken. Chooser-only.
 	SearchAllZones bool `json:"search_all_zones,omitempty"`
+	// SearchOptional (#4134) marks a "you may search" prompt on which
+	// "don't search" is a legal answer right now: the client offers a
+	// "Don't search" button, sent as {choice_id, apply: false}. It is
+	// present only while the prompt is undecided: looking at the list is
+	// searching (CR 701.19), so once the searcher has begun there is no
+	// decline. Declining is not finding nothing: a declined search never
+	// happens, so the library is neither shuffled nor announced. Absent
+	// for a mandatory search. Chooser-only.
+	SearchOptional bool `json:"search_optional,omitempty"`
+	// SearchUndecided (#4134) marks the question an optional search asks
+	// before it looks: options[] is withheld, and the answers are
+	// {apply: true} (begin the search; the same prompt then reappears with
+	// its options, for the Agent's controller under an Opposition Agent)
+	// or {apply: false} (don't search). Chooser-only.
+	SearchUndecided bool `json:"search_undecided,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -9421,7 +9436,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// drops the list outright for non-choosers, because the
 		// COUNT of matches is itself information about a hidden zone
 		// that nobody else is entitled to.
-		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
+		if c.Kind == game.PendingChoiceSearchLibrary {
 			v.SearchMax = c.SearchMax
 			v.SearchMin = c.SearchMin
 			for _, id := range c.SearchGraveyardCards {
@@ -9431,8 +9446,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.SearchHand = append(v.SearchHand, id.String())
 			}
 			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
+			v.SearchOptional = g.SearchDeclineLegalLocked(c)
+			v.SearchUndecided = c.SearchIsUndecided()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
+				if v.SearchUndecided {
+					// Not searching yet: nothing has been looked at.
+					break
+				}
 				if card, ok := g.LookupCardForEffect(id); ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
@@ -10857,6 +10878,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchGraveyard = nil
 			out[i].SearchHand = nil
 			out[i].SearchAllZones = false
+			out[i].SearchOptional = false
+			out[i].SearchUndecided = false
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the

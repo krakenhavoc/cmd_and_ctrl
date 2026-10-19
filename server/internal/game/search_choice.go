@@ -19,6 +19,14 @@ import "github.com/google/uuid"
 // happened to be offered a choice.
 type searchResumeFrame struct {
 	spec SearchLibrarySpec
+
+	// undecided is set on a "you may search" prompt (#4134): the
+	// searcher has not yet said whether they search, so the candidates
+	// are not shown, no control is recorded, and no card pick is
+	// accepted. BeginSearchLibrary swaps
+	// the frame for a decided one (a new pointer, never a write through
+	// this one: an undo snapshot shares it).
+	undecided bool
 }
 
 // ResolveSearchLibrary answers a PendingChoiceSearchLibrary (CR
@@ -27,11 +35,11 @@ type searchResumeFrame struct {
 //
 // An empty `picks` is a legal answer, not a client bug — CR 701.23b
 // lets a player fail to find no matter what their library holds, when
-// the search names a quality, and declining is the whole content of a
-// "you MAY search" clause. The search still happened, so
-// EventSearchLibrary still fires and the library is still shuffled;
-// that shuffle is the drawback the victim of an Assassin's Trophy is
-// accepting either way. It is NOT legal for an unconditional search
+// the search names a quality. The search still happened, so
+// EventSearchLibrary still fires and the library is still shuffled.
+// That is NOT what declining a "you MAY search" means: choosing not to
+// search at all is DeclineSearchLibrary (#4134), which skips the
+// shuffle and the event. An empty `picks` is NOT legal for an unconditional search
 // (CR 701.23d, #3053): choice.SearchMin is the floor, and a short
 // answer is refused with ErrInvalidParam like any other illegal set.
 //
@@ -115,6 +123,11 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 // Caller must hold g.mu.
 func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []uuid.UUID) error {
 	if choice == nil || choice.searchResume == nil {
+		return ErrInvalidParam
+	}
+	if choice.searchResume.undecided {
+		// #4134: the searcher has not begun to search; there is nothing
+		// to take yet.
 		return ErrInvalidParam
 	}
 	if len(picks) > choice.SearchMax {
@@ -280,4 +293,124 @@ func (g *Game) SearchPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) b
 		return false
 	}
 	return g.checkSearchPicksLocked(choice, p, picks) == nil
+}
+
+// SearchIsOptional reports whether the prompt is a "you may search"
+// (#4134): the searcher may decline the search outright, which is not
+// the same answer as finding nothing.
+func (c *PendingChoice) SearchIsOptional() bool {
+	return c != nil && c.Kind == PendingChoiceSearchLibrary && c.searchResume != nil &&
+		c.searchResume.spec.Optional
+}
+
+// SearchIsUndecided reports whether the prompt is still asking "do you
+// search?" (#4134): an Optional search, before the searcher has said
+// yes. No candidates are shown yet, and "don't search" is still on the
+// table; neither is true afterwards.
+func (c *PendingChoice) SearchIsUndecided() bool {
+	return c != nil && c.Kind == PendingChoiceSearchLibrary && c.searchResume != nil &&
+		c.searchResume.undecided
+}
+
+// SearchDeclineLegalLocked reports whether "don't search" is an answer
+// to `choice` right now (#4134): the search is a "you may" and has not
+// begun. Looking through the library is searching (CR 701.19), so once
+// the searcher has said yes, and so seen the candidates, there is no
+// way back: declining would be a free look that never shuffles. For the
+// same reason an Opposition Agent's controller, who takes over only
+// after the search begins, can never decline for the searcher.
+//
+// Caller must hold g's lock (read or write).
+func (g *Game) SearchDeclineLegalLocked(choice *PendingChoice) bool {
+	return choice.SearchIsUndecided() && choice.searchResume.spec.Optional
+}
+
+// DeclineSearchLibrary answers a "you may search" prompt with "I don't
+// search" (#4134, CR 701.19). The search never happens: the library is
+// not looked at and not shuffled, no EventSearchLibrary fires (so an
+// Archivist of Oghma stays quiet), and an Opposition Agent never gets
+// control. Only the rest of the effect runs (spec.Then, with no cards),
+// the way every declined "if you do" lead-in leaves the instructions
+// after it standing: Volatile Fault's Treasure is created either way.
+//
+// This is NOT the empty answer to ResolveSearchLibrary, which is a
+// search that finds nothing (CR 701.23b) and still shuffles. Refused
+// with ErrInvalidParam for a prompt that is not Optional, and for one
+// whose search has already begun (the candidates were seen).
+//
+// Caller must NOT hold g.mu.
+func (g *Game) DeclineSearchLibrary(choiceID, chooserID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := g.choiceIndexLocked(choiceID)
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceSearchLibrary || choice.searchResume == nil {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	if !g.SearchDeclineLegalLocked(choice) {
+		return ErrInvalidParam
+	}
+	spec := choice.searchResume.spec
+	g.dequeueChoiceLocked(idx)
+	if spec.Then != nil {
+		if err := spec.Then(g, nil); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
+		}
+	}
+	g.runStateChecksLocked()
+	return nil
+}
+
+// BeginSearchLibrary answers an undecided "you may search" prompt with
+// "yes, I search" (#4134). Only now does the search start: the
+// candidates become known to the searcher and an Opposition Agent's
+// control begins, so the next answer is the Agent controller's. Refused
+// with ErrInvalidParam on a prompt that is not undecided.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) BeginSearchLibrary(choiceID, chooserID uuid.UUID) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	idx := g.choiceIndexLocked(choiceID)
+	if idx < 0 {
+		return ErrPendingChoiceNotFound
+	}
+	choice := g.PendingChoices[idx]
+	if choice.Kind != PendingChoiceSearchLibrary || choice.searchResume == nil {
+		return ErrInvalidParam
+	}
+	if choice.Chooser != chooserID {
+		return ErrNotTheChooser
+	}
+	if !choice.searchResume.undecided {
+		return ErrInvalidParam
+	}
+	spec := choice.searchResume.spec
+	p := g.playerByIDLocked(spec.libraryOwnerID())
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	g.markSearchCandidatesKnownLocked(spec.Player, p, choice.SearchCards)
+	choice.searchResume = &searchResumeFrame{spec: spec}
+	if spec.libraryOwnerID() == spec.Player {
+		g.beginSearchControlsLocked(spec.Player, choice.ID)
+	}
+	return nil
 }

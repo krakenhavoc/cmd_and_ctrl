@@ -2536,6 +2536,18 @@ type SearchLibrarySpec struct {
 	// Solemn Simulacrum — or when an UNCONDITIONAL search ("a card")
 	// is itself optional, since that is the one case the quality rule
 	// does not already cover.
+	//
+	// An Optional search's prompt also carries a "don't search"
+	// answer (DeclineSearchLibrary, #4134). That is a different
+	// thing from answering with no cards: a search that finds nothing
+	// is still a search (CR 701.19), so the library is shuffled and
+	// "whenever a player searches" triggers fire; a search the player
+	// declined never happened, so none of that does, and the library
+	// keeps its order. Only the instruction after the search
+	// (Then) still runs. The question is asked before the list is
+	// shown (looking is searching, CR 701.19): the prompt opens
+	// undecided, "search" reveals the candidates, and from then on
+	// there is no decline.
 	Optional bool
 
 	// UpTo is "search your library for UP TO N cards" with no stated
@@ -2895,10 +2907,17 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 			// are found all the same.
 			return g.executeSearchTakeLocked(spec, p, nil)
 		}
-		// Nothing to find. Still a search: the event fires and the
-		// shuffle happens, because the card said "then shuffle"
-		// unconditionally.
-		return g.finishSearchLocked(spec, p, nil)
+		// Nothing matches (#4140). It is still asked: the searcher
+		// answers a prompt with no candidates, "find nothing" (a search
+		// that came up empty: the event fires and the library is
+		// shuffled, because the card said "then shuffle"
+		// unconditionally) or, for a "you may search", "don't search".
+		// Resolving it silently would make a library with a match look
+		// different from one without to every other seat (a prompt
+		// appeared or it did not), and would give an optional search no
+		// way to be declined.
+		g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
+		return nil
 	}
 	if spec.Unbounded {
 		// "Any number" is a ceiling, never a target (CR 701.23a): the
@@ -2965,14 +2984,20 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches, handMatches []uuid.UUID) {
-	known := make(map[uuid.UUID]bool, len(matches))
-	for _, id := range matches {
-		known[id] = true
-	}
-	for i := range p.Library.Cards {
-		if known[p.Library.Cards[i].InstanceID] {
-			p.Library.Cards[i].AddKnower(spec.Player)
-		}
+	// #4134: a "you may search" is asked BEFORE the search begins, for
+	// every optional search. Looking through the library IS searching
+	// (CR 701.19), so showing the candidates beside a "don't search"
+	// button would be a free look at hidden information that never
+	// shuffles. The prompt therefore opens "undecided": no candidates
+	// shown, no knowledge granted, no control recorded, and the only
+	// answers are "search" (BeginSearchLibrary, which reveals the list
+	// and from then on has no decline) and "don't" (DeclineSearchLibrary).
+	// It is also why an Opposition Agent has no say in the question: the
+	// Agent's controller takes over only once the search has begun
+	// (CR 723.2, "while they're searching").
+	undecided := spec.Optional
+	if !undecided {
+		g.markSearchCandidatesKnownLocked(spec.Player, p, matches)
 	}
 	reason := spec.Reason
 	if reason == "" {
@@ -2995,13 +3020,31 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		// searcher already looks at the whole hand
 		// (SearchLibraryThenForEffect marks it).
 		SearchHandCards: append([]uuid.UUID(nil), handMatches...),
-		searchResume:    &searchResumeFrame{spec: spec},
+		searchResume:    &searchResumeFrame{spec: spec, undecided: undecided},
 	})
 	// #3998: "You control your opponents while they're searching their
 	// libraries" — for as long as this prompt is open. Only a search of
-	// the searcher's own library is "searching their library".
-	if spec.libraryOwnerID() == spec.Player {
+	// the searcher's own library is "searching their library". An
+	// undecided prompt has not begun a search, so it records no control
+	// (BeginSearchLibrary does, once the searcher says yes).
+	if !undecided && spec.libraryOwnerID() == spec.Player {
 		g.beginSearchControlsLocked(spec.Player, id)
+	}
+}
+
+// markSearchCandidatesKnownLocked makes `searcher` a knower of the
+// library cards a search prompt offers: they are looking through the
+// library, which is exactly the knowledge the rules grant them.
+// Caller must hold g.mu.
+func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, matches []uuid.UUID) {
+	known := make(map[uuid.UUID]bool, len(matches))
+	for _, id := range matches {
+		known[id] = true
+	}
+	for i := range p.Library.Cards {
+		if known[p.Library.Cards[i].InstanceID] {
+			p.Library.Cards[i].AddKnower(searcher)
+		}
 	}
 }
 

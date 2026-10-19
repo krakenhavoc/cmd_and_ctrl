@@ -370,8 +370,9 @@ func TestRooncMoonBlessedClericPutsTheEnchantmentOnTop(t *testing.T) {
 }
 
 // "You may search": taking nothing is legal, puts nothing on top and
-// reveals nothing. (The engine answers a declined "may search" as a
-// search that finds nothing, which still shuffles; see the card's comment.)
+// reveals nothing. This is "find nothing", a search that came up empty and
+// still shuffles; not searching at all is TestMoonBlessedClericDeclined
+// SearchKeepsTheLibraryOrder (#4134).
 func TestRooncMoonBlessedClericMayTakeNothing(t *testing.T) {
 	g, me, opp, ids := rooncClericGame(t)
 	c := searchChoiceFor(g, me.ID)

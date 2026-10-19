@@ -243,7 +243,15 @@ func TestWithoutAlsoGraveyardTheGraveyardIsIgnored(t *testing.T) {
 	searchLibraryOf(me, "Other")
 	gy := gyCard(me, "Wanted")
 	runSearch(t, g, SearchLibrarySpec{Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true})
-	if me.Hand.Contains(gy) || openSearch(g, me.ID) != nil {
+	// #4140: nothing in the library matches, so the prompt is empty.
+	c := openSearch(g, me.ID)
+	if c == nil || len(c.SearchCards) != 0 {
+		t.Fatalf("a library-only search must not see the graveyard: %+v", c)
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	if me.Hand.Contains(gy) {
 		t.Error("a library-only search must not see the graveyard")
 	}
 	if searchEvents(g) != 1 {

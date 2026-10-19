@@ -62,12 +62,27 @@ func TestPublicLogSearchSaysSearchedAndShuffledWithNoCard(t *testing.T) {
 
 	var err error
 	g.WithWriteLock(func() {
-		// A search that finds nothing: no prompt, no card taken, so the
-		// only lines are the search and the shuffle.
+		// A search that finds nothing: no card taken, so the only lines
+		// are the search and the shuffle.
 		err = g.SearchLibraryForEffect(searcher.ID, func(game.Card) bool { return false }, game.ZoneHand, 1, false, true)
 	})
 	if err != nil {
 		t.Fatalf("SearchLibraryForEffect: %v", err)
+	}
+	// #4140: it is still asked, with no candidates; "find nothing" ends it.
+	var open *game.PendingChoice
+	g.ReadSnapshot(func() {
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceSearchLibrary {
+				open = c
+			}
+		}
+	})
+	if open == nil {
+		t.Fatal("a search with nothing to find did not ask")
+	}
+	if err := g.ResolveSearchLibrary(open.ID, searcher.ID, nil); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
 	}
 
 	want := []string{"P1 searched their library and shuffled it"}

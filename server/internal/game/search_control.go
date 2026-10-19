@@ -43,8 +43,9 @@ import (
 // knower of what the searcher knows (the candidates and the hand, CR
 // 723.4) for as long as the record is live and not a moment longer, and
 // the enumerator offers the controller the prompt. A search the rules
-// decide alone (one forced take, or no match at all) opens no prompt
-// and so no control: there is no choice for the controller to make.
+// decide alone (one forced take) opens no prompt and so no control:
+// there is no choice for the controller to make. (A search with no match
+// used to be in that list; since #4140 it asks.)
 //
 // The record is plain data with a prompt ID, never a continuation, so a
 // table mid-search is still a restore point (ADR 0041).

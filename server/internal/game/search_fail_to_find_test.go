@@ -259,8 +259,14 @@ func TestAnUnconditionalSearchMustFind(t *testing.T) {
 		me := g.Seats[0]
 		searchLibraryOf(me)
 		runSearch(t, g, SearchLibrarySpec{Player: me.ID, Dest: ZoneHand, Limit: 1, Shuffle: true})
-		if openSearch(g, me.ID) != nil {
-			t.Fatal("an empty library queued a prompt")
+		// #4140: nothing to find is still asked, so the table cannot tell
+		// an empty library from a full one by the absence of a prompt.
+		c := openSearch(g, me.ID)
+		if c == nil || len(c.SearchCards) != 0 {
+			t.Fatalf("an empty library should still prompt, with no candidates: %+v", c)
+		}
+		if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); err != nil {
+			t.Fatalf("finding nothing: %v", err)
 		}
 		if searchEvents(g) != 1 {
 			t.Errorf("EventSearchLibrary fired %d times, want 1", searchEvents(g))

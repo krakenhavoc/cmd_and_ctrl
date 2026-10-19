@@ -404,6 +404,13 @@ func TestShuffleFairness(t *testing.T) {
 			if err != nil {
 				t.Fatalf("SearchLibraryThenForEffect: %v", err)
 			}
+			// #4140: a search with nothing to find still asks; the
+			// answer is "find nothing", and the shuffle follows.
+			if c := openSearch(g, p.ID); c != nil {
+				if err := g.ResolveSearchLibrary(c.ID, p.ID, nil); err != nil {
+					t.Fatalf("ResolveSearchLibrary: %v", err)
+				}
+			}
 			order := make([]int, 0, fairLibrary)
 			for i := len(p.Library.Cards) - 1; i >= 0; i-- {
 				order = append(order, fairIndex(t, p.Library.Cards[i]))
