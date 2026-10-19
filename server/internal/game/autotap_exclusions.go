@@ -66,6 +66,12 @@ func CastAutoTapExclusions(params CastSpellParams, alt *AlternativeCost) map[uui
 	full := [][]uuid.UUID{params.LockedSources, params.TapIDs, params.DiscardIDs,
 		params.TeamworkIDs, params.BlightIDs, params.ExilePermanentIDs}
 	sacrificed := [][]uuid.UUID{params.SacrificeIDs}
+	// #4055: and what a splice card's cost spends. A sacrificed Mountain
+	// may still tap for mana first, as a Village Rites sacrifice may.
+	for _, pay := range params.SplicePayments {
+		full = append(full, pay.TapIDs, pay.ReturnIDs, pay.ExileIDs)
+		sacrificed = append(sacrificed, pay.SacrificeIDs)
+	}
 	if alt != nil && alt.Sacrifice != nil {
 		sacrificed = append(sacrificed, params.AltCostIDs)
 	} else {

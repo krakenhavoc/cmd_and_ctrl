@@ -69,7 +69,7 @@ The enumerator offers no splice. A splice is a second card's whole effect and a 
 
 ## Not covered
 
-- **A splice cost that isn't mana** (#4055): Veil of Secrecy, Horobi's Whisper, Roar of Jukai, Hundred-Talon Strike and Torrent of Stone stay out of the catalog.
+- **A splice cost that isn't mana** (#4055): Veil of Secrecy, Horobi's Whisper, Roar of Jukai, Hundred-Talon Strike and Torrent of Stone stayed out of the catalog until the 2026-10-19 amendment below built it.
 - **New targets for a copy's spliced text.** A copy keeps the spliced text's targets; CR 707.10c's "may choose new targets" prompt walks the main text's steps only. A retarget ("change the target of target spell") changes the main text's targets only. Both are fewer choices than the rules allow, never more.
 - **Splice cards that aren't catalogued yet** for other reasons (Through the Breach, Reweave, Shifting Borders, Fell Beast's Shriek): each is an ordinary card PR now.
 
@@ -78,3 +78,68 @@ The enumerator offers no splice. A splice is a second card's whole effect and a 
 - Overblaze, Glacial Ray, Desperate Ritual, Goryo's Vengeance, Candles' Glow, Kodama's Might, Wear Away, Consuming Vortex, Spiritual Visit, Vital Surge, Dampen Thought, Soulless Revival, Lifted by Clouds, Hideous Laughter, Strange Inversion, Psychic Puppetry, Blessed Breath, Into the Fray, Evermind, Everdream and Splicer's Skill join the catalog, all Full.
 - The "Splice onto Arcane" seam closes; "A splice cost that isn't mana" opens (#4055).
 - `TestSpliceMatchesThePrintedSplice` (`cards/coverage`) holds every declared splice to the printed quality and cost, and fails a catalogued card that prints splice and declares none.
+
+## Amendment (2026-10-19, [#4055](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4055)): a splice cost that isn't mana
+
+"Not covered" named five Kamigawa cards whose splice cost is a verb: Veil of Secrecy (return a blue creature you control to its
+owner's hand), Horobi's Whisper (exile four cards from your graveyard), Roar of Jukai (an opponent gains 5 life),
+Hundred-Talon Strike (tap an untapped white creature you control) and Torrent of Stone (sacrifice two Mountains). CR 702.47a:
+"Paying a card's splice cost follows the rules for paying additional costs in rules 601.2b and 601.2f-h."
+
+**Decisions.**
+
+1. **`SpliceAbility.Cost *SpliceCost`** is the non-mana half, beside `ManaCost` (never both on a printed card). `SpliceCost` is
+   built out of the components the activated abilities and the other additional costs already pay, so their walks, validators and
+   payers are reused and the view, the bot enumerator and the engine cannot disagree about which object pays (#544): a
+   sacrifice clause (`Sacrifice`), an exile-from-graveyard cost (`ExileCards`), a tap-others cost (`TapOthers`), a
+   return-to-hand cost (`ReturnToHand`), and the one new component, `OpponentGainsLife`. `SpliceAbility.Label` prints the
+   cost after the dash with its full stop ("Splice onto Arcane—Sacrifice two Mountains."), which is what
+   `TestSpliceMatchesThePrintedSplice` holds the card to. `effects.Register` (`checkSplice`, `checkSpliceCost`) refuses a cost
+   that is empty, both mana and not, unlabelled, of more than one component (every printed card has exactly one), a variable
+   count, or a graveyard cost from anywhere but a fixed count in the graveyard.
+2. **The payment rides its own list, not the cast's flat ones.** `CastSpellParams.SplicePayments []SplicePayment`, on the wire
+   `splice_payments` (entry k pays `splices[k]`: `sacrifice_ids`, `exile_ids`, `tap_ids`, `return_ids`, `opponent`). The cast's own
+   plan (ADR 0073) walks `discard_ids`, `sacrifice_ids` and `teamwork_ids` in plan order; folding another card's cost into those
+   would make the client rebuild that order to say which card an object pays for, and would let a mistake in one card's cost
+   change which object pays the spell's. Separate lists make the announcement say what it means. **Rejected:** appending the
+   splice costs to `costPlan` as escalate's are (`escalatePayments`): the right shape when the cost belongs to the spell, the wrong
+   one for a cost that belongs to a card in the hand.
+3. **Validate all, then pay (CR 601.2b, 601.2h).** `validateSplicePaymentsLocked` runs with the cast's other announce checks:
+   each payment is judged by the component's own validator (`validateSacrificeCostLocked`, `validateExileCardsCostLocked`,
+   `validateTapOthersCostLocked`, `validateReturnToHandCostLocked`), a payment for a component the card lacks is refused rather
+   than ignored, and **no object may be named twice**, by two splice cards or by a splice card and the cast's own costs
+   (`castSpentObjects`; CR 118.3). That reads fewer choices than the rules allow (a creature could be tapped for one cost and
+   then returned for another), never more. `paySplicePaymentsLocked` pays them with the spell on the stack, after the cast's own
+   costs, in the order the cards were revealed, so a dies trigger lands above the spell. A commander the cost returns to a hand
+   is asked about first (CR 903.9b), and a card an effect has paused on its way out cannot pay, like every other cost card.
+4. **An unpayable cost is not offered (CR 118.3).** `SpliceOffersLocked` drops a card whose cost the caster cannot pay
+   (`spliceCostPayableLocked`), so a hand never offers Torrent of Stone to a player with one Mountain; the announcement refuses it
+   regardless.
+5. **"An opponent gains N life."** The caster names the opponent as gift's recipient is named, from the opponents still in the
+   game **who can gain life** (`SpliceOpponentsLocked`; CR 614.17b: if an event can't happen, a player can't choose to pay a cost
+   that includes it). The gain is `gainLifeAsCostLocked`, the twin of `payLifeAsCostLocked`: it runs the CR 614 window without
+   pausing (a cost is one indivisible step), so a doubler changes the amount and still pays, and a gain the window cancels
+   refuses the cast.
+6. **Nothing is recorded on `PaidCost`.** No printed splice text reads what its own cost paid, and the spell's own "the creature
+   sacrificed" and "tapped to pay" readers must not see another card's. The auto-tapper keeps the named objects out of the mana
+   it plans (`CastAutoTapExclusions`), a sacrificed Mountain still tapping for mana first as a Village Rites sacrifice may.
+
+**View and client.** `splice_offers[]` gains `cost_label` and the picker for the component the cost has, in the shape of the
+additional cost's: `sacrifice_label` / `sacrifice_options`, `exile_cost_n` / `_label` / `_options`, `tap_others_label` /
+`_options`, `return_label` / `return_options`, `chooses_opponent` / `opponent_options`. The cost picker shows the cost as printed
+where the mana symbol was and asks the opponent with the toggle; the object picks open one card at a time in the order ticked
+(the sacrifice, return and tap pickers over the board, the exile picker over the graveyard), then the chain continues. Bots never
+splice, so the enumerator is unchanged ([docs/bot.md](../bot.md)).
+
+**Snapshot.** None: the payments are announce-time, and `StackItem.Spliced` carries the same texts as before.
+
+**Cards** (5, all Full): Veil of Secrecy, Horobi's Whisper, Roar of Jukai, Hundred-Talon Strike, Torrent of Stone.
+
+**Tests.** `cards/effects/splice_cost_test.go`: each card spliced onto Consuming Vortex pays its cost and runs its text, with the
+refusals paired with an acceptance on the same board; a card is offered only when its cost can be paid; two splice cards never
+share an object; payments are aligned with the splices; Register refuses an unbuildable cost. The client's
+`spliceCost.render.test.ts` covers the cost label, the opponent picker and the wire.
+
+Back-out: drop the `paySplicePaymentsLocked` call and the Mountains stay on the battlefield; drop the `used` check and one
+creature pays two costs; drop `spliceCostPayableLocked` from `SpliceOffersLocked` and Torrent of Stone is offered with one
+Mountain; drop the `SpliceOpponentsLocked` test and an opponent who can't gain life can be chosen.

@@ -48,6 +48,9 @@ type UpkeepPayment struct {
 	// Words is how the prompt names an Action ("Discard a card",
 	// "Sacrifice two lands"). Unused for Mana.
 	Words string
+	// Flips is the number of coins a "flip a coin" payment flips once it
+	// is paid (FlipCoinsPayment, #4063). Zero for every other payment.
+	Flips int
 }
 
 // prompt is the payment's Cost string and Action for UpkeepPayUnless.
@@ -67,6 +70,20 @@ func DiscardPayment(n int) UpkeepPayment {
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionDiscard, Count: n}, Words: words}
 }
 
+// FlipCoinsPayment is "Flip a coin" as a payment (#4063, Karplusan
+// Minotaur's "Cumulative upkeep—Flip a coin"): saying yes costs nothing to
+// pay and then flips n coins under one call (CR 705.2), each a won or lost
+// flip that the controller's flip triggers see. The flipping is the cost,
+// so once the player has said yes none of it can be stopped (the 2006-07-15
+// ruling), and saying no is the only way out.
+func FlipCoinsPayment(n int) UpkeepPayment {
+	words := "Flip a coin"
+	if n != 1 {
+		words = "Flip " + numberWord(n) + " coins"
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionNothing}, Words: words, Flips: n}
+}
+
 // SacrificePayment is "Sacrifice N <noun>" as a payment: `noun` and
 // `plural` are the printed words ("land", "lands"), `of` the permanents
 // that may pay.
@@ -84,6 +101,9 @@ func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) Upkeep
 // any_player_pays.go — Decomposition's granted "Cumulative upkeep—Pay 1
 // life", #3869) multiplies its count.
 func (p UpkeepPayment) times(n int, noun, plural string) UpkeepPayment {
+	if p.Flips > 0 {
+		return FlipCoinsPayment(p.Flips * n)
+	}
 	if p.Action == nil {
 		return UpkeepPayment{Mana: strings.Repeat(p.Mana, n)}
 	}

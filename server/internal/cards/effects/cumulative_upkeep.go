@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -96,18 +98,40 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 			if age <= 0 {
 				return nil
 			}
-			cost, action := each.times(age, noun, plural).prompt()
+			owed := each.times(age, noun, plural)
+			cost, action := owed.prompt()
 			return UpkeepPayUnless{
 				Chooser:   ctx.Controller(),
 				Cost:      cost,
 				Action:    action,
 				Question:  label,
 				OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
+				OnPay:     flipCoinsOnPay(label, owed, source),
 			}.Apply(ctx)
 		})
 	})
 	t.Keyword = game.KeywordCumulativeUpkeep
 	return t
+}
+
+// flipCoinsOnPay is the payment of "Cumulative upkeep—Flip a coin" (#4063,
+// Karplusan Minotaur): saying yes costs nothing to say, and the flips are
+// the payment, queued once it is made, under one call for the age counters'
+// worth (CR 705.2). Nil for every other payment, which has nothing to do
+// once it is paid.
+func flipCoinsOnPay(label string, owed UpkeepPayment, source uuid.UUID) func(*Context) error {
+	if owed.Flips <= 0 {
+		return nil
+	}
+	return func(ctx *Context) error {
+		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
+			Flipper:  ctx.Controller(),
+			Source:   source,
+			Question: label + ": " + strings.ToLower(owed.Words[:1]) + owed.Words[1:],
+			Coins:    owed.Flips,
+		})
+		return nil
+	}
 }
 
 // CumulativeUpkeepGrant is the ADR 0093 bundle for a QUOTED cumulative

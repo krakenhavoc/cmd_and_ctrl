@@ -102,6 +102,8 @@
     // has branches.
     // ADR 0150 §5: and the player asked to help pay, when one was picked.
     // ADR 0202: and the cards spliced onto it, in the order ticked.
+    // #4055: and the opponent each ticked splice card's "An opponent gains
+    // N life" cost gives its life to, by splice card.
     onConfirm: (
       key: string | undefined,
       optional: number[],
@@ -109,6 +111,7 @@
       costBranch?: number,
       assistPlayer?: string,
       splices?: string[],
+      spliceOpponents?: Record<string, string>,
     ) => void;
     onCancel: () => void;
     // #1267: the table, so a gift's opponent picker can name players
@@ -155,8 +158,39 @@
   const spliceOffers = $derived(card ? spliceOffersOf(card) : []);
   let splicing = $state<string[]>([]);
   function toggleSplice(id: string): void {
-    splicing = splicing.includes(id) ? splicing.filter((s) => s !== id) : [...splicing, id];
+    if (splicing.includes(id)) {
+      splicing = splicing.filter((s) => s !== id);
+      const { [id]: _dropped, ...rest } = spliceOppTo;
+      spliceOppTo = rest;
+      return;
+    }
+    splicing = [...splicing, id];
   }
+  // #4055: a ticked splice card whose cost is "An opponent gains N life"
+  // asks which opponent, as gift does. A drop of the toggle forgets the
+  // pick, and a pick that is no longer offered is not sent.
+  let spliceOppTo = $state<Record<string, string>>({});
+  const spliceOpponents = $derived.by(() => {
+    const out: Record<string, string> = {};
+    for (const id of splicing) {
+      const offer = spliceOffers.find((o) => o.card_id === id);
+      const pick = spliceOppTo[id];
+      if (
+        offer?.chooses_opponent &&
+        pick !== undefined &&
+        (offer.opponent_options ?? []).includes(pick)
+      ) {
+        out[id] = pick;
+      }
+    }
+    return out;
+  });
+  const spliceOpponentsMissing = $derived(
+    splicing.some((id) => {
+      const offer = spliceOffers.find((o) => o.card_id === id);
+      return offer?.chooses_opponent === true && spliceOpponents[id] === undefined;
+    }),
+  );
   // #1012 / #1686: whether "Its mana cost" is a row at all — on the
   // zone-and-payability question AND on timing.
   const printedOK = $derived(card ? printedCostCastableNow(card) : true);
@@ -205,7 +239,9 @@
   const branchOK = $derived(
     branches.length === 0 || (branch !== undefined && branches[branch]?.payable === true),
   );
-  const canConfirm = $derived((giftOffer === undefined || giftOpponent !== undefined) && branchOK);
+  const canConfirm = $derived(
+    (giftOffer === undefined || giftOpponent !== undefined) && branchOK && !spliceOpponentsMissing,
+  );
 
   // ordinal names a spliced text's place in the order: "first".
   function ordinal(n: number): string {
@@ -258,6 +294,7 @@
       giftTo = undefined;
       assistTo = undefined;
       splicing = [];
+      spliceOppTo = {};
       branch = card ? firstPayableBranch(card) : undefined;
     }
   });
@@ -271,6 +308,7 @@
       branches.length > 0 ? branch : undefined,
       assistPlayer,
       splicing.filter((id) => spliceOffers.some((o) => o.card_id === id)),
+      spliceOpponents,
     );
   }
 </script>
@@ -285,9 +323,11 @@
       disabled: !canConfirm,
       title: canConfirm
         ? undefined
-        : branchOK
-          ? "Choose an opponent to promise the gift to"
-          : "Choose an additional cost you can pay",
+        : !branchOK
+          ? "Choose an additional cost you can pay"
+          : spliceOpponentsMissing && (giftOffer === undefined || giftOpponent !== undefined)
+            ? "Choose which opponent gains the life"
+            : "Choose an opponent to promise the gift to",
     })}
     secondary={[cancelAction(onCancel)]}
   >
@@ -481,8 +521,38 @@
                     >happens {ordinal(splicing.indexOf(offer.card_id) + 1)}, after the spell</span
                   >{/if}</span
               >
-              <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
+              {#if offer.mana_cost}
+                <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
+              {:else if offer.cost_label}
+                <span class="note">{offer.cost_label}</span>
+              {/if}
             </button>
+            {#if offer.chooses_opponent && splicing.includes(offer.card_id)}
+              <div class="gift-picker" role="radiogroup" aria-label="Give the life to">
+                <p class="prompt-hint gift-hint">
+                  Which opponent gains the life: <span class="prompt-src" aria-hidden="true"
+                    >CR 702.47a</span
+                  >
+                </p>
+                <ul class="prompt-options">
+                  {#each offer.opponent_options ?? [] as pid (pid)}
+                    <li>
+                      <button
+                        type="button"
+                        class="prompt-opt"
+                        role="radio"
+                        class:on={spliceOpponents[offer.card_id] === pid}
+                        aria-checked={spliceOpponents[offer.card_id] === pid}
+                        onclick={() => (spliceOppTo = { ...spliceOppTo, [offer.card_id]: pid })}
+                      >
+                        <span class="prompt-radio" aria-hidden="true"></span>
+                        <span class="name">{playerName(pid)}</span>
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
           </li>
         {/each}
       </ul>

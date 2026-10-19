@@ -722,6 +722,18 @@ type CastPermission struct {
 	// with LapseOnPass, the only shape that spends it.
 	ManaValueBudget *int `json:"manaValueBudget,omitempty"`
 
+	// AnyNumber is "you may cast any number of spells with mana value N or
+	// less from among them without paying their mana costs" (#4021,
+	// Hazoret's Undying Fury, CR 608.2g): one pass-closed permission over
+	// every card it names that a cast does NOT use up. Each cast strikes
+	// only its own card from Cards (spendManaValueBudget), so the rest stay
+	// castable until the holder passes. The per-spell ceiling is
+	// MaxSpellManaValue, not a running total. Meaningful on a ScopeCards
+	// permission with LapseOnPass; without it the first cast spends the
+	// whole permission, "a spell from among them". An older binary reads the
+	// field as absent and offers one cast, which is weaker, never stronger.
+	AnyNumber bool `json:"anyNumber,omitempty"`
+
 	// LapseOnPass closes the permission the next time its holder
 	// passes priority, and says where the card goes then (ADR 0099
 	// §4). It is the grant model's stand-in for CR 608.2g's "cast it

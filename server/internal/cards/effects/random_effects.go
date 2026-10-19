@@ -98,6 +98,26 @@ func WheneverYouWinACoinFlip(label string, effect Effect) game.TriggeredAbility 
 	return On(game.EventFlipCoin, YouWonACoinFlip, label, effect)
 }
 
+// YouLostACoinFlip is "whenever you lose a coin flip" (CR 705.2, #4063,
+// Karplusan Minotaur): an EventFlipCoin that the source's controller
+// flipped, called and did not win. The event's Call is what tells a lost
+// flip from a face-only one: only a called flip (FlipCoinForEffect) has
+// one, because only a called flip has anything to lose, while a flip of
+// faces nobody wins or loses (FlipCoinsForEffect) carries Won false and no
+// Call and never matches. One event per coin, so two lost coins fire the
+// ability twice. A coin flipped at the table is an EventTableRoll, never
+// this kind, and an opponent's lost flip is not yours (the flipper is the
+// event's Actor).
+func YouLostACoinFlip(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return ev.Kind == game.EventFlipCoin && !ev.Won && ev.Call != "" && ev.Actor != uuid.Nil && ev.Actor == source.Controller
+}
+
+// WheneverYouLoseACoinFlip is "Whenever you lose a coin flip, <effect>"
+// (Karplusan Minotaur).
+func WheneverYouLoseACoinFlip(label string, effect Effect) game.TriggeredAbility {
+	return On(game.EventFlipCoin, YouLostACoinFlip, label, effect)
+}
+
 // FlipACoin is a bare "flip a coin" that prints nothing for winning or
 // losing (Tavern Scoundrel's activated ability, Setzer's Vehicle trigger).
 // The flip still has a winner: CR 705.2 has the flipper call it when

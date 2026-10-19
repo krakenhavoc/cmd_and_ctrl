@@ -4555,6 +4555,7 @@ seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
+seats[].castPermissions[].anyNumber	bool
 seats[].castPermissions[].anyType	bool
 seats[].castPermissions[].budgetGroup	custom(uuid.UUID)
 seats[].castPermissions[].cards	array

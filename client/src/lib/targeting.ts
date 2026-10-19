@@ -144,6 +144,12 @@ export interface CastChoices {
   // #3536: the graveyard cards a mandatory "exile N cards from your
   // graveyard" additional cost exiles. Rides cast_spell as `exile_ids`.
   exileIDs?: string[];
+  // #4055 (ADR 0202's 2026-10-19 amendment): what each ticked splice
+  // card's cost is paid with when it is not mana, entry k paying
+  // `splices[k]`. Rides cast_spell as `splice_payments`; filled one card at
+  // a time as the picks are asked, and complete when it is as long as
+  // `splices`.
+  splicePayments?: SplicePaymentChoice[];
   blightIDs?: string[];
   // ADR 0100 amendment 2026-10-07: the one card a chosen reveal / behold
   // branch shows. Set only after the branch is chosen; the server refuses
@@ -208,6 +214,16 @@ export interface CastChoices {
   askPhyrexianLife?: boolean;
 }
 
+// SplicePaymentChoice is one splice card's non-mana cost, paid (#4055).
+// Mirrors the wire's splice_payments entry.
+export interface SplicePaymentChoice {
+  sacrificeIDs?: string[];
+  exileIDs?: string[];
+  tapIDs?: string[];
+  returnIDs?: string[];
+  opponent?: string;
+}
+
 // CastSourceZone is the `from_zone` vocabulary the server's
 // castZoneFromWire accepts. "hand" is never sent — it is the server
 // default and omitting it keeps every pre-S29 client's payload
@@ -243,6 +259,18 @@ export function applyCastChoices(
     params.optional_costs = choices.optionalCosts;
   // ADR 0202: omitted when nothing is spliced, the server default.
   if (choices.splices !== undefined && choices.splices.length > 0) params.splices = choices.splices;
+  // #4055: one entry per spliced card, in order, each carrying only what
+  // its cost spends; omitted when no spliced card has a cost that is not
+  // mana, which is the server default.
+  if (choices.splicePayments !== undefined && choices.splicePayments.some(splicePaymentNames)) {
+    params.splice_payments = choices.splicePayments.map((p) => ({
+      ...(p.sacrificeIDs?.length ? { sacrifice_ids: p.sacrificeIDs } : {}),
+      ...(p.exileIDs?.length ? { exile_ids: p.exileIDs } : {}),
+      ...(p.tapIDs?.length ? { tap_ids: p.tapIDs } : {}),
+      ...(p.returnIDs?.length ? { return_ids: p.returnIDs } : {}),
+      ...(p.opponent ? { opponent: p.opponent } : {}),
+    }));
+  }
   // #1267: omitted unless a gift was promised — a stray one is an
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
@@ -558,6 +586,99 @@ export function spliceSteps(card: CardView, choices: CastChoices | undefined): T
     }
   });
   return out;
+}
+
+// splicePaymentNames reports whether a splice card's payment names
+// anything: an object to spend or an opponent to give life to.
+export function splicePaymentNames(p: SplicePaymentChoice): boolean {
+  return (
+    (p.sacrificeIDs?.length ?? 0) > 0 ||
+    (p.exileIDs?.length ?? 0) > 0 ||
+    (p.tapIDs?.length ?? 0) > 0 ||
+    (p.returnIDs?.length ?? 0) > 0 ||
+    !!p.opponent
+  );
+}
+
+// SpliceCostStep is one pick a splice card's cost that is not mana asks
+// for (#4055, CR 702.47a): which objects pay a component. `kind` says
+// whether it is the sacrifice picker, the return picker, the tap picker or
+// the graveyard exile picker; `options` are the server's, already filtered,
+// and `count` is how many the clause spends.
+export interface SpliceCostStep {
+  kind: "sacrifice" | "exile" | "tap" | "return";
+  verb: string;
+  label: string;
+  count: number;
+  options: string[];
+}
+
+// spliceCostStepsOf is the object picks one splice offer's cost asks for,
+// in the order the payment's fields are filled. A cost that is mana alone,
+// or whose only part is an opponent to name ("An opponent gains 5 life",
+// asked with the toggle), has none.
+export function spliceCostStepsOf(offer: SpliceOfferView): SpliceCostStep[] {
+  const out: SpliceCostStep[] = [];
+  const so = offer.sacrifice_options;
+  if (so) {
+    out.push({
+      kind: "sacrifice",
+      verb: "Sacrifice",
+      label: offer.sacrifice_label ?? "permanents",
+      count: so.max ?? so.min ?? 0,
+      options: so.cards ?? [],
+    });
+  }
+  if ((offer.exile_cost_n ?? 0) > 0) {
+    out.push({
+      kind: "exile",
+      verb: "Exile",
+      label: offer.exile_cost_label ?? "cards",
+      count: offer.exile_cost_n ?? 0,
+      options: offer.exile_cost_options ?? [],
+    });
+  }
+  const to = offer.tap_others_options;
+  if (to) {
+    out.push({
+      kind: "tap",
+      verb: "Tap",
+      label: offer.tap_others_label ?? "permanents",
+      count: to.max ?? to.min ?? 0,
+      options: to.cards ?? [],
+    });
+  }
+  const ro = offer.return_options;
+  if (ro) {
+    out.push({
+      kind: "return",
+      verb: "Return",
+      label: offer.return_label ?? "permanents",
+      count: ro.max ?? ro.min ?? 0,
+      options: ro.cards ?? [],
+    });
+  }
+  return out;
+}
+
+// withSplicePick records one component's picks on the payment of the
+// splice card at `index` of the ticked cards, growing the list as the
+// cards are asked in order.
+export function withSplicePick(
+  payments: SplicePaymentChoice[] | undefined,
+  index: number,
+  kind: SpliceCostStep["kind"],
+  ids: string[],
+): SplicePaymentChoice[] {
+  const next = [...(payments ?? [])];
+  while (next.length <= index) next.push({});
+  const pay = { ...next[index] };
+  if (kind === "sacrifice") pay.sacrificeIDs = ids;
+  else if (kind === "exile") pay.exileIDs = ids;
+  else if (kind === "tap") pay.tapIDs = ids;
+  else pay.returnIDs = ids;
+  next[index] = pay;
+  return next;
 }
 
 // beginSpliceOnly opens the walk for a cast whose own text takes no

@@ -31,6 +31,7 @@
     LegalTargetsView,
     ManaAbilityView,
     PlayerView,
+    SpliceOfferView,
     StackItemView,
     ZoneView,
   } from "../../protocol";
@@ -138,6 +139,8 @@
     beginForModes as beginTargetingForModes,
     beginSpliceOnly,
     spliceOffersOf,
+    spliceCostStepsOf,
+    withSplicePick,
     advance,
     allPicks,
     choiceAnswer,
@@ -192,6 +195,7 @@
     distributionOf,
     type CastChoices,
     type CastSourceZone,
+    type SpliceCostStep,
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
@@ -592,6 +596,7 @@
     costBranch?: number,
     assistPlayer?: string,
     splices?: string[],
+    spliceOpponents?: Record<string, string>,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -616,8 +621,91 @@
     if (assistPlayer !== undefined) next = { ...next, assistPlayer };
     // ADR 0202: the cards spliced onto it, in the order ticked; their
     // clauses join the target walk after the spell's own.
-    if (splices !== undefined && splices.length > 0) next = { ...next, splices };
-    afterAltCost(card, next);
+    if (splices !== undefined && splices.length > 0) {
+      next = {
+        ...next,
+        splices,
+        // #4055: the opponent a ticked "An opponent gains N life" cost
+        // gives its life to is named in the same step; the object picks
+        // of the other costs are asked one at a time next.
+        splicePayments: splices.map((id) =>
+          spliceOpponents?.[id] !== undefined ? { opponent: spliceOpponents[id] } : {},
+        ),
+      };
+    }
+    askSplicePayments(card, next, 0);
+  }
+
+  // #4055 (ADR 0202's 2026-10-19 amendment, CR 702.47a): a ticked splice
+  // card whose cost is not mana asks which objects pay it, one pick at a
+  // time and one card at a time, in the order the cards were ticked — the
+  // order `splice_payments` is read in. The pickers are the ones the
+  // additional costs open (sacrifice, tap, return, graveyard exile) over
+  // the options the server filtered; the chain then continues into the
+  // alternative cost's own picks.
+  let splicePrompt = $state<{
+    card: CardView;
+    choices: CastChoices;
+    index: number;
+    offer: SpliceOfferView;
+    step: SpliceCostStep;
+  } | null>(null);
+  const splicePickOptions = $derived.by(() => {
+    const p = splicePrompt;
+    if (!p) return [];
+    if (p.step.kind === "exile") {
+      const me = view.seats.find((s) => s.id === viewerID);
+      const ids = new Set(p.step.options);
+      return (me?.graveyard.cards ?? []).filter((c) => ids.has(c.instance_id));
+    }
+    return orderSacrificeOptions(view.battlefield.cards, p.step.options);
+  });
+
+  function askSplicePayments(card: CardView, choices: CastChoices, from: number): void {
+    const splices = choices.splices ?? [];
+    const offers = spliceOffersOf(card);
+    for (let k = from; k < splices.length; k++) {
+      const offer = offers.find((o) => o.card_id === splices[k]);
+      if (!offer) continue;
+      const pay = choices.splicePayments?.[k] ?? {};
+      const answered = (kind: SpliceCostStep["kind"]): boolean =>
+        (kind === "sacrifice" && pay.sacrificeIDs !== undefined) ||
+        (kind === "exile" && pay.exileIDs !== undefined) ||
+        (kind === "tap" && pay.tapIDs !== undefined) ||
+        (kind === "return" && pay.returnIDs !== undefined);
+      const step = spliceCostStepsOf(offer).find((s) => !answered(s.kind));
+      if (!step) continue;
+      // Exactly the cards the clause demands: nothing to ask, as for an
+      // exile-cards additional cost.
+      if (step.kind === "exile" && step.options.length === step.count) {
+        askSplicePayments(
+          card,
+          {
+            ...choices,
+            splicePayments: withSplicePick(choices.splicePayments, k, step.kind, step.options),
+          },
+          k,
+        );
+        return;
+      }
+      splicePrompt = { card, choices, index: k, offer, step };
+      return;
+    }
+    afterAltCost(card, choices);
+  }
+
+  function confirmSplicePick(ids: string[]): void {
+    const p = splicePrompt;
+    splicePrompt = null;
+    if (!p) return;
+    askSplicePayments(
+      p.card,
+      {
+        ...p.choices,
+        splicePayments: withSplicePick(p.choices.splicePayments, p.index, p.step.kind, ids),
+      },
+      p.index,
+    );
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -4129,6 +4217,35 @@
     additional
     onConfirm={confirmAddTap}
     onCancel={() => (addTapPrompt = null)}
+  />
+  <!-- #4055 (ADR 0202, CR 702.47a): the objects a spliced card's cost that
+       is not mana spends — the sacrifice picker (Torrent of Stone), the
+       return picker (Veil of Secrecy) or the tap picker (Hundred-Talon
+       Strike) over the board, the exile picker (Horobi's Whisper) over the
+       graveyard. -->
+  <SacrificeCostModal
+    source={splicePrompt && splicePrompt.step.kind !== "exile" ? splicePrompt.card : null}
+    label={splicePrompt?.step.label ?? "a permanent you control"}
+    options={splicePickOptions}
+    count={splicePrompt?.step.count ?? 1}
+    verb={splicePrompt?.step.verb ?? "Sacrifice"}
+    castName={splicePrompt
+      ? `${splicePrompt.card.name}, splicing ${splicePrompt.offer.name}`
+      : undefined}
+    additional
+    onConfirm={confirmSplicePick}
+    onCancel={() => (splicePrompt = null)}
+  />
+  <DiscardCostModal
+    card={splicePrompt && splicePrompt.step.kind === "exile" ? splicePrompt.card : null}
+    options={splicePickOptions}
+    need={splicePrompt?.step.count}
+    label={splicePrompt?.step.label}
+    verb="Exile"
+    note="exiled from your graveyard · not a discard"
+    where="in your graveyard"
+    onConfirm={confirmSplicePick}
+    onCancel={() => (splicePrompt = null)}
   />
   <!-- #3175: exile any number of blue cards from your hand (a March). -->
   <SacrificeCostModal

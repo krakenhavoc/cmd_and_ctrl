@@ -2959,7 +2959,27 @@ export interface SpliceOfferView {
   card_id: string;
   name: string;
   label: string;
+  // "" for a splice cost that is not mana (#4055).
   mana_cost: string;
+  // #4055 (ADR 0202's 2026-10-19 amendment): a splice cost that is not
+  // mana, as printed without its full stop ("Sacrifice two Mountains"),
+  // and the picker for it. Only the component the cost has is present;
+  // the card is offered only when the viewer can pay it. The picks ride
+  // cast_spell in `splice_payments`, entry k paying `splices[k]`.
+  cost_label?: string;
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
+  return_label?: string;
+  return_options?: LegalTargetsView;
+  // "An opponent gains N life": the caster names one of `opponent_options`
+  // on `splice_payments[k].opponent`.
+  chooses_opponent?: boolean;
+  opponent_options?: string[];
   target_mode?: string;
   legal_targets?: LegalTargetsView;
   clauses?: LegalTargetsView[];

@@ -1697,15 +1697,16 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#1989, [ADR 0202](decisions/0202-splice.md)): a card declares `Spec.Splice` (`effects.SpliceOntoArcane(cost)`, `SpliceOntoInstantOrSorcery(cost)`), and its own `Targets` and `OnResolve` are the text a spell gains. The cast names the revealed hand cards in `CastSpellParams.Splices` (`cast_spell.splices`), in the order their effects happen (CR 702.47b), checked with the rest of CR 601.2b; each spliced text's targets ride the flat target list with `TargetRef.Splice` and are judged against the card's own clause from the spell (CR 702.47c-d). The splice costs' mana joins the one pricer at CR 601.2f. `StackItem.Spliced` carries the texts (snapshot and clone, a CR 707.10 copy too); at resolution the main text runs, then each spliced text against a view of the item holding its own targets, waiting for a prompt an earlier instruction opened (the bullet walk, `modeWalk.splices`). A spell is countered by the rules only when every target of every text is illegal, and a text whose own targets are all gone does nothing. The hand card's `splice_offers` lists what may be spliced onto it (per viewer); the stack item shows `spliced`. Bots never splice. **Cards** (21, all Full): Overblaze, Glacial Ray, Desperate Ritual, Goryo's Vengeance, Candles' Glow, Kodama's Might, Wear Away, Consuming Vortex, Spiritual Visit, Vital Surge, Dampen Thought, Soulless Revival, Lifted by Clouds, Hideous Laughter, Strange Inversion, Psychic Puppetry, Blessed Breath, Into the Fray, Evermind, Everdream and Splicer's Skill. A splice cost that is not mana waits on #4055.",
 	},
 	{
-		// #4055 (found landing splice, #1989).
-		Slug: "splice-non-mana-cost", Name: "A splice cost that isn't mana", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Splice cards whose splice cost is something other than mana, such as Veil of Secrecy's returning a blue creature.",
-		Missing:     "Only a mana splice cost can be paid, so the cards whose splice cost is a creature, a sacrifice, cards from a graveyard or an opponent's life are left out rather than shipped without it.",
+		// #4055 (found landing splice, #1989). Closed; history in Closed seams.
+		Slug: "splice-non-mana-cost", Name: "A splice cost that isn't mana", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Splice cards whose splice cost is something other than mana, such as Veil of Secrecy's returning a blue creature or Torrent of Stone's sacrificing two Mountains.",
 		Rules:       []string{"702.47a"},
 		Issue:       4055,
+		ADR:         "0202-splice.md",
 		Tracked:     "#4055 (found landing splice, #1989)",
-		Waiting:     []string{"Veil of Secrecy", "Horobi's Whisper", "Roar of Jukai", "Hundred-Talon Strike", "Torrent of Stone"},
-		EngineNotes: "cast path: `game.SpliceAbility` carries `ManaCost` only and `effects.Register` (`checkSplice`) refuses a splice without one. The likely shape is a `game.AdditionalCost` on the splice ability whose non-mana half (return to hand, exile cards from a graveyard, sacrifice, tap another creature) joins the cast's one payment plan at CR 601.2h, as ADR 0073 pays an optional cost's, with the payment ids announced beside `splices`; \"An opponent gains 5 life\" needs a chosen opponent, as gift's does.",
+		Probe:       func(s effects.Spec) bool { return s.Splice != nil && s.Splice.Cost != nil },
+		Examples:    []string{"Veil of Secrecy", "Horobi's Whisper", "Roar of Jukai", "Hundred-Talon Strike", "Torrent of Stone"},
+		EngineNotes: "**Shipped** (#4055, [ADR 0202](decisions/0202-splice.md) amendment of 2026-10-19). `game.SpliceAbility.Cost` is a `SpliceCost` with one component, built from the pieces abilities and additional costs already pay: `Sacrifice`, `ExileCards`, `TapOthers`, `ReturnToHand`, or the new `OpponentGainsLife`. The payment rides its own `CastSpellParams.SplicePayments` (`cast_spell.splice_payments`, entry k paying `splices[k]`), validated with the cast's other announce checks by each component's own validator (no object named twice, CR 118.3) and paid with the spell on the stack after the cast's own costs (CR 601.2h). `SpliceOffersLocked` leaves out a card whose cost the caster cannot pay; the offer carries `cost_label` and the component's picker, and \"An opponent gains 5 life\" names the opponent from those who can gain life, paid through `gainLifeAsCostLocked`. Bots never splice.",
 	},
 	{
 		Slug: "role-tokens", Name: "Role tokens", Kind: KindSeam, Status: StatusPartial,
@@ -2349,6 +2350,17 @@ var items = []Item{
 		Printed:     `(?i)any number of spells with total mana value`,
 		Examples:    []string{"Uldaros Theorix"},
 		EngineNotes: "**Shipped** (#2017, ADR 0066 amendments of 2026-10-14 and 2026-10-15). `game.CastPermission.ManaValueBudget` is the REMAINING total one `ScopeCards` permission may still open across every card it names; `spellManaValueWithinCap`, the gate `validateCastPathLocked` shares with the view and the bot enumerator, refuses a card whose mana value is more than what is left, and a cast spends it through `consumePassClosedGrantLocked`, which keeps the permission with the cast card struck out and the budget reduced (a fresh pointer, never written in place). Two doors grant it. For card copies, `CardCopyOffer.ManaValueBudget` (`effects.CopyAndCast.TotalManaValueAtMost`) makes ONE permission over all the copies instead of one per copy (Uldaros Theorix). For cards an impulse exile landed, `effects.ExileTopWithPermission.TotalManaValueAtMost` stamps the same free, flash-speed, cast-only permission over the cards that reached exile with `LapseStaysInExile` (Primeval Spawn); the impulse exile already granted ONE permission over the landed cards, so no engine change was needed, and the form refuses the options that mean another window. A land among the cards is stranded (cast-only), an uncast card stays in exile. Not built: Rod of Absorption's X-sized total over \"cards exiled with this artifact\" (it also needs a spell to be exiled as it resolves and linked to the artifact), Invoke Calamity's cast from two zones at once (a permission has one zone), and Dance with Calamity's all-or-nothing total (the total is a condition on the exiled set, not a running budget), none of which is in the catalog.",
+	},
+	{
+		Slug: "each-spell-free-casts", Name: "Free casts of any number of exiled spells, each under a mana value", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Effects that exile cards and let you cast any number of them for free, each only if its own mana value is under a limit, such as Hazoret's Undying Fury's.",
+		Rules:       []string{"601.2", "608.2g"},
+		Issue:       4021,
+		ADR:         "0066-granted-cast-and-play-permissions.md",
+		Tracked:     "#4021 (found shipping the player-wide untap skip, #3995)",
+		Printed:     `(?i)any number of spells with mana value`,
+		Examples:    []string{"Hazoret's Undying Fury"},
+		EngineNotes: "**Shipped** (#4021, ADR 0066 amendment of 2026-10-19). `game.CastPermission.AnyNumber` marks a pass-closed `ScopeCards` permission that a cast does not use up: `spendManaValueBudget` keeps it with the cast card struck from `Cards`, and the per-spell ceiling is the existing `MaxSpellManaValue`, judged by `spellManaValueWithinCap` for the cast path, the view's offers and the bot enumerator alike. `effects.ExileTopWithPermission.EachManaValueAtMost` builds it (free, flash-speed, cast-only, `LapseStaysInExile`), refusing the options that name another window and `TotalManaValueAtMost`. Additive in snapshot v9 (`castPermissions[].anyNumber`).",
 	},
 	{
 		Slug: "ignore-an-effect-until-end-of-turn", Name: "Ignoring an effect by sacrificing a permanent", Kind: KindSeam, Status: StatusMissing,
@@ -3734,6 +3746,17 @@ var items = []Item{
 		Rules:   []string{"705", "706"},
 		ADR:     "0054-dice-rolls-and-coin-flips.md",
 		Printed: `(?i)\broll (?:a|two|three) d\d+|\bflips? (?:a|two|three) coins?\b|\bat random\b`,
+	},
+	{
+		Slug: "lose-a-coin-flip", Name: "Losing a coin flip, and a coin-flip cumulative upkeep", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Abilities that trigger when you lose a coin flip, and a cumulative upkeep paid by flipping coins, such as Karplusan Minotaur's.",
+		Rules:       []string{"705.2", "702.24a"},
+		Issue:       4063,
+		ADR:         "0054-dice-rolls-and-coin-flips.md",
+		Tracked:     "#4063 (found landing targets an opponent chooses, #2055)",
+		Printed:     `(?i)whenever you lose a coin flip`,
+		Examples:    []string{"Karplusan Minotaur"},
+		EngineNotes: "**Shipped** (#4063, ADR 0054 amendment of 2026-10-19). `effects.YouLostACoinFlip` / `WheneverYouLoseACoinFlip` match an `EventFlipCoin` the controller flipped with `Won` unset and a `Call` (a face-only flip has none and never matches). A cumulative upkeep of flipping a coin is `CumulativeUpkeepPaying` over `effects.FlipCoinsPayment`: a `PayActionNothing` payment whose flips are queued from the prompt's `OnPay`, one coin per age counter under one call, not stoppable once started. No new engine state: the coin is the keyed stream, and a table with the call open is not a restore point.",
 	},
 	{
 		Slug: "state-dependent-abilities", Name: "Abilities that depend on your hand, life or graveyard", Kind: KindSeam, Status: StatusImplemented,
