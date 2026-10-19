@@ -2404,7 +2404,7 @@ func (e *enumerator) legalTargetSetsFrom(spec *game.TargetSpec, budget int, lt g
 		different: e.g.TargetDifferenceKeysForEffect(spec, lt.Cards),
 		same:      e.g.TargetSamenessKeysForEffect(spec, lt.Cards),
 	}
-	lo, hi := spec.Min, spec.Max
+	lo, hi := e.g.ClauseMinForEffect(e.seat, spec), spec.Max
 	if hi <= 0 || hi > len(cands) {
 		hi = len(cands)
 	}

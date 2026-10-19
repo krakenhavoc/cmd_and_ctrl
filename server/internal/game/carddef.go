@@ -285,6 +285,10 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
+	// CantBeCopied is "This spell can't be copied" (See Double): the
+	// spell's own printed rider, read by every door a spell copy comes
+	// through (spell_copy.go). See spellPrintsCantBeCopied.
+	CantBeCopied bool
 	// FlashWithCleanupSacrifice is "You may cast this spell as though
 	// it had flash. If you cast it any time a sorcery couldn't have
 	// been cast, the controller of the permanent it becomes sacrifices
@@ -942,6 +946,10 @@ func init() {
 	CatalogCantBeCountered = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
+	}
+	CatalogCantBeCopied = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CantBeCopied
 	}
 	CatalogCantBeCounteredIf = func(key string) SpellCondition {
 		if d := catalogDef(key); d != nil {

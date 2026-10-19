@@ -1220,3 +1220,33 @@ they belonged to (CR 205.3d). `AddCardType` stays the "in addition" form. The Ef
 (`AbilityGrant.Mana`, already merged by the copy-grant path) so the copy has "{T}: Add {U}" besides the copied card's abilities.
 
 Back-out: remove the `v.SetCardTypes("Artifact")` line; `TestMachineGodsEffigyCopiesACreatureAsANonCreatureArtifact` fails.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): "This spell can't be copied"
+
+See Double prints "This spell can't be copied." Abilities had the equivalent since #1574 (`StackItem.Uncopyable`, refused in
+`CopyAbilityForEffect`); a spell had none.
+
+**Decision.** `Spec.CantBeCopied` (carried to `CardDef.CantBeCopied`, reached through the `CatalogCantBeCopied` hook beside
+`CatalogCantBeCountered`) is a property of the spell's printed text, keyed by `CatalogKey`. It is read at the two doors a spell
+copy comes through:
+
+- `copySpellFromLocked`, shared by `CopySpellForEffect` and `CopyLastKnownSpellForEffect` (Twincast, Reverberate, storm, Casualty,
+  every "copy target spell"), **before** the CR 707.10c "choose new targets" prompt, so nobody is asked to retarget a copy that
+  will not exist. CR 101.2's "can't" wins: the copy effect resolves and does nothing, as a counterspell aimed at an uncounterable
+  spell does.
+- `createSpellCopyLocked`, the verb that builds the copy, so a path that never passes the first door (a resumed prompt) cannot make
+  one; and `CopySpellKeepingTargetsForEffect` (Chef's Kiss), which reads the new top of the stack and would otherwise hand back
+  the ORIGINAL spell, returns `ErrCardNotFound` ("the copy effect did nothing").
+
+It is a catalog fact rather than a stamp on the stack item because the spell is the object that prints it and the verbs above
+already hold the card; there is nothing to carry through a restore (the field is derived from the catalog each time).
+
+**Card.** See Double, `full` (its other two parts are the conditional mode count, `OrUpToIf`, and the existing `CopySpell` and
+`CreateTokenCopy`).
+
+**Tests.** `cards/effects/roonb_cards3_test.go`: a Twincast aimed at See Double makes no copy and opens no prompt; the
+keep-the-targets door refuses it; a Lightning Bolt through the same door IS copied (the control, so the refusals are the rider
+talking).
+
+Back-out: drop the guard in `copySpellFromLocked` and `TestRoonbSeeDoubleCantBeCopied` fails; drop it in
+`CopySpellKeepingTargetsForEffect` and `TestRoonbSeeDoubleRefusesTheKeepTargetsCopyDoor` fails.

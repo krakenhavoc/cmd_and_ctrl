@@ -4249,3 +4249,33 @@ both halves.
 
 Back-out: drop rule 3's exception and the flashback-offer tests fail; drop the pile check in `CastPermissionOnCardForEffect`
 and `TestAStoredGrantOverAnotherGraveyardIsOnlyOnThatPile` fails; drop either gate's read and the ban tests fail.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): a cast ban on a name, for a duration (Reflector Mage)
+
+The 2026-09-23 amendment (#1316) built the granted cast ban and named Reflector Mage as the card it was for; what it could not
+say was WHICH spells. `PermissionFilter` had type and zone words and no name. Reflector Mage bans "spells with the same name as
+that creature" until its controller's next turn.
+
+**Decision.**
+
+1. `PermissionFilter.Named string` (empty constrains nothing) is read in `Matches`. It is the name the ability read off the
+   creature before it left the battlefield, so a Clone copying a Bear bans "Grizzly Bears", and a token's name counts.
+2. The ban is a **kind of its own**, `CastBanNamed`, not `CastBanOutright` with a name filter. This is the rollback half of the
+   snapshot rule: a binary from before this change reads a restore point it did not write, drops `filter.named`, and would
+   restore an outright ban on every spell. Under its own kind it reads an unknown kind, which `CastBanRule.forbids` answers
+   `false` (its default arm), so a rollback can only end the ban early, which is weaker than printed, never stronger. An empty
+   `Named` bans nothing.
+3. Nothing else changes: the ban is a `PlayerStatic` on the creature's OWNER with a `DurationUntilYourNextTurn`, read by the one
+   gate every cast already passes (`CastGateLocked`), so the hand, the command zone and the enumerator are covered, and the
+   wire's `cant_cast` stamp needs no new field.
+
+**Snapshot.** Additive within v9: `filter.named` on every `PermissionFilter`. Recorded in `testdata/snapshot_shape/v9.txt`.
+
+**Card.** Reflector Mage, `full`.
+
+**Tests.** `cards/effects/roonb_cards2_test.go`: the bounced name is banned (recast from hand included) and another name is
+not; the ban ends as the Mage controller's next turn begins; the OWNER is banned and the thief is not; a Clone's copied name
+is the banned one; a target that left in response bans nothing.
+
+Back-out: make `CastBanNamed` forbid nothing and the ban test fails; drop the `Named` clause from `Matches` and the
+"another name is not banned" assertion fails; ban `target.Controller` and the owner test fails.

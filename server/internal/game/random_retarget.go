@@ -266,6 +266,11 @@ func (g *Game) CopySpellKeepingTargetsForEffect(spellID, controller uuid.UUID) (
 	if !ok || item.Kind != StackItemSpell {
 		return uuid.Nil, ErrCardNotFound
 	}
+	// "This spell can't be copied": no copy exists to act on, which the
+	// caller reads as the copy effect having done nothing.
+	if spellPrintsCantBeCopied(src) {
+		return uuid.Nil, ErrCardNotFound
+	}
 	g.createSpellCopyLocked(src, item, controller, item.Targets)
 	top, err := g.Stack.Top()
 	if err != nil {

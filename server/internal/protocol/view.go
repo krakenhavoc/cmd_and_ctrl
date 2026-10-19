@@ -7502,6 +7502,9 @@ func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []Att
 // land count, Avacyn's Judgment's 2 or its madness X.
 func viewOfTargetClause(g *game.Game, src game.TargetSource, altKey string, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	v := viewOfLegalTargets(lt, spec)
+	// #4128: a clause bound to an opponent who is not at the table is
+	// not required, so the picker must not demand a pick for it.
+	v.Min = g.ClauseMinForEffect(src.Controller, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
 	stampDivideAmount(g, v, src, altKey, spec)
 	return v
