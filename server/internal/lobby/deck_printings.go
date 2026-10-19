@@ -63,6 +63,26 @@ func printingEntries(d decklibrary.Deck) ([]deck.Entry, error) {
 	return entries, nil
 }
 
+// entryLine is one list line for a saved deck's stored text: "N Name",
+// with " (SET) NO" when the entry names a printing. A printing known by
+// id alone is given its set and number from the card index first, so the
+// text a player's choice is saved as is the same text whichever route
+// wrote it (the printing picker, and an update, #2036).
+func entryLine(c Config, e deck.Entry) string {
+	if e.PrintingID != uuid.Nil && (e.SetCode == "" || e.CollectorNo == "") && c.Cards != nil {
+		if card, ok := c.Cards.FindByName(e.Name); ok {
+			if chosen, found := c.Cards.FindPrintingOf(card, e.PrintingID, e.SetCode, e.CollectorNo); found {
+				e.SetCode, e.CollectorNo = chosen.SetCode, chosen.CollectorNo
+			}
+		}
+	}
+	line := fmt.Sprintf("%d %s", e.Count, e.Name)
+	if e.SetCode != "" && e.CollectorNo != "" {
+		line += fmt.Sprintf(" (%s) %s", strings.ToUpper(e.SetCode), e.CollectorNo)
+	}
+	return line
+}
+
 func myDeckPrintings(c Config, w http.ResponseWriter, r *http.Request) error {
 	owner, err := libraryOwner(r)
 	if err != nil {
@@ -147,18 +167,7 @@ func putMyDeckPrintings(c Config, w http.ResponseWriter, r *http.Request) error 
 	// basics, with explicit boards. Changing art must never drop a card.
 	var text strings.Builder
 	for _, e := range entries {
-		if e.PrintingID != uuid.Nil && (e.SetCode == "" || e.CollectorNo == "") {
-			if card, ok := c.Cards.FindByName(e.Name); ok {
-				if chosen, found := c.Cards.FindPrintingOf(card, e.PrintingID, e.SetCode, e.CollectorNo); found {
-					e.SetCode, e.CollectorNo = chosen.SetCode, chosen.CollectorNo
-				}
-			}
-		}
-		fmt.Fprintf(&text, "%s:\n%d %s", printingBoard(e), e.Count, e.Name)
-		if e.SetCode != "" && e.CollectorNo != "" {
-			fmt.Fprintf(&text, " (%s) %s", strings.ToUpper(e.SetCode), e.CollectorNo)
-		}
-		text.WriteByte('\n')
+		fmt.Fprintf(&text, "%s:\n%s\n", printingBoard(e), entryLine(c, e))
 	}
 	updated, err := c.libraryStore().UpdatePrintings(r.Context(), d, text.String())
 	if errors.Is(err, decklibrary.ErrSourceChanged) {

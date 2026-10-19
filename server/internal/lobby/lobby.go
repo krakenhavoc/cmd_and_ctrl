@@ -1280,6 +1280,28 @@ func (l *Lobby) ForgetLibraryDeck(deckID string) {
 	}
 }
 
+// TablesUsingDeck is how many tables that have not ended hold deckID on
+// a seat. Updating a saved deck does not touch them (a seat keeps the
+// snapshot it was seated with); the update's preview says how many
+// there are so the player knows the new list waits for the next game.
+func (l *Lobby) TablesUsingDeck(deckID string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	n := 0
+	for _, entry := range l.games {
+		if entry.meta.State == "ended" {
+			continue
+		}
+		for _, p := range entry.meta.Players {
+			if p.DeckID == deckID {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
 // SetLibraryDeckPower updates the power level shown on every seat
 // holding deckID after an admin rates it (#3671), so a table already
 // seated with the deck shows the new rating on its next listing.

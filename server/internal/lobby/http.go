@@ -409,6 +409,8 @@ type GameEvictor interface {
 //	PUT  /me/admin-mode     — allowlisted person: switch admin mode on or off
 //	GET  /me/decks          — authenticated: the caller's deck library
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
+//	POST /me/decks/{id}/update          — owner: preview an update from the deck's link, a new link or a pasted list (#2036)
+//	POST /me/decks/{id}/update/confirm  — owner: commit a previewed update, optionally requesting its new missing cards
 //	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
@@ -931,6 +933,12 @@ func Handler(c Config) http.Handler {
 	// so saving cannot get around the fetch limit.
 	deckChecks.fetchLimit = deckCoveragePublic
 	mux.Handle("POST /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.saveDeck))))
+	// #2036: update a saved deck from its link, a new link or a pasted
+	// list. A preview first, then a confirm that commits what was
+	// previewed. Both ride the /me/decks* bucket, and a link spends a
+	// token of the checker's fetch bucket like a save does.
+	mux.Handle("POST /me/decks/{id}/update", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.previewUpdate))))
+	mux.Handle("POST /me/decks/{id}/update/confirm", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.confirmUpdate))))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
 	bugs := newBugGate(c)
@@ -3792,15 +3800,21 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders, libraryCommanderPrintings(c.Cards, d))
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
-			n, m := rep.AsPrinted()
-			nc, size := rep.AsPrintedCopies()
-			info.Coverage = &myDeckCoverageInfo{
-				Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
-				Copies: rep.Copies, UnknownCopies: rep.UnknownCopies, AsPrintedCopies: nc, DeckSize: size,
-			}
+			info.Coverage = coverageInfoOf(rep)
 		}
 	}
 	return info
+}
+
+// coverageInfoOf is a report's library summary: the headline numbers a
+// deck's card shows, and an update's preview shows for the new list.
+func coverageInfoOf(rep *deckcoverage.Report) *myDeckCoverageInfo {
+	n, m := rep.AsPrinted()
+	nc, size := rep.AsPrintedCopies()
+	return &myDeckCoverageInfo{
+		Counts: rep.Counts, Unknown: len(rep.Unknown), AsPrinted: n, Resolved: m,
+		Copies: rep.Copies, UnknownCopies: rep.UnknownCopies, AsPrintedCopies: nc, DeckSize: size,
+	}
 }
 
 // ownedLibraryDeck loads {id} from the path and returns it only when

@@ -388,3 +388,74 @@ sends `{text}`. On an error with the `paste_list` hint, the page shows the serve
 - **The full-report link** cannot carry a list, so a pasted check's reply links to `#/deck-check`
   plainly.
 - **A Moxfield error** shows the server's hint sentence.
+
+## Amendment 2026-10-19: updating a saved deck, and asking only for what is new
+
+**Issue:** [#2036](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2036). No new ADR number is
+reserved: this extends §2 (routes) and §3 (deduplication), and the saved-deck routes of
+[ADR 0112](0112-signed-in-home-player-mode-and-one-decks-page.md) §3.
+
+### Why
+
+A deck is edited on Archidekt after it was saved. Until now the only way to bring the saved copy
+along was to import it again under the same name, which dropped the player's printing choices
+and, for a deck whose cards had been requested, started the request over: the new list has a
+different deck key, so the old issue's cards were asked for a second time.
+
+### Decision
+
+1. **Update is a preview, then a confirm.** `POST /me/decks/{id}/update` takes one of
+   `{source:"relink"}`, `{url}` or `{list}` and writes nothing; it returns the diff, the new
+   coverage and a one-use `preview_id`. `POST /me/decks/{id}/update/confirm` commits what was
+   previewed. The commit uses the previewed list and never fetches again, so what the player saw is
+   what is saved, and it checks the stored list is still the one the preview read (409 otherwise).
+2. **The deck stays itself.** Id, name, owner and creation time are kept. The list, the link,
+   the commander summary and the card count are replaced (`decklibrary.Store.ReplaceContents`), and
+   the power rating is cleared if the list changed, as a re-save does. A card that carries over keeps
+   the printing the saved list gave it: rows match on board and card name, the n-th new row takes
+   the n-th old row's printing (so distinct basic-land printings survive), and where the old row
+   named none the new source's own printing stands. The old printing wins over a new source's when
+   both name one: a choice made in the picker cannot be told apart from a printing the last link
+   happened to carry, and silently reverting a player's art is the worse mistake.
+3. **A pasted list clears the link; a new link replaces it; `relink` keeps it.** A deck that says
+   it comes from a link must be re-pullable from it; a deck edited by hand no longer is. The preview
+   says when a link will go (`link_cleared`).
+4. **Validated as the first import is.** A link goes through `deck.ParseDeckURL` and the configured
+   fetcher (supported hosts only, canonical URL, the fetcher's size cap and timeout: no way to point
+   the server at another host), a list through `deck.ParseText` and the 2000-copy bound. Commander
+   violations are reported in the preview and do not block the update, as they do not block a save;
+   seating re-validates against the catalogue of that day. A link spends a token of
+   `POST /deck-coverage`'s per-IP bucket on every update, because the cache is skipped; the routes
+   ride the `/me/decks*` bucket.
+5. **A table is not touched.** A seat holds the cards it was seated with and nothing re-reads the
+   library row once a game exists; the update changes the row and the next game seats the new list.
+   The preview reports how many unfinished tables hold the deck (`live_tables`) so the client can say
+   so.
+6. **Requests ask only for what is new, and only when asked to.** The confirm takes
+   `request_missing`; without it nothing is filed. With it, the cards to ask for are the new
+   version's `manual` and `unreviewed` cards minus those already requested for this deck. A card is
+   already requested when the OLD version was missing it and the old version's deck key has a request
+   row (the issue lists it), or when the new version is a pasted list that has a request row of its
+   own (a list key is its content). The new cards go as a comment on the deck's open issue, found
+   under the new key and then the old one, and the new key is pointed at that issue, so a later
+   request or update joins it. With no open issue a new one is filed whose checklists hold only the
+   new cards. It is one ask against the requester's 3 per 24 hours, needs a Discord identity as every
+   request does, and its failure or refusal is reported beside a successful update and never undoes
+   it.
+
+### What this does not do
+
+The rule reads the request rows ADR 0095 §3 already keeps; it does not remember which cards each
+issue listed. It is exact for an update after a request, and for a deck whose latest version was the
+one requested. If a player declines to request at one update and then updates again, the cards the
+first issue listed but the second version's key never had are offered again, and a comment can list
+a card already checked off on that issue. Keeping the requested card set per issue would close it,
+at the price of a table that stores card names per request; that was left until it is seen to matter.
+
+### Privacy
+
+Nothing about a person is newly stored. A previewed list is held **in memory** for 15 minutes (at
+most 128, one per person and deck) and dropped on use, on expiry or on restart; it is never written
+to the database or a log. A saved deck's list, link and counts were already stored under the
+account (ADR 0051), and are deleted with it (ADR 0149); an update changes their values, not what is
+kept. A request filed from an update names the requester's display name, as every request does.
