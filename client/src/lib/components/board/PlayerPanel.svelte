@@ -1979,6 +1979,15 @@
     .panel.opponent.flipped .rail > :global(.pile-bar) {
       align-self: start;
     }
+    /* #4127: a library top you may play on their pile (Xanathar's grant)
+       is offered under their piles, at the top of the table, growing down
+       into their panel, and read upright. */
+    .panel.opponent.flipped .rail :global(.top-peek) {
+      bottom: auto;
+      top: calc(100% + 6px);
+      left: auto;
+      right: 0;
+    }
     /* A top-row panel is narrow: the two back-row zones may give up
        more of their width, and shrink their cards to fit (rowFit),
        before either crowds the piles. */

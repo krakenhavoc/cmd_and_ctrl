@@ -3607,6 +3607,7 @@
       connection={$status}
       wsLog={$log}
       attachments={bugReportAttachments}
+      captureTarget={() => sectionEl}
       onclose={() => (bugReportOpen = false)}
       onminimize={minimizeBugReport}
     />

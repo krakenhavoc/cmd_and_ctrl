@@ -583,3 +583,63 @@ follow it and answer a question.
 - **A sweep closes the thread** when the issue closes, by reading the bot's own
   open posts and their issues every five minutes; no webhook, no stored state.
 
+
+## 13. A picture of the board, taken in the reporter's browser (added 2026-10-19)
+
+[#4116](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4116). On a table,
+the report form has an unticked checkbox, "include a picture of the board". A
+reporter who ticks it gets a screenshot of the table they are looking at,
+attached beside any image they paste, drop or pick.
+
+- **It is §6's screenshot, nothing new.** The picture is an ordinary attachment:
+  it lands in the form's list of screenshots with a thumbnail and a remove
+  button, counts toward the same four images, 4 MiB each and 10 MiB per report,
+  goes up in the same multipart body, and is stored, served and expired exactly
+  as an upload is (§6, the 90-day retention and 512 MiB ceiling). The server
+  cannot tell it from a pasted PNG, and no server code changes. So the privacy
+  notice's storage line stands; only its description of what a screenshot may
+  hold is widened (ADR 0149).
+- **Opt-in, and taken only on the tick.** The box starts unticked and is not
+  remembered. Nothing is rendered, fetched or held until it is ticked, and
+  unticking, or removing the thumbnail, drops the picture. "Retake" replaces it
+  with the board as it is then. The form is left out of the picture.
+- **What only the reporter may see is covered, not pictured.** A report is a
+  public issue and the game may still be live, so an opponent could open it
+  and read the reporter's hand off the image. The checkbox's wording is not
+  the protection. Before the picture is taken, each private element gets a
+  neutral "hidden" box of its own size laid over it, and html-to-image's
+  `filter` drops everything inside it from the cloned source, so no card
+  image, name or text of it is part of what is rendered, and the layout stays
+  readable. Covered: the reporter's own hand (an opponent's is card backs
+  and stays); a face-down or foretold card they may look at (CR 708.5,
+  CR 702.143d; `Card` marks itself `data-board-shot-private`); the top of a
+  library, on the pile and on the play peek (#4127); the sideboard pile, the
+  cards they own outside the game; the hover zoom; and any open prompt or
+  dialog, which may list cards only they can see. What is public (the
+  battlefield, the stack, graveyards, exile, the command zone, life, counters,
+  the log) is pictured as the reporter sees it. A new private surface adds
+  itself to `BOARD_SHOT_PRIVATE_SELECTOR` or sets the attribute. This is a
+  list of what is private rather than of what is public because the board is
+  too varied to enumerate the latter; it errs by covering a prompt that was
+  harmless, which costs a reporter a pasted screenshot at most. The boxes are
+  on the live page only while the picture is taken. The form is left out of it
+  too. §4's rule against routing hidden information around the visibility
+  filter is kept.
+- **html-to-image 1.11.13 (MIT, no dependencies), imported on demand.** The
+  board is DOM and images, so there are no canvas pixels to copy. The library
+  clones the element, inlines its images, fonts and computed styles into an SVG
+  and rasterises it. Every card image is this origin's `/cards/<id>/image`, so
+  nothing taints the canvas, and the production Content-Security-Policy
+  (`img-src 'self' data: blob:`, `font-src 'self'`) needs no change: the capture
+  was run under that policy with no violation. It is pinned exactly, loaded
+  only when the box is ticked, and adds nothing to the bundle the table loads
+  with. Rejected: `getDisplayMedia`, which asks the browser for a screen-share
+  permission, shows its own UI and is missing from Safari and Firefox's
+  current-tab mode; html2canvas, which re-implements CSS and breaks on this
+  board's grid, container queries and clipping; and a server-side render, which
+  has no browser and would need the hidden state it must not have.
+- **Under the caps, or no picture.** It is a PNG, then a JPEG at falling
+  quality, the first that fits in 3 MiB (30% of the per-report cap, leaving room
+  for a pasted image or two), at no more than 1920 px wide. If none fits, or the
+  render fails, the form says so and offers nothing; pasting a screenshot
+  still works.
