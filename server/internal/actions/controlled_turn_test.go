@@ -172,6 +172,21 @@ func TestTurnControlSandboxVerbsAreClosedToBothPlayers(t *testing.T) {
 	}
 }
 
+// Every sandbox verb is refused to the controller as the controlled
+// player, and none of them runs (#4025, CR 723.5b).
+func TestTurnControlEverySandboxVerbIsRefusedAsTheControlledPlayer(t *testing.T) {
+	g, alice, bob, _ := newTurnControlGame(t)
+	hand, life := g.PlayerByID(bob).Hand.Size(), g.PlayerByID(bob).Life
+	for ty := range sandboxVerbs {
+		if err := Dispatch(g, Action{Type: ty, Player: bob, Caller: alice}); !errors.Is(err, game.ErrPlayerControlled) {
+			t.Errorf("%s as Bob from Alice: %v, want ErrPlayerControlled", ty, err)
+		}
+	}
+	if g.PlayerByID(bob).Hand.Size() != hand || g.PlayerByID(bob).Life != life {
+		t.Error("a refused sandbox verb still changed Bob")
+	}
+}
+
 // A third player can't act for the controlled player, and the
 // controller can't act for a seat they don't control.
 func TestTurnControlOnlyTheControllerActsForThem(t *testing.T) {
