@@ -41,15 +41,17 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerRemove},
 				Cost:    Plus(PayLife(1), SacrificeAnotherN(1, "another creature", Creature())),
 				Targets: TargetCreature("up to one target creature").WithCount(0, 1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if id, ok := b16FirstLegalTargetCard(ctx); ok {
-						if err := (AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}).Apply(ctx); err != nil {
-							return err
+				Effect: Do(
+					// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						id, ok := b16FirstLegalTargetCard(ctx)
+						if !ok {
+							return nil
 						}
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				},
+						return AddCounter{Target: id, Kind: game.CounterMinusOne, N: 1}.Apply(ctx)
+					}),
+					DrawCards{N: 1},
+				),
 			},
 			{
 				Label:   "{B}{B}, Discard a card: Proliferate.",

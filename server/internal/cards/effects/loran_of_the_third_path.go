@@ -50,16 +50,16 @@ func init() {
 			Purpose: game.Purpose{Draws: 1, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})},
 			Cost:    TapCost(),
 			Targets: TargetPlayer("target opponent", Opponent()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-					return nil
-				}
-				return DrawCards{Player: item.Targets[0].ID, N: 1}.Apply(ctx)
-			},
+			Effect: Do(
+				// The second draw waits for a prompt the first asks (CR 608.2c, #4155).
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetPlayer {
+						return nil
+					}
+					return DrawCards{Player: ctx.Item.Targets[0].ID, N: 1}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

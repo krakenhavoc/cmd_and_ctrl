@@ -19,11 +19,10 @@ func init() {
 		Name:         "Frantic Search",
 		Purpose:      game.Purpose{Draws: 2, Discards: 2},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := lootOne(ctx.Game, item, 2); err != nil {
-				return err
-			}
-			return UntapUpToLands{N: 3, Question: "Frantic Search — untap up to three lands"}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The untap waits for the discard the loot asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error { return lootOne(ctx.Game, ctx.Item, 2) }),
+			UntapUpToLands{N: 3, Question: "Frantic Search — untap up to three lands"},
+		),
 	})
 }

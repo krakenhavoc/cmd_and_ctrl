@@ -30,17 +30,18 @@ func init() {
 			Label:   "{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}{B}{B}"), TapCost()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				p := g.PlayerByIDForEffect(item.Controller)
-				if p == nil {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -p.Hand.Size())
-			},
+			Effect: Do(
+				// The loss counts the hand after the draw, and the draw's prompt
+				// (a dredge offer) comes first (CR 608.2c, #4155).
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
+					if p == nil {
+						return nil
+					}
+					return GainLife{Amount: -p.Hand.Size()}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

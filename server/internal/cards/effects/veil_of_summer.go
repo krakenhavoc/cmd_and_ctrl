@@ -39,37 +39,42 @@ func init() {
 		OracleID:     "002965be-a36f-4a09-9ce0-c6535bca1703",
 		Name:         "Veil of Summer",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			blue, black := ctx.TextColor("U"), ctx.TextColor("B")
-			if anOpponentCastASpellThisTurn(ctx, func(c game.Card) bool { return c.HasColor(blue) || c.HasColor(black) }) {
-				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
+		OnResolve: ResolveSteps(
+			// The rest of the spell waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				blue, black := ctx.TextColor("U"), ctx.TextColor("B")
+				if !anOpponentCastASpellThisTurn(ctx, func(c game.Card) bool { return c.HasColor(blue) || c.HasColor(black) }) {
+					return nil
+				}
+				return DrawCards{N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				blue, black := ctx.TextColor("U"), ctx.TextColor("B")
+				if err := (GrantCounterShield{From: "Veil of Summer", Grant: SpellsCantBeCounteredThisTurn(
+					"Spells you control can't be countered this turn.",
+					game.CounterShieldYouControl, game.PermissionFilter{})}).Apply(ctx); err != nil {
 					return err
 				}
-			}
-			if err := (GrantCounterShield{From: "Veil of Summer", Grant: SpellsCantBeCounteredThisTurn(
-				"Spells you control can't be countered this turn.",
-				game.CounterShieldYouControl, game.PermissionFilter{})}).Apply(ctx); err != nil {
-				return err
-			}
-			hexproofFrom := []string{game.HexproofFromColor(blue), game.HexproofFromColor(black)}
-			if err := (GrantKeywordUntilEOT{
-				Match:    YouControl(),
-				Keywords: hexproofFrom,
-				Label:    "Veil of Summer — hexproof from blue and from black",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			for _, kw := range hexproofFrom {
-				if err := (GainPlayerKeyword{
-					Player:  ctx.Controller(),
-					Keyword: kw,
-					Label:   "Veil of Summer — " + kw,
+				hexproofFrom := []string{game.HexproofFromColor(blue), game.HexproofFromColor(black)}
+				if err := (GrantKeywordUntilEOT{
+					Match:    YouControl(),
+					Keywords: hexproofFrom,
+					Label:    "Veil of Summer — hexproof from blue and from black",
 				}).Apply(ctx); err != nil {
 					return err
 				}
-			}
-			return nil
-		},
+				for _, kw := range hexproofFrom {
+					if err := (GainPlayerKeyword{
+						Player:  ctx.Controller(),
+						Keyword: kw,
+						Label:   "Veil of Summer — " + kw,
+					}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+		),
 	})
 }
 

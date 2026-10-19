@@ -71,16 +71,15 @@ func init() {
 		OracleID:     "16cd0b90-f70c-4efa-b252-8de8784ef9a3",
 		Name:         "Imperial Seal",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			// "Search your library for a card, then shuffle and put
-			// that card on top. You lose 2 life." No reveal, any
-			// card, and the life is a separate sentence that does not
-			// wait on the search.
-			if err := tutorToTop(ctx, "Imperial Seal — any card", false, nil); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2)
-		},
+		OnResolve: ResolveSteps(
+			// "Search your library for a card, then shuffle and put that card on
+			// top. You lose 2 life." No reveal, any card. The life loss is the next
+			// instruction, so it waits for the search (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return tutorToTop(ctx, "Imperial Seal — any card", false, nil)
+			}),
+			GainLife{Amount: -2},
+		),
 	})
 }
 

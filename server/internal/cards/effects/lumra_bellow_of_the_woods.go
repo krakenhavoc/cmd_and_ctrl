@@ -40,13 +40,13 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Lumra — mill four, then return all land cards from your graveyard tapped", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (MillCards{Player: item.Controller, N: 4}).Apply(ctx); err != nil {
-					return err
-				}
-				return b10ReturnAllLandCardsFromGraveyardTapped(ctx, item.Controller)
-			}),
+			WhenThisEnters("Lumra — mill four, then return all land cards from your graveyard tapped", Do(
+				// The lands return after the mill, and wait for a prompt it asks (CR 608.2c, #4155).
+				MillCards{N: 4},
+				Instruction(func(ctx *Context) error {
+					return b10ReturnAllLandCardsFromGraveyardTapped(ctx, ctx.Controller())
+				}),
+			)),
 		},
 	})
 }

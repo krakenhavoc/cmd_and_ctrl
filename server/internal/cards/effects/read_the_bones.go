@@ -23,14 +23,16 @@ func init() {
 		Name:         "Read the Bones",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 2},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			c := ctx.Controller()
-			if err := (Scry{Player: c, N: 2, Then: func(g *game.Game) error {
-				return g.DrawNForEffect(c, 2)
-			}}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), c, -2)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for the scry's answer, and for the draw after it
+			// (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				c := ctx.Controller()
+				return Scry{Player: c, N: 2, Then: func(g *game.Game) error {
+					return g.DrawNForEffect(c, 2)
+				}}.Apply(ctx)
+			}),
+			GainLife{Amount: -2},
+		),
 	})
 }

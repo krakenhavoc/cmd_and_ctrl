@@ -20,22 +20,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageToTarget(0, 3)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			var target game.TargetRef
-			if len(item.Targets) > 0 {
-				target = item.Targets[0]
-			}
-			if err := (DealDamage{
-				Source: ctx.Source(),
-				Target: target.ID,
-				Amount: 3,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{
-				Player: ctx.Controller(),
-				Amount: 3,
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life gain waits for a prompt the damage asks (Khârn the
+			// Betrayer's question, a CR 616 order), CR 608.2c (#4155).
+			Instruction(func(ctx *Context) error {
+				var target game.TargetRef
+				if len(ctx.Item.Targets) > 0 {
+					target = ctx.Item.Targets[0]
+				}
+				return DealDamage{Source: ctx.Source(), Target: target.ID, Amount: 3}.Apply(ctx)
+			}),
+			GainLife{Amount: 3},
+		),
 	})
 }

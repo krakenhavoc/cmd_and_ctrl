@@ -52,28 +52,29 @@ func init() {
 			Cost:          game.AbilityCost{Mana: "{3}{B}", DiscardSelf: true},
 			Zones:         []game.ZoneKind{game.ZoneHand},
 			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				candidates := takenumaGraveyardCandidates(g, item.Controller)
-				if len(candidates) == 0 {
+			Effect: Do(
+				// The choice from the graveyard waits for a prompt the mill asks (CR 608.2c, #4155).
+				MillCards{N: 3},
+				Instruction(func(ctx *Context) error {
+					g, item := ctx.Game, ctx.Item
+					candidates := takenumaGraveyardCandidates(g, item.Controller)
+					if len(candidates) == 0 {
+						return nil
+					}
+					g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+						Chooser:    item.Controller,
+						FromPlayer: item.Controller,
+						Source:     item.SourceCardID,
+						Question:   "Takenuma, Abandoned Mire — return a creature or planeswalker card from your graveyard to your hand",
+						Cards:      candidates,
+						Min:        1,
+						Max:        1,
+						Zone:       game.ZoneGraveyard,
+						Then:       ReturnPickedToHand(item),
+					})
 					return nil
-				}
-				g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-					Chooser:    item.Controller,
-					FromPlayer: item.Controller,
-					Source:     item.SourceCardID,
-					Question:   "Takenuma, Abandoned Mire — return a creature or planeswalker card from your graveyard to your hand",
-					Cards:      candidates,
-					Min:        1,
-					Max:        1,
-					Zone:       game.ZoneGraveyard,
-					Then:       ReturnPickedToHand(item),
-				})
-				return nil
-			},
+				}),
+			),
 		}},
 	})
 }

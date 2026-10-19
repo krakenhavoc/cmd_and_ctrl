@@ -34,23 +34,24 @@ func init() {
 		Name:         "Snakeskin Veil",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			target := item.Targets[0].ID
-			if err := (AddCounter{
-				Target: target,
-				Kind:   "+1/+1",
-				N:      1,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
-				Target:   target,
-				Keywords: []string{"hexproof"},
-				Label:    "Snakeskin Veil — hexproof",
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The hexproof waits for a prompt the counter asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) == 0 || t[0].Kind != game.TargetCard {
+					return nil
+				}
+				return AddCounter{Target: ctx.Item.Targets[0].ID, Kind: "+1/+1", N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if t := ctx.Item.Targets; len(t) == 0 || t[0].Kind != game.TargetCard {
+					return nil
+				}
+				return GrantKeywordUntilEOT{
+					Target:   ctx.Item.Targets[0].ID,
+					Keywords: []string{"hexproof"},
+					Label:    "Snakeskin Veil — hexproof",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

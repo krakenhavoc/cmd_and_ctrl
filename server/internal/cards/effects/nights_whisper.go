@@ -15,12 +15,10 @@ func init() {
 		Name:         "Night's Whisper",
 		Purpose:      game.Purpose{Draws: 2},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			if err := (DrawCards{Player: controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), controller, -2)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			GainLife{Amount: -2},
+		),
 	})
 }

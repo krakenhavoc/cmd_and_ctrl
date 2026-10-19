@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Shamanic Revelation — Sorcery {3}{G}{G} (EDHREC rank 368):
 //
 //	"Draw a card for each creature you control.
@@ -22,21 +20,32 @@ func init() {
 		OracleID:     "d1d171de-1c6d-4fb9-817a-9c689c709f3d",
 		Name:         "Shamanic Revelation",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			creatures, big := 0, 0
-			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller != ctx.Controller() || !c.IsCreature() {
-					continue
-				}
-				creatures++
-				if c.CurrentPower() >= 4 {
-					big++
-				}
-			}
-			if err := (DrawCards{Player: ctx.Controller(), N: creatures}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: 4 * big}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The life gain waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				creatures, _ := shamanicRevelationCounts(ctx)
+				return DrawCards{N: creatures}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				_, big := shamanicRevelationCounts(ctx)
+				return GainLife{Amount: 4 * big}.Apply(ctx)
+			}),
+		),
 	})
+}
+
+// shamanicRevelationCounts is the creatures you control and how many of
+// them have power 4 or greater. Each of the spell's steps reads it from the
+// game, since a piece cannot hand it to the next (#4155).
+func shamanicRevelationCounts(ctx *Context) (creatures, big int) {
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if c.Controller != ctx.Controller() || !c.IsCreature() {
+			continue
+		}
+		creatures++
+		if c.CurrentPower() >= 4 {
+			big++
+		}
+	}
+	return creatures, big
 }
