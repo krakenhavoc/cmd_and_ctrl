@@ -1248,3 +1248,39 @@ trigger walk. `legal/opponent_target_test.go` holds the enumerator to the contro
 Back-out: drop `chooserAdmits` from `sourceAdmits` and the Evangelize and Arena tests offer every opponent's creature;
 skip the park and the Nova Pentacle test sees the cost paid before the target; drop `bindStepChoosers` from
 `itemAnnouncedClauses` and Evangelize takes a creature its opponent no longer controls.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): "for each opponent, … target … that player controls", required
+
+Blatant Thievery ("For each opponent, gain control of target permanent that player controls") needs one REQUIRED pick per
+opponent (CR 601.2c). The "up to one" form already existed (`perOpponentClauses`, Windgrace's Judgment): one clause per possible
+opponent bound to a seat, every clause optional so a seat that is not at the table offers nothing. A required clause cannot
+borrow that shape. At a two-player table the clauses for the second and third seat could never be filled, so the spell would be
+uncastable; and making them "up to one" would let the caster skip an opponent who has a legal permanent, which is stronger
+than printed.
+
+**Decision.** `TargetSpec.OpponentSlot int` (1-based, zero is no slot) binds a clause to the n-th seat after the chooser's in
+turn order, as DATA. Two readings, both through one place (`game/opponent_slot.go`):
+
+- **Who may be picked.** `opponentSlotAdmits`, folded into `sourceAdmits` beside `chooserAdmits`: the candidate must be
+  controlled by the live player in that slot. A seat with no player, or an eliminated one, admits nothing. Because it lives in
+  the shared walk, the legal set, the announce check, the CR 608.2b re-check, the client's picker and the bot's moves are one
+  answer, and a permanent that changed hands in response is illegal for its slot even when it went to another opponent.
+- **Whether the clause is required.** `Game.ClauseMinForEffect` is the clause's `Min`, except 0 when the slot's seat holds no
+  live opponent (an eliminated player is no longer an opponent, CR 800.4a). The announce gate, `anyClauseUnfillableLocked`
+  (the cast offer), the wire view (`viewOfTargetClause` stamps `legal_targets.min` and each clause's `min`) and the enumerator
+  (`legalTargetSetsFrom`) all ask it. A live opponent who controls nothing targetable leaves `Min` at 1, so the spell is
+  uncastable, which is what the rule says.
+
+`effects.ForNthOpponent(n, spec)` binds a clause; `perOpponentRequiredClauses(noun, preds…)` is the three-clause statement.
+No func-typed field was added to any struct reachable from `Game`: the closure ratchet is untouched.
+
+**Card.** Blatant Thievery, `full`.
+
+**Tests.** `cards/effects/roonb_cards_test.go` and `roonb_cards4_test.go` (four live opponents; a pick from the wrong opponent;
+an eliminated opponent; a live opponent with nothing to take; a pick that changed hands in response; a two-player table),
+`legal/opponent_slot_test.go` (the enumerator offers one pick per live opponent, none for an eliminated one, and no cast when a
+live opponent has nothing; every move is dispatched), `protocol/opponent_slot_view_test.go` (the per-clause `min`).
+
+Back-out: drop `opponentSlotAdmits` from `sourceAdmits` and `TestRoonbBlatantThieveryRequiresAPickPerOpponentFromThatOpponent`
+fails; read `c.Min` instead of `clauseMinLocked` in the announce gate and the eliminated-opponent and two-player tests fail;
+drop the view stamp or the enumerator's read and the protocol and legal tests fail.

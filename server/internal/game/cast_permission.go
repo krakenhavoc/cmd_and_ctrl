@@ -292,6 +292,14 @@ type PermissionFilter struct {
 	// which MoveCard stamps, so the clause is pure card data.
 	PutInGraveyardThisTurn bool `json:"putInGraveyardThisTurn,omitempty"`
 
+	// Named is "spells with the same name as that creature" (Reflector
+	// Mage, ADR 0066's 2026-10-19 amendment): a qualifying card's name
+	// is exactly this. Empty constrains nothing. Read by a granted cast
+	// ban (CastBanRule.Filter); the catalog never sets it on a
+	// permission, because a name is a fact about a resolution, not about
+	// a card.
+	Named string `json:"named,omitempty"`
+
 	// ExiledWith is ExiledWithSource's derived payload: the source
 	// object the card must be linked to. Zero on every catalog entry.
 	ExiledWith PermissionCardRef `json:"exiledWith"`
@@ -340,6 +348,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if (f.CreatureTypesAny != [2]string{}) && !cardHasAnyCreatureType(c, f.CreatureTypesAny) {
+		return false
+	}
+	if f.Named != "" && c.Name != f.Named {
 		return false
 	}
 	if f.WithCounter != "" && c.Counters[f.WithCounter] <= 0 {

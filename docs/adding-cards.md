@@ -7566,6 +7566,23 @@ response is an illegal target for the clause it was chosen under.
 Molten Primordial's `TargetsFrom` is the same idea for a trigger that can
 name seats directly.
 
+**"For each opponent, … target … that player controls", every pick
+required** (Blatant Thievery) is `perOpponentRequiredClauses` in
+[opponent_clauses_required.go](../server/internal/cards/effects/opponent_clauses_required.go):
+`ForNthOpponent(n, spec)` sets `TargetSpec.OpponentSlot`, and the engine
+reads the table, so the clause is required only while that seat holds a
+live opponent (two-player tables and eliminated players need no pick).
+Do not reuse the "up to one" form for a required target: it lets the caster
+skip an opponent (ADR 0019, 2026-10-19 amendment, #4128).
+
+**Detain, a ban on a card name, "this spell can't be copied"** (#4128):
+`Detain{Match}` pins a set at resolution and restricts it until your next
+turn ([detain.go](../server/internal/cards/effects/detain.go), ADR 0045
+amendment); `RestrictCasting` with `game.CastBanNamed` and
+`PermissionFilter{Named: …}` is a name ban for a duration (Reflector Mage,
+ADR 0066 amendment); `Spec.CantBeCopied` is the spell's own rider, refused at
+every spell-copy door (See Double, ADR 0043 amendment).
+
 **An intervening "if"** (Thopter Spy Network, Emeria) is read where the
 trigger is declared and again at the top of the `Effect`; the second read
 is the one a response can change (CR 603.4).

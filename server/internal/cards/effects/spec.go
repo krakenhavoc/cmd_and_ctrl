@@ -426,6 +426,13 @@ type Spec struct {
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
 
+	// CantBeCopied is the spell's printed "This spell can't be copied"
+	// (See Double). Every spell-copy door (Twincast, storm, Casualty,
+	// Chef's Kiss) makes no copy of a spell that carries it, and does so
+	// before the CR 707.10c "choose new targets" prompt opens, so
+	// nobody is asked to retarget a copy that will not exist.
+	CantBeCopied bool
+
 	// FlashWithCleanupSacrifice is the Visions-era rider "You may cast
 	// this spell as though it had flash. If you cast it any time a
 	// sorcery couldn't have been cast, the controller of the permanent

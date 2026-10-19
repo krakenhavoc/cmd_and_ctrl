@@ -210,6 +210,7 @@ func buildDef(spec Spec) *game.CardDef {
 		UntapOptOuts:                        spec.UntapOptOuts,
 		DrawStep:                            spec.DrawStep,
 		CantBeCountered:                     spec.CantBeCountered,
+		CantBeCopied:                        spec.CantBeCopied,
 		FlashWithCleanupSacrifice:           spec.FlashWithCleanupSacrifice,
 		CastTimeValues:                      spec.CastTimeValues,
 		CantBeCounteredIf:                   spec.CantBeCounteredIf,

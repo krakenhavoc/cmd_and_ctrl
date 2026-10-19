@@ -533,6 +533,23 @@ type TargetSpec struct {
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
 
+	// OpponentSlot is "for each opponent, … target … that player
+	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
+	// #4128): the clause belongs to the n-th seat (1-based) after the
+	// chooser's in turn order. A candidate must be controlled by the live
+	// player in that slot, and the clause is required (its Min) only
+	// while that seat holds a live opponent -- at a two-player table the
+	// second and third clauses are not required, and neither is one whose
+	// opponent has been eliminated (CR 800.4a). Zero is no slot.
+	//
+	// DATA, not a closure, for the reason RelativeToSource is, and
+	// judged in the one shared walk (opponentSlotAdmits) so the legal
+	// set, the announce check (CR 601.2c), the resolution re-check (CR
+	// 608.2b), the client's picker and the bot's moves are one answer;
+	// the required-ness is Game.ClauseMinForEffect. Build it with
+	// effects.ForNthOpponent.
+	OpponentSlot int
+
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
 	// on the stack, its controller chooses one of their opponents, and
@@ -1729,7 +1746,7 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

@@ -4617,6 +4617,7 @@ seats[].castPermissions[].filter.fromChosenType	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
+seats[].castPermissions[].filter.named	string
 seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
@@ -7292,6 +7293,7 @@ seats[].statics[].cantBeCountered.filter.fromChosenType	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
+seats[].statics[].cantBeCountered.filter.named	string
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
@@ -7322,6 +7324,7 @@ seats[].statics[].castBan.filter.fromChosenType	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
+seats[].statics[].castBan.filter.named	string
 seats[].statics[].castBan.filter.nonLandOnly	bool
 seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
@@ -7397,6 +7400,7 @@ seats[].statics[].nextSpell.filter.fromChosenType	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.landsOnly	bool
+seats[].statics[].nextSpell.filter.named	string
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
 seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
@@ -7431,6 +7435,7 @@ seats[].statics[].timing.filter.fromChosenType	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
+seats[].statics[].timing.filter.named	string
 seats[].statics[].timing.filter.nonLandOnly	bool
 seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
