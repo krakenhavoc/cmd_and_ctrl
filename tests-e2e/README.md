@@ -21,6 +21,7 @@ tests-e2e/
     ├── combat-damage-2956.spec.ts # ADR 0147: a double-blocked trampler's sheet opens on lethal-each-and-the-rest-over, the blockers tick on the board; with Auto-assign on, nothing is asked
     ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s, none with combat motion off; first strike before regular, a double block lunged at once, trample's streak, blockers crumbling
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
+    ├── dock-avatar-4069.spec.ts # #4069: at four seats the tall declare-attackers dock leaves your avatar and life visible at 1024x768, 1366x768 and 1920x1080; opening an opponent's expanded board logs no "ResizeObserver loop" error
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
     ├── free-cast-hand-3270.spec.ts # #3270: "cast a spell from your hand without paying its mana cost" (Surtland Elementalist): the pick starts the cast at once, a sorcery in the declare attackers step included; none casts nothing

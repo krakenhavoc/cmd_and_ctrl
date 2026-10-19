@@ -3580,18 +3580,37 @@
   // The arrows and the fan lane re-measure when the overlay opens,
   // closes, changes seat, moves or resizes (ADR 0120 §3): its copy of a
   // card is the anchor while it is open, and none of that is a snapshot.
+  //
+  // The tick is written on the next frame, never inside an observer
+  // callback (#4069): the arrows' effect depends on it and re-creates its
+  // board observer, and a new observer's first notification at the same
+  // depth goes undelivered ("ResizeObserver loop completed with
+  // undelivered notifications", once per overlay open).
+  let layoutRaf = 0;
+  function bumpLayoutNextFrame(): void {
+    if (typeof requestAnimationFrame === "undefined") {
+      bumpBoardExpandLayout();
+      return;
+    }
+    cancelAnimationFrame(layoutRaf);
+    layoutRaf = requestAnimationFrame(() => {
+      layoutRaf = 0;
+      bumpBoardExpandLayout();
+    });
+  }
   $effect(() => {
     void expanded?.seatID;
     void overlaySpan;
-    untrack(bumpBoardExpandLayout);
+    untrack(bumpLayoutNextFrame);
   });
   $effect(() => {
     const el = overlayEl;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => bumpBoardExpandLayout());
+    const ro = new ResizeObserver(() => bumpLayoutNextFrame());
     ro.observe(el);
     return () => ro.disconnect();
   });
+  $effect(() => () => cancelAnimationFrame(layoutRaf));
 
   // The overlay fades in when animations are on and motion is not
   // reduced; otherwise it appears at once. It always leaves at once, so
