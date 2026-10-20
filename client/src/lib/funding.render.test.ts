@@ -68,7 +68,11 @@ describe("the funding page", () => {
     expect(links).toContain(GITHUB_SPONSORS_URL);
     expect(links).toContain(LEGAL_CONTACT_URL);
     expect(text).toContain(LEGAL_CONTACT_EMAIL);
-    expect(links.some((h) => h.includes("ko-fi.com") || h.includes("patreon.com"))).toBe(false);
+    expect(
+      links.some((h) =>
+        /(^|\.)(ko-fi|patreon)\.com$/.test(new URL(h, "https://x.invalid").hostname),
+      ),
+    ).toBe(false);
     // No shop configured: no shop sentence or commission note.
     expect(text).not.toContain(SHOP_DISCLOSURE);
   });

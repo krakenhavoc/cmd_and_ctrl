@@ -216,6 +216,11 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	return out
 }
 
+// maxUnfoldedRun caps how many requirements unfolded writes out. No
+// real cost comes near it; it exists so the allocation size cannot
+// overflow.
+const maxUnfoldedRun = 1 << 20
+
 // requiredCount is how many coloured requirements the cost has: the
 // listed ones and the folded run.
 func (c ParsedCost) requiredCount() int {
@@ -233,9 +238,12 @@ func (c ParsedCost) unfolded() ParsedCost {
 		return c
 	}
 	out := c
-	out.Required = make([]ColorRequirement, 0, len(c.Required)+c.folded.n)
+	// Bound the size arithmetic: a run so long the sum overflows int
+	// (or exceeds any real cost) is clamped, never allocated.
+	n := min(c.folded.n, maxUnfoldedRun)
+	out.Required = make([]ColorRequirement, 0, len(c.Required)+n)
 	out.Required = append(out.Required, c.Required...)
-	for range c.folded.n {
+	for range n {
 		out.Required = append(out.Required, c.folded.req)
 	}
 	out.folded = reqRun{}
