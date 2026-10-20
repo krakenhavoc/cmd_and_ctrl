@@ -48,7 +48,7 @@ func TestEveryToolIsRegisteredWithItsSchema(t *testing.T) {
 		"get_state":         {[]string{"detail"}, nil},
 		"legal_moves":       {[]string{"card", "choice", "match", "targets_for"}, nil},
 		"card":              {[]string{"ref"}, []string{"ref"}},
-		"act":               {[]string{"move", "targets", "value", "window"}, []string{"move", "window"}},
+		"act":               {[]string{"cards", "move", "targets", "value", "window"}, []string{"move", "window"}},
 		"say":               {[]string{"text"}, []string{"text"}},
 		"concede":           {[]string{"confirm"}, []string{"confirm"}},
 		"leave":             {nil, nil},

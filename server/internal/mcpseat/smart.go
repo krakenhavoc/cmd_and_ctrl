@@ -30,7 +30,9 @@ const (
 // It passes a priority window when nothing is owed (passGuards: no choice,
 // declaration, mulligan, loop notice or trigger still queuing) and
 //
-//   - with something on the stack, the seat holds no response to it; or
+//   - with something on the stack, every item on it is the seat's own
+//     (autoPassOwnStack, on by default), or the seat holds no response to
+//     it; or
 //   - with the stack empty, it is not a window worth a stop. Those are the
 //     seat's own main phases (always: that is where its turn is played,
 //     and where the browser's engineMayMissMana case lives), a
@@ -42,7 +44,13 @@ const (
 // combat, combat damage, end of combat, end) and of an opponent's turn
 // passes even when the seat holds an instant-speed move. Unlike
 // "my_turn_or_stack" it is not cleared by the start of the seat's own
-// turn, and it does not pass for a stack item the seat could answer.
+// turn, and it does not pass for an opponent's stack item the seat could
+// answer.
+//
+// The seat's own main phases stop with an instant in hand, as the
+// browser's do: there the instant is a cast in the seat's sorcery window,
+// which classifyMove counts as a play on a ticked step (the default grid
+// ticks both main phases).
 func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int, bool) {
 	self, ok := passGuards(v, me, moves)
 	if !ok {
@@ -57,6 +65,14 @@ func smartPassApplies(v *protocol.GameView, me string, moves []legal.Move) (int,
 	respond := func() bool { return hasResponseMove(v, me, moves, mine) }
 
 	if len(v.StackItems) > 0 {
+		// #4186: a stack that is entirely the seat's own passes, as the
+		// browser's autoPassOwnStack (on by default, #323) does: casting
+		// in this window already answered the question a stop asks. The
+		// server gives the seat priority again after its own item
+		// resolves, and an opponent's answer to it stops as usual.
+		if ownsEveryStackItem(v, me) {
+			return pass, true
+		}
 		if respond() {
 			return 0, false
 		}
@@ -170,4 +186,27 @@ func isDefending(v *protocol.GameView, me string) bool {
 		}
 	}
 	return false
+}
+
+// ownsEveryStackItem is holdPriority.ts's ownsEveryStackItem: no trigger
+// still queuing, something on the stack, and every item and card on it
+// controlled by the seat.
+func ownsEveryStackItem(v *protocol.GameView, me string) bool {
+	if len(v.PendingTriggers) > 0 {
+		return false
+	}
+	if len(v.StackItems) == 0 && len(v.Stack.Cards) == 0 {
+		return false
+	}
+	for _, it := range v.StackItems {
+		if it.Controller != me {
+			return false
+		}
+	}
+	for i := range v.Stack.Cards {
+		if v.Stack.Cards[i].Controller != me {
+			return false
+		}
+	}
+	return true
 }
