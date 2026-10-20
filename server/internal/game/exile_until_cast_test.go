@@ -92,3 +92,62 @@ func TestExileUntilCastDeclineAndNoHitBottomEverything(t *testing.T) {
 		t.Errorf("no hit: exile %d, library %d, want 0 and 1", len(g.Exile.Cards), me.Library.Size())
 	}
 }
+
+// #4205: the keeping form leaves a declined hit in exile and bottoms the
+// rest of the pile; the base form (cascade's) still bottoms the hit.
+func TestExileUntilCastKeepingLeavesADeclinedHitInExile(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
+	land := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
+	libraryOf(t, me, hit, land)
+	g.WithWriteLock(func() {
+		if err := g.ExileUntilCastFreeKeepingForEffect(me.ID, hit.InstanceID, nonlandNotNamed("x")); err != nil {
+			t.Fatalf("ExileUntilCastFreeKeepingForEffect: %v", err)
+		}
+	})
+	c := discoverPrompt(t, g)
+	if c.DeclineLabel != "Leave it in exile" {
+		t.Errorf("decline label = %q", c.DeclineLabel)
+	}
+	answerMayCast(t, g, me.ID, false)
+	if !g.Exile.Contains(hit.InstanceID) || me.Library.Contains(hit.InstanceID) {
+		t.Errorf("the declined hit should stay in exile")
+	}
+	if !me.Library.Contains(land.InstanceID) || g.Exile.Contains(land.InstanceID) {
+		t.Errorf("the passed-over land should be on the bottom of the library")
+	}
+}
+
+// Accepting and not casting before the pass also leaves the hit in
+// exile (LapseStaysInExile); the grant is gone.
+func TestExileUntilCastKeepingUncastHitStaysInExileOnThePass(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	hit := libCard(me.ID, "Counterspell", "Instant", "{U}{U}")
+	land := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
+	libraryOf(t, me, hit, land)
+	g.WithWriteLock(func() {
+		_ = g.ExileUntilCastFreeKeepingForEffect(me.ID, hit.InstanceID, nonlandNotNamed("x"))
+	})
+	answerMayCast(t, g, me.ID, true)
+	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
+	if perm == nil || perm.LapseOnPass != LapseStaysInExile {
+		t.Fatalf("grant = %+v", perm)
+	}
+	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
+		t.Fatalf("test needs the caster to hold priority")
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
+	}
+	if !g.Exile.Contains(hit.InstanceID) || me.Library.Contains(hit.InstanceID) {
+		t.Errorf("an uncast hit should stay in exile after the pass")
+	}
+	if !me.Library.Contains(land.InstanceID) {
+		t.Errorf("the passed-over land should be on the bottom")
+	}
+	if g.CastPermissionOnCardByIDForEffect(hit.InstanceID) != nil {
+		t.Errorf("the grant should have closed on the pass")
+	}
+}
