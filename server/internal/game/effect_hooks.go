@@ -815,6 +815,20 @@ type ManaAbilityShape struct {
 	// damage than leaves the player above 0 life.
 	RiderSelfDamage int
 
+	// RiderSelfLifeGain is the life Rider gains the ability's
+	// controller, when Rider is exactly "You gain N life"
+	// (effects.ManaAbility.GainLife builds both): The Great Henge's
+	// "{T}: Add {G}{G}. You gain 2 life", Pristine Talisman's 1. Zero
+	// for an opaque rider, or none.
+	//
+	// The auto-tapper's other declared rider (#4185). A mana ability
+	// that also gains life is still a mana ability (CR 605.1a), and the
+	// gain is no resource the player spends, so a source that declares
+	// it here is planned as an ordinary one, and the move list counts
+	// its mana when it asks what is castable. Set it with Rider or with
+	// nothing else; never beside RiderSelfDamage.
+	RiderSelfLifeGain int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE the produced string is computed (Produced / ProducedFunc

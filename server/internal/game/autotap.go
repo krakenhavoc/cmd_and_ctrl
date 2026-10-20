@@ -1426,8 +1426,9 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //
 //   - a life cost the player cannot pay right now (CR 119.4, CR 119.8).
 //     A payable one is planned since #2392, in the pain tier, and so is
-//     a rider that declares its damage (RiderSelfDamage); a rider that
-//     does not is a closure the planner cannot read, and it stays out;
+//     a rider that declares its damage (RiderSelfDamage), or the life
+//     it gains (RiderSelfLifeGain, #4185); a rider that declares
+//     neither is a closure the planner cannot read, and it stays out;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first, so
@@ -1681,9 +1682,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	// #2392: a life cost is plannable — the automatic payment pays it
 	// (CR 119.4: only from a life total at least that large; CR 119.8:
 	// not at all while the total can't change) — and so is a rider
-	// that declares the damage it deals. An opaque rider stays out: the
-	// planner cannot know what it does.
-	if a.Rider != nil && a.RiderSelfDamage <= 0 {
+	// that declares the damage it deals. #4185: and so is one that
+	// declares the life it gains (The Great Henge), which spends
+	// nothing. An opaque rider stays out: the planner cannot know what
+	// it does.
+	if a.Rider != nil && a.RiderSelfDamage <= 0 && a.RiderSelfLifeGain <= 0 {
 		return false
 	}
 	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
