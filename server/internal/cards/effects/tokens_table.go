@@ -150,6 +150,7 @@ var tokenTable = map[string]game.Card{
 	"1/1 white and black Human Cleric":                                 {Name: "Human Cleric", TypeLine: "Token Creature — Human Cleric", Power: 1, Toughness: 1, Colors: []string{"W", "B"}},
 	"1/1 white Rabbit":                                                 {Name: "Rabbit", TypeLine: "Token Creature — Rabbit", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Kor Soldier":                                            {Name: "Kor Soldier", TypeLine: "Token Creature — Kor Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
+	"1/1 white Kor Ally":                                               {Name: "Kor Ally", TypeLine: "Token Creature — Kor Ally", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier":                                                {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}},
 	"1/1 white Soldier with lifelink":                                  {Name: "Soldier", TypeLine: "Token Creature — Soldier", Power: 1, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"lifelink"}},
 	"3/1 white Spirit with flying":                                     {Name: "Spirit", TypeLine: "Token Creature — Spirit", Power: 3, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
