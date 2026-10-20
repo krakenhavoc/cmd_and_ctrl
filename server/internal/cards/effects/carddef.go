@@ -105,6 +105,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			AnyPlayer:                 a.AnyPlayer,
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
+			RiderSelfLifeGain:         a.GainLife,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
@@ -121,14 +122,28 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 	return out
 }
 
-// manaRider is the built ability's rider: the declared Rider, or the
-// PainRider a PainToYou declaration stands for (#2392). Register refuses
-// a spec that sets both, so at most one is non-zero here.
+// manaRider is the built ability's rider: the declared Rider, the
+// PainRider a PainToYou declaration stands for (#2392), or the
+// GainLifeRider a GainLife declaration stands for (#4185). Register
+// refuses a spec that sets two, so at most one is non-zero here.
 func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) error {
 	if a.PainToYou > 0 {
 		return PainRider(a.PainToYou)
 	}
+	if a.GainLife > 0 {
+		return GainLifeRider(a.GainLife)
+	}
 	return a.Rider
+}
+
+// GainLifeRider is the mana-ability rider "You gain N life": the
+// ability's controller gains n life once the mana is in the pool
+// (CR 605.3b). Declare it with ManaAbility.GainLife, which also tells
+// the auto-tapper what it does.
+func GainLifeRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
+	return func(g *game.Game, controller, source uuid.UUID) error {
+		return g.ChangePlayerLifeForEffect(source, controller, n)
+	}
 }
 
 // manaAbilityCondition is the built ability's whole activation gate:

@@ -519,6 +519,10 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// #4185: GainLife builds the rider the same way.
+		if ma.GainLife < 0 || (ma.GainLife > 0 && (ma.Rider != nil || ma.PainToYou > 0)) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife must be positive and replaces Rider and PainToYou — set one", spec.Name, i))
+		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
 		if ma.ProducedAmount != nil && ma.ProducedFunc != nil {

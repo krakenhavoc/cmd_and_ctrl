@@ -2095,6 +2095,17 @@ type ManaAbility struct {
 	// both; Register refuses the pair.
 	PainToYou int
 
+	// GainLife is the other rider declared as data: "You gain N life"
+	// after the "Add …" clause (The Great Henge, Pristine Talisman).
+	// Register builds the Rider from it with GainLifeRider(n), and the
+	// built ability carries the number
+	// (game.ManaAbilityShape.RiderSelfLifeGain) so the auto-tapper
+	// plans the source and the move list counts its mana (#4185): a
+	// mana ability that also gains life is still a mana ability
+	// (CR 605.1a). Set this, PainToYou or Rider, never two of them;
+	// Register refuses the pair.
+	GainLife int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —

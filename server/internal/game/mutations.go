@@ -3193,8 +3193,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// #2392: the declared rider — a painland's "This land deals 1
 		// damage to you" — after the mana and before the triggered mana
 		// abilities, where ActivateManaAbility runs it. The picker only
-		// accepts a rider that declares its damage (RiderSelfDamage), so
-		// this is never an opaque closure the planner could not price.
+		// accepts a rider that declares its damage (RiderSelfDamage) or
+		// the life it gains (RiderSelfLifeGain, #4185), so this is never
+		// an opaque closure the planner could not price.
 		// Any state-based action it causes is checked by the caller,
 		// which runs the state checks before anyone next gets priority.
 		if ab.Rider != nil {
