@@ -1079,3 +1079,26 @@ both answers; a restore after the flip replays the next flip.
 
 Back-out: drop the `Call` test from `YouLostACoinFlip` and the face-only assertions fail; drop `OnPay` from the cumulative upkeep
 and no coin call is queued; drop `OfAnOpponentsChoice` from the lose ability and the controller aims it.
+
+## Amendment (2026-10-19): ignoring a roll, and Berserker's Frenzy (#4174)
+
+Decision 10 left "ignoring a roll" (CR 706.6) out and Decision 5 ordered `RollDiceForEffect` so it could be added
+without moving events. It is added, for "roll two d20 and ignore the lower roll" (Berserker's Frenzy), as the general
+form "roll n dice and ignore the lowest k".
+
+- **`Game.RollDiceIgnoringLowestForEffect(d, sides, n, ignore)`** (`game/effect_api_random.go`) draws all n dice from
+  the keyed roll stream, drops the `ignore` lowest, and emits one `EventRollDie` per **kept** die in one batch. The
+  ignored roll is never an event, so no "whenever you roll one or more dice" ability sees it and no effect applies to
+  it (CR 706.6: "that roll is considered to have never happened"). `RollDiceForEffect` is the `ignore = 0` case.
+  `ignore` must be less than n.
+- **Reproducibility.** The draw count is n whether or not a roll is ignored, so the stream position after the call is
+  the same and an undo or a restore replays the same kept roll (Decision 3's key and counters, unchanged).
+- **Ties.** CR 706.6 lets the player choose which of several results tied for the lowest to ignore. Tied results are
+  the same number, so the choice changes nothing anyone can see and no prompt is asked; the earlier roll is dropped.
+- **Catalog helper.** `effects.rollDiceIgnoringLowest(ctx, sides, n, ignore)`, beside `rollDice`.
+- **Not built.** Decision 10's other ignore-a-roll cards (Pixie Guide, Barbarian Class) modify someone else's roll,
+  which needs a hook on the roll itself; this amendment is the instruction a spell gives, not that hook.
+
+Berserker's Frenzy is Full: the kept d20 picks the row (1-14: `ChoosePermanents` over every board, then a block
+requirement until end of turn on each creature chosen; 15-20: a blockers-only `DeclarationControl` for the turn, ADR
+0167's second amendment). Its cast window is the cursor's (ADR 0020's #4180 amendment, point 4).

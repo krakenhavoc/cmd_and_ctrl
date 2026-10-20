@@ -350,3 +350,89 @@ func TestDeckRandomOrdinalsFollowLobbyReseating(t *testing.T) {
 		t.Fatalf("reused deck source ordinal after reseating: %d / %d", a, b)
 	}
 }
+
+// CR 706.6 (#4174): an ignored roll "is considered to have never
+// happened". The lowest of two d20 is dropped before any event exists,
+// so exactly one EventRollDie is emitted (the kept, highest one), and the
+// result is the larger of the two draws.
+func TestRollDiceIgnoringLowestEmitsOnlyTheKeptRoll(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.SetRNGKeyForTest(testRNGKey())
+
+	// The control: the same stream and key, both dice announced.
+	control := g.Clone()
+	var both []int
+	control.WithWriteLock(func() { both, _ = control.RollDiceForEffect(RandomDraw{Player: p.ID}, 20, 2) })
+	if len(both) != 2 {
+		t.Fatalf("control rolled %v", both)
+	}
+	want := both[0]
+	if both[1] > want {
+		want = both[1]
+	}
+
+	var kept []int
+	g.WithWriteLock(func() {
+		var err error
+		kept, err = g.RollDiceIgnoringLowestForEffect(RandomDraw{Player: p.ID}, 20, 2, 1)
+		if err != nil {
+			t.Fatalf("RollDiceIgnoringLowestForEffect: %v", err)
+		}
+	})
+	if len(kept) != 1 || kept[0] != want {
+		t.Fatalf("kept %v, want [%d] (the higher of %v)", kept, want, both)
+	}
+	var events []Event
+	g.ReadSnapshot(func() {
+		for _, ev := range g.Events {
+			if ev.Kind == EventRollDie {
+				events = append(events, ev)
+			}
+		}
+	})
+	if len(events) != 1 || events[0].Amount != want || events[0].Sides != 20 || events[0].BatchSeq != events[0].Seq {
+		t.Fatalf("events = %#v, want one d20 event of %d", events, want)
+	}
+}
+
+// The ignore count validates, and the dice kept keep their rolled order.
+func TestRollDiceIgnoringLowestValidatesAndKeepsOrder(t *testing.T) {
+	g := newActiveGame(t)
+	g.SetRNGKeyForTest(testRNGKey())
+	g.WithWriteLock(func() {
+		for _, bad := range []struct{ sides, n, ignore int }{{20, 2, 2}, {20, 2, -1}, {20, 0, 0}, {0, 2, 1}} {
+			if _, err := g.RollDiceIgnoringLowestForEffect(RandomDraw{Player: g.Seats[0].ID}, bad.sides, bad.n, bad.ignore); err != ErrInvalidParam {
+				t.Errorf("%+v: err = %v, want ErrInvalidParam", bad, err)
+			}
+		}
+	})
+	if got := keepAllButLowest([]int{5, 2, 9, 2}, 1); !reflect.DeepEqual(got, []int{5, 9, 2}) {
+		t.Errorf("drop one of a tie for lowest: %v", got)
+	}
+	if got := keepAllButLowest([]int{5, 2, 9, 7}, 2); !reflect.DeepEqual(got, []int{9, 7}) {
+		t.Errorf("drop two: %v", got)
+	}
+}
+
+// Ignoring a roll draws the same number of dice, so it replays exactly
+// after an undo and leaves the stream where an unignored pair would.
+func TestRollDiceIgnoringLowestIsReproducibleOnRestore(t *testing.T) {
+	g := newActiveGame(t)
+	p := g.Seats[0]
+	g.SetRNGKeyForTest(testRNGKey())
+	before := g.Clone()
+	var first, again, next1, next2 []int
+	g.WithWriteLock(func() {
+		first, _ = g.RollDiceIgnoringLowestForEffect(RandomDraw{Player: p.ID}, 20, 2, 1)
+		next1, _ = g.RollDiceForEffect(RandomDraw{Player: p.ID}, 20, 1)
+	})
+	g.RestoreFrom(before)
+	g.WithWriteLock(func() {
+		again, _ = g.RollDiceIgnoringLowestForEffect(RandomDraw{Player: p.ID}, 20, 2, 1)
+		next2, _ = g.RollDiceForEffect(RandomDraw{Player: p.ID}, 20, 1)
+	})
+	if !reflect.DeepEqual(first, again) || !reflect.DeepEqual(next1, next2) {
+		t.Fatalf("undo roll = %v then %v, redo = %v then %v", first, next1, again, next2)
+	}
+}

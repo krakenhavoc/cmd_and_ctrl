@@ -17,6 +17,13 @@ func rollDice(ctx *Context, sides, n int) ([]int, error) {
 	return ctx.Game.RollDiceForEffect(randomDraw(ctx), sides, n)
 }
 
+// rollDiceIgnoringLowest is "roll n dice and ignore the lowest `ignore`
+// rolls" (CR 706.6, Berserker's Frenzy): the ignored rolls never happen,
+// so only the kept ones are returned and announced.
+func rollDiceIgnoringLowest(ctx *Context, sides, n, ignore int) ([]int, error) {
+	return ctx.Game.RollDiceIgnoringLowestForEffect(randomDraw(ctx), sides, n, ignore)
+}
+
 func randomPick(ctx *Context, ids []uuid.UUID, n int) []uuid.UUID {
 	return ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), ids, n)
 }

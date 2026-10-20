@@ -37,29 +37,7 @@ func init() {
 		OracleID:     "e70cac5e-674e-4df7-94c7-77f8801e3941",
 		Name:         "Brutal Hordechief",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller)
-			},
-			Key: "Brutal Hordechief — defending player loses 1 life and you gain 1 life",
-			// The defending player is read as the attack is declared
-			// (ADR 0041 P9's fill-in Build), as Generous Plunderer's is.
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Brutal Hordechief — defending player loses 1 life and you gain 1 life")
-				item.Params.Player = b17DefendingPlayer(g, ev)
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if defender := item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(g, defender) {
-					if err := (GainLife{Player: defender, Amount: -1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			},
-		}},
+		Triggered:    []game.TriggeredAbility{attackDrainTrigger("Brutal Hordechief")},
 		Activated: []ActivatedAbility{{
 			Label: "{3}{R/W}{R/W}: Creatures your opponents control block this turn if able, and you choose how those creatures block.",
 			Cost:  ManaCost("{3}{R/W}{R/W}"),
@@ -81,4 +59,36 @@ func init() {
 			},
 		}},
 	})
+}
+
+// attackDrainTrigger is "Whenever a creature you control attacks,
+// defending player loses 1 life and you gain 1 life" (Brutal Hordechief,
+// Campaign of Vengeance): one trigger per attacking creature (CR 508.3a),
+// the defending player read off the attack as it is declared (ADR 0041
+// P9's fill-in Build, as Generous Plunderer's is), so a creature
+// attacking a planeswalker drains its controller. The key is the card
+// name and the clause: a trigger key is an on-disk identity.
+func attackDrainTrigger(cardName string) game.TriggeredAbility {
+	label := cardName + " — defending player loses 1 life and you gain 1 life"
+	return game.TriggeredAbility{
+		Watches: []game.EventKind{game.EventAttack},
+		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			return attackDeclaredByYou(ev, source.Controller)
+		},
+		Key: label,
+		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
+			item := game.NewTriggeredItem(source, label)
+			item.Params.Player = b17DefendingPlayer(g, ev)
+			return item
+		},
+		Effect: func(g *game.Game, item *game.StackItem) error {
+			ctx := NewContext(g, item)
+			if defender := item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(g, defender) {
+				if err := (GainLife{Player: defender, Amount: -1}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
+		},
+	}
 }

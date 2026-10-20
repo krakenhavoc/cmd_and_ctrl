@@ -293,3 +293,41 @@ func TestForcedAttackSirensCallCastWindow(t *testing.T) {
 		t.Error("cast on its caster's own turn")
 	}
 }
+
+// CR 506.8e, 506.8g (#4180): on a turn whose combat phase is skipped the
+// "before attackers are declared" window closes when the precombat main
+// phase ends, for Siren's Call (a spell) and for Norritt's ability alike.
+func TestForcedAttackSkippedCombatClosesTheWindowAtTheEndOfThePrecombatMain(t *testing.T) {
+	g, me, opp := faTable(t)
+	norritt := pushCatalogPermanent(g, me.ID, "Norritt", "Creature — Imp", faNorritt, false)
+	target := apaPush(g, me.ID, me.ID, game.Card{Name: "Red", TypeLine: "Creature — Test", Colors: []string{"R"}, Power: 1, Toughness: 1})
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+
+	// Still the precombat main phase: Norritt's ability is open.
+	if err := g.ActivateCatalogAbility(me.ID, norritt, 1, game.ActivateAbilityParams{Targets: ltCardTarget(target)}); err != nil {
+		t.Fatalf("Norritt in the precombat main phase: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	rtUntap(g, norritt)
+
+	advanceTo(t, g, game.StepPostcombatMain)
+	if g.DeclareAttackersHasBegunThisTurnForEffect() {
+		t.Fatal("the combat phase was not skipped")
+	}
+	acRefused(t, g, me.ID, norritt, 1, game.ActivateAbilityParams{Targets: ltCardTarget(target)})
+	if err := faCastSirensCall(t, g, opp); err == nil {
+		t.Error("Siren's Call was cast after the precombat main phase of a turn whose combat was skipped")
+	}
+}
+
+// Siren's Call is still castable in the precombat main phase of a turn
+// whose combat will be skipped.
+func TestForcedAttackSirensCallIsCastableBeforeASkippedCombat(t *testing.T) {
+	g, _, opp := faTable(t)
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+	if err := faCastSirensCall(t, g, opp); err != nil {
+		t.Fatalf("cast in the precombat main phase: %v", err)
+	}
+}

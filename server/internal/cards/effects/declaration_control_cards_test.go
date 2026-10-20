@@ -116,15 +116,19 @@ func TestMasterWarcraftCastOnlyBeforeAttackersAreDeclared(t *testing.T) {
 }
 
 // A turn that skipped its combat closed the window with the precombat
-// main phase (CR 506.8e).
+// main phase (CR 506.8e): Master Warcraft reads the same shared fact as
+// every other "before attackers are declared" card (#4180).
 func TestMasterWarcraftCantBeCastAfterASkippedCombat(t *testing.T) {
 	g := newCatalogGame(t)
-	if !beforeAttackersDeclaredThisTurn(g) {
-		t.Fatal("the draw step is before attackers are declared")
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+	advanceTo(t, g, game.StepPostcombatMain)
+	if g.DeclareAttackersHasBegunThisTurnForEffect() {
+		t.Fatal("setup: the combat phase was not skipped")
 	}
-	g.WithWriteLock(func() { g.Turn.Step = game.StepPostcombatMain })
-	if beforeAttackersDeclaredThisTurn(g) {
-		t.Fatal("the postcombat main phase of a turn with no declare attackers step is still before it")
+	if _, err := castMasterWarcraft(t, g, me); err == nil {
+		t.Fatal("cast after a skipped combat")
 	}
 }
 
