@@ -4013,6 +4013,11 @@ export interface LegalTargetsView {
   // ordinary pick_target. `players` / `cards` are the superset any
   // opponent could pick from.
   chosen_by_opponent?: boolean;
+  // #4051: a clause whose target the server draws at random as the
+  // ability is activated ("any target chosen at random"). The walk
+  // skips it and sends no target for it; `players` / `cards` are what
+  // the draw is made from.
+  at_random?: boolean;
   // #2055: on a pick_target an opponent answers for such a clause, the
   // player whose spell or ability it is (the one still targeting).
   chosen_for?: string;

@@ -2230,13 +2230,11 @@ var items = []Item{
 		Examples: []string{"Grip of Chaos"},
 	},
 	{
-		Slug: "random-target-on-activation", Name: "An activated ability's target chosen at random", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Activated abilities whose target is chosen at random, such as Goblin Test Pilot's \"any target chosen at random\".",
-		Missing:     "Only a triggered ability's target can be chosen at random, not an activated ability's.",
-		Rules:       []string{"602.2b", "601.2c"},
-		Issue:       4051,
-		Waiting:     []string{"Goblin Test Pilot"},
-		EngineNotes: "target clause: `TargetSpec.AtRandom` (`effects.ChosenAtRandom`, #1815) is honoured only by the trigger target walk (CR 603.3d), and `effects.Register` refuses it on an activated ability. An activation announces its targets with the activation (CR 602.2b, CR 601.2c) in one message, so a random clause needs the announce gate to draw it instead (keyed stream, replayed by undo), the client not to open the picker for it and the bot enumerator not to enumerate it. Found landing #1815.",
+		Slug: "random-target-on-activation", Name: "An activated ability's target chosen at random", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Activated abilities whose target is chosen at random, such as Goblin Test Pilot's \"any target chosen at random\": the game draws the target as the ability is activated, every legal target with the same chance, and everyone sees it before they respond.",
+		Rules:    []string{"602.2b", "601.2c"},
+		Issue:    4051,
+		Examples: []string{"Goblin Test Pilot"},
 	},
 	{
 		Slug: "state-triggers", Name: "Abilities that trigger on a game state", Kind: KindSeam, Status: StatusImplemented,

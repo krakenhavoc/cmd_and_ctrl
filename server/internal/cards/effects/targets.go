@@ -612,10 +612,14 @@ func ExiledWithThis(spec *game.TargetSpec) *game.TargetSpec {
 // through the keyed random stream, and nobody is asked; with no legal
 // target the trigger is removed. It is game.TargetSpec.AtRandom.
 //
-// Register refuses it on a spell, on an activated ability and on a
-// clause that picks anything but exactly one target: only a trigger's
-// targets are chosen by the engine, and no printed card draws more than
-// one.
+// Since #4051 it is also an ACTIVATED ability's lone clause: Goblin
+// Test Pilot's "any target chosen at random" is drawn as part of
+// activating (CR 602.2b / 601.2c), the activator names nothing for it,
+// and with no legal target the ability can't be activated.
+//
+// Register refuses it on a spell, on a mode, on an activated ability
+// with any other clause and on a clause that picks anything but
+// exactly one target: no printed card draws more than one.
 func ChosenAtRandom(spec *game.TargetSpec) *game.TargetSpec {
 	spec.AtRandom = true
 	return spec

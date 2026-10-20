@@ -95,15 +95,17 @@ func StepChosenByOpponent(s AnnouncedClause) bool {
 }
 
 // StepsChosenByController is the announcement's steps without the
-// clauses an opponent chooses: the ones the controller's payload names
-// targets for. The same slice when there are none.
+// clauses an opponent chooses, and without the clauses the engine draws
+// at random (#4051): the ones the controller's payload names targets
+// for. The same slice when there are none.
 func StepsChosenByController(steps []AnnouncedClause) []AnnouncedClause {
-	if !slices.ContainsFunc(steps, StepChosenByOpponent) {
+	notTheController := func(s AnnouncedClause) bool { return StepChosenByOpponent(s) || StepChosenAtRandom(s) }
+	if !slices.ContainsFunc(steps, notTheController) {
 		return steps
 	}
 	out := make([]AnnouncedClause, 0, len(steps))
 	for _, s := range steps {
-		if !s.Clause.ChosenByOpponent {
+		if !notTheController(s) {
 			out = append(out, s)
 		}
 	}

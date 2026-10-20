@@ -1284,3 +1284,42 @@ live opponent has nothing; every move is dispatched), `protocol/opponent_slot_vi
 Back-out: drop `opponentSlotAdmits` from `sourceAdmits` and `TestRoonbBlatantThieveryRequiresAPickPerOpponentFromThatOpponent`
 fails; read `c.Min` instead of `clauseMinLocked` in the announce gate and the eliminated-opponent and two-player tests fail;
 drop the view stamp or the enumerator's read and the protocol and legal tests fail.
+
+## Amendment (2026-10-20, #4051): an activated ability's target chosen at random
+
+The 2026-10-16 amendment (#1815) let the engine draw a TRIGGER's target and refused the flag on an activated ability,
+whose targets the player announces in one message (CR 602.2b, then CR 601.2c). Goblin Test Pilot ("{T}: This creature
+deals 2 damage to any target chosen at random") is that case. Its rulings settle every reading: "The target is chosen
+at random as part of activating the ability. Players can respond to the ability knowing what the target of the ability
+is", "all possible legal targets (including creatures and players) must have an equal chance of being chosen", and the
+Pilot is a legal target of its own ability.
+
+**1. The announcement draws it.** `activateCatalogAbilityLocked` slots the payload's refs as before, then
+`announceRandomTargetsLocked` (game/random_target_announce.go) fills each random step: a payload ref aimed at one is
+refused (`ErrInvalidParam`, no payload may choose a random target), and the step gets one target drawn uniformly from
+its legal set by `drawStepTargetLocked`, the trigger walk's draw, on the "pick" stream keyed to the activator and the
+source (ADR 0054), so an undo replays it. With nothing to draw the activation is refused (CR 601.2c). Everything after
+that (the announce gate, the division, the costs, CR 601.2h) is unchanged. The draw rides the announcement as
+`ActivateAbilityParams.randomTargets`, unexported like ADR 0109 §7's random discards and for the same reason: a run
+parked on a CR 903.9 question and made again aims at the same target. It is logged as the trigger's is ("<clause>:
+<name> (at random)") once the ability is on the stack, so a refused announcement logs nothing.
+
+**2. Nobody picks it.** The clause is a step nobody answers, like an opponent's clause (#2055): `StepsChosenByController`
+leaves it out, the enumerator names no target for it and keeps only the prefixes `RandomStepFillableForEffect` can
+draw for, and the view marks it `at_random` so the client's walk skips it. An ability whose only clause is random opens
+no walk and is activated at once. `abilityClauseView` (a lone ability clause) now carries `chosen_by_opponent` as
+well, which Nova Pentacle's view was missing.
+
+**3. Scope.** `effects.Register` allows the flag on an activated ability's lone clause, the one printed shape. A second
+clause is refused because the payload names it before the draw, so a relation or Distinct between them could not be
+judged; a mode's clause and a spell's stay refused.
+
+**Owner decision not needed.** The rulings fix when the draw is made, over what, and that it is public; each choice
+above is the rules-faithful one.
+
+**Cards:** Goblin Test Pilot, `full`.
+
+Back-out: let the payload name the random clause and `TestGoblinTestPilotRefusesANamedTarget` fails; draw from a private
+source and `TestGoblinTestPilotReplaysTheDrawAfterUndo` fails; leave the Pilot or players out of the legal set and
+`TestGoblinTestPilotDrawsAnyTargetAtRandom` fails; enumerate the clause and `TestGoblinTestPilotEnumeratesNoTarget`
+fails.
