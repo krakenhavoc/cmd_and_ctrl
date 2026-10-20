@@ -203,6 +203,15 @@ func (f *Fetcher) Fetch(ctx context.Context, rawURL string) ([]byte, error) {
 	}
 	req.Header.Set("User-Agent", "cmd-and-ctrl-playmat/1")
 	req.Header.Set("Accept", "image/png,image/jpeg,image/webp")
+	// CodeQL flags this as go/request-forgery (#4204): the URL is a
+	// person's paste, on purpose. The guard is not a host allowlist (the
+	// feature is "any public image") but the dial: f.client's transport
+	// resolves the name itself and refuses every non-public address, on
+	// the first request and on every redirect. Pinned by
+	// TestFetchRefusesPrivateAddressesWithTheProductionGuard,
+	// TestFetchRefusesANameThatResolvesToAPrivateAddress,
+	// TestFetchDialsTheAddressItChecked and
+	// TestFetchRefusesARedirectToAPrivateAddress.
 	resp, err := f.client.Do(req)
 	if err != nil {
 		if errors.Is(err, ErrFetch) {
