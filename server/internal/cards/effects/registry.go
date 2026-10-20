@@ -533,10 +533,6 @@ func Register(spec Spec) {
 		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)", spec.Name, i))
 		}
-		// #3845: zero is "no mill component".
-		if ma.Cost.Mill < 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative mill cost %d", spec.Name, i, ma.Cost.Mill))
-		}
 		// ADR 0129 §5: zero is "no energy component".
 		if ma.Cost.Energy < 0 {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative energy cost %d", spec.Name, i, ma.Cost.Energy))

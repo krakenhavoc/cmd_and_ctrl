@@ -5150,11 +5150,6 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
-	// MillCost is a "Mill N cards" component (#3845, CR 701.17a) —
-	// Millikin's "{T}, Mill a card:". Omitted at zero. When the library
-	// is short, CantActivate carries the engine's refusal. The
-	// auto-tapper never pays such a row; the player activates it.
-	MillCost int `json:"mill_cost,omitempty"`
 	// Exert is an "Exert this land" / "Exert this creature" component
 	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
 	// (CR 701.43b). The auto-tapper never pays such a row on its own,
@@ -8763,14 +8758,6 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// and the engine agree.
 		if views[i].CantActivate == "" && raw[r].EnergyCost > 0 {
 			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[r].EnergyCost); short != nil {
-				views[i].CantActivate = short.Error()
-			}
-		}
-		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card" on a
-		// library that is short, from the predicate the engine refuses
-		// with.
-		if views[i].CantActivate == "" && raw[r].MillCost > 0 {
-			if short := g.MillCostShortfall(controller, raw[r].MillCost); short != nil {
 				views[i].CantActivate = short.Error()
 			}
 		}
@@ -13322,7 +13309,6 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
-			MillCost:      a.MillCost,
 			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,

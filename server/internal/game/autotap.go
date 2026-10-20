@@ -1662,14 +1662,6 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.ExertCost {
 		return false
 	}
-	// #3845: and so is a mill. Milling cards out of a library to pay
-	// for a spell is the player's call (Millikin, "{T}, Mill a card"),
-	// so the planner never takes one; the player activates the row.
-	// This is what the opaque Rider that used to stand in for the cost
-	// did by accident.
-	if a.MillCost > 0 {
-		return false
-	}
 	// #1183: "Activate each exhaust ability only once", and this
 	// object has. Not a decision the planner is declining — the
 	// activation path would refuse it with ErrAbilityExhausted,
@@ -1845,7 +1837,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if !a.OncePerTurn || a.TapCost || a.SacrificeCost {
 		return false
 	}
-	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.MillCost > 0 || a.ManaCost != "" {
+	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.ManaCost != "" {
 		return false
 	}
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
@@ -1919,7 +1911,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
 			continue
 		}
-		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.MillCost > 0 || a.Rider != nil {
+		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.Rider != nil {
 			continue
 		}
 		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {

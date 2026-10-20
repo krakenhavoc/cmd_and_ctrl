@@ -5106,10 +5106,6 @@ export interface ManaAbilityView {
   // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
   // player activates it from this menu.
   exert?: boolean;
-  // #3845: "Mill N cards" as a cost (Millikin's "{T}, Mill a card").
-  // The auto-tapper never pays such a row. A library too short to pay
-  // it makes the server stamp cant_activate, which greys the row.
-  mill_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with

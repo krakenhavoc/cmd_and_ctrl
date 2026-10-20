@@ -4020,7 +4020,7 @@ each seat's energy and other player counters on its board-text line
 
 **A "Mill N cards" cost is priced like a dredge's mill** (#3870). The
 component (#3845) names no card, so `Move.Cost.Mill` carries the count,
-on activated and mana abilities alike (Sinister Concoction, Rot Farm
+on activated abilities (Sinister Concoction, Rot Farm
 Skeleton, Millikin), and the MCP seat's move line says `mills 4 cards
 from your library`. Under `PriceMillCost` the heuristic prices each
 milled card as the dredge answer does: the mean fuel value of its
