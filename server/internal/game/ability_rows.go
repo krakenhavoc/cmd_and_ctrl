@@ -305,6 +305,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
+	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in

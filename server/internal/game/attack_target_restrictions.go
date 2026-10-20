@@ -493,6 +493,11 @@ func (g *Game) canAttackTargetWithLocked(attacker *Card, target uuid.UUID) error
 	if err := g.playerCantAttackRefusalLocked(attacker, target); err != nil {
 		return err
 	}
+	// ADR 0206 (#4197): "each player may attack only the nearest
+	// opponent in the chosen direction", a rule on every player.
+	if err := g.attackDirectionRefusalLocked(attacker, target); err != nil {
+		return err
+	}
 	if err := g.attackTargetRestrictionRefusalLocked(attacker, target); err != nil {
 		return err
 	}
@@ -518,12 +523,13 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 	}
 	all := g.AttackTargetsForEffect(attacker.Controller)
 	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) &&
-		!HasKeyword(attacker, "defender") {
+		!HasKeyword(attacker, "defender") && !g.attackDirectionInForceLocked(attacker.Controller) {
 		return all
 	}
 	out := all[:0:0]
 	for _, t := range all {
 		if g.playerCantAttackRefusalLocked(attacker, t.ID) == nil &&
+			g.attackDirectionRefusalLocked(attacker, t.ID) == nil &&
 			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil &&
 			g.defenderRefusalLocked(attacker, t.ID) == nil {
 			out = append(out, t)

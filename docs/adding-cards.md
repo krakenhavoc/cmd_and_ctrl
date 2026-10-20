@@ -88,6 +88,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
+  - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -11305,6 +11306,30 @@ reading the `CardDef` and are not set by the catalog any more.
   players still to ask), and "whenever a card is drawn this way" is one reflexive trigger per card that reached a hand
   (`len(Game.DrawnThisTurn[player])` before and after), its clause `ChosenAtRandom(TargetPlayer("…", Opponent()))` on the
   `ReflexiveBody`. Explosion of Riches.
+
+### "Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)
+
+Left is the next player in turn order and right the previous one (CR 101.4); players who have left the game are
+skipped. The engine half is `game/attack_direction.go`, the card half `effects/attack_direction.go`.
+
+```go
+// A permanent's static (Pramikon, Sky Rampart):
+AsEnters: ChooseLeftOrRightAsEnters("Pramikon, Sky Rampart"),
+AttackOnlyNearestOpponentInChosenDirection: true,
+
+// A resolved ability with a duration (Teyo, Geometric Tactician's −2):
+var teyoDirection = AttackDirectionUntilYourNextTurnThen("option-pick/teyo-geometric-tactician-direction", name)
+Effect: ChooseLeftOrRightThenEachPlayerAttacksOnlyThatWayUntilYourNextTurn(name, teyoDirection),
+```
+
+- The static reads the permanent's "Left"/"Right" answer live; before the answer, on a copy that never chose, or once
+  it has lost its abilities, it restricts nothing.
+- A resolved ability writes `PlayerStatic.AttackDirection` on every player (`Game.GrantAttackDirectionForEffect`).
+  Another duration is a new `…Then` constructor beside `AttackDirectionUntilYourNextTurnThen`; its key is an on-disk
+  identity.
+- Every rule in force applies at once (rules that disagree leave nobody to attack), battles are never attackable under
+  one, and creatures put onto the battlefield attacking are exempt (CR 508.4c). All of that is the engine's, through
+  `canAttackTargetWithLocked`; a card file says nothing about it.
 
 ### When in doubt
 

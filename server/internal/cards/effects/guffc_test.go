@@ -23,7 +23,7 @@ const (
 )
 
 func TestGuffcSliceCompleteness(t *testing.T) {
-	full := []string{guffcOnakkeOracle, guffcSarkhan, guffcNarsetOracle, guffcVronosOracle, guffcShowdown, guffcRewrites}
+	full := []string{guffcOnakkeOracle, guffcTeyoOracle, guffcSarkhan, guffcNarsetOracle, guffcVronosOracle, guffcShowdown, guffcRewrites}
 	for _, oracle := range full {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -34,19 +34,9 @@ func TestGuffcSliceCompleteness(t *testing.T) {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	for _, oracle := range []string{guffcTeyoOracle} {
-		spec, ok := Lookup(oracle)
-		if !ok {
-			t.Errorf("%s is not registered", oracle)
-			continue
-		}
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-			t.Errorf("%s: %v with caveats %v, want one caveat", spec.Name, spec.Completeness, spec.Caveats)
-		}
-	}
-	// Teyo's −2 is left out, not shipped empty: two rows, both priced.
-	if spec, _ := Lookup(guffcTeyoOracle); len(spec.Activated) != 1 {
-		t.Errorf("Teyo has %d activated rows, want only +1", len(spec.Activated))
+	// Teyo's −2 shipped with ADR 0206 (#4197): both loyalty rows.
+	if spec, _ := Lookup(guffcTeyoOracle); len(spec.Activated) != 2 {
+		t.Errorf("Teyo has %d activated rows, want +1 and −2", len(spec.Activated))
 	}
 }
 
