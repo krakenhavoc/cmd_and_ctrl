@@ -139,6 +139,19 @@ type EmblemSpec struct {
 	// which is as long as the game (CR 114.2).
 	CastPermissions []game.CastPermission
 
+	// Replacements are the emblem's replacement and prevention effects
+	// (#4192, CR 114.3, CR 614, CR 615): the `Spec.Replacements` slot one
+	// zone over, built with the same constructors. The replacement gather
+	// walks every seat's emblems after the battlefield, with the emblem
+	// object as the effect's source and its owner as "you" (CR 114.2), and
+	// the owner orders it against every other effect (CR 616.1). Ajani
+	// Steadfast's "If a source would deal damage to you or a planeswalker
+	// you control, prevent all but 1 of that damage."
+	//
+	// Filed under game.EmblemKey(OracleID), so an emblem's slots are the
+	// same budget a card's are (game.MaxCatalogReplacementSlots).
+	Replacements []game.ReplacementEffect
+
 	// Lines are the emblem's abilities line by line, each with the
 	// count it is gained at, for an emblem whose abilities switch on one
 	// by one (the Ring, CR 701.54c). The wire's text for it is derived
@@ -169,7 +182,9 @@ func buildEmblemDef(e EmblemSpec) *game.CardDef {
 		BlockRules: e.BlockRules,
 		// #2528: standing permissions an emblem grants its owner.
 		CastPermissions: standingCastPermissions(e.CastPermissions),
-		Emblem:          &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
+		// #4192: read through CatalogReplacements by the gather's emblem walk.
+		Replacements: e.Replacements,
+		Emblem:       &game.EmblemDef{Label: e.Label, Text: e.Text, Lines: e.Lines},
 	}
 }
 
@@ -188,12 +203,23 @@ func checkEmblemSpec(name string, e *EmblemSpec) {
 	}
 	if len(e.Static) == 0 && len(e.Triggered) == 0 && len(e.UntapStep) == 0 && len(e.DrawStep) == 0 &&
 		len(e.ActivationTimings) == 0 && len(e.CastRestrictions) == 0 && len(e.LandPlayRestrictions) == 0 &&
-		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 {
+		len(e.GameEndGates) == 0 && len(e.UntapCaps) == 0 && len(e.BlockRules) == 0 && len(e.CastPermissions) == 0 &&
+		len(e.Replacements) == 0 {
 		panic("effects.Register: " + name + " declares an Emblem with no abilities — CR 114.1 says an emblem has nothing else")
 	}
 	checkActivationTimings(name+" emblem", e.ActivationTimings)
 	checkCastRestrictions(name+" emblem", e.CastRestrictions)
 	checkLandPlayRestrictions(name+" emblem", e.LandPlayRestrictions)
+	// #4192: the same slot budget and Then/Prevention rule as a Spec's.
+	if n := len(e.Replacements); n > game.MaxCatalogReplacementSlots {
+		panic(fmt.Sprintf("effects.Register: %s declares an Emblem with %d replacement effects — the ID scheme reserves %d slots per object (game.MaxCatalogReplacementSlots)",
+			name, n, game.MaxCatalogReplacementSlots))
+	}
+	for i, r := range e.Replacements {
+		if problem := replacementThenProblem(r); problem != "" {
+			panic(fmt.Sprintf("effects.Register: %s emblem replacement %d: %s", name, i, problem))
+		}
+	}
 	// ADR 0107 §3: the stack step gathers statics over spells from the
 	// battlefield only, so one on an emblem would be dead text.
 	for i, s := range e.Static {

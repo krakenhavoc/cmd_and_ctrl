@@ -2453,15 +2453,13 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 	// pause, and an index shifts when an earlier permanent leaves
 	// (#3482, replacement_serials.go).
 	if CatalogReplacements != nil {
-		for cardIdx := range g.Battlefield.Cards {
-			card := &g.Battlefield.Cards[cardIdx]
-			// CatalogAbilityKey: a replacement effect is a static
-			// ability (CR 614.1), so a permanent under a CR 613.1f
-			// ability-removing effect contributes none.
-			key := catalogAbilityKeyOf(card)
+		// gatherFrom is one object's catalog replacements. The battlefield
+		// walk and the emblem walk below it share it: an emblem is gathered
+		// exactly as a permanent is, with the emblem object as the source.
+		gatherFrom := func(card *Card, key string) {
 			reps := CatalogReplacements(key)
 			if len(reps) == 0 {
-				continue
+				return
 			}
 			serial := serials.serial(card)
 			for repIdx := range reps {
@@ -2500,6 +2498,28 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 				})
 			}
 		}
+		for cardIdx := range g.Battlefield.Cards {
+			card := &g.Battlefield.Cards[cardIdx]
+			// CatalogAbilityKey: a replacement effect is a static
+			// ability (CR 614.1), so a permanent under a CR 613.1f
+			// ability-removing effect contributes none.
+			gatherFrom(card, catalogAbilityKeyOf(card))
+		}
+		// #4192, ADR 0109 §5: an emblem's replacement and prevention
+		// effects, after the battlefield (CR 114.4 — an emblem's
+		// abilities function in the command zone). The emblem is the
+		// source and its owner is "you" (CR 114.2): Ajani Steadfast's
+		// "If a source would deal damage to you or a planeswalker you
+		// control, prevent all but 1 of that damage". CatalogKey, not
+		// CatalogAbilityKey: nothing can name an emblem to remove its
+		// abilities. Its owner orders it against every other effect
+		// like any permanent's (CR 616.1).
+		g.forEachEmblemLocked(func(card *Card) bool {
+			if key := CatalogKey(*card); key != "" {
+				gatherFrom(card, key)
+			}
+			return true
+		})
 	}
 
 	// Graveyard replacements: dredge (draw_instead.go).
@@ -2712,10 +2732,16 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 			break
 		}
 	}
-	if card == nil {
+	key := ""
+	if card != nil {
+		key = catalogAbilityKeyOf(card)
+	} else if card = g.emblemWithSerialLocked(serial); card != nil {
+		// #4192: an emblem's effect, named by its object like a permanent's.
+		key = CatalogKey(*card)
+	} else {
 		return "", uuid.UUID{}
 	}
-	reps := CatalogReplacements(catalogAbilityKeyOf(card))
+	reps := CatalogReplacements(key)
 	if repIdx >= len(reps) {
 		return "", card.InstanceID
 	}

@@ -642,3 +642,13 @@ A source untapped in response and tapped again registered the effect, which was 
 4. **Preacher ships Full**, with `TheyControl(OfAnOpponentsChoice(…))` (ADR 0019's amendment of 2026-10-16, #2055).
 
 Snapshot impact: one additive field on a stack item. No fixture is edited.
+
+## Amendment 2026-10-20 ([#4192](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4192)): an emblem's replacement and prevention effects
+
+§5's emblem walks gain a sixth: the replacement gather (`gatherReplacementsLocked`). `EmblemSpec.Replacements` is the `Spec.Replacements` slot one zone over, filed under `game.EmblemKey(OracleID)` and read through `CatalogReplacements` with `CatalogKey` (nothing can name an emblem to remove its abilities). The gather walks every seat's emblems after the battlefield, with the emblem object as the effect's source and its owner as "you" (CR 114.2), then orders it against every other effect like a permanent's (CR 616.1).
+
+- **IDs.** An emblem's effect gets a `ReplacementEffectID` from the same per-object serial a permanent's does (`replacementObjectSerials`, keyed by instance ID and epoch), so a CR 616 prompt, the once-per-event marks and `ReplacementOptionMetaForEffect` resolve it the same way. `liveReplacementSourceLocked` finds the emblem in its owner's command zone, and the serial registry's compaction keeps an emblem's entry, since an emblem is in no card index.
+- **Registration.** `checkEmblemSpec` applies the slot budget (`MaxCatalogReplacementSlots`) and the Then/Prevention rule a Spec's replacements get. An emblem with only replacements is a legal emblem.
+- **Ajani Steadfast** is the first user: "If a source would deal damage to you or a planeswalker you control, prevent all but 1 of that damage" lowers the damage event's amount to 1 (`Prevention: true`, so CR 615.12 still leaves it applied once and preventing nothing).
+
+Snapshot impact: none. The emblem def is catalog data and the serial registry is not in a snapshot.

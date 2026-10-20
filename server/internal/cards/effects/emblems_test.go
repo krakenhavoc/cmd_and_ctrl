@@ -298,7 +298,8 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 			len(spec.Emblem.UntapStep) == 0 && len(spec.Emblem.DrawStep) == 0 &&
 			len(spec.Emblem.ActivationTimings) == 0 && len(spec.Emblem.CastRestrictions) == 0 &&
 			len(spec.Emblem.LandPlayRestrictions) == 0 && len(spec.Emblem.GameEndGates) == 0 &&
-			len(spec.Emblem.UntapCaps) == 0 && len(spec.Emblem.CastPermissions) == 0 {
+			len(spec.Emblem.UntapCaps) == 0 && len(spec.Emblem.CastPermissions) == 0 &&
+			len(spec.Emblem.Replacements) == 0 {
 			t.Errorf("%s declares an emblem with no abilities", spec.Name)
 		}
 		if spec.Emblem.Label == "" || spec.Emblem.Text == "" {
@@ -327,7 +328,8 @@ func TestEveryEmblemSpecIsWellFormed(t *testing.T) {
 			len(game.CatalogLandPlayRestrictions(key)) == 0 &&
 			len(game.CatalogGameEndGates(key)) == 0 &&
 			len(game.CatalogUntapCaps(key)) == 0 &&
-			len(game.CatalogCastPermissions(key)) == 0 {
+			len(game.CatalogCastPermissions(key)) == 0 &&
+			len(game.CatalogReplacements(key)) == 0 {
 			t.Errorf("%s's emblem is not registered under %q", spec.Name, key)
 		}
 	}
