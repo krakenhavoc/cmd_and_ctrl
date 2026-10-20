@@ -235,8 +235,94 @@ func TestBeforeAttackersWindowSurvivesARestore(t *testing.T) {
 	baActivate(t, restored2, restored2.PlayerByIDForEffect(me2.ID), talas2, nil)
 }
 
-// A turn in which the first combat is skipped never begins a declare
-// attackers step, so nothing closes the window: the tally is the reading.
+// baSkipCombat removes the turn's combat phase from the plan still to
+// come, as a skipped combat phase leaves it: the cursor goes from the
+// precombat main phase to the postcombat main phase and a declare
+// attackers step never begins (#4180).
+func baSkipCombat(t *testing.T, g *game.Game) {
+	t.Helper()
+	g.WithWriteLock(func() {
+		var plan []game.PlannedStep
+		for _, ps := range g.TurnPlan {
+			if game.PhaseOf(ps.Step) != game.PhaseCombat {
+				plan = append(plan, ps)
+			}
+		}
+		if len(plan) == len(g.TurnPlan) {
+			t.Fatal("setup: the plan has no combat phase to skip")
+		}
+		g.TurnPlan = plan
+	})
+}
+
+// CR 506.8e and 506.8g (#4180): "If the stated point doesn't exist
+// because the relevant combat phase has been skipped, the spell may be
+// cast only before the precombat main phase ends", and the same for an
+// ability. So with the combat phase skipped the window is open through
+// the precombat main phase and shut from the postcombat main phase on,
+// although no declare attackers step ever began.
+func TestBeforeAttackersSkippedCombatClosesTheWindowWithThePrecombatMain(t *testing.T) {
+	g, me, opp := baTable(t)
+	diaochan := baPermanent(g, me, "Diaochan, Artful Beauty", baDiaochan)
+	theirs := apaPush(g, opp.ID, opp.ID, apaCreature("Victim", "", 1, 1))
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+	g.WithWriteLock(func() {
+		if g.BeforeAttackersWindowClosedForEffect() {
+			t.Error("the window is shut in the precombat main phase")
+		}
+	})
+	advanceTo(t, g, game.StepPostcombatMain)
+	if g.DeclareAttackersHasBegunThisTurnForEffect() {
+		t.Fatal("the combat phase was not skipped: a declare attackers step began")
+	}
+	g.WithWriteLock(func() {
+		if !g.BeforeAttackersWindowClosedForEffect() {
+			t.Error("the window is still open in the postcombat main phase of a turn whose combat was skipped")
+		}
+	})
+	acRefused(t, g, me.ID, diaochan, 0, game.ActivateAbilityParams{Targets: ltCardTarget(theirs)})
+	advanceTo(t, g, game.StepEnd)
+	acRefused(t, g, me.ID, diaochan, 0, game.ActivateAbilityParams{Targets: ltCardTarget(theirs)})
+}
+
+// The closure is a position in the turn, so it survives a restore: a
+// table reloaded after the skipped combat keeps the window shut, and one
+// reloaded in the precombat main phase keeps it open.
+func TestBeforeAttackersSkippedCombatSurvivesARestore(t *testing.T) {
+	g, me, _ := baTable(t)
+	talas := baPermanent(g, me, "Talas Researcher", baTalasResearcher)
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+	open := restoreRoundTrip(t, g, true)
+	open.WithWriteLock(func() {
+		if open.BeforeAttackersWindowClosedForEffect() {
+			t.Error("a restore shut the window in the precombat main phase")
+		}
+	})
+	advanceTo(t, g, game.StepPostcombatMain)
+	restored := restoreRoundTrip(t, g, true)
+	acRefused(t, restored, me.ID, talas, 0, game.ActivateAbilityParams{})
+}
+
+// A combat phase added after a skipped one does not reopen the window:
+// CR 506.8d reads the FIRST combat phase of the turn, and that one was
+// skipped, so the point had already ceased to exist.
+func TestBeforeAttackersAnAddedCombatAfterASkippedOneStaysShut(t *testing.T) {
+	g, me, _ := baTable(t)
+	talas := baPermanent(g, me, "Talas Researcher", baTalasResearcher)
+	advanceTo(t, g, game.StepPrecombatMain)
+	baSkipCombat(t, g)
+	advanceTo(t, g, game.StepPostcombatMain)
+	g.WithWriteLock(func() {
+		g.AddPhasesForEffect(uuid.Nil, game.PhaseAnchor{Kind: game.AnchorThisPhase}, game.PhaseKindCombat)
+	})
+	advanceTo(t, g, game.StepBeginCombat)
+	acRefused(t, g, me.ID, talas, 0, game.ActivateAbilityParams{})
+}
+
+// The tally still answers the first half of the fact: a declare
+// attackers step that has begun.
 func TestBeforeAttackersDeclareAttackersBegunFactFollowsTheTally(t *testing.T) {
 	g, me, _ := baTable(t)
 	talas := baPermanent(g, me, "Talas Researcher", baTalasResearcher)

@@ -3548,3 +3548,29 @@ None to the schema. A mana ability never waits on the stack, so no restore point
 ### Back-out
 
 Put `ManaAbilities: []ManaAbility{...}` back on Millikin: `TestLibraryMovingManaCardsAreNotManaAbilities` and `TestManaAbilityTextAgreesWithTheCatalog` fail.
+
+## Amendment 2026-10-19 ([#4180](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4180)): a skipped combat closes the "before attackers are declared" window
+
+The #4062 amendment above (point 2) left the window open for a whole turn whose combat phase is skipped, reading "a
+turn whose combat is skipped never begins the step". That was wrong. CR 506.8a ties "only before attackers are
+declared" to the beginning of the declare attackers step, and CR 506.8e says: "If the stated point doesn't exist
+because the relevant combat phase has been skipped, the spell may be cast only before the precombat main phase ends."
+CR 506.8g applies 506.8 and 506.8a-f to abilities with a combat timing restriction as well, so the activation windows
+(Diaochan and the Portal Three Kingdoms creatures, Arcum's Whistle, Norritt, Nettling Imp) close the same way as the
+cast windows (Siren's Call, Master Warcraft).
+
+1. **One fact.** `Game.BeforeAttackersWindowClosedForEffect` (`game/turn_plan.go`) is the whole of it: closed when a
+   declare attackers step has begun this turn (the tally fact `DeclareAttackersHasBegunThisTurnForEffect` the #4062
+   amendment added, which stays as its first half), or when a second main phase or the ending phase has begun with no
+   declare attackers step behind it (read off `TurnTally.PhasesBegun`, which snapshots already carry and
+   `derivePrePlanOrdinalsLocked` rebuilds), or when the cursor is in the postcombat main or ending phase (for a restore
+   point or a test that set the cursor by hand). A main phase after the first always follows a combat phase, so
+   reaching one without a declare attackers step means that combat was skipped. No new state, no snapshot change.
+2. **An added combat does not reopen it.** CR 506.8d reads the first combat phase, and the first one was the skipped
+   one; the phase tally keeps the closure after the cursor re-enters a combat phase.
+3. **Callers.** `effects.BeforeAttackersAreDeclared` (and so the `DuringYourTurn…` and `DuringAnOpponentsTurn…` pairs),
+   Siren's Call's `CastCondition` and Master Warcraft's `CastCondition` all call it. Master Warcraft's own copy of the
+   skipped-combat rule is gone, so there is one source of truth.
+4. **"Before blockers" is a different point.** Berserker's Frenzy ("before combat or during combat before blockers
+   are declared", CR 506.8b, 506.8c) reads the cursor, not this fact: before the declare blockers step of the combat in
+   progress, any combat phase of the turn, and the precombat main phase of a skipped combat.

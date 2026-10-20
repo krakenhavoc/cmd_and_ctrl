@@ -18,7 +18,9 @@ import (
 // phases, this spell can only be cast before the beginning of the
 // Declare Attackers Step of the first combat phase in that turn"). The
 // turn tally counts steps as they begin, so an additional combat phase
-// does not reopen it.
+// does not reopen it, and a turn whose combat phase is skipped closes
+// it with the precombat main phase (CR 506.8e). Both are the one shared
+// fact, Game.BeforeAttackersWindowClosedForEffect (#4180).
 //
 // The rest is one DeclarationControl for the turn, attackers and
 // blockers (game/declaration_control.go, #4154): in every declare
@@ -42,7 +44,7 @@ func init() {
 		Name:         "Master Warcraft",
 		Completeness: CompletenessFull,
 		CastCondition: func(g *game.Game, _ uuid.UUID, _ game.Card) bool {
-			return beforeAttackersDeclaredThisTurn(g)
+			return !g.BeforeAttackersWindowClosedForEffect()
 		},
 		CastConditionLabel: "Cast this spell only before attackers are declared.",
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
@@ -56,20 +58,4 @@ func init() {
 			return nil
 		},
 	})
-}
-
-// beforeAttackersDeclaredThisTurn reports whether no declare attackers
-// step has begun this turn (CR 506.8a, 506.8d; #4062's turn-tally read).
-// A turn that reached its postcombat main phase or its end without one
-// skipped its combat, and then the window closed with the precombat
-// main phase (CR 506.8e).
-func beforeAttackersDeclaredThisTurn(g *game.Game) bool {
-	if g.DeclareAttackersHasBegunThisTurnForEffect() {
-		return false
-	}
-	switch game.PhaseOf(g.Turn.Step) {
-	case game.PhasePostcombatMain, game.PhaseEnding:
-		return false
-	}
-	return true
 }

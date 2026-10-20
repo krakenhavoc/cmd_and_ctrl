@@ -34,7 +34,7 @@ func init() {
 		// that attacked, creatures that arrived this turn).
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, OpponentsOnly: true, Partial: true}},
 		CastCondition: func(g *game.Game, controller uuid.UUID, _ game.Card) bool {
-			return !IsYourTurn(g, controller) && !g.DeclareAttackersHasBegunThisTurnForEffect()
+			return !IsYourTurn(g, controller) && !g.BeforeAttackersWindowClosedForEffect()
 		},
 		CastConditionLabel: "Cast this spell only during an opponent's turn, before attackers are declared.",
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

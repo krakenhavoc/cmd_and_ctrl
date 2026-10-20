@@ -8,19 +8,72 @@ type RandomDraw struct{ Player, Source uuid.UUID }
 // RollDiceForEffect rolls n natural d-sides results and emits one event per
 // die. Caller must hold g.mu.
 func (g *Game) RollDiceForEffect(d RandomDraw, sides, n int) ([]int, error) {
-	if sides <= 0 || n <= 0 {
+	return g.RollDiceIgnoringLowestForEffect(d, sides, n, 0)
+}
+
+// RollDiceIgnoringLowestForEffect is "roll n dice and ignore the lowest
+// `ignore` rolls" (Berserker's Frenzy's "roll two d20 and ignore the
+// lower roll"; #4174). CR 706.6: an ignored roll "is considered to have
+// never happened. No abilities trigger because of the ignored roll, and
+// no effects apply to that roll."
+//
+// All n dice are drawn from the roll stream first, in order, so the
+// draw count (and every later draw on the stream) is the same whether
+// or not a roll is ignored and a restore replays it exactly. The lowest
+// `ignore` are then dropped, and only the rest are announced: one
+// EventRollDie each, in one batch, so "whenever you roll one or more
+// dice" triggers once, off the kept rolls. The returned slice is the
+// kept rolls in the order they were rolled.
+//
+// When several results are tied for the lowest, the player chooses which
+// to ignore (CR 706.6). Tied results are the same number, so which one
+// is dropped changes nothing anyone can see and no prompt is asked.
+//
+// `ignore` must be at least 0 and less than n: ignoring every roll is
+// not a roll at all.
+//
+// Caller must hold g.mu.
+func (g *Game) RollDiceIgnoringLowestForEffect(d RandomDraw, sides, n, ignore int) ([]int, error) {
+	if sides <= 0 || n <= 0 || ignore < 0 || ignore >= n {
 		return nil, ErrInvalidParam
 	}
 	r := g.randForLocked(rngStream{kind: rngStreamRoll, player: d.Player, source: d.Source})
-	results := make([]int, n)
-	for i := range results {
-		results[i] = r.IntN(sides) + 1
+	rolled := make([]int, n)
+	for i := range rolled {
+		rolled[i] = r.IntN(sides) + 1
+	}
+	results := rolled
+	if ignore > 0 {
+		results = keepAllButLowest(rolled, ignore)
 	}
 	batch := g.eventSeq + 1
 	for _, result := range results {
 		g.EmitEvent(Event{Kind: EventRollDie, Actor: d.Player, Source: d.Source, Amount: result, Sides: sides, BatchSeq: batch})
 	}
 	return results, nil
+}
+
+// keepAllButLowest drops the `drop` lowest values of rolled and returns
+// the rest in their original order. On a tie for the last place dropped
+// the earlier roll goes, which is unobservable: the values are equal.
+func keepAllButLowest(rolled []int, drop int) []int {
+	ignored := make([]bool, len(rolled))
+	for k := 0; k < drop; k++ {
+		low := -1
+		for i, v := range rolled {
+			if !ignored[i] && (low < 0 || v < rolled[low]) {
+				low = i
+			}
+		}
+		ignored[low] = true
+	}
+	kept := make([]int, 0, len(rolled)-drop)
+	for i, v := range rolled {
+		if !ignored[i] {
+			kept = append(kept, v)
+		}
+	}
+	return kept
 }
 
 // FlipCoinsForEffect flips n coins whose faces matter but which nobody wins
