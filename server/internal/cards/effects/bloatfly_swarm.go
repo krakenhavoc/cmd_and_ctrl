@@ -52,12 +52,27 @@ var bloatflyRadBody = game.DelayedBody("prevention/bloatfly-remove-counters-give
 	if n <= 0 {
 		return nil
 	}
-	if err := g.AddCounterForEffect(item.SourceCardID, game.CounterPlusOne, -n); err != nil {
-		return err
-	}
-	removed := n
-	if after, ok := followUpThis(g, item); ok {
-		removed = before - after.Counters[game.CounterPlusOne]
-	}
-	return eachPlayerGetsRadCounters(g, item.Controller, removed)
+	ctx := NewContext(g, item)
+	ctx.RecordStep(bloatflyRecord, nil, before, n)
+	return bloatflyRemoveThenRad.Run(ctx)
 })
+
+// bloatflyRecord is the +1/+1 counters it had and how many are to come off.
+const bloatflyRecord = "bloatfly-swarm/counters"
+
+// bloatflyRemoveThenRad takes the counters off and then gives the rad counters:
+// they wait for a prompt the removal asks (a CR 616 order; CR 608.2c, #4155)
+// and count how many really came off.
+var bloatflyRemoveThenRad = RegisterThenSteps("then-steps/bloatfly-swarm-remove",
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.AddCounterForEffect(ctx.Item.SourceCardID, game.CounterPlusOne, -ctx.StepRecord(bloatflyRecord).Ns[1])
+	}),
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(bloatflyRecord)
+		removed := r.Ns[1]
+		if after, ok := followUpThis(ctx.Game, ctx.Item); ok {
+			removed = r.Ns[0] - after.Counters[game.CounterPlusOne]
+		}
+		return eachPlayerGetsRadCounters(ctx.Game, ctx.Controller(), removed)
+	}),
+)

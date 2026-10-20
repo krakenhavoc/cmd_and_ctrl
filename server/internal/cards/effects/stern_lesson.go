@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Stern Lesson — Instant {2}{U}:
 //
 //	"Draw two cards, then discard a card. Create a tapped Powerstone
@@ -31,20 +29,18 @@ func init() {
 		OracleID:     "8315aa34-08b8-403e-a2e6-796a2d6978ad",
 		Name:         "Stern Lesson",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: ctx.Controller(),
-				Source: ctx.Source(),
-				N:      1,
-			})
-			return CreateTokenAdvanced{
-				Controller: ctx.Controller(),
-				Spec:       Token(PowerstoneToken()).EntersTapped(),
-				N:          1,
-			}.Apply(ctx)
-		},
+		// Each sentence is a step: the discard waits for a prompt the draws ask (a
+		// dredge offer) and the Powerstone for the discard's (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			DrawCards{N: 2},
+			Instruction(controllerDiscardsACard),
+			Instruction(func(ctx *Context) error {
+				return CreateTokenAdvanced{
+					Controller: ctx.Controller(),
+					Spec:       Token(PowerstoneToken()).EntersTapped(),
+					N:          1,
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

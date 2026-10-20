@@ -42,8 +42,13 @@ func init() {
 					TargetCreature("target creature you don't control", OpponentControls()),
 				)),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
+		// Each bullet is a step, in printed order: the sacrifice's question, and the
+		// counter and the fight after it, wait for the prompt before (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) {
+					return nil
+				}
 				for _, t := range OptionTargets(ctx, 0) {
 					if t.Kind != game.TargetCard {
 						continue
@@ -52,22 +57,48 @@ func init() {
 						return err
 					}
 				}
-			}
-			if ctx.HasMode(1) {
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
+				}
 				for _, t := range OptionTargets(ctx, 1) {
 					if t.Kind == game.TargetPlayer {
 						return dromokasCommandSacrifice(ctx, t.ID)
 					}
 				}
-			}
-			return dromokasCommandRest(ctx)
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(2) {
+					return nil
+				}
+				for _, t := range OptionTargets(ctx, 2) {
+					if t.Kind != game.TargetCard {
+						continue
+					}
+					if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				for occ, m := range ctx.Modes() {
+					if m == 3 {
+						return FightTheModesTargets(ctx.Item, ctx, occ)
+					}
+				}
+				return nil
+			}),
+		),
 	})
 }
 
 // dromokasCommandSacrifice is the second bullet: the player chooses one
-// of their enchantments and sacrifices it, and the later bullets follow
-// once it has gone. A player with no enchantment is asked nothing.
+// of their enchantments and sacrifices it, and the later bullets are the
+// steps after this one, so they follow once it has gone. A player with no enchantment is asked nothing.
 func dromokasCommandSacrifice(ctx *Context, player uuid.UUID) error {
 	return ChoosePermanents{
 		Player:   player,
@@ -83,28 +114,5 @@ func dromokasCommandSacrifice(ctx *Context, player uuid.UUID) error {
 			return ids, 1, 1
 		},
 		Sacrifice: true,
-		Then: func(ctx *Context, _ game.PromptedPicks) error {
-			return dromokasCommandRest(ctx)
-		},
 	}.Apply(ctx)
-}
-
-// dromokasCommandRest is the third and fourth bullets, in printed order.
-func dromokasCommandRest(ctx *Context) error {
-	if ctx.HasMode(2) {
-		for _, t := range OptionTargets(ctx, 2) {
-			if t.Kind != game.TargetCard {
-				continue
-			}
-			if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-	}
-	for occ, m := range ctx.Modes() {
-		if m == 3 {
-			return FightTheModesTargets(ctx.Item, ctx, occ)
-		}
-	}
-	return nil
 }

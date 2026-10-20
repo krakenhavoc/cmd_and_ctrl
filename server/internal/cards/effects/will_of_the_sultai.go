@@ -82,15 +82,28 @@ func willOfTheSultaiCounters(ctx *Context) error {
 	if !ctx.HasMode(1) {
 		return nil
 	}
-	for _, t := range OptionTargets(ctx, 1) {
-		if n := b03LandsControlled(ctx.Game, ctx.Controller()); n > 0 {
-			if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+	return willOfTheSultaiBullet.Run(ctx)
+}
+
+// willOfTheSultaiBullet is the second bullet's two instructions: trample
+// waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+var willOfTheSultaiBullet = RegisterThenSteps("then-steps/will-of-the-sultai-bullet",
+	Instruction(func(ctx *Context) error {
+		for _, t := range OptionTargets(ctx, 1) {
+			if n := b03LandsControlled(ctx.Game, ctx.Controller()); n > 0 {
+				if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		for _, t := range OptionTargets(ctx, 1) {
+			if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"trample"}, Label: "Will of the Sultai — trample"}).Apply(ctx); err != nil {
 				return err
 			}
 		}
-		if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"trample"}, Label: "Will of the Sultai — trample"}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+		return nil
+	}),
+)

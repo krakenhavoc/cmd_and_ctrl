@@ -27,15 +27,7 @@ func init() {
 			Key: agentOfTheShadowThievesGrant,
 			Triggered: []game.TriggeredAbility{
 				wheneverThisAttacksAPlayerNoOpponentRicher("Agent of the Shadow Thieves — +1/+1 counter, deathtouch and indestructible", func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GrantKeywordUntilEOT{
-						Target:   ctx.Source(),
-						Keywords: []string{"deathtouch", "indestructible"},
-						Label:    "Agent of the Shadow Thieves — deathtouch and indestructible",
-					}.Apply(ctx)
+					return agentOfTheShadowThievesSteps.Run(NewContext(g, item))
 				}),
 			},
 			Text: "Whenever this creature attacks a player, if no opponent has more life than that player, put a +1/+1 counter on this creature. It gains deathtouch and indestructible until end of turn.",
@@ -43,3 +35,20 @@ func init() {
 		Static: []game.StaticAbility{grantToCommanderCreaturesYouOwn(agentOfTheShadowThievesGrant)},
 	})
 }
+
+// agentOfTheShadowThievesSteps is the counter and then the keywords: they wait
+// for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155). The
+// granted trigger's effect is a closure the shared Background wrapper calls,
+// not a Do, so the steps are a continuation run from it.
+var agentOfTheShadowThievesSteps = RegisterThenSteps("then-steps/agent-of-the-shadow-thieves-grant",
+	Instruction(func(ctx *Context) error {
+		return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return GrantKeywordUntilEOT{
+			Target:   ctx.Source(),
+			Keywords: []string{"deathtouch", "indestructible"},
+			Label:    "Agent of the Shadow Thieves — deathtouch and indestructible",
+		}.Apply(ctx)
+	}),
+)

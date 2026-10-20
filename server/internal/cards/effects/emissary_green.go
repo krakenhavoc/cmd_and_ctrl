@@ -44,26 +44,40 @@ func init() {
 }
 
 var emissaryGreenVoted = VoteResultThen("vote/emissary-green", func(ctx *Context, r game.VoteResult) error {
-	if n := 2 * r.Votes(0); n > 0 {
-		if err := (CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	n := r.Votes(1)
-	if n == 0 {
-		return nil
-	}
-	var mine []uuid.UUID
-	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-		if c.Controller == ctx.Controller() && c.IsCreature() {
-			mine = append(mine, c.InstanceID)
-		}
-	}
-	group := ctx.asGroupMember()
-	for _, id := range mine {
-		if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(group); err != nil {
-			return err
-		}
-	}
-	return nil
+	ctx.RecordStep(emissaryGreenVotesRecord, nil, r.Votes(0), r.Votes(1))
+	return emissaryGreenRewards.Run(ctx)
 })
+
+// emissaryGreenVotesRecord is the votes for profit and for security.
+const emissaryGreenVotesRecord = "emissary-green/votes"
+
+// emissaryGreenRewards is the Treasures and then the counters: the counters
+// wait for a prompt the Treasures' creation asks (a CR 616 order on tokens; CR
+// 608.2c, #4155).
+var emissaryGreenRewards = RegisterThenSteps("then-steps/emissary-green-rewards",
+	Instruction(func(ctx *Context) error {
+		if n := 2 * ctx.StepRecord(emissaryGreenVotesRecord).Ns[0]; n > 0 {
+			return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: n}.Apply(ctx)
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		n := ctx.StepRecord(emissaryGreenVotesRecord).Ns[1]
+		if n == 0 {
+			return nil
+		}
+		var mine []uuid.UUID
+		for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+			if c.Controller == ctx.Controller() && c.IsCreature() {
+				mine = append(mine, c.InstanceID)
+			}
+		}
+		group := ctx.asGroupMember()
+		for _, id := range mine {
+			if err := (AddCounter{Target: id, Kind: "+1/+1", N: n}).Apply(group); err != nil {
+				return err
+			}
+		}
+		return nil
+	}),
+)

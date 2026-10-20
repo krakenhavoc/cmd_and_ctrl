@@ -38,17 +38,16 @@ func init() {
 					}
 					return AddCounter{Target: tgt.ID, Kind: game.CounterPlusOne, N: 3}.Apply(ctx)
 				}),
-			ModeDoing("Defense! — Put a shield counter on target creature. You gain 3 life.", TargetCreature("target creature"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					tgt, ok := ModeTarget(ctx, occ)
+			// The life waits for a prompt the counter asks (CR 608.2c, #4155).
+			ModeSteps("Defense! — Put a shield counter on target creature. You gain 3 life.", TargetCreature("target creature"),
+				Instruction(func(ctx *Context) error {
+					tgt, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok {
 						return nil
 					}
-					if err := (AddCounter{Target: tgt.ID, Kind: game.CounterShield, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
+					return AddCounter{Target: tgt.ID, Kind: game.CounterShield, N: 1}.Apply(ctx)
 				}),
+				GainLife{Amount: 3}),
 			ModeDoing("Fight! — This creature fights up to one target creature an opponent controls.",
 				TargetCreature("up to one target creature an opponent controls", OpponentControls()).WithCount(0, 1),
 				func(item *game.StackItem, ctx *Context, occ int) error {

@@ -57,18 +57,23 @@ func init() {
 			{
 				Label: "−2: Discard your hand, then draw a card for each creature you control.",
 				Cost:  LoyaltyCost(-2),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if _, err := discardWholeHand(g, item.Controller); err != nil {
+				// The draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155)
+				// and counts the creatures when it runs.
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						_, err := discardWholeHand(ctx.Game, ctx.Controller())
 						return err
-					}
-					n := 0
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == item.Controller && c.IsCreature() {
-							n++
+					}),
+					Instruction(func(ctx *Context) error {
+						n := 0
+						for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+							if c.Controller == ctx.Controller() && c.IsCreature() {
+								n++
+							}
 						}
-					}
-					return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-				},
+						return DrawCards{N: n}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "−3: Ajani deals 4 damage to each creature except for tokens you control.",

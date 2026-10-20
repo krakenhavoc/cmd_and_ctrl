@@ -67,6 +67,39 @@ func (t ThenSteps) Run(ctx *Context) error {
 	return runStepsFrom(ctx, t.steps, nil, parkThenSteps(t.key))
 }
 
+// RunAt is Run for a continuation several players' answers can run side by
+// side ("each player may discard their hand and draw seven cards": the
+// confirmations are all open at once). The steps read which of them is
+// theirs with ctx.Occurrence(), which is i here and survives a park, so one
+// player's parked steps are not confused with another's the way a step
+// record filed under one key would be.
+func (t ThenSteps) RunAt(ctx *Context, i int) error {
+	saved := ctx.occurrence
+	ctx.occurrence = i + 1
+	defer func() { ctx.occurrence = saved }()
+	return t.Run(ctx)
+}
+
+// seatAtOccurrence is the player RunAt was given the seat of: the seat
+// index the continuation's steps are running for.
+func seatAtOccurrence(ctx *Context) uuid.UUID {
+	i := ctx.Occurrence()
+	if i < 0 || i >= len(ctx.Game.Seats) || ctx.Game.Seats[i] == nil {
+		return uuid.Nil
+	}
+	return ctx.Game.Seats[i].ID
+}
+
+// seatIndexOf is the index in Game.Seats of player id, or 0 for none.
+func seatIndexOf(g *game.Game, id uuid.UUID) int {
+	for i, p := range g.Seats {
+		if p != nil && p.ID == id {
+			return i
+		}
+	}
+	return 0
+}
+
 // Apply is Run, so a continuation can be a step.
 func (t ThenSteps) Apply(ctx *Context) error { return t.Run(ctx) }
 

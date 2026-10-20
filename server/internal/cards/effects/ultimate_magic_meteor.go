@@ -30,15 +30,17 @@ func init() {
 		SpecialActions: []game.SpecialAction{
 			Foretell("{5}{R}"),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := damageEachMatching(ctx, Creature(), 7); err != nil {
-				return err
-			}
-			if item.CastFromZone != game.ZoneExile {
-				return nil
-			}
-			return ultimateMagicMeteorChoose(ctx, item)
-		},
+		// The foretold choice waits for a prompt the damage asks (a CR 616 order;
+		// CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error { return damageEachMatching(ctx, Creature(), 7) }),
+			Instruction(func(ctx *Context) error {
+				if ctx.Item.CastFromZone != game.ZoneExile {
+					return nil
+				}
+				return ultimateMagicMeteorChoose(ctx, ctx.Item)
+			}),
+		),
 	})
 }
 

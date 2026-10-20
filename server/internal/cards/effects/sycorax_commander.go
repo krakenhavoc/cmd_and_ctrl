@@ -32,11 +32,7 @@ var sycoraxCommanderChoice = NewVillainousChoice("sycorax-commander",
 		Harm:     1,
 		Possible: func(g *game.Game, facing uuid.UUID) bool { return villainousHandSize(g, facing) > 0 },
 		Body: func(ctx *Context, f Facing) error {
-			n, err := discardWholeHand(ctx.Game, f.Player)
-			if err != nil || n <= 1 {
-				return err
-			}
-			return DrawCards{Player: f.Player, N: n - 1}.Apply(ctx)
+			return sycoraxCommanderWheel.RunAt(ctx, seatIndexOf(ctx.Game, f.Player))
 		},
 	},
 	VillainousOption{
@@ -66,4 +62,31 @@ func init() {
 				}),
 		},
 	})
+}
+
+// sycoraxCommanderWheel is "discard all the cards in your hand, then draw
+// that many cards minus one" for the player facing the choice. Each
+// opponent faces it at once, so the steps find their player from the seat
+// RunAt was given and file the count under that player. The draw waits for a
+// prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+var sycoraxCommanderWheel = RegisterThenSteps("then-steps/sycorax-commander-wheel",
+	Instruction(func(ctx *Context) error {
+		who := seatAtOccurrence(ctx)
+		n, err := discardWholeHand(ctx.Game, who)
+		ctx.RecordStep(sycoraxCommanderRecord(who), nil, n)
+		return err
+	}),
+	Instruction(func(ctx *Context) error {
+		who := seatAtOccurrence(ctx)
+		n := ctx.StepRecord(sycoraxCommanderRecord(who)).N()
+		if n <= 1 {
+			return nil
+		}
+		return DrawCards{Player: who, N: n - 1}.Apply(ctx)
+	}),
+)
+
+// sycoraxCommanderRecord is the number of cards a player discarded.
+func sycoraxCommanderRecord(who uuid.UUID) string {
+	return "sycorax-commander/discarded/" + who.String()
 }

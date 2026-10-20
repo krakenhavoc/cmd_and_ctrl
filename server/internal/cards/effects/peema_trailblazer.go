@@ -31,13 +31,16 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Exhaust: true,
 			Cost:    PayEnergy(6),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{N: b42GreatestPowerControlledBy(g, item.Controller)}.Apply(ctx)
-			},
+			// The draw waits for a prompt the counters ask (a CR 616 order; CR 608.2c,
+			// #4155) and counts the greatest power when it runs.
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					return DrawCards{N: b42GreatestPowerControlledBy(ctx.Game, ctx.Controller())}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

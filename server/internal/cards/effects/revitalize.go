@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Revitalize — Instant {1}{W} (EDHREC rank 4242):
 //
 //	"You gain 3 life.
@@ -26,11 +24,7 @@ func init() {
 		OracleID:     "b1385b03-cb4b-4812-857f-7421f1df39af",
 		Name:         "Revitalize",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (GainLife{Amount: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{N: 1}.Apply(ctx)
-		},
+		// The draw waits for a prompt the life gain asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(GainLife{Amount: 3}, DrawCards{N: 1}),
 	})
 }

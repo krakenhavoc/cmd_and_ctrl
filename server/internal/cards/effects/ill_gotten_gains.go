@@ -28,46 +28,57 @@ func init() {
 		OracleID:     "c88eff74-def5-42ea-873c-b3b479f6fe18",
 		Name:         "Ill-Gotten Gains",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (ExileTarget{Target: ctx.Source()}).Apply(ctx); err != nil {
-				return err
-			}
-			players := tablePlayers(ctx)
-			for _, id := range players {
-				if _, err := discardWholeHand(ctx.Game, id); err != nil {
+		// The graveyard picks wait for the prompts the discards ask (a replacement offer such as Library of Leng's; CR
+		// 608.2c, #4155) and read the graveyards when they run.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if err := (ExileTarget{Target: ctx.Source()}).Apply(ctx); err != nil {
 					return err
 				}
-			}
-			var legs []game.ChooseCardsPrompt
-			for _, id := range players {
-				cards := graveyardCardsOfPlayer(ctx.Game, id)
-				if len(cards) == 0 {
-					continue
-				}
-				legs = append(legs, game.ChooseCardsPrompt{
-					Chooser:    id,
-					FromPlayer: id,
-					Source:     ctx.Source(),
-					Question:   "Ill-Gotten Gains — return up to three cards from your graveyard to your hand",
-					Cards:      cards,
-					Min:        0,
-					Max:        3,
-					Zone:       game.ZoneGraveyard,
-				})
-			}
-			resolving := item
-			_, err := ctx.Game.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-				next := NewContext(g, resolving)
-				for _, id := range players {
-					for _, card := range picks.By(id) {
-						if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneHand}).Apply(next); err != nil {
-							return err
-						}
+				for _, id := range tablePlayers(ctx) {
+					if _, err := discardWholeHand(ctx.Game, id); err != nil {
+						return err
 					}
 				}
 				return nil
-			})
-			return err
-		},
+			}),
+			Instruction(illGottenGainsReturn),
+		),
 	})
+}
+
+// illGottenGainsReturn is "each player may return up to three cards from
+// their graveyard to their hand".
+func illGottenGainsReturn(ctx *Context) error {
+	players := tablePlayers(ctx)
+	var legs []game.ChooseCardsPrompt
+	for _, id := range players {
+		cards := graveyardCardsOfPlayer(ctx.Game, id)
+		if len(cards) == 0 {
+			continue
+		}
+		legs = append(legs, game.ChooseCardsPrompt{
+			Chooser:    id,
+			FromPlayer: id,
+			Source:     ctx.Source(),
+			Question:   "Ill-Gotten Gains — return up to three cards from your graveyard to your hand",
+			Cards:      cards,
+			Min:        0,
+			Max:        3,
+			Zone:       game.ZoneGraveyard,
+		})
+	}
+	resolving := ctx.Item
+	_, err := ctx.Game.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
+		next := NewContext(g, resolving)
+		for _, id := range players {
+			for _, card := range picks.By(id) {
+				if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneHand}).Apply(next); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	return err
 }

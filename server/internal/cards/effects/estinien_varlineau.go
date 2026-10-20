@@ -48,17 +48,20 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Estinien Varlineau — +1/+1 counter and flying",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GrantKeywordUntilEOT{
-						Target:   item.SourceCardID,
-						Keywords: []string{"flying"},
-						Label:    "Estinien Varlineau — flying until end of turn",
-					}.Apply(ctx)
-				}),
+				// The keyword waits for a prompt the counter asks (a CR 616 order; CR
+				// 608.2c, #4155).
+				Do(
+					Instruction(func(ctx *Context) error {
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						return GrantKeywordUntilEOT{
+							Target:   ctx.Item.SourceCardID,
+							Keywords: []string{"flying"},
+							Label:    "Estinien Varlineau — flying until end of turn",
+						}.Apply(ctx)
+					}),
+				)),
 			AtYourSecondMainPhase("Estinien Varlineau — draw X cards and lose X life", estinienDrawAndLose),
 		},
 	})
@@ -67,8 +70,24 @@ func init() {
 // estinienDrawAndLose is the second-main-phase ability: X is the number
 // of the controller's opponents dealt combat damage this turn by
 // Estinien (the object that has the ability) or by any Dragon.
-func estinienDrawAndLose(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
+// estinienDrawAndLose is "draw X cards and lose X life": the loss waits for a
+// prompt the draw asks (a dredge offer; CR 608.2c, #4155), and X is the count
+// the draw step filed (#4163).
+var estinienDrawAndLose = Do(
+	Instruction(estinienDraw),
+	Instruction(func(ctx *Context) error {
+		if x := ctx.StepRecord(estinienRecord).N(); x > 0 {
+			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -x)
+		}
+		return nil
+	}),
+)
+
+// estinienRecord is X.
+const estinienRecord = "estinien-varlineau/x"
+
+func estinienDraw(ctx *Context) error {
+	g, item := ctx.Game, ctx.Item
 	dragons := g.PlayersDealtCombatDamageThisTurnByAnySubtype(ctx.TextSubtype("Dragon"))
 	x := 0
 	for _, opp := range ctx.Opponents() {
@@ -85,8 +104,6 @@ func estinienDrawAndLose(g *game.Game, item *game.StackItem) error {
 	if x == 0 {
 		return nil
 	}
-	if err := (DrawCards{N: x}).Apply(ctx); err != nil {
-		return err
-	}
-	return g.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -x)
+	ctx.RecordStep(estinienRecord, nil, x)
+	return DrawCards{N: x}.Apply(ctx)
 }

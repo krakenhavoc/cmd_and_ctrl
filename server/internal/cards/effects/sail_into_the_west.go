@@ -84,10 +84,21 @@ func embarkOffer(ctx *Context, player uuid.UUID) error {
 		Question: "Sail into the West — discard your hand and draw seven cards?",
 		Draws:    7,
 		OnYes: func(c *Context) error {
-			if _, err := discardWholeHand(c.Game, player); err != nil {
-				return err
-			}
-			return DrawCards{Player: player, N: 7}.Apply(c)
+			return sailIntoTheWestEmbark.RunAt(c, seatIndexOf(c.Game, player))
 		},
 	}.Apply(ctx)
 }
+
+// sailIntoTheWestEmbark is one player's "discard your hand and draw seven
+// cards". Every player's question is open at once, so the steps find their
+// player from the seat RunAt was given. The draw waits for a prompt a discard
+// asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+var sailIntoTheWestEmbark = RegisterThenSteps("then-steps/sail-into-the-west-embark",
+	Instruction(func(ctx *Context) error {
+		_, err := discardWholeHand(ctx.Game, seatAtOccurrence(ctx))
+		return err
+	}),
+	Instruction(func(ctx *Context) error {
+		return DrawCards{Player: seatAtOccurrence(ctx), N: 7}.Apply(ctx)
+	}),
+)

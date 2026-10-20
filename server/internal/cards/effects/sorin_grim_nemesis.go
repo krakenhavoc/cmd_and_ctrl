@@ -53,24 +53,31 @@ func init() {
 				Cost:    LoyaltyMinusX(),
 				Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 				Purpose: ForTargets(DamageXToTarget(0)),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					// CR 608.2b: a target that is gone makes the ability
-					// do nothing at all, the life gain included.
-					t, ok := firstLegalTarget(ctx)
-					if !ok {
+				// The life gain waits for a prompt the damage asks (Khârn the Betrayer's
+				// question, a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						// CR 608.2b: a target that is gone makes the ability
+						// do nothing at all, the life gain included.
+						t, ok := firstLegalTarget(ctx)
+						if !ok {
+							return nil
+						}
+						x := ctx.X()
+						if x <= 0 {
+							return nil
+						}
+						ctx.RecordStep(sorinGrimNemesisXRecord, nil, x)
+						return DealDamage{Source: ctx.Item.SourceCardID, Target: t.ID, Amount: x}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						// Two sentences: a prevented X still gains X.
+						if x := ctx.StepRecord(sorinGrimNemesisXRecord).N(); x > 0 {
+							return GainLife{Amount: x}.Apply(ctx)
+						}
 						return nil
-					}
-					x := ctx.X()
-					if x <= 0 {
-						return nil
-					}
-					// Two sentences: a prevented X still gains X.
-					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: x}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: x}.Apply(ctx)
-				},
+					}),
+				),
 			},
 			{
 				Label:  "−9: Create a number of 1/1 black Vampire Knight creature tokens with lifelink equal to the highest life total among all players.",
@@ -134,3 +141,6 @@ func sorinGrimNemesisArmy(g *game.Game, item *game.StackItem) error {
 		N:        best,
 	}.Apply(NewContext(g, item))
 }
+
+// sorinGrimNemesisXRecord is X, filed once the damage has a target.
+const sorinGrimNemesisXRecord = "sorin-grim-nemesis/x"
