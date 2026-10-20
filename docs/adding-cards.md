@@ -370,9 +370,13 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    Opponent()))`, Scab-Clan Giant, Power Pack). The engine draws the
    target uniformly from the legal set as the trigger goes on the
    stack, from the keyed random stream, and no `pick_target` prompt is
-   queued; with no legal target the trigger is removed. `Register`
-   refuses it on a spell, an activated ability (Goblin Test Pilot waits
-   on #4051) and any clause but one undivided target. "Choose an
+   queued; with no legal target the trigger is removed. An activated
+   ability's lone clause takes it too (Goblin Test Pilot's
+   `ChosenAtRandom(TargetAny())`, #4051): the target is drawn as part
+   of activating, the activator names none, and with no legal target
+   the ability can't be activated. `Register` refuses it on a spell, a
+   mode, an activated ability with another clause and any clause but
+   one undivided target. "Choose an
    opponent at random" that is not a target (Knight Rampager) is
    `ChooseAtRandomForEffect` at resolution. "Reselect the targets at
    random" for a spell on the stack (Chef's Kiss) is

@@ -470,17 +470,24 @@ func TestScabClanGiantWithNoOpposingCreatureDoesNothing(t *testing.T) {
 	}
 }
 
-// Only a trigger's target is drawn by the engine, and only one.
+// Only a trigger's or an activated ability's target is drawn by the
+// engine, only one, and on an activated ability only as its lone clause.
 func TestRegisterRefusesATargetChosenAtRandomOffATrigger(t *testing.T) {
-	expectRegisterPanic(t, "only a triggered ability's target", func() {
+	expectRegisterPanic(t, "only a triggered or an activated ability's target", func() {
 		Register(Spec{OracleID: "random-target-spell", Name: "random-target-spell",
 			Targets: ChosenAtRandom(TargetAny())})
 	})
-	expectRegisterPanic(t, "only a triggered ability's target", func() {
-		Register(Spec{OracleID: "random-target-activated", Name: "random-target-activated",
+	expectRegisterPanic(t, "only a lone random clause", func() {
+		Register(Spec{OracleID: "random-target-activated-two", Name: "random-target-activated-two",
 			Activated: []ActivatedAbility{{Label: "{T}: Probe.", Cost: TapCost(),
-				Targets: ChosenAtRandom(TargetAny()),
+				Targets: Clauses(ChosenAtRandom(TargetAny()), TargetCreature("target creature")),
 				Effect:  func(*game.Game, *game.StackItem) error { return nil }}}})
+	})
+	expectRegisterPanic(t, "only a triggered or an activated ability's target", func() {
+		Register(Spec{OracleID: "random-target-activated-mode", Name: "random-target-activated-mode",
+			Activated: []ActivatedAbility{{Label: "{T}: Choose one.", Cost: TapCost(),
+				Modes:  ChooseOne(Mode("Deal 1 damage to any target chosen at random.", ChosenAtRandom(TargetAny())), Mode("Draw a card.")),
+				Effect: func(*game.Game, *game.StackItem) error { return nil }}}})
 	})
 	expectRegisterPanic(t, "not exactly one undivided target", func() {
 		Register(Spec{OracleID: "random-target-two", Name: "random-target-two",

@@ -705,6 +705,9 @@ export function beginSpliceOnly(card: CardView, choices: CastChoices, modes?: nu
 // skipped (every other step keeps its own slot number), and the server
 // asks an opponent for it once the announcement arrives. A statement
 // made only of such clauses is an empty walk.
+//
+// #4051: so is a clause "chosen at random" (Goblin Test Pilot): the
+// server draws its target as the ability is activated.
 export function stepsFor(
   mode: TargetingMode,
   lt: LegalTargetsView | undefined,
@@ -717,7 +720,7 @@ export function stepsFor(
     return [{ mode, min: 1, max: 1, modeIndex, slot: 0, distinct: false }];
   }
   return list.flatMap((c, slot): TargetStep[] =>
-    c.chosen_by_opponent
+    c.chosen_by_opponent || c.at_random
       ? []
       : [
           {

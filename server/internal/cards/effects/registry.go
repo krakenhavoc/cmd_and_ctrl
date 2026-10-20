@@ -80,7 +80,8 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
-		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, false)
+		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, true)
+		checkActivatedAtRandom(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
 		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
 		// the Multifarious's "{X}: ... with mana value X". Still
@@ -1852,11 +1853,12 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 }
 
 // checkTargetAtRandom validates "target … chosen at random" (#1815,
-// game.TargetSpec.AtRandom): only a triggered ability's clause may
-// carry it (`allowed`), since only a trigger's targets are chosen by
-// the engine (CR 603.3d), and only on a clause that picks exactly one
-// target and divides nothing — the shape every printed card has, and
-// the only one the walk's draw honours.
+// game.TargetSpec.AtRandom): only a triggered ability's clause, or an
+// activated ability's own (#4051, checkActivatedAtRandom), may carry
+// it (`allowed`), since only those targets are drawn by the engine
+// (CR 603.3d; CR 602.2b / 601.2c), and only on a clause that picks
+// exactly one target and divides nothing — the shape every printed
+// card has, and the only one the draw honours.
 func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
@@ -1864,11 +1866,31 @@ func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool
 			continue
 		}
 		if !allowed {
-			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered ability's target is chosen by the engine (#1815)", name, owner, i))
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered or an activated ability's target is drawn by the engine (#1815, #4051)", name, owner, i))
 		}
 		if c.Min != 1 || c.Max != 1 || c.Divide != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d that is not exactly one undivided target", name, owner, i))
 		}
+	}
+}
+
+// checkActivatedAtRandom narrows a random clause on an activated
+// ability (#4051) to the one printed shape, Goblin Test Pilot's: the
+// ability's only clause, chosen by nobody else. The payload names its
+// other clauses before the draw is made, so a second clause could not
+// be judged against the random one (a relation, Distinct), and an
+// "of an opponent's choice" clause parks the announcement in a way the
+// draw's carry is not built for.
+func checkActivatedAtRandom(name string, spec *game.TargetSpec) {
+	random := false
+	for i := 0; i < spec.ClauseCount(); i++ {
+		random = random || spec.Clause(i).AtRandom
+	}
+	if !random {
+		return
+	}
+	if spec.ClauseCount() != 1 || spec.ChosenByOpponent {
+		panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on an activated ability with another clause — only a lone random clause is drawn at activation (#4051)", name))
 	}
 }
 

@@ -1284,6 +1284,13 @@ type ActivateAbilityParams struct {
 	// drawing new ones. See randomDiscardsLocked.
 	randomDiscards []uuid.UUID
 
+	// randomTargets is the draw this announcement made for its "target
+	// … chosen at random" clauses (#4051), carried the same way and for
+	// the same reason: unexported, so no payload may choose one, and set
+	// by the first run, so a re-made run aims at the same target. See
+	// announceRandomTargetsLocked.
+	randomTargets []TargetRef
+
 	// opponentPicks is CastSpellParams.opponentPicks for an activation
 	// (#2055): set only by a parked announcement's resume.
 	opponentPicks []opponentPick
@@ -1822,6 +1829,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		return err
 	}
 	params.Targets = oppTargets.targets
+	// #4051, CR 602.2b / 601.2c: a "target … chosen at random" clause is
+	// drawn here, as part of activating, from the clause's legal set; the
+	// payload names nothing for it. A re-made run reuses the first draw.
+	params.Targets, params.randomTargets, err = g.announceRandomTargetsLocked(SourceObject(playerID, source),
+		RandomDraw{Player: playerID, Source: cardID}, oppTargets.check, params.Targets, params.randomTargets)
+	if err != nil {
+		return err
+	}
 	for _, i := range xSteps {
 		if _, bad := xCountMismatch(steps[i], params.Targets, params.XValue); bad {
 			return ErrInvalidParam
@@ -2420,7 +2435,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2b / 115.3: the ability's targets were chosen as it was
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
-	// well as spells, so the activated path has to emit too.
+	// well as spells, so the activated path has to emit too. #4051:
+	// first the log line for a target the announcement drew at random,
+	// now that the ability it aims is on the stack.
+	g.emitAnnouncedRandomTargetsLocked(playerID, cardID, steps, params.randomTargets)
 	g.emitAnnouncedTargetsLocked(playerID, cardID, itemID, params.Targets)
 	// #758: the tap-another component's board half, paid HERE
 	// rather than in the payment block above and for the reason the

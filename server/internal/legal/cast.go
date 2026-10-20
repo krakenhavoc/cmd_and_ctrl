@@ -2247,10 +2247,18 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		// (the engine asks an opponent), so it adds no refs; it only
 		// keeps the prefixes some opponent could still complete
 		// (CR 601.2c), which is the engine's own gate.
-		if game.StepChosenByOpponent(steps[i]) {
+		// #4051: a "target … chosen at random" clause is not the
+		// controller's either. The engine draws it at announce, so the
+		// move names nothing for it and keeps only the prefixes it has
+		// something to draw from (CR 601.2c).
+		if game.StepChosenByOpponent(steps[i]) || game.StepChosenAtRandom(steps[i]) {
+			fillable := e.g.OpponentStepFillableForEffect
+			if game.StepChosenAtRandom(steps[i]) {
+				fillable = e.g.RandomStepFillableForEffect
+			}
 			kept := make([][]game.TargetRef, 0, len(out))
 			for _, prefix := range out {
-				if e.g.OpponentStepFillableForEffect(src, steps, i, prefix) {
+				if fillable(src, steps, i, prefix) {
 					kept = append(kept, prefix)
 				}
 			}
