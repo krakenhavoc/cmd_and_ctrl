@@ -356,6 +356,12 @@ type CardDef struct {
 	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
 	// through CatalogAbilityKey; see loyalty_limit.go.
 	LoyaltyTwiceEachTurn bool
+	// YourPlaneswalkersLoyaltyTwiceEachTurn is this permanent's printed
+	// "You may activate the loyalty abilities of planeswalkers you
+	// control twice each turn rather than only once" (CR 606.3, Oath of
+	// Teferi). Read from the battlefield through CatalogAbilityKey; see
+	// loyalty_limit.go.
+	YourPlaneswalkersLoyaltyTwiceEachTurn bool
 	// ActivateAsThoughHaste is this permanent's printed "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (CR 302.6, 609.4; Thousand-Year Elixir).
@@ -1020,6 +1026,10 @@ func init() {
 	CatalogLoyaltyTwiceEachTurn = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.LoyaltyTwiceEachTurn
+	}
+	CatalogYourPlaneswalkersLoyaltyTwiceEachTurn = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.YourPlaneswalkersLoyaltyTwiceEachTurn
 	}
 	CatalogActivateAsThoughHaste = func(key string) bool {
 		d := catalogDef(key)

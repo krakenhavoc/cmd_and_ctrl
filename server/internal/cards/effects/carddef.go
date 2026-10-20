@@ -277,6 +277,10 @@ func buildDef(spec Spec) *game.CardDef {
 		TargetingRestrictions:               spec.TargetingRestrictions,
 		ActivationRestrictions:              spec.ActivationRestrictions,
 		ActivationTimings:                   spec.ActivationTimings,
+
+		// Oath of Teferi (#4184), set apart so the block above keeps its
+		// alignment.
+		YourPlaneswalkersLoyaltyTwiceEachTurn: spec.YourPlaneswalkersLoyaltyTwiceEachTurn,
 	}
 	if spec.Battle != nil {
 		d.BattleDefense = spec.Battle.Defense

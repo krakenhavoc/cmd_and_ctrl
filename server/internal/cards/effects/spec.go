@@ -1193,6 +1193,16 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// YourPlaneswalkersLoyaltyTwiceEachTurn declares the printed static
+	// "You may activate the loyalty abilities of planeswalkers you
+	// control twice each turn rather than only once" (Oath of Teferi):
+	// LoyaltyTwiceEachTurn's limit of two for every planeswalker this
+	// permanent's controller controls, read live off the battlefield, so
+	// a walker that arrives later is covered and one that changes hands
+	// follows its new controller. Judged through CatalogAbilityKey.
+	// #4184.
+	YourPlaneswalkersLoyaltyTwiceEachTurn bool
+
 	// ActivateAsThoughHaste declares the printed static "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
