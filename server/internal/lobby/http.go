@@ -4485,15 +4485,20 @@ func secureCookies(c Config) bool {
 // secureCookies — prod (HTTPS since S12) gets it by default through
 // the https redirect-URI heuristic.
 func setSessionCookie(c Config, w http.ResponseWriter, tok string, exp time.Time) {
-	http.SetCookie(w, &http.Cookie{
+	ck := &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    tok,
 		Path:     "/",
 		Expires:  exp,
 		HttpOnly: true,
-		Secure:   secureCookies(c),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	// Secure unless local plain-http dev (secureCookies).
+	if !secureCookies(c) {
+		ck.Secure = false
+	}
+	http.SetCookie(w, ck)
 }
 
 // clearSessionCookie emits a Set-Cookie that evicts the browser's
@@ -4502,16 +4507,21 @@ func setSessionCookie(c Config, w http.ResponseWriter, tok string, exp time.Time
 // MaxAge. Secure mirrors setSessionCookie so the eviction targets
 // the same cookie variant the login flow set.
 func clearSessionCookie(c Config, w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
+	ck := &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   secureCookies(c),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	// Secure unless local plain-http dev (secureCookies).
+	if !secureCookies(c) {
+		ck.Secure = false
+	}
+	http.SetCookie(w, ck)
 }
 
 // httpStatusError is a lobby-local wrapper that carries an HTTP

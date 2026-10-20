@@ -190,7 +190,7 @@ function literalCopy(name: string): RegExp {
 
 // ---- Rule 4's document ----
 
-const mdCell = (s: string): string => s.replace(/\|/g, "\\|");
+const mdCell = (s: string): string => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 function nameCell(spec: LabelSpec): string {
   if (spec.type === "static") return `\`${spec.name}\``;
