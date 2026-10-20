@@ -20,12 +20,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	counters := func(g *game.Game, item *game.StackItem) error {
-		if err := SupportEffect(g, item); err != nil {
-			return err
-		}
-		return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
-	}
+	// The life gain waits for a prompt the counters ask (CR 608.2c, #4155).
+	counters := Do(
+		Instruction(func(ctx *Context) error { return SupportEffect(ctx.Game, ctx.Item) }),
+		GainLife{Amount: 2},
+	)
 	upToTwo := func() *game.TargetSpec {
 		return TargetCreature("up to two target creatures you control", YouControl()).WithCount(0, 2)
 	}

@@ -1,6 +1,6 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import "github.com/google/uuid"
 
 // Smite the Deathless — Instant {1}{R}:
 //
@@ -23,18 +23,33 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
+		// Each sentence is a step: the creature loses indestructible and is exiled
+		// if it would die after a prompt the damage asks (a CR 616 order; CR
+		// 608.2c, #4155). The target is read once, as the spell resolves.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				ctx.RecordStep(smiteTheDeathlessRecord, []uuid.UUID{id})
+				return DealDamage{Source: ctx.Source(), Target: id, Amount: 3}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ids := ctx.StepRecord(smiteTheDeathlessRecord).IDs; len(ids) > 0 {
+					return g2LosesIndestructibleUntilEOT(ctx, ids[0])
+				}
 				return nil
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := g2LosesIndestructibleUntilEOT(ctx, id); err != nil {
-				return err
-			}
-			return ExileIfItWouldDieThisTurn{Target: id}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				if ids := ctx.StepRecord(smiteTheDeathlessRecord).IDs; len(ids) > 0 {
+					return ExileIfItWouldDieThisTurn{Target: ids[0]}.Apply(ctx)
+				}
+				return nil
+			}),
+		),
 	})
 }
+
+// smiteTheDeathlessRecord is the creature that was dealt damage.
+const smiteTheDeathlessRecord = "smite-the-deathless/target"

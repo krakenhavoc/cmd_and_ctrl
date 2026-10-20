@@ -18,11 +18,17 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			return Scry{Player: controller, N: 2, Then: func(g *game.Game) error {
-				if err := g.DrawNForEffect(controller, 2); err != nil {
-					return err
-				}
-				return g.AddPlayerCounterByForEffect(controller, controller, game.CounterEnergy, 2)
+				return glimmerOfGeniusRest.Run(NewContext(g, item))
 			}}.Apply(ctx)
 		},
 	})
 }
+
+// glimmerOfGeniusRest is "draw two cards" and then the energy: the energy waits
+// for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+var glimmerOfGeniusRest = RegisterThenSteps("then-steps/glimmer-of-genius-rest",
+	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(ctx.Controller(), 2) }),
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.AddPlayerCounterByForEffect(ctx.Controller(), ctx.Controller(), game.CounterEnergy, 2)
+	}),
+)

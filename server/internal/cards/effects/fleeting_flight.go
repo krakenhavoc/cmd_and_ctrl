@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Fleeting Flight — Instant {W}:
 //
@@ -22,13 +18,27 @@ func init() {
 		Name:         "Fleeting Flight",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return thenShieldTheTarget(ctx, true, func(id uuid.UUID) error {
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
+		// Each sentence is a step: the keyword and the shield wait for a prompt
+		// the counter asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 				}
-				return GrantKeywordUntilEOT{Target: id, Keywords: []string{"flying"}, Label: "Fleeting Flight — flying"}.Apply(ctx)
-			})
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return GrantKeywordUntilEOT{Target: id, Keywords: []string{"flying"}, Label: "Fleeting Flight — flying"}.Apply(ctx)
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return PreventDamageFromSource{Protect: ShieldObject(id), CombatOnly: true}.Apply(ctx)
+				}
+				return nil
+			}),
+		),
 	})
 }

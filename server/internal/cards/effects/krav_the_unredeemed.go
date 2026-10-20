@@ -34,25 +34,44 @@ func init() {
 			Label:   "{B}, Sacrifice X creatures: Target player draws X cards and gains X life. Put X +1/+1 counters on Krav.",
 			Cost:    Plus(ManaCost("{B}"), SacrificeX("X creatures", Creature())),
 			Targets: TargetPlayer("target player"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				x := ctx.X()
-				if x <= 0 {
+			// The life, and then the counters, wait for the prompts before them (a
+			// dredge offer, a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					return kravEachTarget(ctx, func(t game.TargetRef, x int) error {
+						return DrawCards{Player: t.ID, N: x}.Apply(ctx)
+					})
+				}),
+				Instruction(func(ctx *Context) error {
+					return kravEachTarget(ctx, func(t game.TargetRef, x int) error {
+						return GainLife{Player: t.ID, Amount: x}.Apply(ctx)
+					})
+				}),
+				Instruction(func(ctx *Context) error {
+					if x := ctx.X(); x > 0 {
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
+					}
 					return nil
-				}
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind != game.TargetPlayer {
-						continue
-					}
-					if err := (DrawCards{Player: t.ID, N: x}).Apply(ctx); err != nil {
-						return err
-					}
-					if err := (GainLife{Player: t.ID, Amount: x}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
-			},
+				}),
+			),
 		}},
 	})
+}
+
+// kravEachTarget runs do on each legal player target, with X; it does nothing
+// when X is 0.
+func kravEachTarget(ctx *Context, do func(t game.TargetRef, x int) error) error {
+	x := ctx.X()
+	if x <= 0 {
+		return nil
+	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetPlayer {
+			continue
+		}
+		if err := do(t, x); err != nil {
+			return err
+		}
+	}
+	return nil
 }

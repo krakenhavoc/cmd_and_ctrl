@@ -31,10 +31,7 @@ func init() {
 							Question: "Ruin Grinder — discard your hand and draw seven cards?",
 							Draws:    7,
 							OnYes: func(c *Context) error {
-								if _, err := discardWholeHand(c.Game, player); err != nil {
-									return err
-								}
-								return c.Game.DrawNForEffect(player, 7)
+								return ruinGrinderWheel.RunAt(c, seatIndexOf(c.Game, player))
 							},
 						}).Apply(ctx); err != nil {
 							return err
@@ -48,3 +45,15 @@ func init() {
 		},
 	})
 }
+
+// ruinGrinderWheel is one player's "discard your hand and draw seven cards".
+// Every player's question is open at once, so the steps find their player
+// from the seat RunAt was given (ctx.Occurrence()). The draw waits for a
+// prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+var ruinGrinderWheel = RegisterThenSteps("then-steps/ruin-grinder-wheel",
+	Instruction(func(ctx *Context) error {
+		_, err := discardWholeHand(ctx.Game, seatAtOccurrence(ctx))
+		return err
+	}),
+	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(seatAtOccurrence(ctx), 7) }),
+)

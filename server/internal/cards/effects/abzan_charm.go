@@ -40,22 +40,34 @@ func init() {
 			Mode("Distribute two +1/+1 counters among one or two target creatures.",
 				TargetCreature("one or two target creatures").WithCount(1, 2).Dividing(Divide(2))),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			switch {
-			case ctx.HasMode(0):
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+		// Each step is guarded by its mode; the life loss waits for a prompt the
+		// draw asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				item := ctx.Item
+				if !ctx.HasMode(0) || len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil
 				}
 				return ExileTarget{Target: item.Targets[0].ID}.Apply(ctx)
-			case ctx.HasMode(1):
-				if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
-					return err
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
+				}
+				return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(1) {
+					return nil
 				}
 				return GainLife{Player: ctx.Controller(), Amount: -2}.Apply(ctx)
-			case ctx.HasMode(2):
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(2) {
+					return nil
+				}
 				return PutDividedCounters(ctx, game.CounterPlusOne)
-			}
-			return nil
-		},
+			}),
+		),
 	})
 }

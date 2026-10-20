@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -57,16 +59,52 @@ func snortAsk(ctx *Context, players []uuid.UUID, discarded []uuid.UUID) error {
 		Question: "Snort — discard your hand and draw five cards?",
 		Draws:    5,
 		OnYes: func(c *Context) error {
-			if _, err := discardWholeHand(c.Game, player); err != nil {
-				return err
-			}
-			if err := c.Game.DrawNForEffect(player, 5); err != nil {
-				return err
-			}
-			return snortAsk(c, rest, append(discarded, player))
+			c.RecordStep(snortPlayerRecord, []uuid.UUID{player})
+			c.RecordStep(snortRestRecord, rest)
+			c.RecordStep(snortDiscardedRecord, append(slices.Clone(discarded), player))
+			return snortWheel.Run(c)
 		},
 		OnNo: func(c *Context) error {
 			return snortAsk(c, rest, discarded)
 		},
 	}.Apply(ctx)
+}
+
+// What the answer hands the steps behind it: the player who said yes, the
+// players still to ask, and who has discarded so far (#4163). The next player
+// is asked from the last step, so only one answer is in flight.
+const (
+	snortPlayerRecord    = "snort/player"
+	snortRestRecord      = "snort/rest"
+	snortDiscardedRecord = "snort/discarded"
+)
+
+// snortWheel is one player's "discard your hand, then draw five cards" and
+// the question to the next player: the draw waits for a prompt a discard asks
+// (a replacement offer such as Library of Leng's; CR 608.2c, #4155), and the next question waits for the draw's.
+// It asks again, so it is registered in init rather than a package-level
+// initialiser (Go would see an initialisation cycle).
+var snortWheel ThenSteps
+
+func init() {
+	snortWheel = RegisterThenSteps("then-steps/snort-wheel",
+		Instruction(func(ctx *Context) error {
+			ids := ctx.StepRecord(snortPlayerRecord).IDs
+			if len(ids) == 0 {
+				return nil
+			}
+			_, err := discardWholeHand(ctx.Game, ids[0])
+			return err
+		}),
+		Instruction(func(ctx *Context) error {
+			ids := ctx.StepRecord(snortPlayerRecord).IDs
+			if len(ids) == 0 {
+				return nil
+			}
+			return ctx.Game.DrawNForEffect(ids[0], 5)
+		}),
+		Instruction(func(ctx *Context) error {
+			return snortAsk(ctx, ctx.StepRecord(snortRestRecord).IDs, ctx.StepRecord(snortDiscardedRecord).IDs)
+		}),
+	)
 }

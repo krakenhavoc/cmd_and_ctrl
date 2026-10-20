@@ -81,14 +81,15 @@ func attackDrainTrigger(cardName string) game.TriggeredAbility {
 			item.Params.Player = b17DefendingPlayer(g, ev)
 			return item
 		},
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			if defender := item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(g, defender) {
-				if err := (GainLife{Player: defender, Amount: -1}).Apply(ctx); err != nil {
-					return err
+		// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+		Effect: Do(
+			Instruction(func(ctx *Context) error {
+				if defender := ctx.Item.Params.Player; defender != uuid.Nil && defendingPlayerStillIn(ctx.Game, defender) {
+					return GainLife{Player: defender, Amount: -1}.Apply(ctx)
 				}
-			}
-			return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-		},
+				return nil
+			}),
+			GainLife{Amount: 1},
+		),
 	}
 }

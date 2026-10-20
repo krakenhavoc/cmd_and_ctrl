@@ -105,6 +105,9 @@ func TestSternLessonCreatesATappedPowerstone(t *testing.T) {
 	me := g.Seats[0]
 	castCatalogSpell(t, g, "Stern Lesson", "Instant", sternLessonOracle, nil)
 	passPriorityAroundTable(t, g)
+	// The Powerstone follows the discard (CR 608.2c, #4155): answer it first.
+	answerChooseCards(t, g, me.ID, me.Hand.Cards[0].InstanceID)
+	g.SettleResolution()
 
 	found := false
 	for _, c := range g.Battlefield.Cards {

@@ -89,12 +89,8 @@ func gluntchCounters(ctx *Context) error {
 		Zone: game.ZoneBattlefield,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			next := NewContext(g, item)
-			for _, id := range picked {
-				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(next.asGroupMember()); err != nil {
-					return err
-				}
-			}
-			return gluntchSecondPlayer(next)
+			next.RecordStep(gluntchPickedRecord, picked)
+			return gluntchAfterPick.Run(next)
 		},
 	})
 	if queued != uuid.Nil {
@@ -117,18 +113,48 @@ func gluntchSecondPlayer(ctx *Context) error {
 }
 
 // gluntchDraw draws for the second player and asks for the third.
-func gluntchDraw(ctx *Context) error {
-	if second := ctx.ChosenPlayer(); second != uuid.Nil {
-		if err := (DrawCards{Player: second, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return ChoosePlayer{
-		Among:    Players,
-		Except:   ctx.ChosenPlayers(),
-		Question: "Gluntch, the Bestower — choose a third player to create two Treasure tokens",
-		Then:     gluntchTreasure,
-	}.Apply(ctx)
+func gluntchDraw(ctx *Context) error { return gluntchDrawThenThird.Run(ctx) }
+
+// gluntchPickedRecord is the creature that got the counters.
+const gluntchPickedRecord = "gluntch-the-bestower/picked"
+
+// gluntchAfterPick is the counters and then the second player's question:
+// the question waits for a prompt the counters ask (a CR 616 order; CR
+// 608.2c, #4155). It asks again, so it is registered in init.
+var gluntchAfterPick ThenSteps
+
+// gluntchDrawThenThird is the second player's draw and then the third
+// player's question, which waits for a prompt the draw asks (a dredge offer).
+var gluntchDrawThenThird ThenSteps
+
+func init() {
+	gluntchAfterPick = RegisterThenSteps("then-steps/gluntch-the-bestower-counters",
+		Instruction(func(ctx *Context) error {
+			for _, id := range ctx.StepRecord(gluntchPickedRecord).IDs {
+				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 2}).Apply(ctx.asGroupMember()); err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+		Instruction(gluntchSecondPlayer),
+	)
+	gluntchDrawThenThird = RegisterThenSteps("then-steps/gluntch-the-bestower-draw",
+		Instruction(func(ctx *Context) error {
+			if second := ctx.ChosenPlayer(); second != uuid.Nil {
+				return DrawCards{Player: second, N: 1}.Apply(ctx)
+			}
+			return nil
+		}),
+		Instruction(func(ctx *Context) error {
+			return ChoosePlayer{
+				Among:    Players,
+				Except:   ctx.ChosenPlayers(),
+				Question: "Gluntch, the Bestower — choose a third player to create two Treasure tokens",
+				Then:     gluntchTreasure,
+			}.Apply(ctx)
+		}),
+	)
 }
 
 // gluntchTreasure is the last clause.

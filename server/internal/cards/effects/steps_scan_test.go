@@ -399,6 +399,21 @@ type specAt struct {
 
 func specsIn(f *ast.File, fset *token.FileSet) []specAt {
 	var out []specAt
+	// A row may name itself by a string constant of the file (`const name =
+	// "Summon: Ixion"`, then `Name: name`).
+	consts := map[string]string{}
+	ast.Inspect(f, func(n ast.Node) bool {
+		if vs, ok := n.(*ast.ValueSpec); ok && len(vs.Names) == len(vs.Values) {
+			for i, id := range vs.Names {
+				if lit, ok := vs.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					if v, err := strconv.Unquote(lit.Value); err == nil {
+						consts[id.Name] = v
+					}
+				}
+			}
+		}
+		return true
+	})
 	ast.Inspect(f, func(n ast.Node) bool {
 		cl, ok := n.(*ast.CompositeLit)
 		if !ok {
@@ -411,11 +426,25 @@ func specsIn(f *ast.File, fset *token.FileSet) []specAt {
 				continue
 			}
 			key, _ := kv.Key.(*ast.Ident)
-			lit, _ := kv.Value.(*ast.BasicLit)
-			if key == nil || lit == nil || lit.Kind != token.STRING {
+			if key == nil {
 				continue
 			}
-			v, _ := strconv.Unquote(lit.Value)
+			var v string
+			switch val := kv.Value.(type) {
+			case *ast.BasicLit:
+				if val.Kind != token.STRING {
+					continue
+				}
+				v, _ = strconv.Unquote(val.Value)
+			case *ast.Ident:
+				c, ok := consts[val.Name]
+				if !ok || key.Name != "Name" {
+					continue
+				}
+				v = c
+			default:
+				continue
+			}
 			switch key.Name {
 			case "OracleID":
 				s.oracle = v
@@ -656,6 +685,19 @@ var stepsConverted = setOf(
 	"Phlage, Titan of Fire's Fury", "Sorin the Mirthless", "Derelict Attic // Widow's Walk",
 	"Rejoin the Fight", "Meat Locker // Drowned Diner", "Dr. Eggman", "Contaminated Drink",
 	"Twisted Sewer-Witch",
+	// Batch 4.
+	"Birthday Escape", "Revitalize", "Abzan Charm", "Ardbert, Warrior of Darkness", "Summon: Magus Sisters",
+	"Summon: Ixion", "Change of Fortune", "Sauron, the Dark Lord", "Ox of Agonas", "Ogre-Head Helm",
+	"Ajani Unrelenting", "Behold the Beyond", "Umaro, Raging Yeti", "Collective Defiance", "Snort",
+	"Ruin Grinder", "Sail into the West", "Sycorax Commander", "Ill-Gotten Gains", "Will of the Sultai",
+	"Gluntch, the Bestower", "Dawn of a New Age", "The Gitrog, Ravenous Ride", "Tivit, Seller of Secrets",
+	"Locke, Treasure Hunter", "Summon: Kujata", "Glimmer of Genius", "Illusion of Choice",
+	"Brutal Hordechief", "Dromoka's Command", "Mog, Moogle Warrior", "Starving Revenant",
+	"Círdan the Shipwright", "Trap the Trespassers", "Fleeting Flight", "Let's Play a Game",
+	"Emissary Green", "Peema Trailblazer", "Sorin, Grim Nemesis", "Hunted by The Family",
+	"Smite the Deathless", "Estinien Varlineau", "Krav, the Unredeemed", "Depopulate",
+	"Pendant of Prosperity", "Bloatfly Swarm", "Agent of the Shadow Thieves", "Shadow, Mysterious Assassin",
+	"Stern Lesson", "Crushing Disappointment",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -710,6 +752,18 @@ var stepsSkipped = map[string]string{
 	"Awaken the Erstwhile":       "carried: each player's Zombies are the cards they discarded (#4163)",
 	"Decaying Time Loop":         "carried: the number of cards discarded is the number drawn (#4163)",
 	"Lagomos, Hand of Hatred":    "carried: the delayed sacrifice names the token just made (#4163)",
+	// Batch 4.
+	"Fandaniel, Telophoroi Ascian": "exclusive arms: the sacrifice returns, or the life is lost",
+	"Selvala's Stampede":           "exclusive arms: no wild votes returns at once, else the reveal's Then puts the free permanents",
+	"Caustic Bronco":               "exclusive arms: each opponent loses the life, or you do",
+	"Break Down the Door":          "exclusive arms: manifest dread, or the exile",
+	"Yuna's Whistle":               "no prompt: the reflexive trigger goes on the stack after the spell finishes (CR 603.12)",
+	"Tamiyo, Collector of Tales":   "no prompt: a reveal asks nothing, and the cards it names are the next step's input",
+	"Majestic Genesis":             "no prompt: a reveal asks nothing, and the cards it names are the put's input",
+	"Coercive Portal":              "exclusive arms: the draw, or the sacrifice and the destruction",
+	"Diviner's Portent":            "exclusive arms: the draw, or the scry's Then",
+	"Tyrant's Choice":              "exclusive arms: the sacrifices, or the life loss",
+	"Ultimate Magic: Meteor":       "exclusive arms: the choice loop returns when it asks, and the destruction runs once it has none left (the damage-then-choice order is steps)",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -69,15 +71,16 @@ func lockeMug(g *game.Game, item *game.StackItem) error {
 			seats = append(seats, p.ID)
 		}
 	}
-	var milled []uuid.UUID
 	var step func(g *game.Game, i int) error
 	step = func(g *game.Game, i int) error {
 		if i == len(seats) {
-			return lockeMugPayoff(g, item, milled)
+			return lockeMugPayoff.Run(NewContext(g, item))
 		}
 		// The "moved" form: a card Rest in Peace exiled instead of milling
 		// is still one of "those cards" (CR 701.17c).
 		return g.MillToZoneThenMovedForEffect(seats[i], 1, game.ZoneGraveyard, func(g *game.Game, moved []uuid.UUID) error {
+			ctx := NewContext(g, item)
+			milled := slices.Clone(ctx.StepRecord(lockeMilledRecord).IDs)
 			for _, id := range moved {
 				// Graveyard or exile only: a commander its owner moved
 				// to the command zone is neither a land to count nor a
@@ -86,37 +89,44 @@ func lockeMug(g *game.Game, item *game.StackItem) error {
 					milled = append(milled, id)
 				}
 			}
+			ctx.RecordStep(lockeMilledRecord, milled)
 			return step(g, i+1)
 		})
 	}
 	return step(g, 0)
 }
 
-// lockeMugPayoff is the rest of Mug, over the cards that were milled.
-func lockeMugPayoff(g *game.Game, item *game.StackItem, milled []uuid.UUID) error {
-	ctx := NewContext(g, item)
-	var cards []game.Card
-	land := false
-	for _, id := range milled {
-		c, ok := g.LookupCardForEffect(id)
-		if !ok {
-			continue
+// lockeMilledRecord is the cards milled so far, for the payoff (#4163).
+const lockeMilledRecord = "locke-treasure-hunter/milled"
+
+// lockeMugPayoff is the rest of Mug, over the cards that were milled: the
+// Treasure for a land among them and then the cast permission, which waits
+// for a prompt the Treasure's creation asks (a CR 616 order on tokens; CR
+// 608.2c, #4155).
+var lockeMugPayoff = RegisterThenSteps("then-steps/locke-treasure-hunter-payoff",
+	Instruction(func(ctx *Context) error {
+		for _, id := range ctx.StepRecord(lockeMilledRecord).IDs {
+			if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.IsLand() {
+				return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: 1}.Apply(ctx)
+			}
 		}
-		cards = append(cards, c)
-		land = land || c.IsLand()
-	}
-	if land {
-		if err := (CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-			return err
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		var cards []game.Card
+		for _, id := range ctx.StepRecord(lockeMilledRecord).IDs {
+			if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+				cards = append(cards, c)
+			}
 		}
-	}
-	g.GrantCastPermissionAcrossZonesForEffect(game.CastPermission{
-		Player:     item.Controller,
-		CastOnly:   true,
-		CastsLeft:  1,
-		Source:     item.SourceCardID,
-		SourceName: "Locke, Treasure Hunter",
-		Label:      "Locke — cast a spell from among the milled cards",
-	}, cards)
-	return nil
-}
+		ctx.Game.GrantCastPermissionAcrossZonesForEffect(game.CastPermission{
+			Player:     ctx.Controller(),
+			CastOnly:   true,
+			CastsLeft:  1,
+			Source:     ctx.Item.SourceCardID,
+			SourceName: "Locke, Treasure Hunter",
+			Label:      "Locke — cast a spell from among the milled cards",
+		}, cards)
+		return nil
+	}),
+)

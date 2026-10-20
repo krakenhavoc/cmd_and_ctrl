@@ -48,12 +48,20 @@ func ogreHeadHelmMaySacrifice(g *game.Game, item *game.StackItem) error {
 					if !sacrificed {
 						return nil
 					}
-					if _, err := discardWholeHand(ctx.Game, ctx.Controller()); err != nil {
-						return err
-					}
-					return ctx.Game.DrawNForEffect(ctx.Controller(), 3)
+					return ogreHeadHelmWheel.Run(ctx)
 				},
 			}.Apply(ctx)
 		},
 	}.Apply(ctx)
 }
+
+// ogreHeadHelmWheel is "discard your hand, then draw three cards" after the
+// sacrifice: the draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c,
+// #4155).
+var ogreHeadHelmWheel = RegisterThenSteps("then-steps/ogre-head-helm-wheel",
+	Instruction(func(ctx *Context) error {
+		_, err := discardWholeHand(ctx.Game, ctx.Controller())
+		return err
+	}),
+	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(ctx.Controller(), 3) }),
+)

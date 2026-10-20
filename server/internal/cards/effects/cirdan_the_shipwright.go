@@ -52,18 +52,48 @@ func init() {
 
 var cirdanVoted = VoteResultThen("vote/cirdan-the-shipwright", func(ctx *Context, r game.VoteResult) error {
 	received := VotesReceived(r)
-	var unvoted []uuid.UUID
+	var voted, unvoted []uuid.UUID
+	var counts []int
 	for _, p := range apnapLivingSeats(ctx.Game) {
 		if n := received[p]; n > 0 {
-			if err := ctx.Game.DrawNForEffect(p, n); err != nil {
-				return err
-			}
+			voted = append(voted, p)
+			counts = append(counts, n)
 			continue
 		}
 		unvoted = append(unvoted, p)
 	}
-	return cirdanAskToPut(ctx.Game, ctx.Source(), unvoted, nil)
+	ctx.RecordStep(cirdanVotedRecord, voted, counts...)
+	ctx.RecordStep(cirdanUnvotedRecord, unvoted)
+	return cirdanDrawThenAsk.Run(ctx)
 })
+
+// What the vote hands the steps behind it: who received votes and how many,
+// and who received none (#4163).
+const (
+	cirdanVotedRecord   = "cirdan-the-shipwright/voted"
+	cirdanUnvotedRecord = "cirdan-the-shipwright/unvoted"
+)
+
+// cirdanDrawThenAsk is the draws for the players who received votes and then
+// the question to the ones who received none: the question waits for a
+// prompt a draw asks (a dredge offer; CR 608.2c, #4155).
+var cirdanDrawThenAsk = RegisterThenSteps("then-steps/cirdan-the-shipwright-draws",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(cirdanVotedRecord)
+		for i, p := range r.IDs {
+			if i >= len(r.Ns) {
+				break
+			}
+			if err := ctx.Game.DrawNForEffect(p, r.Ns[i]); err != nil {
+				return err
+			}
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		return cirdanAskToPut(ctx.Game, ctx.Source(), ctx.StepRecord(cirdanUnvotedRecord).IDs, nil)
+	}),
+)
 
 // cirdanAskToPut asks the first player in `players` which permanent card
 // from their hand they will put onto the battlefield, if any, and the

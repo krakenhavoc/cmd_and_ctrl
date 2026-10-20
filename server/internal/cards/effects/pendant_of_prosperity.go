@@ -49,20 +49,22 @@ func init() {
 				"This artifact's owner draws a card, then that player may put a land card from their hand onto the battlefield.",
 			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Purpose: game.Purpose{Answers: game.AnswerValue},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				owner := item.Controller
-				if c, ok := g.LookupCardForEffect(item.SourceCardID); ok && c.Owner != uuid.Nil {
-					owner = c.Owner
-				}
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				put := MayPutALandFromHand("Pendant of Prosperity")
-				put.Player = item.Controller
-				put.Then = pendantOwnersHalf(owner, item.SourceCardID)
-				return put.Apply(ctx)
-			},
+			// The land prompt waits for a prompt the draw asks (a dredge offer; CR
+			// 608.2c, #4155).
+			Effect: Do(
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					owner := item.Controller
+					if c, ok := ctx.Game.LookupCardForEffect(item.SourceCardID); ok && c.Owner != uuid.Nil {
+						owner = c.Owner
+					}
+					put := MayPutALandFromHand("Pendant of Prosperity")
+					put.Player = item.Controller
+					put.Then = pendantOwnersHalf(owner, item)
+					return put.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }
@@ -70,17 +72,36 @@ func init() {
 // pendantOwnersHalf is the ability's second sentence, run once the
 // controller has answered their land prompt: the owner draws, then may
 // put a land. It captures only scalars, on the continuation contract.
-func pendantOwnersHalf(owner, source uuid.UUID) func(*game.Game, PutFromHandResult) error {
+func pendantOwnersHalf(owner uuid.UUID, item *game.StackItem) func(*game.Game, PutFromHandResult) error {
 	return func(g *game.Game, _ PutFromHandResult) error {
 		if p := g.PlayerByIDForEffect(owner); p == nil || p.Eliminated {
 			return nil
 		}
-		ctx := NewContext(g, &game.StackItem{Controller: owner, SourceCardID: source})
-		if err := (DrawCards{Player: owner, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		put := MayPutALandFromHand("Pendant of Prosperity")
-		put.Player = owner
-		return put.Apply(ctx)
+		ctx := NewContext(g, item)
+		ctx.RecordStep(pendantOwnerRecord, []uuid.UUID{owner})
+		return pendantOwnersDrawThenPut.Run(ctx)
 	}
 }
+
+// pendantOwnerRecord is the artifact's owner.
+const pendantOwnerRecord = "pendant-of-prosperity/owner"
+
+// pendantOwnersDrawThenPut is the owner's draw and then their land prompt: the
+// prompt waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var pendantOwnersDrawThenPut = RegisterThenSteps("then-steps/pendant-of-prosperity-owner",
+	Instruction(func(ctx *Context) error {
+		if ids := ctx.StepRecord(pendantOwnerRecord).IDs; len(ids) > 0 {
+			return DrawCards{Player: ids[0], N: 1}.Apply(ctx)
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		ids := ctx.StepRecord(pendantOwnerRecord).IDs
+		if len(ids) == 0 {
+			return nil
+		}
+		put := MayPutALandFromHand("Pendant of Prosperity")
+		put.Player = ids[0]
+		return put.Apply(ctx)
+	}),
+)

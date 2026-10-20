@@ -37,30 +37,54 @@ func init() {
 	})
 }
 
+// ardbertCountersAndKeyword is "put a +1/+1 counter on each legendary
+// creature you control. They gain <keyword> until end of turn": the keyword
+// is the next instruction, so it waits for a prompt the counters ask (a CR
+// 616 order; CR 608.2c, #4155). The set is read once, as the trigger
+// resolves, and the keyword goes to the same creatures through the step
+// record (#4163).
 func ardbertCountersAndKeyword(keyword string) Effect {
-	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
+	const record = "ardbert/legendary-creatures"
+	legends := func(ctx *Context) []uuid.UUID {
 		var ids []uuid.UUID
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller == item.Controller && c.IsCreature() && c.IsLegendary() {
+		for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+			if c.Controller == ctx.Item.Controller && c.IsCreature() && c.IsLegendary() {
 				ids = append(ids, c.InstanceID)
 			}
 		}
-		for _, id := range ids {
-			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-				continue
-			}
-			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
-				return err
-			}
-			if err := (GrantKeywordUntilEOT{
-				Target:   id,
-				Keywords: []string{keyword},
-				Label:    "Ardbert, Warrior of Darkness — " + keyword,
-			}).Apply(ctx.asGroupMember()); err != nil {
-				return err
-			}
-		}
-		return nil
+		ctx.RecordStep(record, ids)
+		return ids
 	}
+	onBattlefield := func(ctx *Context, id uuid.UUID) bool {
+		z := ctx.Game.FindCardZoneForEffect(id)
+		return z != nil && z.Kind == game.ZoneBattlefield
+	}
+	return Do(
+		Instruction(func(ctx *Context) error {
+			for _, id := range legends(ctx) {
+				if !onBattlefield(ctx, id) {
+					continue
+				}
+				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+		Instruction(func(ctx *Context) error {
+			for _, id := range ctx.StepRecord(record).IDs {
+				if !onBattlefield(ctx, id) {
+					continue
+				}
+				if err := (GrantKeywordUntilEOT{
+					Target:   id,
+					Keywords: []string{keyword},
+					Label:    "Ardbert, Warrior of Darkness — " + keyword,
+				}).Apply(ctx.asGroupMember()); err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
+	)
 }

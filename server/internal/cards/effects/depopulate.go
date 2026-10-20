@@ -31,20 +31,25 @@ func init() {
 		Name:         "Depopulate",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			drawers := map[uuid.UUID]bool{}
-			for _, c := range MatchingBattlefield(ctx, And(Creature(), Multicolored())) {
-				drawers[c.Controller] = true
-			}
-			for _, p := range ctx.Game.Seats {
-				if p == nil || !drawers[p.ID] {
-					continue
+		// The destruction waits for the prompts the draws ask (a dredge offer; CR
+		// 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				drawers := map[uuid.UUID]bool{}
+				for _, c := range MatchingBattlefield(ctx, And(Creature(), Multicolored())) {
+					drawers[c.Controller] = true
 				}
-				if err := (DrawCards{Player: p.ID, N: 1}).Apply(ctx); err != nil {
-					return err
+				for _, p := range ctx.Game.Seats {
+					if p == nil || !drawers[p.ID] {
+						continue
+					}
+					if err := (DrawCards{Player: p.ID, N: 1}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return DestroyAllMatching{Match: Creature()}.Apply(ctx)
-		},
+				return nil
+			}),
+			DestroyAllMatching{Match: Creature()},
+		),
 	})
 }

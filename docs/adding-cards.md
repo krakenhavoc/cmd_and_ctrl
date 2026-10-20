@@ -4056,7 +4056,16 @@ sacrificed). A chain that asks the next player from its last step (Braids,
 Arisen Nightmare, Court of Ambition) refers to itself, so register it in
 the card's `init` instead of a package-level initialiser, which Go would
 reject as an initialisation cycle. The key is an on-disk identity: append
-it to the ledger with `-update-effect-keys` and never rename it.
+it to the ledger with `-update-effect-keys` and never rename it. `x.Run(ctx)`
+works from any closure that runs while a resolution is open, also one a
+shared wrapper calls and that is not a `Do` itself (Agent of the Shadow
+Thieves, behind the Background wrapper). When several players' answers are
+open side by side ("each player may discard their hand and draw seven
+cards"), call `x.RunAt(ctx, seatIndexOf(g, player))` and read the player in
+the steps with `seatAtOccurrence(ctx)`: the seat survives a park, where a
+record filed under one key would be overwritten by the next answer (Ruin
+Grinder, Sail into the West, Sycorax Commander, whose count is filed under a
+key that names the player).
 
 Which bodies still run whole is a scan, not a guess (#4155):
 `TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written

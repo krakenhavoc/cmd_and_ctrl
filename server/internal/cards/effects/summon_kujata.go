@@ -77,22 +77,9 @@ func init() {
 func summonKujataFire(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	finish := func(g *game.Game, discarded []uuid.UUID) error {
-		if err := g.DrawNForEffect(controller, 2); err != nil {
-			return err
-		}
-		if len(discarded) == 0 {
-			return nil
-		}
-		card, ok := g.LookupCardForEffect(discarded[0])
-		if !ok {
-			return nil
-		}
-		return ReflexiveTrigger{
-			Label:  "Summon: Kujata — damage to each opponent equal to the discarded card's mana value",
-			Cards:  discarded,
-			Body:   summonKujataFireBody,
-			Params: game.EffectParams{Amount: card.ManaValue()},
-		}.Apply(NewContext(g, item))
+		ctx := NewContext(g, item)
+		ctx.RecordStep(summonKujataRecord, discarded)
+		return summonKujataDrawThenDamage.Run(ctx)
 	}
 	if p := g.PlayerByIDForEffect(controller); p == nil || p.Hand.Size() == 0 {
 		return finish(g, nil)
@@ -125,3 +112,29 @@ func summonKujataFireEffect(g *game.Game, item *game.StackItem, p game.EffectPar
 		return nil
 	})
 }
+
+// summonKujataRecord is the card discarded, if there was one.
+const summonKujataRecord = "summon-kujata/discarded"
+
+// summonKujataDrawThenDamage is "draw two cards" and then the damage trigger
+// for the discarded card's mana value: the trigger waits for a prompt the draw
+// asks (a dredge offer; CR 608.2c, #4155).
+var summonKujataDrawThenDamage = RegisterThenSteps("then-steps/summon-kujata-fire",
+	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(ctx.Controller(), 2) }),
+	Instruction(func(ctx *Context) error {
+		discarded := ctx.StepRecord(summonKujataRecord).IDs
+		if len(discarded) == 0 {
+			return nil
+		}
+		card, ok := ctx.Game.LookupCardForEffect(discarded[0])
+		if !ok {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label:  "Summon: Kujata — damage to each opponent equal to the discarded card's mana value",
+			Cards:  discarded,
+			Body:   summonKujataFireBody,
+			Params: game.EffectParams{Amount: card.ManaValue()},
+		}.Apply(ctx)
+	}),
+)
