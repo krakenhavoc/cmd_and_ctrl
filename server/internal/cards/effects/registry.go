@@ -519,6 +519,10 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// #4185: GainLife builds the rider the same way.
+		if ma.GainLife < 0 || (ma.GainLife > 0 && (ma.Rider != nil || ma.PainToYou > 0)) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife must be positive and replaces Rider and PainToYou — set one", spec.Name, i))
+		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
 		if ma.ProducedAmount != nil && ma.ProducedFunc != nil {
@@ -528,10 +532,6 @@ func Register(spec Spec) {
 		// cost that moves the source is not modelled.
 		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)", spec.Name, i))
-		}
-		// #3845: zero is "no mill component".
-		if ma.Cost.Mill < 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative mill cost %d", spec.Name, i, ma.Cost.Mill))
 		}
 		// ADR 0129 §5: zero is "no energy component".
 		if ma.Cost.Energy < 0 {

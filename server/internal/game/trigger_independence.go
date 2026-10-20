@@ -1625,7 +1625,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"FlashWithCleanupSacrifice": defFieldInert, "CastTimeValues": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,

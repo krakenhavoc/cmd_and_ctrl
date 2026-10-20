@@ -11,6 +11,8 @@ package effects
 // the pool, and goes through the ordinary life-change path so every
 // "whenever you gain life" trigger (Archangel of Thune, Sanguine
 // Bond) sees it. Not a cost: the ability is activatable regardless.
+// Declared as GainLife, so the auto-tapper plans it like any other
+// rock (#4185).
 //
 // No simplification.
 func init() {
@@ -22,7 +24,7 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",
 			Label:    "Add {C}. You gain 1 life",
-			Rider:    b12GainLifeRider(1),
+			GainLife: 1,
 		}},
 	})
 }

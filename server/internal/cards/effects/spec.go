@@ -1193,6 +1193,16 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// YourPlaneswalkersLoyaltyTwiceEachTurn declares the printed static
+	// "You may activate the loyalty abilities of planeswalkers you
+	// control twice each turn rather than only once" (Oath of Teferi):
+	// LoyaltyTwiceEachTurn's limit of two for every planeswalker this
+	// permanent's controller controls, read live off the battlefield, so
+	// a walker that arrives later is covered and one that changes hands
+	// follows its new controller. Judged through CatalogAbilityKey.
+	// #4184.
+	YourPlaneswalkersLoyaltyTwiceEachTurn bool
+
 	// ActivateAsThoughHaste declares the printed static "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
@@ -2095,6 +2105,17 @@ type ManaAbility struct {
 	// both; Register refuses the pair.
 	PainToYou int
 
+	// GainLife is the other rider declared as data: "You gain N life"
+	// after the "Add …" clause (The Great Henge, Pristine Talisman).
+	// Register builds the Rider from it with GainLifeRider(n), and the
+	// built ability carries the number
+	// (game.ManaAbilityShape.RiderSelfLifeGain) so the auto-tapper
+	// plans the source and the move list counts its mana (#4185): a
+	// mana ability that also gains life is still a mana ability
+	// (CR 605.1a). Set this, PainToYou or Rider, never two of them;
+	// Register refuses the pair.
+	GainLife int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —
@@ -2366,16 +2387,6 @@ type ManaAbilityCost struct {
 	// mana ability (CR 605.1a). The auto-tapper never pays it on its
 	// own; the player activates the row.
 	Exert bool
-
-	// Mill is "Mill N cards" (#3845, CR 701.17a) — Millikin's "{T},
-	// Mill a card: Add {C}". The component AbilityCost.Mill carries,
-	// paid last through the ordinary mill so replacements apply. A
-	// library of fewer than N cards can't pay it (CR 701.17b), so the
-	// row is not offered then. The auto-tapper never pays it on its own;
-	// the player activates the row. A mana ability that TARGETS is not
-	// a mana ability (CR 605.1a) and declares the cost on Activated
-	// with MillCardsCost instead (The Warring Triad).
-	Mill int
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

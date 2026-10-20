@@ -3193,8 +3193,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// #2392: the declared rider — a painland's "This land deals 1
 		// damage to you" — after the mana and before the triggered mana
 		// abilities, where ActivateManaAbility runs it. The picker only
-		// accepts a rider that declares its damage (RiderSelfDamage), so
-		// this is never an opaque closure the planner could not price.
+		// accepts a rider that declares its damage (RiderSelfDamage) or
+		// the life it gains (RiderSelfLifeGain, #4185), so this is never
+		// an opaque closure the planner could not price.
 		// Any state-based action it causes is checked by the caller,
 		// which runs the state checks before anyone next gets priority.
 		if ab.Rider != nil {
@@ -7833,11 +7834,6 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := EnergyShortfall(p, ab.EnergyCost); err != nil {
 		return err
 	}
-	// #3845, CR 701.17b / 118.3: "Mill a card" (Millikin) can't be
-	// paid from an empty library; refused with the rest, before a tap.
-	if err := g.MillCostShortfall(playerID, ab.MillCost); err != nil {
-		return err
-	}
 	// #789: the counter components, validated by the SAME functions
 	// the CR 602 activated path uses, because it is the same
 	// component — a Vivid land's charge counter and Heart of Kiran's
@@ -8276,18 +8272,6 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// triggers, so drain them on the way out with the mana
 		// already in the pool — the posture the sacrifice and the
 		// discard above each take.
-		needStateChecks = true
-	}
-	// #3845, CR 601.2h: "Mill a card", last of the costs. The mill
-	// door (MillNForEffect) opens the CR 614 windows, and the
-	// graveyard-arrival triggers it queues wait for the state-check
-	// pass on the way out, with the mana already in the pool.
-	if ab.MillCost > 0 {
-		milled, err := g.payMillCostLocked(playerID, ab.MillCost)
-		if err != nil {
-			return err
-		}
-		paid.Milled = append(paid.Milled, milled...)
 		needStateChecks = true
 	}
 	defer func() {

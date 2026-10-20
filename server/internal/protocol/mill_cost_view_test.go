@@ -59,30 +59,3 @@ func TestViewStampsMillCostAndShortfall(t *testing.T) {
 		t.Errorf("two cards in the library: row = mill %d cant %q, want 2 and nothing", r.MillCost, r.CantActivate)
 	}
 }
-
-// #3845: a mana row stamps its mill component and, on a library that
-// is short, the engine's refusal.
-func TestViewStampsManaRowMillCost(t *testing.T) {
-	g := buildActiveGame(t)
-	me := g.Seats[0]
-	var src uuid.UUID
-	g.WithWriteLock(func() {
-		src = uuid.New()
-		g.Battlefield.PushTop(game.Card{
-			InstanceID: src, Name: "Mill Myr", TypeLine: "Artifact Creature — Construct",
-			OracleID: "00000000-0000-0000-0000-000000003846",
-			Owner:    me.ID, Controller: me.ID,
-			ManaAbilities: []game.ManaAbilityShape{
-				{TapCost: true, MillCost: 1, Produced: "{C}", Label: "{T}, Mill a card: Add {C}"},
-			},
-		})
-	})
-	keepLibraryCardsForTest(t, g, me.ID, 0)
-	rows := frameCard(t, g, me.ID.String(), src).ManaAbilities
-	if len(rows) != 1 {
-		t.Fatalf("rows = %d, want 1", len(rows))
-	}
-	if r := rows[0]; r.MillCost != 1 || r.CantActivate != "Not enough cards in your library to mill (have 0, need 1)" {
-		t.Errorf("empty library: row = mill %d cant %q, want 1 and the shortfall", r.MillCost, r.CantActivate)
-	}
-}

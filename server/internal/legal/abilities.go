@@ -2328,11 +2328,6 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if game.EnergyShortfall(e.p, ab.EnergyCost) != nil {
 			continue
 		}
-		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card", through
-		// the predicate ActivateManaAbility refuses with.
-		if g.MillCostShortfall(e.seat, ab.MillCost) != nil {
-			continue
-		}
 		// A mana component in the cost is paid from the pool and,
 		// for what the pool is missing, from the seat's other
 		// sources (#2215: the move carries auto_tap). Affordability
@@ -2518,8 +2513,6 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							cost = withCounterPrice(cost, price)
 						}
 						cost = withHandDiscard(cost, handN)
-						// #3870: Millikin's "Mill a card".
-						cost = withMill(cost, ab.MillCost)
 						e.add(Move{
 							Type:   TypeActivateManaAbility,
 							Player: e.seat,

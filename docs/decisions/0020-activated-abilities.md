@@ -3574,3 +3574,23 @@ cast windows (Siren's Call, Master Warcraft).
 4. **"Before blockers" is a different point.** Berserker's Frenzy ("before combat or during combat before blockers
    are declared", CR 506.8b, 506.8c) reads the cursor, not this fact: before the declare blockers step of the combat in
    progress, any combat phase of the turn, and the precombat main phase of a skipped combat.
+
+## Amendment 2026-10-20 ([#4175](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4175)): the mana-ability mill cost is removed
+
+The 2026-10-19 amendment (#3971) left `ManaAbilityCost.Mill` and `ManaAbilityShape.MillCost` in place because nothing
+catalogued used them, and noted that by CR 605.1a (the September 25, 2026 edition, as that amendment quotes it) a mana
+ability whose cost mills is not a mana ability, so they can have no legal user. They are removed.
+
+Decision 65 stands for `AbilityCost.Mill`; its "and `ManaAbilityCost.Mill`" half, and the 2026-10-15 text that gave the
+wire `mana_abilities[i].mill_cost`, are withdrawn:
+
+- **Gone:** `effects.ManaAbilityCost.Mill` and its negative-count check in `effects.Register`; `game.ManaAbilityShape.MillCost`
+  and every reader (the payer in `ActivateManaAbility`, the auto-tapper's three predicates, `land_mana_each`, the
+  enumerator's gate and `withMill` on mana moves, the view's shortfall stamp); `ManaAbilityView.MillCost`
+  (`mana_abilities[i].mill_cost`) and the client's type and rider text.
+- **Kept:** `AbilityCost.Mill`, `MillCostShortfall`, `payMillCostLocked`, `PaidCost.Milled`,
+  `activated_abilities[i].mill_cost`, `Move.Cost.Mill` and the heuristic's mill pricing, all of which activated abilities use.
+- **Wire:** the field was `omitempty` and no catalogued card ever set it on a mana row after #3971, so no frame carries it.
+  The client reads it nowhere else, so an old or new client tolerates its absence. `docs/protocol.md` is updated.
+- **Snapshot impact:** none. A restore point stores a card's mana-ability count, never the shape
+  (`cardSnapshot.ManaAbilityCount`; the shapes are rebuilt from the catalog), so no persisted field is removed.
