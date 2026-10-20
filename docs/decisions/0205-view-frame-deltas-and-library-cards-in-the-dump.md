@@ -1,11 +1,11 @@
 # ADR 0205 — View frames on the wire: compress before we diff, and library cards in the dump
 
-**Status:** Proposed · 2026-10-20 · S73 — Big boards: layout and per-action cost
+**Status:** Accepted (2026-10-20) · proposed 2026-10-20 · S73 — Big boards: layout and per-action cost
 **Issue:** [#3922](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3922) (split out of [#3823](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3823))
 **Numbering:** `git fetch --all --prune`, then every `docs/decisions/` file name in the history of all remote heads (`git log --remotes --name-only -- docs/decisions`) and the open PRs. The highest in use is **0204**. Reserved on #3922 before this file was written.
 **Builds on:** [ADR 0044](0044-surviving-a-deploy.md) decision 5 (seq and generation), [ADR 0148](0148-capacity-limits-for-a-public-launch.md) (capacity), [ADR 0194](0194-snapshot-only-what-someone-can-undo.md) and [ADR 0041](0041-game-persistence.md)'s 2026-10-15 amendments (the per-commit cost work of #3823), [ADR 0122](0122-an-agent-at-the-table-a-local-mcp-seat.md) (the MCP seat reads the same wire), [ADR 0149](0149-privacy-notice-and-account-deletion.md) (what the replay holds).
 
-This ADR was written plan-first. No code changed with it.
+This ADR was written plan-first. No code changed with it. The owner accepted it the same day; the answers are in "Owner decisions (2026-10-20)".
 
 ---
 
@@ -55,7 +55,7 @@ Three things follow:
 - **A naive diff saves little.** A generic JSON patch saves a third, because the view is made of arrays (zones, the log window) that a merge patch can only replace whole. A diff that pays has to know the view's shape: zones keyed by card instance, the log as entries after a sequence number. That is a protocol of its own, not a library call.
 - **Context takeover would not help.** permessage-deflate's window is at most 32 KB and a frame is more than twice that, so carrying the compressor's state from frame to frame finds almost none of the previous frame. gorilla/websocket supports only "no context takeover" anyway.
 
-The filler cards of the benchmark board are small (177 B per library card in the unfiltered view). Real catalog cards carry more text and fields; #3823's estimate was about 1.5 KB per library `CardView`. These numbers are a floor for a real table and should be re-taken on a real game (open question 1).
+The filler cards of the benchmark board are small (177 B per library card in the unfiltered view). Real catalog cards carry more text and fields; #3823's estimate was about 1.5 KB per library `CardView`. These numbers are a floor for a real table. The bytes metric (Delivery step 1) measures real games.
 
 What is **not** measured: the commit rate of a live table, the bytes per second a table puts on the VM's uplink, and whether the uplink or the browser's parse is ever the bottleneck. ADR 0148's load test found CPU first, then memory; bandwidth was not mentioned.
 
@@ -82,8 +82,8 @@ Turn on `EnableCompression` in the upgrader and send each viewer's frame as a `w
 
 - **Wire:** ~87 % fewer bytes on the benchmark board (table above), for every frame, on every path: commits, presence, reconnect.
 - **Protocol:** none. Compression is negotiated per connection in the handshake. Every browser offers it, so `ws.ts` changes nothing. The MCP seat's and `gamecli`'s `websocket.Dialer` do not ask for it (`mcpseat/conn.go:88`), so they keep receiving uncompressed frames, byte for byte what they get today.
-- **Cost:** CPU to deflate one frame per viewer per commit, at a level we choose (`SetCompressionLevel`), plus a compressor per write. Not measured; it is the thing to measure before turning it on (owner question 3). ADR 0148 says CPU is what runs out first, so this trade is not free.
-- **Proxy path:** Caddy passes WebSocket extensions through. Whether the Cloudflare edge in front of `labxp.io` keeps permessage-deflate end to end has to be checked on cmd-dev (open question 2).
+- **Cost:** CPU to deflate one frame per viewer per commit, at a level we choose (`SetCompressionLevel`), plus a compressor per write. Not measured; it is what Delivery step 1 measures before compression is turned on. ADR 0148 says CPU is what runs out first, so this trade is not free.
+- **Proxy path:** Caddy passes WebSocket extensions through. Whether the Cloudflare edge in front of `labxp.io` keeps permessage-deflate end to end is checked on cmd-dev first (Delivery step 2).
 - **Reconnect, snapshots, replay:** untouched.
 
 ### W2. Section deltas: a `snapshot_patch` frame against a named base
@@ -116,29 +116,41 @@ The log is 22 KB of every frame (32 % of a seat's), and the client already keys 
 
 ---
 
-## Decision (proposed)
+## Owner decisions (2026-10-20)
 
-1. **Wire: W1 first, and only behind a measurement.**
-   - Add a bytes-out counter beside `cmdctrl_ws_frames_total` (by kind), so frames' share of the uplink is a series and not a guess.
-   - Benchmark deflate on `BenchmarkBroadcastWithSpectators` and the midgame board at levels 1 and 6, and report CPU per commit against today's 2.4 ms.
-   - If the CPU is acceptable, turn on permessage-deflate with prepared messages behind an env switch that defaults on, check it end to end through Cloudflare on cmd-dev, and confirm the MCP seat still receives uncompressed frames.
-   No protocol change, no client change, no snapshot change.
-2. **Wire: do not build W2, W3 or W5 now.** W1 removes most of the bytes for none of the protocol, resync, client-merge and per-viewer memory W2 costs, and W2 adds CPU on the path #3823 just cut. Reopen W2 only if the bytes metric shows frames costing after W1, and then start with W5 (the log), since it is the largest single section and already sequenced.
-3. **Dump: D1, keep library card views.** The replay is the only record of library order over a game, the cost is a fraction of a commit that is now 2.4 ms, and nothing has shown it costing. Revisit if a real-game profile shows the library build as a large share of `ViewOfGame`.
-4. **Correct the issue's premise in the record:** the dump does include library card views today.
+The owner answered the questions this ADR asked when it was Proposed. The answers are binding:
+
+1. **Order: metric first, then compress.** *"Ship a WebSocket bytes-out metric and a deflate CPU benchmark first; turn on permessage-deflate behind a switch once the numbers are in."*
+2. **Wire deltas: defer.** *"Defer until the bytes metric shows compressed frames still cost too much."*
+3. **Library card views in the crash dump and replay: keep them.**
+4. **Verification:** *"Enable compression on cmd-dev first (through Cloudflare, check frames and CPU), then promote."*
+
+Two questions were not put to the owner and are settled here:
+
+- **The CPU budget for compression** is set from the benchmark (delivery step 1) and reviewed by the owner before compression is on by default anywhere but cmd-dev.
+- **A "full frames only" handshake switch for agent clients** is moot while deltas are deferred. It comes back only with W2.
+
+## Decision
+
+1. **Wire: W1 (permessage-deflate), behind a measurement and a switch.** Full frames stay the protocol. No protocol, client, MCP seat or snapshot change.
+2. **Wire: W2, W3 and W5 are deferred.** They are reopened only if the bytes metric shows *compressed* frames still costing too much. If one is reopened, start with W5 (the log), since it is the largest single section and is already sequenced. The compatibility line for agent clients (a "full frames only" handshake switch) is decided then.
+3. **Dump: D1. Keep library card views** in the crash dump and the replay. The replay is the only record of library order over a game.
+4. **The record is corrected:** the dump does include library card views today. The issue text said it omitted them.
+
+## Delivery
+
+1. **A bytes-out metric and a deflate CPU benchmark** (one follow-up issue).
+   - Add a counter of bytes queued per frame kind beside `cmdctrl_ws_frames_total`, and add it to the server dashboard.
+   - Benchmark the deflate cost of a broadcast on `BenchmarkBroadcastWithSpectators` and on the midgame board at compression levels 1 and 6, using prepared messages. Report CPU and bytes per commit against today's 2.4 ms commit.
+   - The benchmark sets the CPU budget proposed for default-on, for the owner to review.
+2. **permessage-deflate behind a switch, on cmd-dev first.**
+   - Turn on `EnableCompression` and send each viewer's frame as a `websocket.PreparedMessage`, behind an env switch that is off by default.
+   - Turn it on in cmd-dev and check end to end through Cloudflare: the frames are compressed in the browser and on the bytes metric, the CPU matches the benchmark, and the MCP seat still receives uncompressed frames.
+   - Promote it to prod once the owner has reviewed the numbers.
 
 ## Consequences
 
-- If W1 lands: a browser's frames shrink by roughly an order of magnitude; the server pays a deflate per viewer per commit; the MCP seat, `gamecli` and any agent client keep the plain wire; reconnect, rewind, the replay and the restore point are unchanged.
+- When W1 lands, a browser's frames shrink by roughly an order of magnitude, and the server pays a deflate per viewer per commit. The MCP seat, `gamecli` and any agent client keep the plain wire. Reconnect, rewind, the replay and the restore point are unchanged.
 - If W1's CPU cost is too high for ADR 0148's budget, nothing is lost: the switch stays off, and the bytes metric still answers whether bandwidth was ever the problem.
-- W2 stays possible. `protocol.go` and `docs/protocol.md` already promise that a new frame kind can be added inside v0, and nothing here spends that.
+- W2 stays possible. `protocol.go` and `docs/protocol.md` already promise that a new frame kind can be added inside v0, and nothing here uses that up.
 - Choosing W2 later rules out W4: a delta stream cannot be conflated.
-
-## Owner questions
-
-1. **Is there a real need?** The issue was parked until a profile shows frames or dumps costing. Do you want the bytes-out metric shipped first and this ADR left Proposed until it shows a number, or W1 built now on the benchmark numbers?
-2. **Cloudflare:** is `cmd.labxp.io` (and cmd-dev) proxied through Cloudflare for WebSocket traffic, and is it acceptable to verify permessage-deflate end to end on cmd-dev before turning it on in prod?
-3. **CPU budget:** ADR 0148 says CPU runs out first. What deflate cost per commit is acceptable, for example "no more than +10 % of a commit on the midgame board", before W1 ships default-on?
-4. **Wire deltas (W2) at all?** Do you agree to defer them indefinitely behind a measured need, or do you want W5 (the log as new entries since a sequence number, 32 % of a frame) designed now as the first delta?
-5. **Library cards (D1/D2/D3):** keep them in the dump and the replay (recommended), or trade replay forensics of library order for the bytes?
-6. **Third-party wire clients:** if W2 ever ships, is a "full frames only" handshake switch for the MCP seat and other agent clients the right compatibility line, or should agent seats move to deltas too?
