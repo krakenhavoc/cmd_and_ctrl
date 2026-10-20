@@ -3976,7 +3976,10 @@
   section.has-dock.sheet-open {
     --dock-zoom-clear: 0px;
     /* A wide sheet (the opening hand) must not push the zoom off screen. */
-    --zoom-right: min(calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px), calc(100vw - 360px));
+    --zoom-right: min(
+      calc(var(--sheet-w, 0px) + var(--dock-inset) + 10px),
+      calc(100vw - 28px - var(--zoom-w, 332px))
+    );
   }
   /* §8: on a phone the dock is a full-width bar on the bottom of the
      play area, and the board ends above it rather than under it. */
