@@ -119,3 +119,23 @@ func TestHandlerImageRefusesTraversalInIDSizeAndFace(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCardIDAcceptsOnlyTheCanonicalSpelling(t *testing.T) {
+	id := uuid.New()
+	for _, ok := range []string{id.String(), strings.ToUpper(id.String())} {
+		if got, err := ParseCardID(ok); err != nil || got != id {
+			t.Errorf("ParseCardID(%q) = %v, %v; want %v", ok, got, err, id)
+		}
+	}
+	bad := []string{
+		"", "..", "../../etc/passwd", "..%2f..", id.String() + "/..", id.String() + "\x00",
+		"urn:uuid:" + id.String(), "{" + id.String() + "}",
+		strings.ReplaceAll(id.String(), "-", ""), // 32-digit hex form
+		id.String()[:35] + "g", id.String()[:35] + "/",
+	}
+	for _, b := range bad {
+		if _, err := ParseCardID(b); err == nil {
+			t.Errorf("ParseCardID(%q) accepted", b)
+		}
+	}
+}
