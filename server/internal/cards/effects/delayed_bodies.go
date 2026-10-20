@@ -102,6 +102,21 @@ var (
 	// Galvanic Iteration).
 	copyTheSpellBody = game.SimpleDelayedBody("copy/the-spell-you-just-cast", copyTheSpellYouJustCast)
 
+	// Copy the ability the event-conditioned trigger fired on, with the
+	// new-targets offer: the triggering EventActivateAbility names its
+	// stack item (Jaya's Phoenix's "copy the next loyalty ability you
+	// activate this turn", Leori, Sparktouched Hunter's "copy that
+	// ability"). An ability gone from the stack is not copied.
+	copyTheAbilityBody = game.SimpleDelayedBody("copy/the-ability-you-just-activated", copyTheTriggeringAbility)
+
+	// "When you next activate a loyalty ability this turn": an
+	// EventActivateAbility with the Loyalty bit (CR 606.2) by the
+	// trigger's controller (Jaya's Phoenix).
+	youNextActivateALoyaltyAbilityCondition = game.DelayedCondition("activate/you-next-activate-a-loyalty-ability",
+		func(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
+			return ev.Kind == game.EventActivateAbility && ev.Loyalty && ev.Actor == dt.Controller
+		})
+
 	// The three bodies that used to be FACTORIES — a closure built
 	// around a captured argument. The argument is params now.
 

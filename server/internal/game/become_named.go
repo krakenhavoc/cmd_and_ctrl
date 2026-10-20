@@ -183,6 +183,11 @@ var planeswalkerTypes = []string{
 	"Windgrace", "Wrenn", "Xenagos", "Yanggu", "Yanling", "Zariel",
 }
 
+// PlaneswalkerTypes is CR 205.3j's list, a copy the caller may keep:
+// the options of "choose a planeswalker type" (Leori, Sparktouched
+// Hunter).
+func PlaneswalkerTypes() []string { return append([]string(nil), planeswalkerTypes...) }
+
 // spellTypes is CR 205.3k's list.
 var spellTypes = []string{"Adventure", "Arcane", "Lesson", "Omen", "Trap"}
 

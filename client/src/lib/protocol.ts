@@ -4013,6 +4013,11 @@ export interface LegalTargetsView {
   // ordinary pick_target. `players` / `cards` are the superset any
   // opponent could pick from.
   chosen_by_opponent?: boolean;
+  // #4051: a clause whose target the server draws at random as the
+  // ability is activated ("any target chosen at random"). The walk
+  // skips it and sends no target for it; `players` / `cards` are what
+  // the draw is made from.
+  at_random?: boolean;
   // #2055: on a pick_target an opponent answers for such a clause, the
   // player whose spell or ability it is (the one still targeting).
   chosen_for?: string;
@@ -5106,10 +5111,6 @@ export interface ManaAbilityView {
   // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
   // player activates it from this menu.
   exert?: boolean;
-  // #3845: "Mill N cards" as a cost (Millikin's "{T}, Mill a card").
-  // The auto-tapper never pays such a row. A library too short to pay
-  // it makes the server stamp cant_activate, which greys the row.
-  mill_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with

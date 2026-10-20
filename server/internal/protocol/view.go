@@ -1129,6 +1129,14 @@ type LegalTargetsView struct {
 	// whether the clause can be filled at all.
 	ChosenByOpponent bool `json:"chosen_by_opponent,omitempty"`
 
+	// AtRandom marks a clause whose target the engine draws at random
+	// ("any target chosen at random", Goblin Test Pilot, #4051): the
+	// controller's picker skips it and sends no target for it (a ref
+	// aimed at it is refused); the server draws one from `players` /
+	// `cards` as the ability is activated, and logs it. A trigger's
+	// random clause never reaches a picker at all.
+	AtRandom bool `json:"at_random,omitempty"`
+
 	// ChosenFor is, on a pick_target prompt an opponent answers for
 	// such a clause, the controller of the spell or ability it is for
 	// (game.PendingChoice.PickTargetFor): the player who is targeting,
@@ -5150,11 +5158,6 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
-	// MillCost is a "Mill N cards" component (#3845, CR 701.17a) —
-	// Millikin's "{T}, Mill a card:". Omitted at zero. When the library
-	// is short, CantActivate carries the engine's refusal. The
-	// auto-tapper never pays such a row; the player activates it.
-	MillCost int `json:"mill_cost,omitempty"`
 	// Exert is an "Exert this land" / "Exert this creature" component
 	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
 	// (CR 701.43b). The auto-tapper never pays such a row on its own,
@@ -7626,7 +7629,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -8763,14 +8766,6 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// and the engine agree.
 		if views[i].CantActivate == "" && raw[r].EnergyCost > 0 {
 			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[r].EnergyCost); short != nil {
-				views[i].CantActivate = short.Error()
-			}
-		}
-		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card" on a
-		// library that is short, from the predicate the engine refuses
-		// with.
-		if views[i].CantActivate == "" && raw[r].MillCost > 0 {
-			if short := g.MillCostShortfall(controller, raw[r].MillCost); short != nil {
 				views[i].CantActivate = short.Error()
 			}
 		}
@@ -13145,7 +13140,12 @@ func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarget
 	// the catalog actually declares. Teferi's "up to one target"
 	// is the first clause whose Min is genuinely 0, so the
 	// difference became visible.
-	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
+	//
+	// The clause marks travel too: a lone clause an opponent chooses
+	// (Nova Pentacle, #2055) or the engine draws at random (Goblin Test
+	// Pilot, #4051) is one the client's walk skips. Without them the
+	// picker opened and the announcement it sent was refused.
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}
@@ -13322,7 +13322,6 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
-			MillCost:      a.MillCost,
 			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,

@@ -313,3 +313,12 @@ steps then-steps/twilight-prophet-drain
 body combat/untap-and-remove-the-payload
 condition combat/each-attacker-not-blocked
 choose choose-cards/chandra-legacy-of-fire-remove
+body copy/the-ability-you-just-activated
+body narset-of-the-ancient-way/damage
+body repeated-reverberation/copy-twice
+body rowan-kenrith/creatures-attack-this-turn
+condition activate/you-activate-an-ability-of-a-planeswalker-type
+condition activate/you-next-activate-a-loyalty-ability
+condition repeated-reverberation/next-instant-sorcery-or-loyalty
+option option-pick/leori-sparktouched-hunter-planeswalker-type
+option option-pick/narset-of-the-ancient-way-mana

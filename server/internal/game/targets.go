@@ -639,10 +639,15 @@ type TargetSpec struct {
 	// chance of being chosen", the Witch Hunt ruling). With no legal
 	// target the ability is removed, as any required clause's is.
 	//
-	// Honoured only by the trigger target walk (queuePickTargetStepLocked);
-	// effects.Register refuses it anywhere else, and on a clause that
-	// picks anything but exactly one target. Built with
-	// effects.ChosenAtRandom.
+	// Honoured by the trigger target walk (queuePickTargetStepLocked)
+	// and, since #4051, by an activation's announcement
+	// (announceRandomTargetsLocked, CR 602.2b / 601.2c): Goblin Test
+	// Pilot's "any target chosen at random" is drawn as part of
+	// activating, the payload names nothing for it, and with no legal
+	// target the activation is refused. effects.Register refuses it on
+	// a spell or a mode, on an activated ability with more than this
+	// one clause, and on a clause that picks anything but exactly one
+	// target. Built with effects.ChosenAtRandom.
 	AtRandom bool
 
 	// PlayerOK is the candidate predicate for player targets. Nil

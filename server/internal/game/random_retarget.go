@@ -281,15 +281,29 @@ func (g *Game) CopySpellKeepingTargetsForEffect(spellID, controller uuid.UUID) (
 
 // drawTriggerTargetLocked is TargetSpec.AtRandom in the CR 603.3d
 // target walk: the frame's current step, whose legal set `lt` is not
-// empty, gets one target drawn uniformly from it on the "pick" stream
-// keyed to the trigger's controller and source, and the draw is logged
-// ("<clause>: <name> (at random)"). Players come first in the draw's
-// list and cards after, each in the legal set's own stable order, so
-// the same board and the same stream give the same target.
+// empty, gets one target drawn by drawStepTargetLocked on the "pick"
+// stream keyed to the trigger's controller and source, and the draw is
+// logged ("<clause>: <name> (at random)") as the trigger goes on the
+// stack.
 //
 // Caller must hold g.mu.
 func (g *Game) drawTriggerTargetLocked(f *pickTargetFrame, lt LegalTargets) TargetRef {
 	cur := f.steps[f.step]
+	ref := g.drawStepTargetLocked(RandomDraw{Player: f.source.Controller, Source: f.source.InstanceID}, cur, lt)
+	g.emitRandomTargetLocked(f.source.Controller, f.source.InstanceID, cur, ref)
+	return ref
+}
+
+// drawStepTargetLocked draws one target for `step` uniformly from its
+// legal set `lt`, which must not be empty, on the keyed "pick" stream
+// `d` names (ADR 0054), so an undo replays the draw. Players come first
+// in the draw's list and cards after, each in the legal set's own
+// stable order, so the same board and the same stream give the same
+// target. The ref is stamped with the step's Mode / Slot.
+//
+// Shared by the trigger walk (#1815, CR 603.3d) and an activation's
+// announcement (#4051, CR 602.2b / 601.2c). Caller must hold g.mu.
+func (g *Game) drawStepTargetLocked(d RandomDraw, step AnnouncedClause, lt LegalTargets) TargetRef {
 	ids := make([]uuid.UUID, 0, len(lt.Players)+len(lt.Cards))
 	isPlayer := make(map[uuid.UUID]bool, len(lt.Players))
 	for _, p := range lt.Players {
@@ -297,20 +311,27 @@ func (g *Game) drawTriggerTargetLocked(f *pickTargetFrame, lt LegalTargets) Targ
 		isPlayer[p] = true
 	}
 	ids = append(ids, lt.Cards...)
-	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: f.source.Controller, Source: f.source.InstanceID}, ids, 1)
-	ref := TargetRef{Kind: TargetCard, ID: picked[0], Mode: cur.Mode, Slot: cur.Slot}
+	picked := g.ChooseAtRandomForEffect(d, ids, 1)
+	ref := TargetRef{Kind: TargetCard, ID: picked[0], Mode: step.Mode, Slot: step.Slot}
 	if isPlayer[ref.ID] {
 		ref.Kind = TargetPlayer
 	}
-	label := cur.Clause.Label
+	return ref
+}
+
+// emitRandomTargetLocked logs a target the engine drew for `step`:
+// "<clause>: <name> (at random)".
+//
+// Caller must hold g.mu.
+func (g *Game) emitRandomTargetLocked(actor, source uuid.UUID, step AnnouncedClause, ref TargetRef) {
+	label := step.Clause.Label
 	if label == "" {
 		label = "target"
 	}
 	g.EmitEvent(Event{
 		Kind:   EventOptionChosen,
-		Actor:  f.source.Controller,
-		CardID: f.source.InstanceID,
+		Actor:  actor,
+		CardID: source,
 		Label:  label + ": " + g.targetRefNameLocked(ref) + " (at random)",
 	})
-	return ref
 }
