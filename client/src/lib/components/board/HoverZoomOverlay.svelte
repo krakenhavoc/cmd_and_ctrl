@@ -582,6 +582,15 @@
 {/if}
 
 <style>
+  /* #4213: the zoom scales with the screen, height first. The art is
+     240px up to a 800px-tall viewport (a laptop keeps the size it had),
+     then 30vh, up to 380px on a 1440p monitor; the panel is the art plus
+     its text margin. Global so Game.svelte can keep the panel on screen
+     beside a wide dock sheet (--zoom-right). */
+  :global(:root) {
+    --zoom-art: clamp(240px, 30vh, 380px);
+    --zoom-w: calc(var(--zoom-art) + 92px);
+  }
   /* A tutorial step pointing at the portraits and the mana pool moves the
      preview to the left, off them (TutorialCoach sets the attribute). */
   :global(:root[data-tutorial-preview="left"]) .overlay {
@@ -596,7 +605,7 @@
        --zoom-right while one is open). */
     right: var(--zoom-right, 10px);
     top: 10px;
-    width: min(332px, calc(50% - 132px));
+    width: min(var(--zoom-w), calc(50% - 132px));
     /* ADR 0111 §4: a long card stops above the action dock, which
        shares this right edge (Game.svelte sets --dock-zoom-clear; 0
        without a dock and on a phone, where the dock is under the board). */
@@ -619,10 +628,12 @@
     flex-direction: column;
     gap: 10px;
     color: var(--fg);
-    font-size: 12px;
+    /* Reading text grows a little with the art: 12px on a laptop,
+       14px at 1440 tall. The sizes below are em of this. */
+    font-size: clamp(12px, calc(6px + 0.56vh), 14px);
   }
   .scan {
-    width: min(240px, 100%);
+    width: min(var(--zoom-art), 100%);
     aspect-ratio: 63 / 88;
     align-self: center;
     border-radius: 12px;
@@ -756,19 +767,20 @@
     color: var(--fg-muted);
   }
   .other-title {
-    font-size: 13px;
+    font-size: 1.0833em;
   }
   .oracle.other-oracle {
     max-height: clamp(60px, 14vh, 180px);
     margin-top: 2px;
     color: var(--fg-muted);
   }
-  /* Two faces of text below the scan: the scan gives up a little width
-     so both fit at a laptop's height, and when they still don't, the
-     other side's text is the one that shortens (it fades at the cut),
-     never the face that is up. */
+  /* Two faces of text below the scan: on a short screen the scan gives
+     up width so both fit (200px at a laptop's 768px), and from about
+     1000px tall it is the full --zoom-art again (#4213). When the text
+     still doesn't fit, the other side's text is the one that shortens
+     (it fades at the cut), never the face that is up. */
   .overlay.two-sided .scan:not(.sideways) {
-    width: min(200px, 100%);
+    width: min(clamp(200px, calc(49vh - 180px), var(--zoom-art)), 100%);
   }
   .overlay.two-sided .info > .oracle {
     flex-shrink: 0;
@@ -805,7 +817,7 @@
   }
   .title {
     font-weight: 700;
-    font-size: 14px;
+    font-size: 1.1667em;
     letter-spacing: -0.01em;
     color: var(--fg);
     overflow: hidden;
@@ -814,7 +826,7 @@
   }
   .pt {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 1em;
     font-weight: 700;
     color: var(--fg);
     flex: 0 0 auto;
@@ -825,12 +837,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 11.5px;
+    font-size: 0.9583em;
     color: var(--fg-muted);
   }
   .cost {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 0.9167em;
     color: var(--fg-dim);
     flex: 0 0 auto;
   }
@@ -838,9 +850,9 @@
     /* Long cards (Cyclonic Rift, Counterspell) get a scroll once we
        hit ~7 lines so the overlay doesn't grow taller than the
        viewport. clamp height keeps the panel proportional. */
-    max-height: clamp(80px, 18vh, 220px);
+    max-height: clamp(80px, 18vh, 260px);
     overflow-y: auto;
-    font-size: 11.5px;
+    font-size: 0.9583em;
     line-height: 1.4;
     color: var(--fg);
     white-space: pre-wrap;
@@ -865,7 +877,7 @@
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px dashed var(--border, var(--fg-dim));
-    font-size: 11px;
+    font-size: 0.9167em;
     line-height: 1.35;
     color: var(--fg);
   }
@@ -877,7 +889,7 @@
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px dashed var(--border, var(--fg-dim));
-    font-size: 11px;
+    font-size: 0.9167em;
     line-height: 1.35;
     color: var(--fg);
   }
@@ -894,7 +906,7 @@
      beside oracle text the player is trying to read. */
   .not-implemented {
     margin-top: 4px;
-    font-size: 10.5px;
+    font-size: 0.875em;
     line-height: 1.35;
     letter-spacing: 0.02em;
     color: var(--fg-dim);
@@ -970,7 +982,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 1em;
     color: var(--fg-muted);
   }
   .cmdr-row.zero {
