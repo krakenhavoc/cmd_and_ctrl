@@ -138,7 +138,7 @@ var manaRowScopes = map[string]rowScope{
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).
-	"EnergyCost": rowPublic, "MillCost": rowPublic, "Exert": rowPublic,
+	"EnergyCost": rowPublic, "Exert": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,

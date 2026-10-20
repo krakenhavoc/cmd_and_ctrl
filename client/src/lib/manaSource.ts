@@ -134,7 +134,6 @@ export function manaAbilityRider(a: ManaAbilityView): string {
   if (a.life_cost) parts.push(`pay ${a.life_cost} life`);
   if (a.energy_cost) parts.push(`pay ${a.energy_cost} energy`);
   if (a.exert) parts.push("exert it");
-  if (a.mill_cost) parts.push(`mill ${a.mill_cost === 1 ? "a card" : `${a.mill_cost} cards`}`);
   if (a.sacrifice_cost) parts.push("sacrifice it");
   if (a.sacrifice_options) parts.push(`sacrifice ${a.sacrifice_label || "a permanent"}`);
   if (a.exile_self) parts.push("exile it");
