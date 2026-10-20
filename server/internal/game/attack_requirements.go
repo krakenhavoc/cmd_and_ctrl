@@ -297,14 +297,15 @@ func (g *Game) attackRequirementCandidatesLocked(ap uuid.UUID, assign map[uuid.U
 			// ADR 0106 §2 (#1794), CR 508.1d "without disobeying any
 			// restrictions": a target this creature may not attack
 			// (Xantcha's owner) obeys nothing, so with only its owner
-			// to attack, nothing is owed.
-			if g.attackTargetRestrictionRefusalLocked(c, t.ID) != nil {
-				continue
-			}
-			// #1936: nor a target its defender is not waived for (a
-			// goaded Weathered Sentinels owes an attack only at a
-			// player who attacked its controller last turn).
-			if g.defenderRefusalLocked(c, t.ID) != nil {
+			// to attack, nothing is owed. Nor does a target its
+			// defender is not waived for (#1936: a goaded Weathered
+			// Sentinels owes an attack only at a player who attacked
+			// its controller last turn), one its controller's grant
+			// forbids (#2109), or one off the direction in force (ADR
+			// 0206: with Pramikon choosing left, a goaded creature owes
+			// an attack only at its controller's next opponent). The
+			// declaration-time predicate answers all of them at once.
+			if g.canAttackTargetWithLocked(c, t.ID) != nil {
 				continue
 			}
 			w := g.requirementWeightLocked(reqs, t.ID)

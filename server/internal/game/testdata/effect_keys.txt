@@ -349,3 +349,4 @@ steps then-steps/the-gitrog-ravenous-ride-draw
 steps then-steps/tivit-seller-of-secrets-tokens
 steps then-steps/trap-the-trespassers-stun
 steps then-steps/will-of-the-sultai-bullet
+option option-pick/teyo-geometric-tactician-direction

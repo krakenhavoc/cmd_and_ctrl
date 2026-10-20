@@ -591,6 +591,14 @@ type CardDef struct {
 	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
 	HandsRevealed HandRevealScope
 
+	// AttackOnlyNearestOpponentInChosenDirection is "each player may
+	// attack only the nearest opponent in the chosen direction and
+	// planeswalkers controlled by that opponent" (Pramikon, Sky
+	// Rampart), with the direction read off the permanent's "choose
+	// left or right" answer (Card.ChosenOption). Read by
+	// attackDirectionRulesLocked; see attack_direction.go (ADR 0206).
+	AttackOnlyNearestOpponentInChosenDirection bool
+
 	// DiscardByOpponent and DiscardByOpponentForHand are what the card
 	// declares about "if a spell or ability an opponent controls causes
 	// you to discard" (ADR 0153 §5): its own shape while it sits in a

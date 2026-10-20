@@ -1628,6 +1628,16 @@ type Spec struct {
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
 
+	// AttackOnlyNearestOpponentInChosenDirection declares "each player
+	// may attack only the nearest opponent in the chosen direction and
+	// planeswalkers controlled by that opponent" (Pramikon, Sky
+	// Rampart). Pair it with ChooseLeftOrRightAsEnters, whose answer
+	// names the direction; until it is answered the permanent restricts
+	// nothing. Not a `Static` entry, for HandsRevealed's reason: it is a
+	// rule about every player's attacks, derived from the battlefield on
+	// every query (ADR 0206, game/attack_direction.go).
+	AttackOnlyNearestOpponentInChosenDirection bool
+
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
 	// card while it sits in a hand: game.DiscardByOpponentBattlefield
