@@ -38,16 +38,7 @@ func TestGuffaSliceCompleteness(t *testing.T) {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	ajani, ok := Lookup(guffaAjaniOracle)
-	if !ok {
-		t.Fatal("Ajani Steadfast is not registered")
-	}
-	if ajani.Completeness != CompletenessCaveats || len(ajani.Caveats) != 1 {
-		t.Errorf("Ajani Steadfast: %v with caveats %v, want one caveat for the −7", ajani.Completeness, ajani.Caveats)
-	}
-	if len(ajani.Activated) != 2 || ajani.Emblem != nil {
-		t.Errorf("Ajani Steadfast offers %d abilities (emblem %v), want the +1 and the −2 only", len(ajani.Activated), ajani.Emblem != nil)
-	}
+	// Ajani Steadfast is Full since #4192 (ajani_steadfast_emblem_test.go).
 	// Semester's End waits on #4193.
 	if _, ok := Lookup(guffaSemestersOracle); ok {
 		t.Error("Semester's End is registered, but its return can't give the per-card counters yet")

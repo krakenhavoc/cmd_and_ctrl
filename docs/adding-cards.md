@@ -9551,6 +9551,15 @@ Three things to know:
   every seat's emblems after the battlefield, with the emblem as the
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
+- **An emblem's replacement and prevention effects** (ADR 0109 amendment
+  2026-10-20, #4192) are `EmblemSpec.Replacements`, built with the same
+  constructors and flags as `Spec.Replacements` (declare `Prevention: true`
+  on a prevention). The replacement gather walks every seat's emblems after
+  the battlefield, with the emblem as the `src` an `AppliesTo`/`Replace`
+  receives and its owner as "you": `src.Controller` is the owner, so
+  `ev.DamageTarget == src.Controller` is "damage to you" (Ajani
+  Steadfast's emblem, `ajaniSteadfastEmblemPrevention`). The owner orders
+  it against every other effect (CR 616.1).
 
 ### Compleated (CR 702.150a, ADR 0183, #2946)
 
