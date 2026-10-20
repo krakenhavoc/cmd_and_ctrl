@@ -140,11 +140,34 @@ func parseID(r *http.Request) (uuid.UUID, error) {
 	if raw == "" {
 		return uuid.Nil, errors.New("missing card id")
 	}
-	id, err := uuid.Parse(raw)
+	id, err := ParseCardID(raw)
 	if err != nil {
 		return uuid.Nil, errors.New("invalid card id")
 	}
 	return id, nil
+}
+
+// ParseCardID parses a card id from a request. Only the canonical
+// 36-character hyphenated hex form is accepted: uuid.Parse also takes
+// "urn:uuid:" prefixes, braces and bare 32-digit hex, and an id that
+// reaches a cache path or a lookup should have exactly one spelling.
+func ParseCardID(raw string) (uuid.UUID, error) {
+	if len(raw) != 36 {
+		return uuid.Nil, errors.New("invalid card id")
+	}
+	for i := 0; i < len(raw); i++ {
+		c := raw[i]
+		switch {
+		case i == 8 || i == 13 || i == 18 || i == 23:
+			if c != '-' {
+				return uuid.Nil, errors.New("invalid card id")
+			}
+		case (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'):
+		default:
+			return uuid.Nil, errors.New("invalid card id")
+		}
+	}
+	return uuid.Parse(raw)
 }
 
 func writeErr(w http.ResponseWriter, status int, message string) {

@@ -345,3 +345,25 @@ func TestIsCatalogPrinting(t *testing.T) {
 		t.Error("nil index allowed a printing")
 	}
 }
+
+// A card id is a path component of the image cache, so anything that is
+// not a canonical UUID is refused at the route (#4204).
+func TestImageRouteRefusesTraversalIDs(t *testing.T) {
+	srv := httptest.NewServer(Handler(cards.NewIndex(), nil))
+	defer srv.Close()
+
+	for _, id := range []string{
+		"..%2f..%2fetc%2fpasswd", "%2e%2e%2f%2e%2e", "..%5c..%5cx",
+		printA.String() + "%00", printA.String() + "%2f..",
+		"urn:uuid:" + printA.String(),
+	} {
+		resp, err := http.Get(srv.URL + "/catalog/image/" + id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("id %q: status = %d, want 400", id, resp.StatusCode)
+		}
+	}
+}

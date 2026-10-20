@@ -34,6 +34,11 @@ var ValidSizes = map[string]struct{}{
 // Scryfall-blessed variants. The HTTP handler maps this to 400.
 var ErrInvalidSize = errors.New("cards: invalid image size")
 
+// ErrInvalidPath is returned when a cache path would fall outside the
+// cache directory. It cannot happen for a valid id, size and face; it
+// is the tripwire behind them.
+var ErrInvalidPath = errors.New("cards: image path outside the cache")
+
 // MaxFaceIndex bounds the ?face= parameter. No printing in the
 // Scryfall dump has more than two faces; the cap is generous and its
 // job is not accuracy but keeping a caller-supplied integer from
@@ -112,13 +117,19 @@ func (c *ImageCache) FetchFace(ctx context.Context, idx *Index, id uuid.UUID, si
 	if size == "" {
 		size = c.DefaultSize
 	}
-	if _, ok := ValidSizes[size]; !ok {
+	// canonicalSize returns one of the package's own string literals, not
+	// the caller's string, so nothing the client typed reaches a path.
+	size, ok := canonicalSize(size)
+	if !ok {
 		return "", ErrInvalidSize
 	}
 	if face < 0 || face > MaxFaceIndex {
 		return "", ErrInvalidFace
 	}
-	path := c.pathForFace(id, size, face)
+	path, err := c.pathForFace(id, size, face)
+	if err != nil {
+		return "", err
+	}
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -161,13 +172,44 @@ func (c *ImageCache) FetchFace(ctx context.Context, idx *Index, id uuid.UUID, si
 //
 // `face` must already have been bounds-checked by the caller
 // (FetchFace does it) — it becomes part of a filesystem path.
-func (c *ImageCache) pathForFace(id uuid.UUID, size string, face int) string {
+//
+// The result is confined under c.root: a path that would land outside
+// it is refused with ErrInvalidPath (defence in depth behind
+// canonicalSize, the UUID type and the face bound).
+func (c *ImageCache) pathForFace(id uuid.UUID, size string, face int) (string, error) {
 	s := id.String()
 	name := s + "." + size + ".jpg"
 	if face > 0 {
 		name = s + ".face" + strconv.Itoa(face) + "." + size + ".jpg"
 	}
-	return filepath.Join(c.root, s[:2], name)
+	root := filepath.Clean(c.root)
+	path := filepath.Clean(filepath.Join(root, s[:2], name))
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", ErrInvalidPath
+	}
+	return path, nil
+}
+
+// canonicalSize maps a caller-supplied size to the matching literal in
+// ValidSizes. The returned string is a constant of this package, which
+// is what makes it safe as a filename component.
+func canonicalSize(size string) (string, bool) {
+	switch size {
+	case "small":
+		return "small", true
+	case "normal":
+		return "normal", true
+	case "large":
+		return "large", true
+	case "png":
+		return "png", true
+	case "art_crop":
+		return "art_crop", true
+	case "border_crop":
+		return "border_crop", true
+	}
+	return "", false
 }
 
 // lockFor returns the per-id mutex, creating it on first use. Uses
