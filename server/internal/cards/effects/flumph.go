@@ -31,18 +31,8 @@ func init() {
 			// You draw one, and so does the opponent you aim it at.
 			Purpose: game.Purpose{Draws: 1, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})},
 			Key:     "Flumph — you and target opponent each draw a card",
-			Effect: Do(
-				// The opponent's draw waits for a prompt your draw asks (CR 608.2c, #4155).
-				DrawCards{N: 1},
-				Instruction(func(ctx *Context) error {
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return DrawCards{Player: t.ID, N: 1}.Apply(ctx)
-						}
-					}
-					return nil
-				}),
-			),
+			// The opponent's draw waits for a prompt your draw asks (CR 608.2c, #4155).
+			Effect: youAndTargetOpponentEachDraw(),
 		}},
 	})
 }

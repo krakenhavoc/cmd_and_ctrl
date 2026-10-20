@@ -321,3 +321,4 @@ condition activate/you-next-activate-a-loyalty-ability
 condition repeated-reverberation/next-instant-sorcery-or-loyalty
 option option-pick/leori-sparktouched-hunter-planeswalker-type
 option option-pick/narset-of-the-ancient-way-mana
+body vronos/phase-out-the-objects

@@ -1136,6 +1136,22 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
+// youAndTargetOpponentEachDraw is "you and target opponent each draw a
+// card" (Flumph, Teyo, Geometric Tactician): your draw, then the
+// still-legal target's, as one Do so the second waits for any prompt
+// the first asks (CR 608.2c, #4155).
+func youAndTargetOpponentEachDraw() Effect {
+	return Do(
+		DrawCards{N: 1},
+		Instruction(func(ctx *Context) error {
+			if p, ok := firstLegalPlayerTarget(ctx); ok {
+				return DrawCards{Player: p, N: 1}.Apply(ctx)
+			}
+			return nil
+		}),
+	)
+}
+
 // notACreature strips the Creature card type from a characteristic
 // being built in layer 4: every "as long as <condition>, this isn't a
 // creature" clause (a Theros God's devotion, The Warring Triad's
