@@ -19,7 +19,13 @@ func init() {
 	Register(Spec{
 		OracleID: "8973bd99-20f8-4867-90ef-50392147ee1b",
 		Name:     "Wood Elves",
-		Purpose:  game.Purpose{Lands: 1},
+		// #4128: audited against the printed text and declared Full. The
+		// Forest enters untapped (nothing prints "tapped"), which is
+		// LandsUntapped; the search finds any land with the Forest
+		// subtype (a Snow-Covered Forest, a Temple Garden), may find
+		// nothing, and shuffles.
+		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Lands: 1, LandsUntapped: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Wood Elves — search for a Forest card", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{

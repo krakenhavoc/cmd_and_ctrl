@@ -34,6 +34,11 @@ type Context struct {
 	// as "this" — so the #1432 new-object question is not asked of
 	// them. Set only by asGroupMember (source_object_guard.go, #1463).
 	groupMember bool
+
+	// occurrence is the chosen bullet a ModeSteps body's steps belong
+	// to, plus one (zero: not a bullet's steps). Set only by
+	// bulletContext (do_walk.go, #4019); read with Occurrence.
+	occurrence int
 }
 
 // NewContext constructs a Context bound to a game + stack item.
@@ -41,6 +46,14 @@ type Context struct {
 // fires.
 func NewContext(g *game.Game, item *game.StackItem) *Context {
 	return &Context{Game: g, Item: item}
+}
+
+// Occurrence is the occurrence index of the chosen bullet whose steps
+// are running (ModeSteps, #4019), so a step reads its own bullet's
+// target with ModeTarget(ctx, ctx.Occurrence()). -1 outside a bullet's
+// steps.
+func (c *Context) Occurrence() int {
+	return c.occurrence - 1
 }
 
 // Controller returns the caster / controller of the current stack

@@ -34,18 +34,23 @@ func init() {
 						Reason:  "Insatiable Avarice — search your library for a card",
 					}.Apply(ctx)
 				}),
-			ModeWithPurpose(SpreeModeDoing("Target player draws three cards and loses 3 life.", "{B}{B}",
+			ModeWithPurpose(SpreeModeSteps("Target player draws three cards and loses 3 life.", "{B}{B}",
 				TargetPlayer("target player"),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
+				// The life loss waits for a prompt the draws ask (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
-					if err := (DrawCards{Player: t.ID, N: 3}).Apply(ctx); err != nil {
-						return err
+					return DrawCards{Player: t.ID, N: 3}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetPlayer {
+						return nil
 					}
 					return GainLife{Player: t.ID, Amount: -3}.Apply(ctx)
-				}),
+				})),
 				ForTargets(game.TargetPurpose{Slot: 0, Draws: 3, LifeLoss: 3})),
 		),
 	})

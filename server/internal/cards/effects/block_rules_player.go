@@ -77,3 +77,31 @@ func (r CantBeBlockedThisTurnByPower) Apply(ctx *Context) error {
 func cantBeBlockedByPowerMod(n int) game.Mod {
 	return game.CantBeBlockedByPowerMod(n, "creatures with power "+strconv.Itoa(n)+" or less")
 }
+
+// CantBeBlockedThisTurnBySubtypes registers "<target creature> can't be
+// blocked by Walls this turn" (Kick in the Door, #4100, CR 509.1b): a
+// cantBeBlockedBySubtypes ScopedEffect record pinned to Target at
+// resolution (CR 611.2c) and swept at the turn's end. Subtypes is an
+// any-of of creature types and Text the barred set as printed
+// ("Walls"). The blocker's creature types are read live as blockers are
+// declared, so a changeling is a Wall.
+type CantBeBlockedThisTurnBySubtypes struct {
+	Target   uuid.UUID
+	Subtypes []string
+	Text     string
+	Label    string
+}
+
+// Apply registers the record. Caller is inside the resolution frame
+// (holds g.mu write).
+func (r CantBeBlockedThisTurnBySubtypes) Apply(ctx *Context) error {
+	if len(r.Subtypes) == 0 {
+		return nil
+	}
+	return ScopedEffectFor{
+		Target:   r.Target,
+		Mods:     []game.Mod{game.CantBeBlockedBySubtypesMod(r.Subtypes, r.Text)},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    eotLabel(r.Label, "can't be blocked by "+r.Text+" this turn"),
+	}.Apply(ctx)
+}

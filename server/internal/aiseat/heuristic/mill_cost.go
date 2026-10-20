@@ -2,9 +2,10 @@ package heuristic
 
 // mill_cost.go — #3870: the price of a "Mill N cards" cost.
 //
-// #3845 gave activated and mana abilities a mill component (Sinister
+// #3845 gave activated abilities a mill component (Sinister
 // Concoction's "Mill a card", Rot Farm Skeleton's "Mill four cards",
-// Millikin's "{T}, Mill a card: Add {C}"). The params name no card, so
+// Millikin's "{T}, Mill a card: Add {C}", which is not a mana ability,
+// CR 605.1a). The params name no card, so
 // until legal.MoveCost.Mill carried the count a policy read the library
 // it paid as free.
 //

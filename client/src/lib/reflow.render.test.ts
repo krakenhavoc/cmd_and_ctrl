@@ -234,7 +234,8 @@ describe("reflow on an opponent's turn", () => {
   });
 
   // #4102: the card summarises the seat under its identity.
-  it("reads out Cat's hand, mana, creatures and piles, in that order", () => {
+  // #4118: as stat tiles over a footer of the piles.
+  it("reads out Cat's hand, creatures, power, mana and piles, in that order", () => {
     const view = gameView(1);
     const cat = view.seats[2] as unknown as Record<string, unknown>;
     cat.hand = { kind: "hand", owner: CAT, count: 4, cards: [] };
@@ -251,19 +252,33 @@ describe("reflow on an opponent's turn", () => {
     view.battlefield.cards.push(forest);
     mountBoard(1, view);
     const card = region("Cat")!;
-    const lines = [...card.querySelectorAll<HTMLElement>(".readout > .line")];
-    expect(lines.map((l) => l.classList[1])).toEqual(["hand", "mana", "creatures", "zones"]);
+    const tiles = [...card.querySelectorAll<HTMLElement>(".readout .tiles > .tile")];
+    expect(tiles.map((t) => t.classList[1])).toEqual(["hand", "creatures", "power", "mana"]);
     const text = (el: Element) => el.textContent!.replace(/\s+/g, " ").trim();
-    expect(text(lines[0])).toBe("4 in hand");
-    expect(lines[1].getAttribute("aria-label")).toBe("1 mana from 1 source");
-    expect(lines[1].querySelectorAll(".mana-pip")).toHaveLength(1);
-    expect(text(lines[2])).toBe("1 untapped of 1 · 2 power");
-    expect(text(lines[3])).toContain("deck 87");
-    // The piles are the summary's buttons, with PileButton's names.
-    expect(lines[3].querySelector('button[aria-label="grave: 1 card"]')).not.toBeNull();
-    expect(lines[3].querySelector('button[aria-label="exile: 0 cards"]')).not.toBeNull();
-    // Dee has no mana: the summary's "no mana".
-    expect(text(region("Dee")!.querySelector(".line.mana")!)).toBe("no mana");
+    const num = (el: Element) => text(el.querySelector(".num")!);
+    const spoken = (el: Element) => text(el.querySelector(".sr-only")!);
+    expect(num(tiles[0])).toBe("4");
+    expect(spoken(tiles[0])).toBe("4 in hand");
+    expect(num(tiles[1])).toBe("1/1");
+    expect(spoken(tiles[1])).toBe("1 of 1 creatures untapped");
+    expect(num(tiles[2])).toBe("2");
+    expect(spoken(tiles[2])).toBe("2 untapped power");
+    expect(tiles[3].getAttribute("aria-label")).toBe("1 mana from 1 source");
+    // #4120: the Forest is one green symbol with a 1 in its badge.
+    const syms = [...tiles[3].querySelectorAll<HTMLElement>(".sym")];
+    expect(syms.map((s) => s.dataset.manaGroup)).toEqual(["G"]);
+    expect(syms[0].querySelector('.mana-symbol[data-symbol="G"]')).not.toBeNull();
+    expect(text(syms[0].querySelector(".badge")!)).toBe("1");
+    expect(syms[0].title).toBe("1 green mana from 1 source");
+    const zones = card.querySelector<HTMLElement>(".readout > .zones")!;
+    expect(text(zones.querySelector(".deck")!)).toBe("deck 87");
+    // The piles are buttons with PileButton's names.
+    expect(zones.querySelector('button[aria-label="grave: 1 card"]')).not.toBeNull();
+    expect(zones.querySelector('button[aria-label="exile: 0 cards"]')).not.toBeNull();
+    // Dee has no mana: a 0, and the summary's spoken "no mana" form.
+    const deeMana = region("Dee")!.querySelector(".tile.mana")!;
+    expect(num(deeMana)).toBe("0");
+    expect(deeMana.querySelectorAll(".sym")).toHaveLength(0);
   });
 
   // The card is a size container: jsdom lays nothing out, so this pins
@@ -273,14 +288,18 @@ describe("reflow on an opponent's turn", () => {
     const card = region("Cat")!;
     expect(card.querySelector(".card-head .turn-chip")).not.toBeNull();
     expect(card.querySelector(".card-identity [data-seat-id]")).not.toBeNull();
-    expect(card.querySelector(".zones .deck")).not.toBeNull();
-    expect(card.querySelector(".zones .sep.fold")).not.toBeNull();
+    expect(card.querySelector(".readout > .tiles")).not.toBeNull();
+    expect(card.querySelector(".readout > .zones .deck")).not.toBeNull();
     const src = (await import("./components/board/SeatSummary.svelte?raw")).default as string;
     expect(src).toMatch(/\.avatar-card \{[^}]*container: avatar-card \/ size;/);
     expect(src).toMatch(/--avatar-size-base: 84px;/);
+    // Hand, ready and power in a row, mana a full-width strip (#4120).
+    expect(src).toMatch(/\.tiles \{\s*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+    expect(src).toMatch(/\.tile\.mana \{\s*grid-column: 1 \/ -1;/);
     const short = src.slice(src.indexOf("(max-height: 239px)"));
     expect(short).toMatch(/^[^@]*\.card-identity \{\s*--avatar-size-base: 56px;/);
-    expect(short).toMatch(/^[^@]*\.zones \.sep\.fold \{\s*display: inline;/);
+    // A short card lays the mana strip on one line.
+    expect(short).toMatch(/^[^@]*\.tile\.mana \{\s*flex-direction: row-reverse;/);
   });
 
   it("applies under summaries too: the active opponent is a full board", () => {
@@ -314,6 +333,62 @@ describe("reflow on an opponent's turn", () => {
     targeting.set(null);
     flushSync();
     expect(isAvatarCard("Cat")).toBe(true);
+  });
+});
+
+// ADR 0077 as amended 2026-10-18 (#4115): Bob's spell targets Dee's bear,
+// so Dee's board opens beside Bob's, 50/50, once the pointer is at rest.
+describe("a stack item targeting an avatar-card seat", () => {
+  const targetingDee = () => {
+    const view = gameView(1);
+    view.stack_items = [
+      {
+        id: "beast-within",
+        controller: BOB,
+        source_card_id: "bw",
+        targets: [{ kind: "card", id: "dee-bear" }],
+      } as unknown as StackItemView,
+    ];
+    return view;
+  };
+
+  it("opens the targeted seat's board beside the active one, split evenly", () => {
+    mountBoard(1, targetingDee());
+    // Not at once: the settle gate waits for a still pointer.
+    expect(isAvatarCard("Dee")).toBe(true);
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+    expect(isFullBoard("Bob")).toBe(true);
+    expect(isAvatarCard("Cat")).toBe(true);
+    expect(board().style.gridTemplateColumns).toBe(
+      "var(--reflow-avatar-w) minmax(0, 1fr) minmax(0, 1fr)",
+    );
+    expect(region("Dee")!.closest(".slot")!.classList.contains("reflow-targeted")).toBe(true);
+  });
+
+  it("waits while a pointer button is down, so a click is never moved", () => {
+    mountBoard(1, targetingDee());
+    window.dispatchEvent(new Event("pointerdown"));
+    vi.advanceTimersByTime(2000);
+    flushSync();
+    expect(isAvatarCard("Dee")).toBe(true);
+    window.dispatchEvent(new Event("pointerup"));
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+  });
+
+  it("goes back to an avatar card when the item leaves the stack", () => {
+    const { setProps } = mountBoard(1, targetingDee());
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isFullBoard("Dee")).toBe(true);
+    setProps({ view: gameView(1) } as never);
+    vi.advanceTimersByTime(150);
+    flushSync();
+    expect(isAvatarCard("Dee")).toBe(true);
+    expect(board().style.gridTemplateColumns).toBe("var(--reflow-avatar-w) minmax(0, 2fr)");
   });
 });
 

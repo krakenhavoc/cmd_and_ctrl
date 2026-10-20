@@ -1266,7 +1266,7 @@ func TestCardActionDispatchErrorPaths(t *testing.T) {
 		{
 			name: "mark_damage",
 			ty:   TypeMarkDamage,
-			// A positive delta, because only that is controller-gated.
+			// Either sign is controller-gated since #4131 (table_verb_gates_test.go).
 			params: func(card, _ string) json.RawMessage {
 				return mustJSON(map[string]any{"instance_id": card, "delta": 1})
 			},

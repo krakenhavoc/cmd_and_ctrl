@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Illusion of Choice — Instant {U}:
 //
 //	"You choose how each player votes this turn.
@@ -27,10 +25,14 @@ func init() {
 		OracleID:     "e3ad9287-ef13-4b66-9df8-b17e15bb4b0f",
 		Name:         "Illusion of Choice",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			ctx.Game.ChooseHowEachPlayerVotesThisTurnForEffect(ctx.Source(), ctx.Controller(),
-				"Illusion of Choice — you choose how each player votes this turn")
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		// The draw waits for the choice's prompt (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				ctx.Game.ChooseHowEachPlayerVotesThisTurnForEffect(ctx.Source(), ctx.Controller(),
+					"Illusion of Choice — you choose how each player votes this turn")
+				return nil
+			}),
+			DrawCards{N: 1},
+		),
 	})
 }

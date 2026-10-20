@@ -10,7 +10,7 @@ This is the whole-format sequel to
 [the top-100 staples triage](top-100-commander-staples.md): that file
 ranked the first 100 cards of the gap and shipped 32 of them, this one
 ranks the next **6000** and splits them into 60 tracked batches of 100.
-Tracking issue: **#293**.
+Tracking issue: **#293** (closed 2026-10-15; see [Status 2026-10-19](#progress)).
 
 The 6000 were ranked in three passes, far apart in catalog terms and
 identical in method. **Batches 01–20** (ranks 9–2234) came from the
@@ -73,7 +73,21 @@ is a comment on its card file.
 | 41 | #448 | **46** | 25 | 29 | complete pass in #949/#966 |
 | 42 | #449 | **30** | — | — | partial — 29 in #947/#948 plus Price of Fame pre-existing; stale claim cleared 2026-09-24 |
 | 43 | #450 | **48** | 19 | 33 | 1 pre-existing plus 47 in #955/#966 |
-| 44–60 | #451–#467 | 0 | 0 | — | not started — ranked against `b5a3055`, 2026-09-13 |
+| 44–60 | #451–#467 | 0 | 0 | — | no batch pass was run; the trackers were closed 2026-10-02 as superseded (see Status 2026-10-19 below) |
+
+**Status 2026-10-19.** This table is the record of the batch method, which ended on 2026-10-02, when the
+per-batch trackers (#294–#313, #383–#403, #448–#467) were closed as superseded by #293's rolling gap lists. #293 itself
+was closed on 2026-10-15 after #3654 (the top-1,000 sweep) and the play-rate report (#3658) absorbed its list. The rows
+above are the 2026-09 tallies and are not updated. Card work now comes from two places: the engine seams in
+[engine-seams.md](../engine-seams.md) (and the public roadmap built from them, ADR 0092) and the decks people ask for.
+Where the catalogue stands is two measurements, neither typed by hand:
+
+- The generated census below counts what is registered.
+- `cd server && CMDCTRL_SCRYFALL_DUMP=../data/scryfall/default-cards.json go run ./cmd/playrate -top 100,500,1000,2000,4000,6000`
+  counts how much of each EDHREC rank band the catalogue holds. On develop at `8c182fcbd` with the dump of
+  2026-10-05: the top 1,000 are complete (992 of the 992 ranked), the top 2,000 are 85.1% (1,692 of 1,989), the
+  top 4,000 are 69.1% (2,755 of 3,989) and the top 6,000 are 56.6% (3,391 of 5,989). Re-run it for a current figure; it
+  needs the dump, so CI does not.
 
 ### Where the work actually is — measured 2026-09-18
 
@@ -142,12 +156,12 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **6734** |
-| — whole cards (bare `oracle_id`) | **6450** |
+| Registry keys (`len(effects.All())`) | **6895** |
+| — whole cards (bare `oracle_id`) | **6611** |
 | — back faces (`<oracle_id>#1`) | 284 |
-| Declared `full` | 6701 |
-| Declared `caveats` | 2 |
-| Declared `unreviewed` | 31 |
+| Declared `full` | 6892 |
+| Declared `caveats` | 3 |
+| Declared `unreviewed` | 0 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
 only its sixty land backs, and those cards are still gap cards on their

@@ -44,13 +44,10 @@ func init() {
 					}
 					return nil
 				}),
-			ModeDoing("Each opponent loses 3 life and you gain 3 life.", nil,
-				func(item *game.StackItem, ctx *Context, _ int) error {
-					if err := eachOpponentLosesLife(ctx.Game, item, 3); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
-				}),
+			// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+			ModeSteps("Each opponent loses 3 life and you gain 3 life.", nil,
+				Instruction(func(ctx *Context) error { return eachOpponentLosesLife(ctx.Game, ctx.Item, 3) }),
+				GainLife{Amount: 3}),
 		).AnyNumberIf(DeliriumForModes),
 	})
 }

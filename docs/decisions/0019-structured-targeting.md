@@ -1248,3 +1248,78 @@ trigger walk. `legal/opponent_target_test.go` holds the enumerator to the contro
 Back-out: drop `chooserAdmits` from `sourceAdmits` and the Evangelize and Arena tests offer every opponent's creature;
 skip the park and the Nova Pentacle test sees the cost paid before the target; drop `bindStepChoosers` from
 `itemAnnouncedClauses` and Evangelize takes a creature its opponent no longer controls.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): "for each opponent, … target … that player controls", required
+
+Blatant Thievery ("For each opponent, gain control of target permanent that player controls") needs one REQUIRED pick per
+opponent (CR 601.2c). The "up to one" form already existed (`perOpponentClauses`, Windgrace's Judgment): one clause per possible
+opponent bound to a seat, every clause optional so a seat that is not at the table offers nothing. A required clause cannot
+borrow that shape. At a two-player table the clauses for the second and third seat could never be filled, so the spell would be
+uncastable; and making them "up to one" would let the caster skip an opponent who has a legal permanent, which is stronger
+than printed.
+
+**Decision.** `TargetSpec.OpponentSlot int` (1-based, zero is no slot) binds a clause to the n-th seat after the chooser's in
+turn order, as DATA. Two readings, both through one place (`game/opponent_slot.go`):
+
+- **Who may be picked.** `opponentSlotAdmits`, folded into `sourceAdmits` beside `chooserAdmits`: the candidate must be
+  controlled by the live player in that slot. A seat with no player, or an eliminated one, admits nothing. Because it lives in
+  the shared walk, the legal set, the announce check, the CR 608.2b re-check, the client's picker and the bot's moves are one
+  answer, and a permanent that changed hands in response is illegal for its slot even when it went to another opponent.
+- **Whether the clause is required.** `Game.ClauseMinForEffect` is the clause's `Min`, except 0 when the slot's seat holds no
+  live opponent (an eliminated player is no longer an opponent, CR 800.4a). The announce gate, `anyClauseUnfillableLocked`
+  (the cast offer), the wire view (`viewOfTargetClause` stamps `legal_targets.min` and each clause's `min`) and the enumerator
+  (`legalTargetSetsFrom`) all ask it. A live opponent who controls nothing targetable leaves `Min` at 1, so the spell is
+  uncastable, which is what the rule says.
+
+`effects.ForNthOpponent(n, spec)` binds a clause; `perOpponentRequiredClauses(noun, preds…)` is the three-clause statement.
+No func-typed field was added to any struct reachable from `Game`: the closure ratchet is untouched.
+
+**Card.** Blatant Thievery, `full`.
+
+**Tests.** `cards/effects/roonb_cards_test.go` and `roonb_cards4_test.go` (four live opponents; a pick from the wrong opponent;
+an eliminated opponent; a live opponent with nothing to take; a pick that changed hands in response; a two-player table),
+`legal/opponent_slot_test.go` (the enumerator offers one pick per live opponent, none for an eliminated one, and no cast when a
+live opponent has nothing; every move is dispatched), `protocol/opponent_slot_view_test.go` (the per-clause `min`).
+
+Back-out: drop `opponentSlotAdmits` from `sourceAdmits` and `TestRoonbBlatantThieveryRequiresAPickPerOpponentFromThatOpponent`
+fails; read `c.Min` instead of `clauseMinLocked` in the announce gate and the eliminated-opponent and two-player tests fail;
+drop the view stamp or the enumerator's read and the protocol and legal tests fail.
+
+## Amendment (2026-10-20, #4051): an activated ability's target chosen at random
+
+The 2026-10-16 amendment (#1815) let the engine draw a TRIGGER's target and refused the flag on an activated ability,
+whose targets the player announces in one message (CR 602.2b, then CR 601.2c). Goblin Test Pilot ("{T}: This creature
+deals 2 damage to any target chosen at random") is that case. Its rulings settle every reading: "The target is chosen
+at random as part of activating the ability. Players can respond to the ability knowing what the target of the ability
+is", "all possible legal targets (including creatures and players) must have an equal chance of being chosen", and the
+Pilot is a legal target of its own ability.
+
+**1. The announcement draws it.** `activateCatalogAbilityLocked` slots the payload's refs as before, then
+`announceRandomTargetsLocked` (game/random_target_announce.go) fills each random step: a payload ref aimed at one is
+refused (`ErrInvalidParam`, no payload may choose a random target), and the step gets one target drawn uniformly from
+its legal set by `drawStepTargetLocked`, the trigger walk's draw, on the "pick" stream keyed to the activator and the
+source (ADR 0054), so an undo replays it. With nothing to draw the activation is refused (CR 601.2c). Everything after
+that (the announce gate, the division, the costs, CR 601.2h) is unchanged. The draw rides the announcement as
+`ActivateAbilityParams.randomTargets`, unexported like ADR 0109 §7's random discards and for the same reason: a run
+parked on a CR 903.9 question and made again aims at the same target. It is logged as the trigger's is ("<clause>:
+<name> (at random)") once the ability is on the stack, so a refused announcement logs nothing.
+
+**2. Nobody picks it.** The clause is a step nobody answers, like an opponent's clause (#2055): `StepsChosenByController`
+leaves it out, the enumerator names no target for it and keeps only the prefixes `RandomStepFillableForEffect` can
+draw for, and the view marks it `at_random` so the client's walk skips it. An ability whose only clause is random opens
+no walk and is activated at once. `abilityClauseView` (a lone ability clause) now carries `chosen_by_opponent` as
+well, which Nova Pentacle's view was missing.
+
+**3. Scope.** `effects.Register` allows the flag on an activated ability's lone clause, the one printed shape. A second
+clause is refused because the payload names it before the draw, so a relation or Distinct between them could not be
+judged; a mode's clause and a spell's stay refused.
+
+**Owner decision not needed.** The rulings fix when the draw is made, over what, and that it is public; each choice
+above is the rules-faithful one.
+
+**Cards:** Goblin Test Pilot, `full`.
+
+Back-out: let the payload name the random clause and `TestGoblinTestPilotRefusesANamedTarget` fails; draw from a private
+source and `TestGoblinTestPilotReplaysTheDrawAfterUndo` fails; leave the Pilot or players out of the legal set and
+`TestGoblinTestPilotDrawsAnyTargetAtRandom` fails; enumerate the clause and `TestGoblinTestPilotEnumeratesNoTarget`
+fails.

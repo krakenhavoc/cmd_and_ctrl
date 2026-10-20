@@ -14,7 +14,7 @@
  */
 
 import type { CardView } from "./protocol";
-import { LAYOUT_FLIP, LAYOUT_SPLIT } from "./faces";
+import { isOneSidedLayout, LAYOUT_FLIP } from "./faces";
 
 /** Scryfall image sizes the server's `?size=` accepts. */
 export type CardImageSize = "small" | "normal" | "large" | "png" | "art_crop" | "border_crop";
@@ -55,7 +55,7 @@ export function cardImageURL(
   face?: number,
 ): string | null {
   if (!card?.scryfall_id) return null;
-  if (card.layout === LAYOUT_FLIP || card.layout === LAYOUT_SPLIT) {
+  if (card.layout === LAYOUT_FLIP || isOneSidedLayout(card)) {
     return scryfallImageURL(card.scryfall_id, size, 0);
   }
   return scryfallImageURL(card.scryfall_id, size, face ?? card.active_face ?? 0);

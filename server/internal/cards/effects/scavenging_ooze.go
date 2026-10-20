@@ -37,24 +37,9 @@ func init() {
 					if err := (ExileThenIfItWas{
 						Target: t.ID,
 						Was:    WasCreatureCard,
-						Then: func(ctx *Context) error {
-							// Re-read here rather than before the
-							// exile: the Ooze has to be on the
-							// battlefield when the counter lands, and
-							// with a CR 903.9 prompt in between that
-							// is not the same moment as the cast.
-							if z := ctx.Game.FindCardZoneForEffect(item.SourceCardID); z != nil &&
-								z.Kind == game.ZoneBattlefield {
-								if err := (AddCounter{
-									Target: item.SourceCardID,
-									Kind:   "+1/+1",
-									N:      1,
-								}).Apply(ctx); err != nil {
-									return err
-								}
-							}
-							return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-						},
+						// The life gain waits for a prompt the counter
+						// asks (a CR 616 order; #4162, CR 608.2c).
+						Then: scavengingOozeGrow.Run,
 					}).Apply(ctx); err != nil {
 						return err
 					}
@@ -64,3 +49,20 @@ func init() {
 		}},
 	})
 }
+
+// scavengingOozeGrow is "put a +1/+1 counter on this creature and you
+// gain 1 life".
+var scavengingOozeGrow = RegisterThenSteps("then-steps/scavenging-ooze-grow",
+	Instruction(func(ctx *Context) error {
+		// Re-read here rather than before the exile: the Ooze has to
+		// be on the battlefield when the counter lands, and with a
+		// CR 903.9 prompt in between that is not the same moment as
+		// the cast.
+		self := ctx.Item.SourceCardID
+		if z := ctx.Game.FindCardZoneForEffect(self); z == nil || z.Kind != game.ZoneBattlefield {
+			return nil
+		}
+		return AddCounter{Target: self, Kind: "+1/+1", N: 1}.Apply(ctx)
+	}),
+	GainLife{Amount: 1},
+)

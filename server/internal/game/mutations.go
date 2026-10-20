@@ -335,6 +335,14 @@ type CastSpellParams struct {
 	// ordinary cast. ADR 0202 (#1989).
 	Splices []uuid.UUID
 
+	// SplicePayments pays the splice costs that are not mana (#4055, ADR
+	// 0202's 2026-10-19 amendment, CR 702.47a): entry k is what Splices[k]
+	// is paid with, so the list is no longer than Splices and a card whose
+	// splice cost is mana alone needs no entry. Kept off the cast's own
+	// flat payment lists, so a splice card's cost never changes which
+	// object pays the spell's.
+	SplicePayments []SplicePayment
+
 	// CostBranch names which branch of an either/or additional cost the
 	// caster is paying (CR 601.2b, ADR 0100 §2) — an index into the
 	// card's AdditionalCost.Either: Demand Answers' "sacrifice an
@@ -1553,6 +1561,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): and each
+	// revealed splice card's cost that is not mana, with every object the
+	// rest of this cast already spends (CR 118.3).
+	if err := g.validateSplicePaymentsLocked(playerID, cardID, spliced, params.SplicePayments, castSpentObjects(params)); err != nil {
+		slog.Warn("cast_spell rejected: bad splice cost payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"splices", len(spliced),
+			"payments", len(params.SplicePayments),
+			"err", err,
+		)
+		return err
+	}
 	// S22: tap-permanents-as-a-cost — convoke and waterbend. Checked
 	// here with the other announce-time choices and paid further
 	// down once the spell is on the stack, same validate-all-then-pay
@@ -1562,9 +1583,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	tapCost := g.tapCostForCastParamsLocked(playerID, card, params)
 	if !tapCost.Empty() || len(params.TapIDs) > 0 {
 		budget := 0
+		var chainTotal ParsedCost
+		chainChecked := false
 		if base, _, berr := g.printedCostLocked(p, card, params); berr == nil {
 			budget = tapPermanentsBudget(tapCost, base, params.XValue)
-			if !tapCost.Empty() && tapCost.InCost {
+			if tapCost.HasChain() {
+				// #4177: a cast that owes more than one tap cost (Hama's
+				// waterbend of a convoke spell). The budget bounds the
+				// list; the split below decides whether each tap pays.
+				untapped := params
+				untapped.TapIDs, untapped.DelveIDs = nil, nil
+				if total, terr := g.costAfterModifiersLocked(base, p, card, untapped); terr == nil {
+					budget = tapChainBudget(tapCost, total, params.XValue)
+					chainTotal, chainChecked = total, true
+				}
+			} else if !tapCost.Empty() && tapCost.InCost {
 				// #3989: a waterbend that IS the cost (Hama's grant)
 				// is measured against the total the modifiers leave,
 				// as an activated ability's is (WaterbendBudget): a
@@ -1586,6 +1619,14 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 				"err", err,
 			)
 			return err
+		}
+		if chainChecked && !g.tapChainPaysLocked(tapCost, chainTotal, params.TapIDs, params.XValue) {
+			slog.Warn("cast_spell rejected: a tapped permanent pays for nothing under the chained tap costs",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"taps_received", len(params.TapIDs),
+			)
+			return ErrInvalidParam
 		}
 	}
 	// ADR 0100 §1, CR 702.66a: the graveyard cards named to delve.
@@ -1812,6 +1853,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	moving = append(moving, params.ExileFromHandIDs...)
 	// #3536: and the graveyard cards an exile-cards cost takes.
 	moving = append(moving, params.ExileIDs...)
+	// #4055: and every object a splice card's cost spends.
+	spliceSpent := spliceObjectsOf(params.SplicePayments)
+	moving = append(moving, spliceSpent...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1829,6 +1873,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if alt != nil && alt.ReturnToHand != nil {
 		asking = costCommanderMovesTo(ZoneHand, params.AltCostIDs...)
 	}
+	// #4055: and a splice cost's return to hand (Veil of Secrecy).
+	asking = append(asking, costCommanderMovesTo(ZoneHand, spliceReturnIDsOf(params.SplicePayments)...)...)
 	// #2055: an "of an opponent's choice" clause still unanswered parks
 	// the cast here, before anything is paid or moved (CR 601.2c comes
 	// before CR 601.2h): the caster names an opponent and that opponent
@@ -2186,9 +2232,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
 	// #3172: convoke records WHO tapped, for "each creature that
 	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
-	if len(params.TapIDs) > 0 && g.tapCostForCastParamsLocked(playerID, card, params).Key == "convoke" {
+	if convoked := g.tapConvokersForCastLocked(p, card, g.tapCostForCastParamsLocked(playerID, card, params), params); len(convoked) > 0 {
 		if item := g.StackMeta[cardID]; item != nil {
-			item.Paid.Convoked = append([]uuid.UUID(nil), params.TapIDs...)
+			item.Paid.Convoked = convoked
 		}
 	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
@@ -2230,6 +2276,17 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// spell on the stack, so the table sees the Elf the Vanquisher paid
 	// with. Nothing moves.
 	g.payRevealLocked(playerID, cardID, costPlan, params.RevealIDs)
+	// ADR 0202's 2026-10-19 amendment, CR 702.47a (#4055): the splice
+	// costs that are not mana, in the order the cards were revealed, with
+	// the spell on the stack like every other cost of the cast.
+	if err := g.paySplicePaymentsLocked(playerID, cardID, spliced, params.SplicePayments, params.commanderAnswers); err != nil {
+		slog.Error("cast_spell: splice cost failed after validation",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"err", err,
+		)
+		return err
+	}
 	// ADR 0202, CR 702.47a-b: the spliced cards are revealed, all at once,
 	// and stay in the hand.
 	g.revealSplicesLocked(playerID, cardID, card.Name, spliced)
@@ -3136,8 +3193,9 @@ func (g *Game) materializePlanInLocked(p *Player, plan tapPlan, cost ParsedCost,
 		// #2392: the declared rider — a painland's "This land deals 1
 		// damage to you" — after the mana and before the triggered mana
 		// abilities, where ActivateManaAbility runs it. The picker only
-		// accepts a rider that declares its damage (RiderSelfDamage), so
-		// this is never an opaque closure the planner could not price.
+		// accepts a rider that declares its damage (RiderSelfDamage) or
+		// the life it gains (RiderSelfLifeGain, #4185), so this is never
+		// an opaque closure the planner could not price.
 		// Any state-based action it causes is checked by the caller,
 		// which runs the state checks before anyone next gets priority.
 		if ab.Rider != nil {
@@ -3555,7 +3613,7 @@ func (g *Game) costAfterTapsLocked(cost ParsedCost, p *Player, card Card, params
 		tapCost = TapPermanentsCostFor(CatalogKey(card))
 	}
 	if !tapCost.Empty() {
-		cost = tapPermanentsAdjusted(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
+		cost = g.tapPermanentsAdjustedLocked(cost, tapCost, g.tapPermanentsPayersLocked(params.TapIDs), params.XValue)
 	}
 	return cost
 }
@@ -6730,20 +6788,29 @@ func (g *Game) announcePlacedTriggersLocked(bySeat map[int][]*StackItem, numSeat
 
 // triggerPlacedWatchedLocked reports whether any permanent on the
 // battlefield has a triggered ability that watches EventTriggerPlaced
-// from there — the same enumeration harvestFromZone walks
-// (triggersOf, so an ability-removing effect or an unmet designation
-// gate counts as no watcher). Only the battlefield: no emblem and no
-// other-zone ability watches the kind, and one that does joins this
-// check in the change that declares it.
+// from there. See battlefieldWatchesLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) triggerPlacedWatchedLocked() bool {
+	return g.battlefieldWatchesLocked(EventTriggerPlaced)
+}
+
+// battlefieldWatchesLocked reports whether any permanent on the
+// battlefield has a triggered ability that watches `kind` from there —
+// the same enumeration harvestFromZone walks (triggersOf, so an
+// ability-removing effect or an unmet designation gate counts as no
+// watcher). Only the battlefield: no emblem and no other-zone ability
+// watches EventTriggerPlaced or EventAbilityCopied, and one that does
+// joins this check in the change that declares it.
+//
+// Caller must hold g.mu.
+func (g *Game) battlefieldWatchesLocked(kind EventKind) bool {
 	if g.Battlefield == nil || CatalogTriggers == nil {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
 		for _, t := range triggersOf(&g.Battlefield.Cards[i]) {
-			if triggerWatches(t.Watches, EventTriggerPlaced) && TriggerWatchesFromZone(t, ZoneBattlefield) {
+			if triggerWatches(t.Watches, kind) && TriggerWatchesFromZone(t, ZoneBattlefield) {
 				return true
 			}
 		}
@@ -7767,11 +7834,6 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if err := EnergyShortfall(p, ab.EnergyCost); err != nil {
 		return err
 	}
-	// #3845, CR 701.17b / 118.3: "Mill a card" (Millikin) can't be
-	// paid from an empty library; refused with the rest, before a tap.
-	if err := g.MillCostShortfall(playerID, ab.MillCost); err != nil {
-		return err
-	}
 	// #789: the counter components, validated by the SAME functions
 	// the CR 602 activated path uses, because it is the same
 	// component — a Vivid land's charge counter and Heart of Kiran's
@@ -8210,18 +8272,6 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// triggers, so drain them on the way out with the mana
 		// already in the pool — the posture the sacrifice and the
 		// discard above each take.
-		needStateChecks = true
-	}
-	// #3845, CR 601.2h: "Mill a card", last of the costs. The mill
-	// door (MillNForEffect) opens the CR 614 windows, and the
-	// graveyard-arrival triggers it queues wait for the state-check
-	// pass on the way out, with the mana already in the pool.
-	if ab.MillCost > 0 {
-		milled, err := g.payMillCostLocked(playerID, ab.MillCost)
-		if err != nil {
-			return err
-		}
-		paid.Milled = append(paid.Milled, milled...)
 		needStateChecks = true
 	}
 	defer func() {
@@ -9270,6 +9320,12 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #4154: under a declaration another player is choosing, the
+	// active player's pass finishes a half of it first
+	// (declaration_control.go).
+	if handled, err := g.attackHandoffPassLocked(); handled {
+		return err
+	}
 	return g.passPriorityAsHolderLocked()
 }
 
@@ -9618,6 +9674,14 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if !card.IsCreature() {
 				return ErrNotACreature
 			}
+			// #4154: another player choosing the attackers
+			// (declaration_control.go) — the declarer stages, the
+			// active player only re-points. A declarer who left
+			// chooses nothing more.
+			g.settleOrphanedHandoffLocked()
+			if err := g.attackHandoffRefusalLocked(card, one.Exert); err != nil {
+				return err
+			}
 			// ADR 0106 §2 (#1794): the creature's own CR 508.1c target
 			// restrictions ("can't attack its owner") ride the same
 			// check, refused with a sentence naming them.
@@ -9680,9 +9744,13 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if err := g.validateExertChoicesLocked([]AttackDeclaration{one}); err != nil {
 				return err
 			}
-			price := g.priceAttackDeclarationLocked(decl)
-			if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
-				return err
+			// #4154: under a chosen declaration the costs are the
+			// active player's, paid as they confirm the attacks.
+			if !g.attackTaxDeferredLocked() {
+				price := g.priceAttackDeclarationLocked(decl)
+				if err := g.payAttackTaxLocked(card.Controller, price, params); err != nil {
+					return err
+				}
 			}
 			// Staged, paid at the lock-in. A re-point keeps a choice
 			// already staged; clear_combat or undo is how it is taken
@@ -9816,6 +9884,26 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// has to be judged on the granted keyword, not the printed one.
 	g.RecomputeLayersIfStaleLocked()
 
+	// #4154: under a declaration another player chose
+	// (declaration_control.go), the active player's half is this verb
+	// naming the chosen attackers, and once both halves are done
+	// nothing more attacks. A declarer who left chooses nothing more.
+	g.settleOrphanedHandoffLocked()
+	if g.attackTargetsPhaseLocked() {
+		return g.confirmAttackTargetsLocked(decls, params)
+	}
+	if g.attackChosenLocked() {
+		return nil, ErrAttackersChosen
+	}
+	deferTax := g.attackTaxDeferredLocked()
+	if deferTax {
+		for _, d := range decls {
+			if d.Exert {
+				return nil, ErrDeclarerCantExert
+			}
+		}
+	}
+
 	// ADR 0080 split what used to be one loop into two passes. The
 	// first decides WHICH entries are declarations; the second stages
 	// them. The CR 508.1a payment goes between, because it is priced
@@ -9846,6 +9934,11 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 		// is the card's own controller because authorization is
 		// enforced one layer up in actions.Dispatch.
 		if !AttackerEligible(card, card.Controller) {
+			continue
+		}
+		// #4154: a creature whose cost to attack was declined this
+		// combat can't be chosen again.
+		if g.attackDeclinedLocked(card.InstanceID) {
 			continue
 		}
 		// S27: the target may be a player, a planeswalker or a
@@ -9901,16 +9994,21 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	// That pre-check is exact rather than optimistic: the seats' mana
 	// pools and untapped permanents are disjoint, so nothing one
 	// payment does can change what another can afford.
-	prices := make([]AttackTaxPrice, len(payers))
-	for i, p := range payers {
-		prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
-		if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
-			return nil, err
+	//
+	// #4154: not under a chosen declaration, whose costs the active
+	// player pays as they confirm it (confirmAttackTargetsLocked).
+	if !deferTax {
+		prices := make([]AttackTaxPrice, len(payers))
+		for i, p := range payers {
+			prices[i] = g.priceAttackDeclarationLocked(byPayer[p])
+			if err := g.attackTaxAffordableLocked(p, prices[i], params); err != nil {
+				return nil, err
+			}
 		}
-	}
-	for i, p := range payers {
-		if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
-			return nil, err
+		for i, p := range payers {
+			if err := g.payAttackTaxLocked(p, prices[i], params); err != nil {
+				return nil, err
+			}
 		}
 	}
 

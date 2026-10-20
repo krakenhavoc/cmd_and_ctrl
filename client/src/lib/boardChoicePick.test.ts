@@ -13,6 +13,7 @@ import {
   isBoardPickable,
   isBoardPicked,
   pickOnBoard,
+  pileToggleID,
   publishBoardPick,
   selectionLegal,
   toggleBoardPick,
@@ -170,5 +171,32 @@ describe("publishing", () => {
     expect([...get(boardChoicePick)!.selected]).toEqual(["b"]);
     publishBoardPick(null);
     expect(get(boardChoicePick)).toBeNull();
+  });
+});
+
+describe("a click on a pile of identical tokens (#4028)", () => {
+  it("picks one member directly and puts one back", () => {
+    const tokens = ["t1", "t2", "t3"];
+    const s = pick({ eligible: new Set(tokens), max: 1 });
+    expect(pileToggleID(null, tokens)).toBeNull();
+    expect(pileToggleID(s, [])).toBeNull();
+    const picked = toggleBoardPick(s, pileToggleID(s, tokens)!);
+    expect([...picked.selected]).toEqual(["t1"]);
+    const back = toggleBoardPick(picked, pileToggleID(picked, tokens)!);
+    expect(back.selected.size).toBe(0);
+  });
+
+  it("swallows a pile the choice does not offer", () => {
+    const s = pick({ eligible: new Set(["a"]) });
+    expect(pileToggleID(s, ["x", "y"])).toBe("x");
+    expect(toggleBoardPick(s, "x")).toBe(s);
+  });
+
+  it("takes the next member of a larger pick", () => {
+    const tokens = ["t1", "t2", "t3"];
+    let s = pick({ eligible: new Set(tokens), max: 2, min: 2 });
+    s = toggleBoardPick(s, pileToggleID(s, tokens)!);
+    s = toggleBoardPick(s, "t2");
+    expect([...s.selected].sort()).toEqual(["t1", "t2"]);
   });
 });

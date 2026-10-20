@@ -418,7 +418,7 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 	}
 	for i := range steps {
 		c := &steps[i].Clause
-		if counts[i] < c.Min || (c.Max > 0 && counts[i] > c.Max) {
+		if counts[i] < g.clauseMinLocked(src.Controller, c) || (c.Max > 0 && counts[i] > c.Max) {
 			return ErrInvalidParam
 		}
 	}
@@ -437,11 +437,12 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 func (g *Game) anyClauseUnfillableLocked(src TargetSource, steps []AnnouncedClause) bool {
 	for i := range steps {
 		c := &steps[i].Clause
-		if c.Min <= 0 {
+		min := g.clauseMinLocked(src.Controller, c)
+		if min <= 0 {
 			continue
 		}
 		lt := g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
-		if g.fillableCountLocked(c, lt) < c.Min {
+		if g.fillableCountLocked(c, lt) < min {
 			return true
 		}
 	}

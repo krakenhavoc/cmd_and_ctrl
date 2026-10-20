@@ -3485,3 +3485,112 @@ target clause's lenient reading (a pick with no key conflicts with nothing) is u
 not beside `EachOf`. A mana ability, a cast's additional cost (whose payability check counts candidates) and an optional
 or alternative cost each have payers or offer checks of their own that this change does not teach, so they refuse it
 until a printed card needs it there. Transmutation Font ships Full.
+
+## Amendment 2026-10-19 ([#4062](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4062)): "Activate only during your turn, before attackers are declared"
+
+About thirty Commander-legal cards (Diaochan, Artful Beauty and the Portal Three Kingdoms creatures) print this window,
+and Nettling Imp, Norritt and Arcum's Whistle print variants of it. It is an activation condition (CR 602.1b), and the one
+fact it needed already existed.
+
+1. **The fact is the turn tally's step count.** `Game.DeclareAttackersHasBegunThisTurnForEffect` reads
+   `TurnTally.StepsBegun[StepDeclareAttackers] > 0`. `noteStepBegunLocked` stamps that count as a step really begins (a
+   step the turn does not have, or one a replacement cancelled, is never counted), the snapshot already carries it,
+   `derivePrePlanOrdinalsLocked` rebuilds it for a restore point older than the turn plan, and every turn change empties
+   it. No new state, no snapshot change.
+2. **First combat, not each combat.** Diaochan's ruling: "If a turn has multiple combat phases, the ability can only be
+   activated before the beginning of the declare attackers step of the first combat phase in that turn." The first
+   declare attackers step to begin is the first combat's, so once any has begun the window is shut for the rest of the
+   turn, an extra combat's included. A turn whose combat is skipped never begins the step, and the window stays open all
+   turn, which is what the rule says. The beginning of combat step is still inside the window.
+3. **Builders.** `effects.BeforeAttackersAreDeclared()` (the fact alone, for Arcum's Whistle and Norritt, which name no
+   turn), `DuringYourTurnBeforeAttackersAreDeclared()` (`AllConditions(DuringYourTurn(), …)`, the printed pair) and
+   `DuringAnOpponentsTurnBeforeAttackersAreDeclared()` (Nettling Imp). The view's `condition_unmet` and the legal
+   enumerator read the same closure, so the ability greys out when the window shuts and a bot never offers it.
+4. **Cast restrictions use the same fact.** Siren's Call's `CastCondition` calls the same method. Master Warcraft's
+   "cast only before attackers are declared" needs the window too, but its effect (the spell's controller declares every
+   attack and block) is a seam of its own, #4154.
+
+Cards: Alaborn Veteran, Apprentice Sorcerer, Capricious Sorcerer, Cao Cao Lord of Wei, Coastal Wizard, Cunning Advisor,
+Diaochan, Fire Bowman, Goblin Firestarter, Hua Tuo, King's Assassin, Lady Sun, Loyal Retainers, Lu Su, Norwood Priestess,
+Pang Tong, Shu Farmer, Steam Catapult, Stern Marshal, Stone Catapult, Talas Researcher, Temple Elder, Wu Longbowman,
+Xiahou Dun, Xun Yu and Zhuge Jin (all Full), and the forced-attack family (Nettling Imp, Norritt, Arcum's Whistle,
+Siren's Call; `forced_attack_helpers.go`).
+
+## Amendment 2026-10-19 ([#3971](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3971)): an ability that moves a card to or from a library is not a mana ability
+
+**Why it lands here.** Decisions 65 and 66 put "Mill a card" on `ManaAbilityCost` so Millikin could stay a mana ability, and #3849 did the same for Deranged Assistant, Manakin and Millikin and Charmed Pendant. Chromatic Sphere ran "Draw a card" as a mana ability's rider. None of that checked CR 605.1a, which ADR 0118's 2026-10-16 amendment (#3943) then did, when it built the printed-text classifier. This amendment reverses the *shape* decision 65 made for those five cards and leaves the *component* alone.
+
+**The rule.** CR 605.1a (September 25, 2026): an activated ability is a mana ability only if it doesn't require a target, could add mana when it resolves, is not a loyalty ability, "and its cost and effect don't move any card to or from a library". A mill moves the top card of a library to the graveyard; a draw moves it to the hand. So `{T}, Mill a card: Add {C}` and `{1}, {T}, Sacrifice this artifact: Add one mana of any color. Draw a card` are ordinary activated abilities. The owner's recommendation on the issue (2026-10-16) was to follow the pinned rules.
+
+### Decision 67: the five cards are `Activated`, with `AddMana` on resolution
+
+Millikin, Manakin and Millikin, Deranged Assistant, Charmed Pendant and Chromatic Sphere declare `Spec.Activated`, not `ManaAbilities`. What follows from CR 602, which a mana ability skipped:
+
+- **The stack.** The cost is paid at announce (CR 602.2b): the tap, the mana, the sacrifice and the mill (still last, CR 601.2h). The ability goes on the stack, an opponent may respond, it can be countered (Stifle), and the mana is added on resolution through `AddMana` (CR 106.4, and the CR 106.12b window). Chromatic Sphere sacrifices itself as a cost, so a response cannot save it; it adds the colour (a pick, since the pipe slot asks) and then draws, in the printed order, and the draw waits for the pick (CR 608.2c, the `Do` step walk).
+- **CR 605.3a no longer applies.** They cannot be activated in the middle of paying a cost, so a cast no longer reaches into them. The auto-tapper plans only `ManaAbilities`, so it never taps these either. That is unchanged in effect: the mill and the sacrifice-and-draw were already outside its plans.
+- **Charmed Pendant.** `AbilityCost.Mill` already records the milled card on `PaidCost.Milled` for an activated ability (decision 65's #3849 amendment), and the stack item carries the record, so the effect reads `Context.Paid().Milled` on resolution instead of a `ProducedForPaid` callback. It sees the card wherever it now is (CR 701.17c). A card the effect cannot find adds nothing.
+- **Deck purposes** read `Purpose.Answers` (ADR 0142): each row declares `AnswerValue` (Chromatic Sphere also `Draws: 1`).
+
+`ManaAbilityCost.Mill` and `ManaAbilityShape.MillCost` (decision 65's mana-ability half) stay for now but have no catalogued user, and by CR 605.1a can have none: a mana ability whose cost mills is not a mana ability. Removing them, with the `mana_abilities[i].mill_cost` wire field and the enumerator, view and auto-tapper reads, is its own change, filed as a tech-debt issue. `ProducedForPaid` stays (Black Mana Battery, Bottomless Vault and Food Chain use it). `samiDrawRider` and `samiAnyColorManaThenDraw` had no other user and are deleted.
+
+### The guard that finds the next one
+
+`knownManaAbilityDisagreements` (`cards/coverage/mana_ability_text_test.go`) no longer pins the five. `TestManaAbilityTextAgreesWithTheCatalog` fails on any catalogued card whose `ManaAbilities` row the printed text says is not one, so a card written the old way fails CI. `TestLibraryMovingManaCardsAreNotManaAbilities` pins the five as `Activated` with no `ManaAbilities`.
+
+### Snapshot impact
+
+None to the schema. A mana ability never waits on the stack, so no restore point holds a pending one of the old shape. A stack item names its catalog row (`Activated` index 0); the five cards had no `Activated` row before, so none exists in an old restore point.
+
+### Tests
+
+`cards/effects/mill_cost_cards_test.go`, `batch11_test.go`, `mill_cost_test.go`, `sami_b_test.go`: each card activates, stacks (the pool is empty on the stack), resolves into the pool, mills or draws, refuses an empty library with `ErrCantPayLibraryCost` and a summoning-sick creature, and is never auto-tapped; Charmed Pendant counts coloured symbols, adds nothing for a colourless or costless card, and counts a card Rest in Peace exiled.
+
+### Back-out
+
+Put `ManaAbilities: []ManaAbility{...}` back on Millikin: `TestLibraryMovingManaCardsAreNotManaAbilities` and `TestManaAbilityTextAgreesWithTheCatalog` fail.
+
+## Amendment 2026-10-19 ([#4180](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4180)): a skipped combat closes the "before attackers are declared" window
+
+The #4062 amendment above (point 2) left the window open for a whole turn whose combat phase is skipped, reading "a
+turn whose combat is skipped never begins the step". That was wrong. CR 506.8a ties "only before attackers are
+declared" to the beginning of the declare attackers step, and CR 506.8e says: "If the stated point doesn't exist
+because the relevant combat phase has been skipped, the spell may be cast only before the precombat main phase ends."
+CR 506.8g applies 506.8 and 506.8a-f to abilities with a combat timing restriction as well, so the activation windows
+(Diaochan and the Portal Three Kingdoms creatures, Arcum's Whistle, Norritt, Nettling Imp) close the same way as the
+cast windows (Siren's Call, Master Warcraft).
+
+1. **One fact.** `Game.BeforeAttackersWindowClosedForEffect` (`game/turn_plan.go`) is the whole of it: closed when a
+   declare attackers step has begun this turn (the tally fact `DeclareAttackersHasBegunThisTurnForEffect` the #4062
+   amendment added, which stays as its first half), or when a second main phase or the ending phase has begun with no
+   declare attackers step behind it (read off `TurnTally.PhasesBegun`, which snapshots already carry and
+   `derivePrePlanOrdinalsLocked` rebuilds), or when the cursor is in the postcombat main or ending phase (for a restore
+   point or a test that set the cursor by hand). A main phase after the first always follows a combat phase, so
+   reaching one without a declare attackers step means that combat was skipped. No new state, no snapshot change.
+2. **An added combat does not reopen it.** CR 506.8d reads the first combat phase, and the first one was the skipped
+   one; the phase tally keeps the closure after the cursor re-enters a combat phase.
+3. **Callers.** `effects.BeforeAttackersAreDeclared` (and so the `DuringYourTurn…` and `DuringAnOpponentsTurn…` pairs),
+   Siren's Call's `CastCondition` and Master Warcraft's `CastCondition` all call it. Master Warcraft's own copy of the
+   skipped-combat rule is gone, so there is one source of truth.
+4. **"Before blockers" is a different point.** Berserker's Frenzy ("before combat or during combat before blockers
+   are declared", CR 506.8b, 506.8c) reads the cursor, not this fact: before the declare blockers step of the combat in
+   progress, any combat phase of the turn, and the precombat main phase of a skipped combat.
+
+## Amendment 2026-10-20 ([#4175](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4175)): the mana-ability mill cost is removed
+
+The 2026-10-19 amendment (#3971) left `ManaAbilityCost.Mill` and `ManaAbilityShape.MillCost` in place because nothing
+catalogued used them, and noted that by CR 605.1a (the September 25, 2026 edition, as that amendment quotes it) a mana
+ability whose cost mills is not a mana ability, so they can have no legal user. They are removed.
+
+Decision 65 stands for `AbilityCost.Mill`; its "and `ManaAbilityCost.Mill`" half, and the 2026-10-15 text that gave the
+wire `mana_abilities[i].mill_cost`, are withdrawn:
+
+- **Gone:** `effects.ManaAbilityCost.Mill` and its negative-count check in `effects.Register`; `game.ManaAbilityShape.MillCost`
+  and every reader (the payer in `ActivateManaAbility`, the auto-tapper's three predicates, `land_mana_each`, the
+  enumerator's gate and `withMill` on mana moves, the view's shortfall stamp); `ManaAbilityView.MillCost`
+  (`mana_abilities[i].mill_cost`) and the client's type and rider text.
+- **Kept:** `AbilityCost.Mill`, `MillCostShortfall`, `payMillCostLocked`, `PaidCost.Milled`,
+  `activated_abilities[i].mill_cost`, `Move.Cost.Mill` and the heuristic's mill pricing, all of which activated abilities use.
+- **Wire:** the field was `omitempty` and no catalogued card ever set it on a mana row after #3971, so no frame carries it.
+  The client reads it nowhere else, so an old or new client tolerates its absence. `docs/protocol.md` is updated.
+- **Snapshot impact:** none. A restore point stores a card's mana-ability count, never the shape
+  (`cardSnapshot.ManaAbilityCount`; the shapes are rebuilt from the catalog), so no persisted field is removed.

@@ -1327,7 +1327,8 @@ var characteristicModKinds = map[ModKind]bool{
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
-	ModCantBeBlockedByPower: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
+	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
+	ModCantBeBlockedBySubtypes: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1599,7 +1600,7 @@ const (
 // the map counts as defFieldRules, and
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
-	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
+	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
@@ -1620,11 +1621,11 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert,
 	"EntryRestrictions":      defFieldInert,
 	"ActivationRestrictions": defFieldInert, "ActivationTimings": defFieldInert,
-	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert,
+	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert, "CantBeCopied": defFieldInert,
 	"FlashWithCleanupSacrifice": defFieldInert, "CastTimeValues": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert, "YourPlaneswalkersLoyaltyTwiceEachTurn": defFieldInert, "ActivateAsThoughHaste": defFieldInert,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
 	"ExtraVote": defFieldOwnRules,
@@ -1650,7 +1651,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"TargetingRestrictions": defFieldRules, "PlayerKeywords": defFieldRules,
 	"PlayerKeywordsIf":      defFieldRules,
 	"PlayerLifeTotalLocked": defFieldRules, "DamageCantBePrevented": defFieldRules,
-	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "DamageAsThough": defFieldRules,
+	"CantGainLife": defFieldRules, "DrawLimits": defFieldRules, "VentureLimits": defFieldRules, "DamageAsThough": defFieldRules,
 	"LegendRuleExemptions": defFieldRules, "ZeroLoyaltyExemptions": defFieldRules,
 	"OpponentEffectProtections": defFieldRules, "GameEndGates": defFieldRules,
 	"DealtDamageCantBeRegenerated": defFieldRules,

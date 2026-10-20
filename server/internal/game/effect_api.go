@@ -1671,7 +1671,7 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellLocked(stackID, nil)
+		return g.counterSpellByEffectLocked(stackID, nil, TuckOptions{}, nil)
 	case StackItemActivated, StackItemTriggered:
 		// #2014: "Spells and abilities can't be countered" (Spider-Punk).
 		// The ability stays a legal target, as a covered spell does.
@@ -1712,7 +1712,7 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellLocked(stackID, &dst)
+		return g.counterSpellByEffectLocked(stackID, &dst, TuckOptions{}, nil)
 	case StackItemActivated, StackItemTriggered:
 		if g.abilityCantBeCounteredLocked(item) {
 			slog.Info("counter had no effect: ability can't be countered",
@@ -1771,7 +1771,7 @@ func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOpti
 		}
 		return tell(g, false)
 	}
-	return g.exitSpellFromStackAtLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, ZoneGraveyard, true, at,
+	return g.counterSpellByEffectLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, at,
 		func(g *Game) error {
 			return tell(g, g.landedInZoneLocked(stackID, ZoneLibrary, uuid.Nil))
 		})
@@ -1928,12 +1928,30 @@ func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallbac
 //
 // Caller must hold g.mu.
 func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) error {
+	r, err := g.spellExitRouteLocked(spellID, dst, fallback, countered, at, then)
+	if err != nil {
+		return err
+	}
+	_, err = g.routeCardToZoneLocked(r)
+	return err
+}
+
+// spellExitRouteLocked is exitSpellFromStackAtLocked's first half: the
+// route that takes a spell off the stack, destination resolved and
+// every stack-exit override (flashback's CR 702.34a exile, #3863's
+// graveyard-to-exile) applied, but nothing moved. The counter verbs
+// build it, open the CR 614 window on the counter itself
+// (counter_spell.go, #4056) and only then route it, so a replacement of
+// the counter sees the move the counter would have made.
+//
+// Caller must hold g.mu.
+func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) (zoneRoute, error) {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
-		return ErrCardNotOnStack
+		return zoneRoute{}, ErrCardNotOnStack
 	}
 	if g.Stack == nil || !g.Stack.Contains(spellID) {
-		return ErrCardNotOnStack
+		return zoneRoute{}, ErrCardNotOnStack
 	}
 	// Resolve the destination. nil → the fallback at the spell's
 	// owner (a countered spell's graveyard, a returned spell's hand),
@@ -1944,10 +1962,10 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 	destKind, destOwner := fallback, item.Owner
 	if dst != nil {
 		if dst.Kind == ZoneBattlefield || dst.Kind == ZoneStack {
-			return ErrInvalidStackDestination
+			return zoneRoute{}, ErrInvalidStackDestination
 		}
 		if g.zoneFromRefLocked(*dst) == nil {
-			return ErrZoneNotFound
+			return zoneRoute{}, ErrZoneNotFound
 		}
 		destKind, destOwner = dst.Kind, dst.Owner
 	}
@@ -1982,8 +2000,7 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 	if destKind == ZoneLibrary {
 		r.ToBottom, r.Depth = at.ToBottom, at.Depth
 	}
-	_, err := g.routeCardToZoneLocked(r)
-	return err
+	return r, nil
 }
 
 // counterAbilityLocked is the lock-free body of CounterAbility, and
@@ -2536,6 +2553,18 @@ type SearchLibrarySpec struct {
 	// Solemn Simulacrum — or when an UNCONDITIONAL search ("a card")
 	// is itself optional, since that is the one case the quality rule
 	// does not already cover.
+	//
+	// An Optional search's prompt also carries a "don't search"
+	// answer (DeclineSearchLibrary, #4134). That is a different
+	// thing from answering with no cards: a search that finds nothing
+	// is still a search (CR 701.19), so the library is shuffled and
+	// "whenever a player searches" triggers fire; a search the player
+	// declined never happened, so none of that does, and the library
+	// keeps its order. Only the instruction after the search
+	// (Then) still runs. The question is asked before the list is
+	// shown (looking is searching, CR 701.19): the prompt opens
+	// undecided, "search" reveals the candidates, and from then on
+	// there is no decline.
 	Optional bool
 
 	// UpTo is "search your library for UP TO N cards" with no stated
@@ -2895,10 +2924,17 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 			// are found all the same.
 			return g.executeSearchTakeLocked(spec, p, nil)
 		}
-		// Nothing to find. Still a search: the event fires and the
-		// shuffle happens, because the card said "then shuffle"
-		// unconditionally.
-		return g.finishSearchLocked(spec, p, nil)
+		// Nothing matches (#4140). It is still asked: the searcher
+		// answers a prompt with no candidates, "find nothing" (a search
+		// that came up empty: the event fires and the library is
+		// shuffled, because the card said "then shuffle"
+		// unconditionally) or, for a "you may search", "don't search".
+		// Resolving it silently would make a library with a match look
+		// different from one without to every other seat (a prompt
+		// appeared or it did not), and would give an optional search no
+		// way to be declined.
+		g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
+		return nil
 	}
 	if spec.Unbounded {
 		// "Any number" is a ceiling, never a target (CR 701.23a): the
@@ -2965,14 +3001,20 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 //
 // Caller must hold g.mu.
 func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches, handMatches []uuid.UUID) {
-	known := make(map[uuid.UUID]bool, len(matches))
-	for _, id := range matches {
-		known[id] = true
-	}
-	for i := range p.Library.Cards {
-		if known[p.Library.Cards[i].InstanceID] {
-			p.Library.Cards[i].AddKnower(spec.Player)
-		}
+	// #4134: a "you may search" is asked BEFORE the search begins, for
+	// every optional search. Looking through the library IS searching
+	// (CR 701.19), so showing the candidates beside a "don't search"
+	// button would be a free look at hidden information that never
+	// shuffles. The prompt therefore opens "undecided": no candidates
+	// shown, no knowledge granted, no control recorded, and the only
+	// answers are "search" (BeginSearchLibrary, which reveals the list
+	// and from then on has no decline) and "don't" (DeclineSearchLibrary).
+	// It is also why an Opposition Agent has no say in the question: the
+	// Agent's controller takes over only once the search has begun
+	// (CR 723.2, "while they're searching").
+	undecided := spec.Optional
+	if !undecided {
+		g.markSearchCandidatesKnownLocked(spec.Player, p, matches)
 	}
 	reason := spec.Reason
 	if reason == "" {
@@ -2995,13 +3037,31 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		// searcher already looks at the whole hand
 		// (SearchLibraryThenForEffect marks it).
 		SearchHandCards: append([]uuid.UUID(nil), handMatches...),
-		searchResume:    &searchResumeFrame{spec: spec},
+		searchResume:    &searchResumeFrame{spec: spec, undecided: undecided},
 	})
 	// #3998: "You control your opponents while they're searching their
 	// libraries" — for as long as this prompt is open. Only a search of
-	// the searcher's own library is "searching their library".
-	if spec.libraryOwnerID() == spec.Player {
+	// the searcher's own library is "searching their library". An
+	// undecided prompt has not begun a search, so it records no control
+	// (BeginSearchLibrary does, once the searcher says yes).
+	if !undecided && spec.libraryOwnerID() == spec.Player {
 		g.beginSearchControlsLocked(spec.Player, id)
+	}
+}
+
+// markSearchCandidatesKnownLocked makes `searcher` a knower of the
+// library cards a search prompt offers: they are looking through the
+// library, which is exactly the knowledge the rules grant them.
+// Caller must hold g.mu.
+func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, matches []uuid.UUID) {
+	known := make(map[uuid.UUID]bool, len(matches))
+	for _, id := range matches {
+		known[id] = true
+	}
+	for i := range p.Library.Cards {
+		if known[p.Library.Cards[i].InstanceID] {
+			p.Library.Cards[i].AddKnower(searcher)
+		}
 	}
 }
 

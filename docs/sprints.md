@@ -114,17 +114,24 @@ planned just-in-time from the S12 pain-point triage.
 | S68     | Cost components and alternative costs                                | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/77) | —          | **done**    |
 | S69     | Combat you can watch: table animations                               | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/78) | —          | **done**    |
 | S70     | Public beta: a table strangers can find                              | 7     | [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985) | —          | in progress |
-| S71     | A front door: site shell, front page and a Discord gate              | 7     | [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177) | —          | in progress |
-| S72     | Smoother table play: fewer clicks, the London mulligan, rematch      | 7     | [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294) | —          | planned     |
-| S73     | Big boards: layout and per-action cost                               | 7     | [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295) | —          | planned     |
-| S74     | Table truth: the log, the board and the art say what happened        | 7     | [#3614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3614) | —          | planned     |
-| S75     | Agents at the table: a current seat, quieter turns, sharper bots     | 7     | [#3615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3615) | —          | planned     |
-| S76     | Cards: incubate, face-down and outside the game                      | 7     | [#3616](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3616) | —          | planned     |
-| S77     | Discord and social: voice, friends, mod tools and events             | 7     | [#3617](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3617) | —          | planned     |
+| S71     | A front door: site shell, front page and a Discord gate              | 7     | [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177) | 2026-10-14 | **done**    |
+| S72     | Smoother table play: fewer clicks, the London mulligan, rematch      | 7     | [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294) | 2026-10-16 | **done**    |
+| S73     | Big boards: layout and per-action cost                               | 7     | [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295) | 2026-10-16 | **done**    |
+| S74     | Table truth: the log, the board and the art say what happened        | 7     | [#3614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3614) | 2026-10-16 | **done**    |
+| S75     | Agents at the table: a current seat, quieter turns, sharper bots     | 7     | [#3615](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3615) | —          | in progress |
+| S76     | Cards: incubate, face-down and outside the game                      | 7     | [#3616](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3616) | —          | in progress |
+| S77     | Discord and social: voice, friends, mod tools and events             | 7     | [#3617](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3617) | —          | in progress |
 
 On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
 closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
 next sprint planning. New work opens a new sprint rather than reviving a closed one.
+
+On 2026-10-19 (#4171) the status of S71 to S77 was reconciled against the milestones. Every row from
+S72 to S77 still read `planned` while 5 to 52 of its issues had closed (S71 read `in progress` with
+all 20 closed), and S76 alone had 111 commits on `develop`. S71 to S74 moved to `**done**`, on the owner's
+closing of their trackers on 2026-10-14 and 2026-10-16, and S75 to S77 to `in progress`. Closed checklist
+boxes were ticked. S58 and S70 still read `in progress` with closed trackers and a few open members
+each; they were left for the owner, who closed those trackers.
 
 ### How to read the status column
 
@@ -3705,12 +3712,12 @@ The 2026-10-14 triage filed seven more issues here: #3431, which holds criteria 
 
 Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord server to stop being hidden, and players to ask to be let in through it.
 
-- [ ] ADR 0156
-- [ ] Server: the Discord role gate, re-checked at renewal
-- [ ] Server: guest practice game
-- [ ] Client: page frame, grouped header, footer
-- [ ] Client: front page, gate page, Discord placements
-- [ ] Client: page passes
+- [x] ADR 0156
+- [x] Server: the Discord role gate, re-checked at renewal
+- [x] Server: guest practice game
+- [x] Client: page frame, grouped header, footer
+- [x] Client: front page, gate page, Discord placements
+- [x] Client: page passes
 
 ### Exit criteria
 
@@ -3722,7 +3729,7 @@ Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord s
 
 ### Status
 
-**Planned** (2026-10-13).
+**Done** (2026-10-19 reconciliation, #4171). The tracker [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177) closed on 2026-10-14, and the S71 milestone holds 20 closed issues and none open. Exit criteria 1 to 5 rest on that close; this pass did not re-run them.
 
 ---
 
@@ -3732,20 +3739,20 @@ Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord s
 
 Opened at the 2026-10-13 triage of every open issue.
 
-- [ ] [#2799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2799): mulligans follow CR 103.5, with the free first mulligan in multiplayer (P1)
-- [ ] [#3264](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3264): choose a lone legal target automatically
-- [ ] [#3265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3265): one target for every instance of a repeated trigger
-- [ ] [#3266](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3266): declare attackers by toggling creatures, and keep Attack all
-- [ ] [#3285](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3285): rematch with the same table after game over
-- [ ] [#3262](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3262): several badges on a player hide their life total
-- [ ] [#3095](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3095): the damage-assignment sheet covers the defender's creature row at 1280x720
+- [x] [#2799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2799): mulligans follow CR 103.5, with the free first mulligan in multiplayer (P1)
+- [x] [#3264](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3264): choose a lone legal target automatically
+- [x] [#3265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3265): one target for every instance of a repeated trigger
+- [x] [#3266](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3266): declare attackers by toggling creatures, and keep Attack all
+- [x] [#3285](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3285): rematch with the same table after game over
+- [x] [#3262](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3262): several badges on a player hide their life total
+- [x] [#3095](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3095): the damage-assignment sheet covers the defender's creature row at 1280x720
 
 Added at the 2026-10-14 triage:
 
 - [x] [#3387](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3387): a table setting for a free first mulligan at two-player tables (PRs #3396, #3423)
-- [ ] [#3555](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3555): smart auto-pass stops on every opponent spell while a free sacrifice outlet is out
+- [x] [#3555](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3555): smart auto-pass stops on every opponent spell while a free sacrifice outlet is out
 - [ ] [#3556](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3556): trigger-order footprints for Uro's sacrifice, and no choice between inert tokens
-- [ ] [#3604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3604): auto-pay spends a coloured or multi-mana source on a generic cost the hand needs elsewhere
+- [x] [#3604](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3604): auto-pay spends a coloured or multi-mana source on a generic cost the hand needs elsewhere
 
 ### Exit criteria
 
@@ -3759,7 +3766,7 @@ From the tracker, [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329
 
 ### Status
 
-**Planned** (2026-10-13). #3264, #3265 and #3266 already have PRs open (#3284, #3286, #3291).
+**Done** (2026-10-19 reconciliation, #4171). The tracker [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294) closed on 2026-10-16, and 15 of the milestone's 16 issues are closed. [#3556](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3556) (trigger-order footprints for Uro's sacrifice) stays open on its own: it is not one of the five exit criteria.
 
 ---
 
@@ -3769,11 +3776,11 @@ From the tracker, [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329
 
 Opened at the 2026-10-13 triage, from the owner's 2026-10-11 review of a 39-creature board, and the profiling in #3041 and #3136.
 
-- [ ] [#3044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3044): use vertical room, and stack lands legibly, on a crowded board
-- [ ] [#3045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3045): close the empty band between the creature row and the back row
-- [ ] [#3046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3046): stack identical nontoken permanents into one pile with a count
+- [x] [#3044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3044): use vertical room, and stack lands legibly, on a crowded board
+- [x] [#3045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3045): close the empty band between the creature row and the back row
+- [x] [#3046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3046): stack identical nontoken permanents into one pile with a count
 - [x] [#3041](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3041): store the mana pool as runs, not one token per mana
-- [ ] [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136): the per-action `Game.Clone` and the restore-point write: sparse snapshots or copy-on-write
+- [x] [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136): the per-action `Game.Clone` and the restore-point write: sparse snapshots or copy-on-write
 
 ### Exit criteria
 
@@ -3786,7 +3793,7 @@ From the tracker, [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329
 
 ### Status
 
-**Planned** (2026-10-13).
+**Done** (2026-10-19 reconciliation, #4171). The tracker [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295) closed on 2026-10-16, and all five checklist issues are closed. The milestone's one open issue, [#4109](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4109) (hover zoom for adventurer and prepare cards), is a client bug filed after the sprint's scope was set and stays open on its own.
 
 ---
 
@@ -3796,15 +3803,16 @@ From the tracker, [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/329
 
 Opened at the 2026-10-14 triage, mostly from player reports and an agent's game on cmd-dev.
 
-- [ ] [#3613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3613): a resolving choice is asked after the log says resolved
-- [ ] [#3610](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3610): the win line says every opponent left when they lost
-- [ ] [#3609](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3609): log lines name a token "a card" once the token is gone
-- [ ] [#3490](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3490): rebound (Quantum Misalignment) prompts but never casts
-- [ ] [#3601](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3601): the arrival ring is measured mid-ETB-pop and drawn shrunk
+- [x] [#3613](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3613): a resolving choice is asked after the log says resolved
+- [x] [#3610](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3610): the win line says every opponent left when they lost
+- [x] [#3609](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3609): log lines name a token "a card" once the token is gone
+- [x] [#3490](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3490): rebound (Quantum Misalignment) prompts but never casts
+- [x] [#3601](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3601): the arrival ring is measured mid-ETB-pop and drawn shrunk
+- [ ] [#4124](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4124): saved-deck printing picker and Scryfall alternate-title matching (owner follow-up to #3605)
 - [x] [#3605](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3605): imported decks lose their printing and default to gimmick reprint art ([ADR 0192](decisions/0192-a-deck-names-its-printing.md))
-- [ ] [#3518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3518): double-faced cards show each face as a whole card
-- [ ] [#3449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3449): after a tied opening roll, show the tie and the first-round dice
-- [ ] [#3380](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3380): tie each stack item to its caster's seat, and stop the panel covering a board (needs a design call)
+- [x] [#3518](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3518): double-faced cards show each face as a whole card
+- [x] [#3449](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3449): after a tied opening roll, show the tie and the first-round dice
+- [x] [#3380](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3380): tie each stack item to its caster's seat, and stop the panel covering a board (needs a design call)
 
 ### Exit criteria
 
@@ -3816,7 +3824,7 @@ Opened at the 2026-10-14 triage, mostly from player reports and an agent's game 
 
 ### Status
 
-**Planned** (2026-10-14).
+**Done** (2026-10-19 reconciliation, #4171). The tracker [#3614](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3614) closed on 2026-10-16, and nine of the ten checklist issues are closed. [#4124](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4124) (the printing picker) is merged into `develop` in [#4125](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4125) and closes on promotion; it is the owner's follow-up to #3605, not one of the five exit criteria.
 
 ---
 
@@ -3827,14 +3835,14 @@ Opened at the 2026-10-14 triage, mostly from player reports and an agent's game 
 Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a local server.
 
 - [ ] [#3611](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3611): publish an mcpseat release, since rc.1 lacks two weeks of seat fixes
-- [ ] [#3608](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3608): warn on join when the seat binary is older than the server expects
-- [ ] [#3606](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3606): wait_for_decision serves a window that act can't answer while reconnecting
-- [ ] [#3607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3607): full state's log heading, and a log on game_over
+- [x] [#3608](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3608): warn on join when the seat binary is older than the server expects
+- [x] [#3606](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3606): wait_for_decision serves a window that act can't answer while reconnecting
+- [x] [#3607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3607): full state's log heading, and a log on game_over
 - [x] [#3603](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3603): a pass_until that also skips idle steps of the seat's own turn
-- [ ] [#3612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3612): board text names what an aura, equipment or O-Ring is on
+- [x] [#3612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3612): board text names what an aura, equipment or O-Ring is on
 - [x] [#3489](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3489): send max_completion_tokens to models that refuse max_tokens (PR #3507)
-- [ ] [#3521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3521): the heuristic takes a pass-closed cast before spending the mana elsewhere
-- [ ] [#3309](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3309): the heuristic tells a buff Aura from a curse
+- [x] [#3521](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3521): the heuristic takes a pass-closed cast before spending the mana elsewhere
+- [x] [#3309](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3309): the heuristic tells a buff Aura from a curse
 
 ### Exit criteria
 
@@ -3845,7 +3853,7 @@ Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a
 
 ### Status
 
-**Planned** (2026-10-14).
+**In progress** (2026-10-19 reconciliation, #4171). Eleven of the milestone's 13 issues are closed. The two open ones are the tracker and [#3611](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3611) (publish an `mcpseat` release), which is the owner's call. Exit criterion 1 needs that release.
 
 ---
 
@@ -3855,15 +3863,16 @@ Opened at the 2026-10-14 triage, from four-agent MCP-seat games on cmd-dev and a
 
 Opened at the 2026-10-14 triage. Several members already have PRs open: #3584, #3596, #3526 and #3542.
 
-- [ ] [#3568](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3568): the remaining incubate cards
-- [ ] [#3591](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3591), [#3592](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3592), [#3593](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3593): the incubate caveats of Assimilate Essence, Brimaz and Corruption of Towashi
-- [ ] [#3511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3511): Incubator token art from double_faced_token printings
-- [ ] [#3512](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3512): copies of double-faced permanents (CR 707.8, 707.8a)
-- [ ] [#3535](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3535), [#3538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3538), [#3539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3539): ADR 0189 slices 1, 4 and 5 (parent #3523)
-- [ ] [#3506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3506): a deck sideboard as the outside-the-game pool
+- [ ] [#4126](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4126): fully automate Skrelv, Defector Mite and Umezawa's Jitte for the owner's Squall deck (owner-requested beta follow-up outside the planned mechanic batches)
+- [x] [#3568](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3568): the remaining incubate cards
+- [x] [#3591](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3591), [#3592](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3592), [#3593](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3593): the incubate caveats of Assimilate Essence, Brimaz and Corruption of Towashi
+- [x] [#3511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3511): Incubator token art from double_faced_token printings
+- [x] [#3512](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3512): copies of double-faced permanents (CR 707.8, 707.8a)
+- [x] [#3535](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3535), [#3538](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3538), [#3539](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3539): ADR 0189 slices 1, 4 and 5 (parent #3523)
+- [x] [#3506](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3506): a deck sideboard as the outside-the-game pool
 - [ ] [#3525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3525): the rest of the cards that read "outside the game"
-- [ ] [#3520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3520): Emrakul, the Exigent Doom's exile-from-hand ability
-- [ ] [#3541](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3541): Library of Leng top placements across a simultaneous discard shuffle
+- [x] [#3520](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3520): Emrakul, the Exigent Doom's exile-from-hand ability
+- [x] [#3541](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3541): Library of Leng top placements across a simultaneous discard shuffle
 
 ### Exit criteria
 
@@ -3873,7 +3882,7 @@ Opened at the 2026-10-14 triage. Several members already have PRs open: #3584, #
 
 ### Status
 
-**Planned** (2026-10-14).
+**In progress** (2026-10-19 reconciliation, #4171). 52 of the milestone's 55 issues are closed, among them the incubate cards, the face-down slices (ADR 0189), the sideboard and the card-database pool, and casting from outside the game. Open: the tracker; [#3525](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3525), which now holds Research // Development and the learn cards (the roadmap's `outside-the-game` row is partial); and [#4126](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4126), merged into `develop` in [#4129](https://github.com/krakenhavoc/cmd_and_ctrl/pull/4129) and closing on promotion. The sprint has also carried card and seam work the checklist doesn't list: the initiative and the three Forgotten Realms dungeons (#4096, #4100), the restart (#3856), turn and combat-phase control (#4002, #4158), splice (#1989, #4055), the step-wise resolution of #4155's first three batches, and more. Those are filed in `docs/engine-seams/closed/`.
 
 ---
 
@@ -3883,12 +3892,12 @@ Opened at the 2026-10-14 triage. Several members already have PRs open: #3584, #
 
 Opened at the 2026-10-14 triage.
 
-- [ ] [#3311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3311): show who is in a table voice room and pull seated players in
+- [x] [#3311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3311): show who is in a table voice room and pull seated players in
 - [ ] [#3313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3313): friends and recently played with, with live presence
 - [ ] [#3325](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3325): mod tools with approve buttons, ban sync and a mod log
-- [ ] [#3327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3327): mirror in-app bug reports to a Discord forum thread
-- [ ] [#3326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3326): post release notes and ops alerts to Discord webhooks
-- [ ] [#3324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3324): card lookup in Discord chat and a c2-card command
+- [x] [#3327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3327): mirror in-app bug reports to a Discord forum thread
+- [x] [#3326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3326): post release notes and ops alerts to Discord webhooks
+- [x] [#3324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3324): card lookup in Discord chat and a c2-card command
 - [ ] [#3321](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3321): scheduled games as Discord Scheduled Events with RSVP seats
 - [ ] [#3323](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3323): Linked Roles with CMD & CTRL stats on Discord profiles
 - [ ] [#3312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3312): an ADR on CMD & CTRL as a Discord Activity in the voice channel
@@ -3901,7 +3910,7 @@ Opened at the 2026-10-14 triage.
 
 ### Status
 
-**Planned** (2026-10-14).
+**In progress** (2026-10-19 reconciliation, #4171). Five of the milestone's 11 issues are closed, four of them checklist items: [#3311](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3311) (voice rooms), [#3324](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3324) (card lookup), [#3326](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3326) (release notes and ops alerts) and [#3327](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3327) (bug reports in a forum thread). [#3325](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3325) has its mod log and approve buttons merged into `develop` in [#3969](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3969) and stays open for ban sync. Open with no feature code merged: #3312 (the Activity ADR), #3313, #3321 and #3323 (its design, [ADR 0163](decisions/0163-discord-linked-roles.md), is merged).
 
 ---
 

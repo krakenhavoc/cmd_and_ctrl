@@ -26,11 +26,12 @@ func init() {
 		Name:         "Eureka Moment",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 2},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return MayPutALandFromHand("Eureka Moment").Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The land waits for a prompt the draws ask (CR 608.2c, #4155).
+			DrawCards{N: 2},
+			Instruction(func(ctx *Context) error {
+				return MayPutALandFromHand("Eureka Moment").Apply(ctx)
+			}),
+		),
 	})
 }

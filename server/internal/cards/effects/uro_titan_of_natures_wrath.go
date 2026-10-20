@@ -33,18 +33,16 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Escape("{G}{G}{U}{U}", 5)},
 		Triggered: []game.TriggeredAbility{
 			SacrificeThisUnlessItEscaped("Uro"),
-			WhenThisEntersOrAttacks("Uro — gain 3 life, draw a card, then you may put a land from your hand", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				put := MayPutALandFromHand("Uro")
-				put.Player = item.Controller
-				return put.Apply(ctx)
-			}),
+			WhenThisEntersOrAttacks("Uro — gain 3 life, draw a card, then you may put a land from your hand", Do(
+				// Each instruction waits for the prompts the one before asks (CR 608.2c, #4155).
+				GainLife{Amount: 3},
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					put := MayPutALandFromHand("Uro")
+					put.Player = ctx.Controller()
+					return put.Apply(ctx)
+				}),
+			)),
 		},
 	})
 }

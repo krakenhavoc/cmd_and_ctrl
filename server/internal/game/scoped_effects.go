@@ -464,6 +464,16 @@ const (
 	// pump or a shrink on the blocker after the effect is applied
 	// moves it in or out of the barred set.
 	ModCantBeBlockedByPower ModKind = "cantBeBlockedByPower"
+	// ModCantBeBlockedByColor bars blockers with Colors[0], read live.
+	// It uses existing Mod fields and is additive within this schema.
+	ModCantBeBlockedByColor ModKind = "cantBeBlockedByColor"
+	// ModCantBeBlockedBySubtypes is "<creature> can't be blocked by
+	// Walls this turn" (Kick in the Door, #4100, CR 509.1b). Reads
+	// Subtypes, an any-of of creature types, and Text, the clause as the
+	// refusal sentence reads it. The pinned attacker(s). Pure data: the
+	// blocker's creature types are read live, so a changeling counts as a
+	// Wall and a creature that stops being one leaves the barred set.
+	ModCantBeBlockedBySubtypes ModKind = "cantBeBlockedBySubtypes"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -1080,6 +1090,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModLimitBlockersPerDefender: {reader: readerBlockRule},
 	ModCantBeBlockedByPlayer:    {reader: readerBlockRule},
 	ModCantBeBlockedByPower:     {reader: readerBlockRule},
+	ModCantBeBlockedByColor:     {reader: readerBlockRule},
+	ModCantBeBlockedBySubtypes:  {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},

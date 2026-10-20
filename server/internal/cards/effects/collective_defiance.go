@@ -1,6 +1,13 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// collectiveDefianceRecord is who discarded and how many cards.
+const collectiveDefianceRecord = "collective-defiance/discarded"
 
 // Collective Defiance — Sorcery {1}{R}{R}:
 //
@@ -24,19 +31,26 @@ func init() {
 		Name:         "Collective Defiance",
 		Completeness: CompletenessFull,
 		Modes: Escalating(ChooseOneOrMore(
-			ModeDoing("Target player discards all the cards in their hand, then draws that many cards.",
+			// The draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155)
+			// and draws the count the discard filed (#4163).
+			ModeSteps("Target player discards all the cards in their hand, then draws that many cards.",
 				TargetPlayer("target player"),
-				func(_ *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
 					n, err := discardWholeHand(ctx.Game, t.ID)
-					if err != nil {
-						return err
-					}
-					return DrawCards{Player: t.ID, N: n}.Apply(ctx)
+					ctx.RecordStep(collectiveDefianceRecord, []uuid.UUID{t.ID}, n)
+					return err
 				}),
+				Instruction(func(ctx *Context) error {
+					r := ctx.StepRecord(collectiveDefianceRecord)
+					if len(r.IDs) == 0 {
+						return nil
+					}
+					return DrawCards{Player: r.IDs[0], N: r.N()}.Apply(ctx)
+				})),
 			ModeWithPurpose(ModeDoing("Collective Defiance deals 4 damage to target creature.",
 				TargetCreature("target creature"),
 				DealFixedDamageToModesTarget(4)), ForTargets(DamageToTarget(0, 4))),

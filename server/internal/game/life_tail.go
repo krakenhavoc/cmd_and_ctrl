@@ -320,3 +320,38 @@ func (g *Game) payLifeAsCostLocked(source, playerID uuid.UUID, amount int) error
 	}
 	return nil
 }
+
+// gainLifeAsCostLocked gives `playerID` `amount` life as part of a COST:
+// "An opponent gains 5 life" (#4055, a splice cost, CR 702.47a). The twin
+// of payLifeAsCostLocked and for its reason: a cost is paid as one
+// indivisible step of casting (CR 601.2h), so the CR 614 window settles
+// without asking an ordering question, and a replacement that would ask
+// its own is skipped un-applied. A gain the window cancels is not paid
+// (CR 614.17b: if an event can't happen, a player can't choose to pay a
+// cost that includes it), so it refuses the cost with ErrInvalidParam
+// rather than handing the caster what the cost bought for nothing. A gain
+// a replacement merely changes (a doubler) is still the payment.
+//
+// Caller must hold g.mu.
+func (g *Game) gainLifeAsCostLocked(source, playerID uuid.UUID, amount int) error {
+	if amount <= 0 {
+		return nil
+	}
+	if g.playerByIDLocked(playerID) == nil {
+		return ErrPlayerNotFound
+	}
+	ev := &ReplacementEvent{
+		Kind:          RepEventLife,
+		Source:        source,
+		LifePlayer:    playerID,
+		LifeDelta:     amount,
+		mustSettleNow: true,
+	}
+	if _, err := g.changeLifeThroughReplacementsLocked(ev); err != nil {
+		return err
+	}
+	if ev.Canceled {
+		return fmt.Errorf("%w: a life gain that cannot happen cannot be paid (CR 614.17b)", ErrInvalidParam)
+	}
+	return nil
+}

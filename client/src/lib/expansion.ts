@@ -39,6 +39,13 @@
 // adding a trigger here, the question to answer first is "can this fire
 // while the viewer's mouse is already down?" — and if it can, it does
 // not belong.
+//
+// The one table event that does move the row (ADR 0077 as amended
+// 2026-10-18, #4115): under a reflow, a seat a stack item targets is a
+// full board beside the active one, so the target can be seen. It
+// answers that question by waiting: Board passes the targeted seats
+// through settleGate.ts, which holds the change while a pointer button
+// is down and until the pointer has been still for a moment.
 
 import type { CardView, GameView } from "./protocol";
 import type { TableLayout } from "./tableLayout";
@@ -198,6 +205,11 @@ export interface ReflowSeat {
   isActiveSeat: boolean;
   /** interactionReason is not null for this seat. */
   needsBoard: boolean;
+  /**
+   * A stack item targets this seat or a permanent it controls
+   * (stackTargetSeatIDs, after Board's settle gate; #4115).
+   */
+  targeted?: boolean;
 }
 
 export interface ReflowContext {
@@ -218,6 +230,12 @@ export interface Reflow {
   focusSeatID: string;
   /** The opponents drawn as avatar cards. */
   avatarSeatIDs: ReadonlySet<string>;
+  /**
+   * A targeted seat is a full board beside the focus, so the focus
+   * gives up its second share and the boards split the row evenly
+   * (#4115). Absent means false.
+   */
+  evenSplit?: boolean;
 }
 
 /**
@@ -233,10 +251,38 @@ export function decideReflow(opponents: readonly ReflowSeat[], ctx: ReflowContex
   const focus = opponents.find((o) => o.isActiveSeat);
   if (!focus) return null;
   const avatars = new Set<string>();
+  let evenSplit = false;
   for (const o of opponents) {
-    if (o.id !== focus.id && !o.needsBoard) avatars.add(o.id);
+    if (o.id === focus.id) continue;
+    if (o.targeted) evenSplit = true;
+    else if (!o.needsBoard) avatars.add(o.id);
   }
-  return { focusSeatID: focus.id, avatarSeatIDs: avatars };
+  return { focusSeatID: focus.id, avatarSeatIDs: avatars, evenSplit };
+}
+
+/**
+ * stackTargetSeatIDs is every seat a stack item targets (ADR 0077 as
+ * amended 2026-10-18, #4115): a targeted player, and the controller of
+ * a targeted permanent. A target off the battlefield (a spell on the
+ * stack, a card in a graveyard) names no seat's board, so it is left
+ * out, as are "self" and "none".
+ */
+export function stackTargetSeatIDs(view: GameView): Set<string> {
+  const seats = new Set<string>();
+  const controllerOf = new Map(
+    (view.battlefield?.cards ?? []).map((c) => [c.instance_id, c.controller ?? c.owner]),
+  );
+  for (const item of view.stack_items ?? []) {
+    for (const t of item.targets ?? []) {
+      if (!t.id) continue;
+      if (t.kind === "player") seats.add(t.id);
+      else if (t.kind === "card") {
+        const controller = controllerOf.get(t.id);
+        if (controller) seats.add(controller);
+      }
+    }
+  }
+  return seats;
 }
 
 /** The width of the avatar cards' column: a token, 176px (app.css). */
@@ -282,7 +328,7 @@ export function reflowGrid(
   });
   const boards = columnCells.filter((c) => !reflow.avatarSeatIDs.has(c.id));
   const tracks: string[] = boards.map((c) =>
-    c.id === reflow.focusSeatID ? "minmax(0, 2fr)" : "minmax(0, 1fr)",
+    c.id === reflow.focusSeatID && !reflow.evenSplit ? "minmax(0, 2fr)" : "minmax(0, 1fr)",
   );
   if (avatars.length > 0) tracks.unshift(REFLOW_AVATAR_COLUMN);
   const boardAreas = boards.map((c) => c.area).join(" ");

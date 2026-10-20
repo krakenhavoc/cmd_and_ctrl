@@ -5,7 +5,10 @@ import "github.com/google/uuid"
 // loyalty_limit.go — CR 606.3's "only one loyalty ability per
 // permanent per turn", and the printed exception to it: "You may
 // activate the loyalty abilities of Urza twice each turn rather than
-// only once" (Urza, Planeswalker; ADR 0145).
+// only once" (Urza, Planeswalker; ADR 0145), and its class form, "You
+// may activate the loyalty abilities of planeswalkers you control twice
+// each turn rather than only once" (Oath of Teferi, #4184). Two sources
+// of the static do not stack: the limit is two either way.
 //
 // Two maps, both keyed by the permanent's instance ID and both flushed
 // at the turn boundary and forgotten when the object leaves the
@@ -46,7 +49,44 @@ func (g *Game) LoyaltySpentLocked(cardID uuid.UUID) bool {
 		return true
 	}
 	c := findBattlefieldCard(g, cardID)
-	return c == nil || !c.loyaltyTwiceEachTurn()
+	if c == nil {
+		return true
+	}
+	if c.loyaltyTwiceEachTurn() {
+		return false
+	}
+	return !c.IsPlaneswalker() || !g.yourPlaneswalkersLoyaltyTwiceLocked(c.Controller)
+}
+
+// CatalogYourPlaneswalkersLoyaltyTwiceEachTurn reports whether a
+// battlefield permanent with this catalog key carries the printed static
+// "You may activate the loyalty abilities of planeswalkers you control
+// twice each turn rather than only once" (Oath of Teferi). Populated
+// from effects.Spec.YourPlaneswalkersLoyaltyTwiceEachTurn. A nil hook
+// grants nothing.
+var CatalogYourPlaneswalkersLoyaltyTwiceEachTurn func(key string) bool
+
+// yourPlaneswalkersLoyaltyTwiceLocked reports whether a permanent on the
+// battlefield controlled by `player` has the Oath of Teferi static, read
+// live through CatalogAbilityKey: a source that has lost its abilities,
+// has left, or is phased out (then it is not on the battlefield, CR
+// 702.26b) grants nothing.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) yourPlaneswalkersLoyaltyTwiceLocked(player uuid.UUID) bool {
+	if CatalogYourPlaneswalkersLoyaltyTwiceEachTurn == nil || g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Controller != player {
+			continue
+		}
+		if key := catalogAbilityKeyOf(c); key != "" && CatalogYourPlaneswalkersLoyaltyTwiceEachTurn(key) {
+			return true
+		}
+	}
+	return false
 }
 
 // recordLoyaltyActivationLocked notes one loyalty activation of the

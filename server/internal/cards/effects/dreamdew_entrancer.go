@@ -13,25 +13,30 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{Targeting(
-			WhenThisEnters("Dreamdew Entrancer — tap and stun target creature", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				ts := ctx.LegalTargets()
-				if len(ts) == 0 {
+			WhenThisEnters("Dreamdew Entrancer — tap and stun target creature", Do(
+				// The draw waits for a prompt the counters ask (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					ts := ctx.LegalTargets()
+					if len(ts) == 0 {
+						return nil
+					}
+					if err := (TapTarget{Target: ts[0].ID}).Apply(ctx); err != nil {
+						return err
+					}
+					return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: 3}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					ts := ctx.LegalTargets()
+					if len(ts) == 0 {
+						return nil
+					}
+					c, ok := ctx.Game.LookupCardForEffect(ts[0].ID)
+					if ok && c.Controller == ctx.Item.Controller {
+						return DrawCards{N: 2}.Apply(ctx)
+					}
 					return nil
-				}
-				id := ts[0].ID
-				if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (AddCounter{Target: id, Kind: game.CounterStun, N: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				c, ok := g.LookupCardForEffect(id)
-				if ok && c.Controller == item.Controller {
-					return (DrawCards{Player: item.Controller, N: 2}).Apply(ctx)
-				}
-				return nil
-			}),
+				}),
+			)),
 			TargetCreature("up to one target creature").WithCount(0, 1),
 		)},
 	})

@@ -48,12 +48,13 @@ func init() {
 					return b18LifeLostThisTurn(g, ev.Target) == lost
 				},
 				Key: "Valgavoth, Harrower of Souls — put a +1/+1 counter on it and draw a card",
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					if err := b35PutCounterOnSelf(g, item); err != nil {
-						return err
-					}
-					return DrawCards{N: 1}.Apply(NewContext(g, item))
-				},
+				Effect: Do(
+					// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+					Instruction(func(ctx *Context) error {
+						return b35PutCounterOnSelf(ctx.Game, ctx.Item)
+					}),
+					DrawCards{N: 1},
+				),
 			},
 		},
 	})

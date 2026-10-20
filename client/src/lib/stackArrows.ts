@@ -480,7 +480,7 @@ export function planTargetMarks(items: readonly StackLaneItem[]): TargetMarkPlan
 }
 
 /** The stack's own surfaces: a ring never lands inside them. */
-const STACK_SURFACES = ".stack-lane, [data-stack-body], [data-stack-item-id]";
+export const STACK_SURFACES = ".stack-lane, [data-stack-body], [data-stack-item-id]";
 
 /**
  * planTargetMarks found on the board: each target's element through

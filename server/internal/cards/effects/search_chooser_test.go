@@ -63,6 +63,7 @@ func answerSearchNamed(t *testing.T, g *game.Game, chooser uuid.UUID, names ...s
 		}
 		picks = append(picks, id)
 	}
+	beginSearchIfAsked(t, g, c)
 	if err := g.ResolveSearchLibrary(c.ID, chooser, picks); err != nil {
 		t.Fatalf("ResolveSearchLibrary: %v", err)
 	}
@@ -77,6 +78,7 @@ func answerSearchByID(t *testing.T, g *game.Game, chooser uuid.UUID, picks ...uu
 	if c == nil {
 		t.Fatalf("no search prompt for %s", chooser)
 	}
+	beginSearchIfAsked(t, g, c)
 	if err := g.ResolveSearchLibrary(c.ID, chooser, picks); err != nil {
 		t.Fatalf("ResolveSearchLibrary: %v", err)
 	}
@@ -90,6 +92,7 @@ func answerSearchFailToFind(t *testing.T, g *game.Game, chooser uuid.UUID) {
 	if c == nil {
 		t.Fatalf("no search prompt for %s", chooser)
 	}
+	beginSearchIfAsked(t, g, c)
 	if err := g.ResolveSearchLibrary(c.ID, chooser, nil); err != nil {
 		t.Fatalf("ResolveSearchLibrary (fail to find): %v", err)
 	}

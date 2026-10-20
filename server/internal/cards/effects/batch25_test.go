@@ -368,6 +368,7 @@ func TestB25RecklessHandlingTutorsThenDiscardsAtRandom(t *testing.T) {
 	bear := b20HandCard(me, "Bear", "Creature — Bear")
 	castCatalogSpell(t, g, "Reckless Handling", "Sorcery", b25RecklessHandlingOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Graveyard.Contains(bear) {
 		t.Error("with nothing found, a card is still discarded at random")
 	}

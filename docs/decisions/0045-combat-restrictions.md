@@ -4465,7 +4465,7 @@ A defender with nothing to block with is never waited on: completion point 1
 has declared none for them, and when every defender is in that position the
 step does not park at all. A disconnected defender stalls the step exactly as
 a disconnected priority holder stalls any other. The way out is the same:
-`advance_step`, which any seated player may send, completes every pending
+`advance_step`, which the active player may send (any seated player could, until #4131 narrowed it to the active player and the priority holder; priority is parked here, so it is the active player), completes every pending
 declaration as whatever is staged.
 
 **Completion point 3 survives, narrowed.** A declaring defender's
@@ -4865,3 +4865,46 @@ fails; drop the `used` exclusion in `dackFaydenAsk` and `TestDackFaydenGoadsAndH
 fails.
 
 Tests: `game/goad_rest_of_game_test.go`, `cards/effects/dack_fayden_helping_hand_test.go`.
+
+
+## Amendment — chosen-color evasion (2026-10-19, #4126)
+
+Skrelv, Defector Mite grants a target creature evasion against creatures
+of a color chosen as its ability resolves. This is a floating blocking
+restriction, separate from its hexproof and toxic grants. It uses the
+existing scoped block-rule walk with a new additive mod kind,
+`cantBeBlockedByColor`, whose existing `Colors` field contains one WUBRG
+letter and whose `Text` is the displayed barred set.
+
+The affected creature is pinned at resolution. Blockers' effective
+colors are read when blockers are declared: a multicolored creature
+matches any color it has, a colorless one matches none, and a later
+color change is seen. The validator, legal-move enumerator and UI all
+consume the existing `cant_be_blocked_by` refusal. The record survives
+source departure and snapshots and expires with the same duration as
+the keyword grants. No snapshot fields are retyped or removed.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): detain
+
+Detain (CR 701.35, Lavinia of the Tenth): "Until your next turn, that permanent can't attack or block and its activated
+abilities can't be activated."
+
+**Decision.** No new restriction bit: detain is `CantAttack | CantBlock | CantActivate | CantActivateMana`, the Arrest bundle,
+because "its activated abilities can't be activated" has no mana-ability exemption (Faith's Fetters prints one; detain does not)
+and loyalty abilities are activated abilities. It is the `effects.Detain` primitive (`detain.go`): a scoped-effect record with a
+`DurationUntilYourNextTurn` of the DETAINING player, over a set pinned at resolution as `(instance, entry stamp)` pairs.
+
+The pin is the rule. CR 701.35a names "that permanent", so a creature that arrives later is not detained and one flickered in
+response is a new object (CR 400.7). That is why this does not go through `ScopedEffectFor{Match}`, which refuses a restriction
+mod on purpose (#1650: "creatures can't block this turn" prints no object and reads a live set): detain builds the pinned set
+itself with the same snapshot (`eotSnapshot`) and registers a restriction record over it. `Match` is judged against the
+resolving ability, so the set is decided when the trigger resolves, not when it goes on the stack.
+
+**Card.** Lavinia of the Tenth, `full` (protection from red is the existing keyword).
+
+**Tests.** `cards/effects/roonb_cards2_test.go`: only an opponent's nonland permanents with mana value 4 or less are detained
+(five-drop, land and her controller's own are not); a later arrival is not; a detained creature can't attack; a detained Sol Ring
+can't be tapped for mana; the restrictions are gone as Lavinia's controller's next turn begins.
+
+Back-out: widen `ManaValueLE(4)` and the cheap-nonlands test fails; drop `CantActivateMana` and the Sol Ring test fails; end the
+record at end of turn and the next-turn test fails.

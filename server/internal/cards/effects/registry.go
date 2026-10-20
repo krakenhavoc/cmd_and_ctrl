@@ -80,7 +80,8 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
-		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, false)
+		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, true)
+		checkActivatedAtRandom(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
 		// ability whose OWN cost announces an X (CR 602.2b) — Lazav,
 		// the Multifarious's "{X}: ... with mana value X". Still
@@ -285,6 +286,8 @@ func Register(spec Spec) {
 	checkEitherCost(spec)
 	// ADR 0129 §5: energy in an additional cost, and replicate's pair.
 	checkReplicate(spec)
+	// #3999: an optional "you may waterbend {N}".
+	checkOptionalWaterbend(spec)
 	if spec.AdditionalCost != nil && spec.AdditionalCost.Optional {
 		panic(fmt.Sprintf("effects.Register: %q puts an Optional cost in AdditionalCost — the mandatory slot is never optional; declare it in OptionalCosts", spec.Name))
 	}
@@ -517,6 +520,10 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// #4185: GainLife builds the rider the same way.
+		if ma.GainLife < 0 || (ma.GainLife > 0 && (ma.Rider != nil || ma.PainToYou > 0)) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife must be positive and replaces Rider and PainToYou — set one", spec.Name, i))
+		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
 		if ma.ProducedAmount != nil && ma.ProducedFunc != nil {
@@ -526,10 +533,6 @@ func Register(spec Spec) {
 		// cost that moves the source is not modelled.
 		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)", spec.Name, i))
-		}
-		// #3845: zero is "no mill component".
-		if ma.Cost.Mill < 0 {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares a negative mill cost %d", spec.Name, i, ma.Cost.Mill))
 		}
 		// ADR 0129 §5: zero is "no energy component".
 		if ma.Cost.Energy < 0 {
@@ -648,6 +651,8 @@ func Register(spec Spec) {
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
 		checkGrantorOnlyIsGranted(spec.Name, i, ab)
+		// #4000: an exile-the-grantor cost is a granted row's alone.
+		checkExileGrantor(spec.Name, fmt.Sprintf("ability %d", i), ab, false, "")
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
@@ -1848,11 +1853,12 @@ func checkRaisedModeMax(name, owner string, ms *game.ModeSpec) {
 }
 
 // checkTargetAtRandom validates "target … chosen at random" (#1815,
-// game.TargetSpec.AtRandom): only a triggered ability's clause may
-// carry it (`allowed`), since only a trigger's targets are chosen by
-// the engine (CR 603.3d), and only on a clause that picks exactly one
-// target and divides nothing — the shape every printed card has, and
-// the only one the walk's draw honours.
+// game.TargetSpec.AtRandom): only a triggered ability's clause, or an
+// activated ability's own (#4051, checkActivatedAtRandom), may carry
+// it (`allowed`), since only those targets are drawn by the engine
+// (CR 603.3d; CR 602.2b / 601.2c), and only on a clause that picks
+// exactly one target and divides nothing — the shape every printed
+// card has, and the only one the draw honours.
 func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
@@ -1860,11 +1866,31 @@ func checkTargetAtRandom(name, owner string, spec *game.TargetSpec, allowed bool
 			continue
 		}
 		if !allowed {
-			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered ability's target is chosen by the engine (#1815)", name, owner, i))
+			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d — only a triggered or an activated ability's target is drawn by the engine (#1815, #4051)", name, owner, i))
 		}
 		if c.Min != 1 || c.Max != 1 || c.Divide != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on %s target clause %d that is not exactly one undivided target", name, owner, i))
 		}
+	}
+}
+
+// checkActivatedAtRandom narrows a random clause on an activated
+// ability (#4051) to the one printed shape, Goblin Test Pilot's: the
+// ability's only clause, chosen by nobody else. The payload names its
+// other clauses before the draw is made, so a second clause could not
+// be judged against the random one (a relation, Distinct), and an
+// "of an opponent's choice" clause parks the announcement in a way the
+// draw's carry is not built for.
+func checkActivatedAtRandom(name string, spec *game.TargetSpec) {
+	random := false
+	for i := 0; i < spec.ClauseCount(); i++ {
+		random = random || spec.Clause(i).AtRandom
+	}
+	if !random {
+		return
+	}
+	if spec.ClauseCount() != 1 || spec.ChosenByOpponent {
+		panic(fmt.Sprintf("effects.Register: %q declares a target chosen at random on an activated ability with another clause — only a lone random clause is drawn at activation (#4051)", name))
 	}
 }
 

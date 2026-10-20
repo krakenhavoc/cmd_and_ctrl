@@ -6,7 +6,8 @@
 # on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
 # key with game.EffectAlias(old, new), which keeps the old one resolving.
 # "pick <key>" is a revealed-hand pick's continuation (#2115), which
-# has no alias: never rename one.
+# has no alias: never rename one. "steps <key>" is a continuation
+# written as steps (#4162, effects.RegisterThenSteps), likewise.
 #
 # Append new keys with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
@@ -289,3 +290,62 @@ body initiative/take
 body initiative/venture
 option venture/dungeon
 option venture/room
+choose choose-cards/yorion-sky-nomad-exile
+option option-pick/tomb-of-annihilation-sandfall-cell
+option option-pick/tomb-of-annihilation-veils-of-fear
+option option-pick/acererak-the-archlich-zombie-or-sacrifice
+body destroy/the-object-unless-it-attacked
+body explosion-of-riches/damage
+option option-pick/explosion-of-riches-draw
+steps then-steps/arcane-denial-draws
+steps then-steps/bonehoard-dracosaur-tokens
+steps then-steps/braids-arisen-nightmare-consequence
+steps then-steps/court-of-ambition-loss
+steps then-steps/forgotten-ancient-move
+steps then-steps/gain-then-draw-sacrificed-power
+steps then-steps/midnight-clock-draw-then-exile
+steps then-steps/replicating-ring-replicate
+steps then-steps/scavenging-ooze-grow
+steps then-steps/seize-the-spotlight-fortune
+steps then-steps/sylvan-library-pay
+steps then-steps/transpose-after-discard
+steps then-steps/twilight-prophet-drain
+body combat/untap-and-remove-the-payload
+condition combat/each-attacker-not-blocked
+choose choose-cards/chandra-legacy-of-fire-remove
+body copy/the-ability-you-just-activated
+body narset-of-the-ancient-way/damage
+body repeated-reverberation/copy-twice
+body rowan-kenrith/creatures-attack-this-turn
+condition activate/you-activate-an-ability-of-a-planeswalker-type
+condition activate/you-next-activate-a-loyalty-ability
+condition repeated-reverberation/next-instant-sorcery-or-loyalty
+option option-pick/leori-sparktouched-hunter-planeswalker-type
+option option-pick/narset-of-the-ancient-way-mana
+body vronos/phase-out-the-objects
+steps then-steps/agent-of-the-shadow-thieves-grant
+steps then-steps/bloatfly-swarm-remove
+steps then-steps/cirdan-the-shipwright-draws
+steps then-steps/dawn-of-a-new-age-draw
+steps then-steps/emissary-green-rewards
+steps then-steps/glimmer-of-genius-rest
+steps then-steps/gluntch-the-bestower-counters
+steps then-steps/gluntch-the-bestower-draw
+steps then-steps/hunted-by-the-family-copy
+steps then-steps/locke-treasure-hunter-payoff
+steps then-steps/mog-moogle-warrior-draw
+steps then-steps/mog-moogle-warrior-finish
+steps then-steps/ogre-head-helm-wheel
+steps then-steps/pendant-of-prosperity-owner
+steps then-steps/ruin-grinder-wheel
+steps then-steps/sail-into-the-west-embark
+steps then-steps/sauron-the-dark-lord-wheel
+steps then-steps/shadow-mysterious-assassin-drain
+steps then-steps/snort-wheel
+steps then-steps/starving-revenant-card
+steps then-steps/summon-kujata-fire
+steps then-steps/sycorax-commander-wheel
+steps then-steps/the-gitrog-ravenous-ride-draw
+steps then-steps/tivit-seller-of-secrets-tokens
+steps then-steps/trap-the-trespassers-stun
+steps then-steps/will-of-the-sultai-bullet

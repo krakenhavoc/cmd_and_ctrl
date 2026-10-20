@@ -11,6 +11,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "feb244f8-bcb1-44cf-9940-2719221a7309",
 		Name:            "Vampire Nighthawk",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch", "lifelink"},
 	})
 }

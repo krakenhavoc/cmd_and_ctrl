@@ -66,10 +66,8 @@ func newHuntedChoice() *VillainousChoice {
 				if len(f.Carry) == 0 {
 					return nil
 				}
-				if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: f.Carry[0], N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return huntedNext(ctx, f)
+				ctx.RecordStep(huntedFacingRecord, f.Carry, f.Remaining)
+				return huntedCopyThenNext.Run(ctx)
 			},
 		})
 }
@@ -155,3 +153,25 @@ func init() {
 		},
 	})
 }
+
+// huntedFacingRecord is what the choice's answer hands the steps behind it:
+// the creatures still to face (the first is the one being copied) and how many
+// players are still to answer (#4163).
+const huntedFacingRecord = "hunted-by-the-family/facing"
+
+// huntedCopyThenNext is the token copy and then the next creature's choice:
+// the next choice waits for a prompt the copy asks (a CR 616 order on tokens;
+// CR 608.2c, #4155).
+var huntedCopyThenNext = RegisterThenSteps("then-steps/hunted-by-the-family-copy",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(huntedFacingRecord)
+		if len(r.IDs) == 0 {
+			return nil
+		}
+		return CreateTokenCopy{Controller: ctx.Controller(), Copy: r.IDs[0], N: 1}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(huntedFacingRecord)
+		return huntedNext(ctx, Facing{Carry: r.IDs, Remaining: r.N()})
+	}),
+)

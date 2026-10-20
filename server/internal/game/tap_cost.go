@@ -110,6 +110,27 @@ type TapPermanentsCost struct {
 	// "Waterbend {N}:" makes (waterbend_cost.go). False for every tap
 	// cost written before it, whose Extra is added.
 	InCost bool
+
+	// Also names the other tap costs the same cast owes (#4177): Hama,
+	// the Bloodbender's waterbend cast of a spell that also has
+	// convoke, improvise, or a waterbend of its own. See
+	// tap_cost_chain.go, which shares the one list of tapped
+	// permanents between the chained costs. Empty for nearly every
+	// cost. References, not costs: a cost holds a closure (its Spec),
+	// and a field of its own type would be a second route from Game to
+	// one (the closure ratchet), so each link is rebuilt from its key
+	// by the same constructor the catalog used.
+	Also []TapCostRef
+}
+
+// TapCostRef names one chained tap cost: the three constructors the
+// catalog builds them with are Convoke(), Improvise() and Waterbend(extra),
+// so a key, the waterbend's {N} and whether it is in the cost are the
+// whole of one.
+type TapCostRef struct {
+	Key    string `json:"key"`
+	Extra  string `json:"extra,omitempty"`
+	InCost bool   `json:"inCost,omitempty"`
 }
 
 // Empty reports whether the cost offers nothing. Nil-safe, so the
@@ -123,14 +144,15 @@ func (c *TapPermanentsCost) Empty() bool {
 // for a card whose PRINTED cost has no {X} in it — Waterbender's
 // Restoration costs {U}{U} and still needs one.
 func (c *TapPermanentsCost) DemandsX() bool {
-	if c.Empty() || c.Extra == "" {
-		return false
+	for _, l := range c.links() {
+		if l.Extra == "" {
+			continue
+		}
+		if extra, err := ParseCost(l.Extra); err == nil && extra.XSlots > 0 {
+			return true
+		}
 	}
-	extra, err := ParseCost(c.Extra)
-	if err != nil {
-		return false
-	}
-	return extra.XSlots > 0
+	return false
 }
 
 // CatalogTapPermanentsCost is the catalog hook the effects package
@@ -189,7 +211,11 @@ func TapPermanentsBudgetFor(c *TapPermanentsCost, manaCost string, xValue int) i
 	if err != nil {
 		return 0
 	}
-	return tapPermanentsBudget(c, cost, xValue)
+	n := 0
+	for _, l := range c.links() {
+		n += tapPermanentsBudget(l, cost, xValue)
+	}
+	return n
 }
 
 // tapPermanentsAdjusted layers a tap-permanents cost onto a parsed
@@ -394,7 +420,16 @@ func (g *Game) validateTapPermanentsCostLocked(playerID uuid.UUID, c *TapPermane
 		// specMatchLocked, not targetLegalLocked: tapping a permanent
 		// to pay a cost (convoke, waterbend) does not target it, so a
 		// shrouded or hexproof creature is still a legal tap.
-		if !g.specMatchLocked(SourceChooser(playerID), c.Spec, TargetRef{Kind: TargetCard, ID: id}, false) {
+		// A chained cost (tap_cost_chain.go) takes a permanent that
+		// any of its costs accepts.
+		matched := false
+		for _, l := range c.links() {
+			if g.specMatchLocked(SourceChooser(playerID), l.Spec, TargetRef{Kind: TargetCard, ID: id}, false) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
 			return ErrInvalidParam
 		}
 	}

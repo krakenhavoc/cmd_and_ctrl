@@ -80,24 +80,29 @@ func midnightClockTwelfthHour(ev game.Event, source *game.Card, _ game.Character
 }
 
 // midnightClockPayoff shuffles the controller's hand and graveyard into
-// their library, draws seven, then exiles the Clock. Only values cross
-// the continuation, never the item or the game it started with.
+// their library, draws seven, then exiles the Clock. What follows the
+// tuck is continuation steps (#4162, CR 608.2c): the exile waits for a
+// prompt the draw asks, such as a dredge offer.
 func midnightClockPayoff(g *game.Game, item *game.StackItem) error {
-	return midnightClockShuffleAway(g, item.Controller, item.SourceCardID)
-}
-
-func midnightClockShuffleAway(g *game.Game, player, clock uuid.UUID) error {
+	player := item.Controller
 	ids := append(allHandCardIDs(g, player), echoOfEonsGraveyardCardIDs(g, player)...)
 	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		if err := g.ShuffleLibraryForEffect(player); err != nil {
-			return err
-		}
-		if err := g.DrawNForEffect(player, 7); err != nil {
-			return err
-		}
-		if g.Battlefield.Contains(clock) {
-			return g.ExileCardForEffect(clock)
-		}
-		return nil
+		return midnightClockAfterTuck.Run(NewContext(g, item))
 	})
 }
+
+// midnightClockAfterTuck is "then draw seven cards. Exile Midnight Clock."
+var midnightClockAfterTuck = RegisterThenSteps("then-steps/midnight-clock-draw-then-exile",
+	Instruction(func(ctx *Context) error {
+		if err := ctx.Game.ShuffleLibraryForEffect(ctx.Controller()); err != nil {
+			return err
+		}
+		return ctx.Game.DrawNForEffect(ctx.Controller(), 7)
+	}),
+	Instruction(func(ctx *Context) error {
+		if clock := ctx.Item.SourceCardID; ctx.Game.Battlefield.Contains(clock) {
+			return ctx.Game.ExileCardForEffect(clock)
+		}
+		return nil
+	}),
+)

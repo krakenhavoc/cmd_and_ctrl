@@ -9,12 +9,21 @@
   // seat's commander sits beside its hand instead: yours in the
   // castable strip (ExileStrip), everyone else's in CommandStrip.
   //
+  // #4127: a library top the viewer may play (Bolas's Citadel, Oracle of
+  // Mul Daya) is offered on a card-sized peek raised off the pile, with
+  // its play / cast pills under it. The pile tile is a 28px thumbnail at
+  // the bottom edge of the screen, and the pills used to hang over its
+  // bottom edge at 8.5px, under the dev dock's corner strip and too small
+  // to find, so a player who had been given a permission could neither
+  // read the card they were offered nor tell where to press.
+  //
   // Exile is conceptually a shared zone in the wire protocol
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
   import { tick } from "svelte";
   import type { ActionPayload, ActionType, CardView, PlayerView, ZoneView } from "../../protocol";
+  import Card from "./Card.svelte";
   import PileButton from "./PileButton.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
   import {
@@ -159,11 +168,6 @@
   function openExile(): void {
     openZoneBrowser({ zoneKind: "exile", ownerID: seat.id, ownerName: seat.name });
   }
-  // ADR 0191: only the seat's own view carries the cards.
-  const sideboardCards = $derived<CardView[]>(seat.sideboard ?? []);
-  function openSideboard(): void {
-    openZoneBrowser({ zoneKind: "sideboard", ownerID: seat.id, ownerName: seat.name });
-  }
 </script>
 
 <svelte:window onpointerdown={onWindowPointer} onresize={closeLibraryMenu} />
@@ -199,44 +203,52 @@
         </button>
       </div>
     {/if}
-    {#if libraryTopAction || libraryTopSpecial.length > 0}
-      <div class="pile-actions">
-        {#if libraryTopAction}
-          <!-- #1440: the same always-visible pill treatment as the
-               graveyard's flashback button and the exile impulse
-               button — a permission is a resource, and a player who
-               has to hover a tiny pile thumb to discover it will not
-               discover it. A sibling of PileButton's own <button>,
-               never nested inside it (button-in-button is invalid
-               markup). -->
-          <button
-            type="button"
-            class="pile-action"
-            class:ready={libraryTopReady}
-            title={`${libraryTopAction} from the top of your library`}
-            aria-label={withAvailable(
-              `${libraryTopAction} ${libraryTop?.name || "card"} from the top of the library`,
-              libraryTopReady,
-            )}
-            onclick={playLibraryTop}
-          >
-            {libraryTopAction}
-          </button>
-        {/if}
-        {#each libraryTopSpecial as sa (sa.key)}
-          <!-- #1391: a special action on the top card (Fblthp's plot),
-               sent as `special_action` exactly as the hand menu's row
-               sends it. -->
-          <button
-            type="button"
-            class="pile-action special"
-            title={`${sa.label} from the top of your library`}
-            aria-label={`${sa.label}: ${libraryTop?.name || "card"} from the top of the library`}
-            onclick={() => sendAction("special_action", sa.params, seat.id)}
-          >
-            {sa.text}
-          </button>
-        {/each}
+    {#if libraryTop && (libraryTopAction || libraryTopSpecial.length > 0)}
+      <!-- #4127: raised off the pile and card-sized, so the card on offer
+           reads and the buttons are a thumb's size. A sibling of
+           PileButton's own <button>, never nested inside it
+           (button-in-button is invalid markup). -->
+      <div class="top-peek" data-library-top-peek>
+        <span class="peek-label">Top of library</span>
+        <div class="peek-card">
+          <Card card={libraryTop} size="normal" ready={libraryTopReady} />
+        </div>
+        <div class="pile-actions">
+          {#if libraryTopAction}
+            <!-- #1440: the same always-visible pill treatment as the
+                 graveyard's flashback button and the exile impulse
+                 button: a permission is a resource, and a player who has
+                 to hover a tiny pile thumb to discover it will not
+                 discover it. -->
+            <button
+              type="button"
+              class="pile-action"
+              class:ready={libraryTopReady}
+              title={`${libraryTopAction} from the top of your library`}
+              aria-label={withAvailable(
+                `${libraryTopAction} ${libraryTop.name || "card"} from the top of the library`,
+                libraryTopReady,
+              )}
+              onclick={playLibraryTop}
+            >
+              {libraryTopAction}
+            </button>
+          {/if}
+          {#each libraryTopSpecial as sa (sa.key)}
+            <!-- #1391: a special action on the top card (Fblthp's plot),
+                 sent as `special_action` exactly as the hand menu's row
+                 sends it. -->
+            <button
+              type="button"
+              class="pile-action special"
+              title={`${sa.label} from the top of your library`}
+              aria-label={`${sa.label}: ${libraryTop.name || "card"} from the top of the library`}
+              onclick={() => sendAction("special_action", sa.params, seat.id)}
+            >
+              {sa.text}
+            </button>
+          {/each}
+        </div>
       </div>
     {/if}
   </div>
@@ -257,28 +269,6 @@
     readyCount={exileReady}
     note={exileHeld > 0 ? `${exileHeld} theirs to play` : undefined}
   />
-  {#if isSelf && (sideboardCards.length > 0 || seat.outside_play?.can_name)}
-    <!-- ADR 0191: the cards your deck owns outside the game. Yours alone
-         (the server sends a count to everyone else), face down because
-         it is not a zone anyone else may look into, and it opens the
-         read-only zone browser tab. #3832: "outside the game" is a
-         tooltip and part of the accessible name, not text on the tile,
-         where it overflowed the rail. -->
-    <PileButton
-      label="sideboard"
-      pile="sideboard"
-      owner={seat.id}
-      zone={{
-        kind: "outside",
-        owner: seat.id,
-        count: sideboardCards.length,
-        cards: sideboardCards,
-      }}
-      faceDown
-      onClick={openSideboard}
-      hint="outside the game"
-    />
-  {/if}
 </div>
 
 <style>
@@ -291,23 +281,59 @@
     gap: 4px;
     width: 100%;
   }
-  /* Wraps the library PileButton so the #1440 play/cast pill and the
-     #1391 special-action pills can sit over its bottom edge as
-     siblings — never nested inside
+  /* Wraps the library PileButton so the #4127 peek (the #1440 play/cast
+     pill and the #1391 special-action pills under the top card) can sit
+     over it as a sibling — never nested inside
      PileButton's own <button>, which button-in-button markup forbids. */
   .pile-slot {
     position: relative;
     width: 100%;
   }
-  /* The row of pills over the library's bottom edge: the #1440
-     play/cast pill and the #1391 special-action pills side by side. */
-  .pile-actions {
+  /* #4127: the playable top card, raised off the pile and card-sized.
+     It grows up from the pile's top edge (a seat across the table has its
+     piles at the top of its panel and turns it to grow down, in
+     PlayerPanel), takes no room of its own, and rides over the empty
+     corner beside the back row. Its width follows the creature cards, so
+     it is as big as the board is, never under 104px: the pile's own thumb
+     is about 28px. */
+  .top-peek {
+    --peek-w: clamp(104px, calc(var(--card-h, 120px) * 0.8), 156px);
     position: absolute;
-    left: 50%;
-    bottom: -3px;
-    transform: translate(-50%, 50%);
+    left: 0;
+    bottom: calc(100% + 6px);
+    z-index: 25;
+    width: var(--peek-w);
     display: flex;
-    gap: 3px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 5px;
+    box-sizing: border-box;
+    background: var(--surface-raised);
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 22px rgb(0 0 0 / 0.5);
+  }
+  .peek-label {
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--fg-dim);
+    text-align: center;
+    white-space: nowrap;
+  }
+  .peek-card {
+    display: flex;
+    justify-content: center;
+    --card-w: calc(var(--peek-w) - 12px);
+    --card-h: calc((var(--peek-w) - 12px) * 7 / 5);
+  }
+  /* The row of pills under the card: the #1440 play/cast pill and the
+     #1391 special-action pills, each as wide as the card allows. */
+  .pile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   .lib-menu {
     position: fixed;
@@ -336,15 +362,18 @@
     background: var(--surface-hover);
     outline: none;
   }
+  /* #4127: a button a thumb can hit (26px tall, the card's width). */
   .pile-action {
-    height: 15px;
-    padding: 0 6px;
+    flex: 1 1 0;
+    min-width: 44px;
+    height: 26px;
+    padding: 0 8px;
     border-radius: 999px;
     border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     background: var(--surface-raised);
     color: var(--accent-strong);
     font-family: var(--font-mono);
-    font-size: 8.5px;
+    font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;

@@ -37,6 +37,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - [Targeting costs and bars (#3860)](#targeting-costs-and-bars-3860)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
+  - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
@@ -86,6 +87,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
+  - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -368,9 +370,13 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
    Opponent()))`, Scab-Clan Giant, Power Pack). The engine draws the
    target uniformly from the legal set as the trigger goes on the
    stack, from the keyed random stream, and no `pick_target` prompt is
-   queued; with no legal target the trigger is removed. `Register`
-   refuses it on a spell, an activated ability (Goblin Test Pilot waits
-   on #4051) and any clause but one undivided target. "Choose an
+   queued; with no legal target the trigger is removed. An activated
+   ability's lone clause takes it too (Goblin Test Pilot's
+   `ChosenAtRandom(TargetAny())`, #4051): the target is drawn as part
+   of activating, the activator names none, and with no legal target
+   the ability can't be activated. `Register` refuses it on a spell, a
+   mode, an activated ability with another clause and any clause but
+   one undivided target. "Choose an
    opponent at random" that is not a target (Knight Rampager) is
    `ChooseAtRandomForEffect` at resolution. "Reselect the targets at
    random" for a spell on the stack (Chef's Kiss) is
@@ -3677,6 +3683,36 @@ GrantCounterShield{From: "Determined", ExceptThis: true, Grant: SpellsCantBeCoun
 - `From` is the card's name, shown on the seat's NO COUNTER badge
   (`counter_shields` on the player view) beside the printed `text`.
 
+### "If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)
+
+Guile. A replacement of the act of countering (CR 614.1a, CR 701.6a),
+not of the spell's move to the graveyard: the spell is never countered,
+so "can't be countered" and "whenever a spell is countered" read it
+right, and the replacement knows who is countering. Declare
+`effects.ExileSpellsYouWouldCounterInstead()` on `Spec.Replacements`.
+
+- **The event is `game.RepEventCounterSpell`**, watched with
+  `game.EventCounterSpell`. Its `CounterBy` (also `Actor`) is the
+  controller of the resolving spell or ability, so "you control" is
+  `ev.CounterBy == src.Controller`; `CounterSpellID` is the spell.
+  Guard `AppliesTo` with `ev.CounterSpellStillCounters()` so a second
+  answer does not apply to an event the first already changed.
+- **It opens in the three effect counter verbs**, after the "can't be
+  countered" gate: a hard counter, a declined "counter unless pays", a
+  ward and the destination counters (Hinder) all reach it. It does not
+  open for the sandbox's counter action, for a spell that can't be
+  countered, or for a countered ability.
+- **Answer with `Game.ExileCounteredSpellInsteadForEffect(ev, who,
+  source, name)`**: exile the spell instead (not countered) and let `who`
+  (the countering player, not the spell's owner) cast it free. The free
+  cast is `FreeCastFromExilePermission`, the same now-or-never grant
+  every resolution-time free cast takes. A different "instead" (to the
+  bottom of a library, to the hand) is a new answer on the same event,
+  not a new event.
+- **It can pause.** Two replacements that disagree are ordered by the
+  countered spell's controller (CR 616.1), with nothing moved while the
+  prompt is open.
+
 ### "Play with their hands revealed" (ADR 0199, #3953)
 
 A permanent whose static reveals hands declares `Spec.HandsRevealed`:
@@ -3850,6 +3886,13 @@ BlockRules: []game.BlockRule{
   ADR 0041 phase 3 tier 3b, #1497) — `Keywords` and `Subtypes` are each
   an any-of, and `Text` is the allowed set as the card prints it, read
   by the refusal sentence.
+- **"Can't be blocked by creatures of that color this turn"** (#4126):
+  put `game.CantBeBlockedByColorMod(color)` in a `ScopedEffectFor` pinned
+  to the recipient, with `DurationUntilEndOfTurn(ctx)`. It may share one
+  record with keyword grants (Skrelv). `color` is one WUBRG letter;
+  blockers' effective colors are read live, and the record is serialized
+  like the other scoped block rules. Do not approximate this with
+  protection: that would also prevent damage and change attachments.
 - **A token that prints one** declares it on its `tokenTemplate`'s
   `BlockRules` slot (Avatar Kuruk's Spirit).
 - **"No more than N creatures can block each combat"** (Silent Arbiter,
@@ -3973,7 +4016,84 @@ CR 616 ordering prompt and a prevention follow-up's question, and it
 survives a restore. A `Do` called from inside a closure
 (`Do(...)(g, item)`) cannot wait, and neither can plain statements in a
 closure. If a later instruction must read the ANSWER, not just come
-after it, it still goes in the asking primitive's `Then`.
+after it, it still goes in the asking primitive's `Then`, and that
+`Then` can wait in turn when it is written as continuation steps
+(`RegisterThenSteps`, below).
+
+The same holds in two more places since #4019 (`effects/do_walk.go`):
+
+- A spell's OnResolve: write `OnResolve: ResolveSteps(step, step, …)`
+  instead of a closure that runs one instruction after another
+  (Electrolyze, Tune the Narrative).
+- A modal bullet with more than one instruction: write
+  `ModeSteps(label, targets, step, …)` instead of `ModeDoing`. A step
+  reads its own bullet's target with `ModeTarget(ctx, ctx.Occurrence())`
+  (Demonic Pact).
+
+A step that no primitive value spells is a hand-written function wrapped
+as `Instruction(func(ctx *Context) error { … })`. Split the old body at
+each call that can ask something (damage, counters, a draw, a life
+change, a scry): one `Instruction` per piece. Each piece runs whole, and
+the walk can stop between pieces. A piece must not pass anything to the
+next through a Go variable, because a restore between them would lose
+it. Read what the earlier piece did from the game instead. When the game
+keeps no record of it (a count discarded, the tokens just made, a number
+a player chose), the earlier piece writes one, `ctx.RecordStep(name, ids,
+n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). A
+record lives for one resolution. For something an instruction's own
+prompt decides (which tokens it really made, who really drew), record
+the event log's last sequence number (`b25LastEventSeq`) before it and
+read the events after it in the next piece (Martial Coup, Cut a Deal). A
+`Do` wrapped by `InterveningIf` keeps its steps visible to the walk
+(Imoen, Mystic Trickster).
+
+A continuation with more than one instruction (a `Then`, an `OnYes`, the
+callback of a `...ThenForEffect` method) is written as continuation steps
+(#4162): `var x = RegisterThenSteps("then-steps/<card>-<what>", step, …)`
+at package level, and the closure calls `x.Run(ctx)`. Record what the
+steps need from the closure first (the number chosen, the creature
+sacrificed). A chain that asks the next player from its last step (Braids,
+Arisen Nightmare, Court of Ambition) refers to itself, so register it in
+the card's `init` instead of a package-level initialiser, which Go would
+reject as an initialisation cycle. The key is an on-disk identity: append
+it to the ledger with `-update-effect-keys` and never rename it. `x.Run(ctx)`
+works from any closure that runs while a resolution is open, also one a
+shared wrapper calls and that is not a `Do` itself (Agent of the Shadow
+Thieves, behind the Background wrapper). When several players' answers are
+open side by side ("each player may discard their hand and draw seven
+cards"), call `x.RunAt(ctx, seatIndexOf(g, player))` and read the player in
+the steps with `seatAtOccurrence(ctx)`: the seat survives a park, where a
+record filed under one key would be overwritten by the next answer (Ruin
+Grinder, Sail into the West, Sycorax Commander, whose count is filed under a
+key that names the player).
+
+Which bodies still run whole is a scan, not a guess (#4155):
+`TestScanStepsBodies` (`effects/steps_scan_test.go`) lists each hand-written
+body where an earlier statement can open a prompt (a scry, a search, a
+choose, a CR 616 order on damage, counters, tokens, life, a draw or a mill)
+and a later statement has an effect, ranked by EDHREC. Run it from `server/`
+with `CMDCTRL_SCRYFALL_DUMP=… go test ./internal/cards/effects/ -run
+TestScanStepsBodies -scan-steps=<file>`. When you convert a card, add its
+name to `stepsConverted` in the same file: `TestConvertedBodiesStayConverted`
+then fails if a later edit makes the body one flat function again. Test the
+card with the prompt open: a dredge offer (Stinkweed Imp in the graveyard) or
+Khârn the Betrayer's question, and a restore when the prompt is data
+(`resolution_order_batch1_test.go`, `resolution_order_batch2_test.go`,
+`resolution_order_batch3_test.go`). A test that answers a prompt straight on
+the `Game` (not through `actions.Dispatch`) calls `g.SettleResolution()` after
+it, as Dispatch does, or the steps behind the answer never run. The scan reads a
+`switch` with an asking case followed by another case as a pair, though the
+cases are exclusive. In a card you convert, build the prompt in an `if` and
+queue it once, so the converted body is not flagged again.
+
+A Spree bullet with more than one instruction is `SpreeModeSteps(label, cost,
+targets, step, …)` (Insatiable Avarice). A scanned card you leave as it is goes
+in `stepsSkipped` with the reason, and `TestSkippedBodiesAreStillFlagged` fails
+when the entry goes stale. The reasons so far: arms of one `if` that cannot
+both run (a switch's arms are not scanned as a sequence), a reveal or a random
+pick that asks nothing, one damage instance, and statements that act on
+different players. A continuation and a carried count are not reasons: write
+them as continuation steps and a step record (above).
 
 For a graveyard watcher that must have been there before a creature died,
 use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
@@ -4261,12 +4381,17 @@ It is not an exile: the cards go through the ordinary mill, so Rest in
 Peace exiles them instead and "whenever you mill" payoffs see them. A
 library of fewer than N cards can't pay it (CR 701.17b), so the ability
 is not offered (the enumerator, the view's `cant_activate` and the
-engine all ask `MillCostShortfall`). A mana ability declares it as
-`ManaAbilityCost{Tap: true, Mill: 1}`; the auto-tapper never pays such
-a row. An ability that also TARGETS is not a mana ability (CR 605.1a):
-declare it on `Activated` with `Plus(TapCost(), MillCardsCost(1))`, as
-The Warring Triad does. Register refuses a mill beside an exile of the
-top of the library.
+engine all ask `MillCostShortfall`). An ability whose cost mills a card
+is NOT a mana ability, however much mana it adds (CR 605.1a: its cost
+and effect may not move a card to or from a library), so declare it on
+`Activated` with `Plus(TapCost(), MillCardsCost(1))` and an `AddMana`
+effect, as Millikin and The Warring Triad do (#3971, ADR 0020's
+2026-10-19 amendment); the mana lands on resolution, and a draw in the
+effect (Chromatic Sphere) takes it out of the mana abilities the same
+way. `TestManaAbilityTextAgreesWithTheCatalog` fails on a `ManaAbilities`
+row the printed text says is not one. The milled card is
+`ctx.Paid().Milled` (Charmed Pendant). Register refuses a mill beside an
+exile of the top of the library.
 
 **A target bounded by X (#1559, #1723, ADR 0109 §9):** the bound is
 a flag on the clause, never a predicate, because a predicate cannot see
@@ -4934,10 +5059,28 @@ after the spell's own text against a view of the item whose `Targets` are
 the spliced text's own. The source is the spell (CR 702.47c), so read the
 target with `firstLegalTarget(ctx)` and deal damage from `ctx.Source()`,
 and name a shield or multiplier by the CARD's name in its `Label`, since
-the source's name is the spell's. `Register` refuses a splice with no mana
-cost (a non-mana splice cost waits on #4055), and a splice card with modes,
-an X, a division or a cost of its own. `TestSpliceMatchesThePrintedSplice`
-holds the declared quality and cost to the printed line.
+the source's name is the spell's. `Register` refuses a splice with no cost,
+and a splice card with modes, an X, a division or a cost of its own.
+`TestSpliceMatchesThePrintedSplice` holds the declared quality and cost to
+the printed line.
+
+A splice cost that is not mana (#4055, ADR 0202's 2026-10-19 amendment) is
+`SpliceOntoArcaneCost` over one of the cost constructors, which take the
+clause without its verb exactly as the additional-cost ones do:
+
+```go
+Splice: SpliceOntoArcaneCost(SpliceSacrifice(2, "two Mountains", Land(), Subtype("Mountain"))),            // Torrent of Stone
+Splice: SpliceOntoArcaneCost(SpliceExileFromGraveyard(4, "four cards")),                                 // Horobi's Whisper
+Splice: SpliceOntoArcaneCost(SpliceTapUntapped("an untapped white creature you control", Creature(), OfColor("W"))), // Hundred-Talon Strike
+Splice: SpliceOntoArcaneCost(SpliceReturnToHand("a blue creature you control", Creature(), OfColor("U"))),          // Veil of Secrecy
+Splice: SpliceOntoArcaneCost(SpliceOpponentGainsLife(5)),                                                // Roar of Jukai
+```
+
+One component per card. The caster names the objects on `cast_spell.splice_payments`
+(entry k pays `splices[k]`), they are paid with the spell on the stack, and a card
+whose cost the caster cannot pay is not offered. A condition in the text is read
+as the spell resolves ("If you control a Swamp": `ControlsA(ctx.TextSubtype("Swamp"))`,
+so the cost is paid whether or not it holds).
 
 **Still out:** "enters with a
 counter for each time it was kicked" (Everflowing Chalice, Joraga
@@ -5813,6 +5956,27 @@ as one simultaneous batch (`PutCardsFromLibraryOntoBattlefieldForEffect`),
 so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia).
+
+**Counters that depend on the card picked (#4170, Turntimber Symbiosis):**
+"put a creature card from among them onto the battlefield. If that card has
+mana value 3 or less, it enters with three additional +1/+1 counters" is
+`CountersFor: func(g *game.Game, c game.Card) map[string]int`, called with
+the picked card as it sits in the library and added to `Counters` for that
+entry. It is for a clause that puts exactly one card (`Max: 1`, not `All`):
+`Apply` returns an error for any clause that could put more, because one
+entry batch takes one set of counters.
+
+**An opponent's library (#4128, Lonis, Cryptozoologist):** "target
+opponent reveals the top X cards of their library. You may put a
+nonland permanent card … from among them onto the battlefield under
+your control" reveals THEIR library (`RevealTopOfLibraryForEffect(victim,
+…)`) and sets `LibraryOwner: victim` on the put. `Player` stays the
+chooser and the controller it enters under; `LibraryOwner` is whose
+library the picks sit in, and it is what the prompt's submit-time
+zone check reads — leave it off and a legal pick comes back as "card
+instance not found in zone". The card stays its owner's (CR 108.3), so
+it dies to their graveyard, and `PutRestOnBottomInRandomOrder` bottoms
+the rest of THEIR library.
 
 **"Put it into your HAND" is the twin, and it is a different door
 (#952).** `effects.TakeFromLibraryToHand` — same fields, same `Then`,
@@ -6993,9 +7157,11 @@ devoid either.
 | "Whenever a spell or ability you control exiles one or more permanents" | `EventZoneMove` | `ev.OldZone == ZoneBattlefield && game.ExiledBySpellOrAbilityOf(ev, source.Controller)` plus `OncePerBatch` (Ranar the Ever-Watchful, #1320). Reads `ev.Cause` / `ev.CauseController`, which a routed move fills from the resolving item; a cost, a special action or a manual move names its own cause and never matches |
 | "Whenever ~ becomes the target of a spell or ability" | `EventBecomesTarget` | `ev.CardID == source.InstanceID` — `CardID` repeats `Target` when the target is a card and is `uuid.Nil` for a player, so reading `CardID` is what keeps a player-targeting spell from matching. `ev.Actor` is the targeting player, `ev.Source` its source |
 | "Whenever another creature you control becomes the target…" | `EventBecomesTarget` | `targetedAnotherCreatureYouControl(ev, source, g)` (Monk Gyatso) — excludes the source, checks the target is still on the battlefield, then reads its type and controller. Fires once per target **slot** (CR 115.3), at **announce** (CR 601.2c), so the trigger goes on the stack ABOVE the spell that targeted and resolves first — which is the whole card |
-| "Whenever a triggered ability … triggers" / "is put onto the stack" | `EventTriggerPlaced` | Read the placed item with `g.StackItemForEffect(ev.StackItemID)` and filter on its own triggering event, `item.Trigger.Event` and `item.Trigger.Object` (Aboleth Spawn, #4092). Emitted once per triggered ability after the whole batch is on the stack, so the watcher goes on ABOVE what it watched. The drain only emits it while a permanent on the battlefield watches the kind; a watcher in another zone or on an emblem has to join `triggerPlacedWatchedLocked` first. Copy it with `copyTheTriggeringAbility` |
+| "Whenever a triggered ability … triggers" / "is put onto the stack" | `EventTriggerPlaced` | Read the placed item with `g.StackItemForEffect(ev.StackItemID)` and filter on its own triggering event, `item.Trigger.Event` and `item.Trigger.Object` (Aboleth Spawn, #4092). Emitted once per triggered ability after the whole batch is on the stack, so the watcher goes on ABOVE what it watched. The drain only emits it while a permanent on the battlefield watches the kind; a watcher in another zone or on an emblem has to join `battlefieldWatchesLocked` first. Copy it with `copyTheTriggeringAbility` |
+| "Whenever a spell or ability is put onto the stack" | `EventCast` + `EventSpellCopied` + `EventActivateAbility` + `EventTriggerPlaced` + `EventAbilityCopied` on one ability | The item id is `ev.CardID` for the first two and `ev.StackItemID` for the other three (`putOntoTheStackItem`, Grip of Chaos, #4050). A copy of an ability emits only `EventAbilityCopied` (CR 707.10a), gated on a battlefield watcher like `EventTriggerPlaced`. "If it has a single target" is `StackItemTargetCountForEffect == 1`, checked in `AppliesTo` and again in the effect |
 | "At the beginning of your upkeep" | `EventBeginUpkeep` | `ev.Actor == source.Controller` |
 | "Whenever you win a coin flip" | `EventFlipCoin` | `YouWonACoinFlip` / `WheneverYouWinACoinFlip` (#3767, ADR 0054 amendment 2026-10-15) — `ev.Won` and `ev.Actor == source.Controller`; one event per coin, so it fires once per won flip. A bare "flip a coin" whose winning only matters to such a trigger is the called `FlipACoin{}` (Setzer, Tavern Scoundrel) |
+| "Whenever you lose a coin flip" | `EventFlipCoin` | `YouLostACoinFlip` / `WheneverYouLoseACoinFlip` (#4063, ADR 0054 amendment 2026-10-19) — `!ev.Won`, a `ev.Call` (only a called flip can be lost; a face-only flip has none) and `ev.Actor == source.Controller`. "Cumulative upkeep—Flip a coin" is `CumulativeUpkeepPaying(label, FlipCoinsPayment(1), "", "")`: yes flips one coin per age counter under one call, no sacrifices (Karplusan Minotaur) |
 | "At the beginning of your end step" | `EventBeginEndStep` | `ev.Actor == source.Controller` — drop the check for "the beginning of the end step" (any player's) |
 | "Whenever you become the monarch" / "Whenever an opponent becomes the monarch" | `EventMonarchChanged` | `YouBecameTheMonarch` (Custodi Lich, via `WheneverYouBecomeTheMonarch`) / `AnOpponentBecameTheMonarch` (Knights of the Black Rose). Actor is the new monarch, `uuid.Nil` when the crown was cleared; emitted only on a real change of holder, so "become" never fires for a player already wearing it. "You become the monarch" itself is `BecomeTheMonarch{}` / `WhenThisEntersYouBecomeTheMonarch(name)`; "if you're the monarch" is `YoureTheMonarch(g, you)` ([ADR 0096](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | "At the beginning of combat on your turn" / "your postcombat main phase" / "end of combat" (any step without a kind of its own) | `EventStepBegan` | `StepBegan(game.StepBeginCombat, true)` — or the constructors `AtBeginningOfYourCombat`, `AtYourPostcombatMain`, `AtEndOfYourCombat`, `AtYourStep(step, …)`, `AtEachStep(step, …)` (#588) |
@@ -7547,6 +7713,23 @@ response is an illegal target for the clause it was chosen under.
 Molten Primordial's `TargetsFrom` is the same idea for a trigger that can
 name seats directly.
 
+**"For each opponent, … target … that player controls", every pick
+required** (Blatant Thievery) is `perOpponentRequiredClauses` in
+[opponent_clauses_required.go](../server/internal/cards/effects/opponent_clauses_required.go):
+`ForNthOpponent(n, spec)` sets `TargetSpec.OpponentSlot`, and the engine
+reads the table, so the clause is required only while that seat holds a
+live opponent (two-player tables and eliminated players need no pick).
+Do not reuse the "up to one" form for a required target: it lets the caster
+skip an opponent (ADR 0019, 2026-10-19 amendment, #4128).
+
+**Detain, a ban on a card name, "this spell can't be copied"** (#4128):
+`Detain{Match}` pins a set at resolution and restricts it until your next
+turn ([detain.go](../server/internal/cards/effects/detain.go), ADR 0045
+amendment); `RestrictCasting` with `game.CastBanNamed` and
+`PermissionFilter{Named: …}` is a name ban for a duration (Reflector Mage,
+ADR 0066 amendment); `Spec.CantBeCopied` is the spell's own rider, refused at
+every spell-copy door (See Double, ADR 0043 amendment).
+
 **An intervening "if"** (Thopter Spy Network, Emeria) is read where the
 trigger is declared and again at the top of the `Effect`; the second read
 is the one a response can change (CR 603.4).
@@ -7713,6 +7896,37 @@ Sorin Markov's −7, Construct a Cosmic Cube, and Cruel Entertainment's
 two halves) uses `controlTargetPlayerNextTurn(name)` or
 `controlPlayerNextTurn(g, item, controller, controlled, name)` from
 `cards/effects/turn_control_cards.go`, which set it.
+
+"You control target opponent during their next combat phase" (Secret
+of Bloodbending, #3999) is `Game.BeginCombatControlForEffect` with a
+`CombatControl`: the same record scoped to one combat phase (`Until
+"combat"`, `game/combat_control.go`), which begins as the controlled
+player's next combat phase begins and ends as it ends. The controller
+plays it like a turn, but cannot end the turn from it.
+
+"You choose which creatures attack this turn" and "you choose which
+creatures block this turn (this combat) and how those creatures block"
+(Master Warcraft, Odric, Melee, Brutal Hordechief, #4154) are one
+`Game.BeginDeclarationControlForEffect` with a `DeclarationControl`
+(`Attackers`, `Blockers`, `ThisCombat`; the declarer and the source):
+`game/declaration_control.go`. It is not player control, so nothing else
+changes hands: the declarer makes those declarations on the other
+players' boards, the active player still chooses what each chosen
+attacker attacks and pays its costs, and every restriction and
+requirement applies. A card that also forces the blocks ("block this
+turn if able") adds the requirement itself (Brutal Hordechief's
+rule-scoped `AddBlockRequirementMod`).
+
+A granted ability whose cost exiles the permanent that grants it ("{15},
+Exile The Dominion Bracelet: …" on the equipped creature, #4000) adds
+`ExileTheGrantor()` to the bundle ability's cost with `Plus`; Register
+allows it only in a battlefield `AbilityGrant`. "This ability costs {X}
+less, where X is this creature's power" is the bundle ability's own
+`CostModifiers`, whose `q.Card` is the creature.
+
+An optional "you may waterbend {N}" additional cost is
+`OptionalCosts: []game.AdditionalCost{OptionalWaterbend("{N}")}`; read
+whether it was paid with `ctx.OptionalCostTimes(game.WaterbendKey) > 0`.
 
 ### Adding a `PendingChoiceKind` (#730, #794)
 
@@ -8202,6 +8416,19 @@ offers and the bot enumerator at once: nothing else asks a budget question.
 `Distinct(...)` clause per type under `Clauses(...)`, each `WithCount(0, 1)`
 (see `uldaros_theorix.go`), so a card with two types fills the one slot the
 player picks it for. See ADR 0066's 2026-10-14 amendment.
+
+"Any number of spells with mana value N or less from among them" over an impulse exile
+(Hazoret's Undying Fury, #4021) is the per-spell cap rather than the running total:
+
+```go
+limit := 5
+ExileTopWithPermission{From: me, GrantTo: me, N: 4, EachManaValueAtMost: &limit}.Apply(ctx)
+```
+
+One pass-closed permission carries `MaxSpellManaValue` and `AnyNumber`, so a cast strikes
+only its own card and the rest stay castable until the holder passes. It takes the same
+options as `TotalManaValueAtMost` refuses, and the two cannot be set together. See ADR
+0066's 2026-10-19 amendment.
 
 ### Adding a hideaway card (S43+, ADR 0091)
 
@@ -11044,6 +11271,31 @@ and the engine call site that reads it. Add a per-slot
 `game.CatalogX` variable only if a game-package test needs to stub
 that slot without importing the catalog; the existing ones default to
 reading the `CardDef` and are not set by the catalog any more.
+
+### "Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)
+
+- **The window.** `Condition: DuringYourTurnBeforeAttackersAreDeclared()` is "Activate only during your turn, before
+  attackers are declared" (Diaochan, Artful Beauty and the Portal Three Kingdoms creatures). `BeforeAttackersAreDeclared()`
+  alone is "Activate only before attackers are declared" (Norritt, Arcum's Whistle, no turn named) and
+  `DuringAnOpponentsTurnBeforeAttackersAreDeclared()` is Nettling Imp's. All read
+  `Game.DeclareAttackersHasBegunThisTurnForEffect`, the turn tally's step count: true once ANY declare attackers step has
+  begun, so an extra combat does not reopen the window. A cast restriction uses the same method in its `CastCondition`
+  (Siren's Call). ADR 0020's amendment of 2026-10-19.
+- **"Attacks this turn if able, destroy it at the beginning of the next end step if it didn't"** is
+  `forced_attack_helpers.go`: `forcedAttackTarget()` is "target non-Wall creature the active player has controlled
+  continuously since the beginning of the turn", `forceTheChosenCreature(label)` is the whole Effect, and
+  `mustAttackOrBeDestroyed` is the shared body (an attack-requirement scoped effect until end of turn, and a delayed
+  trigger on `destroyUnlessItAttackedBody`).
+- **"For as long as this remains tapped"** is read from the moment the ability is activated (ADR 0109's amendment of
+  2026-10-19). Build the duration with `DurationWhileThisRemainsTapped` or `WhileYouControlThisAndItRemainsTapped`
+  (through `GainControlOfTargetFor`, `TargetGetsWhileThisRemainsTapped` or `TapAndHoldWhileThisRemainsTapped`) and the
+  untap record on the stack item (`StackItem.SourceUntapped`) is honoured for you. A card that builds a duration from
+  `Game.ForAsLongAsSourceTappedDuration` directly must also refuse on `sourceUntappedSinceActivation(ctx)`, as Old Man of
+  the Sea does.
+- **"Each other player may draw a card"** is a keyed option pick per player in turn order (`OptionPickThen`, `Carry` the
+  players still to ask), and "whenever a card is drawn this way" is one reflexive trigger per card that reached a hand
+  (`len(Game.DrawnThisTurn[player])` before and after), its clause `ChosenAtRandom(TargetPlayer("…", Opponent()))` on the
+  `ReflexiveBody`. Explosion of Riches.
 
 ### When in doubt
 

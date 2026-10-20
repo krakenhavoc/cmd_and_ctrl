@@ -576,3 +576,90 @@ describe("helpers", () => {
     expect(buildStackLane(input()).priority.viewerHolds).toBe(true);
   });
 });
+
+// #4114: a divided or distributed effect says what each target gets.
+describe("stack lane shares of a divided effect (#4114)", () => {
+  const dragon = card("dragon", "Armament Dragon", BOT1);
+  const elves = card("elves", "Llanowar Elves", BOT1);
+  const DIVIDES =
+    "When this creature enters, distribute three +1/+1 counters among one, two, or three target creatures you control.";
+
+  function divided(extra: Partial<StackItemView> = {}) {
+    const trig = {
+      id: "t1",
+      kind: "triggered",
+      controller: BOT1,
+      owner: BOT1,
+      source_card_id: "dragon",
+      label: "Armament Dragon — distribute three +1/+1 counters",
+      ability_text: DIVIDES,
+      targets: [
+        { kind: "card", id: "elves" },
+        { kind: "card", id: "dragon" },
+      ],
+      distribution: { elves: 2, dragon: 1 },
+      ...extra,
+    } as StackItemView;
+    return buildStackLane(
+      input({
+        stack: zone("stack", []),
+        stackItems: [trig],
+        battlefield: zone("battlefield", [dragon, elves]),
+      }),
+    ).stackItems[0];
+  }
+
+  it("puts each target's share in its phrase, counters said as counters", () => {
+    const item = divided();
+    expect(item.targets.map((t) => [t.name, t.share, t.shareText, t.shareBadge])).toEqual([
+      ["Llanowar Elves", 2, "2 counters", "+2"],
+      ["Armament Dragon", 1, "1 counter", "+1"],
+    ]);
+    expect(item.targets.map((t) => t.phrase)).toEqual([
+      "Bot 1's Llanowar Elves (2 counters)",
+      "Bot 1's Armament Dragon (1 counter)",
+    ]);
+    // The compact overlay's line says it too.
+    expect(item.targetText).toBe("→ Llanowar Elves (2 counters) / Armament Dragon (1 counter)");
+  });
+
+  it("says damage for a divided damage spell, to a player or a permanent", () => {
+    const fireball = card("fb", "Fireball", ME);
+    const m = buildStackLane(
+      input({
+        stack: zone("stack", [fireball]),
+        stackItems: [
+          spell("fb", ME, {
+            targets: [
+              { kind: "card", id: "birds" },
+              { kind: "player", id: BOT1 },
+            ],
+            distribution: { birds: 1, [BOT1]: 4 },
+          }),
+        ],
+        oracleTextFor: () =>
+          "Fireball deals X damage divided as you choose among any number of targets.",
+      }),
+    );
+    const t = m.stackItems[0].targets;
+    expect(t.map((x) => [x.kind, x.shareText, x.shareBadge])).toEqual([
+      ["permanent", "1 damage", "1 dmg"],
+      ["player", "4 damage", "4 dmg"],
+    ]);
+  });
+
+  it("leaves a plain item's targets exactly as they were", () => {
+    const m = buildStackLane(input());
+    for (const it of m.stackItems) {
+      for (const t of it.targets) {
+        expect([t.share, t.shareText, t.shareBadge]).toEqual([null, null, null]);
+        expect(t.phrase).not.toMatch(/\(/);
+      }
+    }
+  });
+
+  it("shows a bare number when the text names no unit", () => {
+    const item = divided({ ability_text: "Divide it as you choose among target creatures." });
+    expect(item.targets.map((t) => t.shareText)).toEqual(["2", "1"]);
+  });
+});

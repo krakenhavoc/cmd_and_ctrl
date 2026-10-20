@@ -4249,3 +4249,101 @@ both halves.
 
 Back-out: drop rule 3's exception and the flashback-offer tests fail; drop the pile check in `CastPermissionOnCardForEffect`
 and `TestAStoredGrantOverAnotherGraveyardIsOnlyOnThatPile` fails; drop either gate's read and the ban tests fail.
+
+## Amendment (2026-10-19, [#4128](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4128)): a cast ban on a name, for a duration (Reflector Mage)
+
+The 2026-09-23 amendment (#1316) built the granted cast ban and named Reflector Mage as the card it was for; what it could not
+say was WHICH spells. `PermissionFilter` had type and zone words and no name. Reflector Mage bans "spells with the same name as
+that creature" until its controller's next turn.
+
+**Decision.**
+
+1. `PermissionFilter.Named string` (empty constrains nothing) is read in `Matches`. It is the name the ability read off the
+   creature before it left the battlefield, so a Clone copying a Bear bans "Grizzly Bears", and a token's name counts.
+2. The ban is a **kind of its own**, `CastBanNamed`, not `CastBanOutright` with a name filter. This is the rollback half of the
+   snapshot rule: a binary from before this change reads a restore point it did not write, drops `filter.named`, and would
+   restore an outright ban on every spell. Under its own kind it reads an unknown kind, which `CastBanRule.forbids` answers
+   `false` (its default arm), so a rollback can only end the ban early, which is weaker than printed, never stronger. An empty
+   `Named` bans nothing.
+3. Nothing else changes: the ban is a `PlayerStatic` on the creature's OWNER with a `DurationUntilYourNextTurn`, read by the one
+   gate every cast already passes (`CastGateLocked`), so the hand, the command zone and the enumerator are covered, and the
+   wire's `cant_cast` stamp needs no new field.
+
+**Snapshot.** Additive within v9: `filter.named` on every `PermissionFilter`. Recorded in `testdata/snapshot_shape/v9.txt`.
+
+**Card.** Reflector Mage, `full`.
+
+**Tests.** `cards/effects/roonb_cards2_test.go`: the bounced name is banned (recast from hand included) and another name is
+not; the ban ends as the Mage controller's next turn begins; the OWNER is banned and the thief is not; a Clone's copied name
+is the banned one; a target that left in response bans nothing.
+
+Back-out: make `CastBanNamed` forbid nothing and the ban test fails; drop the `Named` clause from `Matches` and the
+"another name is not banned" assertion fails; ban `target.Controller` and the owner test fails.
+
+## Amendment (2026-10-19, [#4021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4021)): any number of exiled spells, each with mana value N or less
+
+Hazoret's Undying Fury: "Shuffle your library, then exile the top four cards. You may cast any number of spells with mana value
+5 or less from among them without paying their mana costs." The engine had the two neighbours and not this one. A plain
+`ExileTopWithPermission{Free: true}` with `LapseOnPass` is one pass-closed permission that the first cast spends whole ("a spell
+from among them", weaker than printed), and `TotalManaValueAtMost` (the 2026-10-15 amendment) keeps the permission for the
+rest of the set but caps a running TOTAL, not each spell.
+
+**Decision.**
+
+1. `CastPermission.AnyNumber bool` (`json:"anyNumber,omitempty"`) marks a pass-closed `ScopeCards` permission that a cast does
+   not use up. `spendManaValueBudget`, the one place `consumePassClosedGrantLocked` decides between "remove the permission" and
+   "keep it for the cards not yet cast", now also keeps an `AnyNumber` permission, with the cast card struck from `Cards` (a
+   fresh slice, for the undo snapshots' sake) and no budget to spend. The per-spell ceiling is the field that already existed,
+   `MaxSpellManaValue`, judged by `spellManaValueWithinCap` against the face as it is cast with X at zero, so the cast path, the
+   view's `castable_here` and the bot enumerator refuse the same casts.
+2. `effects.ExileTopWithPermission.EachManaValueAtMost` builds it: the same free (`Cost: "{0}"`), flash-speed, cast-only,
+   `LapseStaysInExile` permission `TotalManaValueAtMost` builds, with `MaxSpellManaValue` and `AnyNumber` in place of the budget.
+   Both forms are one window, so both refuse the options that name another (`Free`, `CastOnly`, `WhileExiled`, `Window`,
+   `FaceDown`, `Condition`, `Filter`), and the two cannot be set together.
+3. The rest is the 2026-10-15 amendment's: a land among the cards is stranded, an uncast card stays in exile, the casts are
+   grants taken with ordinary `cast_spell` actions after the ability resolves (CR 608.2g), and the window closes when the holder
+   passes.
+
+**Rejected: one permission per exiled card** (the way `CopyAndCast` offers one per copy). It gives each card its own window
+that closes on its own pass, and a permission per card is a list the bot enumerator and the view would walk twice for no gain;
+the one permission already names every card.
+
+**Rejected: widening `TotalManaValueAtMost` to carry a per-spell cap.** A running total spends down and a per-spell cap does not;
+one field meaning both is how a total of 5 and a cap of 5 get confused.
+
+**Snapshot.** Additive within v9: `seats[].castPermissions[].anyNumber`, recorded in `testdata/snapshot_shape/v9.txt`. A binary
+from before this change reads the field as absent and offers one cast, which is weaker than printed, never stronger.
+
+**Card.** Hazoret's Undying Fury, `full` (its lands clause shipped with #3995).
+
+**Tests.** `cards/effects/hazorets_undying_fury_test.go`: any number are cast and the mana value 6 card is refused; exactly four
+leave the library after the shuffle; the pass closes the window and the rest stay in exile; the enumerator keeps offering the
+other cards after a cast; the permission survives a restore; the lands are held through the next untap step.
+
+Back-out: drop `perm.AnyNumber = true` in `applyBudgeted` and the second cast, the enumerator and the restore tests fail; drop
+`perm.MaxSpellManaValue` and the mana value 6 card is castable, failing the first.
+
+## Amendment 2026-10-19: Shaman's Trance's "as though those cards were in your graveyard" reaches the holder's own permissions (#4177, #4173)
+
+Shaman's Trance (#1987) stored one permission per other seat and left the caster's permissions over "your graveyard"
+(Underworld Breach's escape, Yawgmoth's Will, Lurrus, Muldrotha, a flashback grant) reading the caster's own pile only.
+
+`CastPermission.GraveyardsAreYours` is set on the Trance's own stored grants. While one is live
+(`graveyardPermissionsReachAllLocked`), `permissionReachesPileLocked` (now a `Game` method) lets every permission its holder has
+over THEIR OWN graveyard (a `ZoneOwner` of none) reach a card in any graveyard, so the cast path, the enumerator and the view's
+per-holder stamps all agree. The flag rides the stored grants rather than a new scoped record so a resolved Trance stores no new
+record: `v9/shamans_trance.json` stays a subset of a fresh render.
+
+Two more changes make an offer from a derived permission reachable beside a stored plain one, which Trance + Breach needs:
+`CastPermissionForClaimLocked` also looks at the permissions the holder's permanents give (`standingCastPermissionsLocked`) for
+a claimed alternative cost, and `otherGrantedOffersLocked` lists their offers beside the stored grant's. The per-type ranking
+(`perTypeOthersLocked`) counts the cards of every graveyard under the flag.
+
+A card cast that way is still its owner's and returns to its owner's graveyard (CR 400.3); what such a permission asks of "your
+graveyard" (escape's three exiled cards) is paid from the caster's own.
+
+**Snapshot.** Additive within v9: `seats[].castPermissions[].graveyardsAreYours`. A binary from before this change drops the key
+and reads the Trance as it did, which is weaker than printed, never stronger.
+
+Tests: `cards/effects/shamans_trance_reach_test.go`. Back-out: make `permissionReachesPileLocked` ignore the flag and the Breach
+escape, the end-of-turn and the restore tests fail.

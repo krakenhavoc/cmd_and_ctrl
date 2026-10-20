@@ -63,42 +63,48 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			// "You MAY draw two additional cards" — the first link of
 			// the chain, and the one the engine already had.
-			OptionalDraw(On(game.EventBeginDrawStep, ByYou, "Sylvan Library — draw two additional cards", func(g *game.Game, item *game.StackItem) error {
-				controller := item.Controller
-				if err := g.DrawNForEffect(controller, 2); err != nil {
-					return err
-				}
-				// "choose two cards in your hand drawn this
-				// turn" — every card drawn this turn, not just
-				// the two this ability drew. The turn-based
-				// draw is eligible and is frequently the right
-				// card to put back, which is why the engine
-				// tracks the draws rather than this file
-				// remembering its own two.
-				drawn := g.CardsDrawnThisTurnFor(controller)
-				if len(drawn) == 0 {
+			OptionalDraw(On(game.EventBeginDrawStep, ByYou, "Sylvan Library — draw two additional cards", Do(
+				// The choice of cards waits for a prompt the draws ask, such as a
+				// dredge offer: it is made over what was drawn (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					return ctx.Game.DrawNForEffect(ctx.Controller(), 2)
+				}),
+				Instruction(func(ctx *Context) error {
+					g, item := ctx.Game, ctx.Item
+					controller := item.Controller
+					// "choose two cards in your hand drawn this
+					// turn" — every card drawn this turn, not just
+					// the two this ability drew. The turn-based
+					// draw is eligible and is frequently the right
+					// card to put back, which is why the engine
+					// tracks the draws rather than this file
+					// remembering its own two.
+					drawn := g.CardsDrawnThisTurnFor(controller)
+					if len(drawn) == 0 {
+						return nil
+					}
+					g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+						Chooser:  controller,
+						Source:   item.SourceCardID,
+						Question: "Sylvan Library — choose two cards drawn this turn",
+						Cards:    drawn,
+						// "Choose two" — and no fewer, unless the
+						// player has fewer than two left to
+						// choose from (they discarded one, or an
+						// opponent's effect took it).
+						Min:  min(2, len(drawn)),
+						Max:  min(2, len(drawn)),
+						Zone: game.ZoneHand,
+						Then: func(g *game.Game, picked []uuid.UUID) error {
+							return sylvanLibrarySettle(g, item, picked)
+						},
+					})
 					return nil
-				}
-				g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-					Chooser:  controller,
-					Source:   item.SourceCardID,
-					Question: "Sylvan Library — choose two cards drawn this turn",
-					Cards:    drawn,
-					// "Choose two" — and no fewer, unless the
-					// player has fewer than two left to
-					// choose from (they discarded one, or an
-					// opponent's effect took it).
-					Min:  min(2, len(drawn)),
-					Max:  min(2, len(drawn)),
-					Zone: game.ZoneHand,
-					Then: func(g *game.Game, picked []uuid.UUID) error {
-						return sylvanLibrarySettle(g, item.SourceCardID, controller, picked)
-					},
-				})
-				return nil
-			}), "Sylvan Library — draw two additional cards?", 2),
+				}),
+			)), "Sylvan Library — draw two additional cards?", 2),
 		},
 	})
+	sylvanLibraryPay = RegisterThenSteps("then-steps/sylvan-library-pay", sylvanLibraryPaySteps()...)
 }
 
 // sylvanLibrarySettle asks about the first of the remaining chosen
@@ -111,10 +117,11 @@ func init() {
 // pricing the second against.
 //
 // Caller must hold g.mu.
-func sylvanLibrarySettle(g *game.Game, source, controller uuid.UUID, remaining []uuid.UUID) error {
-	if len(remaining) == 0 {
+func sylvanLibrarySettle(g *game.Game, item *game.StackItem, remaining []uuid.UUID) error {
+	if len(remaining) == 0 || item == nil {
 		return nil
 	}
+	source, controller := item.SourceCardID, item.Controller
 	card := remaining[0]
 	rest := remaining[1:]
 	putBack := func(g *game.Game) error {
@@ -129,7 +136,7 @@ func sylvanLibrarySettle(g *game.Game, source, controller uuid.UUID, remaining [
 		// to ask its owner about the command zone, and the rest of the
 		// card must not run while that is open.
 		return g.TuckToLibraryThenForEffect(card, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-			return sylvanLibrarySettle(g, source, controller, rest)
+			return sylvanLibrarySettle(g, item, rest)
 		})
 	}
 	p := g.PlayerByIDForEffect(controller)
@@ -164,21 +171,40 @@ func sylvanLibrarySettle(g *game.Game, source, controller uuid.UUID, remaining [
 			if p := g.PlayerByIDForEffect(controller); p == nil || p.Life < sylvanLibraryLifeCost {
 				return putBack(g)
 			}
-			// A cost (CR 118.3), so the cost path: the CR 614 window
-			// runs on it (CR 119.4) but settles in one step, which
-			// keeps the per-card chain moving rather than stranding
-			// the rest of it behind a CR 616 prompt (#793).
-			if err := g.PayLifeForEffect(source, controller, sylvanLibraryLifeCost); err != nil {
-				return err
-			}
 			// Keeping the card is the whole of the "pay" branch — it
 			// is already in hand. The chain continues to the next
-			// chosen card.
-			return sylvanLibrarySettle(g, source, controller, rest)
+			// chosen card, after the payment (continuation steps,
+			// #4162, CR 608.2c).
+			ctx := NewContext(g, item)
+			ctx.RecordStep(sylvanLibraryRecord, rest)
+			return sylvanLibraryPay.Run(ctx)
 		},
 		OnDecline: putBack,
 	})
 	return nil
+}
+
+// sylvanLibraryRecord is the chosen cards still to settle.
+const sylvanLibraryRecord = "sylvan-library/rest"
+
+// sylvanLibraryPay is the payment and then the next card's question. It
+// is registered in init, because the next question's answer runs it
+// again.
+var sylvanLibraryPay ThenSteps
+
+func sylvanLibraryPaySteps() []Applier {
+	return []Applier{
+		Instruction(func(ctx *Context) error {
+			// A cost (CR 118.3), so the cost path: the CR 614 window
+			// runs on it (CR 119.4) but settles in one step (#793). As
+			// a step, the next question would wait for it even if it
+			// asked.
+			return ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), sylvanLibraryLifeCost)
+		}),
+		Instruction(func(ctx *Context) error {
+			return sylvanLibrarySettle(ctx.Game, ctx.Item, ctx.StepRecord(sylvanLibraryRecord).IDs)
+		}),
+	}
 }
 
 // sylvanLibraryLifeCost is the printed 4.

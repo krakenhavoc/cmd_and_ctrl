@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Damnable Pact — Sorcery {X}{B}{B} (EDHREC rank 3165):
 //
@@ -20,19 +24,35 @@ func init() {
 		XMatters:     true,
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-				return nil
-			}
-			x := ctx.X()
-			if x <= 0 {
-				return nil
-			}
-			victim := item.Targets[0].ID
-			if err := (DrawCards{Player: victim, N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -x)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for a prompt the draws ask (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				victim, x, ok := damnablePactVictim(ctx)
+				if !ok {
+					return nil
+				}
+				return DrawCards{Player: victim, N: x}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				victim, x, ok := damnablePactVictim(ctx)
+				if !ok {
+					return nil
+				}
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -x)
+			}),
+		),
 	})
+}
+
+// damnablePactVictim is the targeted player and X, or false when either is gone.
+func damnablePactVictim(ctx *Context) (uuid.UUID, int, bool) {
+	item := ctx.Item
+	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+		return uuid.Nil, 0, false
+	}
+	x := ctx.X()
+	if x <= 0 {
+		return uuid.Nil, 0, false
+	}
+	return item.Targets[0].ID, x, true
 }

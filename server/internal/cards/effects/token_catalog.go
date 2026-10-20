@@ -271,6 +271,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// #3861: Teferi, Temporal Pilgrim's Spirit, which grows on a draw.
 	printedTeferiPilgrimSpiritToken,
+
+	// #4184: Commodore Guff's Wizard, whose red mana casts only
+	// planeswalker spells.
+	printedGuffWizardToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

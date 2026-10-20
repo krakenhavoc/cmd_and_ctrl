@@ -212,7 +212,7 @@ good in the window it was shown in.
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
 | `legal_moves` | `card` (an instance id, as each group header prints it) or `choice` (a pending choice id, which `YOU OWE A CHOICE: <kind> [id <id>]` prints; the kind itself when the seat owes one choice of that kind; or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). Two owed choices of one kind make the kind ambiguous; the answer lists their ids. A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
 | `card` | `ref`: an instance id or a card name on the table | Name, type, cost, power/toughness and oracle text, with a note when the engine does not run the card's text. Cached per id. |
-| `act` | `window` (required), `move` (required), `value` (only for a move marked open), `targets` (only for a move that targets) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
+| `act` | `window` (required), `move` (required), `value` (only for a move marked open), `targets` (only for a move that targets), `cards` (only for a move that chooses cards from a hand, see [Choosing cards](#choosing-cards)) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
 | `say` | `text` (1 to 500 characters) | One line of table chat. `sent` or `rate_limited` with when to retry. |
 | `concede` | `confirm: true` | Concedes. Has its own tool because the move list never offers it. |
 | `leave` | none | Disconnects and deletes the saved session. Refused while the game is live and the seat is still in it: concede first. |
@@ -277,7 +277,7 @@ What to know about how they behave:
   default settings, and it also covers the seat's own turn. It stops at
   your main phases, any attack or block you are asked to declare, any
   choice, a mulligan, the loop notice, and a stack item you hold a response
-  to. It passes the rest, even with an instant in hand: upkeep, draw,
+  to, unless every item on the stack is your own. It passes the rest, even with an instant in hand: upkeep, draw,
   beginning of combat, combat damage, end of combat and end step of your
   own turn, and every step of an opponent's turn that is not their end
   step or combat. A response is what the browser counts: a counterspell,
@@ -289,6 +289,15 @@ What to know about how they behave:
   it is not cleared by the start of your turn, and it asks for every call,
   like the other mode. It is a shorter route to the same answers: if you
   hold something to cast in a step it passes, use `none`.
+
+  Holding an instant (#4186) it matches the browser at its defaults. A
+  stack that is entirely your own (your spell, your trigger, your upkeep
+  trigger) passes, as the browser's "auto-pass my own stack" does; an
+  opponent's answer on top of it stops you when you can respond. Your
+  upkeep and the other unticked steps of your turn pass. Your own main
+  phases still stop, and so do the browser's: there the instant is a
+  cast in your own sorcery window, which counts as a play on a ticked
+  step, alongside a land or a sorcery. To skip a main phase, pass it.
 - **Nothing is played on the model's behalf.** No deadline, no
   heuristic fallback. The table waits for the agent as it waits for a
   person.
@@ -343,6 +352,26 @@ checks any targeting (CR 601.2c). A move that divides an amount among
 its targets cannot be re-targeted: choose one of the listed moves. No
 wire change: the move's params already carry `targets`, and the view
 already carries each clause's legal set.
+
+### Choosing cards
+
+A prompt that chooses cards from a hand (the discard to hand size, CR
+514.1, or a discard prompt such as Mind Rot or Thoughtseize's pick) is
+offered as combinations, capped: with 13 cards in hand and a hand size of
+7 there are 1,716 answers, and `legal_moves(choice: "cleanup_discard")`
+lists at most 512. So the move list adds one line per such prompt:
+
+```
+CHOOSE 6 cards (discard to hand size) from: Shamanic Revelation [<id>], …
+  Any set is legal, listed or not: act(window: "<w>", move: 0, cards: ["<id>", …]) sends exactly those cards.
+```
+
+`act(window, move: N, cards: [...])` with any move of that prompt sends
+exactly the named cards in place of the move's own. The set is checked
+before sending, with a reason: every id one the line names, none twice,
+and as many as the line says. The server then checks it as it checks any
+answer. No wire change: the move's params already carry `card_ids`, and
+the server accepts any legal set.
 
 ## The badge
 

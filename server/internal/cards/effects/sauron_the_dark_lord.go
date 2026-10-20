@@ -61,11 +61,17 @@ func anArmyYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card
 func sauronTheDarkLordWheel(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Sauron, the Dark Lord — discard your hand and draw four cards?",
-		OnYes: func(ctx *Context) error {
-			if _, err := discardWholeHand(ctx.Game, ctx.Controller()); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 4}.Apply(ctx)
-		},
+		OnYes:    sauronTheDarkLordDrawSteps.Run,
 	}.Apply(NewContext(g, item))
 }
+
+// sauronTheDarkLordDrawSteps is the answer's "discard your hand and draw four
+// cards": the draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c,
+// #4155).
+var sauronTheDarkLordDrawSteps = RegisterThenSteps("then-steps/sauron-the-dark-lord-wheel",
+	Instruction(func(ctx *Context) error {
+		_, err := discardWholeHand(ctx.Game, ctx.Controller())
+		return err
+	}),
+	DrawCards{N: 4},
+)

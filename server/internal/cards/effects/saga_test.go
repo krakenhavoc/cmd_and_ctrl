@@ -306,6 +306,9 @@ func TestTheBirthOfMeletisRunsAllThreeChaptersThenIsSacrificed(t *testing.T) {
 	sagaID := castCatalogSpell(t, g, "The Birth of Meletis", "Enchantment — Saga",
 		"1ae54fe7-b1d3-4c13-a8ef-f502cf3eb1a0", nil)
 	passPriorityAroundTable(t, g)
+	// Chapter I searches for a Plains the library does not hold; the
+	// search still asks (#4140).
+	takeSearchPrompts(t, g)
 	if got := loreCountersOn(g, sagaID); got != 1 {
 		t.Fatalf("lore after entry = %d, want 1", got)
 	}

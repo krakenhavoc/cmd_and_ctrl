@@ -104,6 +104,9 @@ type deckCheck struct {
 	// once the body is read, request spends it unless the named member
 	// is an admin (#2052). Nil spends nothing.
 	requestLimit *ratelimit.Limiter
+	// updates holds the saved-deck updates that were previewed and not
+	// yet confirmed (#2036). The zero value is ready to use.
+	updates updatePreviews
 }
 
 // checkedDeck is what a check learned about one deck: the report, and
@@ -314,12 +317,22 @@ func (d *deckCheck) reportForURL(ctx context.Context, c Config, rawURL string) (
 // when not nil, is asked once before a fetch, and only on a cache
 // miss; a false answer is errFetchLimited and nothing is fetched.
 func (d *deckCheck) deckForURL(ctx context.Context, c Config, rawURL string, spend func() bool) (checkedDeck, error) {
+	return d.deckForURLOpts(ctx, c, rawURL, spend, false)
+}
+
+// deckForURLOpts is deckForURL; fresh skips the cache read so the deck
+// is fetched now (updating a saved deck exists to see what changed since
+// it was last pulled, #2036). The fetched deck still refills the cache,
+// so a check of the same link straight after fetches nothing.
+func (d *deckCheck) deckForURLOpts(ctx context.Context, c Config, rawURL string, spend func() bool, fresh bool) (checkedDeck, error) {
 	ref, err := deck.ParseDeckURL(rawURL)
 	if err != nil {
 		return checkedDeck{}, newDeckFetchError(rawURL, err)
 	}
-	if e, ok := d.cache.get(ref.Key()); ok {
-		return e, nil
+	if !fresh {
+		if e, ok := d.cache.get(ref.Key()); ok {
+			return e, nil
+		}
 	}
 	if spend != nil && !spend() {
 		return checkedDeck{}, errFetchLimited
@@ -702,14 +715,33 @@ func deckRequesterFor(ctx context.Context, c Config, p auth.Principal, named *de
 // rateLimited answers ADR 0095 §3 step 1. When the requester is over
 // the limit it writes the 429 itself and reports true.
 func (d *deckCheck) rateLimited(ctx context.Context, c Config, w http.ResponseWriter, requesterKey string) (bool, error) {
-	now := d.now()
-	asks, err := c.DeckRequests.AsksSince(ctx, requesterKey, now.Add(-deckRequestWindow))
+	limited, secs, err := d.askLimit(ctx, c, requesterKey)
 	if err != nil {
 		c.logger().Error("deck request: reading the rate limit failed", "err", err)
 		return true, httpError(http.StatusInternalServerError, "could not check your request limit; try again")
 	}
-	if len(asks) < deckRequestLimit {
+	if !limited {
 		return false, nil
+	}
+	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	return true, writeJSON(w, http.StatusTooManyRequests, deckRequestResponse{
+		Status:     deckRequestRateLimited,
+		RetryAfter: secs,
+	})
+}
+
+// askLimit is the rolling-window count behind rateLimited: whether
+// requesterKey is over the limit, and when the next ask is allowed
+// (whole seconds) if so. It writes nothing, so an update (#2036) can
+// report the limit inside its own answer.
+func (d *deckCheck) askLimit(ctx context.Context, c Config, requesterKey string) (limited bool, retryAfter int, err error) {
+	now := d.now()
+	asks, err := c.DeckRequests.AsksSince(ctx, requesterKey, now.Add(-deckRequestWindow))
+	if err != nil {
+		return false, 0, err
+	}
+	if len(asks) < deckRequestLimit {
+		return false, 0, nil
 	}
 	// The ask that has to age out before the count drops below the
 	// limit again.
@@ -718,11 +750,7 @@ func (d *deckCheck) rateLimited(ctx context.Context, c Config, w http.ResponseWr
 	if secs < 1 {
 		secs = 1
 	}
-	w.Header().Set("Retry-After", strconv.Itoa(secs))
-	return true, writeJSON(w, http.StatusTooManyRequests, deckRequestResponse{
-		Status:     deckRequestRateLimited,
-		RetryAfter: secs,
-	})
+	return true, secs, nil
 }
 
 // issueOpen reports whether the deck's current issue is still open. A
@@ -780,6 +808,7 @@ func (d *deckCheck) file(ctx context.Context, c Config, w http.ResponseWriter, k
 		// deck, not the request. Log it loudly and answer success.
 		c.logger().Error("deck request: issue filed but its row was not saved", "deck", key, "issue", url, "err", err)
 	}
+	d.recordRequestedCards(ctx, c, key, number, missingCards(report))
 	d.recordAsk(ctx, c, key, requesterKey)
 	return writeJSON(w, http.StatusCreated, deckRequestResponse{
 		Status: deckRequestFiled, IssueURL: url, IssueNumber: number, Report: report,
@@ -900,6 +929,16 @@ var deckBucketLabels = map[deckcoverage.Bucket]string{
 // the requester's name and any unresolved name came from outside and
 // go through mdUserText.
 func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Report) string {
+	return renderDeckRequestIssueOnly(who, fromBot, r, nil)
+}
+
+// renderDeckRequestIssueOnly is renderDeckRequestIssue with the "Cards
+// to add" and "Cards to review" checklists cut to the cards whose
+// missingKey is in only (nil lists them all). An updated deck's new
+// issue (#2036) lists just the cards its earlier request did not have;
+// the table, the caveats and a pasted deck's list still describe the
+// whole deck.
+func renderDeckRequestIssueOnly(who deckRequester, fromBot bool, r *deckcoverage.Report, only map[string]bool) string {
 	var b strings.Builder
 	pasted := r.SourceURL == ""
 	if pasted {
@@ -922,12 +961,21 @@ func renderDeckRequestIssue(who deckRequester, fromBot bool, r *deckcoverage.Rep
 		fmt.Fprintf(&b, "| %s | %d |\n", deckBucketLabels[bucket], r.Counts[bucket])
 	}
 
+	if only != nil {
+		b.WriteString("\n_Filed when the deck was updated: cards its earlier request already lists are not repeated._\n")
+	}
 	writeChecklist := func(heading string, cards []deckcoverage.Card) {
-		if len(cards) == 0 {
+		var listed []deckcoverage.Card
+		for _, c := range cards {
+			if only == nil || only[missingKey(c)] {
+				listed = append(listed, c)
+			}
+		}
+		if len(listed) == 0 {
 			return
 		}
 		fmt.Fprintf(&b, "\n## %s\n\n", heading)
-		for _, c := range cards {
+		for _, c := range listed {
 			fmt.Fprintf(&b, "- [ ] %s (%s)\n", c.Name, c.OracleID)
 		}
 	}

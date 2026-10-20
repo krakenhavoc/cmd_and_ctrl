@@ -28,19 +28,6 @@ import (
 
 // --- token templates ---------------------------------------------
 
-// --- mana-ability riders -----------------------------------------
-
-// b12GainLifeRider is the post-production half of Pristine Talisman:
-// "{T}: Add {C}. You gain 1 life." A rider, not a cost, and life
-// GAIN rather than damage, so it goes through
-// ChangePlayerLifeForEffect and every "whenever you gain life"
-// payoff (Archangel of Thune, in this same batch) sees it.
-func b12GainLifeRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
-	return func(g *game.Game, controller, source uuid.UUID) error {
-		return g.ChangePlayerLifeForEffect(source, controller, n)
-	}
-}
-
 // --- costs -------------------------------------------------------
 
 // b12SacrificeAGoblin is Skirk Prospector's "Sacrifice a Goblin:"

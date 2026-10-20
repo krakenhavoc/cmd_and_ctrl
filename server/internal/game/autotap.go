@@ -1426,8 +1426,9 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //
 //   - a life cost the player cannot pay right now (CR 119.4, CR 119.8).
 //     A payable one is planned since #2392, in the pain tier, and so is
-//     a rider that declares its damage (RiderSelfDamage); a rider that
-//     does not is a closure the planner cannot read, and it stays out;
+//     a rider that declares its damage (RiderSelfDamage), or the life
+//     it gains (RiderSelfLifeGain, #4185); a rider that declares
+//     neither is a closure the planner cannot read, and it stays out;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first, so
@@ -1661,14 +1662,6 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	if a.ExertCost {
 		return false
 	}
-	// #3845: and so is a mill. Milling cards out of a library to pay
-	// for a spell is the player's call (Millikin, "{T}, Mill a card"),
-	// so the planner never takes one; the player activates the row.
-	// This is what the opaque Rider that used to stand in for the cost
-	// did by accident.
-	if a.MillCost > 0 {
-		return false
-	}
 	// #1183: "Activate each exhaust ability only once", and this
 	// object has. Not a decision the planner is declining — the
 	// activation path would refuse it with ErrAbilityExhausted,
@@ -1681,9 +1674,11 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	// #2392: a life cost is plannable — the automatic payment pays it
 	// (CR 119.4: only from a life total at least that large; CR 119.8:
 	// not at all while the total can't change) — and so is a rider
-	// that declares the damage it deals. An opaque rider stays out: the
-	// planner cannot know what it does.
-	if a.Rider != nil && a.RiderSelfDamage <= 0 {
+	// that declares the damage it deals. #4185: and so is one that
+	// declares the life it gains (The Great Henge), which spends
+	// nothing. An opaque rider stays out: the planner cannot know what
+	// it does.
+	if a.Rider != nil && a.RiderSelfDamage <= 0 && a.RiderSelfLifeGain <= 0 {
 		return false
 	}
 	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
@@ -1842,7 +1837,7 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 	if !a.OncePerTurn || a.TapCost || a.SacrificeCost {
 		return false
 	}
-	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.MillCost > 0 || a.ManaCost != "" {
+	if a.SacrificeOther != nil || !a.TapOthers.Empty() || a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.ManaCost != "" {
 		return false
 	}
 	if a.RemoveCounters != nil || a.AddCounter != nil || a.DiscardCards != nil || a.ExileCards != nil || a.ExileSelf {
@@ -1916,7 +1911,7 @@ func (g *Game) autoManaExileAbilityFor(asker uuid.UUID, source Card, abilities [
 		if g.ManaAbilityExhausted(asker, source.InstanceID, a) {
 			continue
 		}
-		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.MillCost > 0 || a.Rider != nil {
+		if a.LifeCost > 0 || a.EnergyCost > 0 || a.ExertCost || a.Rider != nil {
 			continue
 		}
 		if len(a.Restrictions) > 0 || a.RestrictionsFunc != nil {
@@ -2130,6 +2125,15 @@ func solveColored(
 			return true
 		}
 		*deferred--
+	}
+	// #4177, CR 107.4e: a two-mana hybrid no colour slot can pay is two
+	// generic — the pool solver's foldUnpaidTwobrid.
+	if req.isTwobrid() && !req.AnyMana {
+		*deferred += req.NumericAlt
+		if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
+			return true
+		}
+		*deferred -= req.NumericAlt
 	}
 	return false
 }

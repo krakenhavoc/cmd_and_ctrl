@@ -6,6 +6,7 @@ import {
   begin,
   cancel,
   hasXCost,
+  tapCostFor,
   tapCostLimit,
   tapCostOf,
   targeting,
@@ -142,5 +143,37 @@ describe("a clause counted by X", () => {
     expect(state?.min).toBe(1);
     expect(state?.max).toBe(3);
     cancel();
+  });
+});
+
+// #3999: Secret of Bloodbending's "you may waterbend {10}" is an optional
+// cost whose offer carries the picker; it is the cast's tap cost only
+// while it is chosen.
+describe("tapCostFor", () => {
+  const picker = {
+    key: "waterbend",
+    label: "Waterbend {10}",
+    max: 10,
+    options: { cards: ["soldier-a"] },
+  };
+  const secret = card({
+    instance_id: "secret",
+    name: "Secret of Bloodbending",
+    mana_cost: "{U}{U}{U}{U}",
+    optional_costs: [
+      { index: 0, key: "waterbend", label: "Waterbend {10}", mana_cost: "{10}", tap_cost: picker },
+    ],
+  });
+
+  it("is the chosen waterbend offer's picker, and nothing when it is declined", () => {
+    expect(tapCostOf(secret)).toBeUndefined();
+    expect(tapCostFor(secret)).toBeUndefined();
+    expect(tapCostFor(secret, { optionalCosts: [] })).toBeUndefined();
+    expect(tapCostFor(secret, { optionalCosts: [0] })).toEqual(picker);
+    expect(tapCostLimit(tapCostFor(secret, { optionalCosts: [0] })!, undefined)).toBe(10);
+  });
+
+  it("is the card's own clause first", () => {
+    expect(tapCostFor(rescuer, { optionalCosts: [0] })).toBe(rescuer.tap_cost);
   });
 });

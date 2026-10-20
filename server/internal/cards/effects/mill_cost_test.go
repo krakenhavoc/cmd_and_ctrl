@@ -9,8 +9,8 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// mill_cost_test.go — #3845: "Mill N cards" as a cost, on both owners of
-// the component, and the two cards that were waiting on it (The Warring
+// mill_cost_test.go — #3845: "Mill N cards" as a cost on an activated
+// ability (AbilityCost.Mill), and the two cards that were waiting on it (The Warring
 // Triad, Millikin). The engine halves are against abilities registered
 // for the test; the card halves are against the real catalog entries.
 
@@ -131,8 +131,6 @@ func TestRegisterRefusesAMalformedMillCost(t *testing.T) {
 			Label: "x", Cost: MillCardsCost(-1), Effect: func(*game.Game, *game.StackItem) error { return nil }}}},
 		"with an exile": {OracleID: "test-mc-both", Name: "Mill And Exile", Activated: []ActivatedAbility{{
 			Label: "x", Cost: Plus(MillCardsCost(1), ExileTopOfLibrary(1)), Effect: func(*game.Game, *game.StackItem) error { return nil }}}},
-		"negative on a mana ability": {OracleID: "test-mc-negmana", Name: "Negative Mill Mana", ManaAbilities: []ManaAbility{{
-			Cost: ManaAbilityCost{Tap: true, Mill: -1}, Produced: "{C}", Label: "x"}}},
 	} {
 		func() {
 			defer func() {
@@ -308,7 +306,7 @@ func TestMillikinMillIsReplacedByRestInPeace(t *testing.T) {
 	lib := lcLibrary(g, me, 2)
 	millikin := pushCatalogPermanent(g, me.ID, "Millikin", "Artifact Creature — Construct", b11MillikinOracle, false)
 
-	if err := g.ActivateManaAbility(me.ID, millikin, 0, game.ManaAbilityParams{}); err != nil {
+	if _, err := activateMillMana(t, g, me, millikin); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	if len(me.ManaPool) != 1 {
@@ -319,7 +317,7 @@ func TestMillikinMillIsReplacedByRestInPeace(t *testing.T) {
 	}
 }
 
-// Millikin is a mana ability with a cost the player chooses, so the
+// Millikin is an activated ability with a cost the player chooses, so the
 // auto-tapper never takes it: a spell is not paid for by milling a
 // library behind the player's back.
 func TestMillikinIsNeverAutoTapped(t *testing.T) {

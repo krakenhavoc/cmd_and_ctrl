@@ -210,13 +210,16 @@ func (g *Game) popTurnPlanLocked() bool {
 // noteStepBegunLocked stamps the ordinals as a step really begins
 // (ADR 0059 Decision 8): after the CR 500.11 skip window and the
 // mulligan hold, so a skipped step is not counted. The first step to
-// begin in a new phase instance counts a phase of its family.
+// begin in a new phase instance counts a phase of its family, and
+// opensPhase reports it: that is the moment the phase begins (#3999,
+// beginCombatControlsLocked).
 //
 // Caller must hold g.mu.
-func (g *Game) noteStepBegunLocked() {
+func (g *Game) noteStepBegunLocked() (opensPhase bool) {
 	g.ensureTurnPlanLocked()
 	t := &g.TurnTally
 	if g.Turn.PhaseID != t.PhaseStarted {
+		opensPhase = true
 		if t.PhasesBegun == nil {
 			t.PhasesBegun = map[PhaseKind]int{}
 		}
@@ -238,6 +241,7 @@ func (g *Game) noteStepBegunLocked() {
 			p.EndStepTurn = p.TurnsBegun
 		}
 	}
+	return opensPhase
 }
 
 // derivePrePlanOrdinalsLocked fills in the ordinals for a restore
@@ -517,6 +521,73 @@ func (g *Game) UpcomingStepsForEffect() []PlannedStep {
 // Caller must hold g.mu.
 func (g *Game) IsFirstCombatPhaseForEffect() bool {
 	return g.Turn.Phase == PhaseCombat && g.Turn.PhaseOrdinal <= 1
+}
+
+// DeclareAttackersHasBegunThisTurnForEffect is "a declare attackers
+// step has begun this turn" (#4062): the first half of the fact behind
+// "Activate only during your turn, before attackers are declared"
+// (Diaochan, Artful Beauty and the Portal Three Kingdoms cards). Cards
+// ask BeforeAttackersWindowClosedForEffect, which adds the second half
+// (a skipped combat); this half is exposed for the tests that pin it.
+//
+// The ruling reads it from the FIRST combat's step - "before the
+// beginning of the declare attackers step of the first combat phase in
+// that turn" - and the first such step to begin is that one, so once
+// any has begun the window is shut for the rest of the turn, an extra
+// combat's included (CR 506.8a, 506.8d).
+//
+// It is read off the step tally noteStepBegunLocked keeps, which is
+// stamped as a step really begins (a step the turn does not have, or
+// one a replacement cancelled, is never counted) and is already
+// carried by the snapshot, rebuilt for a restore point that pre-dates
+// it (derivePrePlanOrdinalsLocked), and emptied at every turn change.
+// So no new state was added for it.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) DeclareAttackersHasBegunThisTurnForEffect() bool {
+	return g.TurnTally.StepsBegun[StepDeclareAttackers] > 0
+}
+
+// BeforeAttackersWindowClosedForEffect is the whole of "only before
+// attackers are declared" (CR 506.8a), for a spell (506.8e) and for an
+// activated or other ability alike (506.8g): the turn's first declare
+// attackers step has begun, or the turn's combat phase was skipped.
+//
+// The second half is CR 506.8e: "If the stated point doesn't exist
+// because the relevant combat phase has been skipped, the spell may be
+// cast only before the precombat main phase ends." A turn that has
+// reached its postcombat main phase or its ending phase without a
+// declare attackers step ever having begun is such a turn (a skipped
+// turn's phases, an ended turn that jumped to cleanup, a plan with no
+// combat in it), and the window closed with the precombat main phase.
+// An added combat phase after that does not reopen it: 506.8d reads the
+// FIRST combat phase, and the first one was the skipped one. So the
+// closure is a record of the turn and not only of the cursor's place:
+// the phase tally (already carried by the snapshot) says a second main
+// phase or the ending phase has begun with no declare attackers step
+// behind it. A main phase after the first one always comes after a
+// combat phase (the template's postcombat main, or the main phase an
+// effect adds after its added combat, CR 500.8), so reaching one with
+// no declare attackers step means that combat was skipped. The place of the cursor is read as well, for a restore point
+// or a test that set the cursor by hand.
+//
+// Master Warcraft, Siren's Call, the forced-attack activations and the
+// "during your turn, before attackers are declared" family all read this
+// one fact.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) BeforeAttackersWindowClosedForEffect() bool {
+	if g.DeclareAttackersHasBegunThisTurnForEffect() {
+		return true
+	}
+	if g.TurnTally.PhasesBegun[PhaseKindMain] >= 2 || g.TurnTally.PhasesBegun[PhaseKindEnding] > 0 {
+		return true
+	}
+	switch PhaseOf(g.Turn.Step) {
+	case PhasePostcombatMain, PhaseEnding:
+		return true
+	}
+	return false
 }
 
 // IsFirstStepOfItsKindForEffect is "if it's the first <step> of the

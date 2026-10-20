@@ -77,6 +77,7 @@
     takePendingDeckText,
   } from "../lib/decksPage";
   import type { MyDeckInfo } from "../lib/myDecks";
+  import { updateDoneMessage, type DeckUpdateConfirm } from "../lib/deckUpdate";
   import {
     deckSubtitle as prebuiltSubtitle,
     summariseCoverage,
@@ -285,6 +286,31 @@
   let requesting = $state("");
   let deckRequests = $state<Record<string, DeckRequestResponse>>({});
   let deckRequestErrors = $state<Record<string, string>>({});
+
+  // What the last update of each deck did (#2036): the diff in a line, and
+  // the request it made, with the issue it landed on.
+  let updateNotes = $state<Record<string, { text: string; url?: string; number?: number }>>({});
+
+  function deckUpdated(res: DeckUpdateConfirm): void {
+    const id = res.deck.id;
+    decks = decks.map((item) => (item.id === id ? res.deck : item));
+    if (reportFor === id) closeReport();
+    // The earlier request outcome described the old list.
+    const results = { ...deckRequests };
+    const errors = { ...deckRequestErrors };
+    delete results[id];
+    delete errors[id];
+    deckRequests = results;
+    deckRequestErrors = errors;
+    updateNotes = {
+      ...updateNotes,
+      [id]: {
+        text: updateDoneMessage(res),
+        url: res.request?.issue_url,
+        number: res.request?.issue_number,
+      },
+    };
+  }
 
   async function loadLibrary(): Promise<void> {
     libLoading = true;
@@ -804,11 +830,28 @@
                 requestLocked={requesting !== ""}
                 busy={busy !== ""}
                 onReport={() => toggleReport(d)}
+                onPrintingSaved={(updated) => {
+                  decks = decks.map((item) => (item.id === updated.id ? updated : item));
+                  if (reportFor === updated.id) closeReport();
+                }}
+                onUpdated={deckUpdated}
                 onRequest={() => requestSaved(d)}
                 onRename={(name) => renameDeck(d, name)}
                 onDelete={() => remove(d)}
               >
                 {#snippet below()}
+                  {#if updateNotes[d.id]}
+                    {@const note = updateNotes[d.id]}
+                    <p class="outcome" role="status">
+                      {note.text}
+                      {#if note.url}
+                        <a href={note.url} target="_blank" rel="noreferrer noopener">
+                          #{note.number}
+                          <Icon name="link" size={11} />
+                        </a>
+                      {/if}
+                    </p>
+                  {/if}
                   {#if deckRequests[d.id]}
                     {@const res = deckRequests[d.id]}
                     <p class="outcome" class:warn={res.status === "rate_limited"} role="status">

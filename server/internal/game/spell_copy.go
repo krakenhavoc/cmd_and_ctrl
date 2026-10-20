@@ -125,6 +125,13 @@ func (g *Game) CopySpellForEffect(spellID, controller uuid.UUID, mayChooseNewTar
 // which differs only in WHERE it may find it. `src` is a value copy
 // the caller owns; `item` is only read. Caller must hold g.mu.
 func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UUID, mayChooseNewTargets bool, except func(v *PrintedValues)) {
+	// "This spell can't be copied" (See Double): CR 101.2's "can't"
+	// wins, so the copy effect resolves and does nothing. Refused
+	// before the re-target prompt, for the reason CopyAbilityForEffect
+	// refuses an Uncopyable ability there.
+	if spellPrintsCantBeCopied(src) {
+		return
+	}
 	if except != nil {
 		v := CopiableValuesOf(src)
 		except(&v)
@@ -495,6 +502,12 @@ func itemHasChosenTarget(item *StackItem) bool {
 // means that if a future path ever does route it, it does not
 // silently hand a card to a player who never had one.
 func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.UUID, targets []TargetRef) {
+	// The copy-making verb itself refuses an uncopyable spell, so a path
+	// that reaches it without passing copySpellFromLocked (Chef's Kiss's
+	// keep-the-targets copy) cannot make one either.
+	if spellPrintsCantBeCopied(src) {
+		return
+	}
 	copyCard := src
 	copyCard.InstanceID = uuid.New()
 	g.noteCreatedSourceLocked(copyCard.InstanceID)

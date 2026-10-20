@@ -20,16 +20,11 @@ func init() {
 		Name:         "Bitterblossom",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Bitterblossom — lose 1 life, create a Faerie Rogue", func(g *game.Game, item *game.StackItem) error {
-				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1); err != nil {
-					return err
-				}
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   FaerieRogueToken(),
-					N:          1,
-				}.Apply(NewContext(g, item))
-			}),
+			AtYourUpkeep("Bitterblossom — lose 1 life, create a Faerie Rogue", Do(
+				// The Faerie waits for a prompt the life loss asks (CR 608.2c, #4155).
+				GainLife{Amount: -1},
+				CreateToken{Template: FaerieRogueToken(), N: 1},
+			)),
 		},
 	})
 }

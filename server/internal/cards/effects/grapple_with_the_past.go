@@ -24,17 +24,18 @@ func init() {
 		OracleID:     "d14c633d-977a-4f78-85c2-88582b3c3670",
 		Name:         "Grapple with the Past",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			return ReturnChosenFromGraveyard{
-				Player:   item.Controller,
-				Question: "Grapple with the Past — you may return a creature or land card from your graveyard to your hand",
-				Match:    func(c game.Card) bool { return c.IsCreature() || c.IsLand() },
-				Max:      1,
-				ToHand:   true,
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The pick waits for a prompt the mill asks (CR 608.2c, #4155).
+			MillCards{N: 3},
+			Instruction(func(ctx *Context) error {
+				return ReturnChosenFromGraveyard{
+					Player:   ctx.Controller(),
+					Question: "Grapple with the Past — you may return a creature or land card from your graveyard to your hand",
+					Match:    func(c game.Card) bool { return c.IsCreature() || c.IsLand() },
+					Max:      1,
+					ToHand:   true,
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

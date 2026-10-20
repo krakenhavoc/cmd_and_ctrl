@@ -94,6 +94,12 @@ func choiceBelongsToResolution(c *PendingChoice) bool {
 // resolution function; the caller defers endResolutionLocked. Caller
 // must hold g.mu.
 func (g *Game) beginResolutionLocked() {
+	if !g.resolutionOpen {
+		// #4163: a new resolution starts with no step records. One
+		// left by a continuation that ran after its own resolution
+		// closed is not this one's (step_record.go).
+		g.dropStepRecordsLocked()
+	}
 	g.resolutionOpen = true
 	g.resolutionDepth++
 }
@@ -133,7 +139,9 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 	// resolution (step_walk.go) — after the damage instruction's own
 	// continuation above, before a modal item's next bullet below. One
 	// of them may pause again.
-	if g.resumeStepWalkLocked() && g.pausedResolutionChoiceLocked() != nil {
+	// A continuation's rest (#4162) is parked above the steps it
+	// belongs to and resumes first.
+	if g.resumeStepWalksLocked() {
 		return true
 	}
 	// #2789, CR 608.2c: the prompt a modal item's bullet was waiting on
@@ -150,6 +158,9 @@ func (g *Game) holdForOpenResolutionLocked() bool {
 		return true
 	}
 	g.resolutionOpen = false
+	// #4163: what one step handed a later one belongs to this
+	// resolution only (step_record.go).
+	g.dropStepRecordsLocked()
 	return false
 }
 

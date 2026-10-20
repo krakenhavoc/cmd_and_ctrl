@@ -351,6 +351,17 @@ type AdditionalCost struct {
 	// only) and a fixed count on a branch of an either/or cost (Soaring
 	// Stoneglider's "exile two cards from your graveyard or pay {1}{W}").
 	ExileCards *ExileCost
+
+	// Waterbend is an optional "you may waterbend {N}" additional cost
+	// (CR 701.67, #3999, Secret of Bloodbending): ManaCost is the {N},
+	// and this is the tap clause that may help pay it (effects.Waterbend),
+	// so a chosen one is the cast's tap cost, marked InCost: the {N} is
+	// already in the total the cast pays (CR 601.2f), and the taps pay
+	// only its generic, never the printed cost beside it (CR 701.67b).
+	// See optional_waterbend.go. effects.Register allows it only on an
+	// optional cost keyed WaterbendKey whose ManaCost is the clause's
+	// Extra, on a card with no tap cost of its own.
+	Waterbend *TapPermanentsCost
 }
 
 // Branched reports whether this is an either/or cost (ADR 0100 §2).
@@ -510,6 +521,11 @@ const (
 	// (effects.WasEntwined), so the cost, its validation and its
 	// payment are kicker's.
 	EntwineKey = "entwine"
+	// WaterbendKey is an optional "you may waterbend {N}" additional
+	// cost (#3999). The engine reads it only through the cost's
+	// Waterbend clause (optional_waterbend.go); "if this spell's
+	// additional cost was paid" is ctx.OptionalCostTimes(WaterbendKey).
+	WaterbendKey = "waterbend"
 )
 
 // OptionalCostTimesPaid counts how many times the optional cost whose

@@ -30,16 +30,17 @@ func init() {
 		Name:            "Last March of the Ents",
 		Completeness:    CompletenessFull,
 		CantBeCountered: true,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			player := item.Controller
-			n := glintWeaverGreatestToughnessControlledBy(ctx.Game, player)
-			if n > 0 {
-				if err := ctx.Game.DrawNForEffect(player, n); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The creatures from your hand wait for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				n := glintWeaverGreatestToughnessControlledBy(ctx.Game, ctx.Controller())
+				if n <= 0 {
+					return nil
 				}
-			}
-			return lastMarchPutCreatures(ctx.Game, item)
-		},
+				return DrawCards{N: n}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error { return lastMarchPutCreatures(ctx.Game, ctx.Item) }),
+		),
 	})
 }
 

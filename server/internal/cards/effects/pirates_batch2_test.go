@@ -463,18 +463,27 @@ func TestFranticSearchLootsAndUntapsThreeLands(t *testing.T) {
 	castCatalogSpell(t, g, "Frantic Search", "Instant", franticSearchOracle, nil)
 	passPriorityAroundTable(t, g)
 
-	// Two choose_cards prompts are open at once (the loot's discard
-	// and the untap), so tell them apart by which cards they offer
-	// rather than by discardChoiceFor / chooseCardsChoiceFor, which
-	// would only find one of them.
-	var untapPick *game.PendingChoice
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == active.ID && hasID(c.ChooseCards, lands[0]) {
-			untapPick = c
+	// The loot's discard is asked first, and the untap waits for its
+	// answer (CR 608.2c, #4155): only the discard is open now. The untap
+	// prompt is told from it by the cards it offers.
+	untapPrompt := func() *game.PendingChoice {
+		for _, c := range g.PendingChoices {
+			if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == active.ID && hasID(c.ChooseCards, lands[0]) {
+				return c
+			}
 		}
+		return nil
 	}
+	if discardOwed(g, active.ID) != 2 {
+		t.Fatalf("loot should queue a 2-card discard, got %d", discardOwed(g, active.ID))
+	}
+	if untapPrompt() != nil {
+		t.Fatal("the untap prompt is open before the discard is answered")
+	}
+	discardFromHand(t, g, active.ID)
+	untapPick := untapPrompt()
 	if untapPick == nil {
-		t.Fatalf("no untap prompt for the controller: %+v", g.PendingChoices)
+		t.Fatalf("no untap prompt for the controller after the discard: %+v", g.PendingChoices)
 	}
 	if err := g.ResolveChooseCards(untapPick.ID, active.ID, lands[:3]); err != nil {
 		t.Fatalf("ResolveChooseCards(untap): %v", err)
@@ -489,9 +498,6 @@ func TestFranticSearchLootsAndUntapsThreeLands(t *testing.T) {
 	}
 	if untapped != 3 {
 		t.Errorf("untapped %d lands, want exactly 3 (up to three)", untapped)
-	}
-	if discardOwed(g, active.ID) != 2 {
-		t.Errorf("loot should queue a 2-card discard, got %d", discardOwed(g, active.ID))
 	}
 }
 

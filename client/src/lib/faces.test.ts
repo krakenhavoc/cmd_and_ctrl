@@ -4,8 +4,11 @@ import {
   cardAsFace,
   castableFaceIndex,
   castableFaces,
+  isOneSidedLayout,
   isSidewaysArt,
   needsFacePicker,
+  otherSideHeading,
+  otherSideIndex,
 } from "./faces";
 import { cardImageURL, scryfallImageURL } from "./cardImage";
 import { applyCastChoices } from "./targeting";
@@ -327,5 +330,37 @@ describe("applyCastChoices carries the face", () => {
     expect(params.face).toBeUndefined();
     applyCastChoices(params, {});
     expect(params.face).toBeUndefined();
+  });
+});
+
+describe("the halves of a one-image card (#4109)", () => {
+  const two = [{ name: "A" }, { name: "B" }] as CardView["faces"];
+
+  it("names the other half of an adventurer, prepare or split card", () => {
+    for (const layout of ["adventure", "prepare", "split"]) {
+      const c = { layout, active_face: 0, faces: two } as CardView;
+      expect(isOneSidedLayout(c), layout).toBe(true);
+      expect(otherSideIndex(c), layout).toBe(1);
+    }
+    expect(otherSideHeading({ layout: "adventure", active_face: 0 })).toBe("Adventure");
+    expect(otherSideHeading({ layout: "adventure", active_face: 1 })).toBe("Creature");
+    expect(otherSideHeading({ layout: "prepare", active_face: 0 })).toBe("Prepare spell");
+    expect(otherSideHeading({ layout: "split", active_face: 0 })).toBe("Other half");
+    expect(otherSideHeading({ layout: "transform", active_face: 0 })).toBe("Back face");
+  });
+
+  it("is not one-sided for a double-faced or flip card", () => {
+    for (const layout of ["transform", "modal_dfc", "flip"]) {
+      expect(isOneSidedLayout({ layout }), layout).toBe(false);
+    }
+    expect(isOneSidedLayout(null)).toBe(false);
+  });
+
+  it("serves the whole card's one image whichever half is asked for", () => {
+    for (const layout of ["adventure", "prepare"]) {
+      const c = { ...seaGate(1), layout };
+      expect(cardImageURL(c, "normal"), layout).toBe("/cards/sg/image?size=normal");
+      expect(cardImageURL(c, "normal", 1), layout).toBe("/cards/sg/image?size=normal");
+    }
   });
 });

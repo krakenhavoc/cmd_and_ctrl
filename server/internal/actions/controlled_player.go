@@ -22,15 +22,20 @@ import (
 //     player: Caller and Player both become the controlled seat, and
 //     Actor keeps the controller;
 //   - the controller can't concede for them (CR 723.6);
-//   - while Word of Command's forced play is under way, the controller
-//     may do only what the card allows the player: make the play (a
-//     cast_spell naming the prompt, checked in the cast branch),
-//     activate their lands' mana abilities (the engine refuses any
-//     other source), and answer the prompts that raises;
-//   - while the controller plays a whole turn (Emrakul, ADR 0167 §4),
-//     they may send every rules verb as the controlled player, and no
-//     sandbox verb at all, as either player (CR 723.5b: those are not
-//     choices the rules or an object call for).
+//   - what the controller may send as the controlled player depends on
+//     the stage of the control (controlledStageVerbs): Word of Command's
+//     forced play allows the play (a cast_spell naming the prompt,
+//     checked in the cast branch), their lands' mana abilities (the
+//     engine refuses any other source) and the prompts that raises;
+//     while the forced spell resolves, and while a search is under way,
+//     only the prompts; while the controller plays a whole turn
+//     (Emrakul, ADR 0167 §4) every rules verb; and while they play one
+//     combat phase (Secret of Bloodbending, #3999) every rules verb of
+//     that phase;
+//   - no stage allows a sandbox verb as the controlled player, and a
+//     controller who plays a whole turn or a combat phase has the
+//     sandbox closed as themselves too (CR 723.5b: those are not choices the rules or an
+//     object call for).
 
 // turnRulesVerbs are the verbs a turn's controller may send as the
 // player whose turn they control (ADR 0167 §4): the action types
@@ -51,6 +56,23 @@ var turnRulesVerbs = map[Type]struct{}{
 	TypeResolveChoice:       {},
 	TypeDiscardSelection:    {},
 }
+
+// combatRulesVerbs are the verbs a combat phase's controller may send as
+// the player whose combat phase they control (#3999, Secret of
+// Bloodbending): turnRulesVerbs less the two that reach past the phase.
+// end_turn would walk the controlled player's turn on to its end, after
+// the control is over, and the cleanup discard (CR 514.1) is never in a
+// combat phase.
+var combatRulesVerbs = func() map[Type]struct{} {
+	out := make(map[Type]struct{}, len(turnRulesVerbs))
+	for t := range turnRulesVerbs {
+		if t == TypeEndTurn || t == TypeDiscardSelection {
+			continue
+		}
+		out[t] = struct{}{}
+	}
+	return out
+}()
 
 // sandboxVerbs are the manual table verbs (ADR 0167 §4) closed to both
 // players of a controlled turn for as long as it is played: a sandbox
@@ -94,6 +116,63 @@ var sandboxVerbs = map[Type]struct{}{
 	TypeEndVote:                {},
 }
 
+// controlledStageVerbs is what a controller may send as the player they
+// control, per stage of the control (CR 723.5b: no choice the rules or an
+// object don't call for; ADR 0166 amendment of 2026-10-19, #4025). A
+// stage with no row allows nothing, so a stage added later is closed
+// until it is given one.
+//
+//   - ControlPlaying (Word of Command, the forced play): the play itself,
+//     the controlled player's lands' mana abilities, and the prompts that
+//     raises.
+//   - ControlSpellResolving (Word of Command, the forced spell resolving):
+//     only the prompts the resolution raises. Nobody holds priority during
+//     a resolution, so no rules verb is a choice either.
+//   - ControlSearching (Opposition Agent): only the search prompt.
+//   - ControlTurn (Emrakul): every rules verb (turnRulesVerbs).
+//   - ControlCombat (Secret of Bloodbending, #3999): the rules verbs of
+//     a combat phase (combatRulesVerbs).
+//   - ControlDeclaring (Master Warcraft, #4154): the attack or block
+//     declaration being chosen for the player (declaringVerbs).
+//
+// No stage allows a sandboxVerbs entry.
+var controlledStageVerbs = map[game.ControlStage]map[Type]struct{}{
+	game.ControlPlaying: {
+		TypeCastSpell:           {},
+		TypeActivateManaAbility: {},
+		TypeResolveChoice:       {},
+	},
+	game.ControlSpellResolving: {TypeResolveChoice: {}},
+	game.ControlSearching:      {TypeResolveChoice: {}},
+	game.ControlTurn:           turnRulesVerbs,
+	game.ControlCombat:         combatRulesVerbs,
+	game.ControlDeclaring:      declaringVerbs,
+}
+
+// declaringVerbs are what the declarer of a "you choose which creatures
+// attack / block" effect may send as the player whose declaration they
+// are making (#4154, Master Warcraft; ADR 0167's second amendment of
+// 2026-10-19): the declaration verbs, and the pass that finishes an
+// attack declaration (the active player holds priority while it is
+// made, and the engine spends that pass on finishing it). Nothing
+// else: the player is not controlled, only their declaration is
+// chosen for them.
+var declaringVerbs = map[Type]struct{}{
+	TypeDeclareAttacker:  {},
+	TypeDeclareAttackers: {},
+	TypePassPriority:     {},
+	TypeDeclareBlocker:   {},
+	TypeDeclareBlockers:  {},
+	TypeFinishBlocks:     {},
+}
+
+// controlledVerbAllowed reports whether a controller may send a verb of
+// type t as a player whose control is in stage.
+func controlledVerbAllowed(stage game.ControlStage, t Type) bool {
+	_, ok := controlledStageVerbs[stage][t]
+	return ok
+}
+
 // routeControlledPlayer applies the rules above. Admin and spectator
 // connections (Caller uuid.Nil) are untouched.
 func routeControlledPlayer(g *game.Game, a Action) (Action, error) {
@@ -107,8 +186,9 @@ func routeControlledPlayer(g *game.Game, a Action) (Action, error) {
 		}
 		return a, game.ErrPlayerControlled
 	}
-	// ADR 0167 §4: the sandbox is closed to a turn's controller, as
-	// themselves too, for as long as they play it.
+	// ADR 0167 §4: the sandbox is closed to a turn's (or a combat
+	// phase's, #3999) controller, as themselves too, for as long as
+	// they play it.
 	if _, sandbox := sandboxVerbs[a.Type]; sandbox && g.ControlsATurn(a.Caller) {
 		return a, game.ErrPlayerControlled
 	}
@@ -124,25 +204,11 @@ func routeControlledPlayer(g *game.Game, a Action) (Action, error) {
 	if a.Type == TypeConcede {
 		return a, ErrPlayerCallerMismatch
 	}
-	switch until := g.ControlUntilOfPlayer(target); {
-	case until == game.ControlUntilTurn:
-		if _, ok := turnRulesVerbs[a.Type]; !ok {
-			return a, game.ErrPlayerControlled
-		}
-	case until == game.ControlUntilSearch:
-		// #3998: Opposition Agent controls the player only while they
-		// search, and the search is the prompt they owe. Answering it
-		// (and anything it raises) is the one decision the rules call
-		// for (CR 723.5b); nothing else may be sent as them.
-		if a.Type != TypeResolveChoice {
-			return a, game.ErrPlayerControlled
-		}
-	case g.LandManaOnly(target):
-		switch a.Type {
-		case TypeCastSpell, TypeActivateManaAbility, TypeResolveChoice:
-		default:
-			return a, game.ErrPlayerControlled
-		}
+	// ADR 0166 amendment (2026-10-19, #4025): what the controller may
+	// send as the controlled player depends on the stage of the control,
+	// and a stage with no row, or no live record, allows nothing.
+	if !controlledVerbAllowed(g.ControlStageOfPlayer(target), a.Type) {
+		return a, game.ErrPlayerControlled
 	}
 	a.Player = target
 	a.Caller = target

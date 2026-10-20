@@ -32,22 +32,32 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Ob Nixilis, the Fallen — have target player lose 3 life? (He gets three +1/+1 counters.)"},
 			Targets:        TargetPlayer("target player"),
 			Key:            "Ob Nixilis, the Fallen — target player loses 3 life, three +1/+1 counters",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				if p := ctx.PlayerByID(item.Targets[0].ID); p == nil || p.Eliminated {
-					return nil
-				}
-				if err := g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -3); err != nil {
-					return err
-				}
-				if !b09SourceStillOnBattlefield(g, item) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 3}.Apply(ctx)
-			},
+			Effect: Do(
+				// The counters wait for a prompt the life loss asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+						return nil
+					}
+					if p := ctx.PlayerByID(item.Targets[0].ID); p == nil || p.Eliminated {
+						return nil
+					}
+					return ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -3)
+				}),
+				Instruction(func(ctx *Context) error {
+					// The first step ended the ability early for a missing target; the
+					// target it just made lose life may now be out of the game, so this
+					// step reads only the target's kind and the source.
+					item := ctx.Item
+					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
+						return nil
+					}
+					if !b09SourceStillOnBattlefield(ctx.Game, item) {
+						return nil
+					}
+					return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 3}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

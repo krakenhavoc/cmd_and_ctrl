@@ -88,10 +88,7 @@ func b39DawnOfANewAgeEndStep(g *game.Game, item *game.StackItem) error {
 		// line, the check would still see the last hope counter and
 		// never cash the enchantment in.
 		return g.AddCounterThenForEffect(source, b39HopeCounter, -1, func(g *game.Game, _ int) error {
-			if err := (DrawCards{Player: item.Controller, N: 1}).Apply(NewContext(g, item)); err != nil {
-				return err
-			}
-			return b39DawnOfANewAgeCashIn(g, item)
+			return b39DawnOfANewAgeDrawThenCashIn.Run(NewContext(g, item))
 		})
 	}
 	return b39DawnOfANewAgeCashIn(g, item)
@@ -109,3 +106,10 @@ func b39DawnOfANewAgeCashIn(g *game.Game, item *game.StackItem) error {
 	}
 	return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
 }
+
+// b39DawnOfANewAgeDrawThenCashIn is the draw and then the cash-in: the cash-in
+// waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var b39DawnOfANewAgeDrawThenCashIn = RegisterThenSteps("then-steps/dawn-of-a-new-age-draw",
+	DrawCards{N: 1},
+	Instruction(func(ctx *Context) error { return b39DawnOfANewAgeCashIn(ctx.Game, ctx.Item) }),
+)

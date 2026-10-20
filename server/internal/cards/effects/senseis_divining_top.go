@@ -50,20 +50,19 @@ func init() {
 				Label:   "{T}: Draw a card, then put this artifact on top of its owner's library.",
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    game.AbilityCost{Tap: true},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					// Order is load-bearing: draw off the library as
-					// the player left it, THEN tuck. Tucking first
-					// would draw the Top itself.
-					if err := g.DrawNForEffect(item.Controller, 1); err != nil {
-						return err
-					}
-					// #1432: a Top that left and came back is not
-					// "this artifact".
-					if sourceIsNewObject(g, item) {
-						return nil
-					}
-					return g.TuckToLibraryForEffect(item.SourceCardID, false)
-				},
+				Effect: Do(
+					// Order is load-bearing: draw off the library as the player left
+					// it, THEN tuck. Tucking first would draw the Top itself. The tuck
+					// also waits for a prompt the draw asks (CR 608.2c, #4155).
+					DrawCards{N: 1},
+					Instruction(func(ctx *Context) error {
+						// #1432: a Top that left and came back is not "this artifact".
+						if sourceIsNewObject(ctx.Game, ctx.Item) {
+							return nil
+						}
+						return ctx.Game.TuckToLibraryForEffect(ctx.Source(), false)
+					}),
+				),
 			},
 		},
 	})

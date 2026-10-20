@@ -184,3 +184,241 @@ The owner's answers did not settle these. Each is decided above, and each can be
 6. **Unpinning closes** (§1, §4). There is no separate close button: the pin toggle, the avatar and Escape all close it.
 7. **z 32, under the arrows, the stack, the strip and the dock; no scrim** (§2). Arrows draw over the overlay, and prompts are never covered.
 8. **Spectators get it, phones get the pin only** (§5).
+
+### Amendment (2026-10-18): even card sizes, a seat strip and a header (#4122)
+
+**Status:** Accepted · 2026-10-18 · S73 — Big boards: layout and per-action cost.
+The owner accepted it as written the same day, calls 9–16 included.
+**Issue:** [#4122](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4122). Written
+plan-first; checked on `origin/develop` at `c2fe92bd1`.
+
+**Owner scope (2026-10-18), binding.**
+
+1. **Layout and card sizes.** The overlay's groups read at an even size, tapped
+   cards don't eat the row, there is no stray scrollbar, and the seat's hand,
+   avatar and piles sit in a proper strip.
+2. **A header naming the seat**: avatar, name, life, the reflow turn chip if the
+   seat has one, and the existing pin control.
+
+Out of scope until the owner has seen the result: combat and target arrows,
+owner-only chrome such as "+ Promise", and the overlay's position and size on the
+table (§2 is unchanged).
+
+**What goes wrong.** In the owner's screenshot, Bot 3's board is expanded at
+about 930px tall. Bot 3 has two creatures, one of them tapped, and its lands are
+two tapped Plains.
+
+- **The card size follows the overlay's height alone.** The overlay's panel is a
+  `.panel.opponent.expanded`, never flipped, so the upright opponent's formula
+  sizes its cards: `--card-h: clamp(90px, 52cqh - 33px, --card-h-max)`. §3 capped
+  that at 240px. #3032 (for #3028) raised the cap to `100cqh`, which no card ever
+  reaches (`PlayerPanel.svelte`, `.panel.opponent.expanded`). So a 930px overlay
+  draws a 450px creature. The formula was made for a table panel 300 to 400px
+  tall, where its ratios are fine. At 450px they no longer are.
+- **The groups use the table's steps.** The back row is `--card-h-sm`, half a
+  creature (225px). The commander is `0.42 × --card-h`, capped by the room beside
+  an avatar (`--seat-side`). The piles' columns clamp at 52px. At a 450px
+  creature that gives the 1 : 0.5 : 0.42 : 0.12 spread in the screenshot.
+- **The tapped card takes its turned width at that size.** A tapped pile is
+  padded `(h − w) / 2` on each side (`BattlefieldRow.svelte`, #2442), so a turned
+  450px creature is 450px wide. `rowFit` shrinks a row only when it overflows its
+  width. One untapped and one tapped card (about 770px) fit in about 880px, so
+  nothing shrinks, and the two cards fill the row.
+- **The scrollbar is a land-strip bug that the overlay's size makes visible.**
+  When every land is tapped, the first pile gets `margin-left: (h − w) / 2`
+  (`.row.strip .pile.tapped:first-child`). `fitRow` measures the strip's spread
+  from `first.offsetLeft`, which leaves that margin out. It then caps the row at
+  `--strip-spread`. The row's content is wider than its cap by the margin, 32px
+  at a 225px land, and the row's `overflow: auto` shows a scrollbar. The table
+  has the same bug, but its smaller lands give a smaller overflow.
+- **The hand's edge is a table panel's edge.** ADR 0204 seats the identity at the
+  middle of the hand's edge, over a fan whose backs are drawn at the creature
+  size, 450px, peeking 30%. The fan's arc lifts its outer backs above the zone
+  (`--hand-headroom`, 0.3 of a card), into the back row. The piles squeeze into
+  `--seat-side` beside the avatar. The commander is tucked at the right end.
+- **Nothing names the seat on screen.** The overlay's name ("Bot 3's board,
+  expanded") is only its `aria-label`. The only visible identity is the seated
+  avatar at the bottom, so the overlay starts with "Creatures 2".
+
+**The design.** The expanded panel gets a layout of its own, chosen by the
+existing `expanded` prop (`.panel.expanded`, from 600px up; §5's phone rule is
+unchanged). It is still the same `PlayerPanel` with the same props and handlers,
+so act-through, the single popover, `boardAnchor` and the region names of §3
+don't change.
+
+```
+┌ header ─ (avatar) Bot 3 [BOT] · 40 · markers ········ NEXT UP ··· [pin] ┐
+│ Creatures 2                                                             │
+│  [card] [card, turned]                                                  │
+│ Lands 2        Artifacts 1        Command 1                             │
+│  [card][card]   [card]             [commander]                          │
+├ strip ─ [lib 90][gy 0][ex 0] ······ (fan of backs) 5 ······ promises ───┤
+```
+
+*1. One card size.*
+
+- Every battlefield group draws at one size: creatures, lands, each other
+  permanent type, and the commander. In `.panel.expanded`, `--card-h-sm` is
+  `--card-h`, so a `compact` row is no smaller than the creature row.
+- The size comes from the room the two battlefield rows share, with a cap:
+  `--card-h: clamp(96px, (100cqh − header − strip − 96px) / 2 × --card-scale, 240px × --card-scale)`,
+  where 96px is the two rows' labels, padding and gaps. That gives about 200px at
+  1024×768, and the 240px cap at 1440×900 and 1920×1080. This restores §3's
+  240px cap for the overlay only. #3028's uncapped table panels keep their own
+  rules.
+- The overlay uses the viewer's `--card-scale` for every seat, not
+  `--card-scale-opponent`. It is a reading surface, as a spectator's panel is.
+- Width is still `rowFit`'s job. A wide row shrinks its cards, wraps them within
+  its height budget (#3044), or overlaps them, exactly as on the table. The
+  budgets (`allocateRowHeights`) are fed the overlay panel's own height, as now.
+  An empty creature row still holds one card's line (#3893), so the back row
+  doesn't jump up when the last creature dies.
+
+*2. Tapped cards.* A tapped card stays turned 90° (the same signal as on the
+table). At an even size, capped at 240px, it is 1.4 times a card's width, not a
+450px slab. `rowFit` already counts the turned width (`tappedRoom`), so a row
+with many tapped cards shrinks or wraps sooner. Nothing reorders on a tap,
+because moving a card under the pointer is worse than a wide row.
+
+*3. The command zone joins the back row.* In the overlay, `CommandStrip` (and the
+revealed companion, if any) is drawn as the last group of the back row, labelled
+like the other zones and at the even size. It keeps its accessible name
+(`L.commandZone`) and its tax badge. It is no longer tucked half behind the hand's
+edge, which is what a table panel needs and the overlay doesn't.
+
+*4. The seat strip.* The bottom row is a strip of fixed height,
+`--x-strip-h: clamp(64px, 10cqh, 96px)`, set off from the battlefield by a
+hairline (`--border`):
+
+- **Piles** at the left: library, graveyard and exile, with their mono labels
+  showing, because there is room. The thumbnails are sized to the strip.
+- **The hand** in the middle. The fan's cards are sized so that their peek is
+  the strip's height (`--card-h` on the hand zone is
+  `--x-strip-h / --hand-peek`), and the fan's headroom is clipped to the strip,
+  so at rest no back rises above the hairline. An opponent's face-down fan shows
+  its count beside it. Your own fan in your own overlay lifts on hover, as on
+  the table (z above the rows), and drag-casting from it still works.
+- **Promises** keep their current anchor at the strip's right end. Their chrome
+  is out of scope.
+- **No avatar.** The seat's one identity is in the header (call 12). The
+  ADR 0204 seating is turned off in the overlay: no `--seat-notch` band in the
+  back row, and no `seatRoom` measuring. `fieldHeight` measures the panel minus
+  the header and the strip.
+
+*5. The header.* A row of about 52px across the overlay's top, on a 9% seat-colour
+wash (the `.seat-panel` rule), so whose board it is reads before the name:
+
+- `PlayerIdentity` gets a `header` variant: a 40px disc with its turn and
+  priority rings, the name and bot or agent tag on one line, the life total in
+  the display face, and the markers (poison, commander damage, monarch,
+  initiative) and, on your own seat, the life steppers in a line after it.
+  It is the same component, so it keeps `data-seat-id`, the target and attack
+  intercepts and the peek handlers. A click on it during targeting still targets
+  the player (owner answer 1 of 2026-10-04), and arrows to the player land on it
+  through `boardAnchor`.
+- **The turn chip**: when the seat is a reflow avatar card, the header shows the
+  same mono chip as the card (NEXT UP, AFTER YOU, AFTER <NAME>). It comes from
+  `reflowChips`, which Board passes to the overlay's panel as a new `turnChip`
+  prop. Otherwise there is no chip.
+- **The pin toggle** moves from floating over the panel into the header's right
+  end, with the same name, `aria-pressed` and behaviour (§4; call 6 stands:
+  unpinning closes). No new control is added.
+- The header is not a heading in the accessibility tree. The region's name
+  already says whose board it is, and a second name would break §3's uniqueness
+  rule for the e2e matches.
+
+**Calls made here** (each can be overturned in review; numbering continues from
+the eight above):
+
+9. **One card size for every group, capped at 240px** times the card-size setting.
+   The back row and the commander are no longer a step smaller in the overlay,
+   and #3032's uncapped ceiling no longer applies to it.
+10. **The command zone is a back-row group in the overlay**, at the even size,
+    not tucked beside the hand.
+11. **Tapped cards stay turned**, at the even size. The other way would be
+    upright cards with a "tapped" badge in the overlay only, which keeps rows
+    narrow but tells the player something different from the table.
+12. **One avatar, in the header.** The strip has none. Two avatars for one seat
+    in the overlay would give `boardAnchor`'s first-match readers two
+    candidates, and two click targets for picking the player.
+13. **The strip is fixed and short**: `clamp(64px, 10cqh, 96px)`, piles, hand and
+    promises. The fan never rises above it at rest.
+14. **The pin stays the only control**, now in the header. There is no separate
+    close button.
+15. **The land-strip scrollbar is fixed everywhere.** `fitRow`'s spread includes
+    the first pile's left margin, so the table loses the same scrollbar.
+16. **The overlay reads `--card-scale` for every seat**, not the opponent scale.
+
+**Product question for the owner.** The scope lists the avatar in both the strip
+and the header. Should the overlay show it once, in the header (call 12), or
+twice? *Recommended: once, in the header.* A second disc would be decoration, and
+it would make the player's own click target and arrow anchor ambiguous.
+**Owner answer (2026-10-18), binding:** once, in the header. The strip holds only
+the piles and the hand fan.
+
+**As built (2026-10-18).** Three details differ from the plan below:
+
+- **Your own castable strip stays in your strip.** On your own seat, the commander
+  is in the strip you cast from (ExileStrip, #2202), not in `CommandStrip`.
+  It stays beside your hand, sized to the strip like the hand. Only another
+  seat's command zone moves to the back row.
+- **The card size at 1024×768 is about 180px, not 200px.** A top-row seat's
+  overlay opens below its avatar (ADR 0204 §4), so it is shorter than the
+  board. The size comes from the overlay's height.
+- **The card size's floor is 56px (rowFit's `MIN_CARD_H`), not 96px.** The
+  overlay stops above the dock, so while a request is open it can be under 400px
+  tall. With a 96px floor the rows were taller than the panel. The back row then
+  ran under the strip, and the face-down fan took a target click (the branch
+  E2E). The back row's track can also shrink to nothing, and the back row is
+  cut at its track rather than reaching under the strip.
+- **The Playwright check uses the two-player fixture**, at the three sizes. The
+  suite has no three- or four-player setup. The PR's screenshots cover 3 and 4
+  seats from a fixture rendering of the real `Board`.
+
+**Delivery.** One client PR into `develop` (S73, closes #4122), once the owner has
+accepted this amendment:
+
+- `PlayerPanel.svelte`: the `.panel.expanded` grid (`head`, `creatures`,
+  `middle`, `strip`), the size tokens, the command zone placed in the back row
+  when expanded, seating and `--seat-notch` off, and `fieldHeight` less the
+  header and the strip.
+- `PlayerIdentity.svelte`: the `header` variant.
+- `Board.svelte`: `turnChip` passed to the overlay's panel, and the pin moved
+  into the header's slot. `.board-expanded` loses the floating pin's placement.
+- `CommandStrip.svelte` and `Hand.svelte`: a size that follows the `--card-h`
+  they are given (strip size, back-row size), if either still assumes the hand's
+  edge.
+- `lib/rowFit.ts`: the strip spread measured from the list's content edge, so it
+  includes the first pile's margin.
+- DESIGN.md §5: one line on the expanded board (a header, even groups, a strip).
+
+Tests:
+
+- **Vitest, unit.** `rowFit.test.ts`: the spread of an all-tapped strip includes
+  the first pile's turned overhang, through a pure helper split out of `fitRow`.
+- **Vitest, rendered** (`boardExpand.render.test.ts`): the header shows the
+  seat's name and life. It shows the reflow chip for an avatar-card seat and none
+  for a full-board seat. Inside the overlay there is exactly one
+  `[data-seat-id]` for the seat, and it is in the header. The command zone's
+  group is in the back row when expanded and beside the hand when not. The pin
+  is in the header with an unchanged name. Every existing case (region names,
+  act-through, Escape, the single popover, placement) still passes.
+- **Stylesheet**, read the way `boardArtPip.test.ts` resolves its cascade: in
+  `.panel.expanded`, `--card-h-sm` is `--card-h` and the ceiling is 240px times
+  the scale.
+- **Playwright** (`board-expand-2208.spec.ts`, extended): with three and with four
+  players joined, at 1024×768, 1440×900 and 1920×1080, open an opponent's overlay
+  and check:
+  - the header names the seat;
+  - all of the overlay's battlefield tiles in one row have the same height
+    (±1px), and rows that didn't shrink match each other;
+  - no element in the overlay has `scrollWidth > clientWidth + 1`;
+  - no hand tile at rest has its top above the strip's top.
+
+  The spec attaches a screenshot per size and seat count. The same six
+  screenshots, with a tapped creature, all lands tapped and a commander out,
+  go in the PR body.
+- **The nightly E2E on the branch before merge**
+  (`gh workflow run "cmd_and_ctrl E2E" --ref <branch>`), because the overlay's
+  layout changes what is under a resting pointer. Then on `develop` after
+  merge, with a look at a 4-player table on cmd-dev before #4122 is closed.

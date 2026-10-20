@@ -359,8 +359,14 @@ func TestDemolitionFieldDestroysANonbasicAndOffersBothSearches(t *testing.T) {
 		t.Fatal("the nonbasic land survived")
 	}
 	if searchChoiceFor(g, opp.ID) == nil {
-		t.Error("the victim gets a (declinable) search for a basic")
+		t.Fatal("the victim gets a (declinable) search for a basic")
 	}
+	// "Its controller may search ...; you may search ..." (CR 608.2c, #4155):
+	// yours is asked once theirs is answered.
+	if searchChoiceFor(g, me.ID) != nil {
+		t.Fatal("the controller's search opened before the victim's was answered")
+	}
+	answerSearchByID(t, g, opp.ID)
 	if searchChoiceFor(g, me.ID) == nil {
 		t.Fatal("the controller gets a (declinable) search for a basic")
 	}

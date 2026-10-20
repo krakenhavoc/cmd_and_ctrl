@@ -490,20 +490,23 @@ func spellManaValueWithinCap(card Card, grant *CastPermission) bool {
 // ManaValueBudget over more cards than the one cast, it answers a copy
 // of the permission with `card` struck from its named cards and the
 // card's mana value taken off the budget (never below zero), and true.
-// For every other permission — no budget, or the cast card was the last
-// it named — false: the caller removes it whole, as it always has.
+// An AnyNumber permission (#4021) spends no budget and strikes the card
+// alone. For every other permission — no budget, or the cast card was the
+// last it named — false: the caller removes it whole, as it always has.
 //
 // A fresh Cards slice and a fresh budget pointer, because the originals
 // are shared with the undo snapshots (sweepCastPermissionsLocked says
 // why). `card` is the card as the permission names it, face materialised
 // as the cast gate judged it.
 func (p CastPermission) spendManaValueBudget(card Card) (CastPermission, bool) {
-	if p.ManaValueBudget == nil || len(p.Cards) < 2 {
+	if (p.ManaValueBudget == nil && !p.AnyNumber) || len(p.Cards) < 2 {
 		return p, false
 	}
-	mv, _ := card.ParsedManaValue()
-	left := max(*p.ManaValueBudget-mv, 0)
-	p.ManaValueBudget = &left
+	if p.ManaValueBudget != nil {
+		mv, _ := card.ParsedManaValue()
+		left := max(*p.ManaValueBudget-mv, 0)
+		p.ManaValueBudget = &left
+	}
 	cards := make([]PermissionCardRef, 0, len(p.Cards)-1)
 	for _, ref := range p.Cards {
 		if ref.ID == card.InstanceID && ref.Epoch == card.ObjectEpoch {

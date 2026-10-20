@@ -81,13 +81,9 @@ func IfYouHaveTheInitiative(t game.TriggeredAbility) game.TriggeredAbility {
 	t.AppliesTo = func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 		return source != nil && YouHaveTheInitiative(g, source.Controller) && when(ev, source, lki, g)
 	}
-	// A Do keeps its steps visible to the footprint (If's footprint is
-	// the condition's read followed by its steps); a hand-written
-	// Effect goes through InterveningIf.
-	if steps, ok := doStepsOf(t.Effect); ok {
-		t.Effect = Do(If{Cond: CondYouHaveTheInitiative{}, Then: steps})
-		return t
-	}
+	// InterveningIf keeps a Do's steps visible to the footprint (If's
+	// footprint is the condition's read followed by its steps) and to
+	// the step walk (#4019).
 	return InterveningIf(CondYouHaveTheInitiative{}, t)
 }
 

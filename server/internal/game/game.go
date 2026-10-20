@@ -444,6 +444,13 @@ type Game struct {
 	// player_control.go.
 	PlayerControls []PlayerControl
 
+	// DeclarationControls is the live "you choose which creatures
+	// attack / block" effects (#4154, Master Warcraft), and
+	// AttackHandoff the state of this combat's attack declaration under
+	// one. See declaration_control.go.
+	DeclarationControls []DeclarationControl
+	AttackHandoff       *AttackHandoff
+
 	// PendingChoices is the S14 generic "someone needs to pick"
 	// queue. Populated by effect cards that defer a decision
 	// (Thoughtseize → caster picks from target's revealed hand).
@@ -925,8 +932,24 @@ type Game struct {
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the
-	// persisted snapshot carry it. See step_walk.go.
+	// persisted snapshot carry it. See step_walk.go. Since #4162 it is
+	// the top of a chain (stepWalk.outer): a continuation's parked
+	// steps above the steps they belong to.
 	pausedStepWalk *stepWalk
+
+	// stepRecords is what an earlier step of the resolution handed a
+	// later one (#4163, step_record.go): IDs and numbers, keyed by the
+	// item and a name the card chose. Plain data, dropped as the
+	// resolution closes. Clone and the persisted snapshot carry it.
+	stepRecords []stepRecordEntry
+
+	// stepSites says which step sequences other than an item's own
+	// Effect may park right now (#4019, step_walk.go): the resolving
+	// spell's OnResolve while its catalog hook runs, and the modal
+	// bullet the walk is running. Plain data, set and cleared inside
+	// one resolution function, so it is zero between actions and
+	// neither Clone nor the snapshot carries it.
+	stepSites stepSites
 
 	// pausedResolutionTail is the end of a resolution parked behind one
 	// of its own prompts (#3613, CR 608.2n): a spell's exit from the
@@ -1597,6 +1620,11 @@ func (g *Game) AdvanceStep() (Turn, error) {
 	// wave off Zurgo or a goad: refused while a free addition would
 	// still obey a requirement, with the requirement named.
 	if g.Turn.Step == StepDeclareAttackers {
+		// #4154: nor does it skip a declaration another player is
+		// still choosing (declaration_control.go).
+		if g.attackHandoffOpenLocked() {
+			return g.Turn, ErrAttackDeclarationOpen
+		}
 		if err := g.attackCheckpointLocked(); err != nil {
 			return g.Turn, err
 		}
@@ -1799,7 +1827,20 @@ func (g *Game) advanceCursorLocked() {
 	// ADR 0059 Decision 3: the next step is the head of the turn plan,
 	// which is the template plus every phase and step an effect added.
 	// An empty plan is the end of the turn.
+	leaving := g.Turn.PhaseID
+	wasCombat := PhaseOf(g.Turn.Step) == PhaseCombat
 	if g.popTurnPlanLocked() {
+		// #3999: a combat-phase player control ends as the cursor
+		// leaves the combat phase instance it was for — into the next
+		// phase, or into an additional combat phase straight after.
+		if wasCombat && (PhaseOf(g.Turn.Step) != PhaseCombat || g.Turn.PhaseID != leaving) {
+			g.endCombatControlsLocked()
+			// #4154: and a "this combat" declaration control (Odric,
+			// Melee) with it, and a delayed trigger whose stated
+			// duration is this combat (Melee's, CR 603.7b, 511.3).
+			g.endDeclarationControlsLocked(false)
+			g.clearEndOfCombatDelayedTriggersLocked()
+		}
 		return
 	}
 	g.beginNextTurnLocked()
@@ -2167,7 +2208,15 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	}
 	// ADR 0059 Decision 8: the step has really begun, so it counts —
 	// Turn.StepOrdinal, and Turn.PhaseOrdinal when it opens a phase.
-	g.noteStepBegunLocked()
+	opensPhase := g.noteStepBegunLocked()
+	// #3999: a combat-phase player control waiting for this phase
+	// begins with it, before the step is announced, so the phase's
+	// triggers and choices are already the controller's. Only the
+	// phase's first step that really begins opens it, so a record made
+	// mid-combat waits for the next combat phase.
+	if opensPhase && PhaseOf(g.Turn.Step) == PhaseCombat {
+		g.beginCombatControlsLocked()
+	}
 	g.DrawnThisStep = nil
 	// S31 sub-PR 0: announce the step for the public game log, and
 	// since #588 for the trigger harvester too. Placed after the
@@ -2192,6 +2241,10 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// step, so it waits for the following one. See delayed.go.
 	g.fireDelayedTriggersLocked(g.Turn.Step)
 	switch g.Turn.Step {
+	case StepDeclareAttackers:
+		// #4154: a declaration another player chooses, over an active
+		// player with nothing that could attack, is over as it begins.
+		g.beginChosenAttackDeclarationLocked()
 	case StepDeclareBlockers:
 		// #1279 / CR 509.1: the declaration is taken as the step
 		// begins. A defending player with no legal block has nothing

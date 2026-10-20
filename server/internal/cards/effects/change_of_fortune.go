@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Change of Fortune — Sorcery {3}{R}:
 //
 //	"Discard your hand, then draw a card for each card you've
@@ -28,13 +26,17 @@ func init() {
 		OracleID:     "925feb7e-7876-430b-b95a-92b236a2e409",
 		Name:         "Change of Fortune",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			caster := item.Controller
-			if _, err := discardWholeHand(ctx.Game, caster); err != nil {
+		// The draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155) and
+		// reads the turn's tally, not a count carried from the discard.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				_, err := discardWholeHand(ctx.Game, ctx.Controller())
 				return err
-			}
-			n := ctx.Game.TurnTallyFor(caster).CardsDiscarded
-			return DrawCards{Player: caster, N: n}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				caster := ctx.Controller()
+				return DrawCards{Player: caster, N: ctx.Game.TurnTallyFor(caster).CardsDiscarded}.Apply(ctx)
+			}),
+		),
 	})
 }

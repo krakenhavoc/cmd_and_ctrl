@@ -45,33 +45,47 @@ func init() {
 			Label:   "{1}, Sacrifice Zack Fair: Target creature you control gains indestructible until end of turn. Put Zack Fair's counters on that creature and attach an Equipment that was attached to Zack Fair to that creature.",
 			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Targets: TargetCreature("target creature you control", YouControl()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				target, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
-					return nil
-				}
-				if err := (GrantKeywordUntilEOT{Target: target, Keywords: []string{"indestructible"}, Label: "Zack Fair — indestructible"}).Apply(ctx); err != nil {
-					return err
-				}
-				zack, ok := ctx.SacrificedPermanent()
-				if !ok {
-					return nil
-				}
-				kinds := make([]string, 0, len(zack.Counters))
-				for kind, n := range zack.Counters {
-					if n > 0 {
-						kinds = append(kinds, kind)
+			Effect: Do(
+				// The Equipment moves after a prompt a counter asks (CR 608.2c, #4155).
+				// Zack's counters and Equipment are read from the payment record.
+				Instruction(func(ctx *Context) error {
+					target, ok := b16FirstLegalTargetCard(ctx)
+					if !ok {
+						return nil
 					}
-				}
-				sort.Strings(kinds)
-				for _, kind := range kinds {
-					if err := (AddCounter{Target: target, Kind: kind, N: zack.Counters[kind]}).Apply(ctx); err != nil {
+					if err := (GrantKeywordUntilEOT{Target: target, Keywords: []string{"indestructible"}, Label: "Zack Fair — indestructible"}).Apply(ctx); err != nil {
 						return err
 					}
-				}
-				return zackFairMoveEquipment(ctx, zack, target)
-			},
+					zack, ok := ctx.SacrificedPermanent()
+					if !ok {
+						return nil
+					}
+					kinds := make([]string, 0, len(zack.Counters))
+					for kind, n := range zack.Counters {
+						if n > 0 {
+							kinds = append(kinds, kind)
+						}
+					}
+					sort.Strings(kinds)
+					for _, kind := range kinds {
+						if err := (AddCounter{Target: target, Kind: kind, N: zack.Counters[kind]}).Apply(ctx); err != nil {
+							return err
+						}
+					}
+					return nil
+				}),
+				Instruction(func(ctx *Context) error {
+					target, ok := b16FirstLegalTargetCard(ctx)
+					if !ok {
+						return nil
+					}
+					zack, ok := ctx.SacrificedPermanent()
+					if !ok {
+						return nil
+					}
+					return zackFairMoveEquipment(ctx, zack, target)
+				}),
+			),
 		}},
 	})
 }

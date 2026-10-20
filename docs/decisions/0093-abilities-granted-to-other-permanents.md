@@ -1091,3 +1091,42 @@ expresses. Pinned by `cipher_test.go` (`internal/cards/effects`): encoding, decl
 the combat-damage copy, the creature leaving, a change of controller, an ability removal
 older and newer than the encoding, a restore with the question
 open, and Trait Doctoring's prompt order.
+
+
+## Amendment 2026-10-19 — a granted ability whose cost exiles its grantor (#4000)
+
+**Sprint:** S76 — Cards: incubate, face-down and outside the game.
+
+The Dominion Bracelet: "Equipped creature gets +1/+1 and has '{15}, Exile
+The Dominion Bracelet: You control target opponent during their next turn.
+This ability costs {X} less to activate, where X is this creature's power.
+Activate only as a sorcery.'" The ability is the creature's (CR 113.10), so
+two words of it point away from its source.
+
+**1. "Exile The Dominion Bracelet."** `AbilityCost.ExileGrantor`
+(`effects.ExileTheGrantor`): the permanent the row's origin names
+(`AbilityOrigin.GrantedBy`, Decision 5), read when the activation names the
+row. `ExileSelf` would exile the creature. The activation refuses a row
+with no grantor and a grantor no longer on the battlefield, checks it pays
+no other component (CR 118.3), refuses a grantor an effect has paused on
+its way out as it refuses any moving cost card, and pays it with the permanent-moving components
+through the one exit route, marked as a cost and settled at once
+(CR 601.2h via 602.2b). The grant ends with it; the ability on the stack
+does not (CR 113.7a). Register allows it only in a battlefield bundle's
+activated ability, and never beside a component that picks permanents
+(sacrifice another, return, exile, tap another, crew, saddle, waterbend),
+so the enumerator's pick lists never have to exclude it.
+
+**2. "This creature's power."** Nothing new: a bundle's activated ability
+carries `CostModifiers` like a card's own (#1296), and the own clause is
+bound to the ability's source, which for a granted row is the recipient.
+`CostQuery.Card` is the layered creature, so the +1/+1 counts.
+
+**Wire and bots.** `ActivatedAbilityView.exile_grantor` (advisory, like
+`return_self`; the grantor is `granted_by`). The heuristic prices such a
+row by the grantor's value, and no longer reads it as costing only mana
+and taps.
+
+Tests: `game/exile_grantor_cost_test.go`,
+`cards/effects/the_dominion_bracelet_test.go`,
+`protocol/combat_control_view_test.go`.

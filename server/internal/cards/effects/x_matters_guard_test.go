@@ -57,6 +57,7 @@ import (
 var xMattersAllowlist = map[string]string{
 	"benevolent_hydra.go Benevolent Hydra":                        "1/1 body: the Hydra survives at X=0 with its counter-boosting replacement and its {T} ability",
 	"chandra_chill_of_compliance.go Chandra, Chill of Compliance": "a planeswalker with no X cost of its own: her −X at X=0 still taps the target, and her other abilities never read X",
+	"tezzeret_the_seeker.go Tezzeret the Seeker":                  "a planeswalker with no X cost of its own: his −X at X=0 still finds an artifact card with mana value 0",
 	"ugin_the_spirit_dragon.go Ugin, the Spirit Dragon":           "a planeswalker with no X cost of its own: his −X at X=0 still exiles every coloured permanent with mana value 0, tokens included",
 	"domesticated_hydra.go Domesticated Hydra":                    "Monstrosity X at X=0 still makes it monstrous, and a monstrous Hydra has trample (#1700)",
 	"farmer_cotton.go Farmer Cotton":                              "1/1 legendary body: the creature stays even when it brings no Halflings and no Food",

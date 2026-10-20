@@ -31,6 +31,7 @@
     LegalTargetsView,
     ManaAbilityView,
     PlayerView,
+    SpliceOfferView,
     StackItemView,
     ZoneView,
   } from "../../protocol";
@@ -51,9 +52,11 @@
     reflowGrid,
     seatControlsLegalTarget,
     seatHasAttackersOn,
+    stackTargetSeatIDs,
     type SeatDecision,
     type SeatSignals,
   } from "../../expansion";
+  import { createSettleGate } from "../../settleGate";
   import { settings } from "../../settings";
   import { opponentsInARow } from "../../tableLayout";
   import HoverZoomOverlay from "./HoverZoomOverlay.svelte";
@@ -136,6 +139,8 @@
     beginForModes as beginTargetingForModes,
     beginSpliceOnly,
     spliceOffersOf,
+    spliceCostStepsOf,
+    withSplicePick,
     advance,
     allPicks,
     choiceAnswer,
@@ -160,7 +165,7 @@
     altCostPayX,
     castExileCardsCost,
     exileXChoice,
-    tapCostOf,
+    tapCostFor,
     tapCostLimit,
     alternativeCostsOf,
     alternativeCostByKey,
@@ -190,6 +195,7 @@
     distributionOf,
     type CastChoices,
     type CastSourceZone,
+    type SpliceCostStep,
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
@@ -590,6 +596,7 @@
     costBranch?: number,
     assistPlayer?: string,
     splices?: string[],
+    spliceOpponents?: Record<string, string>,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -614,8 +621,91 @@
     if (assistPlayer !== undefined) next = { ...next, assistPlayer };
     // ADR 0202: the cards spliced onto it, in the order ticked; their
     // clauses join the target walk after the spell's own.
-    if (splices !== undefined && splices.length > 0) next = { ...next, splices };
-    afterAltCost(card, next);
+    if (splices !== undefined && splices.length > 0) {
+      next = {
+        ...next,
+        splices,
+        // #4055: the opponent a ticked "An opponent gains N life" cost
+        // gives its life to is named in the same step; the object picks
+        // of the other costs are asked one at a time next.
+        splicePayments: splices.map((id) =>
+          spliceOpponents?.[id] !== undefined ? { opponent: spliceOpponents[id] } : {},
+        ),
+      };
+    }
+    askSplicePayments(card, next, 0);
+  }
+
+  // #4055 (ADR 0202's 2026-10-19 amendment, CR 702.47a): a ticked splice
+  // card whose cost is not mana asks which objects pay it, one pick at a
+  // time and one card at a time, in the order the cards were ticked — the
+  // order `splice_payments` is read in. The pickers are the ones the
+  // additional costs open (sacrifice, tap, return, graveyard exile) over
+  // the options the server filtered; the chain then continues into the
+  // alternative cost's own picks.
+  let splicePrompt = $state<{
+    card: CardView;
+    choices: CastChoices;
+    index: number;
+    offer: SpliceOfferView;
+    step: SpliceCostStep;
+  } | null>(null);
+  const splicePickOptions = $derived.by(() => {
+    const p = splicePrompt;
+    if (!p) return [];
+    if (p.step.kind === "exile") {
+      const me = view.seats.find((s) => s.id === viewerID);
+      const ids = new Set(p.step.options);
+      return (me?.graveyard.cards ?? []).filter((c) => ids.has(c.instance_id));
+    }
+    return orderSacrificeOptions(view.battlefield.cards, p.step.options);
+  });
+
+  function askSplicePayments(card: CardView, choices: CastChoices, from: number): void {
+    const splices = choices.splices ?? [];
+    const offers = spliceOffersOf(card);
+    for (let k = from; k < splices.length; k++) {
+      const offer = offers.find((o) => o.card_id === splices[k]);
+      if (!offer) continue;
+      const pay = choices.splicePayments?.[k] ?? {};
+      const answered = (kind: SpliceCostStep["kind"]): boolean =>
+        (kind === "sacrifice" && pay.sacrificeIDs !== undefined) ||
+        (kind === "exile" && pay.exileIDs !== undefined) ||
+        (kind === "tap" && pay.tapIDs !== undefined) ||
+        (kind === "return" && pay.returnIDs !== undefined);
+      const step = spliceCostStepsOf(offer).find((s) => !answered(s.kind));
+      if (!step) continue;
+      // Exactly the cards the clause demands: nothing to ask, as for an
+      // exile-cards additional cost.
+      if (step.kind === "exile" && step.options.length === step.count) {
+        askSplicePayments(
+          card,
+          {
+            ...choices,
+            splicePayments: withSplicePick(choices.splicePayments, k, step.kind, step.options),
+          },
+          k,
+        );
+        return;
+      }
+      splicePrompt = { card, choices, index: k, offer, step };
+      return;
+    }
+    afterAltCost(card, choices);
+  }
+
+  function confirmSplicePick(ids: string[]): void {
+    const p = splicePrompt;
+    splicePrompt = null;
+    if (!p) return;
+    askSplicePayments(
+      p.card,
+      {
+        ...p.choices,
+        splicePayments: withSplicePick(p.choices.splicePayments, p.index, p.step.kind, ids),
+      },
+      p.index,
+    );
   }
 
   // S21 sub-PR 5: a spell with an additional cost ("As an
@@ -949,12 +1039,12 @@
   const tapCostOptions = $derived.by(() => {
     const card = tapPromptCard;
     if (!card) return [];
-    const ids = new Set(tapCostOf(card)?.options?.cards ?? []);
+    const ids = new Set(tapCostFor(card, tapPromptChoices)?.options?.cards ?? []);
     return view.battlefield.cards.filter((c) => ids.has(c.instance_id));
   });
 
   const tapCostCap = $derived.by(() => {
-    const tc = tapPromptCard ? tapCostOf(tapPromptCard) : undefined;
+    const tc = tapPromptCard ? tapCostFor(tapPromptCard, tapPromptChoices) : undefined;
     if (!tc) return 0;
     return tapCostLimit(tc, tapPromptChoices.xValue);
   });
@@ -1293,7 +1383,8 @@
   }
 
   function afterPhyrexianLife(card: CardView, choices: CastChoices): void {
-    if (tapCostOf(card)) {
+    // #3999: or a chosen "you may waterbend {N}" offer's picker.
+    if (tapCostFor(card, choices)) {
       tapPromptChoices = choices;
       tapPromptCard = card;
       return;
@@ -2160,6 +2251,39 @@
     const ids = new Set(p.ability.reveal_cost_options ?? []);
     const me = view.seats.find((s) => s.id === viewerID);
     return (me?.hand.cards ?? []).filter((c) => ids.has(c.instance_id));
+  });
+
+  // #4043: a spell's own stack ability (Lightning Storm) is announced
+  // while the spell is on the stack (CR 113.6). If the spell resolves or
+  // is countered while the player is still choosing the land to discard,
+  // the engine would refuse the activation, so the picker closes with a
+  // short notice. The effect remembers that the prompt's source was seen
+  // on the stack, so a hand ability's picker is never touched.
+  let stackPromptSource: string | null = null;
+  let stackGoneTimer: ReturnType<typeof setTimeout> | null = null;
+  let stackGoneNotice = $state<string | null>(null);
+  $effect(() => {
+    const p = abilityDiscardPrompt;
+    const onStack = new Set((view.stack.cards ?? []).map((c) => c.instance_id));
+    if (!p) {
+      stackPromptSource = null;
+      return;
+    }
+    const id = p.card.instance_id;
+    if (onStack.has(id)) {
+      stackPromptSource = id;
+      return;
+    }
+    if (stackPromptSource !== id) return;
+    stackPromptSource = null;
+    abilityDiscardPrompt = null;
+    abilityDiscardIDs = [];
+    stackGoneNotice = L.stackAbilityGone(p.card.name);
+    if (stackGoneTimer) clearTimeout(stackGoneTimer);
+    stackGoneTimer = setTimeout(() => (stackGoneNotice = null), 5000);
+  });
+  onDestroy(() => {
+    if (stackGoneTimer) clearTimeout(stackGoneTimer);
   });
 
   // The cards the clause admits, resolved out of the seat's hand. The
@@ -3303,6 +3427,16 @@
   // row's columns. It follows the active seat, so it changes on a turn
   // boundary, and a seat an open prompt needs is never an avatar card.
   const opponentColumns: SeatPosition[] = ["next", "across", "across_next"];
+  // ADR 0077 as amended 2026-10-18 (#4115): a seat a stack item targets
+  // is a full board beside the active one, so the target can be seen.
+  // It is a table event, so it goes through the settle gate: the row
+  // changes only once no pointer button is down and the pointer is still.
+  const stackTargetKey = $derived([...stackTargetSeatIDs(view)].sort().join(" "));
+  let shownTargetKey = $state("");
+  const targetGate = createSettleGate<string>((k) => (shownTargetKey = k));
+  onDestroy(() => targetGate.destroy());
+  $effect(() => targetGate.request(stackTargetKey));
+  const shownTargetSeats = $derived(new Set(shownTargetKey.split(" ").filter(Boolean)));
   const reflow = $derived.by(() => {
     if (!placements) return null;
     const table = { spectator: isSpectator, combatMode };
@@ -3315,6 +3449,7 @@
         id: seat.id,
         isActiveSeat: sig.isActiveSeat,
         needsBoard: interactionReason(sig, table) !== null,
+        targeted: shownTargetSeats.has(seat.id),
       });
     }
     return decideReflow(opponents, {
@@ -3567,18 +3702,37 @@
   // The arrows and the fan lane re-measure when the overlay opens,
   // closes, changes seat, moves or resizes (ADR 0120 §3): its copy of a
   // card is the anchor while it is open, and none of that is a snapshot.
+  //
+  // The tick is written on the next frame, never inside an observer
+  // callback (#4069): the arrows' effect depends on it and re-creates its
+  // board observer, and a new observer's first notification at the same
+  // depth goes undelivered ("ResizeObserver loop completed with
+  // undelivered notifications", once per overlay open).
+  let layoutRaf = 0;
+  function bumpLayoutNextFrame(): void {
+    if (typeof requestAnimationFrame === "undefined") {
+      bumpBoardExpandLayout();
+      return;
+    }
+    cancelAnimationFrame(layoutRaf);
+    layoutRaf = requestAnimationFrame(() => {
+      layoutRaf = 0;
+      bumpBoardExpandLayout();
+    });
+  }
   $effect(() => {
     void expanded?.seatID;
     void overlaySpan;
-    untrack(bumpBoardExpandLayout);
+    untrack(bumpLayoutNextFrame);
   });
   $effect(() => {
     const el = overlayEl;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => bumpBoardExpandLayout());
+    const ro = new ResizeObserver(() => bumpLayoutNextFrame());
     ro.observe(el);
     return () => ro.disconnect();
   });
+  $effect(() => () => cancelAnimationFrame(layoutRaf));
 
   // The overlay fades in when animations are on and motion is not
   // reduced; otherwise it appears at once. It always leaves at once, so
@@ -3682,6 +3836,7 @@
       isSelf={false}
       spectator={true}
       {expanded}
+      turnChip={expanded ? (reflowChips.get(seat.id) ?? null) : null}
       isActive={seat.id === activeSeatID}
       hasPriority={seat.id === prioritySeatID}
       {viewerID}
@@ -3713,6 +3868,7 @@
         ? pos !== "self"
         : pos === "across" || pos === "across_next"}
       {expanded}
+      turnChip={expanded ? (reflowChips.get(seat.id) ?? null) : null}
       isActive={seat.id === activeSeatID}
       hasPriority={seat.id === prioritySeatID}
       {viewerID}
@@ -3787,6 +3943,7 @@
           class="slot"
           class:reflow-avatar={avatarCard}
           class:reflow-focus={reflow?.focusSeatID === seat.id}
+          class:reflow-targeted={reflow !== null && !avatarCard && shownTargetSeats.has(seat.id)}
           class:reflow-animate={reflow !== null && overlayMotion}
           class:reflow-odd={view.turn.number % 2 === 1}
           data-pos={pos}
@@ -4061,6 +4218,35 @@
     onConfirm={confirmAddTap}
     onCancel={() => (addTapPrompt = null)}
   />
+  <!-- #4055 (ADR 0202, CR 702.47a): the objects a spliced card's cost that
+       is not mana spends — the sacrifice picker (Torrent of Stone), the
+       return picker (Veil of Secrecy) or the tap picker (Hundred-Talon
+       Strike) over the board, the exile picker (Horobi's Whisper) over the
+       graveyard. -->
+  <SacrificeCostModal
+    source={splicePrompt && splicePrompt.step.kind !== "exile" ? splicePrompt.card : null}
+    label={splicePrompt?.step.label ?? "a permanent you control"}
+    options={splicePickOptions}
+    count={splicePrompt?.step.count ?? 1}
+    verb={splicePrompt?.step.verb ?? "Sacrifice"}
+    castName={splicePrompt
+      ? `${splicePrompt.card.name}, splicing ${splicePrompt.offer.name}`
+      : undefined}
+    additional
+    onConfirm={confirmSplicePick}
+    onCancel={() => (splicePrompt = null)}
+  />
+  <DiscardCostModal
+    card={splicePrompt && splicePrompt.step.kind === "exile" ? splicePrompt.card : null}
+    options={splicePickOptions}
+    need={splicePrompt?.step.count}
+    label={splicePrompt?.step.label}
+    verb="Exile"
+    note="exiled from your graveyard · not a discard"
+    where="in your graveyard"
+    onConfirm={confirmSplicePick}
+    onCancel={() => (splicePrompt = null)}
+  />
   <!-- #3175: exile any number of blue cards from your hand (a March). -->
   <SacrificeCostModal
     source={handExilePrompt?.card ?? null}
@@ -4192,6 +4378,9 @@
       abilityRevealX = undefined;
     }}
   />
+  {#if stackGoneNotice}
+    <p class="stack-gone" role="status">{stackGoneNotice}</p>
+  {/if}
   <!-- #660: the same picker, one cost site over — an activated
        ability's "Discard a creature card" (CR 602.2b). -->
   <DiscardCostModal
@@ -4462,7 +4651,7 @@
   />
   <TapCostModal
     card={tapPromptCard}
-    cost={tapPromptCard ? (tapCostOf(tapPromptCard) ?? null) : null}
+    cost={tapPromptCard ? (tapCostFor(tapPromptCard, tapPromptChoices) ?? null) : null}
     options={tapCostOptions}
     limit={tapCostCap}
     onConfirm={confirmTapCost}
@@ -4654,6 +4843,19 @@
   .slot.reflow-animate.reflow-odd.reflow-focus {
     animation-name: reflow-in-odd;
   }
+  /* #4115: a targeted seat's board comes in with the same fade, under
+     its own name so it starts when the seat leaves the avatar column. */
+  .slot.reflow-animate.reflow-targeted {
+    animation: reflow-target-in 160ms var(--ease);
+  }
+  @keyframes reflow-target-in {
+    from {
+      opacity: 0.4;
+    }
+    to {
+      opacity: 1;
+    }
+  }
   @keyframes reflow-in {
     from {
       opacity: 0.4;
@@ -4674,7 +4876,8 @@
     .slot.reflow-animate.reflow-avatar,
     .slot.reflow-animate.reflow-focus,
     .slot.reflow-animate.reflow-odd.reflow-avatar,
-    .slot.reflow-animate.reflow-odd.reflow-focus {
+    .slot.reflow-animate.reflow-odd.reflow-focus,
+    .slot.reflow-animate.reflow-targeted {
       animation: none;
     }
   }
@@ -4772,11 +4975,13 @@
     }
   }
 
-  /* §4: the pin toggle, top right of the overlay, over its panel's rail. */
+  /* §4: the pin toggle, at the right end of the overlay panel's header
+     (ADR 0120 as amended 2026-10-18): centred on its 52px, inside the
+     panel's 8px padding, where the header keeps its right end clear. */
   .pin-board {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 22px;
+    right: 16px;
     z-index: 20;
     display: inline-flex;
     align-items: center;
@@ -4829,6 +5034,19 @@
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
     left: calc(33.333% + 190px);
     width: min(512px, calc(33.333% - 252px));
+  }
+  /* #4150: a phone has no spare column (the offsets above go to zero or
+     negative width under 540px, which hid the docked stack card and left
+     its buttons covered by the seats). The strip spans the board between
+     two gutters, over the seat panels like a tablet's strip does. */
+  @media (max-width: 599px) {
+    .strip,
+    :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
+    :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
+      left: 8px;
+      right: 8px;
+      width: auto;
+    }
   }
 
   /* Quadrant templates per opponent count. The bottom row (next +
@@ -4971,5 +5189,23 @@
   .board.spectator[data-seat-count="4"] {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
+  }
+  /* #4043: the short notice after the discard picker closes because its
+     spell left the stack. */
+  .stack-gone {
+    position: fixed;
+    left: 50%;
+    bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem);
+    transform: translateX(-50%);
+    z-index: 900;
+    margin: 0;
+    max-width: min(28rem, calc(100vw - 2rem));
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+    color: var(--fg);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
   }
 </style>

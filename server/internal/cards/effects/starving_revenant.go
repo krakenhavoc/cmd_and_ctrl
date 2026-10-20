@@ -76,15 +76,38 @@ func starvingRevenantSurveil(g *game.Game, item *game.StackItem) error {
 			return nil
 		}
 		kept := looked - (before - len(q.Library.Cards))
-		for i := 0; i < kept; i++ {
-			if err := g.DrawNForEffect(me, 1); err != nil {
-				return err
-			}
-			if err := g.ChangePlayerLifeForEffect(item.SourceCardID, me, -3); err != nil {
-				return err
-			}
+		if kept <= 0 {
+			return nil
 		}
-		return nil
+		ctx := NewContext(g, item)
+		ctx.RecordStep(starvingRevenantRecord, nil, kept)
+		return starvingRevenantCard.Run(ctx)
 	})
 	return nil
+}
+
+// starvingRevenantRecord is how many cards are still to be drawn.
+const starvingRevenantRecord = "starving-revenant/kept"
+
+// starvingRevenantCard is one card kept on top: draw a card and lose 3 life,
+// and then the next one. The loss waits for a prompt the draw asks (a dredge
+// offer) and the next draw for one the loss asks (CR 608.2c, #4155). It runs
+// itself again, so it is registered in init.
+var starvingRevenantCard ThenSteps
+
+func init() {
+	starvingRevenantCard = RegisterThenSteps("then-steps/starving-revenant-card",
+		Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(ctx.Controller(), 1) }),
+		Instruction(func(ctx *Context) error {
+			return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Controller(), -3)
+		}),
+		Instruction(func(ctx *Context) error {
+			left := ctx.StepRecord(starvingRevenantRecord).N() - 1
+			if left <= 0 {
+				return nil
+			}
+			ctx.RecordStep(starvingRevenantRecord, nil, left)
+			return starvingRevenantCard.Run(ctx)
+		}),
+	)
 }

@@ -609,6 +609,8 @@ const (
 	// End). `seat` is the controller, `target_seat` the controlled
 	// player and `card_id` the card whose effect it is. Narrated because
 	// it decides who plays a turn the table has not reached yet.
+	// `label` "combat" marks a control for one combat phase instead
+	// (#3999, Secret of Bloodbending), on all three kinds.
 	LogPlayerControlScheduled LogKind = "player_control_scheduled"
 	// LogPlayerControlBegan — that turn began, and the controller makes
 	// the controlled player's decisions for all of it. Fields as above.
@@ -2176,6 +2178,8 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 			base.Kind = LogPlayerControlEnded
 		}
 		base.CardID = uuidStringOrEmpty(ev.Source)
+		// #3999: "combat" marks a control for one combat phase.
+		base.Label = ev.Label
 		if seat := seatOf(ev.Target); seat != NoSeat {
 			base.TargetSeat = &seat
 		}
@@ -3079,11 +3083,17 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	case LogPlayerControlScheduled, LogPlayerControlBegan, LogPlayerControlEnded:
 		// `target` is the controlled player's seat name (or "a
 		// player"), as in LogChoosePlayer.
+		// `label` "combat" is a control for one combat phase (#3999).
 		var line string
-		switch e.Kind {
-		case LogPlayerControlScheduled:
+		combat := e.Label == string(game.ControlUntilCombat)
+		switch {
+		case e.Kind == LogPlayerControlScheduled && combat:
+			line = fmt.Sprintf("%s will control %s during %s's next combat phase", actor, target, target)
+		case e.Kind == LogPlayerControlScheduled:
 			line = fmt.Sprintf("%s will control %s during %s's next turn", actor, target, target)
-		case LogPlayerControlBegan:
+		case e.Kind == LogPlayerControlBegan && combat:
+			line = fmt.Sprintf("%s controls %s this combat", actor, target)
+		case e.Kind == LogPlayerControlBegan:
 			line = fmt.Sprintf("%s controls %s this turn", actor, target)
 		default:
 			line = fmt.Sprintf("%s no longer controls %s", actor, target)

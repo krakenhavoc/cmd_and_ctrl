@@ -32,12 +32,8 @@ func init() {
 	})
 }
 
-// imoenDraw draws one card, or two for a player who has completed a
-// dungeon.
-func imoenDraw(g *game.Game, item *game.StackItem) error {
-	n := 1
-	if YouCompletedADungeon(g, item.Controller) {
-		n = 2
-	}
-	return DrawCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-}
+// imoenDraw is the two printed instructions as two steps: draw a card,
+// then draw another if you've completed a dungeon. The second waits for
+// a prompt the first draw asks (dredge, a CR 616 order), CR 608.2c
+// (#4019), and its condition is read as it begins.
+var imoenDraw = Do(DrawCards{N: 1}, If{Cond: CondYouCompletedADungeon, Then: []Applier{DrawCards{N: 1}}})

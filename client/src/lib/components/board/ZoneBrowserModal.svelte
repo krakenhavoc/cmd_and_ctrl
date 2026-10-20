@@ -317,26 +317,13 @@
     sendAction("move_card", payload, viewerID);
   }
 
-  // #3955 (Wish): "you may play a card you own from outside the game this
-  // turn" with the card database as the pool. The card is named when it is
-  // played, so the right shows a button that opens the pick; naming it mints
-  // the card and the board starts its cast or land play at once. Only on the
-  // viewer's own sideboard tab.
-  const wishRight = $derived(
-    zoneKind === "sideboard" && viewerID && viewerID === ownerSeat.id
-      ? view.seats.find((s) => s.id === ownerSeat.id)?.outside_play
-      : undefined,
-  );
-  function nameWishedCard(): void {
-    if (!viewerID) return;
-    sendAction("outside_play", undefined, viewerID);
-    onClose();
-  }
-
   // Tabs switch zones for the same owner without closing (the stack
   // is a shared zone with no owner, so it stays a single view).
-  // ADR 0191: the viewer's own sideboard is a fourth tab, offered only on
-  // their own seat and only while it holds cards. It is read-only.
+  // ADR 0191 (restored 2026-10-19, #3833): the viewer's own sideboard is a
+  // fourth tab, offered only on their own seat and only while it holds
+  // cards or a Wish can name one. It is read only: it exists to check what
+  // a Wish can fetch, and a card in it moves only through a live permission
+  // (the cast button below), never by a drag or a menu.
   const tabs = $derived.by<{ kind: BrowsableZone; label: string }[]>(() => {
     const base: { kind: BrowsableZone; label: string }[] = [
       { kind: "graveyard", label: "graveyard" },
@@ -432,24 +419,11 @@
     {#each targetBans as ban (ban)}
       <p class="zb-ban" role="note">{ban}</p>
     {/each}
-    {#if wishRight?.can_name}
-      <div class="zb-wish">
-        <button
-          type="button"
-          class="primary"
-          data-testid="name-outside-card"
-          onclick={nameWishedCard}
-          title="Pick any card from the card database; it is played now, at its own timing and cost"
-        >
-          Name a card to play ({wishRight.source_name})
-        </button>
-      </div>
-    {/if}
     {#if zoneKind === "sideboard"}
       <p class="zb-ban" role="note">
-        Cards you own outside the game. Only an effect can reach them: one that brings a card in, or
-        one that lets you cast or play a card from here (Spawnsire of Ulamog, Wish), which puts a
-        button on that card.
+        Cards you own outside the game, for you alone: opponents see a count. Only an effect can
+        reach them. One that lets you cast or play a card from here (Spawnsire of Ulamog, Wish) puts
+        a button on that card; a Wish that names any card has its button in the action dock.
       </p>
     {/if}
     {#if zoneCards.length === 0}
@@ -692,9 +666,6 @@
     color: var(--fg-muted);
     font-size: 13px;
     margin: 4px 0 0;
-  }
-  .zb-wish {
-    display: flex;
   }
   .zb-ban {
     color: var(--fg-muted);

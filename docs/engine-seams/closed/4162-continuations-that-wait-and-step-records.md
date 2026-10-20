@@ -1,0 +1,6 @@
+---
+title: "A continuation's later instruction waits, and a later step reads what an earlier one recorded"
+date: 2026-10-19
+issues: [4162, 4163]
+---
+**A continuation's later instruction waits, and a later step reads what an earlier one recorded** (#4162, #4163, [ADR 0065](decisions/0065-modal-and-multi-target-clauses.md) amendment of 2026-10-19 (b)) — a prompt's `Then`, an `OnYes` or `OnAccept`, or the callback a `...ThenForEffect` method runs can be written as continuation steps (`effects.RegisterThenSteps`, ledger lines `steps <key>`). Its later steps wait for a prompt an earlier one asks (CR 608.2c) and park as the key and a path, so a restore taken mid-pause still runs them after the answer. The parked walks are a chain: a continuation's rest resumes before the steps whose prompt it continued. A step hands a later step IDs and numbers through a per-resolution record (`ctx.RecordStep`, `GameSnapshot.StepRecords`), plain data dropped as the resolution closes. **Cards:** Arcane Denial, Braids, Arisen Nightmare, Forgotten Ancient, Twilight Prophet, Scavenging Ooze, Seize the Spotlight, Disciple of Freyalise, Disciple of Bolas, Replicating Ring, Bonehoard Dracosaur, Midnight Clock, Court of Ambition, Transpose and Sylvan Library (continuations); Martial Coup, Windfall, Dark Deal, Tolarian Winds and Cut a Deal (records).

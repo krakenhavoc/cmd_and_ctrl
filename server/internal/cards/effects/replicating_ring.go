@@ -45,17 +45,32 @@ func init() {
 				// on a CR 616 prompt, and reading before it resumes
 				// would see the pre-placement count.
 				return g.AddCounterThenForEffect(ring, "night", 1, func(g *game.Game, _ int) error {
-					ctx := NewContext(g, item)
 					c, ok := g.LookupCardForEffect(ring)
 					if !ok || c.Counters["night"] < 8 {
 						return nil
 					}
-					if err := (AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}).Apply(ctx); err != nil {
-						return err
-					}
-					return CreateToken{Controller: item.Controller, Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
+					// The tokens wait for a prompt the removal asks
+					// (#4162, CR 608.2c).
+					return replicatingRingReplicate.Run(NewContext(g, item))
 				})
 			}),
 		},
 	})
 }
+
+// replicatingRingReplicate is "If there are eight or more night counters
+// on it, remove them and create eight colorless artifact tokens named
+// Replicated Ring …", once the count has been read.
+var replicatingRingReplicate = RegisterThenSteps("then-steps/replicating-ring-replicate",
+	Instruction(func(ctx *Context) error {
+		ring := ctx.Item.SourceCardID
+		c, ok := ctx.Game.LookupCardForEffect(ring)
+		if !ok {
+			return nil
+		}
+		return AddCounter{Target: ring, Kind: "night", N: -c.Counters["night"]}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return CreateToken{Template: b14ReplicatedRingToken(), N: 8}.Apply(ctx)
+	}),
+)

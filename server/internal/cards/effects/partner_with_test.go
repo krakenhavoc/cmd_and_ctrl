@@ -151,9 +151,10 @@ func TestPartnerWithNoCardFound(t *testing.T) {
 	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 
-	if searchChoiceFor(g, me.ID) != nil {
-		t.Fatal("a search with nothing to find opened a prompt")
+	if c := searchChoiceFor(g, me.ID); c == nil || len(c.SearchCards) != 0 {
+		t.Fatalf("a search with nothing to find still asks (#4140), with no candidates: %+v", c)
 	}
+	answerSearchFailToFind(t, g, me.ID)
 	if me.Hand.Size() != hand {
 		t.Errorf("hand %d, want %d: a card with a different name was found", me.Hand.Size(), hand)
 	}

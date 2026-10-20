@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deckcoverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/decklibrary"
@@ -138,6 +139,7 @@ type deckStack struct {
 	users  *users.SQLStore
 	store  *deckrequests.SQLStore
 	lib    *decklibrary.SQLStore
+	dbase  *db.DB
 	filer  *fakeFiler
 	source *fakeDeckLinks
 	tc     deckcoverage.TestingCards
@@ -158,6 +160,7 @@ func newDeckStack(t *testing.T, relax bool, configure func(*Config)) *deckStack 
 		users: users.NewSQLStore(d, nil),
 		store: deckrequests.NewSQLStore(d),
 		lib:   decklibrary.NewSQLStore(d),
+		dbase: d,
 		filer: &fakeFiler{issues: map[int]*fakeIssue{}},
 		source: &fakeDeckLinks{
 			decks: map[string]fakeDeck{

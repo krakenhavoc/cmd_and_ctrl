@@ -17,10 +17,12 @@ tests-e2e/
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── board-pick-2880.spec.ts # #2880: a sacrifice picked by clicking the creature on the board, confirmed in the dock
+├── bug-report-board-shot-4116.spec.ts # #4116, ADR 0017 §13: the report form's unticked "include a picture of the board" box takes a picture of the table in the browser, leaving the form out, and sends it as an ordinary attachment beside a picked image; unticked, no picture goes
     ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (pay on paper) asks first, casts it paid on paper, logs it
     ├── combat-damage-2956.spec.ts # ADR 0147: a double-blocked trampler's sheet opens on lethal-each-and-the-rest-over, the blockers tick on the board; with Auto-assign on, nothing is asked
     ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s, none with combat motion off; first strike before regular, a double block lunged at once, trample's streak, blockers crumbling
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
+    ├── dock-avatar-4069.spec.ts # #4069: at four seats the tall declare-attackers dock leaves your avatar and life visible at 1024x768, 1366x768 and 1920x1080; opening an opponent's expanded board logs no "ResizeObserver loop" error
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
     ├── free-cast-hand-3270.spec.ts # #3270: "cast a spell from your hand without paying its mana cost" (Surtland Elementalist): the pick starts the cast at once, a sorcery in the declare attackers step included; none casts nothing
@@ -28,6 +30,7 @@ tests-e2e/
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
     ├── land-menu-2960.spec.ts # #2960: a land's ability menu is visible and clickable at 1280x720 and 1998x716; seven lands each keep a clickable tile
+├── library-top-4127.spec.ts # #4127: a playable library top (Bolas's Citadel) is offered on a card-sized peek raised off the pile, its cast button 26px tall and not under the dev dock, at three viewports; a click starts the cast
     ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
@@ -35,12 +38,15 @@ tests-e2e/
     ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
     ├── type-groups-4087.spec.ts # #4087: a labelled group per permanent type (creatures, lands, planeswalkers, battles, artifacts, enchantments); walkers and battles never overlap and show a readable loyalty pip, at 2, 3 and 4 seats and three viewports
     ├── playmat-shape-3934.spec.ts # #3934, ADR 0128 §12: a playmat is shown whole (contain, centred) over a blurred backdrop that is its seat's battlefield box, at 2, 3 and 4 seats and three viewports
+    ├── outside-game-3833.spec.ts # #3833, #4054, #4109: a seated sideboard has no pile in the rail but a read-only Sideboard tab in its owner's zone browser (none for a seat without one); hovering an adventurer lists the creature and its Adventure with no ?face=1 scan
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
     ├── rebound-3490.spec.ts   # #3490: rebound (Quantum Misalignment) end to end on default settings: exiled, the upkeep offer in the upkeep after a discard-ended turn, "Cast it free" opens targeting with nothing passing under it, cast free, into the graveyard
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)
     ├── s19-triggers.spec.ts   # S19 triggered abilities: chooser modal, targets, resolution
     ├── smoke.spec.ts          # router + entry pages + healthz
+    ├── stack-ability-4043.spec.ts # #4043: Lightning Storm under a response; the lower card's bolt button on the pile's strip activates the storm's discard ability at 1024x768
+├── stack-divide-4114.spec.ts # #4114: a divided effect (Arc Lightning 2 and 1 at two players) names each target's share on the stack row and on a badge on each targeted player
     ├── stack-hold-2204.spec.ts # ADR 0119 §2: an opponent's item stays up for the stack hold
     └── zone-browser.spec.ts   # graveyard / exile modal behind the pile chips
 ```

@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // turn_control.go — controlling another player's whole turn (CR 723.1,
 // ADR 0167, #2164): Emrakul, the Promised End's "you gain control of
@@ -190,6 +194,11 @@ func (g *Game) endTurnControlsLocked() {
 // ControllerOfPlayerLocked reads), or "" when nobody controls p. Caller
 // must hold g.mu (read or write).
 func (g *Game) ControlUntilOfPlayerLocked(p uuid.UUID) ControlUntil {
+	// #4154: a declaration being made for p comes first, as
+	// ControllerOfPlayerLocked has it.
+	if r, ok := g.declarationControlOverLocked(p); ok && g.playerControllerLocked(r.Declarer) != p {
+		return ControlUntilDeclarations
+	}
 	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
 		r := g.PlayerControls[i]
 		if r.Controlled == p && g.controlLiveLocked(r) {
@@ -207,16 +216,43 @@ func (g *Game) ControlUntilOfPlayer(p uuid.UUID) ControlUntil {
 	return g.ControlUntilOfPlayerLocked(p)
 }
 
+// ControlStageOfPlayerLocked is the stage of the newest live record over
+// p (the one ControllerOfPlayerLocked reads), or "" when nobody controls
+// p. The actions layer reads it to decide which verbs the controller may
+// send as p (CR 723.5b, ADR 0166 amendment of 2026-10-19). Caller must
+// hold g.mu (read or write).
+func (g *Game) ControlStageOfPlayerLocked(p uuid.UUID) ControlStage {
+	if r, ok := g.declarationControlOverLocked(p); ok && g.playerControllerLocked(r.Declarer) != p {
+		return ControlDeclaring
+	}
+	for i := len(g.PlayerControls) - 1; i >= 0; i-- {
+		r := g.PlayerControls[i]
+		if r.Controlled == p && g.controlLiveLocked(r) {
+			return r.Stage
+		}
+	}
+	return ""
+}
+
+// ControlStageOfPlayer is ControlStageOfPlayerLocked under the read
+// lock. Caller must NOT hold g.mu.
+func (g *Game) ControlStageOfPlayer(p uuid.UUID) ControlStage {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.ControlStageOfPlayerLocked(p)
+}
+
 // TurnControlledByLocked lists the players whose turn controller is
 // playing right now (ADR 0167 §7): each seat whose live control is
-// turn-long and is controller's. Caller must hold g.mu.
+// controller's and plays for them (ControlUntil.PlaysForThem: a whole
+// turn, or one combat phase, #3999). Caller must hold g.mu.
 func (g *Game) TurnControlledByLocked(controller uuid.UUID) []uuid.UUID {
 	var out []uuid.UUID
 	for _, p := range g.Seats {
 		if p == nil || p.ID == controller || p.Eliminated {
 			continue
 		}
-		if g.ControllerOfPlayerLocked(p.ID) == controller && g.ControlUntilOfPlayerLocked(p.ID) == ControlUntilTurn {
+		if g.ControllerOfPlayerLocked(p.ID) == controller && g.ControlUntilOfPlayerLocked(p.ID).PlaysForThem() {
 			out = append(out, p.ID)
 		}
 	}
@@ -224,7 +260,8 @@ func (g *Game) TurnControlledByLocked(controller uuid.UUID) []uuid.UUID {
 }
 
 // ControlsATurn reports whether controller is playing another player's
-// turn right now. Caller must NOT hold g.mu.
+// turn, or one combat phase of it (#3999), right now. Caller must NOT
+// hold g.mu.
 func (g *Game) ControlsATurn(controller uuid.UUID) bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -232,12 +269,14 @@ func (g *Game) ControlsATurn(controller uuid.UUID) bool {
 }
 
 // ScheduledPlayerControlsLocked is every turn-long record still waiting
-// for its turn whose players are both in the game, oldest first: the
-// view's scheduled_player_controls (ADR 0167 §8). Caller must hold g.mu.
+// for its turn, and every combat-phase record still waiting for its
+// combat phase (#3999), whose players are both in the game, oldest
+// first: the view's scheduled_player_controls (ADR 0167 §8). Caller must
+// hold g.mu.
 func (g *Game) ScheduledPlayerControlsLocked() []PlayerControl {
 	var out []PlayerControl
 	for _, r := range g.PlayerControls {
-		if r.UntilKind() != ControlUntilTurn || r.Stage != ControlAwaitingTurn {
+		if r.Stage != ControlAwaitingTurn && r.Stage != ControlAwaitingCombat {
 			continue
 		}
 		if !g.playerInGameLocked(r.Controller) || !g.playerInGameLocked(r.Controlled) {
@@ -254,9 +293,15 @@ func (g *Game) ScheduledPlayerControlsLocked() []PlayerControl {
 // the same player (a Word of Command's under it, or a second Emrakul's)
 // is not listed. Caller must hold g.mu.
 func (g *Game) LivePlayerControlsLocked() []PlayerControl {
-	var out []PlayerControl
+	// #4154: a declaration being made for a player is listed for them,
+	// and takes precedence over a record that controls them.
+	declaring := g.declarationControlsLiveLocked()
+	out := declaring
 	for i, r := range g.PlayerControls {
 		if !g.controlLiveLocked(r) {
+			continue
+		}
+		if slices.ContainsFunc(declaring, func(d PlayerControl) bool { return d.Controlled == r.Controlled }) {
 			continue
 		}
 		newer := false

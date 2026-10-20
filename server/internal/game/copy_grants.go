@@ -249,6 +249,14 @@ func mergeCatalogParts(parts []*CardDef) *CardDef {
 		if len(g.GameEndGates) > 0 {
 			merged.GameEndGates = append(append([]GameEndGate(nil), merged.GameEndGates...), g.GameEndGates...)
 		}
+		// #4137: a layer-6 grant may carry a CR 603.2d trigger doubler
+		// (Dungeon Delver). The harvest's doubler scan reads
+		// CatalogTriggerDoublers(CatalogAbilityKey(c)), so the recipient
+		// has the doubler while it has the grant, and each recipient is
+		// its own doubler (CR 603.2d: they add).
+		if len(g.TriggerDoublers) > 0 {
+			merged.TriggerDoublers = append(append([]TriggerDoubler(nil), merged.TriggerDoublers...), g.TriggerDoublers...)
+		}
 	}
 	// ADR 0041 P9 (tier 4-2): a bundle granted twice contributes its
 	// triggered rows twice, and each copy is a different instance of

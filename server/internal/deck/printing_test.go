@@ -209,3 +209,41 @@ func TestTextCarriesThePrintingThroughASave(t *testing.T) {
 		t.Errorf("an old list resolved to %s / %s, want the defaults", oldList.Commanders[0].ID, oldList.Mainboard[0].ID)
 	}
 }
+
+func TestAlternateNameKeepsPrintingThroughSaveAndExplicitSelection(t *testing.T) {
+	idx := printingIndex()
+	alternate, _ := idx.Get(sol1ID)
+	alternate.FlavorName = "Alternate Sol Ring"
+	idx.Put(alternate)
+	for _, tc := range []struct {
+		source string
+		want   uuid.UUID
+	}{
+		{"1 Alternate Sol Ring", sol1ID},
+		{"1 Alternate Sol Ring (LTC) 1", sol2ID},
+		{"1 Alternate Sol Ring (SLZ) 93", sol1ID}, // another card's printing cannot change identity
+	} {
+		entries, err := ParseText(tc.source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		list, err := Resolve(idx, "t", entries)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := list.Mainboard[0]; got.ID != tc.want || got.OracleID != solOracle || got.Name != "Sol Ring" {
+			t.Fatalf("%s resolved as %+v", tc.source, got)
+		}
+		saved, err := ParseText(list.Text())
+		if err != nil {
+			t.Fatal(err)
+		}
+		back, err := Resolve(idx, "t", saved)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if back.Mainboard[0].ID != tc.want {
+			t.Fatalf("printing lost when saving %s", tc.source)
+		}
+	}
+}

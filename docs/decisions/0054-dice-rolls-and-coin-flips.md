@@ -1040,3 +1040,65 @@ token's key; Mu Yanling is Full too. Still open from Decision 6's list:
 "whenever a player wins a coin flip" and "flip a coin until you lose a
 flip" (Okaun, Eye of Chaos; Zndrsplt, Eye of Wisdom), and "whenever you
 lose a coin flip" (Karplusan Minotaur).
+
+## Amendment (2026-10-19): "whenever you lose a coin flip" and a coin-flip cumulative upkeep (#4063)
+
+The 2026-10-15 amendment shipped "whenever you win a coin flip" and noted the other half as open. Karplusan Minotaur prints
+both, and a cumulative upkeep whose cost is a flip:
+
+> Cumulative upkeep—Flip a coin.
+> Whenever you win a coin flip, this creature deals 1 damage to any target.
+> Whenever you lose a coin flip, this creature deals 1 damage to any target of an opponent's choice.
+
+**Decisions.**
+
+1. **The matcher.** `effects.YouLostACoinFlip` is an `EventFlipCoin` the source's controller flipped, with `Won` unset **and a
+   `Call` set**. Only a called flip (`FlipCoinForEffect`, the one with a winner) has anything to lose; a face-only flip
+   (`FlipCoinsForEffect`) carries `Won` false and no `Call` and must never read as a loss. The flipper is the event's `Actor`
+   (CR 705.2: only the player who flips the coin wins or loses it), so an opponent's lost flip is not yours. One event per coin,
+   so two lost coins fire the ability twice. `WheneverYouLoseACoinFlip` is the constructor beside `WheneverYouWinACoinFlip`.
+2. **The cost.** "Flip a coin" is an `effects.UpkeepPayment` (`FlipCoinsPayment`): a payment that costs nothing to say yes to
+   (`game.PayActionNothing`) and whose payment is the flips, so `CumulativeUpkeepPaying` queues them from the prompt's
+   `OnPay`. CR 702.24a makes the cost "for each age counter", so the payment scales (`UpkeepPayment.times`): n age counters flip
+   n coins **under one call** (owner decision 4 of this ADR: coins flipped under one call). Saying no sacrifices the permanent,
+   as for any cumulative upkeep.
+3. **Once started, not stopped.** The 2006-07-15 ruling is that you cannot choose to stop once you start flipping. The coin call
+   is queued with `AllowStop: false`, so `stop` is refused; the only way out is to answer no at the upkeep prompt.
+4. **Restores.** Nothing new is stored. The coin is the game's keyed stream (Decision 2), advanced as the call is answered, and
+   a table with the call open is not a restore point (the call holds a continuation, `ContinuationCensus.ChoiceResumeFrames`),
+   so a restore is taken after the flip and the next flip is drawn exactly as the original's would be.
+5. **The targets.** The win ability's target is the controller's. The lose ability's is "of an opponent's choice"
+   ([ADR 0019](0019-structured-targeting.md) 2026-10-16 amendment), so the controller cannot aim the damage.
+
+**Card.** Karplusan Minotaur, `full`.
+
+**Tests.** `cards/effects/karplusan_minotaur_test.go`: the matcher against a won, lost, opponent's, face-only and table flip;
+the win target is the controller's and the lose target an opponent's; unrelated flips start nothing; the upkeep flips one coin
+per age counter and cannot be stopped; a decline sacrifices and flips nothing; the prompt survives a clone; the enumerator offers
+both answers; a restore after the flip replays the next flip.
+
+Back-out: drop the `Call` test from `YouLostACoinFlip` and the face-only assertions fail; drop `OnPay` from the cumulative upkeep
+and no coin call is queued; drop `OfAnOpponentsChoice` from the lose ability and the controller aims it.
+
+## Amendment (2026-10-19): ignoring a roll, and Berserker's Frenzy (#4174)
+
+Decision 10 left "ignoring a roll" (CR 706.6) out and Decision 5 ordered `RollDiceForEffect` so it could be added
+without moving events. It is added, for "roll two d20 and ignore the lower roll" (Berserker's Frenzy), as the general
+form "roll n dice and ignore the lowest k".
+
+- **`Game.RollDiceIgnoringLowestForEffect(d, sides, n, ignore)`** (`game/effect_api_random.go`) draws all n dice from
+  the keyed roll stream, drops the `ignore` lowest, and emits one `EventRollDie` per **kept** die in one batch. The
+  ignored roll is never an event, so no "whenever you roll one or more dice" ability sees it and no effect applies to
+  it (CR 706.6: "that roll is considered to have never happened"). `RollDiceForEffect` is the `ignore = 0` case.
+  `ignore` must be less than n.
+- **Reproducibility.** The draw count is n whether or not a roll is ignored, so the stream position after the call is
+  the same and an undo or a restore replays the same kept roll (Decision 3's key and counters, unchanged).
+- **Ties.** CR 706.6 lets the player choose which of several results tied for the lowest to ignore. Tied results are
+  the same number, so the choice changes nothing anyone can see and no prompt is asked; the earlier roll is dropped.
+- **Catalog helper.** `effects.rollDiceIgnoringLowest(ctx, sides, n, ignore)`, beside `rollDice`.
+- **Not built.** Decision 10's other ignore-a-roll cards (Pixie Guide, Barbarian Class) modify someone else's roll,
+  which needs a hook on the roll itself; this amendment is the instruction a spell gives, not that hook.
+
+Berserker's Frenzy is Full: the kept d20 picks the row (1-14: `ChoosePermanents` over every board, then a block
+requirement until end of turn on each creature chosen; 15-20: a blockers-only `DeclarationControl` for the turn, ADR
+0167's second amendment). Its cast window is the cursor's (ADR 0020's #4180 amendment, point 4).

@@ -42,6 +42,17 @@
   const halves = $derived(key.includes("/") && !key.endsWith("/P") ? key.split("/") : null);
   const phyrexian = $derived(key.endsWith("/P") ? key.split("/")[0] : null);
   const snow = $derived(key === "S");
+  // #4120: "WUBRG" is not a printed symbol. It is the avatar card's
+  // rainbow for a source of three or more colours, or of any colour: five
+  // slices of the colour discs, white at the top, clockwise in WUBRG order.
+  const rainbow = $derived(key === "WUBRG");
+  function slice(i: number): string {
+    const at = (k: number) => {
+      const a = ((-90 - 36 + k * 72) * Math.PI) / 180;
+      return `${(16 + 15 * Math.cos(a)).toFixed(2)} ${(16 + 15 * Math.sin(a)).toFixed(2)}`;
+    };
+    return `M16 16L${at(i)}A15 15 0 0 1 ${at(i + 1)}Z`;
+  }
   const halfFill = (h: string): string => (/^\d+$/.test(h) ? "#cac5c0" : manaSymbolMeta(h).fill);
 </script>
 
@@ -58,7 +69,11 @@
 >
   <!-- The offset shadow disc under the face, as on a printed symbol. -->
   <circle cx="16.6" cy="17.2" r="15" fill="#0d0f0f" opacity="0.55" />
-  {#if halves}
+  {#if rainbow}
+    {#each ["W", "U", "B", "R", "G"] as c, i (c)}
+      <path d={slice(i)} fill={manaSymbolMeta(c).fill} stroke="#0d0f0f" stroke-width="0.8" />
+    {/each}
+  {:else if halves}
     <path d="M5.39 26.61A15 15 0 0 1 26.61 5.39Z" fill={halfFill(halves[0])} />
     <path d="M5.39 26.61A15 15 0 0 0 26.61 5.39Z" fill={halfFill(halves[1])} />
     {#each halves as h, i (i)}
@@ -109,7 +124,7 @@
   {:else}
     <circle cx="16" cy="16" r="15" fill={meta.fill} />
   {/if}
-  {#if halves || phyrexian || snow}
+  {#if halves || phyrexian || snow || rainbow}
     <!-- drawn above -->
   {:else if known}
     <path d={meta.glyph} fill="#0d0f0f" fill-rule="evenodd" />

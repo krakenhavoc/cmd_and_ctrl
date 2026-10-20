@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,7 +29,9 @@ import (
 // second ability: it happens after the mana lands in the pool, in the
 // same atomic resolution (CR 605.3b), and it happens whether or not
 // the controller needed it. The painlands' damage rider is the same
-// slot with the sign flipped.
+// slot with the sign flipped. It is declared as GainLife, not a
+// hand-written Rider, so the auto-tapper can plan the Henge and the
+// move list counts its {G}{G} when it asks what is castable (#4185).
 //
 // The trigger reads the ENTERING permanent, so it captures ev.CardID
 // in Build rather than using one of the shorthand constructors: the
@@ -58,24 +58,23 @@ func init() {
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}{G}",
 			Label:    "Add {G}{G}. You gain 2 life",
-			Rider: func(g *game.Game, controller, source uuid.UUID) error {
-				return g.ChangePlayerLifeForEffect(source, controller, 2)
-			},
+			GainLife: 2,
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: nontokenCreatureEnteredUnderYourControl,
 			Key:       "The Great Henge — put a +1/+1 counter on it and draw a card",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				entered := item.Trigger.Event.CardID
-				if onBattlefield(g, entered) {
-					if err := (AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)); err != nil {
-						return err
+			Effect: Do(
+				// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					entered := ctx.Item.Trigger.Event.CardID
+					if !onBattlefield(ctx.Game, entered) {
+						return nil
 					}
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
+					return AddCounter{Target: entered, Kind: "+1/+1", N: 1}.Apply(ctx)
+				}),
+				DrawCards{N: 1},
+			),
 		}},
 	})
 }

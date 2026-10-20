@@ -277,7 +277,7 @@ func (p *Policy) tapsACreature(st *state, m legal.Move) bool {
 // printed cost has no component but mana and tapping. A "Mill N cards"
 // component (#3845) is a library cost like LibraryExileCostN's (#3870).
 func rowCostsOnlyManaAndTaps(r *protocol.ActivatedAbilityView) bool {
-	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf && !r.BottomSelf &&
+	return !r.SacrificeSelf && !r.DiscardSelf && !r.ExileSelf && !r.ReturnSelf && !r.BottomSelf && !r.ExileGrantor &&
 		r.SacrificeLabel == "" && r.LifeCost == 0 && r.LoyaltyCost == nil &&
 		r.DiscardCostN == 0 && r.TopCostN == 0 && r.ExileCostN == 0 &&
 		r.LibraryExileCostN == 0 && r.MillCost == 0 && r.ReturnLabel == "" && r.ExilePermanentLabel == ""

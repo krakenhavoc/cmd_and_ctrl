@@ -28,13 +28,7 @@ const blitzballStadiumGrant = "blitzball-stadium/draw-per-counter-kind"
 
 func init() {
 	support := WhenThisEnters("Blitzball Stadium — support X", SupportEffect)
-	support.TargetsFrom = func(_ game.TriggerContext, source *game.Card, _ *game.Game) *game.TargetSpec {
-		x := source.CastX()
-		if x <= 0 {
-			return nil
-		}
-		return TargetCreature("up to X target creatures").WithCount(0, x)
-	}
+	support.TargetsFrom = UpToCastXCreatureTargets
 	Register(Spec{
 		OracleID:     "a4b66fb3-16ea-4bf1-bce3-6df872e8883b",
 		Name:         "Blitzball Stadium",

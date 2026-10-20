@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Reckoner's Bargain — Instant {1}{B}:
 //
 //	"As an additional cost to cast this spell, sacrifice an artifact or
@@ -19,11 +17,10 @@ func init() {
 		Name:           "Reckoner's Bargain",
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact or creature", Or(Artifact(), Creature())),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (GainLife{Amount: sacrificedManaValue(ctx)}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{N: 2}.Apply(ctx)
-		},
+		// The cards wait for a prompt the life gain asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error { return GainLife{Amount: sacrificedManaValue(ctx)}.Apply(ctx) }),
+			DrawCards{N: 2},
+		),
 	})
 }

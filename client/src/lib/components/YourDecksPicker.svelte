@@ -6,6 +6,7 @@
   import { preselectFor, type LastDeck } from "../lastDeck";
   import { libraryRow } from "../deckPicker";
   import DeckRadioList from "./DeckRadioList.svelte";
+  import SideboardList from "./decks/SideboardList.svelte";
   import Icon from "./Icon.svelte";
 
   // YourDecksPicker is the deck-library half of the deck panel (ADR
@@ -42,6 +43,15 @@
   let errorMessage = $state("");
   let violations = $state<ApiViolation[]>([]);
   let seated = $state("");
+  // ADR 0191 (amended 2026-10-19, #3833): the picked deck's sideboard, read
+  // only. It closes when another deck is picked, so it is never the last
+  // deck's list under this deck's name.
+  let sideboardOpen = $state(false);
+  let sideboardFor = $state("");
+  let seatedSideboard = $state(0);
+  $effect(() => {
+    if (selected !== sideboardFor) sideboardOpen = false;
+  });
 
   const current = $derived(decks.find((d) => d.id === selected));
   const rows = $derived(decks.map(libraryRow));
@@ -96,9 +106,11 @@
     errorMessage = "";
     violations = [];
     seated = "";
+    seatedSideboard = 0;
     try {
       const res = await seatLibraryDeck(gameID, selected);
       seated = res.deck_name || current?.name || "deck";
+      seatedSideboard = res.sideboard ?? 0;
       onSuccess?.(res);
     } catch (err) {
       if (err instanceof LobbyApiError) {
@@ -131,12 +143,32 @@
 
     <div class="row-actions">
       {#if seated}
-        <p class="success"><Icon name="check" size={13} /> playing {seated}</p>
+        <p class="success">
+          <Icon name="check" size={13} /> playing {seated}{#if seatedSideboard > 0}, with {seatedSideboard}
+            outside the game{/if}
+        </p>
       {/if}
+      <button
+        type="button"
+        class="btn ghost"
+        data-testid="your-deck-sideboard"
+        aria-expanded={sideboardOpen}
+        disabled={!selected}
+        onclick={() => {
+          sideboardFor = selected;
+          sideboardOpen = !sideboardOpen;
+        }}>Sideboard</button
+      >
       <button class="primary" onclick={seat} disabled={busy || !selected}>
         {busy ? "seating…" : current ? `play ${current.name}` : "play this deck"}
       </button>
     </div>
+
+    {#if sideboardOpen && current}
+      {#key current.id}
+        <SideboardList deck={current} onclose={() => (sideboardOpen = false)} />
+      {/key}
+    {/if}
 
     {#if errorMessage}
       <pre class="deck-error">{errorMessage}</pre>
@@ -185,7 +217,7 @@
   }
   /* "play <deck name>": a long name ellipsises rather than widening
      the button past the panel. */
-  .row-actions button {
+  .row-actions button.primary {
     max-width: min(100%, 22rem);
     overflow: hidden;
     text-overflow: ellipsis;

@@ -47,32 +47,34 @@ func init() {
 		Name:         "Finale of Revelation",
 		Completeness: CompletenessFull,
 		XMatters:     true,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			x := ctx.X()
-			if x < 10 {
-				if err := (DrawCards{Player: controller, N: x}).Apply(ctx); err != nil {
-					return err
-				}
-				return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
-			}
-			if err := finaleShuffleGraveyardIntoLibrary(ctx, controller); err != nil {
-				return err
-			}
-			if err := (DrawCards{Player: controller, N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return UntapUpToLands{
-				N:        5,
-				Question: "Finale of Revelation — untap up to five lands",
-				Then: func(next *Context) error {
-					if err := next.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize); err != nil {
+		OnResolve: ResolveSteps(
+			// The exile, or the untap, waits for a prompt the draw asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				x := ctx.X()
+				if x >= 10 {
+					if err := finaleShuffleGraveyardIntoLibrary(ctx, ctx.Controller()); err != nil {
 						return err
 					}
-					return (ExileTarget{Target: next.Source()}).Apply(next)
-				},
-			}.Apply(ctx)
-		},
+				}
+				return DrawCards{N: x}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.X() < 10 {
+					return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
+				}
+				controller := ctx.Controller()
+				return UntapUpToLands{
+					N:        5,
+					Question: "Finale of Revelation — untap up to five lands",
+					Then: func(next *Context) error {
+						if err := next.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize); err != nil {
+							return err
+						}
+						return (ExileTarget{Target: next.Source()}).Apply(next)
+					},
+				}.Apply(ctx)
+			}),
+		),
 	})
 }
 

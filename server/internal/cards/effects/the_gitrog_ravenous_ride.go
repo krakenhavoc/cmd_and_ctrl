@@ -82,20 +82,32 @@ func gitrogRavenousRideSacrifice(g *game.Game, item *game.StackItem) error {
 				if !ok || info.Power <= 0 {
 					return nil
 				}
-				x := info.Power
-				if err := (DrawCards{Player: item.Controller, N: x}).Apply(ctx); err != nil {
-					return err
-				}
-				return PutFromHandOntoBattlefield{
-					Player:   item.Controller,
-					Match:    Land(),
-					Tapped:   true,
-					Optional: true,
-					Max:      x,
-					Label:    "The Gitrog, Ravenous Ride — put up to X land cards from your hand onto the battlefield tapped",
-				}.Apply(ctx)
+				ctx.RecordStep(gitrogRavenousRideRecord, nil, info.Power)
+				return gitrogRavenousRideDrawAndPut.Run(ctx)
 			}}.Apply(NewContext(g, item))
 		},
 	})
 	return nil
 }
+
+// gitrogRavenousRideRecord is X, the sacrificed creature's power.
+const gitrogRavenousRideRecord = "the-gitrog-ravenous-ride/x"
+
+// gitrogRavenousRideDrawAndPut is "draw X cards, then put up to X land cards
+// from your hand onto the battlefield tapped": the put waits for a prompt the
+// draw asks (a dredge offer; CR 608.2c, #4155).
+var gitrogRavenousRideDrawAndPut = RegisterThenSteps("then-steps/the-gitrog-ravenous-ride-draw",
+	Instruction(func(ctx *Context) error {
+		return DrawCards{Player: ctx.Controller(), N: ctx.StepRecord(gitrogRavenousRideRecord).N()}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return PutFromHandOntoBattlefield{
+			Player:   ctx.Controller(),
+			Match:    Land(),
+			Tapped:   true,
+			Optional: true,
+			Max:      ctx.StepRecord(gitrogRavenousRideRecord).N(),
+			Label:    "The Gitrog, Ravenous Ride — put up to X land cards from your hand onto the battlefield tapped",
+		}.Apply(ctx)
+	}),
+)

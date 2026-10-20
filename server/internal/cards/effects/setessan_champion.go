@@ -25,15 +25,16 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsEnchantment()
-			}, "Setessan Champion — a +1/+1 counter and a card (constellation)", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if b09SourceStillOnBattlefield(g, item) {
-					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
+			}, "Setessan Champion — a +1/+1 counter and a card (constellation)", Do(
+				// The draw waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					if !b09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+						return nil
 					}
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			}),
+					return AddCounter{Target: ctx.Item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
+				}),
+				DrawCards{N: 1},
+			)),
 		},
 	})
 }

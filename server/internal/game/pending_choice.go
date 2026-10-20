@@ -2431,6 +2431,17 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 		if ev.StepTransitionSeat >= 0 && ev.StepTransitionSeat < len(g.Seats) {
 			return g.Seats[ev.StepTransitionSeat].ID
 		}
+	case RepEventCounterSpell:
+		// #4056. CR 616.1: the affected object is the spell about to be
+		// countered, and its controller chooses, not the controller of
+		// whichever "if you would counter" replacement gathered first
+		// (that player is the one doing the countering).
+		if item := g.StackMeta[ev.CounterSpellID]; item != nil {
+			if item.Controller != uuid.Nil {
+				return item.Controller
+			}
+			return item.Owner
+		}
 	case RepEventExtraTurn:
 		// #2529. The player whose extra turn it is. The prompt this
 		// would order is never put to them (the window sets
@@ -2715,6 +2726,13 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// Then the rest of the instruction (CR 121.6b): a "draw three"
 		// paused on its first card still owes two (draw_instead.go).
 		return g.settleResumedDrawLocked(ev, false)
+	case RepEventCounterSpell:
+		// #4056: the window has settled on what happens to the spell
+		// (countered as asked, or exiled instead). Finishing it is the
+		// same function the unpaused path runs, so a counter that paused
+		// on an ordering prompt and one that did not cannot drift
+		// apart.
+		return g.finishCounterSpellLocked(ev)
 	case RepEventExtraTurn:
 		// #2529: unreachable. The window sets mustSettleNow (the
 		// rotation seam has no resume), so no event of this kind ever
@@ -3086,6 +3104,11 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// instruction ("draw three" has two more to go), which the
 		// body pays through `done`. draw_instead.go.
 		return g.settleResumedDrawLocked(ev, true)
+	case RepEventCounterSpell:
+		// #4056: a cancelled counter leaves the spell on the stack, and
+		// the caller's continuation ("if that spell is countered this
+		// way") is told it was not.
+		return g.runRouteTailLocked(ev.zoneRoute)
 	case RepEventExtraTurn:
 		// #2529: a cancelled extra turn is a SKIPPED one, and
 		// popExtraTurnLocked acts on that verdict itself, inline. The

@@ -39,6 +39,7 @@ registered, or when this file is stale.
 | `expandBoard` | `Expand <name>'s board, or Expand your own board` (starts with `Expand `) | button | aria | `lib/components/board/Board.svelte` | a board's expand button (ADR 0120); null names the viewer's own |
 | `stackPile` | `stack: <N> on the stack` (starts with `stack: `) | region | aria | `lib/components/board/StackLaneHost.svelte`<br>`lib/components/board/StackOverlay.svelte` | the stack pile (ADR 0119), and the floating stack overlay; the tutorial's stack step anchors here |
 | `stackAbility` | `Activate <card name> on the stack: <cost>` (contains ` on the stack: `) | button | aria | `lib/components/board/StackAbilityButtons.svelte` | #1865: a spell's ability that works while it is on the stack (Lightning Storm's discard a land card), on every stack surface beside Counter; offered to each seat that may activate it |
+| `stackAbilityGone` | `<card name> left the stack` (ends with ` left the stack`) | status | text | `lib/components/board/Board.svelte` | #4043: the notice that closes the discard picker when the spell whose stack ability was being announced resolves or is countered first |
 | `attention` | `attention` | region | aria | `lib/components/board/Board.svelte` | the attention strip, top left: bot chatter, reveals, the roll call |
 | `turnPhase` | `turn and phase indicator` | generic | aria | `lib/components/board/PhaseDisplay.svelte` | the turn number, the active player and the step |
 | `abilityChip` | `<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)` (contains ` abilit`) | button | aria | `lib/components/board/AbilityKindChips.svelte` | an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's |
@@ -124,6 +125,18 @@ registered, or when this file is stale.
 | `newTable` | `new table` | button | aria | `routes/Lobby.svelte` | the Tables page head's + New table, which opens the new-table form; the lobby.create hint points at it |
 | `suggestTableName` | `suggest a name` | button | aria | `lib/components/NewTableRow.svelte` | the dice next to the Lobby's game-name box: fills it with a generated table name (#2630) |
 | `deckLink` | `deck link` | textbox | aria | `routes/Decks.svelte` | the Decks page's deck-link field; the decks.check hint points at it |
+| `choosePrintings` | `Choose printings` | button | text | `lib/components/decks/DeckCard.svelte` | saved-deck printing picker |
+| `printingPicker` | `card printings` | region | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `printingCard` | `Card to customize` | combobox | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `filterPrintings` | `Filter printings` | searchbox | aria | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `savePrintings` | `Save printings` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `cancelPrintings` | `Cancel printing changes` | button | text | `lib/components/decks/PrintingPicker.svelte` | saved-deck printing picker |
+| `updateDeck` | `Update deck` | button | text | `lib/components/decks/DeckCard.svelte` | a saved deck's action that opens the update sheet (#2036) |
+| `deckUpdateSheet` | `update deck` | region | aria | `lib/components/decks/UpdateDeckSheet.svelte` | the sheet that updates a saved deck from its link, a new link or a pasted list (#2036) |
+| `deckUpdateChoices` | `how to update` | group | aria | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's three ways in: re-pull, new link, paste list (#2036) |
+| `previewUpdate` | `Preview changes` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's first step: read the new list and show the diff, writing nothing (#2036) |
+| `saveUpdate` | `Save update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | the update sheet's confirm: commits the previewed list (#2036) |
+| `cancelUpdate` | `Cancel update` | button | text | `lib/components/decks/UpdateDeckSheet.svelte` | closes the update sheet without saving (#2036) |
 | `yourDecks` | `your decks` | list | aria | `routes/Decks.svelte` | a signed-in person's saved decks; the decks.library hint points at it |
 | `settingsSections` | `settings sections` | navigation | aria | `lib/components/Settings.svelte` | the Settings dialog's section tabs; the settings.display hint points at it |
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |

@@ -77,6 +77,14 @@ func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, sta
 		// #3998: a search the bot controls is answered in its interest.
 		pol = controlledSearchPolicy{inner: r.policy, g: r.room.Game}
 	}
+	return r.playWith(ctx, pol, moves, started, minThink)
+}
+
+// playWith takes one decision from moves with pol, never asking a
+// model, and sends it as this bot for the move's Player. The engine of
+// playControlledTurn, shared with the active player's half of a chosen
+// attack declaration (attack_targets.go).
+func (r *Runner) playWith(ctx context.Context, pol Policy, moves []legal.Move, started time.Time, minThink time.Duration) (ok, applied bool) {
 	d, err := pol.Decide(ctx, Input{Seat: r.seat, Moves: moves})
 	if err != nil || d.Index < 0 || d.Index >= len(moves) {
 		return true, false
@@ -115,8 +123,12 @@ func (r *Runner) playControlledTurn(ctx context.Context, moves []legal.Move, sta
 }
 
 // splitControlledTurnMoves separates the seat's own moves from those it
-// makes for a seat whose turn it is playing (ADR 0167 §7) or whose
-// search it controls (#3998, controlled_search.go). A move for a seat it
+// makes for a seat whose turn (or combat phase, #3999) it is playing
+// (ADR 0167 §7), whose search it controls (#3998, controlled_search.go)
+// or whose attack or block declaration it is choosing (#4154,
+// controlledTurnPolicy: no attackers and no blockers, or the required
+// ones, which is legal and, for a player choosing an opponent's
+// attacks or the blocks against their own, sensible). A move for a seat it
 // controls only during a resolution (Word of Command, ADR 0166) stays
 // with its own: its policy has always answered those.
 func splitControlledTurnMoves(g *game.Game, seat uuid.UUID, moves []legal.Move) (own, controlled []legal.Move) {
@@ -125,7 +137,7 @@ func splitControlledTurnMoves(g *game.Game, seat uuid.UUID, moves []legal.Move) 
 			own = append(own, m)
 			continue
 		}
-		if until := g.ControlUntilOfPlayer(m.Player); until == game.ControlUntilTurn || until == game.ControlUntilSearch {
+		if until := g.ControlUntilOfPlayer(m.Player); until.PlaysForThem() || until == game.ControlUntilSearch || until == game.ControlUntilDeclarations {
 			controlled = append(controlled, m)
 			continue
 		}

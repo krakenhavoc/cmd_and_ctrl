@@ -38,13 +38,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverACreatureYouControlDies("Dark Prophecy — draw a card, lose 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-				}),
+				// The life loss waits for a prompt the draw asks (CR 608.2c, #4155).
+				Do(DrawCards{N: 1}, GainLife{Amount: -1})),
 		},
 	})
 }

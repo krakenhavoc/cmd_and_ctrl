@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Lazotep Plating — Instant {1}{U}:
 //
 //	"Amass Zombies 1.
@@ -18,23 +16,24 @@ func init() {
 		OracleID:     "ba0082fb-2d4c-489e-8140-93a6fa693fd0",
 		Name:         "Lazotep Plating",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (Amass{Subtype: "Zombie", N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (GainPlayerKeyword{
-				Player:   ctx.Controller(),
-				Keyword:  KeywordHexproof,
-				Label:    "Lazotep Plating — hexproof",
-				Duration: DurationUntilEndOfTurn(ctx),
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
-				Match:    YouControl(),
-				Keywords: []string{"hexproof"},
-				Label:    "Lazotep Plating — permanents you control gain hexproof",
-			}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The hexproof waits for a prompt the amass asks (CR 608.2c, #4155).
+			Amass{Subtype: "Zombie", N: 1},
+			Instruction(func(ctx *Context) error {
+				if err := (GainPlayerKeyword{
+					Player:   ctx.Controller(),
+					Keyword:  KeywordHexproof,
+					Label:    "Lazotep Plating — hexproof",
+					Duration: DurationUntilEndOfTurn(ctx),
+				}).Apply(ctx); err != nil {
+					return err
+				}
+				return GrantKeywordUntilEOT{
+					Match:    YouControl(),
+					Keywords: []string{"hexproof"},
+					Label:    "Lazotep Plating — permanents you control gain hexproof",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

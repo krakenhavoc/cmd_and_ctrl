@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Finale of Glory — Sorcery {X}{W}{W} (EDHREC rank 2861):
 //
 //	"Create X 2/2 white Soldier creature tokens with vigilance. If X
@@ -19,18 +17,22 @@ func init() {
 		Name:         "Finale of Glory",
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			if x <= 0 {
-				return nil
-			}
-			if err := (CreateToken{Controller: item.Controller, Template: TokenCard("2/2 white Soldier with vigilance"), N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			if x < 10 {
-				return nil
-			}
-			return CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Angel with flying and vigilance"), N: x}.Apply(ctx)
-		},
+		OnResolve: ResolveSteps(
+			// The Angels wait for a prompt the Soldiers' creation asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				x := ctx.X()
+				if x <= 0 {
+					return nil
+				}
+				return CreateToken{Template: TokenCard("2/2 white Soldier with vigilance"), N: x}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				x := ctx.X()
+				if x < 10 {
+					return nil
+				}
+				return CreateToken{Template: TokenCard("4/4 white Angel with flying and vigilance"), N: x}.Apply(ctx)
+			}),
+		),
 	})
 }

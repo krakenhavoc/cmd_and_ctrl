@@ -217,6 +217,14 @@ type GameView struct {
 	// grants no visibility; the turn strip and the controlled player's
 	// warning read it.
 	ScheduledPlayerControls []ScheduledPlayerControlView `json:"scheduled_player_controls,omitempty"`
+	// DeclarationControls is every "you choose which creatures attack /
+	// block" effect this turn (#4154, Master Warcraft), oldest first.
+	// Public: the whole table can see who is choosing.
+	DeclarationControls []DeclarationControlView `json:"declaration_controls,omitempty"`
+	// AttackHandoff is this combat's attack declaration under one
+	// (#4154): who chose the attackers, and whether the active player
+	// is choosing their targets. Public.
+	AttackHandoff *AttackHandoffView `json:"attack_handoff,omitempty"`
 	// LegalMoves is the closed list of things the VIEWER'S OWN seat
 	// may do right now, straight out of internal/legal. Empty
 	// whenever that seat owes no decision — which is most frames,
@@ -815,6 +823,21 @@ type PendingChoiceView struct {
 	// and library" prompt: every zone is searched, so the library is
 	// shuffled whatever is taken. Chooser-only.
 	SearchAllZones bool `json:"search_all_zones,omitempty"`
+	// SearchOptional (#4134) marks a "you may search" prompt on which
+	// "don't search" is a legal answer right now: the client offers a
+	// "Don't search" button, sent as {choice_id, apply: false}. It is
+	// present only while the prompt is undecided: looking at the list is
+	// searching (CR 701.19), so once the searcher has begun there is no
+	// decline. Declining is not finding nothing: a declined search never
+	// happens, so the library is neither shuffled nor announced. Absent
+	// for a mandatory search. Chooser-only.
+	SearchOptional bool `json:"search_optional,omitempty"`
+	// SearchUndecided (#4134) marks the question an optional search asks
+	// before it looks: options[] is withheld, and the answers are
+	// {apply: true} (begin the search; the same prompt then reappears with
+	// its options, for the Agent's controller under an Opposition Agent)
+	// or {apply: false} (don't search). Chooser-only.
+	SearchUndecided bool `json:"search_undecided,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -1105,6 +1128,14 @@ type LegalTargetsView struct {
 	// the superset any opponent could pick from, so the client can tell
 	// whether the clause can be filled at all.
 	ChosenByOpponent bool `json:"chosen_by_opponent,omitempty"`
+
+	// AtRandom marks a clause whose target the engine draws at random
+	// ("any target chosen at random", Goblin Test Pilot, #4051): the
+	// controller's picker skips it and sends no target for it (a ref
+	// aimed at it is refused); the server draws one from `players` /
+	// `cards` as the ability is activated, and logs it. A trigger's
+	// random clause never reaches a picker at all.
+	AtRandom bool `json:"at_random,omitempty"`
 
 	// ChosenFor is, on a pick_target prompt an opponent answers for
 	// such a clause, the controller of the spell or ability it is for
@@ -1561,8 +1592,29 @@ type SpliceOfferView struct {
 	Name string `json:"name"`
 	// Label is the ability as printed: "Splice onto Arcane {1}{R}".
 	Label string `json:"label"`
-	// ManaCost is the splice cost.
+	// ManaCost is the splice cost, empty when it is not mana.
 	ManaCost string `json:"mana_cost"`
+	// CostLabel is a splice cost that is not mana as printed, without its
+	// full stop ("Sacrifice two Mountains"). The components below are the
+	// pickers for it, in the shape and with the meaning the additional
+	// cost gives them (#4055, ADR 0202's 2026-10-19 amendment); the picks
+	// ride cast_spell in `splice_payments`, entry k paying `splices[k]`,
+	// on the field of the same name. Only the component the cost has is
+	// present, and the card is offered only when the viewer can pay it.
+	CostLabel        string            `json:"cost_label,omitempty"`
+	SacrificeLabel   string            `json:"sacrifice_label,omitempty"`
+	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	ExileCostN       int               `json:"exile_cost_n,omitempty"`
+	ExileCostLabel   string            `json:"exile_cost_label,omitempty"`
+	ExileCostOptions []string          `json:"exile_cost_options,omitempty"`
+	TapOthersLabel   string            `json:"tap_others_label,omitempty"`
+	TapOthersOptions *LegalTargetsView `json:"tap_others_options,omitempty"`
+	ReturnLabel      string            `json:"return_label,omitempty"`
+	ReturnOptions    *LegalTargetsView `json:"return_options,omitempty"`
+	// ChoosesOpponent marks "An opponent gains N life": the caster names
+	// one of OpponentOptions on `splice_payments[k].opponent`.
+	ChoosesOpponent bool     `json:"chooses_opponent,omitempty"`
+	OpponentOptions []string `json:"opponent_options,omitempty"`
 	// TargetMode, LegalTargets and Clauses are the spliced text's target
 	// clause, judged from the spell (CR 702.47c-d). Absent for a text
 	// with no target.
@@ -1646,6 +1698,14 @@ type OptionalCostView struct {
 	// cast_spell as `blight_ids`.
 	Blight        int               `json:"blight,omitempty"`
 	BlightOptions *LegalTargetsView `json:"blight_options,omitempty"`
+
+	// TapCost is the waterbend clause of a "you may waterbend {N}" offer
+	// (CR 701.67, #3999): the TapCostView a hand card's own waterbend
+	// ships, sized at the offer's {N}. Taking the offer makes it the
+	// cast's tap cost, so the client opens its tap picker from this when
+	// the offer is chosen and sends the picks as `tap_ids`. Absent on
+	// every other offer.
+	TapCost *TapCostView `json:"tap_cost,omitempty"`
 
 	// TargetMode / LegalTargets / Clauses are the target clause the
 	// spell has WHEN THIS COST IS PAID — a gift's "if the gift was
@@ -4633,6 +4693,11 @@ type ActivatedAbilityView struct {
 	// like `return_self`: the source is the payment, so nothing is
 	// collected and nothing rides the payload.
 	BottomSelf bool `json:"bottom_self,omitempty"`
+	// ExileGrantor is a granted row's "Exile <the permanent that grants
+	// this>" cost component (#4000): The Dominion Bracelet. Advisory,
+	// like `return_self`: the grantor (`granted_by`) is the payment, so
+	// nothing is collected and nothing rides the payload.
+	ExileGrantor bool `json:"exile_grantor,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -5093,11 +5158,6 @@ type ManaAbilityView struct {
 	// short, CantActivate carries the engine's refusal ("Not enough
 	// energy (have 0, need 1)").
 	EnergyCost int `json:"energy_cost,omitempty"`
-	// MillCost is a "Mill N cards" component (#3845, CR 701.17a) —
-	// Millikin's "{T}, Mill a card:". Omitted at zero. When the library
-	// is short, CantActivate carries the engine's refusal. The
-	// auto-tapper never pays such a row; the player activates it.
-	MillCost int `json:"mill_cost,omitempty"`
 	// Exert is an "Exert this land" / "Exert this creature" component
 	// (ADR 0130 §4): Arena of Glory, Oasis Ritualist. Always payable
 	// (CR 701.43b). The auto-tapper never pays such a row on its own,
@@ -5556,6 +5616,9 @@ func ViewOfGame(g *game.Game) GameView {
 		view.legalBySeat, view.legalActionsBySeat, view.legalTruncatedBySeat, view.controlledLegalActionsBySeat = enumerateLegalMoves(g)
 		// ADR 0167 §8: public, the turn-long controls still waiting.
 		view.ScheduledPlayerControls = viewOfScheduledPlayerControls(g)
+		// #4154: public, who chooses the attackers and blockers.
+		view.DeclarationControls = viewOfDeclarationControls(g)
+		view.AttackHandoff = viewOfAttackHandoff(g)
 		// S31 sub-PR 0: the public log resolves card names and knower
 		// sets out of the view that was just assembled, so it must run
 		// last — and inside the same read lock, so the log and the
@@ -7502,6 +7565,9 @@ func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []Att
 // land count, Avacyn's Judgment's 2 or its madness X.
 func viewOfTargetClause(g *game.Game, src game.TargetSource, altKey string, lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
 	v := viewOfLegalTargets(lt, spec)
+	// #4128: a clause bound to an opponent who is not at the table is
+	// not required, so the picker must not demand a pick for it.
+	v.Min = g.ClauseMinForEffect(src.Controller, spec)
 	stampTargetSetRule(g, v, lt.Cards, spec)
 	stampDivideAmount(g, v, src, altKey, spec)
 	return v
@@ -7563,7 +7629,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -7586,7 +7652,7 @@ func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarge
 func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.TapPermanentsCost) *TapCostView {
 	v := &TapCostView{
 		Key:         tc.Key,
-		Label:       tc.Label,
+		Label:       tc.ChainLabel(),
 		ColorClause: tc.ColorClause,
 		DemandsX:    tc.DemandsX(),
 	}
@@ -7594,7 +7660,17 @@ func viewOfTapCost(g *game.Game, caster uuid.UUID, manaCost string, tc *game.Tap
 	// permanent for convoke or waterbend doesn't target it, so a
 	// shrouded creature you control is still a legal tapper. The
 	// engine's own check (tap_cost.go) already works this way.
+	//
+	// A cast that owes more than one tap cost (Hama's waterbend of a
+	// convoke spell, #4177) offers the permanents any of them accepts.
 	opts := viewOfLegalTargets(g.SpecCandidatesForEffect(caster, tc.Spec), tc.Spec)
+	for _, spec := range tc.ChainSpecs()[1:] {
+		for _, id := range viewOfLegalTargets(g.SpecCandidatesForEffect(caster, spec), spec).Cards {
+			if !slices.Contains(opts.Cards, id) {
+				opts.Cards = append(opts.Cards, id)
+			}
+		}
+	}
 	opts.Cards = filterToController(g, opts.Cards, caster)
 	opts.Players = nil
 	opts.Min, opts.Max, opts.CountFromX = 0, 0, false
@@ -7991,6 +8067,10 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 		if oc.Blight > 0 {
 			v.Blight = oc.Blight
 			v.BlightOptions = &LegalTargetsView{Min: 1, Max: 1, Cards: cardIDStrings(g.BlightOptionsForEffect(caster))}
+		}
+		// #3999: "you may waterbend {N}" — the picker the offer opens.
+		if !oc.Waterbend.Empty() {
+			v.TapCost = viewOfTapCost(g, caster, oc.ManaCost, oc.Waterbend)
 		}
 		if oc.ChoosesOpponent {
 			v.ChoosesOpponent = true
@@ -8689,14 +8769,6 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 				views[i].CantActivate = short.Error()
 			}
 		}
-		// #3845, CR 701.17b / 118.3: Millikin's "Mill a card" on a
-		// library that is short, from the predicate the engine refuses
-		// with.
-		if views[i].CantActivate == "" && raw[r].MillCost > 0 {
-			if short := g.MillCostShortfall(controller, raw[r].MillCost); short != nil {
-				views[i].CantActivate = short.Error()
-			}
-		}
 		// #1183: the exhaust flag, stamped beside the condition
 		// because the client reads them off the same row and greys
 		// with the same code — and separately from it, because the
@@ -9374,6 +9446,22 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 		}
+		// PendingChoiceCopyTarget — "you may have this enter as a copy
+		// of ..." (S16.5; Clone, Sakashima the Impostor, Spark Double).
+		// Same shape as the sacrifice picker: the candidate permanents
+		// inlined as Options so the picker renders faces and the board
+		// can highlight them. Battlefield cards are public, so no
+		// redaction concern. #4027: an earlier merge dropped this block,
+		// so the picker never received a candidate and the table could
+		// not copy anything the client had not already drawn.
+		if c.Kind == game.PendingChoiceCopyTarget && len(c.CopyOptions) > 0 {
+			v.Options = make([]CardView, 0, len(c.CopyOptions))
+			for _, id := range c.CopyOptions {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+				}
+			}
+		}
 		// The scry family — scry, surveil, plain "look at the top
 		// N, put them back in any order", and ADR 0088's
 		// put_in_library — projects the cards, top-first, as Options. All three are "look at", not
@@ -9402,7 +9490,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// drops the list outright for non-choosers, because the
 		// COUNT of matches is itself information about a hidden zone
 		// that nobody else is entitled to.
-		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
+		if c.Kind == game.PendingChoiceSearchLibrary {
 			v.SearchMax = c.SearchMax
 			v.SearchMin = c.SearchMin
 			for _, id := range c.SearchGraveyardCards {
@@ -9412,8 +9500,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.SearchHand = append(v.SearchHand, id.String())
 			}
 			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
+			v.SearchOptional = g.SearchDeclineLegalLocked(c)
+			v.SearchUndecided = c.SearchIsUndecided()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
+				if v.SearchUndecided {
+					// Not searching yet: nothing has been looked at.
+					break
+				}
 				if card, ok := g.LookupCardForEffect(id); ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
@@ -10481,7 +10575,8 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	// ADR 0166, CR 723.4: a controller sees what the player they
 	// control can see.
 	var controlled []string
-	// ADR 0167 §9: the seats whose whole turn the viewer is playing.
+	// ADR 0167 §9: the seats whose whole turn (or one combat phase of
+	// it, #3999) the viewer is playing.
 	// Their per-seat cast stamps and ability rows reach the viewer as a
 	// fallback for any card the viewer has no answer of their own for,
 	// so the "Playing as" board can announce the controlled player's
@@ -10489,8 +10584,13 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	var playingFor []string
 	for _, pc := range v.PlayerControls {
 		if pc.Controller == viewerID {
+			// #4154: choosing a player's attackers or blockers is not
+			// controlling them, and shows nothing they can see.
+			if game.ControlUntil(pc.Until) == game.ControlUntilDeclarations {
+				continue
+			}
 			controlled = append(controlled, pc.Controlled)
-			if pc.Until == string(game.ControlUntilTurn) {
+			if game.ControlUntil(pc.Until).PlaysForThem() {
 				playingFor = append(playingFor, pc.Controlled)
 			}
 		}
@@ -10710,6 +10810,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// ADR 0167 §8: public, and identical for every seat. It grants
 		// no visibility.
 		ScheduledPlayerControls: v.ScheduledPlayerControls,
+		// #4154: public, and identical for every seat. They grant no
+		// visibility.
+		DeclarationControls: v.DeclarationControls,
+		AttackHandoff:       v.AttackHandoff,
 		// ADR 0057: public, and identical for every seat. The source
 		// name was resolved from public zones only.
 		Outcome: v.Outcome,
@@ -10838,6 +10942,8 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchGraveyard = nil
 			out[i].SearchHand = nil
 			out[i].SearchAllZones = false
+			out[i].SearchOptional = false
+			out[i].SearchUndecided = false
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the
@@ -11015,23 +11121,43 @@ func redactChoiceCards(c PendingChoiceView, cards []CardView, isKnower func(Card
 	if len(cards) == 0 {
 		return nil
 	}
-	// The pool is the chooser's own when no other seat is named, or
-	// when the named seat IS the chooser.
-	ownPool := c.FromPlayer == "" || c.FromPlayer == c.Chooser
+	// The pool is the chooser's own when the named seat IS the chooser.
+	// A prompt that names no seat carries the zero UUID on the wire, not
+	// "" (viewOfPendingChoices formats c.FromPlayer as is), so both
+	// spellings mean "no source player" (#4148). That says nothing about
+	// whose cards the candidates are, so it is settled card by card
+	// below: a sourceless prompt keeps an unknown candidate for its
+	// chooser only when the chooser owns it. Nothing in a hidden zone
+	// that belongs to another seat is ever kept on the strength of a
+	// missing FromPlayer.
+	sourceless := noSourceSeat(c.FromPlayer)
+	ownPool := c.FromPlayer == c.Chooser
 	// #2115: revealed_hand_pick is the same pool, and was revealed the
 	// same way; its graveyard candidates are public.
 	handPool := c.Kind == string(game.PendingChoiceDiscardFromHand) ||
 		c.Kind == string(game.PendingChoiceRevealedHandPick)
-	keepUnknown := c.Chooser == viewerID && (ownPool || handPool)
+	// #4027: a copy_target's candidates are battlefield permanents, a
+	// public zone whose cards are already on every viewer's wire (a
+	// face-down one as a back). Dropping one the chooser is not a knower
+	// of would leave it on the board and off the picker.
+	publicPool := c.Kind == string(game.PendingChoiceCopyTarget)
+	keepUnknown := c.Chooser == viewerID && (ownPool || handPool || publicPool)
 	out := make([]CardView, 0, len(cards))
 	for _, card := range cards {
 		known := isKnower(card)
-		if !known && !keepUnknown {
+		if !known && !keepUnknown && !(sourceless && c.Chooser == viewerID && card.Owner == c.Chooser) {
 			continue
 		}
 		out = append(out, redactCardForViewer(card, known))
 	}
 	return out
+}
+
+// noSourceSeat reports whether a PendingChoiceView.FromPlayer names no
+// seat: the empty string, or the zero UUID a prompt with no source
+// player formats to (#4148).
+func noSourceSeat(s string) bool {
+	return s == "" || s == uuid.Nil.String()
 }
 
 // redactZone returns a copy of `z` with every card projected through
@@ -12424,6 +12550,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
 			BottomSelf:    a.Cost.BottomSelf,
+			ExileGrantor:  a.Cost.ExileGrantor,
 			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
@@ -13013,7 +13140,12 @@ func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarget
 	// the catalog actually declares. Teferi's "up to one target"
 	// is the first clause whose Min is genuinely 0, so the
 	// difference became visible.
-	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max}
+	//
+	// The clause marks travel too: a lone clause an opponent chooses
+	// (Nova Pentacle, #2055) or the engine draws at random (Goblin Test
+	// Pilot, #4051) is one the client's walk skips. Without them the
+	// picker opened and the announcement it sent was refused.
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}
@@ -13190,7 +13322,6 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			ExileSelf:     a.ExileSelf,
 			LifeCost:      a.LifeCost,
 			EnergyCost:    a.EnergyCost,
-			MillCost:      a.MillCost,
 			Exert:         a.ExertCost,
 			ManaCost:      a.ManaCost,
 			Restrictions:  a.Restrictions,
@@ -13538,6 +13669,33 @@ func viewOfSpliceOffers(g *game.Game, caster uuid.UUID, src game.TargetSource, s
 			Name:     o.Name,
 			Label:    o.Ability.Label(),
 			ManaCost: o.Ability.ManaCost,
+		}
+		// #4055: the splice cost that is not mana, off the engine's own
+		// walks so the picker offers exactly the objects the validator
+		// accepts (#544).
+		if c := o.Ability.Cost; !c.Empty() {
+			v.CostLabel = c.Label
+			if c.Sacrifice != nil {
+				v.SacrificeLabel = c.Sacrifice.Label
+				v.SacrificeOptions = sacrificeCostOptions(g, caster, c.Sacrifice, uuid.Nil, false)
+			}
+			if ec := c.ExileCards; ec != nil {
+				v.ExileCostN = ec.N
+				v.ExileCostLabel = ec.Label
+				v.ExileCostOptions = cardIDStrings(g.ExileCostOptionsForEffect(caster, spell.InstanceID, ec))
+			}
+			if tc := c.TapOthers; !tc.Empty() {
+				v.TapOthersLabel = tc.Label
+				v.TapOthersOptions = tapOthersCostOptions(g, caster, spell.InstanceID, tc, false)
+			}
+			if rc := c.ReturnToHand; !rc.Empty() {
+				v.ReturnLabel = rc.Label
+				v.ReturnOptions = returnCostOptions(g, caster, spell.InstanceID, rc)
+			}
+			if c.OpponentGainsLife > 0 {
+				v.ChoosesOpponent = true
+				v.OpponentOptions = cardIDStrings(g.SpliceOpponentsLocked(caster))
+			}
 		}
 		if spec := o.Targets; spec != nil {
 			v.TargetMode = spec.Mode

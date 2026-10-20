@@ -83,19 +83,27 @@ func (o SpliceOnto) Words() string {
 
 // SpliceAbility is a card's "Splice onto [quality] [cost]".
 //
-// Only a mana cost is expressed. The five Kamigawa splice cards whose
-// cost is not mana (Veil of Secrecy, Horobi's Whisper, Roar of Jukai,
-// Hundred-Talon Strike, Torrent of Stone) stay out of the catalog until
-// a non-mana splice cost is built (ADR 0202, "Not covered").
+// The cost is mana (ManaCost: "Splice onto Arcane {1}{R}"), something else
+// (Cost: "Splice onto Arcane—Sacrifice two Mountains"), but never both on a
+// printed card. A cost that is not mana is paid as an additional cost is,
+// with the spell on the stack (splice_cost.go, ADR 0202's 2026-10-19
+// amendment, #4055).
 type SpliceAbility struct {
 	Onto     SpliceOnto
 	ManaCost string
+	// Cost is the non-mana cost. Nil for a mana splice.
+	Cost *SpliceCost
 }
 
-// Label is the ability as printed: "Splice onto Arcane {1}{R}".
+// Label is the ability as printed: "Splice onto Arcane {1}{R}", or for a
+// cost that is not mana "Splice onto Arcane—Sacrifice two Mountains." with
+// its full stop (the reminder text follows it).
 func (s *SpliceAbility) Label() string {
 	if s == nil {
 		return ""
+	}
+	if s.ManaCost == "" && s.Cost != nil {
+		return "Splice onto " + s.Onto.Words() + "—" + s.Cost.Label + "."
 	}
 	return "Splice onto " + s.Onto.Words() + " " + s.ManaCost
 }
@@ -335,6 +343,10 @@ func (g *Game) SpliceOffersLocked(caster uuid.UUID, spell Card, src TargetSource
 		}
 		spec := TargetSpecFor(key)
 		if spec != nil && g.anyClauseUnfillableLocked(src, AnnouncedClauses(spec, nil, nil)) {
+			continue
+		}
+		// #4055, CR 118.3: a cost the caster cannot pay is not offered.
+		if !g.spliceCostPayableLocked(caster, spell.InstanceID, sa.Cost) {
 			continue
 		}
 		out = append(out, SpliceOffer{CardID: c.InstanceID, Name: c.Name, Ability: *sa, Targets: spec})

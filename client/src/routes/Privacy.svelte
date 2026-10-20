@@ -143,14 +143,16 @@
     },
     {
       what: "Deck requests",
-      details: `When you ask for a deck’s missing cards, a row with your Discord id counts your requests (${F.deckRequestsPerWindow} every ${F.deckRequestWindowHours} hours). The request itself is a GitHub issue that names you by display name (see GitHub below).`,
-      why: "To limit how many requests one person can make.",
-      howLong: "The rows: until you delete your account. The GitHub issue: see below.",
-      source: "migration 0006; lobby/deckcheck.go deckRequestLimit, “Requested by”",
+      details: `When you ask for a deck’s missing cards, a row with your Discord id counts your requests (${F.deckRequestsPerWindow} every ${F.deckRequestWindowHours} hours). The request itself is a GitHub issue that names you by display name (see GitHub below). The server also remembers which cards each deck’s issue listed, with the deck’s link or a hash of its list but not your name, so an updated deck does not ask for the same card twice.`,
+      why: "To limit how many requests one person can make, and to ask only for cards an issue does not already list.",
+      howLong:
+        "The count rows: until you delete your account. The list of cards an issue named stays with the deck’s issue, since it names no one. The GitHub issue: see below.",
+      source:
+        "migrations 0006 and 0028; lobby/deckcheck.go deckRequestLimit, “Requested by”; lobby/mydecks_update.go requestedSet",
     },
     {
       what: "Bug reports, ideas and questions",
-      details: `What you type, your name and role, the table id and turn, and, for a bug or a question, the browser’s recent log. Up to ${F.bugImages} screenshots you attach. A bug report or a question also keeps the table’s public game log, and a bug report a copy of its replay, both readable by server admins only.`,
+      details: `What you type, your name and role, the table id and turn, and, for a bug or a question, the browser’s recent log. Up to ${F.bugImages} screenshots you attach, which can include a picture of the table if you tick the box for it. Your hand, face-down cards you can look at, library tops and any open prompt are covered in it. A bug report or a question also keeps the table’s public game log, and a bug report a copy of its replay, both readable by server admins only.`,
       why: "So the problem can be understood and fixed.",
       howLong: `The screenshots and the saved copies are removed after ${F.bugArtifactDays} days, or sooner, oldest first, if the store passes ${F.bugArtifactMiB} MiB. They are not tied to your account. The GitHub issue stays (see below).`,
       source:

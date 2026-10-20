@@ -222,3 +222,49 @@ describe("the library-top special-action pill — #1391", () => {
     expect(pills).toEqual(["cast", "plot"]);
   });
 });
+
+// #4127: a playable top card is offered on a card-sized peek raised off
+// the pile, with the pills under it, rather than on pills hanging over
+// the 28px tile's bottom edge.
+describe("the library-top peek — #4127", () => {
+  const peek = (c: HTMLElement): HTMLElement | null =>
+    c.querySelector<HTMLElement>("[data-library-top-peek]");
+
+  it("holds the top card and its pills when the viewer may play it", () => {
+    const spell = card({
+      instance_id: "spell1",
+      name: "Top Sorcery",
+      type_line: "Sorcery",
+      castable_here: true,
+    });
+    const { container } = mount([spell], { isSelf: true });
+    const p = peek(container)!;
+    expect(p).not.toBeNull();
+    expect(p.textContent).toContain("Top of library");
+    expect(p.querySelector(".peek-card")).not.toBeNull();
+    // The pill is inside it, not on the pile tile.
+    expect(p.querySelector(".pile-action")).not.toBeNull();
+    expect(container.querySelector(".pile .pile-action")).toBeNull();
+  });
+
+  it("is not drawn for a top card that is only revealed", () => {
+    // Oracle of Mul Daya reveals a sorcery without opening it: the pile
+    // thumb shows it, and there is nothing to offer.
+    const { container } = mount([card({ type_line: "Sorcery" })], { isSelf: true });
+    expect(peek(container)).toBeNull();
+  });
+
+  it("is drawn for a special action alone", () => {
+    const plotted = card({
+      instance_id: "bears",
+      name: "Grizzly Bears",
+      type_line: "Creature — Bear",
+      special_actions: [{ kind: "plot", label: "Plot {1}{G}", cost: "{1}{G}", available: true }],
+    });
+    const { container } = mountSpecial([plotted], true);
+    expect(peek(container)).not.toBeNull();
+    expect(container.querySelectorAll("[data-library-top-peek] .pile-action.special")).toHaveLength(
+      1,
+    );
+  });
+});

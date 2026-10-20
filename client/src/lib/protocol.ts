@@ -549,12 +549,21 @@ export interface GameView {
   // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
   // whole of a turn another player plays, Emrakul, the Promised End).
   // #3998: or "search" (Opposition Agent: only while the controlled
-  // player's search prompt is open).
+  // player's search prompt is open). #3999: or "combat" (Secret of
+  // Bloodbending: one combat phase, played like a turn).
+  // #4154: or "declarations" (Master Warcraft: only while the
+  // controller is making that player's attack or block declaration;
+  // grants no visibility and allows only the declaration verbs).
   // One entry per controlled player: the effect that applies now.
   player_controls?: PlayerControlView[];
   // ADR 0167 §8: turn-long controls still waiting for the controlled
   // player's next turn. Public; grants no visibility.
   scheduled_player_controls?: ScheduledPlayerControlView[];
+  // #4154: every "you choose which creatures attack / block" effect
+  // this turn (Master Warcraft, Odric), oldest first. Public.
+  declaration_controls?: DeclarationControlView[];
+  // #4154: this combat's attack declaration under one. Public.
+  attack_handoff?: AttackHandoffView;
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -1937,6 +1946,18 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // #4134: this is a "you may search", and "Don't search" is a legal answer
+  // right now: {choice_id, apply: false}. It is not "Find nothing": a search
+  // that finds nothing still happens (the library is shuffled and the table
+  // is told), a declined one never does. Absent for a mandatory search, and
+  // while an Opposition Agent's controller is answering (whether to search
+  // was the searcher's to decide before the control began).
+  search_optional?: boolean;
+  // #4134: an optional search opened under a live Opposition Agent, before
+  // the searcher has said whether they search. `options` is withheld; the
+  // answers are {apply: true} (begin the search, then the Agent's controller
+  // picks) and {apply: false} (don't search).
+  search_undecided?: boolean;
   // #3217: on a "search your library and/or graveyard" prompt, the
   // instance IDs among `options` that are in the searcher's graveyard.
   // Everything else is a library card. Absent for a library-only search.
@@ -2946,7 +2967,27 @@ export interface SpliceOfferView {
   card_id: string;
   name: string;
   label: string;
+  // "" for a splice cost that is not mana (#4055).
   mana_cost: string;
+  // #4055 (ADR 0202's 2026-10-19 amendment): a splice cost that is not
+  // mana, as printed without its full stop ("Sacrifice two Mountains"),
+  // and the picker for it. Only the component the cost has is present;
+  // the card is offered only when the viewer can pay it. The picks ride
+  // cast_spell in `splice_payments`, entry k paying `splices[k]`.
+  cost_label?: string;
+  sacrifice_label?: string;
+  sacrifice_options?: LegalTargetsView;
+  exile_cost_n?: number;
+  exile_cost_label?: string;
+  exile_cost_options?: string[];
+  tap_others_label?: string;
+  tap_others_options?: LegalTargetsView;
+  return_label?: string;
+  return_options?: LegalTargetsView;
+  // "An opponent gains N life": the caster names one of `opponent_options`
+  // on `splice_payments[k].opponent`.
+  chooses_opponent?: boolean;
+  opponent_options?: string[];
   target_mode?: string;
   legal_targets?: LegalTargetsView;
   clauses?: LegalTargetsView[];
@@ -3016,6 +3057,10 @@ export interface OptionalCostView {
   // cast_spell as `blight_ids`.
   blight?: number;
   blight_options?: LegalTargetsView;
+  // #3999: a "you may waterbend {N}" offer's picker. Taken, it is the
+  // cast's tap cost: the board opens the tap picker from it and sends
+  // the picks as `tap_ids` (lib/targeting.ts tapCostFor).
+  tap_cost?: TapCostView;
   // #1267: the target clause the spell has WHEN THIS COST IS PAID —
   // Long River's Pull counters any spell once the gift is promised.
   // Same shape and meaning as AlternativeCostView's trio; absent when
@@ -3548,6 +3593,11 @@ export interface ActivatedAbilityView {
   // #2726: "Put this creature on the bottom of its owner's library"
   // (Timestream Navigator). Advisory like `return_self`.
   bottom_self?: boolean;
+  // #4000: "Exile <the permanent that grants this>" on a granted row
+  // (The Dominion Bracelet). Advisory like `return_self`: the grantor
+  // (`granted_by`) is the payment, so nothing is picked and nothing is
+  // sent.
+  exile_grantor?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
@@ -3963,6 +4013,11 @@ export interface LegalTargetsView {
   // ordinary pick_target. `players` / `cards` are the superset any
   // opponent could pick from.
   chosen_by_opponent?: boolean;
+  // #4051: a clause whose target the server draws at random as the
+  // ability is activated ("any target chosen at random"). The walk
+  // skips it and sends no target for it; `players` / `cards` are what
+  // the draw is made from.
+  at_random?: boolean;
   // #2055: on a pick_target an opponent answers for such a clause, the
   // player whose spell or ability it is (the one still targeting).
   chosen_for?: string;
@@ -5056,10 +5111,6 @@ export interface ManaAbilityView {
   // Glory, Oasis Ritualist). The auto-tapper never pays such a row; the
   // player activates it from this menu.
   exert?: boolean;
-  // #3845: "Mill N cards" as a cost (Millikin's "{T}, Mill a card").
-  // The auto-tapper never pays such a row. A library too short to pay
-  // it makes the server stamp cant_activate, which greys the row.
-  mill_cost?: number;
   // S32 (#352): a mana component of the activation cost — the Signet
   // cycle's "{1}, {T}", Cabal Coffers' "{2}, {T}". Advisory like
   // life_cost. The client sends every activate_mana_ability with
@@ -5383,14 +5434,51 @@ export interface PlayerControlView {
   controlled: string;
   source?: string;
   source_name?: string;
-  until: "resolution" | "turn" | "search";
+  // #3999: "combat" is one combat phase of the controlled player's
+  // (Secret of Bloodbending), played like a turn for its length.
+  // #4154: "declarations" is not player control: the controller is
+  // making the controlled player's attack or block declaration, and
+  // nothing else.
+  until: "resolution" | "turn" | "search" | "combat" | "declarations";
 }
 
-/** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
+/**
+ * #4154: a "you choose which creatures attack / block" effect (Master
+ * Warcraft for the turn, Odric for one combat). Public; grants no
+ * visibility.
+ */
+export interface DeclarationControlView {
+  declarer: string;
+  source_name?: string;
+  attackers?: boolean;
+  blockers?: boolean;
+  scope: "turn" | "combat";
+}
+
+/**
+ * #4154: this combat's attack declaration under a DeclarationControl.
+ * `stage` absent: the declarer is choosing the attackers; "targets": the
+ * active player is choosing what each attacks and whether to pay its
+ * costs; "chosen": both are done. `declined` lists the creatures whose
+ * costs the active player declined this combat.
+ */
+export interface AttackHandoffView {
+  stage?: "targets" | "chosen";
+  declarer: string;
+  source_name?: string;
+  declined?: string[];
+}
+
+/**
+ * ADR 0167 §8: a control waiting for the controlled player's next turn,
+ * or (#3999, `until: "combat"`) their next combat phase. Absent `until`
+ * reads as "turn".
+ */
 export interface ScheduledPlayerControlView {
   controller: string;
   controlled: string;
   source_name?: string;
+  until?: "turn" | "combat";
 }
 
 // ADR 0127 §3: one of a seat's standing answers, as the server holds it.

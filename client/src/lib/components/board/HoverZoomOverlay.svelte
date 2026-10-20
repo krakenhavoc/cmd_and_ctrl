@@ -21,6 +21,7 @@
   import { cardImageURL } from "../../cardImage";
   import {
     isFlippedFlipCard,
+    isOneSidedLayout,
     isSidewaysArt,
     LAYOUT_FLIP,
     otherSideHeading,
@@ -60,8 +61,9 @@
   const otherFace = $derived.by(() => {
     const faces = card?.faces;
     if (!faces || faces.length < 2) return null;
-    // A split card's halves share one image: nothing to inset (#3518).
-    if (sideways) return null;
+    // A split, adventurer or prepare card's halves share one image:
+    // nothing to inset, and no ?face=1 scan to request (#3518, #4109).
+    if (isOneSidedLayout(card)) return null;
     const active = card?.active_face ?? 0;
     const idx = active === 0 ? 1 : 0;
     // A flip card's other half is the same image turned the other way
@@ -326,7 +328,7 @@
        screen reader reaches a card's other face, so it stays in the
        accessibility tree and its images are named for the face each
        one shows. -->
-  <div class="overlay" class:two-sided={otherSide !== null}>
+  <div class="overlay" class:two-sided={otherSide !== null} data-board-shot-private>
     <div class="scan" class:sideways>
       {#if bigSrc}
         <!-- keyed so a new card never shows the previous card's scan

@@ -24,6 +24,13 @@ announcedBlocks	map:array
 announcedBlocks{}	custom(uuid.UUID)
 attackDefenders	map:array
 attackDefenders{}	custom(uuid.UUID)
+attackHandoff	object
+attackHandoff.declarer	custom(uuid.UUID)
+attackHandoff.declined	array
+attackHandoff.declined[]	custom(uuid.UUID)
+attackHandoff.source	custom(uuid.UUID)
+attackHandoff.sourceName	string
+attackHandoff.stage	string
 attacksDeclared	bool
 battlefield	object
 battlefield.cards	array
@@ -410,6 +417,15 @@ dayNight.prevTurnAllSpells	number:int
 dayNight.prevTurnKnown	bool
 dayNight.prevTurnMostSpells	number:int
 dayNight.prevTurnSpells	number:int
+declarationControls	array
+declarationControls[]	object
+declarationControls[].attackers	bool
+declarationControls[].blockers	bool
+declarationControls[].declarer	custom(uuid.UUID)
+declarationControls[].source	custom(uuid.UUID)
+declarationControls[].sourceName	string
+declarationControls[].thisCombat	bool
+declarationControls[].turnSeq	number:int
 delayedTriggers	array
 delayedTriggers[]	object
 delayedTriggers[].at	string
@@ -2049,6 +2065,7 @@ lastKnownStack[].item.sourceObject	object
 lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
 lastKnownStack[].item.sourceTurnOvers	number:int
+lastKnownStack[].item.sourceUntapped	bool
 lastKnownStack[].item.spliced	array
 lastKnownStack[].item.spliced[]	object
 lastKnownStack[].item.spliced[].cardId	custom(uuid.UUID)
@@ -2324,6 +2341,8 @@ outcome.kind	string
 outcome.source	custom(uuid.UUID)
 outcome.winner	custom(uuid.UUID)
 pausedModeWalk	object
+pausedModeWalk.inner	array
+pausedModeWalk.inner[]	number:int
 pausedModeWalk.item	object
 pausedModeWalk.item.altCost	string
 pausedModeWalk.item.altCostExiles	bool
@@ -2481,6 +2500,7 @@ pausedModeWalk.item.sourceObject	object
 pausedModeWalk.item.sourceObject.epoch	number:int
 pausedModeWalk.item.sourceObject.id	custom(uuid.UUID)
 pausedModeWalk.item.sourceTurnOvers	number:int
+pausedModeWalk.item.sourceUntapped	bool
 pausedModeWalk.item.spliced	array
 pausedModeWalk.item.spliced[]	object
 pausedModeWalk.item.spliced[].cardId	custom(uuid.UUID)
@@ -2788,6 +2808,7 @@ pausedResolutionTail.item.sourceObject	object
 pausedResolutionTail.item.sourceObject.epoch	number:int
 pausedResolutionTail.item.sourceObject.id	custom(uuid.UUID)
 pausedResolutionTail.item.sourceTurnOvers	number:int
+pausedResolutionTail.item.sourceUntapped	bool
 pausedResolutionTail.item.spliced	array
 pausedResolutionTail.item.spliced[]	object
 pausedResolutionTail.item.spliced[].cardId	custom(uuid.UUID)
@@ -3089,6 +3110,7 @@ pausedStepWalk.item.sourceObject	object
 pausedStepWalk.item.sourceObject.epoch	number:int
 pausedStepWalk.item.sourceObject.id	custom(uuid.UUID)
 pausedStepWalk.item.sourceTurnOvers	number:int
+pausedStepWalk.item.sourceUntapped	bool
 pausedStepWalk.item.spliced	array
 pausedStepWalk.item.spliced[]	object
 pausedStepWalk.item.spliced[].cardId	custom(uuid.UUID)
@@ -3232,8 +3254,12 @@ pausedStepWalk.item.trigger.Object.Types	array
 pausedStepWalk.item.trigger.Object.Types[]	string
 pausedStepWalk.item.uncopyable	bool
 pausedStepWalk.item.xValue	number:int
+pausedStepWalk.key	string
+pausedStepWalk.occ	number:int
+pausedStepWalk.outer	recursive(game.stepWalkSnapshot)
 pausedStepWalk.path	array
 pausedStepWalk.path[]	number:int
+pausedStepWalk.then	string
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
@@ -3756,6 +3782,7 @@ pendingTriggers[].sourceObject	object
 pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
 pendingTriggers[].sourceTurnOvers	number:int
+pendingTriggers[].sourceUntapped	bool
 pendingTriggers[].spliced	array
 pendingTriggers[].spliced[]	object
 pendingTriggers[].spliced[].cardId	custom(uuid.UUID)
@@ -4552,6 +4579,7 @@ seats[].castPermissions	array
 seats[].castPermissions[]	object
 seats[].castPermissions[].altCostKey	string
 seats[].castPermissions[].anyColor	bool
+seats[].castPermissions[].anyNumber	bool
 seats[].castPermissions[].anyType	bool
 seats[].castPermissions[].budgetGroup	custom(uuid.UUID)
 seats[].castPermissions[].cards	array
@@ -4617,6 +4645,7 @@ seats[].castPermissions[].filter.fromChosenType	bool
 seats[].castPermissions[].filter.historicOnly	bool
 seats[].castPermissions[].filter.instantOrSorceryOnly	bool
 seats[].castPermissions[].filter.landsOnly	bool
+seats[].castPermissions[].filter.named	string
 seats[].castPermissions[].filter.nonLandOnly	bool
 seats[].castPermissions[].filter.nonLandPermanentOnly	bool
 seats[].castPermissions[].filter.noncreatureOnly	bool
@@ -4634,6 +4663,7 @@ seats[].castPermissions[].gainsAbilities[]	string
 seats[].castPermissions[].gainsKeywords	array
 seats[].castPermissions[].gainsKeywords[]	string
 seats[].castPermissions[].grantsHaste	bool
+seats[].castPermissions[].graveyardsAreYours	bool
 seats[].castPermissions[].ifNotCast	string
 seats[].castPermissions[].label	string
 seats[].castPermissions[].lapseOnPass	string
@@ -7292,6 +7322,7 @@ seats[].statics[].cantBeCountered.filter.fromChosenType	bool
 seats[].statics[].cantBeCountered.filter.historicOnly	bool
 seats[].statics[].cantBeCountered.filter.instantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.landsOnly	bool
+seats[].statics[].cantBeCountered.filter.named	string
 seats[].statics[].cantBeCountered.filter.nonLandOnly	bool
 seats[].statics[].cantBeCountered.filter.nonLandPermanentOnly	bool
 seats[].statics[].cantBeCountered.filter.noncreatureOnly	bool
@@ -7322,6 +7353,7 @@ seats[].statics[].castBan.filter.fromChosenType	bool
 seats[].statics[].castBan.filter.historicOnly	bool
 seats[].statics[].castBan.filter.instantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.landsOnly	bool
+seats[].statics[].castBan.filter.named	string
 seats[].statics[].castBan.filter.nonLandOnly	bool
 seats[].statics[].castBan.filter.nonLandPermanentOnly	bool
 seats[].statics[].castBan.filter.noncreatureOnly	bool
@@ -7397,6 +7429,7 @@ seats[].statics[].nextSpell.filter.fromChosenType	bool
 seats[].statics[].nextSpell.filter.historicOnly	bool
 seats[].statics[].nextSpell.filter.instantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.landsOnly	bool
+seats[].statics[].nextSpell.filter.named	string
 seats[].statics[].nextSpell.filter.nonLandOnly	bool
 seats[].statics[].nextSpell.filter.nonLandPermanentOnly	bool
 seats[].statics[].nextSpell.filter.noncreatureOnly	bool
@@ -7431,6 +7464,7 @@ seats[].statics[].timing.filter.fromChosenType	bool
 seats[].statics[].timing.filter.historicOnly	bool
 seats[].statics[].timing.filter.instantOrSorceryOnly	bool
 seats[].statics[].timing.filter.landsOnly	bool
+seats[].statics[].timing.filter.named	string
 seats[].statics[].timing.filter.nonLandOnly	bool
 seats[].statics[].timing.filter.nonLandPermanentOnly	bool
 seats[].statics[].timing.filter.noncreatureOnly	bool
@@ -7995,6 +8029,7 @@ stackMeta[].sourceObject	object
 stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
 stackMeta[].sourceTurnOvers	number:int
+stackMeta[].sourceUntapped	bool
 stackMeta[].spliced	array
 stackMeta[].spliced[]	object
 stackMeta[].spliced[].cardId	custom(uuid.UUID)
@@ -8140,6 +8175,15 @@ stackMeta[].uncopyable	bool
 stackMeta[].xValue	number:int
 startingSeat	number:int
 state	string
+stepRecords	array
+stepRecords[]	object
+stepRecords[].item	custom(uuid.UUID)
+stepRecords[].key	string
+stepRecords[].record	object
+stepRecords[].record.ids	array
+stepRecords[].record.ids[]	custom(uuid.UUID)
+stepRecords[].record.ns	array
+stepRecords[].record.ns[]	number:int
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
 turn	object

@@ -30,13 +30,13 @@ func init() {
 				}
 				return GrantKeywordUntilEOT{Match: others, Keywords: []string{"trample"}, Label: name + " — trample"}.Apply(ctx)
 			}),
-		ModeDoing("Discard your hand, then draw four cards.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if _, err := discardWholeHand(ctx.Game, item.Controller); err != nil {
-					return err
-				}
-				return DrawCards{Player: item.Controller, N: 4}.Apply(ctx)
+		// The draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+		ModeSteps("Discard your hand, then draw four cards.", nil,
+			Instruction(func(ctx *Context) error {
+				_, err := discardWholeHand(ctx.Game, ctx.Controller())
+				return err
 			}),
+			DrawCards{N: 4}),
 		ModeDoing("Umaro deals 5 damage to any target.", TargetAny(),
 			func(item *game.StackItem, ctx *Context, occ int) error {
 				tgt, ok := ModeTarget(ctx, occ)

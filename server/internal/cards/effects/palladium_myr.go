@@ -12,8 +12,9 @@ package effects
 // ability. Haste on the Myr lifts it, same as any tap ability.
 func init() {
 	Register(Spec{
-		OracleID: "7b0767b8-b504-456e-93bd-218502f73b3d",
-		Name:     "Palladium Myr",
+		OracleID:     "7b0767b8-b504-456e-93bd-218502f73b3d",
+		Name:         "Palladium Myr",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}{C}",

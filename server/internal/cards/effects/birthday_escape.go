@@ -1,13 +1,11 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Birthday Escape — Sorcery {U}:
 //
 //	"Draw a card. The Ring tempts you."
 //
-// In printed order (CR 608.2c). A draw never pauses, so the tempt can
-// follow it directly.
+// In printed order (CR 608.2c): a draw can pause (a dredge offer), and the
+// tempt waits for the answer.
 //
 // No simplification.
 func init() {
@@ -15,11 +13,7 @@ func init() {
 		OracleID:     "4f958678-2a32-4a30-8fe7-47df9ada6b2f",
 		Name:         "Birthday Escape",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return TheRingTemptsYou{}.Apply(ctx)
-		},
+		// The Ring tempts after the draw's prompt is answered (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(DrawCards{N: 1}, TheRingTemptsYou{}),
 	})
 }

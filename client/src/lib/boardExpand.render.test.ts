@@ -9,6 +9,7 @@
 // boardExpand.test.ts.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { get } from "svelte/store";
 
 vi.mock("./sounds", () => ({ play: () => {} }));
@@ -493,5 +494,126 @@ describe("placement (ADR 0120 §2)", () => {
     const left = parseFloat(overlay()!.style.left);
     const width = parseFloat(overlay()!.style.width);
     expect(left + width <= 500 - 8 || left >= 584 + 8).toBe(true);
+  });
+});
+
+// ADR 0120 as amended 2026-10-18 (#4122): the overlay's own layout. A
+// header names the seat and holds its one identity, the command zone is
+// a back-row group, and the strip holds the piles and the hand.
+describe("the overlay's layout (#4122)", () => {
+  const commander = (owner: string): CardView =>
+    ({
+      instance_id: `${owner}-cmdr`,
+      name: "Adeline, Resplendent Cathar",
+      owner,
+      controller: owner,
+      type_line: "Legendary Creature — Human Knight",
+    }) as unknown as CardView;
+
+  const withCommanderAndHand = (view: GameView): GameView => {
+    const bob = view.seats[1] as PlayerView;
+    (bob as { command: unknown }).command = zone("command", BOB, [commander(BOB)]);
+    (bob as { hand: unknown }).hand = { kind: "hand", owner: BOB, count: 5, cards: [] };
+    return view;
+  };
+
+  it("names the seat in a header that holds its one avatar", () => {
+    mountBoard();
+    click(tableAvatar(BOB));
+    const o = overlay()!;
+    const head = o.querySelector<HTMLElement>(".head")!;
+    expect(head).not.toBeNull();
+    expect(head.querySelector(".name")?.textContent).toBe("Bob");
+    expect(head.querySelector(".life")?.textContent).toBe("40");
+    // One identity for the seat in the overlay, and it is the header's,
+    // so a pick of the player or an arrow to them lands there.
+    const avatars = o.querySelectorAll(`[data-seat-id="${BOB}"]`);
+    expect(avatars).toHaveLength(1);
+    expect(head.contains(avatars[0])).toBe(true);
+    // The header is not a second name for the board.
+    expect(regionsNamed("Bob board")).toHaveLength(1);
+    // A full board's seat has no turn chip.
+    expect(head.querySelector(".turn-chip")).toBeNull();
+  });
+
+  it("draws the command zone as a back-row group, and the hand count in the strip", () => {
+    mountBoard(withCommanderAndHand(gameView()));
+    click(tableAvatar(BOB));
+    const o = overlay()!;
+    const cmd = o.querySelector<HTMLElement>('[role="group"][aria-label^="Bob command zone"]')!;
+    expect(cmd).not.toBeNull();
+    expect(cmd.closest(".grid-middle")).not.toBeNull();
+    expect(cmd.querySelector(".row-label")?.textContent).toContain("Command");
+    expect(o.querySelector(".grid-bottom .command-strip")).toBeNull();
+    const count = o.querySelector<HTMLElement>(".grid-bottom .strip-hand-count")!;
+    expect(count.getAttribute("aria-label")).toBe("5 cards in hand");
+    // The piles leave the rail for the strip; the rail holds no identity.
+    expect(o.querySelector(".rail > .identity")).toBeNull();
+    expect(o.querySelector(".rail > .pile-bar")).not.toBeNull();
+  });
+
+  it("shows the reflow turn chip of a seat that is an avatar card", () => {
+    updateSettings("display", "expandStyle", "reflow");
+    const view = gameView();
+    (view.turn as { active_seat: number }).active_seat = 1;
+    mountBoard(view);
+    // Bob's turn: Cat plays next and is an avatar card.
+    click(tableAvatar(CAT));
+    const chip = overlay()!.querySelector(".head .turn-chip");
+    expect(chip?.textContent?.trim()).toBe("Next up");
+    click(tableAvatar(CAT));
+    // Bob, the active seat, is a full board: no chip.
+    click(tableAvatar(BOB));
+    expect(overlay()!.querySelector(".head .turn-chip")).toBeNull();
+  });
+
+  // jsdom has no layout, so the sizes are read off the stylesheet, as
+  // boardArtPip.test.ts reads BattlefieldRow's (call 9).
+  it("sizes every group at one card size, capped at 240px times the setting", () => {
+    const src = readFileSync("src/lib/components/board/PlayerPanel.svelte", "utf8");
+    const at = src.indexOf("  .panel.expanded:not(.flipped) {");
+    expect(at).toBeGreaterThan(0);
+    const block = src.slice(at, src.indexOf("\n  }", at));
+    expect(block).toContain("--card-h-sm: var(--card-h);");
+    expect(block).toContain("calc(240px * var(--card-scale, 1))");
+    expect(block).not.toContain("--card-scale-opponent");
+  });
+
+  // #4122's branch E2E: with a dock request open the overlay is short,
+  // and a 96px floor made the rows taller than the panel. The back row
+  // ran down under the strip and the opponent's face-down fan took the
+  // click meant for a card in it. The floor is rowFit's MIN_CARD_H, the
+  // back row's track may shrink to nothing, and the back row is cut at
+  // its track rather than reaching under the strip.
+  // #4122's branch E2E: at 1024×768 with a dock request open, "Command 1"
+  // was wider than its one small commander, and the absolute label past
+  // the group's edge made the back row scroll sideways by 2px. It is kept
+  // inside the group, as BattlefieldRow keeps the zones' labels.
+  it("keeps the command group's label inside the group", () => {
+    const src = readFileSync("src/lib/components/board/CommandStrip.svelte", "utf8");
+    const rule = (sel: string) => {
+      const at = src.indexOf(`  ${sel} {`);
+      expect(at, sel).toBeGreaterThan(0);
+      return src.slice(at, src.indexOf("\n  }", at));
+    };
+    expect(rule(".row-label")).toContain("max-width: calc(100% - 12px);");
+    expect(rule(".row-name")).toContain("text-overflow: ellipsis;");
+    expect(rule(".command-strip.row")).toContain("min-width: 72px;");
+  });
+
+  it("never lets the back row reach under the strip", () => {
+    const src = readFileSync("src/lib/components/board/PlayerPanel.svelte", "utf8");
+    const at = src.indexOf("  .panel.expanded:not(.flipped) {");
+    const block = src.slice(at, src.indexOf("\n  }", at));
+    expect(block).toMatch(/--card-h: clamp\(\s*56px,/);
+    expect(block).toContain(
+      "grid-template-rows: auto minmax(var(--creature-min, 0px), auto) minmax(0, 1fr) auto;",
+    );
+    const mid = src.indexOf("  .panel.expanded:not(.flipped) .grid-middle {");
+    expect(mid).toBeGreaterThan(0);
+    expect(src.slice(mid, src.indexOf("\n  }", mid))).toContain("min-height: 0;");
+    // .grid-middle itself clips what does not fit, vertically.
+    const base = src.indexOf("  .grid-middle {");
+    expect(src.slice(base, src.indexOf("\n  }", base))).toContain("overflow-y: hidden;");
   });
 });

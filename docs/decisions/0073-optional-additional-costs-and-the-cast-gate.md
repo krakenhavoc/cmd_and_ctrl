@@ -1569,3 +1569,81 @@ Tests: `cards/effects/improvise_test.go`.
 **Native improvise cards (#3654).** The twenty-odd cards that print improvise declare `TapCost: Improvise()` and share the payment
 code above; `effects.SpellsYouCastHaveImprovise` (beside the convoke grant) is the permanent's "noncreature spells you cast have
 improvise" (Ironheart, Clever Champion). Tests: `cards/effects/improvise_cards_test.go`.
+
+
+## Amendment 2026-10-19: an optional waterbend (#3999)
+
+Secret of Bloodbending: "As an additional cost to cast this spell, you may
+waterbend {10}." A waterbend cost (CR 701.67) was a mandatory tap cost on a
+spell (`Spec.TapCost`, Waterbender's Restoration) or an ability's cost; an
+optional one had no shape.
+
+**The shape.** `AdditionalCost.Waterbend`, the tap clause
+(`effects.Waterbend`), on an optional cost keyed `waterbend`
+(`game.WaterbendKey`) whose `ManaCost` is the clause's own {N}. Built with
+`effects.OptionalWaterbend("{10}")`. Chosen, the {N} joins the total at
+CR 601.2f like a kicker's mana, so the modifiers, the auto-tapper, the
+preview and the enumerator already price it.
+
+**The taps.** A cast carries one tap cost and one `tap_ids` list.
+`tapCostForCastParamsLocked` returns a chosen optional waterbend as that
+tap cost, marked `InCost` as Hama's waterbend alternative cost is (#3989):
+its {N} is already in the total, so each tapped artifact or creature pays
+{1} of it, never the printed cost beside it (CR 701.67b), and the budget
+is the waterbend's generic capped at what the modifiers leave. Unchosen,
+the cast has no tap cost and a `tap_ids` is refused like any stray one.
+
+**Register refuses** a waterbend clause in the mandatory slot or on an
+either/or branch, one built by hand (another key, a mana cost that is not
+the clause's, any other component, a repeat, an X), two on one card, one
+beside a card's own tap cost, and an optional cost keyed `waterbend`
+without a clause.
+
+**Wire and client.** `OptionalCostView.tap_cost` is the offer's picker
+(`TapCostView`, sized at {N}). The client's `tapCostFor(card, choices)` is
+the card's own `tap_cost` or the chosen offer's, so the board opens its tap
+picker for a chosen waterbend and sends the picks as `tap_ids`.
+
+**Not covered.** As for convoke, the move enumerator offers the optional
+cost but never offers taps for it; it prices the {N} as mana.
+
+**Snapshot impact.** None: the choice is the existing optional-cost index,
+and the clause is catalog data.
+
+Tests: `cards/effects/secret_of_bloodbending_test.go`,
+`cards/effects/the_dominion_bracelet_test.go` (the refusals),
+`protocol/combat_control_view_test.go`, `client/src/lib/tapCost.test.ts`.
+
+## Amendment 2026-10-19: a cast that owes more than one tap cost (#4177, #4172)
+
+A cast used to carry ONE tap cost (`tapCostForCastParamsLocked`), so a spell cast for a waterbend cost (Hama, the Bloodbender's
+permission, #3989) lost any convoke or improvise it had, its own, a permanent's grant (Hoarding Broodlord) or an improvise
+promise (Archway of Innovation), and Waterbender's Restoration cast that way dropped its own `waterbend {X}`. A Hama cast of a
+convoke spell could not pay a tax with a creature.
+
+**The shape.** `TapPermanentsCost.Also` chains the other tap costs the same cast owes, as `TapCostRef` values (a key, a
+waterbend's `{N}`, whether it is in the cost), not as costs: a cost holds a closure, and a field of its own type would be a
+second route from `Game` to one (the closure ratchet). `tapCostFromRef` rebuilds each link with the constructor the catalog
+used (`Convoke()`, `Improvise()`, `Waterbend(extra)`; `game.ConvokeTapCost`, `ImproviseTapCost` and `WaterbendTapCost` are
+installed at init). `WithAlso` builds a chain as a new value and drops a second convoke or improvise (CR 702.51b).
+`TapPermanentsCostForGrantLocked` chains the grant's waterbend (marked `InCost`) with the card's own or granted tap cost, and
+`tapCostForCastParamsLocked` chains a chosen optional waterbend (#3999) in front of whatever else the cast owes.
+
+**The wire is unchanged.** A cast still names one list of tapped permanents (`tap_ids`). The engine shares it between the
+chained costs (`splitTapPayersLocked`): costs are served in order; each takes the permanents only it can use first, then the
+ones the later costs want least (fewer colours first when a later cost is convoke), and only those that still reduce what it
+owes; a tap that pays for nothing under any cost is refused. A waterbend's taps pay only its own `{N}` (CR 701.67b); convoke and
+improvise pay any part of the total cost, a tax for instance (CR 702.51a, 702.126a). The same split prices the cast
+(`tapPermanentsAdjustedLocked`), validates it (`tapChainPaysLocked`, with `tapChainBudget` bounding the list) and records who
+convoked (`tapConvokersForCastLocked`, #3172).
+
+**View.** `TapCostView.label` joins the labels ("Waterbend {3} + Convoke"), its options are the permanents any link accepts and
+its `max` is the sum of the links' budgets: an affordance, as before; the server re-derives the real budget.
+
+**Not covered.** The move enumerator still offers no taps for a tap cost (as for convoke). Two different convoke-like grants on
+one spell are still one (`TapPermanentsCostForCastLocked` returns the first).
+
+**Snapshot impact.** None: a tap cost is never stored.
+
+Tests: `cards/effects/hama_chain_test.go`, `game/tap_cost_chain_test.go`. Back-out: return the grant's waterbend without
+`WithAlso` in `TapPermanentsCostForGrantLocked` and five of the Hama chain tests fail.

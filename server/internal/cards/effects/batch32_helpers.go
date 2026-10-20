@@ -90,37 +90,6 @@ func b32TokenYouControlAttacksAPlayer(g *game.Game, controller uuid.UUID) bool {
 	return false
 }
 
-// b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed is the set
-// of players a creature named `name` under `controller`'s control
-// dealt combat damage to this turn. What Trygon Predator's target
-// clause reads to narrow "target artifact or enchantment THAT PLAYER
-// controls" to the players its Predators actually connected with: a
-// target predicate is not handed the trigger's event, so this stands
-// in for it.
-//
-// The per-turn tally's damage-source cell (#1009). It used to scan
-// this turn's events and look the dealing creature up wherever it had
-// since landed, which lost a dealer that had ceased to exist; the
-// tally records the name AT THE DAMAGE, while the creature is still
-// on the battlefield to be read.
-func b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g *game.Game, controller uuid.UUID, name string) map[uuid.UUID]bool {
-	return g.PlayersDealtCombatDamageThisTurnByName(controller, name)
-}
-
-// b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator is Trygon
-// Predator's target predicate: an artifact or enchantment controlled
-// by a player one of the caster's Trygon Predators dealt combat
-// damage to this turn. The trigger's body re-checks the specific
-// damaged player, so with two Predators connecting with two players
-// in one combat each trigger's pick is still validated against its
-// own victim.
-func b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator(g *game.Game, caster uuid.UUID, c game.Card) bool {
-	if !c.IsArtifact() && !c.IsEnchantment() {
-		return false
-	}
-	return b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g, caster, "Trygon Predator")[c.Controller]
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b32CreatureYouControlBecameTapped is Quest for Renewal's
@@ -266,28 +235,6 @@ func b32PutCountersPerElfOnChosenCreature(g *game.Game, item *game.StackItem) er
 // b32TrygonPredatorLabel is the stack label of Trygon Predator's
 // combat-damage trigger.
 const b32TrygonPredatorLabel = "Trygon Predator — destroy an artifact or enchantment that player controls"
-
-// b32DestroyChosenIfControlledByTriggerVictim is Trygon Predator's
-// body: the chosen artifact or enchantment is destroyed if it is
-// still legal and still controlled by the player the Predator hit —
-// read off the item's triggering event (item.Trigger.Event.Target,
-// ADR 0041 P9) rather than captured, so a table with this trigger
-// waiting on the stack is a restore point. A pick under some other
-// player's control — possible when two Predators connected with two
-// players in one combat and the clause offered both players'
-// permanents — does nothing.
-func b32DestroyChosenIfControlledByTriggerVictim(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	id, ok := b16FirstLegalTargetCard(ctx)
-	if !ok {
-		return nil
-	}
-	c, found := g.LookupCardForEffect(id)
-	if !found || c.Controller != item.Trigger.Event.Target {
-		return nil
-	}
-	return DestroyTarget{Target: id}.Apply(ctx)
-}
 
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —
 // the "one or more" dedup keys on it.

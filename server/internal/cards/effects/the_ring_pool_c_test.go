@@ -157,6 +157,9 @@ func TestThereAndBackAgain(t *testing.T) {
 
 	advanceToPrecombatMainOf(t, g, seat)
 	ringSettle(t, g)
+	// Chapter II searches for a Mountain the library does not hold; the
+	// search still asks (#4140).
+	takeSearchPrompts(t, g)
 	advanceToPrecombatMainOf(t, g, seat)
 	ringSettle(t, g)
 	var smaug uuid.UUID

@@ -93,25 +93,43 @@ func TestSamiBChromaticSphereAddsManaAndDraws(t *testing.T) {
 	hand := len(me.Hand.Cards)
 
 	// Without the {1} the ability is refused and the Sphere stays.
-	if err := g.ActivateManaAbility(me.ID, sphere, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err == nil {
+	if err := g.ActivateCatalogAbility(me.ID, sphere, 0, game.ActivateAbilityParams{Strict: true}); err == nil {
 		t.Fatal("activating with no {1} in pool should be refused")
 	}
 	if findBattlefieldCardForTest(g, sphere) == nil || len(me.Hand.Cards) != hand {
 		t.Fatal("a refused activation must leave the Sphere and the hand alone")
 	}
 
+	// Not a mana ability (#3971, CR 605.1a: it draws a card): the costs
+	// are paid at announce, the ability stacks, and the mana and the card
+	// come on resolution.
 	samiGiveColorless(me, 1)
-	if err := g.ActivateManaAbility(me.ID, sphere, 0, game.ManaAbilityParams{Colors: []string{"G"}}); err != nil {
-		t.Fatalf("ActivateManaAbility: %v", err)
+	if err := g.ActivateCatalogAbility(me.ID, sphere, 0, game.ActivateAbilityParams{Strict: true}); err != nil {
+		t.Fatalf("activate: %v", err)
 	}
+	if len(g.StackMeta) != 1 || len(me.Hand.Cards) != hand || me.ManaPool.Total() != 0 {
+		t.Fatalf("stack %d, hand %d (was %d), pool %d: want the ability stacked and nothing added yet",
+			len(g.StackMeta), len(me.Hand.Cards), hand, me.ManaPool.Total())
+	}
+	if !samiInGraveyard(g, me, sphere) {
+		t.Error("the Sphere was sacrificed as a cost")
+	}
+	passPriorityAroundTable(t, g)
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceMana, me.ID)
+	if pick == nil {
+		t.Fatal("no colour pick for the any-colour mana")
+	}
+	if err := g.ResolveManaChoice(pick.ID, me.ID, "G"); err != nil {
+		t.Fatalf("ResolveManaChoice: %v", err)
+	}
+	// The draw waits for the colour answer (CR 608.2c); the actions layer
+	// settles the resolution after every answer, as this does.
+	g.SettleResolution()
 	if got := poolColors(me); !reflect.DeepEqual(got, []string{"G"}) {
 		t.Errorf("pool = %v, want [G] (the {1} was spent)", got)
 	}
 	if len(me.Hand.Cards) != hand+1 {
 		t.Errorf("hand = %d, want %d", len(me.Hand.Cards), hand+1)
-	}
-	if !samiInGraveyard(g, me, sphere) {
-		t.Error("the Sphere was sacrificed as a cost")
 	}
 }
 

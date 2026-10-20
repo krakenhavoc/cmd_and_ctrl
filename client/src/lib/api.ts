@@ -16,12 +16,14 @@ import {
   type BugReportContext,
   type BugReportKind,
 } from "./bugReport";
+import { splicePaymentsWire } from "./targeting";
 import { redactSecrets } from "./redact";
 import type { PrebuiltDecksResponse } from "./prebuiltDecks";
 import type { MyGame } from "./myGames";
 import type { MyDeckInfo, MyDecksResponse } from "./myDecks";
 import type { CoverageReport, DeckCheckRequest } from "./deckcheck";
 import type { SaveDeckResponse } from "./decksPage";
+import type { DeckUpdateConfirm, DeckUpdateInput, DeckUpdatePreview } from "./deckUpdate";
 import type { InviteDMResponse, Tablemate } from "./tablemates";
 import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
@@ -887,6 +889,50 @@ export async function fetchMyDecks(): Promise<MyDecksResponse> {
   return (await res.json()) as MyDecksResponse;
 }
 
+export interface CardPrinting {
+  id: string;
+  name: string;
+  flavor_name?: string;
+  set: string;
+  collector_number: string;
+}
+
+export interface DeckPrintingRow {
+  entry: number;
+  name: string;
+  count: number;
+  board: string;
+  printing_id: string;
+  set: string;
+  collector_number: string;
+}
+
+export interface DeckPrintings {
+  revision: string;
+  cards: DeckPrintingRow[];
+}
+
+export async function fetchDeckPrintings(id: string): Promise<DeckPrintings> {
+  return (await authFetch(`/me/decks/${encodeURIComponent(id)}/printings`)).json();
+}
+
+export async function fetchCardPrintings(id: string): Promise<CardPrinting[]> {
+  const res = await authFetch(`/cards/${encodeURIComponent(id)}/printings`);
+  return (await res.json()).printings;
+}
+
+export async function saveDeckPrintings(
+  id: string,
+  revision: string,
+  choices: { entry: number; printing_id: string }[],
+): Promise<MyDeckInfo> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/printings`, {
+    method: "PUT",
+    body: JSON.stringify({ revision, choices }),
+  });
+  return res.json();
+}
+
 // fetchMyStats reads the signed-in caller's own game statistics (ADR
 // 0165 §7, GET /me/stats). A guest or an admin gets a 403 whose message
 // the page shows.
@@ -936,6 +982,40 @@ export async function saveMyDeck(req: DeckCheckRequest, name: string): Promise<S
     body: JSON.stringify(n ? { ...req, name: n } : req),
   });
   return (await res.json()) as SaveDeckResponse;
+}
+
+// previewDeckUpdate asks what updating a saved deck would change (POST
+// /me/decks/{id}/update, #2036): from its own link, a new link or a pasted
+// list. It writes nothing; the answer carries the diff, the new coverage
+// and the preview_id confirmDeckUpdate commits. A refusal throws a
+// LobbyApiError whose message the sheet shows as is; its `body.hint` is
+// "paste_list" for a Moxfield link the server cannot fetch.
+export async function previewDeckUpdate(
+  id: string,
+  input: DeckUpdateInput,
+): Promise<DeckUpdatePreview> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/update`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as DeckUpdatePreview;
+}
+
+// confirmDeckUpdate commits a previewed update (POST
+// /me/decks/{id}/update/confirm). requestMissing also files or extends the
+// deck request for the cards the deck's earlier request did not list; the
+// request's outcome rides the answer and never undoes the update. A 410
+// means the preview expired or was used: preview again.
+export async function confirmDeckUpdate(
+  id: string,
+  previewId: string,
+  requestMissing: boolean,
+): Promise<DeckUpdateConfirm> {
+  const res = await authFetch(`/me/decks/${encodeURIComponent(id)}/update/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ preview_id: previewId, request_missing: requestMissing }),
+  });
+  return (await res.json()) as DeckUpdateConfirm;
 }
 
 // fetchMyDeckCoverage reads one saved deck's full ADR 0095 report.
@@ -1540,6 +1620,10 @@ export async function fetchAutoTapPreview(
     }
     // ADR 0202: the spliced cards, whose splice costs join the total.
     if (cast.splices && cast.splices.length > 0) params.set("splices", cast.splices.join(","));
+    // #4159: and what their costs spend, which the plan must leave alone.
+    if (cast.splicePayments && cast.splicePayments.length > 0) {
+      params.set("splice_payments", JSON.stringify(splicePaymentsWire(cast.splicePayments)));
+    }
     if (cast.tapIDs && cast.tapIDs.length > 0) {
       params.set("tap_ids", cast.tapIDs.join(","));
     }

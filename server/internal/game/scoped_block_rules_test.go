@@ -23,6 +23,8 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedByPlayer, Text: "creatures Bob controls"}, // no player
 		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New()},             // no text
 		{Kind: ModCantBeBlockedByPower, Amount: 2},                       // no text
+		{Kind: ModCantBeBlockedBySubtypes, Text: "Walls"},                // no subtype
+		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}},   // no text
 	}
 	for _, m := range bad {
 		if blockRuleModProblem(m) == "" {
@@ -36,6 +38,7 @@ func TestBlockRuleModProblemCatchesBadParameters(t *testing.T) {
 		{Kind: ModCantBeBlockedByPlayer, Player: uuid.New(), Text: "creatures Bob controls"},
 		{Kind: ModCantBeBlockedByPower, Amount: 2, Text: "creatures with power 2 or less"},
 		{Kind: ModCantBeBlockedByPower, Amount: 0, Text: "creatures with power 0 or less"},
+		{Kind: ModCantBeBlockedBySubtypes, Subtypes: []string{"Wall"}, Text: "Walls"},
 	}
 	for _, m := range ok {
 		if p := blockRuleModProblem(m); p != "" {
@@ -188,5 +191,55 @@ func TestCantBeBlockedByPowerReadsTheBlockersPowerLive(t *testing.T) {
 	})
 	if r := refusal(attacker, big); r.Legal() {
 		t.Error("a blocker shrunk to power N after the effect was still allowed")
+	}
+}
+
+// cantBeBlockedBySubtypes (#4100, Kick in the Door): the pinned
+// attacker is refused by a Wall and by a changeling (every creature
+// type), and allowed by any other blocker; an attacker it is not pinned
+// to is not covered.
+func TestCantBeBlockedBySubtypesBarsWallsAndChangelings(t *testing.T) {
+	g := newActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	attacker := pushCombatant(t, g, me, "Attacker", 2, 2)
+	other := pushCombatant(t, g, me, "Other Attacker", 2, 2)
+	wall := pushCombatant(t, g, opp, "Wall", 0, 4)
+	plain := pushCombatant(t, g, opp, "Bear", 2, 2)
+	shifter := pushCombatant(t, g, opp, "Changeling", 1, 1, KeywordChangeling)
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == wall {
+			g.Battlefield.Cards[i].TypeLine = "Creature — Wall"
+		}
+	}
+
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(uuid.Nil, g.PinnedObjectsLocked(attacker),
+			[]Mod{CantBeBlockedBySubtypesMod([]string{"Wall"}, "Walls")},
+			IndefiniteDuration(), "test") {
+			t.Fatal("setup: registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	refusal := func(att, blocker uuid.UUID) BlockRefusal {
+		var r BlockRefusal
+		g.WithWriteLock(func() {
+			g.RecomputeLayersIfStaleLocked()
+			r = g.blockRuleRefusalLocked(findCard(g, att), findCard(g, blocker))
+		})
+		return r
+	}
+	if r := refusal(attacker, wall); r.Legal() {
+		t.Error("a Wall was allowed to block")
+	} else if r.Reason != BlockReasonCantBeBlockedBy || r.Label != "Walls" {
+		t.Errorf("refusal = %+v", r)
+	}
+	if r := refusal(attacker, shifter); r.Legal() {
+		t.Error("a changeling (a Wall among every creature type) was allowed to block")
+	}
+	if r := refusal(attacker, plain); !r.Legal() {
+		t.Errorf("a non-Wall was refused: %+v", r)
+	}
+	if r := refusal(other, wall); !r.Legal() {
+		t.Errorf("an attacker the effect is not pinned to was covered: %+v", r)
 	}
 }

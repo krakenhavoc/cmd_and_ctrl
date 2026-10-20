@@ -663,6 +663,26 @@ const (
 	// event log it had before the kind existed.
 	EventTriggerPlaced EventKind = "trigger_placed"
 
+	// EventAbilityCopied — a copy of an activated or triggered ability
+	// was put onto the stack (CR 707.10, createAbilityCopyLocked). Actor
+	// is the copy's controller, Source the object the ability came from
+	// and StackItemID the COPY now on the stack.
+	//
+	// The twin of EventSpellCopied for an ability, and the third way an
+	// ability reaches the stack beside EventActivateAbility and
+	// EventTriggerPlaced: "whenever a spell or ability is put onto the
+	// stack" (Grip of Chaos, #4050) counts a copy, which is created and
+	// not cast, activated or triggered (CR 707.10a), so none of the other
+	// kinds fire for it. It is NOT EventTriggerPlaced on purpose: a copy
+	// carries the original's triggering event (StackItem.Trigger), so a
+	// watcher that filters a placed trigger by its cause (Aboleth Spawn)
+	// would copy the copy forever.
+	//
+	// Emitted only while a permanent on the battlefield watches it
+	// (battlefieldWatchesLocked), like EventTriggerPlaced, so a table
+	// without one keeps the event log it had before the kind existed.
+	EventAbilityCopied EventKind = "ability_copied"
+
 	// EventActivateAbility — a player ACTIVATED an activated ability
 	// (CR 602.2b), announced onto the stack. Actor is the activator,
 	// Source and CardID are the permanent (or, since #660, the hand

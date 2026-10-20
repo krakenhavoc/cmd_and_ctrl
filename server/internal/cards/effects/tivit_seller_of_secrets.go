@@ -52,13 +52,26 @@ func init() {
 }
 
 var tivitVoted = VoteResultThen("vote/tivit-seller-of-secrets", func(ctx *Context, r game.VoteResult) error {
-	if n := r.Votes(0); n > 0 {
-		if err := (CreateToken{Controller: ctx.Controller(), Template: ClueToken(), N: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	if n := r.Votes(1); n > 0 {
-		return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: n}.Apply(ctx)
-	}
-	return nil
+	ctx.RecordStep(tivitVotesRecord, nil, r.Votes(0), r.Votes(1))
+	return tivitTokens.Run(ctx)
 })
+
+// tivitVotesRecord is the votes for evidence and for bribery.
+const tivitVotesRecord = "tivit-seller-of-secrets/votes"
+
+// tivitTokens is the Clues and then the Treasures: the Treasures wait for a
+// prompt the Clues ask (a CR 616 order on tokens; CR 608.2c, #4155).
+var tivitTokens = RegisterThenSteps("then-steps/tivit-seller-of-secrets-tokens",
+	Instruction(func(ctx *Context) error {
+		if n := ctx.StepRecord(tivitVotesRecord).Ns[0]; n > 0 {
+			return CreateToken{Controller: ctx.Controller(), Template: ClueToken(), N: n}.Apply(ctx)
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		if n := ctx.StepRecord(tivitVotesRecord).Ns[1]; n > 0 {
+			return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: n}.Apply(ctx)
+		}
+		return nil
+	}),
+)

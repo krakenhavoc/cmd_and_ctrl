@@ -15,8 +15,8 @@ func init() {
 		Name:         "Tune the Narrative",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1, Energy: 2},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return Do(DrawCards{N: 1}, GetEnergy{N: 2})(ctx.Game, item)
-		},
+		// Two steps, so the energy waits for a prompt the draw asks
+		// (dredge, a CR 616 order), CR 608.2c (#4019).
+		OnResolve: ResolveSteps(DrawCards{N: 1}, GetEnergy{N: 2}),
 	})
 }

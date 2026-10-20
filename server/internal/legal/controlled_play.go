@@ -123,9 +123,10 @@ func (e *enumerator) controlledChoiceMoves() bool {
 		if e.g.ControllerOfPlayerLocked(p.ID) != e.seat {
 			continue
 		}
-		// ADR 0167 §7: a turn's controller gets the whole of that
-		// seat's run (controlledTurnMoves), prompts included.
-		if e.g.ControlUntilOfPlayerLocked(p.ID) == game.ControlUntilTurn {
+		// ADR 0167 §7: a turn's (or a combat phase's, #3999)
+		// controller gets the whole of that seat's run
+		// (controlledTurnMoves), prompts included.
+		if e.g.ControlUntilOfPlayerLocked(p.ID).PlaysForThem() {
 			continue
 		}
 		sub := enumeratorAs(e.g, p.ID, e.opts)
@@ -150,6 +151,8 @@ func (e *enumerator) controlledChoiceMoves() bool {
 // holds priority at a time, so the two lists are non-empty together
 // only for prompts, and Player tells them apart. Caller must hold g.mu.
 func (e *enumerator) controlledTurnMoves() {
+	// #4154: and the declarations e's seat is making for another seat.
+	e.controlledDeclarationMoves()
 	for _, seat := range e.g.TurnControlledByLocked(e.seat) {
 		sub := enumeratorAs(e.g, seat, e.opts)
 		if sub == nil {

@@ -54,6 +54,14 @@ import (
 // own shape, so it refuses the options that mean a different window (Free,
 // CastOnly, WhileExiled, Window, FaceDown, Condition, Filter) rather than
 // quietly overriding them.
+//
+// EachManaValueAtMost is "you may cast any number of spells with mana value
+// N or less from among them without paying their mana costs" (Hazoret's
+// Undying Fury, #4021): the same resolving-ability window, but the cap is
+// on EACH spell and there is no running total. The one permission carries
+// MaxSpellManaValue and AnyNumber, so a cast strikes only its own card and
+// the rest stay open until the holder passes. It refuses the same options
+// as TotalManaValueAtMost and cannot be combined with it.
 type ExileTopWithPermission struct {
 	// From is whose library is exiled off. Often an opponent's.
 	From uuid.UUID
@@ -74,6 +82,10 @@ type ExileTopWithPermission struct {
 	// TotalManaValueAtMost is the shared budget described above. Nil is the
 	// ordinary one-grant-per-turn impulse exile.
 	TotalManaValueAtMost *int
+
+	// EachManaValueAtMost is the per-spell cap described above. Nil is the
+	// ordinary impulse exile.
+	EachManaValueAtMost *int
 }
 
 func (e ExileTopWithPermission) Apply(ctx *Context) error {
@@ -81,7 +93,7 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if n <= 0 {
 		n = 1
 	}
-	if e.TotalManaValueAtMost != nil {
+	if e.TotalManaValueAtMost != nil || e.EachManaValueAtMost != nil {
 		return e.applyBudgeted(ctx, n)
 	}
 	perm := game.CastPermission{
@@ -111,28 +123,43 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	return err
 }
 
-// applyBudgeted is the TotalManaValueAtMost form: one free, flash-speed,
-// cast-only permission over the cards that landed, spent down by each cast.
+// applyBudgeted is the TotalManaValueAtMost and EachManaValueAtMost form:
+// one free, flash-speed, cast-only permission over the cards that landed,
+// spent down by each cast (a running total) or kept for every other card
+// (a cap on each spell).
 func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 	if e.Free || e.CastOnly || e.WhileExiled || e.Window != nil || e.FaceDown ||
 		e.Condition != nil || e.Filter != (game.PermissionFilter{}) {
-		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost is its own window and takes no other option")
+		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost and EachManaValueAtMost are their own window and take no other option")
 	}
-	budget := *e.TotalManaValueAtMost
-	if budget < 0 {
-		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost %d is negative", budget)
+	if e.TotalManaValueAtMost != nil && e.EachManaValueAtMost != nil {
+		return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost and EachManaValueAtMost are two readings of one clause; name one")
 	}
 	perm := game.CastPermission{
 		// "{0}", not empty: an empty Cost means "pay the printed cost".
-		Cost:            "{0}",
-		Timing:          game.TimingFlash,
-		CastOnly:        true,
-		AnyColor:        e.AnyColor || e.AnyType,
-		AnyType:         e.AnyType,
-		LapseOnPass:     game.LapseStaysInExile,
-		ManaValueBudget: &budget,
-		Source:          ctx.Source(),
-		Label:           "Cast any number of spells with total mana value " + strconv.Itoa(budget) + " or less without paying their mana costs",
+		Cost:        "{0}",
+		Timing:      game.TimingFlash,
+		CastOnly:    true,
+		AnyColor:    e.AnyColor || e.AnyType,
+		AnyType:     e.AnyType,
+		LapseOnPass: game.LapseStaysInExile,
+		Source:      ctx.Source(),
+	}
+	if e.TotalManaValueAtMost != nil {
+		budget := *e.TotalManaValueAtMost
+		if budget < 0 {
+			return fmt.Errorf("ExileTopWithPermission: TotalManaValueAtMost %d is negative", budget)
+		}
+		perm.ManaValueBudget = &budget
+		perm.Label = "Cast any number of spells with total mana value " + strconv.Itoa(budget) + " or less without paying their mana costs"
+	} else {
+		limit := *e.EachManaValueAtMost
+		if limit < 0 {
+			return fmt.Errorf("ExileTopWithPermission: EachManaValueAtMost %d is negative", limit)
+		}
+		perm.MaxSpellManaValue = &limit
+		perm.AnyNumber = true
+		perm.Label = "Cast any number of spells with mana value " + strconv.Itoa(limit) + " or less without paying their mana costs"
 	}
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		perm.SourceName = src.Name

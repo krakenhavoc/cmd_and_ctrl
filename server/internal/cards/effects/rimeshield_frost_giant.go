@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // declaration with nothing else around it.
 func init() {
 	Register(Spec{
-		OracleID: "ec47cf67-2580-464f-8118-7eabea5be11c",
-		Name:     "Rimeshield Frost Giant",
+		OracleID:     "ec47cf67-2580-464f-8118-7eabea5be11c",
+		Name:         "Rimeshield Frost Giant",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{3}"), "Rimeshield Frost Giant — ward {3}"),
 		},

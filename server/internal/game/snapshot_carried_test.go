@@ -360,6 +360,8 @@ var carriedFixture = map[string]any{
 				SourceCardID: id, Label: "drift-Game.pausedModeWalk", Modes: []int{2, 0}, XValue: 3, Seq: 5252},
 			key:  "drift-Game.pausedModeWalk",
 			rest: []int{1, 0},
+			// #4019: the position inside the first bullet.
+			inner: []int{1, 0},
 		}
 	},
 	// #4012: the same, for an effect's parked steps.
@@ -370,7 +372,24 @@ var carriedFixture = map[string]any{
 			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
 				SourceCardID: id, Label: "drift-Game.pausedStepWalk", XValue: 4, Seq: 5353},
 			path: []int{2, 1},
+			// #4162: a continuation's steps, with its bullet occurrence,
+			// parked above the walk they belong to.
+			then: carriedTestThenStepsKey,
+			occ:  2,
+			outer: &stepWalk{
+				item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+					SourceCardID: id, Label: "drift-Game.pausedStepWalk", XValue: 4, Seq: 5353},
+				path: []int{1},
+				// #4019: a spell's OnResolve steps.
+				key: "drift-Game.pausedStepWalk",
+			},
 		}
+	},
+	// #4163: what an earlier step handed a later one.
+	"Game.stepRecords": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.stepRecords"))
+		return []stepRecordEntry{{Item: id, Key: "drift-Game.stepRecords",
+			Record: StepRecord{IDs: []uuid.UUID{id, g.Seats[0].ID}, Ns: []int{3, 7}}}}
 	},
 	// #3613: the same, for the end of a paused resolution.
 	"Game.pausedResolutionTail": func(g *Game) any {
@@ -919,6 +938,11 @@ var (
 	// ADR 0146: a ballot's vote continuation key.
 	carriedTestVoteKey = RegisterVoteThen(testEffectKeyPrefix+"carried-vote",
 		func(*Game, VoteResult) error { return nil })
+	// #4162: a continuation written as steps.
+	carriedTestThenStepsKey = func() string {
+		RegisterThenStepsKey(testEffectKeyPrefix + "carried-steps")
+		return testEffectKeyPrefix + "carried-steps"
+	}()
 )
 
 // carriedTestDungeon is a dungeon registered for the carried probes

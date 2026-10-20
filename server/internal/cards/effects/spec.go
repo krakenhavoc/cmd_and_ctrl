@@ -426,6 +426,13 @@ type Spec struct {
 	// server/internal/game/cant_be_countered.go.
 	CantBeCountered bool
 
+	// CantBeCopied is the spell's printed "This spell can't be copied"
+	// (See Double). Every spell-copy door (Twincast, storm, Casualty,
+	// Chef's Kiss) makes no copy of a spell that carries it, and does so
+	// before the CR 707.10c "choose new targets" prompt opens, so
+	// nobody is asked to retarget a copy that will not exist.
+	CantBeCopied bool
+
 	// FlashWithCleanupSacrifice is the Visions-era rider "You may cast
 	// this spell as though it had flash. If you cast it any time a
 	// sorcery couldn't have been cast, the controller of the permanent
@@ -1186,6 +1193,16 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// YourPlaneswalkersLoyaltyTwiceEachTurn declares the printed static
+	// "You may activate the loyalty abilities of planeswalkers you
+	// control twice each turn rather than only once" (Oath of Teferi):
+	// LoyaltyTwiceEachTurn's limit of two for every planeswalker this
+	// permanent's controller controls, read live off the battlefield, so
+	// a walker that arrives later is covered and one that changes hands
+	// follows its new controller. Judged through CatalogAbilityKey.
+	// #4184.
+	YourPlaneswalkersLoyaltyTwiceEachTurn bool
+
 	// ActivateAsThoughHaste declares the printed static "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (Thousand-Year Elixir, #3928): CR 302.6 no
@@ -1263,6 +1280,14 @@ type Spec struct {
 	// CatalogAbilityKey, before each individual draw's replacement
 	// window: a draw the cap forbids is not performed (draw_limit.go).
 	DrawLimits []game.DrawLimitStatic
+
+	// VentureLimits declares this permanent's printed "Each opponent
+	// can't venture into the dungeon more than once each turn" (Keen-Eared
+	// Sentry, #4100). Read from the battlefield through
+	// game.CatalogVentureLimits, keyed by CatalogAbilityKey, as each
+	// venture begins: a venture the limit forbids is not performed
+	// (game/venture_limit.go).
+	VentureLimits []game.VentureLimitStatic
 
 	// DamageAsThough declares this permanent's printed "damage is dealt
 	// as though its source had wither / infect" statics (CR 120.3, 609.4,
@@ -2080,6 +2105,17 @@ type ManaAbility struct {
 	// both; Register refuses the pair.
 	PainToYou int
 
+	// GainLife is the other rider declared as data: "You gain N life"
+	// after the "Add …" clause (The Great Henge, Pristine Talisman).
+	// Register builds the Rider from it with GainLifeRider(n), and the
+	// built ability carries the number
+	// (game.ManaAbilityShape.RiderSelfLifeGain) so the auto-tapper
+	// plans the source and the move list counts its mana (#4185): a
+	// mana ability that also gains life is still a mana ability
+	// (CR 605.1a). Set this, PainToYou or Rider, never two of them;
+	// Register refuses the pair.
+	GainLife int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —
@@ -2351,16 +2387,6 @@ type ManaAbilityCost struct {
 	// mana ability (CR 605.1a). The auto-tapper never pays it on its
 	// own; the player activates the row.
 	Exert bool
-
-	// Mill is "Mill N cards" (#3845, CR 701.17a) — Millikin's "{T},
-	// Mill a card: Add {C}". The component AbilityCost.Mill carries,
-	// paid last through the ordinary mill so replacements apply. A
-	// library of fewer than N cards can't pay it (CR 701.17b), so the
-	// row is not offered then. The auto-tapper never pays it on its own;
-	// the player activates the row. A mana ability that TARGETS is not
-	// a mana ability (CR 605.1a) and declares the cost on Activated
-	// with MillCardsCost instead (The Warring Triad).
-	Mill int
 
 	// Mana is a mana component of the activation cost — the Signet
 	// cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2}, {T}",

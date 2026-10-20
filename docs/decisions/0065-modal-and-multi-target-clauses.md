@@ -1572,3 +1572,180 @@ strict restore; a scry inside an `If`'s steps across a restore; and a
 first step whose one instance deals damage to Khârn and to a player
 with Selfless Squire's shield, where the next step sees the Squire's
 announcement already made, live and across a strict restore.
+
+## Amendment 2026-10-19: a spell's OnResolve and a bullet's own instructions wait too (#4019)
+
+**The gap.** The 2026-10-16 amendment parked a `Do`'s later steps only
+when the `Do` was the item's own Effect, because only that `Do` could
+be found again from data. Everything else still ran its next instruction
+before an earlier one's answer: a spell's `OnResolve` (Electrolyze drew
+its card while Khârn the Betrayer's question was open), the body of a
+`ModeDoing` bullet (Demonic Pact gained its 4 life before the same
+question was answered, because the mode walk parks between bullets, not
+inside one), a `Do` wrapped by `InterveningIf` (it became one opaque
+step), and an `If` inside any of those.
+
+**Measured.** A scan of the catalog's function literals on 2026-10-19
+found 380 `OnResolve` bodies, 147 trigger and activated `Effect`
+bodies, 31 `ModeDoing` bodies and 70 `Then` bodies with two or more
+statements that call an effect primitive. Almost any primitive can ask
+(a CR 616 order on damage, counters, tokens, life or a draw; a
+prevention follow-up's question; dredge), so each is a candidate. No
+engine change can stop a Go function part-way and resume it after a
+restore. So the fix is two more sites that can park, and a recipe for
+converting rows to them. The rows are converted card by card.
+
+**What changed.**
+
+- **A spell's OnResolve as steps.** `effects.ResolveSteps(steps...)`
+  is an `OnResolve` the registry can read: it answers a probe with its
+  steps, and the registry gives the card's `CardDef` a `ResumeResolve`
+  that runs them from a path. The engine opens the spell's step site
+  while it runs the spell's catalog hook (`runSpellResolverLocked`: the
+  item's ID and the key it resolved under), and
+  `Game.ParkSpellStepsForEffect` parks only inside that site and only
+  when the key can find the steps again. The parked walk records the
+  key (`stepWalk.key`). A spliced text or a fused half finds no site,
+  or a key with no `ResumeResolve`, and runs back to back as before.
+- **A bullet as steps.** `effects.ModeSteps(label, targets, steps...)`
+  is a `ModeOption` whose body answers the same probe. The mode walk
+  opens the bullet's site around that occurrence (`runBulletLocked`).
+  When a step parks (`Game.ParkBulletStepsForEffect`), the walk parks
+  itself with that bullet first and the position inside it
+  (`modeWalk.inner`), and resumes it through `game.ResumeBulletSteps`
+  before the next bullet. A step reads its occurrence with
+  `ctx.Occurrence()`.
+- **A hand-written step.** `effects.Instruction(fn)` makes one function
+  a step. It runs whole, and the walk may stop before or after it. A
+  converted body is split at its asking calls, one `Instruction` per
+  piece. The function belongs to the catalog row, so a resume finds it
+  again. It must not pass anything to the next step through a Go
+  variable.
+- **`InterveningIf` keeps a `Do`'s steps.** A `Do` it wraps becomes the
+  `If`'s `Then` instead of one opaque step, as `IfYouHaveTheInitiative`
+  already did (it now calls `InterveningIf`). A hand-written Effect is
+  still one step.
+- **An `If` inside any site** is walked one level down, as before.
+
+**What it costs.** The step sites are plain data set around one call
+(`Game.stepSites`, dropped by the snapshot because it is zero between
+actions). A parked position is still an item, a key and a path. No
+closure is stored, no census counter rises, and `closure_fields.txt`
+does not change. Two additive fields in schema v9
+(`pausedStepWalk.key`, `pausedModeWalk.inner`). A binary from before
+this change drops them. It would resume a spell's parked steps as the
+item's Effect (a spell has none, so nothing runs) and a parked bullet
+from its start.
+
+**Cards converted.** Electrolyze and Tune the Narrative
+(`ResolveSteps`), Demonic Pact's first bullet (`ModeSteps`), and Imoen,
+Mystic Trickster (its two printed instructions as two steps under
+`InterveningIf`). Every other row behaves as it did before.
+
+Tests: `effects/resolution_order_test.go`. Electrolyze and Demonic Pact
+against Khârn's question, live and across a strict restore; Tune the
+Narrative and Imoen against a dredge offer, live and on an undo (the
+dredge offer is not a restore point), with the census unchanged; an
+`If` inside `ResolveSteps`, and a bullet's later step before the next
+bullet, across a strict restore.
+
+## Amendment 2026-10-19 (b): a continuation's instructions wait, and a step reads what an earlier one recorded (#4162, #4163)
+
+**The gap.** The two amendments above park a step sequence the engine
+can find again from data: an item's Effect, a spell's `OnResolve`, a
+bullet. Two shapes were left.
+
+- **A continuation** (#4162). A primitive's `Then`, an `OnYes` or
+  `OnAccept`, and the callback a `...ThenForEffect` method runs are Go
+  closures riding their prompt. When one runs two instructions and the
+  first asks something (a dredge offer on a draw, a CR 616 order on
+  counters, tokens or life), the second ran before the answer. Arcane
+  Denial drew the caster's card with the victim's dredge offer open.
+  Scavenging Ooze gained its life while its counter waited on the
+  Doubling Season / Hardened Scales order.
+- **A value carried between steps** (#4163). A step must not hand the
+  next anything through a Go variable, because a restore taken between
+  them loses it. Some later steps need what the game keeps no record of:
+  the number of cards discarded (Windfall, Dark Deal, Tolarian Winds),
+  the Soldiers just made (Martial Coup), the opponents who really drew
+  (Cut a Deal), the number a player chose (Arcane Denial), the
+  sacrificed creature's power (the Disciples).
+
+**What changed.**
+
+- **Continuation steps.** `effects.RegisterThenSteps(key, steps...)`
+  names a step sequence with an on-disk key. Its `Run` walks the steps
+  as a `Do` does and parks between them through
+  `Game.ParkThenStepsForEffect`, as the key, the bullet occurrence and a
+  path (`stepWalk.then`, `stepWalk.occ`). `game.ResumeThenSteps` finds
+  them again by the key. The closure that calls `Run` still rides its own
+  prompt, unchanged and counted where it was. What is new is that the
+  rest of the continuation, once a step of it has asked, is data. The key
+  shares the effect-key namespace and ledger (`steps <key>` in
+  `testdata/effect_keys.txt`). A restore point naming a key this binary
+  lacks is refused (`checkEffectKeys`), because the walk would run
+  nothing after the answer.
+- **The parked walks are a chain** (`stepWalk.outer`). A continuation
+  runs while another walk may be parked: the item's own `Do`, waiting
+  behind the very prompt whose answer ran the continuation. And a step
+  may run a continuation that parks before the step's own walk does. The
+  continuation is the earlier instruction in both cases (CR 608.2c), so
+  it resumes first. Each walk takes a mark (`Game.StepWalkMarkForEffect`)
+  as each step begins. A walk that parks goes directly above that mark,
+  beneath the walks the step parked and above those parked before it
+  (`parkStepWalkLocked`). The walks above the mark are copied, not
+  relinked, because a clone may share them. `holdForOpenResolutionLocked`
+  resumes the chain top first (`resumeStepWalksLocked`) until a step
+  pauses again or none is left. An item's Effect, a spell's steps and a
+  continuation all park this way. Before, a second walk could not park
+  and ran on.
+- **The step record.** `Game.RecordStepForEffect(item, key, rec)` files
+  a `StepRecord` (IDs and numbers) under the resolving item and a name the
+  card chooses. `StepRecordForEffect` reads it back, and in the effects
+  package these are `ctx.RecordStep` and `ctx.StepRecord`. A record lives
+  for one resolution. It is dropped as the resolution closes and as a new
+  one opens, so no other item reads it. A step that needs an event's
+  outcome records the event log's last sequence number and reads the log
+  after it: Martial Coup spares the tokens the caster created after its
+  record, and Cut a Deal counts the opponents with a draw event after
+  its record (a dredge is not a draw).
+
+**What it costs.** No closure is stored, and no census counter rises.
+`closure_fields.txt` gains one `keyed` line, `stepWalk.outer`, which is
+not a ceiling. Schema v9 gains additive fields
+(`pausedStepWalk.then`, `.occ`, `.outer` and `stepRecords`), and the
+fixtures are not edited. A binary from before this change drops them. It
+would resume one parked walk, the top one, as an item's Effect (a
+continuation's path into the wrong steps, or nothing), and its later
+steps would read a zero record. That is the rollback a restore point
+written by a newer binary always risks, and `checkEffectKeys` cannot
+catch it from the older side.
+
+**The scan.** `steps_scan_test.go` no longer reads a switch's clauses as
+a sequence (`clauseList`): they are exclusive arms. Abrade, Boros Charm,
+Izzet Charm, Archdruid's Charm and Rip Apart leave `stepsSkipped` for
+that reason, and the "a Then" and "carried" reasons are gone.
+
+**Cards converted.** Continuations: Arcane Denial, Braids, Arisen
+Nightmare, Forgotten Ancient, Twilight Prophet, Scavenging Ooze, Seize the
+Spotlight, Disciple of Freyalise, Disciple of Bolas, Replicating Ring,
+Bonehoard Dracosaur, Midnight Clock, Court of Ambition, Transpose and
+Sylvan Library. The chained ones (Braids, Court of Ambition, Forgotten
+Ancient, Seize the Spotlight, Sylvan Library) carry the queue of players,
+creatures or fortunes still owed in the record and run their steps again
+for the next one. Records: Martial Coup, Windfall, Dark Deal, Tolarian
+Winds and Cut a Deal, now `ResolveSteps`. Currency Converter's flagged
+pair was two arms of one `if`, now one instruction. Genesis Wave, Coiling
+Oracle and Animist's Awakening stay as they are, because their reveal asks
+nothing.
+
+Tests: `effects/then_steps_test.go`. A probe whose `Do` asks a number
+and whose continuation scries then draws that many: the continuation
+parks above the `Do`, the draw reads the number from the record, and the
+`Do`'s last step runs after the draw, live and across a strict restore
+taken while the scry is open. Seize the Spotlight's fortunes on a dredge
+offer, Scavenging Ooze on a CR 616 counter order, Martial Coup on a
+CR 616 token order (Doubling Season and Ojer Taq) and Cut a Deal on a
+dredge offer, both answers, live and on an undo.
+`game/step_walk_chain_test.go`: the chain order, copy on park, and a
+record dropped as its resolution closes.

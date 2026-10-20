@@ -25,6 +25,14 @@
   // is user-opened and user-dismissable: Cancel closes it, discards the
   // draft and sends nothing.
   //
+  // #4116: on a table the form can also take a picture of the board,
+  // from a checkbox that starts unticked. The picture is made in this
+  // browser from this page's own DOM (lib/boardShot.ts), with everything
+  // private to them (their hand, face-down cards they may look at, library
+  // tops, open prompts) covered as "hidden", since a report is a public
+  // issue and the game may be live. It lands in the list of screenshots below, where it can be looked at and removed like
+  // one they pasted. Ticking the box is the only thing that takes it.
+  //
   // Minimize (#4029) closes the modal and keeps the draft. The fields
   // live in lib/bugReportDraft.svelte.ts, not here, so this component
   // can be unmounted and mounted again with nothing lost: the host
@@ -51,6 +59,7 @@
     validateBugReport,
     type BugLogEntry,
   } from "../bugReport";
+  import { BoardShotError, captureBoardShot } from "../boardShot";
   import { discardBugDraft, openBugDraft } from "../bugReportDraft.svelte";
   import { recentClientErrors } from "../clientErrors";
   import type { LogEntry } from "../ws";
@@ -74,6 +83,10 @@
     // page names where a report filed outside a game came from (#3492,
     // the site header's button): a route name, with gameID "".
     page?: string;
+    // captureTarget (#4116) is the element a picture of the board is
+    // taken of: the table. Absent outside a game, where there is no
+    // board, and the checkbox is not offered.
+    captureTarget?: () => HTMLElement | null;
     // onclose is Cancel and Done: the draft is gone either way.
     onclose: () => void;
     // onminimize leaves the draft in place; the host unmounts the form
@@ -89,6 +102,7 @@
     wsLog,
     attachments,
     page = "",
+    captureTarget,
     onclose,
     onminimize,
   }: Props = $props();
@@ -145,6 +159,18 @@
     if (ctx.connection) bits.push(`ws ${ctx.connection}`);
     return bits.join(" \u00b7 ");
   });
+
+  // The box is ticked while the board's picture is among the attached
+  // images, so removing its thumbnail unticks it.
+  const boardShotOn = $derived(draft.boardShot !== null && draft.images.includes(draft.boardShot));
+  let capturing = $state(false);
+  let shotBox = $state<HTMLInputElement | null>(null);
+  // The box shows what the state says. A click that changed nothing (the
+  // picture was refused) leaves the state where it was, so the browser's
+  // own tick has to be put back by hand.
+  function syncShotBox(): void {
+    if (shotBox) shotBox.checked = boardShotOn;
+  }
 
   const totalImageBytes = $derived(draft.images.reduce((n, f) => n + f.size, 0));
 
@@ -208,6 +234,52 @@
     error = null;
   }
 
+  // The checkbox. Ticking takes the picture now; unticking drops it.
+  // "Retake" (the same call again) replaces it with the board as it is
+  // by then.
+  async function takeBoardShot(): Promise<void> {
+    const root = captureTarget?.() ?? null;
+    if (!root) {
+      error = "couldn't find the board to take a picture of";
+      syncShotBox();
+      return;
+    }
+    const others = draft.images.filter((f) => f !== draft.boardShot);
+    if (others.length >= BUG_MAX_IMAGES) {
+      error = `attach at most ${BUG_MAX_IMAGES} images — remove one to add the board`;
+      syncShotBox();
+      return;
+    }
+    capturing = true;
+    error = null;
+    try {
+      const file = await captureBoardShot(root);
+      const next = [file, ...others];
+      const problem = validateAttachments(next);
+      if (problem) {
+        error = problem;
+        return;
+      }
+      draft.setImages(next);
+      draft.boardShot = file;
+    } catch (e) {
+      error = e instanceof BoardShotError ? e.message : "couldn't take a picture of the board";
+    } finally {
+      capturing = false;
+      syncShotBox();
+    }
+  }
+
+  function toggleBoardShot(on: boolean): void {
+    if (on) {
+      void takeBoardShot();
+      return;
+    }
+    draft.setImages(draft.images.filter((f) => f !== draft.boardShot));
+    draft.boardShot = null;
+    error = null;
+  }
+
   async function submit(): Promise<void> {
     const problem =
       validateBugReport(draft.title, draft.description) ?? validateAttachments(draft.images);
@@ -263,7 +335,15 @@
 
 <ModalLayer />
 
-<div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
+<!-- data-board-shot-skip: the picture of the board (#4116) is of the
+     table, not of this form (lib/boardShot.ts BOARD_SHOT_SKIP_ATTR). -->
+<div
+  class="backdrop"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="bug-report-title"
+  data-board-shot-skip
+>
   <div class="modal">
     {#if sent}
       <h2 id="bug-report-title">Sent — thank you</h2>
@@ -400,6 +480,32 @@
             </button>
             <span class="muted small">or press Ctrl/⌘+V to paste one</span>
           </div>
+          {#if captureTarget}
+            <!-- #4116. Off until ticked; the picture then shows in the
+                 list above before anything is sent. -->
+            <label class="context board-shot">
+              <input
+                type="checkbox"
+                bind:this={shotBox}
+                checked={boardShotOn || capturing}
+                disabled={submitting || capturing}
+                onchange={(e) => toggleBoardShot(e.currentTarget.checked)}
+              />
+              <span>
+                include a picture of the board
+                <span class="muted"
+                  >({capturing
+                    ? "taking it…"
+                    : "your hand, face-down cards you can look at, library tops and open prompts are covered as “hidden”; you see it here before it is sent"})</span
+                >
+                {#if boardShotOn && !capturing}
+                  <button type="button" class="peek" onclick={takeBoardShot} disabled={submitting}>
+                    retake
+                  </button>
+                {/if}
+              </span>
+            </label>
+          {/if}
           <input
             bind:this={fileInput}
             type="file"

@@ -615,3 +615,30 @@ None. The statics are catalog data and nothing is stored.
 #### Cards
 
 Kunoros, Hound of Athreos, Soulless Jailer and Weathered Runestone land Full; Grafdigger's Cage moves. Worms of the Earth lands with ADR 0187 slice 8 (#3576; the either payment it also needs shipped in PR #3754), declaring `LandPlayRestrictions: PlayersCantPlayLands(…)` and `EntryRestrictions: LandsCantEnter("Lands can't enter the battlefield.")`.
+
+## Amendment 2026-10-19 ([#4061](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4061)): "for as long as this remains tapped" is read from the activation
+
+Decision 3's `ForAsLongAsSourceTappedDuration` checked that the source was tapped *as the ability resolved*. Preacher's
+ruling (and Vedalken Shackles', which prints the same duration) reads it earlier: "Whether Preacher is tapped is checked
+continually, starting when the ability is activated. If, before the ability resolves, there's any point at which Preacher
+is untapped, the ability has no effect - even if Preacher is tapped again by the time the ability resolves" (CR 611.2b).
+A source untapped in response and tapped again registered the effect, which was stronger than printed.
+
+1. **The record is on the stack item.** `StackItem.SourceUntapped` (snapshot key `sourceUntapped`, additive within v9,
+   omitted when false) is set by `untapPermanentLocked`, the engine's one untap path, on every ability item of that
+   permanent still on the stack. It is the same object only: an item from an earlier object of the same card (CR 400.7) is
+   not marked. An untap a stun counter replaces is not an untap (`untapPermanentLocked` returns before the write), so it
+   marks nothing. A copy of the ability carries the flag (CR 707.10); a delayed trigger built after the untap starts clear.
+2. **The reader.** `Game.SourceUntappedSinceActivationForEffect(item)`, and on the card side
+   `effects.sourceUntappedSinceActivation(ctx)`, which `DurationWhileThisRemainsTapped`,
+   `WhileYouControlThisAndItRemainsTapped` and Old Man of the Sea's steal refuse on, so "never starts" now means "untapped
+   at any point since the ability went on the stack". The constructors in `game/duration.go` keep their meaning (tapped
+   now); the activation-start half is the card-side wrapper, because only the resolving context knows its item.
+3. **The family.** Every card that builds its duration through those wrappers is held to the same reading: Vedalken
+   Shackles, Seasinger, Rubinia Soulsinger, Willow Satyr, Hivis of the Scale, Helm of Possession, Old Man of the Sea,
+   the Couriers, Endoskeleton and the other `TargetGetsWhileThisRemainsTapped` cards, and the tap-and-hold cards (Mana
+   Leech, Rust Tick, Sand Squid and the rest, through `TapAndHoldWhileThisRemainsTapped`). The tap itself of a hold
+   card still happens; the hold does not start.
+4. **Preacher ships Full**, with `TheyControl(OfAnOpponentsChoice(…))` (ADR 0019's amendment of 2026-10-16, #2055).
+
+Snapshot impact: one additive field on a stack item. No fixture is edited.

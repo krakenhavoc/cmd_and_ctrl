@@ -379,6 +379,88 @@ describe("the deck pickers stay one screen with many decks", () => {
   });
 });
 
+describe("the lobby deck panel shows a saved deck's sideboard (#3833)", () => {
+  const deck = (id: string, name: string) => ({
+    id,
+    name,
+    commanders: [],
+    card_count: 100,
+    updated_at: new Date().toISOString(),
+  });
+  const printing = (name: string, count: number, board: string, entry: number) => ({
+    entry,
+    name,
+    count,
+    board,
+    printing_id: "p",
+    set: "s",
+    collector_number: "1",
+  });
+
+  function setup() {
+    setSession(sess("player", USER));
+    routes = {
+      "GET /me/decks": () => ({ decks: [deck("lib-a", "Wishes"), deck("lib-b", "Plain")] }),
+      "GET /me/decks/lib-a/printings": () => ({
+        revision: "r",
+        cards: [
+          printing("Forest", 99, "Mainboard", 0),
+          printing("Living Wish", 1, "Sideboard", 1),
+          printing("Burning Wish", 1, "Sideboard", 2),
+        ],
+      }),
+      "GET /me/decks/lib-b/printings": () => ({
+        revision: "r",
+        cards: [printing("Forest", 99, "Mainboard", 0)],
+      }),
+      [`POST /games/${GAME}/decks/library`]: () => ({}),
+    };
+    stubServer();
+    return render(YourDecksPicker as never, { gameID: GAME, playerID: "p1" } as never);
+  }
+
+  const sideButton = (c: HTMLElement) =>
+    c.querySelector<HTMLButtonElement>('[data-testid="your-deck-sideboard"]')!;
+  const list = (c: HTMLElement) => c.querySelector('[data-testid="deck-sideboard"]');
+
+  it("opens the picked deck's sideboard read only, and closes it again", async () => {
+    const { container } = setup();
+    await settle();
+    expect(list(container)).toBeNull();
+    expect(sideButton(container).getAttribute("aria-expanded")).toBe("false");
+    click(sideButton(container));
+    await settle();
+    const box = list(container)!;
+    expect(box.textContent).toContain("Sideboard");
+    expect(box.textContent).toContain("(2)");
+    expect(box.textContent).toContain("Burning Wish");
+    expect(box.textContent).toContain("Living Wish");
+    expect(box.textContent).not.toContain("Forest");
+    expect(sideButton(container).getAttribute("aria-expanded")).toBe("true");
+    // Read only: its one control is Close.
+    expect([...box.querySelectorAll("button")].map((b) => b.textContent?.trim())).toEqual([
+      "Close",
+    ]);
+    click(box.querySelector("button")!);
+    flushSync();
+    expect(list(container)).toBeNull();
+  });
+
+  it("closes when another deck is picked, and says a deck has none", async () => {
+    const { container } = setup();
+    await settle();
+    click(sideButton(container));
+    await settle();
+    expect(list(container)).not.toBeNull();
+    click(container.querySelector<HTMLInputElement>('input[value="lib-b"]')!);
+    await settle();
+    expect(list(container)).toBeNull();
+    click(sideButton(container));
+    await settle();
+    expect(list(container)?.textContent).toContain("This deck has no sideboard.");
+  });
+});
+
 describe("the pre-built decks fold away behind your own", () => {
   const pb = (id: string) => ({
     id,

@@ -45,6 +45,7 @@ func init() {
 			name:     "Elvish Archdruid",
 			filter:   TribeFilter{Tribes: []string{"Elf"}, Others: true, YoursOnly: true},
 			spec: func(s *Spec) {
+				s.Completeness = CompletenessFull
 				s.ManaAbilities = []ManaAbility{{
 					Cost:           ManaAbilityCost{Tap: true},
 					ProducedAmount: ProducedPerPermanent("G", MatchCreatureSubtype("Elf")),
@@ -78,7 +79,10 @@ func init() {
 			name:     "Goblin Chieftain",
 			filter:   TribeFilter{Tribes: []string{"Goblin"}, Others: true, YoursOnly: true},
 			keyword:  "haste",
-			spec:     func(s *Spec) { s.PrintedKeywords = []string{"haste"} },
+			spec: func(s *Spec) {
+				s.Completeness = CompletenessFull
+				s.PrintedKeywords = []string{"haste"}
+			},
 		},
 	} {
 		spec := Spec{

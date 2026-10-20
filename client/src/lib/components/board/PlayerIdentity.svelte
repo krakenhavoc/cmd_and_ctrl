@@ -74,6 +74,11 @@
     // the tags, so the identity is as short as it can be over the
     // battlefield. Unset (SeatSummary, a phone's rail) it is unchanged.
     seated?: boolean;
+    // ADR 0120 as amended 2026-10-18 (#4122): the identity is the
+    // expanded overlay's header, one line across its top: a small
+    // portrait (life on its rim, as ever), then the name and tags, then
+    // the satellites. The same pieces and handlers as anywhere else.
+    header?: boolean;
     // ADR 0204 §2 (call 2): the face-down fan behind an opponent's avatar
     // hides its centre, so the count rides beside the portrait. Null
     // shows nothing (the viewer's own seat, or the count setting off).
@@ -94,6 +99,7 @@
     commanderScryfallID = null,
     considering = false,
     seated = false,
+    header = false,
     handCount = null,
   }: Props = $props();
 
@@ -289,6 +295,7 @@
   class:cast-picked={pickedByCast}
   class:eliminated={seat.eliminated}
   class:seated
+  class:header
   class:bot={isBot}
   data-seat-identity={seated ? seat.id : undefined}
   class:thinking={(botThinking || agentThinking || considering) && animateThinking}
@@ -1396,5 +1403,50 @@
       right: calc(50% + 24px);
       z-index: 1;
     }
+  }
+
+  /* ADR 0120 as amended 2026-10-18 (#4122): the expanded overlay's
+     header. One row: the portrait first (44px, its life on the rim as
+     everywhere), then the name and its tags, then the mana pool and the
+     markers and steppers beside them. Every width, since the overlay
+     has its own layout on a phone too (ADR 0120 §5). */
+  .identity.header {
+    --avatar-size: calc(44px * var(--card-scale, 1));
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    /* The life chip hangs 6px under the rim. */
+    padding-bottom: 6px;
+  }
+  /* The core row's pieces join the header's one line, so the name sits
+     between the portrait and its satellites. */
+  .identity.header > .core-row {
+    display: contents;
+  }
+  .identity.header .avatar-wrap {
+    order: -2;
+    flex: none;
+  }
+  .identity.header .name-line {
+    order: -1;
+  }
+  .identity.header .side {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .identity.header .name-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 6px;
+    min-width: 0;
+  }
+  .identity.header .name-line > .tag {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+  .identity.header .name {
+    font-size: 0.875rem;
+    max-width: 220px;
   }
 </style>

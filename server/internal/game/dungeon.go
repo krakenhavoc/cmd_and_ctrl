@@ -326,6 +326,11 @@ func (g *Game) VentureForEffect(player, source uuid.UUID, into string) error {
 	if p == nil || p.Eliminated {
 		return nil
 	}
+	if g.ventureLimitReachedLocked(p) {
+		// "Can't venture more than once each turn" (venture_limit.go):
+		// the venture is not performed.
+		return nil
+	}
 	if p.Dungeon != nil {
 		d := DungeonByKey(p.Dungeon.Key)
 		if d == nil {

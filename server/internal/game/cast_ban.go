@@ -57,6 +57,20 @@ const (
 	// hands" (ExceptFromZone: ZoneHand).
 	CastBanOutright CastBanKind = "outright"
 
+	// CastBanNamed is "can't cast spells with the same name as that
+	// creature" (Reflector Mage, ADR 0066's 2026-10-19 amendment): the
+	// filter's Named is the one name, and an empty Named bans nothing.
+	//
+	// A kind of its own rather than CastBanOutright with a name filter,
+	// for the rollback direction of the snapshot rule: a binary from
+	// before this kind reads a restore point it did not write, drops
+	// `filter.named`, and would restore an OUTRIGHT ban on every spell.
+	// Under its own kind that binary reads an unknown kind, which
+	// forbids nothing (the default arm of CastBanRule.forbids), so the
+	// worst a rollback does is end the ban early -- weaker than printed,
+	// never stronger.
+	CastBanNamed CastBanKind = "named"
+
 	// CastBanMaxPerTurn is "can't cast more than N spells", granted for
 	// a duration rather than printed on a permanent — the shape Rule of
 	// Law's clause would take if a resolving spell rather than a static
@@ -118,6 +132,8 @@ func (r CastBanRule) forbids(g *Game, playerID uuid.UUID, card Card, zone ZoneKi
 			return false
 		}
 		return r.ExceptFromZone == "" || zone != r.ExceptFromZone
+	case CastBanNamed:
+		return r.Filter.Named != "" && r.Filter.Matches(card)
 	case CastBanMaxPerTurn:
 		if !r.Filter.Matches(card) {
 			return false

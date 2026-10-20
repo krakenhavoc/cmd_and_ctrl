@@ -29,7 +29,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The +2 uses the widest target clause — "any target" is a player, a
 // creature, a planeswalker or a battle — and the life gain happens
-// whether or not the damage did (a fogged or prevented 2 still gains
+// whether or not the damage did (but not when the target is illegal, CR 608.2b) (a fogged or prevented 2 still gains
 // the 2).
 //
 // THE −7 is turn control (CR 723.1, ADR 0167, #3857). Its target is
@@ -54,18 +54,26 @@ func init() {
 				Cost:    LoyaltyCost(2),
 				Targets: TargetAny(),
 				Purpose: ForTargets(DamageToTarget(0, 2)),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					// CR 608.2b: a target that left in response is
-					// skipped. The life gain is NOT conditional on the
-					// damage landing — it is a separate sentence.
-					if legal := ctx.LegalTargets(); len(legal) > 0 {
-						if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: 2}).Apply(ctx); err != nil {
-							return err
+				// The life gain waits for a prompt the damage asks (CR 608.2c, #4155).
+				Effect: Do(
+					// CR 608.2b: with its only target illegal the ability
+					// does nothing at all, life gain included (#4082).
+					// The life gain is NOT conditional on the damage
+					// landing — a fogged or prevented 2 still gains 2.
+					Instruction(func(ctx *Context) error {
+						legal := ctx.LegalTargets()
+						if len(legal) == 0 {
+							return nil
 						}
-					}
-					return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
-				},
+						return DealDamage{Source: ctx.Item.SourceCardID, Target: legal[0].ID, Amount: 2}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if len(ctx.LegalTargets()) == 0 {
+							return nil
+						}
+						return GainLife{Amount: 2}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "−3: Target opponent's life total becomes 10.",

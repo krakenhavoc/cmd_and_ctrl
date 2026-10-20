@@ -11,7 +11,12 @@
   // at a time); the card owns its menu, its rename field and its
   // confirm, and hands the page the new name or the delete.
 
-  import type { Snippet } from "svelte";
+  import { L } from "../../labels";
+  import PrintingPicker from "./PrintingPicker.svelte";
+  import UpdateDeckSheet from "./UpdateDeckSheet.svelte";
+  import SideboardList from "./SideboardList.svelte";
+  import type { DeckUpdateConfirm } from "../../deckUpdate";
+  import { tick, type Snippet } from "svelte";
   import Icon from "../Icon.svelte";
   import CommanderArt from "./CommanderArt.svelte";
   import CoverageRing from "./CoverageRing.svelte";
@@ -28,6 +33,9 @@
     /** A rename or delete is in flight somewhere in the library. */
     busy: boolean;
     onReport: () => void;
+    onPrintingSaved: (deck: MyDeckInfo) => void;
+    /** An update was saved: the deck as it is now, the diff, the request's outcome. */
+    onUpdated: (res: DeckUpdateConfirm) => void;
     onRequest: () => void;
     /** Resolves to an error message, or "" when the rename landed. */
     onRename: (name: string) => Promise<string>;
@@ -44,6 +52,8 @@
     requestLocked,
     busy,
     onReport,
+    onPrintingSaved,
+    onUpdated,
     onRequest,
     onRename,
     onDelete,
@@ -60,6 +70,28 @@
   const shown = $derived(art.filter((a) => !failed.includes(a.scryfallId)));
 
   let menuOpen = $state(false);
+  let printingsOpen = $state(false);
+  let printingButton = $state<HTMLButtonElement | null>(null);
+  let updateOpen = $state(false);
+  let updateButton = $state<HTMLButtonElement | null>(null);
+  // ADR 0191 (amended 2026-10-19, #3833, #4054): the deck's sideboard, read only.
+  let sideboardOpen = $state(false);
+  let sideboardButton = $state<HTMLButtonElement | null>(null);
+
+  function closeSideboard(): void {
+    sideboardOpen = false;
+    void tick().then(() => sideboardButton?.focus());
+  }
+
+  function closeUpdate(): void {
+    updateOpen = false;
+    void tick().then(() => updateButton?.focus());
+  }
+
+  function closePrintings(): void {
+    printingsOpen = false;
+    void tick().then(() => printingButton?.focus());
+  }
   let renaming = $state(false);
   let renameValue = $state("");
   let renameError = $state("");
@@ -184,6 +216,43 @@
         </div>
       {:else}
         <div class="actions">
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => {
+              updateOpen = false;
+              sideboardOpen = false;
+              printingsOpen = true;
+            }}
+            bind:this={printingButton}
+            aria-expanded={printingsOpen}
+            disabled={busy || printingsOpen}>{L.choosePrintings}</button
+          >
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => {
+              printingsOpen = false;
+              sideboardOpen = false;
+              updateOpen = true;
+            }}
+            bind:this={updateButton}
+            aria-expanded={updateOpen}
+            disabled={busy || updateOpen}>{L.updateDeck}</button
+          >
+          <button
+            type="button"
+            class="btn sm"
+            onclick={() => {
+              printingsOpen = false;
+              updateOpen = false;
+              sideboardOpen = true;
+            }}
+            bind:this={sideboardButton}
+            aria-expanded={sideboardOpen}
+            aria-label={`sideboard of ${deck.name}`}
+            disabled={busy || sideboardOpen}>Sideboard</button
+          >
           {#if deck.coverage}
             <button type="button" class="btn sm" onclick={onReport} aria-expanded={reportOpen}>
               {reportOpen ? "Hide report" : "Coverage report"}
@@ -243,6 +312,29 @@
         </div>
       {/if}
 
+      {#if printingsOpen}
+        <PrintingPicker
+          {deck}
+          onclose={closePrintings}
+          onsaved={(updated) => {
+            onPrintingSaved(updated);
+            closePrintings();
+          }}
+        />
+      {/if}
+      {#if sideboardOpen}
+        <SideboardList {deck} onclose={closeSideboard} />
+      {/if}
+      {#if updateOpen}
+        <UpdateDeckSheet
+          {deck}
+          onclose={closeUpdate}
+          onupdated={(res) => {
+            updateOpen = false;
+            onUpdated(res);
+          }}
+        />
+      {/if}
       {@render below?.()}
     </div>
   </article>

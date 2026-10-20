@@ -29,28 +29,40 @@ func init() {
 		Name:            "Transpose",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			me := ctx.Controller()
-			if err := (DrawCards{Player: me, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			fromHand := item.CastFromZone == game.ZoneHand
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: me,
-				Source: item.SourceCardID,
-				N:      1,
-				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-					ctx := NewContext(g, item)
-					if err := g.ChangePlayerLifeForEffect(ctx.Source(), me, -1); err != nil {
-						return err
-					}
-					if !fromHand {
-						return nil
-					}
-					return CreateToken{Controller: me, Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
-				},
-			})
-			return nil
-		},
+		OnResolve: ResolveSteps(
+			// The discard waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 1},
+			Instruction(transposeDiscard),
+		),
 	})
 }
+
+// transposeDiscard is the discard, and the life loss and Wizard it leads to.
+// Those two are continuation steps (#4162): the Wizard waits for a prompt the
+// life loss asks (a CR 616 order of two life-loss replacements).
+func transposeDiscard(ctx *Context) error {
+	item := ctx.Item
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: ctx.Controller(),
+		Source: item.SourceCardID,
+		N:      1,
+		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
+			return transposeAfterDiscard.Run(NewContext(g, item))
+		},
+	})
+	return nil
+}
+
+// transposeAfterDiscard is "You lose 1 life. If this spell was cast from your
+// hand, create a 0/1 black Wizard creature token …".
+var transposeAfterDiscard = RegisterThenSteps("then-steps/transpose-after-discard",
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
+	}),
+	Instruction(func(ctx *Context) error {
+		if ctx.Item.CastFromZone != game.ZoneHand {
+			return nil
+		}
+		return CreateToken{Controller: ctx.Controller(), Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
+	}),
+)

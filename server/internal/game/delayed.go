@@ -895,12 +895,32 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 //
 // Caller must hold g.mu.
 func (g *Game) clearExpiredDelayedTriggersLocked(endOfTurn bool) {
+	g.clearDelayedTriggersWhereLocked(func(d Duration) bool { return g.durationExpiredLocked(d, endOfTurn) })
+}
+
+// clearEndOfCombatDelayedTriggersLocked drops every delayed trigger whose
+// stated duration was the combat that just ended (#4154, Melee; CR
+// 603.7b, 511.3). The step seam calls it as the cursor leaves a combat
+// phase; a turn that ends mid-combat sweeps it with the rest.
+//
+// Caller must hold g.mu.
+func (g *Game) clearEndOfCombatDelayedTriggersLocked() {
+	g.clearDelayedTriggersWhereLocked(func(d Duration) bool {
+		return d.Kind == UntilEndOfCombat && g.durationExpiredLocked(d, false)
+	})
+}
+
+// clearDelayedTriggersWhereLocked is the two sweeps' one body: it drops
+// every delayed trigger with a Duration that expired says is over.
+//
+// Caller must hold g.mu.
+func (g *Game) clearDelayedTriggersWhereLocked(expired func(Duration) bool) {
 	if len(g.DelayedTriggers) == 0 {
 		return
 	}
 	kept := make([]*DelayedTrigger, 0, len(g.DelayedTriggers))
 	for _, dt := range g.DelayedTriggers {
-		if dt != nil && dt.Duration != nil && g.durationExpiredLocked(*dt.Duration, endOfTurn) {
+		if dt != nil && dt.Duration != nil && expired(*dt.Duration) {
 			continue
 		}
 		kept = append(kept, dt)

@@ -62,11 +62,10 @@ func init() {
 				}.Apply(NewContext(g, item))
 			},
 		}},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -1)
-		},
+		OnResolve: ResolveSteps(
+			// The life loss waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 1},
+			GainLife{Amount: -1},
+		),
 	})
 }

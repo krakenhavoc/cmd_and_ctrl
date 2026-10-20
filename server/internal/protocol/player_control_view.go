@@ -14,18 +14,25 @@ type PlayerControlView struct {
 	SourceName string `json:"source_name,omitempty"`
 	// Until is how long the control lasts: "resolution" (Word of
 	// Command, ADR 0166), "turn" (the whole of the controlled
-	// player's turn, ADR 0167) or "search" (while the controlled player
-	// searches their library, Opposition Agent, #3998).
+	// player's turn, ADR 0167), "search" (while the controlled player
+	// searches their library, Opposition Agent, #3998) or "combat" (one
+	// combat phase of the controlled player's, Secret of Bloodbending,
+	// #3999).
 	Until string `json:"until"`
 }
 
-// ScheduledPlayerControlView is a turn-long control waiting for the
-// controlled player's next turn (ADR 0167 §8): "Alice will control Bob
-// during Bob's next turn". Public, and it grants no visibility.
+// ScheduledPlayerControlView is a control waiting for the controlled
+// player's next turn (ADR 0167 §8): "Alice will control Bob during Bob's
+// next turn", or (#3999) waiting for their next combat phase. Public,
+// and it grants no visibility.
 type ScheduledPlayerControlView struct {
 	Controller string `json:"controller"`
 	Controlled string `json:"controlled"`
 	SourceName string `json:"source_name,omitempty"`
+	// Until is what the control waits for: "turn", or "combat" for one
+	// combat phase (#3999). Absent reads as "turn", which every
+	// scheduled control was before it.
+	Until string `json:"until,omitempty"`
 }
 
 // viewOfPlayerControls lists the records that apply right now, one per
@@ -45,8 +52,8 @@ func viewOfPlayerControls(g *game.Game) []PlayerControlView {
 	return out
 }
 
-// viewOfScheduledPlayerControls lists the turn-long records still
-// waiting for their turn. Caller must hold g's read lock.
+// viewOfScheduledPlayerControls lists the records still waiting for
+// their turn or their combat phase. Caller must hold g's read lock.
 func viewOfScheduledPlayerControls(g *game.Game) []ScheduledPlayerControlView {
 	var out []ScheduledPlayerControlView
 	for _, r := range g.ScheduledPlayerControlsLocked() {
@@ -54,7 +61,73 @@ func viewOfScheduledPlayerControls(g *game.Game) []ScheduledPlayerControlView {
 			Controller: r.Controller.String(),
 			Controlled: r.Controlled.String(),
 			SourceName: r.SourceName,
+			Until:      string(r.UntilKind()),
 		})
+	}
+	return out
+}
+
+// DeclarationControlView is one "you choose which creatures attack /
+// block" effect (#4154): Master Warcraft's "this turn", Odric's and
+// Melee's "this combat". Public, and it grants no visibility.
+type DeclarationControlView struct {
+	Declarer   string `json:"declarer"`
+	SourceName string `json:"source_name,omitempty"`
+	// Attackers and Blockers say which declarations the declarer makes.
+	Attackers bool `json:"attackers,omitempty"`
+	Blockers  bool `json:"blockers,omitempty"`
+	// Scope is "turn" or "combat".
+	Scope string `json:"scope"`
+}
+
+// AttackHandoffView is this combat's attack declaration under a
+// DeclarationControl (#4154). Stage "" means the declarer is choosing
+// the attackers (again, after a declined cost); "targets" that the
+// active player is choosing what each attacks and whether to pay its
+// costs; "chosen" that both are done.
+type AttackHandoffView struct {
+	Stage      string `json:"stage,omitempty"`
+	Declarer   string `json:"declarer"`
+	SourceName string `json:"source_name,omitempty"`
+	// Declined lists the creatures whose costs the active player
+	// declined this combat; they can't be chosen again.
+	Declined []string `json:"declined,omitempty"`
+}
+
+// viewOfDeclarationControls lists this turn's records. Caller must hold
+// g's read lock.
+func viewOfDeclarationControls(g *game.Game) []DeclarationControlView {
+	var out []DeclarationControlView
+	for _, r := range g.DeclarationControlsForEffect() {
+		scope := "turn"
+		if r.ThisCombat {
+			scope = "combat"
+		}
+		out = append(out, DeclarationControlView{
+			Declarer:   r.Declarer.String(),
+			SourceName: r.SourceName,
+			Attackers:  r.Attackers,
+			Blockers:   r.Blockers,
+			Scope:      scope,
+		})
+	}
+	return out
+}
+
+// viewOfAttackHandoff is the handoff, or nil. Caller must hold g's read
+// lock.
+func viewOfAttackHandoff(g *game.Game) *AttackHandoffView {
+	h := g.AttackHandoffForEffect()
+	if h == nil {
+		return nil
+	}
+	out := &AttackHandoffView{
+		Stage:      string(h.Stage),
+		Declarer:   h.Declarer.String(),
+		SourceName: h.SourceName,
+	}
+	for _, id := range h.Declined {
+		out.Declined = append(out.Declined, id.String())
 	}
 	return out
 }

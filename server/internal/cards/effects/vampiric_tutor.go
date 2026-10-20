@@ -31,22 +31,20 @@ func init() {
 		Name:         "Vampiric Tutor",
 		Purpose:      game.Purpose{Tutors: 1},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (SearchLibrary{
-				Player:  ctx.Controller(),
-				Dest:    game.ZoneLibrary,
-				ToTop:   true,
-				Limit:   1,
-				Reveal:  false,
-				Shuffle: true,
-				Reason:  "Vampiric Tutor — search your library for a card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			// The life loss is a separate sentence and does not wait
-			// on the search, so it stays inline rather than riding
-			// the Then continuation.
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2)
-		},
+		OnResolve: ResolveSteps(
+			// "You lose 2 life" comes after the search (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return SearchLibrary{
+					Player:  ctx.Controller(),
+					Dest:    game.ZoneLibrary,
+					ToTop:   true,
+					Limit:   1,
+					Reveal:  false,
+					Shuffle: true,
+					Reason:  "Vampiric Tutor — search your library for a card",
+				}.Apply(ctx)
+			}),
+			GainLife{Amount: -2},
+		),
 	})
 }

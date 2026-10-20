@@ -1474,3 +1474,20 @@ rest of the restricted-mana group follow the same rule.
 (`aiseat/heuristic` `manaSourceOf`) left restricted rows out of its estimate of
 the mana it has. [ADR 0136's amendment of 2026-10-16](0136-planning-the-turns-mana.md#amendment-2026-10-16-restricted-mana-counts-for-the-casts-it-admits-3976)
 (#3976) counts them for the casts they admit, through the matcher above.
+
+## Amendment 2026-10-19 — a two-mana hybrid symbol is paid with its colour or with two of anything (#4177)
+
+The parser read `{2/B}` into a `ColorRequirement` with `NumericAlt` 2 from the first (above), and the mana value reads it (CR
+202.3f), but nothing PAID it with the two generic: the pool solver and the auto-tapper booked the colour half only, so Beseech the
+Queen, Karn, Gilded Guardian and Spectral Procession could not be cast without their colours (CR 107.4e, 601.2b).
+
+The pool solver walks the symbols that name one colour first, then the two-mana hybrids (`requirementRuns`, `widenedLast`), so a
+hybrid never holds the one {B} a plain {B} needed. A hybrid no mana of its colour paid comes back unpaid and `foldUnpaidTwobrid`
+turns it into `NumericAlt` generic (`allocateRest`, `MissingFor`). The auto-tapper's `solveColored` tries the hybrid's coloured
+slots first and, last, defers it to the generic recruit as `NumericAlt` mana. Both choose the colour whenever it can be had,
+which is the cheaper payment; the choice is not offered to the player.
+
+**Snapshot and wire impact.** None.
+
+Tests: `game/twobrid_payment_test.go`, `cards/effects/beseech_twobrid_test.go`. Back-out: drop the `foldUnpaidTwobrid` call in
+`allocateRest` and the pool tests fail; drop the deferral branch in `solveColored` and the auto-pay tests fail.

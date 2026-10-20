@@ -15,6 +15,7 @@ import (
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
+	"ResumeResolve":              "the rest of that effect after a prompt (#4019), not an ability of the object",
 	"DiscardByOpponent":          "a declaration the bot reads about a hand card, not an ability of the object (ADR 0153 §5)",
 	"DiscardByOpponentForHand":   "a declaration the bot reads about the hand, not an ability of the object (ADR 0153 §5)",
 	"AsEnters":                   "the CR 614.12 choice as it enters; its answer is on the wire as chosen_color and the rest",
@@ -47,6 +48,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"CastConditionLabel":         "the spell's own cast gate's text",
 	"CantBeCountered":            "a property of the spell on the stack, shown there",
 	"CantBeCounteredIf":          "a property of the spell on the stack, shown there",
+	"CantBeCopied":               "a property of the spell on the stack (\"This spell can't be copied\"), not an ability of a permanent",
 	"FlashWithCleanupSacrifice":  "the spell's own cast timing, read by the cast gate (#3156)",
 	"CastTimeValues":             "a number the spell fixes as it is cast, read by its own resolution (#3781)",
 	"SpellDamageCantBePrevented": "a property of the spell's damage",

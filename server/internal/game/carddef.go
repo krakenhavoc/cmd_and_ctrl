@@ -35,6 +35,11 @@ import (
 type CardDef struct {
 	// Resolve runs the card's OnResolve; nil when it has none.
 	Resolve func(g *Game, item *StackItem) error
+	// ResumeResolve runs the card's OnResolve steps from the position
+	// path names (#4019, step_walk.go). Set only when the OnResolve is a
+	// step sequence (effects.ResolveSteps); nil leaves the spell's
+	// steps unable to park, so they run back to back.
+	ResumeResolve func(g *Game, item *StackItem, path []int) error
 	// AsEnters runs the card's CR 614.12 "as enters" hook; nil for
 	// nearly every card.
 	AsEnters func(g *Game, cardID uuid.UUID) error
@@ -285,6 +290,10 @@ type CardDef struct {
 	ActivationTimings []ActivationTiming
 
 	CantBeCountered bool
+	// CantBeCopied is "This spell can't be copied" (See Double): the
+	// spell's own printed rider, read by every door a spell copy comes
+	// through (spell_copy.go). See spellPrintsCantBeCopied.
+	CantBeCopied bool
 	// FlashWithCleanupSacrifice is "You may cast this spell as though
 	// it had flash. If you cast it any time a sorcery couldn't have
 	// been cast, the controller of the permanent it becomes sacrifices
@@ -347,6 +356,12 @@ type CardDef struct {
 	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
 	// through CatalogAbilityKey; see loyalty_limit.go.
 	LoyaltyTwiceEachTurn bool
+	// YourPlaneswalkersLoyaltyTwiceEachTurn is this permanent's printed
+	// "You may activate the loyalty abilities of planeswalkers you
+	// control twice each turn rather than only once" (CR 606.3, Oath of
+	// Teferi). Read from the battlefield through CatalogAbilityKey; see
+	// loyalty_limit.go.
+	YourPlaneswalkersLoyaltyTwiceEachTurn bool
 	// ActivateAsThoughHaste is this permanent's printed "You may
 	// activate abilities of creatures you control as though those
 	// creatures had haste" (CR 302.6, 609.4; Thousand-Year Elixir).
@@ -386,6 +401,11 @@ type CardDef struct {
 	// Read from the battlefield through CatalogDrawLimits; see
 	// draw_limit.go.
 	DrawLimits []DrawLimitStatic
+	// VentureLimits are this permanent's printed "each opponent can't
+	// venture into the dungeon more than once each turn" statics (#4100).
+	// Read from the battlefield through CatalogVentureLimits; see
+	// venture_limit.go.
+	VentureLimits []VentureLimitStatic
 	// DamageAsThough are this permanent's printed "damage is dealt as
 	// though its source had wither / infect" statics (ADR 0108 §10). Read
 	// from the battlefield through CatalogDamageAsThough, keyed by
@@ -943,6 +963,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.CantBeCountered
 	}
+	CatalogCantBeCopied = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.CantBeCopied
+	}
 	CatalogCantBeCounteredIf = func(key string) SpellCondition {
 		if d := catalogDef(key); d != nil {
 			return d.CantBeCounteredIf
@@ -1003,6 +1027,10 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.LoyaltyTwiceEachTurn
 	}
+	CatalogYourPlaneswalkersLoyaltyTwiceEachTurn = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.YourPlaneswalkersLoyaltyTwiceEachTurn
+	}
 	CatalogActivateAsThoughHaste = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.ActivateAsThoughHaste
@@ -1036,6 +1064,12 @@ func init() {
 	CatalogDrawLimits = func(key string) []DrawLimitStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DrawLimits
+		}
+		return nil
+	}
+	CatalogVentureLimits = func(key string) []VentureLimitStatic {
+		if d := catalogDef(key); d != nil {
+			return d.VentureLimits
 		}
 		return nil
 	}

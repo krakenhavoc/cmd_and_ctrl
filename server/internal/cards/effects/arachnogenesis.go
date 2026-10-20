@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Arachnogenesis — Instant {2}{G}:
 //
 //	"Create X 1/2 green Spider creature tokens with reach, where X is the
@@ -20,13 +18,16 @@ func init() {
 		OracleID:     "b655bee5-52d3-467e-b16c-cfc2edf2b1a1",
 		Name:         "Arachnogenesis",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if n := creaturesAttackingPlayer(ctx.Game, ctx.Controller()); n > 0 {
-				if err := (CreateToken{Template: TokenCard("1/2 green Spider with reach"), N: n}).Apply(ctx); err != nil {
-					return err
+		OnResolve: ResolveSteps(
+			// The shield waits for a prompt the Spiders' creation asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				n := creaturesAttackingPlayer(ctx.Game, ctx.Controller())
+				if n <= 0 {
+					return nil
 				}
-			}
-			return combatShieldAgainstCreatures(exceptSubtypes("Spider")).Apply(ctx)
-		},
+				return CreateToken{Template: TokenCard("1/2 green Spider with reach"), N: n}.Apply(ctx)
+			}),
+			combatShieldAgainstCreatures(exceptSubtypes("Spider")),
+		),
 	})
 }

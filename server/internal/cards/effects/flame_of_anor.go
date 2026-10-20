@@ -33,25 +33,34 @@ func init() {
 			Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
 			Mode("Flame of Anor deals 5 damage to target creature.", TargetCreature("target creature")),
 		).OrUpToIf(2, YouControlAWizard),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range OptionTargets(ctx, 0) {
-				if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			for _, t := range OptionTargets(ctx, 1) {
-				if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return ctx.Game.DamageInstanceForEffect(func() error {
-				for _, t := range OptionTargets(ctx, 2) {
-					if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 5}).Apply(ctx); err != nil {
+		OnResolve: ResolveSteps(
+			// Each bullet waits for a prompt the one before asks (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				for _, t := range OptionTargets(ctx, 0) {
+					if err := (DrawCards{Player: t.ID, N: 2}).Apply(ctx); err != nil {
 						return err
 					}
 				}
 				return nil
-			})
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				for _, t := range OptionTargets(ctx, 1) {
+					if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+						return err
+					}
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, t := range OptionTargets(ctx, 2) {
+						if err := (DealDamage{Source: ctx.Item.SourceCardID, Target: t.ID, Amount: 5}).Apply(ctx); err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+			}),
+		),
 	})
 }

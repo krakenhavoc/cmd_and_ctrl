@@ -105,6 +105,22 @@ func (g *Game) spellCantBeCounteredLocked(spellID uuid.UUID) bool {
 	return spell != nil && g.counterShieldGrantedLocked(item, *spell)
 }
 
+// CatalogCantBeCopied is the catalog hook for "This spell can't be
+// copied" (See Double), wired at init beside CatalogCantBeCountered.
+// Nil means no card declares the rider.
+var CatalogCantBeCopied func(oracleID string) bool
+
+// spellPrintsCantBeCopied reports whether the spell's own text says
+// "This spell can't be copied". Keyed by CatalogKey, as
+// spellPrintsCantBeCountered is: the rider is a statement on the spell.
+func spellPrintsCantBeCopied(spell Card) bool {
+	if CatalogCantBeCopied == nil {
+		return false
+	}
+	oracle := CatalogKey(spell)
+	return oracle != "" && CatalogCantBeCopied(oracle)
+}
+
 // CatalogCantBeCounteredIf returns the condition under which a spell
 // with the given catalog key says "this spell can't be countered" of
 // itself — "If X is 5 or more, this spell can't be countered" (Banefire),

@@ -24,35 +24,41 @@ func init() {
 		Name:         "Descent into Avernus",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventStepBegan, StepBegan(game.StepUpkeep, true), label, func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				src := item.SourceCardID
-				if !onBattlefield(g, src) {
-					return nil
-				}
-				if err := (AddCounter{Target: src, Kind: "descent", N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				c, ok := g.LookupCardForEffect(src)
-				if !ok || c.Counters["descent"] <= 0 {
-					return nil
-				}
-				x := c.Counters["descent"]
-				players := seatsFromActive(g)
-				for _, p := range players {
-					if err := (CreateToken{Controller: p, Template: TreasureToken(), N: x}).Apply(ctx.asGroupMember()); err != nil {
-						return err
+			On(game.EventStepBegan, StepBegan(game.StepUpkeep, true), label, Do(
+				// The Treasures wait for a prompt the counters ask (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					src := ctx.Item.SourceCardID
+					if !onBattlefield(ctx.Game, src) {
+						return nil
 					}
-				}
-				return g.DamageInstanceForEffect(func() error {
+					return AddCounter{Target: src, Kind: "descent", N: 2}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					g, src := ctx.Game, ctx.Item.SourceCardID
+					if !onBattlefield(g, src) {
+						return nil
+					}
+					c, ok := g.LookupCardForEffect(src)
+					if !ok || c.Counters["descent"] <= 0 {
+						return nil
+					}
+					x := c.Counters["descent"]
+					players := seatsFromActive(g)
 					for _, p := range players {
-						if err := (DealDamage{Source: src, Target: p, Amount: x}).Apply(ctx.asGroupMember()); err != nil {
+						if err := (CreateToken{Controller: p, Template: TreasureToken(), N: x}).Apply(ctx.asGroupMember()); err != nil {
 							return err
 						}
 					}
-					return nil
-				})
-			}),
+					return g.DamageInstanceForEffect(func() error {
+						for _, p := range players {
+							if err := (DealDamage{Source: src, Target: p, Amount: x}).Apply(ctx.asGroupMember()); err != nil {
+								return err
+							}
+						}
+						return nil
+					})
+				}),
+			)),
 		},
 	})
 }

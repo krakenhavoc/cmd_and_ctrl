@@ -10,8 +10,10 @@ import {
   controlledByViewer,
   controllerOfViewer,
   decisionOwer,
+  endTurnClosed,
   nextPlayingAs,
   playingAsBanner,
+  playsForSeat,
   togglePlayingAs,
   viewForSeat,
   type PlayingAsState,
@@ -208,7 +210,7 @@ describe("viewForSeat and the legal-action lookup", () => {
 });
 
 describe("actsForSeat", () => {
-  it("is the rules verbs, not blocks, settings or the sandbox", () => {
+  it("is the rules verbs and (#4154) a chosen defender's blocks, not settings or the sandbox", () => {
     for (const t of [
       "pass_priority",
       "end_turn",
@@ -216,17 +218,13 @@ describe("actsForSeat", () => {
       "declare_attackers",
       "resolve_choice",
       "discard_selection",
+      "declare_blocker",
+      "declare_blockers",
+      "finish_blocks",
     ]) {
       expect(actsForSeat(t), t).toBe(true);
     }
-    for (const t of [
-      "declare_blocker",
-      "finish_blocks",
-      "draw_card",
-      "concede",
-      "undo",
-      "set_auto_answers",
-    ]) {
+    for (const t of ["draw_card", "concede", "undo", "set_auto_answers"]) {
       expect(actsForSeat(t), t).toBe(false);
     }
   });
@@ -291,5 +289,149 @@ describe("playingAsBanner", () => {
     expect(playingAsBanner(v, ALICE, ALICE)!.text).toBe("You will control Bob's next turn");
     expect(playingAsBanner(v, null, null)!.text).toBe("Alice will control Bob's next turn");
     expect(playingAsBanner(frame(), ALICE, ALICE)).toBeNull();
+  });
+});
+
+// #3999: Secret of Bloodbending's control lasts one combat phase, and
+// the board plays it exactly as it plays a controlled turn.
+describe("a controlled combat phase", () => {
+  const BLOODBENDING: PlayerControlView = {
+    controller: ALICE,
+    controlled: BOB,
+    source_name: "Secret of Bloodbending",
+    until: "combat",
+  };
+  const combat = (priority = 1) => frame({ player_controls: [BLOODBENDING] }, priority);
+
+  it("plays for the seat like a turn, unlike a resolution or a search", () => {
+    expect(playsForSeat("turn")).toBe(true);
+    expect(playsForSeat("combat")).toBe(true);
+    expect(playsForSeat("resolution")).toBe(false);
+    expect(playsForSeat("search")).toBe(false);
+    expect(playsForSeat(undefined)).toBe(false);
+    expect(controlledByViewer(combat(), ALICE)).toEqual(BLOODBENDING);
+    expect(controllerOfViewer(combat(), BOB)).toEqual(BLOODBENDING);
+    expect(actingSeatID(combat(), ALICE, "controlled")).toBe(BOB);
+    expect(nextPlayingAs(NOT_PLAYING_AS, combat(), ALICE).control).toBe(BOB);
+  });
+
+  it("closes End turn on Bob's board only", () => {
+    expect(endTurnClosed(combat(), ALICE, BOB)).toBe(true);
+    expect(endTurnClosed(combat(), ALICE, ALICE)).toBe(false);
+    expect(endTurnClosed(controlled(), ALICE, BOB)).toBe(false);
+    expect(endTurnClosed(frame(), ALICE, ALICE)).toBe(false);
+  });
+
+  it("says combat, not turn, in the banner", () => {
+    expect(playingAsBanner(combat(1), ALICE, ALICE)!.text).toBe(
+      "Viewing your board, Bob's combat is yours",
+    );
+    expect(playingAsBanner(combat(), BOB, BOB)!.text).toBe("Alice controls you this combat");
+    expect(playingAsBanner(combat(), CAROL, CAROL)!.text).toBe("Alice controls Bob this combat");
+    const waiting = frame({
+      scheduled_player_controls: [
+        {
+          controller: ALICE,
+          controlled: BOB,
+          source_name: "Secret of Bloodbending",
+          until: "combat",
+        },
+      ],
+    });
+    expect(playingAsBanner(waiting, BOB, BOB)!.text).toBe(
+      "Alice will control your next combat phase",
+    );
+    expect(playingAsBanner(waiting, ALICE, ALICE)!.text).toBe(
+      "You will control Bob's next combat phase",
+    );
+    expect(playingAsBanner(waiting, null, null)!.text).toBe(
+      "Alice will control Bob's next combat phase",
+    );
+  });
+});
+
+// #4154: Master Warcraft. Alice chooses Bob's attackers (Bob is active)
+// and Carol's blockers; the board is how she picks their creatures.
+describe("a declaration chosen for another seat", () => {
+  const WARCRAFT = (controlled: string): PlayerControlView => ({
+    controller: ALICE,
+    controlled,
+    source_name: "Master Warcraft",
+    until: "declarations",
+  });
+  const attacking = (extra: Partial<GameView> = {}) =>
+    frame({ player_controls: [WARCRAFT(BOB)], ...extra }, 1);
+  const withStep = (v: GameView, step: string, extra: Partial<GameView["turn"]> = {}) =>
+    ({ ...v, turn: { ...v.turn, step, ...extra } }) as GameView;
+
+  it("acts on the chosen seat's board, and closes End turn there", () => {
+    expect(playsForSeat("declarations")).toBe(true);
+    const v = withStep(attacking(), "declare_attackers");
+    expect(controlledByViewer(v, ALICE)?.controlled).toBe(BOB);
+    expect(actingSeatID(v, ALICE, "controlled")).toBe(BOB);
+    expect(nextPlayingAs(NOT_PLAYING_AS, v, ALICE).control).toBe(BOB);
+    expect(endTurnClosed(v, ALICE, BOB)).toBe(true);
+  });
+
+  it("hands the board to a defender whose blocks the viewer chooses", () => {
+    const v = withStep(frame({ player_controls: [WARCRAFT(CAROL)] }, -1), "declare_blockers", {
+      block_pending_seats: [2],
+    });
+    expect(decisionOwer(v, ALICE, CAROL)).toBe(CAROL);
+    expect(nextPlayingAs(NOT_PLAYING_AS, v, ALICE)).toMatchObject({
+      control: CAROL,
+      pref: "controlled",
+    });
+  });
+
+  it("names the declaration in the banner, for each viewer", () => {
+    const v = withStep(attacking(), "declare_attackers");
+    expect(playingAsBanner(v, ALICE, BOB)!.text).toBe("Choosing Bob's attackers");
+    expect(playingAsBanner(v, ALICE, ALICE)!.text).toBe(
+      "Viewing your board, Bob's attackers are yours to choose",
+    );
+    expect(playingAsBanner(v, BOB, BOB)!.text).toBe("Alice is choosing your attackers");
+    expect(playingAsBanner(v, CAROL, CAROL)!.text).toBe("Alice is choosing Bob's attackers");
+    const b = withStep(frame({ player_controls: [WARCRAFT(CAROL)] }, -1), "declare_blockers");
+    expect(playingAsBanner(b, CAROL, CAROL)!.text).toBe("Alice is choosing your blockers");
+  });
+
+  it("says who chooses this turn, and the active player's half", () => {
+    const turn = frame({
+      declaration_controls: [
+        {
+          declarer: ALICE,
+          source_name: "Master Warcraft",
+          attackers: true,
+          blockers: true,
+          scope: "turn",
+        },
+      ],
+    });
+    expect(playingAsBanner(turn, CAROL, CAROL)).toMatchObject({
+      kind: "choosing",
+      text: "Alice chooses which creatures attack and block this turn",
+    });
+    expect(playingAsBanner(turn, ALICE, ALICE)!.text).toBe(
+      "You choose which creatures attack and block this turn",
+    );
+    const odric = frame({
+      declaration_controls: [{ declarer: ALICE, blockers: true, scope: "combat" }],
+    });
+    expect(playingAsBanner(odric, BOB, BOB)!.text).toBe(
+      "Alice chooses which creatures block this combat",
+    );
+    const half = withStep(
+      frame({
+        attack_handoff: { stage: "targets", declarer: ALICE, source_name: "Master Warcraft" },
+      }),
+      "declare_attackers",
+    );
+    expect(playingAsBanner(half, BOB, BOB)).toMatchObject({
+      kind: "choosing",
+      text: "Alice chose your attackers",
+      note: "Choose what each attacks, then confirm",
+    });
+    expect(playingAsBanner(half, CAROL, CAROL)!.text).toBe("Alice chose Bob's attackers");
   });
 });

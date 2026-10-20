@@ -41,17 +41,23 @@ func init() {
 				item.Params.Amount = source.CastX()
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				x := item.Params.Amount
-				if x <= 0 {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				if err := (CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Halfling"), N: x}).Apply(ctx); err != nil {
-					return err
-				}
-				return CreateToken{Controller: item.Controller, Template: FoodToken(), N: x}.Apply(ctx)
-			},
+			Effect: Do(
+				// The Food waits for a prompt the Halflings' creation asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					x := ctx.Item.Params.Amount
+					if x <= 0 {
+						return nil
+					}
+					return CreateToken{Template: TokenCard("1/1 white Halfling"), N: x}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					x := ctx.Item.Params.Amount
+					if x <= 0 {
+						return nil
+					}
+					return CreateToken{Template: FoodToken(), N: x}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

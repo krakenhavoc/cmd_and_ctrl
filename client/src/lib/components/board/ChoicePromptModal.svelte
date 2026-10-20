@@ -255,7 +255,10 @@
   // from null → non-null, or the choice ID changes).
   let lastChoiceID: string | null = null;
   $effect(() => {
-    const nextID = active?.id ?? null;
+    // #4134: an undecided search is the same prompt id as the search it
+    // becomes once the searcher says yes, but it is a fresh question to
+    // the selection: the candidates only arrive then.
+    const nextID = active ? active.id + (active.search_undecided ? "?" : "") : null;
     if (nextID !== lastChoiceID) {
       // #826: an untap prompt whose ceiling is "all of them" is a board
       // of nothing but "you may choose NOT to untap" permanents, and
@@ -355,6 +358,14 @@
   // search ("a card", CR 701.23d) must find that many: the server sends
   // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
+  // #4134: "you may search" has an answer beside "Find nothing": not
+  // searching at all, which skips the shuffle and the search event. It is
+  // only on the table BEFORE the search begins (looking at the list is
+  // searching, CR 701.19), so the server sends search_optional only on the
+  // undecided prompt.
+  const searchOptional = $derived(isSearch && active?.search_optional === true);
+  // #4134: an optional search asks first, with no candidate list.
+  const searchUndecided = $derived(isSearch && active?.search_undecided === true);
 
   // #3998: a search another player owes (Opposition Agent controls them
   // while they search, CR 723.2) is answered here by the controller.
@@ -626,6 +637,20 @@
   // #3053 (CR 701.23b): a search for a card with a stated quality may
   // find nothing even with the match in front of you. Always an empty
   // answer, whatever the grid currently has selected.
+  // #4134: "I don't search" — apply:false, which the server does not
+  // confuse with the empty card list above.
+  function declineSearch(): void {
+    if (!active || !viewerID || !searchOptional) return;
+    answer({ apply: false });
+  }
+
+  // #4134: "I search", on the question an Opposition Agent's table asks
+  // before the search starts.
+  function beginSearch(): void {
+    if (!active || !viewerID || !searchUndecided) return;
+    answer({ apply: true });
+  }
+
   function findNothing(): void {
     if (!active || !viewerID || !isSearch || pickMin > 0) return;
     answer({ card_ids: [] });
@@ -2160,16 +2185,20 @@
       // declining is one click either way and never a deselect-then-
       // find-the-button hunt; it is absent when the rules make the
       // searcher find (search_min).
-      primary:
-        isSearch && none && pickMin === 0
+      primary: searchUndecided
+        ? confirmAction("Search", beginSearch, { enter: true })
+        : isSearch && none && pickMin === 0
           ? null
           : confirmAction(verb, submit, {
               disabled: !canSubmit,
               enter: !(none && pickMin === 0),
             }),
       secondary: [
-        ...(isSearch && pickMin === 0
+        ...(isSearch && pickMin === 0 && !searchUndecided
           ? [{ id: "fail", label: "Find nothing", onPress: findNothing }]
+          : []),
+        ...(searchOptional
+          ? [{ id: "decline", label: "Don't search", onPress: declineSearch }]
           : []),
         ...(clearable
           ? [
@@ -2924,6 +2953,13 @@
         {#if isSacrifice}
           Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to sacrifice.
           This isn't optional — {triggerSourceName(active.source)} is making you.
+        {:else if searchUndecided}
+          You may search your library. Looking through it is searching: choose Search and you'll see
+          the matches and your library is shuffled afterwards; choose Don't search and it isn't
+          looked at or shuffled.
+        {:else if isSearch && optionCards.length === 0}
+          Nothing in the library matches. Find nothing to carry on: your library is shuffled all the
+          same.
         {:else if isSearch}
           {#if pickMin > 0}
             Take {pickMin === pickMax ? pickMax : `at least ${pickMin} and up to ${pickMax}`} of these

@@ -533,6 +533,23 @@ type TargetSpec struct {
 	// effects.ControlledByThatPlayer.
 	ControlledByThatPlayer bool
 
+	// OpponentSlot is "for each opponent, … target … that player
+	// controls" with a REQUIRED pick per opponent (Blatant Thievery,
+	// #4128): the clause belongs to the n-th seat (1-based) after the
+	// chooser's in turn order. A candidate must be controlled by the live
+	// player in that slot, and the clause is required (its Min) only
+	// while that seat holds a live opponent -- at a two-player table the
+	// second and third clauses are not required, and neither is one whose
+	// opponent has been eliminated (CR 800.4a). Zero is no slot.
+	//
+	// DATA, not a closure, for the reason RelativeToSource is, and
+	// judged in the one shared walk (opponentSlotAdmits) so the legal
+	// set, the announce check (CR 601.2c), the resolution re-check (CR
+	// 608.2b), the client's picker and the bot's moves are one answer;
+	// the required-ness is Game.ClauseMinForEffect. Build it with
+	// effects.ForNthOpponent.
+	OpponentSlot int
+
 	// ChosenByOpponent is "target … of an opponent's choice" (#2055,
 	// ADR 0019's 2026-10-16 amendment): as the spell or ability is put
 	// on the stack, its controller chooses one of their opponents, and
@@ -622,10 +639,15 @@ type TargetSpec struct {
 	// chance of being chosen", the Witch Hunt ruling). With no legal
 	// target the ability is removed, as any required clause's is.
 	//
-	// Honoured only by the trigger target walk (queuePickTargetStepLocked);
-	// effects.Register refuses it anywhere else, and on a clause that
-	// picks anything but exactly one target. Built with
-	// effects.ChosenAtRandom.
+	// Honoured by the trigger target walk (queuePickTargetStepLocked)
+	// and, since #4051, by an activation's announcement
+	// (announceRandomTargetsLocked, CR 602.2b / 601.2c): Goblin Test
+	// Pilot's "any target chosen at random" is drawn as part of
+	// activating, the payload names nothing for it, and with no legal
+	// target the activation is refused. effects.Register refuses it on
+	// a spell or a mode, on an activated ability with more than this
+	// one clause, and on a clause that picks anything but exactly one
+	// target. Built with effects.ChosenAtRandom.
 	AtRandom bool
 
 	// PlayerOK is the candidate predicate for player targets. Nil
@@ -1729,7 +1751,7 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 // of them, false when there is one and the walk has no source to be
 // relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) {
+	if !s.chooserAdmits(src, c) || !s.thatPlayerAdmits(src, c) || !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) || !s.paidForAdmits(g, src, c) || !s.amongPayloadAdmits(c) || !s.opponentSlotAdmits(g, src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

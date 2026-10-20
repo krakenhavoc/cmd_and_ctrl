@@ -29,12 +29,31 @@ import (
 // "Never starts" (CR 611.2b): a source that has untapped, left, or come
 // back as a new object (CR 400.7, #1432) before the ability resolves
 // makes the duration false as it would begin, so nothing is registered.
+//
+// The tapped state is read from the moment the ability was ACTIVATED
+// (#4061, Preacher's ruling: "Whether Preacher is tapped is checked
+// continually, starting when the ability is activated. If, before the
+// ability resolves, there's any point at which Preacher is untapped, the
+// ability has no effect - even if Preacher is tapped again by the time
+// the ability resolves"; Vedalken Shackles' rulings say the same). So a
+// source that untapped in response and was tapped again is not enough:
+// the engine records the untap on the ability's stack item
+// (StackItem.SourceUntapped, stamped by the one untap path) and every
+// constructor below refuses on it - sourceUntappedSinceActivation.
+
+// sourceUntappedSinceActivation reports whether this context's source
+// untapped after the resolving ability was put on the stack (#4061): the
+// duration was broken before it began. False with no item (an AsEnters
+// hook), and for a spell.
+func sourceUntappedSinceActivation(ctx *Context) bool {
+	return ctx != nil && ctx.Game != nil && ctx.Game.SourceUntappedSinceActivationForEffect(ctx.Item)
+}
 
 // DurationWhileThisRemainsTapped is "for as long as ~ remains tapped",
 // about the resolving ability's source. False when the duration would
 // never start.
 func DurationWhileThisRemainsTapped(ctx *Context) (game.Duration, bool) {
-	if ctx.isNewSourceObjectAsThis(ctx.Source()) { // #1432
+	if ctx.isNewSourceObjectAsThis(ctx.Source()) || sourceUntappedSinceActivation(ctx) { // #1432, #4061
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsSourceTappedDuration(ctx.Source())
@@ -45,7 +64,7 @@ func DurationWhileThisRemainsTapped(ctx *Context) (game.Duration, bool) {
 // controller. False when either half is already false, so the card
 // registers nothing (CR 611.2b).
 func WhileYouControlThisAndItRemainsTapped(ctx *Context) (game.Duration, bool) {
-	if ctx.isNewSourceObjectAsThis(ctx.Source()) { // #1432
+	if ctx.isNewSourceObjectAsThis(ctx.Source()) || sourceUntappedSinceActivation(ctx) { // #1432, #4061
 		return game.Duration{}, false
 	}
 	return ctx.Game.ForAsLongAsYouControlAndSourceTappedDuration(ctx.Source(), ctx.Controller())

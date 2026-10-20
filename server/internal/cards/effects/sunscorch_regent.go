@@ -27,15 +27,16 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b15OpponentCastSpell(ev, source)
-			}, "Sunscorch Regent — +1/+1 counter and gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if b15OnBattlefield(g, item.SourceCardID) {
-					if err := (AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-						return err
+			}, "Sunscorch Regent — +1/+1 counter and gain 1 life", Do(
+				// The life gain waits for a prompt the counter asks (CR 608.2c, #4155).
+				Instruction(func(ctx *Context) error {
+					if !b15OnBattlefield(ctx.Game, ctx.Item.SourceCardID) {
+						return nil
 					}
-				}
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			}),
+					return AddCounter{Target: ctx.Item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(ctx)
+				}),
+				GainLife{Amount: 1},
+			)),
 		},
 	})
 }

@@ -373,20 +373,6 @@ type ManaAbilityShape struct {
 	// row is paid only when the player activates it.
 	ExertCost bool
 
-	// MillCost is "Mill N cards" in a mana ability's cost (#3845,
-	// CR 701.17a) — Millikin's "{T}, Mill a card: Add {C}". Zero means
-	// no such component. The SAME component AbilityCost.Mill carries,
-	// paid through the same door (payMillCostLocked → MillNForEffect),
-	// so the CR 614 window and "whenever you mill" see it.
-	//
-	// CR 701.17b / 118.3: a library of fewer than N cards can't pay it,
-	// so the activation is refused (ErrCantPayLibraryCost), the
-	// enumerator drops the move and the view greys the row. Paid last,
-	// with the mana still landing in the pool afterwards (CR 605.3b — one
-	// atomic step). The auto-tapper never plans such a source:
-	// milling a library to pay for a spell is the player's call.
-	MillCost int
-
 	// ManaCost is a mana component in the activation cost — the
 	// Signet cycle's "{1}, {T}: Add {W}{U}", Cabal Coffers' "{2},
 	// {T}". Scryfall brace grammar, parsed with ParseCost.
@@ -815,6 +801,20 @@ type ManaAbilityShape struct {
 	// damage than leaves the player above 0 life.
 	RiderSelfDamage int
 
+	// RiderSelfLifeGain is the life Rider gains the ability's
+	// controller, when Rider is exactly "You gain N life"
+	// (effects.ManaAbility.GainLife builds both): The Great Henge's
+	// "{T}: Add {G}{G}. You gain 2 life", Pristine Talisman's 1. Zero
+	// for an opaque rider, or none.
+	//
+	// The auto-tapper's other declared rider (#4185). A mana ability
+	// that also gains life is still a mana ability (CR 605.1a), and the
+	// gain is no resource the player spends, so a source that declares
+	// it here is planned as an ordinary one, and the move list counts
+	// its mana when it asks what is castable. Set it with Rider or with
+	// nothing else; never beside RiderSelfDamage.
+	RiderSelfLifeGain int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE the produced string is computed (Produced / ProducedFunc
@@ -996,11 +996,17 @@ var CatalogTriggerDoublers func(oracleID string) []TriggerDoubler
 // fireEffectResolverLocked invokes the registered EffectResolver
 // if non-nil, emits EventEffectError on failure, and swallows the
 // error so the resolution path keeps moving. Caller must hold g.mu.
+//
+// The spell's step site is open while it runs (#4019), so an OnResolve
+// written as steps (effects.ResolveSteps) parks its later steps behind
+// an earlier step's prompt.
 func (g *Game) fireEffectResolverLocked(item *StackItem, oracleID string, cardID uuid.UUID) {
 	if EffectResolver == nil || oracleID == "" {
 		return
 	}
-	if err := EffectResolver(g, item, oracleID); err != nil {
+	if err := g.runSpellResolverLocked(item, oracleID, func() error {
+		return EffectResolver(g, item, oracleID)
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,

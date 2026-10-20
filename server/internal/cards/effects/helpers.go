@@ -1136,6 +1136,22 @@ func firstLegalPlayerTarget(ctx *Context) (uuid.UUID, bool) {
 	return uuid.Nil, false
 }
 
+// youAndTargetOpponentEachDraw is "you and target opponent each draw a
+// card" (Flumph, Teyo, Geometric Tactician): your draw, then the
+// still-legal target's, as one Do so the second waits for any prompt
+// the first asks (CR 608.2c, #4155).
+func youAndTargetOpponentEachDraw() Effect {
+	return Do(
+		DrawCards{N: 1},
+		Instruction(func(ctx *Context) error {
+			if p, ok := firstLegalPlayerTarget(ctx); ok {
+				return DrawCards{Player: p, N: 1}.Apply(ctx)
+			}
+			return nil
+		}),
+	)
+}
+
 // notACreature strips the Creature card type from a characteristic
 // being built in layer 4: every "as long as <condition>, this isn't a
 // creature" clause (a Theros God's devotion, The Warring Triad's
@@ -1220,13 +1236,18 @@ func untapTheTarget(g *game.Game, item *game.StackItem) error {
 // artifacts and/or enchantments" — and the one-target unpromised Wear
 // Down, which is the same loop over one slot.
 func destroyEachLegalTarget(_ *game.StackItem, ctx *Context) error {
+	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
+		if t.Kind != game.TargetCard || ctx.isNewSourceObject(t.ID) {
 			continue
 		}
-		if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
+		ids = append(ids, t.ID)
+	}
+	if len(ids) > 0 {
+		// ONE simultaneous event (CR 700.4, CR 603.10a), not a loop of
+		// DestroyTarget: a Blood Artist among the targets sees every
+		// death, not only the ones after its own (#4095).
+		ctx.Game.DestroyPermanentsForEffect(ids)
 	}
 	return nil
 }

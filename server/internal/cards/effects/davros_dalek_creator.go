@@ -50,21 +50,31 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Davros — create a Dalek if an opponent lost 3 or more life this turn, then those opponents face a villainous choice",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					var losers []uuid.UUID
-					for _, opp := range ctx.Opponents() {
-						if b18LifeLostThisTurn(g, opp) >= 3 {
-							losers = append(losers, opp)
+				Do(
+					// The choice waits for a prompt the token's creation asks (CR 608.2c,
+					// #4155). The opponents who lost 3 life are found again for it: making
+					// a token does not change how much life was lost this turn.
+					Instruction(func(ctx *Context) error {
+						if len(davrosLosers(ctx)) == 0 {
+							return nil
 						}
-					}
-					if len(losers) > 0 {
-						if err := (CreateToken{Template: TokenCard("3/3 black Dalek artifact with menace"), N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return FaceVillainousChoice{Players: losers, Choice: davrosChoice}.Apply(ctx)
-				}),
+						return CreateToken{Template: TokenCard("3/3 black Dalek artifact with menace"), N: 1}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						return FaceVillainousChoice{Players: davrosLosers(ctx), Choice: davrosChoice}.Apply(ctx)
+					}),
+				)),
 		},
 	})
+}
+
+// davrosLosers are the opponents who lost 3 or more life this turn.
+func davrosLosers(ctx *Context) []uuid.UUID {
+	var losers []uuid.UUID
+	for _, opp := range ctx.Opponents() {
+		if b18LifeLostThisTurn(ctx.Game, opp) >= 3 {
+			losers = append(losers, opp)
+		}
+	}
+	return losers
 }

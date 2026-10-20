@@ -75,7 +75,7 @@ var activatedRowScopes = map[string]rowScope{
 	// the shortfall it greys the row with is too.
 	"MillCost":     rowPublic,
 	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "LoyaltyCostX": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "ExileGrantor": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
@@ -138,7 +138,7 @@ var manaRowScopes = map[string]rowScope{
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).
-	"EnergyCost": rowPublic, "MillCost": rowPublic, "Exert": rowPublic,
+	"EnergyCost": rowPublic, "Exert": rowPublic,
 	"ManaCost": rowPublic, "Produced": rowPublic, "Restrictions": rowPublic,
 	"SacrificeLabel": rowPublic, "SacrificeOptions": rowPublic,
 	"TapOthersLabel": rowPublic, "TapOthersOptions": rowPublic,

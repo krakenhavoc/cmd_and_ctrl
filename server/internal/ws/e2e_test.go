@@ -193,6 +193,8 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.LoopRecording = n.loopRecording(v.LoopRecording)
 	out.PlayerControls = n.playerControls(v.PlayerControls)
 	out.ScheduledPlayerControls = n.scheduledPlayerControls(v.ScheduledPlayerControls)
+	out.DeclarationControls = n.declarationControls(v.DeclarationControls)
+	out.AttackHandoff = n.attackHandoff(v.AttackHandoff)
 	out.Outcome = n.outcome(v.Outcome)
 	// ADR 0122 §6.1: a flag, no IDs.
 	out.LegalMovesTruncated = v.LegalMovesTruncated
@@ -351,6 +353,36 @@ func (n *normalizer) scheduledPlayerControls(v []protocol.ScheduledPlayerControl
 		}
 	}
 	return out
+}
+
+// declarationControls normalises #4154's records: the declarer is a seat ID.
+func (n *normalizer) declarationControls(v []protocol.DeclarationControlView) []protocol.DeclarationControlView {
+	if len(v) == 0 {
+		return nil
+	}
+	out := make([]protocol.DeclarationControlView, len(v))
+	for i, d := range v {
+		d.Declarer = n.id(d.Declarer)
+		out[i] = d
+	}
+	return out
+}
+
+// attackHandoff normalises #4154's handoff: the declarer is a seat ID and
+// the declined creatures are card IDs.
+func (n *normalizer) attackHandoff(v *protocol.AttackHandoffView) *protocol.AttackHandoffView {
+	if v == nil {
+		return nil
+	}
+	out := *v
+	out.Declarer = n.id(v.Declarer)
+	if len(v.Declined) > 0 {
+		out.Declined = make([]string, len(v.Declined))
+		for i, id := range v.Declined {
+			out.Declined[i] = n.id(id)
+		}
+	}
+	return &out
 }
 
 // loopRecording normalises ADR 0193's view: the recorder and the seat that
@@ -648,6 +680,8 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		LoopRecording:           &protocol.LoopRecordingView{Recorder: ownerID, Status: "ready", Steps: 4, MaxIterations: 1000},
 		PlayerControls:          []protocol.PlayerControlView{{Controller: ownerID, Controlled: ownerID, Source: ownerID, Until: "turn"}},
 		ScheduledPlayerControls: []protocol.ScheduledPlayerControlView{{Controller: ownerID, Controlled: oppID, SourceName: "Emrakul, the Promised End"}},
+		DeclarationControls:     []protocol.DeclarationControlView{{Declarer: ownerID, SourceName: "Master Warcraft", Attackers: true, Scope: "turn"}},
+		AttackHandoff:           &protocol.AttackHandoffView{Stage: "targets", Declarer: ownerID, Declined: []string{cardID}},
 		ControlledLegalActions:  map[string]*protocol.LegalActionsView{oppID: {Pass: true}},
 		Outcome:                 &protocol.OutcomeView{Kind: "win", Winner: ownerID, Cause: "effect", Source: cardID},
 	}

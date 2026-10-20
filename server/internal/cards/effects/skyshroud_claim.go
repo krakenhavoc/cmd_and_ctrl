@@ -21,9 +21,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // lives.
 func init() {
 	Register(Spec{
-		OracleID: "376c9d3f-21d3-4251-bb6a-026fa9e1b0e1",
-		Name:     "Skyshroud Claim",
-		Purpose:  game.Purpose{Lands: 2},
+		OracleID:     "376c9d3f-21d3-4251-bb6a-026fa9e1b0e1",
+		Name:         "Skyshroud Claim",
+		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{Lands: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
 				Player:    ctx.Controller(),

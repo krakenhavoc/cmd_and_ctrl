@@ -18,9 +18,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // carried by CopySpell.Controller defaulting to ctx.Controller().
 func init() {
 	Register(Spec{
-		OracleID: "a1f55890-31c5-4ed4-a2cd-7a4a9f05f8ca",
-		Name:     "Reverberate",
-		Targets:  instantOrSorcerySpell("target instant or sorcery spell"),
+		OracleID:     "a1f55890-31c5-4ed4-a2cd-7a4a9f05f8ca",
+		Name:         "Reverberate",
+		Completeness: CompletenessFull,
+		Targets:      instantOrSorcerySpell("target instant or sorcery spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

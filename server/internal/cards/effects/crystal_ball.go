@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplifications.
 func init() {
 	Register(Spec{
-		OracleID: "bd85fe4d-1d62-416f-ac2d-e287911c84e3",
-		Name:     "Crystal Ball",
+		OracleID:     "bd85fe4d-1d62-416f-ac2d-e287911c84e3",
+		Name:         "Crystal Ball",
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Scry 2.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},

@@ -17,9 +17,11 @@ import (
 //
 //	GET /cards/{id}        — card metadata (name, image_uri, etc.)
 //	GET /cards/{id}/image  — image bytes; downloads on miss
+//	GET /cards/{id}/printings — available English printings
 //
-// Both endpoints require authentication upstream — main.go wraps
-// this handler with auth.Middleware before mounting it.
+// Metadata and images require authentication upstream. main.go also
+// mounts the printing-list route publicly, like /catalog; it performs
+// no external requests.
 //
 // The handler consults idx for metadata and cache for image bytes.
 // A nil cache disables the /image route (returns 503); a nil idx
@@ -45,6 +47,36 @@ func Handler(idx *Index, cache *ImageCache) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "public, max-age=3600")
 		_ = json.NewEncoder(w).Encode(card)
+	})
+
+	mux.HandleFunc("GET /cards/{id}/printings", func(w http.ResponseWriter, r *http.Request) {
+		id, err := parseID(r)
+		if err != nil {
+			writeErr(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if idx == nil {
+			writeErr(w, http.StatusServiceUnavailable, "card index not loaded")
+			return
+		}
+		if _, ok := idx.Get(id); !ok {
+			writeErr(w, http.StatusNotFound, "unknown card")
+			return
+		}
+		type printing struct {
+			ID         uuid.UUID `json:"id"`
+			Name       string    `json:"name"`
+			FlavorName string    `json:"flavor_name,omitempty"`
+			Set        string    `json:"set"`
+			Number     string    `json:"collector_number"`
+		}
+		out := []printing{}
+		for _, c := range idx.Printings(id) {
+			out = append(out, printing{c.ID, c.Name, c.FlavorName, c.SetCode, c.CollectorNo})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		_ = json.NewEncoder(w).Encode(map[string]any{"printings": out})
 	})
 
 	mux.HandleFunc("GET /cards/{id}/image", func(w http.ResponseWriter, r *http.Request) {

@@ -15,9 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Instant naming the tribe grows a Door and draws nothing here.
 func init() {
 	Register(Spec{
-		OracleID: "8cf38025-5821-45a0-9483-266353b7e82d",
-		Name:     "Vanquisher's Banner",
-		AsEnters: ChooseCreatureTypeAsEnters("Vanquisher's Banner"),
+		OracleID:     "8cf38025-5821-45a0-9483-266353b7e82d",
+		Name:         "Vanquisher's Banner",
+		Completeness: CompletenessFull,
+		AsEnters:     ChooseCreatureTypeAsEnters("Vanquisher's Banner"),
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Chosen: true, YoursOnly: true}, 1, 1),
 		},

@@ -39,12 +39,14 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{EscapeWithCounters("{R}{R}", 8, 1)},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Ox of Agonas — discard your hand, then draw three", func(g *game.Game, item *game.StackItem) error {
-				if _, err := discardWholeHand(g, item.Controller); err != nil {
+			// The draw waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+			WhenThisEnters("Ox of Agonas — discard your hand, then draw three", Do(
+				Instruction(func(ctx *Context) error {
+					_, err := discardWholeHand(ctx.Game, ctx.Controller())
 					return err
-				}
-				return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-			}),
+				}),
+				DrawCards{N: 3},
+			)),
 		},
 	})
 }

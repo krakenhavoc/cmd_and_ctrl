@@ -58,16 +58,16 @@ func init() {
 // back is a new object (CR 400.7, #1418) and gets nothing.
 func uthrosResearchCraftCastTrigger() game.TriggeredAbility {
 	t := On(game.EventCast, YouCast(Artifact()), "Uthros Research Craft — draw a card and add a charge counter",
-		func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			if g.AbilitySourceGoneForEffect(item) {
-				return nil
-			}
-			return AddCounter{Target: item.SourceCardID, Kind: game.CounterCharge, N: 1}.Apply(ctx)
-		})
+		Do(
+			// The counter waits for a prompt the draw asks (CR 608.2c, #4155).
+			DrawCards{N: 1},
+			Instruction(func(ctx *Context) error {
+				if ctx.Game.AbilitySourceGoneForEffect(ctx.Item) {
+					return nil
+				}
+				return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterCharge, N: 1}.Apply(ctx)
+			}),
+		))
 	t.ActiveWhen = AtChargeCounters(3)
 	return t
 }

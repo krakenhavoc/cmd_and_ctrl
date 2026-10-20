@@ -66,12 +66,23 @@ func shadowThrow(g *game.Game, item *game.StackItem) error {
 				if !sacrificed {
 					return nil
 				}
-				if err := g.DrawNForEffect(item.Controller, 2); err != nil {
-					return err
-				}
-				return eachOpponentLosesLife(g, item, mv)
+				ctx := NewContext(g, item)
+				ctx.RecordStep(shadowMysteriousAssassinRecord, nil, mv)
+				return shadowDrainSteps.Run(ctx)
 			})
 		},
 	})
 	return nil
 }
+
+// shadowMysteriousAssassinRecord is the sacrificed permanent's mana value.
+const shadowMysteriousAssassinRecord = "shadow-mysterious-assassin/mana-value"
+
+// shadowDrainSteps is the two cards and then the life loss: the loss waits for
+// a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+var shadowDrainSteps = RegisterThenSteps("then-steps/shadow-mysterious-assassin-drain",
+	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(ctx.Controller(), 2) }),
+	Instruction(func(ctx *Context) error {
+		return eachOpponentLosesLife(ctx.Game, ctx.Item, ctx.StepRecord(shadowMysteriousAssassinRecord).N())
+	}),
+)

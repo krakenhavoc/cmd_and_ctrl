@@ -17,18 +17,22 @@ func init() {
 		OracleID:     "b2402ac0-8ab8-413c-bac4-9f4ba2163c58",
 		Name:         "Behold the Beyond",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if _, err := discardWholeHand(ctx.Game, ctx.Controller()); err != nil {
+		// The search waits for a prompt a discard asks (a replacement offer such as Library of Leng's; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				_, err := discardWholeHand(ctx.Game, ctx.Controller())
 				return err
-			}
-			return SearchLibrary{
-				Player:  ctx.Controller(),
-				Dest:    game.ZoneHand,
-				Limit:   3,
-				Reveal:  false,
-				Shuffle: true,
-				Reason:  "Behold the Beyond — search your library for three cards",
-			}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				return SearchLibrary{
+					Player:  ctx.Controller(),
+					Dest:    game.ZoneHand,
+					Limit:   3,
+					Reveal:  false,
+					Shuffle: true,
+					Reason:  "Behold the Beyond — search your library for three cards",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

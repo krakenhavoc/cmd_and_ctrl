@@ -294,6 +294,120 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  it("search: a you-may search asks before it looks, with no cards shown (#4134)", () => {
+    // Looking through the library is searching (CR 701.19): the question
+    // comes first, so declining is never a free look.
+    const a = mount(
+      snap({
+        kind: "search_library",
+        reason: "Path to Exile — you may search for a basic land",
+        search_max: 1,
+        search_optional: true,
+        search_undecided: true,
+        options: [],
+      }),
+    );
+    expectSheet("Path to Exile — you may search for a basic land");
+    expect(inSheet("button.card-pick")).toHaveLength(0);
+    expect(barButton("Find nothing")).toBeNull();
+    expect(nameOf(barPrimary()!)).toBe("Search");
+    const dont = barButton("Don't search")!;
+    expect(barSecondaries()).toContain(dont);
+    keyFromBody("Enter");
+    expect(a.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", apply: true } },
+    ]);
+    cleanup();
+
+    const b = mount(
+      snap({
+        kind: "search_library",
+        reason: "Path to Exile — you may search for a basic land",
+        search_max: 1,
+        search_optional: true,
+        search_undecided: true,
+        options: [],
+      }),
+    );
+    click(barButton("Don't search")!);
+    // Not searching is apply:false, never the empty card list: that is a
+    // search that finds nothing, and it still shuffles.
+    expect(b.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", apply: false } },
+    ]);
+  });
+
+  it("search: once the search has begun there is no Don't search, only Find nothing (#4134)", () => {
+    const opts = [card("f", "Forest"), card("i", "Island")];
+    const a = mount(
+      snap({
+        kind: "search_library",
+        reason: "Path to Exile — you may search for a basic land",
+        search_max: 1,
+        options: opts,
+      }),
+    );
+    expectSheet("Path to Exile — you may search for a basic land");
+    expect(inSheet("button.card-pick")).toHaveLength(2);
+    expect(barButton("Don't search")).toBeNull();
+    click(barButton("Find nothing")!);
+    expect(a.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: [] } },
+    ]);
+  });
+
+  it("search: a prompt with no candidates still asks, then offers only Find nothing (#4140)", () => {
+    // Optional: the question first, as for any optional search.
+    const a = mount(
+      snap({
+        kind: "search_library",
+        reason: "Path to Exile — you may search for a basic land",
+        search_max: 1,
+        search_optional: true,
+        search_undecided: true,
+        options: [],
+      }),
+    );
+    expect(nameOf(barPrimary()!)).toBe("Search");
+    click(barButton("Don't search")!);
+    expect(a.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", apply: false } },
+    ]);
+    cleanup();
+
+    // Begun (or mandatory): an empty list and Find nothing.
+    const b = mount(
+      snap({
+        kind: "search_library",
+        reason: "Rampant Growth — a basic land",
+        search_max: 1,
+        options: [],
+      }),
+    );
+    expectSheet("Rampant Growth — a basic land");
+    expect(inSheet("button.card-pick")).toHaveLength(0);
+    expect(barPrimary()).toBeNull();
+    expect(barButton("Don't search")).toBeNull();
+    expect(sheetPanel()!.textContent).toContain("Nothing in the library matches");
+    click(barButton("Find nothing")!);
+    expect(b.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: [] } },
+    ]);
+  });
+
+  it("search: a mandatory search has no Don't search (#4134)", () => {
+    mount(
+      snap({
+        kind: "search_library",
+        reason: "Rampant Growth — a basic land",
+        search_max: 1,
+        options: [card("f", "Forest"), card("i", "Island")],
+      }),
+    );
+    expectSheet("Rampant Growth — a basic land");
+    expect(barButton("Don't search")).toBeNull();
+  });
+
   it("search: a search the viewer answers for another player names whose it is (#3998)", () => {
     // Opposition Agent: the searcher's prompt arrives addressed to the
     // controller, on the searcher's behalf.

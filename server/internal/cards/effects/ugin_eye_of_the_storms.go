@@ -92,13 +92,11 @@ func init() {
 			{
 				Label: "+2: You gain 3 life and draw a card.",
 				Cost:  LoyaltyCost(2),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-				},
+				Effect: Do(
+					// The draw waits for a prompt the life gain asks (CR 608.2c, #4155).
+					GainLife{Amount: 3},
+					DrawCards{N: 1},
+				),
 			},
 			{
 				Label: "0: Add {C}{C}{C}.",

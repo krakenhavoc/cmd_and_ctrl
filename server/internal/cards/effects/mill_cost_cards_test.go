@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -53,8 +54,27 @@ func TestMillCostCardsAreGradedHonestly(t *testing.T) {
 	}
 }
 
-// The two mill-for-colourless creatures: the mana lands, the card is
-// milled, the source taps, and an empty library refuses the ability.
+// activateMillMana activates the card's one activated ability (the
+// mill-for-mana cards are not mana abilities, #3971, CR 605.1a), checks
+// it went on the stack with nothing in the pool yet, then lets it resolve.
+// It returns the activation's error and, when it succeeded, the pool size
+// seen while the ability was still on the stack.
+func activateMillMana(t *testing.T, g *game.Game, me *game.Player, src uuid.UUID) (int, error) {
+	t.Helper()
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); err != nil {
+		return 0, err
+	}
+	onStack := me.ManaPool.Total()
+	if len(g.StackMeta) != 1 {
+		t.Fatalf("stack holds %d items after activation, want the one ability", len(g.StackMeta))
+	}
+	passPriorityAroundTable(t, g)
+	return onStack, nil
+}
+
+// The two mill-for-colourless creatures: the card is milled and the
+// source taps as the cost, the ability uses the stack, and the mana lands
+// when it resolves. An empty library refuses the ability.
 func TestDerangedAssistantAndManakinAndMillikinMillForColourless(t *testing.T) {
 	for _, tc := range []struct {
 		name, oracle, typeLine string
@@ -69,8 +89,12 @@ func TestDerangedAssistantAndManakinAndMillikinMillForColourless(t *testing.T) {
 			src := pushCatalogPermanent(g, me.ID, tc.name, tc.typeLine, tc.oracle, false)
 			lib := lcLibrary(g, me, 3)
 
-			if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
+			onStack, err := activateMillMana(t, g, me, src)
+			if err != nil {
 				t.Fatalf("activate: %v", err)
+			}
+			if onStack != 0 {
+				t.Errorf("pool held %d while the ability was on the stack; not a mana ability, so the mana comes on resolution", onStack)
 			}
 			got := batch01PoolColors(me)
 			if len(got) != tc.want {
@@ -91,8 +115,8 @@ func TestDerangedAssistantAndManakinAndMillikinMillForColourless(t *testing.T) {
 			// Nothing to mill: refused, and the source stays untapped.
 			b02bSetTapped(g, src, false)
 			g.WithWriteLock(func() { me.Library.Cards = nil })
-			if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err == nil {
-				t.Error("activated with an empty library")
+			if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); !errors.Is(err, game.ErrCantPayLibraryCost) {
+				t.Errorf("empty library: activate = %v, want ErrCantPayLibraryCost", err)
 			}
 			if c, _ := battlefieldCard(g, src); c.Tapped {
 				t.Error("a refused activation tapped the source")
@@ -105,8 +129,30 @@ func TestManakinAndMillikinIsSummoningSick(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	src := pushCatalogPermanent(g, me.ID, "Manakin and Millikin", millCostCardsCreatureType, manakinAndMillikinOracle, true)
-	if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err == nil {
-		t.Error("a summoning-sick creature tapped for mana")
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); err == nil {
+		t.Error("a summoning-sick creature paid its {T}")
+	}
+}
+
+// CR 605.1a (#3971): a cost or effect that moves a card to or from a
+// library takes an ability out of the mana abilities, so each of the five
+// declares an activated ability and no mana ability. Back-out: restore a
+// ManaAbilities row on one and this fails.
+func TestLibraryMovingManaCardsAreNotManaAbilities(t *testing.T) {
+	for _, oracle := range []string{
+		derangedAssistantOracle, manakinAndMillikinOracle, charmedPendantOracle,
+		b11MillikinOracle, samiChromaticSphere,
+	} {
+		spec, ok := Lookup(oracle)
+		if !ok {
+			t.Fatalf("%s is not registered", oracle)
+		}
+		if len(spec.ManaAbilities) != 0 {
+			t.Errorf("%s declares %d mana abilities; CR 605.1a says it has none", spec.Name, len(spec.ManaAbilities))
+		}
+		if len(spec.Activated) != 1 {
+			t.Errorf("%s declares %d activated abilities, want 1", spec.Name, len(spec.Activated))
+		}
 	}
 }
 
@@ -283,7 +329,7 @@ func TestCharmedPendantAddsOneManaPerColouredSymbolOfTheMilledCard(t *testing.T)
 	if top.InstanceID != milled {
 		t.Fatal("setup: the milled card is not on top")
 	}
-	if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
+	if _, err := activateMillMana(t, g, me, src); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	got := map[string]int{}
@@ -301,7 +347,7 @@ func TestCharmedPendantAddsOneManaPerColouredSymbolOfTheMilledCard(t *testing.T)
 func TestCharmedPendantAddsNothingForAColourlessOrCostlessCard(t *testing.T) {
 	for _, cost := range []string{"{4}", ""} {
 		g, me, src, _ := pendantTable(t, cost)
-		if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
+		if _, err := activateMillMana(t, g, me, src); err != nil {
 			t.Fatalf("cost %q: activate: %v", cost, err)
 		}
 		if n := me.ManaPool.Total(); n != 0 {
@@ -315,7 +361,7 @@ func TestCharmedPendantAddsNothingForAColourlessOrCostlessCard(t *testing.T) {
 func TestCharmedPendantCountsACardRestInPeaceExiled(t *testing.T) {
 	g, me, src, milled := pendantTable(t, "{1}{G}{G}")
 	castRestInPeace(t, g)
-	if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err != nil {
+	if _, err := activateMillMana(t, g, me, src); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
 	if !g.Exile.Contains(milled) {
@@ -330,8 +376,8 @@ func TestCharmedPendantCountsACardRestInPeaceExiled(t *testing.T) {
 func TestCharmedPendantNeedsALibrary(t *testing.T) {
 	g, me, src, _ := pendantTable(t, "{G}")
 	g.WithWriteLock(func() { me.Library.Cards = nil })
-	if err := g.ActivateManaAbility(me.ID, src, 0, game.ManaAbilityParams{}); err == nil {
-		t.Error("activated with an empty library")
+	if err := g.ActivateCatalogAbility(me.ID, src, 0, game.ActivateAbilityParams{}); !errors.Is(err, game.ErrCantPayLibraryCost) {
+		t.Errorf("empty library: activate = %v, want ErrCantPayLibraryCost", err)
 	}
 }
 

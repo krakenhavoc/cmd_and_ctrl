@@ -88,9 +88,20 @@ func (s If) footprints() ([]game.FootprintStep, bool) {
 // (game.CatalogTriggerInterveningIf, read by rowInterveningIf). The
 // old Effect's own re-check, if it kept one, is then redundant but
 // harmless.
+//
+// An Effect that is itself a Do is not wrapped: its steps become the
+// If's Then, Do(If{Cond: cond, Then: its steps}) (#4019). The walk then
+// parks between them (do_walk.go), so a later step waits for an earlier
+// step's prompt as it would in the Do alone, and the row declares a
+// footprint when its steps do (#3033). A hand-written Effect is one step
+// and runs whole.
 func InterveningIf(cond Condition, t game.TriggeredAbility) game.TriggeredAbility {
 	if cond == nil || t.Effect == nil {
 		panic("effects.InterveningIf: needs a condition and a declared Effect")
+	}
+	if steps, ok := doStepsOf(t.Effect); ok {
+		t.Effect = Do(If{Cond: cond, Then: steps})
+		return t
 	}
 	t.Effect = Do(If{Cond: cond, Then: []Applier{runEffect{fn: t.Effect}}})
 	return t

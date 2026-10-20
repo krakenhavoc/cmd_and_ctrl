@@ -439,6 +439,14 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			if row := rowAt(src, cp.AbilityIndex); row != nil && (row.ReturnSelf || row.BottomSelf) {
 				v -= st.selfReturnCost(src)
 			}
+			// #4000: a row that exiles the permanent granting it (The
+			// Dominion Bracelet) gives that permanent up, priced as an
+			// exiled permanent is below.
+			if row := rowAt(src, cp.AbilityIndex); row != nil && row.ExileGrantor && row.GrantedBy != nil {
+				if g := st.bf[row.GrantedBy.ID]; g != nil {
+					v -= st.permanentValue(g)
+				}
+			}
 		}
 		v += targetV
 		// ADR 0126 §7: priced by the chance the bot would have kept

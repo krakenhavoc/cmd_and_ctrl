@@ -37,13 +37,8 @@ func init() {
 			Cost: Plus(ManaCost("{1}{B}{G}"), game.AbilityCost{
 				SacrificeOther: sacrificeSpec("an artifact or creature", Or(Artifact(), Creature())),
 			}),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
+			// The draw waits for a prompt the life gain asks (CR 608.2c, #4155).
+			Effect: Do(GainLife{Amount: 1}, DrawCards{N: 1}),
 		}},
 	})
 }

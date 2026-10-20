@@ -17,16 +17,23 @@ func init() {
 		OracleID:     "b1a23235-3076-475c-a68a-db29cf2a9dba",
 		Name:         "Pull from Tomorrow",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: ctx.X()}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: item.Controller,
-				Source: item.SourceCardID,
-				N:      1,
-			})
-			return nil
-		},
+		OnResolve: ResolveSteps(
+			// The discard is asked after the draw's own prompts (CR 608.2c, #4155).
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Controller(), N: ctx.X()}.Apply(ctx)
+			}),
+			Instruction(controllerDiscardsACard),
+		),
 	})
+}
+
+// controllerDiscardsACard is "discard a card": the resolving ability's
+// controller is asked for one card from their hand.
+func controllerDiscardsACard(ctx *Context) error {
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player: ctx.Controller(),
+		Source: ctx.Source(),
+		N:      1,
+	})
+	return nil
 }

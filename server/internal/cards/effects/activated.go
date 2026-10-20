@@ -438,6 +438,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.BottomSelf {
 			out.BottomSelf = true
 		}
+		// #4000: and the exile-the-grantor component; dropped, The
+		// Dominion Bracelet would control a turn and stay equipped.
+		if c.ExileGrantor {
+			out.ExileGrantor = true
+		}
 		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
 		// this creature" that dropped it would untap next turn — stronger
 		// than printed, the #259 direction.
@@ -612,6 +617,17 @@ func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 // Compose it with Plus like any other component.
 func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
 
+// ExileTheGrantor is "Exile <the permanent that grants this ability>"
+// as a cost (#4000): The Dominion Bracelet's equipped creature has
+// "{15}, Exile The Dominion Bracelet: …". The ability is the creature's,
+// so ExileThis would exile the creature; this exiles the Equipment whose
+// grant the row is (game.AbilityCost.ExileGrantor).
+//
+// Only in an AbilityGrant bundle given to battlefield permanents, and
+// never beside a component that picks permanents: Register refuses
+// anything else. Compose it with Plus like any other component.
+func ExileTheGrantor() game.AbilityCost { return game.AbilityCost{ExileGrantor: true} }
+
 // PutThisOnTheBottomOfItsOwnersLibrary is "Put this creature on the
 // bottom of its owner's library" as a cost (#2726).
 func PutThisOnTheBottomOfItsOwnersLibrary() game.AbilityCost {
@@ -743,8 +759,10 @@ func ExileTopOfLibrary(n int) game.AbilityCost {
 //
 //	Plus(TapCost(), MillCardsCost(1))
 //
-// A mana ability declares the same component as
-// ManaAbilityCost{Mill: 1}. Nothing to choose; a library of fewer than
+// It is never a mana ability's cost: CR 605.1a excludes any ability
+// whose cost or effect moves a card to or from a library, so Millikin's
+// "{T}, Mill a card: Add {C}" is an Activated row with an AddMana effect
+// (#3971). Nothing to choose; a library of fewer than
 // N cards can't pay it (CR 701.17b, CR 118.3), so the ability is not
 // offered then. It is paid through the ordinary mill, so Rest in Peace
 // and Bruvac the Grandiloquent apply. Named MillCardsCost because

@@ -107,6 +107,8 @@ var Inventory = join(
 		"requester"),
 	cols("deck_request_asks", NotPersonal, "which deck was asked about, and when",
 		"deck_key", "at"),
+	cols("deck_request_cards", NotPersonal, "which cards a deck's GitHub issue lists (migration 0028, #4135): a deck key, a card and an issue number. The requester is not here; it is in deck_request_asks, which is deleted. Like deck_requests, the rows describe a deck's public issue and are kept",
+		"deck_key", "card_key", "card_name", "issue_number"),
 
 	cols("user_settings", Deleted, "the person's synced settings",
 		"user_id", "version", "revision", "body", "updated_at"),
