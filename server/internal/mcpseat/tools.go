@@ -68,6 +68,10 @@ type ActInput struct {
 	// candidates legal_moves(targets_for) lists, instead of from the
 	// enumerator's combinations (#2276).
 	Targets []TargetPick `json:"targets,omitempty" jsonschema:"only for a move that targets: the picks per target clause, [{slot, ids}]. The move chooses the card and its costs, these replace its targets; see legal_moves(targets_for: <move>)"`
+	// Cards names the exact set a choose-cards-from-hand move takes (a
+	// discard to hand size, a discard prompt), instead of a listed
+	// combination (#4186).
+	Cards []string `json:"cards,omitempty" jsonschema:"only for a move that chooses cards from a hand (discard to hand size, a discard prompt): the exact card ids to choose, any set of the size the move list's CHOOSE line states. They replace the move's own cards"`
 }
 
 // SayInput is `say`'s input.
@@ -906,6 +910,16 @@ func (s *Seat) Act(ctx context.Context, in ActInput) (Result, error) {
 		view := s.view
 		s.mu.Unlock()
 		params, err = applyTargets(view, m, params, in.Targets)
+		if err != nil {
+			return errorResult("%v", err), nil
+		}
+	}
+	if in.Cards != nil {
+		s.mu.Lock()
+		view := s.view
+		me := w.me
+		s.mu.Unlock()
+		params, err = applyCards(view, me, m, params, in.Cards)
 		if err != nil {
 			return errorResult("%v", err), nil
 		}

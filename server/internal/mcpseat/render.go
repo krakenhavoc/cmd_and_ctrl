@@ -482,6 +482,7 @@ func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match stri
 	var groups []*group
 	bySource := map[string]*group{}
 	shown := 0
+	listed := map[int]bool{}
 	for i, m := range w.moves {
 		src := ""
 		if m.Source != uuid.Nil {
@@ -500,6 +501,7 @@ func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match stri
 			groups = append(groups, g)
 		}
 		g.idx = append(g.idx, i)
+		listed[i] = true
 		shown++
 	}
 	var b strings.Builder
@@ -542,6 +544,9 @@ func renderMovesMatching(v *protocol.GameView, w *window, onlySource, match stri
 				cardRef(v, c.Source), omitted(c), c.Cap, c.Source)
 		}
 	}
+	// #4186: a choose-cards prompt takes any set of the right size, not
+	// only the combinations listed.
+	b.WriteString(cardPickLines(v, w, listed))
 	if match != "" && shown == 0 {
 		b.WriteString("No move's label contains that text. The list may also be cut: see the \"not listed\" lines in the unfiltered list.\n")
 	}

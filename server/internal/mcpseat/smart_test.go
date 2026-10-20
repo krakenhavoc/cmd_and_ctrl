@@ -43,6 +43,15 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 	oppSpell := func(v *protocol.GameView) {
 		v.StackItems = []protocol.StackItemView{{ID: "s", Kind: "spell", Controller: opp.String()}}
 	}
+	mySpell := func(v *protocol.GameView) {
+		v.StackItems = []protocol.StackItemView{{ID: "s", Kind: "spell", Controller: me.String()}}
+	}
+	myTrigger := func(v *protocol.GameView) {
+		v.StackItems = []protocol.StackItemView{{ID: "t", Kind: "triggered", Controller: me.String(), Label: "Tovolar: it becomes night"}}
+	}
+	theirAnswerOnMine := func(v *protocol.GameView) {
+		v.StackItems = []protocol.StackItemView{{ID: "s", Kind: "spell", Controller: me.String()}, {ID: "c", Kind: "spell", Controller: opp.String()}}
+	}
 	attackerInPlay := func(v *protocol.GameView) {
 		v.Battlefield.Cards = []protocol.CardView{{InstanceID: "a", Controller: opp.String(), AttackingTarget: me.String()}}
 	}
@@ -98,6 +107,23 @@ func TestSmartPassFollowsTheBrowsersAutopass(t *testing.T) {
 		{"their spell, a sacrifice outlet", view(1, "precombat_main", oppSpell), []legal.Move{pass, outlet}, false},
 		{"their spell, a special action", view(1, "precombat_main", oppSpell), []legal.Move{pass, special}, false},
 		{"their spell on my turn, nothing to answer with", view(0, "precombat_main", oppSpell), []legal.Move{pass}, true},
+
+		// #4186: holding an instant. The browser passes a stack that is
+		// entirely the seat's own (autoPassOwnStack, on by default) and
+		// an own upkeep (not a ticked step); it stops at the seat's own
+		// main phases, where the instant is a play on a ticked step.
+		{"my own spell, holding an instant", view(0, "precombat_main", mySpell), []legal.Move{pass, instant, mana}, true},
+		{"my own spell, holding a counterspell", view(0, "precombat_main", mySpell), []legal.Move{pass, counter}, true},
+		{"my own trigger at my upkeep, holding an instant", view(0, "upkeep", myTrigger), []legal.Move{pass, instant}, true},
+		{"my own spell on their turn, holding an instant", view(1, "end", mySpell), []legal.Move{pass, instant}, true},
+		{"their answer on top of my spell, holding an instant", view(0, "precombat_main", theirAnswerOnMine), []legal.Move{pass, instant}, false},
+		{"my upkeep after my trigger resolved, holding an instant", view(0, "upkeep", nil), []legal.Move{pass, instant, mana}, true},
+		{"own first main, an instant and mana abilities", view(0, "precombat_main", nil), []legal.Move{pass, instant, mana}, false},
+		{"own second main, an instant and mana abilities", view(0, "postcombat_main", nil), []legal.Move{pass, instant, mana}, false},
+		{"my own spell while a trigger still queues", view(0, "precombat_main", func(v *protocol.GameView) {
+			mySpell(v)
+			v.PendingTriggers = []protocol.StackItemView{{}}
+		}), []legal.Move{pass, instant}, false},
 
 		// What always stops it.
 		{"a pending choice", view(1, "upkeep", func(v *protocol.GameView) {
