@@ -1,4 +1,4 @@
-# ADR 0080 — Attack taxes: "creatures can't attack you unless their controller pays {N}" (CR 508.1a)
+# ADR 0080 — Attack taxes: "creatures can't attack you unless their controller pays {N}" (CR 508.1h)
 
 **Status:** Accepted · 2026-09-21 · S37 — Combat correctness: damage steps, removal from combat, block legality
 **Issues:** [#1063](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1063) (the seam), cards from [#294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/294) (Propaganda, Ghostly Prison, Windborn Muse)
@@ -135,7 +135,7 @@ type AttackTaxPrice struct {
 The body walks the declarations; for each, resolves the defending
 player with `defendingPlayerForAttackLocked` (so an attack on a
 planeswalker or a battle is taxed by its CONTROLLER's / PROTECTOR's
-Propaganda, CR 508.1a), then walks the battlefield for that player's
+Propaganda, CR 508.1h), then walks the battlefield for that player's
 permanents and asks each of their taxes. `PriceCast` is the model and
 the name is deliberately its sibling.
 
@@ -149,7 +149,7 @@ below them — `ParseCost`, `ManaPool.CanPayFor`, `autoTapLocked`,
 pays foretell through it). So nothing was extracted: the declaration
 became the fourth caller of the payer that already existed.
 
-### 3. The cost is charged at CR 508.1a, on the declaration, before the commit
+### 3. The cost is charged at CR 508.1h, on the declaration, before the commit
 
 Inside the declaration verbs, after the eligible set is settled and
 **before** any creature is staged:
@@ -165,7 +165,7 @@ Three properties, each chosen rather than fallen into:
   under `CantAttack` (the contract `DeclareAttackers` has had since
   #318). Pricing the submitted set would charge for attacks that never
   happen.
-- **All or nothing (CR 508.1a).** If the eligible set's tax cannot be
+- **All or nothing (CR 508.1j).** If the eligible set's tax cannot be
   paid in full, NOTHING is declared and the verb returns
   `*AttackTaxUnpaidError`. A partially-paid declaration is not a legal
   declaration; the player's move is to submit a smaller set. This is
@@ -181,7 +181,7 @@ Three properties, each chosen rather than fallen into:
 **No `pay_unless` prompt.** `PendingChoicePayUnless` exists and is the
 wrong tool: it is a prompt raised *after* the thing happened, answered
 later, and `choice_gate.go:144` deliberately does not let it block the
-table. An attack tax is announce-time — CR 508.1a puts it inside the
+table. An attack tax is announce-time — CR 508.1 puts it inside the
 turn-based action, alongside the CR 508.1f tap — so it is paid by the
 action that declares the attack, exactly as a cast's additional costs
 are paid by the action that casts the spell (ADR 0073 §4). The
@@ -341,12 +341,12 @@ client can subset) is already shipped in `AttackTaxPrice.Lines`.
   payload type is its own decision.
 - **Goad, and "attacks if able".** Requirements (CR 508.1d) do not
   exist in the engine at all (`GoadedBy` is a marker nothing enforces),
-  and a requirement interacting with a tax — CR 508.1a's "the player
+  and a requirement interacting with a tax — CR 508.1d's "the player
   is not required to attack if they cannot pay" — has no second half to
   interact with yet.
 - **Re-pricing an attack after the declaration.** A Propaganda that
   enters after attackers are declared charges nothing, because CR
-  508.1a is a turn-based action that has already happened. That is the
+  508.1 is a turn-based action that has already happened. That is the
   same rule `restrictions.go`'s "when restrictions are checked"
   section states for the bits, and it needs no code.
 

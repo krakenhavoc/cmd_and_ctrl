@@ -39,7 +39,7 @@ import (
 //
 // Propaganda-style attack TAXES used to be on that list and are not
 // any more: they ship in attack_tax.go, charged by the declaration
-// verbs at CR 508.1a (ADR 0080, #1063). They are not a target-legality
+// verbs at CR 508.1h (ADR 0080, #1063). They are not a target-legality
 // question, which is why they are not here — defendingPlayerForAttack-
 // Locked is what the pricer uses this file for, so an attack on a
 // planeswalker is taxed by its controller's Propaganda.

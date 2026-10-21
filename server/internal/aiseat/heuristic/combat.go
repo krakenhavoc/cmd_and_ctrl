@@ -331,7 +331,7 @@ func (p *Policy) decideAttack(st *state, moves []legal.Move) (aiseat.Decision, b
 		}
 		declared, declaredPower := declaredAgainst(st, ap.Target, p.cfg.FocusNeedsValue)
 		v, reason := p.attackValue(st, atk, def, declared, declaredPower)
-		// ADR 0080 / #1063: the CR 508.1a attack tax. The enumerator
+		// ADR 0080 / #1063: the CR 508.1h attack tax. The enumerator
 		// has already dropped every attack this seat cannot pay for,
 		// so what is left to decide is whether the attack is WORTH
 		// the mana — a 1/1 into Ghostly Prison spends the turn's two
@@ -697,7 +697,7 @@ func (p *Policy) commanderDeath(atk *protocol.CardView) float64 {
 	return p.cfg.Weights.CommanderTax
 }
 
-// attackTaxValue is what this attack move charges at CR 508.1a, as a
+// attackTaxValue is what this attack move charges at CR 508.1h, as a
 // mana value. Zero for every move at a table with no attack tax on it,
 // which is the overwhelming majority (ADR 0080, #1063).
 //

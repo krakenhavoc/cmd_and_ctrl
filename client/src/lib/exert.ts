@@ -55,7 +55,7 @@ export function declareAttackerParams(
   const p: DeclareAttackerParams = {
     attacker: sel.cardID,
     target,
-    // ADR 0080 (#1063): the CR 508.1a attack tax may need lands
+    // ADR 0080 (#1063): the CR 508.1h attack tax may need lands
     // tapped. Inert at a table with no attack tax on it.
     auto_tap: true,
   };

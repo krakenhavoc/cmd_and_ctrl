@@ -1684,7 +1684,7 @@ func attackRequirementPayload(err error, viewer uuid.UUID) (protocol.ErrorPayloa
 }
 
 // attackTaxPayload builds the `attack_tax_unpaid` error frame for a
-// declaration refused for want of its CR 508.1a cost (ADR 0080,
+// declaration refused for want of its CR 508.1h cost (ADR 0080,
 // #1063): the whole price as a cost string in Reason, and the symbols
 // the pool and the tapper together could not cover in Missing. ok is
 // false for any error that is not an unpaid attack tax.

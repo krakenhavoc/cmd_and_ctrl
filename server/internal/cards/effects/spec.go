@@ -828,7 +828,7 @@ type Spec struct {
 	// (CR 113.6). Nil for every other card.
 	BoastLimits []game.BoastLimit
 
-	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
+	// AttackTaxes is the CR 508.1h attack tax: "creatures can't attack
 	// you unless their controller pays {2} for each creature they
 	// control that's attacking you" — Propaganda, Ghostly Prison,
 	// Windborn Muse, Sphere of Safety. ADR 0080.

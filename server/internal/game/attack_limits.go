@@ -30,7 +30,7 @@ import "github.com/google/uuid"
 // # Where it is judged
 //
 // On the declaration, by both declaration verbs, before anything is
-// staged and before the CR 508.1a tax is priced — a declaration the
+// staged and before the CR 508.1h tax is priced — a declaration the
 // limit refuses owes nothing:
 //
 //   - DeclareAttackerWith, the per-creature verb the client clicks and

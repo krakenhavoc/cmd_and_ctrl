@@ -10,7 +10,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 {4}{W}{W}, Exile this card from your graveyard: Return target
 //	 planeswalker card from your graveyard to the battlefield."
 //
-// The first ability is the CR 508.1a attack tax (ADR 0080) with the
+// The first ability is the CR 508.1h attack tax (ADR 0080) with the
 // planeswalker scope (ProtectingPlaneswalkers) narrowed by AppliesTo to
 // attacks that name a planeswalker: unlike Sphere of Safety, an attack
 // on the Oathkeeper's controller is free. The tax is charged per

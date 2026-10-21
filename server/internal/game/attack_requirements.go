@@ -260,7 +260,7 @@ type reqPair struct {
 // or "can't attack" creature cannot be asked to attack, which is
 // CR 508.1d's "without disobeying any restrictions".
 //
-// "Free" is CR 508.1d's cost clause: a pair whose CR 508.1a tax is not
+// "Free" is CR 508.1d's cost clause: a pair whose CR 508.1h tax is not
 // zero is not counted, so a requirement never forces a payment.
 //
 // Caller must hold g.mu with fresh layers.

@@ -3357,7 +3357,7 @@ over-taxes.
 
 **The engine charges it; you do not.** `Game.PriceAttackDeclaration`
 is the one pricer, `DeclareAttackerWith` / `DeclareAttackersWith` pay
-it at CR 508.1a before anything is staged, ALL OR NOTHING, and
+it at CR 508.1j before anything is staged, ALL OR NOTHING, and
 `internal/legal` calls the same pricer so an unaffordable attack is
 never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`

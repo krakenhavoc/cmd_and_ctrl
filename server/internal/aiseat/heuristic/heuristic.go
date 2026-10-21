@@ -736,7 +736,7 @@ type Config struct {
 	AttackReserve int
 	ReserveLife   int
 
-	// AttackTaxPenalty is what one point of CR 508.1a attack tax costs
+	// AttackTaxPenalty is what one point of CR 508.1h attack tax costs
 	// an attack's value (ADR 0080, #1063) — Propaganda's {2} is worth
 	// 2 × this. It is a MANA price rather than a life or card price,
 	// so it is tuned against DamageToOpponent: at the default, {2}

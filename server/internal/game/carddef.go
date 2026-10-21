@@ -162,7 +162,7 @@ type CardDef struct {
 	BoastLimits []BoastLimit
 	// AttackTaxes are the "creatures can't attack you unless their
 	// controller pays {N}" statics this permanent contributes
-	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
+	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an

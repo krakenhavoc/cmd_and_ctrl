@@ -2,7 +2,7 @@
   // AttackDeclarationModal — #1162, ADR 0080 §7's deferred client
   // half.
   //
-  // Opens when "attack with all" is refused for want of the CR 508.1a
+  // Opens when "attack with all" is refused for want of the CR 508.1h
   // attack tax (Propaganda, Ghostly Prison, Sphere of Safety), or when
   // the player chooses "pick attackers…" beside a taxed target
   // proactively. Either way, the problem is the same: the seat can pay

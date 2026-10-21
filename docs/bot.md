@@ -3293,7 +3293,7 @@ Mana Cache, or its own; the auto-tapper does not plan a source with no
 ## Never offered an attack it cannot pay for (#1063)
 
 The same shape, one step over. Propaganda, Ghostly Prison and Sphere of
-Safety make attacking their controller cost mana at CR 508.1a
+Safety make attacking their controller cost mana at CR 508.1h
 ([ADR 0080](decisions/0080-attack-taxes.md)), and an attack tax is the
 first thing that can make a DECLARATION fail for want of it.
 

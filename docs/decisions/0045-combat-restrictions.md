@@ -2868,7 +2868,7 @@ rule. And the "you" family is scoped by the DEFENDING SEAT, which is the axis
   the same raise-the-count rule as Decision 43. Re-pointing an attacker from
   one opponent to a Crawlspace player counts against the Crawlspace player,
   and moving one away is never refused.
-- **Both verbs enforce it,** before the CR 508.1a tax is priced, so a refused
+- **Both verbs enforce it,** before the CR 508.1h tax is priced, so a refused
   declaration owes nothing:
   - `DeclareAttackerWith` refuses the one creature. The verb is lax about
     eligibility for the sandbox's hand-forcing, but a limit is not

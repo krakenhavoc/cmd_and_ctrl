@@ -570,7 +570,7 @@ describe("buildMenuSections — combat", () => {
     expect(itemById(sections, "combat-attack-b")?.action).toEqual({
       type: "declare_attacker",
       // ADR 0080 (#1063): auto_tap rides every attack payload so the
-      // CR 508.1a tax can reach the lands. Inert without a tax.
+      // CR 508.1h tax can reach the lands. Inert without a tax.
       params: { attacker: "c1", target: "b", auto_tap: true },
     });
     expect(itemById(sections, "combat-attack-a")).toBeUndefined();

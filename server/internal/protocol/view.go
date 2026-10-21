@@ -5444,7 +5444,7 @@ type AttackTargetView struct {
 	ID   string `json:"id"`
 
 	// Tax is what ONE creature pays to attack this target under
-	// CR 508.1a — "{2}" against a seat with Propaganda out, "{2}{2}"
+	// CR 508.1h — "{2}" against a seat with Propaganda out, "{2}{2}"
 	// against one with Propaganda and Ghostly Prison, "" when
 	// attacking it is free. ADR 0080 (#1063).
 	//

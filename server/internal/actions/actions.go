@@ -284,7 +284,7 @@ var ErrMissingParams = errors.New("actions: missing required params")
 const MaxBulkAttackers = 256
 
 // attackTaxParams is the payment posture both declaration verbs carry
-// for the CR 508.1a attack tax (ADR 0080, #1063) — the same trio
+// for the CR 508.1h attack tax (ADR 0080, #1063) — the same trio
 // cast_spell, activate_ability and special_action already send.
 //
 // Embedded in each verb's params struct rather than written twice, so

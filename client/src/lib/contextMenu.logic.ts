@@ -1905,7 +1905,7 @@ function combatItems(
               {
                 id: `${prefix}-${s.id}`,
                 label: s.display_name || s.name,
-                // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
+                // ADR 0080 (#1063): the seat's CR 508.1h attack tax, stated
                 // on the control that charges it. Read off the server's
                 // price, never derived.
                 hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
