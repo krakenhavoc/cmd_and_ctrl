@@ -30,20 +30,23 @@ func init() {
 			TargetPlayer("target opponent", Opponent()),
 			TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-				Exile:  true,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			t, ok := ctx.ClauseTarget(1)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			return AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}.Apply(ctx)
-		},
+		// The counter waits for the question the choice asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return ChooseFromRevealedHand{
+					Player: TargetedPlayer(ctx),
+					Filter: Nonland(),
+					Label:  "nonland card",
+					Exile:  true,
+				}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				t, ok := ctx.ClauseTarget(1)
+				if !ok || t.Kind != game.TargetCard {
+					return nil
+				}
+				return AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

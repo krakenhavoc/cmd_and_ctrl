@@ -50,16 +50,15 @@ func kimoyoBeadsTrigger() game.TriggeredAbility {
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier"), N: 2}.Apply(ctx)
 			}),
-		ModeDoing("Prime Bead — You gain 3 life. Exile this artifact, then return it to the battlefield under its owner's control.", nil,
-			func(item *game.StackItem, ctx *Context, _ int) error {
-				if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				if !sourceIsStillThisPermanent(ctx.Game, item) {
+		// The exile waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+		ModeSteps("Prime Bead — You gain 3 life. Exile this artifact, then return it to the battlefield under its owner's control.", nil,
+			GainLife{Amount: 3},
+			Instruction(func(ctx *Context) error {
+				if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
 					return nil
 				}
-				return Flicker{Target: item.SourceCardID}.Apply(ctx)
-			}),
+				return Flicker{Target: ctx.Item.SourceCardID}.Apply(ctx)
+			})),
 	)
 	return t
 }

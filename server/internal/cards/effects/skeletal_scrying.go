@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Skeletal Scrying — Instant {X}{B}:
 //
 //	"As an additional cost to cast this spell, exile X cards from your
@@ -25,15 +23,20 @@ func init() {
 		Completeness:   CompletenessFull,
 		XMatters:       true,
 		AdditionalCost: ExileXFromGraveyardCost("X cards", nil),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			if x <= 0 {
+		// The life loss waits for a prompt a draw asks (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if x := ctx.X(); x > 0 {
+					return DrawCards{Player: ctx.Controller(), N: x}.Apply(ctx)
+				}
 				return nil
-			}
-			if err := (DrawCards{Player: ctx.Controller(), N: x}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: ctx.Controller(), Amount: -x}.Apply(ctx)
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				if x := ctx.X(); x > 0 {
+					return GainLife{Player: ctx.Controller(), Amount: -x}.Apply(ctx)
+				}
+				return nil
+			}),
+		),
 	})
 }

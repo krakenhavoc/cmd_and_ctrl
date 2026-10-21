@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Travel Through Caradhras — Sorcery {5}{G}:
 //
@@ -34,43 +38,60 @@ func init() {
 		OracleID:     "2d47a98b-5700-4096-b080-32df4d79910c",
 		Name:         "Travel Through Caradhras",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (Vote{
+		// The exile waits for the vote and what it asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Vote{
 				Question:      "Travel Through Caradhras — vote for Redhorn Pass or Mines of Moria",
 				Words:         []string{"Redhorn Pass", "Mines of Moria"},
 				ForController: []int{2, 1},
 				ForOpponents:  []int{0, 1},
 				Then:          travelThroughCaradhrasVoted,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+			},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }
 
+// travelThroughCaradhrasRecord is the vote's source and its two tallies.
+const travelThroughCaradhrasRecord = "travel-through-caradhras/votes"
+
 var travelThroughCaradhrasVoted = VoteResultThen("vote/travel-through-caradhras", func(ctx *Context, r game.VoteResult) error {
-	if n := r.Votes(0); n > 0 {
-		if err := (SearchLibrary{
+	ctx.RecordStep(travelThroughCaradhrasRecord, []uuid.UUID{r.Source}, r.Votes(0), r.Votes(1))
+	return travelThroughCaradhrasSteps.Run(ctx)
+})
+
+// travelThroughCaradhrasSteps is the search and then the return: the return
+// waits for a prompt the search asks (CR 608.2c, #4155).
+var travelThroughCaradhrasSteps = RegisterThenSteps("then-steps/travel-through-caradhras-votes",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(travelThroughCaradhrasRecord)
+		if len(r.Ns) < 2 || r.Ns[0] <= 0 {
+			return nil
+		}
+		return SearchLibrary{
 			Player:        ctx.Controller(),
 			Predicate:     IsBasicLand,
 			Dest:          game.ZoneBattlefield,
-			Limit:         n,
+			Limit:         r.Ns[0],
 			TappedOnEntry: true,
 			Shuffle:       true,
 			Reason:        "Travel Through Caradhras — search for a basic land card for each Redhorn Pass vote",
-		}).Apply(ctx); err != nil {
-			return err
+		}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(travelThroughCaradhrasRecord)
+		if len(r.Ns) < 2 || r.Ns[1] <= 0 || len(r.IDs) == 0 {
+			return nil
 		}
-	}
-	if n := r.Votes(1); n > 0 {
+		n := r.Ns[1]
 		return ReturnChosenFromGraveyard{
 			Question: "Travel Through Caradhras — return a card from your graveyard to your hand for each Mines of Moria vote",
-			Except:   r.Source,
+			Except:   r.IDs[0],
 			Min:      n,
 			Max:      n,
 			ToHand:   true,
 		}.Apply(ctx)
-	}
-	return nil
-})
+	}),
+)

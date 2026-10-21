@@ -21,13 +21,10 @@ func init() {
 		Name:         "Fatehold Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Draw a card. Empower Jace 2.", nil,
-				func(item *game.StackItem, ctx *Context, _ int) error {
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return EmpowerJace{N: 2}.Apply(ctx)
-				}),
+			// Empower waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+			ModeSteps("Draw a card. Empower Jace 2.", nil,
+				DrawCards{N: 1},
+				EmpowerJace{N: 2}),
 			ModeDoing("Return target spell or creature to its owner's hand.",
 				TargetSpellOrPermanent("target spell or creature", nil, Creature()), returnModesSpellOrPermanentToHand),
 			ModeDoing("Creatures you control get +1/+2 until end of turn.", nil,

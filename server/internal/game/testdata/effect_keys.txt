@@ -351,3 +351,10 @@ steps then-steps/trap-the-trespassers-stun
 steps then-steps/will-of-the-sultai-bullet
 option option-pick/teyo-geometric-tactician-direction
 body flicker/return-exiled-with-additional-counters
+steps then-steps/damocles-base-lose-and-draw
+steps then-steps/lieutenants-of-the-guard-votes
+steps then-steps/messenger-jays-votes
+steps then-steps/niv-mizzet-ghost-counsel-pay-and-draw
+steps then-steps/soul-shackled-zombie-drain
+steps then-steps/travel-through-caradhras-votes
+steps then-steps/truth-or-consequences-votes

@@ -36,12 +36,23 @@ func init() {
 	})
 }
 
+const lieutenantsOfTheGuardRecord = "lieutenants-of-the-guard/votes"
+
 var lieutenantsOfTheGuardVoted = VoteResultThen("vote/lieutenants-of-the-guard", func(ctx *Context, r game.VoteResult) error {
-	if err := countersOnVotedCreature(ctx, r, r.Votes(0)); err != nil {
-		return err
-	}
-	if n := r.Votes(1); n > 0 {
-		return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Soldier"), N: n}.Apply(ctx)
-	}
-	return nil
+	recordVotedCreature(ctx, lieutenantsOfTheGuardRecord, r)
+	return lieutenantsOfTheGuardSteps.Run(ctx)
 })
+
+// lieutenantsOfTheGuardSteps is the counters and then the Soldiers: the tokens
+// wait for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+var lieutenantsOfTheGuardSteps = RegisterThenSteps("then-steps/lieutenants-of-the-guard-votes",
+	Instruction(func(ctx *Context) error {
+		return countersOnRecordedCreature(ctx, lieutenantsOfTheGuardRecord, 0)
+	}),
+	Instruction(func(ctx *Context) error {
+		if n := recordedTally(ctx, lieutenantsOfTheGuardRecord, 1); n > 0 {
+			return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 white Soldier"), N: n}.Apply(ctx)
+		}
+		return nil
+	}),
+)

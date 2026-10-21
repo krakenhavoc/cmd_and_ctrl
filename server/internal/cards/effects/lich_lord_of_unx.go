@@ -1,6 +1,14 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// lichLordOfUnxRecord is the target player and X, the Zombies counted as the
+// ability resolves.
+const lichLordOfUnxRecord = "lich-lord-of-unx/drain"
 
 // Lich Lord of Unx — Creature — Zombie Wizard {1}{U}{B}, 2/2:
 //
@@ -30,23 +38,31 @@ func init() {
 				Label:   "{U}{U}{B}{B}: Target player loses X life and mills X cards, where X is the number of Zombies you control.",
 				Cost:    ManaCost("{U}{U}{B}{B}"),
 				Targets: TargetPlayer("target player"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind != game.TargetPlayer {
-							continue
+				// The mill waits for a prompt the life loss asks (a CR 616 order; CR 608.2c,
+				// #4155), and mills the X counted before the loss.
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						for _, t := range ctx.LegalTargets() {
+							if t.Kind != game.TargetPlayer {
+								continue
+							}
+							x := zombiesYouControl(ctx.Game, ctx.Controller())
+							ctx.RecordStep(lichLordOfUnxRecord, []uuid.UUID{t.ID}, x)
+							if x == 0 {
+								return nil
+							}
+							return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -x)
 						}
-						x := zombiesYouControl(g, item.Controller)
-						if x == 0 {
+						return nil
+					}),
+					Instruction(func(ctx *Context) error {
+						r := ctx.StepRecord(lichLordOfUnxRecord)
+						if len(r.IDs) == 0 || r.N() <= 0 {
 							return nil
 						}
-						if err := g.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -x); err != nil {
-							return err
-						}
-						return MillCards{Player: t.ID, N: x}.Apply(ctx)
-					}
-					return nil
-				},
+						return MillCards{Player: r.IDs[0], N: r.N()}.Apply(ctx)
+					}),
+				),
 			},
 		},
 	})

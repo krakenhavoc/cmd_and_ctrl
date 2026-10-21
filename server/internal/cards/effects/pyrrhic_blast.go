@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Pyrrhic Blast — Instant {3}{R}:
 //
 //	"As an additional cost to cast this spell, sacrifice a creature.
@@ -21,11 +19,12 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		Targets:        TargetAny(),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := damageEqualToSacrificedPower(item, ctx); err != nil {
-				return err
-			}
-			return DrawCards{N: 1}.Apply(ctx)
-		},
+		// The draw waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return damageEqualToSacrificedPower(ctx.Item, ctx)
+			}),
+			DrawCards{N: 1},
+		),
 	})
 }

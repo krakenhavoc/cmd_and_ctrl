@@ -36,25 +36,25 @@ func init() {
 			LifeGain: 4,
 			Targets:  game.ForTargets(DamageToTarget(1, 4)),
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if t, ok := ctx.ClauseTarget(0); ok {
-				if err := jeskaiRevelationReturn(ctx, t.ID); err != nil {
-					return err
+		// In printed order: each sentence waits for the prompt the one before asks
+		// (the damage's CR 616 order, a dredge offer on the draws; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(0); ok {
+					return jeskaiRevelationReturn(ctx, t.ID)
 				}
-			}
-			if t, ok := ctx.ClauseTarget(1); ok {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 4}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(1); ok {
+					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 4}.Apply(ctx)
 				}
-			}
-			if err := (CreateToken{Template: TokenCard("1/1 white Monk with prowess"), N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
-		},
+				return nil
+			}),
+			CreateToken{Template: TokenCard("1/1 white Monk with prowess"), N: 2},
+			DrawCards{N: 2},
+			GainLife{Amount: 4},
+		),
 	})
 }
 

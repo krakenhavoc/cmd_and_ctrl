@@ -38,13 +38,13 @@ func init() {
 			{
 				Label: "+1: Draw two cards, then put a card from your hand on the bottom of your library.",
 				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return rfPutCardFromHandOnBottom(ctx, "Jace, Multiverse Architect — put a card from your hand on the bottom of your library")
-				},
+				// The card goes to the bottom after a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+				Effect: Do(
+					DrawCards{N: 2},
+					Instruction(func(ctx *Context) error {
+						return rfPutCardFromHandOnBottom(ctx, "Jace, Multiverse Architect — put a card from your hand on the bottom of your library")
+					}),
+				),
 			},
 			{
 				Label:   "−3: Exile another target planeswalker or creature you control. Reveal cards from the top of your library until you reveal a creature or planeswalker card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",

@@ -20,11 +20,12 @@ func init() {
 		OracleID:     "103ca069-0bfe-4976-bee1-75406273875d",
 		Name:         "Fog of War",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (GainLife{Player: ctx.Controller(), Amount: len(ctx.CreatureIDs())}).Apply(ctx); err != nil {
-				return err
-			}
-			return combatShieldAgainstCreatures(game.DamageSourceFilter{PowerBounded: true, PowerAtMost: 3}).Apply(ctx)
-		},
+		// The prevention waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return GainLife{Player: ctx.Controller(), Amount: len(ctx.CreatureIDs())}.Apply(ctx)
+			}),
+			combatShieldAgainstCreatures(game.DamageSourceFilter{PowerBounded: true, PowerAtMost: 3}),
+		),
 	})
 }

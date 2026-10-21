@@ -48,6 +48,36 @@ func countersOnVotedCreature(ctx *Context, r game.VoteResult, n int) error {
 	return AddCounter{Target: id, Kind: "+1/+1", N: n}.Apply(ctx)
 }
 
+// recordVotedCreature files the voted creature and both tallies of a
+// two-word vote under key, for the steps that follow it (#4155).
+func recordVotedCreature(ctx *Context, key string, r game.VoteResult) {
+	ctx.RecordStep(key, []uuid.UUID{votedCreature(r)}, r.Votes(0), r.Votes(1))
+}
+
+// recordedTally is the tally at index i of a record recordVotedCreature
+// filed, 0 when there is none.
+func recordedTally(ctx *Context, key string, i int) int {
+	r := ctx.StepRecord(key)
+	if i < 0 || i >= len(r.Ns) {
+		return 0
+	}
+	return r.Ns[i]
+}
+
+// countersOnRecordedCreature is countersOnVotedCreature for the tally at
+// index i of a record recordVotedCreature filed.
+func countersOnRecordedCreature(ctx *Context, key string, i int) error {
+	r := ctx.StepRecord(key)
+	if len(r.IDs) == 0 || i >= len(r.Ns) {
+		return nil
+	}
+	id, n := r.IDs[0], r.Ns[i]
+	if id == uuid.Nil || n <= 0 {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: "+1/+1", N: n}.Apply(ctx)
+}
+
 // eachOpponentDiscards is "each opponent discards N cards", each
 // choosing their own. Nothing hangs off it.
 func eachOpponentDiscards(ctx *Context, n int) {

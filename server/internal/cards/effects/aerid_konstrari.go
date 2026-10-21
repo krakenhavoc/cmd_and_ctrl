@@ -30,20 +30,22 @@ func init() {
 			Label:   "{6}: Create a Heartwood token. Then Aerid Konstrari gets +X/+0 until end of turn, where X is the number of artifacts you control",
 			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost:    ManaCost("{6}"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (CreateToken{Template: HeartwoodToken(), N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				if !b15OnBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return BoostUntilEOT{
-					Target: item.SourceCardID,
-					Power:  rfCreatureAArtifactsYouControl(g, item.Controller),
-					Label:  "Aerid Konstrari — +X/+0",
-				}.Apply(ctx)
-			},
+			// The boost waits for a prompt the token's creation asks (a CR 616 order; CR 608.2c, #4155)
+			// and counts the artifacts when it runs.
+			Effect: Do(
+				CreateToken{Template: HeartwoodToken(), N: 1},
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					if !b15OnBattlefield(ctx.Game, item.SourceCardID) {
+						return nil
+					}
+					return BoostUntilEOT{
+						Target: item.SourceCardID,
+						Power:  rfCreatureAArtifactsYouControl(ctx.Game, item.Controller),
+						Label:  "Aerid Konstrari — +X/+0",
+					}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

@@ -40,24 +40,31 @@ func init() {
 					Or(Artifact(), Enchantment()), Not(IsTokenPredicate()), OpponentControls())),
 			Mode("Incubate 2, then transform an Incubator token you control."),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) {
+		// The incubate waits for a prompt the destruction asks (a replacement
+		// offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) {
+					return nil
+				}
 				for _, t := range ctx.LegalTargets() {
 					if t.Kind != game.TargetCard {
 						continue
 					}
-					if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-					break
+					return DestroyTarget{Target: t.ID}.Apply(ctx)
 				}
-				return Incubate{N: 2}.Apply(ctx)
-			}
-			if ctx.HasMode(1) {
-				return Incubate{N: 2, Then: chooseAnIncubatorAndTransformIt}.Apply(ctx)
-			}
-			return nil
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				incubate := Incubate{N: 2}
+				if ctx.HasMode(1) {
+					incubate.Then = chooseAnIncubatorAndTransformIt
+				} else if !ctx.HasMode(0) {
+					return nil
+				}
+				return incubate.Apply(ctx)
+			}),
+		),
 	})
 }
 

@@ -31,14 +31,17 @@ func init() {
 			Targets: TargetCreature("one, two, or three target creatures").
 				WithCount(1, 3).Dividing(Divide(3)),
 			Key: "Glint Weaver — distribute three +1/+1 counters, then gain life",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := PutDividedCounters(ctx, game.CounterPlusOne); err != nil {
-					return err
-				}
-				n := glintWeaverGreatestToughnessControlledBy(g, item.Controller)
-				return GainLife{Player: item.Controller, Amount: n}.Apply(ctx)
-			},
+			// The life gain waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155)
+			// and reads the toughness when it runs.
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					return PutDividedCounters(ctx, game.CounterPlusOne)
+				}),
+				Instruction(func(ctx *Context) error {
+					n := glintWeaverGreatestToughnessControlledBy(ctx.Game, ctx.Controller())
+					return GainLife{Player: ctx.Controller(), Amount: n}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }
