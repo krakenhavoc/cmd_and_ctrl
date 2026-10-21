@@ -500,6 +500,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}AttackDeclarationModal.svelte`],
     doc: "ADR 0130 §7: the Choose attackers picker's per-row Exert toggle",
   }),
+  attackPayWithLife: label({
+    name: "pay the attack tax with life",
+    kind: "aria",
+    role: "group",
+    owners: [`${BOARD}AttackLifeStepper.svelte`],
+    doc: "#4198: the stepper that pays a Phyrexian attack tax (Norn's Annex's {W/P}) with 2 life per symbol; drawn in the Choose attackers picker and in the Pay the attack tax sheet",
+  }),
   declareBlockers: label({
     name: "declare blockers",
     kind: "aria",

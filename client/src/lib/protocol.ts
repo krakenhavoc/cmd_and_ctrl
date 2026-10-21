@@ -5213,6 +5213,16 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #4198: how many symbols in ONE creature's `tax` carry CR 107.4f's
+  // "or 2 life" option (Norn's Annex's {W/P} is 1). Absent when none
+  // does. A declaration of n attackers prints n times as many, and the
+  // answer is sent as `phyrexian_life` on declare_attacker /
+  // declare_attackers. The client parses no mana string to find it.
+  tax_phyrexian?: number;
+  // Of those, how many are payable with life only because the active
+  // seat controls a life-for-mana grant (ADR 0131), not because the tax
+  // prints a Phyrexian symbol.
+  tax_phyrexian_granted?: number;
   // #1533 (ADR 0045 Decision 46): how many MORE creatures may be
   // declared attacking this target this combat under a CR 508.1c count
   // limit (Silent Arbiter, Crawlspace), after the ones already

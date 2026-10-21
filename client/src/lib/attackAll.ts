@@ -225,6 +225,9 @@ export type AttackAllParams = {
   // of the cast modal's `locked_sources`. Omitted rather than sent
   // empty, matching every other caller of this field on the wire.
   locked_sources?: string[];
+  // #4198: how many of the tax's Phyrexian symbols are paid with 2 life
+  // each (CR 107.4f), the attack dock's answer. Omitted at zero.
+  phyrexian_life?: number;
 };
 
 // AttackAllOptions narrows a declaration built from an AttackAllPlan.
@@ -249,6 +252,9 @@ export interface AttackAllOptions {
   // exertable is dropped: the server refuses the whole declaration for
   // an exert it can't honour.
   exert?: readonly string[];
+  // #4198: the Phyrexian symbols of the tax to pay with life, sent as
+  // `phyrexian_life`. Zero or absent pays them all with mana.
+  phyrexianLife?: number;
 }
 
 // attackAllParams builds the action payload aiming every eligible
@@ -274,6 +280,9 @@ export function attackAllParams(
   };
   if (opts.lockedSources && opts.lockedSources.length > 0) {
     params.locked_sources = [...opts.lockedSources];
+  }
+  if (opts.phyrexianLife && opts.phyrexianLife > 0) {
+    params.phyrexian_life = opts.phyrexianLife;
   }
   return params;
 }

@@ -5463,6 +5463,26 @@ type AttackTargetView struct {
 	// one. The field would go then, rather than grow a caveat.
 	Tax string `json:"tax,omitempty"`
 
+	// TaxPhyrexian is how many symbols in ONE creature's `tax` carry
+	// CR 107.4f's "or 2 life" option — 1 for Norn's Annex's {W/P}. A
+	// declaration of n attackers at this target prints n times as many
+	// (the tax is concatenated once per attacker), and the attack dock
+	// offers a stepper bounded by that count and by the attacker's life
+	// total, sent as `phyrexian_life` on declare_attackers (#4198).
+	//
+	// Shipped as a count for the reason `phyrexian_symbols` is on a
+	// card: a client that read the `tax` string for it would be a
+	// second parser of the mana-cost syntax. Counted as the active seat
+	// will pay it, so a symbol K'rrik makes payable with life is in it
+	// and in TaxPhyrexianGranted.
+	TaxPhyrexian int `json:"tax_phyrexian,omitempty"`
+	// TaxPhyrexianGranted is how many of `tax_phyrexian` are payable
+	// with life only because the active seat controls a life-for-mana
+	// grant (ADR 0131), not because the tax prints a Phyrexian symbol.
+	// The dock asks about the printed ones up front and the granted
+	// ones only once the tax is refused, as a cast does.
+	TaxPhyrexianGranted int `json:"tax_phyrexian_granted,omitempty"`
+
 	// AttackLimit is how many MORE creatures may be declared attacking
 	// this target this combat under a CR 508.1c count limit — Silent
 	// Arbiter's "no more than one creature can attack each combat",
@@ -8946,6 +8966,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 				Attacker: probe,
 				Target:   t.ID,
 			}}).Cost
+			row.TaxPhyrexian, row.TaxPhyrexianGranted = phyrexianSymbolsIn(g, active.ID, row.Tax)
 		}
 		// #1533: the CR 508.1c room left under any attack limit.
 		if room, limited := g.AttackLimitRoomForEffect(t.ID); limited {
