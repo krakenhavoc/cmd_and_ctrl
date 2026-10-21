@@ -2057,6 +2057,21 @@ A permanent that did not come from a spell — reanimated, put onto the
 battlefield, a token — enters with none, because the seeding site is
 the spell's entry and nothing else (CR 107.3b).
 
+The PUTTING effect's own clause is the fourth slot. "Return it to the
+battlefield with an additional +1/+1 counter on it" gives every card of
+the put the same counters: `game.ZoneEntryOptions.EntersWithCounters`
+(Generous Revival uses `ReturnFromGraveyardWithCountersForEffect`).
+"Each of them enters with an additional +1/+1 counter on it if it's a
+creature and an additional loyalty counter on it if it's a planeswalker"
+(Semester's End, #4193) gives each card its own, in ONE put:
+`ReturnFromExileTogether{CountersIfType: []game.EntryCountersIfType{…}}`,
+or `ZoneEntryOptions.EntersWithCountersIfType` on any batch door. Each
+card is judged as it would exist on the battlefield (CR 614.12, the
+entry look-ahead), after the copy it was told to enter as, so a Spark
+Double returning as a copy of a planeswalker gets the loyalty counter.
+Loyalty counters a planeswalker enters with are added to its printed
+loyalty (CR 306.5b), never in place of it.
+
 Whatever seeds them, the settled map is **drained by one helper**,
 `(*Game).applyEntryCountersLocked`
 ([game/entry_counters.go](../server/internal/game/entry_counters.go)) —

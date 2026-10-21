@@ -36,6 +36,12 @@ var (
 	// step" half; Cosmic Intervention).
 	returnExiledToOwnersBody = game.SimpleDelayedBody("flicker/return-exiled-to-owners", returnExiledCardsToOwners)
 
+	// The same return, with "each of them enters with an additional
+	// +1/+1 counter on it if it's a creature and an additional loyalty
+	// counter on it if it's a planeswalker" (Semester's End, #4193).
+	returnExiledWithAdditionalCountersBody = game.SimpleDelayedBody(
+		"flicker/return-exiled-with-additional-counters", returnExiledCardsWithAdditionalCounters)
+
 	// Exile the listed cards (unearth, Whip of Erebos, Saheeli Rai and
 	// friends: "exile it at the beginning of the next end step").
 	exileListedCardsBody = game.SimpleDelayedBody("exile/listed-cards", b06ExileListedCards)

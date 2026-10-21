@@ -28,7 +28,7 @@ const (
 
 func TestGuffaSliceCompleteness(t *testing.T) {
 	for _, oracle := range []string{guffaChandraOracle, guffaGuffOracle, guffaFogBankOracle, guffaBeaconOracle,
-		guffaShakuOracle, guffaDistrictOracle, guffaOathOracle, guffaTezzeretOracle} {
+		guffaShakuOracle, guffaDistrictOracle, guffaOathOracle, guffaTezzeretOracle, guffaSemestersOracle} {
 		spec, ok := Lookup(oracle)
 		if !ok {
 			t.Errorf("%s is not registered", oracle)
@@ -38,11 +38,8 @@ func TestGuffaSliceCompleteness(t *testing.T) {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	// Ajani Steadfast is Full since #4192 (ajani_steadfast_emblem_test.go).
-	// Semester's End waits on #4193.
-	if _, ok := Lookup(guffaSemestersOracle); ok {
-		t.Error("Semester's End is registered, but its return can't give the per-card counters yet")
-	}
+	// Ajani Steadfast is Full since #4192 (ajani_steadfast_emblem_test.go),
+	// Semester's End since #4193 (semesters_end_test.go).
 }
 
 // guffaCastWalker casts a planeswalker with printed loyalty from the

@@ -386,6 +386,10 @@ func (g *Game) recordEntryBatchMemberLocked(b *entryBatch, i int, out *Replaceme
 		// back to it; nothing may re-enter the batch through it.
 		out.entryTail.batch = nil
 	}
+	// #4193: the putting effect's per-card "if it's a <type>" counters,
+	// judged now that this member's window has settled (so after any
+	// copy it was told to enter as) and before anything lands.
+	g.seedEntryCountersIfTypeLocked(b.opts.EntersWithCountersIfType, out)
 	b.members[i].out = out
 }
 

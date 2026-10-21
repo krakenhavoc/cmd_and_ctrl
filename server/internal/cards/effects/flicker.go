@@ -90,6 +90,13 @@ func flickerFirstLegalTarget(g *game.Game, item *game.StackItem) error {
 // once: the legs leave together, and the continuation is handed the
 // cards that reached exile.
 func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
+	return exileTargetsThenScheduleReturnBody(ctx, label, returnExiledToOwnersBody)
+}
+
+// exileTargetsThenScheduleReturnBody is exileTargetsThenScheduleReturn
+// with the delayed return's body named: Semester's End's return gives
+// each card its own counters (returnExiledWithAdditionalCountersBody).
+func exileTargetsThenScheduleReturnBody(ctx *Context, label string, body game.BodyRef) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
@@ -97,7 +104,7 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 		}
 		ids = append(ids, t.ID)
 	}
-	return exileCardsThenScheduleReturn(ctx, ids, label)
+	return exileCardsThenScheduleReturnBody(ctx, ids, label, body)
 }
 
 // exileCardsThenScheduleReturn is exileTargetsThenScheduleReturn for
@@ -106,6 +113,13 @@ func exileTargetsThenScheduleReturn(ctx *Context, label string) error {
 // the same one exile, and the same delayed trigger over the cards that
 // reached it.
 func exileCardsThenScheduleReturn(ctx *Context, ids []uuid.UUID, label string) error {
+	return exileCardsThenScheduleReturnBody(ctx, ids, label, returnExiledToOwnersBody)
+}
+
+// exileCardsThenScheduleReturnBody is the one exile and the one delayed
+// trigger every "exile …, return them at the beginning of the next end
+// step" shares, with the return's body named.
+func exileCardsThenScheduleReturnBody(ctx *Context, ids []uuid.UUID, label string, body game.BodyRef) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -120,9 +134,31 @@ func exileCardsThenScheduleReturn(ctx *Context, ids []uuid.UUID, label string) e
 			At:    game.StepEnd,
 			Label: label,
 			Cards: exiled,
-			Body:  returnExiledToOwnersBody,
+			Body:  body,
 		}.Apply(NewContext(g, item))
 	})
+}
+
+// returnExiledCardsWithAdditionalCounters is Semester's End's return:
+// the listed cards come back together under their owners' control, and
+// each enters with an additional +1/+1 counter if it's a creature and
+// an additional loyalty counter if it's a planeswalker, judged card by
+// card as each would exist on the battlefield (CR 614.12, #4193). A
+// creature planeswalker gets both.
+func returnExiledCardsWithAdditionalCounters(g *game.Game, item *game.StackItem) error {
+	var ids []uuid.UUID
+	for _, t := range item.Targets {
+		if t.Kind == game.TargetCard && t.ID != uuid.Nil {
+			ids = append(ids, t.ID)
+		}
+	}
+	return ReturnFromExileTogether{
+		Targets: ids,
+		CountersIfType: []game.EntryCountersIfType{
+			{CardType: "creature", Counter: game.CounterPlusOne, N: 1},
+			{CardType: "planeswalker", Counter: game.CounterLoyalty, N: 1},
+		},
+	}.Apply(NewContext(g, item))
 }
 
 // exileTargetsThenReturnOnOwnersEndStep is "exile <targets>. Return
