@@ -47,7 +47,7 @@ func TestNewSteppedDropsTheWallClockHolds(t *testing.T) {
 func TestStepRefusesARunnerBuiltByStart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := Start(ctx, paceRoom(t), uuid.New(), &RandomPolicy{}, Config{}, nil, nil)
+	r := startRunner(t, ctx, paceRoom(t), uuid.New(), &RandomPolicy{}, Config{}, nil, nil)
 	if r.Stepped() {
 		t.Error("Start built a runner that reports itself stepped")
 	}

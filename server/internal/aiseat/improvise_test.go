@@ -267,7 +267,7 @@ func TestRunnerAppliesAnnouncesAndTagsAnImprovisation(t *testing.T) {
 	defer cancel()
 	bc := &chatBroadcaster{}
 	pol := &improviser{im: grimTutor(t, bot, human, card)}
-	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
+	r := startBot(t, ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
 
 	waitFor(t, "the improvisation to apply", func() bool {
 		return r.Stats().Improvisations == 1
@@ -341,7 +341,7 @@ func TestHumanUndoOfBotImprovisationRevertsTheWholeBundle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	pol := &improviser{im: grimTutor(t, bot, human, card)}
-	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot, pol, aiseat.Config{}, nil, testLogger())
 	waitFor(t, "the improvisation to apply", func() bool {
 		return r.Stats().Improvisations == 1
 	})
@@ -410,7 +410,7 @@ func TestImprovisationBundleIsAtomic(t *testing.T) {
 	defer cancel()
 	bc := &chatBroadcaster{}
 	pol := &improviser{im: im}
-	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
+	r := startBot(t, ctx, room, bot, pol, aiseat.Config{}, bc, testLogger())
 	waitFor(t, "the improvisation to be refused", func() bool {
 		return r.Stats().ImprovRefused == 1
 	})
@@ -458,7 +458,7 @@ func TestUnannouncedImprovisationIsRefused(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	bc := &chatBroadcaster{}
-	r := aiseat.Start(ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
+	r := startBot(t, ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
 	waitFor(t, "the improvisation to be refused", func() bool {
 		return r.Stats().ImprovRefused == 1
 	})
@@ -509,7 +509,7 @@ func TestRefusedImprovisationTellsTheTable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	bc := &chatBroadcaster{}
-	r := aiseat.Start(ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
+	r := startBot(t, ctx, room, bot, &improviser{im: im}, aiseat.Config{}, bc, testLogger())
 	waitFor(t, "the improvisation to be refused", func() bool {
 		return r.Stats().ImprovRefused == 1
 	})
@@ -568,7 +568,7 @@ func TestImproviserGetsTheRunnersDeadline(t *testing.T) {
 	pol := &blockingImproviser{}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{MaxThink: 150 * time.Millisecond}, nil, testLogger())
+	r := startBot(t, ctx, room, bot, pol, aiseat.Config{MaxThink: 150 * time.Millisecond}, nil, testLogger())
 	waitFor(t, "the improviser to be cancelled", func() bool { return pol.cancelled() })
 	cancel()
 	<-r.Done()
@@ -638,7 +638,7 @@ func TestBotReasoningIsNarratedOnlyWhenAsked(t *testing.T) {
 			defer cancel()
 			bc := &chatBroadcaster{}
 			pol := &scripted{prefer: []string{"Keep hand"}}
-			r := aiseat.Start(ctx, room, bot, pol, aiseat.Config{Narrate: narrate}, bc, testLogger())
+			r := startBot(t, ctx, room, bot, pol, aiseat.Config{Narrate: narrate}, bc, testLogger())
 			waitFor(t, "the bot to act", func() bool { return r.Stats().Applied > 0 })
 			cancel()
 			<-r.Done()

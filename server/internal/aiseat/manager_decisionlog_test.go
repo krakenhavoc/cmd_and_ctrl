@@ -72,7 +72,7 @@ func TestManagerInstallsOneDecisionLogPerGame(t *testing.T) {
 	gl := &fakeGameLog{}
 	dl := &fakeDecisionLogger{log: gl}
 
-	mgr := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, testLogger())
+	mgr := newManager(t, nil, aiseat.Config{}, testLogger())
 	mgr.SetDecisionLogger(dl)
 	seats := []aiseat.SeatSpec{
 		{PlayerID: room.Game.Seats[0].ID, Tier: string(aiseat.TierRandom)},
@@ -124,7 +124,7 @@ func TestManagerReplacingRunnersClosesTheOldDecisionLog(t *testing.T) {
 		return second, nil
 	})
 
-	mgr := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, testLogger())
+	mgr := newManager(t, nil, aiseat.Config{}, testLogger())
 	mgr.SetDecisionLogger(dl)
 	// Both seats, so the table keeps moving after the replacement:
 	// one bot and one empty chair stalls as soon as priority crosses.
