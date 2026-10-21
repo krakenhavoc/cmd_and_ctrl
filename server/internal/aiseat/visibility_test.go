@@ -312,7 +312,7 @@ func captureBotInput(t *testing.T, room *ws.Room, seat uuid.UUID) aiseat.Input {
 	t.Cleanup(cancel)
 	// MaxThink is an hour so the runner's own deadline cannot expire
 	// mid-assertion, take the fallback pass, and move the board.
-	r := aiseat.Start(ctx, room, seat, pol, aiseat.Config{MaxThink: time.Hour}, nil, testLogger())
+	r := startBot(t, ctx, room, seat, pol, aiseat.Config{MaxThink: time.Hour}, nil, testLogger())
 	t.Cleanup(func() {
 		cancel()
 		<-r.Done()

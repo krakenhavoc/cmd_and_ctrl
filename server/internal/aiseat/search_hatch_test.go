@@ -199,7 +199,7 @@ func TestRunnerTakesTheAlwaysLegalAnswerWhenEveryPickIsRejected(t *testing.T) {
 	pol := &millOnPick{t: t, room: room, seat: me.ID}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, me.ID, pol, aiseat.Config{
+	r := startBot(t, ctx, room, me.ID, pol, aiseat.Config{
 		MaxThink:              time.Second,
 		MaxConsecutiveRejects: 2,
 	}, nil, testLogger())

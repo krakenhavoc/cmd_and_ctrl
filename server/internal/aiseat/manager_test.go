@@ -23,7 +23,7 @@ func TestManagerPlaysALobbySeatedTable(t *testing.T) {
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
 	bc := &recordingBroadcaster{}
-	host := aiseat.NewManagerWithConfig(bc, aiseat.Config{}, log)
+	host := newManager(t, bc, aiseat.Config{}, log)
 	l.SetBotHost(host)
 	if got := host.Tiers(); len(got) != 1 || got[0] != string(aiseat.TierRandom) {
 		t.Fatalf("tiers: %v", got)
@@ -108,7 +108,7 @@ func TestManagerStopCancelsRunners(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{MinThink: time.Hour}, log) // never gets a move off
+	host := newManager(t, nil, aiseat.Config{MinThink: time.Hour}, log) // never gets a move off
 	l.SetBotHost(host)
 	meta, _ := l.Create("Stop me")
 	for i := 0; i < 2; i++ {

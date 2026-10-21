@@ -455,7 +455,7 @@ func playCatalogGame(t *testing.T, room *ws.Room, policies []aiseat.Policy, turn
 	started := time.Now()
 	runners := make([]*aiseat.Runner, 0, len(policies))
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], aiseat.Config{}, nil, testLogger()))
+		runners = append(runners, startBot(t, ctx, room, p.ID, policies[i], aiseat.Config{}, nil, testLogger()))
 	}
 
 	var out catalogRun

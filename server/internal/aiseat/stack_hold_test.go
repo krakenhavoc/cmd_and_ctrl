@@ -85,7 +85,7 @@ func TestRunnerHoldsItsPassOnAnotherSeatsStackItem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	started := time.Now()
-	r := aiseat.Start(ctx, room, bot, &scripted{}, cfg, nil, testLogger())
+	r := startBot(t, ctx, room, bot, &scripted{}, cfg, nil, testLogger())
 
 	waitFor(t, "the bot passes on the human's trigger", func() bool {
 		_, ok := clock.passed()

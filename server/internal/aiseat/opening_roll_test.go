@@ -211,7 +211,7 @@ func TestBotsRollAndChooseThroughTheOpeningRollAndPlayOn(t *testing.T) {
 	defer cancel()
 	runners := make([]*aiseat.Runner, 0, len(policies))
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
+		runners = append(runners, startBot(t, ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
 	}
 
 	// Every predicate below is monotone: the window only ever closes,
@@ -273,7 +273,7 @@ func TestBotsRollOnTheTablesBotPace(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	started := time.Now()
-	r := aiseat.Start(ctx, room, g.Seats[0].ID, heuristic.New(),
+	r := startBot(t, ctx, room, g.Seats[0].ID, heuristic.New(),
 		aiseat.Config{FollowTablePace: true, MaxThink: 2 * time.Second}, nil, testLogger())
 	var rolledAt time.Time
 	// Monotone: a die rolled in round 1 stays rolled.

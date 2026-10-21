@@ -177,8 +177,8 @@ func TestALobbySeatOrdersItsTargetsByThreat(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot.ID, watch, aiseat.Config{}, nil, testLogger())
-	h := aiseat.Start(ctx, room, opp.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot.ID, watch, aiseat.Config{}, nil, testLogger())
+	h := startBot(t, ctx, room, opp.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
 
 	waitFor(t, "a window offering the bolt at both creatures", func() bool {
 		_, _, ok := watch.snapshot()
@@ -263,8 +263,8 @@ func TestALobbySeatPricesItsEscapeFuel(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot.ID, watch, aiseat.Config{MaxThink: 2 * time.Second}, nil, testLogger())
-	h := aiseat.Start(ctx, room, opp.ID, passPolicy{}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot.ID, watch, aiseat.Config{MaxThink: 2 * time.Second}, nil, testLogger())
+	h := startBot(t, ctx, room, opp.ID, passPolicy{}, aiseat.Config{}, nil, testLogger())
 
 	waitFor(t, "a window offering Uro's escape", func() bool {
 		_, _, ok := watch.snapshot()

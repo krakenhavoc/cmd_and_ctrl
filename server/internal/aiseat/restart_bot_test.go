@@ -34,7 +34,7 @@ func TestBotsPlayOnThroughARestartedGame(t *testing.T) {
 	defer cancel()
 	runners := make([]*aiseat.Runner, 0, len(policies))
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], aiseat.Config{}, nil, testLogger()))
+		runners = append(runners, startBot(t, ctx, room, p.ID, policies[i], aiseat.Config{}, nil, testLogger()))
 	}
 
 	waitFor(t, "the bots to reach the old game's second turn", func() bool {

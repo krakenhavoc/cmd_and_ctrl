@@ -189,7 +189,7 @@ func playOpeningRoll(t *testing.T, room *ws.Room, player uuid.UUID) {
 func startPracticeBot(t *testing.T, room *ws.Room, firstTurnTo *int) (*aiseat.Manager, *firstTurnTally) {
 	t.Helper()
 	tally := &firstTurnTally{}
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{Observer: tally}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	host := newManager(t, nil, aiseat.Config{Observer: tally}, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	host.StartBots(room, []aiseat.SeatSpec{{
 		PlayerID:    room.Game.Seats[1].ID,
 		Tier:        string(aiseat.TierRandom),
@@ -299,7 +299,7 @@ func TestFirstTurnToUnsetLeavesTheChoiceToTheTier(t *testing.T) {
 func TestPracticeTableRollsAndThePlayerTakesTurnOne(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	l := lobby.NewLobby(ws.NewRoomManager(log, ""))
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, log)
+	host := newManager(t, nil, aiseat.Config{}, log)
 	l.SetBotHost(host)
 	t.Cleanup(host.Shutdown)
 

@@ -83,6 +83,65 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: lvl}))
 }
 
+// startBot is aiseat.Start for a test, and the only way a test in this
+// package starts a runner (TestNoTestStartsARunnerItDoesNotStop
+// enforces it).
+//
+// A runner is a goroutine the test does not schedule, and
+// `defer cancel()` only ASKS it to stop: the goroutine can still be
+// inside a step, reading the process-wide catalog hooks
+// (game.CatalogTriggers and the others) through the room's view, when
+// the next test begins. The next test may then swap one of those hooks
+// (installTriggerLoop does), and the race detector reports a write
+// against a read the first test left behind, charged to whichever test
+// happens to be running. That is #4219.
+//
+// So the runner is started under a context of the helper's own and a
+// t.Cleanup cancels it and waits for Done. Cleanups run after the
+// test's defers and before the next test starts, which makes "no
+// runner outlives its test" a fact rather than a hope — and it holds
+// for the test that forgot its own cancel, too.
+func startBot(t *testing.T, ctx context.Context, room *ws.Room, seat uuid.UUID, policy aiseat.Policy, cfg aiseat.Config, bc aiseat.Broadcaster, log *slog.Logger) *aiseat.Runner {
+	t.Helper()
+	ctx, cancel := context.WithCancel(ctx)
+	r := aiseat.Start(ctx, room, seat, policy, cfg, bc, log)
+	t.Cleanup(func() {
+		cancel()
+		// The backstop for a wedged runner, as in waitFor: nothing
+		// depends on it being reached. Errorf, not Fatalf, so the rest
+		// of the cleanups still run.
+		select {
+		case <-r.Done():
+		case <-time.After(waitForBudget):
+			t.Errorf("the bot runner for seat %s did not exit after its test ended; it would race the next test (#4219)", seat)
+		}
+	})
+	return r
+}
+
+// newManager is aiseat.NewManagerWithConfig for a test, shut down when
+// the test ends. Shutdown stops every game's runners, stand-ins
+// included, and waits for them to exit, so a test that starts bots
+// through the manager cannot leave one behind either (#4219). It is
+// idempotent, so a test that also calls it (or StopBots) itself is
+// fine.
+func newManager(t *testing.T, bc aiseat.Broadcaster, cfg aiseat.Config, log *slog.Logger) *aiseat.Manager {
+	t.Helper()
+	m := aiseat.NewManagerWithConfig(bc, cfg, log)
+	t.Cleanup(m.Shutdown)
+	return m
+}
+
+// newTierManager is aiseat.NewManager (production pacing, no override)
+// for a test that only asks which tiers the manager offers, shut down
+// when the test ends like newManager's.
+func newTierManager(t *testing.T, log *slog.Logger) *aiseat.Manager {
+	t.Helper()
+	m := aiseat.NewManager(nil, log)
+	t.Cleanup(m.Shutdown)
+	return m
+}
+
 // --- scripted policy ----------------------------------------------
 
 // scripted picks the first move whose label has one of the given
@@ -363,10 +422,10 @@ func TestRunnerKeepsHandThenPlaysALandAndPasses(t *testing.T) {
 	bc := &recordingBroadcaster{}
 	drops := &landDrops{}
 	pol := &scripted{prefer: []string{"Keep hand", "Play Mountain"}}
-	r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{Observer: drops}, bc, testLogger())
+	r := startBot(t, ctx, room, bot.ID, pol, aiseat.Config{Observer: drops}, bc, testLogger())
 	// The "human" in seat 1 is a second runner that only ever keeps
 	// and passes, so priority actually comes back around.
-	h := aiseat.Start(ctx, room, human.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
+	h := startBot(t, ctx, room, human.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
 
 	waitFor(t, "both seats to keep", func() bool {
 		return handKept(g, bot.ID) && handKept(g, human.ID)
@@ -439,7 +498,7 @@ func TestRunnerFallsBackWhenPolicyFails(t *testing.T) {
 			bot := g.Seats[0]
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			r := aiseat.Start(ctx, room, bot.ID, pol, aiseat.Config{MaxThink: 30 * time.Millisecond}, nil, testLogger())
+			r := startBot(t, ctx, room, bot.ID, pol, aiseat.Config{MaxThink: 30 * time.Millisecond}, nil, testLogger())
 			// In the mulligan window there is no pass move, so the
 			// fallback is the first legal move — "Keep hand".
 			waitFor(t, "fallback keep", func() bool { return handKept(g, bot.ID) })
@@ -460,7 +519,7 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	bot := g.Seats[0]
 
 	ctx, cancel := context.WithCancel(context.Background())
-	r := aiseat.Start(ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(1, 1)), aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(1, 1)), aiseat.Config{}, nil, testLogger())
 	cancel()
 	waitForRunner(t, "the runner to exit on cancel", r)
 
@@ -468,7 +527,7 @@ func TestRunnerExitsOnCancelAndOnGameEnd(t *testing.T) {
 	// wakes on the commit and exits.
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel2()
-	r2 := aiseat.Start(ctx2, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(2, 2)), aiseat.Config{}, nil, testLogger())
+	r2 := startBot(t, ctx2, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(2, 2)), aiseat.Config{}, nil, testLogger())
 	if _, _, err := room.ApplyExternal(func() error { return g.Concede(g.Seats[1].ID) }); err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +549,7 @@ func TestRunnerExitsWhenAnEffectWinsTheGame(t *testing.T) {
 	defer cancel()
 	var runners []*aiseat.Runner
 	for i, p := range g.Seats {
-		runners = append(runners, aiseat.Start(ctx, room, p.ID,
+		runners = append(runners, startBot(t, ctx, room, p.ID,
 			aiseat.NewRandomPolicy(rand.NewPCG(uint64(10+i), 1)), aiseat.Config{}, nil, testLogger()))
 	}
 	winner := g.Seats[1]
@@ -522,7 +581,7 @@ func TestRunnerPacesDecisions(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	start := time.Now()
-	aiseat.Start(ctx, room, bot.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{MinThink: 150 * time.Millisecond}, nil, testLogger())
+	startBot(t, ctx, room, bot.ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{MinThink: 150 * time.Millisecond}, nil, testLogger())
 	waitFor(t, "paced keep", func() bool { return handKept(g, bot.ID) })
 	if el := time.Since(start); el < 140*time.Millisecond {
 		t.Errorf("decision landed after %v; MinThink not honoured", el)
@@ -579,7 +638,7 @@ func TestFourRandomBotsPlay(t *testing.T) {
 			var runners []*aiseat.Runner
 			for i, p := range g.Seats {
 				pol := aiseat.NewRandomPolicy(rand.NewPCG(seed, uint64(i)))
-				runners = append(runners, aiseat.Start(ctx, room, p.ID, pol, aiseat.Config{}, nil, testLogger()))
+				runners = append(runners, startBot(t, ctx, room, p.ID, pol, aiseat.Config{}, nil, testLogger()))
 			}
 
 			lastSeq, lastMove := room.Seq(), time.Now()
@@ -747,7 +806,7 @@ func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 	grace := 2 * time.Second
 	start := time.Now()
 	// Active bot: pass-only policy, with grace.
-	aiseat.Start(ctx, room, bot.ID, &scripted{}, aiseat.Config{BlockGrace: grace}, nil, testLogger())
+	startBot(t, ctx, room, bot.ID, &scripted{}, aiseat.Config{BlockGrace: grace}, nil, testLogger())
 	// It must still be declare_blockers well inside the grace window,
 	// because the defender has an undeclared legal block.
 	time.Sleep(300 * time.Millisecond)
@@ -761,7 +820,7 @@ func TestActiveBotHoldsPassForBlockers(t *testing.T) {
 		t.Fatal(err)
 	}
 	blocked := time.Now()
-	aiseat.Start(ctx, room, def.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
+	startBot(t, ctx, room, def.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
 	waitFor(t, "step to leave declare_blockers", func() bool {
 		return g.Snapshot().Turn.Step != game.StepDeclareBlockers
 	})
@@ -813,7 +872,7 @@ func TestActiveBotBlockGraceEndsWhenTheDefenderFinishes(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	grace := 3 * time.Second
-	aiseat.Start(ctx, room, bot.ID, &scripted{}, aiseat.Config{BlockGrace: grace}, nil, testLogger())
+	startBot(t, ctx, room, bot.ID, &scripted{}, aiseat.Config{BlockGrace: grace}, nil, testLogger())
 	time.Sleep(300 * time.Millisecond)
 	if s := g.Snapshot().Turn.Step; s != game.StepDeclareBlockers {
 		t.Fatalf("active bot passed out of declare_blockers inside the grace window (now %s)", s)
@@ -887,7 +946,7 @@ func TestDefenderBotThatDeclinesStillFinishesItsDeclaration(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	aiseat.Start(ctx, room, def.ID, declinesEverything{}, aiseat.Config{}, nil, testLogger())
+	startBot(t, ctx, room, def.ID, declinesEverything{}, aiseat.Config{}, nil, testLogger())
 	waitFor(t, "the defender bot to finish declaring", func() bool {
 		return g.BlockDeclarationStatusOf(def.ID) == game.BlockDeclarationDeclared
 	})

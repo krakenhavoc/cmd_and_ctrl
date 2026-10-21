@@ -136,7 +136,7 @@ func TestRandomBotSoak(t *testing.T) {
 			defer cancel()
 			var runners []*aiseat.Runner
 			for i, p := range g.Seats {
-				runners = append(runners, aiseat.Start(ctx, room, p.ID, soakPolicy(seed, i), aiseat.Config{}, nil, testLogger()))
+				runners = append(runners, startBot(t, ctx, room, p.ID, soakPolicy(seed, i), aiseat.Config{}, nil, testLogger()))
 			}
 			lastSeq, lastMove := room.Seq(), time.Now()
 			for {

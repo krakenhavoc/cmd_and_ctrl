@@ -13,6 +13,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 // pass_pacing_internal_test.go pins #2898: a seat whose only legal move
@@ -59,6 +60,27 @@ func (f *firstMove) wait(t *testing.T) (time.Time, []legal.Move, int) {
 
 func testLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
 
+// startRunner is Start for a test in this package, and the only way one
+// starts a runner (TestNoTestStartsARunnerItDoesNotStop). It is
+// startBot in runner_test.go for the internal tests, for the same
+// reason (#4219): a runner a test merely cancels can still be inside a
+// step, reading the process-wide catalog hooks, when the next test
+// swaps one. The cleanup cancels it and waits for Done.
+func startRunner(t *testing.T, ctx context.Context, room *ws.Room, seat uuid.UUID, policy Policy, cfg Config, bc Broadcaster, log *slog.Logger) *Runner {
+	t.Helper()
+	ctx, cancel := context.WithCancel(ctx)
+	r := Start(ctx, room, seat, policy, cfg, bc, log)
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-r.Done():
+		case <-time.After(holdBackstop):
+			t.Errorf("the bot runner for seat %s did not exit after its test ended (#4219)", seat)
+		}
+	})
+	return r
+}
+
 // waitDone waits for the runner to exit; the caller has cancelled it.
 func waitDone(t *testing.T, r *Runner) {
 	t.Helper()
@@ -97,7 +119,7 @@ func TestRunnerPassesWithoutMinThinkWhenPassIsTheOnlyMove(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	started := time.Now()
-	r := Start(ctx, room, active, NewRandomPolicy(rand.NewPCG(2898, 1)), cfg, nil, testLog())
+	r := startRunner(t, ctx, room, active, NewRandomPolicy(rand.NewPCG(2898, 1)), cfg, nil, testLog())
 	at, moves, idx := rec.wait(t)
 	if !onlyPass(moves) || moves[idx].Kind != legal.KindPass {
 		t.Fatalf("fixture drifted: the bot's window is not pass-only: %+v", moves)
@@ -131,7 +153,7 @@ func TestRunnerStillPacesAWindowWithAChoice(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	started := time.Now()
-	r := Start(ctx, room, active, NewRandomPolicy(rand.NewPCG(2898, 2)), cfg, nil, testLog())
+	r := startRunner(t, ctx, room, active, NewRandomPolicy(rand.NewPCG(2898, 2)), cfg, nil, testLog())
 	at, moves, _ := rec.wait(t)
 	if onlyPass(moves) {
 		t.Fatalf("fixture drifted: the window is pass-only")
@@ -164,7 +186,7 @@ func TestPassOnlyWindowStillHoldsForAnotherSeatsStackItem(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	started := time.Now()
-	r := Start(ctx, room, other, NewRandomPolicy(rand.NewPCG(2898, 3)), cfg, nil, testLog())
+	r := startRunner(t, ctx, room, other, NewRandomPolicy(rand.NewPCG(2898, 3)), cfg, nil, testLog())
 	at, moves, idx := rec.wait(t)
 	if !onlyPass(moves) || moves[idx].Kind != legal.KindPass {
 		t.Fatalf("fixture drifted: the bot's window is not pass-only: %+v", moves)

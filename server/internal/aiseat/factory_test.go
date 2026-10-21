@@ -69,7 +69,7 @@ func allTiers() map[aiseat.Tier]bool {
 // build, which is `random` — and says so about the rest rather than
 // leaving the picker to guess.
 func TestManagerWithoutAFactoryOffersRandomOnly(t *testing.T) {
-	m := aiseat.NewManager(nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	m := newTierManager(t, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if got := m.Tiers(); len(got) != 1 || got[0] != string(aiseat.TierRandom) {
 		t.Fatalf("tiers: %v, want [random]", got)
 	}
@@ -89,7 +89,7 @@ func TestManagerWithoutAFactoryOffersRandomOnly(t *testing.T) {
 // Injecting a factory that can build all four makes all four
 // available, which is the whole point of the injection.
 func TestManagerTiersFollowTheInjectedFactory(t *testing.T) {
-	m := aiseat.NewManager(nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	m := newTierManager(t, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	m.SetPolicyFactory(&stubFactory{available: allTiers()})
 
 	if got := len(m.Tiers()); got != 4 {
@@ -113,7 +113,7 @@ func TestManagerReportsWhyAModelTierIsMissing(t *testing.T) {
 		available: map[aiseat.Tier]bool{aiseat.TierRandom: true, aiseat.TierHeuristic: true},
 		reason:    "needs a model endpoint",
 	}
-	m := aiseat.NewManager(nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	m := newTierManager(t, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	m.SetPolicyFactory(f)
 
 	got := strings.Join(m.Tiers(), ",")
@@ -138,7 +138,7 @@ func TestStartBotsPassesTheDeckToTheFactory(t *testing.T) {
 	f := &stubFactory{available: allTiers()}
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, log)
+	host := newManager(t, nil, aiseat.Config{}, log)
 	host.SetPolicyFactory(f)
 	l.SetBotHost(host)
 
@@ -174,7 +174,7 @@ func TestSeatsRunThePolicyTheirTierNames(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, log)
+	host := newManager(t, nil, aiseat.Config{}, log)
 	// The production factory, with a fake transport standing in for
 	// the model endpoint CI does not have.
 	host.SetPolicyFactory(tiers.NewFactory(tiers.FactoryOptions{
