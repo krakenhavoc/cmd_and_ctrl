@@ -126,6 +126,7 @@
   import { withPaperPayment, type PaperPayment } from "../lib/paperPayment";
   import type { PaperPaymentPrompt } from "../lib/protocol";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
+  import AttackLifeModal from "../lib/components/board/AttackLifeModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
   import PhaseDisplay from "../lib/components/board/PhaseDisplay.svelte";
@@ -210,6 +211,13 @@
     owesFreeCast,
   } from "../lib/priority";
   import { attackHandoffRequest, confirmAttacksParams } from "../lib/attackHandoff";
+  import {
+    attackLifeAsks,
+    attackLifePrompt,
+    attackLifeSymbols,
+    clampAttackLife,
+    type AttackLifePrompt,
+  } from "../lib/attackLife";
   import { hasPlay, hasResponse, keyWindow, type ResponseCategories } from "../lib/responseWindow";
   import { engineMayMissMana } from "../lib/engineMayMissMana";
   import {
@@ -217,6 +225,7 @@
     attackLimitOn,
     blockedSummary,
     bulkAttackRefusal,
+    eligibleAt,
     exertChoiceAt,
     planAttackAll,
     type AttackAllParams,
@@ -1841,9 +1850,38 @@
     // The params carry auto_tap (ADR 0080) and, when chosen, exert.
     const params = declareAttackerParams(combatSelection, targetPlayerID);
     if (!params) return;
-    client.sendAction("declare_attacker", actingPlayer, params);
     combatSelection = null;
-    play("attack");
+    // #4198: a Phyrexian tax asks mana or life first.
+    const sendOne = (life: number): void => {
+      client.sendAction(
+        "declare_attacker",
+        actingPlayer,
+        life > 0 ? { ...params, phyrexian_life: life } : params,
+      );
+      play("attack");
+    };
+    if (askAttackLife([targetPlayerID], "Re-declare attacker", sendOne)) return;
+    sendOne(0);
+  }
+
+  // #4198: a Phyrexian attack tax (Norn's Annex's {W/P}) asks, before the
+  // declaration goes out, how many of its symbols are paid with 2 life
+  // (CR 107.4f). `targets` is one entry per attacker. Returns true when
+  // the question is open (the caller sends nothing now); the sheet's
+  // answer calls `send` with the count.
+  const actingLife = $derived(view?.seats.find((s) => s.id === actingID)?.life ?? 0);
+  let attackLifeAsk = $state<{ prompt: AttackLifePrompt; send: (life: number) => void } | null>(
+    null,
+  );
+  function askAttackLife(targets: string[], verb: string, send: (life: number) => void): boolean {
+    if (!attackLifeAsks(view, targets, actingLife)) return false;
+    attackLifeAsk = { prompt: attackLifePrompt(view, targets, verb), send };
+    return true;
+  }
+  function answerAttackLife(n: number): void {
+    const ask = attackLifeAsk;
+    attackLifeAsk = null;
+    ask?.send(n);
   }
 
   // #3266: the primary's "Attack with N". One declare_attackers carries
@@ -1854,7 +1892,24 @@
   let attackCommit = $state<{ frame: string; seq: number; ids: string[] } | null>(null);
   function commitAttack(): void {
     if (attackCommit) return;
-    const params = stagedParams(attackStage);
+    if (!stagedParams(attackStage)) return;
+    // #4198: a Phyrexian tax asks mana or life before anything is sent.
+    if (
+      askAttackLife(
+        attackStage.map((s) => s.target),
+        `Attack with ${attackStage.length}`,
+        sendStagedAttack,
+      )
+    ) {
+      return;
+    }
+    sendStagedAttack(0);
+  }
+  function sendStagedAttack(life: number): void {
+    if (attackCommit) return;
+    const targets = attackStage.map((s) => s.target);
+    const symbols = attackLifeSymbols(view, targets).total;
+    const params = stagedParams(attackStage, clampAttackLife(life, symbols, actingLife));
     if (!params) return;
     combatSelection = null;
     const frame = client.sendAction("declare_attackers", actingPlayer, params);
@@ -1960,6 +2015,18 @@
       openAttackPicker(defenderSeatID);
       return;
     }
+    // #4198: a Phyrexian tax is a question (mana or life per symbol),
+    // which the picker asks beside the rows.
+    if (
+      attackLifeAsks(
+        view,
+        eligibleAt(attackPlan, defenderSeatID).map(() => defenderSeatID),
+        actingLife,
+      )
+    ) {
+      openAttackPicker(defenderSeatID);
+      return;
+    }
     const params = attackAllParams(attackPlan, defenderSeatID);
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
@@ -2056,6 +2123,7 @@
     attackerIDs: string[],
     lockedSources: string[],
     exertIDs: string[] = [],
+    phyrexianLife = 0,
   ): void {
     const defenderSeatID = attackPickerDefenderID;
     attackPickerDefenderID = null;
@@ -2066,6 +2134,8 @@
       lockedSources,
       // ADR 0130 §7: the rows whose Exert toggle the player turned on.
       exert: exertIDs,
+      // #4198: the Phyrexian symbols of the tax paid with life.
+      phyrexianLife,
     });
     if (!params) return;
     sendBulkAttack(defenderSeatID, params);
@@ -2079,6 +2149,17 @@
     // ADR 0130 §7: a group with a member that may be exerted is asked
     // about in the picker, like "Attack with all".
     if (attackerIDs.some((id) => attackPlan.exertable.includes(id))) {
+      openAttackPicker(defenderSeatID);
+      return;
+    }
+    // #4198: the picker asks mana or life for a Phyrexian tax.
+    if (
+      attackLifeAsks(
+        view,
+        attackerIDs.map(() => defenderSeatID),
+        actingLife,
+      )
+    ) {
       openAttackPicker(defenderSeatID);
       return;
     }
@@ -2512,8 +2593,25 @@
           view,
           actingID,
           (attacks) => {
-            client.sendAction("declare_attackers", actingPlayer, confirmAttacksParams(attacks));
-            play("attack");
+            const send = (life: number): void => {
+              client.sendAction(
+                "declare_attackers",
+                actingPlayer,
+                confirmAttacksParams(attacks, life),
+              );
+              play("attack");
+            };
+            // #4198: a Phyrexian tax asks mana or life before it is paid.
+            if (
+              askAttackLife(
+                attacks.map((a) => a.target),
+                `Confirm attacks`,
+                send,
+              )
+            ) {
+              return;
+            }
+            send(0);
           },
           () => sendPass(actingPlayer, "declined the costs of the chosen attackers", false),
         ),
@@ -3603,8 +3701,15 @@
         defenderSeatID={attackPickerDefenderID}
         limitReason={attackPickerLimitReason}
         legalGate={legalActions}
+        life={actingLife}
         onConfirm={confirmAttackPicker}
         onCancel={cancelAttackPicker}
+      />
+      <AttackLifeModal
+        prompt={attackLifeAsk?.prompt ?? null}
+        life={actingLife}
+        onConfirm={answerAttackLife}
+        onCancel={() => (attackLifeAsk = null)}
       />
     {/if}
   </div>

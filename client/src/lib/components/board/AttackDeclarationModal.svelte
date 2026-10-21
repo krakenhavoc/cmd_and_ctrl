@@ -48,6 +48,12 @@
   // primary and Cancel its secondary; Escape cancels, as it did, and
   // Enter now confirms the picked set (ADR 0111 §1: Enter commits what
   // the player picked), through the dock's one key handler.
+  //
+  // #4198: a tax with Phyrexian symbols (Norn's Annex's {W/P}) adds the
+  // "Pay with life" stepper below the rows: how many of the checked
+  // attackers' symbols are paid with 2 life each (CR 107.4f), sent as
+  // `phyrexian_life`. Its ceiling follows the checked set and the life
+  // total (CR 119.4).
 
   import type { CardView, GameView } from "../../protocol";
   import {
@@ -60,12 +66,14 @@
     seedAttackSelection,
     toggleAttackSelection,
   } from "../../attackAll";
+  import { attackLifeSymbols, clampAttackLife } from "../../attackLife";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { usableManaAbilities } from "../../seatSummary";
   import { cancelAction, confirmAction } from "../../dock";
   import { EXERT_NOTE } from "../../combatDock";
   import { L } from "../../labels";
   import DockSheet from "./DockSheet.svelte";
+  import AttackLifeStepper from "./AttackLifeStepper.svelte";
 
   interface Props {
     view: GameView;
@@ -82,9 +90,19 @@
     // the "attack with all" button counts. Absent means no information:
     // the row fields decide, as they did before.
     legalGate?: LegalActions;
+    // #4198: the viewer's life total, for the CR 119.4 cap on paying a
+    // Phyrexian attack tax with life.
+    life?: number;
     // ADR 0130 §7: `exertIDs` are the checked attackers whose Exert
     // toggle is on.
-    onConfirm: (attackerIDs: string[], lockedSources: string[], exertIDs: string[]) => void;
+    // #4198: `phyrexianLife` is how many Phyrexian symbols of the tax
+    // are paid with life; 0 pays them all with mana.
+    onConfirm: (
+      attackerIDs: string[],
+      lockedSources: string[],
+      exertIDs: string[],
+      phyrexianLife: number,
+    ) => void;
     onCancel: () => void;
   }
 
@@ -94,6 +112,7 @@
     defenderSeatID,
     limitReason = null,
     legalGate = NO_LEGAL_ACTIONS,
+    life = 0,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -117,6 +136,8 @@
   // exert as they attack. Off by default on every row: nothing exerts a
   // creature the player didn't ask to (CR 508.1g).
   let exerted = $state<string[]>([]);
+  // #4198: the Phyrexian symbols the player pays with life.
+  let lifeSymbols = $state(0);
 
   // Seed the selection with every eligible attacker when the modal
   // OPENS for a defender — not on every later snapshot, which would
@@ -129,6 +150,7 @@
       selected = seedAttackSelection(eligible, cap);
       lockedSources = [];
       exerted = [];
+      lifeSymbols = 0;
     }
   });
 
@@ -151,6 +173,13 @@
     const eligibleIDs = new Set(eligible.map((c) => c.instance_id));
     return selected.filter((id) => eligibleIDs.has(id));
   });
+  // #4198: the symbols of the checked attackers' tax, and the count the
+  // player may pay with life (never more than the checked set prints or
+  // the life total buys).
+  const taxSymbols = $derived(
+    attackLifeSymbols(view, defenderSeatID ? liveSelected.map(() => defenderSeatID) : []).total,
+  );
+  const liveLife = $derived(clampAttackLife(lifeSymbols, taxSymbols, life));
   const atCap = $derived(cap !== null && liveSelected.length >= cap);
   const overCap = $derived(cap !== null && liveSelected.length > cap);
 
@@ -183,7 +212,7 @@
 
   function confirm(): void {
     if (liveSelected.length === 0 || overCap) return;
-    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice());
+    onConfirm(liveSelected.slice(), lockedSources.slice(), liveExerted.slice(), liveLife);
   }
 </script>
 
@@ -272,6 +301,16 @@
       >
       <button type="button" class="ghost" onclick={selectNone}>None</button>
     </div>
+    {#if taxSymbols > 0}
+      <!-- #4198: a Phyrexian tax: each symbol is its mana or 2 life. -->
+      <AttackLifeStepper
+        symbols={taxSymbols}
+        {life}
+        {each}
+        value={liveLife}
+        onChange={(n) => (lifeSymbols = clampAttackLife(n, taxSymbols, life))}
+      />
+    {/if}
     <!-- The lock-a-land toggle only matters when a tax is paid from
          lands; a picker opened for a limit alone has nothing to pay. -->
     {#if each && lockCandidates.length > 0}

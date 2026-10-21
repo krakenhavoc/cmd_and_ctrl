@@ -3348,6 +3348,21 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+**A Phyrexian symbol in the tax** (Norn's Annex's `{W/P}`, #4198) needs
+nothing in the card file: `AttackTax("{W/P}", …)` is the whole tax. Each
+symbol is paid with the colour or 2 life (CR 107.4f), announced with the
+declaration as `phyrexian_life` on `declare_attacker` and
+`declare_attackers` (`game.DeclareAttackersParams.PhyrexianLife`), which
+goes through the same strike-and-pay helper a cast uses; auto-tap never
+pays life. The view ships the count per creature as
+`turn.attack_targets[].tax_phyrexian` (and `tax_phyrexian_granted` for a
+K'rrik-style grant), so the client parses no mana string. The attack
+dock asks for it: the attackers picker has a "Pay with life" stepper, and
+"Attack all", "Attack with N" and the chosen-attackers confirm open the
+same question for a printed Phyrexian symbol
+(`client/src/lib/attackLife.ts`). The enumerator offers the life
+payment to a bot seat when mana falls short (`attackTaxPayment`).
+
 **A tax that LASTS FOR A WHILE** ("Until your next turn, creatures can't
 attack you unless their controller pays {2} for each of those
 creatures", Summon: Yojimbo, #3398) is made by a resolving spell or

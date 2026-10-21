@@ -68,6 +68,7 @@ registered, or when this file is stale.
 | `attackAndExert` | `Attack and exert` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking and exerting it |
 | `declareAttackerAndExert` | `Declare attacker and exert` | menuitem | text | `lib/contextMenu.logic.ts` | ADR 0130 §7: the card menu's row beside Declare attacker, for a creature that may be exerted |
 | `exertAttacker` | `Exert <name>` (starts with `Exert `) | switch | aria | `lib/components/board/AttackDeclarationModal.svelte` | ADR 0130 §7: the Choose attackers picker's per-row Exert toggle |
+| `attackPayWithLife` | `pay the attack tax with life` | group | aria | `lib/components/board/AttackLifeStepper.svelte` | #4198: the stepper that pays a Phyrexian attack tax (Norn's Annex's {W/P}) with 2 life per symbol; drawn in the Choose attackers picker and in the Pay the attack tax sheet |
 | `declareBlockers` | `declare blockers` | dialog, group | aria | `lib/combatDock.ts` | the block request's dialog and its row group |
 | `removeBlock` | `Remove block` | button | text | `lib/combatDock.ts` | #3898: the dock's button that takes the selected blocker's block back while blockers are declared on the board |
 | `chooseBlockers` | `choose blockers` | dialog | aria | `lib/components/board/BlockListSheet.svelte` | #3898: the block declaration as a list, opened from the block request's Show as list; the keyboard path |
