@@ -917,3 +917,62 @@ colourless, 1 for a basic, 2 for a dual, 5 for Birds. What stays untapped makes
 the most colours. The keys above it (the wish, once-each-turn, the hand, the
 sacrifice and pain tiers, frozen) are unchanged and tested first, so a Treasure
 is still the last thing a generic pip reaches for (#1215).
+
+## Amendment (2026-10-21, #4185, #4189): declared riders beyond pain, the table tier, and the life-gain guard
+
+#2392 admitted one rider the planner could read, "This permanent deals N damage
+to you". Any other hand-written `Rider` kept its source out of every plan, so a
+spell only that source made affordable was not offered until the player tapped it
+by hand. #4185 added "You gain N life" (`ManaAbility.GainLife`,
+`ManaAbilityShape.RiderSelfLifeGain`: The Great Henge, Pristine Talisman). #4189
+adds the rest of the cases and decides each source in the #4189 list.
+
+### 1. Riders that act on the opponents are declared, and tiered (#4189)
+
+- **Two shapes.** `ManaAbility.OpponentsGainLife` ("Each opponent gains N
+  life": Grove of the Burnwillows' coloured half) and `ManaAbility.PingOpponents`
+  ("deals N damage to each opponent": Zhur-Taa Druid). Each builds the rider
+  (`EachOpponentGainsLifeRider`, `PingEachOpponentRider`) and carries the number
+  to the planner (`RiderOpponentLifeGain`, `RiderOpponentDamage`). A mana ability
+  that does this is still a mana ability (CR 605.1a). `Register` refuses a spec
+  that sets more than one of `Rider`, `PainToYou`, `GainLife`, `OpponentsGainLife`
+  and `PingOpponents`.
+- **The tier.** A source that acts on other players is `tapSource.Table`. It
+  spends nothing, so it needs no budget, but a click that casts a spell should
+  not also feed or ping the table while a quieter source could pay. It shares the
+  pain tier (`costTier` 2), and sorts before a source that costs life because
+  its `Pain` is 0. A Mountain, a Forest or Birds of Paradise pays before Grove's
+  coloured half or the Druid does.
+
+### 2. The sources whose rider uses up a resource stay manual (#4189)
+
+Owner decision (2026-10-21). Gemstone Mine and Temple of Cyclical Time remove
+counters, Twitching Doll adds one, Runaway Steam-Kin removes three, and Vexing
+Puzzlebox rolls a d20 whose total becomes charge counters. The planner does not
+tap them: tapping the last mining counter sacrifices the land, and the others
+change a count the player is keeping on purpose. Solar Array and Yuna set up a
+bonus for a later spell; the value depends on which spell follows and on payment
+order, which the planner cannot weigh, and neither is a number a shape could
+declare. All of them stay hand-activated.
+
+They are also not counted by the move list. Every move the enumerator offers
+carries `auto_tap` and is accepted as it stands (the #544 invariant),
+so offering a cast the planner cannot pay would hand a bot or an agent a
+move that fails. Counting a source the planner will not tap needs a second kind
+of move, "castable once you tap this by hand", with its own wire shape; that is
+not done here.
+
+### 3. A gain that becomes a loss is pain (#4189)
+
+Under Tainted Remedy or Plague Drone ("if an opponent would gain life, that
+player loses that much life instead"), The Great Henge's 2 life is a loss of 2.
+`lifeChangePreviewLocked` asks the CR 614 life window what the gain would become,
+read-only and with the same `Replace` functions the real window fires, as
+`producedManaPreviewLocked` does for a mana production. A loss is booked as
+`tapSource.Pain`, so `painBudgetFor` keeps the plan above 0 life, exactly as it
+does for a painland. A gain that stays a gain, doubled by Rhox Faithmender or
+not, costs nothing, and a "can't gain life" shield (CR 119.7) is a zero.
+
+**Known limits.** The `/autotap` preview does not list a life-gain loss or an
+opponent-facing rider against the source; `AutoTapPlanEntry` has no field for
+them.

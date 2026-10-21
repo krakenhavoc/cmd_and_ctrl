@@ -24,7 +24,10 @@ package effects
 // same atomic mana-ability resolution (CR 605.3b), so nobody gets
 // priority between the {G} landing in the pool and the three points
 // of damage, and the damage happens even at 1 life — a rider is not
-// a cost.
+// a cost. It is declared as PingOpponents, not a hand-written Rider, so
+// the auto-tapper can plan the Druid and the move list counts its {G}
+// (#4189); the planner reaches for it only after the sources that do not
+// ping the table.
 //
 // No simplification.
 func init() {
@@ -33,10 +36,10 @@ func init() {
 		Name:         "Zhur-Taa Druid",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{G}",
-			Label:    "Add {G}. This creature deals 1 damage to each opponent",
-			Rider:    b40PingEachOpponent(1),
+			Cost:          ManaAbilityCost{Tap: true},
+			Produced:      "{G}",
+			Label:         "Add {G}. This creature deals 1 damage to each opponent",
+			PingOpponents: 1,
 		}},
 	})
 }

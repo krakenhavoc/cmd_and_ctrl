@@ -341,7 +341,7 @@ func costedShapeKey(s tapSource) string {
 		b.WriteString(strings.Join(slot.Options, ","))
 	}
 	b.WriteString("|" + s.OneColor + "|" + strings.Join(s.DifferentColors, ",") + "|" + strconv.Itoa(s.Pain) + "|" + strconv.Itoa(s.Energy))
-	for _, bit := range []bool{s.Frozen, s.Sacrifices, s.SacrificesCreature, s.Wanted, s.GrantedCreature} {
+	for _, bit := range []bool{s.Frozen, s.Sacrifices, s.SacrificesCreature, s.Wanted, s.GrantedCreature, s.Table} {
 		if bit {
 			b.WriteString("1")
 		} else {

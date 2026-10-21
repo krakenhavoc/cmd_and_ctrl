@@ -27,27 +27,6 @@ import (
 // b12WhiteAngelFlyingToken, the Blood / Clue / Food tokens are in
 // tokens.go, and the lord keyword grant is TribalKeywordGrant.
 
-// --- mana-ability riders -----------------------------------------
-
-// b32EachOpponentGainsLifeRider is the post-production half of
-// Grove of the Burnwillows' coloured ability: "Each opponent gains
-// 1 life." A rider, not a cost, and life GAIN through
-// ChangePlayerLifeForEffect so every opponent's "whenever you gain
-// life" payoff sees it — which is the whole drawback of the card.
-func b32EachOpponentGainsLifeRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
-	return func(g *game.Game, controller, source uuid.UUID) error {
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated || p.ID == controller {
-				continue
-			}
-			if err := g.ChangePlayerLifeForEffect(source, p.ID, n); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
 // --- card reads --------------------------------------------------
 
 // b32ElvesControlled counts the Elves `controller` controls —

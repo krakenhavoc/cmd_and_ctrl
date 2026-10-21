@@ -2126,6 +2126,24 @@ type ManaAbility struct {
 	// Register refuses the pair.
 	GainLife int
 
+	// OpponentsGainLife is "Each opponent gains N life" after the "Add …"
+	// clause, declared as data (Grove of the Burnwillows' coloured half).
+	// Register builds the Rider with EachOpponentGainsLifeRider(n), and the
+	// built ability carries the number
+	// (game.ManaAbilityShape.RiderOpponentLifeGain) so the auto-tapper
+	// plans the source and the move list counts its mana (#4189). It acts
+	// on other players, so the planner reaches for it only after the
+	// sources that do not (tapSource.Table). Set one of Rider, PainToYou,
+	// GainLife, OpponentsGainLife or PingOpponents; Register refuses two.
+	OpponentsGainLife int
+
+	// PingOpponents is "this permanent deals N damage to each opponent"
+	// after the "Add …" clause, declared as data (Zhur-Taa Druid). Register
+	// builds the Rider with PingEachOpponentRider(n); the number reaches
+	// the auto-tapper as game.ManaAbilityShape.RiderOpponentDamage, and the
+	// source is tiered as OpponentsGainLife is (#4189).
+	PingOpponents int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE Produced / ProducedFunc / ProducedForPaid is evaluated —

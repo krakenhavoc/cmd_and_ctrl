@@ -105,6 +105,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
 			RiderSelfLifeGain:         a.GainLife,
+			RiderOpponentLifeGain:     a.OpponentsGainLife,
+			RiderOpponentDamage:       a.PingOpponents,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
@@ -122,15 +124,23 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 }
 
 // manaRider is the built ability's rider: the declared Rider, the
-// PainRider a PainToYou declaration stands for (#2392), or the
-// GainLifeRider a GainLife declaration stands for (#4185). Register
-// refuses a spec that sets two, so at most one is non-zero here.
+// PainRider a PainToYou declaration stands for (#2392), the
+// GainLifeRider a GainLife declaration stands for (#4185), or the
+// opponent-facing riders OpponentsGainLife and PingOpponents stand for
+// (#4189). Register refuses a spec that sets two, so at most one is
+// non-zero here.
 func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) error {
 	if a.PainToYou > 0 {
 		return PainRider(a.PainToYou)
 	}
 	if a.GainLife > 0 {
 		return GainLifeRider(a.GainLife)
+	}
+	if a.OpponentsGainLife > 0 {
+		return EachOpponentGainsLifeRider(a.OpponentsGainLife)
+	}
+	if a.PingOpponents > 0 {
+		return PingEachOpponentRider(a.PingOpponents)
 	}
 	return a.Rider
 }
