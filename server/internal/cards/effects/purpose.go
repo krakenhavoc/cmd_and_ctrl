@@ -46,6 +46,8 @@ import (
 //     AdditionalLandPlays says a different number (#2678);
 //   - LandfallExtraTriggers anywhere but the card, or on a card with
 //     no TriggerDoubler (#3146);
+//   - ExtraLoyaltyActivations anywhere but the card or an activated
+//     row of the controller's own (#4191);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -88,7 +90,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.ExtraLoyaltyActivations < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
@@ -102,6 +104,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.LandfallExtraTriggers != 0 && slot != purposeOnCard {
 		fail("sets LandfallExtraTriggers off the card — a landfall doubler is the card's own static (#3146)")
+	}
+	if p.ExtraLoyaltyActivations != 0 && slot != purposeOnCard && slot != purposeOnActivated {
+		fail("sets ExtraLoyaltyActivations off the card or an activated row of its controller's own — it grants the planeswalkers of whoever resolves it (#4191)")
 	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")

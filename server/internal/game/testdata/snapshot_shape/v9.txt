@@ -2318,6 +2318,11 @@ loyaltyActivatedThisTurn	map:array
 loyaltyActivatedThisTurn{}	bool
 loyaltyActivatedTwiceThisTurn	map:array
 loyaltyActivatedTwiceThisTurn{}	bool
+loyaltyExtraActivationsThisTurn	map:array
+loyaltyExtraActivationsThisTurn{}	number:int
+loyaltyExtraActivationsUsedThisTurn	map:array
+loyaltyExtraActivationsUsedThisTurn{}	map:array
+loyaltyExtraActivationsUsedThisTurn{}{}	number:int
 monarch	custom(uuid.UUID)
 mulligansOpen	bool
 nextExtraRef	number:int

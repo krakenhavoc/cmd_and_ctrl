@@ -299,6 +299,23 @@ type Game struct {
 	// is. ADR 0145.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyExtraActivationsThisTurn counts, per PLAYER, the one-turn
+	// grants "for each planeswalker you control, you may activate one
+	// of its loyalty abilities once this turn as though none of its
+	// loyalty abilities have been activated this turn" (The Chain Veil,
+	// #4191). Each is one more activation for every planeswalker that
+	// player controls, now or later this turn. Flushed at the turn
+	// boundary, like ExtraLandDropsThisTurn.
+	// ADR 0145 amendment 2026-10-21; loyalty_limit.go.
+	LoyaltyExtraActivationsThisTurn map[uuid.UUID]int
+
+	// LoyaltyExtraActivationsUsedThisTurn counts, per permanent and then
+	// per player, the grants in LoyaltyExtraActivationsThisTurn that
+	// permanent has spent this turn: an activation made once CR 606.3's
+	// ordinary limit was used up. Keyed, cleared and forgotten exactly
+	// as LoyaltyActivatedThisTurn is.
+	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped

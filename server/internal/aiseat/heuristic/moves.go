@@ -369,6 +369,17 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleSelfUntap(src, cp) {
 			return idleEquipMove, "untap for no net mana"
 		}
+		// #4191: one more loyalty activation for each of the bot's
+		// planeswalkers (loyalty_grant.go), worth something only in its
+		// own main phase with walkers to use it.
+		if !across && src != nil {
+			if gv, ok := st.loyaltyGrantValue(p.cfg, src, cp.AbilityIndex); ok {
+				if gv < 0 {
+					return gv, "extra loyalty activation it cannot use"
+				}
+				return gv, "extra loyalty activation for its planeswalkers"
+			}
+		}
 		// #2777: a free activation the bot already made this turn
 		// buys nothing more (free_repeat.go).
 		if !across && p.repeatsFreeActivation(st, m) {
