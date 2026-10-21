@@ -296,3 +296,53 @@ func (g *Game) attackDirectionRefusalLocked(attacker *Card, target uuid.UUID) er
 func (g *Game) attackDirectionInForceLocked(player uuid.UUID) bool {
 	return len(g.attackDirectionRulesLocked(player)) > 0
 }
+
+// AttackDirectionInForce is one direction rule in force, as the table
+// shows it (#4211): the direction, what said so, and who each player
+// may attack under it.
+type AttackDirectionInForce struct {
+	Direction  AttackDirection
+	SourceName string
+	// Nearest maps each player still in the game to the opponent this
+	// rule lets them attack; a player with no opponent that way is
+	// absent.
+	Nearest map[uuid.UUID]uuid.UUID
+}
+
+// AttackDirectionsInForceForView lists the direction rules in force
+// right now, oldest source first, for the game view's table chip. A
+// rule is written on every player (Teyo) or reads the same for every
+// player (Pramikon), so the first player still in the game speaks for
+// the table. Empty on nearly every turn.
+//
+// Read-only. Caller must hold g.mu (read or write) with fresh layers.
+func (g *Game) AttackDirectionsInForceForView() []AttackDirectionInForce {
+	var first uuid.UUID
+	for _, p := range g.Seats {
+		if p != nil && !p.Eliminated {
+			first = p.ID
+			break
+		}
+	}
+	if first == uuid.Nil {
+		return nil
+	}
+	rules := g.attackDirectionRulesLocked(first)
+	if len(rules) == 0 {
+		return nil
+	}
+	out := make([]AttackDirectionInForce, 0, len(rules))
+	for _, r := range rules {
+		row := AttackDirectionInForce{Direction: r.Direction, SourceName: r.SourceName, Nearest: map[uuid.UUID]uuid.UUID{}}
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated {
+				continue
+			}
+			if n := g.NearestOpponentForEffect(p.ID, r.Direction); n != uuid.Nil {
+				row.Nearest[p.ID] = n
+			}
+		}
+		out = append(out, row)
+	}
+	return out
+}

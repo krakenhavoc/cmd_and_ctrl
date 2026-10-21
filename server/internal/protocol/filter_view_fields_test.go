@@ -116,6 +116,7 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
 		DamageRedirections:    []string{"Damage to P1 is dealt to Beacon of Destiny instead, the next time — Beacon of Destiny"},
+		AttackDirections:      []AttackDirectionView{{Direction: "left", Source: "Pramikon, Sky Rampart", Nearest: map[string]string{ownerID: oppID}}},
 		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []PendingChoiceView{{

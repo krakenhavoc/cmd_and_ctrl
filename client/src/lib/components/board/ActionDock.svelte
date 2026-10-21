@@ -134,6 +134,9 @@
     // sideboard is no pile on the table. Game.svelte builds it; omitted or
     // empty, none.
     outside?: OutsideDock;
+    // ADR 0206 (#4211): the seat looking, so the attack-direction line can
+    // name who it may attack. Null or absent for a spectator.
+    viewerID?: string | null;
   }
 
   const {
@@ -159,6 +162,7 @@
     menu,
     loop,
     outside,
+    viewerID = null,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -506,6 +510,8 @@
       damageMultipliers={view.damage_multipliers ?? []}
       damageRedirections={view.damage_redirections ?? []}
       dayNight={view.day_night}
+      attackDirections={view.attack_directions ?? []}
+      viewerId={viewerID}
       {readyActions}
       {trackOpen}
     />

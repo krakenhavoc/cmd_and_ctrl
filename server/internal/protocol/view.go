@@ -181,6 +181,14 @@ type GameView struct {
 	// are announced as the effect is made. Battlefield statics that say
 	// the same (Pariah) are not listed.
 	DamageRedirections []string `json:"damage_redirections,omitempty"`
+	// AttackDirections is one row per live "each player may attack only
+	// the nearest opponent in the chosen direction and planeswalkers
+	// controlled by that opponent" rule (ADR 0206, #4211): a Pramikon,
+	// Sky Rampart that chose, or Teyo, Geometric Tactician's −2 until
+	// its controller's next turn. The table shows each as a chip beside
+	// the turn line. Public and identical for every viewer; omitted when
+	// no such rule is in force, which is nearly always.
+	AttackDirections []AttackDirectionView `json:"attack_directions,omitempty"`
 	// GraveyardTargetBans is one line per live static that stops cards
 	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
 	// worded for the graveyard viewer's banner: the printed clause and
@@ -5582,6 +5590,7 @@ func ViewOfGame(g *game.Game) GameView {
 			DamageShields:         g.DamageShieldLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
 			DamageRedirections:    g.DamageRedirectionLines(),
+			AttackDirections:      viewOfAttackDirections(g.AttackDirectionsInForceForView()),
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
@@ -10376,6 +10385,39 @@ func cloneStringIntMap(in map[string]int) map[string]int {
 	return out
 }
 
+// AttackDirectionView is one attack-direction rule in force (ADR 0206,
+// #4211).
+type AttackDirectionView struct {
+	// Direction is "left" (the next player in turn order) or "right"
+	// (the previous one).
+	Direction string `json:"direction"`
+	// Source names what said so: "Pramikon, Sky Rampart".
+	Source string `json:"source,omitempty"`
+	// Nearest maps a player ID to the opponent that rule lets them
+	// attack (the nearest opponent that way). A player with no
+	// opponent that way has no entry.
+	Nearest map[string]string `json:"nearest,omitempty"`
+}
+
+// viewOfAttackDirections projects the rules in force to wire format.
+func viewOfAttackDirections(in []game.AttackDirectionInForce) []AttackDirectionView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]AttackDirectionView, 0, len(in))
+	for _, r := range in {
+		v := AttackDirectionView{Direction: string(r.Direction), Source: r.SourceName}
+		if len(r.Nearest) > 0 {
+			v.Nearest = make(map[string]string, len(r.Nearest))
+			for from, to := range r.Nearest {
+				v.Nearest[from.String()] = to.String()
+			}
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
 // viewOfPromises projects the per-pair promise map to wire format.
 // Keys are encoded as "{from}->{to}" strings; entries with count <= 0
 // are dropped so the wire payload stays sparse.
@@ -10794,6 +10836,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DamageShields:         v.DamageShields,
 		DamageMultipliers:     v.DamageMultipliers,
 		DamageRedirections:    v.DamageRedirections,
+		AttackDirections:      v.AttackDirections,
 		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),

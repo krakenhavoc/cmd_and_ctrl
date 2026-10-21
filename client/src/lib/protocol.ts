@@ -406,6 +406,16 @@ export const CHAT_BOT_NOTICE = "bot_notice";
 
 // View types mirror server/internal/protocol/view.go.
 
+/** One attack-direction rule in force (GameView.attack_directions, ADR 0206). */
+export interface AttackDirectionView {
+  /** "left" (the next player in turn order) or "right" (the one before). */
+  direction: string;
+  /** What said so: "Pramikon, Sky Rampart". */
+  source?: string;
+  /** Player id to the opponent that rule lets them attack; absent for a player with none that way. */
+  nearest?: Record<string, string>;
+}
+
 export interface GameView {
   id: string;
   state: "lobby" | "active" | "ended";
@@ -528,6 +538,12 @@ export interface GameView {
   // Harm's Way, Kor Chant), oldest first, already worded for the banner.
   // Absent on nearly every turn.
   damage_redirections?: string[];
+  // ADR 0206 (#4211): one row per live "each player may attack only the
+  // nearest opponent in the chosen direction and planeswalkers
+  // controlled by that opponent" rule (Pramikon, Sky Rampart; Teyo,
+  // Geometric Tactician's −2). The dock says which way attacks go.
+  // Public and identical for every viewer; absent on nearly every turn.
+  attack_directions?: AttackDirectionView[];
   // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
   // graveyards being targeted, the printed clause and its card ("Cards in
   // graveyards can't be the targets of spells or abilities. — Ground
