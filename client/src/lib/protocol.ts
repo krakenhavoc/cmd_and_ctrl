@@ -3861,6 +3861,10 @@ export interface PurposeView {
   // #3146: on the card of a landfall doubler (Ancient Greenwarden), how
   // many additional times each landfall trigger of its controller's fires.
   landfall_extra_triggers?: number;
+  // #4191: on The Chain Veil's activated row, how many more times this
+  // turn each of its controller's planeswalkers may activate a loyalty
+  // ability.
+  extra_loyalty_activations?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;

@@ -108,6 +108,10 @@ type PurposeView struct {
 	// card of a permanent that doubles them (#3146): Ancient
 	// Greenwarden 1.
 	LandfallExtraTriggers int `json:"landfall_extra_triggers,omitempty"`
+	// ExtraLoyaltyActivations is how many more times this turn each
+	// planeswalker its controller controls may activate a loyalty
+	// ability (#4191): The Chain Veil's activated row 1.
+	ExtraLoyaltyActivations int `json:"extra_loyalty_activations,omitempty"`
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
@@ -351,6 +355,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
 		LandfallExtraTriggers:     p.LandfallExtraTriggers,
+		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,

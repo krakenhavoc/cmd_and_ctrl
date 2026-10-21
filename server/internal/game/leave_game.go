@@ -214,6 +214,7 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 		delete(g.LoyaltyActivatedThisTurn, cardID)
 	}
 	delete(g.LoyaltyActivatedTwiceThisTurn, cardID)
+	delete(g.LoyaltyExtraActivationsUsedThisTurn, cardID)
 	if g.lastKnownBattlefield != nil {
 		delete(g.lastKnownBattlefield, cardID)
 	}

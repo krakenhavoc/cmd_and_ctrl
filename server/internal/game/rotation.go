@@ -434,6 +434,8 @@ func (g *Game) onTurnBeganLocked() {
 		g.LoyaltyActivatedThisTurn = nil
 	}
 	g.LoyaltyActivatedTwiceThisTurn = nil
+	g.LoyaltyExtraActivationsThisTurn = nil
+	g.LoyaltyExtraActivationsUsedThisTurn = nil
 	if g.SpellsCastThisTurn != nil {
 		g.SpellsCastThisTurn = nil
 	}

@@ -9665,6 +9665,14 @@ applied from the spell's `OnResolve`. It stores a plain-data statement on the pl
 `LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed` a permanent or an emblem declares. An empty `Subtype` is
 every planeswalker you control. It opens the window only; the once-per-permanent count still holds.
 
+**"For each planeswalker you control, you may activate one of its loyalty abilities once this turn as though
+none of its loyalty abilities have been activated this turn"** (The Chain Veil, #4191) is
+`g.GrantExtraLoyaltyActivationForEffect(item.Controller)` from the row's `Effect`, with
+`Purpose: game.Purpose{Answers: game.AnswerValue, ExtraLoyaltyActivations: 1}` for the bot. The grant is the player's for the rest of the
+turn, so a walker that arrives later is covered; each call adds one, and it stacks with
+`LoyaltyTwiceEachTurn` / `YourPlaneswalkersLoyaltyTwiceEachTurn` (ADR 0145 amendment 2026-10-21). The timing of
+each activation is unchanged.
+
 **Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
 0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it

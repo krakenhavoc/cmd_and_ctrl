@@ -408,6 +408,13 @@ type GameSnapshot struct {
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
 
+	// LoyaltyExtraActivationsThisTurn and
+	// LoyaltyExtraActivationsUsedThisTurn are Game's (#4191, ADR 0145
+	// amendment 2026-10-21): The Chain Veil's grants per player, and the
+	// grants each permanent has spent per player. Additive.
+	LoyaltyExtraActivationsThisTurn     map[uuid.UUID]int               `json:"loyaltyExtraActivationsThisTurn,omitempty"`
+	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int `json:"loyaltyExtraActivationsUsedThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -2180,6 +2187,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
+	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
+	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
@@ -3242,6 +3251,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.LoyaltyActivatedTwiceThisTurn = copyBoolMap(s.LoyaltyActivatedTwiceThisTurn)
+	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
+	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
@@ -3994,6 +4005,24 @@ func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
 	out := make(map[uuid.UUID]uuid.UUID, len(in))
 	for k, v := range in {
 		out[k] = v
+	}
+	return out
+}
+
+// copyNestedIntMap deep-copies a two-level count map, dropping empty
+// inner maps (#4191).
+func copyNestedIntMap(in map[uuid.UUID]map[uuid.UUID]int) map[uuid.UUID]map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		if inner := copyIntMap(v); inner != nil {
+			out[k] = inner
+		}
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

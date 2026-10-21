@@ -12,7 +12,7 @@ import (
 // slice b: Ichormoon Gauntlet, Jaya's Phoenix, Leori, Sparktouched
 // Hunter, Repeated Reverberation, Rowan Kenrith, Oath of Teferi, Narset
 // of the Ancient Way and Saheeli, Sublime Artificer. The Chain Veil
-// waits on #4191.
+// followed with #4191 (the_chain_veil_test.go).
 
 const (
 	guffbIchormoonOracle = "9fc7aba7-eda2-4134-9c10-31ee35201b72"
@@ -33,7 +33,7 @@ const (
 
 func TestGuffbSliceIsRegisteredFullWithNoCaveats(t *testing.T) {
 	for _, oracle := range []string{guffbIchormoonOracle, guffbJayaOracle, guffbLeoriOracle, guffbReverbOracle,
-		guffbRowanOracle, guffbOathOracle, guffbNarsetOracle, guffbSaheeliOracle} {
+		guffbRowanOracle, guffbOathOracle, guffbNarsetOracle, guffbSaheeliOracle, guffbChainVeilOracle} {
 		spec, ok := Lookup(oracle)
 		if !ok {
 			t.Errorf("%s is not registered", oracle)
@@ -42,9 +42,6 @@ func TestGuffbSliceIsRegisteredFullWithNoCaveats(t *testing.T) {
 		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
-	}
-	if _, ok := Lookup(guffbChainVeilOracle); ok {
-		t.Error("The Chain Veil is registered; it waits on #4191")
 	}
 }
 

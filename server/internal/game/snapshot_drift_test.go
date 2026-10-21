@@ -131,6 +131,8 @@ var gameFields = plan(
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"LoyaltyActivatedTwiceThisTurn", carried, "",
+	"LoyaltyExtraActivationsThisTurn", carried, "",
+	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",

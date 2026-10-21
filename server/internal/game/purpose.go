@@ -201,6 +201,16 @@ type Purpose struct {
 	// payoffs by it.
 	LandfallExtraTriggers int
 
+	// ExtraLoyaltyActivations is how many more times this turn each
+	// planeswalker its controller controls may activate a loyalty
+	// ability (#4191): The Chain Veil's "{4}, {T}: For each planeswalker
+	// you control, you may activate one of its loyalty abilities once
+	// this turn as though none of its loyalty abilities have been
+	// activated this turn" 1. The engine's own record is
+	// Game.LoyaltyExtraActivationsThisTurn; the heuristic activates such
+	// a row only in its own main phase, with planeswalkers to use it.
+	ExtraLoyaltyActivations int
+
 	// Impulse is how many cards it exiles from the top of its
 	// controller's library that its controller may play this turn
 	// (#2480): Professional Face-Breaker's "Exile the top card of your
@@ -669,6 +679,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
 		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
+		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations + o.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse + o.Impulse,
 		Answers:                   p.Answers | o.Answers,
 	}

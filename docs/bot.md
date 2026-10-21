@@ -1518,6 +1518,19 @@ opponent's Tatyova, it keeps the Hart.
   the one it sacrifices is ramp. So a fetch with no payoff out is
   cracked as before.
 
+### One more loyalty activation (#4191)
+
+The Chain Veil's "{4}, {T}: For each planeswalker you control, you may
+activate one of its loyalty abilities once this turn as though none of
+its loyalty abilities have been activated this turn" declares
+`extra_loyalty_activations: 1` on the row. `loyalty_grant.go` prices it
+at `ActivateBase` per grant for each of the bot's planeswalkers with a
+loyalty row, in its own main phase with an empty stack, and below
+passing anywhere else (another player's turn, its own combat, no
+walker), where the grant cannot be used before the turn ends. After it
+resolves, the enumerator offers the walkers' loyalty rows again and they
+are priced as usual.
+
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
 An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
