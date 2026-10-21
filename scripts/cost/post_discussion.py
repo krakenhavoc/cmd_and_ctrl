@@ -8,7 +8,14 @@ in the body itself as an HTML comment, so there is no other state to keep.
 
     python3 scripts/cost/post_discussion.py              # create or update the body
     python3 scripts/cost/post_discussion.py --comment    # ...and post the change since last time
+    python3 scripts/cost/post_discussion.py --as-comment # CI: post the report as a new comment
     python3 scripts/cost/post_discussion.py --dry-run    # print what would be posted
+
+--as-comment never edits the discussion, because the workflow's GITHUB_TOKEN
+cannot edit a discussion another user wrote (#4212). It posts the full report
+(with the change since last time on top) as a comment, and the previous
+numbers are then read from the newest comment that carries the snapshot
+marker, falling back to the body.
 """
 import argparse
 import json
@@ -49,6 +56,15 @@ def snapshot(r):
     }
 
 
+def latest_snapshot(discussion):
+    """The newest snapshot: newest comment carrying the marker, else the body."""
+    for text in [c["body"] for c in reversed(discussion["comments"]["nodes"])] + [discussion["body"]]:
+        m = SNAPSHOT.search(text or "")
+        if m:
+            return json.loads(m.group(1))
+    return None
+
+
 def change_comment(old, new):
     def d(key, fmt):
         delta = new[key] - old.get(key, 0)
@@ -70,6 +86,8 @@ def main():
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", "krakenhavoc/cmd_and_ctrl"))
     ap.add_argument("--category", default="General")
     ap.add_argument("--comment", action="store_true", help="also comment with the change since the last update")
+    ap.add_argument("--as-comment", action="store_true",
+                    help="post the full report as a new comment instead of editing the body (used by CI)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -83,15 +101,18 @@ def main():
     owner, name = args.repo.split("/")
     data = graphql("""query($owner:String!,$name:String!){repository(owner:$owner,name:$name){
         id discussionCategories(first:25){nodes{id name}}
-        discussions(first:100,orderBy:{field:CREATED_AT,direction:DESC}){nodes{id title body url}}}}""",
+        discussions(first:100,orderBy:{field:CREATED_AT,direction:DESC}){nodes{id title body url
+            comments(last:30){nodes{body}}}}}}""",
                    owner=owner, name=name)["repository"]
     existing = next((n for n in data["discussions"]["nodes"] if n["title"] == TITLE), None)
 
     old = None
     if existing:
-        m = SNAPSHOT.search(existing["body"] or "")
-        old = json.loads(m.group(1)) if m else None
-    comment = change_comment(old, snap) if (args.comment and old) else None
+        old = latest_snapshot(existing)
+    change = change_comment(old, snap) if (old and (args.comment or args.as_comment)) else None
+    comment = change if args.comment and not args.as_comment else None
+    if existing and args.as_comment:
+        comment = (change + "\n---\n" if change else "") + body
 
     if args.dry_run:
         print(body)
@@ -99,7 +120,11 @@ def main():
             print("--- comment ---\n" + comment)
         return
 
-    if existing:
+    if existing and args.as_comment:
+        graphql("mutation($id:ID!,$body:String!){addDiscussionComment(input:{discussionId:$id,body:$body}){comment{id}}}",
+                id=existing["id"], body=comment)
+        url = existing["url"]
+    elif existing:
         graphql("mutation($id:ID!,$body:String!){updateDiscussion(input:{discussionId:$id,body:$body}){discussion{id}}}",
                 id=existing["id"], body=body)
         url = existing["url"]
