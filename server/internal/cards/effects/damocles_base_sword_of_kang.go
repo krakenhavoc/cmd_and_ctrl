@@ -34,12 +34,26 @@ var damoclesBaseChoice = NewVillainousChoice("damocles-base",
 		LifeCost: 2,
 		Harm:     1,
 		Body: func(ctx *Context, f Facing) error {
-			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), f.Player, -2); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
+			ctx.RecordStep(damoclesBaseRecord, []uuid.UUID{f.Player})
+			return damoclesBaseLoseAndDraw.Run(ctx)
 		},
 	})
+
+// damoclesBaseRecord is the player who lost the life.
+const damoclesBaseRecord = "damocles-base/facing"
+
+// damoclesBaseLoseAndDraw is the life loss and then the draw: the draw waits
+// for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+var damoclesBaseLoseAndDraw = RegisterThenSteps("then-steps/damocles-base-lose-and-draw",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(damoclesBaseRecord)
+		if len(r.IDs) == 0 {
+			return nil
+		}
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), r.IDs[0], -2)
+	}),
+	DrawCards{N: 2},
+)
 
 // damoclesNontokenCreature is "a nontoken creature".
 func damoclesNontokenCreature() CardPredicate {

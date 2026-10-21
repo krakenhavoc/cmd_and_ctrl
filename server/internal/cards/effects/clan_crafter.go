@@ -29,13 +29,13 @@ func init() {
 				Label:   "{2}, Sacrifice an artifact: Put a +1/+1 counter on this creature and draw a card.",
 				Cost:    Plus(ManaCost("{2}"), game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())}),
 				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerPump},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return DrawCards{N: 1}.Apply(ctx)
-				},
+				// The draw waits for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}),
+					DrawCards{N: 1},
+				),
 			}},
 			Text: "{2}, Sacrifice an artifact: Put a +1/+1 counter on this creature and draw a card.",
 		}},

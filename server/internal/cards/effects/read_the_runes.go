@@ -64,9 +64,13 @@ func init() {
 		Name:         "Read the Runes",
 		XMatters:     true,
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return readTheRunesResolve(ctx)
-		},
+		// The first question waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error { return readTheRunesDraw(ctx) }),
+			Instruction(func(ctx *Context) error {
+				return readTheRunesStep(ctx, ctx.StepRecord(readTheRunesRecord).N())
+			}),
+		),
 	})
 }
 
@@ -78,22 +82,26 @@ const (
 	readTheRunesSacrifice = "sacrifice"
 )
 
-// readTheRunesResolve draws, then starts the chain of questions.
+// readTheRunesRecord is how many cards the draw puts in the hand, the number
+// of questions owed.
+const readTheRunesRecord = "read-the-runes/drawn"
+
+// readTheRunesDraw draws X cards and files how many really come, for the
+// chain of questions that follows as the next step.
 //
 // Caller holds g.mu.
-func readTheRunesResolve(ctx *Context) error {
+func readTheRunesDraw(ctx *Context) error {
 	x := ctx.X()
 	if x <= 0 {
+		ctx.RecordStep(readTheRunesRecord, nil, 0)
 		return nil
 	}
 	drawn := x
 	if p := ctx.PlayerByID(ctx.Controller()); p != nil && p.Library != nil && p.Library.Size() < drawn {
 		drawn = p.Library.Size()
 	}
-	if err := (DrawCards{N: x}).Apply(ctx); err != nil {
-		return err
-	}
-	return readTheRunesStep(ctx, drawn)
+	ctx.RecordStep(readTheRunesRecord, nil, drawn)
+	return DrawCards{N: x}.Apply(ctx)
 }
 
 // readTheRunesStep asks the question owed for one drawn card and
@@ -127,32 +135,40 @@ func readTheRunesAnswered(branches []string, rest int) func(ctx *Context, index 
 	return func(ctx *Context, index int) error {
 		next := func(ctx *Context) error { return readTheRunesStep(ctx, rest) }
 		if index >= 0 && index < len(branches) && branches[index] == readTheRunesSacrifice {
-			return SacrificeChoice{
+			ask := SacrificeChoice{
 				Player:     ctx.Controller(),
 				Candidates: PermanentsControlledBy(ctx.Game, ctx.Controller()),
 				Question:   "Read the Runes — sacrifice a permanent",
 				Then:       next,
-			}.Apply(ctx)
+			}
+			return ask.Apply(ctx)
 		}
 		// The discard, and the "no question could be asked" case,
 		// which is the same outcome: an index the branch list does
 		// not have means the chooser left between the question being
 		// built and it being queued, and the rest of the run still
 		// happens.
-		player := ctx.Controller()
-		if p := ctx.PlayerByID(player); p == nil || p.Hand == nil || p.Hand.Size() == 0 {
-			return next(ctx)
-		}
-		item := ctx.Item
-		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-			Player:   player,
-			Source:   ctx.Source(),
-			N:        1,
-			Question: "Read the Runes — discard a card",
-			Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-				return readTheRunesStep(NewContext(g, item), rest)
-			},
-		})
-		return nil
+		return readTheRunesDiscardCard(ctx, rest)
 	}
+}
+
+// readTheRunesDiscardCard is the discard branch: the prompt, or the next
+// question at once when the hand is empty. The branches are exclusive, so it
+// is a function of its own rather than the tail of the sacrifice's `if`.
+func readTheRunesDiscardCard(ctx *Context, rest int) error {
+	player := ctx.Controller()
+	if p := ctx.PlayerByID(player); p == nil || p.Hand == nil || p.Hand.Size() == 0 {
+		return readTheRunesStep(ctx, rest)
+	}
+	item := ctx.Item
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player:   player,
+		Source:   ctx.Source(),
+		N:        1,
+		Question: "Read the Runes — discard a card",
+		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
+			return readTheRunesStep(NewContext(g, item), rest)
+		},
+	})
+	return nil
 }

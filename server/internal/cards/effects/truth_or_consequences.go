@@ -41,17 +41,47 @@ func init() {
 	})
 }
 
+// truthOrConsequencesRecord is the two tallies: truth votes, consequences votes.
+const truthOrConsequencesRecord = "truth-or-consequences/votes"
+
+// truthOrConsequencesPicked is the opponent chosen at random.
+const truthOrConsequencesPicked = "truth-or-consequences/picked"
+
 var truthOrConsequencesVoted = VoteResultThen("vote/truth-or-consequences", func(ctx *Context, r game.VoteResult) error {
-	if err := (DrawCards{N: r.Votes(0)}).Apply(ctx); err != nil {
-		return err
-	}
-	opponents := ctx.Opponents()
-	if len(opponents) == 0 {
-		return nil
-	}
-	pick := ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), opponents, 1)
-	if n := r.Votes(1); n > 0 && len(pick) == 1 {
-		return ctx.Game.DealDamageToPlayerForEffect(ctx.Source(), pick[0], 3*n)
-	}
-	return nil
+	ctx.RecordStep(truthOrConsequencesRecord, nil, r.Votes(0), r.Votes(1))
+	return truthOrConsequencesSteps.Run(ctx)
 })
+
+// truthOrConsequencesSteps is the draw and then the damage: the damage waits
+// for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var truthOrConsequencesSteps = RegisterThenSteps("then-steps/truth-or-consequences-votes",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(truthOrConsequencesRecord)
+		if len(r.Ns) < 2 {
+			return nil
+		}
+		return DrawCards{N: r.Ns[0]}.Apply(ctx)
+	}),
+	// The random pick asks nothing; it is its own step so that the damage
+	// reads the player it named.
+	Instruction(func(ctx *Context) error {
+		opponents := ctx.Opponents()
+		if len(opponents) == 0 {
+			return nil
+		}
+		pick := ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), opponents, 1)
+		ctx.RecordStep(truthOrConsequencesPicked, pick)
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(truthOrConsequencesRecord)
+		picked := ctx.StepRecord(truthOrConsequencesPicked).IDs
+		if len(r.Ns) < 2 || len(picked) != 1 {
+			return nil
+		}
+		if n := r.Ns[1]; n > 0 {
+			return ctx.Game.DealDamageToPlayerForEffect(ctx.Source(), picked[0], 3*n)
+		}
+		return nil
+	}),
+)

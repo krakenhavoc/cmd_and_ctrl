@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // The Torment of Gollum — Sorcery {3}{B}:
 //
 //	"Target opponent reveals their hand. You choose a nonland card from
@@ -20,15 +18,12 @@ func init() {
 		Name:         "The Torment of Gollum",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return Amass{Subtype: "Orc", N: 2}.Apply(ctx)
-		},
+		// The Army waits for the question the choice asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return chooseNonlandFromTargetedHand(ctx)
+			}),
+			Amass{Subtype: "Orc", N: 2},
+		),
 	})
 }

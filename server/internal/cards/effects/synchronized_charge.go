@@ -26,15 +26,16 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Harmonize("{4}{G}")},
 		Targets: TargetCreature("one or two target creatures you control", YouControl()).
 			WithCount(1, 2).Dividing(Divide(2)),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := PutDividedCounters(ctx, game.CounterPlusOne); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
+		// The keywords wait for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return PutDividedCounters(ctx, game.CounterPlusOne)
+			}),
+			GrantKeywordUntilEOT{
 				Match:    And(Creature(), YouControl(), b64HasAnyCounter()),
 				Keywords: []string{"vigilance", "trample"},
 				Label:    "Synchronized Charge — vigilance and trample",
-			}.Apply(ctx)
-		},
+			},
+		),
 	})
 }

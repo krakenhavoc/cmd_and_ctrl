@@ -26,13 +26,12 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Entwine("{4}")},
 		Modes: Entwining(ChooseOne(
-			ModeDoing("You draw five cards and you lose 5 life.", nil,
-				func(item *game.StackItem, ctx *Context, _ int) error {
-					if err := (DrawCards{Player: item.Controller, N: 5}).Apply(ctx); err != nil {
-						return err
-					}
-					return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), item.Controller, -5)
-				}),
+			// The life loss waits for a prompt a draw asks (a dredge offer; CR 608.2c, #4155).
+			ModeSteps("You draw five cards and you lose 5 life.", nil,
+				DrawCards{N: 5},
+				Instruction(func(ctx *Context) error {
+					return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -5)
+				})),
 			ModeDoing("Create an X/X black Demon creature token with flying, where X is the number of cards in your hand.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
 					x := 0

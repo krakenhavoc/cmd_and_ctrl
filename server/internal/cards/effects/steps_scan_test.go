@@ -698,6 +698,18 @@ var stepsConverted = setOf(
 	"Smite the Deathless", "Estinien Varlineau", "Krav, the Unredeemed", "Depopulate",
 	"Pendant of Prosperity", "Bloatfly Swarm", "Agent of the Shadow Thieves", "Shadow, Mysterious Assassin",
 	"Stern Lesson", "Crushing Disappointment",
+	// Batch 5.
+	"Narset of the Ancient Way", "Truth or Consequences", "Noosegraf Mob", "Blight Titan",
+	"Synchronized Charge", "Read the Runes", "Erestor of the Council", "Sunder the Gateway",
+	"Clan Crafter", "Delirium", "Collective Brutality", "Kick in the Door",
+	"Jace, Multiverse Architect", "Lich Lord of Unx", "Jeskai Revelation", "You Find a Cursed Idol",
+	"Travel Through Caradhras", "Promise of Power", "Skeletal Scrying", "Severed Strands",
+	"Scurry of Gremlins", "The Torment of Gollum", "Survivor's Med Kit", "Explosion of Riches",
+	"Niv-Mizzet, Ghost Counsel", "Boommobile", "Fog of War", "Soul-Shackled Zombie",
+	"Messenger Jays", "Glint Weaver", "Fatehold Charm", "Damocles Base, Sword of Kang",
+	"Aggressive Negotiations", "Ingris Stingerquill", "Draconic Intervention", "Zygon Infiltrator",
+	"Kimoyo Beads", "Bushmeat Poacher", "Lieutenants of the Guard", "Aerid Konstrari",
+	"Pyrrhic Blast", "Torch the Tower", "Eyes in the Skies",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -764,6 +776,14 @@ var stepsSkipped = map[string]string{
 	"Diviner's Portent":            "exclusive arms: the draw, or the scry's Then",
 	"Tyrant's Choice":              "exclusive arms: the sacrifices, or the life loss",
 	"Ultimate Magic: Meteor":       "exclusive arms: the choice loop returns when it asks, and the destruction runs once it has none left (the damage-then-choice order is steps)",
+	// Batch 5.
+	"Galadriel, Elven-Queen":    "exclusive arms: the draw, or the Ring tempts and the counter",
+	"Vault 11: Voter's Dilemma": "exclusive arms: every player draws, or the voted creatures are destroyed",
+	"Fatal Grudge":              "exclusive arms: the draw, or the sacrifices and the draw in their Then",
+	"Rhys, the Evermore":        "carried: the kinds of counter still to ask about are strings, and a step record holds only ids and numbers",
+	"Cecily, Haunted Mage":      "carried: the follow-up is a registered DrawThen (an on-disk identity) that has no stack item to run steps from",
+	"The Ur-Sphinx":             "carried: the cards each player milled are held in a Go slice across the chain of mills and offers",
+	"Earth's Mightiest Heroes":  "no prompt: a reveal asks nothing, and the cards it names are the put's input",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

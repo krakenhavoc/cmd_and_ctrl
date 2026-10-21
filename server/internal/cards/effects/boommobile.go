@@ -41,17 +41,22 @@ func init() {
 				Exhaust: true,
 				Cost:    ManaCost("{X}{2}{R}"),
 				Targets: TargetAny(),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					legal := ctx.LegalTargets()
-					if len(legal) == 0 {
-						return nil
-					}
-					if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: ctx.X()}).Apply(ctx); err != nil {
-						return err
-					}
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				},
+				// The counter waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						legal := ctx.LegalTargets()
+						if len(legal) == 0 {
+							return nil
+						}
+						return DealDamage{Source: ctx.Item.SourceCardID, Target: legal[0].ID, Amount: ctx.X()}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if len(ctx.LegalTargets()) == 0 {
+							return nil
+						}
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label:   "Crew 2",

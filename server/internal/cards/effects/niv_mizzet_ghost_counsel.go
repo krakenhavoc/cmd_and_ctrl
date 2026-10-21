@@ -39,14 +39,8 @@ func init() {
 					Question: "Niv-Mizzet, Ghost Counsel — pay " + numberWord(n) + " life to draw " + numberWord(n) + " cards?",
 					LifeCost: n,
 					OnYes: func(ctx *Context) error {
-						p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
-						if p == nil || p.Eliminated || p.Life < n {
-							return nil
-						}
-						if err := ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), n); err != nil {
-							return err
-						}
-						return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
+						ctx.RecordStep(nivMizzetGhostCounselRecord, nil, n)
+						return nivMizzetGhostCounselPayAndDraw.Run(ctx)
 					},
 				}.Apply(NewContext(g, item))
 			}),
@@ -59,3 +53,29 @@ func init() {
 		}},
 	})
 }
+
+// nivMizzetGhostCounselRecord is the life paid and the cards drawn, 0 when the
+// life could not be paid.
+const nivMizzetGhostCounselRecord = "niv-mizzet-ghost-counsel/amount"
+
+// nivMizzetGhostCounselPayAndDraw is the payment and then the draw: the draw
+// waits for a prompt the payment asks (a CR 616 order on the life loss; CR
+// 608.2c, #4155).
+var nivMizzetGhostCounselPayAndDraw = RegisterThenSteps("then-steps/niv-mizzet-ghost-counsel-pay-and-draw",
+	Instruction(func(ctx *Context) error {
+		n := ctx.StepRecord(nivMizzetGhostCounselRecord).N()
+		p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
+		if p == nil || p.Eliminated || p.Life < n {
+			ctx.RecordStep(nivMizzetGhostCounselRecord, nil, 0)
+			return nil
+		}
+		return ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), n)
+	}),
+	Instruction(func(ctx *Context) error {
+		n := ctx.StepRecord(nivMizzetGhostCounselRecord).N()
+		if n <= 0 {
+			return nil
+		}
+		return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
+	}),
+)

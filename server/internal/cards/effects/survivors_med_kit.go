@@ -44,23 +44,26 @@ func init() {
 					func(item *game.StackItem, ctx *Context, _ int) error {
 						return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(ctx)
 					}),
-				ModeDoing("RadAway — Target player loses all rad counters. Sacrifice this artifact.",
+				// The sacrifice waits for a prompt the counters' removal asks (CR 608.2c, #4155).
+				ModeSteps("RadAway — Target player loses all rad counters. Sacrifice this artifact.",
 					TargetPlayer("target player"),
-					func(item *game.StackItem, ctx *Context, occ int) error {
-						if t, ok := ModeTarget(ctx, occ); ok && t.Kind == game.TargetPlayer {
+					Instruction(func(ctx *Context) error {
+						if t, ok := ModeTarget(ctx, ctx.Occurrence()); ok && t.Kind == game.TargetPlayer {
 							if p := ctx.PlayerByID(t.ID); p != nil {
 								if n := p.Counters[game.CounterRad]; n > 0 {
-									if err := ctx.Game.AddPlayerCounterForEffect(t.ID, game.CounterRad, -n); err != nil {
-										return err
-									}
+									return ctx.Game.AddPlayerCounterForEffect(t.ID, game.CounterRad, -n)
 								}
 							}
 						}
+						return nil
+					}),
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
 						if !onBattlefield(ctx.Game, item.SourceCardID) {
 							return nil
 						}
 						return SacrificePermanent{Target: item.SourceCardID}.Apply(ctx)
-					}),
+					})),
 			),
 		}},
 	})

@@ -19,17 +19,18 @@ func init() {
 			Label:   "{1}, {T}, Sacrifice another creature: You gain life equal to the sacrificed creature's toughness. Draw a card.",
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeAnotherN(1, "another creature", Creature())),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if fed, ok := b17PermanentSacrificedToPay(g, item); ok {
-					if t := departedCreatureToughness(g, fed); t > 0 {
-						if err := (GainLife{Player: item.Controller, Amount: t}).Apply(ctx); err != nil {
-							return err
+			// The draw waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					if fed, ok := b17PermanentSacrificedToPay(ctx.Game, ctx.Item); ok {
+						if t := departedCreatureToughness(ctx.Game, fed); t > 0 {
+							return GainLife{Player: ctx.Controller(), Amount: t}.Apply(ctx)
 						}
 					}
-				}
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
+					return nil
+				}),
+				DrawCards{N: 1},
+			),
 		}},
 	})
 }

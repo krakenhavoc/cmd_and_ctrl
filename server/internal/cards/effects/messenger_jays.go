@@ -43,17 +43,29 @@ func init() {
 	})
 }
 
+const messengerJaysRecord = "messenger-jays/votes"
+
 var messengerJaysVoted = VoteResultThen("vote/messenger-jays", func(ctx *Context, r game.VoteResult) error {
-	if err := countersOnVotedCreature(ctx, r, r.Votes(0)); err != nil {
-		return err
-	}
-	if n := r.Votes(1); n > 0 {
-		return ctx.Game.DrawNThenForEffect(ctx.Controller(), n, game.DrawThen{
-			Ref: messengerJaysDiscardRef, Player: ctx.Controller(), Source: ctx.Source(), N: n,
-		})
-	}
-	return nil
+	recordVotedCreature(ctx, messengerJaysRecord, r)
+	return messengerJaysSteps.Run(ctx)
 })
+
+// messengerJaysSteps is the counters and then the draw: the draw waits for a
+// prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+var messengerJaysSteps = RegisterThenSteps("then-steps/messenger-jays-votes",
+	Instruction(func(ctx *Context) error {
+		return countersOnRecordedCreature(ctx, messengerJaysRecord, 0)
+	}),
+	Instruction(func(ctx *Context) error {
+		n := recordedTally(ctx, messengerJaysRecord, 1)
+		if n > 0 {
+			return ctx.Game.DrawNThenForEffect(ctx.Controller(), n, game.DrawThen{
+				Ref: messengerJaysDiscardRef, Player: ctx.Controller(), Source: ctx.Source(), N: n,
+			})
+		}
+		return nil
+	}),
+)
 
 // messengerJaysDiscardRef is "for each card drawn this way, discard a
 // card": it runs once every draw has settled and asks for one discard per

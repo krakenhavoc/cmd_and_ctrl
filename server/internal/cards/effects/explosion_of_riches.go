@@ -55,12 +55,15 @@ func init() {
 		Name:         "Explosion of Riches",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := explosionOfRichesDraw(ctx, ctx.Controller()); err != nil {
-				return err
-			}
-			return explosionOfRichesAsk(ctx, opponentsInTurnOrder(ctx.Game, ctx.Controller()))
-		},
+		// The opponents are asked after a prompt your draw asks (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return explosionOfRichesDraw(ctx, ctx.Controller())
+			}),
+			Instruction(func(ctx *Context) error {
+				return explosionOfRichesAsk(ctx, opponentsInTurnOrder(ctx.Game, ctx.Controller()))
+			}),
+		),
 	})
 }
 
