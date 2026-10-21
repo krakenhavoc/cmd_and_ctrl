@@ -348,7 +348,7 @@ type MoveCost struct {
 	// Mana is a mana cost string the move charges that `params`
 	// cannot name. Three kinds of move carry it:
 	//
-	//   - An attack: the CR 508.1a attack tax (ADR 0080, #1063), "{2}"
+	//   - An attack: the CR 508.1h attack tax (ADR 0080, #1063), "{2}"
 	//     for an attack into Propaganda. An attack has no printed cost,
 	//     so the tax is nowhere else on the wire, and a policy that may
 	//     not import internal/game (ADR 0033 §3) would price an attack

@@ -45,7 +45,7 @@ export const ErrorCode = {
   // the blocker. The client never re-derives the rule.
   IllegalBlock: "illegal_block",
   // #1063 (ADR 0080): a declare_attacker / declare_attackers refused
-  // for want of the CR 508.1a attack tax. `reason` carries the whole
+  // for want of the CR 508.1h attack tax. `reason` carries the whole
   // declaration's price as a cost string ("{2}{2}"), not a
   // BlockRefusalReason token — see ErrorPayload.reason. `missing` is
   // the symbols the pool and the tapper together could not cover.
@@ -973,7 +973,7 @@ export interface MoveCost {
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
   // A mana cost string the move charges that `params` cannot name.
-  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1a attack
+  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1h attack
   // tax ("{2}" for an attack into Propaganda). On every cast_spell move
   // (ADR 0136 §2): the total mana the cast charges (CR 601.2f), with
   // the commander tax, X, alternative costs and the board's increases
@@ -5206,7 +5206,7 @@ export interface ManaAbilityView {
 export interface AttackTargetView {
   kind: "player" | "planeswalker" | "battle";
   id: string;
-  // ADR 0080 (#1063): the CR 508.1a price ONE creature pays to attack
+  // ADR 0080 (#1063): the CR 508.1h price ONE creature pays to attack
   // this target — "{2}" against a seat with Propaganda out, "{2}{2}"
   // against one with Propaganda and Ghostly Prison, absent when
   // attacking it is free. A declaration's real price is this once per

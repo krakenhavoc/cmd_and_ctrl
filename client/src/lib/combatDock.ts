@@ -65,7 +65,7 @@ export interface AttackRowInput {
   } | null;
 }
 
-// ADR 0080 (#1063): the button's tooltip names the CR 508.1a price as
+// ADR 0080 (#1063): the button's tooltip names the CR 508.1h price as
 // well as the count, so the cost of a wide swing under Propaganda is
 // legible before the click rather than arriving as a refusal. The price
 // is the server's; nothing here derives it (#429).

@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// attack_tax.go — constructors for Spec.AttackTaxes, the CR 508.1a
+// attack_tax.go — constructors for Spec.AttackTaxes, the CR 508.1h
 // attack tax: "Creatures can't attack you unless their controller pays
 // {2} for each creature they control that's attacking you". The engine
 // half lives in game/attack_tax.go; this file is the vocabulary a card

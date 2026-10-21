@@ -23,14 +23,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the engine gets it for free: the tax is asked once per attacking
 // creature and the prices are concatenated, so three attackers into
 // this is "{2}{2}{2}" — six generic, charged as one payment on the
-// declaration (CR 508.1a, ADR 0080).
+// declaration (CR 508.1h, ADR 0080).
 //
 // Nothing about the tax is a RESTRICTION. A creature under Propaganda
 // still has no CantAttack bit, is still offered by the enumerator when
 // its controller can pay, and still attacks the moment the {2} is
 // paid. What the clause buys the defender is a price, and the engine
 // charges it at declaration and never again — a Propaganda that enters
-// AFTER attackers are declared charges nothing, because CR 508.1a is a
+// AFTER attackers are declared charges nothing, because CR 508.1 is a
 // turn-based action that has already happened.
 func init() {
 	Register(Spec{

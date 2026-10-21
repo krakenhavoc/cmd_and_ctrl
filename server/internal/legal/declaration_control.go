@@ -28,7 +28,7 @@ type declarationAttackersPayload struct {
 	PhyrexianLife int            `json:"phyrexian_life,omitempty"`
 }
 
-// chosenAttackTaxCost is a chosen attack's CR 508.1a price as a move's
+// chosenAttackTaxCost is a chosen attack's CR 508.1h price as a move's
 // cost, nil when free.
 func chosenAttackTaxCost(mana string) *MoveCost {
 	if mana == "" {

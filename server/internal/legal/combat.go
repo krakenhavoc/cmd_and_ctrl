@@ -14,7 +14,7 @@ type attackParams struct {
 	Attacker string `json:"attacker"`
 	Target   string `json:"target"`
 
-	// AutoTap lets the declaration tap lands for the CR 508.1a attack
+	// AutoTap lets the declaration tap lands for the CR 508.1h attack
 	// tax (ADR 0080). Set only when the seat's pool alone cannot cover
 	// the tax but the tapper can, exactly as the cast arm sets it —
 	// the Move doc's promise is that Params is EXACTLY the payload
@@ -163,7 +163,7 @@ func (e *enumerator) combatMoves() {
 				if g.AttackRequirementRefusalForEffect(decl) != nil {
 					continue
 				}
-				// ADR 0080 / #1063: the CR 508.1a attack tax. Priced
+				// ADR 0080 / #1063: the CR 508.1h attack tax. Priced
 				// through the SAME function the engine charges
 				// (PriceAttackDeclarationForEffect), so the price the
 				// bot is offered and the price it is charged cannot
@@ -490,7 +490,7 @@ func joinNames(names []string) string {
 
 // attackTargetLabel renders an attack target for the move's human
 // label: a seat's name, or a permanent's card name.
-// attackMoveLabel is the move's human line, with the CR 508.1a tax
+// attackMoveLabel is the move's human line, with the CR 508.1h tax
 // named when there is one. A bot's decision log and the client's move
 // list both read it, and "Attack Alice with Bear" reads as free
 // whether it is or not.
@@ -561,7 +561,7 @@ func attackLifeLabel(symbols int) string {
 	return fmt.Sprintf(" (paying %d life)", symbols*game.PhyrexianLifePerSymbol)
 }
 
-// withAttackTax adds the CR 508.1a mana price to a (possibly nil)
+// withAttackTax adds the CR 508.1h mana price to a (possibly nil)
 // MoveCost, returning a fresh value so no two moves share one — the
 // contract withCounterPrice has, for the same reason.
 func withAttackTax(c *MoveCost, mana string) *MoveCost {

@@ -485,7 +485,7 @@ var (
 	ErrAttackersAlreadyDeclared = errors.New("game: attackers have already been declared this combat")
 
 	// ErrAttackTaxUnpaid is returned by the declaration verbs when the
-	// attacking player cannot pay the CR 508.1a cost of the
+	// attacking player cannot pay the CR 508.1h cost of the
 	// declaration they submitted — Propaganda's "{2} for each creature
 	// they control that's attacking you". ADR 0080, #1063.
 	//

@@ -15,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // AttackTaxCounting renders the count as a generic cost string once
 // per attacking creature, so a Sphere beside two other enchantments
 // charges "{3}" per attacker and three attackers pay "{3}{3}{3}". The
-// count is taken at DECLARATION, which is when CR 508.1a asks: an
+// count is taken at DECLARATION, which is when CR 508.1h asks: an
 // enchantment that enters after attackers are declared changes
 // nothing, and one that leaves in response to the declaration being
 // announced is already too late.

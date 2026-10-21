@@ -86,7 +86,7 @@ export interface StagedAttackParams {
 
 /**
  * stagedParams is the one declare_attackers the primary sends, or null
- * with nothing staged. auto_tap pays a CR 508.1a attack tax from lands
+ * with nothing staged. auto_tap pays a CR 508.1h attack tax from lands
  * (ADR 0080), as every other declaration does; it is inert without one.
  */
 export function stagedParams(

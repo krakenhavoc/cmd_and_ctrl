@@ -9613,7 +9613,7 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	return g.DeclareAttackerWith(attackerID, targetPlayerID, DeclareAttackersParams{})
 }
 
-// DeclareAttackerWith is DeclareAttacker with the CR 508.1a payment
+// DeclareAttackerWith is DeclareAttacker with the CR 508.1j payment
 // posture named (ADR 0080, #1063) — whether the attack tax may tap
 // lands, which lands are locked, and how many Phyrexian symbols are
 // being paid with life.
@@ -9703,7 +9703,7 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if !CanAttack(card) {
 				return ErrCantAttack
 			}
-			// CR 508.1a, ADR 0080: the attack tax. Priced against the
+			// CR 508.1h, ADR 0080: the attack tax. Priced against the
 			// one attack this verb declares, and paid BEFORE anything
 			// is staged, so a refusal leaves the creature untapped,
 			// undeclared and the board exactly as it was.
@@ -9846,7 +9846,7 @@ type AttackDeclaration struct {
 // these creatures) is enforced one layer up, in actions.Dispatch.
 //
 // ADR 0080 adds the one exception to "skip what doesn't fit": the
-// CR 508.1a attack tax is ALL OR NOTHING. See DeclareAttackersWith.
+// CR 508.1j attack tax is ALL OR NOTHING. See DeclareAttackersWith.
 // #1507 adds the second, for the same reason: a CR 508.1c count limit
 // (Silent Arbiter, Crawlspace) refuses the whole eligible set with an
 // *AttackLimitError rather than choosing which creatures to drop.
@@ -9854,7 +9854,7 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 	return g.DeclareAttackersWith(decls, DeclareAttackersParams{})
 }
 
-// DeclareAttackersWith is DeclareAttackers with the CR 508.1a payment
+// DeclareAttackersWith is DeclareAttackers with the CR 508.1j payment
 // posture named (ADR 0080, #1063).
 //
 // The tax is priced against the ELIGIBLE set — what this verb would
@@ -9906,7 +9906,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 
 	// ADR 0080 split what used to be one loop into two passes. The
 	// first decides WHICH entries are declarations; the second stages
-	// them. The CR 508.1a payment goes between, because it is priced
+	// them. The CR 508.1j payment goes between, because it is priced
 	// against the eligible set (charging for an attack that gets
 	// skipped would be wrong) and because an unpayable tax must leave
 	// nothing staged (a half-declared swing is not a declaration).
@@ -9985,7 +9985,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateExertChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
-	// CR 508.1a, before anything is staged and before the CR 508.1f
+	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
 	// Priced for every payer BEFORE any of them is charged, so a

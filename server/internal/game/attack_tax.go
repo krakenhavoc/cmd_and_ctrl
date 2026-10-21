@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// attack_tax.go is CR 508.1a's cost to attack: "Creatures can't attack
+// attack_tax.go is CR 508.1h's cost to attack: "Creatures can't attack
 // you unless their controller pays {2} for each creature they control
 // that's attacking you" — Propaganda, Ghostly Prison, Windborn Muse,
 // Sphere of Safety, Collective Restraint, Norn's Annex, War Tax.
@@ -34,9 +34,9 @@ import (
 //
 // # Where it is charged
 //
-// At CR 508.1a, on the DECLARATION, by the declaration verb — after
+// At CR 508.1h, on the DECLARATION, by the declaration verb — after
 // eligibility is settled and before anything is staged. Never as a
-// pay_unless prompt afterwards: CR 508.1a is part of the turn-based
+// pay_unless prompt afterwards: CR 508.1 is part of the turn-based
 // action, alongside the CR 508.1f tap, so it is paid by the action
 // that declares the attack exactly as a cast's additional costs are
 // paid by the action that casts the spell (ADR 0073 §4).
@@ -106,7 +106,7 @@ type AttackTaxQuery struct {
 
 	// TargetKind is what the declaration actually names: the defending
 	// player themselves, a planeswalker they control, or a battle they
-	// protect (CR 508.1a). Scope handles the distinction every printed
+	// protect (CR 508.1h). Scope handles the distinction every printed
 	// card makes; this is here for a predicate that needs more.
 	TargetKind AttackTargetKind
 
@@ -280,7 +280,7 @@ type AttackTaxLine struct {
 	Mana string
 }
 
-// AttackTaxPrice is what one attack declaration costs at CR 508.1a.
+// AttackTaxPrice is what one attack declaration costs at CR 508.1h.
 //
 // The zero value is a free declaration — every table with no tax on it
 // — and IsFree is the one test callers make, so a board the catalog
@@ -306,7 +306,7 @@ type AttackTaxPrice struct {
 func (p AttackTaxPrice) IsFree() bool { return p.Cost == "" }
 
 // PriceAttackDeclaration prices a whole attack declaration at
-// CR 508.1a. Takes the read lock.
+// CR 508.1h. Takes the read lock.
 //
 // PriceCast's sibling, and deliberately not PriceCast itself:
 // PriceCast's body is the CR 601.2 announce sequence end to end —
@@ -338,7 +338,7 @@ func (g *Game) PriceAttackDeclarationForEffect(decls []AttackDeclaration) Attack
 //
 // For each declared attack it resolves the DEFENDING PLAYER — which
 // for a planeswalker or a battle is that permanent's controller or
-// protector, CR 508.1a — and asks every tax that player's permanents
+// protector, CR 508.1h — and asks every tax that player's permanents
 // contribute. A declaration naming several defenders is priced against
 // each of their boards separately, so Alice's Propaganda never prices
 // an attack on Bob.
@@ -483,7 +483,7 @@ func (g *Game) attackTaxAffordableLocked(payer uuid.UUID, price AttackTaxPrice, 
 }
 
 // payAttackTaxLocked charges `price` to `payer` as part of declaring
-// attackers (CR 508.1a).
+// attackers (CR 508.1h).
 //
 // ALL OR NOTHING. A declaration whose tax cannot be paid in full is
 // not a legal declaration, so this returns an error and spends
@@ -529,7 +529,7 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 	}
 	// #1184: the helper takes a parsed cost now, because an activated
 	// ability's is priced through the CR 601.2f pass before it gets
-	// there. An attack tax is NOT (CR 508.1a is a cost to attack, not
+	// there. An attack tax is NOT (CR 508.1h is a cost to attack, not
 	// a cost to activate, and no printed modifier touches it), so it
 	// parses its own string and hands the number over unpriced —
 	// which is exactly what it did before.
@@ -549,7 +549,7 @@ func (g *Game) payAttackTaxLocked(payer uuid.UUID, price AttackTaxPrice, params 
 }
 
 // AttackTaxUnpaidError is what a declaration refused for want of the
-// CR 508.1a cost returns: the price that was owed, and the payer's own
+// CR 508.1h cost returns: the price that was owed, and the payer's own
 // reason for failing it (an *InsufficientManaError naming the missing
 // symbols, usually).
 //

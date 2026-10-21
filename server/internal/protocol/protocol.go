@@ -80,7 +80,7 @@ const (
 	CodeIllegalBlock = "illegal_block"
 	// CodeAttackTaxUnpaid — a declare_attacker or declare_attackers
 	// was refused because the attacking player cannot pay the
-	// CR 508.1a attack tax the declaration owes (Propaganda, Ghostly
+	// CR 508.1h attack tax the declaration owes (Propaganda, Ghostly
 	// Prison, Sphere of Safety). The frame carries the whole price in
 	// ErrorPayload.Reason — a cost string like "{2}{2}" — and the
 	// symbols the pool and the tapper together could not cover in
@@ -198,7 +198,7 @@ type ErrorPayload struct {
 	// Omitted for other codes. ADR 0045 addendum Decision 8 (#705).
 	//
 	// It also populates `code: "attack_tax_unpaid"`, where it is the
-	// declaration's whole CR 508.1a price as a cost string ("{2}{2}"
+	// declaration's whole CR 508.1h price as a cost string ("{2}{2}"
 	// for two attackers into Propaganda) rather than a token. One
 	// field, two codes, because both answer "why" in the shape their
 	// own code documents. ADR 0080 (#1063).

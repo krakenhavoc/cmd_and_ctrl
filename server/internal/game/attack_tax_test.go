@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// attack_tax_test.go — ADR 0080 / #1063: CR 508.1a's cost to attack.
+// attack_tax_test.go — ADR 0080 / #1063: CR 508.1h's cost to attack.
 //
 // Every test here is about a RULE rather than a card; Propaganda,
 // Ghostly Prison and Sphere of Safety prove the same rules from the
@@ -81,7 +81,7 @@ func TestAttackUnderATaxIsRefusedWhenItIsNotPaid(t *testing.T) {
 	if !errors.As(err, &te) || te.Cost != "{2}" {
 		t.Errorf("the error does not carry the price: %#v", te)
 	}
-	// Nothing happened: CR 508.1a is paid before the CR 508.1f tap,
+	// Nothing happened: CR 508.1h is paid before the CR 508.1f tap,
 	// so a refused declaration leaves the creature untapped and
 	// undeclared.
 	c := findCard(g, bear)
@@ -108,7 +108,7 @@ func TestAttackUnderATaxIsAcceptedWhenItIsPaid(t *testing.T) {
 	}
 }
 
-// --- all or nothing (CR 508.1a) ------------------------------------
+// --- all or nothing (CR 508.1j) ------------------------------------
 
 func TestABulkDeclarationRefusesTheWholeSwingWhenTheTaxIsOnlyPartlyAffordable(t *testing.T) {
 	g, first := taxedTable(t, map[string][]AttackTax{
@@ -355,7 +355,7 @@ func TestATaxThatArrivesAfterTheDeclarationChargesNothing(t *testing.T) {
 	if err := g.DeclareAttacker(bear, g.Seats[1].ID); err != nil {
 		t.Fatalf("an untaxed declaration: %v", err)
 	}
-	// CR 508.1a is a turn-based action that has already happened.
+	// CR 508.1 is a turn-based action that has already happened.
 	pushTaxEnchantment(g, g.Seats[1], "Propaganda", propagandaTestOracle)
 	advanceIntoStep(t, g, StepCombatDamage)
 	if g.Seats[1].Life != 40-2 {

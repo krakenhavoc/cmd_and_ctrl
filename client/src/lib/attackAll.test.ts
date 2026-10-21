@@ -293,7 +293,7 @@ describe("attackAllParams", () => {
         { attacker: "y", target: "c" },
       ],
       // ADR 0080 (#1063): the payload always carries permission to
-      // tap for the CR 508.1a attack tax. Inert without one.
+      // tap for the CR 508.1h attack tax. Inert without one.
       auto_tap: true,
     });
   });
@@ -454,7 +454,7 @@ describe("attackAllLabel", () => {
   });
 });
 
-// --- the CR 508.1a attack tax (ADR 0080, #1063) --------------------
+// --- the CR 508.1h attack tax (ADR 0080, #1063) --------------------
 //
 // The price is the SERVER's, read off turn.attack_targets[].tax.
 // Nothing here derives it, and the total for a wide swing is the
