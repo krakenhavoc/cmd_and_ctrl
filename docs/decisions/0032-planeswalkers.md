@@ -840,10 +840,17 @@ with no printed loyalty (Jeska, Thrice Reborn, whose loyalty is all "enters with
 before. Both placements go through the CR 614 counter window, so Doubling Season doubles each
 (CR 122.6): a printed-3 walker returned by Semester's End under Doubling Season has 8. Spark Double's
 own extra loyalty counter still goes through the copied starting loyalty (`spark_double.go`); it and
-Semester's End add up.
+Semester's End add up. Oath of Gideon (#4184) used to add its counter to the entry's counters for a
+walker that entered with loyalty counters, because the stamp skipped that walker. Now that the stamp
+happens, the Oath rides the stamp for every walker with a printed loyalty, and it keeps the
+entry-counter branch only for a walker the stamp gives nothing (`game.StartingLoyaltyForEffect` <= 0).
+The Oath test that pinned the old total (a printed-5 walker put with 2 counters arriving with 3) now
+expects 8.
 
 **The per-card clause.** "If it's a creature … if it's a planeswalker" is a putting effect's clause that
-differs card by card inside one simultaneous return (CR 603.6a forbids splitting it into two events).
+differs card by card inside one simultaneous return. Splitting it into a creature put and a
+planeswalker put would make two events, and each permanent the return puts onto the battlefield must
+see the others enter (CR 603.6a).
 `ZoneEntryOptions.EntersWithCountersIfType` carries it as data (no closure, so a batch held behind an
 entry question adds nothing to the closure census). Each member is judged once its own CR 614 window
 has settled, by the entry look-ahead's dry run (`entryCharacteristicsLocked`, CR 614.12): its own
