@@ -1096,10 +1096,7 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 	if card.Counters[CounterLoyalty] > 0 {
 		return
 	}
-	loyalty := card.StartingLoyalty
-	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
-		loyalty = CatalogStartingLoyalty(oracleID)
-	}
+	loyalty := startingLoyaltyOf(card, oracleID)
 	if loyalty <= 0 {
 		// Nothing printed and nothing in the catalog. Leave it at
 		// zero and let CR 704.5i do its job — inventing a loyalty
@@ -1126,6 +1123,25 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 		})
 	}
 }
+
+// startingLoyaltyOf is the loyalty the CR 306.5b stamp places: the
+// printed value, else the catalog's fallback (see
+// stampStartingLoyaltyLocked's source precedence). Zero or less means
+// the stamp opens no counter event at all.
+func startingLoyaltyOf(c *Card, oracleID string) int {
+	loyalty := c.StartingLoyalty
+	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
+		loyalty = CatalogStartingLoyalty(oracleID)
+	}
+	return loyalty
+}
+
+// StartingLoyaltyForEffect is the starting loyalty the CR 306.5b stamp
+// would give `c` as it enters (#4193). A replacement that adds to the
+// stamp's own event (Oath of Gideon) asks it to tell whether that event
+// will happen: for a walker with none (Jeska, Thrice Reborn), the only
+// loyalty it enters with is the entry's own "enters with" counters.
+func StartingLoyaltyForEffect(c Card) int { return startingLoyaltyOf(&c, catalogKeyOf(&c)) }
 
 // IsAutoCard is the exported wrapper for the view layer. Returns
 // true when the card's oracle ID is in the catalog. Called from

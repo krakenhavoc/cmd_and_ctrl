@@ -28,7 +28,7 @@ const (
 
 func TestGuffaSliceCompleteness(t *testing.T) {
 	for _, oracle := range []string{guffaChandraOracle, guffaGuffOracle, guffaFogBankOracle, guffaBeaconOracle,
-		guffaShakuOracle, guffaDistrictOracle, guffaOathOracle, guffaTezzeretOracle} {
+		guffaShakuOracle, guffaDistrictOracle, guffaOathOracle, guffaTezzeretOracle, guffaSemestersOracle} {
 		spec, ok := Lookup(oracle)
 		if !ok {
 			t.Errorf("%s is not registered", oracle)
@@ -38,11 +38,8 @@ func TestGuffaSliceCompleteness(t *testing.T) {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	// Ajani Steadfast is Full since #4192 (ajani_steadfast_emblem_test.go).
-	// Semester's End waits on #4193.
-	if _, ok := Lookup(guffaSemestersOracle); ok {
-		t.Error("Semester's End is registered, but its return can't give the per-card counters yet")
-	}
+	// Ajani Steadfast is Full since #4192 (ajani_steadfast_emblem_test.go),
+	// Semester's End since #4193 (semesters_end_test.go).
 }
 
 // guffaCastWalker casts a planeswalker with printed loyalty from the
@@ -265,9 +262,10 @@ func TestGuffaOathMakesTwoKorAlliesAndAddsALoyaltyCounter(t *testing.T) {
 	_ = me
 }
 
-// A walker an effect puts onto the battlefield already holding loyalty
-// counters skips the starting-loyalty stamp; the Oath adds to the
-// entry's counters instead.
+// A walker an effect puts onto the battlefield with loyalty counters
+// keeps its printed loyalty too (CR 306.5b, #4193), and the Oath adds
+// one, once: 5 printed + 2 + 1. An opponent's walker gets no Oath
+// counter: 5 + 2.
 func TestGuffaOathAddsToAnEntryWithLoyaltyCounters(t *testing.T) {
 	g, me, opp := spendTable(t)
 	pushCatalogPermanent(g, me.ID, "Oath of Gideon", "Legendary Enchantment", guffaOathOracle, false)
@@ -283,7 +281,7 @@ func TestGuffaOathAddsToAnEntryWithLoyaltyCounters(t *testing.T) {
 		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{{CardID: theirs, From: game.ZoneGraveyard}},
 			game.ZoneEntryOptions{Controller: opp.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, nil)
 	})
-	for name, want := range map[string]int{"My Walker": 3, "Their Walker": 2} {
+	for name, want := range map[string]int{"My Walker": 8, "Their Walker": 7} {
 		var got int
 		for _, c := range g.Battlefield.Cards {
 			if c.Name == name {
@@ -293,6 +291,39 @@ func TestGuffaOathAddsToAnEntryWithLoyaltyCounters(t *testing.T) {
 		if got != want {
 			t.Errorf("%s entered with %d loyalty, want %d", name, got, want)
 		}
+	}
+}
+
+// A walker with no printed loyalty that an effect gives loyalty counters
+// (Jeska's shape) is not stamped, so the Oath's counter rides the entry's
+// own counters: 2 + 1.
+func TestGuffaOathAddsToAWalkerWithNoPrintedLoyalty(t *testing.T) {
+	g, me, _ := spendTable(t)
+	pushCatalogPermanent(g, me.ID, "Oath of Gideon", "Legendary Enchantment", guffaOathOracle, false)
+	id := uuid.New()
+	me.Graveyard.PushTop(game.Card{InstanceID: id, Name: "Zero Walker", TypeLine: "Legendary Planeswalker — Test",
+		Owner: me.ID, Controller: me.ID})
+	g.WithWriteLock(func() {
+		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{{CardID: id, From: game.ZoneGraveyard}},
+			game.ZoneEntryOptions{Controller: me.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, nil)
+	})
+	if got := loyaltyOf(g, id); got != 3 {
+		t.Errorf("Zero Walker entered with %d loyalty, want 3", got)
+	}
+}
+
+// Oath of Gideon and Semester's End both add a counter to a returning
+// walker: 3 printed + 1 + 1.
+func TestGuffaOathAndSemestersEndBothAddALoyaltyCounter(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Oath of Gideon", "Legendary Enchantment", guffaOathOracle, false)
+	walker := semestersEndWalker(g, me.ID, "Walker", "Legendary Planeswalker — Test", 3, 1, 0, 0)
+	semestersEndCast(t, g, walker)
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if got := semestersEndCard(t, g, "Walker").Counters[game.CounterLoyalty]; got != 5 {
+		t.Errorf("Walker returned with %d loyalty under the Oath, want 5", got)
 	}
 }
 

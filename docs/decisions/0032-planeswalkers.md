@@ -822,3 +822,43 @@ walkers and scrolls the artifacts and enchantments away first.
 
 Tests: `cardTypes.test.ts`, `backRow.test.ts`, `typeGroups.render.test.ts`, and
 `tests-e2e/tests/type-groups-4087.spec.ts` (2, 3 and 4 seats at 1920x1080, 1366x768 and 390x844).
+
+## Amendment (2026-10-21, #4193): loyalty counters a planeswalker enters with are added to its printed loyalty
+
+CR 306.5b makes printed loyalty an intrinsic "this permanent enters with" replacement (CR 614.1c), so
+an effect that gives a planeswalker loyalty counters as it enters adds to the printed number. Semester's
+End ("each of them enters with … an additional loyalty counter on it if it's a planeswalker") is the
+first card to put loyalty counters on an entry event. §3's stamp could not express it: its
+already-has-loyalty guard, there to keep the stamp idempotent, read the entry's counters (placed by
+`applyEntryCountersLocked` before `fireETBHookLocked` runs) as the starting loyalty and stamped
+nothing, so a walker returned with "an additional loyalty counter" arrived with one.
+
+**Decision.** When an entry's settled counters include loyalty counters, the drain stamps the starting
+loyalty first, with the same `StartingLoyalty`-marked event (ADR 0183 §3), then places the entry's
+counters. The stamp in `fireETBHookLocked` then finds loyalty and does nothing, as before. A walker
+with no printed loyalty (Jeska, Thrice Reborn, whose loyalty is all "enters with") stamps nothing, as
+before. Both placements go through the CR 614 counter window, so Doubling Season doubles each
+(CR 122.6): a printed-3 walker returned by Semester's End under Doubling Season has 8. Spark Double's
+own extra loyalty counter still goes through the copied starting loyalty (`spark_double.go`); it and
+Semester's End add up. Oath of Gideon (#4184) used to add its counter to the entry's counters for a
+walker that entered with loyalty counters, because the stamp skipped that walker. Now that the stamp
+happens, the Oath rides the stamp for every walker with a printed loyalty, and it keeps the
+entry-counter branch only for a walker the stamp gives nothing (`game.StartingLoyaltyForEffect` <= 0).
+The Oath test that pinned the old total (a printed-5 walker put with 2 counters arriving with 3) now
+expects 8.
+
+**The per-card clause.** "If it's a creature … if it's a planeswalker" is a putting effect's clause that
+differs card by card inside one simultaneous return. Splitting it into a creature put and a
+planeswalker put would make two events, and each permanent the return puts onto the battlefield must
+see the others enter (CR 603.6a).
+`ZoneEntryOptions.EntersWithCountersIfType` carries it as data (no closure, so a batch held behind an
+entry question adds nothing to the closure census). Each member is judged once its own CR 614 window
+has settled, by the entry look-ahead's dry run (`entryCharacteristicsLocked`, CR 614.12): its own
+statics, the effects that already exist, and the copy it was told to enter as (CR 616.1c orders the copy
+first; the rest is CR 616.1e's free order). The other members of the batch are not on the board for the
+dry run, which is CR 614.12's "continuous effects that already exist". A member a replacement sent
+elsewhere gets nothing (CR 614.6). Code: `game/entry_counters_if_type.go`; catalog:
+`ReturnFromExileTogether.CountersIfType` and the delayed body
+`flicker/return-exiled-with-additional-counters`.
+
+Tests: `entry_counters_if_type_test.go` (`internal/game`), `semesters_end_test.go` (`internal/cards/effects`).

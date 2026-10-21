@@ -110,6 +110,16 @@ type ZoneEntryOptions struct {
 	// batch copies it onto each event. nil for every other caller.
 	EntersWithCounters map[string]int
 
+	// EntersWithCountersIfType are the putting effect's per-card
+	// clauses: "each of them enters with an additional +1/+1 counter
+	// on it if it's a creature and an additional loyalty counter on it
+	// if it's a planeswalker" (Semester's End, #4193). Each member of
+	// the batch is judged by what it would be on the battlefield
+	// (CR 614.12) once its own CR 614 window has settled, and gets
+	// only the clauses it matches; see entry_counters_if_type.go.
+	// Read-only, nil for every other caller.
+	EntersWithCountersIfType []EntryCountersIfType
+
 	// AttachedTo is the host the putting effect names — "return … to
 	// the battlefield attached to enchanted creature" (Mantle of the
 	// Ancients, #3158). Seeded onto every card's entry event: each card

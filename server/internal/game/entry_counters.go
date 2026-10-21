@@ -448,6 +448,20 @@ func (g *Game) applyEntryCountersLocked(cardID uuid.UUID, counters map[string]in
 	if c, ok := g.LookupCardForEffect(cardID); ok {
 		placer = c.Controller
 	}
+	// #4193, CR 306.5b: a planeswalker's printed loyalty is itself an
+	// "enters with" clause (CR 614.1c), so a walker given loyalty
+	// counters as it enters ("an additional loyalty counter",
+	// Semester's End) enters with those AND its printed loyalty. The
+	// stamp's already-has-loyalty guard would read the entry's counters
+	// as the starting loyalty and place nothing, so the stamp goes
+	// first here and the one fireETBHookLocked runs later finds it
+	// done. A walker with no printed loyalty (Jeska, Thrice Reborn,
+	// whose counters are all "enters with") stamps nothing, as before.
+	if counters[CounterLoyalty] > 0 {
+		if c, ok := g.battlefieldCardLocked(cardID); ok {
+			g.stampStartingLoyaltyLocked(cardID, catalogKeyOf(c))
+		}
+	}
 	for _, name := range kinds {
 		_ = g.AddCounterByForEffect(placer, cardID, name, counters[name])
 	}
