@@ -2970,6 +2970,7 @@
           damageMultipliers={view.damage_multipliers ?? []}
           damageRedirections={view.damage_redirections ?? []}
           dayNight={view.day_night}
+          attackDirections={view.attack_directions ?? []}
         />
       </div>
     {/if}
@@ -3524,6 +3525,7 @@
           menu={menuOptions}
           loop={loopDock}
           outside={outsideDockProps}
+          {viewerID}
         />
         {#if coachMounted}
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />

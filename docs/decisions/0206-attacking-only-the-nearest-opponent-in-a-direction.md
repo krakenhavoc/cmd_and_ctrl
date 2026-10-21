@@ -62,5 +62,15 @@ The card menu's per-creature "Declare attacker" rows now use the same gate durin
 
 ## Out of scope
 
-- A table badge naming the direction in force. The rule shows today as greyed defenders and the refusal sentence.
+- A table badge naming the direction in force (done, see the 2026-10-21 amendment).
 - CR 803's attack left / attack right variant options: no table option exists for them.
+
+---
+
+## Amendment 2026-10-21 — the direction in force, and the bot's answer (#4211)
+
+The two items left out above are done. Neither changes a rule or the snapshot.
+
+**The table says which way attacks go.** `GameView.attack_directions` (omitempty, one row per rule in force) is `[{ direction, source?, nearest? }]`: `Game.AttackDirectionsInForceForView` reads the same `attackDirectionRulesLocked` the refusal does, for the first player still in the game (a rule is written on every player, or reads the same for every player), and works out `nearest`, each player's opponent under that rule, with `NearestOpponentForEffect`. It is public and identical for every viewer, and it is a view field only: nothing is stored, so there is no snapshot change. The action dock's `PhaseDisplay` shows one status line per row beside the other turn rules, "Attacks go left: you may attack only Bob (Pramikon, Sky Rampart)" (a spectator gets the direction and source only), and one more line when two rules send a player to different opponents, since nobody can attack then. The client words the line and decides no attack: `attack_targets` in the legal-action digest is still the gate.
+
+**The bot answers by who could attack it.** The prompt is an anchor-word option pick, recognised by its two answers "Left" and "Right" (`heuristic/attack_direction.go`; the `aiseat` packages may not import `internal/game`). Under "left" the player who may attack the bot is the nearest live player before it in turn order and the bot may attack the nearest live player after it; "right" swaps them. The bot takes the direction whose attacker has the weaker creature board (`SeatEval.Creatures`), with a small pull (0.05 of `Strength`) toward the weaker opponent it could attack as the tie-break, and keeps the first answer offered when both are equal. It does not model what the choice does to the other two players.

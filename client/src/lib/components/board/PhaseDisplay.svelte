@@ -21,7 +21,7 @@
   // `.first()`, so this must stay the only element on the page with
   // either class.
 
-  import type { PlayerView, TurnView } from "../../protocol";
+  import type { AttackDirectionView, PlayerView, TurnView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { avatarURL } from "../../api";
   import { getAvatarColor } from "../../avatarColor";
@@ -44,6 +44,7 @@
   import { QUIET_ANNOUNCER, announceArrival, type ReadyAnnouncer } from "../../legalActions";
   import { L } from "../../labels";
   import { dayNightChip } from "../../dayNight";
+  import { attackDirectionLines } from "../../attackDirection";
 
   interface Props {
     turn: TurnView;
@@ -64,6 +65,11 @@
     // ADR 0132 (CR 731): GameView.day_night, absent while the game has
     // neither designation.
     dayNight?: string;
+    // ADR 0206 (#4211): GameView.attack_directions, the "may attack only
+    // the nearest opponent that way" rules in force, and the seat looking
+    // (null for a spectator), so the line can name who they may attack.
+    attackDirections?: AttackDirectionView[];
+    viewerId?: string | null;
     // ADR 0105 §7 (sub-PR 6): how many of the viewer's cards have a
     // highlighted action on this frame (legalActions.ts
     // actionableCount over the HIGHLIGHT lookup, so 0 while highlights
@@ -90,6 +96,8 @@
     damageMultipliers = [],
     damageRedirections = [],
     dayNight = undefined,
+    attackDirections = [],
+    viewerId = null,
     readyActions = 0,
     trackOpen = false,
     readOnly = false,
@@ -113,6 +121,7 @@
   const multiplierLines = $derived(damageMultiplierLines(damageMultipliers));
   const redirectionLines = $derived(damageRedirectionLines(damageRedirections));
   const dayNightBadge = $derived(dayNightChip(dayNight));
+  const directionLines = $derived(attackDirectionLines(attackDirections, seats, viewerId));
 
   const activeSeat = $derived(turn.active_seat ?? 0);
   const priorityHeld = $derived((turn.priority_holder ?? -1) >= 0);
@@ -340,6 +349,19 @@
   {#each redirectionLines as line, i (i)}
     <div class="row turn-rule" role="status">{line}</div>
   {/each}
+  <!-- ADR 0206 (#4211): which way attacks go, before anyone tries. -->
+  {#each directionLines as line, i (i)}
+    <div
+      class="row turn-rule attack-direction"
+      class:conflict={line.direction === "conflict"}
+      role="status"
+      data-attack-direction={line.direction}
+      title={line.title}
+    >
+      <span class="dir-glyph" aria-hidden="true">⚔</span>
+      {line.text}
+    </div>
+  {/each}
 </div>
 
 <style>
@@ -547,6 +569,20 @@
     font-size: 0.72rem;
     color: var(--danger);
     opacity: 0.9;
+  }
+  /* A rule that says where attacks go is information, not a warning: the
+     banner's danger colour is for the rules that hurt (a conflict is). */
+  .attack-direction {
+    color: var(--fg-muted);
+    opacity: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .attack-direction.conflict {
+    color: var(--danger);
+  }
+  .dir-glyph {
+    color: var(--accent);
   }
   .sr-only {
     position: absolute;

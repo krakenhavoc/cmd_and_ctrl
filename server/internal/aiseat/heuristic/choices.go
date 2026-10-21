@@ -185,6 +185,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if v, why, ok := st.villainousValue(ch, cp.OptionIndex); ok {
 			return v, why
 		}
+		// ADR 0206: "choose left or right" (attack_direction.go).
+		if v, why, ok := st.attackDirectionValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 		// ADR 0203: a venture's room choice (venture.go).
 		if v, why, ok := st.ventureRoomValue(ch, cp.OptionIndex); ok {
 			return v, why
