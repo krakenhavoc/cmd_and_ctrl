@@ -62,10 +62,12 @@ func (b spendBudget) overdrawn() bool {
 // costTier is the tier a source's non-tap cost puts it in, for both
 // comparators: 0 for a source that spends neither life nor energy, 1
 // for the energy tier, 2 for the pain tier (owner decision 2: energy
-// before life).
+// before life). A source whose rider acts on the opponents (tapSource.
+// Table, #4189) is in the pain tier too, ahead of the ones that spend
+// life.
 func (s tapSource) costTier() int {
 	switch {
-	case s.Pain > 0:
+	case s.Pain > 0 || s.Table:
 		return 2
 	case s.Energy > 0:
 		return 1

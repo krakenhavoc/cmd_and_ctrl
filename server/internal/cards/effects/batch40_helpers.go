@@ -61,33 +61,6 @@ func b40Outlaw() CardPredicate {
 	return AnySubtype("Assassin", "Mercenary", "Pirate", "Rogue", "Warlock")
 }
 
-// --- mana-ability riders -------------------------------------------
-
-// b40PingEachOpponent is Zhur-Taa Druid's rider: "it deals N damage
-// to each opponent", run immediately after the mana lands in the
-// pool, inside the same atomic mana-ability resolution (CR 605.3b).
-//
-// It cannot use damageToEachOpponent, which reads the opponent list
-// off a resolving stack item: a mana ability never uses the stack
-// (CR 605.3), so there is no item and the seat walk has to be done
-// here against the activator. Eliminated seats are skipped, as
-// everywhere else.
-func b40PingEachOpponent(n int) func(g *game.Game, controller, source uuid.UUID) error {
-	return func(g *game.Game, controller, source uuid.UUID) error {
-		return g.DamageInstanceForEffect(func() error {
-			for _, p := range g.Seats {
-				if p == nil || p.Eliminated || p.ID == controller {
-					continue
-				}
-				if err := g.DealDamageToPlayerForEffect(source, p.ID, n); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	}
-}
-
 // --- mana-ability conditions ---------------------------------------
 
 // b40NotActivatedForManaThisTurn is "Activate only once each turn" on

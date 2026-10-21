@@ -815,6 +815,27 @@ type ManaAbilityShape struct {
 	// nothing else; never beside RiderSelfDamage.
 	RiderSelfLifeGain int
 
+	// RiderOpponentLifeGain is the life Rider gives EACH OPPONENT of the
+	// ability's controller, when Rider is exactly "Each opponent gains N
+	// life" (effects.ManaAbility.OpponentsGainLife builds both): Grove of
+	// the Burnwillows' coloured half. Zero for an opaque rider, or none.
+	//
+	// Declared for the auto-tapper (#4189), as RiderSelfLifeGain is. A
+	// source that gives the table something is still a mana source
+	// (CR 605.1a), so the planner taps it and the move list counts its
+	// mana; but it acts on other players, so it sits in the same last
+	// tier as a life-spending source (tapSource.Table) and is reached for
+	// only when nothing quieter could pay. Set it with Rider or with
+	// nothing else.
+	RiderOpponentLifeGain int
+
+	// RiderOpponentDamage is the damage Rider deals each opponent of the
+	// ability's controller, in one damage instance, when Rider is exactly
+	// "this creature deals N damage to each opponent" (effects.ManaAbility.
+	// PingOpponents builds both): Zhur-Taa Druid. Zero for an opaque rider,
+	// or none. Declared and tiered as RiderOpponentLifeGain is.
+	RiderOpponentDamage int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE the produced string is computed (Produced / ProducedFunc

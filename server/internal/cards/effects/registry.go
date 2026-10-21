@@ -520,9 +520,19 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
-		// #4185: GainLife builds the rider the same way.
-		if ma.GainLife < 0 || (ma.GainLife > 0 && (ma.Rider != nil || ma.PainToYou > 0)) {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife must be positive and replaces Rider and PainToYou — set one", spec.Name, i))
+		// #4185, #4189: GainLife, OpponentsGainLife and PingOpponents build
+		// the rider the same way, so a spec carries at most one of the five.
+		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 || ma.PingOpponents < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife, OpponentsGainLife and PingOpponents must be positive", spec.Name, i))
+		}
+		riders := 0
+		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0, ma.PingOpponents > 0} {
+			if set {
+				riders++
+			}
+		}
+		if riders > 1 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife, OpponentsGainLife and PingOpponents each build the rider — set one", spec.Name, i))
 		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
