@@ -86,8 +86,9 @@ import (
 
 // AttackRequirement is one CR 508.1d requirement on one creature.
 //
-// Four shapes, told apart by OtherThan, MostLifeOpponentOf and MustAttack
-// (MustAttack: "attacks that player this turn if able", encore, #3172):
+// Five shapes, told apart by OtherThan, MostLifeOpponentOf, MustAttack
+// (MustAttack: "attacks that player this turn if able", encore, #3172)
+// and MustAttackPermanent ("attacks Gideon Jura if able", #2567):
 //
 //   - OtherThan == uuid.Nil: "attacks each combat if able" — obeyed by
 //     attacking anything.
@@ -103,6 +104,19 @@ import (
 //     opponent of MostLifeOpponentOf and has the most life of them.
 //     Life is read when the attack is judged, so a tie offers each of
 //     the tied opponents.
+//   - MustAttackPermanent set: "attacks <that permanent> if able"
+//     (Gideon Jura, Gideon, Battle-Forged, #2567) — obeyed only by
+//     attacking that permanent as the object it was when the effect
+//     began (CR 400.7). An attack on its controller, or on another of
+//     their planeswalkers, obeys nothing. A permanent that has left, or
+//     that the creature cannot attack for free, is never offered by the
+//     search, so nothing is owed and the creature may attack anything or
+//     stay home (the Gideon Jura rulings).
+//
+// AfterTurn, when above zero, holds a requirement back until a turn
+// whose Turn.Seq is above it (#2567): "during <a player's> next turn"
+// does not reach the turn the effect was made in, even when a loyalty
+// ability was activated at instant speed during that player's own turn.
 //
 // Pure data, so the Characteristic that carries it stays copyable.
 type AttackRequirement struct {
@@ -130,6 +144,15 @@ type AttackRequirement struct {
 	// themself. An attack on their planeswalker or battle obeys the plain
 	// requirement and not this one, as for OtherThan.
 	MustAttack uuid.UUID
+	// MustAttackPermanent, when set, makes this "attacks that permanent
+	// if able" (#2567): obeyed only by attacking the permanent whose
+	// instance is ID while its ObjectEpoch is still Epoch (CR 400.7).
+	MustAttackPermanent ObjectRef
+	// AfterTurn, when above zero, is the Turn.Seq the requirement was
+	// made in: it binds only in a later turn (#2567, "during that
+	// player's next turn"). attackRequirementsOfLocked leaves it out
+	// until then.
+	AfterTurn int
 }
 
 // obeyedBy reports whether an attack at `target` obeys r. uuid.Nil is
@@ -145,6 +168,13 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	}
 	if r.MustAttack != uuid.Nil {
 		return target == r.MustAttack
+	}
+	if r.MustAttackPermanent.ID != uuid.Nil {
+		if target != r.MustAttackPermanent.ID {
+			return false
+		}
+		c := findBattlefieldCard(g, target)
+		return c != nil && c.ObjectEpoch == r.MustAttackPermanent.Epoch
 	}
 	if r.OtherThan == uuid.Nil {
 		return true
@@ -195,14 +225,21 @@ func (g *Game) isMostLifeOpponentLocked(you, target uuid.UUID) bool {
 // player obeys the same number, so it must attack and may attack any
 // of them — which is CR 701.15c's fallback, with no case of its own.
 //
+// A requirement held back to a later turn (AttackRequirement.AfterTurn,
+// #2567) is not on the list until that turn: it does not exist yet as
+// far as CR 508.1d is concerned.
+//
 // Caller must hold g.mu with fresh layers.
 func (g *Game) attackRequirementsOfLocked(c *Card) []AttackRequirement {
 	if c == nil {
 		return nil
 	}
 	var out []AttackRequirement
-	if eff := c.Effective(); len(eff.AttackRequirements) > 0 {
-		out = append(out, eff.AttackRequirements...)
+	for _, r := range c.Effective().AttackRequirements {
+		if r.AfterTurn > 0 && g.Turn.Seq <= r.AfterTurn {
+			continue
+		}
+		out = append(out, r)
 	}
 	for _, gd := range c.Goads {
 		out = append(out,
@@ -624,6 +661,10 @@ type AttackRequirementError struct {
 	OtherThanName string
 	// MustAttackName is the display name of Requirement.MustAttack.
 	MustAttackName string
+	// MustAttackPermanentName is the name of the permanent
+	// Requirement.MustAttackPermanent names (#2567), read as the refusal
+	// is built.
+	MustAttackPermanentName string
 }
 
 // Error is the debug form.
@@ -642,6 +683,7 @@ func (e *AttackRequirementError) Unwrap() error { return ErrAttackRequirement }
 //	"Grizzly Bears must attack this combat if able (Grand Melee)."
 //	"Grizzly Bears is goaded by you and must attack a player other than you if able."
 //	"Galactus, Devourer of Worlds must attack an opponent with the most life if able."
+//	"Grizzly Bears must attack Gideon Jura if able."
 func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	who := nameOr(e.AttackerName, "That creature")
 	r := e.Requirement
@@ -654,6 +696,14 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	if r.MostLifeOpponentOf != uuid.Nil {
 		s := who + " must attack an opponent with the most life if able"
 		if r.SourceName != "" && r.SourceName != e.AttackerName {
+			s += " (" + r.SourceName + ")"
+		}
+		return s + "."
+	}
+	if r.MustAttackPermanent.ID != uuid.Nil {
+		target := nameOr(e.MustAttackPermanentName, "that permanent")
+		s := who + " must attack " + target + " if able"
+		if r.SourceName != "" && r.SourceName != e.AttackerName && r.SourceName != target {
 			s += " (" + r.SourceName + ")"
 		}
 		return s + "."
@@ -709,6 +759,11 @@ func (g *Game) attackRequirementErrorLocked(id uuid.UUID, reqs []AttackRequireme
 	}
 	if p := g.playerByIDLocked(e.Requirement.MustAttack); p != nil {
 		e.MustAttackName = p.Name
+	}
+	if id := e.Requirement.MustAttackPermanent.ID; id != uuid.Nil {
+		if c := findBattlefieldCard(g, id); c != nil {
+			e.MustAttackPermanentName = c.Effective().Name
+		}
 	}
 	return e
 }

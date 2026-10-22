@@ -92,6 +92,17 @@ const (
 	// requirement; its own kind, because an older binary that read it as
 	// the plain requirement would let the token attack anyone.
 	ModAttackPlayerIfAble ModKind = "attackPlayerIfAble" // layer 6
+	// ModAttackPermanentIfAble is "attacks <that permanent> if able"
+	// (#2567): Gideon Jura's "creatures that player controls attack
+	// Gideon Jura if able", Gideon, Battle-Forged's "attacks Gideon
+	// during its controller's next turn if able". Objects[0] is the
+	// permanent, as the OBJECT it was when the effect began (CR 400.7),
+	// and AfterTurn the Turn.Seq the effect began in: the requirement
+	// binds only in a later turn, which is the "during <a player's>
+	// NEXT turn" half. Layer 6 and appended, like the plain requirement;
+	// its own kind, because an older binary that read it as the plain
+	// requirement would let the creature attack anything.
+	ModAttackPermanentIfAble ModKind = "attackPermanentIfAble" // layer 6
 	// ModGoad is goad as a continuous effect from a resolved ability
 	// (#2733): "as long as this enchantment remains on the battlefield,
 	// that creature is also goaded" (Hot Pursuit). Player is the
@@ -790,6 +801,10 @@ type Mod struct {
 	// whole turn. Refused on every other record
 	// (dealtDamageByScopeProblem).
 	DamageSince int `json:"damageSince,omitempty"`
+	// AfterTurn is ModAttackPermanentIfAble's turn stamp (#2567): the
+	// Turn.Seq the effect began in, so the requirement binds only in a
+	// later turn. Refused on every other kind (attackPermanentModProblem).
+	AfterTurn int `json:"afterTurn,omitempty"`
 	// AnyController is ModSkipNextUntapStep's "Creatures don't untap"
 	// (Blinding Beam, #3995): every permanent of its Types that would
 	// untap in Player's untap step, not only the ones Player controls.
@@ -1016,6 +1031,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddAttackRequirement: {layer: Layer6Ability},
 	// #3172
 	ModAttackPlayerIfAble: {layer: Layer6Ability},
+	// #2567: "attacks <that permanent> if able".
+	ModAttackPermanentIfAble: {layer: Layer6Ability},
 	// #2733
 	ModGoad: {layer: Layer6Ability},
 	// #1597
@@ -1276,6 +1293,36 @@ func AttackPlayerIfAbleMod(player uuid.UUID) Mod {
 	return Mod{Kind: ModAttackPlayerIfAble, Player: player}
 }
 
+// AttackPermanentIfAbleMod is "attacks <permanent> if able" (#2567,
+// ModAttackPermanentIfAble): obeyed only by attacking that permanent as
+// the object `permanent` names, and binding only in a turn whose
+// Turn.Seq is above `afterTurn` (pass the current Turn.Seq for "during
+// <a player's> next turn"; the record's duration says which turn ends
+// it). Attributed to the record's source, so a refusal names the card.
+func AttackPermanentIfAbleMod(permanent ObjectRef, afterTurn int) Mod {
+	return Mod{Kind: ModAttackPermanentIfAble, Objects: []ObjectRef{permanent}, AfterTurn: afterTurn}
+}
+
+// attackPermanentModProblem is the registration and restore check for
+// ModAttackPermanentIfAble (#2567): exactly one named permanent and a
+// turn stamp that is not negative, and no turn stamp on any other kind.
+// "" when the mod is sound.
+func attackPermanentModProblem(m Mod) string {
+	if m.Kind != ModAttackPermanentIfAble {
+		if m.AfterTurn != 0 {
+			return fmt.Sprintf("mod %q carries afterTurn, which only attackPermanentIfAble reads", m.Kind)
+		}
+		return ""
+	}
+	if len(m.Objects) != 1 || m.Objects[0].ID == uuid.Nil {
+		return "an attackPermanentIfAble mod needs exactly one permanent"
+	}
+	if m.AfterTurn < 0 {
+		return fmt.Sprintf("an attackPermanentIfAble mod needs a turn stamp of at least 0, got %d", m.AfterTurn)
+	}
+	return ""
+}
+
 // GoadMod is goad from a resolved ability for as long as its duration
 // lasts (#2733, ModGoad): `by` is the goading player.
 func GoadMod(by uuid.UUID) Mod { return Mod{Kind: ModGoad, Player: by} }
@@ -1334,8 +1381,11 @@ func blockRequirementModProblem(m Mod) string {
 		// here (nextFromSourceModProblem checks it).
 		// #1946: a ScopeDealtDamageBy record names the dealer here
 		// (dealtDamageByScopeProblem checks it).
+		// #2567: "attacks <that permanent> if able" names the permanent
+		// here (attackPermanentModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
-			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie {
+			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
+			m.Kind != ModAttackPermanentIfAble {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""
@@ -1621,6 +1671,9 @@ func (g *Game) buildScopedEffectLocked(sourceID uuid.UUID, affected []AffectedOb
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 		if problem := skipNextUntapStepModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if problem := attackPermanentModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
 	}
@@ -2167,6 +2220,19 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		must := m.Player
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
 			r := AttackRequirement{MustAttack: must}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModAttackPermanentIfAble:
+		var permanent ObjectRef
+		if len(m.Objects) > 0 {
+			permanent = m.Objects[0]
+		}
+		after := m.AfterTurn
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackRequirement{MustAttackPermanent: permanent, AfterTurn: after}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

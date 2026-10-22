@@ -4908,3 +4908,56 @@ can't be tapped for mana; the restrictions are gone as Lavinia's controller's ne
 
 Back-out: widen `ManaValueLE(4)` and the cheap-nonlands test fails; drop `CantActivateMana` and the Sol Ring test fails; end the
 record at end of turn and the next-turn test fails.
+
+## Amendment (2026-10-22, [#2567](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2567)): "attacks Gideon if able" during one player's next turn
+
+Gideon Jura prints "+2: During target opponent's next turn, creatures that player controls attack Gideon Jura if able."
+Gideon, Battle-Forged (Kytheon, Hero of Akros's back face) prints "+2: Up to one target creature an opponent controls attacks
+Gideon during its controller's next turn if able." Both are one CR 508.1d requirement that only an attack on one permanent
+obeys, in one turn. The 2026-10-08 amendment left it open as a sibling of `MostLifeOpponentOf`.
+
+**Decision 1: the requirement.** `AttackRequirement` gains a fifth shape, `MustAttackPermanent`, an `ObjectRef`. `obeyedBy`
+accepts only an attack on that instance while its `ObjectEpoch` is still the one named (CR 400.7), so an attack on the
+planeswalker's controller or on another planeswalker obeys nothing, and a Gideon that left (or left and came back) is owed
+nothing: the search never offers a pair that obeys nothing, so the creature may attack anything else or stay home, which is
+the rulings' answer. Nothing else in the search changes; a tapped, sick or "can't attack" creature, or an attack tax, already
+leaves it owing nothing. The sentence reads "<creature> must attack <permanent> if able.", the permanent's name read as the
+refusal is built.
+
+**Decision 2: its own mod kind.** `ModAttackPermanentIfAble` (`attackPermanentIfAble`, layer 6, appended like the plain
+requirement) carries the permanent in `Objects[0]` and a new `Mod.AfterTurn`: the `Turn.Seq` the effect began in.
+`attackRequirementsOfLocked` leaves the requirement out until a later turn, which is the "NEXT turn" half: a loyalty ability
+activated at instant speed during that player's own turn (Teferi, Temporal Archmage's emblem) does not bind the rest of it.
+Registration and restore refuse a mod with no permanent, a negative stamp, or `afterTurn` on any other kind; an older binary
+refuses the unknown kind (`ErrUnknownEffectKey`).
+
+**Decision 3: Gideon Jura's set and duration.** No new scope: "creatures that player controls" is `ScopeYourCreatures` with
+the target opponent as the record's "you", the shape Incite War already uses, read live because a requirement changes no
+characteristic (CR 611.2c; the ruling that a creature they gain later must attack too). The duration is the existing
+`UntilEndOfYourNextTurnDuration(that player)`. Another opponent's creatures are never in the set, so in four seats the turns
+in between ask nothing of anyone, and every combat of the target's next turn is bound (the ruling).
+
+**Decision 4: "during its controller's next turn".** A new duration kind, `UntilEndOfItsControllersNextTurn` (the tenth,
+appended), pins the creature by its entry stamp and stamps `Duration.AfterTurn`. The cleanup step of a later turn whose active
+player controls the creature ends it; the pin ends it if the creature leaves. "Its controller" is read live, so a creature that
+changes controllers before its chance to attack is bound during its new controller's next turn (the card's ruling). `Problem`
+refuses the kind without a pin and `AfterTurn` on any other kind.
+
+**Decision 5: Kytheon's flip.** "At end of combat, if Kytheon and at least two other creatures attacked this combat" is an
+intervening if (CR 603.4) on the end of combat step (CR 511.2), read off `Game.AttackersThisCombatForEffect`: the distinct
+objects declared as attackers in the current combat phase (`AttackRecord.PhaseID`), so an attacker that died still counts and
+one put onto the battlefield attacking never does (the rulings). The flip is ADR 0079's `ExileAndReturnTransformed`.
+
+**Cards.** Gideon Jura and Kytheon, Hero of Akros // Gideon, Battle-Forged, both `full`.
+
+**Tests.** `game/attack_permanent_requirement_test.go` (obeyed only by that permanent, counted under a one-attacker limit, a
+new object owed nothing, held back in the turn it was made, the duration's end, the malformed shapes);
+`cards/effects/attack_this_permanent_test.go` (four seats: the opponent in between owes nothing, the target's creatures and
+one gained later must attack Gideon and not his controller, the turn after asks nothing; Gideon gone; a strict restore with the
+requirement live, for both cards; the requirement following a new controller; Kytheon's flip with two, one, and a dead
+attacker; the +1); `legal/attack_this_permanent_test.go` (only the attack at Gideon is offered, AlwaysLegal, the pass
+withheld); `aiseat/attack_this_permanent_test.go` (both policies attack Gideon with the bound creature and the combat ends).
+
+Back-out: make `obeyedBy` accept any target for the new shape and the enumerator and attacking-his-controller tests fail;
+drop the `AfterTurn` filter and the held-back test fails; widen the scope to `ScopeOpponentsCreatures` and the four-seat test
+fails at the opponent in between; end the new duration at any cleanup after `AfterTurn` and the new-controller test fails.

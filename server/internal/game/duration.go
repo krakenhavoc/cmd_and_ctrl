@@ -180,6 +180,26 @@ const (
 	// again. durationExpiredLocked reads only the flag.
 	UntilCardCast
 
+	// UntilEndOfItsControllersNextTurn is "during its controller's next
+	// turn", said of one creature (#2567): Gideon, Battle-Forged's "Up to
+	// one target creature an opponent controls attacks Gideon during its
+	// controller's next turn if able." "Its controller" is read live, so
+	// a creature that changes controllers before its chance to attack is
+	// bound during its NEW controller's next turn (the card's ruling).
+	//
+	// The tenth kind, appended after UntilCardCast so every persisted int
+	// keeps its meaning; a binary from before it refuses a file carrying
+	// it through Known.
+	//
+	// The duration pins the creature (Pinned, by its entry stamp:
+	// PinnedTo), so it ends the moment that object leaves (CR 400.7),
+	// and stamps AfterTurn, the Turn.Seq it was made in. The
+	// cleanup step (CR 514.2) of a LATER turn whose active player
+	// controls the creature then ends it: that turn was its controller's
+	// next turn. The turn it was made in never counts, even when the
+	// ability resolved during the creature's controller's own turn.
+	UntilEndOfItsControllersNextTurn
+
 	// durationKindEnd is a sentinel, not a kind: every kind this binary
 	// knows is below it. Keep it LAST. DurationKind is persisted as a
 	// bare int (a restore point's `duration.Kind`), so a kind a newer
@@ -352,6 +372,12 @@ func (d Duration) Problem() string {
 		if !c.Known() {
 			return fmt.Sprintf("duration condition %d joined by Also", c)
 		}
+	}
+	if d.Kind != UntilEndOfItsControllersNextTurn && d.AfterTurn != 0 {
+		return fmt.Sprintf("a next-turn stamp on a %s duration", d.Kind)
+	}
+	if d.Kind == UntilEndOfItsControllersNextTurn && (d.Pinned == uuid.Nil || d.AfterTurn < 0) {
+		return "an until-its-controller's-next-turn duration names no creature"
 	}
 	if d.Kind != UntilEndOfCombat && (d.CombatTurn != 0 || d.CombatPhase != 0) {
 		return fmt.Sprintf("a combat stamp on a %s duration", d.Kind)
@@ -545,6 +571,12 @@ type Duration struct {
 	SourceEpoch int  `json:"SourceEpoch,omitempty"`
 	Ended       bool `json:"Ended,omitempty"`
 
+	// AfterTurn is the Turn.Seq an UntilEndOfItsControllersNextTurn
+	// duration was made in (#2567): only a later turn's cleanup can end
+	// it. Zero, and omitted, for every other kind; Problem refuses it
+	// there.
+	AfterTurn int `json:"AfterTurn,omitempty"`
+
 	// Also is the rest of a conjunction (ADR 0109 §3, CR 611.2b): a
 	// ForAsLongAs duration lasts while Condition AND every condition
 	// listed here hold, and ends the moment any one of them stops.
@@ -659,6 +691,21 @@ func (g *Game) UntilYourNextEndStepDuration(player uuid.UUID) Duration {
 		Player:              player,
 		ExpiresAtTurnsBegun: target,
 	}
+}
+
+// UntilEndOfItsControllersNextTurnDuration is "during its controller's
+// next turn" for the creature `creature` (#2567), pinned to it as the
+// object it is now and stamped with the current turn. The second return
+// is false when the creature is not on the battlefield: there is no
+// object for the effect to last on, so the caller registers nothing.
+//
+// Caller must hold g.mu.
+func (g *Game) UntilEndOfItsControllersNextTurnDuration(creature uuid.UUID) (Duration, bool) {
+	d := g.PinnedTo(Duration{Kind: UntilEndOfItsControllersNextTurn, AfterTurn: g.Turn.Seq}, creature)
+	if d.Pinned == uuid.Nil {
+		return Duration{}, false
+	}
+	return d, true
 }
 
 // UntilEndOfCombatDuration is "this combat" / "until end of combat"
@@ -1048,6 +1095,15 @@ func (g *Game) durationExpiredLocked(d Duration, endOfTurn bool) bool {
 		// Over once CastSpell marked it (#3520). The card leaving
 		// exile uncast does NOT end it (ruling 2026-08-21).
 		return d.Ended
+	case UntilEndOfItsControllersNextTurn:
+		// The cleanup step of a turn after the one it was made in,
+		// whose active player controls the pinned creature (#2567).
+		// The pin above has already ended it if the creature left.
+		if !endOfTurn || g.Turn.Seq <= d.AfterTurn {
+			return false
+		}
+		c, ok := g.battlefieldCardLocked(d.Pinned)
+		return ok && c.Controller == g.activePlayerIDLocked()
 	case Indefinite, WhileInZone:
 		// Neither ends on a turn boundary. WhileInZone ends on a ZONE
 		// change, which CR 400.7 answers on the permission itself —
@@ -1262,6 +1318,8 @@ func (k DurationKind) String() string {
 		return "until you exile another card with it"
 	case UntilCardCast:
 		return "until the card is cast from exile"
+	case UntilEndOfItsControllersNextTurn:
+		return "until the end of its controller's next turn"
 	}
 	return "unknown duration"
 }

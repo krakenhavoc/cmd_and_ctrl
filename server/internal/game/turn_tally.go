@@ -564,6 +564,31 @@ func (g *Game) ObjectAttackedThisTurn(ref ObjectRef) bool {
 	return false
 }
 
+// AttackersThisCombatForEffect is every object declared as an attacker
+// in the combat phase in progress, each once, first declared first:
+// "if Kytheon and at least two other creatures attacked this combat"
+// (#2567). It reads this turn's attack records for the current
+// Turn.PhaseID, so an additional combat phase is a combat of its own,
+// a creature that attacked and has since left the battlefield still
+// counts, and one put onto the battlefield attacking never does (it was
+// never declared, CR 508.4; the Kytheon ruling). Empty outside a combat
+// phase's records.
+//
+// Caller must hold g.mu.
+func (g *Game) AttackersThisCombatForEffect() []ObjectRef {
+	var out []ObjectRef
+	seen := map[ObjectRef]bool{}
+	for _, a := range g.TurnTally.Attacks {
+		ref := ObjectRef{ID: a.Attacker, Epoch: a.Epoch}
+		if a.PhaseID != g.Turn.PhaseID || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		out = append(out, ref)
+	}
+	return out
+}
+
 // AttackedPlayersThisTurn is the players the object `cardID` names has
 // attacked this turn, first attack first and each once. An attack on a
 // planeswalker or a battle is not an attack on a player.

@@ -267,7 +267,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
