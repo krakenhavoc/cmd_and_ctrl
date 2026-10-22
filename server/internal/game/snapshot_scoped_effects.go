@@ -155,6 +155,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := skipNextUntapStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #2567: an attack-this-permanent requirement naming no
+			// permanent, or a turn stamp on another kind.
+			if problem := attackPermanentModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

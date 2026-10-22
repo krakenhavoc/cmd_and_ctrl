@@ -243,6 +243,7 @@ battlefield.cards[].nextUntapSkips[]	object
 battlefield.cards[].nextUntapSkips[].extra	number:int
 battlefield.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 battlefield.cards[].nextUntapSkips[].while	object
+battlefield.cards[].nextUntapSkips[].while.AfterTurn	number:int
 battlefield.cards[].nextUntapSkips[].while.Also	array
 battlefield.cards[].nextUntapSkips[].while.Also[]	number:int
 battlefield.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -459,6 +460,7 @@ delayedTriggers[].createdSeq	number:int
 delayedTriggers[].createdTurn	number:int
 delayedTriggers[].due	bool
 delayedTriggers[].duration	object
+delayedTriggers[].duration.AfterTurn	number:int
 delayedTriggers[].duration.Also	array
 delayedTriggers[].duration.Also[]	number:int
 delayedTriggers[].duration.CombatPhase	number:int
@@ -833,6 +835,7 @@ exile.cards[].nextUntapSkips[]	object
 exile.cards[].nextUntapSkips[].extra	number:int
 exile.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 exile.cards[].nextUntapSkips[].while	object
+exile.cards[].nextUntapSkips[].while.AfterTurn	number:int
 exile.cards[].nextUntapSkips[].while.Also	array
 exile.cards[].nextUntapSkips[].while.Also[]	number:int
 exile.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -999,6 +1002,7 @@ extraTurns[].effects[].affected[].onStack	bool
 extraTurns[].effects[].affected[].unstamped	bool
 extraTurns[].effects[].controller	custom(uuid.UUID)
 extraTurns[].effects[].duration	object
+extraTurns[].effects[].duration.AfterTurn	number:int
 extraTurns[].effects[].duration.Also	array
 extraTurns[].effects[].duration.Also[]	number:int
 extraTurns[].effects[].duration.CombatPhase	number:int
@@ -1021,6 +1025,7 @@ extraTurns[].effects[].duration.SourceEpoch	number:int
 extraTurns[].effects[].label	string
 extraTurns[].effects[].mods	array
 extraTurns[].effects[].mods[]	object
+extraTurns[].effects[].mods[].afterTurn	number:int
 extraTurns[].effects[].mods[].amount	number:int
 extraTurns[].effects[].mods[].andDealtBy	bool
 extraTurns[].effects[].mods[].anyController	bool
@@ -1222,9 +1227,13 @@ lastKnownBattlefield{}.AdditionalBlocks	number:int
 lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
+lastKnownBattlefield{}.AttackRequirements[].AfterTurn	number:int
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MustAttack	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].MustAttackPermanent	object
+lastKnownBattlefield{}.AttackRequirements[].MustAttackPermanent.epoch	number:int
+lastKnownBattlefield{}.AttackRequirements[].MustAttackPermanent.id	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
@@ -1365,9 +1374,13 @@ lastKnownPermanents{}[].characteristic.AdditionalBlocks	number:int
 lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
+lastKnownPermanents{}[].characteristic.AttackRequirements[].AfterTurn	number:int
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttack	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttackPermanent	object
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttackPermanent.epoch	number:int
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttackPermanent.id	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
@@ -1760,6 +1773,7 @@ lastKnownStack[].card.nextUntapSkips[]	object
 lastKnownStack[].card.nextUntapSkips[].extra	number:int
 lastKnownStack[].card.nextUntapSkips[].player	custom(uuid.UUID)
 lastKnownStack[].card.nextUntapSkips[].while	object
+lastKnownStack[].card.nextUntapSkips[].while.AfterTurn	number:int
 lastKnownStack[].card.nextUntapSkips[].while.Also	array
 lastKnownStack[].card.nextUntapSkips[].while.Also[]	number:int
 lastKnownStack[].card.nextUntapSkips[].while.CombatPhase	number:int
@@ -3363,9 +3377,13 @@ pendingChoices[].damageAssignment.SourceLKI.AdditionalBlocks	number:int
 pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].AfterTurn	number:int
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttack	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttackPermanent	object
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttackPermanent.epoch	number:int
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttackPermanent.id	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
@@ -4142,6 +4160,7 @@ phasedOut.cards[].nextUntapSkips[]	object
 phasedOut.cards[].nextUntapSkips[].extra	number:int
 phasedOut.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 phasedOut.cards[].nextUntapSkips[].while	object
+phasedOut.cards[].nextUntapSkips[].while.AfterTurn	number:int
 phasedOut.cards[].nextUntapSkips[].while.Also	array
 phasedOut.cards[].nextUntapSkips[].while.Also[]	number:int
 phasedOut.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -4370,6 +4389,7 @@ scopedEffects[].affected[].onStack	bool
 scopedEffects[].affected[].unstamped	bool
 scopedEffects[].controller	custom(uuid.UUID)
 scopedEffects[].duration	object
+scopedEffects[].duration.AfterTurn	number:int
 scopedEffects[].duration.Also	array
 scopedEffects[].duration.Also[]	number:int
 scopedEffects[].duration.CombatPhase	number:int
@@ -4392,6 +4412,7 @@ scopedEffects[].duration.SourceEpoch	number:int
 scopedEffects[].label	string
 scopedEffects[].mods	array
 scopedEffects[].mods[]	object
+scopedEffects[].mods[].afterTurn	number:int
 scopedEffects[].mods[].amount	number:int
 scopedEffects[].mods[].andDealtBy	bool
 scopedEffects[].mods[].anyController	bool
@@ -4607,6 +4628,7 @@ seats[].castPermissions[].discover	object
 seats[].castPermissions[].discover.n	number:int
 seats[].castPermissions[].discover.source	custom(uuid.UUID)
 seats[].castPermissions[].duration	object
+seats[].castPermissions[].duration.AfterTurn	number:int
 seats[].castPermissions[].duration.Also	array
 seats[].castPermissions[].duration.Also[]	number:int
 seats[].castPermissions[].duration.CombatPhase	number:int
@@ -4904,6 +4926,7 @@ seats[].command.cards[].nextUntapSkips[]	object
 seats[].command.cards[].nextUntapSkips[].extra	number:int
 seats[].command.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].command.cards[].nextUntapSkips[].while	object
+seats[].command.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].command.cards[].nextUntapSkips[].while.Also	array
 seats[].command.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].command.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -5269,6 +5292,7 @@ seats[].companion.cards[].nextUntapSkips[]	object
 seats[].companion.cards[].nextUntapSkips[].extra	number:int
 seats[].companion.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].companion.cards[].nextUntapSkips[].while	object
+seats[].companion.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].companion.cards[].nextUntapSkips[].while.Also	array
 seats[].companion.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].companion.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -5643,6 +5667,7 @@ seats[].emblems.cards[].nextUntapSkips[]	object
 seats[].emblems.cards[].nextUntapSkips[].extra	number:int
 seats[].emblems.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].emblems.cards[].nextUntapSkips[].while	object
+seats[].emblems.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.Also	array
 seats[].emblems.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].emblems.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -6006,6 +6031,7 @@ seats[].graveyard.cards[].nextUntapSkips[]	object
 seats[].graveyard.cards[].nextUntapSkips[].extra	number:int
 seats[].graveyard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].graveyard.cards[].nextUntapSkips[].while	object
+seats[].graveyard.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.Also	array
 seats[].graveyard.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].graveyard.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -6367,6 +6393,7 @@ seats[].hand.cards[].nextUntapSkips[]	object
 seats[].hand.cards[].nextUntapSkips[].extra	number:int
 seats[].hand.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].hand.cards[].nextUntapSkips[].while	object
+seats[].hand.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].hand.cards[].nextUntapSkips[].while.Also	array
 seats[].hand.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].hand.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -6741,6 +6768,7 @@ seats[].library.cards[].nextUntapSkips[]	object
 seats[].library.cards[].nextUntapSkips[].extra	number:int
 seats[].library.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].library.cards[].nextUntapSkips[].while	object
+seats[].library.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].library.cards[].nextUntapSkips[].while.Also	array
 seats[].library.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].library.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -7141,6 +7169,7 @@ seats[].sideboard.cards[].nextUntapSkips[]	object
 seats[].sideboard.cards[].nextUntapSkips[].extra	number:int
 seats[].sideboard.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 seats[].sideboard.cards[].nextUntapSkips[].while	object
+seats[].sideboard.cards[].nextUntapSkips[].while.AfterTurn	number:int
 seats[].sideboard.cards[].nextUntapSkips[].while.Also	array
 seats[].sideboard.cards[].nextUntapSkips[].while.Also[]	number:int
 seats[].sideboard.cards[].nextUntapSkips[].while.CombatPhase	number:int
@@ -7374,6 +7403,7 @@ seats[].statics[].creaturesEnterWithCounters	object
 seats[].statics[].creaturesEnterWithCounters.count	number:int
 seats[].statics[].creaturesEnterWithCounters.kind	string
 seats[].statics[].duration	object
+seats[].statics[].duration.AfterTurn	number:int
 seats[].statics[].duration.Also	array
 seats[].statics[].duration.Also[]	number:int
 seats[].statics[].duration.CombatPhase	number:int
@@ -7727,6 +7757,7 @@ stack.cards[].nextUntapSkips[]	object
 stack.cards[].nextUntapSkips[].extra	number:int
 stack.cards[].nextUntapSkips[].player	custom(uuid.UUID)
 stack.cards[].nextUntapSkips[].while	object
+stack.cards[].nextUntapSkips[].while.AfterTurn	number:int
 stack.cards[].nextUntapSkips[].while.Also	array
 stack.cards[].nextUntapSkips[].while.Also[]	number:int
 stack.cards[].nextUntapSkips[].while.CombatPhase	number:int
