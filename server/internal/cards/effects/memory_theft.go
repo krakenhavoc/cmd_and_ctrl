@@ -32,16 +32,17 @@ func init() {
 		Name:         "Memory Theft",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			victim := TargetedPlayer(ctx)
-			if victim == uuid.Nil {
-				return nil
-			}
-			if err := (ChooseFromRevealedHand{Player: victim, Filter: Nonland(), Label: "nonland card"}).Apply(ctx); err != nil {
-				return err
-			}
-			return memoryTheftAdventure(ctx.Game, item, victim)
-		},
+		// The Adventure offer waits for the question the choice asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(chooseNonlandFromTargetedHand),
+			Instruction(func(ctx *Context) error {
+				victim := TargetedPlayer(ctx)
+				if victim == uuid.Nil {
+					return nil
+				}
+				return memoryTheftAdventure(ctx.Game, ctx.Item, victim)
+			}),
+		),
 	})
 }
 

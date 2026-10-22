@@ -33,13 +33,14 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhereverDiscarded(On(game.EventDiscardCard, DiscardedByAnOpponent(true),
 				"Mangara's Blessing — discarded: gain 2 life, return it to your hand at the next end step",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := (GainLife{Amount: 2}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-					return scheduleReturnOfThisCard(g, item,
-						"Mangara's Blessing — return it from your graveyard to your hand", returnDiscardedToHandBody)
-				})),
+				// The delayed return waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+				Do(
+					GainLife{Amount: 2},
+					Instruction(func(ctx *Context) error {
+						return scheduleReturnOfThisCard(ctx.Game, ctx.Item,
+							"Mangara's Blessing — return it from your graveyard to your hand", returnDiscardedToHandBody)
+					}),
+				))),
 		},
 	})
 }

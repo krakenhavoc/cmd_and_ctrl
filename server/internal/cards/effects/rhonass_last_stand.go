@@ -16,11 +16,11 @@ func init() {
 		Name:         "Rhonas's Last Stand",
 		Purpose:      game.Purpose{Tokens: 1},
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{Template: TokenCard("5/4 green Snake"), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return LandsYouControlDontUntapNextStep(ctx)
-		},
+		// The lands' rider waits for a prompt the Snake's creation asks (a CR 616 order;
+		// CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			CreateToken{Template: TokenCard("5/4 green Snake"), N: 1},
+			Instruction(LandsYouControlDontUntapNextStep),
+		),
 	})
 }

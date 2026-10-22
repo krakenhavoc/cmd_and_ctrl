@@ -117,6 +117,20 @@ func wretchedBonemassKeywords(materials []game.Card) []string {
 	return append(out, protections...)
 }
 
+// altarOfTheWretchedRecord files the sacrificed creature's power.
+const altarOfTheWretchedRecord = "altar-of-the-wretched/power"
+
+// altarOfTheWretchedDrawMill is the draw and then the mill: the mill waits for
+// a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+var altarOfTheWretchedDrawMill = RegisterThenSteps("then-steps/altar-of-the-wretched-draw-mill",
+	Instruction(func(ctx *Context) error {
+		return DrawCards{Player: ctx.Controller(), N: ctx.StepRecord(altarOfTheWretchedRecord).N()}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return MillCards{Player: ctx.Controller(), N: ctx.StepRecord(altarOfTheWretchedRecord).N()}.Apply(ctx)
+	}),
+)
+
 // altarOfTheWretchedEnters is the enters trigger: the optional
 // sacrifice, then draw X and mill X for that creature's power.
 func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
@@ -144,10 +158,8 @@ func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
 						return nil
 					}
 					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: info.Power}).Apply(ctx); err != nil {
-						return err
-					}
-					return MillCards{Player: item.Controller, N: info.Power}.Apply(ctx)
+					ctx.RecordStep(altarOfTheWretchedRecord, nil, info.Power)
+					return altarOfTheWretchedDrawMill.Run(ctx)
 				})
 		},
 	}.Apply(NewContext(g, item))

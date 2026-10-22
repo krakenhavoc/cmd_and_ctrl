@@ -47,17 +47,22 @@ func init() {
 			Cost: Plus(ManaCost("{2}"), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature or planeswalker", Or(Creature(), Planeswalker()))),
 			}),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if !b09SourceStillOnBattlefield(g, item) {
+			// The menace waits for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					if b09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+						return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}
 					return nil
-				}
-				ctx := NewContext(g, item)
-				if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return GrantKeywordUntilEOT{Target: item.SourceCardID, Keywords: []string{"menace"},
-					Label: "Edgar, Ancient Bloodlord — menace"}.Apply(ctx)
-			},
+				}),
+				Instruction(func(ctx *Context) error {
+					if !b09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+						return nil
+					}
+					return GrantKeywordUntilEOT{Target: ctx.Item.SourceCardID, Keywords: []string{"menace"},
+						Label: "Edgar, Ancient Bloodlord — menace"}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

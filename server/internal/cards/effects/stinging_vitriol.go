@@ -2,8 +2,6 @@ package effects
 
 import (
 	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Stinging Vitriol — Sorcery {B}{R} (Reality Fracture, tracker #2795):
@@ -22,15 +20,16 @@ func init() {
 		Name:         "Stinging Vitriol",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			victim := TargetedPlayer(ctx)
-			if victim == uuid.Nil {
-				return nil
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: victim, Amount: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			return ChooseFromRevealedHand{Player: victim, Filter: Nonland(), Label: "nonland card"}.Apply(ctx)
-		},
+		// The choice waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				victim := TargetedPlayer(ctx)
+				if victim == uuid.Nil {
+					return nil
+				}
+				return DealDamage{Source: ctx.Source(), Target: victim, Amount: 2}.Apply(ctx)
+			}),
+			Instruction(chooseNonlandFromTargetedHand),
+		),
 	})
 }

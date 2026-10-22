@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Scorching Lava — Instant {1}{R}:
 //
@@ -24,18 +27,27 @@ func init() {
 		Purpose:       ForTargets(DamageToTarget(0, 2)),
 		Targets:       TargetAny(),
 		OptionalCosts: []game.AdditionalCost{Kicker("{R}")},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			t, ok := firstLegalTarget(ctx)
-			if !ok {
-				return nil
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if !ctx.WasKicked() {
-				return nil
-			}
-			return markCreatureNoRegenExileIfDies(ctx, t.ID)
-		},
+		// The riders wait for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155)
+		// and mark the creature the damage was dealt to, filed before it.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				t, ok := firstLegalTarget(ctx)
+				if !ok {
+					return nil
+				}
+				ctx.RecordStep(scorchingLavaRecord, []uuid.UUID{t.ID})
+				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				ids := ctx.StepRecord(scorchingLavaRecord).IDs
+				if len(ids) == 0 || !ctx.WasKicked() {
+					return nil
+				}
+				return markCreatureNoRegenExileIfDies(ctx, ids[0])
+			}),
+		),
 	})
 }
+
+// scorchingLavaRecord files the target the damage was dealt to.
+const scorchingLavaRecord = "scorching-lava/target"

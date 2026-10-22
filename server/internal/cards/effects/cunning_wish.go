@@ -15,17 +15,18 @@ func init() {
 		OracleID:     "bdf80a55-b524-4d17-9be8-a0005403a0e7",
 		Name:         "Cunning Wish",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (TakeFromOutside{
+		// The exile waits for the question the take asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			TakeFromOutside{
 				Match:    func(c game.Card) bool { return c.IsInstant() },
 				Question: "Cunning Wish — reveal an instant card you own from outside the game, or none",
 				Reveal:   true,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			// "Exile Cunning Wish." The spell moves itself, so the
-			// resolution frame does not put it into the graveyard (#489).
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+			},
+			Instruction(func(ctx *Context) error {
+				// "Exile Cunning Wish." The spell moves itself, so the
+				// resolution frame does not put it into the graveyard (#489).
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }

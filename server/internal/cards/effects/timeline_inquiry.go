@@ -19,19 +19,22 @@ func init() {
 		Name:          "Timeline Inquiry",
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(2)},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			if ctx.UsedTeamwork() {
+		// The discard waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Item.Controller, N: 3}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.UsedTeamwork() {
+					return nil
+				}
+				ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+					Player: ctx.Item.Controller,
+					Source: ctx.Item.SourceCardID,
+					N:      1,
+				})
 				return nil
-			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: item.Controller,
-				Source: item.SourceCardID,
-				N:      1,
-			})
-			return nil
-		},
+			}),
+		),
 	})
 }

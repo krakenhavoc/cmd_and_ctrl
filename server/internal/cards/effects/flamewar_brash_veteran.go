@@ -51,15 +51,17 @@ func init() {
 				Label:        "Sacrifice another artifact: Put a +1/+1 counter on Flamewar and convert it. Activate only as a sorcery.",
 				Cost:         SacrificeAnotherN(1, "another artifact", Artifact()),
 				SorcerySpeed: true,
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item) {
-						if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-							return err
+				// The conversion waits for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						if onBattlefield(ctx.Game, item.SourceCardID) && !sourceIsNewObject(ctx.Game, item) {
+							return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 						}
-					}
-					return ConvertThis{}.Apply(ctx)
-				},
+						return nil
+					}),
+					ConvertThis{},
+				),
 			},
 			{
 				Label:   "{1}, Discard your hand: Put all exiled cards you own with intel counters on them into your hand.",

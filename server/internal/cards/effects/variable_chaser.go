@@ -37,10 +37,7 @@ func init() {
 					Question: "Arc of Fortune — discard your hand and draw seven cards?",
 					Draws:    7,
 					OnYes: func(ctx *Context) error {
-						if _, err := discardWholeHand(ctx.Game, player); err != nil {
-							return err
-						}
-						return ctx.Game.DrawNForEffect(player, 7)
+						return arcOfFortuneEmbark.RunAt(ctx, seatIndexOf(ctx.Game, player))
 					},
 				}).Apply(ctx); err != nil {
 					return err
@@ -50,3 +47,16 @@ func init() {
 		},
 	})
 }
+
+// arcOfFortuneEmbark is one player's discard and draw: the draw waits for a
+// prompt the discards ask (a madness or a replacement offer; CR 608.2c, #4155).
+// The player is the seat the answer was given for.
+var arcOfFortuneEmbark = RegisterThenSteps("then-steps/arc-of-fortune-embark",
+	Instruction(func(ctx *Context) error {
+		_, err := discardWholeHand(ctx.Game, seatAtOccurrence(ctx))
+		return err
+	}),
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.DrawNForEffect(seatAtOccurrence(ctx), 7)
+	}),
+)

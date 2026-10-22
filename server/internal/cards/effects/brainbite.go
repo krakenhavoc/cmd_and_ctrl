@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Brainbite — Sorcery {2}{U}{B}:
 //
 //	"Target opponent reveals their hand. You choose a card from it.
@@ -21,11 +19,14 @@ func init() {
 		Name:         "Brainbite",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Label: "card"}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		// The draw waits for the question the choice asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return ChooseFromRevealedHand{Player: TargetedPlayer(ctx), Label: "card"}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

@@ -63,15 +63,17 @@ func init() {
 			On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.AttachedTo.Kind == game.TargetPlayer && source.AttachedTo.ID == ev.Actor
 			}, "Curse of Leeches — they lose 1 life and you gain 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					victim := item.Trigger.Event.Actor
-					if g.PlayerByIDForEffect(victim) != nil {
-						if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -1); err != nil {
-							return err
+				// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+				Do(
+					Instruction(func(ctx *Context) error {
+						victim := ctx.Item.Trigger.Event.Actor
+						if ctx.Game.PlayerByIDForEffect(victim) != nil {
+							return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, victim, -1)
 						}
-					}
-					return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-				}),
+						return nil
+					}),
+					GainLife{Amount: 1},
+				)),
 		},
 	})
 	Register(Spec{

@@ -38,30 +38,42 @@ func teyoEntersTrigger(label, keyword string) game.TriggeredAbility {
 		AppliesTo: Self,
 		Key:       label,
 		Targets:   TargetPermanent("target permanent you control", YouControl()),
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			ctx := NewContext(g, item)
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{keyword}, Label: label}).Apply(ctx); err != nil {
-					return err
-				}
-				c, ok := g.LookupCardForEffect(t.ID)
-				if !ok {
-					return nil
-				}
-				if c.IsCreature() {
-					if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-						return err
+		// The counters wait for a prompt the keyword's grant asks, and the loyalty counter for
+		// one the +1/+1 counter asks (a CR 616 order; CR 608.2c, #4155).
+		Effect: Do(
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetCard {
+						continue
 					}
-				}
-				if c.IsPlaneswalker() {
-					return nothingIfGone(g.AddCounterByForEffect(ctx.Controller(), t.ID, game.CounterLoyalty, 1))
+					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{keyword}, Label: label}.Apply(ctx)
 				}
 				return nil
-			}
-			return nil
-		},
+			}),
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetCard {
+						continue
+					}
+					if c, ok := ctx.Game.LookupCardForEffect(t.ID); ok && c.IsCreature() {
+						return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+					}
+					return nil
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind != game.TargetCard {
+						continue
+					}
+					if c, ok := ctx.Game.LookupCardForEffect(t.ID); ok && c.IsPlaneswalker() {
+						return nothingIfGone(ctx.Game.AddCounterByForEffect(ctx.Controller(), t.ID, game.CounterLoyalty, 1))
+					}
+					return nil
+				}
+				return nil
+			}),
+		),
 	}
 }

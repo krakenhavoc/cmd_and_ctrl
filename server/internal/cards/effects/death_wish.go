@@ -17,23 +17,26 @@ func init() {
 		OracleID:     "ff0ca1a4-da67-407c-a5c0-998a35eb7d8d",
 		Name:         "Death Wish",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (TakeFromOutside{
+		// The life loss and the exile wait for the question the take asks, and the exile for
+		// a prompt the loss asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			TakeFromOutside{
 				Question: "Death Wish — put a card you own from outside the game into your hand, or none",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			// "You lose half your life, rounded up." Life loss, not
-			// damage (CR 119.3), so no prevention sees it.
-			if p := ctx.PlayerByID(item.Controller); p != nil {
-				if n := game.HalfLifeRoundedUp(p.Life); n > 0 {
-					if err := ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -n); err != nil {
-						return err
+			},
+			Instruction(func(ctx *Context) error {
+				// "You lose half your life, rounded up." Life loss, not
+				// damage (CR 119.3), so no prevention sees it.
+				if p := ctx.PlayerByID(ctx.Item.Controller); p != nil {
+					if n := game.HalfLifeRoundedUp(p.Life); n > 0 {
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Item.Controller, -n)
 					}
 				}
-			}
-			// "Exile Death Wish." The spell moves itself (#489).
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				// "Exile Death Wish." The spell moves itself (#489).
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }
