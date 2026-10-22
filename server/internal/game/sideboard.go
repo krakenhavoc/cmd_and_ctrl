@@ -306,3 +306,44 @@ func (g *Game) BringFromOutsideForEffect(playerID, cardID uuid.UUID) error {
 	})
 	return nil
 }
+
+// PutFromOutsideIntoLibraryForEffect puts cards `playerID` owns outside
+// the game into their library, the other door out of the container
+// (Research's "shuffle up to four cards you own from outside the game
+// into your library", #3525). Like BringFromOutsideForEffect it is only
+// reached by an effect that brings cards in (CR 400.11c), and it moves
+// them as a zone change from outside the game.
+//
+// The cards go on the bottom, unrevealed, and the caller shuffles
+// (ShuffleLibraryForEffect): the shuffle clears what any seat knew about
+// the library's order, and the owner's memory of what they put in with
+// it. A card that is not in the player's container is skipped, so a
+// second submission of the same ID moves nothing twice; the cards that
+// were moved are returned in the order given.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromOutsideIntoLibraryForEffect(playerID uuid.UUID, cardIDs []uuid.UUID) ([]uuid.UUID, error) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil || p.Sideboard == nil || p.Library == nil {
+		return nil, ErrCardNotFound
+	}
+	var moved []uuid.UUID
+	for _, id := range cardIDs {
+		c, err := p.Sideboard.Remove(id)
+		if err != nil {
+			continue
+		}
+		c.Owner = p.ID
+		c.Controller = p.ID
+		p.Library.PushBottom(c)
+		moved = append(moved, c.InstanceID)
+		g.EmitEvent(Event{
+			Kind:    EventZoneMove,
+			Actor:   p.ID,
+			CardID:  c.InstanceID,
+			OldZone: ZoneOutside,
+			NewZone: ZoneLibrary,
+		})
+	}
+	return moved, nil
+}

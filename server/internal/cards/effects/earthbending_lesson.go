@@ -12,8 +12,8 @@ package effects
 // downside is mostly notional — it comes back tapped when it dies, so
 // a removal spell costs the opponent a card and costs you one untap.
 //
-// The Lesson subtype is type-line data only; there is no Learn in the
-// catalog.
+// The Lesson subtype is type-line data only; it is what learn
+// (CR 701.48a, learn.go) looks for outside the game.
 //
 // EVERYTHING IS THE KEYWORD ACTION. The animation, the haste, the four
 // counters and the delayed return all live in

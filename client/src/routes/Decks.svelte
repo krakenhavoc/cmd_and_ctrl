@@ -53,6 +53,7 @@
     canRequestCards,
     deckRequestOutcomeMessage,
     shouldOfferPaste,
+    sideboardNote,
     BUCKET_ORDER,
     BUCKET_LABELS,
     BUCKET_BLURBS,
@@ -566,6 +567,10 @@
           {#if report.companion}
             <!-- ADR 0172 §2: the companion, outside the 100. -->
             <p class="commanders">Companion: {report.companion.name}</p>
+          {/if}
+          {#if sideboardNote(report)}
+            <!-- ADR 0191: the sideboard, outside the 100. -->
+            <p class="commanders">{sideboardNote(report)}</p>
           {/if}
           {#if report.source_url}
             <a

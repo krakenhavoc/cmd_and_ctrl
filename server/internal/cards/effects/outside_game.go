@@ -46,7 +46,15 @@ func (t TakeFromOutside) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	source := ctx.Source()
+	takeFromOutside(ctx.Game, player, ctx.Source(), t)
+	return nil
+}
+
+// takeFromOutside queues t's pick for `player`, with `source` as the card
+// asking. It is Apply without a Context, so a continuation that runs
+// after the resolving frame (learn's rummage-or-Lesson choice) can ask
+// the same question the same way. Caller must hold g.mu.
+func takeFromOutside(g *game.Game, player, source uuid.UUID, t TakeFromOutside) {
 	question, reveal := t.Question, t.Reveal
 	floor := 0
 	if t.Required {
@@ -54,7 +62,7 @@ func (t TakeFromOutside) Apply(ctx *Context) error {
 	}
 	// Frozen scalars only (the StackItem.Effect contract): the closure
 	// resolves against whichever *Game it is handed.
-	ctx.Game.QueueOutsidePickForEffect(game.OutsidePickPrompt{
+	g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 		Player:   player,
 		Source:   source,
 		Question: question,
@@ -76,5 +84,51 @@ func (t TakeFromOutside) Apply(ctx *Context) error {
 			return g.BringFromOutsideForEffect(player, picked[0])
 		},
 	})
-	return nil
+}
+
+// ShuffleFromOutside is "Shuffle up to N cards you own from outside the
+// game into your library" (Research, #3525): the move the other way.
+//
+// It asks the owner to choose up to Max cards from their sideboard (the
+// card database for a deck that seated none, ADR 0198), puts them on the
+// bottom of the library unrevealed, and shuffles it. The library is
+// shuffled whether or not any card was chosen or any was there to
+// choose: an effect that would shuffle a set of objects into a library
+// shuffles it even when the set is empty (CR 701.24d), and a pool that
+// is closed to a controller of the owner's turn is an empty set.
+type ShuffleFromOutside struct {
+	// Player owns the cards and the library. Zero means the resolving
+	// effect's controller.
+	Player uuid.UUID
+	// Match narrows the pool; nil offers every card.
+	Match func(game.Card) bool
+	// Max is the ceiling of the pick ("up to four").
+	Max int
+	// Question is the prompt's header, written the way the card is.
+	Question string
+}
+
+func (s ShuffleFromOutside) Apply(ctx *Context) error {
+	player := s.Player
+	if player == uuid.Nil {
+		player = ctx.Controller()
+	}
+	queued := ctx.Game.QueueOutsidePickForEffect(game.OutsidePickPrompt{
+		Player:   player,
+		Source:   ctx.Source(),
+		Question: s.Question,
+		Match:    s.Match,
+		Min:      0,
+		Max:      s.Max,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if _, err := g.PutFromOutsideIntoLibraryForEffect(player, picked); err != nil {
+				return err
+			}
+			return g.ShuffleLibraryForEffect(player)
+		},
+	})
+	if queued {
+		return nil
+	}
+	return ctx.Game.ShuffleLibraryForEffect(player)
 }
