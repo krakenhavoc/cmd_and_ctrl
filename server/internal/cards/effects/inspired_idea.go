@@ -24,15 +24,16 @@ func init() {
 		Name:             "Inspired Idea",
 		Completeness:     CompletenessFull,
 		AlternativeCosts: []game.AlternativeCost{Cleave("{3}{U}{U}", nil)},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			if ctx.PaidAltCost("cleave") {
-				return nil
-			}
-			return ctx.Game.GrantHandSizeForEffect(item.Controller, game.HandSizeModify, -3,
-				"Inspired Idea — maximum hand size reduced by three", item.SourceCardID, game.IndefiniteDuration())
-		},
+		// The hand size waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			DrawCards{N: 3},
+			Instruction(func(ctx *Context) error {
+				if ctx.PaidAltCost("cleave") {
+					return nil
+				}
+				return ctx.Game.GrantHandSizeForEffect(ctx.Controller(), game.HandSizeModify, -3,
+					"Inspired Idea — maximum hand size reduced by three", ctx.Source(), game.IndefiniteDuration())
+			}),
+		),
 	})
 }

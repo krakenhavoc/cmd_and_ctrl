@@ -37,20 +37,23 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBeginDrawStep, ByYou, "Midnight Oil — draw an additional card and remove two hour counters", func(g *game.Game, item *game.StackItem) error {
-				if err := g.DrawNForEffect(item.Controller, 1); err != nil {
-					return err
-				}
-				c, ok := g.LookupCardForEffect(item.SourceCardID)
-				if !ok || !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				n := min(2, c.Counters[midnightOilHour])
-				if n <= 0 {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: midnightOilHour, N: -n}.Apply(NewContext(g, item))
-			}),
+			// The counters come off after the draw's prompt is answered (a dredge offer;
+			// CR 608.2c, #4155).
+			On(game.EventBeginDrawStep, ByYou, "Midnight Oil — draw an additional card and remove two hour counters", Do(
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					g := ctx.Game
+					c, ok := g.LookupCardForEffect(ctx.Source())
+					if !ok || !onBattlefield(g, ctx.Source()) {
+						return nil
+					}
+					n := min(2, c.Counters[midnightOilHour])
+					if n <= 0 {
+						return nil
+					}
+					return AddCounter{Target: ctx.Source(), Kind: midnightOilHour, N: -n}.Apply(ctx)
+				}),
+			)),
 			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
 			}, "Midnight Oil — you lose 1 life", func(g *game.Game, item *game.StackItem) error {

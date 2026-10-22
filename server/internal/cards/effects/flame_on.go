@@ -23,24 +23,32 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			x := len(graveyardIDs(ctx.Game, ctx.Controller(), func(c game.Card) bool {
-				return !c.IsCreature() && !c.IsLand()
-			}))
-			if x > 0 {
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: x}).Apply(ctx); err != nil {
-					return err
+		// The flying waits for the counters' prompt (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
 				}
-			}
-			return GrantKeywordUntilEOT{
-				Target:   id,
-				Keywords: []string{"flying"},
-				Label:    "Flame On! — flying",
-			}.Apply(ctx)
-		},
+				x := len(graveyardIDs(ctx.Game, ctx.Controller(), func(c game.Card) bool {
+					return !c.IsCreature() && !c.IsLand()
+				}))
+				if x > 0 {
+					return AddCounter{Target: id, Kind: game.CounterPlusOne, N: x}.Apply(ctx)
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return GrantKeywordUntilEOT{
+					Target:   id,
+					Keywords: []string{"flying"},
+					Label:    "Flame On! — flying",
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

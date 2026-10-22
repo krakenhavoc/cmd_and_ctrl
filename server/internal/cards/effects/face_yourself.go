@@ -40,38 +40,52 @@ func init() {
 			},
 			Text: "At the beginning of the end step, if you don't control a planeswalker, sacrifice this creature.",
 		}},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			t, ok := firstLegalTarget(ctx)
-			if !ok || t.Kind != game.TargetPlayer {
+		// The sacrifice rider waits for the prompts the copies ask (a CR 616 order on each token;
+		// CR 608.2c, #4155). The event log's position before the copies is filed for it.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				t, ok := firstLegalTarget(ctx)
+				if !ok || t.Kind != game.TargetPlayer {
+					return nil
+				}
+				var originals []uuid.UUID
+				for _, c := range MatchingBattlefield(ctx, And(Creature(), ControlledBy(t.ID))) {
+					originals = append(originals, c.InstanceID)
+				}
+				ctx.RecordStep(faceYourselfRecord, nil, int(b25LastEventSeq(ctx.Game)))
+				for _, id := range originals {
+					if err := (CreateTokenCopy{Controller: ctx.Controller(), Copy: id, N: 1, Except: TokenCopyGainsHaste}).Apply(ctx); err != nil {
+						return err
+					}
+				}
 				return nil
-			}
-			var originals []uuid.UUID
-			for _, c := range MatchingBattlefield(ctx, And(Creature(), ControlledBy(t.ID))) {
-				originals = append(originals, c.InstanceID)
-			}
-			cursor := b25LastEventSeq(ctx.Game)
-			for _, id := range originals {
-				if err := (CreateTokenCopy{Controller: item.Controller, Copy: id, N: 1, Except: TokenCopyGainsHaste}).Apply(ctx); err != nil {
-					return err
+			}),
+			Instruction(func(ctx *Context) error {
+				r := ctx.StepRecord(faceYourselfRecord)
+				if len(r.Ns) == 0 {
+					return nil
 				}
-			}
-			for _, id := range b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor) {
-				if err := (GrantAbilitiesFor{
-					Target:   id,
-					Keys:     []string{faceYourselfSacrifice},
-					Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
-					Label:    "Face Yourself — the copy is sacrificed at end step without a planeswalker",
-				}).Apply(ctx); err != nil {
-					return err
+				for _, id := range b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(r.N())) {
+					if err := (GrantAbilitiesFor{
+						Target:   id,
+						Keys:     []string{faceYourselfSacrifice},
+						Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
+						Label:    "Face Yourself — the copy is sacrificed at end step without a planeswalker",
+					}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }
 
 // faceYourselfSacrifice is the key of the granted sacrifice bundle.
 const faceYourselfSacrifice = "face-yourself/sacrifice"
+
+// faceYourselfRecord files the event log's position before the copies are made.
+const faceYourselfRecord = "face-yourself/cursor"
 
 // controllerHasNoPlaneswalker is the intervening "if you don't control a
 // planeswalker", "you" being the host creature's controller.

@@ -15,6 +15,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // answered, so the draw comes before the draw step.
 //
 // No simplification.
+// glintSleeveSiphonerDrawAndLose is the draw and then the life loss: the loss
+// waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var glintSleeveSiphonerDrawAndLose = RegisterThenSteps("then-steps/glint-sleeve-siphoner-draw-and-lose",
+	DrawCards{N: 1},
+	Instruction(func(ctx *Context) error {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
+	}),
+)
+
 func init() {
 	Register(Spec{
 		OracleID:        "ea34ec71-2f3b-4119-937d-4629cbf7ac5e",
@@ -27,10 +36,7 @@ func init() {
 			AtYourUpkeep("Glint-Sleeve Siphoner — you may pay {E}{E}",
 				mayPayEnergyThen("Glint-Sleeve Siphoner", 2, "draw a card and lose 1 life",
 					func(g *game.Game, item *game.StackItem) error {
-						if err := (DrawCards{N: 1}).Apply(NewContext(g, item)); err != nil {
-							return err
-						}
-						return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
+						return glintSleeveSiphonerDrawAndLose.Run(NewContext(g, item))
 					})),
 		},
 	})

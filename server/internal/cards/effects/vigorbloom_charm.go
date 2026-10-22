@@ -32,13 +32,10 @@ func init() {
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"hexproof", "indestructible"}, Label: "Vigorbloom Charm"}.Apply(ctx)
 				}),
-			ModeDoing("You draw a card and gain 3 life.", nil,
-				func(_ *game.StackItem, ctx *Context, _ int) error {
-					if err := (DrawCards{Player: ctx.Controller(), N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: ctx.Controller(), Amount: 3}.Apply(ctx)
-				}),
+			// The life gain waits for the draw's prompt (a dredge offer; CR 608.2c, #4155).
+			ModeSteps("You draw a card and gain 3 life.", nil,
+				DrawCards{N: 1},
+				GainLife{Amount: 3}),
 			ModeDoing("Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),

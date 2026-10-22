@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Oketra's Last Mercy — Sorcery {1}{W}{W}:
 //
 //	"Your life total becomes equal to your starting life total. Lands
@@ -18,11 +16,14 @@ func init() {
 		OracleID:     "b5e0aa12-920d-4700-a287-5ca24933abb1",
 		Name:         "Oketra's Last Mercy",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := b31LifeBecomes(ctx, ctx.Controller(), startingLifeOf(ctx.Game)); err != nil {
-				return err
-			}
-			return LandsYouControlDontUntapNextStep(ctx)
-		},
+		// The lands' untap rider waits for the life change's prompt (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return b31LifeBecomes(ctx, ctx.Controller(), startingLifeOf(ctx.Game))
+			}),
+			Instruction(func(ctx *Context) error {
+				return LandsYouControlDontUntapNextStep(ctx)
+			}),
+		),
 	})
 }

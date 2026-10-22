@@ -29,22 +29,31 @@ func init() {
 		Name:         "Simulacrum",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			n := damageDealtToPlayerThisTurn(ctx.Game, ctx.Controller())
-			if n <= 0 {
-				return nil
-			}
-			if err := (GainLife{Player: ctx.Controller(), Amount: n}).Apply(ctx); err != nil {
-				return err
-			}
-			t, ok := ctx.ClauseTarget(0)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}.Apply(ctx)
-		},
+		// The damage waits for the life gain's prompt (a CR 616 order; CR 608.2c, #4155). The
+		// total is read once, as the spell begins to resolve, and filed for the second step.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				n := damageDealtToPlayerThisTurn(ctx.Game, ctx.Controller())
+				ctx.RecordStep(simulacrumRecord, nil, n)
+				return GainLife{Player: ctx.Controller(), Amount: n}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				n := ctx.StepRecord(simulacrumRecord).N()
+				if n <= 0 {
+					return nil
+				}
+				t, ok := ctx.ClauseTarget(0)
+				if !ok || t.Kind != game.TargetCard {
+					return nil
+				}
+				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: n}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// simulacrumRecord files the damage dealt to the caster this turn, read once.
+const simulacrumRecord = "simulacrum-damage"
 
 // damageDealtToPlayerThisTurn is "the damage dealt to you this turn":
 // the total of this turn's damage events naming `player`.

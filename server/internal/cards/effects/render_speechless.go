@@ -25,19 +25,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetPlayer("target opponent", Opponent()).
 			Then(TargetCreature("up to one target creature").WithCount(0, 1)),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			t, ok := ctx.ClauseTarget(1)
-			if !ok || t.Kind != game.TargetCard {
-				return nil
-			}
-			return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-		},
+		// The counters wait for the choice from the revealed hand (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(chooseNonlandFromTargetedHand),
+			Instruction(func(ctx *Context) error {
+				t, ok := ctx.ClauseTarget(1)
+				if !ok || t.Kind != game.TargetCard {
+					return nil
+				}
+				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+			}),
+		),
 	})
 }

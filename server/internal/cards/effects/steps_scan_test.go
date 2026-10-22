@@ -710,6 +710,19 @@ var stepsConverted = setOf(
 	"Aggressive Negotiations", "Ingris Stingerquill", "Draconic Intervention", "Zygon Infiltrator",
 	"Kimoyo Beads", "Bushmeat Poacher", "Lieutenants of the Guard", "Aerid Konstrari",
 	"Pyrrhic Blast", "Torch the Tower", "Eyes in the Skies",
+	// Batch 6.
+	"Midnight Oil", "Necromancer's Stockpile", "Agonizing Remorse", "Way of the Paradox",
+	"Simulacrum", "Curse of the Werefox", "Oketra's Last Mercy", "Flame On!",
+	"Thought Erasure", "Humiliate", "Vigorbloom Charm", "Glint-Sleeve Siphoner",
+	"Ego Drain", "Orchard Elemental", "Favored Hoplite", "Ebony Charm",
+	"Narset's Rebuke", "Repulsor Blast", "Sorin, Vampire Lord", "Way of the Healer",
+	"Toll of the Invasion", "Stubborn Burrowfiend", "Vraska's Final Mercy", "The Crowd Goes Wild",
+	"Sphinx's Approach", "Harsh Scrutiny", "Eyes of Gitaxias",
+	"Render Speechless", "Live Fast", "Face Yourself", "Lightning Storm",
+	"Splitting the Powerstone", "Gix's Caress", "Hungering Puppetbeast", "Scion of Vitu-Ghazi",
+	"Eliminate the Impossible", "Konstrari Charm", "Rise of the Deathbringer", "Cease",
+	"Angelic Favor", "Hired Hexblade", "Proft, Consulting Detective", "Zealot il-Vec",
+	"Inspired Idea", "Horncaller's Chant", "Primal Witchstalker",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -784,6 +797,12 @@ var stepsSkipped = map[string]string{
 	"Cecily, Haunted Mage":      "carried: the follow-up is a registered DrawThen (an on-disk identity) that has no stack item to run steps from",
 	"The Ur-Sphinx":             "carried: the cards each player milled are held in a Go slice across the chain of mills and offers",
 	"Earth's Mightiest Heroes":  "no prompt: a reveal asks nothing, and the cards it names are the put's input",
+	// Batch 6.
+	"Surreal Memoir":        "no prompt: the card is picked at random",
+	"Burn the Accursed":     "one batch: the damage to the creature and to its controller are one instance (the exile rider after it is a step)",
+	"Devour Intellect":      "exclusive arms: the choice from the revealed hand, or the discard",
+	"Demonlord of Ashmouth": "exclusive arms: the sacrifice, or the exile",
+	"Earthen Arms":          "exclusive arms: with no target awaken at once, else the counters' Then awakens",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

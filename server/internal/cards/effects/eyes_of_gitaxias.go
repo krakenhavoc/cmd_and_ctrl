@@ -17,11 +17,10 @@ func init() {
 		Name:         "Eyes of Gitaxias",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (Incubate{N: 3}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		// The draw waits for a prompt the Incubator token asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Incubate{N: 3},
+			DrawCards{N: 1},
+		),
 	})
 }

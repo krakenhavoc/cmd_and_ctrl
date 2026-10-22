@@ -207,7 +207,7 @@ func TestBrainbiteDrawsWithNothingToTake(t *testing.T) {
 	}
 }
 
-// Harsh Scrutiny's scry is queued behind the pick, so it is answered
+// Harsh Scrutiny's scry waits for the pick, so it is answered
 // after the discard, as printed; with no creature card it still
 // happens (the 2016-09-20 ruling).
 func TestHarshScrutinyScriesAfterThePick(t *testing.T) {
@@ -232,7 +232,7 @@ func TestHarshScrutinyScriesAfterThePick(t *testing.T) {
 	}
 }
 
-// Thought Erasure's surveil is queued behind the pick.
+// Thought Erasure's surveil waits for the pick.
 func TestThoughtErasureSurveilsAfterThePick(t *testing.T) {
 	g := newCatalogGame(t)
 	caster, victim := g.Seats[0], g.Seats[1]
@@ -352,28 +352,19 @@ func poolAHasChoice(g *game.Game, chooser uuid.UUID, kind game.PendingChoiceKind
 }
 
 // poolAPickThen checks the pick is open and a `then` prompt for the
-// caster is queued after it, then answers the pick and checks the
-// `then` prompt is still waiting.
+// caster is not, then answers the pick and checks the `then` prompt
+// opens: the later instruction waits for the answer (CR 608.2c, #4155).
 func poolAPickThen(t *testing.T, g *game.Game, caster uuid.UUID, then game.PendingChoiceKind) {
 	t.Helper()
 	pick := openPick(t, g)
-	pickAt, thenAt := -1, -1
-	for i, c := range g.PendingChoices {
-		switch {
-		case c == nil:
-		case c.ID == pick.ID:
-			pickAt = i
-		case c.Kind == then && c.Chooser == caster:
-			thenAt = i
-		}
-	}
-	if thenAt < 0 || thenAt < pickAt {
-		t.Fatalf("%s prompt at %d, pick at %d: want it queued after the pick", then, thenAt, pickAt)
+	if poolAHasChoice(g, caster, then) {
+		t.Fatalf("the %s prompt is open with the pick: it ran before the answer", then)
 	}
 	if err := g.ResolvePendingChoice(pick.ID, caster, pick.DiscardOptions[:1]); err != nil {
 		t.Fatalf("answering the pick: %v", err)
 	}
+	g.SettleResolution()
 	if !poolAHasChoice(g, caster, then) {
-		t.Errorf("the %s prompt went away with the pick", then)
+		t.Errorf("the %s prompt did not open after the pick", then)
 	}
 }

@@ -49,19 +49,26 @@ func init() {
 		Name:         "Curse of the Werefox",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			if err := (CreateRoleToken{Role: RoleMonster, Host: id}).Apply(ctx); err != nil {
-				return err
-			}
-			return ReflexiveTrigger{
-				Label: "Curse of the Werefox — that creature fights up to one target creature you don't control",
-				Cards: []uuid.UUID{id},
-				Body:  curseOfTheWerefoxFightBody,
-			}.Apply(ctx)
-		},
+		// The fight trigger waits for the Role token's prompt (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return CreateRoleToken{Role: RoleMonster, Host: id}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				return ReflexiveTrigger{
+					Label: "Curse of the Werefox — that creature fights up to one target creature you don't control",
+					Cards: []uuid.UUID{id},
+					Body:  curseOfTheWerefoxFightBody,
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

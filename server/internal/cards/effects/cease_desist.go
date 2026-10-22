@@ -24,6 +24,25 @@ import (
 // whoever's graveyard was hit.
 //
 // No simplification.
+// ceaseGainAndDraw is "that player gains 2 life and draws a card": the draw
+// waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+var ceaseGainAndDraw = RegisterThenSteps("then-steps/cease-gain-and-draw",
+	Instruction(func(ctx *Context) error {
+		p, ok := ctx.ClauseTarget(1)
+		if !ok || p.Kind != game.TargetPlayer {
+			return nil
+		}
+		return GainLife{Player: p.ID, Amount: 2}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		p, ok := ctx.ClauseTarget(1)
+		if !ok || p.Kind != game.TargetPlayer {
+			return nil
+		}
+		return DrawCards{Player: p.ID, N: 1}.Apply(ctx)
+	}),
+)
+
 func init() {
 	Register(Spec{
 		OracleID:     "ba4d644f-1931-4fc4-aed5-681a476a5a58",
@@ -40,14 +59,7 @@ func init() {
 		// pauses it on its owner's CR 903.9 choice (CR 608.2c: in order).
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return exileTargetCardsThen(ctx, func(ctx *Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
-				p, ok := ctx.ClauseTarget(1)
-				if !ok || p.Kind != game.TargetPlayer {
-					return nil
-				}
-				if err := (GainLife{Player: p.ID, Amount: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: p.ID, N: 1}.Apply(ctx)
+				return ceaseGainAndDraw.Run(ctx)
 			})
 		},
 	})

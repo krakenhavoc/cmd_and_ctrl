@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Orchard Elemental — Creature — Elemental {5}{G}, 2/2:
 //
@@ -36,9 +40,25 @@ func init() {
 	})
 }
 
+// orchardElementalRecord is the creature voted for and both tallies.
+const orchardElementalRecord = "orchard-elemental/votes"
+
 var orchardElementalVoted = VoteResultThen("vote/orchard-elemental", func(ctx *Context, r game.VoteResult) error {
-	if err := countersOnVotedCreature(ctx, r, 2*r.Votes(0)); err != nil {
-		return err
-	}
-	return GainLife{Amount: 3 * r.Votes(1)}.Apply(ctx)
+	recordVotedCreature(ctx, orchardElementalRecord, r)
+	return orchardElementalSteps.Run(ctx)
 })
+
+// orchardElementalSteps is the counters and then the life: the life waits for a
+// prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+var orchardElementalSteps = RegisterThenSteps("then-steps/orchard-elemental-votes",
+	Instruction(func(ctx *Context) error {
+		r := ctx.StepRecord(orchardElementalRecord)
+		if len(r.IDs) == 0 || len(r.Ns) < 2 || r.IDs[0] == uuid.Nil || r.Ns[0] <= 0 {
+			return nil
+		}
+		return AddCounter{Target: r.IDs[0], Kind: "+1/+1", N: 2 * r.Ns[0]}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return GainLife{Amount: 3 * recordedTally(ctx, orchardElementalRecord, 1)}.Apply(ctx)
+	}),
+)

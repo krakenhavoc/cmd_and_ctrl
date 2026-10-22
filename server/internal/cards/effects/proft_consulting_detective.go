@@ -16,6 +16,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // object on the battlefield; the draw happens regardless.
 //
 // No simplification.
+// proftConsultingDetectivePaid is the counter and then the draw: the draw
+// waits for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+var proftConsultingDetectivePaid = RegisterThenSteps("then-steps/proft-consulting-detective-paid",
+	Instruction(func(ctx *Context) error {
+		if !b09SourceStillOnBattlefield(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+	}),
+	DrawCards{N: 1},
+)
+
 func init() {
 	const label = "Proft, Consulting Detective — you may pay {2} for a +1/+1 counter and a card"
 	Register(Spec{
@@ -30,14 +42,7 @@ func init() {
 						Chooser:  ctx.Controller(),
 						Cost:     "{2}",
 						Question: "Proft, Consulting Detective — pay {2} to put a +1/+1 counter on Proft and draw a card?",
-						OnPay: func(c *Context) error {
-							if b09SourceStillOnBattlefield(c.Game, c.Item) {
-								if err := (AddCounter{Target: c.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(c); err != nil {
-									return err
-								}
-							}
-							return DrawCards{Player: c.Controller(), N: 1}.Apply(c)
-						},
+						OnPay:    proftConsultingDetectivePaid.Run,
 					}.Apply(ctx)
 				}),
 		},

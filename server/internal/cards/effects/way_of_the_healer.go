@@ -29,17 +29,14 @@ func init() {
 				Label:   "−2: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Surveil 1.",
 				Cost:    LoyaltyCost(-2),
 				Purpose: game.Purpose{Tokens: 1},
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("2/2 colorless Wizard Soldier named Cadet"),
-						N:          1,
-					}).Apply(ctx); err != nil {
-						return err
-					}
-					return Surveil{Player: item.Controller, N: 1}.Apply(ctx)
-				},
+				// The surveil waits for a prompt the token asks (a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					CreateToken{
+						Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"),
+						N:        1,
+					},
+					Surveil{N: 1},
+				),
 			}},
 			Text: "[−2]: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Surveil 1.",
 		}},

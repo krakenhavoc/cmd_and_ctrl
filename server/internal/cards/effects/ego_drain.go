@@ -30,19 +30,16 @@ func init() {
 		Name:         "Ego Drain",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			if ControlsA(ctx.TextSubtype("Faerie"))(ctx.Game, item.Controller) {
-				return nil
-			}
-			return egoDrainExile(ctx.Game, item)
-		},
+		// The exile from your hand waits for the choice from the revealed hand (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(chooseNonlandFromTargetedHand),
+			Instruction(func(ctx *Context) error {
+				if ControlsA(ctx.TextSubtype("Faerie"))(ctx.Game, ctx.Controller()) {
+					return nil
+				}
+				return egoDrainExile(ctx.Game, ctx.Item)
+			}),
+		),
 	})
 }
 
