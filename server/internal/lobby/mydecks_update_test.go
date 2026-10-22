@@ -700,8 +700,10 @@ func (s *deckStack) requestSaved(t *testing.T, tok, deckID string) deckRequestRe
 // An update that adds one missing card to a deck whose missing cards were
 // already requested extends that request with only the new card.
 func TestUpdateRequestExtendsTheOpenIssueWithOnlyTheNewCards(t *testing.T) {
+	// A long id, so a random UUID in the comment cannot contain it by chance.
+	const requesterID = "730041873200418732"
 	s := newUpdateStack(t, nil)
-	tok, _ := s.person(t, "111", "Alice")
+	tok, _ := s.person(t, requesterID, "Alice")
 	id := s.saveNeedy(t, tok)
 	first := s.requestSaved(t, tok, id)
 	if first.Status != deckRequestFiled || first.IssueNumber != 1 {
@@ -731,7 +733,7 @@ func TestUpdateRequestExtendsTheOpenIssueWithOnlyTheNewCards(t *testing.T) {
 	if !strings.Contains(c, secondEngine) || strings.Contains(c, s.tc.Manual) || strings.Contains(c, s.tc.Unreviewed) {
 		t.Errorf("the comment should list only the new card:\n%s", c)
 	}
-	if strings.Contains(c, "111") {
+	if strings.Contains(c, requesterID) {
 		t.Errorf("the comment names the requester's id:\n%s", c)
 	}
 
