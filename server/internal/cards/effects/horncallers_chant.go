@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Horncaller's Chant — Sorcery {7}{G}:
 //
 //	"Create a 4/4 green Rhino creature token with trample, then
@@ -18,11 +16,10 @@ func init() {
 		OracleID:     "8c069834-ed89-4298-989b-e67036d56196",
 		Name:         "Horncaller's Chant",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{Template: TokenCard("4/4 green Rhino with trample"), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return Populate{}.Apply(ctx)
-		},
+		// Populate waits for a prompt the token asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			CreateToken{Template: TokenCard("4/4 green Rhino with trample"), N: 1},
+			Populate{},
+		),
 	})
 }

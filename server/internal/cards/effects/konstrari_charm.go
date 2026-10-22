@@ -22,37 +22,40 @@ func init() {
 		Name:         "Konstrari Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Konstrari Charm deals 6 damage to target creature with flying.",
-				TargetCreature("target creature with flying", HasKeyword("flying"))),
-			Mode("Put two +1/+1 counters on target creature. It gains trample until end of turn.",
-				TargetCreature("target creature")),
-			Mode("Add {C}{C}{C}."),
+			ModeDoing("Konstrari Charm deals 6 damage to target creature with flying.",
+				TargetCreature("target creature with flying", HasKeyword("flying")),
+				func(_ *game.StackItem, ctx *Context, occ int) error {
+					t, ok := ModeTarget(ctx, occ)
+					if !ok {
+						return nil
+					}
+					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 6}.Apply(ctx)
+				}),
+			// The trample waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+			ModeSteps("Put two +1/+1 counters on target creature. It gains trample until end of turn.",
+				TargetCreature("target creature"),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetCard {
+						return nil
+					}
+					return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetCard {
+						return nil
+					}
+					return GrantKeywordUntilEOT{
+						Target:   t.ID,
+						Keywords: []string{"trample"},
+						Label:    "Konstrari Charm — trample",
+					}.Apply(ctx)
+				})),
+			ModeDoing("Add {C}{C}{C}.", nil,
+				func(_ *game.StackItem, ctx *Context, _ int) error {
+					return AddMana{Produced: "{C}{C}{C}"}.Apply(ctx)
+				}),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			switch {
-			case ctx.HasMode(0):
-				t, ok := ModeTarget(ctx, 0)
-				if !ok {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 6}.Apply(ctx)
-			case ctx.HasMode(1):
-				t, ok := ModeTarget(ctx, 0)
-				if !ok || t.Kind != game.TargetCard {
-					return nil
-				}
-				if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				return GrantKeywordUntilEOT{
-					Target:   t.ID,
-					Keywords: []string{"trample"},
-					Label:    "Konstrari Charm — trample",
-				}.Apply(ctx)
-			case ctx.HasMode(2):
-				return AddMana{Produced: "{C}{C}{C}"}.Apply(ctx)
-			}
-			return nil
-		},
 	})
 }

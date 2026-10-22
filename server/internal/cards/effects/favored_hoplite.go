@@ -22,15 +22,18 @@ func init() {
 		Name:         "Favored Hoplite",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			heroic("Favored Hoplite — a +1/+1 counter, and prevent all damage to it this turn (heroic)", func(g *game.Game, item *game.StackItem) error {
-				if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-				return shieldThis(g, item, PreventDamageFromSource{})
-			}),
+			// The shield waits for the counter's prompt (a CR 616 order; CR 608.2c, #4155).
+			heroic("Favored Hoplite — a +1/+1 counter, and prevent all damage to it this turn (heroic)", Do(
+				Instruction(func(ctx *Context) error {
+					if sourceIsNewObject(ctx.Game, ctx.Item) || !onBattlefield(ctx.Game, ctx.Source()) {
+						return nil
+					}
+					return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					return shieldThis(ctx.Game, ctx.Item, PreventDamageFromSource{})
+				}),
+			)),
 		},
 	})
 }

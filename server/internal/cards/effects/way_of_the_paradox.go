@@ -24,13 +24,14 @@ func init() {
 			WhenThisEnters("Way of the Paradox — empower Jace 5", Do(EmpowerJace{N: 5})),
 			On(game.EventActivateAbility, frYouActivatedALoyaltyAbility,
 				"Way of the Paradox — gain 1 life and play an additional land",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := (GainLife{Player: item.Controller, Amount: 1}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-					g.GrantAdditionalLandPlayForEffect(item.Controller, 1)
-					return nil
-				}),
+				// The land drop waits for the life gain's prompt (a CR 616 order; CR 608.2c, #4155).
+				Do(
+					GainLife{Amount: 1},
+					Instruction(func(ctx *Context) error {
+						ctx.Game.GrantAdditionalLandPlayForEffect(ctx.Controller(), 1)
+						return nil
+					}),
+				)),
 		},
 	})
 }

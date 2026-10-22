@@ -27,21 +27,24 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordAssist},
 		Targets:         marchOfSwirlingMistTargets(),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
+		// The trample waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if t.Kind == game.TargetCard {
+						if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+							return err
+						}
+					}
 				}
-				if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return GrantKeywordUntilEOT{
+				return nil
+			}),
+			GrantKeywordUntilEOT{
 				Match:    crowdGoesWildCountered,
 				Keywords: []string{"trample"},
 				Label:    "The Crowd Goes Wild — trample until end of turn",
-			}.Apply(ctx)
-		},
+			},
+		),
 	})
 }
 

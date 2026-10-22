@@ -170,11 +170,17 @@ func TestAgonizingRemorseTakesFromTheGraveyard(t *testing.T) {
 	if !sameIDs(pick.DiscardOptions, []uuid.UUID{grave}) || !pick.PickFromGraveyard {
 		t.Fatalf("options = %v from graveyard %v, want the graveyard land", pick.DiscardOptions, pick.PickFromGraveyard)
 	}
-	if caster.Life != life-1 {
-		t.Errorf("caster life = %d, want %d", caster.Life, life-1)
+	// The life loss is the instruction after the pick, so it waits for the
+	// answer (CR 608.2c, #4155).
+	if caster.Life != life {
+		t.Errorf("caster life = %d with the pick open, want %d", caster.Life, life)
 	}
 	if err := g.ResolvePendingChoice(pick.ID, caster.ID, []uuid.UUID{grave}); err != nil {
 		t.Fatalf("resolve: %v", err)
+	}
+	g.SettleResolution()
+	if caster.Life != life-1 {
+		t.Errorf("caster life = %d after the pick, want %d", caster.Life, life-1)
 	}
 	if !g.Exile.Contains(grave) || victim.Graveyard.Contains(grave) {
 		t.Error("the graveyard card was not exiled")

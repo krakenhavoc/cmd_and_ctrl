@@ -18,21 +18,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	grant := func(keyword string) func(item *game.StackItem, ctx *Context, occurrence int) error {
-		return func(item *game.StackItem, ctx *Context, _ int) error {
-			self := item.SourceCardID
-			if !onBattlefield(ctx.Game, self) {
-				return nil
-			}
-			if err := (AddCounter{Target: self, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return GrantKeywordUntilEOT{
-				Target:   self,
-				Keywords: []string{keyword},
-				Label:    "Hungering Puppetbeast — " + keyword + " until end of turn",
-			}.Apply(ctx)
-		}
+	// The keyword waits for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+	grant := func(keyword string) game.ModeOption {
+		return ModeSteps("Put a +1/+1 counter on it. It gains "+keyword+" until end of turn.", nil,
+			Instruction(func(ctx *Context) error {
+				self := ctx.Source()
+				if !onBattlefield(ctx.Game, self) {
+					return nil
+				}
+				return AddCounter{Target: self, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				self := ctx.Source()
+				if !onBattlefield(ctx.Game, self) {
+					return nil
+				}
+				return GrantKeywordUntilEOT{
+					Target:   self,
+					Keywords: []string{keyword},
+					Label:    "Hungering Puppetbeast — " + keyword + " until end of turn",
+				}.Apply(ctx)
+			}))
 	}
 	Register(Spec{
 		OracleID:     "690ae865-87bd-46b2-8e65-c53bd80c1a18",
@@ -46,11 +52,7 @@ func init() {
 			Label:   "{1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerProtect | game.AnswerCombatGrant},
 			Cost:    Plus(ManaCost("{1}"), SacrificeAnotherN(1, "another artifact", Artifact())),
-			Modes: ChooseOne(
-				ModeDoing("Put a +1/+1 counter on it. It gains trample until end of turn.", nil, grant("trample")),
-				ModeDoing("Put a +1/+1 counter on it. It gains hexproof until end of turn.", nil, grant("hexproof")),
-				ModeDoing("Put a +1/+1 counter on it. It gains haste until end of turn.", nil, grant("haste")),
-			),
+			Modes:   ChooseOne(grant("trample"), grant("hexproof"), grant("haste")),
 		}},
 	})
 }

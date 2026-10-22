@@ -358,3 +358,8 @@ steps then-steps/niv-mizzet-ghost-counsel-pay-and-draw
 steps then-steps/soul-shackled-zombie-drain
 steps then-steps/travel-through-caradhras-votes
 steps then-steps/truth-or-consequences-votes
+steps then-steps/cease-gain-and-draw
+steps then-steps/glint-sleeve-siphoner-draw-and-lose
+steps then-steps/orchard-elemental-votes
+steps then-steps/proft-consulting-detective-paid
+steps then-steps/zealot-il-vec-yes

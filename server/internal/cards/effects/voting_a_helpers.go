@@ -38,16 +38,6 @@ func votedCreature(r game.VoteResult) uuid.UUID {
 	return r.Carry[0]
 }
 
-// countersOnVotedCreature is "put N +1/+1 counters on this creature"
-// as a vote's result.
-func countersOnVotedCreature(ctx *Context, r game.VoteResult, n int) error {
-	id := votedCreature(r)
-	if id == uuid.Nil || n <= 0 {
-		return nil
-	}
-	return AddCounter{Target: id, Kind: "+1/+1", N: n}.Apply(ctx)
-}
-
 // recordVotedCreature files the voted creature and both tallies of a
 // two-word vote under key, for the steps that follow it (#4155).
 func recordVotedCreature(ctx *Context, key string, r game.VoteResult) {
@@ -64,7 +54,7 @@ func recordedTally(ctx *Context, key string, i int) int {
 	return r.Ns[i]
 }
 
-// countersOnRecordedCreature is countersOnVotedCreature for the tally at
+// countersOnRecordedCreature is "put N +1/+1 counters on this creature" as a vote's result, for the tally at
 // index i of a record recordVotedCreature filed.
 func countersOnRecordedCreature(ctx *Context, key string, i int) error {
 	r := ctx.StepRecord(key)

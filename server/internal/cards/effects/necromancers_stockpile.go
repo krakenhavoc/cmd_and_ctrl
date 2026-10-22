@@ -23,20 +23,20 @@ func init() {
 			Label:   "{1}{B}, Discard a creature card: Draw a card. If the discarded card was a Zombie card, create a tapped 2/2 black Zombie creature token.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}{B}"), DiscardCardsMatching(1, "a creature card", MatchCreature)),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				card, ok := ctx.DiscardedCard()
-				// "Zombie" is a word of the source's text (CR 612.2, #3984).
-				if !ok || !card.HasSubtype(ctx.TextSubtype("Zombie")) {
-					return nil
-				}
-				tmpl := TokenCard("2/2 black Zombie")
-				tmpl.Tapped = true
-				return CreateToken{Template: tmpl, N: 1}.Apply(ctx)
-			},
+			// The token waits for the draw's prompt (a dredge offer; CR 608.2c, #4155).
+			Effect: Do(
+				DrawCards{N: 1},
+				Instruction(func(ctx *Context) error {
+					card, ok := ctx.DiscardedCard()
+					// "Zombie" is a word of the source's text (CR 612.2, #3984).
+					if !ok || !card.HasSubtype(ctx.TextSubtype("Zombie")) {
+						return nil
+					}
+					tmpl := TokenCard("2/2 black Zombie")
+					tmpl.Tapped = true
+					return CreateToken{Template: tmpl, N: 1}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

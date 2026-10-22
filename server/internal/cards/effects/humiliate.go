@@ -29,15 +29,10 @@ func init() {
 		Name:         "Humiliate",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ChoosePermanents{
+		// The counter's question waits for the choice from the revealed hand (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(chooseNonlandFromTargetedHand),
+			ChoosePermanents{
 				Question:   "Humiliate — put a +1/+1 counter on a creature you control",
 				Candidates: humiliateCreatures,
 				Then: func(ctx *Context, picked game.PromptedPicks) error {
@@ -48,8 +43,8 @@ func init() {
 					}
 					return nil
 				},
-			}.Apply(ctx)
-		},
+			},
+		),
 	})
 }
 

@@ -23,16 +23,23 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
 				return b06SelfETB(ev, source, lki, g) && b30CastFromHand(g, source.InstanceID)
-			}, "Scion of Vitu-Ghazi — a Bird, then populate", func(g *game.Game, item *game.StackItem) error {
-				if !b30CastFromHand(g, item.SourceCardID) {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				if err := (CreateToken{Template: TokenCard("1/1 white Bird with flying"), N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return Populate{}.Apply(ctx)
-			}),
+			}, "Scion of Vitu-Ghazi — a Bird, then populate",
+				// Populate waits for a prompt the token asks (a CR 616 order; CR 608.2c, #4155).
+				// Whether it was cast from hand does not change while the trigger resolves.
+				Do(
+					Instruction(func(ctx *Context) error {
+						if !b30CastFromHand(ctx.Game, ctx.Source()) {
+							return nil
+						}
+						return CreateToken{Template: TokenCard("1/1 white Bird with flying"), N: 1}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if !b30CastFromHand(ctx.Game, ctx.Source()) {
+							return nil
+						}
+						return Populate{}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

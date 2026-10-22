@@ -23,24 +23,35 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Primal Witchstalker — mill four cards", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				p := g.PlayerByIDForEffect(item.Controller)
-				if p == nil || p.Library == nil || p.Library.Size() == 0 {
-					return nil
-				}
-				if err := (MillCards{Player: item.Controller, N: 4}).Apply(ctx); err != nil {
-					return err
-				}
-				return WhenYouDo("Primal Witchstalker — return target land card from your graveyard to the battlefield tapped",
-					primalWitchstalkerLandBody).Apply(ctx)
-			}),
+			// The reflexive trigger waits for a prompt the mill asks (a CR 616 order; CR 608.2c,
+			// #4155). With an empty library nothing is milled and nothing triggers; that is read
+			// before the mill and filed for the second step.
+			WhenThisEnters("Primal Witchstalker — mill four cards", Do(
+				Instruction(func(ctx *Context) error {
+					p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
+					if p == nil || p.Library == nil || p.Library.Size() == 0 {
+						return nil
+					}
+					ctx.RecordStep(primalWitchstalkerRecord, nil, 1)
+					return MillCards{N: 4}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					if ctx.StepRecord(primalWitchstalkerRecord).N() == 0 {
+						return nil
+					}
+					return WhenYouDo("Primal Witchstalker — return target land card from your graveyard to the battlefield tapped",
+						primalWitchstalkerLandBody).Apply(ctx)
+				}),
+			)),
 		},
 	})
 }
 
 // primalWitchstalkerLandBody is the reflexive trigger: the chosen land
 // card comes back tapped under its owner's control.
+// primalWitchstalkerRecord files that the library had a card to mill.
+const primalWitchstalkerRecord = "primal-witchstalker/milled"
+
 var primalWitchstalkerLandBody = game.ReflexiveBody("primal-witchstalker/land",
 	func(g *game.Game, item *game.StackItem, _ game.EffectParams) error {
 		ctx := NewContext(g, item)

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Splitting the Powerstone — Sorcery {2}{U}:
 //
 //	"As an additional cost to cast this spell, sacrifice an artifact.
@@ -20,18 +18,18 @@ func init() {
 		Name:           "Splitting the Powerstone",
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact", Artifact()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (CreateTokenAdvanced{
-				Controller: ctx.Controller(),
-				Spec:       Token(PowerstoneToken()).EntersTapped(),
-				N:          2,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			if !sacrificedHadSupertype(ctx, "Legendary") {
-				return nil
-			}
-			return DrawCards{N: 1}.Apply(ctx)
-		},
+		// The draw waits for a prompt the tokens ask (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			CreateTokenAdvanced{
+				Spec: Token(PowerstoneToken()).EntersTapped(),
+				N:    2,
+			},
+			Instruction(func(ctx *Context) error {
+				if !sacrificedHadSupertype(ctx, "Legendary") {
+					return nil
+				}
+				return DrawCards{N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

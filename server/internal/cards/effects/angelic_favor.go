@@ -21,6 +21,9 @@ import (
 // shape); a token that has left by then is not exiled.
 //
 // No simplifications.
+// angelicFavorRecord files the event log's position before the Angel is made.
+const angelicFavorRecord = "angelic-favor/cursor"
+
 func init() {
 	Register(Spec{
 		OracleID:     "37162c6e-ac31-4386-9d1e-76aa66070b35",
@@ -33,20 +36,24 @@ func init() {
 			return game.PhaseOf(g.Turn.Step) == game.PhaseCombat
 		},
 		CastConditionLabel: "Cast this spell only during combat.",
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			cursor := b25LastEventSeq(ctx.Game)
-			if err := (CreateToken{Controller: item.Controller, Template: TokenCard("4/4 white Angel with flying"), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			tokens := b27TokensCreatedByAfter(ctx.Game, item.Controller, cursor)
-			if len(tokens) == 0 {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				Label: "Angelic Favor — exile the Angel",
-				Cards: tokens,
-				Body:  exileListedCardsBody,
-			}.Apply(ctx)
-		},
+		// The delayed exile waits for a prompt the token asks (a CR 616 order; CR 608.2c, #4155).
+		// The event log's position before the token is filed for the second step.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				ctx.RecordStep(angelicFavorRecord, nil, int(b25LastEventSeq(ctx.Game)))
+				return CreateToken{Template: TokenCard("4/4 white Angel with flying"), N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				tokens := b27TokensCreatedByAfter(ctx.Game, ctx.Controller(), uint64(ctx.StepRecord(angelicFavorRecord).N()))
+				if len(tokens) == 0 {
+					return nil
+				}
+				return ScheduleDelayedTrigger{
+					Label: "Angelic Favor — exile the Angel",
+					Cards: tokens,
+					Body:  exileListedCardsBody,
+				}.Apply(ctx)
+			}),
+		),
 	})
 }

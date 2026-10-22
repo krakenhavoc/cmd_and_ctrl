@@ -29,14 +29,12 @@ func init() {
 		OracleID:     "48b1ac27-430f-4fd9-a71b-6ad125c57fe3",
 		Name:         "Sphinx's Approach",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: ctx.Controller(), N: 2}).Apply(ctx); err != nil {
-				return err
-			}
+		// The exile offer waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(DrawCards{N: 2}, Instruction(func(ctx *Context) error {
 			var copies []uuid.UUID
 			if p := ctx.PlayerByID(ctx.Controller()); p != nil && p.Graveyard != nil {
 				for _, c := range p.Graveyard.Cards {
-					if c.Name == "Sphinx's Approach" && c.InstanceID != item.SourceCardID {
+					if c.Name == "Sphinx's Approach" && c.InstanceID != ctx.Item.SourceCardID {
 						copies = append(copies, c.InstanceID)
 					}
 				}
@@ -45,8 +43,8 @@ func init() {
 				return nil
 			}
 			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:  item.Controller,
-				Source:   item.SourceCardID,
+				Chooser:  ctx.Item.Controller,
+				Source:   ctx.Item.SourceCardID,
 				Question: "Sphinx's Approach — exile this spell and four cards named Sphinx's Approach from your graveyard (choose exactly four, or none)",
 				Cards:    copies,
 				Min:      0,
@@ -57,30 +55,30 @@ func init() {
 					if len(picked) != 4 {
 						return nil
 					}
-					c := NewContext(g, item)
+					c := NewContext(g, ctx.Item)
 					for _, id := range picked {
 						if err := (ExileTarget{Target: id}).Apply(c); err != nil {
 							return err
 						}
 					}
-					if !sourceIsNewObject(g, item) {
-						if err := g.ExileCardForEffect(item.SourceCardID); err != nil {
+					if !sourceIsNewObject(g, ctx.Item) {
+						if err := g.ExileCardForEffect(ctx.Item.SourceCardID); err != nil {
 							return err
 						}
 					}
 					return SearchLibrary{
-						Player: item.Controller,
+						Player: ctx.Item.Controller,
 						// SearchLibrary lends the spell's text (CR 612.2, #3984).
 						Predicate: func(card game.Card) bool { return card.IsCreature() && card.HasSubtypeWord("Sphinx") },
 						Dest:      game.ZoneBattlefield,
 						Limit:     1,
 						Shuffle:   true,
 						Reason:    "Sphinx's Approach — a Sphinx creature card",
-						Source:    item.SourceCardID,
+						Source:    ctx.Item.SourceCardID,
 					}.Apply(c)
 				},
 			})
 			return nil
-		},
+		})),
 	})
 }
