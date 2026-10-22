@@ -368,3 +368,8 @@ steps then-steps/arc-of-fortune-embark
 steps then-steps/cyclonus-connive-rest
 steps then-steps/pillar-tombs-of-aku-decline
 steps then-steps/the-legend-of-yangchen-draws
+body counter/plus-one-and-haste-for-the-payload
+condition etb/each-creature-you-control
+option option-pick/development-opponent-round-1
+option option-pick/development-opponent-round-2
+option option-pick/development-opponent-round-3

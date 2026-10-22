@@ -8,8 +8,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 battlefield tapped, then shuffle."
 //
 // Rampant Growth with a Lesson subtype. The subtype matters only to
-// "learn", which no card in the catalog has; the spell itself is the
-// two-mana basic fetch, and the searcher picks the basic.
+// "learn" (CR 701.48a, learn.go), which looks for it outside the game;
+// the spell itself is the two-mana basic fetch, and the searcher picks
+// the basic.
 //
 // No simplification.
 func init() {

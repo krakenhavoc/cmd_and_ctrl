@@ -578,7 +578,17 @@ A pasted list may name at most 2,000 cards in total (400 past that).
   deck's size (100 for a Commander deck); the site and the bot's
   headline "N of M cards play as printed" read it.
   `count` on a card is its copies, summed across the command zone and
-  the main deck. Sideboard rows are not bucketed.
+  the main deck. Sideboard rows are not in `cards`, `counts` or `copies`.
+- `sideboard` ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md),
+  #3525, omitempty and additive) lists the deck's sideboard, which seats
+  outside the game, bucketed like `cards` (same fields, same order) with
+  each distinct card's copies. It is the cards a wish, learn or Research
+  would bring in, so a `manual` or `unreviewed` row is one the engine
+  would not run. A lone companion kept in the sideboard is in `companion`,
+  not here. Listing is all it does: a sideboard card is not checked
+  against the commander's colour identity or the banlist (ADR 0191,
+  decision 3: that waits for game formats, #2352), and it is never a
+  reason to file a deck request.
 - `cards` is sorted by bucket in the order above, then by name.
 - `unknown` is the names the card index could not resolve; they are in
   no bucket.

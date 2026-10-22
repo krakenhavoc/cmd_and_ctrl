@@ -108,6 +108,15 @@ type Report struct {
 	// of the 100, so Copies still totals 100 for a legal deck. Absent
 	// for a deck with none. Additive (ADR 0095 §1 style).
 	Companion *Card `json:"companion,omitempty"`
+	// Sideboard is the deck's sideboard, which seats outside the game
+	// (ADR 0191), bucketed like any card but kept out of Cards, Counts
+	// and Copies: it is not one of the 100, so Copies still totals 100
+	// for a legal deck. A card here that is manual or unreviewed is one
+	// a wish, learn or Research would bring into the game without the
+	// engine knowing it. Sorted like Cards. Absent for a deck with none.
+	// The companion is not in it (it has its own field above). Additive
+	// (ADR 0095 §1 style).
+	Sideboard []Card `json:"sideboard,omitempty"`
 }
 
 // AsPrinted is how many distinct cards play exactly as printed
@@ -170,8 +179,11 @@ var ErrNoIndex = errors.New("deckcoverage: no card index loaded")
 // Build resolves d against idx and sorts every card into its bucket.
 //
 // Sideboard rows are resolved and handed to deck.Validate (which warns
-// about them) but are not bucketed: a Commander deck has no sideboard,
-// and a builder's "considering" pile is not the deck.
+// about them) and bucketed on their own, in Report.Sideboard (ADR 0191):
+// not part of the 100, so never in Cards, Counts or Copies. Listing them
+// does not make them a reason to file a request (Needed reads the deck's
+// own counts); it lets the report say which sideboard cards the engine
+// would not run.
 func Build(idx *cards.Index, d Deck) (*Report, error) {
 	if idx == nil {
 		return nil, ErrNoIndex
@@ -302,6 +314,10 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 		r.Companion = &Card{Name: c.Name, OracleID: oracle, Count: 1, Bucket: bucket, Caveats: caveats}
 	}
 
+	// ADR 0191: the sideboard, read after the companion is settled so a
+	// lone companion kept there is not listed twice.
+	r.Sideboard = sideboardCards(list.Sideboard, verdicts)
+
 	if err := deck.Validate(list); err != nil {
 		var ve *deck.ValidationError
 		if errors.As(err, &ve) {
@@ -309,6 +325,49 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 		}
 	}
 	return r, nil
+}
+
+// sideboardCards buckets the resolved sideboard, one row per distinct
+// card with its copies, in report order (bucket, then name). Nil for an
+// empty sideboard. The sideboard is the player's outside-the-game pool
+// (ADR 0191); it is deliberately NOT checked here against the
+// commander's colour identity or the banlist (ADR 0191, decision 3 of
+// 2026-10-14: the check waits for #2352's formats), so a card is listed
+// whatever its identity.
+func sideboardCards(side []cards.Card, verdicts map[string]catalog.Entry) []Card {
+	if len(side) == 0 {
+		return nil
+	}
+	byKey := map[string]int{}
+	var out []Card
+	for _, c := range side {
+		key := c.OracleID.String()
+		if c.OracleID == uuid.Nil {
+			key = "name:" + strings.ToLower(c.Name)
+		}
+		if i, ok := byKey[key]; ok {
+			out[i].Count++
+			continue
+		}
+		bucket, caveats := bucketOf(c, false, verdicts)
+		oracle := ""
+		if c.OracleID != uuid.Nil {
+			oracle = c.OracleID.String()
+		}
+		byKey[key] = len(out)
+		out = append(out, Card{Name: c.Name, OracleID: oracle, Count: 1, Bucket: bucket, Caveats: caveats})
+	}
+	rank := make(map[Bucket]int, len(Buckets))
+	for i, b := range Buckets {
+		rank[b] = i
+	}
+	sort.SliceStable(out, func(a, b int) bool {
+		if out[a].Bucket != out[b].Bucket {
+			return rank[out[a].Bucket] < rank[out[b].Bucket]
+		}
+		return strings.ToLower(out[a].Name) < strings.ToLower(out[b].Name)
+	})
+	return out
 }
 
 // bucketOf decides one card's bucket. The order matters only for a

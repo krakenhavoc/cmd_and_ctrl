@@ -231,3 +231,24 @@ The server, the wire, the snapshot and the bot are untouched: `sideboard` and `s
 - The rail shows only library, graveyard and exile again, and the "outside the game" caption that overflowed it (#3832) has nothing left to caption.
 - A player can check a sideboard before the game (the lobby and the Decks page) and during it (the tab) without it being drawn on the table.
 - No server tests change. The client tests pin each of the above in `sideboard.render.test.ts` (no pile, the tab, its cards and cast buttons, who sees it), `outsidePlay.render.test.ts` (the dock chips), `playerTables.render.test.ts` (the lobby list), `deckSideboard.test.ts` (the Decks page) and `tests-e2e/tests/outside-game-3833.spec.ts`.
+
+## Amendment (2026-10-22, #3525): learn, Research, and the checker lists the sideboard
+
+### Context
+
+The last of #3525: the learn cards, Research // Development, and the deck-side gaps the issue listed ("`deckcoverage.Report` does not list the sideboard's cards" and "seating does not check a sideboard card against the commander's colour identity or the banlist").
+
+### Decision
+
+1. **Learn is CR 701.48a and uses the pool this ADR built.** `effects.Learn` asks "you may discard a card" (a floor of zero; an empty hand is asked nothing). A player who discarded draws a card; one who did not is asked for a Lesson card they own from outside the game, as a `TakeFromOutside` with a reveal, over the sideboard or, for a deck that seated none, the card database (ADR 0198). Lessons are found by their spell type (CR 205.3k). The order is the rule's: the discard comes first, and a player who discards is not offered the Lesson.
+2. **Research moves cards the other way.** `effects.ShuffleFromOutside` asks for up to four cards and puts them on the bottom of the library, unrevealed, through `game.PutFromOutsideIntoLibraryForEffect`, the second door out of the container beside `BringFromOutsideForEffect` (CR 400.11c: an effect that brings cards in). It then shuffles, and shuffles even when nothing was chosen or the pool was closed (CR 701.24d).
+3. **Judgement call 3 stands, and is followed.** A sideboard card is still not checked against the commander's colour identity or the banlist: `deck.Validate` reads the commanders and the mainboard only, and seating does not look at the sideboard's identity. The check waits for #2352's formats, which will know which format a deck is for. The issue's third bullet asked for it; this ADR decided against, so it is not built.
+4. **The checker lists it.** `deckcoverage.Report.Sideboard` (omitempty, additive) is the deck's sideboard bucketed like any card, one row per distinct card with its copies, and kept out of `Cards`, `Counts` and `Copies` so a legal deck still totals 100. A lone companion kept in the sideboard stays in `Companion`. The decks page shows one line for it (`sideboardNote`). Listing a sideboard card does not make it a reason to file a deck request: `Needed()` reads the deck's own counts.
+
+### Not changed
+
+The snapshot, the wire protocol and the bot are untouched. A table with a learn question open is not a restore point, as with every prompt that carries a continuation closure; the last restore point before the cast is.
+
+### Consequences
+
+- Retriever Phoenix is still out: its "if you would learn, you may instead return this card to the battlefield" needs learn to be a replaceable action, as dredge needs a draw to be one.

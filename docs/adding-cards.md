@@ -10764,10 +10764,38 @@ that is weaker than printed. A card file never declares the container in
 copy's sideboard. Tests: `castFromOutside` in `play_from_outside_test.go`,
 `resolveWish` / `nameWished` in `wish_test.go`.
 
-What is still missing: Research // Development (shuffling cards in from outside
-the game) and learn. Cunning, Glittering, Golden and Death Wish and Fae of
-Wishes // Granted are the same `TakeFromOutside` with their own clause (#3525);
-Coax from the Blind Eternities and Karn, the Great Creator shipped with ADR 0198.
+Cunning, Glittering, Golden and Death Wish and Fae of Wishes // Granted are the
+same `TakeFromOutside` with their own clause (#3525); Coax from the Blind
+Eternities and Karn, the Great Creator shipped with ADR 0198.
+
+**Shuffling cards in from outside the game** (Research, #3525) is
+`ShuffleFromOutside{Max: 4, Question: "…"}` in `effects/outside_game.go`: a pick
+of up to `Max` cards, which `game.PutFromOutsideIntoLibraryForEffect` puts in the
+library unrevealed (the second door out of the container, beside
+`BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
+nothing was chosen or there was nothing to choose from (CR 701.24d).
+
+**Learn** (CR 701.48a, #3525) is `Learn{}` in `effects/learn.go`, the last
+instruction of every printing:
+
+```go
+OnResolve: ResolveSteps(GainLife{Amount: 4}, Learn{})                  // Cram Session
+Triggered: []game.TriggeredAbility{WhenThisEnters("… — learn", Do(Learn{}))} // Gnarled Professor
+Effect:    Do(Learn{})                                                  // Overgrown Arch's {2}, sacrifice
+```
+
+It asks "you may discard a card" (a floor of zero, so an empty hand is asked
+nothing), draws for a player who did, and for one who did not asks a
+`TakeFromOutside` for a Lesson (`c.HasSubtype("Lesson")`, revealed), over the
+sideboard or, for a deck with none, the card database. Write the spell's earlier
+clauses as steps (`ResolveSteps`) so learn waits for an answer one of them
+asked. `OnTheTargetCard(func(ctx, id) error)` is the step for "do X to the
+target, then learn". A table with a learn question open is not a restore point
+(the discard prompt carries a continuation, so `Restorable()` is false until it
+is answered); the last restore point before the cast is. Retriever Phoenix's
+"if you would learn, you may instead return this card to the battlefield" needs
+learn to be a replaceable action (it is not one yet, like dredge for a draw), so
+the card is not in the catalog.
 
 ### Renown (CR 702.112, #2049)
 
