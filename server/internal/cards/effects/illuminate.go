@@ -1,6 +1,6 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import "github.com/google/uuid"
 
 // Illuminate — Sorcery {X}{R}:
 //
@@ -27,28 +27,38 @@ func init() {
 		XMatters:      true,
 		OptionalCosts: Kickers("{2}{R}", "{3}{U}"),
 		Targets:       TargetCreature("target creature"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := ctx.X()
-			creature, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			target, ok := ctx.Game.LookupCardForEffect(creature)
-			if !ok {
-				return nil
-			}
-			if err := (DealDamage{Source: item.SourceCardID, Target: creature, Amount: x}).Apply(ctx); err != nil {
-				return err
-			}
-			if ctx.KickedWith("{2}{R}") {
-				if err := (DealDamage{Source: item.SourceCardID, Target: target.Controller, Amount: x}).Apply(ctx); err != nil {
-					return err
+		// Each kicker's effect waits for a prompt the damage before it asks (a CR 616 order;
+		// CR 608.2c, #4155). The creature's controller is read before the damage and filed
+		// for the player damage behind it.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				creature, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
 				}
-			}
-			if ctx.KickedWith("{3}{U}") {
-				return DrawCards{N: x}.Apply(ctx)
-			}
-			return nil
-		},
+				target, ok := ctx.Game.LookupCardForEffect(creature)
+				if !ok {
+					return nil
+				}
+				ctx.RecordStep(illuminateRecord, []uuid.UUID{target.Controller})
+				return DealDamage{Source: ctx.Item.SourceCardID, Target: creature, Amount: ctx.X()}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				ids := ctx.StepRecord(illuminateRecord).IDs
+				if len(ids) == 0 || !ctx.KickedWith("{2}{R}") {
+					return nil
+				}
+				return DealDamage{Source: ctx.Item.SourceCardID, Target: ids[0], Amount: ctx.X()}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if len(ctx.StepRecord(illuminateRecord).IDs) == 0 || !ctx.KickedWith("{3}{U}") {
+					return nil
+				}
+				return DrawCards{N: ctx.X()}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// illuminateRecord files the controller of the creature the damage was dealt to.
+const illuminateRecord = "illuminate/controller"

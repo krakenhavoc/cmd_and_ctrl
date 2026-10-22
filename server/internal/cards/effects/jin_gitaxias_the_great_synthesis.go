@@ -83,25 +83,28 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("The Great Synthesis", 1, "draw cards equal to the number of cards in your hand"),
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					n := 0
-					if p := g.PlayerByIDForEffect(item.Controller); p != nil && p.Hand != nil {
-						n = p.Hand.Size()
-					}
-					if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-						return err
-					}
-					// "for as long as you control this Saga": with no
-					// duration (the Saga gone, or a new object) the effect
-					// never begins (CR 611.2b).
-					d, ok := DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)
-					if !ok {
-						return nil
-					}
-					return g.GrantHandSizeForEffect(item.Controller, game.HandSizeNoMaximum, 0,
-						"The Great Synthesis — no maximum hand size", item.SourceCardID, d)
-				}),
+				// The hand size waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+				Do(
+					Instruction(func(ctx *Context) error {
+						n := 0
+						if p := ctx.Game.PlayerByIDForEffect(ctx.Item.Controller); p != nil && p.Hand != nil {
+							n = p.Hand.Size()
+						}
+						return DrawCards{Player: ctx.Item.Controller, N: n}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						// "for as long as you control this Saga": with no
+						// duration (the Saga gone, or a new object) the effect
+						// never begins (CR 611.2b).
+						d, ok := DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)
+						if !ok {
+							return nil
+						}
+						return ctx.Game.GrantHandSizeForEffect(item.Controller, game.HandSizeNoMaximum, 0,
+							"The Great Synthesis — no maximum hand size", item.SourceCardID, d)
+					}),
+				)),
 			TriggerWithPurpose(ChapterTrigger(2, SagaChapterLabel("The Great Synthesis", 2, "return all non-Phyrexian creatures to their owners' hands"),
 				func(g *game.Game, item *game.StackItem) error {
 					return BounceAllMatching{Match: And(Creature(), Not(OfCreatureType("Phyrexian")))}.Apply(NewContext(g, item))

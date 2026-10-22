@@ -20,11 +20,12 @@ func init() {
 		Name:         "Meditate",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 4, SkipsTurns: 1},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: ctx.Controller(), N: 4}).Apply(ctx); err != nil {
-				return err
-			}
-			return SkipYourNextTurns{}.Apply(ctx)
-		},
+		// The skip waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Controller(), N: 4}.Apply(ctx)
+			}),
+			SkipYourNextTurns{},
+		),
 	})
 }

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // No Admittance — Sorcery {1}{R} (Reality Fracture):
 //
 //	"No Admittance deals 3 damage to any target.
@@ -22,13 +20,15 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageToTarget(0, 3)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if len(item.Targets) > 0 {
-				if err := (DealDamage{Source: ctx.Source(), Target: item.Targets[0].ID, Amount: 3}).Apply(ctx); err != nil {
-					return err
+		// Empower Jace waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if len(ctx.Item.Targets) == 0 {
+					return nil
 				}
-			}
-			return EmpowerJace{N: 1}.Apply(ctx)
-		},
+				return DealDamage{Source: ctx.Source(), Target: ctx.Item.Targets[0].ID, Amount: 3}.Apply(ctx)
+			}),
+			EmpowerJace{N: 1},
+		),
 	})
 }

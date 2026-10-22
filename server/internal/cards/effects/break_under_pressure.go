@@ -20,14 +20,18 @@ func init() {
 		Name:         "Break Under Pressure",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if t, ok := firstLegalTarget(ctx); ok && t.Kind == game.TargetPlayer {
-				ctx.Game.PlayerSacrificesForEffect(ctx.Source(), t.ID,
-					sacrificeSpec("a creature or planeswalker with the greatest mana value",
-						b10GreatestManaValueCreatureOrPlaneswalkerYouControl()),
-					"Break Under Pressure — sacrifice a creature or planeswalker with the greatest mana value")
-			}
-			return GainLife{Amount: 2}.Apply(ctx)
-		},
+		// The life waits for the sacrifice the opponent is asked about (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if t, ok := firstLegalTarget(ctx); ok && t.Kind == game.TargetPlayer {
+					ctx.Game.PlayerSacrificesForEffect(ctx.Source(), t.ID,
+						sacrificeSpec("a creature or planeswalker with the greatest mana value",
+							b10GreatestManaValueCreatureOrPlaneswalkerYouControl()),
+						"Break Under Pressure — sacrifice a creature or planeswalker with the greatest mana value")
+				}
+				return nil
+			}),
+			GainLife{Amount: 2},
+		),
 	})
 }

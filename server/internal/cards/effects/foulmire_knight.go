@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Foulmire Knight // Profane Insight — the catalog's first ADVENTURE
 // card (CR 715), oracle 10c0f814…:
 //
@@ -68,14 +66,17 @@ func init() {
 		OracleID:     foulmireKnightOracleID + "#1",
 		Name:         "Profane Insight",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			// "you lose 1 life" — life LOSS, not damage (CR 119.3),
-			// so it is a life change rather than a DealDamage and no
-			// prevention or redirection sees it.
-			return ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-		},
+		// The life loss waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return DrawCards{Player: ctx.Item.Controller, N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				// "you lose 1 life" — life LOSS, not damage (CR 119.3),
+				// so it is a life change rather than a DealDamage and no
+				// prevention or redirection sees it.
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Item.SourceCardID, ctx.Item.Controller, -1)
+			}),
+		),
 	})
 }

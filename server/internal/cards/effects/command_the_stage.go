@@ -31,24 +31,31 @@ func init() {
 		Name:         "Command the Stage",
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{commandTheStageReturn()},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			me := ctx.Controller()
-			made, err := ctx.Game.CreateTokensForEffect(me, ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
-			if err != nil {
+		// The counters wait for a prompt the Cadet's creation asks (a CR 616 order; CR 608.2c,
+		// #4155) and skip the token it made, read from the event log after the cursor the
+		// first step filed.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				ctx.RecordStep(commandTheStageRecord, nil, int(b25LastEventSeq(ctx.Game)))
+				_, err := ctx.Game.CreateTokensForEffect(ctx.Controller(), ctx.TextToken(TokenCard("2/2 colorless Wizard Soldier named Cadet")), 1, game.TokenEntryOptions{})
 				return err
-			}
-			// "Wizard" is a word of the spell's text (CR 612.2, #3984).
-			wizard := ctx.TextSubtype("Wizard")
-			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if c.Controller != me || !IsToken(c) || !c.HasSubtype(wizard) || slices.Contains(made, c.InstanceID) {
-					continue
+			}),
+			Instruction(func(ctx *Context) error {
+				me := ctx.Controller()
+				made := b27TokensCreatedByAfter(ctx.Game, me, uint64(ctx.StepRecord(commandTheStageRecord).N()))
+				// "Wizard" is a word of the spell's text (CR 612.2, #3984).
+				wizard := ctx.TextSubtype("Wizard")
+				for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+					if c.Controller != me || !IsToken(c) || !c.HasSubtype(wizard) || slices.Contains(made, c.InstanceID) {
+						continue
+					}
+					if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
+						return err
+					}
 				}
-				if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx.asGroupMember()); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+				return nil
+			}),
+		),
 	})
 }
 
@@ -70,3 +77,6 @@ func commandTheStageReturn() game.TriggeredAbility {
 	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
 	return t
 }
+
+// commandTheStageRecord is the last event logged before the Cadet was made.
+const commandTheStageRecord = "command-the-stage/before-cadet"

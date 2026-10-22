@@ -14,17 +14,18 @@ func init() {
 		OracleID:     "b9d186f5-1c92-4539-a5b5-e7fbd4b726fe",
 		Name:         "Living Wish",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (TakeFromOutside{
+		// The exile waits for the question the take asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			TakeFromOutside{
 				Match:    func(c game.Card) bool { return c.IsCreature() || c.IsLand() },
 				Question: "Living Wish — reveal a creature or land card you own from outside the game, or none",
 				Reveal:   true,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			// "Exile Living Wish." The spell moves itself, so the resolution
-			// frame does not put it into the graveyard afterwards (#489).
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+			},
+			Instruction(func(ctx *Context) error {
+				// "Exile Living Wish." The spell moves itself, so the resolution
+				// frame does not put it into the graveyard afterwards (#489).
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }

@@ -206,17 +206,11 @@ func frLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
 	return false
 }
 
-// frDealDamageWithExcess deals `amount` damage from the resolving
-// source to a creature or planeswalker and returns the EXCESS (CR
-// 120.4a): what landed beyond the lethal amount. Lethal is the toughness
-// less damage already marked for a creature, the loyalty for a
-// planeswalker, and the larger of the two for something that is both.
-// Read after the damage lands, so prevention lowers the excess too.
-func frDealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, error) {
-	c, ok := ctx.Game.LookupCardForEffect(target)
-	if !ok || amount <= 0 {
-		return 0, nil
-	}
+// frLethalDamage is the damage that would be lethal to a creature or
+// planeswalker as it stands: the toughness less damage already marked for a
+// creature, the loyalty for a planeswalker, and the larger of the two for
+// something that is both (CR 120.4a).
+func frLethalDamage(c game.Card) int {
 	lethal := 0
 	if c.IsCreature() {
 		lethal = c.CurrentToughness() - c.DamageMarked
@@ -227,15 +221,7 @@ func frDealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, er
 	if lethal < 0 {
 		lethal = 0
 	}
-	cursor := b25LastEventSeq(ctx.Game)
-	if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: amount}).Apply(ctx); err != nil {
-		return 0, err
-	}
-	excess := b27DamageDealtToAfter(ctx.Game, ctx.Source(), target, cursor) - lethal
-	if excess < 0 {
-		excess = 0
-	}
-	return excess, nil
+	return lethal
 }
 
 // --- fra-planeswalker-a ---------------------------------------------

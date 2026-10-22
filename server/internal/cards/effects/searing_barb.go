@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Searing Barb — Sorcery {2}{R} (March of the Machine):
 //
@@ -22,30 +25,45 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
 		Purpose:      ForTargets(DamageToTarget(0, 2)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			legal := ctx.LegalTargets()
-			if len(legal) == 0 {
-				return nil
-			}
-			t := legal[0]
-			isCreature := false
-			if t.Kind == game.TargetCard {
-				if c, ok := ctx.Game.LookupCardForEffect(t.ID); ok && c.IsCreature() {
-					isCreature = true
+		// The restriction and the Incubator wait for a prompt the damage asks (a CR 616
+		// order; CR 608.2c, #4155). Whether the target was a creature is read before the
+		// damage and filed for the steps behind it.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				legal := ctx.LegalTargets()
+				if len(legal) == 0 {
+					return nil
 				}
-			}
-			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if isCreature {
-				if z := ctx.Game.FindCardZoneForEffect(t.ID); z != nil && z.Kind == game.ZoneBattlefield {
-					if err := (RestrictUntilEOT{Target: t.ID, Restrictions: game.CantBlock,
-						Label: "Searing Barb — can't block"}).Apply(ctx); err != nil {
-						return err
+				t := legal[0]
+				isCreature := 0
+				if t.Kind == game.TargetCard {
+					if c, ok := ctx.Game.LookupCardForEffect(t.ID); ok && c.IsCreature() {
+						isCreature = 1
 					}
 				}
-			}
-			return Incubate{N: 1}.Apply(ctx)
-		},
+				ctx.RecordStep(searingBarbRecord, []uuid.UUID{t.ID}, isCreature)
+				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 2}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				r := ctx.StepRecord(searingBarbRecord)
+				if len(r.IDs) == 0 || len(r.Ns) == 0 || r.Ns[0] == 0 {
+					return nil
+				}
+				if z := ctx.Game.FindCardZoneForEffect(r.IDs[0]); z != nil && z.Kind == game.ZoneBattlefield {
+					return RestrictUntilEOT{Target: r.IDs[0], Restrictions: game.CantBlock,
+						Label: "Searing Barb — can't block"}.Apply(ctx)
+				}
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if len(ctx.StepRecord(searingBarbRecord).IDs) == 0 {
+					return nil
+				}
+				return Incubate{N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }
+
+// searingBarbRecord files the target, and 1 when it was a creature, before the damage.
+const searingBarbRecord = "searing-barb/target"

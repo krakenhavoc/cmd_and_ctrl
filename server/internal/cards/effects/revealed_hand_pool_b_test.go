@@ -549,14 +549,23 @@ func TestEgoDrainExilesWithoutAFaerie(t *testing.T) {
 func TestMemoryTheftOffersTheVictimsAdventurers(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victim := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
-	revealHand(victim, rhBolt())
+	hand := revealHand(victim, rhBolt())
 	theirs := adventurerInExile(g, victim.ID)
 	adventurerInExile(g, g.Seats[2].ID)
 	g.Exile.PushTop(game.Card{InstanceID: uuid.New(), Name: "Grizzly Bears", TypeLine: "Creature — Bear", Owner: victim.ID, Controller: victim.ID})
 
 	castCatalogSpell(t, g, "Memory Theft", "Sorcery", memoryTheftOracle, []game.TargetRef{pbPlayer(victim.ID)})
 	passPriorityAroundTable(t, g)
-	openPick(t, g)
+	pick := openPick(t, g)
+	// The Adventure offer is the sentence after the discard, so it waits for the
+	// pick (CR 608.2c, #4155).
+	if pbChooseCards(g, me.ID) != nil {
+		t.Fatal("the Adventure offer is open with the pick open")
+	}
+	if err := g.ResolvePendingChoice(pick.ID, me.ID, hand); err != nil {
+		t.Fatalf("taking the Bolt: %v", err)
+	}
+	g.SettleResolution()
 	c := pbChooseCards(g, me.ID)
 	if c == nil {
 		t.Fatal("no adventurer choice")

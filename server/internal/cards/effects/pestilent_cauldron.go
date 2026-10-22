@@ -90,17 +90,22 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("up to two target creature, land, and/or planeswalker cards from your graveyard",
 			YouOwn(), Or(Creature(), Land(), Planeswalker())).WithCount(0, 2),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := returnLegalGraveyardTargetsToHand(ctx); err != nil {
-				return err
-			}
-			for _, player := range apnapPlayers(ctx.Game) {
-				if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), player, 4); err != nil {
-					return err
+		// The life and the exile wait for the prompts before them (a return's replacement
+		// offer, a CR 616 order on the life; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(returnLegalGraveyardTargetsToHand),
+			Instruction(func(ctx *Context) error {
+				for _, player := range apnapPlayers(ctx.Game) {
+					if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), player, 4); err != nil {
+						return err
+					}
 				}
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }
 

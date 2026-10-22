@@ -60,37 +60,60 @@ func init() {
 	})
 }
 
-func cyclonusConnive(g *game.Game, item *game.StackItem) error {
-	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(NewContext(g, item)); err != nil {
-		return err
-	}
-	source := item.SourceCardID
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player:   item.Controller,
-		Source:   source,
-		N:        1,
-		Question: "Cyclonus, the Saboteur — connive: discard a card",
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			if !onBattlefield(g, source) {
-				return nil
+// cyclonusConnive is the draw and then the discard: the discard waits for a
+// prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+var cyclonusConnive = Do(
+	DrawCards{N: 1},
+	Instruction(func(ctx *Context) error {
+		item := ctx.Item
+		source := item.SourceCardID
+		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player:   item.Controller,
+			Source:   source,
+			N:        1,
+			Question: "Cyclonus, the Saboteur — connive: discard a card",
+			Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
+				ctx := NewContext(g, item)
+				ctx.RecordStep(cyclonusConniveRecord, discarded)
+				return cyclonusConniveRest.Run(ctx)
+			},
+		})
+		return nil
+	}),
+)
+
+// cyclonusConniveRecord files the cards the connive discarded.
+const cyclonusConniveRecord = "cyclonus/connive-discarded"
+
+// cyclonusConniveRest is the counter and then the conversion: the conversion
+// reads the power after a prompt the counter asks (a CR 616 order; CR 608.2c,
+// #4155).
+var cyclonusConniveRest = RegisterThenSteps("then-steps/cyclonus-connive-rest",
+	Instruction(func(ctx *Context) error {
+		g, source := ctx.Game, ctx.Item.SourceCardID
+		if !onBattlefield(g, source) {
+			return nil
+		}
+		if discarded := ctx.StepRecord(cyclonusConniveRecord).IDs; len(discarded) > 0 {
+			if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() {
+				return g.AddCounterForEffect(source, game.CounterPlusOne, 1)
 			}
-			if len(discarded) > 0 {
-				if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() {
-					if err := g.AddCounterForEffect(source, game.CounterPlusOne, 1); err != nil {
-						return err
-					}
-				}
-			}
-			g.RecomputeLayersIfStaleLocked()
-			cyc, ok := g.LookupCardForEffect(source)
-			if !ok || cyc.CurrentPower() < 5 {
-				return nil
-			}
-			return ConvertThis{}.Apply(NewContext(g, item))
-		},
-	})
-	return nil
-}
+		}
+		return nil
+	}),
+	Instruction(func(ctx *Context) error {
+		g, source := ctx.Game, ctx.Item.SourceCardID
+		if !onBattlefield(g, source) {
+			return nil
+		}
+		g.RecomputeLayersIfStaleLocked()
+		cyc, ok := g.LookupCardForEffect(source)
+		if !ok || cyc.CurrentPower() < 5 {
+			return nil
+		}
+		return ConvertThis{}.Apply(ctx)
+	}),
+)
 
 func cyclonusConvertForPhase(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

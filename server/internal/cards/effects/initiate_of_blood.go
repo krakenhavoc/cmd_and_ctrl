@@ -28,6 +28,9 @@ import (
 // Goka is red and {3}{R} (CR 710.1c).
 //
 // No simplification.
+// initiateOfBloodRecord files the creature the damage was dealt to.
+const initiateOfBloodRecord = "initiate-of-blood/target"
+
 const initiateOfBloodOracleID = "5b18d2fd-bc65-49a2-b812-c217f125571d"
 
 func init() {
@@ -39,18 +42,25 @@ func init() {
 			Label:   "{T}: This creature deals 1 damage to target creature that was dealt damage this turn. When that creature dies this turn, flip this creature.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature that was dealt damage this turn", DealtDamageThisTurn()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				id, ok := b16FirstLegalTargetCard(ctx)
-				if !ok {
+			// The flip watch waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					id, ok := b16FirstLegalTargetCard(ctx)
+					if !ok {
+						return nil
+					}
+					ctx.RecordStep(initiateOfBloodRecord, []uuid.UUID{id})
+					return ctx.Game.DealDamageToCreatureForEffect(ctx.Item.SourceCardID, id, 1)
+				}),
+				Instruction(func(ctx *Context) error {
+					ids := ctx.StepRecord(initiateOfBloodRecord).IDs
+					if len(ids) == 0 {
+						return nil
+					}
+					flipWhenItDiesThisTurn(ctx, ids[0], "Initiate of Blood — flip it")
 					return nil
-				}
-				if err := g.DealDamageToCreatureForEffect(item.SourceCardID, id, 1); err != nil {
-					return err
-				}
-				flipWhenItDiesThisTurn(ctx, id, "Initiate of Blood — flip it")
-				return nil
-			},
+				}),
+			),
 		}},
 	})
 	Register(Spec{

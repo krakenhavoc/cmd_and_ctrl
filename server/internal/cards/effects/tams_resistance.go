@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Tam's Resistance — Sorcery {1}{G/U} (Reality Fracture):
 //
 //	"Put a +1/+1 counter on up to one target creature. It gains
@@ -18,16 +16,26 @@ func init() {
 		Name:         "Tam's Resistance",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("up to one target creature").WithCount(0, 1),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-					return err
+		// Vigilance and Empower Jace wait for a prompt the counter asks (a CR 616 order;
+		// CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if err := (AddCounter{Target: t.ID, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-				if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"vigilance"}, Label: "Tam's Resistance — vigilance until end of turn"}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				for _, t := range ctx.LegalTargets() {
+					if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"vigilance"}, Label: "Tam's Resistance — vigilance until end of turn"}).Apply(ctx); err != nil {
+						return err
+					}
 				}
-			}
-			return EmpowerJace{N: 4}.Apply(ctx)
-		},
+				return nil
+			}),
+			EmpowerJace{N: 4},
+		),
 	})
 }

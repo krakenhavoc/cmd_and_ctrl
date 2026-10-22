@@ -723,6 +723,19 @@ var stepsConverted = setOf(
 	"Eliminate the Impossible", "Konstrari Charm", "Rise of the Deathbringer", "Cease",
 	"Angelic Favor", "Hired Hexblade", "Proft, Consulting Detective", "Zealot il-Vec",
 	"Inspired Idea", "Horncaller's Chant", "Primal Witchstalker",
+	// Batch 7.
+	"Meditate", "Surgical Precision", "Flames of the Blood Hand", "Edgar, Ancient Bloodlord",
+	"Command the Stage", "No Admittance", "Scorching Lava", "Coursers' Accord",
+	"Timeline Inquiry", "Cut In", "Searing Barb", "Hexhaven Battalion",
+	"Violent Echoes", "Burning Wish", "Brainbite", "Rhonas's Last Stand",
+	"Memory Theft", "Tam's Resistance", "Living Wish", "Break Under Pressure",
+	"Illuminate", "Cunning Wish", "Death Wish", "Absolving Lammasu",
+	"Diplomacy of the Wastes", "Glittering Wish", "Spiritual Focus", "Stinging Vitriol",
+	"Ribbons of Night", "Awaken the Inferno", "Pillar Tombs of Aku", "Teyo, Diamondblade Mage",
+	"Fateshaper Aspirant", "Golden Wish", "Mangara's Blessing", "Arc of Fortune",
+	"Arcee, Acrobatic Coupe", "Arcee, Sharpshooter", "Curse of Leeches", "Cyclonus, Cybertronian Fighter",
+	"Flamewar, Brash Veteran", "Initiate of Blood", "Profane Insight", "Restorative Burst",
+	"The Great Synthesis", "The Legend of Yangchen", "Wretched Bonemass",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -803,6 +816,10 @@ var stepsSkipped = map[string]string{
 	"Devour Intellect":      "exclusive arms: the choice from the revealed hand, or the discard",
 	"Demonlord of Ashmouth": "exclusive arms: the sacrifice, or the exile",
 	"Earthen Arms":          "exclusive arms: with no target awaken at once, else the counters' Then awakens",
+	// Batch 7.
+	"Repeat Offender":        "exclusive arms: the counter, or the suspect",
+	"Gruesome Discovery":     "exclusive arms: the reveal and choice, or the plain discard",
+	"Desperate Futurescribe": "exclusive arms: the counter, or the +1/+1 boost",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

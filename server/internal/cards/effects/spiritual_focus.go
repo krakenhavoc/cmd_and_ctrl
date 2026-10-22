@@ -26,17 +26,15 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDiscardCard, DiscardedByAnOpponent(false),
 				"Spiritual Focus — gain 2 life and you may draw a card",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Amount: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return MayChoice{
+				// The question waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+				Do(
+					GainLife{Amount: 2},
+					MayChoice{
 						Question: "Spiritual Focus — draw a card?",
 						Draws:    1,
 						OnYes:    func(ctx *Context) error { return DrawCards{N: 1}.Apply(ctx) },
-					}.Apply(ctx)
-				}),
+					},
+				)),
 		},
 	})
 }

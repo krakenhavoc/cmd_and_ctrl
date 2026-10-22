@@ -2,8 +2,6 @@ package effects
 
 import (
 	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // Diplomacy of the Wastes — Sorcery {2}{B}:
@@ -27,19 +25,16 @@ func init() {
 		Name:         "Diplomacy of the Wastes",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			victim := TargetedPlayer(ctx)
-			if err := (ChooseFromRevealedHand{
-				Player: victim,
-				Filter: Nonland(),
-				Label:  "nonland card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			if victim == uuid.Nil || !ControlsA(ctx.TextSubtype("Warrior"))(ctx.Game, ctx.Controller()) {
-				return nil
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -2)
-		},
+		// The life loss waits for the question the choice asks (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(chooseNonlandFromTargetedHand),
+			Instruction(func(ctx *Context) error {
+				victim := TargetedPlayer(ctx)
+				if victim == uuid.Nil || !ControlsA(ctx.TextSubtype("Warrior"))(ctx.Game, ctx.Controller()) {
+					return nil
+				}
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -2)
+			}),
+		),
 	})
 }

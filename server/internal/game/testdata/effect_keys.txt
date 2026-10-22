@@ -363,3 +363,8 @@ steps then-steps/glint-sleeve-siphoner-draw-and-lose
 steps then-steps/orchard-elemental-votes
 steps then-steps/proft-consulting-detective-paid
 steps then-steps/zealot-il-vec-yes
+steps then-steps/altar-of-the-wretched-draw-mill
+steps then-steps/arc-of-fortune-embark
+steps then-steps/cyclonus-connive-rest
+steps then-steps/pillar-tombs-of-aku-decline
+steps then-steps/the-legend-of-yangchen-draws
