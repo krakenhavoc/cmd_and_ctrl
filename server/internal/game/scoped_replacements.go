@@ -153,6 +153,9 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a gainNoLife replacement names no player"
 		}
+	case ModLandManaIsColor:
+		// #1997: Hall of Gemstone's chosen colour.
+		return landManaColorProblem(m)
 	case ModExileInsteadOfYourGraveyard:
 		if m.Player == uuid.Nil {
 			return "an exileInsteadOfYourGraveyard replacement names no player"
@@ -183,6 +186,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchLife
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
+	case ModLandManaIsColor:
+		return watchManaAdded
 	}
 	return nil
 }
@@ -694,6 +699,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
+	case ModLandManaIsColor:
+		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
 		return exileIfWouldDieAppliesLocked(g, e, m, ev)
 	case ModPreventNextFromSource, ModPreventNextCombatFromSource:
@@ -768,6 +775,9 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// replacement. No EventChangeLife, so "whenever you gain life"
 		// sees nothing.
 		ev.Cancel()
+	case ModLandManaIsColor:
+		// #1997: every coloured mana becomes the chosen colour.
+		applyLandManaColorLocked(m, ev)
 	case ModExileInsteadOfGraveyard:
 		ev.NewZone = ZoneExile
 		ev.NewZoneOwner = uuid.Nil

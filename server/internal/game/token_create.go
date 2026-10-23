@@ -120,6 +120,14 @@ type TokenGroup struct {
 	// AttackOpponent limits creation-time attack choices to this player or their planeswalkers.
 	AttackOpponent uuid.UUID
 
+	// CreatedWith links every token of this group to the permanent
+	// OBJECT whose ability creates it (#1997, CR 607.1d), stamped as
+	// each is minted (Card.CreatedWith): Tombstone Stairwell's "tokens
+	// created with this enchantment". A doubler's extra tokens are made
+	// by the same instruction, so they carry it too. The zero value
+	// links nothing, which is every other creation.
+	CreatedWith PermissionCardRef
+
 	// Blocking is the attacking creature this group's tokens are created
 	// BLOCKING (CR 506.3d, 509.5): Brimaz's "create a 1/1 Cat Soldier
 	// creature token with vigilance that's blocking that creature". It
@@ -454,6 +462,9 @@ func (g *Game) mintTokenLocked(grp TokenGroup, controller uuid.UUID) Card {
 	tok.CounterStampedAt = nil
 	tok.LostLastCounter = false
 	tok.KnownBy = nil
+	// #1997: assigned, not inherited — a copy of a linked token is not
+	// linked, since the template is the copied token.
+	tok.CreatedWith = grp.CreatedWith
 	if grp.Entry.Tapped {
 		// Additive, not an assignment: a caller that pre-stamped
 		// Tapped on the template (the older idiom — Mary Read's

@@ -1211,8 +1211,15 @@ type cardSnapshot struct {
 	// without them restores no encoding, which is every game before it.
 	// A pointer, so a card that is not encoded writes nothing (the
 	// #1492 omitzero rule).
-	EncodedOn         *PermissionCardRef `json:"encodedOn,omitempty"`
-	EncodedAt         int64              `json:"encodedAt,omitempty"`
+	EncodedOn *PermissionCardRef `json:"encodedOn,omitempty"`
+	EncodedAt int64              `json:"encodedAt,omitempty"`
+	// CreatedWith is a token's link to the permanent object whose
+	// ability created it (#1997, CR 607.1d: Tombstone Stairwell). Carried
+	// because nothing else records it, and additive within this version:
+	// a file without it restores tokens created with nothing, which is
+	// every game before it. A pointer, so an unlinked card writes
+	// nothing (the #1492 omitzero rule).
+	CreatedWith       *PermissionCardRef `json:"createdWith,omitempty"`
 	StartingDefense   int                `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID          `json:"protectorPlayerId,omitempty"`
 
@@ -2549,6 +2556,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
+		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
@@ -3497,6 +3505,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
+		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,

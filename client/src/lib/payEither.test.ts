@@ -70,6 +70,7 @@ describe("branches", () => {
     expect(branchNamesCards(damage)).toBe(false);
     expect(branchNamesCards({ ...sacrifice, action: "exile_graveyard" })).toBe(true);
     expect(branchNamesCards({ ...sacrifice, action: "discard" })).toBe(true);
+    expect(branchNamesCards({ ...sacrifice, action: "tap" })).toBe(true);
   });
 
   it("read as buttons", () => {

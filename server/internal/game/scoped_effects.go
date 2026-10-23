@@ -1077,6 +1077,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModExileInsteadOfGraveyard: {reader: readerReplacement},
 	// ADR 0107 §5 (#1880): Flames of the Blood Hand's replacement.
 	ModGainNoLife: {reader: readerReplacement},
+	// #1997: Hall of Gemstone's "lands tapped for mana produce mana of
+	// the chosen color instead" (land_mana_color.go).
+	ModLandManaIsColor: {reader: readerReplacement},
 	// ADR 0108 §4 (#1823): Yawgmoth's Will's replacement.
 	ModExileInsteadOfYourGraveyard: {reader: readerReplacement},
 	// ADR 0107 §6 (#1860): the next damage from a source.

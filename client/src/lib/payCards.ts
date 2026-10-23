@@ -27,7 +27,8 @@ export function togglePayCard(pc: PayCardsView, picks: string[], id: string): st
 
 // payCardsOptions resolves the option IDs to the cards they name: the
 // chooser's hand for a discard, their own graveyard for an exile (ADR
-// 0187 §3), the battlefield for a sacrifice, in the server's order.
+// 0187 §3), the battlefield for a sacrifice or a tap, in the server's
+// order.
 export function payCardsOptions(
   pc: PayCardsView,
   battlefield: CardView[] | undefined,
@@ -48,5 +49,6 @@ export function payCardsVerb(pc: PayCardsView): string {
   const n = pc.count === 1 ? "one card" : `${pc.count} cards`;
   if (pc.action === "discard") return `Choose ${n} to discard.`;
   if (pc.action === "exile_graveyard") return `Choose ${n} from your graveyard to exile.`;
+  if (pc.action === "tap") return `Choose ${n} to tap.`;
   return `Choose ${n} to sacrifice.`;
 }

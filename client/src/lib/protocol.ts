@@ -3290,8 +3290,9 @@ export interface PayAmountView {
 
 export interface PayCardsView {
   // "exile_graveyard" (ADR 0187 §3): options are the chooser's own
-  // graveyard, public to every seat.
-  action: "discard" | "sacrifice" | "exile_graveyard";
+  // graveyard, public to every seat. "tap" (#1997): the untapped
+  // permanents of the clause's kind the chooser controls.
+  action: "discard" | "sacrifice" | "exile_graveyard" | "tap";
   count: number;
   options: string[];
 }
