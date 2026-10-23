@@ -210,8 +210,8 @@ type StaticAbility struct {
 	// of 2026-10-23, layer_dependency.go). The declaration says only
 	// that the trial is worth running: a layer-6 effect that reads no
 	// ability can't depend on another in that layer, and the bucket
-	// holds every printed keyword row on the board, so the trial is not
-	// paid for anything that does not declare this. effects.Register
+	// holds every lord, Equipment and grant on the board, so the trial is
+	// not paid for anything that does not declare this. effects.Register
 	// refuses it outside layer 6 and beside a removal or a borrow, and
 	// a granted bundle can't carry it (GrantedStaticProblem).
 	ReadsAbilities bool
@@ -510,23 +510,13 @@ type StaticAbility struct {
 	// and never read by the layer pass.
 	Label string
 
-	// Keywords names the keyword abilities this row IS, when it is
-	// one: the self-only layer-6 static the effects package
-	// synthesises from Spec.PrintedKeywords carries them here. The
-	// tile's keyword chips already show those, so AbilityRowsOf
+	// Keywords names the keyword abilities this row IS, when it is one: a
+	// station card's "{N+} | Flying" line (effects.ThresholdKeywords).
+	// The tile's keyword chips already show those, so AbilityRowsOf
 	// leaves such a row out rather than counting it twice (#2219).
-	// Catalog data; not persisted and never read by the layer pass.
+	// Printed keywords are not a row at all (#4236). Catalog data; not
+	// persisted and never read by the layer pass.
 	Keywords []string
-
-	// PrintedKeywordRow marks that synthesised row and no other. It is
-	// engine-owned: effects.buildDef sets it on the row it makes from
-	// Spec.PrintedKeywords and clears it on every row a card file
-	// wrote. The row applies the object's own printed keywords to the
-	// object itself and reads nothing else, so changing the object
-	// cannot change what it does to any other; the trigger-order
-	// independence check does not count it as a rule the object
-	// shapes (defBearsRules, #3013). Catalog data; not persisted.
-	PrintedKeywordRow bool
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter

@@ -2872,12 +2872,14 @@ fails anything else.
 Creatures with printed combat keywords (flying, reach, deathtouch,
 lifelink, trample, vigilance, first strike, double strike, menace,
 defender, haste, flash) declare those keywords through a single
-`Spec.PrintedKeywords []string` slot. The engine auto-generates a
-Layer 6 `StaticAbility` at catalog load time that appends each
-keyword to the card's own `Characteristic.Abilities`, so
-battlefield-side consumers see the same surface Lord of Atlantis
-uses for granted keywords. The same list feeds off-battlefield
-reads (flash gating on a card in hand).
+`Spec.PrintedKeywords []string` slot. The list is the object's own
+characteristics (CR 613.1), so it is in the baseline the layer pass
+starts from and is no static of its own (#4236): a removal of any
+timestamp ("loses flying", "loses all abilities") takes the keyword
+away, and a grant that sorts after the removal gives it back. Consumers
+on the battlefield read it from `Characteristic.Abilities`, the same
+surface Lord of Atlantis uses for granted keywords. The same list feeds
+off-battlefield reads (flash gating on a card in hand).
 
 ```go
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -7180,8 +7182,8 @@ must set it with `t.SetCopyExceptionColors("B")`, never `t.Colors = ...`
 (#2322, CR 707.9d): the copied object's colour-defining ability is not
 copied, so a devoid creature's token copy is not devoid. The helper
 strips devoid from `Keywords` and sets `Card.ColorCDADropped`, which the
-printed-keyword merge and the catalog's synthesised keyword static both
-honour; the mark is a copiable value, so a copy of that token has no
+printed-keyword baseline and the catalog's `PrintedKeywordsHonouringCopy`
+both honour; the mark is a copiable value, so a copy of that token has no
 devoid either.
 
 **Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.

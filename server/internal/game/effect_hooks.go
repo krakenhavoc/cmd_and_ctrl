@@ -950,10 +950,10 @@ var CatalogReplacements func(oracleID string) []ReplacementEffect
 // package alongside the other catalog hooks.
 //
 // Two consumers:
-//   - On-battlefield: wire.go synthesizes a self-only Layer 6
-//     StaticAbility that appends each entry to the card's own
-//     Characteristic.Abilities, so HasKeyword naturally picks them
-//     up via Effective().Abilities.
+//   - On-battlefield: the entries are in the baseline the layer pass
+//     starts from (printedInputs), so HasKeyword naturally picks them
+//     up via Effective().Abilities, and a removal of any timestamp
+//     takes them away (#4236).
 //   - Off-battlefield: HasKeyword (keywords.go) reads directly from
 //     this hook when the card has no `effective` cache (e.g. a card
 //     in hand needs flash gating before cast). The layer engine

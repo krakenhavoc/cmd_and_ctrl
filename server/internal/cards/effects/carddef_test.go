@@ -14,24 +14,24 @@ const (
 	lightningBoltOracleForDef = "d4af6b58-f0b7-4c8f-8f4b-6f2a5a43e2c1"
 )
 
-func TestCardDefIsBuiltOnceWithTheKeywordStatic(t *testing.T) {
+func TestCardDefIsBuiltOnceAndCarriesNoKeywordStatic(t *testing.T) {
 	d := game.CatalogLookup(serraAngelOracleForDef)
 	if d == nil {
 		t.Fatal("Serra Angel has no CardDef")
 	}
-	if len(d.Static) != 1 || d.Static[0].Layer != game.Layer6Ability {
-		t.Fatalf("Serra Angel should carry exactly one synthesised Layer 6 keyword static, got %d", len(d.Static))
+	// #4236: printed keywords are the baseline, not a layer-6 static.
+	if len(d.Static) != 0 {
+		t.Fatalf("Serra Angel should carry no static (her keywords are printed, not a row), got %d", len(d.Static))
 	}
 	if len(d.PrintedKeywords) != 2 {
 		t.Errorf("printed keywords %v, want flying + vigilance", d.PrintedKeywords)
 	}
 	// Two reads hand out the SAME slice: nothing is rebuilt per call.
-	a, b := game.CatalogStaticAbilities(serraAngelOracleForDef), game.CatalogStaticAbilities(serraAngelOracleForDef)
-	if &a[0] != &b[0] {
-		t.Error("CatalogStaticAbilities rebuilt the keyword static on the second call")
+	if a, b := game.CatalogPrintedKeywords(serraAngelOracleForDef), game.CatalogPrintedKeywords(serraAngelOracleForDef); &a[0] != &b[0] {
+		t.Error("CatalogPrintedKeywords rebuilt the list on the second call")
 	}
-	if allocs := testing.AllocsPerRun(50, func() { _ = game.CatalogStaticAbilities(serraAngelOracleForDef) }); allocs != 0 {
-		t.Errorf("CatalogStaticAbilities allocates %.0f per call, want 0", allocs)
+	if allocs := testing.AllocsPerRun(50, func() { _ = game.CatalogPrintedKeywords(serraAngelOracleForDef) }); allocs != 0 {
+		t.Errorf("CatalogPrintedKeywords allocates %.0f per call, want 0", allocs)
 	}
 	if allocs := testing.AllocsPerRun(50, func() { _ = game.CatalogTriggers(serraAngelOracleForDef) }); allocs != 0 {
 		t.Errorf("CatalogTriggers allocates %.0f per call, want 0", allocs)

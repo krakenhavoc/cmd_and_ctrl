@@ -3,6 +3,7 @@
 **Status:** Accepted · 2026-09-18 · S38 ("Layers: dependency ordering, ability grants, ability removal") · tracked on [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668), [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) and [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670).
 **Amended:** 2026-10-15 — Decision 2's removal bucket, for an effect that started in an earlier layer, and the timestamp of an effect that begins at a counter threshold ([#3862](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3862)); see the amendment at the end.
 2026-10-23 — layer 6 is ordered for a static that declares it reads an ability, Sephara, Sky's Blade's "other creatures you control with flying have indestructible" ([#2663](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2663)); see the amendment at the end.
+2026-10-23 — a catalogued creature's printed keywords are the baseline and no longer a layer-6 row, so an older "loses flying" removes them ([#4236](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4236)); see the last amendment.
 **Numbering:** checked on 2026-09-18 against every remote branch after
 `git fetch origin` (the AGENTS.md §4 loop over `git branch -r` +
 `git ls-tree`). `0061`-`0064`, `0066` and `0069` exist; `0065`, `0067`
@@ -423,16 +424,17 @@ layer. Applying a "gains flying" or a "loses flying" changes what her effect app
 the timestamps. In timestamp order alone, a creature that gained flying from a later effect got no
 indestructible, which is weaker than printed. A creature that lost flying to a later Gravity Sphere
 kept indestructible, which is stronger than printed, so she was not shipped (#2030). The engine
-gives every catalogued permanent's printed keywords a layer-6 row at that permanent's timestamp, so
-the weaker case was not rare: it was every catalogued flier that entered after her. Kwende, Pride
+gave every catalogued permanent's printed keywords a layer-6 row at that permanent's timestamp
+(until #4236, which made them the baseline: see the last amendment), so the weaker case was not
+rare: it was every catalogued flier that entered after her. Kwende, Pride
 of Femeref ("Creatures you control with first strike have double strike") is the same shape. Its
 2018-04-27 ruling says so: "If a creature you control gains first strike after Kwende has entered
 the battlefield, that creature also gains double strike."
 
 Decision 1's rule for adding a bucket is "a catalogued pair, plus a benchmark". Here is the pair.
 The benchmark says why layer 6 still does not join `dependencyOrderedLayers`. The layer-6 bucket
-holds a printed keyword row for every catalogued permanent with a keyword, so it is the largest
-bucket on most boards. Almost none of its effects can depend on another, because they read nothing
+held a printed keyword row for every catalogued permanent with a keyword (until #4236), so it
+was the largest bucket on most boards. Almost none of its effects can depend on another, because they read nothing
 that layer 6 writes.
 
 **1. A declaration turns the trial on.** `StaticAbility.ReadsAbilities` says that the static's
@@ -503,3 +505,71 @@ Pinned by `TestAReaderWaitsForAGrantOfWhatItReads`, `TestAReaderWaitsForARemoval
 `TestALayerSixDependencyLoopFallsBackToTimestampOrder`, `TestAnEffectWaitingOnALoopAppliesAfterIt`
 and `TestAnUndeclaredReaderKeepsTimestampOrder` (`internal/game`), and by the Sephara and Kwende
 tests in `internal/cards/effects/keyword_reading_grant_test.go`.
+
+## Amendment (2026-10-23, #4236): a printed keyword is the baseline, not a layer-6 row
+
+The #2663 amendment above says the engine "gives every catalogued permanent's printed keywords a
+layer-6 row at that permanent's timestamp". That was true until #4236, and it was wrong. A catalogued
+creature's `Spec.PrintedKeywords` reached the layer pass as a self-only layer-6 static at the
+creature's own timestamp (`effects.buildDef`). A "loses flying" that was older than the creature
+(Gravity Sphere, Mystic Decree, `effects.LoseKeywords`) sorted before that row, and the row put the
+keyword back. Zahid, Djinn of the Lamp entering after a Gravity Sphere kept flying. That is stronger
+than printed for two Full cards. ADR 0093 Decision 3's pre-sort did not help, because it orders a
+"loses all abilities" removal before the effects of the objects it silences, and `LoseKeywords`
+silences nothing.
+
+**The rule.** CR 613.1 starts a card from "the values of the characteristics printed on that card"
+and only then applies the layers. A printed keyword is one of those values. It is not an effect, so
+it has no timestamp (CR 613.7), and no removal can sort before it. The engine already worked this way
+for a card that arrives with the importer's `Card.Keywords`, and for the catalog's list too: the layer
+baseline (`printedInputs.characteristicFrom`) merges `CatalogPrintedKeywords(key)` into
+`Characteristic.Abilities`, with the layer-3 changed words and the CR 707.9d devoid mark applied.
+The row was a second copy of the same list, applied again in layer 6.
+
+**The fix.** `buildDef` no longer makes the row. The baseline is the only source, so:
+
+- Any removal takes a printed keyword away, whatever its timestamp: "loses flying", "loses all
+  abilities" (Darksteel Mutation, Humility's shape), "can't have". A grant that sorts after the
+  removal gives the keyword back, as it does for a non-catalogued creature.
+- ADR 0093 Decision 3 is unchanged. A "loses all abilities" still empties `Abilities` and sets
+  `AbilitiesRemoved`; it now empties the printed keywords the same way instead of silencing the row.
+- ADR 0067 Decision 2 (a removal and the effects of its victims) is unchanged. A creature's own
+  keywords were never a continuous effect it generated, so nothing in the pre-sort changes.
+- The #2663 amendment stands for what it ordered: a reader waits for a grant or a removal of what it
+  reads. Its premise that a printed keyword arrives as an effect later than the reader is gone. A
+  catalogued flier that enters after Sephara is a creature with flying in the baseline, and the
+  trial finds nothing for her effect to wait on.
+
+`StaticAbility.PrintedKeywordRow` is deleted. The trigger-independence check no longer special-cases
+it, since there is no row to skip (`defBearsRules` reads `PrintedKeywords` as inert already).
+`StaticAbility.Keywords` stays: a station card's `ThresholdKeywords` is a real static that is a
+keyword line.
+
+**Snapshots.** Nothing persisted changes. `Characteristic` is rebuilt by the pass, and the `Static`
+count that a restore point records per card (`AbilityCounts`, #522) still counts the printed-keyword
+line as one, in `catalogAbilityCounts`. Without that, every v7-v9 corpus fixture holding a keyworded
+creature restores flagged manual ("fewer catalog abilities than captured"). With it, a record written
+before this change and one written after it are the same number, in both directions of a deploy and
+a rollback. The frozen fixtures are untouched.
+
+**Cost.** The same `-count=6 -benchtime=3000x` run of `internal/cards/effects`, before and after, on
+a shared host (load average 14 to 20). The times are the instrumented test binary's, and are for
+comparison with each other only. Bytes and allocations are exact.
+
+| board | before | after |
+|---|---|---|
+| `LayerRecompute_80perms` | 1.56-1.63 ms, 53 760 B, 355 allocs | 1.23-1.56 ms, 48 200 B, 341 allocs |
+| `LayerRecomputeLayer4Dependencies_80perms` | 3.66-4.33 ms, 187 808 B, 709 allocs | 3.41-4.81 ms, 181 320 B, 693 allocs |
+| `LayerRecomputeLayer6Readers_80perms` | 3.26-4.76 ms, 120 824 B, 880 allocs | 2.16-2.41 ms, 99 600 B, 703 allocs |
+
+Every catalogued permanent with a keyword had one layer-6 effect for it, so the layer-6 bucket is
+smaller on every board. On the readers board each reader used to wait on the ten Serra Angels' rows as
+well as on the Sphere; now only on the Sphere.
+
+**Pinned by** `TestGravitySphereRemovesACataloguedCreaturesPrintedFlyingInEitherOrder`,
+`TestOlderMysticDecreeLeavesTheOtherPrintedKeywordsOfACataloguedCreature`,
+`TestDarksteelMutationRemovesACataloguedCreaturesPrintedFlying`,
+`TestAnOlderSphereStillTakesPrintedFlyingAfterARestore`, `TestPrintedKeywordsMakeNoStatic` and
+`TestCardDefIsBuiltOnceAndCarriesNoKeywordStatic` (`internal/cards/effects`), and
+`TestThePrintedKeywordLineStillCountsAsOneStatic` and `TestPrintedKeywordsBearNoRules`
+(`internal/game`); `TestSnapshotCorpusRestores` holds the old restore points.

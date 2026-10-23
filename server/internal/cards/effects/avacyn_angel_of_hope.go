@@ -16,9 +16,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # Both halves, and why only one of them is a Static
 //
 // Avacyn's OWN indestructible is printed on her, so it rides
-// `PrintedKeywords` — the engine synthesises a self-only layer-6
-// static from that slot at catalog load, which is the same place a
-// granted keyword lands. The second line is a genuine battlefield
+// `PrintedKeywords` — the engine puts that slot in the baseline
+// the layer pass starts from. The second line is a genuine battlefield
 // static granting to OTHER permanents, so it is written out.
 //
 // The self-exclusion in `AppliesTo` is not redundant with the

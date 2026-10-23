@@ -1668,11 +1668,6 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		if !f.IsExported() || v.Field(i).IsZero() {
 			continue
 		}
-		// The row the registry makes from the printed keywords applies
-		// them to the object itself and reads nothing (#3013).
-		if f.Name == "Static" && onlyPrintedKeywordRows(d.Static) {
-			continue
-		}
 		switch class, ok := cardDefFieldClass[f.Name]; {
 		case !ok || class == defFieldRules:
 			global = true
@@ -1681,15 +1676,4 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		}
 	}
 	return global, own
-}
-
-// onlyPrintedKeywordRows reports whether every static is the row the
-// registry makes from a card's printed keywords.
-func onlyPrintedKeywordRows(statics []StaticAbility) bool {
-	for i := range statics {
-		if !statics[i].PrintedKeywordRow {
-			return false
-		}
-	}
-	return true
 }

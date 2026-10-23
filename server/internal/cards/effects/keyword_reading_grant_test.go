@@ -74,9 +74,8 @@ func TestSepharaAndKwendeAreFull(t *testing.T) {
 }
 
 // The grant sees flying however and whenever it arrived: printed on a
-// non-catalog creature, from a catalog creature's printed keyword row that
-// entered after Sephara (a layer-6 effect with a later timestamp), and from
-// an until-end-of-turn grant that resolved after both. It skips Sephara
+// non-catalog creature, printed on a catalog creature that entered after
+// Sephara, and from an until-end-of-turn grant that resolved after both. It skips Sephara
 // herself, a creature without flying and an opponent's flier.
 func TestSepharaGivesIndestructibleToFliersThatArriveOrGainFlyingLater(t *testing.T) {
 	g := newCatalogGame(t)

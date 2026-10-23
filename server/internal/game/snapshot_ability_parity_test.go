@@ -290,3 +290,58 @@ func TestAFaceDownFlaggedCardDoesNotLeakTheFlag(t *testing.T) {
 		t.Error("a face-down permanent read as unimplemented")
 	}
 }
+
+// #4236: a card's printed keywords stopped being a layer-6 static. The
+// binary before recorded that row in the card's Static count, so the one
+// after still counts the keyword line as one static: a restore point
+// written before the change (the frozen corpus has them) does not flag the
+// card as having lost an ability, and one written after compares the same.
+func TestThePrintedKeywordLineStillCountsAsOneStatic(t *testing.T) {
+	own := StaticAbility{Layer: Layer6Ability}
+	keywordsOnly := &CardDef{PrintedKeywords: []string{"flying"}}
+	withOwn := &CardDef{PrintedKeywords: []string{"flying"}, Static: []StaticAbility{own}}
+
+	capture := func(t *testing.T, def *CardDef) (*GameSnapshot, AbilityCounts) {
+		t.Helper()
+		withCatalog(t, parityOracle, def)
+		g := newRestorableGame(t)
+		pushParityCard(g)
+		snap := throughJSON(t, g.CaptureSnapshot())
+		for _, c := range snap.Battlefield.Cards {
+			if c.OracleID == parityOracle && c.CatalogAbilities != nil {
+				return snap, *c.CatalogAbilities
+			}
+		}
+		t.Fatal("no catalog measurement recorded for the probe")
+		return nil, AbilityCounts{}
+	}
+
+	snap, got := capture(t, keywordsOnly)
+	if want := (AbilityCounts{Static: 1}); got != want {
+		t.Errorf("a keyword-only entry recorded %+v, want %+v: what the binary before wrote", got, want)
+	}
+	if sf := snap.AbilityShortfalls(); len(sf) != 0 {
+		t.Errorf("shortfalls = %+v, want none", sf)
+	}
+	// Written by the binary before: a plain record of one static.
+	old := throughJSON(t, snap)
+	for i := range old.Battlefield.Cards {
+		if old.Battlefield.Cards[i].OracleID == parityOracle {
+			old.Battlefield.Cards[i].CatalogAbilities = &AbilityCounts{Static: 1}
+		}
+	}
+	if sf := old.AbilityShortfalls(); len(sf) != 0 {
+		t.Errorf("a record written before #4236: shortfalls = %+v, want none", sf)
+	}
+
+	// Beside a static of its own the line is the second; losing the
+	// static is still a shortfall.
+	snap, got = capture(t, withOwn)
+	if want := (AbilityCounts{Static: 2}); got != want {
+		t.Errorf("an entry with a static recorded %+v, want %+v", got, want)
+	}
+	withCatalog(t, parityOracle, keywordsOnly)
+	if sf := snap.AbilityShortfalls(); len(sf) != 1 {
+		t.Errorf("a lost static beside printed keywords: shortfalls = %+v, want the probe", sf)
+	}
+}

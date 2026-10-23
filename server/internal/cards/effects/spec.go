@@ -250,11 +250,14 @@ type Spec struct {
 	//
 	// Feeds two consumers:
 	//
-	//   1. On-battlefield: wire.go synthesizes a self-only Layer 6
-	//      StaticAbility per card that appends each entry to the
-	//      card's own `Characteristic.Abilities`, so the keyword
-	//      lands in `card.Effective().Abilities` alongside grants
-	//      from other cards' static abilities (Lord of Atlantis).
+	//   1. On-battlefield: the entries are the object's own
+	//      characteristics, so they are in the baseline the layer pass
+	//      starts from (game.printedInputs). They are not a static: a
+	//      removal of any timestamp, "loses flying" included, takes
+	//      them away, and a grant of a later one gives them back
+	//      (CR 613.7, #4236). The keyword lands in
+	//      `card.Effective().Abilities` alongside grants from other
+	//      cards' static abilities (Lord of Atlantis).
 	//   2. Off-battlefield: game.HasKeyword (keywords.go) falls back
 	//      to `CatalogPrintedKeywords(oracleID)` when the card has
 	//      no `effective` cache — needed for flash gating on a

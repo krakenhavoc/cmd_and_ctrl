@@ -190,8 +190,8 @@ func TestSleightOfMindChangesPrintedProtection(t *testing.T) {
 }
 
 // A catalog card's printed keywords are its text too, though they reach
-// the permanent through the layer-6 printed-keyword row rather than the
-// importer's list: Burrenton Forge-Tender's protection from red changes
+// the permanent through the catalog rather than the importer's list:
+// Burrenton Forge-Tender's protection from red changes
 // with the rest.
 func TestSleightOfMindChangesACatalogPrintedProtection(t *testing.T) {
 	g := newCatalogGame(t)

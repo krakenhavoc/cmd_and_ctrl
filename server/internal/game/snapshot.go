@@ -1308,6 +1308,14 @@ func catalogAbilityCounts(key string) AbilityCounts {
 	if CatalogStaticAbilities != nil {
 		n.Static = len(CatalogStaticAbilities(key))
 	}
+	// #4236: a card's printed keywords used to be one more static, a
+	// self-only layer-6 row. They are the baseline now and no static, but
+	// the census still counts the line as one, so a restore point written
+	// by a binary on either side of that change compares equal and no
+	// card comes back flagged manual.
+	if CatalogPrintedKeywords != nil && len(CatalogPrintedKeywords(key)) > 0 {
+		n.Static++
+	}
 	if CatalogReplacements != nil {
 		n.Replacements = len(CatalogReplacements(key))
 	}

@@ -217,6 +217,9 @@ It is not ADR 0067's general trial application. ADR 0067 asked for "a catalogued
 and a benchmark" before adding another dependency-ordered bucket: the pair is Gemhide Sliver plus
 Kenrith's Transformation (and Lord of Atlantis plus the same), and the benchmark is Decision 2's.
 Layer 1-5 effects of a silenced grantor are untouched: ADR 0067 §2 stands.
+(2026-10-23, #4236: a catalogued creature's printed keywords were a layer-6 row that this pre-sort
+silenced with its source, and that an older "loses flying" could not reach. They are the baseline now,
+so a removal of either kind takes them away: [ADR 0067's last amendment](0067-layer-dependency-ordering.md).)
 
 Other layer-6 dependencies between two grants (a grant whose "applies to" reads another grant's
 output) are **not** ordered. Timestamp order applies, as it does today, and no catalogued pair
