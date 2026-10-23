@@ -434,3 +434,22 @@ during the PREVIOUS turn, stamped from `NoncombatDamage` (which now records the
 `Victim` of each entry) as the tally resets at the turn boundary. It clones,
 snapshots and undoes with the tally. `Game.WasDealtNoncombatDamageLastTurn`
 reads it. Command the Stage's graveyard upkeep trigger is the proof card.
+
+## Amendment (2026-10-23, #2128): void is two table-wide cells
+
+*Branch `feat/2128-void`.*
+
+Void (CR 207.2c, Edge of Eternities) asks "if a nonland permanent left the battlefield this turn or a spell was warped this turn" (CR 702.185c: a spell was cast for its warp cost). The per-player `PermanentsLeft` cell (#2148) is the wrong shape for it: void is a fact about the whole table, and it needs to tell a land from anything else.
+
+`TurnTally.NonlandPermanentsLeft` and `TurnTally.SpellsWarped` are the two cells, additive in snapshot schema 9 (recorded with `-update-shape`). Both are plain ints, are cloned by `cloneTurnTally`, and reset with the rest of the tally.
+
+- `NonlandPermanentsLeft` is bumped in `turnTallyListener.OnEvent` from the same `EventLTB` branch that feeds revolt, for any route and any controller. The permanent is read as it last existed on the battlefield (CR 608.2h): the exit's own last-known types first (`Event.WasType`), then the CR 603.10 snapshot, then the card as it now sits. A land, including a land creature, is not counted; a token that ceases to exist is. A permanent none of those can type is not counted, the weaker reading.
+- `SpellsWarped` is bumped where the spell becomes cast, in `castSpellLocked` beside `noteGrantedOfferClaimedLocked`, when the alternative cost the caster claimed carries the warp exile clause (`AlternativeCost.WarpExile`, which `effects.Warp` sets and a granted warp keeps). It counts a spell whether or not it later resolves or is countered, and a cast from any zone (Timeline Culler's graveyard warp). A cast for another alternative cost, or for the printed cost, does not count.
+
+`Game.VoidThisTurn` reads both. `cards/effects/void.go` is the card side: `Void(g)`, `CondVoid` (an `InterveningIf` condition, checked as the trigger fires and again as it resolves, CR 603.4), `WhenThisEntersIfVoid`, `WheneverThisAttacksIfVoid`, `AtYourEndStepIfVoid`, `AtYourEndStepUnlessVoid` (Chorale of the Void's resolution-time check, which is not an intervening if) and `CostsLessIfVoid` (Temporal Intervention's self cost modifier, priced at CR 601.2f). `CondVoid` declares no trigger-independence footprint, so a row that carries it is not reordered.
+
+A restore point written before this change and restored mid-turn has void off for the rest of that turn; the cells are zero-valued in an older file, and the next turn is exact.
+
+Back-out: remove the `recordNonlandPermanentLeftLocked` call and `TestVoidCountsEveryRouteOfANonlandPermanent`, `TestVoidIsTableWide` and `TestVoidforgedTitanDrawsAndLosesLifeOnlyWithVoid` fail; remove the `noteSpellWarpedLocked` call and `TestVoidforgedTitanSeesAWarpedSpell`, `TestTragicTrajectoryCountsAWarpedSpell` and `TestTemporalInterventionCostsTwoLessAfterAWarp` fail.
+
+Alpharael's "Ward—Discard a card at random" is `WardCost.DiscardAtRandom` (`effects.WardDiscardAtRandom`): the payer confirms and the engine discards from their hand on the payer's random stream (CR 701.9b), with no pick prompt.

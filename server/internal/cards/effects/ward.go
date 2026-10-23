@@ -88,6 +88,12 @@ type WardCost struct {
 	// Discard is "ward—discard N cards" (#3172): the payer discards
 	// that many cards from their own hand, their choice (CR 701.9a).
 	Discard int
+	// DiscardAtRandom makes the discard "at random" (Alpharael,
+	// Stonechosen: "Ward—Discard a card at random", #2128): the payer
+	// accepts the payment, and the engine picks the cards from their hand
+	// on the payer's random stream instead of asking. Meaningful only
+	// with Discard.
+	DiscardAtRandom bool
 }
 
 // WardSacrificeCost is the "sacrifice a <thing>" half of a ward cost:
@@ -158,6 +164,10 @@ func WardSacrificeN(n int, label string, preds ...CardPredicate) WardCost {
 // picks which cards go, and a payer holding fewer than N cannot pay at
 // all (CR 118.3), so the spell is countered with no prompt.
 func WardDiscard(n int) WardCost { return WardCost{Discard: n} }
+
+// WardDiscardAtRandom builds "ward—discard N cards at random" (CR 701.9b;
+// Alpharael, Stonechosen). The payer chooses only whether to pay.
+func WardDiscardAtRandom(n int) WardCost { return WardCost{Discard: n, DiscardAtRandom: true} }
 
 // validate panics on an empty cost or an unsupported mixture. It runs
 // from Ward() at catalog init, so a malformed card fails at boot rather
@@ -356,7 +366,7 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem, counter)
 	case cost.Discard > 0:
-		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost.Discard, targetingItem, counter)
+		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost.Discard, cost.DiscardAtRandom, targetingItem, counter)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with
@@ -516,7 +526,7 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 // A cost is not an instruction to a player, so nothing here targets:
 // hexproof and protection are irrelevant, and the cards are the
 // payer's own.
-func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetingItem uuid.UUID, counter func(*game.Game) error) error {
+func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, atRandom bool, targetingItem uuid.UUID, counter func(*game.Game) error) error {
 	handSize := func(g *game.Game) int {
 		if p := g.PlayerByIDForEffect(payer); p != nil && p.Hand != nil {
 			return p.Hand.Size()
@@ -530,6 +540,9 @@ func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetin
 	if n > 1 {
 		label = fmt.Sprintf("%d cards", n)
 	}
+	if atRandom {
+		label += " at random"
+	}
 	g.QueueConfirmForEffect(game.ConfirmPrompt{
 		Chooser:      payer,
 		Source:       source,
@@ -542,6 +555,9 @@ func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetin
 			}
 			if handSize(g) < n {
 				return counter(g)
+			}
+			if atRandom {
+				return g.DiscardRandomForEffect(payer, n)
 			}
 			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 				Player:   payer,
