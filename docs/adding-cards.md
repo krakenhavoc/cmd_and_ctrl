@@ -3468,6 +3468,14 @@ LandPlayRestrictions: []game.LandPlayRestriction{
 - Read from the battlefield through `CatalogAbilityKey`, like a cast
   restriction, so nothing is stored and the source leaving lifts the ban.
   `Register` refuses a restriction with no `Label` or no `Forbids`.
+- **"…may sacrifice a permanent … to ignore this effect until end of turn"**
+  (Damping Engine, #1986, CR 116.2d): set `Spec.IgnorableEffect =
+  &game.IgnorableEffect{Label, Applies}` (`Applies` is whether the ability
+  bears on that player right now) and mark the restrictions that ARE the
+  ability `Ignorable: true`, on `CastRestrictions` and `LandPlayRestrictions`
+  alike. The special action, its sacrifice, the per-player record and both
+  gates are the engine's (`game/ignore_effect.go`); `Register` refuses one
+  without the other. See `damping_engine.go`.
 - **A ban from a resolved spell or ability** ("target player can't play
   lands this turn": Turf Wound, Solfatara, Pardic Miner, Moonhold) is not
   this slot. Its source is gone the moment it resolves, so it is stored:

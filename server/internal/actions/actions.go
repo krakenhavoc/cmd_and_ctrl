@@ -2799,6 +2799,10 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0189: which turn_face_up offer — "mana_cost",
 			// "morph" or "disguise". Empty takes the first.
 			Route string `json:"route,omitempty"`
+			// CR 116.2d (#1986): the permanent an ignore_effect action
+			// sacrifices as its cost. Required for that kind, refused
+			// for every other.
+			SacrificeID string `json:"sacrifice_id,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2806,6 +2810,13 @@ func dispatch(g *game.Game, a Action) error {
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
 			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		var sacrificeID uuid.UUID
+		if p.SacrificeID != "" {
+			sacrificeID, err = uuid.Parse(p.SacrificeID)
+			if err != nil {
+				return fmt.Errorf("special_action sacrifice_id: %w", err)
+			}
 		}
 		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
 		if !routeOK {
@@ -2821,6 +2832,8 @@ func dispatch(g *game.Game, a Action) error {
 			Cost:    p.Cost,
 			Door:    door,
 			Route:   route,
+
+			SacrificeID: sacrificeID,
 		})
 
 	case TypeSacrificePermanent:

@@ -17,6 +17,10 @@ type specialActionParams struct {
 	Cost string `json:"cost,omitempty"`
 	// Door is the door an unlock unlocks (ADR 0103).
 	Door string `json:"door,omitempty"`
+	// SacrificeID is the permanent an ignore_effect pays (CR 116.2d,
+	// #1986). The enumerator names the first of the payment order, the
+	// one a "choose for me" would give up.
+	SacrificeID string `json:"sacrifice_id,omitempty"`
 	// Route names which turn-face-up offer this is, sent only when the
 	// card offers turn_face_up more than once (ADR 0189 decision 4).
 	Route string `json:"route,omitempty"`
@@ -45,6 +49,7 @@ func (e *enumerator) specialActionMoves() {
 		return
 	}
 	e.outsidePlayMove()
+	e.ignoreEffectMoves()
 	if p.Hand != nil {
 		for i := range p.Hand.Cards {
 			e.specialActionMovesForCard(p.Hand.Cards[i], game.ZoneHand)
@@ -164,6 +169,34 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 			Label:  label,
 			Source: card.InstanceID,
 			Params: mustJSON(params),
+		})
+	}
+}
+
+// ignoreEffectMoves offers CR 116.2d's special action for every static
+// ability that bears on the seat and may be ignored (Damping Engine,
+// #1986): one move per source, paying with the first permanent of the
+// payment order. The engine's own accessor decides what is on offer
+// (IgnoreEffectOffersLocked), so this cannot disagree with it; the action
+// has no mana cost and no timing beyond priority, so there is nothing
+// else to ask. Under a split-second spell the move is still offered: a
+// special action is neither a cast nor an activation (CR 702.61b).
+func (e *enumerator) ignoreEffectMoves() {
+	for _, offer := range e.g.IgnoreEffectOffersLocked(e.seat) {
+		if !e.enter(scope{source: offer.Source}) {
+			continue
+		}
+		e.add(Move{
+			Type:   TypeSpecialAction,
+			Player: e.seat,
+			Kind:   KindSpecialAction,
+			Label:  offer.Label,
+			Source: offer.Source,
+			Params: mustJSON(specialActionParams{
+				CardID:      offer.Source.String(),
+				Kind:        string(game.SpecialActionIgnoreEffect),
+				SacrificeID: offer.Candidates[0].String(),
+			}),
 		})
 	}
 }

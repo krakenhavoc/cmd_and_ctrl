@@ -2758,6 +2758,18 @@ type PlayerView struct {
 	// the ban refuses every land out of the hand.
 	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
 
+	// IgnorableEffects are the CR 116.2d special actions this player may
+	// take right now: a static ability that bears on them and that they
+	// may ignore until end of turn by sacrificing a permanent (Damping
+	// Engine, #1986). Each is a button on the seat's own panel that asks
+	// which permanent to give up and sends `special_action
+	// {kind: "ignore_effect", card_id: source_id, sacrifice_id}`. The
+	// seat's own (and the controller's, while they play it), like the
+	// companion's row: another seat's frame drops it, since the list of
+	// permanents it would pay with is nobody else's to read. Empty for
+	// almost every seat in almost every game.
+	IgnorableEffects []IgnorableEffectView `json:"ignorable_effects,omitempty"`
+
 	// HandRevealed names why this player plays with their hand revealed
 	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
 	// #3953). Public: the cards themselves reach every seat through the
@@ -10274,6 +10286,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
+		IgnorableEffects:    viewOfIgnorableEffects(g, p.ID),
 		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
@@ -10689,6 +10702,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
+		// #1986: the ignore buttons are the seat's own (or its
+		// controller's), as the companion's {3} row is.
+		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+			out.IgnorableEffects = nil
+		}
 		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
 			out.TriggerOrder = ""

@@ -606,6 +606,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfCompanion(st, sp)
 		case "turn_face_up":
 			return p.valueOfTurnFaceUp(st, m, sp)
+		case "ignore_effect":
+			return p.valueOfIgnoreEffect(st, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 

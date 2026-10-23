@@ -419,6 +419,9 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	// CR 116.2d (#1986): an ignorable effect and the restrictions that
+	// are it come together or not at all.
+	checkIgnorableEffect(spec)
 	// #1985: and for the entry twin.
 	checkEntryRestrictions(spec.Name, spec.EntryRestrictions)
 	// ADR 0109 §6: and for a targeting restriction, which must also say
@@ -1086,6 +1089,33 @@ func checkCastRestrictions(card string, rs []game.CastRestriction) {
 func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
 	for _, r := range rs {
 		checkRestriction(card, "land-play", r.Label, r.Forbids == nil)
+	}
+}
+
+// checkIgnorableEffect refuses a card whose ignore switches nothing off
+// (no restriction marked Ignorable) or whose Ignorable restriction has no
+// ignore to be switched off by, and an ignore with no printed row or no
+// rule for whom it bears on.
+func checkIgnorableEffect(spec Spec) {
+	marked := false
+	for _, r := range spec.CastRestrictions {
+		marked = marked || r.Ignorable
+	}
+	for _, r := range spec.LandPlayRestrictions {
+		marked = marked || r.Ignorable
+	}
+	ig := spec.IgnorableEffect
+	if ig == nil {
+		if marked {
+			panic(fmt.Sprintf("effects.Register: %q marks a restriction Ignorable but declares no IgnorableEffect", spec.Name))
+		}
+		return
+	}
+	if ig.Label == "" || ig.Applies == nil {
+		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect without its Label or Applies", spec.Name))
+	}
+	if !marked {
+		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect but no restriction is Ignorable, so ignoring it would switch nothing off", spec.Name))
 	}
 }
 

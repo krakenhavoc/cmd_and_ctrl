@@ -1471,6 +1471,11 @@ estimate.
 > a rules gate read by both the cast gate and the land-play gate (#1987, Shaman's Trance), is one more
 > additive kind under schema v9, with one fixture (`v9/shamans_trance.json`).
 
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-23): `ignoreEffect`,
+> a rules gate read by both the cast gate and the land-play gate (#1986, Damping Engine's "ignore this effect until
+> end of turn"), is one more additive kind under schema v9, with one fixture (`v9/damping_engine_ignore.json`).
+> Its `source` is the ignored permanent as an object (id and epoch), so a returned permanent is not ignored.
+
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing
 `ScopedEffect` instead. There are three reasons:

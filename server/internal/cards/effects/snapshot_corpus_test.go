@@ -592,7 +592,34 @@ func corpusBoards() []corpusBoard {
 		// the caster's stored standing permissions, one per other seat's
 		// graveyard (castPermissions[].zoneOwner over a graveyard).
 		{"shamans_trance", corpusShamansTrance},
+		// v9, added by #1986 (ADR 0109 §4 amendment 2026-10-23) as a new
+		// file: a Damping Engine whose controller has ignored it by
+		// sacrificing a permanent — the ignoreEffect record (a game-scope
+		// rule kind naming the player, its source the Engine as an object
+		// with its CR 400.7 epoch, until end of turn).
+		{"damping_engine_ignore", corpusDampingEngineIgnore},
 	}
+}
+
+// corpusDampingEngineIgnore is #1986's stored shape: the ignore record a
+// CR 116.2d special action writes, live when the restore point is taken.
+func corpusDampingEngineIgnore(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	engine := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Damping Engine", TypeLine: "Artifact",
+		OracleID: dampingEngineOracle, Owner: me.ID, Controller: me.ID,
+	})
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	if err := g.PerformSpecialAction(me.ID, engine, game.SpecialActionIgnoreEffect,
+		game.SpecialActionParams{SacrificeID: bear}); err != nil {
+		t.Fatalf("setup: ignore: %v", err)
+	}
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModIgnoreEffect {
+		t.Fatalf("setup: scoped records = %+v, want one ignoreEffect", g.ScopedEffects)
+	}
+	return g
 }
 
 // corpusShamansTrance is #1987's stored shapes: the own-graveyard ban
