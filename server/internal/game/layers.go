@@ -195,6 +195,27 @@ type StaticAbility struct {
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
 
+	// ReadsAbilities declares a layer-6 static whose AppliesTo (or
+	// Apply) reads the abilities of the objects it looks at — Sephara,
+	// Sky's Blade's "Other creatures you control with flying have
+	// indestructible", Kwende, Pride of Femeref's "Creatures you control
+	// with first strike have double strike". Flying and first strike are
+	// themselves added and removed in layer 6, so such a grant depends
+	// on every effect in the bucket that would add or remove the
+	// ability it reads (CR 613.8a), and waits for them whatever the
+	// timestamps (CR 613.8b).
+	//
+	// The engine finds WHICH effects it depends on by ADR 0067's trial
+	// application, run for this static's rows only (ADR 0067 amendment
+	// of 2026-10-23, layer_dependency.go). The declaration says only
+	// that the trial is worth running: a layer-6 effect that reads no
+	// ability can't depend on another in that layer, and the bucket
+	// holds every printed keyword row on the board, so the trial is not
+	// paid for anything that does not declare this. effects.Register
+	// refuses it outside layer 6 and beside a removal or a borrow, and
+	// a granted bundle can't carry it (GrantedStaticProblem).
+	ReadsAbilities bool
+
 	// StartsAtCounters declares a static whose effect begins when its
 	// SOURCE gets its Nth counter of a kind — Idol of False Gods' "As
 	// long as this artifact has eight or more +1/+1 counters on it" —

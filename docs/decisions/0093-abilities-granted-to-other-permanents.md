@@ -221,6 +221,8 @@ Layer 1-5 effects of a silenced grantor are untouched: ADR 0067 §2 stands.
 Other layer-6 dependencies between two grants (a grant whose "applies to" reads another grant's
 output) are **not** ordered. Timestamp order applies, as it does today, and no catalogued pair
 reaches it.
+(2026-10-23: they are now ordered for a static that declares `ReadsAbilities`, Sephara, Sky's
+Blade's. See [ADR 0067's amendment of that date](0067-layer-dependency-ordering.md), #2663.)
 
 ## Decision 4 — "This creature" is the host, by construction
 

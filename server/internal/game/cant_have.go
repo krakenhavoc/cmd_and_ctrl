@@ -108,3 +108,26 @@ func hexproofModProblem(m Mod) string {
 	}
 	return ""
 }
+
+// HasKeywordItCanHave is HasKeyword less a keyword the object can't
+// have (CR 613.1f). After the layer pass the two agree, because the strip
+// has run. Inside the layer-6 bucket they don't: a "can't have flying"
+// that has applied is recorded on Characteristic.CantHave and the
+// flying is still in the list until the bucket ends. A static that
+// reads an ability (StaticAbility.ReadsAbilities) asks this, so that it
+// depends on the "can't have" as it does on a "loses" (CR 613.8a) and
+// never grants anything to a creature for a keyword the creature will
+// not have.
+func HasKeywordItCanHave(c *Card, kw string) bool {
+	if !HasKeyword(c, kw) {
+		return false
+	}
+	if c.effective == nil {
+		return true
+	}
+	if containsFold(c.effective.CantHave, kw) {
+		return false
+	}
+	// CR 702.11e: no hexproof means no hexproof from a quality either.
+	return !(IsHexproofFromToken(kw) && containsFold(c.effective.CantHave, KeywordHexproof))
+}

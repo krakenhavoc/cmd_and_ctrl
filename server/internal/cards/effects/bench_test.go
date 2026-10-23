@@ -174,3 +174,37 @@ func BenchmarkLayerRecomputeLayer4Dependencies_80perms(b *testing.B) {
 		})
 	}
 }
+
+// BenchmarkLayerRecomputeLayer6Readers_80perms is ADR 0067's amendment of
+// 2026-10-23 (#2663) priced: the 80-permanent board with Sephara, Sky's
+// Blade and Kwende, Pride of Femeref under it. Both are older than every
+// other permanent, so each waits on the printed keyword rows of the ten
+// Serra Angels that entered after it, which is the most the trial is
+// asked to do, and a Gravity Sphere on top takes every creature's flying
+// away.
+//
+// Read it against BenchmarkLayerRecompute_80perms, the same board with no
+// static that reads an ability, whose layer-6 bucket runs no trial.
+func BenchmarkLayerRecomputeLayer6Readers_80perms(b *testing.B) {
+	g := benchGame(b)
+	owner := g.Seats[0].ID
+	push := func(name, oracle, typeLine string) uuid.UUID {
+		c := game.NewCard(name, owner)
+		c.OracleID = oracle
+		c.TypeLine = typeLine
+		c.Controller = owner
+		return pushBattlefieldCardWithTimestamp(g, c)
+	}
+	push("Sephara, Sky's Blade", sepharaOracle, "Legendary Creature — Angel")
+	push("Kwende, Pride of Femeref", kwendeOracle, "Legendary Creature — Human Knight")
+	seedBoard(g, 80)
+	push("Gravity Sphere", gravitySphereOracle, "World Enchantment")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		g.WithWriteLock(func() {
+			g.BumpLayerVersionForTest()
+			g.RecomputeLayersIfStaleLocked()
+		})
+	}
+}

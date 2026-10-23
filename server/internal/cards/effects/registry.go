@@ -860,8 +860,11 @@ func Register(spec Spec) {
 	checkStaticZones(spec.Name, "static", spec.Static)
 	// ADR 0093: an ability grant is a layer-6 effect and names a bundle.
 	checkStaticGrants(spec.Name, "static", spec.Static)
+	// ADR 0067 amendment 2026-10-23: a static that reads an ability.
+	checkAbilityReaders(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
 		checkStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
+		checkAbilityReaders(spec.Name, "emblem static", spec.Emblem.Static)
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
@@ -1020,6 +1023,31 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d functions from %s — %s",
 					card, what, i, zone, why))
 			}
+		}
+	}
+}
+
+// checkAbilityReaders is the registration check for
+// StaticAbility.ReadsAbilities (ADR 0067 amendment 2026-10-23): the
+// dependency order it asks for is kept inside the layer-6 bucket of the
+// battlefield pass, so a reader is a layer-6 static over permanents with a
+// predicate to read, and it is not also a removal or a borrow (the bucket
+// orders those by rules of their own, ADR 0093 Decision 3 and ADR 0155
+// Decision 4).
+func checkAbilityReaders(card, what string, statics []game.StaticAbility) {
+	for i, s := range statics {
+		if !s.ReadsAbilities {
+			continue
+		}
+		switch {
+		case s.Layer != game.Layer6Ability:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities outside layer 6: only the layer-6 bucket is ordered for it", card, what, i))
+		case s.AppliesTo == nil:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities but has no AppliesTo", card, what, i))
+		case s.RemovesAbilities || s.Borrows != nil:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities beside a removal or a borrow: declare them as statics of their own", card, what, i))
+		case s.AffectsSpells || len(s.AffectsZones) > 0:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities over spells or cards off the battlefield: only the battlefield's layer-6 bucket is ordered for it", card, what, i))
 		}
 	}
 }
