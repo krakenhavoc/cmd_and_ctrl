@@ -9,8 +9,8 @@ import (
 // carddef.go — builds the engine's view of a Spec once, at Register
 // (#622). Everything the twenty-two per-slot hooks used to compute on
 // every call is computed here, one time per card: the mana and
-// activated ability shapes, the printed-keyword static (closure and
-// all), the resolve and as-enters wrappers, the target-mode hint.
+// activated ability shapes, the resolve and as-enters wrappers, the
+// target-mode hint.
 
 // defs is the engine-facing catalog, keyed exactly as registry is.
 var defs = map[string]*game.CardDef{}
@@ -382,37 +382,14 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
-	// S18 sub-PR 2: the printed keywords become one self-only Layer 6
-	// static, appended after the hand-written ones. Built here, once,
-	// rather than on every layer recompute.
+	// #4236: the printed keywords are NOT a static. They are the object's
+	// own characteristics, so they are in the baseline the layer pass
+	// starts from (CR 613.1; printedInputs.characteristicFrom reads
+	// CatalogPrintedKeywords), where every removal, whenever it began,
+	// takes them away (CR 613.1f, CR 613.7). They used to be re-applied
+	// here as a self-only layer-6 row at the creature's own timestamp,
+	// which put a keyword back after any older "loses flying".
 	d.Static = spec.Static
-	for i := range d.Static {
-		if d.Static[i].PrintedKeywordRow {
-			// Engine-owned (#3013): only the row below may carry it.
-			d.Static = append([]game.StaticAbility(nil), spec.Static...)
-			for j := range d.Static {
-				d.Static[j].PrintedKeywordRow = false
-			}
-			break
-		}
-	}
-	if len(spec.PrintedKeywords) > 0 {
-		kws := append([]string(nil), spec.PrintedKeywords...)
-		synth := game.StaticAbility{
-			Layer:     game.Layer6Ability,
-			AppliesTo: selfOnly,
-			// #2219: this row IS the printed keywords, which the
-			// tile already shows as keyword chips.
-			Keywords:          kws,
-			PrintedKeywordRow: true,
-			Apply: func(c *game.Characteristic, target *game.Card, _ *game.Game, _ *game.Card) {
-				// CR 707.9d (#2322): a copy whose colour exception
-				// dropped devoid does not get it back from the entry.
-				appendKeywordsTo(c, target.PrintedKeywordsHonouringCopy(kws))
-			},
-		}
-		d.Static = append(append([]game.StaticAbility(nil), d.Static...), synth)
-	}
 	if len(d.Static) == 0 {
 		d.Static = nil
 	}

@@ -92,29 +92,26 @@ func TestProwessHasAKeyedFootprint(t *testing.T) {
 	}
 }
 
-// The printed-keyword row is the registry's: it marks the row it makes
-// from PrintedKeywords and clears the mark on any row a card file
-// wrote, so a hand-written static cannot pass for it.
-func TestOnlyTheRegistryMarksThePrintedKeywordRow(t *testing.T) {
-	const key = "test-3013-printed-keyword-row"
+// Printed keywords are the object's own characteristics, so the registry
+// makes no static of them (#4236): a card with PrintedKeywords and nothing
+// else has no statics, and one with a static of its own keeps just that.
+func TestPrintedKeywordsMakeNoStatic(t *testing.T) {
+	const key = "test-4236-printed-keywords-no-static"
+	own := game.StaticAbility{Layer: game.Layer6Ability, AppliesTo: selfOnly, Label: "probe"}
 	registerForTest(t, Spec{
-		OracleID: key, Name: "Printed Keyword Row Probe",
+		OracleID: key, Name: "Printed Keywords Probe",
 		PrintedKeywords: []string{"flying"},
-		Static: []game.StaticAbility{{
-			Layer: game.Layer6Ability, AppliesTo: selfOnly, PrintedKeywordRow: true,
-			Apply: func(*game.Characteristic, *game.Card, *game.Game, *game.Card) {},
-		}},
+		Static:          []game.StaticAbility{own},
 	})
 	d := lookupDef(key)
-	if d == nil || len(d.Static) != 2 {
-		t.Fatalf("definition statics %+v, want the card's row and the printed keywords", d)
+	if d == nil || len(d.Static) != 1 || d.Static[0].Label != "probe" {
+		t.Fatalf("definition statics %+v, want only the card's own", d)
 	}
-	if d.Static[0].PrintedKeywordRow || !d.Static[1].PrintedKeywordRow {
-		t.Errorf("marks %v / %v, want false for the card's row and true for the registry's",
-			d.Static[0].PrintedKeywordRow, d.Static[1].PrintedKeywordRow)
+	if got := game.CatalogPrintedKeywords(key); len(got) != 1 || got[0] != "flying" {
+		t.Errorf("printed keywords %v, want flying", got)
 	}
-	if got := game.CatalogLookup(oracleMonasteryMentor); got == nil || len(got.Static) != 1 || !got.Static[0].PrintedKeywordRow {
-		t.Error("Monastery Mentor's only static should be its printed keywords")
+	if got := game.CatalogLookup(oracleMonasteryMentor); got == nil || len(got.Static) != 0 {
+		t.Error("Monastery Mentor has no static: its prowess is a printed keyword")
 	}
 }
 

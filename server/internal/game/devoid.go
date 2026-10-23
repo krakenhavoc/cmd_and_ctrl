@@ -124,8 +124,7 @@ func (c *Card) SetCopyExceptionColors(colors ...string) {
 // It also translates the list through the object's changed words (ADR
 // 0160's 2026-10-15 amendment, CR 612.2): the catalog's printed keywords
 // are the object's text, so Sleight of Mind on a White Knight makes its
-// layer-6 printed-keyword row "protection from blue" as it does the
-// baseline's.
+// printed protection from white read protection from blue.
 func (c *Card) PrintedKeywordsHonouringCopy(kws []string) []string {
 	if c == nil {
 		return kws

@@ -114,8 +114,8 @@ func stubAbilityRowCatalog(t *testing.T) {
 			Static: []StaticAbility{
 				{Layer: Layer7PT},
 				{Layer: Layer6Ability, Label: "Attacks each combat if able."},
-				// The printed-keyword static the effects package
-				// synthesises: on the keyword chips.
+				// A keyword line (a station card's "{N+} | Flying"):
+				// on the keyword chips.
 				{Layer: Layer6Ability, Keywords: []string{"flying"}},
 				// The later-layer half of the first row's ability.
 				{Layer: Layer7PT, ContinuesAfterRemoval: true},
@@ -193,8 +193,8 @@ func TestAbilityRowsUncataloguedAndVanillaHaveNone(t *testing.T) {
 	}
 }
 
-// A keyword-only catalog card — its one static is the synthesised
-// keyword row — has no rows: the keyword chips are the whole story.
+// A keyword-only catalog card — its one static is a keyword line — has
+// no rows: the keyword chips are the whole story.
 func TestAbilityRowsKeywordOnlyCardHasNone(t *testing.T) {
 	prev := CatalogLookup
 	CatalogLookup = func(key string) *CardDef {

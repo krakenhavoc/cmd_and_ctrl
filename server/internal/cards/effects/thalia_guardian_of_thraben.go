@@ -15,8 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Symmetrical as printed — Thalia's own controller pays it on their
 // own removal spell too.
 //
-// First strike rides PrintedKeywords rather than a Static entry;
-// wire.go synthesises the self-only Layer 6 grant.
+// First strike rides PrintedKeywords rather than a Static entry.
 func init() {
 	Register(Spec{
 		OracleID:        "9b7f1d05-707c-4ed3-9f0e-8ced1232c2ee",

@@ -640,8 +640,9 @@ func sameStringSlice(a, b []string) bool {
 // Sephara, Sky's Blade's "Other creatures you control with flying have
 // indestructible" applies to the creatures that have flying, and flying
 // is itself added and removed in layer 6: by a lord, an Equipment, an
-// until-end-of-turn grant, a flying counter, a printed keyword row that
-// entered after her, or Gravity Sphere's "All creatures lose flying".
+// until-end-of-turn grant, a flying counter, or Gravity Sphere's "All
+// creatures lose flying". (A printed keyword is the baseline, not an
+// effect, so a creature that entered after her needs no ordering: #4236.)
 // Applying any of those changes what her effect applies to, so it
 // depends on each of them (CR 613.8a) and waits until they have applied
 // (CR 613.8b). In timestamp order alone a creature that gained flying
@@ -651,9 +652,9 @@ func sameStringSlice(a, b []string) bool {
 // the rows that declare StaticAbility.ReadsAbilities and of nothing
 // else. The narrowing is stated: a layer-6 effect that does not declare
 // it is never treated as dependent. It can't be one unless it reads an
-// ability, and the declaration is what keeps the bucket — which holds a
-// printed keyword row for every catalogued permanent with a keyword —
-// from paying O(N²) trials on every board.
+// ability, and the declaration is what keeps the bucket — which holds
+// every lord, Equipment and grant on the board — from paying O(N²)
+// trials on every board.
 
 // readsAbilities reports whether a layer-6 effect declares
 // StaticAbility.ReadsAbilities. Only a battlefield (or emblem) static can:
@@ -752,8 +753,8 @@ func (g *Game) readerWaitsOnLocked(rest []ContinuousEffect, k, first int) int {
 // The fixed base is cloned, and the reader run on it, only for an object
 // the reader applies to before the trial: one it applies to in neither
 // world is the same answer, and one it applies to in only one is a
-// difference whatever the output. That is most of the objects a printed
-// keyword row or a lord applies to, and it keeps the probe's allocations
+// difference whatever the output. That is most of the objects a lord
+// applies to, and it keeps the probe's allocations
 // to the trial's own clones.
 func (g *Game) trialChangesLocked(reader, other ContinuousEffect, idxs []int) bool {
 	var bases []Characteristic

@@ -177,11 +177,12 @@ func BenchmarkLayerRecomputeLayer4Dependencies_80perms(b *testing.B) {
 
 // BenchmarkLayerRecomputeLayer6Readers_80perms is ADR 0067's amendment of
 // 2026-10-23 (#2663) priced: the 80-permanent board with Sephara, Sky's
-// Blade and Kwende, Pride of Femeref under it. Both are older than every
-// other permanent, so each waits on the printed keyword rows of the ten
-// Serra Angels that entered after it, which is the most the trial is
-// asked to do, and a Gravity Sphere on top takes every creature's flying
-// away.
+// Blade and Kwende, Pride of Femeref under it, and a Gravity Sphere on top
+// that takes every creature's flying away. Both readers are older than
+// every other permanent and wait on the Sphere, which is the most the trial
+// is asked to do. (Until #4236 they also waited on the printed keyword row
+// of each of the ten Serra Angels that entered after them; a printed
+// keyword is the baseline now and no longer a row in the bucket.)
 //
 // Read it against BenchmarkLayerRecompute_80perms, the same board with no
 // static that reads an ability, whose layer-6 bucket runs no trial.

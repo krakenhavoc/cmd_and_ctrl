@@ -23,18 +23,16 @@ func init() {
 	game.CatalogLookup = lookupDef
 }
 
-// selfOnly is the AppliesTo predicate for the synthesized
-// printed-keyword StaticAbility — the keyword list applies only to
-// the card itself, not to any other battlefield card. Separated
-// here so the closure inside the hook is a bare reference rather
-// than an inline func literal per call.
+// selfOnly is the AppliesTo predicate for a static that applies only to
+// the card itself, not to any other battlefield card. Separated here so
+// the closure inside the hook is a bare reference rather than an inline
+// func literal per call.
 func selfOnly(target *game.Card, g *game.Game, source *game.Card) bool {
 	return target.InstanceID == source.InstanceID
 }
 
-// keywordSliceContains is a small helper for the synthesized
-// keyword apply — avoids re-appending a keyword already in the
-// slice (e.g. Lord of Atlantis grants "islandwalk" to a Merfolk
+// keywordSliceContains is a small helper for a keyword apply —
+// avoids re-appending a keyword already in the slice (e.g. Lord of Atlantis grants "islandwalk" to a Merfolk
 // that already has printed islandwalk from its own
 // `PrintedKeywords`). Named to avoid colliding with the
 // `containsString` helper in test files in this package.
@@ -50,10 +48,8 @@ func keywordSliceContains(xs []string, s string) bool {
 // appendKeywordsTo is the layer-6 Apply body every self-only keyword
 // grant shares: append each keyword the object does not already have.
 //
-// Two callers, which is why it is named — the printed-keyword static
-// buildDef synthesises for every card with a PrintedKeywords list, and
-// ThresholdKeywords, a station card's "{N+} | Flying" line. The
-// membership check is the load-bearing half: a permanent that already
+// ThresholdKeywords, a station card's "{N+} | Flying" line, is its
+// caller. The membership check is the load-bearing half: a permanent that already
 // has the keyword must not end up with it twice, because the wire
 // renders the badge list verbatim.
 func appendKeywordsTo(c *game.Characteristic, keywords []string) {

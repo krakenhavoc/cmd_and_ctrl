@@ -185,16 +185,15 @@ func TestTokenKeywordWatches(t *testing.T) {
 	}
 }
 
-// The static the registry makes from a card's printed keywords applies
-// them to the object itself, so it is not a rule the object shapes for
-// anything else; any other static still is.
-func TestPrintedKeywordRowBearsNoRules(t *testing.T) {
-	kw := StaticAbility{Layer: Layer6Ability, PrintedKeywordRow: true}
-	if global, own := defBearsRules(&CardDef{Static: []StaticAbility{kw}}); global || own {
+// A card's printed keywords apply to the object itself and are no static
+// (#4236), so a definition that has only them bears no rules; any static
+// beside them still does.
+func TestPrintedKeywordsBearNoRules(t *testing.T) {
+	if global, own := defBearsRules(&CardDef{PrintedKeywords: []string{"flying"}}); global || own {
 		t.Errorf("printed keywords alone: global %v own %v, want neither", global, own)
 	}
 	other := StaticAbility{Layer: Layer6Ability}
-	if _, own := defBearsRules(&CardDef{Static: []StaticAbility{other, kw}}); !own {
+	if _, own := defBearsRules(&CardDef{PrintedKeywords: []string{"flying"}, Static: []StaticAbility{other}}); !own {
 		t.Error("a static beside the printed keywords must still bear the object's own rules")
 	}
 }
