@@ -150,7 +150,11 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	PendingChoiceRevealedHandPick: true,
 	// ADR 0166: Word of Command's forced play is the rest of its
 	// resolution.
-	PendingChoiceControlledPlay:      true,
+	PendingChoiceControlledPlay: true,
+	// #2947, CR 608.2g: casting a copy during the resolution that made
+	// it is the rest of that resolution, and no player receives
+	// priority until it is done.
+	PendingChoiceResolutionCast:      true,
 	PendingChoiceMana:                true,
 	PendingChoiceReplacementOrder:    true,
 	PendingChoiceOptionalReplacement: true,

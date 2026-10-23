@@ -8426,10 +8426,13 @@ Hand it the cards that REALLY reached exile (the continuation of
 `ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
 gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
 free-cast offer, all at once with no cap; the player casts them in the order
-they like. A copy not cast by the player's next priority pass ceases to
-exist, and a cast one ceases on resolution (a permanent becomes a token). It
-is an exact copy, so the catalog resolves it as the original. See ADR 0066's
-2026-10-13 amendment.
+they like, while the effect is still resolving (a `resolution_cast` prompt
+holds the resolution open, CR 608.2g, #2947), or declines the rest. A copy not
+cast ceases to exist, and a cast one ceases on resolution (a permanent becomes
+a token). It is an exact copy, so the catalog resolves it as the original. See
+ADR 0066's 2026-10-13 and 2026-10-22 amendments. Anything the card's body does
+after `CopyAndCast` runs before the casts; write it as a later step if a cast
+must come first.
 
 "Any number of spells with total mana value N or less from among the copies"
 (Uldaros Theorix) adds `TotalManaValueAtMost`:

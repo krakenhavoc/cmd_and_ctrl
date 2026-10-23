@@ -109,6 +109,7 @@
   import { outsideDock } from "../lib/outsideRight";
   import { openZoneBrowser } from "../lib/zoneBrowser";
   import ControlledPlaySheet from "../lib/components/board/ControlledPlaySheet.svelte";
+  import ResolutionCastSheet from "../lib/components/board/ResolutionCastSheet.svelte";
   import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoPassNotice from "../lib/components/board/AutoPassNotice.svelte";
@@ -3624,6 +3625,8 @@
         {sendAction}
       />
       <ControlledPlaySheet snap={view} {viewerID} {sendAction} />
+      <!-- #2947: casting a copy during the resolution that made it. -->
+      <ResolutionCastSheet snap={view} {viewerID} {sendAction} />
       <!-- lastError too: this modal's backdrop covers the board's
            rejection toast, so it shows a refusal of its own answer. -->
       <!-- ADR 0193 §9: the recorder's propose sheet and the other seats'

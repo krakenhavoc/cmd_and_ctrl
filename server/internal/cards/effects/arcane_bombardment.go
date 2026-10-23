@@ -20,7 +20,8 @@ import (
 // so the pile grows by a card a turn and the copies are made again from
 // the same originals each time. The originals are never cast, only
 // copied; the copies are not cards and cease to exist as they resolve or
-// when the caster passes priority with them uncast.
+// when the caster declines them. They are cast, or not, while the trigger
+// is still resolving (CR 608.2g, #2947).
 //
 //   - "First instant or sorcery spell each turn" is the per-turn tally's
 //     InstantSorcery count (the cast path bumps it before EventCast), so

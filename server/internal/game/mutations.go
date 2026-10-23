@@ -657,6 +657,15 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #2947, CR 608.2g: a copy a resolution is offering its chooser is
+	// cast as that resolution's answer however the cast arrives, so the
+	// prompt cannot be left offering a copy that has gone, and no action
+	// is noted (nobody receives priority after it).
+	if g.State == StateActive {
+		if idx := g.resolutionCastChoiceForCardLocked(playerID, cardID); idx >= 0 {
+			return g.castForResolutionChoiceLocked(g.PendingChoices[idx].ID, playerID, cardID, params)
+		}
+	}
 	if err := g.castSpellLocked(playerID, cardID, params); err != nil {
 		return err
 	}
@@ -9348,6 +9357,16 @@ func (g *Game) passPriorityAsHolderLocked() error {
 	// stack or on the table, exactly as if the discover had put the
 	// card into their hand during its resolution; they pass again to
 	// move on.
+	//
+	// #2947: a pass the choice gate refuses changes nothing, so the gate
+	// is asked before any window closes. Otherwise the refused pass of a
+	// holder paused on a resolution_cast prompt would lapse the very
+	// offers that prompt is asking about (resolution_copy_cast.go).
+	if g.State == StateActive && !g.TurnChangePending {
+		if c := g.blockingChoiceLocked(); c != nil {
+			return choicePendingErrorLocked(c)
+		}
+	}
 	if h := g.Turn.PriorityHolder; h >= 0 && h < len(g.Seats) && g.Seats[h] != nil {
 		if g.closePassWindowsLocked(g.Seats[h].ID) {
 			if g.blockingChoiceLocked() != nil || len(g.PendingTriggers) > 0 {

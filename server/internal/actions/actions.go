@@ -669,7 +669,11 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0166 §4: the controlled_play prompt this cast answers.
 			// Word of Command's forced play is cast during its
 			// resolution (CR 608.2g), so nobody holds priority for it.
-			ControlledPlay string           `json:"controlled_play,omitempty"`
+			ControlledPlay string `json:"controlled_play,omitempty"`
+			// #2947, CR 608.2g: the resolution_cast prompt this cast
+			// answers. A copy cast during the resolution that made it
+			// needs no priority either.
+			ResolutionCast string           `json:"resolution_cast,omitempty"`
 			InstanceID     string           `json:"instance_id"`
 			FromZone       string           `json:"from_zone,omitempty"`
 			Targets        []castTargetWire `json:"targets,omitempty"`
@@ -800,7 +804,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		if p.ControlledPlay == "" {
+		if p.ControlledPlay == "" && p.ResolutionCast == "" {
 			// A controller casts as the player they control only to
 			// make the play the effect demands (ADR 0166), or while
 			// they play that player's whole turn (ADR 0167 §4) or one
@@ -964,6 +968,20 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("cast_spell controlled_play: %w", err)
 			}
 			return g.ControlledPlayCast(a.Actor, choiceID, instanceID, params)
+		}
+		if p.ResolutionCast != "" {
+			choiceID, err := uuid.Parse(p.ResolutionCast)
+			if err != nil {
+				return fmt.Errorf("cast_spell resolution_cast: %w", err)
+			}
+			// The prompt's chooser casts, as themselves: a controller
+			// casting as a player they control arrives here re-addressed
+			// (routeControlledPlayer), and is refused unless that player
+			// is the chooser.
+			if a.Actor != a.Caller && !g.ControlUntilOfPlayer(a.Caller).PlaysForThem() {
+				return game.ErrPlayerControlled
+			}
+			return g.CastForResolutionChoice(a.Player, choiceID, instanceID, params)
 		}
 		return g.CastSpell(a.Player, instanceID, params)
 

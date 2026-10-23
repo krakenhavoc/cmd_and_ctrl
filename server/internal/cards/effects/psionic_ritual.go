@@ -26,10 +26,10 @@ import (
 // The resolution is Mizzix's Mastery's (CopyAndCast, ADR 0066's card-copy
 // amendment) over ANY graveyard: the card is exiled through the CR 614
 // window, and only a card that really reached exile is copied (CR
-// 707.12). The copy is offered to the caster for free, flash-timed
-// (CR 608.2g); one not cast by their next priority pass ceases to exist,
-// and one that is cast ceases to exist as it resolves (CR 707.10a). The
-// card itself stays in exile.
+// 707.12). The copy is offered to the caster for free, and cast, or not,
+// while the Ritual is still resolving (CR 608.2g, #2947); one not cast
+// ceases to exist, and one that is cast ceases to exist as it resolves
+// (CR 707.10a). The card itself stays in exile.
 //
 // "Exile Psionic Ritual" is the last instruction: the card leaves the
 // stack to exile rather than its graveyard. A replicate copy is not a

@@ -122,7 +122,8 @@ func TestBlueMagesCaneUncastCopyCeases(t *testing.T) {
 	if len(cardCopies(g)) != 1 {
 		t.Fatalf("copies = %d, want 1", len(cardCopies(g)))
 	}
-	// Moving the table on past the controller's next priority pass ends the offer.
+	// Declining ends the offer, and the table moves on.
+	declineResolutionCasts(t, g, me.ID)
 	advanceTo(t, g, game.StepPostcombatMain)
 	passPriorityAroundTable(t, g)
 	if n := len(cardCopies(g)); n != 0 {

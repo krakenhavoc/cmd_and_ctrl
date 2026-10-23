@@ -20,12 +20,15 @@ import (
 // permanent on the battlefield).
 //
 // The copies are offered to Player together, and Player casts them in the
-// order they like. With no total each is its own grant, so casting one
-// never touches another; with TotalManaValueAtMost they are ONE grant that
-// every cast spends from. An instant or sorcery copy ceases to exist as it
+// order they like, DURING the resolution (CR 707.12, CR 608.2g; ADR 0066's
+// 2026-10-22 amendment, #2947): a resolution_cast prompt holds the
+// resolution open until Player has cast the ones they want, each becoming
+// the topmost object on the stack with nobody receiving priority in
+// between. With no total each is its own grant, so casting one never
+// touches another; with TotalManaValueAtMost they are ONE grant that every
+// cast spends from. An instant or sorcery copy ceases to exist as it
 // resolves; a permanent copy becomes a token (CR 707.10b). Every copy not
-// cast when the window closes, on Player's next priority pass, ceases to
-// exist too (CR 704.5e).
+// cast ceases to exist too (CR 704.5e).
 
 // CopyAndCast makes a copy of every card in Cards and offers Player a cast
 // of each.
@@ -82,6 +85,8 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 		Timing:   game.TimingFlash,
 		Lapse:    game.LapseStaysInExile,
 		FollowUp: c.FollowUp,
+
+		DuringResolution: true,
 
 		FollowUpObject: c.FollowUpObject,
 		LastKnown:      c.LastKnown,
