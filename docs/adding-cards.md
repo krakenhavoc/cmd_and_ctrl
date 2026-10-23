@@ -89,6 +89,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
+  - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -11360,6 +11361,21 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
   `SacrificeNDifferent`).
+
+### Void and revolt: "left the battlefield this turn" (#2128, #2148)
+
+Two turn-tally facts, one per printed word. **Revolt** is "a permanent you controlled left the battlefield this turn" and is per player (`PlayerTurnTally.PermanentsLeft`, `cards/effects/revolt.go`). **Void** is "a nonland permanent left the battlefield this turn or a spell was warped this turn" and is the whole table's (`TurnTally.NonlandPermanentsLeft` and `SpellsWarped`, `cards/effects/void.go`, ADR 0049's 2026-10-23 amendment). Never walk `g.Events` for either.
+
+```go
+WhenThisEntersIfVoid(label, effect)         // "Void — When this enters, if …"
+WheneverThisAttacksIfVoid(label, effect)    // "Void — Whenever this attacks, if …"
+AtYourEndStepIfVoid(label, effect)          // "Void — At the beginning of your end step, if …"
+AtYourEndStepUnlessVoid(label, effect)      // "… unless …": not an intervening if
+SelfCostModifiers: []game.CostModifier{CostsLessIfVoid(2, "This spell costs {2} less to cast if …")}
+if Void(ctx.Game) { … }                     // a spell's "instead if", read as it resolves
+```
+
+The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the trigger fires and again as it resolves, and an `effect` that is a `Do` keeps its steps, so a later step still waits for an earlier step's prompt. Set `Targets` on the returned ability for a targeted body. A land (a land creature too) leaving does not count; a token ceasing to exist does; a spell cast for any alternative cost that carries the warp exile clause counts whether or not it resolves.
 
 ### Adding a `Spec` slot (#622)
 

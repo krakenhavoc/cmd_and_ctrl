@@ -8327,6 +8327,7 @@ turnTally.noncombatDamage[].colors[]	string
 turnTally.noncombatDamage[].controller	custom(uuid.UUID)
 turnTally.noncombatDamage[].source	custom(uuid.UUID)
 turnTally.noncombatDamage[].victim	custom(uuid.UUID)
+turnTally.nonlandPermanentsLeft	number:int
 turnTally.permissionTypes	map:string
 turnTally.permissionTypes{}	number:int
 turnTally.phaseStarted	number:int
@@ -8360,6 +8361,7 @@ turnTally.resolved	map:string
 turnTally.resolved{}	number:int
 turnTally.sacrificedSubtypes	map:string
 turnTally.sacrificedSubtypes{}	number:int
+turnTally.spellsWarped	number:int
 turnTally.stepsBegun	map:string
 turnTally.stepsBegun{}	number:int
 turnTally.triggered	map:string
