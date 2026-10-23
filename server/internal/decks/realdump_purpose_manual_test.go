@@ -105,8 +105,11 @@ func declaresTargetEntry(s effects.Spec) bool {
 // reviewedNotAWipe is every catalog card the sweep reading flags that
 // declares no Sweep, with why. Each was read.
 var reviewedNotAWipe = map[string]string{
-	"Armageddon":     "destroys lands, which no sweep class holds alone",
-	"Bag of Holding": "returns the cards it exiled, not permanents",
+	"Armageddon": "destroys lands, which no sweep class holds alone",
+	// #1997: its end-step and leaves triggers destroy only the Tombspawn
+	// it created itself, every player's, never another permanent.
+	"Tombstone Stairwell":                      "destroys only the tokens it created, not a board",
+	"Bag of Holding":                           "returns the cards it exiled, not permanents",
 	"Baneblade Scoundrel // Baneclaw Marauder": "-1/-1 only to the creatures blocking it",
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",

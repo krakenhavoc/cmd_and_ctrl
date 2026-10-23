@@ -67,6 +67,12 @@ var knownUnmatchedTokens = map[string]string{
 	// token cards. The template follows the oracle text (#2096).
 	"0/1 black Insect": "no token card was ever printed for Carrion's Insects",
 
+	// Tombstone Stairwell (Mirage, 1996) creates "a 2/2 black Zombie
+	// creature token with haste named Tombspawn" (#1997). It predates
+	// token cards, and no Tombspawn token card was ever printed. The
+	// template follows the oracle text.
+	"2/2 black Zombie with haste named Tombspawn": "no token card was ever printed for Tombstone Stairwell's Tombspawn",
+
 	// Wurmcoil Engine's current oracle says "3/3 colorless Phyrexian
 	// Wurm artifact creature token"; the printed token card, from
 	// 2010, is named "Wurm" — it predates the 2021 Phyrexian subtype
