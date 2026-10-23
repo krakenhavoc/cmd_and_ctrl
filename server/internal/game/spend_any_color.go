@@ -264,11 +264,63 @@ func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
+	return g.costAsPaidByExcludingLocked(payer, ctx, cost, x, nil)
+}
+
+// costAsPaidByExcludingLocked is costAsPaidByLocked for a payer whose
+// auto-tap may not reach for `excluded` (the cast's lock-taps and the
+// sources its other costs spend, castAutoTapExclusionsLocked). The
+// exclusions matter only to a "no more than one mana of each color"
+// clause, whose colours are chosen by what the payer can pay
+// (spend_only.go, "One mana of each colour"); every other cost reads
+// exactly as costAsPaidByLocked reads it.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) costAsPaidByExcludingLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int, excluded map[uuid.UUID]bool) ParsedCost {
 	// ADR 0131: K'rrik's "you may pay 2 life rather than pay that {B}"
 	// marks the printed symbols FIRST, so the requirements the
 	// spend-only fold adds below (Crypt Rats' "black mana on X") are not
 	// marked: life never pays generic mana (the 2019-08-23 ruling).
 	cost = g.grantLifeForManaLocked(payer, cost)
+	if choices := cost.distinctSpendChoices(x); len(choices) > 0 {
+		return g.distinctColorsAsPaidLocked(payer, ctx, cost, x, excluded, choices)
+	}
+	return g.foldAndWidenLocked(payer, ctx, cost, x)
+}
+
+// distinctColorsAsPaidLocked is the cost as paid with the colour subset
+// of a "no more than one mana of each color" clause chosen (#2575): the
+// first of `choices` the floating pool pays alone, else the first the
+// pool and an auto-tap plan pay together, else the first. Read-only.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) distinctColorsAsPaidLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int, excluded map[uuid.UUID]bool, choices [][]string) ParsedCost {
+	paid := make([]ParsedCost, len(choices))
+	for i, colors := range choices {
+		paid[i] = g.foldAndWidenLocked(payer, ctx, cost.withSpendColors(colors), x)
+	}
+	p := g.playerByIDLocked(payer)
+	if p == nil {
+		return paid[0]
+	}
+	for _, c := range paid {
+		if p.ManaPool.CanPayFor(c, x, ctx) {
+			return c
+		}
+	}
+	for _, c := range paid {
+		if _, _, ok := g.autoTapTopUpLocked(payer, c, x, ctx, excluded, 0); ok {
+			return c
+		}
+	}
+	return paid[0]
+}
+
+// foldAndWidenLocked is the rest of costAsPaidByLocked: the spend-only
+// fold, then the spend grant's widening.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) foldAndWidenLocked(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
 	cost = cost.foldSpendOnly(x)
 	if cost.requiredCount() == 0 {
 		return cost
@@ -346,15 +398,31 @@ func (g *Game) CostAsPaidByForEffect(payer uuid.UUID, ctx ManaSpendContext, cost
 	return g.costAsPaidByLocked(payer, ctx, cost, x)
 }
 
+// CostAsPaidByExcludingForEffect is costAsPaidByExcludingLocked for
+// the same caller, which knows the sources the payment's auto-tap may
+// not reach for (canPayExcluding), so a "no more than one mana of each
+// color" clause is read with the exclusions the payment reads it with.
+func (g *Game) CostAsPaidByExcludingForEffect(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int, excluded map[uuid.UUID]bool) ParsedCost {
+	return g.costAsPaidByExcludingLocked(payer, ctx, cost, x, excluded)
+}
+
 // CostAsPaidBy is costAsPaidByLocked under the read lock, for the
 // auto-tap preview endpoint, so the plan and the missing-mana breakdown
 // it shows are the ones the payment will make.
 //
 // Callers must NOT hold g.mu.
 func (g *Game) CostAsPaidBy(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int) ParsedCost {
+	return g.CostAsPaidByExcluding(payer, ctx, cost, x, nil)
+}
+
+// CostAsPaidByExcluding is CostAsPaidBy with the preview's auto-tap
+// exclusions, the ones CastSpell's auto-tap will plan around.
+//
+// Callers must NOT hold g.mu.
+func (g *Game) CostAsPaidByExcluding(payer uuid.UUID, ctx ManaSpendContext, cost ParsedCost, x int, excluded map[uuid.UUID]bool) ParsedCost {
 	out := cost
 	g.ReadSnapshot(func() {
-		out = g.costAsPaidByLocked(payer, ctx, cost, x)
+		out = g.costAsPaidByExcludingLocked(payer, ctx, cost, x, excluded)
 	})
 	return out
 }

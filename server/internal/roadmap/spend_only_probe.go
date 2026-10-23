@@ -18,6 +18,13 @@ func declaresSpendOnly(s effects.Spec) bool {
 	if s.SpendOnly != nil || s.SpendOnlySources != 0 {
 		return true
 	}
+	// #2575: and an alternative cost's own "spend only mana produced by
+	// …" (Security Rhox).
+	for _, alt := range s.AlternativeCosts {
+		if alt.SpendOnlySources != 0 {
+			return true
+		}
+	}
 	for _, a := range s.Activated {
 		if a.Cost.SpendOnly != nil {
 			return true

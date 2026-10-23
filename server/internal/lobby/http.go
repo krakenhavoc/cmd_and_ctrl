@@ -2487,7 +2487,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// function.
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
-		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian)
+		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian, nil)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
@@ -2539,7 +2539,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
 	spend := game.ManaSpendForCastParams(price.Card, params)
-	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian)
+	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian, excluded)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
 	// "{2}{U}" and an airbent permanent reads "{2}". The commander tax
@@ -2774,8 +2774,11 @@ func costAsPaidForPreview(
 	xValue int,
 	spend game.ManaSpendContext,
 	claimed int,
+	excluded map[uuid.UUID]bool,
 ) game.ParsedCost {
-	cost = g.CostAsPaidBy(playerID, spend, cost, xValue)
+	// #2575: with the plan's exclusions, which a "no more than one mana
+	// of each color" clause chooses its colours around.
+	cost = g.CostAsPaidByExcluding(playerID, spend, cost, xValue, excluded)
 	if claimed <= 0 {
 		return cost
 	}

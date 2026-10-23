@@ -857,7 +857,10 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// nothing reads targets, which is every board without such a
 	// card; otherwise each (modes, targets) set below is priced on its
 	// own and carries its own X.
-	spend := game.ManaSpendForCastFrom(card, fromZone)
+	// #2575: off the announcement, which names the offer, so an
+	// alternative cost's own "spend only mana produced by …" (Security
+	// Rhox) is read as CastSpell reads it.
+	spend := game.ManaSpendForCastParams(card, announce)
 	// #3860: and a permanent that adds life to the cost of a spell that
 	// targets it (Terror of the Peaks) makes the price a function of the
 	// targets too, so each set is solved against the life it leaves the
@@ -1996,8 +1999,10 @@ func (e *enumerator) canPayExcluding(
 	// in the one affordability probe the cast, activation, special
 	// action, delve, waterbend and pay-unless moves all ask, so none of
 	// them can offer a payment the engine would refuse or hide one it
-	// would accept.
-	cost = e.g.CostAsPaidByForEffect(e.seat, spend, cost, x)
+	// would accept. #2575: with the exclusions, which a "no more than one
+	// mana of each color" clause chooses its colours around, as the
+	// engine's cast auto-tap does.
+	cost = e.g.CostAsPaidByExcludingForEffect(e.seat, spend, cost, x, excluded)
 	if e.p.ManaPool.CanPayFor(cost, x, spend) {
 		return true
 	}
