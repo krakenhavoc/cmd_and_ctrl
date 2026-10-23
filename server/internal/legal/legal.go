@@ -148,6 +148,11 @@ type Move struct {
 	// play, or "it can't be played". The client lists exactly these
 	// moves in that prompt, and the wire cap never folds them away.
 	ControlledPlay string `json:"controlled_play,omitempty"`
+	// ResolutionCast is the resolution_cast prompt this move answers
+	// (#2947, CR 608.2g): one way of casting a copy during the
+	// resolution that made it, or "don't cast". The client lists exactly
+	// these moves in that prompt, and the wire cap never folds them.
+	ResolutionCast string `json:"resolution_cast,omitempty"`
 	// Cost is what the move charges its own controller beyond the
 	// mana, in the components Params cannot name. Nil — most moves
 	// that are not casts — means "nothing but mana and the choices

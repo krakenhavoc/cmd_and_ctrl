@@ -167,17 +167,18 @@ func TestSpellweaverVoluteWithNoOtherInstantFallsOff(t *testing.T) {
 	}
 }
 
-// Declining: the copy ceases to exist when the caster passes, and the
-// Volute stays on its card, which stays in the graveyard.
+// Declining: the copy ceases to exist when the caster declines it, and
+// the Volute stays on its card, which stays in the graveyard.
 func TestSpellweaverVoluteDeclinedCopyLeavesEverythingWhereItWas(t *testing.T) {
 	g, me, opp, bolt, volute := svSetup(t)
 	gyCard(opp, "Shock", "Instant", "{R}", shockOracleForCopies)
 
 	svCastSorcery(t, g)
 	passUntilCopies(t, g)
+	declineResolutionCasts(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if n := len(cardCopies(g)); n != 0 {
-		t.Errorf("%d copies left after the caster passed", n)
+		t.Errorf("%d copies left after the caster declined", n)
 	}
 	if !me.Graveyard.Contains(bolt) || svHost(t, g, volute) != bolt || adZone(g, volute) != game.ZoneBattlefield {
 		t.Error("nothing is exiled or moved when the copy is not cast")

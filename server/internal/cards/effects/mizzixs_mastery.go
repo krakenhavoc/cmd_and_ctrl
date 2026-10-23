@@ -22,9 +22,10 @@ import (
 // copy (CR 707.12) in exile and a free-cast offer, all at once and with
 // no cap, so an overloaded Mastery over a graveyard of five spells is
 // five offers the caster takes in whatever order they like — the last
-// copy cast resolves first. The copies are not cards: one not cast by
-// the caster's next priority pass ceases to exist, and one that is cast
-// ceases to exist as it resolves (CR 707.10a).
+// copy cast resolves first. They are cast while Mastery is still
+// resolving (CR 608.2g, #2947). The copies are not cards: one not cast
+// ceases to exist, and one that is cast ceases to exist as it resolves
+// (CR 707.10a).
 //
 // Overload swaps "target" for "each" (CR 702.96a), which here widens the
 // set from one chosen card to EVERY instant and sorcery card in the

@@ -4347,3 +4347,79 @@ and reads the Trance as it did, which is weaker than printed, never stronger.
 
 Tests: `cards/effects/shamans_trance_reach_test.go`. Back-out: make `permissionReachesPileLocked` ignore the flag and the Breach
 escape, the end-of-turn and the restore tests fail.
+
+## Amendment — 2026-10-22 (#2947, #2910): a copy of a card is cast during the resolution that made it
+
+The 2026-10-13 card-copy amendment used a permission that lapses on the holder's next priority pass as a stand-in for CR
+608.2g. Kaervek, the Punisher was then declared Full on that composition (#3478), but resolving a real crime trigger left no
+decision inside the resolution: the trigger finished, the active player received priority, and the copy was cast afterwards,
+after anyone who held priority first had been able to act. CR 707.12 says the copy is created "and then cast while another
+spell or ability is resolving", and CR 608.2g says a spell cast that way is cast "except no player receives priority after
+it's cast. That spell becomes the topmost object on the stack, and the currently resolving spell or ability continues to
+resolve". Every `CopyAndCast` card prints the same instruction, so the stand-in was wrong for all of them in the same way.
+
+A draft of this amendment (2026-10-14, branch `fix/2947-resolution-copy-casts`) proposed a separate door used by Kaervek
+alone. That is replaced here by one flag on the existing offer, set by every `CopyAndCast` card.
+
+### Decision
+
+1. **The door.** `CardCopyOffer.DuringResolution` asks for the cast inside the resolution. `CopyCardsAndOfferCastsForEffect`
+   still makes the copies and their exact permissions (one per copy, or one over the set for a mana value budget), then queues
+   a `resolution_cast` prompt over the copies (`game/resolution_copy_cast.go`). `effects.CopyAndCast` always sets the flag, so
+   Mizzix's Mastery, Psionic Ritual, Arcane Bombardment, Isochron Scepter, Blue Mage's Cane, Spellweaver Volute, Uldaros
+   Theorix and Kaervek all move to it. Cipher's and paradigm's offers call the engine door without the flag and keep the
+   pass-closed window. Outside an open resolution the flag does nothing.
+2. **The prompt is data.** `PendingChoiceResolutionCast` carries the chooser, the source, its name (`Reason`) and the copies
+   still on offer (`DiscardOptions`). It is queued while the resolution is open, so it is stamped `midResolution`: it blocks the
+   table and holds the CR 704.3 boundary (`resolution_pause.go`). No Go continuation is stored. Answering it lets the existing
+   resolution bookend carry on (step walks, mode walks, the resolution tail), and the permissions, the copies and
+   `ResolutionOpen` already persist. A table paused on it is a restore point.
+3. **The cast answer.** A `cast_spell` with `resolution_cast` set to the prompt's id goes to `Game.CastForResolutionChoice`,
+   which checks the chooser and the candidate, then calls `castSpellLocked` through the copy's own permission. The actions
+   layer asks for no priority for it, as it does for Word of Command's `controlled_play`. An ordinary `CastSpell` of a
+   candidate by its chooser is routed to the same path, so the prompt can never be left offering a copy that has gone. The
+   price, X, targets, modes, additional costs, cast prohibitions, split second and the "if you do" follow-up are all the
+   existing ones. Payment is strict, `force_cast` and a paper payment are ignored, and the auto-tapper may use every ordinary
+   mana source the caster does not lock out (CR 608.2g lets them activate mana abilities). Word of Command's land-only rule is
+   not used: nobody else is making the choices. The cast notes no action, since nobody receives priority after it.
+4. **Settling.** A successful cast takes its copy, and any copy that can no longer be cast, off the prompt. The prompt stays
+   open while a copy is left (CR 707.12a: each is its own "may") and is answered once none is. A refused cast (unpaid, an
+   illegal target) leaves it open for another try or a decline. Each cast copy becomes the topmost object on the stack, so the
+   order of the casts is the order the player chose.
+5. **Declining.** The empty `resolve_choice` is "cast no more of them". It is always legal, and it withdraws every permission
+   naming the copies left, so the CR 704.5e sweep at the boundary removes them. The originals stay where the earlier
+   instruction put them.
+6. **Passing priority is not an answer.** `passPriorityAsHolderLocked` now asks the choice gate before it closes the holder's
+   pass-closed windows. Before, a refused pass still lapsed those windows, which would have ended the copy's offer under its
+   own open prompt. A refused pass now changes nothing, for every blocking prompt.
+7. **What waits for the resolution.** Spell-cast triggers (a copy aimed at an opponent is a crime, and Kaervek triggers again)
+   and state-based actions are put on the stack and performed at the boundary after the last answer, so they land above the
+   copies (CR 603.3). Kaervek's 2 life is the permission's follow-up: it is lost as the copy is cast, inside the resolution,
+   and a life replacement prompt it raises is mid-resolution too.
+8. **Legal moves and the client.** The enumerator answers the prompt with every cast of each copy that the engine would take
+   (`castMovesFromZone` over the copy's zone, each move naming the prompt) and the always-legal decline
+   (`legal/resolution_cast.go`). Bots and MCP clients use the same moves. The view lists the copies still on offer as the
+   prompt's `options` and `eligible`, face up (they are printed on a face-up card in a public zone), and the wire cap does not
+   fold moves that carry `resolution_cast`. The client's `ResolutionCastSheet` shows the copies, the casts and "Don't cast".
+9. **Departure.** A chooser who leaves takes the prompt with them (CR 800.4a; the departure table drops it) and the resolution
+   finishes without the casts.
+
+### Limits, stated
+
+- An instruction the card's Go body runs after `CopyAndCast` (Mizzix's Mastery's and Psionic Ritual's "Exile this") runs
+  before the casts rather than after them, because it is the same body. No card on this door has a later instruction whose
+  outcome a cast could change. A later instruction that needs the casts first would be a step (`step_walk.go`).
+- Casting a card from hand during a resolution (#2110, `offerFreeHandCast`), discover, cascade, cipher and paradigm keep the
+  grant stand-in. They are separate doors and are not changed here.
+
+### Snapshot
+
+No new field and no schema bump. `resolution_cast` is a new value of the pending-choice kind, and a binary that does not know it
+refuses the restore point (`KnownChoiceKind`). The frozen corpus is untouched.
+
+Tests: `game/resolution_copy_cast_test.go`, `legal/resolution_cast_test.go`, `protocol/resolution_cast_view_test.go`,
+`cards/effects/kaervek_the_punisher_test.go` and the other `CopyAndCast` cards' tests, and
+`client/src/lib/resolutionCast.render.test.ts`. Back-outs: drop the `queueResolutionCastLocked` call and
+`TestKaervekResolutionQueuesOptionalCastDecision` and `TestResolutionCastHoldsTheResolutionAndCastsInAnyOrder` fail; drop the
+early gate in `passPriorityAsHolderLocked` and `TestKaervekDecliningTheCopyLosesNoLife` fails; drop the withdrawal in
+`resolveResolutionCastLocked` and `TestResolutionCastRefusalsAndDecline` fails.

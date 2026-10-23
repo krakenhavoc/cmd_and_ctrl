@@ -28,13 +28,15 @@ import (
 // The exile goes through the CR 614 window, and only a card that really
 // reached exile is copied, which is CopyAndCast (#3258, ADR 0066's
 // 2026-10-13 card-copy amendment). The copy is offered at its printed
-// mana cost ("You may cast the copy", not "without paying"), at instant
-// speed, until Kaervek's controller next passes priority. A permanent
-// copy resolves as a token (CR 707.10b); a copy not cast ceases to exist
-// (CR 704.5e), and the original card stays in exile.
+// mana cost ("You may cast the copy", not "without paying"), and it is
+// cast, or not, while the trigger is still resolving: nobody receives
+// priority in between (CR 707.12, CR 608.2g; the 2026-10-22 amendment,
+// #2947). A permanent copy resolves as a token (CR 707.10b); a copy not
+// cast ceases to exist (CR 704.5e), and the original card stays in exile.
 //
 // "If you do, you lose 2 life" is the offer's FollowUp, which runs once,
-// only when the copy is cast through this offer.
+// only when the copy is cast through this offer, as it is cast. A crime
+// the copy commits triggers Kaervek again once this resolution is done.
 //
 // No simplification.
 var kaervekLosesTwo = game.RegisterCastFollowUp("kaervek-the-punisher-lose-2",

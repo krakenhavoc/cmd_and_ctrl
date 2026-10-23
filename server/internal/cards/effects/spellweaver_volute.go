@@ -27,9 +27,9 @@ import (
 //     Volute removed first still copies its card, even after that card
 //     has left the graveyard too (the second): CopyAndCast.LastKnown.
 //   - The copy exists in the graveyard (the caster's: the engine makes a
-//     card copy in its holder's own graveyard) and is offered at instant
-//     timing until the caster next passes priority; uncast, it ceases to
-//     exist (CR 704.5e).
+//     card copy in its holder's own graveyard) and is cast, or not,
+//     while the trigger is still resolving (CR 608.2g, #2947); uncast, it
+//     ceases to exist (CR 704.5e).
 //   - "If you do" is the offer's FollowUp, run once the copy is cast
 //     through it. It is told the card the copy was made from
 //     (CastFollowUp.Object), since the copy spell does not name it.

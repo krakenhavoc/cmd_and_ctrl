@@ -29,10 +29,9 @@ import (
 // copy is a card copy (CR 707.12): it lives in exile, is offered to the
 // trigger's controller for {3} in place of its mana cost (CR 118.9, an
 // alternative cost, so an X is 0 and additional costs and cost increases
-// still apply), and ceases to exist if it is not cast by the controller's
-// next priority pass (CR 704.5e). The original stays exiled either way. The
-// cast is taken after the trigger resolves, as every resolution-time cast
-// offer is (ADR 0066, CopyAndCast).
+// still apply), and ceases to exist if it is not cast (CR 704.5e). The
+// original stays exiled either way. The cast is made while the trigger is
+// still resolving (CR 608.2g; ADR 0066's 2026-10-22 amendment, #2947).
 //
 // No simplification beyond that grant model.
 func init() {

@@ -5867,7 +5867,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	for _, m := range moves {
 		// ADR 0166: a forced play's ways are the whole of the decision
 		// its prompt shows, so none of them is an alternative to fold.
-		if m.ControlledPlay != "" {
+		if m.ControlledPlay != "" || m.ResolutionCast != "" {
 			out = append(out, m)
 			continue
 		}
@@ -9411,6 +9411,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				}
 			}
 			v.Eligible = cardIDStrings(c.DiscardOptions)
+		}
+		// #2947: a resolution_cast shows the copies still on offer,
+		// which sit face up in exile or a graveyard.
+		if c.Kind == game.PendingChoiceResolutionCast {
+			for _, id := range c.DiscardOptions {
+				if card, _, ok := g.ResolutionCastCandidateLocked(c.Chooser, id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+					v.Eligible = append(v.Eligible, id.String())
+				}
+			}
 		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor

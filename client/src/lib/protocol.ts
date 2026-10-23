@@ -914,6 +914,11 @@ export interface LegalMoveView {
   // ControlledPlaySheet lists exactly these, and the server never folds
   // them into the capped list's one-per-card.
   controlled_play?: string;
+  // #2947, CR 608.2g: the resolution_cast prompt this move answers — one
+  // way of casting a copy during the resolution that made it, or "don't
+  // cast". ResolutionCastSheet lists exactly these, and the server never
+  // folds them into the capped list's one-per-card.
+  resolution_cast?: string;
   // #1307: true on a cast or activation whose chosen targets include
   // an object on the stack — a counterspell, a Stifle, a redirect.
   // Smart autopass reads it to tell "can answer the thing on the
@@ -1468,6 +1473,14 @@ export interface PendingChoiceView {
     // as that player, or {choice_id} with no cards, "it can't be
     // played", which the server takes only when that is true.
     | "controlled_play"
+    // #2947, CR 707.12 / 608.2g: an effect made copies of cards and the
+    // chooser may cast any of them while it is still resolving.
+    // `options` are the copies still on offer (face up, in exile or a
+    // graveyard). Answered by one of the legal moves naming it
+    // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
+    // the prompt's id and no priority needed, or {choice_id, card_ids: []},
+    // "cast no more of them", which is always legal.
+    | "resolution_cast"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"

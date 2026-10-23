@@ -1605,6 +1605,11 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// play itself is ControlledPlayCast.
 		return g.resolveControlledPlayLocked(idx, choice, picks)
 	}
+	if choice.Kind == PendingChoiceResolutionCast {
+		// #2947: the empty answer, "cast no more of them". The casts
+		// are CastForResolutionChoice.
+		return g.resolveResolutionCastLocked(idx, choice, picks)
+	}
 	if len(picks) != choice.Count {
 		return ErrInvalidParam
 	}

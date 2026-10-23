@@ -169,6 +169,9 @@ func (e *enumerator) choiceMoves() bool {
 		case game.PendingChoiceControlledPlay:
 			// ADR 0166 §4: Word of Command's forced play.
 			e.controlledPlayMoves(c)
+		case game.PendingChoiceResolutionCast:
+			// #2947, CR 608.2g: casting a copy during the resolution.
+			e.resolutionCastMoves(c)
 		case game.PendingChoiceRevealedHandPick:
 			// #2115: the variants. The pool is what the prompt offered,
 			// still where it was offered — the hand, or a graveyard the

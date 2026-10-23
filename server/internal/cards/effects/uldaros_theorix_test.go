@@ -140,7 +140,7 @@ func TestUldarosTheorixPermanentCopyBecomesAToken(t *testing.T) {
 	}
 }
 
-func TestUldarosTheorixUncastCopiesCeaseWhenTheCasterPasses(t *testing.T) {
+func TestUldarosTheorixUncastCopiesCeaseWhenTheCasterDeclines(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	golem, bolt, _ := uldarosGraveyard(me)
@@ -153,9 +153,10 @@ func TestUldarosTheorixUncastCopiesCeaseWhenTheCasterPasses(t *testing.T) {
 	if err := castCopyNamed(t, g, me, "Test Bolt"); err != nil {
 		t.Fatalf("cast one copy: %v", err)
 	}
+	declineResolutionCasts(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if n := len(cardCopies(g)); n != 0 {
-		t.Errorf("%d copies left after the caster passed: an uncast copy ceases to exist", n)
+		t.Errorf("%d copies left after the caster declined: an uncast copy ceases to exist", n)
 	}
 }
 

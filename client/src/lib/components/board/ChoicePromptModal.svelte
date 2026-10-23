@@ -210,6 +210,9 @@
       // ADR 0166: Word of Command's forced play has its own sheet
       // (ControlledPlaySheet.svelte).
       if (c.kind === "controlled_play") continue;
+      // #2947: so has a copy cast during a resolution
+      // (ResolutionCastSheet.svelte).
+      if (c.kind === "resolution_cast") continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
