@@ -2496,6 +2496,19 @@ export interface ManaPoolRun {
   count: number;
 }
 
+// IgnorableEffectView is one CR 116.2d special action a seat may take
+// (#1986): ignore a static ability's effect until end of turn by
+// sacrificing a permanent of its choice (Damping Engine). `source_id` is
+// the permanent whose effect it is, which `special_action` names as its
+// `card_id`; `sacrifice_ids` are the permanents the seat may give up, in
+// the order a "choose for me" would take them. Its own frame only.
+export interface IgnorableEffectView {
+  source_id: string;
+  source_name: string;
+  label: string;
+  sacrifice_ids: string[];
+}
+
 export interface PlayerView {
   id: string;
   name: string;
@@ -2754,6 +2767,12 @@ export interface PlayerView {
   // from your hand — Memory Vessel"). While it is set `cant_play_lands`
   // carries the same clause; the badge row shows one NO HAND badge.
   cant_play_from_hand?: string;
+  // #1986 (CR 116.2d): the static abilities that bear on this seat and
+  // that it may ignore until end of turn by sacrificing a permanent
+  // (Damping Engine). Its own frame only. Each row is a button that asks
+  // which permanent to give up, then sends `special_action
+  // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
+  ignorable_effects?: IgnorableEffectView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.

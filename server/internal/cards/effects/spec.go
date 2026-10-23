@@ -557,6 +557,14 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// IgnorableEffect declares that the player a static ability bears on
+	// may ignore it until end of turn by sacrificing a permanent (CR
+	// 116.2d, #1986) — Damping Engine's last sentence. The restrictions
+	// that ARE that ability (the CastRestrictions and LandPlayRestrictions
+	// above) carry Ignorable: true; Register refuses one without the
+	// other, so a card cannot offer an ignore that switches nothing off.
+	IgnorableEffect *game.IgnorableEffect
+
 	// EntryRestrictions are the "can't enter the battlefield" statics
 	// this PERMANENT imposes (#1985; CR 101.2, 305.4) — Worms of the
 	// Earth's "Lands can't enter the battlefield", Grafdigger's Cage's

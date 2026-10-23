@@ -227,6 +227,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}CompanionSlot.svelte`],
     doc: "the companion special action (CR 116.2g, ADR 0172): pay {3} to put your companion into your hand; greyed outside your main phase",
   }),
+  ignoreEffect: dynamicLabel({
+    stem: " (sacrifice a permanent)",
+    match: "suffix",
+    shape: "Ignore <card name> (sacrifice a permanent)",
+    make: (card: string) => `Ignore ${card} (sacrifice a permanent)`,
+    example: ["Damping Engine"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}IgnoreEffects.svelte`],
+    doc: "the CR 116.2d special action (#1986): sacrifice a permanent of your choice to ignore a static ability's effect until end of turn (Damping Engine); on your own panel while the effect bears on you, and it opens the sacrifice picker",
+  }),
   expandBoard: dynamicLabel({
     stem: "Expand ",
     match: "prefix",

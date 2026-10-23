@@ -263,6 +263,12 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// IgnorableEffect says this PERMANENT's static ability may be
+	// ignored by the player it bears on, by sacrificing a permanent
+	// (CR 116.2d, #1986, ignore_effect.go): Damping Engine. The
+	// restrictions that are that ability carry Ignorable. Read from the
+	// battlefield through CatalogAbilityKey.
+	IgnorableEffect *IgnorableEffect
 	// EntryRestrictions are the "can't enter the battlefield" statics
 	// this PERMANENT imposes (#1985, entry_gate.go): Worms of the
 	// Earth's lands, Grafdigger's Cage's creature cards in graveyards
@@ -916,6 +922,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogIgnorableEffect = func(key string) *IgnorableEffect {
+		if d := catalogDef(key); d != nil {
+			return d.IgnorableEffect
 		}
 		return nil
 	}

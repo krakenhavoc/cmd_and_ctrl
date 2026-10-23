@@ -367,6 +367,20 @@ const (
 	// reason: an older binary refuses the file instead of banning
 	// nothing. Reads Player.
 	ModCantPlayFromOwnGraveyard ModKind = "cantPlayFromOwnGraveyard"
+	// ModIgnoreEffect is "<player> ignores <the source's> effect until
+	// end of turn" (ADR 0109 §4 amendment 2026-10-23, #1986; CR 116.2d):
+	// Damping Engine's "That player may sacrifice a permanent of their
+	// choice for that player to ignore this effect until end of turn."
+	// Scope ScopeGame with Player set to the one player who ignores it;
+	// the ABILITY ignored is the record's Source object (id and epoch,
+	// CR 400.7), so another permanent with the same words is not
+	// ignored. Written by the ignore_effect special action
+	// (ignore_effect.go) and read by effectIgnoredLocked, which both
+	// CastGateLocked and LandPlayGateLocked ask for each restriction
+	// marked Ignorable. A ScopedEffect for ModCantPlayLands' reason: an
+	// older binary refuses the file instead of locking the player out
+	// again. Reads Player.
+	ModIgnoreEffect ModKind = "ignoreEffect"
 	// ModCantBecomeMonarch is "<player> can't become the monarch this
 	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
 	// Carthalion's "You can't become the monarch this turn". Scope
@@ -1090,6 +1104,9 @@ var modKinds = map[ModKind]modKindSpec{
 	// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 	// read by both gates.
 	ModCantPlayFromOwnGraveyard: {reader: readerRule},
+	// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
+	// ability, read by both gates.
+	ModIgnoreEffect: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0032 amendment (#3515): the turn-limited legend-rule exemption.
