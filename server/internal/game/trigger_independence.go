@@ -1344,6 +1344,9 @@ var knownBuiltinReplacementLabels = map[string]bool{
 	regenerationShieldReplacement.Label:       true,
 	protectionPreventsDamageReplacement.Label: true,
 	lifeTotalCantChangeReplacement.Label:      true,
+	// CR 717.6 moves a card with the Astrotorium back to the command
+	// zone, never into a graveyard, hand or library a step could read.
+	astrotoriumJunkyardReplacement.Label: true,
 	// The entry-counters grant exists only while a player static does,
 	// and any player static makes the board opaque already.
 	playerEntryCountersReplacement.Label: true,

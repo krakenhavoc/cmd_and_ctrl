@@ -146,7 +146,14 @@ var closureClassCeilings = map[string]int{
 	// (the snapshot's card walk and the ability-ref lookup both include
 	// it), and it is a container of ordinary cards, not a new kind of
 	// blocker.
-	"census:IntrinsicAbilityCards": 51,
+	//
+	// 53: + Player.AttractionDeck and Player.Junkyard (ADR 0207 §5,
+	// #2121), the Attraction deck and the junkyard, two containers of
+	// ordinary cards in the command zone built like Player.Emblems and
+	// counted like Player.Sideboard: the census walks both (the
+	// snapshot's card walk and the ability-ref lookup include them), and
+	// neither is a new kind of blocker.
+	"census:IntrinsicAbilityCards": 53,
 	"transient":                    1,
 }
 

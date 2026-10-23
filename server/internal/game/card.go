@@ -178,6 +178,13 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
+	// AttractionLights are the numbers lit up on this printing of an
+	// Attraction (CR 717.1), ascending, from Scryfall's
+	// attraction_lights. Printing data like the image: two printings of
+	// one Attraction can light different numbers, so the deck's chosen
+	// printing decides them (ADR 0207 §3). Nil on every other card.
+	AttractionLights []int
+
 	// GrantedAbilities are the catalog keys of ability bundles a
 	// CR 707.9a copy effect granted to this object — Phantasmal
 	// Image's "and it has 'when this creature becomes the target of a
@@ -1418,6 +1425,17 @@ type Card struct {
 	// the card after an effect brings it into a hand. It grants
 	// nothing.
 	IsSideboard bool
+
+	// AstrotoriumBack marks a card with the Astrotorium card back (CR
+	// 717.1): an Attraction card. It is a fact about the physical card,
+	// stamped by the importer from the printed type line, so it holds
+	// in every zone and whatever an effect does to the object's types,
+	// and it is not copiable: a token copy of an Attraction is not a
+	// card and has no back. It seats the card in its owner's Attraction
+	// deck (ADR 0207 §2) and drives the CR 717.6 junkyard replacement
+	// (attractions.go). Read through HasAstrotoriumBack, which also
+	// refuses a token.
+	AstrotoriumBack bool
 
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a

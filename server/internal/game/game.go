@@ -896,6 +896,15 @@ type Game struct {
 	// persisted snapshot does not carry it, for enteringTokens' reason.
 	outsideEntering uuid.UUID
 
+	// attractionEntering is the one card of an Attraction deck
+	// (Player.AttractionDeck) the card index may see: the Attraction
+	// being opened, for the span of its entry (CR 701.51b, ADR 0207 §4).
+	// The deck is in no zone the index reaches, and the entry batch
+	// reads the card through it, as outsideEntering's land is read.
+	// uuid.Nil between opens. Clone copies it so an undo across a paused
+	// entry still finds the card; the snapshot does not carry it.
+	attractionEntering uuid.UUID
+
 	// resolving is the stack item whose resolution is in flight, plus
 	// the card it was (CR 608.2n last-known information), held for
 	// exactly one event batch — see resolving_item.go (#920).
@@ -1268,6 +1277,9 @@ func NewGame() *Game {
 	g.BuiltinReplacements = append(g.BuiltinReplacements,
 		commanderZoneReplacement,
 		regenerationShieldReplacement,
+		// ADR 0207, CR 717.6: an Astrotorium-backed card goes to its
+		// owner's junkyard instead of a hand, library or graveyard.
+		astrotoriumJunkyardReplacement,
 		// #662, CR 702.16e. Order in this slice is not precedence —
 		// the protection built-in declares Preemptive, which is what
 		// puts it ahead of every other applicable replacement and
@@ -1389,6 +1401,8 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Companion = nil
 	p.Sideboard = nil
 	p.HasSideboard = false
+	p.AttractionDeck = nil
+	p.Junkyard = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID
@@ -2302,6 +2316,12 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// which is the same boundary every other turn-based action
 		// uses.
 		g.advanceSagasForActiveSeatLocked()
+		// ADR 0207, CR 717.4 / 703.4g: immediately after the lore
+		// counters, a player who controls an Attraction rolls to visit
+		// their Attractions. Same turn-based-action boundary: the visit
+		// triggers it fires are drained onto the stack with the
+		// chapters'.
+		g.rollToVisitForActiveSeatLocked()
 		// S30: announce the precombat main phase so "at the beginning
 		// of your precombat main phase" triggers auto-fire through
 		// the harvester. Same shape as the upkeep and end-step

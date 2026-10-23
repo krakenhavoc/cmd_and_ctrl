@@ -128,11 +128,13 @@ PendingChoice.replacementResume              census:ChoiceResumeFrames          
 PendingChoice.scryResume                     census:ChoiceResumeFrames          # Game.PendingChoices.scryResume
 PendingChoice.searchResume                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume
 PendingChoice.triggerResume                  census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume
+Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
 Player.Companion                             census:IntrinsicAbilityCards       # Game.Seats.Companion
 Player.Emblems                               census:IntrinsicAbilityCards       # Game.Seats.Emblems
 Player.Graveyard                             census:IntrinsicAbilityCards       # Game.Seats.Graveyard
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand
+Player.Junkyard                              census:IntrinsicAbilityCards       # Game.Seats.Junkyard
 Player.Library                               census:IntrinsicAbilityCards       # Game.Seats.Library
 Player.Sideboard                             census:IntrinsicAbilityCards       # Game.Seats.Sideboard
 ProjectionCache.v                            rebuilt                            # Game.logProjection.v

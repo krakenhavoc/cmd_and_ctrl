@@ -144,6 +144,12 @@ func parseSectionHeader(line string) (section, bool) {
 		return sectionSideboard, true
 	case "companion", "companions":
 		return sectionCompanion, true
+	case "attractions", "attraction", "attraction deck":
+		// ADR 0207 §2: an Attraction deck's heading. Its rows are read
+		// as the main deck's, and Resolve routes every Attraction card
+		// to the Attraction deck by its type line, so a list that names
+		// them under no heading at all seats them the same way.
+		return sectionMain, true
 	}
 	return 0, false
 }
@@ -321,5 +327,6 @@ func (l *List) Text() string {
 	}
 	section("Mainboard:", l.Mainboard)
 	section("Sideboard:", l.Sideboard)
+	section("Attractions:", l.Attractions)
 	return b.String()
 }

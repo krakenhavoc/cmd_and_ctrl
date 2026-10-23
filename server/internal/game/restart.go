@@ -286,6 +286,12 @@ func (g *Game) buildRestartedGameLocked(req *GameRestart) (*Game, []uuid.UUID) {
 			case card.IsCommander:
 				// CR 103.2c.
 				owner.Command.PushTop(card)
+			case card.HasAstrotoriumBack():
+				// CR 727.2 involves nontraditional cards in the new
+				// game too, and CR 717.2 starts an Attraction card in
+				// its owner's Attraction deck (ADR 0207 §2), from the
+				// battlefield, the junkyard or the deck alike.
+				seatAttractionCard(owner, card)
 			default:
 				owner.Library.PushTop(card)
 			}
@@ -310,6 +316,8 @@ func (g *Game) buildRestartedGameLocked(req *GameRestart) (*Game, []uuid.UUID) {
 		walk(p.Library, nil)
 		walk(p.Hand, nil)
 		walk(p.Graveyard, nil)
+		walk(p.AttractionDeck, nil)
+		walk(p.Junkyard, nil)
 	}
 	walk(g.Battlefield, nil)
 	walk(g.PhasedOut, nil)

@@ -731,6 +731,15 @@ type playerSnapshot struct {
 	// binary drops it, and the player loses the cards an effect could
 	// have brought in: weaker than printed, never stronger.
 	Sideboard *zoneSnapshot `json:"sideboard,omitempty"`
+	// AttractionDeck and Junkyard are Player.AttractionDeck and
+	// Player.Junkyard (ADR 0207 §5): the face-down Attraction deck and
+	// the face-up junkyard, both in the command zone. Written only
+	// while they hold a card. Additive within v9: absent means none,
+	// which is right for every file written before Attractions could
+	// be seated. An older binary drops them, and the player can open
+	// nothing more: weaker than printed, never stronger.
+	AttractionDeck *zoneSnapshot `json:"attractionDeck,omitempty"`
+	Junkyard       *zoneSnapshot `json:"junkyard,omitempty"`
 	// HasSideboard is Player.HasSideboard (ADR 0198 §2): the deck seated
 	// a sideboard, so it is the pool even once it is empty. Additive
 	// within v9. A file without the key restores it from the sideboard
@@ -953,6 +962,14 @@ type cardSnapshot struct {
 	// v8; absent means not a sideboard card. An older binary drops it
 	// and loses nothing it read.
 	IsSideboard bool `json:"isSideboard,omitempty"`
+	// AstrotoriumBack and AttractionLights are Card.AstrotoriumBack and
+	// Card.AttractionLights (ADR 0207 §5): printed facts the importer
+	// stamps. Additive within v9; absent means an ordinary card with no
+	// lights, which every card in an older file is. An older binary
+	// drops them: its Attractions are ordinary artifacts that never
+	// visit, and a junkyard-bound one goes to its graveyard.
+	AstrotoriumBack  bool  `json:"astrotoriumBack,omitempty"`
+	AttractionLights []int `json:"attractionLights,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -1476,6 +1493,8 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Emblems)
 		walk(p.Companion)
 		walk(p.Sideboard)
+		walk(p.AttractionDeck)
+		walk(p.Junkyard)
 	}
 	return out
 }
@@ -2483,6 +2502,15 @@ func restoreCompanionZone(z *zoneSnapshot) *Zone {
 	return restoreZone(z, ZoneOutside)
 }
 
+// restoreCommandPile is restoreZone for Player.AttractionDeck and
+// Player.Junkyard (ADR 0207 §5): absent stays nil, which is "none".
+func restoreCommandPile(z *zoneSnapshot) *Zone {
+	if z == nil {
+		return nil
+	}
+	return restoreZone(z, ZoneCommand)
+}
+
 func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 	if z == nil {
 		return nil
@@ -2607,6 +2635,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
+		AstrotoriumBack:          c.AstrotoriumBack,
+		AttractionLights:         append([]int(nil), c.AttractionLights...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2723,6 +2753,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:               snapshotZone(p.Emblems, cen),
 		Companion:             snapshotCompanionZone(p.Companion, cen),
 		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
+		AttractionDeck:        snapshotCompanionZone(p.AttractionDeck, cen),
+		Junkyard:              snapshotCompanionZone(p.Junkyard, cen),
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
@@ -3614,6 +3646,8 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
+		AstrotoriumBack:          c.AstrotoriumBack,
+		AttractionLights:         append([]int(nil), c.AttractionLights...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3762,6 +3796,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		Companion:          restoreCompanionZone(p.Companion),
 		Sideboard:          restoreCompanionZone(p.Sideboard),
+		AttractionDeck:     restoreCommandPile(p.AttractionDeck),
+		Junkyard:           restoreCommandPile(p.Junkyard),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
