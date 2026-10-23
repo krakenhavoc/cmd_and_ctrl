@@ -353,7 +353,14 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 		return nil // refused by the payment itself, before anything is spent
 	}
 	spend := ManaSpendForCastParams(card, params)
-	cost = g.costAsPaidByLocked(p.ID, spend, cost, params.XValue)
+	// #2575: read with the auto-tap's exclusions, as applyAutoTapLocked
+	// reads it, so a "no more than one mana of each color" clause
+	// chooses the colours the payment will.
+	var excluded map[uuid.UUID]bool
+	if params.AutoTap {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
+	cost = g.costAsPaidByExcludingLocked(p.ID, spend, cost, params.XValue, excluded)
 	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, spend, params.PhyrexianLife, nil)
 	if err != nil {
 		return nil
@@ -362,7 +369,6 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 		return nil
 	}
 	if params.AutoTap {
-		excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
 		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spend, excluded, WantedManaSourcesFor(card))
 		if ok && g.planFundsLocked(p, plan, short, cost, params.XValue, spend) {
 			return nil

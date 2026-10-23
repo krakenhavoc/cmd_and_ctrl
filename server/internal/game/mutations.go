@@ -2661,8 +2661,14 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	// #1600: the cost as this caster may pay it — the same widening
 	// applyCastCostLocked will pay under, so the plan funds exactly
-	// what the payment accepts.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue)
+	// what the payment accepts. #2575: a "no more than one mana of each
+	// color" clause chooses its colours by what the plan below can
+	// reach, so it is read with the plan's exclusions.
+	var excluded map[uuid.UUID]bool
+	if cost.SpendOnly != nil && cost.SpendOnly.Distinct {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
+	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue, excluded)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -2703,7 +2709,9 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// offered to Village Rites and leave the sacrifice nothing to pay
 	// with, after the mana was made. One list, shared with the
 	// legal-move enumerator: see CastAutoTapExclusions.
-	excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
+	if excluded == nil {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
 	// #1212: the spell's own source wish. A card whose text reads
 	// which mana paid for it ("if mana from a Treasure was spent to
 	// cast it") prefers a source it can read back — a tiebreak in the

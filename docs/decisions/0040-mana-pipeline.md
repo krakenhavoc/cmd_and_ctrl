@@ -1491,3 +1491,83 @@ which is the cheaper payment; the choice is not offered to the player.
 
 Tests: `game/twobrid_payment_test.go`, `cards/effects/beseech_twobrid_test.go`. Back-out: drop the `foldUnpaidTwobrid` call in
 `allocateRest` and the pool tests fail; drop the deferral branch in `solveColored` and the auto-pay tests fail.
+
+## Amendment 2026-10-22 — one mana of each colour on X, and a source restriction on an alternative cost (#2575)
+
+**The gap.** The 2026-10-07 amendment (#2556) left two shapes of the "Costs that only some mana can pay" row open. Emblazoned
+Golem's "Kicker {X}. Spend only colored mana on X. No more than one mana of each color may be spent this way" is a cap on
+how many mana of one colour pay X, and a `ColorRequirement` is one symbol that the solvers match independently, so "each of
+a different colour" had no shape. Security Rhox's "You may pay {R}{G} rather than pay this spell's mana cost. Spend only mana
+produced by Treasures to cast it this way" restricts the source of the mana for one alternative cost (CR 118.9), and
+`Spec.SpendOnlySources` restricted every way of casting the card.
+
+### Decision 1 — the cap is a choice of colours, made where the cost is read
+
+`ManaSpendOnly.Distinct` ("no more than one mana of each color may be spent this way"), built on a spell with
+`effects.SpellSpendOnlyColoredOnXOneOfEach()` (the five colours, "on X", distinct). Paid, an X of n under the cap is one
+mana of each of n different colours: it is exactly the cost {C1}{C2}…{Cn} for some n-colour subset of WUBRG, which every
+solver already pays. Which subset is the caster's choice of which mana to spend (CR 601.2h), the choice the pool solver
+already makes for them between a `{W/U}` and a `{U}`.
+
+Two designs were weighed. Teaching the pool solver, the auto-tapper and the missing-mana breakdown a requirement set that
+may not repeat a colour is a matching problem with a per-colour capacity in each of them, and the #1927 lesson is that
+readers of one rule drift. A colour-subset choice at announce puts a new field on the wire and a picker in the client for
+a choice CR 601.2b does not ask for. Neither was taken. Instead:
+
+- **The fold stays pure and is handed the subset.** `foldSpendOnly` writes a `Distinct` clause as one single-colour
+  requirement per colour of the clause, in order, listed in `Required` (not the counted run); more restricted mana than
+  colours adds one requirement no mana pays (`noManaColor`), so X = 6 is never payable.
+- **The subset is chosen in `costAsPaidByLocked`**, which every payment and probe already calls with the announced X
+  (`distinctSpendChoices`, `distinctColorsAsPaidLocked`): the first subset in WUBRG order that the floating pool pays on
+  its own; failing that, the first that the pool and an auto-tap plan pay together (`autoTapTopUpLocked`); failing both,
+  the first, for the shortfall. The cast's auto-tap (`applyAutoTapLocked`), its payment (`applyCastCostLocked`), the
+  assisted cast (`castManaShortLocked`), `internal/legal`'s probe (`canPayExcluding`) and the `/autotap` preview all read
+  the cost there, so they choose alike and cannot disagree about whether the cast is payable.
+- **Exclusions.** The auto-tap probe must plan around what the payment's auto-tap may not touch, or a locked Plains would
+  be chosen for white and then refused. `costAsPaidByExcludingLocked` takes the exclusion set; the cast's auto-tap, the
+  assisted cast, the enumerator (`CostAsPaidByExcludingForEffect`) and the preview (`CostAsPaidByExcluding`) pass theirs.
+  The plain `costAsPaidByLocked` passes none, and is what the pool-only payment after the taps reads, where the pool test
+  decides first.
+
+Under Chromatic Orrery the chosen requirements are widened like any folded symbol (Decision 3 of the 2026-10-03
+amendment): the cap and "colored mana" are both rules about how the cost may be paid (CR 609.4b).
+
+Kicker {X} needs nothing new: the kicker's mana joins the price before the cast pricer stamps the clause, so the restricted
+X is the kicker's. No X ceiling is declared for the cap: the restricted mana is what is left of X after a cost reduction
+(`XMana`, #2701), so a Golem kicked at X = 6 under a {3} reduction (its printed {2} first, then one of X) pays five mana on X and is legal. The counters are `effects.XCountersIfKicked` (CR 614.1c, CR 107.3m).
+
+`Register` refuses `Distinct` on an ability cost (no printed ability has it, and the activation's auto-tap is not read with
+its exclusions). The listed requirements are not marked as the mana that paid X (`ManaToken.ForX`, ADR 0068's 2026-10-16
+amendment); no card with this clause reads that record.
+
+### Decision 2 — the source restriction moves onto the alternative cost
+
+`AlternativeCost.SpendOnlySources` (`game.ManaSourceKinds`; `effects.SpendOnlyManaFromTreasures` is the Treasure kind).
+`ManaSpendForCastParams` reads the claimed offer off the card's own alternative costs (`AlternativeCostByKey`) and puts
+its kinds in `ManaSpendContext.SourceOnly`, where the card-wide restriction already rode. From there the 2026-10-07
+machinery holds the payment to it unchanged: the pool refuses a token whose recorded source is not a Treasure
+(`allowsToken`), and the auto-tapper excludes every source that could not make one (`excludeNonQualifyingSourcesLocked`).
+The enumerator now builds its spend context from the announcement it prices (`ManaSpendForCastParams(card, announce)`,
+which names the offer) instead of from the zone alone, so the bot is offered the {R}{G} exactly when Treasures can pay it.
+`Register` refuses the field on an offer with no mana, beside a card-wide `SpendOnlySources` (one payment has one
+`SourceOnly`), and on a granted offer, which the cast does not read it from.
+
+### Decision 3 — Soul Burn needs nothing more
+
+The 2026-10-07 amendment's third gap, "the amount of {B} spent on X", was closed by
+[ADR 0068](0068-the-mana-spent-on-a-spell.md)'s 2026-10-16 amendment (#3941): the pool solver records which mana paid
+the X run, and Soul Burn is Full. Nothing in this amendment changes that.
+
+**Snapshot and wire impact.** None. `ManaSpendOnly.distinct` and `AlternativeCost.SpendOnlySources` are catalog data; the
+folded requirements and the chosen subset are recomputed at every reading.
+
+**Cards.** Emblazoned Golem and Security Rhox (Full).
+
+Tests: `game/spend_only_distinct_test.go` (the fold, the choices, the pool choice) and
+`cards/effects/mana_caps_and_alt_sources_test.go` (refusal of two of one colour, X above five, auto-pay choosing blue,
+black and red off an Island, a Swamp and a Mountain, the enumerator's kicked X = 1 off three Plains, a locked Plains,
+the Rhox's Treasure-only payment from the pool and by auto-pay, the enumerator's offer, both restores, and the
+registration refusals). Back-outs: drop the `Distinct` branch in `foldSpendOnly` and the refusal tests fail; return the
+first subset unconditionally in `distinctColorsAsPaidLocked` and the auto-pay tests fail; pass no exclusions in
+`applyAutoTapLocked` and the locked-Plains test fails; drop the `SourceOnly` line in `ManaSpendForCastParams` and the
+Rhox tests fail; build the enumerator's context from the zone alone and it offers the {R}{G} off a Mountain and a Forest.

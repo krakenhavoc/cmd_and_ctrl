@@ -897,8 +897,19 @@ The colour clause is stamped on the cast's price and folded like an
 ability's; the source clause is read from the cast's spend context by the
 pool and by the auto-tapper's planner. A spell's clause is the "on X" form
 only, and `Register` refuses it beside delve or convoke / waterbend.
-Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
-2026-10-03 and 2026-10-07 amendments.
+Two more shapes (#2575, ADR 0040's 2026-10-22 amendment):
+
+```go
+SpendOnly: SpellSpendOnlyColoredOnXOneOfEach(), // Emblazoned Golem: "Spend only colored mana on X. No more than one mana of each color …"
+AlternativeCosts: []game.AlternativeCost{{Key: "security-rhox", ManaCost: "{R}{G}",
+	SpendOnlySources: SpendOnlyManaFromTreasures}}, // Security Rhox: "…produced by Treasures to cast it this way"
+```
+
+The one-of-each-colour cap is paid as an exact {W}{U}… for a subset of the
+colours, which the engine chooses by what the caster can pay. A source clause
+on an alternative cost restricts only a cast that claims that cost, and
+`Register` refuses it beside a card-wide `SpendOnlySources`. See ADR 0040's
+2026-10-03, 2026-10-07 and 2026-10-22 amendments.
 
 **Counts have a ceiling (#3040).** The engine pins counters, power and
 toughness at `game.MaxCount` (2^30) and a single production's mana at

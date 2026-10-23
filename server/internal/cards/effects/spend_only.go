@@ -57,6 +57,23 @@ func SpellSpendOnlyOnX(colors ...string) *game.ManaSpendOnly {
 	return &game.ManaSpendOnly{Colors: colors, XOnly: true}
 }
 
+// SpellSpendOnlyColoredOnXOneOfEach is Emblazoned Golem's "Spend only
+// colored mana on X. No more than one mana of each color may be spent
+// this way" (#2575): the mana paid for {X} (here the {X} of its kicker)
+// must be coloured, each of a different colour, so X can be paid up to
+// 5. The engine pays it as an exact {W}{U}… for a subset of the colours,
+// choosing the subset the payer can pay (game/spend_only.go, "One mana
+// of each colour").
+func SpellSpendOnlyColoredOnXOneOfEach() *game.ManaSpendOnly {
+	return &game.ManaSpendOnly{Colors: []string{"W", "U", "B", "R", "G"}, XOnly: true, Distinct: true}
+}
+
+// SpendOnlyManaFromTreasures is the source kind Security Rhox's
+// alternative cost names (#2575): "Spend only mana produced by
+// Treasures to cast it this way". It goes in the offer's
+// SpendOnlySources.
+const SpendOnlyManaFromTreasures = game.ManaSourceTreasure
+
 // checkSpellSpendOnly holds a spell's own spend-only declarations to the
 // shapes the cast pricer can pay, at boot:
 //
@@ -66,16 +83,36 @@ func SpellSpendOnlyOnX(colors ...string) *game.ManaSpendOnly {
 //   - not beside delve or a tap cost (convoke / waterbend): both settle
 //     {X} into generic mana before anyone pays it, and which part of a
 //     restricted cost a tapped creature or an exiled card covers is a
-//     question no printed card asks. Refused rather than guessed.
+//     question no printed card asks. Refused rather than guessed;
+//   - #2575: a source restriction on an alternative cost needs mana in
+//     that cost to restrict, sits on a printed offer only (the cast
+//     reads it off the card's own offers), and not beside a card-wide
+//     one, since one payment has one source restriction.
 //
 // Whether the spell's printed cost HAS an {X} is checked against the
 // Scryfall dump by the card's own test (a Spec carries no mana cost).
 func checkSpellSpendOnly(spec Spec) {
-	if spec.SpendOnly == nil && spec.SpendOnlySources == 0 {
-		return
-	}
 	fail := func(why string) {
 		panic(fmt.Sprintf("effects.Register: %q declares a spend-only clause on the spell %s", spec.Name, why))
+	}
+	for _, alt := range spec.AlternativeCosts {
+		if alt.SpendOnlySources == 0 {
+			continue
+		}
+		if alt.ManaCost == "" {
+			fail(fmt.Sprintf("on its alternative cost %q, which has no mana to restrict", alt.Key))
+		}
+		if spec.SpendOnlySources != 0 {
+			fail(fmt.Sprintf("on its alternative cost %q beside a card-wide source restriction", alt.Key))
+		}
+	}
+	for _, alt := range spec.GrantedAlternativeCosts {
+		if alt.Offer.SpendOnlySources != 0 {
+			fail("on an alternative cost it grants, which the cast does not read")
+		}
+	}
+	if spec.SpendOnly == nil && spec.SpendOnlySources == 0 {
+		return
 	}
 	if s := spec.SpendOnly; s != nil {
 		if !s.XOnly {
@@ -166,5 +203,11 @@ func checkSpendOnlyClause(name string, i int, c game.AbilityCost) {
 	}
 	if c.Waterbend != nil {
 		fail("beside a waterbend clause — which part of a restricted cost a tap pays is not modelled")
+	}
+	if s.Distinct {
+		// #2575: the activation's auto-tap is not read with its
+		// exclusions when the colours are chosen, and no printed
+		// ability has the clause.
+		fail("with \"no more than one mana of each color\", which only a spell's X declares")
 	}
 }

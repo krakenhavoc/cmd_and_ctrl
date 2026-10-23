@@ -347,9 +347,21 @@ func ManaSpendForCastFrom(c Card, from ZoneKind) ManaSpendContext {
 // ManaSpendForCastParams is ManaSpendForCastFrom with the zone read off
 // the cast's own parameters, as CastSpell reads it (an empty FromZone
 // is the hand).
+//
+// #2575: and with the source restriction of the alternative cost the
+// cast claims, when it prints one — Security Rhox's "You may pay {R}{G}
+// rather than pay this spell's mana cost. Spend only mana produced by
+// Treasures to cast it this way" restricts that payment and no other.
+// Only a printed offer can carry one (AlternativeCost.SpendOnlySources),
+// so the card's own offers are the ones looked in; a granted offer, or
+// the printed mana cost, keeps the card's own restriction.
 func ManaSpendForCastParams(c Card, params CastSpellParams) ManaSpendContext {
 	from, _ := castZoneFromWire(params.FromZone)
-	return ManaSpendForCastFrom(c, from)
+	ctx := ManaSpendForCastFrom(c, from)
+	if alt := AlternativeCostByKey(castOfferKey(c), params.AlternativeCost); alt != nil && alt.SpendOnlySources != 0 {
+		ctx.SourceOnly = alt.SpendOnlySources
+	}
+	return ctx
 }
 
 // ManaSpendForCast builds the spend context for casting `c`. It does
