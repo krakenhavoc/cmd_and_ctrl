@@ -384,3 +384,111 @@ func TestAttractionsSurviveARestore(t *testing.T) {
 		t.Errorf("undo left %d cards in the Attraction deck, want 8", len(g.Seats[0].AttractionDeckCards()))
 	}
 }
+
+// CR 727.2: a restart involves nontraditional cards too, and CR 717.2
+// starts each one in its owner's Attraction deck: the opened one on the
+// battlefield, the one in the junkyard and the ones still in the deck all
+// begin the new game there, shuffled, as new objects, and the library
+// holds none of them.
+func TestARestartRebuildsTheAttractionDeck(t *testing.T) {
+	g := newAttractionGame(t, 5, attrDeck(10)...)
+	me := g.Seats[0]
+	g.WithWriteLock(func() {
+		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 2, nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+	opened := attrEvents(g, 0, EventAttractionOpened)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(opened[0].CardID); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if len(me.AttractionDeckCards()) != 8 || len(me.JunkyardCards()) != 1 {
+		t.Fatalf("before the restart: deck %d junkyard %d", len(me.AttractionDeckCards()), len(me.JunkyardCards()))
+	}
+	old := map[uuid.UUID]bool{}
+	for _, c := range me.AttractionDeckCards() {
+		old[c.InstanceID] = true
+	}
+	g.WithWriteLock(func() { g.RestartTheGameForEffect(me.ID, uuid.Nil, nil) })
+	g.SettleResolution()
+	if g.RestartPending != nil || g.State != StateActive {
+		t.Fatalf("the restart did not run: pending %v state %s", g.RestartPending, g.State)
+	}
+	nme := g.Seats[0]
+	deck := nme.AttractionDeckCards()
+	if len(deck) != 10 {
+		t.Fatalf("the new game's Attraction deck holds %d, want all 10", len(deck))
+	}
+	if nme.JunkyardCards() != nil {
+		t.Errorf("the new game starts with a junkyard of %d", len(nme.JunkyardCards()))
+	}
+	for _, c := range deck {
+		if old[c.InstanceID] {
+			t.Errorf("%s kept its old object ID across the restart", c.Name)
+		}
+		if !c.AstrotoriumBack || len(c.AttractionLights) == 0 {
+			t.Errorf("%s lost its back or its lights", c.Name)
+		}
+	}
+	for _, z := range []*Zone{nme.Library, nme.Hand, nme.Command} {
+		for _, c := range z.Cards {
+			if c.AstrotoriumBack {
+				t.Errorf("%s began the new game in the %s", c.Name, z.Kind)
+			}
+		}
+	}
+	for _, c := range g.Battlefield.Cards {
+		if c.AstrotoriumBack {
+			t.Errorf("%s is still on the battlefield", c.Name)
+		}
+	}
+}
+
+// CR 800.4a: a player who leaves takes everything they own with them,
+// the Attraction deck and the junkyard included.
+func TestALeavingPlayerTakesTheirAttractionPiles(t *testing.T) {
+	g := NewGame()
+	for i := range 3 {
+		deck := buildTestDeck(fmt.Sprintf("Commander %d", i+1))
+		if i == 1 {
+			deck = append(deck, attrDeck(10)...)
+		}
+		if _, err := g.AddPlayer(fmt.Sprintf("P%d", i+1), deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.Start(rand.New(rand.NewPCG(9, 2))); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+	leaver := g.Seats[1]
+	g.WithWriteLock(func() {
+		if err := g.OpenAttractionsThenForEffect(leaver.ID, uuid.Nil, 2, nil); err != nil {
+			t.Fatal(err)
+		}
+	})
+	opened := attrEvents(g, 0, EventAttractionOpened)
+	g.WithWriteLock(func() {
+		if err := g.DestroyPermanentForEffect(opened[0].CardID); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if len(leaver.AttractionDeckCards()) != 8 || len(leaver.JunkyardCards()) != 1 {
+		t.Fatalf("before leaving: deck %d junkyard %d", len(leaver.AttractionDeckCards()), len(leaver.JunkyardCards()))
+	}
+	if err := g.Concede(leaver.ID); err != nil {
+		t.Fatalf("Concede: %v", err)
+	}
+	if n := len(leaver.AttractionDeckCards()) + len(leaver.JunkyardCards()); n != 0 {
+		t.Errorf("the leaver's Attraction piles still hold %d cards", n)
+	}
+	if findBattlefieldCard(g, opened[1].CardID) != nil {
+		t.Error("the leaver's opened Attraction is still on the battlefield")
+	}
+}

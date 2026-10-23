@@ -17,7 +17,11 @@ import { guardedWritable } from "./guardedStore";
 // 2026-10-19): read only, a tab of the zone browser and no pile on the table,
 // never offered for another seat. A card in it moves only through a live
 // permission's cast button.
-export type BrowsableZone = "graveyard" | "exile" | "command" | "stack" | "sideboard";
+//
+// "junkyard" is a seat's face-up pile of Attraction cards the rules put into
+// the command zone (CR 717.6a, ADR 0207): public and read only, a tab of the
+// zone browser and a pile in the rail while it holds a card.
+export type BrowsableZone = "graveyard" | "exile" | "command" | "stack" | "sideboard" | "junkyard";
 
 export interface ZoneBrowserOpen {
   zoneKind: BrowsableZone;

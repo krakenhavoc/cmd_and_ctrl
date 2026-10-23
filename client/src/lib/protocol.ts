@@ -2714,6 +2714,14 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // ADR 0207 (#2121): how many cards are in this seat's Attraction deck
+  // (CR 717.2), face down in the command zone. Public, like a library's
+  // size; the cards are on nobody's wire. Absent for a seat with none.
+  attraction_deck_count?: number;
+  // ADR 0207: this seat's junkyard (CR 717.6a), the Attraction cards the
+  // rules put into the command zone, face up for every viewer. Absent for
+  // a seat with none.
+  junkyard?: CardView[];
   // #3955 (Wish): the seat's live "you may play a card you own from outside
   // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
   // pool is the card database, so the `outside_play` action is how it names
@@ -4486,6 +4494,9 @@ export interface CardView extends CastSurfaceView {
   // ADR 0172 §3: a deck's revealed companion, outside the game or after
   // it has come into the game. Public; drives the "Companion" badge.
   is_companion?: boolean;
+  // ADR 0207: the numbers lit up on an Attraction (CR 717.1), ascending.
+  // A roll to visit that matches one visits it. Absent on every other card.
+  attraction_lights?: number[];
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
