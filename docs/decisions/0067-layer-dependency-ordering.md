@@ -2,6 +2,7 @@
 
 **Status:** Accepted · 2026-09-18 · S38 ("Layers: dependency ordering, ability grants, ability removal") · tracked on [#668](https://github.com/krakenhavoc/cmd_and_ctrl/issues/668), [#669](https://github.com/krakenhavoc/cmd_and_ctrl/issues/669) and [#670](https://github.com/krakenhavoc/cmd_and_ctrl/issues/670).
 **Amended:** 2026-10-15 — Decision 2's removal bucket, for an effect that started in an earlier layer, and the timestamp of an effect that begins at a counter threshold ([#3862](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3862)); see the amendment at the end.
+2026-10-23 — layer 6 is ordered for a static that declares it reads an ability, Sephara, Sky's Blade's "other creatures you control with flying have indestructible" ([#2663](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2663)); see the amendment at the end.
 **Numbering:** checked on 2026-09-18 against every remote branch after
 `git fetch origin` (the AGENTS.md §4 loop over `git branch -r` +
 `git ls-tree`). `0061`-`0064`, `0066` and `0069` exist; `0065`, `0067`
@@ -412,3 +413,93 @@ Pinned by `TestIdolOfFalseGodsKeepsAnnihilatorUnderAnOlderRemoval`,
 `TestIdolOfFalseGodsANinthCounterDoesNotOutrunALaterRemoval` and the existing
 `TestIdolOfFalseGodsStaysACreatureWhenItLosesItsAbilities` and
 `TestIdolOfFalseGodsBasePTOutlivesAnOlderRemoval` (`internal/cards/effects`).
+
+## Amendment (2026-10-23, #2663): layer 6 is ordered for a static that reads an ability
+
+Sephara, Sky's Blade reads "Other creatures you control with flying have indestructible." Her effect
+applies to the creatures that have flying, and flying is added and removed in layer 6, her own
+layer. Applying a "gains flying" or a "loses flying" changes what her effect applies to, so by CR
+613.8a her effect depends on it, and by CR 613.8b it waits until that effect has applied, whatever
+the timestamps. In timestamp order alone, a creature that gained flying from a later effect got no
+indestructible, which is weaker than printed. A creature that lost flying to a later Gravity Sphere
+kept indestructible, which is stronger than printed, so she was not shipped (#2030). The engine
+gives every catalogued permanent's printed keywords a layer-6 row at that permanent's timestamp, so
+the weaker case was not rare: it was every catalogued flier that entered after her. Kwende, Pride
+of Femeref ("Creatures you control with first strike have double strike") is the same shape. Its
+2018-04-27 ruling says so: "If a creature you control gains first strike after Kwende has entered
+the battlefield, that creature also gains double strike."
+
+Decision 1's rule for adding a bucket is "a catalogued pair, plus a benchmark". Here is the pair.
+The benchmark says why layer 6 still does not join `dependencyOrderedLayers`. The layer-6 bucket
+holds a printed keyword row for every catalogued permanent with a keyword, so it is the largest
+bucket on most boards. Almost none of its effects can depend on another, because they read nothing
+that layer 6 writes.
+
+**1. A declaration turns the trial on.** `StaticAbility.ReadsAbilities` says that the static's
+`AppliesTo` (or `Apply`) reads the abilities of the objects it looks at. It does not say which
+effects the static depends on. Decision 1's trial application, on a fixed base, still finds them,
+but it is run only for the rows that declare it. Decision 1's argument against a declaration was
+about a "what I read / what I write" field required on every static. This field is one bool, set
+by the effects helper that builds the clause (`effects.WithKeywordHave`). An undeclared static
+keeps timestamp order. That is a stated narrowing, and `TestAnUndeclaredReaderKeepsTimestampOrder`
+pins it. `effects.Register` refuses the field outside layer 6, without `AppliesTo`, beside a removal
+or a borrow, and over spells or cards off the battlefield. `GrantedStaticProblem` keeps it out of a
+granted bundle.
+
+**2. The order, inside the layer-6 bucket.** `applyGrantingBucketLocked` asks
+`nextAbilityEffectLocked` which effect goes next before each application, while a reader is still
+waiting. It picks the first effect in bucket order that depends on nothing still to apply. An
+effect that does not read an ability depends on nothing, so it ends the scan with no trial. A
+reader is applied once no remaining effect's trial changes whether it applies to one of that
+effect's objects, or what it does to one. The question is asked again after every application (CR
+613.8c). That matters because a reader often waits on an effect near the end of the bucket. The
+effect a reader waited on at the previous step is tried first, so each step usually costs one
+trial. This runs after ADR 0093 Decision 3's pre-sort and inside the same loop that inserts
+granted layer-6 statics, so both of those orders still hold. Borrows still apply last (ADR 0155
+Decision 4).
+
+**3. Loops.** When every remaining effect is a reader waiting on another, CR 613.8b's last sentence
+applies: "If several dependent effects form a dependency loop, then this rule is ignored and the
+effects in the dependency loop are applied in timestamp order." `firstInDependencyLoopLocked`
+computes the relation among those readers. It picks the earliest one that depends on itself through
+the relation, meaning it is in a loop. A reader that only waits on a loop is not in it, and it waits
+until the loop has applied. This amendment does not change layer 4, which still falls back to index
+0 as Decision 1 describes. The two give different answers only when an effect that waits on a loop
+is older than the loop.
+
+**4. "Can't have."** A "can't have flying" (ADR 0038's amendment of 2026-09-28) is recorded on
+`Characteristic.CantHave` during the bucket, and the flying is stripped only when the bucket ends.
+A reader asks `game.HasKeywordItCanHave`, so it depends on the lockout the same way it depends on
+a "loses". A creature that can't have flying gets nothing from Sephara, even when a newer effect
+grants it flying.
+
+**5. Nothing new is snapshotted.** The order is computed again on every pass, from the board.
+`TestSepharasGrantSurvivesARestore` restores a table where the grant depends on a later catalogued
+flier and on an until-end-of-turn flying grant.
+
+**Cost.** Measured with `-count=6 -benchtime=3000x` on a shared host under load (load average about
+40 on 24 cores), so the times below are ranges from one run. The allocation counts are exact.
+
+| board | develop `1b1fea5ef` | this change |
+|---|---|---|
+| `LayerRecompute_80perms` (no reader) | 70-103 µs, 53 440 B, 335 allocs | 93-136 µs, 53 440 B, 335 allocs |
+| `LayerRecomputeLayer6Readers_80perms`, the trial switched off | — | 135-143 µs, 58 016 B, 368 allocs |
+| `LayerRecomputeLayer6Readers_80perms` | — | 214-267 µs, 120 128 B, 850 allocs |
+
+On a board with no reader, the only new work is one walk of the layer-6 bucket to count readers.
+Bytes and allocations are unchanged. The difference in times is within the run-to-run spread on
+that host: in one run the same binary measured 67-81 µs. The readers board is the
+80-permanent board with Sephara and Kwende under it, older than everything else, so they wait on all
+ten Serra Angels' printed keyword rows. A Gravity Sphere newer than everything takes all their
+flying away. That is the most a reader can be made to wait. There, the trial costs about 480
+allocations and roughly 80-120 µs a pass on that host. Before the hint in §2 and before the trial cloned only the
+objects the reader applies to, it measured 1 166 allocations and 229 712 B.
+
+**Cards.** Sephara, Sky's Blade (with her ADR 0135 §1 tap cost, `TapInsteadPaying`) and Kwende,
+Pride of Femeref, both Full.
+
+Pinned by `TestAReaderWaitsForAGrantOfWhatItReads`, `TestAReaderWaitsForARemovalOfWhatItReads`,
+`TestAReaderWaitsForACantHaveOfWhatItReads`, `TestAReaderWaitsForAnotherReader`,
+`TestALayerSixDependencyLoopFallsBackToTimestampOrder`, `TestAnEffectWaitingOnALoopAppliesAfterIt`
+and `TestAnUndeclaredReaderKeepsTimestampOrder` (`internal/game`), and by the Sephara and Kwende
+tests in `internal/cards/effects/keyword_reading_grant_test.go`.

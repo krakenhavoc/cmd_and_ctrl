@@ -20,7 +20,7 @@ import (
 // TO, or what A does to the things it applies to. A dependent effect
 // waits until what it depends on has applied (613.8b), the question
 // is asked again after each application (613.8c), and a loop falls
-// back to timestamp order (613.8c's escape).
+// back to timestamp order (613.8b's last sentence).
 //
 // Detection here is by TRIAL APPLICATION and not by a declaration on
 // every StaticAbility, which is the design ADR 0043 §5 priced and
@@ -53,6 +53,14 @@ import (
 // so paying O(N²) trial applications on every recompute would buy
 // nothing. ADR 0067 §1 has the measured numbers and the rule for
 // adding a layer: a catalogued pair, plus a benchmark.
+//
+// Layer 6 is not in the list, and is ordered all the same for the one
+// kind of effect there that can depend on another: a static that
+// declares StaticAbility.ReadsAbilities (Sephara, Sky's Blade's "other
+// creatures you control with flying have indestructible"). The trial
+// runs for those rows only — nextAbilityEffectLocked, below — so a
+// layer-6 bucket with no such static pays one bool test per effect.
+// ADR 0067's amendment of 2026-10-23 has the decision and the numbers.
 var dependencyOrderedLayers = map[Layer]bool{
 	Layer4Type: true,
 }
@@ -211,7 +219,7 @@ func (st *layerPassState) stillApplies(src *Card, target *Card, bucketIndex int,
 // The loop is CR 613.8b + 613.8c literally: take the first effect
 // that depends on nothing else still waiting, apply it, and ask
 // again. `firstIndependent` returning -1 is the loop case — every
-// remaining effect depends on another — and CR 613.8c says to give up
+// remaining effect depends on another — and CR 613.8b says to give up
 // on dependency there and fall back to timestamp order, which is what
 // index 0 is.
 //
@@ -289,8 +297,10 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 // the input back. It is not ADR 0067's trial application: the relation
 // is read off the removals' own AppliesTo, once per pass.
 //
-// Other layer-6 dependencies — a grant whose "applies to" reads another
-// grant's output — are NOT ordered; no catalogued pair reaches them.
+// The other layer-6 dependency the catalog reaches — a grant whose
+// "applies to" reads an ability another effect adds or removes — is
+// ordered later, inside the bucket, by nextAbilityEffectLocked (ADR 0067
+// amendment of 2026-10-23).
 //
 // An effect that is the later-layer half of one that already started
 // in an earlier layer is nobody's victim (CR 613.6, #3862): the removal
@@ -365,7 +375,7 @@ func (g *Game) orderRemovalsBeforeTheirVictimsLocked(bucket []ContinuousEffect, 
 
 // firstIndependent returns the index of the first effect that depends
 // on no other effect in the set, or -1 when every one of them does —
-// the CR 613.8c loop.
+// the CR 613.8b loop.
 func firstIndependent(edges [][]bool) int {
 	for i := range edges {
 		depends := false
@@ -623,4 +633,208 @@ func sameStringSlice(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// --- layer 6: a grant that reads an ability (ADR 0067 amendment 2026-10-23) ---
+//
+// Sephara, Sky's Blade's "Other creatures you control with flying have
+// indestructible" applies to the creatures that have flying, and flying
+// is itself added and removed in layer 6: by a lord, an Equipment, an
+// until-end-of-turn grant, a flying counter, a printed keyword row that
+// entered after her, or Gravity Sphere's "All creatures lose flying".
+// Applying any of those changes what her effect applies to, so it
+// depends on each of them (CR 613.8a) and waits until they have applied
+// (CR 613.8b). In timestamp order alone a creature that gained flying
+// later got no indestructible, and one that lost flying later kept it.
+//
+// The relation is ADR 0067's trial application, unchanged, asked for
+// the rows that declare StaticAbility.ReadsAbilities and of nothing
+// else. The narrowing is stated: a layer-6 effect that does not declare
+// it is never treated as dependent. It can't be one unless it reads an
+// ability, and the declaration is what keeps the bucket — which holds a
+// printed keyword row for every catalogued permanent with a keyword —
+// from paying O(N²) trials on every board.
+
+// readsAbilities reports whether a layer-6 effect declares
+// StaticAbility.ReadsAbilities. Only a battlefield (or emblem) static can:
+// a granted bundle can't carry it (GrantedStaticProblem) and a resolving
+// spell's effect locks its set as it resolves (CR 611.2c).
+func readsAbilities(eff ContinuousEffect) bool {
+	sce, ok := eff.(staticContinuousEffect)
+	return ok && sce.ability.ReadsAbilities
+}
+
+// countAbilityReaders is the fast-path test: how many effects in the
+// bucket declare ReadsAbilities. Zero on nearly every board, and then the
+// bucket is applied exactly as before.
+func countAbilityReaders(bucket []ContinuousEffect) int {
+	n := 0
+	for _, eff := range bucket {
+		if readsAbilities(eff) {
+			n++
+		}
+	}
+	return n
+}
+
+// nextAbilityEffectLocked returns the index, in `rest` (the layer-6
+// effects still to apply, in the order the bucket has them), of the one
+// to apply next.
+//
+// CR 613.8b and 613.8c: the first effect that depends on nothing still
+// waiting, asked again before every application. An effect that does not
+// read an ability depends on nothing, so the first one of those ends the
+// scan with no trial at all; a reader is applied when no remaining effect
+// would change what it applies to or what it does. When every remaining
+// effect is a reader waiting on another, the readers form a dependency
+// loop, or wait on one, and firstInDependencyLoopLocked picks.
+//
+// `hint` is the index in rest of an effect rest[0] was found waiting on
+// before the last application, or -1. It is tried first: a reader that
+// waits on an effect near the end of the bucket is asked again at every
+// step, and the answer is nearly always the same effect, so this keeps
+// each step to one trial. The second result is that index for this step
+// (an effect rest[0] waits on), or -1 when rest[0] does not wait.
+func (g *Game) nextAbilityEffectLocked(rest []ContinuousEffect, hint int) (pick, headWaitsOn int) {
+	headWaitsOn = -1
+	if len(rest) < 2 || g.Battlefield == nil {
+		return 0, -1
+	}
+	for k, eff := range rest {
+		if !readsAbilities(eff) {
+			return k, headWaitsOn
+		}
+		first := -1
+		if k == 0 {
+			first = hint
+		}
+		on := g.readerWaitsOnLocked(rest, k, first)
+		if on < 0 {
+			return k, headWaitsOn
+		}
+		if k == 0 {
+			headWaitsOn = on
+		}
+	}
+	return g.firstInDependencyLoopLocked(rest), headWaitsOn
+}
+
+// readerWaitsOnLocked returns the index in rest of an effect that rest[k],
+// a reader, depends on, or -1 when it depends on none: an effect whose
+// trial application to the objects it applies to changes whether rest[k]
+// applies to one of them, or what it does to it (CR 613.8a, ADR 0067
+// Decision 1, on the same fixed base). rest[first] is tried before the
+// others when it is in range; the walk stops at the first dependency.
+func (g *Game) readerWaitsOnLocked(rest []ContinuousEffect, k, first int) int {
+	reader := rest[k]
+	waitsOn := func(j int) bool {
+		idxs := g.effectTargetIndexesLocked(rest[j])
+		return len(idxs) > 0 && g.trialChangesLocked(reader, rest[j], idxs)
+	}
+	if first >= 0 && first < len(rest) && first != k && waitsOn(first) {
+		return first
+	}
+	for j := range rest {
+		if j == k || j == first {
+			continue
+		}
+		if waitsOn(j) {
+			return j
+		}
+	}
+	return -1
+}
+
+// trialChangesLocked is one probe of dependencyEdgesLocked, for one pair:
+// does applying `other` to the objects at idxs change what `reader` would
+// do to any of them?
+//
+// The fixed base is cloned, and the reader run on it, only for an object
+// the reader applies to before the trial: one it applies to in neither
+// world is the same answer, and one it applies to in only one is a
+// difference whatever the output. That is most of the objects a printed
+// keyword row or a lord applies to, and it keeps the probe's allocations
+// to the trial's own clones.
+func (g *Game) trialChangesLocked(reader, other ContinuousEffect, idxs []int) bool {
+	var bases []Characteristic
+	var outs []Characteristic
+	applied := make([]bool, len(idxs))
+	for t, idx := range idxs {
+		target := &g.Battlefield.Cards[idx]
+		if !reader.AppliesTo(target, g) {
+			continue
+		}
+		if bases == nil {
+			bases = make([]Characteristic, len(idxs))
+			outs = make([]Characteristic, len(idxs))
+		}
+		applied[t] = true
+		bases[t] = target.effective.clone()
+		outs[t] = g.applyOnFixedBase(reader, target, bases[t])
+	}
+	restore := g.installTrialLocked(other, idxs)
+	defer restore()
+	for t, idx := range idxs {
+		target := &g.Battlefield.Cards[idx]
+		applies := reader.AppliesTo(target, g)
+		if applies != applied[t] {
+			return true
+		}
+		if applies && !sameCharacteristic(outs[t], g.applyOnFixedBase(reader, target, bases[t])) {
+			return true
+		}
+	}
+	return false
+}
+
+// firstInDependencyLoopLocked is CR 613.8b's last sentence: "If several
+// dependent effects form a dependency loop, then this rule is ignored and
+// the effects in the dependency loop are applied in timestamp order." It
+// returns the earliest effect in `rest` that is IN a loop — one that
+// depends, through the relation, on itself. An effect that merely waits
+// on a loop is not in it, and keeps waiting until the loop has applied.
+// Index 0, the earliest, when the relation shows no loop at all, which
+// nextAbilityEffectLocked never asks for.
+func (g *Game) firstInDependencyLoopLocked(rest []ContinuousEffect) int {
+	edges := g.dependencyEdgesLocked(rest)
+	if edges == nil {
+		return 0
+	}
+	for i := range rest {
+		if dependsOnItself(edges, i) {
+			return i
+		}
+	}
+	return 0
+}
+
+// dependsOnItself reports whether effect i reaches itself along the
+// "depends on" edges: whether it is in a dependency loop.
+func dependsOnItself(edges [][]bool, i int) bool {
+	seen := make([]bool, len(edges))
+	stack := []int{i}
+	for len(stack) > 0 {
+		at := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		for j, dep := range edges[at] {
+			if !dep {
+				continue
+			}
+			if j == i {
+				return true
+			}
+			if !seen[j] {
+				seen[j] = true
+				stack = append(stack, j)
+			}
+		}
+	}
+	return false
+}
+
+// moveToFront brings rest[k] to rest[0], keeping the others in order.
+func moveToFront(rest []ContinuousEffect, k int) {
+	eff := rest[k]
+	copy(rest[1:k+1], rest[:k])
+	rest[0] = eff
 }
