@@ -64,6 +64,15 @@ const (
 	// LibraryTopRevealed is "play with the top card of your library
 	// revealed" — every player sees it.
 	LibraryTopRevealed
+
+	// LibraryTopRevealedEachPlayer is "PLAYERS play with the top card
+	// of their libraries revealed" (Field of Dreams, #1997): every
+	// library's top card is revealed to everybody, whoever controls the
+	// permanent. A CardDef value only — LibraryTopVisibilityLocked
+	// reads it off any controller's permanent and answers
+	// LibraryTopRevealed for the library asked about, so nothing
+	// downstream of the derivation has to know it exists.
+	LibraryTopRevealedEachPlayer
 )
 
 // CatalogLibraryTopVisible returns how far a battlefield permanent
@@ -92,9 +101,6 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 	out := LibraryTopHidden
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
-		if c.Controller != playerID {
-			continue
-		}
 		// The gate is "has no catalog entry", not "has no oracle ID"
 		// (ADR 0083 decision 3): a TOKEN has a key of its own since
 		// #521, and an object CR 708.2a has silenced has none.
@@ -102,7 +108,15 @@ func (g *Game) LibraryTopVisibilityLocked(playerID uuid.UUID) LibraryTopVisibili
 		if key == "" {
 			continue
 		}
-		if v := CatalogLibraryTopVisible(key); v > out {
+		v := CatalogLibraryTopVisible(key)
+		switch {
+		case v == LibraryTopRevealedEachPlayer:
+			// #1997: every player's library, whoever controls it.
+			return LibraryTopRevealed
+		case c.Controller != playerID:
+			continue
+		}
+		if v > out {
 			out = v
 		}
 	}

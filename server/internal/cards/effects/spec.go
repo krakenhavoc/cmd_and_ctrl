@@ -1620,7 +1620,10 @@ type Spec struct {
 	// game.LibraryTopOwner for "you may look at the top card of your
 	// library any time" (Realmwalker, Bolas's Citadel),
 	// game.LibraryTopRevealed for "play with the top card of your
-	// library revealed" (Oracle of Mul Daya, Courser of Kruphix).
+	// library revealed" (Oracle of Mul Daya, Courser of Kruphix), and
+	// game.LibraryTopRevealedEachPlayer for "players play with the top
+	// card of their libraries revealed" (Field of Dreams), which reveals
+	// every player's top card, not only its controller's.
 	//
 	// Deliberately NOT a `Static` entry, for the reason
 	// AdditionalLandPlays above is not: it is a fact about a PLAYER

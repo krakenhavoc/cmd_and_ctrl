@@ -586,8 +586,10 @@ type CardDef struct {
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
 	// "play with the top card of your library revealed" is
-	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
-	// library_top.go.
+	// LibraryTopRevealed, and "players play with the top card of their
+	// libraries revealed" (Field of Dreams, #1997) is
+	// LibraryTopRevealedEachPlayer, which reaches every library. Read
+	// through CatalogLibraryTopVisible; see library_top.go.
 	LibraryTopVisible LibraryTopVisibility
 
 	// HandsRevealed is whose hands this permanent's static reveals:

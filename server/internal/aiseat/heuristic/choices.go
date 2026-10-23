@@ -725,6 +725,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 					case c == nil:
 					case ch.PayCards.Action == "sacrifice":
 						loss += st.permanentValue(c)
+					case ch.PayCards.Action == "tap":
+						// #1997: a tapped creature is lost only as an
+						// attacker or blocker until it untaps, a small
+						// share of what it is worth.
+						loss += 0.1 * st.permanentValue(c)
 					default:
 						loss += st.cardValue(p.cfg, c)
 					}

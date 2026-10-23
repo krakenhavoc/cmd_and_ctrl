@@ -630,6 +630,10 @@ var cardFields = plan(
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
 	"EncodedAt", carried, "",
+	// #1997: a token's link to the object that created it (CR 607.1d,
+	// Tombstone Stairwell). Nothing else records it, and "created with
+	// nothing" is a legal zero.
+	"CreatedWith", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's

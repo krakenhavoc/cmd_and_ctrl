@@ -95,6 +95,18 @@ func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) Upkeep
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionSacrifice, Count: n, Of: of}, Words: words}
 }
 
+// TapPayment is "Tap N untapped <noun> you control" as a payment (#1997,
+// Koskun Falls): `noun` and `plural` are the printed words ("creature",
+// "creatures"), `of` the permanents that may pay. Only untapped ones can
+// (CR 701.26a), which the engine checks.
+func TapPayment(n int, noun, plural string, of game.PermanentQuery) UpkeepPayment {
+	words := "Tap an untapped " + noun + " you control"
+	if n != 1 {
+		words = "Tap " + numberWord(n) + " untapped " + plural + " you control"
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionTap, Count: n, Of: of}, Words: words}
+}
+
 // times is the payment made `n` times over, all at once: a cumulative
 // upkeep's cost for each age counter (CR 702.24a). A mana cost repeats
 // its symbols; a discard, sacrifice or life payment (LifePayment,

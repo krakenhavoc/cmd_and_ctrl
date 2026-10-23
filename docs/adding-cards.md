@@ -39,6 +39,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
+  - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -3779,6 +3780,33 @@ label, source, d)` with a duration from `durations.go` (Stromgald Spy uses
 false). Never stamp `KnownBy` on the hand's cards for these: the view
 derives the reveal per frame (`game.HandRevealedLocked`), so cards drawn
 later are shown and the hand is hidden again when the effect ends.
+
+### Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)
+
+Each of these was built for one world enchantment and is there for the
+next card that prints the same words:
+
+- **"Tokens created with this"** (Tombstone Stairwell): set
+  `CreatedWith: game.PermissionCardRef(ref)` on the `game.TokenGroup`
+  you hand `g.CreateTokensThenForEffect`, with `ref` from
+  `ctx.SourceRef()`. Read the set back with
+  `g.TokensCreatedWithForEffect(ref)`. A leaves trigger's own
+  `SourceRef()` names the object that left, so it still finds them.
+- **"Sacrifice it unless you tap an untapped creature you control"**
+  (Koskun Falls): `TapPayment(n, noun, plural, of)` beside
+  `SacrificePayment`, handed to `UpkeepPayUnless` or a cumulative upkeep.
+- **"Players play with the top card of their libraries revealed"**
+  (Field of Dreams): `LibraryTopVisible: game.LibraryTopRevealedEachPlayer`.
+- **"If the player hasn't played the card"** (Elkin Lair): don't record
+  the play. Name the exiled card as an object in the delayed trigger's
+  params, and act only while it is still that object in exile.
+- **A triggered mana ability that also stops the land untapping**
+  (Winter's Night): `TappedSkipsNextUntap: true` on the
+  `game.ManaTrigger`.
+- **"Lands tapped for mana produce mana of the chosen color instead"**
+  until end of turn (Hall of Gemstone):
+  `g.LandsTappedProduceColorThisTurnForEffect(source, controller, color,
+  label)`. The auto-tap planner already prices the new colour.
 
 ### "Can't draw more than one card each turn" (#3927, CR 121.2b)
 

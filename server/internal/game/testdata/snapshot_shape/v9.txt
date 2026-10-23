@@ -89,6 +89,9 @@ battlefield.cards[].craftedWith	array
 battlefield.cards[].craftedWith[]	object
 battlefield.cards[].craftedWith[].epoch	number:int
 battlefield.cards[].craftedWith[].id	custom(uuid.UUID)
+battlefield.cards[].createdWith	object
+battlefield.cards[].createdWith.epoch	number:int
+battlefield.cards[].createdWith.id	custom(uuid.UUID)
 battlefield.cards[].damageMarked	number:int
 battlefield.cards[].dealtCombatDamage	bool
 battlefield.cards[].devoured	number:int
@@ -681,6 +684,9 @@ exile.cards[].craftedWith	array
 exile.cards[].craftedWith[]	object
 exile.cards[].craftedWith[].epoch	number:int
 exile.cards[].craftedWith[].id	custom(uuid.UUID)
+exile.cards[].createdWith	object
+exile.cards[].createdWith.epoch	number:int
+exile.cards[].createdWith.id	custom(uuid.UUID)
 exile.cards[].damageMarked	number:int
 exile.cards[].dealtCombatDamage	bool
 exile.cards[].devoured	number:int
@@ -1619,6 +1625,9 @@ lastKnownStack[].card.craftedWith	array
 lastKnownStack[].card.craftedWith[]	object
 lastKnownStack[].card.craftedWith[].epoch	number:int
 lastKnownStack[].card.craftedWith[].id	custom(uuid.UUID)
+lastKnownStack[].card.createdWith	object
+lastKnownStack[].card.createdWith.epoch	number:int
+lastKnownStack[].card.createdWith.id	custom(uuid.UUID)
 lastKnownStack[].card.damageMarked	number:int
 lastKnownStack[].card.dealtCombatDamage	bool
 lastKnownStack[].card.devoured	number:int
@@ -4006,6 +4015,9 @@ phasedOut.cards[].craftedWith	array
 phasedOut.cards[].craftedWith[]	object
 phasedOut.cards[].craftedWith[].epoch	number:int
 phasedOut.cards[].craftedWith[].id	custom(uuid.UUID)
+phasedOut.cards[].createdWith	object
+phasedOut.cards[].createdWith.epoch	number:int
+phasedOut.cards[].createdWith.id	custom(uuid.UUID)
 phasedOut.cards[].damageMarked	number:int
 phasedOut.cards[].dealtCombatDamage	bool
 phasedOut.cards[].devoured	number:int
@@ -4772,6 +4784,9 @@ seats[].command.cards[].craftedWith	array
 seats[].command.cards[].craftedWith[]	object
 seats[].command.cards[].craftedWith[].epoch	number:int
 seats[].command.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].command.cards[].createdWith	object
+seats[].command.cards[].createdWith.epoch	number:int
+seats[].command.cards[].createdWith.id	custom(uuid.UUID)
 seats[].command.cards[].damageMarked	number:int
 seats[].command.cards[].dealtCombatDamage	bool
 seats[].command.cards[].devoured	number:int
@@ -5138,6 +5153,9 @@ seats[].companion.cards[].craftedWith	array
 seats[].companion.cards[].craftedWith[]	object
 seats[].companion.cards[].craftedWith[].epoch	number:int
 seats[].companion.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].companion.cards[].createdWith	object
+seats[].companion.cards[].createdWith.epoch	number:int
+seats[].companion.cards[].createdWith.id	custom(uuid.UUID)
 seats[].companion.cards[].damageMarked	number:int
 seats[].companion.cards[].dealtCombatDamage	bool
 seats[].companion.cards[].devoured	number:int
@@ -5513,6 +5531,9 @@ seats[].emblems.cards[].craftedWith	array
 seats[].emblems.cards[].craftedWith[]	object
 seats[].emblems.cards[].craftedWith[].epoch	number:int
 seats[].emblems.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].emblems.cards[].createdWith	object
+seats[].emblems.cards[].createdWith.epoch	number:int
+seats[].emblems.cards[].createdWith.id	custom(uuid.UUID)
 seats[].emblems.cards[].damageMarked	number:int
 seats[].emblems.cards[].dealtCombatDamage	bool
 seats[].emblems.cards[].devoured	number:int
@@ -5877,6 +5898,9 @@ seats[].graveyard.cards[].craftedWith	array
 seats[].graveyard.cards[].craftedWith[]	object
 seats[].graveyard.cards[].craftedWith[].epoch	number:int
 seats[].graveyard.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].graveyard.cards[].createdWith	object
+seats[].graveyard.cards[].createdWith.epoch	number:int
+seats[].graveyard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].graveyard.cards[].damageMarked	number:int
 seats[].graveyard.cards[].dealtCombatDamage	bool
 seats[].graveyard.cards[].devoured	number:int
@@ -6239,6 +6263,9 @@ seats[].hand.cards[].craftedWith	array
 seats[].hand.cards[].craftedWith[]	object
 seats[].hand.cards[].craftedWith[].epoch	number:int
 seats[].hand.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].hand.cards[].createdWith	object
+seats[].hand.cards[].createdWith.epoch	number:int
+seats[].hand.cards[].createdWith.id	custom(uuid.UUID)
 seats[].hand.cards[].damageMarked	number:int
 seats[].hand.cards[].dealtCombatDamage	bool
 seats[].hand.cards[].devoured	number:int
@@ -6614,6 +6641,9 @@ seats[].library.cards[].craftedWith	array
 seats[].library.cards[].craftedWith[]	object
 seats[].library.cards[].craftedWith[].epoch	number:int
 seats[].library.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].library.cards[].createdWith	object
+seats[].library.cards[].createdWith.epoch	number:int
+seats[].library.cards[].createdWith.id	custom(uuid.UUID)
 seats[].library.cards[].damageMarked	number:int
 seats[].library.cards[].dealtCombatDamage	bool
 seats[].library.cards[].devoured	number:int
@@ -7015,6 +7045,9 @@ seats[].sideboard.cards[].craftedWith	array
 seats[].sideboard.cards[].craftedWith[]	object
 seats[].sideboard.cards[].craftedWith[].epoch	number:int
 seats[].sideboard.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].sideboard.cards[].createdWith	object
+seats[].sideboard.cards[].createdWith.epoch	number:int
+seats[].sideboard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].sideboard.cards[].damageMarked	number:int
 seats[].sideboard.cards[].dealtCombatDamage	bool
 seats[].sideboard.cards[].devoured	number:int
@@ -7603,6 +7636,9 @@ stack.cards[].craftedWith	array
 stack.cards[].craftedWith[]	object
 stack.cards[].craftedWith[].epoch	number:int
 stack.cards[].craftedWith[].id	custom(uuid.UUID)
+stack.cards[].createdWith	object
+stack.cards[].createdWith.epoch	number:int
+stack.cards[].createdWith.id	custom(uuid.UUID)
 stack.cards[].damageMarked	number:int
 stack.cards[].dealtCombatDamage	bool
 stack.cards[].devoured	number:int

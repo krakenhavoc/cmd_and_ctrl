@@ -428,6 +428,8 @@ func libraryTopRows(v reflect.Value) []string {
 		return []string{"You may look at the top card of your library any time."}
 	case LibraryTopRevealed:
 		return []string{"Play with the top card of your library revealed."}
+	case LibraryTopRevealedEachPlayer:
+		return []string{"Players play with the top card of their libraries revealed."}
 	}
 	return nil
 }

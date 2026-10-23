@@ -1179,6 +1179,18 @@ type Card struct {
 	// the snapshot.
 	EncodedOn PermissionCardRef
 
+	// CreatedWith is the link from a TOKEN to the permanent OBJECT
+	// {instance, epoch} whose ability created it (#1997, CR 607.1d):
+	// Tombstone Stairwell's "destroy all tokens created with this
+	// enchantment". Stamped as the token is minted, from
+	// TokenGroup.CreatedWith, so only a creation that asked for the link
+	// carries it, and a token COPY of a linked token is not linked (the
+	// group's zero value overwrites whatever the template carried). The
+	// epoch pins the incarnation: a Stairwell that leaves and returns is
+	// a new object with no claim on the old one's tokens (CR 400.7).
+	// Carried by the snapshot.
+	CreatedWith PermissionCardRef
+
 	// PutInGraveyardFrom is the zone the card was put into THIS
 	// graveyard from — the arrival record "put into your graveyard from
 	// anywhere other than the battlefield this turn" reads (Banon, the
