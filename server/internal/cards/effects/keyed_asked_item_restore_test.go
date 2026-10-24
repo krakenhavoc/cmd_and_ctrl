@@ -485,3 +485,77 @@ func TestCleansingOfferIsARestorePointAtEveryLeg(t *testing.T) {
 		t.Errorf("lives %d, %d; want seat 0 down 1 (one land) and seat 1 down 2 (the shared land and its own)", a.Life, b.Life)
 	}
 }
+
+// Extrapolate the Impossible, the second and third prompts (#4264): at
+// three seats the caster names the opponent who chooses (a keyed option
+// pick carrying the caster and the revealed pair), and that opponent picks
+// one of the pair (a keyed reveal pick). Each is a strict restore point,
+// and the chosen card comes into the caster's hand on the restored table.
+func TestExtrapolateTheImpossibleOpponentAndRevealPicksAreRestorePoints(t *testing.T) {
+	g := newSideboardCatalogGame(t, 3, outsideCard("Alpha", "Sorcery"), outsideCard("Beta", "Instant"))
+	castCatalogSpell(t, g, "Extrapolate the Impossible", "Sorcery", extrapolateOracle, nil)
+	passPriorityAroundTable(t, g)
+	me, chosen := g.Seats[0], g.Seats[2]
+	cards := me.SideboardCards()
+	c := latestChooseCardsFor(g, me.ID)
+	if c == nil || c.PickThen != extrapolatePick.Key() {
+		t.Fatalf("the first prompt is %v, want the keyed pick", c != nil)
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{cards[0].InstanceID, cards[1].InstanceID}); err != nil {
+		t.Fatalf("reveal the pair: %v", err)
+	}
+
+	// Second prompt, restored: the caster names the opponent.
+	named := pendingOfKind(g, game.PendingChoiceOptionPick)
+	if named == nil || named.PickThen != extrapolateOpponent.Key() || len(named.OptionCarry) != 3 || named.OptionCarry[0] != me.ID {
+		t.Fatalf("the second prompt is not the keyed option pick carrying the caster and the pair")
+	}
+	g = restoreRoundTrip(t, g, true)
+	me, chosen = g.Seats[0], g.Seats[2]
+	if restored := pendingOfKind(g, game.PendingChoiceOptionPick); restored == nil || restored.PickThen != extrapolateOpponent.Key() || len(restored.OptionCarry) != 3 {
+		t.Fatalf("restored second prompt is not the keyed option pick carrying the caster and the pair")
+	}
+	answerChosenPlayer(t, g, me.ID, chosen.ID)
+
+	// Third prompt, restored: the chosen opponent picks one of the pair.
+	rp := latestRevealPickFor(g, chosen.ID)
+	if rp == nil || rp.PickThen != extrapolateTake.Key() || len(rp.ChooseCards) != 2 || rp.FromPlayer != me.ID {
+		t.Fatalf("the third prompt is not the keyed reveal pick of the pair, owned by the caster")
+	}
+	g = restoreRoundTrip(t, g, true)
+	me, chosen = g.Seats[0], g.Seats[2]
+	rp = latestRevealPickFor(g, chosen.ID)
+	if rp == nil || rp.PickThen != extrapolateTake.Key() || len(rp.ChooseCards) != 2 || rp.FromPlayer != me.ID {
+		t.Fatalf("restored third prompt is not the keyed reveal pick of the pair, owned by the caster")
+	}
+	if err := g.PassPriority(); !errors.Is(err, game.ErrChoicePending) {
+		t.Errorf("a pass while the restored reveal pick was open = %v, want ErrChoicePending", err)
+	}
+	if err := g.ResolveRevealPick(rp.ID, chosen.ID, []uuid.UUID{cards[1].InstanceID}); err != nil {
+		t.Fatalf("the opponent's pick on the restored table: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if !outsideHandHas(me, "Beta") || outsideHandHas(me, "Alpha") {
+		t.Error("the card the opponent chose did not come into the caster's hand alone")
+	}
+}
+
+// A reveal pick or an opponent pick naming a key this binary lacks is
+// refused on restore, as every keyed prompt is.
+func TestExtrapolateTheImpossibleSecondAndThirdPromptsWithAnUnknownKeyAreRefused(t *testing.T) {
+	for _, key := range []string{extrapolateOpponent.Key(), extrapolateTake.Key()} {
+		g := newSideboardCatalogGame(t, 3, outsideCard("Alpha", "Sorcery"), outsideCard("Beta", "Instant"))
+		castCatalogSpell(t, g, "Extrapolate the Impossible", "Sorcery", extrapolateOracle, nil)
+		passPriorityAroundTable(t, g)
+		me := g.Seats[0]
+		cards := me.SideboardCards()
+		c := latestChooseCardsFor(g, me.ID)
+		if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{cards[0].InstanceID, cards[1].InstanceID}); err != nil {
+			t.Fatal(err)
+		}
+		if key == extrapolateTake.Key() {
+			answerChosenPlayer(t, g, me.ID, g.Seats[2].ID)
+		}
+		refuseUnknownKey(t, g, key)
+	}
+}

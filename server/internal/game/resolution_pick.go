@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -226,6 +228,17 @@ type RevealPickPrompt struct {
 	// ChooseCardsPrompt.Validate's shape and rules — including that it
 	// is never called for an empty pick.
 	Validate func(picked []Card) bool
+
+	// ThenKey is the continuation as a REGISTERED choose_cards
+	// continuation (RegisterChooseCardsThen), and Carry the plain data it
+	// is handed (#4264): a reveal pick queued with one holds no closure,
+	// so a table waiting on the opponent's choice is a restore point. The
+	// continuation gets the cards picked in CardsChosen.Picked, the reveal
+	// as CardsChosen.Candidates and the owner as CardsChosen.From. With a
+	// key, Validate is ignored (a set rule rides the key) and the pick is
+	// one prompt, not a run.
+	ThenKey ChooseCardsThen
+	Carry   []uuid.UUID
 }
 
 // RevealPickThenForEffect asks `p.Chooser` to pick from the revealed
@@ -248,6 +261,12 @@ type RevealPickPrompt struct {
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) RevealPickThenForEffect(p RevealPickPrompt, then func(g *Game, picked, left []uuid.UUID) error) (int, error) {
+	if p.ThenKey.key != "" {
+		if then != nil {
+			return 0, fmt.Errorf("%w: keyed reveal pick %q also sets a closure", ErrInvalidParam, p.ThenKey.key)
+		}
+		return g.queueRevealPickKeyedLocked(p), nil
+	}
 	// Frozen at the ask, like every other prompt's candidate list: the
 	// partition handed to `then` has to be a partition of what the
 	// chooser was actually shown.
@@ -262,6 +281,48 @@ func (g *Game) RevealPickThenForEffect(p RevealPickPrompt, then func(g *Game, pi
 	return g.runPromptsLocked([]uuid.UUID{p.Chooser}, landedThen, func(seat, run uuid.UUID) bool {
 		return g.queueRevealPickLocked(p, all, seat, run) != uuid.Nil
 	})
+}
+
+// queueRevealPickKeyedLocked queues a reveal pick whose continuation is a
+// registered key (#4264) and reports how many prompts went up. The prompt
+// carries no frame and no run: the pick is its chooser's alone, so a table
+// waiting on it is a restore point. Nothing to pick from, or a chooser who
+// has left, queues nothing (QueueChoiceForEffect's CR 800.4a guard).
+//
+// Caller must hold g.mu.
+func (g *Game) queueRevealPickKeyedLocked(p RevealPickPrompt) int {
+	all := copyUUIDs(p.Cards)
+	if len(all) == 0 {
+		return 0
+	}
+	owner := p.Owner
+	if owner == uuid.Nil {
+		owner = p.Chooser
+	}
+	hi := p.Max
+	if hi <= 0 || hi > len(all) {
+		hi = len(all)
+	}
+	lo := max(p.Min, 0)
+	if lo > hi {
+		lo = hi
+	}
+	if g.QueueChoiceForEffect(PendingChoice{
+		Kind:        PendingChoiceRevealPick,
+		Chooser:     p.Chooser,
+		FromPlayer:  owner,
+		Count:       hi,
+		Source:      p.Source,
+		Reason:      p.Question,
+		ChooseCards: all,
+		ChooseMin:   lo,
+		ChooseMax:   hi,
+		PickThen:    p.ThenKey.key,
+		OptionCarry: copyUUIDs(p.Carry),
+	}) == uuid.Nil {
+		return 0
+	}
+	return 1
 }
 
 // queueRevealPickLocked queues ONE reveal pick and reports its ID, or

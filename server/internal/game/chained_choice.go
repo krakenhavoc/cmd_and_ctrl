@@ -580,6 +580,11 @@ func (g *Game) resolveCardSetPick(kind PendingChoiceKind, choiceID, chooserID uu
 		// #2040: a keyed pick's continuation, looked up by its key.
 		keyed := *choice
 		g.dequeueChoiceLocked(idx)
+		if keyed.Kind == PendingChoiceRevealPick {
+			// The closure leg narrates the pick (revealPickLegThen); a
+			// keyed one does too.
+			g.emitCardsChosenLocked(chooserID, keyed.Source, picks)
+		}
 		g.emitChoiceEffectErrorLocked(chooserID, keyed.Source, g.runKeyedChooseCardsLocked(&keyed, picks, true))
 		g.runStateChecksLocked()
 		return nil
