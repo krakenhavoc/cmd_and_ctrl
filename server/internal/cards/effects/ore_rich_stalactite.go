@@ -24,9 +24,9 @@ import (
 // The Catalyst picks one material still in exile at random (ADR 0054's
 // keyed stream) and offers a free cast of it as part of the
 // resolution: Emergent Ultimatum's grant (grantFreeCasts) at flash
-// timing, whose window closes on the caster's next pass and leaves an
-// uncast card in exile, as the ruling says ("You can't wait to cast it
-// later in the turn"). The card stays a material if it is not cast.
+// timing, offered during the resolution (#4250). The window closes on the
+// caster's next pass only as the fallback, leaving an uncast card in exile,
+// as the ruling says ("You can't wait to cast it later in the turn"). The card stays a material if it is not cast.
 //
 // No simplification.
 const oreRichStalactiteOracleID = "e17d8c0e-16e7-477b-830d-0818cedcb354"

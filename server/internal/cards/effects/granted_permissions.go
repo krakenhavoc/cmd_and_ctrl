@@ -165,9 +165,9 @@ func PlayFromTopOfYourLibrary(filter game.PermissionFilter, label string) game.C
 // (game.CastPermission.ExileInsteadOfGraveyard, #3863).
 //
 // It is Torrential Gearhulk's grant with the price left at "its mana
-// cost" and a FollowUp. The offer is flash-timed and closed by the
-// holder's next priority pass (LapseStaysInHand: an uncast card simply
-// stays in the graveyard), and it is claimed under the shared
+// cost" and a FollowUp. The offer is flash-timed and made during the
+// resolution (#4250). The holder's next priority pass closes it only as the
+// fallback (LapseStaysInHand: an uncast card simply stays in the graveyard), and it is claimed under the shared
 // "granted-cost" key rather than "flashback", so a card that prints
 // flashback is still cast for its MANA cost here (a flashback claim
 // would take the card's own flashback price), and the cast counts as

@@ -37,8 +37,9 @@ import (
 //     0066's posture on every "you may cast it" a resolution offers):
 //     {0}, flash timing so a sorcery can be cast at once (CR 608.2g),
 //     mana value capped at X against the face actually cast, and the
-//     window closes on the caster's next pass, sending an uncast card to
-//     the bottom of the library.
+//     cast is offered during the resolution (#4250); the window is only the
+//     fallback and closes on the caster's next pass, sending an uncast card
+//     to the bottom of the library.
 //   - The rest goes to the bottom in a random order from the game's
 //     keyed stream, so an undone or restored game bottoms them the same
 //     way.
@@ -178,9 +179,9 @@ func sunbirdsFinisher(controller, source uuid.UUID, x int, revealed []uuid.UUID)
 // sunbirdsGrantFreeCast stamps the free cast on the chosen card where it
 // sits in its owner's library: cascade's grant shape with Sunbird's own
 // mana value cap, pointed at the library. A card that has left the
-// library since the reveal gets nothing. An uncast card is bottomed on
-// the holder's next pass (lapseCastPermissionLocked reads the zone the
-// grant opens).
+// library since the reveal gets nothing. The holder's next pass bottoms an
+// uncast card only as the fallback, for an offer made outside the
+// resolution (lapseCastPermissionLocked reads the zone the grant opens).
 func sunbirdsGrantFreeCast(g *game.Game, controller, source, cardID uuid.UUID, x int) {
 	z := g.FindCardZoneForEffect(cardID)
 	c, ok := g.LookupCardForEffect(cardID)
