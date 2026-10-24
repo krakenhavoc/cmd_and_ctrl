@@ -1312,7 +1312,8 @@ export type LogKind =
   // player, `card_id` the card whose effect it is (Emrakul).
   | "player_control_scheduled"
   | "player_control_began"
-  | "player_control_ended";
+  | "player_control_ended"
+  | "sticker_placed";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -2722,6 +2723,11 @@ export interface PlayerView {
   // rules put into the command zone, face up for every viewer. Absent for
   // a seat with none.
   junkyard?: CardView[];
+  // ADR 0208 (#2138): the three sticker sheets this seat plays with (CR
+  // 103.2d), public because they "remain revealed" (CR 123.2c). A sticker
+  // with `in_use` is on an object now and can't go on another (CR 123.3).
+  // Absent for a seat with none. Tickets are `counters.ticket`.
+  sticker_sheets?: StickerSheetView[];
   // #3955 (Wish): the seat's live "you may play a card you own from outside
   // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
   // pool is the card database, so the `outside_play` action is how it names
@@ -4450,6 +4456,25 @@ export interface LandTypeEffect {
   source?: string;
 }
 
+// ADR 0208 (#2138): one sticker, on an object or on a sheet. `kind` is
+// CR 123.1's four; `text` is a name sticker's word(s), an ability
+// sticker's ability or a power and toughness sticker's "2/3", empty for an
+// art sticker.
+export interface StickerView {
+  kind: "name" | "ability" | "pt" | "art";
+  text?: string;
+  ticket_cost?: number;
+  sheet?: string;
+  in_use?: boolean;
+}
+
+// ADR 0208: one sticker sheet a seat plays with.
+export interface StickerSheetView {
+  name: string;
+  scryfall_id?: string;
+  stickers: StickerView[];
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -4497,6 +4522,9 @@ export interface CardView extends CastSurfaceView {
   // ADR 0207: the numbers lit up on an Attraction (CR 717.1), ascending.
   // A roll to visit that matches one visits it. Absent on every other card.
   attraction_lights?: number[];
+  // ADR 0208: the stickers on this object (CR 123), oldest first. Absent
+  // when it has none.
+  stickers?: StickerView[];
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
