@@ -1069,7 +1069,9 @@ func (g *Game) routeDestinationLocked(cardID uuid.UUID, dst ZoneKind, dstOwner u
 	case ZoneLibrary:
 		return p.Library, p.ID, nil
 	case ZoneCommand:
-		return p.Command, p.ID, nil
+		// ADR 0207, CR 717.6a: an Astrotorium-backed card put into
+		// the command zone goes to its owner's junkyard.
+		return g.commandPileForIDLocked(p, cardID), p.ID, nil
 	}
 	return nil, uuid.Nil, ErrZoneNotFound
 }

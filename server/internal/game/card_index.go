@@ -239,6 +239,17 @@ func (g *Game) locateCardLocked(cardID uuid.UUID) (*Zone, int) {
 	if cardIndexCrossCheck.Load() {
 		g.crossCheckCardLocked(cardID, z, pos)
 	}
+	if z == nil && cardID == g.attractionEntering && cardID != uuid.Nil {
+		// ADR 0207: the Attraction being opened, for the span of its
+		// entry. See Game.attractionEntering.
+		if az := g.attractionDeckZoneLocked(cardID); az != nil {
+			for i := range az.Cards {
+				if az.Cards[i].InstanceID == cardID {
+					return az, i
+				}
+			}
+		}
+	}
 	if z == nil && cardID == g.outsideEntering && cardID != uuid.Nil {
 		// #3955: the land being played from outside the game, for the
 		// span of its entry. See Game.outsideEntering.

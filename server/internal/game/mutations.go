@@ -6433,7 +6433,9 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 			destZone = g.Exile
 			dest = ZoneExile
 		} else {
-			destZone = cmdOwner.Command
+			// ADR 0207, CR 717.6a: or the owner's junkyard, for a
+			// card with the Astrotorium back.
+			destZone = cmdOwner.commandPileFor(card)
 			actor = cmdOwner.ID
 		}
 	case ZoneExile:
@@ -11562,7 +11564,7 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 		p.Seat = i
 		// Lobby seats compact after a departure. Keep deck source ordinals
 		// aligned so a later join cannot reuse a surviving card's ordinal.
-		for _, zone := range []*Zone{p.Library, p.Command, p.Companion, p.Sideboard} {
+		for _, zone := range []*Zone{p.Library, p.Command, p.Companion, p.Sideboard, p.AttractionDeck} {
 			if zone == nil {
 				continue
 			}

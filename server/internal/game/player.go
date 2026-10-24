@@ -153,6 +153,24 @@ type Player struct {
 	// restore of a seat with none: every reader asks SideboardCards.
 	Sideboard *Zone
 
+	// AttractionDeck is this player's supplementary Attraction deck
+	// (CR 717.2, ADR 0207 §1): face down, shuffled before the game
+	// begins, in the command zone. Kind ZoneCommand, built the way
+	// Emblems is and for the same reason: every reader of Command.Cards
+	// means "commander card", no ZoneRef resolves to it and the card
+	// index does not cover it, so nothing but opening an Attraction
+	// (CR 701.51, OpenAttractionsThenForEffect) takes a card out. Nil
+	// for a deck with no Attractions; every reader asks
+	// AttractionDeckCards.
+	AttractionDeck *Zone
+
+	// Junkyard is the face-up pile of this player's Astrotorium-backed
+	// cards the CR 717.6 replacement put into the command zone (CR
+	// 717.6a: "not its own zone"). Kind ZoneCommand, unreachable by any
+	// ZoneRef or the card index, like AttractionDeck. Nothing takes a
+	// card out of it. Nil until the first card arrives.
+	Junkyard *Zone
+
 	// HasSideboard is whether this player's deck SEATED a sideboard,
 	// which makes the sideboard their pool of cards outside the game
 	// (ADR 0191). False means the pool is the card database (ADR 0198):

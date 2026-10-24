@@ -191,6 +191,9 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		sweep(p.Companion)
 		// ADR 0191: and so does its sideboard.
 		sweep(p.Sideboard)
+		// ADR 0207: and its Attraction deck and junkyard.
+		sweep(p.AttractionDeck)
+		sweep(p.Junkyard)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()

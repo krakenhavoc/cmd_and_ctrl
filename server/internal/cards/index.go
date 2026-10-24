@@ -184,6 +184,12 @@ type Card struct {
 	// (Universes Beyond, newer sets, tokens), and the client then links
 	// the Scryfall card page instead. Omitted on the wire when empty.
 	MultiverseIDs []int `json:"multiverse_ids,omitempty"`
+	// AttractionLights are the numbers lit up on this printing of an
+	// Attraction (CR 717.1), Scryfall's attraction_lights. Printing
+	// data, like the picture, but read by the rules: the deck's chosen
+	// printing decides which results visit it (ADR 0207 §3). Empty on
+	// every other card; omitted on the wire then.
+	AttractionLights []int `json:"attraction_lights,omitempty"`
 	// The next six fields describe HOW a printing looks, not what the
 	// card is. They exist for one reader, printingRank, which decides
 	// which printing stands for a card name when a deck names none

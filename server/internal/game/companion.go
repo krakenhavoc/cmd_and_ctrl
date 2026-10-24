@@ -89,6 +89,11 @@ func seatDeckCard(p *Player, c Card) {
 		p.HasSideboard = true
 		c.AddKnower(p.ID)
 		p.Sideboard.PushTop(c)
+	case c.AstrotoriumBack:
+		// ADR 0207 §2, CR 717.2: an Attraction card never begins the
+		// game in a deck. It starts face down in its owner's Attraction
+		// deck in the command zone.
+		seatAttractionCard(p, c)
 	default:
 		p.Library.PushTop(c)
 	}

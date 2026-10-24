@@ -1,0 +1,10 @@
+---
+title: "Attractions"
+date: 2026-10-23
+issues: [2121]
+---
+**Attractions** (#2121, CR 717, CR 701.51, CR 701.52, CR 702.159, [ADR 0207](../../decisions/0207-attractions.md)) — nothing in the engine knew Unfinity's Attractions. A deck's Attraction cards (by printed type line, under an `Attractions:` heading, Moxfield's `attractions` board or none) are `deck.List.Attractions`, not one of the 100; an Attraction deck that breaks CR 717.2a is warned (`attraction_deck_illegal`) and not seated. The importer stamps `Card.AstrotoriumBack` and the printing's `Card.AttractionLights` (Scryfall `attraction_lights`).
+- **The piles.** `Player.AttractionDeck` (face down, shuffled on its own stream before the game begins) and `Player.Junkyard` (face up), two `ZoneCommand` containers no `ZoneRef` or card-index lookup reaches. Snapshot keys are additive (`seats[].attractionDeck`, `seats[].junkyard`, card `astrotoriumBack` / `attractionLights`); the closure ceiling went from 51 to 53 for the two containers.
+- **Open, visit, junkyard.** `Game.OpenAttractionsThenForEffect` puts the top card through the entry batch and announces `EventAttractionOpened` (CR 701.51c). `Game.RollToVisitForEffect` is an ordinary d6, then `EventRollToVisit` and one `EventVisitAttraction` per lit Attraction; the turn-based roll runs as the precombat main phase begins, after the Saga lore counters (CR 717.4, 703.4g). `astrotoriumJunkyardReplacement` sends an Astrotorium-backed card bound anywhere but the battlefield, exile or the command zone to its owner's junkyard (CR 717.6).
+- **Wire:** `PlayerView.attraction_deck_count`, `PlayerView.junkyard`, `CardView.attraction_lights`.
+- **Cards (16, all Full):** Down for Repairs, Deadbeat Attendant, Petting Zookeeper, Rad Rascal, Ride Guide, Seasoned Buttoneer, Step Right Up, Line Cutter, Coming Attraction, Draconian Gate-Bot, Information Booth, Fortune Teller, Concession Stand, Roller Coaster, Kiddie Coaster and Spinny Ride. **Still open:** stickers and tickets (#2138), "claim the prize", "Attractions you've visited this turn" and Monitor Monitor's reroll.

@@ -92,6 +92,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
+  - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -11755,6 +11756,45 @@ Effect: ChooseLeftOrRightThenEachPlayerAttacksOnlyThatWayUntilYourNextTurn(name,
 - Every rule in force applies at once (rules that disagree leave nobody to attack), battles are never attackable under
   one, and creatures put onto the battlefield attacking are exempt (CR 508.4c). All of that is the engine's, through
   `canAttackTargetWithLocked`; a card file says nothing about it.
+
+### Attractions (ADR 0207, #2121)
+
+An Attraction card needs nothing to reach its pile: the importer reads the
+Attraction subtype off the printed type line, stamps `Card.AstrotoriumBack` and
+the printing's `Card.AttractionLights`, and the game seats it in the player's
+Attraction deck. The engine runs the rest (opening, the roll to visit as each
+precombat main phase begins, the CR 717.6 junkyard). A card says only what it
+prints, with `cards/effects/attractions.go`:
+
+```go
+// "When this creature enters, open an Attraction."
+Triggered: []game.TriggeredAbility{WhenThisEntersOpenAnAttraction("Rad Rascal")},
+// "Open two Attractions." (a spell)
+OnResolve: ResolveSteps(OpenAttractions{N: 2}),
+// "When this creature enters, roll to visit your Attractions."
+WhenThisEnters("Line Cutter — roll to visit your Attractions", Do(RollToVisitYourAttractions{})),
+// An Attraction's "Visit — Draw a card."
+Triggered: []game.TriggeredAbility{Visit("Information Booth", Do(DrawCards{N: 1}))},
+// "Visit — Tap target creature an opponent controls." (a targeted visit)
+Targeting(Visit("Spinny Ride", b36TapChosenCreature), TargetCreature("target creature an opponent controls", OpponentControls())),
+// "Destroy target Attraction." (it goes to the junkyard by the rules, not by the card)
+TargetPermanent("target Attraction", Attraction()),
+```
+
+- A visit ability watches `game.EventVisitAttraction`, which the engine emits
+  only for an Attraction whose lights match the roll, so write no lights check.
+- "Whenever you open an Attraction" watches `game.EventAttractionOpened`;
+  "whenever you roll to visit your Attractions" watches `game.EventRollToVisit`
+  (Amount is the result). "Attractions you've visited this turn" counts this
+  turn's `EventVisitAttraction` events for the player.
+- The roll to visit is an ordinary die roll (`EventRollDie`, six sides), so
+  "whenever you roll a 1" sees it with no extra work.
+- In a test, give a seat an Attraction deck with `p.AttractionDeck =
+  &game.Zone{Kind: game.ZoneCommand, Owner: p.ID}` and `PushTop`, and give an
+  Attraction every light (`1..6`) when the test is about what its visit does.
+  Walk to the precombat main phase BEFORE putting an Attraction on the
+  battlefield, or the turn-based roll there visits it too.
+- Stickers and tickets ({TK}) are #2138, not this vocabulary.
 
 ### When in doubt
 

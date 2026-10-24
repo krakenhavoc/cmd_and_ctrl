@@ -326,6 +326,7 @@ var gameFields = plan(
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
 	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
+	"attractionEntering", dropped, "the one card of an Attraction deck the card index may see, for the span of its open's entry (ADR 0207 §4); non-empty between actions only while that entry is paused on a replacement prompt, whose resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	// #4270: the CR 707.10 self-copy source (#920) and every other reader
 	// of the item whose resolution is in flight. Carried as plain data
@@ -400,6 +401,9 @@ var cardFields = plan(
 	"IsCompanion", carried, "",
 	// ADR 0191 §3: the sideboard stamp; it routes seating only.
 	"IsSideboard", carried, "",
+	// ADR 0207 §5: printed facts about an Attraction card.
+	"AstrotoriumBack", carried, "",
+	"AttractionLights", carried, "",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -706,6 +710,11 @@ var playerFields = plan(
 	// for Companion's reason: nothing else on the board says what an
 	// effect could still bring in. Written only while it holds a card.
 	"Sideboard", carried, "",
+	// ADR 0207 §5: the Attraction deck and the junkyard. Carried: what is
+	// left to open, and what the rules have put aside, are on no board.
+	// Written only while they hold a card.
+	"AttractionDeck", carried, "",
+	"Junkyard", carried, "",
 	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",

@@ -194,6 +194,20 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PlayerPanel.svelte`],
     doc: "a board's creature row; every board has one, so anchor it within your board",
   }),
+  attractionDeck: label({
+    name: "attractions",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}PileBar.svelte`],
+    doc: "a seat's face-down Attraction deck in the rail (ADR 0207, CR 717.2), drawn only while it holds a card; a count, not openable",
+  }),
+  junkyard: label({
+    name: "junkyard",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}PileBar.svelte`],
+    doc: "a seat's face-up junkyard in the rail (ADR 0207, CR 717.6a), drawn only while it holds a card; opens the zone browser's junkyard tab",
+  }),
   commandZone: dynamicLabel({
     stem: " command zone, ",
     match: "contains",

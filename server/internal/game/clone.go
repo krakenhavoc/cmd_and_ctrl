@@ -532,6 +532,7 @@ func (g *Game) cloneLocked() *Game {
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
 	out.outsideEntering = g.outsideEntering
+	out.attractionEntering = g.attractionEntering
 	if len(g.enteringTokens) > 0 {
 		// #762: a token whose entry paused on a replacement prompt is
 		// here and nowhere else. An undo across that prompt has to
@@ -636,6 +637,9 @@ func deepenCard(out *Card) {
 	}
 	if len(out.Colors) > 0 {
 		out.Colors = append([]string(nil), out.Colors...)
+	}
+	if len(out.AttractionLights) > 0 {
+		out.AttractionLights = append([]int(nil), out.AttractionLights...)
 	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
@@ -764,6 +768,8 @@ func clonePlayer(p *Player) *Player {
 	out.Emblems = cloneZone(p.Emblems)
 	out.Companion = cloneZone(p.Companion)
 	out.Sideboard = cloneZone(p.Sideboard)
+	out.AttractionDeck = cloneZone(p.AttractionDeck)
+	out.Junkyard = cloneZone(p.Junkyard)
 	// ADR 0018's eighth amendment: game state, cloned with the seat.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.CommanderDamage) > 0 {
@@ -1356,6 +1362,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.promptRuns = src.promptRuns
 	g.enteringTokens = src.enteringTokens
 	g.outsideEntering = src.outsideEntering
+	g.attractionEntering = src.attractionEntering
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.
 	g.resolving = src.resolving

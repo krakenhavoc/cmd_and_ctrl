@@ -2677,6 +2677,17 @@ type PlayerView struct {
 	// PUBLIC, the way a hand's size is; absent for a seat with none.
 	SideboardCount int `json:"sideboard_count,omitempty"`
 
+	// AttractionDeckCount is how many cards are in this seat's
+	// Attraction deck (CR 717.2, ADR 0207 §6). PUBLIC, the way a
+	// library's size is; the cards are face down and nobody sees them.
+	// Absent for a seat with none.
+	AttractionDeckCount int `json:"attraction_deck_count,omitempty"`
+
+	// Junkyard is this seat's junkyard (CR 717.6a): its Astrotorium-
+	// backed cards the rules put into the command zone, face up. PUBLIC
+	// and unredacted, like emblems. Absent for a seat with none.
+	Junkyard []CardView `json:"junkyard,omitempty"`
+
 	// OutsidePlay is the seat's live "you may play a card you own from
 	// outside the game this turn" right (Wish, #3955): present while it
 	// is held and unspent. OWNER-ONLY, like the sideboard. The card is
@@ -3012,6 +3023,11 @@ type CardView struct {
 	// outside the game or after it has come into the game. Public: the
 	// card was revealed to the table. The client's "Companion" badge.
 	IsCompanion bool `json:"is_companion,omitempty"`
+	// AttractionLights are the numbers lit up on an Attraction (CR
+	// 717.1, ADR 0207 §6): a die result that matches one visits it.
+	// Printing data, so redacted with the rest of a hidden card's
+	// identity. Absent on every other card.
+	AttractionLights []int `json:"attraction_lights,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -10251,6 +10267,11 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 	for _, c := range p.SideboardCards() {
 		sideboard = append(sideboard, viewOfCard(c))
 	}
+	// ADR 0207 §6: the Attraction deck's size and the junkyard, public.
+	var junkyard []CardView
+	for _, c := range p.JunkyardCards() {
+		junkyard = append(junkyard, viewOfCard(c))
+	}
 	pv := PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
@@ -10300,6 +10321,8 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		Companion:           companion,
 		Sideboard:           sideboard,
 		SideboardCount:      len(sideboard),
+		AttractionDeckCount: len(p.AttractionDeckCards()),
+		Junkyard:            junkyard,
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
@@ -11514,6 +11537,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Counters = nil
 	out.IsCommander = false
 	out.IsCompanion = false
+	out.AttractionLights = nil
 	out.ManaCost = ""
 	out.Abilities = nil
 	// #3898: a block refusal's sentence names the card, and a minimum
@@ -12002,6 +12026,8 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
 		IsCompanion:   c.IsCompanion,
+		// ADR 0207: printed, like the name.
+		AttractionLights: append([]int(nil), c.AttractionLights...),
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

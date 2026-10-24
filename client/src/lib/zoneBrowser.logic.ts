@@ -28,6 +28,8 @@ export function cardsForZone(view: GameView, zoneKind: BrowsableZone, ownerID: s
   // is read only (restored 2026-10-19, #3833): the whole sideboard, so a
   // Wish's candidates can be checked.
   if (zoneKind === "sideboard") return seat.sideboard ?? [];
+  // ADR 0207: public, so every viewer's seat carries the cards.
+  if (zoneKind === "junkyard") return seat.junkyard ?? [];
   return [];
 }
 
@@ -54,7 +56,8 @@ export function canManageZone(
   viewerID: string | null,
   ownerID: string,
 ): boolean {
-  if (zoneKind === "stack" || zoneKind === "sideboard") return false;
+  // ADR 0207: nothing takes a card out of a junkyard, so it is read only.
+  if (zoneKind === "stack" || zoneKind === "sideboard" || zoneKind === "junkyard") return false;
   if (!viewerID) return false;
   return viewerID === ownerID;
 }
