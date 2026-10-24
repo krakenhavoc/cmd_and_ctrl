@@ -346,6 +346,14 @@ type ReplacementEvent struct {
 	// clone could share.
 	drawInstead drawInsteadRun
 
+	// keywordInstead is drawInstead's sibling for a KEYWORD ACTION
+	// replaced by an effect: Retriever Phoenix's "return this card to
+	// the battlefield" in place of a learn. Set when a replacement
+	// declaring ReplacementEffect.KeywordInstead is applied, which also
+	// cancels the action. A registered key plus the source card, plain
+	// data. See learn_action.go.
+	keywordInstead keywordInsteadRun
+
 	// drawTail is how many individual draws of the SAME instruction are
 	// still owed once this one is finished — "draw three" paused on its
 	// first card owes two. Unexported engine plumbing; the catalog
@@ -1634,12 +1642,26 @@ type ReplacementEffect struct {
 	// value is "not a draw-substituting effect".
 	DrawInstead DrawInsteadRef
 
+	// KeywordInstead, on a RepEventKeywordAction replacement, replaces
+	// the keyword action with an effect (learn_action.go): Retriever
+	// Phoenix's "if you would learn, you may instead return this card to
+	// the battlefield". The DrawInstead shape for a keyword action:
+	// applying the effect cancels the action, and once the window has
+	// SETTLED the registered body (RegisterKeywordInstead) runs, may
+	// queue prompts, and calls `done` when it has finished.
+	//
+	// Leave Replace nil: the engine cancels the action itself. The zero
+	// value is "not an action-substituting effect".
+	KeywordInstead KeywordInsteadRef
+
 	// FromGraveyard makes this a replacement its source applies from
-	// the DRAWING PLAYER's graveyard rather than from the battlefield —
-	// dredge (CR 702.52a), the one ability a card has in that zone. The
-	// battlefield walk skips such an effect, and the gather finds it in
-	// the graveyard instead. Only a draw event consults the graveyard
-	// (draw_instead.go).
+	// the AFFECTED PLAYER's graveyard rather than from the battlefield —
+	// dredge (CR 702.52a) for a draw, Retriever Phoenix's "as long as
+	// this card is in your graveyard, if you would learn" for a learn.
+	// The battlefield walk skips such an effect, and the gather finds it
+	// in the graveyard instead. Only a draw event (the drawing player's
+	// graveyard) and a learn (the learning player's) consult the
+	// graveyard (draw_instead.go, learn_action.go).
 	FromGraveyard bool
 
 	// Dredge is N on a dredge offer (CR 702.52a): how many cards

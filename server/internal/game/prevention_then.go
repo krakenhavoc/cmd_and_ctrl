@@ -88,6 +88,10 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 		g.recordDrawInsteadLocked(ev, a)
 		return
 	}
+	if a.effect.KeywordInstead.key != "" {
+		g.recordKeywordInsteadLocked(ev, a)
+		return
+	}
 	if a.effect.Replace == nil {
 		return
 	}

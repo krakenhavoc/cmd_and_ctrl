@@ -377,21 +377,32 @@ func decodeGraveyardReplacementID(id ReplacementEffectID) (serial, slot int, ok 
 }
 
 // gatherGraveyardReplacementsLocked appends the FromGraveyard
-// replacements of the drawing player's graveyard that apply to ev.
-// Only a draw consults a graveyard, and only the DRAWER's: dredge says
-// "your graveyard".
+// replacements of the affected player's graveyard that apply to ev.
+// Only a draw and a learn consult a graveyard, and only the affected
+// player's: dredge says "your graveyard", and so does Retriever
+// Phoenix.
 //
 // The source is a copy of the card, never a pointer into the zone's
 // slice, because a prompt can outlive the slice it was gathered from.
 //
 // Caller must hold g.mu.
 func (g *Game) gatherGraveyardReplacementsLocked(ev *ReplacementEvent, applied map[ReplacementEffectID]bool, serials *replacementSerialMinter, out []activeReplacement) []activeReplacement {
-	if CatalogReplacements == nil || ev == nil || ev.Kind != RepEventDraw || ev.DrawCount <= 0 {
+	if CatalogReplacements == nil || ev == nil {
+		return out
+	}
+	var player uuid.UUID
+	switch {
+	case ev.Kind == RepEventDraw && ev.DrawCount > 0:
+		player = ev.DrawPlayer
+	case ev.Kind == RepEventKeywordAction && ev.KeywordAction == KeywordActionLearn:
+		// #3525: the learning player's graveyard.
+		player = ev.Actor
+	default:
 		return out
 	}
 	seat := -1
 	for i, p := range g.Seats {
-		if p != nil && p.ID == ev.DrawPlayer {
+		if p != nil && p.ID == player {
 			seat = i
 			break
 		}

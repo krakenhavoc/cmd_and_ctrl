@@ -25,6 +25,12 @@ import (
 //     for a deck that seated none, ADR 0198), "you may", revealed. With
 //     no Lesson to choose from it asks nothing.
 //
+// Learn is one event, opened once (game.LearnForEffect) as a
+// RepEventKeywordAction before any of it happens, so "if you would
+// learn, ... instead" can replace the whole instruction
+// (retriever_phoenix.go, ADR 0191's amendment of 2026-10-23). A
+// replaced learn discards, draws and reveals nothing.
+//
 // Card text writes "learn" as the last instruction of its ability in
 // every printing, so the card files put it last in a ResolveSteps or a
 // Do and nothing needs to wait on it; the walk still parks a later step
@@ -55,8 +61,18 @@ func (l Learn) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	source := ctx.Source()
-	return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+	// Learn is an event a replacement effect can apply to (CR 614.1a,
+	// game/learn_action.go): Retriever Phoenix, in a graveyard, may
+	// replace it. Whatever the window leaves is learnBody.
+	return ctx.Game.LearnForEffect(player, ctx.Source())
+}
+
+func init() { game.LearnBody = learnBody }
+
+// learnBody is learn itself, once its CR 614 window has left it alone:
+// CR 701.48a's discard, draw and Lesson.
+func learnBody(g *game.Game, player, source uuid.UUID) error {
+	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
 		Player:   player,
 		Source:   source,
 		N:        1,
