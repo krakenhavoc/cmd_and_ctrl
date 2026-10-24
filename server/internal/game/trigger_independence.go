@@ -1086,11 +1086,12 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	case FootprintSurveil:
 		a.cards[you] = true
 		a.beyondDraw[you] = true
-		// The graveyard leg emits EventMill per card, as an ordinary
-		// mill does (ResolveSurveil): a "card put into your graveyard
-		// from your library" watcher sees it. Found by the footprint
-		// conformance test (#3013).
-		a.emit(EventSurveil, EventMill, EventZoneMove)
+		// The graveyard leg emits an EventZoneMove per card
+		// (ResolveSurveil): a "card put into your graveyard from your
+		// library" watcher sees it. It is not a mill (CR 701.25a), so
+		// no EventMill since #2809; the conformance test (#3013) holds
+		// the declaration to what the step really emits.
+		a.emit(EventSurveil, EventZoneMove)
 	case FootprintEnergy:
 		a.emit(EventPlayerCounterPlaced)
 	case FootprintCreateToken:

@@ -67,32 +67,8 @@ func hedgeShredderReturnLands(g *game.Game, item *game.StackItem) error {
 }
 
 // landsPutIntoGraveyardFromLibraryInBatch is the land cards `owner`
-// put into their graveyard from their library in event batch `batch`,
-// in the order they landed, and only those whose most recent zone
-// change this turn is still that move — still the same object in the
-// graveyard (CR 400.7).
+// put into their graveyard from their library in event batch `batch`
+// (cardsPutIntoGraveyardFromLibraryInBatch).
 func landsPutIntoGraveyardFromLibraryInBatch(g *game.Game, batch uint64, owner uuid.UUID) []uuid.UUID {
-	events := g.EventsThisTurn()
-	lastMove := map[uuid.UUID]int{}
-	for i, ev := range events {
-		if ev.CardID != uuid.Nil && ev.OldZone != "" && ev.NewZone != "" {
-			lastMove[ev.CardID] = i
-		}
-	}
-	var out []uuid.UUID
-	for i, ev := range events {
-		if ev.Batch != batch || (ev.Kind != game.EventMill && ev.Kind != game.EventZoneMove) {
-			continue
-		}
-		if ev.OldZone != game.ZoneLibrary || ev.NewZone != game.ZoneGraveyard || lastMove[ev.CardID] != i {
-			continue
-		}
-		if z := g.FindCardZoneForEffect(ev.CardID); z == nil || z.Kind != game.ZoneGraveyard {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.IsLand() && c.Owner == owner {
-			out = append(out, ev.CardID)
-		}
-	}
-	return out
+	return cardsPutIntoGraveyardFromLibraryInBatch(g, batch, owner, isLandCard)
 }

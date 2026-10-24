@@ -144,6 +144,16 @@ func (g *Game) currentEventBatchLocked() uint64 {
 	return g.eventBatch
 }
 
+// CurrentEventBatchForEffect is the event batch a resolving effect's
+// events are stamped with: inside a resolution, the batch it opened, so
+// "for each card drawn this way" can count the draws this resolution
+// made off this turn's log (Struggle for Project Purity, #2809). A read;
+// it opens batch 1 on a game that has never emitted an event, as
+// EmitEvent would. Caller must hold g.mu in write mode.
+func (g *Game) CurrentEventBatchForEffect() uint64 {
+	return g.currentEventBatchLocked()
+}
+
 // oncePerBatchKeyLocked is the ability key the guard below is keyed
 // on: TriggeredAbility.Key, plus the dimension BatchKey reads off the
 // event when the printed clause quantifies over an object (#784).

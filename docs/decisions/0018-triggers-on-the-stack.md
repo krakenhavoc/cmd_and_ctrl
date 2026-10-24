@@ -5016,3 +5016,13 @@ blocked" only while attacking, and the registration refusals.
 
 **Not covered.** A trigger doubler on a TOKEN template's granted bundle (ADR 0093, 2026-10-08) rides the same
 `AbilityGrant` and needs nothing more, but no card needs it yet.
+
+## Amendment 2026-10-23 — a surveil's footprint emits no mill (#2809) · Accepted · S76
+
+The footprint table's `MillCards`, `Surveil` row says a surveil "also emits mill for the cards it puts in the
+graveyard (#3013 sub-PR 1)". Since ADR 0013's amendment of 2026-10-23 it does not: surveil is not a mill (CR
+701.25a), and its graveyard leg is an ordinary library-to-graveyard zone move. `FootprintSurveil` now declares
+`EventSurveil` and `EventZoneMove`, and the conformance test (`footprint_conformance_test.go`) still holds the
+declaration to what the step emits. A watcher of milling alone (Zellix, Glowing One) no longer conflicts with a
+surveil; a "put into your graveyard from your library" watcher (Colossal Grave-Reaver) still does, through the
+zone move it now watches as well.

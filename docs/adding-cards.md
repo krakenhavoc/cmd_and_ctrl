@@ -10247,9 +10247,32 @@ On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mill
   trigger makes. A replacement reads `ev.LifeFromRadiation` on a
   `RepEventLife`; a trigger reads `ev.FromRadiation` on the landed
   `EventChangeLife`.
-- **"One or more nonland cards are milled"** (Mirelurk Queen, The Wise
-  Mothman) is a batch trigger, not `ANonlandCardWasMilled`, which fires
-  once per card. Nothing builds that batch yet (#2809).
+- **"One or more nonland cards are milled"** (Mirelurk Queen, Screeching
+  Scorchbeast, The Wise Mothman) is `WheneverOneOrMoreNonlandCardsAreMilled`
+  (`effects/nonland_cards_milled.go`, #2809), not `ANonlandCardWasMilled`,
+  which fires once per card. It is one trigger per event batch (AtBatchEnd
+  with `ThatManyEvents`), whoever milled, and `nonlandCardsMilledThisWay(item)`
+  is "that many" / X. A battlefield ability only. "This ability triggers
+  only once each turn" is `TriggersOnlyOnceEachTurn(t)`; "do this only once
+  each turn" is the `b28DoneThisTurn` record (Screeching Scorchbeast).
+- **"A card in a graveyard that was milled this turn"** (Tato Farmer, The
+  Master, Transcendent) is the target predicate `MilledThisTurn()`: the
+  card's latest graveyard arrival this turn was an `EventMill`, read off
+  this turn's log as `discardedOrMilledThisTurn` is.
+- **Milled means a mill** (CR 701.17a). A surveil's graveyard leg is an
+  `EventZoneMove`, not an `EventMill` (ADR 0013 amendment 2026-10-23), so a
+  "milled" payoff never sees it. "Put into your graveyard from your
+  library" watches both kinds and reads the zone pair:
+  `cardPutIntoYourGraveyardFromYourLibrary` and
+  `cardsPutIntoGraveyardFromLibraryInBatch` (`library_to_graveyard.go`).
+- **A graveyard trigger's "if this card is in your graveyard"** (Infesting
+  Radroach) is `InterveningIf(CondThisInYourGraveyard{}, InGraveyard(…))`:
+  the same object must still be there as it resolves, and an optional one
+  is removed without asking once it has gone.
+- **"You gain life rather than lose life from radiation"** is
+  `youGainLifeRatherThanLoseLifeFromRadiation` (Strong, the Brutish
+  Thespian), and an enrage that triggers once per damage event is
+  `AtBatchEnd: ThatMuchDamage()`.
 
 Tests give counters with `g.AddPlayerCounter(player, game.CounterRad, n)`
 and read `p.Counters[game.CounterRad]`: see `rad_counter_cards_test.go`.

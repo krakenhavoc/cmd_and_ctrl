@@ -18,14 +18,16 @@ const b17GraveReaverReturnLabel = "Colossal Grave-Reaver — put a milled creatu
 //
 // The self-mill Dragon that reanimates as it goes. The first trigger
 // is Sun Titan's "enters or attacks" shape with a three-card mill.
-// The second watches EventMill — the engine emits one per card, so
-// "one or more" is the per-label dedup: the first creature card of
-// a mill fires the trigger and the rest of that mill are declined as
-// later events of the same batch (OncePerBatch; see docs/adding-cards.md).
-// At resolution the batch is read back off the event log
-// (b17MilledCreatureCards) — every creature card that mill put into
-// the controller's graveyard and is still there — and one of them
-// comes back under the controller's control.
+// The second watches every library-to-graveyard arrival — a mill's
+// EventMill and the EventZoneMove of a surveil or a search (#2809,
+// library_to_graveyard.go) — one per card, so "one or more" is the
+// per-label dedup: the first creature card of a batch fires the
+// trigger and the rest are declined as later events of the same batch
+// (OncePerBatch; see docs/adding-cards.md). At resolution the batch is
+// read back off the event log (cardsPutIntoGraveyardFromLibraryInBatch)
+// — every creature card the batch put into the controller's graveyard
+// from their library that is still there — and one of them comes back
+// under the controller's control.
 //
 // "Put ONE OF THEM" is the controller's choice (#2523): with more than
 // one creature card in the batch the trigger's resolution queues a
@@ -45,22 +47,15 @@ func init() {
 			WhenThisEntersOrAttacks("Colossal Grave-Reaver — mill three cards", Do(MillCards{N: 3})),
 			{
 				OncePerBatch: true,
-				Watches:      []game.EventKind{game.EventMill},
+				Watches:      libraryToGraveyardKinds,
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					if ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
-						return false
-					}
-					c, ok := g.LookupCardForEffect(ev.CardID)
-					if !ok || !c.IsCreature() || c.Owner != source.Controller {
-						return false
-					}
-					return true
+					return cardPutIntoYourGraveyardFromYourLibrary(ev, source, g, isCreatureCard)
 				},
 				Key: b17GraveReaverReturnLabel,
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b17ReanimateOneMilled(g, item, item.Controller,
 						"Colossal Grave-Reaver — put one of the milled creature cards onto the battlefield",
-						b17MilledCreatureCards(g, item.Controller, item.Trigger.Event.Seq))
+						cardsPutIntoGraveyardFromLibraryInBatch(g, item.Trigger.Event.Batch, item.Controller, isCreatureCard))
 				},
 			},
 		},
