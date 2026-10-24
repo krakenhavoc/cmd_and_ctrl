@@ -268,7 +268,12 @@ func corpusBoards() []corpusBoard {
 		{"keyword_counters_counter_placer", corpusKeywordCounters},
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
-		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
+		// #4281: the board that wrote delved_spell_on_stack.json logged the
+		// delve exiles with no actor and no cause, a history this engine
+		// no longer makes (delve's exile is a cost of the spell, so it
+		// names the caster and the spell). The file stays and is still
+		// restored; the same board is a new file.
+		{"delved_spell_on_stack_cost_cause", corpusDelvedSpellOnStack},
 		// v7, added by ADR 0100 sub-PR 3 as a new file: an either/or
 		// spell on the stack — PaidCost.CostBranch and
 		// PaidCost.Discarded on disk.
@@ -298,7 +303,10 @@ func corpusBoards() []corpusBoard {
 		// A cause is read only inside an open resolution now, so that
 		// exile names none. The file stays and is still restored; the
 		// same board is a new file.
-		{"delve_linked_permanents_no_stale_cause", corpusDelveLinkedPermanents},
+		// #4281: the delve exiles on that board carried no cause at all;
+		// they are a cost of the spell and name it now. Same board, a
+		// new file.
+		{"delve_linked_permanents_cost_cause", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell

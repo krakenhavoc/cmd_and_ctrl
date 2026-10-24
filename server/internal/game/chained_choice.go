@@ -586,11 +586,16 @@ func (g *Game) resolveCardSetPick(kind PendingChoiceKind, choiceID, chooserID uu
 	}
 	frame := choice.chooseCardsResume
 	source := choice.Source
+	// #4281: a pick (a discard's, for one) that a keyed branch queued is
+	// answered under that branch's cause.
+	cause := carriedCauseOfChoice(choice)
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || frame.then == nil {
 		return nil
 	}
-	if err := frame.then(g, append([]uuid.UUID(nil), picks...)); err != nil {
+	if err := g.withCarriedCauseLocked(cause, func() error {
+		return frame.then(g, append([]uuid.UUID(nil), picks...))
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooserID,

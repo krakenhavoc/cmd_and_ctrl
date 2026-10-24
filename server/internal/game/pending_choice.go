@@ -1124,6 +1124,11 @@ type PendingChoice struct {
 	// the decline stamps THIS cause on a discard or a sacrifice, not
 	// whatever the slot holds then. The source card is Source. Zero
 	// when the prompt was queued outside a resolution.
+	//
+	// #4281: any prompt a keyed branch queues while it runs under such a
+	// cause takes it too (QueueChoiceForEffect), and its answer (a keyed
+	// confirm, option pick or choose-cards, a discard or a sacrifice)
+	// runs under it, so a chain of follow-ups keeps the first cause.
 	PayCauseController, PayCauseItem uuid.UUID
 
 	// CouncilVote makes an option pick a BALLOT (CR 701.38, ADR 0146,
@@ -1605,6 +1610,13 @@ func (g *Game) QueueChoiceForEffect(choice PendingChoice) uuid.UUID {
 	if choice.ID == uuid.Nil {
 		choice.ID = uuid.New()
 	}
+	// #4281: a prompt queued by a keyed branch that runs under a carried
+	// cause (a keyed pay-unless's decline, or a follow-up of one) takes
+	// that cause with it, so the answer, given after the table moved on,
+	// still names the spell or ability that asked.
+	if choice.PayCauseController == uuid.Nil && g.carriedCause != nil && g.carriedCause.Controller != uuid.Nil {
+		choice.PayCauseController, choice.PayCauseItem = g.carriedCause.Controller, g.carriedCause.Item
+	}
 	// #1289: a prompt a resolution asks is part of that resolution.
 	choice.midResolution = g.resolutionOpen && choiceBelongsToResolution(&choice)
 	// ADR 0127 §2: a covered pay_unless or confirm is filed under the
@@ -1695,10 +1707,13 @@ func (g *Game) ResolvePendingChoice(choiceID, chooserID uuid.UUID, picks []uuid.
 		// discard runs through the one discard path (discard.go),
 		// which can queue prompts of its own and drop stale ones, and
 		// an index into g.PendingChoices does not survive that.
+		cause := carriedCauseOfChoice(choice) // #4281
 		g.dequeueChoiceLocked(idx)
-		return g.discardCardsLocked(from.ID, picks, discardOptions{
-			cause:  DiscardCauseEffect,
-			source: choice.Source,
+		return g.withCarriedCauseLocked(cause, func() error {
+			return g.discardCardsLocked(from.ID, picks, discardOptions{
+				cause:  DiscardCauseEffect,
+				source: choice.Source,
+			})
 		})
 	default:
 		return ErrInvalidParam
@@ -5115,6 +5130,7 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// entry is about to leave the queue and the continuation below
 	// closes over the id rather than over the entry.
 	run, seat := choice.promptRun, choice.Chooser
+	cause := carriedCauseOfChoice(choice) // #4281: a branch's cause rides the answer
 	g.dequeueChoiceLocked(idx)
 	// #1019: the picked permanent goes through the sacrifice's own
 	// CONTINUATION rather than the fire-and-forget call, for the two
@@ -5130,12 +5146,14 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// passed none (sacrificePermanentLocked): EventSacrifice carries
 	// no source for a prompted sacrifice today, and giving the leg a
 	// continuation must change the sequencing and nothing else.
-	if err := g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
-		var landed []uuid.UUID
-		if sacrificed {
-			landed = []uuid.UUID{cardID}
-		}
-		return g.settleRunLegLocked(run, seat, landed)
+	if err := g.withCarriedCauseLocked(cause, func() error {
+		return g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
+			var landed []uuid.UUID
+			if sacrificed {
+				landed = []uuid.UUID{cardID}
+			}
+			return g.settleRunLegLocked(run, seat, landed)
+		})
 	}); err != nil {
 		return err
 	}

@@ -1206,11 +1206,15 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 	// payment half way through it. #1420: MustSettleNow extends that
 	// indivisible-payment rule to CR 616 ordering prompts; a spell may
 	// not sit on the stack while the card paying for it is still in its
-	// old zone.
+	// old zone. #4281: every move here is a cost of the spell being cast
+	// (escape's exile, a pitch, a return), so it names that cost.
 	move := func(id uuid.UUID, dst ZoneKind) error {
 		_, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:          id,
 			Dst:             dst,
+			Actor:           playerID,
+			Source:          castID,
+			Cause:           spellCostCause(playerID, castID),
 			MustSettleNow:   true,
 			commanderAnswer: commanderAnswerFor(answers, id),
 		})

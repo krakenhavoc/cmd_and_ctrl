@@ -157,16 +157,19 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 	if !ok {
 		return fmt.Errorf("%w: choose-cards continuation %q", ErrUnknownEffectKey, c.PickThen)
 	}
-	return fn(g, CardsChosen{
-		Chooser:    c.Chooser,
-		Source:     c.Source,
-		Picked:     copyUUIDs(picked),
-		Answered:   answered,
-		Candidates: copyUUIDs(c.ChooseCards),
-		Min:        c.ChooseMin,
-		Max:        c.ChooseMax,
-		Carry:      copyUUIDs(c.OptionCarry),
-		Question:   c.Reason,
-		Word:       c.PickMatchArg,
+	// #4281: a pick a keyed branch queued runs under that branch's cause.
+	return g.withCarriedCauseLocked(carriedCauseOfChoice(c), func() error {
+		return fn(g, CardsChosen{
+			Chooser:    c.Chooser,
+			Source:     c.Source,
+			Picked:     copyUUIDs(picked),
+			Answered:   answered,
+			Candidates: copyUUIDs(c.ChooseCards),
+			Min:        c.ChooseMin,
+			Max:        c.ChooseMax,
+			Carry:      copyUUIDs(c.OptionCarry),
+			Question:   c.Reason,
+			Word:       c.PickMatchArg,
+		})
 	})
 }
