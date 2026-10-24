@@ -1800,6 +1800,10 @@ type pendingChoiceSnapshot struct {
 	// and because the ID is the only route back to what the
 	// question was about.
 	GuardsStackItem uuid.UUID `json:"guardsStackItem,omitempty"`
+	// PayActionClause is PendingChoice's (#4264): a keyed pay-unless's
+	// non-mana payment, plain data. A pointer so a mana prompt writes
+	// nothing; additive within the version.
+	PayActionClause *PayAction `json:"payActionClause,omitempty"`
 	// OptionalItem / OptionalTradeFor are PendingChoice's (#2494): the
 	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
 	// what a "yes" trades for. Plain data: the item rides the parked
@@ -2973,6 +2977,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
+		PayActionClause:       copyPayAction(c.PayActionClause),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,
@@ -3912,6 +3917,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DeclineEndsLoop:       c.DeclineEndsLoop,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
+		PayActionClause:       copyPayAction(c.PayActionClause),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,

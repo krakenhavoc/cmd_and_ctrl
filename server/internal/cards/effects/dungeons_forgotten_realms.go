@@ -456,6 +456,15 @@ func init() {
 	})
 }
 
+// tombVeilsDiscarded is the next player's question once the discard
+// Veils of Fear asked for has landed, keyed (#4264).
+var tombVeilsDiscarded = game.RegisterDiscardThen("choose-cards/tomb-of-annihilation-veils-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return tombUnlessStep(keyedContext(g, r.Carry[0], r.Source), tombVeils, r.Carry[1:])
+})
+
 // tombUnlessAnswered applies one player's answer and asks the next. A
 // hand or board that emptied between the question and the answer
 // degrades to the life loss.
@@ -467,12 +476,14 @@ func tombUnlessAnswered(ctx *Context, kind tombUnless, r game.OptionPicked) erro
 		switch kind {
 		case tombVeils:
 			if p := ctx.Game.PlayerByIDForEffect(victim); p != nil && p.Hand != nil && p.Hand.Size() > 0 {
-				return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+				// Keyed (#4264): the controller and the players still to
+				// be asked ride the prompt as its Carry.
+				return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 					Player:   victim,
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Tomb of Annihilation — Veils of Fear: discard a card",
-				}, func(g *game.Game, _ game.PromptedDiscards) error { return next(g) })
+				}, tombVeilsDiscarded, append([]uuid.UUID{ctx.Controller()}, rest...))
 			}
 		default:
 			if len(ctx.Game.EffectSacrificeCandidatesForEffect(victim, tombSandfallSpec())) > 0 {

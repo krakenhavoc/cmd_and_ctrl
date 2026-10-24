@@ -62,7 +62,7 @@ func init() {
 			}
 			return b39MayDiscardThenDraw(2, false,
 				"Cathartic Pyre — discard up to two cards, then draw that many",
-				func(discarded int) int { return discarded })(ctx)
+				drawAsManyAsDiscarded)(ctx)
 		},
 	})
 }

@@ -27,10 +27,12 @@ import (
 // the card put there (Carry). The key shares the effect-key namespace
 // and is ledgered as a choose-cards continuation ("choose <key>").
 //
-// What it gives up is the closure form's per-prompt extras: the set rule
-// (DiscardPrompt.Validate) and the leg's own Then, both closures. A pick
-// that has left the hand by the time the answer comes in is skipped by
-// the discard itself, as every discard skips a card no longer in hand.
+// What it gives up is the closure form's per-prompt extra, the leg's own
+// Then, a closure. The set rule (DiscardPrompt.Validate, "exactly two or
+// none") is registered with the continuation instead
+// (RegisterDiscardThenRule, #4264). A pick that has left the hand by the
+// time the answer comes in is skipped by the discard itself, as every
+// discard skips a card no longer in hand.
 // A discard the CR 903.9 commander prompt pauses part-way is still a
 // closure for as long as that prompt is open, which is the commander
 // prompt's own frame and no change here.
@@ -67,10 +69,18 @@ func (d DiscardThen) Key() string { return d.then.key }
 // The key is an on-disk identity: never renamed, never reused, and
 // ledgered as "choose <key>".
 func RegisterDiscardThen(key string, fn DiscardThenFunc) DiscardThen {
+	return RegisterDiscardThenRule(key, nil, fn)
+}
+
+// RegisterDiscardThenRule is RegisterDiscardThen for a discard with a
+// set rule over what is chosen (#4264): Thrilling Discovery's "discard
+// two cards", which is two or none, never one. The rule is never called
+// for an empty pick.
+func RegisterDiscardThenRule(key string, rule SetRuleFunc, fn DiscardThenFunc) DiscardThen {
 	if fn == nil {
 		panic(fmt.Sprintf("game: discard-then continuation %q has no function", key))
 	}
-	then := RegisterChooseCardsThen(key, func(g *Game, r CardsChosen) error {
+	then := RegisterChooseCardsThenRule(key, rule, func(g *Game, r CardsChosen) error {
 		done := func(g *Game, landed []uuid.UUID) error {
 			return fn(g, DiscardsDone{
 				Player:    r.Chooser,
@@ -102,7 +112,8 @@ func RegisterDiscardThen(key string, fn DiscardThenFunc) DiscardThen {
 // it is a restore point.
 //
 // The prompt's Then and Validate must be nil: they are closures, and a
-// restore would drop them (ErrInvalidParam). When nothing is asked (an
+// restore would drop them (ErrInvalidParam). A set rule is registered
+// with the continuation (RegisterDiscardThenRule). When nothing is asked (an
 // empty hand, a discard an opponent's effect can't cause, a player who
 // has left) the continuation runs at once with nothing discarded, as
 // the closure form's does.

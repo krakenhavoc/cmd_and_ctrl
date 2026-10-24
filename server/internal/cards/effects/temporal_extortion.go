@@ -22,7 +22,7 @@ func init() {
 		Name:         "Temporal Extortion",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			anyPlayerMayCounterThisSpell("Temporal Extortion", "pay half your life, rounded up", UpkeepPayment{}, HalfTheirLifeRoundedUp),
+			anyPlayerMayCounterThisSpell("Temporal Extortion", "pay half your life, rounded up", UpkeepPayment{}, anyPlayerCounterThisSpellHalfLife),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return TakeExtraTurn{}.Apply(ctx)

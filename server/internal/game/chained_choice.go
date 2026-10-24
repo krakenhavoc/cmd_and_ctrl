@@ -351,6 +351,10 @@ type ChooseCardsPrompt struct {
 	// the continuation re-checks what it needs.
 	ThenKey ChooseCardsThen
 	Carry   []uuid.UUID
+	// CarryWord is the one word of the card's text a keyed continuation
+	// is handed (CardsChosen.Word, #4264): plain data on the prompt
+	// (PendingChoice.PickMatchArg).
+	CarryWord string
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
@@ -426,6 +430,7 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			ChooseMax:         hi,
 			ChooseDestination: p.Destination,
 			PickThen:          key,
+			PickMatchArg:      p.CarryWord,
 			OptionCarry:       copyUUIDs(p.Carry),
 		})
 	}
@@ -494,7 +499,7 @@ func (g *Game) ResolveConfirm(choiceID, chooserID uuid.UUID, accept bool) error 
 // answered prompt's branch, so a prompt it queues is keyed from this
 // one's (§2). Caller must hold g.mu.
 func (g *Game) answerConfirmLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, accept, auto bool) {
-	frame := choice.confirmResume
+	frame := confirmFrameOf(choice)
 	source := choice.Source
 	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
@@ -642,13 +647,28 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	// Skipped for an empty pick, so a zero-floor prompt's "choose
 	// nothing" stays the answer nothing can refuse (see
 	// ChooseCardsPrompt.Validate).
-	if frame == nil || frame.validate == nil || len(picks) == 0 {
+	//
+	// The rule is the closure frame's, or, for a keyed pick, the one
+	// registered with its continuation (#4264).
+	var validate func([]Card) bool
+	outside := false
+	switch {
+	case frame != nil && frame.validate != nil:
+		validate, outside = frame.validate, frame.zone == ZoneOutside
+	case frame == nil && choice.PickThen != "":
+		if rule := lookupChooseCardsRule(choice.PickThen); rule != nil {
+			// A keyed pick has no zone of its own, so a card the table
+			// cannot find is read from the sideboards too.
+			validate, outside = rule, true
+		}
+	}
+	if validate == nil || len(picks) == 0 {
 		return nil
 	}
 	chosen := make([]Card, 0, len(picks))
 	for _, id := range picks {
 		card, ok := g.LookupCardForEffect(id)
-		if !ok && frame.zone == ZoneOutside {
+		if !ok && outside {
 			card, ok = g.LookupOutsideCardForEffect(id)
 		}
 		if !ok {
@@ -656,7 +676,7 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 		}
 		chosen = append(chosen, card)
 	}
-	if !frame.validate(chosen) {
+	if !validate(chosen) {
 		return ErrChoiceSetRejected
 	}
 	return nil

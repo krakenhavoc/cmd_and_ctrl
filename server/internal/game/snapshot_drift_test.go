@@ -1155,6 +1155,8 @@ var pendingChoiceFields = plan(
 	// #4256: a keyed collection pick's filter word; its key rides
 	// PickThen.
 	"PickMatchArg", carried, "",
+	// #4264: a keyed pay-unless's non-mana payment.
+	"PayActionClause", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",

@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -109,6 +110,16 @@ type CounterUnlessPaidPrompt struct {
 	// arrives at and must capture no game state.
 	OnPaid func(g *Game) error
 
+	// Then is OnDecline and OnPaid as REGISTERED branches
+	// (RegisterPayUnlessBranches, #4264), and Carry the plain data they
+	// are handed (the guarded object rides PayUnlessAnswer.Guards): a
+	// prompt queued with one holds no closure, so a table waiting on it
+	// is a restore point. With it OnDecline and OnPaid must be nil. A
+	// prompt with none of the three, the printed "counter that spell", is
+	// keyed by the engine itself (counterGuardedDecline).
+	Then  PayUnlessElse
+	Carry []uuid.UUID
+
 	// Cost is the printed payment ("{1}", "{2}"), parsed by
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
@@ -161,6 +172,22 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 		chooser = guarded.Controller
 	}
 	stackID := p.StackItem
+	// #4264: the registered branches, or the engine's own for the plain
+	// "counter that spell", leave the prompt without a closure. A
+	// waterbend payment keeps its frame.
+	then, carry := p.Then, p.Carry
+	if then.key != "" && (p.OnDecline != nil || p.OnPaid != nil) {
+		return fmt.Errorf("%w: keyed counter-unless-pays %q also sets a closure", ErrInvalidParam, then.key)
+	}
+	if then.key == "" && p.OnDecline == nil && p.OnPaid == nil && p.Waterbend == nil {
+		then, carry = counterGuardedDecline, nil
+	}
+	if then.key != "" && p.Waterbend == nil {
+		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+			Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
+			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost,
+		})
+	}
 	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }
 	if p.OnDecline != nil {
 		custom := p.OnDecline
@@ -175,6 +202,15 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 		decline,
 		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost, onPay: p.OnPaid})
 }
+
+// counterGuardedDecline is the printed "counter that spell", as the
+// keyed decline of every counter-unless-pays that sets no consequence of
+// its own (#4264): the guarded object rides the prompt (GuardsStackItem),
+// so the prompt needs no closure and a table waiting on it is a restore
+// point. A spell that has left the stack by the answer is not an error.
+var counterGuardedDecline = RegisterPayUnlessElse("pay-unless/counter-guarded", func(g *Game, r PayUnlessAnswer) error {
+	return g.counterIfStillOnStackLocked(r.Guards)
+})
 
 // counterIfStillOnStackLocked counters `stackID` unless it has
 // already left the stack, in which case the "unless" clause bought

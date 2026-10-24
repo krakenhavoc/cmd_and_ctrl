@@ -194,7 +194,7 @@ func payUnlessCovered(c *PendingChoice) bool {
 // a plain "you may", with the default Yes / No labels and no life to
 // pay.
 func confirmCovered(c *PendingChoice) bool {
-	return c.confirmResume != nil && c.LifeCost == 0 && c.AcceptLabel == "" && c.DeclineLabel == ""
+	return confirmFrameOf(c) != nil && c.LifeCost == 0 && c.AcceptLabel == "" && c.DeclineLabel == ""
 }
 
 // triggerPromptCovered reports whether an optional trigger can take a

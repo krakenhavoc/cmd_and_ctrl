@@ -33,19 +33,24 @@ func init() {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			target := item.Targets[0].ID
 			return GuardedPayUnless{
-				StackID:  target,
+				StackID:  item.Targets[0].ID,
 				Cost:     "{2}",
 				Question: "Divert — pay {2} or the target of your spell is changed",
-				OnDecline: func(ctx *Context) error {
-					return ChangeTargets{
-						StackID: target,
-						Policy:  game.RetargetChangeOne,
-						Reason:  "Divert — change the target",
-					}.Apply(ctx)
-				},
+				Else:     divertChangeTarget,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// divertChangeTarget is Divert's "or else", keyed (#4264): the guarded
+// spell rides the prompt (game.PayUnlessAnswer.Guards), so a table
+// waiting on the payer is a restore point.
+var divertChangeTarget = PayUnlessElse("pay-unless/divert-change-target",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return ChangeTargets{
+			StackID: r.Guards,
+			Policy:  game.RetargetChangeOne,
+			Reason:  "Divert — change the target",
+		}.Apply(ctx)
+	})

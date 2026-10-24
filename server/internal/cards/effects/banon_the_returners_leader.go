@@ -58,22 +58,31 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{1}",
 					Question: "Banon — pay {1} and discard a card to draw a card?",
-					OnPay: func(ctx *Context) error {
-						player := ctx.Controller()
-						return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-							Player:   player,
-							Source:   ctx.Source(),
-							N:        1,
-							Question: "Banon — discard a card, then draw a card",
-						}, func(g *game.Game, done game.PromptedDiscards) error {
-							if !done.Discarded(player) {
-								return nil
-							}
-							return g.DrawNForEffect(player, 1)
-						})
-					},
+					Then:     banonPaid,
 				}.Apply(ctx)
 			})),
 		},
 	})
 }
+
+// banonDraw is "then draw a card" once the discard has landed, keyed
+// (#4264): a table waiting on the discard is a restore point.
+var banonDraw = game.RegisterDiscardThen("choose-cards/banon-the-returners-leader-draw", func(g *game.Game, r game.DiscardsDone) error {
+	if !r.Discarded.Discarded(r.Player) {
+		return nil
+	}
+	return g.DrawNForEffect(r.Player, 1)
+})
+
+// banonPaid is the paid half of Banon's attack trigger, keyed (#4264): the
+// discard it opens is keyed too (banonDraw), so a table waiting on either
+// the payer or the discard is a restore point.
+var banonPaid = PayUnlessBranches("pay-unless/banon-the-returners-leader-discard",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+			Player:   ctx.Controller(),
+			Source:   ctx.Source(),
+			N:        1,
+			Question: "Banon — discard a card, then draw a card",
+		}, banonDraw, nil)
+	}, nil)

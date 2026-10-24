@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -106,12 +108,66 @@ type MayChoice struct {
 	// empty closure to say so. Both run with g.mu held and may queue
 	// further choices, which is how a chain continues.
 	OnYes, OnNo func(ctx *Context) error
+
+	// Then is the answer as a REGISTERED one (MayAnswer, #4264) and Carry
+	// the plain data it is handed: a prompt queued with one holds no
+	// closure, so a table waiting on it is a restore point. Set Then or
+	// OnYes/OnNo, not both. When a draw limit means nothing is asked
+	// (Draws), Then runs at once as a "no".
+	Then  game.ConfirmThen
+	Carry []uuid.UUID
+}
+
+// MayAnswer registers a keyed "you may" answer under `key`, an on-disk
+// identity (never renamed, never reused, ledgered "confirm <key>"). Call
+// it once, from a package-level var. The body runs against a Context
+// bound to a stand-in for the asking item: its controller and its source
+// card, the two things an answer reads, because the item itself has long
+// resolved by the time the player answers (and a restore does not carry
+// it). r.Accepted is the answer and r.Carry the card's own Carry.
+func MayAnswer(key string, body func(ctx *Context, r game.ConfirmAnswer) error) game.ConfirmThen {
+	return game.RegisterConfirmThen(key, func(g *game.Game, r game.ConfirmAnswer) error {
+		// MayChoice.Apply puts the asking effect's controller first; the
+		// card's own Carry follows it.
+		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
+		r.Carry = carry
+		return body(ctx, r)
+	})
+}
+
+// applyKeyed is Apply for a MayChoice whose answer is a registered key.
+func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
+	if m.OnYes != nil || m.OnNo != nil {
+		return fmt.Errorf("%w: MayChoice %q sets both Then and a branch", game.ErrInvalidParam, m.Then.Key())
+	}
+	carry := append([]uuid.UUID{ctx.Controller()}, m.Carry...)
+	if m.Draws > 0 {
+		drawer := m.Drawer
+		if drawer == uuid.Nil {
+			drawer = chooser
+		}
+		if !ctx.Game.CanChooseToDrawForEffect(drawer, m.Draws) {
+			return ctx.Game.RunConfirmThenForEffect(m.Then, game.ConfirmAnswer{Chooser: chooser, Source: ctx.Source(), Carry: carry})
+		}
+	}
+	_, err := ctx.Game.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
+		Chooser:      chooser,
+		Source:       ctx.Source(),
+		Question:     m.Question,
+		AcceptLabel:  m.YesLabel,
+		DeclineLabel: m.NoLabel,
+		LifeCost:     m.LifeCost,
+	}, m.Then, carry)
+	return err
 }
 
 func (m MayChoice) Apply(ctx *Context) error {
 	chooser := m.Player
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
+	}
+	if m.Then.Key() != "" {
+		return m.applyKeyed(ctx, chooser)
 	}
 	item := ctx.Item
 	onYes, onNo := m.OnYes, m.OnNo

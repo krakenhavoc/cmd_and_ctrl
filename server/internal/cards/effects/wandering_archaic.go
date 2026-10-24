@@ -125,16 +125,24 @@ var wanderingArchaicDecline = PayUnlessElse("pay-unless/wandering-archaic-may-co
 	if len(r.Carry) == 0 {
 		return nil
 	}
-	spellID, controller := r.Carry[0], ctx.Controller()
 	return MayChoice{
-		Player:   controller,
+		Player:   ctx.Controller(),
 		Question: "Wandering Archaic — copy that spell?",
-		OnYes: func(ctx *Context) error {
-			return CopySpell{
-				StackID:          spellID,
-				Controller:       controller,
-				ChooseNewTargets: true,
-			}.Apply(ctx)
-		},
+		Then:     wanderingArchaicCopy,
+		Carry:    []uuid.UUID{r.Carry[0]},
+	}.Apply(ctx)
+})
+
+// wanderingArchaicCopy is Wandering Archaic's controller's answer to
+// "copy that spell?", keyed (#4264): a table waiting on it is a restore
+// point. The spell rides on the prompt as its Carry.
+var wanderingArchaicCopy = MayAnswer("confirm/wandering-archaic-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	if !r.Accepted || len(r.Carry) == 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:          r.Carry[0],
+		Controller:       ctx.Controller(),
+		ChooseNewTargets: true,
 	}.Apply(ctx)
 })

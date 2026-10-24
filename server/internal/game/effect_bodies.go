@@ -230,6 +230,14 @@ func checkEffectKey(kind, key string) {
 	if _, dup := payUnlessElses[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a pay-unless decline", kind, key))
 	}
+	// #4264: and a keyed confirm's answer.
+	if _, dup := confirmThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a confirm answer", kind, key))
+	}
+	// #4264: and a keyed any-player offer's consequences.
+	if _, dup := anyPlayerThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already any-player consequences", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -420,12 +428,14 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 // continuation (#2115) as "pick <key>", or a keyed option pick's
 // (#2854) as "option <key>", a keyed choose_cards pick's (#2040) as
 // "choose <key>", a continuation written as steps (#4162) as "steps
-// <key>", a keyed pay-unless decline (#4256) as "payunless <key>",
+// <key>", a keyed pay-unless decline (#4256) as "payunless <key>", a
+// keyed confirm's answer (#4264) as "confirm <key>", a keyed any-player
+// offer's consequences (#4264) as "anyplayer <key>",
 // sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -441,6 +451,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredChooseCardsKeysLocked()...)
 	out = append(out, registeredThenStepKeysLocked()...)
 	out = append(out, registeredPayUnlessKeysLocked()...)
+	out = append(out, registeredConfirmKeysLocked()...)
+	out = append(out, registeredAnyPlayerKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

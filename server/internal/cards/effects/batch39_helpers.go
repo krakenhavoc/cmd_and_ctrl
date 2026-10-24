@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -302,35 +304,85 @@ func b39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
 // mayDiscardACardToDrawTwo is the commonest shape: "you may discard a
 // card. If you do, draw two cards." (Witch's Mark, Saheeli's Lattice).
 func mayDiscardACardToDrawTwo(question string) func(*Context) error {
-	return b39MayDiscardThenDraw(1, false, question, func(discarded int) int {
-		if discarded > 0 {
-			return 2
-		}
-		return 0
-	})
+	return b39MayDiscardThenDraw(1, false, question, drawTwoIfDiscarded)
 }
 
-func b39MayDiscardThenDraw(n int, exact bool, question string, draw func(discarded int) int) func(*Context) error {
+// discardDraw is how many cards a "discard, then draw" draws, as a
+// registered keyed continuation (#4264): a function of the count really
+// discarded, shared by every card that draws that way, so the prompt of
+// all of them is a restore point. The player who draws is the player who
+// discarded.
+type discardDraw struct{ then game.DiscardThen }
+
+// registerDiscardDraw registers one draw rule under `key`, ledgered
+// "choose <key>". `exactly`, when above zero, is the set rule "exactly
+// that many cards or none" (Thrilling Discovery: the deal is two cards,
+// never one). Call it once, from a package-level var.
+func registerDiscardDraw(key string, exactly int, draw func(discarded int) int) discardDraw {
+	var rule game.SetRuleFunc
+	if exactly > 0 {
+		rule = func(picked []game.Card) bool { return len(picked) == exactly }
+	}
+	return discardDraw{then: game.RegisterDiscardThenRule(key, rule, func(g *game.Game, r game.DiscardsDone) error {
+		if k := draw(r.Discarded.Count()); k > 0 {
+			return g.DrawNForEffect(r.Player, k)
+		}
+		return nil
+	})}
+}
+
+var (
+	// drawAsManyAsDiscarded is "discard up to N cards, then draw that
+	// many".
+	drawAsManyAsDiscarded = registerDiscardDraw("choose-cards/discard-draw-as-many", 0,
+		func(discarded int) int { return discarded })
+	// drawOneMoreThanDiscarded is "discard any number of cards, then draw
+	// that many plus one", which draws one even for none.
+	drawOneMoreThanDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-more", 0,
+		func(discarded int) int { return discarded + 1 })
+	// drawOneIfDiscarded is "you may discard a card. If you do, draw a
+	// card".
+	drawOneIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-one-if-any", 0,
+		func(discarded int) int {
+			if discarded > 0 {
+				return 1
+			}
+			return 0
+		})
+	// drawTwoIfDiscarded is "you may discard a card. If you do, draw two
+	// cards".
+	drawTwoIfDiscarded = registerDiscardDraw("choose-cards/discard-draw-two-if-any", 0,
+		func(discarded int) int {
+			if discarded > 0 {
+				return 2
+			}
+			return 0
+		})
+	// drawThreeIfDiscardedTwo is Thrilling Discovery's "you may discard
+	// two cards. If you do, draw three cards": the discard is exactly two
+	// or none, by a set rule registered with the key.
+	drawThreeIfDiscardedTwo = registerDiscardDraw("choose-cards/discard-draw-three-if-two", 2,
+		func(discarded int) int {
+			if discarded < 2 {
+				return 0
+			}
+			return 3
+		})
+)
+
+func b39MayDiscardThenDraw(n int, exact bool, question string, draw discardDraw) func(*Context) error {
 	return func(ctx *Context) error {
-		player := ctx.Controller()
-		prompt := game.DiscardPrompt{
-			Player:   player,
+		if exact != (draw.then.Key() == drawThreeIfDiscardedTwo.then.Key()) {
+			// The "exactly N or none" set rule travels with the key, so a
+			// caller that wants it names the rule that has it.
+			return fmt.Errorf("%w: b39MayDiscardThenDraw exact=%v with the wrong draw rule", game.ErrInvalidParam, exact)
+		}
+		return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+			Player:   ctx.Controller(),
 			Source:   ctx.Source(),
 			N:        n,
 			UpTo:     true,
 			Question: question,
-		}
-		if exact {
-			prompt.Validate = func(picked []game.Card) bool {
-				return len(picked) == 0 || len(picked) == n
-			}
-		}
-		return ctx.Game.PlayerDiscardsThenForEffect(prompt,
-			func(g *game.Game, discarded game.PromptedDiscards) error {
-				if k := draw(discarded.Count()); k > 0 {
-					return g.DrawNForEffect(player, k)
-				}
-				return nil
-			})
+		}, draw.then, nil)
 	}
 }

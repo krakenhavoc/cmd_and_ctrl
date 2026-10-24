@@ -66,8 +66,15 @@ var mysticRemoraDecline = PayUnlessElse("pay-unless/mystic-remora-may-draw", fun
 	return MayChoice{
 		Question: "Mystic Remora — draw a card?",
 		Draws:    1,
-		OnYes: func(ctx *Context) error {
-			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		Then:     mysticRemoraDraw,
 	}.Apply(ctx)
+})
+
+// mysticRemoraDraw is the Remora's controller's answer to "draw a
+// card?", keyed (#4264): a table waiting on it is a restore point.
+var mysticRemoraDraw = MayAnswer("confirm/mystic-remora-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 })

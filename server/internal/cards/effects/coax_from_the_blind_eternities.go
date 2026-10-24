@@ -23,10 +23,10 @@ func init() {
 			// "Eldrazi" is a word of the spell's text (CR 612.2, #3984).
 			eldrazi := ctx.TextSubtype("Eldrazi")
 			return TakeFromExileOrOutside{
-				Pick:            coaxFromTheBlindEternitiesTake,
-				Word:            eldrazi,
-				ExileQuestion:   "Coax from the Blind Eternities — choose a face-up Eldrazi card you own in exile, or none to reveal one from outside the game",
-				OutsideQuestion: "Coax from the Blind Eternities — reveal an Eldrazi card you own from outside the game, or none",
+				Pick:          coaxFromTheBlindEternitiesTake,
+				Exile:         coaxFromTheBlindEternitiesExile,
+				Word:          eldrazi,
+				ExileQuestion: "Coax from the Blind Eternities — choose a face-up Eldrazi card you own in exile, or none to reveal one from outside the game",
 			}.Apply(ctx)
 		},
 	})
@@ -37,3 +37,9 @@ func init() {
 // text-changing effect may have changed, so it rides on the prompt.
 var coaxFromTheBlindEternitiesTake = registerOutsideTakeOfWord("choose-cards/coax-from-the-blind-eternities-take",
 	func(c game.Card, eldrazi string) bool { return c.HasSubtype(eldrazi) }, true)
+
+// coaxFromTheBlindEternitiesExile is the exile pick, keyed (#4264): a
+// table waiting on it is a restore point. The spell's word for "Eldrazi"
+// rides the prompt, and "none" asks the outside pick with it.
+var coaxFromTheBlindEternitiesExile = registerExileOrOutside("choose-cards/coax-from-the-blind-eternities-exile",
+	coaxFromTheBlindEternitiesTake, "Coax from the Blind Eternities — reveal an Eldrazi card you own from outside the game, or none")

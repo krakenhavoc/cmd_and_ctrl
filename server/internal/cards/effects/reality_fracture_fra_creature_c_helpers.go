@@ -177,23 +177,27 @@ func rfCreatureCJiangAloneEffect(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	player, source, attacker := item.Controller, item.SourceCardID, item.Trigger.Event.CardID
-	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-		Player:   player,
-		Source:   source,
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player:   item.Controller,
+		Source:   item.SourceCardID,
 		N:        1,
 		Question: "Jiang Yanggu, Alone — discard a card, then draw a card",
-	}, func(g *game.Game, _ game.PromptedDiscards) error {
-		if err := g.DrawNForEffect(player, 1); err != nil {
-			return err
-		}
-		n := g.TurnTallyFor(player).CardsDiscarded
-		if n <= 0 || !onBattlefield(g, attacker) {
-			return nil
-		}
-		return g.AddCounterForEffect(attacker, game.CounterPlusOne, n)
-	})
+	}, rfCreatureCJiangAloneRest, []uuid.UUID{item.Trigger.Event.CardID})
 }
+
+// rfCreatureCJiangAloneRest is the draw and the counters once the discard
+// has landed, keyed (#4264): the attacker rides the prompt as its Carry,
+// so a table waiting on the discard is a restore point.
+var rfCreatureCJiangAloneRest = game.RegisterDiscardThen("choose-cards/jiang-yanggu-alone-rest", func(g *game.Game, r game.DiscardsDone) error {
+	if err := g.DrawNForEffect(r.Player, 1); err != nil {
+		return err
+	}
+	n := g.TurnTallyFor(r.Player).CardsDiscarded
+	if n <= 0 || len(r.Carry) == 0 || !onBattlefield(g, r.Carry[0]) {
+		return nil
+	}
+	return g.AddCounterForEffect(r.Carry[0], game.CounterPlusOne, n)
+})
 
 // rfCreatureCKarnDrawEffect is "draw a card for each color among other
 // artifacts you control".

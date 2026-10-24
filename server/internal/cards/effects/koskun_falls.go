@@ -50,8 +50,6 @@ func koskunFallsUpkeep(g *game.Game, item *game.StackItem) error {
 		Cost:     words,
 		Action:   action,
 		Question: "Koskun Falls — tap an untapped creature you control or sacrifice Koskun Falls?",
-		OnDecline: func(ctx *Context) error {
-			return SacrificePermanent{Target: sourceID}.Apply(ctx)
-		},
+		Else:     upkeepSacrificeSource,
 	}.Apply(NewContext(g, item))
 }
