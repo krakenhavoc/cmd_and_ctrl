@@ -10,11 +10,18 @@ import (
 )
 
 // free_play_from_top_view_test.go — #3801. "Look at the top card of your
-// library, you may play it free" names a card only its looker has seen
-// (CR 701.20). The may_cast offer's words and its card id are the
-// chooser's alone; the table sees that a seat owes an answer and nothing
-// about which card. A reveal (Rashmi) is public.
+// library, you may cast it free" names a card only its looker has seen
+// (CR 701.20). Since #4250 the spell's offer is a resolution_cast made
+// inside the resolution that looks: its card, still on top of the library,
+// is the chooser's alone (the knower filter drops it from every other
+// viewer's copy of the prompt), and the table sees that a seat owes an
+// answer and what made the offer, and nothing about which card. The land's
+// may_cast is private text. A reveal (Rashmi) is public.
 
+// topPlayOfferTable makes the offer over a top card. The engine raises the
+// resolution_cast only inside an open resolution; here the offer is made
+// directly, so the permission is stamped and the prompt the resolution
+// would raise is queued by hand, as resolution_cast_view_test.go does.
 func topPlayOfferTable(t *testing.T, reveal bool) (g *game.Game, me, them *game.Player, top game.Card) {
 	t.Helper()
 	g = buildActiveGame(t)
@@ -32,14 +39,20 @@ func topPlayOfferTable(t *testing.T, reveal bool) (g *game.Game, me, them *game.
 		}); err != nil {
 			t.Fatalf("offer: %v", err)
 		}
+		g.QueueChoiceForEffect(game.PendingChoice{
+			Kind: game.PendingChoiceResolutionCast, Chooser: me.ID, Count: 1,
+			Reason: "Test Envoy", DiscardOptions: []uuid.UUID{top.InstanceID},
+			MayCastKeyword: game.MayCastKeywordFreeOrHand,
+			AcceptLabel:    "Cast it free", DeclineLabel: "Put it into your hand",
+		})
 	})
 	return g, me, them, top
 }
 
-func mayCastFor(g *game.Game, viewer *game.Player) *PendingChoiceView {
-	v := ViewOfGameFor(g, viewer.ID.String())
+func topOfferFor(g *game.Game, viewer string) *PendingChoiceView {
+	v := ViewOfGameFor(g, viewer)
 	for i := range v.PendingChoices {
-		if v.PendingChoices[i].Kind == string(game.PendingChoiceMayCast) {
+		if v.PendingChoices[i].Kind == string(game.PendingChoiceResolutionCast) {
 			return &v.PendingChoices[i]
 		}
 	}
@@ -49,32 +62,27 @@ func mayCastFor(g *game.Game, viewer *game.Player) *PendingChoiceView {
 func TestALookedAtTopCardOfferIsPrivateToItsChooser(t *testing.T) {
 	g, me, them, top := topPlayOfferTable(t, false)
 
-	own := mayCastFor(g, me)
+	own := topOfferFor(g, me.ID.String())
 	if own == nil {
-		t.Fatal("the chooser has no may_cast offer")
+		t.Fatal("the chooser has no offer")
 	}
-	if own.MayCastCard != top.InstanceID.String() || !strings.Contains(own.Reason, "Secret Spell") {
-		t.Errorf("the chooser must see the card: card=%q reason=%q", own.MayCastCard, own.Reason)
+	if len(own.Options) != 1 || own.Options[0].InstanceID != top.InstanceID.String() || own.Options[0].Name != "Secret Spell" {
+		t.Errorf("the chooser must see the card: %+v", own.Options)
+	}
+	if own.MayCastKeyword != game.MayCastKeywordFreeOrHand || own.DeclineLabel != "Put it into your hand" {
+		t.Errorf("the chooser's words: keyword %q decline %q", own.MayCastKeyword, own.DeclineLabel)
 	}
 
-	other := mayCastFor(g, them)
+	other := topOfferFor(g, them.ID.String())
 	if other == nil {
 		t.Fatal("the table does not see that a seat owes an answer")
 	}
-	if other.MayCastCard != "" || strings.Contains(other.Reason, "Secret Spell") ||
-		strings.Contains(other.Reason, "Test Envoy") || other.AcceptLabel != "" || other.Source != "" {
+	if len(other.Options) != 0 || len(other.Eligible) != 0 || strings.Contains(other.Reason, "Secret Spell") {
 		t.Errorf("an opponent's copy leaks the looked-at card: %+v", other)
 	}
-	if !other.PrivateText {
-		t.Error("the opponent's copy is not marked private")
-	}
-	// The spectator and the admin view are held to the same rule.
-	for _, viewer := range []string{SpectatorViewerID} {
-		for _, c := range ViewOfGameFor(g, viewer).PendingChoices {
-			if c.Kind == string(game.PendingChoiceMayCast) && (c.MayCastCard != "" || strings.Contains(c.Reason, "Secret Spell")) {
-				t.Errorf("%q sees the looked-at card: %+v", viewer, c)
-			}
-		}
+	// The spectator is held to the same rule.
+	if c := topOfferFor(g, SpectatorViewerID); c != nil && (len(c.Options) != 0 || len(c.Eligible) != 0) {
+		t.Errorf("a spectator sees the looked-at card: %+v", c)
 	}
 	// And the card itself stays out of the opponent's view of the library.
 	if card := cardInZone(ViewOfGameFor(g, them.ID.String()).Seats[seatIndex(g, me)].Library, top.InstanceID); card != nil && card.Name != "" {
@@ -84,26 +92,19 @@ func TestALookedAtTopCardOfferIsPrivateToItsChooser(t *testing.T) {
 
 func TestARevealedTopCardOfferIsPublic(t *testing.T) {
 	g, _, them, top := topPlayOfferTable(t, true)
-	other := mayCastFor(g, them)
-	if other == nil || other.MayCastCard != top.InstanceID.String() || other.PrivateText {
+	other := topOfferFor(g, them.ID.String())
+	if other == nil || len(other.Options) != 1 || other.Options[0].InstanceID != top.InstanceID.String() {
 		t.Fatalf("a revealed card's offer must be public: %+v", other)
 	}
 }
 
-// Accepting stamps the free cast on the looked-at card, so its controller's
-// pile shows it castable, and no other seat gets the card or the button.
+// The offer stamps the free cast on the looked-at card, so its
+// controller's pile shows it readable and castable, and no other seat gets
+// the card or the button.
 func TestAnAcceptedTopCardCastIsCastableForItsController(t *testing.T) {
 	g, me, them, top := topPlayOfferTable(t, false)
-	c := mayCastFor(g, me)
-	if c == nil {
+	if topOfferFor(g, me.ID.String()) == nil {
 		t.Fatal("no offer")
-	}
-	id, err := uuid.Parse(c.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := g.ResolveMayCast(id, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	card := cardInZone(ViewOfGameFor(g, me.ID.String()).Seats[seatIndex(g, me)].Library, top.InstanceID)
 	if card == nil || card.Name == "" || !card.CastableHere {

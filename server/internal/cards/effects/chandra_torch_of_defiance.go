@@ -19,10 +19,11 @@ import (
 // The first +1 is game.ExileTopThenPaidCastOrElseForEffect (#3510,
 // ADR 0099 amendment 2026-10-14): the cast happens as the ability
 // resolves (CR 608.2g), so its timing is ignored but its mana cost is
-// paid. "Cast it" opens a pass-closed window over the exiled card;
-// "don't", a land, an empty library, or accepting and then passing
-// without casting all deal the 2 damage to each opponent. The card stays
-// in exile when it is not cast.
+// paid. The cast is made inside the ability's resolution through a
+// resolution_cast prompt over the exiled card (#4250), paying for it then;
+// "don't", a land or an empty library deals the 2 damage to each
+// opponent, inside the resolution. The card stays in exile when it is not
+// cast.
 //
 // The second +1 is a loyalty ability, so it uses the stack and is not a
 // mana ability (CR 605.1a); the mana empties with the step. The emblem

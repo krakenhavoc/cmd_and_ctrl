@@ -25,14 +25,14 @@ import (
 // countered spell's, read BEFORE the counter so a spell that is gone
 // afterwards still names its exclusion.
 //
-// The free cast is a grant the chooser uses right after this resolves,
-// not an inline cast during resolution — the same stand-in cascade and
-// discover use, with the same window (it closes on their next priority
-// pass and the card goes to the bottom). If the target spell is
-// already gone, the spell is countered on resolution (CR 608.2b) and
-// none of this happens.
+// The free cast is made during this resolution (CR 608.2g, #4250), as
+// cascade's and discover's are: a resolution_cast prompt over the hit
+// holds Tibalt's Trickery on the stack while its chooser casts it or
+// declines, and a declined hit goes to the bottom with the rest. If the
+// target spell is already gone, the spell is countered on resolution
+// (CR 608.2b) and none of this happens.
 //
-// No simplification beyond that shared stand-in.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "6623cb85-fb1e-4561-8b21-0977c25096c2",

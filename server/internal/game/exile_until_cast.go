@@ -10,9 +10,14 @@ import "github.com/google/uuid"
 // are the keyword forms; Tibalt's Trickery is the first card whose test
 // is a name. ADR 0099 amendment 2026-10-13.
 //
-// It is cascade's body on the same pieces: the exile walk, the may_cast
-// prompt, a {0} flash-timed grant that lapses on the chooser's next
-// priority pass, and the random-order bottom. It differs from cascade
+// It is cascade's body on the same pieces: the exile walk, a {0}
+// flash-timed grant over the hit, the resolution_cast prompt that holds
+// the resolution open while the chooser casts it (CR 608.2g; ADR 0066's
+// 2026-10-23 amendment, #4250), and the random-order bottom. The prompt
+// carries the cards the walk passed over (PendingChoice.CastPile) and
+// puts them on the bottom when it is answered, with the hit when it was
+// declined and the shape bottoms it. Outside an open resolution the
+// grant alone is the window, closing on the chooser's next pass. It differs from cascade
 // only in having no mana-value cap and in letting the CALLER say whose
 // library is walked and who chooses, which for Tibalt's Trickery is the
 // countered spell's controller and not the caster.
@@ -26,11 +31,11 @@ const MayCastKeywordExileUntil = "exile_until"
 const ExileUntilCastLabel = "Cast it without paying its mana cost"
 
 // ExileUntilCastFreeForEffect walks `player`'s library to the first
-// card `hit` accepts, exiling each card on the way, then asks `player`
-// whether to cast the hit for free. Accepting grants the cast and
-// bottoms the rest of the pile in a random order; declining bottoms the
-// hit with the pile. A walk that finds nothing bottoms everything. Every
-// "nothing happened" case returns nil (CR 608.2c).
+// card `hit` accepts, exiling each card on the way, then offers `player`
+// the hit's free cast during this resolution. Casting it bottoms the
+// rest of the pile in a random order; declining bottoms the hit with the
+// pile. A walk that finds nothing bottoms everything. Every "nothing
+// happened" case returns nil (CR 608.2c).
 //
 // `hit` is called during the walk only; it is never stored, so it may
 // close over values read before the call (a name, a count) but not a
@@ -61,39 +66,49 @@ func (g *Game) exileUntilCastFreeLocked(player, source uuid.UUID, hit func(Card)
 	if found == uuid.Nil {
 		return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
 	}
-	name := "the exiled card"
-	if c, ok := g.cardInZoneLocked(g.Exile, found); ok {
-		name = c.Name
-	}
 	declineLabel, lapse := "Put it on the bottom", LapseToLibraryBottom
 	if keepUncast {
 		declineLabel, lapse = "Leave it in exile", LapseStaysInExile
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	uncast := func() error {
+		if keepUncast {
+			return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
+		}
+		return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, append(pile, found))
+	}
+	if !g.playerInGameLocked(player) {
+		return uncast()
+	}
+	g.grantExileUntilCastLocked(player, source, found, lapse)
+	if _, _, ok := g.ResolutionCastCandidateLocked(player, found); !ok {
+		return uncast()
+	}
+	reason := "Cast it free"
+	if c, _ := g.findCardAndZoneLocked(source); c != nil && c.Name != "" {
+		reason = c.Name
+	}
+	if g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      player,
 		Source:       source,
-		Card:         found,
-		Question:     "Cast " + name + " without paying its mana cost?",
+		Reason:       reason,
+		Candidates:   []uuid.UUID{found},
 		Keyword:      MayCastKeywordExileUntil,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: declineLabel,
-		OnAccept: func(g *Game) error {
-			g.grantExileUntilCastLocked(player, source, found, lapse)
-			return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
-		},
-		OnDecline: func(g *Game) error {
-			if keepUncast {
-				return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
-			}
-			return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, append(pile, found))
-		},
-	})
+		Pile:         pile,
+	}) != uuid.Nil {
+		return nil
+	}
+	// Outside a resolution: the permission is the window, and the
+	// cards passed over go to the bottom now.
+	return g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
 }
 
 // grantExileUntilCastLocked is grantFreeCastLocked without the mana
 // value cap: {0} (so X is 0), flash timing (CR 608.2g), cast-only, and a
-// window that closes on the chooser's next pass with the card going
-// where `lapse` says: the bottom of the library for cascade's shape,
+// window that the resolution_cast prompt's answer closes (or, outside a
+// resolution, the chooser's next pass), with an uncast card going where
+// `lapse` says: the bottom of the library for cascade's shape,
 // staying in exile for the keeping one.
 //
 // Caller must hold g.mu.

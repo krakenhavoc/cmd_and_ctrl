@@ -55,9 +55,11 @@ func seedCheapLibrary(g *game.Game, p *game.Player, cheap int) {
 	}
 }
 
-// isKeywordCastPrompt reports whether c is an offer to cast a card for
-// free: a may_cast prompt, or the resolution_cast prompt cascade and
-// discover ask (#4243).
+// isKeywordCastPrompt reports whether c is an offer to cast one card: a
+// may_cast prompt, or the resolution_cast prompt cascade and discover
+// (#4243), and rebound, suspend, madness and the other keyword and
+// effect offers (#4250), ask. A keyword's resolution_cast names its
+// keyword; a copy's does not.
 func isKeywordCastPrompt(c *game.PendingChoice) bool {
 	if c == nil {
 		return false
@@ -65,8 +67,29 @@ func isKeywordCastPrompt(c *game.PendingChoice) bool {
 	if c.Kind == game.PendingChoiceMayCast {
 		return true
 	}
-	return c.Kind == game.PendingChoiceResolutionCast &&
-		(c.MayCastKeyword == game.MayCastKeywordCascade || c.MayCastKeyword == game.MayCastKeywordDiscover)
+	return c.Kind == game.PendingChoiceResolutionCast && c.MayCastKeyword != ""
+}
+
+// keywordCastPromptFor is chooser's open keyword cast, or nil.
+func keywordCastPromptFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if isKeywordCastPrompt(c) && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// offeredZone is the zone a resolution_cast's card is cast from: exile
+// for most, the library for Ziatora's Envoy's top card.
+func offeredZone(g *game.Game, chooser, card uuid.UUID) game.ZoneKind {
+	zone := game.ZoneExile
+	g.WithWriteLock(func() {
+		if _, z, ok := g.ResolutionCastCandidateLocked(chooser, card); ok {
+			zone = z
+		}
+	})
+	return zone
 }
 
 // keywordCastCard is the card a cascade or discover offer is about.
@@ -92,7 +115,8 @@ func answerKeywordCast(t *testing.T, g *game.Game, c *game.PendingChoice, apply 
 			}
 			return
 		}
-		if err := g.CastForResolutionChoice(c.Chooser, c.ID, keywordCastCard(c), game.CastSpellParams{FromZone: "exile"}); err != nil {
+		card := keywordCastCard(c)
+		if err := g.CastForResolutionChoice(c.Chooser, c.ID, card, game.CastSpellParams{FromZone: string(offeredZone(g, c.Chooser, card))}); err != nil {
 			t.Fatalf("casting the offered card: %v", err)
 		}
 		return

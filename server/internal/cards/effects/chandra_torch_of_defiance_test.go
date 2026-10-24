@@ -53,6 +53,10 @@ func chandraTorchGrant(me *game.Player, card uuid.UUID) *game.CastPermission {
 	return nil
 }
 
+// The +1's cast is offered inside the ability's resolution (CR 608.2g,
+// #4250): a paid_or_else resolution_cast over the exiled card. Declining
+// is "if you don't", and the 2 damage is dealt then, inside the
+// resolution.
 func TestChandraTorchDeclineDealsTwoToEachOpponent(t *testing.T) {
 	spell := uuid.New()
 	g, me, chandra := chandraTorchTable(t, 4, &game.Card{InstanceID: spell, Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}"})
@@ -63,18 +67,18 @@ func TestChandraTorchDeclineDealsTwoToEachOpponent(t *testing.T) {
 	if !g.Exile.Contains(spell) {
 		t.Fatal("the top card was not exiled")
 	}
-	var prompt *game.PendingChoice
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
-			prompt = c
-		}
+	prompt := keywordCastPromptFor(g, me.ID)
+	if prompt == nil || prompt.Kind != game.PendingChoiceResolutionCast || keywordCastCard(prompt) != spell ||
+		prompt.MayCastKeyword != game.MayCastKeywordPaidOrElse {
+		t.Fatalf("a paid_or_else resolution_cast over the exiled card: %+v", prompt)
 	}
-	if prompt == nil || prompt.MayCastCard != spell || prompt.MayCastKeyword != game.MayCastKeywordPaidOrElse {
-		t.Fatalf("a paid_or_else may_cast over the exiled card: %+v", prompt)
+	if !g.ResolutionPaused() {
+		t.Fatal("the offer is not holding the +1's resolution open")
 	}
 	assertOpponentsLost(t, g, me.ID, before, 0)
 
 	answerMayCastPrompt(t, g, me.ID, false)
+	assertOpponentsLost(t, g, me.ID, before, 2)
 	passPriorityAroundTable(t, g)
 	assertOpponentsLost(t, g, me.ID, before, 2)
 	if me.Life != life {
@@ -91,6 +95,8 @@ func TestChandraTorchDeclineDealsTwoToEachOpponent(t *testing.T) {
 	}
 }
 
+// Casting it is paid at its own cost, the lands tapped for it during the
+// cast (CR 601.2g, CR 608.2g), and deals no damage.
 func TestChandraTorchAcceptPaysTheCostAndDealsNoDamage(t *testing.T) {
 	spell := uuid.New()
 	g, me, chandra := chandraTorchTable(t, 4, &game.Card{InstanceID: spell, Name: "Divination", TypeLine: "Sorcery", ManaCost: "{1}{R}"})
@@ -101,32 +107,25 @@ func TestChandraTorchAcceptPaysTheCostAndDealsNoDamage(t *testing.T) {
 	before := opponentLives(g, me.ID)
 
 	b16Activate(t, g, me.ID, chandra, 0, game.ActivateAbilityParams{})
-	answerMayCastPrompt(t, g, me.ID, true)
 	grant := chandraTorchGrant(me, spell)
 	if grant == nil {
-		t.Fatal("accepting granted no cast over the exiled card")
+		t.Fatal("the offer granted no cast over the exiled card")
 	}
 	if grant.Cost != "" || grant.Timing != game.TimingFlash || !grant.CastOnly ||
 		grant.LapseOnPass != game.LapseStaysInExile || grant.IfNotCast == "" {
 		t.Errorf("grant = %+v, want printed cost, flash timing, cast-only, pass-closed with an if-not-cast", *grant)
 	}
 
-	// The cast is PAID: with an empty pool it is refused.
-	err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: string(game.ZoneExile), Strict: true})
-	if !errors.Is(err, game.ErrInsufficientMana) {
-		t.Fatalf("a free cast went through: %v", err)
-	}
-	// CR 601.2g: mana abilities during the cast.
-	for _, m := range mountains {
-		if err := g.ActivateManaAbility(me.ID, m, 0, game.ManaAbilityParams{}); err != nil {
-			t.Fatalf("tap Mountain: %v", err)
-		}
-	}
 	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: string(game.ZoneExile), Strict: true}); err != nil {
 		t.Fatalf("cast from exile: %v", err)
 	}
-	if me.ManaPool.Total() != 0 {
-		t.Errorf("the cost was not paid: pool %+v", me.ManaPool)
+	if !g.Stack.Contains(spell) || g.ResolutionPaused() {
+		t.Fatal("the cast is not on the stack, or the +1's resolution is still held")
+	}
+	for _, m := range mountains {
+		if c := findTestCard(g, m); c == nil || !c.Tapped {
+			t.Errorf("the Mountains pay the printed cost: %v untapped", m)
+		}
 	}
 	if chandraTorchGrant(me, spell) != nil {
 		t.Error("the cast spent the grant")
@@ -138,23 +137,50 @@ func TestChandraTorchAcceptPaysTheCostAndDealsNoDamage(t *testing.T) {
 	}
 }
 
-func TestChandraTorchAcceptThenPassDealsTheDamage(t *testing.T) {
+// The cast is PAID: with no way to pay it is refused and the offer stays
+// open; the decline then deals the damage.
+func TestChandraTorchUnpayableCastIsRefusedAndTheDeclineDealsTheDamage(t *testing.T) {
 	spell := uuid.New()
 	g, me, chandra := chandraTorchTable(t, 4, &game.Card{InstanceID: spell, Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}"})
 	before := opponentLives(g, me.ID)
 
 	b16Activate(t, g, me.ID, chandra, 0, game.ActivateAbilityParams{})
-	answerMayCastPrompt(t, g, me.ID, true)
-	assertOpponentsLost(t, g, me.ID, before, 0)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("pass: %v", err)
+	err := g.CastSpell(me.ID, spell, game.CastSpellParams{FromZone: string(game.ZoneExile), Strict: true})
+	if !errors.Is(err, game.ErrInsufficientMana) {
+		t.Fatalf("a free cast went through: %v", err)
 	}
+	if keywordCastPromptFor(g, me.ID) == nil || !g.ResolutionPaused() {
+		t.Fatal("the refused cast closed the offer")
+	}
+	assertOpponentsLost(t, g, me.ID, before, 0)
+	answerMayCastPrompt(t, g, me.ID, false)
 	assertOpponentsLost(t, g, me.ID, before, 2)
 	if chandraTorchGrant(me, spell) != nil {
-		t.Error("the pass closed the window")
+		t.Error("the decline closed the window")
 	}
 	if !g.Exile.Contains(spell) {
 		t.Error("the uncast card stays in exile")
+	}
+}
+
+// A table paused on the +1's offer is a restore point: the restored
+// decline still deals the damage.
+func TestChandraTorchOfferSurvivesARestoreMidPrompt(t *testing.T) {
+	spell := uuid.New()
+	g, me, chandra := chandraTorchTable(t, 4, &game.Card{InstanceID: spell, Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}"})
+	before := opponentLives(g, me.ID)
+	b16Activate(t, g, me.ID, chandra, 0, game.ActivateAbilityParams{})
+
+	restored := restoreRoundTrip(t, g, true)
+	rme := restored.PlayerByIDForEffect(me.ID)
+	rc := keywordCastPromptFor(restored, rme.ID)
+	if rc == nil || keywordCastCard(rc) != spell || !restored.ResolutionPaused() {
+		t.Fatalf("the restored table lost the offer: %+v", rc)
+	}
+	answerMayCastPrompt(t, restored, rme.ID, false)
+	assertOpponentsLost(t, restored, rme.ID, before, 2)
+	if restored.ResolutionPaused() {
+		t.Error("the restored resolution did not finish")
 	}
 }
 
@@ -164,10 +190,8 @@ func TestChandraTorchLandIsNotAskedAndDealsTheDamage(t *testing.T) {
 	before := opponentLives(g, me.ID)
 
 	b16Activate(t, g, me.ID, chandra, 0, game.ActivateAbilityParams{})
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
-			t.Fatal("a land can't be cast, so nothing is asked")
-		}
+	if keywordCastPromptFor(g, me.ID) != nil {
+		t.Fatal("a land can't be cast, so nothing is asked")
 	}
 	assertOpponentsLost(t, g, me.ID, before, 2)
 	if !g.Exile.Contains(land) {

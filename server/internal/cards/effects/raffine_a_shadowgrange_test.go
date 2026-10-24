@@ -91,13 +91,11 @@ func TestShadowgrangeArchfiendMadnessChargesEightLife(t *testing.T) {
 		if !g.Exile.Contains(id) {
 			t.Fatal("the Archfiend is not in exile")
 		}
-		offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+		offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 		if offer == nil {
 			t.Fatal("no madness offer")
 		}
-		if e := g.ResolveMayCast(offer.ID, me.ID, true); e != nil {
-			t.Fatalf("ResolveMayCast: %v", e)
-		}
+		// #4250: the cast below answers the resolution_cast prompt.
 		if e := g.AddManaForEffect(me.ID, uuid.Nil, "{C}{C}{B}"); e != nil {
 			t.Fatalf("mana: %v", e)
 		}

@@ -18,8 +18,9 @@ import (
 // Bargain is the shared optional cost (g2Bargain, exile_if_dies_g2.go). The
 // search exiles face down, so the table sees a card back. Bargained,
 // the card is offered as a free cast capped at mana value 4
-// (Game.CastExiledFreeOrToHandForEffect): declined, passed on or over
-// the cap, it goes into its owner's hand. Not bargained, it goes
+// (Game.CastExiledFreeOrToHandForEffect), cast inside the spell's
+// resolution (CR 608.2g, #4250): declined or over the cap, it goes into
+// its owner's hand. Not bargained, it goes
 // straight to the hand, a Diabolic Tutor that hides the card on the
 // way.
 //

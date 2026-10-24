@@ -34,12 +34,12 @@ import (
 // nonland card and puts the rest on the bottom in a random order, then
 // is asked whether to cast that card free
 // (ExileUntilCastFreeKeepingForEffect, cascade's body with one
-// difference). The cast uses the shared stand-in cascade and Tibalt's
-// Trickery use: a free grant taken right after the spell resolves
-// rather than a cast inside its resolution.
+// difference). The cast is made inside the spell's resolution, as
+// cascade's and Tibalt's Trickery's are: a resolution_cast prompt for
+// each player over their card (CR 608.2g, #4250).
 //
-// A card the player declines, or doesn't cast before passing, stays in
-// exile as printed; only the rest of the pile goes to the bottom (#4205).
+// A card the player declines stays in exile as printed; only the rest of
+// the pile goes to the bottom (#4205).
 // Guffster's Party deck request (#4184).
 func init() {
 	Register(Spec{

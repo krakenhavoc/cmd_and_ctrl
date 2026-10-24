@@ -9,27 +9,21 @@ import "github.com/google/uuid"
 // CR 608.2g puts the cast inside the resolution: its timing permissions
 // are ignored, but unlike cascade's or discover's cast it is PAID, at
 // the card's own mana cost (and mana abilities may be activated during
-// it, CR 601.2g). "If you don't" is judged by whether that cast was
-// made, so the consequence has two ways in:
-//
-//   - the controller answers the may_cast prompt "don't": it runs at
-//     once, inside the resolution;
-//   - the controller answers "cast", which opens ADR 0099 §4's window (a
-//     printed-cost, TimingFlash, cast-only grant with LapseOnPass), and
-//     then passes priority without casting, or cannot pay: the lapse
-//     runs it (CastPermission.IfNotCast).
+// it, CR 601.2g and CR 608.2g). The offer is a printed-cost, TimingFlash,
+// cast-only grant over the card (LapseStaysInExile, with the "if you
+// don't" body as CastPermission.IfNotCast) and a resolution_cast prompt
+// over it (ADR 0066's 2026-10-23 amendment, #4250), which holds the
+// resolution open while the controller casts the card, paying for it
+// then, or declines. "If you don't" is judged by whether that cast was
+// made: the decline lapses the permission, which runs IfNotCast inside
+// the resolution. Outside an open resolution the permission alone is
+// the window, and passing priority without casting runs it.
 //
 // The card stays in exile either way (LapseStaysInExile): nothing in the
 // text moves it. A land can never be cast, so it gets no question and
 // the consequence runs at once; so does an empty library, and a
 // commander its owner sent to the command zone instead of exile. In each
 // of those "you" did not cast "that card".
-//
-// SANDBOX SIMPLIFICATION, ADR 0099 §4's: the cast is an ordinary
-// cast_spell taken right after the resolution rather than a frame inside
-// it. Its controller is the active player (a loyalty ability is
-// activated at sorcery speed), so CR 117.3b gives them priority first
-// and no one else can act in between.
 
 // MayCastKeywordPaidOrElse is the PendingChoice.MayCastKeyword the offer
 // asks under. The client words it as a paid cast and opens the cast
@@ -84,32 +78,32 @@ func (g *Game) ExileTopThenPaidCastOrElseForEffect(o PaidCastOrElse) error {
 // Caller must hold g.mu (write).
 func (g *Game) OfferPaidCastFromExileForEffect(o PaidCastOrElse, cardID uuid.UUID) error {
 	c, ok := g.cardInZoneLocked(g.Exile, cardID)
-	if !ok || c.IsLand() {
+	if !ok || c.IsLand() || !g.playerInGameLocked(o.Player) {
 		return g.paidCastNotMadeLocked(o, cardID)
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	if !g.grantPaidCastOrElseLocked(o, cardID) {
+		return g.paidCastNotMadeLocked(o, cardID)
+	}
+	reason := o.SourceName
+	if reason == "" {
+		reason = "Cast it"
+	}
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      o.Player,
 		Source:       o.Source,
-		Card:         cardID,
-		Question:     o.SourceName + " — cast " + c.Name + "?",
+		Reason:       reason,
+		Candidates:   []uuid.UUID{cardID},
 		Keyword:      MayCastKeywordPaidOrElse,
 		AcceptLabel:  "Cast it",
 		DeclineLabel: o.DeclineLabel,
-		OnAccept: func(g *Game) error {
-			if !g.grantPaidCastOrElseLocked(o, cardID) {
-				return g.paidCastNotMadeLocked(o, cardID)
-			}
-			return nil
-		},
-		OnDecline: func(g *Game) error {
-			return g.paidCastNotMadeLocked(o, cardID)
-		},
 	})
+	return nil
 }
 
-// PaidCastOrElsePermission is the grant an accepted offer stamps: the
-// card's printed cost, any timing (CR 608.2g), cast-only, closing on
-// the holder's next pass with the card left in exile and the "if you
+// PaidCastOrElsePermission is the grant the offer stamps: the card's
+// printed cost, any timing (CR 608.2g), cast-only, ended by the
+// resolution_cast prompt's decline (or, outside a resolution, the
+// holder's next pass) with the card left in exile and the "if you
 // don't" body run.
 func (g *Game) PaidCastOrElsePermission(o PaidCastOrElse) CastPermission {
 	return CastPermission{

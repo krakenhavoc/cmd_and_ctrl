@@ -138,7 +138,13 @@ func corpusBoards() []corpusBoard {
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file
 		// stays and is still restored; the same board is a new file.
-		{"suspend_haste_counter_placer", corpusSuspendHaste},
+		// #4250: and the board that wrote suspend_haste_counter_placer.json
+		// cast the card after the last-counter trigger had finished
+		// resolving, a history this engine no longer makes (the cast is
+		// made inside that resolution, CR 608.2g, so it is logged before
+		// the trigger's "resolution finished"). That file stays and is
+		// still restored; the same board is a new file.
+		{"suspend_haste_cast_during_resolution", corpusSuspendHaste},
 		// v7, added by the #1568 review as new files: params, condParams
 		// and a fired keyed item on disk.
 		{"queued_mana_drain", corpusQueuedManaDrain},
@@ -301,7 +307,13 @@ func corpusBoards() []corpusBoard {
 		// whose LapseOnPass is "exile").
 		{"rebound_waiting", corpusReboundWaiting},
 		{"rebound_on_stack", corpusReboundOnStack},
-		{"rebound_free_cast_grant", corpusReboundFreeCastGrant},
+		// #4250: the board that wrote rebound_free_cast_grant.json
+		// stamped the grant after "yes" and let the trigger finish
+		// resolving, a history this engine no longer makes (the grant
+		// is stamped under a resolution_cast prompt that holds the
+		// trigger's resolution open, CR 608.2g). That file stays and is
+		// still restored; the board as it is now built is a new file.
+		{"rebound_free_cast_offered_during_resolution", corpusReboundFreeCastGrant},
 		// v7, added by ADR 0107 PR 6 (#1853, #1880) as a new file: the
 		// rules gates as data — a resolved Skullcrack's
 		// damageCantBePrevented and cantGainLife turn grants, Flames of
@@ -1629,23 +1641,20 @@ func corpusReboundOnStack(t *testing.T) *game.Game {
 	return g
 }
 
-// corpusReboundFreeCastGrant is the offer accepted: the free cast is a
-// per-object CastPermission that closes on its holder's pass and leaves
-// the card in exile (#1854).
+// corpusReboundFreeCastGrant is the offer made: the free cast is a
+// per-object CastPermission that leaves the card in exile when it is not
+// taken (#1854). Since #4250 the trigger's resolution is still open on a
+// resolution_cast prompt over the card when the grant is there.
 func corpusReboundFreeCastGrant(t *testing.T) *game.Game {
 	g := corpusReboundOnStack(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceMayCast) == nil; i++ {
+	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
-	if offer == nil {
+	if latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil {
 		t.Fatal("setup: no rebound offer")
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	granted := false
 	for _, perm := range me.CastPermissions {
@@ -2574,13 +2583,10 @@ func corpusSuspendHaste(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
-	if offer == nil {
+	if latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil {
 		t.Fatal("setup: the last time counter offered no cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, active.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast answers the resolution_cast prompt.
 	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("the free cast: %v", err)
 	}

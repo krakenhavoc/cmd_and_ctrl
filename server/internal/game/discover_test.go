@@ -30,17 +30,6 @@ func discoverEvents(g *Game) []Event {
 	return out
 }
 
-func discoverPrompt(t *testing.T, g *Game) *PendingChoice {
-	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			return c
-		}
-	}
-	t.Fatalf("no may_cast prompt outstanding")
-	return nil
-}
-
 // discoverResolving resolves a stack item whose effect is a discover N for
 // me, so the cast is offered inside an open resolution (CR 608.2g, #4243).
 // It returns what the discover found, with the resolution_cast prompt (if

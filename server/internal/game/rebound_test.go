@@ -73,17 +73,27 @@ func reboundOnStack(g *Game) bool {
 	return false
 }
 
+// mayCastOutstanding is the open keyword cast: a resolution_cast that
+// names a keyword (rebound, suspend, ...; #4250), or nil.
 func mayCastOutstanding(g *Game) *PendingChoice {
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
+		if c != nil && c.Kind == PendingChoiceResolutionCast && c.MayCastKeyword != "" {
 			return c
 		}
 	}
 	return nil
 }
 
+// offeredCard is the one card a keyword's resolution_cast offers.
+func offeredCard(c *PendingChoice) uuid.UUID {
+	if c == nil || len(c.DiscardOptions) != 1 {
+		return uuid.Nil
+	}
+	return c.DiscardOptions[0]
+}
+
 // reachReboundOffer walks to the seat's next upkeep and resolves the
-// rebound trigger, stopping at the may_cast prompt.
+// rebound trigger, stopping at its resolution_cast prompt.
 func reachReboundOffer(t *testing.T, g *Game, seat int) *PendingChoice {
 	t.Helper()
 	upkeepFor(t, g, seat)
@@ -225,9 +235,10 @@ func TestASpellWithoutReboundStillGoesToTheGraveyard(t *testing.T) {
 }
 
 // The whole loop: the opponent's upkeep does nothing, the
-// controller's next upkeep offers the cast, "yes" opens a free cast of
-// a SORCERY in the upkeep (CR 608.2g), and the recast — from exile,
-// not a hand — goes to the graveyard and does not rebound again.
+// controller's next upkeep offers the cast inside the trigger's
+// resolution (CR 608.2g, #4250), a free cast of a SORCERY in the upkeep
+// is made then, and the recast — from exile, not a hand — goes to the
+// graveyard and does not rebound again.
 func TestReboundOffersAFreeCastAtYourNextUpkeep(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -241,13 +252,18 @@ func TestReboundOffersAFreeCastAtYourNextUpkeep(t *testing.T) {
 	}
 
 	offer := reachReboundOffer(t, g, 0)
-	if offer.MayCastKeyword != MayCastKeywordRebound || offer.MayCastCard != id {
-		t.Fatalf("offer = keyword %q card %v, want rebound about %v", offer.MayCastKeyword, offer.MayCastCard, id)
+	if offer.MayCastKeyword != MayCastKeywordRebound || offeredCard(offer) != id {
+		t.Fatalf("offer = keyword %q cards %v, want rebound about %v", offer.MayCastKeyword, offer.DiscardOptions, id)
 	}
 	if len(reboundTriggers(g)) != 0 {
 		t.Error("the rebound trigger is still queued after it fired")
 	}
-	answerMayCast(t, g, me.ID, true)
+	if !g.ResolutionPaused() || g.Stack.Contains(id) {
+		t.Fatal("the offer is not holding the trigger's resolution open")
+	}
+	if err := g.PassPriority(); err == nil {
+		t.Fatal("a pass was taken while the rebound cast is open mid-resolution")
+	}
 
 	if g.Turn.Step != StepUpkeep {
 		t.Fatalf("test needs the upkeep, at %q", g.Turn.Step)
@@ -256,6 +272,9 @@ func TestReboundOffersAFreeCastAtYourNextUpkeep(t *testing.T) {
 	me.ManaPool = nil
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
 		t.Fatalf("free cast of a rebound sorcery in the upkeep: %v", err)
+	}
+	if g.ResolutionPaused() || mayCastOutstanding(g) != nil {
+		t.Fatal("the cast did not answer the prompt and finish the resolution")
 	}
 	resolveTop(t, g)
 	if !me.Graveyard.Contains(id) {
@@ -272,25 +291,43 @@ func TestDecliningTheReboundCastLeavesTheCardInExile(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := castAndResolveRebound(t, g, me, "Instant")
-	reachReboundOffer(t, g, 0)
-	answerMayCast(t, g, me.ID, false)
+	offer := reachReboundOffer(t, g, 0)
+	if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
+	}
 
 	if !g.Exile.Contains(id) {
 		t.Fatal("declining moved the card out of exile")
+	}
+	if g.ResolutionPaused() {
+		t.Error("the decline did not finish the trigger's resolution")
 	}
 	if err := g.CastSpell(me.ID, id, CastSpellParams{FromZone: "exile"}); err != ErrNoPlayPermission {
 		t.Errorf("cast after declining: got %v, want ErrNoPlayPermission", err)
 	}
 }
 
-// Accepting and then passing without casting is the decline, made
-// late: the window closes on the pass and the card stays in exile.
+// Outside an open resolution (the fallback; the trigger always resolves
+// inside one) the grant is the window, and passing without casting is
+// the decline, made late: it closes and the card stays in exile.
 func TestPassingOnTheReboundCastLeavesTheCardInExile(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := castAndResolveRebound(t, g, me, "Instant")
-	reachReboundOffer(t, g, 0)
-	answerMayCast(t, g, me.ID, true)
+	var ref ObjectRef
+	g.WithWriteLock(func() {
+		// The recast's resolution boundary, so no resolution is open.
+		g.runStateChecksLocked()
+		c := exiledCardByIDLocked(g, id)
+		ref = ObjectRef{ID: id, Epoch: c.ObjectEpoch}
+		item := &StackItem{Controller: me.ID}
+		if err := reboundCast(g, item, EffectParams{Object: ref}); err != nil {
+			t.Fatalf("reboundCast: %v", err)
+		}
+	})
+	if mayCastOutstanding(g) != nil {
+		t.Fatal("no resolution is open, so nothing is asked")
+	}
 	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
 		t.Fatal("test needs the rebound controller to hold priority")
 	}
@@ -352,7 +389,46 @@ func TestReboundSurvivesASnapshotRoundTrip(t *testing.T) {
 		t.Fatalf("rebound triggers after the round trip: %d, want 1", n)
 	}
 	offer := reachReboundOffer(t, restored, 0)
-	if offer.MayCastCard != id {
-		t.Errorf("restored offer names %v, want %v", offer.MayCastCard, id)
+	if offeredCard(offer) != id {
+		t.Errorf("restored offer names %v, want %v", offer.DiscardOptions, id)
+	}
+}
+
+// A table paused on the rebound offer itself is a restore point: the
+// restored prompt casts the card during the trigger's resolution, or
+// its decline leaves the card in exile.
+func TestReboundOfferSurvivesARestoreMidPrompt(t *testing.T) {
+	for _, cast := range []bool{true, false} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		id := castAndResolveRebound(t, g, me, "Sorcery")
+		reachReboundOffer(t, g, 0)
+
+		_, restored := roundTrip(t, g)
+		rme := restored.Seats[0]
+		rc := mayCastOutstanding(restored)
+		if rc == nil || offeredCard(rc) != id || !restored.ResolutionPaused() ||
+			rc.MayCastKeyword != MayCastKeywordRebound || rc.DeclineLabel != "Leave it in exile" {
+			t.Fatalf("cast=%v: the restored table lost the offer: %+v", cast, rc)
+		}
+		if cast {
+			rme.ManaPool = nil
+			if err := restored.CastSpell(rme.ID, id, CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
+				t.Fatalf("the restored rebound cast: %v", err)
+			}
+			if !restored.Stack.Contains(id) {
+				t.Error("the restored cast did not reach the stack")
+			}
+		} else {
+			if err := restored.ResolvePendingChoice(rc.ID, rme.ID, nil); err != nil {
+				t.Fatalf("the restored decline: %v", err)
+			}
+			if !restored.Exile.Contains(id) {
+				t.Error("the restored decline moved the card out of exile")
+			}
+		}
+		if restored.ResolutionPaused() {
+			t.Errorf("cast=%v: the restored resolution did not finish", cast)
+		}
 	}
 }

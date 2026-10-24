@@ -35,13 +35,16 @@ import "github.com/google/uuid"
 //     phase 3): the body is the registered key "rebound/cast" and the
 //     card is Params.Object, the exiled object's id and CR 400.7
 //     epoch. A table with the trigger waiting is a restore point.
-//  3. THE CAST is suspend's: the "you may" is a PendingChoiceMayCast
-//     asked as the trigger resolves (CR 603.5), and "yes" stamps a
-//     per-object CastPermission over exile priced "{0}" (without
-//     paying its mana cost; CR 107.3b locks X at 0) with flash timing,
-//     because the cast happens during a resolution in an upkeep and
-//     every rebound sorcery would otherwise be uncastable there (CR
-//     608.2g).
+//  3. THE CAST happens during the trigger's resolution (CR 702.88a, CR
+//     608.2g; ADR 0066's 2026-10-23 amendment, #4250): the trigger
+//     stamps a per-object CastPermission over exile priced "{0}"
+//     (without paying its mana cost; CR 107.3b locks X at 0) with
+//     flash timing, because the cast happens during a resolution in an
+//     upkeep and every rebound sorcery would otherwise be uncastable
+//     there, and raises a resolution_cast prompt over the card
+//     (resolution_copy_cast.go). The prompt holds the resolution open
+//     while the controller casts the card, its targets and modes chosen
+//     then, or declines; nobody receives priority in between.
 //
 // # Whose rebound it is
 //
@@ -53,25 +56,19 @@ import "github.com/google/uuid"
 // it. A spell another player gained control of (ADR 0104) was not cast
 // from its new controller's hand, and goes to its owner's graveyard.
 //
-// # The window, and the one place it differs from paper
+// # The window
 //
-// SANDBOX SIMPLIFICATION, cascade's and discover's (ADR 0099 §4): the
-// cast happens with an ordinary cast_spell action AFTER the trigger
-// finishes resolving rather than inline in its resolution, because an
-// inline cast would have to run the whole announce — targets, modes,
-// the cost picker — under a paused resolution frame. The window is
-// shut as tightly as theirs, so it is never stronger than printed:
+// The prompt is the window: its cast consumes the permission, and its
+// decline lapses it (LapseStaysInExile), so the card stays in exile,
+// which is the printed outcome of a rebound card that was not cast. The
+// prompt is plain data, so a table paused on it is a restore point.
 //
-//   - by the holder PASSING PRIORITY (CastPermission.LapseOnPass):
-//     passing is the decline, and the card stays in exile, which is
-//     the printed outcome of a rebound card that was not cast;
-//   - by CR 400.7 — the card leaving exile (the cast itself included)
-//     ends the grant, through the epoch it names;
-//   - by the end of the turn at the latest.
-//
-// Suspend still holds its free cast until the end of the turn; rebound
-// does not, because an upkeep cast that could wait for the main phase
-// is a choice the printed card does not give.
+// Outside an open resolution (nothing reaches one: the trigger always
+// resolves) the permission alone is the window, shut as tightly as
+// cascade's was (ADR 0099 §4): by the holder's next priority pass
+// (CastPermission.LapseOnPass), by CR 400.7 (the card leaving exile ends
+// the grant through the epoch it names), and by the end of the turn at
+// the latest.
 //
 // # Granted rebound
 //
@@ -191,7 +188,8 @@ func init() {
 // reboundCast offers the cast, against the game as it is now (CR
 // 608.2). A card that is no longer the object the trigger was created
 // for — it left exile, or left and came back — is offered nothing
-// (CR 603.7c, 400.7).
+// (CR 603.7c, 400.7). The cast is made during this resolution through a
+// resolution_cast prompt (#4250); a decline leaves the card in exile.
 func reboundCast(g *Game, item *StackItem, p EffectParams) error {
 	c := exiledCardByIDLocked(g, p.Object.ID)
 	if c == nil || c.ObjectEpoch != p.Object.Epoch {
@@ -201,20 +199,23 @@ func reboundCast(g *Game, item *StackItem, p EffectParams) error {
 	if chooser == uuid.Nil {
 		chooser = c.Owner
 	}
-	ref := p.Object
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	if !g.playerInGameLocked(chooser) {
+		return nil
+	}
+	id := c.InstanceID
+	g.grantReboundCastLocked(chooser, p.Object)
+	// "You MAY cast this card": the cast, or the decline, is answered
+	// inside this resolution. Outside one the permission is the window.
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      chooser,
-		Source:       c.InstanceID,
-		Card:         c.InstanceID,
-		Question:     "Rebound — cast " + c.Name + " without paying its mana cost?",
+		Source:       id,
+		Reason:       "Rebound",
+		Candidates:   []uuid.UUID{id},
 		Keyword:      MayCastKeywordRebound,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Leave it in exile",
-		OnAccept: func(g *Game) error {
-			g.grantReboundCastLocked(chooser, ref)
-			return nil
-		},
 	})
+	return nil
 }
 
 // grantReboundCastLocked stamps the free cast on the one exiled object
@@ -226,8 +227,9 @@ func reboundCast(g *Game, item *StackItem, p EffectParams) error {
 //   - `Timing: TimingFlash`, CR 608.2g: the cast happens during a
 //     resolution in an upkeep, whatever the card's own timing.
 //   - `CastOnly`: "cast this card".
-//   - `LapseOnPass: LapseStaysInExile`, the window (see the file
-//     header). A cast from exile is not a cast from a hand, so the
+//   - `LapseOnPass: LapseStaysInExile`: declining the prompt, or
+//     passing outside a resolution, leaves the card in exile (see the
+//     file header). A cast from exile is not a cast from a hand, so the
 //     resolved spell goes to its owner's graveyard.
 //
 // Caller must hold g.mu (write).

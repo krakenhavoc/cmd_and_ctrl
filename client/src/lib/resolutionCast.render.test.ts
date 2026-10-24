@@ -194,3 +194,47 @@ describe("ResolutionCastSheet — cascade and discover (#4243)", () => {
     ]);
   });
 });
+
+describe("ResolutionCastSheet — rebound, madness and the other keyword casts (#4250)", () => {
+  const hitDialog = (reason: string): Element | null =>
+    document.querySelector(`[role="dialog"][aria-label^="${reason}"]`);
+
+  it("words madness's price and its graveyard decline", () => {
+    mount([castMove("Cast Dark Ritual"), declineMove], "me", {
+      keyword: "madness",
+      reason: "Madness",
+      decline: "Put it into your graveyard",
+    });
+    expect(nameOf(hitDialog("Madness")!)).toBe(
+      "Madness: you may cast Dark Ritual for its madness cost",
+    );
+    expect(document.body.textContent).toContain("it goes into your graveyard");
+    const buttons = [...document.querySelectorAll("button")].map((b) => nameOf(b));
+    expect(buttons).toContain("Put it into your graveyard");
+  });
+
+  it("words rebound's decline as staying in exile", () => {
+    mount([declineMove], "me", {
+      keyword: "rebound",
+      reason: "Rebound",
+      decline: "Leave it in exile",
+    });
+    expect(nameOf(hitDialog("Rebound")!)).toBe(
+      "Rebound: you may cast Dark Ritual without paying its mana cost",
+    );
+    expect(document.body.textContent).toContain("it stays in exile");
+    const primary = barPrimary();
+    expect(primary && nameOf(primary)).toBe("Leave it in exile");
+  });
+
+  it("words the paid cast of Chandra, Torch of Defiance as paying its cost", () => {
+    mount([castMove("Cast Dark Ritual"), declineMove], "me", {
+      keyword: "paid_or_else",
+      reason: "Chandra, Torch of Defiance",
+      decline: "Don't cast it (2 damage to each opponent)",
+    });
+    expect(nameOf(hitDialog("Chandra, Torch of Defiance")!)).toBe(
+      "Chandra, Torch of Defiance: you may cast Dark Ritual paying its mana cost",
+    );
+  });
+});

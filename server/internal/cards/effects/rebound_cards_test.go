@@ -99,13 +99,11 @@ func TestStaggershockReboundsAndDealsDamageTwice(t *testing.T) {
 	advanceToUpkeepOf(t, g, (seat+1)%len(g.Seats))
 	advanceToUpkeepOf(t, g, seat)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no rebound offer at the controller's next upkeep")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
 		Strict:   true,
 		FromZone: "exile",
@@ -206,8 +204,8 @@ func TestReboundIntoTheTimeVortexCascadesOnItsReboundCast(t *testing.T) {
 	seat := g.Turn.ActiveSeat
 	me, id := castFromHandAtMain(t, g, "Into the Time Vortex", "Sorcery", "ad9d969e-def5-45a3-b65b-0c776f62ef0e")
 	for i := 0; i < 32 && !g.Exile.Contains(id); i++ {
-		if offer := latestChoiceOfKind(g, game.PendingChoiceMayCast); offer != nil {
-			if err := g.ResolveMayCast(offer.ID, me.ID, false); err != nil {
+		if offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast); offer != nil {
+			if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
 				t.Fatalf("decline cascade: %v", err)
 			}
 			continue
@@ -223,13 +221,11 @@ func TestReboundIntoTheTimeVortexCascadesOnItsReboundCast(t *testing.T) {
 	advanceToUpkeepOf(t, g, (seat+1)%len(g.Seats))
 	advanceToUpkeepOf(t, g, seat)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil || offer.MayCastKeyword != game.MayCastKeywordRebound {
 		t.Fatal("no rebound offer at the controller's next upkeep")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("the free rebound cast: %v", err)
 	}

@@ -208,7 +208,7 @@ func TestTheLastTickOffersTheFreeCast(t *testing.T) {
 	if n := timeCounters(g, id); n != 1 {
 		t.Fatalf("after one tick: %d time counters, want 1", n)
 	}
-	if pendingChoiceOfKind(g, PendingChoiceMayCast) != nil {
+	if pendingChoiceOfKind(g, PendingChoiceResolutionCast) != nil {
 		t.Fatal("the cast was offered before the last counter came off")
 	}
 
@@ -218,20 +218,17 @@ func TestTheLastTickOffersTheFreeCast(t *testing.T) {
 	if n := timeCounters(g, id); n != 0 {
 		t.Fatalf("after two ticks: %d time counters, want 0", n)
 	}
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("the last tick offered no cast")
 	}
 	if offer.Chooser != me.ID {
 		t.Errorf("offer chooser = %s, want the owner %s", offer.Chooser, me.ID)
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
 
 	perm := grantOn(g, me.ID, id, ZoneExile)
 	if perm == nil {
-		t.Fatal("accepting the offer granted no cast permission")
+		t.Fatal("the offer granted no cast permission")
 	}
 	if perm.Cost != "{0}" {
 		t.Errorf("granted price: got %q, want {0} — without paying its mana cost", perm.Cost)
@@ -260,12 +257,12 @@ func TestDecliningTheFreeCastStrandsTheCard(t *testing.T) {
 
 	upkeepFor(t, g, 0)
 	settleStack(t, g)
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no cast offer on the last tick")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, false); err != nil {
-		t.Fatalf("ResolveMayCast(decline): %v", err)
+	if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	if exiledCardByIDLocked(g, id) == nil {
 		t.Error("a declined suspend cast left exile anyway")
@@ -289,12 +286,9 @@ func TestTheFreeCastLocksXAtZero(t *testing.T) {
 
 	upkeepFor(t, g, 0)
 	settleStack(t, g)
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no cast offer on the last tick")
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile", XValue: 5}); !errors.Is(err, ErrInvalidParam) {
 		t.Fatalf("X=5 on a free cast: got %v, want ErrInvalidParam", err)
@@ -319,12 +313,9 @@ func TestASuspendedCreatureHasHaste(t *testing.T) {
 
 	upkeepFor(t, g, 0)
 	settleStack(t, g)
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no cast offer on the last tick")
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("the free cast: %v", err)
@@ -478,7 +469,7 @@ func TestTheCountdownAndTheCastAreTwoTriggers(t *testing.T) {
 	// Drain the upkeep trigger only.
 	passUntil(t, g, func() bool { return timeCounters(g, id) == 0 })
 
-	if pendingChoiceOfKind(g, PendingChoiceMayCast) != nil {
+	if pendingChoiceOfKind(g, PendingChoiceResolutionCast) != nil {
 		t.Error("the upkeep trigger made the cast offer itself; the second trigger is what offers it")
 	}
 	if n := suspendItemsWaiting(g, SuspendFreeCastLabel); n != 1 {
@@ -486,12 +477,12 @@ func TestTheCountdownAndTheCastAreTwoTriggers(t *testing.T) {
 	}
 
 	settleStack(t, g)
-	if pendingChoiceOfKind(g, PendingChoiceMayCast) == nil {
+	if pendingChoiceOfKind(g, PendingChoiceResolutionCast) == nil {
 		t.Fatal("the last-counter trigger made no cast offer")
 	}
 	offers := 0
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
+		if c != nil && c.Kind == PendingChoiceResolutionCast {
 			offers++
 		}
 	}
@@ -521,15 +512,12 @@ func TestAnExternalRemovalFiresTheLastCounterTrigger(t *testing.T) {
 	})
 	settleStack(t, g)
 
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("removing the last time counter outside an upkeep offered no cast (CR 702.62b)")
 	}
 	if offer.Chooser != me.ID {
 		t.Errorf("offer chooser = %s, want the owner %s", offer.Chooser, me.ID)
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	if perm := grantOn(g, me.ID, id, ZoneExile); perm == nil {
 		t.Error("the externally-ended countdown granted no free cast")
@@ -555,7 +543,7 @@ func TestAnEarlierRemovalOffersNothing(t *testing.T) {
 	if n := timeCounters(g, id); n != 2 {
 		t.Fatalf("time counters: got %d, want 2", n)
 	}
-	if pendingChoiceOfKind(g, PendingChoiceMayCast) != nil {
+	if pendingChoiceOfKind(g, PendingChoiceResolutionCast) != nil {
 		t.Error("a removal that left counters behind offered the cast")
 	}
 }
@@ -574,12 +562,9 @@ func castTheSuspendedCreature(t *testing.T, g *Game, me *Player) uuid.UUID {
 
 	upkeepFor(t, g, 0)
 	settleStack(t, g)
-	offer := pendingChoiceOfKind(g, PendingChoiceMayCast)
+	offer := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no cast offer on the last tick")
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("the free cast: %v", err)

@@ -260,13 +260,11 @@ func d1657MadnessJudgment(t *testing.T, g *game.Game) uuid.UUID {
 	passPriorityAroundTable(t, g)
 	answerChooseCards(t, g, me.ID, judgment, spare)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("the madness trigger offered no cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 	return judgment
 }
 
