@@ -29,7 +29,7 @@ func init() {
 			ModeDoing("Destroy target enchantment.",
 				TargetPermanent("target enchantment", Enchantment()),
 				DestroyTheModesTarget),
-			ModeDoing("Target creature gains hexproof and indestructible until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gains hexproof and indestructible until end of turn.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -41,7 +41,7 @@ func init() {
 						Keywords: []string{"hexproof", "indestructible"},
 						Label:    "Collective Resistance",
 					}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))),
 		), EscalateMana("{G}")),
 	})
 }

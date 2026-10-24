@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3ceaeb1b-8b25-453d-ac09-e466cfdd9c77",
 		Name:         "Undying Evil",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "undying")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e5e19326-3e90-439c-a3b2-749d43a1af0c",
 		Name:         "Tragic Trajectory",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

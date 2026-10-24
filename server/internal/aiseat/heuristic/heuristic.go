@@ -294,6 +294,23 @@ type Config struct {
 	// creature that is attacking or blocking, before combat damage, on
 	// top of the attack it adds (PriceTemporaryEffects).
 	CombatGrant float64
+	// PriceGrantSaves prices a benefit until end of turn aimed at the
+	// bot's own permanent that the stack would remove, when the grant
+	// keeps it (#4312, grant_save.go): hexproof, shroud or protection
+	// against what targets it, indestructible against destroy and
+	// damage, toughness against damage it outgrows. Worth what
+	// answerSave pays an untargeted row: the permanent's value times the
+	// chance it is lost. Such a save costing only mana and taps, with
+	// mana to spare, clears LeftoverThreshold. Off prices the grant by
+	// the attack it adds, as #4302 did. Read only with
+	// PriceTemporaryEffects and PriceAnswers on.
+	PriceGrantSaves bool
+	// PriceEvasionGrants prices the evasion a benefit until end of turn
+	// gives an attacker before blockers (#4312, face_up_pump.go): a
+	// declared "can't be blocked this turn" as the restriction it puts on
+	// the creature, and a trample grant by the damage it puts over the
+	// defender's biggest blocker. Off, neither adds to the attack.
+	PriceEvasionGrants bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -823,6 +840,10 @@ func DefaultConfig() Config {
 		// #4302: a change until end of turn, priced by what it does now.
 		PriceTemporaryEffects: true,
 		CombatGrant:           0.50,
+		// #4312: a grant that saves a permanent, and evasion before
+		// blockers.
+		PriceGrantSaves:    true,
+		PriceEvasionGrants: true,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -985,6 +1006,8 @@ func BaselineConfig() Config {
 	// #4302: a change until end of turn priced as an ordinary target.
 	c.PriceTemporaryEffects = false
 	c.CombatGrant = 0
+	c.PriceGrantSaves = false
+	c.PriceEvasionGrants = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1466,6 +1489,11 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			// with mana the rest of the turn does not need.
 			bar = p.cfg.LeftoverThreshold
 			reason += ", spare mana in combat"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.spareGrantSave(st, moves[i]) {
+			// #4312: a grant that keeps a permanent the stack would
+			// remove, with mana the rest of the turn does not need.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", spare mana for a save"
 		}
 		if v > bar && (take < 0 || v > takeVal) {
 			take, takeVal, takeReason = i, v, reason

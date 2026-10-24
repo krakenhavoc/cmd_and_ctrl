@@ -26,7 +26,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Target creature with power 3 or less can't be blocked this turn",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target creature with power 3 or less", PowerLE(3)),
 			Effect: func(g *game.Game, item *game.StackItem) error {

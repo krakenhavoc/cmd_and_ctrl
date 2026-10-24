@@ -202,8 +202,8 @@ func checkPump(pm *game.Pump, fail func(string)) {
 	if pm == nil {
 		return
 	}
-	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 {
-		fail("is a pump that gives nothing — set Power, Toughness or Keywords")
+	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked {
+		fail("is a pump that gives nothing — set Power, Toughness, Keywords or CantBeBlocked")
 	}
 	for _, k := range pm.Keywords {
 		if k == "" || k != strings.ToLower(k) || strings.ContainsAny(k, "\t—") {
@@ -529,8 +529,8 @@ func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail f
 	if e.UntilEndOfTurn == game.TargetBenefit && (pm.Power < 0 || pm.Toughness < 0) {
 		fail(fmt.Sprintf("declares a benefit on slot %d that takes power or toughness — that is a harm (#4302)", e.Slot))
 	}
-	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0) {
-		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness or a keyword (#4302)", e.Slot))
+	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0 || pm.CantBeBlocked) {
+		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness, a keyword or unblockability (#4302)", e.Slot))
 	}
 }
 
@@ -546,6 +546,20 @@ func BenefitUntilEOT(slot, power, toughness int, keywords ...string) game.Target
 	if power != 0 || toughness != 0 || len(keywords) > 0 {
 		e.Pump = &game.Pump{Power: power, Toughness: toughness, Keywords: keywords}
 	}
+	return e
+}
+
+// CantBeBlockedUntilEOT is BenefitUntilEOT for a clause that also makes
+// its pick unblockable this turn (#4312): Rogue's Passage's "target
+// creature can't be blocked this turn" is CantBeBlockedUntilEOT(0, 0, 0),
+// and Taigam's Strike's "+2/+0 until end of turn and can't be blocked this
+// turn" CantBeBlockedUntilEOT(0, 2, 0).
+func CantBeBlockedUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, power, toughness, keywords...)
+	if e.Pump == nil {
+		e.Pump = &game.Pump{}
+	}
+	e.Pump.CantBeBlocked = true
 	return e
 }
 

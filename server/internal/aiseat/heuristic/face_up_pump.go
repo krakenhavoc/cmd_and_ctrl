@@ -63,6 +63,15 @@ func (p *Policy) pumpAttackGain(st *state, c *protocol.CardView, pump *protocol.
 	if hasty {
 		up.SummoningSick = false
 	}
+	// #4312: evasion counts until blockers are declared. After that an
+	// attacker stays blocked or unblocked for the rest of combat
+	// (CR 509.1h), so "can't be blocked" and trample's way past a chump
+	// are worth no more than the attack they change.
+	evasion := p.cfg.PriceEvasionGrants && st.step != "declare_blockers"
+	if evasion && pump.CantBeBlocked {
+		up.Restrictions = append(slices.Clone(c.Restrictions), "cant_be_blocked")
+	}
+	tramples := evasion && hasKeyword(up, "trample") && !hasKeyword(c, "trample")
 	best, lethal := 0.0, false
 	for _, o := range st.opps {
 		if c.AttackingTarget != "" && c.AttackingTarget != o.ID {
@@ -79,7 +88,12 @@ func (p *Policy) pumpAttackGain(st *state, c *protocol.CardView, pump *protocol.
 			// Without the haste there is no attack to compare with.
 			before = 0
 		}
-		after, _ := p.attackValue(st, up, o, declared, declaredPower)
+		after, why := p.attackValue(st, up, o, declared, declaredPower)
+		if tramples && (why == "blocked at a loss" || why == "gang-blocked at a loss") {
+			// attackValue reads no trample: a blocked trampler still
+			// puts its excess over (CR 702.19b).
+			after += p.trampleThrough(st, up, o, declared)
+		}
 		gain := max(after, 0) - max(before, 0)
 		// The kill is the pump's only if the swing without it was short.
 		kills := !p.lethalPushAs(st, o, nil) && p.lethalPushAs(st, o, up)
@@ -91,4 +105,27 @@ func (p *Policy) pumpAttackGain(st *state, c *protocol.CardView, pump *protocol.
 		}
 	}
 	return best, lethal
+}
+
+// trampleThrough is what trample gives back of a block of atk by defender
+// def. attackValue charges a blocked attacker the life its whole power
+// would have cost def (the block "saves them" that), and a trampler's
+// block saves only what the blocker absorbs: the excess goes over to the
+// player (CR 702.19b). So this is that excess, over the blocker that
+// absorbs most of it (trampleAbsorb), at what def's life is worth. Zero
+// when def has no blocker free for it once the `declared` attackers are
+// met.
+func (p *Policy) trampleThrough(st *state, atk *protocol.CardView, def *SeatEval, declared int) float64 {
+	absorb, n := 0, 0
+	for _, b := range defenderBlockers(st, def.ID) {
+		if couldBlock(st, def.ID, atk, b) {
+			n++
+			absorb = max(absorb, trampleAbsorb(atk, b))
+		}
+	}
+	over := combatPower(atk) - absorb
+	if n-declared <= 0 || over <= 0 {
+		return 0
+	}
+	return float64(over) * st.w.MarginalLife(def.Life)
 }

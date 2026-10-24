@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e83e1f99-1f9b-49fc-bdc7-5f6335e401e4",
 		Name:         "Blessed Breath",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
 		Completeness: CompletenessFull,
 		Splice:       SpliceOntoArcane("{W}"),
 		Targets:      TargetCreature("target creature you control", YouControl()),

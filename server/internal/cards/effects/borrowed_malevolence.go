@@ -18,12 +18,12 @@ func init() {
 		Name:         "Borrowed Malevolence",
 		Completeness: CompletenessFull,
 		Modes: Escalating(ChooseN("Choose one or both", 1, 2,
-			ModeDoing("Target creature gets +1/+1 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets +1/+1 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(1, 1, "Borrowed Malevolence")),
-			ModeDoing("Target creature gets -1/-1 until end of turn.",
+				BoostTheModesTarget(1, 1, "Borrowed Malevolence")), ForTargets(BenefitUntilEOT(0, 1, 1))),
+			ModeWithPurpose(ModeDoing("Target creature gets -1/-1 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(-1, -1, "Borrowed Malevolence")),
+				BoostTheModesTarget(-1, -1, "Borrowed Malevolence")), ForTargets(HarmUntilEOT(0, -1, -1))),
 		), EscalateMana("{2}")),
 	})
 }

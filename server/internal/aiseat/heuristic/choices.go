@@ -1136,6 +1136,12 @@ const (
 // at you now outranks what is merely large.
 const threatAttacking = 2.0
 
+// threatOnTheStack lifts an opponent's item on the stack that targets one
+// of the bot's permanents above every threat on the board when the
+// protection policy ranks them (#4312): it is the one the protection is
+// being bought against now.
+const threatOnTheStack = 100.0
+
 // boardTieBreak is the ceiling of the own-board term in the benefit
 // arm. It is deliberately under 0.1 — one mana symbol in hand — so the
 // board only ever breaks a tie between colours the hand wants equally.
@@ -1275,11 +1281,36 @@ func (st *state) opponentColorCount(color string) float64 {
 // then any creature, then any other permanent, then a spell on the
 // stack. Zero for a colour nobody is threatening in, so a quiet board
 // leaves the enumerator's order to decide.
+//
+// An opponent's item on the stack that targets one of the bot's
+// permanents outranks all of it (#4312): that is what a protection grant
+// made in response is answering (grant_save.go), and naming the colour
+// of the biggest creature on the board instead lets the Murder resolve.
 func (st *state) biggestThreatOfColor(cfg Config, color string) float64 {
 	var best float64
 	consider := func(v float64) {
 		if v > best {
 			best = v
+		}
+	}
+	if cfg.PriceGrantSaves {
+		for i := range st.view.StackItems {
+			it := &st.view.StackItems[i]
+			if it.Controller == st.me {
+				continue
+			}
+			src := st.stack[it.SourceCardID]
+			if src == nil {
+				src = st.bf[it.SourceCardID]
+			}
+			if src == nil || !hasColor(src, color) {
+				continue
+			}
+			for _, ref := range it.Targets {
+				if c := st.bf[ref.ID]; c != nil && c.Controller == st.me {
+					consider(threatOnTheStack + st.permanentValue(c))
+				}
+			}
 		}
 	}
 	for i := range st.view.Battlefield.Cards {

@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "49dddec0-d958-4810-8c6e-225fc8118c8f",
 		Name:         "Defile",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -894,7 +894,7 @@ per-card branches anywhere in it.
 | `benefit` | Heraldic Banner, Selective Obliteration | the same, with the colour it has most of on its **own board** breaking ties. Selective Obliteration's chosen colour is the one that *survives*, so "name what you want to keep" is the same question the anthem asks |
 | `harm` | Wash Out | the colour that costs the **opposition** most net of what it costs the bot, priced with the same `permanentValue` the board evaluation uses |
 | `filter` | Oona, Queen of the Fae | the colour most common among the opponents' **known** cards — their battlefield, their graveyards and the stack. Libraries and hands are counts on the wire and stay that way ([ADR 0033 §3](decisions/0033-ai-bot-seat.md)), so this is a proxy, and on a board that has shown nothing every colour ties and the enumerator's order decides |
-| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
+| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of an opponent's spell or ability on the stack that targets one of the bot's permanents, first (#4312: what the grant is answering); then the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
 
 **An undeclared prompt keeps the old rule.** The purpose is a string,
 its zero value is "nothing was said", and the default arm is the
@@ -1330,10 +1330,64 @@ turn does not need, and a cast that develops the board comes first.
 `TestUntilEndOfTurnRowsDeclareTheirDirection` holds every catalog activated
 row whose text changes a target until end of turn to a direction that
 matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
-and Zack Fair are exempt, each for a reason the test names). A spell may
-declare the same entry and is read the same way; no spell declares one
-yet. The arena's `heuristic-notemporary` is today's heuristic with the
-switch off.
+and Zack Fair are exempt, each for a reason the test names). The arena's
+`heuristic-notemporary` is today's heuristic with the switch off.
+
+**Spells declare it too**
+([#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)).
+Giant Growth's "+3/+3 until end of turn", Dismember's -5/-5, Blossoming
+Defense's +2/+2 and hexproof: every catalog instant, sorcery and mode
+whose text changes a permanent it targets until end of turn declares the
+direction on that target's entry, with the printed amounts, the keywords
+(`protection` for protection from the colour of your choice) and
+`cant_be_blocked` for "can't be blocked this turn". Before, the pick was
+priced as removal, so a Giant Growth was worth casting at an opponent's
+attacker. `TestUntilEndOfTurnSpellsDeclareTheirDirection` holds 106 spell
+clauses to their words, from the oracle fixtures; Berserk, Fated Clash and
+Martyrdom are exempt, each for a reason it names. An amount the spell
+decides at resolution (-X/-X, Tragic Slip's morbid -13/-13) declares only
+the direction, which keeps the removal price for a harm. A lasting rider
+that helps the same creature (Beast Mode's counter, Monstrous Rage's
+Role) does not stop the declaration and is left unpriced. A rider with an
+amount the purpose can say is declared beside it (Expedite's card,
+Ancestors' Aid's Treasure); scry, learn and the like are not priced. A
+declared spell is priced by its purpose, so it loses the mana-value proxy,
+as declared damage does.
+
+**A grant that saves is priced as the save**
+(#4312, `PriceGrantSaves`, `grant_save.go`). A targeted row cannot
+declare `answers` (ADR 0142 §2), so Mother of Runes, Liliana the
+Faultless and Plaza of Heroes were priced by the attack they add, which on
+an opponent's turn is nothing. When the stack would remove the bot's
+permanent, a benefit aimed at it is now worth what `answerSave` pays an
+untargeted row (the permanent's value times the chance it is lost) when it
+keeps the permanent:
+
+- hexproof, shroud or protection, from what an opponent aims at it, not
+  from a sweep (CR 608.2b, 702.11b, 702.18a, 702.16b). Protection from a
+  colour of the bot's choice needs every targeting threat to share a
+  colour, and the bot names it: an opponent's stack item aimed at one of
+  the bot's permanents is the biggest threat in the `protect` colour
+  policy;
+- indestructible (and undying and persist, priced alike) from destruction
+  and lethal damage, half of that against a targeted removal that
+  declares no damage (CR 702.12b);
+- toughness from declared damage and -N/-N it outgrows.
+
+A save the bot already has on the stack for the same permanent is not
+made twice. Such a move that costs only mana and taps clears
+`LeftoverThreshold` when its mana is spare, as a combat grant does. So
+Mother of Runes answers a Murder, and names black.
+
+**Evasion is priced before attacks** (#4312, `PriceEvasionGrants`).
+"Can't be blocked this turn" (Rogue's Passage, Artful Dodge) is the
+`cant_be_blocked` restriction the creature will have, so a grant made in
+the first main phase is worth the attack it turns from blocked into
+unblocked. A trample grant is worth the damage over the defender's
+biggest blocker (CR 702.19b). After blockers are declared neither changes
+anything (CR 509.1h) and only `CombatGrant` is left. +X/+X is still not
+priced before combat. The arena's `heuristic-nogrants` turns both of
+these off, and `--decks tricks-battle` deals a deck with the cards in it.
 
 ### Board wipes
 
@@ -1757,7 +1811,9 @@ creature.
 
 Not covered: a combat grant (the combat planner's business), a `sac_outlet`
 whose sacrifice is chosen at resolution (no catalog row has one), and
-spells, which declare no answers yet.
+spells, which declare no answers yet. A targeted grant on the threatened
+creature, row or spell, is priced from its target entry instead (#4312,
+`grant_save.go`, above).
 
 ### The old prices, kept runnable
 
@@ -2493,8 +2549,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan` or `heuristic-notemporary`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary` or `heuristic-nogrants`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |

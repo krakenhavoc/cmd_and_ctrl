@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "be0a3925-8e0d-4ef6-85cb-c9f5eef6b4bb",
 		Name:         "Turn Inside Out",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

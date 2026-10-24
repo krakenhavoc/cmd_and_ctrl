@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}: Target Goblin, Orc, or Pirate can't be blocked this turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{2}{U}"),
 			Targets: TargetCreature("target Goblin, Orc, or Pirate",
 				Or(OfCreatureType("Goblin"), OfCreatureType("Orc"), OfCreatureType("Pirate"))),

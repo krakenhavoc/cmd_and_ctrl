@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "abfde51c-dfe7-4382-8aa2-f0a7ac1b7048",
 		Name:         "Veil of Secrecy",
+		Purpose:      ForTargets(CantBeBlockedUntilEOT(0, 0, 0, "shroud")),
 		Completeness: CompletenessFull,
 		Splice: SpliceOntoArcaneCost(
 			SpliceReturnToHand("a blue creature you control", Creature(), OfColor("U"))),

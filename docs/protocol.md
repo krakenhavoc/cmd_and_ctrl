@@ -3615,7 +3615,7 @@ Every field is omitted when zero.
 | `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
 | `landfall_payoff` | on a triggered row: it pays out whenever a land enters under its controller's control; see below ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)) | Tatyova, Benthic Druid |
 | `creature_enter_payoff` | on a triggered row: it pays out whenever a creature enters under its controller's control; the same fields as `landfall_payoff`, per creature (#3165) | Purphoros, God of the Forge |
-| `pump` | on a triggered or activated row: `{power, toughness, keywords}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
+| `pump` | on a triggered or activated row: `{power, toughness, keywords, cant_be_blocked}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
 | `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
 | `extra_turns` | extra turns its controller takes after this one (CR 500.7). The caster's own turns; "target player takes an extra turn" is a [target entry](#target-entries-adr-0126-amendment-of-2026-10-08). Left off a card whose extra turn ends in a loss ([ADR 0188](decisions/0188-skipped-turns-and-turn-bound-effects.md) Decision 10, #3566) | Capture of Jingzhou 1 |
 | `skips_turns` | next turns its controller skips (CR 614.10), priced as a turn lost. Refused on an any-player activated row ([ADR 0188](decisions/0188-skipped-turns-and-turn-bound-effects.md) Decision 10, #3566) | Magosi, the Waterveil's third ability 1 |
@@ -3780,7 +3780,7 @@ opponent.
 | `reanimates` | the spell puts the picked graveyard card onto the battlefield under its caster's control (#3161); the bot prices the pick as the permanent it becomes, whoever owns the graveyard | Reanimate, Animate Dead |
 | `returns` | what the target's **controller** is given when the target is removed (#2679), an object below; absent when nothing comes back | Rapid Hybridization's 3/3 |
 | `until_end_of_turn` | `"benefit"` or `"harm"`: which way a change to the picked permanent that ends with the turn cuts for that permanent's controller (#4302). A bot aims a benefit at its own permanent and a harm at an opponent's, and prices it by what it does this turn | Heliod, Sun-Crowned's lifelink `"benefit"`, Vilis's -1/-1 `"harm"` |
-| `pump` | that change in printed amounts, beside `until_end_of_turn`: `power` and `toughness` added (negative for a harm) and the `keywords` a benefit grants; absent for an amount counted at resolution (+X/+X) or a change that is not a pump ("can't be blocked") | Heliod `{"keywords": ["lifelink"]}`, Vilis `{"power": -1, "toughness": -1}` |
+| `pump` | that change in printed amounts, beside `until_end_of_turn`: `power` and `toughness` added (negative for a harm), the `keywords` a benefit grants (`protection` for protection from a quality chosen at resolution), and `cant_be_blocked: true` for "can't be blocked this turn" (#4312); absent for an amount counted at resolution (+X/+X) with nothing else printed. A spell or a mode declares the same entry (#4312) | Heliod `{"keywords": ["lifelink"]}`, Vilis `{"power": -1, "toughness": -1}`, Rogue's Passage `{"cant_be_blocked": true}`, Giant Growth `{"power": 3, "toughness": 3}` |
 
 `returns` holds printed amounts, each omitted when zero:
 

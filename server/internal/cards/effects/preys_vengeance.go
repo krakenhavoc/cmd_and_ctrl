@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "67f6e949-14d9-4253-9d18-4004cac2f900",
 		Name:            "Prey's Vengeance",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 2, 2)),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),

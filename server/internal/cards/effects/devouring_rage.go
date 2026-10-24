@@ -27,6 +27,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "19a8c2d3-b06e-4a76-bb28-8928ce84186c",
 		Name:           "Devouring Rage",
+		Purpose:        ForTargets(BenefitUntilEOT(0, 3, 0)),
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeAnyNumberCost("any number of Spirits", HasSubtype("Spirit")),
 		Targets:        TargetCreature("target creature"),

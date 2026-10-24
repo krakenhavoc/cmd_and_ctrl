@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "c4023e1f-26e3-4225-98d0-3d33f6654616",
 		Name:           "Caustic Exhale",
+		Purpose:        ForTargets(HarmUntilEOT(0, -3, -3)),
 		Completeness:   CompletenessFull,
 		AdditionalCost: BeholdOrPay("a", "Dragon", "{1}"),
 		Targets:        TargetCreature("target creature"),

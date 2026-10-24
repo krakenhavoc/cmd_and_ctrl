@@ -3912,7 +3912,7 @@ export interface PurposeView {
   sweep?: SweepView;
   death_payoff?: boolean;
   // ADR 0130 (amendment of 2026-10-07): what an exert row does.
-  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
   extra_combat?: number;
   // ADR 0188 Decision 10 (#3566): extra turns its controller takes
   // after this one (CR 500.7) and next turns it makes them skip
@@ -3973,7 +3973,7 @@ export interface TargetPurposeView {
   // turn cuts for its controller.
   until_end_of_turn?: "benefit" | "harm";
   // #4302: that change in printed amounts (negative for a harm).
-  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
 }
 
 // TargetReturnView is what a removal spell hands the controller of the

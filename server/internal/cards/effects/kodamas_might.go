@@ -10,6 +10,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c027a8ef-6cdd-4c14-9d4f-b21c63312874",
 		Name:         "Kodama's Might",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2)),
 		Completeness: CompletenessFull,
 		Splice:       SpliceOntoArcane("{G}"),
 		Targets:      TargetCreature("target creature"),

@@ -44,14 +44,14 @@ func init() {
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return exileTargetCardsThen(ctx, nil)
 				}),
-			ModeDoing("Target creature gains fear until end of turn.", TargetCreature("target creature"),
+			ModeWithPurpose(ModeDoing("Target creature gains fear until end of turn.", TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
 					if !ok || t.Kind != game.TargetCard {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"fear"}}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "fear"))),
 		),
 	})
 }

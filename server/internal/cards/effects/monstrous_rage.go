@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "646a2371-54c0-4492-ac2f-20f109d6108c",
 		Name:         "Monstrous Rage",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "0f58f791-469a-4a22-996e-4906c0914858",
 		Name:             "Monstrify",
+		Purpose:          ForTargets(BenefitUntilEOT(0, 4, 4)),
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{3}{G}")},

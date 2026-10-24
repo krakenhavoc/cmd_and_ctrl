@@ -21,7 +21,7 @@ func init() {
 		Name:         "Defend the Rider",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Target permanent you control gains hexproof and indestructible until end of turn.",
+			ModeWithPurpose(ModeDoing("Target permanent you control gains hexproof and indestructible until end of turn.",
 				TargetPermanent("target permanent you control", YouControl()),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -33,7 +33,7 @@ func init() {
 						Keywords: []string{"hexproof", "indestructible"},
 						Label:    "Defend the Rider — hexproof and indestructible",
 					}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))),
 			ModeDoing("Create a 1/1 colorless Pilot creature token.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return CreateToken{Template: PilotToken(), N: 1}.Apply(ctx)

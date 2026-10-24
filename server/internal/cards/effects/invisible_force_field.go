@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "c96d67fb-359c-4439-aa1b-598d9bca2880",
 		Name:            "Invisible Force Field",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetPermanent("up to four target permanents you control", YouControl()).WithCount(0, 4),

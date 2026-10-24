@@ -21,8 +21,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Creatures you control get +2/+0 until end of turn."),
-			Mode("Target creature gets +2/+0 and gains first strike until end of turn. Put a +1/+1 counter on it.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Target creature gets +2/+0 and gains first strike until end of turn. Put a +1/+1 counter on it.",
+				TargetCreature("target creature")), ForTargets(BenefitUntilEOT(0, 2, 0, "first strike"))),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			switch {

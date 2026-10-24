@@ -63,7 +63,7 @@ func init() {
 			ModeDoing("This spell deals X damage to target planeswalker.",
 				TargetPermanent("target planeswalker", Planeswalker()),
 				DealXDamageToModesTarget),
-			ModeDoing("Target creature gets +X/+0 and gains haste until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets +X/+0 and gains haste until end of turn.",
 				TargetCreature("target creature"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -74,7 +74,7 @@ func init() {
 						return err
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"haste"}, Label: "Mishra's Command"}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "haste"))),
 		),
 	})
 }

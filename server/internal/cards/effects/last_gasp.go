@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a82c3860-4dd6-4ffd-aa8f-ab8df687db6c",
 		Name:         "Last Gasp",
+		Purpose:      ForTargets(HarmUntilEOT(0, -3, -3)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

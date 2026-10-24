@@ -28,7 +28,7 @@ func init() {
 					}
 					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 3}.Apply(ctx)
 				}),
-			ModeDoing("Target creature gains first strike and deathtouch until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gains first strike and deathtouch until end of turn.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -36,7 +36,7 @@ func init() {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"first strike", "deathtouch"}, Label: "Stingerquill Charm"}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "first strike", "deathtouch"))),
 			ModeDoing("Create a 2/2 colorless Wizard Soldier creature token named Cadet. It gains haste until end of turn.",
 				nil, rfSpellBCadetWithHaste),
 		),

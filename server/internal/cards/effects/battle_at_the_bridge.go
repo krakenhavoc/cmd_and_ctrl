@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3d63ad3a-4e9f-4968-a576-4be063f4ecbf",
 		Name:         "Battle at the Bridge",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		TapCost:      Improvise(),
