@@ -5767,10 +5767,13 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 // the cards that go down are in a zone the chooser can reanimate,
 // delve and escape from, not buried under sixty other cards.
 //
-// The graveyard leg emits EventMill per card, the same event an
-// ordinary mill emits, because it is the same zone change from the
-// same zone: a "whenever a card is put into your graveyard from your
-// library" payoff must not care how it got there. The completed
+// The graveyard leg emits an EventZoneMove per card, library to
+// graveyard, and NOT the EventMill a mill emits (#2809, ADR 0013 §5q
+// amendment 2026-10-23): surveil is its own keyword action (CR
+// 701.25a), not a mill (CR 701.17a), so "whenever one or more cards
+// are milled" (Mirelurk Queen, Zellix) does not see it. A "whenever a
+// card is put into your graveyard from your library" payoff watches
+// both kinds and reads the zone pair, so it still does. The completed
 // surveil then emits EventSurveil once, for the payoffs that watch
 // the keyword itself.
 //
@@ -5862,6 +5865,9 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		p.Library.PushTop(pulled[graveyard[i]])
 	}
 	r := millRoute(chooserID, ZoneGraveyard)
+	// Surveil is not a mill (CR 701.25a): the leg is an ordinary
+	// library-to-graveyard zone move (#2809).
+	r.Mill = false
 	r.Source = choice.Source
 	source := choice.Source
 	err = g.routeAllThenLocked(r, graveyard, func(g *Game, milled []uuid.UUID) error {

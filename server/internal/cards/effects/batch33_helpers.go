@@ -28,7 +28,7 @@ import (
 // OncePerBatch, "who put these counters" is b11CounterPlacerOf, the
 // last-known power of a creature that is
 // no longer on the battlefield is b17LastKnownPowerOffBattlefield,
-// the milled-creature batch is b17MilledCreatureCards, the first
+// the milled-creature batch is cardsPutIntoGraveyardFromLibraryInBatch, the first
 // legal target read is b16FirstLegalTargetCard and its destroy body
 // destroyFirstLegalTarget, "exile target players' graveyards, then
 // draw" is b30ExileTargetGraveyardsThenDraw, the counter-on-each body is
@@ -222,21 +222,6 @@ func b33YouPutMinusCountersOnACreature(ev game.Event, source *game.Card, g *game
 		return false
 	}
 	return b11CounterPlacerOf(ev, g) == source.Controller
-}
-
-// b33CreatureCardMilledIntoYourGraveyard is Sidisi's condition before
-// the "one or more" dedup: a creature card the source's controller
-// owns was milled into their graveyard (Colossal Grave-Reaver's
-// read). The engine emits one EventMill per card, so the first
-// creature card of a mill fires the trigger and the rest are
-// declined as later events of the same batch (OncePerBatch; see
-// docs/adding-cards.md).
-func b33CreatureCardMilledIntoYourGraveyard(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventMill || ev.Actor != source.Controller || ev.NewZone != game.ZoneGraveyard {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.Owner == source.Controller
 }
 
 // b33EndStepAndYouGainedLifeThisTurn is Lathiel's intervening-if at

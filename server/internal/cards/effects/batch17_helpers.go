@@ -204,55 +204,6 @@ func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	return p
 }
 
-// b17MilledCreatureCards is the batch of creature cards `owner`
-// milled in the mill that fired the event at `seq` — Colossal
-// Grave-Reaver's "one or more creature cards are put into your
-// graveyard from your library". A mill emits one EventMill per card
-// with nothing of its own in between; only the harvester's
-// EventTrigger breadcrumbs (the first creature milled fires this
-// very trigger) interleave. The batch is therefore every EventMill
-// by `owner` from the firing event forward until the first event
-// that is neither, read at resolution when every card of it is in
-// the graveyard. Cards that have since left the graveyard are
-// dropped.
-func b17MilledCreatureCards(g *game.Game, owner uuid.UUID, seq uint64) []uuid.UUID {
-	start := -1
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		if g.Events[i].Seq == seq {
-			start = i
-			break
-		}
-	}
-	if start < 0 {
-		return nil
-	}
-	p := g.PlayerByIDForEffect(owner)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var out []uuid.UUID
-	for i := start; i < len(g.Events); i++ {
-		ev := g.Events[i]
-		switch ev.Kind {
-		case game.EventTrigger:
-			continue
-		case game.EventMill:
-			if ev.Actor != owner || ev.NewZone != game.ZoneGraveyard {
-				return out
-			}
-		default:
-			return out
-		}
-		if !p.Graveyard.Contains(ev.CardID) {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.IsCreature() {
-			out = append(out, ev.CardID)
-		}
-	}
-	return out
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b17SelfOrZombieYouControlDied is Undead Augur's condition: the

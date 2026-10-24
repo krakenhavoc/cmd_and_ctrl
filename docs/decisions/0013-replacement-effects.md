@@ -4892,3 +4892,45 @@ instead of any other type and amount" can only be answered against it.
   precedent).
 
 Damping Sphere ships `full`.
+
+## Amendment 2026-10-23 — a surveil is not a mill (#2809)
+
+§5q decision 2 kept surveil's graveyard leg on `EventMill`, the event a
+mill emits, on the ground that a "whenever a card is put into your
+graveyard from your library" payoff must not care which keyword moved it.
+It said then that the rules are narrower: surveil is its own keyword
+action (CR 701.25a), not a mill (CR 701.17a). The second rad-counter batch
+makes that reading wrong in play. Mirelurk Queen, Screeching Scorchbeast
+and The Wise Mothman print "whenever one or more nonland cards are
+milled", Infesting Radroach "whenever an opponent mills a nonland card",
+and Tato Farmer and The Master, Transcendent "a card in a graveyard that
+was milled this turn". Every one of them saw a surveil as a mill, and so
+did the cards already shipped on the same event (Glowing One, Zellix,
+Sanity Flayer's Hive Mind). That was stronger than printed.
+
+- **The leg emits `EventZoneMove`.** `ResolveSurveil` still routes the
+  binned cards through `millRoute` (the same CR 614 window, the same CR
+  903.9 offer), with `Mill` cleared, so the completed move is an ordinary
+  library-to-graveyard zone move. `EventSurveil` is unchanged. The CR
+  614 window, the batch and the continuation are as §5q left them.
+- **"Put into your graveyard from your library" watches both kinds.**
+  The two payoffs that watched `EventMill` alone for that wording,
+  Colossal Grave-Reaver and Sidisi, Brood Tyrant, now watch `EventMill`
+  and `EventZoneMove` and read the zone pair
+  (`effects.cardPutIntoYourGraveyardFromYourLibrary`,
+  `cardsPutIntoGraveyardFromLibraryInBatch`, `library_to_graveyard.go`).
+  So a surveilled creature card still counts for them, and an Entombed
+  one now does too, which their old comments listed as a gap. Every
+  other reader of that wording already watched both kinds.
+- **The footprint follows.** ADR 0018's `FootprintSurveil` step declares
+  `EventSurveil` and `EventZoneMove`, not `EventMill`: the declaration is
+  what the step emits, and the conformance test holds it there.
+- **No snapshot change.** An event logged before this as a surveil's
+  `EventMill` stays one; only new surveils emit the zone move. A restored
+  turn whose log holds an old surveil's `EventMill` reads that card as
+  milled this turn, until the turn ends.
+
+Still as before: a card a replacement sends elsewhere (Rest in Peace) was
+not put into a graveyard and emits no `EventMill`, so it is not "milled"
+for these payoffs either. CR 701.17c lets an effect find a milled card in
+the zone it moved to; no catalog card asks that of an exiled one yet.

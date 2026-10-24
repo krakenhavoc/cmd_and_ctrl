@@ -15,14 +15,13 @@ const b33SidisiZombieLabel = "Sidisi, Brood Tyrant — create a 2/2 black Zombie
 //
 // The self-mill commander. The first trigger is Sun Titan's "enters
 // or attacks" shape with a three-card mill; the second is Colossal
-// Grave-Reaver's: it watches EventMill — the engine emits one per
-// card — so the first creature card of a mill fires it and the rest
-// of that mill are declined as later events of the same batch
-// (OncePerBatch; see docs/adding-cards.md). Two separate mills in one turn
-// make two Zombies, as printed. A creature card that reaches the
-// graveyard from the library some other way — a search that puts it
-// there — is not a mill and does not fire it; no card in the catalog
-// does that.
+// Grave-Reaver's: it watches every library-to-graveyard arrival, a
+// mill's EventMill and a surveil's or a search's EventZoneMove (#2809,
+// library_to_graveyard.go), one per card, so the first creature card
+// of a batch fires it and the rest are declined as later events of the
+// same batch (OncePerBatch; see docs/adding-cards.md). Two separate
+// mills in one turn make two Zombies, as printed, and a creature card
+// surveilled or Entombed into your graveyard counts too.
 //
 // No simplification.
 func init() {
@@ -34,8 +33,8 @@ func init() {
 			OnAny([]game.EventKind{game.EventETB, game.EventAttack}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b21SelfEnteredOrAttacked(ev, source)
 			}, "Sidisi, Brood Tyrant — mill three cards", Do(MillCards{N: 3})),
-			OncePerBatch(On(game.EventMill, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b33CreatureCardMilledIntoYourGraveyard(ev, source, g)
+			OncePerBatch(OnAny(libraryToGraveyardKinds, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return cardPutIntoYourGraveyardFromYourLibrary(ev, source, g, isCreatureCard)
 			}, b33SidisiZombieLabel, Do(CreateToken{Template: BlackZombieToken(), N: 1}))),
 		},
 	})
