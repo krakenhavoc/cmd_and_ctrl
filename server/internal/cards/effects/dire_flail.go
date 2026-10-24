@@ -90,20 +90,7 @@ func direBlunderbussAttacks(g *game.Game, item *game.StackItem) error {
 		Question: "Dire Blunderbuss — sacrifice an artifact other than Dire Blunderbuss to deal damage to target creature?",
 		YesLabel: "Sacrifice an artifact",
 		NoLabel:  "Don't",
-		OnYes: func(ctx *Context) error {
-			return ctx.Game.PlayerSacrificesThenForEffect(
-				item.SourceCardID, item.Controller,
-				sacrificeSpec("an artifact other than Dire Blunderbuss", eligible),
-				"Dire Blunderbuss — sacrifice an artifact",
-				1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					if sacrificed.Count() == 0 {
-						return nil
-					}
-					return WhenYouDo("Dire Blunderbuss — this creature deals damage equal to its power to target creature",
-						direBlunderbussDamageBody).Apply(NewContext(g, item))
-				})
-		},
+		Then:     direBlunderbussAnswer,
 	}.Apply(NewContext(g, item))
 }
 
@@ -143,3 +130,26 @@ func direBlunderbussDamage(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// direBlunderbussAnswer is the "yes": sacrifice an artifact other than the
+// Blunderbuss, and raise the reflexive damage once it has gone. Keyed
+// (#4291).
+var direBlunderbussAnswer = MayYes("confirm/dire-blunderbuss-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	exclude := direBlunderbussGrantors(ctx.Game, item)
+	eligible := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsArtifact() && !exclude[c.InstanceID]
+	}
+	return ctx.Game.PlayerSacrificesThenForEffect(
+		item.SourceCardID, item.Controller,
+		sacrificeSpec("an artifact other than Dire Blunderbuss", eligible),
+		"Dire Blunderbuss — sacrifice an artifact",
+		1,
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			if sacrificed.Count() == 0 {
+				return nil
+			}
+			return WhenYouDo("Dire Blunderbuss — this creature deals damage equal to its power to target creature",
+				direBlunderbussDamageBody).Apply(NewContext(g, item))
+		})
+})

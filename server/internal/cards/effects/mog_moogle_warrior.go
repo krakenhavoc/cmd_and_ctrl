@@ -66,39 +66,11 @@ func mogAsk(ctx *Context, players []uuid.UUID) error {
 		return mogFinish.Run(ctx)
 	}
 	player, rest := players[0], players[1:]
-	item := ctx.Item
 	return MayChoice{
 		Player:   player,
 		Question: "Mog, Moogle Warrior — discard a card (and draw a card)?",
-		OnYes: func(c *Context) error {
-			c.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player:   player,
-				Source:   c.Source(),
-				N:        1,
-				Question: "Mog, Moogle Warrior — discard a card",
-				Then: func(g *game.Game, seat uuid.UUID, discarded []uuid.UUID) error {
-					next := NewContext(g, item)
-					creature, other := mogDanceFlags(next)
-					for _, id := range discarded {
-						if card, ok := g.LookupCardForEffect(id); ok {
-							if card.IsCreature() {
-								creature = true
-							} else {
-								other = true
-							}
-						}
-					}
-					next.RecordStep(mogDanceRecord, nil, boolToInt(creature), boolToInt(other))
-					next.RecordStep(mogSeatRecord, []uuid.UUID{seat}, len(discarded))
-					next.RecordStep(mogRestRecord, rest)
-					return mogDrawThenAsk.Run(next)
-				},
-			})
-			return nil
-		},
-		OnNo: func(c *Context) error {
-			return mogAsk(c, rest)
-		},
+		Then:     mogAnswer,
+		Carry:    rest,
 	}.Apply(ctx)
 }
 
@@ -159,4 +131,46 @@ func init() {
 			return mogAsk(ctx, ctx.StepRecord(mogRestRecord).IDs)
 		}),
 	)
+}
+
+// mogAnswer is one player's answer to "discard a card (and draw a card)?": a
+// yes opens their discard and the steps behind it, a no asks the next player
+// (the carried IDs). Registered in init because the no asks through mogAsk,
+// which names it. Keyed (#4291).
+var mogAnswer game.ConfirmThen
+
+func init() {
+	mogAnswer = MayYesNo("confirm/mog-moogle-warrior-discard", mogDiscard,
+		func(c *Context, r game.ConfirmAnswer) error { return mogAsk(c, r.Carry) })
+}
+
+// mogDiscard is a player's "yes": they discard a card, and the steps behind
+// it draw and ask the rest (the carried IDs).
+func mogDiscard(c *Context, r game.ConfirmAnswer) error {
+	player, rest := r.Chooser, r.Carry
+	item := c.Item
+	c.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player:   player,
+		Source:   c.Source(),
+		N:        1,
+		Question: "Mog, Moogle Warrior — discard a card",
+		Then: func(g *game.Game, seat uuid.UUID, discarded []uuid.UUID) error {
+			next := NewContext(g, item)
+			creature, other := mogDanceFlags(next)
+			for _, id := range discarded {
+				if card, ok := g.LookupCardForEffect(id); ok {
+					if card.IsCreature() {
+						creature = true
+					} else {
+						other = true
+					}
+				}
+			}
+			next.RecordStep(mogDanceRecord, nil, boolToInt(creature), boolToInt(other))
+			next.RecordStep(mogSeatRecord, []uuid.UUID{seat}, len(discarded))
+			next.RecordStep(mogRestRecord, rest)
+			return mogDrawThenAsk.Run(next)
+		},
+	})
+	return nil
 }

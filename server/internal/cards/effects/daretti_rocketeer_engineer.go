@@ -76,7 +76,7 @@ func darettiSacrificeToReturn(g *game.Game, item *game.StackItem) error {
 		Question: "Daretti — sacrifice an artifact to return the chosen card?",
 		YesLabel: "Sacrifice an artifact",
 		NoLabel:  "Don't",
-		OnYes:    darettiSacrificeThenReturn,
+		Then:     darettiAnswer,
 	}.Apply(ctx)
 }
 
@@ -104,3 +104,9 @@ func darettiSacrificeThenReturn(ctx *Context) error {
 			return nil
 		})
 }
+
+// darettiAnswer is the "yes": sacrifice an artifact, then return the chosen
+// card. Keyed (#4291).
+var darettiAnswer = MayYes("confirm/daretti-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return darettiSacrificeThenReturn(ctx)
+})

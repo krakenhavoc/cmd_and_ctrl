@@ -35,3 +35,15 @@ func keyedCarryContext(g *game.Game, chooser, source uuid.UUID, carry []uuid.UUI
 	}
 	return keyedContext(g, controller, source), carry
 }
+
+// askedContext is the Context a keyed answer runs against: a copy of the
+// asking item when the prompt carried one (game.AskedItem, #4264, #4291), the
+// stand-in of keyedCarryContext when it did not. The carry it returns is the
+// card's own.
+func askedContext(g *game.Game, item *game.StackItem, chooser, source uuid.UUID, carry []uuid.UUID) (*Context, []uuid.UUID) {
+	ctx, carry := keyedCarryContext(g, chooser, source, carry)
+	if item != nil {
+		ctx = NewContext(g, item)
+	}
+	return ctx, carry
+}

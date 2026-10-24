@@ -64,7 +64,7 @@ func chainOfSmogDiscard(ctx *Context) error {
 			return MayChoice{
 				Player:   player,
 				Question: "Chain of Smog — copy it? (you may choose a new target for the copy)",
-				OnYes:    copyThisSpellFor(player),
+				Then:     mayCopyThisSpell,
 			}.Apply(NewContext(g, item))
 		},
 	})

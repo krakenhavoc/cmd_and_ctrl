@@ -43,14 +43,8 @@ func init() {
 					return MayChoice{
 						Player:   hc.Controller,
 						Question: "Farrel's Mantle — have the enchanted creature deal damage equal to its power plus 2 to the target creature? (if you do, it assigns no combat damage this turn)",
-						OnYes: func(ctx *Context) error {
-							amount := b31CurrentPowerOf(ctx.Game, host) + 2
-							if err := (DealDamage{Source: host, Target: target, Amount: amount}).Apply(ctx); err != nil {
-								return err
-							}
-							enchantedAssignsNoCombatDamage(ctx, host, "Farrel's Mantle — assigns no combat damage this turn")
-							return nil
-						},
+						Then:     farrelsMantleAnswer,
+						Carry:    []uuid.UUID{host, target},
 					}.Apply(ctx)
 				},
 			},
@@ -71,3 +65,16 @@ func farrelsMantleTarget(_ game.TriggerContext, source *game.Card, _ *game.Game)
 		Min: 1, Max: 1,
 	}
 }
+
+// farrelsMantleAnswer is the "yes": the enchanted creature (the first
+// carried ID) deals damage equal to its power plus 2 to the target (the
+// second), then assigns no combat damage this turn. Keyed (#4291).
+var farrelsMantleAnswer = MayYes("confirm/farrels-mantle-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	host, target := carryAt(r, 0), carryAt(r, 1)
+	amount := b31CurrentPowerOf(ctx.Game, host) + 2
+	if err := (DealDamage{Source: host, Target: target, Amount: amount}).Apply(ctx); err != nil {
+		return err
+	}
+	enchantedAssignsNoCombatDamage(ctx, host, "Farrel's Mantle — assigns no combat damage this turn")
+	return nil
+})

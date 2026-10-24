@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -37,10 +38,8 @@ func fabricateChoice(g *game.Game, item *game.StackItem, label string, n int) er
 		Question: label,
 		YesLabel: fmt.Sprintf("Put %d +1/+1 counter(s) on it", n),
 		NoLabel:  fmt.Sprintf("Create %d 1/1 colorless Servo artifact creature token(s)", n),
-		OnYes: func(ctx *Context) error {
-			return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: n}.Apply(ctx)
-		},
-		OnNo: func(ctx *Context) error { return fabricateServos(ctx, n) },
+		Then:     mayFabricate,
+		Word:     strconv.Itoa(n),
 	}.Apply(ctx)
 }
 
@@ -48,3 +47,10 @@ func fabricateChoice(g *game.Game, item *game.StackItem, label string, n int) er
 func fabricateServos(ctx *Context, n int) error {
 	return CreateToken{Template: TokenCard("1/1 colorless Servo artifact"), N: n}.Apply(ctx)
 }
+
+// mayFabricate is fabricate N's choice: "yes" puts N +1/+1 counters on the
+// source, "no" creates N Servos (Word is N). Angel of Invention and every
+// Fabricate card. Keyed (#4291).
+var mayFabricate = MayYesNo("confirm/fabricate", func(ctx *Context, r game.ConfirmAnswer) error {
+	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: wordInt(r)}.Apply(ctx)
+}, func(ctx *Context, r game.ConfirmAnswer) error { return fabricateServos(ctx, wordInt(r)) })

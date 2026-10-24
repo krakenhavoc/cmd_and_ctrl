@@ -30,6 +30,7 @@ func init() {
 func deathgreeterMayGain(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Deathgreeter — gain 1 life?",
-		OnYes:    func(ctx *Context) error { return GainLife{Amount: 1}.Apply(ctx) },
+		Then:     mayGainLife,
+		Word:     "1",
 	}.Apply(NewContext(g, item))
 }

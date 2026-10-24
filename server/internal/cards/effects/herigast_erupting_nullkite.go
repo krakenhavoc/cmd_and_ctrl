@@ -58,7 +58,7 @@ func herigastAsk(g *game.Game, item *game.StackItem) error {
 		Question: "Herigast, Erupting Nullkite — exile your hand and draw three cards?",
 		YesLabel: "Exile my hand, draw three",
 		NoLabel:  "Keep my hand",
-		OnYes:    herigastExileHandThenDraw,
+		Then:     herigastAnswer,
 	}.Apply(ctx)
 }
 
@@ -71,3 +71,8 @@ func herigastExileHandThenDraw(ctx *Context) error {
 		return DrawCards{Player: controller, N: 3}.Apply(NewContext(g, item))
 	})
 }
+
+// herigastAnswer is the "yes": exile the hand and draw three. Keyed (#4291).
+var herigastAnswer = MayYes("confirm/herigast-exile-hand-draw", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return herigastExileHandThenDraw(ctx)
+})

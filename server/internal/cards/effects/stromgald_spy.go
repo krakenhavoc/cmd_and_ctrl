@@ -31,17 +31,24 @@ func init() {
 			WhenAttacksAndIsNotBlockedEffect(label, func(g *game.Game, item *game.StackItem, defender uuid.UUID) error {
 				return MayChoice{
 					Question: label + "? (it then assigns no combat damage this turn)",
-					OnYes: func(ctx *Context) error {
-						if defendingPlayerStillIn(ctx.Game, defender) {
-							if d, ok := DurationWhileSourceRemains(ctx, ctx.Source()); ok {
-								ctx.Game.GrantHandRevealedForEffect(defender, "Stromgald Spy", ctx.Source(), d)
-							}
-						}
-						assignsNoCombatDamageThisTurn(ctx, "Stromgald Spy — assigns no combat damage this turn")
-						return nil
-					},
+					Then:     stromgaldSpyAnswer,
+					Carry:    []uuid.UUID{defender},
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// stromgaldSpyAnswer is the "yes": the defending player (the carried ID)
+// plays with their hand revealed for as long as the Spy stays, and the Spy
+// assigns no combat damage this turn. Keyed (#4291).
+var stromgaldSpyAnswer = MayYes("confirm/stromgald-spy-reveal-hand", func(ctx *Context, r game.ConfirmAnswer) error {
+	defender := carryAt(r, 0)
+	if defendingPlayerStillIn(ctx.Game, defender) {
+		if d, ok := DurationWhileSourceRemains(ctx, ctx.Source()); ok {
+			ctx.Game.GrantHandRevealedForEffect(defender, "Stromgald Spy", ctx.Source(), d)
+		}
+	}
+	assignsNoCombatDamageThisTurn(ctx, "Stromgald Spy — assigns no combat damage this turn")
+	return nil
+})

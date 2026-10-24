@@ -50,12 +50,19 @@ func gazeOfPain(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Gaze of Pain — have the attacking creature deal damage equal to its power to the target creature? (if you do, it assigns no combat damage this turn)",
-		OnYes: func(ctx *Context) error {
-			if err := (DealDamage{Source: it, Target: target, Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Gaze of Pain — assigns no combat damage this turn")
-			return nil
-		},
+		Then:     gazeOfPainAnswer,
+		Carry:    []uuid.UUID{it, target},
 	}.Apply(ctx)
 }
+
+// gazeOfPainAnswer is the "yes": the attacking creature (the first carried
+// ID) deals damage equal to its power to the target (the second), then
+// assigns no combat damage this turn. Keyed (#4291).
+var gazeOfPainAnswer = MayYes("confirm/gaze-of-pain-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	it, target := carryAt(r, 0), carryAt(r, 1)
+	if err := (DealDamage{Source: it, Target: target, Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
+		return err
+	}
+	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Gaze of Pain — assigns no combat damage this turn")
+	return nil
+})

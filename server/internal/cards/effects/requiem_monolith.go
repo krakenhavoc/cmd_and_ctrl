@@ -100,7 +100,8 @@ func requiemMonolithActivate(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Player:   creature.Controller,
 		Question: "Requiem Monolith — have it deal 1 damage to " + creature.Name + "?",
-		OnYes:    requiemMonolithPing(target),
+		Then:     requiemMonolithAnswer,
+		Carry:    []uuid.UUID{target},
 	}.Apply(ctx)
 }
 
@@ -116,3 +117,9 @@ func requiemMonolithPing(target uuid.UUID) func(ctx *Context) error {
 		return DealDamage{Source: ctx.Source(), Target: target, Amount: 1}.Apply(ctx)
 	}
 }
+
+// requiemMonolithAnswer is the creature's controller's "yes": the Monolith
+// deals 1 damage to the creature (the carried ID). Keyed (#4291).
+var requiemMonolithAnswer = MayYes("confirm/requiem-monolith-ping", func(ctx *Context, r game.ConfirmAnswer) error {
+	return requiemMonolithPing(carryAt(r, 0))(ctx)
+})

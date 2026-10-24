@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -202,18 +204,39 @@ func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
 		Player:   who,
 		Question: "Kwain, Itinerant Meddler — draw a card?",
 		Draws:    1,
-		OnYes: func(ctx *Context) error {
-			p := ctx.Game.PlayerByIDForEffect(who)
-			got := p != nil && p.Library != nil && p.Library.Size() > 0
-			if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			next := drew
-			if got {
-				next = append(append([]uuid.UUID(nil), drew...), who)
-			}
-			return b20KwainAsk(ctx, rest, next)
-		},
-		OnNo: func(ctx *Context) error { return b20KwainAsk(ctx, rest, drew) },
+		Then:     b20KwainAnswer,
+		// The players who have drawn so far, then the ones still to ask.
+		Carry: append(append([]uuid.UUID(nil), drew...), rest...),
+		Word:  strconv.Itoa(len(drew)),
 	}.Apply(ctx)
+}
+
+// b20KwainAnswer is one player's answer to Kwain's "draw a card?": on a yes
+// they draw (and are counted if they did), either way the next player is
+// asked. The prompt carries the players who have drawn (the first Word of
+// them) and the ones still to ask. Registered in init because the answer
+// asks the next player through b20KwainAsk, which names it. Keyed (#4291).
+var b20KwainAnswer game.ConfirmThen
+
+func init() {
+	b20KwainAnswer = MayAnswer("confirm/kwain-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+		n := wordInt(r)
+		if n > len(r.Carry) {
+			n = len(r.Carry)
+		}
+		drew, rest := append([]uuid.UUID(nil), r.Carry[:n]...), r.Carry[n:]
+		if !r.Accepted {
+			return b20KwainAsk(ctx, rest, drew)
+		}
+		who := r.Chooser
+		p := ctx.Game.PlayerByIDForEffect(who)
+		got := p != nil && p.Library != nil && p.Library.Size() > 0
+		if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+		if got {
+			drew = append(drew, who)
+		}
+		return b20KwainAsk(ctx, rest, drew)
+	})
 }

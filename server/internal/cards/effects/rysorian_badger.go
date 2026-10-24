@@ -26,7 +26,7 @@ func init() {
 		Name:         "Rysorian Badger",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			withTargetsFrom(unblockedAttackerMay("Rysorian Badger", "exile up to two target creature cards from defending player's graveyard",
+			withTargetsFrom(unblockedAttackerMay("Rysorian Badger", "exile up to two target creature cards from defending player's graveyard", "rysorian-badger-exile",
 				func(ctx *Context, _ uuid.UUID) error {
 					exiled := 0
 					for _, t := range ctx.LegalTargets() {

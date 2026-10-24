@@ -20,7 +20,7 @@ func init() {
 		Name:         "Ophidian",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			unblockedAttackerMayDraw("Ophidian", "draw a card", 1, func(ctx *Context, _ uuid.UUID) error {
+			unblockedAttackerMayDraw("Ophidian", "draw a card", 1, "ophidian-draw", func(ctx *Context, _ uuid.UUID) error {
 				return DrawCards{N: 1}.Apply(ctx)
 			}),
 		},

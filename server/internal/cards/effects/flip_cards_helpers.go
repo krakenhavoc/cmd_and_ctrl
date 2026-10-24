@@ -65,10 +65,15 @@ func kiFlipTriggers(name string) []game.TriggeredAbility {
 			if !ok || !onBattlefield(g, item.SourceCardID) || src.Counters["ki"] < 2 || sourceIsNewObject(g, item) {
 				return nil
 			}
-			return MayChoice{Question: name + " — flip it?", OnYes: FlipThis{}.Apply}.Apply(NewContext(g, item))
+			return MayChoice{Question: name + " — flip it?", Then: mayFlipThis}.Apply(NewContext(g, item))
 		}),
 	}
 }
 
 // removeAKiCounter is the cost "Remove a ki counter from <this>".
 func removeAKiCounter() game.AbilityCost { return RemoveCountersFromThis("ki", 1) }
+
+// mayFlipThis is the ki cycle's "you may flip it". Keyed (#4291).
+var mayFlipThis = MayYes("confirm/flip-this", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return FlipThis{}.Apply(ctx)
+})

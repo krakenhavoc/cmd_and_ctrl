@@ -33,7 +33,7 @@ func init() {
 				return MayChoice{
 					Question: "Bringer of the Black Dawn — pay 2 life to search your library for a card?",
 					LifeCost: 2,
-					OnYes:    bringerOfTheBlackDawnPayAndSearch,
+					Then:     bringerOfTheBlackDawnAnswer,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -53,3 +53,9 @@ func bringerOfTheBlackDawnPayAndSearch(ctx *Context) error {
 	}
 	return tutorToTop(ctx, "Bringer of the Black Dawn — any card, to the top of your library", false, nil)
 }
+
+// bringerOfTheBlackDawnAnswer is the "yes": pay 2 life and search. Keyed
+// (#4291).
+var bringerOfTheBlackDawnAnswer = MayYes("confirm/bringer-of-the-black-dawn-search", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return bringerOfTheBlackDawnPayAndSearch(ctx)
+})

@@ -79,13 +79,17 @@ func init() {
 func ratchetMayConvert(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Ratchet, Field Medic — convert Ratchet? (When you do, return an artifact card from your graveyard to the battlefield tapped.)",
-		OnYes: func(ctx *Context) error {
-			converted, err := convertThisReporting(ctx)
-			if err != nil || !converted {
-				return err
-			}
-			return WhenYouDo("Ratchet, Field Medic — return target artifact card from your graveyard to the battlefield tapped",
-				ratchetReturnBody).Apply(ctx)
-		},
+		Then:     ratchetConvertAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// ratchetConvertAnswer is the "yes": convert Ratchet, and when you do,
+// return an artifact card. Keyed (#4291).
+var ratchetConvertAnswer = MayYes("confirm/ratchet-field-medic-convert", func(ctx *Context, _ game.ConfirmAnswer) error {
+	converted, err := convertThisReporting(ctx)
+	if err != nil || !converted {
+		return err
+	}
+	return WhenYouDo("Ratchet, Field Medic — return target artifact card from your graveyard to the battlefield tapped",
+		ratchetReturnBody).Apply(ctx)
+})

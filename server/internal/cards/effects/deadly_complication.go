@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Deadly Complication — Sorcery {1}{B}{R}:
 //
@@ -45,8 +49,13 @@ func deadlyComplicationCounterAndRelease(_ *game.StackItem, ctx *Context, occ in
 		Question: "Deadly Complication — make it no longer suspected?",
 		YesLabel: "No longer suspected",
 		NoLabel:  "Keep it suspected",
-		OnYes: func(ctx *Context) error {
-			return Unsuspect{Target: t.ID}.Apply(ctx)
-		},
+		Then:     deadlyComplicationUnsuspect,
+		Carry:    []uuid.UUID{t.ID},
 	}.Apply(ctx)
 }
+
+// deadlyComplicationUnsuspect is the "yes": the target (the carried ID) is
+// no longer suspected. Keyed (#4291).
+var deadlyComplicationUnsuspect = MayYes("confirm/deadly-complication-unsuspect", func(ctx *Context, r game.ConfirmAnswer) error {
+	return Unsuspect{Target: carryAt(r, 0)}.Apply(ctx)
+})

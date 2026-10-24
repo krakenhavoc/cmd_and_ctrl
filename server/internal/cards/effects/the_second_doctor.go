@@ -58,13 +58,8 @@ func secondDoctorAsk(ctx *Context, order []uuid.UUID, i int, drew []uuid.UUID) e
 		Player:   asked,
 		Question: "The Second Doctor — draw a card?",
 		Draws:    1,
-		OnYes: func(ctx *Context) error {
-			next := append(append([]uuid.UUID(nil), drew...), asked)
-			return secondDoctorAsk(ctx, order, i+1, next)
-		},
-		OnNo: func(ctx *Context) error {
-			return secondDoctorAsk(ctx, order, i+1, drew)
-		},
+		Then:     secondDoctorAnswer,
+		Carry:    joinCarry(drew, order[i+1:]),
 	}.Apply(ctx)
 }
 
@@ -85,4 +80,21 @@ func secondDoctorFinish(ctx *Context, drew []uuid.UUID) error {
 			"The Second Doctor — can't attack its controller or their permanents", ctx.Source())
 	}
 	return nil
+}
+
+// secondDoctorAnswer is one player's answer to "draw a card?": a yes counts
+// them among those who will draw, either way the next player is asked. The
+// carried IDs are those who have said yes, a Nil, then the players still to
+// ask. Registered in init because it asks the next player through
+// secondDoctorAsk, which names it. Keyed (#4291).
+var secondDoctorAnswer game.ConfirmThen
+
+func init() {
+	secondDoctorAnswer = MayAnswer("confirm/the-second-doctor-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+		drew, rest := splitCarry(r)
+		if r.Accepted {
+			drew = append(drew, r.Chooser)
+		}
+		return secondDoctorAsk(ctx, rest, 0, drew)
+	})
 }

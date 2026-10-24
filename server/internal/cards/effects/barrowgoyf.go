@@ -97,15 +97,21 @@ func barrowgoyfMill(n int) Effect {
 		}
 		return MayChoice{
 			Question: "Barrowgoyf — mill " + strconv.Itoa(n) + " cards?",
-			OnYes: func(ctx *Context) error {
-				return MillToZone{
-					N: n,
-					Then: func(ctx *Context, milled []uuid.UUID) error {
-						return mayTakeOneFromAmongThem(ctx, milled, Creature(),
-							"Barrowgoyf — you may put a creature card from among them into your hand")
-					},
-				}.Apply(ctx)
-			},
+			Then:     barrowgoyfAnswer,
+			Word:     strconv.Itoa(n),
 		}.Apply(NewContext(g, item))
 	}
 }
+
+// barrowgoyfAnswer is the "yes": mill that many cards (the Word, the damage
+// dealt), then a creature card from among them may go to the hand. Keyed
+// (#4291).
+var barrowgoyfAnswer = MayYes("confirm/barrowgoyf-mill", func(ctx *Context, r game.ConfirmAnswer) error {
+	return MillToZone{
+		N: wordInt(r),
+		Then: func(ctx *Context, milled []uuid.UUID) error {
+			return mayTakeOneFromAmongThem(ctx, milled, Creature(),
+				"Barrowgoyf — you may put a creature card from among them into your hand")
+		},
+	}.Apply(ctx)
+})

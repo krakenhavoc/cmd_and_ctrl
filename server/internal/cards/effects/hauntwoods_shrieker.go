@@ -63,10 +63,15 @@ func hauntwoodsShriekerRevealAndMaybeTurnUp(g *game.Game, item *game.StackItem) 
 		}
 		return MayChoice{
 			Question: "Hauntwoods Shrieker — turn the revealed creature card face up?",
-			OnYes: func(ctx *Context) error {
-				return TurnFaceUp{Targets: []uuid.UUID{id}}.Apply(ctx)
-			},
+			Then:     hauntwoodsShriekerFaceUp,
+			Carry:    []uuid.UUID{id},
 		}.Apply(ctx)
 	}
 	return nil
 }
+
+// hauntwoodsShriekerFaceUp is the "yes": turn the revealed creature (the
+// carried ID) face up. Keyed (#4291).
+var hauntwoodsShriekerFaceUp = MayYes("confirm/hauntwoods-shrieker-face-up", func(ctx *Context, r game.ConfirmAnswer) error {
+	return TurnFaceUp{Targets: []uuid.UUID{carryAt(r, 0)}}.Apply(ctx)
+})

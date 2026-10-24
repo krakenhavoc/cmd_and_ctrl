@@ -35,7 +35,7 @@ func init() {
 				Question: "Entrust the Spark — sacrifice a planeswalker to search for a planeswalker?",
 				YesLabel: "Sacrifice a planeswalker",
 				NoLabel:  "Don't",
-				OnYes:    entrustTheSparkSacrificeThenSearch,
+				Then:     entrustTheSparkAnswer,
 			}.Apply(ctx)
 		},
 	})
@@ -63,3 +63,9 @@ func entrustTheSparkSacrificeThenSearch(ctx *Context) error {
 			}.Apply(NewContext(g, item))
 		})
 }
+
+// entrustTheSparkAnswer is the "yes": sacrifice a planeswalker, then search.
+// Keyed (#4291).
+var entrustTheSparkAnswer = MayYes("confirm/entrust-the-spark-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return entrustTheSparkSacrificeThenSearch(ctx)
+})

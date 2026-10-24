@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Clash of Elements — Instant {1}{U}{R}:
 //
@@ -38,18 +42,26 @@ func init() {
 				Question: "Clash of Elements — put " + c.Name + " on top of your library? (Yes: take 2 damage. No: it goes on the bottom.)",
 				YesLabel: "Top (take 2 damage)",
 				NoLabel:  "Bottom",
-				OnYes: func(ctx *Context) error {
-					return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, tucked bool) error {
-						if !tucked {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: owner, Amount: 2}.Apply(NewContext(g, item))
-					})
-				},
-				OnNo: func(ctx *Context) error {
-					return ctx.Game.TuckToLibraryForEffect(id, true)
-				},
+				Then:     clashOfElementsAnswer,
+				Carry:    []uuid.UUID{id},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// clashOfElementsAnswer is the permanent's owner's answer: it goes on top
+// of their library and they take 2 damage, or it goes on the bottom (the
+// carried ID is the permanent). Keyed (#4291).
+var clashOfElementsAnswer = MayYesNo("confirm/clash-of-elements-top-or-bottom",
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		owner := r.Chooser
+		return ctx.Game.TuckToLibraryThenForEffect(carryAt(r, 0), game.TuckOptions{}, func(g *game.Game, tucked bool) error {
+			if !tucked {
+				return nil
+			}
+			return DealDamage{Source: ctx.Item.SourceCardID, Target: owner, Amount: 2}.Apply(NewContext(g, ctx.Item))
+		})
+	},
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		return ctx.Game.TuckToLibraryForEffect(carryAt(r, 0), true)
+	})

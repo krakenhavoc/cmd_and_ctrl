@@ -38,6 +38,24 @@ type ConfirmAnswer struct {
 	Accepted bool
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// LifeCost is the life the accept branch was declared to charge
+	// (ConfirmPrompt.LifeCost): "pay N life" is a number a shared answer
+	// reads off the prompt rather than from a key of its own.
+	LifeCost int
+	// Word is the one word of the card's text the queuing card put on the
+	// prompt (ConfirmPrompt.Word, #4291): an amount or a token's name that a
+	// shared answer ("draw N cards", "create a token") is parameterised by.
+	// Empty when none.
+	Word string
+	// Objects are the objects, with the epoch each had, the card named as it
+	// asked (ConfirmPrompt.Objects), so an answer can tell a permanent from a
+	// new object the same card has become (CR 400.7).
+	Objects []ObjectRef
+	// Item is the stack item that asked, rebuilt from the data the prompt
+	// carried (ConfirmPrompt.Asked), so an answer reads the trigger's event,
+	// the targets, the X and the source object's epoch as a closure over the
+	// item used to. Nil when the card put none there.
+	Item *StackItem
 }
 
 // ConfirmFunc is a registered answer. It runs with g.mu held, may queue
@@ -146,6 +164,9 @@ func (g *Game) QueueConfirmKeyedForEffect(p ConfirmPrompt, then ConfirmThen, car
 		DeclineEndsLoop: p.DeclineEndsLoop,
 		PickThen:        then.key,
 		OptionCarry:     copyUUIDs(carry),
+		PickMatchArg:    p.Word,
+		OptionObjects:   cloneObjectRefs(p.Objects),
+		Asked:           copyAskedItem(p.Asked),
 	}), nil
 }
 
@@ -163,7 +184,11 @@ func confirmFrameOf(c *PendingChoice) *confirmFrame {
 	if c.Kind != PendingChoiceConfirm || c.PickThen == "" {
 		return nil
 	}
-	r := ConfirmAnswer{Chooser: c.Chooser, Source: c.Source, Carry: copyUUIDs(c.OptionCarry)}
+	r := ConfirmAnswer{
+		Chooser: c.Chooser, Source: c.Source, Carry: copyUUIDs(c.OptionCarry),
+		LifeCost: c.LifeCost, Word: c.PickMatchArg, Objects: cloneObjectRefs(c.OptionObjects),
+		Item: c.Asked.StackItem(),
+	}
 	accepted := r
 	accepted.Accepted = true
 	// #4281: a confirm a keyed branch queued answers under that branch's

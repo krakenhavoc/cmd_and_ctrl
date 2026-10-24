@@ -247,6 +247,14 @@ type ConfirmPrompt struct {
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040): accepting
 	// would continue a loop the table is already in.
 	DeclineEndsLoop bool
+	// Asked, Word and Objects are what a KEYED confirm hands its answer
+	// beside the carried IDs (QueueConfirmKeyedForEffect, #4291): the
+	// asking stack item as data (NewAskedItem), the one word of the card's
+	// text, and the objects with the epoch each had. A closure-form prompt
+	// leaves them empty.
+	Asked   *AskedItem
+	Word    string
+	Objects []ObjectRef
 	// OnAccept / OnDecline are the branches. Either may be nil. Both
 	// run with g.mu held and may queue further choices.
 	OnAccept, OnDecline func(g *Game) error
@@ -351,6 +359,11 @@ type ChooseCardsPrompt struct {
 	// the continuation re-checks what it needs.
 	ThenKey ChooseCardsThen
 	Carry   []uuid.UUID
+	// LiveZone opts a KEYED pick into the live-zone re-check a closure pick
+	// gets from Zone (#4291): the pick is refused for, and withdrawn when,
+	// its candidates are no longer in that zone, and the withdrawal runs the
+	// continuation with nothing picked. Ignored without ThenKey.
+	LiveZone ZoneKind
 	// CarryWord is the one word of the card's text a keyed continuation
 	// is handed (CardsChosen.Word, #4264): plain data on the prompt
 	// (PendingChoice.PickMatchArg).
@@ -432,6 +445,7 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			PickThen:          key,
 			PickMatchArg:      p.CarryWord,
 			OptionCarry:       copyUUIDs(p.Carry),
+			ChooseLiveZone:    p.LiveZone,
 		})
 	}
 	return g.QueueChoiceForEffect(PendingChoice{
@@ -645,11 +659,11 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 			return ErrInvalidParam
 		}
 		seen[id] = true
-		if frame != nil && frame.zone != "" {
+		if zone := choice.liveZone(); zone != "" {
 			// Re-checked against the LIVE zone, not the frozen
 			// candidate list: the prompt is asynchronous and a card
 			// can leave between the question and the answer.
-			if !g.pickStillInPickZoneLocked(choice, frame.zone, id) {
+			if !g.pickStillInPickZoneLocked(choice, zone, id) {
 				return ErrCardNotFound
 			}
 		}

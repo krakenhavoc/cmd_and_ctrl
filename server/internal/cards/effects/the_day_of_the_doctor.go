@@ -120,19 +120,24 @@ func dayOfTheDoctorFinale(g *game.Game, item *game.StackItem) error {
 // you do, this Saga deals 13 damage to you." The damage follows the
 // choice to exile, not the number of creatures that reached exile.
 func dayOfTheDoctorMayExileOthers(g *game.Game, item *game.StackItem, chosen []uuid.UUID) error {
-	keep := make(map[uuid.UUID]bool, len(chosen))
-	for _, id := range chosen {
-		keep[id] = true
-	}
 	return MayChoice{
 		Question: "The Day of the Doctor — exile all other creatures? If you do, it deals 13 damage to you.",
-		OnYes: func(ctx *Context) error {
-			if err := (ExileAllMatching{Match: And(Creature(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-				return !keep[c.InstanceID]
-			})}).Apply(ctx); err != nil {
-				return err
-			}
-			return DamageController{N: 13}.Apply(ctx)
-		},
+		Then:     dayOfTheDoctorAnswer,
+		Carry:    chosen,
 	}.Apply(NewContext(g, item))
 }
+
+// dayOfTheDoctorAnswer is the "yes": exile every creature but the ones kept
+// (the carried IDs), then take 13 damage. Keyed (#4291).
+var dayOfTheDoctorAnswer = MayYes("confirm/the-day-of-the-doctor-exile-others", func(ctx *Context, r game.ConfirmAnswer) error {
+	keep := make(map[uuid.UUID]bool, len(r.Carry))
+	for _, id := range r.Carry {
+		keep[id] = true
+	}
+	if err := (ExileAllMatching{Match: And(Creature(), func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return !keep[c.InstanceID]
+	})}).Apply(ctx); err != nil {
+		return err
+	}
+	return DamageController{N: 13}.Apply(ctx)
+})

@@ -21,7 +21,7 @@ func init() {
 		Name:         "Floral Spuzzem",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			withTargetsFrom(unblockedAttackerMay("Floral Spuzzem", "destroy target artifact defending player controls",
+			withTargetsFrom(unblockedAttackerMay("Floral Spuzzem", "destroy target artifact defending player controls", "floral-spuzzem-destroy",
 				func(ctx *Context, target uuid.UUID) error {
 					return DestroyTarget{Target: target}.Apply(ctx)
 				}), TargetOfDefendingPlayer("artifact", "target artifact defending player controls", Artifact())),

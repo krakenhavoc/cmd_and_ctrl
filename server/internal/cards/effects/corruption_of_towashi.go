@@ -32,10 +32,6 @@ import (
 // removes the other difference, so the two are equivalent except that
 // the do-nothing second trigger never reaches the stack.
 func init() {
-	const doneLabel = "Corruption of Towashi — draw (done)"
-	notYetDone := func(g *game.Game, source uuid.UUID) bool {
-		return g.ResolvedThisTurn(source, doneLabel) == 0
-	}
 	Register(Spec{
 		OracleID:     "242c39b4-5ef0-469a-a852-738f79d93bd6",
 		Name:         "Corruption of Towashi",
@@ -60,15 +56,24 @@ func init() {
 					return MayChoice{
 						Question: "Corruption of Towashi — draw a card?",
 						Draws:    1,
-						OnYes: func(ctx *Context) error {
-							if !notYetDone(ctx.Game, ctx.Item.SourceCardID) {
-								return nil
-							}
-							ctx.Game.NoteDoneThisTurn(ctx.Item.SourceCardID, doneLabel)
-							return DrawCards{N: 1}.Apply(ctx)
-						},
+						Then:     corruptionOfTowashiDraw,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+const doneLabel = "Corruption of Towashi — draw (done)"
+
+func notYetDone(g *game.Game, source uuid.UUID) bool {
+	return g.ResolvedThisTurn(source, doneLabel) == 0
+}
+
+// corruptionOfTowashiDraw is the "yes": draw, once this turn. Keyed (#4291).
+var corruptionOfTowashiDraw = MayYes("confirm/corruption-of-towashi-draw", func(ctx *Context, _ game.ConfirmAnswer) error {
+	if !notYetDone(ctx.Game, ctx.Item.SourceCardID) {
+		return nil
+	}
+	ctx.Game.NoteDoneThisTurn(ctx.Item.SourceCardID, doneLabel)
+	return DrawCards{N: 1}.Apply(ctx)
+})

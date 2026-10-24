@@ -45,22 +45,29 @@ func init() {
 
 func limDulsPaladinUpkeep(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	sacrificeAndDraw := func(ctx *Context) error {
-		if err := (SacrificePermanent{Target: ctx.Source()}).Apply(ctx); err != nil {
-			return err
-		}
-		return DrawCards{N: 1}.Apply(ctx)
-	}
 	p := g.PlayerByIDForEffect(ctx.Controller())
 	if p == nil || p.Hand.Size() == 0 {
-		return sacrificeAndDraw(ctx)
+		return limDulsPaladinSacrificeAndDraw(ctx)
 	}
 	return MayChoice{
 		Question: "Lim-Dûl's Paladin — discard a card? (if you don't, sacrifice it and draw a card)",
-		OnYes: func(ctx *Context) error {
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: ctx.Controller(), Source: ctx.Source(), N: 1})
-			return nil
-		},
-		OnNo: sacrificeAndDraw,
+		Then:     limDulsPaladinAnswer,
 	}.Apply(ctx)
 }
+
+// limDulsPaladinSacrificeAndDraw is "sacrifice it and draw a card".
+func limDulsPaladinSacrificeAndDraw(ctx *Context) error {
+	if err := (SacrificePermanent{Target: ctx.Source()}).Apply(ctx); err != nil {
+		return err
+	}
+	return DrawCards{N: 1}.Apply(ctx)
+}
+
+// limDulsPaladinAnswer is the upkeep choice: discard a card on a yes,
+// sacrifice the Paladin and draw on a no. Keyed (#4291).
+var limDulsPaladinAnswer = MayYesNo("confirm/lim-duls-paladin-discard-or-sacrifice",
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: ctx.Controller(), Source: ctx.Source(), N: 1})
+		return nil
+	},
+	func(ctx *Context, _ game.ConfirmAnswer) error { return limDulsPaladinSacrificeAndDraw(ctx) })

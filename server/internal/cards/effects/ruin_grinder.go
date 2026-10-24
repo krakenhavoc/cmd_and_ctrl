@@ -30,9 +30,7 @@ func init() {
 							Player:   player,
 							Question: "Ruin Grinder — discard your hand and draw seven cards?",
 							Draws:    7,
-							OnYes: func(c *Context) error {
-								return ruinGrinderWheel.RunAt(c, seatIndexOf(c.Game, player))
-							},
+							Then:     ruinGrinderAnswer,
 						}).Apply(ctx); err != nil {
 							return err
 						}
@@ -57,3 +55,9 @@ var ruinGrinderWheel = RegisterThenSteps("then-steps/ruin-grinder-wheel",
 	}),
 	Instruction(func(ctx *Context) error { return ctx.Game.DrawNForEffect(seatAtOccurrence(ctx), 7) }),
 )
+
+// ruinGrinderAnswer is a player's "yes": they discard their hand and draw
+// seven. Keyed (#4291).
+var ruinGrinderAnswer = MayYes("confirm/ruin-grinder-wheel", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ruinGrinderWheel.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
+})

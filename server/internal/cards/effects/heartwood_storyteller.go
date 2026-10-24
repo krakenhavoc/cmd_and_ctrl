@@ -83,9 +83,8 @@ func b38EachOpponentOfMayDraw(g *game.Game, item *game.StackItem, caster uuid.UU
 			Player:   who,
 			Question: "Heartwood Storyteller — draw a card?",
 			Draws:    1,
-			OnYes: func(ctx *Context) error {
-				return DrawCards{Player: who, N: 1}.Apply(ctx)
-			},
+			Then:     mayDrawCards,
+			Word:     "1",
 		}).Apply(ctx); err != nil {
 			return err
 		}

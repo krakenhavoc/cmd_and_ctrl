@@ -78,17 +78,9 @@ func crosswayMayPayTwoLifeToDraw(g *game.Game, item *game.StackItem) error {
 		YesLabel: "Pay 2 life",
 		NoLabel:  "Decline",
 		LifeCost: crosswayLifePayment,
-		OnYes:    crosswayPayTwoLifeThenDraw,
+		Then:     mayPayLifeDraw,
+		Word:     "1",
 	}.Apply(NewContext(g, item))
-}
-
-// crosswayPayTwoLifeThenDraw is the "if you do" branch: a CR 118.3
-// cost, then the linked draw. The body is the shared one in
-// helpers.go — Erebos, Bleak-Hearted prints the same sentence.
-//
-// Caller holds g.mu.
-func crosswayPayTwoLifeThenDraw(ctx *Context) error {
-	return payLifeThenDraw(ctx, crosswayLifePayment, 1)
 }
 
 // crosswayLifePayment is the printed 2.

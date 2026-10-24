@@ -54,8 +54,8 @@ func starAthletePunish(g *game.Game, item *game.StackItem) error {
 			Question: "Star Athlete — sacrifice " + c.Name + "? If you don't, Star Athlete deals 5 damage to you.",
 			YesLabel: "Sacrifice it",
 			NoLabel:  "Take 5 damage",
-			OnYes:    starAthleteSacrifice(t.ID, c.Controller),
-			OnNo:     starAthleteDamage(c.Controller),
+			Then:     starAthleteAnswer,
+			Carry:    []uuid.UUID{t.ID},
 		}.Apply(ctx)
 	}
 	return nil
@@ -84,3 +84,11 @@ func starAthleteDamage(player uuid.UUID) func(ctx *Context) error {
 		return DealDamage{Source: ctx.Item.SourceCardID, Target: player, Amount: 5}.Apply(ctx)
 	}
 }
+
+// starAthleteAnswer is the target's controller's answer: sacrifice it (the
+// carried ID), or take 5 damage. Keyed (#4291).
+var starAthleteAnswer = MayYesNo("confirm/star-athlete-sacrifice-or-damage",
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		return starAthleteSacrifice(carryAt(r, 0), r.Chooser)(ctx)
+	},
+	func(ctx *Context, r game.ConfirmAnswer) error { return starAthleteDamage(r.Chooser)(ctx) })

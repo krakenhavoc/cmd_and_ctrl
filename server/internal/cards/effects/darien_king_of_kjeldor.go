@@ -68,13 +68,8 @@ func init() {
 					Question: "Darien, King of Kjeldor — create " + strconv.Itoa(n) + " 1/1 white Soldier creature tokens?",
 					YesLabel: "Create them",
 					NoLabel:  "Decline",
-					OnYes: func(ctx *Context) error {
-						return CreateToken{
-							Controller: item.Controller,
-							Template:   TokenCard("1/1 white Soldier"),
-							N:          n,
-						}.Apply(ctx)
-					},
+					Then:     mayCreateTokens,
+					Word:     tokenWord(n, "1/1 white Soldier"),
 				}.Apply(ctx)
 			},
 		}},

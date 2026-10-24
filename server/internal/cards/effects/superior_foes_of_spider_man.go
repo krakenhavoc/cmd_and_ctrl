@@ -29,11 +29,15 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
 						Question: "Superior Foes of Spider-Man — exile the top card of your library?",
-						OnYes: func(ctx *Context) error {
-							return exileTopUntilYouExileAnother(ctx.Game, ctx.Item)
-						},
+						Then:     superiorFoesAnswer,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// superiorFoesAnswer is the "yes": exile the top card of the library,
+// closing the window this creature opened before. Keyed (#4291).
+var superiorFoesAnswer = MayYes("confirm/superior-foes-exile-top", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return exileTopUntilYouExileAnother(ctx.Game, ctx.Item)
+})

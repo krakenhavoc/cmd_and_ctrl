@@ -64,39 +64,45 @@ const gogoName = "Gogo, Mysterious Mime"
 // pump and force both creatures.
 func gogoMimic(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	self := item.SourceCardID
 	other, ok := b16FirstLegalTargetCard(ctx)
 	if !ok {
 		return nil
 	}
 	return MayChoice{
 		Question: "Gogo, Mysterious Mime — have Gogo become a copy of that creature until end of turn?",
-		OnYes: func(ctx *Context) error {
-			copied, err := BecomeCopy{
-				Targets: []uuid.UUID{self},
-				Of:      other,
-				Except:  func(v *game.PrintedValues) { v.SetName(gogoName) },
-				Label:   "Gogo, Mysterious Mime — becomes a copy",
-			}.ApplyReports(ctx)
-			if err != nil || !copied {
-				return err
-			}
-			// "If you do": Gogo and that creature each.
-			for _, id := range []uuid.UUID{self, other} {
-				if err := (ScopedEffectFor{
-					Target: id,
-					Mods: []game.Mod{
-						game.ModifyPTMod(2, 0),
-						game.AddKeywordsMod("haste"),
-						game.AddAttackRequirementMod(uuid.Nil),
-					},
-					Duration: DurationUntilEndOfTurn(ctx),
-					Label:    "Gogo, Mysterious Mime — +2/+0, haste, attacks this turn if able",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Then:     gogoAnswer,
+		Carry:    []uuid.UUID{other},
 	}.Apply(ctx)
 }
+
+// gogoAnswer is the "yes": Gogo becomes a copy of the creature (the carried
+// ID) until end of turn, and only if the copy began, both are pumped and
+// forced to attack. Keyed (#4291).
+var gogoAnswer = MayYes("confirm/gogo-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	self, other := ctx.Item.SourceCardID, carryAt(r, 0)
+	copied, err := BecomeCopy{
+		Targets: []uuid.UUID{self},
+		Of:      other,
+		Except:  func(v *game.PrintedValues) { v.SetName(gogoName) },
+		Label:   "Gogo, Mysterious Mime — becomes a copy",
+	}.ApplyReports(ctx)
+	if err != nil || !copied {
+		return err
+	}
+	// "If you do": Gogo and that creature each.
+	for _, id := range []uuid.UUID{self, other} {
+		if err := (ScopedEffectFor{
+			Target: id,
+			Mods: []game.Mod{
+				game.ModifyPTMod(2, 0),
+				game.AddKeywordsMod("haste"),
+				game.AddAttackRequirementMod(uuid.Nil),
+			},
+			Duration: DurationUntilEndOfTurn(ctx),
+			Label:    "Gogo, Mysterious Mime — +2/+0, haste, attacks this turn if able",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

@@ -80,8 +80,7 @@ func painfulQuandaryAsk(g *game.Game, item *game.StackItem, caster uuid.UUID) er
 		Question: "Painful Quandary — discard a card, or lose 5 life?",
 		YesLabel: "Discard a card",
 		NoLabel:  "Lose 5 life",
-		OnYes:    painfulQuandaryDiscard(caster),
-		OnNo:     painfulQuandaryLoseLife(caster),
+		Then:     painfulQuandaryAnswer,
 	}.Apply(ctx)
 }
 
@@ -110,3 +109,9 @@ func painfulQuandaryLoseLife(caster uuid.UUID) func(ctx *Context) error {
 		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), caster, -painfulQuandaryLifeLoss)
 	}
 }
+
+// painfulQuandaryAnswer is the caster's answer: discard a card, or lose 5
+// life. Keyed (#4291).
+var painfulQuandaryAnswer = MayYesNo("confirm/painful-quandary-discard-or-lose-life",
+	func(ctx *Context, r game.ConfirmAnswer) error { return painfulQuandaryDiscard(r.Chooser)(ctx) },
+	func(ctx *Context, r game.ConfirmAnswer) error { return painfulQuandaryLoseLife(r.Chooser)(ctx) })
