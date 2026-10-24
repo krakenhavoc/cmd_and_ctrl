@@ -131,6 +131,17 @@ func (g *Game) enteringAuraLocked(ev *ReplacementEvent) (Card, *TargetSpec, bool
 	} else if tok, ok := g.enteringTokenLocked(ev.CardID); ok {
 		card, found = tok, true
 	}
+	if found && ev.entersAsAura {
+		// A card returning as an Aura (returned_aura.go): a creature card in
+		// its zone, an Aura with the clause its definition names the moment
+		// it lands. It must be a card with a clause; the sandbox's other
+		// entries never set the flag.
+		spec := ReturnedAuraSpecFor(catalogKeyOf(&card))
+		if spec == nil {
+			return Card{}, nil, false
+		}
+		return card, spec, true
+	}
 	if !found || !card.IsAura() || card.IsRole() || card.IsCreature() {
 		return Card{}, nil, false
 	}

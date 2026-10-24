@@ -1816,6 +1816,23 @@ type Card struct {
 	// for alignment.
 	EnchantSwapped bool
 
+	// ReturnedAura is the Aura form of a card that "returns to the
+	// battlefield. It's an Aura enchantment with enchant <clause> and
+	// '<ability>'. It loses all other abilities" (Harold and Bob, First
+	// Numens; Bronzehide Lion's wording; ADR 0154's 2026-10-23
+	// amendment, returned_aura.go). Set as the entry lands, before the
+	// CR 303.4f host is attached and before EventETB, by
+	// ReturnFromGraveyardAsAuraForEffect. The card's own statics read it
+	// (effects.ReturnedAuraForm): the layer-4 type set, the layer-6
+	// removal and the grant to the enchanted permanent. The enchant
+	// clause is CardDef.ReturnedAura, read first by attachmentLegalLocked
+	// when this is set.
+	//
+	// Cleared at both CR 400.7 sites on every zone change, so a card that
+	// dies as an Aura comes back as the creature card it prints. Not a
+	// copiable value (CR 707.2). Carried by clone and the snapshot.
+	ReturnedAura bool
+
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a
 	// battlefield host is judged by it (#3159; documented beside
 	// AttachedEpoch, kept here for alignment). AttachForEffect sets it

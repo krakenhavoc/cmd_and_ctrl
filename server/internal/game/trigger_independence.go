@@ -1603,7 +1603,7 @@ const (
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
-	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
+	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,

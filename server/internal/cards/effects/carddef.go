@@ -191,6 +191,7 @@ func buildDef(spec Spec) *game.CardDef {
 		StartingLoyalty:                     spec.StartingLoyalty,
 		TargetMode:                          spec.TargetMode,
 		Targets:                             spec.Targets,
+		ReturnedAura:                        spec.ReturnedAura,
 		Modes:                               spec.Modes,
 		Purpose:                             spec.Purpose,
 		Replacements:                        spec.Replacements,

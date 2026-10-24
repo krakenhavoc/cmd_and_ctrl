@@ -684,6 +684,13 @@ type ReplacementEvent struct {
 	auraHostFixed   bool
 	auraHostSettled bool
 
+	// entersAsAura is a card that comes back "as an Aura" (returned_aura.go,
+	// ADR 0154's 2026-10-23 amendment): CR 303.4f judges it an Aura with
+	// the enchant clause CardDef.ReturnedAura gives it, though the card in
+	// its zone is a creature card, and the landing sets Card.ReturnedAura
+	// before the host is attached. A value field, like auraHost.
+	entersAsAura bool
+
 	// exchangeTextWith names the creature an "as this enters, you may
 	// exchange its text box and another creature's" choice picked (ADR
 	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by

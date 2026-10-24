@@ -234,6 +234,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// card in its new zone never had it.
 	c.EnchantSwapped = false
 	c.EnchantReturned = ObjectRef{}
+	// ADR 0154 / CR 400.7: the Aura form of a card that returns as an
+	// Aura (returned_aura.go) belongs to the object that returned. The
+	// card in its new zone is the card it prints.
+	c.ReturnedAura = false
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.

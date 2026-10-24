@@ -48,7 +48,7 @@ func (g *Game) offBattlefieldHostLocked(attachmentID uuid.UUID, host TargetRef) 
 	if c == nil || !c.IsAura() || c.EnchantSwapped || c.Bestowed {
 		return 0, false
 	}
-	spec := TargetSpecFor(catalogKeyOf(c))
+	spec := auraEnchantSpecOf(c)
 	if spec == nil {
 		return 0, false
 	}

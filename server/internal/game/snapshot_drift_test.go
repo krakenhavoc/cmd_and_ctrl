@@ -589,6 +589,10 @@ var cardFields = plan(
 	// ADR 0154 decision 4: Animate Dead's gained enchant clause and the
 	// creature it names, carried for Bestowed's reason.
 	"EnchantSwapped", carried, "",
+	// ADR 0154 amendment 2026-10-23 (#2809): the Aura form of a card that
+	// returned as an Aura, set as the entry lands. Carried: a restore that
+	// dropped it would give the Aura its creature back.
+	"ReturnedAura", carried, "",
 	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
