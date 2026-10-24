@@ -1,0 +1,861 @@
+package game
+
+import (
+	"reflect"
+	"sort"
+
+	"github.com/google/uuid"
+)
+
+// replacement_resume_keyed.go — #4253: a CR 616 prompt's resume frame
+// written as data, so a table waiting on one is a restore point.
+//
+// Every CR 616 prompt (a "may" replacement's yes/no, riot's question, the
+// ordering prompt of CR 616.1) pauses one ReplacementEvent and resumes it
+// through PendingChoice.replacementResume: the event, the replacements
+// gathered for it, and — on the Game — the CR 614.5 once-per-event marks.
+// Until now none of that was written to a restore point, so the census
+// counted the frame (ChoiceResumeFrames) and the table was not one.
+//
+// # What the frame is, on disk
+//
+// The frame is four things, and each is data:
+//
+//   - The event: its kind and its fields (replacementEventSnapshot). Its
+//     own continuation is either data already (a draw's drawTail and
+//     drawThen, a replaced draw's or learn's registered body, an expanded
+//     draw's pending siblings) or is engine code chosen by the event's
+//     kind (finishSettledReplacementLocked). A field that holds a Go
+//     closure — a route's `then`, an entry batch, a token, life, counter,
+//     damage or mill tail — keeps the frame off the disk: such a frame is
+//     still counted by the census, exactly as before.
+//   - The pending replacement set: the IDs of the gathered effects, in
+//     gathered order. The effects themselves are rebuilt by the running
+//     binary, by gathering the restored event again and picking those
+//     IDs, because every source a gather reads (the board, the
+//     graveyards, the entering card, its look-ahead, the scoped records)
+//     is in the restore point. The object serials the catalog IDs pack
+//     (#3482) are written beside the prompts, so the IDs mean the same
+//     objects after the restore.
+//   - The marks: which effects have already applied to this event.
+//   - A registered key for the tail that runs once the window settles,
+//     one per event kind (the three keys below). It rides the prompt's
+//     `pickThen`, so a binary from before this change, which checks a
+//     pickThen it does not know as a revealed-hand pick's continuation,
+//     refuses the file (ErrUnknownEffectKey) instead of restoring a prompt
+//     with no frame behind it, which would wedge the table.
+//
+// # Event kinds
+//
+// Keyed: a draw (dredge, Underrealm Lich, Forbidden Crypt, an ordering
+// prompt between a doubler and a dredge), a keyword action with no tail
+// (learn, so Retriever Phoenix), and a zone move — an exit whose route
+// carries no continuation (a commander's CR 903.9b bounce) and a
+// battlefield entry with no batch and no entry continuation (riot,
+// unleash, a permanent spell's entry, whose resolving stack item is
+// written with it).
+//
+// Not keyed (the frame stays a closure, counted by the census): a
+// discard, a token creation, a counter placement, a life change, damage,
+// a mill, a step transition, a countered spell, and a keyword action,
+// move or entry whose tail holds a closure (a route's `then`, a
+// simultaneous exit or exchange, an entry batch or an entry tail's
+// `then`). The other prompt kinds that pause an entry through the same
+// frame (copy, entry-controller, entry-card, aura-host, read-ahead and
+// the entry-life payment) are not keyed either.
+
+// The registered tails, one per keyed event kind. On-disk identities:
+// never renamed, never reused. Ledgered as "resume <key>".
+const (
+	ReplacementResumeDraw          = "replacement-resume/draw"
+	ReplacementResumeKeywordAction = "replacement-resume/keyword-action"
+	ReplacementResumeMove          = "replacement-resume/move"
+)
+
+// replacementResumeTails maps each tail key to the event kind it
+// finishes. The tail itself is finishSettledReplacementLocked's arm for
+// that kind, reached through the prompt kind's own resolve path.
+var replacementResumeTails = map[string]ReplacementEventKind{
+	ReplacementResumeDraw:          RepEventDraw,
+	ReplacementResumeKeywordAction: RepEventKeywordAction,
+	ReplacementResumeMove:          RepEventMove,
+}
+
+// KnownReplacementResume reports whether key names a registered tail.
+func KnownReplacementResume(key string) bool {
+	_, ok := replacementResumeTails[key]
+	return ok
+}
+
+// replacementResumeKeyFor is the tail key for an event kind, or "".
+func replacementResumeKeyFor(kind ReplacementEventKind) string {
+	for k, v := range replacementResumeTails {
+		if v == kind {
+			return k
+		}
+	}
+	return ""
+}
+
+// keyedReplacementPromptKind reports whether a prompt of this kind
+// resumes through ResolveOptionalReplacement, ResolveReplacementOrder or
+// ResolveEntryRiot, the three resolve paths that read nothing but the
+// frame and the prompt's own data.
+func keyedReplacementPromptKind(k PendingChoiceKind) bool {
+	switch k {
+	case PendingChoiceOptionalReplacement, PendingChoiceReplacementOrder, PendingChoiceEntryRiot:
+		return true
+	}
+	return false
+}
+
+// registeredReplacementResumeKeys lists the ledger lines for the tails
+// and for the three body registries a keyed event can name: "resume
+// <key>", "drawinstead <key>", "drawthen <key>", "keywordinstead <key>".
+func registeredReplacementResumeKeys() []string {
+	var out []string
+	for k := range replacementResumeTails {
+		out = append(out, "resume "+k)
+	}
+	drawInsteadMu.RLock()
+	for k := range drawInsteadBodies {
+		out = append(out, "drawinstead "+k)
+	}
+	drawInsteadMu.RUnlock()
+	drawThenMu.RLock()
+	for k := range drawThenBodies {
+		out = append(out, "drawthen "+k)
+	}
+	drawThenMu.RUnlock()
+	keywordInsteadMu.RLock()
+	for k := range keywordInsteadBodies {
+		out = append(out, "keywordinstead "+k)
+	}
+	keywordInsteadMu.RUnlock()
+	sort.Strings(out)
+	return out
+}
+
+// KnownDrawInstead, KnownDrawThen and KnownKeywordInstead report whether
+// a body is registered under key.
+func KnownDrawInstead(key string) bool {
+	drawInsteadMu.RLock()
+	defer drawInsteadMu.RUnlock()
+	_, ok := drawInsteadBodies[key]
+	return ok
+}
+
+func KnownDrawThen(key string) bool {
+	drawThenMu.RLock()
+	defer drawThenMu.RUnlock()
+	_, ok := drawThenBodies[key]
+	return ok
+}
+
+func KnownKeywordInstead(key string) bool {
+	keywordInsteadMu.RLock()
+	defer keywordInsteadMu.RUnlock()
+	_, ok := keywordInsteadBodies[key]
+	return ok
+}
+
+// --- the event's fields -----------------------------------------------
+
+// replacementEventField says what a keyed frame does with one field of
+// ReplacementEvent.
+type replacementEventField uint8
+
+const (
+	// repFieldCarried: written with the frame and put back.
+	repFieldCarried replacementEventField = iota + 1
+	// repFieldGate: not written. A frame whose event has it set is not
+	// keyed (it is counted by the census, as before): it holds a closure,
+	// or it belongs to an event kind this file does not key.
+	repFieldGate
+	// repFieldCache: not written; the running binary recomputes it.
+	repFieldCache
+)
+
+// replacementEventFields classifies every field of ReplacementEvent.
+// TestReplacementEventFieldsAreClassified fails on a field missing from
+// it, and an unclassified field is treated as a gate, so a new field
+// keeps its frames off the disk until someone decides.
+var replacementEventFields = map[string]replacementEventField{
+	"ID":            repFieldCarried,
+	"Kind":          repFieldCarried,
+	"Canceled":      repFieldCarried,
+	"Actor":         repFieldCarried,
+	"Source":        repFieldCarried,
+	"mustSettleNow": repFieldCarried,
+
+	// A draw.
+	"DrawPlayer":     repFieldCarried,
+	"DrawCount":      repFieldCarried,
+	"drawPending":    repFieldCarried,
+	"drawInstead":    repFieldCarried,
+	"drawTail":       repFieldCarried,
+	"drawThen":       repFieldCarried,
+	"keywordInstead": repFieldCarried,
+
+	// A keyword action. Its tail holds closures (a scry's or a
+	// proliferate's "then", an amass's Army), so it gates; learn has none.
+	"KeywordAction":      repFieldCarried,
+	"KeywordActionCount": repFieldCarried,
+	"keywordAction":      repFieldGate,
+
+	// A zone move and a battlefield entry.
+	"CardID":                    repFieldCarried,
+	"OldZone":                   repFieldCarried,
+	"NewZone":                   repFieldCarried,
+	"NewZoneOwner":              repFieldCarried,
+	"ShuffleDestinationLibrary": repFieldCarried,
+	"ExiledWith":                repFieldCarried,
+	"ExileCounter":              repFieldCarried,
+	"Destruction":               repFieldCarried,
+	"CantBeRegenerated":         repFieldCarried,
+	"StateBasedDestruction":     repFieldCarried,
+	"EntersTapped":              repFieldCarried,
+	"EntersPrepared":            repFieldCarried,
+	"EntersDevoured":            repFieldCarried,
+	"EntersWithHaste":           repFieldCarried,
+	"lookAhead":                 repFieldCache,
+	"entryRefused":              repFieldCarried,
+	"EntersUnlocked":            repFieldCarried,
+	"EntersAttacking":           repFieldCarried,
+	"FaceDown":                  repFieldCarried,
+	"FaceDownListed":            repFieldCarried,
+	"EntersAsCopyOf":            repFieldCarried,
+	"copySourceID":              repFieldCarried,
+	"copyUntilEndOfTurn":        repFieldCarried,
+	"auraHost":                  repFieldCarried,
+	"auraHostFixed":             repFieldCarried,
+	"auraHostSettled":           repFieldCarried,
+	"entersAsAura":              repFieldCarried,
+	"exchangeTextWith":          repFieldCarried,
+	"stackItem":                 repFieldCarried,
+	"putByEntering":             repFieldCarried,
+	"EntersWithCounters":        repFieldCarried,
+	"entryResumable":            repFieldCarried,
+	"entryTail":                 repFieldCarried, // its data half; see replacementFrameKeyable
+	"landPlay":                  repFieldCarried,
+	"landPlayer":                repFieldCarried,
+	"entryControllerSet":        repFieldCarried,
+	"entryControllerPrior":      repFieldCarried,
+	"zoneRoute":                 repFieldCarried, // its data half; see replacementFrameKeyable
+	"lifeAfterMove":             repFieldCarried,
+	"extraTurnsAfterMove":       repFieldCarried,
+	"asCommanderMove":           repFieldCarried,
+	"commanderAnswer":           repFieldCarried,
+
+	// The event kinds this file does not key.
+	"ManaPlayer":                 repFieldGate,
+	"ManaSource":                 repFieldGate,
+	"ManaColors":                 repFieldGate,
+	"ManaFromTap":                repFieldGate,
+	"DiscardPlayer":              repFieldGate,
+	"DiscardCause":               repFieldGate,
+	"DiscardCauseController":     repFieldGate,
+	"TokenController":            repFieldGate,
+	"TokenGroups":                repFieldGate,
+	"TokenAttacking":             repFieldGate,
+	"TokenTogether":              repFieldGate,
+	"TokenAttackChoicesLabel":    repFieldGate,
+	"tokenTail":                  repFieldGate,
+	"MillPlayer":                 repFieldGate,
+	"MillCount":                  repFieldGate,
+	"mill":                       repFieldGate,
+	"CounterTarget":              repFieldGate,
+	"CounterName":                repFieldGate,
+	"CounterDelta":               repFieldGate,
+	"CounterPlayer":              repFieldGate,
+	"StartingLoyalty":            repFieldGate,
+	"counterTail":                repFieldGate,
+	"CounterPlacer":              repFieldGate,
+	"CounterFromCombatDamage":    repFieldGate,
+	"CounterFromCost":            repFieldGate,
+	"CounterFromTurnBasedAction": repFieldGate,
+	"LifePlayer":                 repFieldGate,
+	"LifeDelta":                  repFieldGate,
+	"LifeFromRadiation":          repFieldGate,
+	"lifeTail":                   repFieldGate,
+	"DamageSource":               repFieldGate,
+	"DamageTarget":               repFieldGate,
+	"DamageAmount":               repFieldGate,
+	"IsCombatDamage":             repFieldGate,
+	"DamageInstance":             repFieldGate,
+	"SourceLKI":                  repFieldGate,
+	"damageTail":                 repFieldGate,
+	"StepTransitionStep":         repFieldGate,
+	"StepTransitionSeat":         repFieldGate,
+	"ExtraTurnSeat":              repFieldGate,
+	"ExtraTurnRef":               repFieldGate,
+	"CounterSpellID":             repFieldGate,
+	"CounterBy":                  repFieldGate,
+	"CounterBySource":            repFieldGate,
+	"counterInstead":             repFieldGate,
+}
+
+// replacementEventGatesClear reports whether every gate field of ev is
+// at its zero value. An unclassified field counts as a gate.
+func replacementEventGatesClear(ev *ReplacementEvent) bool {
+	v := reflect.ValueOf(ev).Elem()
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		class := replacementEventFields[t.Field(i).Name]
+		if class == repFieldCarried || class == repFieldCache {
+			continue
+		}
+		if !v.Field(i).IsZero() {
+			return false
+		}
+	}
+	return true
+}
+
+// replacementFrameKeyable reports the tail key a prompt's frame is
+// written under, or "" when the frame stays a closure.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
+	if c == nil || !keyedReplacementPromptKind(c.Kind) || c.costCommanderResume != nil {
+		return ""
+	}
+	f := c.replacementResume
+	if f == nil || f.ev == nil || len(f.applicable) == 0 {
+		return ""
+	}
+	ev := f.ev
+	key := replacementResumeKeyFor(ev.Kind)
+	if key == "" || !replacementEventGatesClear(ev) {
+		return ""
+	}
+	if r := ev.zoneRoute; r != nil && (r.then != nil || len(r.simultaneousExit) > 0 || r.simultaneousEntry != nil) {
+		return ""
+	}
+	if t := ev.entryTail; t != nil && (t.then != nil || t.batch != nil) {
+		return ""
+	}
+	if ev.stackItem != nil {
+		// The resolving spell a permanent's entry carries. Written with
+		// the frame through the stack-item mirror; one the mirror cannot
+		// carry whole keeps the frame off the disk.
+		var scratch ContinuationCensus
+		_ = snapshotStackItem(g, ev.stackItem, &scratch)
+		if !scratch.Empty() {
+			return ""
+		}
+	}
+	for _, a := range f.applicable {
+		if a.id >= testReplacementIDBase && a.id < builtinReplacementIDBase {
+			// A test-injected effect is not in the restore point, so the
+			// restored binary could not gather it again.
+			return ""
+		}
+	}
+	return key
+}
+
+// --- the mirror -------------------------------------------------------
+
+// replacementResumeSnapshot is a keyed frame on disk
+// (pendingChoiceSnapshot.ReplacementResume). Its tail key rides the
+// prompt's pickThen.
+type replacementResumeSnapshot struct {
+	Event replacementEventSnapshot `json:"event"`
+	// Applicable is the pending replacement set, in gathered order:
+	// replacementResumeFrame.applicable by ID. Restore gathers the event
+	// again and picks these.
+	Applicable []ReplacementEffectID `json:"applicable"`
+	// Applied is Game.replacementsAppliedThisEvent for the event, sorted:
+	// the effects that have already applied to it (CR 614.5).
+	Applied []ReplacementEffectID `json:"applied,omitempty"`
+}
+
+// replacementEventSnapshot is a ReplacementEvent's carried fields.
+type replacementEventSnapshot struct {
+	ID            ReplacementEventID   `json:"id"`
+	Kind          ReplacementEventKind `json:"kind"`
+	Canceled      bool                 `json:"canceled,omitempty"`
+	Actor         *uuid.UUID           `json:"actor,omitempty"`
+	Source        *uuid.UUID           `json:"source,omitempty"`
+	MustSettleNow bool                 `json:"mustSettleNow,omitempty"`
+
+	DrawPlayer     *uuid.UUID            `json:"drawPlayer,omitempty"`
+	DrawCount      int                   `json:"drawCount,omitempty"`
+	DrawPending    []pendingDrawSnapshot `json:"drawPending,omitempty"`
+	DrawInstead    *insteadRunSnapshot   `json:"drawInstead,omitempty"`
+	DrawTail       int                   `json:"drawTail,omitempty"`
+	DrawThen       *drawThenSnapshot     `json:"drawThen,omitempty"`
+	KeywordInstead *insteadRunSnapshot   `json:"keywordInstead,omitempty"`
+
+	KeywordAction      KeywordAction `json:"keywordAction,omitempty"`
+	KeywordActionCount int           `json:"keywordActionCount,omitempty"`
+
+	CardID                    *uuid.UUID          `json:"cardId,omitempty"`
+	OldZone                   ZoneKind            `json:"oldZone,omitempty"`
+	NewZone                   ZoneKind            `json:"newZone,omitempty"`
+	NewZoneOwner              *uuid.UUID          `json:"newZoneOwner,omitempty"`
+	ShuffleDestinationLibrary bool                `json:"shuffleDestinationLibrary,omitempty"`
+	ExiledWith                *PermissionCardRef  `json:"exiledWith,omitempty"`
+	ExileCounter              string              `json:"exileCounter,omitempty"`
+	Destruction               bool                `json:"destruction,omitempty"`
+	CantBeRegenerated         bool                `json:"cantBeRegenerated,omitempty"`
+	StateBasedDestruction     bool                `json:"stateBasedDestruction,omitempty"`
+	EntersTapped              bool                `json:"entersTapped,omitempty"`
+	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
+	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
+	EntersWithHaste           bool                `json:"entersWithHaste,omitempty"`
+	EntryRefused              bool                `json:"entryRefused,omitempty"`
+	EntersUnlocked            DoorMask            `json:"entersUnlocked,omitempty"`
+	EntersAttacking           *uuid.UUID          `json:"entersAttacking,omitempty"`
+	FaceDown                  FaceDownKind        `json:"faceDown,omitempty"`
+	FaceDownListed            *FaceDownListing    `json:"faceDownListed,omitempty"`
+	EntersAsCopyOf            *PrintedValues      `json:"entersAsCopyOf,omitempty"`
+	CopySource                *uuid.UUID          `json:"copySource,omitempty"`
+	CopyUntilEndOfTurn        bool                `json:"copyUntilEndOfTurn,omitempty"`
+	AuraHost                  *TargetRef          `json:"auraHost,omitempty"`
+	AuraHostFixed             bool                `json:"auraHostFixed,omitempty"`
+	AuraHostSettled           bool                `json:"auraHostSettled,omitempty"`
+	EntersAsAura              bool                `json:"entersAsAura,omitempty"`
+	ExchangeTextWith          *uuid.UUID          `json:"exchangeTextWith,omitempty"`
+	StackItem                 *stackItemSnapshot  `json:"stackItem,omitempty"`
+	PutByEntering             bool                `json:"putByEntering,omitempty"`
+	EntersWithCounters        map[string]int      `json:"entersWithCounters,omitempty"`
+	EntryResumable            bool                `json:"entryResumable,omitempty"`
+	EntryTail                 *entryTailSnapshot  `json:"entryTail,omitempty"`
+	LandPlay                  bool                `json:"landPlay,omitempty"`
+	LandPlayer                *uuid.UUID          `json:"landPlayer,omitempty"`
+	EntryControllerSet        bool                `json:"entryControllerSet,omitempty"`
+	EntryControllerPrior      *uuid.UUID          `json:"entryControllerPrior,omitempty"`
+	ZoneRoute                 *zoneRouteSnapshot  `json:"zoneRoute,omitempty"`
+	LifeAfterMove             []moveLifeSnapshot  `json:"lifeAfterMove,omitempty"`
+	ExtraTurnsAfterMove       []moveTurnSnapshot  `json:"extraTurnsAfterMove,omitempty"`
+	AsCommanderMove           bool                `json:"asCommanderMove,omitempty"`
+	CommanderAnswer           commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+}
+
+// pendingDrawSnapshot is a pendingDraw: an expanded draw's sibling.
+type pendingDrawSnapshot struct {
+	Player  uuid.UUID             `json:"player"`
+	Count   int                   `json:"count"`
+	Applied []ReplacementEffectID `json:"applied,omitempty"`
+}
+
+// insteadRunSnapshot is a recorded draw-instead or keyword-instead body:
+// its registered key and the card it belongs to.
+type insteadRunSnapshot struct {
+	Key    string     `json:"key"`
+	Source *uuid.UUID `json:"source,omitempty"`
+}
+
+// drawThenSnapshot is a DrawThen.
+type drawThenSnapshot struct {
+	Key    string     `json:"key"`
+	Player *uuid.UUID `json:"player,omitempty"`
+	Source *uuid.UUID `json:"source,omitempty"`
+	N      int        `json:"n,omitempty"`
+}
+
+// entryTailSnapshot is an entryTail's data half: a tail with a `then`
+// or a batch is never written.
+type entryTailSnapshot struct {
+	NewObject   bool        `json:"newObject,omitempty"`
+	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
+	BatchIndex  int         `json:"batchIndex,omitempty"`
+}
+
+// zoneRouteSnapshot is a zoneRoute's data half: a route with a `then`,
+// a simultaneous exit or an exchange entry is never written.
+type zoneRouteSnapshot struct {
+	CardID              *uuid.UUID          `json:"cardId,omitempty"`
+	Dst                 ZoneKind            `json:"dst,omitempty"`
+	DstOwner            *uuid.UUID          `json:"dstOwner,omitempty"`
+	Actor               *uuid.UUID          `json:"actor,omitempty"`
+	ToBottom            bool                `json:"toBottom,omitempty"`
+	Depth               int                 `json:"depth,omitempty"`
+	FaceDown            FaceDownKind        `json:"faceDown,omitempty"`
+	HiddenBy            *PermissionCardRef  `json:"hiddenBy,omitempty"`
+	ExiledWith          *PermissionCardRef  `json:"exiledWith,omitempty"`
+	ExiledWithAbility   *AbilityRef         `json:"exiledWithAbility,omitempty"`
+	Mill                bool                `json:"mill,omitempty"`
+	Discard             bool                `json:"discard,omitempty"`
+	DiscardCause        DiscardCause        `json:"discardCause,omitempty"`
+	Source              *uuid.UUID          `json:"source,omitempty"`
+	MustSettleNow       bool                `json:"mustSettleNow,omitempty"`
+	Countered           bool                `json:"countered,omitempty"`
+	CauseKind           MoveCauseKind       `json:"causeKind,omitempty"`
+	CauseController     *uuid.UUID          `json:"causeController,omitempty"`
+	CauseItem           *uuid.UUID          `json:"causeItem,omitempty"`
+	Sacrifice           bool                `json:"sacrifice,omitempty"`
+	ViaBattlefieldLeave bool                `json:"viaBattlefieldLeave,omitempty"`
+	Destruction         bool                `json:"destruction,omitempty"`
+	CantBeRegenerated   bool                `json:"cantBeRegenerated,omitempty"`
+	StateBased          bool                `json:"stateBased,omitempty"`
+	AsCommander         bool                `json:"asCommander,omitempty"`
+	CommanderAnswer     commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+}
+
+// moveLifeSnapshot is a lifeInstruction (ADR 0178).
+type moveLifeSnapshot struct {
+	Source *uuid.UUID `json:"source,omitempty"`
+	Player uuid.UUID  `json:"player"`
+	Delta  int        `json:"delta"`
+}
+
+// moveTurnSnapshot is an extraTurnInstruction (ADR 0188).
+type moveTurnSnapshot struct {
+	Source *uuid.UUID `json:"source,omitempty"`
+	Player uuid.UUID  `json:"player"`
+}
+
+// replacementSerialSnapshot is one entry of Game.replacementObjectSerials.
+type replacementSerialSnapshot struct {
+	Object ObjectRef `json:"object"`
+	Serial int       `json:"serial"`
+}
+
+func permissionRefPtr(r PermissionCardRef) *PermissionCardRef {
+	if r == (PermissionCardRef{}) {
+		return nil
+	}
+	return &r
+}
+
+func permissionRefValue(r *PermissionCardRef) PermissionCardRef {
+	if r == nil {
+		return PermissionCardRef{}
+	}
+	return *r
+}
+
+func insteadRunOrNil(key string, source uuid.UUID) *insteadRunSnapshot {
+	if key == "" {
+		return nil
+	}
+	return &insteadRunSnapshot{Key: key, Source: uuidPtrOrNil(source)}
+}
+
+// snapshotReplacementResume writes a keyable frame. Caller has checked
+// replacementFrameKeyable.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) snapshotReplacementResume(f *replacementResumeFrame, cen *ContinuationCensus) *replacementResumeSnapshot {
+	out := &replacementResumeSnapshot{Event: g.snapshotReplacementEvent(f.ev, cen)}
+	out.Applicable = make([]ReplacementEffectID, 0, len(f.applicable))
+	for _, a := range f.applicable {
+		out.Applicable = append(out.Applicable, a.id)
+	}
+	for id, applied := range g.replacementsAppliedThisEvent[f.ev.ID] {
+		if applied {
+			out.Applied = append(out.Applied, id)
+		}
+	}
+	sort.Slice(out.Applied, func(i, j int) bool { return out.Applied[i] < out.Applied[j] })
+	return out
+}
+
+func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationCensus) replacementEventSnapshot {
+	out := replacementEventSnapshot{
+		ID:                        ev.ID,
+		Kind:                      ev.Kind,
+		Canceled:                  ev.Canceled,
+		Actor:                     uuidPtrOrNil(ev.Actor),
+		Source:                    uuidPtrOrNil(ev.Source),
+		MustSettleNow:             ev.mustSettleNow,
+		DrawPlayer:                uuidPtrOrNil(ev.DrawPlayer),
+		DrawCount:                 ev.DrawCount,
+		DrawInstead:               insteadRunOrNil(ev.drawInstead.ref.key, ev.drawInstead.source),
+		DrawTail:                  ev.drawTail,
+		KeywordInstead:            insteadRunOrNil(ev.keywordInstead.ref.key, ev.keywordInstead.source),
+		KeywordAction:             ev.KeywordAction,
+		KeywordActionCount:        ev.KeywordActionCount,
+		CardID:                    uuidPtrOrNil(ev.CardID),
+		OldZone:                   ev.OldZone,
+		NewZone:                   ev.NewZone,
+		NewZoneOwner:              uuidPtrOrNil(ev.NewZoneOwner),
+		ShuffleDestinationLibrary: ev.ShuffleDestinationLibrary,
+		ExiledWith:                permissionRefPtr(ev.ExiledWith),
+		ExileCounter:              ev.ExileCounter,
+		Destruction:               ev.Destruction,
+		CantBeRegenerated:         ev.CantBeRegenerated,
+		StateBasedDestruction:     ev.StateBasedDestruction,
+		EntersTapped:              ev.EntersTapped,
+		EntersPrepared:            ev.EntersPrepared,
+		EntersDevoured:            ev.EntersDevoured,
+		EntersWithHaste:           ev.EntersWithHaste,
+		EntryRefused:              ev.entryRefused,
+		EntersUnlocked:            ev.EntersUnlocked,
+		EntersAttacking:           uuidPtrOrNil(ev.EntersAttacking),
+		FaceDown:                  ev.FaceDown,
+		EntersAsCopyOf:            copyPrintedValues(ev.EntersAsCopyOf),
+		CopySource:                uuidPtrOrNil(ev.copySourceID),
+		CopyUntilEndOfTurn:        ev.copyUntilEndOfTurn,
+		AuraHostFixed:             ev.auraHostFixed,
+		AuraHostSettled:           ev.auraHostSettled,
+		EntersAsAura:              ev.entersAsAura,
+		ExchangeTextWith:          uuidPtrOrNil(ev.exchangeTextWith),
+		PutByEntering:             ev.putByEntering,
+		EntersWithCounters:        copyStringIntMap(ev.EntersWithCounters),
+		EntryResumable:            ev.entryResumable,
+		LandPlay:                  ev.landPlay,
+		LandPlayer:                uuidPtrOrNil(ev.landPlayer),
+		EntryControllerSet:        ev.entryControllerSet,
+		EntryControllerPrior:      uuidPtrOrNil(ev.entryControllerPrior),
+		AsCommanderMove:           ev.asCommanderMove,
+		CommanderAnswer:           ev.commanderAnswer,
+	}
+	for _, p := range ev.drawPending {
+		out.DrawPending = append(out.DrawPending, pendingDrawSnapshot{
+			Player: p.player, Count: p.count, Applied: copyReplacementEffectIDs(p.applied),
+		})
+	}
+	if ev.drawThen.Ref.key != "" {
+		out.DrawThen = &drawThenSnapshot{
+			Key: ev.drawThen.Ref.key, Player: uuidPtrOrNil(ev.drawThen.Player),
+			Source: uuidPtrOrNil(ev.drawThen.Source), N: ev.drawThen.N,
+		}
+	}
+	if l := ev.FaceDownListed; l != nil {
+		out.FaceDownListed = &FaceDownListing{
+			Types: copyStrings(l.Types), Subtypes: copyStrings(l.Subtypes), Power: l.Power, Toughness: l.Toughness,
+		}
+	}
+	if ev.auraHost != (TargetRef{}) {
+		h := ev.auraHost
+		out.AuraHost = &h
+	}
+	if ev.stackItem != nil {
+		it := snapshotStackItem(g, ev.stackItem, cen)
+		out.StackItem = &it
+	}
+	if t := ev.entryTail; t != nil {
+		out.EntryTail = &entryTailSnapshot{
+			NewObject: t.newObject, CraftedWith: append([]ObjectRef(nil), t.craftedWith...), BatchIndex: t.batchIndex,
+		}
+	}
+	if r := ev.zoneRoute; r != nil {
+		out.ZoneRoute = &zoneRouteSnapshot{
+			CardID: uuidPtrOrNil(r.CardID), Dst: r.Dst, DstOwner: uuidPtrOrNil(r.DstOwner),
+			Actor: uuidPtrOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
+			HiddenBy: permissionRefPtr(r.HiddenBy), ExiledWith: permissionRefPtr(r.ExiledWith),
+			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
+			Source: uuidPtrOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			CauseKind: r.Cause.Kind, CauseController: uuidPtrOrNil(r.Cause.Controller), CauseItem: uuidPtrOrNil(r.Cause.Item),
+			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
+			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
+			CommanderAnswer: r.commanderAnswer,
+		}
+		if r.ExiledWithAbility != (AbilityRef{}) {
+			a := r.ExiledWithAbility
+			out.ZoneRoute.ExiledWithAbility = &a
+		}
+	}
+	for _, l := range ev.lifeAfterMove {
+		out.LifeAfterMove = append(out.LifeAfterMove, moveLifeSnapshot{Source: uuidPtrOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	for _, x := range ev.extraTurnsAfterMove {
+		out.ExtraTurnsAfterMove = append(out.ExtraTurnsAfterMove, moveTurnSnapshot{Source: uuidPtrOrNil(x.Source), Player: x.Player})
+	}
+	return out
+}
+
+// restoreReplacementEvent is snapshotReplacementEvent's inverse. The
+// look-ahead cache is left empty, for the running binary to fill.
+func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
+	ev := &ReplacementEvent{
+		ID:                        s.ID,
+		Kind:                      s.Kind,
+		Canceled:                  s.Canceled,
+		Actor:                     uuidOrNil(s.Actor),
+		Source:                    uuidOrNil(s.Source),
+		mustSettleNow:             s.MustSettleNow,
+		DrawPlayer:                uuidOrNil(s.DrawPlayer),
+		DrawCount:                 s.DrawCount,
+		drawTail:                  s.DrawTail,
+		KeywordAction:             s.KeywordAction,
+		KeywordActionCount:        s.KeywordActionCount,
+		CardID:                    uuidOrNil(s.CardID),
+		OldZone:                   s.OldZone,
+		NewZone:                   s.NewZone,
+		NewZoneOwner:              uuidOrNil(s.NewZoneOwner),
+		ShuffleDestinationLibrary: s.ShuffleDestinationLibrary,
+		ExiledWith:                permissionRefValue(s.ExiledWith),
+		ExileCounter:              s.ExileCounter,
+		Destruction:               s.Destruction,
+		CantBeRegenerated:         s.CantBeRegenerated,
+		StateBasedDestruction:     s.StateBasedDestruction,
+		EntersTapped:              s.EntersTapped,
+		EntersPrepared:            s.EntersPrepared,
+		EntersDevoured:            s.EntersDevoured,
+		EntersWithHaste:           s.EntersWithHaste,
+		entryRefused:              s.EntryRefused,
+		EntersUnlocked:            s.EntersUnlocked,
+		EntersAttacking:           uuidOrNil(s.EntersAttacking),
+		FaceDown:                  s.FaceDown,
+		EntersAsCopyOf:            copyPrintedValues(s.EntersAsCopyOf),
+		copySourceID:              uuidOrNil(s.CopySource),
+		copyUntilEndOfTurn:        s.CopyUntilEndOfTurn,
+		auraHostFixed:             s.AuraHostFixed,
+		auraHostSettled:           s.AuraHostSettled,
+		entersAsAura:              s.EntersAsAura,
+		exchangeTextWith:          uuidOrNil(s.ExchangeTextWith),
+		putByEntering:             s.PutByEntering,
+		EntersWithCounters:        copyStringIntMap(s.EntersWithCounters),
+		entryResumable:            s.EntryResumable,
+		landPlay:                  s.LandPlay,
+		landPlayer:                uuidOrNil(s.LandPlayer),
+		entryControllerSet:        s.EntryControllerSet,
+		entryControllerPrior:      uuidOrNil(s.EntryControllerPrior),
+		asCommanderMove:           s.AsCommanderMove,
+		commanderAnswer:           s.CommanderAnswer,
+	}
+	for _, p := range s.DrawPending {
+		ev.drawPending = append(ev.drawPending, pendingDraw{
+			player: p.Player, count: p.Count, applied: copyReplacementEffectIDs(p.Applied),
+		})
+	}
+	if r := s.DrawInstead; r != nil {
+		ev.drawInstead = drawInsteadRun{ref: DrawInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
+	}
+	if r := s.KeywordInstead; r != nil {
+		ev.keywordInstead = keywordInsteadRun{ref: KeywordInsteadRef{key: r.Key}, source: uuidOrNil(r.Source)}
+	}
+	if d := s.DrawThen; d != nil {
+		ev.drawThen = DrawThen{Ref: DrawThenRef{key: d.Key}, Player: uuidOrNil(d.Player), Source: uuidOrNil(d.Source), N: d.N}
+	}
+	if l := s.FaceDownListed; l != nil {
+		ev.FaceDownListed = &FaceDownListing{
+			Types: copyStrings(l.Types), Subtypes: copyStrings(l.Subtypes), Power: l.Power, Toughness: l.Toughness,
+		}
+	}
+	if s.AuraHost != nil {
+		ev.auraHost = *s.AuraHost
+	}
+	if s.StackItem != nil {
+		ev.stackItem, _ = restoreStackItem(s.StackItem)
+	}
+	if t := s.EntryTail; t != nil {
+		ev.entryTail = &entryTail{newObject: t.NewObject, craftedWith: append([]ObjectRef(nil), t.CraftedWith...), batchIndex: t.BatchIndex}
+	}
+	if r := s.ZoneRoute; r != nil {
+		ev.zoneRoute = &zoneRoute{
+			CardID: uuidOrNil(r.CardID), Dst: r.Dst, DstOwner: uuidOrNil(r.DstOwner),
+			Actor: uuidOrNil(r.Actor), ToBottom: r.ToBottom, Depth: r.Depth, FaceDown: r.FaceDown,
+			HiddenBy: permissionRefValue(r.HiddenBy), ExiledWith: permissionRefValue(r.ExiledWith),
+			Mill: r.Mill, Discard: r.Discard, DiscardCause: r.DiscardCause,
+			Source: uuidOrNil(r.Source), MustSettleNow: r.MustSettleNow, Countered: r.Countered,
+			Cause:     MoveCause{Kind: r.CauseKind, Controller: uuidOrNil(r.CauseController), Item: uuidOrNil(r.CauseItem)},
+			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
+			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
+			commanderAnswer: r.CommanderAnswer,
+		}
+		if r.ExiledWithAbility != nil {
+			ev.zoneRoute.ExiledWithAbility = *r.ExiledWithAbility
+		}
+	}
+	for _, l := range s.LifeAfterMove {
+		ev.lifeAfterMove = append(ev.lifeAfterMove, lifeInstruction{Source: uuidOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	for _, x := range s.ExtraTurnsAfterMove {
+		ev.extraTurnsAfterMove = append(ev.extraTurnsAfterMove, extraTurnInstruction{Source: uuidOrNil(x.Source), Player: x.Player})
+	}
+	return ev
+}
+
+// unknownReplacementResumeKeys is checkEffectKeys' half for a keyed
+// frame: its tail, the bodies its event names, and its stack item.
+func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
+	var unknown []string
+	f := c.ReplacementResume
+	kind, known := replacementResumeTails[c.PickThen]
+	switch {
+	case !known:
+		unknown = append(unknown, "replacement resume "+c.PickThen)
+	case f == nil:
+		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
+	case f.Event.Kind != kind:
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
+	}
+	if f == nil {
+		return unknown
+	}
+	if r := f.Event.DrawInstead; r != nil && !KnownDrawInstead(r.Key) {
+		unknown = append(unknown, "draw-instead body "+r.Key)
+	}
+	if r := f.Event.KeywordInstead; r != nil && !KnownKeywordInstead(r.Key) {
+		unknown = append(unknown, "keyword-instead body "+r.Key)
+	}
+	if d := f.Event.DrawThen; d != nil && !KnownDrawThen(d.Key) {
+		unknown = append(unknown, "draw-then body "+d.Key)
+	}
+	if it := f.Event.StackItem; it != nil {
+		if it.Body != "" && !KnownEffectBody(it.Body) {
+			unknown = append(unknown, "stack-item body "+it.Body)
+		}
+		unknown = append(unknown, unknownAbilityRef(*it)...)
+	}
+	return unknown
+}
+
+// restoreReplacementSerials puts the object serials back.
+func (g *Game) restoreReplacementSerials(serials []replacementSerialSnapshot, next int) {
+	if len(serials) == 0 && next == 0 {
+		return
+	}
+	g.replacementObjectSerials = make(map[ObjectRef]int, len(serials))
+	for _, s := range serials {
+		g.replacementObjectSerials[s.Object] = s.Serial
+		if s.Serial >= next {
+			next = s.Serial + 1
+		}
+	}
+	g.nextReplacementObjectSerial = next
+	g.replacementSerialsCompactAt = 2*len(g.replacementObjectSerials) + 64
+}
+
+// snapshotReplacementSerials writes the object serials, sorted.
+func (g *Game) snapshotReplacementSerials() ([]replacementSerialSnapshot, int) {
+	out := make([]replacementSerialSnapshot, 0, len(g.replacementObjectSerials))
+	for ref, serial := range g.replacementObjectSerials {
+		out = append(out, replacementSerialSnapshot{Object: ref, Serial: serial})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Serial < out[j].Serial })
+	return out, g.nextReplacementObjectSerial
+}
+
+// rebuildReplacementResumeLocked rebuilds a keyed frame on a restored
+// game: the event, its marks, and the pending set gathered again by ID.
+// An ID the gather no longer finds — the effect is gone from the running
+// binary's catalog — is kept as a lost entry, which every resolve path
+// treats as an effect that no longer applies (CR 616.1f).
+//
+// Caller must hold g.mu (write): the gather fills layer caches and mints
+// serials.
+func (g *Game) rebuildReplacementResumeLocked(s *replacementResumeSnapshot) *replacementResumeFrame {
+	ev := restoreReplacementEvent(&s.Event)
+	if g.replacementsAppliedThisEvent == nil {
+		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
+	}
+	marks := make(map[ReplacementEffectID]bool, len(s.Applied))
+	for _, id := range s.Applied {
+		marks[id] = true
+	}
+	g.replacementsAppliedThisEvent[ev.ID] = marks
+	if uint64(ev.ID) > g.nextReplacementEventID.Load() {
+		g.nextReplacementEventID.Store(uint64(ev.ID))
+	}
+	gathered := g.gatherActiveReplacementsLocked(ev)
+	byID := make(map[ReplacementEffectID]activeReplacement, len(gathered))
+	for _, a := range gathered {
+		byID[a.id] = a
+	}
+	frame := &replacementResumeFrame{ev: ev}
+	for _, id := range s.Applicable {
+		a, ok := byID[id]
+		if !ok {
+			a = activeReplacement{id: id, lost: true}
+		}
+		frame.applicable = append(frame.applicable, a)
+	}
+	return frame
+}

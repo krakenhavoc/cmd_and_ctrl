@@ -24,9 +24,11 @@ import "github.com/google/uuid"
 // (CR 400.7). Serials are never reused, so an ID whose object has gone
 // names nothing rather than its neighbour.
 //
-// Not in the snapshot: a game paused on a replacement prompt is never a
-// restore point (its resume frame is in the continuation census), and
-// between prompts no ID outlives the action that minted it. Clone and
+// In the snapshot only beside a keyed CR 616 frame (#4253,
+// replacement_resume_keyed.go), whose IDs must name the same objects
+// after the restore; a frame that is not keyed is in the continuation
+// census, and between prompts no ID outlives the action that minted it,
+// so a file with neither mints afresh. Clone and
 // RestoreFrom copy the registry, so an undo into an open prompt answers
 // against the serials the prompt was built with.
 
@@ -132,6 +134,11 @@ func cloneReplacementObjectSerials(in map[ObjectRef]int) map[ObjectRef]int {
 //
 // Caller must hold g.mu.
 func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplacement, bool) {
+	if a.lost {
+		// #4253: a restored frame's effect the running binary no longer
+		// has. It has gone, as a source that left takes its effect.
+		return a, false
+	}
 	if a.sourceRef.ID == uuid.Nil {
 		return a, true
 	}

@@ -247,8 +247,17 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		// the card.
 		// #2854: on an option_pick it is a keyed option pick's
 		// continuation, from the other registry.
+		if c.ReplacementResume != nil && (c.PickThen == "" || !keyedReplacementPromptKind(c.Kind)) {
+			// #4253: a frame on a prompt kind that cannot carry one, or
+			// with no tail key, is a newer binary's shape.
+			unknown = append(unknown, fmt.Sprintf("replacement resume frame on a %s prompt with tail %q", c.Kind, c.PickThen))
+		}
 		switch {
 		case c.PickThen == "":
+		case keyedReplacementPromptKind(c.Kind):
+			// #4253: a keyed CR 616 frame's tail, and the bodies and stack
+			// item its event names.
+			unknown = append(unknown, unknownReplacementResumeKeys(&c)...)
 		case c.Kind == PendingChoiceOptionPick:
 			if !KnownOptionPickThen(c.PickThen) {
 				unknown = append(unknown, "option pick continuation "+c.PickThen)

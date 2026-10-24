@@ -326,22 +326,3 @@ func TestRetrieverPhoenixInTheGraveyardSurvivesARestore(t *testing.T) {
 		t.Errorf("restored: graveyard %d, prompts %+v", rme.Graveyard.Size(), restored.PendingChoices)
 	}
 }
-
-// The declared limit, pinned: while the Phoenix's question is open the
-// table is not a restore point, because every CR 616 prompt carries its
-// resume frame (as a dredge offer does). The ADR 0191 amendment of
-// 2026-10-23 says so; this fails if that stops being true so the
-// document is corrected with it.
-func TestRetrieverPhoenixQuestionIsNotARestorePoint(t *testing.T) {
-	g := newSideboardCatalogGame(t, 2)
-	me := g.Seats[0]
-	gyPhoenix(me)
-	castCatalogSpell(t, g, "Cram Session", "Sorcery", cramSessionOracle, nil)
-	passPriorityAroundTable(t, g)
-	if learnOffer(g, me) == nil {
-		t.Fatal("no offer")
-	}
-	if g.CaptureSnapshot().Restorable() {
-		t.Error("a table with a replacement question open is a restore point; update ADR 0191's amendment")
-	}
-}

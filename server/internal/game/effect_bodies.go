@@ -453,6 +453,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredPayUnlessKeysLocked()...)
 	out = append(out, registeredConfirmKeysLocked()...)
 	out = append(out, registeredAnyPlayerKeysLocked()...)
+	// #4253: a keyed CR 616 frame's tail, and the bodies its event names.
+	out = append(out, registeredReplacementResumeKeys()...)
 	sort.Strings(out)
 	return out
 }

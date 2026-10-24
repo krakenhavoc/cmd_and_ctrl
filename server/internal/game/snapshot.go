@@ -508,6 +508,15 @@ type GameSnapshot struct {
 	// schema bump.
 	PausedResolutionTail *resolutionTailSnapshot `json:"pausedResolutionTail,omitempty"`
 
+	// ReplacementSerials / NextReplacementSerial are
+	// Game.replacementObjectSerials and its next serial (#3482): the
+	// object serials a catalog or graveyard ReplacementEffectID packs.
+	// Written only beside a keyed CR 616 frame (#4253), whose IDs must
+	// name the same objects after the restore. Additive within the
+	// version.
+	ReplacementSerials    []replacementSerialSnapshot `json:"replacementSerials,omitempty"`
+	NextReplacementSerial int                         `json:"nextReplacementSerial,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -1873,6 +1882,13 @@ type pendingChoiceSnapshot struct {
 	AutoAnswerPrompt string      `json:"autoAnswerPrompt,omitempty"`
 	AskedByHand      AskedByHand `json:"askedByHand,omitempty"`
 
+	// ReplacementResume is a CR 616 prompt's resume frame written as
+	// data (#4253, replacement_resume_keyed.go): the paused event, the
+	// pending replacement set and the marks. Written only for a frame
+	// that holds no closure; its tail key rides PickThen, so a binary
+	// from before it refuses the file. Additive within the version.
+	ReplacementResume *replacementResumeSnapshot `json:"replacementResume,omitempty"`
+
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
 	ResumeFrames []string `json:"resumeFrames,omitempty"`
@@ -2280,12 +2296,24 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.AttackHandoff = cloneAttackHandoff(g.AttackHandoff)
 
 	if len(g.PendingChoices) > 0 {
+		keyedFrames := false
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
 		for _, c := range g.PendingChoices {
 			if c == nil {
 				continue
 			}
-			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
+			key := g.replacementFrameKeyable(c)
+			pc := snapshotPendingChoiceFrame(c, cen, key != "")
+			if key != "" {
+				// #4253: the frame is data; it is written, not counted.
+				pc.ReplacementResume = g.snapshotReplacementResume(c.replacementResume, cen)
+				pc.PickThen = key
+				keyedFrames = true
+			}
+			s.PendingChoices = append(s.PendingChoices, pc)
+		}
+		if keyedFrames {
+			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
 		}
 	}
 	// #3665: a combat damage step's damage held behind its
@@ -2906,6 +2934,13 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 }
 
 func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingChoiceSnapshot {
+	return snapshotPendingChoiceFrame(c, cen, false)
+}
+
+// snapshotPendingChoiceFrame is snapshotPendingChoice with the CR 616
+// frame already written as data (keyedFrame, #4253), so it is not
+// counted.
+func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyedFrame bool) pendingChoiceSnapshot {
 	out := pendingChoiceSnapshot{
 		ID:                    c.ID,
 		Kind:                  c.Kind,
@@ -3023,7 +3058,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	}
 	// The continuation slots, one by one. Each is a paused effect.
 	for name, present := range map[string]bool{
-		"replacementResume": c.replacementResume != nil,
+		"replacementResume": c.replacementResume != nil && !keyedFrame,
 		// #1397: a parked cost announcement waiting on a commander's
 		// owner. Dropping it drops the announcement, not half of it —
 		// nothing was paid — but the census still says so.
@@ -3397,6 +3432,18 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// lastResolvedVersion is what forces that.
 	g.lastResolvedVersion.Store(s.LastResolvedVersion)
 	g.layerVersion.Store(s.LayerVersion + 1)
+
+	// #4253: the keyed CR 616 frames, rebuilt last because the gather
+	// that finds their effects again reads the whole restored board.
+	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)
+	for i := range s.PendingChoices {
+		rs := s.PendingChoices[i].ReplacementResume
+		if rs == nil || !keyedReplacementPromptKind(s.PendingChoices[i].Kind) {
+			continue
+		}
+		g.PendingChoices[i].PickThen = ""
+		g.PendingChoices[i].replacementResume = g.rebuildReplacementResumeLocked(rs)
+	}
 	return g
 }
 
