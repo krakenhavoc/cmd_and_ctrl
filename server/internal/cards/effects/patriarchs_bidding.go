@@ -73,5 +73,9 @@ func patriarchsBiddingReturn(ctx *Context, chosen []string) error {
 		}
 		return false
 	})
-	return ReturnFromGraveyardTogether{Targets: ids}.Apply(ctx)
+	// #1997: "each player returns" — each card is put by the player it
+	// enters under (CR 110.2a), which Arboria reads.
+	return ctx.Game.PutByEnteringPlayerForEffect(func() error {
+		return ReturnFromGraveyardTogether{Targets: ids}.Apply(ctx)
+	})
 }

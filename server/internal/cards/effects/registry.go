@@ -71,6 +71,7 @@ func Register(spec Spec) {
 	checkEntwine(spec)
 	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
+	refuseTriggerActorChoice(spec.Name, "a spell's", spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
@@ -80,6 +81,7 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
+		refuseTriggerActorChoice(spec.Name, "an activated ability's", a.Targets)
 		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, true)
 		checkActivatedAtRandom(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
@@ -1778,8 +1780,18 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
-	if c.ControlledByChooser && !c.ChosenByOpponent {
+	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
+	}
+	if c.ChosenByTriggerActor {
+		// #1997: "of their choice" is one plain clause, like an
+		// opponent's.
+		switch {
+		case c.ChosenByOpponent:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen both by an opponent and by the triggering player", name, i))
+		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is the triggering player's choice and is random, divided or related — no printed card is", name, i))
+		}
 	}
 	if !c.ChosenByOpponent {
 		return
@@ -1801,6 +1813,19 @@ func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		if spec.Clause(i).ChosenByOpponent {
 			panic(fmt.Sprintf("effects.Register: %q declares an opponent's-choice target on %s clause %d — only a spell's, an activated ability's or a trigger's own clause list is asked of an opponent", name, owner, i))
+		}
+	}
+	refuseTriggerActorChoice(name, owner, spec)
+}
+
+// refuseTriggerActorChoice refuses a "that player controls of their
+// choice" clause (#1997, OfThatPlayersChoice) anywhere but a trigger's
+// own clause list: only a trigger's CR 603.3d walk has an event whose
+// player could be asked.
+func refuseTriggerActorChoice(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByTriggerActor {
+			panic(fmt.Sprintf("effects.Register: %q declares a triggering player's-choice target on %s clause %d — only a trigger's own clause list has a triggering player", name, owner, i))
 		}
 	}
 }

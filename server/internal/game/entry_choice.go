@@ -686,6 +686,8 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 		g.stampEntryProvenanceLocked(&etb)
 	}
 	g.EmitEvent(etb)
+	// #1997: who put it there, for "during their last turn" (Arboria).
+	g.notePermanentPutLocked(l)
 	// ADR 0103, CR 709.5h: "when you unlock this door" triggers on a
 	// door unlocked as the permanent enters, too. After EventETB, in
 	// the same batch.

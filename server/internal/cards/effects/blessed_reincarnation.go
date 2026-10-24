@@ -59,13 +59,17 @@ func blessedReincarnationReveal(ctx *Context, player uuid.UUID) error {
 	// The shuffle rides Then, so an entry that pauses for its own
 	// question (a Clone's copy) is on the battlefield before the rest
 	// is shuffled in.
-	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-		All:    true,
-		Then: func(g *game.Game, _ PutFromLibraryResult) error {
-			return g.ShuffleLibraryForEffect(player)
-		},
-	}.Apply(ctx)
+	// #1997: "The player puts that card onto the battlefield" (CR
+	// 110.2a), which Arboria reads.
+	return ctx.Game.PutByEnteringPlayerForEffect(func() error {
+		return PutFromLibraryOntoBattlefield{
+			Player: player,
+			Cards:  run,
+			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:    true,
+			Then: func(g *game.Game, _ PutFromLibraryResult) error {
+				return g.ShuffleLibraryForEffect(player)
+			},
+		}.Apply(ctx)
+	})
 }

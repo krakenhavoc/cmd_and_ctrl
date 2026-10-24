@@ -162,6 +162,8 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 //
 // Caller must hold g.mu.
 func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (entered uuid.UUID, err error) {
+	// #1997: who puts it, stamped before any pause.
+	g.stampPutByEnteringLocked(ev)
 	paused := false
 	defer func() {
 		if paused {
@@ -326,6 +328,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ChosenPlayer = uuid.Nil
 		c.ChosenSecondPlayer = uuid.Nil
 		c.ChosenName = ""
+		c.ChosenSecondName = ""
 		c.ChosenOption = ""
 		c.ChosenNumber = 0
 		c.ChosenPermanent = ObjectRef{}

@@ -195,6 +195,14 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 }
 
 func (g *Game) startPreparedEntryBatchLocked(cards []BatchEntry, b *entryBatch) error {
+	// #1997: a batch begun inside PutByEnteringPlayerForEffect, or a
+	// manifest or cloak (the player who manifests puts the card, and it
+	// enters under them, CR 701.40a, CR 701.58a), is put by the player
+	// each card enters under. Captured now: a later member may land
+	// after a pause, when the scope has ended.
+	if g.putByEntering > 0 || b.opts.FaceDown == FaceDownManifested || b.opts.FaceDown == FaceDownCloaked {
+		b.opts.PutByEnteringPlayer = true
+	}
 	opts := b.opts
 	refuse := func(err error) error {
 		if tailErr := g.finishEntryBatchThenLocked(b, nil); tailErr != nil {
@@ -320,6 +328,8 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 			// replacement effect inspecting the entry sees it.
 			FaceDown:       b.opts.FaceDown,
 			FaceDownListed: b.opts.FaceDownListed,
+			// #1997: who put it, for Arboria.
+			putByEntering: b.opts.PutByEnteringPlayer,
 			// #1322: the batch can be resumed, because what it still
 			// owes — the other cards' windows, the landing, the
 			// announcement and the caller's continuation — rides on

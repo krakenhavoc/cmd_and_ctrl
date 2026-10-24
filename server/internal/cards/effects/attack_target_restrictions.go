@@ -110,6 +110,33 @@ func QuerySubtype(subtype string) game.PermanentQuery {
 	return game.PermanentQuery{Subtypes: []string{subtype}}
 }
 
+// CreaturesCantAttackPlayersWhoDidNothingLastTurn is Arboria's
+// "Creatures can't attack a player unless that player cast a spell or
+// put a nontoken permanent onto the battlefield during their last turn"
+// (#1997, ADR 0109 amendment 2026-10-23, CR 508.1c): every creature, any
+// controller's, gets the restriction, with this permanent as its source,
+// so a creature that loses all abilities keeps it (it is not the
+// creature's own ability). Players only: planeswalkers and battles may
+// still be attacked. The engine reads the player's last turn live at
+// declaration (game.Game.CastOrPutDuringLastTurnForEffect).
+func CreaturesCantAttackPlayersWhoDidNothingLastTurn() game.StaticAbility {
+	r := game.AttackTargetRestriction{PlayerMustHaveActedLastTurn: true}
+	return game.StaticAbility{
+		Label: "Creatures can't attack a player unless that player cast a spell or put a nontoken permanent onto the battlefield during their last turn.",
+		Layer: game.Layer6Ability,
+		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
+			return target.IsCreature()
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			r := r
+			if source != nil {
+				r.Source, r.SourceName = source.InstanceID, source.Name
+			}
+			c.AttackTargetRestrictions = append(c.AttackTargetRestrictions, r)
+		},
+	}
+}
+
 // selfAttackTargetRestriction writes r onto the creature whose ability it
 // is, naming that creature as the source.
 func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbility {

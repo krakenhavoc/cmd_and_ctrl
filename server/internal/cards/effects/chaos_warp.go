@@ -60,9 +60,13 @@ func init() {
 				if err := g.ShuffleLibraryForEffect(owner); err != nil {
 					return err
 				}
-				_, err := revealTopThenPutIfMatch(g, source, owner, chaosWarpAnyPermanent,
-					false, "Chaos Warp — revealed from the top of the library")
-				return err
+				// #1997: "they put it onto the battlefield" — the
+				// owner puts it (CR 110.2a), which Arboria reads.
+				return g.PutByEnteringPlayerForEffect(func() error {
+					_, err := revealTopThenPutIfMatch(g, source, owner, chaosWarpAnyPermanent,
+						false, "Chaos Warp — revealed from the top of the library")
+					return err
+				})
 			})
 		},
 	})

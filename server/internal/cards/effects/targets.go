@@ -671,6 +671,23 @@ func OfAnOpponentsChoice(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// OfThatPlayersChoice is "target … that player controls of their
+// choice" on a triggered ability (#1997, ADR 0019 amendment 2026-10-23):
+// the player the triggering event names (the player whose upkeep it is)
+// chooses the clause's targets, though the ability's controller still
+// controls it and still targets (the 2004 ruling on The Abyss). Legality
+// is judged for the controller, so the clause's predicates are written
+// from the controller's side. It is data on the clause
+// (game.TargetSpec.ChosenByTriggerActor): the trigger's target walk sends
+// the step's prompt to that player. "That player controls" is TheyControl
+// around it. Triggers only; effects.Register refuses it elsewhere.
+//
+//	TheyControl(OfThatPlayersChoice(TargetCreature("target nonartifact creature that player controls of their choice", NonArtifact())))
+func OfThatPlayersChoice(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ChosenByTriggerActor = true
+	return spec
+}
+
 // TheyControl is the "they control" of "target creature of an opponent's
 // choice they control" (Evangelize, Preacher, Arena): the candidate must
 // be controlled by the opponent who chooses it (game.TargetSpec.

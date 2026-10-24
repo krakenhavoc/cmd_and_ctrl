@@ -399,7 +399,7 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"Life": true, "Poison": true, "Energy": true, "Speed": true,
 		"Library": true, "Hand": true, "Graveyard": true, "Command": true, "Emblems": true,
 		"CommanderDamage": true, "LifeHistory": true, "TurnsBegun": true, "UpkeepsBegun": true,
-		"EndStepTurn": true, "LastTurnAttacks": true, "Eliminated": true, "Removed": true,
+		"EndStepTurn": true, "LastTurnAttacks": true, "LastTurnCastOrPut": true, "Eliminated": true, "Removed": true,
 		"HandKept": true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,

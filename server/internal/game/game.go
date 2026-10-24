@@ -940,6 +940,13 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// putByEntering counts the PutByEnteringPlayerForEffect scopes open
+	// on the Go stack (#1997): while above zero, an entry is put by the
+	// player it enters under. Zero between actions by construction, like
+	// resolutionDepth; an entry that pauses inside the scope carries the
+	// answer on its own event.
+	putByEntering int
+
 	// pausedModeWalk is the rest of a modal item's chosen bullets,
 	// parked behind a prompt an earlier bullet queued (#2789, CR
 	// 608.2c). Non-nil only while a resolution is open and paused.

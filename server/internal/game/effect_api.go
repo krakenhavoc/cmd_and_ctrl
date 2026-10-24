@@ -3308,6 +3308,10 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		EntersTapped:   spec.TappedOnEntry,
 		entryResumable: true,
 		entryTail:      &entryTail{then: then},
+		// #1997: the searcher puts what they find, and it enters under
+		// them (Path to Exile's "its controller may search … put that
+		// card onto the battlefield").
+		putByEntering: true,
 		// Copied: the event owns its map (replacements add to it), and
 		// the spec is shared with a pending prompt.
 		EntersWithCounters: copyCounterMap(spec.EntersWithCounters),

@@ -131,6 +131,14 @@ type PlayerTurnTally struct {
 	// schema v8.
 	TokensAttacked     int `json:"tokensAttacked,omitempty"`
 	CommandersAttacked int `json:"commandersAttacked,omitempty"`
+	// NontokenPermanentsPut counts the nontoken permanents this player
+	// PUT onto the battlefield this turn (#1997, last_turn_actions.go):
+	// a land played, a permanent spell of theirs resolving, a put by a
+	// spell or ability they control, or one an instruction told them to
+	// make. Who it entered under does not decide it, and a permanent
+	// that has since left still counts. Arboria reads it, a turn later,
+	// through Player.LastTurnCastOrPut. Additive within schema v9.
+	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.

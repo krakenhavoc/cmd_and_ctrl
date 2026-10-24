@@ -1647,3 +1647,7 @@ one spell are still one (`TapPermanentsCostForCastLocked` returns the first).
 
 Tests: `cards/effects/hama_chain_test.go`, `game/tap_cost_chain_test.go`. Back-out: return the grant's waterbend without
 `WithAlso` in `TapPermanentsCostForGrantLocked` and five of the Hama chain tests fail.
+
+## Amendment (2026-10-23, #1997): a second card name, and a cast and land-play ban by name
+
+§8 left "can't cast for a chosen card name" out because there was no card-name prompt. #1210 built that prompt, and Null Chamber now uses it twice: "you and an opponent each choose a card name other than a basic land card name. Spells with the chosen names can't be cast and lands with the chosen names can't be played." `CardNamePrompt.SecondName` stores the opponent's answer as `Card.ChosenSecondName`. `CardNamePrompt.NotBasicLandName` refuses a basic land card's name (CR 201.4a). The ban is an ordinary catalog `CastRestriction` and `LandPlayRestriction` that reads both names live (`game.ChosenNamesOn`) and compares the face being cast or played (`game.SpellOrLandHasName`, CR 709.3b, 712.11c). The gate itself is unchanged. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the detail.

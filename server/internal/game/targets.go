@@ -568,6 +568,27 @@ type TargetSpec struct {
 	// Build it with effects.OfAnOpponentsChoice.
 	ChosenByOpponent bool
 
+	// ChosenByTriggerActor is "target … that player controls of their
+	// choice" on a triggered ability (#1997, ADR 0019 amendment
+	// 2026-10-23): the player the triggering event names as its Actor
+	// chooses this clause's targets, not the ability's controller. The
+	// Abyss's "At the beginning of each player's upkeep, destroy target
+	// nonartifact creature that player controls of their choice" is
+	// chosen by the player whose upkeep it is, who may be the controller
+	// (the 2004 ruling: "The controller of The Abyss controls the
+	// ability, but the current player chooses what gets destroyed").
+	//
+	// As with ChosenByOpponent the controller still controls the ability
+	// and is still the player targeting, so legality is judged for the
+	// controller (hexproof keeps an upkeep player's own creature out of
+	// an opponent's Abyss). Unlike it there is no question of WHICH
+	// player: the event names them, so nothing is recorded on the item
+	// and the CR 608.2b re-check reads the same event. With
+	// ControlledByChooser it is "that player controls". Triggers only;
+	// effects.Register refuses it on a spell, an activation, a mode or a
+	// divided clause. Build it with effects.OfThatPlayersChoice.
+	ChosenByTriggerActor bool
+
 	// ControlledByChooser is "… they control" on a ChosenByOpponent
 	// clause: the candidate must be controlled by the opponent who
 	// chooses it (Evangelize, Preacher, Arena). The opponent is bound
@@ -1739,10 +1760,26 @@ func (s *TargetSpec) chooserAdmits(src TargetSource, c Card) bool {
 	if !s.ControlledByChooser {
 		return true
 	}
+	if s.ChosenByTriggerActor {
+		// #1997: the chooser is the triggering event's player, read off
+		// the walk's own event at announce and at the re-check alike.
+		who := triggerActorOf(src)
+		return who != uuid.Nil && c.Controller == who
+	}
 	if s.chooser != uuid.Nil {
 		return c.Controller == s.chooser
 	}
 	return c.Controller != uuid.Nil && c.Controller != src.Controller
+}
+
+// triggerActorOf is the player the walk's triggering event names as its
+// Actor (the player whose upkeep it is), or uuid.Nil for a walk with no
+// fired trigger: a ChosenByTriggerActor clause's chooser.
+func triggerActorOf(src TargetSource) uuid.UUID {
+	if src.Trigger == nil || !src.Trigger.Fired() {
+		return uuid.Nil
+	}
+	return src.Trigger.Event.Actor
 }
 
 // sourceAdmits is the source-relative gate: RelativeToSource's stat

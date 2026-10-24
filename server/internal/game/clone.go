@@ -726,6 +726,7 @@ func clonePlayer(p *Player) *Player {
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut: p.LastTurnCastOrPut,
 		Eliminated:        p.Eliminated,
 		Removed:           p.Removed,
 		HandKept:          p.HandKept,

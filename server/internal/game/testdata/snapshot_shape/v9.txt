@@ -71,6 +71,7 @@ battlefield.cards[].chosenPermanent	object
 battlefield.cards[].chosenPermanent.epoch	number:int
 battlefield.cards[].chosenPermanent.id	custom(uuid.UUID)
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
+battlefield.cards[].chosenSecondName	string
 battlefield.cards[].chosenSecondPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
 battlefield.cards[].colorCDADropped	bool
@@ -666,6 +667,7 @@ exile.cards[].chosenPermanent	object
 exile.cards[].chosenPermanent.epoch	number:int
 exile.cards[].chosenPermanent.id	custom(uuid.UUID)
 exile.cards[].chosenPlayer	custom(uuid.UUID)
+exile.cards[].chosenSecondName	string
 exile.cards[].chosenSecondPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
 exile.cards[].colorCDADropped	bool
@@ -1277,6 +1279,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	boo
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].SourceName	string
 lastKnownBattlefield{}.BlockRequirements	array
@@ -1424,6 +1427,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAtta
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].SourceName	string
 lastKnownPermanents{}[].characteristic.BlockRequirements	array
@@ -1607,6 +1611,7 @@ lastKnownStack[].card.chosenPermanent	object
 lastKnownStack[].card.chosenPermanent.epoch	number:int
 lastKnownStack[].card.chosenPermanent.id	custom(uuid.UUID)
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
+lastKnownStack[].card.chosenSecondName	string
 lastKnownStack[].card.chosenSecondPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
 lastKnownStack[].card.colorCDADropped	bool
@@ -3430,6 +3435,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlread
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].PlayerMustHaveActedLastTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements	array
@@ -3574,6 +3580,7 @@ pendingChoices[].modeUsedLabel	array
 pendingChoices[].modeUsedLabel[]	string
 pendingChoices[].noGain	bool
 pendingChoices[].noLegalTarget	bool
+pendingChoices[].notBasicLandName	bool
 pendingChoices[].optionCarry	array
 pendingChoices[].optionCarry[]	custom(uuid.UUID)
 pendingChoices[].optionalItem	custom(uuid.UUID)
@@ -3645,6 +3652,7 @@ pendingChoices[].searchHandCards	array
 pendingChoices[].searchHandCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
 pendingChoices[].searchMin	number:int
+pendingChoices[].secondName	bool
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
@@ -3997,6 +4005,7 @@ phasedOut.cards[].chosenPermanent	object
 phasedOut.cards[].chosenPermanent.epoch	number:int
 phasedOut.cards[].chosenPermanent.id	custom(uuid.UUID)
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
+phasedOut.cards[].chosenSecondName	string
 phasedOut.cards[].chosenSecondPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
 phasedOut.cards[].colorCDADropped	bool
@@ -4766,6 +4775,7 @@ seats[].command.cards[].chosenPermanent	object
 seats[].command.cards[].chosenPermanent.epoch	number:int
 seats[].command.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].command.cards[].chosenSecondName	string
 seats[].command.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
 seats[].command.cards[].colorCDADropped	bool
@@ -5135,6 +5145,7 @@ seats[].companion.cards[].chosenPermanent	object
 seats[].companion.cards[].chosenPermanent.epoch	number:int
 seats[].companion.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].companion.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].companion.cards[].chosenSecondName	string
 seats[].companion.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].companion.cards[].classLevel	number:int
 seats[].companion.cards[].colorCDADropped	bool
@@ -5513,6 +5524,7 @@ seats[].emblems.cards[].chosenPermanent	object
 seats[].emblems.cards[].chosenPermanent.epoch	number:int
 seats[].emblems.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].emblems.cards[].chosenSecondName	string
 seats[].emblems.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
 seats[].emblems.cards[].colorCDADropped	bool
@@ -5880,6 +5892,7 @@ seats[].graveyard.cards[].chosenPermanent	object
 seats[].graveyard.cards[].chosenPermanent.epoch	number:int
 seats[].graveyard.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].graveyard.cards[].chosenSecondName	string
 seats[].graveyard.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
 seats[].graveyard.cards[].colorCDADropped	bool
@@ -6245,6 +6258,7 @@ seats[].hand.cards[].chosenPermanent	object
 seats[].hand.cards[].chosenPermanent.epoch	number:int
 seats[].hand.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].hand.cards[].chosenSecondName	string
 seats[].hand.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
 seats[].hand.cards[].colorCDADropped	bool
@@ -6584,6 +6598,7 @@ seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
 seats[].lastTurnAttacks[].epoch	number:int
 seats[].lastTurnAttacks[].phaseId	number:int
 seats[].lastTurnAttacks[].planeswalkerController	custom(uuid.UUID)
+seats[].lastTurnCastOrPut	bool
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object
@@ -6623,6 +6638,7 @@ seats[].library.cards[].chosenPermanent	object
 seats[].library.cards[].chosenPermanent.epoch	number:int
 seats[].library.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].library.cards[].chosenSecondName	string
 seats[].library.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
 seats[].library.cards[].colorCDADropped	bool
@@ -7027,6 +7043,7 @@ seats[].sideboard.cards[].chosenPermanent	object
 seats[].sideboard.cards[].chosenPermanent.epoch	number:int
 seats[].sideboard.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].sideboard.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].sideboard.cards[].chosenSecondName	string
 seats[].sideboard.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].sideboard.cards[].classLevel	number:int
 seats[].sideboard.cards[].colorCDADropped	bool
@@ -7618,6 +7635,7 @@ stack.cards[].chosenPermanent	object
 stack.cards[].chosenPermanent.epoch	number:int
 stack.cards[].chosenPermanent.id	custom(uuid.UUID)
 stack.cards[].chosenPlayer	custom(uuid.UUID)
+stack.cards[].chosenSecondName	string
 stack.cards[].chosenSecondPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int
 stack.cards[].colorCDADropped	bool
@@ -8387,6 +8405,7 @@ turnTally.players{}.lifeGained	number:int
 turnTally.players{}.lifeLost	number:int
 turnTally.players{}.lifeLow	number:int
 turnTally.players{}.lifeLowSet	bool
+turnTally.players{}.nontokenPermanentsPut	number:int
 turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int

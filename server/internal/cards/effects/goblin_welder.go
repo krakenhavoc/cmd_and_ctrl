@@ -26,7 +26,11 @@ func init() {
 				if !aOK || !bOK || a.Kind != game.TargetCard || b.Kind != game.TargetCard || !ctx.IsTargetLegal(a) || !ctx.IsTargetLegal(b) {
 					return nil
 				}
-				return g.ExchangeArtifactWithGraveyardForEffect(item.SourceCardID, a.ID, b.ID)
+				// #1997: "that player … returns" the card, so they put
+				// it (CR 110.2a), which Arboria reads.
+				return g.PutByEnteringPlayerForEffect(func() error {
+					return g.ExchangeArtifactWithGraveyardForEffect(item.SourceCardID, a.ID, b.ID)
+				})
 			},
 		}},
 	})

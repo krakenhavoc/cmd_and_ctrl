@@ -694,6 +694,13 @@ type ReplacementEvent struct {
 	// whose entry queued any prompt was never pushed at all.
 	stackItem *StackItem
 
+	// putByEntering records the permanent as put onto the battlefield
+	// by the player it enters under rather than by the resolving item's
+	// controller (#1997, last_turn_actions.go): a search, a manifest, an
+	// instruction that names who puts. Unexported engine plumbing,
+	// copied with the struct.
+	putByEntering bool
+
 	// EntersWithCounters is the map of counter name → count applied
 	// BEFORE EventETB fires (Hangarback Walker "enters with X +1/+1
 	// counters", etc.). Applied by the battlefield-entry path under

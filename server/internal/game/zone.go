@@ -314,6 +314,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// also what stops the restriction reader having to ask what
 		// zone the Needle is in.
 		c.ChosenName = ""
+		c.ChosenSecondName = ""
 		// #1572 / CR 614.12: and so does the chosen OPTION. A Siege
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.

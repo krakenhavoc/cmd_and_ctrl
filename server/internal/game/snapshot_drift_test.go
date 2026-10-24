@@ -223,6 +223,7 @@ var gameFields = plan(
 	// #3613: the end of that resolution, parked behind the same prompt.
 	"pausedResolutionTail", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
+	"putByEntering", dropped, "not game state: it counts PutByEnteringPlayerForEffect scopes on the Go stack, so it is zero between actions (#1997)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.
 	"promptKeys", dropped, "not game state: read only inside one resolution function or one answered prompt's branch, and reset where each begins (ADR 0127 §2)",
@@ -526,6 +527,7 @@ var cardFields = plan(
 	// three above there is not even a vocabulary to rebuild it from,
 	// because CR 201.2 lets a player name any card name at all.
 	"ChosenName", carried, "",
+	"ChosenSecondName", carried, "",
 	// #1572, CR 614.12: the named option (a Siege's anchor word)
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
@@ -707,6 +709,9 @@ var playerFields = plan(
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
+	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
+	// the battlefield during their last turn".
+	"LastTurnCastOrPut", carried, "",
 	"Eliminated", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
@@ -1094,6 +1099,9 @@ var pendingChoiceFields = plan(
 	// ADR 0160's 2026-10-15 amendment: the creature types a
 	// choose_creature_type prompt refuses.
 	"ExcludedTypes", carried, "",
+	// #1997: Null Chamber's second card name and its basic-land bar.
+	"SecondName", carried, "",
+	"NotBasicLandName", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",
 	"LibraryTopCount", carried, "",
