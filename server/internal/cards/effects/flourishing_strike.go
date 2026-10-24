@@ -30,8 +30,8 @@ func init() {
 				rfCreatureBModeTargetDoes(func(ctx *Context, id uuid.UUID) error {
 					return DealDamage{Source: ctx.Source(), Target: id, Amount: 5}.Apply(ctx)
 				})),
-			ModeDoing("Target creature gets +3/+3 until end of turn.",
-				TargetCreature("target creature"), BoostTheModesTarget(3, 3, "Flourishing Strike")),
+			ModeWithPurpose(ModeDoing("Target creature gets +3/+3 until end of turn.",
+				TargetCreature("target creature"), BoostTheModesTarget(3, 3, "Flourishing Strike")), ForTargets(BenefitUntilEOT(0, 3, 3))),
 		)),
 	})
 }

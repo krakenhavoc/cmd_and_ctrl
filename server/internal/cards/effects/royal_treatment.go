@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fd0f8fdc-4065-41f4-b8fb-ecb8f185774d",
 		Name:         "Royal Treatment",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

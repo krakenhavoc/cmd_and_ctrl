@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4233334d-bb19-41e4-a203-2b7bb0c48f52",
 		Name:         "Enthusiastic Study",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 1, "trample")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

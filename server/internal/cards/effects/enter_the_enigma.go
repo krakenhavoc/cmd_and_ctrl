@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "67554654-e751-4679-9e92-f3588525ae4f",
 		Name:         "Enter the Enigma",
+		Purpose:      game.Purpose{Draws: 1, Targets: game.ForTargets(CantBeBlockedUntilEOT(0, 0, 0))},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

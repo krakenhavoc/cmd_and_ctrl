@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "bb2b324c-970a-4920-884e-c92ba49669f0",
 		Name:         "Tamiyo's Safekeeping",
+		Purpose:      game.Purpose{LifeGain: 2, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))},
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target permanent you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

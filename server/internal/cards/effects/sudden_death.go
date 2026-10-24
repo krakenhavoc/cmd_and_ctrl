@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "a3475ca6-d88e-4855-a554-1338624d1635",
 		Name:            "Sudden Death",
+		Purpose:         ForTargets(HarmUntilEOT(0, -4, -4)),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordSplitSecond},
 		Targets:         TargetCreature("target creature"),

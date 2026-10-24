@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "571cb4b6-b4e5-40a2-a970-42c1ab65c8a9",
 		Name:         "Overkill",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, -9999)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

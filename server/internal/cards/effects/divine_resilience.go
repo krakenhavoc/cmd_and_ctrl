@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4f6e2e47-34df-4bf3-a546-e06b42840167",
 		Name:         "Divine Resilience",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "indestructible")),
 		Completeness: CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{WhenPaid(Kicker("{2}{W}"),
 			TargetCreature("any number of target creatures you control", YouControl()).WithCount(0, 0))},

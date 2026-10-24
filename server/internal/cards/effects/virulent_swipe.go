@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "77f53f6a-36ab-43d1-b547-4578fd724864",
 		Name:            "Virulent Swipe",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 2, 0, "deathtouch")),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),

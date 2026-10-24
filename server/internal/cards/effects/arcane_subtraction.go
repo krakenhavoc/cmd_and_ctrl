@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4b5806fa-430f-4b78-b874-63d01a8a9de5",
 		Name:         "Arcane Subtraction",
+		Purpose:      ForTargets(HarmUntilEOT(0, -4, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: ResolveSteps(

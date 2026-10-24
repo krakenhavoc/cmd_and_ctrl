@@ -29,9 +29,9 @@ func init() {
 			ModeDoing("Target opponent reveals their hand. You choose an instant or sorcery card from it. That player discards that card.",
 				TargetPlayer("target opponent", Opponent()),
 				ModeTargetRevealsYouChooseDiscard(Or(Instant(), Sorcery()), "instant or sorcery card")),
-			ModeDoing("Target creature gets -2/-2 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets -2/-2 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(-2, -2, "Collective Brutality")),
+				BoostTheModesTarget(-2, -2, "Collective Brutality")), ForTargets(HarmUntilEOT(0, -2, -2))),
 			// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
 			ModeSteps("Target opponent loses 2 life and you gain 2 life.",
 				TargetPlayer("target opponent", Opponent()),

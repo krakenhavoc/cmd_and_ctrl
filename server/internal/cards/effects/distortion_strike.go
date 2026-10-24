@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "4c7f3fbf-6b68-492f-893d-853c73cfa463",
 		Name:            "Distortion Strike",
+		Purpose:         ForTargets(CantBeBlockedUntilEOT(0, 1, 0)),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),

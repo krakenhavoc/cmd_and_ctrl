@@ -19,10 +19,10 @@ func init() {
 		Name:         "Borrowed Hostility",
 		Completeness: CompletenessFull,
 		Modes: Escalating(ChooseN("Choose one or both", 1, 2,
-			ModeDoing("Target creature gets +3/+0 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets +3/+0 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(3, 0, "Borrowed Hostility")),
-			ModeDoing("Target creature gains first strike until end of turn.",
+				BoostTheModesTarget(3, 0, "Borrowed Hostility")), ForTargets(BenefitUntilEOT(0, 3, 0))),
+			ModeWithPurpose(ModeDoing("Target creature gains first strike until end of turn.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -30,7 +30,7 @@ func init() {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"first strike"}, Label: "Borrowed Hostility"}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "first strike"))),
 		), EscalateMana("{3}")),
 	})
 }

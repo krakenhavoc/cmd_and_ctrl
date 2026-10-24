@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "95a53dd7-76dc-46f1-8833-fafd02ba49c4",
 		Name:         "Tainted Strike",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 0, "infect")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

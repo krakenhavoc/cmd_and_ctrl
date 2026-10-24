@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "f2782c21-ed99-4821-8938-cc539e783ec7",
 		Name:           "Call for Blood",
+		Purpose:        ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		Targets:        TargetCreature("target creature"),

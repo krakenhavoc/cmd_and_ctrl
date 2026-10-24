@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "b4f89885-eeb9-46c7-9820-9758b624ca24",
 		Name:         "Tethermage's Advantage",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2, "reach")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

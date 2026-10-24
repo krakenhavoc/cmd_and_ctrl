@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e513c05c-14c0-4d2e-a5b3-e4f29cb4c1a2",
 		Name:         "Enshrouding Mist",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

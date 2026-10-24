@@ -24,9 +24,9 @@ func init() {
 			ModeDoing("Target opponent reveals their hand. You choose a nonland permanent card from it. That player discards that card.",
 				TargetPlayer("target opponent", Opponent()),
 				ModeTargetRevealsYouChooseDiscard(NonlandPermanentCard(), "nonland permanent card")),
-			ModeDoing("Target creature gets -2/-2 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets -2/-2 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(-2, -2, "Auntie's Sentence")),
+				BoostTheModesTarget(-2, -2, "Auntie's Sentence")), ForTargets(HarmUntilEOT(0, -2, -2))),
 		),
 	})
 }

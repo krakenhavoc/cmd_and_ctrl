@@ -22,7 +22,7 @@ func init() {
 		Name:         "Tifa's Limit Break",
 		Completeness: CompletenessFull,
 		Modes: Tiered(
-			SpreeModeDoing("Somersault — Target creature gets +2/+2 until end of turn.", "{0}",
+			ModeWithPurpose(SpreeModeDoing("Somersault — Target creature gets +2/+2 until end of turn.", "{0}",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -30,11 +30,11 @@ func init() {
 						return nil
 					}
 					return BoostUntilEOT{Target: t.ID, Power: 2, Toughness: 2, Label: "Tifa's Limit Break — Somersault"}.Apply(ctx)
-				}),
-			SpreeModeDoing("Meteor Strikes — Double target creature's power and toughness until end of turn.", "{2}",
-				TargetCreature("target creature"), tifaMultiply(2, "Tifa's Limit Break — Meteor Strikes")),
-			SpreeModeDoing("Final Heaven — Triple target creature's power and toughness until end of turn.", "{6}{G}",
-				TargetCreature("target creature"), tifaMultiply(3, "Tifa's Limit Break — Final Heaven")),
+				}), ForTargets(BenefitUntilEOT(0, 2, 2))),
+			ModeWithPurpose(SpreeModeDoing("Meteor Strikes — Double target creature's power and toughness until end of turn.", "{2}",
+				TargetCreature("target creature"), tifaMultiply(2, "Tifa's Limit Break — Meteor Strikes")), ForTargets(BenefitUntilEOT(0, 0, 0))),
+			ModeWithPurpose(SpreeModeDoing("Final Heaven — Triple target creature's power and toughness until end of turn.", "{6}{G}",
+				TargetCreature("target creature"), tifaMultiply(3, "Tifa's Limit Break — Final Heaven")), ForTargets(BenefitUntilEOT(0, 0, 0))),
 		),
 	})
 }

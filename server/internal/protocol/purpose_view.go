@@ -265,6 +265,9 @@ type PumpView struct {
 	Power     int      `json:"power,omitempty"`
 	Toughness int      `json:"toughness,omitempty"`
 	Keywords  []string `json:"keywords,omitempty"`
+	// CantBeBlocked: the change makes the creature unblockable this turn
+	// (#4312).
+	CantBeBlocked bool `json:"cant_be_blocked,omitempty"`
 }
 
 // DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
@@ -370,7 +373,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
 	if pm := p.Pump; pm != nil {
-		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
+		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{
@@ -409,7 +412,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 				UntilEndOfTurn: string(t.UntilEndOfTurn),
 			}
 			if pm := t.Pump; pm != nil {
-				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
+				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

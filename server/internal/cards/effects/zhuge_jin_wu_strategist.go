@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Target creature can't be blocked this turn. Activate only during your turn, before attackers are declared.",
-			Purpose:   ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Purpose:   ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:      TapCost(),
 			Targets:   TargetCreature("target creature"),
 			Condition: DuringYourTurnBeforeAttackersAreDeclared(),

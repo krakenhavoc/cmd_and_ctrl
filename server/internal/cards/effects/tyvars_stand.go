@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "4247b667-a0a8-4995-97c7-622d20132f7d",
 		Name:         "Tyvar's Stand",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

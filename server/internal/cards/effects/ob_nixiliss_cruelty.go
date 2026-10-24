@@ -11,6 +11,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "c638957f-88bf-40c2-834c-2be39d73bf41",
 		Name:         "Ob Nixilis's Cruelty",
+		Purpose:      ForTargets(HarmUntilEOT(0, -5, -5)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve:    shrinkFirstTargetExileIfItDies(5),

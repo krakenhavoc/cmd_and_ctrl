@@ -47,6 +47,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "40601061-1b25-4db8-8b99-33324ce945cf",
 		Name:           "Hatred",
+		Purpose:        ForTargets(BenefitUntilEOT(0, 0, 0)),
 		Completeness:   CompletenessFull,
 		XMatters:       true,
 		AdditionalCost: PayXLifeCost(),

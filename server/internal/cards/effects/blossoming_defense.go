@@ -39,6 +39,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "5a851367-1c4a-4cc9-a9c3-3d2775986b4c",
 		Name:         "Blossoming Defense",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2, "hexproof")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

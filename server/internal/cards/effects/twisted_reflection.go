@@ -22,8 +22,8 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Entwine("{B}")},
 		Modes: Entwining(ChooseOne(
-			ModeDoing("Target creature gets -6/-0 until end of turn.", TargetCreature("target creature"),
-				BoostTheModesTarget(-6, 0, "Twisted Reflection — -6/-0")),
+			ModeWithPurpose(ModeDoing("Target creature gets -6/-0 until end of turn.", TargetCreature("target creature"),
+				BoostTheModesTarget(-6, 0, "Twisted Reflection — -6/-0")), ForTargets(HarmUntilEOT(0, -6, 0))),
 			ModeDoing("Switch target creature's power and toughness until end of turn.", TargetCreature("target creature"),
 				SwitchTheModesTarget("Twisted Reflection — switch power and toughness")),
 		)),

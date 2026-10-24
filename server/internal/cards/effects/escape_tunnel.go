@@ -31,7 +31,7 @@ func init() {
 			},
 			{
 				Label:   "{T}, Sacrifice this land: Target creature with power 2 or less can't be blocked this turn.",
-				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+				Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 				Cost:    Plus(TapCost(), SacrificeThis()),
 				Targets: TargetCreature("target creature with power 2 or less", PowerLE(2)),
 				Effect:  escapeTunnelUnblockable,

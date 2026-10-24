@@ -38,7 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target creature you control gains protection from the color of your choice until end of turn.",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
 			Cost:    game.AbilityCost{Tap: true},
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

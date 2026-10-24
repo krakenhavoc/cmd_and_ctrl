@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "256cc907-2a13-4f43-9d37-2e52034cdaf4",
 		Name:         "Compelled Duel",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 3)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

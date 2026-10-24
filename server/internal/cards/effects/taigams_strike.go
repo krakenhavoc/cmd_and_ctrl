@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "f256c828-01d2-4077-823d-8dccd15120bd",
 		Name:            "Taigam's Strike",
+		Purpose:         ForTargets(CantBeBlockedUntilEOT(0, 2, 0)),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),

@@ -21,7 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, {T}: Another target creature you control with power 2 or less can't be blocked this turn",
-			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: Another(TargetCreature("another target creature you control with power 2 or less",
 				YouControl(), PowerLE(2))),

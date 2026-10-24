@@ -16,7 +16,7 @@ func init() {
 		OracleID:     "c86ed70b-ab09-402e-8aaf-6332b4749453",
 		Name:         "Highspire Infusion",
 		Completeness: CompletenessFull,
-		Purpose:      game.Purpose{Energy: 2},
+		Purpose:      game.Purpose{Energy: 2, Targets: game.ForTargets(BenefitUntilEOT(0, 3, 3))},
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {

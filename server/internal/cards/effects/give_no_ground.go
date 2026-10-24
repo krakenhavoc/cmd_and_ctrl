@@ -14,6 +14,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "bae18a46-00e0-4b3e-8fdb-44cc61f30f8e",
 		Name:         "Give No Ground",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 6)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

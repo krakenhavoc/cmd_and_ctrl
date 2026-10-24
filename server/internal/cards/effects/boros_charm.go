@@ -44,8 +44,8 @@ func init() {
 			ModeWithPurpose(Mode("Boros Charm deals 4 damage to target player or planeswalker.",
 				targetPlayerOrPlaneswalker()), ForTargets(DamageToTarget(0, 4))),
 			Mode("Permanents you control gain indestructible until end of turn."),
-			Mode("Target creature gains double strike until end of turn.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Target creature gains double strike until end of turn.",
+				TargetCreature("target creature")), ForTargets(BenefitUntilEOT(0, 0, 0, "double strike"))),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {

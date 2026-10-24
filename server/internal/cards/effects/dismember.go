@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fd74f8eb-0253-42dd-8277-186d4934da38",
 		Name:         "Dismember",
+		Purpose:      ForTargets(HarmUntilEOT(0, -5, -5)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

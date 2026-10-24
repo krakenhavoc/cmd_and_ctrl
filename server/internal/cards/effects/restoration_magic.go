@@ -37,10 +37,10 @@ func init() {
 		Name:         "Restoration Magic",
 		Completeness: CompletenessFull,
 		Modes: Tiered(
-			SpreeModeDoing("Cure — Target permanent gains hexproof and indestructible until end of turn.", "{0}",
-				TargetPermanent("target permanent"), cure(0, "Restoration Magic — Cure")),
-			SpreeModeDoing("Cura — Target permanent gains hexproof and indestructible until end of turn. You gain 3 life.", "{1}",
-				TargetPermanent("target permanent"), cure(3, "Restoration Magic — Cura")),
+			ModeWithPurpose(SpreeModeDoing("Cure — Target permanent gains hexproof and indestructible until end of turn.", "{0}",
+				TargetPermanent("target permanent"), cure(0, "Restoration Magic — Cure")), ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))),
+			ModeWithPurpose(SpreeModeDoing("Cura — Target permanent gains hexproof and indestructible until end of turn. You gain 3 life.", "{1}",
+				TargetPermanent("target permanent"), cure(3, "Restoration Magic — Cura")), game.Purpose{LifeGain: 3, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))}),
 			SpreeModeDoing("Curaga — Permanents you control gain hexproof and indestructible until end of turn. You gain 6 life.", "{3}{W}", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					if err := (GrantKeywordUntilEOT{Match: YouControl(), Keywords: protect, Label: "Restoration Magic — Curaga"}).Apply(ctx); err != nil {

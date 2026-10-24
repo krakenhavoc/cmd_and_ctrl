@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "686b44ec-3446-4e1f-a15f-9d8557db6d70",
 		Name:            "Center Soul",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature you control", YouControl()),

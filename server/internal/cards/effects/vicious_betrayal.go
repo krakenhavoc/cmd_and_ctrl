@@ -23,6 +23,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "be1015a7-2ace-4b97-8884-202abae8401b",
 		Name:           "Vicious Betrayal",
+		Purpose:        ForTargets(BenefitUntilEOT(0, 0, 0)),
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeAnyNumberCost("any number of creatures", Creature()),
 		Targets:        TargetCreature("target creature"),

@@ -384,14 +384,22 @@ type TargetPurpose struct {
 	// on the wire tells the two apart, so the bot priced every opposing
 	// pick as removal and gave an opponent's creature lifelink. The zero
 	// value is "not declared", which keeps that price.
+	//
+	// A spell declares it too (#4312): Giant Growth's +3/+3, Dismember's
+	// -5/-5. A lasting part that helps the same target as well (Beast
+	// Mode's teamwork counter, Monstrous Rage's Role) does not stop a
+	// benefit being declared; it is left unpriced, so the price is a
+	// floor. A change that is partly a harm and partly a benefit, or
+	// whose direction is chosen at resolution, declares nothing.
 	UntilEndOfTurn TargetEffect
 	// Pump is what the change is, when it is printed in amounts: the
-	// power and toughness it adds (negative for a harm's -N/-N) and the
+	// power and toughness it adds (negative for a harm's -N/-N), the
 	// keywords a benefit grants, lowercase as the wire's `abilities`
-	// spells them. Nil for an amount counted at resolution (+X/+X) or a
-	// change that is not a pump ("can't be blocked this turn"). Declared
-	// only beside UntilEndOfTurn. A pointer so TargetPurpose stays
-	// comparable.
+	// spells them ("protection" for protection from a quality chosen at
+	// resolution), and "can't be blocked this turn" (#4312). Nil for an
+	// amount counted at resolution (+X/+X) with nothing else printed.
+	// Declared only beside UntilEndOfTurn. A pointer so TargetPurpose
+	// stays comparable.
 	Pump *Pump
 }
 
@@ -479,6 +487,11 @@ type Pump struct {
 	Power     int
 	Toughness int
 	Keywords  []string
+	// CantBeBlocked is "can't be blocked this turn" (#4312): Rogue's
+	// Passage, Artful Dodge. Not a keyword, so not in Keywords; the bot
+	// reads it as the `cant_be_blocked` restriction the creature will
+	// have.
+	CantBeBlocked bool
 }
 
 // Saves is the permanents a `survive` or `protect` row covers besides, or

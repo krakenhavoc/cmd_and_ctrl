@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6344c96a-efa5-4125-8219-d333228391cf",
 		Name:         "Blazing Crescendo",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 1)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

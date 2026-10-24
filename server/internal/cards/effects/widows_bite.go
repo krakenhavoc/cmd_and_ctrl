@@ -21,7 +21,7 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(3)},
 		Modes: ChooseOne(
-			ModeDoing("Target creature gains deathtouch until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gains deathtouch until end of turn.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -29,8 +29,8 @@ func init() {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"deathtouch"}, Label: "Widow's Bite"}.Apply(ctx)
-				}),
-			ModeDoing("Target creature gets -2/-2 until end of turn.",
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "deathtouch"))),
+			ModeWithPurpose(ModeDoing("Target creature gets -2/-2 until end of turn.",
 				TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -38,7 +38,7 @@ func init() {
 						return nil
 					}
 					return BoostUntilEOT{Target: t.ID, Power: -2, Toughness: -2, Label: "Widow's Bite"}.Apply(ctx)
-				}),
+				}), ForTargets(HarmUntilEOT(0, -2, -2))),
 		).InsteadIf(2, TeamworkUsed),
 	})
 }

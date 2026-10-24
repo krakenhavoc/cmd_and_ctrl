@@ -12,6 +12,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "61978202-538b-4f92-acfc-e95f4a6ce466",
 		Name:             "Wild Ride",
+		Purpose:          ForTargets(BenefitUntilEOT(0, 3, 0, "haste")),
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Harmonize("{4}{R}")},

@@ -102,6 +102,11 @@ func (p *Policy) temporaryBenefitValue(st *state, c *protocol.CardView, pump *pr
 	if inCombatNow(st, c) {
 		gain += p.cfg.CombatGrant
 	}
+	// #4312: a grant that keeps c when the stack would remove it is worth
+	// what keeping it is worth (grant_save.go).
+	if saved, ok := p.grantSave(st, c, pump); ok && saved > gain {
+		return saved
+	}
 	return gain
 }
 
@@ -123,14 +128,20 @@ func (p *Policy) temporaryHarmValue(st *state, c *protocol.CardView, pump *proto
 }
 
 // grantsNothingNew reports whether a benefit adds nothing to c: no power
-// or toughness, and every keyword it grants c already has (CR 702.15f:
-// several instances of lifelink are redundant, and so for the others).
+// or toughness, every keyword it grants c already has (CR 702.15f:
+// several instances of lifelink are redundant, and so for the others),
+// and, when it makes c unblockable, c already is (#4312). Protection from
+// a quality chosen at resolution is always new: c may have protection
+// from another one.
 func grantsNothingNew(c *protocol.CardView, pump *protocol.PumpView) bool {
-	if pump == nil || pump.Power != 0 || pump.Toughness != 0 || len(pump.Keywords) == 0 {
+	if pump == nil || pump.Power != 0 || pump.Toughness != 0 || (len(pump.Keywords) == 0 && !pump.CantBeBlocked) {
+		return false
+	}
+	if pump.CantBeBlocked && !hasRestriction(c, "cant_be_blocked") {
 		return false
 	}
 	for _, k := range pump.Keywords {
-		if !hasKeyword(c, k) {
+		if k == "protection" || !hasKeyword(c, k) {
 			return false
 		}
 	}
@@ -206,16 +217,38 @@ func (st *state) temporaryPicks(m legal.Move) ([]targetRef, []*protocol.TargetPu
 // clears LeftoverThreshold. On another player's turn the bot's mana comes
 // back in its untap step, so all of it is spare.
 func (p *Policy) spareCombatGrant(st *state, m legal.Move) bool {
+	return p.spareTemporaryMove(st, m, func(c *protocol.CardView, _ *protocol.TargetPurposeView) bool {
+		return inCombatNow(st, c)
+	})
+}
+
+// spareGrantSave is spareCombatGrant for a grant that keeps the bot's
+// permanent from what the stack would do to it (#4312, grant_save.go):
+// Mother of Runes in answer to a Murder.
+func (p *Policy) spareGrantSave(st *state, m legal.Move) bool {
+	return p.spareTemporaryMove(st, m, func(c *protocol.CardView, e *protocol.TargetPurposeView) bool {
+		if e.UntilEndOfTurn != targetBenefit {
+			return false
+		}
+		_, ok := p.grantSave(st, c, e.Pump)
+		return ok
+	})
+}
+
+// spareTemporaryMove reports whether m is a change until end of turn whose
+// every pick passes ok, paid with mana and taps only, that leaves the bot
+// the mana for the biggest card it could still cast this turn.
+func (p *Policy) spareTemporaryMove(st *state, m legal.Move, ok func(*protocol.CardView, *protocol.TargetPurposeView) bool) bool {
 	if !p.cfg.PriceTemporaryEffects || !p.costsOnlyManaAndTaps(st, m) {
 		return false
 	}
-	picks, _ := st.temporaryPicks(m)
+	picks, entries := st.temporaryPicks(m)
 	if len(picks) == 0 {
 		return false
 	}
-	for _, t := range picks {
+	for i, t := range picks {
 		c := st.bf[t.ID]
-		if c == nil || !inCombatNow(st, c) {
+		if c == nil || !ok(c, entries[i]) {
 			return false
 		}
 	}

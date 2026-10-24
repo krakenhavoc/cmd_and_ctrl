@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "7b58920e-3e90-44ed-a0e9-4cb1b7359a5b",
 		Name:            "Artful Maneuver",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 2, 2)),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature"),
