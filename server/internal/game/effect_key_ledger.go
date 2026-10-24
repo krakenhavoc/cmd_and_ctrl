@@ -109,6 +109,8 @@ func ledgerLineResolves(line string) bool {
 		return KnownVoteThen(fields[1])
 	case "choose":
 		return KnownChooseCardsThen(fields[1])
+	case "payunless":
+		return KnownPayUnlessElse(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

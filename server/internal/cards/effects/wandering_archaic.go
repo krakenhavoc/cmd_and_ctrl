@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Wandering Archaic // Explore the Vastlands — modal double-faced card
 // (slice 296-m; the back face #1743):
@@ -105,23 +109,32 @@ func wanderingArchaicPayOrCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	spellID := ctx.Trigger().Event.CardID
 	caster := ctx.Trigger().Event.Actor
-	controller := item.Controller
 	return PayUnless{
 		Chooser:  caster,
 		Cost:     "{2}",
 		Question: "Wandering Archaic — pay {2}?",
-		OnDecline: func(ctx *Context) error {
-			return MayChoice{
-				Player:   controller,
-				Question: "Wandering Archaic — copy that spell?",
-				OnYes: func(ctx *Context) error {
-					return CopySpell{
-						StackID:          spellID,
-						Controller:       controller,
-						ChooseNewTargets: true,
-					}.Apply(ctx)
-				},
+		Else:     wanderingArchaicDecline,
+		Carry:    []uuid.UUID{spellID},
+	}.Apply(ctx)
+}
+
+// wanderingArchaicDecline is "you may copy that spell" once the tax is
+// not paid, keyed (#4256): a table waiting on the payer is a restore
+// point. The spell rides on the prompt as its Carry.
+var wanderingArchaicDecline = PayUnlessElse("pay-unless/wandering-archaic-may-copy", func(ctx *Context, r game.PayUnlessAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	spellID, controller := r.Carry[0], ctx.Controller()
+	return MayChoice{
+		Player:   controller,
+		Question: "Wandering Archaic — copy that spell?",
+		OnYes: func(ctx *Context) error {
+			return CopySpell{
+				StackID:          spellID,
+				Controller:       controller,
+				ChooseNewTargets: true,
 			}.Apply(ctx)
 		},
 	}.Apply(ctx)
-}
+})

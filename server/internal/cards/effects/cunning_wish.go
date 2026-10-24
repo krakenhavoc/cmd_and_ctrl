@@ -18,9 +18,8 @@ func init() {
 		// The exile waits for the question the take asks (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
 			TakeFromOutside{
-				Match:    func(c game.Card) bool { return c.IsInstant() },
+				Pick:     cunningWishTake,
 				Question: "Cunning Wish — reveal an instant card you own from outside the game, or none",
-				Reveal:   true,
 			},
 			Instruction(func(ctx *Context) error {
 				// "Exile Cunning Wish." The spell moves itself, so the
@@ -30,3 +29,8 @@ func init() {
 		),
 	})
 }
+
+// cunningWishTake is the wish's keyed pick (#4256), so a table waiting on
+// it is a restore point.
+var cunningWishTake = registerOutsideTake("choose-cards/cunning-wish-take",
+	func(c game.Card) bool { return c.IsInstant() }, true)

@@ -1152,6 +1152,9 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"CollectionSuggestions", carried, "",
+	// #4256: a keyed collection pick's filter word; its key rides
+	// PickThen.
+	"PickMatchArg", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",

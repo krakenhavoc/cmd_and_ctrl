@@ -42,10 +42,14 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return TakeFromOutside{
-				Match:    func(c game.Card) bool { return !c.IsCreature() },
+				Pick:     grantedTake,
 				Question: "Granted — reveal a noncreature card you own from outside the game, or none",
-				Reveal:   true,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// grantedTake is Granted's keyed pick (#4256), so a table waiting on it
+// is a restore point.
+var grantedTake = registerOutsideTake("choose-cards/granted-take",
+	func(c game.Card) bool { return !c.IsCreature() }, true)

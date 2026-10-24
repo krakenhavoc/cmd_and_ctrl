@@ -183,7 +183,7 @@ func payUnlessCovered(c *PendingChoice) bool {
 	if c.GuardsStackItem != uuid.Nil || c.OwedInStep != (TurnStep{}) || c.LifeCost != 0 {
 		return false
 	}
-	f := c.payUnlessResume
+	f := payUnlessFrameOf(c)
 	if f == nil || f.action != nil || !f.tap.Empty() {
 		return false
 	}
@@ -404,7 +404,7 @@ func (g *Game) autoAnswerHandReasonLocked(c *PendingChoice, answer AutoAnswer) A
 		return AskedByHandEmptyLibrary
 	}
 	if c.Kind == PendingChoicePayUnless {
-		if c.payUnlessResume == nil || !g.canPayCostLocked(p, c.payUnlessResume.cost, c.Source) {
+		if f := payUnlessFrameOf(c); f == nil || !g.canPayCostLocked(p, f.cost, c.Source) {
 			return AskedByHandNoMana
 		}
 	}

@@ -39,11 +39,15 @@ func init() {
 					Chooser:  item.Trigger.Event.Actor,
 					Cost:     "{3}",
 					Question: "Kazuul, Tyrant of the Cliffs — pay {3} to stop the Ogre?",
-					OnDecline: func(ctx *Context) error {
-						return CreateToken{Controller: ctx.Controller(), Template: TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
-					},
+					Else:     kazuulDecline,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// kazuulDecline is the Ogre once the tax is not paid, keyed (#4256): a
+// table waiting on the payer is a restore point.
+var kazuulDecline = PayUnlessElse("pay-unless/kazuul-ogre", func(ctx *Context, _ game.PayUnlessAnswer) error {
+	return CreateToken{Controller: ctx.Controller(), Template: TokenCard("3/3 red Ogre"), N: 1}.Apply(ctx)
+})

@@ -220,6 +220,12 @@ type DiscardPrompt struct {
 	// already; `discarded` is nil for an empty hand, which is the
 	// case this still fires for.
 	Then func(g *Game, seat uuid.UUID, discarded []uuid.UUID) error
+
+	// keyed and carry are a keyed discard-then's continuation and its
+	// plain data (PlayerDiscardsThenKeyedForEffect, discard_run_keyed.go,
+	// #4256). Unexported because the one entry point sets them.
+	keyed ChooseCardsThen
+	carry []uuid.UUID
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -336,6 +342,23 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	question := p.Question
 	if question == "" {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
+	}
+	if p.keyed.key != "" {
+		// #4256: a keyed discard-then. The prompt holds no closure and
+		// no run link, so a table waiting on it is a restore point; the
+		// continuation discards the picks and runs the rest of the card
+		// (discard_run_keyed.go).
+		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    p.Player,
+			FromPlayer: p.Player,
+			Source:     p.Source,
+			Question:   question,
+			Cards:      hand,
+			Min:        lo,
+			Max:        n,
+			ThenKey:    p.keyed,
+			Carry:      p.carry,
+		})
 	}
 	discarder, source := p.Player, p.Source
 	legThen := p.Then

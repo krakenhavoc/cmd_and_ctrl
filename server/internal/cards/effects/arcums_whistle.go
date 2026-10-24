@@ -3,6 +3,8 @@ package effects
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -60,8 +62,17 @@ func arcumsWhistleAsks(g *game.Game, item *game.StackItem) error {
 		Chooser:  payer,
 		Cost:     fmt.Sprintf("{%d}", mv),
 		Question: fmt.Sprintf("Arcum's Whistle - pay {%d} so %s doesn't have to attack?", mv, c.Name),
-		OnDecline: func(ctx *Context) error {
-			return mustAttackOrBeDestroyed(ctx, id, "Arcum's Whistle")
-		},
+		Else:     arcumsWhistleDecline,
+		Carry:    []uuid.UUID{id},
 	}.Apply(ctx)
 }
+
+// arcumsWhistleDecline is the forced attack once the payer declines,
+// keyed (#4256): a table waiting on the payer is a restore point. The
+// creature rides on the prompt as its Carry.
+var arcumsWhistleDecline = PayUnlessElse("pay-unless/arcums-whistle-must-attack", func(ctx *Context, r game.PayUnlessAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return mustAttackOrBeDestroyed(ctx, r.Carry[0], "Arcum's Whistle")
+})

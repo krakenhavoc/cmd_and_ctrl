@@ -63,7 +63,7 @@ func init() {
 				Cost:  LoyaltyCost(-2),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return TakeFromExileOrOutside{
-						Match:           func(c game.Card) bool { return c.IsArtifact() },
+						Pick:            karnTheGreatCreatorTake,
 						ExileQuestion:   "Karn, the Great Creator — choose a face-up artifact card you own in exile, or none to reveal one from outside the game",
 						OutsideQuestion: "Karn, the Great Creator — reveal an artifact card you own from outside the game, or none",
 					}.Apply(NewContext(g, item))
@@ -72,3 +72,8 @@ func init() {
 		},
 	})
 }
+
+// karnTheGreatCreatorTake is the −2's pick from outside the game, keyed
+// (#4256), and the artifact filter its exile pick shares.
+var karnTheGreatCreatorTake = registerOutsideTake("choose-cards/karn-the-great-creator-take",
+	func(c game.Card) bool { return c.IsArtifact() }, true)

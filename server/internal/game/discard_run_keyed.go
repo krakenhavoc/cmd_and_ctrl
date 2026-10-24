@@ -1,0 +1,124 @@
+package game
+
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
+// discard_run_keyed.go — "discard <n> cards, then <the rest>" whose rest
+// is a KEY rather than a closure (#4256), so a table waiting on the
+// discard is a restore point.
+//
+// PlayerDiscardsThenForEffect keeps the rest of the card in a prompted
+// run (prompt_run.go): a closure on Game.promptRuns, linked from the
+// prompt by a run id, and the prompt's own continuation is a closure
+// too. Neither is written to a restore point, so a table waiting on
+// learn's "you may discard a card" could be undone but not saved and
+// restored.
+//
+// The keyed form is for the one-seat shape, which is one prompt and so
+// needs no run: the prompt is a keyed choose_cards pick over the
+// player's hand (choose_cards_keyed.go) whose registered continuation
+// discards the picks through the one discard path (discardCardsLocked)
+// and, once they have landed, runs the card's registered rest with what
+// was really discarded. What the rest needs is plain data on the
+// prompt: the player (Chooser), the card that asked (Source) and the IDs
+// the card put there (Carry). The key shares the effect-key namespace
+// and is ledgered as a choose-cards continuation ("choose <key>").
+//
+// What it gives up is the closure form's per-prompt extras: the set rule
+// (DiscardPrompt.Validate) and the leg's own Then, both closures. A pick
+// that has left the hand by the time the answer comes in is skipped by
+// the discard itself, as every discard skips a card no longer in hand.
+// A discard the CR 903.9 commander prompt pauses part-way is still a
+// closure for as long as that prompt is open, which is the commander
+// prompt's own frame and no change here.
+
+// DiscardsDone is what a keyed discard-then's continuation is handed.
+type DiscardsDone struct {
+	// Player discarded (or was asked to); Source is the card that asked.
+	Player, Source uuid.UUID
+	// Discarded is what really left the player's hand this way
+	// (PromptedDiscards' reading). Empty when nothing was asked (an
+	// empty hand, CR 701.9a) or the prompt ended unanswered.
+	Discarded PromptedDiscards
+	// Carry is the plain data the queuing card put on the prompt.
+	Carry []uuid.UUID
+}
+
+// DiscardThenFunc is a registered discard-then continuation. It runs
+// with g.mu held, may queue prompts of its own, and must capture
+// nothing.
+type DiscardThenFunc func(g *Game, r DiscardsDone) error
+
+// DiscardThen names a registered discard-then continuation. The key is
+// unexported, so the only way to hold one is RegisterDiscardThen.
+type DiscardThen struct {
+	then ChooseCardsThen
+	fn   DiscardThenFunc
+}
+
+// Key is the continuation's on-disk key.
+func (d DiscardThen) Key() string { return d.then.key }
+
+// RegisterDiscardThen registers a keyed discard-then continuation. Call
+// it once, from a package-level var. Panics on a bad or duplicate key.
+// The key is an on-disk identity: never renamed, never reused, and
+// ledgered as "choose <key>".
+func RegisterDiscardThen(key string, fn DiscardThenFunc) DiscardThen {
+	if fn == nil {
+		panic(fmt.Sprintf("game: discard-then continuation %q has no function", key))
+	}
+	then := RegisterChooseCardsThen(key, func(g *Game, r CardsChosen) error {
+		done := func(g *Game, landed []uuid.UUID) error {
+			return fn(g, DiscardsDone{
+				Player:    r.Chooser,
+				Source:    r.Source,
+				Discarded: PromptedDiscards{{Seat: r.Chooser, Cards: landed}},
+				Carry:     r.Carry,
+			})
+		}
+		if !r.Answered {
+			// The chooser left with the prompt open: they discarded
+			// nothing, and the rest of the card still runs, as the run's
+			// withdrawn leg does (settleRunLegLocked).
+			return done(g, nil)
+		}
+		return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
+			cause:  DiscardCauseEffect,
+			source: r.Source,
+			then:   done,
+		})
+	})
+	return DiscardThen{then: then, fn: fn}
+}
+
+// PlayerDiscardsThenKeyedForEffect is PlayerDiscardsThenForEffect with
+// the rest of the card as a registered continuation and `carry` the
+// plain data it is handed: learn's "you may discard a card. If you do,
+// draw a card", Abandon Attachments' "you may discard a card. If you do,
+// draw two cards". The prompt carries no closure, so a table waiting on
+// it is a restore point.
+//
+// The prompt's Then and Validate must be nil: they are closures, and a
+// restore would drop them (ErrInvalidParam). When nothing is asked (an
+// empty hand, a discard an opponent's effect can't cause, a player who
+// has left) the continuation runs at once with nothing discarded, as
+// the closure form's does.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayerDiscardsThenKeyedForEffect(p DiscardPrompt, then DiscardThen, carry []uuid.UUID) error {
+	if then.then.key == "" || then.fn == nil {
+		return fmt.Errorf("%w: keyed discard-then with no continuation", ErrInvalidParam)
+	}
+	if p.Then != nil || p.Validate != nil {
+		return fmt.Errorf("%w: keyed discard-then %q also sets a closure", ErrInvalidParam, then.then.key)
+	}
+	p.keyed = then.then
+	p.carry = copyUUIDs(carry)
+	if g.queueDiscardPromptLocked(p, uuid.Nil) != uuid.Nil {
+		return nil
+	}
+	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry)})
+}

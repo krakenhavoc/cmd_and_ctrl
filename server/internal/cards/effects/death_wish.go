@@ -21,6 +21,7 @@ func init() {
 		// a prompt the loss asks (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
 			TakeFromOutside{
+				Pick:     deathWishTake,
 				Question: "Death Wish — put a card you own from outside the game into your hand, or none",
 			},
 			Instruction(func(ctx *Context) error {
@@ -40,3 +41,7 @@ func init() {
 		),
 	})
 }
+
+// deathWishTake is the wish's keyed pick (#4256), so a table waiting on
+// it is a restore point. Death Wish does not reveal.
+var deathWishTake = registerOutsideTake("choose-cards/death-wish-take", nil, false)

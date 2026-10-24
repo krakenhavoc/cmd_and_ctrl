@@ -247,12 +247,12 @@ func TestLearnTakesALessonFromTheDatabaseWithoutASideboard(t *testing.T) {
 	}
 }
 
-// A table with a learn question open is not a restore point: the open
-// discard prompt carries a continuation the snapshot cannot represent,
-// and the census says so rather than dropping it silently (the
-// closure ratchet, AGENTS.md). Restoring the point before the cast, and
-// casting again, learns as normal.
-func TestLearnPromptIsCensusedAndTheGameBeforeItRestores(t *testing.T) {
+// A table with a learn question open is a restore point (#4256): both
+// halves are keyed prompts, so the census counts no continuation frame.
+// keyed_prompts_restore_test.go answers each one on a restored table.
+// Restoring the point before the cast, and casting again, learns as
+// normal.
+func TestLearnPromptIsARestorePointAndTheGameBeforeItRestores(t *testing.T) {
 	g := newSideboardCatalogGame(t, 2, lessonCard("Environmental Sciences"))
 	me := g.Seats[0]
 	before := g.CaptureSnapshot()
@@ -266,8 +266,8 @@ func TestLearnPromptIsCensusedAndTheGameBeforeItRestores(t *testing.T) {
 		t.Fatalf("no discard prompt: %+v", g.PendingChoices)
 	}
 	open := g.CaptureSnapshot()
-	if open.Restorable() || open.Continuations.ChoiceResumeFrames == 0 {
-		t.Errorf("a table waiting on a learn discard reports itself restorable: %+v", open.Continuations)
+	if !open.Restorable() || open.Continuations.ChoiceResumeFrames != 0 {
+		t.Errorf("a table waiting on a learn discard is not a restore point: %+v", open.Continuations)
 	}
 
 	// The last restore point rebuilds the table, sideboard and all, and

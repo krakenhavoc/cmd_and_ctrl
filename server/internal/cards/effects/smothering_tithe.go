@@ -44,15 +44,19 @@ func init() {
 					Chooser:  ctx.Trigger().Event.Actor,
 					Cost:     "{2}",
 					Question: "Smothering Tithe — pay {2}?",
-					OnDecline: func(ctx *Context) error {
-						return CreateToken{
-							Controller: ctx.Controller(),
-							Template:   TreasureToken(),
-							N:          1,
-						}.Apply(ctx)
-					},
+					Else:     smotheringTitheDecline,
 				}.Apply(ctx)
 			},
 		}},
 	})
 }
+
+// smotheringTitheDecline is the Treasure once the tax is not paid, keyed
+// (#4256): a table waiting on the payer is a restore point.
+var smotheringTitheDecline = PayUnlessElse("pay-unless/smothering-tithe-treasure", func(ctx *Context, _ game.PayUnlessAnswer) error {
+	return CreateToken{
+		Controller: ctx.Controller(),
+		Template:   TreasureToken(),
+		N:          1,
+	}.Apply(ctx)
+})

@@ -21,11 +21,20 @@ import (
 //
 // A card chosen in exile is put into its owner's hand from exile; it is
 // face up, so it is already public and is not revealed again.
+//
+// The pick from outside the game is keyed (#4256, outside_game.go), so a
+// table waiting on it is a restore point. The exile pick before it still
+// resumes through a closure: its "none" asks the outside pick with the
+// card's word, which a keyed choose-cards pick has nowhere to carry.
 
 // TakeFromExileOrOutside is the shape described above.
 type TakeFromExileOrOutside struct {
-	// Match is the kind of card ("an Eldrazi card", "an artifact card").
-	Match func(game.Card) bool
+	// Pick is the card's registered outside pick (registerOutsideTake,
+	// revealing), whose filter is the kind of card ("an Eldrazi card",
+	// "an artifact card") in exile too. Required.
+	Pick outsideTake
+	// Word is the word of the card's text the filter reads, if any.
+	Word string
 	// ExileQuestion heads the first prompt; OutsideQuestion the second.
 	ExileQuestion, OutsideQuestion string
 }
@@ -35,12 +44,12 @@ func (t TakeFromExileOrOutside) Apply(ctx *Context) error {
 	var exiled []uuid.UUID
 	if ex := ctx.Game.Exile; ex != nil {
 		for _, c := range ex.Cards {
-			if c.Owner == me && !c.FaceDown && (t.Match == nil || t.Match(c)) {
+			if c.Owner == me && !c.FaceDown && t.Pick.matches(c, t.Word) {
 				exiled = append(exiled, c.InstanceID)
 			}
 		}
 	}
-	outside := TakeFromOutside{Player: me, Match: t.Match, Question: t.OutsideQuestion, Reveal: true}
+	outside := TakeFromOutside{Player: me, Pick: t.Pick, Word: t.Word, Question: t.OutsideQuestion}
 	if len(exiled) == 0 {
 		return outside.Apply(ctx)
 	}
