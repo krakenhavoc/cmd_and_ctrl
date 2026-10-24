@@ -2277,7 +2277,8 @@ the body runs once the window has settled, may queue a prompt, and
 calls `done` when it finishes so the rest of a multi-card draw ("draw
 three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
 replacement apply from the drawing player's graveyard instead of the
-battlefield. See `game/draw_instead.go`.
+battlefield (and, for a learn, the learning player's: Retriever Phoenix,
+`game/learn_action.go`). See `game/draw_instead.go`.
 
 **"Except the first one you draw in each of your draw steps"** reads the
 completed-draw tally `Game.DrawnThisStep`, reset at every step boundary.
@@ -10889,10 +10890,20 @@ clauses as steps (`ResolveSteps`) so learn waits for an answer one of them
 asked. `OnTheTargetCard(func(ctx, id) error)` is the step for "do X to the
 target, then learn". A table with a learn question open is not a restore point
 (the discard prompt carries a continuation, so `Restorable()` is false until it
-is answered); the last restore point before the cast is. Retriever Phoenix's
-"if you would learn, you may instead return this card to the battlefield" needs
-learn to be a replaceable action (it is not one yet, like dredge for a draw), so
-the card is not in the catalog.
+is answered); the last restore point before the cast is.
+
+Learn is an event a replacement can apply to (#3525, ADR 0191's amendment of
+2026-10-23): `Learn{}` opens a CR 614 window (`game.LearnForEffect`, a
+`RepEventKeywordAction` with `KeywordActionLearn`) and performs the learn only
+if nothing replaced it. "If you would learn, you may instead return this card
+to the battlefield" is `ReturnThisInsteadOfLearning(name)` on
+`Spec.Replacements` (Retriever Phoenix): `FromGraveyard` (the learner's
+graveyard, as dredge's is for a draw), `Optional`, and `KeywordInstead`, a
+body registered with `game.RegisterKeywordInstead(key, body)` that runs once
+the window has settled and calls `done`. A new "if you would learn" card is a
+`ReplacementEffect` that watches `game.EventKeywordAction` and narrows
+`ev.KeywordAction` to `game.KeywordActionLearn`; set `KeywordInstead`
+instead of `Replace` for an "instead" with a body that may ask.
 
 ### Renown (CR 702.112, #2049)
 

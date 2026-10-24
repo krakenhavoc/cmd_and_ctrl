@@ -111,6 +111,13 @@ const (
 	// It is the second action that DOES SOMETHING at a count of zero;
 	// see actsAtZeroCount.
 	KeywordActionAmass KeywordAction = "amass"
+
+	// KeywordActionLearn is learn (CR 701.48a, #3525, learn_action.go).
+	// It carries no COUNT: "learn" is one instruction, and the count on
+	// the event stays 1 whatever a window does to it. What a window can
+	// do to a learn is replace it (CR 614.1a: "if you would learn, …
+	// instead"), which is KeywordInstead, or leave it alone.
+	KeywordActionLearn KeywordAction = "learn"
 )
 
 // actsAtZeroCount reports whether the action still happens when its
@@ -367,6 +374,10 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		return 0, g.proliferateExplicitLocked(ev.Actor, tail.cards, tail.players, times, then)
 	case KeywordActionScry, KeywordActionSurveil:
 		return g.lookAtTopForEffect(tail.choice, ev.Actor, ev.Source, n, tail.then), nil
+	case KeywordActionLearn:
+		// #3525. Learn is performed by the catalog's body once the
+		// window has left it alone (learn_action.go).
+		return 0, g.applyLearnLocked(ev)
 	case KeywordActionAmass:
 		// #1236. The count is a number of +1/+1 counters and the rest
 		// of the verb happens whatever it settled on, which is why
@@ -415,6 +426,20 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 //
 // Caller must hold g.mu.
 func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
+	// #3525: a replacement that put a different event in its place
+	// (Retriever Phoenix's "return this card to the battlefield
+	// instead") recorded a body. The rest of the sentence waits for it,
+	// as a replaced draw's does (runDrawInsteadLocked).
+	if run := ev.keywordInstead; run.body() != nil {
+		ev.keywordInstead = keywordInsteadRun{}
+		// Captured by value, like a replaced draw's tail: the body may
+		// pause, and the continuation must not read a frame an undo
+		// clone shares.
+		tail := *ev
+		return run.body()(g, ev.Actor, run.source, func(g *Game) error {
+			return g.runKeywordActionThenLocked(&tail)
+		})
+	}
 	return g.runKeywordActionThenLocked(ev)
 }
 
