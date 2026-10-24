@@ -69,23 +69,34 @@ func (g *Game) PutExiledCreatureOntoBattlefieldOrHandForEffect(player, source, c
 	if !c.IsCreature() {
 		return g.putExiledIntoHandLocked(player, source, cardID)
 	}
-	g.QueueConfirmForEffect(ConfirmPrompt{
+	_, err := g.QueueConfirmKeyedForEffect(ConfirmPrompt{
 		Chooser:      player,
 		Source:       source,
 		Question:     "Put " + c.Name + " onto the battlefield? If you don't, it goes to its owner's hand.",
 		AcceptLabel:  "Put it onto the battlefield",
 		DeclineLabel: "Put it into hand",
-		OnAccept: func(g *Game) error {
-			return g.ReturnFromExileToBattlefieldThenForEffect(cardID, player, false, func(g *Game, entered uuid.UUID) error {
-				if entered != uuid.Nil || g.Exile == nil || !g.Exile.Contains(cardID) {
-					return nil
-				}
-				return g.putExiledIntoHandLocked(player, source, cardID)
-			})
-		},
-		OnDecline: func(g *Game) error {
-			return g.putExiledIntoHandLocked(player, source, cardID)
-		},
-	})
-	return nil
+	}, exiledCreatureOrHandAnswer, []uuid.UUID{cardID})
+	return err
 }
+
+// exiledCreatureOrHandAnswer is the answer to the third chapter's offer,
+// a registered key (#4298): the exiled card rides the prompt as its carried
+// ID, and the player and the Saga are its chooser and source. Accepting
+// puts the card onto the battlefield, and an entry a replacement turned away
+// leaves it in exile, so it goes to the hand too; declining puts it into its
+// owner's hand.
+var exiledCreatureOrHandAnswer = RegisterConfirmThen("confirm/exiled-creature-battlefield-or-hand", func(g *Game, r ConfirmAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	cardID, player, source := r.Carry[0], r.Chooser, r.Source
+	if !r.Accepted {
+		return g.putExiledIntoHandLocked(player, source, cardID)
+	}
+	return g.ReturnFromExileToBattlefieldThenForEffect(cardID, player, false, func(g *Game, entered uuid.UUID) error {
+		if entered != uuid.Nil || g.Exile == nil || !g.Exile.Contains(cardID) {
+			return nil
+		}
+		return g.putExiledIntoHandLocked(player, source, cardID)
+	})
+})

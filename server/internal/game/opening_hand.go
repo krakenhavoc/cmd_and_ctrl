@@ -136,20 +136,46 @@ func openingHandQuestion(name string, act *OpeningHandAction) string {
 //
 // Caller must hold g.mu.
 func (g *Game) queueOpeningHandOfferLocked(seat, cardID uuid.UUID, name string, act *OpeningHandAction) {
-	id := g.QueueConfirmForEffect(ConfirmPrompt{
+	id, err := g.QueueConfirmKeyedForEffect(ConfirmPrompt{
 		Chooser:      seat,
 		Source:       cardID,
 		Question:     openingHandQuestion(name, act),
 		AcceptLabel:  "Begin the game with it",
 		DeclineLabel: "Keep it in my hand",
-		OnAccept: func(g *Game) error {
-			return g.takeOpeningHandActionLocked(seat, cardID, act)
-		},
-	})
+	}, openingHandOfferAnswer, nil)
+	if err != nil {
+		return
+	}
 	if _, c := g.findChoiceLocked(id); c != nil {
 		c.private = true
 	}
 }
+
+// openingHandOfferAnswer is the answer to an opening-hand offer, a
+// registered key (#4298) so a table waiting on the question is a restore
+// point. The card is the prompt's source; the action is read from the
+// catalog again when the answer arrives, because the prompt carries the
+// card's identity and the catalog is the one place its action is declared.
+// A decline leaves the card in hand. The card must still be in its
+// owner's hand (takeOpeningHandActionLocked).
+var openingHandOfferAnswer = RegisterConfirmThen("confirm/opening-hand-offer", func(g *Game, r ConfirmAnswer) error {
+	if !r.Accepted || CatalogOpeningHand == nil {
+		return nil
+	}
+	p := g.playerByIDLocked(r.Chooser)
+	if p == nil || p.Hand == nil {
+		return nil
+	}
+	c, ok := g.cardInZoneLocked(p.Hand, r.Source)
+	if !ok {
+		return nil
+	}
+	act := CatalogOpeningHand(catalogKeyOf(&c))
+	if act == nil {
+		return nil
+	}
+	return g.takeOpeningHandActionLocked(r.Chooser, r.Source, act)
+})
 
 // takeOpeningHandActionLocked puts the card onto the battlefield from
 // its owner's hand and does what the rest of the sentence says. The card

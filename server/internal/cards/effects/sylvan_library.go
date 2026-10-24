@@ -96,7 +96,7 @@ func init() {
 						Max:  min(2, len(drawn)),
 						Zone: game.ZoneHand,
 						Then: func(g *game.Game, picked []uuid.UUID) error {
-							return sylvanLibrarySettle(g, item, picked)
+							return sylvanLibrarySettle(NewContext(g, item), picked)
 						},
 					})
 					return nil
@@ -116,72 +116,94 @@ func init() {
 // answered, because the answer to the first is what the player is
 // pricing the second against.
 //
+// The loop's progress is data on the prompt (#4298): the cards still to
+// settle, the one asked about first, are its carried IDs, so a table
+// waiting on a payment is a restore point.
+//
 // Caller must hold g.mu.
-func sylvanLibrarySettle(g *game.Game, item *game.StackItem, remaining []uuid.UUID) error {
-	if len(remaining) == 0 || item == nil {
+func sylvanLibrarySettle(ctx *Context, remaining []uuid.UUID) error {
+	g := ctx.Game
+	if len(remaining) == 0 || ctx.Item == nil {
 		return nil
 	}
-	source, controller := item.SourceCardID, item.Controller
+	controller := ctx.Controller()
 	card := remaining[0]
 	rest := remaining[1:]
-	putBack := func(g *game.Game) error {
-		// Top, not bottom: the card is back on the library and will be
-		// drawn again next turn. That is what makes the put-back leg a
-		// tempo cost rather than a loss.
-		//
-		// #783: the NEXT question hangs off the tuck's continuation
-		// rather than the next line, for the same reason the first one
-		// hangs off the answer to the one before it — a library is a
-		// CR 903.9 destination, so putting a drawn commander back stops
-		// to ask its owner about the command zone, and the rest of the
-		// card must not run while that is open.
-		return g.TuckToLibraryThenForEffect(card, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-			return sylvanLibrarySettle(g, item, rest)
-		})
-	}
 	p := g.PlayerByIDForEffect(controller)
 	if p == nil || p.Life < sylvanLibraryLifeCost {
 		// CR 119.4: a player cannot pay life they do not have, so
 		// there is no question to ask. Put it back and move on rather
 		// than offering a branch the engine would have to refuse —
 		// an unanswerable prompt is how a table wedges (#544).
-		return putBack(g)
+		return sylvanLibraryPutBack(ctx, card, rest)
 	}
 	name := "that card"
 	if c, ok := g.LookupCardForEffect(card); ok && c.Name != "" {
 		name = c.Name
 	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      controller,
-		Source:       source,
-		Question:     fmt.Sprintf("Sylvan Library — %s: pay %d life to keep it?", name, sylvanLibraryLifeCost),
-		AcceptLabel:  fmt.Sprintf("Pay %d life", sylvanLibraryLifeCost),
-		DeclineLabel: "Put it on top",
+	return MayChoice{
+		Player:   controller,
+		Question: fmt.Sprintf("Sylvan Library — %s: pay %d life to keep it?", name, sylvanLibraryLifeCost),
+		YesLabel: fmt.Sprintf("Pay %d life", sylvanLibraryLifeCost),
+		NoLabel:  "Put it on top",
 		// Declared so the move list prices it. Without it a bot at 4
 		// life answers "pay" and dies — the same hole #547 closed for
 		// activated abilities, reached through a prompt instead.
 		LifeCost: sylvanLibraryLifeCost,
-		OnAccept: func(g *game.Game) error {
-			// Life can move between the question and the answer (an
-			// opponent's burn spell in response to nothing in
-			// particular), so the payment is re-checked rather than
-			// trusted from prompt time. A payment that can no longer
-			// be made degrades to the put-back, which is the same
-			// shape ResolveEntryPayLife uses for a shockland.
-			if p := g.PlayerByIDForEffect(controller); p == nil || p.Life < sylvanLibraryLifeCost {
-				return putBack(g)
-			}
-			// Keeping the card is the whole of the "pay" branch — it
-			// is already in hand. The chain continues to the next
-			// chosen card, after the payment (continuation steps,
-			// #4162, CR 608.2c).
-			ctx := NewContext(g, item)
-			ctx.RecordStep(sylvanLibraryRecord, rest)
-			return sylvanLibraryPay.Run(ctx)
-		},
-		OnDecline: putBack,
+		Then:     sylvanLibraryAnswer,
+		Carry:    remaining,
+	}.Apply(ctx)
+}
+
+// sylvanLibraryPutBack puts the card on top of the library and asks about
+// the rest.
+func sylvanLibraryPutBack(ctx *Context, card uuid.UUID, rest []uuid.UUID) error {
+	// Top, not bottom: the card is back on the library and will be
+	// drawn again next turn. That is what makes the put-back leg a
+	// tempo cost rather than a loss.
+	//
+	// #783: the NEXT question hangs off the tuck's continuation
+	// rather than the next line, for the same reason the first one
+	// hangs off the answer to the one before it — a library is a
+	// CR 903.9 destination, so putting a drawn commander back stops
+	// to ask its owner about the command zone, and the rest of the
+	// card must not run while that is open.
+	item := ctx.Item
+	return ctx.Game.TuckToLibraryThenForEffect(card, game.TuckOptions{}, func(g *game.Game, _ bool) error {
+		return sylvanLibrarySettle(NewContext(g, item), rest)
 	})
-	return nil
+}
+
+// sylvanLibraryAnswer is the answer to one card's "pay 4 life or put it on
+// top". Registered in init, because the payment's steps ask the next card
+// through sylvanLibrarySettle, which names it.
+var sylvanLibraryAnswer game.ConfirmThen
+
+func init() {
+	sylvanLibraryAnswer = MayAnswer("confirm/sylvan-library-pay-or-top", func(ctx *Context, r game.ConfirmAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		card, rest := r.Carry[0], r.Carry[1:]
+		if !r.Accepted {
+			return sylvanLibraryPutBack(ctx, card, rest)
+		}
+		// Life can move between the question and the answer (an
+		// opponent's burn spell in response to nothing in
+		// particular), so the payment is re-checked rather than
+		// trusted from prompt time. A payment that can no longer
+		// be made degrades to the put-back, which is the same
+		// shape ResolveEntryPayLife uses for a shockland.
+		if p := ctx.Game.PlayerByIDForEffect(ctx.Controller()); p == nil || p.Life < sylvanLibraryLifeCost {
+			return sylvanLibraryPutBack(ctx, card, rest)
+		}
+		// Keeping the card is the whole of the "pay" branch — it
+		// is already in hand. The chain continues to the next
+		// chosen card, after the payment (continuation steps,
+		// #4162, CR 608.2c).
+		ctx.RecordStep(sylvanLibraryRecord, rest)
+		return sylvanLibraryPay.Run(ctx)
+	})
 }
 
 // sylvanLibraryRecord is the chosen cards still to settle.
@@ -202,7 +224,7 @@ func sylvanLibraryPaySteps() []Applier {
 			return ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), sylvanLibraryLifeCost)
 		}),
 		Instruction(func(ctx *Context) error {
-			return sylvanLibrarySettle(ctx.Game, ctx.Item, ctx.StepRecord(sylvanLibraryRecord).IDs)
+			return sylvanLibrarySettle(ctx, ctx.StepRecord(sylvanLibraryRecord).IDs)
 		}),
 	}
 }

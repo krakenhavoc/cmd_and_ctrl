@@ -2,6 +2,9 @@ package effects
 
 import (
 	"fmt"
+	"strconv"
+
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -55,30 +58,37 @@ func channelHarmMayDeal(g *game.Game, item *game.StackItem, p game.EffectParams)
 	if n <= 0 || len(item.Targets) != 1 {
 		return nil
 	}
-	source, target := item.SourceCardID, item.Targets[0].ID
+	target := item.Targets[0].ID
 	name := "the creature"
 	if c, ok := g.LookupCardForEffect(target); ok && c.Name != "" {
 		name = c.Name
 	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      item.Controller,
-		Source:       source,
-		Question:     fmt.Sprintf("Channel Harm — deal %d damage to %s?", n, name),
-		AcceptLabel:  fmt.Sprintf("Deal %d damage", n),
-		DeclineLabel: "Don't",
+	// Keyed (#4298): the target rides the prompt as its carried ID and the
+	// damage as its word.
+	return MayChoice{
+		Player:   item.Controller,
+		Question: fmt.Sprintf("Channel Harm — deal %d damage to %s?", n, name),
+		YesLabel: fmt.Sprintf("Deal %d damage", n),
+		NoLabel:  "Don't",
 		// The damage prevented was a Channel Harm's own: accepting
 		// continues the loop the ruling describes, and declining ends
 		// it. Bots read the hint (#2040).
 		DeclineEndsLoop: channelHarmPreventedAChannelHarm(g, item),
-		OnAccept: func(g *game.Game) error {
-			if !g.Battlefield.Contains(target) {
-				return nil
-			}
-			return g.DealMarkedDamageForEffect(source, nil, target, n, game.DamageMarks{})
-		},
-	})
-	return nil
+		Then:            channelHarmDealAnswer,
+		Carry:           []uuid.UUID{target},
+		Word:            strconv.Itoa(n),
+	}.Apply(NewContext(g, item))
 }
+
+// channelHarmDealAnswer is "you may have Channel Harm deal that much damage
+// to target creature": the creature must still be on the battlefield.
+var channelHarmDealAnswer = MayYes("confirm/channel-harm-deal", func(ctx *Context, r game.ConfirmAnswer) error {
+	target := carryAt(r, 0)
+	if !ctx.Game.Battlefield.Contains(target) {
+		return nil
+	}
+	return ctx.Game.DealMarkedDamageForEffect(r.Source, nil, target, wordInt(r), game.DamageMarks{})
+})
 
 // channelHarmPreventedAChannelHarm reports whether the damage this
 // application prevented was dealt by a Channel Harm.

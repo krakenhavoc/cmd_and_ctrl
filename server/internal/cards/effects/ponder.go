@@ -42,31 +42,30 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
-			source := ctx.Source()
-			draw := func(g *game.Game) error {
-				return g.DrawNForEffect(controller, 1)
-			}
 			return LookAtTop{
 				Player: controller,
 				N:      3,
 				Then: func(g *game.Game) error {
-					g.QueueConfirmForEffect(game.ConfirmPrompt{
-						Chooser:      controller,
-						Source:       source,
-						Question:     "Ponder — shuffle your library?",
-						AcceptLabel:  "Shuffle",
-						DeclineLabel: "Keep that order",
-						OnAccept: func(g *game.Game) error {
-							if err := g.ShuffleLibraryForEffect(controller); err != nil {
-								return err
-							}
-							return draw(g)
-						},
-						OnDecline: draw,
-					})
-					return nil
+					return MayChoice{
+						Question: "Ponder — shuffle your library?",
+						YesLabel: "Shuffle",
+						NoLabel:  "Keep that order",
+						Then:     ponderShuffle,
+					}.Apply(NewContext(g, item))
 				},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// ponderShuffle is "you may shuffle", then the draw: the draw is on both
+// branches (#4298: keyed, so a table waiting on the question is a restore
+// point).
+var ponderShuffle = MayAnswer("confirm/ponder-shuffle", func(ctx *Context, r game.ConfirmAnswer) error {
+	if r.Accepted {
+		if err := ctx.Game.ShuffleLibraryForEffect(r.Chooser); err != nil {
+			return err
+		}
+	}
+	return ctx.Game.DrawNForEffect(r.Chooser, 1)
+})

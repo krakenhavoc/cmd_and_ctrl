@@ -26,7 +26,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					if o := item.Trigger.Object; o != nil {
 						// The object that entered, not a later one (CR 400.7).
-						return g.ExploreForEffect(item.SourceCardID, game.ObjectRef{ID: o.ID, Epoch: o.Epoch}, item.Controller, nil)
+						return g.ExploreForEffect(item.SourceCardID, game.ObjectRef{ID: o.ID, Epoch: o.Epoch}, item.Controller)
 					}
 					return Explores{Explorer: item.Trigger.Event.CardID}.Apply(NewContext(g, item))
 				}),

@@ -7548,6 +7548,18 @@ Mog, Myriad). **Share a key when the consequence is word for word the same**
 `maySearchNamedLibraryOrGraveyard`, `mayFabricate`. A closure `OnYes` / `OnNo`
 still works and is not a restore point.
 
+**A loop is data on the prompt** (#4298). A "repeat until" or "for each of those
+cards" confirm carries its progress rather than a closure over it: Tainted Pact
+puts the names exiled so far in `Word` (one per line) and the card just exiled in
+`Carry`; Sylvan Library carries the chosen cards still to settle; Tempt with
+Discovery carries the opponents still to ask. The answer reads them back and,
+for the next round, asks again with the shorter list. `MayChoice{DeclineEndsLoop}`
+is the bot's hint (Channel Harm). An engine confirm that is not a card's "you
+may" uses the same door: `game.RegisterConfirmThen` and `QueueConfirmKeyedForEffect`
+(the opening-hand offer, explore's graveyard question, The Creation of Avacyn's
+third chapter). A prompt whose words name a card in a hidden zone sets
+`PendingChoice.private`, which is written to the snapshot.
+
 **A ward's life, sacrifice and discard confirms** are keyed too (#4291):
 `confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
 `confirm/ward-discard` (the Word is the count, then `random`), and for a
@@ -7954,7 +7966,7 @@ question first: `MayChoice` for a draw (Mystic Remora, Kwain: one
 `ChooseNumber` for "up to two" (Arcane Denial's victim, from a delayed
 trigger's body), `DiscardPrompt{UpTo: true}` with `Then` gated on
 `done.Discarded(player)` for "you may discard a card. If you do"
-(Abandon Attachments), and a `QueueConfirmForEffect` ahead of a
+(Abandon Attachments), and a keyed `MayChoice` ahead of a
 non-optional search when "who searches" matters (Tempt with Discovery:
 a searcher may still fail to find, and still counts as having searched).
 

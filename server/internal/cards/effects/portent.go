@@ -51,29 +51,30 @@ func init() {
 			if victim == uuid.Nil {
 				return nil
 			}
-			caster, source := item.Controller, ctx.Source()
 			return LookAtLibraryThenPlace{
 				Owner:     victim,
 				N:         3,
 				Placement: game.LibraryPlaceTop,
 				Label:     "Portent — put them back in any order",
 				Then: func(g *game.Game) error {
-					g.QueueConfirmForEffect(game.ConfirmPrompt{
-						Chooser:      caster,
-						Source:       source,
-						Question:     "Portent — have that player shuffle their library?",
-						AcceptLabel:  "Shuffle",
-						DeclineLabel: "Leave it",
-						OnAccept: func(g *game.Game) error {
-							return g.ShuffleLibraryForEffect(victim)
-						},
-					})
-					return nil
+					return MayChoice{
+						Question: "Portent — have that player shuffle their library?",
+						YesLabel: "Shuffle",
+						NoLabel:  "Leave it",
+						Then:     portentShuffle,
+						Carry:    []uuid.UUID{victim},
+					}.Apply(NewContext(g, item))
 				},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// portentShuffle is "you may have that player shuffle": the player is the
+// prompt's carried ID (#4298: keyed).
+var portentShuffle = MayYes("confirm/portent-shuffle", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ctx.Game.ShuffleLibraryForEffect(carryAt(r, 0))
+})
 
 // portentDraw is the delayed trigger's effect: its controller draws a
 // card. Package-level, so it captures nothing (ScheduleDelayedTrigger).
