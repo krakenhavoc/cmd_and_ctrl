@@ -3538,8 +3538,9 @@ EntryRestrictions: []game.EntryRestriction{
 ### "Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)
 
 - **Every player over their own exiled cards** (Memory Vessel, Rocco,
-  Street Chef): `EachPlayerExilesTopAndMayPlay(g, n, d)`
-  (`effects/impulse_exile.go`). One stored permission per seated player,
+  Street Chef): `EachPlayerExilesTopAndMayPlay(ctx, n, d, done)`
+  (`effects/impulse_exile.go`; one library at a time in APNAP order, #4268,
+  and `done` is where a clause that follows the last exile goes). One stored permission per seated player,
   held by that player, over the cards they exiled. Stamp `d` against the
   card's controller: `g.UntilYourNextTurnDuration(controller)`,
   `g.UntilYourNextEndStepDuration(controller)`. It is play, not cast, so a
@@ -5728,7 +5729,8 @@ every player's milled or exiled cards (`[]PlayerCards`) after the last.
 Anything the card does after the mills (a count, a pick, a cast) goes in
 `done`, or in the next `ResolveSteps` step, which waits for the last
 prompt. A count that reads the table (cards in hand) is the `n` func,
-which is asked for every player before the first mill.
+which is asked for every player before the first mill. A template whose
+holder is each library's owner sets `GrantToOwner` (Memory Vessel).
 
 **Every arrival in a graveyard goes through the window (#931).** "If a
 card would be put into a graveyard from anywhere, exile it instead"

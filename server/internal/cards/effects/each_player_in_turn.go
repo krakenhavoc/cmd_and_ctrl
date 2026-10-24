@@ -20,10 +20,9 @@ import (
 // active player first, then each other player in turn order. A chain makes
 // that real. Each player's mill starts from the previous player's continuation, so at
 // most one of these prompts is open at a time, the active player's first, and
-// the next library is not touched until it is answered. Dread Summons
-// (b35DreadSummonsMillStep) and Doomsday Excruciator
-// (doomsdayExileFrom) do the same by hand; a card that does it for several
-// players calls the helpers below instead of writing a third copy.
+// the next library is not touched until it is answered. Doomsday
+// Excruciator (doomsdayExileFrom) does the same by hand; a card that does it for
+// several players calls the helpers below instead of writing another copy.
 
 // PlayerCards is one player's share of a multi-player instruction: whose
 // library it was done to and which cards reached the destination zone (CR
@@ -61,7 +60,7 @@ func apnapOrder(g *game.Game, players []uuid.UUID) []uuid.UUID {
 // The results are carried forward BY VALUE, never through a variable the
 // continuations share: an undo across a prompt replays the continuation, and a
 // list built up in a captured slice would count the first run's cards twice
-// (the property b35DreadSummonsMillStep documents).
+// (the property Dread Summons, #893, needs).
 func eachPlayerInTurn(
 	g *game.Game,
 	players []uuid.UUID,

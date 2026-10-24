@@ -36,7 +36,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourEndStep("Rocco, Street Chef — each player exiles the top card of their library and may play it until your next end step",
 				func(g *game.Game, item *game.StackItem) error {
-					return EachPlayerExilesTopAndMayPlay(g, 1, g.UntilYourNextEndStepDuration(item.Controller))
+					return EachPlayerExilesTopAndMayPlay(NewContext(g, item), 1, g.UntilYourNextEndStepDuration(item.Controller), nil)
 				}),
 			Targeting(OnAny([]game.EventKind{game.EventCast, game.EventZoneMove}, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return aCardWasPlayedFromExile(ev, g)

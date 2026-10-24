@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Tasha's Hideous Laughter — Sorcery {1}{U}{U} (EDHREC rank 2921):
 //
@@ -23,12 +27,12 @@ func init() {
 		Name:         "Tasha's Hideous Laughter",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, opp := range ctx.Opponents() {
-				if err := b27ExileTopUntilTotalManaValue(ctx, opp, 20); err != nil {
-					return err
-				}
-			}
-			return nil
+			// One opponent at a time in APNAP order (CR 101.4, #4268).
+			item := ctx.Item
+			return eachPlayerInTurn(ctx.Game, ctx.Opponents(),
+				func(g *game.Game, opp uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
+					return b27ExileTopUntilTotalManaValueThen(NewContext(g, item), opp, 20, next)
+				}, nil)
 		},
 	})
 }

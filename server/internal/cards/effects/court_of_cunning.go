@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Court of Cunning — Enchantment {1}{U}{U}:
 //
@@ -37,13 +41,12 @@ func courtOfCunningUpkeep(g *game.Game, item *game.StackItem) error {
 	if YoureTheMonarch(g, item.Controller) {
 		n = 10
 	}
+	var players []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetPlayer {
-			continue
-		}
-		if err := (MillCards{Player: t.ID, N: n}).Apply(ctx); err != nil {
-			return err
+		if t.Kind == game.TargetPlayer {
+			players = append(players, t.ID)
 		}
 	}
-	return nil
+	// Each chosen player mills in APNAP order, one prompt at a time (CR 101.4).
+	return millEachPlayerInTurn(ctx, players, constantMill(n), nil)
 }

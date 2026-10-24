@@ -348,29 +348,34 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 }
 
 // b35EachPlayerMillsXThenZombiesPerCreature is Dread Summons's body:
-// every live player, the controller first and then the opponents in
-// seat order, mills X — or the rest of their library when it holds
-// fewer — and the controller creates one tapped 2/2 black Zombie for
-// each creature card that landed in a graveyard that way, all the
-// Zombies after all the mills as the printed "for each" reads.
-func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
-	return b35DreadSummonsMillStep(ctx, item, tablePlayers(ctx), ctx.X(), 0)
-}
-
-// b35DreadSummonsMillStep mills the head of `players` and continues
-// with the tail from that mill's continuation; the empty list is the
-// base case, where the Zombies are created.
+// every live player mills X, one library at a time in APNAP order (CR 101.4;
+// the controller is first only on their own turn, #4268) — or the rest
+// of their library when it holds fewer — and the controller creates one
+// tapped 2/2 black Zombie for each creature card that landed in a graveyard
+// that way, all the Zombies after all the mills as the printed "for each"
+// reads.
 //
-// #893: "each creature card put into a graveyard this way" is what
-// LANDED in a graveyard (CR 400.7), so the tally is read from each
-// mill's continuation, not from the line after the mill, and the seats
-// are milled one after another through it. (Before ADR 0115 any seat's
-// mill could stop to ask its owner about CR 903.9, which is why.)
-// The running count is carried forward BY VALUE, which is what makes an
-// undo across the prompt replay identically rather than counting the
-// first run's creatures twice.
-func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.UUID, x, creatures int) error {
-	if len(players) == 0 {
+// #893: "each creature card put into a graveyard this way" is what LANDED in
+// a graveyard (CR 400.7), so the tally is read from each mill's results, not
+// from the line after the mill. millEachPlayerInTurn carries them forward by
+// value, which is what makes an undo across a CR 616.1 prompt replay
+// identically rather than counting the first run's creatures twice.
+func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
+	var seats []uuid.UUID
+	for _, p := range ctx.Game.Seats {
+		if p != nil {
+			seats = append(seats, p.ID)
+		}
+	}
+	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), func(ctx *Context, results []PlayerCards) error {
+		creatures := 0
+		for _, r := range results {
+			for _, cardID := range r.Cards {
+				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
+					creatures++
+				}
+			}
+		}
 		if creatures == 0 {
 			return nil
 		}
@@ -379,21 +384,7 @@ func b35DreadSummonsMillStep(ctx *Context, item *game.StackItem, players []uuid.
 			Spec:       Token(BlackZombieToken()).EntersTapped(),
 			N:          creatures,
 		}.Apply(ctx)
-	}
-	next, rest := players[0], players[1:]
-	return MillToZone{
-		Player: next,
-		N:      x,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			found := creatures
-			for _, cardID := range milled {
-				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
-					found++
-				}
-			}
-			return b35DreadSummonsMillStep(ctx, item, rest, x, found)
-		},
-	}.Apply(ctx)
+	})
 }
 
 // b35RedirectDamageToChosen is Screaming Nemesis's body: the Nemesis
