@@ -59,6 +59,9 @@ func apbRequireAnyPlayerRows(t *testing.T, g *game.Game, id uuid.UUID, want ...i
 		// Answers (ADR 0142) is not a bot price; only the amounts are.
 		priced := r.Purpose
 		priced.Answers = 0
+		// #4302: nor is a target entry, which says what the row does to
+		// its pick and buys the activator nothing.
+		priced.Targets = nil
 		if !priced.IsZero() {
 			t.Errorf("row %d (%q) declares a purpose %+v; none of this batch's rows should", i, r.Label, r.Purpose)
 		}

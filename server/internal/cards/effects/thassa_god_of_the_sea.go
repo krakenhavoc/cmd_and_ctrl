@@ -43,6 +43,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}: Target creature you control can't be blocked this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{1}{U}"),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

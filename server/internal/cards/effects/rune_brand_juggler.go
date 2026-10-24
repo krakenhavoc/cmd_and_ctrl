@@ -26,6 +26,7 @@ func init() {
 		)},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{B}{R}, Sacrifice a suspected creature: Target creature gets -5/-5 until end of turn.",
+			Purpose: ForTargets(HarmUntilEOT(0, -5, -5)),
 			Cost:    Plus(ManaCost("{3}{B}{R}"), SacrificeASuspectedCreature()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

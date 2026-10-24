@@ -92,6 +92,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Up to one other target creature you control gains your choice of vigilance, lifelink, or indestructible until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 				Cost:    LoyaltyCost(1),
 				Targets: Another(TargetCreature("up to one other target creature you control", YouControl())).WithCount(0, 1),
 				Effect:  gideonBlackbladePlusOne,

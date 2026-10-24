@@ -43,6 +43,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{G}, Sacrifice a creature: Target creature gets +3/+3 until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 3, 3)),
 			Cost:    Plus(ManaCost("{G}"), SacrificeACreature()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

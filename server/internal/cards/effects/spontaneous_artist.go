@@ -22,6 +22,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}: Target creature gains haste until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "haste")),
 			Cost:    PayEnergy(1),
 			Targets: TargetCreature("target creature"),
 			Effect:  ebTargetCreatureGainsUntilEOT("haste", "Spontaneous Artist — haste until end of turn"),

@@ -59,6 +59,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        label,
+			Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 			Cost:         Plus(ManaCost("{B}"), SacrificeX("X Treasures", isTreasure)),
 			SorcerySpeed: true,
 			Targets:      TargetCreature("target creature"),

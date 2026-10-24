@@ -24,6 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:        "{2}, {T}, Tap X untapped artifacts you control: Target creature gets +X/+0 until end of turn.",
+				Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0)),
 				Cost:         Plus(ManaCost("{2}"), TapCost(), TapXUntapped("X untapped artifacts you control", Artifact())),
 				SorcerySpeed: true,
 				Targets:      TargetCreature("target creature"),

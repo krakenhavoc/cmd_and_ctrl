@@ -44,6 +44,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}: Target attacking creature gets +2/+0 until end of turn. When that creature leaves the battlefield this turn, sacrifice this artifact. If the creature deals damage to a creature this turn, the creature dealt damage can't be regenerated this turn. If a creature dealt damage by the targeted creature would die this turn, exile that creature instead.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 2, 0)),
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target attacking creature", AttackingCreature()),
 			Effect:  runeswordResolve,

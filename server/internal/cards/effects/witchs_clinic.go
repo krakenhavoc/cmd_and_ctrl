@@ -29,8 +29,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Target commander gains lifelink until end of turn",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Target commander gains lifelink until end of turn",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")),
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Targets: TargetPermanent("target commander",
 				func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCommander }),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -34,6 +34,7 @@ func init() {
 		CastConditionLabel: "You can't cast this spell unless there are seven or more cards in your graveyard.",
 		Activated: []ActivatedAbility{{
 			Label:   "{B}, Discard this card: Target creature gets -3/-1 until end of turn",
+			Purpose: ForTargets(HarmUntilEOT(0, -3, -1)),
 			Cost:    Plus(ManaCost("{B}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
 			Targets: TargetCreature("target creature"),

@@ -20,6 +20,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{2}: Target creature you control gains flying until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 				Cost:    ManaCost("{2}"),
 				Targets: TargetCreature("target creature you control", YouControl()),
 				Effect: func(g *game.Game, item *game.StackItem) error {

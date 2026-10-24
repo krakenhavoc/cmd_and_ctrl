@@ -229,6 +229,15 @@ type TargetPurposeView struct {
 	// Reanimates: the spell puts the picked graveyard card onto the
 	// battlefield under its caster's control (#3161).
 	Reanimates bool `json:"reanimates,omitempty"`
+	// UntilEndOfTurn is "benefit" or "harm": which way a change that ends
+	// with the turn cuts for the picked permanent's controller (#4302).
+	// Absent when the entry declares none.
+	UntilEndOfTurn string `json:"until_end_of_turn,omitempty"`
+	// Pump is that change in printed amounts: the power and toughness it
+	// adds (negative for a harm) and the keywords a benefit grants.
+	// Absent for an amount counted at resolution or a change that is not
+	// a pump. A pointer so TargetPurposeView stays comparable.
+	Pump *PumpView `json:"pump,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -397,6 +406,10 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
 				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, DamagePerTapped: t.DamagePerTapped, Reanimates: t.Reanimates,
+				UntilEndOfTurn: string(t.UntilEndOfTurn),
+			}
+			if pm := t.Pump; pm != nil {
+				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

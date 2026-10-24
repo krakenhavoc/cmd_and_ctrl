@@ -33,6 +33,7 @@ func init() {
 			},
 			{
 				Label:   "Tap an untapped Zombie you control: Target creature gains swampwalk until end of turn. (It can't be blocked as long as defending player controls a Swamp.)",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "swampwalk")),
 				Cost:    TapAnUntapped("an untapped Zombie you control", HasSubtype("Zombie")),
 				Targets: TargetCreature("target creature"),
 				Effect: func(g *game.Game, item *game.StackItem) error {

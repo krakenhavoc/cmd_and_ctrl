@@ -19,6 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{X}, {T}: Target creature with power X or less can't be blocked this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{X}"), TapCost()),
 			Targets: TargetCreature("target creature with power X or less").WithPowerAtMostX(),
 			Effect: func(g *game.Game, item *game.StackItem) error {

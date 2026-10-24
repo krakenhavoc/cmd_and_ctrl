@@ -25,6 +25,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}: Another target creature with an art sticker on it gets +2/+0 and gains menace until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 2, 0, "menace")),
 			Cost:    ManaCost("{2}{R}"),
 			Targets: Another(TargetCreature("another target creature with an art sticker on it", WithSticker(game.StickerArt))),
 			Effect: func(g *game.Game, item *game.StackItem) error {

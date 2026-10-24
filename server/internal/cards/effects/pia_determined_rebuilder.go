@@ -25,6 +25,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{5}{R}: Target creature gets +X/+0 until end of turn, where X is the number of artifacts you control",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{5}{R}"),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -36,6 +36,7 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Activated: []ActivatedAbility{{
 			Label:   "Remove a ki counter from Ichiga: Target creature gets +2/+2 until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
 			Cost:    removeAKiCounter(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

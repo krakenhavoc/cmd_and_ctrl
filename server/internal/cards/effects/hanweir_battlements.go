@@ -28,6 +28,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{R}, {T}: Target creature gains haste until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "haste")),
 				Cost:    Plus(ManaCost("{R}"), TapCost()),
 				Targets: TargetCreature("target creature"),
 				Effect:  ebTargetCreatureGainsUntilEOT("haste", "Hanweir Battlements — haste until end of turn"),

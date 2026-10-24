@@ -33,6 +33,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{B}: Target creature gains lifelink until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")),
 			Cost:    ManaCost("{1}{W}{B}"),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

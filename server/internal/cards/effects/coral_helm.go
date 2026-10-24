@@ -20,6 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, Discard a card at random: Target creature gets +2/+2 until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 2, 2)),
 			Cost:    Plus(ManaCost("{3}"), DiscardAtRandom(1, "a card at random")),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

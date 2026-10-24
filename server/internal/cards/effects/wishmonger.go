@@ -36,6 +36,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: Target creature gains protection from the color of its controller's choice until end of turn. Any player may activate this ability.",
+			Purpose:   ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:      game.AbilityCost{Mana: "{2}"},
 			Targets:   TargetCreature("target creature"),
 			AnyPlayer: true,
