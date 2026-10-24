@@ -109,6 +109,10 @@ func wanderingArchaicPayOrCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	spellID := ctx.Trigger().Event.CardID
 	caster := ctx.Trigger().Event.Actor
+	// The pay_unless below does not stop the table (choice_gate.go), so
+	// the spell can resolve and the step move on before the caster
+	// answers: hold its last-known information for the copy (#4276).
+	ctx.Game.HoldSpellForEffect(spellID)
 	return PayUnless{
 		Chooser:  caster,
 		Cost:     "{2}",
@@ -141,8 +145,12 @@ var wanderingArchaicCopy = MayAnswer("confirm/wandering-archaic-copy", func(ctx 
 		return nil
 	}
 	return CopySpell{
-		StackID:          r.Carry[0],
-		Controller:       ctx.Controller(),
+		StackID:    r.Carry[0],
+		Controller: ctx.Controller(),
+		// "Copy that spell" names it and does not target it, so it is
+		// copied from last-known information when it has left the
+		// stack (CR 608.2h), as the table may have moved on (#4276).
+		FromLastKnown:    true,
 		ChooseNewTargets: true,
 	}.Apply(ctx)
 })

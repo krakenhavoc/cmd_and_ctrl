@@ -198,3 +198,47 @@ func TestTheRecordIsSnapshotted(t *testing.T) {
 		}
 	})
 }
+
+// TestAHeldSpellOutlivesAResolutionAndASpellAPromptNamesOutlivesTheTurn —
+// #4276. HoldSpellForEffect records a spell that is still on the stack,
+// so a copy named from a non-blocking prompt still finds it after the
+// spell resolves. The turn boundary drops every record but the ones an
+// open prompt names in its carried IDs.
+func TestAHeldSpellOutlivesAResolutionAndASpellAPromptNamesOutlivesTheTurn(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	held := pushLKISpell(t, g, me.ID, "Opt")
+	other := pushLKISpell(t, g, me.ID, "Shock")
+	g.WithWriteLock(func() {
+		g.HoldSpellForEffect(held)
+		g.HoldSpellForEffect(other)
+		g.HoldSpellForEffect(uuid.New()) // not on the stack: records nothing
+		if len(g.lastKnownStack) != 2 {
+			t.Fatalf("%d records, want the two spells on the stack", len(g.lastKnownStack))
+		}
+		for i := 0; i < 2; i++ {
+			if err := g.resolveTopOfStackLocked(); err != nil {
+				t.Fatalf("resolveTopOfStackLocked: %v", err)
+			}
+		}
+		if _, _, ok := g.lastKnownSpellLocked(held); !ok {
+			t.Fatal("the held spell lost its record when it resolved")
+		}
+		g.PendingChoices = append(g.PendingChoices, &PendingChoice{
+			ID: uuid.New(), Kind: PendingChoicePayUnless, Chooser: me.ID,
+			OptionCarry: []uuid.UUID{me.ID, held},
+		})
+		g.onTurnBeganLocked()
+		if _, _, ok := g.lastKnownSpellLocked(held); !ok {
+			t.Error("the spell an open prompt names lost its record at the turn boundary")
+		}
+		if _, _, ok := g.lastKnownSpellLocked(other); ok {
+			t.Error("a spell no prompt names kept its record past the turn boundary")
+		}
+		g.PendingChoices = nil
+		g.onTurnBeganLocked()
+		if _, _, ok := g.lastKnownSpellLocked(held); ok {
+			t.Error("the record outlived the prompt that named it")
+		}
+	})
+}
