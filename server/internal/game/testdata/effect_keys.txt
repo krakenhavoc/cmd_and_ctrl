@@ -778,3 +778,16 @@ tail attacking-tokens/mobilize-sacrifice-the-warriors
 tail attacking-tokens/sandstorm-crasher-sacrifice-the-token
 tail attacking-tokens/sauron-the-necromancer-exile-the-wraith
 tail attacking-tokens/tilonallis-summoner-exile-unless-blessed
+choose choose-cards/discard-leg
+run prompt-run/annihilator-sacrifice
+run prompt-run/consuming-vapors-gain
+run prompt-run/doomgape-gain
+run prompt-run/entish-restoration-search
+run prompt-run/entrust-the-spark-search
+run prompt-run/garruk-the-veil-cursed-tutor
+run prompt-run/garruk-veiled-butcher-draws
+run prompt-run/sheoldred-the-true-scriptures-mill
+run prompt-run/springbloom-druid-search
+run prompt-run/syphon-mind-draw
+run prompt-run/tenured-tethermage-tokens
+run prompt-run/vicious-rumors-gain

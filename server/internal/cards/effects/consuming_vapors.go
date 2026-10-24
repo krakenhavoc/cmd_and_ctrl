@@ -32,21 +32,13 @@ func init() {
 			if !ok {
 				return nil
 			}
-			me := ctx.Controller()
-			return ctx.Game.PlayerSacrificesThenForEffect(ctx.Source(), victim,
+			// Keyed (#4290): the caster and the victim ride the run as
+			// its carry, so a table waiting on the sacrifice is a
+			// restore point.
+			return ctx.Game.PlayerSacrificesThenKeyedForEffect(ctx.Source(), victim,
 				sacrificeSpec("a creature", Creature()),
 				"Consuming Vapors — sacrifice a creature", 1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					ids := sacrificed.By(victim)
-					if len(ids) == 0 {
-						return nil
-					}
-					toughness := departedCreatureToughness(g, ids[0])
-					if toughness <= 0 {
-						return nil
-					}
-					return GainLife{Player: me, Amount: toughness}.Apply(NewContext(g, item))
-				})
+				consumingVaporsGain, []uuid.UUID{ctx.Controller(), victim})
 		},
 	})
 }
@@ -67,3 +59,22 @@ func departedCreatureToughness(g *game.Game, cardID uuid.UUID) int {
 	}
 	return info.Toughness
 }
+
+// consumingVaporsGain is "you gain life equal to that creature's
+// toughness", once the victim's creature has left the battlefield. The
+// carry is the caster, then the victim.
+var consumingVaporsGain = game.RegisterPromptRunThen("prompt-run/consuming-vapors-gain", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	me, victim := r.Carry[0], r.Carry[1]
+	ids := r.Sacrifices().By(victim)
+	if len(ids) == 0 {
+		return nil
+	}
+	toughness := departedCreatureToughness(g, ids[0])
+	if toughness <= 0 {
+		return nil
+	}
+	return GainLife{Player: me, Amount: toughness}.Apply(keyedContext(g, me, r.Source))
+})

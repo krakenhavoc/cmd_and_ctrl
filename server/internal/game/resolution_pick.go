@@ -456,8 +456,61 @@ func (g *Game) PermanentsPickedThenForEffect(p PermanentPickPrompt, then func(g 
 		}
 	}
 	return g.runPromptsLocked(p.Of, landedThen, func(seat, run uuid.UUID) bool {
-		return g.queuePermanentPickLocked(p, seat, run) != uuid.Nil
+		return g.queuePermanentPickLocked(p, seat, run, "") != uuid.Nil
 	})
+}
+
+// PermanentsPickedThenKeyedForEffect is PermanentsPickedThenForEffect
+// with the rest of the card as a registered run continuation
+// (RegisterPromptRunThen) and `carry` the plain data it is handed:
+// annihilator's "defending player sacrifices N permanents" (#4290).
+//
+// Each leg's frame is then data — the battlefield re-check and the leg
+// settle, rebuilt on restore from the prompt (permanentPickLegIsData) —
+// so a table waiting on any leg is a restore point. The legs name the
+// run's key in PickThen, so a binary without it refuses the file. The
+// prompt's Validate must be nil: it is a closure.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PermanentsPickedThenKeyedForEffect(p PermanentPickPrompt, then PromptRunThen, carry []uuid.UUID) (int, error) {
+	if p.Validate != nil {
+		return 0, fmt.Errorf("%w: keyed permanent pick %q also sets a closure", ErrInvalidParam, then.key)
+	}
+	return g.runPromptsKeyedLocked(p.Of, then, p.Source, carry, func(seat, run uuid.UUID) bool {
+		return g.queuePermanentPickLocked(p, seat, run, then.key) != uuid.Nil
+	})
+}
+
+// permanentPickLegIsData reports whether c is a leg of a keyed
+// permanent-pick run whose frame is exactly what queuePermanentPickLocked
+// builds with no set rule: the battlefield re-check and the leg settle,
+// both functions of the prompt's own fields. Such a frame is not counted
+// by the census and is rebuilt on restore (restorePermanentPickLeg).
+func permanentPickLegIsData(c *PendingChoice) bool {
+	if c == nil || !isPermanentPickKind(c.Kind) || c.PickThen == "" || c.promptRun == uuid.Nil {
+		return false
+	}
+	f := c.chooseCardsResume
+	return f != nil && f.validate == nil && f.earlierPermanentChoices == nil && f.permanentEpochs == nil &&
+		f.zone == ZoneBattlefield
+}
+
+// isPermanentPickKind is the two kinds queuePermanentPickLocked queues.
+func isPermanentPickKind(k PendingChoiceKind) bool {
+	return k == PendingChoiceOwnPermanents || k == PendingChoiceTheirPermanents
+}
+
+// restorePermanentPickLeg rebuilds a keyed permanent-pick leg's frame
+// from the prompt: the leg is keyed by whose permanents were chosen
+// (FromPlayer), as permanentPickLegThen is at queue time.
+func restorePermanentPickLeg(c *PendingChoice) {
+	if c == nil || !isPermanentPickKind(c.Kind) || c.PickThen == "" || c.promptRun == uuid.Nil {
+		return
+	}
+	c.chooseCardsResume = &chooseCardsFrame{
+		zone: ZoneBattlefield,
+		then: permanentPickLegThen(c.promptRun, c.Chooser, c.FromPlayer, c.Source),
+	}
 }
 
 // queuePermanentPickLocked queues ONE permanent pick and reports its
@@ -466,7 +519,7 @@ func (g *Game) PermanentsPickedThenForEffect(p PermanentPickPrompt, then func(g 
 // THE one place either permanent-pick kind is created.
 //
 // Caller must hold g.mu.
-func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID) uuid.UUID {
+func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID, key string) uuid.UUID {
 	if p.Candidates == nil {
 		return uuid.Nil
 	}
@@ -501,6 +554,8 @@ func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID
 		ChooseMin:   lo,
 		ChooseMax:   hi,
 		promptRun:   run,
+		// #4290: a keyed run's leg names the run's key.
+		PickThen: key,
 		chooseCardsResume: &chooseCardsFrame{
 			// Re-checked against the LIVE battlefield on submit and
 			// pruned off the open prompt as the board moves
