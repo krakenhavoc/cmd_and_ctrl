@@ -7462,11 +7462,18 @@ whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
 Write the decline KEYED (#4256): `Else: smotheringTitheDecline` with
 `var smotheringTitheDecline = PayUnlessElse("pay-unless/smothering-tithe-treasure",
 func(ctx *Context, r game.PayUnlessAnswer) error { … })` in the card's file, so a
-table waiting on the payer is a restore point. The decline's `Context` is a
-stand-in for the asking item (its controller and its source card), and anything
-else it needs rides on `PayUnless.Carry` as IDs (Wandering Archaic's spell,
-Arcum's Whistle's creature). The key is an on-disk identity, ledgered as
-`payunless <key>`. A closure `OnDecline` still works and is not a restore point.
+table waiting on the payer is a restore point. The decline's `Context` is bound
+to a copy of the asking item rebuilt from data the prompt carries (#4264,
+`game.AskedItem`): its controller and owner, its source card and the source
+object with its epoch (CR 400.7, so `ctx.SourceRef()` and `sourceIsNewObject`
+read what they do for a closure), its targets, its triggering event
+(`ctx.Trigger()`), X and modes. It has no `Effect`, no target clause and no
+`Params`; anything else the branch needs rides on `PayUnless.Carry` as IDs
+(`r.Carry`: Wandering Archaic's spell, Goblin Vandal's artifact, Ripples of
+Undeath's milled cards) or, for a permanent with its epoch,
+`MayPay.CarryObjects` (`r.Objects`: Dance of the Dead's creature). The key is an
+on-disk identity, ledgered as `payunless <key>`. A closure `OnDecline` still
+works and is not a restore point.
 A keyed pay-unless carries the cause it was queued under (the asking spell or
 ability's controller and ID, `PendingChoice.PayCauseController` and
 `PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered
@@ -7493,9 +7500,18 @@ engine and needs nothing from the card. A non-mana payment (a discard, a
 sacrifice, a tap) is plain data on the prompt (`PayActionClause`). The any-player
 offers are `AnyPlayerPays{Then, Carry}` with `AnyPlayerConsequences(key, onPaid,
 onNobody, perPayer)` (`anyPlayerMayCounterThisSpell` is the shared helper; Dash
-Hopes, Brain Gorgers, Phantasmagorian, Temporal Extortion). The waterbend tap
-clause, the per-object any-player offer and an echo's "new object" check keep
-closures.
+Hopes, Brain Gorgers, Phantasmagorian, Temporal Extortion). Echo is
+`UpkeepPayUnless{Else: echoPaidOrSacrificed}`, whose one key names both answers.
+A key's branches replace the engine's own "counter that spell", so a
+`CounterUnlessPaid{Then}` with a paid half also registers the decline
+(`Game.CounterIfStillOnStackForEffect(r.Guards)`: Assimilate Essence). A ward's
+waterbend clause is rebuilt from its kind and extra cost (`PendingChoice.PayTap`,
+`game.RegisterTapCost`), so it needs nothing from the card. The per-object offer
+is `AnyPlayerPaysForEach{Then, Carry}` with `AnyPlayerEachConsequence(key, func(ctx,
+r game.AnyPlayerEachAnswer) error { … })` (`r.Unsaved` are the objects nobody
+paid for; Cleansing), ledgered as `choose <key>`. `MayPayX`, the energy payments
+(`MayPayEnergy`, `PayEnergyUnless`) and a ward's life, sacrifice and discard
+confirms keep closures.
 
 **A "you may" asked of a resolving effect** (`MayChoice`) is keyed with `Then:
 mayAnswer`, `var mayAnswer = MayAnswer("confirm/<card>-<clause>", func(ctx

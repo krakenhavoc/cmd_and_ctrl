@@ -31,9 +31,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{G}",
 					Question: "Lifecrafter's Bestiary — pay {G} to draw a card?",
-					OnPay: func(ctx *Context) error {
-						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-					},
+					Then:     mayPayDrawACard,
 				}.Apply(NewContext(g, item))
 			}),
 		},

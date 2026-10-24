@@ -34,9 +34,13 @@ func init() {
 						Cost:       "{U}",
 						Question:   "Mtenda Lion — pay {U} to prevent all combat damage it would deal this turn?",
 						InThisStep: true,
-						OnPay:      shieldAgainstThisCombatDamage,
+						Then:       mtendaLionPaid,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// mtendaLionPaid is the paid half, keyed (#4264): the payer is the defending player and the Lion is the asking item's source.
+var mtendaLionPaid = PayUnlessBranches("pay-unless/mtenda-lion-prevent-combat-damage",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return shieldAgainstThisCombatDamage(ctx) }, nil)

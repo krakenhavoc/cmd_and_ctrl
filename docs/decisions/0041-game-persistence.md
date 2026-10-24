@@ -2780,3 +2780,7 @@ reaches it only through the slot, and after a restore "yes" copied nothing.
   `restoreGame` and `TestWanderingArchaicCopyConfirmIsARestorePoint` takes 3
   damage instead of 6, and `TestKeyedDiscardAnswerAfterARestoreStillNamesTheResolvingSpellAsItsCause`
   finds the discards with no cause.
+
+## Amendment — 2026-10-24: a keyed prompt carries the asking item, named objects, a tap clause and a per-object offer's state (#4264)
+
+Four additive fields within `SnapshotSchemaVersion` 9, recorded with `-update-shape` and no fixture edited; each is absent from a file that has no such prompt, and each restores as empty from an earlier file. `pendingChoices[].asked` is `game.AskedItem`, the plain data of the stack item that queued a keyed pay-unless, may-pay, upkeep, counter-unless-pays or any-player prompt (ID, kind, controller, owner, source card, the source object with its epoch, the label, the targets, the triggering event, X and the modes; ADR 0018's amendment of 2026-10-24). `pendingChoices[].optionObjects` is a list of named objects with their epochs. `pendingChoices[].payTap` is a keyed pay-unless's waterbend clause as its kind and extra cost. `anyPlayerOffer.objects`, `.picks` and `.noun` are a keyed per-object any-player offer's state (ADR 0187's amendment). A new ledger kind, `tapcost <kind>`, names the tap clause; `checkEffectKeys` refuses a file naming a kind the binary lacks. Nothing here adds a route from `Game` to a func (`closure_fields.txt` is unchanged).

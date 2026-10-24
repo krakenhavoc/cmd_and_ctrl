@@ -51,6 +51,11 @@ type MayPay struct {
 	// paid. Set Then or OnPay, not both.
 	Then  game.PayUnlessElse
 	Carry []uuid.UUID
+	// CarryObjects are objects, with the epoch each had, the card names as
+	// the offer is made (a permanent it will act on): a branch is handed
+	// them as PayUnlessAnswer.Objects and can tell the object from a new
+	// one the same card has become (CR 400.7).
+	CarryObjects []game.ObjectRef
 }
 
 func (p MayPay) Apply(ctx *Context) error {
@@ -58,8 +63,12 @@ func (p MayPay) Apply(ctx *Context) error {
 		if p.OnPay != nil {
 			return fmt.Errorf("%w: MayPay %q sets both Then and OnPay", game.ErrInvalidParam, p.Then.Key())
 		}
-		return ctx.Game.QueueMayPayKeyedForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
-			p.Then, append([]uuid.UUID{ctx.Controller()}, p.Carry...), p.InThisStep)
+		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+			Then: p.Then, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			InThisStep: p.InThisStep, MayPay: true, Asked: game.NewAskedItem(ctx.Item),
+			Objects: p.CarryObjects,
+		})
 	}
 	item := ctx.Item
 	onPay := p.OnPay
@@ -74,3 +83,13 @@ func (p MayPay) Apply(ctx *Context) error {
 	}
 	return ctx.Game.QueueMayPayForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
 }
+
+// mayPayDrawACard is "If you do, draw a card" for every may-pay whose paid
+// half is only that (Dawn of Hope, Key to the City, Leaf-Crowned Visionary,
+// Lifecrafter's Bestiary, Mentor of the Meek, Mind's Eye, Seer's Sundial),
+// keyed (#4264): the controller rides the asking item, so a table waiting
+// on the payer is a restore point.
+var mayPayDrawACard = PayUnlessBranches("pay-unless/draw-a-card",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+	}, nil)

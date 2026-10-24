@@ -40,8 +40,10 @@ import (
 
 // CardsChosen is what a keyed choose_cards continuation is handed.
 type CardsChosen struct {
-	// Chooser answered; Source is the card that asked.
-	Chooser, Source uuid.UUID
+	// Chooser answered; Source is the card that asked. From is whose cards
+	// they are (PendingChoice.FromPlayer): the owner of a reveal pick's
+	// pool.
+	Chooser, Source, From uuid.UUID
 	// Picked are the cards chosen, in the order submitted. Nil when the
 	// prompt ended unanswered (its chooser left the game).
 	Picked []uuid.UUID
@@ -58,6 +60,13 @@ type CardsChosen struct {
 	// Word is the one word of the card's text the queuing card put on
 	// the prompt (ChooseCardsPrompt.CarryWord, #4264). Empty when none.
 	Word string
+	// Key is the continuation's own key, as it rode the prompt.
+	Key string
+	// Offer and Asked are the any-player offer and the asking item a leg
+	// of a keyed per-object offer carries (#4264); nil on every other
+	// pick.
+	Offer *AnyPlayerOffer
+	Asked *StackItem
 }
 
 // SetRuleFunc is a registered set rule: is `picked`, the live cards in
@@ -144,10 +153,11 @@ func registeredChooseCardsKeysLocked() []string {
 	return out
 }
 
-// isKeyedChooseCards reports whether c is a choose_cards pick with a
-// registered continuation.
+// isKeyedChooseCards reports whether c is a choose_cards pick, or a
+// reveal pick (#4264, resolution_pick.go), with a registered continuation.
 func isKeyedChooseCards(c *PendingChoice) bool {
-	return c != nil && c.Kind == PendingChoiceChooseCards && c.PickThen != "" && c.chooseCardsResume == nil
+	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick) &&
+		c.PickThen != "" && c.chooseCardsResume == nil
 }
 
 // runKeyedChooseCardsLocked runs c's continuation with `picked`
@@ -162,6 +172,7 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 		return fn(g, CardsChosen{
 			Chooser:    c.Chooser,
 			Source:     c.Source,
+			From:       c.FromPlayer,
 			Picked:     copyUUIDs(picked),
 			Answered:   answered,
 			Candidates: copyUUIDs(c.ChooseCards),
@@ -170,6 +181,9 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Carry:      copyUUIDs(c.OptionCarry),
 			Question:   c.Reason,
 			Word:       c.PickMatchArg,
+			Key:        c.PickThen,
+			Offer:      cloneAnyPlayerOffer(c.AnyPlayerOffer),
+			Asked:      c.Asked.StackItem(),
 		})
 	})
 }

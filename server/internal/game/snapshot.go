@@ -1823,6 +1823,17 @@ type pendingChoiceSnapshot struct {
 	// non-mana payment, plain data. A pointer so a mana prompt writes
 	// nothing; additive within the version.
 	PayActionClause *PayAction `json:"payActionClause,omitempty"`
+	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
+	// clause as its kind and extra cost. Additive within the version.
+	PayTap *PayTapSpec `json:"payTap,omitempty"`
+	// OptionObjects is PendingChoice's (#4264): the objects, with their
+	// epochs, a keyed pay-unless or any-player prompt's branches are
+	// handed. Additive within the version.
+	OptionObjects []ObjectRef `json:"optionObjects,omitempty"`
+	// Asked is PendingChoice's (#4264): the item that queued a keyed
+	// pay-unless or any-player prompt, plain data. A pointer so a prompt
+	// that has none writes nothing; additive within the version.
+	Asked *AskedItem `json:"asked,omitempty"`
 	// OptionalItem / OptionalTradeFor are PendingChoice's (#2494): the
 	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
 	// what a "yes" trades for. Plain data: the item rides the parked
@@ -3028,6 +3039,9 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
+		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,
@@ -3990,6 +4004,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
+		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
+		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,

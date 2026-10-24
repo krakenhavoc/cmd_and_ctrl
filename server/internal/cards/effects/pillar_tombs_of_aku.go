@@ -44,10 +44,7 @@ func pillarTombsOfAkuUpkeep(g *game.Game, item *game.StackItem) error {
 		Cost:     cost,
 		Action:   action,
 		Question: "Pillar Tombs of Aku — sacrifice a creature, or lose 5 life and its controller sacrifices it?",
-		OnDecline: func(ctx *Context) error {
-			ctx.RecordStep(pillarTombsOfAkuRecord, []uuid.UUID{player})
-			return pillarTombsOfAkuDecline.Run(ctx)
-		},
+		Else:     pillarTombsOfAkuDeclined,
 	}.Apply(ctx)
 }
 
@@ -69,3 +66,10 @@ var pillarTombsOfAkuDecline = RegisterThenSteps("then-steps/pillar-tombs-of-aku-
 		return SacrificeThisIfStillOnBattlefield(ctx.Game, ctx.Item)
 	}),
 )
+
+// pillarTombsOfAkuDeclined is the decline, keyed (#4264): the player who declined is the payer.
+var pillarTombsOfAkuDeclined = PayUnlessElse("pay-unless/pillar-tombs-of-aku-decline",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.RecordStep(pillarTombsOfAkuRecord, []uuid.UUID{r.Chooser})
+		return pillarTombsOfAkuDecline.Run(ctx)
+	})

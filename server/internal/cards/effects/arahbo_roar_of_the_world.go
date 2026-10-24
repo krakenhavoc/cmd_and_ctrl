@@ -59,14 +59,11 @@ func arahboMayPayToPump(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	cat := item.Trigger.Event.CardID
 	return MayPay{
 		Chooser:  item.Controller,
 		Cost:     "{1}{G}{W}",
 		Question: "Arahbo, Roar of the World — pay {1}{G}{W}: the attacking Cat gains trample and gets +X/+X, where X is its power?",
-		OnPay: func(ctx *Context) error {
-			return arahboPump(ctx, cat)
-		},
+		Then:     arahboPaid,
 	}.Apply(NewContext(g, item))
 }
 
@@ -80,3 +77,9 @@ func arahboPump(ctx *Context, cat uuid.UUID) error {
 	return untilEndOfTurn(ctx, cat, nil, "Arahbo, Roar of the World — trample and +X/+X",
 		game.ModifyPTMod(x, x), game.AddKeywordsMod("trample"))
 }
+
+// arahboPaid is the paid half, keyed (#4264): the attacking Cat is the asking trigger's event.
+var arahboPaid = PayUnlessBranches("pay-unless/arahbo-roar-of-the-world-pump",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return arahboPump(ctx, ctx.Trigger().Event.CardID)
+	}, nil)

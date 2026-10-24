@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -29,11 +27,15 @@ func init() {
 					return AnyPlayerPays{
 						Pay:      SacrificePayment(2, "creature", "creatures", QueryType("creature")),
 						Question: "Prowling Pangolin — sacrifice two creatures to make its controller sacrifice it?",
-						OnPaid: func(ctx *Context, _ uuid.UUID) error {
-							return sacrificeThisIfStillHere(ctx)
-						},
+						Then:     prowlingPangolinSacrificed,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// prowlingPangolinSacrificed is "if a player does", keyed (#4264).
+var prowlingPangolinSacrificed = AnyPlayerConsequences("any-player/prowling-pangolin-sacrifice",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return sacrificeThisIfStillHere(ctx) },
+	nil,
+	nil)

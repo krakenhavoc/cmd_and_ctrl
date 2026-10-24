@@ -262,9 +262,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownOptionPickThen(c.PickThen) {
 				unknown = append(unknown, "option pick continuation "+c.PickThen)
 			}
-		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast:
+		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick:
 			// #2040: a keyed choose_cards pick's continuation. #4250: a
-			// resolution_cast's "after the casts" is one too.
+			// resolution_cast's "after the casts" is one too. #4264: and a
+			// keyed reveal pick's.
 			if !KnownChooseCardsThen(c.PickThen) {
 				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
 			}
@@ -293,6 +294,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
+		}
+		// #4264: a keyed pay-unless's waterbend clause is built by a
+		// registered kind; restored without it the payment would be plain
+		// mana, harder to pay than printed.
+		if c.PayTap != nil && !KnownTapCost(c.PayTap.Kind) {
+			unknown = append(unknown, "tap cost "+c.PayTap.Kind)
 		}
 		// ADR 0146: a ballot's vote continuation is a key too.
 		if c.CouncilVote != nil && !KnownVoteThen(c.CouncilVote.Then) {

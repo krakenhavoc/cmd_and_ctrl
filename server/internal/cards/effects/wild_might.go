@@ -31,13 +31,7 @@ func init() {
 			return AnyPlayerPays{
 				Cost:     "{2}",
 				Question: "Wild Might — pay {2} to stop the additional +4/+4?",
-				OnNobody: func(ctx *Context) error {
-					target, ok := wildMightTarget(ctx)
-					if !ok {
-						return nil
-					}
-					return BoostUntilEOT{Target: target.ID, Power: 4, Toughness: 4, Label: "Wild Might — an additional +4/+4"}.Apply(ctx)
-				},
+				Then:     wildMightExtra,
 			}.Apply(ctx)
 		},
 	})
@@ -53,3 +47,15 @@ func wildMightTarget(ctx *Context) (game.TargetRef, bool) {
 	}
 	return game.TargetRef{}, false
 }
+
+// wildMightExtra is "if no one does", keyed (#4264): the spell's target rides the asking item.
+var wildMightExtra = AnyPlayerConsequences("any-player/wild-might-extra",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		target, ok := wildMightTarget(ctx)
+		if !ok {
+			return nil
+		}
+		return BoostUntilEOT{Target: target.ID, Power: 4, Toughness: 4, Label: "Wild Might — an additional +4/+4"}.Apply(ctx)
+	},
+	nil)

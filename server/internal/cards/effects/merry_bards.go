@@ -25,12 +25,16 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{1}",
 					Question: "Merry Bards — pay {1} to create a Young Hero Role token attached to a creature you control?",
-					OnPay: func(ctx *Context) error {
-						return WhenYouDo("Merry Bards — create a Young Hero Role token attached to target creature you control",
-							merryBardsYoungHeroBody).Apply(ctx)
-					},
+					Then:     merryBardsPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// merryBardsPaid is the paid half, keyed (#4264): the "when you do" reflexive trigger is queued against the asking item.
+var merryBardsPaid = PayUnlessBranches("pay-unless/merry-bards-young-hero",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return WhenYouDo("Merry Bards — create a Young Hero Role token attached to target creature you control",
+			merryBardsYoungHeroBody).Apply(ctx)
+	}, nil)

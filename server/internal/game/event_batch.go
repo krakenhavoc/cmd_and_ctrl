@@ -133,6 +133,17 @@ func (g *Game) beginEventBatchLocked() {
 	g.dropRedirectOrdersLocked(0)
 }
 
+// BeginEventBatchForTest opens a new event batch from outside the package:
+// play has moved on, so the resolving slot is empty. A test that answers a
+// keyed prompt in the same call as the resolution that asked it would
+// otherwise answer inside the batch the item resolved in, which a real
+// answer never does.
+func (g *Game) BeginEventBatchForTest() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.beginEventBatchLocked()
+}
+
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter
 // starts at zero on a freshly constructed Game and the first event of
 // a game would then carry the un-stamped sentinel, so the first read

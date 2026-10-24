@@ -71,10 +71,12 @@ type AnyPlayerPays struct {
 // reused, ledgered "anyplayer <key>"): `onPaid` is "if a player does,
 // ...", `onNobody` "if no one does, ..." and `perPayer` the payment
 // worked out for each player. Any may be nil, but not all three. The
-// bodies run against a Context bound to a stand-in for the asking item:
-// the effect's controller and its source card, because the item itself
+// bodies run against a Context bound to a copy of the asking item rebuilt
+// from data the offer carries (game.AskedItem), because the item itself
 // has long resolved by the time anyone answers (and a restore does not
-// carry it). Call it once, from a package-level var.
+// carry it). An offer queued without one gets a stand-in with the
+// effect's controller and its source card. Call it once, from a
+// package-level var.
 func AnyPlayerConsequences(key string,
 	onPaid, onNobody func(ctx *Context, r game.AnyPlayerAnswer) error,
 	perPayer game.AnyPlayerPerPayerFunc,
@@ -84,6 +86,9 @@ func AnyPlayerConsequences(key string,
 			return nil
 		}
 		return func(g *game.Game, r game.AnyPlayerAnswer) error {
+			if r.Item != nil {
+				return body(NewContext(g, r.Item), r)
+			}
 			return body(keyedContext(g, r.Controller, r.Source), r)
 		}
 	}
@@ -254,6 +259,7 @@ func (a AnyPlayerPays) applyKeyed(ctx *Context) error {
 		DeclineLabel: a.DeclineLabel,
 		Then:         a.Then,
 		Carry:        a.Carry,
+		Asked:        game.NewAskedItem(ctx.Item),
 
 		HelpsController: a.HelpsController,
 	})
@@ -310,15 +316,17 @@ var anyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counte
 // damage to them. If no one does, <onNobody>." (Book Burning, Breaking
 // Point, Browbeat) as a spell's OnResolve (ADR 0150 §3). The spell
 // deals the damage through the ordinary path, so prevention and
-// replacement apply, and taking it is always a payment.
-func anyPlayerMayTakeDamageFromThis(name string, n int, what string, onNobody func(ctx *Context) error) func(*game.StackItem, *Context) error {
+// replacement apply, and taking it is always a payment. `nobody` is "if
+// no one does" as a registered consequence (AnyPlayerConsequences, #4264),
+// so a table waiting on any player's answer is a restore point.
+func anyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game.AnyPlayerThen) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return AnyPlayerPays{
 			Pay:          DamagePayment(n),
 			Question:     name + " — take " + strconv.Itoa(n) + " damage to stop " + what + "?",
 			AcceptLabel:  "Take " + strconv.Itoa(n) + " damage",
 			DeclineLabel: "Don't",
-			OnNobody:     onNobody,
+			Then:         nobody,
 		}.Apply(ctx)
 	}
 }
@@ -334,12 +342,7 @@ func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 			return AnyPlayerPays{
 				Pay:      SacrificePayment(1, "land", "lands", QueryType("land")),
 				Question: name + " — sacrifice a land to put it on top of its owner's library?",
-				OnPaid: func(ctx *Context, _ uuid.UUID) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
-				},
+				Then:     anyPlayerTucksThis,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -369,9 +372,35 @@ type AnyPlayerPaysForEach struct {
 	// OnUnsaved is the effect on the objects nobody paid for. It is
 	// handed only objects that are still the same objects.
 	OnUnsaved func(ctx *Context, unsaved []uuid.UUID) error
+
+	// Then is OnUnsaved as a REGISTERED consequence
+	// (AnyPlayerEachConsequence, #4264), and Carry the plain data it is
+	// handed: every leg of an offer queued with one holds no closure, so a
+	// table waiting on any seat's pick is a restore point. Set Then or
+	// OnUnsaved, not both.
+	Then  game.AnyPlayerEachThen
+	Carry []uuid.UUID
+}
+
+// AnyPlayerEachConsequence registers a keyed per-object offer's
+// consequence under `key`, an on-disk identity (never renamed, never
+// reused, ledgered "choose <key>", the offer's choose_cards continuation):
+// `onUnsaved` is "the objects nobody paid for ...", handed them in r.Unsaved
+// and run against a Context bound to the asking item the offer carried.
+// Call it once, from a package-level var.
+func AnyPlayerEachConsequence(key string, onUnsaved func(ctx *Context, r game.AnyPlayerEachAnswer) error) game.AnyPlayerEachThen {
+	return game.RegisterAnyPlayerPaysEach(key, func(g *game.Game, r game.AnyPlayerEachAnswer) error {
+		if r.Item != nil {
+			return onUnsaved(NewContext(g, r.Item), r)
+		}
+		return onUnsaved(keyedContext(g, r.Controller, r.Source), r)
+	})
 }
 
 func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
+	if a.Then.Key() != "" && a.OnUnsaved != nil {
+		return fmt.Errorf("%w: AnyPlayerPaysForEach %q sets both Then and OnUnsaved", game.ErrInvalidParam, a.Then.Key())
+	}
 	item := ctx.Item
 	var objects []uuid.UUID
 	if a.Objects != nil {
@@ -392,5 +421,20 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		Noun:       a.Noun,
 		Question:   a.Question,
 		OnUnsaved:  onUnsaved,
+		Then:       a.Then,
+		Carry:      a.Carry,
+		Asked:      game.NewAskedItem(item),
 	})
 }
+
+// anyPlayerTucksThis is "If a player does, put this creature on top of its
+// owner's library", keyed (#4264): a creature that left and came back is a
+// new object and is not moved (CR 400.7), which the asking item's object
+// answers.
+var anyPlayerTucksThis = AnyPlayerConsequences("any-player/tuck-this-on-top-of-library",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
+	}, nil, nil)

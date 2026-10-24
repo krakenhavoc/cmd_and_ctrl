@@ -29,11 +29,15 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{1}",
 					Question: "Nadir Kraken — pay {1} to put a +1/+1 counter on it and create a 1/1 Tentacle?",
-					OnPay: func(ctx *Context) error {
-						return b25GrowAndSpawnTentacle(ctx, item.SourceCardID, item.Controller)
-					},
+					Then:     nadirKrakenPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// nadirKrakenPaid is the paid half, keyed (#4264).
+var nadirKrakenPaid = PayUnlessBranches("pay-unless/nadir-kraken-grow-and-tentacle",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return b25GrowAndSpawnTentacle(ctx, ctx.Source(), ctx.Controller())
+	}, nil)

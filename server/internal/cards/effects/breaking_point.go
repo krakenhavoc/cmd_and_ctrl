@@ -18,8 +18,13 @@ func init() {
 		Name:         "Breaking Point",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve: anyPlayerMayTakeDamageFromThis("Breaking Point", 6, "the sweep", func(ctx *Context) error {
-			return wrathDestroyAllCreaturesNoRegen(ctx.Item, ctx)
-		}),
+		OnResolve:    anyPlayerMayTakeDamageFromThis("Breaking Point", 6, "the sweep", breakingPointSweeps),
 	})
 }
+
+// breakingPointSweeps is "If no one does, destroy all creatures", keyed
+// (#4264).
+var breakingPointSweeps = AnyPlayerConsequences("any-player/breaking-point-sweep", nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		return wrathDestroyAllCreaturesNoRegen(ctx.Item, ctx)
+	}, nil)

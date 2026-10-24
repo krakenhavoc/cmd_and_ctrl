@@ -59,19 +59,11 @@ func init() {
 			// token is, well under a 4/4, which leaves room for it.
 			Purpose: game.Purpose{DiscardPayoff: &game.DiscardPayoff{Types: []string{"creature"}, Tokens: 1}},
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				discarded := item.Trigger.Event.CardID
 				return MayPay{
 					Chooser:  item.Controller,
 					Cost:     "{2}{U}",
 					Question: "Hashaton, Scarab's Fist — pay {2}{U} to create a tapped 4/4 black Zombie copy?",
-					OnPay: func(ctx *Context) error {
-						return CreateTokenCopy{
-							Controller: item.Controller,
-							Copy:       discarded,
-							N:          1,
-							Except:     hashatonZombieExceptionThrough(ctx.textReader()),
-						}.Apply(ctx)
-					},
+					Then:     hashatonPaid,
 				}.Apply(NewContext(g, item))
 			},
 		}},
@@ -98,3 +90,14 @@ func hashatonZombieExceptionThrough(reader *game.Card) func(t *game.Card) {
 		t.Tapped = true
 	}
 }
+
+// hashatonPaid is the paid half, keyed (#4264): the discarded card is the asking trigger's event.
+var hashatonPaid = PayUnlessBranches("pay-unless/hashaton-scarabs-fist-zombie-copy",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return CreateTokenCopy{
+			Controller: ctx.Controller(),
+			Copy:       ctx.Trigger().Event.CardID,
+			N:          1,
+			Except:     hashatonZombieExceptionThrough(ctx.textReader()),
+		}.Apply(ctx)
+	}, nil)

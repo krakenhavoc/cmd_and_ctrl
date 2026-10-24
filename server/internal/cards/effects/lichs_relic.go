@@ -58,23 +58,28 @@ func lichsRelicClause(opponents int) *game.TargetSpec {
 }
 
 func lichsRelicMayPay(g *game.Game, item *game.StackItem) error {
-	opponents := 0
+	var opponents []uuid.UUID
 	for _, p := range g.Seats {
 		if p != nil && !p.Eliminated && p.ID != item.Controller {
-			opponents++
+			opponents = append(opponents, p.ID)
 		}
 	}
-	if opponents == 0 {
+	if len(opponents) == 0 {
 		return nil
 	}
 	return MayPay{
 		Chooser:  item.Controller,
 		Cost:     "{2}",
 		Question: "Lich's Relic — pay {2} to destroy up to one creature or planeswalker each opponent controls?",
-		OnPay: func(ctx *Context) error {
-			t := WhenYouDo("Lich's Relic — destroy up to one target creature or planeswalker for each opponent", lichsRelicDestroyBody)
-			t.Params = game.EffectParams{Amount: opponents}
-			return t.Apply(ctx)
-		},
+		Then:     lichsRelicPaid,
+		Carry:    opponents,
 	}.Apply(NewContext(g, item))
 }
+
+// lichsRelicPaid is the paid half, keyed (#4264): the opponents counted as the offer was made ride the prompt.
+var lichsRelicPaid = PayUnlessBranches("pay-unless/lichs-relic-destroy-per-opponent",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		t := WhenYouDo("Lich's Relic — destroy up to one target creature or planeswalker for each opponent", lichsRelicDestroyBody)
+		t.Params = game.EffectParams{Amount: len(r.Carry)}
+		return t.Apply(ctx)
+	}, nil)

@@ -1258,10 +1258,12 @@ type PayUnless struct {
 // PayUnlessElse registers a keyed pay-unless decline under `key`, an
 // on-disk identity (never renamed, never reused, ledgered "payunless
 // <key>"). Call it once, from a package-level var. The body runs against
-// a Context bound to a stand-in for the asking item: its controller and
-// its source card, the two things a decline reads, because the item
-// itself has long resolved by the time the payer answers (and a restore
-// does not carry it). r.Carry is the card's own Carry.
+// a Context bound to a copy of the asking item rebuilt from data the
+// prompt carries (game.AskedItem: its controller, source card and source
+// object with its epoch, targets, triggering event, X and modes), because
+// the item itself has long resolved by the time the payer answers (and a
+// restore does not carry it). A prompt queued without one gets a stand-in
+// with the controller and the source card. r.Carry is the card's own Carry.
 func PayUnlessElse(key string, body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessElse {
 	return game.RegisterPayUnlessElse(key, payUnlessBranch(body))
 }
@@ -1291,6 +1293,11 @@ func PayUnlessBranches(key string, onPay, onDecline func(ctx *Context, r game.Pa
 func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessFunc {
 	return func(g *game.Game, r game.PayUnlessAnswer) error {
 		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
+		if r.Item != nil {
+			// The prompt carried the asking item as data (#4264): the
+			// branch reads its event, targets, X and source object.
+			ctx = NewContext(g, r.Item)
+		}
 		r.Carry = carry
 		return body(ctx, r)
 	}
@@ -1310,8 +1317,11 @@ func (p PayUnless) Apply(ctx *Context) error {
 		if p.OnDecline != nil {
 			return fmt.Errorf("%w: PayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
 		}
-		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
-		return ctx.Game.QueuePayUnlessKeyedForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, p.Else, carry)
+		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+			Then: p.Else, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked: game.NewAskedItem(ctx.Item),
+		})
 	}
 	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
 		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
@@ -1401,6 +1411,7 @@ func (p UpkeepPayUnless) Apply(ctx *Context) error {
 			Question: p.Question,
 			Then:     p.Else,
 			Carry:    append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked:    game.NewAskedItem(ctx.Item),
 		})
 	}
 	prompt := game.UpkeepPayUnlessPrompt{
@@ -1483,6 +1494,7 @@ func (c CounterUnlessPaid) Apply(ctx *Context) error {
 			Question:  c.Question,
 			Then:      c.Then,
 			Carry:     append([]uuid.UUID{ctx.Controller()}, c.Carry...),
+			Asked:     game.NewAskedItem(ctx.Item),
 		})
 	}
 	var onPaid func(*game.Game) error
@@ -1550,6 +1562,7 @@ func (p GuardedPayUnless) Apply(ctx *Context) error {
 			Question:  p.Question,
 			Then:      p.Else,
 			Carry:     append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked:     game.NewAskedItem(ctx.Item),
 		})
 	}
 	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{

@@ -61,14 +61,11 @@ func inallaMayPayToCopy(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {
 		return nil
 	}
-	wizard, controller := item.Trigger.Event.CardID, item.Controller
 	return MayPay{
-		Chooser:  controller,
+		Chooser:  item.Controller,
 		Cost:     "{1}",
 		Question: "Inalla, Archmage Ritualist — pay {1} to create a token that's a copy of that Wizard?",
-		OnPay: func(ctx *Context) error {
-			return inallaHastyCopy(ctx, controller, wizard)
-		},
+		Then:     inallaPaid,
 	}.Apply(NewContext(g, item))
 }
 
@@ -93,3 +90,9 @@ func inallaHastyCopy(ctx *Context, controller, wizard uuid.UUID) error {
 		Body:       exileListedCardsBody,
 	}.Apply(ctx)
 }
+
+// inallaPaid is the paid half, keyed (#4264): the Wizard is the asking trigger's event.
+var inallaPaid = PayUnlessBranches("pay-unless/inalla-archmage-ritualist-copy",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return inallaHastyCopy(ctx, ctx.Controller(), ctx.Trigger().Event.CardID)
+	}, nil)

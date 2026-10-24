@@ -36,11 +36,15 @@ func mayPayForGraveyardReturn(g *game.Game, item *game.StackItem, cost, question
 		Chooser:  item.Controller,
 		Cost:     cost,
 		Question: question,
-		OnPay: func(ctx *Context) error {
-			if !cardObjectStillInGraveyard(ctx.Game, ctx.Item) {
-				return nil
-			}
-			return returnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
-		},
+		Then:     graveyardReturnPaid,
 	}.Apply(NewContext(g, item))
 }
+
+// graveyardReturnPaid is the paid half of mayPayForGraveyardReturn, keyed (#4264). The asking item carries the card's object, so a card that left the graveyard and came back is a new object (CR 400.7).
+var graveyardReturnPaid = PayUnlessBranches("pay-unless/graveyard-return-this-card-to-battlefield",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if !cardObjectStillInGraveyard(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return returnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
+	}, nil)

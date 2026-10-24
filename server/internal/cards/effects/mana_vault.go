@@ -35,7 +35,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{4}",
 					Question: "Mana Vault — pay {4} to untap it?",
-					OnPay:    manaVaultUntapThis,
+					Then:     manaVaultPaid,
 				}.Apply(NewContext(g, item))
 			}),
 			On(game.EventBeginDrawStep, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
@@ -72,3 +72,7 @@ func manaVaultDrawStepDamage(g *game.Game, item *game.StackItem) error {
 	}
 	return DealDamage{SourceObject: &ref, Target: item.Controller, Amount: 1}.Apply(ctx)
 }
+
+// manaVaultPaid is the paid half, keyed (#4264). The asking item carries the Vault's object (SourceObject, with its epoch), so a Vault that left and came back while the payer decided is a new object and is not untapped (CR 400.7).
+var manaVaultPaid = PayUnlessBranches("pay-unless/mana-vault-untap",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return manaVaultUntapThis(ctx) }, nil)

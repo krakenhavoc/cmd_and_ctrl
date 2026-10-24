@@ -45,12 +45,8 @@ func aetherRiftUpkeep(g *game.Game, item *game.StackItem) error {
 		return AnyPlayerPays{
 			Pay:      LifePayment(5),
 			Question: "Aether Rift — pay 5 life to stop the creature card returning?",
-			OnNobody: func(ctx *Context) error {
-				if !aetherRiftCreatureInGraveyard(ctx.Game, card) {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield}.Apply(ctx)
-			},
+			Then:     aetherRiftReturns,
+			Carry:    []uuid.UUID{card},
 		}.Apply(NewContext(g, item))
 	})
 }
@@ -65,3 +61,14 @@ func aetherRiftCreatureInGraveyard(g *game.Game, id uuid.UUID) bool {
 	c, ok := g.LookupCardForEffect(id)
 	return ok && c.IsCreature()
 }
+
+// aetherRiftReturns is "if no one does", keyed (#4264): the card that was discarded rides the offer.
+var aetherRiftReturns = AnyPlayerConsequences("any-player/aether-rift-return",
+	nil,
+	func(ctx *Context, r game.AnyPlayerAnswer) error {
+		if len(r.Carry) == 0 || !aetherRiftCreatureInGraveyard(ctx.Game, r.Carry[0]) {
+			return nil
+		}
+		return ReturnFromGraveyard{Target: r.Carry[0], Dest: game.ZoneBattlefield}.Apply(ctx)
+	},
+	nil)

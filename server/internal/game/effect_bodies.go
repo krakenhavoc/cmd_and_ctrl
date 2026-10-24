@@ -435,7 +435,7 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens)+len(tapCostBuilders))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -455,6 +455,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredAnyPlayerKeysLocked()...)
 	// #4253: a keyed CR 616 frame's tail, and the bodies its event names.
 	out = append(out, registeredReplacementResumeKeys()...)
+	// #4264: a keyed pay-unless's waterbend clause kind.
+	out = append(out, registeredTapCostKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

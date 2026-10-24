@@ -18,6 +18,11 @@ func init() {
 	shield := PreventNextDamageFromChosenSource(ShieldYou)
 	shield.Question = "Rhystic Circle — choose a source"
 	shield.Label = "Rhystic Circle — prevent the next damage from a source of your choice"
+	// "If no one does" is keyed (#4264): the shield is built here and the
+	// key names it, so a table waiting on any player's answer is a
+	// restore point.
+	rhysticCircleShield := AnyPlayerConsequences("any-player/rhystic-circle-shield", nil,
+		func(ctx *Context, _ game.AnyPlayerAnswer) error { return shield.Apply(ctx) }, nil)
 	Register(Spec{
 		OracleID:     "bffb7d30-b9a4-4529-a3fc-c82d6cd4b599",
 		Name:         "Rhystic Circle",
@@ -30,7 +35,7 @@ func init() {
 				return AnyPlayerPays{
 					Cost:     "{1}",
 					Question: "Rhystic Circle — pay {1} to stop the damage shield?",
-					OnNobody: shield.Apply,
+					Then:     rhysticCircleShield,
 				}.Apply(NewContext(g, item))
 			},
 		}},

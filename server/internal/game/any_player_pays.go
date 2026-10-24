@@ -109,6 +109,22 @@ type AnyPlayerOffer struct {
 	// whose answer is the objects the chooser will pay that much for.
 	// Zero on every other offer.
 	EachLife int `json:"eachLife,omitempty"`
+	// Objects, Picks and Noun are a KEYED per-object offer's state
+	// (#4264, any_player_each_keyed.go): the objects it is about, each
+	// with the epoch it had when the offer was made; the picks of the
+	// seats already asked, in order; and the object's noun ("land"). They
+	// are what the closure form's ordered collector held in its frames.
+	// Additive within the version; empty on every other offer.
+	Objects []ObjectRef `json:"objects,omitempty"`
+	Picks   []OfferPick `json:"picks,omitempty"`
+	Noun    string      `json:"noun,omitempty"`
+}
+
+// OfferPick is one seat's answer to a keyed per-object offer's leg: the
+// objects it will pay for. A seat that chose nothing has an empty list.
+type OfferPick struct {
+	Seat  uuid.UUID   `json:"seat"`
+	Cards []uuid.UUID `json:"cards,omitempty"`
 }
 
 func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {
@@ -118,6 +134,13 @@ func cloneAnyPlayerOffer(o *AnyPlayerOffer) *AnyPlayerOffer {
 	out := *o
 	out.Order = copyUUIDs(o.Order)
 	out.Declined = copyUUIDs(o.Declined)
+	out.Objects = cloneObjectRefs(o.Objects)
+	if len(o.Picks) > 0 {
+		out.Picks = make([]OfferPick, len(o.Picks))
+		for i, p := range o.Picks {
+			out.Picks[i] = OfferPick{Seat: p.Seat, Cards: copyUUIDs(p.Cards)}
+		}
+	}
 	return &out
 }
 

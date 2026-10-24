@@ -47,19 +47,25 @@ func distantMemoriesOffer(ctx *Context, found []uuid.UUID) error {
 		Question:     "Distant Memories — put the exiled card into its caster's hand, or let them draw three?",
 		AcceptLabel:  "Let them have the card",
 		DeclineLabel: "Let them draw three",
-		OnPaid: func(ctx *Context, _ uuid.UUID) error {
-			for _, id := range found {
-				if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
-					continue
-				}
-				if err := ctx.Game.BounceToHandForEffect(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-		OnNobody: func(ctx *Context) error {
-			return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)
-		},
+		Then:         distantMemoriesOutcome,
+		Carry:        found,
 	}.Apply(ctx)
 }
+
+// distantMemoriesOutcome is both answers, keyed (#4264): the exiled cards ride the offer.
+var distantMemoriesOutcome = AnyPlayerConsequences("any-player/distant-memories-outcome",
+	func(ctx *Context, r game.AnyPlayerAnswer) error {
+		for _, id := range r.Carry {
+			if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
+				continue
+			}
+			if err := ctx.Game.BounceToHandForEffect(id); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)
+	},
+	nil)
