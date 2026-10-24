@@ -9080,7 +9080,7 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 		for _, r := range g.DefenderRefusalsForEffect(card) {
 			view.Cards[i].AttackTargetRestrictions = append(view.Cards[i].AttackTargetRestrictions, AttackTargetRestrictionView{
 				Player:        r.Player.String(),
-				Planeswalkers: true,
+				Planeswalkers: !r.PlayerOnly,
 				Source:        r.Restriction.SourceName,
 				Unless:        game.PermanentQueriesNoun(r.Restriction.DefenderMustControl),
 				Reason:        r.Why,
@@ -9840,6 +9840,17 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// what the Locked suffix means.
 		if c.Kind == game.PendingChoiceCardName {
 			v.NameOptions = g.PublicCardNamesLocked()
+			// #1997: a prompt that refuses a basic land card's name
+			// (Null Chamber) does not suggest one.
+			if c.NotBasicLandName {
+				kept := v.NameOptions[:0]
+				for _, n := range v.NameOptions {
+					if !game.IsBasicLandCardName(n) {
+						kept = append(kept, n)
+					}
+				}
+				v.NameOptions = kept
+			}
 		}
 		// ADR 0198: a pick from the card database as the chooser's
 		// collection. The suggestions are plain names on the choice; the

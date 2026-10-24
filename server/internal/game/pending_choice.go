@@ -756,6 +756,19 @@ type PendingChoice struct {
 	// type_options leave them out. Empty on every other prompt.
 	ExcludedTypes []string
 
+	// SecondName marks a PendingChoiceCardName whose answer is the
+	// source's SECOND chosen name (Card.ChosenSecondName): Null
+	// Chamber's opponent's name (#1997). False on every other prompt,
+	// whose answer is ChosenName.
+	SecondName bool
+
+	// NotBasicLandName marks a PendingChoiceCardName that may not be
+	// answered with a basic land card's name: Null Chamber's "a card
+	// name other than a basic land card name" (CR 201.4a, the names
+	// IsBasicLandCardName knows). The resolver refuses one, and the
+	// enumerator and the wire's name_options leave them out.
+	NotBasicLandName bool
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).
@@ -3652,6 +3665,25 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// opponent the controller names (CR 603.3d with CR 601.2c), its
 		// legal set still judged for the controller.
 		chooser, forPlayer := f.source.Controller, uuid.Nil
+		if clause.ChosenByTriggerActor {
+			// #1997: "of their choice" — the triggering event's player
+			// chooses (The Abyss's upkeep player), its legal set still
+			// judged for the controller. A walk with no such player, or
+			// one who has left, has nobody to choose: CR 603.3d removes
+			// the ability for a required clause.
+			who := triggerActorOf(src)
+			if who == uuid.Nil || !g.playerInGameLocked(who) {
+				if clause.Min > 0 {
+					return
+				}
+				f.step++
+				continue
+			}
+			chooser = who
+			if who != f.source.Controller {
+				forPlayer = f.source.Controller
+			}
+		}
 		if clause.ChosenByOpponent {
 			named := f.stepChooser(f.step)
 			if named == uuid.Nil {

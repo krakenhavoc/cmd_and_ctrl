@@ -230,6 +230,16 @@ type Player struct {
 	// AttackedDuringControllersLastTurn and AttackedYouDuringTheirLastTurn.
 	LastTurnAttacks []AttackRecord
 
+	// LastTurnCastOrPut is whether this player cast a spell or put a
+	// nontoken permanent onto the battlefield during the last turn they
+	// took (#1997, last_turn_actions.go): Arboria's "unless that player
+	// cast a spell or put a nontoken permanent onto the battlefield
+	// during their last turn". Written as each of their turns ends, from
+	// that turn's CastTally and PlayerTurnTally.NontokenPermanentsPut,
+	// and kept until their next turn ends. False before their first
+	// turn. Read through CastOrPutDuringLastTurnForEffect.
+	LastTurnCastOrPut bool
+
 	// Eliminated is set when the player leaves the game: a concession,
 	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
 	// eliminated player still occupies their seat for spectating. The

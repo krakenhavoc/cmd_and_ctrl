@@ -744,7 +744,12 @@ type playerSnapshot struct {
 	// written before it restores with none, which reads as "nothing
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
-	Eliminated      bool           `json:"eliminated"`
+	// LastTurnCastOrPut is Player.LastTurnCastOrPut (#1997, Arboria).
+	// Additive within v9: a file written before it restores with false,
+	// which reads as "did nothing last turn" until the player's next turn
+	// ends.
+	LastTurnCastOrPut bool `json:"lastTurnCastOrPut,omitempty"`
+	Eliminated        bool `json:"eliminated"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -1023,6 +1028,10 @@ type cardSnapshot struct {
 	// came back with an empty name would silently stop restricting
 	// the card it was played to stop.
 	ChosenName string `json:"chosenName,omitempty"`
+	// ChosenSecondName is the opponent's half of Null Chamber's two
+	// names (#1997). Carried for ChosenName's reason. Old snapshots have
+	// no key and read "no second name". Additive within v9.
+	ChosenSecondName string `json:"chosenSecondName,omitempty"`
 	// ChosenOption is the CR 614.12 "as this enters, choose <A> or
 	// <B>" answer (#1572) — a Siege's anchor word. Carried for
 	// ChosenPlayer's reason: it is the whole of what decides which of
@@ -1739,7 +1748,11 @@ type pendingChoiceSnapshot struct {
 	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
 	ExchangesText  bool               `json:"exchangesText,omitempty"`
 	ExcludedTypes  []string           `json:"excludedTypes,omitempty"`
-	ScryCards      []uuid.UUID        `json:"scryCards,omitempty"`
+	// #1997: Null Chamber's second name and its "other than a basic
+	// land card name". Additive within v9.
+	SecondName       bool        `json:"secondName,omitempty"`
+	NotBasicLandName bool        `json:"notBasicLandName,omitempty"`
+	ScryCards        []uuid.UUID `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -2526,6 +2539,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
@@ -2607,6 +2621,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
@@ -2918,6 +2933,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		SecondName:            c.SecondName,
+		NotBasicLandName:      c.NotBasicLandName,
 		ScryCards:             copyUUIDs(c.ScryCards),
 		LibraryPlacement:      c.LibraryPlacement,
 		LibraryTopCount:       c.LibraryTopCount,
@@ -3475,6 +3492,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
@@ -3588,6 +3606,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
@@ -3850,6 +3869,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		SecondName:            c.SecondName,
+		NotBasicLandName:      c.NotBasicLandName,
 		ScryCards:             copyUUIDs(c.ScryCards),
 		LibraryPlacement:      c.LibraryPlacement,
 		LibraryTopCount:       c.LibraryTopCount,

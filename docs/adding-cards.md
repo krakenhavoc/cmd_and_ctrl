@@ -40,6 +40,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
   - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
+  - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -3807,6 +3808,44 @@ next card that prints the same words:
   until end of turn (Hall of Gemstone):
   `g.LandsTappedProduceColorThisTurnForEffect(source, controller, color,
   label)`. The auto-tap planner already prices the new colour.
+
+### Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)
+
+Built for the last three world enchantments:
+
+- **A player who "puts" a permanent onto the battlefield.** The engine
+  counts who put each nontoken permanent onto the battlefield. A land
+  play counts for its player, a permanent spell for its controller, and
+  an effect's put for the controller of the resolving spell or ability
+  (CR 608.2c). That holds even when the permanent enters under someone
+  else, as "return it under its owner's control" does. A search counts
+  for the searcher, and a manifest or cloak for the player who manifests.
+  **If your card's text tells ANOTHER player to put or return a card
+  onto the battlefield** ("each player puts", "its controller reveals …
+  and puts that card onto the battlefield", "they put it onto the
+  battlefield"), run that put inside
+  `ctx.Game.PutByEnteringPlayerForEffect(func() error { … })`. Every
+  permanent the put lands is then counted for the player it enters
+  under (CR 110.2a), and Arboria reads the right player. Exhume, Living
+  Death, Chaos Warp and Proteus Staff are examples.
+- **"Creatures can't attack a player unless that player cast a spell or
+  put a nontoken permanent onto the battlefield during their last turn"**
+  (Arboria): `Static: []game.StaticAbility{CreaturesCantAttackPlayersWhoDidNothingLastTurn()}`.
+  A card that asks the same question reads
+  `g.CastOrPutDuringLastTurnForEffect(player)`.
+- **"Target … that player controls of their choice" on a trigger** (The
+  Abyss, Magus of the Abyss): wrap the clause as
+  `TheyControl(OfThatPlayersChoice(TargetCreature(…)))`. The player the
+  triggering event names (the player whose upkeep it is) answers the
+  prompt, and legality is judged for the trigger's controller. Triggers
+  only.
+- **Two card names, one chosen by an opponent, and "other than a basic
+  land card name"** (Null Chamber): queue
+  `g.QueueCardNamePromptForEffect(game.CardNamePrompt{…, SecondName: true,
+  NotBasicLandName: true})`. Read both names back with
+  `game.ChosenNamesOn(&source)`. Compare a spell or a land being played
+  with `game.SpellOrLandHasName`, which asks only the face being cast or
+  played.
 
 ### "Can't draw more than one card each turn" (#3927, CR 121.2b)
 

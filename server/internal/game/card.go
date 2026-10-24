@@ -782,6 +782,22 @@ type Card struct {
 	// choose_card_name.go.
 	ChosenName string
 
+	// ChosenSecondName is the SECOND card name chosen for this
+	// permanent, by another player: Null Chamber's "you and an opponent
+	// each choose a card name" (#1997, ADR 0109 amendment 2026-10-23),
+	// whose opponent's answer lands here while its controller's lands in
+	// ChosenName. Empty is "no second name": every other card, and the
+	// window before the opponent answers.
+	//
+	// Exactly ChosenName's lifecycle, as ChosenSecondPlayer is
+	// ChosenPlayer's: per INSTANCE, carried by the snapshot and by clone,
+	// cleared when the permanent leaves the battlefield (CR 400.7), and
+	// not a copiable value (CR 707.2). Free text, compared with
+	// CardNameMatches or SpellOrLandHasName, never with ==. Read it with
+	// ChosenNamesOf; written by ResolveCardNameChoice for a prompt whose
+	// SecondName is set, and by nothing else.
+	ChosenSecondName string
+
 	// ChosenOption is the NAMED OPTION chosen for this permanent by an
 	// "as this enters, choose <A> or <B>" instruction (CR 614.12) —
 	// the anchor words of the Siege cycles: "choose Khans or Dragons"

@@ -2666,6 +2666,12 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 		if card.Controller == chooser || card.FaceDown || card.Name == "" {
 			continue
 		}
+		// #1997: a prompt that refuses a basic land card's name (Null
+		// Chamber, CR 201.4a) is never offered one. A basic has a mana
+		// ability, so it would otherwise rank here.
+		if c != nil && c.NotBasicLandName && game.IsBasicLandCardName(card.Name) {
+			continue
+		}
 		if len(game.ActivatedAbilitiesForCard(*card)) == 0 &&
 			len(game.ManaAbilitiesForCard(*card)) == 0 {
 			continue

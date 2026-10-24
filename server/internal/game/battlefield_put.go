@@ -43,6 +43,14 @@ type ZoneEntryOptions struct {
 	// pipeline has to know the answer before it runs.
 	Controller uuid.UUID
 
+	// PutByEnteringPlayer records each card as put onto the battlefield
+	// by the player it enters under, not by the controller of the
+	// resolving spell or ability (#1997, last_turn_actions.go): the put
+	// of an instruction that names who puts ("each player puts", "they
+	// put it onto the battlefield", CR 110.2a). Set for a manifest or a
+	// cloak, and for a batch begun inside PutByEnteringPlayerForEffect.
+	PutByEnteringPlayer bool
+
 	// Tapped is the putting effect's own "onto the battlefield
 	// TAPPED" clause (Arboreal Grazer, Risen Reef). It is SEEDED onto
 	// the replacement event rather than OR-ed in after the pipeline,

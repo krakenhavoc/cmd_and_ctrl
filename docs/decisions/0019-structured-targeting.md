@@ -1323,3 +1323,9 @@ Back-out: let the payload name the random clause and `TestGoblinTestPilotRefuses
 source and `TestGoblinTestPilotReplaysTheDrawAfterUndo` fails; leave the Pilot or players out of the legal set and
 `TestGoblinTestPilotDrawsAnyTargetAtRandom` fails; enumerate the clause and `TestGoblinTestPilotEnumeratesNoTarget`
 fails.
+
+## Amendment (2026-10-23, #1997): a trigger's target chosen by the triggering player
+
+"Target nonartifact creature that player controls of their choice" (The Abyss, Magus of the Abyss) is chosen by the player the trigger's event names, the player whose upkeep it is, even when that is not the ability's controller. `TargetSpec.ChosenByTriggerActor` (`effects.OfThatPlayersChoice`) is the clause. The #2055 amendment's opponent's choice asks the controller to name an opponent first. This clause asks nothing first, because the event names the chooser. So nothing is recorded on the item: the CR 608.2b re-check reads the same event. `ControlledByChooser` reads "that player controls" against the event's player. Legality is still judged for the controller. Triggers only. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the detail.
+
+Back-out: skip the event-player gate in `chooserAdmits` and `TestTheAbyssTargetIsChosenByTheUpkeepPlayer` and `TestMagusOfTheAbyssOnItsControllersUpkeepMustChooseItself` fail; send the prompt to the controller and `TestTheAbyssTargetIsChosenByTheUpkeepPlayer` fails.

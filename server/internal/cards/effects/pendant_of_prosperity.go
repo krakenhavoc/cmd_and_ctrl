@@ -102,6 +102,8 @@ var pendantOwnersDrawThenPut = RegisterThenSteps("then-steps/pendant-of-prosperi
 		}
 		put := MayPutALandFromHand("Pendant of Prosperity")
 		put.Player = ids[0]
-		return put.Apply(ctx)
+		// #1997: "that player may put a land card from their hand" —
+		// the owner puts it (CR 110.2a), which Arboria reads.
+		return ctx.Game.PutByEnteringPlayerForEffect(func() error { return put.Apply(ctx) })
 	}),
 )

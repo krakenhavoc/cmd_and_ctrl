@@ -453,3 +453,7 @@ A restore point written before this change and restored mid-turn has void off fo
 Back-out: remove the `recordNonlandPermanentLeftLocked` call and `TestVoidCountsEveryRouteOfANonlandPermanent`, `TestVoidIsTableWide` and `TestVoidforgedTitanDrawsAndLosesLifeOnlyWithVoid` fail; remove the `noteSpellWarpedLocked` call and `TestVoidforgedTitanSeesAWarpedSpell`, `TestTragicTrajectoryCountsAWarpedSpell` and `TestTemporalInterventionCostsTwoLessAfterAWarp` fail.
 
 Alpharael's "Ward—Discard a card at random" is `WardCost.DiscardAtRandom` (`effects.WardDiscardAtRandom`): the payer confirms and the engine discards from their hand on the payer's random stream (CR 701.9b), with no pick prompt.
+
+## Amendment (2026-10-23, #1997): who put a nontoken permanent onto the battlefield
+
+`PlayerTurnTally.NontokenPermanentsPut` counts, for each player, the nontoken permanents that player PUT onto the battlefield this turn. That is the player who made the put, not the player the permanent entered under. It is bumped where the entry is announced (`notePermanentPutLocked`), not by the listener, because the putter is read off the entry itself: a land play's player, a permanent spell's controller, the resolving spell or ability's controller, or the player an instruction names. At turn end it is folded into `Player.LastTurnCastOrPut`, for Arboria. [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)'s amendment of 2026-10-23, second part, has the rule. Additive in schema 9.

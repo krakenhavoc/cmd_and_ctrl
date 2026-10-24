@@ -166,6 +166,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack unless you have the city's blessing."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
+	case r.PlayerMustHaveActedLastTurn:
+		return "Can't attack a player who didn't cast a spell or put a nontoken permanent onto the battlefield during their last turn."
 	}
 	return ""
 }
