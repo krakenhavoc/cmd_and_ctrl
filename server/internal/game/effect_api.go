@@ -1502,6 +1502,12 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	// that is waiting on the prompt is not in it. A caller that must act on
 	// the finished batch (Necropotence schedules a delivery of the card)
 	// reads ExileTopFaceDownThenForEffect instead (#4259).
+	//
+	// NO production caller reads the list any more (#4262: Doomsday
+	// Excruciator was the last, and chains ExileTopFaceDownThenForEffect per
+	// player). It is unreliable on a paused batch, so a new caller that needs
+	// the cards must use the Then form; the list stays for the tests that pin
+	// what had landed.
 	var out []uuid.UUID
 	done := false
 	err = g.exileFaceDownLegsLocked(playerID, plan, nil, func(_ *Game, landed []uuid.UUID) error {

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Doomsday Excruciator — Creature — Demon {B}{B}{B}{B}{B}{B}, 6/6:
 //
@@ -41,21 +45,47 @@ func doomsdayExcruciatorWasCast(_ game.Event, source *game.Card, _ game.Characte
 }
 
 // doomsdayExcruciatorExile is the enters trigger's body.
+//
+// "Each player exiles ..." is done by the players one at a time in APNAP order
+// (CR 101.4), each exile starting from the previous player's continuation
+// (#4262). Starting them all from one loop opened every player's CR 616.1
+// ordering prompt at once; chained, at most one prompt is open at a time and
+// the next player's exile waits for the answer. How many cards each player
+// exiles is read up front, before any exile, because the exiles are
+// simultaneous as far as "all but the bottom six" is concerned.
 func doomsdayExcruciatorExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	if ctx.CastProvenance().FromZone == "" {
 		return nil
 	}
-	for _, id := range tablePlayers(ctx) {
+	var steps []doomsdayStep
+	for _, id := range apnapPlayers(g) {
 		p := g.PlayerByIDForEffect(id)
 		if p == nil || p.Library == nil {
 			continue
 		}
 		if n := len(p.Library.Cards) - 6; n > 0 {
-			if _, err := g.ExileTopFaceDownForEffect(id, n); err != nil {
-				return err
-			}
+			steps = append(steps, doomsdayStep{player: id, n: n})
 		}
 	}
-	return nil
+	return doomsdayExileFrom(g, steps)
+}
+
+// doomsdayStep is one player's share of the exile: how many cards leave the
+// top of their library.
+type doomsdayStep struct {
+	player uuid.UUID
+	n      int
+}
+
+// doomsdayExileFrom exiles the head step's cards and continues with the rest
+// from that exile's continuation.
+func doomsdayExileFrom(g *game.Game, steps []doomsdayStep) error {
+	if len(steps) == 0 {
+		return nil
+	}
+	head, rest := steps[0], steps[1:]
+	return g.ExileTopFaceDownThenForEffect(head.player, head.n, func(g *game.Game, _ []uuid.UUID) error {
+		return doomsdayExileFrom(g, rest)
+	})
 }
