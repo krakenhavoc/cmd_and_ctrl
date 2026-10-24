@@ -13,6 +13,7 @@ import {
   requestDeck,
   shouldOfferPaste,
   sideboardNote,
+  attractionsNote,
   type CoverageCard,
   type CoverageReport,
 } from "./deckcheck";
@@ -395,5 +396,24 @@ describe("requestDeck", () => {
     expect(err).toBeInstanceOf(DeckCheckError);
     expect((err as DeckCheckError).status).toBe(403);
     expect((err as DeckCheckError).message).toMatch(/discord identity/i);
+  });
+});
+
+describe("attractionsNote", () => {
+  it("is null for a deck with no Attractions", () => {
+    expect(attractionsNote(null)).toBeNull();
+    expect(attractionsNote(report())).toBeNull();
+  });
+
+  it("counts the cards outside the 100 and names what is not automated", () => {
+    const r = report({
+      attractions: [
+        card({ name: "Ferris Wheel", bucket: "automated" }),
+        card({ name: "Odd Ride", bucket: "manual" }),
+      ],
+    });
+    expect(attractionsNote(r)).toBe(
+      "Attraction deck: 2 cards, outside the 100. Odd Ride (not automated).",
+    );
   });
 });
