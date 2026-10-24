@@ -1823,6 +1823,9 @@ type pendingChoiceSnapshot struct {
 	// non-mana payment, plain data. A pointer so a mana prompt writes
 	// nothing; additive within the version.
 	PayActionClause *PayAction `json:"payActionClause,omitempty"`
+	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
+	// clause as its kind and extra cost. Additive within the version.
+	PayTap *PayTapSpec `json:"payTap,omitempty"`
 	// OptionObjects is PendingChoice's (#4264): the objects, with their
 	// epochs, a keyed pay-unless or any-player prompt's branches are
 	// handed. Additive within the version.
@@ -3037,6 +3040,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
 		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
@@ -4001,6 +4005,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
 		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,

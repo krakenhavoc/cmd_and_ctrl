@@ -295,6 +295,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}
+		// #4264: a keyed pay-unless's waterbend clause is built by a
+		// registered kind; restored without it the payment would be plain
+		// mana, harder to pay than printed.
+		if c.PayTap != nil && !KnownTapCost(c.PayTap.Kind) {
+			unknown = append(unknown, "tap cost "+c.PayTap.Kind)
+		}
 		// ADR 0146: a ballot's vote continuation is a key too.
 		if c.CouncilVote != nil && !KnownVoteThen(c.CouncilVote.Then) {
 			unknown = append(unknown, "vote continuation "+c.CouncilVote.Then)

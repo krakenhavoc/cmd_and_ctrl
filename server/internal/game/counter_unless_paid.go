@@ -184,13 +184,18 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	if then.key != "" && (p.OnDecline != nil || p.OnPaid != nil) {
 		return fmt.Errorf("%w: keyed counter-unless-pays %q also sets a closure", ErrInvalidParam, then.key)
 	}
-	if then.key == "" && p.OnDecline == nil && p.OnPaid == nil && p.Waterbend == nil {
+	// A waterbend clause stays a closure unless its kind is registered
+	// (RegisterTapCost), which is what lets a prompt carry it as data.
+	tap := payTapSpecOf(p.Waterbend)
+	keyable := p.Waterbend == nil || tap != nil
+	if then.key == "" && p.OnDecline == nil && p.OnPaid == nil && keyable {
 		then, carry = counterGuardedDecline, nil
 	}
-	if then.key != "" && p.Waterbend == nil {
+	if then.key != "" && keyable {
 		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
 			Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
 			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost, Asked: p.Asked,
+			Tap: tap,
 		})
 	}
 	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }

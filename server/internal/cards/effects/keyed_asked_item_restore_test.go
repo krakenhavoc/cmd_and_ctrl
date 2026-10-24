@@ -559,3 +559,95 @@ func TestExtrapolateTheImpossibleSecondAndThirdPromptsWithAnUnknownKeyAreRefused
 		refuseUnknownKey(t, g, key)
 	}
 }
+
+// The Unagi of Kyoshi Island's "Ward—Waterbend {4}": the tap clause is
+// rebuilt from its kind and extra cost (RegisterTapCost, PayTap), so the
+// ward prompt is a restore point that still offers the taps. Paying with
+// four taps on the restored table lets the removal resolve, and declining
+// counters it.
+func TestWaterbendWardIsARestorePoint(t *testing.T) {
+	for _, pay := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		unagi := pushCatalogPermanent(g, me.ID, "The Unagi of Kyoshi Island",
+			"Legendary Creature — Serpent", theUnagiOfKyoshiIslandOracl, false)
+		var helpers []uuid.UUID
+		for i := 0; i < 4; i++ {
+			helpers = append(helpers, pushVanillaCreature(g, opp.ID, "Helper", 1, 1))
+		}
+		advanceToMain(t, g)
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+		blade := castAtWardedCreature(t, g, opp, unagi)
+		for i := 0; i < 8 && !hasPayUnlessFor(g, opp.ID); i++ {
+			if err := g.PassPriority(); err != nil {
+				t.Fatalf("PassPriority: %v", err)
+			}
+		}
+		prompt := payUnlessFor(g, opp.ID)
+		if prompt == nil || prompt.PayTap == nil || prompt.PayTap.Kind != "waterbend" || prompt.PayTap.Extra != "{4}" || prompt.PickThen == "" {
+			t.Fatalf("pay=%v: the ward prompt carries no keyed waterbend {4} clause", pay)
+		}
+
+		g = restoreRoundTrip(t, g, true)
+		opp = g.Seats[1]
+		prompt = payUnlessFor(g, opp.ID)
+		if prompt == nil {
+			t.Fatalf("pay=%v: no ward prompt after the restore", pay)
+		}
+		if tc := prompt.PayTapCost(); tc == nil || tc.Extra != "{4}" || tc.Key != "waterbend" || tc.Spec == nil {
+			t.Fatalf("pay=%v: the restored prompt carries tap clause %+v, want a rebuilt waterbend {4}", pay, tc)
+		}
+		if !pay {
+			answerPayUnless(t, g, opp.ID, false)
+			passPriorityAroundTable(t, g)
+			if !g.Battlefield.Contains(unagi) || !opp.Graveyard.Contains(blade) {
+				t.Errorf("declined: the Unagi on the battlefield = %v, the spell in the graveyard = %v; want a countered spell",
+					g.Battlefield.Contains(unagi), opp.Graveyard.Contains(blade))
+			}
+			continue
+		}
+		if err := g.ResolvePayUnlessWithTaps(prompt.ID, opp.ID, true, helpers); err != nil {
+			t.Fatalf("pay with four taps on the restored table: %v", err)
+		}
+		passPriorityAroundTable(t, g)
+		if g.Battlefield.Contains(unagi) {
+			t.Error("the ward was paid on the restored table, so the removal should have resolved")
+		}
+		for _, id := range helpers {
+			if !isTapped(g, id) {
+				t.Errorf("%v was not tapped to pay the ward", id)
+			}
+		}
+	}
+}
+
+// A prompt carrying a tap clause of a kind this binary lacks is refused on
+// restore: restored without it the payment would be plain mana, harder to
+// pay than printed.
+func TestWaterbendWardWithAnUnknownTapKindIsRefused(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	unagi := pushCatalogPermanent(g, me.ID, "The Unagi of Kyoshi Island",
+		"Legendary Creature — Serpent", theUnagiOfKyoshiIslandOracl, false)
+	advanceToMain(t, g)
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
+	}
+	castAtWardedCreature(t, g, opp, unagi)
+	for i := 0; i < 8 && !hasPayUnlessFor(g, opp.ID); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	prompt := payUnlessFor(g, opp.ID)
+	if prompt == nil || prompt.PayTap == nil {
+		t.Fatal("the ward prompt carries no tap clause")
+	}
+	prompt.PayTap.Kind = "no-such-tap-kind"
+	snap := g.CaptureSnapshot()
+	if _, err := snap.RestoreStrict(); !errors.Is(err, game.ErrUnknownEffectKey) {
+		t.Fatalf("restoring a prompt with an unknown tap kind = %v, want ErrUnknownEffectKey", err)
+	}
+}

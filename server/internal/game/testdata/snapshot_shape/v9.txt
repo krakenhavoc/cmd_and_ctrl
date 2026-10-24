@@ -3764,6 +3764,9 @@ pendingChoices[].payActionClause.Words	string
 pendingChoices[].payCauseController	custom(uuid.UUID)
 pendingChoices[].payCauseItem	custom(uuid.UUID)
 pendingChoices[].payCost	string
+pendingChoices[].payTap	object
+pendingChoices[].payTap.extra	string
+pendingChoices[].payTap.kind	string
 pendingChoices[].pickDestination	string
 pendingChoices[].pickExiledWith	object
 pendingChoices[].pickExiledWith.epoch	number:int

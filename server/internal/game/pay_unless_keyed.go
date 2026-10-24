@@ -23,9 +23,10 @@ import (
 // the answer comes in), the branches' key (PickThen), the IDs the card
 // put there (OptionCarry), and, for the shapes #4264 added, the step the
 // prompt is owed in (OwedInStep), the stack object it guards
-// (GuardsStackItem), the life paid beside the cost (LifeCost) and a
+// (GuardsStackItem), the life paid beside the cost (LifeCost), a
 // non-mana payment (PayActionClause, plain data like the rest of
-// PayAction). payUnlessFrameOf builds the frame the resolver, the
+// PayAction) and a waterbend clause (PayTap: its kind and extra cost,
+// rebuilt by RegisterTapCost's builder). payUnlessFrameOf builds the frame the resolver, the
 // automatic answer and the departure table read from that data, so every
 // path that answers a pay-unless answers a keyed one the same way.
 //
@@ -41,8 +42,86 @@ import (
 // "pay or else" that holds its step (Stasis, cumulative upkeep), the
 // "you may pay" (Hellkite Charger), a counter-unless-pays guarding a
 // stack object (QueueCounterUnlessPaidForEffect's own default is keyed)
-// and the non-mana payments (a discard, a sacrifice, a tap). The
-// waterbend tap clause stays a closure.
+// and the non-mana payments (a discard, a sacrifice, a tap), and a
+// waterbend payment (the tap clause is rebuilt from PayTap).
+
+// PayTapSpec names the "tap permanents to help pay" clause of a keyed
+// pay-unless (#4264): the waterbend of "Ward—Waterbend {4}" (CR 701.67a).
+// The clause itself is a TapPermanentsCost, whose target spec holds
+// predicates, so it cannot ride a restore point. It is built from two
+// strings, though: the kind of clause and the part of the cost its taps may
+// cover, so those ride the prompt and RegisterTapCost's builder rebuilds it.
+type PayTapSpec struct {
+	// Kind is the registered clause ("waterbend").
+	Kind string `json:"kind"`
+	// Extra is the part of the cost the taps may cover ("{4}").
+	Extra string `json:"extra"`
+}
+
+// tapCostBuilders are the registered clauses, by kind. Guarded by
+// effectRegistryMu, with the other effect keys: the kind is an on-disk
+// identity too ("tapcost <kind>" in the ledger).
+var tapCostBuilders = map[string]func(extra string) *TapPermanentsCost{}
+
+// RegisterTapCost registers the builder of a tap clause a keyed pay-unless
+// may carry. Call it once per kind, from an init. Panics on an empty or
+// duplicate kind or a nil builder. The kind is an on-disk identity: never
+// renamed, never reused.
+func RegisterTapCost(kind string, build func(extra string) *TapPermanentsCost) {
+	if kind == "" || build == nil {
+		panic("game: a tap cost needs a kind and a builder")
+	}
+	effectRegistryMu.Lock()
+	defer effectRegistryMu.Unlock()
+	if _, dup := tapCostBuilders[kind]; dup {
+		panic(fmt.Sprintf("game: tap cost %q registered twice", kind))
+	}
+	tapCostBuilders[kind] = build
+}
+
+// KnownTapCost reports whether this binary has a tap clause registered
+// under kind.
+func KnownTapCost(kind string) bool {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	_, ok := tapCostBuilders[kind]
+	return ok
+}
+
+// registeredTapCostKeysLocked lists the ledger lines, "tapcost <kind>".
+// Caller holds effectRegistryMu.
+func registeredTapCostKeysLocked() []string {
+	out := make([]string, 0, len(tapCostBuilders))
+	for k := range tapCostBuilders {
+		out = append(out, "tapcost "+k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// payTapSpecOf is the spec that rebuilds `t`, nil for nil or for a clause
+// whose kind has no builder (which stays a closure prompt).
+func payTapSpecOf(t *TapPermanentsCost) *PayTapSpec {
+	if t == nil || !KnownTapCost(t.Key) {
+		return nil
+	}
+	return &PayTapSpec{Kind: t.Key, Extra: t.Extra}
+}
+
+// tapCostOf rebuilds the clause a spec names, nil for nil or an unknown
+// kind.
+func tapCostOf(s *PayTapSpec) *TapPermanentsCost {
+	if s == nil {
+		return nil
+	}
+	effectRegistryMu.RLock()
+	build, ok := tapCostBuilders[s.Kind]
+	effectRegistryMu.RUnlock()
+	if !ok {
+		return nil
+	}
+	return build(s.Extra)
+}
 
 // PayUnlessAnswer is what a keyed pay-unless branch is handed.
 type PayUnlessAnswer struct {
@@ -195,6 +274,18 @@ type PayUnlessKeyedPrompt struct {
 	// (PayUnlessAnswer.Objects), for a permanent the card named as the
 	// prompt was queued.
 	Objects []ObjectRef
+	// Tap is the waterbend clause (RegisterTapCost): the chooser may tap
+	// artifacts and creatures to pay part of Cost. Nil for a plain payment.
+	Tap *PayTapSpec
+}
+
+// copyPayTapSpec is a copy of a tap clause's spec, nil for nil.
+func copyPayTapSpec(s *PayTapSpec) *PayTapSpec {
+	if s == nil {
+		return nil
+	}
+	out := *s
+	return &out
 }
 
 // copyPayAction is a deep copy of a non-mana payment, nil for nil.
@@ -273,6 +364,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		PayActionClause: copyPayAction(p.Action),
 		Asked:           copyAskedItem(p.Asked),
 		OptionObjects:   cloneObjectRefs(p.Objects),
+		PayTap:          copyPayTapSpec(p.Tap),
 		PickThen:        p.Then.key,
 		OptionCarry:     copyUUIDs(p.Carry),
 
@@ -332,6 +424,7 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 		}
 		f.cost = parsed
 	}
+	f.tap = tapCostOf(c.PayTap)
 	r := PayUnlessAnswer{
 		Chooser: c.Chooser,
 		Source:  c.Source,

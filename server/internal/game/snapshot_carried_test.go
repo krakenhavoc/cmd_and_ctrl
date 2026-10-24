@@ -202,6 +202,10 @@ var carriedFixture = map[string]any{
 			// refused at restore when this binary does not know them.
 			c.PickThen = carriedTestPickKey.Key()
 			c.PickDestination = PickExile
+			// #4264: so is a keyed pay-unless's tap clause kind.
+			if c.PayTap != nil {
+				c.PayTap.Kind = carriedTestTapKind
+			}
 			// ADR 0146: so is a ballot's vote continuation.
 			if c.CouncilVote != nil {
 				c.CouncilVote.Then = carriedTestVoteKey.Key()
@@ -219,6 +223,7 @@ var carriedFixture = map[string]any{
 		return out
 	},
 	"PendingChoice.PickThen":        carriedTestPickKey.Key(),
+	"PendingChoice.PayTap":          &PayTapSpec{Kind: carriedTestTapKind, Extra: "{4}"},
 	"PendingChoice.PickDestination": PickExile,
 	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
@@ -953,6 +958,12 @@ var (
 	// ADR 0146: a ballot's vote continuation key.
 	carriedTestVoteKey = RegisterVoteThen(testEffectKeyPrefix+"carried-vote",
 		func(*Game, VoteResult) error { return nil })
+	// #4264: a keyed pay-unless's tap clause kind.
+	carriedTestTapKind = func() string {
+		kind := testEffectKeyPrefix + "carried-tap"
+		RegisterTapCost(kind, func(extra string) *TapPermanentsCost { return &TapPermanentsCost{Key: kind, Extra: extra} })
+		return kind
+	}()
 	// #4162: a continuation written as steps.
 	carriedTestThenStepsKey = func() string {
 		RegisterThenStepsKey(testEffectKeyPrefix + "carried-steps")
