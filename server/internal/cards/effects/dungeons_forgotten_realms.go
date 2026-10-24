@@ -303,9 +303,10 @@ func madMageRunestoneCaverns(g *game.Game, item *game.StackItem) error {
 // count of cards the player has drawn this turn is carried on the
 // continuation, and the drawn cards are the tail of
 // Game.DrawnThisTurn past it once the last draw is done. The free cast
-// is the resolving ability's (CR 608.2g): it ignores timing and closes
-// on the player's next pass, and a land is never offered (a land is not
-// cast).
+// is the resolving ability's (CR 608.2g): it is offered during the
+// resolution through the resolution_cast prompt (offerFreeHandCastOver),
+// ignores timing, and a land is never offered (a land is not cast).
+// Outside a resolution the pass-closed window is the fallback.
 func madMageMadWizardsLair(g *game.Game, item *game.StackItem) error {
 	you := item.Controller
 	return g.DrawNThenForEffect(you, 3, game.DrawThen{
