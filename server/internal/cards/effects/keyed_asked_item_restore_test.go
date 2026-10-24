@@ -57,7 +57,7 @@ func TestManaVaultOfferKeepsTheVaultsObjectAcrossARestore(t *testing.T) {
 
 		g = restoreRoundTrip(t, g, true)
 		owner = g.Seats[0]
-		c, asked = askedPrompt(t, g, owner.ID)
+		_, asked = askedPrompt(t, g, owner.ID)
 		if asked.SourceObject == nil || asked.SourceObject.ID != vault || asked.SourceObject.Epoch != epoch {
 			t.Fatalf("restored: the asking item names object %+v, want the Vault at epoch %d", asked.SourceObject, epoch)
 		}
@@ -495,7 +495,7 @@ func TestExtrapolateTheImpossibleOpponentAndRevealPicksAreRestorePoints(t *testi
 	g := newSideboardCatalogGame(t, 3, outsideCard("Alpha", "Sorcery"), outsideCard("Beta", "Instant"))
 	castCatalogSpell(t, g, "Extrapolate the Impossible", "Sorcery", extrapolateOracle, nil)
 	passPriorityAroundTable(t, g)
-	me, chosen := g.Seats[0], g.Seats[2]
+	me := g.Seats[0]
 	cards := me.SideboardCards()
 	c := latestChooseCardsFor(g, me.ID)
 	if c == nil || c.PickThen != extrapolatePick.Key() {
@@ -511,7 +511,7 @@ func TestExtrapolateTheImpossibleOpponentAndRevealPicksAreRestorePoints(t *testi
 		t.Fatalf("the second prompt is not the keyed option pick carrying the caster and the pair")
 	}
 	g = restoreRoundTrip(t, g, true)
-	me, chosen = g.Seats[0], g.Seats[2]
+	me, chosen := g.Seats[0], g.Seats[2]
 	if restored := pendingOfKind(g, game.PendingChoiceOptionPick); restored == nil || restored.PickThen != extrapolateOpponent.Key() || len(restored.OptionCarry) != 3 {
 		t.Fatalf("restored second prompt is not the keyed option pick carrying the caster and the pair")
 	}
