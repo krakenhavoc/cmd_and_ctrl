@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Folio of Fancies — Artifact — Book {1}{U}:
 //
@@ -37,16 +41,11 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{2}{U}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
+					// Each opponent's hand is counted as the ability resolves,
+					// before anyone mills; the libraries go one at a time in
+					// APNAP order (#4266).
 					ctx := NewContext(g, item)
-					for _, p := range livePlayers(g) {
-						if p.ID == item.Controller {
-							continue
-						}
-						if err := (MillCards{Player: p.ID, N: b14HandSize(g, p.ID)}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
+					return millEachPlayerInTurn(ctx, ctx.Opponents(), func(p uuid.UUID) int { return b14HandSize(g, p) }, nil)
 				},
 			},
 		},

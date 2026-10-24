@@ -126,12 +126,7 @@ func trueScripturesChapterTwo(g *game.Game, item *game.StackItem) error {
 		game.DiscardPrompt{Source: item.SourceCardID, N: 3},
 		func(g *game.Game, _ game.PromptedDiscards) error {
 			c := NewContext(g, item)
-			for _, opp := range c.Opponents() {
-				if err := (MillCards{Player: opp, N: 3}).Apply(c); err != nil {
-					return err
-				}
-			}
-			return nil
+			return millEachPlayerInTurn(c, c.Opponents(), constantMill(3), nil)
 		})
 }
 

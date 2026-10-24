@@ -256,12 +256,7 @@ func b12TargetOpponentOrTheirCreatureOrPlaneswalker() *game.TargetSpec {
 // of the item's controller mills n.
 func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		if err := (MillCards{Player: opp, N: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), nil)
 }
 
 // b12ImpulseExileForTurn is "exile the top N cards of your library.

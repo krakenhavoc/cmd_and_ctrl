@@ -18,7 +18,7 @@ import (
 //
 // Chapter I reads the power of your Ring-bearer after the tempt, so it
 // is the creature just chosen; with no creature, nothing is milled,
-// and a negative power mills nothing. Each player mills in turn order.
+// and a negative power mills nothing. Each player mills in APNAP order, one at a time.
 // Chapter III counts each opponent's own graveyard.
 //
 // No simplification.
@@ -47,15 +47,8 @@ func oneRingTemptThenMill(g *game.Game, item *game.StackItem) error {
 				n = c.CurrentPower()
 			}
 		}
-		for _, p := range ctx.Game.Seats {
-			if p == nil || p.Eliminated {
-				continue
-			}
-			if err := (MillCards{Player: p.ID, N: n}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
+		// One library at a time in APNAP order (#4266).
+		return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), nil)
 	}}.Apply(NewContext(g, item))
 }
 
