@@ -67,17 +67,23 @@ type ExileTopWithPermission struct {
 	From uuid.UUID
 	// GrantTo is who may play the cards. Usually the controller of
 	// the effect, and usually NOT the owner.
-	GrantTo     uuid.UUID
-	N           int
-	CastOnly    bool
-	AnyColor    bool
-	AnyType     bool
-	FaceDown    bool
-	WhileExiled bool
-	Free        bool
-	Condition   *game.PermissionCondition
-	Window      *game.Duration
-	Filter      game.PermissionFilter
+	GrantTo uuid.UUID
+	// GrantToOwner makes the holder the owner of the library each card came
+	// off, whoever that is, and ignores GrantTo: "each player exiles the top
+	// card of their library; each player may play the cards they exiled this
+	// way" (exileTopEachPlayerInTurn names the library in turn, so the one
+	// template gives every player their own permission).
+	GrantToOwner bool
+	N            int
+	CastOnly     bool
+	AnyColor     bool
+	AnyType      bool
+	FaceDown     bool
+	WhileExiled  bool
+	Free         bool
+	Condition    *game.PermissionCondition
+	Window       *game.Duration
+	Filter       game.PermissionFilter
 
 	// TotalManaValueAtMost is the shared budget described above. Nil is the
 	// ordinary one-grant-per-turn impulse exile.
@@ -98,9 +104,9 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	}
 	perm := e.permission()
 	if e.FaceDown {
-		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.grantee(), n, perm)
 	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.grantee(), n, perm)
 	return err
 }
 
@@ -122,13 +128,22 @@ func (e ExileTopWithPermission) ApplyThen(ctx *Context, then func(ctx *Context, 
 	// The context is rebuilt inside the continuation from the live *Game,
 	// as MillToZone.Apply does: an undo restores the game in place.
 	item := ctx.Item
-	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, e.GrantTo, n, e.permission(),
+	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, e.grantee(), n, e.permission(),
 		func(g *game.Game, landed []uuid.UUID) error {
 			if then == nil {
 				return nil
 			}
 			return then(NewContext(g, item), landed)
 		})
+}
+
+// grantee is who may play the cards: the library's owner for GrantToOwner,
+// otherwise GrantTo.
+func (e ExileTopWithPermission) grantee() uuid.UUID {
+	if e.GrantToOwner {
+		return e.From
+	}
+	return e.GrantTo
 }
 
 // permission is the grant a plain (unbudgeted) ExileTopWithPermission stamps.
@@ -197,7 +212,7 @@ func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		perm.SourceName = src.Name
 	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.grantee(), n, perm)
 	return err
 }
 
@@ -240,16 +255,27 @@ func ExileTopNUntilYourNextEndStep(ctx *Context, n int) error {
 // the caller stamps against its own controller ("your next turn").
 // Play, not cast: a land among them is played and spends a land drop
 // (ADR 0066 §6).
-func EachPlayerExilesTopAndMayPlay(g *game.Game, n int, d game.Duration) error {
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated {
-			continue
-		}
-		if _, err := g.ExileTopWithPermissionForEffect(p.ID, p.ID, n, game.CastPermission{Duration: d}); err != nil {
-			return err
+//
+// The libraries are exiled from one at a time in APNAP order (CR 101.4,
+// #4268, exileTopEachPlayerInTurn), so at most one CR 616.1 ordering prompt is
+// open. `done` runs once after the last player's exile, from the answer when a
+// prompt paused it; it is where Memory Vessel's "and they can't play cards from
+// their hand" goes. It may be nil.
+func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done func(ctx *Context) error) error {
+	var seats []uuid.UUID
+	for _, p := range ctx.Game.Seats {
+		if p != nil {
+			seats = append(seats, p.ID)
 		}
 	}
-	return nil
+	return exileTopEachPlayerInTurn(ctx, seats,
+		ExileTopWithPermission{GrantToOwner: true, N: n, Window: &d},
+		func(ctx *Context, _ []PlayerCards) error {
+			if done == nil {
+				return nil
+			}
+			return done(ctx)
+		})
 }
 
 // damagedOpponent returns the opponent a combat-damage event hit,

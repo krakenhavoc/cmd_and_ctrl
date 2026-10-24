@@ -403,7 +403,7 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 	return excess, nil
 }
 
-// b27ExileTopUntilTotalManaValue is Tasha's Hideous Laughter for one
+// b27ExileTopUntilTotalManaValueThen is Tasha's Hideous Laughter for one
 // player: exile cards from the top of their library until the exiled
 // cards' total mana value reaches `threshold`. An unbounded run (N
 // left 0 with an Until): a library that totals less than the
@@ -418,15 +418,28 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 // nothing here: exiling the top card of a library is not a mill
 // (CR 701.17a), so no repetition opens a mill-amount window and
 // nothing can double one.
-func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold int) error {
+//
+// `then` (#4268) lets a caller that does this to several players chain them: it
+// runs once the run has settled, with the cards that
+// reached exile, at once on a clean run and from the answer when a prompt paused
+// it. A player no longer in the game exiles nothing and `then` still runs. It
+// may be nil.
+func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshold int, then func(g *game.Game, exiled []uuid.UUID) error) error {
 	if ctx.PlayerByID(player) == nil {
-		return nil
+		if then == nil {
+			return nil
+		}
+		return then(ctx.Game, nil)
 	}
-	return MillToZone{
+	mill := MillToZone{
 		Player: player,
 		To:     game.ZoneExile,
 		Until:  UntilTotalManaValue(threshold),
-	}.Apply(ctx)
+	}
+	if then != nil {
+		mill.Then = func(ctx *Context, exiled []uuid.UUID) error { return then(ctx.Game, exiled) }
+	}
+	return mill.Apply(ctx)
 }
 
 // b27GooseMotherAttackLabel is the stack label of The Goose Mother's

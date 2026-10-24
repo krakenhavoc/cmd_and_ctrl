@@ -65,12 +65,8 @@ func init() {
 // lockeMug mills each player in turn, collecting what landed, then
 // finishes the ability.
 func lockeMug(g *game.Game, item *game.StackItem) error {
-	var seats []uuid.UUID
-	for _, p := range g.Seats {
-		if p != nil && !p.Eliminated {
-			seats = append(seats, p.ID)
-		}
-	}
+	// APNAP order (CR 101.4, #4268), not seat zero first.
+	seats := apnapPlayers(g)
 	var step func(g *game.Game, i int) error
 	step = func(g *game.Game, i int) error {
 		if i == len(seats) {
