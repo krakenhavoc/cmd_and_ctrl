@@ -31,10 +31,16 @@ func init() {
 				Question: "Wrath of the Skies — pay any amount of {E}; destroy each artifact, creature and enchantment with mana value up to it",
 				Unit:     game.PayAmountOther,
 				Goal:     largestOpposingManaValue,
-				Then: func(ctx *Context, paid int) error {
-					return DestroyAllMatching{Match: And(Or(Artifact(), Creature(), Enchantment()), ManaValueLE(paid))}.Apply(ctx)
-				},
+				Then:     wrathOfTheSkiesDestroys,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// wrathOfTheSkiesDestroys is the paid half (#4294): each artifact,
+// creature and enchantment with mana value up to the {E} paid is
+// destroyed, also when nothing was paid.
+var wrathOfTheSkiesDestroys = NumberThen("number/wrath-of-the-skies-destroy-up-to-that-value",
+	func(ctx *Context, r game.NumberAnswer) error {
+		return DestroyAllMatching{Match: And(Or(Artifact(), Creature(), Enchantment()), ManaValueLE(r.Number))}.Apply(ctx)
+	})

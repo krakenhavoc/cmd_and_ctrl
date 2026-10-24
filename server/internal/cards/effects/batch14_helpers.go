@@ -360,38 +360,47 @@ func b14MoveChosenCounters(ctx *Context, from, to uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
-	return chooseCounters(ctx, from, 0, "Resourceful Defense — move any number of counters", nil,
-		func(ctx *Context, picked map[string]int) error {
-			if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
+	return resourcefulDefenseMoves.choose(ctx, from, []uuid.UUID{to}, 0, "Resourceful Defense — move any number of counters")
+}
+
+// resourcefulDefenseMoves is Resourceful Defense's clause (#4294): the
+// counts chosen on `from` move onto `to`, which rides the prompts as the
+// clause's extra ID.
+var resourcefulDefenseMoves = registerCounterChoice("number/resourceful-defense-move-counters", nil,
+	func(ctx *Context, from uuid.UUID, extra []uuid.UUID, picked map[string]int) error {
+		if len(extra) == 0 {
+			return nil
+		}
+		to := extra[0]
+		if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
+			return nil
+		}
+		kinds := make([]string, 0, len(picked))
+		for kind := range picked {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
+		for _, kind := range kinds {
+			n := picked[kind]
+			src, ok := ctx.Game.LookupCardForEffect(from)
+			if !ok {
 				return nil
 			}
-			kinds := make([]string, 0, len(picked))
-			for kind := range picked {
-				kinds = append(kinds, kind)
+			if have := src.Counters[kind]; have < n {
+				n = have
 			}
-			sort.Strings(kinds)
-			for _, kind := range kinds {
-				n := picked[kind]
-				src, ok := ctx.Game.LookupCardForEffect(from)
-				if !ok {
-					return nil
-				}
-				if have := src.Counters[kind]; have < n {
-					n = have
-				}
-				if n <= 0 {
-					continue
-				}
-				if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
-					return err
-				}
+			if n <= 0 {
+				continue
 			}
-			return nil
-		})
-}
+			if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 // b14PutCounters puts a set of counters, keyed by kind, on a
 // battlefield permanent — Resourceful Defense's trigger. Kinds are

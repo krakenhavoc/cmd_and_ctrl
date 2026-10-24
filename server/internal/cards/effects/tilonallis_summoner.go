@@ -57,11 +57,16 @@ var tilonallisSummonerPaid = PayUnlessBranches("pay-unless/tilonallis-summoner-a
 			Tapped:   true,
 			Prefer:   attacked,
 			Label:    tilonallisSummonerName,
-			Then: func(ctx *Context, created []uuid.UUID) error {
-				return ExileUnlessCitysBlessing(ctx, tilonallisSummonerName+" — exile the Elementals unless you have the city's blessing", created)
-			},
+			Tail:     game.KeyedTail{Ref: tilonallisSummonerExile},
 		}.Apply(ctx)
 	}, nil)
+
+// tilonallisSummonerExile is the tokens' tail, keyed (#4294): the end
+// step trigger that exiles them unless you have the city's blessing.
+var tilonallisSummonerExile = AttackingTokensThen("attacking-tokens/tilonallis-summoner-exile-unless-blessed",
+	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
+		return ExileUnlessCitysBlessing(ctx, tilonallisSummonerName+" — exile the Elementals unless you have the city's blessing", created)
+	})
 
 func tilonallisSummonerAttacks(g *game.Game, item *game.StackItem) error {
 	return MayPayX{

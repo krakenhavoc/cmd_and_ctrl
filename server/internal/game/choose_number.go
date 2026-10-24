@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 
@@ -81,6 +82,14 @@ type ChooseNumber struct {
 	// chooser left: with 0 for a payment, which was not made, and with
 	// Min for a number that is not paid.
 	Then func(g *Game, n int) error
+	// Branch is the same consequence as a REGISTERED branch
+	// (RegisterNumberThen, #4294), in place of Then: it is handed the
+	// number as NumberAnswer.Number, and runs exactly once as Then does.
+	// A prompt queued with one holds no closure, so a table waiting on
+	// the chooser is a restore point. Set Branch or Then, not both.
+	Branch NumberBranch
+	// split is the engine's attack split's state (attack_split.go).
+	split *AttackSplit
 }
 
 // QueueChooseNumberForEffect asks p.Chooser for a number (CR 608.2d).
@@ -90,6 +99,9 @@ type ChooseNumber struct {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
+	if !p.Branch.IsZero() && p.Then != nil {
+		return fmt.Errorf("%w: keyed choose-number %q also sets a closure", ErrInvalidParam, p.Branch.Then.Key())
+	}
 	then := p.Then
 	floor := max(p.Min, 0)
 	fallback := 0
@@ -97,6 +109,9 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 		fallback = floor
 	}
 	run := func(g *Game, n int) error {
+		if !p.Branch.IsZero() {
+			return g.runNumberBranchNow(p.Branch, p.Chooser, p.Source, n)
+		}
 		if then == nil {
 			return nil
 		}
@@ -138,7 +153,7 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 	if resource == "" {
 		resource = PayResourceNone
 	}
-	id := g.QueueChoiceForEffect(PendingChoice{
+	prompt := PendingChoice{
 		Kind:    PendingChoicePayAmount,
 		Chooser: p.Chooser,
 		Count:   1,
@@ -148,7 +163,13 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 			Min: floor, Max: ceiling, Goal: goal, Unit: unit,
 			Resource: resource, NoMax: p.NoMax, Marks: marks, SelfDamage: p.SelfDamage,
 		},
-		chooseValueResume: &chooseValueFrame{then: func(g *Game, value string) error {
+	}
+	if !p.Branch.IsZero() {
+		// #4294: the keyed form, a restore point.
+		p.Branch.apply(&prompt, g.resolutionCauseLocked())
+		prompt.AttackSplit = cloneAttackSplit(p.split)
+	} else {
+		prompt.chooseValueResume = &chooseValueFrame{then: func(g *Game, value string) error {
 			// "" is the drop (the chooser left, CR 800.4f): a payment
 			// was not made, and a number that is not paid is its floor.
 			n, err := strconv.Atoi(value)
@@ -156,8 +177,9 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 				n = fallback
 			}
 			return run(g, n)
-		}},
-	})
+		}}
+	}
+	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {
 		return run(g, fallback)
 	}

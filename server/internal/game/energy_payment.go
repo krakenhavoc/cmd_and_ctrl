@@ -267,6 +267,12 @@ type PayEnergyAmount struct {
 	// nothing was paid. It runs exactly once, also when there was
 	// nothing to ask and when the chooser left.
 	Then func(g *Game, paid int) error
+	// Branch is the same consequence as a REGISTERED branch
+	// (RegisterNumberThen, #4294), in place of Then: it is handed the
+	// amount as NumberAnswer.Number, and runs exactly once as Then does.
+	// A prompt queued with one holds no closure, so a table waiting on
+	// the payer is a restore point. Set Branch or Then, not both.
+	Branch NumberBranch
 }
 
 // QueuePayEnergyAmountForEffect asks p.Chooser how much energy to pay.
@@ -276,12 +282,19 @@ type PayEnergyAmount struct {
 //
 // The continuation rides the chooseValueResume frame a resolution-time
 // colour pick uses, with the amount in its decimal form, so the prompt
-// adds no closure route (ADR 0041's ratchet).
+// adds no closure route (ADR 0041's ratchet). With a Branch (#4294) it
+// rides no frame at all: the prompt carries the branch's key and data.
 //
 // Caller must hold g.mu.
 func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
+	if !p.Branch.IsZero() && p.Then != nil {
+		return fmt.Errorf("%w: keyed energy amount %q also sets a closure", ErrInvalidParam, p.Branch.Then.Key())
+	}
 	then := p.Then
 	run := func(g *Game, n int) error {
+		if !p.Branch.IsZero() {
+			return g.runNumberBranchNow(p.Branch, p.Chooser, p.Source, n)
+		}
 		if then == nil {
 			return nil
 		}
@@ -309,14 +322,19 @@ func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
 	if p.Unit == "" {
 		p.Unit = PayAmountOther
 	}
-	id := g.QueueChoiceForEffect(PendingChoice{
+	prompt := PendingChoice{
 		Kind:      PendingChoicePayAmount,
 		Chooser:   p.Chooser,
 		Count:     1,
 		Source:    p.Source,
 		Reason:    p.Question,
 		PayAmount: &PayAmountPrompt{Min: minimum, Max: maximum, Goal: goal, Unit: p.Unit, Resource: PayResourceEnergy},
-		chooseValueResume: &chooseValueFrame{then: func(g *Game, value string) error {
+	}
+	if !p.Branch.IsZero() {
+		// #4294: the keyed form, a restore point.
+		p.Branch.apply(&prompt, g.resolutionCauseLocked())
+	} else {
+		prompt.chooseValueResume = &chooseValueFrame{then: func(g *Game, value string) error {
 			// "" is the drop (the chooser left, CR 800.4f): nothing
 			// was paid. An answer is always a validated number.
 			n, err := strconv.Atoi(value)
@@ -324,8 +342,9 @@ func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
 				n = 0
 			}
 			return run(g, n)
-		}},
-	})
+		}}
+	}
+	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {
 		return run(g, 0)
 	}
@@ -380,7 +399,7 @@ func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error
 		if choice.Assist == nil {
 			return ErrInvalidParam
 		}
-		if _, _, ok := g.assistFundsLocked(chooserID, amount, choice.Assist.spend); !ok {
+		if _, _, ok := g.assistFundsLocked(chooserID, amount, choice.Assist.Spend); !ok {
 			return ErrInsufficientMana
 		}
 	}

@@ -98,12 +98,22 @@ func arcaneDenialDraws(g *game.Game, item *game.StackItem, p game.EffectParams) 
 			}
 			return 2
 		},
-		Then: func(ctx *Context, n int) error {
-			ctx.RecordStep(arcaneDenialRecord, []uuid.UUID{victim}, n)
-			return arcaneDenialRest.Run(ctx)
-		},
+		Then:  arcaneDenialChosen,
+		Carry: []uuid.UUID{victim},
 	}.Apply(ctx)
 }
+
+// arcaneDenialChosen is the victim's number's branch (#4294): it files who
+// chose and how many for the draws that follow. The victim rides the
+// prompt's Carry.
+var arcaneDenialChosen = NumberThen("number/arcane-denial-draw-up-to-two",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		ctx.RecordStep(arcaneDenialRecord, []uuid.UUID{r.Carry[0]}, r.Number)
+		return arcaneDenialRest.Run(ctx)
+	})
 
 // arcaneDenialRecord is what the number prompt's answer hands the
 // draws: the victim, and how many they chose.

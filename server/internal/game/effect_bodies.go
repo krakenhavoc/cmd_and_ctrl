@@ -238,6 +238,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := anyPlayerThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already any-player consequences", kind, key))
 	}
+	// #4294: and a keyed number prompt's branch.
+	if _, dup := numberThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a number branch", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -435,7 +439,7 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens)+len(tapCostBuilders))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens)+len(tapCostBuilders)+len(numberThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -453,6 +457,7 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredPayUnlessKeysLocked()...)
 	out = append(out, registeredConfirmKeysLocked()...)
 	out = append(out, registeredAnyPlayerKeysLocked()...)
+	out = append(out, registeredNumberKeysLocked()...)
 	// #4253: a keyed CR 616 frame's tail, and the bodies its event names.
 	out = append(out, registeredReplacementResumeKeys()...)
 	// #4264: a keyed pay-unless's waterbend clause kind.

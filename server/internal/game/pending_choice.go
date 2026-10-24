@@ -507,9 +507,10 @@ type PendingChoice struct {
 	// energy_payment.go): the bounds of the answer, the card's own
 	// threshold and what each counter buys. Wire-serialised via
 	// PendingChoiceView.PayAmount. Plain data, written to a restore point
-	// (#4289) when the prompt holds no chooseValueResume frame: the
-	// keyed "choose X" of a MayPayX (MayPayX below). A pay_amount that
-	// does carry a frame is not a restore point.
+	// (#4289, #4294) when the prompt holds no chooseValueResume frame: the
+	// keyed "choose X" of a MayPayX (MayPayX below), and a keyed number
+	// prompt (PickThen is a RegisterNumberThen key, number_then.go). A
+	// pay_amount that does carry a frame is not a restore point.
 	PayAmount *PayAmountPrompt
 
 	// MayPayX makes a pay_amount the "choose X" half of a KEYED
@@ -525,6 +526,19 @@ type PendingChoice struct {
 	// (#4289): the X a MayPayX settled before it asked whether to pay.
 	// Zero on every other prompt.
 	PickNumber int
+
+	// AttackSplit makes a keyed number prompt a question of a
+	// tokens-attacking split (CR 508.4, attack_split.go): the template, the
+	// things to attack and the shares fixed so far. Plain data, written to
+	// a restore point; nil on every other prompt.
+	AttackSplit *AttackSplit
+
+	// PickWords and PickNums are the words and numbers a keyed number
+	// prompt's branch is handed beside OptionCarry (#4294, number_then.go):
+	// the kinds of counters still to ask about, and how many were chosen
+	// so far. Empty on every other prompt.
+	PickWords []string
+	PickNums  []int
 
 	// NoLegalTarget marks a PendingChoiceTriggerPrompt whose effect
 	// has no legal target / will pass without effect if the chooser
@@ -1198,8 +1212,8 @@ type PendingChoice struct {
 	// Assist makes a pay_amount an assist helper's prompt (ADR 0150 §4,
 	// assist.go): who is casting what, and the generic it has. Plain
 	// data, shown to every seat (the caster's waiting line reads it).
-	// Never captured: the prompt always carries a chooseValueResume
-	// frame, as every pay_amount does.
+	// Written to a restore point (#4294) with the parked cast it re-runs;
+	// the prompt names the engine's own branch (assistHelpThen).
 	Assist *AssistPrompt
 
 	// TurnSkipOrder makes a prompt the which-skip question of a paused

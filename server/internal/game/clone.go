@@ -318,6 +318,9 @@ func (g *Game) cloneLocked() *Game {
 			cloned.PayTap = copyPayTapSpec(c.PayTap)
 			cloned.PayAmount = copyPayAmountPrompt(c.PayAmount)
 			cloned.MayPayX = copyMayPayXClause(c.MayPayX)
+			cloned.AttackSplit = cloneAttackSplit(c.AttackSplit)
+			cloned.PickWords = copyStrings(c.PickWords)
+			cloned.PickNums = copyInts(c.PickNums)
 			cloned.OptionObjects = cloneObjectRefs(c.OptionObjects)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
