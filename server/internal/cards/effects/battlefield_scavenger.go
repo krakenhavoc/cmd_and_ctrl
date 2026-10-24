@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouExert(label, func(g *game.Game, item *game.StackItem) error {
 				return b39MayDiscardThenDraw(1, false, label,
-					func(discarded int) int { return discarded })(NewContext(g, item))
+					drawAsManyAsDiscarded)(NewContext(g, item))
 			}),
 		},
 	})

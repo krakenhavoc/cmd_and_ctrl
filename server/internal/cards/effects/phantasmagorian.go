@@ -25,7 +25,7 @@ func init() {
 		Name:         "Phantasmagorian",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			anyPlayerMayCounterThisSpell("Phantasmagorian", "discard three cards", DiscardPayment(3), nil),
+			anyPlayerMayCounterThisSpell("Phantasmagorian", "discard three cards", DiscardPayment(3), anyPlayerCounterThisSpell),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Discard three cards: Return this card from your graveyard to your hand.",

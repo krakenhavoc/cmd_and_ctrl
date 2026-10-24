@@ -47,7 +47,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return b39MayDiscardThenDraw(2, false,
 						"Fable of the Mirror-Breaker — discard up to two cards, then draw that many",
-						func(discarded int) int { return discarded })(NewContext(g, item))
+						drawAsManyAsDiscarded)(NewContext(g, item))
 				}),
 			ChapterTrigger(3, "Fable of the Mirror-Breaker — exile it, then return it transformed",
 				ChapterExileAndReturnTransformed),

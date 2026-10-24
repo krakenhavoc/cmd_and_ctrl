@@ -25,10 +25,18 @@ import (
 // ("choose <key>" in testdata/effect_keys.txt).
 //
 // What a keyed pick gives up is the closure-only half of
-// ChooseCardsPrompt: the per-set Validate and the live-zone re-check
-// (Zone). Both are closures or ride the closure frame. A continuation
-// that cares where a pick is now checks it itself, as Immortal Coil's
-// does.
+// ChooseCardsPrompt: the live-zone re-check (Zone), which rides the
+// closure frame. A continuation that cares where a pick is now checks it
+// itself, as Immortal Coil's does.
+//
+// A set rule (ChooseCardsPrompt.Validate, "exactly two cards with
+// different names") is registered under the same key as the
+// continuation (RegisterChooseCardsThenRule, #4264) and looked up by it
+// each time an answer is checked, so a keyed pick keeps its set rule and
+// still carries no closure. And one word of the card's text, which a
+// text-changing effect may have changed (CR 612.2), rides the prompt as
+// CarryWord, in PendingChoice.PickMatchArg (#4264), for a continuation
+// that asks the next prompt with it (Coax from the Blind Eternities).
 
 // CardsChosen is what a keyed choose_cards continuation is handed.
 type CardsChosen struct {
@@ -47,7 +55,16 @@ type CardsChosen struct {
 	// Question is the prompt's header as it was asked: a reveal names
 	// it as its reason (#4256's outside-the-game picks).
 	Question string
+	// Word is the one word of the card's text the queuing card put on
+	// the prompt (ChooseCardsPrompt.CarryWord, #4264). Empty when none.
+	Word string
 }
+
+// SetRuleFunc is a registered set rule: is `picked`, the live cards in
+// the order submitted, a set the clause allows? It is never called for
+// an empty pick and is a function of the cards alone, so it runs under
+// the enumerator's read lock and must capture nothing.
+type SetRuleFunc func(picked []Card) bool
 
 // ChooseCardsFunc is a registered continuation. It runs with g.mu held,
 // may queue prompts of its own, and must capture nothing.
@@ -64,11 +81,26 @@ func (r ChooseCardsThen) Key() string { return r.key }
 // effect keys, because the keys share one namespace and one ledger.
 var chooseCardsThens = map[string]ChooseCardsFunc{}
 
+// chooseCardsRules are the set rules of the continuations registered
+// with one (RegisterChooseCardsThenRule), under the continuation's key.
+// Guarded by effectRegistryMu.
+var chooseCardsRules = map[string]SetRuleFunc{}
+
 // RegisterChooseCardsThen registers a keyed choose_cards continuation.
 // Call it once, from a package-level var. Panics on a bad or duplicate
 // key, as DelayedBody does. The key is an on-disk identity: never
 // renamed, never reused.
 func RegisterChooseCardsThen(key string, fn ChooseCardsFunc) ChooseCardsThen {
+	return RegisterChooseCardsThenRule(key, nil, fn)
+}
+
+// RegisterChooseCardsThenRule is RegisterChooseCardsThen for a pick with
+// a set rule (#4264): every answer to the prompt, and every answer the
+// enumerator offers, is checked against `rule` (nil allows every set the
+// bounds allow). The rule shares the continuation's key, so it needs no
+// ledger line of its own: a binary that does not know the key refuses
+// the file, and one that knows it has the rule.
+func RegisterChooseCardsThenRule(key string, rule SetRuleFunc, fn ChooseCardsFunc) ChooseCardsThen {
 	effectRegistryMu.Lock()
 	defer effectRegistryMu.Unlock()
 	checkEffectKey("choose-cards continuation", key)
@@ -76,7 +108,18 @@ func RegisterChooseCardsThen(key string, fn ChooseCardsFunc) ChooseCardsThen {
 		panic(fmt.Sprintf("game: choose-cards continuation %q has no function", key))
 	}
 	chooseCardsThens[key] = fn
+	if rule != nil {
+		chooseCardsRules[key] = rule
+	}
 	return ChooseCardsThen{key: key}
+}
+
+// lookupChooseCardsRule is the set rule registered under key, nil when
+// the continuation has none.
+func lookupChooseCardsRule(key string) SetRuleFunc {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	return chooseCardsRules[key]
 }
 
 func lookupChooseCardsThen(key string) (ChooseCardsFunc, bool) {
@@ -124,5 +167,6 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 		Max:        c.ChooseMax,
 		Carry:      copyUUIDs(c.OptionCarry),
 		Question:   c.Reason,
+		Word:       c.PickMatchArg,
 	})
 }

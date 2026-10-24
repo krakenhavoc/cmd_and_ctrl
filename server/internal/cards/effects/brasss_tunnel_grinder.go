@@ -67,7 +67,7 @@ func brassTunnelGrinderLoot(g *game.Game, item *game.StackItem) error {
 	}
 	return b39MayDiscardThenDraw(hand, false,
 		"Brass's Tunnel-Grinder — discard any number of cards, then draw that many plus one",
-		func(discarded int) int { return discarded + 1 })(ctx)
+		drawOneMoreThanDiscarded)(ctx)
 }
 
 // brassTunnelGrinderBore is the end-step body, in printed order.

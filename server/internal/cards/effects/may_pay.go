@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -41,9 +43,24 @@ type MayPay struct {
 	// is an additional combat phase" (Hellkite Charger) — so the answer
 	// cannot arrive after that phase has ended.
 	InThisStep bool
+
+	// Then is OnPay as REGISTERED branches (PayUnlessBranches, #4264),
+	// and Carry the plain data it is handed: a prompt queued with one
+	// holds no closure, so a table waiting on the payer is a restore
+	// point. The key's pay branch runs only when the mana was really
+	// paid. Set Then or OnPay, not both.
+	Then  game.PayUnlessElse
+	Carry []uuid.UUID
 }
 
 func (p MayPay) Apply(ctx *Context) error {
+	if p.Then.Key() != "" {
+		if p.OnPay != nil {
+			return fmt.Errorf("%w: MayPay %q sets both Then and OnPay", game.ErrInvalidParam, p.Then.Key())
+		}
+		return ctx.Game.QueueMayPayKeyedForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
+			p.Then, append([]uuid.UUID{ctx.Controller()}, p.Carry...), p.InThisStep)
+	}
 	item := ctx.Item
 	onPay := p.OnPay
 	then := func(g *game.Game) error {

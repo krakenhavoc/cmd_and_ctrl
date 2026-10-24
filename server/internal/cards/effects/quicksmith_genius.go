@@ -44,12 +44,7 @@ func init() {
 					ctx := NewContext(g, item)
 					return b39MayDiscardThenDraw(1, false,
 						"Quicksmith Genius — discard a card to draw a card?",
-						func(discarded int) int {
-							if discarded > 0 {
-								return 1
-							}
-							return 0
-						})(ctx)
+						drawOneIfDiscarded)(ctx)
 				}),
 		},
 	})

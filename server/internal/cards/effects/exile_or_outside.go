@@ -23,9 +23,13 @@ import (
 // face up, so it is already public and is not revealed again.
 //
 // The pick from outside the game is keyed (#4256, outside_game.go), so a
-// table waiting on it is a restore point. The exile pick before it still
-// resumes through a closure: its "none" asks the outside pick with the
-// card's word, which a keyed choose-cards pick has nowhere to carry.
+// table waiting on it is a restore point, and so is the exile pick before
+// it (#4264): a keyed choose_cards pick (registerExileOrOutside) whose
+// continuation puts the chosen card into the hand, or, on "none", asks
+// the outside pick with the card's word, which rides the prompt as its
+// string carry (ChooseCardsPrompt.CarryWord). The keyed pick has no
+// live-zone re-check of its own, so the continuation checks the card is
+// still a face-up card the player owns in exile.
 
 // TakeFromExileOrOutside is the shape described above.
 type TakeFromExileOrOutside struct {
@@ -33,10 +37,64 @@ type TakeFromExileOrOutside struct {
 	// revealing), whose filter is the kind of card ("an Eldrazi card",
 	// "an artifact card") in exile too. Required.
 	Pick outsideTake
+	// Exile is the card's registered exile pick (registerExileOrOutside),
+	// the first prompt's continuation. Required.
+	Exile exileTake
 	// Word is the word of the card's text the filter reads, if any.
 	Word string
-	// ExileQuestion heads the first prompt; OutsideQuestion the second.
-	ExileQuestion, OutsideQuestion string
+	// ExileQuestion heads the first prompt. The second's header is the
+	// exile pick's (registerExileOrOutside).
+	ExileQuestion string
+}
+
+// exileTake is a registered exile pick: the first prompt of a
+// TakeFromExileOrOutside, keyed.
+type exileTake struct {
+	then game.ChooseCardsThen
+	// question heads the outside pick the "none" answer asks.
+	question string
+}
+
+// registerExileOrOutside registers the exile half of a "from outside the
+// game or in exile" card under `key` (#4264), whose "none" asks `outside`
+// with `question`. Call it once, from a package-level var. The key is an
+// on-disk identity, ledgered "choose <key>".
+func registerExileOrOutside(key string, outside outsideTake, question string) exileTake {
+	return exileTake{question: question, then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
+		if !r.Answered {
+			return nil
+		}
+		if len(r.Picked) == 1 {
+			// "Put that card into your hand", only if it is still the
+			// face-up card the player owns in exile.
+			if !stillFaceUpInExile(g, r.Chooser, r.Picked[0]) {
+				return nil
+			}
+			return nothingIfGone(g.BounceToHandForEffect(r.Picked[0]))
+		}
+		takeFromOutside(g, r.Chooser, r.Source, TakeFromOutside{
+			Player:   r.Chooser,
+			Pick:     outside,
+			Word:     r.Word,
+			Question: question,
+		})
+		return nil
+	})}
+}
+
+// stillFaceUpInExile reports whether `id` is a face-up card `owner` owns
+// in exile now.
+func stillFaceUpInExile(g *game.Game, owner, id uuid.UUID) bool {
+	ex := g.Exile
+	if ex == nil {
+		return false
+	}
+	for _, c := range ex.Cards {
+		if c.InstanceID == id {
+			return c.Owner == owner && !c.FaceDown
+		}
+	}
+	return false
 }
 
 func (t TakeFromExileOrOutside) Apply(ctx *Context) error {
@@ -49,11 +107,9 @@ func (t TakeFromExileOrOutside) Apply(ctx *Context) error {
 			}
 		}
 	}
-	outside := TakeFromOutside{Player: me, Pick: t.Pick, Word: t.Word, Question: t.OutsideQuestion}
 	if len(exiled) == 0 {
-		return outside.Apply(ctx)
+		return TakeFromOutside{Player: me, Pick: t.Pick, Word: t.Word, Question: t.Exile.question}.Apply(ctx)
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    me,
 		FromPlayer: me,
@@ -62,13 +118,8 @@ func (t TakeFromExileOrOutside) Apply(ctx *Context) error {
 		Cards:      exiled,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 1 {
-				return nothingIfGone(g.BounceToHandForEffect(picked[0]))
-			}
-			return outside.Apply(NewContext(g, item))
-		},
+		ThenKey:    t.Exile.then,
+		CarryWord:  t.Word,
 	})
 	return nil
 }

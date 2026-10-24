@@ -27,7 +27,7 @@ func init() {
 		Name:         "Improvised Act",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return b39MayDiscardThenDraw(1, false, question, func(discarded int) int { return discarded })(ctx)
+			return b39MayDiscardThenDraw(1, false, question, drawAsManyAsDiscarded)(ctx)
 		},
 	})
 }

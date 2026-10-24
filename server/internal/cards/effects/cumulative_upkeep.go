@@ -100,14 +100,23 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 			}
 			owed := each.times(age, noun, plural)
 			cost, action := owed.prompt()
-			return UpkeepPayUnless{
-				Chooser:   ctx.Controller(),
-				Cost:      cost,
-				Action:    action,
-				Question:  label,
-				OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
-				OnPay:     flipCoinsOnPay(label, owed, source),
-			}.Apply(ctx)
+			prompt := UpkeepPayUnless{
+				Chooser:  ctx.Controller(),
+				Cost:     cost,
+				Action:   action,
+				Question: label,
+			}
+			if owed.Flips > 0 {
+				// The flips are the payment, queued once it is made, so a
+				// coin-flip upkeep keeps its closures.
+				prompt.OnDecline = func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) }
+				prompt.OnPay = flipCoinsOnPay(label, owed, source)
+			} else {
+				// #4264: keyed, so a table waiting on the payer is a
+				// restore point.
+				prompt.Else = upkeepSacrificeSource
+			}
+			return prompt.Apply(ctx)
 		})
 	})
 	t.Keyword = game.KeywordCumulativeUpkeep

@@ -84,7 +84,7 @@ const coolButRudeAttackLabel = "Cool but Rude — you may discard a card; if you
 // draw is "if you do".
 func coolButRudeRummage(g *game.Game, item *game.StackItem) error {
 	return b39MayDiscardThenDraw(1, false, coolButRudeAttackLabel,
-		func(discarded int) int { return discarded })(NewContext(g, item))
+		drawAsManyAsDiscarded)(NewContext(g, item))
 }
 
 // coolButRudeTutor is the level-3 line. "A card" is every card in the

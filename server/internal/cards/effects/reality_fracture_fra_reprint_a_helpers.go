@@ -68,21 +68,25 @@ func rfReprintALandscape(oracleID, name, cyclingCost string, subtypes ...string)
 // card type among cards discarded this way", registered as the draw's
 // continuation so the discard prompt opens only once the draws are done.
 var rfReprintAOccultEpiphanyDiscard = game.RegisterDrawThen("occult-epiphany-discard", func(g *game.Game, d game.DrawThen) error {
-	player := d.Player
-	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-		Player:   player,
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player:   d.Player,
 		Source:   d.Source,
 		N:        d.N,
 		Question: "Occult Epiphany — discard X cards",
-	}, func(g *game.Game, discarded game.PromptedDiscards) error {
-		n := rfReprintACardTypesAmong(g, discarded.By(player))
-		if n == 0 {
-			return nil
-		}
-		// The Spirits are words of the spell's text (#4005).
-		spirit := g.TextReaderOfForEffect(d.Source).TokenThroughText(TokenCard("1/1 white Spirit with flying"))
-		return g.CreateTokenForEffect(player, spirit, n)
-	})
+	}, rfReprintAOccultEpiphanySpirits, nil)
+})
+
+// rfReprintAOccultEpiphanySpirits is the Spirits, once the discard has
+// landed, keyed (#4264): a table waiting on the discard is a restore
+// point.
+var rfReprintAOccultEpiphanySpirits = game.RegisterDiscardThen("choose-cards/occult-epiphany-spirits", func(g *game.Game, r game.DiscardsDone) error {
+	n := rfReprintACardTypesAmong(g, r.Discarded.By(r.Player))
+	if n == 0 {
+		return nil
+	}
+	// The Spirits are words of the spell's text (#4005).
+	spirit := g.TextReaderOfForEffect(r.Source).TokenThroughText(TokenCard("1/1 white Spirit with flying"))
+	return g.CreateTokenForEffect(r.Player, spirit, n)
 })
 
 // rfReprintACardTypesAmong counts the distinct card types among the

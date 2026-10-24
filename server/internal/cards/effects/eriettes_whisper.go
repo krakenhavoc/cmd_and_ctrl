@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Eriette's Whisper — Sorcery {3}{B}:
 //
@@ -29,17 +33,37 @@ func init() {
 			// The Role is the rest of the discard's sentence, so it rides
 			// the discard's continuation (ADR 0013 §5y): the answer is
 			// ignored, which is "create a Role" being printed AFTER it.
-			role := func(g *game.Game, _ game.PromptedDiscards) error {
-				return createRoleOnClauseTarget(NewContext(g, item), 1, RoleWicked)
+			// The continuation is keyed (#4264), so the caster and the
+			// creature (checked as the spell resolves, CR 608.2b) ride
+			// the prompt as its Carry rather than the stack item.
+			carry := []uuid.UUID{ctx.Controller()}
+			if host, ok := ctx.ClauseTarget(1); ok && host.Kind == game.TargetCard {
+				carry = append(carry, host.ID)
 			}
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetPlayer {
-				return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+				return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 					Player: t.ID,
 					Source: item.SourceCardID,
 					N:      2,
-				}, role)
+				}, eriettesWhisperRole, carry)
 			}
-			return role(ctx.Game, game.PromptedDiscards{})
+			return eriettesWhisperRoleOn(ctx.Game, item.SourceCardID, carry)
 		},
 	})
+}
+
+// eriettesWhisperRole is "create a Wicked Role token attached to up to
+// one target creature you control", keyed (#4264): a table waiting on the
+// discard is a restore point.
+var eriettesWhisperRole = game.RegisterDiscardThen("choose-cards/eriettes-whisper-role", func(g *game.Game, r game.DiscardsDone) error {
+	return eriettesWhisperRoleOn(g, r.Source, r.Carry)
+})
+
+// eriettesWhisperRoleOn is the Role: carry is the caster, then the
+// creature when there is one.
+func eriettesWhisperRoleOn(g *game.Game, source uuid.UUID, carry []uuid.UUID) error {
+	if len(carry) < 2 {
+		return nil
+	}
+	return CreateRoleToken{Role: RoleWicked, Host: carry[1]}.Apply(keyedContext(g, carry[0], source))
 }

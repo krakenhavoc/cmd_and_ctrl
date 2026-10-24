@@ -149,28 +149,37 @@ func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 		sacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
 		"Archon of Cruelty — sacrifice a creature or planeswalker", 1,
 		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return g.PlayerDiscardsThenForEffect(
+			return g.PlayerDiscardsThenKeyedForEffect(
 				game.DiscardPrompt{Player: victim, Source: source, N: 1},
-				func(g *game.Game, _ game.PromptedDiscards) error {
-					return b09ArchonOfCrueltyPayout(g, item, victim)
-				})
+				b09ArchonOfCrueltyPaid, []uuid.UUID{item.Controller})
 		})
 }
+
+// b09ArchonOfCrueltyPaid is the payout once the discard has landed, keyed
+// (#4264): the controller rides the prompt as its Carry, so a table
+// waiting on the discard is a restore point. The discard prompt itself
+// is the sacrifice's continuation, which is still a closure.
+var b09ArchonOfCrueltyPaid = game.RegisterDiscardThen("choose-cards/archon-of-cruelty-payout", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return b09ArchonOfCrueltyPayout(g, r.Carry[0], r.Source, r.Player)
+})
 
 // b09ArchonOfCrueltyPayout is Archon of Cruelty's last three clauses,
 // printed after both prompts: "…and loses 3 life. You draw a card and
 // gain 3 life."
 //
 // Caller holds g.mu.
-func b09ArchonOfCrueltyPayout(g *game.Game, item *game.StackItem, victim uuid.UUID) error {
-	ctx := NewContext(g, item)
-	if err := g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -3); err != nil {
+func b09ArchonOfCrueltyPayout(g *game.Game, controller, source, victim uuid.UUID) error {
+	ctx := keyedContext(g, controller, source)
+	if err := g.ChangePlayerLifeForEffect(source, victim, -3); err != nil {
 		return err
 	}
-	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
+	if err := (DrawCards{Player: controller, N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
+	return GainLife{Player: controller, Amount: 3}.Apply(ctx)
 }
 
 // b09SourceStillOnBattlefield is the guard every "put a counter on

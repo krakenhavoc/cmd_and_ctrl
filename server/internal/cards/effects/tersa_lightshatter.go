@@ -38,7 +38,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return b39MayDiscardThenDraw(2, false,
 						"Tersa Lightshatter — discard up to two cards, then draw that many",
-						func(discarded int) int { return discarded })(NewContext(g, item))
+						drawAsManyAsDiscarded)(NewContext(g, item))
 				}),
 			On(game.EventAttack,
 				AllOf(ThisAttacked, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

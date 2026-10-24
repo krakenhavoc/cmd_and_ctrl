@@ -264,10 +264,22 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownOutsidePick(c.PickThen) {
 				unknown = append(unknown, "outside pick "+c.PickThen)
 			}
+		case c.Kind == PendingChoicePayUnless && c.AnyPlayerOffer != nil:
+			// #4264: a keyed any-player offer's consequences, which are
+			// registered apart from a plain pay-unless's branches.
+			if !KnownAnyPlayerPays(c.PickThen) {
+				unknown = append(unknown, "any-player consequences "+c.PickThen)
+			}
 		case c.Kind == PendingChoicePayUnless:
-			// #4256: a keyed pay-unless prompt's decline.
+			// #4256: a keyed pay-unless prompt's decline (and, since
+			// #4264, its payment's branch).
 			if !KnownPayUnlessElse(c.PickThen) {
-				unknown = append(unknown, "pay-unless decline "+c.PickThen)
+				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
+		case c.Kind == PendingChoiceConfirm:
+			// #4264: a keyed confirm's answer.
+			if !KnownConfirmThen(c.PickThen) {
+				unknown = append(unknown, "confirm answer "+c.PickThen)
 			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)

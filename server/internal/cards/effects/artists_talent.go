@@ -73,5 +73,5 @@ const artistsTalentLabel = "Artist's Talent — you may discard a card; if you d
 
 func artistsTalentRummage(g *game.Game, item *game.StackItem) error {
 	return b39MayDiscardThenDraw(1, false, artistsTalentLabel,
-		func(discarded int) int { return discarded })(NewContext(g, item))
+		drawAsManyAsDiscarded)(NewContext(g, item))
 }

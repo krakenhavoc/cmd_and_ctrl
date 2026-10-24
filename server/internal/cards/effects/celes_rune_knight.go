@@ -71,7 +71,7 @@ func celesRuneKnightLoot(g *game.Game, item *game.StackItem) error {
 	}
 	return b39MayDiscardThenDraw(hand, false,
 		"Celes, Rune Knight — discard any number of cards, then draw that many plus one",
-		func(discarded int) int { return discarded + 1 })(ctx)
+		drawOneMoreThanDiscarded)(ctx)
 }
 
 // celesOtherCreatureFromGraveyard is the second ability's trigger and

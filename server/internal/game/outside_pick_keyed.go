@@ -32,11 +32,12 @@ import (
 // cards and runs the continuation with their new IDs, exactly as the
 // closure form does.
 //
-// What a keyed pick gives up is a set rule (OutsidePickPrompt.Validate),
-// a closure: Extrapolate the Impossible's "two cards with different
-// names" stays on the closure form. A continuation re-checks where its
-// picks are now (StillOutsideForEffect): a keyed pick has no live-zone
-// re-check of its own.
+// A set rule (OutsidePickPrompt.Validate, Extrapolate the Impossible's
+// "two cards with different names") is registered with the pick
+// (RegisterOutsidePickRule, #4264), under the same key, and looked up by
+// it on both branches. A continuation re-checks where its picks are now
+// (StillOutsideForEffect): a keyed pick has no live-zone re-check of its
+// own.
 
 // OutsideMatchFunc is a registered outside-pick filter: does `c` satisfy
 // the clause, given the word the prompt carries? Nil offers every card.
@@ -68,7 +69,14 @@ var outsidePicks = map[string]outsidePickEntry{}
 // key is an on-disk identity: never renamed, never reused, ledgered as
 // "choose <key>".
 func RegisterOutsidePick(key string, match OutsideMatchFunc, then ChooseCardsFunc) OutsidePick {
-	t := RegisterChooseCardsThen(key, then)
+	return RegisterOutsidePickRule(key, match, nil, then)
+}
+
+// RegisterOutsidePickRule is RegisterOutsidePick for a pick with a set
+// rule over the whole answer (#4264): "exactly two cards with different
+// names". The rule is never called for an empty pick.
+func RegisterOutsidePickRule(key string, match OutsideMatchFunc, rule SetRuleFunc, then ChooseCardsFunc) OutsidePick {
+	t := RegisterChooseCardsThenRule(key, rule, then)
 	effectRegistryMu.Lock()
 	defer effectRegistryMu.Unlock()
 	outsidePicks[key] = outsidePickEntry{match: match}
@@ -121,7 +129,7 @@ func outsidePickMatch(p OutsidePickPrompt) (func(Card) bool, error) {
 
 // collectionFilterLocked is a collection pick's per-card filter and set
 // rule: the closure form's frame, or the keyed form's registered filter
-// (no set rule). ok is false for a choice that is neither.
+// and set rule. ok is false for a choice that is neither.
 func collectionFilterLocked(choice *PendingChoice) (pred func(Card) bool, validate func([]Card) bool, ok bool) {
 	if choice == nil {
 		return nil, nil, false
@@ -136,7 +144,7 @@ func collectionFilterLocked(choice *PendingChoice) (pred func(Card) bool, valida
 	if !known {
 		return nil, nil, false
 	}
-	return boundOutsideMatch(fn, choice.PickMatchArg), nil, true
+	return boundOutsideMatch(fn, choice.PickMatchArg), lookupChooseCardsRule(choice.PickThen), true
 }
 
 // StillOutsideForEffect is the cards of `ids` still in `player`'s

@@ -5854,7 +5854,15 @@ func(g *game.Game, r game.DiscardsDone) error { … })` in the card's file.
 `r.Player`, `r.Source`, `r.Discarded` and `r.Carry` are all it gets, so a
 continuation that needs the stack item builds a stand-in Context. The
 prompt's `Then` and `Validate` must be nil. Learn, Abandon Attachments and
-Charming Scoundrel are written this way.
+Charming Scoundrel are written this way, and so are Last Rites, Pia, Eriette's
+Whisper, Mishra's Command, Malcolm, Occult Epiphany, Banon, Jiang Yanggu,
+Archon of Cruelty, Tomb of Annihilation's Veils of Fear and every "discard N,
+then draw" card (#4264). Put what the continuation needs on `carry` as IDs
+(Eriette's Whisper's caster and creature, Last Rites' target). A set rule over
+the discard ("exactly two or none") is `game.RegisterDiscardThenRule(key, rule,
+fn)`, never a `Validate` on the prompt. The "discard up to N, then draw" family
+shares five registered draw rules (`registerDiscardDraw`, `batch39_helpers.go`):
+pass the rule, not a closure, to `b39MayDiscardThenDraw`.
 
 What counts as discarded is CR 701.9a's move OUT of the hand, so a
 madness card exiled instead of binned counts, a Library of Leng card
@@ -7453,6 +7461,29 @@ stand-in for the asking item (its controller and its source card), and anything
 else it needs rides on `PayUnless.Carry` as IDs (Wandering Archaic's spell,
 Arcum's Whistle's creature). The key is an on-disk identity, ledgered as
 `payunless <key>`. A closure `OnDecline` still works and is not a restore point.
+
+The other pay-unless shapes are keyed the same way (#4264), with the key from
+`PayUnlessBranches(key, onPay, onDecline)` (either may be nil), one handle for
+both branches: `UpkeepPayUnless{Else}` ("sacrifice it unless you pay", which
+still holds its step; Stasis, Haazda Shield Mate, Koskun Falls, Pact of
+Negation, every cumulative upkeep that is not a coin flip),
+`MayPay{Then}` ("you may pay. If you do", `InThisStep` too; Extort, Hellkite
+Charger, Banon), `GuardedPayUnless{Else}` (Divert; the guarded spell is
+`r.Guards`) and `CounterUnlessPaid{Then}` for a consequence on the paid half.
+A plain `CounterUnlessPaid` (Daze, Mana Leak, ward's mana half) is keyed by the
+engine and needs nothing from the card. A non-mana payment (a discard, a
+sacrifice, a tap) is plain data on the prompt (`PayActionClause`). The any-player
+offers are `AnyPlayerPays{Then, Carry}` with `AnyPlayerConsequences(key, onPaid,
+onNobody, perPayer)` (`anyPlayerMayCounterThisSpell` is the shared helper; Dash
+Hopes, Brain Gorgers, Phantasmagorian, Temporal Extortion). The waterbend tap
+clause, the per-object any-player offer and an echo's "new object" check keep
+closures.
+
+**A "you may" asked of a resolving effect** (`MayChoice`) is keyed with `Then:
+mayAnswer`, `var mayAnswer = MayAnswer("confirm/<card>-<clause>", func(ctx
+*Context, r game.ConfirmAnswer) error { … })` (#4264): `r.Accepted` is the
+answer and `Carry` rides the prompt, as for `PayUnless`. A closure `OnYes` /
+`OnNo` still works and is not a restore point.
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card
@@ -10900,6 +10931,12 @@ The key is an on-disk identity; append it to `game/testdata/effect_keys.txt`
 card's text; a filter that reads a word a text-changing effect may change
 (Coax from the Blind Eternities' "Eldrazi") is `registerOutsideTakeOfWord`,
 with the word passed as `TakeFromOutside.Word`, which rides on the prompt. A
+set rule over the whole answer ("exactly two cards with different names") is
+`game.RegisterOutsidePickRule(key, filter, rule, then)`, registered with the
+pick and looked up by its key (#4264). The exile half of "from outside the game
+or in exile" is `registerExileOrOutside` (Karn, Coax), a keyed `choose_cards`
+whose "none" asks the outside pick with the spell's word, which rides the prompt
+as `ChooseCardsPrompt.CarryWord` (`CardsChosen.Word`). A
 card that needs more composes the game-level calls itself:
 `QueueOutsidePickForEffect` (with a set-level `Validate`),
 `RevealOutsideForEffect` and `BringFromOutsideForEffect`, as Extrapolate

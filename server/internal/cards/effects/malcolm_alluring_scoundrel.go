@@ -148,13 +148,16 @@ func malcolmOfferFreeCast(g *game.Game, controller, source uuid.UUID, discarded 
 // discard, and the free-cast offer hung off it, open only once the
 // draw has resolved (#2391).
 var malcolmDiscardThen = game.RegisterDrawThen("malcolm-discard", func(g *game.Game, d game.DrawThen) error {
-	controller, source := d.Player, d.Source
-	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-		Player:   controller,
-		Source:   source,
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+		Player:   d.Player,
+		Source:   d.Source,
 		N:        1,
 		Question: "Malcolm, Alluring Scoundrel — discard a card",
-	}, func(g *game.Game, discarded game.PromptedDiscards) error {
-		return malcolmOfferFreeCast(g, controller, source, discarded.Cards())
-	})
+	}, malcolmFreeCastOffer, nil)
+})
+
+// malcolmFreeCastOffer is the free-cast offer hung off the discard,
+// keyed (#4264): a table waiting on the discard is a restore point.
+var malcolmFreeCastOffer = game.RegisterDiscardThen("choose-cards/malcolm-free-cast-offer", func(g *game.Game, r game.DiscardsDone) error {
+	return malcolmOfferFreeCast(g, r.Player, r.Source, r.Discarded.Cards())
 })

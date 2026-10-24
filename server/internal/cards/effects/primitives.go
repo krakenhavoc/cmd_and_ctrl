@@ -1263,20 +1263,37 @@ type PayUnless struct {
 // itself has long resolved by the time the payer answers (and a restore
 // does not carry it). r.Carry is the card's own Carry.
 func PayUnlessElse(key string, body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessElse {
-	return game.RegisterPayUnlessElse(key, func(g *game.Game, r game.PayUnlessAnswer) error {
-		controller := r.Chooser
-		if len(r.Carry) > 0 {
-			// PayUnless.Apply puts the asking effect's controller
-			// first; the card's own Carry follows it.
-			controller, r.Carry = r.Carry[0], r.Carry[1:]
-		}
-		return body(NewContext(g, &game.StackItem{
-			Kind:         game.StackItemTriggered,
-			Controller:   controller,
-			Owner:        controller,
-			SourceCardID: r.Source,
-		}), r)
-	})
+	return game.RegisterPayUnlessElse(key, payUnlessBranch(body))
+}
+
+// PayUnlessBranches registers both branches of a keyed pay-unless under
+// one `key` (#4264): `onPay` runs once the payment has been made ("you
+// may pay. If you do", echo's event) and `onDecline` when it has not.
+// Either may be nil, but not both. The key is an on-disk identity (never
+// renamed, never reused, ledgered "payunless <key>"), and the bodies run
+// as PayUnlessElse's do. The one handle serves PayUnless.Else,
+// UpkeepPayUnless.Else, MayPay.Then, GuardedPayUnless.Else and
+// CounterUnlessPaid.Then. Call it once, from a package-level var.
+func PayUnlessBranches(key string, onPay, onDecline func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessElse {
+	var pay, decline game.PayUnlessFunc
+	if onPay != nil {
+		pay = payUnlessBranch(onPay)
+	}
+	if onDecline != nil {
+		decline = payUnlessBranch(onDecline)
+	}
+	return game.RegisterPayUnlessBranches(key, pay, decline)
+}
+
+// payUnlessBranch adapts a card-side branch (a *Context body) to the
+// engine's registered one. The asking effect's controller rides first on
+// the prompt's Carry, and the card's own Carry follows it.
+func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessFunc {
+	return func(g *game.Game, r game.PayUnlessAnswer) error {
+		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
+		r.Carry = carry
+		return body(ctx, r)
+	}
 }
 
 // USE UpkeepPayUnless FOR "AT THE BEGINNING OF YOUR UPKEEP, PAY OR
@@ -1361,9 +1378,31 @@ type UpkeepPayUnless struct {
 	// OnPay runs once the payment has been made (echo's "echo cost is
 	// paid" event). Optional.
 	OnPay func(ctx *Context) error
+
+	// Else is OnDecline (and OnPay) as REGISTERED branches
+	// (PayUnlessBranches, #4264), and Carry the plain data they are
+	// handed: a prompt queued with one holds no closure, so a table
+	// waiting on the payer is a restore point, and it holds its step as
+	// ever. Set Else or OnDecline/OnPay, not both.
+	Else  game.PayUnlessElse
+	Carry []uuid.UUID
 }
 
 func (p UpkeepPayUnless) Apply(ctx *Context) error {
+	if p.Else.Key() != "" {
+		if p.OnDecline != nil || p.OnPay != nil {
+			return fmt.Errorf("%w: UpkeepPayUnless %q sets both Else and a closure", game.ErrInvalidParam, p.Else.Key())
+		}
+		return ctx.Game.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
+			Chooser:  p.Chooser,
+			Source:   ctx.Source(),
+			Cost:     p.Cost,
+			Action:   p.Action,
+			Question: p.Question,
+			Then:     p.Else,
+			Carry:    append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		})
+	}
 	prompt := game.UpkeepPayUnlessPrompt{
 		Chooser:   p.Chooser,
 		Source:    ctx.Source(),
@@ -1421,9 +1460,31 @@ type CounterUnlessPaid struct {
 	// countered and this does not run. Nil for every card whose payment
 	// simply lets the object resolve.
 	OnPaid func(ctx *Context) error
+
+	// Then is OnPaid as REGISTERED branches (PayUnlessBranches, #4264),
+	// and Carry the plain data it is handed: a prompt queued with one
+	// holds no closure, so a table waiting on the payer is a restore
+	// point. Set Then or OnPaid, not both. A CounterUnlessPaid with
+	// neither is keyed by the engine itself.
+	Then  game.PayUnlessElse
+	Carry []uuid.UUID
 }
 
 func (c CounterUnlessPaid) Apply(ctx *Context) error {
+	if c.Then.Key() != "" {
+		if c.OnPaid != nil {
+			return fmt.Errorf("%w: CounterUnlessPaid %q sets both Then and OnPaid", game.ErrInvalidParam, c.Then.Key())
+		}
+		return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+			StackItem: c.StackID,
+			Chooser:   c.Chooser,
+			Source:    ctx.Source(),
+			Cost:      c.Cost,
+			Question:  c.Question,
+			Then:      c.Then,
+			Carry:     append([]uuid.UUID{ctx.Controller()}, c.Carry...),
+		})
+	}
 	var onPaid func(*game.Game) error
 	if c.OnPaid != nil {
 		onPaid = declineAgainstTheSameItem(ctx.Item, c.OnPaid)
@@ -1463,12 +1524,34 @@ type GuardedPayUnless struct {
 	// Chooser overrides "its controller", as CounterUnlessPaid's does.
 	Chooser uuid.UUID
 
-	// OnDecline is the consequence. Required: with none this is a
-	// CounterUnlessPaid and should be written as one.
+	// OnDecline is the consequence. Required (unless Else is set): with
+	// none this is a CounterUnlessPaid and should be written as one.
 	OnDecline func(ctx *Context) error
+
+	// Else is OnDecline as REGISTERED branches (PayUnlessBranches,
+	// #4264), and Carry the plain data it is handed (the guarded object
+	// rides game.PayUnlessAnswer.Guards): a prompt queued with one holds
+	// no closure, so a table waiting on the payer is a restore point. Set
+	// Else or OnDecline, not both.
+	Else  game.PayUnlessElse
+	Carry []uuid.UUID
 }
 
 func (p GuardedPayUnless) Apply(ctx *Context) error {
+	if p.Else.Key() != "" {
+		if p.OnDecline != nil {
+			return fmt.Errorf("%w: GuardedPayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
+		}
+		return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+			StackItem: p.StackID,
+			Chooser:   p.Chooser,
+			Source:    ctx.Source(),
+			Cost:      p.Cost,
+			Question:  p.Question,
+			Then:      p.Else,
+			Carry:     append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		})
+	}
 	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 		StackItem: p.StackID,
 		Chooser:   p.Chooser,

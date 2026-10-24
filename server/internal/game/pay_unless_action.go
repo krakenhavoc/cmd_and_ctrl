@@ -443,12 +443,12 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 // Read by the protocol view and the legal-move enumerator;
 // ResolvePayUnlessWithCards is the one validator.
 func (c *PendingChoice) PayAction() *PayAction {
-	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.action == nil {
+	if c == nil {
 		return nil
 	}
-	a := *c.payUnlessResume.action
-	if len(a.Either) > 0 {
-		a.Either = append([]PayAction(nil), a.Either...)
+	if c.payUnlessResume != nil {
+		return copyPayAction(c.payUnlessResume.action)
 	}
-	return &a
+	// A keyed prompt (#4264) carries its payment as data.
+	return copyPayAction(c.PayActionClause)
 }

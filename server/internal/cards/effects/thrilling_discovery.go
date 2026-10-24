@@ -44,12 +44,7 @@ func init() {
 			}
 			return b39MayDiscardThenDraw(2, true,
 				"Thrilling Discovery — discard two cards to draw three?",
-				func(discarded int) int {
-					if discarded < 2 {
-						return 0
-					}
-					return 3
-				})(ctx)
+				drawThreeIfDiscardedTwo)(ctx)
 		},
 	})
 }

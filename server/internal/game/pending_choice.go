@@ -856,6 +856,14 @@ type PendingChoice struct {
 	// can't pay. Not serialised. Added in S19 sub-PR 6.
 	payUnlessResume *payUnlessFrame
 
+	// PayActionClause is a KEYED pay-unless's non-mana payment (#4264):
+	// "discard a card", "sacrifice two lands", "tap an untapped
+	// creature". Plain data, written to a restore point, so a keyed
+	// prompt carries the payment without a frame (payUnlessFrameOf reads
+	// it back). Nil on every mana prompt and on a framed one, whose
+	// payment rides payUnlessFrame.action.
+	PayActionClause *PayAction
+
 	// SearchCards is the set of library cards a
 	// PendingChoiceSearchLibrary's chooser may take, in library
 	// order. Wire-serialised via PendingChoiceView.Options — and,

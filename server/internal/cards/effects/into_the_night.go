@@ -28,7 +28,7 @@ func init() {
 			}
 			return b39MayDiscardThenDraw(hand, false,
 				"Into the Night — discard any number of cards, then draw that many plus one",
-				func(discarded int) int { return discarded + 1 })(ctx)
+				drawOneMoreThanDiscarded)(ctx)
 		},
 	})
 }

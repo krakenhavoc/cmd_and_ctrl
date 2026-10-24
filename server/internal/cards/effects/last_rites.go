@@ -43,24 +43,34 @@ func init() {
 			if p := ctx.Game.PlayerByIDForEffect(you); p != nil && p.Hand != nil {
 				hand = p.Hand.Size()
 			}
-			return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 				Player:   you,
 				Source:   source,
 				N:        hand,
 				UpTo:     true,
 				Question: "Last Rites — discard any number of cards",
-			}, func(g *game.Game, discarded game.PromptedDiscards) error {
-				nonland := Nonland()
-				g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
-					Chooser:    you,
-					FromPlayer: victim,
-					Source:     source,
-					Count:      discarded.Count(),
-					Filter:     func(c game.Card) bool { return nonland(g, you, c) },
-					Label:      "nonland card",
-				})
-				return nil
-			})
+			}, lastRitesReveal, []uuid.UUID{victim})
 		},
 	})
 }
+
+// lastRitesReveal is the rest of Last Rites once the discard has landed:
+// the target reveals their hand and the caster chooses that many nonland
+// cards from it. Keyed (#4264): the target rides the prompt as its
+// Carry, so a table waiting on the discard is a restore point.
+var lastRitesReveal = game.RegisterDiscardThen("choose-cards/last-rites-reveal", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	you, victim := r.Player, r.Carry[0]
+	nonland := Nonland()
+	g.QueueDiscardFromRevealedHand(game.RevealedHandDiscard{
+		Chooser:    you,
+		FromPlayer: victim,
+		Source:     r.Source,
+		Count:      r.Discarded.Count(),
+		Filter:     func(c game.Card) bool { return nonland(g, you, c) },
+		Label:      "nonland card",
+	})
+	return nil
+})

@@ -66,14 +66,11 @@ func init() {
 			// PayUnless until then, and a table could take the whole
 			// turn with the {U} still unpaid.
 			AtYourUpkeep("Stasis — sacrifice unless you pay {U}", func(g *game.Game, item *game.StackItem) error {
-				sourceID := item.SourceCardID
 				return UpkeepPayUnless{
 					Chooser:  item.Controller,
 					Cost:     "{U}",
 					Question: "Stasis — pay {U} or sacrifice Stasis?",
-					OnDecline: func(ctx *Context) error {
-						return SacrificePermanent{Target: sourceID}.Apply(ctx)
-					},
+					Else:     upkeepSacrificeSource,
 				}.Apply(NewContext(g, item))
 			}),
 		},
