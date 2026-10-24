@@ -482,3 +482,5 @@ resume replacement-resume/move
 choose resolution-cast/great-synthesis-flicker
 choose resolution-cast/looked-at-rest-to-bottom
 choose resolution-cast/kefka-life-loss
+resume replacement-resume/counter
+resume replacement-resume/life

@@ -136,9 +136,10 @@ func TestDoStepAfterKharnsQuestionWaitsForTheAnswer(t *testing.T) {
 // Vivi Ornitier — "put a +1/+1 counter on Vivi Ornitier and it deals 1
 // damage to each opponent" — with Doubling Season and Hardened Scales:
 // the counter waits on the CR 616 order, and so does the damage. An
-// undo taken while the order is open keeps the damage parked too. (The
-// CR 616 resume itself is a closure, so this table is not a restore
-// point; the parked steps add nothing to the census.)
+// undo taken while the order is open keeps the damage parked too, and
+// so does a strict restore: the counter placement has no tail, so its
+// CR 616 frame is data (#4253), and the parked steps add nothing to the
+// census.
 func TestViviDamageWaitsForTheCounterOrder(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -159,12 +160,9 @@ func TestViviDamageWaitsForTheCounterOrder(t *testing.T) {
 			t.Fatalf("seat %s life %d with the order open, want %d: the damage ran before the counter", p.Name, p.Life, life[p.ID])
 		}
 	}
-	snap := g.CaptureSnapshot()
-	if n := snap.Continuations.ChoiceResumeFrames; n != 1 {
-		t.Fatalf("census counts %d resume frames, want 1 (the CR 616 resume alone): %+v", n, snap.Continuations)
-	}
 	undo := g.Clone()
-	for _, table := range []*game.Game{g, undo} {
+	restored := strictRestoreWithFrame(t, g, game.ReplacementResumeCounter)
+	for _, table := range []*game.Game{g, undo, restored} {
 		answerOrderBySource(t, table, ds, hs)
 		if got := counterCount(table, vivi, game.CounterPlusOne); got != 3 {
 			t.Fatalf("+1/+1 counters %d, want 3 ((1×2)+1, Doubling Season first)", got)

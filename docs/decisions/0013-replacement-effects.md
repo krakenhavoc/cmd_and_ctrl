@@ -4997,3 +4997,48 @@ The prompt kinds keyed are the three whose resolve path reads nothing but the fr
 - Not restoring an entry's stack item fails `TestReplacementEventMirrorRoundTrips` and `TestSnapshotCorpusRestores` on `riot_entry.json`.
 - Not writing the tail key on `pickThen` fails every restore test above.
 - Restoring an unknown effect as a live one fails `TestALostEffectInARestoredFrameNoLongerApplies`.
+
+## Amendment 2026-10-24 — the entry questions, counter and life changes, and data-only keyword actions share the keyed frame (#4253, slice 2)
+
+The 2026-10-23 amendment keyed the CR 616 resume frame for three prompt kinds and three event kinds. This slice keys the rest of what shares that frame with no new continuation, inside schema v9 again.
+
+**Prompt kinds keyed.** Each one pauses a battlefield entry through the same `replacementResume` frame, and its resolve path reads nothing but the frame and the prompt's own written fields, so keying it is allow-listing it in `keyedReplacementPromptKind`:
+
+- `copy_target` (CR 707.2, Clone's "enter as a copy");
+- `entry_controller` (ADR 0102, Captive Audience);
+- the four entry card choices: `entry_reveal_from_hand` (a reveal land), `entry_discard_from_hand` (Mox Diamond), `entry_sacrifice` (Heart of Yavimaya) and `entry_choose_permanents` (Phylactery Lich, ADR 0170);
+- `aura_host` (CR 303.4f, #4260: Animate Dead returned by Sun Titan);
+- `entry_read_ahead` (CR 702.155b);
+- `entry_pay_life` (a shockland's 2 life).
+
+Two of them need more than the allow-list. An `aura_host` frame holds the event and no gathered effect, because the apply-loop asks CR 303.4f's question itself once nothing is left to apply; it is the one kind keyed with an empty applicable set (`keyedPromptNeedsApplicable`). An entry card choice also holds a `chooseCardsFrame` for the live-zone re-check, and for these kinds that frame is only the zone, which its prompt kind names (`entryCardChoiceZone`). A keyed one is written without it, is not counted for it, and gets it back from the kind on restore. A frame with anything more (a `then`, a validator, ordered-permanent receipts, another zone) is not keyed. What the answer starts afterwards (Mox Diamond's discard, Heart of Yavimaya's sacrifice, a discard replaced by Library of Leng) is a later event with its own frame, and is not changed here.
+
+**Event kinds keyed.**
+
+- **A counter placement with no tail** (`replacement-resume/counter`): an ordering prompt between Hardened Scales and Doubling Season over a sandbox counter, or over Vivi Ornitier's counter, whose damage waits as steps. The counter fields are carried; `counterTail` stays a gate.
+- **A life change with no tail** (`replacement-resume/life`): an ordering prompt between Rhox Faithmender and Alhammarret's Archive over one gain. The life fields are carried; `lifeTail` stays a gate.
+- **A keyword action whose tail is data** (under the existing `replacement-resume/keyword-action`): a scry or surveil with no "then" (its prompt kind), a proliferate's chosen lists or its `ask`, an earthbend's land. `ReplacementEvent.keywordAction` is now carried as its data half (`replacementResume.event.keywordActionTail`), and `replacementFrameKeyable` refuses a tail with a `then`, amass's Army or its "the Army you amassed". A restore refuses a tail naming a prompt kind it does not know.
+
+Two new tail keys, ledgered as `resume replacement-resume/counter` and `resume replacement-resume/life` (appended; never renamed or reused). A file holding one is refused by a binary from before this slice, which does not know the key, and a file holding a newly keyed prompt kind is refused by the slice-1 binary, which refuses a frame on a prompt kind it does not key. Either way the file is kept for the roll-forward.
+
+**Every field the new kinds use, re-checked against `replacementEventFields`.** The entry prompts read only fields slice 1 already carries (`EntersAsCopyOf`, `copySourceID`, `copyUntilEndOfTurn`, `exchangeTextWith`, `entryControllerSet`, `entryControllerPrior`, `Actor`, `auraHost`, `auraHostFixed`, `auraHostSettled`, `EntersWithCounters`, `EntersTapped`, `landPlay`, `landPlayer`, `stackItem`, the look-ahead cache). The counter and life fields move from gate to carried; `counterTail`, `lifeTail` and every damage, token, mill, discard, step, extra-turn, countered-spell and mana field stay gates, and an unclassified field is still a gate. One gate is added outright: an entry of a created token staged in `Game.enteringTokens`, which a restore point does not carry. Every such entry has an entry-tail `then` or a batch today, so the gate is a backstop.
+
+**Still not keyed**, each a frame whose continuation is a closure that must be keyed first: a move whose route has a `then`, a simultaneous exit or an exchange (the multi-card discard, mill and exile batches, #4257's exile-top-face-down batch, #4261's Necropotence); an entry in a batch or with an entry-tail `then` (a library search's shuffle, Replenish, a created token); a counter placement with a tail (amass, a Saga chapter check, a `ThenForEffect` caller); a life change with a tail (a drain's gain, radiation's mill); a keyword action with a `then` (Preordain's draw) or an amass; a discard, token creation, damage, mill, step transition or countered spell.
+
+**Compatibility.** Schema v9 gains `replacementResume.event.keywordActionTail` and the counter and life fields of the event mirror, recorded with `-update-shape`. No fixture is edited; three new corpus boards freeze the new shapes (`v9/counter_order.json`, `v9/life_order.json`, `v9/entry_sacrifice.json`). No closure route is added or removed, and no ceiling moves: `PendingChoice.replacementResume`, `chooseCardsFrame.then` and the tails stay `census:ChoiceResumeFrames`, the route an unkeyed frame still takes.
+
+**Tests.** `effects/entry_prompt_restore_test.go`, each a strict restore with the prompt open, answered on the restored table: Clone (copy and decline), Captive Audience, a Snarl (reveal and decline), Mox Diamond, Heart of Yavimaya (the restored prompt still refuses an empty answer), Phylactery Lich (the suggestion survives), Animate Dead under Sun Titan, a read ahead Saga (the chapter rule still holds afterwards), a shockland (pay and decline), Doubling Season with Hardened Scales (both orders), Rhox Faithmender with Alhammarret's Archive, and a scry under two scry replacements (both orders). Flipped: `TestAuraHostSurvivesAnUndoMidChoice` and `TestReadAheadRestoreWithTheChoicePending` now require a restore point, and `TestViviDamageWaitsForTheCounterOrder` answers on a strictly restored table as well. `game/replacement_resume_keyed_test.go`: the new kinds keyed and the new gates refused, the mirror's round trip over the counter, life and keyword-tail fields, and three more refusals.
+
+**Back-outs**, each failing the named tests:
+
+- Dropping `copy_target` from the allow-list fails `TestACopyTargetQuestionIsARestorePoint`.
+- Dropping `entry_controller` fails `TestAnEntryControllerQuestionIsARestorePoint`.
+- Dropping `aura_host`, or requiring a gathered effect for it, fails `TestAnAuraHostQuestionIsARestorePoint` and `TestAuraHostSurvivesAnUndoMidChoice`.
+- Dropping `entry_read_ahead` fails `TestAReadAheadQuestionIsARestorePoint` and `TestReadAheadRestoreWithTheChoicePending`.
+- Dropping `entry_pay_life` fails `TestAnEntryLifePaymentIsARestorePoint`.
+- Dropping the four entry card choices fails `TestAnEntryRevealQuestionIsARestorePoint`, `TestAnEntryDiscardQuestionIsARestorePoint`, `TestAnEntrySacrificeQuestionIsARestorePoint` and `TestAnEntryChoosePermanentsQuestionIsARestorePoint`.
+- Counting a keyed entry card choice's zone frame fails `TestAnEntryRevealQuestionIsARestorePoint` and `TestAnEntrySacrificeQuestionIsARestorePoint`; not rebuilding it on restore fails `TestAnEntryDiscardQuestionIsARestorePoint`, whose restored prompt then takes a land that has left the hand.
+- Dropping the counter tail fails `TestACounterOrderingPromptIsARestorePoint` and `TestViviDamageWaitsForTheCounterOrder`; not restoring the counter delta fails `TestACounterOrderingPromptIsARestorePoint`.
+- Dropping the life tail, or not restoring the life delta, fails `TestALifeOrderingPromptIsARestorePoint`.
+- Not restoring a keyword tail's prompt kind fails `TestAKeywordActionOrderingPromptIsARestorePoint`; not checking it fails `TestAKeyedFrameWithAnUnknownTailIsRefused`.
+- Keying a keyword action with a `then`, a staged token's entry, or an entry card choice whose frame holds more than its zone fails `TestAFrameHoldingAClosureIsNotKeyed`.
