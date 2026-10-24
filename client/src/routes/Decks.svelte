@@ -54,6 +54,7 @@
     deckRequestOutcomeMessage,
     shouldOfferPaste,
     sideboardNote,
+    attractionsNote,
     BUCKET_ORDER,
     BUCKET_LABELS,
     BUCKET_BLURBS,
@@ -571,6 +572,10 @@
           {#if sideboardNote(report)}
             <!-- ADR 0191: the sideboard, outside the 100. -->
             <p class="commanders">{sideboardNote(report)}</p>
+          {/if}
+          {#if attractionsNote(report)}
+            <!-- ADR 0207 §2: the Attraction deck, outside the 100. -->
+            <p class="commanders">{attractionsNote(report)}</p>
           {/if}
           {#if report.source_url}
             <a

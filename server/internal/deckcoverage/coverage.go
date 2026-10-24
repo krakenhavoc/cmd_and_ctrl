@@ -122,6 +122,12 @@ type Report struct {
 	// Copies. Each is bucketed by what the catalog runs of its ability
 	// stickers. Sorted like Cards. Absent for a deck with none. Additive.
 	StickerSheets []Card `json:"sticker_sheets,omitempty"`
+	// Attractions are the deck's Attraction cards (ADR 0207 §2, CR
+	// 717.2): the Attraction deck, outside the 100, so kept out of Cards,
+	// Counts and Copies. Sorted like Cards. Absent for a deck with none.
+	// An Attraction deck short of ten cards or repeating a name is
+	// reported in Violations (the rule seating applies). Additive.
+	Attractions []Card `json:"attractions,omitempty"`
 }
 
 // AsPrinted is how many distinct cards play exactly as printed
@@ -251,10 +257,14 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 			continue
 		}
 		sheet := !e.IsCommander && deck.PrintsStickerSheet(c)
+		attraction := !e.IsCommander && deck.PrintsAttraction(c)
 		for range e.Count {
 			switch {
 			case e.IsCommander:
 				list.Commanders = append(list.Commanders, c)
+			case attraction:
+				// ADR 0207 §2: an Attraction card, wherever it was listed.
+				list.Attractions = append(list.Attractions, c)
 			case sheet:
 				// ADR 0208 §2: a sticker sheet, wherever it was listed.
 				list.StickerSheets = append(list.StickerSheets, c)
@@ -266,7 +276,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 				list.Mainboard = append(list.Mainboard, c)
 			}
 		}
-		if e.IsSideboard || e.IsCompanion || sheet {
+		if e.IsSideboard || e.IsCompanion || sheet || attraction {
 			continue
 		}
 		if e.IsCommander {
@@ -328,6 +338,8 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	r.Sideboard = sideboardCards(list.Sideboard, verdicts)
 	// ADR 0208 §2: the sticker sheets, bucketed the same way.
 	r.StickerSheets = sideboardCards(list.StickerSheets, verdicts)
+	// ADR 0207 §2: the Attraction deck, likewise.
+	r.Attractions = sideboardCards(list.Attractions, verdicts)
 
 	if err := deck.Validate(list); err != nil {
 		var ve *deck.ValidationError
