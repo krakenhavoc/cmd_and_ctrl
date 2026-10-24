@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var aetherstreamLeopardPumpPaid = energyPaid("pay-unless/aetherstream-leopard-pump",
+	thisGetsUntilEndOfTurn(2, 0, "Aetherstream Leopard — +2/+0 until end of turn"))
+
 // Aetherstream Leopard — Creature — Cat {2}{G}, 2/3:
 //
 //	"Trample
@@ -23,7 +26,7 @@ func init() {
 		Purpose:         game.Purpose{Energy: 1},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Aetherstream Leopard", 1),
-			whenThisAttacksMayPayEnergy("Aetherstream Leopard", 1, "have it get +2/+0", thisGetsUntilEndOfTurn(2, 0, "Aetherstream Leopard — +2/+0 until end of turn")),
+			whenThisAttacksMayPayEnergy("Aetherstream Leopard", 1, "have it get +2/+0", aetherstreamLeopardPumpPaid),
 		},
 	})
 }

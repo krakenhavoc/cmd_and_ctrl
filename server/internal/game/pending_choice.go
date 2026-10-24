@@ -506,9 +506,25 @@ type PendingChoice struct {
 	// PayAmount is the payload of a PendingChoicePayAmount (ADR 0129 §3,
 	// energy_payment.go): the bounds of the answer, the card's own
 	// threshold and what each counter buys. Wire-serialised via
-	// PendingChoiceView.PayAmount. Never captured: the prompt always
-	// carries a chooseValueResume frame.
+	// PendingChoiceView.PayAmount. Plain data, written to a restore point
+	// (#4289) when the prompt holds no chooseValueResume frame: the
+	// keyed "choose X" of a MayPayX (MayPayX below). A pay_amount that
+	// does carry a frame is not a restore point.
 	PayAmount *PayAmountPrompt
+
+	// MayPayX makes a pay_amount the "choose X" half of a KEYED
+	// "you may pay {X}{R}. If you do, ..." (#4289, pay_x_on_resolution.go):
+	// the printed cost, the words of the next prompt and whether it holds
+	// the step. Answering it queues the may-pay for the cost with X
+	// settled, whose paid branch is PickThen's, handed the X (PickNumber,
+	// PayUnlessAnswer.Number). Plain data: the prompt holds no frame, so a
+	// table waiting on X is a restore point. Nil on every other prompt.
+	MayPayX *MayPayXClause
+
+	// PickNumber is a number a keyed pay-unless's branches are handed
+	// (#4289): the X a MayPayX settled before it asked whether to pay.
+	// Zero on every other prompt.
+	PickNumber int
 
 	// NoLegalTarget marks a PendingChoiceTriggerPrompt whose effect
 	// has no legal target / will pass without effect if the chooser

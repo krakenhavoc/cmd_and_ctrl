@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -41,6 +42,15 @@ import (
 // {X}" with X = 0) is paid by doing nothing (CR 118.5), so the payment
 // prompt is skipped and the rider runs with 0.
 //
+// Both prompts are plain data (#4289), so a table waiting on either is a
+// restore point. The number prompt holds no frame: it carries a
+// MayPayXClause (the cost and the words of the next question), the key of
+// the card's branches (PickThen, RegisterPayUnlessBranches), the asking
+// item (Asked) and the cause it was queued under, and its answer builds
+// the frame from that data (chooseValueFrameOf). The payment prompt is a
+// keyed may-pay that carries X as PendingChoice.PickNumber, handed to the
+// branch as PayUnlessAnswer.Number.
+//
 // A PayResourceMana that charged the pool from the stepper was the
 // alternative the amendment named. It would have needed its own
 // payment, its own auto-tap and its own Always / Never row for a
@@ -73,38 +83,94 @@ type MayPayX struct {
 	// (QueueMayPayInThisStepForEffect): set it when what X buys is
 	// about the step in progress — tokens that enter attacking.
 	InThisStep bool
-	// OnPay runs with X once the cost has been paid. It does not run
-	// when the chooser declines, cannot fund the payment, or has left.
-	OnPay func(g *Game, x int) error
+	// Then is what the card does once the cost has been paid, as
+	// REGISTERED branches (RegisterPayUnlessBranches, #4289): the pay
+	// branch is handed X as PayUnlessAnswer.Number, and runs against the
+	// asking item rebuilt from Asked. It does not run when the chooser
+	// declines, cannot fund the payment, or has left. Neither prompt
+	// holds a closure, so a table waiting on X, or on the payment, is a
+	// restore point.
+	Then PayUnlessElse
+	// Carry is the plain data the branches are handed, and Asked the
+	// asking stack item as data (NewAskedItem).
+	Carry []uuid.UUID
+	Asked *AskedItem
+}
+
+// MayPayXClause is the part of a MayPayX the "choose X" prompt must keep
+// to ask the question after it (PendingChoice.MayPayX, #4289): plain data,
+// so the prompt is written to a restore point. The branches that run once
+// the cost is paid are the prompt's PickThen.
+type MayPayXClause struct {
+	// Cost is the printed cost ("{X}{R}"); for a Symbol cost it is the
+	// words only ("X {R}").
+	Cost string `json:"cost"`
+	// Symbol is the one mana symbol a "pay any amount" cost repeats.
+	Symbol string `json:"symbol,omitempty"`
+	// Label and Buys word the payment's header, as MayPayX's do.
+	Label string `json:"label,omitempty"`
+	Buys  string `json:"buys,omitempty"`
+	// InThisStep holds the payment prompt in the step it is asked in.
+	InThisStep bool `json:"inThisStep,omitempty"`
+}
+
+// copyMayPayXClause is a copy of a clause, nil for nil.
+func copyMayPayXClause(c *MayPayXClause) *MayPayXClause {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	return &out
+}
+
+// copyPayAmountPrompt is a deep copy of a pay_amount payload, nil for nil.
+func copyPayAmountPrompt(pa *PayAmountPrompt) *PayAmountPrompt {
+	if pa == nil {
+		return nil
+	}
+	out := *pa
+	out.Marks = copyInts(pa.Marks)
+	return &out
+}
+
+// settler is the cost with X settled, as a function of X: X copies of
+// the one symbol for a "pay any amount" cost, else the printed cost with
+// its {X} filled in. It fails on a cost with no single {X}.
+func (c *MayPayXClause) settler() (func(x int) ParsedCost, error) {
+	if c.Symbol != "" {
+		_, err := ParseCost(c.Symbol)
+		return func(x int) ParsedCost {
+			out, _ := ParseCost(strings.Repeat(c.Symbol, x))
+			return out
+		}, err
+	}
+	cost, err := ParseCost(c.Cost)
+	if err == nil && cost.XSlots != 1 {
+		err = errMayPayXNoX
+	}
+	return func(x int) ParsedCost { return cost.SettleX(x) }, err
 }
 
 // QueueMayPayXForEffect asks p.Chooser for X and then whether to pay
-// p.Cost with X settled (see the file comment).
+// p.Cost with X settled (see the file comment). Both prompts are plain
+// data (#4289): the first names the branches in p.Then and carries the
+// clause, the second is a keyed may-pay that carries X.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
-	var cost ParsedCost
-	var err error
-	settle := func(x int) ParsedCost { return cost.SettleX(x) }
-	if p.Symbol != "" {
-		// "Any amount of {R}": X copies of the one symbol.
-		cost, err = ParseCost(p.Symbol)
-		settle = func(x int) ParsedCost {
-			c, _ := ParseCost(strings.Repeat(p.Symbol, x))
-			return c
-		}
-		p.Cost = "X " + p.Symbol
-	} else {
-		cost, err = ParseCost(p.Cost)
-		if err == nil && cost.XSlots != 1 {
-			err = errMayPayXNoX
-		}
+	if p.Then.key == "" {
+		return fmt.Errorf("%w: may-pay-x with no branches", ErrInvalidParam)
 	}
+	clause := &MayPayXClause{Cost: p.Cost, Symbol: p.Symbol, Label: p.Label, Buys: p.Buys, InThisStep: p.InThisStep}
+	if p.Symbol != "" {
+		clause.Cost = "X " + p.Symbol
+	}
+	settle, err := clause.settler()
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   p.Source,
-			ErrorMsg: "may-pay-x: cost " + p.Cost + ": " + err.Error(),
+			ErrorMsg: "may-pay-x: cost " + clause.Cost + ": " + err.Error(),
 		})
 		return nil
 	}
@@ -118,44 +184,112 @@ func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
 		// 118.3), and "Don't pay" is the only one left.
 		return nil
 	}
+	if ceiling == 0 {
+		// Nothing to choose (CR 118.3): X is 0.
+		return g.mayPayXAfterNumberLocked(clause, p.Then.key, p.Chooser, p.Source, p.Carry, p.Asked, 0)
+	}
 	goal := 0
 	if p.Goal != nil {
 		goal = p.Goal(ceiling)
 	}
-	onPay := p.OnPay
-	return g.QueueChooseNumberForEffect(ChooseNumber{
-		Chooser:  p.Chooser,
-		Source:   p.Source,
-		Resource: PayResourceNone,
-		Min:      0,
-		Max:      ceiling,
-		Goal:     goal,
-		Unit:     p.Unit,
-		Question: p.Label + " — choose X for " + p.Cost + " (you can pay up to " + strconv.Itoa(ceiling) + ")",
-		Then: func(g *Game, x int) error {
-			settled := settle(x)
-			run := func(g *Game) error {
-				if onPay == nil {
-					return nil
-				}
-				return onPay(g, x)
-			}
-			if settled.Empty() {
-				// {X} at X = 0 costs nothing (CR 118.5).
-				return run(g)
-			}
-			price := settled.String()
-			question := p.Label + " — pay " + price
-			if p.Buys != "" {
-				question += " to " + strings.ReplaceAll(p.Buys, "X", strconv.Itoa(x))
-			}
-			question += "?"
-			if p.InThisStep {
-				return g.QueueMayPayInThisStepForEffect(p.Chooser, p.Source, price, question, run)
-			}
-			return g.QueueMayPayForEffect(p.Chooser, p.Source, price, question, run)
+	if goal < 0 || goal > ceiling {
+		goal = 0
+	}
+	unit := p.Unit
+	if unit == "" {
+		unit = PayAmountOther
+	}
+	// #4279: the cause is taken while the asking resolution is open; the
+	// payment that follows is queued under it.
+	cause := carriedCause{MoveCause: g.resolutionCauseLocked(), Source: p.Source}
+	id := g.QueueChoiceForEffect(PendingChoice{
+		Kind:    PendingChoicePayAmount,
+		Chooser: p.Chooser,
+		Count:   1,
+		Source:  p.Source,
+		Reason:  p.Label + " — choose X for " + clause.Cost + " (you can pay up to " + strconv.Itoa(ceiling) + ")",
+		PayAmount: &PayAmountPrompt{
+			Min: 0, Max: ceiling, Goal: goal, Unit: unit, Resource: PayResourceNone,
 		},
+		MayPayX:     clause,
+		PickThen:    p.Then.key,
+		OptionCarry: copyUUIDs(p.Carry),
+		Asked:       copyAskedItem(p.Asked),
+
+		PayCauseController: cause.Controller,
+		PayCauseItem:       cause.Item,
 	})
+	if id == uuid.Nil {
+		return g.mayPayXAfterNumberLocked(clause, p.Then.key, p.Chooser, p.Source, p.Carry, p.Asked, 0)
+	}
+	return nil
+}
+
+// mayPayXAfterNumberLocked is what follows the number: with X settled, the
+// cost is empty ({X} at X = 0 costs nothing, CR 118.5) and the paid branch
+// runs at once, or the keyed may-pay for it is asked. Everything it needs
+// is the prompt's data.
+//
+// Caller must hold g.mu.
+func (g *Game) mayPayXAfterNumberLocked(clause *MayPayXClause, key string, chooser, source uuid.UUID, carry []uuid.UUID, asked *AskedItem, x int) error {
+	settle, err := clause.settler()
+	if err != nil {
+		return nil
+	}
+	settled := settle(x)
+	if settled.Empty() {
+		r := PayUnlessAnswer{Chooser: chooser, Source: source, Carry: copyUUIDs(carry), Item: asked.StackItem(), Number: x}
+		cause := carriedCause{MoveCause: g.resolutionCauseLocked(), Source: source}
+		return keyedPayUnlessBranch(key, r, true, cause)(g)
+	}
+	price := settled.String()
+	question := clause.Label + " — pay " + price
+	if clause.Buys != "" {
+		question += " to " + strings.ReplaceAll(clause.Buys, "X", strconv.Itoa(x))
+	}
+	question += "?"
+	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+		Chooser: chooser, Source: source, Cost: price, Question: question,
+		Then: PayUnlessElse{key: key}, Carry: carry, InThisStep: clause.InThisStep, MayPay: true,
+		Asked: asked, Number: x,
+	})
+}
+
+// mayPayXFrameOf is the continuation behind a keyed MayPayX's "choose X"
+// prompt, built from its data: the number answered (or "" when the chooser
+// left, which is X = 0) settles the cost and asks the payment. Nil for any
+// other prompt.
+func mayPayXFrameOf(c *PendingChoice) *chooseValueFrame {
+	if c == nil || c.Kind != PendingChoicePayAmount || c.MayPayX == nil || c.PickThen == "" {
+		return nil
+	}
+	clause := copyMayPayXClause(c.MayPayX)
+	key, chooser, source := c.PickThen, c.Chooser, c.Source
+	carry, asked := copyUUIDs(c.OptionCarry), copyAskedItem(c.Asked)
+	cause := carriedCauseOfChoice(c)
+	return &chooseValueFrame{then: func(g *Game, value string) error {
+		x, err := strconv.Atoi(value)
+		if err != nil || x < 0 {
+			x = 0
+		}
+		return g.withCarriedCauseLocked(cause, func() error {
+			return g.mayPayXAfterNumberLocked(clause, key, chooser, source, carry, asked, x)
+		})
+	}}
+}
+
+// chooseValueFrameOf is the frame a resolution-time value prompt answers
+// through: its own, or, for a keyed MayPayX's "choose X", a frame built
+// from its data. Nil for a prompt with neither. Every reader of a
+// chooseValueResume goes through this for a pay_amount.
+func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
+	if c == nil {
+		return nil
+	}
+	if c.chooseValueResume != nil {
+		return c.chooseValueResume
+	}
+	return mayPayXFrameOf(c)
 }
 
 // errMayPayXNoX is a MayPayX cost without exactly one {X}: a catalog

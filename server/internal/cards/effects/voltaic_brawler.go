@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var voltaicBrawlerPumpPaid = energyPaid("pay-unless/voltaic-brawler-pump",
+	voltaicBrawlerPump)
+
 // Voltaic Brawler — Creature — Human Warrior {R}{G}, 3/2:
 //
 //	"When this creature enters, you get {E}{E} (two energy counters).
@@ -21,7 +24,7 @@ func init() {
 		Purpose:      game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Voltaic Brawler", 2),
-			whenThisAttacksMayPayEnergy("Voltaic Brawler", 1, "have it get +1/+1 and trample", voltaicBrawlerPump),
+			whenThisAttacksMayPayEnergy("Voltaic Brawler", 1, "have it get +1/+1 and trample", voltaicBrawlerPumpPaid),
 		},
 	})
 }

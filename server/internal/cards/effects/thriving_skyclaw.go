@@ -23,7 +23,7 @@ func init() {
 		Purpose:         game.Purpose{Energy: 3},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Thriving Skyclaw", 3),
-			whenThisAttacksMayPayEnergy("Thriving Skyclaw", 3, "put a +1/+1 counter on it", thisStillHere(plusOneCountersOnThis(1))),
+			whenThisAttacksMayPayEnergy("Thriving Skyclaw", 3, "put a +1/+1 counter on it", energyPlusOneCounterOnThis),
 		},
 	})
 }

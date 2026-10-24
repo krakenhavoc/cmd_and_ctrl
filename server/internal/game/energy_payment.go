@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -58,6 +59,22 @@ type EnergyPayment struct {
 	// on a "yes" the payer cannot fund, and when the payer has left
 	// (CR 800.4f: the cost is not paid).
 	OnPay, OnDecline func(g *Game) error
+	// Then is the payment's consequence as REGISTERED branches
+	// (RegisterPayUnlessBranches, #4289), in place of OnPay / OnDecline:
+	// the pay branch runs once the energy has been paid, the decline
+	// branch on "no", on a "yes" the payer cannot fund and when the payer
+	// has left. A prompt queued with one holds no closure, so a table
+	// waiting on the payer is a restore point. Set Then or the closures,
+	// not both.
+	Then PayUnlessElse
+	// Carry is the plain data the branches are handed, Asked the asking
+	// stack item as data (NewAskedItem) they run against, and MayPay says
+	// the branches are "you may pay. If you do, ...": a payer who cannot
+	// be asked runs nothing, where a "sacrifice it unless you pay" runs
+	// its decline. Read only with Then.
+	Carry  []uuid.UUID
+	Asked  *AskedItem
+	MayPay bool
 	// InThisStep holds the table in the current step until the answer
 	// (PendingChoice.OwedInStep): set it when what hangs off the answer
 	// is about the step in progress — an attack trigger's +1/+1 counter
@@ -86,6 +103,18 @@ func (g *Game) QueueEnergyPaymentForEffect(p EnergyPayment) error {
 	n := p.N
 	if n < 0 {
 		n = 0
+	}
+	if p.Then.key != "" {
+		if p.OnPay != nil || p.OnDecline != nil {
+			return fmt.Errorf("%w: keyed energy payment %q also sets a closure", ErrInvalidParam, p.Then.key)
+		}
+		// #4289: the keyed form, a restore point. The payment is plain
+		// data (PayActionClause), as it is for the closure form.
+		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: p.Source, Cost: EnergyPaymentWords(n), Question: p.Question,
+			Then: p.Then, Carry: p.Carry, Action: &PayAction{Kind: PayActionEnergy, Count: n},
+			InThisStep: p.InThisStep, MayPay: p.MayPay, Asked: p.Asked,
+		})
 	}
 	var owed TurnStep
 	if p.InThisStep {
@@ -133,22 +162,25 @@ func (g *Game) energyPaymentPayableLocked(chooser uuid.UUID, a *PayAction) bool 
 const PendingChoicePayAmount PendingChoiceKind = "pay_amount"
 
 // PayAmountPrompt is the plain data of a pay_amount prompt, read by the
-// protocol view, the legal-move enumerator and the bot.
+// protocol view, the legal-move enumerator and the bot. The JSON tags are
+// the restore point's form (#4289), written when the prompt is a keyed
+// MayPayX's "choose X"; the wire view has its own struct.
 type PayAmountPrompt struct {
 	// Min is the smallest payment: 0 for "any amount", 1 for "one or
 	// more" (CR 107.1b: never negative). Max is the payer's energy when
 	// the prompt was asked. Zero is always an answer as well: "any
 	// amount" includes none, and "you may pay one or more" may be
 	// declined. So the answers are 0 and Min..Max.
-	Min, Max int
+	Min int `json:"min"`
+	Max int `json:"max"`
 	// Goal is the smallest amount that reaches the card's own threshold
 	// — the target's toughness for Harnessed Lightning — or 0 when the
 	// card names none. The enumerator offers it beside Min and Max, and
 	// the heuristic pays it.
-	Goal int
+	Goal int `json:"goal,omitempty"`
 	// Unit says what each counter paid buys: PayAmountDamage,
 	// PayAmountCounters, PayAmountCards, … Read by the heuristic.
-	Unit string
+	Unit string `json:"unit,omitempty"`
 
 	// The fields below were added by ADR 0129's amendment of
 	// 2026-10-09 (#1941), which widens the prompt from energy to any
@@ -160,19 +192,19 @@ type PayAmountPrompt struct {
 	// that predates the field is unchanged), PayResourceLife ("pay any
 	// amount of life", CR 119.4) or PayResourceNone (a number chosen
 	// and not paid: "an amount of damage of your choice", CR 608.2d).
-	Resource string
+	Resource string `json:"resource,omitempty"`
 	// NoMax is a number with no printed ceiling (CR 107.1b only rules
 	// out a negative one). Max then holds PayAmountNoMaxCeiling, the
 	// engine's guard against an overflow, which no client draws.
-	NoMax bool
+	NoMax bool `json:"noMax,omitempty"`
 	// Marks are further numbers the card names as meaningful, offered
 	// by the enumerator beside Min, Goal and Max: the chooser's life
 	// total, for Volcano Hellion. Ascending; may be empty.
-	Marks []int
+	Marks []int `json:"marks,omitempty"`
 	// SelfDamage says each point is also dealt to the chooser as damage
 	// (Volcano Hellion's "to you and target creature"), so a policy
 	// prices the answer in life even though nothing is paid.
-	SelfDamage bool
+	SelfDamage bool `json:"selfDamage,omitempty"`
 }
 
 // The resources a pay_amount prompt charges (PayAmountPrompt.Resource).
@@ -352,7 +384,7 @@ func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error
 			return ErrInsufficientMana
 		}
 	}
-	frame := choice.chooseValueResume
+	frame := chooseValueFrameOf(choice)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 	var err error

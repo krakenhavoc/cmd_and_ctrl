@@ -2,6 +2,12 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var blasterHulkPaid = energyPaid("pay-unless/blaster-hulk-damage",
+	func(g *game.Game, item *game.StackItem) error {
+		return WhenYouDo("Blaster Hulk — 8 damage divided as you choose among up to eight targets",
+			blasterHulkDamageBody).Apply(NewContext(g, item))
+	})
+
 // Blaster Hulk — Artifact Creature — Pirate {6}{R}{R}, 8/8:
 //
 //	"This spell costs {1} less to cast for each {E} (energy counter)
@@ -41,10 +47,7 @@ func init() {
 					return MayPayEnergy{
 						N:        8,
 						Question: "Blaster Hulk — pay eight {E} to deal 8 damage divided among up to eight targets?",
-						OnPay: func(ctx *Context) error {
-							return WhenYouDo("Blaster Hulk — 8 damage divided as you choose among up to eight targets",
-								blasterHulkDamageBody).Apply(ctx)
-						},
+						Then:     blasterHulkPaid,
 					}.Apply(ctx)
 				}),
 		},

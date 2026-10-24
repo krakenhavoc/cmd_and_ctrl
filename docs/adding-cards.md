@@ -1690,8 +1690,8 @@ step it was asked in, so an attack trigger's counter lands before
 blockers.
 
 ```go
-MayPayEnergy{N: 2, Question: "…", OnPay: func(ctx *Context) error { … }}        // "you may pay {E}{E}. If you do, …"
-PayEnergyUnless{N: 2, Question: "…", OnDecline: func(ctx *Context) error { … }} // "sacrifice it unless you pay {E}{E}"
+MayPayEnergy{N: 2, Question: "…", Then: heroPaid}                              // "you may pay {E}{E}. If you do, …"
+PayEnergyUnless{N: 2, Question: "…", Else: heroDeclined}                        // "sacrifice it unless you pay {E}{E}"
 PayEnergyOrElse{N: 2, OrElse: func(ctx *Context) error { … }}                    // "pay {E}{E}. If you can't, …" (asks nothing)
 PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,      // "you may pay any amount of {E}"
 	Then: func(ctx *Context, paid int) error { … }}                               // Min: 1 for "one or more"
@@ -1700,7 +1700,16 @@ PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,     
 `MayPayEnergy` / `PayEnergyUnless` are the `pay_unless` prompt with an
 energy payment: "Pay" is a payment only when the payer has the energy
 (CR 118.3), and an amount computed at resolution ("an amount of {E}
-equal to its mana value") is just `N`. `PayEnergyAmount` is the
+equal to its mana value") is just `N`. The consequence is a REGISTERED
+branch (#4289), so a table waiting on the payer is a restore point:
+`var heroPaid = energyPaid("pay-unless/<card>-<clause>", func(g *game.Game,
+item *game.StackItem) error { … })` (or `energyDeclined` for "unless you
+pay"), a package-level var in the card's file. The branch runs against a
+copy of the asking item rebuilt from the prompt, so it reads the trigger's
+event, the targets and the source object as a closure over the item did.
+Cards whose consequence is the same sentence share one key (see the
+shared handles in `energy_resolution.go`); the key is an on-disk identity,
+never renamed and never reused, and is appended to the ledger. `PayEnergyAmount` is the
 `pay_amount` prompt: `Then` always runs exactly once, with 0 when
 nothing was paid (no energy, declined, or the payer left), so the rest
 of the card ("Destroy all creatures") lives inside it. `Goal` is the
@@ -1710,7 +1719,8 @@ the bot pays it and the stepper opens on it. A reflexive "When you do,
 …" is `WhenYouDo(...)` applied inside `OnPay`. The shared lines are in
 `effects/energy_resolution.go`: `whenThisAttacksMayPayEnergy`,
 `mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
-`getEnergyThenPayAnyAmountToDamageTarget`.
+`getEnergyThenPayAnyAmountToDamageTarget`; the first two take the handle an
+`energyPaid` returns, not an `Effect`.
 
 **Energy in other costs** (PR 4). An alternative cost takes
 `AlternativeCost.Energy`, checked with the offer (a caster short of it is
@@ -7509,9 +7519,10 @@ waterbend clause is rebuilt from its kind and extra cost (`PendingChoice.PayTap`
 `game.RegisterTapCost`), so it needs nothing from the card. The per-object offer
 is `AnyPlayerPaysForEach{Then, Carry}` with `AnyPlayerEachConsequence(key, func(ctx,
 r game.AnyPlayerEachAnswer) error { … })` (`r.Unsaved` are the objects nobody
-paid for; Cleansing), ledgered as `choose <key>`. `MayPayX`, the energy payments
-(`MayPayEnergy`, `PayEnergyUnless`) and a ward's life, sacrifice and discard
-confirms keep closures.
+paid for; Cleansing), ledgered as `choose <key>`. The energy payments
+(`MayPayEnergy{Then}`, `PayEnergyUnless{Else}`) and `MayPayX{Then}` are keyed
+the same way (#4289; `MayPayX`'s branch reads X as `r.Number`). A ward's life,
+sacrifice and discard confirms keep closures.
 
 **A "you may" asked of a resolving effect** (`MayChoice`) is keyed with `Then:
 mayAnswer`, `var mayAnswer = MayAnswer("confirm/<card>-<clause>", func(ctx
@@ -7825,11 +7836,12 @@ worth offering a bot.
 
 **A payment with {X} in it** (#2727, the same ADR's next amendment,
 [may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
-`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, OnPay}`: "you may
+`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, Then}`: "you may
 pay {X}{R}. If you do, …" (Tilonalli's Summoner, Flameblast Dragon).
 X is asked first, from 0 to the most the chooser can pay now, then the
-cost with X settled is an ordinary `MayPay`. `OnPay` gets X and runs
-only once the mana is paid. `Goal` gets that ceiling
+cost with X settled is an ordinary `MayPay`. `Then` is a registered branch
+(`PayUnlessBranches`, #4289) that gets X as `r.Number` and runs only once the
+mana is paid; both prompts are restore points. `Goal` gets that ceiling
 (`XAsHighAsYouCan` for "more is better"); nil keeps a bot's mana. Set
 `InThisStep` when what X buys belongs to the step in progress (tokens
 that enter attacking).
@@ -11401,9 +11413,9 @@ Six small pieces, each in a 2026-10-13 amendment of the ADR that owns it
 [0066](decisions/0066-granted-cast-and-play-permissions.md)).
 
 ```go
-MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, OnPay: func(ctx *Context, x int) error {
-    return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: x}}.Apply(ctx)
-}}.Apply(ctx)                                                                  // "pay any amount of {R}. When you do …"
+MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, Then: leylineTyrantPaid}.Apply(ctx) // "pay any amount of {R}. When you do …"
+// var leylineTyrantPaid = PayUnlessBranches("pay-unless/…", func(ctx *Context, r game.PayUnlessAnswer) error {
+//     return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: r.Number}}.Apply(ctx) }, nil)
 ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(id, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error { … }) // It Doesn't Add Up
 v.SetCardTypes("Artifact")                                                     // "except it's an artifact" (no "in addition")
 {Mana: []ManaAbility{…}}                                                       // an AbilityGrant a COPY can take: v.GrantAbility(key)

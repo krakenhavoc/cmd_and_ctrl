@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 
@@ -15,12 +16,18 @@ import (
 // controller chooses (CR 508.4). The engine half of the payment is
 // game/pay_x_on_resolution.go.
 
-// MayPayX is "you may pay <Cost with one {X}>. If you do, <OnPay with
+// MayPayX is "you may pay <Cost with one {X}>. If you do, <Then with
 // X>". X is chosen as the ability resolves (CR 608.2d), from 0 to the
 // most the chooser can pay right now, and then the cost with X settled
 // is offered as an ordinary "you may pay" (MayPay's prompt and payment
 // path). Like MayPay, it only queues: anything the card does after the
-// payment lives in OnPay.
+// payment lives in Then.
+//
+// Then is the paid half as REGISTERED branches (PayUnlessBranches, #4289),
+// handed X as r.Number: neither prompt holds a closure, so a table waiting
+// on X or on the payment is a restore point. The branch runs against a
+// copy of the asking item rebuilt from data the prompts carry
+// (game.AskedItem).
 type MayPayX struct {
 	// Chooser is who picks X and pays: the controller when zero.
 	Chooser uuid.UUID
@@ -43,16 +50,18 @@ type MayPayX struct {
 	// buys something about the step in progress (tokens that enter
 	// attacking).
 	InThisStep bool
-	OnPay      func(ctx *Context, x int) error
+	Then       game.PayUnlessElse
+	Carry      []uuid.UUID
 }
 
 func (m MayPayX) Apply(ctx *Context) error {
-	item := ctx.Item
+	if m.Then.Key() == "" {
+		return fmt.Errorf("%w: MayPayX has no Then", game.ErrInvalidParam)
+	}
 	var goal func(int) int
 	if m.Goal != nil {
 		goal = func(ceiling int) int { return m.Goal(ctx, ceiling) }
 	}
-	onPay := m.OnPay
 	return ctx.Game.QueueMayPayXForEffect(game.MayPayX{
 		Chooser:    energyChooser(ctx, m.Chooser),
 		Source:     ctx.Source(),
@@ -63,12 +72,9 @@ func (m MayPayX) Apply(ctx *Context) error {
 		Goal:       goal,
 		Unit:       m.Unit,
 		InThisStep: m.InThisStep,
-		OnPay: func(g *game.Game, x int) error {
-			if onPay == nil {
-				return nil
-			}
-			return onPay(NewContext(g, item), x)
-		},
+		Then:       m.Then,
+		Carry:      append([]uuid.UUID{ctx.Controller()}, m.Carry...),
+		Asked:      game.NewAskedItem(ctx.Item),
 	})
 }
 

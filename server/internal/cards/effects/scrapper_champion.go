@@ -23,7 +23,7 @@ func init() {
 		Purpose:         game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Scrapper Champion", 2),
-			whenThisAttacksMayPayEnergy("Scrapper Champion", 2, "put a +1/+1 counter on it", thisStillHere(plusOneCountersOnThis(1))),
+			whenThisAttacksMayPayEnergy("Scrapper Champion", 2, "put a +1/+1 counter on it", energyPlusOneCounterOnThis),
 		},
 	})
 }

@@ -29,6 +29,12 @@ func init() {
 	})
 }
 
+// flameblastDragonPaid is the paid half, keyed (#4289): X rides the prompt.
+var flameblastDragonPaid = PayUnlessBranches("pay-unless/flameblast-dragon-x-damage",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return sourceDealsComputedDamageToEachLegalTarget(func(*Context) int { return r.Number })(ctx.Game, ctx.Item)
+	}, nil)
+
 func flameblastDragonAttacks(g *game.Game, item *game.StackItem) error {
 	return MayPayX{
 		Cost:  "{X}{R}",
@@ -36,9 +42,7 @@ func flameblastDragonAttacks(g *game.Game, item *game.StackItem) error {
 		Buys:  "deal X damage to the target",
 		Goal:  flameblastDragonGoal,
 		Unit:  game.PayAmountDamage,
-		OnPay: func(ctx *Context, x int) error {
-			return sourceDealsComputedDamageToEachLegalTarget(func(*Context) int { return x })(ctx.Game, ctx.Item)
-		},
+		Then:  flameblastDragonPaid,
 	}.Apply(NewContext(g, item))
 }
 

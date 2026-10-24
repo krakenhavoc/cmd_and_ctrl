@@ -1826,6 +1826,13 @@ type pendingChoiceSnapshot struct {
 	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
 	// clause as its kind and extra cost. Additive within the version.
 	PayTap *PayTapSpec `json:"payTap,omitempty"`
+	// PayAmount, MayPayX and PickNumber are PendingChoice's (#4289): a
+	// keyed MayPayX's "choose X" prompt (its bounds, the clause that asks
+	// the next question) and the X a keyed pay-unless's branches are
+	// handed. Additive within the version.
+	PayAmount  *PayAmountPrompt `json:"payAmount,omitempty"`
+	MayPayX    *MayPayXClause   `json:"mayPayX,omitempty"`
+	PickNumber int              `json:"pickNumber,omitempty"`
 	// OptionObjects is PendingChoice's (#4264): the objects, with their
 	// epochs, a keyed pay-unless or any-player prompt's branches are
 	// handed. Additive within the version.
@@ -3041,6 +3048,9 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PayActionClause:       copyPayAction(c.PayActionClause),
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
+		PayAmount:             copyPayAmountPrompt(c.PayAmount),
+		MayPayX:               copyMayPayXClause(c.MayPayX),
+		PickNumber:            c.PickNumber,
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
@@ -4006,6 +4016,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayActionClause:       copyPayAction(c.PayActionClause),
 		Asked:                 copyAskedItem(c.Asked),
 		PayTap:                copyPayTapSpec(c.PayTap),
+		PayAmount:             copyPayAmountPrompt(c.PayAmount),
+		MayPayX:               copyMayPayXClause(c.MayPayX),
+		PickNumber:            c.PickNumber,
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,

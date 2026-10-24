@@ -1040,7 +1040,12 @@ var pendingChoiceFields = plan(
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	// #4289: a pay_amount that carries a chooseValueResume frame is still
+	// not a restore point (ContinuationCensus.ChoiceResumeFrames); a keyed
+	// MayPayX's "choose X" holds none, so its bounds are written.
+	"PayAmount", carried, "",
+	"MayPayX", carried, "",
+	"PickNumber", carried, "",
 	"NoLegalTarget", carried, "",
 	// #2494: the resolving item a resolution-time "you may" asks about,
 	// and what a "yes" trades for. Carried: the item rides the parked

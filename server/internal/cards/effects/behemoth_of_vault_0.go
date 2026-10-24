@@ -6,6 +6,18 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+var behemothOfVault0Paid = energyPaid("pay-unless/behemoth-of-vault-0-destroy",
+	func(g *game.Game, item *game.StackItem) error {
+		if len(item.Targets) == 0 {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: "Behemoth of Vault 0 — destroy that permanent",
+			Cards: []uuid.UUID{item.Targets[0].ID},
+			Body:  behemothDestroyBody,
+		}.Apply(NewContext(g, item))
+	})
+
 // Behemoth of Vault 0 — Artifact Creature — Robot {6}, 6/6:
 //
 //	"Trample
@@ -32,13 +44,7 @@ func init() {
 			return MayPayEnergy{
 				N:        firstTargetManaValue(g, item),
 				Question: "Behemoth of Vault 0 — pay {E} equal to its mana value to destroy it?",
-				OnPay: func(ctx *Context) error {
-					return ReflexiveTrigger{
-						Label: "Behemoth of Vault 0 — destroy that permanent",
-						Cards: []uuid.UUID{ctx.Item.Targets[0].ID},
-						Body:  behemothDestroyBody,
-					}.Apply(ctx)
-				},
+				Then:     behemothOfVault0Paid,
 			}.Apply(NewContext(g, item))
 		})
 	dies.Targets = TargetPermanent("target nonland permanent", Nonland())
