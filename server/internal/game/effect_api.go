@@ -3941,6 +3941,15 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, after)
 }
 
+// LookAtTopKeyedForEffect is LookAtTopThenForEffect with the continuation as
+// data (#4301): `after` is a registered tail (RegisterTail), so the look-at
+// prompt is a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.lookAtTopWithTailLocked(PendingChoiceLookAtTop, playerID, source, n, nil, after)
+}
+
 // lookAtTopForEffect queues the "look at the top N cards of your
 // library, then put them somewhere" prompt that scry and surveil
 // share. It marks the chooser — and ONLY the chooser — a knower of

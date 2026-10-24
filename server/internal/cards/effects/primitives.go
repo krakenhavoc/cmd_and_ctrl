@@ -1823,12 +1823,21 @@ type LookAtTop struct {
 	// decided which card is on top — which is the entire point of
 	// the card.
 	Then func(g *game.Game) error
+
+	// ThenTail is Then as data (#4301): a registered tail
+	// (game.RegisterTail, Context.Tail), so the look-at prompt is a restore
+	// point. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (l LookAtTop) Apply(ctx *Context) error {
 	player := l.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
+	}
+	if l.Then == nil && !l.ThenTail.IsZero() {
+		ctx.Game.LookAtTopKeyedForEffect(player, ctx.Source(), l.N, tailDefaults(l.ThenTail, player, ctx.Source()))
+		return nil
 	}
 	ctx.Game.LookAtTopThenForEffect(player, ctx.Source(), l.N, l.Then)
 	return nil

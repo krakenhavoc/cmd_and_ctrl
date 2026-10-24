@@ -1253,6 +1253,7 @@ var pendingChoiceFields = plan(
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"libraryOrderKeyed", carried, "#4301: an ordering prompt's keyed then, as LibraryOrder (its key rides PickThen)",
 	"midResolution", carried, "",
 	"AutoAnswerKey", carried, "",
 	"AutoAnswerCard", carried, "",

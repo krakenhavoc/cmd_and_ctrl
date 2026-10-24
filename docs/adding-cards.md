@@ -7588,6 +7588,16 @@ may" uses the same door: `game.RegisterConfirmThen` and `QueueConfirmKeyedForEff
 third chapter). A prompt whose words name a card in a hidden zone sets
 `PendingChoice.private`, which is written to the snapshot.
 
+**The prompt that leads into a confirm is keyed too** (#4301). A look-at-top or an
+ordering prompt asks its "then" through a tail, not a closure: `LookAtTop{ThenTail:
+ctx.ItemTail(ref)}` (Ponder) and `LookAtLibraryThenPlace{ThenTail: tail}` /
+`PutInLibraryInAnyOrder{ThenTail: tail}` (Portent), where `ref` is a
+`CardTail("<card>/<name>", func(ctx *Context, o game.TailOutcome) error {...})` and
+what the body reads rides the tail (`Carry`, `N`, the asking item). A pick over
+cards is `game.RegisterChooseCardsThen` with `ThenKey` (Sylvan Library, Lazav),
+and `LiveZone` keeps a hand re-check. A search prompt (`searchResume`) is not keyed
+yet, so a card that asks one is still not a restore point at that prompt.
+
 **A ward's life, sacrifice and discard confirms** are keyed too (#4291):
 `confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
 `confirm/ward-discard` (the Word is the count, then `random`), and for a

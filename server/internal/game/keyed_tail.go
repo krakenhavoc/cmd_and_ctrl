@@ -138,10 +138,11 @@ func (t KeyedTail) Run(g *Game, ids []uuid.UUID) error {
 	return g.runKeyedTailLocked(t, ids, 0)
 }
 
-// isScryOrSurveil reports whether a prompt kind can carry a keyed look-at
-// continuation (PendingChoice.scryThen).
-func isScryOrSurveil(k PendingChoiceKind) bool {
-	return k == PendingChoiceScry || k == PendingChoiceSurveil
+// carriesLookAtThen reports whether a prompt kind can carry a keyed look-at
+// continuation (PendingChoice.scryThen): a scry, a surveil, and (#4301) a
+// look at the top of the library to put the cards back in any order.
+func carriesLookAtThen(k PendingChoiceKind) bool {
+	return k == PendingChoiceScry || k == PendingChoiceSurveil || k == PendingChoiceLookAtTop
 }
 
 // copyKeyedTail gives a tail its own Carry.

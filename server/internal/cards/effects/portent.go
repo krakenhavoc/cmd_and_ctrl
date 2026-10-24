@@ -51,24 +51,31 @@ func init() {
 			if victim == uuid.Nil {
 				return nil
 			}
+			ask := ctx.ItemTail(portentAskShuffle)
+			ask.Carry = []uuid.UUID{victim}
 			return LookAtLibraryThenPlace{
 				Owner:     victim,
 				N:         3,
 				Placement: game.LibraryPlaceTop,
 				Label:     "Portent — put them back in any order",
-				Then: func(g *game.Game) error {
-					return MayChoice{
-						Question: "Portent — have that player shuffle their library?",
-						YesLabel: "Shuffle",
-						NoLabel:  "Leave it",
-						Then:     portentShuffle,
-						Carry:    []uuid.UUID{victim},
-					}.Apply(NewContext(g, item))
-				},
+				ThenTail:  ask,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// portentAskShuffle is the order prompt's "then": ask whether the library's
+// owner shuffles (#4301: a registered tail; the owner is its carried ID and
+// the asking item its data). An on-disk key.
+var portentAskShuffle = CardTail("portent/ask-shuffle", func(ctx *Context, o game.TailOutcome) error {
+	return MayChoice{
+		Question: "Portent — have that player shuffle their library?",
+		YesLabel: "Shuffle",
+		NoLabel:  "Leave it",
+		Then:     portentShuffle,
+		Carry:    o.Tail.Carry,
+	}.Apply(ctx)
+})
 
 // portentShuffle is "you may have that player shuffle": the player is the
 // prompt's carried ID (#4298: keyed).

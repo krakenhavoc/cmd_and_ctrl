@@ -810,6 +810,10 @@ type playerSnapshot struct {
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
+	// MulliganBottoming is Player.mulliganBottoming (#4301): the seat has
+	// kept and its London-mulligan cards are not down yet, so the window
+	// stays open for it. Additive.
+	MulliganBottoming bool `json:"mulliganBottoming,omitempty"`
 	// TriggerOrderAlwaysAsk is #1530's always-ask flag, true when
 	// Player.TriggerOrder is "always". Still written beside TriggerOrder
 	// so a binary from before #1968, which reads only this key, restores
@@ -1991,6 +1995,13 @@ type pendingChoiceSnapshot struct {
 	// is a prompt that is no run's leg.
 	PromptRun uuid.UUID `json:"promptRun,omitempty"`
 
+	// LibraryOrder is PendingChoice.libraryOrderKeyed (#4301): a put_in_library
+	// prompt's way of moving the cards and its keyed "then". The tail's key
+	// also rides PickThen, so a binary from before it refuses the file
+	// instead of restoring the prompt without the rest of its card.
+	// Additive within the version.
+	LibraryOrder *libraryOrderSnapshot `json:"libraryOrder,omitempty"`
+
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
 	ResumeFrames []string `json:"resumeFrames,omitempty"`
@@ -2406,9 +2417,14 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			key := g.replacementFrameKeyable(c)
 			pc := snapshotPendingChoiceFrame(c, cen, key != "")
-			if t := snapshotKeyedTail(c.scryThen); t != nil && (c.Kind == PendingChoiceScry || c.Kind == PendingChoiceSurveil) {
+			if t := snapshotKeyedTail(c.scryThen); t != nil && carriesLookAtThen(c.Kind) {
 				// #4253 slice 3: the look-at's keyed "then".
 				pc.ScryThen, pc.PickThen = t, t.Key
+			}
+			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
+				// #4301: the ordering prompt's keyed "then".
+				pc.LibraryOrder = snapshotLibraryOrder(k)
+				pc.PickThen = k.then.Ref.key
 			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
@@ -2813,6 +2829,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
+		MulliganBottoming:     p.mulliganBottoming,
 		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
 		TriggerOrder:          string(p.TriggerOrder),
 		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
@@ -3582,8 +3599,12 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// that finds their effects again reads the whole restored board.
 	for i := range s.PendingChoices {
 		// #4253 slice 3: a look-at's keyed "then", whose key rode PickThen.
-		if t := s.PendingChoices[i].ScryThen; t != nil && isScryOrSurveil(s.PendingChoices[i].Kind) {
+		if t := s.PendingChoices[i].ScryThen; t != nil && carriesLookAtThen(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
+			g.PendingChoices[i].PickThen = ""
+		}
+		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
+			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)
 			g.PendingChoices[i].PickThen = ""
 		}
 	}
@@ -3863,6 +3884,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
+		mulliganBottoming:  p.MulliganBottoming,
 		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
 		AutoAnswers:        copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:     p.MulligansTaken,

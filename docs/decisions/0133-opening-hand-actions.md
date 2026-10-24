@@ -101,3 +101,8 @@ None. `OpeningHandAction` is catalog data. The prompts carry continuation frames
 ## Amendment 2026-10-24 — the offer is a keyed confirm, and `private` is written (#4298)
 
 The offer is queued with `QueueConfirmKeyedForEffect` under the key `confirm/opening-hand-offer` instead of an `OnAccept` closure, so a table waiting on an opening-hand answer is a restore point (ADR 0018, amendment of the same date). The answer reads the card's `OpeningHandAction` from the catalog when it arrives; the card is the prompt's source and the chooser its owner. The "Snapshot impact" above no longer holds for one field: `PendingChoice.private` is serialised as `private` (`omitempty`, additive within version 9), so a restored offer is still private to its chooser and does not name the card in a hand to every seat. The London-mulligan bottom pick (`mulligan_order.go`) also sets `private` and is still a closure, so it is still never written.
+
+
+## Amendment 2026-10-24 (second) — the mulligan pick is keyed too (#4301)
+
+The sentence above, that the London-mulligan bottom pick "is still a closure, so it is still never written", no longer holds: it is a keyed pick and `private` is written with it (ADR 0168, amendment of the same date). That amendment also closes a leak on the way: a private `choose_cards` prompt's candidates reached every seat's view.

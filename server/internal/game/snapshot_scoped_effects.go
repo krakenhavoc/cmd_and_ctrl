@@ -299,7 +299,7 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownPayUnlessElse(c.PickThen) {
 				unknown = append(unknown, "pay-unless branches "+c.PickThen)
 			}
-		case isScryOrSurveil(c.Kind):
+		case carriesLookAtThen(c.Kind):
 			// #4253 slice 3: a look-at's keyed "then".
 			if c.ScryThen == nil || c.ScryThen.Key != c.PickThen || !KnownTail(c.PickThen) {
 				unknown = append(unknown, "look-at continuation "+c.PickThen)
@@ -310,6 +310,13 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// refuses the file rather than answering into nobody.
 			if !KnownPromptRunThen(c.PickThen) {
 				unknown = append(unknown, "prompted-run continuation "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePutInLibrary:
+			// #4301: an ordering prompt's keyed "then".
+			if c.LibraryOrder == nil || c.LibraryOrder.Then == nil || c.LibraryOrder.Then.Key != c.PickThen {
+				unknown = append(unknown, "put-in-library continuation "+c.PickThen)
+			} else {
+				unknown = append(unknown, unknownKeyedTail(c.LibraryOrder.Then)...)
 			}
 		case c.Kind == PendingChoiceConfirm:
 			// #4264: a keyed confirm's answer.
