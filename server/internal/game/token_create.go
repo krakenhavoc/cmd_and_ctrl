@@ -191,6 +191,15 @@ type tokenTail struct {
 	// follows, and runs with g.mu held, so it may start the next
 	// move or queue the next prompt itself.
 	then func(g *Game, created []uuid.UUID) error
+
+	// keyed is `then` as data (#4253 slice 3): a registered tail, told
+	// the tokens that landed as TailOutcome.IDs. report is a synchronous
+	// door's result, written as the creation finishes and read on the
+	// door's next line (CreateTokensForEffect); a creation that paused
+	// has returned by then, so a restore point drops it. With neither a
+	// closure nor anything but these, a paused creation is data.
+	keyed  KeyedTail
+	report *[]uuid.UUID
 }
 
 // TokenCount is the total number of tokens the instruction currently
@@ -309,8 +318,16 @@ func (g *Game) abandonTokenCreationLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func runTokenTailLocked(g *Game, tail *tokenTail, created []uuid.UUID) error {
-	if tail == nil || tail.then == nil {
+	if tail == nil {
 		return nil
+	}
+	if tail.report != nil {
+		*tail.report = created
+	}
+	if tail.then == nil {
+		keyed := tail.keyed
+		tail.keyed = KeyedTail{}
+		return g.runKeyedTailLocked(keyed, created, 0)
 	}
 	then := tail.then
 	tail.then = nil
@@ -331,6 +348,33 @@ func runTokenTailLocked(g *Game, tail *tokenTail, created []uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensThenForEffect(spec TokenCreation, then func(g *Game, created []uuid.UUID) error) error {
+	var tail *tokenTail
+	if then != nil {
+		tail = &tokenTail{then: then}
+	}
+	return g.createTokensWithTailLocked(spec, tail)
+}
+
+// CreateTokensKeyedForEffect is CreateTokensThenForEffect with the rest
+// of the effect as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the tokens that landed as TailOutcome.IDs. A
+// question the creation or a token's entry asks on the way (a CR 616
+// ordering prompt between two token replacements) is then a restore
+// point.
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensKeyedForEffect(spec TokenCreation, then KeyedTail) error {
+	var tail *tokenTail
+	if !then.IsZero() {
+		tail = &tokenTail{keyed: then}
+	}
+	return g.createTokensWithTailLocked(spec, tail)
+}
+
+// createTokensWithTailLocked is the one body of the token doors.
+//
+// Caller must hold g.mu.
+func (g *Game) createTokensWithTailLocked(spec TokenCreation, tail *tokenTail) error {
 	groups := make([]TokenGroup, 0, len(spec.Groups))
 	for _, grp := range spec.Groups {
 		if grp.Count > 0 {
@@ -347,9 +391,7 @@ func (g *Game) CreateTokensThenForEffect(spec TokenCreation, then func(g *Game, 
 		TokenTogether:           spec.Together,
 		TokenAttackChoicesLabel: spec.AttackChoicesLabel,
 	}
-	if then != nil {
-		ev.tokenTail = &tokenTail{then: then}
-	}
+	ev.tokenTail = tail
 	if len(groups) == 0 {
 		// Nothing to create. Still a terminal outcome: a caller
 		// sequenced behind the tail has to be told.
@@ -427,14 +469,19 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	// a replayed answer skip the rest of the card. Reaching here and
 	// reaching abandonTokenCreationLocked are mutually exclusive, so
 	// the continuation still runs exactly once per run.
-	var then func(g *Game, created []uuid.UUID) error
+	var done tokenDone
 	if ev.tokenTail != nil {
-		then = ev.tokenTail.then
+		done = tokenDone{then: ev.tokenTail.then, keyed: ev.tokenTail.keyed, report: ev.tokenTail.report}
 	}
 	if ev.TokenTogether {
-		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, then)
+		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, done.closure())
 	}
-	return g.enterCreatedTokensLocked(batch, nil, ev.Source, then)
+	if done.then == nil {
+		// #4253 slice 3: the rest of the batch is data, so a token's
+		// entry question is a restore point.
+		return g.enterCreatedTokensKeyedLocked(batch, nil, ev.Source, done)
+	}
+	return g.enterCreatedTokensLocked(batch, nil, ev.Source, done.then)
 }
 
 // stagedToken is one minted-but-not-yet-entered token: the object
@@ -531,39 +578,7 @@ func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID
 	}
 	next, rest := batch[0], batch[1:]
 	g.enteringTokens = append(g.enteringTokens, next.card)
-	ev := &ReplacementEvent{
-		Kind:   RepEventMove,
-		Actor:  next.card.Controller,
-		Source: source,
-		CardID: next.card.InstanceID,
-		// No OLD zone: a token is created on the battlefield and came
-		// from nowhere (CR 111.1). Every entry replacement in the
-		// catalog keys on NewZone, so none of them notices, and the
-		// empty old zone is what the finisher reads to push the staged
-		// token instead of moving a card.
-		NewZone:      ZoneBattlefield,
-		NewZoneOwner: next.card.Controller,
-		EntersTapped: next.entry.Tapped,
-		// #1227: CR 506.3c's attack, taken off the minted token and
-		// put on the ENTRY where the card door already carries it
-		// (ZoneEntryOptions.Attacking). The token object keeps its own
-		// AttackingTarget — that is what a replacement inspecting the
-		// staged token reads, and what this line copies — but the
-		// "never declared" marking is now made once, by the entry, for
-		// both doors. See stampEntryAttackerLocked.
-		EntersAttacking: next.card.AttackingTarget,
-		// The entry may pause, and #478's frame finishes it. Nothing is
-		// skipped by resuming one: there is no shuffle owed and no new
-		// object identity to mint.
-		entryResumable: true,
-	}
-	for name, n := range next.entry.Counters {
-		ev.AddCounterAtETB(name, n)
-	}
-	// #3158: a creation that names the Aura token's host.
-	if next.entry.AttachedTo.Kind != "" {
-		ev.auraHost, ev.auraHostFixed = next.entry.AttachedTo, true
-	}
+	ev := createdTokenEntryEvent(next.card, next.entry, source)
 	ev.entryTail = &entryTail{then: func(g *Game, entered uuid.UUID) error {
 		// uuid.Nil means nothing entered — the window cancelled or
 		// redirected it, or its prompt was taken away. A token that

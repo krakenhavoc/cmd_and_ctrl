@@ -362,6 +362,11 @@ type zoneRoute struct {
 	// why cloneReplacementResume gives an undo snapshot its own copy
 	// of the route.
 	then func(g *Game) error
+
+	// faceDownLegs is `then` as data for one leg of a face-down exile
+	// batch (#4253 slice 3, exile_face_down_keyed.go). Cleared through
+	// the pointer as it runs, as `then` is. Never set together with it.
+	faceDownLegs *faceDownExileRun
 }
 
 // runRouteTailLocked runs a settled route's continuation exactly once.
@@ -389,7 +394,14 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 			g.pruneChoicesAfterArrivalLocked()
 		}
 	}
-	if r == nil || r.then == nil {
+	if r == nil {
+		return nil
+	}
+	if legs := r.faceDownLegs; legs != nil && r.then == nil {
+		r.faceDownLegs = nil
+		return g.runFaceDownExileStepLocked(legs)
+	}
+	if r.then == nil {
 		return nil
 	}
 	then := r.then

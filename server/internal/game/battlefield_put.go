@@ -401,12 +401,16 @@ func (g *Game) ManifestFromHandsThenForEffect(ids []uuid.UUID, then func(g *Game
 //
 // Caller must hold g.mu.
 func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, opts ZoneEntryOptions) ([]uuid.UUID, error) {
-	var entered []uuid.UUID
-	err := g.startEntryBatchLocked(batchEntriesFrom(ids, from), opts, func(_ *Game, in []uuid.UUID) error {
-		entered = in
-		return nil
-	})
-	return entered, err
+	// #4253 slice 3: what entered is read off the finished batch rather
+	// than handed to a closure over a local, so a batch paused on a
+	// question (a put shockland's "pay 2 life?") holds no closure and is
+	// a restore point.
+	b := &entryBatch{opts: opts}
+	err := g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, from), b)
+	if !b.done {
+		return nil, err
+	}
+	return b.landed, err
 }
 
 // batchEntriesFrom names every ID as put from one zone kind.
@@ -432,6 +436,26 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldThenForEffect(ids []uuid.UUID, 
 	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), opts, then)
 }
 
+// PutCardsFromLibraryOntoBattlefieldKeyedForEffect is
+// PutCardsFromLibraryOntoBattlefieldThenForEffect with the continuation
+// as data (#4253 slice 3): `then` is a registered tail (RegisterTail),
+// told the permanents that entered as TailOutcome.IDs. A card's question
+// asked on the way (a shockland's) is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) PutCardsFromLibraryOntoBattlefieldKeyedForEffect(ids []uuid.UUID, opts LibraryEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), &entryBatch{keyed: then, opts: opts})
+}
+
+// PutOntoBattlefieldTogetherKeyedForEffect is
+// PutOntoBattlefieldTogetherThenForEffect with the continuation as data
+// (#4253 slice 3), as PutCardsFromLibraryOntoBattlefieldKeyedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) PutOntoBattlefieldTogetherKeyedForEffect(cards []BatchEntry, opts ZoneEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked(cards, &entryBatch{keyed: then, opts: opts})
+}
+
 // PutCardsFromHandOntoBattlefieldThenForEffect puts every card in `ids`
 // from its owner's hand onto the battlefield as ONE simultaneous entry
 // ("put up to N permanent cards from your hand onto the battlefield",
@@ -455,10 +479,12 @@ func (g *Game) PutCardsFromHandOntoBattlefieldThenForEffect(ids []uuid.UUID, opt
 //
 // Caller must hold g.mu.
 func (g *Game) PutFromHandOntoBattlefieldThenForEffect(cardID uuid.UUID, opts HandEntryOptions, then func(g *Game, entered uuid.UUID) error) error {
+	if then == nil {
+		// No continuation, so none on the batch: a paused entry is a
+		// restore point (#4253 slice 3).
+		return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, nil)
+	}
 	return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, func(g *Game, in []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
 		entered := uuid.Nil
 		if len(in) > 0 {
 			entered = in[0]

@@ -486,6 +486,10 @@ var carriedNotRoundTrippable = map[string]string{
 		"its characteristics instead of serving the cache it dropped (restoreGame). " +
 		"TestSnapshotRoundTripIsExact asserts the bump, and TestSnapshotRoundTripKeepsGameUsable " +
 		"asserts the recompute it buys.",
+	"PendingChoice.scryThen": "#4253 slice 3: written only on a scry or surveil prompt, whose PickThen it " +
+		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +
+		"v9/preordain_scry.json corpus board (effects).",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.

@@ -233,6 +233,11 @@ type keywordActionTail struct {
 	// away entirely — which is the contract lookAtTopForEffect
 	// already documents.
 	then func(g *Game) error
+
+	// keyed is `then` as data (#4253 slice 3), for a scry or a surveil:
+	// a registered tail the settled action hands to its prompt
+	// (PendingChoice.scryThen). Set one or neither.
+	keyed KeyedTail
 }
 
 // ProliferateForEffect takes the proliferate keyword action
@@ -373,7 +378,7 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		// since a placement can pause on a CR 616 prompt.
 		return 0, g.proliferateExplicitLocked(ev.Actor, tail.cards, tail.players, times, then)
 	case KeywordActionScry, KeywordActionSurveil:
-		return g.lookAtTopForEffect(tail.choice, ev.Actor, ev.Source, n, tail.then), nil
+		return g.lookAtTopWithTailLocked(tail.choice, ev.Actor, ev.Source, n, tail.then, tail.keyed), nil
 	case KeywordActionLearn:
 		// #3525. Learn is performed by the catalog's body once the
 		// window has left it alone (learn_action.go).
@@ -471,6 +476,13 @@ func takeKeywordActionThen(tail *keywordActionTail) func(g *Game) error {
 	}
 	then := tail.then
 	tail.then = nil
+	if then == nil && !tail.keyed.IsZero() {
+		// #4253 slice 3: a keyed tail handed on to a part that takes a
+		// closure; that part's own frame is not keyed.
+		keyed := tail.keyed
+		tail.keyed = KeyedTail{}
+		then = func(g *Game) error { return g.runKeyedTailLocked(keyed, nil, 0) }
+	}
 	return then
 }
 
@@ -499,7 +511,9 @@ func (g *Game) runKeywordActionThenLocked(ev *ReplacementEvent) error {
 		return err
 	}
 	if ev.keywordAction.then == nil {
-		return nil
+		keyed := ev.keywordAction.keyed
+		ev.keywordAction.keyed = KeyedTail{}
+		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	// Cleared THROUGH the pointer, so a continuation that re-enters
 	// the pipeline on the same tail value cannot run itself twice —

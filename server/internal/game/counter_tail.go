@@ -55,6 +55,10 @@ type counterTail struct {
 	// EventCounterPlaced, so it may read the counters back or start the
 	// next placement itself.
 	then func(g *Game, placed int) error
+
+	// keyed is `then` as data (#4253 slice 3): a registered tail, told
+	// the delta that settled as TailOutcome.Amount. Set one or neither.
+	keyed KeyedTail
 }
 
 // runCounterTailLocked runs a settled counter event's continuation
@@ -70,12 +74,15 @@ type counterTail struct {
 //
 // Caller must hold g.mu.
 func (g *Game) runCounterTailLocked(ev *ReplacementEvent, placed int) error {
-	if ev == nil || ev.counterTail == nil || ev.counterTail.then == nil {
+	if ev == nil || ev.counterTail == nil {
 		return nil
 	}
-	then := ev.counterTail.then
+	tail := ev.counterTail
 	ev.counterTail = nil
-	return then(g, placed)
+	if tail.then == nil {
+		return g.runKeyedTailLocked(tail.keyed, nil, placed)
+	}
+	return tail.then(g, placed)
 }
 
 // applyResolvedCounterThenLocked lands a settled RepEventCounter and
@@ -135,13 +142,36 @@ func (g *Game) AddCounterThenForEffect(cardID uuid.UUID, name string, delta int,
 //
 // Caller must hold g.mu.
 func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, delta int, then func(g *Game, placed int) error) error {
+	var tail *counterTail
+	if then != nil {
+		tail = &counterTail{then: then}
+	}
+	return g.addCounterWithTailLocked(placer, cardID, name, delta, tail)
+}
+
+// AddCounterByKeyedForEffect is AddCounterByThenForEffect with the
+// continuation as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the delta that settled as TailOutcome.Amount. A
+// CR 616 ordering prompt over the placement (Hardened Scales beside
+// Doubling Season) is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) AddCounterByKeyedForEffect(placer, cardID uuid.UUID, name string, delta int, then KeyedTail) error {
+	var tail *counterTail
+	if !then.IsZero() {
+		tail = &counterTail{keyed: then}
+	}
+	return g.addCounterWithTailLocked(placer, cardID, name, delta, tail)
+}
+
+// addCounterWithTailLocked is the one body of the two doors above.
+//
+// Caller must hold g.mu.
+func (g *Game) addCounterWithTailLocked(placer, cardID uuid.UUID, name string, delta int, tail *counterTail) error {
 	if delta == 0 {
 		// Nothing to place and no event for a replacement to see — but
 		// still a terminal outcome for a caller sequenced behind it.
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return g.runCounterTailLocked(&ReplacementEvent{counterTail: tail}, 0)
 	}
 	if name == "" {
 		return ErrInvalidParam
@@ -152,9 +182,7 @@ func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, 
 		CounterName:   name,
 		CounterDelta:  delta,
 		CounterPlacer: placer,
-	}
-	if then != nil {
-		ev.counterTail = &counterTail{then: then}
+		counterTail:   tail,
 	}
 	return g.placeCountersThroughReplacementsLocked(ev)
 }

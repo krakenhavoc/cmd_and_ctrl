@@ -677,25 +677,32 @@ func (g *Game) MonstrosityForEffect(cardID uuid.UUID, n int) error {
 		n = 0
 	}
 	placer := card.Controller
-	return g.AddCounterByThenForEffect(placer, cardID, CounterPlusOne, n, func(g *Game, _ int) error {
-		// Re-find: the placement may have paused on a CR 616 prompt,
-		// and the permanent pointer is not stable across an action.
-		c := findBattlefieldCard(g, cardID)
-		if c == nil || c.Monstrous {
-			return nil
-		}
-		c.Monstrous = true
-		g.EmitEvent(Event{
-			Kind:   EventBecameMonstrous,
-			Actor:  c.Controller,
-			Source: cardID,
-			CardID: cardID,
-			Target: cardID,
-			Amount: n,
-		})
-		return nil
-	})
+	// #4253 slice 3: the continuation is a registered tail, so an
+	// ordering prompt over the counters is a restore point.
+	return g.AddCounterByKeyedForEffect(placer, cardID, CounterPlusOne, n, KeyedTail{Ref: tailBecomeMonstrous, Source: cardID, N: n})
 }
+
+// tailBecomeMonstrous is "it becomes monstrous" (CR 701.37a), once the
+// counters have landed. An on-disk key.
+var tailBecomeMonstrous = RegisterTail("engine/become-monstrous", func(g *Game, o TailOutcome) error {
+	cardID, n := o.Tail.Source, o.Tail.N
+	// Re-find: the placement may have paused on a CR 616 prompt, and
+	// the permanent pointer is not stable across an action.
+	c := findBattlefieldCard(g, cardID)
+	if c == nil || c.Monstrous {
+		return nil
+	}
+	c.Monstrous = true
+	g.EmitEvent(Event{
+		Kind:   EventBecameMonstrous,
+		Actor:  c.Controller,
+		Source: cardID,
+		CardID: cardID,
+		Target: cardID,
+		Amount: n,
+	})
+	return nil
+})
 
 // IsMonstrous reports whether the named battlefield permanent is
 // monstrous. False for anything not on the battlefield — CR 400.7, a

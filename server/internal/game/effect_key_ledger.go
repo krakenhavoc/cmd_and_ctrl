@@ -125,6 +125,9 @@ func ledgerLineResolves(line string) bool {
 		return KnownDrawThen(ledgerLineKey(line))
 	case "keywordinstead":
 		return KnownKeywordInstead(ledgerLineKey(line))
+	case "tail":
+		// #4253 slice 3: a keyed event continuation (RegisterTail).
+		return KnownTail(ledgerLineKey(line))
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()
