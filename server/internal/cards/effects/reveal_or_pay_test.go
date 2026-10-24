@@ -478,11 +478,13 @@ func TestSurtlandElementalistOffersAFreeInstantOrSorceryOnAttack(t *testing.T) {
 	}
 	lockInAttacks(t, g)
 	passPriorityAroundTable(t, g)
-	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
-	if pick == nil {
-		t.Fatal("no free-cast pick on attacking")
+	// #4250: the free cast is offered inside the attack trigger's resolution.
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, instant)
+	if hasID(offer.DiscardOptions, creature) {
+		t.Fatalf("offered %v, want only the instant", offer.DiscardOptions)
 	}
-	if !hasID(pick.ChooseCards, instant) || hasID(pick.ChooseCards, creature) {
-		t.Fatalf("offered %v, want only the instant", pick.ChooseCards)
+	if err := castThroughResolutionCast(t, g, me.ID, instant, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free six-mana instant: %v", err)
 	}
+	castInsideTheResolution(t, g, instant)
 }

@@ -23,9 +23,9 @@ import (
 // stops on a prompt (a dredge offer) grants over the hand the player
 // really ends up with, the seven new cards included. "Any number" is
 // grantFreeHandCastsFrom: one pass-closed, any-timing {0} grant per
-// nonland card in hand (CR 608.2g), each cast an ordinary cast_spell
-// taken in the same priority round, the whole window closing on the
-// holder's next pass (free_hand_cast.go). Additional costs are still
+// nonland card in hand (CR 608.2g), and the resolution_cast prompt over
+// them inside the ability's resolution (#4250), each cast its own answer
+// until the player declines or none is left (free_hand_cast.go). Additional costs are still
 // paid and X is 0, as for every free cast.
 func init() {
 	t := On(game.EventCast, conduitYouCastASpell,

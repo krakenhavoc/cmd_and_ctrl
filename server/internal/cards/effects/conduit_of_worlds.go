@@ -82,6 +82,10 @@ func init() {
 						SourceName:           "Conduit of Worlds",
 						Label:                "Conduit of Worlds — cast it from your graveyard",
 					}, []game.Card{c})
+					// #4250: cast during the resolution (CR 608.2g),
+					// paying its mana cost then.
+					offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Conduit of Worlds",
+						game.MayCastKeywordPaidCast, declineLeaveInGraveyard, c.InstanceID)
 				}
 				return nil
 			},

@@ -108,6 +108,10 @@ func crabominationExile(g *game.Game, item *game.StackItem) error {
 			SourceName:  crabominationName,
 			Label:       crabominationName + " — cast a spell from among the exiled cards without paying its mana cost",
 		}, cards)
+		// #4250: cast during the resolution (CR 608.2g); the one
+		// permission is spent by the one cast.
+		offerResolutionCastOver(g, controller, source, crabominationName,
+			game.MayCastKeywordFreeCast, declineLeaveInExile, exiled...)
 		return nil
 	})
 }

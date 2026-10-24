@@ -212,8 +212,15 @@ func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 	if src, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
 		perm.SourceName = src.Name
 	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.grantee(), n, perm)
-	return err
+	// #4250: "you may cast any number of spells ... from among them" is
+	// cast during the resolution (CR 608.2g), each cast its own answer to
+	// the resolution_cast prompt over the cards that landed, until the
+	// player declines or none is left.
+	grantTo, source, name := e.grantee(), ctx.Source(), perm.SourceName
+	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, grantTo, n, perm, func(g *game.Game, landed []uuid.UUID) error {
+		offerResolutionCastOver(g, grantTo, source, name, game.MayCastKeywordFreeCast, declineLeaveInExile, landed...)
+		return nil
+	})
 }
 
 // ExileTopNUntilYourNextTurn exiles the top n cards of the resolving

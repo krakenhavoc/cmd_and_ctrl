@@ -24,13 +24,21 @@ import (
 //     looker knows the cards are somewhere in the bottom few, not where.
 //   - no mana value cap.
 //
-// The chosen card keeps its place and, once the rest are bottomed, is the
-// top card of the library, still known to its owner alone. The grant is
-// game.FreeCastFromLibraryPermission: free, any timing (CR 608.2g),
-// closing on the holder's next priority pass, and a card that is not cast
-// goes to the bottom with the rest, which is what "put the rest" means
-// when the answer was "none". The cast itself is the ordinary cast_spell
-// taken right after the pick (ADR 0066, ADR 0091, ADR 0099 §4).
+// #4250: the cast is made during the resolution (CR 608.2g), through the
+// resolution_cast prompt over the nonland cards looked at, where they sit
+// in the library: ONE free, any-timing permission
+// (game.FreeCastFromLibraryPermission) over all of them, spent by the
+// first cast, so one spell. Once the prompt is answered, by the cast or
+// the decline, the rest of the looked-at cards still in the library go to
+// the bottom in a random order (lookedAtRestToBottom), which is what "put
+// the rest" means when the answer was "none". Only the looker sees the
+// candidates: the prompt's cards go through the same knower filter as
+// every prompt's.
+//
+// The keyed pick below (#4246) stays registered, so a table saved while
+// waiting on one restores and answers; it is also the offer outside an
+// open resolution, which no catalog card reaches. Its chosen card keeps
+// its place and gets the pass-closed grant there.
 
 // freeLibraryCastOffer is one card's look-and-cast offer: the name that
 // heads the question and labels the grant, and the registered
@@ -84,6 +92,24 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer
 	if len(eligible) == 0 {
 		return finishFreeCastFromLooked(g, controller, source, name, looked, uuid.Nil)
 	}
+	perm := g.FreeCastFromLibraryPermission(controller, source, name)
+	// Nothing moves on the decline: lookedAtRestToBottom bottoms every
+	// looked-at card left, the declined ones with the rest, in one order.
+	perm.LapseOnPass = game.LapseStaysInHand
+	if g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+		Chooser:      controller,
+		Source:       source,
+		Reason:       name,
+		Cards:        eligible,
+		Permission:   &perm,
+		Keyword:      game.MayCastKeywordFreeCast,
+		AcceptLabel:  "Cast it free",
+		DeclineLabel: "Put them on the bottom",
+		Then:         lookedAtRestToBottom,
+		Carry:        looked,
+	}) {
+		return nil
+	}
 	// Keyed (#4246): the looked-at cards ride on the prompt as its Carry,
 	// so a table waiting on the pick is a restore point.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
@@ -124,3 +150,13 @@ func finishFreeCastFromLooked(g *game.Game, controller, source uuid.UUID, name s
 	}
 	return nil
 }
+
+// lookedAtRestToBottom is the rest of a look-and-cast resolution once
+// its resolution_cast prompt is answered (#4250): every looked-at card
+// (the prompt's Carry) still in a library goes to the bottom in a random
+// order. The card cast is on the stack, so it is not among them. An
+// on-disk key, never renamed.
+var lookedAtRestToBottom = game.RegisterChooseCardsThen("resolution-cast/looked-at-rest-to-bottom",
+	func(g *game.Game, r game.CardsChosen) error {
+		return g.PutOnBottomInRandomOrderForEffect(r.Chooser, game.ZoneLibrary, cardsStillInALibrary(g, r.Carry))
+	})

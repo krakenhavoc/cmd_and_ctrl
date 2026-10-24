@@ -36,6 +36,20 @@ func resolutionCastCasts(g *game.Game, chooser, card uuid.UUID, opts Options) []
 	}
 	speed := g.SorcerySpeedOpenLocked(chooser)
 	e.castMovesFromZone(c, zone, string(zone), speed, false, true, true)
+	// #4250: a hand card's ordinary cast is not this prompt's answer;
+	// only the casts that claim the offer are.
+	if claim, held := g.ResolutionCastClaimLocked(chooser, card); held {
+		kept := e.out[:0]
+		for _, m := range e.out {
+			var p struct {
+				AlternativeCost string `json:"alternative_cost"`
+			}
+			if json.Unmarshal(m.Params, &p) == nil && game.AltCostKeyword(p.AlternativeCost) == claim {
+				kept = append(kept, m)
+			}
+		}
+		return kept
+	}
 	return e.out
 }
 

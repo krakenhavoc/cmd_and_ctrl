@@ -169,37 +169,27 @@ func TestSunbirdsInvocationRevealsTopXAndCastsOneFree(t *testing.T) {
 	forest, bear, wurm := ids[0], ids[1], ids[2]
 	castSpellWithCost(t, g, "Three Drop", "Sorcery", "", "{2}{R}", nil)
 	passPriorityUntilChoice(t, g)
-	c := chooseCardsChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("the reveal should offer a free cast")
+	// #4250: the cast is offered inside the trigger's resolution.
+	c := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, bear)
+	if hasID(c.DiscardOptions, forest) || hasID(c.DiscardOptions, wurm) {
+		t.Errorf("offered %v: only the nonland card with mana value 3 or less may be cast", c.DiscardOptions)
 	}
-	if !hasID(c.ChooseCards, bear) || hasID(c.ChooseCards, forest) || hasID(c.ChooseCards, wurm) {
-		t.Errorf("offered %v: only the nonland card with mana value 3 or less may be cast", c.ChooseCards)
+	if err := g.CastSpell(me.ID, wurm, game.CastSpellParams{FromZone: "library"}); err == nil {
+		t.Error("the offer opens the eligible card and no other card in the library")
 	}
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
+	// The Bear is cast from where it sits, with the Three Drop still on
+	// the stack beneath it.
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "library"}); err != nil {
+		t.Fatalf("free cast of the revealed card from the library: %v", err)
 	}
-	if inExile(g, bear) {
-		t.Fatal("the chosen card is cast from the library, not exiled first")
+	if inExile(g, bear) || libraryIndex(me, bear) >= 0 || !g.Stack.Contains(bear) {
+		t.Error("the cast takes the card from the library to the stack, not through exile")
 	}
-	if i := libraryIndex(me, bear); i != len(me.Library.Cards)-1 {
-		t.Fatalf("the chosen card stays on top of the library, found at index %d", i)
-	}
+	castInsideTheResolution(t, g, bear)
 	for _, id := range []uuid.UUID{forest, wurm} {
 		if i := libraryIndex(me, id); i < 0 || i > 1 {
 			t.Errorf("the rest should be on the bottom of the library, found at index %d", i)
 		}
-	}
-	if err := g.CastSpell(me.ID, wurm, game.CastSpellParams{FromZone: "library"}); err == nil {
-		t.Error("the grant opens the chosen card and no other card in the library")
-	}
-	// The window closes on the caster's next pass, so the Bear is cast
-	// now, with the Three Drop still on the stack beneath it.
-	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "library"}); err != nil {
-		t.Fatalf("free cast of the revealed card from the library: %v", err)
-	}
-	if libraryIndex(me, bear) >= 0 {
-		t.Error("the cast takes the card off the library")
 	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(bear) {
@@ -221,13 +211,7 @@ func TestSunbirdsInvocationCastComesFromTheLibrary(t *testing.T) {
 	sorcery := ids[0]
 	castSpellWithCost(t, g, "Two Drop", "Sorcery", "", "{1}{R}", nil)
 	passPriorityUntilChoice(t, g)
-	c := chooseCardsChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("the reveal should offer a free cast")
-	}
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{sorcery}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
-	}
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, sorcery)
 	if err := g.CastSpell(me.ID, sorcery, game.CastSpellParams{FromZone: "library"}); err != nil {
 		t.Fatalf("free cast from the library: %v", err)
 	}
@@ -241,13 +225,13 @@ func TestSunbirdsInvocationCastComesFromTheLibrary(t *testing.T) {
 		t.Errorf("the free spell was cast from %q, want the library", from)
 	}
 	passPriorityAroundTable(t, g)
-	if chooseCardsChoiceFor(g, me.ID) != nil {
+	if chooseCardsChoiceFor(g, me.ID) != nil || resolutionCastOfferFor(g, me.ID) != nil {
 		t.Error("a spell cast from the library does not trigger Sunbird's Invocation again")
 	}
 }
 
-// Passing without casting closes the window and bottoms the chosen card
-// out of the library, as the rest were.
+// Declining (#4250: the resolution_cast's empty answer) bottoms the
+// eligible card with the rest.
 func TestSunbirdsInvocationUncastPickGoesToTheBottom(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -263,24 +247,16 @@ func TestSunbirdsInvocationUncastPickGoesToTheBottom(t *testing.T) {
 	bear := ids[0]
 	castSpellWithCost(t, g, "Two Drop", "Sorcery", "", "{1}{R}", nil)
 	passPriorityUntilChoice(t, g)
-	c := chooseCardsChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("the reveal should offer a free cast")
-	}
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
-	}
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, bear)
 	if i := libraryIndex(me, bear); i != len(me.Library.Cards)-1 {
-		t.Fatalf("the pick waits on top of the library, found at index %d", i)
+		t.Fatalf("the offered card waits on top of the library, found at index %d", i)
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
-	}
-	if i := libraryIndex(me, bear); i != 0 {
-		t.Errorf("an uncast pick goes to the bottom of the library, found at index %d", i)
+	declineResolutionCast(t, g, me.ID)
+	if i := libraryIndex(me, bear); i < 0 || i > 1 {
+		t.Errorf("an uncast card goes to the bottom of the library, found at index %d", i)
 	}
 	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "library"}); err == nil {
-		t.Error("the window closed on the pass")
+		t.Error("the window closed on the decline")
 	}
 }
 
@@ -294,13 +270,8 @@ func TestSunbirdsInvocationDeclineBottomsEverything(t *testing.T) {
 	)
 	castSpellWithCost(t, g, "Two Drop", "Sorcery", "", "{1}{R}", nil)
 	passPriorityUntilChoice(t, g)
-	c := chooseCardsChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("the reveal should offer a free cast")
-	}
-	if err := g.ResolveChooseCards(c.ID, me.ID, nil); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
-	}
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, ids...)
+	declineResolutionCast(t, g, me.ID)
 	for _, id := range ids {
 		if i := libraryIndex(me, id); i < 0 || i > 1 {
 			t.Errorf("a declined card is bottomed with the rest, found at index %d", i)

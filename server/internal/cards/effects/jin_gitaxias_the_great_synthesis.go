@@ -126,24 +126,40 @@ const jinGitaxiasOracleID = "b70c3adb-64ba-49ea-bcf6-6406a58cb453"
 // the controller's hand, then flickers the Saga. The flicker returns a
 // double-faced card front face up (CR 712.14a), so it needs no
 // "transformed" flag.
+//
+// #4250: the casts are made during the chapter's resolution, through the
+// resolution_cast prompt over the hand (CR 608.2g), each its own answer
+// until the player declines or none is left, and the flicker is the
+// prompt's continuation (greatSynthesisFlicker), run once it is answered.
+// So the Saga is exiled and returned AFTER the casts, as printed: the
+// returned Jin-Gitaxias does not see the free spells cast.
 func greatSynthesisChapterThree(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, id := range allHandCardIDs(g, item.Controller) {
-		c, ok := g.LookupCardForEffect(id)
-		if !ok || c.IsLand() {
-			continue
-		}
-		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
-			Player:      item.Controller,
-			AltCostKey:  greatSynthesisKey,
-			Cost:        "{0}",
-			CastOnly:    true,
-			Timing:      game.TimingFlash,
-			LapseOnPass: game.LapseStaysInHand,
-			Source:      item.SourceCardID,
-			SourceName:  "The Great Synthesis",
-			Label:       "The Great Synthesis — cast it without paying its mana cost",
-		})
-	}
-	return Flicker{Target: item.SourceCardID, Controller: item.Controller}.Apply(ctx)
+	offerFreeHandCastsOf(g, item.Controller, item.SourceCardID, "The Great Synthesis",
+		freeCastHandCandidates(g, item.Controller, nil),
+		func(id uuid.UUID) bool { return greatSynthesisGrant(g, item, id) }, greatSynthesisFlicker)
+	return nil
+}
+
+// greatSynthesisFlicker is chapter III's last sentence, "Exile this Saga,
+// then return it to the battlefield (front face up)", once the casts are
+// made. An on-disk key, never renamed.
+var greatSynthesisFlicker = game.RegisterChooseCardsThen("resolution-cast/great-synthesis-flicker",
+	func(g *game.Game, r game.CardsChosen) error {
+		item := &game.StackItem{Controller: r.Chooser, SourceCardID: r.Source}
+		return Flicker{Target: r.Source, Controller: r.Chooser}.Apply(NewContext(g, item))
+	})
+
+// greatSynthesisGrant stamps chapter III's free cast over one hand card.
+func greatSynthesisGrant(g *game.Game, item *game.StackItem, id uuid.UUID) bool {
+	return g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+		Player:      item.Controller,
+		AltCostKey:  greatSynthesisKey,
+		Cost:        "{0}",
+		CastOnly:    true,
+		Timing:      game.TimingFlash,
+		LapseOnPass: game.LapseStaysInHand,
+		Source:      item.SourceCardID,
+		SourceName:  "The Great Synthesis",
+		Label:       "The Great Synthesis — cast it without paying its mana cost",
+	})
 }

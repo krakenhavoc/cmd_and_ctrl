@@ -11352,10 +11352,11 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
 - **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, busterSwordFreeCast,
   "a spell with mana value N or less", ManaValueLE(N))`, with `var busterSwordFreeCast =
-  registerFreeHandCastOffer("choose-cards/buster-sword-cast", "Buster Sword")` in the card's file: one keyed prompt,
-  so a table waiting on it is a restore point (#4246), then the pass-closed any-timing `{0}` cast (#3270). The key
-  is an on-disk identity; append it to `game/testdata/effect_keys.txt`. Never write the pick and a keyless
-  `CastPermission` by hand: the pick would open nothing and the card would stay castable all turn.
+  registerFreeHandCastOffer("choose-cards/buster-sword-cast", "Buster Sword")` in the card's file. Inside the
+  resolution it asks the `resolution_cast` prompt over the hand (#4250), one pass-closed any-timing `{0}` permission
+  over every candidate, spent by the one cast; the keyed pick (#4246) is the offer outside a resolution and what an old
+  save restores into. The key is an on-disk identity; append it to `game/testdata/effect_keys.txt`. Never write a
+  keyless `CastPermission` by hand: the card would stay castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
@@ -11439,20 +11440,29 @@ ctx.SourcePermanent()                                                           
   claimed under `AltCostKeyGrantedCost`, `CastOnly`, `TimingFlash` and `LapseOnPass: game.LapseStaysInHand`, so the
   holder's next pass ends it and the card stays in hand. "You may cast a spell from your hand" with a pick (Buster
   Sword, Kari Zev's and Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan) is
-  `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
-  The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
-  enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
-  its own `AltCostKey` and no pick (#3270). The pick is keyed (#4246): each card registers its
-  own `registerFreeHandCastOffer(key, name)` and passes it in, so a table waiting on the offer is a restore point.
+  `offerFreeHandCast` in `free_hand_cast.go`. Since #4250 it stamps one permission over every candidate and asks the
+  `resolution_cast` prompt over them inside the resolution (`Game.OfferResolutionCastForEffect`, keyword `hand_cast`):
+  the cast is the prompt's answer, held to the permission's claim, and the decline leaves the cards in hand. "Every
+  card in your hand" (The Great Synthesis) writes the same grant over each card with its own `AltCostKey`, asks the
+  same prompt, and runs "exile this Saga, then return it" as the prompt's continuation, after the casts. Each card
+  still registers its own `registerFreeHandCastOffer(key, name)`: the keyed pick is the offer outside a resolution.
   A pick behind a draw (Cecily, Haunted Mage) is a step after the draw (#4228); `offerFreeHandCastFrom(g, controller,
   source, ...)` is the form that takes no Context.
   "Any number of spells from your hand" (Aetherflux Conduit) is `grantFreeHandCastsFrom`: the same grant, one per
-  nonland card in hand and no pick, because a grant naming several cards is spent by the first cast. "Look at the top
-  N cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the
-  bottom in a random order" (Aetherworks Marvel) is `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private
-  look, a `ChooseCastFreeFromLibrary` pick over the nonland cards, the rest bottomed, and
-  `Game.FreeCastFromLibraryPermission` over the pick (an uncast pick goes to the bottom too). ADR 0099 amendment
-  2026-10-15 (#2110).
+  nonland card in hand, because a grant naming several cards is spent by the first cast, and the prompt over all of
+  them, each cast its own answer. "Look at the top N cards of your library. You may cast a spell from among them
+  without paying its mana cost. Put the rest on the bottom in a random order" (Aetherworks Marvel) is
+  `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private look, one `Game.FreeCastFromLibraryPermission` over
+  the nonland cards where they sit, the prompt over them (`free_cast`), and the rest bottomed by the prompt's
+  continuation once it is answered. ADR 0099 amendment 2026-10-15 (#2110), ADR 0066 amendment 2026-10-24 (#4250).
+- **Any other "you may cast it" a resolution offers** (#4250): stamp the permission as before (flash timing,
+  `LapseOnPass`), then call `offerResolutionCastOver(g, controller, source, name, keyword, decline, ids...)`
+  (`free_cast_grants.go`) over the cards, with `game.MayCastKeywordFreeCast` or `game.MayCastKeywordPaidCast` and the
+  decline label that says where an uncast card stays ("Leave it in exile", "Leave it in the graveyard"). One
+  permission over several cards is "cast a spell from among them"; one per card is "any number". Something the card
+  does AFTER the casts ("then each player who owns a spell you cast this way loses life") is a `ChooseCardsThen` key
+  passed as the offer's `Then`, with the cards in `Carry` (Kefka, Dancing Mad). "Until end of turn, you may cast that
+  card" is a real window: no prompt, no lapse (Nicol Bolas, God-Pharaoh).
 - **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
   `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
   (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a
@@ -11560,9 +11570,9 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   (`PermanentInfo.Copiable`); Unstable Shapeshifter reads it.
 - **A cost of tapping several named permanents is a mana ability's `TapOthers`** (Heritage Druid's shape, The Cabbage Merchant's two
   Foods), and a discard is `DiscardACard()` in `Plus(...)` (Trading Post).
-- **"Cast one of the revealed cards" from the library, as printed:** bottom the rest first, so the pick IS the top card (still
-  known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
-  `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
+- **"Cast one of the revealed cards" from the library, as printed:** one `ScopeCards` permission in `ZoneLibrary` over the
+  eligible cards where they sit, the `resolution_cast` prompt over them, and the rest bottomed by the prompt's continuation
+  (`lookedAtRestToBottom`) once it is answered (#4250). Sunbird's Invocation.
 - **Cards that stay caveated**, with the gap named: Vorinclex, Monstrous Raider (counter placements that name no
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,

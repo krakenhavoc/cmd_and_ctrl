@@ -281,23 +281,18 @@ func TestDungeonOfTheMadMageWalk(t *testing.T) {
 	if me.Hand.Size() != hand+3 {
 		t.Fatalf("the Lair drew %d, want 3", me.Hand.Size()-hand)
 	}
-	// The offer is a keyed pick (#4246): the table waiting on it is a
-	// restore point, and the rest of the walk runs on the restored table.
+	// The offer is a resolution_cast inside the room's resolution (#4250):
+	// the table waiting on it is a restore point, and the rest of the walk
+	// runs on the restored table.
 	g = restoreRoundTrip(t, g, true)
 	me = g.Seats[0]
-	c := latestChooseCardsFor(g, me.ID)
-	if c == nil {
-		t.Fatalf("the Lair offered no free cast")
-	}
+	c := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast)
 	offered := map[uuid.UUID]bool{}
-	for _, id := range c.ChooseCards {
+	for _, id := range c.DiscardOptions {
 		offered[id] = true
 	}
 	if !offered[spell] || !offered[creature] || offered[land] || len(offered) != 2 {
-		t.Fatalf("the Lair offered %v, want the spell and the creature", c.ChooseCards)
-	}
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{creature}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
+		t.Fatalf("the Lair offered %v, want the spell and the creature", c.DiscardOptions)
 	}
 	g.ReadSnapshot(func() {
 		p := g.CastPermissionOnCardByIDForEffect(creature)
@@ -305,6 +300,12 @@ func TestDungeonOfTheMadMageWalk(t *testing.T) {
 			t.Errorf("the Lair opened no free cast of the creature: %+v", p)
 		}
 	})
+	if err := castThroughResolutionCast(t, g, me.ID, creature, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the Lair's free cast: %v", err)
+	}
+	if !g.Stack.Contains(creature) || resolutionCastOfferFor(g, me.ID) != nil {
+		t.Fatal("the Lair's one free cast did not reach the stack and close the offer")
+	}
 	frSettle(t, g)
 	if got := initCompleted(g, me.ID); len(got) != 1 || got[0] != DungeonOfTheMadMageKey {
 		t.Fatalf("completed = %v", got)

@@ -504,17 +504,20 @@ func TestGreatIntelligencesPlanSecondOptionLetsTheControllerCastForFree(t *testi
 	villainCastPlan(t, g, opp)
 
 	villainAnswer(t, g, villainPrompt(t, g, opp.ID), 1)
-	pick := chooseCardsChoiceFor(g, me.ID)
-	if pick == nil {
-		t.Fatalf("the controller was not offered the free cast: %+v", g.PendingChoices)
+	// #4250: the free cast is offered inside the spell's resolution, and
+	// declining it (the "may") is always an answer.
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast)
+	if len(offer.DiscardOptions) == 0 {
+		t.Fatal("the controller was offered no card to cast")
 	}
-	if pick.ChooseMin != 0 {
-		t.Errorf("the free cast is a 'may': floor = %d", pick.ChooseMin)
-	}
-	for _, id := range pick.ChooseCards {
+	for _, id := range offer.DiscardOptions {
 		if c, ok := g.LookupCardForEffect(id); ok && c.IsLand() {
 			t.Error("a land was offered as a spell to cast")
 		}
+	}
+	declineResolutionCast(t, g, me.ID)
+	if g.ResolutionPaused() {
+		t.Error("the decline did not let the spell finish resolving")
 	}
 }
 

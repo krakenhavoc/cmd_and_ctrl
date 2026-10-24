@@ -1,6 +1,7 @@
 package game
 
 import (
+	"log/slog"
 	"slices"
 
 	"github.com/google/uuid"
@@ -60,6 +61,29 @@ import (
 // says (the bottom of the library, or the hand), and the pile and any
 // card that goes to the bottom are put there together, in one random
 // order, once the prompt is answered (CR 702.85a, CR 701.57a).
+//
+// #4250, part 2: the same prompt is the cast an effect's resolution
+// offers over cards it names, wherever they are
+// (OfferResolutionCastForEffect, the door the catalog uses): a card in
+// the caster's hand (Buster Sword, the Expertises, Aetherflux Conduit,
+// The Great Synthesis), the top of a library (Aetherworks Marvel,
+// Sunbird's Invocation), a graveyard (Torrential Gearhulk, Memory
+// Plunder) or exile (Etali, Kefka, the Sieges). Two things are new for
+// them:
+//
+//   - A HAND card also has its ordinary cast (CR 601.2), and a hand
+//     permission prices only the cast that claims its offer
+//     (CastPermission.ForClaim). So a hand candidate's cast is held to
+//     the permission's claim: castForResolutionChoiceLocked names it
+//     whatever the cast sent, and the enumerator offers only the casts
+//     that make it (ResolutionCastClaimLocked).
+//   - What the resolution does AFTER the casts ("then exile this Saga",
+//     "then each player who owns a spell you cast this way loses life",
+//     "put the rest on the bottom") is the prompt's own continuation, a
+//     registered ChooseCardsThen key in PendingChoice.PickThen with the
+//     caller's cards in OptionCarry. It runs once the prompt is answered,
+//     with the cards of the carry that were cast (now on the stack) as
+//     its picks. Both are plain data, so the prompt stays a restore point.
 
 // PendingChoiceResolutionCast is the open "you may cast the copy"
 // inside a resolution (CR 707.12, CR 608.2g). Chooser casts, Source is
@@ -96,6 +120,11 @@ type resolutionCastOffer struct {
 	// Pile is cascade's or discover's passed-over cards, bottomed when
 	// the prompt is answered.
 	Pile []uuid.UUID
+	// Then is the rest of the resolution after the casts, run once the
+	// prompt is answered (#4250), and Carry the cards it is told about.
+	// Zero for none.
+	Then  ChooseCardsThen
+	Carry []uuid.UUID
 }
 
 // queueResolutionCastOfferLocked raises the prompt for o, or answers
@@ -117,20 +146,195 @@ func (g *Game) queueResolutionCastOfferLocked(o resolutionCastOffer) uuid.UUID {
 		MayCastKeyword: o.Keyword,
 		AcceptLabel:    o.AcceptLabel,
 		DeclineLabel:   o.DeclineLabel,
+		PickThen:       o.Then.Key(),
+		OptionCarry:    slices.Clone(o.Carry),
 	})
+}
+
+// ResolutionCastOffer is OfferResolutionCastForEffect's question: who may
+// cast which cards during the resolution that is offering them, under
+// what name, and what the resolution does once the casts are made.
+type ResolutionCastOffer struct {
+	// Chooser casts; Source is the card whose effect offers the casts.
+	Chooser, Source uuid.UUID
+	// Reason names the effect: the prompt's header and every move's
+	// label prefix.
+	Reason string
+	// Cards are the cards on offer. Each one must be named by a stored
+	// ScopeCards permission of Chooser's, or by Permission.
+	Cards []uuid.UUID
+	// Permission, when set, is stamped over Cards as ONE permission, and
+	// only once the prompt is sure to be asked. A pass-closed one is
+	// spent whole by the first cast it is the reason for
+	// (consumePassClosedGrantLocked), which is "cast a spell from among
+	// them": one cast. Its Zone is filled in from where the first card
+	// is, and a card in any other zone is left out. A hand permission
+	// with a Cost and no AltCostKey is given AltCostKeyGrantedCost, as
+	// GrantCastPermissionOverCardForEffect does.
+	Permission *CastPermission
+	// Keyword, AcceptLabel and DeclineLabel word the prompt
+	// (MayCastKeywordHandCast, MayCastKeywordFreeCast, ...).
+	Keyword, AcceptLabel, DeclineLabel string
+	// Then and Carry are the rest of the resolution after the casts:
+	// Then runs once the prompt is answered, with the cards of Carry
+	// that were cast as its Picked and Carry as its Carry.
+	Then  ChooseCardsThen
+	Carry []uuid.UUID
+}
+
+// Keywords a ResolutionCastOffer can name (#4250). The client words each
+// (mayCast.ts keywordCastWords). On-disk values, never renamed.
+const (
+	// MayCastKeywordHandCast is "you may cast a spell from your hand
+	// without paying its mana cost": the cards are in the caster's hand
+	// and stay there if they are not cast.
+	MayCastKeywordHandCast = "hand_cast"
+	// MayCastKeywordFreeCast is "you may cast it without paying its mana
+	// cost" over cards in exile, a graveyard or a library. The decline
+	// label says where an uncast card ends up.
+	MayCastKeywordFreeCast = "free_cast"
+	// MayCastKeywordPaidCast is the same offer at a price: the card's own
+	// mana cost, or the alternative the effect names (energy, a
+	// discard).
+	MayCastKeywordPaidCast = "paid_cast"
+)
+
+// OfferResolutionCastForEffect asks o.Chooser to cast o.Cards during the
+// resolution that is offering them (CR 608.2g), through the
+// resolution_cast prompt. It answers false, and changes nothing, when no
+// resolution is open or the chooser has left the game: the caller then
+// keeps its own fallback (a pass-closed permission, or a keyed pick).
+//
+// Otherwise it answers true. o.Permission is stamped, the prompt is
+// raised over the cards a permission really opens, and when none does
+// (every card has moved, or none was a spell) o.Then runs at once with
+// nothing cast.
+//
+// Caller must hold g.mu (write).
+func (g *Game) OfferResolutionCastForEffect(o ResolutionCastOffer) bool {
+	if !g.resolutionOpen || !g.playerInGameLocked(o.Chooser) {
+		return false
+	}
+	if o.Permission != nil {
+		g.stampResolutionCastPermissionLocked(o.Chooser, *o.Permission, o.Cards)
+	}
+	// A land is played, never cast (CR 116.2a, CR 305.9), so it is never
+	// on a cast offer, whatever the permission names.
+	var candidates []uuid.UUID
+	for _, id := range o.Cards {
+		if slices.Contains(candidates, id) {
+			continue
+		}
+		if c, _, ok := g.ResolutionCastCandidateLocked(o.Chooser, id); ok && !c.IsLand() {
+			candidates = append(candidates, id)
+		}
+	}
+	queued := g.queueResolutionCastOfferLocked(resolutionCastOffer{
+		Chooser:      o.Chooser,
+		Source:       o.Source,
+		Reason:       o.Reason,
+		Candidates:   candidates,
+		Keyword:      o.Keyword,
+		AcceptLabel:  o.AcceptLabel,
+		DeclineLabel: o.DeclineLabel,
+		Then:         o.Then,
+		Carry:        o.Carry,
+	})
+	if queued == uuid.Nil {
+		g.runResolutionCastThenLocked(o.Then.Key(), o.Chooser, o.Source, o.Carry)
+	}
+	return true
+}
+
+// stampResolutionCastPermissionLocked stores perm over the cards of ids
+// that sit in its zone (the first card's, when it names none), as one
+// ScopeCards permission. Caller must hold g.mu (write).
+func (g *Game) stampResolutionCastPermissionLocked(chooser uuid.UUID, perm CastPermission, ids []uuid.UUID) {
+	var cards []Card
+	for _, id := range ids {
+		z := g.findCardZoneLocked(id)
+		if z == nil {
+			continue
+		}
+		if perm.Zone == "" {
+			perm.Zone = z.Kind
+		}
+		if z.Kind != perm.Zone {
+			continue
+		}
+		if c, ok := g.cardInZoneLocked(z, id); ok {
+			cards = append(cards, c)
+		}
+	}
+	if perm.Player == uuid.Nil {
+		perm.Player = chooser
+	}
+	if perm.Zone == ZoneHand && perm.AltCostKey == "" && perm.Cost != "" {
+		perm.AltCostKey = AltCostKeyGrantedCost
+	}
+	g.GrantCastPermissionToCardsForEffect(perm, cards)
+}
+
+// ResolutionOpenForEffect reports whether a resolution is open, so a
+// resolution_cast offer will be asked (OfferResolutionCastForEffect).
+// A card whose fallback differs (Kefka's per-cast life loss) asks it
+// before it stamps its permissions. Caller must hold g.mu.
+func (g *Game) ResolutionOpenForEffect() bool { return g.resolutionOpen }
+
+// RunResolutionCastThenForEffect runs then as a resolution_cast prompt's
+// continuation would, for an offer OfferResolutionCastForEffect did not
+// take (no resolution open): the caller's fallback for "and then".
+//
+// Caller must hold g.mu (write).
+func (g *Game) RunResolutionCastThenForEffect(then ChooseCardsThen, chooser, source uuid.UUID, carry []uuid.UUID) {
+	g.runResolutionCastThenLocked(then.Key(), chooser, source, carry)
+}
+
+// runResolutionCastThenLocked runs a resolution_cast prompt's
+// continuation, if it has one: the cards of carry now on the stack are
+// the ones cast through the prompt (nobody received priority since, so
+// nothing else put them there or took them off). An unknown key is
+// logged, not fatal: the casts are made. Caller must hold g.mu (write).
+func (g *Game) runResolutionCastThenLocked(key string, chooser, source uuid.UUID, carry []uuid.UUID) {
+	if key == "" {
+		return
+	}
+	fn, ok := lookupChooseCardsThen(key)
+	if !ok {
+		slog.Warn("resolution_cast: unknown continuation", "key", key)
+		return
+	}
+	var cast []uuid.UUID
+	for _, id := range carry {
+		if g.Stack != nil && g.Stack.Contains(id) {
+			cast = append(cast, id)
+		}
+	}
+	if err := fn(g, CardsChosen{
+		Chooser:  chooser,
+		Source:   source,
+		Picked:   cast,
+		Answered: true,
+		Carry:    slices.Clone(carry),
+	}); err != nil {
+		slog.Warn("resolution_cast: continuation failed", "key", key, "err", err)
+	}
 }
 
 // ResolutionCastCandidateLocked reports whether id is a card chooser
 // may still cast through a resolution_cast prompt: a copy of a card, or
 // the card a keyword or an effect put on offer (#4243, #4250), still in
-// exile, a graveyard or a library, that one of chooser's stored
-// permissions names. It answers the zone it sits in. A library card is
-// Ziatora's Envoy's top card, cast from where it sits (#4250); its
-// permission opens the library, so nothing else in a library is ever a
-// candidate. Caller must hold g.mu.
+// exile, a graveyard, a library or chooser's hand, that one of chooser's
+// stored permissions names. It answers the zone it sits in. A library
+// card is a top card an effect let its owner look at (Ziatora's Envoy,
+// Aetherworks Marvel), cast from where it sits (#4250); its permission
+// opens the library, so nothing else in a library is ever a candidate.
+// A hand card is one an effect lets its owner cast for free (#4250, part
+// 2); its cast is held to the permission's claim
+// (ResolutionCastClaimLocked). Caller must hold g.mu.
 func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneKind, bool) {
 	z := g.findCardZoneLocked(id)
-	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary) {
+	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary && z.Kind != ZoneHand) {
 		return Card{}, "", false
 	}
 	c, ok := g.cardInZoneLocked(z, id)
@@ -147,6 +351,29 @@ func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneK
 		}
 	}
 	return Card{}, "", false
+}
+
+// ResolutionCastClaimLocked is the alternative-cost claim a cast of the
+// candidate id through a resolution_cast prompt must make, and whether it
+// must make one: a HAND card's (#4250). A hand card also has its ordinary
+// cast, at its printed cost and timing, and the permission prices only
+// the cast that claims its offer (CastPermission.ForClaim), so the
+// prompt's cast is the claimed one and no other. Every other zone answers
+// "", false: the permission is the reason the cast is legal at all,
+// whatever it claims. Caller must hold g.mu.
+func (g *Game) ResolutionCastClaimLocked(chooser, id uuid.UUID) (string, bool) {
+	c, zone, ok := g.ResolutionCastCandidateLocked(chooser, id)
+	if !ok || zone != ZoneHand {
+		return "", false
+	}
+	p := g.playerByIDLocked(chooser)
+	for i := range p.CastPermissions {
+		perm := &p.CastPermissions[i]
+		if perm.Scope == ScopeCards && perm.Zone == ZoneHand && perm.NamesCard(c) && perm.AltCostKey != "" {
+			return perm.AltCostKey, true
+		}
+	}
+	return "", false
 }
 
 // resolutionCastChoiceForCardLocked is the index of the open
@@ -205,6 +432,10 @@ func (g *Game) castForResolutionChoiceLocked(choiceID, caster, cardID uuid.UUID,
 	params.PaperPayment = nil
 	params.Strict = true
 	params.AutoTap = true
+	// #4250: a hand card is cast through the offer and no other way.
+	if claim, ok := g.ResolutionCastClaimLocked(caster, cardID); ok && AltCostKeyword(params.AlternativeCost) != claim {
+		params.AlternativeCost = claim
+	}
 	if err := g.castSpellLocked(caster, cardID, params); err != nil {
 		return err
 	}
@@ -277,6 +508,8 @@ func (g *Game) finishResolutionCastLocked(c *PendingChoice, declined []uuid.UUID
 	if len(bottom) > 0 {
 		_ = g.PutOnBottomInRandomOrderForEffect(c.Chooser, ZoneExile, bottom)
 	}
+	// #4250: the rest of the resolution after the casts.
+	g.runResolutionCastThenLocked(c.PickThen, c.Chooser, c.Source, c.OptionCarry)
 }
 
 // withdrawCardCopyOffersLocked drops every ScopeCards permission holder

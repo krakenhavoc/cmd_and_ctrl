@@ -112,6 +112,11 @@ func TestGreatSynthesisFlickerInChapterThreeEndsIt(t *testing.T) {
 	})
 	advanceToPrecombatMainOf(t, g, seat)
 	passPriorityAroundTable(t, g)
+	// #4250: the free casts come first, inside the chapter's resolution;
+	// declining them lets the flicker run.
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		declineResolutionCast(t, g, me.ID)
+	}
 
 	if c := praetorOnBattlefield(g, jinGitaxiasOracleID); c == nil || c.Name != "Jin-Gitaxias" {
 		t.Fatalf("the Saga did not come back front face up: %+v", c)

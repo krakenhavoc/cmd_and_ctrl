@@ -10,6 +10,14 @@
 // `decline_label`, and keywordCastWords turns the keyword into the sheet's
 // rule tag, the verb of its heading and the hint.
 //
+// #4250, part 2: an effect's own "you may cast it" is the same prompt, under
+// one of three keywords: `hand_cast` (a spell from your hand, free: Buster
+// Sword, the Expertises, Aetherflux Conduit), `free_cast` (a card in exile,
+// a graveyard or a library, free: Etali, Torrential Gearhulk, Aetherworks
+// Marvel) and `paid_cast` (the same at a price: Conduit of Worlds, Amped
+// Raptor's energy, The Infamous Cruelclaw's discard). The decline label
+// says where an uncast card stays.
+//
 // What is left of "may_cast" is the land play of "look at the top card,
 // you may play it" (`play_or_hand`, #3801) and the offers that are only
 // their card's text (hideaway, Malcolm); mayCastCopy words those.
@@ -56,10 +64,29 @@ export function mayCastCopy(
 // KeywordCastWords is how a keyword's resolution_cast speaks: `src` is the
 // rule tag on the sheet, `how` finishes "you may cast <card> ..." in the
 // heading, and `ifNot` is what happens to the card if it is not cast.
+// `many`, when set, stands for the card in the heading when the offer names
+// more than one ("a spell from your hand").
 export interface KeywordCastWords {
   src: string;
   how: string;
   ifNot: string;
+  many?: string;
+}
+
+// whereItStays is what a declined effect cast leaves behind, read off the
+// server's decline label (#4250).
+function whereItStays(declineLabel: string | undefined): string {
+  switch (declineLabel) {
+    case "Put them on the bottom":
+      return "it goes to the bottom of your library with the rest";
+    case "Leave it in the graveyard":
+      return "it stays in the graveyard";
+    case "Keep it in your hand":
+    case "Cast no more":
+      return "it stays in your hand";
+    default:
+      return "it stays in exile";
+  }
 }
 
 const FREE = "without paying its mana cost";
@@ -117,6 +144,27 @@ export function keywordCastWords(
         src: "CR 702.35",
         how: "for its madness cost",
         ifNot: "it goes into your graveyard",
+      };
+    case "hand_cast":
+      return {
+        src: "CR 608.2g",
+        how: FREE,
+        ifNot: "it stays in your hand",
+        many: "a spell from your hand",
+      };
+    case "free_cast":
+      return {
+        src: "CR 608.2g",
+        how: FREE,
+        ifNot: whereItStays(declineLabel),
+        many: "a spell from among them",
+      };
+    case "paid_cast":
+      return {
+        src: "CR 608.2g",
+        how: "paying its cost",
+        ifNot: whereItStays(declineLabel),
+        many: "a spell from among them",
       };
     default:
       return null;

@@ -89,5 +89,13 @@ func goliathDaydreamerAttack(g *game.Game, item *game.StackItem) error {
 		SourceName:  "Goliath Daydreamer",
 		Label:       "Goliath Daydreamer — cast a spell with a dream counter without paying its mana cost",
 	}, cards)
+	// #4250: cast during the resolution (CR 608.2g); the one permission is
+	// spent by the one cast.
+	ids := make([]uuid.UUID, 0, len(cards))
+	for _, c := range cards {
+		ids = append(ids, c.InstanceID)
+	}
+	offerResolutionCastOver(g, controller, item.SourceCardID, "Goliath Daydreamer",
+		game.MayCastKeywordFreeCast, declineLeaveInExile, ids...)
 	return nil
 }

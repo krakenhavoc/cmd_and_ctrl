@@ -68,6 +68,8 @@ func TestEmetSelchCastsTheTargetAtItsCostLessTwoAndExilesIt(t *testing.T) {
 	if err := emetCast(g, me, div); err != nil {
 		t.Fatalf("cast Divination for {U}: %v", err)
 	}
+	// #4250: cast during the trigger's resolution.
+	castInsideTheResolution(t, g, div)
 	passPriorityAroundTable(t, g)
 	if me.Graveyard.Contains(div) || !inExile(g, div) {
 		t.Error("Divination goes to exile instead of the graveyard")
@@ -114,15 +116,17 @@ func TestEmetSelchOffersOnlyOnceEachTurn(t *testing.T) {
 	}
 }
 
-// A declined offer spends nothing: the offer lapses when the holder
-// passes, and the next loss offers again.
+// A declined offer spends nothing: the decline (#4250, the resolution_cast's
+// empty answer) closes it, and the next loss offers again.
 func TestEmetSelchDeclinedOfferLeavesTheTurnsUse(t *testing.T) {
 	g, me, opp, emet := emetSetup(t)
 	div := gyCard(me, "Divination", "Sorcery", "{2}{U}", divinationOracle)
 
 	emetOffer(t, g, me, opp, emet, div)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("pass: %v", err)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordPaidCast, div)
+	declineResolutionCast(t, g, me.ID)
+	if !me.Graveyard.Contains(div) {
+		t.Fatal("the declined card left the graveyard")
 	}
 	floatForTest(g, me, "U")
 	if err := emetCast(g, me, div); err == nil {

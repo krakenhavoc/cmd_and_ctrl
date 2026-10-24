@@ -89,16 +89,23 @@ func TestHazoretsUndyingFuryExilesExactlyFourAfterAShuffle(t *testing.T) {
 	}
 }
 
-// The window is the resolving spell's: a pass closes it and the cards not
-// cast stay in exile.
+// The window is the resolving spell's (#4250: its resolution_cast prompt):
+// each cast is made during the resolution, the decline closes it, and the
+// cards not cast stay in exile.
 func TestHazoretsUndyingFuryWindowClosesOnPass(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	five, _, two, _ := furyLibrary(me)
 	furyCast(t, g)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, five, two)
 	if err := furyCastFromExile(g, me, five); err != nil {
 		t.Fatal(err)
 	}
+	if resolutionCastOfferFor(g, me.ID) == nil {
+		t.Fatal("one cast closed the \"any number\" offer")
+	}
+	declineResolutionCast(t, g, me.ID)
+	castInsideTheResolution(t, g, five)
 	passPriorityAroundTable(t, g)
 	if !inExile(g, two) {
 		t.Error("the card not cast stays in exile")
@@ -182,6 +189,7 @@ func TestHazoretsUndyingFuryHoldsTheCastersLands(t *testing.T) {
 	theirLand := upsTapped(g, opp.ID, "Island", "Basic Land — Island")
 	furyLibrary(me)
 	furyCast(t, g)
+	declineResolutionCast(t, g, me.ID)
 	upsAfterTheirUntap(t, g, opp.ID)
 	if upsIsTapped(t, g, theirLand) {
 		t.Error("the opponent's land stayed tapped")
