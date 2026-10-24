@@ -258,6 +258,17 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownChooseCardsThen(c.PickThen) {
 				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
 			}
+		case c.Kind == PendingChoiceOutsideCollection:
+			// #4256: a keyed collection pick's filter and continuation,
+			// registered under one key.
+			if !KnownOutsidePick(c.PickThen) {
+				unknown = append(unknown, "outside pick "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayUnless:
+			// #4256: a keyed pay-unless prompt's decline.
+			if !KnownPayUnlessElse(c.PickThen) {
+				unknown = append(unknown, "pay-unless decline "+c.PickThen)
+			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}

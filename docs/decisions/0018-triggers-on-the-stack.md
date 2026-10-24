@@ -5026,3 +5026,15 @@ graveyard (#3013 sub-PR 1)". Since ADR 0013's amendment of 2026-10-23 it does no
 declaration to what the step emits. A watcher of milling alone (Zellix, Glowing One) no longer conflicts with a
 surveil; a "put into your graveyard from your library" watcher (Colossal Grave-Reaver) still does, through the
 zone move it now watches as well.
+
+## Amendment 2026-10-23 — a pay-unless decline can be a key, so a table waiting on the payer is a restore point (#4256)
+
+§6's pay-unless parks its decline on the prompt's `payUnlessFrame` as a closure, with the parsed cost beside it, and a prompt with a frame is not written to a restore point. A table waiting on Rhystic Study's, Smothering Tithe's or Esper Sentinel's payer (CR 118.12a) could be undone but not saved and restored.
+
+**Decision.** `game.RegisterPayUnlessElse(key, fn)` (`game/pay_unless_keyed.go`) registers a decline under an on-disk key, in a new registry that shares the effect-key namespace and is ledgered as `payunless <key>`. `QueuePayUnlessKeyedForEffect(chooser, source, cost, question, decline, carry)` queues the plain mana shape with no frame: the payer (`Chooser`), the card that asked (`Source`), the cost as printed (`PayCost`), the decline's key (`PickThen`) and the carried IDs (`OptionCarry`), all fields the snapshot already writes. `payUnlessFrameOf` builds the frame from that data (the cost re-parsed, the decline looked up by its key when it runs), and every reader of a pay-unless frame goes through it: the resolver, the automatic answer (ADR 0127) and the departure table's decline (CR 800.4f), so a keyed prompt is answered, auto-answered and dropped as a framed one is. On the card side `PayUnless{Else, Carry}` takes the key; `effects.PayUnlessElse` builds the decline's Context from a stand-in for the asking item (its controller, put first on the carry, and its source card), because the item has long resolved when the payer answers.
+
+**Callers.** Rhystic Study, Mystic Remora, Smothering Tithe, Esper Sentinel, Kazuul, Elesh Norn // The Argent Etchings' chapter, Wandering Archaic (the spell on the carry) and Arcum's Whistle (the creature on the carry): every `PayUnless` in the catalog. A decline that asks a "you may" (Rhystic Study, Wandering Archaic) queues it as before; that second prompt is still a closure.
+
+**Not keyed.** The shapes with more on the frame: `UpkeepPayUnless` (the step anchor), `GuardedPayUnless` and counter-unless-pays (a guarded stack item), the any-player offers, may-pay and may-pay-else (an `onPay`), and the non-mana payments.
+
+**Compatibility.** An older binary refuses a file with a keyed pay-unless open (`checkEffectKeys`, `pay-unless decline <key>`). No snapshot field and no closure route is added. **Tests** (`effects/keyed_prompts_restore_test.go`): Smothering Tithe across a strict restore, declined (the Treasure) and paid (none); Rhystic Study across one, declined and drawn; the decline still runs when the payer leaves with the keyed prompt open; an unknown key refused. **Back-out:** giving the keyed prompt its frame back fails `TestSmotheringTithePayUnlessIsARestorePoint` and `TestRhysticStudyPayUnlessIsARestorePoint`.

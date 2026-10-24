@@ -697,10 +697,21 @@ type PendingChoice struct {
 	// does not know, so a binary from before #2854, handed a file with
 	// a keyed option pick open, refuses it and keeps it (the rollback
 	// case) instead of restoring a question whose answer runs nothing.
+	//
+	// PickThen is also a keyed choose_cards pick's continuation (#2040),
+	// a keyed outside-the-game collection pick's (#4256,
+	// RegisterOutsidePick: the key names its filter too) and a keyed
+	// pay-unless prompt's decline (#4256, RegisterPayUnlessElse).
 	PickDestination   PickDestination
 	PickOptional      bool
 	PickFromGraveyard bool
 	PickThen          string
+	// PickMatchArg is the one word a keyed outside-the-game collection
+	// pick's filter is handed with each typed card (#4256,
+	// OutsidePickPrompt.MatchArg): Spawnsire of Ulamog's subtype, which
+	// a text-changing effect may have changed. Plain data. Empty on
+	// every other prompt.
+	PickMatchArg string
 	// PickMeasures is RevealedHandDiscard.Measure's reading of each
 	// candidate, in DiscardOptions order, taken as the pick was raised.
 	// Nil when the card measures nothing.
@@ -4583,7 +4594,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	frame := choice.payUnlessResume
+	frame := payUnlessFrameOf(choice)
 	if len(tapIDs) > 0 {
 		if !apply || frame == nil {
 			return ErrInvalidParam
@@ -4675,7 +4686,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 // The branch runs as the answered prompt's branch, so a prompt it
 // queues is keyed from this one's (§2). Caller must hold g.mu.
 func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, apply bool, tapIDs, cardIDs []uuid.UUID, phyrexianLife int, payable, auto bool, branch *PayAction) {
-	frame := choice.payUnlessResume
+	frame := payUnlessFrameOf(choice)
 	var action *PayAction
 	if frame != nil {
 		action = frame.action
@@ -4783,11 +4794,13 @@ func (g *Game) runPayUnlessBranchLocked(choice *PendingChoice, chooserID uuid.UU
 //
 // Caller must hold g.mu.
 func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
-	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.onDecline == nil {
+	// #4256: a keyed prompt's frame is built from its data.
+	frame := payUnlessFrameOf(c)
+	if frame == nil || frame.onDecline == nil {
 		return
 	}
 	g.runPromptBranchLocked(c.AutoAnswerKey, func() {
-		g.runPayUnlessBranchLocked(c, c.Chooser, c.payUnlessResume.onDecline)
+		g.runPayUnlessBranchLocked(c, c.Chooser, frame.onDecline)
 	})
 }
 

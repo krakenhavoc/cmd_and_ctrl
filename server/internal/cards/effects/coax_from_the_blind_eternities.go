@@ -23,10 +23,17 @@ func init() {
 			// "Eldrazi" is a word of the spell's text (CR 612.2, #3984).
 			eldrazi := ctx.TextSubtype("Eldrazi")
 			return TakeFromExileOrOutside{
-				Match:           func(c game.Card) bool { return c.HasSubtype(eldrazi) },
+				Pick:            coaxFromTheBlindEternitiesTake,
+				Word:            eldrazi,
 				ExileQuestion:   "Coax from the Blind Eternities — choose a face-up Eldrazi card you own in exile, or none to reveal one from outside the game",
 				OutsideQuestion: "Coax from the Blind Eternities — reveal an Eldrazi card you own from outside the game, or none",
 			}.Apply(ctx)
 		},
 	})
 }
+
+// coaxFromTheBlindEternitiesTake is the spell's pick from outside the
+// game, keyed (#4256). The subtype is the spell's word, which a
+// text-changing effect may have changed, so it rides on the prompt.
+var coaxFromTheBlindEternitiesTake = registerOutsideTakeOfWord("choose-cards/coax-from-the-blind-eternities-take",
+	func(c game.Card, eldrazi string) bool { return c.HasSubtype(eldrazi) }, true)

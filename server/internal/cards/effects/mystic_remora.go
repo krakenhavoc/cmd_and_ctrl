@@ -52,18 +52,22 @@ func init() {
 						Chooser:  item.Trigger.Event.Actor,
 						Cost:     "{4}",
 						Question: "Mystic Remora — pay {4}?",
-						OnDecline: func(ctx *Context) error {
-							return MayChoice{
-								Question: "Mystic Remora — draw a card?",
-								Draws:    1,
-								OnYes: func(ctx *Context) error {
-									return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-								},
-							}.Apply(ctx)
-						},
+						Else:     mysticRemoraDecline,
 					}.Apply(NewContext(g, item))
 				},
 			},
 		},
 	})
 }
+
+// mysticRemoraDecline is "you may draw a card" once the tax is not paid,
+// keyed (#4256): a table waiting on the payer is a restore point.
+var mysticRemoraDecline = PayUnlessElse("pay-unless/mystic-remora-may-draw", func(ctx *Context, _ game.PayUnlessAnswer) error {
+	return MayChoice{
+		Question: "Mystic Remora — draw a card?",
+		Draws:    1,
+		OnYes: func(ctx *Context) error {
+			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+		},
+	}.Apply(ctx)
+})

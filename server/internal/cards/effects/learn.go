@@ -71,28 +71,35 @@ func init() { game.LearnBody = learnBody }
 
 // learnBody is learn itself, once its CR 614 window has left it alone:
 // CR 701.48a's discard, draw and Lesson.
+//
+// Both halves are keyed (#4256): the discard is a keyed discard-then
+// (learnAfterDiscard) and the Lesson pick a keyed outside pick
+// (learnLessonTake), so a table waiting on either is a restore point.
 func learnBody(g *game.Game, player, source uuid.UUID) error {
-	return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   player,
 		Source:   source,
 		N:        1,
 		UpTo:     true,
 		Question: learnDiscardQuestion,
-	}, func(g *game.Game, done game.PromptedDiscards) error {
-		if done.Discarded(player) {
-			// "If you do, draw a card."
-			return g.DrawNForEffect(player, 1)
-		}
-		// "If you didn't discard a card, you may reveal a Lesson card
-		// you own from outside the game and put it into your hand."
-		takeFromOutside(g, player, source, TakeFromOutside{
-			Match:    isLessonCard,
-			Question: learnLessonQuestion,
-			Reveal:   true,
-		})
-		return nil
-	})
+	}, learnAfterDiscard, nil)
 }
+
+// learnAfterDiscard is the rest of learn once the discard has settled:
+// "if you do, draw a card", else the Lesson pick.
+var learnAfterDiscard = game.RegisterDiscardThen("choose-cards/learn-discard", func(g *game.Game, r game.DiscardsDone) error {
+	if r.Discarded.Discarded(r.Player) {
+		// "If you do, draw a card."
+		return g.DrawNForEffect(r.Player, 1)
+	}
+	// "If you didn't discard a card, you may reveal a Lesson card you
+	// own from outside the game and put it into your hand."
+	takeFromOutside(g, r.Player, r.Source, TakeFromOutside{
+		Pick:     learnLessonTake,
+		Question: learnLessonQuestion,
+	})
+	return nil
+})
 
 // OnTheTargetCard is one step of a spell that does something to its
 // first legal target card and then learns: "Target creature gets +3/+1
@@ -113,3 +120,7 @@ func OnTheTargetCard(f func(ctx *Context, id uuid.UUID) error) Instruction {
 		return f(ctx, id)
 	}
 }
+
+// learnLessonTake is learn's Lesson pick, keyed (#4256): a table waiting
+// on it is a restore point.
+var learnLessonTake = registerOutsideTake("choose-cards/learn-lesson", isLessonCard, true)

@@ -44,6 +44,9 @@ type CardsChosen struct {
 	Min, Max   int
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// Question is the prompt's header as it was asked: a reveal names
+	// it as its reason (#4256's outside-the-game picks).
+	Question string
 }
 
 // ChooseCardsFunc is a registered continuation. It runs with g.mu held,
@@ -120,5 +123,6 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 		Min:        c.ChooseMin,
 		Max:        c.ChooseMax,
 		Carry:      copyUUIDs(c.OptionCarry),
+		Question:   c.Reason,
 	})
 }

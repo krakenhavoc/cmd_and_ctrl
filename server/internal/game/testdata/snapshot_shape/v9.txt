@@ -3599,6 +3599,7 @@ pendingChoices[].pickExiledWith	object
 pendingChoices[].pickExiledWith.epoch	number:int
 pendingChoices[].pickExiledWith.id	custom(uuid.UUID)
 pendingChoices[].pickFromGraveyard	bool
+pendingChoices[].pickMatchArg	string
 pendingChoices[].pickMeasures	array
 pendingChoices[].pickMeasures[]	number:int
 pendingChoices[].pickOptional	bool

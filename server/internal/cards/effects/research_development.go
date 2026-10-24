@@ -49,6 +49,7 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ShuffleFromOutside{
+				Pick:     researchShuffle,
 				Max:      4,
 				Question: "Research — shuffle up to four cards you own from outside the game into your library",
 			}.Apply(ctx)
@@ -143,3 +144,7 @@ func developmentNextRound(ctx *Context, round int) error {
 	}
 	return developmentAsk(ctx, round+1, opponentsInTurnOrder(ctx.Game, ctx.Controller()))
 }
+
+// researchShuffle is Research's keyed pick (#4256), so a table waiting
+// on it is a restore point.
+var researchShuffle = registerOutsideShuffle("choose-cards/research-shuffle", nil)

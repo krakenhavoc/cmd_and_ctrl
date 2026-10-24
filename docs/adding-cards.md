@@ -5831,6 +5831,15 @@ like `PromptedSacrifices`: `.Count()` is "a card for each card
 discarded this way", `.Discarded(seat)` is "if you discard a card this
 way", `.By(seat)` and `.Cards()` are the cards.
 
+For one seat, write it KEYED (#4256) so a table waiting on the discard is
+a restore point: `g.PlayerDiscardsThenKeyedForEffect(prompt, then, carry)`
+with `var then = game.RegisterDiscardThen("choose-cards/<card>-<clause>",
+func(g *game.Game, r game.DiscardsDone) error { … })` in the card's file.
+`r.Player`, `r.Source`, `r.Discarded` and `r.Carry` are all it gets, so a
+continuation that needs the stack item builds a stand-in Context. The
+prompt's `Then` and `Validate` must be nil. Learn, Abandon Attachments and
+Charming Scoundrel are written this way.
+
 What counts as discarded is CR 701.9a's move OUT of the hand, so a
 madness card exiled instead of binned counts, a Library of Leng card
 put on top of the library counts, and a leg the CR 614 window
@@ -7420,6 +7429,14 @@ captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `OnDecline`. See
 [rhystic_study.go](../server/internal/cards/effects/rhystic_study.go),
 whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
+Write the decline KEYED (#4256): `Else: smotheringTitheDecline` with
+`var smotheringTitheDecline = PayUnlessElse("pay-unless/smothering-tithe-treasure",
+func(ctx *Context, r game.PayUnlessAnswer) error { … })` in the card's file, so a
+table waiting on the payer is a restore point. The decline's `Context` is a
+stand-in for the asking item (its controller and its source card), and anything
+else it needs rides on `PayUnless.Carry` as IDs (Wandering Archaic's spell,
+Arcum's Whistle's creature). The key is an on-disk identity, ledgered as
+`payunless <key>`. A closure `OnDecline` still works and is not a restore point.
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card
@@ -10847,14 +10864,26 @@ nothing else:
 ```go
 // "You may reveal a sorcery card you own from outside the game and put it
 // into your hand. Exile ~."  (Burning Wish)
-TakeFromOutside{Match: func(c game.Card) bool { return c.IsSorcery() }, Question: "…", Reveal: true}.Apply(ctx)
+TakeFromOutside{Pick: burningWishTake, Question: "…"}.Apply(ctx)
 exileThisSpell(item, ctx)
+
+// in the card's file: the pick's filter, whether it reveals, and its key
+var burningWishTake = registerOutsideTake("choose-cards/burning-wish-take",
+	func(c game.Card) bool { return c.IsSorcery() }, true)
 ```
 
 `TakeFromOutside` (`effects/outside_game.go`) is the whole of the common
 shape: it asks the owner (a `choose_cards` over their sideboard, `Required`
-for "put a card" with no "may"), reveals the choice when `Reveal` is set,
-and brings it into the hand. With nothing to choose from it asks nothing. A
+for "put a card" with no "may"), reveals the choice when the pick was
+registered to, and brings it into the hand. With nothing to choose from it
+asks nothing. The pick is keyed (#4256): `registerOutsideTake` registers its
+filter and continuation under one key (`game.RegisterOutsidePick`), so a
+table waiting on it is a restore point on the sideboard and on the database.
+The key is an on-disk identity; append it to `game/testdata/effect_keys.txt`
+(`-update-effect-keys`). The filter captures nothing but constants of the
+card's text; a filter that reads a word a text-changing effect may change
+(Coax from the Blind Eternities' "Eldrazi") is `registerOutsideTakeOfWord`,
+with the word passed as `TakeFromOutside.Word`, which rides on the prompt. A
 card that needs more composes the game-level calls itself:
 `QueueOutsidePickForEffect` (with a set-level `Validate`),
 `RevealOutsideForEffect` and `BringFromOutsideForEffect`, as Extrapolate
@@ -10872,8 +10901,11 @@ the cast half of the same seam. The cast itself is a `cast_spell` with
 ```go
 // a free cast of cards PICKED now: a pass-closed {0} permission per card
 // (game.FreeCastFromOutsidePermission); the cards not cast stay outside
-PlayFromOutside{Name: "Spawnsire of Ulamog", Clause: "any number of Eldrazi cards",
-    Match: func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() }}
+PlayFromOutside{Pick: spawnsireOfUlamogCast, Word: ctx.TextSubtype("Eldrazi"),
+    Clause: "any number of Eldrazi cards"}
+// with, in the card's file (keyed, #4256):
+//   var spawnsireOfUlamogCast = registerPlayFromOutside("choose-cards/spawnsire-of-ulamog-cast",
+//       "Spawnsire of Ulamog", func(c game.Card, eldrazi string) bool { return c.HasSubtype(eldrazi) && !c.IsLand() })
 // a right to play a card chosen LATER: standing, one use, until end of turn
 GrantOutsidePlayRight{Name: "Wish"}
 ```
@@ -10890,11 +10922,15 @@ copy's sideboard. Tests: `castFromOutside` in `play_from_outside_test.go`,
 `resolveWish` / `nameWished` in `wish_test.go`.
 
 Cunning, Glittering, Golden and Death Wish and Fae of Wishes // Granted are the
-same `TakeFromOutside` with their own clause (#3525); Coax from the Blind
-Eternities and Karn, the Great Creator shipped with ADR 0198.
+same `TakeFromOutside` with their own clause (#3525), each with its own
+registered pick; Coax from the Blind Eternities and Karn, the Great Creator
+shipped with ADR 0198. Their exile half (`TakeFromExileOrOutside`) still
+resumes through a closure; the pick from outside the game it falls back to is
+keyed.
 
 **Shuffling cards in from outside the game** (Research, #3525) is
-`ShuffleFromOutside{Max: 4, Question: "…"}` in `effects/outside_game.go`: a pick
+`ShuffleFromOutside{Pick: researchShuffle, Max: 4, Question: "…"}` in
+`effects/outside_game.go`, with `registerOutsideShuffle(key, filter)` for the pick: a pick
 of up to `Max` cards, which `game.PutFromOutsideIntoLibraryForEffect` puts in the
 library unrevealed (the second door out of the container, beside
 `BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
@@ -10915,9 +10951,11 @@ nothing), draws for a player who did, and for one who did not asks a
 sideboard or, for a deck with none, the card database. Write the spell's earlier
 clauses as steps (`ResolveSteps`) so learn waits for an answer one of them
 asked. `OnTheTargetCard(func(ctx, id) error)` is the step for "do X to the
-target, then learn". A table with a learn question open is not a restore point
-(the discard prompt carries a continuation, so `Restorable()` is false until it
-is answered); the last restore point before the cast is.
+target, then learn". Both of learn's questions are keyed (#4256): the discard
+is a keyed discard-then (`learnAfterDiscard`) and the Lesson a keyed outside
+pick (`learnLessonTake`), so a table with either open is a restore point. A
+Retriever Phoenix question before them is the CR 616 optional-replacement
+prompt, which is not (#4253).
 
 Learn is an event a replacement can apply to (#3525, ADR 0191's amendment of
 2026-10-23): `Learn{}` opens a CR 614 window (`game.LearnForEffect`, a

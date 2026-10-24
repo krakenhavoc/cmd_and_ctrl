@@ -4934,3 +4934,15 @@ Still as before: a card a replacement sends elsewhere (Rest in Peace) was
 not put into a graveyard and emits no `EventMill`, so it is not "milled"
 for these payoffs either. CR 701.17c lets an effect find a milled card in
 the zone it moved to; no catalog card asks that of an exiled one yet.
+
+## Amendment 2026-10-23 — a one-seat "discard, then" is keyed, so a table waiting on it is a restore point (#4256)
+
+§5y's run keeps the rest of the card as a closure on `Game.promptRuns`, linked from the prompt by a run id, and the prompt's own continuation is a closure too; neither is written to a restore point (the census counts `promptRun`). A table waiting on learn's "you may discard a card" (CR 701.48a) could be undone but not saved and restored.
+
+**Decision.** The one-seat shape is one prompt, so it needs no run. `game.RegisterDiscardThen(key, fn)` (`game/discard_run_keyed.go`) registers the rest of the card as a keyed choose-cards continuation (ledgered `choose <key>`), and `PlayerDiscardsThenKeyedForEffect(prompt, then, carry)` queues the discard as a keyed `choose_cards` pick over the hand with no run link. The continuation discards the picks through the one discard path (`discardCardsLocked`, CR 701.9a), so a pick no longer in the hand is skipped as every discard skips one, and once they have landed runs the card's continuation with `DiscardsDone{Player, Source, Discarded, Carry}`. `Discarded` reads as the run's answer does. When nothing is asked (an empty hand, a discard an opponent's effect cannot cause, a player who has left) the continuation runs at once with nothing discarded, as the closure form's does; a prompt that ends unanswered settles with nothing discarded, as a withdrawn leg does. The prompt's own `Then` and `Validate` are closures and must be nil.
+
+**Callers.** Learn's discard half (`choose-cards/learn-discard`), Abandon Attachments (`choose-cards/abandon-attachments-draw`) and Charming Scoundrel's rummage (`choose-cards/charming-scoundrel-draw`).
+
+**Not keyed.** The multi-seat forms (`PlayersDiscardThenForEffect`, `EachPlayerDiscardsThenForEffect`) still need a run, whose shared counter and landed lists would have to be snapshot data; and the other `PlayerDiscardsThenForEffect` callers, whose continuations capture the stack item or a Go value (Last Rites, Pia, Eriette's Whisper, Mishra's Command and the rest), stay on the closure form until each is rewritten. A discard the CR 903.9 commander prompt pauses part-way is still a closure for as long as that prompt is open.
+
+**Compatibility.** An older binary refuses a file with one of these prompts open (`checkEffectKeys`). No snapshot field and no closure route is added. **Tests** (`effects/keyed_prompts_restore_test.go`): learn's discard across a strict restore, discarded (and drawn) and declined (and the Lesson offered); Abandon Attachments and Charming Scoundrel across one; an unknown key refused. **Back-out:** sending the keyed prompt back to the closure form (`queueDiscardPromptLocked`) fails `TestLearnDiscardIsARestorePoint`, `TestAbandonAttachmentsDiscardIsARestorePoint` and `TestCharmingScoundrelRummageIsARestorePoint`.

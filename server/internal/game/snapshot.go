@@ -1753,6 +1753,9 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #4256: the word a keyed outside-the-game collection pick's filter
+	// is handed (its key rides pickThen). Additive within the version.
+	PickMatchArg string `json:"pickMatchArg,omitempty"`
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (CR 607.2a). A pointer so a prompt that links nothing writes
 	// nothing; additive within the version.
@@ -2942,6 +2945,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickOptional:          c.PickOptional,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
+		PickMatchArg:          c.PickMatchArg,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
@@ -3880,6 +3884,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickOptional:          c.PickOptional,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
+		PickMatchArg:          c.PickMatchArg,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),

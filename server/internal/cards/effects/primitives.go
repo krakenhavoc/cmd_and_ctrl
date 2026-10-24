@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -1240,11 +1241,42 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 // to the same stack item, so it can read Controller / Source the
 // way the outer effect did. Used by Rhystic Study, Smothering
 // Tithe, Esper Sentinel. Added in S19 sub-PR 6.
+//
+// Else is OnDecline as a REGISTERED decline (PayUnlessElse, #4256), and
+// Carry the plain data it is handed: a prompt queued with one holds no
+// closure, so a table waiting on the payer is a restore point. Set Else
+// or OnDecline, not both.
 type PayUnless struct {
 	Chooser   uuid.UUID
 	Cost      string
 	Question  string
 	OnDecline func(ctx *Context) error
+	Else      game.PayUnlessElse
+	Carry     []uuid.UUID
+}
+
+// PayUnlessElse registers a keyed pay-unless decline under `key`, an
+// on-disk identity (never renamed, never reused, ledgered "payunless
+// <key>"). Call it once, from a package-level var. The body runs against
+// a Context bound to a stand-in for the asking item: its controller and
+// its source card, the two things a decline reads, because the item
+// itself has long resolved by the time the payer answers (and a restore
+// does not carry it). r.Carry is the card's own Carry.
+func PayUnlessElse(key string, body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessElse {
+	return game.RegisterPayUnlessElse(key, func(g *game.Game, r game.PayUnlessAnswer) error {
+		controller := r.Chooser
+		if len(r.Carry) > 0 {
+			// PayUnless.Apply puts the asking effect's controller
+			// first; the card's own Carry follows it.
+			controller, r.Carry = r.Carry[0], r.Carry[1:]
+		}
+		return body(NewContext(g, &game.StackItem{
+			Kind:         game.StackItemTriggered,
+			Controller:   controller,
+			Owner:        controller,
+			SourceCardID: r.Source,
+		}), r)
+	})
 }
 
 // USE UpkeepPayUnless FOR "AT THE BEGINNING OF YOUR UPKEEP, PAY OR
@@ -1257,6 +1289,13 @@ type PayUnless struct {
 // and Pact of Negation did exactly that.
 
 func (p PayUnless) Apply(ctx *Context) error {
+	if p.Else.Key() != "" {
+		if p.OnDecline != nil {
+			return fmt.Errorf("%w: PayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
+		}
+		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
+		return ctx.Game.QueuePayUnlessKeyedForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, p.Else, carry)
+	}
 	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
 		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
 }

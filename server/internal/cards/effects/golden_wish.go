@@ -18,9 +18,8 @@ func init() {
 		// The exile waits for the question the take asks (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
 			TakeFromOutside{
-				Match:    func(c game.Card) bool { return c.IsArtifact() || c.IsEnchantment() },
+				Pick:     goldenWishTake,
 				Question: "Golden Wish — reveal an artifact or enchantment card you own from outside the game, or none",
-				Reveal:   true,
 			},
 			Instruction(func(ctx *Context) error {
 				// "Exile Golden Wish." The spell moves itself (#489).
@@ -29,3 +28,8 @@ func init() {
 		),
 	})
 }
+
+// goldenWishTake is the wish's keyed pick (#4256), so a table waiting
+// on it is a restore point.
+var goldenWishTake = registerOutsideTake("choose-cards/golden-wish-take",
+	func(c game.Card) bool { return c.IsArtifact() || c.IsEnchantment() }, true)

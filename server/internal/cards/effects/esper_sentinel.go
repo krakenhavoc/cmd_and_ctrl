@@ -57,11 +57,15 @@ func init() {
 					Chooser:  item.Trigger.Event.Actor,
 					Cost:     cost,
 					Question: "Esper Sentinel — pay " + cost + "?",
-					OnDecline: func(ctx *Context) error {
-						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-					},
+					Else:     esperSentinelDecline,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// esperSentinelDecline is the draw once the tax is not paid, keyed
+// (#4256): a table waiting on the payer is a restore point.
+var esperSentinelDecline = PayUnlessElse("pay-unless/esper-sentinel-draw", func(ctx *Context, _ game.PayUnlessAnswer) error {
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

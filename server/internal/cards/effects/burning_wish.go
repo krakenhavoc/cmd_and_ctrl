@@ -20,9 +20,8 @@ func init() {
 		// The exile waits for the question the take asks (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
 			TakeFromOutside{
-				Match:    func(c game.Card) bool { return c.IsSorcery() },
+				Pick:     burningWishTake,
 				Question: "Burning Wish — reveal a sorcery card you own from outside the game, or none",
-				Reveal:   true,
 			},
 			Instruction(func(ctx *Context) error {
 				// "Exile Burning Wish." The spell moves itself, so the resolution
@@ -32,3 +31,8 @@ func init() {
 		),
 	})
 }
+
+// burningWishTake is the wish's keyed pick (#4256), so a table waiting on
+// it is a restore point.
+var burningWishTake = registerOutsideTake("choose-cards/burning-wish-take",
+	func(c game.Card) bool { return c.IsSorcery() }, true)

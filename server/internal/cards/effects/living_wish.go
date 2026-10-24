@@ -17,9 +17,8 @@ func init() {
 		// The exile waits for the question the take asks (CR 608.2c, #4155).
 		OnResolve: ResolveSteps(
 			TakeFromOutside{
-				Match:    func(c game.Card) bool { return c.IsCreature() || c.IsLand() },
+				Pick:     livingWishTake,
 				Question: "Living Wish — reveal a creature or land card you own from outside the game, or none",
-				Reveal:   true,
 			},
 			Instruction(func(ctx *Context) error {
 				// "Exile Living Wish." The spell moves itself, so the resolution
@@ -29,3 +28,8 @@ func init() {
 		),
 	})
 }
+
+// livingWishTake is the wish's keyed pick (#4256), so a table waiting on
+// it is a restore point.
+var livingWishTake = registerOutsideTake("choose-cards/living-wish-take",
+	func(c game.Card) bool { return c.IsCreature() || c.IsLand() }, true)

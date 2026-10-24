@@ -137,6 +137,18 @@ type OutsidePickPrompt struct {
 	// Then receives the picks, in the order the chooser submitted them,
 	// and runs with g.mu held. It may queue further choices.
 	Then func(g *Game, picked []uuid.UUID) error
+	// Keyed is the pick as a registered filter and continuation
+	// (RegisterOutsidePick, outside_pick_keyed.go, #4256): a prompt
+	// queued with one holds no closure, so a table waiting on it is a
+	// restore point. With it Match, Validate and Then must be nil.
+	Keyed OutsidePick
+	// MatchArg is the one word a keyed filter is handed with each card
+	// (Spawnsire of Ulamog's subtype, which a text-changing effect may
+	// have changed). Plain data, carried by the prompt.
+	MatchArg string
+	// Carry is the plain data a keyed continuation is handed
+	// (CardsChosen.Carry).
+	Carry []uuid.UUID
 	// Destination says what the effect does with the picks, for the
 	// client and the bot (ChooseDestination). Empty is ChooseFromOutside,
 	// "bring it into the game" (every wish). A cast or a play from outside
@@ -181,19 +193,41 @@ func (p OutsidePickPrompt) outsideDestination() ChooseDestination {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
+	match, err := outsidePickMatch(p)
+	if err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Actor: p.Player, Source: p.Source, ErrorMsg: err.Error()})
+		return false
+	}
 	if pl := g.playerByIDLocked(p.Player); pl != nil && !pl.HasSideboard {
 		if !g.outsidePoolOpenLocked(p.Player) {
 			return false
 		}
-		return g.queueCollectionPickLocked(p)
+		return g.queueCollectionPickLocked(p, match)
 	}
-	cands := g.OutsideCandidatesForEffect(p.Player, p.Match)
+	cands := g.OutsideCandidatesForEffect(p.Player, match)
 	if len(cands) == 0 {
 		return false
 	}
 	max := p.Max
 	if max <= 0 {
 		max = 1
+	}
+	if p.Keyed.Key() != "" {
+		// #4256: the keyed pick. The filter has done its work (the
+		// candidates); the continuation re-checks where the picks are.
+		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:     p.Player,
+			FromPlayer:  p.Player,
+			Source:      p.Source,
+			Question:    p.Question,
+			Cards:       cands,
+			Min:         p.Min,
+			Max:         max,
+			Destination: p.outsideDestination(),
+			ThenKey:     p.Keyed.then,
+			Carry:       p.Carry,
+		})
+		return true
 	}
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:     p.Player,
