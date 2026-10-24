@@ -529,6 +529,64 @@ func (v *PrintedValues) MakeToken() {
 	v.setTypeLine(supers, types, subs)
 }
 
+// withTokenStatus is v with the "Token" supertype present exactly when
+// `token` says the object wearing the values is a token.
+//
+// Being a token is what an object IS (CR 111.1: a marker for a
+// permanent that isn't represented by a card; CR 111.6: a token isn't a
+// card), not a characteristic: CR 707.2 lists name, mana cost, color
+// indicator, card type, subtype, supertype, rules text, power,
+// toughness and loyalty as the copiable values and leaves status out.
+// This engine reads token status off the printed type line
+// (Card.IsToken), so a copy effect that writes the copied object's type
+// line over the copier's has to put the copier's status back on it:
+//
+//   - a token that becomes a copy of a nontoken (a token copy of Clone
+//     entering as a copy of a creature) stays a token, or CR 704.5d would
+//     never clear it from a graveyard and every "nontoken" filter would
+//     read it as a card;
+//   - a nontoken that becomes a copy of a token (Clone copying a Treasure)
+//     stays a card, or it would cease to exist the first time it left
+//     the battlefield.
+//
+// Every face carries the same status, so a transform cannot turn a
+// token into a card or the reverse. A line that already agrees is left
+// byte for byte as it was.
+func (v PrintedValues) withTokenStatus(token bool) PrintedValues {
+	agrees := typeLineHas(v.TypeLine, "token") == token
+	for _, f := range v.Faces {
+		agrees = agrees && typeLineHas(f.TypeLine, "token") == token
+	}
+	if agrees {
+		return v
+	}
+	v = v.Clone()
+	v.TypeLine = typeLineWithToken(v.TypeLine, token)
+	for i := range v.Faces {
+		v.Faces[i].TypeLine = typeLineWithToken(v.Faces[i].TypeLine, token)
+	}
+	return v
+}
+
+// typeLineWithToken is `line` with the "Token" supertype added in front
+// (how a token's type line is printed) or taken off.
+func typeLineWithToken(line string, token bool) string {
+	if typeLineHas(line, "token") == token {
+		return line
+	}
+	supers, types, subs := ParseTypeLine(line)
+	kept := make([]string, 0, len(supers)+1)
+	if token {
+		kept = append(kept, "Token")
+	}
+	for _, s := range supers {
+		if s != "Token" {
+			kept = append(kept, s)
+		}
+	}
+	return composeTypeLine(kept, types, subs)
+}
+
 // HasCardType reports whether the copied values carry card type `t`
 // (case-sensitive, Scryfall capitalisation). Card files branch on
 // it for the "if it's a creature / if it's a planeswalker" halves of
@@ -616,7 +674,8 @@ func (c *Card) applyCopy(v PrintedValues, src Card) {
 		own := printedValuesOf(*c)
 		c.PrintedSelf = &own
 	}
-	c.setPrintedValues(v)
+	// Token status is the copier's own, never the copied object's (#4296).
+	c.setPrintedValues(v.withTokenStatus(IsTokenPtr(c)))
 	c.ManaAbilities = append([]ManaAbilityShape(nil), src.ManaAbilities...)
 	c.ActivatedAbilities = append([]ActivatedAbilityShape(nil), src.ActivatedAbilities...)
 }

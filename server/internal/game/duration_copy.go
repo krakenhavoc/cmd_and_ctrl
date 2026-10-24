@@ -278,6 +278,8 @@ func (g *Game) materialiseDurationCopiesLocked() {
 				c.PrintedSelf = &own
 			}
 		}
+		// #4296: the copier's own token status, not the copied object's.
+		want = want.withTokenStatus(IsTokenPtr(c))
 		// ADR 0151: a flipped copier shows a copied flip card's
 		// flipped half, so compare against what the write would leave.
 		if reflect.DeepEqual(printedValuesOf(*c), want.withFlipStatus(c.Flipped)) {
