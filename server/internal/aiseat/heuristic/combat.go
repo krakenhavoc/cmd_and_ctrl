@@ -483,12 +483,14 @@ func (p *Policy) lethalPushAs(st *state, def *SeatEval, as *protocol.CardView) b
 		if c.Controller != st.me || !isCreature(c) {
 			continue
 		}
+		// The stand-in is read for whether it can join too: a pump that
+		// grants haste lets a summoning-sick creature swing (#4302).
+		if as != nil && as.InstanceID == c.InstanceID {
+			c = as
+		}
 		committed := c.AttackingTarget == def.ID
 		joinable := c.AttackingTarget == "" && !c.Tapped && !c.SummoningSick && !hasKeyword(c, "defender")
 		if committed || joinable {
-			if as != nil && as.InstanceID == c.InstanceID {
-				c = as
-			}
 			attackers = append(attackers, c)
 		}
 	}

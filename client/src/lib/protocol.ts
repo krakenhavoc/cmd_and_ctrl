@@ -3969,6 +3969,11 @@ export interface TargetPurposeView {
   reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
+  // #4302: which way a change to the picked permanent that ends with the
+  // turn cuts for its controller.
+  until_end_of_turn?: "benefit" | "harm";
+  // #4302: that change in printed amounts (negative for a harm).
+  pump?: { power?: number; toughness?: number; keywords?: string[] };
 }
 
 // TargetReturnView is what a removal spell hands the controller of the

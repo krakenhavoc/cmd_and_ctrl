@@ -59,6 +59,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Another target creature you control can't be blocked this turn except by Spirits.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    ManaCost("{3}{U}"),
 			Targets: Another(TargetCreature("another target creature you control", YouControl())),
 			Effect: func(g *game.Game, item *game.StackItem) error {

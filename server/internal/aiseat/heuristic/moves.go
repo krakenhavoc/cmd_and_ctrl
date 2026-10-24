@@ -385,6 +385,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && p.repeatsFreeActivation(st, m) {
 			return freeRepeat, "free activation already made this turn"
 		}
+		// #4302: a no-amount grant the row already gave the same
+		// creature this turn (temporary_effect.go).
+		if !across && p.repeatsTemporaryGrant(st, m) {
+			return redundantGrant, "grant already made this turn"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its

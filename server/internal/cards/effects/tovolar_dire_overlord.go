@@ -68,6 +68,7 @@ func init() {
 		Triggered:       []game.TriggeredAbility{draw("Tovolar, the Midnight Scourge")},
 		Activated: []ActivatedAbility{{
 			Label:   "{X}{R}{G}: Target Wolf or Werewolf you control gets +X/+0 and gains trample until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "trample")),
 			Cost:    ManaCost("{X}{R}{G}"),
 			Targets: TargetCreature("target Wolf or Werewolf you control", YouControl(), Or(OfCreatureType("Wolf"), OfCreatureType("Werewolf"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {

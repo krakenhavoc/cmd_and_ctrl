@@ -17,6 +17,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}, {T}: Target legendary creature gains fear until end of turn",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "fear")),
 			Cost:    Plus(ManaCost("{B}"), TapCost()),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

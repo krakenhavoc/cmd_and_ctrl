@@ -50,6 +50,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:   "{B}, Pay 2 life: Target creature gets -1/-1 until end of turn.",
+			Purpose: ForTargets(HarmUntilEOT(0, -1, -1)),
 			Cost:    Plus(ManaCost("{B}"), PayLife(2)),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

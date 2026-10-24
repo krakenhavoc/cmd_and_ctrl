@@ -434,7 +434,10 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //     no printed toughness or a size with no tokens, or more untapped
 //     lands than lands. The clause's card predicate is a closure, so "target
 //     artifact" is a permanent clause to this check; the card's text
-//     is the rest of the review.
+//     is the rest of the review;
+//   - a change until end of turn (#4302) that is neither benefit nor
+//     harm, on a clause that cannot target a permanent, or whose Pump
+//     points the other way (checkUntilEndOfTurn).
 func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSpec, known bool) {
 	if p.Targets == nil {
 		return
@@ -480,6 +483,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
 			fail(fmt.Sprintf("reanimates slot %d, whose clause %q cannot target a card in a graveyard", e.Slot, clause.Label))
 		}
+		checkUntilEndOfTurn(e, clause, fail)
 		if r := e.Returns; !r.IsZero() {
 			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 				fail(fmt.Sprintf("returns something to the controller of slot %d, whose clause %q cannot target a permanent", e.Slot, clause.Label))
@@ -495,6 +499,67 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 			}
 		}
 	}
+}
+
+// checkUntilEndOfTurn is checkTargetPurposes' half for a change that
+// ends with the turn (#4302): a direction of benefit or harm, on a
+// clause that can pick a permanent; a Pump only beside one, that says
+// something, adds nothing negative to a benefit and nothing positive or
+// no keyword to a harm (a harm's keywords are lost, which a Pump cannot
+// say).
+func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail func(string)) {
+	switch e.UntilEndOfTurn {
+	case "":
+		if e.Pump != nil {
+			fail(fmt.Sprintf("sets a Pump on slot %d without UntilEndOfTurn — say whether it helps or hurts (#4302)", e.Slot))
+		}
+		return
+	case game.TargetBenefit, game.TargetHarm:
+	default:
+		fail(fmt.Sprintf("sets UntilEndOfTurn %q on slot %d, which is neither benefit nor harm (#4302)", e.UntilEndOfTurn, e.Slot))
+	}
+	if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+		fail(fmt.Sprintf("changes slot %d until end of turn, whose clause %q cannot target a permanent (#4302)", e.Slot, clause.Label))
+	}
+	pm := e.Pump
+	if pm == nil {
+		return
+	}
+	checkPump(pm, fail)
+	if e.UntilEndOfTurn == game.TargetBenefit && (pm.Power < 0 || pm.Toughness < 0) {
+		fail(fmt.Sprintf("declares a benefit on slot %d that takes power or toughness — that is a harm (#4302)", e.Slot))
+	}
+	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0) {
+		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness or a keyword (#4302)", e.Slot))
+	}
+}
+
+// BenefitUntilEOT is the target entry for a clause that helps its pick
+// until end of turn (#4302): Heliod, Sun-Crowned's "another target
+// creature gains lifelink until end of turn" is
+// ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")), and "target creature
+// gets +2/+2 until end of turn" BenefitUntilEOT(0, 2, 2). With no amount
+// and no keyword (+X/+X, "can't be blocked this turn") it declares only
+// the direction.
+func BenefitUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
+	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetBenefit}
+	if power != 0 || toughness != 0 || len(keywords) > 0 {
+		e.Pump = &game.Pump{Power: power, Toughness: toughness, Keywords: keywords}
+	}
+	return e
+}
+
+// HarmUntilEOT is the target entry for a clause that hurts its pick until
+// end of turn (#4302), with the printed change as signed amounts: "target
+// creature gets -2/-1 until end of turn" is HarmUntilEOT(0, -2, -1). With
+// no amount (-X/-X, "can't block this turn") it declares only the
+// direction.
+func HarmUntilEOT(slot, power, toughness int) game.TargetPurpose {
+	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetHarm}
+	if power != 0 || toughness != 0 {
+		e.Pump = &game.Pump{Power: power, Toughness: toughness}
+	}
+	return e
 }
 
 // ForTargets is a Purpose that declares only what happens to the

@@ -55,6 +55,9 @@ func init() {
 			Label:   "{1}{W}: Another target creature gains lifelink until end of turn.",
 			Cost:    ManaCost("{1}{W}"),
 			Targets: Another(TargetCreature("another target creature")),
+			// #4302: lifelink helps whoever controls the creature, so the
+			// bot gives it to its own and only when it matters this turn.
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				id, ok := b16FirstLegalTargetCard(ctx)

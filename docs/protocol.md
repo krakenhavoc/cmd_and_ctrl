@@ -3778,6 +3778,8 @@ opponent.
 | `damage_per_tapped` | the damage dealt to the target is this many times the number of permanents the cast's "tap any number" cost taps, the length of its `teamwork_ids` (#3961); `damage` is then absent | Burn at the Stake 3 |
 | `reanimates` | the spell puts the picked graveyard card onto the battlefield under its caster's control (#3161); the bot prices the pick as the permanent it becomes, whoever owns the graveyard | Reanimate, Animate Dead |
 | `returns` | what the target's **controller** is given when the target is removed (#2679), an object below; absent when nothing comes back | Rapid Hybridization's 3/3 |
+| `until_end_of_turn` | `"benefit"` or `"harm"`: which way a change to the picked permanent that ends with the turn cuts for that permanent's controller (#4302). A bot aims a benefit at its own permanent and a harm at an opponent's, and prices it by what it does this turn | Heliod, Sun-Crowned's lifelink `"benefit"`, Vilis's -1/-1 `"harm"` |
+| `pump` | that change in printed amounts, beside `until_end_of_turn`: `power` and `toughness` added (negative for a harm) and the `keywords` a benefit grants; absent for an amount counted at resolution (+X/+X) or a change that is not a pump ("can't be blocked") | Heliod `{"keywords": ["lifelink"]}`, Vilis `{"power": -1, "toughness": -1}` |
 
 `returns` holds printed amounts, each omitted when zero:
 

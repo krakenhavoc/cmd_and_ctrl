@@ -40,6 +40,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, {T}: Choose a player with the most life or tied for most life. Target creature can't be blocked by creatures that player controls this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{1}{B}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

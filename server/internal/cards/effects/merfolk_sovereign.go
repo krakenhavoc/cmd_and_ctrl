@@ -46,6 +46,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target Merfolk creature can't be blocked this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target Merfolk creature", HasSubtype("Merfolk")),
 			Effect: func(g *game.Game, item *game.StackItem) error {

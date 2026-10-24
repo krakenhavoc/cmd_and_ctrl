@@ -20,8 +20,9 @@ func init() {
 		Name:         "Eardrum Rattler",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Another target creature you control with power 2 or less can't be blocked this turn",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Another target creature you control with power 2 or less can't be blocked this turn",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: Another(TargetCreature("another target creature you control with power 2 or less",
 				YouControl(), PowerLE(2))),
 			Effect: func(g *game.Game, item *game.StackItem) error {

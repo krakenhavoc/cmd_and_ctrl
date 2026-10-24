@@ -23,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a land: Target creature you control gains shroud until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "shroud")),
 			Cost:    b08SacrificeALand(),
 			Targets: TargetCreature("target creature you control", YouControl()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

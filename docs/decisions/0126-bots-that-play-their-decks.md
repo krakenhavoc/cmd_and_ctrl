@@ -2887,3 +2887,45 @@ The arena's Cards table leaves lands out, so the fetches are read from the decis
 2. **The flip is priced by the attack the pump enables.** `valueOfTurnFaceUp` adds, for a creature that can still attack this turn (untapped and not summoning-sick before attackers, or already attacking before damage), the attack value of the pumped creature less that of the plain one, per opponent, and takes the best. When the pump is what turns the swing into a kill (`lethalPushAs` true with the pumped creature and false without) it adds `LethalBonus`, so a flip for lethal outweighs the skipped turn's `Weights.Turn`. Out of that window the pump is worth nothing.
 3. **A creature cast for evoke, warp, dash or blitz is a temporary body.** `valueOfCast` reads the alternative-cost key off the move and replaces the lasting body `resolvedValueFor` priced with what the cast buys: its enters effect (unchanged, the card's purpose), a haste attack this turn when it has one and it is still ahead, blitz's death draw, and the card dash and warp keep. Evoke keeps only the enters effect.
 
+
+## Amendment 2026-10-24: a change until end of turn, priced by whose permanent it is
+
+**Status:** Accepted. The code is in the PR that adds this section. One `Config` switch, `PriceTemporaryEffects`, with its weight `CombatGrant` (0.50), on in `DefaultConfig()` and off in `BaselineConfig()`; the arena's `heuristic-notemporary` is `DefaultConfig()` with it off.
+**Issue:** [#4302](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4302), from real games. Sprint: S75 — Agents at the table: a current seat, quieter turns, sharper bots.
+**Amends:** the amendment of 2026-10-08 (a target priced by what the purpose does to it).
+
+### The problem
+
+With Heliod, Sun-Crowned out, a heuristic seat ignored the creature in its hand and its castable commander, spent its mana on "{1}{W}: Another target creature gains lifelink until end of turn" aimed at an **opponent's** creature, and did nothing else that turn. Two causes, both in `targetsValue`'s sign convention, "a target is hit":
+
+1. **The target.** Nothing on the wire said what the row does to its pick, so `cardTargetValue` priced an opposing creature as removed (its value × `RemovalConfidence` × `LeaderBoost`, about 2.5 for a 3/3) and the bot's own as `OwnPermanentTarget` (0.40). Lifelink on the opponent's creature was the best target on the list; `RemovalConfidence`'s own comment named the case ("an unrestricted 'target creature gets +3/+3' may target theirs").
+2. **The ranking.** That price plus the flat `ActivateBase` (0.50) beat a two-drop's cast (+1.41) and a commander's (+2.41). Nothing was removed, so the same move was on offer at the same price in the next window, and the bot repeated it until its mana ran out: three activations off six Plains in the whole-engine repro.
+
+### Decision
+
+1. **A target entry may declare `UntilEndOfTurn`**, `TargetBenefit` or `TargetHarm`, with an optional `Pump` (the printed power and toughness, negative for a harm, and a benefit's keywords). `effects.BenefitUntilEOT` and `effects.HarmUntilEOT` build it. `effects.Register` refuses another value, a `Pump` without a direction, a benefit that takes power or toughness, a harm that adds any or grants a keyword, and a clause that cannot pick a permanent. The wire carries `until_end_of_turn` and `pump` on the entry.
+2. **The heuristic prices such a permanent pick by side and by this turn** (`temporary_effect.go`): a benefit on an opponent's permanent, or a harm on the bot's own, costs the permanent's value (`hostWorth`, the misplaced Aura's price); a benefit on the bot's own creature is worth the attack it adds this turn (`pumpAttackGain`, shared with the turn-face-up pump: attack with the pump less attack without, `LethalBonus` when it makes the kill, haste letting a summoning-sick creature swing), plus `CombatGrant` while that creature is attacking or blocking before damage; anywhere else nothing. A harm is removal when its -N/-N kills (CR 704.5f, 704.5g), `CombatGrant` on a creature in combat when it does not, nothing elsewhere, and the old price when it prints no amount.
+3. **No loop.** A benefit that adds nothing (every keyword it grants already on the creature, CR 702.15f) is below a pass, and so is a grant with no power or toughness that the same row already gave the same creature this turn: the policy remembers those per row and target for the turn, as `free_repeat.go` remembers a free activation, because a grant still on the stack shows nothing on the creature yet.
+4. **Spare mana in combat.** Such a move on a creature in combat that costs only mana and taps clears `LeftoverThreshold` when the mana left after it still pays for the biggest card in the bot's hand or command zone its mana could cast; on another seat's turn all of it is spare. Otherwise it needs `InstantThreshold`, so the bot keeps the mana for its second main phase.
+5. **The catalog declares it.** Every activated row whose text changes a target until end of turn declares a direction that matches its words: 74 rows, held by `TestUntilEndOfTurnRowsDeclareTheirDirection`. Exempt: Liliana of the Dark Realms (the sign is chosen at resolution), Soulbright Seeker (its third resolution adds mana) and Zack Fair (part of it lasts).
+
+### Measurements
+
+`boteval arena --lockstep --rotate --games 48 --seed 4302`, `heuristic` against `heuristic-notemporary`, two runs on mono-white-weenie, boros-voltron, mono-green-stompy and simic-ramp with the policies swapped between the decks, so each policy played each deck 48 times:
+
+| | heuristic | heuristic-notemporary |
+|---|---:|---:|
+| all four decks | 52/192, 27.1% (21.3–33.8%) | 44/192, 22.9% (17.5–29.4%) |
+| mono-white-weenie (Heliod, Mother of Runes) | 17/48, 35.4% | 13/48, 27.1% |
+| boros-voltron (Mother of Runes, Rogue's Passage) | 18/48, 37.5% | 15/48, 31.2% |
+| mono-green-stompy (Rogue's Passage) | 2/48 | 2/48 |
+| simic-ramp (none) | 15/48 | 14/48 |
+
+Heliod's activation: `heuristic-notemporary` took it in 68 of the 68 windows it was offered in, in all 8 games; `heuristic` in 15 of 260, in 3 of 9 games. Mother of Runes went from 39 activations in 360 windows to 8 in 603: out of combat it buys nothing. The intervals overlap, so the win rate is a direction, not a result. On the standard pool (mono-red-aggro, simic-ramp, esper-control, mono-black-aristocrats), which holds none of the declared cards, the same two runs gave identical per-deck wins and every game ended on the same turn: the change does nothing there.
+
+### Not priced
+
+- A protection grant aimed at the bot's own creature in answer to removal (Mother of Runes, Liliana the Faultless, Plaza of Heroes): `answers.go` prices only untargeted rows on the threatened creature.
+- A pump or evasion grant with no printed amount before combat (+X/+X, "can't be blocked"): only `CombatGrant`, once the creature is attacking.
+- Spells and triggered rows: they may declare the entry and are read the same way, but none does yet.
+- Heliod's own lifegain trigger, which turns lifelink into +1/+1 counters.

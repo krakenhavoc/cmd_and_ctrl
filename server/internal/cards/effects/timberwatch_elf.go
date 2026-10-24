@@ -35,6 +35,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target creature gets +X/+X until end of turn, where X is the number of Elves on the battlefield.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -20,8 +20,9 @@ func init() {
 		Name:         "Key to the City",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:   "{T}, Discard a card: Up to one target creature can't be blocked this turn.",
-			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Label: "{T}, Discard a card: Up to one target creature can't be blocked this turn.",
+			// #4302: "can't be blocked" ends with the turn.
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0))},
 			Cost:    Plus(TapCost(), DiscardACard()),
 			Targets: TargetCreature("up to one target creature").WithCount(0, 1),
 			Effect: func(g *game.Game, item *game.StackItem) error {

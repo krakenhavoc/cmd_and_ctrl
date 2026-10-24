@@ -30,6 +30,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "{T}: Target Merfolk creature gets +1/+1 and gains islandwalk until end of turn. (It can't be blocked as long as defending player controls an Island.)",
+				Purpose: ForTargets(BenefitUntilEOT(0, 1, 1, "islandwalk")),
 				Cost:    TapCost(),
 				Targets: TargetCreature("target Merfolk creature", HasSubtype("Merfolk")),
 				Effect: func(g *game.Game, item *game.StackItem) error {

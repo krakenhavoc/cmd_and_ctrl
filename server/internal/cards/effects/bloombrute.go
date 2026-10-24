@@ -28,6 +28,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{G}{W}: Target creature gains trample and lifelink until end of turn",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "trample", "lifelink")),
 			Cost:    ManaCost("{4}{G}{W}"),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

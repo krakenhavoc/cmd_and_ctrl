@@ -27,6 +27,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}: Another target creature with a name sticker on it gains flying until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 			Cost:    ManaCost("{2}{U}"),
 			Targets: Another(TargetCreature("another target creature with a name sticker on it", WithSticker(game.StickerName))),
 			Effect: func(g *game.Game, item *game.StackItem) error {

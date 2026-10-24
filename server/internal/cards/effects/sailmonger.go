@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: Target creature gains flying until end of turn. Any player may activate this ability.",
+			Purpose:   ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 			Cost:      ManaCost("{2}"),
 			Targets:   TargetCreature("target creature"),
 			AnyPlayer: true,

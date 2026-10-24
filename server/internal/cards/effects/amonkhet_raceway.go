@@ -25,6 +25,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			MaxSpeedActivated(ActivatedAbility{
 				Label:   "Max speed — {T}: Target creature gains haste until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "haste")),
 				Cost:    TapCost(),
 				Targets: TargetCreature("target creature"),
 				Effect: func(g *game.Game, item *game.StackItem) error {

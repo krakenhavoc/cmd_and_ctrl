@@ -58,6 +58,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Up to one target creature gets +2/+0 until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 2, 0)),
 				Cost:    LoyaltyCost(1),
 				Targets: TargetCreature("up to one target creature").WithCount(0, 1),
 				Effect: func(g *game.Game, item *game.StackItem) error {

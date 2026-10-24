@@ -60,6 +60,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{support},
 		Activated: []ActivatedAbility{{
 			Label:   "Go for the Goal! — {3}, {T}: Until end of turn, target creature gains \"Whenever this creature deals combat damage to a player, draw a card for each kind of counter on it\" and it can't be blocked this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

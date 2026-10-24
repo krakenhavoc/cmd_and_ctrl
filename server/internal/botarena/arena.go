@@ -107,8 +107,20 @@ const VariantNoPlan = "noplan"
 // NoPlanContestant is VariantNoPlan's contestant name.
 const NoPlanContestant = string(tiers.Heuristic) + "-" + VariantNoPlan
 
+// VariantNoTemporary is today's heuristic with #4302's pricing of a
+// change until end of turn off (Config.PriceTemporaryEffects false),
+// seated as `heuristic-notemporary`: a target that a declared benefit or
+// harm is aimed at is priced as it was before #4302, so a run against
+// `heuristic` measures that pricing alone. An arena name only, like
+// heuristic-baseline.
+const VariantNoTemporary = "notemporary"
+
+// NoTemporaryContestant is VariantNoTemporary's contestant name.
+const NoTemporaryContestant = string(tiers.Heuristic) + "-" + VariantNoTemporary
+
 // ParseContestant reads one `--seats` entry: a tier,
-// `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`.
+// `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan` or
+// `heuristic-notemporary`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -117,10 +129,12 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoExert}, nil
 	case NoPlanContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoPlan}, nil
+	case NoTemporaryContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTemporary}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -309,7 +323,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary:
 		return true
 	}
 	return false
@@ -761,6 +775,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoPlan:
 		h := heuristic.DefaultConfig()
 		h.PlanTurnMana = false
+		opt.Heuristic = &h
+	case VariantNoTemporary:
+		h := heuristic.DefaultConfig()
+		h.PriceTemporaryEffects = false
 		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {

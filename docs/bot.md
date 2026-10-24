@@ -1257,6 +1257,55 @@ that:
 Only a target an opponent controls is netted, and a return does not make
 the move purpose-priced.
 
+**A change until end of turn is priced by whose permanent it is and what
+it does this turn**
+([#4302](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4302),
+`PriceTemporaryEffects`, `temporary_effect.go`). With nothing on the wire
+to say what "{1}{W}: Another target creature gains lifelink until end of
+turn" does to its pick, Heliod, Sun-Crowned's row priced an opponent's
+creature as removed (about 2.5 for a 3/3, plus `ActivateBase`). That beat
+casting a two-drop or the commander, and since nothing was removed the
+same move was on offer at the same price in the next window, until the
+mana ran out. A target entry now declares `until_end_of_turn`, `benefit`
+or `harm`, with the printed `pump` when there is one (`BenefitUntilEOT`,
+`HarmUntilEOT` in `effects`):
+
+- A benefit on an opponent's permanent, or a harm on the bot's own, costs
+  that permanent's value, as a misplaced Aura does.
+- A benefit on the bot's own creature is worth the attack it adds this
+  turn: the pumped creature's attack less the plain one (more damage
+  through, lifelink's life, an evasion past the blockers, haste on a
+  summoning-sick creature), plus `LethalBonus` when it makes the kill.
+  That is the price Unstable Hulk's flip gets. While the creature is
+  attacking or blocking and damage is still to come, it is worth
+  `CombatGrant` (0.50) more. Anywhere else the change ends at cleanup
+  (CR 514.2) having done nothing, and is worth nothing.
+- A benefit that adds nothing is below a pass: lifelink on a creature
+  that has it (CR 702.15f), or a grant with no power or toughness to it
+  that the same row already gave the same creature this turn. The policy
+  remembers those for the turn, as it remembers a free activation,
+  because a grant still on the stack shows nothing on the creature yet.
+- A harm on an opponent's permanent is removal when its declared -N/-N
+  kills (CR 704.5f, 704.5g), `CombatGrant` on a creature in combat when it
+  does not, and nothing elsewhere. One with no printed amount (-X/-X,
+  "can't block") keeps the old removal price.
+- In combat, such a move costing only mana and taps clears
+  `LeftoverThreshold` when the mana left after it still pays for the
+  biggest card in the bot's hand or command zone that its mana could cast
+  (`spareCombatGrant`). On another player's turn all of the bot's mana is
+  spare. Otherwise it needs `InstantThreshold`, so the bot keeps the mana
+  for its second main phase.
+
+So Heliod's lifelink goes on the bot's own attacker, once, with mana the
+turn does not need, and a cast that develops the board comes first.
+`TestUntilEndOfTurnRowsDeclareTheirDirection` holds every catalog activated
+row whose text changes a target until end of turn to a direction that
+matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
+and Zack Fair are exempt, each for a reason the test names). A spell may
+declare the same entry and is read the same way; no spell declares one
+yet. The arena's `heuristic-notemporary` is today's heuristic with the
+switch off.
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
@@ -2415,7 +2464,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan` or `heuristic-notemporary`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |

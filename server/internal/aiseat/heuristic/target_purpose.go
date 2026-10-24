@@ -212,6 +212,13 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 					continue
 				}
 			}
+			// #4302: a change until end of turn, by whose permanent it
+			// is and what it does this turn (temporary_effect.go).
+			if v, ok := p.temporaryEffectValue(st, t, e); ok {
+				cards += v
+				priced = true
+				continue
+			}
 			rest = append(rest, t)
 			continue
 		}

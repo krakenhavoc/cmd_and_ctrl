@@ -20,8 +20,9 @@ func init() {
 		Name:         "Corsairs of Umbar",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}{U}: Target Goblin, Orc, or Pirate can't be blocked this turn.",
-			Cost:  ManaCost("{2}{U}"),
+			Label:   "{2}{U}: Target Goblin, Orc, or Pirate can't be blocked this turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
+			Cost:    ManaCost("{2}{U}"),
 			Targets: TargetCreature("target Goblin, Orc, or Pirate",
 				Or(OfCreatureType("Goblin"), OfCreatureType("Orc"), OfCreatureType("Pirate"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {

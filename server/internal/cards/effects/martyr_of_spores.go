@@ -23,6 +23,7 @@ func init() {
 		XMatters:     true,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Reveal X green cards from your hand, Sacrifice this creature: Target creature gets +X/+X until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0)),
 			Cost:    Plus(ManaCost("{1}"), RevealX("X green cards", "G"), SacrificeThis()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

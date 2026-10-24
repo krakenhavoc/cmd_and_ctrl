@@ -278,6 +278,22 @@ type Config struct {
 	// face_up_pump.go) by the attack it enables this turn, so a flip for
 	// lethal is taken. Off (the baseline) prices the flip without it.
 	PriceFaceUpPump bool
+	// PriceTemporaryEffects prices a pick whose declared target entry
+	// says the change ends with the turn (TargetPurpose.UntilEndOfTurn,
+	// #4302, temporary_effect.go): a benefit aimed at an opponent's
+	// permanent, or a harm at the bot's own, costs that permanent's
+	// value; a benefit on the bot's own creature is worth the attack it
+	// adds this turn, plus CombatGrant while that creature is in combat;
+	// a harm that kills its pick is removal and one that does not is
+	// worth CombatGrant on a creature in combat and nothing elsewhere.
+	// Such a move with spare mana in combat clears LeftoverThreshold.
+	// Off (the baseline) prices every opposing pick as removal and the
+	// bot's own as OwnPermanentTarget.
+	PriceTemporaryEffects bool
+	// CombatGrant is what a change until end of turn is worth on a
+	// creature that is attacking or blocking, before combat damage, on
+	// top of the attack it adds (PriceTemporaryEffects).
+	CombatGrant float64
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -804,6 +820,9 @@ func DefaultConfig() Config {
 		// #3802, #3776: a body that leaves this turn, and a flip that wins.
 		PriceTemporaryBodies: true,
 		PriceFaceUpPump:      true,
+		// #4302: a change until end of turn, priced by what it does now.
+		PriceTemporaryEffects: true,
+		CombatGrant:           0.50,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -963,6 +982,9 @@ func BaselineConfig() Config {
 	c.HoldFlashSacrifice = false
 	c.PriceTemporaryBodies = false
 	c.PriceFaceUpPump = false
+	// #4302: a change until end of turn priced as an ordinary target.
+	c.PriceTemporaryEffects = false
+	c.CombatGrant = 0
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1090,6 +1112,10 @@ type Policy struct {
 	// freeThisTurn is the free activations the policy chose this turn
 	// (#2777, free_repeat.go).
 	freeThisTurn *turnFreeActivations
+	// grantsThisTurn is the changes until end of turn with no amount the
+	// policy chose this turn, per row and target (#4302,
+	// temporary_effect.go).
+	grantsThisTurn *turnFreeActivations
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -1121,6 +1147,7 @@ func (p *Policy) Reset() {
 	p.tail = nil
 	p.heldThisTurn = nil
 	p.freeThisTurn = nil
+	p.grantsThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1378,6 +1405,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	p.notePlan(st, in.Moves, plan)
 	p.noteHolds(st, in.Moves, plan)
 	p.noteFreeActivation(st, in.Moves, d)
+	p.noteTemporaryGrant(st, in.Moves, d)
 	return d, plan, nil
 }
 
@@ -1433,6 +1461,11 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			// spends nothing it would keep, §5's premise, in any window.
 			bar = p.cfg.LeftoverThreshold
 			reason += ", dying anyway"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.spareCombatGrant(st, moves[i]) {
+			// #4302: a change until end of turn on a creature in combat,
+			// with mana the rest of the turn does not need.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", spare mana in combat"
 		}
 		if v > bar && (take < 0 || v > takeVal) {
 			take, takeVal, takeReason = i, v, reason

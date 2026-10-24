@@ -23,6 +23,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{2}{B}, Remove two counters from this creature: Target creature gets -2/-2 until end of turn. Activate only as a sorcery.",
+			Purpose:      ForTargets(HarmUntilEOT(0, -2, -2)),
 			Cost:         Plus(ManaCost("{2}{B}"), RemoveCountersOfAnyKindsFromThis(2)),
 			Targets:      TargetCreature("target creature"),
 			SorcerySpeed: true,

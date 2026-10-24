@@ -24,6 +24,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice an artifact: Target creature gets -2/-2 until end of turn.",
+			Purpose: ForTargets(HarmUntilEOT(0, -2, -2)),
 			Cost:    Plus(ManaCost("{1}{B}"), SacrificeN(1, "an artifact", Artifact())),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
