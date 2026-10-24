@@ -57,24 +57,29 @@ func init() {
 					Question: "Aether Refinery — pay one or more {E} for an X/X Aetherborn",
 					Unit:     game.PayAmountPower,
 					Goal:     AsMuchAsYouCan,
-					Then: func(ctx *Context, paid int) error {
-						if paid <= 0 {
-							return nil
-						}
-						return CreateToken{
-							Controller: ctx.Controller(),
-							Template: game.Card{
-								Name:      "Aetherborn",
-								TypeLine:  "Token Creature — Aetherborn",
-								Colors:    []string{"B"},
-								Power:     paid,
-								Toughness: paid,
-							},
-							N: 1,
-						}.Apply(ctx)
-					},
+					Then:     aetherRefineryAetherborn,
 				}.Apply(ctx)
 			},
 		}},
 	})
 }
+
+// aetherRefineryAetherborn is the paid half (#4294): an X/X black
+// Aetherborn token, X the {E} paid.
+var aetherRefineryAetherborn = NumberThen("number/aether-refinery-create-an-aetherborn",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		return CreateToken{
+			Controller: ctx.Controller(),
+			Template: game.Card{
+				Name:      "Aetherborn",
+				TypeLine:  "Token Creature — Aetherborn",
+				Colors:    []string{"B"},
+				Power:     r.Number,
+				Toughness: r.Number,
+			},
+			N: 1,
+		}.Apply(ctx)
+	})

@@ -279,8 +279,9 @@ func mayPayXFrameOf(c *PendingChoice) *chooseValueFrame {
 }
 
 // chooseValueFrameOf is the frame a resolution-time value prompt answers
-// through: its own, or, for a keyed MayPayX's "choose X", a frame built
-// from its data. Nil for a prompt with neither. Every reader of a
+// through: its own, or, for a keyed MayPayX's "choose X" or a keyed number
+// prompt (number_then.go), a frame built from its data. Nil for a prompt
+// with none. Every reader of a
 // chooseValueResume goes through this for a pay_amount.
 func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
 	if c == nil {
@@ -289,7 +290,10 @@ func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
 	if c.chooseValueResume != nil {
 		return c.chooseValueResume
 	}
-	return mayPayXFrameOf(c)
+	if f := mayPayXFrameOf(c); f != nil {
+		return f
+	}
+	return numberFrameOf(c)
 }
 
 // errMayPayXNoX is a MayPayX cost without exactly one {X}: a catalog

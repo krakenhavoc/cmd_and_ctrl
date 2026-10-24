@@ -52,41 +52,53 @@ func init() {
 				Goal: func(ctx *Context) int {
 					return min(n, game.PlayerEnergy(ctx.Game.PlayerByIDForEffect(ctx.Controller())))
 				},
-				Then: func(ctx *Context, paid int) error {
-					if paid <= 0 || n == 0 {
-						return nil
-					}
-					most := paid
-					if most > n {
-						most = n
-					}
-					return ChoosePermanents{
-						Of:       []uuid.UUID{victim},
-						Question: "Suppression Ray — choose creatures tapped this way to get a stun counter",
-						Candidates: func(g *game.Game, _ uuid.UUID) ([]uuid.UUID, int, int) {
-							var still []uuid.UUID
-							for _, id := range tapped {
-								if onBattlefield(g, id) {
-									still = append(still, id)
-								}
-							}
-							hi := most
-							if hi > len(still) {
-								hi = len(still)
-							}
-							return still, 0, hi
-						},
-						Then: func(ctx *Context, picked game.PromptedPicks) error {
-							for _, id := range picked.Cards() {
-								if err := ctx.Game.AddCounterByForEffect(ctx.Controller(), id, game.CounterStun, 1); err != nil {
-									return err
-								}
-							}
-							return nil
-						},
-					}.Apply(ctx)
-				},
+				Then: suppressionRayStun,
+				// The player whose creatures were tapped, then the creatures
+				// this spell tapped ("tapped this way"), as data.
+				Carry: append([]uuid.UUID{victim}, tapped...),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// suppressionRayStun is the paid half (#4294): the caster chooses up to
+// that many of the creatures this spell tapped, still on the battlefield,
+// and each gets a stun counter. The prompt's Carry is the player whose
+// creatures they were, then the creatures.
+var suppressionRayStun = NumberThen("number/suppression-ray-stun-counters",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		victim, tapped := r.Carry[0], r.Carry[1:]
+		n := len(tapped)
+		if r.Number <= 0 || n == 0 {
+			return nil
+		}
+		most := min(r.Number, n)
+		return ChoosePermanents{
+			Of:       []uuid.UUID{victim},
+			Question: "Suppression Ray — choose creatures tapped this way to get a stun counter",
+			Candidates: func(g *game.Game, _ uuid.UUID) ([]uuid.UUID, int, int) {
+				var still []uuid.UUID
+				for _, id := range tapped {
+					if onBattlefield(g, id) {
+						still = append(still, id)
+					}
+				}
+				hi := most
+				if hi > len(still) {
+					hi = len(still)
+				}
+				return still, 0, hi
+			},
+			Then: func(ctx *Context, picked game.PromptedPicks) error {
+				for _, id := range picked.Cards() {
+					if err := ctx.Game.AddCounterByForEffect(ctx.Controller(), id, game.CounterStun, 1); err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}.Apply(ctx)
+	})

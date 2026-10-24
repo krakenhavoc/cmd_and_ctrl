@@ -222,6 +222,16 @@ var carriedFixture = map[string]any{
 		out.Then = carriedTestVoteKey.Key()
 		return out
 	},
+	// #4294: a tokens-attacking split's tail is a registered key too.
+	"PendingChoice.AttackSplit": func(*Game) any {
+		v, err := generateNonZero(reflect.TypeOf(&AttackSplit{}), "PendingChoice.AttackSplit", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().(*AttackSplit)
+		out.Tail.Ref = attackSplitTail
+		return out
+	},
 	"PendingChoice.PickThen":        carriedTestPickKey.Key(),
 	"PendingChoice.PayTap":          &PayTapSpec{Kind: carriedTestTapKind, Extra: "{4}"},
 	"PendingChoice.PickDestination": PickExile,

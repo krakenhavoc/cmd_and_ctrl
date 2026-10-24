@@ -54,14 +54,19 @@ func necrodominanceEndStep(g *game.Game, item *game.StackItem) error {
 		Question: "Necrodominance — pay any amount of life to draw that many cards",
 		Unit:     game.PayAmountCards,
 		Goal:     necrodominanceGoal,
-		Then: func(ctx *Context, paid int) error {
-			if paid <= 0 {
-				return nil
-			}
-			return DrawCards{Player: ctx.Controller(), N: paid}.Apply(ctx)
-		},
+		Then:     necrodominanceDraws,
 	}.Apply(NewContext(g, item))
 }
+
+// necrodominanceDraws is the life paid's branch (#4294): draw that many
+// cards.
+var necrodominanceDraws = NumberThen("number/necrodominance-draw-that-many",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		return DrawCards{Player: ctx.Controller(), N: r.Number}.Apply(ctx)
+	})
 
 // necrodominanceGoal is what a bot pays: the cards that fill its hand to
 // the maximum of five, capped by its library and by 10 life kept.

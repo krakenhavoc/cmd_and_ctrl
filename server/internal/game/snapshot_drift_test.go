@@ -1055,6 +1055,11 @@ var pendingChoiceFields = plan(
 	"PayAmount", carried, "",
 	"MayPayX", carried, "",
 	"PickNumber", carried, "",
+	// #4294: a keyed number prompt's words, numbers and tokens-attacking
+	// split. A pay_amount with one holds no frame either.
+	"PickWords", carried, "",
+	"PickNums", carried, "",
+	"AttackSplit", carried, "",
 	"NoLegalTarget", carried, "",
 	// #2494: the resolving item a resolution-time "you may" asks about,
 	// and what a "yes" trades for. Carried: the item rides the parked
@@ -1215,7 +1220,9 @@ var pendingChoiceFields = plan(
 	// ADR 0188 Decision 12: the which-skip question's plain data.
 	"TurnSkipOrder", carried, "",
 	"AnyPlayerOffer", carried, "",
-	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	// ADR 0150 §4, #4294: an assist helper's prompt, with the cast it
+	// re-runs as data.
+	"Assist", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

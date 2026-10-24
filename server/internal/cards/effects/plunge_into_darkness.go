@@ -63,25 +63,30 @@ func plungeIntoDarknessSacrifice(item *game.StackItem, ctx *Context, _ int) erro
 	}.Apply(ctx)
 }
 
-func plungeIntoDarknessLook(item *game.StackItem, ctx *Context, _ int) error {
-	controller := item.Controller
+func plungeIntoDarknessLook(_ *game.StackItem, ctx *Context, _ int) error {
 	return PayLifeAmount{
 		Question: "Plunge into Darkness — pay any amount of life, then look at that many cards from the top of your library",
 		Unit:     game.PayAmountCards,
-		Then: func(ctx *Context, paid int) error {
-			if paid <= 0 {
-				return nil
-			}
-			return TakeFromLibraryToHand{
-				Player: controller,
-				Cards:  ctx.Game.LookAtTopOfLibraryForEffect(controller, paid),
-				Max:    1,
-				Label:  "Plunge into Darkness — put one of those cards into your hand (the rest are exiled)",
-				Then:   plungeIntoDarknessExileRest,
-			}.Apply(ctx)
-		},
+		Then:     plungeIntoDarknessLooks,
 	}.Apply(ctx)
 }
+
+// plungeIntoDarknessLooks is the life paid's branch (#4294): look at that
+// many cards from the top of the controller's library.
+var plungeIntoDarknessLooks = NumberThen("number/plunge-into-darkness-look-at-that-many",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		controller := ctx.Controller()
+		return TakeFromLibraryToHand{
+			Player: controller,
+			Cards:  ctx.Game.LookAtTopOfLibraryForEffect(controller, r.Number),
+			Max:    1,
+			Label:  "Plunge into Darkness — put one of those cards into your hand (the rest are exiled)",
+			Then:   plungeIntoDarknessExileRest,
+		}.Apply(ctx)
+	})
 
 // plungeIntoDarknessExileRest is "and exile the rest": every looked-at
 // card still in the library, exiled together.

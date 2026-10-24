@@ -25,7 +25,6 @@ func init() {
 			if len(item.Targets) == 0 {
 				return nil
 			}
-			target := item.Targets[0].ID
 			if err := (GetEnergy{N: 2}).Apply(ctx); err != nil {
 				return err
 			}
@@ -33,14 +32,19 @@ func init() {
 				Question: "Die Young — pay any amount of {E}; the creature gets -1/-1 for each",
 				Unit:     game.PayAmountPower,
 				Goal:     lethalDamageGoal,
-				Then: func(ctx *Context, paid int) error {
-					if paid <= 0 {
-						return nil
-					}
-					return BoostUntilEOT{Target: target, Power: -paid, Toughness: -paid,
-						Label: "Die Young — -1/-1 for each {E} paid"}.Apply(ctx)
-				},
+				Then:     dieYoungShrinks,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// dieYoungShrinks is the paid half (#4294): -1/-1 until end of turn for
+// each {E} paid, on the first target of the item that asked.
+var dieYoungShrinks = NumberThen("number/die-young-minus-one-for-each",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 || ctx.Item == nil || len(ctx.Item.Targets) == 0 {
+			return nil
+		}
+		return BoostUntilEOT{Target: ctx.Item.Targets[0].ID, Power: -r.Number, Toughness: -r.Number,
+			Label: "Die Young — -1/-1 for each {E} paid"}.Apply(ctx)
+	})

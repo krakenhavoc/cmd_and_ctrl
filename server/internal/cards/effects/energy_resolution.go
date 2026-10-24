@@ -132,7 +132,6 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 		if len(item.Targets) == 0 {
 			return nil
 		}
-		target := item.Targets[0].ID
 		if err := (GetEnergy{N: n}).Apply(ctx); err != nil {
 			return err
 		}
@@ -140,15 +139,21 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 			Question: name + " — pay any amount of {E} for that much damage",
 			Unit:     game.PayAmountDamage,
 			Goal:     lethalDamageGoal,
-			Then: func(ctx *Context, paid int) error {
-				if paid <= 0 {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: target, Amount: paid}.Apply(ctx)
-			},
+			Then:     dealThatMuchDamageToTheTarget,
 		}.Apply(ctx)
 	}
 }
+
+// dealThatMuchDamageToTheTarget is "<this> deals that much damage to that
+// <permanent>" (#4294): the amount paid, dealt to the first target of the
+// item that asked. One key for every card that says it.
+var dealThatMuchDamageToTheTarget = NumberThen("number/deal-that-much-damage-to-the-target",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 || ctx.Item == nil || len(ctx.Item.Targets) == 0 {
+			return nil
+		}
+		return DealDamage{Source: ctx.Source(), Target: ctx.Item.Targets[0].ID, Amount: r.Number}.Apply(ctx)
+	})
 
 // voltaicBrawlerPump is Voltaic Brawler's "it gets +1/+1 and gains
 // trample until end of turn": two until-end-of-turn effects on the same

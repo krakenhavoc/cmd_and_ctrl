@@ -324,7 +324,7 @@ type ManaSpendContext struct {
 	// to pick between sources, and the pool solver to pick between
 	// tokens it was already free to take. No payability test reads it
 	// (see spendWish). Plain data, so it can sit in a stored context
-	// (AssistPrompt.spend) without carrying a Game or a closure with it.
+	// (AssistPrompt.Spend) without carrying a Game or a closure with it.
 	wish *spendWish
 }
 

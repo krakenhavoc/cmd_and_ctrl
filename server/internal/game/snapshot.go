@@ -1865,6 +1865,19 @@ type pendingChoiceSnapshot struct {
 	PayAmount  *PayAmountPrompt `json:"payAmount,omitempty"`
 	MayPayX    *MayPayXClause   `json:"mayPayX,omitempty"`
 	PickNumber int              `json:"pickNumber,omitempty"`
+	// PickWords and PickNums are PendingChoice's (#4294): the words and
+	// numbers a keyed number prompt's branch is handed. Additive within
+	// the version.
+	PickWords []string `json:"pickWords,omitempty"`
+	PickNums  []int    `json:"pickNums,omitempty"`
+	// AttackSplit is PendingChoice's (#4294): a tokens-attacking split's
+	// state, the template through the card mirror. A pointer so every other
+	// prompt writes nothing; additive within the version.
+	AttackSplit *attackSplitSnapshot `json:"attackSplit,omitempty"`
+	// Assist is PendingChoice's (#4294): an assist helper's prompt, its
+	// parked cast and the spend context as data. A pointer so every other
+	// prompt writes nothing; additive within the version.
+	Assist *AssistPrompt `json:"assist,omitempty"`
 	// OptionObjects is PendingChoice's (#4264): the objects, with their
 	// epochs, a keyed pay-unless or any-player prompt's branches are
 	// handed. Additive within the version.
@@ -3112,6 +3125,10 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),
 		MayPayX:               copyMayPayXClause(c.MayPayX),
 		PickNumber:            c.PickNumber,
+		PickWords:             copyStrings(c.PickWords),
+		PickNums:              copyInts(c.PickNums),
+		Assist:                cloneAssistPrompt(c.Assist),
+		AttackSplit:           snapshotAttackSplit(c.AttackSplit, cen),
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
@@ -4098,6 +4115,10 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PayAmount:             copyPayAmountPrompt(c.PayAmount),
 		MayPayX:               copyMayPayXClause(c.MayPayX),
 		PickNumber:            c.PickNumber,
+		PickWords:             copyStrings(c.PickWords),
+		PickNums:              copyInts(c.PickNums),
+		Assist:                cloneAssistPrompt(c.Assist),
+		AttackSplit:           restoreAttackSplit(c.AttackSplit),
 		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,

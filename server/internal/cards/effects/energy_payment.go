@@ -113,7 +113,9 @@ func (p PayEnergyOrElse) Apply(ctx *Context) error {
 // pay one or more {E}" (Min 1): the pay_amount prompt, whose answer is
 // handed to Then. Then always runs exactly once, with 0 when nothing was
 // paid — when the chooser had no energy, declined or left — so the rest
-// of the card ("Destroy all creatures") lives inside it.
+// of the card ("Destroy all creatures") lives inside it. Then is a
+// registered branch (NumberThen, #4294), handed the amount as r.Number,
+// so a table waiting on the payer is a restore point.
 //
 // Goal is the card's own threshold, computed when the prompt is asked:
 // the smallest amount that does what the card is for (Harnessed
@@ -127,13 +129,22 @@ type PayEnergyAmount struct {
 	Question string
 	Unit     string
 	Goal     func(ctx *Context) int
-	Then     func(ctx *Context, paid int) error
+	// Then is the branch the amount is handed to; Carry, Words and Nums
+	// are the plain data it is handed with it.
+	Then  game.NumberThen
+	Carry []uuid.UUID
+	Words []string
+	Nums  []int
 }
 
 func (p PayEnergyAmount) Apply(ctx *Context) error {
 	goal := 0
 	if p.Goal != nil {
 		goal = p.Goal(ctx)
+	}
+	branch, err := numberBranchOf(ctx, p.Then, p.Carry, p.Words, p.Nums)
+	if err != nil {
+		return err
 	}
 	return ctx.Game.QueuePayEnergyAmountForEffect(game.PayEnergyAmount{
 		Chooser:  energyChooser(ctx, p.Chooser),
@@ -142,7 +153,7 @@ func (p PayEnergyAmount) Apply(ctx *Context) error {
 		Goal:     goal,
 		Unit:     p.Unit,
 		Question: p.Question,
-		Then:     amountThen(ctx.Item, p.Then),
+		Branch:   branch,
 	})
 }
 

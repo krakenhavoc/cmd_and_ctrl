@@ -36,16 +36,21 @@ func init() {
 						Min:      1,
 						Question: "Territorial Aetherkite — pay one or more {E}; it deals that much damage to each other creature",
 						Unit:     game.PayAmountDamage,
-						Then: func(ctx *Context, paid int) error {
-							if paid <= 0 {
-								return nil
-							}
-							t := WhenYouDo("Territorial Aetherkite — that much damage to each other creature", territorialAetherkiteDamageBody)
-							t.Params = game.EffectParams{Amount: paid}
-							return t.Apply(ctx)
-						},
+						Then:     territorialAetherkiteReflexive,
 					}.Apply(ctx)
 				}),
 		},
 	})
 }
+
+// territorialAetherkiteReflexive is the paid half (#4294): the reflexive
+// trigger that deals that much damage to each other creature.
+var territorialAetherkiteReflexive = NumberThen("number/territorial-aetherkite-damage-each-other-creature",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		t := WhenYouDo("Territorial Aetherkite — that much damage to each other creature", territorialAetherkiteDamageBody)
+		t.Params = game.EffectParams{Amount: r.Number}
+		return t.Apply(ctx)
+	})
