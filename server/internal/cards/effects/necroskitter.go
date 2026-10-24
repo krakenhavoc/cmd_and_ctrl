@@ -66,11 +66,20 @@ func necroskitterMayReturn(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Necroskitter — return that card to the battlefield under your control?",
-		OnYes: func(ctx *Context) error {
-			if !diedCardStillInGraveyard(ctx, dead) {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: dead, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
-		},
+		Then:     necroskitterAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// necroskitterAnswer is the "yes": return the card that died (the asking
+// item's triggering event) to the battlefield under your control. Keyed
+// (#4291).
+var necroskitterAnswer = MayYes("confirm/necroskitter-return", func(ctx *Context, _ game.ConfirmAnswer) error {
+	if ctx.Item.Trigger == nil {
+		return nil
+	}
+	dead := ctx.Item.Trigger.Event.CardID
+	if !diedCardStillInGraveyard(ctx, dead) {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: dead, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+})

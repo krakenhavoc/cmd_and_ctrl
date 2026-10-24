@@ -21,7 +21,7 @@ func init() {
 		Name:         "Dwarven Vigilantes",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(unblockedAttackerMay("Dwarven Vigilantes", "deal damage equal to its power to target creature",
+			Targeting(unblockedAttackerMay("Dwarven Vigilantes", "deal damage equal to its power to target creature", "dwarven-vigilantes-damage",
 				func(ctx *Context, target uuid.UUID) error {
 					return DealDamage{Source: ctx.Source(), Target: target, Amount: sourcePowerNow(ctx)}.Apply(ctx)
 				}), TargetCreature("target creature")),

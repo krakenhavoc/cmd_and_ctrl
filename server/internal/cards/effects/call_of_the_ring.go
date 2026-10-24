@@ -39,8 +39,7 @@ func callOfTheRingPayAndDraw(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Call of the Ring — pay 2 life to draw a card?",
 		LifeCost: 2,
-		OnYes: func(ctx *Context) error {
-			return payLifeThenDraw(ctx, 2, 1)
-		},
+		Then:     mayPayLifeDraw,
+		Word:     "1",
 	}.Apply(NewContext(g, item))
 }

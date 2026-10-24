@@ -22,7 +22,7 @@ func init() {
 		Name:         "Farrel's Zealot",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(unblockedAttackerMay("Farrel's Zealot", "deal 3 damage to target creature",
+			Targeting(unblockedAttackerMay("Farrel's Zealot", "deal 3 damage to target creature", "farrels-zealot-damage",
 				func(ctx *Context, target uuid.UUID) error {
 					return DealDamage{Source: ctx.Source(), Target: target, Amount: 3}.Apply(ctx)
 				}), TargetCreature("target creature")),

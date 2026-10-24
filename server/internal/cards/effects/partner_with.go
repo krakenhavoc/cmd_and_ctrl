@@ -73,20 +73,26 @@ func partnerWithSearch(partner string) Effect {
 				Question: "Partner with " + partner + " — search your library for a card named " + partner + "?",
 				YesLabel: "Search",
 				NoLabel:  "Don't search",
-				OnYes: func(ctx *Context) error {
-					return SearchLibrary{
-						Player:    searcher,
-						Predicate: func(c game.Card) bool { return game.HasName(c, partner) },
-						Dest:      game.ZoneHand,
-						Limit:     1,
-						Reveal:    true,
-						Shuffle:   true,
-						Optional:  true,
-						Reason:    "Partner with — choose a card named " + partner + " to reveal and put into your hand",
-					}.Apply(ctx)
-				},
+				Then:     partnerWithAnswer,
+				Word:     partner,
 			}.Apply(ctx)
 		}
 		return nil
 	}
 }
+
+// partnerWithAnswer is the target player's "yes": search for the card named
+// by the Word. Keyed (#4291).
+var partnerWithAnswer = MayYes("confirm/partner-with-search", func(ctx *Context, r game.ConfirmAnswer) error {
+	partner := r.Word
+	return SearchLibrary{
+		Player:    r.Chooser,
+		Predicate: func(c game.Card) bool { return game.HasName(c, partner) },
+		Dest:      game.ZoneHand,
+		Limit:     1,
+		Reveal:    true,
+		Shuffle:   true,
+		Optional:  true,
+		Reason:    "Partner with — choose a card named " + partner + " to reveal and put into your hand",
+	}.Apply(ctx)
+})

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strconv"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Niv-Mizzet, Ghost Counsel — Legendary Creature — Spirit Dragon
 // {2}{W}{W}{B}{B}, 4/4:
@@ -38,10 +42,8 @@ func init() {
 				return MayChoice{
 					Question: "Niv-Mizzet, Ghost Counsel — pay " + numberWord(n) + " life to draw " + numberWord(n) + " cards?",
 					LifeCost: n,
-					OnYes: func(ctx *Context) error {
-						ctx.RecordStep(nivMizzetGhostCounselRecord, nil, n)
-						return nivMizzetGhostCounselPayAndDraw.Run(ctx)
-					},
+					Then:     nivMizzetAnswer,
+					Word:     strconv.Itoa(n),
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -79,3 +81,10 @@ var nivMizzetGhostCounselPayAndDraw = RegisterThenSteps("then-steps/niv-mizzet-g
 		return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
 	}),
 )
+
+// nivMizzetAnswer is the "yes": pay life equal to the life gained (Word) and
+// draw that many cards. Keyed (#4291).
+var nivMizzetAnswer = MayYes("confirm/niv-mizzet-ghost-counsel-pay-and-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.RecordStep(nivMizzetGhostCounselRecord, nil, wordInt(r))
+	return nivMizzetGhostCounselPayAndDraw.Run(ctx)
+})

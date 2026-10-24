@@ -106,8 +106,8 @@ func charismaticConquerorAsk(g *game.Game, item *game.StackItem, entered uuid.UU
 		Question: "Charismatic Conqueror — tap " + name + "?",
 		YesLabel: "Tap it",
 		NoLabel:  "They get a Vampire",
-		OnYes:    charismaticConquerorTap(entered),
-		OnNo:     charismaticConquerorToken,
+		Then:     charismaticConquerorAnswer,
+		Carry:    []uuid.UUID{entered},
 	}.Apply(ctx)
 }
 
@@ -133,3 +133,10 @@ func charismaticConquerorToken(ctx *Context) error {
 		N:          1,
 	}.Apply(ctx)
 }
+
+// charismaticConquerorAnswer is the permanent's controller's answer: tap it
+// (the carried ID), or the Conqueror's controller gets a Vampire. Keyed
+// (#4291).
+var charismaticConquerorAnswer = MayYesNo("confirm/charismatic-conqueror-tap",
+	func(ctx *Context, r game.ConfirmAnswer) error { return charismaticConquerorTap(carryAt(r, 0))(ctx) },
+	func(ctx *Context, _ game.ConfirmAnswer) error { return charismaticConquerorToken(ctx) })

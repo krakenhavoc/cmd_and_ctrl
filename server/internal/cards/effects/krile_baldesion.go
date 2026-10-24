@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Krile Baldesion — Legendary Creature — Dwarf Wizard {W}{U}, 2/2:
 //
@@ -85,19 +89,24 @@ func krileReturn(g *game.Game, item *game.StackItem) error {
 	id := ts[0].ID
 	return MayChoice{
 		Question: "Krile Baldesion — return that card to your hand?",
-		OnYes: func(ctx *Context) error {
-			g, item := ctx.Game, ctx.Item
-			if g.ResolvedThisTurn(item.SourceCardID, krileDoneLabel) > 0 {
-				return nil
-			}
-			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-				return nil
-			}
-			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-				return err
-			}
-			g.NoteDoneThisTurn(item.SourceCardID, krileDoneLabel)
-			return nil
-		},
+		Then:     krileAnswer,
+		Carry:    []uuid.UUID{id},
 	}.Apply(ctx)
 }
+
+// krileAnswer is the "yes": return the card (the carried ID) to the hand
+// and record the use. Keyed (#4291).
+var krileAnswer = MayYes("confirm/krile-baldesion-return", func(ctx *Context, r game.ConfirmAnswer) error {
+	g, item, id := ctx.Game, ctx.Item, carryAt(r, 0)
+	if g.ResolvedThisTurn(item.SourceCardID, krileDoneLabel) > 0 {
+		return nil
+	}
+	if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+		return nil
+	}
+	if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+		return err
+	}
+	g.NoteDoneThisTurn(item.SourceCardID, krileDoneLabel)
+	return nil
+})

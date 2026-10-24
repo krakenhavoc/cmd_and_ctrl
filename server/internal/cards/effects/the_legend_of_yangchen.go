@@ -89,10 +89,8 @@ func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 		return MayChoice{
 			Question: "The Legend of Yangchen — have target opponent draw three cards?",
 			Draws:    3, Drawer: opponent,
-			OnYes: func(ctx *Context) error {
-				ctx.RecordStep(yangchenRecord, []uuid.UUID{opponent})
-				return yangchenDraws.Run(ctx)
-			},
+			Then:  yangchenAnswer,
+			Carry: []uuid.UUID{opponent},
 		}.Apply(ctx)
 	}
 	// CR 608.2b: the target left before this resolved.
@@ -159,3 +157,10 @@ func seatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// yangchenAnswer is the "yes": the target opponent (the carried ID) draws
+// three. Keyed (#4291).
+var yangchenAnswer = MayYes("confirm/the-legend-of-yangchen-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.RecordStep(yangchenRecord, []uuid.UUID{carryAt(r, 0)})
+	return yangchenDraws.Run(ctx)
+})

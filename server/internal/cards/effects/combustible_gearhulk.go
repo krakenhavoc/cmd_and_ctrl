@@ -58,8 +58,7 @@ func combustibleGearhulkAsk(g *game.Game, item *game.StackItem) error {
 			Draws:    3, Drawer: ctx.Controller(),
 			YesLabel: "They draw three",
 			NoLabel:  "They mill three and it deals damage to you",
-			OnYes:    combustibleGearhulkDrawThree,
-			OnNo:     combustibleGearhulkMillThenBurn,
+			Then:     combustibleGearhulkAnswer,
 		}.Apply(ctx)
 	}
 	// CR 608.2b: the target is gone, so the trigger does nothing at
@@ -124,3 +123,10 @@ func combustibleGearhulkBurn(ctx *Context, milled []uuid.UUID) error {
 	}
 	return nil
 }
+
+// combustibleGearhulkAnswer is the chosen opponent's answer: they let the
+// Gearhulk's controller draw three, or they mill three and are burned.
+// Keyed (#4291).
+var combustibleGearhulkAnswer = MayYesNo("confirm/combustible-gearhulk-draw-or-mill",
+	func(ctx *Context, _ game.ConfirmAnswer) error { return combustibleGearhulkDrawThree(ctx) },
+	func(ctx *Context, _ game.ConfirmAnswer) error { return combustibleGearhulkMillThenBurn(ctx) })

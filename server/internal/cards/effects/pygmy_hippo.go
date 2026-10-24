@@ -37,35 +37,43 @@ func init() {
 			WhenAttacksAndIsNotBlockedEffect(label, func(g *game.Game, item *game.StackItem, defender uuid.UUID) error {
 				return MayChoice{
 					Question: label + "? (it then assigns no combat damage this turn)",
-					OnYes: func(ctx *Context) error {
-						assignsNoCombatDamageThisTurn(ctx, "Pygmy Hippo — assigns no combat damage this turn")
-						if !defendingPlayerStillIn(ctx.Game, defender) {
-							return nil
-						}
-						return ActivateAManaAbilityOfEachLand{
-							Player: defender,
-							Card:   "Pygmy Hippo",
-							Then: func(ctx *Context, lost []game.ManaToken) error {
-								n := game.TotalMana(lost)
-								if n <= 0 {
-									return nil
-								}
-								step, phase, ok := ctx.Game.NextMainPhaseThisTurnForEffect()
-								if !ok {
-									return nil
-								}
-								return ScheduleDelayedTrigger{
-									At:      step,
-									OnPhase: phase,
-									Label:   "Pygmy Hippo — add {C} × " + strconv.Itoa(n),
-									Body:    pygmyHippoManaBody,
-									Params:  game.EffectParams{Amount: n},
-								}.Apply(ctx)
-							},
-						}.Apply(ctx)
-					},
+					Then:     pygmyHippoAnswer,
+					Carry:    []uuid.UUID{defender},
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// pygmyHippoAnswer is the "yes": Pygmy Hippo assigns no combat damage this
+// turn, and the defending player (the carried ID) activates a mana ability
+// of each land and loses the mana, which comes back as {C} at the next main
+// phase. Keyed (#4291).
+var pygmyHippoAnswer = MayYes("confirm/pygmy-hippo-lose-mana", func(ctx *Context, r game.ConfirmAnswer) error {
+	defender := carryAt(r, 0)
+	assignsNoCombatDamageThisTurn(ctx, "Pygmy Hippo — assigns no combat damage this turn")
+	if !defendingPlayerStillIn(ctx.Game, defender) {
+		return nil
+	}
+	return ActivateAManaAbilityOfEachLand{
+		Player: defender,
+		Card:   "Pygmy Hippo",
+		Then: func(ctx *Context, lost []game.ManaToken) error {
+			n := game.TotalMana(lost)
+			if n <= 0 {
+				return nil
+			}
+			step, phase, ok := ctx.Game.NextMainPhaseThisTurnForEffect()
+			if !ok {
+				return nil
+			}
+			return ScheduleDelayedTrigger{
+				At:      step,
+				OnPhase: phase,
+				Label:   "Pygmy Hippo — add {C} × " + strconv.Itoa(n),
+				Body:    pygmyHippoManaBody,
+				Params:  game.EffectParams{Amount: n},
+			}.Apply(ctx)
+		},
+	}.Apply(ctx)
+})

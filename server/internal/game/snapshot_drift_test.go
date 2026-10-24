@@ -1168,6 +1168,8 @@ var pendingChoiceFields = plan(
 	// #4256: a keyed collection pick's filter word; its key rides
 	// PickThen.
 	"PickMatchArg", carried, "",
+	// #4291: a keyed choose_cards pick's live-zone re-check.
+	"ChooseLiveZone", carried, "",
 	// #4264: a keyed pay-unless's non-mana payment.
 	"PayActionClause", carried, "",
 	// #4264: the item that queued a keyed pay-unless or any-player

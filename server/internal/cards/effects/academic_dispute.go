@@ -41,16 +41,20 @@ func init() {
 				}
 				return MayChoice{
 					Question: "Academic Dispute — have the creature gain reach until end of turn?",
-					OnYes: func(ctx *Context) error {
-						return GrantKeywordUntilEOT{
-							Target:   id,
-							Keywords: []string{"reach"},
-							Label:    "Academic Dispute — reach until end of turn",
-						}.Apply(ctx)
-					},
+					Then:     academicDisputeReach,
+					Carry:    []uuid.UUID{id},
 				}.Apply(ctx)
 			}),
 			Learn{},
 		),
 	})
 }
+
+// academicDisputeReach is the "yes": the creature gains reach, keyed (#4291).
+var academicDisputeReach = MayYes("confirm/academic-dispute-reach", func(ctx *Context, r game.ConfirmAnswer) error {
+	return GrantKeywordUntilEOT{
+		Target:   carryAt(r, 0),
+		Keywords: []string{"reach"},
+		Label:    "Academic Dispute — reach until end of turn",
+	}.Apply(ctx)
+})

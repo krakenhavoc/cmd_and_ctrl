@@ -33,19 +33,8 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
 						Question: "Ajani's Aid — search your library and/or graveyard for a card named Ajani, Valiant Protector?",
-						OnYes: func(ctx *Context) error {
-							return SearchLibrary{
-								Player:    ctx.Controller(),
-								Predicate: func(c game.Card) bool { return c.Name == "Ajani, Valiant Protector" },
-								Dest:      game.ZoneHand,
-								Limit:     1,
-								Reveal:    true,
-								Shuffle:   true,
-								// #3217: "library and/or graveyard".
-								AlsoGraveyard: true,
-								Reason:        "Choose a card named Ajani, Valiant Protector to put into your hand",
-							}.Apply(ctx)
-						},
+						Then:     maySearchNamedLibraryOrGraveyard,
+						Word:     "Ajani, Valiant Protector",
 					}.Apply(NewContext(g, item))
 				}),
 		},

@@ -36,10 +36,14 @@ func init() {
 func galadrielOfLothlorienReveal(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Galadriel of Lothlórien — reveal the top card of your library?",
-		OnYes: func(ctx *Context) error {
-			_, err := revealTopThenPutIfMatch(ctx.Game, ctx.Source(), ctx.Controller(), game.Card.IsLand, true,
-				"Galadriel of Lothlórien — revealed from the top of the library")
-			return err
-		},
+		Then:     galadrielAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// galadrielAnswer is the "yes": reveal the top card, and a land may be put
+// onto the battlefield. Keyed (#4291).
+var galadrielAnswer = MayYes("confirm/galadriel-reveal", func(ctx *Context, _ game.ConfirmAnswer) error {
+	_, err := revealTopThenPutIfMatch(ctx.Game, ctx.Source(), ctx.Controller(), game.Card.IsLand, true,
+		"Galadriel of Lothlórien — revealed from the top of the library")
+	return err
+})

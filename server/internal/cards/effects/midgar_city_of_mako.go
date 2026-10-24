@@ -52,7 +52,7 @@ func init() {
 				Question: "Reactor Raid — sacrifice an artifact or creature to draw two cards?",
 				YesLabel: "Sacrifice",
 				NoLabel:  "Don't",
-				OnYes:    reactorRaidSacrifice,
+				Then:     reactorRaidAnswer,
 			}.Apply(ctx)
 		},
 	})
@@ -80,3 +80,9 @@ func reactorRaidSacrifice(ctx *Context) error {
 			return DrawCards{Player: me, N: 2}.Apply(NewContext(g, item))
 		})
 }
+
+// reactorRaidAnswer is the "yes": sacrifice an artifact or creature, then
+// draw two cards. Keyed (#4291).
+var reactorRaidAnswer = MayYes("confirm/reactor-raid-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return reactorRaidSacrifice(ctx)
+})

@@ -41,9 +41,8 @@ func init() {
 				return b11CountersWerePlaced(ev, source.InstanceID, game.CounterPlusOne, g)
 			}, "Herd Baloth — you may create a 4/4 green Beast", Do(MayChoice{
 				Question: "Herd Baloth — create a 4/4 green Beast creature token?",
-				OnYes: func(ctx *Context) error {
-					return CreateToken{Template: TokenCard("4/4 green Beast"), N: 1}.Apply(ctx)
-				},
+				Then:     mayCreateTokens,
+				Word:     tokenWord(1, "4/4 green Beast"),
 			})),
 		},
 	})

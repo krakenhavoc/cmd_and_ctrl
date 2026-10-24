@@ -1781,6 +1781,9 @@ type pendingChoiceSnapshot struct {
 	// #4256: the word a keyed outside-the-game collection pick's filter
 	// is handed (its key rides pickThen). Additive within the version.
 	PickMatchArg string `json:"pickMatchArg,omitempty"`
+	// ChooseLiveZone is PendingChoice's (#4291): the zone a keyed
+	// choose_cards pick's candidates are re-checked against.
+	ChooseLiveZone ZoneKind `json:"chooseLiveZone,omitempty"`
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (CR 607.2a). A pointer so a prompt that links nothing writes
 	// nothing; additive within the version.
@@ -3038,6 +3041,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,
+		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
@@ -4018,6 +4022,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
 		PickMatchArg:          c.PickMatchArg,
+		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),

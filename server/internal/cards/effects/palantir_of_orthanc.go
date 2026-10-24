@@ -76,12 +76,7 @@ func palantirAskOpponent(g *game.Game, item *game.StackItem) error {
 			Draws:    1, Drawer: item.Controller,
 			YesLabel: "They draw a card",
 			NoLabel:  "They mill instead and I lose life",
-			OnYes: func(ctx *Context) error {
-				return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-			},
-			OnNo: func(ctx *Context) error {
-				return palantirMillAndBurn(ctx, item, opponent)
-			},
+			Then:     palantirAnswer,
 		}.Apply(ctx)
 	}
 	// CR 608.2b: the target opponent is gone, so nothing happens at
@@ -119,3 +114,13 @@ func palantirMillAndBurn(ctx *Context, item *game.StackItem, opponent uuid.UUID)
 			return g.ChangePlayerLifeForEffect(item.SourceCardID, opponent, -total)
 		})
 }
+
+// palantirAnswer is the chosen opponent's answer: let the Palantír's
+// controller draw a card, or they mill and lose life. Keyed (#4291).
+var palantirAnswer = MayYesNo("confirm/palantir-of-orthanc-draw-or-mill",
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		return DrawCards{Player: ctx.Item.Controller, N: 1}.Apply(ctx)
+	},
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		return palantirMillAndBurn(ctx, ctx.Item, r.Chooser)
+	})

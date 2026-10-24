@@ -729,7 +729,17 @@ type PendingChoice struct {
 	// OutsidePickPrompt.MatchArg): Spawnsire of Ulamog's subtype, which
 	// a text-changing effect may have changed. Plain data. Empty on
 	// every other prompt.
+	//
+	// It is also the one word a keyed confirm hands its answer
+	// (ConfirmPrompt.Word, #4291) and a keyed choose_cards pick's
+	// CarryWord.
 	PickMatchArg string
+	// ChooseLiveZone is the zone a KEYED choose_cards pick's candidates are
+	// re-checked against, on submit and by the sweep that withdraws a pick
+	// whose candidates have all left it (#4291, ChooseCardsPrompt.LiveZone).
+	// A closure pick keeps this on its frame (chooseCardsFrame.zone). Empty
+	// on every other prompt, which means no live re-check.
+	ChooseLiveZone ZoneKind
 	// PickMeasures is RevealedHandDiscard.Measure's reading of each
 	// candidate, in DiscardOptions order, taken as the pick was raised.
 	// Nil when the card measures nothing.
@@ -5365,13 +5375,13 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		if c.Kind == PendingChoiceUntapChoice || isEntryCardChoiceKind(c.Kind) {
 			continue
 		}
-		frame := c.chooseCardsResume
-		if frame == nil || frame.zone == "" {
+		zone := c.liveZone()
+		if zone == "" {
 			continue
 		}
 		live := make([]uuid.UUID, 0, len(c.ChooseCards))
 		for _, id := range c.ChooseCards {
-			if g.pickStillInPickZoneLocked(c, frame.zone, id) {
+			if g.pickStillInPickZoneLocked(c, zone, id) {
 				live = append(live, id)
 			}
 		}
@@ -5397,6 +5407,19 @@ func (g *Game) pruneCardSetChoicesLocked() {
 		})
 		g.dropChoiceLocked(idx)
 	}
+}
+
+// liveZone is the zone a card-set pick's candidates are re-checked against:
+// its frame's, or, for a keyed pick, the one it was queued with
+// (ChooseLiveZone, #4291). Empty means no live re-check.
+func (c *PendingChoice) liveZone() ZoneKind {
+	if c.chooseCardsResume != nil {
+		return c.chooseCardsResume.zone
+	}
+	if isKeyedChooseCards(c) {
+		return c.ChooseLiveZone
+	}
+	return ""
 }
 
 // setCardSetCandidates replaces a choose-cards prompt's candidate list

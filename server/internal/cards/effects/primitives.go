@@ -1292,12 +1292,9 @@ func PayUnlessBranches(key string, onPay, onDecline func(ctx *Context, r game.Pa
 // the prompt's Carry, and the card's own Carry follows it.
 func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessFunc {
 	return func(g *game.Game, r game.PayUnlessAnswer) error {
-		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
-		if r.Item != nil {
-			// The prompt carried the asking item as data (#4264): the
-			// branch reads its event, targets, X and source object.
-			ctx = NewContext(g, r.Item)
-		}
+		// A prompt that carried the asking item as data (#4264) lets the
+		// branch read its event, targets, X and source object.
+		ctx, carry := askedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
 		r.Carry = carry
 		return body(ctx, r)
 	}

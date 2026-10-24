@@ -112,11 +112,9 @@ func creatureDealtCombatDamageToAnOpponentOf(ev game.Event, controller uuid.UUID
 	return ok && dealer.IsCreature()
 }
 
-// payLifeThenDrawFor is payLifeThenDraw addressed to a named seat:
-// "that player may pay N life. If they do, they draw a card."
-// payLifeThenDraw charges the resolving effect's controller, which is
-// the wrong seat for a political card whose payoff belongs to an
-// opponent (Gix).
+// payLifeThenDrawFor is "that player may pay N life. If they do, they draw
+// M cards": the body of the shared confirm/pay-life-draw answer (Call of the
+// Ring, Erebos, Crossway Troublemakers, Gix), addressed to a named seat.
 //
 // Paying life is a COST (CR 118.3), so "if they do" has to know the
 // payment finished before the draw happens (#793), and an

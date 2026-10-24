@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"slices"
-
 	"github.com/google/uuid"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -70,14 +68,27 @@ func myriadTokenCopies(g *game.Game, item *game.StackItem, name string) error {
 	if !ok {
 		return nil
 	}
-	return myriadChooseOpponents(NewContext(g, item), name, tmpl, b27OtherOpponents(g, item.Controller, defender), nil)
+	return myriadChooseOpponents(NewContext(g, item), name, item.Params.Object, tmpl, b27OtherOpponents(g, item.Controller, defender), nil)
 }
 
-func myriadChooseOpponents(ctx *Context, name string, tmpl game.Card, opponents []uuid.UUID, groups []game.TokenGroup) error {
+// myriadGroups is a token copy attacking each of the opponents chosen.
+func myriadGroups(tmpl game.Card, chosen []uuid.UUID) []game.TokenGroup {
+	var groups []game.TokenGroup
+	for _, opponent := range chosen {
+		groups = append(groups, game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
+	}
+	return groups
+}
+
+// myriadChooseOpponents asks, for each opponent still to ask, whether to
+// create a copy attacking them. `chosen` are the opponents who have said
+// yes; the attacker (obj) rides the prompt so the copy's template is read
+// again when the answer arrives.
+func myriadChooseOpponents(ctx *Context, name string, obj game.ObjectRef, tmpl game.Card, opponents, chosen []uuid.UUID) error {
 	if len(opponents) == 0 {
 		item := ctx.Item
 		return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
-			Controller: ctx.Controller(), Source: ctx.Source(), Groups: groups, Together: true, AttackChoicesLabel: name + " — myriad",
+			Controller: ctx.Controller(), Source: ctx.Source(), Groups: myriadGroups(tmpl, chosen), Together: true, AttackChoicesLabel: name + " — myriad",
 		}, func(g *game.Game, tokens []uuid.UUID) error {
 			if len(tokens) == 0 {
 				return nil
@@ -89,14 +100,45 @@ func myriadChooseOpponents(ctx *Context, name string, tmpl game.Card, opponents 
 	opponent := opponents[0]
 	p := ctx.Game.PlayerByIDForEffect(opponent)
 	if p == nil || p.Eliminated {
-		return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], groups)
+		return myriadChooseOpponents(ctx, name, obj, tmpl, opponents[1:], chosen)
 	}
 	return (MayChoice{Question: name + " — myriad: create a copy attacking " + p.Name + " or a planeswalker they control?",
 		YesLabel: "Create copy", NoLabel: "Skip opponent",
-		OnYes: func(ctx *Context) error {
-			chosen := append(slices.Clone(groups), game.TokenGroup{Template: copiedToken(tmpl), Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
-			return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], chosen)
-		},
-		OnNo: func(ctx *Context) error { return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], groups) },
+		Then:    myriadAnswer,
+		Carry:   joinCarry(chosen, opponents),
+		Word:    name,
+		Objects: []game.ObjectRef{obj},
 	}).Apply(ctx)
+}
+
+// myriadAnswer is one opponent's offer of a token copy: a yes adds them to
+// the opponents chosen (the carried IDs before the Nil; the one asked is the
+// first after it), either way the next is asked. The attacker is the object the prompt
+// carries, and Word is the card granting myriad. Registered in init because
+// it asks the next opponent through myriadChooseOpponents, which names it.
+// Keyed (#4291).
+var myriadAnswer game.ConfirmThen
+
+func init() {
+	myriadAnswer = MayAnswer("confirm/myriad-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+		if len(r.Objects) == 0 {
+			return nil
+		}
+		obj := r.Objects[0]
+		tmpl, ok := ctx.Game.TokenCopyTemplateForObjectForEffect(obj)
+		if !ok {
+			return nil
+		}
+		// The carry holds the opponents who said yes, then the one asked and
+		// the ones still to ask.
+		chosen, queue := splitCarry(r)
+		if len(queue) == 0 {
+			return nil
+		}
+		asked, rest := queue[0], queue[1:]
+		if r.Accepted {
+			chosen = append(chosen, asked)
+		}
+		return myriadChooseOpponents(ctx, r.Word, obj, tmpl, rest, chosen)
+	})
 }

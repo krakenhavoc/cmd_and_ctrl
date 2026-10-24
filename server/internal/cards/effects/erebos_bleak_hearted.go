@@ -88,9 +88,8 @@ func init() {
 					YesLabel: "Pay 2 life",
 					NoLabel:  "Don't pay",
 					LifeCost: 2,
-					OnYes: func(ctx *Context) error {
-						return payLifeThenDraw(ctx, 2, 1)
-					},
+					Then:     mayPayLifeDraw,
+					Word:     "1",
 				}.Apply(ctx)
 			}),
 		},

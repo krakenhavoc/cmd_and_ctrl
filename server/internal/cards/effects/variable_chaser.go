@@ -36,9 +36,7 @@ func init() {
 					Player:   player,
 					Question: "Arc of Fortune — discard your hand and draw seven cards?",
 					Draws:    7,
-					OnYes: func(ctx *Context) error {
-						return arcOfFortuneEmbark.RunAt(ctx, seatIndexOf(ctx.Game, player))
-					},
+					Then:     arcOfFortuneAnswer,
 				}).Apply(ctx); err != nil {
 					return err
 				}
@@ -60,3 +58,9 @@ var arcOfFortuneEmbark = RegisterThenSteps("then-steps/arc-of-fortune-embark",
 		return ctx.Game.DrawNForEffect(seatAtOccurrence(ctx), 7)
 	}),
 )
+
+// arcOfFortuneAnswer is a player's "yes": they discard their hand and draw
+// seven. Keyed (#4291).
+var arcOfFortuneAnswer = MayYes("confirm/arc-of-fortune-embark", func(ctx *Context, r game.ConfirmAnswer) error {
+	return arcOfFortuneEmbark.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
+})

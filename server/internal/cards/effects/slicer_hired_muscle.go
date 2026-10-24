@@ -74,33 +74,40 @@ func init() {
 
 func slicerUpkeep(g *game.Game, item *game.StackItem) error {
 	player := item.Trigger.Event.Actor
-	slicer := item.SourceCardID
 	return MayChoice{
 		Question: "Slicer, Hired Muscle — have " + attackTargetName(g, player) + " gain control of Slicer until end of turn? (If you don't, convert it.)",
 		YesLabel: "Hand it over",
 		NoLabel:  "Convert it",
-		OnYes: func(ctx *Context) error {
-			if ctx.isNewSourceObject(slicer) || !onBattlefield(ctx.Game, slicer) {
-				return nil
-			}
-			if err := (GainControl{
-				Target:     slicer,
-				Controller: player,
-				Label:      "Slicer, Hired Muscle — gain control until end of turn",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (UntapTarget{Target: slicer}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := goadAndScheduleClear(ctx, []uuid.UUID{slicer}); err != nil {
-				return err
-			}
-			return CantBeSacrificedThisTurn{
-				Target: slicer,
-				Label:  "Slicer, Hired Muscle — can't be sacrificed this turn",
-			}.Apply(ctx)
-		},
-		OnNo: func(ctx *Context) error { return ConvertThis{}.Apply(ctx) },
+		Then:     slicerAnswer,
+		Carry:    []uuid.UUID{player},
 	}.Apply(NewContext(g, item))
 }
+
+// slicerAnswer is the controller's choice: the player attacked (the carried
+// ID) gains control of Slicer until end of turn, or it converts. Keyed
+// (#4291).
+var slicerAnswer = MayYesNo("confirm/slicer-hired-muscle-hand-over-or-convert",
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		slicer, player := ctx.Item.SourceCardID, carryAt(r, 0)
+		if ctx.isNewSourceObject(slicer) || !onBattlefield(ctx.Game, slicer) {
+			return nil
+		}
+		if err := (GainControl{
+			Target:     slicer,
+			Controller: player,
+			Label:      "Slicer, Hired Muscle — gain control until end of turn",
+		}).Apply(ctx); err != nil {
+			return err
+		}
+		if err := (UntapTarget{Target: slicer}).Apply(ctx); err != nil {
+			return err
+		}
+		if err := goadAndScheduleClear(ctx, []uuid.UUID{slicer}); err != nil {
+			return err
+		}
+		return CantBeSacrificedThisTurn{
+			Target: slicer,
+			Label:  "Slicer, Hired Muscle — can't be sacrificed this turn",
+		}.Apply(ctx)
+	},
+	func(ctx *Context, _ game.ConfirmAnswer) error { return ConvertThis{}.Apply(ctx) })

@@ -67,21 +67,27 @@ func kimahriRonsoRageEffect(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Ronso Rage — have Kimahri become a copy of that creature?",
-		OnYes: func(ctx *Context) error {
-			if !onBattlefield(ctx.Game, victim) {
-				return nil
-			}
-			return BecomeCopy{
-				Targets:  []uuid.UUID{self},
-				Of:       victim,
-				Duration: CopyIndefinite,
-				Except: func(v *game.PrintedValues) {
-					v.SetName(kimahriName)
-					v.AddKeyword("vigilance")
-					v.GrantAbility(kimahriGrant)
-				},
-				Label: "Ronso Rage — Kimahri becomes a copy",
-			}.Apply(ctx)
-		},
+		Then:     kimahriAnswer,
+		Carry:    []uuid.UUID{victim},
 	}.Apply(ctx)
 }
+
+// kimahriAnswer is the "yes": Kimahri becomes a copy of the tapped creature
+// (the carried ID). Keyed (#4291).
+var kimahriAnswer = MayYes("confirm/kimahri-ronso-rage-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	victim := carryAt(r, 0)
+	if !onBattlefield(ctx.Game, victim) {
+		return nil
+	}
+	return BecomeCopy{
+		Targets:  []uuid.UUID{ctx.Item.SourceCardID},
+		Of:       victim,
+		Duration: CopyIndefinite,
+		Except: func(v *game.PrintedValues) {
+			v.SetName(kimahriName)
+			v.AddKeyword("vigilance")
+			v.GrantAbility(kimahriGrant)
+		},
+		Label: "Ronso Rage — Kimahri becomes a copy",
+	}.Apply(ctx)
+})

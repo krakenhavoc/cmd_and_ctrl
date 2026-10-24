@@ -68,9 +68,8 @@ func tataruTaruEnter(g *game.Game, item *game.StackItem) error {
 			Draws:    1,
 			YesLabel: "Draw a card",
 			NoLabel:  "Don't draw",
-			OnYes: func(ctx *Context) error {
-				return DrawCards{Player: opp, N: 1}.Apply(ctx)
-			},
+			Then:     mayDrawCards,
+			Word:     "1",
 		}.Apply(ctx)
 	}
 	return nil

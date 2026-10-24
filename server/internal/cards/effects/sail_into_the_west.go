@@ -83,9 +83,7 @@ func embarkOffer(ctx *Context, player uuid.UUID) error {
 		Player:   player,
 		Question: "Sail into the West — discard your hand and draw seven cards?",
 		Draws:    7,
-		OnYes: func(c *Context) error {
-			return sailIntoTheWestEmbark.RunAt(c, seatIndexOf(c.Game, player))
-		},
+		Then:     sailIntoTheWestAnswer,
 	}.Apply(ctx)
 }
 
@@ -102,3 +100,9 @@ var sailIntoTheWestEmbark = RegisterThenSteps("then-steps/sail-into-the-west-emb
 		return DrawCards{Player: seatAtOccurrence(ctx), N: 7}.Apply(ctx)
 	}),
 )
+
+// sailIntoTheWestAnswer is a player's "yes": they discard their hand and
+// draw seven. Keyed (#4291).
+var sailIntoTheWestAnswer = MayYes("confirm/sail-into-the-west-embark", func(ctx *Context, r game.ConfirmAnswer) error {
+	return sailIntoTheWestEmbark.RunAt(ctx, seatIndexOf(ctx.Game, r.Chooser))
+})

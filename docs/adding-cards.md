@@ -7521,14 +7521,41 @@ is `AnyPlayerPaysForEach{Then, Carry}` with `AnyPlayerEachConsequence(key, func(
 r game.AnyPlayerEachAnswer) error { … })` (`r.Unsaved` are the objects nobody
 paid for; Cleansing), ledgered as `choose <key>`. The energy payments
 (`MayPayEnergy{Then}`, `PayEnergyUnless{Else}`) and `MayPayX{Then}` are keyed
-the same way (#4289; `MayPayX`'s branch reads X as `r.Number`). A ward's life,
-sacrifice and discard confirms keep closures.
+the same way (#4289; `MayPayX`'s branch reads X as `r.Number`).
 
 **A "you may" asked of a resolving effect** (`MayChoice`) is keyed with `Then:
-mayAnswer`, `var mayAnswer = MayAnswer("confirm/<card>-<clause>", func(ctx
-*Context, r game.ConfirmAnswer) error { … })` (#4264): `r.Accepted` is the
-answer and `Carry` rides the prompt, as for `PayUnless`. A closure `OnYes` /
-`OnNo` still works and is not a restore point.
+mayAnswer`, `var mayAnswer = MayYes("confirm/<card>-<clause>", func(ctx
+*Context, r game.ConfirmAnswer) error { … })` (#4264, #4291). `MayYes` does
+something only on a yes, `MayYesNo` has a body for each reply and `MayAnswer`
+one body that reads `r.Accepted`. Every caller in the catalog is keyed, so a
+table waiting on any "you may" is a restore point. A keyed prompt carries the
+asking item as data (`game.AskedItem`), so the body runs against a copy of it:
+`ctx.Trigger()`, `ctx.Item.Targets`, `sourceIsNewObject` and the source
+object's epoch read what a closure over the item used to. Everything else the
+body needs rides the prompt as plain data: `Carry` (IDs; `r.Carry`),
+`Word` (one string, an amount or a name; `r.Word`, `wordInt(r)`), `LifeCost`
+(`r.LifeCost`) and `Objects` (`r.Objects`, with epochs). The state is frozen
+while a prompt is open, so work out a target or a candidate before asking and
+carry it; do not recompute it from the item. A recursive "ask each player in
+turn" body names the function that asks the next player, so register its key in
+`init` (`var x game.ConfirmThen; func init() { x = MayAnswer(…) }`) to avoid a
+package initialization cycle, and pass its two lists in one `Carry` with
+`joinCarry` / `splitCarry` (Kwain, Model of Unity, the Second Doctor, Snort,
+Mog, Myriad). **Share a key when the consequence is word for word the same**
+(`may_shared.go`): `mayDrawCards` (Word is N), `mayGainLife`,
+`mayCreateTokens` (`tokenWord(n, template)`), `mayCopyThisSpell`,
+`mayPayLifeDraw` (the life is `LifeCost`, the draw the Word),
+`maySearchNamedLibraryOrGraveyard`, `mayFabricate`. A closure `OnYes` / `OnNo`
+still works and is not a restore point.
+
+**A ward's life, sacrifice and discard confirms** are keyed too (#4291):
+`confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
+`confirm/ward-discard` (the Word is the count, then `random`), and for a
+sacrifice cost one `confirm/ward-sacrifice-<label>` and one
+`choose-cards/ward-sacrifice-<label>` per distinct label, registered when
+`WardSacrifice` is validated at boot. The cost's predicate is a function and
+cannot ride a prompt, so the label IS the cost: two costs with one label must
+be the same cost.
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card

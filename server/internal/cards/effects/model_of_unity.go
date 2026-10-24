@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -50,18 +52,32 @@ func mayScryInTurn(ctx *Context, players []uuid.UUID, n int) error {
 		return nil
 	}
 	p, rest := players[0], players[1:]
-	next := func(ctx *Context) error { return mayScryInTurn(ctx, rest, n) }
 	return MayChoice{
 		Player:   p,
 		Question: "Model of Unity — scry 2?",
-		OnYes: func(ctx *Context) error {
-			item := ctx.Item
-			return Scry{
-				Player: p,
-				N:      n,
-				Then:   func(g *game.Game) error { return next(NewContext(g, item)) },
-			}.Apply(ctx)
-		},
-		OnNo: next,
+		Then:     modelOfUnityAnswer,
+		Carry:    rest,
+		Word:     strconv.Itoa(n),
 	}.Apply(ctx)
+}
+
+// modelOfUnityAnswer is one player's answer to "scry n?": a yes scries first
+// (Word is n), either way the next player (the carried IDs) is asked.
+// Registered in init because it asks the next player through mayScryInTurn,
+// which names it. Keyed (#4291).
+var modelOfUnityAnswer game.ConfirmThen
+
+func init() {
+	modelOfUnityAnswer = MayAnswer("confirm/model-of-unity-scry", func(ctx *Context, r game.ConfirmAnswer) error {
+		rest, n := r.Carry, wordInt(r)
+		if !r.Accepted {
+			return mayScryInTurn(ctx, rest, n)
+		}
+		item := ctx.Item
+		return Scry{
+			Player: r.Chooser,
+			N:      n,
+			Then:   func(g *game.Game) error { return mayScryInTurn(NewContext(g, item), rest, n) },
+		}.Apply(ctx)
+	})
 }

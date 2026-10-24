@@ -73,9 +73,14 @@ func coriSteelCutterFlurry(g *game.Game, item *game.StackItem) error {
 			Question: "Cori-Steel Cutter — attach it to the Monk?",
 			YesLabel: "Attach",
 			NoLabel:  "Don't attach",
-			OnYes: func(ctx *Context) error {
-				return ctx.Game.AttachSourceForEffect(ctx.Item, game.TargetRef{Kind: game.TargetCard, ID: monk})
-			},
+			Then:     coriSteelCutterAttach,
+			Carry:    []uuid.UUID{monk},
 		}.Apply(NewContext(g, item))
 	})
 }
+
+// coriSteelCutterAttach is the "yes": attach the Cutter to the Monk (the
+// carried ID). Keyed (#4291).
+var coriSteelCutterAttach = MayYes("confirm/cori-steel-cutter-attach", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ctx.Game.AttachSourceForEffect(ctx.Item, game.TargetRef{Kind: game.TargetCard, ID: carryAt(r, 0)})
+})

@@ -49,12 +49,19 @@ func delifsCone(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Delif's Cone — gain life equal to the attacking creature's power? (if you do, it assigns no combat damage this turn)",
-		OnYes: func(ctx *Context) error {
-			if err := (GainLife{Player: item.Controller, Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Delif's Cone — assigns no combat damage this turn")
-			return nil
-		},
+		Then:     delifsConeAnswer,
+		Carry:    []uuid.UUID{it},
 	}.Apply(ctx)
 }
+
+// delifsConeAnswer is the "yes": gain life equal to the attacking creature's
+// power (the carried ID), and it assigns no combat damage this turn. Keyed
+// (#4291).
+var delifsConeAnswer = MayYes("confirm/delifs-cone-gain-life", func(ctx *Context, r game.ConfirmAnswer) error {
+	it := carryAt(r, 0)
+	if err := (GainLife{Player: ctx.Controller(), Amount: powerNowOrLastKnown(ctx.Game, it)}).Apply(ctx); err != nil {
+		return err
+	}
+	ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), it, "Delif's Cone — assigns no combat damage this turn")
+	return nil
+})

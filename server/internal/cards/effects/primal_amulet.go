@@ -58,17 +58,23 @@ func primalAmuletCharge(g *game.Game, item *game.StackItem) error {
 			Question: "Primal Amulet — remove its charge counters and transform it?",
 			YesLabel: "Transform",
 			NoLabel:  "Keep it",
-			OnYes: func(ctx *Context) error {
-				// "Those counters": whatever it holds now.
-				n := b39CountersOn(ctx.Game, source, game.CounterCharge)
-				if n <= 0 {
-					return nil
-				}
-				return ctx.Game.AddCounterThenForEffect(source, game.CounterCharge, -n,
-					func(g *game.Game, _ int) error {
-						return TransformThis{}.Apply(NewContext(g, item))
-					})
-			},
+			Then:     primalAmuletAnswer,
 		}.Apply(NewContext(g, item))
 	})
 }
+
+// primalAmuletAnswer is the "yes": remove the charge counters it holds now,
+// then transform. Keyed (#4291).
+var primalAmuletAnswer = MayYes("confirm/primal-amulet-transform", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	source := item.SourceCardID
+	// "Those counters": whatever it holds now.
+	n := b39CountersOn(ctx.Game, source, game.CounterCharge)
+	if n <= 0 {
+		return nil
+	}
+	return ctx.Game.AddCounterThenForEffect(source, game.CounterCharge, -n,
+		func(g *game.Game, _ int) error {
+			return TransformThis{}.Apply(NewContext(g, item))
+		})
+})

@@ -52,22 +52,27 @@ func wayOfTheDeathbringerMaySacrifice(g *game.Game, item *game.StackItem) error 
 		Question: "Way of the Deathbringer — sacrifice a creature to create a 4/4 Beast?",
 		YesLabel: "Sacrifice a creature",
 		NoLabel:  "Don't",
-		OnYes: func(ctx *Context) error {
-			return ctx.Game.PlayerSacrificesThenForEffect(
-				item.SourceCardID, item.Controller,
-				sacrificeSpec("a creature", Creature()),
-				"Way of the Deathbringer — sacrifice a creature",
-				1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					if sacrificed.Count() == 0 {
-						return nil
-					}
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   TokenCard("4/4 green Beast with trample"),
-						N:          1,
-					}.Apply(NewContext(g, item))
-				})
-		},
+		Then:     wayOfTheDeathbringerAnswer,
 	}.Apply(ctx)
 }
+
+// wayOfTheDeathbringerAnswer is the "yes": sacrifice a creature, then create
+// the Beast. Keyed (#4291).
+var wayOfTheDeathbringerAnswer = MayYes("confirm/way-of-the-deathbringer-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	return ctx.Game.PlayerSacrificesThenForEffect(
+		item.SourceCardID, item.Controller,
+		sacrificeSpec("a creature", Creature()),
+		"Way of the Deathbringer — sacrifice a creature",
+		1,
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			if sacrificed.Count() == 0 {
+				return nil
+			}
+			return CreateToken{
+				Controller: item.Controller,
+				Template:   TokenCard("4/4 green Beast with trample"),
+				N:          1,
+			}.Apply(NewContext(g, item))
+		})
+})

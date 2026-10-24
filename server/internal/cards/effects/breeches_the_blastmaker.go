@@ -91,7 +91,8 @@ func breechesOffer(spell uuid.UUID) Effect {
 		}
 		return MayChoice{
 			Question: "Breeches, the Blastmaker — sacrifice an artifact? (if you do, flip a coin)",
-			OnYes:    breechesSacrifice(spell),
+			Then:     breechesAnswer,
+			Carry:    []uuid.UUID{spell},
 		}.Apply(ctx)
 	}
 }
@@ -188,3 +189,9 @@ func breechesCopyThatSpell(g *game.Game, item *game.StackItem) error {
 // target": the amount rides Params.Amount, fixed when the flip was
 // lost; the target is the one chosen as this trigger went on the
 // stack.
+
+// breechesAnswer is the "yes": sacrifice an artifact, then flip a coin for
+// the spell that triggered it (the first carried ID). Keyed (#4291).
+var breechesAnswer = MayYes("confirm/breeches-sacrifice", func(ctx *Context, r game.ConfirmAnswer) error {
+	return breechesSacrifice(carryAt(r, 0))(ctx)
+})

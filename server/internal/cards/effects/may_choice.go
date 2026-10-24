@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/google/uuid"
 
@@ -116,23 +117,72 @@ type MayChoice struct {
 	// (Draws), Then runs at once as a "no".
 	Then  game.ConfirmThen
 	Carry []uuid.UUID
+
+	// Word is the one word of the card's text a keyed answer is
+	// parameterised by (#4291): an amount ("2"), a token's name. A shared
+	// answer ("draw N cards", "gain N life") reads it as r.Word, so many
+	// cards use one registered key. Set with Then.
+	Word string
+
+	// Objects are the objects, with the epoch each had, a keyed answer is
+	// handed beside Carry's IDs (r.Objects): a permanent the card named as it
+	// asked, so the answer can tell it from a new object the same card has
+	// become (CR 400.7).
+	Objects []game.ObjectRef
 }
 
 // MayAnswer registers a keyed "you may" answer under `key`, an on-disk
 // identity (never renamed, never reused, ledgered "confirm <key>"). Call
 // it once, from a package-level var. The body runs against a Context
-// bound to a stand-in for the asking item: its controller and its source
-// card, the two things an answer reads, because the item itself has long
-// resolved by the time the player answers (and a restore does not carry
-// it). r.Accepted is the answer and r.Carry the card's own Carry.
+// bound to a copy of the asking item rebuilt from data the prompt carries
+// (game.AskedItem: its controller, source card and source object with its
+// epoch, targets, triggering event, X and modes, #4291), because the item
+// itself has long resolved by the time the player answers (and a restore
+// does not carry it). r.Accepted is the answer, r.Carry the card's own
+// Carry and r.Word its Word. A prompt queued without the item gets a
+// stand-in with the asking controller and the source card.
 func MayAnswer(key string, body func(ctx *Context, r game.ConfirmAnswer) error) game.ConfirmThen {
 	return game.RegisterConfirmThen(key, func(g *game.Game, r game.ConfirmAnswer) error {
 		// MayChoice.Apply puts the asking effect's controller first; the
 		// card's own Carry follows it.
-		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
-		r.Carry = carry
+		var ctx *Context
+		ctx, r.Carry = askedContext(g, r.Item, r.Chooser, r.Source, r.Carry)
 		return body(ctx, r)
 	})
+}
+
+// MayYes registers a keyed "you may" answer that does something only on a
+// yes (the common shape: "you may draw a card"). The body runs as
+// MayAnswer's does, and a decline does nothing.
+func MayYes(key string, body func(ctx *Context, r game.ConfirmAnswer) error) game.ConfirmThen {
+	return MayAnswer(key, func(ctx *Context, r game.ConfirmAnswer) error {
+		if !r.Accepted {
+			return nil
+		}
+		return body(ctx, r)
+	})
+}
+
+// MayYesNo registers a keyed answer with a branch for each reply, for
+// "you may X. If you don't, Y". Either may be nil.
+func MayYesNo(key string, onYes, onNo func(ctx *Context, r game.ConfirmAnswer) error) game.ConfirmThen {
+	return MayAnswer(key, func(ctx *Context, r game.ConfirmAnswer) error {
+		branch := onNo
+		if r.Accepted {
+			branch = onYes
+		}
+		if branch == nil {
+			return nil
+		}
+		return branch(ctx, r)
+	})
+}
+
+// wordInt reads the amount a keyed answer was parameterised with
+// (MayChoice.Word), 0 when it holds none.
+func wordInt(r game.ConfirmAnswer) int {
+	n, _ := strconv.Atoi(r.Word)
+	return n
 }
 
 // applyKeyed is Apply for a MayChoice whose answer is a registered key.
@@ -141,13 +191,17 @@ func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
 		return fmt.Errorf("%w: MayChoice %q sets both Then and a branch", game.ErrInvalidParam, m.Then.Key())
 	}
 	carry := append([]uuid.UUID{ctx.Controller()}, m.Carry...)
+	asked := game.NewAskedItem(ctx.Item)
 	if m.Draws > 0 {
 		drawer := m.Drawer
 		if drawer == uuid.Nil {
 			drawer = chooser
 		}
 		if !ctx.Game.CanChooseToDrawForEffect(drawer, m.Draws) {
-			return ctx.Game.RunConfirmThenForEffect(m.Then, game.ConfirmAnswer{Chooser: chooser, Source: ctx.Source(), Carry: carry})
+			return ctx.Game.RunConfirmThenForEffect(m.Then, game.ConfirmAnswer{
+				Chooser: chooser, Source: ctx.Source(), Carry: carry,
+				LifeCost: m.LifeCost, Word: m.Word, Objects: m.Objects, Item: asked.StackItem(),
+			})
 		}
 	}
 	_, err := ctx.Game.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
@@ -157,6 +211,9 @@ func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
 		AcceptLabel:  m.YesLabel,
 		DeclineLabel: m.NoLabel,
 		LifeCost:     m.LifeCost,
+		Asked:        asked,
+		Word:         m.Word,
+		Objects:      m.Objects,
 	}, m.Then, carry)
 	return err
 }

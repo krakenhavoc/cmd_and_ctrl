@@ -3828,6 +3828,7 @@ pendingChoices[].castPile[]	custom(uuid.UUID)
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseDestination	string
+pendingChoices[].chooseLiveZone	string
 pendingChoices[].chooseMax	number:int
 pendingChoices[].chooseMin	number:int
 pendingChoices[].choosePlayers	array

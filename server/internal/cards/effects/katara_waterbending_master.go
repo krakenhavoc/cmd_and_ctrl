@@ -57,8 +57,12 @@ func kataraMayDrawPerExperience(g *game.Game, item *game.StackItem) error {
 		Draws:    n,
 		YesLabel: "Draw",
 		NoLabel:  "Decline",
-		OnYes: func(ctx *Context) error {
-			return b16DrawThenDiscard(ctx.Game, ctx.Item, experienceCounters(ctx.Game, ctx.Controller()))
-		},
+		Then:     kataraAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// kataraAnswer is the "yes": draw a card for each experience counter, then
+// discard a card. Keyed (#4291).
+var kataraAnswer = MayYes("confirm/katara-draw-discard", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return b16DrawThenDiscard(ctx.Game, ctx.Item, experienceCounters(ctx.Game, ctx.Controller()))
+})

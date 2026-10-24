@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Sword of Light and Shadow — Artifact — Equipment {3} (the Squall
 // deck request, #3918):
@@ -60,8 +64,13 @@ func swordOfLightAndShadowHit(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Sword of Light and Shadow — return that creature card from your graveyard to your hand?",
-		OnYes: func(ctx *Context) error {
-			return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
-		},
+		Then:     swordOfLightAndShadowReturn,
+		Carry:    []uuid.UUID{id},
 	}.Apply(ctx)
 }
+
+// swordOfLightAndShadowReturn is the "yes": return the creature card (the
+// carried ID) to the hand. Keyed (#4291).
+var swordOfLightAndShadowReturn = MayYes("confirm/sword-of-light-and-shadow-return", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ReturnFromGraveyard{Target: carryAt(r, 0), Dest: game.ZoneHand}.Apply(ctx)
+})
