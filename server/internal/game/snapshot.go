@@ -1817,6 +1817,10 @@ type pendingChoiceSnapshot struct {
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
 	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
 	DeclineLabel    string `json:"declineLabel,omitempty"`
+	// Private is PendingChoice.private (ADR 0133, #4298): the prompt names a
+	// card in a hidden zone, so the wire strips its words from every viewer
+	// but the chooser. Carried since the opening-hand offer is keyed.
+	Private bool `json:"private,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -3067,6 +3071,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
+		Private:               c.private,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),
@@ -4048,6 +4053,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
+		private:               c.Private,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
 		PayActionClause:       copyPayAction(c.PayActionClause),

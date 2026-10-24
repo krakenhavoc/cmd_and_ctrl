@@ -112,7 +112,7 @@ func lazavFamiliarStrangerEffect(g *game.Game, item *game.StackItem) error {
 				if !exiled {
 					return nil
 				}
-				return lazavFamiliarStrangerOfferCopy(ctx, resolving, self, picked[0])
+				return lazavFamiliarStrangerOfferCopy(ctx, picked[0])
 			}}.Apply(NewContext(g, resolving))
 		},
 	})
@@ -123,26 +123,34 @@ func lazavFamiliarStrangerEffect(g *game.Game, item *game.StackItem) error {
 // this way, you may have Lazav become a copy of that card until end
 // of turn" — asked only when the exile actually produced a creature
 // card, per CR 608.2c.
-func lazavFamiliarStrangerOfferCopy(ctx *Context, resolving *game.StackItem, self, card uuid.UUID) error {
+func lazavFamiliarStrangerOfferCopy(ctx *Context, card uuid.UUID) error {
 	c, ok := ctx.Game.LookupCardForEffect(card)
 	if !ok || !c.IsCreature() {
 		return nil
 	}
-	own := game.OwnPrintedValues(c)
-	ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      ctx.Controller(),
-		Source:       self,
-		Question:     "Lazav, Familiar Stranger — have Lazav become a copy of " + c.Name + " until end of turn?",
-		AcceptLabel:  "Become a copy",
-		DeclineLabel: "Decline",
-		OnAccept: func(g *game.Game) error {
-			return BecomeCopy{
-				Targets: []uuid.UUID{self},
-				Of:      card,
-				Values:  &own,
-				Label:   "Lazav, Familiar Stranger — becomes a copy until end of turn",
-			}.Apply(NewContext(g, resolving))
-		},
-	})
-	return nil
+	return MayChoice{
+		Question: "Lazav, Familiar Stranger — have Lazav become a copy of " + c.Name + " until end of turn?",
+		YesLabel: "Become a copy",
+		NoLabel:  "Decline",
+		Then:     lazavFamiliarStrangerCopy,
+		Carry:    []uuid.UUID{card},
+	}.Apply(ctx)
 }
+
+// lazavFamiliarStrangerCopy is "you may have Lazav become a copy of that
+// card until end of turn" (#4298: keyed; the exiled card is the prompt's
+// carried ID and its printed values are read again from it).
+var lazavFamiliarStrangerCopy = MayYes("confirm/lazav-familiar-stranger-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	card := carryAt(r, 0)
+	c, ok := ctx.Game.LookupCardForEffect(card)
+	if !ok {
+		return nil
+	}
+	own := game.OwnPrintedValues(c)
+	return BecomeCopy{
+		Targets: []uuid.UUID{r.Source},
+		Of:      card,
+		Values:  &own,
+		Label:   "Lazav, Familiar Stranger — becomes a copy until end of turn",
+	}.Apply(ctx)
+})

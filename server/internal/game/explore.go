@@ -46,24 +46,14 @@ import "github.com/google/uuid"
 const EventExplored EventKind = "explored"
 
 // ExploreForEffect has the permanent `explorer` explore (CR 701.44a),
-// controlled by `controller`, on behalf of `source`. `then`, when set,
-// is the rest of the effect, run once the permanent has explored —
-// after the graveyard question is answered, if there is one.
+// controlled by `controller`, on behalf of `source`. There is no rest-of-
+// the-effect to hand it (#4298): the graveyard question is a keyed confirm,
+// and a closure on it would be a table that cannot be saved. A card that
+// wants something after the explore watches EventExplored (CR 701.44b).
 //
 // Caller must hold g.mu.
-func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID, then func(g *Game) error) error {
-	done := func(g *Game) error {
-		g.EmitEvent(Event{
-			Kind:   EventExplored,
-			Actor:  controller,
-			CardID: explorer.ID,
-			Source: source,
-		})
-		if then != nil {
-			return then(g)
-		}
-		return nil
-	}
+func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller uuid.UUID) error {
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer.ID, controller) }
 	p := g.playerByIDLocked(controller)
 	if p == nil || p.Eliminated {
 		return done(g)
@@ -88,8 +78,7 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 		return err
 	}
 	ask := func(g *Game, _ int) error {
-		g.queueExploreGraveyardQuestionLocked(source, controller, top, done)
-		return nil
+		return g.queueExploreGraveyardQuestionLocked(source, controller, explorer.ID, top)
 	}
 	if perm := findBattlefieldCard(g, explorer.ID); perm != nil && perm.ObjectEpoch == explorer.Epoch {
 		return g.AddCounterByThenForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
@@ -97,37 +86,65 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 	return ask(g, 0)
 }
 
+// finishExploreLocked is CR 701.44b: the permanent has explored.
+//
+// Caller must hold g.mu.
+func (g *Game) finishExploreLocked(source, explorer, controller uuid.UUID) error {
+	g.EmitEvent(Event{
+		Kind:   EventExplored,
+		Actor:  controller,
+		CardID: explorer,
+		Source: source,
+	})
+	return nil
+}
+
 // queueExploreGraveyardQuestionLocked asks CR 701.44a's last clause:
 // "may put the revealed card into their graveyard". The card is checked
 // again when the answer arrives, because the library can change while
 // the question is open; one that is no longer on top stays where it is.
 //
+// The answer is a registered key (#4298), so a table waiting on it is a
+// restore point: the revealed card and the explorer ride the prompt as
+// its carried IDs.
+//
 // Caller must hold g.mu.
-func (g *Game) queueExploreGraveyardQuestionLocked(source, controller uuid.UUID, revealed Card, done func(g *Game) error) {
-	g.QueueConfirmForEffect(ConfirmPrompt{
+func (g *Game) queueExploreGraveyardQuestionLocked(source, controller, explorer uuid.UUID, revealed Card) error {
+	_, err := g.QueueConfirmKeyedForEffect(ConfirmPrompt{
 		Chooser:      controller,
 		Source:       source,
 		Question:     "Explore — put " + nameOr(revealed.Name, "the revealed card") + " into your graveyard?",
 		AcceptLabel:  "Put it into your graveyard",
 		DeclineLabel: "Leave it on top",
-		OnAccept: func(g *Game) error {
-			p := g.playerByIDLocked(controller)
-			if p == nil || p.Library.Size() == 0 || p.Library.Cards[p.Library.Size()-1].InstanceID != revealed.InstanceID {
-				return done(g)
-			}
-			_, err := g.routeCardToZoneLocked(zoneRoute{
-				CardID:   revealed.InstanceID,
-				Dst:      ZoneGraveyard,
-				DstOwner: controller,
-				Actor:    controller,
-				Source:   source,
-				then:     done,
-			})
-			return err
-		},
-		OnDecline: done,
-	})
+	}, exploreGraveyardAnswer, []uuid.UUID{revealed.InstanceID, explorer})
+	return err
 }
+
+// exploreGraveyardAnswer is the answer to the explore question. Carry is
+// the revealed card, then the explorer.
+var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", func(g *Game, r ConfirmAnswer) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	revealed, explorer, controller, source := r.Carry[0], r.Carry[1], r.Chooser, r.Source
+	done := func(g *Game) error { return g.finishExploreLocked(source, explorer, controller) }
+	if !r.Accepted {
+		return done(g)
+	}
+	p := g.playerByIDLocked(controller)
+	if p == nil || p.Library.Size() == 0 || p.Library.Cards[p.Library.Size()-1].InstanceID != revealed {
+		return done(g)
+	}
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   revealed,
+		Dst:      ZoneGraveyard,
+		DstOwner: controller,
+		Actor:    controller,
+		Source:   source,
+		then:     done,
+	})
+	return err
+})
 
 // exploreReason is the reveal banner: "<name> explores".
 //

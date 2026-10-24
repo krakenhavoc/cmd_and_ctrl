@@ -47,22 +47,23 @@ func lurkingPredatorsReveal(g *game.Game, item *game.StackItem) error {
 	if !ok || (c.IsCreature() && !IsToken(c)) {
 		return nil
 	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      controller,
-		Source:       source,
-		Question:     "Lurking Predators — put " + c.Name + " on the bottom of your library?",
-		AcceptLabel:  "Put it on the bottom",
-		DeclineLabel: "Leave it on top",
-		OnAccept: func(g *game.Game) error {
-			// A pile of one: the random-order bottom is the plain
-			// bottom, and it is the move that repositions a card
-			// already in its owner's library. "That card" is the one
-			// on top of the library: ZoneLibrary makes a card that
-			// left it before the answer arrived (drawn, milled) a
-			// no-op rather than pulling it back out of a hand or a
-			// graveyard.
-			return g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, []uuid.UUID{top})
-		},
-	})
-	return nil
+	return MayChoice{
+		Player:   controller,
+		Question: "Lurking Predators — put " + c.Name + " on the bottom of your library?",
+		YesLabel: "Put it on the bottom",
+		NoLabel:  "Leave it on top",
+		Then:     lurkingPredatorsBottom,
+		Carry:    []uuid.UUID{top},
+	}.Apply(NewContext(g, item))
 }
+
+// lurkingPredatorsBottom is "you may put that card on the bottom of your
+// library" (#4298: keyed; the card is the prompt's carried ID).
+var lurkingPredatorsBottom = MayYes("confirm/lurking-predators-bottom", func(ctx *Context, r game.ConfirmAnswer) error {
+	// A pile of one: the random-order bottom is the plain bottom, and it is
+	// the move that repositions a card already in its owner's library.
+	// "That card" is the one on top of the library: ZoneLibrary makes a card
+	// that left it before the answer arrived (drawn, milled) a no-op rather
+	// than pulling it back out of a hand or a graveyard.
+	return ctx.Game.PutOnBottomInRandomOrderForEffect(r.Chooser, game.ZoneLibrary, []uuid.UUID{carryAt(r, 0)})
+})

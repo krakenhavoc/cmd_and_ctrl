@@ -4176,6 +4176,7 @@ pendingChoices[].pickTargetMin	number:int
 pendingChoices[].pickTargetPlayers	array
 pendingChoices[].pickTargetPlayers[]	custom(uuid.UUID)
 pendingChoices[].pickThen	string
+pendingChoices[].private	bool
 pendingChoices[].reason	string
 pendingChoices[].replacementEffectIds	array
 pendingChoices[].replacementEffectIds[]	number:uint64

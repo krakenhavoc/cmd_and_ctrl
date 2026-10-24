@@ -689,3 +689,17 @@ confirm confirm/ward-sacrifice-three-permanents
 confirm confirm/ward-sacrifice-two-permanents
 confirm confirm/way-of-the-deathbringer-sacrifice
 confirm confirm/zealot-il-vec-damage
+confirm confirm/channel-harm-deal
+confirm confirm/end-the-turn
+confirm confirm/exiled-creature-battlefield-or-hand
+confirm confirm/explore-graveyard
+confirm confirm/lazav-familiar-stranger-copy
+confirm confirm/lurking-predators-bottom
+confirm confirm/opening-hand-offer
+confirm confirm/ponder-shuffle
+confirm confirm/portent-shuffle
+confirm confirm/reckless-endeavor-result
+confirm confirm/sephiroth-cell-counter
+confirm confirm/sylvan-library-pay-or-top
+confirm confirm/tainted-pact-take
+confirm confirm/tempt-with-discovery-search

@@ -96,3 +96,8 @@ One PR: the engine (`game/opening_hand.go`, the `CardDef` and `Spec` slots, the 
 ## Snapshot impact
 
 None. `OpeningHandAction` is catalog data. The prompts carry continuation frames, which the restore-point census already counts, so a table is not restorable only while an opening-hand answer is outstanding; `PendingChoice.private` is unexported and never written.
+
+
+## Amendment 2026-10-24 — the offer is a keyed confirm, and `private` is written (#4298)
+
+The offer is queued with `QueueConfirmKeyedForEffect` under the key `confirm/opening-hand-offer` instead of an `OnAccept` closure, so a table waiting on an opening-hand answer is a restore point (ADR 0018, amendment of the same date). The answer reads the card's `OpeningHandAction` from the catalog when it arrives; the card is the prompt's source and the chooser its owner. The "Snapshot impact" above no longer holds for one field: `PendingChoice.private` is serialised as `private` (`omitempty`, additive within version 9), so a restored offer is still private to its chooser and does not name the card in a hand to every seat. The London-mulligan bottom pick (`mulligan_order.go`) also sets `private` and is still a closure, so it is still never written.

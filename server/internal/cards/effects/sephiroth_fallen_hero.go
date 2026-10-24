@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Sephiroth, Fallen Hero — Legendary Creature — Human Avatar Soldier
 // {3}{R}{W}, 7/5 (#3656):
@@ -47,32 +51,39 @@ func init() {
 func sephirothJenovaCells(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	target, hasTarget := b16FirstLegalTargetCard(ctx)
-	base := func(g *game.Game) error {
-		bctx := NewContext(g, item)
-		return ScopedEffectFor{
-			Match: And(Creature(), YouControl(), modifiedCreature),
-			Mods: []game.Mod{
-				game.SetBasePowerMod(7),
-				game.SetBaseToughnessMod(5),
-			},
-			Duration: DurationUntilEndOfTurn(bctx),
-			Label:    "Sephiroth, Fallen Hero — each modified creature you control has base power and toughness 7/5 until end of turn",
-		}.Apply(bctx)
-	}
 	if !hasTarget {
-		return base(g)
+		return sephirothBaseStats(ctx)
 	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:  item.Controller,
-		Source:   item.SourceCardID,
+	// Keyed (#4298): the target is found while the item still has its clauses
+	// and rides the prompt as its carried ID.
+	return MayChoice{
 		Question: "Sephiroth, Fallen Hero — put a cell counter on target creature?",
-		OnAccept: func(g *game.Game) error {
-			if err := (AddCounter{Target: target, Kind: "cell", N: 1}).Apply(NewContext(g, item)); err != nil {
-				return err
-			}
-			return base(g)
-		},
-		OnDecline: base,
-	})
-	return nil
+		Then:     sephirothCounter,
+		Carry:    []uuid.UUID{target},
+	}.Apply(ctx)
 }
+
+// sephirothBaseStats is the second sentence: each modified creature you
+// control has base power and toughness 7/5 until end of turn, counter or not.
+func sephirothBaseStats(ctx *Context) error {
+	return ScopedEffectFor{
+		Match: And(Creature(), YouControl(), modifiedCreature),
+		Mods: []game.Mod{
+			game.SetBasePowerMod(7),
+			game.SetBaseToughnessMod(5),
+		},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    "Sephiroth, Fallen Hero — each modified creature you control has base power and toughness 7/5 until end of turn",
+	}.Apply(ctx)
+}
+
+// sephirothCounter is "you may put a cell counter on target creature": the
+// counter on a yes, the base-P/T sentence either way.
+var sephirothCounter = MayAnswer("confirm/sephiroth-cell-counter", func(ctx *Context, r game.ConfirmAnswer) error {
+	if r.Accepted {
+		if err := (AddCounter{Target: carryAt(r, 0), Kind: "cell", N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return sephirothBaseStats(ctx)
+})

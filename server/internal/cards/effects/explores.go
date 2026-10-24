@@ -16,11 +16,11 @@ import (
 // exists to perform.
 
 // Explores has the permanent `Explorer` explore under the effect's
-// controller. Then, when set, is the rest of the effect, run once the
-// permanent has explored.
+// controller. A card that wants something once the permanent has explored
+// watches EventExplored (CR 701.44b); the explore holds no continuation of
+// its own (#4298).
 type Explores struct {
 	Explorer uuid.UUID
-	Then     func(g *game.Game) error
 }
 
 // Apply reads the explorer's object identity now, so a creature that
@@ -31,7 +31,7 @@ func (e Explores) Apply(ctx *Context) error {
 	if c, ok := ctx.Game.LookupCardForEffect(e.Explorer); ok {
 		ref.Epoch = c.ObjectEpoch
 	}
-	return ctx.Game.ExploreForEffect(ctx.Source(), ref, ctx.Controller(), e.Then)
+	return ctx.Game.ExploreForEffect(ctx.Source(), ref, ctx.Controller())
 }
 
 // targetCreatureYouControlExplores is the resolution of "Target creature

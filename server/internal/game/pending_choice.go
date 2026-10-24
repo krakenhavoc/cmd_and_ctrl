@@ -1047,8 +1047,9 @@ type PendingChoice struct {
 	// card in the chooser's hand). The wire keeps the prompt — the
 	// table has to see that a seat owes an answer — and strips what it
 	// says from every viewer but the chooser (PrivateText, view.go).
-	// Not serialised: every prompt that sets it carries a continuation
-	// frame, and a choice with one is never written to a restore point.
+	// Serialised as Private (#4298): the opening-hand offer is a keyed
+	// confirm, so a restore point holds it, and a restored table must not
+	// name the card in a hand to every viewer.
 	private bool
 
 	// OwedInStep is the step THIS prompt has to be answered in: the

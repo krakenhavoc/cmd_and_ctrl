@@ -129,34 +129,49 @@ func b07SearchBasicOntoBattlefield(g *game.Game, item *game.StackItem, player uu
 // A package-level func, not a closure over the Context: the chain
 // lives on pending choices that outlive the resolution that started
 // it, and it captures only IDs.
-func b07TemptWithDiscoveryOffer(g *game.Game, controller, source uuid.UUID, opponents []uuid.UUID, i int) error {
-	if i >= len(opponents) {
+func b07TemptWithDiscoveryOffer(ctx *Context, opponents []uuid.UUID) error {
+	if len(opponents) == 0 {
 		return nil
 	}
-	next := func(g *game.Game) error {
-		return b07TemptWithDiscoveryOffer(g, controller, source, opponents, i+1)
-	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:  opponents[i],
-		Source:   source,
+	// Keyed (#4298): the opponents still to ask, after this one, ride the
+	// prompt as its carried IDs, and the caster is the asking item's
+	// controller.
+	return MayChoice{
+		Player:   opponents[0],
 		Question: "Tempt with Discovery — search your library for a land (the caster gets one too if you do)?",
-		OnAccept: func(g *game.Game) error {
-			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:  opponents[i],
-				Source:  source,
-				Pred:    b03IsLandCard,
-				Dest:    game.ZoneBattlefield,
-				Limit:   1,
-				Shuffle: true,
-				Reason:  "Tempt with Discovery — a land onto the battlefield",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return b07TemptWithDiscoveryCasterSearch(g, controller, source, next)
-				},
-			})
-		},
-		OnDecline: next,
+		Then:     b07TemptWithDiscoveryAnswer,
+		Carry:    opponents[1:],
+	}.Apply(ctx)
+}
+
+// b07TemptWithDiscoveryAnswer is one opponent's answer to the tempting
+// offer: a yes searches for a land and earns the caster one, either way the
+// next opponent is asked. Registered in init, because it asks the next
+// opponent through b07TemptWithDiscoveryOffer, which names it.
+var b07TemptWithDiscoveryAnswer game.ConfirmThen
+
+func init() {
+	b07TemptWithDiscoveryAnswer = MayAnswer("confirm/tempt-with-discovery-search", func(ctx *Context, r game.ConfirmAnswer) error {
+		controller, source, rest, item := ctx.Controller(), r.Source, r.Carry, ctx.Item
+		next := func(g *game.Game) error {
+			return b07TemptWithDiscoveryOffer(NewContext(g, item), rest)
+		}
+		if !r.Accepted {
+			return next(ctx.Game)
+		}
+		return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+			Player:  r.Chooser,
+			Source:  source,
+			Pred:    b03IsLandCard,
+			Dest:    game.ZoneBattlefield,
+			Limit:   1,
+			Shuffle: true,
+			Reason:  "Tempt with Discovery — a land onto the battlefield",
+			Then: func(g *game.Game, _ []uuid.UUID) error {
+				return b07TemptWithDiscoveryCasterSearch(g, controller, source, next)
+			},
+		})
 	})
-	return nil
 }
 
 // b07TemptWithDiscoveryCasterSearch is the caster's own "search your

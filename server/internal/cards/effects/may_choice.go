@@ -93,6 +93,10 @@ type MayChoice struct {
 	// deduction. Zero on most cards.
 	LifeCost int
 
+	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040, #4298): saying
+	// yes would continue a loop the table is already in. A hint for a bot.
+	DeclineEndsLoop bool
+
 	// Draws, when above zero, says the YES branch is a choice to draw
 	// that many cards, for Drawer. A player a draw limit stops drawing
 	// that many can't choose to (CR 121.2b, CR 121.3), and neither can
@@ -205,15 +209,16 @@ func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
 		}
 	}
 	_, err := ctx.Game.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
-		Chooser:      chooser,
-		Source:       ctx.Source(),
-		Question:     m.Question,
-		AcceptLabel:  m.YesLabel,
-		DeclineLabel: m.NoLabel,
-		LifeCost:     m.LifeCost,
-		Asked:        asked,
-		Word:         m.Word,
-		Objects:      m.Objects,
+		Chooser:         chooser,
+		Source:          ctx.Source(),
+		Question:        m.Question,
+		AcceptLabel:     m.YesLabel,
+		DeclineLabel:    m.NoLabel,
+		LifeCost:        m.LifeCost,
+		DeclineEndsLoop: m.DeclineEndsLoop,
+		Asked:           asked,
+		Word:            m.Word,
+		Objects:         m.Objects,
 	}, m.Then, carry)
 	return err
 }
