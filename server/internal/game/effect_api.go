@@ -1469,37 +1469,95 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	if g.Exile == nil || n <= 0 {
 		return nil, nil
 	}
-	out := make([]uuid.UUID, 0, n)
-	for i := 0; i < n; i++ {
-		if p.Library.Size() == 0 {
-			return out, nil
-		}
-		// The library's top is the LAST element — the same read
-		// PopTop and ExileTopWithPermissionForEffect use.
-		top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-		// #529: through the shared exit primitive so a commander
-		// exiled off the top of its owner's library still gets the CR
-		// 903.9 choice. A queued prompt leaves the card ON the
-		// library, so the loop has to stop rather than read the same
-		// top card again — see MillToZoneForEffect for the same
-		// hazard handled without losing the rest of the batch. Here
-		// the batch is Necropotence-shaped (n is 1 in every printed
-		// case), so stopping costs nothing worth the machinery.
-		paused, err := g.routeCardToZoneLocked(zoneRoute{
-			CardID:   top,
-			Dst:      ZoneExile,
-			Actor:    playerID,
-			FaceDown: FaceDownExiled,
-		})
-		if err != nil {
-			return out, err
-		}
-		if paused {
-			return out, nil
-		}
-		out = append(out, top)
+	avail := len(p.Library.Cards)
+	if n > avail {
+		n = avail
 	}
-	return out, nil
+	// The cards are chosen UP FRONT, top first, and moved by ID (the
+	// millPlanLocked argument). The library's top is the LAST element,
+	// the same read PopTop and ExileTopWithPermissionForEffect use.
+	plan := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		plan = append(plan, p.Library.Cards[avail-1-i].InstanceID)
+	}
+	if len(plan) == 0 {
+		return nil, nil
+	}
+	// #529, #4245: through the shared exit primitive, one card at a time
+	// from the previous card's continuation (exileFaceDownLegsLocked). A leg
+	// that opens a prompt (a CR 616.1 ordering of replacements) leaves its
+	// card ON the library and resumes the rest of the batch from the
+	// answer, so the cards after it are exiled then rather than never.
+	// Looping here and stopping at the pause, as this did, exiled one card
+	// of a batch of three.
+	//
+	// The list is what had landed when the call returned: every card on a
+	// clean run, and the cards before the pause on a paused one. A card
+	// that is waiting on the prompt is not in it, as before. A caller that
+	// must act on the finished batch needs a continuation form, which no
+	// printed case has asked for.
+	var out []uuid.UUID
+	done := false
+	err := g.exileFaceDownLegsLocked(playerID, plan, nil, func(_ *Game, landed []uuid.UUID) error {
+		out, done = landed, true
+		return nil
+	})
+	if !done {
+		// Paused: the cards before the prompt are already in exile.
+		for _, id := range plan {
+			if g.landedInZoneLocked(id, ZoneExile, uuid.Nil) {
+				out = append(out, id)
+			}
+		}
+	}
+	return out, err
+}
+
+// exileFaceDownLegsLocked exiles the head of `ids` face down and carries on
+// with the rest from that leg's continuation, so a leg paused on a prompt
+// holds the rest of the batch behind it and the answer runs it. The empty
+// list is the base case: `then` is told which legs landed in exile.
+//
+// A leg is skipped, not routed, when its card is no longer in the player's
+// library: it was taken out while an earlier leg waited on its prompt, and
+// exiling it from wherever it went would pull it out of a hand or a graveyard
+// that the effect never named (routeAllThenLocked checks only that the card
+// is not already in its destination, which is not enough here).
+//
+// `landed` is carried by value, never appended in place, so two runs of one
+// continuation (an undo, then the same answer again) cannot see each other's
+// entries.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) exileFaceDownLegsLocked(
+	player uuid.UUID,
+	ids, landed []uuid.UUID,
+	then func(g *Game, landed []uuid.UUID) error,
+) error {
+	for len(ids) > 0 {
+		if z := g.findCardZoneLocked(ids[0]); z != nil && z.Kind == ZoneLibrary && z.Owner == player {
+			break
+		}
+		ids = ids[1:]
+	}
+	if len(ids) == 0 {
+		return then(g, landed)
+	}
+	next, rest := ids[0], ids[1:]
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   next,
+		Dst:      ZoneExile,
+		Actor:    player,
+		FaceDown: FaceDownExiled,
+		then: func(g *Game) error {
+			out := landed
+			if g.landedInZoneLocked(next, ZoneExile, uuid.Nil) {
+				out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
+			}
+			return g.exileFaceDownLegsLocked(player, rest, out, then)
+		},
+	})
+	return err
 }
 
 // BounceToHandForEffect moves a card from wherever it is to its
