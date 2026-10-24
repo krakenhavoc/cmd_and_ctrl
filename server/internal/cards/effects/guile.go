@@ -25,9 +25,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - The last line is the titans' graveyard trigger (#2038,
 //     WhenThisIsPutIntoAGraveyardFromAnywhereShuffleItIn).
 //
-// No simplification beyond the one every resolution-time free cast
-// shares: the play is an ordinary cast taken after the counterspell
-// finishes resolving, and closes on the player's next priority pass.
+// No simplification. The play is made while the counterspell resolves
+// (CR 608.2g, #4286): the resolution_cast prompt is asked over the exiled
+// card inside that resolution, the cast is free with X at 0, and a decline
+// leaves the card in exile. Only a counter made after its resolution has
+// closed (a carried cause, #4279) leaves the player the pass-closed grant
+// instead.
 func init() {
 	Register(Spec{
 		OracleID:     "591bbf84-259d-4885-8b5f-b29c04222d41",

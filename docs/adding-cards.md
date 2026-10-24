@@ -3763,10 +3763,14 @@ right, and the replacement knows who is countering. Declare
 - **Answer with `Game.ExileCounteredSpellInsteadForEffect(ev, who,
   source, name)`**: exile the spell instead (not countered) and let `who`
   (the countering player, not the spell's owner) cast it free. The free
-  cast is `FreeCastFromExilePermission`, the same now-or-never grant
-  every resolution-time free cast takes. A different "instead" (to the
-  bottom of a library, to the hand) is a new answer on the same event,
-  not a new event.
+  cast is made during the countering spell's resolution (CR 608.2g,
+  #4286): the exile is followed by the `resolution_cast` prompt over the
+  card (`OfferResolutionCastForEffect`, ADR 0066's 2026-10-24 note), under
+  `FreeCastFromExilePermission` (free, cast-only, X is 0); a decline
+  leaves the card in exile. Only a counter made with no resolution open
+  falls back to that permission granted alone, closing on the player's
+  next priority pass. A different "instead" (to the bottom of a library,
+  to the hand) is a new answer on the same event, not a new event.
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.

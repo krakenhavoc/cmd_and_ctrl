@@ -4689,3 +4689,40 @@ every cast; a restore mid-prompt) and the moved card tests; `protocol/hand_cast_
 `aiseat/free_hand_cast_bot_test.go` (only the claimed casts are offered for a hand card) and
 `aiseat/one_off_resolution_cast_bot_test.go` (graveyard, exile with a continuation, library); `client/src/lib/mayCast.test.ts`
 and `resolutionCast.render.test.ts`. Back-outs are listed in the PR.
+
+### Note — 2026-10-24 (#4286): Guile's play is made during the counterspell's resolution
+
+Decision 4 left one pass-closed grant out: Guile's "If a spell or ability you control would counter a spell, instead exile that
+spell and you may play that card without paying its mana cost" (ADR 0113's 2026-10-19 amendment, `finishCounterSpellLocked` in
+`game/counter_spell.go`). It stamped `FreeCastFromExilePermission` and returned, so the play was an ordinary `cast_spell` taken
+after the counterspell had finished, and it closed on the player's next pass. The play is made while the countering spell or
+ability resolves (CR 608.2g), so it now takes the door every other resolution-time cast takes.
+
+- **The change.** Once the spell has landed in exile, the finisher calls `OfferResolutionCastForEffect` with that permission as
+  `Permission`, keyword `free_cast`, accept "Cast it free" and decline "Leave it in exile", over the one exiled card, for the
+  countering player (never the spell's owner). The cast is made before the counterspell finishes; a decline leaves the card in
+  exile and the counterspell finishes. Nothing changed in the rules the permission carries: free, cast-only, X is 0 (CR 107.3b),
+  and offered only if the card really landed in exile. No wire change (`free_cast` is decision 6's value) and no snapshot change
+  (the prompt is the existing `resolution_cast`).
+- **Every counter runs inside an open resolution.** `counterSpellByEffectLocked` opens the window only when a resolving spell or
+  ability is the cause, and every counter in the catalog reaches it there: a hard counter (Counterspell); a declined
+  counter-unless-pays (Spell Pierce, and the any-player offers: the prompt guards the countering spell, so it holds the
+  resolution open until the answer); a ward (the warded permanent's controller's triggered ability, whose counter runs on the
+  payer's decline); and the destination counters (Hinder's top or bottom, Devious Cover-Up's exile, and Remand's hand and
+  Memory Lapse's library, which are the same two verbs). A CR 616.1 ordering prompt put to the countered spell's controller holds
+  the resolution open too, so the resume that finishes the counter offers the cast inside it.
+- **What stays.** If the door answers false, which is a counter whose cause was carried past the end of its resolution (a
+  non-blocking pay-unless answered after the table moved on, `carriedCause`, #4279), the replaced counter still grants the
+  pass-closed permission alone, as before. No catalog counter reaches it today (checked: every counter-unless-pays prompt
+  guards its stack item and so holds the resolution open); it stays so that no future counter can lose the free play.
+- **A commander** (ADR 0115) lands in exile at once and is offered like any card; if its owner then takes the command zone
+  (CR 903.9a), the countering player's permission no longer opens anything.
+
+Tests: `game/counter_spell_resolution_cast_4286_test.go` (each counter verb, including the hand, exile and both library
+destinations, asks the prompt for the countering player alone; a decline leaves the card exiled with no permission; X is locked at
+0; no open resolution keeps the pass-closed grant; a commander); `cards/effects/guile_resolution_cast_4286_test.go` (Counterspell,
+a declined Spell Pierce, a ward, Hinder to the top and to the bottom, Devious Cover-Up: the cast is logged before the countering
+resolution finishes, a decline leaves the card in exile, a strict restore mid-prompt keeps the offer and the cast is made on the
+restored table) and the updated `guile_test.go`; `aiseat/guile_resolution_cast_bot_test.go` (the bot answers for a hard counter,
+a declined Pierce, a ward and Hinder). Back-outs: asking no prompt in `finishCounterSpellLocked` fails every one of those;
+dropping the pass-closed fallback fails `TestAReplacedCounterWithNoResolutionOpenKeepsThePassClosedGrant`.

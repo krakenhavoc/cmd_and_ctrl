@@ -32,12 +32,18 @@ import (
 //     counter you did not cause (the sandbox's counter action).
 //   - Only a SPELL is replaced. A countered ability is not covered.
 //   - The play is the countering player's, not the spell owner's, and is
-//     the same now-or-never free cast every resolution-time grant is
-//     (game.FreeCastFromExilePermission): any timing, cast-only (a spell
-//     is never a land), closing on that player's next priority pass with
-//     the card staying exiled. X is 0. It is granted only if the card
-//     really landed in exile: a commander spell whose owner took the
-//     command zone (CR 903.9) is not offered.
+//     made during the resolution of the countering spell or ability
+//     (CR 608.2g, #4286): the exile is followed by the resolution_cast
+//     prompt over the exiled card (game.OfferResolutionCastForEffect), so
+//     the cast happens before the counterspell finishes resolving and
+//     nobody receives priority in between. Declining leaves the card in
+//     exile. The permission behind it is game.FreeCastFromExilePermission:
+//     free, cast-only (a spell is never a land) and X is 0. It is offered
+//     only if the card really landed in exile: a commander spell whose
+//     owner took the command zone (CR 903.9) is not. Only a counter the
+//     engine cannot ask the prompt for (a cause carried past the end of its
+//     resolution, #4279) falls back to the same permission granted alone,
+//     any timing and closing on that player's next priority pass.
 //   - Two of these on one table (two Guiles) are one replacement: the
 //     first turns the event into an exile, and the second no longer has
 //     a counter to replace (CR 616.1f).
