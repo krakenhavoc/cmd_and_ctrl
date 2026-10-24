@@ -633,7 +633,62 @@ func corpusBoards() []corpusBoard {
 		// (replacementResume.event.stackItem).
 		{"dredge_offer", corpusDredgeOffer},
 		{"riot_entry", corpusRiotEntry},
+		// v9, added by #4253 slice 2 (ADR 0013 amendment 2026-10-24) as
+		// new files: a counter placement and a life change paused on a
+		// CR 616 ordering prompt (the event mirror's counter and life
+		// fields), and a land's entry paused on Heart of Yavimaya's
+		// sacrifice (an entry card choice, its zone frame rebuilt from
+		// the prompt kind).
+		{"counter_order", corpusCounterOrder},
+		{"life_order", corpusLifeOrder},
+		{"entry_sacrifice", corpusEntrySacrifice},
 	}
+}
+
+// corpusCounterOrder is a +1/+1 counter paused on the ordering prompt
+// between Hardened Scales and Doubling Season (#4253).
+func corpusCounterOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me)
+	bear := seedCreature(g, "Bears", me)
+	if err := g.AddCounter(bear, game.CounterPlusOne, 1); err != nil {
+		t.Fatal(err)
+	}
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the counter did not ask for an order")
+	}
+	return g
+}
+
+// corpusLifeOrder is a life gain paused on the ordering prompt between
+// Rhox Faithmender and Alhammarret's Archive (#4253).
+func corpusLifeOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, rhoxFaithmenderOracle, "Rhox Faithmender", me)
+	seedReplacementPermanent(g, alhammarretsArchiveOracle, "Alhammarret's Archive", me)
+	if _, err := g.ChangePlayerLife(me, 3); err != nil {
+		t.Fatal(err)
+	}
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the gain did not ask for an order")
+	}
+	return g
+}
+
+// corpusEntrySacrifice is Heart of Yavimaya's entry paused on its
+// "sacrifice a Forest" (#4253).
+func corpusEntrySacrifice(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushSacrificeCandidate(g, me.ID, "Forest", "Basic Land — Forest", false)
+	playLandFromHand(t, g, "Heart of Yavimaya", sacrificeInsteadLandOracleIDs["Heart of Yavimaya"])
+	if pendingOfKind(g, game.PendingChoiceEntrySacrifice) == nil {
+		t.Fatal("setup: Heart of Yavimaya did not ask")
+	}
+	return g
 }
 
 // corpusDredgeOffer is a draw paused on a dredge offer (#4253).

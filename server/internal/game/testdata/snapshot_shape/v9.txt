@@ -3667,6 +3667,14 @@ pendingChoices[].replacementResume.event.cardId	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.commanderAnswer	number:uint8
 pendingChoices[].replacementResume.event.copySource	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.copyUntilEndOfTurn	bool
+pendingChoices[].replacementResume.event.counterDelta	number:int
+pendingChoices[].replacementResume.event.counterFromCombatDamage	bool
+pendingChoices[].replacementResume.event.counterFromCost	bool
+pendingChoices[].replacementResume.event.counterFromTurnBasedAction	bool
+pendingChoices[].replacementResume.event.counterName	string
+pendingChoices[].replacementResume.event.counterPlacer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterPlayer	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.counterTarget	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.destruction	bool
 pendingChoices[].replacementResume.event.drawCount	number:int
 pendingChoices[].replacementResume.event.drawInstead	object
@@ -3767,6 +3775,14 @@ pendingChoices[].replacementResume.event.faceDownListed.types[]	string
 pendingChoices[].replacementResume.event.id	number:uint64
 pendingChoices[].replacementResume.event.keywordAction	string
 pendingChoices[].replacementResume.event.keywordActionCount	number:int
+pendingChoices[].replacementResume.event.keywordActionTail	object
+pendingChoices[].replacementResume.event.keywordActionTail.ask	bool
+pendingChoices[].replacementResume.event.keywordActionTail.cards	array
+pendingChoices[].replacementResume.event.keywordActionTail.cards[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.choice	string
+pendingChoices[].replacementResume.event.keywordActionTail.land	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.keywordActionTail.players	array
+pendingChoices[].replacementResume.event.keywordActionTail.players[]	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.keywordInstead	object
 pendingChoices[].replacementResume.event.keywordInstead.key	string
 pendingChoices[].replacementResume.event.keywordInstead.source	custom(uuid.UUID)
@@ -3778,6 +3794,9 @@ pendingChoices[].replacementResume.event.lifeAfterMove[]	object
 pendingChoices[].replacementResume.event.lifeAfterMove[].delta	number:int
 pendingChoices[].replacementResume.event.lifeAfterMove[].player	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.lifeAfterMove[].source	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.lifeDelta	number:int
+pendingChoices[].replacementResume.event.lifeFromRadiation	bool
+pendingChoices[].replacementResume.event.lifePlayer	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.mustSettleNow	bool
 pendingChoices[].replacementResume.event.newZone	string
 pendingChoices[].replacementResume.event.newZoneOwner	custom(uuid.UUID)
@@ -4086,6 +4105,7 @@ pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types	array
 pendingChoices[].replacementResume.event.stackItem.trigger.Object.Types[]	string
 pendingChoices[].replacementResume.event.stackItem.uncopyable	bool
 pendingChoices[].replacementResume.event.stackItem.xValue	number:int
+pendingChoices[].replacementResume.event.startingLoyalty	bool
 pendingChoices[].replacementResume.event.stateBasedDestruction	bool
 pendingChoices[].replacementResume.event.zoneRoute	object
 pendingChoices[].replacementResume.event.zoneRoute.actor	custom(uuid.UUID)

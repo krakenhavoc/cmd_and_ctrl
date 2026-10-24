@@ -50,6 +50,13 @@ func keyedFrameSample() *ReplacementEvent {
 		drawThen:       DrawThen{Ref: DrawThenRef{key: "dt"}, Player: id("dt-p"), Source: id("dt-s"), N: 5},
 		keywordInstead: keywordInsteadRun{ref: KeywordInsteadRef{key: "ki"}, source: id("ki-src")},
 		KeywordAction:  KeywordActionLearn, KeywordActionCount: 1,
+		keywordAction: &keywordActionTail{
+			cards: []uuid.UUID{id("kc")}, players: []uuid.UUID{id("kp")}, ask: true, choice: PendingChoiceScry, land: id("land"),
+		},
+		CounterTarget: id("ct"), CounterName: CounterPlusOne, CounterDelta: 3, CounterPlayer: id("cp"),
+		StartingLoyalty: true, CounterPlacer: id("placer"), CounterFromCombatDamage: true, CounterFromCost: true,
+		CounterFromTurnBasedAction: true,
+		LifePlayer:                 id("lifer"), LifeDelta: -4, LifeFromRadiation: true,
 		CardID: id("card"), OldZone: ZoneStack, NewZone: ZoneBattlefield, NewZoneOwner: id("owner"),
 		ShuffleDestinationLibrary: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
 		ExileCounter: "egg", Destruction: true, CantBeRegenerated: true, StateBasedDestruction: true,
@@ -100,6 +107,7 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 	}{
 		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true, "simultaneousEntry": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
+		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true, "armySubtype": true}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -140,6 +148,27 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 	if g.replacementFrameKeyable(base()) != ReplacementResumeMove {
 		t.Fatal("a plain bounce's frame is not keyed")
 	}
+	// #4253 slice 2: the event kinds and prompt kinds keyed since.
+	for name, mut := range map[string]func(c *PendingChoice){
+		"a counter placement": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventCounter },
+		"a life change":       func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventLife },
+		"a scry with no then": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventKeywordAction
+			c.replacementResume.ev.keywordAction = &keywordActionTail{choice: PendingChoiceScry}
+		},
+		"a copy prompt":       func(c *PendingChoice) { c.Kind = PendingChoiceCopyTarget },
+		"an aura host prompt": func(c *PendingChoice) { c.Kind, c.replacementResume.applicable = PendingChoiceAuraHost, nil },
+		"an entry sacrifice": func(c *PendingChoice) {
+			c.Kind = PendingChoiceEntrySacrifice
+			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneBattlefield}
+		},
+	} {
+		c := base()
+		mut(c)
+		if key := g.replacementFrameKeyable(c); key == "" {
+			t.Errorf("%s: the frame is not keyed", name)
+		}
+	}
 	for name, mut := range map[string]func(c *PendingChoice){
 		"a route's then": func(c *PendingChoice) {
 			c.replacementResume.ev.zoneRoute = &zoneRoute{then: func(*Game) error { return nil }}
@@ -149,20 +178,45 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		},
 		"an entry batch": func(c *PendingChoice) { c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{}} },
 		"a life tail":    func(c *PendingChoice) { c.replacementResume.ev.lifeTail = &lifeTail{} },
-		"a keyword-action tail": func(c *PendingChoice) {
-			c.replacementResume.ev.keywordAction = &keywordActionTail{}
+		"a counter tail": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventCounter
+			c.replacementResume.ev.counterTail = &counterTail{}
 		},
-		"a counter event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventCounter },
+		"a keyword action's then": func(c *PendingChoice) {
+			c.replacementResume.ev.keywordAction = &keywordActionTail{then: func(*Game) error { return nil }}
+		},
+		"the Army you amassed": func(c *PendingChoice) {
+			c.replacementResume.ev.keywordAction = &keywordActionTail{amassed: func(*Game, uuid.UUID) error { return nil }}
+		},
+		"an amass's Army": func(c *PendingChoice) {
+			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{Name: "Army"}}
+		},
+		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
 		"a test replacement": func(c *PendingChoice) {
 			c.replacementResume.applicable = []activeReplacement{{id: testReplacementIDBase}}
 		},
-		"a copy prompt": func(c *PendingChoice) { c.Kind = PendingChoiceCopyTarget },
+		"an unkeyed prompt kind": func(c *PendingChoice) { c.Kind = PendingChoiceSacrifice },
+		"no gathered effect":     func(c *PendingChoice) { c.replacementResume.applicable = nil },
+		"an entry card choice with a then": func(c *PendingChoice) {
+			c.Kind = PendingChoiceEntryDiscardFromHand
+			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneHand, then: func(*Game, []uuid.UUID) error { return nil }}
+		},
+		"an entry card choice with no zone frame": func(c *PendingChoice) { c.Kind = PendingChoiceEntrySacrifice },
+		"an entry card choice over the wrong zone": func(c *PendingChoice) {
+			c.Kind = PendingChoiceEntrySacrifice
+			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneHand}
+		},
+		"a staged token's entry": func(c *PendingChoice) {
+			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
+			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}
+		},
 	} {
 		c := base()
 		mut(c)
 		if key := g.replacementFrameKeyable(c); key != "" {
 			t.Errorf("%s: the frame is keyed as %q", name, key)
 		}
+		g.enteringTokens = nil
 	}
 }
 
@@ -228,6 +282,13 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 		"no tail":            func(c *pendingChoiceSnapshot) { c.PickThen = "" },
 		"unknown draw body": func(c *pendingChoiceSnapshot) {
 			c.ReplacementResume.Event.DrawInstead = &insteadRunSnapshot{Key: "never-registered"}
+		},
+		"unknown keyword-action prompt kind": func(c *pendingChoiceSnapshot) {
+			c.ReplacementResume.Event.KeywordActionTail = &keywordActionTailSnapshot{Choice: "never-registered"}
+		},
+		"a counter tail over a move": func(c *pendingChoiceSnapshot) { c.PickThen = ReplacementResumeCounter },
+		"a frame on an unkeyed prompt kind": func(c *pendingChoiceSnapshot) {
+			c.Kind = PendingChoiceSacrifice
 		},
 	} {
 		snap := throughJSON(t, g.CaptureSnapshot())

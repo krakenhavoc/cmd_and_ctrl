@@ -48,21 +48,35 @@ import (
 // # Event kinds
 //
 // Keyed: a draw (dredge, Underrealm Lich, Forbidden Crypt, an ordering
-// prompt between a doubler and a dredge), a keyword action with no tail
-// (learn, so Retriever Phoenix), and a zone move — an exit whose route
-// carries no continuation (a commander's CR 903.9b bounce) and a
-// battlefield entry with no batch and no entry continuation (riot,
-// unleash, a permanent spell's entry, whose resolving stack item is
-// written with it).
+// prompt between a doubler and a dredge); a keyword action whose tail is
+// data (learn, so Retriever Phoenix; a scry, surveil, proliferate or
+// earthbend with no "then"); a zone move — an exit whose route carries
+// no continuation (a commander's CR 903.9b bounce) and a battlefield
+// entry with no batch and no entry continuation (riot, unleash, a
+// permanent spell's entry, whose resolving stack item is written with
+// it); and a counter placement or a life change with no tail (an
+// ordering prompt between Hardened Scales and Doubling Season, or
+// between two life-gain replacements).
 //
 // Not keyed (the frame stays a closure, counted by the census): a
-// discard, a token creation, a counter placement, a life change, damage,
-// a mill, a step transition, a countered spell, and a keyword action,
-// move or entry whose tail holds a closure (a route's `then`, a
+// discard, a token creation, damage, a mill, a step transition, a
+// countered spell, and a keyword action, move, entry, counter placement
+// or life change whose tail holds a closure (a route's `then`, a
 // simultaneous exit or exchange, an entry batch or an entry tail's
-// `then`). The other prompt kinds that pause an entry through the same
-// frame (copy, entry-controller, entry-card, aura-host, read-ahead and
-// the entry-life payment) are not keyed either.
+// `then`, a counter or life tail, a keyword action's `then` or amass's
+// Army), and the entry of a staged token.
+//
+// # Prompt kinds
+//
+// Keyed: every prompt kind whose resolve path reads nothing but the
+// frame and the prompt's own written fields (keyedReplacementPromptKind).
+// The CR 616 three (optional_replacement, replacement_order, entry_riot)
+// and the entry questions that pause through the same frame: copy_target,
+// entry_controller, the four entry card choices (reveal, discard,
+// sacrifice, choose permanents), aura_host, entry_read_ahead and
+// entry_pay_life (#4253 slice 2). An entry card choice also holds a
+// chooseCardsFrame, which for these kinds is the zone its prompt kind
+// names and nothing else: restore rebuilds it from the kind.
 
 // The registered tails, one per keyed event kind. On-disk identities:
 // never renamed, never reused. Ledgered as "resume <key>".
@@ -70,6 +84,8 @@ const (
 	ReplacementResumeDraw          = "replacement-resume/draw"
 	ReplacementResumeKeywordAction = "replacement-resume/keyword-action"
 	ReplacementResumeMove          = "replacement-resume/move"
+	ReplacementResumeCounter       = "replacement-resume/counter"
+	ReplacementResumeLife          = "replacement-resume/life"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -79,6 +95,8 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeDraw:          RepEventDraw,
 	ReplacementResumeKeywordAction: RepEventKeywordAction,
 	ReplacementResumeMove:          RepEventMove,
+	ReplacementResumeCounter:       RepEventCounter,
+	ReplacementResumeLife:          RepEventLife,
 }
 
 // KnownReplacementResume reports whether key names a registered tail.
@@ -98,15 +116,48 @@ func replacementResumeKeyFor(kind ReplacementEventKind) string {
 }
 
 // keyedReplacementPromptKind reports whether a prompt of this kind
-// resumes through ResolveOptionalReplacement, ResolveReplacementOrder or
-// ResolveEntryRiot, the three resolve paths that read nothing but the
-// frame and the prompt's own data.
+// resumes through a resolve path that reads nothing but the frame and
+// the prompt's own written fields: ResolveOptionalReplacement,
+// ResolveReplacementOrder, ResolveEntryRiot, ResolveCopyTarget,
+// ResolveEntryController, ResolveEntryCardChoice, ResolveAuraHost,
+// ResolveEntryReadAhead and ResolveEntryPayLife.
 func keyedReplacementPromptKind(k PendingChoiceKind) bool {
 	switch k {
-	case PendingChoiceOptionalReplacement, PendingChoiceReplacementOrder, PendingChoiceEntryRiot:
+	case PendingChoiceOptionalReplacement, PendingChoiceReplacementOrder, PendingChoiceEntryRiot,
+		// #4253 slice 2: the entry questions that share the frame.
+		PendingChoiceCopyTarget, PendingChoiceEntryController, PendingChoiceAuraHost,
+		PendingChoiceEntryReadAhead, PendingChoiceEntryPayLife:
 		return true
 	}
-	return false
+	return isEntryCardChoiceKind(k)
+}
+
+// keyedPromptNeedsApplicable reports whether a keyed prompt kind's
+// resolve path reads the frame's first gathered effect. An aura_host
+// prompt is the one that does not: CR 303.4f's question is asked by the
+// apply-loop itself, once nothing is left to apply, so its frame holds
+// the event alone.
+func keyedPromptNeedsApplicable(k PendingChoiceKind) bool {
+	return k != PendingChoiceAuraHost
+}
+
+// entryCardChoiceZone is the zone an entry card choice's prompt kind
+// picks from: EntryCardChoice.zone for the declaration that queues it.
+func entryCardChoiceZone(k PendingChoiceKind) ZoneKind {
+	if k == PendingChoiceEntrySacrifice || k == PendingChoiceEntryChoosePermanents {
+		return ZoneBattlefield
+	}
+	return ZoneHand
+}
+
+// entryCardChoiceFrameIsData reports whether an entry card choice's
+// chooseCardsFrame is the one queueEntryCardChoicePromptLocked builds:
+// the zone its kind names and nothing else, so restore can rebuild it
+// from the kind. Anything more keeps the frame off the disk.
+func entryCardChoiceFrameIsData(c *PendingChoice) bool {
+	f := c.chooseCardsResume
+	return f != nil && f.then == nil && f.validate == nil && f.earlierPermanentChoices == nil &&
+		f.permanentEpochs == nil && f.zone == entryCardChoiceZone(c.Kind)
 }
 
 // registeredReplacementResumeKeys lists the ledger lines for the tails
@@ -197,11 +248,14 @@ var replacementEventFields = map[string]replacementEventField{
 	"drawThen":       repFieldCarried,
 	"keywordInstead": repFieldCarried,
 
-	// A keyword action. Its tail holds closures (a scry's or a
-	// proliferate's "then", an amass's Army), so it gates; learn has none.
+	// A keyword action. Its tail's data half (a proliferate's lists or
+	// its "ask", a scry's or surveil's prompt kind, an earthbend's land)
+	// is carried; a tail with a "then", an amass's Army or its "the Army
+	// you amassed" keeps the frame off the disk (replacementFrameKeyable).
+	// Learn has no tail at all.
 	"KeywordAction":      repFieldCarried,
 	"KeywordActionCount": repFieldCarried,
-	"keywordAction":      repFieldGate,
+	"keywordAction":      repFieldCarried, // its data half; see replacementFrameKeyable
 
 	// A zone move and a battlefield entry.
 	"CardID":                    repFieldCarried,
@@ -247,52 +301,55 @@ var replacementEventFields = map[string]replacementEventField{
 	"asCommanderMove":           repFieldCarried,
 	"commanderAnswer":           repFieldCarried,
 
+	// A counter placement and a life change (#4253 slice 2). Their
+	// tails hold closures, so a placement or change with one gates.
+	"CounterTarget":              repFieldCarried,
+	"CounterName":                repFieldCarried,
+	"CounterDelta":               repFieldCarried,
+	"CounterPlayer":              repFieldCarried,
+	"StartingLoyalty":            repFieldCarried,
+	"CounterPlacer":              repFieldCarried,
+	"CounterFromCombatDamage":    repFieldCarried,
+	"CounterFromCost":            repFieldCarried,
+	"CounterFromTurnBasedAction": repFieldCarried,
+	"LifePlayer":                 repFieldCarried,
+	"LifeDelta":                  repFieldCarried,
+	"LifeFromRadiation":          repFieldCarried,
+
 	// The event kinds this file does not key.
-	"ManaPlayer":                 repFieldGate,
-	"ManaSource":                 repFieldGate,
-	"ManaColors":                 repFieldGate,
-	"ManaFromTap":                repFieldGate,
-	"DiscardPlayer":              repFieldGate,
-	"DiscardCause":               repFieldGate,
-	"DiscardCauseController":     repFieldGate,
-	"TokenController":            repFieldGate,
-	"TokenGroups":                repFieldGate,
-	"TokenAttacking":             repFieldGate,
-	"TokenTogether":              repFieldGate,
-	"TokenAttackChoicesLabel":    repFieldGate,
-	"tokenTail":                  repFieldGate,
-	"MillPlayer":                 repFieldGate,
-	"MillCount":                  repFieldGate,
-	"mill":                       repFieldGate,
-	"CounterTarget":              repFieldGate,
-	"CounterName":                repFieldGate,
-	"CounterDelta":               repFieldGate,
-	"CounterPlayer":              repFieldGate,
-	"StartingLoyalty":            repFieldGate,
-	"counterTail":                repFieldGate,
-	"CounterPlacer":              repFieldGate,
-	"CounterFromCombatDamage":    repFieldGate,
-	"CounterFromCost":            repFieldGate,
-	"CounterFromTurnBasedAction": repFieldGate,
-	"LifePlayer":                 repFieldGate,
-	"LifeDelta":                  repFieldGate,
-	"LifeFromRadiation":          repFieldGate,
-	"lifeTail":                   repFieldGate,
-	"DamageSource":               repFieldGate,
-	"DamageTarget":               repFieldGate,
-	"DamageAmount":               repFieldGate,
-	"IsCombatDamage":             repFieldGate,
-	"DamageInstance":             repFieldGate,
-	"SourceLKI":                  repFieldGate,
-	"damageTail":                 repFieldGate,
-	"StepTransitionStep":         repFieldGate,
-	"StepTransitionSeat":         repFieldGate,
-	"ExtraTurnSeat":              repFieldGate,
-	"ExtraTurnRef":               repFieldGate,
-	"CounterSpellID":             repFieldGate,
-	"CounterBy":                  repFieldGate,
-	"CounterBySource":            repFieldGate,
-	"counterInstead":             repFieldGate,
+	"ManaPlayer":              repFieldGate,
+	"ManaSource":              repFieldGate,
+	"ManaColors":              repFieldGate,
+	"ManaFromTap":             repFieldGate,
+	"DiscardPlayer":           repFieldGate,
+	"DiscardCause":            repFieldGate,
+	"DiscardCauseController":  repFieldGate,
+	"TokenController":         repFieldGate,
+	"TokenGroups":             repFieldGate,
+	"TokenAttacking":          repFieldGate,
+	"TokenTogether":           repFieldGate,
+	"TokenAttackChoicesLabel": repFieldGate,
+	"tokenTail":               repFieldGate,
+	"MillPlayer":              repFieldGate,
+	"MillCount":               repFieldGate,
+	"mill":                    repFieldGate,
+	"counterTail":             repFieldGate,
+	"lifeTail":                repFieldGate,
+	"DamageSource":            repFieldGate,
+	"DamageTarget":            repFieldGate,
+	"DamageAmount":            repFieldGate,
+	"IsCombatDamage":          repFieldGate,
+	"DamageInstance":          repFieldGate,
+	"SourceLKI":               repFieldGate,
+	"damageTail":              repFieldGate,
+	"StepTransitionStep":      repFieldGate,
+	"StepTransitionSeat":      repFieldGate,
+	"ExtraTurnSeat":           repFieldGate,
+	"ExtraTurnRef":            repFieldGate,
+	"CounterSpellID":          repFieldGate,
+	"CounterBy":               repFieldGate,
+	"CounterBySource":         repFieldGate,
+	"counterInstead":          repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is
@@ -321,13 +378,27 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 		return ""
 	}
 	f := c.replacementResume
-	if f == nil || f.ev == nil || len(f.applicable) == 0 {
+	if f == nil || f.ev == nil || (len(f.applicable) == 0 && keyedPromptNeedsApplicable(c.Kind)) {
+		return ""
+	}
+	if isEntryCardChoiceKind(c.Kind) && !entryCardChoiceFrameIsData(c) {
 		return ""
 	}
 	ev := f.ev
 	key := replacementResumeKeyFor(ev.Kind)
 	if key == "" || !replacementEventGatesClear(ev) {
 		return ""
+	}
+	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil || t.armySubtype != "" ||
+		!reflect.ValueOf(t.armyToken).IsZero()) {
+		return ""
+	}
+	if ev.CardID != uuid.Nil {
+		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
+			// A created token's entry: the token is in no zone, only in
+			// Game.enteringTokens, which a restore point does not carry.
+			return ""
+		}
 	}
 	if r := ev.zoneRoute; r != nil && (r.then != nil || len(r.simultaneousExit) > 0 || r.simultaneousEntry != nil) {
 		return ""
@@ -432,6 +503,33 @@ type replacementEventSnapshot struct {
 	ExtraTurnsAfterMove       []moveTurnSnapshot  `json:"extraTurnsAfterMove,omitempty"`
 	AsCommanderMove           bool                `json:"asCommanderMove,omitempty"`
 	CommanderAnswer           commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+
+	// #4253 slice 2: a keyword action's tail (its data half), a counter
+	// placement and a life change.
+	KeywordActionTail          *keywordActionTailSnapshot `json:"keywordActionTail,omitempty"`
+	CounterTarget              *uuid.UUID                 `json:"counterTarget,omitempty"`
+	CounterName                string                     `json:"counterName,omitempty"`
+	CounterDelta               int                        `json:"counterDelta,omitempty"`
+	CounterPlayer              *uuid.UUID                 `json:"counterPlayer,omitempty"`
+	StartingLoyalty            bool                       `json:"startingLoyalty,omitempty"`
+	CounterPlacer              *uuid.UUID                 `json:"counterPlacer,omitempty"`
+	CounterFromCombatDamage    bool                       `json:"counterFromCombatDamage,omitempty"`
+	CounterFromCost            bool                       `json:"counterFromCost,omitempty"`
+	CounterFromTurnBasedAction bool                       `json:"counterFromTurnBasedAction,omitempty"`
+	LifePlayer                 *uuid.UUID                 `json:"lifePlayer,omitempty"`
+	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
+	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
+}
+
+// keywordActionTailSnapshot is a keywordActionTail's data half: a tail
+// with a "then", an amass's Army or "the Army you amassed" is never
+// written. Present (even empty) exactly when the event had a tail.
+type keywordActionTailSnapshot struct {
+	Cards   []uuid.UUID       `json:"cards,omitempty"`
+	Players []uuid.UUID       `json:"players,omitempty"`
+	Ask     bool              `json:"ask,omitempty"`
+	Choice  PendingChoiceKind `json:"choice,omitempty"`
+	Land    *uuid.UUID        `json:"land,omitempty"`
 }
 
 // pendingDrawSnapshot is a pendingDraw: an expanded draw's sibling.
@@ -603,6 +701,25 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		EntryControllerPrior:      uuidPtrOrNil(ev.entryControllerPrior),
 		AsCommanderMove:           ev.asCommanderMove,
 		CommanderAnswer:           ev.commanderAnswer,
+
+		CounterTarget:              uuidPtrOrNil(ev.CounterTarget),
+		CounterName:                ev.CounterName,
+		CounterDelta:               ev.CounterDelta,
+		CounterPlayer:              uuidPtrOrNil(ev.CounterPlayer),
+		StartingLoyalty:            ev.StartingLoyalty,
+		CounterPlacer:              uuidPtrOrNil(ev.CounterPlacer),
+		CounterFromCombatDamage:    ev.CounterFromCombatDamage,
+		CounterFromCost:            ev.CounterFromCost,
+		CounterFromTurnBasedAction: ev.CounterFromTurnBasedAction,
+		LifePlayer:                 uuidPtrOrNil(ev.LifePlayer),
+		LifeDelta:                  ev.LifeDelta,
+		LifeFromRadiation:          ev.LifeFromRadiation,
+	}
+	if t := ev.keywordAction; t != nil {
+		out.KeywordActionTail = &keywordActionTailSnapshot{
+			Cards: copyUUIDs(t.cards), Players: copyUUIDs(t.players), Ask: t.ask, Choice: t.choice,
+			Land: uuidPtrOrNil(t.land),
+		}
 	}
 	for _, p := range ev.drawPending {
 		out.DrawPending = append(out.DrawPending, pendingDrawSnapshot{
@@ -708,6 +825,25 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		entryControllerPrior:      uuidOrNil(s.EntryControllerPrior),
 		asCommanderMove:           s.AsCommanderMove,
 		commanderAnswer:           s.CommanderAnswer,
+
+		CounterTarget:              uuidOrNil(s.CounterTarget),
+		CounterName:                s.CounterName,
+		CounterDelta:               s.CounterDelta,
+		CounterPlayer:              uuidOrNil(s.CounterPlayer),
+		StartingLoyalty:            s.StartingLoyalty,
+		CounterPlacer:              uuidOrNil(s.CounterPlacer),
+		CounterFromCombatDamage:    s.CounterFromCombatDamage,
+		CounterFromCost:            s.CounterFromCost,
+		CounterFromTurnBasedAction: s.CounterFromTurnBasedAction,
+		LifePlayer:                 uuidOrNil(s.LifePlayer),
+		LifeDelta:                  s.LifeDelta,
+		LifeFromRadiation:          s.LifeFromRadiation,
+	}
+	if t := s.KeywordActionTail; t != nil {
+		ev.keywordAction = &keywordActionTail{
+			cards: copyUUIDs(t.Cards), players: copyUUIDs(t.Players), ask: t.Ask, choice: t.Choice,
+			land: uuidOrNil(t.Land),
+		}
 	}
 	for _, p := range s.DrawPending {
 		ev.drawPending = append(ev.drawPending, pendingDraw{
@@ -787,6 +923,10 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 	}
 	if d := f.Event.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)
+	}
+	if t := f.Event.KeywordActionTail; t != nil && t.Choice != "" && !KnownChoiceKind(t.Choice) {
+		// The prompt a settled scry or surveil queues.
+		unknown = append(unknown, "keyword-action prompt kind "+string(t.Choice))
 	}
 	if it := f.Event.StackItem; it != nil {
 		if it.Body != "" && !KnownEffectBody(it.Body) {
