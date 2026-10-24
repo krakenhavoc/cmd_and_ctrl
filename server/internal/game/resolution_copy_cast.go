@@ -122,12 +122,15 @@ func (g *Game) queueResolutionCastOfferLocked(o resolutionCastOffer) uuid.UUID {
 
 // ResolutionCastCandidateLocked reports whether id is a card chooser
 // may still cast through a resolution_cast prompt: a copy of a card, or
-// the card a cascade or discover hit (#4243), still in exile or a
-// graveyard, that one of chooser's stored permissions names. It answers
-// the zone it sits in. Caller must hold g.mu.
+// the card a keyword or an effect put on offer (#4243, #4250), still in
+// exile, a graveyard or a library, that one of chooser's stored
+// permissions names. It answers the zone it sits in. A library card is
+// Ziatora's Envoy's top card, cast from where it sits (#4250); its
+// permission opens the library, so nothing else in a library is ever a
+// candidate. Caller must hold g.mu.
 func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneKind, bool) {
 	z := g.findCardZoneLocked(id)
-	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard) {
+	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard && z.Kind != ZoneLibrary) {
 		return Card{}, "", false
 	}
 	c, ok := g.cardInZoneLocked(z, id)

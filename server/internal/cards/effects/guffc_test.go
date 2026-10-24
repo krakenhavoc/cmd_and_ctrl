@@ -441,11 +441,11 @@ func TestGuffcRewritesHistoryShufflesAndOffersEachPlayerACast(t *testing.T) {
 	// stop on it or on the Divination.
 	prompts := 0
 	for _, c := range g.PendingChoices {
-		if c == nil || c.Kind != game.PendingChoiceMayCast {
+		if !isKeywordCastPrompt(c) {
 			continue
 		}
 		prompts++
-		card, ok := cardInZone(g.Exile, c.MayCastCard)
+		card, ok := cardInZone(g.Exile, keywordCastCard(c))
 		if !ok || card.Owner != c.Chooser || card.IsLand() {
 			t.Errorf("%s was offered %s (in exile %v), want a nonland card of their own", c.Chooser, card.Name, ok)
 		}
@@ -480,8 +480,8 @@ func TestGuffcRewritesHistoryDeclinedCardStaysInExile(t *testing.T) {
 
 	var offered []uuid.UUID
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
-			offered = append(offered, c.MayCastCard)
+		if isKeywordCastPrompt(c) {
+			offered = append(offered, keywordCastCard(c))
 		}
 	}
 	if len(offered) != len(g.Seats) {
@@ -489,7 +489,7 @@ func TestGuffcRewritesHistoryDeclinedCardStaysInExile(t *testing.T) {
 	}
 	for len(pendingMayCasts(g)) > 0 {
 		c := pendingMayCasts(g)[0]
-		if err := g.ResolveMayCast(c.ID, c.Chooser, false); err != nil {
+		if err := g.ResolvePendingChoice(c.ID, c.Chooser, nil); err != nil {
 			t.Fatalf("decline: %v", err)
 		}
 	}
@@ -516,7 +516,7 @@ func TestGuffcRewritesHistoryDeclinedCardStaysInExile(t *testing.T) {
 func pendingMayCasts(g *game.Game) []*game.PendingChoice {
 	var out []*game.PendingChoice
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
+		if isKeywordCastPrompt(c) {
 			out = append(out, c)
 		}
 	}

@@ -16,10 +16,10 @@ import (
 //
 // What is pinned here is the keyword's own contract: the replacement
 // runs for every CAUSE of discard and for nothing that is not a
-// discard, the trigger offers the cast from exile, declining puts the
+// discard, the trigger offers the cast from exile during its own
+// resolution (a resolution_cast, CR 608.2g, #4250), declining puts the
 // card into the graveyard, the grant is priced and keyed and
-// flash-timed, and an accepted-but-uncast card does not live in exile
-// forever.
+// flash-timed, and an uncast card does not live in exile forever.
 
 const madnessOracle = "test-madness-oracle"
 
@@ -39,9 +39,14 @@ func seedMadnessCard(p *Player, name, typeLine, manaCost string) uuid.UUID {
 	return seedHandCard(p, name, madnessOracle, typeLine, manaCost).InstanceID
 }
 
-// madnessOffer returns the queued may-cast prompt, or nil.
+// madnessOffer returns the queued madness cast, a resolution_cast over
+// the exiled card (#4250), or nil.
 func madnessOffer(g *Game) *PendingChoice {
-	return pendingChoiceOfKind(g, PendingChoiceMayCast)
+	c := pendingChoiceOfKind(g, PendingChoiceResolutionCast)
+	if c == nil || c.MayCastKeyword != MayCastKeywordMadness {
+		return nil
+	}
+	return c
 }
 
 // inGraveyard reports whether the card is in p's graveyard.
@@ -158,8 +163,9 @@ func TestTheDiscardEventStillFiresForAMadnessDiscard(t *testing.T) {
 
 // --- the offer (CR 702.35a) --------------------------------------------
 
-// Taking the offer stamps the cast on that one exiled object, priced
-// at the madness cost, keyed "madness" and flash-timed (CR 608.2g).
+// The offer stamps the cast on that one exiled object, priced at the
+// madness cost, keyed "madness" and flash-timed (CR 608.2g), and the
+// cast is made while the trigger is still resolving.
 func TestTakingTheMadnessOfferGrantsThePricedCast(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -176,13 +182,16 @@ func TestTakingTheMadnessOfferGrantsThePricedCast(t *testing.T) {
 	if offer.Chooser != me.ID {
 		t.Errorf("offer chooser = %s, want the owner %s", offer.Chooser, me.ID)
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
+	if len(offer.DiscardOptions) != 1 || offer.DiscardOptions[0] != id || !g.ResolutionPaused() {
+		t.Fatalf("offer = %+v, want the madness card, holding the trigger's resolution", offer)
 	}
 
 	perm := grantOn(g, me.ID, id, ZoneExile)
 	if perm == nil {
-		t.Fatal("accepting the madness offer granted no cast permission")
+		t.Fatal("the madness offer granted no cast permission")
+	}
+	if perm.LapseOnPass != LapseToGraveyard {
+		t.Errorf("granted lapse: got %q, want the graveyard (CR 702.35a)", perm.LapseOnPass)
 	}
 	if perm.Cost != "{R}" {
 		t.Errorf("granted price: got %q, want the madness cost {R}", perm.Cost)
@@ -203,6 +212,9 @@ func TestTakingTheMadnessOfferGrantsThePricedCast(t *testing.T) {
 	}
 	if !g.Stack.Contains(id) {
 		t.Error("the madness cast did not reach the stack")
+	}
+	if g.ResolutionPaused() || madnessOffer(g) != nil {
+		t.Error("the trigger's resolution is still held after the cast")
 	}
 	if len(me.ManaPool) != 0 {
 		t.Errorf("mana pool after the cast: %d tokens left, want 0 — the madness cost was not charged", len(me.ManaPool))
@@ -226,9 +238,6 @@ func TestAMadnessSorceryCastsOnAnOpponentsTurn(t *testing.T) {
 	if offer == nil {
 		t.Fatal("no madness offer on the opponent's turn")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
 	me.ManaPool.AddMana(ManaToken{Color: "R"})
 	if err := g.CastSpell(me.ID, id, CastSpellParams{Strict: true, FromZone: "exile", AlternativeCost: AltCostKeyMadness}); err != nil {
 		t.Fatalf("a madness sorcery on the opponent's turn: %v", err)
@@ -249,8 +258,8 @@ func TestDecliningMadnessPutsTheCardInTheGraveyard(t *testing.T) {
 	if offer == nil {
 		t.Fatal("no madness offer")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, false); err != nil {
-		t.Fatalf("ResolveMayCast(decline): %v", err)
+	if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 
 	if exiledCardByIDLocked(g, id) != nil {
@@ -264,37 +273,83 @@ func TestDecliningMadnessPutsTheCardInTheGraveyard(t *testing.T) {
 	}
 }
 
-// The grant-instead-of-inline-cast simplification must not be
-// STRONGER than printed: a card accepted and then never cast is in
-// the graveyard by the next end step, not parked in exile forever.
+// Outside an open resolution (the fallback; the trigger always resolves
+// inside one) the permission alone is the window, and it is not
+// STRONGER than printed: passing priority without casting puts the card
+// into its owner's graveyard (CR 702.35a), not parked in exile.
 func TestAnUncastMadnessCardGoesToTheGraveyard(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	withMadnessCard(t, "{R}")
 	advanceTo(t, g, StepPrecombatMain)
 	id := seedMadnessCard(me, "Fiery Temper", "Instant", "{1}{R}{R}")
-
-	discardOne(t, g, me, id, DiscardCauseEffect)
-	settleStack(t, g)
-	offer := madnessOffer(g)
-	if offer == nil {
-		t.Fatal("no madness offer")
+	g.WithWriteLock(func() {
+		c, _ := g.cardInZoneLocked(me.Hand, id)
+		me.Hand.Cards = nil
+		g.Exile.PushTop(c)
+		if err := g.offerMadnessCastLocked(me.ID, id, "{R}"); err != nil {
+			t.Fatalf("offerMadnessCastLocked: %v", err)
+		}
+	})
+	if madnessOffer(g) != nil {
+		t.Fatal("no resolution is open, so nothing is asked")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
+	if grantOn(g, me.ID, id, ZoneExile) == nil {
+		t.Fatal("the fallback granted no cast")
 	}
-	if exiledCardByIDLocked(g, id) == nil {
-		t.Fatal("the accepted madness card left exile before it was cast")
+	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
+		t.Fatal("test needs the owner to hold priority")
 	}
-
-	advanceTo(t, g, StepEnd)
-	settleStack(t, g)
-
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
+	}
 	if exiledCardByIDLocked(g, id) != nil {
-		t.Error("an accepted-but-uncast madness card is still in exile at the end step")
+		t.Error("an uncast madness card is still in exile after the pass")
 	}
 	if !inGraveyard(me, id) {
-		t.Error("an accepted-but-uncast madness card did not reach its owner's graveyard")
+		t.Error("an uncast madness card did not reach its owner's graveyard")
+	}
+}
+
+// A table paused on the madness offer is a restore point: the restored
+// prompt casts the card, or its decline puts the card into the
+// graveyard.
+func TestTheMadnessOfferSurvivesARestore(t *testing.T) {
+	for _, cast := range []bool{true, false} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		withMadnessCard(t, "{R}")
+		advanceTo(t, g, StepPrecombatMain)
+		id := seedMadnessCard(me, "Fiery Temper", "Instant", "{1}{R}{R}")
+		discardOne(t, g, me, id, DiscardCauseEffect)
+		settleStack(t, g)
+		if madnessOffer(g) == nil {
+			t.Fatal("no madness offer")
+		}
+		_, restored := roundTrip(t, g)
+		rme := restored.Seats[0]
+		rc := madnessOffer(restored)
+		if rc == nil || !restored.ResolutionPaused() || rc.DeclineLabel != "Put it into your graveyard" {
+			t.Fatalf("cast=%v: the restored table lost the offer: %+v", cast, rc)
+		}
+		if cast {
+			rme.ManaPool.AddMana(ManaToken{Color: "R"})
+			if err := restored.CastSpell(rme.ID, id, CastSpellParams{Strict: true, FromZone: "exile", AlternativeCost: AltCostKeyMadness}); err != nil {
+				t.Fatalf("the restored madness cast: %v", err)
+			}
+			if !restored.Stack.Contains(id) {
+				t.Error("the restored cast did not reach the stack")
+			}
+		} else {
+			if err := restored.ResolvePendingChoice(rc.ID, rme.ID, nil); err != nil {
+				t.Fatalf("the restored decline: %v", err)
+			}
+			if !inGraveyard(rme, id) {
+				t.Error("the restored decline did not put the card into the graveyard")
+			}
+		}
+		if restored.ResolutionPaused() {
+			t.Errorf("cast=%v: the restored resolution did not finish", cast)
+		}
 	}
 }
 
@@ -332,12 +387,9 @@ func TestAMadnessCardDiscardedToHandSize(t *testing.T) {
 	}
 }
 
-// The reclamation reaches across a turn. A cleanup discard is taken
-// after this turn's end step has gone by, so the graveyard trigger
-// fires at the NEXT turn's end step — and the card that was accepted
-// and never cast is in a graveyard rather than parked in exile for
-// the rest of the game. The trigger is guarded by CR 400.7's object
-// epoch, so a gap this long costs it nothing.
+// The cleanup offer holds the cleanup step until it is answered, and its
+// decline puts the card into the graveyard there and then: nothing is
+// left in exile for a later turn to reclaim.
 func TestACleanupMadnessCardIsReclaimedAtTheNextEndStep(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -354,19 +406,14 @@ func TestACleanupMadnessCardIsReclaimedAtTheNextEndStep(t *testing.T) {
 	if offer == nil {
 		t.Fatal("the cleanup discard offered no madness cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
+	if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
-	if exiledCardByIDLocked(g, id) == nil {
-		t.Fatal("the accepted card left exile before it was cast")
+	if g.Turn.Step != StepCleanup {
+		t.Errorf("the decline was answered in %s, want the same cleanup step", g.Turn.Step)
 	}
-
-	// A whole turn later: the grant is long gone.
-	advanceTo(t, g, StepEnd)
-	settleStack(t, g)
-
 	if perm := grantOn(g, me.ID, id, ZoneExile); perm != nil {
-		t.Error("the madness grant outlived the turn it was made in")
+		t.Error("the madness grant outlived the decline")
 	}
 	if exiledCardByIDLocked(g, id) != nil {
 		t.Error("the uncast madness card is stranded in exile")

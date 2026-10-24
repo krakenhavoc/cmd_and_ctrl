@@ -12,14 +12,18 @@
   // the server wrote it. "Don't cast" is always there and always legal.
   //
   // #4243: cascade's and discover's cast is the same prompt over the one
-  // card they exiled (CR 702.85a, CR 701.57a), not a copy. The server names
-  // the keyword (`may_cast_keyword`) and the words of the decline
-  // (`decline_label`: "Put it on the bottom", "Put it into your hand"),
-  // and the sheet speaks in those terms.
+  // card they exiled (CR 702.85a, CR 701.57a), not a copy, and since #4250
+  // so are rebound's, suspend's and madness's, the exile-until shape's, the
+  // paid "if you don't" cast's (Chandra, Torch of Defiance) and the
+  // free-or-hand offers' (Ziatora's Envoy, Beseech the Mirror). The server
+  // names the keyword (`may_cast_keyword`) and the words of the decline
+  // (`decline_label`: "Put it on the bottom", "Leave it in exile", ...),
+  // and the sheet speaks in those terms (keywordCastWords).
 
   import type { ActionType, GameView, LegalMoveView } from "../../protocol";
   import Card from "./Card.svelte";
   import { confirmAction } from "../../dock";
+  import { keywordCastWords } from "../../mayCast";
   import DockSheet from "./DockSheet.svelte";
 
   interface Props {
@@ -39,10 +43,9 @@
   );
   const copies = $derived(active?.options ?? []);
   const source = $derived(active?.reason || "The effect");
-  // cascade and discover offer the card they exiled, not a copy of one.
-  const keyword = $derived(active?.may_cast_keyword ?? "");
-  const exiledHit = $derived(keyword === "cascade" || keyword === "discover");
+  // A keyword's offer is one real card, not a copy of one.
   const declineLabel = $derived(active?.decline_label || "Don't cast");
+  const words = $derived(keywordCastWords(active?.may_cast_keyword, active?.decline_label));
 
   // The moves for this prompt, the server's labels without the prompt's
   // own name in front of each.
@@ -79,8 +82,8 @@
     casts.length > 0 ? [{ id: "decline", label: declineLabel, onPress: sendDecline }] : [],
   );
   const heading = $derived(
-    exiledHit
-      ? `${source}: you may cast ${copies[0]?.name ?? "it"} without paying its mana cost`
+    words
+      ? `${source}: you may cast ${copies[0]?.name ?? "it"} ${words.how}`
       : `${source}: you may cast ${copies.length === 1 ? `the copy of ${copies[0].name}` : "the copies"}`,
   );
 </script>
@@ -89,19 +92,16 @@
   <DockSheet
     rank="choice"
     label={heading}
-    src={keyword === "cascade" ? "CR 702.85" : keyword === "discover" ? "CR 701.57" : "CR 707.12"}
+    src={words?.src ?? "CR 707.12"}
     width={560}
     sheetKey={`resolution-cast:${active.id}:${copies.length}`}
     {primary}
     {secondary}
   >
     <p class="prompt-hint">
-      {#if exiledHit}
-        {source} is still resolving. Cast {copies[0]?.name ?? "it"} now, for nothing, or don't. If you
-        don't, {keyword === "discover"
-          ? "it goes into your hand"
-          : "it goes to the bottom of your library"}; the rest of the exiled cards go to the bottom
-        either way.
+      {#if words}
+        {source} is still resolving. Cast {copies[0]?.name ?? "it"} now, or don't. If you don't,
+        {words.ifNot}.
       {:else}
         {source} is still resolving. Cast {copies.length === 1 ? "the copy" : "any of the copies"} now,
         or don't. A copy you don't cast stops existing.

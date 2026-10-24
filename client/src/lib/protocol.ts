@@ -1476,8 +1476,11 @@ export interface PendingChoiceView {
     // #2947, CR 707.12 / 608.2g: an effect made copies of cards and the
     // chooser may cast any of them while it is still resolving.
     // `options` are the copies still on offer (face up, in exile or a
-    // graveyard); for cascade and discover (#4243) the one card they
-    // exiled, with `may_cast_keyword` naming the rule and
+    // graveyard); for a keyword cast (cascade and discover, #4243; rebound,
+    // suspend, madness, exile_until, paid_or_else and free_or_hand, #4250)
+    // the one real card on offer (in exile, or for free_or_hand off the top
+    // of the chooser's library, where the knower filter keeps it from
+    // every other viewer), with `may_cast_keyword` naming the rule and
     // `accept_label` / `decline_label` the two answers. Answered by one of
     // the legal moves naming it
     // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
@@ -2052,9 +2055,10 @@ export interface PendingChoiceView {
   accept_label?: string;
   decline_label?: string;
   // ADR 0099 §7: populated for kind "may_cast". The rule the offer is
-  // asked under ("suspend", "madness", ...; cascade and discover ask a
-  // "resolution_cast" since #4243, which carries the same keyword and
-  // labels) and the
+  // asked under ("play_or_hand", or absent for an offer that is only its
+  // card's text; every keyword cast asks a "resolution_cast", which
+  // carries the keyword and labels: cascade and discover since #4243, the
+  // rest since #4250) and the
   // instance id of the exiled card it offers. A may_cast also carries
   // accept_label / decline_label when the server named its branches.
   may_cast_keyword?: string;

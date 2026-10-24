@@ -41,23 +41,6 @@ func libCard(owner uuid.UUID, name, typeLine, manaCost string) Card {
 	return c
 }
 
-// answerMayCast finds the outstanding may-cast prompt and answers it. The
-// keywords that still ask one are suspend, madness, rebound and the
-// paid-or-else and free-or-hand offers; cascade and discover moved to a
-// resolution_cast prompt (#4243).
-func answerMayCast(t *testing.T, g *Game, chooser uuid.UUID, apply bool) {
-	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			if err := g.ResolveMayCast(c.ID, chooser, apply); err != nil {
-				t.Fatalf("ResolveMayCast: %v", err)
-			}
-			return
-		}
-	}
-	t.Fatalf("no may_cast prompt outstanding")
-}
-
 // cascadeResolving resolves a stack item whose effect is a cascade for me
 // off a spell of mana value lessThan, so the cast is offered inside an open
 // resolution (CR 608.2g, #4243). It returns with the resolution_cast prompt
@@ -88,7 +71,13 @@ func answerResolutionCast(t *testing.T, g *Game, chooser uuid.UUID, cast bool) {
 	if len(c.DiscardOptions) != 1 {
 		t.Fatalf("the prompt offers %d cards, want the one hit", len(c.DiscardOptions))
 	}
-	if err := g.CastForResolutionChoice(chooser, c.ID, c.DiscardOptions[0], CastSpellParams{FromZone: string(ZoneExile)}); err != nil {
+	zone := ZoneExile
+	g.WithWriteLock(func() {
+		if _, z, ok := g.ResolutionCastCandidateLocked(chooser, c.DiscardOptions[0]); ok {
+			zone = z
+		}
+	})
+	if err := g.CastForResolutionChoice(chooser, c.ID, c.DiscardOptions[0], CastSpellParams{FromZone: string(zone)}); err != nil {
 		t.Fatalf("casting the hit: %v", err)
 	}
 }

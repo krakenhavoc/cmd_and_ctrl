@@ -17,10 +17,10 @@ import (
 //     "whenever you could begin to cast the card" — so a sorcery may
 //     be suspended only at sorcery speed, and neither kind may be
 //     suspended under split second (CR 702.62c).
-//  2. TWO TRIGGERS THAT WORK IN EXILE (CR 702.62b). Both are #925's
+//  2. TWO TRIGGERS THAT WORK IN EXILE (CR 702.62a). Both are #925's
 //     `TriggeredAbility.Zones = {ZoneExile}`, built for exactly this
 //     and for cycling's graveyard trigger.
-//  3. A FREE CAST when the last counter comes off (CR 702.62b/c,
+//  3. A FREE CAST when the last counter comes off (CR 702.62a,
 //     CR 608.2g) — ADR 0066's per-instance `CastPermission` with a
 //     `{0}` price, `TimingFlash` (a trigger resolving in an upkeep is
 //     not a main phase, and Rift Bolt is a sorcery) and the CR 107.3b
@@ -40,7 +40,7 @@ import (
 //
 // # Two triggers, as printed (#990)
 //
-// CR 702.62b prints two triggered abilities and the engine has two:
+// CR 702.62a prints two triggered abilities and the engine has two:
 //
 //	SuspendUpkeepTrigger()        "at the beginning of your upkeep,
 //	                               if this card is suspended, remove
@@ -140,7 +140,7 @@ func CardIsSuspended(c Card) bool {
 }
 
 // SuspendUpkeepTrigger builds the first of the two exile-zone
-// triggers every suspended card carries (CR 702.62b): "at the
+// triggers every suspended card carries (CR 702.62a): "at the
 // beginning of your upkeep, if this card is suspended, remove a time
 // counter from it". The catalog attaches it from the card's suspend
 // declaration rather than the card file writing it out, so the
@@ -176,7 +176,7 @@ func SuspendUpkeepTrigger() TriggeredAbility {
 var suspendTickBody = SimpleDelayedBody("suspend/tick", suspendTick)
 
 // suspendTick is the upkeep trigger's resolution, and the whole of it:
-// remove one time counter (CR 702.62b).
+// remove one time counter (CR 702.62a).
 //
 // It does NOT offer the cast. Taking the last counter off emits the
 // `EventCounterPlaced` that SuspendLastCounterTrigger watches, so the
@@ -201,7 +201,7 @@ func suspendTick(g *Game, item *StackItem) error {
 }
 
 // SuspendLastCounterTrigger builds the second exile-zone trigger
-// (CR 702.62b): "when the last time counter is removed from this
+// (CR 702.62a): "when the last time counter is removed from this
 // card, if it's exiled, cast it without paying its mana cost". Like
 // its sibling the catalog attaches it from the suspend declaration.
 //
@@ -242,7 +242,7 @@ func SuspendLastCounterTrigger() TriggeredAbility {
 var suspendFreeCastBody = SimpleDelayedBody("suspend/free-cast", suspendLastCounterRemoved)
 
 // suspendLastCounterRemoved is the second trigger's resolution: the
-// CR 702.62b/c offer, made against the game as it is now (CR 608.2).
+// CR 702.62a offer, made against the game as it is now (CR 608.2).
 // A card that left exile while the trigger was on the stack is not
 // offered anything, which is the intervening "if it's exiled" read at
 // resolution.
@@ -250,35 +250,37 @@ func suspendLastCounterRemoved(g *Game, item *StackItem) error {
 	return g.offerSuspendedCastLocked(item.Controller, item.SourceCardID)
 }
 
-// offerSuspendedCastLocked is CR 702.62b's second half: "when the last
-// time counter is removed, if it's exiled, its owner MAY cast it
-// without paying its mana cost".
+// offerSuspendedCastLocked is CR 702.62a's third ability: "when the
+// last time counter is removed from this card, if it's exiled, you may
+// play it without paying its mana cost if able. If you don't, it remains
+// exiled."
 //
-// A "may", so it goes through the same PendingChoiceMayCast prompt
-// cascade uses, and an unanswered or declined offer leaves the card in
-// exile with no counters and no permission — which is the printed
-// outcome, an uncast suspended card stranded in exile.
+// The cast happens during this resolution (CR 608.2g; ADR 0066's
+// 2026-10-23 amendment, #4250): the free cast is stamped on the card and
+// a resolution_cast prompt over it holds the resolution open while its
+// owner casts it, with its targets and modes chosen then, or declines.
+// The decline withdraws the permission and nothing else, so the card
+// stays in exile with no counters, which is the printed outcome. Outside
+// an open resolution the permission alone is the window, for the rest of
+// the turn as before.
 //
 // Caller must hold g.mu (write).
 func (g *Game) offerSuspendedCastLocked(chooser, cardID uuid.UUID) error {
 	c := exiledCardByIDLocked(g, cardID)
-	if c == nil {
+	if c == nil || !g.playerInGameLocked(chooser) {
 		return nil
 	}
-	name := c.Name
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	g.grantSuspendedFreeCastLocked(chooser, cardID)
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      chooser,
 		Source:       cardID,
-		Card:         cardID,
-		Question:     "Suspend — cast " + name + " without paying its mana cost?",
+		Reason:       "Suspend",
+		Candidates:   []uuid.UUID{cardID},
 		Keyword:      MayCastKeywordSuspend,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Leave it in exile",
-		OnAccept: func(g *Game) error {
-			g.grantSuspendedFreeCastLocked(chooser, cardID)
-			return nil
-		},
 	})
+	return nil
 }
 
 // grantSuspendedFreeCastLocked stamps the free cast on the one exiled
@@ -286,7 +288,7 @@ func (g *Game) offerSuspendedCastLocked(chooser, cardID uuid.UUID) error {
 //
 // Three fields carry the rules:
 //
-//   - `Cost: "{0}"` is "without paying its mana cost" (CR 702.62b).
+//   - `Cost: "{0}"` is "without paying its mana cost" (CR 702.62a).
 //     Spelled as a zero cost rather than left empty, for the reason
 //     cascade's grant spells it: empty means "pay the printed cost",
 //     which for Lotus Bloom and Ancestral Vision is CR 118.6's
@@ -311,8 +313,10 @@ func (g *Game) grantSuspendedFreeCastLocked(player, cardID uuid.UUID) {
 		Timing:      TimingFlash,
 		CastOnly:    true,
 		GrantsHaste: true,
-		// CR 702.62b: the cast happens as the trigger resolves, so
-		// the window is this turn and no longer (#945). Stamped
+		// CR 702.62a: the cast happens as the trigger resolves, so
+		// the window is this turn and no longer (#945). Under the
+		// resolution_cast prompt (#4250) it is narrower still: the
+		// prompt's answer ends it. Stamped
 		// explicitly rather than left zero because the trigger fires
 		// in an UPKEEP, and a reader should be able to see which turn
 		// the grant names without tracing the write path.

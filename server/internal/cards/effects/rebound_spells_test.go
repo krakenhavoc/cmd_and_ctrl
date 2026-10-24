@@ -293,13 +293,11 @@ func TestReboundSpellTransposeMakesAWizardOnlyWhenCastFromHand(t *testing.T) {
 	advanceToUpkeepOf(t, g, (seat+1)%len(g.Seats))
 	advanceToUpkeepOf(t, g, seat)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("no rebound offer")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 	if err := g.CastSpell(me.ID, id, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("rebound cast: %v", err)
 	}

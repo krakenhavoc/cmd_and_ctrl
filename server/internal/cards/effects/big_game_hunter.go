@@ -22,8 +22,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Everything about the keyword is the engine's (#657): the card file
 // is one trigger and one string. See fiery_temper.go and
-// game/madness.go for the declared grant-instead-of-inline-cast
-// simplification the two share.
+// game/madness.go: the madness cast is made inside the trigger's
+// resolution (CR 608.2g, #4250).
 func init() {
 	Register(Spec{
 		OracleID:     "ab55834f-c935-4773-89c6-bec9712284eb",

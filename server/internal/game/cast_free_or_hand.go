@@ -8,12 +8,15 @@ import "github.com/google/uuid"
 // Mirror, bargained).
 //
 // Discover's two branches on a card already in exile, with the caller's
-// cap and no EventDiscover: the may_cast prompt, a {0} flash-timed
-// cast-only grant capped at the mana value (CR 608.2g: the cast happens
-// as part of the resolution), and a hand for the card the chooser
-// declines or passes without casting (LapseToHand). A card that can
-// never be cast this way (a land, or a mana value over the cap) goes
-// straight to its owner's hand with no question.
+// cap and no EventDiscover: a {0} flash-timed cast-only grant capped at
+// the mana value, and a resolution_cast prompt over the card that holds
+// the resolution open while the chooser casts it (CR 608.2g: the cast
+// happens as part of the resolution; ADR 0066's 2026-10-23 amendment,
+// #4250), and a hand for the card the chooser declines (LapseToHand).
+// Outside an open resolution the grant alone is the window, closing on
+// the chooser's next pass the same way. A card that can never be cast
+// this way (a land, or a mana value over the cap) goes straight to its
+// owner's hand with no question.
 
 // MayCastKeywordFreeOrHand is the PendingChoice.MayCastKeyword the offer
 // asks under. The client words it like discover and opens the free cast
@@ -34,30 +37,30 @@ func (g *Game) CastExiledFreeOrToHandForEffect(player, source, cardID uuid.UUID,
 	if !ok {
 		return nil
 	}
-	if c.IsLand() || c.ManaValue() > maxMV {
+	if c.IsLand() || c.ManaValue() > maxMV || !g.playerInGameLocked(player) {
 		return g.putExiledIntoHandLocked(player, source, cardID)
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	g.grantFreeCastOrHandLocked(player, source, cardID, maxMV)
+	reason := "Cast it free"
+	if src, _ := g.findCardAndZoneLocked(source); src != nil && src.Name != "" {
+		reason = src.Name
+	}
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      player,
 		Source:       source,
-		Card:         cardID,
-		Question:     "Cast " + c.Name + " without paying its mana cost?",
+		Reason:       reason,
+		Candidates:   []uuid.UUID{cardID},
 		Keyword:      MayCastKeywordFreeOrHand,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Put it into your hand",
-		OnAccept: func(g *Game) error {
-			g.grantFreeCastOrHandLocked(player, source, cardID, maxMV)
-			return nil
-		},
-		OnDecline: func(g *Game) error {
-			return g.putExiledIntoHandLocked(player, source, cardID)
-		},
 	})
+	return nil
 }
 
 // grantFreeCastOrHandLocked is discover's grant without the discover
 // record: {0}, flash timing, cast-only, capped at maxMV, lapsing to the
-// hand on the chooser's next pass.
+// hand when the prompt is declined (or, outside a resolution, on the
+// chooser's next pass).
 //
 // Caller must hold g.mu.
 func (g *Game) grantFreeCastOrHandLocked(player, source, cardID uuid.UUID, maxMV int) {

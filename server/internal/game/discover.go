@@ -61,6 +61,11 @@ const (
 	// that weren't cast on the bottom of your library in a random
 	// order" (CR 702.85a).
 	LapseToLibraryBottom PermissionLapse = "library_bottom"
+	// LapseToGraveyard is madness's "if that player doesn't, they put
+	// this card into their graveyard" (CR 702.35a, #4250): the card goes
+	// to its owner's graveyard through the exit primitive. It is not a
+	// discard (CR 701.9a); the card left the hand when it was exiled.
+	LapseToGraveyard PermissionLapse = "graveyard"
 )
 
 // DiscoverGrant is CastPermission.Discover: the N and the discovering
@@ -397,6 +402,10 @@ func (g *Game) lapseCastPermissionCollectingLocked(holder uuid.UUID, perm CastPe
 				continue
 			}
 			_ = g.BounceToHandForEffect(ref.ID)
+		case LapseToGraveyard:
+			if present {
+				_ = g.putIntoOwnersGraveyardLocked(ref.ID)
+			}
 		case LapseToLibraryBottom:
 			if present && bottom != nil && perm.Zone == ZoneExile {
 				*bottom = append(*bottom, ref.ID)

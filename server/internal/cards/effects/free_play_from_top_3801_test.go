@@ -56,15 +56,32 @@ func (tb *envoyTable) attack(t *testing.T) {
 	passPriorityAroundTable(t, tb.g)
 }
 
+// mayCast is the offer waiting on the controller: the land's may_cast
+// (play_or_hand), or the spell's resolution_cast (free_or_hand, cast
+// during the trigger's resolution, #4250).
 func (tb *envoyTable) mayCast() *game.PendingChoice {
-	return latestChoiceOfKindFor(tb.g, game.PendingChoiceMayCast, tb.me.ID)
+	if c := latestChoiceOfKindFor(tb.g, game.PendingChoiceMayCast, tb.me.ID); c != nil {
+		return c
+	}
+	return keywordCastPromptFor(tb.g, tb.me.ID)
 }
 
+// answer answers the land's may_cast either way, or declines the spell's
+// resolution_cast (its cast needs targets, so the tests cast it).
 func (tb *envoyTable) answer(t *testing.T, apply bool) {
 	t.Helper()
 	c := tb.mayCast()
 	if c == nil {
-		t.Fatal("no may_cast prompt is waiting")
+		t.Fatal("no offer is waiting")
+	}
+	if c.Kind == game.PendingChoiceResolutionCast {
+		if apply {
+			t.Fatal("cast the spell with its targets; answer only declines it")
+		}
+		if err := tb.g.ResolvePendingChoice(c.ID, tb.me.ID, nil); err != nil {
+			t.Fatalf("decline: %v", err)
+		}
+		return
 	}
 	if err := tb.g.ResolveMayCast(c.ID, tb.me.ID, apply); err != nil {
 		t.Fatalf("ResolveMayCast: %v", err)
@@ -148,10 +165,12 @@ func TestZiatorasEnvoyCastsTheTopSpellFromTheLibrary(t *testing.T) {
 	bolt := tb.top("Lightning Bolt", "Instant", "{R}", boltOracleCombat)
 	tb.attack(t)
 	c := tb.mayCast()
-	if c == nil || c.MayCastKeyword != game.MayCastKeywordFreeOrHand || c.MayCastCard != bolt {
+	if c == nil || c.Kind != game.PendingChoiceResolutionCast || c.MayCastKeyword != game.MayCastKeywordFreeOrHand || keywordCastCard(c) != bolt {
 		t.Fatalf("the spell was not offered as a free cast: %+v", c)
 	}
-	tb.answer(t, true)
+	if !tb.g.ResolutionPaused() {
+		t.Fatal("the offer is not holding the trigger's resolution open")
+	}
 	if !tb.inLibraryTop(bolt) {
 		t.Fatal("the card must stay on top of the library while the free cast is open")
 	}
@@ -168,6 +187,9 @@ func TestZiatorasEnvoyCastsTheTopSpellFromTheLibrary(t *testing.T) {
 	}
 	if tb.me.Library.Contains(bolt) {
 		t.Fatal("the spell did not leave the library")
+	}
+	if tb.g.ResolutionPaused() || tb.mayCast() != nil {
+		t.Fatal("the cast did not answer the offer and finish the trigger's resolution")
 	}
 	passPriorityAroundTable(t, tb.g)
 	if tb.opp.Life != 40-5-3 {
@@ -189,23 +211,32 @@ func TestZiatorasEnvoyDecliningTheSpellPutsItInHand(t *testing.T) {
 	}
 }
 
-// Accepting and then passing without casting closes the window with the card
-// in the hand, and the library is not left holding a free cast.
-func TestZiatorasEnvoyPassingWithoutCastingPutsItInHand(t *testing.T) {
+// Nobody passes while the offer is open (it is mid-resolution), and a
+// table paused on it is a restore point: the restored decline puts the
+// card into the hand, and the library is not left holding a free cast.
+func TestZiatorasEnvoyOfferSurvivesARestoreMidPrompt(t *testing.T) {
 	tb := newEnvoyTable(t)
 	bolt := tb.top("Lightning Bolt", "Instant", "{R}", boltOracleCombat)
 	tb.attack(t)
-	tb.answer(t, true)
-	if err := tb.g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
+	if err := tb.g.PassPriority(); err == nil {
+		t.Fatal("a pass was taken while the free cast is open mid-resolution")
 	}
-	if !tb.me.Hand.Contains(bolt) || tb.me.Library.Contains(bolt) {
-		t.Fatal("an uncast free spell goes to the hand when the window closes")
+	restored := restoreRoundTrip(t, tb.g, true)
+	rme := restored.PlayerByIDForEffect(tb.me.ID)
+	rc := keywordCastPromptFor(restored, rme.ID)
+	if rc == nil || keywordCastCard(rc) != bolt || !restored.ResolutionPaused() {
+		t.Fatalf("the restored table lost the offer: %+v", rc)
+	}
+	if err := restored.ResolvePendingChoice(rc.ID, rme.ID, nil); err != nil {
+		t.Fatalf("the restored decline: %v", err)
+	}
+	if !rme.Hand.Contains(bolt) || rme.Library.Contains(bolt) {
+		t.Fatal("the restored decline did not put the spell into the hand")
 	}
 	var perm *game.CastPermission
-	tb.g.ReadSnapshot(func() { perm = tb.g.CastPermissionOnCardByIDForEffect(bolt) })
+	restored.ReadSnapshot(func() { perm = restored.CastPermissionOnCardByIDForEffect(bolt) })
 	if perm != nil {
-		t.Error("the grant outlived the window")
+		t.Error("the grant outlived the decline")
 	}
 }
 
@@ -228,7 +259,7 @@ func TestZiatorasEnvoySpellAtTheDamageIsOffered(t *testing.T) {
 	five := tb.top("Five Spell", "Sorcery", "{3}{R}{R}", "")
 	tb.attack(t)
 	c := tb.mayCast()
-	if c == nil || c.MayCastCard != five {
+	if c == nil || keywordCastCard(c) != five {
 		t.Fatalf("a mana value 5 spell was not offered after 5 damage: %+v", c)
 	}
 }
@@ -303,8 +334,9 @@ func (rt *rashmiTable) castFirst(t *testing.T, cost string) {
 	passPriorityAroundTable(t, rt.g)
 }
 
+// mayCast is the revealed spell's offer, a resolution_cast (#4250).
 func (rt *rashmiTable) mayCast() *game.PendingChoice {
-	return latestChoiceOfKindFor(rt.g, game.PendingChoiceMayCast, rt.me.ID)
+	return keywordCastPromptFor(rt.g, rt.me.ID)
 }
 
 func TestRashmiOffersARevealedLesserSpellAndRevealsItToTheTable(t *testing.T) {
@@ -312,7 +344,7 @@ func TestRashmiOffersARevealedLesserSpellAndRevealsItToTheTable(t *testing.T) {
 	bolt := rt.top("Lightning Bolt", "Instant", "{R}", boltOracleCombat)
 	rt.castFirst(t, "{2}")
 	c := rt.mayCast()
-	if c == nil || c.MayCastCard != bolt || c.MayCastKeyword != game.MayCastKeywordFreeOrHand {
+	if c == nil || keywordCastCard(c) != bolt || c.MayCastKeyword != game.MayCastKeywordFreeOrHand {
 		t.Fatalf("a mana value 1 card was not offered under a mana value 2 spell: %+v", c)
 	}
 	if c.PrivateText() {
@@ -327,12 +359,9 @@ func TestRashmiOffersARevealedLesserSpellAndRevealsItToTheTable(t *testing.T) {
 		t.Error("the opponent did not see the revealed card")
 	}
 	var perm *game.CastPermission
-	if err := rt.g.ResolveMayCast(c.ID, rt.me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
 	rt.g.ReadSnapshot(func() { perm = rt.g.CastPermissionOnCardByIDForEffect(bolt) })
 	if perm == nil {
-		t.Fatal("accepting did not open the free cast")
+		t.Fatal("the offer did not open the free cast")
 	}
 }
 
@@ -368,8 +397,8 @@ func TestRashmiOnlyTriggersOnTheFirstSpellEachTurn(t *testing.T) {
 	if c == nil {
 		t.Fatal("the first spell did not trigger Rashmi")
 	}
-	if err := rt.g.ResolveMayCast(c.ID, rt.me.ID, false); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
+	if err := rt.g.ResolvePendingChoice(c.ID, rt.me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	second := rt.top("Another Bolt", "Instant", "{R}", boltOracleCombat)
 	rt.castFirst(t, "{3}")

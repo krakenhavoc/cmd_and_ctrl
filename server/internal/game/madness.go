@@ -24,7 +24,7 @@ import (
 //
 // Nothing here is a new model. The replacement is ADR 0013's, the
 // trigger is #925's zone dimension, the offer is the
-// PendingChoiceMayCast cascade and suspend already use, and the cast
+// resolution_cast prompt cascade and suspend also use (#4250), and the cast
 // is ADR 0066's per-instance CastPermission with a key and
 // TimingFlash — the timing the ADR reserved for this keyword by name.
 // What this file is, is the wiring, declared ONCE: a card file says
@@ -75,25 +75,26 @@ import (
 //
 // # "If that player doesn't, they put it into their graveyard"
 //
-// Declining puts the card into its owner's graveyard THEN AND THERE,
-// inside the trigger's resolution, which is the printed outcome.
+// The cast happens during the trigger's resolution (CR 608.2g; ADR
+// 0066's 2026-10-23 amendment, #4250). The trigger stamps the madness
+// cast on the card (a per-instance CastPermission at the madness cost,
+// with flash timing, CR 608.2g's "ignoring timing restrictions" as this
+// engine spells it) and raises a resolution_cast prompt over it, which
+// holds the resolution open while the owner casts the card, with its
+// targets, modes and the madness cost paid then, or declines. Nobody
+// receives priority in between.
 //
-// SANDBOX SIMPLIFICATION, the same one cascade and suspend take and
-// for the same reason: accepting stamps a CastPermission rather than
-// casting the card inline, because an inline cast would have to run
-// the whole announce — targets, modes, X, the cost picker — under a
-// paused resolution frame. So the card is cast with an ordinary
-// cast_spell action afterwards, at instant speed (TimingFlash, which
-// is CR 608.2g's "ignoring timing restrictions" as this engine
-// spells it), and the CR 117.3b response window in between is wider
-// than paper's.
+// Declining is CR 702.35a's "if that player doesn't": the permission
+// lapses with LapseToGraveyard and the card goes into its owner's
+// graveyard then and there, inside the trigger's resolution, which is
+// the printed outcome. The prompt is plain data, so a table paused on it
+// is a restore point.
 //
-// The one place that could have made the grant STRONGER than printed
-// is closed the way cascade closes it: a card still sitting in exile
-// under its madness grant at the beginning of the next end step goes
-// to its owner's graveyard. Without that, answering "yes" and then
-// never casting would park the card in exile forever — a permanent
-// improvement on a keyword that gives you one window.
+// Outside an open resolution (nothing reaches one: the trigger always
+// resolves) the permission alone is the window: it closes on the
+// owner's next priority pass with the card put into the graveyard, and
+// the end-step cleanup (scheduleMadnessGraveyardLocked) is the backstop
+// that keeps an uncast card from being parked in exile forever.
 
 // AltCostKeyMadness is the alternative-cost key a madness cast is
 // claimed under. Shared with the printed-keyword keys on purpose
@@ -215,7 +216,7 @@ var madnessOfferBody = DelayedBody("madness/offer", func(g *Game, item *StackIte
 })
 
 // offerMadnessCastLocked is the trigger's resolution: the CR 702.35a
-// "may", and CR 702.35b's answer to a "no".
+// "may", cast during this resolution, and its "if that player doesn't".
 //
 // A card that has left exile since the trigger went on the stack is
 // offered nothing and moved nowhere — CR 608.2 resolves against the
@@ -228,56 +229,62 @@ func (g *Game) offerMadnessCastLocked(owner, cardID uuid.UUID, cost string) erro
 	if c == nil {
 		return nil
 	}
+	if !g.playerInGameLocked(owner) {
+		// An owner who has left cannot cast it: "if that player
+		// doesn't" is already true.
+		return g.madnessToGraveyardLocked(cardID)
+	}
 	name := c.Name
 	priced := cost
 	if life := MadnessLifeFor(CatalogKey(*c)); life > 0 {
 		priced = fmt.Sprintf("%s and %d life", cost, life)
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	g.grantMadnessCastLocked(owner, cardID, cost)
+	if g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      owner,
 		Source:       cardID,
-		Card:         cardID,
-		Question:     "Madness — cast " + name + " for its madness cost " + priced + "?",
+		Reason:       "Madness",
+		Candidates:   []uuid.UUID{cardID},
 		Keyword:      MayCastKeywordMadness,
 		AcceptLabel:  "Cast it for " + priced,
 		DeclineLabel: "Put it into your graveyard",
-		OnAccept: func(g *Game) error {
-			g.grantMadnessCastLocked(owner, cardID, cost)
-			g.scheduleMadnessGraveyardLocked(owner, cardID, name)
-			return nil
-		},
-		OnDecline: func(g *Game) error {
-			// CR 702.35b. Immediately, inside this resolution, which
-			// is where the card prints it.
-			return g.madnessToGraveyardLocked(cardID)
-		},
-	})
+	}) == uuid.Nil {
+		// Outside a resolution: the permission is the window, with the
+		// end-step backstop.
+		g.scheduleMadnessGraveyardLocked(owner, cardID, name)
+	}
+	return nil
 }
 
 // grantMadnessCastLocked stamps the cast on the one exiled object the
 // trigger was about.
 //
-// Four fields carry the rules:
+// Five fields carry the rules:
 //
 //   - `Cost` is the MADNESS cost, paid "rather than paying its mana
 //     cost" (CR 702.35a). A real alternative price, so CR 107.3b
 //     locks X at 0 through the same CastCostFor rule suspend's {0}
 //     rides.
+//
 //   - `AltCostKey` is what makes the resulting spell readable as "its
 //     madness cost was paid" (CR 702.35b).
+//
 //   - `Timing: TimingFlash`, because the cast happens during the
 //     resolution of a trigger (CR 608.2g) and the trigger can resolve
 //     in anyone's turn at any speed. ADR 0066 reserved this value for
 //     madness by name.
+//
 //   - `CastOnly`, because CR 702.35a says "cast it": no printed
 //     madness card is a land, and the flag is the rule rather than a
 //     guard against one.
 //
-// The window is the rest of the turn — the zero `Duration`, which
-// #945 made "until end of turn, stamped at the grant" — and it is the
-// grant-instead-of-inline-cast simplification the file header
-// declares, bounded on the other side by
-// scheduleMadnessGraveyardLocked.
+//   - `LapseOnPass: LapseToGraveyard`, CR 702.35a's "if that player
+//     doesn't, they put this card into their graveyard": what the
+//     resolution_cast prompt's decline does (#4250), and what a pass
+//     does outside a resolution.
+//
+// The zero `Duration` is #945's "until end of turn, stamped at the
+// grant", a backstop only: the prompt's answer ends the window first.
 //
 // Caller must hold g.mu (write).
 func (g *Game) grantMadnessCastLocked(owner, cardID uuid.UUID, cost string) {
@@ -292,7 +299,9 @@ func (g *Game) grantMadnessCastLocked(owner, cardID uuid.UUID, cost string) {
 		Cost:       cost,
 		Timing:     TimingFlash,
 		CastOnly:   true,
-		Label:      MadnessTriggerLabel,
+		// CR 702.35a: not cast means the graveyard (#4250).
+		LapseOnPass: LapseToGraveyard,
+		Label:       MadnessTriggerLabel,
 	}, []Card{*c})
 }
 
@@ -369,7 +378,18 @@ func init() {
 //
 // Caller must hold g.mu (write).
 func (g *Game) madnessToGraveyardLocked(cardID uuid.UUID) error {
-	c := exiledCardByIDLocked(g, cardID)
+	if exiledCardByIDLocked(g, cardID) == nil {
+		return nil
+	}
+	return g.putIntoOwnersGraveyardLocked(cardID)
+}
+
+// putIntoOwnersGraveyardLocked moves a card, from whatever zone holds
+// it, into its owner's graveyard through the shared exit primitive (the
+// CR 614 window, CR 903.9's command-zone offer). Not a discard. A card
+// that is nowhere is left alone. Caller must hold g.mu (write).
+func (g *Game) putIntoOwnersGraveyardLocked(cardID uuid.UUID) error {
+	c, _ := g.findCardAndZoneLocked(cardID)
 	if c == nil {
 		return nil
 	}

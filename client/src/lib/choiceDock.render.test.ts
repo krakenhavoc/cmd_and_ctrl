@@ -306,13 +306,15 @@ describe("the yes/no family, inline in the dock", () => {
     {
       kind: "may_cast",
       over: {
-        reason: "Cascade — cast Lightning Bolt free?",
-        may_cast_keyword: "cascade",
-        may_cast_card: "bolt",
+        // #4250: the keyword casts ask a resolution_cast now; the land
+        // play is a may_cast that is still asked.
+        reason: "Ziatora's Envoy — play Forest?",
+        may_cast_keyword: "play_or_hand",
+        may_cast_card: "forest",
       },
-      name: "Cascade — cast Lightning Bolt free?",
-      yes: "Cast it free",
-      no: "Put it on the bottom",
+      name: "Ziatora's Envoy — play Forest?",
+      yes: "Play it",
+      no: "Put it into your hand",
     },
     {
       kind: "entry_pay_life",

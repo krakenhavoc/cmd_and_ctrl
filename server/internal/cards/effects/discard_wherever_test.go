@@ -282,12 +282,12 @@ func TestADiscardAbilityTriggersFromMadnessExile(t *testing.T) {
 		}
 	}
 	passPriorityAroundTable(t, d.g)
-	offer := latestChoiceOfKind(d.g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(d.g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("a madness discard offered no cast")
 	}
-	if err := d.g.ResolveMayCast(offer.ID, d.victim.ID, false); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
+	if err := d.g.ResolvePendingChoice(offer.ID, d.victim.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	passPriorityAroundTable(t, d.g)
 	if madnessProbeFired != 1 {

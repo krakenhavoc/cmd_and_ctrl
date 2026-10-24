@@ -552,7 +552,7 @@ func TestNghcNihilithLastCounterOffersTheFreeCast(t *testing.T) {
 	if got := nghcTimeCounters(g, id); got != 0 {
 		t.Fatalf("after seven cards: %d counters, want 0", got)
 	}
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("removing the last time counter offered no free cast")
 	}
@@ -582,11 +582,11 @@ func TestNghcNihilithResolutionRechecksTheSuspendedState(t *testing.T) {
 	})
 	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("the last counter coming off offered no free cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, false); err != nil {
+	if err := g.ResolvePendingChoice(offer.ID, me.ID, nil); err != nil {
 		t.Fatalf("decline the free cast: %v", err)
 	}
 	// The ability still on the stack finds the card no longer suspended
