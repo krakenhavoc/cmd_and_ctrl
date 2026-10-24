@@ -3611,6 +3611,8 @@ pendingChoices[].payActionClause.Of.Supertypes[]	string
 pendingChoices[].payActionClause.Of.Types	array
 pendingChoices[].payActionClause.Of.Types[]	string
 pendingChoices[].payActionClause.Words	string
+pendingChoices[].payCauseController	custom(uuid.UUID)
+pendingChoices[].payCauseItem	custom(uuid.UUID)
 pendingChoices[].payCost	string
 pendingChoices[].pickDestination	string
 pendingChoices[].pickExiledWith	object

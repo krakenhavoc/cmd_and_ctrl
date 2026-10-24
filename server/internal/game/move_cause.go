@@ -100,11 +100,50 @@ type MoveCause struct {
 // is resolving, and the zero MoveCause when nothing is. Caller must
 // hold g.mu.
 func (g *Game) resolutionCauseLocked() MoveCause {
-	if g.resolving == nil || g.resolving.item == nil {
+	if g.carriedCause != nil {
+		return g.carriedCause.MoveCause
+	}
+	// #4279: the slot is stale once the resolution has closed (a
+	// non-blocking pay-unless answered after the table moved on). With
+	// nothing open, nothing is resolving, unless the caller carries a
+	// cause (carriedCause).
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
 		return MoveCause{}
 	}
 	it := g.resolving.item
 	return MoveCause{Kind: MoveCauseEffect, Controller: it.Controller, Item: it.ID}
+}
+
+// carriedCause is a cause a caller hands the engine for one call, with
+// the card that asked (#4279). See Game.carriedCause.
+type carriedCause struct {
+	MoveCause
+	Source uuid.UUID
+}
+
+// withCarriedCauseLocked runs fn with c as the cause of every effect
+// move it makes, in place of the resolving slot. A zero cause runs fn
+// as it was. Caller must hold g.mu.
+func (g *Game) withCarriedCauseLocked(c carriedCause, fn func() error) error {
+	if c.Kind == "" {
+		return fn()
+	}
+	prev := g.carriedCause
+	g.carriedCause = &c
+	defer func() { g.carriedCause = prev }()
+	return fn()
+}
+
+// resolutionSourceLocked is the card behind resolutionCauseLocked's
+// cause, uuid.Nil when there is none.
+func (g *Game) resolutionSourceLocked() uuid.UUID {
+	if g.carriedCause != nil {
+		return g.carriedCause.Source
+	}
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
+		return uuid.Nil
+	}
+	return g.resolving.item.SourceCardID
 }
 
 // stampCause copies a cause onto an event. A zero cause leaves the

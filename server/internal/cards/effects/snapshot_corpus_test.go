@@ -292,7 +292,13 @@ func corpusBoards() []corpusBoard {
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file
 		// stays and is still restored; the same board is a new file.
-		{"delve_linked_permanents_counter_placer", corpusDelveLinkedPermanents},
+		// #4279: the board that wrote delve_linked_permanents_counter_placer.json
+		// logged the second spell's delve exile with the FIRST spell's
+		// cause, read off a resolving slot that had finished resolving.
+		// A cause is read only inside an open resolution now, so that
+		// exile names none. The file stays and is still restored; the
+		// same board is a new file.
+		{"delve_linked_permanents_no_stale_cause", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell

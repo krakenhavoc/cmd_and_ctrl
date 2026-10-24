@@ -1116,6 +1116,16 @@ type PendingChoice struct {
 	// closure. Empty on every other prompt.
 	OptionCarry []uuid.UUID
 
+	// PayCauseController and PayCauseItem are the cause (#4279) a
+	// KEYED pay-unless was queued under: the controller and the stack
+	// item ID of the spell or ability whose resolution asked, captured
+	// while that resolution was open. A pay-unless does not stop the
+	// table, so it can be answered after Game.resolving has moved on;
+	// the decline stamps THIS cause on a discard or a sacrifice, not
+	// whatever the slot holds then. The source card is Source. Zero
+	// when the prompt was queued outside a resolution.
+	PayCauseController, PayCauseItem uuid.UUID
+
 	// CouncilVote makes an option pick a BALLOT (CR 701.38, ADR 0146,
 	// council_vote.go): the vote so far, which the answer is cast into
 	// before the next voter is asked. Plain data, written to a restore

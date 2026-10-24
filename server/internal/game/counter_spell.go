@@ -156,10 +156,7 @@ func (g *Game) counterSpellByEffectLocked(spellID uuid.UUID, dst *ZoneRef, at Tu
 		_, err = g.routeCardToZoneLocked(r)
 		return err
 	}
-	var source uuid.UUID
-	if g.resolving != nil && g.resolving.item != nil {
-		source = g.resolving.item.SourceCardID
-	}
+	source := g.resolutionSourceLocked()
 	ev := &ReplacementEvent{
 		Kind:            RepEventCounterSpell,
 		Actor:           cause.Controller,

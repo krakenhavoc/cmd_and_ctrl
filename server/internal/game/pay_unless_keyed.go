@@ -130,7 +130,7 @@ func registeredPayUnlessKeysLocked() []string {
 // binary lacks is an error (checkEffectKeys refuses such a restore
 // point, so this is the live-table guard); a branch the key does not
 // have does nothing.
-func keyedPayUnlessBranch(key string, r PayUnlessAnswer, pay bool) func(g *Game) error {
+func keyedPayUnlessBranch(key string, r PayUnlessAnswer, pay bool, cause carriedCause) func(g *Game) error {
 	return func(g *Game) error {
 		e, ok := lookupPayUnlessElse(key)
 		if !ok {
@@ -143,7 +143,7 @@ func keyedPayUnlessBranch(key string, r PayUnlessAnswer, pay bool) func(g *Game)
 		if fn == nil {
 			return nil
 		}
-		return fn(g, r)
+		return g.withCarriedCauseLocked(cause, func() error { return fn(g, r) })
 	}
 }
 
@@ -207,11 +207,13 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		return ErrInvalidParam
 	}
 	r := PayUnlessAnswer{Chooser: p.Chooser, Source: p.Source, Carry: copyUUIDs(p.Carry), Guards: p.Guards}
+	// #4279: the cause is taken while the asking resolution is open.
+	cause := carriedCause{MoveCause: g.resolutionCauseLocked(), Source: p.Source}
 	decline := func(g *Game) error {
 		if p.MayPay {
 			return nil
 		}
-		return keyedPayUnlessBranch(p.Then.key, r, false)(g)
+		return keyedPayUnlessBranch(p.Then.key, r, false, cause)(g)
 	}
 	var err error
 	switch {
@@ -255,6 +257,9 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		PayActionClause: copyPayAction(p.Action),
 		PickThen:        p.Then.key,
 		OptionCarry:     copyUUIDs(p.Carry),
+
+		PayCauseController: cause.Controller,
+		PayCauseItem:       cause.Item,
 	})
 	return nil
 }
@@ -315,16 +320,23 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 		Carry:   copyUUIDs(c.OptionCarry),
 		Guards:  c.GuardsStackItem,
 	}
+	var cause carriedCause
+	if c.PayCauseController != uuid.Nil {
+		cause = carriedCause{
+			MoveCause: MoveCause{Kind: MoveCauseEffect, Controller: c.PayCauseController, Item: c.PayCauseItem},
+			Source:    c.Source,
+		}
+	}
 	// A branch the key does not have stays nil, so the engine's own "this
 	// branch does nothing" reading holds (a may-pay's decline, a plain
 	// pay-unless's payment). A key this binary lacks keeps the decline,
 	// which reports it.
 	e, known := lookupPayUnlessElse(c.PickThen)
 	if !known || e.decline != nil {
-		f.onDecline = keyedPayUnlessBranch(c.PickThen, r, false)
+		f.onDecline = keyedPayUnlessBranch(c.PickThen, r, false, cause)
 	}
 	if known && e.pay != nil {
-		f.onPay = keyedPayUnlessBranch(c.PickThen, r, true)
+		f.onPay = keyedPayUnlessBranch(c.PickThen, r, true, cause)
 	}
 	return f
 }
