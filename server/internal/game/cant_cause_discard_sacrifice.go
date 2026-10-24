@@ -52,7 +52,9 @@ func (g *Game) effectCauseControllerLocked() uuid.UUID {
 	if g.carriedCause != nil {
 		return g.carriedCause.Controller
 	}
-	if g.resolving == nil || g.resolving.item == nil {
+	// #4281: the slot outlives its resolution until play moves on, so it
+	// is read only while one is open, as resolutionCauseLocked reads it.
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
 		return uuid.Nil
 	}
 	return g.resolving.item.Controller

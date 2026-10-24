@@ -2252,7 +2252,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// it. The record names the objects that landed in exile, which is
 	// what CR 607.2q links the permanent to.
 	if len(params.DelveIDs) > 0 {
-		delved, err := g.payDelveLocked(params.DelveIDs, params.commanderAnswers)
+		delved, err := g.payDelveLocked(playerID, cardID, params.DelveIDs, params.commanderAnswers)
 		if item := g.StackMeta[cardID]; item != nil {
 			item.Paid.Delved = delved
 		}

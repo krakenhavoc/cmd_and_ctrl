@@ -93,13 +93,13 @@ func registeredConfirmKeysLocked() []string {
 
 // keyedConfirmBranch is one branch of a keyed confirm as the frame's
 // closure, built fresh from the prompt's data each time it is read.
-func keyedConfirmBranch(key string, r ConfirmAnswer) func(g *Game) error {
+func keyedConfirmBranch(key string, r ConfirmAnswer, cause carriedCause) func(g *Game) error {
 	return func(g *Game) error {
 		fn, ok := lookupConfirmThen(key)
 		if !ok {
 			return fmt.Errorf("%w: confirm answer %q", ErrUnknownEffectKey, key)
 		}
-		return fn(g, r)
+		return g.withCarriedCauseLocked(cause, func() error { return fn(g, r) })
 	}
 }
 
@@ -111,7 +111,7 @@ func (g *Game) RunConfirmThenForEffect(then ConfirmThen, r ConfirmAnswer) error 
 	if then.key == "" {
 		return nil
 	}
-	return keyedConfirmBranch(then.key, r)(g)
+	return keyedConfirmBranch(then.key, r, carriedCause{})(g)
 }
 
 // QueueConfirmKeyedForEffect is QueueConfirmForEffect with the answer as
@@ -166,8 +166,11 @@ func confirmFrameOf(c *PendingChoice) *confirmFrame {
 	r := ConfirmAnswer{Chooser: c.Chooser, Source: c.Source, Carry: copyUUIDs(c.OptionCarry)}
 	accepted := r
 	accepted.Accepted = true
+	// #4281: a confirm a keyed branch queued answers under that branch's
+	// cause.
+	cause := carriedCauseOfChoice(c)
 	return &confirmFrame{
-		onAccept:  keyedConfirmBranch(c.PickThen, accepted),
-		onDecline: keyedConfirmBranch(c.PickThen, r),
+		onAccept:  keyedConfirmBranch(c.PickThen, accepted, cause),
+		onDecline: keyedConfirmBranch(c.PickThen, r, cause),
 	}
 }

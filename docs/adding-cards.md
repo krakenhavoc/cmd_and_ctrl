@@ -7468,8 +7468,13 @@ ability's controller and ID, `PendingChoice.PayCauseController` and
 `PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered
 after the table moved on still records the right cause and still meets a "can't
 cause you to discard" gate. Outside a resolution, and outside such a branch,
-there is no cause: `resolutionCauseLocked` reads `Game.resolving` only while
-`resolutionOpen`.
+there is no cause: `resolutionCauseLocked` and `effectCauseControllerLocked`
+read `Game.resolving` only while `resolutionOpen`. A prompt such a branch queues
+(a keyed confirm, option pick or choose-cards, the discard or sacrifice its
+answer asks for) takes the cause with it and answers under it (#4281), so a chain
+of follow-ups keeps the first spell's cause. Delve's and escape's exiles (and a
+pitch or a return paid as a cost) name `spellCostCause`, the caster and the spell
+being cast, never the resolving slot (#4281).
 
 The other pay-unless shapes are keyed the same way (#4264), with the key from
 `PayUnlessBranches(key, onPay, onDecline)` (either may be nil), one handle for

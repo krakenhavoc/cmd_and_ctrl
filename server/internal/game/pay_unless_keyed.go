@@ -320,13 +320,7 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 		Carry:   copyUUIDs(c.OptionCarry),
 		Guards:  c.GuardsStackItem,
 	}
-	var cause carriedCause
-	if c.PayCauseController != uuid.Nil {
-		cause = carriedCause{
-			MoveCause: MoveCause{Kind: MoveCauseEffect, Controller: c.PayCauseController, Item: c.PayCauseItem},
-			Source:    c.Source,
-		}
-	}
+	cause := carriedCauseOfChoice(c)
 	// A branch the key does not have stays nil, so the engine's own "this
 	// branch does nothing" reading holds (a may-pay's decline, a plain
 	// pay-unless's payment). A key this binary lacks keeps the decline,

@@ -379,8 +379,13 @@ func (g *Game) validateDelveLocked(caster, castID uuid.UUID, card Card, ids, alt
 // permanent", and a card that has since left exile is a new object
 // that no longer counts.
 //
+// #4281: the exile is a COST of the spell being cast, so it names
+// spellCostCause: the caster and the spell. Left to infer, it read
+// whatever the resolving slot held, which is wrong when the cast is made
+// from inside a resolution (a spell cast for free off an effect).
+//
 // Caller must hold g.mu in write mode.
-func (g *Game) payDelveLocked(ids []uuid.UUID, answers map[uuid.UUID]bool) ([]ObjectRef, error) {
+func (g *Game) payDelveLocked(playerID, castID uuid.UUID, ids []uuid.UUID, answers map[uuid.UUID]bool) ([]ObjectRef, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -389,6 +394,9 @@ func (g *Game) payDelveLocked(ids []uuid.UUID, answers map[uuid.UUID]bool) ([]Ob
 		if _, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:          id,
 			Dst:             ZoneExile,
+			Actor:           playerID,
+			Source:          castID,
+			Cause:           spellCostCause(playerID, castID),
 			MustSettleNow:   true,
 			commanderAnswer: commanderAnswerFor(answers, id),
 		}); err != nil {
