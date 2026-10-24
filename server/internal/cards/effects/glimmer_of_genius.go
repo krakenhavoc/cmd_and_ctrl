@@ -16,13 +16,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 2, Energy: 2},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			return Scry{Player: controller, N: 2, Then: func(g *game.Game) error {
-				return glimmerOfGeniusRest.Run(NewContext(g, item))
-			}}.Apply(ctx)
+			return Scry{Player: ctx.Controller(), N: 2, ThenTail: ctx.ItemTail(glimmerOfGeniusThen)}.Apply(ctx)
 		},
 	})
 }
+
+// glimmerOfGeniusThen is the draws and the energy, once the scry is done
+// (#4253 slice 4). An on-disk key.
+var glimmerOfGeniusThen = CardTail("glimmer-of-genius/then", func(ctx *Context, _ game.TailOutcome) error {
+	return glimmerOfGeniusRest.Run(ctx)
+})
 
 // glimmerOfGeniusRest is "draw two cards" and then the energy: the energy waits
 // for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).

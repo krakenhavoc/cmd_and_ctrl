@@ -44,9 +44,9 @@ func init() {
 						me := ctx.Controller()
 						x := len(OpponentsWhoVotedForAChoiceYouDidntVoteFor(ctx))
 						return Scry{
-							Player: me,
-							N:      x,
-							Then:   func(g *game.Game) error { return g.DrawNForEffect(me, 1) },
+							Player:   me,
+							N:        x,
+							ThenTail: ctx.TailN(thenDrawCards, 1),
 						}.Apply(ctx)
 					}),
 				)),

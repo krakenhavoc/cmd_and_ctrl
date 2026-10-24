@@ -414,6 +414,11 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player,
 // condition holds, as the printed "repeat this process" does.
 func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error {
 	controller, source := item.Controller, item.SourceCardID
+	var tail game.KeyedTail
+	if again {
+		// #4253 slice 4: the repeat is a registered tail.
+		tail = NewContext(g, item).ItemTail(b17ClaimJumperRepeat)
+	}
 	return SearchLibrary{
 		Player:        controller,
 		Predicate:     IsLandWithSubtype("Plains"),
@@ -424,13 +429,22 @@ func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error 
 		Optional:      true,
 		Reason:        "Claim Jumper — a Plains card, onto the battlefield tapped",
 		Source:        source,
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			if !again || !b03OpponentControlsMoreLands(g, controller) {
-				return nil
-			}
-			return b17ClaimJumperSearch(g, item, false)
-		},
+		ThenTail:      tail,
 	}.Apply(NewContext(g, item))
+}
+
+// b17ClaimJumperRepeat is "then if an opponent controls more lands than you,
+// repeat this process once": one more pass, with no repeat of its own. An
+// on-disk key. Registered in init: it runs the search that names it.
+var b17ClaimJumperRepeat game.TailRef
+
+func init() {
+	b17ClaimJumperRepeat = CardTail("claim-jumper/repeat", func(ctx *Context, o game.TailOutcome) error {
+		if !b03OpponentControlsMoreLands(ctx.Game, o.Tail.Player) {
+			return nil
+		}
+		return b17ClaimJumperSearch(ctx.Game, ctx.Item, false)
+	})
 }
 
 // destroyFirstLegalTarget destroys the first announce-time target

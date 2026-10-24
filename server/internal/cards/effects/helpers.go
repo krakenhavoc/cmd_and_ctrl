@@ -1565,14 +1565,12 @@ func plusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
 func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason string, life int) error {
 	source, controller := item.SourceCardID, item.Controller
 	return SearchLibrary{
-		Player:  controller,
-		Dest:    game.ZoneHand,
-		Limit:   1,
-		Shuffle: true,
-		Reason:  reason,
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.ChangePlayerLifeForEffect(source, controller, -life)
-		},
+		Player:   controller,
+		Dest:     game.ZoneHand,
+		Limit:    1,
+		Shuffle:  true,
+		Reason:   reason,
+		ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: -life},
 	}.Apply(ctx)
 }
 

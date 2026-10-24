@@ -73,35 +73,43 @@ func intuitionResolve(item *game.StackItem, ctx *Context) error {
 		// have nothing to choose from. The library order it imposes is
 		// wiped by the shuffle printed after the choice, so nothing
 		// observable rides on it.
-		ToTop:  true,
-		Reason: "Intuition — search your library for three cards",
-		Then:   intuitionChoose(item, opp),
+		ToTop:    true,
+		Reason:   "Intuition — search your library for three cards",
+		ThenTail: intuitionTail(ctx, opp),
 	})
 }
 
-// intuitionChoose is the continuation of the search: a package-level
-// constructor closing over the item and a seat ID, the
-// StackItem.Effect contract, so an undo across either prompt resolves
-// it against the restored game.
-func intuitionChoose(item *game.StackItem, opp uuid.UUID) func(g *game.Game, found []uuid.UUID) error {
-	return func(g *game.Game, found []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		if len(found) == 0 {
-			// Nothing was found, so there is nothing to choose from
-			// and nothing to move. The shuffle still happens.
-			return g.ShuffleLibraryForEffect(ctx.Controller())
-		}
-		return RevealPick{
-			Player:   opp,
-			Owner:    ctx.Controller(),
-			Question: "Intuition — choose one of these cards; it goes to their hand and the rest to their graveyard",
-			Cards:    found,
-			Min:      1,
-			Max:      1,
-			Then:     intuitionSettle,
-		}.Apply(ctx)
-	}
+// intuitionTail is the search's continuation, the target opponent riding
+// it as Carry[0]: they choose which card goes to the hand.
+func intuitionTail(ctx *Context, opp uuid.UUID) game.KeyedTail {
+	t := ctx.ItemTail(intuitionChoose)
+	t.Carry = []uuid.UUID{opp}
+	return t
 }
+
+// intuitionChoose is the continuation of the search: the item and the
+// opponent are data on the tail, so an undo or a restore across either
+// prompt resolves it against the restored game. An on-disk key.
+var intuitionChoose = CardTail("intuition/choose", func(ctx *Context, o game.TailOutcome) error {
+	found := o.IDs
+	if len(found) == 0 {
+		// Nothing was found, so there is nothing to choose from
+		// and nothing to move. The shuffle still happens.
+		return ctx.Game.ShuffleLibraryForEffect(ctx.Controller())
+	}
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return RevealPick{
+		Player:   o.Tail.Carry[0],
+		Owner:    ctx.Controller(),
+		Question: "Intuition — choose one of these cards; it goes to their hand and the rest to their graveyard",
+		Cards:    found,
+		Min:      1,
+		Max:      1,
+		Then:     intuitionSettle,
+	}.Apply(ctx)
+})
 
 // intuitionSettle moves the chosen card to hand, the rest to the
 // graveyard, and shuffles. A card that is no longer where the search

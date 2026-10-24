@@ -64,10 +64,15 @@ func centralElevatorSearch(g *game.Game, item *game.StackItem) error {
 
 func promisingStairsUpkeep(g *game.Game, item *game.StackItem) error {
 	me := item.Controller
-	return Surveil{Player: me, N: 1, Then: func(g *game.Game) error {
-		if distinctDoorNames(g, me) < 8 {
-			return nil
-		}
-		return WinTheGame{Player: me}.Apply(NewContext(g, item))
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return Surveil{Player: me, N: 1, ThenTail: ctx.ItemTail(promisingStairsWin)}.Apply(ctx)
 }
+
+// promisingStairsWin is "if you control eight or more Rooms with different
+// names, you win the game". An on-disk key.
+var promisingStairsWin = CardTail("promising-stairs/win-the-game", func(ctx *Context, o game.TailOutcome) error {
+	if distinctDoorNames(ctx.Game, o.Tail.Player) < 8 {
+		return nil
+	}
+	return WinTheGame{Player: o.Tail.Player}.Apply(ctx)
+})

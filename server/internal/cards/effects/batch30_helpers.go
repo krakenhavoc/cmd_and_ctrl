@@ -440,8 +440,14 @@ func b30SearchUpToTwoLandsTappedThenZombies(item *game.StackItem, ctx *Context) 
 		Shuffle:       true,
 		TappedOnEntry: true,
 		Reason:        "Hour of Promise — choose up to two lands to put onto the battlefield tapped",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return b30ZombiesIfThreeDeserts(g, item, controller)
-		},
+		// #4253 slice 4: the item rides the tail, for the words of its text
+		// the Zombies are read through.
+		ThenTail: ctx.ItemTail(b30HourOfPromiseZombies),
 	}.Apply(ctx)
 }
+
+// b30HourOfPromiseZombies is the Desert check, once the fetched lands have
+// entered. An on-disk key.
+var b30HourOfPromiseZombies = CardTail("hour-of-promise/zombies-if-three-deserts", func(ctx *Context, o game.TailOutcome) error {
+	return b30ZombiesIfThreeDeserts(ctx.Game, ctx.Item, o.Tail.Player)
+})

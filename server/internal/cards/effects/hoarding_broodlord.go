@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -52,19 +50,24 @@ func hoardingBroodlordEnters(g *game.Game, item *game.StackItem) error {
 		FaceDown: game.FaceDownPermitted,
 		Shuffle:  true,
 		Reason:   "Hoarding Broodlord — search your library for a card",
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			for _, id := range found {
-				if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
-					continue
-				}
-				g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
-					Player:   controller,
-					Zone:     game.ZoneExile,
-					Duration: game.WhileInZoneDuration(),
-					Source:   item.SourceCardID,
-				})
-			}
-			return nil
-		},
+		ThenTail: game.KeyedTail{Ref: hoardingBroodlordPermission, Player: controller, Source: item.SourceCardID},
 	}.Apply(NewContext(g, item))
 }
+
+// hoardingBroodlordPermission is "you may cast it for as long as it
+// remains exiled": a permission over each card the search exiled, held by
+// Tail.Player. An on-disk key.
+var hoardingBroodlordPermission = game.RegisterTail("hoarding-broodlord/cast-permission", func(g *game.Game, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
+			continue
+		}
+		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player:   o.Tail.Player,
+			Zone:     game.ZoneExile,
+			Duration: game.WhileInZoneDuration(),
+			Source:   o.Tail.Source,
+		})
+	}
+	return nil
+})

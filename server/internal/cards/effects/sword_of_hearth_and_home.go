@@ -98,12 +98,18 @@ func swordOfHearthAndHomeResolve(g *game.Game, item *game.StackItem) error {
 			// printed after the put, and runs from its continuation.
 			ToTop:  true,
 			Reason: "Sword of Hearth and Home — search for a basic land card",
-			Then: func(g *game.Game, found []uuid.UUID) error {
-				return swordOfHearthAndHomePutBoth(g, you, exiled, found)
-			},
+			// #4253 slice 4: the exiled card rides the tail.
+			ThenTail: game.KeyedTail{Ref: swordOfHearthAndHomePutBothTail, Player: you, Source: source, Carry: exiled},
 		})
 	})
 }
+
+// swordOfHearthAndHomePutBothTail runs swordOfHearthAndHomePutBoth: the
+// exiled cards ride Tail.Carry and the found land is the outcome. An
+// on-disk key.
+var swordOfHearthAndHomePutBothTail = game.RegisterTail("sword-of-hearth-and-home/put-both", func(g *game.Game, o game.TailOutcome) error {
+	return swordOfHearthAndHomePutBoth(g, o.Tail.Player, o.Tail.Carry, o.IDs)
+})
 
 // swordOfHearthAndHomePutBoth is "put both cards onto the battlefield
 // under your control, then shuffle": one simultaneous entry of the

@@ -24,13 +24,11 @@ func init() {
 			Foretell("{1}{U}"),
 		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
 			return Scry{
-				Player: controller,
+				Player: ctx.Controller(),
 				N:      2,
-				Then: func(g *game.Game) error {
-					return g.DrawNForEffect(controller, 2)
-				},
+				// #4253 slice 4: "then draw two cards" is a shared tail.
+				ThenTail: ctx.TailN(thenDrawCards, 2),
 			}.Apply(ctx)
 		},
 	})

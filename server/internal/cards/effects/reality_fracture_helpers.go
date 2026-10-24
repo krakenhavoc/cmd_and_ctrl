@@ -277,31 +277,40 @@ func surveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
 	if p == nil {
 		return nil
 	}
-	before := map[uuid.UUID]bool{}
+	// The cards already in the graveyard ride the tail (#4253 slice 4).
+	tail := NewContext(g, item).ItemTail(surveilKeepNoncreatureNonlandTail)
 	for _, c := range p.Graveyard.Cards {
-		before[c.InstanceID] = true
+		tail.Carry = append(tail.Carry, c.InstanceID)
 	}
-	g.SurveilThenForEffect(me, item.SourceCardID, 1, func(g *game.Game) error {
-		q := g.PlayerByIDForEffect(me)
-		if q == nil {
-			return nil
-		}
-		var back []uuid.UUID
-		for _, c := range q.Graveyard.Cards {
-			if !before[c.InstanceID] && !c.IsCreature() && !c.IsLand() {
-				back = append(back, c.InstanceID)
-			}
-		}
-		ctx := NewContext(g, item)
-		for _, id := range back {
-			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	g.SurveilKeyedForEffect(me, item.SourceCardID, 1, tail)
 	return nil
 }
+
+// surveilKeepNoncreatureNonlandTail returns each noncreature, nonland card
+// the surveil put into the graveyard (those not in Tail.Carry) to its
+// owner's hand. An on-disk key.
+var surveilKeepNoncreatureNonlandTail = CardTail("reality-fracture/surveil-keep-noncreature-nonland", func(ctx *Context, o game.TailOutcome) error {
+	q := ctx.Game.PlayerByIDForEffect(o.Tail.Player)
+	if q == nil {
+		return nil
+	}
+	before := make(map[uuid.UUID]bool, len(o.Tail.Carry))
+	for _, id := range o.Tail.Carry {
+		before[id] = true
+	}
+	var back []uuid.UUID
+	for _, c := range q.Graveyard.Cards {
+		if !before[c.InstanceID] && !c.IsCreature() && !c.IsLand() {
+			back = append(back, c.InstanceID)
+		}
+	}
+	for _, id := range back {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // --- fra-prepare-b -------------------------------------------------
 

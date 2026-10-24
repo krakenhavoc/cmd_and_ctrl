@@ -47,9 +47,9 @@ func init() {
 						return nil
 					}
 					player := t.ID
-					return Scry{Player: player, N: ctx.X(), Then: func(g *game.Game) error {
-						return g.DrawNForEffect(player, 1)
-					}}.Apply(ctx)
+					draw := ctx.TailN(thenDrawCards, 1)
+					draw.Player = player
+					return Scry{Player: player, N: ctx.X(), ThenTail: draw}.Apply(ctx)
 				}),
 			ModeDoing("Exile target creature with mana value X or less.",
 				TargetCreature("target creature with mana value X or less").WithManaValueAtMostX(),

@@ -74,28 +74,37 @@ func giftsUngivenResolve(item *game.StackItem, ctx *Context) error {
 		ToTop:    true,
 		Reason:   "Gifts Ungiven — search your library for up to four cards with different names",
 		Validate: DifferentNames,
-		Then:     giftsUngivenChoose(item, opp),
+		ThenTail: giftsUngivenTail(ctx, opp),
 	})
 }
 
-// giftsUngivenChoose is the continuation of the search.
-func giftsUngivenChoose(item *game.StackItem, opp uuid.UUID) func(g *game.Game, found []uuid.UUID) error {
-	return func(g *game.Game, found []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		if len(found) == 0 {
-			return g.ShuffleLibraryForEffect(ctx.Controller())
-		}
-		return RevealPick{
-			Player:   opp,
-			Owner:    ctx.Controller(),
-			Question: "Gifts Ungiven — choose two of these cards; they go to their graveyard and the rest to their hand",
-			Cards:    found,
-			Min:      2,
-			Max:      2,
-			Then:     giftsUngivenSettle,
-		}.Apply(ctx)
-	}
+// giftsUngivenTail is the search's continuation, the target opponent
+// riding it as Carry[0]: they choose which two go to the graveyard.
+func giftsUngivenTail(ctx *Context, opp uuid.UUID) game.KeyedTail {
+	t := ctx.ItemTail(giftsUngivenChoose)
+	t.Carry = []uuid.UUID{opp}
+	return t
 }
+
+// giftsUngivenChoose is the continuation of the search. An on-disk key.
+var giftsUngivenChoose = CardTail("gifts-ungiven/choose", func(ctx *Context, o game.TailOutcome) error {
+	found := o.IDs
+	if len(found) == 0 {
+		return ctx.Game.ShuffleLibraryForEffect(ctx.Controller())
+	}
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return RevealPick{
+		Player:   o.Tail.Carry[0],
+		Owner:    ctx.Controller(),
+		Question: "Gifts Ungiven — choose two of these cards; they go to their graveyard and the rest to their hand",
+		Cards:    found,
+		Min:      2,
+		Max:      2,
+		Then:     giftsUngivenSettle,
+	}.Apply(ctx)
+})
 
 // giftsUngivenSettle is Intuition's last sentence inverted: the CHOSEN
 // cards go to the graveyard.

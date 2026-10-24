@@ -48,9 +48,8 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					// The draw waits for the scry's answer, so the card
 					// left on top is the card drawn.
-					return Scry{N: 2, Then: func(g *game.Game) error {
-						return g.DrawNForEffect(item.Controller, 1)
-					}}.Apply(NewContext(g, item))
+					ctx := NewContext(g, item)
+					return Scry{N: 2, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 				})),
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b16PlayerAttackedWithAtLeast(ev, source, g, 8, fullParty)

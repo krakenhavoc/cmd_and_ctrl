@@ -31,27 +31,33 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtBeginningOfYourCombat(label, func(g *game.Game, item *game.StackItem) error {
-				return Scry{N: 1, Then: func(g *game.Game) error {
-					return b12ImpulseExileForTurnThen(g, item, 1, func(g *game.Game, exiled []uuid.UUID) error {
-						if len(exiled) == 0 {
-							return nil
-						}
-						card, ok := g.LookupCardForEffect(exiled[0])
-						if !ok {
-							return nil
-						}
-						return ReflexiveTrigger{
-							Label:  "Cait Sith, Fortune Teller — target creature you control gets +X/+0 until end of turn",
-							Cards:  exiled,
-							Body:   caitSithBoostBody,
-							Params: game.EffectParams{Amount: card.ManaValue()},
-						}.Apply(NewContext(g, item))
-					})
-				}}.Apply(NewContext(g, item))
+				ctx := NewContext(g, item)
+				return Scry{N: 1, ThenTail: ctx.ItemTail(caitSithImpulseExile)}.Apply(ctx)
 			}),
 		},
 	})
 }
+
+// caitSithImpulseExile is "then exile the top card of your library; you may
+// play it this turn", and the reflexive boost it earns. An on-disk key.
+var caitSithImpulseExile = CardTail("cait-sith-fortune-teller/impulse-exile", func(ctx *Context, _ game.TailOutcome) error {
+	item := ctx.Item
+	return b12ImpulseExileForTurnThen(ctx.Game, item, 1, func(g *game.Game, exiled []uuid.UUID) error {
+		if len(exiled) == 0 {
+			return nil
+		}
+		card, ok := g.LookupCardForEffect(exiled[0])
+		if !ok {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label:  "Cait Sith, Fortune Teller — target creature you control gets +X/+0 until end of turn",
+			Cards:  exiled,
+			Body:   caitSithBoostBody,
+			Params: game.EffectParams{Amount: card.ManaValue()},
+		}.Apply(NewContext(g, item))
+	})
+})
 
 // caitSithBoost is the reflexive half: the chosen creature gets
 // +X/+0, X the exiled card's mana value (Params.Amount).

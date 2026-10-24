@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -66,8 +64,6 @@ func clayFiredBricksEnters(g *game.Game, item *game.StackItem) error {
 		Reveal:    true,
 		Shuffle:   true,
 		Reason:    "Clay-Fired Bricks — search for a basic Plains",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.ChangePlayerLifeForEffect(source, controller, 2)
-		},
+		ThenTail:  game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: 2},
 	}.Apply(NewContext(g, item))
 }

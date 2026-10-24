@@ -43,9 +43,10 @@ func elrondOrAnotherCreatureYouControlEntered(ev game.Event, source *game.Card, 
 // elrondScry is the ability's body.
 func elrondScry(g *game.Game, item *game.StackItem) error {
 	second := g.ResolvedThisTurn(item.SourceCardID, elrondLabel) == 2
-	var then func(*game.Game) error
+	ctx := NewContext(g, item)
+	var then game.KeyedTail
 	if second {
-		then = ringTemptsYouNext(item)
+		then = ctx.ItemTail(ringTemptsYouTail)
 	}
-	return Scry{N: 1, Then: then}.Apply(NewContext(g, item))
+	return Scry{N: 1, ThenTail: then}.Apply(ctx)
 }

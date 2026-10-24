@@ -26,9 +26,9 @@ func init() {
 		Targets:      TargetCreature("up to two target creatures").WithCount(0, 2),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ids := legalTargetIDs(ctx)
-			tempt := ringTemptsYouNext(item)
 			return ctx.Game.BounceCardsToHandThenForEffect(ids, func(g *game.Game, _ []uuid.UUID) error {
-				return Scry{N: 1, Then: tempt}.Apply(NewContext(g, item))
+				fresh := NewContext(g, item)
+				return Scry{N: 1, ThenTail: fresh.ItemTail(ringTemptsYouTail)}.Apply(fresh)
 			})
 		},
 	})

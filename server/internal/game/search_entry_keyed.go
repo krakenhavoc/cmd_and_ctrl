@@ -118,6 +118,7 @@ func cloneSearchEntryRun(r *searchEntryRun) *searchEntryRun {
 	if r.Spec.ThenTail != nil {
 		t := *r.Spec.ThenTail
 		t.Carry = copyUUIDs(r.Spec.ThenTail.Carry)
+		t.Asked = copyAskedItem(r.Spec.ThenTail.Asked)
 		out.Spec.ThenTail = &t
 	}
 	out.Rest = copyUUIDs(r.Rest)

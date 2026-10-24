@@ -27,18 +27,22 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return SearchLibrary{
-				Player:  ctx.Controller(),
-				Dest:    game.ZoneExile,
-				Limit:   1,
-				Shuffle: true,
-				Reason:  "Distant Memories — search your library for a card to exile",
-				Then: func(g *game.Game, found []uuid.UUID) error {
-					return distantMemoriesOffer(NewContext(g, item), found)
-				},
+				Player:   ctx.Controller(),
+				Dest:     game.ZoneExile,
+				Limit:    1,
+				Shuffle:  true,
+				Reason:   "Distant Memories — search your library for a card to exile",
+				ThenTail: ctx.ItemTail(distantMemoriesOfferTail),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// distantMemoriesOfferTail is the offer to the opponents, made over the
+// card the search exiled. An on-disk key.
+var distantMemoriesOfferTail = CardTail("distant-memories/offer", func(ctx *Context, o game.TailOutcome) error {
+	return distantMemoriesOffer(ctx, o.IDs)
+})
 
 func distantMemoriesOffer(ctx *Context, found []uuid.UUID) error {
 	return AnyPlayerPays{

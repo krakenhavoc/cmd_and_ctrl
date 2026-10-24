@@ -50,31 +50,36 @@ func init() {
 // wishclawTutorThenHandOver searches, then gives the Talisman away.
 func wishclawTutorThenHandOver(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	controller, talisman := ctx.Controller(), item.SourceCardID
+	talisman := item.SourceCardID
 	return SearchLibrary{
-		Player:  controller,
-		Dest:    game.ZoneHand,
-		Limit:   1,
-		Shuffle: true,
-		Source:  talisman,
-		Reason:  "Wishclaw Talisman — search your library for a card",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			g.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
-				Chooser:  controller,
-				Among:    NewContext(g, item).Opponents(),
-				Source:   talisman,
-				Question: "Wishclaw Talisman — choose an opponent to gain control of it",
-				Item:     item,
-				Then: func(g *game.Game, chosen uuid.UUID) error {
-					if chosen == uuid.Nil || sourceIsNewObject(g, item) {
-						return nil
-					}
-					g.GainControlForEffect(talisman, talisman, chosen, game.IndefiniteDuration(),
-						"Wishclaw Talisman — an opponent gains control of this artifact")
-					return nil
-				},
-			})
-			return nil
-		},
+		Player:   ctx.Controller(),
+		Dest:     game.ZoneHand,
+		Limit:    1,
+		Shuffle:  true,
+		Source:   talisman,
+		Reason:   "Wishclaw Talisman — search your library for a card",
+		ThenTail: ctx.ItemTail(wishclawTalismanHandOver),
 	}.Apply(ctx)
 }
+
+// wishclawTalismanHandOver is "an opponent gains control of Wishclaw
+// Talisman": its controller chooses which. An on-disk key.
+var wishclawTalismanHandOver = CardTail("wishclaw-talisman/hand-it-over", func(ctx *Context, o game.TailOutcome) error {
+	g, item, controller, talisman := ctx.Game, ctx.Item, o.Tail.Player, o.Tail.Source
+	g.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
+		Chooser:  controller,
+		Among:    ctx.Opponents(),
+		Source:   talisman,
+		Question: "Wishclaw Talisman — choose an opponent to gain control of it",
+		Item:     item,
+		Then: func(g *game.Game, chosen uuid.UUID) error {
+			if chosen == uuid.Nil || sourceIsNewObject(g, item) {
+				return nil
+			}
+			g.GainControlForEffect(talisman, talisman, chosen, game.IndefiniteDuration(),
+				"Wishclaw Talisman — an opponent gains control of this artifact")
+			return nil
+		},
+	})
+	return nil
+})

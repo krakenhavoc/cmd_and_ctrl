@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -51,7 +49,6 @@ func init() {
 				if err := (DestroyTarget{Target: target}).Apply(ctx); err != nil {
 					return err
 				}
-				controller := item.Controller
 				return SearchLibrary{
 					Player:    victim,
 					Predicate: IsBasicLand,
@@ -60,11 +57,16 @@ func init() {
 					Shuffle:   true,
 					Optional:  true,
 					Reason:    "Volatile Fault — you may search for a basic land",
-					Then: func(g *game.Game, _ []uuid.UUID) error {
-						return CreateToken{Controller: controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-					},
+					// #4253 slice 4: a registered tail.
+					ThenTail: ctx.ItemTail(volatileFaultTreasure),
 				}.Apply(ctx)
 			},
 		}},
 	})
 }
+
+// volatileFaultTreasure is "You create a Treasure token" for the ability's
+// controller. An on-disk key.
+var volatileFaultTreasure = CardTail("volatile-fault/create-treasure", func(ctx *Context, _ game.TailOutcome) error {
+	return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: 1}.Apply(ctx)
+})

@@ -46,7 +46,7 @@ func init() {
 		Name:         "Emergent Ultimatum",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return emergentUltimatumSearch(item, ctx)
+			return emergentUltimatumSearch(ctx)
 		},
 	})
 }
@@ -56,7 +56,7 @@ const emergentUltimatumName = "Emergent Ultimatum"
 // emergentUltimatumSearch is the search, and from its continuation the
 // rest. Everything the later steps need is a scalar or an ID, so an undo
 // across a prompt resolves against the restored game.
-func emergentUltimatumSearch(item *game.StackItem, ctx *Context) error {
+func emergentUltimatumSearch(ctx *Context) error {
 	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
 		Player:   ctx.Controller(),
 		Source:   ctx.Source(),
@@ -66,11 +66,15 @@ func emergentUltimatumSearch(item *game.StackItem, ctx *Context) error {
 		Reveal:   true,
 		Reason:   "Emergent Ultimatum — up to three monocolored cards with different names, to exile",
 		Validate: DifferentNames,
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			return emergentUltimatumChoose(NewContext(g, item), found)
-		},
+		ThenTail: ctx.ItemTail(emergentUltimatumChooseTail),
 	})
 }
+
+// emergentUltimatumChooseTail has an opponent pick one of the exiled cards.
+// An on-disk key.
+var emergentUltimatumChooseTail = CardTail("emergent-ultimatum/choose", func(ctx *Context, o game.TailOutcome) error {
+	return emergentUltimatumChoose(ctx, o.IDs)
+})
 
 // emergentUltimatumChoose has an opponent pick one of the exiled cards.
 func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {

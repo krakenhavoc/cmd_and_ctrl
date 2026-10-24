@@ -35,11 +35,7 @@ func init() {
 		Name:         "Tempt with Discovery",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller, source, opponents := ctx.Controller(), ctx.Source(), ctx.Opponents()
-			return b07TemptWithDiscoveryCasterSearch(ctx.Game, controller, source,
-				func(g *game.Game) error {
-					return b07TemptWithDiscoveryOffer(NewContext(g, item), opponents)
-				})
+			return b07TemptWithDiscoveryCasterSearch(ctx, ctx.Opponents())
 		},
 	})
 }

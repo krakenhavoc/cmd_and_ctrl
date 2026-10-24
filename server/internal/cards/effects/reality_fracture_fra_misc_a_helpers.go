@@ -43,25 +43,27 @@ func rfMiscAFinalityExile(label string) game.ReplacementEffect {
 // (CR 608.2c: "it" is the Eye by last-known information), so an Eye
 // removed in response to the trigger still pays out.
 func rfMiscAEyeOfJaceUpkeep(g *game.Game, item *game.StackItem) error {
-	snapshot := *item
-	controller, eye := item.Controller, item.SourceCardID
-	return Surveil{N: 1, Then: func(g *game.Game) error {
-		if b31GraveyardSize(g, controller) < 7 {
-			return nil
-		}
-		it := snapshot
-		ctx := NewContext(g, &it)
-		if onBattlefield(g, eye) && !sourceIsNewObject(g, &it) {
-			if err := (SacrificePermanent{Target: eye}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		if err := damageToEachOpponent(g, &it, 2); err != nil {
+	ctx := NewContext(g, item)
+	return Surveil{N: 1, ThenTail: ctx.ItemTail(rfMiscAEyeOfJaceCheck)}.Apply(ctx)
+}
+
+// rfMiscAEyeOfJaceCheck is the seven-card graveyard check and its payout,
+// once the surveil has settled; the item rides the tail. An on-disk key.
+var rfMiscAEyeOfJaceCheck = CardTail("eye-of-jace/graveyard-check", func(ctx *Context, o game.TailOutcome) error {
+	g, controller, eye, it := ctx.Game, o.Tail.Player, o.Tail.Source, ctx.Item
+	if b31GraveyardSize(g, controller) < 7 {
+		return nil
+	}
+	if onBattlefield(g, eye) && !sourceIsNewObject(g, it) {
+		if err := (SacrificePermanent{Target: eye}).Apply(ctx); err != nil {
 			return err
 		}
-		return GainLife{Player: controller, Amount: 2}.Apply(ctx)
-	}}.Apply(NewContext(g, item))
-}
+	}
+	if err := damageToEachOpponent(g, it, 2); err != nil {
+		return err
+	}
+	return GainLife{Player: controller, Amount: 2}.Apply(ctx)
+})
 
 // rfMiscAConfidantEndStep is Enlightened Confidant's end-step trigger.
 // The intervening "if you gained life this turn" is asked again as it
@@ -82,26 +84,38 @@ func rfMiscAConfidantEndStep(g *game.Game, item *game.StackItem) error {
 	if c, err := p.Library.Top(); err == nil {
 		top = c.InstanceID
 	}
-	snapshot := *item
-	return Surveil{N: 1, Then: func(g *game.Game) error {
-		if top == uuid.Nil {
-			return nil
-		}
-		p := g.PlayerByIDForEffect(controller)
-		if p == nil || !p.Graveyard.Contains(top) {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(top)
-		if !ok {
-			return nil
-		}
-		if mv, ok := g.ManaValueForEffect(c); !ok || mv > gained {
-			return nil
-		}
-		it := snapshot
-		return ReturnFromGraveyard{Target: top, Dest: game.ZoneHand}.Apply(NewContext(g, &it))
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	tail := ctx.ItemTail(rfMiscAConfidantReturn)
+	tail.N = gained
+	if top != uuid.Nil {
+		tail.Carry = []uuid.UUID{top}
+	}
+	return Surveil{N: 1, ThenTail: tail}.Apply(ctx)
 }
+
+// rfMiscAConfidantReturn returns the card that was on top to its owner's
+// hand if the surveil put it into the graveyard and its mana value is no
+// greater than the life gained (Tail.N); the card rides Tail.Carry. An
+// on-disk key.
+var rfMiscAConfidantReturn = CardTail("enlightened-confidant/return-top-card", func(ctx *Context, o game.TailOutcome) error {
+	g, controller := ctx.Game, o.Tail.Player
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	top := o.Tail.Carry[0]
+	p := g.PlayerByIDForEffect(controller)
+	if p == nil || !p.Graveyard.Contains(top) {
+		return nil
+	}
+	c, ok := g.LookupCardForEffect(top)
+	if !ok {
+		return nil
+	}
+	if mv, ok := g.ManaValueForEffect(c); !ok || mv > o.Tail.N {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: top, Dest: game.ZoneHand}.Apply(ctx)
+})
 
 // rfMiscAForestsYouControlOtherThan counts the Forests `controller`
 // controls apart from `except` (post-layer land types). `forest` is the

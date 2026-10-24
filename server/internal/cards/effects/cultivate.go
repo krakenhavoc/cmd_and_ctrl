@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -64,17 +62,37 @@ func cultivateSearch(ctx *Context, name string) error {
 		Shuffle:       false,
 		TappedOnEntry: true,
 		Reason:        name + " — basic land onto the battlefield tapped",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:  controller,
-				Source:  source,
-				Pred:    IsBasicLand,
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Reveal:  true,
-				Shuffle: true,
-				Reason:  name + " — basic land into your hand",
-			})
-		},
+		// #4253 slice 4: the hand half is a registered tail, so the first
+		// land's entry question is a restore point.
+		ThenTail: game.KeyedTail{Ref: cultivateHandHalf(name), Player: controller, Source: source},
 	}.Apply(ctx)
+}
+
+// The hand half of the two cards that share cultivateSearch: one key each,
+// since the prompt names the card. On-disk keys.
+var (
+	cultivateHandSearch    = cultivateHandTail("cultivate/basic-land-to-hand", "Cultivate")
+	kodamasReachHandSearch = cultivateHandTail("kodamas-reach/basic-land-to-hand", "Kodama's Reach")
+)
+
+func cultivateHandTail(key, name string) game.TailRef {
+	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
+		return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+			Player:  o.Tail.Player,
+			Source:  o.Tail.Source,
+			Pred:    IsBasicLand,
+			Dest:    game.ZoneHand,
+			Limit:   1,
+			Reveal:  true,
+			Shuffle: true,
+			Reason:  name + " — basic land into your hand",
+		})
+	})
+}
+
+func cultivateHandHalf(name string) game.TailRef {
+	if name == "Kodama's Reach" {
+		return kodamasReachHandSearch
+	}
+	return cultivateHandSearch
 }
