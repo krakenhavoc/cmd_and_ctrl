@@ -238,6 +238,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := anyPlayerThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already any-player consequences", kind, key))
 	}
+	// #4290: and a keyed prompted run's continuation.
+	if _, dup := promptRunThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a prompted-run continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -430,7 +434,8 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 // "choose <key>", a continuation written as steps (#4162) as "steps
 // <key>", a keyed pay-unless decline (#4256) as "payunless <key>", a
 // keyed confirm's answer (#4264) as "confirm <key>", a keyed any-player
-// offer's consequences (#4264) as "anyplayer <key>",
+// offer's consequences (#4264) as "anyplayer <key>", a keyed prompted
+// run's continuation (#4290) as "run <key>",
 // sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
@@ -457,6 +462,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredReplacementResumeKeys()...)
 	// #4264: a keyed pay-unless's waterbend clause kind.
 	out = append(out, registeredTapCostKeysLocked()...)
+	// #4290: a keyed prompted run's continuation.
+	out = append(out, registeredPromptRunKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

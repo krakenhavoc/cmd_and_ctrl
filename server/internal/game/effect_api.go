@@ -226,6 +226,15 @@ type DiscardPrompt struct {
 	// #4256). Unexported because the one entry point sets them.
 	keyed ChooseCardsThen
 	carry []uuid.UUID
+
+	// keyedLeg queues this prompt as a keyed leg (#4290,
+	// discard_run_keyed.go): a choose_cards pick under the engine's own
+	// discard continuation (choose-cards/discard-leg), linked to its run
+	// by the run id, so it holds no closure. runThen is the keyed run's
+	// key, whose per-seat tail runs at once for a seat asked nothing.
+	// Unexported because discardRunLocked sets them.
+	keyedLeg bool
+	runThen  string
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -326,6 +335,8 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 				})
 			}
 		}
+		// #4290: a keyed run's per-seat tail is that Then, by key.
+		g.runLegTailLocked(p.runThen, p.Player, p.Source, nil, p.carry)
 		return uuid.Nil
 	}
 	hand := make([]uuid.UUID, 0, player.Hand.Size())
@@ -358,6 +369,25 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 			Max:        n,
 			ThenKey:    p.keyed,
 			Carry:      p.carry,
+		})
+	}
+	if p.keyedLeg {
+		// #4290: a keyed leg. The engine's discard continuation discards
+		// the picks, runs the run's per-seat tail and settles the leg
+		// (discard_run_keyed.go); the prompt holds no closure.
+		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    p.Player,
+			FromPlayer: p.Player,
+			Source:     p.Source,
+			Question:   question,
+			Cards:      hand,
+			Min:        lo,
+			Max:        n,
+			ThenKey:    discardLegThen,
+			Carry:      p.carry,
+			// The closure leg's Zone re-check and prune, kept (#4291).
+			LiveZone:  ZoneHand,
+			promptRun: run,
 		})
 	}
 	discarder, source := p.Player, p.Source

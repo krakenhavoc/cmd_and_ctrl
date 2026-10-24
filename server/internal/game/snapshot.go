@@ -523,6 +523,15 @@ type GameSnapshot struct {
 	// them. Additive within the version.
 	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
 
+	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
+	// multi-seat instructions in flight whose continuation is a
+	// registered key, each with its outstanding count, ask order, what
+	// each seat has landed, its key, carry and source. A run whose
+	// continuation is a closure is counted by the census and not
+	// written. A file written before it restores none, which is the old
+	// behaviour (no keyed run existed). Additive within the version.
+	PromptRuns []promptRunSnapshot `json:"promptRuns,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -1931,6 +1940,11 @@ type pendingChoiceSnapshot struct {
 	// prompt without the rest of its card. Additive within the version.
 	ScryThen *keyedTailSnapshot `json:"scryThen,omitempty"`
 
+	// PromptRun is PendingChoice.promptRun (#4290): the run this prompt
+	// is one leg of, by its ID in PromptRuns. Additive: a file without it
+	// is a prompt that is no run's leg.
+	PromptRun uuid.UUID `json:"promptRun,omitempty"`
+
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
 	ResumeFrames []string `json:"resumeFrames,omitempty"`
@@ -2392,6 +2406,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.StepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
+	// #4290: the prompted runs in flight. A keyed run is written; a run
+	// whose continuation is a closure is counted.
+	s.PromptRuns = snapshotPromptRuns(g.promptRuns, cen)
 
 	switch n := len(g.Events); {
 	case n == 0:
@@ -3106,6 +3123,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		AutoAnswerCard:        c.AutoAnswerCard,
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
+		PromptRun:             c.promptRun,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -3143,21 +3161,20 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"confirmResume": c.confirmResume != nil,
 		// #4253 slice 2: a keyed entry card choice's zone frame is
 		// rebuilt from its prompt kind (entryCardChoiceFrameIsData).
-		"chooseCardsResume": c.chooseCardsResume != nil && !(keyedFrame && isEntryCardChoiceKind(c.Kind)),
+		"chooseCardsResume": c.chooseCardsResume != nil && !(keyedFrame && isEntryCardChoiceKind(c.Kind)) &&
+			// #4290: a keyed permanent-pick run's leg frame is rebuilt
+			// from the prompt (permanentPickLegIsData).
+			!permanentPickLegIsData(c),
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
 		"chooseValueResume": c.chooseValueResume != nil,
 		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
-		// #1019's / #1027's prompted run — a sacrifice's or a
-		// discard's. Not a frame ON the choice — the continuation
-		// lives on the Game, keyed by this id, because the prompts of
-		// one run share it — but it is a continuation the snapshot
-		// cannot carry all the same, and a restore point taken
-		// mid-fan-out would drop the rest of the card. Counted here so
-		// the census says so.
-		"promptRun": c.promptRun != uuid.Nil,
+		// #1019's / #1027's prompted run is not counted here since
+		// #4290: the link (promptRun) is carried, and the run itself is
+		// counted once, on the Game, when its continuation is a closure
+		// (snapshotPromptRuns).
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -3294,6 +3311,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.pausedStepWalk = restoreStepWalk(s.PausedStepWalk)
 	g.stepRecords = cloneStepRecords(s.StepRecords)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
+	g.promptRuns = restorePromptRuns(s.PromptRuns)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
@@ -4088,10 +4106,15 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AutoAnswerCard:        c.AutoAnswerCard,
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
+		// #4290: the run this prompt is one leg of (PromptRuns).
+		promptRun: c.PromptRun,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
 	}
+	// #4290: except a keyed permanent-pick leg's, which is a function
+	// of the prompt's own fields.
+	restorePermanentPickLeg(out)
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)

@@ -298,6 +298,13 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if c.ScryThen == nil || c.ScryThen.Key != c.PickThen || !KnownTail(c.PickThen) {
 				unknown = append(unknown, "look-at continuation "+c.PickThen)
 			}
+		case c.Kind == PendingChoiceSacrifice || isPermanentPickKind(c.Kind):
+			// #4290: a keyed run's sacrifice or permanent-pick leg names
+			// its run's key, so a binary that cannot finish the run
+			// refuses the file rather than answering into nobody.
+			if !KnownPromptRunThen(c.PickThen) {
+				unknown = append(unknown, "prompted-run continuation "+c.PickThen)
+			}
 		case c.Kind == PendingChoiceConfirm:
 			// #4264: a keyed confirm's answer.
 			if !KnownConfirmThen(c.PickThen) {
@@ -323,6 +330,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// #4162: a parked continuation names its steps by key. Restored
 	// without them, the rest of the continuation would never run.
 	unknown = append(unknown, unknownThenSteps(s.PausedStepWalk)...)
+	// #4290: a keyed prompted run names its continuation by key.
+	// Restored without it, the rest of the card would never run.
+	unknown = append(unknown, unknownPromptRunKeys(s.PromptRuns)...)
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

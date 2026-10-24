@@ -324,7 +324,7 @@ var gameFields = plan(
 	"replacementObjectSerials", dropped, "the object serials catalog and graveyard ReplacementEffectIDs pack (#3482); an ID outlives an action only inside a paused replacement event, so the map is written beside a keyed frame (#4253, replacementSerials) and is otherwise counted with its frame in ContinuationCensus.ChoiceResumeFrames, a restored game minting afresh; Clone copies it for undo",
 	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty unless a keyed frame wrote it (#4253, nextReplacementSerial)",
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
-	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
+	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, source) and restored; a run whose continuation is a closure is not written and is counted once in ContinuationCensus.ChoiceResumeFrames (snapshotPromptRuns); Clone deep-copies it for undo",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	// #4270: the CR 707.10 self-copy source (#920) and every other reader
@@ -1242,7 +1242,7 @@ var pendingChoiceFields = plan(
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
-	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
+	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
 )
 
 // driftPlans is every domain type the snapshot touches, paired with the

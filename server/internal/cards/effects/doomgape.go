@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Doomgape — Creature — Elemental {4}{B/G}{B/G}{B/G}, 10/10:
 //
@@ -20,22 +24,32 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Doomgape — sacrifice a creature, gain life equal to its toughness",
 				func(g *game.Game, item *game.StackItem) error {
-					me := item.Controller
-					return g.PlayerSacrificesThenForEffect(item.SourceCardID, me,
+					// Keyed (#4290): the controller rides the run as its
+					// carry, so a table waiting on the sacrifice is a
+					// restore point.
+					return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, item.Controller,
 						sacrificeSpec("a creature", Creature()),
 						"Doomgape — sacrifice a creature", 1,
-						func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-							ids := sacrificed.By(me)
-							if len(ids) == 0 {
-								return nil
-							}
-							t := departedCreatureToughness(g, ids[0])
-							if t <= 0 {
-								return nil
-							}
-							return GainLife{Player: me, Amount: t}.Apply(NewContext(g, item))
-						})
+						doomgapeGain, []uuid.UUID{item.Controller})
 				}),
 		},
 	})
 }
+
+// doomgapeGain is "you gain life equal to that creature's toughness",
+// once the creature has left the battlefield (CR 608.2h).
+var doomgapeGain = game.RegisterPromptRunThen("prompt-run/doomgape-gain", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	me := r.Carry[0]
+	ids := r.Sacrifices().By(me)
+	if len(ids) == 0 {
+		return nil
+	}
+	t := departedCreatureToughness(g, ids[0])
+	if t <= 0 {
+		return nil
+	}
+	return GainLife{Player: me, Amount: t}.Apply(keyedContext(g, me, r.Source))
+})

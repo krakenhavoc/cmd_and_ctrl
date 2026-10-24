@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Entish Restoration — Instant {2}{G} (EDHREC rank 449):
 //
@@ -31,28 +35,38 @@ func init() {
 		Name:         "Entish Restoration",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			// Keyed (#4290): the caster rides the run as its carry, so
+			// a table waiting on the sacrifice is a restore point.
 			controller := ctx.Controller()
-			return ctx.Game.PlayerSacrificesThenForEffect(
+			return ctx.Game.PlayerSacrificesThenKeyedForEffect(
 				ctx.Source(), controller,
 				sacrificeSpec("a land", Land()),
 				"Entish Restoration — sacrifice a land",
 				1,
-				func(g *game.Game, _ game.PromptedSacrifices) error {
-					ctx := NewContext(g, item)
-					limit := 2
-					if youControlPowerFourOrGreater(g, controller) {
-						limit = 3
-					}
-					return SearchLibrary{
-						Player:        controller,
-						Predicate:     IsBasicLand,
-						Dest:          game.ZoneBattlefield,
-						Limit:         limit,
-						Shuffle:       true,
-						TappedOnEntry: true,
-						Reason:        "Entish Restoration — basic lands, onto the battlefield tapped",
-					}.Apply(ctx)
-				})
+				entishRestorationSearch, []uuid.UUID{controller})
 		},
 	})
 }
+
+// entishRestorationSearch is the search after the sacrifice, which runs
+// whether or not a land was sacrificed ("Sacrifice a land. Search …" is
+// not an "if you do"); the power-4 check is read after the sacrifice.
+var entishRestorationSearch = game.RegisterPromptRunThen("prompt-run/entish-restoration-search", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	controller := r.Carry[0]
+	limit := 2
+	if youControlPowerFourOrGreater(g, controller) {
+		limit = 3
+	}
+	return SearchLibrary{
+		Player:        controller,
+		Predicate:     IsBasicLand,
+		Dest:          game.ZoneBattlefield,
+		Limit:         limit,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Reason:        "Entish Restoration — basic lands, onto the battlefield tapped",
+	}.Apply(keyedContext(g, controller, r.Source))
+})

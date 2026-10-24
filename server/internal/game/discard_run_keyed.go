@@ -133,3 +133,80 @@ func (g *Game) PlayerDiscardsThenKeyedForEffect(p DiscardPrompt, then DiscardThe
 	}
 	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry)})
 }
+
+// discardLegThen is the engine's own continuation for a keyed discard
+// LEG (#4290): a prompt of a multi-seat discard, or of a fan-out nothing
+// waits on, queued as a keyed choose_cards pick over the seat's hand.
+// It discards the picks through the one discard path, and once they
+// have landed runs the run's per-seat tail (RegisterPromptRunThenLeg)
+// and settles the leg, which runs the run's continuation after the
+// last one. With no run (a fire-and-forget fan-out) it only discards.
+//
+// A leg whose chooser leaves is settled with nothing discarded by the
+// departure table before this is reached (defaultDroppedChoiceLocked
+// reads the run link first); the !Answered branch is the same rule for
+// a leg reached any other way.
+var discardLegThen = RegisterChooseCardsThen("choose-cards/discard-leg", func(g *Game, r CardsChosen) error {
+	if !r.Answered {
+		return g.settleRunLegLocked(r.Run, r.Chooser, nil)
+	}
+	return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
+		cause:  DiscardCauseEffect,
+		source: r.Source,
+		then: func(g *Game, landed []uuid.UUID) error {
+			if run := g.promptRuns[r.Run]; run != nil {
+				g.runLegTailLocked(run.thenKey, r.Chooser, r.Source, landed, run.carry)
+			}
+			return g.settleRunLegLocked(r.Run, r.Chooser, landed)
+		},
+	})
+})
+
+// EachPlayerDiscardsThenKeyedForEffect is EachPlayerDiscardsThenForEffect
+// with the rest of the card as a registered run continuation
+// (RegisterPromptRunThen) and `carry` the plain data it is handed: "each
+// opponent discards a card. You draw a card for each card discarded this
+// way" (Syphon Mind, with the caster on the carry). Neither the run nor
+// its legs hold a closure, so a table waiting on any leg is a restore
+// point (#4290).
+//
+// The prompt's Then and Validate must be nil: they are closures. A
+// per-seat tail ("…then mills a card") is registered with the run
+// (RegisterPromptRunThenLeg). When nobody is asked the continuation runs
+// at once with nothing discarded, as the closure form's does.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) EachPlayerDiscardsThenKeyedForEffect(except uuid.UUID, p DiscardPrompt, then PromptRunThen, carry []uuid.UUID) error {
+	return g.discardRunKeyedLocked(g.discardFanOutSeatsLocked(except), p, then, carry)
+}
+
+// PlayersDiscardThenKeyedForEffect is PlayersDiscardThenForEffect with
+// the rest of the card as a registered run continuation; the seats are
+// `players`, in the order given. See EachPlayerDiscardsThenKeyedForEffect.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayersDiscardThenKeyedForEffect(players []uuid.UUID, p DiscardPrompt, then PromptRunThen, carry []uuid.UUID) error {
+	return g.discardRunKeyedLocked(players, p, then, carry)
+}
+
+// discardRunKeyedLocked is discardRunLocked with a keyed continuation and
+// keyed legs.
+//
+// Caller must hold g.mu.
+func (g *Game) discardRunKeyedLocked(asks []uuid.UUID, p DiscardPrompt, then PromptRunThen, carry []uuid.UUID) error {
+	if then.key == "" {
+		return fmt.Errorf("%w: keyed discard run with no continuation", ErrInvalidParam)
+	}
+	if p.Then != nil || p.Validate != nil || p.keyed.key != "" {
+		return fmt.Errorf("%w: keyed discard run %q also sets a closure", ErrInvalidParam, then.key)
+	}
+	p.keyedLeg = true
+	p.runThen = then.key
+	p.carry = copyUUIDs(carry)
+	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, carry, func(seat, run uuid.UUID) bool {
+		leg := p
+		leg.Player = seat
+		return g.queueDiscardPromptLocked(leg, run) != uuid.Nil
+	})
+	return err
+}

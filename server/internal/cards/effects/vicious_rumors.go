@@ -31,8 +31,10 @@ import (
 // opponent's own prompt: "…discards a card, THEN mills a card" is one
 // sentence about one player, so a mill written as the next statement
 // would happen BEFORE they chose, and the card they milled would be a
-// card they could no longer discard. DiscardPrompt.Then also fires
-// immediately for an opponent with an empty hand, which is right:
+// card they could no longer discard. Since #4290 it is the keyed run's
+// per-seat tail (RegisterPromptRunThenLeg), which like the closure
+// form's DiscardPrompt.Then also fires immediately for an opponent with
+// an empty hand, which is right:
 // CR 701.9a discards as many as you can (none), and "then mills a
 // card" is not conditional on there having been a card to pitch.
 //
@@ -54,32 +56,39 @@ func init() {
 			if err := damageToEachOpponent(ctx.Game, item, 1); err != nil {
 				return err
 			}
+			// Keyed (#4290): the mill is the run's per-seat tail and the
+			// life gain its continuation, with the caster as the carry,
+			// so a table waiting on any opponent's discard is a restore
+			// point.
 			caster := ctx.Controller()
-			return ctx.Game.EachPlayerDiscardsThenForEffect(caster,
+			return ctx.Game.EachPlayerDiscardsThenKeyedForEffect(caster,
 				game.DiscardPrompt{
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Vicious Rumors — discard a card, then mill a card",
-					Then:     viciousRumorsMillTheSeatJustAsked,
 				},
-				func(g *game.Game, _ game.PromptedDiscards) error {
-					return GainLife{Player: caster, Amount: 1}.Apply(NewContext(g, item))
-				})
+				viciousRumorsRest, []uuid.UUID{caster})
 		},
 	})
 }
 
-// viciousRumorsMillTheSeatJustAsked is the per-opponent "then mills a
-// card".
+// viciousRumorsRest is the per-opponent "then mills a card" (the run's
+// per-seat tail) and "you gain 1 life" (its continuation).
 //
 // The seat is the leg's own argument rather than something captured,
 // which is what makes the fan-out safe: the prompt template is ONE
-// value copied per seat (discardRunLocked), so a closure over a loop
-// variable would mill whichever player the loop stopped on. What the
-// leg is handed is the seat whose discard has just finished, which is
-// the player this sentence is about.
-//
-// Caller holds g.mu.
-func viciousRumorsMillTheSeatJustAsked(g *game.Game, seat uuid.UUID, _ []uuid.UUID) error {
-	return g.MillNForEffect(seat, 1)
-}
+// value copied per seat, so a closure over a loop variable would mill
+// whichever player the loop stopped on. What the leg is handed is the
+// seat whose discard has just finished, which is the player this
+// sentence is about; an opponent with an empty hand is handed to it at
+// once, as DiscardPrompt.Then is.
+var viciousRumorsRest = game.RegisterPromptRunThenLeg("prompt-run/vicious-rumors-gain",
+	func(g *game.Game, leg game.RunLeg) error {
+		return g.MillNForEffect(leg.Seat, 1)
+	},
+	func(g *game.Game, r game.RunDone) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		return GainLife{Player: r.Carry[0], Amount: 1}.Apply(keyedContext(g, r.Carry[0], r.Source))
+	})

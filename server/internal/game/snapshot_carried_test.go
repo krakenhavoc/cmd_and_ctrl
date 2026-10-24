@@ -420,6 +420,22 @@ var carriedFixture = map[string]any{
 				SourceCardID: id, Label: "drift-Game.pausedResolutionTail", XValue: 2, Seq: 5353},
 		}
 	},
+	// #4290: a keyed prompted run. A generated run would name an
+	// invented continuation and be refused, and a generated closure
+	// could not be written at all.
+	"Game.promptRuns": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.promptRuns"))
+		a, b := g.Seats[0].ID, g.Seats[1].ID
+		card := uuid.NewSHA1(uuid.Nil, []byte("Game.promptRuns/card"))
+		return map[uuid.UUID]*promptRun{id: {
+			outstanding: 1,
+			seats:       []uuid.UUID{a, b},
+			landed:      map[uuid.UUID][]uuid.UUID{a: {card}},
+			thenKey:     carriedTestPromptRunKey,
+			carry:       []uuid.UUID{b},
+			source:      card,
+		}}
+	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
 	// ADR 0069's face-down rule. An invented kind has no viewers row.
@@ -968,6 +984,9 @@ var (
 		RegisterTapCost(kind, func(extra string) *TapPermanentsCost { return &TapPermanentsCost{Key: kind, Extra: extra} })
 		return kind
 	}()
+	// #4290: a keyed prompted run's continuation.
+	carriedTestPromptRunKey = RegisterPromptRunThen(testEffectKeyPrefix+"carried-run",
+		func(*Game, RunDone) error { return nil }).Key()
 	// #4162: a continuation written as steps.
 	carriedTestThenStepsKey = func() string {
 		RegisterThenStepsKey(testEffectKeyPrefix + "carried-steps")

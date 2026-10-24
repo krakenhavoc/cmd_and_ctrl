@@ -306,19 +306,48 @@ func (g *Game) sacrificeRunLocked(
 		// repeated ask of the same seat fails here for the same
 		// reason every time, since nothing moves between two queued
 		// prompts.
-		return g.queueSacrificePromptLocked(source, seat, spec, reason, run)
+		return g.queueSacrificePromptLocked(source, seat, spec, reason, run, "")
 	})
+}
+
+// PlayerSacrificesThenKeyedForEffect is PlayerSacrificesThenForEffect
+// with the rest of the card as a registered run continuation
+// (RegisterPromptRunThen) and `carry` the plain data it is handed:
+// Doomgape's "sacrifice a creature. You gain life equal to that
+// creature's toughness", with the controller on the carry. A sacrifice
+// prompt is plain data already, so with the run keyed too a table
+// waiting on any of its prompts is a restore point (#4290).
+//
+// Each prompt names the run's key in PickThen, so a binary that does
+// not know it refuses the file rather than sacrificing into a run it
+// cannot finish (checkEffectKeys).
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayerSacrificesThenKeyedForEffect(
+	source, playerID uuid.UUID,
+	spec *TargetSpec,
+	reason string,
+	count int,
+	then PromptRunThen,
+	carry []uuid.UUID,
+) error {
+	_, err := g.runPromptsKeyedLocked(repeatSeat(playerID, count), then, source, carry, func(seat, run uuid.UUID) bool {
+		return g.queueSacrificePromptLocked(source, seat, spec, reason, run, then.key)
+	})
+	return err
 }
 
 // queueSacrificePromptLocked queues ONE sacrifice prompt and reports
 // whether it went up. `run` is the run the prompt belongs to, or
-// uuid.Nil for a prompt nothing is waiting on.
+// uuid.Nil for a prompt nothing is waiting on; `key` is that run's
+// registered continuation when it is keyed (#4290), stamped on the
+// prompt as PickThen, or "".
 //
 // THE one place a PendingChoiceSacrifice is created, so the run link
 // cannot be forgotten by a new caller.
 //
 // Caller must hold g.mu.
-func (g *Game) queueSacrificePromptLocked(source, playerID uuid.UUID, spec *TargetSpec, reason string, run uuid.UUID) bool {
+func (g *Game) queueSacrificePromptLocked(source, playerID uuid.UUID, spec *TargetSpec, reason string, run uuid.UUID, key string) bool {
 	options := g.EffectSacrificeCandidatesForEffect(playerID, spec)
 	if len(options) == 0 {
 		return false
@@ -331,6 +360,7 @@ func (g *Game) queueSacrificePromptLocked(source, playerID uuid.UUID, spec *Targ
 		Source:           source,
 		Reason:           reason,
 		SacrificeOptions: options,
+		PickThen:         key,
 		promptRun:        run,
 	}) != uuid.Nil
 }
