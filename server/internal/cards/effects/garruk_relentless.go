@@ -131,23 +131,12 @@ func garrukFight(g *game.Game, item *game.StackItem) error {
 
 // garrukSacrificeThenTutor is the back face's −1.
 func garrukSacrificeThenTutor(g *game.Game, item *game.StackItem) error {
-	return g.PlayerSacrificesThenForEffect(item.SourceCardID, item.Controller,
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on the sacrifice is a restore point.
+	return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, item.Controller,
 		sacrificeSpec("a creature you control", Creature(), YouControl()),
 		"Garruk, the Veil-Cursed — sacrifice a creature", 1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if !sacrificed.Sacrificed(item.Controller) {
-				return nil
-			}
-			return SearchLibrary{
-				Player:    item.Controller,
-				Predicate: func(c game.Card) bool { return c.IsCreature() },
-				Dest:      game.ZoneHand,
-				Limit:     1,
-				Reveal:    true,
-				Shuffle:   true,
-				Reason:    "Garruk, the Veil-Cursed — a creature card",
-			}.Apply(NewContext(g, item))
-		})
+		garrukVeilCursedTutor, []uuid.UUID{item.Controller})
 }
 
 // garrukOverrun is the back face's −3.
@@ -162,3 +151,20 @@ func garrukOverrun(g *game.Game, item *game.StackItem) error {
 	}
 	return GrantKeywordUntilEOT{Match: yours, Keywords: []string{"trample"}, Label: "Garruk, the Veil-Cursed — trample"}.Apply(ctx)
 }
+
+// garrukVeilCursedTutor is the −1's "if you do, search your library for
+// a creature card, reveal it, put it into your hand".
+var garrukVeilCursedTutor = game.RegisterPromptRunThen("prompt-run/garruk-the-veil-cursed-tutor", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return SearchLibrary{
+		Player:    r.Carry[0],
+		Predicate: func(c game.Card) bool { return c.IsCreature() },
+		Dest:      game.ZoneHand,
+		Limit:     1,
+		Reveal:    true,
+		Shuffle:   true,
+		Reason:    "Garruk, the Veil-Cursed — a creature card",
+	}.Apply(keyedContext(g, r.Carry[0], r.Source))
+})

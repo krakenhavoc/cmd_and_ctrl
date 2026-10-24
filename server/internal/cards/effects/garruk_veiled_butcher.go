@@ -94,34 +94,44 @@ func init() {
 }
 
 func garrukVeiledButcherMinusThree(g *game.Game, item *game.StackItem) error {
-	controller := item.Controller
-	source := item.SourceCardID
-	return g.EachPlayerDiscardsThenForEffect(controller,
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on any opponent's discard is a restore point.
+	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
 		game.DiscardPrompt{
-			Source:   source,
+			Source:   item.SourceCardID,
 			N:        2,
 			Question: "Garruk, Veiled Butcher — discard two cards",
 		},
-		func(g *game.Game, discarded game.PromptedDiscards) error {
-			draws := 0
-			for _, p := range g.Seats {
-				if p == nil || p.Eliminated || p.ID == controller {
-					continue
-				}
-				cards := discarded.By(p.ID)
-				ok := len(cards) == 2
-				for _, id := range cards {
-					if c, found := g.LookupCardForEffect(id); !found || c.IsLand() {
-						ok = false
-					}
-				}
-				if !ok {
-					draws++
-				}
-			}
-			if draws == 0 {
-				return nil
-			}
-			return g.DrawNForEffect(controller, draws)
-		})
+		garrukVeiledButcherDraws, []uuid.UUID{item.Controller})
 }
+
+// garrukVeiledButcherDraws is "for each opponent who didn't discard two
+// nonland cards this way, you draw a card", once every opponent has
+// answered.
+var garrukVeiledButcherDraws = game.RegisterPromptRunThen("prompt-run/garruk-veiled-butcher-draws", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	controller := r.Carry[0]
+	discarded := r.Discards()
+	draws := 0
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated || p.ID == controller {
+			continue
+		}
+		cards := discarded.By(p.ID)
+		ok := len(cards) == 2
+		for _, id := range cards {
+			if c, found := g.LookupCardForEffect(id); !found || c.IsLand() {
+				ok = false
+			}
+		}
+		if !ok {
+			draws++
+		}
+	}
+	if draws == 0 {
+		return nil
+	}
+	return g.DrawNForEffect(controller, draws)
+})

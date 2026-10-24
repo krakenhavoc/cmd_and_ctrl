@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/google/uuid"
@@ -116,6 +117,16 @@ type promptRun struct {
 	// then is the rest of the card. Nil is a run nobody is waiting on,
 	// which is every caller that used the fire-and-forget entry points.
 	then func(g *Game, landed []SeatCards) error
+
+	// thenKey is the rest of the card as a REGISTERED continuation
+	// (RegisterPromptRunThen, prompt_run_keyed.go, #4290) in place of
+	// `then`, and carry and source are the plain data it is handed. A
+	// run with a key holds no closure, so it is written to a restore
+	// point (GameSnapshot.PromptRuns) and the table waiting on its legs
+	// is one. At most one of `then` and `thenKey` is set.
+	thenKey string
+	carry   []uuid.UUID
+	source  uuid.UUID
 }
 
 // answer builds the continuation's argument: the ask order, with each
@@ -151,9 +162,37 @@ func (g *Game) runPromptsLocked(
 	then func(g *Game, landed []SeatCards) error,
 	queue func(seat, run uuid.UUID) bool,
 ) (int, error) {
-	run := &promptRun{landed: map[uuid.UUID][]uuid.UUID{}, then: then}
+	return g.startRunLocked(asks, &promptRun{then: then}, queue)
+}
+
+// runPromptsKeyedLocked is runPromptsLocked with the rest of the card
+// as a registered continuation (#4290): `then` is looked up by its key
+// when the last leg settles, and handed `source` and `carry` with the
+// answer. The run is plain data, so a table waiting on its legs is a
+// restore point when the legs are too.
+//
+// Caller must hold g.mu.
+func (g *Game) runPromptsKeyedLocked(
+	asks []uuid.UUID,
+	then PromptRunThen,
+	source uuid.UUID,
+	carry []uuid.UUID,
+	queue func(seat, run uuid.UUID) bool,
+) (int, error) {
+	if then.key == "" {
+		return 0, fmt.Errorf("%w: keyed prompted run with no continuation", ErrInvalidParam)
+	}
+	return g.startRunLocked(asks, &promptRun{thenKey: then.key, source: source, carry: copyUUIDs(carry)}, queue)
+}
+
+// startRunLocked is the body of both: `run` arrives with its
+// continuation (a closure, a key, or neither) and leaves with its legs.
+//
+// Caller must hold g.mu.
+func (g *Game) startRunLocked(asks []uuid.UUID, run *promptRun, queue func(seat, run uuid.UUID) bool) (int, error) {
+	run.landed = map[uuid.UUID][]uuid.UUID{}
 	id := uuid.New()
-	if then == nil {
+	if !run.waited() {
 		// Nothing is waiting, so there is no run to keep: the prompts
 		// go up unlinked and settle into nobody. Keeping one would be
 		// bookkeeping for a question nobody asked about, and it would
@@ -170,10 +209,7 @@ func (g *Game) runPromptsLocked(
 		run.outstanding++
 	}
 	if run.outstanding == 0 {
-		if then == nil {
-			return 0, nil
-		}
-		return 0, then(g, nil)
+		return 0, g.finishRunLocked(run)
 	}
 	if id == uuid.Nil {
 		return run.outstanding, nil
@@ -229,10 +265,36 @@ func (g *Game) settleRunLegLocked(runID, seat uuid.UUID, landed []uuid.UUID) err
 	if len(g.promptRuns) == 0 {
 		g.promptRuns = nil
 	}
-	if run.then == nil {
-		return nil
+	return g.finishRunLocked(run)
+}
+
+// waited reports whether anything is waiting on the run: a closure or a
+// registered continuation.
+func (r *promptRun) waited() bool { return r.then != nil || r.thenKey != "" }
+
+// finishRunLocked runs the rest of the card once the run's last leg has
+// settled (or when no leg went up): the closure with the answer, or the
+// registered continuation with the answer and the run's plain data.
+//
+// Caller must hold g.mu.
+func (g *Game) finishRunLocked(run *promptRun) error {
+	// No seat was asked: the continuation is handed nothing, as the
+	// closure form always was.
+	var answer []SeatCards
+	if len(run.seats) > 0 {
+		answer = run.answer()
 	}
-	return run.then(g, run.answer())
+	switch {
+	case run.then != nil:
+		return run.then(g, answer)
+	case run.thenKey != "":
+		fn, ok := lookupPromptRunThen(run.thenKey)
+		if !ok {
+			return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, run.thenKey)
+		}
+		return fn(g, RunDone{Source: run.source, Landed: answer, Carry: copyUUIDs(run.carry)})
+	}
+	return nil
 }
 
 // clonePromptRuns gives an undo snapshot its own copy of every run in
@@ -256,6 +318,7 @@ func clonePromptRuns(in map[uuid.UUID]*promptRun) map[uuid.UUID]*promptRun {
 		}
 		cp := *run
 		cp.seats = append([]uuid.UUID(nil), run.seats...)
+		cp.carry = copyUUIDs(run.carry)
 		cp.landed = make(map[uuid.UUID][]uuid.UUID, len(run.landed))
 		for seat, cards := range run.landed {
 			cp.landed[seat] = append([]uuid.UUID(nil), cards...)

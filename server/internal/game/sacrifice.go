@@ -214,7 +214,7 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {
-	if !g.queueSacrificePromptLocked(source, playerID, spec, reason, uuid.Nil) {
+	if !g.queueSacrificePromptLocked(source, playerID, spec, reason, uuid.Nil, "") {
 		return 0
 	}
 	return 1

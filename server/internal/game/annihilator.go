@@ -273,15 +273,22 @@ func (g *Game) annihilatorSacrificeLocked(item *StackItem, recorded uuid.UUID, n
 		return nil
 	}
 	source := item.SourceCardID
-	_, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+	_, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 		Chooser:    defender,
 		Source:     source,
 		Question:   item.Label + " — choose " + permanentsPhrase(n) + " to sacrifice",
 		Of:         []uuid.UUID{defender},
 		Candidates: annihilatorCandidates(n),
-	}, annihilatorSacrificeThen(source))
+	}, annihilatorSacrificed, nil)
 	return err
 }
+
+// annihilatorSacrificed is "sacrifices N permanents" once the defending
+// player has chosen them, keyed (#4290) so a table waiting on the choice
+// is a restore point. The source is the run's.
+var annihilatorSacrificed = RegisterPromptRunThen("prompt-run/annihilator-sacrifice", func(g *Game, r RunDone) error {
+	return annihilatorSacrificeThen(r.Source)(g, r.Picks())
+})
 
 // annihilatorCandidates offers every permanent the defending player
 // controls, exactly N to be chosen. The engine clamps the bounds when

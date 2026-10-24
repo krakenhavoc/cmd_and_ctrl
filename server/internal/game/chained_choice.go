@@ -446,6 +446,8 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			PickMatchArg:      p.CarryWord,
 			OptionCarry:       copyUUIDs(p.Carry),
 			ChooseLiveZone:    p.LiveZone,
+			// #4290: a keyed leg of a prompted run.
+			promptRun: p.promptRun,
 		})
 	}
 	return g.QueueChoiceForEffect(PendingChoice{

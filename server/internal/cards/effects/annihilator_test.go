@@ -643,8 +643,10 @@ func TestUlamogTheDefilerWithNoCountersAnnihilatesNothing(t *testing.T) {
 // --- snapshots ------------------------------------------------------------
 
 // A table with an annihilator trigger waiting on the stack is a restore
-// point, and the restored table resolves it. While the defender is
-// choosing, it holds Lotus Field's pick prompt and is not.
+// point, and the restored table resolves it. Since #4290 the defender's
+// choice is a keyed permanent-pick run, so the table is a restore point
+// while they choose too, and the picks are sacrificed on the restored
+// table.
 func TestAnnihilatorTriggerOnTheStackRestores(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -663,13 +665,17 @@ func TestAnnihilatorTriggerOnTheStackRestores(t *testing.T) {
 		t.Errorf("restored defender has %d permanents left, want 1", got)
 	}
 
-	// The pick open: the same restore-point class as Lotus Field's.
+	// The pick open: a restore point since #4290.
 	passPriorityAroundTable(t, g)
 	if c := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, opp.ID); c == nil {
 		t.Fatal("no pick prompt on the original table")
 	}
-	if open := g.CaptureSnapshot(); open.Restorable() || open.Continuations.ChoiceResumeFrames == 0 {
-		t.Errorf("with the pick open: restorable %v, resume frames %d; want a continuation-blocked capture",
-			open.Restorable(), open.Continuations.ChoiceResumeFrames)
+	open := restoreRoundTrip(t, g, true)
+	asked = annSettle(t, open, nil)
+	if len(asked) != 1 || asked[0].ChooseMax != 2 {
+		t.Fatalf("the table restored with the pick open asked %+v, want one choice of 2", asked)
+	}
+	if got := annCountOn(open, opp.ID); got != 1 {
+		t.Errorf("the defender restored mid-pick has %d permanents left, want 1", got)
 	}
 }
