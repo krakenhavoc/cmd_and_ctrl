@@ -546,6 +546,7 @@ enteringTokens[].activatedAbilityCount	number:int
 enteringTokens[].activeFace	number:int
 enteringTokens[].alsoBlocking	array
 enteringTokens[].alsoBlocking[]	custom(uuid.UUID)
+enteringTokens[].astrotoriumBack	bool
 enteringTokens[].attachedAt	number:int64
 enteringTokens[].attachedEpoch	number:int
 enteringTokens[].attachedPinned	bool
@@ -557,6 +558,8 @@ enteringTokens[].attachedTo.Slot	number:int
 enteringTokens[].attachedTo.epoch	number:int
 enteringTokens[].attachedTo.splice	number:int
 enteringTokens[].attackingTarget	custom(uuid.UUID)
+enteringTokens[].attractionLights	array
+enteringTokens[].attractionLights[]	number:int
 enteringTokens[].baseController	custom(uuid.UUID)
 enteringTokens[].battleX	number:float64
 enteringTokens[].battleY	number:float64
@@ -4840,6 +4843,7 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.activatedAbility
 pendingChoices[].replacementResume.event.tokenGroups[].template.activeFace	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.alsoBlocking	array
 pendingChoices[].replacementResume.event.tokenGroups[].template.alsoBlocking[]	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.astrotoriumBack	bool
 pendingChoices[].replacementResume.event.tokenGroups[].template.attachedAt	number:int64
 pendingChoices[].replacementResume.event.tokenGroups[].template.attachedEpoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.attachedPinned	bool
@@ -4851,6 +4855,8 @@ pendingChoices[].replacementResume.event.tokenGroups[].template.attachedTo.Slot	
 pendingChoices[].replacementResume.event.tokenGroups[].template.attachedTo.epoch	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.attachedTo.splice	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.attackingTarget	custom(uuid.UUID)
+pendingChoices[].replacementResume.event.tokenGroups[].template.attractionLights	array
+pendingChoices[].replacementResume.event.tokenGroups[].template.attractionLights[]	number:int
 pendingChoices[].replacementResume.event.tokenGroups[].template.baseController	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.tokenGroups[].template.battleX	number:float64
 pendingChoices[].replacementResume.event.tokenGroups[].template.battleY	number:float64
@@ -6039,6 +6045,7 @@ resolving.card.activatedAbilityCount	number:int
 resolving.card.activeFace	number:int
 resolving.card.alsoBlocking	array
 resolving.card.alsoBlocking[]	custom(uuid.UUID)
+resolving.card.astrotoriumBack	bool
 resolving.card.attachedAt	number:int64
 resolving.card.attachedEpoch	number:int
 resolving.card.attachedPinned	bool
@@ -6050,6 +6057,8 @@ resolving.card.attachedTo.Slot	number:int
 resolving.card.attachedTo.epoch	number:int
 resolving.card.attachedTo.splice	number:int
 resolving.card.attackingTarget	custom(uuid.UUID)
+resolving.card.attractionLights	array
+resolving.card.attractionLights[]	number:int
 resolving.card.baseController	custom(uuid.UUID)
 resolving.card.battleX	number:float64
 resolving.card.battleY	number:float64
@@ -6980,6 +6989,7 @@ seats[].attractionDeck.cards[].chosenPermanent	object
 seats[].attractionDeck.cards[].chosenPermanent.epoch	number:int
 seats[].attractionDeck.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].attractionDeck.cards[].chosenSecondName	string
 seats[].attractionDeck.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].attractionDeck.cards[].classLevel	number:int
 seats[].attractionDeck.cards[].colorCDADropped	bool
@@ -6998,6 +7008,9 @@ seats[].attractionDeck.cards[].craftedWith	array
 seats[].attractionDeck.cards[].craftedWith[]	object
 seats[].attractionDeck.cards[].craftedWith[].epoch	number:int
 seats[].attractionDeck.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].attractionDeck.cards[].createdWith	object
+seats[].attractionDeck.cards[].createdWith.epoch	number:int
+seats[].attractionDeck.cards[].createdWith.id	custom(uuid.UUID)
 seats[].attractionDeck.cards[].damageMarked	number:int
 seats[].attractionDeck.cards[].dealtCombatDamage	bool
 seats[].attractionDeck.cards[].devoured	number:int
@@ -7278,6 +7291,7 @@ seats[].attractionDeck.cards[].putInGraveyardFrom	string
 seats[].attractionDeck.cards[].putInGraveyardThisTurn	bool
 seats[].attractionDeck.cards[].regenerationShields	number:int
 seats[].attractionDeck.cards[].renowned	bool
+seats[].attractionDeck.cards[].returnedAura	bool
 seats[].attractionDeck.cards[].ringBearer	bool
 seats[].attractionDeck.cards[].ringTemptations	number:int
 seats[].attractionDeck.cards[].saddled	bool
@@ -9337,6 +9351,7 @@ seats[].junkyard.cards[].chosenPermanent	object
 seats[].junkyard.cards[].chosenPermanent.epoch	number:int
 seats[].junkyard.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].junkyard.cards[].chosenPlayer	custom(uuid.UUID)
+seats[].junkyard.cards[].chosenSecondName	string
 seats[].junkyard.cards[].chosenSecondPlayer	custom(uuid.UUID)
 seats[].junkyard.cards[].classLevel	number:int
 seats[].junkyard.cards[].colorCDADropped	bool
@@ -9355,6 +9370,9 @@ seats[].junkyard.cards[].craftedWith	array
 seats[].junkyard.cards[].craftedWith[]	object
 seats[].junkyard.cards[].craftedWith[].epoch	number:int
 seats[].junkyard.cards[].craftedWith[].id	custom(uuid.UUID)
+seats[].junkyard.cards[].createdWith	object
+seats[].junkyard.cards[].createdWith.epoch	number:int
+seats[].junkyard.cards[].createdWith.id	custom(uuid.UUID)
 seats[].junkyard.cards[].damageMarked	number:int
 seats[].junkyard.cards[].dealtCombatDamage	bool
 seats[].junkyard.cards[].devoured	number:int
@@ -9635,6 +9653,7 @@ seats[].junkyard.cards[].putInGraveyardFrom	string
 seats[].junkyard.cards[].putInGraveyardThisTurn	bool
 seats[].junkyard.cards[].regenerationShields	number:int
 seats[].junkyard.cards[].renowned	bool
+seats[].junkyard.cards[].returnedAura	bool
 seats[].junkyard.cards[].ringBearer	bool
 seats[].junkyard.cards[].ringTemptations	number:int
 seats[].junkyard.cards[].saddled	bool
