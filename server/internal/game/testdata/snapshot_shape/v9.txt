@@ -8257,6 +8257,8 @@ stepRecords[].record.ids	array
 stepRecords[].record.ids[]	custom(uuid.UUID)
 stepRecords[].record.ns	array
 stepRecords[].record.ns[]	number:int
+stepRecords[].record.strs	array
+stepRecords[].record.strs[]	string
 tableRollNext	number:uint64
 takenAt	custom(time.Time)
 turn	object

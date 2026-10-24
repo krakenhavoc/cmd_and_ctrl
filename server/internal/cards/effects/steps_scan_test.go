@@ -736,6 +736,8 @@ var stepsConverted = setOf(
 	"Arcee, Acrobatic Coupe", "Arcee, Sharpshooter", "Curse of Leeches", "Cyclonus, Cybertronian Fighter",
 	"Flamewar, Brash Veteran", "Initiate of Blood", "Profane Insight", "Restorative Burst",
 	"The Great Synthesis", "The Legend of Yangchen", "Wretched Bonemass",
+	// #4228: the four bodies that carried Go state between prompts.
+	"Rhys, the Evermore", "Cecily, Haunted Mage", "The Ur-Sphinx", "Flamewar, Streetwise Operative",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -806,9 +808,6 @@ var stepsSkipped = map[string]string{
 	"Galadriel, Elven-Queen":    "exclusive arms: the draw, or the Ring tempts and the counter",
 	"Vault 11: Voter's Dilemma": "exclusive arms: every player draws, or the voted creatures are destroyed",
 	"Fatal Grudge":              "exclusive arms: the draw, or the sacrifices and the draw in their Then",
-	"Rhys, the Evermore":        "carried: the kinds of counter still to ask about are strings, and a step record holds only ids and numbers",
-	"Cecily, Haunted Mage":      "carried: the follow-up is a registered DrawThen (an on-disk identity) that has no stack item to run steps from",
-	"The Ur-Sphinx":             "carried: the cards each player milled are held in a Go slice across the chain of mills and offers",
 	"Earth's Mightiest Heroes":  "no prompt: a reveal asks nothing, and the cards it names are the put's input",
 	// Batch 6.
 	"Surreal Memoir":        "no prompt: the card is picked at random",

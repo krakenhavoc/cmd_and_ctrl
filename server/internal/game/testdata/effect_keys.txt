@@ -374,3 +374,5 @@ option option-pick/development-opponent-round-1
 option option-pick/development-opponent-round-2
 option option-pick/development-opponent-round-3
 body elkin-lair/unplayed-card-to-graveyard
+choose choose-cards/the-ur-sphinx-cast
+option option-pick/rhys-the-evermore-remove
