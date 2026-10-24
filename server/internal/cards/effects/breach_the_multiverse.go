@@ -31,13 +31,11 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: ResolveSteps(
 			// The picks wait for a prompt the mills ask (CR 608.2c, #4155).
+			// The mills are one library at a time in APNAP order, so a
+			// prompt one asks is the only one open (#4266); the picks are
+			// parked behind the last of them.
 			Instruction(func(ctx *Context) error {
-				for _, p := range apnapPlayers(ctx.Game) {
-					if err := (MillCards{Player: p, N: 10}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+				return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(10), nil)
 			}),
 			Instruction(func(ctx *Context) error {
 				return breachAskNext(ctx.Game, ctx.Item, apnapPlayers(ctx.Game), nil)

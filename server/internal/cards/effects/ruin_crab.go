@@ -10,8 +10,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Hedron Crab pointed at the table. The landfall trigger is the
 // Tireless Provisioner shape; the mill is three per opponent, each
-// through MillNForEffect, so "whenever you mill" and graveyard
-// payoffs on the other side of the table see it.
+// through the mill primitive, so "whenever you mill" and graveyard
+// payoffs on the other side of the table see it, one opponent at a time
+// in APNAP order (millEachPlayerInTurn, #4266).
 //
 // No simplification.
 func init() {
@@ -22,12 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Landfall("Ruin Crab — each opponent mills three (landfall)", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if err := (MillCards{Player: opp, N: 3}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
+				return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(3), nil)
 			}),
 		},
 	})

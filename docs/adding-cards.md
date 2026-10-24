@@ -5714,6 +5714,22 @@ primitive with `To: game.ZoneExile`, and it is not a mill — no
 `EventMill`, no mill payoff. See
 [ADR 0013 §5l](decisions/0013-replacement-effects.md).
 
+**Several libraries: one at a time, in APNAP order (#4266).** "Each
+player mills", "each opponent mills" and "exile the top card of each
+player's library" must not be a `for` loop over `MillCards` or
+`ExileTopWithPermission`: each call can open its own CR 616.1 ordering
+prompt, so every library with something to ask opens one at once, where
+CR 101.4 and CR 616.1 have the players choose in APNAP order. Use
+`millEachPlayerInTurn(ctx, players, n, done)` or
+`exileTopEachPlayerInTurn(ctx, players, template, done)`
+(`each_player_in_turn.go`): they put the players in APNAP order, start
+each library from the previous one's continuation, and run `done` with
+every player's milled or exiled cards (`[]PlayerCards`) after the last.
+Anything the card does after the mills (a count, a pick, a cast) goes in
+`done`, or in the next `ResolveSteps` step, which waits for the last
+prompt. A count that reads the table (cards in hand) is the `n` func,
+which is asked for every player before the first mill.
+
 **Every arrival in a graveyard goes through the window (#931).** "If a
 card would be put into a graveyard from anywhere, exile it instead"
 (Rest in Peace, Leyline of the Void) is one sentence whose whole

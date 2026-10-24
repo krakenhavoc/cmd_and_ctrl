@@ -96,6 +96,43 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if e.TotalManaValueAtMost != nil || e.EachManaValueAtMost != nil {
 		return e.applyBudgeted(ctx, n)
 	}
+	perm := e.permission()
+	if e.FaceDown {
+		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	}
+	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
+	return err
+}
+
+// ApplyThen is Apply for a caller that acts on what was exiled, or that
+// chains another exile behind this one (#4266, exileTopEachPlayerInTurn):
+// `then` runs once the exile has settled, with the cards that reached exile,
+// at once on a clean run and from the answer when a CR 616.1 prompt paused
+// it. Face up and unbudgeted only, which is every caller that chains; the
+// face-down and budgeted forms have no continuation yet and are refused
+// rather than run without one.
+func (e ExileTopWithPermission) ApplyThen(ctx *Context, then func(ctx *Context, landed []uuid.UUID) error) error {
+	if e.FaceDown || e.TotalManaValueAtMost != nil || e.EachManaValueAtMost != nil {
+		return fmt.Errorf("ExileTopWithPermission.ApplyThen: the face-down and budgeted forms have no continuation")
+	}
+	n := e.N
+	if n <= 0 {
+		n = 1
+	}
+	// The context is rebuilt inside the continuation from the live *Game,
+	// as MillToZone.Apply does: an undo restores the game in place.
+	item := ctx.Item
+	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, e.GrantTo, n, e.permission(),
+		func(g *game.Game, landed []uuid.UUID) error {
+			if then == nil {
+				return nil
+			}
+			return then(NewContext(g, item), landed)
+		})
+}
+
+// permission is the grant a plain (unbudgeted) ExileTopWithPermission stamps.
+func (e ExileTopWithPermission) permission() game.CastPermission {
 	perm := game.CastPermission{
 		CastOnly: e.CastOnly,
 		// AnyType implies AnyColor, and saying both keeps the grant
@@ -116,11 +153,7 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 		// cost", which is the opposite of what this clause grants.
 		perm.Cost = "{0}"
 	}
-	if e.FaceDown {
-		return ctx.Game.ExileTopFaceDownWithPermissionForEffect(e.From, e.GrantTo, n, perm)
-	}
-	_, err := ctx.Game.ExileTopWithPermissionForEffect(e.From, e.GrantTo, n, perm)
-	return err
+	return perm
 }
 
 // applyBudgeted is the TotalManaValueAtMost and EachManaValueAtMost form:

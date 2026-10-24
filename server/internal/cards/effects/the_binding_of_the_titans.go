@@ -50,16 +50,8 @@ func init() {
 }
 
 func titansMillAll(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, p := range g.Seats {
-		if p.Eliminated {
-			continue
-		}
-		if err := (MillCards{Player: p.ID, N: 3}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One library at a time in APNAP order (#4266).
+	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(3), nil)
 }
 
 func titansExileFromGraveyards(g *game.Game, item *game.StackItem) error {
