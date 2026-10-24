@@ -1749,3 +1749,48 @@ CR 616 token order (Doubling Season and Ojer Taq) and Cut a Deal on a
 dredge offer, both answers, live and on an undo.
 `game/step_walk_chain_test.go`: the chain order, copy on park, and a
 record dropped as its resolution closes.
+
+## Amendment 2026-10-23: the step record holds words, and four bodies stop carrying Go state (#4228)
+
+#4155 left four bodies that handed a Go variable from one prompt to the
+next: Rhys, the Evermore, Cecily, Haunted Mage, The Ur-Sphinx and Flamewar,
+Streetwise Operative.
+
+- **`StepRecord.Strs`.** The record gains a list of words beside its IDs and
+  numbers (`json:"strs,omitempty"`), carried by `Clone` and the snapshot.
+  Schema v9 gains `stepRecords[].record.strs`, additive, and the fixtures are
+  not edited. A binary from before it drops the words. The only reader is
+  Rhys's keyed question (below), whose continuation key that binary also does
+  not have, so it refuses the file (`checkEffectKeys`) instead of restoring a
+  question whose answer would read no kinds. `ctx.RecordStepRecord` files a
+  whole record.
+- **Rhys** files the creature, the counter kinds it had (sorted) and how far
+  the questions have got. Each question is a keyed option pick
+  (`option-pick/rhys-the-evermore-remove`, whose Carry is the resolving item,
+  because a keyed continuation runs with no item of its own). The answer
+  removes the counters and asks the next kind from the record. A table
+  waiting on any question is a restore point; before, each question's
+  continuation was a closure holding the kinds.
+- **The Ur-Sphinx** is a `Do` of one counting step, a mill step for each seat
+  (`game.MaxPlayers`; a seat the table lacks does nothing) and an offer step
+  for each seat. The first step files the event log's cursor and how many
+  cards each player mills. An offer step reads the player's `EventMill`
+  events after the cursor and offers the nonland cards still in their
+  graveyard, as a keyed choose-cards pick
+  (`choose-cards/the-ur-sphinx-cast`) whose answer grants the free cast. The
+  next offer is the next step, which the walk runs after the answer.
+- **Flamewar** files the log's cursor, exiles, and the next step marks the
+  cards that moved from the library to exile after the cursor. It no longer
+  holds the exiled IDs in a pointer across the two statements.
+- **Cecily** is `Do(DrawCards, the life loss, the free-cast offer)`. The
+  registered `DrawThen` `cecily-haunted-mage-after-draw` is gone: a
+  `DrawThen` rides a replacement event in memory and is in no snapshot or
+  ledger, and nothing else named it.
+
+The closure counts do not move: no field is added to `Game` that reaches a
+func, and the closures these bodies used are replaced by keys and steps.
+
+Tests: `effects/resolution_steps_state_test.go`. Rhys across a strict
+restore before each of three questions and on an undo. The Ur-Sphinx across
+a strict restore before each of four offers, a milled land not offered. Cecily on a dredge offer, live and on an undo.
+Flamewar's marking step on the live table, an undo and a restored table.

@@ -4121,8 +4121,12 @@ next through a Go variable, because a restore between them would lose
 it. Read what the earlier piece did from the game instead. When the game
 keeps no record of it (a count discarded, the tokens just made, a number
 a player chose), the earlier piece writes one, `ctx.RecordStep(name, ids,
-n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). A
-record lives for one resolution. For something an instruction's own
+n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). Words
+go in the record's `Strs` (`ctx.RecordStepRecord(name, game.StepRecord{…})`,
+#4228: Rhys, the Evermore's counter kinds). A keyed continuation runs with no
+item of its own, so a card that reads the record from one carries the
+resolving item's ID on the prompt (`Carry`). A record lives for one
+resolution. For something an instruction's own
 prompt decides (which tokens it really made, who really drew), record
 the event log's last sequence number (`b25LastEventSeq`) before it and
 read the events after it in the next piece (Martial Coup, Cut a Deal). A

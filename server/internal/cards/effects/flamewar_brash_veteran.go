@@ -88,7 +88,13 @@ func init() {
 				item.Params.Amount = ev.Amount
 				return item
 			},
-			Effect: flamewarExileIntel,
+			// The counters and the conversion wait for a prompt the exile asks (a CR 614
+			// replacement on a commander, CR 903.9; CR 608.2c, #4228).
+			Effect: Do(
+				Instruction(flamewarExileIntel),
+				Instruction(flamewarMarkIntel),
+				ConvertThis{},
+			),
 		}},
 	})
 }
@@ -110,21 +116,44 @@ func flamewarTakeIntel(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// flamewarExileIntel is the back face's trigger: exile that many cards
-// face down, an intel counter on each, then convert.
-func flamewarExileIntel(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	var exiled []uuid.UUID
-	if err := (ExileTopFaceDown{Player: item.Controller, N: item.Params.Amount, Exiled: &exiled}).Apply(ctx); err != nil {
-		return err
+// flamewarIntelRecord files the event log's cursor from before the exile, for
+// the step that marks the cards (#4228).
+const flamewarIntelRecord = "flamewar/exile-cursor"
+
+// flamewarExileIntel is the back face's trigger, step one: file the log's
+// cursor, then exile that many cards face down.
+func flamewarExileIntel(ctx *Context) error {
+	ctx.RecordStep(flamewarIntelRecord, nil, int(b25LastEventSeq(ctx.Game)))
+	return ExileTopFaceDown{Player: ctx.Controller(), N: ctx.Item.Params.Amount}.Apply(ctx)
+}
+
+// flamewarMarkIntel is step two: an intel counter on each card that left the
+// controller's library for exile since the cursor and is still there. It reads
+// the cards off the event log rather than from step one's result, so a
+// commander the owner chose to leave in exile (CR 903.9, a prompt the exile
+// asked) is marked too, once the answer is in.
+func flamewarMarkIntel(ctx *Context) error {
+	r := ctx.StepRecord(flamewarIntelRecord)
+	if len(r.Ns) == 0 {
+		return nil
 	}
-	for _, id := range exiled {
-		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
+	var ids []uuid.UUID
+	for i := len(ctx.Game.Events) - 1; i >= 0; i-- {
+		ev := ctx.Game.Events[i]
+		if ev.Seq <= uint64(r.Ns[0]) {
+			break
+		}
+		if ev.Kind == game.EventZoneMove && ev.Actor == ctx.Controller() && ev.OldZone == game.ZoneLibrary && ev.NewZone == game.ZoneExile {
+			ids = append(ids, ev.CardID)
+		}
+	}
+	for _, id := range ids {
+		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
 			continue
 		}
-		if err := g.AddCounterForEffect(id, flamewarIntelCounter, 1); err != nil {
+		if err := ctx.Game.AddCounterForEffect(id, flamewarIntelCounter, 1); err != nil {
 			return err
 		}
 	}
-	return ConvertThis{}.Apply(ctx)
+	return nil
 }
