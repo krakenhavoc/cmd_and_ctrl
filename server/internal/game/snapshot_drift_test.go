@@ -1242,6 +1242,7 @@ var pendingChoiceFields = plan(
 	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
 	"opponentTargetResume", dropped, "#2055: a parked cast or activation waiting on an opponent's target; counted in ContinuationCensus.ChoiceResumeFrames",
 	"PickTargetFor", dropped, "#2055: rides only a pick_target that carries a pickTargetResume or opponentTargetResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	"PickTargetHarmful", dropped, "#4249: rides only a pick_target that carries a pickTargetResume frame (it is the frame's clause flag, read for the wire), so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",

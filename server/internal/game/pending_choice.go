@@ -621,6 +621,11 @@ type PendingChoice struct {
 	// effect prices the pick the other way round) and never by a rule.
 	PickTargetFor uuid.UUID
 
+	// PickTargetHarmful is, on a pick_target, the clause's Harmful flag
+	// (#4249): the effect hurts the permanent picked, so a bot choosing
+	// among its own gives up the least valuable. Read by the wire only.
+	PickTargetHarmful bool
+
 	// opponentTargetResume is the parked announcement behind an "of an
 	// opponent's choice" clause (#2055, opponent_target.go): on the
 	// opponent's pick_target it is what the answer makes again; on the
@@ -3895,6 +3900,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 			PickTargetMin:     clause.Min,
 			PickTargetMax:     clause.Max,
 			PickTargetFor:     forPlayer,
+			PickTargetHarmful: clause.Harmful,
 			pickTargetResume:  f,
 		})
 		return

@@ -22,6 +22,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 603.3d). The target is checked again as it resolves (CR 608.2b),
 // and the destruction ignores regeneration (CR 701.19c).
 //
+// The clause is Harmful (#4249): on its controller's own upkeep the bot
+// picks among its own creatures with no `chosen_for` on the prompt, and
+// the flag is what makes it give up the least valuable one.
+//
 // A world permanent: the world rule (CR 704.5k) puts it into its owner's
 // graveyard when a newer one enters. Magus of the Abyss prints the same
 // trigger (magus_of_the_abyss.go).
@@ -41,7 +45,7 @@ func init() {
 func theAbyssTrigger(name string) game.TriggeredAbility {
 	return Targeting(
 		AtEachUpkeep(name+" — destroy target nonartifact creature that player controls of their choice; it can't be regenerated", theAbyssDestroy),
-		TheyControl(OfThatPlayersChoice(TargetCreature("target nonartifact creature that player controls of their choice", Not(Artifact())))),
+		Harmful(TheyControl(OfThatPlayersChoice(TargetCreature("target nonartifact creature that player controls of their choice", Not(Artifact()))))),
 	)
 }
 

@@ -4102,6 +4102,9 @@ export interface LegalTargetsView {
   // #2055: on a pick_target an opponent answers for such a clause, the
   // player whose spell or ability it is (the one still targeting).
   chosen_for?: string;
+  // #4249: on a pick_target, the clause's effect hurts the permanent
+  // picked (The Abyss's destroy), so a bot gives up its least valuable.
+  harmful?: boolean;
   // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
   // picks may share a key ("that each have a different mana value",
   // "controlled by different players"). The picker greys a candidate

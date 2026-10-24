@@ -688,6 +688,19 @@ func OfThatPlayersChoice(spec *game.TargetSpec) *game.TargetSpec {
 	return spec
 }
 
+// Harmful marks a clause whose effect hurts the permanent it picks
+// (game.TargetSpec.Harmful, #4249): The Abyss's destroy. Nothing else on a
+// pick_target prompt says which way the pick cuts, so a bot that has to
+// pick one of its own permanents (the Abyss on its controller's own
+// upkeep) gives up the least valuable instead of an arbitrary one. A
+// clause that picks a permanent only; Register refuses it elsewhere.
+//
+//	Harmful(TheyControl(OfThatPlayersChoice(TargetCreature("target nonartifact creature that player controls of their choice", Not(Artifact())))))
+func Harmful(spec *game.TargetSpec) *game.TargetSpec {
+	spec.Harmful = true
+	return spec
+}
+
 // TheyControl is the "they control" of "target creature of an opponent's
 // choice they control" (Evangelize, Preacher, Arena): the candidate must
 // be controlled by the opponent who chooses it (game.TargetSpec.
