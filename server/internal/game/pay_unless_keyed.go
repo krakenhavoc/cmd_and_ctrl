@@ -143,6 +143,9 @@ type PayUnlessAnswer struct {
 	// Objects are the objects, with their epochs, the card put on the
 	// prompt beside Carry (PendingChoice.OptionObjects).
 	Objects []ObjectRef
+	// Number is the number the prompt carried (PendingChoice.PickNumber):
+	// the X a MayPayX settled before it asked whether to pay (#4289).
+	Number int
 }
 
 // PayUnlessFunc is a registered branch. It runs with g.mu held, may
@@ -274,6 +277,9 @@ type PayUnlessKeyedPrompt struct {
 	// (PayUnlessAnswer.Objects), for a permanent the card named as the
 	// prompt was queued.
 	Objects []ObjectRef
+	// Number is a number the branches are handed (PayUnlessAnswer.Number):
+	// the X a MayPayX settled (#4289).
+	Number int
 	// Tap is the waterbend clause (RegisterTapCost): the chooser may tap
 	// artifacts and creatures to pay part of Cost. Nil for a plain payment.
 	Tap *PayTapSpec
@@ -313,7 +319,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 	if p.LifeCost < 0 {
 		return ErrInvalidParam
 	}
-	r := PayUnlessAnswer{Chooser: p.Chooser, Source: p.Source, Carry: copyUUIDs(p.Carry), Guards: p.Guards, Item: p.Asked.StackItem(), Objects: cloneObjectRefs(p.Objects)}
+	r := PayUnlessAnswer{Chooser: p.Chooser, Source: p.Source, Carry: copyUUIDs(p.Carry), Guards: p.Guards, Item: p.Asked.StackItem(), Objects: cloneObjectRefs(p.Objects), Number: p.Number}
 	// #4279: the cause is taken while the asking resolution is open.
 	cause := carriedCause{MoveCause: g.resolutionCauseLocked(), Source: p.Source}
 	decline := func(g *Game) error {
@@ -365,6 +371,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		Asked:           copyAskedItem(p.Asked),
 		OptionObjects:   cloneObjectRefs(p.Objects),
 		PayTap:          copyPayTapSpec(p.Tap),
+		PickNumber:      p.Number,
 		PickThen:        p.Then.key,
 		OptionCarry:     copyUUIDs(p.Carry),
 
@@ -432,6 +439,7 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 		Guards:  c.GuardsStackItem,
 		Item:    c.Asked.StackItem(),
 		Objects: cloneObjectRefs(c.OptionObjects),
+		Number:  c.PickNumber,
 	}
 	cause := carriedCauseOfChoice(c)
 	// A branch the key does not have stays nil, so the engine's own "this

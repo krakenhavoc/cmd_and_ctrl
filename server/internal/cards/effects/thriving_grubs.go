@@ -21,7 +21,7 @@ func init() {
 		Purpose:      game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Thriving Grubs", 2),
-			whenThisAttacksMayPayEnergy("Thriving Grubs", 2, "put a +1/+1 counter on it", thisStillHere(plusOneCountersOnThis(1))),
+			whenThisAttacksMayPayEnergy("Thriving Grubs", 2, "put a +1/+1 counter on it", energyPlusOneCounterOnThis),
 		},
 	})
 }

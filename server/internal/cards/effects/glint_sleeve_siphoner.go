@@ -24,6 +24,11 @@ var glintSleeveSiphonerDrawAndLose = RegisterThenSteps("then-steps/glint-sleeve-
 	}),
 )
 
+var glintSleeveSiphonerPaid = energyPaid("pay-unless/glint-sleeve-siphoner-draw-and-lose",
+	func(g *game.Game, item *game.StackItem) error {
+		return glintSleeveSiphonerDrawAndLose.Run(NewContext(g, item))
+	})
+
 func init() {
 	Register(Spec{
 		OracleID:        "ea34ec71-2f3b-4119-937d-4629cbf7ac5e",
@@ -34,10 +39,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Glint-Sleeve Siphoner — you get {E}", Do(GetEnergy{N: 1})),
 			AtYourUpkeep("Glint-Sleeve Siphoner — you may pay {E}{E}",
-				mayPayEnergyThen("Glint-Sleeve Siphoner", 2, "draw a card and lose 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						return glintSleeveSiphonerDrawAndLose.Run(NewContext(g, item))
-					})),
+				mayPayEnergyThen("Glint-Sleeve Siphoner", 2, "draw a card and lose 1 life", glintSleeveSiphonerPaid)),
 		},
 	})
 }

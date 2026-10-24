@@ -2,6 +2,15 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var maulfistDoorbusterPaid = energyPaid("pay-unless/maulfist-doorbuster-cant-block",
+	func(g *game.Game, item *game.StackItem) error {
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return RestrictUntilEOT{Target: item.Targets[0].ID, Restrictions: game.CantBlock,
+			Label: "Maulfist Doorbuster — can't block this turn"}.Apply(NewContext(g, item))
+	})
+
 // Maulfist Doorbuster — Creature — Human Warrior {3}{R}, 4/2:
 //
 //	"When this creature enters, you get {E}{E} (two energy counters).
@@ -14,14 +23,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	attack := whenThisAttacksMayPayEnergy("Maulfist Doorbuster", 1, "stop it blocking",
-		func(g *game.Game, item *game.StackItem) error {
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return RestrictUntilEOT{Target: item.Targets[0].ID, Restrictions: game.CantBlock,
-				Label: "Maulfist Doorbuster — can't block this turn"}.Apply(NewContext(g, item))
-		})
+	attack := whenThisAttacksMayPayEnergy("Maulfist Doorbuster", 1, "stop it blocking", maulfistDoorbusterPaid)
 	attack.Targets = TargetCreature("target creature")
 	Register(Spec{
 		OracleID:     "70a04e3f-e123-4925-9a02-9825488f1bc8",

@@ -6,6 +6,22 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+var sentryBotPaid = energyPaid("pay-unless/sentry-bot-counters",
+	func(g *game.Game, item *game.StackItem) error {
+		var mine []uuid.UUID
+		for _, c := range g.Battlefield.Cards {
+			if c.Controller == item.Controller && c.IsCreature() {
+				mine = append(mine, c.InstanceID)
+			}
+		}
+		for _, id := range mine {
+			if err := g.AddCounterByForEffect(item.Controller, id, game.CounterPlusOne, 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
 // Sentry Bot — Artifact Creature — Robot {4}{W}, 2/5:
 //
 //	"Flash
@@ -46,21 +62,7 @@ func init() {
 					return GetEnergy{N: n}.Apply(NewContext(g, item))
 				}),
 			AtBeginningOfYourCombat("Sentry Bot — you may pay {E}{E}{E}",
-				mayPayEnergyThen("Sentry Bot", 3, "put a +1/+1 counter on each creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						var mine []uuid.UUID
-						for _, c := range g.Battlefield.Cards {
-							if c.Controller == item.Controller && c.IsCreature() {
-								mine = append(mine, c.InstanceID)
-							}
-						}
-						for _, id := range mine {
-							if err := g.AddCounterByForEffect(item.Controller, id, game.CounterPlusOne, 1); err != nil {
-								return err
-							}
-						}
-						return nil
-					})),
+				mayPayEnergyThen("Sentry Bot", 3, "put a +1/+1 counter on each creature you control", sentryBotPaid)),
 		},
 	})
 }

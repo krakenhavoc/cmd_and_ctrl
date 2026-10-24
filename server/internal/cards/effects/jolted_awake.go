@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var joltedAwakePaid = energyPaid("pay-unless/jolted-awake-return",
+	returnFirstLegalGraveyardTargetToBattlefield)
+
 // Jolted Awake — Sorcery {W}:
 //
 //	"Choose up to one target artifact or creature card in your
@@ -34,9 +37,7 @@ func init() {
 			return MayPayEnergy{
 				N:        firstTargetManaValue(ctx.Game, item),
 				Question: "Jolted Awake — pay {E} equal to its mana value to return it to the battlefield?",
-				OnPay: func(ctx *Context) error {
-					return returnFirstLegalGraveyardTargetToBattlefield(ctx.Game, ctx.Item)
-				},
+				Then:     joltedAwakePaid,
 			}.Apply(ctx)
 		},
 		Activated: []ActivatedAbility{Cycling("{2}")},

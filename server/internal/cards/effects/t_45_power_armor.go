@@ -6,6 +6,21 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+var t45PowerArmorPaid = energyPaid("pay-unless/t-45-power-armor-untap-and-counter",
+	func(g *game.Game, item *game.StackItem) error {
+		equipped := equippedCreatureOf(g, item.SourceCardID)
+		if equipped == uuid.Nil {
+			return nil
+		}
+		ctx := NewContext(g, item)
+		if err := (UntapTarget{Target: equipped}).Apply(ctx); err != nil {
+			return err
+		}
+		return putChosenCounterOn(ctx, item.Controller, equipped,
+			"T-45 Power Armor — choose a counter for the equipped creature",
+			[]string{game.CounterMenace, game.CounterTrample, game.CounterLifelink})
+	})
+
 // T-45 Power Armor — Artifact — Equipment {2}:
 //
 //	"When this Equipment enters, you get {E}{E} (two energy counters).
@@ -35,20 +50,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("T-45 Power Armor", 2),
 			AtYourUpkeep("T-45 Power Armor — you may pay {E}",
-				mayPayEnergyThen("T-45 Power Armor", 1, "untap equipped creature and give it a counter",
-					func(g *game.Game, item *game.StackItem) error {
-						equipped := equippedCreatureOf(g, item.SourceCardID)
-						if equipped == uuid.Nil {
-							return nil
-						}
-						ctx := NewContext(g, item)
-						if err := (UntapTarget{Target: equipped}).Apply(ctx); err != nil {
-							return err
-						}
-						return putChosenCounterOn(ctx, item.Controller, equipped,
-							"T-45 Power Armor — choose a counter for the equipped creature",
-							[]string{game.CounterMenace, game.CounterTrample, game.CounterLifelink})
-					})),
+				mayPayEnergyThen("T-45 Power Armor", 1, "untap equipped creature and give it a counter", t45PowerArmorPaid)),
 		},
 		Activated: []ActivatedAbility{EquipAbility("{3}")},
 	})

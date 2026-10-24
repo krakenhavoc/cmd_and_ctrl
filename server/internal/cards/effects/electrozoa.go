@@ -2,6 +2,14 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var electrozoaTap = energyDeclined("pay-unless/electrozoa-tap",
+	func(g *game.Game, item *game.StackItem) error {
+		if !sourceIsStillThisPermanent(g, item) {
+			return nil
+		}
+		return TapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
+	})
+
 // Electrozoa — Creature — Jellyfish {2}{U}, 3/1:
 //
 //	"Flash
@@ -29,12 +37,7 @@ func init() {
 				return PayEnergyUnless{
 					N:        1,
 					Question: "Electrozoa — pay {E}, or tap it?",
-					OnDecline: func(ctx *Context) error {
-						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-							return nil
-						}
-						return TapTarget{Target: ctx.Item.SourceCardID}.Apply(ctx)
-					},
+					Else:     electrozoaTap,
 				}.Apply(NewContext(g, item))
 			}),
 		},

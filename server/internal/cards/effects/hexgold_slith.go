@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var hexgoldSlithFirstStrikePaid = energyPaid("pay-unless/hexgold-slith-first-strike",
+	thisGainsKeywordUntilEndOfTurn("first strike", "Hexgold Slith — first strike until end of turn"))
+
 // Hexgold Slith — Creature — Slith {1}{W}, 2/1:
 //
 //	"When this creature enters, you get {E}{E} (two energy counters).
@@ -22,7 +25,7 @@ func init() {
 		Purpose:      game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Hexgold Slith", 2),
-			whenThisAttacksMayPayEnergy("Hexgold Slith", 2, "have it gain first strike", thisGainsKeywordUntilEndOfTurn("first strike", "Hexgold Slith — first strike until end of turn")),
+			whenThisAttacksMayPayEnergy("Hexgold Slith", 2, "have it gain first strike", hexgoldSlithFirstStrikePaid),
 			WheneverThisDealsCombatDamageToAPlayer("Hexgold Slith — put a +1/+1 counter on it", thisStillHere(plusOneCountersOnThis(1))),
 		},
 	})

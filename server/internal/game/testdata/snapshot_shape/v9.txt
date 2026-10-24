@@ -3717,6 +3717,12 @@ pendingChoices[].manaSourceKinds	number:uint16
 pendingChoices[].manaTapped	bool
 pendingChoices[].mayCastCard	custom(uuid.UUID)
 pendingChoices[].mayCastKeyword	string
+pendingChoices[].mayPayX	object
+pendingChoices[].mayPayX.buys	string
+pendingChoices[].mayPayX.cost	string
+pendingChoices[].mayPayX.inThisStep	bool
+pendingChoices[].mayPayX.label	string
+pendingChoices[].mayPayX.symbol	string
 pendingChoices[].midResolution	bool
 pendingChoices[].modeMax	number:int
 pendingChoices[].modeMin	number:int
@@ -3761,6 +3767,16 @@ pendingChoices[].payActionClause.Of.Supertypes[]	string
 pendingChoices[].payActionClause.Of.Types	array
 pendingChoices[].payActionClause.Of.Types[]	string
 pendingChoices[].payActionClause.Words	string
+pendingChoices[].payAmount	object
+pendingChoices[].payAmount.goal	number:int
+pendingChoices[].payAmount.marks	array
+pendingChoices[].payAmount.marks[]	number:int
+pendingChoices[].payAmount.max	number:int
+pendingChoices[].payAmount.min	number:int
+pendingChoices[].payAmount.noMax	bool
+pendingChoices[].payAmount.resource	string
+pendingChoices[].payAmount.selfDamage	bool
+pendingChoices[].payAmount.unit	string
 pendingChoices[].payCauseController	custom(uuid.UUID)
 pendingChoices[].payCauseItem	custom(uuid.UUID)
 pendingChoices[].payCost	string
@@ -3775,6 +3791,7 @@ pendingChoices[].pickFromGraveyard	bool
 pendingChoices[].pickMatchArg	string
 pendingChoices[].pickMeasures	array
 pendingChoices[].pickMeasures[]	number:int
+pendingChoices[].pickNumber	number:int
 pendingChoices[].pickOptional	bool
 pendingChoices[].pickOptions	array
 pendingChoices[].pickOptions[]	object

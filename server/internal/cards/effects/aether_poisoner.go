@@ -23,7 +23,7 @@ func init() {
 		Purpose:         game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Aether Poisoner", 2),
-			whenThisAttacksMayPayEnergy("Aether Poisoner", 2, "create a 1/1 Servo", createServo),
+			whenThisAttacksMayPayEnergy("Aether Poisoner", 2, "create a 1/1 Servo", energyCreateServo),
 		},
 	})
 }

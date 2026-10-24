@@ -281,6 +281,12 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownAnyPlayerPays(c.PickThen) {
 				unknown = append(unknown, "any-player consequences "+c.PickThen)
 			}
+		case c.Kind == PendingChoicePayAmount:
+			// #4289: a keyed MayPayX's "choose X" names the branches the
+			// payment that follows runs.
+			if !KnownPayUnlessElse(c.PickThen) {
+				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
 		case c.Kind == PendingChoicePayUnless:
 			// #4256: a keyed pay-unless prompt's decline (and, since
 			// #4264, its payment's branch).
