@@ -29,16 +29,19 @@ func init() {
 			MaxSpeedTrigger(WheneverYouCast(Artifact(), "Mendicant Core, Guidelight — you may pay {1} to copy that artifact spell",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					spell := ctx.Trigger().Event.CardID
 					return MayPay{
 						Chooser:  item.Controller,
 						Cost:     "{1}",
 						Question: "Mendicant Core, Guidelight — pay {1} to copy that artifact spell?",
-						OnPay: func(ctx *Context) error {
-							return CopySpell{StackID: spell, Controller: ctx.Controller()}.Apply(ctx)
-						},
+						Then:     mendicantCorePaid,
 					}.Apply(ctx)
 				})),
 		},
 	})
 }
+
+// mendicantCorePaid is the paid half, keyed (#4264): the spell is the asking trigger's event.
+var mendicantCorePaid = PayUnlessBranches("pay-unless/mendicant-core-guidelight-copy-spell",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return CopySpell{StackID: ctx.Trigger().Event.CardID, Controller: ctx.Controller()}.Apply(ctx)
+	}, nil)

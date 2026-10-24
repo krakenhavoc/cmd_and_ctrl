@@ -42,9 +42,8 @@ func init() {
 						Chooser:  c.Controller,
 						Cost:     "{2}{R}",
 						Question: "Heroism — pay {2}{R}, or " + c.Name + "'s combat damage this turn is prevented",
-						OnDecline: func(ctx *Context) error {
-							return PreventDamageFromSource{From: attacker, CombatOnly: true, Protect: ShieldAnything}.Apply(ctx)
-						},
+						Else:     heroismPrevent,
+						Carry:    []uuid.UUID{attacker},
 					}).Apply(ctx); err != nil {
 						return err
 					}
@@ -54,3 +53,12 @@ func init() {
 		}},
 	})
 }
+
+// heroismPrevent is the decline, keyed (#4264): the attacker rides the prompt.
+var heroismPrevent = PayUnlessElse("pay-unless/heroism-prevent-combat-damage",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		return PreventDamageFromSource{From: r.Carry[0], CombatOnly: true, Protect: ShieldAnything}.Apply(ctx)
+	})

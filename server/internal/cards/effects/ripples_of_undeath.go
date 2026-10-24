@@ -100,9 +100,8 @@ func ripplesOfUndeathOffer(ctx *Context, milled []uuid.UUID) error {
 		Chooser:  controller,
 		Cost:     "{1}",
 		Question: "Ripples of Undeath — pay {1} and 3 life to put one of the milled cards into your hand?",
-		OnPay: func(ctx *Context) error {
-			return ripplesOfUndeathTakeOne(ctx, cards)
-		},
+		Then:     ripplesOfUndeathPaid,
+		Carry:    cards,
 	}.Apply(ctx)
 }
 
@@ -144,3 +143,7 @@ func ripplesOfUndeathTakeOne(ctx *Context, milled []uuid.UUID) error {
 	})
 	return nil
 }
+
+// ripplesOfUndeathPaid is the paid half, keyed (#4264): the cards that were milled ride the prompt.
+var ripplesOfUndeathPaid = PayUnlessBranches("pay-unless/ripples-of-undeath-take-one",
+	func(ctx *Context, r game.PayUnlessAnswer) error { return ripplesOfUndeathTakeOne(ctx, r.Carry) }, nil)

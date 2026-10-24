@@ -25,14 +25,20 @@ func init() {
 				return AnyPlayerPays{
 					Cost:     "{2}",
 					Question: "Nakaya Shade — pay {2} to stop the +1/+1?",
-					OnNobody: func(ctx *Context) error {
-						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-							return nil
-						}
-						return thisGetsUntilEndOfTurn(1, 1, "Nakaya Shade — +1/+1 until end of turn")(ctx.Game, ctx.Item)
-					},
+					Then:     nakayaShadePump,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// nakayaShadePump is "if no one does", keyed (#4264): the asking item carries the Shade's object (CR 400.7).
+var nakayaShadePump = AnyPlayerConsequences("any-player/nakaya-shade-pump",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return thisGetsUntilEndOfTurn(1, 1, "Nakaya Shade — +1/+1 until end of turn")(ctx.Game, ctx.Item)
+	},
+	nil)

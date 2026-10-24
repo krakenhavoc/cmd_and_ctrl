@@ -43,9 +43,15 @@ func init() {
 						Cost:            "{3}",
 						Question:        "Icy Prison — pay {3} to keep it on the battlefield?",
 						HelpsController: true,
-						OnNobody:        sacrificeThisIfStillHere,
+						Then:            icyPrisonSacrificed,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// icyPrisonSacrificed is "if no one does", keyed (#4264).
+var icyPrisonSacrificed = AnyPlayerConsequences("any-player/icy-prison-sacrifice",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return sacrificeThisIfStillHere(ctx) },
+	nil)

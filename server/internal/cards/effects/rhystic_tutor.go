@@ -23,16 +23,22 @@ func init() {
 			return AnyPlayerPays{
 				Cost:     "{2}",
 				Question: "Rhystic Tutor — pay {2} to stop the search?",
-				OnNobody: func(ctx *Context) error {
-					return SearchLibrary{
-						Player:  ctx.Controller(),
-						Dest:    game.ZoneHand,
-						Limit:   1,
-						Shuffle: true,
-						Reason:  "Rhystic Tutor — search your library for a card",
-					}.Apply(ctx)
-				},
+				Then:     rhysticTutorSearches,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// rhysticTutorSearches is "if no one does", keyed (#4264).
+var rhysticTutorSearches = AnyPlayerConsequences("any-player/rhystic-tutor-search",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		return SearchLibrary{
+			Player:  ctx.Controller(),
+			Dest:    game.ZoneHand,
+			Limit:   1,
+			Shuffle: true,
+			Reason:  "Rhystic Tutor — search your library for a card",
+		}.Apply(ctx)
+	},
+	nil)

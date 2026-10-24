@@ -47,6 +47,10 @@ type AnyPlayerAnswer struct {
 	Carry []uuid.UUID
 	// Guards is the stack object the offer guarded, or uuid.Nil.
 	Guards uuid.UUID
+	// Item is the stack item that asked, rebuilt from the data the offer
+	// carried (AskedItem), or nil when the card put none there. See
+	// PayUnlessAnswer.Item.
+	Item *StackItem
 }
 
 // AnyPlayerFunc is a registered consequence. It runs with g.mu held, may
@@ -140,6 +144,10 @@ type AnyPlayerPaysKeyed struct {
 	// consequences are handed Carry.
 	Then  AnyPlayerThen
 	Carry []uuid.UUID
+	// Asked is the asking stack item as data (NewAskedItem), handed to the
+	// consequences as AnyPlayerAnswer.Item (#4264). Nil when they read
+	// none.
+	Asked *AskedItem
 }
 
 // QueueAnyPlayerPaysKeyedForEffect is QueueAnyPlayerPaysForEffect with
@@ -198,6 +206,7 @@ func (g *Game) runAnyPlayerNobodyLocked(p AnyPlayerPaysKeyed) error {
 	}
 	return entry.onNobody(g, AnyPlayerAnswer{
 		Source: p.Source, Controller: p.Controller, Carry: copyUUIDs(p.Carry), Guards: p.Guards,
+		Item: p.Asked.StackItem(),
 	})
 }
 
@@ -231,6 +240,7 @@ func (g *Game) offerAnyPlayerKeyedFromLocked(p AnyPlayerPaysKeyed, offer *AnyPla
 			AcceptLabel:     p.AcceptLabel,
 			DeclineLabel:    p.DeclineLabel,
 			PayActionClause: copyPayAction(action),
+			Asked:           copyAskedItem(p.Asked),
 			PickThen:        p.Then.key,
 			OptionCarry:     copyUUIDs(p.Carry),
 		})
@@ -277,6 +287,7 @@ func anyPlayerFrameOf(c *PendingChoice) *payUnlessFrame {
 		Guards:          c.GuardsStackItem,
 		Then:            AnyPlayerThen{key: c.PickThen},
 		Carry:           copyUUIDs(c.OptionCarry),
+		Asked:           copyAskedItem(c.Asked),
 	}
 	owed := c.OwedInStep
 	after := len(offer.Order)
@@ -299,6 +310,7 @@ func anyPlayerFrameOf(c *PendingChoice) *payUnlessFrame {
 		}
 		return entry.onPaid(g, AnyPlayerAnswer{
 			Source: p.Source, Controller: p.Controller, Payer: who, Carry: copyUUIDs(p.Carry), Guards: p.Guards,
+			Item: p.Asked.StackItem(),
 		})
 	}
 	return f

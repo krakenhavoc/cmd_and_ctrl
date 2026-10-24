@@ -1,7 +1,7 @@
 package effects
 
 import (
-	"github.com/google/uuid"
+	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -41,6 +41,18 @@ func carrionTrigger(name string, n int) game.TriggeredAbility {
 	if n != 1 {
 		words = numberWord(n) + " cards"
 	}
+	// "If a player does" is keyed (#4264), one key per card, so a table
+	// waiting on any player's answer is a restore point. The Rats must
+	// still be the permanent the trigger came from (CR 400.7): the asking
+	// item carries its object.
+	noDamage := AnyPlayerConsequences("any-player/"+strings.ReplaceAll(strings.ToLower(name), " ", "-")+"-no-combat-damage",
+		func(ctx *Context, _ game.AnyPlayerAnswer) error {
+			if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+				return nil
+			}
+			ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), ctx.Item.SourceCardID, name+" — assigns no combat damage this turn")
+			return nil
+		}, nil, nil)
 	return OnAny([]game.EventKind{game.EventAttack, game.EventBlock}, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 		return attackDeclared(ev, source) || selfBlocksOnce(ev, source)
 	}, name+" — any player may exile "+words+" from their graveyard to stop its combat damage",
@@ -48,13 +60,7 @@ func carrionTrigger(name string, n int) game.TriggeredAbility {
 			return AnyPlayerPays{
 				Pay:      ExileFromGraveyardPayment(n),
 				Question: name + " — exile " + words + " from your graveyard so it assigns no combat damage this turn?",
-				OnPaid: func(ctx *Context, _ uuid.UUID) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					ctx.Game.AssignsNoCombatDamageThisTurnForEffect(ctx.Source(), ctx.Item.SourceCardID, name+" — assigns no combat damage this turn")
-					return nil
-				},
+				Then:     noDamage,
 			}.Apply(NewContext(g, item))
 		})
 }

@@ -41,11 +41,15 @@ func sunstreakPhoenixOffer(g *game.Game, item *game.StackItem) error {
 		Chooser:  item.Controller,
 		Cost:     "{1}{R}",
 		Question: "Sunstreak Phoenix — pay {1}{R} to return it to the battlefield tapped?",
-		OnPay: func(ctx *Context) error {
-			if z := ctx.Game.FindCardZoneForEffect(ctx.Item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: ctx.Item.SourceCardID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
-		},
+		Then:     sunstreakPhoenixPaid,
 	}.Apply(NewContext(g, item))
 }
+
+// sunstreakPhoenixPaid is the paid half, keyed (#4264).
+var sunstreakPhoenixPaid = PayUnlessBranches("pay-unless/sunstreak-phoenix-return",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if z := ctx.Game.FindCardZoneForEffect(ctx.Item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
+			return nil
+		}
+		return ReturnFromGraveyard{Target: ctx.Item.SourceCardID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
+	}, nil)

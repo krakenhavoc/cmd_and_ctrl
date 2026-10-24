@@ -32,8 +32,14 @@ func init() {
 			return AnyPlayerPays{
 				Cost:     cost,
 				Question: "Soul Strings — pay " + cost + " to stop the return?",
-				OnNobody: returnLegalGraveyardTargetsToHand,
+				Then:     soulStringsReturns,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// soulStringsReturns is "if no one does", keyed (#4264): the spell's targets ride the asking item.
+var soulStringsReturns = AnyPlayerConsequences("any-player/soul-strings-return",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return returnLegalGraveyardTargetsToHand(ctx) },
+	nil)

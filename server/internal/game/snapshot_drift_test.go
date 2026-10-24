@@ -1165,6 +1165,12 @@ var pendingChoiceFields = plan(
 	"PickMatchArg", carried, "",
 	// #4264: a keyed pay-unless's non-mana payment.
 	"PayActionClause", carried, "",
+	// #4264: the item that queued a keyed pay-unless or any-player
+	// prompt, as the data a branch reads off it.
+	"Asked", carried, "",
+	// #4264: the objects, with their epochs, a keyed pay-unless or
+	// any-player prompt's branches are handed.
+	"OptionObjects", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",

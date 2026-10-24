@@ -41,9 +41,7 @@ func init() {
 						Chooser:  item.Controller,
 						Cost:     "{2}",
 						Question: "Seer's Sundial — pay {2} to draw a card?",
-						OnPay: func(ctx *Context) error {
-							return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-						},
+						Then:     mayPayDrawACard,
 					}.Apply(NewContext(g, item))
 				}),
 		},

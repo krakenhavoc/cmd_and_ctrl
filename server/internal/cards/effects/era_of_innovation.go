@@ -29,9 +29,7 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{1}",
 					Question: "Pay {1} to get {E}{E}?",
-					OnPay: func(ctx *Context) error {
-						return GetEnergy{N: 2}.Apply(ctx)
-					},
+					Then:     eraOfInnovationEnergy,
 				}.Apply(ctx)
 			}),
 		},
@@ -43,3 +41,7 @@ func init() {
 		}},
 	})
 }
+
+// eraOfInnovationEnergy is the paid half, keyed (#4264).
+var eraOfInnovationEnergy = PayUnlessBranches("pay-unless/era-of-innovation-get-energy",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return GetEnergy{N: 2}.Apply(ctx) }, nil)

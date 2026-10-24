@@ -314,6 +314,8 @@ func (g *Game) cloneLocked() *Game {
 			// #4264: a keyed pay-unless's non-mana payment, with its
 			// own Either list.
 			cloned.PayActionClause = copyPayAction(c.PayActionClause)
+			cloned.Asked = copyAskedItem(c.Asked)
+			cloned.OptionObjects = cloneObjectRefs(c.OptionObjects)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)

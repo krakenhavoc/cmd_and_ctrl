@@ -42,9 +42,13 @@ func init() {
 						Chooser:  ctx.Controller(),
 						Cost:     "{2}",
 						Question: "Proft, Consulting Detective — pay {2} to put a +1/+1 counter on Proft and draw a card?",
-						OnPay:    proftConsultingDetectivePaid.Run,
+						Then:     proftPaid,
 					}.Apply(ctx)
 				}),
 		},
 	})
 }
+
+// proftPaid is the paid half, keyed (#4264): the counter and the draw are the keyed steps above, run against the asking item.
+var proftPaid = PayUnlessBranches("pay-unless/proft-consulting-detective-counter-and-draw",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return proftConsultingDetectivePaid.Run(ctx) }, nil)

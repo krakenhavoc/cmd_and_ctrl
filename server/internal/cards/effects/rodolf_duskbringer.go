@@ -73,7 +73,7 @@ func rodolfEndStepOffer(g *game.Game, item *game.StackItem) error {
 		Chooser:  item.Controller,
 		Cost:     "{1}{W/B}",
 		Question: "Rodolf Duskbringer — pay {1}{W/B} to return a creature card from your graveyard to the battlefield?",
-		OnPay:    rodolfReturnFromGraveyard,
+		Then:     rodolfPaid,
 	}.Apply(NewContext(g, item))
 }
 
@@ -86,3 +86,7 @@ func rodolfReturnFromGraveyard(ctx *Context) error {
 		Body:  rodolfReturnBody,
 	}.Apply(ctx)
 }
+
+// rodolfPaid is the paid half, keyed (#4264).
+var rodolfPaid = PayUnlessBranches("pay-unless/rodolf-duskbringer-return",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return rodolfReturnFromGraveyard(ctx) }, nil)

@@ -55,6 +55,15 @@ type PayUnlessAnswer struct {
 	// prompt that guards none (a counter-unless-pays names the spell it
 	// counts on).
 	Guards uuid.UUID
+	// Item is the stack item that asked, rebuilt from the data the
+	// prompt carried (AskedItem), or nil for a prompt whose card put none
+	// there. A branch runs against it, so it reads the asking trigger's
+	// event, targets and X, and the object (CR 400.7) the ability came
+	// from, as a closure over the item used to.
+	Item *StackItem
+	// Objects are the objects, with their epochs, the card put on the
+	// prompt beside Carry (PendingChoice.OptionObjects).
+	Objects []ObjectRef
 }
 
 // PayUnlessFunc is a registered branch. It runs with g.mu held, may
@@ -179,6 +188,13 @@ type PayUnlessKeyedPrompt struct {
 	Guards uuid.UUID
 	// LifeCost is mandatory life paid with the cost in one payment.
 	LifeCost int
+	// Asked is the asking stack item as data (NewAskedItem), handed to the
+	// branches as PayUnlessAnswer.Item. Nil when they read none.
+	Asked *AskedItem
+	// Objects are objects with their epochs the branches are handed
+	// (PayUnlessAnswer.Objects), for a permanent the card named as the
+	// prompt was queued.
+	Objects []ObjectRef
 }
 
 // copyPayAction is a deep copy of a non-mana payment, nil for nil.
@@ -206,7 +222,7 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 	if p.LifeCost < 0 {
 		return ErrInvalidParam
 	}
-	r := PayUnlessAnswer{Chooser: p.Chooser, Source: p.Source, Carry: copyUUIDs(p.Carry), Guards: p.Guards}
+	r := PayUnlessAnswer{Chooser: p.Chooser, Source: p.Source, Carry: copyUUIDs(p.Carry), Guards: p.Guards, Item: p.Asked.StackItem(), Objects: cloneObjectRefs(p.Objects)}
 	// #4279: the cause is taken while the asking resolution is open.
 	cause := carriedCause{MoveCause: g.resolutionCauseLocked(), Source: p.Source}
 	decline := func(g *Game) error {
@@ -255,6 +271,8 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 		OwedInStep:      owed,
 		GuardsStackItem: p.Guards,
 		PayActionClause: copyPayAction(p.Action),
+		Asked:           copyAskedItem(p.Asked),
+		OptionObjects:   cloneObjectRefs(p.Objects),
 		PickThen:        p.Then.key,
 		OptionCarry:     copyUUIDs(p.Carry),
 
@@ -319,6 +337,8 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 		Source:  c.Source,
 		Carry:   copyUUIDs(c.OptionCarry),
 		Guards:  c.GuardsStackItem,
+		Item:    c.Asked.StackItem(),
+		Objects: cloneObjectRefs(c.OptionObjects),
 	}
 	cause := carriedCauseOfChoice(c)
 	// A branch the key does not have stays nil, so the engine's own "this

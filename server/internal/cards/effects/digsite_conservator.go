@@ -39,11 +39,15 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{4}",
 					Question: "Digsite Conservator — pay {4} to discover 4?",
-					OnPay: func(ctx *Context) error {
-						return Discover{N: 4}.Apply(ctx)
-					},
+					Then:     digsiteConservatorDiscover,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// digsiteConservatorDiscover is the paid half, keyed (#4264): the
+// controller rides the asking item, so a table waiting on the payer is a
+// restore point.
+var digsiteConservatorDiscover = PayUnlessBranches("pay-unless/digsite-conservator-discover",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return Discover{N: 4}.Apply(ctx) }, nil)

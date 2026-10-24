@@ -108,6 +108,11 @@ type UpkeepPayUnlessPrompt struct {
 	// OnPay must be nil.
 	Then  PayUnlessElse
 	Carry []uuid.UUID
+
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed branch as PayUnlessAnswer.Item (#4264). Nil when the branch
+	// reads none.
+	Asked *AskedItem
 }
 
 // QueueUpkeepPayUnlessForEffect queues the CR 118.12 prompt and
@@ -127,7 +132,7 @@ func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
 		}
 		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
 			Chooser: p.Chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
-			Then: p.Then, Carry: p.Carry, Action: p.Action, InThisStep: true,
+			Then: p.Then, Carry: p.Carry, Action: p.Action, InThisStep: true, Asked: p.Asked,
 		})
 	}
 	var action *PayAction

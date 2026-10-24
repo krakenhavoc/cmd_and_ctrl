@@ -1,5 +1,9 @@
 package effects
 
+import (
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
 // Browbeat — Sorcery {2}{R}:
 //
 //	"Any player may have Browbeat deal 5 damage to them. If no one
@@ -19,12 +23,17 @@ func init() {
 		Name:         "Browbeat",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target player"),
-		OnResolve: anyPlayerMayTakeDamageFromThis("Browbeat", 5, "the draw", func(ctx *Context) error {
-			who, ok := firstLegalPlayerTarget(ctx)
-			if !ok {
-				return nil
-			}
-			return DrawCards{Player: who, N: 3}.Apply(ctx)
-		}),
+		OnResolve:    anyPlayerMayTakeDamageFromThis("Browbeat", 5, "the draw", browbeatDraws),
 	})
 }
+
+// browbeatDraws is "If no one does, that player draws three cards", keyed
+// (#4264): the spell's target rides the asking item.
+var browbeatDraws = AnyPlayerConsequences("any-player/browbeat-draw", nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		who, ok := firstLegalPlayerTarget(ctx)
+		if !ok {
+			return nil
+		}
+		return DrawCards{Player: who, N: 3}.Apply(ctx)
+	}, nil)

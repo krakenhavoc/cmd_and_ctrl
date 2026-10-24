@@ -71,12 +71,16 @@ func ringsCopyActivatedAbility(g *game.Game, item *game.StackItem) error {
 		Chooser:  controller,
 		Cost:     "{2}",
 		Question: "Rings of Brighthearth — pay {2} to copy that ability?",
-		OnPay: func(ctx *Context) error {
-			return CopyAbility{
-				ItemID:           ability,
-				Controller:       controller,
-				ChooseNewTargets: true,
-			}.Apply(ctx)
-		},
+		Then:     ringsOfBrighthearthPaid,
 	}.Apply(ctx)
 }
+
+// ringsOfBrighthearthPaid is the paid half, keyed (#4264): the ability is the asking trigger's event.
+var ringsOfBrighthearthPaid = PayUnlessBranches("pay-unless/rings-of-brighthearth-copy-ability",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return CopyAbility{
+			ItemID:           ctx.Trigger().Event.StackItemID,
+			Controller:       ctx.Controller(),
+			ChooseNewTargets: true,
+		}.Apply(ctx)
+	}, nil)

@@ -1291,6 +1291,11 @@ func PayUnlessBranches(key string, onPay, onDecline func(ctx *Context, r game.Pa
 func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessFunc {
 	return func(g *game.Game, r game.PayUnlessAnswer) error {
 		ctx, carry := keyedCarryContext(g, r.Chooser, r.Source, r.Carry)
+		if r.Item != nil {
+			// The prompt carried the asking item as data (#4264): the
+			// branch reads its event, targets, X and source object.
+			ctx = NewContext(g, r.Item)
+		}
 		r.Carry = carry
 		return body(ctx, r)
 	}
@@ -1310,8 +1315,11 @@ func (p PayUnless) Apply(ctx *Context) error {
 		if p.OnDecline != nil {
 			return fmt.Errorf("%w: PayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
 		}
-		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
-		return ctx.Game.QueuePayUnlessKeyedForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, p.Else, carry)
+		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+			Then: p.Else, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked: game.NewAskedItem(ctx.Item),
+		})
 	}
 	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
 		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
@@ -1401,6 +1409,7 @@ func (p UpkeepPayUnless) Apply(ctx *Context) error {
 			Question: p.Question,
 			Then:     p.Else,
 			Carry:    append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked:    game.NewAskedItem(ctx.Item),
 		})
 	}
 	prompt := game.UpkeepPayUnlessPrompt{
@@ -1483,6 +1492,7 @@ func (c CounterUnlessPaid) Apply(ctx *Context) error {
 			Question:  c.Question,
 			Then:      c.Then,
 			Carry:     append([]uuid.UUID{ctx.Controller()}, c.Carry...),
+			Asked:     game.NewAskedItem(ctx.Item),
 		})
 	}
 	var onPaid func(*game.Game) error
@@ -1550,6 +1560,7 @@ func (p GuardedPayUnless) Apply(ctx *Context) error {
 			Question:  p.Question,
 			Then:      p.Else,
 			Carry:     append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			Asked:     game.NewAskedItem(ctx.Item),
 		})
 	}
 	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{

@@ -84,6 +84,9 @@ func AnyPlayerConsequences(key string,
 			return nil
 		}
 		return func(g *game.Game, r game.AnyPlayerAnswer) error {
+			if r.Item != nil {
+				return body(NewContext(g, r.Item), r)
+			}
 			return body(keyedContext(g, r.Controller, r.Source), r)
 		}
 	}
@@ -254,6 +257,7 @@ func (a AnyPlayerPays) applyKeyed(ctx *Context) error {
 		DeclineLabel: a.DeclineLabel,
 		Then:         a.Then,
 		Carry:        a.Carry,
+		Asked:        game.NewAskedItem(ctx.Item),
 
 		HelpsController: a.HelpsController,
 	})
@@ -310,15 +314,17 @@ var anyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counte
 // damage to them. If no one does, <onNobody>." (Book Burning, Breaking
 // Point, Browbeat) as a spell's OnResolve (ADR 0150 §3). The spell
 // deals the damage through the ordinary path, so prevention and
-// replacement apply, and taking it is always a payment.
-func anyPlayerMayTakeDamageFromThis(name string, n int, what string, onNobody func(ctx *Context) error) func(*game.StackItem, *Context) error {
+// replacement apply, and taking it is always a payment. `nobody` is "if
+// no one does" as a registered consequence (AnyPlayerConsequences, #4264),
+// so a table waiting on any player's answer is a restore point.
+func anyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game.AnyPlayerThen) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return AnyPlayerPays{
 			Pay:          DamagePayment(n),
 			Question:     name + " — take " + strconv.Itoa(n) + " damage to stop " + what + "?",
 			AcceptLabel:  "Take " + strconv.Itoa(n) + " damage",
 			DeclineLabel: "Don't",
-			OnNobody:     onNobody,
+			Then:         nobody,
 		}.Apply(ctx)
 	}
 }
@@ -334,12 +340,7 @@ func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 			return AnyPlayerPays{
 				Pay:      SacrificePayment(1, "land", "lands", QueryType("land")),
 				Question: name + " — sacrifice a land to put it on top of its owner's library?",
-				OnPaid: func(ctx *Context, _ uuid.UUID) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
-				},
+				Then:     anyPlayerTucksThis,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -394,3 +395,15 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		OnUnsaved:  onUnsaved,
 	})
 }
+
+// anyPlayerTucksThis is "If a player does, put this creature on top of its
+// owner's library", keyed (#4264): a creature that left and came back is a
+// new object and is not moved (CR 400.7), which the asking item's object
+// answers.
+var anyPlayerTucksThis = AnyPlayerConsequences("any-player/tuck-this-on-top-of-library",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
+	}, nil, nil)

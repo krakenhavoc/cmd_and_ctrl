@@ -28,12 +28,16 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{1}",
 					Question: "Spellbook Vendor — pay {1} to create a Sorcerer Role token attached to a creature you control?",
-					OnPay: func(ctx *Context) error {
-						return WhenYouDo("Spellbook Vendor — create a Sorcerer Role token attached to target creature you control",
-							spellbookVendorSorcererBody).Apply(ctx)
-					},
+					Then:     spellbookVendorPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// spellbookVendorPaid is the paid half, keyed (#4264): the "when you do" reflexive trigger is queued against the asking item.
+var spellbookVendorPaid = PayUnlessBranches("pay-unless/spellbook-vendor-sorcerer",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return WhenYouDo("Spellbook Vendor — create a Sorcerer Role token attached to target creature you control",
+			spellbookVendorSorcererBody).Apply(ctx)
+	}, nil)

@@ -120,6 +120,11 @@ type CounterUnlessPaidPrompt struct {
 	Then  PayUnlessElse
 	Carry []uuid.UUID
 
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed branch as PayUnlessAnswer.Item (#4264). Nil when the branch
+	// reads none.
+	Asked *AskedItem
+
 	// Cost is the printed payment ("{1}", "{2}"), parsed by
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
@@ -185,7 +190,7 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	if then.key != "" && p.Waterbend == nil {
 		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
 			Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
-			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost,
+			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost, Asked: p.Asked,
 		})
 	}
 	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }
@@ -223,6 +228,19 @@ func (g *Game) counterIfStillOnStackLocked(stackID uuid.UUID) error {
 		return err
 	}
 	return nil
+}
+
+// CounterIfStillOnStackForEffect counters `stackID` unless it has already
+// left the stack, in which case the "unless" clause bought off nothing and
+// that is not an error. It is the decline a keyed counter-unless-pays names
+// when it also has a payment branch of its own (Assimilate Essence's "if
+// they do, you incubate 2"): a registered key's branches replace the
+// engine's own "counter that spell", so a card that registers a pay branch
+// registers this as its decline.
+//
+// Caller must hold g.mu.
+func (g *Game) CounterIfStillOnStackForEffect(stackID uuid.UUID) error {
+	return g.counterIfStillOnStackLocked(stackID)
 }
 
 // choiceGuardsALiveStackItem reports whether `c` is a prompt whose

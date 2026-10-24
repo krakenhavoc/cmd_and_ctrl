@@ -866,6 +866,23 @@ type PendingChoice struct {
 	// payment rides payUnlessFrame.action.
 	PayActionClause *PayAction
 
+	// OptionObjects are the objects, with the epoch each had, that a KEYED
+	// pay-unless or any-player prompt's branches are handed beside
+	// OptionCarry's IDs (#4264): a permanent the card named as the offer
+	// was made, so a branch can tell it from a new object the same card
+	// has become (CR 400.7). Plain data.
+	OptionObjects []ObjectRef
+
+	// Asked is the stack item that queued a KEYED pay-unless or
+	// any-player prompt, as plain data (#4264, asked_item.go): its
+	// controller, the card and object it came from, its targets, its
+	// triggering event and its X. A keyed branch is handed it as the item
+	// it runs against, so it reads what a closure over the item used to
+	// (CR 400.7 included: the object's epoch rides it). Nil on a framed
+	// prompt and on a keyed one whose branches read only the payer, the
+	// card and the carried IDs.
+	Asked *AskedItem
+
 	// SearchCards is the set of library cards a
 	// PendingChoiceSearchLibrary's chooser may take, in library
 	// order. Wire-serialised via PendingChoiceView.Options — and,

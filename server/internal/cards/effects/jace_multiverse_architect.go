@@ -64,16 +64,19 @@ func jaceMultiverseArchitectCombatTax(g *game.Game, item *game.StackItem) error 
 	if item.Trigger == nil {
 		return nil
 	}
-	opponent, controller := item.Trigger.Event.Actor, item.Controller
 	return UpkeepPayUnless{
-		Chooser:  opponent,
+		Chooser:  item.Trigger.Event.Actor,
 		Cost:     "{2}",
 		Question: "Jace, Multiverse Architect — pay {2}, or your creatures can't attack its controller's Jaces this turn?",
-		OnDecline: func(ctx *Context) error {
-			ctx.Game.GrantCantAttackPlayerThisTurnForEffect(opponent, controller,
-				game.CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"},
-				"Jace, Multiverse Architect", ctx.Source())
-			return nil
-		},
+		Else:     jaceCombatTaxDeclined,
 	}.Apply(NewContext(g, item))
 }
+
+// jaceCombatTaxDeclined is the decline, keyed (#4264): the payer is the opponent whose combat it is.
+var jaceCombatTaxDeclined = PayUnlessElse("pay-unless/jace-multiverse-architect-cant-attack",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.Game.GrantCantAttackPlayerThisTurnForEffect(r.Chooser, ctx.Controller(),
+			game.CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"},
+			"Jace, Multiverse Architect", ctx.Source())
+		return nil
+	})

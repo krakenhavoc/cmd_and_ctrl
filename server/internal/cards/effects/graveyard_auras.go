@@ -193,16 +193,11 @@ func mayPayToUntapEnchantedCreature(name, cost string) Effect {
 		}
 		creature := game.ObjectRef{ID: host.InstanceID, Epoch: host.ObjectEpoch}
 		return MayPay{
-			Chooser:  item.Trigger.Event.Actor,
-			Cost:     cost,
-			Question: name + " — pay " + cost + " to untap the enchanted creature?",
-			OnPay: func(ctx *Context) error {
-				c, ok := ctx.Game.LookupCardForEffect(creature.ID)
-				if !ok || c.ObjectEpoch != creature.Epoch || !onBattlefield(ctx.Game, creature.ID) {
-					return nil
-				}
-				return UntapTarget{Target: creature.ID}.Apply(ctx)
-			},
+			Chooser:      item.Trigger.Event.Actor,
+			Cost:         cost,
+			Question:     name + " — pay " + cost + " to untap the enchanted creature?",
+			Then:         mayPayUntapEnchantedCreaturePaid,
+			CarryObjects: []game.ObjectRef{creature},
 		}.Apply(ctx)
 	}
 }
@@ -268,3 +263,20 @@ func (BecomeAnAuraAndReanimateTarget) Apply(ctx *Context) error {
 			return animateAttachAndSchedule(g, auraRef, name, controller, entered)
 		})
 }
+
+// mayPayUntapEnchantedCreaturePaid is the paid half of
+// mayPayToUntapEnchantedCreature, keyed (#4264): the creature, with the
+// epoch it had as the trigger resolved, rides the prompt, so a creature
+// that left and came back is a new object and is not untapped (CR 400.7).
+var mayPayUntapEnchantedCreaturePaid = PayUnlessBranches("pay-unless/untap-enchanted-creature",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		if len(r.Objects) == 0 {
+			return nil
+		}
+		creature := r.Objects[0]
+		c, ok := ctx.Game.LookupCardForEffect(creature.ID)
+		if !ok || c.ObjectEpoch != creature.Epoch || !onBattlefield(ctx.Game, creature.ID) {
+			return nil
+		}
+		return UntapTarget{Target: creature.ID}.Apply(ctx)
+	}, nil)
