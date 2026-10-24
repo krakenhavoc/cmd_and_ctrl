@@ -102,29 +102,33 @@ func b64HasAnyCounter() CardPredicate {
 // permanent": the controller chooses how many of each kind, then they are
 // removed through the ordinary counter primitive.
 func b64ChooseAndRemoveCounters(ctx *Context, target uuid.UUID, n int) error {
-	you := ctx.Controller()
-	return chooseCounters(ctx, target, n, "Glissa Sunslayer — remove up to three counters",
-		func(ctx *Context, kind string, most int) int {
-			mine := false
-			if c, ok := ctx.Game.LookupCardForEffect(target); ok {
-				mine = c.Controller == you
-			}
-			if (kind == "-1/-1") == mine {
-				return most
-			}
-			return 0
-		},
-		func(ctx *Context, picked map[string]int) error {
-			kinds := make([]string, 0, len(picked))
-			for kind := range picked {
-				kinds = append(kinds, kind)
-			}
-			sort.Strings(kinds)
-			for _, kind := range kinds {
-				if err := (AddCounter{Target: target, Kind: kind, N: -picked[kind]}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+	return glissaSunslayerRemoves.choose(ctx, target, nil, n, "Glissa Sunslayer — remove up to three counters")
 }
+
+// glissaSunslayerRemoves is Glissa Sunslayer's clause (#4294): the bot
+// removes -1/-1 counters from its own permanent and everything else from
+// another's, and the counts chosen come off the permanent.
+var glissaSunslayerRemoves = registerCounterChoice("number/glissa-sunslayer-remove-counters",
+	func(ctx *Context, target uuid.UUID, kind string, most int) int {
+		mine := false
+		if c, ok := ctx.Game.LookupCardForEffect(target); ok {
+			mine = c.Controller == ctx.Controller()
+		}
+		if (kind == "-1/-1") == mine {
+			return most
+		}
+		return 0
+	},
+	func(ctx *Context, target uuid.UUID, _ []uuid.UUID, picked map[string]int) error {
+		kinds := make([]string, 0, len(picked))
+		for kind := range picked {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
+		for _, kind := range kinds {
+			if err := (AddCounter{Target: target, Kind: kind, N: -picked[kind]}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

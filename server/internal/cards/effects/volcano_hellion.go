@@ -57,11 +57,6 @@ func volcanoHellionDamage(g *game.Game, item *game.StackItem) error {
 	}
 	target := targets[0].ID
 	you := ctx.Controller()
-	source := ctx.Source()
-	var sourceObj *game.ObjectRef
-	if ref, ok := ctx.SourceRef(); ok {
-		sourceObj = &ref
-	}
 	return ChooseNumber{
 		Question:   "Volcano Hellion — choose an amount of damage to deal to you and the target creature",
 		NoMax:      true,
@@ -80,11 +75,26 @@ func volcanoHellionDamage(g *game.Game, item *game.StackItem) error {
 			}
 			return marks
 		},
-		Then: func(ctx *Context, n int) error {
-			return volcanoHellionDeal(ctx, source, sourceObj, you, target, n)
-		},
+		Then:  volcanoHellionDeals,
+		Carry: []uuid.UUID{target},
 	}.Apply(ctx)
 }
+
+// volcanoHellionDeals is the chosen amount's branch (#4294): the amount
+// dealt to the controller and to the target the trigger chose, which rides
+// the prompt's Carry. The damage's source object is read off the asking
+// trigger.
+var volcanoHellionDeals = NumberThen("number/volcano-hellion-damage-to-you-and-target",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		var sourceObj *game.ObjectRef
+		if ref, ok := ctx.SourceRef(); ok {
+			sourceObj = &ref
+		}
+		return volcanoHellionDeal(ctx, ctx.Source(), sourceObj, ctx.Controller(), r.Carry[0], r.Number)
+	})
 
 // volcanoHellionDeal is "it deals that much damage to you and target
 // creature. The damage can't be prevented": one damage instruction, two

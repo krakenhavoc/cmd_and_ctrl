@@ -70,19 +70,24 @@ func dorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
 		Tapped:   true,
 		Prefer:   triggerAttackTarget(item),
 		Label:    "Dorothea's Retribution",
-		Then: func(ctx *Context, created []uuid.UUID) error {
-			if len(created) == 0 {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				At:    game.StepEndCombat,
-				Label: "Dorothea's Retribution — sacrifice the Spirit",
-				Cards: created,
-				Body:  sacrificeListedCardsBody,
-			}.Apply(ctx)
-		},
+		Tail:     game.KeyedTail{Ref: dorotheasRetributionSacrifice},
 	}.Apply(NewContext(g, item))
 }
+
+// dorotheasRetributionSacrifice is the Spirit's tail, keyed (#4294): the
+// end of combat trigger that sacrifices it.
+var dorotheasRetributionSacrifice = AttackingTokensThen("attacking-tokens/dorotheas-retribution-sacrifice-the-spirit",
+	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
+		if len(created) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			At:    game.StepEndCombat,
+			Label: "Dorothea's Retribution — sacrifice the Spirit",
+			Cards: created,
+			Body:  sacrificeListedCardsBody,
+		}.Apply(ctx)
+	})
 
 // withSubtypeInAddition is "except it's a <subtype> in addition to its
 // other types" on a type line (CR 707.9a): the subtype is added, and

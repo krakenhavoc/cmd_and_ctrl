@@ -95,20 +95,34 @@ func forgottenAncientMoveOnto(ctx *Context, self uuid.UUID, onto []uuid.UUID) er
 			Max:      have,
 			Question: "Forgotten Ancient — how many +1/+1 counters onto " + name + "?",
 			Unit:     game.PayAmountCounters,
-			Then: func(ctx *Context, n int) error {
-				if n <= 0 || !onBattlefield(ctx.Game, self) || !onBattlefield(ctx.Game, to) {
-					n = 0
-				}
-				// The rest of the move, and the next creature's
-				// question, wait for a prompt the counters ask (a
-				// CR 616 order; #4162, CR 608.2c).
-				ctx.RecordStep(forgottenAncientRecord, append([]uuid.UUID{to}, rest...), n)
-				return forgottenAncientMoveRest.Run(ctx)
-			},
+			Then:     forgottenAncientChosen,
+			// The Ancient, the creature this question is about, and the
+			// creatures still to ask about (#4294).
+			Carry: append([]uuid.UUID{self, to}, rest...),
 		}.Apply(ctx)
 	}
 	return nil
 }
+
+// forgottenAncientChosen is one question's branch (#4294): how many
+// counters move onto the creature asked about. Its Carry is the Ancient,
+// that creature and the creatures still to ask about.
+var forgottenAncientChosen = NumberThen("number/forgotten-ancient-move-counters",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if len(r.Carry) < 2 {
+			return nil
+		}
+		self, to, rest := r.Carry[0], r.Carry[1], r.Carry[2:]
+		n := r.Number
+		if n <= 0 || !onBattlefield(ctx.Game, self) || !onBattlefield(ctx.Game, to) {
+			n = 0
+		}
+		// The rest of the move, and the next creature's
+		// question, wait for a prompt the counters ask (a
+		// CR 616 order; #4162, CR 608.2c).
+		ctx.RecordStep(forgottenAncientRecord, append([]uuid.UUID{to}, rest...), n)
+		return forgottenAncientMoveRest.Run(ctx)
+	})
 
 // forgottenAncientRecord is the creature the counters move onto, then
 // the creatures still to ask about; and how many move (0: none).

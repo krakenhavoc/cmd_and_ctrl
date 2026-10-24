@@ -281,11 +281,17 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownAnyPlayerPays(c.PickThen) {
 				unknown = append(unknown, "any-player consequences "+c.PickThen)
 			}
-		case c.Kind == PendingChoicePayAmount:
+		case c.Kind == PendingChoicePayAmount && c.MayPayX != nil:
 			// #4289: a keyed MayPayX's "choose X" names the branches the
 			// payment that follows runs.
 			if !KnownPayUnlessElse(c.PickThen) {
 				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayAmount:
+			// #4294: a keyed number prompt's branch (an assist helper's is
+			// the engine's own).
+			if !KnownNumberThen(c.PickThen) {
+				unknown = append(unknown, "number branch "+c.PickThen)
 			}
 		case c.Kind == PendingChoicePayUnless:
 			// #4256: a keyed pay-unless prompt's decline (and, since
@@ -305,6 +311,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
+		}
+		// #4294: a tokens-attacking split's tail is a registered key too.
+		if c.AttackSplit != nil {
+			unknown = append(unknown, unknownKeyedTail(c.AttackSplit.Tail)...)
 		}
 		// #4264: a keyed pay-unless's waterbend clause is built by a
 		// registered kind; restored without it the payment would be plain

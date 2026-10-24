@@ -65,15 +65,20 @@ func sandstormCrasherCopy(g *game.Game, item *game.StackItem) error {
 		Tapped:   true,
 		Prefer:   triggerAttackTarget(item),
 		Label:    "Sandstorm Crasher",
-		Then: func(ctx *Context, created []uuid.UUID) error {
-			if len(created) == 0 {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				Label: "Sandstorm Crasher — sacrifice the token",
-				Cards: created,
-				Body:  sacrificeListedCardsBody,
-			}.Apply(ctx)
-		},
+		Tail:     game.KeyedTail{Ref: sandstormCrasherSacrifice},
 	}.Apply(ctx)
 }
+
+// sandstormCrasherSacrifice is the copy's tail, keyed (#4294): the end
+// step trigger that sacrifices it.
+var sandstormCrasherSacrifice = AttackingTokensThen("attacking-tokens/sandstorm-crasher-sacrifice-the-token",
+	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
+		if len(created) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			Label: "Sandstorm Crasher — sacrifice the token",
+			Cards: created,
+			Body:  sacrificeListedCardsBody,
+		}.Apply(ctx)
+	})

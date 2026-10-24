@@ -36,13 +36,18 @@ func init() {
 				Question: "Expel the Interlopers — choose a number between 0 and 10",
 				Unit:     game.PayAmountOther,
 				Goal:     expelTheInterlopersGoal,
-				Then: func(ctx *Context, n int) error {
-					return DestroyAllMatching{Match: And(Creature(), PowerGE(n))}.Apply(ctx)
-				},
+				Then:     expelTheInterlopersDestroys,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// expelTheInterlopersDestroys is the chosen number's branch (#4294):
+// destroy all creatures with power that number or greater.
+var expelTheInterlopersDestroys = NumberThen("number/expel-the-interlopers-destroy-power-at-least",
+	func(ctx *Context, r game.NumberAnswer) error {
+		return DestroyAllMatching{Match: And(Creature(), PowerGE(r.Number))}.Apply(ctx)
+	})
 
 // expelTheInterlopersGoal is the number that destroys the most
 // creatures the caster does not control for the fewest they do, ties

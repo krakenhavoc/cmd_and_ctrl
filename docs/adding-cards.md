@@ -1695,7 +1695,7 @@ MayPayEnergy{N: 2, Question: "…", Then: heroPaid}                             
 PayEnergyUnless{N: 2, Question: "…", Else: heroDeclined}                        // "sacrifice it unless you pay {E}{E}"
 PayEnergyOrElse{N: 2, OrElse: func(ctx *Context) error { … }}                    // "pay {E}{E}. If you can't, …" (asks nothing)
 PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,      // "you may pay any amount of {E}"
-	Then: func(ctx *Context, paid int) error { … }}                               // Min: 1 for "one or more"
+	Then: heroDamages}                                                            // a NumberThen; Min: 1 for "one or more"
 ```
 
 `MayPayEnergy` / `PayEnergyUnless` are the `pay_unless` prompt with an
@@ -1711,7 +1711,14 @@ event, the targets and the source object as a closure over the item did.
 Cards whose consequence is the same sentence share one key (see the
 shared handles in `energy_resolution.go`); the key is an on-disk identity,
 never renamed and never reused, and is appended to the ledger. `PayEnergyAmount` is the
-`pay_amount` prompt: `Then` always runs exactly once, with 0 when
+`pay_amount` prompt: `Then` is a registered number branch (#4294), `var heroDamages
+= NumberThen("number/<card>-<clause>", func(ctx *Context, r game.NumberAnswer)
+error { … })`, handed the amount as `r.Number` and the asking item as `ctx.Item`
+(its targets, event and source object), so a table waiting on the payer is a restore
+point. Put what the branch needs beyond the item in `Carry` (IDs; the controller
+rides first and is stripped for you), `Words` or `Nums`; capture nothing. Share a key
+where the consequence is the same sentence (`dealThatMuchDamageToTheTarget`). `Then`
+always runs exactly once, with 0 when
 nothing was paid (no energy, declined, or the payer left), so the rest
 of the card ("Destroy all creatures") lives inside it. `Goal` is the
 amount the card is for, computed when it is asked (the lethal damage,
@@ -7875,12 +7882,17 @@ the board.
 is ADR 0129 §3's `pay_amount` prompt, with `Resource` saying what each
 point costs. Three builders:
 
-- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then}`:
+- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then, Carry}`:
   "an amount of damage of your choice" (Volcano Hellion). Nothing is
   paid; `NoMax` is a number with no printed ceiling (CR 107.1b).
 - `PayLifeAmount{Unit, Goal, Then}`: "you may pay any amount of life. If
   you do, …" (Necrodominance). The ceiling is the payer's life total
   (CR 119.4); `Then` gets the life paid, 0 on a decline.
+
+`Then` on all three is a registered number branch (`NumberThen`, #4294), the
+same as `PayEnergyAmount`'s: the number is `r.Number`, the card's own IDs are
+`r.Carry` (give them as `Carry`), and a chain of questions keeps its place in
+`Words` / `Nums`. No closure: the prompt is a restore point.
 - `PayAnyAmountOfLifeAsEnters(label, unit, goal)` for `Spec.AsEnters`:
   "As this enters, pay any amount of life" (Phyrexian Processor). The
   amount lands on `game.Card.ChosenNumber`; read it in the permanent's
@@ -7907,10 +7919,15 @@ that enter attacking).
 
 **Tokens "that are tapped and attacking"** with no player named are
 `CreateTokensAttackingYourChoice{Template, N, Tapped, Prefer, Label,
-Then}`: CR 508.4 lets the controller choose what each attacks, so with
+Tail}`: CR 508.4 lets the controller choose what each attacks, so with
 more than one player, planeswalker or battle to attack they are asked
 how many go at each, `Prefer` (what the creature whose trigger it is
-attacks) first. Prefer it to `CreateTokensAttackingForEffect` with a
+attacks) first. The rest of the card is a registered tail (#4294),
+`var thing = AttackingTokensThen("attacking-tokens/<card>-<clause>",
+func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error { … })`
+and `Tail: game.KeyedTail{Ref: thing}` (`Carry` and `N` carry what it
+reads); it runs against a stand-in for the item, so a card that needs the
+item itself keeps `Then` (a closure, and not a restore point). Prefer it to `CreateTokensAttackingForEffect` with a
 fixed defender, which is a caveat ("attacks the player X attacked
 rather than a player of your choice").
 
@@ -7965,8 +7982,11 @@ Resourceful Defense) is `chooseCounters` in
 [choose_counters.go](../server/internal/cards/effects/choose_counters.go):
 a `ChooseNumber` per kind of counter on the permanent, in sorted order,
 each bounded by what it has and by what is left of the ceiling, handing
-`then` a kind-to-count map. Give it a `counterGoal` so a bot knows which
-kinds it wants gone.
+the clause's final step a kind-to-count map. Register the clause with
+`registerCounterChoice(key, goal, final)` (a package-level var, #4294) and
+call `.choose(ctx, perm, extra, ceiling, question)`; give it a
+`counterGoal` so a bot knows which kinds it wants gone. The chain's place
+rides the prompt, so each question is a restore point.
 
 **"Discard two cards unless you discard a <kind> card"** (Thirst for
 Knowledge, Thirst for Discovery) is `discardTwoUnlessOne` in

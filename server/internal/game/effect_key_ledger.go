@@ -115,6 +115,8 @@ func ledgerLineResolves(line string) bool {
 		return KnownConfirmThen(fields[1])
 	case "anyplayer":
 		return KnownAnyPlayerPays(fields[1])
+	case "number":
+		return KnownNumberThen(fields[1])
 	// #4253: these registries' keys may hold spaces (a "then discard"
 	// body is keyed by its question), so the key is the rest of the line.
 	case "resume":

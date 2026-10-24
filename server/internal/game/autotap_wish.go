@@ -69,7 +69,7 @@ var CatalogWantsColors func(oracleID string) []string
 // spendWish is what a CAST's object reads back from its payment,
 // snapshotted when the ManaSpendContext is built. Plain data — an ID, a
 // bitset, two lists and a map of answers — so a context stored in game
-// state (AssistPrompt.spend) carries no Game and no closure with it.
+// state (AssistPrompt.Spend) carries no Game and no closure with it.
 //
 // Casts only. An activated ability's payment names no wish: a rider reads
 // "when that mana is spent to cast", and the ability-cost paths were not
