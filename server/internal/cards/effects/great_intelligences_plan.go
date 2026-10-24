@@ -36,7 +36,7 @@ var greatIntelligencesPlanChoice = NewVillainousChoice("great-intelligences-plan
 		Label: "The controller of Great Intelligence's Plan may cast a spell from their hand without paying its mana cost",
 		Harm:  3,
 		Body: func(ctx *Context, _ Facing) error {
-			offerFreeHandCast(ctx, ctx.Controller(), "Great Intelligence's Plan", "a spell", nil)
+			offerFreeHandCast(ctx, ctx.Controller(), greatIntelligencesPlanFreeCast, "a spell", nil)
 			return nil
 		},
 	})
@@ -64,3 +64,6 @@ func init() {
 		),
 	})
 }
+
+// greatIntelligencesPlanFreeCast is the offer's keyed continuation (#4246).
+var greatIntelligencesPlanFreeCast = registerFreeHandCastOffer("choose-cards/great-intelligences-plan-cast", "Great Intelligence's Plan")

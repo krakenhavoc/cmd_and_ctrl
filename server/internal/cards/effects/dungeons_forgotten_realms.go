@@ -345,29 +345,15 @@ var madWizardsLairAfterDraw = game.RegisterDrawThen("dungeon/mad-wizards-lair", 
 			candidates = append(candidates, id)
 		}
 	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	player, source := d.Player, d.Source
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:     player,
-		Source:      source,
-		Question:    "Mad Wizard's Lair — cast one of them without paying its mana cost?",
-		Cards:       candidates,
-		Min:         0,
-		Max:         1,
-		Zone:        game.ZoneHand,
-		Destination: game.ChooseCastFree,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.FreeCastFromHandForEffect(player, source, picked[0], dungeonOfTheMadMageName)
-			return nil
-		},
-	})
+	// The keyed free-cast offer (free_hand_cast.go, #4246), so a table
+	// waiting on it is a restore point.
+	offerFreeHandCastOver(g, d.Player, d.Source, madWizardsLairFreeCast,
+		"Mad Wizard's Lair — cast one of them without paying its mana cost?", candidates)
 	return nil
 })
+
+// madWizardsLairFreeCast is the room's free-cast offer, keyed (#4246).
+var madWizardsLairFreeCast = registerFreeHandCastOffer("choose-cards/mad-wizards-lair-cast", dungeonOfTheMadMageName)
 
 // tombTrappedEntry: each player loses 1 life.
 func tombTrappedEntry(g *game.Game, item *game.StackItem) error {

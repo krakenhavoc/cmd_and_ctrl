@@ -409,3 +409,26 @@ resolution (CR 608.2g): the hit is cast there or declined there, and the passed-
 The permission this ADR describes (§3, §4) is unchanged and still the data under that prompt; the pass-closed window is now only
 the fallback for an offer made with no open resolution. `DiscoverThenForEffect` and `effects.Discover.Then` are replaced by
 `DiscoverForEffect` and a step record (`effects.DiscoverStepKey`).
+
+## Amendment 2026-10-23: the free-cast offers are keyed picks, so a table waiting on one is a restore point (#4246)
+
+Every free-cast pick resumed through a closure on its prompt (`ChooseCardsPrompt.Then`), and a prompt with a closure frame is not written to a restore point. A table waiting on Cecily's, Buster Sword's or any other free-cast offer could be undone but not saved and restored. #4228 (ADR 0065, amendment 2026-10-23) made The Ur-Sphinx's graveyard offer a keyed choose-cards pick (`choose-cards/the-ur-sphinx-cast`); this does the same for the rest.
+
+**Decision.**
+
+1. **One key per card.** `effects.registerFreeHandCastOffer(key, name)` (`effects/free_hand_cast.go`) registers a choose-cards continuation (`game.RegisterChooseCardsThen`) and returns a `freeHandCastOffer`, the key with the card's name. Each caller holds one in a package-level var and hands it to `offerFreeHandCast`. What the answer needs is plain data on the prompt: the chooser (who casts), the source (the card that asked) and the candidates. The name is bound to the key, not read back off the source when the answer comes in, because the source may be gone by then: a copy of Rishkar's Expertise has ceased to exist (CR 707.10a), and so has a token Surtland Elementalist that died (CR 704.5d). The keys, ledgered in `game/testdata/effect_keys.txt`: `choose-cards/buster-sword-cast`, `choose-cards/cecily-haunted-mage-cast`, `choose-cards/great-intelligences-plan-cast`, `choose-cards/kari-zevs-expertise-cast`, `choose-cards/rishkars-expertise-cast`, `choose-cards/surtland-elementalist-cast` and `choose-cards/mad-wizards-lair-cast` (the Dungeon of the Mad Mage room, which wrote its own copy of the offer and now calls `offerFreeHandCastOver`).
+2. **The answer re-checks the hand.** A keyed pick gives up the closure frame's live-zone re-check (`choose_cards_keyed.go`), so the continuation does it: a picked card no longer in the chooser's hand is granted nothing. The offer's floor is zero, so the pruning a floor-one pick needs (the #544 wedge) does not apply.
+3. **The look-and-cast pick is keyed the same way.** `effects.registerFreeLibraryCastOffer(key, name)` (`effects/free_library_cast.go`) is the library form: the looked-at cards ride on the prompt as its `Carry`, so the answer still bottoms the rest in a random order and grants the library free cast over the pick if it is still in a library. Aetherworks Marvel's key is `choose-cards/aetherworks-marvel-cast`. A pick that ends unanswered (the looker left the game) does nothing.
+4. **`offerFreeHandCastFrom` stays** as the form that takes the game and the source rather than a Context; Cecily's body is a step now (#4228) and calls `offerFreeHandCast`.
+
+**What is not keyed here.** The outside-the-game picks (`QueueOutsidePickForEffect`: every wish, learn's Lesson half, `PlayFromOutside`'s free casts) carry a `Match` predicate the database pick validates a typed name against, so a key needs a keyed predicate too. Learn's discard half (`PlayerDiscardsThenForEffect`), pay-unless prompts and the other discard-then prompts have no keyed registry at all. Each is a separate seam, listed in #4256.
+
+**Rollback.** A binary from before this change does not have these keys. Handed a file with one of the offers open, it refuses it (`checkEffectKeys`, `ErrUnknownEffectKey`), as it does for #4228's keys, rather than restoring a question whose answer would run nothing.
+
+**Snapshot impact.** None to the schema. A keyed pick is written with the fields v9 already has (`pendingChoices[].pickThen`, `pendingChoices[].optionCarry`), and no fixture is edited.
+
+**Closure counts.** Unchanged: no field reaches a func from `Game`; the closures these prompts carried were never persisted, and a keyed prompt carries none.
+
+**Tests.** `effects/free_cast_keyed_restore_test.go`: Cecily's offer across a strict restore, picked and cast free on the restored table, and declined; the same offer with its key replaced by an unknown one refused at restore; Buster Sword's offer across a strict restore, the bolt cast and resolved; a picked card that went to another hand granted nothing; Aetherworks Marvel's look across a strict restore, the rest bottomed and the pick granted. `TestDungeonOfTheMadMageWalk` now takes a strict restore with the Lair's offer open.
+
+**Back-out.** Putting the closure back in `offerFreeHandCastOver` fails `TestCecilyFreeCastOfferIsARestorePoint`, `TestCecilyFreeCastOfferWithAnUnknownKeyIsRefused` and `TestBusterSwordFreeCastOfferIsARestorePoint` (not a restore point); dropping the hand check fails `TestFreeHandCastPickNoLongerInTheChoosersHandIsGrantedNothing`; putting the closure back in `lookAtTopAndOfferFreeCast` fails `TestAetherworksMarvelFreeCastPickIsARestorePoint`.

@@ -281,6 +281,10 @@ func TestDungeonOfTheMadMageWalk(t *testing.T) {
 	if me.Hand.Size() != hand+3 {
 		t.Fatalf("the Lair drew %d, want 3", me.Hand.Size()-hand)
 	}
+	// The offer is a keyed pick (#4246): the table waiting on it is a
+	// restore point, and the rest of the walk runs on the restored table.
+	g = restoreRoundTrip(t, g, true)
+	me = g.Seats[0]
 	c := latestChooseCardsFor(g, me.ID)
 	if c == nil {
 		t.Fatalf("the Lair offered no free cast")

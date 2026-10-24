@@ -63,8 +63,11 @@ func busterSwordOfferFreeCast(ctx *Context, controller uuid.UUID, damage int) er
 	if damage < 0 {
 		return nil
 	}
-	offerFreeHandCast(ctx, controller, "Buster Sword",
+	offerFreeHandCast(ctx, controller, busterSwordFreeCast,
 		"a spell with mana value "+strconv.Itoa(damage)+" or less",
 		ManaValueLE(damage))
 	return nil
 }
+
+// busterSwordFreeCast is the offer's keyed continuation (#4246).
+var busterSwordFreeCast = registerFreeHandCastOffer("choose-cards/buster-sword-cast", "Buster Sword")

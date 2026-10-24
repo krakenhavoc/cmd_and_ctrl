@@ -61,7 +61,10 @@ func init() {
 // Rishkar's Expertise's rishkarsExpertiseOfferFreeCast with the
 // ceiling lowered to two.
 func kariZevsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	offerFreeHandCast(ctx, controller, "Kari Zev's Expertise",
+	offerFreeHandCast(ctx, controller, kariZevsExpertiseFreeCast,
 		"a spell with mana value 2 or less", ManaValueLE(2))
 	return nil
 }
+
+// kariZevsExpertiseFreeCast is the offer's keyed continuation (#4246).
+var kariZevsExpertiseFreeCast = registerFreeHandCastOffer("choose-cards/kari-zevs-expertise-cast", "Kari Zev's Expertise")
