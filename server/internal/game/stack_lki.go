@@ -105,10 +105,45 @@ func (g *Game) lastKnownSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) 
 	return rec.card, &item, true
 }
 
-// clearLastKnownStackLocked forgets the turn's records. Called at the
-// turn boundary. Caller must hold g.mu.
+// HoldSpellForEffect records the spell `spellID` as it stands on the
+// stack, for an effect that will name it from a prompt it opens (#4276,
+// CR 608.2h). Wandering Archaic's trigger asks the caster to pay {2} and
+// then its controller whether to copy "that spell"; the first question
+// is a pay_unless, which does not stop the table (choice_gate.go), so
+// the spell can resolve, and the turn move on, before the answer. By
+// then the resolving slot is long gone (it lives for one event batch)
+// and only this record is left, which CopyLastKnownSpellForEffect reads.
+//
+// The spell stays on the stack and keeps resolving as it would; a spell
+// not on the stack records nothing (its own exit already did, or it has
+// no record to give). The record lives like every last-known-spell
+// record, for the turn, and also for as long as an open prompt names the
+// spell in its carried IDs (clearLastKnownStackLocked). Caller must hold
+// g.mu.
+func (g *Game) HoldSpellForEffect(spellID uuid.UUID) {
+	g.rememberLeavingSpellLocked(spellID)
+}
+
+// clearLastKnownStackLocked forgets the turn's records, except those a
+// prompt still open names in its carried IDs (HoldSpellForEffect): a
+// pay_unless left unanswered over a turn boundary still has its spell.
+// Called at the turn boundary. Caller must hold g.mu.
 func (g *Game) clearLastKnownStackLocked() {
-	g.lastKnownStack = nil
+	var kept map[uuid.UUID]lastKnownSpell
+	for _, c := range g.PendingChoices {
+		if c == nil {
+			continue
+		}
+		for _, id := range c.OptionCarry {
+			if rec, ok := g.lastKnownStack[id]; ok {
+				if kept == nil {
+					kept = make(map[uuid.UUID]lastKnownSpell)
+				}
+				kept[id] = rec
+			}
+		}
+	}
+	g.lastKnownStack = kept
 }
 
 // cloneLastKnownStack copies the record for Clone. The values are never
