@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -28,7 +26,8 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("an artifact or creature", Or(Artifact(), Creature())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			sacrificedMV := sacrificedManaValue(ctx)
+			tail := ctx.Tail(anchorToRealityScry)
+			tail.N = sacrificedManaValue(ctx)
 			return SearchLibrary{
 				Player: item.Controller,
 				Predicate: func(c game.Card) bool {
@@ -38,17 +37,25 @@ func init() {
 				Limit:   1,
 				Shuffle: true,
 				Reason:  "Anchor to Reality — an Equipment or Vehicle card",
-				Then: func(g *game.Game, found []uuid.UUID) error {
-					if len(found) == 0 {
-						return nil
-					}
-					c, ok := g.LookupCardForEffect(found[0])
-					if !ok || c.ManaValue() >= sacrificedMV {
-						return nil
-					}
-					return Scry{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-				},
+				// #4253 slice 4: the sacrificed permanent's mana value rides
+				// the tail, so a fetched Equipment's entry question is a
+				// restore point.
+				ThenTail: tail,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// anchorToRealityScry is "if its mana value is less than the sacrificed
+// permanent's (Tail.N), scry 2", told the card that was put onto the
+// battlefield. An on-disk key.
+var anchorToRealityScry = CardTail("anchor-to-reality/scry-if-cheaper", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(o.IDs[0])
+	if !ok || c.ManaValue() >= o.Tail.N {
+		return nil
+	}
+	return Scry{Player: o.Tail.Player, N: 2}.Apply(ctx)
+})

@@ -46,6 +46,13 @@ type KeyedTail struct {
 	Carry []uuid.UUID
 	// N is a number the body reads.
 	N int
+	// Asked is the asking stack item as data (NewAskedItem, #4253 slice 4),
+	// for a body that reads more of the item than its controller and
+	// source: its targets, its X, its text, the window its source object
+	// had. A body runs against a copy rebuilt from it (AskedItem.StackItem),
+	// the way a keyed pay-unless answer does. Nil when the card put none
+	// there.
+	Asked *AskedItem
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -140,6 +147,7 @@ func isScryOrSurveil(k PendingChoiceKind) bool {
 // copyKeyedTail gives a tail its own Carry.
 func copyKeyedTail(t KeyedTail) KeyedTail {
 	t.Carry = copyUUIDs(t.Carry)
+	t.Asked = copyAskedItem(t.Asked)
 	return t
 }
 
@@ -150,6 +158,7 @@ type keyedTailSnapshot struct {
 	Source *uuid.UUID  `json:"source,omitempty"`
 	Carry  []uuid.UUID `json:"carry,omitempty"`
 	N      int         `json:"n,omitempty"`
+	Asked  *AskedItem  `json:"asked,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -158,7 +167,7 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 	}
 	return &keyedTailSnapshot{
 		Key: t.Ref.key, Player: uuidPtrOrNil(t.Player), Source: uuidPtrOrNil(t.Source),
-		Carry: copyUUIDs(t.Carry), N: t.N,
+		Carry: copyUUIDs(t.Carry), N: t.N, Asked: copyAskedItem(t.Asked),
 	}
 }
 
@@ -168,7 +177,7 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 	}
 	return KeyedTail{
 		Ref: TailRef{key: s.Key}, Player: uuidOrNil(s.Player), Source: uuidOrNil(s.Source),
-		Carry: copyUUIDs(s.Carry), N: s.N,
+		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked),
 	}
 }
 

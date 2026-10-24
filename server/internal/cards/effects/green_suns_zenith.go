@@ -3,8 +3,6 @@ package effects
 import (
 	"slices"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,7 +29,8 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			src := ctx.Source()
-			owner := item.Owner
+			tail := ctx.Tail(greenSunsZenithTuck)
+			tail.Player = item.Owner
 			return SearchLibrary{
 				Player: ctx.Controller(),
 				Predicate: func(c game.Card) bool {
@@ -41,12 +40,19 @@ func init() {
 				Limit:  1,
 				Reason: "Green Sun's Zenith — a green creature card with mana value X or less",
 				Source: src,
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.TuckToLibraryThenForEffect(src, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-						return g.ShuffleLibraryForEffect(owner)
-					})
-				},
+				// #4253 slice 4: the owner rides the tail.
+				ThenTail: tail,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// greenSunsZenithTuck is "shuffle Green Sun's Zenith into its owner's
+// library" (Tail.Source, Tail.Player the owner), once the creature has
+// entered. An on-disk key.
+var greenSunsZenithTuck = game.RegisterTail("green-suns-zenith/shuffle-into-library", func(g *game.Game, o game.TailOutcome) error {
+	owner := o.Tail.Player
+	return g.TuckToLibraryThenForEffect(o.Tail.Source, game.TuckOptions{}, func(g *game.Game, _ bool) error {
+		return g.ShuffleLibraryForEffect(owner)
+	})
+})

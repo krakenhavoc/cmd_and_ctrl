@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -40,19 +38,20 @@ func init() {
 				TappedOnEntry: true,
 				Reason:        "Explore the Underdark — up to two basic lands and/or Gates, onto the battlefield tapped",
 				Source:        item.SourceCardID,
-				Then:          exploreTheUnderdarkTakeTheInitiative(you, item.SourceCardID),
+				// #4253 slice 4: the initiative is a registered tail.
+				ThenTail: game.KeyedTail{Ref: exploreTheUnderdarkInitiative, Player: you, Source: item.SourceCardID},
 			}.Apply(ctx)
 		},
 	})
 }
 
-// exploreTheUnderdarkTakeTheInitiative is the search's continuation:
-// "You take the initiative."
-func exploreTheUnderdarkTakeTheInitiative(you, source uuid.UUID) func(g *game.Game, _ []uuid.UUID) error {
-	return func(g *game.Game, _ []uuid.UUID) error {
+// exploreTheUnderdarkInitiative is the search's continuation: "You take
+// the initiative." An on-disk key.
+var exploreTheUnderdarkInitiative = game.RegisterTail("explore-the-underdark/take-the-initiative",
+	func(g *game.Game, o game.TailOutcome) error {
+		you := o.Tail.Player
 		if p := g.PlayerByIDForEffect(you); p == nil || p.Eliminated {
 			return nil
 		}
-		return g.TakeInitiativeForEffect(you, source)
-	}
-}
+		return g.TakeInitiativeForEffect(you, o.Tail.Source)
+	})

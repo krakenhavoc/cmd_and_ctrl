@@ -27,10 +27,7 @@ func init() {
 			// The life loss waits for the scry's answer, and for the draw after it
 			// (CR 608.2c, #4155).
 			Instruction(func(ctx *Context) error {
-				c := ctx.Controller()
-				return Scry{Player: c, N: 2, Then: func(g *game.Game) error {
-					return g.DrawNForEffect(c, 2)
-				}}.Apply(ctx)
+				return Scry{Player: ctx.Controller(), N: 2, ThenTail: ctx.TailN(thenDrawCards, 2)}.Apply(ctx)
 			}),
 			GainLife{Amount: -2},
 		),

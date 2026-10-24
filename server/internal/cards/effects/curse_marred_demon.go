@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -28,15 +26,13 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					controller := item.Controller
 					return SearchLibrary{
-						Player:  controller,
-						Dest:    game.ZoneHand,
-						Limit:   1,
-						Shuffle: true,
-						Reason:  "Curse-Marred Demon — search your library for a card",
-						Source:  item.SourceCardID,
-						Then: func(g *game.Game, _ []uuid.UUID) error {
-							return g.DiscardRandomForEffect(controller, 1)
-						},
+						Player:   controller,
+						Dest:     game.ZoneHand,
+						Limit:    1,
+						Shuffle:  true,
+						Reason:   "Curse-Marred Demon — search your library for a card",
+						Source:   item.SourceCardID,
+						ThenTail: game.KeyedTail{Ref: thenDiscardAtRandom, Player: controller, N: 1},
 					}.Apply(NewContext(g, item))
 				}),
 		},

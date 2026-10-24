@@ -48,12 +48,9 @@ const theLegendOfKurukOracleID = "201b8936-18f4-4881-a1d4-c308cf3832bf"
 // to leave on top.
 func kurukScryTwoThenDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	controller := item.Controller
 	return Scry{
-		Player: controller,
-		N:      2,
-		Then: func(g *game.Game) error {
-			return g.DrawNForEffect(controller, 1)
-		},
+		Player:   item.Controller,
+		N:        2,
+		ThenTail: ctx.TailN(thenDrawCards, 1),
 	}.Apply(ctx)
 }

@@ -38,9 +38,7 @@ func init() {
 			if total < 15 {
 				return DrawCards{Player: controller, N: x}.Apply(ctx)
 			}
-			return Scry{Player: controller, N: x, Then: func(g *game.Game) error {
-				return g.DrawNForEffect(controller, x)
-			}}.Apply(ctx)
+			return Scry{Player: controller, N: x, ThenTail: ctx.TailN(thenDrawCards, x)}.Apply(ctx)
 		},
 	})
 }

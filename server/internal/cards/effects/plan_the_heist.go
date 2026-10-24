@@ -27,11 +27,10 @@ func init() {
 		SpecialActions: []game.SpecialAction{Plot("{3}{U}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			c := ctx.Controller()
-			draw := func(g *game.Game) error { return g.DrawNForEffect(c, 3) }
 			if p := ctx.Game.PlayerByIDForEffect(c); p != nil && (p.Hand == nil || len(p.Hand.Cards) == 0) {
-				return Surveil{Player: c, N: 3, Then: draw}.Apply(ctx)
+				return Surveil{Player: c, N: 3, ThenTail: ctx.TailN(thenDrawCards, 3)}.Apply(ctx)
 			}
-			return draw(ctx.Game)
+			return ctx.Game.DrawNForEffect(c, 3)
 		},
 	})
 }

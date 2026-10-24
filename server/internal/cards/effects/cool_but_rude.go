@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -93,13 +91,11 @@ func coolButRudeRummage(g *game.Game, item *game.StackItem) error {
 func coolButRudeTutor(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	return SearchLibrary{
-		Player:  controller,
-		Dest:    game.ZoneHand,
-		Limit:   1,
-		Shuffle: true,
-		Reason:  "Cool but Rude — search your library for a card",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.DiscardRandomForEffect(controller, 1)
-		},
+		Player:   controller,
+		Dest:     game.ZoneHand,
+		Limit:    1,
+		Shuffle:  true,
+		Reason:   "Cool but Rude — search your library for a card",
+		ThenTail: game.KeyedTail{Ref: thenDiscardAtRandom, Player: controller, N: 1},
 	}.Apply(NewContext(g, item))
 }

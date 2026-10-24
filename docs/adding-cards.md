@@ -2176,6 +2176,25 @@ after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
 
+**Write the "then" as a registered tail** (#4253 slices 3 and 4). A scry or
+surveil, and a library search, can take its "then" as data instead of a
+closure: `Scry{ThenTail: …}`, `Surveil{ThenTail: …}`,
+`SearchLibrary{ThenTail: …}`. A table waiting on a scry or on the entry
+question of a fetched permanent is then a restore point; a closure keeps
+the frame off the disk. Register the body once, from a package-level var,
+under a key that is never renamed or reused (`CardTail("card/what", …)`,
+ledgered `tail card/what`), and build the tail with `ctx.Tail(ref)` (the
+effect's controller and source card), `ctx.TailN(ref, n)` for one number, or
+`ctx.ItemTail(ref)` when the body reads more of the item (its targets, its
+X, the words of its text), which then rides the tail as data. What the
+closure captured goes on the tail: `Player`, `Source`, `N`, `Carry` (IDs),
+and the search's found cards arrive as `o.IDs`. The shared tails are
+`then/shuffle`, `then/draw-n-cards`, `then/change-life` (N below zero loses
+life), `then/discard-at-random`, `then/get-energy` and
+`then/put-found-lands-onto-battlefield-tapped` (`effects/keyed_tails.go`);
+use one rather than registering a twin. A tail that runs the effect that
+names it again (a chain of searches) is registered in `init`.
+
 **Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
 asks: once the window above has settled it queues a
 `PendingChoiceProliferate` offering every permanent and player with a

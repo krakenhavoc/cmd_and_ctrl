@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -78,9 +76,7 @@ func init() {
 						Reveal:    true,
 						Shuffle:   true,
 						Reason:    "Grim Servant — a card with mana value at most your devotion to black, revealed, to hand",
-						Then: func(g *game.Game, _ []uuid.UUID) error {
-							return g.ChangePlayerLifeForEffect(source, player, -3)
-						},
+						ThenTail:  game.KeyedTail{Ref: thenChangeLife, Player: player, Source: source, N: -3},
 					}.Apply(ctx)
 				}),
 		},

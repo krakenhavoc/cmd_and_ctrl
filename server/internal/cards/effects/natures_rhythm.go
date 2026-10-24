@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -33,7 +31,8 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			src := ctx.Source()
-			owner := item.Owner
+			tail := ctx.Tail(thenShuffle)
+			tail.Player = item.Owner
 			return SearchLibrary{
 				Player: ctx.Controller(),
 				Predicate: func(c game.Card) bool {
@@ -43,9 +42,8 @@ func init() {
 				Limit:  1,
 				Reason: "Nature's Rhythm — a creature card with mana value X or less",
 				Source: src,
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.ShuffleLibraryForEffect(owner)
-				},
+				// #4253 slice 4: "then shuffle" is a registered tail.
+				ThenTail: tail,
 			}.Apply(ctx)
 		},
 	})

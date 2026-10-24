@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -41,18 +39,24 @@ func init() {
 				Reveal:    true,
 				Shuffle:   true,
 				Reason:    "Reckless Handling — search your library for an artifact card",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					mark := b25LastEventSeq(g)
-					if err := g.DiscardRandomForEffect(controller, 1); err != nil {
-						return err
-					}
-					discarded, ok := b25DiscardedByAfter(g, controller, mark)
-					if !ok || !discarded.IsArtifact() {
-						return nil
-					}
-					return damageToEachOpponent(g, item, 2)
-				},
+				ThenTail:  ctx.ItemTail(recklessHandlingDiscard),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// recklessHandlingDiscard is "then discard a card at random. If an artifact
+// card is discarded this way, this spell deals 2 damage to each opponent". An
+// on-disk key.
+var recklessHandlingDiscard = CardTail("reckless-handling/discard-at-random", func(ctx *Context, o game.TailOutcome) error {
+	g, controller := ctx.Game, o.Tail.Player
+	mark := b25LastEventSeq(g)
+	if err := g.DiscardRandomForEffect(controller, 1); err != nil {
+		return err
+	}
+	discarded, ok := b25DiscardedByAfter(g, controller, mark)
+	if !ok || !discarded.IsArtifact() {
+		return nil
+	}
+	return damageToEachOpponent(g, ctx.Item, 2)
+})

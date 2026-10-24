@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -51,10 +49,15 @@ func init() {
 				TappedOnEntry: true,
 				Optional:      true,
 				Reason:        "Sundering Eruption — you may search for a basic land",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return faltering("Sundering Eruption")(item, NewContext(g, item))
-				},
+				// #4253 slice 4: a registered tail.
+				ThenTail: ctx.ItemTail(sunderingEruptionFalter),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// sunderingEruptionFalter is "creatures without flying can't block this
+// turn". An on-disk key.
+var sunderingEruptionFalter = CardTail("sundering-eruption/creatures-cant-block", func(ctx *Context, _ game.TailOutcome) error {
+	return faltering("Sundering Eruption")(ctx.Item, ctx)
+})

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,9 +29,7 @@ func init() {
 				Reveal:    true,
 				Shuffle:   true,
 				Reason:    "Attune with Aether — a basic land card",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.AddPlayerCounterByForEffect(controller, controller, game.CounterEnergy, 2)
-				},
+				ThenTail:  ctx.TailN(thenGetEnergy, 2),
 			}.Apply(ctx)
 		},
 	})

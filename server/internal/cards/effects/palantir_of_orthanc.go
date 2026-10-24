@@ -58,10 +58,14 @@ func palantirTrigger(g *game.Game, item *game.StackItem) error {
 	if err := (AddCounter{Target: item.SourceCardID, Kind: "influence", N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	return Scry{Player: item.Controller, N: 2, Then: func(g *game.Game) error {
-		return palantirAskOpponent(g, item)
-	}}.Apply(ctx)
+	return Scry{Player: item.Controller, N: 2, ThenTail: ctx.ItemTail(palantirAsk)}.Apply(ctx)
 }
+
+// palantirAsk is "then an opponent chooses": the item, and so the targeted
+// opponent, rides the tail. An on-disk key.
+var palantirAsk = CardTail("palantir-of-orthanc/ask-opponent", func(ctx *Context, _ game.TailOutcome) error {
+	return palantirAskOpponent(ctx.Game, ctx.Item)
+})
 
 func palantirAskOpponent(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

@@ -55,9 +55,7 @@ func galadrielLightOfValinorTrigger() game.TriggeredAbility {
 		ModeDoing("Scry 2, then draw a card.", nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {
 				you := item.Controller
-				return Scry{Player: you, N: 2, Then: func(g *game.Game) error {
-					return g.DrawNForEffect(you, 1)
-				}}.Apply(ctx)
+				return Scry{Player: you, N: 2, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 			}),
 	)
 	return t

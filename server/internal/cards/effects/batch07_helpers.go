@@ -152,44 +152,64 @@ var b07TemptWithDiscoveryAnswer game.ConfirmThen
 
 func init() {
 	b07TemptWithDiscoveryAnswer = MayAnswer("confirm/tempt-with-discovery-search", func(ctx *Context, r game.ConfirmAnswer) error {
-		controller, source, rest, item := ctx.Controller(), r.Source, r.Carry, ctx.Item
-		next := func(g *game.Game) error {
-			return b07TemptWithDiscoveryOffer(NewContext(g, item), rest)
-		}
+		rest := r.Carry
 		if !r.Accepted {
-			return next(ctx.Game)
+			return b07TemptWithDiscoveryOffer(ctx, rest)
 		}
+		// #4253 slice 4: the caster's search and the rest of the offer are
+		// registered tails (the opponents still to ask ride Carry, the item
+		// rides Asked), so the opponent's fetched land can ask without
+		// holding a closure.
+		caster := ctx.ItemTail(b07TemptCasterSearch)
+		caster.Source, caster.Carry = r.Source, rest
 		return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-			Player:  r.Chooser,
-			Source:  source,
-			Pred:    b03IsLandCard,
-			Dest:    game.ZoneBattlefield,
-			Limit:   1,
-			Shuffle: true,
-			Reason:  "Tempt with Discovery — a land onto the battlefield",
-			Then: func(g *game.Game, _ []uuid.UUID) error {
-				return b07TemptWithDiscoveryCasterSearch(g, controller, source, next)
-			},
+			Player:   r.Chooser,
+			Source:   r.Source,
+			Pred:     b03IsLandCard,
+			Dest:     game.ZoneBattlefield,
+			Limit:    1,
+			Shuffle:  true,
+			Reason:   "Tempt with Discovery — a land onto the battlefield",
+			ThenTail: caster,
 		})
+	})
+}
+
+// The two tails of the chain, which run each other, so they are registered
+// in init:
+//
+//   - b07TemptCasterSearch is the caster's search after an opponent searched;
+//   - b07TemptNextOffer is the offer to the next opponent (Tail.Carry), once
+//     the caster's search has settled.
+//
+// On-disk keys.
+var b07TemptCasterSearch, b07TemptNextOffer game.TailRef
+
+func init() {
+	b07TemptCasterSearch = CardTail("tempt-with-discovery/caster-search", func(ctx *Context, o game.TailOutcome) error {
+		return b07TemptWithDiscoveryCasterSearch(ctx, o.Tail.Carry)
+	})
+	b07TemptNextOffer = CardTail("tempt-with-discovery/next-offer", func(ctx *Context, o game.TailOutcome) error {
+		return b07TemptWithDiscoveryOffer(ctx, o.Tail.Carry)
 	})
 }
 
 // b07TemptWithDiscoveryCasterSearch is the caster's own "search your
 // library for a land card and put it onto the battlefield" — the
 // opening one and every one an opponent's acceptance earns. Not
-// optional and untapped, as printed. `then` continues the offer once
-// this search has settled.
-func b07TemptWithDiscoveryCasterSearch(g *game.Game, controller, source uuid.UUID, then func(*game.Game) error) error {
-	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-		Player:  controller,
-		Source:  source,
-		Pred:    b03IsLandCard,
-		Dest:    game.ZoneBattlefield,
-		Limit:   1,
-		Shuffle: true,
-		Reason:  "Tempt with Discovery — a land onto the battlefield",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return then(g)
-		},
+// optional and untapped, as printed. The offer continues at the opponents
+// still to ask (`rest`) once this search has settled.
+func b07TemptWithDiscoveryCasterSearch(ctx *Context, rest []uuid.UUID) error {
+	next := ctx.ItemTail(b07TemptNextOffer)
+	next.Carry = rest
+	return ctx.Game.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:   ctx.Controller(),
+		Source:   ctx.Source(),
+		Pred:     b03IsLandCard,
+		Dest:     game.ZoneBattlefield,
+		Limit:    1,
+		Shuffle:  true,
+		Reason:   "Tempt with Discovery — a land onto the battlefield",
+		ThenTail: next,
 	})
 }

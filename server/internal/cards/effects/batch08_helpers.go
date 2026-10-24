@@ -176,21 +176,26 @@ func b08KrosanVergeFetch(g *game.Game, item *game.StackItem) error {
 		TappedOnEntry: true,
 		Source:        source,
 		Reason:        "Krosan Verge — a Forest card, onto the battlefield tapped",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:        controller,
-				Source:        source,
-				Pred:          IsLandWithSubtype("Plains"),
-				Dest:          game.ZoneBattlefield,
-				Limit:         1,
-				Reveal:        true,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        "Krosan Verge — a Plains card, onto the battlefield tapped",
-			})
-		},
+		// #4253 slice 4: the Plains search is a registered tail.
+		ThenTail: game.KeyedTail{Ref: krosanVergePlainsSearch, Player: controller, Source: source},
 	}.Apply(NewContext(g, item))
 }
+
+// krosanVergePlainsSearch is the second half of Krosan Verge's search, run
+// once the Forest search has settled. An on-disk key.
+var krosanVergePlainsSearch = game.RegisterTail("krosan-verge/plains-search", func(g *game.Game, o game.TailOutcome) error {
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:        o.Tail.Player,
+		Source:        o.Tail.Source,
+		Pred:          IsLandWithSubtype("Plains"),
+		Dest:          game.ZoneBattlefield,
+		Limit:         1,
+		Reveal:        true,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Reason:        "Krosan Verge — a Plains card, onto the battlefield tapped",
+	})
+})
 
 // --- cycle shapes ------------------------------------------------
 
@@ -287,9 +292,8 @@ func b08OverlookFetchFor(reason string, pred func(game.Card) bool) func(g *game.
 			Shuffle:       true,
 			TappedOnEntry: true,
 			Reason:        reason,
-			Then: func(g *game.Game, _ []uuid.UUID) error {
-				return g.ChangePlayerLifeForEffect(source, controller, 1)
-			},
+			// #4253 slice 4: "you gain 1 life" is a registered tail.
+			ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: 1},
 		}.Apply(NewContext(g, item))
 	}
 }

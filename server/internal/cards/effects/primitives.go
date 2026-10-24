@@ -1125,6 +1125,14 @@ type SearchLibrary struct {
 	// found. Runs inline when no prompt was needed and from the
 	// resolve path when one was.
 	Then func(g *game.Game, found []uuid.UUID) error
+	// ThenTail is Then as data (#4253 slice 4): a registered tail
+	// (CardTail, or game.RegisterTail), told the cards found as
+	// TailOutcome.IDs, with the effect's controller and source card filled
+	// in where the card left Player and Source zero. A battlefield search
+	// whose fetched permanent stops for an entry question (a fetchland's
+	// shockland) is then a restore point while it waits. Set Then or
+	// ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 	// Source is the card that caused the search — prompt context.
 	Source uuid.UUID
 	// ToTop is the "... then shuffle and put that card ON TOP"
@@ -1191,6 +1199,22 @@ type SearchLibrary struct {
 	LinkTo game.PermissionCardRef
 }
 
+// thenTail is ThenTail with the effect's controller and source card filled
+// in where the card left them zero. Dropped when Then is set (Then wins).
+func (s SearchLibrary) thenTail(source uuid.UUID) game.KeyedTail {
+	if s.Then != nil || s.ThenTail.IsZero() {
+		return game.KeyedTail{}
+	}
+	t := s.ThenTail
+	if t.Player == uuid.Nil {
+		t.Player = s.Player
+	}
+	if t.Source == uuid.Nil {
+		t.Source = source
+	}
+	return t
+}
+
 func (s SearchLibrary) Apply(ctx *Context) error {
 	source := s.Source
 	if source == uuid.Nil && ctx != nil {
@@ -1220,6 +1244,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Reason:               s.Reason,
 		Validate:             s.Validate,
 		Then:                 s.Then,
+		ThenTail:             s.thenTail(source),
 		ToTop:                s.ToTop,
 		Depth:                s.Depth,
 		LibraryOwner:         s.LibraryOwner,
@@ -1685,13 +1710,30 @@ type Scry struct {
 	ThenTail game.KeyedTail
 }
 
+// lookAtTail is ThenTail with the scrying player and the source card filled
+// in where the card left them zero (#4253 slice 4).
+func (s Scry) lookAtTail(player, source uuid.UUID) game.KeyedTail {
+	return tailDefaults(s.ThenTail, player, source)
+}
+
+// tailDefaults gives a tail a Player and Source where it has none.
+func tailDefaults(t game.KeyedTail, player, source uuid.UUID) game.KeyedTail {
+	if t.Player == uuid.Nil {
+		t.Player = player
+	}
+	if t.Source == uuid.Nil {
+		t.Source = source
+	}
+	return t
+}
+
 func (s Scry) Apply(ctx *Context) error {
 	player := s.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
 	if s.Then == nil && !s.ThenTail.IsZero() {
-		ctx.Game.ScryKeyedForEffect(player, ctx.Source(), s.N, s.ThenTail)
+		ctx.Game.ScryKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
 		return nil
 	}
 	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
@@ -1735,13 +1777,18 @@ type Surveil struct {
 	ThenTail game.KeyedTail
 }
 
+// lookAtTail is Scry.lookAtTail for a surveil.
+func (s Surveil) lookAtTail(player, source uuid.UUID) game.KeyedTail {
+	return tailDefaults(s.ThenTail, player, source)
+}
+
 func (s Surveil) Apply(ctx *Context) error {
 	player := s.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
 	if s.Then == nil && !s.ThenTail.IsZero() {
-		ctx.Game.SurveilKeyedForEffect(player, ctx.Source(), s.N, s.ThenTail)
+		ctx.Game.SurveilKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
 		return nil
 	}
 	ctx.Game.SurveilThenForEffect(player, ctx.Source(), s.N, s.Then)

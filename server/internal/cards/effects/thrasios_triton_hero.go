@@ -35,19 +35,26 @@ func init() {
 			Cost:    ManaCost("{4}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				controller, source := item.Controller, item.SourceCardID
-				g.ScryThenForEffect(controller, source, 1, func(g *game.Game) error {
-					top, err := revealTopThenPutIfMatch(g, source, controller, game.Card.IsLand, true,
-						"Thrasios, Triton Hero — revealed from the top of the library")
-					if err != nil {
-						return err
-					}
-					if c, ok := g.LookupCardForEffect(top); ok && c.IsLand() {
-						return nil
-					}
-					return g.DrawNForEffect(controller, 1)
-				})
+				g.ScryKeyedForEffect(controller, source, 1,
+					game.KeyedTail{Ref: thrasiosRevealTop, Player: controller, Source: source})
 				return nil
 			},
 		}},
 	})
 }
+
+// thrasiosRevealTop is "reveal the top card of your library. If it's a land
+// card, put it onto the battlefield tapped. Otherwise, draw a card", once
+// the scry is done. An on-disk key.
+var thrasiosRevealTop = game.RegisterTail("thrasios-triton-hero/reveal-top", func(g *game.Game, o game.TailOutcome) error {
+	controller, source := o.Tail.Player, o.Tail.Source
+	top, err := revealTopThenPutIfMatch(g, source, controller, game.Card.IsLand, true,
+		"Thrasios, Triton Hero — revealed from the top of the library")
+	if err != nil {
+		return err
+	}
+	if c, ok := g.LookupCardForEffect(top); ok && c.IsLand() {
+		return nil
+	}
+	return g.DrawNForEffect(controller, 1)
+})

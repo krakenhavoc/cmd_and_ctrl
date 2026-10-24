@@ -73,11 +73,14 @@ func init() {
 		if !r.Accepted {
 			return mayScryInTurn(ctx, rest, n)
 		}
-		item := ctx.Item
-		return Scry{
-			Player: r.Chooser,
-			N:      n,
-			Then:   func(g *game.Game) error { return mayScryInTurn(NewContext(g, item), rest, n) },
-		}.Apply(ctx)
+		next := ctx.ItemTail(modelOfUnityAskNext)
+		next.Carry, next.N = rest, n
+		return Scry{Player: r.Chooser, N: n, ThenTail: next}.Apply(ctx)
 	})
 }
+
+// modelOfUnityAskNext asks the next player in turn order (Tail.Carry) once
+// the scry is done, the count to scry riding as Tail.N. An on-disk key.
+var modelOfUnityAskNext = CardTail("model-of-unity/ask-next", func(ctx *Context, o game.TailOutcome) error {
+	return mayScryInTurn(ctx, o.Tail.Carry, o.Tail.N)
+})

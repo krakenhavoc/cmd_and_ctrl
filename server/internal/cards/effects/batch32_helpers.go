@@ -263,17 +263,21 @@ func b32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error 
 		Limit:     1,
 		Reveal:    true,
 		Reason:    "Axgard Armory — choose up to one Aura card to put into your hand",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:  controller,
-				Source:  source,
-				Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Reveal:  true,
-				Shuffle: true,
-				Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
-			})
-		},
+		ThenTail:  game.KeyedTail{Ref: axgardArmoryEquipmentSearch, Player: controller, Source: source},
 	}.Apply(NewContext(g, item))
 }
+
+// axgardArmoryEquipmentSearch is the Equipment half of Axgard Armory's
+// search, run once the Aura search has settled. An on-disk key.
+var axgardArmoryEquipmentSearch = game.RegisterTail("axgard-armory/equipment-search", func(g *game.Game, o game.TailOutcome) error {
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:  o.Tail.Player,
+		Source:  o.Tail.Source,
+		Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
+		Dest:    game.ZoneHand,
+		Limit:   1,
+		Reveal:  true,
+		Shuffle: true,
+		Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
+	})
+})

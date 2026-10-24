@@ -662,6 +662,12 @@ func corpusBoards() []corpusBoard {
 		{"drain_order", corpusDrainOrder},
 		{"face_down_exile_leg", corpusFaceDownExileLeg},
 		{"preordain_scry", corpusPreordainScry},
+		// #4253 slice 4: a card's own registered tail on a battlefield
+		// search (entryTail.search.thenTail), one that carries the asking
+		// item (KeyedTail.asked), and a surveil's that does.
+		{"cultivate_fetch", corpusCultivateFetch},
+		{"hour_of_promise_fetch", corpusHourOfPromiseFetch},
+		{"eye_of_jace_surveil", corpusEyeOfJaceSurveil},
 	}
 }
 
@@ -815,6 +821,65 @@ func corpusPreordainScry(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	if pendingOfKind(g, game.PendingChoiceScry) == nil {
 		t.Fatal("setup: Preordain did not scry")
+	}
+	return g
+}
+
+// corpusCultivateFetch is Cultivate's first half paused on the fetched
+// land's question, the hand half a registered tail on the search (#4253
+// slice 4).
+func corpusCultivateFetch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	crypt := seedSearchLibrary(me, basicShockland(), game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})[0]
+	castCatalogSpell(t, g, "Cultivate", "Sorcery", cultivateOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, crypt)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched land did not ask")
+	}
+	return g
+}
+
+// corpusHourOfPromiseFetch is Hour of Promise's search paused on the first
+// land's question, the spell's item on the search's tail as data (#4253
+// slice 4).
+func corpusHourOfPromiseFetch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedLand(g, me.ID, "Desert of the Glorified", "Land — Desert", "")
+	ids := seedSearchLibrary(me,
+		game.Card{Name: "Blood Crypt", TypeLine: "Land — Swamp Mountain", OracleID: bloodCryptOracle},
+		game.Card{Name: "Desert A", TypeLine: "Land — Desert"},
+	)
+	castCatalogSpell(t, g, "Hour of Promise", "Sorcery", b30HourOfPromiseOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, ids[0], ids[1])
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched Blood Crypt did not ask")
+	}
+	return g
+}
+
+// corpusEyeOfJaceSurveil is Eye of Jace's upkeep surveil waiting, the
+// trigger's item on its keyed "then" as data (#4253 slice 4).
+func corpusEyeOfJaceSurveil(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0]
+	rfmaPush(g, me.ID, "Eye of Jace", "Artifact", rfmaEyeOfJace, 0, 0)
+	for i := 0; i < 6; i++ {
+		batch01GraveyardCard(me, "Fodder", "Sorcery")
+	}
+	seedLibrary(me, "Top", "Next")
+	// The corpus game starts on turn 1's upkeep, which the Eye missed: walk
+	// off it and on to the next one.
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceSurveil) == nil {
+		t.Fatal("setup: the Eye did not surveil")
 	}
 	return g
 }
