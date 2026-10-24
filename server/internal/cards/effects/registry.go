@@ -1785,6 +1785,9 @@ func checkOpponentChoice(name string, i int, c *game.TargetClause) {
 	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
 	}
+	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
+	}
 	if c.ChosenByTriggerActor {
 		// #1997: "of their choice" is one plain clause, like an
 		// opponent's.

@@ -589,6 +589,18 @@ type TargetSpec struct {
 	// divided clause. Build it with effects.OfThatPlayersChoice.
 	ChosenByTriggerActor bool
 
+	// Harmful says the clause's effect hurts the permanent it picks:
+	// The Abyss's "destroy target nonartifact creature that player
+	// controls of their choice" (#4249). Nothing else on a pick_target
+	// prompt says which way the pick cuts, and a bot that picks for
+	// itself (the Abyss on its controller's own upkeep, where the chooser
+	// is the controller and no `chosen_for` is set) would otherwise score
+	// every permanent it controls the same and give up the first listed.
+	// Read by the wire only (LegalTargetsView.Harmful on a pick_target
+	// prompt), never by a rule. Build it with effects.Harmful; Register
+	// refuses it on a clause that cannot pick a permanent.
+	Harmful bool
+
 	// ControlledByChooser is "… they control" on a ChosenByOpponent
 	// clause: the candidate must be controlled by the opponent who
 	// chooses it (Evangelize, Preacher, Arena). The opponent is bound

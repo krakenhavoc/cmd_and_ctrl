@@ -1152,6 +1152,13 @@ type LegalTargetsView struct {
 	// answers themselves.
 	ChosenFor string `json:"chosen_for,omitempty"`
 
+	// Harmful is, on a pick_target prompt, the clause's declared harm
+	// (game.PendingChoice.PickTargetHarmful, #4249): what the effect does
+	// to the permanent picked is bad for its controller, as The Abyss's
+	// destroy is. A bot that must pick one of its own gives up the least
+	// valuable. Absent on every other prompt and on a clause view.
+	Harmful bool `json:"harmful,omitempty"`
+
 	// Different is the clause's rule over the chosen SET (#1559, CR
 	// 601.2c): no two picks may share a key — "that each have a
 	// different mana value", "controlled by different players". The
@@ -9959,6 +9966,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if c.PickTargetFor != uuid.Nil {
 				pt.ChosenFor = c.PickTargetFor.String()
 			}
+			pt.Harmful = c.PickTargetHarmful
 			v.PickTarget = pt
 		}
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each

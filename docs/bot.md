@@ -351,6 +351,24 @@ the bot is the CONTROLLER, its enumerator names no target for such a
 clause and the "which opponent" question is the choose-a-player prompt
 above.
 
+**A pick the bot makes for itself that hurts what it picks
+([#4249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4249)).**
+The Abyss and Magus of the Abyss ("destroy target nonartifact creature
+that player controls of their choice") are chosen by the player whose
+upkeep it is. On the controller's own upkeep that is the controller, so
+the prompt has no `chosen_for`, and `targetsValue` gave every permanent
+the bot controls the same flat `OwnPermanentTarget`: it destroyed
+whichever creature was listed first, its best one included. The clause is
+now declared `Harmful` (`effects.Harmful`, `game.TargetSpec.Harmful`),
+which the prompt carries as `pick_target.harmful`, and the heuristic
+prices such a pick with `opponentsChoiceValue` for itself: a permanent of
+its own costs what losing it does, so the least valuable creature goes,
+and a legal permanent of an opponent's, when there is one, still comes
+first. The opponent's-upkeep case (`chosen_for` set) is unchanged. Only
+those two cards use the flag today; a new forced self-harm clause (one
+that the controller or upkeep player must aim at their own permanent)
+declares it the same way.
+
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the
 existing card-set enumeration offers the subsets — including the empty

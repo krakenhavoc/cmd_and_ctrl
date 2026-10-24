@@ -284,6 +284,14 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if ch != nil && ch.PickTarget != nil && ch.PickTarget.ChosenFor != "" && ch.PickTarget.ChosenFor != st.me {
 			return st.opponentsChoiceValue(p.cfg, ch.PickTarget.ChosenFor, targets), "choose for an opponent's effect"
 		}
+		// #4249: the bot picks for itself, but the clause hurts what it
+		// picks (The Abyss on its controller's own upkeep). A permanent
+		// of its own is then priced at what losing it costs, so it gives
+		// up the least valuable instead of the first listed, and a legal
+		// permanent of an opponent's, if there is one, still comes first.
+		if ch != nil && ch.PickTarget != nil && ch.PickTarget.Harmful {
+			return st.opponentsChoiceValue(p.cfg, st.me, targets), "pick the permanent to lose"
+		}
 		return st.targetsValue(p.cfg, targets), "pick target"
 
 	case choiceSacrifice:
