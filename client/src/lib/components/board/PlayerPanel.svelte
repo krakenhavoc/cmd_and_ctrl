@@ -89,6 +89,7 @@
   import ExileStrip from "./ExileStrip.svelte";
   import CommandStrip from "./CommandStrip.svelte";
   import CompanionSlot from "./CompanionSlot.svelte";
+  import IgnoreEffects from "./IgnoreEffects.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import Icon from "../Icon.svelte";
@@ -1322,6 +1323,12 @@
         legalGate={rowGate}
         {sorcerySpeedBlocked}
       />
+      <!-- #1986 (CR 116.2d): "ignore this effect until end of turn" for
+           the price of a permanent of your choice (Damping Engine).
+           Renders nothing unless an effect bears on you. -->
+      {#if !spectator}
+        <IgnoreEffects seatID={seat.id} effects={seat.ignorable_effects} {view} {sendAction} />
+      {/if}
     {/if}
     {#if !isSelf}
       {#if expanded}

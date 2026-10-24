@@ -22,7 +22,8 @@ import (
 // 603.7) waits for your next upkeep and, as it resolves, grants the
 // cast Torrential Gearhulk's does (ADR 0099 §4): free ({0}, so X is 0
 // and additional costs are still paid), any timing (CR 608.2g),
-// cast-only, closed by your next pass, with "exile it instead" as the
+// cast-only, offered during the trigger's resolution (#4250) and closed by
+// your next pass only as the fallback, with "exile it instead" as the
 // permission's ExileInsteadOfGraveyard. A card that has left exile by
 // then cannot be cast this way.
 //
@@ -85,6 +86,9 @@ func powerPackCastExiled(g *game.Game, item *game.StackItem) error {
 			SourceName:              "Power Pack",
 			Label:                   "Power Pack — cast " + c.Name + " without paying its mana cost",
 		}, []game.Card{c})
+		// #4250: cast as the delayed trigger resolves (CR 608.2g).
+		offerResolutionCastOver(g, item.Controller, item.SourceCardID, "Power Pack",
+			game.MayCastKeywordFreeCast, declineLeaveInExile, c.InstanceID)
 	}
 	return nil
 }

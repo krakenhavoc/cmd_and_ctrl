@@ -29,16 +29,20 @@ func init() {
 		),
 		// Slot 1 is given a Role token, which no amount says.
 		Purpose: ForTargets(DamageToTarget(0, 4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 4}).Apply(ctx); err != nil {
-					return err
+		// The Role waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
+					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 4}.Apply(ctx)
 				}
-			}
-			if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
-				return CreateRoleToken{Role: RoleYoungHero, Host: t.ID}.Apply(ctx)
-			}
-			return nil
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
+					return CreateRoleToken{Role: RoleYoungHero, Host: t.ID}.Apply(ctx)
+				}
+				return nil
+			}),
+		),
 	})
 }

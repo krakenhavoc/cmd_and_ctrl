@@ -19,6 +19,22 @@ import (
 // the Zealot while it is still the same object (CR 400.7).
 //
 // No simplifications.
+// zealotIlVecRecord files the creature Zealot il-Vec was aimed at.
+const zealotIlVecRecord = "zealot-il-vec/target"
+
+// zealotIlVecYes is the damage and then the shield: the shield waits for a
+// prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+var zealotIlVecYes = RegisterThenSteps("then-steps/zealot-il-vec-yes",
+	Instruction(func(ctx *Context) error {
+		ids := ctx.StepRecord(zealotIlVecRecord).IDs
+		if len(ids) == 0 {
+			return nil
+		}
+		return DealDamage{Source: ctx.Source(), Target: ids[0], Amount: 1}.Apply(ctx)
+	}),
+	Instruction(shieldAgainstThisCombatDamage),
+)
+
 func init() {
 	Register(Spec{
 		OracleID:        "4107d0e3-608b-4024-b433-40c5d8b63549",
@@ -40,14 +56,17 @@ func init() {
 					}
 					return MayChoice{
 						Question: "Zealot il-Vec — deal 1 damage to the target creature? (if you do, its combat damage this turn is prevented)",
-						OnYes: func(ctx *Context) error {
-							if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: 1}).Apply(ctx); err != nil {
-								return err
-							}
-							return shieldAgainstThisCombatDamage(ctx)
-						},
+						Then:     zealotIlVecAnswer,
+						Carry:    []uuid.UUID{target},
 					}.Apply(ctx)
 				}), TargetCreature("target creature")),
 		},
 	})
 }
+
+// zealotIlVecAnswer is the "yes": deal 1 damage to the target (the carried
+// ID), and its combat damage this turn is prevented. Keyed (#4291).
+var zealotIlVecAnswer = MayYes("confirm/zealot-il-vec-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.RecordStep(zealotIlVecRecord, []uuid.UUID{carryAt(r, 0)})
+	return zealotIlVecYes.Run(ctx)
+})

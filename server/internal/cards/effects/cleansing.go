@@ -37,10 +37,17 @@ func init() {
 				EachLife: 1,
 				Noun:     "land",
 				Question: "Cleansing — pay 1 life for each land you want to save?",
-				OnUnsaved: func(ctx *Context, unsaved []uuid.UUID) error {
-					return ctx.Game.DestroyPermanentsThenForEffect(unsaved, func(*game.Game, []uuid.UUID) error { return nil })
-				},
+				Then:     cleansingDestroysTheUnsaved,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// cleansingDestroysTheUnsaved is "destroy that land" for every land nobody
+// paid for, keyed (#4264): the offer's legs are plain data, so a table
+// waiting on any seat's pick is a restore point. The lands are destroyed in
+// one batch.
+var cleansingDestroysTheUnsaved = AnyPlayerEachConsequence("any-player-each/cleansing-destroy",
+	func(ctx *Context, r game.AnyPlayerEachAnswer) error {
+		return ctx.Game.DestroyPermanentsThenForEffect(r.Unsaved, func(*game.Game, []uuid.UUID) error { return nil })
+	})

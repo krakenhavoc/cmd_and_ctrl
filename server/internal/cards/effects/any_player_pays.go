@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -55,6 +56,43 @@ type AnyPlayerPays struct {
 	// AcceptLabel and DeclineLabel name the two answers when "Pay" and
 	// "Don't pay" read wrong.
 	AcceptLabel, DeclineLabel string
+
+	// Then is OnPaid, OnNobody and PerPayer as REGISTERED consequences
+	// (AnyPlayerConsequences, #4264), and Carry the plain data they are
+	// handed: every link of an offer queued with one holds no closure, so
+	// a table waiting on any player's answer is a restore point. Set Then
+	// or the closures, not both.
+	Then  game.AnyPlayerThen
+	Carry []uuid.UUID
+}
+
+// AnyPlayerConsequences registers a keyed any-player offer's
+// consequences under `key`, an on-disk identity (never renamed, never
+// reused, ledgered "anyplayer <key>"): `onPaid` is "if a player does,
+// ...", `onNobody` "if no one does, ..." and `perPayer` the payment
+// worked out for each player. Any may be nil, but not all three. The
+// bodies run against a Context bound to a copy of the asking item rebuilt
+// from data the offer carries (game.AskedItem), because the item itself
+// has long resolved by the time anyone answers (and a restore does not
+// carry it). An offer queued without one gets a stand-in with the
+// effect's controller and its source card. Call it once, from a
+// package-level var.
+func AnyPlayerConsequences(key string,
+	onPaid, onNobody func(ctx *Context, r game.AnyPlayerAnswer) error,
+	perPayer game.AnyPlayerPerPayerFunc,
+) game.AnyPlayerThen {
+	wrap := func(body func(ctx *Context, r game.AnyPlayerAnswer) error) game.AnyPlayerFunc {
+		if body == nil {
+			return nil
+		}
+		return func(g *game.Game, r game.AnyPlayerAnswer) error {
+			if r.Item != nil {
+				return body(NewContext(g, r.Item), r)
+			}
+			return body(keyedContext(g, r.Controller, r.Source), r)
+		}
+	}
+	return game.RegisterAnyPlayerPays(key, wrap(onPaid), wrap(onNobody), perPayer)
 }
 
 // LifePayment is "pay N life" as a payment (ADR 0150 §3, CR 119.4).
@@ -150,6 +188,12 @@ func HalfTheirLifeRoundedUp(g *game.Game, payer uuid.UUID) (game.PayAction, stri
 }
 
 func (a AnyPlayerPays) Apply(ctx *Context) error {
+	if a.Then.Key() != "" {
+		if a.OnPaid != nil || a.OnNobody != nil || a.PerPayer != nil {
+			return fmt.Errorf("%w: AnyPlayerPays %q sets both Then and a closure", game.ErrInvalidParam, a.Then.Key())
+		}
+		return a.applyKeyed(ctx)
+	}
 	item := ctx.Item
 	var onPaid func(*game.Game, uuid.UUID) error
 	if a.OnPaid != nil {
@@ -189,6 +233,38 @@ func (a AnyPlayerPays) Apply(ctx *Context) error {
 	})
 }
 
+// applyKeyed is Apply for an offer whose consequences are a registered
+// key (#4264).
+func (a AnyPlayerPays) applyKeyed(ctx *Context) error {
+	var guards uuid.UUID
+	if a.GuardsSource {
+		guards = ctx.Source()
+	}
+	cost, action := a.Cost, a.Pay.Action
+	if action != nil {
+		cost = a.Pay.Words
+		if cost != "" {
+			cost = strings.ToLower(cost[:1]) + cost[1:]
+		}
+	}
+	return ctx.Game.QueueAnyPlayerPaysKeyedForEffect(game.AnyPlayerPaysKeyed{
+		Source:       ctx.Source(),
+		Controller:   ctx.Controller(),
+		Cost:         cost,
+		Action:       action,
+		Question:     a.Question,
+		Opponents:    a.Opponents,
+		Guards:       guards,
+		AcceptLabel:  a.AcceptLabel,
+		DeclineLabel: a.DeclineLabel,
+		Then:         a.Then,
+		Carry:        a.Carry,
+		Asked:        game.NewAskedItem(ctx.Item),
+
+		HelpsController: a.HelpsController,
+	})
+}
+
 // counterThisSpell counters the item's source spell if it is still on
 // the stack: the "counter <this spell>" of a cast trigger (Dash Hopes).
 // A spell that has already left has nothing to counter (CR 608.2b).
@@ -205,36 +281,52 @@ func counterThisSpell(ctx *Context) error {
 // Dash Hopes, Temporal Extortion, Brain Gorgers, Phantasmagorian). The
 // trigger resolves above the spell (CR 601.2i), and each link of the
 // offer guards the spell, so it can't resolve while a player is still
-// deciding. `pay` is the payment, or the zero value with `perPayer`
-// set for one worked out per player.
-func anyPlayerMayCounterThisSpell(name, what string, pay UpkeepPayment, perPayer func(*game.Game, uuid.UUID) (game.PayAction, string)) game.TriggeredAbility {
+// deciding. `pay` is the payment, or the zero value with the per-payer
+// key (anyPlayerCounterThisSpellHalfLife) for one worked out per player.
+//
+// The consequence is a registered key (#4264), so a table waiting on any
+// player's answer is a restore point.
+func anyPlayerMayCounterThisSpell(name, what string, pay UpkeepPayment, then game.AnyPlayerThen) game.TriggeredAbility {
 	return WhenYouCastThisSpell(name+" — any player may "+what+" to counter it",
 		func(g *game.Game, item *game.StackItem) error {
 			return AnyPlayerPays{
 				Pay:          pay,
-				PerPayer:     perPayer,
 				Question:     name + " — " + what + " to counter it?",
 				GuardsSource: true,
-				OnPaid: func(ctx *Context, _ uuid.UUID) error {
-					return counterThisSpell(ctx)
-				},
+				Then:         then,
 			}.Apply(NewContext(g, item))
 		})
 }
+
+// anyPlayerCounterThisSpell is "If a player does, counter <this spell>",
+// keyed (#4264): the spell is the offer's source.
+var anyPlayerCounterThisSpell = AnyPlayerConsequences("any-player/counter-this-spell",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return counterThisSpell(ctx) }, nil, nil)
+
+// anyPlayerCounterThisSpellHalfLife is the same with Temporal Extortion's
+// payment, half the asked player's life rounded up, worked out per
+// player.
+var anyPlayerCounterThisSpellHalfLife = AnyPlayerConsequences("any-player/counter-this-spell-half-life",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return counterThisSpell(ctx) }, nil,
+	func(g *game.Game, payer uuid.UUID, _ []uuid.UUID) (game.PayAction, string) {
+		return HalfTheirLifeRoundedUp(g, payer)
+	})
 
 // anyPlayerMayTakeDamageFromThis is "Any player may have <this> deal N
 // damage to them. If no one does, <onNobody>." (Book Burning, Breaking
 // Point, Browbeat) as a spell's OnResolve (ADR 0150 §3). The spell
 // deals the damage through the ordinary path, so prevention and
-// replacement apply, and taking it is always a payment.
-func anyPlayerMayTakeDamageFromThis(name string, n int, what string, onNobody func(ctx *Context) error) func(*game.StackItem, *Context) error {
+// replacement apply, and taking it is always a payment. `nobody` is "if
+// no one does" as a registered consequence (AnyPlayerConsequences, #4264),
+// so a table waiting on any player's answer is a restore point.
+func anyPlayerMayTakeDamageFromThis(name string, n int, what string, nobody game.AnyPlayerThen) func(*game.StackItem, *Context) error {
 	return func(_ *game.StackItem, ctx *Context) error {
 		return AnyPlayerPays{
 			Pay:          DamagePayment(n),
 			Question:     name + " — take " + strconv.Itoa(n) + " damage to stop " + what + "?",
 			AcceptLabel:  "Take " + strconv.Itoa(n) + " damage",
 			DeclineLabel: "Don't",
-			OnNobody:     onNobody,
+			Then:         nobody,
 		}.Apply(ctx)
 	}
 }
@@ -250,12 +342,7 @@ func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 			return AnyPlayerPays{
 				Pay:      SacrificePayment(1, "land", "lands", QueryType("land")),
 				Question: name + " — sacrifice a land to put it on top of its owner's library?",
-				OnPaid: func(ctx *Context, _ uuid.UUID) error {
-					if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
-				},
+				Then:     anyPlayerTucksThis,
 			}.Apply(NewContext(g, item))
 		})
 }
@@ -285,9 +372,35 @@ type AnyPlayerPaysForEach struct {
 	// OnUnsaved is the effect on the objects nobody paid for. It is
 	// handed only objects that are still the same objects.
 	OnUnsaved func(ctx *Context, unsaved []uuid.UUID) error
+
+	// Then is OnUnsaved as a REGISTERED consequence
+	// (AnyPlayerEachConsequence, #4264), and Carry the plain data it is
+	// handed: every leg of an offer queued with one holds no closure, so a
+	// table waiting on any seat's pick is a restore point. Set Then or
+	// OnUnsaved, not both.
+	Then  game.AnyPlayerEachThen
+	Carry []uuid.UUID
+}
+
+// AnyPlayerEachConsequence registers a keyed per-object offer's
+// consequence under `key`, an on-disk identity (never renamed, never
+// reused, ledgered "choose <key>", the offer's choose_cards continuation):
+// `onUnsaved` is "the objects nobody paid for ...", handed them in r.Unsaved
+// and run against a Context bound to the asking item the offer carried.
+// Call it once, from a package-level var.
+func AnyPlayerEachConsequence(key string, onUnsaved func(ctx *Context, r game.AnyPlayerEachAnswer) error) game.AnyPlayerEachThen {
+	return game.RegisterAnyPlayerPaysEach(key, func(g *game.Game, r game.AnyPlayerEachAnswer) error {
+		if r.Item != nil {
+			return onUnsaved(NewContext(g, r.Item), r)
+		}
+		return onUnsaved(keyedContext(g, r.Controller, r.Source), r)
+	})
 }
 
 func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
+	if a.Then.Key() != "" && a.OnUnsaved != nil {
+		return fmt.Errorf("%w: AnyPlayerPaysForEach %q sets both Then and OnUnsaved", game.ErrInvalidParam, a.Then.Key())
+	}
 	item := ctx.Item
 	var objects []uuid.UUID
 	if a.Objects != nil {
@@ -308,5 +421,20 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		Noun:       a.Noun,
 		Question:   a.Question,
 		OnUnsaved:  onUnsaved,
+		Then:       a.Then,
+		Carry:      a.Carry,
+		Asked:      game.NewAskedItem(item),
 	})
 }
+
+// anyPlayerTucksThis is "If a player does, put this creature on top of its
+// owner's library", keyed (#4264): a creature that left and came back is a
+// new object and is not moved (CR 400.7), which the asking item's object
+// answers.
+var anyPlayerTucksThis = AnyPlayerConsequences("any-player/tuck-this-on-top-of-library",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return ctx.Game.TuckToLibraryForEffect(ctx.Item.SourceCardID, false)
+	}, nil, nil)

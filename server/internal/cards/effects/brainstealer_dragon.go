@@ -49,14 +49,9 @@ func init() {
 
 func brainstealerDragonExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		if err := (ExileTopWithPermission{
-			From: opp, GrantTo: item.Controller, N: 1, AnyColor: true, WhileExiled: true,
-		}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One opponent's library at a time in APNAP order (#4266).
+	return exileTopEachPlayerInTurn(ctx, ctx.Opponents(),
+		ExileTopWithPermission{GrantTo: item.Controller, N: 1, AnyColor: true, WhileExiled: true}, nil)
 }
 
 func brainstealerDragonOpponentsPermanentEnters(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

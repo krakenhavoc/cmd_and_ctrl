@@ -25,8 +25,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // So the shuffle prompt is queued by the look-at-top prompt's
 // continuation, which is the composition the choice queue gained for
-// exactly this (see game/chained_choice.go). LookAtTop.Then no longer
-// draws; it asks. The draw moves down one link, onto both branches of
+// exactly this (see game/chained_choice.go). LookAtTop's "then" no longer
+// draws; it asks. It is a registered tail (#4301), so a table waiting on the
+// look-at is a restore point as the shuffle question after it is. The draw moves down one link, onto both branches of
 // the confirm, because "then draw a card" is what happens after the
 // whole reorder-and-maybe-shuffle clause finishes — a draw on only one
 // branch would be a card that Ponder sometimes forgets to draw.
@@ -42,31 +43,34 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
-			source := ctx.Source()
-			draw := func(g *game.Game) error {
-				return g.DrawNForEffect(controller, 1)
-			}
 			return LookAtTop{
-				Player: controller,
-				N:      3,
-				Then: func(g *game.Game) error {
-					g.QueueConfirmForEffect(game.ConfirmPrompt{
-						Chooser:      controller,
-						Source:       source,
-						Question:     "Ponder — shuffle your library?",
-						AcceptLabel:  "Shuffle",
-						DeclineLabel: "Keep that order",
-						OnAccept: func(g *game.Game) error {
-							if err := g.ShuffleLibraryForEffect(controller); err != nil {
-								return err
-							}
-							return draw(g)
-						},
-						OnDecline: draw,
-					})
-					return nil
-				},
+				Player:   controller,
+				N:        3,
+				ThenTail: ctx.ItemTail(ponderAskShuffle),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// ponderAskShuffle is the look-at's "then": ask whether to shuffle (#4301:
+// a registered tail, with the asking item as its data). An on-disk key.
+var ponderAskShuffle = CardTail("ponder/ask-shuffle", func(ctx *Context, _ game.TailOutcome) error {
+	return MayChoice{
+		Question: "Ponder — shuffle your library?",
+		YesLabel: "Shuffle",
+		NoLabel:  "Keep that order",
+		Then:     ponderShuffle,
+	}.Apply(ctx)
+})
+
+// ponderShuffle is "you may shuffle", then the draw: the draw is on both
+// branches (#4298: keyed, so a table waiting on the question is a restore
+// point).
+var ponderShuffle = MayAnswer("confirm/ponder-shuffle", func(ctx *Context, r game.ConfirmAnswer) error {
+	if r.Accepted {
+		if err := ctx.Game.ShuffleLibraryForEffect(r.Chooser); err != nil {
+			return err
+		}
+	}
+	return ctx.Game.DrawNForEffect(r.Chooser, 1)
+})

@@ -30,12 +30,18 @@ func init() {
 					if !anyWasCreature(exiled, wasCreature) {
 						return nil
 					}
-					if err := eachOpponentLosesLife(ctx.Game, ctx.Item, 2); err != nil {
-						return err
-					}
-					return GainLife{Player: ctx.Controller(), Amount: 2}.Apply(ctx)
+					return soulShackledZombieDrain.Run(ctx)
 				})
 			}),
 		},
 	})
 }
+
+// soulShackledZombieDrain is the life loss and then the gain: the gain waits
+// for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+var soulShackledZombieDrain = RegisterThenSteps("then-steps/soul-shackled-zombie-drain",
+	Instruction(func(ctx *Context) error {
+		return eachOpponentLosesLife(ctx.Game, ctx.Item, 2)
+	}),
+	GainLife{Amount: 2},
+)

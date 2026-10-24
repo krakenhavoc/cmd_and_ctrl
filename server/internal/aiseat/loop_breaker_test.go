@@ -192,8 +192,8 @@ func TestBotsStopPassingWhenTheLoopBreakerFires(t *testing.T) {
 	})
 
 	pol := func() aiseat.Policy { return &scripted{prefer: []string{"Keep hand"}} }
-	r0 := aiseat.Start(ctx, room, g.Seats[0].ID, pol(), aiseat.Config{}, nil, testLogger())
-	r1 := aiseat.Start(ctx, room, g.Seats[1].ID, pol(), aiseat.Config{}, nil, testLogger())
+	r0 := startBot(t, ctx, room, g.Seats[0].ID, pol(), aiseat.Config{}, nil, testLogger())
+	r1 := startBot(t, ctx, room, g.Seats[1].ID, pol(), aiseat.Config{}, nil, testLogger())
 	waitFor(t, "both seats to keep", func() bool {
 		return handKept(g, g.Seats[0].ID) && handKept(g, g.Seats[1].ID)
 	})

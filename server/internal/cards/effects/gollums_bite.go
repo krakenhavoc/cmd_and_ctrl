@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "cf0492de-cec5-4455-839f-212246b7e9ea",
 		Name:         "Gollum's Bite",
+		Purpose:      ForTargets(HarmUntilEOT(0, -2, -2)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -26,9 +26,8 @@ func init() {
 				return MayChoice{
 					Question: "Bringer of the Blue Dawn — draw two cards?",
 					Draws:    2,
-					OnYes: func(ctx *Context) error {
-						return DrawCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
-					},
+					Then:     mayDrawCards,
+					Word:     "2",
 				}.Apply(NewContext(g, item))
 			}),
 		},

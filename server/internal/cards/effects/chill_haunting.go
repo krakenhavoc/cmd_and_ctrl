@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "ebe61471-e236-4ff8-9416-151970b5efd6",
 		Name:           "Chill Haunting",
+		Purpose:        ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness:   CompletenessFull,
 		XMatters:       true,
 		AdditionalCost: ExileXFromGraveyardCost("X creature cards", func(c game.Card) bool { return c.IsCreature() }),

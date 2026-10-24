@@ -10,25 +10,56 @@ import (
 // pay energy as an ability resolves. Append-only: add a builder, never
 // change what one means. The primitives are in energy_payment.go.
 
+// energyPaid registers the paid half of a "you may pay N {E}. If you do,
+// <then>" under `key` (#4289): `then` runs against a copy of the asking
+// item rebuilt from data the prompt carries, once the energy has really
+// been paid. Call it once, from a package-level var, and hand the handle to
+// whenThisAttacksMayPayEnergy / mayPayEnergyThen / MayPayEnergy.Then.
+// Cards whose paid half is the same sentence share one key (the Thriving
+// cycle's counter, the Aether Chasers' Servo), the way mayPayDrawACard
+// does. The key is an on-disk identity: never renamed, never reused.
+func energyPaid(key string, then Effect) game.PayUnlessElse {
+	return PayUnlessBranches(key, func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return then(ctx.Game, ctx.Item)
+	}, nil)
+}
+
+// energyDeclined is energyPaid's mirror, for "<then> unless you pay N
+// {E}": `then` runs when the energy was not paid.
+func energyDeclined(key string, then Effect) game.PayUnlessElse {
+	return PayUnlessBranches(key, nil, func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return then(ctx.Game, ctx.Item)
+	})
+}
+
+// The paid halves several cards share (#4289), one key each.
+var (
+	// energyPlusOneCounterOnThis is the Thriving cycle's and Scrapper
+	// Champion's "put a +1/+1 counter on it".
+	energyPlusOneCounterOnThis = energyPaid("pay-unless/energy-plus-one-counter-on-this", thisStillHere(plusOneCountersOnThis(1)))
+	// energyCreateServo is the Aether Chaser cycle's "create a 1/1
+	// colorless Servo artifact creature token".
+	energyCreateServo = energyPaid("pay-unless/energy-create-servo", createServo)
+)
+
 // whenThisAttacksMayPayEnergy is "Whenever this creature attacks, you
 // may pay N {E}. If you do, <then>." — the Thriving cycle, the Aether
 // Chaser cycle, Riparian Tiger. `what` finishes the question: "pay {E}{E}
 // to <what>?". The prompt holds the declare attackers step, so what is
-// bought lands before blockers and damage.
-func whenThisAttacksMayPayEnergy(name string, n int, what string, then Effect) game.TriggeredAbility {
+// bought lands before blockers and damage. `then` is registered
+// (energyPaid), so the prompt is a restore point.
+func whenThisAttacksMayPayEnergy(name string, n int, what string, then game.PayUnlessElse) game.TriggeredAbility {
 	return WheneverThisAttacks(name+" — you may pay "+EnergySymbols(n), mayPayEnergyThen(name, n, what, then))
 }
 
 // mayPayEnergyThen is the body of "you may pay N {E}. If you do, <then>"
 // as a trigger's effect, for any trigger condition.
-func mayPayEnergyThen(name string, n int, what string, then Effect) Effect {
+func mayPayEnergyThen(name string, n int, what string, then game.PayUnlessElse) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return MayPayEnergy{
 			N:        n,
 			Question: name + " — pay " + EnergySymbols(n) + " to " + what + "?",
-			OnPay: func(ctx *Context) error {
-				return then(ctx.Game, ctx.Item)
-			},
+			Then:     then,
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -50,6 +81,12 @@ func createServo(g *game.Game, item *game.StackItem) error {
 	return CreateToken{Template: TokenCard("1/1 colorless Servo artifact"), N: 1}.Apply(NewContext(g, item))
 }
 
+// energySacrificeThis is the decline of "sacrifice this permanent unless
+// you pay N {E}", shared by Lathnu Hellion, Liberty Prime and Static Prison
+// (#4289): the permanent that triggered, not a new object (CR 400.7).
+var energySacrificeThis = PayUnlessBranches("pay-unless/energy-sacrifice-this", nil,
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return sacrificeThisIfStillHere(ctx) })
+
 // sacrificeThisUnlessYouPayEnergy is "sacrifice this permanent unless
 // you pay N {E}" (CR 118.12a) as a trigger's effect. Declining, or being
 // short, sacrifices it — the permanent that triggered, not a new object
@@ -57,9 +94,9 @@ func createServo(g *game.Game, item *game.StackItem) error {
 func sacrificeThisUnlessYouPayEnergy(name, permanent string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return PayEnergyUnless{
-			N:         n,
-			Question:  name + " — pay " + EnergySymbols(n) + ", or sacrifice " + permanent + "?",
-			OnDecline: sacrificeThisIfStillHere,
+			N:        n,
+			Question: name + " — pay " + EnergySymbols(n) + ", or sacrifice " + permanent + "?",
+			Else:     energySacrificeThis,
 		}.Apply(NewContext(g, item))
 	}
 }
@@ -95,7 +132,6 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 		if len(item.Targets) == 0 {
 			return nil
 		}
-		target := item.Targets[0].ID
 		if err := (GetEnergy{N: n}).Apply(ctx); err != nil {
 			return err
 		}
@@ -103,15 +139,21 @@ func getEnergyThenPayAnyAmountToDamageTarget(name string, n int) func(item *game
 			Question: name + " — pay any amount of {E} for that much damage",
 			Unit:     game.PayAmountDamage,
 			Goal:     lethalDamageGoal,
-			Then: func(ctx *Context, paid int) error {
-				if paid <= 0 {
-					return nil
-				}
-				return DealDamage{Source: ctx.Source(), Target: target, Amount: paid}.Apply(ctx)
-			},
+			Then:     dealThatMuchDamageToTheTarget,
 		}.Apply(ctx)
 	}
 }
+
+// dealThatMuchDamageToTheTarget is "<this> deals that much damage to that
+// <permanent>" (#4294): the amount paid, dealt to the first target of the
+// item that asked. One key for every card that says it.
+var dealThatMuchDamageToTheTarget = NumberThen("number/deal-that-much-damage-to-the-target",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 || ctx.Item == nil || len(ctx.Item.Targets) == 0 {
+			return nil
+		}
+		return DealDamage{Source: ctx.Source(), Target: ctx.Item.Targets[0].ID, Amount: r.Number}.Apply(ctx)
+	})
 
 // voltaicBrawlerPump is Voltaic Brawler's "it gets +1/+1 and gains
 // trample until end of turn": two until-end-of-turn effects on the same
@@ -128,7 +170,7 @@ func voltaicBrawlerPump(g *game.Game, item *game.StackItem) error {
 // (Consul's Shieldguard, Eddytrail Hawk, Smelted Chargebug). The target
 // is chosen as the trigger goes on the stack (CR 603.3d); the payment is
 // made as it resolves.
-func anotherAttackerMayPayEnergy(name, what string, then Effect) game.TriggeredAbility {
+func anotherAttackerMayPayEnergy(name, what string, then game.PayUnlessElse) game.TriggeredAbility {
 	t := whenThisAttacksMayPayEnergy(name, 1, what, then)
 	t.Targets = Another(TargetCreature("another target attacking creature", AttackingCreature()))
 	return t

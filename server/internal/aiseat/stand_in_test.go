@@ -22,7 +22,7 @@ func TestAStandInPlaysThePersonsSeatAndStopsAlone(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, log)
+	host := newManager(t, nil, aiseat.Config{}, log)
 	host.SetPolicyFactory(tiers.NewFactory(tiers.FactoryOptions{Client: model.AlwaysIndex(0)}))
 	l.SetBotHost(host)
 	defer host.Shutdown()

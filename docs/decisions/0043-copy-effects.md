@@ -1250,3 +1250,40 @@ talking).
 
 Back-out: drop the guard in `copySpellFromLocked` and `TestRoonbSeeDoubleCantBeCopied` fails; drop it in
 `CopySpellKeepingTargetsForEffect` and `TestRoonbSeeDoubleRefusesTheKeepTargetsCopyDoor` fails.
+
+## Amendment (2026-10-24, [#4270](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4270)): the resolving slot survives a restore
+
+The "Snapshot classification" paragraph of the #920 section says `resolving`
+is `dropped`. It is carried now (ADR 0041's amendment of 2026-10-24): a keyed
+prompt holds no resume frame, so a table waiting on Wandering Archaic's "copy
+that spell?" is a restore point, and the copy reads the spell that already
+resolved through this slot. `CopySpell` also logs, rather than silently
+swallows, the case where the spell it was told to copy is nowhere (not on the
+stack, not resolving, no last-known record): CR 608.2b makes that the right
+outcome for a spell countered under an effect that targets it, and the log is
+how a loss of the engine's own record shows up.
+
+## Amendment (2026-10-24, [#4276](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4276)): a copy named from a prompt the table can walk past
+
+`pay_unless` is the one prompt kind that does not stop the table
+(`choice_gate.go`, ADR 0018 §6). Wandering Archaic's "they may pay {2}. If they
+don't, you may copy that spell" therefore reproduced a loss with no restore
+involved: the caster left the {2} question open, the Bolt resolved, the table
+walked into the next step (which clears `Game.resolving`, one event batch of
+life), and a decline followed by "yes" copied nothing. The spell was carried by
+ID, but nothing held its card.
+
+The copy now reads last-known information, which is what CR 608.2h says for an
+effect that names an object that has left the zone it was expected in, and
+Archaic's copy does not target (CR 608.2b does not apply). The trigger calls
+`Game.HoldSpellForEffect(spellID)` as it resolves, which files the spell, still
+on the stack, in `lastKnownStack` (the record #1255 keeps for a spell that
+leaves without resolving); the answer's `CopySpell` sets `FromLastKnown`. The
+record is carried by the snapshot already (`GameSnapshot.LastKnownStack`), so
+there is no schema change, and a restore with the question open copies as well.
+The turn boundary still clears the record, except for a spell an open prompt
+names in its `OptionCarry`, so a question left open across a turn keeps its
+spell. Only a pay-unless can be answered after the table moves on; every other
+keyed prompt blocks, so no other caller that names the resolving spell has this
+exposure. Mystic Remora, Rhystic Study, Esper Sentinel and Smothering Tithe read
+nothing off the spell.

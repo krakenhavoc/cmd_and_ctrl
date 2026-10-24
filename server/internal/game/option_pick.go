@@ -381,13 +381,13 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 	case isKeyedChooseCards(c):
 		// #2040: a keyed choose_cards pick, run with nobody's choice.
 		err = g.runKeyedChooseCardsLocked(c, nil, false)
-	case c.chooseValueResume != nil:
+	case chooseValueFrameOf(c) != nil:
 		// A resolution-time "choose a creature type" whose chooser left
 		// (Patriarch's Bidding asks every seat in turn). "" is the
 		// absence of a choice, spelled in the currency the frame
 		// speaks; an ANSWER can never be empty (CanonicalCreatureType
 		// refuses it), so it cannot be mistaken for one.
-		err = c.chooseValueResume.runWithNoChoice(g)
+		err = chooseValueFrameOf(c).runWithNoChoice(g)
 	case c.Kind == PendingChoiceOptionPick && c.CouncilVote != nil:
 		// ADR 0146: a ballot whose voter left casts nothing, and the
 		// vote goes on to the next player (CR 800.4a). When someone was
@@ -401,8 +401,10 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		}
 	case c.Kind == PendingChoiceOptionPick && c.PickThen != "":
 		// #2854: a keyed option pick, run with nobody's choice.
-		err = runOptionPickThen(g, c.PickThen, OptionPicked{
-			Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry),
+		err = g.withCarriedCauseLocked(carriedCauseOfChoice(c), func() error {
+			return runOptionPickThen(g, c.PickThen, OptionPicked{
+				Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry),
+			})
 		})
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
@@ -699,9 +701,12 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	}
 	if key := choice.PickThen; key != "" {
 		carry := copyUUIDs(choice.OptionCarry)
+		cause := carriedCauseOfChoice(choice) // #4281
 		g.dequeueChoiceLocked(idx)
-		g.emitChoiceEffectErrorLocked(chooserID, source, runOptionPickThen(g, key, OptionPicked{
-			Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry,
+		g.emitChoiceEffectErrorLocked(chooserID, source, g.withCarriedCauseLocked(cause, func() error {
+			return runOptionPickThen(g, key, OptionPicked{
+				Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry,
+			})
 		}))
 		g.runStateChecksLocked()
 		return nil

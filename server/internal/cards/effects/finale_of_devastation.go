@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -57,7 +55,8 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()
-			item := ctx.Item
+			tail := ctx.ItemTail(finaleOfDevastationPump)
+			tail.N = x
 			return SearchLibrary{
 				Player:    ctx.Controller(),
 				Predicate: func(c game.Card) bool { return c.IsCreature() && c.ManaValue() <= x },
@@ -67,27 +66,32 @@ func init() {
 				// #3217: "library and/or graveyard".
 				AlsoGraveyard: true,
 				Reason:        "Finale of Devastation — a creature card with mana value X or less",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					if x < 10 {
-						return nil
-					}
-					fresh := NewContext(g, item)
-					yours := And(Creature(), YouControl())
-					if err := (BoostUntilEOT{
-						Match:     yours,
-						Power:     x,
-						Toughness: x,
-						Label:     "Finale of Devastation — +X/+X",
-					}).Apply(fresh); err != nil {
-						return err
-					}
-					return GrantKeywordUntilEOT{
-						Match:    yours,
-						Keywords: []string{"haste"},
-						Label:    "Finale of Devastation — haste",
-					}.Apply(fresh)
-				},
+				// #4253 slice 4: X and the item ride the tail.
+				ThenTail: tail,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// finaleOfDevastationPump is "if X is 10 or more, creatures you control get
+// +X/+X and gain haste until end of turn" (X is Tail.N). An on-disk key.
+var finaleOfDevastationPump = CardTail("finale-of-devastation/pump", func(ctx *Context, o game.TailOutcome) error {
+	x := o.Tail.N
+	if x < 10 {
+		return nil
+	}
+	yours := And(Creature(), YouControl())
+	if err := (BoostUntilEOT{
+		Match:     yours,
+		Power:     x,
+		Toughness: x,
+		Label:     "Finale of Devastation — +X/+X",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	return GrantKeywordUntilEOT{
+		Match:    yours,
+		Keywords: []string{"haste"},
+		Label:    "Finale of Devastation — haste",
+	}.Apply(ctx)
+})

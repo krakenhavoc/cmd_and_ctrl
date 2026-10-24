@@ -2,6 +2,19 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+// assaultronDominatorPaid reads the attacker off the asking trigger's event,
+// which the prompt carries as data (#4289).
+var assaultronDominatorPaid = energyPaid("pay-unless/assaultron-dominator-counter",
+	func(g *game.Game, item *game.StackItem) error {
+		if item.Trigger == nil {
+			return nil
+		}
+		ctx := NewContext(g, item)
+		return putChosenCounterOn(ctx, ctx.Controller(), item.Trigger.Event.CardID,
+			"Assaultron Dominator — choose a counter for that creature",
+			[]string{game.CounterPlusOne, game.CounterFirstStrike, game.CounterTrample})
+	})
+
 // Assaultron Dominator — Artifact Creature — Robot {1}{R}, 2/2:
 //
 //	"When this creature enters, you get {E}{E} (two energy counters).
@@ -35,15 +48,10 @@ func init() {
 					if item.Trigger == nil {
 						return nil
 					}
-					attacker := item.Trigger.Event.CardID
 					return MayPayEnergy{
 						N:        1,
 						Question: "Assaultron Dominator — pay {E} to put a +1/+1, first strike or trample counter on that creature?",
-						OnPay: func(ctx *Context) error {
-							return putChosenCounterOn(ctx, ctx.Controller(), attacker,
-								"Assaultron Dominator — choose a counter for that creature",
-								[]string{game.CounterPlusOne, game.CounterFirstStrike, game.CounterTrample})
-						},
+						Then:     assaultronDominatorPaid,
 					}.Apply(NewContext(g, item))
 				}),
 		},

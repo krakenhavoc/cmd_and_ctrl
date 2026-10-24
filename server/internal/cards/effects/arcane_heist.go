@@ -59,6 +59,8 @@ func arcaneHeistOffer(_ *game.StackItem, ctx *Context) error {
 			SourceName:              "Arcane Heist",
 			Label:                   "Arcane Heist — cast " + c.Name + " without paying its mana cost",
 		}, []game.Card{c})
+		// #4250: cast during the resolution (CR 608.2g).
+		offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Arcane Heist", game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
 		return nil
 	}
 	return nil

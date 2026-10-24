@@ -29,13 +29,14 @@ func init() {
 					return UnsuspectAll{}.Apply(NewContext(g, item))
 				}),
 			Targeting(
+				// The suspect waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
 				WhenThisDies("Absolving Lammasu — you gain 3 life and suspect up to one target creature an opponent controls",
-					func(g *game.Game, item *game.StackItem) error {
-						if err := (GainLife{Player: item.Controller, Amount: 3}).Apply(NewContext(g, item)); err != nil {
-							return err
-						}
-						return SuspectEachLegalTarget(g, item)
-					}),
+					Do(
+						GainLife{Amount: 3},
+						Instruction(func(ctx *Context) error {
+							return SuspectEachLegalTarget(ctx.Game, ctx.Item)
+						}),
+					)),
 				UpToOneTargetCreature("up to one target creature an opponent controls", OpponentControls()),
 			),
 		},

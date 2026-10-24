@@ -24,7 +24,8 @@ import (
 //
 // A step writes a small record, keyed by the resolving item and a name
 // the card chooses, and a later step of the same resolution reads it:
-// a list of object or player IDs and a list of numbers. It is plain
+// a list of object or player IDs, a list of numbers and a list of words
+// (#4228). It is plain
 // data, carried by Clone and the snapshot (GameSnapshot.StepRecords,
 // additive within v9), and it is no closure, so the closure ratchet
 // does not move.
@@ -37,9 +38,16 @@ import (
 // so it never needs one across a restore.
 
 // StepRecord is what one step hands a later one.
+//
+// Strs is a list of words (#4228): the counter kinds Rhys, the Evermore
+// still has to ask about. A new field of the record, so additive within
+// the snapshot version: `omitempty`, and a binary from before it reads
+// a record without it exactly as one that never had any. Nothing about
+// it is a closure.
 type StepRecord struct {
-	IDs []uuid.UUID `json:"ids,omitempty"`
-	Ns  []int       `json:"ns,omitempty"`
+	IDs  []uuid.UUID `json:"ids,omitempty"`
+	Ns   []int       `json:"ns,omitempty"`
+	Strs []string    `json:"strs,omitempty"`
 }
 
 // N is the record's first number, 0 when it has none.
@@ -59,7 +67,7 @@ type stepRecordEntry struct {
 }
 
 func cloneStepRecord(r StepRecord) StepRecord {
-	return StepRecord{IDs: copyUUIDs(r.IDs), Ns: copyInts(r.Ns)}
+	return StepRecord{IDs: copyUUIDs(r.IDs), Ns: copyInts(r.Ns), Strs: copyStrings(r.Strs)}
 }
 
 func cloneStepRecords(in []stepRecordEntry) []stepRecordEntry {

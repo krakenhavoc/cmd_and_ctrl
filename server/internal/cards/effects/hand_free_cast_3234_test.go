@@ -24,8 +24,16 @@ func freeCastFixture(g *game.Game, me *game.Player) (thrill, fodder uuid.UUID) {
 	return thrill, fodder
 }
 
+// answerFreeCastPick checks the free-cast offer names id. Inside a
+// resolution (#4250) the offer is the resolution_cast prompt and the cast
+// itself is its answer, so there is nothing to pick; outside one it is the
+// keyed pick (#4246), answered with id.
 func answerFreeCastPick(t *testing.T, g *game.Game, me *game.Player, id uuid.UUID) {
 	t.Helper()
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, id)
+		return
+	}
 	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
 	if pick == nil {
 		t.Fatal("no free-cast pick")
@@ -40,15 +48,19 @@ func answerFreeCastPick(t *testing.T, g *game.Game, me *game.Player, id uuid.UUI
 
 // assertCastsFree casts id with an empty pool: refused at the printed
 // cost, accepted when the caster claims the granted offer, with the
-// additional cost (discard) still paid.
+// additional cost (discard) still paid. Inside a resolution (#4250) the
+// offer's prompt holds a hand card's cast to the granted claim, so the
+// unclaimed cast IS the free one.
 func assertCastsFree(t *testing.T, g *game.Game, me *game.Player, id, fodder uuid.UUID) {
 	t.Helper()
 	params := game.CastSpellParams{Strict: true, DiscardIDs: []uuid.UUID{fodder}}
-	err := g.CastSpell(me.ID, id, params)
-	if err == nil || !strings.Contains(err.Error(), "insufficient mana") {
-		t.Fatalf("an unclaimed cast must pay the printed cost, got %v", err)
+	if resolutionCastOfferFor(g, me.ID) == nil {
+		err := g.CastSpell(me.ID, id, params)
+		if err == nil || !strings.Contains(err.Error(), "insufficient mana") {
+			t.Fatalf("an unclaimed cast must pay the printed cost, got %v", err)
+		}
+		params.AlternativeCost = game.AltCostKeyGrantedCost
 	}
-	params.AlternativeCost = game.AltCostKeyGrantedCost
 	if err := g.CastSpell(me.ID, id, params); err != nil {
 		t.Fatalf("the free cast: %v", err)
 	}

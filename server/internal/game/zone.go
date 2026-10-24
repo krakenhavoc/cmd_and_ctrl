@@ -234,6 +234,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// card in its new zone never had it.
 	c.EnchantSwapped = false
 	c.EnchantReturned = ObjectRef{}
+	// ADR 0154 / CR 400.7: the Aura form of a card that returns as an
+	// Aura (returned_aura.go) belongs to the object that returned. The
+	// card in its new zone is the card it prints.
+	c.ReturnedAura = false
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.
@@ -314,6 +318,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// also what stops the restriction reader having to ask what
 		// zone the Needle is in.
 		c.ChosenName = ""
+		c.ChosenSecondName = ""
 		// #1572 / CR 614.12: and so does the chosen OPTION. A Siege
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
@@ -452,6 +457,13 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// while it sits in exile" true with no special case: a move
 	// within a zone is not a move, and never reaches here.
 	c.ClearFaceDown()
+	// CR 123.5 (ADR 0208): stickers come off a card that moves to a
+	// hidden zone, and out of the game; every other move keeps them, an
+	// exception to CR 400.7. Keyed on the destination, as the rule is.
+	switch dst.Kind {
+	case ZoneLibrary, ZoneHand, ZoneOutside:
+		c.Stickers = nil
+	}
 	// ADR 0066 amendment 2026-10-15 (#3769): the graveyard-arrival
 	// record. Every move rewrites it, so a card that leaves a graveyard
 	// names nothing and one that arrives names where it came from.

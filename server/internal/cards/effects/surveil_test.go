@@ -19,10 +19,11 @@ import (
 //     the library. That is the entire keyword. A reanimator deck
 //     surveils to fill a graveyard, and bottoming instead is the
 //     difference between a resource and a card that is gone.
-//   - they emit EventMill on the way, the same event an ordinary mill
-//     emits, because it is the same zone change. A "whenever a card is
-//     put into your graveyard from your library" payoff must not care
-//     which keyword moved it.
+//   - they emit an EventZoneMove on the way, library to graveyard, and
+//     not the EventMill a mill emits: surveil is not a mill (CR
+//     701.25a, #2809). A "whenever a card is put into your graveyard
+//     from your library" payoff watches both kinds and still sees it;
+//     a "whenever one or more cards are milled" payoff does not.
 //   - surveil is LOOK AT, not reveal — same privacy rule as scry.
 //   - the scry resolver must refuse a surveil prompt and vice versa,
 //     because both answers carry a top_order and only the other key
@@ -179,11 +180,11 @@ func TestSurveilKeepingOnTopLeavesTheLibraryAlone(t *testing.T) {
 	}
 }
 
-// TestSurveilEmitsMillAndSurveilEvents — the binned card takes the
+// TestSurveilEmitsZoneMoveAndSurveilEvents — the binned card takes the
 // ordinary library-to-graveyard route, so graveyard payoffs see it;
 // the completed keyword gets its own event on top, so surveil payoffs
 // see that and an ordinary scry does not fire them.
-func TestSurveilEmitsMillAndSurveilEvents(t *testing.T) {
+func TestSurveilEmitsZoneMoveAndSurveilEvents(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	seedLibrary(me, "Fodder")
@@ -201,12 +202,14 @@ func TestSurveilEmitsMillAndSurveilEvents(t *testing.T) {
 		t.Fatalf("ResolveSurveil: %v", err)
 	}
 
-	var mills, surveils, scries int
+	var moves, mills, surveils, scries int
 	for _, ev := range g.Events[before:] {
 		switch ev.Kind {
 		case game.EventMill:
+			mills++
+		case game.EventZoneMove:
 			if ev.CardID == binned && ev.OldZone == game.ZoneLibrary && ev.NewZone == game.ZoneGraveyard {
-				mills++
+				moves++
 			}
 		case game.EventSurveil:
 			surveils++
@@ -217,8 +220,11 @@ func TestSurveilEmitsMillAndSurveilEvents(t *testing.T) {
 			scries++
 		}
 	}
-	if mills != 1 {
-		t.Errorf("%d library-to-graveyard mill events, want 1", mills)
+	if moves != 1 {
+		t.Errorf("%d library-to-graveyard zone moves, want 1", moves)
+	}
+	if mills != 0 {
+		t.Errorf("%d mill events; surveil is not a mill (CR 701.25a)", mills)
 	}
 	if surveils != 1 {
 		t.Errorf("%d surveil events, want 1", surveils)

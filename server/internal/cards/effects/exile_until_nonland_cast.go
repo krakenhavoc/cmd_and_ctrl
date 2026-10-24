@@ -22,6 +22,7 @@ func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error
 		To:     game.ZoneExile,
 		Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
 		Then: func(ctx *Context, exiled []uuid.UUID) error {
+			var granted []uuid.UUID
 			for _, id := range exiled {
 				c, ok := ctx.Game.LookupCardForEffect(id)
 				z := ctx.Game.FindCardZoneForEffect(id)
@@ -32,7 +33,12 @@ func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error
 				grant.Player = ctx.Controller()
 				grant.Zone = game.ZoneExile
 				ctx.Game.GrantCastPermissionToCardsForEffect(grant, []game.Card{c})
+				granted = append(granted, id)
 			}
+			// #4250: cast during the resolution (CR 608.2g), at the
+			// permission's price.
+			offerResolutionCastOver(ctx.Game, ctx.Controller(), perm.Source, perm.SourceName,
+				game.MayCastKeywordPaidCast, declineLeaveInExile, granted...)
 			return nil
 		},
 	}.Apply(ctx)

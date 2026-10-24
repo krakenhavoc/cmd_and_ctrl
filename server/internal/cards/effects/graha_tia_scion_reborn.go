@@ -2,6 +2,7 @@ package effects
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -73,9 +74,8 @@ func grahaTiaThrowWideTheGates(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "G'raha Tia — pay X life, where X is that spell's mana value, to create a 1/1 Hero with X +1/+1 counters?",
 		LifeCost: x,
-		OnYes: func(ctx *Context) error {
-			return grahaTiaPayAndCreate(ctx, x)
-		},
+		Then:     grahaTiaAnswer,
+		Word:     strconv.Itoa(x),
 	}.Apply(NewContext(g, item))
 }
 
@@ -106,3 +106,9 @@ func grahaTiaPayAndCreate(ctx *Context, x int) error {
 	_, err := g.CreateTokensForEffect(item.Controller, NewContext(g, item).TextToken(TokenCard("1/1 colorless Hero")), 1, opts)
 	return err
 }
+
+// grahaTiaAnswer is the "yes": pay X life (Word) and create the Hero. Keyed
+// (#4291).
+var grahaTiaAnswer = MayYes("confirm/graha-tia-pay-and-create", func(ctx *Context, r game.ConfirmAnswer) error {
+	return grahaTiaPayAndCreate(ctx, wordInt(r))
+})

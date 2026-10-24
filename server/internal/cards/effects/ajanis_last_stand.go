@@ -75,10 +75,14 @@ func controlsPlains(g *game.Game, controller uuid.UUID) bool {
 func ajanisLastStandSacrifice(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Ajani's Last Stand — sacrifice it to create a 4/4 white Avatar with flying?",
-		OnYes: func(ctx *Context) error {
-			return SacrificeThisThen(func(ctx *Context) error {
-				return CreateToken{Template: TokenCard("4/4 white Avatar with flying"), N: 1}.Apply(ctx)
-			})(ctx.Game, ctx.Item)
-		},
+		Then:     ajanisLastStandAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// ajanisLastStandAnswer is the "yes": sacrifice the enchantment, and only
+// then the token. Keyed (#4291).
+var ajanisLastStandAnswer = MayYes("confirm/ajanis-last-stand-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return SacrificeThisThen(func(ctx *Context) error {
+		return CreateToken{Template: TokenCard("4/4 white Avatar with flying"), N: 1}.Apply(ctx)
+	})(ctx.Game, ctx.Item)
+})

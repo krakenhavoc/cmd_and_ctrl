@@ -24,6 +24,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}{W}, {T}: Target creature gets +2/+0 and gains vigilance and haste until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 2, 0, "vigilance", "haste")),
 			Cost:    Plus(ManaCost("{R}{W}"), TapCost()),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

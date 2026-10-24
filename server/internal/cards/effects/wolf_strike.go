@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "34237f39-1db3-4b3d-b87b-5fd1fbd5462a",
 		Name:         "Wolf Strike",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetCreature("target creature you control", YouControl()),

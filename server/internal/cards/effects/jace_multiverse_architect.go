@@ -38,13 +38,13 @@ func init() {
 			{
 				Label: "+1: Draw two cards, then put a card from your hand on the bottom of your library.",
 				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return rfPutCardFromHandOnBottom(ctx, "Jace, Multiverse Architect — put a card from your hand on the bottom of your library")
-				},
+				// The card goes to the bottom after a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+				Effect: Do(
+					DrawCards{N: 2},
+					Instruction(func(ctx *Context) error {
+						return rfPutCardFromHandOnBottom(ctx, "Jace, Multiverse Architect — put a card from your hand on the bottom of your library")
+					}),
+				),
 			},
 			{
 				Label:   "−3: Exile another target planeswalker or creature you control. Reveal cards from the top of your library until you reveal a creature or planeswalker card. Put that card onto the battlefield and the rest on the bottom of your library in a random order.",
@@ -64,16 +64,19 @@ func jaceMultiverseArchitectCombatTax(g *game.Game, item *game.StackItem) error 
 	if item.Trigger == nil {
 		return nil
 	}
-	opponent, controller := item.Trigger.Event.Actor, item.Controller
 	return UpkeepPayUnless{
-		Chooser:  opponent,
+		Chooser:  item.Trigger.Event.Actor,
 		Cost:     "{2}",
 		Question: "Jace, Multiverse Architect — pay {2}, or your creatures can't attack its controller's Jaces this turn?",
-		OnDecline: func(ctx *Context) error {
-			ctx.Game.GrantCantAttackPlayerThisTurnForEffect(opponent, controller,
-				game.CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"},
-				"Jace, Multiverse Architect", ctx.Source())
-			return nil
-		},
+		Else:     jaceCombatTaxDeclined,
 	}.Apply(NewContext(g, item))
 }
+
+// jaceCombatTaxDeclined is the decline, keyed (#4264): the payer is the opponent whose combat it is.
+var jaceCombatTaxDeclined = PayUnlessElse("pay-unless/jace-multiverse-architect-cant-attack",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		ctx.Game.GrantCantAttackPlayerThisTurnForEffect(r.Chooser, ctx.Controller(),
+			game.CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"},
+			"Jace, Multiverse Architect", ctx.Source())
+		return nil
+	})

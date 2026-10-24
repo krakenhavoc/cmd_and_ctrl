@@ -44,6 +44,7 @@ func init() {
 			},
 			{
 				Label:   "{3}, {T}: Target creature can't be blocked this turn.",
+				Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 				Cost:    Plus(ManaCost("{3}"), TapCost()),
 				Targets: TargetCreature("target creature"),
 				Effect: func(g *game.Game, item *game.StackItem) error {

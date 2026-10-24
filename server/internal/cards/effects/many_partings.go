@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -33,10 +31,13 @@ func init() {
 				Reveal:    true,
 				Shuffle:   true,
 				Reason:    "Many Partings — a basic land card, revealed, to hand",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
-				},
+				ThenTail:  ctx.ItemTail(manyPartingsFood),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// manyPartingsFood is "create a Food token". An on-disk key.
+var manyPartingsFood = CardTail("many-partings/create-food", func(ctx *Context, _ game.TailOutcome) error {
+	return CreateToken{Controller: ctx.Controller(), Template: FoodToken(), N: 1}.Apply(ctx)
+})

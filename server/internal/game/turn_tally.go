@@ -131,6 +131,14 @@ type PlayerTurnTally struct {
 	// schema v8.
 	TokensAttacked     int `json:"tokensAttacked,omitempty"`
 	CommandersAttacked int `json:"commandersAttacked,omitempty"`
+	// NontokenPermanentsPut counts the nontoken permanents this player
+	// PUT onto the battlefield this turn (#1997, last_turn_actions.go):
+	// a land played, a permanent spell of theirs resolving, a put by a
+	// spell or ability they control, or one an instruction told them to
+	// make. Who it entered under does not decide it, and a permanent
+	// that has since left still counts. Arboria reads it, a turn later,
+	// through Player.LastTurnCastOrPut. Additive within schema v9.
+	NontokenPermanentsPut int `json:"nontokenPermanentsPut,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -140,6 +148,20 @@ type TurnTally struct {
 	Players map[uuid.UUID]PlayerTurnTally `json:"players,omitempty"`
 	// CreaturesDied is the table-wide count, any controller.
 	CreaturesDied int `json:"creaturesDied,omitempty"`
+	// NonlandPermanentsLeft is the table-wide count of nonland
+	// permanents that left the battlefield this turn, by any route, to
+	// any zone, whoever controlled them (void, CR 207.2c; #2128): a
+	// death, a sacrifice, a bounce, an exile, a token that ceased to
+	// exist. The permanent is read as it last existed on the
+	// battlefield (CR 608.2h), so an animated land is a land and a
+	// manifested land card is the nonland permanent it was. Half of
+	// Game.VoidThisTurn.
+	NonlandPermanentsLeft int `json:"nonlandPermanentsLeft,omitempty"`
+	// SpellsWarped is the table-wide count of spells cast for their
+	// warp cost this turn (CR 702.185c), from any zone and by any
+	// player, whether or not the spell later resolved. The other half
+	// of Game.VoidThisTurn.
+	SpellsWarped int `json:"spellsWarped,omitempty"`
 	// Resolved counts stack items that resolved this turn, keyed by
 	// ObjectTallyKey(source, epoch, label) — the "once per turn" gate
 	// for an ability that must not fire twice. PER OBJECT (#936,
@@ -562,6 +584,31 @@ func (g *Game) ObjectAttackedThisTurn(ref ObjectRef) bool {
 		}
 	}
 	return false
+}
+
+// AttackersThisCombatForEffect is every object declared as an attacker
+// in the combat phase in progress, each once, first declared first:
+// "if Kytheon and at least two other creatures attacked this combat"
+// (#2567). It reads this turn's attack records for the current
+// Turn.PhaseID, so an additional combat phase is a combat of its own,
+// a creature that attacked and has since left the battlefield still
+// counts, and one put onto the battlefield attacking never does (it was
+// never declared, CR 508.4; the Kytheon ruling). Empty outside a combat
+// phase's records.
+//
+// Caller must hold g.mu.
+func (g *Game) AttackersThisCombatForEffect() []ObjectRef {
+	var out []ObjectRef
+	seen := map[ObjectRef]bool{}
+	for _, a := range g.TurnTally.Attacks {
+		ref := ObjectRef{ID: a.Attacker, Epoch: a.Epoch}
+		if a.PhaseID != g.Turn.PhaseID || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		out = append(out, ref)
+	}
+	return out
 }
 
 // AttackedPlayersThisTurn is the players the object `cardID` names has
@@ -1485,7 +1532,7 @@ func (g *Game) resetTurnTallyLocked() {
 
 // cloneTurnTally deep-copies the maps; the counters are plain values.
 func cloneTurnTally(t TurnTally) TurnTally {
-	out := TurnTally{CreaturesDied: t.CreaturesDied, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
+	out := TurnTally{CreaturesDied: t.CreaturesDied, NonlandPermanentsLeft: t.NonlandPermanentsLeft, SpellsWarped: t.SpellsWarped, FirstEvent: t.FirstEvent, MonarchAtStart: t.MonarchAtStart}
 	if len(t.Players) > 0 {
 		out.Players = make(map[uuid.UUID]PlayerTurnTally, len(t.Players))
 		for k, v := range t.Players {
@@ -1739,6 +1786,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		// #2148: revolt. Every battlefield exit, whatever the
 		// destination, recorded under the controller it left from.
 		g.recordPermanentLeftLocked(ev)
+		// #2128: void. The table-wide nonland sibling.
+		g.recordNonlandPermanentLeftLocked(ev)
 		if ev.NewZone != ZoneGraveyard {
 			return
 		}
@@ -1862,6 +1911,52 @@ func (g *Game) recordPermanentLeftLocked(ev Event) {
 		controller = ev.Actor
 	}
 	g.bumpPlayerTally(controller, func(p *PlayerTurnTally) { p.PermanentsLeft++ })
+}
+
+// recordNonlandPermanentLeftLocked bumps NonlandPermanentsLeft when the
+// permanent an EventLTB names was not a land as it last existed on the
+// battlefield (CR 608.2h). The exit's own last-known types answer first,
+// then the CR 603.10 snapshot, then the card as it now sits; a permanent
+// none of them can type is not counted, which is the weaker reading.
+func (g *Game) recordNonlandPermanentLeftLocked(ev Event) {
+	if was, known := ev.WasType("land"); known {
+		if !was {
+			g.TurnTally.NonlandPermanentsLeft++
+		}
+		return
+	}
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		if !hasTypeFold(lki.Types, "land") {
+			g.TurnTally.NonlandPermanentsLeft++
+		}
+		return
+	}
+	if c := g.findCardByIDLocked(ev.CardID); c != nil && !c.IsLand() {
+		g.TurnTally.NonlandPermanentsLeft++
+	}
+}
+
+// noteSpellWarpedLocked records a cast for the warp cost (CR 702.185c).
+// `alt` is the alternative cost the caster chose, nil for an ordinary
+// cast. Warp is told apart by the exile clause every warp offer carries
+// (effects.Warp sets WarpExile; a granted warp keeps it), so a cast for
+// any other alternative cost, or for the printed cost, does not count.
+func (g *Game) noteSpellWarpedLocked(alt *AlternativeCost) {
+	if alt != nil && alt.WarpExile {
+		g.TurnTally.SpellsWarped++
+	}
+}
+
+// VoidThisTurn reports void (CR 207.2c; #2128): whether a nonland
+// permanent left the battlefield this turn or a spell was warped this
+// turn. A fact about the whole table's turn, not about any one player,
+// so it takes no seat. It is read where each card's text asks: at the
+// announcement for a cost, as a trigger fires and again as it resolves
+// for an intervening "if", and as a spell resolves for "instead".
+//
+// Caller must hold g.mu.
+func (g *Game) VoidThisTurn() bool {
+	return g.TurnTally.NonlandPermanentsLeft > 0 || g.TurnTally.SpellsWarped > 0
 }
 
 // PermanentLeftThisTurn reports revolt (CR 702.136): whether a

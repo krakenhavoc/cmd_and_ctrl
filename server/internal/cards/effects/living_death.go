@@ -103,7 +103,12 @@ func init() {
 				// to do must not open a window for a move that cannot
 				// happen.
 				return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, _ []uuid.UUID) error {
-					return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+					// #1997: "each player … puts all cards they exiled"
+					// — put by the player each enters under (CR
+					// 110.2a), which Arboria reads.
+					return g.PutByEnteringPlayerForEffect(func() error {
+						return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+					})
 				})
 			})
 		},

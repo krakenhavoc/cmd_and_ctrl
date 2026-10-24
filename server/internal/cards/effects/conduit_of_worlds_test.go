@@ -71,9 +71,12 @@ func TestConduitOfWorldsCastsTheCardAndBansFurtherSpells(t *testing.T) {
 	if err := conduitActivate(t, g, me, conduit, bear); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
+	// #4250: the cast is made during the ability's resolution, paid then.
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordPaidCast, bear)
 	if err := conduitCastFromGraveyard(g, me, bear); err != nil {
 		t.Fatalf("cast from graveyard: %v", err)
 	}
+	castInsideTheResolution(t, g, bear)
 	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{}); !conduitBanned(err) {
 		t.Fatalf("a second spell this turn must be refused by the ban, got %v", err)
 	}
@@ -89,12 +92,14 @@ func TestConduitOfWorldsDeclinedOfferBansNothing(t *testing.T) {
 	if err := conduitActivate(t, g, me, conduit, bear); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	// Declining is passing priority: the offer closes (CR 608.2g).
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("pass: %v", err)
+	// #4250: the decline is the resolution_cast's empty answer, and the
+	// card stays in the graveyard (CR 608.2g).
+	declineResolutionCast(t, g, me.ID)
+	if !me.Graveyard.Contains(bear) {
+		t.Fatal("the declined card left the graveyard")
 	}
 	if err := conduitCastFromGraveyard(g, me, bear); err == nil {
-		t.Fatal("the offer closed on the pass; the card cannot be cast afterwards")
+		t.Fatal("the offer closed on the decline; the card cannot be cast afterwards")
 	}
 	if err := g.CastSpell(me.ID, bolt, game.CastSpellParams{}); err != nil {
 		t.Fatalf("declining the cast binds nobody: %v", err)
@@ -106,8 +111,9 @@ func TestConduitOfWorldsExpiredOfferRunsNoFollowUp(t *testing.T) {
 	if err := conduitActivate(t, g, me, conduit, bear); err != nil {
 		t.Fatalf("activate: %v", err)
 	}
-	// The sandbox can move the turn without a pass; the offer lapses
-	// with the turn and nothing follows.
+	// The offer is declined inside the resolution, and the turn moves
+	// on: nothing follows.
+	declineResolutionCast(t, g, me.ID)
 	for i := 0; i < 40 && g.Turn.ActiveSeat == 0; i++ {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)

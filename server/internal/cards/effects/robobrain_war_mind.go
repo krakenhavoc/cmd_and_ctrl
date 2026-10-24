@@ -49,7 +49,7 @@ func init() {
 					}
 					return GetEnergy{N: n}.Apply(NewContext(g, item))
 				}),
-			whenThisAttacksMayPayEnergy("Robobrain War Mind", 3, "draw a card", Do(DrawCards{N: 1})),
+			whenThisAttacksMayPayEnergy("Robobrain War Mind", 3, "draw a card", mayPayDrawACard),
 		},
 	})
 }

@@ -44,10 +44,6 @@ func mindskinnerMill(g *game.Game, item *game.StackItem, _ game.EffectParams) er
 	if n <= 0 {
 		return nil
 	}
-	for _, opp := range b27OtherOpponents(g, item.Controller, uuid.Nil) {
-		if err := g.MillNForEffect(opp, n); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One opponent's library at a time in APNAP order (#4266).
+	return millEachPlayerInTurn(NewContext(g, item), b27OtherOpponents(g, item.Controller, uuid.Nil), constantMill(n), nil)
 }

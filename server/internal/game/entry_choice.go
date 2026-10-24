@@ -553,6 +553,12 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	if bestowed {
 		g.seedBestowedEntryLocked(entered, &moved)
 	}
+	// ADR 0154's 2026-10-23 amendment: a card returning as an Aura is
+	// one from the moment it lands, before the host is attached and
+	// before EventETB, so an enters trigger finds an Aura and no creature.
+	if ev.entersAsAura {
+		g.seedReturnedAuraEntryLocked(entered, &moved)
+	}
 	// ADR 0104 (CR 110.2b, CR 400.7a): a permanent spell whose control
 	// was changed on the stack keeps that change as a permanent, and
 	// its default controller is the player who put the spell on the
@@ -686,6 +692,8 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 		g.stampEntryProvenanceLocked(&etb)
 	}
 	g.EmitEvent(etb)
+	// #1997: who put it there, for "during their last turn" (Arboria).
+	g.notePermanentPutLocked(l)
 	// ADR 0103, CR 709.5h: "when you unlock this door" triggers on a
 	// door unlocked as the permanent enters, too. After EventETB, in
 	// the same batch.

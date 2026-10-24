@@ -27,27 +27,6 @@ import (
 // b12WhiteAngelFlyingToken, the Blood / Clue / Food tokens are in
 // tokens.go, and the lord keyword grant is TribalKeywordGrant.
 
-// --- mana-ability riders -----------------------------------------
-
-// b32EachOpponentGainsLifeRider is the post-production half of
-// Grove of the Burnwillows' coloured ability: "Each opponent gains
-// 1 life." A rider, not a cost, and life GAIN through
-// ChangePlayerLifeForEffect so every opponent's "whenever you gain
-// life" payoff sees it — which is the whole drawback of the card.
-func b32EachOpponentGainsLifeRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
-	return func(g *game.Game, controller, source uuid.UUID) error {
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated || p.ID == controller {
-				continue
-			}
-			if err := g.ChangePlayerLifeForEffect(source, p.ID, n); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-}
-
 // --- card reads --------------------------------------------------
 
 // b32ElvesControlled counts the Elves `controller` controls —
@@ -284,17 +263,21 @@ func b32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error 
 		Limit:     1,
 		Reveal:    true,
 		Reason:    "Axgard Armory — choose up to one Aura card to put into your hand",
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:  controller,
-				Source:  source,
-				Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Reveal:  true,
-				Shuffle: true,
-				Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
-			})
-		},
+		ThenTail:  game.KeyedTail{Ref: axgardArmoryEquipmentSearch, Player: controller, Source: source},
 	}.Apply(NewContext(g, item))
 }
+
+// axgardArmoryEquipmentSearch is the Equipment half of Axgard Armory's
+// search, run once the Aura search has settled. An on-disk key.
+var axgardArmoryEquipmentSearch = game.RegisterTail("axgard-armory/equipment-search", func(g *game.Game, o game.TailOutcome) error {
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:  o.Tail.Player,
+		Source:  o.Tail.Source,
+		Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
+		Dest:    game.ZoneHand,
+		Limit:   1,
+		Reveal:  true,
+		Shuffle: true,
+		Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
+	})
+})

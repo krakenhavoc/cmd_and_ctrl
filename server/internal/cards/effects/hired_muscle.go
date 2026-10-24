@@ -31,6 +31,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Remove a ki counter from Scarmaker: Target creature gains fear until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "fear")),
 			Cost:    removeAKiCounter(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

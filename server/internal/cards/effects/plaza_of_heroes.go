@@ -69,6 +69,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{3}, {T}, Exile this land: Target legendary creature gains hexproof and indestructible until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible")),
 			Cost:    Plus(ManaCost("{3}"), TapCost(), ExileThis()),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

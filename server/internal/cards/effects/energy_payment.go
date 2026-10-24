@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -18,54 +20,73 @@ import (
 //
 // Like MayPay, the first two and the last only QUEUE a prompt: the
 // calling effect has finished by the time the player answers, so what
-// the card does after the payment lives inside OnPay / OnDecline / Then,
-// never after Apply returns. Each branch gets a fresh Context bound to
-// the same stack item.
+// the card does after the payment lives inside Then / Else (registered
+// branches, #4289) and PayEnergyAmount's Then, never after Apply returns.
+// Each branch gets a Context bound to a copy of the asking item.
 //
 // Every prompt here holds the table in the step it was asked in
 // (game.EnergyPayment.InThisStep): an attack trigger's +1/+1 counter has
 // to land before combat damage, and an upkeep draw before the draw step.
 
-// MayPayEnergy is "you may pay N {E}. If you do, <OnPay>". Chooser
+// MayPayEnergy is "you may pay N {E}. If you do, <Then>". Chooser
 // defaults to the controller of the resolving spell or ability.
+//
+// Then is the paid half as REGISTERED branches (PayUnlessBranches, #4289):
+// a prompt queued with one holds no closure, so a table waiting on the
+// payer is a restore point. The branch runs against a copy of the asking
+// item rebuilt from data the prompt carries (game.AskedItem), so it reads
+// the trigger's event, targets and source object as the closure over the
+// item did. Carry is the plain data it is handed, as MayPay's is.
 type MayPayEnergy struct {
 	Chooser  uuid.UUID
 	N        int
 	Question string
-	OnPay    func(ctx *Context) error
+	Then     game.PayUnlessElse
+	Carry    []uuid.UUID
 }
 
 func (p MayPayEnergy) Apply(ctx *Context) error {
+	if p.Then.Key() == "" {
+		return fmt.Errorf("%w: MayPayEnergy has no Then", game.ErrInvalidParam)
+	}
 	return ctx.Game.QueueEnergyPaymentForEffect(game.EnergyPayment{
 		Chooser:    energyChooser(ctx, p.Chooser),
 		Source:     ctx.Source(),
 		N:          p.N,
 		Question:   p.Question,
 		InThisStep: true,
-		// The same adapter the decline uses: a fresh Context bound to
-		// the same stack item, built when the branch runs.
-		OnPay: declineAgainstTheSameItem(ctx.Item, p.OnPay),
+		Then:       p.Then,
+		Carry:      append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		Asked:      game.NewAskedItem(ctx.Item),
+		MayPay:     true,
 	})
 }
 
-// PayEnergyUnless is "<OnDecline> unless you pay N {E}" (CR 118.12a).
-// OnDecline runs on "no", on a "yes" the chooser cannot fund, and when
-// the chooser has left the game (CR 800.4f).
+// PayEnergyUnless is "<Else> unless you pay N {E}" (CR 118.12a). Else is
+// the decline as REGISTERED branches (PayUnlessElse, #4289): it runs on
+// "no", on a "yes" the chooser cannot fund, and when the chooser has left
+// the game (CR 800.4f). Carry is the plain data it is handed.
 type PayEnergyUnless struct {
-	Chooser   uuid.UUID
-	N         int
-	Question  string
-	OnDecline func(ctx *Context) error
+	Chooser  uuid.UUID
+	N        int
+	Question string
+	Else     game.PayUnlessElse
+	Carry    []uuid.UUID
 }
 
 func (p PayEnergyUnless) Apply(ctx *Context) error {
+	if p.Else.Key() == "" {
+		return fmt.Errorf("%w: PayEnergyUnless has no Else", game.ErrInvalidParam)
+	}
 	return ctx.Game.QueueEnergyPaymentForEffect(game.EnergyPayment{
 		Chooser:    energyChooser(ctx, p.Chooser),
 		Source:     ctx.Source(),
 		N:          p.N,
 		Question:   p.Question,
 		InThisStep: true,
-		OnDecline:  declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+		Then:       p.Else,
+		Carry:      append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		Asked:      game.NewAskedItem(ctx.Item),
 	})
 }
 
@@ -92,7 +113,9 @@ func (p PayEnergyOrElse) Apply(ctx *Context) error {
 // pay one or more {E}" (Min 1): the pay_amount prompt, whose answer is
 // handed to Then. Then always runs exactly once, with 0 when nothing was
 // paid — when the chooser had no energy, declined or left — so the rest
-// of the card ("Destroy all creatures") lives inside it.
+// of the card ("Destroy all creatures") lives inside it. Then is a
+// registered branch (NumberThen, #4294), handed the amount as r.Number,
+// so a table waiting on the payer is a restore point.
 //
 // Goal is the card's own threshold, computed when the prompt is asked:
 // the smallest amount that does what the card is for (Harnessed
@@ -106,13 +129,22 @@ type PayEnergyAmount struct {
 	Question string
 	Unit     string
 	Goal     func(ctx *Context) int
-	Then     func(ctx *Context, paid int) error
+	// Then is the branch the amount is handed to; Carry, Words and Nums
+	// are the plain data it is handed with it.
+	Then  game.NumberThen
+	Carry []uuid.UUID
+	Words []string
+	Nums  []int
 }
 
 func (p PayEnergyAmount) Apply(ctx *Context) error {
 	goal := 0
 	if p.Goal != nil {
 		goal = p.Goal(ctx)
+	}
+	branch, err := numberBranchOf(ctx, p.Then, p.Carry, p.Words, p.Nums)
+	if err != nil {
+		return err
 	}
 	return ctx.Game.QueuePayEnergyAmountForEffect(game.PayEnergyAmount{
 		Chooser:  energyChooser(ctx, p.Chooser),
@@ -121,7 +153,7 @@ func (p PayEnergyAmount) Apply(ctx *Context) error {
 		Goal:     goal,
 		Unit:     p.Unit,
 		Question: p.Question,
-		Then:     amountThen(ctx.Item, p.Then),
+		Branch:   branch,
 	})
 }
 

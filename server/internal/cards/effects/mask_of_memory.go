@@ -67,7 +67,7 @@ func maskOfMemoryMayDrawTwo(g *game.Game, item *game.StackItem) error {
 		Draws:    2,
 		YesLabel: "Draw two",
 		NoLabel:  "Decline",
-		OnYes:    maskOfMemoryDrawThenDiscard,
+		Then:     maskOfMemoryAnswer,
 	}.Apply(NewContext(g, item))
 }
 
@@ -77,3 +77,9 @@ func maskOfMemoryMayDrawTwo(g *game.Game, item *game.StackItem) error {
 func maskOfMemoryDrawThenDiscard(ctx *Context) error {
 	return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), 2, 1, "")
 }
+
+// maskOfMemoryAnswer is the "yes": draw two, then discard a card. Keyed
+// (#4291).
+var maskOfMemoryAnswer = MayYes("confirm/mask-of-memory-loot", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return maskOfMemoryDrawThenDiscard(ctx)
+})

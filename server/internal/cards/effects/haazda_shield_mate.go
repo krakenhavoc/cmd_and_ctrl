@@ -20,14 +20,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Haazda Shield Mate — sacrifice unless you pay {W}{W}", func(g *game.Game, item *game.StackItem) error {
-				sourceID := item.SourceCardID
 				return UpkeepPayUnless{
 					Chooser:  item.Controller,
 					Cost:     "{W}{W}",
 					Question: "Haazda Shield Mate — pay {W}{W} or sacrifice Haazda Shield Mate?",
-					OnDecline: func(ctx *Context) error {
-						return SacrificePermanent{Target: sourceID}.Apply(ctx)
-					},
+					Else:     upkeepSacrificeSource,
 				}.Apply(NewContext(g, item))
 			}),
 		},

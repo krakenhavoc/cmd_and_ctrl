@@ -80,14 +80,21 @@ export function pruneStage(
 export interface StagedAttackParams {
   attackers: StagedAttack[];
   auto_tap: true;
+  // #4198: Phyrexian symbols of the attack tax paid with 2 life each.
+  phyrexian_life?: number;
 }
 
 /**
  * stagedParams is the one declare_attackers the primary sends, or null
- * with nothing staged. auto_tap pays a CR 508.1a attack tax from lands
+ * with nothing staged. auto_tap pays a CR 508.1h attack tax from lands
  * (ADR 0080), as every other declaration does; it is inert without one.
  */
-export function stagedParams(stage: readonly StagedAttack[]): StagedAttackParams | null {
+export function stagedParams(
+  stage: readonly StagedAttack[],
+  phyrexianLife = 0,
+): StagedAttackParams | null {
   if (stage.length === 0) return null;
-  return { attackers: stage.map((s) => ({ ...s })), auto_tap: true };
+  const params: StagedAttackParams = { attackers: stage.map((s) => ({ ...s })), auto_tap: true };
+  if (phyrexianLife > 0) params.phyrexian_life = phyrexianLife;
+  return params;
 }

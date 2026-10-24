@@ -1,0 +1,6 @@
+---
+title: "Attacking only the nearest opponent in a direction"
+date: 2026-10-20
+issues: [4197]
+---
+**Attacking only the nearest opponent in a direction** (#4197, ADR 0206): "each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent". Left is the next player in turn order (CR 101.4) and right the previous one; `Game.NearestOpponentForEffect` skips players who have left the game. A permanent's static is `Spec.AttackOnlyNearestOpponentInChosenDirection`, its direction read off the permanent's "choose left or right" answer (`ChooseLeftOrRightAsEnters`, `Card.ChosenOption`), derived from the battlefield and never stored. A resolved ability writes `PlayerStatic.AttackDirection` with a CR 611.2 duration on every player (`Game.GrantAttackDirectionForEffect`). `attackDirectionRefusalLocked` folds both inside `canAttackTargetWithLocked` and `AttackTargetsForAttackerForEffect`, so both declaration verbs, the CR 508.1d requirement search, the enumerator, the digest, the client's attack gate (now also the card menu's Declare attacker rows) and the bot agree; rules that disagree leave nobody to attack, and creatures put onto the battlefield attacking are exempt (CR 508.4c). Snapshot: one additive field. **2 cards:** Pramikon, Sky Rampart (new, complete); Teyo, Geometric Tactician's −2 (caveat removed).

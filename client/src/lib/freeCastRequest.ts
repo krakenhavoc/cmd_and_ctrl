@@ -1,33 +1,24 @@
 import { guardedWritable } from "./guardedStore";
 import type { AlternativeCostView, CardView, PendingChoiceView } from "./protocol";
 
-// ADR 0099 §7. Answering "Cast it free" to a discover's or a cascade's
-// may_cast prompt only opens the free cast: the server stamps a grant on
-// the exiled card, and the cast itself is an ordinary cast_spell. The
-// prompt lives in ChoicePromptModal and the one cast entry point
-// (handlePlayCard, #874) lives in Board, so the modal leaves the card's
-// instance id here and Board starts the cast chain — face picker,
-// targets, modes — once a snapshot shows the card in exile and castable.
+// ADR 0099 §7. Answering a free-cast pick only opens the free cast: the
+// server stamps a grant on the card, and the cast itself is an ordinary
+// cast_spell. The prompt lives in ChoicePromptModal and the one cast entry
+// point (handlePlayCard, #874) lives in Board, so the modal leaves the
+// card's instance id here and Board starts the cast chain — face picker,
+// targets, modes — once a snapshot shows the card castable.
 //
 // The window closes on the player's next pass, so a request that never
 // becomes castable (no legal target, say) is dropped rather than kept:
 // the player passes, and the card goes where the keyword sends it.
 export const freeCastRequest = guardedWritable<string | null>(null, "freeCastRequest");
 
-// MayCastKeywordsThatOpenACast are the may_cast keywords whose accept
-// branch is a cast from exile the client starts at once: the free casts,
-// and "paid_or_else" (#3510, Chandra, Torch of Defiance), a cast at the
-// card's own cost during the resolution. Not madness's paid cast or an
-// offer the card's own text words.
-export const mayCastKeywordsThatOpenACast: ReadonlySet<string> = new Set([
-  "discover",
-  "cascade",
-  "exile_until",
-  "free_or_hand",
-  "paid_or_else",
-  "suspend",
-  "rebound",
-]);
+// #4250: no may_cast keyword opens a cast from here any more. Every
+// keyword cast (cascade, discover, rebound, suspend, madness, the
+// exile-until shape, the paid "if you don't" cast and the free-or-hand
+// offers) is a resolution_cast, cast from ResolutionCastSheet inside the
+// resolution that offers it. freeCastRequest is set by the library pick
+// below (Aetherworks Marvel).
 
 // freeCastTarget is Board's half: the exiled card a pending request
 // names, when it is there and the viewer may cast it now. `undefined`

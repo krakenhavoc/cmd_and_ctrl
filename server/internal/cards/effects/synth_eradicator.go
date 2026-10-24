@@ -54,15 +54,8 @@ func synthEradicatorAttack(g *game.Game, item *game.StackItem) error {
 			Question: "Synth Eradicator — get {E}{E}? If you don't, you may play the exiled card this turn.",
 			YesLabel: "Get {E}{E}",
 			NoLabel:  "Play the exiled card this turn",
-			OnYes: func(ctx *Context) error {
-				return GetEnergy{N: 2}.Apply(ctx)
-			},
-			OnNo: func(ctx *Context) error {
-				if exiled != uuid.Nil {
-					ctx.Game.GrantCastPermissionOverCardForEffect(exiled, game.CastPermission{Player: controller})
-				}
-				return nil
-			},
+			Then:     synthEradicatorAnswer,
+			Carry:    []uuid.UUID{exiled},
 		}.Apply(NewContext(g, item))
 	}
 	if p.Library == nil || len(p.Library.Cards) == 0 {
@@ -76,3 +69,15 @@ func synthEradicatorAttack(g *game.Game, item *game.StackItem) error {
 		return ask(g, top)
 	})
 }
+
+// synthEradicatorAnswer is the choice after the exile: get {E}{E}, or the
+// exiled card (the carried ID, if any) may be played this turn. Keyed
+// (#4291).
+var synthEradicatorAnswer = MayYesNo("confirm/synth-eradicator-energy-or-play",
+	func(ctx *Context, _ game.ConfirmAnswer) error { return GetEnergy{N: 2}.Apply(ctx) },
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		if exiled := carryAt(r, 0); exiled != uuid.Nil {
+			ctx.Game.GrantCastPermissionOverCardForEffect(exiled, game.CastPermission{Player: r.Chooser})
+		}
+		return nil
+	})

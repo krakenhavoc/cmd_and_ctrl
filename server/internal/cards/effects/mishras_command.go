@@ -29,6 +29,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // before the player has chosen, which would let the draw happen
 // before there was anything to count.
 //
+// The draw is a keyed discard-then (#4264), so a table waiting on the
+// discard is a restore point.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -45,18 +48,14 @@ func init() {
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
-					target := t.ID
-					return ctx.Game.PlayerDiscardsThenForEffect(
+					return ctx.Game.PlayerDiscardsThenKeyedForEffect(
 						game.DiscardPrompt{
-							Player:   target,
+							Player:   t.ID,
 							Source:   item.SourceCardID,
 							N:        ctx.X(),
 							UpTo:     true,
 							Question: "Mishra's Command — discard up to X cards",
-						},
-						func(g *game.Game, discarded game.PromptedDiscards) error {
-							return g.DrawNForEffect(target, discarded.Count())
-						})
+						}, mishrasCommandDraw, nil)
 				}),
 			ModeDoing("This spell deals X damage to target creature.",
 				TargetCreature("target creature"),
@@ -64,7 +63,7 @@ func init() {
 			ModeDoing("This spell deals X damage to target planeswalker.",
 				TargetPermanent("target planeswalker", Planeswalker()),
 				DealXDamageToModesTarget),
-			ModeDoing("Target creature gets +X/+0 and gains haste until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets +X/+0 and gains haste until end of turn.",
 				TargetCreature("target creature"),
 				func(item *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -75,7 +74,13 @@ func init() {
 						return err
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"haste"}, Label: "Mishra's Command"}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "haste"))),
 		),
 	})
 }
+
+// mishrasCommandDraw is "then they draw a card for each card discarded
+// this way", keyed (#4264).
+var mishrasCommandDraw = game.RegisterDiscardThen("choose-cards/mishras-command-draw", func(g *game.Game, r game.DiscardsDone) error {
+	return g.DrawNForEffect(r.Player, r.Discarded.Count())
+})

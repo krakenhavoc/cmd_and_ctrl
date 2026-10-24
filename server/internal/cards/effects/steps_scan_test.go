@@ -698,6 +698,46 @@ var stepsConverted = setOf(
 	"Smite the Deathless", "Estinien Varlineau", "Krav, the Unredeemed", "Depopulate",
 	"Pendant of Prosperity", "Bloatfly Swarm", "Agent of the Shadow Thieves", "Shadow, Mysterious Assassin",
 	"Stern Lesson", "Crushing Disappointment",
+	// Batch 5.
+	"Narset of the Ancient Way", "Truth or Consequences", "Noosegraf Mob", "Blight Titan",
+	"Synchronized Charge", "Read the Runes", "Erestor of the Council", "Sunder the Gateway",
+	"Clan Crafter", "Delirium", "Collective Brutality", "Kick in the Door",
+	"Jace, Multiverse Architect", "Lich Lord of Unx", "Jeskai Revelation", "You Find a Cursed Idol",
+	"Travel Through Caradhras", "Promise of Power", "Skeletal Scrying", "Severed Strands",
+	"Scurry of Gremlins", "The Torment of Gollum", "Survivor's Med Kit", "Explosion of Riches",
+	"Niv-Mizzet, Ghost Counsel", "Boommobile", "Fog of War", "Soul-Shackled Zombie",
+	"Messenger Jays", "Glint Weaver", "Fatehold Charm", "Damocles Base, Sword of Kang",
+	"Aggressive Negotiations", "Ingris Stingerquill", "Draconic Intervention", "Zygon Infiltrator",
+	"Kimoyo Beads", "Bushmeat Poacher", "Lieutenants of the Guard", "Aerid Konstrari",
+	"Pyrrhic Blast", "Torch the Tower", "Eyes in the Skies",
+	// Batch 6.
+	"Midnight Oil", "Necromancer's Stockpile", "Agonizing Remorse", "Way of the Paradox",
+	"Simulacrum", "Curse of the Werefox", "Oketra's Last Mercy", "Flame On!",
+	"Thought Erasure", "Humiliate", "Vigorbloom Charm", "Glint-Sleeve Siphoner",
+	"Ego Drain", "Orchard Elemental", "Favored Hoplite", "Ebony Charm",
+	"Narset's Rebuke", "Repulsor Blast", "Sorin, Vampire Lord", "Way of the Healer",
+	"Toll of the Invasion", "Stubborn Burrowfiend", "Vraska's Final Mercy", "The Crowd Goes Wild",
+	"Sphinx's Approach", "Harsh Scrutiny", "Eyes of Gitaxias",
+	"Render Speechless", "Live Fast", "Face Yourself", "Lightning Storm",
+	"Splitting the Powerstone", "Gix's Caress", "Hungering Puppetbeast", "Scion of Vitu-Ghazi",
+	"Eliminate the Impossible", "Konstrari Charm", "Rise of the Deathbringer", "Cease",
+	"Angelic Favor", "Hired Hexblade", "Proft, Consulting Detective", "Zealot il-Vec",
+	"Inspired Idea", "Horncaller's Chant", "Primal Witchstalker",
+	// Batch 7.
+	"Meditate", "Surgical Precision", "Flames of the Blood Hand", "Edgar, Ancient Bloodlord",
+	"Command the Stage", "No Admittance", "Scorching Lava", "Coursers' Accord",
+	"Timeline Inquiry", "Cut In", "Searing Barb", "Hexhaven Battalion",
+	"Violent Echoes", "Burning Wish", "Brainbite", "Rhonas's Last Stand",
+	"Memory Theft", "Tam's Resistance", "Living Wish", "Break Under Pressure",
+	"Illuminate", "Cunning Wish", "Death Wish", "Absolving Lammasu",
+	"Diplomacy of the Wastes", "Glittering Wish", "Spiritual Focus", "Stinging Vitriol",
+	"Ribbons of Night", "Awaken the Inferno", "Pillar Tombs of Aku", "Teyo, Diamondblade Mage",
+	"Fateshaper Aspirant", "Golden Wish", "Mangara's Blessing", "Arc of Fortune",
+	"Arcee, Acrobatic Coupe", "Arcee, Sharpshooter", "Curse of Leeches", "Cyclonus, Cybertronian Fighter",
+	"Flamewar, Brash Veteran", "Initiate of Blood", "Profane Insight", "Restorative Burst",
+	"The Great Synthesis", "The Legend of Yangchen", "Wretched Bonemass",
+	// #4228: the four bodies that carried Go state between prompts.
+	"Rhys, the Evermore", "Cecily, Haunted Mage", "The Ur-Sphinx", "Flamewar, Streetwise Operative",
 )
 
 // stepsSkipped are the cards the scan flags that are not converted, each
@@ -764,6 +804,21 @@ var stepsSkipped = map[string]string{
 	"Diviner's Portent":            "exclusive arms: the draw, or the scry's Then",
 	"Tyrant's Choice":              "exclusive arms: the sacrifices, or the life loss",
 	"Ultimate Magic: Meteor":       "exclusive arms: the choice loop returns when it asks, and the destruction runs once it has none left (the damage-then-choice order is steps)",
+	// Batch 5.
+	"Galadriel, Elven-Queen":    "exclusive arms: the draw, or the Ring tempts and the counter",
+	"Vault 11: Voter's Dilemma": "exclusive arms: every player draws, or the voted creatures are destroyed",
+	"Fatal Grudge":              "exclusive arms: the draw, or the sacrifices and the draw in their Then",
+	"Earth's Mightiest Heroes":  "no prompt: a reveal asks nothing, and the cards it names are the put's input",
+	// Batch 6.
+	"Surreal Memoir":        "no prompt: the card is picked at random",
+	"Burn the Accursed":     "one batch: the damage to the creature and to its controller are one instance (the exile rider after it is a step)",
+	"Devour Intellect":      "exclusive arms: the choice from the revealed hand, or the discard",
+	"Demonlord of Ashmouth": "exclusive arms: the sacrifice, or the exile",
+	"Earthen Arms":          "exclusive arms: with no target awaken at once, else the counters' Then awakens",
+	// Batch 7.
+	"Repeat Offender":        "exclusive arms: the counter, or the suspect",
+	"Gruesome Discovery":     "exclusive arms: the reveal and choice, or the plain discard",
+	"Desperate Futurescribe": "exclusive arms: the counter, or the +1/+1 boost",
 }
 
 func TestSkippedBodiesAreStillFlagged(t *testing.T) {

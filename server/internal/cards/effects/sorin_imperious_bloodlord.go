@@ -46,6 +46,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Target creature you control gains deathtouch and lifelink until end of turn. If it's a Vampire, put a +1/+1 counter on it.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "deathtouch", "lifelink")),
 				Cost:    LoyaltyCost(1),
 				Targets: TargetCreature("target creature you control", YouControl()),
 				Effect:  sorinImperiousGrant,

@@ -53,11 +53,10 @@ import (
 // without ever going over, so the running total and the printed
 // "total mana value 6 or less" accept the same casts.
 //
-// As with every "you may cast it" a resolution offers (ADR 0066, ADR
-// 0091), the casts are grants taken with ordinary cast_spell actions
-// after the trigger resolves, and the window closes when the caster next
-// passes priority; copies not cast cease to exist (CR 704.5e). A
-// permanent copy becomes a token as it resolves (CR 707.10b).
+// The casts are made while the trigger is still resolving (CR 608.2g;
+// ADR 0066's 2026-10-22 amendment, #2947); copies not cast cease to
+// exist (CR 704.5e). A permanent copy becomes a token as it resolves
+// (CR 707.10b).
 //
 // No simplification.
 func init() {

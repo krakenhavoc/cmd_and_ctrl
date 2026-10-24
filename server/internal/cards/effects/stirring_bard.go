@@ -26,6 +26,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Mantle of Inspiration — {T}: Target creature gains menace and haste until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "menace", "haste")),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect:  stirringBardMantle,

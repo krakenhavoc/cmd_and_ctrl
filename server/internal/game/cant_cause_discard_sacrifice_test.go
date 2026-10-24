@@ -45,6 +45,7 @@ func protectionFixture(t *testing.T) (g *Game, shielded, opponent *Player, handC
 
 func resolvingFor(g *Game, controller uuid.UUID) {
 	g.resolving = &resolvingItem{item: &StackItem{Controller: controller}}
+	g.resolutionOpen = true // #4281: the gate reads the slot only inside a resolution
 }
 
 func TestEffectDiscardFromOpponentIsBlockedButCleanupIsNot(t *testing.T) {

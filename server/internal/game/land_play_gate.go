@@ -91,6 +91,10 @@ type LandPlayRestriction struct {
 	// ActiveWhen is the CR 716 / 719 / 721 designation gate, as on
 	// CastRestriction.
 	ActiveWhen Designation
+	// Ignorable marks this restriction as the static ability the card's
+	// IgnorableEffect lets a player ignore (CR 116.2d, #1986), as on
+	// CastRestriction.
+	Ignorable bool
 }
 
 // CatalogLandPlayRestrictions is the catalog hook the effects package
@@ -162,6 +166,11 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 	refusedBy := func(src *Card) *CantPlayLandError {
 		for _, r := range landPlayRestrictionsOf(src) {
 			if r.Forbids == nil {
+				continue
+			}
+			// CR 116.2d (#1986): an effect the player is ignoring refuses
+			// nothing.
+			if r.Ignorable && g.effectIgnoredLocked(player, src) {
 				continue
 			}
 			q.Source = *src

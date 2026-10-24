@@ -1,6 +1,9 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Flames of the Blood Hand — Instant {2}{R}:
 //
@@ -25,25 +28,39 @@ func init() {
 		SpellDamageCantBePrevented: Always(),
 		Targets:                    targetPlayerOrPlaneswalker(),
 		Purpose:                    ForTargets(DamageToTarget(0, 4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			targets := ctx.LegalTargets()
-			if len(targets) == 0 {
-				return nil
-			}
-			t := targets[0]
-			player := t.ID
-			if t.Kind == game.TargetCard {
-				c, ok := ctx.Game.LookupCardForEffect(t.ID)
-				if !ok {
+		// The no-lifegain replacement waits for a prompt the damage asks (a CR 616 order;
+		// CR 608.2c, #4155). The player is read before the damage, since a planeswalker
+		// it destroys is no longer there to say who controlled it.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				targets := ctx.LegalTargets()
+				if len(targets) == 0 {
 					return nil
 				}
-				player = c.Controller
-			}
-			if err := (DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 4}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.GainNoLifeThisTurnForEffect(item.SourceCardID, player, "Flames of the Blood Hand — gains no life this turn")
-			return nil
-		},
+				t := targets[0]
+				player := t.ID
+				if t.Kind == game.TargetCard {
+					c, ok := ctx.Game.LookupCardForEffect(t.ID)
+					if !ok {
+						return nil
+					}
+					player = c.Controller
+				}
+				ctx.RecordStep(flamesOfTheBloodHandPlayer, []uuid.UUID{player})
+				return DealDamage{Source: ctx.Item.SourceCardID, Target: t.ID, Amount: 4}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				ids := ctx.StepRecord(flamesOfTheBloodHandPlayer).IDs
+				if len(ids) == 0 {
+					return nil
+				}
+				ctx.Game.GainNoLifeThisTurnForEffect(ctx.Item.SourceCardID, ids[0], "Flames of the Blood Hand — gains no life this turn")
+				return nil
+			}),
+		),
 	})
 }
+
+// flamesOfTheBloodHandPlayer files the player the damage went to (or whose
+// planeswalker it went to), for the life they gain none of (#4155).
+const flamesOfTheBloodHandPlayer = "flames-of-the-blood-hand-player"

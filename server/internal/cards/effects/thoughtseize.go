@@ -28,11 +28,7 @@ func init() {
 		OnResolve: ResolveSteps(
 			// The life loss waits for the choice from the revealed hand (CR 608.2c, #4155).
 			Instruction(func(ctx *Context) error {
-				return ChooseFromRevealedHand{
-					Player: TargetedPlayer(ctx),
-					Filter: Nonland(),
-					Label:  "nonland card",
-				}.Apply(ctx)
+				return chooseNonlandFromTargetedHand(ctx)
 			}),
 			GainLife{Amount: -2},
 		),

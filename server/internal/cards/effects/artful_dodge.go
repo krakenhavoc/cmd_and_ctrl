@@ -42,6 +42,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "c174dcbb-03a0-439c-b3d8-ed61bd46dc67",
 		Name:             "Artful Dodge",
+		Purpose:          ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 		Completeness:     CompletenessFull,
 		Targets:          TargetCreature("target creature"),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},

@@ -133,9 +133,12 @@ func TestStragoAndRelmCastCreatureGainsHasteAndIsSacrificedAtEndStep(t *testing.
 	if z := g.FindCardZoneForEffect(bear); z == nil || z.Kind != game.ZoneExile {
 		t.Fatal("the run did not stop on the creature card in exile")
 	}
+	// #4250: the free cast is made during the ability's resolution.
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, bear)
 	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "exile"}); err != nil {
 		t.Fatalf("free cast of the exiled creature: %v", err)
 	}
+	castInsideTheResolution(t, g, bear)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(bear) {
 		t.Fatal("the cast creature did not resolve")
@@ -171,7 +174,12 @@ func TestStragoAndRelmCastCreatureGainsHasteAndIsSacrificedAtEndStep(t *testing.
 // permission. Any other creature you cast has neither haste nor the
 // sacrifice.
 func TestStragoAndRelmHardCastCreatureGainsNothing(t *testing.T) {
-	g, me, _, _, _, _ := stragoGame(t)
+	g, me, _, _, _, bear := stragoGame(t)
+	// #4250: declining the offer leaves the exiled creature in exile.
+	declineResolutionCast(t, g, me.ID)
+	if z := g.FindCardZoneForEffect(bear); z == nil || z.Kind != game.ZoneExile {
+		t.Fatal("the declined creature card left exile")
+	}
 	other := castCatalogSpell(t, g, "Plain Bear", "Creature — Bear", "", nil)
 	passPriorityAroundTable(t, g)
 	if effectiveAbilitiesContain(t, g, other, "haste") {

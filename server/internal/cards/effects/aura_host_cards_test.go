@@ -246,9 +246,9 @@ func TestReplenishedAnimateDeadCantEnchantACardReplenishReturns(t *testing.T) {
 }
 
 // Undo mid-choice: a clone taken while the question is open restores
-// the question, and answering it differently is honoured. The paused
-// entry is a continuation the persistence snapshot cannot carry, and its
-// census says so (every entry question's frame is).
+// the question, and answering it differently is honoured. Since #4253
+// the paused entry's frame is data, so the table is a restore point as
+// well (TestAnAuraHostQuestionIsARestorePoint answers it after one).
 func TestAuraHostSurvivesAnUndoMidChoice(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -259,8 +259,8 @@ func TestAuraHostSurvivesAnUndoMidChoice(t *testing.T) {
 	if auraHostChoiceFor(g, me.ID) == nil {
 		t.Fatal("setup: Animate Dead asks")
 	}
-	if g.CaptureSnapshot().Restorable() {
-		t.Error("a paused entry is not a restore point")
+	if snap := g.CaptureSnapshot(); !snap.Restorable() {
+		t.Errorf("the open aura_host question is not a restore point: %+v", snap.Continuations)
 	}
 
 	snap := g.Clone()

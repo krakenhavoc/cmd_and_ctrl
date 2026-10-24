@@ -20,9 +20,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that closes when you pass priority, leaving an uncast card in exile.
 // The lands exiled on the way stay in exile.
 //
-// SANDBOX SIMPLIFICATION, cascade's (cascade.go): the cast is made right
-// after the trigger finishes resolving rather than during it. The
-// pass-closed window keeps it no stronger than printed.
+// #4250: the cast is made DURING the trigger's resolution (CR 608.2g), through the
+// resolution_cast prompt over the card (offerResolutionCastOver), and
+// the decline leaves it where it is. Nobody receives priority in between.
 func init() {
 	Register(Spec{
 		OracleID:        "e229d55c-9513-437d-bd67-015ac46aaa18",

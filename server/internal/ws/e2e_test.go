@@ -187,6 +187,7 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 	out.DamageShields = v.DamageShields
 	out.DamageMultipliers = v.DamageMultipliers
 	out.DamageRedirections = v.DamageRedirections
+	out.AttackDirections = n.attackDirections(v.AttackDirections)
 	out.GraveyardTargetBans = v.GraveyardTargetBans
 	out.DiscardPending = n.idKeyedIntMap(v.DiscardPending)
 	out.LoopNotice = n.loopNotice(v.LoopNotice)
@@ -294,6 +295,25 @@ func (n *normalizer) idKeyedIntMap(in map[string]int) map[string]int {
 	out := make(map[string]int, len(in))
 	for k, v := range in {
 		out[n.id(k)] = v
+	}
+	return out
+}
+
+// attackDirections normalizes GameView.AttackDirections' player-id keys
+// and values (viewOfAttackDirections in protocol/view.go).
+func (n *normalizer) attackDirections(in []protocol.AttackDirectionView) []protocol.AttackDirectionView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]protocol.AttackDirectionView, len(in))
+	for i, r := range in {
+		out[i] = protocol.AttackDirectionView{Direction: r.Direction, Source: r.Source}
+		if len(r.Nearest) > 0 {
+			out[i].Nearest = make(map[string]string, len(r.Nearest))
+			for from, to := range r.Nearest {
+				out[i].Nearest[n.id(from)] = n.id(to)
+			}
+		}
 	}
 	return out
 }
@@ -658,6 +678,7 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 		DamageShields:         []string{"Pay No Heed (Goblin Guide)"},
 		DamageMultipliers:     []string{"P1's sources deal double damage this turn — Insult"},
 		DamageRedirections:    []string{"Damage to P1 is dealt to Beacon of Destiny instead, the next time — Beacon of Destiny"},
+		AttackDirections:      []protocol.AttackDirectionView{{Direction: "left", Source: "Pramikon, Sky Rampart", Nearest: map[string]string{ownerID: ownerID}}},
 		GraveyardTargetBans:   []string{"Cards in graveyards can't be the targets of spells or abilities. — Ground Seal"},
 		DiscardPending:        map[string]int{ownerID: 1},
 		PendingChoices: []protocol.PendingChoiceView{{

@@ -165,21 +165,28 @@ func resolveEvolve(g *Game, item *StackItem) error {
 		return nil
 	}
 	selfID, controller := self.InstanceID, item.Controller
-	return g.AddCounterByThenForEffect(controller, selfID, CounterPlusOne, 1, func(g *Game, placed int) error {
-		if placed <= 0 {
-			return nil
-		}
-		g.EmitEvent(Event{
-			Kind:   EventEvolved,
-			CardID: selfID,
-			Target: selfID,
-			Source: selfID,
-			Actor:  controller,
-			Amount: placed,
-		})
-		return nil
-	})
+	// #4253 slice 3: the continuation is a registered tail, so an
+	// ordering prompt over the counter is a restore point.
+	return g.AddCounterByKeyedForEffect(controller, selfID, CounterPlusOne, 1, KeyedTail{Ref: tailEvolved, Player: controller, Source: selfID})
 }
+
+// tailEvolved emits EventEvolved once the counter has landed, and only
+// when one did. An on-disk key.
+var tailEvolved = RegisterTail("engine/evolved", func(g *Game, o TailOutcome) error {
+	if o.Amount <= 0 {
+		return nil
+	}
+	selfID := o.Tail.Source
+	g.EmitEvent(Event{
+		Kind:   EventEvolved,
+		CardID: selfID,
+		Target: selfID,
+		Source: selfID,
+		Actor:  o.Tail.Player,
+		Amount: o.Amount,
+	})
+	return nil
+})
 
 // EvolveCount reports how many instances of evolve the card has — a
 // read for tests, the bot and the view, through the same walk the

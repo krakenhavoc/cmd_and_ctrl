@@ -42,6 +42,54 @@ func PainRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
 	}
 }
 
+// EachOpponentGainsLifeRider is the mana-ability rider "Each opponent
+// gains N life" (Grove of the Burnwillows): every other seat still in the
+// game gains n life once the mana is in the pool (CR 605.3b). It is life
+// GAIN through ChangePlayerLifeForEffect, so each opponent's replacements
+// and "whenever you gain life" payoffs see it, which is the whole
+// drawback of the card. Declare it with ManaAbility.OpponentsGainLife,
+// which also tells the auto-tapper what it does (#4189).
+func EachOpponentGainsLifeRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
+	return func(g *game.Game, controller, source uuid.UUID) error {
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == controller {
+				continue
+			}
+			if err := g.ChangePlayerLifeForEffect(source, p.ID, n); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// PingEachOpponentRider is the mana-ability rider "this permanent deals N
+// damage to each opponent" (Zhur-Taa Druid), run inside the same atomic
+// mana-ability resolution as the mana (CR 605.3b). The damage is one
+// instance dealt to every opponent still in the game,
+// through DealDamageToPlayerForEffect so prevention and doubling apply.
+//
+// It cannot use damageToEachOpponent, which reads the opponent list off a
+// resolving stack item: a mana ability never uses the stack (CR 605.3), so
+// the seat walk is done here against the activator. Declare it with
+// ManaAbility.PingOpponents, which also tells the auto-tapper what it does
+// (#4189).
+func PingEachOpponentRider(n int) func(g *game.Game, controller, source uuid.UUID) error {
+	return func(g *game.Game, controller, source uuid.UUID) error {
+		return g.DamageInstanceForEffect(func() error {
+			for _, p := range g.Seats {
+				if p == nil || p.Eliminated || p.ID == controller {
+					continue
+				}
+				if err := g.DealDamageToPlayerForEffect(source, p.ID, n); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+}
+
 // painDual is the second ability shared by all eight painlands and
 // all six Talismans: "{T}: Add {A} or {B}. This permanent deals 1
 // damage to you."

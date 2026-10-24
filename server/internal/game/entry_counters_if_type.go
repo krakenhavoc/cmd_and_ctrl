@@ -1,0 +1,91 @@
+package game
+
+// entry_counters_if_type.go — #4193: a putting effect's "each of them
+// enters with an additional <counter> on it if it's a <type>" clause
+// (Semester's End: "an additional +1/+1 counter on it if it's a
+// creature and an additional loyalty counter on it if it's a
+// planeswalker").
+//
+// ZoneEntryOptions.EntersWithCounters gives every card of a batch the
+// same counters. This clause gives each card its own, by what the card
+// is as it enters, and it has to stay ONE batch: splitting the return
+// into a creature batch and a planeswalker batch would make it two
+// events, and every permanent it puts onto the battlefield must see the
+// others enter (CR 603.6a).
+//
+// What the card "is" is CR 614.12's question: the characteristics of
+// the permanent as it would exist on the battlefield, taking into
+// account the replacement effects that have already modified how it
+// enters, its own static abilities and the continuous effects that
+// already exist. That is the entry look-ahead's dry run
+// (entry_lookahead.go), so a Spark Double coming back as a copy of a
+// planeswalker gets the loyalty counter and not the +1/+1 counter, and
+// a permanent that would be both a creature and a planeswalker gets
+// both. The other members of the same batch are not on the battlefield
+// for the dry run, which is right: their statics do not exist yet.
+//
+// The clause is read once per member, when that member's CR 614 window
+// has settled on the battlefield (recordEntryBatchMemberLocked), and
+// folded into the settled event's EntersWithCounters. Applying it after
+// the window's other replacements is an order the affected object's
+// controller may choose (CR 616.1e), and it is the only order in which
+// the copy a Clone was told to enter as is already known (CR 616.1c
+// puts the copy first). A member a replacement sent somewhere else
+// (CR 614.6) gets nothing.
+//
+// The counters then go through the ordinary drain
+// (applyEntryCountersLocked), so a counter replacement such as
+// Hardened Scales or Doubling Season applies to them (CR 122.6), and an
+// additional loyalty counter is put on top of the printed starting
+// loyalty rather than instead of it (CR 306.5b).
+
+// EntryCountersIfType is one "an additional N <Counter> counters on it
+// if it's a <CardType>" clause of a putting effect. Data, so a batch
+// held behind an entry question carries no closure.
+type EntryCountersIfType struct {
+	// CardType is the card type the entering permanent must have, in
+	// lowercase as Card.HasCardType reads it: "creature",
+	// "planeswalker".
+	CardType string
+	// Counter is the counter kind (CounterPlusOne, CounterLoyalty).
+	Counter string
+	// N is how many. Zero or less adds nothing.
+	N int
+}
+
+// seedEntryCountersIfTypeLocked folds the putting effect's typed
+// clauses into one member's settled entry event. A face-down entry
+// takes none: no putting effect combines the two, and a face-down
+// permanent's characteristics are CR 708.2's, which the look-ahead does
+// not compute.
+//
+// Caller must hold g.mu (write): the look-ahead's dry pass assigns
+// layer caches on a copy of the battlefield.
+func (g *Game) seedEntryCountersIfTypeLocked(clauses []EntryCountersIfType, ev *ReplacementEvent) {
+	if len(clauses) == 0 || ev == nil || ev.Canceled || ev.Kind != RepEventMove ||
+		ev.NewZone != ZoneBattlefield || ev.FaceDown != FaceDownNone {
+		return
+	}
+	perm, ok := g.entryCharacteristicsLocked(ev)
+	if !ok {
+		// No dry run (the card cannot be found, or the pass computed
+		// nothing for it): the card as it is now, with the copy it
+		// was told to enter as.
+		c, found := g.LookupCardForEffect(ev.CardID)
+		if !found {
+			return
+		}
+		if ev.EntersAsCopyOf != nil {
+			c.applyCopy(*ev.EntersAsCopyOf, Card{})
+		}
+		perm = c
+	}
+	for _, cl := range clauses {
+		if cl.N <= 0 || cl.Counter == "" || cl.CardType == "" {
+			continue
+		}
+		if perm.HasCardType(cl.CardType) {
+			ev.AddCounterAtETB(cl.Counter, cl.N)
+		}
+	}
+}

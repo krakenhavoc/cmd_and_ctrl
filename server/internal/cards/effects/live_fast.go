@@ -16,15 +16,14 @@ func init() {
 		Name:         "Live Fast",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 2, Energy: 2},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			if err := (DrawCards{Player: controller, N: 2}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), controller, -2); err != nil {
-				return err
-			}
-			return GetEnergy{N: 2}.Apply(ctx)
-		},
+		// Each sentence waits for the prompt the one before asks (a dredge offer, a CR 616
+		// order on the life loss; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			DrawCards{N: 2},
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -2)
+			}),
+			GetEnergy{N: 2},
+		),
 	})
 }

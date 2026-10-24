@@ -27,23 +27,25 @@ func init() {
 		Completeness:  CompletenessFull,
 		Targets:       TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OptionalCosts: []game.AdditionalCost{g2Bargain()},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			bargained := g2WasBargained(ctx)
-			amount := 2
-			if bargained {
-				amount = 3
-			}
-			if err := DealDamageThen(ctx, id, amount, ExileIfDealtDamageWouldDie(item, true)); err != nil {
-				return err
-			}
-			if !bargained {
-				return nil
-			}
-			return Scry{N: 1}.Apply(ctx)
-		},
+		// The scry waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				amount := 2
+				if g2WasBargained(ctx) {
+					amount = 3
+				}
+				return DealDamageThen(ctx, id, amount, ExileIfDealtDamageWouldDie(ctx.Item, true))
+			}),
+			Instruction(func(ctx *Context) error {
+				if _, ok := b16FirstLegalTargetCard(ctx); !ok || !g2WasBargained(ctx) {
+					return nil
+				}
+				return Scry{N: 1}.Apply(ctx)
+			}),
+		),
 	})
 }

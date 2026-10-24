@@ -32,8 +32,18 @@ func init() {
 				StackID:  item.Targets[0].ID,
 				Cost:     "{4}",
 				Question: "Assimilate Essence — pay {4} or your spell is countered",
-				OnPaid:   Incubate{N: 2}.Apply,
+				Then:     assimilateEssencePaid,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// assimilateEssencePaid is "If they do, you incubate 2", keyed (#4264):
+// the spell rides the prompt as the asking item, so Controller() is the
+// caster and not the payer. A key's branches replace the engine's own
+// "counter that spell", so the decline is named here.
+var assimilateEssencePaid = PayUnlessBranches("pay-unless/assimilate-essence-incubate",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return Incubate{N: 2}.Apply(ctx) },
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return ctx.Game.CounterIfStillOnStackForEffect(r.Guards)
+	})

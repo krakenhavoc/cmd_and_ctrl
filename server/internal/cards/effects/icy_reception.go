@@ -23,8 +23,8 @@ func init() {
 		Modes: ChooseOne(
 			Mode("Counter target creature or legendary spell unless its controller pays {3}.",
 				TargetSpell("target creature or legendary spell", Or(Creature(), Legendary()))),
-			Mode("Target creature gets -5/-0 until end of turn.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Target creature gets -5/-0 until end of turn.",
+				TargetCreature("target creature")), ForTargets(HarmUntilEOT(0, -5, 0))),
 		),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			switch {

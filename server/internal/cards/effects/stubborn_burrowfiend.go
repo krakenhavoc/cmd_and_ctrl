@@ -23,17 +23,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Saddle(2)},
 		Triggered: []game.TriggeredAbility{
-			WhenBecomesSaddled("Stubborn Burrowfiend — mill two, then +X/+X", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-				if !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				x := b11CreatureCardsInGraveyard(g, item.Controller)
-				return BoostUntilEOT{Target: item.SourceCardID, Power: x, Toughness: x, Label: "Stubborn Burrowfiend — +X/+X"}.Apply(ctx)
-			}),
+			// The boost counts the graveyard once the mill's prompt is answered (CR 608.2c, #4155).
+			WhenBecomesSaddled("Stubborn Burrowfiend — mill two, then +X/+X", Do(
+				MillCards{N: 2},
+				Instruction(func(ctx *Context) error {
+					if !onBattlefield(ctx.Game, ctx.Source()) {
+						return nil
+					}
+					x := b11CreatureCardsInGraveyard(ctx.Game, ctx.Controller())
+					return BoostUntilEOT{Target: ctx.Source(), Power: x, Toughness: x, Label: "Stubborn Burrowfiend — +X/+X"}.Apply(ctx)
+				}),
+			)),
 		},
 	})
 }

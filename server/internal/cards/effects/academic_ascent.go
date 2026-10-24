@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "406e853b-713f-4c89-9efb-aca74a11183f",
 		Name:         "Academic Ascent",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 2, 2, "flying")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

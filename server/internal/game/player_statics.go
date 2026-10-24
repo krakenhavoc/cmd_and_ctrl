@@ -297,6 +297,17 @@ type PlayerStatic struct {
 	// (Telepathy, Revelation).
 	HandRevealed bool `json:"handRevealed,omitempty"`
 
+	// AttackDirection is a granted "each player may attack only the
+	// nearest opponent in <direction> and planeswalkers controlled by
+	// that opponent" for a duration (Teyo, Geometric Tactician's −2,
+	// "until your next turn"). ADR 0206, #4197, attack_direction.go. The
+	// THIRTEENTH payload, told apart by a non-empty direction; it
+	// carries no Keyword. It is written on EVERY player by one grant.
+	// Its READER is attackDirectionRefusalLocked, called from
+	// canAttackTargetWithLocked, which folds it with the battlefield's
+	// derived rules (Pramikon, Sky Rampart).
+	AttackDirection AttackDirection `json:"attackDirection,omitempty"`
+
 	// Source is the card that granted it, for the log and for the
 	// view's attribution. Never read by any rule: a granted ability
 	// outlives its source, which is the whole reason it is stored

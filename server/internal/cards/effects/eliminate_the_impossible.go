@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Eliminate the Impossible — Instant {1}{U}:
 //
 //	"Investigate. Creatures your opponents control get -2/-0 until end
@@ -22,17 +20,15 @@ func init() {
 		OracleID:     "c78d4cec-6764-4cce-96d2-a2d85a57b218",
 		Name:         "Eliminate the Impossible",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{Template: ClueToken(), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			if err := (BoostUntilEOT{
+		// Each sentence waits for the prompt the one before asks (a CR 616 order on the Clue;
+		// CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			CreateToken{Template: ClueToken(), N: 1},
+			BoostUntilEOT{
 				Match: opponentsCreatures(), Power: -2,
 				Label: "Eliminate the Impossible — -2/-0 until end of turn",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return UnsuspectAll{Match: opponentsCreatures()}.Apply(ctx)
-		},
+			},
+			UnsuspectAll{Match: opponentsCreatures()},
+		),
 	})
 }

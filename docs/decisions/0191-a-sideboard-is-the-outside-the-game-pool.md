@@ -231,3 +231,59 @@ The server, the wire, the snapshot and the bot are untouched: `sideboard` and `s
 - The rail shows only library, graveyard and exile again, and the "outside the game" caption that overflowed it (#3832) has nothing left to caption.
 - A player can check a sideboard before the game (the lobby and the Decks page) and during it (the tab) without it being drawn on the table.
 - No server tests change. The client tests pin each of the above in `sideboard.render.test.ts` (no pile, the tab, its cards and cast buttons, who sees it), `outsidePlay.render.test.ts` (the dock chips), `playerTables.render.test.ts` (the lobby list), `deckSideboard.test.ts` (the Decks page) and `tests-e2e/tests/outside-game-3833.spec.ts`.
+
+## Amendment (2026-10-22, #3525): learn, Research, and the checker lists the sideboard
+
+### Context
+
+The last of #3525: the learn cards, Research // Development, and the deck-side gaps the issue listed ("`deckcoverage.Report` does not list the sideboard's cards" and "seating does not check a sideboard card against the commander's colour identity or the banlist").
+
+### Decision
+
+1. **Learn is CR 701.48a and uses the pool this ADR built.** `effects.Learn` asks "you may discard a card" (a floor of zero; an empty hand is asked nothing). A player who discarded draws a card; one who did not is asked for a Lesson card they own from outside the game, as a `TakeFromOutside` with a reveal, over the sideboard or, for a deck that seated none, the card database (ADR 0198). Lessons are found by their spell type (CR 205.3k). The order is the rule's: the discard comes first, and a player who discards is not offered the Lesson.
+2. **Research moves cards the other way.** `effects.ShuffleFromOutside` asks for up to four cards and puts them on the bottom of the library, unrevealed, through `game.PutFromOutsideIntoLibraryForEffect`, the second door out of the container beside `BringFromOutsideForEffect` (CR 400.11c: an effect that brings cards in). It then shuffles, and shuffles even when nothing was chosen or the pool was closed (CR 701.24d).
+3. **Judgement call 3 stands, and is followed.** A sideboard card is still not checked against the commander's colour identity or the banlist: `deck.Validate` reads the commanders and the mainboard only, and seating does not look at the sideboard's identity. The check waits for #2352's formats, which will know which format a deck is for. The issue's third bullet asked for it; this ADR decided against, so it is not built.
+4. **The checker lists it.** `deckcoverage.Report.Sideboard` (omitempty, additive) is the deck's sideboard bucketed like any card, one row per distinct card with its copies, and kept out of `Cards`, `Counts` and `Copies` so a legal deck still totals 100. A lone companion kept in the sideboard stays in `Companion`. The decks page shows one line for it (`sideboardNote`). Listing a sideboard card does not make it a reason to file a deck request: `Needed()` reads the deck's own counts.
+
+### Not changed
+
+The snapshot, the wire protocol and the bot are untouched. A table with a learn question open is not a restore point, as with every prompt that carries a continuation closure; the last restore point before the cast is.
+
+### Consequences
+
+- Retriever Phoenix was still out when this was written: its "if you would learn, you may instead return this card to the battlefield" needs learn to be a replaceable action, as dredge needs a draw to be one. It shipped with the amendment of 2026-10-23 below.
+
+## Amendment (2026-10-23, #3525): learn is an event a replacement can apply to (Retriever Phoenix)
+
+### Context
+
+The one card left on #3525. Retriever Phoenix: "As long as this card is in your graveyard, if you would learn, you may instead return this card to the battlefield." Learn was `effects.Learn`, a function that queued its discard prompt directly, so no CR 614 window ever saw it, and the front half of the card alone (flying, haste, learn on a cast) would have been weaker than printed. The rules: CR 701.48a defines learn as one instruction ("You may discard a card. If you do, draw a card. If you didn't discard a card, you may reveal a Lesson card you own from outside the game and put it into your hand"); CR 614.1a makes an "instead" effect a replacement effect; CR 614.6 says a replaced event never happens; CR 616.1 gives the affected player the choice among several; CR 113.6b says an ability that states a zone functions only from that zone. All checked against `MagicCompRules 20260925.txt`.
+
+### Decision
+
+1. **The learn contract changes.** `effects.Learn.Apply` no longer queues the discard prompt. It calls `game.LearnForEffect(player, source)`, which opens a CR 614 window on one event, a `RepEventKeywordAction` with the new `KeywordActionLearn`, as proliferate and scry already do (`keyword_action.go`). If the window leaves the learn alone it is performed by `game.LearnBody`, a package hook the catalog installs at init (`learnBody` in `effects/learn.go`: the unchanged discard, draw and Lesson pick). The Lesson pick is a sideboard seam `game` does not own, which is why it is a hook and not a body in `game`. A replaced learn performs none of it: nothing is discarded or drawn and no Lesson is offered. Learn has no count (`KeywordActionCount` stays 1), and nothing is owed after it: every printing puts learn last.
+2. **"If you would <keyword action>, <do this> instead" has a shape.** `ReplacementEffect.KeywordInstead` is `DrawInstead`'s sibling for a keyword action: applying it cancels the action and records a registered body (`game.RegisterKeywordInstead`; the key is an on-disk identity, never renamed or reused). Once the window has settled the body runs, may queue prompts, and calls `done`, which runs the rest of the sentence the action was in. The event holds a key and a card id, which is plain data, and the body lives in a registry, so no func is added to the event or to the `Game` struct.
+3. **The graveyard gather serves a learn.** Dredge introduced `FromGraveyard` for a draw. The gather now looks in the learning player's graveyard for a learn, as it looks in the drawing player's for a draw, and only for those two events. This is the pattern the issue asked about, an existing graveyard-zone replacement extended rather than a second one. The rad-counter graveyard trigger seam (another agent's batch-2 work) was not on `develop` when this was written, and a trigger is not a replacement, so nothing here depends on it.
+4. **The Phoenix is `ReturnThisInsteadOfLearning(name)`**, an `Optional` `FromGraveyard` `KeywordInstead` replacement (`effects/retriever_phoenix.go`). "You may instead" is the ordinary optional-replacement yes/no, and its prompt names the Phoenix. Declined, the learn goes on as printed. The card returns under its owner's control (CR 400.3, and "to the battlefield" has no "under your control" clause) and the body checks the card is still in the graveyard when it runs. The enters trigger is "if you cast it", read off the event log (Tiamat's `b16EnteredFromStack`), so a Phoenix that returns this way does not learn.
+5. **More than one replacement is the player's choice, as CR 616.1 says.** Two Phoenixes in a graveyard are two "may"s asked in turn (`allGraveyardOptions`): the player takes one or none, and the first yes ends the learn. A Phoenix beside any replacement that is not a graveyard "may" is the ordinary CR 616 ordering prompt, and the order chosen is the order applied: Phoenix first and accepted, and the other effect has nothing left to replace. A Phoenix applies only to its owner's learn ("your graveyard, if you would learn"): an opponent's learn is not offered it.
+6. **Declared Full, with no simplification.** The card is exactly the printed text.
+
+### Restore points, and what was not widened
+
+Learn prompts hold closures and are not restore points (the discard run's continuation, and every wish's pick). This amendment adds none. The Phoenix's yes/no is the generic CR 616 optional-replacement prompt, which carries `replacementResume`, the frame every dredge offer and every other "may" replacement already carries. A table with it open is counted in `ContinuationCensus.ChoiceResumeFrames` and is not a restore point, so the last one before the cast is. Keying that choice would mean making the CR 616 resume frame data for every event kind (it holds the paused `ReplacementEvent`, its tails and the gathered effects), which is a snapshot-schema change of its own and beyond this issue. What this change adds to that state is nothing: the learn window opens and settles in one call or queues that one prompt, and the event carries a registered key and a card id. `TestRetrieverPhoenixQuestionIsNotARestorePoint` pins the limit so this paragraph is corrected the day it stops being true, and `TestRetrieverPhoenixInTheGraveyardSurvivesARestore` shows a table with a Phoenix in the graveyard is a restore point and still offers the replacement afterwards. No snapshot field is added, no fixture is touched, and no census ceiling moves.
+
+**Addendum, 2026-10-23 (#4253).** The limit above is lifted: the CR 616 resume frame of a learn, a keyword action with no tail, is now written to a restore point as data ([ADR 0013](0013-replacement-effects.md)'s amendment of 2026-10-23), so a table with the Phoenix's question open is a restore point. `TestRetrieverPhoenixQuestionIsNotARestorePoint` is replaced by `TestRetrieverPhoenixQuestionIsARestorePoint`, which answers the question both ways across a strict restore.
+
+### Not changed
+
+The wire and the snapshot are untouched. The bot takes the prompt's default "yes" (a returned 2/2 flier with haste beats a learn), which is the right answer without a policy of its own. The deck checker needs nothing: the card is an ordinary catalog row.
+
+### Consequences
+
+- #3525 is complete: the roadmap seam `outside-the-game` has no waiting card left, and Retriever Phoenix is Full.
+- A future "if you would learn" card, or any "if you would <keyword action>, … instead" card, is a `ReplacementEffect` with `KeywordInstead` (or a `Replace` that cancels), not a new seam. The count-bearing actions (scry, surveil, proliferate) still take count replacements through `KeywordActionBecomes`.
+- A learn replaced from the graveyard asks its question before the learn's own, so a player who would rather discard to draw says no and goes on.
+
+## Amendment (2026-10-23, #4256): learn's two questions are restore points
+
+The "Restore points" paragraph of the amendment above said learn's prompts hold closures. Both are keyed now: the discard half is a keyed discard-then (`learnAfterDiscard`, ADR 0013 §5y's amendment of 2026-10-23) and the Lesson half a keyed outside pick (`learnLessonTake`, ADR 0198's amendment of 2026-10-23), on a sideboard and on the database alike. A table with either open is a restore point; `TestLearnPromptIsARestorePointAndTheGameBeforeItRestores` (renamed from `TestLearnPromptIsCensusedAndTheGameBeforeItRestores`) now asserts it, and `TestLearnDiscardIsARestorePoint` and `TestLearnLessonPickIsARestorePoint` answer each on a restored table. What stays is the Retriever Phoenix question, the CR 616 optional-replacement prompt with its `replacementResume` frame (#4253); `TestRetrieverPhoenixQuestionIsNotARestorePoint` still pins it. The sideboard picks every wish asks (decision 2) are keyed by the same change.

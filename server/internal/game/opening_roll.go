@@ -457,6 +457,11 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 			continue
 		}
 		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
+		// CR 717.2 / 103.3a: and the Attraction deck (ADR 0207 §2).
+		g.shuffleAttractionDeckLocked(p)
+		// CR 103.2d / 123.2a: and the three sticker sheets it plays
+		// with, chosen at random from those it revealed (ADR 0208 §2).
+		g.chooseStickerSheetsLocked(p)
 		// Deal an opening hand of 7: the practice table's scripted
 		// cards first (scripted_hand.go, ADR 0076 §2.2), then the rest
 		// from the top. If the library is too short to satisfy 7 (a

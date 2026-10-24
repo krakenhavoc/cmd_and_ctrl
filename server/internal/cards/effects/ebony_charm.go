@@ -24,39 +24,34 @@ func init() {
 		Name:         "Ebony Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Target opponent loses 1 life and you gain 1 life.", TargetPlayer("target opponent", Opponent())),
-			Mode("Exile up to three target cards from a single graveyard.", upToNCardsFromASingleGraveyard(3)),
-			Mode("Target creature gains fear until end of turn.", TargetCreature("target creature")),
-		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			for _, occ := range ctx.ModeOccurrences() {
-				switch ctx.Mode(occ) {
-				case 0:
-					t, ok := ModeTarget(ctx, occ)
+			// The gain waits for a prompt the life loss asks (a CR 616 order; CR 608.2c, #4155).
+			ModeSteps("Target opponent loses 1 life and you gain 1 life.", TargetPlayer("target opponent", Opponent()),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {
-						continue
+						return nil
 					}
-					if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -1); err != nil {
-						return err
+					return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), t.ID, -1)
+				}),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetPlayer {
+						return nil
 					}
-					if err := (GainLife{Player: ctx.Controller(), Amount: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				case 1:
-					if err := exileTargetCardsThen(ctx, nil); err != nil {
-						return err
-					}
-				case 2:
+					return GainLife{Player: ctx.Controller(), Amount: 1}.Apply(ctx)
+				})),
+			ModeDoing("Exile up to three target cards from a single graveyard.", upToNCardsFromASingleGraveyard(3),
+				func(_ *game.StackItem, ctx *Context, _ int) error {
+					return exileTargetCardsThen(ctx, nil)
+				}),
+			ModeWithPurpose(ModeDoing("Target creature gains fear until end of turn.", TargetCreature("target creature"),
+				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
 					if !ok || t.Kind != game.TargetCard {
-						continue
+						return nil
 					}
-					if err := (GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"fear"}}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"fear"}}.Apply(ctx)
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "fear"))),
+		),
 	})
 }

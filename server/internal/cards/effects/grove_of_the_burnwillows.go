@@ -9,7 +9,11 @@ package effects
 // abilities in the painland shape: the painless {C} first, so the
 // auto-tapper reaches for it, and the coloured pair with a rider —
 // the opponents' life gain, through the ordinary life-change path so
-// their lifegain payoffs see it, as printed. The pipe is not
+// their lifegain payoffs see it, as printed. It is declared as
+// OpponentsGainLife, not a hand-written Rider, so the auto-tapper can plan
+// the land and the move list counts its mana (#4189); the planner reaches
+// for the coloured half only after the sources that give the table
+// nothing. The pipe is not
 // narrowed to the commander's identity: the card names two colours
 // and says nothing about the command zone.
 //
@@ -22,10 +26,10 @@ func init() {
 		ManaAbilities: []ManaAbility{
 			painlessColorless(),
 			{
-				Cost:     ManaAbilityCost{Tap: true},
-				Produced: "{R|G}",
-				Label:    "Add {R} or {G}. Each opponent gains 1 life.",
-				Rider:    b32EachOpponentGainsLifeRider(1),
+				Cost:              ManaAbilityCost{Tap: true},
+				Produced:          "{R|G}",
+				Label:             "Add {R} or {G}. Each opponent gains 1 life.",
+				OpponentsGainLife: 1,
 			},
 		},
 	})

@@ -82,13 +82,25 @@ func kotoseEnters(g *game.Game, item *game.StackItem) error {
 				AlsoGraveyardAndHand: true,
 				Shuffle:              true,
 				Reason:               "Kotose, the Silent Spider — search their graveyard, hand and library for cards named " + name,
-				Then: func(g *game.Game, found []uuid.UUID) error {
-					return kotoseGrant(g, item, append(append([]uuid.UUID(nil), first...), found...))
-				},
+				// #4253 slice 4: the first card rides the tail.
+				ThenTail: kotoseTail(ctx, first),
 			}.Apply(ctx)
 		},
 	}.Apply(ctx)
 }
+
+// kotoseTail is the search's continuation: the card exiled first rides it
+// as Carry, and the cards the search found are the outcome.
+func kotoseTail(ctx *Context, first []uuid.UUID) game.KeyedTail {
+	t := ctx.ItemTail(kotoseGrantTail)
+	t.Carry = first
+	return t
+}
+
+// kotoseGrantTail is the permission over every exiled card. An on-disk key.
+var kotoseGrantTail = CardTail("kotose/grant-play-permission", func(ctx *Context, o game.TailOutcome) error {
+	return kotoseGrant(ctx.Game, ctx.Item, append(append([]uuid.UUID(nil), o.Tail.Carry...), o.IDs...))
+})
 
 // kotoseGrant is "for as long as you control Kotose, you may play one of
 // the exiled cards": one permission over the cards that are in exile now.

@@ -2,6 +2,17 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var aetherstormRocPaid = energyPaid("pay-unless/aetherstorm-roc-counter-and-tap",
+	func(g *game.Game, item *game.StackItem) error {
+		if err := thisStillHere(plusOneCountersOnThis(1))(g, item); err != nil {
+			return err
+		}
+		if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
+	})
+
 // Aetherstorm Roc — Creature — Bird {2}{W}{W}, 3/3:
 //
 //	"Flying
@@ -19,16 +30,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
-	attack := whenThisAttacksMayPayEnergy("Aetherstorm Roc", 2, "put a +1/+1 counter on it and tap a creature",
-		func(g *game.Game, item *game.StackItem) error {
-			if err := thisStillHere(plusOneCountersOnThis(1))(g, item); err != nil {
-				return err
-			}
-			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-				return nil
-			}
-			return TapTarget{Target: item.Targets[0].ID}.Apply(NewContext(g, item))
-		})
+	attack := whenThisAttacksMayPayEnergy("Aetherstorm Roc", 2, "put a +1/+1 counter on it and tap a creature", aetherstormRocPaid)
 	attack.TargetsFrom = upToOne(TargetCreatureDefendingPlayerControls)
 	Register(Spec{
 		OracleID:        "06f09e5a-5cfb-437f-9dd1-1682d71f4e7f",

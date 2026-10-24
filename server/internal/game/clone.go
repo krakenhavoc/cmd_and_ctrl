@@ -131,6 +131,8 @@ func (g *Game) cloneLocked() *Game {
 		}
 	}
 	out.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
+	out.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
+	out.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -309,6 +311,17 @@ func (g *Game) cloneLocked() *Game {
 			// undo snapshot.
 			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
 			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
+			// #4264: a keyed pay-unless's non-mana payment, with its
+			// own Either list.
+			cloned.PayActionClause = copyPayAction(c.PayActionClause)
+			cloned.Asked = copyAskedItem(c.Asked)
+			cloned.PayTap = copyPayTapSpec(c.PayTap)
+			cloned.PayAmount = copyPayAmountPrompt(c.PayAmount)
+			cloned.MayPayX = copyMayPayXClause(c.MayPayX)
+			cloned.AttackSplit = cloneAttackSplit(c.AttackSplit)
+			cloned.PickWords = copyStrings(c.PickWords)
+			cloned.PickNums = copyInts(c.PickNums)
+			cloned.OptionObjects = cloneObjectRefs(c.OptionObjects)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)
@@ -522,6 +535,7 @@ func (g *Game) cloneLocked() *Game {
 	// time. Deep-copied, because the live pipeline writes the inner
 	// sets in place.
 	out.outsideEntering = g.outsideEntering
+	out.attractionEntering = g.attractionEntering
 	if len(g.enteringTokens) > 0 {
 		// #762: a token whose entry paused on a replacement prompt is
 		// here and nowhere else. An undo across that prompt has to
@@ -627,6 +641,17 @@ func deepenCard(out *Card) {
 	if len(out.Colors) > 0 {
 		out.Colors = append([]string(nil), out.Colors...)
 	}
+	if len(out.AttractionLights) > 0 {
+		out.AttractionLights = append([]int(nil), out.AttractionLights...)
+	}
+	// ADR 0208: the stickers on the object, plain values.
+	if len(out.Stickers) > 0 {
+		out.Stickers = append([]PlacedSticker(nil), out.Stickers...)
+	}
+	if out.StickerSheet != nil {
+		sheet := cloneStickerSheet(*out.StickerSheet)
+		out.StickerSheet = &sheet
+	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
 		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)
@@ -724,10 +749,12 @@ func clonePlayer(p *Player) *Player {
 		UpkeepsBegun:      p.UpkeepsBegun,
 		EndStepTurn:       p.EndStepTurn,
 		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut: p.LastTurnCastOrPut,
 		Eliminated:        p.Eliminated,
 		Removed:           p.Removed,
 		HandKept:          p.HandKept,
 		MulliganDecided:   p.MulliganDecided,
+		mulliganBottoming: p.mulliganBottoming,
 		TriggerOrder:      p.TriggerOrder,
 		AutoAnswers:       copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:    p.MulligansTaken,
@@ -753,6 +780,11 @@ func clonePlayer(p *Player) *Player {
 	out.Emblems = cloneZone(p.Emblems)
 	out.Companion = cloneZone(p.Companion)
 	out.Sideboard = cloneZone(p.Sideboard)
+	out.AttractionDeck = cloneZone(p.AttractionDeck)
+	// ADR 0208: the revealed sticker sheets and the three chosen.
+	out.StickerSheetPool = cloneStickerSheets(p.StickerSheetPool)
+	out.StickerSheets = cloneStickerSheets(p.StickerSheets)
+	out.Junkyard = cloneZone(p.Junkyard)
 	// ADR 0018's eighth amendment: game state, cloned with the seat.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)
 	if len(p.CommanderDamage) > 0 {
@@ -1241,6 +1273,8 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
 	g.LoyaltyActivatedTwiceThisTurn = src.LoyaltyActivatedTwiceThisTurn
+	g.LoyaltyExtraActivationsThisTurn = src.LoyaltyExtraActivationsThisTurn
+	g.LoyaltyExtraActivationsUsedThisTurn = src.LoyaltyExtraActivationsUsedThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
@@ -1343,6 +1377,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.promptRuns = src.promptRuns
 	g.enteringTokens = src.enteringTokens
 	g.outsideEntering = src.outsideEntering
+	g.attractionEntering = src.attractionEntering
 	// #920: the resolving item rewinds with the prompt that is reading
 	// it — see cloneLocked.
 	g.resolving = src.resolving

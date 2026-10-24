@@ -265,12 +265,12 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 // the empty-library loss only if they then have to draw).
 func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, opp := range ctx.Opponents() {
-		if err := b14MillUntilLand(ctx, opp); err != nil {
-			return err
-		}
-	}
-	return nil
+	// One opponent at a time in APNAP order (CR 101.4, #4268): each run starts
+	// from the previous one's continuation, so at most one prompt is open.
+	return eachPlayerInTurn(g, ctx.Opponents(),
+		func(g *game.Game, opp uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
+			return b14MillUntilLandThen(NewContext(g, item), opp, next)
+		}, nil)
 }
 
 // b14MillUntilLand reveals cards off the top of one player's library
@@ -303,6 +303,13 @@ func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 // pre-move copies — the same cards the reveal above named — so no
 // pass re-reads anything, and the run ends where the card says it ends.
 func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
+	return b14MillUntilLandThen(ctx, player, nil)
+}
+
+// b14MillUntilLandThen is b14MillUntilLand for a caller that chains: `then`
+// runs once the run has settled, with the cards that reached the graveyard, at
+// once on a clean run and from the answer when a prompt paused it. It may be nil.
+func b14MillUntilLandThen(ctx *Context, player uuid.UUID, then func(g *game.Game, milled []uuid.UUID) error) error {
 	if p := ctx.PlayerByID(player); p != nil && p.Library != nil {
 		run := make([]uuid.UUID, 0, 8)
 		for i := len(p.Library.Cards) - 1; i >= 0; i-- {
@@ -333,10 +340,14 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	// replacement (Bruvac the Grandiloquent under an opponent's
 	// control) doubles each repetition and the land that ends it can
 	// arrive beside a second card.
-	return MillToZone{
+	mill := MillToZone{
 		Player: player,
 		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),
-	}.Apply(ctx)
+	}
+	if then != nil {
+		mill.Then = func(ctx *Context, milled []uuid.UUID) error { return then(ctx.Game, milled) }
+	}
+	return mill.Apply(ctx)
 }
 
 // b14MoveChosenCounters is Resourceful Defense's activated ability:
@@ -349,38 +360,47 @@ func b14MoveChosenCounters(ctx *Context, from, to uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
-	return chooseCounters(ctx, from, 0, "Resourceful Defense — move any number of counters", nil,
-		func(ctx *Context, picked map[string]int) error {
-			if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
+	return resourcefulDefenseMoves.choose(ctx, from, []uuid.UUID{to}, 0, "Resourceful Defense — move any number of counters")
+}
+
+// resourcefulDefenseMoves is Resourceful Defense's clause (#4294): the
+// counts chosen on `from` move onto `to`, which rides the prompts as the
+// clause's extra ID.
+var resourcefulDefenseMoves = registerCounterChoice("number/resourceful-defense-move-counters", nil,
+	func(ctx *Context, from uuid.UUID, extra []uuid.UUID, picked map[string]int) error {
+		if len(extra) == 0 {
+			return nil
+		}
+		to := extra[0]
+		if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
+			return nil
+		}
+		kinds := make([]string, 0, len(picked))
+		for kind := range picked {
+			kinds = append(kinds, kind)
+		}
+		sort.Strings(kinds)
+		for _, kind := range kinds {
+			n := picked[kind]
+			src, ok := ctx.Game.LookupCardForEffect(from)
+			if !ok {
 				return nil
 			}
-			kinds := make([]string, 0, len(picked))
-			for kind := range picked {
-				kinds = append(kinds, kind)
+			if have := src.Counters[kind]; have < n {
+				n = have
 			}
-			sort.Strings(kinds)
-			for _, kind := range kinds {
-				n := picked[kind]
-				src, ok := ctx.Game.LookupCardForEffect(from)
-				if !ok {
-					return nil
-				}
-				if have := src.Counters[kind]; have < n {
-					n = have
-				}
-				if n <= 0 {
-					continue
-				}
-				if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
-					return err
-				}
+			if n <= 0 {
+				continue
 			}
-			return nil
-		})
-}
+			if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 // b14PutCounters puts a set of counters, keyed by kind, on a
 // battlefield permanent — Resourceful Defense's trigger. Kinds are

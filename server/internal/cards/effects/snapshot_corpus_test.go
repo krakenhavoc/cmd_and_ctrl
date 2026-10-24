@@ -138,7 +138,13 @@ func corpusBoards() []corpusBoard {
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file
 		// stays and is still restored; the same board is a new file.
-		{"suspend_haste_counter_placer", corpusSuspendHaste},
+		// #4250: and the board that wrote suspend_haste_counter_placer.json
+		// cast the card after the last-counter trigger had finished
+		// resolving, a history this engine no longer makes (the cast is
+		// made inside that resolution, CR 608.2g, so it is logged before
+		// the trigger's "resolution finished"). That file stays and is
+		// still restored; the same board is a new file.
+		{"suspend_haste_cast_during_resolution", corpusSuspendHaste},
 		// v7, added by the #1568 review as new files: params, condParams
 		// and a fired keyed item on disk.
 		{"queued_mana_drain", corpusQueuedManaDrain},
@@ -262,7 +268,12 @@ func corpusBoards() []corpusBoard {
 		{"keyword_counters_counter_placer", corpusKeywordCounters},
 		// v7, added by ADR 0100 sub-PR 1 as a new file: a delved spell
 		// on the stack — PaidCost.Delved, the objects in exile, on disk.
-		{"delved_spell_on_stack", corpusDelvedSpellOnStack},
+		// #4281: the board that wrote delved_spell_on_stack.json logged the
+		// delve exiles with no actor and no cause, a history this engine
+		// no longer makes (delve's exile is a cost of the spell, so it
+		// names the caster and the spell). The file stays and is still
+		// restored; the same board is a new file.
+		{"delved_spell_on_stack_cost_cause", corpusDelvedSpellOnStack},
 		// v7, added by ADR 0100 sub-PR 3 as a new file: an either/or
 		// spell on the stack — PaidCost.CostBranch and
 		// PaidCost.Discarded on disk.
@@ -286,7 +297,16 @@ func corpusBoards() []corpusBoard {
 		// placement with no placer, a history this engine no longer
 		// makes (every placement names who put the counters). The file
 		// stays and is still restored; the same board is a new file.
-		{"delve_linked_permanents_counter_placer", corpusDelveLinkedPermanents},
+		// #4279: the board that wrote delve_linked_permanents_counter_placer.json
+		// logged the second spell's delve exile with the FIRST spell's
+		// cause, read off a resolving slot that had finished resolving.
+		// A cause is read only inside an open resolution now, so that
+		// exile names none. The file stays and is still restored; the
+		// same board is a new file.
+		// #4281: the delve exiles on that board carried no cause at all;
+		// they are a cost of the spell and name it now. Same board, a
+		// new file.
+		{"delve_linked_permanents_cost_cause", corpusDelveLinkedPermanents},
 		// v7, added by ADR 0106 PR 3 (#1806) as a new file: "can't be
 		// countered" as data — a turn grant and an unspent one-use
 		// promise on a seat (PlayerStatic.CantBeCountered), and a spell
@@ -301,7 +321,13 @@ func corpusBoards() []corpusBoard {
 		// whose LapseOnPass is "exile").
 		{"rebound_waiting", corpusReboundWaiting},
 		{"rebound_on_stack", corpusReboundOnStack},
-		{"rebound_free_cast_grant", corpusReboundFreeCastGrant},
+		// #4250: the board that wrote rebound_free_cast_grant.json
+		// stamped the grant after "yes" and let the trigger finish
+		// resolving, a history this engine no longer makes (the grant
+		// is stamped under a resolution_cast prompt that holds the
+		// trigger's resolution open, CR 608.2g). That file stays and is
+		// still restored; the board as it is now built is a new file.
+		{"rebound_free_cast_offered_during_resolution", corpusReboundFreeCastGrant},
 		// v7, added by ADR 0107 PR 6 (#1853, #1880) as a new file: the
 		// rules gates as data — a resolved Skullcrack's
 		// damageCantBePrevented and cantGainLife turn grants, Flames of
@@ -592,7 +618,370 @@ func corpusBoards() []corpusBoard {
 		// the caster's stored standing permissions, one per other seat's
 		// graveyard (castPermissions[].zoneOwner over a graveyard).
 		{"shamans_trance", corpusShamansTrance},
+		// v9, added by #1986 (ADR 0109 §4 amendment 2026-10-23) as a new
+		// file: a Damping Engine whose controller has ignored it by
+		// sacrificing a permanent — the ignoreEffect record (a game-scope
+		// rule kind naming the player, its source the Engine as an object
+		// with its CR 400.7 epoch, until end of turn).
+		{"damping_engine_ignore", corpusDampingEngineIgnore},
+		// v9, added by #4253 (ADR 0013 amendment 2026-10-23) as new files:
+		// two CR 616 prompts whose resume frame is data. A draw paused on
+		// Golgari Thug's dredge offer (pendingChoices[].replacementResume
+		// over a draw, the tail key on pickThen, the object serials beside
+		// the prompts); and a riot creature spell's entry paused on riot's
+		// question, its frame carrying the resolving spell
+		// (replacementResume.event.stackItem).
+		{"dredge_offer", corpusDredgeOffer},
+		{"riot_entry", corpusRiotEntry},
+		// v9, added by #4253 slice 2 (ADR 0013 amendment 2026-10-24) as
+		// new files: a counter placement and a life change paused on a
+		// CR 616 ordering prompt (the event mirror's counter and life
+		// fields), and a land's entry paused on Heart of Yavimaya's
+		// sacrifice (an entry card choice, its zone frame rebuilt from
+		// the prompt kind).
+		{"counter_order", corpusCounterOrder},
+		{"life_order", corpusLifeOrder},
+		{"entry_sacrifice", corpusEntrySacrifice},
+		// v9, added by #4253 slice 3 (ADR 0013 amendment 2026-10-24) as
+		// new files: CR 616 prompts whose event carries a continuation
+		// that is now data. A fetched shockland's question with the rest
+		// of the search on its entry tail (entryTail.search); the second
+		// question of a two-card put, the first card's settled event in
+		// the batch (entryTail.batch); a token creation's ordering prompt
+		// (the event mirror's token fields) and a token copy's entry
+		// question with the staged tokens beside it (entryTail.tokens,
+		// enteringTokens); Monstrosity's counters (counterTail.then); an
+		// extort drain over an opponent's loss (lifeTail.each); a
+		// face-down exile leg under Necropotence (zoneRoute.faceDownLegs);
+		// and Preordain's scry with its keyed draw (pendingChoices[].scryThen).
+		{"fetched_shockland", corpusFetchedShockland},
+		{"put_batch_second_question", corpusPutBatchSecondQuestion},
+		{"token_creation_order", corpusTokenCreationOrder},
+		{"token_copy_entry", corpusTokenCopyEntry},
+		{"monstrosity_order", corpusMonstrosityOrder},
+		{"drain_order", corpusDrainOrder},
+		{"face_down_exile_leg", corpusFaceDownExileLeg},
+		{"preordain_scry", corpusPreordainScry},
+		// #4253 slice 4: a card's own registered tail on a battlefield
+		// search (entryTail.search.thenTail), one that carries the asking
+		// item (KeyedTail.asked), and a surveil's that does.
+		{"cultivate_fetch", corpusCultivateFetch},
+		{"hour_of_promise_fetch", corpusHourOfPromiseFetch},
+		{"eye_of_jace_surveil", corpusEyeOfJaceSurveil},
 	}
+}
+
+// corpusFetchedShockland is Polluted Delta cracked for Watery Grave,
+// paused on the Grave's "pay 2 life?" with the rest of the search (the
+// shuffle) on its entry tail (#4253 slice 3).
+func corpusFetchedShockland(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	delta := pushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", pollutedDeltaOracle, false)
+	pushLibraryCardForTest(me, game.Card{
+		Name: "Watery Grave", TypeLine: "Land — Island Swamp", OracleID: shocklandOracleIDs["Watery Grave"],
+	})
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched Grave did not ask")
+	}
+	return g
+}
+
+// corpusPutBatchSecondQuestion is two shocklands put together, the first
+// answered and the second asking (#4253 slice 3).
+func corpusPutBatchSecondQuestion(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	fountain := pushLibraryCardForTest(me, game.Card{
+		Name: "Hallowed Fountain", TypeLine: "Land — Plains Island", OracleID: hallowedFountainOracle,
+	})
+	crypt := pushLibraryCardForTest(me, game.Card{
+		Name: "Blood Crypt", TypeLine: "Land — Swamp Mountain", OracleID: bloodCryptOracle,
+	})
+	g.WithWriteLock(func() {
+		if _, err := g.PutCardsFromLibraryOntoBattlefieldForEffect([]uuid.UUID{fountain, crypt},
+			game.LibraryEntryOptions{Controller: me.ID}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	answerEntryPayLife(t, g, me.ID, true)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the second land did not ask")
+	}
+	return g
+}
+
+// corpusTokenCreationOrder is a Treasure's creation paused on the
+// ordering prompt between Doubling Season and Academy Manufactor
+// (#4253 slice 3).
+func corpusTokenCreationOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	pushTokenReplacementCard(g, doublingSeasonOracle, "Doubling Season", "Enchantment", me)
+	pushTokenReplacementCard(g, academyManufactorOracle, "Academy Manufactor", "Artifact Creature — Assembly-Worker", me)
+	makeTokens(t, g, me, TreasureToken(), 1)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the creation did not ask for an order")
+	}
+	return g
+}
+
+// corpusTokenCopyEntry is the first of two token copies of Clone paused
+// on its "enter as a copy?", the second staged behind it (#4253 slice 3).
+func corpusTokenCopyEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	clone := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Clone", TypeLine: "Creature — Shapeshifter", OracleID: oracleClone,
+		Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() {
+		tmpl, ok := TokenCopyTemplate(g, clone)
+		if !ok {
+			t.Fatal("setup: TokenCopyTemplate failed")
+		}
+		if err := g.CreateTokenForEffect(me.ID, tmpl, 2); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceCopyTarget) == nil {
+		t.Fatal("setup: the token copy did not ask")
+	}
+	return g
+}
+
+// corpusMonstrosityOrder is Monstrosity 2 paused on the ordering prompt
+// between Hardened Scales and Doubling Season, "it becomes monstrous"
+// waiting as a keyed tail (#4253 slice 3).
+func corpusMonstrosityOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me)
+	bear := seedCreature(g, "Bears", me)
+	g.WithWriteLock(func() {
+		if err := g.MonstrosityForEffect(bear, 2); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: Monstrosity did not ask for an order")
+	}
+	return g
+}
+
+// corpusDrainOrder is an extort drain paused on the opponent's ordering
+// prompt between Bloodletter of Aclazotz and a life-loss probe, the gain
+// waiting as a keyed tail (#4253 slice 3).
+func corpusDrainOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	blood := seedReplacementPermanent(g, bloodletterOracle, "Bloodletter of Aclazotz", me.ID)
+	seedReplacementPermanent(g, lifeLossPlusOneProbeOracle, "Life Loss Probe", me.ID)
+	g.WithWriteLock(func() {
+		if err := b21DrainEachOpponentAndGainTheTotal(g, &game.StackItem{Controller: me.ID, SourceCardID: blood}, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the drain did not ask for an order")
+	}
+	return g
+}
+
+// corpusFaceDownExileLeg is Necropotence's face-down exile paused on an
+// ordering prompt, the delivery waiting as a keyed tail (#4253 slice 3).
+func corpusFaceDownExileLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	necro := seedReplacementPermanent(g, necropotenceOracle, "Necropotence", me.ID)
+	pushLibraryTopForTest(me, "Needle")
+	seedExileOrderProbes(g, me.ID)
+	if err := g.ActivateCatalogAbility(me.ID, necro, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the exile did not ask for an order")
+	}
+	return g
+}
+
+// corpusPreordainScry is Preordain's scry 2 waiting, its "then draw a
+// card" a keyed tail on the prompt (#4253 slice 3).
+func corpusPreordainScry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	castCatalogSpell(t, g, "Preordain", "Sorcery", preordainOracle, nil)
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceScry) == nil {
+		t.Fatal("setup: Preordain did not scry")
+	}
+	return g
+}
+
+// corpusCultivateFetch is Cultivate's first half paused on the fetched
+// land's question, the hand half a registered tail on the search (#4253
+// slice 4).
+func corpusCultivateFetch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	crypt := seedSearchLibrary(me, basicShockland(), game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})[0]
+	castCatalogSpell(t, g, "Cultivate", "Sorcery", cultivateOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, crypt)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched land did not ask")
+	}
+	return g
+}
+
+// corpusHourOfPromiseFetch is Hour of Promise's search paused on the first
+// land's question, the spell's item on the search's tail as data (#4253
+// slice 4).
+func corpusHourOfPromiseFetch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedLand(g, me.ID, "Desert of the Glorified", "Land — Desert", "")
+	ids := seedSearchLibrary(me,
+		game.Card{Name: "Blood Crypt", TypeLine: "Land — Swamp Mountain", OracleID: bloodCryptOracle},
+		game.Card{Name: "Desert A", TypeLine: "Land — Desert"},
+	)
+	castCatalogSpell(t, g, "Hour of Promise", "Sorcery", b30HourOfPromiseOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, ids[0], ids[1])
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched Blood Crypt did not ask")
+	}
+	return g
+}
+
+// corpusEyeOfJaceSurveil is Eye of Jace's upkeep surveil waiting, the
+// trigger's item on its keyed "then" as data (#4253 slice 4).
+func corpusEyeOfJaceSurveil(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0]
+	rfmaPush(g, me.ID, "Eye of Jace", "Artifact", rfmaEyeOfJace, 0, 0)
+	for i := 0; i < 6; i++ {
+		batch01GraveyardCard(me, "Fodder", "Sorcery")
+	}
+	seedLibrary(me, "Top", "Next")
+	// The corpus game starts on turn 1's upkeep, which the Eye missed: walk
+	// off it and on to the next one.
+	if _, err := g.AdvanceStep(); err != nil {
+		t.Fatal(err)
+	}
+	advanceToUpkeepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceSurveil) == nil {
+		t.Fatal("setup: the Eye did not surveil")
+	}
+	return g
+}
+
+// corpusCounterOrder is a +1/+1 counter paused on the ordering prompt
+// between Hardened Scales and Doubling Season (#4253).
+func corpusCounterOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me)
+	bear := seedCreature(g, "Bears", me)
+	if err := g.AddCounter(bear, game.CounterPlusOne, 1); err != nil {
+		t.Fatal(err)
+	}
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the counter did not ask for an order")
+	}
+	return g
+}
+
+// corpusLifeOrder is a life gain paused on the ordering prompt between
+// Rhox Faithmender and Alhammarret's Archive (#4253).
+func corpusLifeOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, rhoxFaithmenderOracle, "Rhox Faithmender", me)
+	seedReplacementPermanent(g, alhammarretsArchiveOracle, "Alhammarret's Archive", me)
+	if _, err := g.ChangePlayerLife(me, 3); err != nil {
+		t.Fatal(err)
+	}
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the gain did not ask for an order")
+	}
+	return g
+}
+
+// corpusEntrySacrifice is Heart of Yavimaya's entry paused on its
+// "sacrifice a Forest" (#4253).
+func corpusEntrySacrifice(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushSacrificeCandidate(g, me.ID, "Forest", "Basic Land — Forest", false)
+	playLandFromHand(t, g, "Heart of Yavimaya", sacrificeInsteadLandOracleIDs["Heart of Yavimaya"])
+	if pendingOfKind(g, game.PendingChoiceEntrySacrifice) == nil {
+		t.Fatal("setup: Heart of Yavimaya did not ask")
+	}
+	return g
+}
+
+// corpusDredgeOffer is a draw paused on a dredge offer (#4253).
+func corpusDredgeOffer(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p := g.Seats[g.Turn.ActiveSeat]
+	gyCardWithOracle(p, "Golgari Thug", "Creature — Human Warrior", golgariThugOracle)
+	drawN(g, p, 1)
+	if optionalOffer(g, p) == nil {
+		t.Fatal("setup: Golgari Thug's dredge was not offered")
+	}
+	return g
+}
+
+// corpusRiotEntry is a riot creature spell's entry paused on riot's
+// question (#4253).
+func corpusRiotEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Zhur-Taa Goblin", TypeLine: "Creature — Goblin Berserker",
+		Power: 2, Toughness: 2, Keywords: []string{game.KeywordRiot}, Owner: me.ID, Controller: me.ID,
+	})
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceEntryRiot) == nil {
+		t.Fatal("setup: riot was not asked")
+	}
+	return g
+}
+
+// corpusDampingEngineIgnore is #1986's stored shape: the ignore record a
+// CR 116.2d special action writes, live when the restore point is taken.
+func corpusDampingEngineIgnore(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	engine := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Damping Engine", TypeLine: "Artifact",
+		OracleID: dampingEngineOracle, Owner: me.ID, Controller: me.ID,
+	})
+	bear := pushBattlefieldCardWithTimestamp(g, corpusCreature(me.ID, "Grizzly Bears", 2, 2))
+	if err := g.PerformSpecialAction(me.ID, engine, game.SpecialActionIgnoreEffect,
+		game.SpecialActionParams{SacrificeID: bear}); err != nil {
+		t.Fatalf("setup: ignore: %v", err)
+	}
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModIgnoreEffect {
+		t.Fatalf("setup: scoped records = %+v, want one ignoreEffect", g.ScopedEffects)
+	}
+	return g
 }
 
 // corpusShamansTrance is #1987's stored shapes: the own-graveyard ban
@@ -1602,23 +1991,20 @@ func corpusReboundOnStack(t *testing.T) *game.Game {
 	return g
 }
 
-// corpusReboundFreeCastGrant is the offer accepted: the free cast is a
-// per-object CastPermission that closes on its holder's pass and leaves
-// the card in exile (#1854).
+// corpusReboundFreeCastGrant is the offer made: the free cast is a
+// per-object CastPermission that leaves the card in exile when it is not
+// taken (#1854). Since #4250 the trigger's resolution is still open on a
+// resolution_cast prompt over the card when the grant is there.
 func corpusReboundFreeCastGrant(t *testing.T) *game.Game {
 	g := corpusReboundOnStack(t)
 	me := g.Seats[g.Turn.ActiveSeat]
-	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceMayCast) == nil; i++ {
+	for i := 0; i < 8 && latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil; i++ {
 		if err := g.PassPriority(); err != nil {
 			t.Fatalf("PassPriority: %v", err)
 		}
 	}
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
-	if offer == nil {
+	if latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil {
 		t.Fatal("setup: no rebound offer")
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
 	}
 	granted := false
 	for _, perm := range me.CastPermissions {
@@ -2547,13 +2933,10 @@ func corpusSuspendHaste(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
-	if offer == nil {
+	if latestChoiceOfKind(g, game.PendingChoiceResolutionCast) == nil {
 		t.Fatal("setup: the last time counter offered no cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, active.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast answers the resolution_cast prompt.
 	if err := g.CastSpell(active.ID, id, game.CastSpellParams{Strict: true, FromZone: "exile"}); err != nil {
 		t.Fatalf("the free cast: %v", err)
 	}

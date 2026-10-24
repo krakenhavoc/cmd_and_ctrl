@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -31,7 +34,7 @@ import (
 // nothing.
 //
 // A target that is no longer on the stack — countered, or already
-// resolved, in response to this spell — is skipped silently, unless
+// resolved, in response to this spell — is skipped (and logged), unless
 // FromLastKnown says the effect does not target it. That
 // is the CR 608.2b outcome for the whole spell in the single-target
 // case, and the engine's re-check has already handled it by the
@@ -95,10 +98,19 @@ func (c CopySpell) Apply(ctx *Context) error {
 			copyFn = ctx.Game.CopyLastKnownSpellForEffect
 		}
 		err := copyFn(c.StackID, controller, c.ChooseNewTargets, c.Except)
-		if err == game.ErrCardNotFound {
-			// The copied spell left the stack between copies. The
-			// copies already made stand; there is nothing left to
-			// copy for the rest.
+		if errors.Is(err, game.ErrCardNotFound) {
+			// The copied spell is not on the stack, is not the item
+			// resolving, and (for FromLastKnown) has no last-known
+			// record. That is the right answer for a spell that was
+			// countered under an effect that targets it (CR 608.2b), and
+			// for a spell that left between copies: the copies already
+			// made stand and there is nothing left to copy. It is also
+			// how a copy is silently lost when the engine has dropped
+			// the spell's record (#4270: a restore that dropped the
+			// resolving slot), so it is logged rather than swallowed.
+			slog.Warn("copy spell: the spell to copy was not found; no copy made",
+				"stack_id", c.StackID, "copies_made", i, "copies_wanted", n,
+				"from_last_known", c.FromLastKnown)
 			return nil
 		}
 		if err != nil {

@@ -53,17 +53,15 @@ func init() {
 			{
 				Label: "+1: You gain 2 life. Add {U}, {R}, or {W}. Spend this mana only to cast a noncreature spell.",
 				Cost:  LoyaltyCost(1),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (GainLife{Amount: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return PickOption{
+				// The colour pick waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+				Effect: Do(
+					GainLife{Amount: 2},
+					PickOption{
 						Question: "Narset of the Ancient Way — add {U}, {R}, or {W}",
 						Options:  []game.ChoiceOption{{Label: "{U}"}, {Label: "{R}"}, {Label: "{W}"}},
 						ThenKey:  narsetAncientWayMana,
-					}.Apply(ctx)
-				},
+					},
+				),
 			},
 			{
 				Label: "−2: Draw a card, then you may discard a card. When you discard a nonland card this way, Narset deals damage equal to that card's mana value to target creature or planeswalker.",

@@ -49,6 +49,12 @@ import (
 // left by the end step is skipped rather than chased.
 //
 // No simplification.
+// saheeliPing is "Saheeli Rai deals 1 damage to each opponent", once the
+// scry is done. An on-disk key.
+var saheeliPing = game.RegisterTail("saheeli-rai/ping-each-opponent", func(g *game.Game, o game.TailOutcome) error {
+	return saheeliPingEachOpponent(g, o.Tail.Player, o.Tail.Source)
+})
+
 func init() {
 	Register(Spec{
 		OracleID:     "5f3fe679-aff1-41b3-8d75-c78c2c0636f0",
@@ -66,15 +72,13 @@ func init() {
 					// Plain values, not the item: the scry's
 					// continuation runs after a player prompt, and
 					// the stack item it was scheduled from is gone
-					// by then.
-					controller, source := item.Controller, item.SourceCardID
+					// by then. They ride a registered tail (#4253 slice 4).
+					ctx := NewContext(g, item)
 					return Scry{
-						Player: controller,
-						N:      1,
-						Then: func(g *game.Game) error {
-							return saheeliPingEachOpponent(g, controller, source)
-						},
-					}.Apply(NewContext(g, item))
+						Player:   item.Controller,
+						N:        1,
+						ThenTail: ctx.Tail(saheeliPing),
+					}.Apply(ctx)
 				},
 			},
 			{

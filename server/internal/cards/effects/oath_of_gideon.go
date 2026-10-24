@@ -22,11 +22,13 @@ import (
 // from the CR 306.5b stamp (ReplacementEvent.StartingLoyalty, the event
 // Compleated also reads), and the Oath adds one to that placement. It
 // can't ride the entry's own "enters with" counters there, because the
-// stamp skips a walker that already has loyalty counters and the walker
-// would arrive with one. A walker that some other effect puts onto the
-// battlefield WITH loyalty counters skips the stamp, so for that entry
-// the Oath adds its counter to the entry's counters instead. The two
-// cannot both apply to one entry. Either way the counter is the
+// stamp is the event that carries the printed loyalty. A walker that
+// some other effect puts onto the battlefield WITH loyalty counters is
+// stamped too, before those counters (CR 306.5b, #4193), so the Oath
+// rides the stamp there as well. Only a walker with no printed loyalty
+// (Jeska, Thrice Reborn), which the stamp gives nothing, takes the
+// Oath's counter on the entry's own counters instead. The two cannot
+// both apply to one entry. Either way the counter is the
 // walker's controller's ("you control" is the controller it enters
 // under, the move's actor), a counter replacement (Doubling Season)
 // sees it as part of the same placement, and an Oath that has lost its
@@ -63,9 +65,10 @@ func init() {
 }
 
 // oathOfGideonApplies picks the event the walker's entering loyalty
-// rides: the starting-loyalty stamp for an ordinary entry, or the
-// entry's own "enters with" counters when another effect already gives
-// it loyalty counters (and the stamp is then skipped).
+// rides: the starting-loyalty stamp for any walker with a printed
+// loyalty, or the entry's own "enters with" counters for a walker with
+// none that another effect gives loyalty counters (the stamp then
+// places nothing).
 func oathOfGideonApplies(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 	if src == nil {
 		return false
@@ -81,8 +84,12 @@ func oathOfGideonApplies(ev *game.ReplacementEvent, g *game.Game, src *game.Card
 		if ev.NewZone != game.ZoneBattlefield || ev.EntersWithCounters[game.CounterLoyalty] <= 0 || ev.Actor != src.Controller {
 			return false
 		}
+		// #4193: a walker with a printed loyalty is stamped even when it
+		// enters with loyalty counters (CR 306.5b), and the Oath rides
+		// that stamp above. Only a walker the stamp gives nothing takes
+		// the Oath's counter here, so no entry gets it twice.
 		entering, ok := g.LookupCardForEffect(ev.CardID)
-		return ok && entering.IsPlaneswalker()
+		return ok && entering.IsPlaneswalker() && game.StartingLoyaltyForEffect(entering) <= 0
 	}
 	return false
 }

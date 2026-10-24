@@ -89,20 +89,7 @@ func inCombatStep(s game.Step) bool {
 func megatronPostcombat(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Megatron, Tyrant — convert Megatron? (If you do, add {C} for each life your opponents have lost this turn.)",
-		OnYes: func(ctx *Context) error {
-			converted, err := convertThisReporting(ctx)
-			if err != nil || !converted {
-				return err
-			}
-			lost := 0
-			for _, opp := range ctx.Opponents() {
-				lost += b18LifeLostThisTurn(ctx.Game, opp)
-			}
-			if lost <= 0 {
-				return nil
-			}
-			return AddMana{Amount: ManaN(lost, "C")}.Apply(ctx)
-		},
+		Then:     megatronConvertAnswer,
 	}.Apply(NewContext(g, item))
 }
 
@@ -177,3 +164,20 @@ func megatronStrike(g *game.Game, item *game.StackItem, p game.EffectParams) err
 	}
 	return ConvertThis{}.Apply(ctx)
 }
+
+// megatronConvertAnswer is the "yes": convert Megatron, then add {C} for
+// each life the opponents have lost this turn. Keyed (#4291).
+var megatronConvertAnswer = MayYes("confirm/megatron-tyrant-convert", func(ctx *Context, _ game.ConfirmAnswer) error {
+	converted, err := convertThisReporting(ctx)
+	if err != nil || !converted {
+		return err
+	}
+	lost := 0
+	for _, opp := range ctx.Opponents() {
+		lost += b18LifeLostThisTurn(ctx.Game, opp)
+	}
+	if lost <= 0 {
+		return nil
+	}
+	return AddMana{Amount: ManaN(lost, "C")}.Apply(ctx)
+})

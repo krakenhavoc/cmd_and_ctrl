@@ -42,28 +42,39 @@ func init() {
 
 const tilonallisSummonerName = "Tilonalli's Summoner"
 
+// tilonallisSummonerPaid is the paid half, keyed (#4289): X rides the
+// prompt, and the creature it attacked is read off the asking trigger's
+// event, which the prompt carries.
+var tilonallisSummonerPaid = PayUnlessBranches("pay-unless/tilonallis-summoner-attacking-elementals",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		attacked := uuid.Nil
+		if ctx.Item != nil && ctx.Item.Trigger != nil {
+			attacked = ctx.Item.Trigger.Event.Target
+		}
+		return CreateTokensAttackingYourChoice{
+			Template: TokenCard("1/1 red Elemental"),
+			N:        r.Number,
+			Tapped:   true,
+			Prefer:   attacked,
+			Label:    tilonallisSummonerName,
+			Tail:     game.KeyedTail{Ref: tilonallisSummonerExile},
+		}.Apply(ctx)
+	}, nil)
+
+// tilonallisSummonerExile is the tokens' tail, keyed (#4294): the end
+// step trigger that exiles them unless you have the city's blessing.
+var tilonallisSummonerExile = AttackingTokensThen("attacking-tokens/tilonallis-summoner-exile-unless-blessed",
+	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
+		return ExileUnlessCitysBlessing(ctx, tilonallisSummonerName+" — exile the Elementals unless you have the city's blessing", created)
+	})
+
 func tilonallisSummonerAttacks(g *game.Game, item *game.StackItem) error {
-	attacked := uuid.Nil
-	if item.Trigger != nil {
-		attacked = item.Trigger.Event.Target
-	}
 	return MayPayX{
 		Cost:       "{X}{R}",
 		Label:      tilonallisSummonerName,
 		Buys:       "create X tapped and attacking 1/1 red Elementals",
 		Goal:       XAsHighAsYouCan,
 		InThisStep: true,
-		OnPay: func(ctx *Context, x int) error {
-			return CreateTokensAttackingYourChoice{
-				Template: TokenCard("1/1 red Elemental"),
-				N:        x,
-				Tapped:   true,
-				Prefer:   attacked,
-				Label:    tilonallisSummonerName,
-				Then: func(ctx *Context, created []uuid.UUID) error {
-					return ExileUnlessCitysBlessing(ctx, tilonallisSummonerName+" — exile the Elementals unless you have the city's blessing", created)
-				},
-			}.Apply(ctx)
-		},
+		Then:       tilonallisSummonerPaid,
 	}.Apply(NewContext(g, item))
 }

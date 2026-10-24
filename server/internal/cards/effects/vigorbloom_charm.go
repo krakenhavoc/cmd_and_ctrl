@@ -23,7 +23,7 @@ func init() {
 		Name:         "Vigorbloom Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Target permanent you control gains hexproof and indestructible until end of turn.",
+			ModeWithPurpose(ModeDoing("Target permanent you control gains hexproof and indestructible until end of turn.",
 				TargetPermanent("target permanent you control", YouControl()),
 				func(_ *game.StackItem, ctx *Context, occ int) error {
 					t, ok := ModeTarget(ctx, occ)
@@ -31,14 +31,11 @@ func init() {
 						return nil
 					}
 					return GrantKeywordUntilEOT{Target: t.ID, Keywords: []string{"hexproof", "indestructible"}, Label: "Vigorbloom Charm"}.Apply(ctx)
-				}),
-			ModeDoing("You draw a card and gain 3 life.", nil,
-				func(_ *game.StackItem, ctx *Context, _ int) error {
-					if err := (DrawCards{Player: ctx.Controller(), N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: ctx.Controller(), Amount: 3}.Apply(ctx)
-				}),
+				}), ForTargets(BenefitUntilEOT(0, 0, 0, "hexproof", "indestructible"))),
+			// The life gain waits for the draw's prompt (a dredge offer; CR 608.2c, #4155).
+			ModeSteps("You draw a card and gain 3 life.", nil,
+				DrawCards{N: 1},
+				GainLife{Amount: 3}),
 			ModeDoing("Put a +1/+1 counter on target creature you control. Then it fights target creature an opponent controls.",
 				Clauses(
 					TargetCreature("target creature you control", YouControl()),

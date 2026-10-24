@@ -25,22 +25,27 @@ func init() {
 		ModeDoing("Return target legendary card from your graveyard to your hand.",
 			TargetCardInGraveyard("target legendary card in your graveyard", YouOwn(), Legendary()),
 			ReturnTheModesGraveyardTargetToHand),
-		ModeDoing("Put a +1/+1 counter on target creature. It gains vigilance and indestructible until end of turn.",
+		// The keywords wait for a prompt the counter asks (a CR 616 order; CR 608.2c, #4155).
+		ModeSteps("Put a +1/+1 counter on target creature. It gains vigilance and indestructible until end of turn.",
 			TargetCreature("target creature"),
-			func(_ *game.StackItem, ctx *Context, occ int) error {
-				t, ok := ModeTarget(ctx, occ)
+			Instruction(func(ctx *Context) error {
+				t, ok := ModeTarget(ctx, ctx.Occurrence())
 				if !ok {
 					return nil
 				}
-				if err := (AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
+				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				t, ok := ModeTarget(ctx, ctx.Occurrence())
+				if !ok {
+					return nil
 				}
 				return GrantKeywordUntilEOT{
 					Target:   t.ID,
 					Keywords: []string{"vigilance", "indestructible"},
 					Label:    "Fateshaper Aspirant — vigilance and indestructible",
 				}.Apply(ctx)
-			}),
+			})),
 	)
 	Register(Spec{
 		OracleID:     "bb3996b6-b68d-4ea1-b3dd-1600f8da2f1c",

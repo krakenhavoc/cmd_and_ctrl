@@ -15,9 +15,8 @@ import (
 func scryThenGetEnergy(scry, energy int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		controller := item.Controller
-		return Scry{Player: controller, N: scry, Then: func(g *game.Game) error {
-			return g.AddPlayerCounterByForEffect(controller, controller, game.CounterEnergy, energy)
-		}}.Apply(NewContext(g, item))
+		ctx := NewContext(g, item)
+		return Scry{Player: controller, N: scry, ThenTail: ctx.TailN(thenGetEnergy, energy)}.Apply(ctx)
 	}
 }
 

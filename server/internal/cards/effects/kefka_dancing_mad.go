@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -26,14 +28,20 @@ import (
 // An uncast card stays in exile and a land is stranded, since the text
 // names spells.
 //
-// The life loss is the permission's FollowUp, which runs once the cast
-// is made through THIS grant. It is read when the spell goes on the
-// stack rather than after every cast has finished; because every
-// spell cast this way waits on the stack until the ability has
-// finished resolving, the table sees the same life totals the printed
-// order would produce before any of those spells resolve. The loser is
-// the spell card's owner (an opponent, since the cards came from their
-// graveyards) and the amount is its mana value.
+// #4250: the casts are made during the ability's resolution (CR 608.2g),
+// each its own answer to the resolution_cast prompt over the exiled
+// cards, until the player declines or none is left. "Then each player
+// who owns a spell you cast this way loses life" is the prompt's
+// continuation (kefkaAfterTheCasts), run once it is answered, so the life
+// is lost AFTER every cast, as printed. The loser is the spell card's
+// owner (an opponent, since the cards came from their graveyards) and
+// the amount is its mana value.
+//
+// kefkaLifeLoss is the per-cast FollowUp the permission carried before
+// #4250. It stays registered (a table saved with such a permission open
+// still restores), and it is still the life loss outside an open
+// resolution, where no prompt is asked and the permissions alone are
+// the window.
 //
 // No simplification.
 var kefkaLifeLoss = game.RegisterCastFollowUp("kefka-dancing-mad-life-loss",
@@ -72,25 +80,73 @@ func init() {
 
 func kefkaEndStep(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
+	var picks []uuid.UUID
 	for _, opp := range ctx.Opponents() {
-		pick := g.ChooseAtRandomForEffect(randomDraw(ctx), graveyardIDs(g, opp, nil), 1)
-		if len(pick) == 0 {
-			continue
-		}
-		if err := g.ExileCardWithPermissionForEffect(pick[0], game.CastPermission{
-			Player:      item.Controller,
-			Duration:    g.UntilEndOfTurnDuration(),
-			Cost:        "{0}",
-			Timing:      game.TimingFlash,
-			CastOnly:    true,
-			LapseOnPass: game.LapseStaysInExile,
-			FollowUp:    kefkaLifeLoss,
-			Source:      item.SourceCardID,
-			SourceName:  "Kefka, Dancing Mad",
-			Label:       "Kefka, Dancing Mad — cast it without paying its mana cost",
-		}); err != nil {
-			return err
-		}
+		picks = append(picks, g.ChooseAtRandomForEffect(randomDraw(ctx), graveyardIDs(g, opp, nil), 1)...)
 	}
-	return nil
+	if len(picks) == 0 {
+		return nil
+	}
+	controller, source := item.Controller, item.SourceCardID
+	perm := game.CastPermission{
+		Player:      controller,
+		Duration:    g.UntilEndOfTurnDuration(),
+		Cost:        "{0}",
+		Timing:      game.TimingFlash,
+		CastOnly:    true,
+		LapseOnPass: game.LapseStaysInExile,
+		Source:      source,
+		SourceName:  "Kefka, Dancing Mad",
+		Label:       "Kefka, Dancing Mad — cast it without paying its mana cost",
+	}
+	inline := g.ResolutionOpenForEffect()
+	if !inline {
+		perm.FollowUp = kefkaLifeLoss
+	}
+	return g.ExileCardsThenForEffect(picks, func(g *game.Game, exiled []uuid.UUID) error {
+		var landed []uuid.UUID
+		for _, id := range exiled {
+			grant := perm
+			grant.Zone = game.ZoneExile
+			if g.GrantCastPermissionOverCardForEffect(id, grant) {
+				landed = append(landed, id)
+			}
+		}
+		if inline {
+			g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+				Chooser:      controller,
+				Source:       source,
+				Reason:       "Kefka, Dancing Mad",
+				Cards:        landed,
+				Keyword:      game.MayCastKeywordFreeCast,
+				AcceptLabel:  "Cast it free",
+				DeclineLabel: declineLeaveInExile,
+				Then:         kefkaAfterTheCasts,
+				Carry:        landed,
+			})
+		}
+		return nil
+	})
 }
+
+// kefkaAfterTheCasts is "Then each player who owns a spell you cast this
+// way loses life equal to its mana value", once the resolution_cast prompt
+// is answered: Picked are the exiled cards cast through it, still on the
+// stack. An on-disk key, never renamed.
+var kefkaAfterTheCasts = game.RegisterChooseCardsThen("resolution-cast/kefka-life-loss",
+	func(g *game.Game, r game.CardsChosen) error {
+		for _, id := range r.Picked {
+			c, ok := g.LookupCardForEffect(id)
+			if !ok {
+				continue
+			}
+			mv := c.ManaValue()
+			if mv <= 0 || g.PlayerByIDForEffect(c.Owner) == nil {
+				continue
+			}
+			if err := g.ChangePlayerLifeForEffect(r.Source, c.Owner, -mv); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

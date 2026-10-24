@@ -40,8 +40,12 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return lookAtTopAndOfferFreeCast(g, ctx.Controller(), ctx.Source(), "Aetherworks Marvel", 6)
+				return lookAtTopAndOfferFreeCast(g, ctx.Controller(), ctx.Source(), aetherworksMarvelFreeCast, 6)
 			},
 		}},
 	})
 }
+
+// aetherworksMarvelFreeCast is the look-and-cast pick's keyed
+// continuation (#4246), so a table waiting on it is a restore point.
+var aetherworksMarvelFreeCast = registerFreeLibraryCastOffer("choose-cards/aetherworks-marvel-cast", "Aetherworks Marvel")

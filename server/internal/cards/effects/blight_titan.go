@@ -23,14 +23,17 @@ func init() {
 		PrintedKeywords: []string{"deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Blight Titan — mill two cards, then incubate X, where X is the number of creature cards in your graveyard",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (MillCards{Player: item.Controller, N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					n := g2CardsInYourGraveyard(func(c game.Card) bool { return c.IsCreature() })(item, ctx)
-					return Incubate{N: n}.Apply(ctx)
-				}),
+				// The incubate waits for a prompt the mill asks (a replacement offer; CR 608.2c, #4155)
+				// and counts the graveyard when it runs.
+				Do(
+					Instruction(func(ctx *Context) error {
+						return MillCards{Player: ctx.Controller(), N: 2}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						n := g2CardsInYourGraveyard(func(c game.Card) bool { return c.IsCreature() })(ctx.Item, ctx)
+						return Incubate{N: n}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

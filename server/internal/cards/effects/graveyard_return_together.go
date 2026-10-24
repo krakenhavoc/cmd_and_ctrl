@@ -118,15 +118,25 @@ func allGraveyardsCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID 
 // card. Controller, Tapped and Then mean what they mean on
 // ReturnFromGraveyardTogether: zero Controller is "under its owner's
 // control" (CR 610.3c for an "until" return).
+//
+// CountersIfType is the return's own "each of them enters with an
+// additional <counter> on it if it's a <type>" (Semester's End, #4193):
+// each card is judged by what it would be on the battlefield
+// (CR 614.12), and the return stays one event.
 type ReturnFromExileTogether struct {
-	Targets    []uuid.UUID
-	Controller uuid.UUID
-	Tapped     bool
-	Then       func(ctx *Context, entered []uuid.UUID) error
+	Targets        []uuid.UUID
+	Controller     uuid.UUID
+	Tapped         bool
+	CountersIfType []game.EntryCountersIfType
+	Then           func(ctx *Context, entered []uuid.UUID) error
 }
 
 func (r ReturnFromExileTogether) Apply(ctx *Context) error {
-	return putCardsFromZoneTogether(ctx, game.ZoneExile, r.Targets, r.Controller, r.Tapped, r.Then)
+	return putCardsFromZoneTogetherWith(ctx, game.ZoneExile, r.Targets, game.ZoneEntryOptions{
+		Controller:               r.Controller,
+		Tapped:                   r.Tapped,
+		EntersWithCountersIfType: r.CountersIfType,
+	}, r.Then)
 }
 
 // putCardsFromZoneTogether is the body of ReturnFromGraveyardTogether

@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a95a0b13-d50f-41cf-8668-de60d445e7b0",
 		Name:         "Ancestors' Aid",
+		Purpose:      game.Purpose{Tokens: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 2, 0, "first strike"))},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -39,11 +39,11 @@ func TestPrimordialGnawerDiscoversThreeOnDeath(t *testing.T) {
 	killPrimordialGnawer(t, g, me.ID)
 	var prompt *game.PendingChoice
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
+		if isKeywordCastPrompt(c) {
 			prompt = c
 		}
 	}
-	if prompt == nil || prompt.MayCastCard != three.InstanceID {
+	if prompt == nil || keywordCastCard(prompt) != three.InstanceID {
 		t.Fatalf("discover 3 did not stop on the three-drop: %+v", prompt)
 	}
 	answerMayCastPrompt(t, g, me.ID, false)
@@ -63,10 +63,8 @@ func TestPrimordialGnawerDiscoveredCardIsCastableForFree(t *testing.T) {
 	hit := me.Library.Cards[0].InstanceID
 
 	killPrimordialGnawer(t, g, me.ID)
+	// Taking the offer is the cast, made while the trigger resolves.
 	answerMayCastPrompt(t, g, me.ID, true)
-	if err := g.CastSpell(me.ID, hit, game.CastSpellParams{FromZone: string(game.ZoneExile)}); err != nil {
-		t.Fatalf("free cast of the discovered card: %v", err)
-	}
 	if !g.Stack.Contains(hit) {
 		t.Errorf("the discovered spell is not on the stack")
 	}

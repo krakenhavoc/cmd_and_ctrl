@@ -64,11 +64,15 @@ func giantsAmuletMayPayForAGiant(g *game.Game, item *game.StackItem) error {
 		Chooser:  item.Controller,
 		Cost:     "{3}{U}",
 		Question: "Giant's Amulet — pay {3}{U} to create a 4/4 blue Giant Wizard and attach the Amulet to it?",
-		OnPay: func(ctx *Context) error {
-			return createTokenAndAttachSource(ctx.Game, ctx.Item, giantsAmuletGiantToken, true)
-		},
+		Then:     giantsAmuletPaid,
 	}.Apply(NewContext(g, item))
 }
 
 // giantsAmuletGiantToken is the token the Amulet makes.
 const giantsAmuletGiantToken = "4/4 blue Giant Wizard"
+
+// giantsAmuletPaid is the paid half, keyed (#4264): the Giant, and the attach to the Amulet the asking item names.
+var giantsAmuletPaid = PayUnlessBranches("pay-unless/giants-amulet-giant-and-attach",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return createTokenAndAttachSource(ctx.Game, ctx.Item, giantsAmuletGiantToken, true)
+	}, nil)

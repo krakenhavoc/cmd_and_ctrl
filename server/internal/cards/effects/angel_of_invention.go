@@ -56,12 +56,8 @@ func init() {
 					Question: "Angel of Invention — fabricate 2",
 					YesLabel: "Put two +1/+1 counters on it",
 					NoLabel:  "Create two 1/1 colorless Servo artifact creature tokens",
-					OnYes: func(ctx *Context) error {
-						return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 2}.Apply(ctx)
-					},
-					OnNo: func(ctx *Context) error {
-						return CreateToken{Template: TokenCard("1/1 colorless Servo artifact"), N: 2}.Apply(ctx)
-					},
+					Then:     mayFabricate,
+					Word:     "2",
 				}.Apply(NewContext(g, item))
 			}),
 		},

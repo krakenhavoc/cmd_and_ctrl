@@ -27,8 +27,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Run and Hide — Prevent all combat damage that would be dealt to you and creatures you control this turn."),
-			Mode("Gather Your Courage — Target creature gets +5/+5 and gains indestructible until end of turn. All creatures your opponents control able to block that creature this turn do so.",
-				TargetCreature("target creature")),
+			ModeWithPurpose(Mode("Gather Your Courage — Target creature gets +5/+5 and gains indestructible until end of turn. All creatures your opponents control able to block that creature this turn do so.",
+				TargetCreature("target creature")), ForTargets(BenefitUntilEOT(0, 5, 5, "indestructible"))),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {

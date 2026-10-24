@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f0f24c6d-80fb-4e99-a74d-6ed9d349ed3d",
 		Name:         "Yare",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature defending player controls", ControlledByDefendingPlayer()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -122,31 +120,36 @@ func init() {
 						Dest:      game.ZoneExile,
 						Unbounded: true,
 						Shuffle:   true,
-						Then: func(g *game.Game, found []uuid.UUID) error {
-							if len(found) == 0 {
-								return nil
-							}
-							cards := make([]game.Card, 0, len(found))
-							for _, id := range found {
-								if c, ok := g.LookupCardForEffect(id); ok {
-									cards = append(cards, c)
-								}
-							}
-							g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-								Player: controller,
-								Zone:   game.ZoneExile,
-								Cost:   "{0}",
-								Source: source,
-								Label:  "Ugin, Eye of the Storms — cast without paying its mana cost",
-							}, cards)
-							return nil
-						},
+						ThenTail:  game.KeyedTail{Ref: uginEyeOfTheStormsFreeCast, Player: controller, Source: source},
 					})
 				},
 			},
 		},
 	})
 }
+
+// uginEyeOfTheStormsFreeCast is "until end of turn, you may cast those
+// cards without paying their mana costs": a permission over the cards the
+// search exiled. An on-disk key.
+var uginEyeOfTheStormsFreeCast = game.RegisterTail("ugin-eye-of-the-storms/free-cast-permission", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	cards := make([]game.Card, 0, len(o.IDs))
+	for _, id := range o.IDs {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			cards = append(cards, c)
+		}
+	}
+	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+		Player: o.Tail.Player,
+		Zone:   game.ZoneExile,
+		Cost:   "{0}",
+		Source: o.Tail.Source,
+		Label:  "Ugin, Eye of the Storms — cast without paying its mana cost",
+	}, cards)
+	return nil
+})
 
 // uginEyeOfTheStormsTarget is the clause both removal triggers
 // print, word for word. Built per trigger rather than shared as one

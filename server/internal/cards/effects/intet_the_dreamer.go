@@ -38,17 +38,21 @@ func init() {
 					Chooser:  item.Controller,
 					Cost:     "{2}{U}",
 					Question: "Intet, the Dreamer — pay {2}{U} to exile the top card of your library face down?",
-					OnPay: func(ctx *Context) error {
-						window := forAsLongAsThisRemainsWindow(ctx.Game, ctx.Item)
-						return ExileTopWithPermission{
-							From: ctx.Item.Controller, GrantTo: ctx.Item.Controller, N: 1,
-							FaceDown: true,
-							Free:     true,
-							Window:   &window,
-						}.Apply(ctx)
-					},
+					Then:     intetPaid,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// intetPaid is the paid half, keyed (#4264). The asking item carries Intet's object, so the window knows an Intet that left and came back is a new object (CR 400.7).
+var intetPaid = PayUnlessBranches("pay-unless/intet-the-dreamer-exile-top",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		window := forAsLongAsThisRemainsWindow(ctx.Game, ctx.Item)
+		return ExileTopWithPermission{
+			From: ctx.Item.Controller, GrantTo: ctx.Item.Controller, N: 1,
+			FaceDown: true,
+			Free:     true,
+			Window:   &window,
+		}.Apply(ctx)
+	}, nil)

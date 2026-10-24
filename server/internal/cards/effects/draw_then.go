@@ -34,6 +34,25 @@ func drawThenDiscardRef(question string) game.DrawThenRef {
 	})
 }
 
+// drawThenDiscardQuestions is every question a caller hands
+// drawThenDiscard. Each body is registered at init (#4253): a draw paused
+// on a CR 616 prompt is a restore point, its frame names the body by
+// key, and a freshly booted binary must already know that key when it
+// restores the file. TestEveryDrawThenDiscardQuestionIsRegisteredAtInit
+// reads the callers and fails on a question missing here.
+var drawThenDiscardQuestions = []string{
+	"",
+	"Anvil of Bogardan — discard a card",
+	"Arni, Humble Scribe — discard a card",
+	"Depth Defiler — discard a card",
+}
+
+func init() {
+	for _, q := range drawThenDiscardQuestions {
+		drawThenDiscardRef(q)
+	}
+}
+
 // drawThenDiscard is "<player> draws `draw` cards, then discards
 // `discard` cards" — the discard prompt opens only after every draw has
 // resolved, so the drawn cards are legal discards.

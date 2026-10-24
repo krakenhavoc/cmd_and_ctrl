@@ -35,6 +35,7 @@ func init() {
 				}.Apply(ctx)
 			case ctx.HasMode(1):
 				return TakeFromOutside{
+					Pick:     mastermindsAcquisitionTake,
 					Question: "Mastermind's Acquisition — put a card you own from outside the game into your hand",
 					Required: true,
 				}.Apply(ctx)
@@ -43,3 +44,7 @@ func init() {
 		},
 	})
 }
+
+// mastermindsAcquisitionTake is the second mode's keyed pick (#4256),
+// so a table waiting on it is a restore point. It does not reveal.
+var mastermindsAcquisitionTake = registerOutsideTake("choose-cards/masterminds-acquisition-take", nil, false)

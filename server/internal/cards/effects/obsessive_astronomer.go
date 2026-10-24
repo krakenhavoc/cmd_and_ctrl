@@ -24,7 +24,7 @@ func init() {
 				func(g *game.Game, item *game.StackItem) error {
 					return b39MayDiscardThenDraw(2, false,
 						"Obsessive Astronomer — discard up to two cards, then draw that many",
-						func(discarded int) int { return discarded })(NewContext(g, item))
+						drawAsManyAsDiscarded)(NewContext(g, item))
 				}),
 		},
 	})

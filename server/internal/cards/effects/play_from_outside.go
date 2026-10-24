@@ -24,17 +24,51 @@ import (
 // The pick is "any number" (game.OutsideAnyNumber), and the same card
 // name may be chosen more than once from the database: a player may own
 // two copies of a card.
+//
+// The pick is keyed (#4256, registerPlayFromOutside), so a table waiting
+// on it is a restore point.
 type PlayFromOutside struct {
 	// Player owns the cards and chooses. Zero means the resolving
 	// effect's controller.
 	Player uuid.UUID
-	// Match narrows the pool ("an Eldrazi card"); nil offers every card.
-	Match func(game.Card) bool
-	// Name labels the permission and heads the question: the card's name.
-	Name string
+	// Pick is the card's registered pick: its filter, its name (which
+	// labels the permission and heads the question) and its key.
+	// Required.
+	Pick outsidePlay
+	// Word is the one word of the card's text the filter reads
+	// (Spawnsire's "Eldrazi", which a text-changing effect may have
+	// changed). Plain data on the prompt.
+	Word string
 	// Clause is the pick's object, written the way the card is: "any
 	// number of Eldrazi cards".
 	Clause string
+}
+
+// outsidePlay is one card's keyed cast-from-outside pick.
+type outsidePlay struct {
+	pick game.OutsidePick
+	name string
+}
+
+// registerPlayFromOutside registers a card's cast-from-outside pick under
+// `key`: `match` is the filter (nil offers every card), handed the word
+// the prompt carries, and `name` labels each grant. The name is bound to
+// the key rather than read off the source when the answer comes in,
+// freeHandCastOffer's reason: the source may be gone by then. Call it
+// once, from a package-level var.
+func registerPlayFromOutside(key, name string, match game.OutsideMatchFunc) outsidePlay {
+	return outsidePlay{
+		name: name,
+		pick: game.RegisterOutsidePick(key, match, func(g *game.Game, r game.CardsChosen) error {
+			if !r.Answered {
+				return nil
+			}
+			for _, id := range g.StillOutsideForEffect(r.Chooser, r.Picked) {
+				g.FreeCastFromOutsideForEffect(r.Chooser, r.Source, id, name)
+			}
+			return nil
+		}),
+	}
 }
 
 func (t PlayFromOutside) Apply(ctx *Context) error {
@@ -42,24 +76,16 @@ func (t PlayFromOutside) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	source, name := ctx.Source(), t.Name
-	question := name + " — choose " + t.Clause + " you own from outside the game to cast without paying their mana costs"
-	// Frozen scalars only (the StackItem.Effect contract): the closure
-	// resolves against whichever *Game it is handed.
+	question := t.Pick.name + " — choose " + t.Clause + " you own from outside the game to cast without paying their mana costs"
 	ctx.Game.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 		Player:      player,
-		Source:      source,
+		Source:      ctx.Source(),
 		Question:    question,
-		Match:       t.Match,
 		Min:         0,
 		Max:         game.OutsideAnyNumber,
 		Destination: game.ChooseCastFreeFromOutside,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				g.FreeCastFromOutsideForEffect(player, source, id, name)
-			}
-			return nil
-		},
+		Keyed:       t.Pick.pick,
+		MatchArg:    t.Word,
 	})
 	return nil
 }

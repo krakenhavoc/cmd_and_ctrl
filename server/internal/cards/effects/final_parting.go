@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,22 +29,26 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller, source := ctx.Controller(), ctx.Source()
 			return SearchLibrary{
-				Player:  controller,
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Shuffle: false,
-				Reason:  "Final Parting — a card to put into your hand",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-						Player:  controller,
-						Source:  source,
-						Dest:    game.ZoneGraveyard,
-						Limit:   1,
-						Shuffle: true,
-						Reason:  "Final Parting — a card to put into your graveyard",
-					})
-				},
+				Player:   controller,
+				Dest:     game.ZoneHand,
+				Limit:    1,
+				Shuffle:  false,
+				Reason:   "Final Parting — a card to put into your hand",
+				ThenTail: game.KeyedTail{Ref: finalPartingGraveyardSearch, Player: controller, Source: source},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// finalPartingGraveyardSearch is the second half of Final Parting's search,
+// run once the hand search has settled. An on-disk key.
+var finalPartingGraveyardSearch = game.RegisterTail("final-parting/graveyard-search", func(g *game.Game, o game.TailOutcome) error {
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:  o.Tail.Player,
+		Source:  o.Tail.Source,
+		Dest:    game.ZoneGraveyard,
+		Limit:   1,
+		Shuffle: true,
+		Reason:  "Final Parting — a card to put into your graveyard",
+	})
+})

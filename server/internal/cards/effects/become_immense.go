@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "40e5b83e-5f53-4b15-8bfd-c0c0b8355a6f",
 		Name:         "Become Immense",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 6, 6)),
 		Completeness: CompletenessFull,
 		Delve:        true,
 		Targets:      TargetCreature("target creature"),

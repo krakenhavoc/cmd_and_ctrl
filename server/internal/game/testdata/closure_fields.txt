@@ -62,6 +62,7 @@ ActivatedAbilityShape.Effect                 census:IntrinsicAbilityCards       
 ActivatedAbilityShape.Modes                  census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Modes
 ActivatedAbilityShape.Targets                census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Targets
 AnnouncedClause.Clause                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps.Clause
+AttackSplit.Template                         rebuilt                            # Game.PendingChoices.AttackSplit.Template
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
@@ -112,6 +113,7 @@ ManaAbilityShape.TapOthers                   census:IntrinsicAbilityCards       
 ModeOption.Effect                            census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Effect
 ModeOption.Targets                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Targets
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
+PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
 PendingChoice.chooseCardsResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume
 PendingChoice.chooseValueResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseValueResume
 PendingChoice.coinFlipResume                 census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume
@@ -128,11 +130,13 @@ PendingChoice.replacementResume              census:ChoiceResumeFrames          
 PendingChoice.scryResume                     census:ChoiceResumeFrames          # Game.PendingChoices.scryResume
 PendingChoice.searchResume                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume
 PendingChoice.triggerResume                  census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume
+Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
 Player.Companion                             census:IntrinsicAbilityCards       # Game.Seats.Companion
 Player.Emblems                               census:IntrinsicAbilityCards       # Game.Seats.Emblems
 Player.Graveyard                             census:IntrinsicAbilityCards       # Game.Seats.Graveyard
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand
+Player.Junkyard                              census:IntrinsicAbilityCards       # Game.Seats.Junkyard
 Player.Library                               census:IntrinsicAbilityCards       # Game.Seats.Library
 Player.Sideboard                             census:IntrinsicAbilityCards       # Game.Seats.Sideboard
 ProjectionCache.v                            rebuilt                            # Game.logProjection.v

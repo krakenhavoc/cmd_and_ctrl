@@ -570,7 +570,7 @@ describe("buildMenuSections — combat", () => {
     expect(itemById(sections, "combat-attack-b")?.action).toEqual({
       type: "declare_attacker",
       // ADR 0080 (#1063): auto_tap rides every attack payload so the
-      // CR 508.1a tax can reach the lands. Inert without a tax.
+      // CR 508.1h tax can reach the lands. Inert without a tax.
       params: { attacker: "c1", target: "b", auto_tap: true },
     });
     expect(itemById(sections, "combat-attack-a")).toBeUndefined();
@@ -709,6 +709,44 @@ describe("buildMenuSections — combat", () => {
     });
     // Never the controller's own seat.
     expect(itemById(sections, "combat-attack-all-a")).toBeUndefined();
+  });
+
+  // #4198: Norn's Annex's {W/P}. The row stays the mana payment; a
+  // sibling pays this creature's symbol with life, and the bulk row
+  // leaves the question to the dock.
+  it("offers a pay-with-life row beside a Phyrexian attack tax", () => {
+    const c1 = card("c1", "a", { type_line: "Creature — Bear" });
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [c1],
+      step: "declare_attackers",
+    });
+    v.turn!.attack_targets = [{ kind: "player", id: "b", tax: "{W/P}", tax_phyrexian: 1 }];
+    const sections = buildMenuSections(v, c1, "a", false);
+    expect(itemById(sections, "combat-attack-b")?.action?.params).toEqual({
+      attacker: "c1",
+      target: "b",
+      auto_tap: true,
+    });
+    const life = itemById(sections, "combat-attack-b-life");
+    expect(life?.label).toBe("Bob (pay with life)");
+    expect(life?.action).toEqual({
+      type: "declare_attacker",
+      params: { attacker: "c1", target: "b", auto_tap: true, phyrexian_life: 1 },
+    });
+    const bulk = itemById(sections, "combat-attack-all-b");
+    expect(bulk?.disabled).toBe(true);
+    expect(bulk?.action).toBeUndefined();
+  });
+
+  it("offers no pay-with-life row when the life total cannot buy a symbol", () => {
+    const c1 = card("c1", "a", { type_line: "Creature — Bear" });
+    const me = seat("a", "Alice");
+    me.life = 1;
+    const v = view([me, seat("b", "Bob")], { battlefield: [c1], step: "declare_attackers" });
+    v.turn!.attack_targets = [{ kind: "player", id: "b", tax: "{W/P}", tax_phyrexian: 1 }];
+    const sections = buildMenuSections(v, c1, "a", false);
+    expect(itemById(sections, "combat-attack-b")).toBeDefined();
+    expect(itemById(sections, "combat-attack-b-life")).toBeUndefined();
   });
 
   it("disables attack-with-all when nothing on the board can attack", () => {

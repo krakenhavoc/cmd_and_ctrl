@@ -125,3 +125,11 @@ func Waterbend(cost string) *game.TapPermanentsCost {
 func WaterbendCost(cost string) game.AbilityCost {
 	return game.AbilityCost{Mana: cost, Waterbend: Waterbend(cost)}
 }
+
+// The waterbend clause is built from nothing but its extra cost, so a keyed
+// pay-unless carries it as that string and rebuilds it here (#4264): a
+// table waiting on a ward's waterbend payment is a restore point. The kind
+// is an on-disk identity ("tapcost waterbend"): never renamed, never reused.
+func init() {
+	game.RegisterTapCost("waterbend", Waterbend)
+}

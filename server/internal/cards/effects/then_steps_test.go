@@ -47,6 +47,13 @@ var thenStepsProbeRest = RegisterThenSteps("test/then-steps-probe",
 	}),
 )
 
+// thenStepsProbeChosen is the number's keyed branch.
+var thenStepsProbeChosen = NumberThen("test/then-steps-probe-chosen",
+	func(ctx *Context, r game.NumberAnswer) error {
+		ctx.RecordStep(thenStepsProbeRecord, nil, r.Number)
+		return thenStepsProbeRest.Run(ctx)
+	})
+
 func init() {
 	Register(Spec{
 		OracleID: thenStepsProbeOracle,
@@ -58,10 +65,7 @@ func init() {
 			Effect: Do(
 				ChooseNumber{
 					Min: 0, Max: 2, Question: "Then Steps Probe — how many?", Unit: game.PayAmountCards,
-					Then: func(ctx *Context, n int) error {
-						ctx.RecordStep(thenStepsProbeRecord, nil, n)
-						return thenStepsProbeRest.Run(ctx)
-					},
+					Then: thenStepsProbeChosen,
 				},
 				Instruction(func(ctx *Context) error {
 					thenStepsProbeLook = ctx.Game.PlayerByIDForEffect(ctx.Controller()).Hand.Size()

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Kick in the Door — Sorcery {R}:
 //
 //	"Put a +1/+1 counter on target creature. That creature gains haste
@@ -19,19 +17,28 @@ func init() {
 		Name:         "Kick in the Door",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if id, ok := b16FirstLegalTargetCard(ctx); ok {
-				if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx); err != nil {
-					return err
+		// Each sentence waits for the prompt the one before asks (a CR 616 order
+		// on the counter; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return AddCounter{Target: id, Kind: "+1/+1", N: 1}.Apply(ctx)
 				}
-				if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: "Kick in the Door — haste until end of turn"}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: "Kick in the Door — haste until end of turn"}.Apply(ctx)
 				}
-				if err := (CantBeBlockedThisTurnBySubtypes{Target: id, Subtypes: []string{ctx.TextSubtype("Wall")}, Text: "Walls", Label: "Kick in the Door — can't be blocked by Walls this turn"}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if id, ok := b16FirstLegalTargetCard(ctx); ok {
+					return CantBeBlockedThisTurnBySubtypes{Target: id, Subtypes: []string{ctx.TextSubtype("Wall")}, Text: "Walls", Label: "Kick in the Door — can't be blocked by Walls this turn"}.Apply(ctx)
 				}
-			}
-			return VentureIntoTheDungeon{}.Apply(ctx)
-		},
+				return nil
+			}),
+			VentureIntoTheDungeon{},
+		),
 	})
 }

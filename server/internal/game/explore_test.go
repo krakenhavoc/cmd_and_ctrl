@@ -49,7 +49,7 @@ func TestExploreRevealsALandIntoHand(t *testing.T) {
 	hand := me.Hand.Size()
 
 	g.WithWriteLock(func() {
-		if err := g.ExploreForEffect(uuid.Nil, explorer, me.ID, nil); err != nil {
+		if err := g.ExploreForEffect(uuid.Nil, explorer, me.ID); err != nil {
 			t.Fatalf("ExploreForEffect: %v", err)
 		}
 	})
@@ -77,7 +77,7 @@ func TestExploreNonlandCountersThenAsks(t *testing.T) {
 		g, me, explorer := exploreSetup(t, spell)
 
 		g.WithWriteLock(func() {
-			if err := g.ExploreForEffect(uuid.Nil, explorer, me.ID, nil); err != nil {
+			if err := g.ExploreForEffect(uuid.Nil, explorer, me.ID); err != nil {
 				t.Fatalf("ExploreForEffect: %v", err)
 			}
 		})
@@ -118,7 +118,7 @@ func TestExploreByADepartedPermanentStillReveals(t *testing.T) {
 	stale := ObjectRef{ID: explorer.ID, Epoch: explorer.Epoch + 1}
 
 	g.WithWriteLock(func() {
-		if err := g.ExploreForEffect(uuid.Nil, stale, me.ID, nil); err != nil {
+		if err := g.ExploreForEffect(uuid.Nil, stale, me.ID); err != nil {
 			t.Fatalf("ExploreForEffect: %v", err)
 		}
 	})
@@ -138,7 +138,7 @@ func TestExploreWithAnEmptyLibraryStillExplores(t *testing.T) {
 	me.Library.Cards = nil
 	c, _ := battlefieldCardByID(g, id)
 	g.WithWriteLock(func() {
-		if err := g.ExploreForEffect(uuid.Nil, ObjectRef{ID: id, Epoch: c.ObjectEpoch}, me.ID, nil); err != nil {
+		if err := g.ExploreForEffect(uuid.Nil, ObjectRef{ID: id, Epoch: c.ObjectEpoch}, me.ID); err != nil {
 			t.Fatalf("ExploreForEffect: %v", err)
 		}
 	})

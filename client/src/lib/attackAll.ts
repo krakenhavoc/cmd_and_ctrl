@@ -48,7 +48,7 @@ import type { CardView, GameView, PlayerView } from "./protocol";
 // to an attack-with-all. "declared" is tracked separately in the plan
 // because it isn't a problem — that creature is already attacking.
 // "unavailable" is the server leaving a creature out for a reason the
-// row fields don't show: an attack tax it can't pay (CR 508.1a), a
+// row fields don't show: an attack tax it can't pay (CR 508.1h), a
 // count limit already reached (CR 508.1c), a requirement it would break
 // (CR 508.1d).
 export type AttackBlocker = "restricted" | "tapped" | "summoning-sick" | "defender" | "unavailable";
@@ -212,7 +212,7 @@ export type AttackAllParams = {
   // `exert`: ADR 0130 §5, the choice to exert that attacker as it
   // attacks. Sent only as true; absent means no.
   attackers: { attacker: string; target: string; exert?: true }[];
-  // ADR 0080 (#1063): let the server tap lands for the CR 508.1a
+  // ADR 0080 (#1063): let the server tap lands for the CR 508.1h
   // attack tax when the mana pool alone cannot cover it. Always sent,
   // for the reason the cast chain sends it after its preview — a
   // declaration the player has confirmed at a price they were shown
@@ -225,6 +225,9 @@ export type AttackAllParams = {
   // of the cast modal's `locked_sources`. Omitted rather than sent
   // empty, matching every other caller of this field on the wire.
   locked_sources?: string[];
+  // #4198: how many of the tax's Phyrexian symbols are paid with 2 life
+  // each (CR 107.4f), the attack dock's answer. Omitted at zero.
+  phyrexian_life?: number;
 };
 
 // AttackAllOptions narrows a declaration built from an AttackAllPlan.
@@ -235,7 +238,7 @@ export interface AttackAllOptions {
   // #1162: restrict the declaration to exactly these instance IDs
   // rather than every eligible creature — the attack-tax picker's
   // chosen subset, offered when "attack with all" is refused for want
-  // of the CR 508.1a tax (ADR 0080) and the player has to choose which
+  // of the CR 508.1h tax (ADR 0080) and the player has to choose which
   // attacks to pay for instead. An ID the plan no longer considers
   // eligible (a stale selection after a snapshot changed the board) is
   // dropped rather than sent, the same silent-skip posture
@@ -249,6 +252,9 @@ export interface AttackAllOptions {
   // exertable is dropped: the server refuses the whole declaration for
   // an exert it can't honour.
   exert?: readonly string[];
+  // #4198: the Phyrexian symbols of the tax to pay with life, sent as
+  // `phyrexian_life`. Zero or absent pays them all with mana.
+  phyrexianLife?: number;
 }
 
 // attackAllParams builds the action payload aiming every eligible
@@ -275,10 +281,13 @@ export function attackAllParams(
   if (opts.lockedSources && opts.lockedSources.length > 0) {
     params.locked_sources = [...opts.lockedSources];
   }
+  if (opts.phyrexianLife && opts.phyrexianLife > 0) {
+    params.phyrexian_life = opts.phyrexianLife;
+  }
   return params;
 }
 
-// attackTaxOn is the CR 508.1a price of attacking one seat, read off
+// attackTaxOn is the CR 508.1h price of attacking one seat, read off
 // the turn's server-priced attack_targets (ADR 0080, #1063). "" when
 // attacking it is free, or when the field is absent — an older server,
 // or a step that is not declare_attackers.

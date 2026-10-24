@@ -88,14 +88,14 @@ func init() {
 					YesLabel: "Pay 2 life",
 					NoLabel:  "Don't pay",
 					LifeCost: 2,
-					OnYes: func(ctx *Context) error {
-						return payLifeThenDraw(ctx, 2, 1)
-					},
+					Then:     mayPayLifeDraw,
+					Word:     "1",
 				}.Apply(ctx)
 			}),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice another creature: Target creature gets -2/-1 until end of turn.",
+			Purpose: ForTargets(HarmUntilEOT(0, -2, -1)),
 			Cost:    Plus(ManaCost("{1}{B}"), SacrificeAnotherN(1, "another creature", Creature())),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

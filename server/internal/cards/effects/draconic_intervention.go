@@ -30,20 +30,23 @@ func init() {
 		AdditionalCost: ExileFromGraveyardCost(1, "an instant or sorcery card", func(c game.Card) bool {
 			return c.IsInstant() || c.IsSorcery()
 		}),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			x := 0
-			for _, id := range ctx.Exiled() {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok {
-					x = c.ManaValue()
+		// The exile waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				x := 0
+				for _, id := range ctx.Exiled() {
+					if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+						x = c.ManaValue()
+					}
 				}
-			}
-			if err := damageEachExileIfDealtDies(ctx, And(Creature(), Not(OfCreatureType("Dragon"))), x, false); err != nil {
-				return err
-			}
-			if item.IsCopy {
-				return nil
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+				return damageEachExileIfDealtDies(ctx, And(Creature(), Not(OfCreatureType("Dragon"))), x, false)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.Item.IsCopy {
+					return nil
+				}
+				return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+			}),
+		),
 	})
 }

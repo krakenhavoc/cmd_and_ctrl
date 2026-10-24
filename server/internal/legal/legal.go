@@ -148,6 +148,11 @@ type Move struct {
 	// play, or "it can't be played". The client lists exactly these
 	// moves in that prompt, and the wire cap never folds them away.
 	ControlledPlay string `json:"controlled_play,omitempty"`
+	// ResolutionCast is the resolution_cast prompt this move answers
+	// (#2947, CR 608.2g): one way of casting a copy during the
+	// resolution that made it, or "don't cast". The client lists exactly
+	// these moves in that prompt, and the wire cap never folds them.
+	ResolutionCast string `json:"resolution_cast,omitempty"`
 	// Cost is what the move charges its own controller beyond the
 	// mana, in the components Params cannot name. Nil — most moves
 	// that are not casts — means "nothing but mana and the choices
@@ -348,7 +353,7 @@ type MoveCost struct {
 	// Mana is a mana cost string the move charges that `params`
 	// cannot name. Three kinds of move carry it:
 	//
-	//   - An attack: the CR 508.1a attack tax (ADR 0080, #1063), "{2}"
+	//   - An attack: the CR 508.1h attack tax (ADR 0080, #1063), "{2}"
 	//     for an attack into Propaganda. An attack has no printed cost,
 	//     so the tax is nowhere else on the wire, and a policy that may
 	//     not import internal/game (ADR 0033 §3) would price an attack

@@ -20,7 +20,7 @@ func init() {
 		Name:         "Kukemssa Pirates",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			withTargetsFrom(unblockedAttackerMay("Kukemssa Pirates", "gain control of target artifact defending player controls",
+			withTargetsFrom(unblockedAttackerMay("Kukemssa Pirates", "gain control of target artifact defending player controls", "kukemssa-pirates-gain-control",
 				func(ctx *Context, target uuid.UUID) error {
 					return GainControl{Target: target, Duration: game.IndefiniteDuration(), Label: "Kukemssa Pirates — gain control"}.Apply(ctx)
 				}), TargetOfDefendingPlayer("artifact", "target artifact defending player controls", Artifact())),

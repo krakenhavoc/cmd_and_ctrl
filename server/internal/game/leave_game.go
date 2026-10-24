@@ -191,6 +191,9 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		sweep(p.Companion)
 		// ADR 0191: and so does its sideboard.
 		sweep(p.Sideboard)
+		// ADR 0207: and its Attraction deck and junkyard.
+		sweep(p.AttractionDeck)
+		sweep(p.Junkyard)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()
@@ -214,6 +217,7 @@ func (g *Game) forgetObjectLocked(cardID uuid.UUID) {
 		delete(g.LoyaltyActivatedThisTurn, cardID)
 	}
 	delete(g.LoyaltyActivatedTwiceThisTurn, cardID)
+	delete(g.LoyaltyExtraActivationsUsedThisTurn, cardID)
 	if g.lastKnownBattlefield != nil {
 		delete(g.lastKnownBattlefield, cardID)
 	}
@@ -536,6 +540,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// leaves, and the card leaves with a controlled player who does.
 	// Either way the forced play is over.
 	PendingChoiceControlledPlay: {},
+	// #2947: the copies on offer are the chooser's, and CR 800.4a takes
+	// them out of the game with them; the resolution goes on without
+	// the casts.
+	PendingChoiceResolutionCast: {},
 	// option_pick: the second half of a pile split is a living
 	// player's cards. Torment of Hailfire's "each opponent chooses"
 	// is the same KIND and is still dropped — by the material test in

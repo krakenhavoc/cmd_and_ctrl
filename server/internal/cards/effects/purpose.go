@@ -46,6 +46,8 @@ import (
 //     AdditionalLandPlays says a different number (#2678);
 //   - LandfallExtraTriggers anywhere but the card, or on a card with
 //     no TriggerDoubler (#3146);
+//   - ExtraLoyaltyActivations anywhere but the card or an activated
+//     row of the controller's own (#4191);
 //   - a Sweep with an unknown class or verb, an amount on a verb that
 //     has none, or none on a verb that needs one;
 //   - a target entry (Purpose.Targets, ADR 0126's amendment of
@@ -88,7 +90,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandfallExtraTriggers < 0 || p.ExtraLoyaltyActivations < 0 || p.LandsUntapped < 0 || p.Impulse < 0 || p.CreatureTokens < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
@@ -102,6 +104,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	if p.LandfallExtraTriggers != 0 && slot != purposeOnCard {
 		fail("sets LandfallExtraTriggers off the card — a landfall doubler is the card's own static (#3146)")
+	}
+	if p.ExtraLoyaltyActivations != 0 && slot != purposeOnCard && slot != purposeOnActivated {
+		fail("sets ExtraLoyaltyActivations off the card or an activated row of its controller's own — it grants the planeswalkers of whoever resolves it (#4191)")
 	}
 	if p.ExtraLandDrops != 0 && slot != purposeOnCard {
 		fail("sets ExtraLandDrops off the card — an additional land drop is the card's own static or its spell's effect (#2678)")
@@ -197,8 +202,8 @@ func checkPump(pm *game.Pump, fail func(string)) {
 	if pm == nil {
 		return
 	}
-	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 {
-		fail("is a pump that gives nothing — set Power, Toughness or Keywords")
+	if pm.Power == 0 && pm.Toughness == 0 && len(pm.Keywords) == 0 && !pm.CantBeBlocked {
+		fail("is a pump that gives nothing — set Power, Toughness, Keywords or CantBeBlocked")
 	}
 	for _, k := range pm.Keywords {
 		if k == "" || k != strings.ToLower(k) || strings.ContainsAny(k, "\t—") {
@@ -429,7 +434,10 @@ func checkTriggeredPurpose(name, where string, t game.TriggeredAbility) {
 //     no printed toughness or a size with no tokens, or more untapped
 //     lands than lands. The clause's card predicate is a closure, so "target
 //     artifact" is a permanent clause to this check; the card's text
-//     is the rest of the review.
+//     is the rest of the review;
+//   - a change until end of turn (#4302) that is neither benefit nor
+//     harm, on a clause that cannot target a permanent, or whose Pump
+//     points the other way (checkUntilEndOfTurn).
 func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSpec, known bool) {
 	if p.Targets == nil {
 		return
@@ -475,6 +483,7 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if e.Reanimates && !slices.Contains(clause.Zones, game.ZoneGraveyard) {
 			fail(fmt.Sprintf("reanimates slot %d, whose clause %q cannot target a card in a graveyard", e.Slot, clause.Label))
 		}
+		checkUntilEndOfTurn(e, clause, fail)
 		if r := e.Returns; !r.IsZero() {
 			if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 				fail(fmt.Sprintf("returns something to the controller of slot %d, whose clause %q cannot target a permanent", e.Slot, clause.Label))
@@ -490,6 +499,81 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 			}
 		}
 	}
+}
+
+// checkUntilEndOfTurn is checkTargetPurposes' half for a change that
+// ends with the turn (#4302): a direction of benefit or harm, on a
+// clause that can pick a permanent; a Pump only beside one, that says
+// something, adds nothing negative to a benefit and nothing positive or
+// no keyword to a harm (a harm's keywords are lost, which a Pump cannot
+// say).
+func checkUntilEndOfTurn(e game.TargetPurpose, clause *game.TargetClause, fail func(string)) {
+	switch e.UntilEndOfTurn {
+	case "":
+		if e.Pump != nil {
+			fail(fmt.Sprintf("sets a Pump on slot %d without UntilEndOfTurn — say whether it helps or hurts (#4302)", e.Slot))
+		}
+		return
+	case game.TargetBenefit, game.TargetHarm:
+	default:
+		fail(fmt.Sprintf("sets UntilEndOfTurn %q on slot %d, which is neither benefit nor harm (#4302)", e.UntilEndOfTurn, e.Slot))
+	}
+	if !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+		fail(fmt.Sprintf("changes slot %d until end of turn, whose clause %q cannot target a permanent (#4302)", e.Slot, clause.Label))
+	}
+	pm := e.Pump
+	if pm == nil {
+		return
+	}
+	checkPump(pm, fail)
+	if e.UntilEndOfTurn == game.TargetBenefit && (pm.Power < 0 || pm.Toughness < 0) {
+		fail(fmt.Sprintf("declares a benefit on slot %d that takes power or toughness — that is a harm (#4302)", e.Slot))
+	}
+	if e.UntilEndOfTurn == game.TargetHarm && (pm.Power > 0 || pm.Toughness > 0 || len(pm.Keywords) > 0 || pm.CantBeBlocked) {
+		fail(fmt.Sprintf("declares a harm on slot %d that adds power, toughness, a keyword or unblockability (#4302)", e.Slot))
+	}
+}
+
+// BenefitUntilEOT is the target entry for a clause that helps its pick
+// until end of turn (#4302): Heliod, Sun-Crowned's "another target
+// creature gains lifelink until end of turn" is
+// ForTargets(BenefitUntilEOT(0, 0, 0, "lifelink")), and "target creature
+// gets +2/+2 until end of turn" BenefitUntilEOT(0, 2, 2). With no amount
+// and no keyword (+X/+X, "can't be blocked this turn") it declares only
+// the direction.
+func BenefitUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
+	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetBenefit}
+	if power != 0 || toughness != 0 || len(keywords) > 0 {
+		e.Pump = &game.Pump{Power: power, Toughness: toughness, Keywords: keywords}
+	}
+	return e
+}
+
+// CantBeBlockedUntilEOT is BenefitUntilEOT for a clause that also makes
+// its pick unblockable this turn (#4312): Rogue's Passage's "target
+// creature can't be blocked this turn" is CantBeBlockedUntilEOT(0, 0, 0),
+// and Taigam's Strike's "+2/+0 until end of turn and can't be blocked this
+// turn" CantBeBlockedUntilEOT(0, 2, 0).
+func CantBeBlockedUntilEOT(slot, power, toughness int, keywords ...string) game.TargetPurpose {
+	e := BenefitUntilEOT(slot, power, toughness, keywords...)
+	if e.Pump == nil {
+		e.Pump = &game.Pump{}
+	}
+	e.Pump.CantBeBlocked = true
+	return e
+}
+
+// HarmUntilEOT is the target entry for a clause that hurts its pick until
+// end of turn (#4302), with the printed change as signed amounts: "target
+// creature gets -2/-1 until end of turn" is HarmUntilEOT(0, -2, -1). With
+// no amount (-X/-X, "can't block this turn") it declares only the
+// direction.
+func HarmUntilEOT(slot, power, toughness int) game.TargetPurpose {
+	e := game.TargetPurpose{Slot: slot, UntilEndOfTurn: game.TargetHarm}
+	if power != 0 || toughness != 0 {
+		e.Pump = &game.Pump{Power: power, Toughness: toughness}
+	}
+	return e
 }
 
 // ForTargets is a Purpose that declares only what happens to the

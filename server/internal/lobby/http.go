@@ -2487,7 +2487,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 		// function.
 		total := game.WaterbendReduced(price.Total, xValue, len(params.WaterbendIDs))
 		spend := game.ManaSpendForAbility(price.Source)
-		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian)
+		cost := costAsPaidForPreview(g, p.PlayerID, total, xValue, spend, phyrexian, nil)
 		// #1212: no source wish for an ability. "If mana from a
 		// Treasure was spent to activate this ability" (Forsworn
 		// Paladin, Jetmir's Fixer) is real printed text and is
@@ -2539,7 +2539,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// the card type, which a modal DFC's two faces need not share
 	// (ADR 0034).
 	spend := game.ManaSpendForCastParams(price.Card, params)
-	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian)
+	cost := costAsPaidForPreview(g, p.PlayerID, price.Total, xValue, spend, phyrexian, excluded)
 	// The cost string reported back is the one this cast PAYS, not
 	// the one in the card's corner — a flashed-back Think Twice reads
 	// "{2}{U}" and an airbent permanent reads "{2}". The commander tax
@@ -2774,8 +2774,11 @@ func costAsPaidForPreview(
 	xValue int,
 	spend game.ManaSpendContext,
 	claimed int,
+	excluded map[uuid.UUID]bool,
 ) game.ParsedCost {
-	cost = g.CostAsPaidBy(playerID, spend, cost, xValue)
+	// #2575: with the plan's exclusions, which a "no more than one mana
+	// of each color" clause chooses its colours around.
+	cost = g.CostAsPaidByExcluding(playerID, spend, cost, xValue, excluded)
 	if claimed <= 0 {
 		return cost
 	}
@@ -3129,6 +3132,14 @@ type uploadDeckResponse struct {
 	// game (ADR 0191 §3): not part of CardCount, read only by effects
 	// that bring a card in from outside the game. Zero for none.
 	Sideboard int `json:"sideboard,omitempty"`
+	// Attractions is how many cards the deck seats in its Attraction
+	// deck (ADR 0207 §2): not part of CardCount. Zero for none, and for
+	// an Attraction deck that breaks CR 717.2a (a warning says so).
+	Attractions int `json:"attractions,omitempty"`
+	// StickerSheets is how many sticker sheets the deck seats (ADR 0208
+	// §2): not cards and not part of CardCount. Zero for none, and for a
+	// pool that breaks CR 123.2a (a warning says so).
+	StickerSheets int `json:"sticker_sheets,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -3286,6 +3297,10 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				// said and not seated, never a reason to refuse a deck.
 				if v.Code == deck.CodeSideboardUnsupported ||
 					v.Code == deck.CodeSideboardTooLarge ||
+					v.Code == deck.CodeAttractionDeckIllegal ||
+					// ADR 0208 §2: so is a sticker sheet pool that
+					// breaks CR 123.2a.
+					v.Code == deck.CodeStickerSheetsIllegal ||
 					v.Code == deck.CodeUnsupportedLayout ||
 					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
@@ -3428,6 +3443,8 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Commanders:    commanders,
 		Companion:     companionName(list),
 		Sideboard:     len(list.SeatedSideboard()),
+		Attractions:   len(list.SeatedAttractions()),
+		StickerSheets: len(list.SeatedStickerSheets()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3642,6 +3659,8 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Commanders:    commanders,
 		Companion:     companionName(list),
 		Sideboard:     len(list.SeatedSideboard()),
+		Attractions:   len(list.SeatedAttractions()),
+		StickerSheets: len(list.SeatedStickerSheets()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})
@@ -4485,15 +4504,20 @@ func secureCookies(c Config) bool {
 // secureCookies — prod (HTTPS since S12) gets it by default through
 // the https redirect-URI heuristic.
 func setSessionCookie(c Config, w http.ResponseWriter, tok string, exp time.Time) {
-	http.SetCookie(w, &http.Cookie{
+	ck := &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    tok,
 		Path:     "/",
 		Expires:  exp,
 		HttpOnly: true,
-		Secure:   secureCookies(c),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	// Secure unless local plain-http dev (secureCookies).
+	if !secureCookies(c) {
+		ck.Secure = false
+	}
+	http.SetCookie(w, ck)
 }
 
 // clearSessionCookie emits a Set-Cookie that evicts the browser's
@@ -4502,16 +4526,21 @@ func setSessionCookie(c Config, w http.ResponseWriter, tok string, exp time.Time
 // MaxAge. Secure mirrors setSessionCookie so the eviction targets
 // the same cookie variant the login flow set.
 func clearSessionCookie(c Config, w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
+	ck := &http.Cookie{
 		Name:     auth.SessionCookie,
 		Value:    "",
 		Path:     "/",
 		Expires:  time.Unix(0, 0),
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   secureCookies(c),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
-	})
+	}
+	// Secure unless local plain-http dev (secureCookies).
+	if !secureCookies(c) {
+		ck.Secure = false
+	}
+	http.SetCookie(w, ck)
 }
 
 // httpStatusError is a lobby-local wrapper that carries an HTTP

@@ -28,12 +28,12 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
+			// #4253 slice 3: the draw is a registered tail, so the scry
+			// prompt is a restore point.
 			return Scry{
-				Player: controller,
-				N:      1,
-				Then: func(g *game.Game) error {
-					return g.DrawNForEffect(controller, 1)
-				},
+				Player:   controller,
+				N:        1,
+				ThenTail: game.KeyedTail{Ref: thenDrawACard, Player: controller},
 			}.Apply(ctx)
 		},
 	})

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -56,18 +54,9 @@ func init() {
 					Reveal:    true,
 					Shuffle:   true,
 					Reason:    "Archdruid's Charm — a creature or land card",
-					Then: func(g *game.Game, found []uuid.UUID) error {
-						for _, id := range found {
-							c, ok := g.LookupCardForEffect(id)
-							if !ok || !c.IsLand() {
-								continue
-							}
-							if _, err := g.PutFromHandOntoBattlefieldForEffect(id, game.HandEntryOptions{Controller: controller, Tapped: true}); err != nil {
-								return err
-							}
-						}
-						return nil
-					},
+					// #4253 slice 4: "put it onto the battlefield tapped if it's
+					// a land card" is a shared registered tail.
+					ThenTail: game.KeyedTail{Ref: thenPutFoundLandsTapped, Player: controller, Source: ctx.Source()},
 				}.Apply(ctx)
 			case ctx.HasMode(1):
 				occ := -1

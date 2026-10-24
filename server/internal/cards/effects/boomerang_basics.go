@@ -41,8 +41,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a pre-move fact. So a return the CR 614 window cancelled still draws,
 // exactly as Path to Exile still searches.
 //
-// A Lesson is an ordinary sorcery here: learn (CR 701.47) fetches
-// Lessons from the sideboard, and Commander has no sideboard.
+// A Lesson is an ordinary sorcery on the table: learn (CR 701.48a,
+// learn.go) fetches Lessons from outside the game, and a Commander deck
+// takes them from the card database (ADR 0198).
 //
 // No simplification.
 func init() {

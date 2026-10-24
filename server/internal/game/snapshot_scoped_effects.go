@@ -155,6 +155,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := skipNextUntapStepModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #2567: an attack-this-permanent requirement naming no
+			// permanent, or a turn stamp on another kind.
+			if problem := attackPermanentModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
@@ -242,19 +247,94 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		// the card.
 		// #2854: on an option_pick it is a keyed option pick's
 		// continuation, from the other registry.
+		if c.ReplacementResume != nil && (c.PickThen == "" || !keyedReplacementPromptKind(c.Kind)) {
+			// #4253: a frame on a prompt kind that cannot carry one, or
+			// with no tail key, is a newer binary's shape.
+			unknown = append(unknown, fmt.Sprintf("replacement resume frame on a %s prompt with tail %q", c.Kind, c.PickThen))
+		}
 		switch {
 		case c.PickThen == "":
+		case keyedReplacementPromptKind(c.Kind):
+			// #4253: a keyed CR 616 frame's tail, and the bodies and stack
+			// item its event names.
+			unknown = append(unknown, unknownReplacementResumeKeys(&c)...)
 		case c.Kind == PendingChoiceOptionPick:
 			if !KnownOptionPickThen(c.PickThen) {
 				unknown = append(unknown, "option pick continuation "+c.PickThen)
 			}
-		case c.Kind == PendingChoiceChooseCards:
-			// #2040: a keyed choose_cards pick's continuation.
+		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick:
+			// #2040: a keyed choose_cards pick's continuation. #4250: a
+			// resolution_cast's "after the casts" is one too. #4264: and a
+			// keyed reveal pick's.
 			if !KnownChooseCardsThen(c.PickThen) {
 				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
 			}
+		case c.Kind == PendingChoiceOutsideCollection:
+			// #4256: a keyed collection pick's filter and continuation,
+			// registered under one key.
+			if !KnownOutsidePick(c.PickThen) {
+				unknown = append(unknown, "outside pick "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayUnless && c.AnyPlayerOffer != nil:
+			// #4264: a keyed any-player offer's consequences, which are
+			// registered apart from a plain pay-unless's branches.
+			if !KnownAnyPlayerPays(c.PickThen) {
+				unknown = append(unknown, "any-player consequences "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayAmount && c.MayPayX != nil:
+			// #4289: a keyed MayPayX's "choose X" names the branches the
+			// payment that follows runs.
+			if !KnownPayUnlessElse(c.PickThen) {
+				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayAmount:
+			// #4294: a keyed number prompt's branch (an assist helper's is
+			// the engine's own).
+			if !KnownNumberThen(c.PickThen) {
+				unknown = append(unknown, "number branch "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePayUnless:
+			// #4256: a keyed pay-unless prompt's decline (and, since
+			// #4264, its payment's branch).
+			if !KnownPayUnlessElse(c.PickThen) {
+				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
+		case carriesLookAtThen(c.Kind):
+			// #4253 slice 3: a look-at's keyed "then".
+			if c.ScryThen == nil || c.ScryThen.Key != c.PickThen || !KnownTail(c.PickThen) {
+				unknown = append(unknown, "look-at continuation "+c.PickThen)
+			}
+		case c.Kind == PendingChoiceSacrifice || isPermanentPickKind(c.Kind):
+			// #4290: a keyed run's sacrifice or permanent-pick leg names
+			// its run's key, so a binary that cannot finish the run
+			// refuses the file rather than answering into nobody.
+			if !KnownPromptRunThen(c.PickThen) {
+				unknown = append(unknown, "prompted-run continuation "+c.PickThen)
+			}
+		case c.Kind == PendingChoicePutInLibrary:
+			// #4301: an ordering prompt's keyed "then".
+			if c.LibraryOrder == nil || c.LibraryOrder.Then == nil || c.LibraryOrder.Then.Key != c.PickThen {
+				unknown = append(unknown, "put-in-library continuation "+c.PickThen)
+			} else {
+				unknown = append(unknown, unknownKeyedTail(c.LibraryOrder.Then)...)
+			}
+		case c.Kind == PendingChoiceConfirm:
+			// #4264: a keyed confirm's answer.
+			if !KnownConfirmThen(c.PickThen) {
+				unknown = append(unknown, "confirm answer "+c.PickThen)
+			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
+		}
+		// #4294: a tokens-attacking split's tail is a registered key too.
+		if c.AttackSplit != nil {
+			unknown = append(unknown, unknownKeyedTail(c.AttackSplit.Tail)...)
+		}
+		// #4264: a keyed pay-unless's waterbend clause is built by a
+		// registered kind; restored without it the payment would be plain
+		// mana, harder to pay than printed.
+		if c.PayTap != nil && !KnownTapCost(c.PayTap.Kind) {
+			unknown = append(unknown, "tap cost "+c.PayTap.Kind)
 		}
 		// ADR 0146: a ballot's vote continuation is a key too.
 		if c.CouncilVote != nil && !KnownVoteThen(c.CouncilVote.Then) {
@@ -267,6 +347,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// #4162: a parked continuation names its steps by key. Restored
 	// without them, the rest of the continuation would never run.
 	unknown = append(unknown, unknownThenSteps(s.PausedStepWalk)...)
+	// #4290: a keyed prompted run names its continuation by key.
+	// Restored without it, the rest of the card would never run.
+	unknown = append(unknown, unknownPromptRunKeys(s.PromptRuns)...)
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)
@@ -390,6 +473,7 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		StackMeta           []map[string]json.RawMessage `json:"stackMeta"`
 		PendingTriggers     []map[string]json.RawMessage `json:"pendingTriggers"`
 		LastKnownStack      []map[string]json.RawMessage `json:"lastKnownStack"`
+		Resolving           map[string]json.RawMessage   `json:"resolving"`
 		PreventionFollowUps []map[string]json.RawMessage `json:"preventionFollowUps"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
@@ -509,6 +593,21 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 			}
 		}
 	}
+	// #4270: the resolving slot is a stack item and a card of its own.
+	if envelope.Resolving != nil {
+		if current {
+			check("the resolving slot", envelope.Resolving, resolvingJSONKeys)
+		}
+		it, err := object(envelope.Resolving["item"])
+		if err != nil {
+			return nil, err
+		}
+		if it != nil {
+			if err := stackItem("the resolving slot's item", it); err != nil {
+				return nil, err
+			}
+		}
+	}
 	sort.Strings(out)
 	return out, nil
 }
@@ -594,6 +693,7 @@ var (
 	abilityRefJSONKeys            = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
 	stackItemJSONKeys             = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
 	lastKnownSpellJSONKeys        = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
+	resolvingJSONKeys             = jsonKeysOf(reflect.TypeOf(resolvingSnapshot{}))
 	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
 	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )

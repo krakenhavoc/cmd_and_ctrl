@@ -85,9 +85,12 @@ describe("the phase icons' pairs (#2214)", () => {
   it("gives every step its own drawing", () => {
     const seen = new Map<string, string>();
     for (const step of STEP_IDS) {
-      const html = svg(step)
-        .innerHTML.replace(/<!--[\s\S]*?-->/g, "")
-        .trim();
+      let html = svg(step).innerHTML;
+      for (let prev = ""; prev !== html; ) {
+        prev = html;
+        html = html.replace(/<!--[\s\S]*?-->/g, "");
+      }
+      html = html.trim();
       const other = seen.get(html);
       expect(other, `${step} draws the same as ${other}`).toBeUndefined();
       seen.set(html, step);

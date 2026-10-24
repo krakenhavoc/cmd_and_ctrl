@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a9564593-b5a6-4a83-be1e-2af8caf647d7",
 		Name:         "Daring Discovery",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Discovers:    true,
 		Targets:      TargetCreature("up to three target creatures").WithCount(0, 3),

@@ -12,13 +12,16 @@ import "github.com/google/uuid"
 // with the card still in the LIBRARY instead of in exile, plus a land
 // branch:
 //
-//   - a nonland card whose mana value fits gets a may_cast prompt under
-//     MayCastKeywordFreeOrHand. Accepting stamps a {0}, flash-timed,
-//     cast-only, mana-value-capped permission over that card in the
-//     library, closing on the holder's next pass with the card sent to
-//     its owner's hand (LapseToHand; lapseCastPermissionLocked reads the
-//     zone the grant opens). Declining puts the card into the hand at
-//     once;
+//   - a nonland card whose mana value fits is cast during the resolution
+//     (CR 608.2g; ADR 0066's 2026-10-23 amendment, #4250): a {0},
+//     flash-timed, cast-only, mana-value-capped permission over that
+//     card in the library, and a resolution_cast prompt over it under
+//     MayCastKeywordFreeOrHand, which holds the resolution open while
+//     the player casts it from the top of the library or declines.
+//     Declining lapses the permission with the card sent to its owner's
+//     hand (LapseToHand; lapseCastPermissionLocked reads the zone the
+//     grant opens). Outside an open resolution the permission alone is
+//     the window, closing on the holder's next pass the same way;
 //   - a land the player can play right now (CR 305.2b, 305.3) gets a
 //     may_cast prompt under MayCastKeywordPlayOrHand. Accepting plays it
 //     through PlayLandDuringResolutionForEffect, which works from any
@@ -30,13 +33,11 @@ import "github.com/google/uuid"
 //     so "if you don't" is already true.
 //
 // The look is private (CR 701.20): only the looker is marked a knower of
-// the card, and the prompt is marked private so its words, which name
-// the card, reach nobody else. A reveal (Rashmi) marks every seat and
-// the prompt is public.
-//
-// SANDBOX SIMPLIFICATION, the one every "you may cast it" a resolution
-// offers takes (ADR 0066, ADR 0091): the cast is an ordinary cast_spell
-// taken right after the resolution rather than a frame inside it.
+// the card. The land's may_cast is marked private so its words, which
+// name the card, reach nobody else; the spell's resolution_cast names
+// only the source, and its card is dropped from every other viewer's
+// copy of the prompt by the knower filter, as any hidden card on a
+// prompt is. A reveal (Rashmi) marks every seat and both are public.
 
 // MayCastKeywordPlayOrHand is the PendingChoice.MayCastKeyword a land
 // offer asks under: accepting plays the land at once, so the client has
@@ -117,28 +118,26 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 		})
 	}
 	mv, readable := g.ManaValueForEffect(c)
-	if !readable || mv > o.MaxManaValue {
+	if !readable || mv > o.MaxManaValue || !g.playerInGameLocked(o.Player) {
 		return g.putLibraryCardIntoHandLocked(o, id)
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	if !g.grantFreeCastFromTopLocked(o, id) {
+		return g.putLibraryCardIntoHandLocked(o, id)
+	}
+	reason := o.SourceName
+	if reason == "" {
+		reason = "Cast it free"
+	}
+	g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      o.Player,
 		Source:       o.Source,
-		Card:         id,
-		Question:     o.SourceName + " — cast " + c.Name + " without paying its mana cost?",
+		Reason:       reason,
+		Candidates:   []uuid.UUID{id},
 		Keyword:      MayCastKeywordFreeOrHand,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Put it into your hand",
-		Private:      !o.Reveal,
-		OnAccept: func(g *Game) error {
-			if !g.grantFreeCastFromTopLocked(o, id) {
-				return g.putLibraryCardIntoHandLocked(o, id)
-			}
-			return nil
-		},
-		OnDecline: func(g *Game) error {
-			return g.putLibraryCardIntoHandLocked(o, id)
-		},
 	})
+	return nil
 }
 
 // grantFreeCastFromTopLocked stamps the free cast over the card where

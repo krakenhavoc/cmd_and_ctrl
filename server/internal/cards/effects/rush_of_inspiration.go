@@ -2,6 +2,11 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var rushOfInspirationDiscard = energyDeclined("pay-unless/rush-of-inspiration-discard",
+	func(g *game.Game, item *game.StackItem) error {
+		return DiscardCards{N: 1}.Apply(NewContext(g, item))
+	})
+
 // Rush of Inspiration // Crackling Falls — modal double-faced card. This
 // file is the FRONT face, Instant {1}{U/R}{U/R}:
 //
@@ -28,9 +33,7 @@ func init() {
 			PayEnergyUnless{
 				N:        2,
 				Question: "Rush of Inspiration — pay {E}{E}, or discard a card at random?",
-				OnDecline: func(ctx *Context) error {
-					return DiscardCards{N: 1}.Apply(ctx)
-				},
+				Else:     rushOfInspirationDiscard,
 			},
 		),
 	})

@@ -1,0 +1,6 @@
+---
+title: "One more loyalty activation for each planeswalker you control"
+date: 2026-10-21
+issues: [4191]
+---
+**One more loyalty activation for each planeswalker you control** (#4191, [ADR 0145](decisions/0145-meld.md) amendment 2026-10-21) — The Chain Veil's "for each planeswalker you control, you may activate one of its loyalty abilities once this turn as though none of its loyalty abilities have been activated this turn" is `Game.GrantExtraLoyaltyActivationForEffect(player)`: a per-player grant for the rest of the turn (`Game.LoyaltyExtraActivationsThisTurn`), read live, so a planeswalker that comes under that player's control later is covered (the 2014-07-18 ruling). A grant is spent by an activation made once CR 606.3's ordinary limit is used up (`Game.LoyaltyExtraActivationsUsedThisTurn`, per permanent and per player), so it stacks with a second Veil activation and with Oath of Teferi's and Urza's "twice", in any order. `LoyaltySpentLocked` stays the one predicate the gate, the sandbox verb, the enumerator and the wire's `loyalty_activated` ask. Both maps are snapshot-additive, flushed at the turn boundary and forgotten per object as §8's maps are. The bot reads `Purpose.ExtraLoyaltyActivations` (`extra_loyalty_activations`). **Cards:** The Chain Veil (Full).

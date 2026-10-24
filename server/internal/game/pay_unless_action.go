@@ -81,6 +81,15 @@ const (
 	// a wrapper only: the engine pays the chosen branch, as that
 	// PayAction, and a branch is never itself an Either.
 	PayActionEither PayActionKind = "either"
+	// PayActionTap taps Count untapped permanents the payer controls
+	// that match Of (CR 701.26a, #1997): Koskun Falls' "sacrifice this
+	// enchantment unless you tap an untapped creature you control". A
+	// card pick, so it takes the {apply, card_ids} answer like a
+	// sacrifice, and "Pay" is a payment only with at least Count
+	// untapped matches (CR 118.3). Tapping is not a {T} cost of the
+	// creature, so a creature that came under its controller's control
+	// this turn may pay (CR 302.6 restricts only its own {T} abilities).
+	PayActionTap PayActionKind = "tap"
 )
 
 // NamesNothing reports whether a "Pay" of this payment names no cards
@@ -221,6 +230,8 @@ func PayActionPhrase(a PayAction) string {
 		return "discard " + n + " cards"
 	case PayActionSacrifice:
 		return "sacrifice " + n + " permanents"
+	case PayActionTap:
+		return "tap " + n + " untapped permanents"
 	case PayActionExileFromGraveyard:
 		return "exile " + n + " cards from your graveyard"
 	case PayActionNothing:
@@ -298,6 +309,18 @@ func (g *Game) payActionOptionsLocked(chooser uuid.UUID, a *PayAction) []uuid.UU
 			}
 		}
 		out = g.SacrificePaymentOrderForEffect(out, uuid.Nil)
+	case PayActionTap:
+		// #1997: only an untapped permanent can be tapped (CR 701.26a),
+		// and only one the payer controls. Battlefield order.
+		if g.Battlefield == nil {
+			return nil
+		}
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller == chooser && !c.Tapped && a.Of.matchesLocked(g, c) {
+				out = append(out, c.InstanceID)
+			}
+		}
 	}
 	return out
 }
@@ -380,6 +403,10 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
 			return err
 		}
+	case PayActionTap:
+		// #1997: the taps are the payment, each announced as a tap
+		// (EventTapCard) through the path a tap cost pays with.
+		g.payTapPermanentsCostLocked(chooser, picked)
 	case PayActionEnergy:
 		// ADR 0129 §3 (energy_payment.go): the counters come off the
 		// payer through the one path that pays energy.
@@ -416,12 +443,12 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 // Read by the protocol view and the legal-move enumerator;
 // ResolvePayUnlessWithCards is the one validator.
 func (c *PendingChoice) PayAction() *PayAction {
-	if c == nil || c.payUnlessResume == nil || c.payUnlessResume.action == nil {
+	if c == nil {
 		return nil
 	}
-	a := *c.payUnlessResume.action
-	if len(a.Either) > 0 {
-		a.Either = append([]PayAction(nil), a.Either...)
+	if c.payUnlessResume != nil {
+		return copyPayAction(c.payUnlessResume.action)
 	}
-	return &a
+	// A keyed prompt (#4264) carries its payment as data.
+	return copyPayAction(c.PayActionClause)
 }

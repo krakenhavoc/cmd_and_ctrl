@@ -36,6 +36,12 @@ var (
 	// step" half; Cosmic Intervention).
 	returnExiledToOwnersBody = game.SimpleDelayedBody("flicker/return-exiled-to-owners", returnExiledCardsToOwners)
 
+	// The same return, with "each of them enters with an additional
+	// +1/+1 counter on it if it's a creature and an additional loyalty
+	// counter on it if it's a planeswalker" (Semester's End, #4193).
+	returnExiledWithAdditionalCountersBody = game.SimpleDelayedBody(
+		"flicker/return-exiled-with-additional-counters", returnExiledCardsWithAdditionalCounters)
+
 	// Exile the listed cards (unearth, Whip of Erebos, Saheeli Rai and
 	// friends: "exile it at the beginning of the next end step").
 	exileListedCardsBody = game.SimpleDelayedBody("exile/listed-cards", b06ExileListedCards)
@@ -281,6 +287,16 @@ var (
 	// spell would be put into your graveyard, exile it instead." (Power
 	// Pack, #1815): the payload card, if it is still in exile.
 	powerPackCastExiledBody = game.SimpleDelayedBody("power-pack/cast-exiled-free", powerPackCastExiled)
+
+	// "Whenever a creature you control enters this turn" (First Day of
+	// Class, #3525): the creature an EventETB names, if the delayed
+	// trigger's controller controls it.
+	eachCreatureYouControlEntersCondition = game.DelayedEachCondition("etb/each-creature-you-control", eachCreatureYouControlEntered)
+
+	// "Put a +1/+1 counter on it and it gains haste until end of turn"
+	// (First Day of Class, #3525): the payload's permanent, if it is
+	// still that object on the battlefield (CR 603.7c).
+	counterAndHasteForThePayloadBody = game.SimpleDelayedBody("counter/plus-one-and-haste-for-the-payload", counterAndHasteForThePayload)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

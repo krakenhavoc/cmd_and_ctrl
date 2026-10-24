@@ -61,7 +61,7 @@ func anArmyYouControlDealtCombatDamageToAPlayer(ev game.Event, source *game.Card
 func sauronTheDarkLordWheel(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Question: "Sauron, the Dark Lord — discard your hand and draw four cards?",
-		OnYes:    sauronTheDarkLordDrawSteps.Run,
+		Then:     sauronAnswer,
 	}.Apply(NewContext(g, item))
 }
 
@@ -75,3 +75,8 @@ var sauronTheDarkLordDrawSteps = RegisterThenSteps("then-steps/sauron-the-dark-l
 	}),
 	DrawCards{N: 4},
 )
+
+// sauronAnswer is the "yes": discard the hand and draw four. Keyed (#4291).
+var sauronAnswer = MayYes("confirm/sauron-the-dark-lord-wheel", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return sauronTheDarkLordDrawSteps.Run(ctx)
+})

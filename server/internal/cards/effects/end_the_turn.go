@@ -72,17 +72,18 @@ func (ActivePlayerMayEndTheTurn) Apply(ctx *Context) error {
 	if active == uuid.Nil {
 		return nil
 	}
-	source := ctx.Source()
-	ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      active,
-		Source:       source,
-		Question:     "End the turn?",
-		AcceptLabel:  "End the turn",
-		DeclineLabel: "Don't end it",
-		OnAccept: func(g *game.Game) error {
-			g.EndTheTurnForEffect(source)
-			return nil
-		},
-	})
-	return nil
+	return MayChoice{
+		Player:   active,
+		Question: "End the turn?",
+		YesLabel: "End the turn",
+		NoLabel:  "Don't end it",
+		Then:     activePlayerEndTheTurn,
+	}.Apply(ctx)
 }
+
+// activePlayerEndTheTurn is the answer to Obeka's question (#4298: keyed): a
+// yes ends the turn, on behalf of the card that asked.
+var activePlayerEndTheTurn = MayYes("confirm/end-the-turn", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.Game.EndTheTurnForEffect(r.Source)
+	return nil
+})

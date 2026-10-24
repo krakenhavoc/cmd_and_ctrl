@@ -35,17 +35,8 @@ func init() {
 					}
 					return MayChoice{
 						Question: "Bone Dancer — put the top creature card of defending player's graveyard onto the battlefield under your control? (it then assigns no combat damage this turn)",
-						OnYes: func(ctx *Context) error {
-							card := topCreatureCardOfGraveyard(ctx.Game, defender)
-							if card == uuid.Nil {
-								return nil
-							}
-							if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}).Apply(ctx); err != nil {
-								return err
-							}
-							assignsNoCombatDamageThisTurn(ctx, "Bone Dancer — assigns no combat damage this turn")
-							return nil
-						},
+						Then:     boneDancerReanimate,
+						Carry:    []uuid.UUID{defender},
 					}.Apply(ctx)
 				}),
 		},
@@ -66,3 +57,18 @@ func topCreatureCardOfGraveyard(g *game.Game, player uuid.UUID) uuid.UUID {
 	}
 	return uuid.Nil
 }
+
+// boneDancerReanimate is the "yes": the top creature card of the defending
+// player's graveyard comes onto the battlefield, and Bone Dancer assigns no
+// combat damage this turn. Keyed (#4291).
+var boneDancerReanimate = MayYes("confirm/bone-dancer-reanimate", func(ctx *Context, r game.ConfirmAnswer) error {
+	card := topCreatureCardOfGraveyard(ctx.Game, carryAt(r, 0))
+	if card == uuid.Nil {
+		return nil
+	}
+	if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}).Apply(ctx); err != nil {
+		return err
+	}
+	assignsNoCombatDamageThisTurn(ctx, "Bone Dancer — assigns no combat damage this turn")
+	return nil
+})

@@ -121,19 +121,24 @@ func trueScripturesChapterOneClauses(tc game.TriggerContext, source *game.Card, 
 	return Clauses(clauses[0], clauses[1:]...)
 }
 
+// trueScripturesChapterTwo is "each opponent discards three cards, then
+// mills three cards". Keyed (#4290): the controller rides the run as its
+// carry, so a table waiting on any opponent's discard is a restore point.
 func trueScripturesChapterTwo(g *game.Game, item *game.StackItem) error {
-	return g.EachPlayerDiscardsThenForEffect(item.Controller,
+	return g.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
 		game.DiscardPrompt{Source: item.SourceCardID, N: 3},
-		func(g *game.Game, _ game.PromptedDiscards) error {
-			c := NewContext(g, item)
-			for _, opp := range c.Opponents() {
-				if err := (MillCards{Player: opp, N: 3}).Apply(c); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		trueScripturesMill, []uuid.UUID{item.Controller})
 }
+
+// trueScripturesMill is chapter II's mill, once every opponent has
+// discarded.
+var trueScripturesMill = game.RegisterPromptRunThen("prompt-run/sheoldred-the-true-scriptures-mill", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	c := keyedContext(g, r.Carry[0], r.Source)
+	return millEachPlayerInTurn(c, c.Opponents(), constantMill(3), nil)
+})
 
 func trueScripturesChapterThree(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

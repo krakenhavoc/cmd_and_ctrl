@@ -35,6 +35,8 @@ func Register(spec Spec) {
 	}
 	// ADR 0126 §6: what a declared Purpose may say, slot by slot.
 	checkSpecPurposes(spec)
+	// ADR 0208 §5: a sticker sheet's ability stickers.
+	registerStickerSheet(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))
@@ -71,6 +73,7 @@ func Register(spec Spec) {
 	checkEntwine(spec)
 	checkSplice(spec)
 	checkFlatClauses(spec.Name, spec.Targets)
+	refuseTriggerActorChoice(spec.Name, "a spell's", spec.Targets)
 	checkSpellXBound(spec.Name, spec.Targets)
 	checkTargetAtRandom(spec.Name, "a spell's", spec.Targets, false)
 	checkExhaustAbilities(spec)
@@ -80,6 +83,7 @@ func Register(spec Spec) {
 	checkHandSize(spec)
 	for _, a := range spec.Activated {
 		checkFlatClauses(spec.Name, a.Targets)
+		refuseTriggerActorChoice(spec.Name, "an activated ability's", a.Targets)
 		checkTargetAtRandom(spec.Name, "an activated ability's", a.Targets, true)
 		checkActivatedAtRandom(spec.Name, a.Targets)
 		// #1723: an X-bound target clause is allowed on an activated
@@ -419,6 +423,9 @@ func Register(spec Spec) {
 	checkCastRestrictions(spec.Name, spec.CastRestrictions)
 	// ADR 0109 §4: the same two checks for the land-play twin.
 	checkLandPlayRestrictions(spec.Name, spec.LandPlayRestrictions)
+	// CR 116.2d (#1986): an ignorable effect and the restrictions that
+	// are it come together or not at all.
+	checkIgnorableEffect(spec)
 	// #1985: and for the entry twin.
 	checkEntryRestrictions(spec.Name, spec.EntryRestrictions)
 	// ADR 0109 §6: and for a targeting restriction, which must also say
@@ -520,9 +527,19 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
-		// #4185: GainLife builds the rider the same way.
-		if ma.GainLife < 0 || (ma.GainLife > 0 && (ma.Rider != nil || ma.PainToYou > 0)) {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife must be positive and replaces Rider and PainToYou — set one", spec.Name, i))
+		// #4185, #4189: GainLife, OpponentsGainLife and PingOpponents build
+		// the rider the same way, so a spec carries at most one of the five.
+		if ma.GainLife < 0 || ma.OpponentsGainLife < 0 || ma.PingOpponents < 0 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: GainLife, OpponentsGainLife and PingOpponents must be positive", spec.Name, i))
+		}
+		riders := 0
+		for _, set := range []bool{ma.Rider != nil, ma.PainToYou > 0, ma.GainLife > 0, ma.OpponentsGainLife > 0, ma.PingOpponents > 0} {
+			if set {
+				riders++
+			}
+		}
+		if riders > 1 {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d: Rider, PainToYou, GainLife, OpponentsGainLife and PingOpponents each build the rider — set one", spec.Name, i))
 		}
 		// #3042: two computed outputs would leave the precedence
 		// (ProducedAmount wins) as the only thing deciding which one runs.
@@ -850,8 +867,11 @@ func Register(spec Spec) {
 	checkStaticZones(spec.Name, "static", spec.Static)
 	// ADR 0093: an ability grant is a layer-6 effect and names a bundle.
 	checkStaticGrants(spec.Name, "static", spec.Static)
+	// ADR 0067 amendment 2026-10-23: a static that reads an ability.
+	checkAbilityReaders(spec.Name, "static", spec.Static)
 	if spec.Emblem != nil {
 		checkStaticGrants(spec.Name, "emblem static", spec.Emblem.Static)
+		checkAbilityReaders(spec.Name, "emblem static", spec.Emblem.Static)
 		checkTriggerZones(spec.Name, "emblem trigger", spec.Emblem.Triggered)
 	}
 	checkEmblemSpec(spec.Name, spec.Emblem)
@@ -1014,6 +1034,31 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 	}
 }
 
+// checkAbilityReaders is the registration check for
+// StaticAbility.ReadsAbilities (ADR 0067 amendment 2026-10-23): the
+// dependency order it asks for is kept inside the layer-6 bucket of the
+// battlefield pass, so a reader is a layer-6 static over permanents with a
+// predicate to read, and it is not also a removal or a borrow (the bucket
+// orders those by rules of their own, ADR 0093 Decision 3 and ADR 0155
+// Decision 4).
+func checkAbilityReaders(card, what string, statics []game.StaticAbility) {
+	for i, s := range statics {
+		if !s.ReadsAbilities {
+			continue
+		}
+		switch {
+		case s.Layer != game.Layer6Ability:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities outside layer 6: only the layer-6 bucket is ordered for it", card, what, i))
+		case s.AppliesTo == nil:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities but has no AppliesTo", card, what, i))
+		case s.RemovesAbilities || s.Borrows != nil:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities beside a removal or a borrow: declare them as statics of their own", card, what, i))
+		case s.AffectsSpells || len(s.AffectsZones) > 0:
+			panic(fmt.Sprintf("effects.Register: %q %s %d reads abilities over spells or cards off the battlefield: only the battlefield's layer-6 bucket is ordered for it", card, what, i))
+		}
+	}
+}
+
 // checkActivationTimings is #1208's guard for a list of activation
 // timing statements, shared by Spec.ActivationTimings and
 // EmblemSpec.ActivationTimings (#1275) so the two homes cannot drift
@@ -1048,6 +1093,33 @@ func checkCastRestrictions(card string, rs []game.CastRestriction) {
 func checkLandPlayRestrictions(card string, rs []game.LandPlayRestriction) {
 	for _, r := range rs {
 		checkRestriction(card, "land-play", r.Label, r.Forbids == nil)
+	}
+}
+
+// checkIgnorableEffect refuses a card whose ignore switches nothing off
+// (no restriction marked Ignorable) or whose Ignorable restriction has no
+// ignore to be switched off by, and an ignore with no printed row or no
+// rule for whom it bears on.
+func checkIgnorableEffect(spec Spec) {
+	marked := false
+	for _, r := range spec.CastRestrictions {
+		marked = marked || r.Ignorable
+	}
+	for _, r := range spec.LandPlayRestrictions {
+		marked = marked || r.Ignorable
+	}
+	ig := spec.IgnorableEffect
+	if ig == nil {
+		if marked {
+			panic(fmt.Sprintf("effects.Register: %q marks a restriction Ignorable but declares no IgnorableEffect", spec.Name))
+		}
+		return
+	}
+	if ig.Label == "" || ig.Applies == nil {
+		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect without its Label or Applies", spec.Name))
+	}
+	if !marked {
+		panic(fmt.Sprintf("effects.Register: %q declares an IgnorableEffect but no restriction is Ignorable, so ignoring it would switch nothing off", spec.Name))
 	}
 }
 
@@ -1710,8 +1782,21 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 // card has one, and the walk that asks the opponent judges one clause
 // alone.
 func checkOpponentChoice(name string, i int, c *game.TargetClause) {
-	if c.ControlledByChooser && !c.ChosenByOpponent {
+	if c.ControlledByChooser && !c.ChosenByOpponent && !c.ChosenByTriggerActor {
 		panic(fmt.Sprintf("effects.Register: %q target clause %d says \"they control\" with no opponent choosing it — wrap it as TheyControl(OfAnOpponentsChoice(...))", name, i))
+	}
+	if c.Harmful && !slices.Contains(c.Zones, game.ZoneBattlefield) {
+		panic(fmt.Sprintf("effects.Register: %q target clause %d is marked Harmful but cannot pick a permanent (#4249)", name, i))
+	}
+	if c.ChosenByTriggerActor {
+		// #1997: "of their choice" is one plain clause, like an
+		// opponent's.
+		switch {
+		case c.ChosenByOpponent:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is chosen both by an opponent and by the triggering player", name, i))
+		case c.AtRandom, c.Divide != nil, c.Relation != nil, c.Different != nil, c.Same != nil, len(c.EachOf) > 0:
+			panic(fmt.Sprintf("effects.Register: %q target clause %d is the triggering player's choice and is random, divided or related — no printed card is", name, i))
+		}
 	}
 	if !c.ChosenByOpponent {
 		return
@@ -1733,6 +1818,19 @@ func refuseOpponentChoice(name, owner string, spec *game.TargetSpec) {
 	for i := 0; i < spec.ClauseCount(); i++ {
 		if spec.Clause(i).ChosenByOpponent {
 			panic(fmt.Sprintf("effects.Register: %q declares an opponent's-choice target on %s clause %d — only a spell's, an activated ability's or a trigger's own clause list is asked of an opponent", name, owner, i))
+		}
+	}
+	refuseTriggerActorChoice(name, owner, spec)
+}
+
+// refuseTriggerActorChoice refuses a "that player controls of their
+// choice" clause (#1997, OfThatPlayersChoice) anywhere but a trigger's
+// own clause list: only a trigger's CR 603.3d walk has an event whose
+// player could be asked.
+func refuseTriggerActorChoice(name, owner string, spec *game.TargetSpec) {
+	for i := 0; i < spec.ClauseCount(); i++ {
+		if spec.Clause(i).ChosenByTriggerActor {
+			panic(fmt.Sprintf("effects.Register: %q declares a triggering player's-choice target on %s clause %d — only a trigger's own clause list has a triggering player", name, owner, i))
 		}
 	}
 }

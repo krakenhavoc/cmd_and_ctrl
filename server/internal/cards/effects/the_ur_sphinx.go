@@ -36,6 +36,13 @@ import (
 // each player, the controller picks up to one nonland card from the ones
 // that player milled THIS WAY and is granted the free cast.
 //
+// The body is a step sequence (#4228, CR 608.2c): a mill step and an offer
+// step for each seat, so a prompt a mill asks holds the next step behind it.
+// The cards milled this way are not held in a slice; each offer step reads
+// them back off the event log after a cursor the first step filed, and the
+// pick's continuation is a registered key, so a table waiting on an offer is
+// a restore point.
+//
 // The free cast is a grant, the engine's shape for every "cast it without
 // paying its mana cost" (Malcolm, cascade, madness; game/cascade.go): the
 // chosen card's own object gets a per-instance cast permission priced at
@@ -60,7 +67,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller) && attackerHasSubtype(g, ev, source.TextSubtype("Sphinx"))
-			}, urSphinxTriggerLabel, urSphinxMillAndCast)),
+			}, urSphinxTriggerLabel, urSphinxSteps)),
 		},
 	})
 }
@@ -98,77 +105,126 @@ func attackersOfSubtypeInTheSameBatch(g *game.Game, ev game.Event, you uuid.UUID
 	return n
 }
 
-// urSphinxMillAndCast is the trigger's body: every player mills N, then
-// the controller picks a free cast from each milled pile in turn.
-func urSphinxMillAndCast(g *game.Game, item *game.StackItem) error {
+// urSphinxRecord files the log's cursor from before the first mill and how
+// many cards each player mills (#4228).
+const urSphinxRecord = "ur-sphinx/mill"
+
+// urSphinxSteps is the trigger's body (CR 608.2c, #4228): one step to count
+// and file the cursor, a mill step for each seat, then an offer step for each
+// seat. Each is its own step, so the walk stops behind a prompt one asks (a
+// commander's CR 903.9 offer on a milled card, the free-cast pick) and a
+// restore taken there still runs the rest. The cards a player milled this way
+// are read back off the event log after the cursor, not held in a slice. A seat
+// the table does not have makes its steps nothing.
+var urSphinxSteps = urSphinxBuildSteps()
+
+func urSphinxBuildSteps() Effect {
+	steps := []Applier{Instruction(urSphinxCount)}
+	for i := 0; i < game.MaxPlayers; i++ {
+		steps = append(steps, Instruction(urSphinxMill(i)))
+	}
+	for i := 0; i < game.MaxPlayers; i++ {
+		steps = append(steps, Instruction(urSphinxOffer(i)))
+	}
+	return Do(steps...)
+}
+
+// urSphinxCount counts the Sphinxes that attacked together, "that many", and
+// files it with the log's cursor.
+func urSphinxCount(ctx *Context) error {
+	item := ctx.Item
 	if item.Trigger == nil {
 		return nil
 	}
+	g := ctx.Game
 	n := attackersOfSubtypeInTheSameBatch(g, item.Trigger.Event, item.Controller, g.TextReaderForEffect(item).TextSubtype("Sphinx"))
-	if n <= 0 {
-		return nil
-	}
-	ctx := NewContext(g, item)
-	players := tablePlayers(ctx)
-	milledBy := make([][]uuid.UUID, len(players))
-	var millFrom func(i int) error
-	millFrom = func(i int) error {
-		if i >= len(players) {
-			return urSphinxOfferCasts(NewContext(ctx.Game, item), players, milledBy, 0)
-		}
-		return MillToZone{Player: players[i], N: n, Then: func(c *Context, milled []uuid.UUID) error {
-			milledBy[i] = milled
-			return millFrom(i + 1)
-		}}.Apply(NewContext(ctx.Game, item))
-	}
-	return millFrom(0)
+	ctx.RecordStep(urSphinxRecord, nil, int(b25LastEventSeq(g)), n)
+	return nil
 }
 
-// urSphinxOfferCasts walks the players in order and, for each, asks the
-// controller for up to one nonland card that player milled this way,
-// then grants the free cast. The next player is asked once the previous
-// answer is in.
-func urSphinxOfferCasts(ctx *Context, players []uuid.UUID, milledBy [][]uuid.UUID, i int) error {
-	g, item := ctx.Game, ctx.Item
-	for ; i < len(players); i++ {
-		var offered []uuid.UUID
-		for _, id := range milledBy[i] {
-			// Still in that player's graveyard, and a card that can be cast.
-			if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-				continue
-			}
-			if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-				offered = append(offered, id)
-			}
+// urSphinxMill is the mill of the i-th player at the table, the controller
+// first.
+func urSphinxMill(i int) func(ctx *Context) error {
+	return func(ctx *Context) error {
+		players := tablePlayers(ctx)
+		r := ctx.StepRecord(urSphinxRecord)
+		if i >= len(players) || len(r.Ns) < 2 || r.Ns[1] <= 0 {
+			return nil
 		}
-		if len(offered) == 0 {
+		return MillToZone{Player: players[i], N: r.Ns[1]}.Apply(ctx)
+	}
+}
+
+// urSphinxMilledThisWay is the cards `player` milled since the cursor that
+// are still in their graveyard and can be cast (a land cannot), oldest first.
+// A card a replacement exiled or sent to the command zone instead of milling
+// has no EventMill and is not offered (CR 400.7).
+func urSphinxMilledThisWay(g *game.Game, player uuid.UUID, cursor uint64) []uuid.UUID {
+	p := g.PlayerByIDForEffect(player)
+	if p == nil || p.Graveyard == nil {
+		return nil
+	}
+	var out []uuid.UUID
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := g.Events[i]
+		if ev.Seq <= cursor {
+			break
+		}
+		if ev.Kind != game.EventMill || ev.Actor != player || ev.NewZone != game.ZoneGraveyard || !p.Graveyard.Contains(ev.CardID) {
 			continue
 		}
-		owner, next := players[i], i+1
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:    item.Controller,
-			FromPlayer: owner,
-			Source:     item.SourceCardID,
+		if c, ok := g.LookupCardForEffect(ev.CardID); ok && !c.IsLand() {
+			out = append(out, ev.CardID)
+		}
+	}
+	for l, r := 0, len(out)-1; l < r; l, r = l+1, r-1 {
+		out[l], out[r] = out[r], out[l]
+	}
+	return out
+}
+
+// urSphinxOffer asks the controller for up to one nonland card the i-th
+// player milled this way, then grants the free cast. The pick's continuation
+// is a registered key, so the table waiting on it is a restore point.
+func urSphinxOffer(i int) func(ctx *Context) error {
+	return func(ctx *Context) error {
+		players := tablePlayers(ctx)
+		r := ctx.StepRecord(urSphinxRecord)
+		if i >= len(players) || len(r.Ns) < 2 || r.Ns[1] <= 0 {
+			return nil
+		}
+		offered := urSphinxMilledThisWay(ctx.Game, players[i], uint64(r.Ns[0]))
+		if len(offered) == 0 {
+			return nil
+		}
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    ctx.Controller(),
+			FromPlayer: players[i],
+			Source:     ctx.Item.SourceCardID,
 			Question:   "The Ur-Sphinx — you may cast a card milled this way without paying its mana cost",
 			Cards:      offered,
 			Min:        0,
 			Max:        1,
 			Zone:       game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				if len(picked) > 0 {
-					g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-						Player:   item.Controller,
-						Zone:     game.ZoneGraveyard,
-						Cost:     "{0}",
-						CastOnly: true,
-						Timing:   game.TimingFlash,
-						Label:    "The Ur-Sphinx — cast it without paying its mana cost",
-					})
-				}
-				return urSphinxOfferCasts(NewContext(g, item), players, milledBy, next)
-			},
+			ThenKey:    urSphinxChosen,
 		})
 		return nil
 	}
-	return nil
 }
+
+// urSphinxChosen grants the free cast over the card picked. The next
+// player's offer is the next step, which the walk runs once this answer is in.
+var urSphinxChosen = game.RegisterChooseCardsThen("choose-cards/the-ur-sphinx-cast", func(g *game.Game, r game.CardsChosen) error {
+	if !r.Answered || len(r.Picked) == 0 {
+		return nil
+	}
+	g.GrantCastPermissionOverCardForEffect(r.Picked[0], game.CastPermission{
+		Player:   r.Chooser,
+		Zone:     game.ZoneGraveyard,
+		Cost:     "{0}",
+		CastOnly: true,
+		Timing:   game.TimingFlash,
+		Label:    "The Ur-Sphinx — cast it without paying its mana cost",
+	})
+	return nil
+})

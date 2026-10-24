@@ -31,20 +31,33 @@ import (
 //     decision taken while the trigger is resolving, which is the
 //     PendingChoice machinery's job (PendingChoiceMayCast).
 //
-// SANDBOX SIMPLIFICATION — the free cast is a GRANT, not an inline
-// cast. Printed cascade casts the card then and there, as part of the
-// trigger's resolution, ignoring timing (CR 608.2g). Here, answering
-// "yes" stamps a free-cast permission on the exiled card and the player
-// casts it with an ordinary cast_spell action, so it goes on the stack
-// after the trigger has finished resolving rather than on top of it.
-// An inline cast would have to collect targets, modes and X from inside
-// a resolution, and the announce path has no frame for a half-validated
-// cast — see CastSpellParams.Face on why PendingChoice is deliberately
-// not that frame.
+// THE CAST happens during the trigger's resolution (CR 608.2g, #4243).
+// CR 702.85a: "You may cast it without paying its mana cost", and CR
+// 608.2g makes that a cast made while the cascade trigger is still
+// resolving: no player receives priority after it, the spell becomes the
+// topmost object on the stack above the trigger's controller's own
+// spell, and the trigger carries on resolving. So the hit is not offered
+// with a yes/no and cast later: a resolution_cast prompt
+// (resolution_copy_cast.go, ADR 0066's 2026-10-22 and 2026-10-23
+// amendments) holds the resolution open while the caster casts the hit,
+// with its targets, modes and X chosen then, or declines. The prompt is
+// plain data (the hit, and the cards cascade passed over in
+// PendingChoice.CastPile), so a table paused on it is a restore point.
 //
-// ADR 0099 moved cascade onto the pieces discover shares (discover.go),
-// so the grant now keeps the printed card's shape in three ways it used
-// not to:
+// Under the prompt the hit still carries the pass-closed permission
+// ADR 0099 gave it, so the price, the timing, the mana value cap and
+// the way an uncast hit goes to the bottom are all one definition. A
+// cast consumes the permission; a decline lapses it, and the hit goes to
+// the bottom of the library in the same random order as the cards
+// cascade passed over (CR 702.85a: "put all cards exiled this way that
+// weren't cast on the bottom of your library in a random order").
+//
+// Outside an open resolution (nothing calls cascade from one, but the
+// engine does not assume it) there is nothing to hold open: the
+// permission alone is the window, closing on the caster's next priority
+// pass as it did before, and the passed-over cards are bottomed at once.
+//
+// ADR 0099 gave the permission the printed card's shape in three ways:
 //
 //   - TimingFlash (CR 608.2g). A cascaded sorcery is castable in combat
 //     or on another player's turn. Before, it obeyed its own timing and
@@ -81,35 +94,35 @@ func (g *Game) CascadeForEffect(controller, source uuid.UUID, lessThan int) erro
 		// not lost.
 		return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, pile)
 	}
-	hitName := "the exiled card"
-	if c, ok := g.cardInZoneLocked(g.Exile, hit); ok {
-		hitName = c.Name
-	}
 	// The pile and the hit are IDs saved before the prompt. Every
 	// bottom below names ZoneExile, so a card that left exile while
 	// the question was open stays where it went rather than being
 	// pulled back.
-	//
+	if !g.playerInGameLocked(controller) {
+		// A caster who has left cannot cast it: the hit joins the pile.
+		return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, append(pile, hit))
+	}
+	g.grantFreeCastLocked(controller, hit, lessThan)
+	if _, _, ok := g.ResolutionCastCandidateLocked(controller, hit); !ok {
+		return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, append(pile, hit))
+	}
 	// "You MAY cast it." Declining is a real choice — a cascade into
 	// a card you do not want cast is a decision, not a formality.
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	if g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      controller,
 		Source:       source,
-		Card:         hit,
-		Question:     "Cascade — cast " + hitName + " without paying its mana cost?",
+		Reason:       "Cascade",
+		Candidates:   []uuid.UUID{hit},
 		Keyword:      MayCastKeywordCascade,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Put it on the bottom",
-		OnAccept: func(g *Game) error {
-			g.grantFreeCastLocked(controller, hit, lessThan)
-			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, pile)
-		},
-		OnDecline: func(g *Game) error {
-			// Declined: the hit joins the rest of the pile and the
-			// whole lot goes to the bottom in a random order.
-			return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, append(pile, hit))
-		},
-	})
+		Pile:         pile,
+	}) != uuid.Nil {
+		return nil
+	}
+	// Outside a resolution: the permission is the window, and the
+	// cards passed over go to the bottom now.
+	return g.PutOnBottomInRandomOrderForEffect(controller, ZoneExile, pile)
 }
 
 // cascadeHit reports whether an exiled card stops the cascade: a

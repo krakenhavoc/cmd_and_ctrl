@@ -330,10 +330,11 @@ func TestReadAheadTokenCopyAsks(t *testing.T) {
 	}
 }
 
-// A table with the question open is not a restore point: the paused
-// entry is a continuation, counted in the census. Once it is answered,
-// the restore point carries the Saga and the turn it entered, so the
-// chapter rule still holds after a restore.
+// A table with the question open is a restore point (#4253: the paused
+// entry's frame is data; TestAReadAheadQuestionIsARestorePoint answers
+// it after one). Once it is answered, the restore point carries the Saga
+// and the turn it entered, so the chapter rule still holds after a
+// restore.
 func TestReadAheadRestoreWithTheChoicePending(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
@@ -341,11 +342,8 @@ func TestReadAheadRestoreWithTheChoicePending(t *testing.T) {
 	id := castReadAheadSaga(t, g, "Love Song of Night and Day", loveSongOracle)
 
 	snap := g.CaptureSnapshot()
-	if snap.Restorable() {
-		t.Fatal("a table with the read ahead question open reports itself restorable")
-	}
-	if snap.Continuations.ChoiceResumeFrames == 0 {
-		t.Fatal("the census does not count the paused entry")
+	if !snap.Restorable() {
+		t.Fatalf("a table with the read ahead question open is not a restore point: %+v", snap.Continuations)
 	}
 
 	chooseChapter(t, g, 2)

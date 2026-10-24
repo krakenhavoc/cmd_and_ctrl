@@ -267,7 +267,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
@@ -354,6 +354,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0066 amendment 2026-10-16 (#1987): the own-graveyard ban,
 		// read by both gates. Its cases are in graveyard_play_ban_test.go.
 		ModCantPlayFromOwnGraveyard: true,
+		// ADR 0109 §4 amendment 2026-10-23 (#1986): an ignored static
+		// ability, read by both gates. Its cases are in
+		// ignore_effect_test.go.
+		ModIgnoreEffect: true,
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
@@ -382,6 +386,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0058 amendment 2026-10-16 (#3995): a player-wide untap
 		// skip. Its cases are in untap_player_skip_test.go.
 		ModSkipNextUntapStep: true,
+		// #1997: Hall of Gemstone's recolouring, a replacement. Its
+		// cases are in land_mana_color_test.go.
+		ModLandManaIsColor: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

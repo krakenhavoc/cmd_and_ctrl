@@ -84,8 +84,14 @@ func pactPayment(g *game.Game, item *game.StackItem, p game.EffectParams) error 
 		Chooser:  payer,
 		Cost:     p.Cost,
 		Question: p.Name + " — pay " + p.Cost + " or lose the game",
-		OnDecline: func(ctx *Context) error {
-			return LoseTheGame{Player: payer}.Apply(ctx)
-		},
+		Else:     pactLoseTheGame,
 	}.Apply(NewContext(g, item))
 }
+
+// pactLoseTheGame is the Pact cycle's "or lose the game", keyed (#4264):
+// the payer is the prompt's chooser, so a table waiting on the payment is
+// a restore point.
+var pactLoseTheGame = PayUnlessElse("pay-unless/pact-lose-the-game",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return LoseTheGame{Player: r.Chooser}.Apply(ctx)
+	})

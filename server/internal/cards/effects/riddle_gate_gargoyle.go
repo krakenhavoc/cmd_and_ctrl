@@ -2,6 +2,12 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var riddleGateGargoylePaid = energyPaid("pay-unless/riddle-gate-gargoyle-lifelink",
+	func(g *game.Game, item *game.StackItem) error {
+		return WhenYouDo("Riddle Gate Gargoyle — target creature you control gains lifelink",
+			riddleGateLifelinkBody).Apply(NewContext(g, item))
+	})
+
 // Riddle Gate Gargoyle — Artifact Creature — Gargoyle {W}{U}, 2/2:
 //
 //	"Flying
@@ -27,11 +33,7 @@ func init() {
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller)
 			}, "Riddle Gate Gargoyle — you may pay {E}{E}",
-				mayPayEnergyThen("Riddle Gate Gargoyle", 2, "give a creature you control lifelink",
-					func(g *game.Game, item *game.StackItem) error {
-						return WhenYouDo("Riddle Gate Gargoyle — target creature you control gains lifelink",
-							riddleGateLifelinkBody).Apply(NewContext(g, item))
-					}))),
+				mayPayEnergyThen("Riddle Gate Gargoyle", 2, "give a creature you control lifelink", riddleGateGargoylePaid))),
 		},
 	})
 }

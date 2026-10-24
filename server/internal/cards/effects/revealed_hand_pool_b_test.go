@@ -434,9 +434,15 @@ func TestHumiliatePutsACounterOnYourCreature(t *testing.T) {
 	castCatalogSpell(t, g, "Humiliate", "Sorcery", humiliateOracle, []game.TargetRef{pbPlayer(victim.ID)})
 	passPriorityAroundTable(t, g)
 	pick := openPick(t, g)
+	for _, c := range g.PendingChoices {
+		if c != nil && c.Kind == game.PendingChoiceOwnPermanents {
+			t.Fatal("the creature choice is open with the pick: it ran before the answer")
+		}
+	}
 	if err := g.ResolvePendingChoice(pick.ID, me.ID, pick.DiscardOptions); err != nil {
 		t.Fatalf("pick: %v", err)
 	}
+	g.SettleResolution()
 	var own *game.PendingChoice
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Kind == game.PendingChoiceOwnPermanents {
@@ -473,7 +479,7 @@ func TestHumiliateWithNoCreature(t *testing.T) {
 // Render Speechless: two +1/+1 counters on the second target.
 func TestRenderSpeechlessCountersTheSecondTarget(t *testing.T) {
 	g := newCatalogGame(t)
-	victim := g.Seats[1]
+	me, victim := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
 	theirs := pr7Creature(g, victim.ID, "Theirs", 2)
 	revealHand(victim, rhBolt())
 	castCatalogSpell(t, g, "Render Speechless", "Sorcery", renderSpeechlessOracle, []game.TargetRef{
@@ -481,7 +487,14 @@ func TestRenderSpeechlessCountersTheSecondTarget(t *testing.T) {
 		{Kind: game.TargetCard, ID: theirs, Slot: 1},
 	})
 	passPriorityAroundTable(t, g)
-	openPick(t, g)
+	pick := openPick(t, g)
+	if got := countersOn(g, theirs, game.CounterPlusOne); got != 0 {
+		t.Fatalf("+1/+1 counters = %d with the pick open, want 0: they came before the answer", got)
+	}
+	if err := g.ResolvePendingChoice(pick.ID, me.ID, pick.DiscardOptions); err != nil {
+		t.Fatalf("pick: %v", err)
+	}
+	g.SettleResolution()
 	if got := countersOn(g, theirs, game.CounterPlusOne); got != 2 {
 		t.Errorf("+1/+1 counters = %d, want 2", got)
 	}
@@ -503,7 +516,14 @@ func TestEgoDrainExilesWithoutAFaerie(t *testing.T) {
 		}
 		castCatalogSpell(t, g, "Ego Drain", "Sorcery", egoDrainOracle, []game.TargetRef{pbPlayer(victim.ID)})
 		passPriorityAroundTable(t, g)
-		openPick(t, g)
+		pick := openPick(t, g)
+		if pbChooseCards(g, me.ID) != nil {
+			t.Fatal("asked to exile from your hand with the pick open: it ran before the answer")
+		}
+		if err := g.ResolvePendingChoice(pick.ID, me.ID, pick.DiscardOptions); err != nil {
+			t.Fatalf("pick: %v", err)
+		}
+		g.SettleResolution()
 		c := pbChooseCards(g, me.ID)
 		if faerie {
 			if c != nil {
@@ -529,14 +549,23 @@ func TestEgoDrainExilesWithoutAFaerie(t *testing.T) {
 func TestMemoryTheftOffersTheVictimsAdventurers(t *testing.T) {
 	g := newCatalogGame(t)
 	me, victim := g.Seats[g.Turn.ActiveSeat], g.Seats[1]
-	revealHand(victim, rhBolt())
+	hand := revealHand(victim, rhBolt())
 	theirs := adventurerInExile(g, victim.ID)
 	adventurerInExile(g, g.Seats[2].ID)
 	g.Exile.PushTop(game.Card{InstanceID: uuid.New(), Name: "Grizzly Bears", TypeLine: "Creature — Bear", Owner: victim.ID, Controller: victim.ID})
 
 	castCatalogSpell(t, g, "Memory Theft", "Sorcery", memoryTheftOracle, []game.TargetRef{pbPlayer(victim.ID)})
 	passPriorityAroundTable(t, g)
-	openPick(t, g)
+	pick := openPick(t, g)
+	// The Adventure offer is the sentence after the discard, so it waits for the
+	// pick (CR 608.2c, #4155).
+	if pbChooseCards(g, me.ID) != nil {
+		t.Fatal("the Adventure offer is open with the pick open")
+	}
+	if err := g.ResolvePendingChoice(pick.ID, me.ID, hand); err != nil {
+		t.Fatalf("taking the Bolt: %v", err)
+	}
+	g.SettleResolution()
 	c := pbChooseCards(g, me.ID)
 	if c == nil {
 		t.Fatal("no adventurer choice")

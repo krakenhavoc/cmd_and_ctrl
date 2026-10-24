@@ -49,11 +49,15 @@ func terraPayOffer(g *game.Game, item *game.StackItem) error {
 		Chooser:  item.Controller,
 		Cost:     "{2}",
 		Question: "Terra, Herald of Hope — pay {2} to return a creature card with power 3 or less from your graveyard to the battlefield tapped?",
-		OnPay: func(ctx *Context) error {
-			return ReflexiveTrigger{
-				Label: "Terra, Herald of Hope — return target creature card with power 3 or less to the battlefield tapped",
-				Body:  terraReturnBody,
-			}.Apply(ctx)
-		},
+		Then:     terraPaid,
 	}.Apply(NewContext(g, item))
 }
+
+// terraPaid is the paid half, keyed (#4264): the reflexive trigger is queued against the asking item.
+var terraPaid = PayUnlessBranches("pay-unless/terra-herald-of-hope-return",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return ReflexiveTrigger{
+			Label: "Terra, Herald of Hope — return target creature card with power 3 or less to the battlefield tapped",
+			Body:  terraReturnBody,
+		}.Apply(ctx)
+	}, nil)

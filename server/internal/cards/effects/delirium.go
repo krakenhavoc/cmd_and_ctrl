@@ -22,6 +22,15 @@ import (
 // of the turn.
 //
 // No simplifications.
+// deliriumTarget is the creature Delirium taps, read from the item each step.
+func deliriumTarget(ctx *Context) (uuid.UUID, bool) {
+	ts := ctx.LegalTargets()
+	if len(ts) == 0 || ts[0].Kind != game.TargetCard {
+		return uuid.Nil, false
+	}
+	return ts[0].ID, true
+}
+
 func init() {
 	Register(Spec{
 		OracleID:     "a00e5eb6-b916-4cd6-8ff2-c02f4929abc7",
@@ -36,24 +45,36 @@ func init() {
 			active := activePlayerIDOf(g)
 			return active != uuid.Nil && c.Controller == active
 		}),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			ts := ctx.LegalTargets()
-			if len(ts) == 0 || ts[0].Kind != game.TargetCard {
-				return nil
-			}
-			id := ts[0].ID
-			if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-				return err
-			}
-			ctx.Game.RecomputeLayersIfStaleLocked()
-			if c, ok := ctx.Game.LookupCardForEffect(id); ok {
-				if active := activePlayerIDOf(ctx.Game); active != uuid.Nil {
-					if err := (DealDamage{Source: id, Target: active, Amount: c.CurrentPower()}).Apply(ctx); err != nil {
-						return err
+		// Each sentence waits for the prompt the one before asks (a CR 616 order
+		// on the damage, a replacement offer on the tap; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := deliriumTarget(ctx)
+				if !ok {
+					return nil
+				}
+				return TapTarget{Target: id}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := deliriumTarget(ctx)
+				if !ok {
+					return nil
+				}
+				ctx.Game.RecomputeLayersIfStaleLocked()
+				if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+					if active := activePlayerIDOf(ctx.Game); active != uuid.Nil {
+						return DealDamage{Source: id, Target: active, Amount: c.CurrentPower()}.Apply(ctx)
 					}
 				}
-			}
-			return toAndByShield(ShieldObject(id), true).Apply(ctx)
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := deliriumTarget(ctx)
+				if !ok {
+					return nil
+				}
+				return toAndByShield(ShieldObject(id), true).Apply(ctx)
+			}),
+		),
 	})
 }

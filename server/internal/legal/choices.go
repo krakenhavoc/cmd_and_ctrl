@@ -169,6 +169,9 @@ func (e *enumerator) choiceMoves() bool {
 		case game.PendingChoiceControlledPlay:
 			// ADR 0166 §4: Word of Command's forced play.
 			e.controlledPlayMoves(c)
+		case game.PendingChoiceResolutionCast:
+			// #2947, CR 608.2g: casting a copy during the resolution.
+			e.resolutionCastMoves(c)
 		case game.PendingChoiceRevealedHandPick:
 			// #2115: the variants. The pool is what the prompt offered,
 			// still where it was offered — the hand, or a graveyard the
@@ -2661,6 +2664,12 @@ func (e *enumerator) cardNameAnswers(c *game.PendingChoice) []string {
 	for i := range e.g.Battlefield.Cards {
 		card := &e.g.Battlefield.Cards[i]
 		if card.Controller == chooser || card.FaceDown || card.Name == "" {
+			continue
+		}
+		// #1997: a prompt that refuses a basic land card's name (Null
+		// Chamber, CR 201.4a) is never offered one. A basic has a mana
+		// ability, so it would otherwise rank here.
+		if c != nil && c.NotBasicLandName && game.IsBasicLandCardName(card.Name) {
 			continue
 		}
 		if len(game.ActivatedAbilitiesForCard(*card)) == 0 &&

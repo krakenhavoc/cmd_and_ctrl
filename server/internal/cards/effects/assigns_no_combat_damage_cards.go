@@ -27,28 +27,34 @@ func assignsNoCombatDamageThisTurn(ctx *Context, label string) {
 // this turn". `do` gets the ability's first legal card target (uuid.Nil
 // for an ability with none) and runs only on "yes". The caller adds the
 // target clause (Targeting, or TargetsFrom for "defending player controls").
-func unblockedAttackerMay(card, question string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
-	return unblockedAttackerMayDraw(card, question, 0, do)
+func unblockedAttackerMay(card, question, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
+	return unblockedAttackerMayDraw(card, question, 0, key, do)
 }
 
 // unblockedAttackerMayDraw is unblockedAttackerMay for a "yes" that is a
 // choice to draw `draws` cards (Ophidian's "you may draw a card"), which a
 // player a draw limit stops drawing can't take (MayChoice.Draws, #4016).
-func unblockedAttackerMayDraw(card, question string, draws int, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
+//
+// `key` registers the "yes" as a keyed answer, "confirm/<key>" (#4291): an
+// on-disk identity, never renamed, never reused. This is called once per
+// card, from its init.
+func unblockedAttackerMayDraw(card, question string, draws int, key string, do func(ctx *Context, target uuid.UUID) error) game.TriggeredAbility {
 	label := card + " — " + question
+	then := MayYes("confirm/"+key, func(ctx *Context, r game.ConfirmAnswer) error {
+		if err := do(ctx, carryAt(r, 0)); err != nil {
+			return err
+		}
+		assignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
+		return nil
+	})
 	return WhenAttacksAndIsNotBlockedEffect(label, func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
 		ctx := NewContext(g, item)
 		target := firstLegalCardTarget(ctx)
 		return MayChoice{
 			Question: label + "?",
 			Draws:    draws,
-			OnYes: func(ctx *Context) error {
-				if err := do(ctx, target); err != nil {
-					return err
-				}
-				assignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
-				return nil
-			},
+			Then:     then,
+			Carry:    []uuid.UUID{target},
 		}.Apply(ctx)
 	})
 }
@@ -65,13 +71,9 @@ func laccolithBlocked(card string) game.TriggeredAbility {
 		target := firstLegalCardTarget(ctx)
 		return MayChoice{
 			Question: label + "? (it then assigns no combat damage this turn)",
-			OnYes: func(ctx *Context) error {
-				if err := (DealDamage{Source: ctx.Source(), Target: target, Amount: sourcePowerNow(ctx)}).Apply(ctx); err != nil {
-					return err
-				}
-				assignsNoCombatDamageThisTurn(ctx, card+" — assigns no combat damage this turn")
-				return nil
-			},
+			Then:     mayLaccolithDamage,
+			Word:     card,
+			Carry:    []uuid.UUID{target},
 		}.Apply(ctx)
 	}), TargetCreature("target creature"))
 }
@@ -160,3 +162,14 @@ func TargetOfDefendingPlayer(mode, label string, pred CardPredicate) func(game.T
 		}
 	}
 }
+
+// mayLaccolithDamage is the Laccolith creatures' "yes": it deals damage
+// equal to its power to the target, then assigns no combat damage this turn
+// (Word is the card's name). Keyed (#4291).
+var mayLaccolithDamage = MayYes("confirm/laccolith-blocked-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	if err := (DealDamage{Source: ctx.Source(), Target: carryAt(r, 0), Amount: sourcePowerNow(ctx)}).Apply(ctx); err != nil {
+		return err
+	}
+	assignsNoCombatDamageThisTurn(ctx, r.Word+" — assigns no combat damage this turn")
+	return nil
+})

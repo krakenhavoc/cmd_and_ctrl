@@ -32,19 +32,25 @@ func init() {
 				Question: "Localized Destruction — pay one or more {E}; your creatures with that power gain indestructible",
 				Unit:     game.PayAmountPower,
 				Goal:     powerThatSavesMostOfYours,
-				Then: func(ctx *Context, paid int) error {
-					if paid > 0 {
-						if err := (GrantKeywordUntilEOT{
-							Match:    And(Creature(), YouControl(), PowerGE(paid), PowerLE(paid)),
-							Keywords: []string{"indestructible"},
-							Label:    "Localized Destruction — indestructible until end of turn",
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return DestroyAllMatching{Match: Creature()}.Apply(ctx)
-				},
+				Then:     localizedDestructionDestroys,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// localizedDestructionDestroys is the paid half (#4294): the creatures
+// you control with power equal to the {E} paid gain indestructible, then
+// every creature is destroyed.
+var localizedDestructionDestroys = NumberThen("number/localized-destruction-destroy-all",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number > 0 {
+			if err := (GrantKeywordUntilEOT{
+				Match:    And(Creature(), YouControl(), PowerGE(r.Number), PowerLE(r.Number)),
+				Keywords: []string{"indestructible"},
+				Label:    "Localized Destruction — indestructible until end of turn",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+	})

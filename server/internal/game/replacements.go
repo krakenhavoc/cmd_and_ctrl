@@ -346,6 +346,14 @@ type ReplacementEvent struct {
 	// clone could share.
 	drawInstead drawInsteadRun
 
+	// keywordInstead is drawInstead's sibling for a KEYWORD ACTION
+	// replaced by an effect: Retriever Phoenix's "return this card to
+	// the battlefield" in place of a learn. Set when a replacement
+	// declaring ReplacementEffect.KeywordInstead is applied, which also
+	// cancels the action. A registered key plus the source card, plain
+	// data. See learn_action.go.
+	keywordInstead keywordInsteadRun
+
 	// drawTail is how many individual draws of the SAME instruction are
 	// still owed once this one is finished — "draw three" paused on its
 	// first card owes two. Unexported engine plumbing; the catalog
@@ -676,6 +684,13 @@ type ReplacementEvent struct {
 	auraHostFixed   bool
 	auraHostSettled bool
 
+	// entersAsAura is a card that comes back "as an Aura" (returned_aura.go,
+	// ADR 0154's 2026-10-23 amendment): CR 303.4f judges it an Aura with
+	// the enchant clause CardDef.ReturnedAura gives it, though the card in
+	// its zone is a creature card, and the landing sets Card.ReturnedAura
+	// before the host is attached. A value field, like auraHost.
+	entersAsAura bool
+
 	// exchangeTextWith names the creature an "as this enters, you may
 	// exchange its text box and another creature's" choice picked (ADR
 	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
@@ -693,6 +708,13 @@ type ReplacementEvent struct {
 	// site entryResumable. Before it existed, a permanent spell
 	// whose entry queued any prompt was never pushed at all.
 	stackItem *StackItem
+
+	// putByEntering records the permanent as put onto the battlefield
+	// by the player it enters under rather than by the resolving item's
+	// controller (#1997, last_turn_actions.go): a search, a manifest, an
+	// instruction that names who puts. Unexported engine plumbing,
+	// copied with the struct.
+	putByEntering bool
 
 	// EntersWithCounters is the map of counter name → count applied
 	// BEFORE EventETB fires (Hangarback Walker "enters with X +1/+1
@@ -1634,12 +1656,26 @@ type ReplacementEffect struct {
 	// value is "not a draw-substituting effect".
 	DrawInstead DrawInsteadRef
 
+	// KeywordInstead, on a RepEventKeywordAction replacement, replaces
+	// the keyword action with an effect (learn_action.go): Retriever
+	// Phoenix's "if you would learn, you may instead return this card to
+	// the battlefield". The DrawInstead shape for a keyword action:
+	// applying the effect cancels the action, and once the window has
+	// SETTLED the registered body (RegisterKeywordInstead) runs, may
+	// queue prompts, and calls `done` when it has finished.
+	//
+	// Leave Replace nil: the engine cancels the action itself. The zero
+	// value is "not an action-substituting effect".
+	KeywordInstead KeywordInsteadRef
+
 	// FromGraveyard makes this a replacement its source applies from
-	// the DRAWING PLAYER's graveyard rather than from the battlefield —
-	// dredge (CR 702.52a), the one ability a card has in that zone. The
-	// battlefield walk skips such an effect, and the gather finds it in
-	// the graveyard instead. Only a draw event consults the graveyard
-	// (draw_instead.go).
+	// the AFFECTED PLAYER's graveyard rather than from the battlefield —
+	// dredge (CR 702.52a) for a draw, Retriever Phoenix's "as long as
+	// this card is in your graveyard, if you would learn" for a learn.
+	// The battlefield walk skips such an effect, and the gather finds it
+	// in the graveyard instead. Only a draw event (the drawing player's
+	// graveyard) and a learn (the learning player's) consult the
+	// graveyard (draw_instead.go, learn_action.go).
 	FromGraveyard bool
 
 	// Dredge is N on a dredge offer (CR 702.52a): how many cards
@@ -1675,6 +1711,11 @@ type activeReplacement struct {
 	// an effect that has no stable identity — see
 	// replacementIdentity.
 	identity replacementIdentity
+	// lost marks an entry of a restored CR 616 frame whose effect the
+	// running binary no longer gathers (#4253, replacement_resume_keyed.go):
+	// its catalog row is gone. It is an effect that no longer applies
+	// (CR 616.1f), so no resolve path fires it.
+	lost bool
 }
 
 // replacementIdentity names one declared replacement effect: the
@@ -2361,7 +2402,7 @@ func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) bool {
-	if ev == nil || g.replacementsAppliedThisEvent[ev.ID][a.id] {
+	if ev == nil || a.lost || g.replacementsAppliedThisEvent[ev.ID][a.id] {
 		return false
 	}
 	if !eventKindMatches(a.effect.Watches, ev.Kind) {
@@ -2453,15 +2494,13 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 	// pause, and an index shifts when an earlier permanent leaves
 	// (#3482, replacement_serials.go).
 	if CatalogReplacements != nil {
-		for cardIdx := range g.Battlefield.Cards {
-			card := &g.Battlefield.Cards[cardIdx]
-			// CatalogAbilityKey: a replacement effect is a static
-			// ability (CR 614.1), so a permanent under a CR 613.1f
-			// ability-removing effect contributes none.
-			key := catalogAbilityKeyOf(card)
+		// gatherFrom is one object's catalog replacements. The battlefield
+		// walk and the emblem walk below it share it: an emblem is gathered
+		// exactly as a permanent is, with the emblem object as the source.
+		gatherFrom := func(card *Card, key string) {
 			reps := CatalogReplacements(key)
 			if len(reps) == 0 {
-				continue
+				return
 			}
 			serial := serials.serial(card)
 			for repIdx := range reps {
@@ -2500,6 +2539,28 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 				})
 			}
 		}
+		for cardIdx := range g.Battlefield.Cards {
+			card := &g.Battlefield.Cards[cardIdx]
+			// CatalogAbilityKey: a replacement effect is a static
+			// ability (CR 614.1), so a permanent under a CR 613.1f
+			// ability-removing effect contributes none.
+			gatherFrom(card, catalogAbilityKeyOf(card))
+		}
+		// #4192, ADR 0109 §5: an emblem's replacement and prevention
+		// effects, after the battlefield (CR 114.4 — an emblem's
+		// abilities function in the command zone). The emblem is the
+		// source and its owner is "you" (CR 114.2): Ajani Steadfast's
+		// "If a source would deal damage to you or a planeswalker you
+		// control, prevent all but 1 of that damage". CatalogKey, not
+		// CatalogAbilityKey: nothing can name an emblem to remove its
+		// abilities. Its owner orders it against every other effect
+		// like any permanent's (CR 616.1).
+		g.forEachEmblemLocked(func(card *Card) bool {
+			if key := CatalogKey(*card); key != "" {
+				gatherFrom(card, key)
+			}
+			return true
+		})
 	}
 
 	// Graveyard replacements: dredge (draw_instead.go).
@@ -2712,10 +2773,16 @@ func (g *Game) ReplacementOptionMetaForEffect(id ReplacementEffectID) (string, u
 			break
 		}
 	}
-	if card == nil {
+	key := ""
+	if card != nil {
+		key = catalogAbilityKeyOf(card)
+	} else if card = g.emblemWithSerialLocked(serial); card != nil {
+		// #4192: an emblem's effect, named by its object like a permanent's.
+		key = CatalogKey(*card)
+	} else {
 		return "", uuid.UUID{}
 	}
-	reps := CatalogReplacements(catalogAbilityKeyOf(card))
+	reps := CatalogReplacements(key)
 	if repIdx >= len(reps) {
 		return "", card.InstanceID
 	}

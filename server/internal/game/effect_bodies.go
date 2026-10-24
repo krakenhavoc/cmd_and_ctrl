@@ -226,6 +226,26 @@ func checkEffectKey(kind, key string) {
 	if thenStepKeys[key] {
 		panic(fmt.Sprintf("game: %s key %q is already continuation steps", kind, key))
 	}
+	// #4256: and a keyed pay-unless decline.
+	if _, dup := payUnlessElses[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a pay-unless decline", kind, key))
+	}
+	// #4264: and a keyed confirm's answer.
+	if _, dup := confirmThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a confirm answer", kind, key))
+	}
+	// #4264: and a keyed any-player offer's consequences.
+	if _, dup := anyPlayerThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already any-player consequences", kind, key))
+	}
+	// #4294: and a keyed number prompt's branch.
+	if _, dup := numberThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a number branch", kind, key))
+	}
+	// #4290: and a keyed prompted run's continuation.
+	if _, dup := promptRunThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a prompted-run continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -416,11 +436,15 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 // continuation (#2115) as "pick <key>", or a keyed option pick's
 // (#2854) as "option <key>", a keyed choose_cards pick's (#2040) as
 // "choose <key>", a continuation written as steps (#4162) as "steps
-// <key>", sorted, for the ledger.
+// <key>", a keyed pay-unless decline (#4256) as "payunless <key>", a
+// keyed confirm's answer (#4264) as "confirm <key>", a keyed any-player
+// offer's consequences (#4264) as "anyplayer <key>", a keyed prompted
+// run's continuation (#4290) as "run <key>",
+// sorted, for the ledger.
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens)+len(chooseCardsThens)+len(thenStepKeys)+len(payUnlessElses)+len(confirmThens)+len(anyPlayerThens)+len(tapCostBuilders)+len(numberThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -435,6 +459,16 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredVoteKeysLocked()...)
 	out = append(out, registeredChooseCardsKeysLocked()...)
 	out = append(out, registeredThenStepKeysLocked()...)
+	out = append(out, registeredPayUnlessKeysLocked()...)
+	out = append(out, registeredConfirmKeysLocked()...)
+	out = append(out, registeredAnyPlayerKeysLocked()...)
+	out = append(out, registeredNumberKeysLocked()...)
+	// #4253: a keyed CR 616 frame's tail, and the bodies its event names.
+	out = append(out, registeredReplacementResumeKeys()...)
+	// #4264: a keyed pay-unless's waterbend clause kind.
+	out = append(out, registeredTapCostKeysLocked()...)
+	// #4290: a keyed prompted run's continuation.
+	out = append(out, registeredPromptRunKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

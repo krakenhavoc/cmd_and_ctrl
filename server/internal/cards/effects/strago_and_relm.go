@@ -99,6 +99,9 @@ func stragoAndRelmSketch(g *game.Game, item *game.StackItem) error {
 				SourceName:     "Strago and Relm",
 				Label:          "Strago and Relm — cast it without paying its mana cost",
 			}, []game.Card{c})
+			// #4250: cast during the resolution (CR 608.2g).
+			offerResolutionCastOver(ctx.Game, ctx.Controller(), ctx.Source(), "Strago and Relm",
+				game.MayCastKeywordFreeCast, declineLeaveInExile, hit)
 			return nil
 		},
 	}.Apply(ctx)

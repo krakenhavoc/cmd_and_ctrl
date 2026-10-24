@@ -95,3 +95,12 @@ None persisted. `MulligansTaken` and `MulligansOpen` are already in the snapshot
 ## Delivery
 
 One PR: this ADR, the engine (count, limit, prompts, the window's close), the view field, the legal-move labels and parameter, the bot's keep rules, the client's copy, and tests for each.
+
+
+## Amendment 2026-10-24 — the bottoming prompts are keyed, so the window is a restore point (#4301)
+
+"Snapshot impact" above no longer holds: the bottom pick is a keyed `choose_cards` prompt (`choose-cards/london-mulligan-bottom`; the seat is the prompt's chooser, `LiveZone: ZoneHand` keeps the hand re-check, an answer or an unanswered end both order what was picked) and the order of the cards is a keyed `put_in_library` prompt whose tail is `london-mulligan/cards-down` (its `Player` is the seat). Neither holds a closure, so a table waiting on a keep's bottoming is a restore point, and a deploy in that moment no longer sends the seat back to deciding.
+
+`Player.mulliganBottoming` is **written** (`seats[].mulliganBottoming`, `omitempty`, an additive field within v9): without it a restored window would close as soon as the other seats had kept, with the first keeper's cards still to put down (decision 4). The pick is still `PendingChoice.private`, which is written since #4298, so it stays private to its chooser across a restore.
+
+The view had a hole this exposed: `FilterViewFor` returned from its private-prompt branch before its `choose_cards` redaction, so every other seat was sent the keeper's hand as the pick's `options` (names included). A private `choose_cards` prompt now loses its options and bounds for every viewer but its chooser, the same as an unprivate one. **Tests** (`protocol/mulligan_bottom_view_test.go`): the pick is restored private, its view for both seats is identical before and after and the other seat's names no card in the hand; a keeper's order is restored and the window stays open until it is answered even though the other seat has finished; an unknown key is refused. **Back-outs:** the pick's `ThenKey` back to a closure fails the first two tests; the order's `ThenTail` back to a closure fails the second; not writing `mulliganBottoming` fails the second; the view change reverted fails the first.

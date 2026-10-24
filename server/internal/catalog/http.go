@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
@@ -65,7 +63,7 @@ func Handler(idx *cards.Index, cache *cards.ImageCache) http.Handler {
 
 	mux.HandleFunc("GET /catalog/image/{id}", func(w http.ResponseWriter, r *http.Request) {
 		raw := r.PathValue("id")
-		id, err := uuid.Parse(raw)
+		id, err := cards.ParseCardID(raw)
 		if err != nil {
 			writeErr(w, http.StatusBadRequest, "invalid card id")
 			return

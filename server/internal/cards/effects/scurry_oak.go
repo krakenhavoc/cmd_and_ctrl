@@ -30,9 +30,8 @@ func init() {
 				return ev.Target == source.InstanceID && b33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
 			}, "Scurry Oak — you may create a 1/1 green Squirrel", Do(MayChoice{
 				Question: "Scurry Oak — create a 1/1 green Squirrel creature token?",
-				OnYes: func(ctx *Context) error {
-					return CreateToken{Template: TokenCard("1/1 green Squirrel"), N: 1}.Apply(ctx)
-				},
+				Then:     mayCreateTokens,
+				Word:     tokenWord(1, "1/1 green Squirrel"),
 			})),
 		},
 	})

@@ -618,6 +618,11 @@ const (
 	// LogPlayerControlEnded — the controlled turn is over and the
 	// control with it, as the next turn begins. Fields as above.
 	LogPlayerControlEnded LogKind = "player_control_ended"
+	// LogStickerPlaced — a player put a sticker on an object (CR 123.3,
+	// ADR 0208). `card_id` is the object, `choice` what the sticker says
+	// (empty for an art sticker), `label` its kind ("name", "ability",
+	// "pt", "art") and `amount` the tickets it cost.
+	LogStickerPlaced LogKind = "sticker_placed"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1605,6 +1610,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 				base.TargetSeat = &seat
 			}
 		}
+		return base, true
+
+	case game.EventStickerPlaced:
+		// ADR 0208: the sticker goes on in front of the table (CR
+		// 123.3), and the ticket cost with it.
+		base.Kind = LogStickerPlaced
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		kind, text := game.StickerEventKindText(ev)
+		base.Label = string(kind)
+		base.Choice = text
+		base.Amount = ev.Amount
 		return base, true
 
 	case game.EventColorChosen:
@@ -2868,6 +2884,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s named %s for %s", actor, nameOr(e.Choice, "a card"), card)
 	case LogChooseOption:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(e.Choice, "an option"), card)
+	case LogStickerPlaced:
+		return renderStickerPlacedText(*e, actor, card)
 	case LogChoosePlayer:
 		// `target` is already the seat name here (or "a player"): a
 		// chosen player never rides Target, so the card branch above
@@ -3853,4 +3871,26 @@ func ventureRoomName(label string) string {
 		return d.Name + " — " + r.Name
 	}
 	return d.Name
+}
+
+// renderStickerPlacedText is LogStickerPlaced's sentence: "Ian put the
+// Menace sticker on Bear (2 tickets)".
+func renderStickerPlacedText(e LogEvent, actor, card string) string {
+	var what string
+	switch game.StickerKind(e.Label) {
+	case game.StickerName:
+		what = "the name sticker “" + e.Choice + "”"
+	case game.StickerAbility, game.StickerPT:
+		what = "the " + e.Choice + " sticker"
+	default:
+		what = "an art sticker"
+	}
+	out := fmt.Sprintf("%s put %s on %s", actor, what, card)
+	switch {
+	case e.Amount == 1:
+		out += " (1 ticket)"
+	case e.Amount > 1:
+		out += fmt.Sprintf(" (%d tickets)", e.Amount)
+	}
+	return out
 }

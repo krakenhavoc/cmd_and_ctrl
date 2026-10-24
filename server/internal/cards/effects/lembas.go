@@ -33,9 +33,8 @@ func init() {
 
 func lembasScryThenDraw(g *game.Game, item *game.StackItem) error {
 	c := item.Controller
-	return Scry{Player: c, N: 1, Then: func(g *game.Game) error {
-		return g.DrawNForEffect(c, 1)
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return Scry{Player: c, N: 1, ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 }
 
 func lembasShuffleBack(g *game.Game, item *game.StackItem) error {

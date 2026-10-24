@@ -178,14 +178,27 @@ func TestGreatSynthesisChapterThreeCastsFreeThenReturnsFrontFaceUp(t *testing.T)
 	advanceToPrecombatMainOf(t, g, seat)
 	passPriorityAroundTable(t, g)
 
-	if praetorOnBattlefield(g, jinGitaxiasOracleID).Name != "Jin-Gitaxias" {
-		t.Fatalf("the Saga did not return front face up: %s", praetorOnBattlefield(g, jinGitaxiasOracleID).Name)
-	}
-	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{Strict: true, AlternativeCost: greatSynthesisKey}); err != nil {
-		t.Fatalf("the free cast: %v", err)
+	// #4250: the casts are made inside chapter III's resolution, BEFORE the
+	// Saga is exiled and returned (CR 608.2g), so the returned Jin-Gitaxias
+	// does not see them: no "draw a card" for a seven-mana sorcery.
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, spell)
+	if name := praetorOnBattlefield(g, jinGitaxiasOracleID).Name; name != "The Great Synthesis" {
+		t.Fatalf("the Saga was flickered before the casts: %s", name)
 	}
 	if err := g.CastSpell(me.ID, land, game.CastSpellParams{Strict: true, AlternativeCost: greatSynthesisKey}); err == nil {
 		t.Error("a land was castable through chapter III")
+	}
+	hand := me.Hand.Size()
+	if err := castThroughResolutionCast(t, g, me.ID, spell, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	castInsideTheResolution(t, g, spell)
+	if praetorOnBattlefield(g, jinGitaxiasOracleID).Name != "Jin-Gitaxias" {
+		t.Fatalf("the Saga did not return front face up: %s", praetorOnBattlefield(g, jinGitaxiasOracleID).Name)
+	}
+	passPriorityAroundTable(t, g)
+	if me.Hand.Size() != hand-1 {
+		t.Errorf("hand %d, want %d: Jin-Gitaxias returned after the cast and drew for it", me.Hand.Size(), hand-1)
 	}
 }
 

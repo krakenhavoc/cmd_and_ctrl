@@ -32,8 +32,10 @@ import (
 // takes (cascade, discover, Emergent Ultimatum): one permission over the
 // exiled cards, priced {0} (so an {X} is 0, CR 107.3b), spells only (a
 // land among them can't be played), at instant speed (CR 608.2g), for one
-// spell (CastsLeft), closing on its holder's next priority pass with the
-// cards left in exile.
+// spell (CastsLeft). The cast is offered during the resolution (#4250, the
+// resolution_cast prompt); the permission's pass-closed window is only the
+// fallback, closing on its holder's next priority pass with the cards left
+// in exile.
 //
 // No simplification beyond that posture.
 func init() {
@@ -108,6 +110,10 @@ func crabominationExile(g *game.Game, item *game.StackItem) error {
 			SourceName:  crabominationName,
 			Label:       crabominationName + " — cast a spell from among the exiled cards without paying its mana cost",
 		}, cards)
+		// #4250: cast during the resolution (CR 608.2g); the one
+		// permission is spent by the one cast.
+		offerResolutionCastOver(g, controller, source, crabominationName,
+			game.MayCastKeywordFreeCast, declineLeaveInExile, exiled...)
 		return nil
 	})
 }

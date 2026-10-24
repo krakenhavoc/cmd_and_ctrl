@@ -21,8 +21,13 @@ func init() {
 			Mode("Lift the Curse — Destroy target enchantment.", TargetPermanent("target enchantment", Enchantment())),
 			Mode("Steal Its Eyes — Create a Treasure token and venture into the dungeon."),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(0) || ctx.HasMode(1) {
+		// The venture waits for a prompt the Treasure's creation asks (a CR 616
+		// order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(0) && !ctx.HasMode(1) {
+					return nil
+				}
 				for _, t := range ctx.LegalTargets() {
 					if t.Kind == game.TargetCard {
 						if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
@@ -30,14 +35,20 @@ func init() {
 						}
 					}
 				}
-			}
-			if ctx.HasMode(2) {
-				if err := (CreateToken{Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-					return err
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(2) {
+					return nil
+				}
+				return CreateToken{Template: TreasureToken(), N: 1}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if !ctx.HasMode(2) {
+					return nil
 				}
 				return VentureIntoTheDungeon{}.Apply(ctx)
-			}
-			return nil
-		},
+			}),
+		),
 	})
 }

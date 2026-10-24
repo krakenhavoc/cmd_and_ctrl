@@ -149,6 +149,14 @@ type ManaTrigger struct {
 	// ManaTriggersForCard and nowhere else. The zero value is "no
 	// gate", which is every card in the family today.
 	ActiveWhen Designation
+
+	// TappedSkipsNextUntap is Winter's Night's rider (#1997): "That land
+	// doesn't untap during its controller's next untap step." When the
+	// ability resolves, the tapped permanent gets the ordinary
+	// next-untap marker for the player who controls it then (CR 502.3,
+	// SkipNextUntapForEffect), after its mana is added. Plain data, so
+	// the rider adds no closure route. False for every other card.
+	TappedSkipsNextUntap bool
 }
 
 // CatalogManaTriggers returns the registered triggered mana abilities
@@ -221,6 +229,7 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 		source   uuid.UUID
 		label    string
 		produced string
+		skip     bool
 	}
 	var fired []firing
 	// CR 605.1b / 603.7b: triggered mana abilities a spell set up for
@@ -257,11 +266,18 @@ func (g *Game) fireManaTriggersLocked(prod ManaProduced, pending *[]ColorRequire
 				// nothing does nothing.
 				continue
 			}
-			fired = append(fired, firing{source: source.InstanceID, label: t.Label, produced: produced})
+			fired = append(fired, firing{source: source.InstanceID, label: t.Label, produced: produced, skip: t.TappedSkipsNextUntap})
 		}
 	}
 	for _, f := range fired {
 		g.addTriggeredManaLocked(prod.Controller, f.source, f.label, f.produced, pending)
+		if f.skip {
+			// #1997: the tapped permanent, if it is still there, skips
+			// its controller's next untap step.
+			if land := g.findBattlefieldCardLocked(prod.SourceID()); land != nil {
+				_ = g.SkipNextUntapForEffect(land.InstanceID, land.Controller)
+			}
+		}
 	}
 }
 

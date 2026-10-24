@@ -113,13 +113,11 @@ func TestFieryTemperIsLootedAwayAndCastForItsMadnessCost(t *testing.T) {
 		t.Error("the card without madness did not reach the graveyard")
 	}
 
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("the madness trigger offered no cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 
 	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}"); err != nil {
 		t.Fatalf("AddManaForEffect: %v", err)
@@ -182,13 +180,11 @@ func TestOliviasDragoonPitchesBigGameHunterAsACost(t *testing.T) {
 	}
 
 	passPriorityAroundTable(t, g)
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("a cost discard offered no madness cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{B}"); err != nil {
 		t.Fatalf("AddManaForEffect: %v", err)
 	}

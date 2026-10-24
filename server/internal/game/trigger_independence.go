@@ -1086,11 +1086,12 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	case FootprintSurveil:
 		a.cards[you] = true
 		a.beyondDraw[you] = true
-		// The graveyard leg emits EventMill per card, as an ordinary
-		// mill does (ResolveSurveil): a "card put into your graveyard
-		// from your library" watcher sees it. Found by the footprint
-		// conformance test (#3013).
-		a.emit(EventSurveil, EventMill, EventZoneMove)
+		// The graveyard leg emits an EventZoneMove per card
+		// (ResolveSurveil): a "card put into your graveyard from your
+		// library" watcher sees it. It is not a mill (CR 701.25a), so
+		// no EventMill since #2809; the conformance test (#3013) holds
+		// the declaration to what the step really emits.
+		a.emit(EventSurveil, EventZoneMove)
 	case FootprintEnergy:
 		a.emit(EventPlayerCounterPlaced)
 	case FootprintCreateToken:
@@ -1321,7 +1322,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
 	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
+	ModSetBaseToughness: true, ModModifyPT: true, ModSwitchPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModAttackPermanentIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true, ModCantAttackOwner: true, ModWaiveDefender: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
@@ -1343,6 +1344,9 @@ var knownBuiltinReplacementLabels = map[string]bool{
 	regenerationShieldReplacement.Label:       true,
 	protectionPreventsDamageReplacement.Label: true,
 	lifeTotalCantChangeReplacement.Label:      true,
+	// CR 717.6 moves a card with the Astrotorium back to the command
+	// zone, never into a graveyard, hand or library a step could read.
+	astrotoriumJunkyardReplacement.Label: true,
 	// The entry-counters grant exists only while a player static does,
 	// and any player static makes the board opaque already.
 	playerEntryCountersReplacement.Label: true,
@@ -1602,7 +1606,7 @@ const (
 var cardDefFieldClass = map[string]defFieldClass{
 	"Resolve": defFieldInert, "ResumeResolve": defFieldInert, "AsEnters": defFieldInert, "AsEntersOthers": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
-	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
+	"TargetMode": defFieldInert, "Targets": defFieldInert, "ReturnedAura": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
 	"EntersWithCountersFromCast": defFieldInert, "PrintedKeywords": defFieldInert,
 	"ManaTriggers": defFieldInert, "AdditionalCost": defFieldInert,
@@ -1618,7 +1622,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,
 	"UntapOptOuts": defFieldInert, "DrawStep": defFieldInert,
 	"CastCondition": defFieldInert, "CastConditionLabel": defFieldInert,
-	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert,
+	"CastRestrictions": defFieldInert, "LandPlayRestrictions": defFieldInert, "IgnorableEffect": defFieldInert,
 	"EntryRestrictions":      defFieldInert,
 	"ActivationRestrictions": defFieldInert, "ActivationTimings": defFieldInert,
 	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert, "CantBeCopied": defFieldInert,
@@ -1640,7 +1644,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,
 	"GrantedAlternativeCosts": defFieldInert, "OpeningHand": defFieldInert,
-	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
+	"LibraryTopVisible": defFieldInert, "HandsRevealed": defFieldInert, "AttackOnlyNearestOpponentInChosenDirection": defFieldInert, "DiscardByOpponent": defFieldInert, "DiscardByOpponentForHand": defFieldInert,
 
 	"Triggered": defFieldReactor, "Replacements": defFieldOwnRules,
 
@@ -1668,11 +1672,6 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		if !f.IsExported() || v.Field(i).IsZero() {
 			continue
 		}
-		// The row the registry makes from the printed keywords applies
-		// them to the object itself and reads nothing (#3013).
-		if f.Name == "Static" && onlyPrintedKeywordRows(d.Static) {
-			continue
-		}
 		switch class, ok := cardDefFieldClass[f.Name]; {
 		case !ok || class == defFieldRules:
 			global = true
@@ -1681,15 +1680,4 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		}
 	}
 	return global, own
-}
-
-// onlyPrintedKeywordRows reports whether every static is the row the
-// registry makes from a card's printed keywords.
-func onlyPrintedKeywordRows(statics []StaticAbility) bool {
-	for i := range statics {
-		if !statics[i].PrintedKeywordRow {
-			return false
-		}
-	}
-	return true
 }

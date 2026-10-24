@@ -197,7 +197,11 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 		})
 		return nil
 	}
-	return ReturnFromGraveyardTogether{Targets: chosen}.Apply(ctx)
+	// #1997: "each player puts" — each card is put by the player it
+	// enters under (CR 110.2a), which Arboria reads.
+	return g.PutByEnteringPlayerForEffect(func() error {
+		return ReturnFromGraveyardTogether{Targets: chosen}.Apply(ctx)
+	})
 }
 
 // --- static scopes -------------------------------------------------

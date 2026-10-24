@@ -56,9 +56,10 @@ func TestElectrolyzeDrawWaitsForKharnsQuestion(t *testing.T) {
 
 // Tune the Narrative — "Draw a card. You get {E}{E}." — with Stinkweed
 // Imp in the graveyard: the draw offers dredge (CR 702.52), and the
-// energy waits for the answer, live and on an undo taken while dredge is
-// open. (The dredge offer resumes through a closure, so that table is
-// not a restore point; the parked step adds nothing to the census.)
+// energy waits for the answer, live, on an undo taken while dredge is
+// open, and across a strict restore taken then: the dredge offer's frame
+// is data (#4253) and the parked step is keyed, so the table is a
+// restore point.
 func TestTuneTheNarrativeEnergyWaitsForDredge(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -72,11 +73,12 @@ func TestTuneTheNarrativeEnergyWaitsForDredge(t *testing.T) {
 	if energyOf(me) != energy {
 		t.Fatalf("energy %d with dredge open, want %d: the energy came before the draw", energyOf(me), energy)
 	}
-	if n := g.CaptureSnapshot().Continuations.ChoiceResumeFrames; n != 1 {
-		t.Fatalf("census counts %d resume frames, want 1 (the dredge offer alone)", n)
+	if snap := g.CaptureSnapshot(); !snap.Restorable() {
+		t.Fatalf("the table waiting on dredge is not a restore point: %+v", snap.Continuations)
 	}
 	undo := g.Clone()
-	for _, table := range []*game.Game{g, undo} {
+	restored := restoreRoundTrip(t, g, true)
+	for _, table := range []*game.Game{g, undo, restored} {
 		p := table.Seats[table.Turn.ActiveSeat]
 		answerOptional(t, table, p, true)
 		if !p.Hand.Contains(imp) || energyOf(p) != energy+2 {
@@ -129,8 +131,8 @@ func TestDemonicPactLifeGainWaitsForKharnsQuestion(t *testing.T) {
 // intervening "if" (InterveningIf). With Stinkweed Imp in the graveyard
 // the first draw offers dredge, and the second draw waits for the
 // answer: it then draws a real card, because the Imp is in the hand.
-// Live and on an undo taken while dredge is open (not a restore point,
-// for Tune the Narrative's reason).
+// Live, on an undo taken while dredge is open, and across a strict
+// restore taken then (a restore point, for Tune the Narrative's reason).
 func TestImoenSecondDrawWaitsForDredge(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -157,11 +159,12 @@ func TestImoenSecondDrawWaitsForDredge(t *testing.T) {
 	if offers != 1 {
 		t.Fatalf("%d dredge offers open, want 1: the second draw began before the first was answered", offers)
 	}
-	if n := g.CaptureSnapshot().Continuations.ChoiceResumeFrames; n != 1 {
-		t.Fatalf("census counts %d resume frames, want 1 (the dredge offer alone)", n)
+	if snap := g.CaptureSnapshot(); !snap.Restorable() {
+		t.Fatalf("the table waiting on dredge is not a restore point: %+v", snap.Continuations)
 	}
 	undo := g.Clone()
-	for _, table := range []*game.Game{g, undo} {
+	restored := restoreRoundTrip(t, g, true)
+	for _, table := range []*game.Game{g, undo, restored} {
 		p := table.Seats[0]
 		answerOptional(t, table, p, true)
 		if !p.Hand.Contains(imp) || p.Hand.Size() != hand+2 || p.Library.Size() != library-6 {

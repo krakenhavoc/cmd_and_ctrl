@@ -131,6 +131,8 @@ var gameFields = plan(
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
 	"LoyaltyActivatedTwiceThisTurn", carried, "",
+	"LoyaltyExtraActivationsThisTurn", carried, "",
+	"LoyaltyExtraActivationsUsedThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
@@ -221,6 +223,8 @@ var gameFields = plan(
 	// #3613: the end of that resolution, parked behind the same prompt.
 	"pausedResolutionTail", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
+	"carriedCause", dropped, "not game state: the cause a keyed pay-unless branch runs under, set for that one locked call and nil between actions (#4279)",
+	"putByEntering", dropped, "not game state: it counts PutByEnteringPlayerForEffect scopes on the Go stack, so it is zero between actions (#1997)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.
 	"promptKeys", dropped, "not game state: read only inside one resolution function or one answered prompt's branch, and reset where each begins (ADR 0127 §2)",
@@ -315,15 +319,23 @@ var gameFields = plan(
 	"entryOrdinalSeq", rebuilt, "the last Card.EntryOrdinal handed out; restore sets it to the largest ordinal a carried permanent holds",
 	"entryOrdinalShared", dropped, "not game state: the ordinal one simultaneous entry is announcing its cards under, set and cleared inside one mutation, so it is zero between actions",
 	"testReplacements", dropped, "test-only injection slot; production has no path to it",
-	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
-	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty",
-	"replacementObjectSerials", dropped, "the object serials catalog and graveyard ReplacementEffectIDs pack (#3482); an ID outlives an action only inside a paused replacement event, whose prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames, so a restored game mints afresh; Clone copies it for undo",
-	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty",
+	"replacementsAppliedThisEvent", dropped, "non-empty between actions only for an event paused on a replacement prompt; a keyed frame writes its event's entry with it (#4253, replacementResume.applied) and every other frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone deep-copies it for undo (#808)",
+	"nextReplacementEventID", dropped, "mints keys for the map above, which restores empty but for a keyed frame's event; restore puts it past every keyed frame's event ID (#4253)",
+	"replacementObjectSerials", dropped, "the object serials catalog and graveyard ReplacementEffectIDs pack (#3482); an ID outlives an action only inside a paused replacement event, so the map is written beside a keyed frame (#4253, replacementSerials) and is otherwise counted with its frame in ContinuationCensus.ChoiceResumeFrames, a restored game minting afresh; Clone copies it for undo",
+	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty unless a keyed frame wrote it (#4253, nextReplacementSerial)",
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
-	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
+	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, source) and restored; a run whose continuation is a closure is not written and is counted once in ContinuationCensus.ChoiceResumeFrames (snapshotPromptRuns); Clone deep-copies it for undo",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
+	"attractionEntering", dropped, "the one card of an Attraction deck the card index may see, for the span of its open's entry (ADR 0207 §4); non-empty between actions only while that entry is paused on a replacement prompt, whose resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
-	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
+	// #4270: the CR 707.10 self-copy source (#920) and every other reader
+	// of the item whose resolution is in flight. Carried as plain data
+	// (GameSnapshot.Resolving): a keyed prompt carries no resume frame,
+	// so a table waiting on one is a restore point, and its answer reads
+	// the slot (Wandering Archaic's "copy that spell?" reads the cast
+	// spell through it). Cleared by the next beginEventBatchLocked, the
+	// batch counter being carried too. Clone shares it for undo.
+	"resolving", carried, "GameSnapshot.Resolving",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy
@@ -389,6 +401,12 @@ var cardFields = plan(
 	"IsCompanion", carried, "",
 	// ADR 0191 §3: the sideboard stamp; it routes seating only.
 	"IsSideboard", carried, "",
+	// ADR 0207 §5: printed facts about an Attraction card.
+	"AstrotoriumBack", carried, "",
+	"AttractionLights", carried, "",
+	// ADR 0208: the stickers on the object, plain data.
+	"Stickers", carried, "",
+	"StickerSheet", dropped, "always empty on a card in a zone: set only on the deck importer's pseudo-card for a sticker sheet, which seatDeckCard turns into Player.StickerSheetPool (ADR 0208 §2)",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -524,6 +542,7 @@ var cardFields = plan(
 	// three above there is not even a vocabulary to rebuild it from,
 	// because CR 201.2 lets a player name any card name at all.
 	"ChosenName", carried, "",
+	"ChosenSecondName", carried, "",
 	// #1572, CR 614.12: the named option (a Siege's anchor word)
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
@@ -585,6 +604,10 @@ var cardFields = plan(
 	// ADR 0154 decision 4: Animate Dead's gained enchant clause and the
 	// creature it names, carried for Bestowed's reason.
 	"EnchantSwapped", carried, "",
+	// ADR 0154 amendment 2026-10-23 (#2809): the Aura form of a card that
+	// returned as an Aura, set as the entry lands. Carried: a restore that
+	// dropped it would give the Aura its creature back.
+	"ReturnedAura", carried, "",
 	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
@@ -628,6 +651,10 @@ var cardFields = plan(
 	// Nothing else records either, and "not encoded" is a legal zero.
 	"EncodedOn", carried, "",
 	"EncodedAt", carried, "",
+	// #1997: a token's link to the object that created it (CR 607.1d,
+	// Tombstone Stairwell). Nothing else records it, and "created with
+	// nothing" is a legal zero.
+	"CreatedWith", carried, "",
 	// #1199 / CR 702.26, ADR 0084. All four are the phased-out status
 	// and all four are legal zero values, so a restore that dropped
 	// them would bring a phased board back under the wrong player's
@@ -686,6 +713,13 @@ var playerFields = plan(
 	// for Companion's reason: nothing else on the board says what an
 	// effect could still bring in. Written only while it holds a card.
 	"Sideboard", carried, "",
+	// ADR 0207 §5: the Attraction deck and the junkyard. Carried: what is
+	// left to open, and what the rules have put aside, are on no board.
+	// Written only while they hold a card.
+	"AttractionDeck", carried, "",
+	"Junkyard", carried, "",
+	"StickerSheetPool", carried, "",
+	"StickerSheets", carried, "",
 	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
@@ -701,6 +735,9 @@ var playerFields = plan(
 	// What the player's creatures attacked during their last turn
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
+	// #1997: Arboria's "cast a spell or put a nontoken permanent onto
+	// the battlefield during their last turn".
+	"LastTurnCastOrPut", carried, "",
 	"Eliminated", carried, "",
 	// #3093: an admin removed the seat from a started game. Carried: the
 	// lobby refuses the seat's session on it, and a restart that forgot
@@ -1017,7 +1054,17 @@ var pendingChoiceFields = plan(
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	"PayAmount", dropped, "ADR 0129 §3: a pay_amount prompt always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	// #4289: a pay_amount that carries a chooseValueResume frame is still
+	// not a restore point (ContinuationCensus.ChoiceResumeFrames); a keyed
+	// MayPayX's "choose X" holds none, so its bounds are written.
+	"PayAmount", carried, "",
+	"MayPayX", carried, "",
+	"PickNumber", carried, "",
+	// #4294: a keyed number prompt's words, numbers and tokens-attacking
+	// split. A pay_amount with one holds no frame either.
+	"PickWords", carried, "",
+	"PickNums", carried, "",
+	"AttackSplit", carried, "",
 	"NoLegalTarget", carried, "",
 	// #2494: the resolving item a resolution-time "you may" asks about,
 	// and what a "yes" trades for. Carried: the item rides the parked
@@ -1065,6 +1112,7 @@ var pendingChoiceFields = plan(
 	// same reason SacrificeOptions is — a restored game that forgot
 	// them would let the chooser take a land with Thoughtseize.
 	"DiscardOptions", carried, "",
+	"CastPile", carried, "",
 	"DiscardLabel", carried, "",
 	// #2115: a revealed_hand_pick's variant. Carried for the same
 	// reason: a restored pick that forgot them would discard what it
@@ -1088,6 +1136,9 @@ var pendingChoiceFields = plan(
 	// ADR 0160's 2026-10-15 amendment: the creature types a
 	// choose_creature_type prompt refuses.
 	"ExcludedTypes", carried, "",
+	// #1997: Null Chamber's second card name and its basic-land bar.
+	"SecondName", carried, "",
+	"NotBasicLandName", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",
 	"LibraryTopCount", carried, "",
@@ -1133,6 +1184,21 @@ var pendingChoiceFields = plan(
 	"ChooseCards", carried, "",
 	"ChooseMin", carried, "",
 	"CollectionSuggestions", carried, "",
+	// #4256: a keyed collection pick's filter word; its key rides
+	// PickThen.
+	"PickMatchArg", carried, "",
+	// #4291: a keyed choose_cards pick's live-zone re-check.
+	"ChooseLiveZone", carried, "",
+	// #4264: a keyed pay-unless's non-mana payment.
+	"PayActionClause", carried, "",
+	// #4264: the item that queued a keyed pay-unless or any-player
+	// prompt, as the data a branch reads off it.
+	"Asked", carried, "",
+	// #4264: a keyed pay-unless's waterbend clause, as its kind and extra.
+	"PayTap", carried, "",
+	// #4264: the objects, with their epochs, a keyed pay-unless or
+	// any-player prompt's branches are handed.
+	"OptionObjects", carried, "",
 	"ChooseMax", carried, "",
 	"ChoosePlayers", carried, "",
 	"ChooseSuggested", carried, "",
@@ -1150,6 +1216,8 @@ var pendingChoiceFields = plan(
 	// continuation: a restored prompt that forgot them would answer
 	// about nothing.
 	"OptionCarry", carried, "",
+	"PayCauseController", carried, "",
+	"PayCauseItem", carried, "",
 	// ADR 0146: a ballot's vote so far. Carried because it is the
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
@@ -1157,7 +1225,9 @@ var pendingChoiceFields = plan(
 	// ADR 0188 Decision 12: the which-skip question's plain data.
 	"TurnSkipOrder", carried, "",
 	"AnyPlayerOffer", carried, "",
-	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	// ADR 0150 §4, #4294: an assist helper's prompt, with the cast it
+	// re-runs as data.
+	"Assist", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
@@ -1168,10 +1238,11 @@ var pendingChoiceFields = plan(
 	"LoopShortcutCount", carried, "",
 	"LoopShortcutRepeat", carried, "",
 
-	"replacementResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
+	"replacementResume", dropped, "continuation frame: written as data when its event holds no closure (#4253, pendingChoices[].replacementResume, replacement_resume_keyed.go), otherwise counted in ContinuationCensus.ChoiceResumeFrames",
 	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
 	"opponentTargetResume", dropped, "#2055: a parked cast or activation waiting on an opponent's target; counted in ContinuationCensus.ChoiceResumeFrames",
 	"PickTargetFor", dropped, "#2055: rides only a pick_target that carries a pickTargetResume or opponentTargetResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
+	"PickTargetHarmful", dropped, "#4249: rides only a pick_target that carries a pickTargetResume frame (it is the frame's clause flag, read for the wire), so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
@@ -1181,7 +1252,9 @@ var pendingChoiceFields = plan(
 	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"libraryOrderKeyed", carried, "#4301: an ordering prompt's keyed then, as LibraryOrder (its key rides PickThen)",
 	"midResolution", carried, "",
 	"AutoAnswerKey", carried, "",
 	"AutoAnswerCard", carried, "",
@@ -1191,8 +1264,8 @@ var pendingChoiceFields = plan(
 	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"private", dropped, "ADR 0133: only an opening-hand offer sets it, and that prompt always carries a confirmResume frame, counted in ContinuationCensus.ChoiceResumeFrames, so it is never written to a restore point; Clone copies it with the rest of the choice",
-	"promptRun", dropped, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); the run's continuation lives on Game.promptRuns and is counted in ContinuationCensus.ChoiceResumeFrames through this field; Clone copies it with the rest of the choice",
+	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
+	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
 )
 
 // driftPlans is every domain type the snapshot touches, paired with the

@@ -22,6 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6b4f1569-2025-46a8-89ba-79859208b04e",
 		Name:         "Flourishing Grapple",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets: Clauses(
 			TargetPermanent("target creature or planeswalker an opponent controls that's red or white",

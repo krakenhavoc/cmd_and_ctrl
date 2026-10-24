@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var smeltedChargebugPumpPaid = energyPaid("pay-unless/smelted-chargebug-pump-and-menace",
+	firstTargetGainsUntilEndOfTurn(1, "Smelted Chargebug — +1/+0 and menace until end of turn", "menace"))
+
 // Smelted Chargebug — Artifact Creature — Insect {1}{R}, 1/3:
 //
 //	"Menace
@@ -24,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Smelted Chargebug", 2),
 			anotherAttackerMayPayEnergy("Smelted Chargebug", "give it +1/+0 and menace",
-				firstTargetGainsUntilEndOfTurn(1, "Smelted Chargebug — +1/+0 and menace until end of turn", "menace")),
+				smeltedChargebugPumpPaid),
 		},
 	})
 }

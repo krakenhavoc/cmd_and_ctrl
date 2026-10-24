@@ -21,19 +21,22 @@ func init() {
 		Name:         "Abandon Attachments",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			player := item.Controller
-			return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-				Player:   player,
+			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+				Player:   item.Controller,
 				Source:   item.SourceCardID,
 				N:        1,
 				UpTo:     true,
 				Question: "Abandon Attachments — you may discard a card; if you do, draw two",
-			}, func(g *game.Game, done game.PromptedDiscards) error {
-				if !done.Discarded(player) {
-					return nil
-				}
-				return g.DrawNForEffect(player, 2)
-			})
+			}, abandonAttachmentsDraw, nil)
 		},
 	})
 }
+
+// abandonAttachmentsDraw is "if you do, draw two cards", keyed (#4256):
+// a table waiting on the discard is a restore point.
+var abandonAttachmentsDraw = game.RegisterDiscardThen("choose-cards/abandon-attachments-draw", func(g *game.Game, r game.DiscardsDone) error {
+	if !r.Discarded.Discarded(r.Player) {
+		return nil
+	}
+	return g.DrawNForEffect(r.Player, 2)
+})

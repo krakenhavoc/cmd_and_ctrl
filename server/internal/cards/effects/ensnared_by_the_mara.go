@@ -24,9 +24,10 @@ import (
 // primitive that owns it), then grants the spell's CONTROLLER a free cast
 // of that card (grantFreeCasts, the window Emergent Ultimatum's "cast them
 // as part of this" uses): price {0}, cast only, flash timing because the
-// cast is part of this resolution (CR 608.2g), and it closes on the
-// caster's next priority pass, leaving an uncast card in exile (nothing
-// says it goes anywhere). The lands exiled on the way stay exiled. A
+// cast is part of this resolution (CR 608.2g), offered during the
+// resolution (#4250). The caster's next priority pass closes the window
+// only as the fallback, leaving an uncast card in exile (nothing says it
+// goes anywhere). The lands exiled on the way stay exiled. A
 // library with no nonland card exiles all of it and grants nothing.
 //
 // Option B exiles the top four of the facing player's library (fewer from

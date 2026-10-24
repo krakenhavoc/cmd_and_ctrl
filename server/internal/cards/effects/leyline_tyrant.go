@@ -37,6 +37,20 @@ func init() {
 }
 
 // leylineTyrantPay is the dies trigger's body.
+// leylineTyrantPaid is the paid half, keyed (#4289): the {R} paid rides the
+// prompt.
+var leylineTyrantPaid = PayUnlessBranches("pay-unless/leyline-tyrant-damage",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		if r.Number <= 0 {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label:  "Leyline Tyrant — damage equal to the {R} paid to any target",
+			Body:   leylineTyrantDamageBody,
+			Params: game.EffectParams{Amount: r.Number},
+		}.Apply(ctx)
+	}, nil)
+
 func leylineTyrantPay(g *game.Game, item *game.StackItem) error {
 	return MayPayX{
 		Symbol: "{R}",
@@ -44,15 +58,6 @@ func leylineTyrantPay(g *game.Game, item *game.StackItem) error {
 		Buys:   "deal X damage to any target",
 		Goal:   XAsHighAsYouCan,
 		Unit:   game.PayAmountDamage,
-		OnPay: func(ctx *Context, x int) error {
-			if x <= 0 {
-				return nil
-			}
-			return ReflexiveTrigger{
-				Label:  "Leyline Tyrant — damage equal to the {R} paid to any target",
-				Body:   leylineTyrantDamageBody,
-				Params: game.EffectParams{Amount: x},
-			}.Apply(ctx)
-		},
+		Then:   leylineTyrantPaid,
 	}.Apply(NewContext(g, item))
 }

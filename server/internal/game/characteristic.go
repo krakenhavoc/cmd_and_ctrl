@@ -772,6 +772,9 @@ func effectiveOf(c *Card) Characteristic {
 	for _, kw := range c.stackGranted {
 		ch.Abilities = AppendKeywordAbility(ch.Abilities, kw)
 	}
+	// ADR 0208, CR 123.6-123.8: and the stickers on a card in a public
+	// zone no layer pass reaches.
+	applyStickersOffBattlefield(c, &ch)
 	return ch
 }
 

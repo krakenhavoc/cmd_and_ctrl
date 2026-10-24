@@ -43,6 +43,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target creature gets +1/+1 until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 1, 1)),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

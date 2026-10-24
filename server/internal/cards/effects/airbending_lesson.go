@@ -36,9 +36,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // THE DRAW IS UNCONDITIONAL AND HAPPENS SECOND. If the target became
 // illegal in response the spell is countered by the rules (CR 608.2b)
 // and there is no draw; if the target is still legal, the exile and
-// then the draw both happen. The Lesson subtype does nothing on its
-// own (there is no Learn in the catalog), so it is type-line data
-// only.
+// then the draw both happen. The Lesson subtype does nothing on the
+// card itself; it is type-line data that learn (CR 701.48a, learn.go)
+// reads when a player fetches a Lesson from outside the game.
 //
 // No simplification.
 func init() {

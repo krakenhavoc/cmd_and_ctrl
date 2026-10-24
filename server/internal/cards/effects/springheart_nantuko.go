@@ -46,9 +46,6 @@ func init() {
 func springheartLandfall(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	controller := ctx.Controller()
-	insect := func(g *game.Game) error {
-		return CreateToken{Template: TokenCard("1/1 green Insect"), N: 1}.Apply(NewContext(g, item))
-	}
 	var host uuid.UUID
 	if !sourceIsNewObject(g, item) {
 		if h := attachedHostFor(g, item.SourceCardID); h != nil && h.IsCreature() && h.Controller == controller {
@@ -56,15 +53,34 @@ func springheartLandfall(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	if host == uuid.Nil {
-		return insect(g)
+		return springheartInsect(ctx)
 	}
-	return g.QueueMayPayElseForEffect(controller, item.SourceCardID, "{1}{G}",
-		"Springheart Nantuko — pay {1}{G} to create a token copy of the enchanted creature? (If you don't, create a 1/1 green Insect.)",
-		func(g *game.Game) error {
-			if _, ok := TokenCopyTemplate(g, host); !ok {
-				return insect(g)
-			}
-			return CreateTokenCopy{Controller: controller, Copy: host, N: 1}.Apply(NewContext(g, item))
-		},
-		insect)
+	return PayUnless{
+		Chooser:  controller,
+		Cost:     "{1}{G}",
+		Question: "Springheart Nantuko — pay {1}{G} to create a token copy of the enchanted creature? (If you don't, create a 1/1 green Insect.)",
+		Else:     springheartCopyOrInsect,
+		Carry:    []uuid.UUID{host},
+	}.Apply(ctx)
 }
+
+// springheartInsect is "create a 1/1 green Insect creature token".
+func springheartInsect(ctx *Context) error {
+	return CreateToken{Template: TokenCard("1/1 green Insect"), N: 1}.Apply(ctx)
+}
+
+// springheartCopyOrInsect is the offer's two answers, keyed (#4264): the
+// enchanted creature rides the prompt, paying copies it (or makes the Insect
+// when it can no longer be copied) and declining makes the Insect. A table
+// waiting on the payer is a restore point.
+var springheartCopyOrInsect = PayUnlessBranches("pay-unless/springheart-nantuko-copy-or-insect",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		if len(r.Carry) == 0 {
+			return springheartInsect(ctx)
+		}
+		if _, ok := TokenCopyTemplate(ctx.Game, r.Carry[0]); !ok {
+			return springheartInsect(ctx)
+		}
+		return CreateTokenCopy{Controller: ctx.Controller(), Copy: r.Carry[0], N: 1}.Apply(ctx)
+	},
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return springheartInsect(ctx) })

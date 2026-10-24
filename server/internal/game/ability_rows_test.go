@@ -26,6 +26,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"BattleDefense":              "a characteristic (defense), shown on the card",
 	"TargetMode":                 "the spell's target hint",
 	"Targets":                    "the spell's target clause",
+	"ReturnedAura":               "the enchant clause of the card's Aura form, read by CR 303.4f's host choice and CR 704.5m (#2809)",
 	"Modes":                      "the spell's modes",
 	"Purpose":                    "the catalog's declared purpose for the bot (ADR 0126 §6), already the card's own purpose field",
 	"ManaAbilities":              "mana abilities: ADR 0105's drop pip and the mana menu are their surface",
@@ -58,6 +59,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"XMatters":                   "an enumerator hint",
 	"MadnessLife":                "the life a madness cost charges, read when pricing the cast",
 	"XCeiling":                   "a bound on a spell's announced X, read at cast",
+	"IgnorableEffect":            "the escape of the CastRestrictions and LandPlayRestrictions that are the tile's rows (#1986, CR 116.2d); a special action on the player's own panel",
 	"WantsDistinctColors":        "an auto-tapper hint",
 	"ReadsManaSpent":             "a waived payment's question, not an ability (#3855)",
 	"WantsManaFrom":              "an auto-tapper hint",
@@ -113,8 +115,8 @@ func stubAbilityRowCatalog(t *testing.T) {
 			Static: []StaticAbility{
 				{Layer: Layer7PT},
 				{Layer: Layer6Ability, Label: "Attacks each combat if able."},
-				// The printed-keyword static the effects package
-				// synthesises: on the keyword chips.
+				// A keyword line (a station card's "{N+} | Flying"):
+				// on the keyword chips.
 				{Layer: Layer6Ability, Keywords: []string{"flying"}},
 				// The later-layer half of the first row's ability.
 				{Layer: Layer7PT, ContinuesAfterRemoval: true},
@@ -192,8 +194,8 @@ func TestAbilityRowsUncataloguedAndVanillaHaveNone(t *testing.T) {
 	}
 }
 
-// A keyword-only catalog card — its one static is the synthesised
-// keyword row — has no rows: the keyword chips are the whole story.
+// A keyword-only catalog card — its one static is a keyword line — has
+// no rows: the keyword chips are the whole story.
 func TestAbilityRowsKeywordOnlyCardHasNone(t *testing.T) {
 	prev := CatalogLookup
 	CatalogLookup = func(key string) *CardDef {

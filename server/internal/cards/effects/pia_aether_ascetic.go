@@ -22,29 +22,32 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters(label, func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				player := ctx.Controller()
-				return g.PlayerDiscardsThenForEffect(game.DiscardPrompt{
-					Player:   player,
+				return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+					Player:   ctx.Controller(),
 					Source:   ctx.Source(),
 					N:        1,
 					UpTo:     true,
 					Question: label,
-				}, func(g *game.Game, discarded game.PromptedDiscards) error {
-					if discarded.Count() == 0 {
-						return nil
-					}
-					return SearchLibrary{
-						Player:    player,
-						Predicate: game.Card.IsEnchantment,
-						Dest:      game.ZoneHand,
-						Limit:     1,
-						Reveal:    true,
-						Shuffle:   true,
-						Reason:    "Pia, Aether Ascetic — an enchantment card, to your hand",
-						Source:    item.SourceCardID,
-					}.Apply(NewContext(g, item))
-				})
+				}, piaSearch, nil)
 			}),
 		},
 	})
 }
+
+// piaSearch is "if you do, search your library for an enchantment card",
+// keyed (#4264): a table waiting on the discard is a restore point.
+var piaSearch = game.RegisterDiscardThen("choose-cards/pia-aether-ascetic-search", func(g *game.Game, r game.DiscardsDone) error {
+	if r.Discarded.Count() == 0 {
+		return nil
+	}
+	return SearchLibrary{
+		Player:    r.Player,
+		Predicate: game.Card.IsEnchantment,
+		Dest:      game.ZoneHand,
+		Limit:     1,
+		Reveal:    true,
+		Shuffle:   true,
+		Reason:    "Pia, Aether Ascetic — an enchantment card, to your hand",
+		Source:    r.Source,
+	}.Apply(keyedContext(g, r.Player, r.Source))
+})

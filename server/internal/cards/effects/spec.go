@@ -153,6 +153,18 @@ type Spec struct {
 	// means no structured targeting.
 	Targets *game.TargetSpec
 
+	// ReturnedAura is the enchant clause of the card's Aura form, for a
+	// creature that "returns to the battlefield. It's an Aura enchantment
+	// with enchant Forest you control …" (Harold and Bob, First Numens;
+	// ADR 0154's 2026-10-23 amendment): EnchantLand(Subtype("Forest"),
+	// YouControl()). Not Targets, which a creature spell would read as its
+	// own cast-time target. Read only for a permanent whose
+	// game.Card.ReturnedAura is set, by the CR 303.4f host choice as it
+	// enters and by the CR 704.5m legality check afterwards. A card that
+	// sets it carries ReturnedAuraForm's statics and returns itself with
+	// WhenThisDiesReturnItAsAnAura.
+	ReturnedAura *game.TargetSpec
+
 	// ManaAbilities is the list of activated mana abilities the card
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of
@@ -250,11 +262,14 @@ type Spec struct {
 	//
 	// Feeds two consumers:
 	//
-	//   1. On-battlefield: wire.go synthesizes a self-only Layer 6
-	//      StaticAbility per card that appends each entry to the
-	//      card's own `Characteristic.Abilities`, so the keyword
-	//      lands in `card.Effective().Abilities` alongside grants
-	//      from other cards' static abilities (Lord of Atlantis).
+	//   1. On-battlefield: the entries are the object's own
+	//      characteristics, so they are in the baseline the layer pass
+	//      starts from (game.printedInputs). They are not a static: a
+	//      removal of any timestamp, "loses flying" included, takes
+	//      them away, and a grant of a later one gives them back
+	//      (CR 613.7, #4236). The keyword lands in
+	//      `card.Effective().Abilities` alongside grants from other
+	//      cards' static abilities (Lord of Atlantis).
 	//   2. Off-battlefield: game.HasKeyword (keywords.go) falls back
 	//      to `CatalogPrintedKeywords(oracleID)` when the card has
 	//      no `effective` cache — needed for flash gating on a
@@ -557,6 +572,14 @@ type Spec struct {
 	// land_play_restriction.go.
 	LandPlayRestrictions []game.LandPlayRestriction
 
+	// IgnorableEffect declares that the player a static ability bears on
+	// may ignore it until end of turn by sacrificing a permanent (CR
+	// 116.2d, #1986) — Damping Engine's last sentence. The restrictions
+	// that ARE that ability (the CastRestrictions and LandPlayRestrictions
+	// above) carry Ignorable: true; Register refuses one without the
+	// other, so a card cannot offer an ignore that switches nothing off.
+	IgnorableEffect *game.IgnorableEffect
+
 	// EntryRestrictions are the "can't enter the battlefield" statics
 	// this PERMANENT imposes (#1985; CR 101.2, 305.4) — Worms of the
 	// Earth's "Lands can't enter the battlefield", Grafdigger's Cage's
@@ -828,7 +851,7 @@ type Spec struct {
 	// (CR 113.6). Nil for every other card.
 	BoastLimits []game.BoastLimit
 
-	// AttackTaxes is the CR 508.1a attack tax: "creatures can't attack
+	// AttackTaxes is the CR 508.1h attack tax: "creatures can't attack
 	// you unless their controller pays {2} for each creature they
 	// control that's attacking you" — Propaganda, Ghostly Prison,
 	// Windborn Muse, Sphere of Safety. ADR 0080.
@@ -1609,7 +1632,10 @@ type Spec struct {
 	// game.LibraryTopOwner for "you may look at the top card of your
 	// library any time" (Realmwalker, Bolas's Citadel),
 	// game.LibraryTopRevealed for "play with the top card of your
-	// library revealed" (Oracle of Mul Daya, Courser of Kruphix).
+	// library revealed" (Oracle of Mul Daya, Courser of Kruphix), and
+	// game.LibraryTopRevealedEachPlayer for "players play with the top
+	// card of their libraries revealed" (Field of Dreams), which reveals
+	// every player's top card, not only its controller's.
 	//
 	// Deliberately NOT a `Static` entry, for the reason
 	// AdditionalLandPlays above is not: it is a fact about a PLAYER
@@ -1627,6 +1653,16 @@ type Spec struct {
 	// it is a fact about players' hands, derived from the battlefield on
 	// every query (game.HandRevealedLocked, ADR 0199).
 	HandsRevealed game.HandRevealScope
+
+	// AttackOnlyNearestOpponentInChosenDirection declares "each player
+	// may attack only the nearest opponent in the chosen direction and
+	// planeswalkers controlled by that opponent" (Pramikon, Sky
+	// Rampart). Pair it with ChooseLeftOrRightAsEnters, whose answer
+	// names the direction; until it is answered the permanent restricts
+	// nothing. Not a `Static` entry, for HandsRevealed's reason: it is a
+	// rule about every player's attacks, derived from the battlefield on
+	// every query (ADR 0206, game/attack_direction.go).
+	AttackOnlyNearestOpponentInChosenDirection bool
 
 	// DiscardByOpponent declares what "if a spell or ability an
 	// opponent controls causes you to discard this card" does for this
@@ -1741,6 +1777,11 @@ type Spec struct {
 	// game.GrantKey(Key). See ability_grant.go and
 	// server/internal/game/copy_grants.go.
 	Grants []AbilityGrant
+
+	// StickerSheet marks this entry as a sticker sheet's (CR 123.2, ADR
+	// 0208 §5) and says what each of its ability stickers gives. A sheet
+	// is not a card: nothing else on the Spec applies to it.
+	StickerSheet *StickerSheetSpec
 
 	// Purpose is what the card does, as printed amounts, declared by
 	// hand for the bot like Completeness (ADR 0126 §6): the spell's
@@ -2115,6 +2156,24 @@ type ManaAbility struct {
 	// (CR 605.1a). Set this, PainToYou or Rider, never two of them;
 	// Register refuses the pair.
 	GainLife int
+
+	// OpponentsGainLife is "Each opponent gains N life" after the "Add …"
+	// clause, declared as data (Grove of the Burnwillows' coloured half).
+	// Register builds the Rider with EachOpponentGainsLifeRider(n), and the
+	// built ability carries the number
+	// (game.ManaAbilityShape.RiderOpponentLifeGain) so the auto-tapper
+	// plans the source and the move list counts its mana (#4189). It acts
+	// on other players, so the planner reaches for it only after the
+	// sources that do not (tapSource.Table). Set one of Rider, PainToYou,
+	// GainLife, OpponentsGainLife or PingOpponents; Register refuses two.
+	OpponentsGainLife int
+
+	// PingOpponents is "this permanent deals N damage to each opponent"
+	// after the "Add …" clause, declared as data (Zhur-Taa Druid). Register
+	// builds the Rider with PingEachOpponentRider(n); the number reaches
+	// the auto-tapper as game.ManaAbilityShape.RiderOpponentDamage, and the
+	// source is tiered as OpponentsGainLife is (#4189).
+	PingOpponents int
 
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and

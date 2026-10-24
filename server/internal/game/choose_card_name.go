@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
@@ -87,6 +88,59 @@ func (g *Game) QueueCardNameChoiceForEffect(chooser, source uuid.UUID, reason st
 	})
 }
 
+// CardNamePrompt is the as-enters card-name prompt with its two
+// options spelled out (#1997): which of the source's names the answer
+// fills, and whether a basic land card's name is refused.
+type CardNamePrompt struct {
+	// Chooser names the card. Source is the permanent the name is
+	// chosen for. Reason is the prompt's header.
+	Chooser, Source uuid.UUID
+	Reason          string
+	// SecondName stores the answer as the source's ChosenSecondName
+	// instead of its ChosenName: the name another player chooses for it
+	// (Null Chamber's opponent).
+	SecondName bool
+	// NotBasicLandName is "a card name other than a basic land card
+	// name" (CR 201.4a).
+	NotBasicLandName bool
+}
+
+// QueueCardNamePromptForEffect queues a CardNamePrompt and returns the
+// choice ID, or uuid.Nil when its chooser has left the game. Plain data,
+// like QueueCardNameChoiceForEffect: a table waiting on it is a restore
+// point.
+//
+// Caller must hold g.mu.
+func (g *Game) QueueCardNamePromptForEffect(p CardNamePrompt) uuid.UUID {
+	return g.QueueChoiceForEffect(PendingChoice{
+		Kind:             PendingChoiceCardName,
+		Chooser:          p.Chooser,
+		Count:            1,
+		Source:           p.Source,
+		Reason:           p.Reason,
+		SecondName:       p.SecondName,
+		NotBasicLandName: p.NotBasicLandName,
+	})
+}
+
+// basicLandCardNames are the names of the basic land cards in the Oracle
+// card reference (CR 205.4c names the ten from before Eighth Edition;
+// Wastes and Snow-Covered Wastes are the two since, and Barry's Land the
+// one un-set basic). Lower case, for IsBasicLandCardName.
+var basicLandCardNames = map[string]bool{
+	"plains": true, "island": true, "swamp": true, "mountain": true, "forest": true, "wastes": true,
+	"snow-covered plains": true, "snow-covered island": true, "snow-covered swamp": true,
+	"snow-covered mountain": true, "snow-covered forest": true, "snow-covered wastes": true,
+	"barry's land": true,
+}
+
+// IsBasicLandCardName reports whether `name` is the name of a basic land
+// card, compared as every card name is (case-insensitive, trimmed): the
+// names "a card name other than a basic land card name" rules out.
+func IsBasicLandCardName(name string) bool {
+	return basicLandCardNames[strings.ToLower(strings.TrimSpace(name))]
+}
+
 // QueueCardNameChoiceThenForEffect queues the AT-RESOLUTION form: the
 // answer is handed to `then` and stored nowhere, so the permanent's
 // ChosenName is untouched. `then` runs with g.mu held and may queue
@@ -151,6 +205,11 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	if chosen == "" || len(chosen) > MaxChosenNameLen {
 		return ErrInvalidParam
 	}
+	if choice.NotBasicLandName && IsBasicLandCardName(chosen) {
+		// CR 201.4a: not a name this prompt may be answered with. The
+		// prompt stays open for another answer, and the refusal says why.
+		return fmt.Errorf("%w: a basic land card's name can't be chosen", ErrInvalidParam)
+	}
 	g.dequeueChoiceLocked(idx)
 
 	if frame := choice.chooseValueResume; frame != nil {
@@ -175,7 +234,11 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	}
 
 	if i := findCardOnBattlefield(g, choice.Source); i >= 0 {
-		g.Battlefield.Cards[i].ChosenName = chosen
+		if choice.SecondName {
+			g.Battlefield.Cards[i].ChosenSecondName = chosen
+		} else {
+			g.Battlefield.Cards[i].ChosenName = chosen
+		}
 		// The chosen name is an AppliesTo input to a static ability
 		// since Alpine Moon (ADR 0109 §2): "Lands your opponents
 		// control with the chosen name lose all land types and
@@ -211,6 +274,62 @@ func (g *Game) ChosenNameOf(sourceID uuid.UUID) string {
 		return g.Battlefield.Cards[i].ChosenName
 	}
 	return ""
+}
+
+// ChosenNamesOf returns every card name chosen for the permanent
+// `sourceID` on the battlefield: its ChosenName and then its
+// ChosenSecondName, each only once it has been answered. Nil for a
+// permanent with none, or one that is gone. Null Chamber's two names
+// (#1997).
+//
+// Caller must hold either lock.
+func (g *Game) ChosenNamesOf(sourceID uuid.UUID) []string {
+	i := findCardOnBattlefield(g, sourceID)
+	if i < 0 {
+		return nil
+	}
+	return ChosenNamesOn(&g.Battlefield.Cards[i])
+}
+
+// ChosenNamesOn is ChosenNamesOf for a permanent already in hand: its
+// ChosenName and then its ChosenSecondName, each only once answered.
+func ChosenNamesOn(c *Card) []string {
+	if c == nil {
+		return nil
+	}
+	var out []string
+	for _, n := range []string{c.ChosenName, c.ChosenSecondName} {
+		if strings.TrimSpace(n) != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// SpellOrLandHasName reports whether the card `c` being cast or played
+// has the name `named`: "spells with the chosen name can't be cast" and
+// "lands with the chosen name can't be played" (Null Chamber, #1997).
+//
+// The card is the one the cast or play gate is handed, with the face
+// being cast or played already materialised, so Card.Name is the name it
+// has on the stack or will have on the battlefield. Only that face
+// counts: a split card on the stack has only the half being cast (CR
+// 709.3b), and a modal double-faced card only the face cast or played
+// (CR 712.11c, CR 712.12). A fused split spell has both halves' names (CR 709.4d),
+// which the engine spells "Fire // Ice", so each half of a name with
+// " // " in it is asked too. Compared as every card name is
+// (case-insensitive, trimmed).
+func SpellOrLandHasName(c Card, named string) bool {
+	want := strings.TrimSpace(named)
+	if want == "" || c.FaceDown {
+		return false
+	}
+	for _, part := range strings.Split(c.Name, " // ") {
+		if strings.EqualFold(strings.TrimSpace(part), want) {
+			return true
+		}
+	}
+	return false
 }
 
 // CardNameMatches reports whether `c` has the name `named` for the

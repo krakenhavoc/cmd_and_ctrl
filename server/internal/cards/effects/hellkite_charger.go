@@ -30,10 +30,16 @@ func init() {
 					Chooser:    item.Controller,
 					Cost:       "{5}{R}{R}",
 					Question:   "Hellkite Charger — pay {5}{R}{R} to untap all attacking creatures and get an additional combat phase?",
-					OnPay:      untapAttackersThenExtraCombat,
+					Then:       hellkiteChargerExtraCombat,
 					InThisStep: true,
 				}.Apply(NewContext(g, item))
 			}),
 		},
 	})
 }
+
+// hellkiteChargerExtraCombat is the paid half, keyed (#4264): the step
+// anchor and the key leave the prompt without a closure, so a table
+// waiting on the payer is a restore point.
+var hellkiteChargerExtraCombat = PayUnlessBranches("pay-unless/hellkite-charger-extra-combat",
+	func(ctx *Context, _ game.PayUnlessAnswer) error { return untapAttackersThenExtraCombat(ctx) }, nil)

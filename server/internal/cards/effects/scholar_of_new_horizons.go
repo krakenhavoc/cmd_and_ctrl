@@ -58,28 +58,34 @@ func scholarOfNewHorizonsSearch(g *game.Game, item *game.StackItem) error {
 		Shuffle:   true,
 		Reason:    "Scholar of New Horizons — a Plains card",
 		Source:    source,
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			if len(found) == 0 {
-				return nil
-			}
-			if !b03OpponentControlsMoreLands(g, controller) {
-				return scholarOfNewHorizonsToHand(g, found)
-			}
-			return PutFromLibraryOntoBattlefield{
-				Player:   controller,
-				Cards:    found,
-				Match:    Land(),
-				Max:      1,
-				Optional: true,
-				Tapped:   true,
-				Label:    "Scholar of New Horizons — you may put the Plains onto the battlefield tapped (otherwise it goes into your hand)",
-				Then: func(g *game.Game, res PutFromLibraryResult) error {
-					return scholarOfNewHorizonsToHand(g, res.Rest)
-				},
-			}.Apply(NewContext(g, &game.StackItem{Controller: controller, SourceCardID: source}))
-		},
+		ThenTail:  game.KeyedTail{Ref: scholarOfNewHorizonsPlace, Player: controller, Source: source},
 	}.Apply(NewContext(g, item))
 }
+
+// scholarOfNewHorizonsPlace is "if an opponent controls more lands than you,
+// you may put that card onto the battlefield tapped. If you don't put the
+// card onto the battlefield, put it into your hand". An on-disk key.
+var scholarOfNewHorizonsPlace = game.RegisterTail("scholar-of-new-horizons/battlefield-or-hand", func(g *game.Game, o game.TailOutcome) error {
+	found, controller, source := o.IDs, o.Tail.Player, o.Tail.Source
+	if len(found) == 0 {
+		return nil
+	}
+	if !b03OpponentControlsMoreLands(g, controller) {
+		return scholarOfNewHorizonsToHand(g, found)
+	}
+	return PutFromLibraryOntoBattlefield{
+		Player:   controller,
+		Cards:    found,
+		Match:    Land(),
+		Max:      1,
+		Optional: true,
+		Tapped:   true,
+		Label:    "Scholar of New Horizons — you may put the Plains onto the battlefield tapped (otherwise it goes into your hand)",
+		Then: func(g *game.Game, res PutFromLibraryResult) error {
+			return scholarOfNewHorizonsToHand(g, res.Rest)
+		},
+	}.Apply(NewContext(g, &game.StackItem{Controller: controller, SourceCardID: source}))
+})
 
 // scholarOfNewHorizonsToHand puts the found Plains still in the library
 // into its owner's hand.

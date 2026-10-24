@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strconv"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Niv-Mizzet, Ghost Counsel — Legendary Creature — Spirit Dragon
 // {2}{W}{W}{B}{B}, 4/4:
@@ -38,16 +42,8 @@ func init() {
 				return MayChoice{
 					Question: "Niv-Mizzet, Ghost Counsel — pay " + numberWord(n) + " life to draw " + numberWord(n) + " cards?",
 					LifeCost: n,
-					OnYes: func(ctx *Context) error {
-						p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
-						if p == nil || p.Eliminated || p.Life < n {
-							return nil
-						}
-						if err := ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), n); err != nil {
-							return err
-						}
-						return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
-					},
+					Then:     nivMizzetAnswer,
+					Word:     strconv.Itoa(n),
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -59,3 +55,36 @@ func init() {
 		}},
 	})
 }
+
+// nivMizzetGhostCounselRecord is the life paid and the cards drawn, 0 when the
+// life could not be paid.
+const nivMizzetGhostCounselRecord = "niv-mizzet-ghost-counsel/amount"
+
+// nivMizzetGhostCounselPayAndDraw is the payment and then the draw: the draw
+// waits for a prompt the payment asks (a CR 616 order on the life loss; CR
+// 608.2c, #4155).
+var nivMizzetGhostCounselPayAndDraw = RegisterThenSteps("then-steps/niv-mizzet-ghost-counsel-pay-and-draw",
+	Instruction(func(ctx *Context) error {
+		n := ctx.StepRecord(nivMizzetGhostCounselRecord).N()
+		p := ctx.Game.PlayerByIDForEffect(ctx.Controller())
+		if p == nil || p.Eliminated || p.Life < n {
+			ctx.RecordStep(nivMizzetGhostCounselRecord, nil, 0)
+			return nil
+		}
+		return ctx.Game.PayLifeForEffect(ctx.Source(), ctx.Controller(), n)
+	}),
+	Instruction(func(ctx *Context) error {
+		n := ctx.StepRecord(nivMizzetGhostCounselRecord).N()
+		if n <= 0 {
+			return nil
+		}
+		return DrawCards{Player: ctx.Controller(), N: n}.Apply(ctx)
+	}),
+)
+
+// nivMizzetAnswer is the "yes": pay life equal to the life gained (Word) and
+// draw that many cards. Keyed (#4291).
+var nivMizzetAnswer = MayYes("confirm/niv-mizzet-ghost-counsel-pay-and-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.RecordStep(nivMizzetGhostCounselRecord, nil, wordInt(r))
+	return nivMizzetGhostCounselPayAndDraw.Run(ctx)
+})

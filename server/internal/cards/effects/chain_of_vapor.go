@@ -98,7 +98,8 @@ func chainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) 
 	return MayChoice{
 		Player:   controller,
 		Question: name + " — sacrifice a land? (if you do, you may copy this spell)",
-		OnYes:    chainSacrificeLand(controller, name),
+		Then:     chainSacrificeLandAnswer,
+		Word:     name,
 	}.Apply(ctx)
 }
 
@@ -128,7 +129,7 @@ func chainMayCopy(player uuid.UUID, name string) func(ctx *Context) error {
 		return MayChoice{
 			Player:   player,
 			Question: name + " — copy it? (you may choose a new target for the copy)",
-			OnYes:    copyThisSpellFor(player),
+			Then:     mayCopyThisSpell,
 		}.Apply(ctx)
 	}
 }
@@ -170,3 +171,9 @@ func landsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// chainSacrificeLandAnswer is the "yes": they pick the land (Word is the
+// card asking), then may copy the spell. Keyed (#4291).
+var chainSacrificeLandAnswer = MayYes("confirm/chain-sacrifice-a-land", func(ctx *Context, r game.ConfirmAnswer) error {
+	return chainSacrificeLand(r.Chooser, r.Word)(ctx)
+})

@@ -11,11 +11,10 @@ import (
 // madness_cast_moves_test.go — #657: the bot half of madness.
 //
 // The keyword adds no enumerator code, which is the claim under test.
-// The may-cast prompt already has an answer (choices.go's
-// PendingChoiceMayCast arm, built for cascade), and the cast itself is
-// an ordinary granted cast out of exile — so a bot that took the offer
-// is offered the spell, at the madness price, with the key the engine
-// validates it under.
+// The offer is a resolution_cast (#4250; resolution_cast.go answers it),
+// and the cast itself is an ordinary granted cast out of exile — so a
+// bot is offered the spell, at the madness price, with the key the
+// engine validates it under.
 //
 // The window is the half worth a test of its own. A madness SORCERY is
 // castable outside a main phase, because the grant carries CR 608.2g's

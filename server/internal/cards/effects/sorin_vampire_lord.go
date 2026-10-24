@@ -33,6 +33,9 @@ import (
 // No simplification.
 const sorinVampireLordSteal = "sorin-vampire-lord/gain-control"
 
+// sorinVampireLordRecord files that the -2 had a legal target, read before the damage.
+const sorinVampireLordRecord = "sorin-vampire-lord/minus-two"
+
 func init() {
 	Register(Spec{
 		OracleID:     "753dcc18-3697-49c5-80c6-2d8dc8ee8c9a",
@@ -55,6 +58,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Up to one target creature gets +2/+0 until end of turn.",
+				Purpose: ForTargets(BenefitUntilEOT(0, 2, 0)),
 				Cost:    LoyaltyCost(1),
 				Targets: TargetCreature("up to one target creature").WithCount(0, 1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
@@ -71,20 +75,28 @@ func init() {
 				Cost:    LoyaltyCost(-2),
 				Targets: TargetAny(),
 				Purpose: ForTargets(DamageToTarget(0, 4)),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					// CR 608.2b: with its only target gone the ability does
-					// nothing at all, life gain included (#4082). A prevented
-					// damage still gains the life.
-					legal := ctx.LegalTargets()
-					if len(legal) == 0 {
-						return nil
-					}
-					if err := (DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: 4}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 4}.Apply(ctx)
-				},
+				// The life gain waits for a prompt the damage asks (a CR 616 order; CR 608.2c,
+				// #4155).
+				Effect: Do(
+					Instruction(func(ctx *Context) error {
+						// CR 608.2b: with its only target gone the ability does
+						// nothing at all, life gain included (#4082). A prevented
+						// damage still gains the life. That is read here, before
+						// the damage can kill the target, and filed for the gain.
+						legal := ctx.LegalTargets()
+						if len(legal) == 0 {
+							return nil
+						}
+						ctx.RecordStep(sorinVampireLordRecord, nil, 1)
+						return DealDamage{Source: ctx.Source(), Target: legal[0].ID, Amount: 4}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						if ctx.StepRecord(sorinVampireLordRecord).N() == 0 {
+							return nil
+						}
+						return GainLife{Amount: 4}.Apply(ctx)
+					}),
+				),
 			},
 			{
 				Label: "−8: Until end of turn, each Vampire you control gains \"{T}: Gain control of target creature.\"",

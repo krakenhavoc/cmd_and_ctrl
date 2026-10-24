@@ -135,6 +135,13 @@ type CastRestriction struct {
 	// engine, the enumerator and the view cannot disagree about
 	// whether it exists (ADR 0071).
 	ActiveWhen Designation
+
+	// Ignorable marks this restriction as the static ability the card's
+	// IgnorableEffect lets a player ignore (CR 116.2d, #1986): while the
+	// player named by the query has a live ModIgnoreEffect record for the
+	// source, the gate skips it. False, the zero value, for every
+	// restriction nobody may switch off.
+	Ignorable bool
 }
 
 // CatalogCastRestrictions is the catalog hook the effects package
@@ -256,6 +263,11 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	refusedBy := func(src *Card) *CantCastError {
 		for _, r := range castRestrictionsOf(src) {
 			if r.Forbids == nil {
+				continue
+			}
+			// CR 116.2d (#1986): an effect the caster is ignoring refuses
+			// nothing.
+			if r.Ignorable && g.effectIgnoredLocked(caster, src) {
 				continue
 			}
 			q.Source = *src

@@ -303,9 +303,10 @@ func madMageRunestoneCaverns(g *game.Game, item *game.StackItem) error {
 // count of cards the player has drawn this turn is carried on the
 // continuation, and the drawn cards are the tail of
 // Game.DrawnThisTurn past it once the last draw is done. The free cast
-// is the resolving ability's (CR 608.2g): it ignores timing and closes
-// on the player's next pass, and a land is never offered (a land is not
-// cast).
+// is the resolving ability's (CR 608.2g): it is offered during the
+// resolution through the resolution_cast prompt (offerFreeHandCastOver),
+// ignores timing, and a land is never offered (a land is not cast).
+// Outside a resolution the pass-closed window is the fallback.
 func madMageMadWizardsLair(g *game.Game, item *game.StackItem) error {
 	you := item.Controller
 	return g.DrawNThenForEffect(you, 3, game.DrawThen{
@@ -345,29 +346,15 @@ var madWizardsLairAfterDraw = game.RegisterDrawThen("dungeon/mad-wizards-lair", 
 			candidates = append(candidates, id)
 		}
 	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	player, source := d.Player, d.Source
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:     player,
-		Source:      source,
-		Question:    "Mad Wizard's Lair — cast one of them without paying its mana cost?",
-		Cards:       candidates,
-		Min:         0,
-		Max:         1,
-		Zone:        game.ZoneHand,
-		Destination: game.ChooseCastFree,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.FreeCastFromHandForEffect(player, source, picked[0], dungeonOfTheMadMageName)
-			return nil
-		},
-	})
+	// The keyed free-cast offer (free_hand_cast.go, #4246), so a table
+	// waiting on it is a restore point.
+	offerFreeHandCastOver(g, d.Player, d.Source, madWizardsLairFreeCast,
+		"Mad Wizard's Lair — cast one of them without paying its mana cost?", candidates)
 	return nil
 })
+
+// madWizardsLairFreeCast is the room's free-cast offer, keyed (#4246).
+var madWizardsLairFreeCast = registerFreeHandCastOffer("choose-cards/mad-wizards-lair-cast", dungeonOfTheMadMageName)
 
 // tombTrappedEntry: each player loses 1 life.
 func tombTrappedEntry(g *game.Game, item *game.StackItem) error {
@@ -470,6 +457,15 @@ func init() {
 	})
 }
 
+// tombVeilsDiscarded is the next player's question once the discard
+// Veils of Fear asked for has landed, keyed (#4264).
+var tombVeilsDiscarded = game.RegisterDiscardThen("choose-cards/tomb-of-annihilation-veils-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return tombUnlessStep(keyedContext(g, r.Carry[0], r.Source), tombVeils, r.Carry[1:])
+})
+
 // tombUnlessAnswered applies one player's answer and asks the next. A
 // hand or board that emptied between the question and the answer
 // degrades to the life loss.
@@ -481,12 +477,14 @@ func tombUnlessAnswered(ctx *Context, kind tombUnless, r game.OptionPicked) erro
 		switch kind {
 		case tombVeils:
 			if p := ctx.Game.PlayerByIDForEffect(victim); p != nil && p.Hand != nil && p.Hand.Size() > 0 {
-				return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+				// Keyed (#4264): the controller and the players still to
+				// be asked ride the prompt as its Carry.
+				return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 					Player:   victim,
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Tomb of Annihilation — Veils of Fear: discard a card",
-				}, func(g *game.Game, _ game.PromptedDiscards) error { return next(g) })
+				}, tombVeilsDiscarded, append([]uuid.UUID{ctx.Controller()}, rest...))
 			}
 		default:
 			if len(ctx.Game.EffectSacrificeCandidatesForEffect(victim, tombSandfallSpec())) > 0 {

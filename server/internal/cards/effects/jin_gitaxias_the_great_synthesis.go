@@ -83,25 +83,28 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("The Great Synthesis", 1, "draw cards equal to the number of cards in your hand"),
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					n := 0
-					if p := g.PlayerByIDForEffect(item.Controller); p != nil && p.Hand != nil {
-						n = p.Hand.Size()
-					}
-					if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
-						return err
-					}
-					// "for as long as you control this Saga": with no
-					// duration (the Saga gone, or a new object) the effect
-					// never begins (CR 611.2b).
-					d, ok := DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)
-					if !ok {
-						return nil
-					}
-					return g.GrantHandSizeForEffect(item.Controller, game.HandSizeNoMaximum, 0,
-						"The Great Synthesis — no maximum hand size", item.SourceCardID, d)
-				}),
+				// The hand size waits for a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+				Do(
+					Instruction(func(ctx *Context) error {
+						n := 0
+						if p := ctx.Game.PlayerByIDForEffect(ctx.Item.Controller); p != nil && p.Hand != nil {
+							n = p.Hand.Size()
+						}
+						return DrawCards{Player: ctx.Item.Controller, N: n}.Apply(ctx)
+					}),
+					Instruction(func(ctx *Context) error {
+						item := ctx.Item
+						// "for as long as you control this Saga": with no
+						// duration (the Saga gone, or a new object) the effect
+						// never begins (CR 611.2b).
+						d, ok := DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)
+						if !ok {
+							return nil
+						}
+						return ctx.Game.GrantHandSizeForEffect(item.Controller, game.HandSizeNoMaximum, 0,
+							"The Great Synthesis — no maximum hand size", item.SourceCardID, d)
+					}),
+				)),
 			TriggerWithPurpose(ChapterTrigger(2, SagaChapterLabel("The Great Synthesis", 2, "return all non-Phyrexian creatures to their owners' hands"),
 				func(g *game.Game, item *game.StackItem) error {
 					return BounceAllMatching{Match: And(Creature(), Not(OfCreatureType("Phyrexian")))}.Apply(NewContext(g, item))
@@ -123,24 +126,40 @@ const jinGitaxiasOracleID = "b70c3adb-64ba-49ea-bcf6-6406a58cb453"
 // the controller's hand, then flickers the Saga. The flicker returns a
 // double-faced card front face up (CR 712.14a), so it needs no
 // "transformed" flag.
+//
+// #4250: the casts are made during the chapter's resolution, through the
+// resolution_cast prompt over the hand (CR 608.2g), each its own answer
+// until the player declines or none is left, and the flicker is the
+// prompt's continuation (greatSynthesisFlicker), run once it is answered.
+// So the Saga is exiled and returned AFTER the casts, as printed: the
+// returned Jin-Gitaxias does not see the free spells cast.
 func greatSynthesisChapterThree(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, id := range allHandCardIDs(g, item.Controller) {
-		c, ok := g.LookupCardForEffect(id)
-		if !ok || c.IsLand() {
-			continue
-		}
-		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
-			Player:      item.Controller,
-			AltCostKey:  greatSynthesisKey,
-			Cost:        "{0}",
-			CastOnly:    true,
-			Timing:      game.TimingFlash,
-			LapseOnPass: game.LapseStaysInHand,
-			Source:      item.SourceCardID,
-			SourceName:  "The Great Synthesis",
-			Label:       "The Great Synthesis — cast it without paying its mana cost",
-		})
-	}
-	return Flicker{Target: item.SourceCardID, Controller: item.Controller}.Apply(ctx)
+	offerFreeHandCastsOf(g, item.Controller, item.SourceCardID, "The Great Synthesis",
+		freeCastHandCandidates(g, item.Controller, nil),
+		func(id uuid.UUID) bool { return greatSynthesisGrant(g, item, id) }, greatSynthesisFlicker)
+	return nil
+}
+
+// greatSynthesisFlicker is chapter III's last sentence, "Exile this Saga,
+// then return it to the battlefield (front face up)", once the casts are
+// made. An on-disk key, never renamed.
+var greatSynthesisFlicker = game.RegisterChooseCardsThen("resolution-cast/great-synthesis-flicker",
+	func(g *game.Game, r game.CardsChosen) error {
+		item := &game.StackItem{Controller: r.Chooser, SourceCardID: r.Source}
+		return Flicker{Target: r.Source, Controller: r.Chooser}.Apply(NewContext(g, item))
+	})
+
+// greatSynthesisGrant stamps chapter III's free cast over one hand card.
+func greatSynthesisGrant(g *game.Game, item *game.StackItem, id uuid.UUID) bool {
+	return g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+		Player:      item.Controller,
+		AltCostKey:  greatSynthesisKey,
+		Cost:        "{0}",
+		CastOnly:    true,
+		Timing:      game.TimingFlash,
+		LapseOnPass: game.LapseStaysInHand,
+		Source:      item.SourceCardID,
+		SourceName:  "The Great Synthesis",
+		Label:       "The Great Synthesis — cast it without paying its mana cost",
+	})
 }

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -41,9 +43,33 @@ type MayPay struct {
 	// is an additional combat phase" (Hellkite Charger) — so the answer
 	// cannot arrive after that phase has ended.
 	InThisStep bool
+
+	// Then is OnPay as REGISTERED branches (PayUnlessBranches, #4264),
+	// and Carry the plain data it is handed: a prompt queued with one
+	// holds no closure, so a table waiting on the payer is a restore
+	// point. The key's pay branch runs only when the mana was really
+	// paid. Set Then or OnPay, not both.
+	Then  game.PayUnlessElse
+	Carry []uuid.UUID
+	// CarryObjects are objects, with the epoch each had, the card names as
+	// the offer is made (a permanent it will act on): a branch is handed
+	// them as PayUnlessAnswer.Objects and can tell the object from a new
+	// one the same card has become (CR 400.7).
+	CarryObjects []game.ObjectRef
 }
 
 func (p MayPay) Apply(ctx *Context) error {
+	if p.Then.Key() != "" {
+		if p.OnPay != nil {
+			return fmt.Errorf("%w: MayPay %q sets both Then and OnPay", game.ErrInvalidParam, p.Then.Key())
+		}
+		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+			Then: p.Then, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+			InThisStep: p.InThisStep, MayPay: true, Asked: game.NewAskedItem(ctx.Item),
+			Objects: p.CarryObjects,
+		})
+	}
 	item := ctx.Item
 	onPay := p.OnPay
 	then := func(g *game.Game) error {
@@ -57,3 +83,13 @@ func (p MayPay) Apply(ctx *Context) error {
 	}
 	return ctx.Game.QueueMayPayForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
 }
+
+// mayPayDrawACard is "If you do, draw a card" for every may-pay whose paid
+// half is only that (Dawn of Hope, Key to the City, Leaf-Crowned Visionary,
+// Lifecrafter's Bestiary, Mentor of the Meek, Mind's Eye, Seer's Sundial),
+// keyed (#4264): the controller rides the asking item, so a table waiting
+// on the payer is a restore point.
+var mayPayDrawACard = PayUnlessBranches("pay-unless/draw-a-card",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+	}, nil)

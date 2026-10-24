@@ -107,6 +107,40 @@ type PutInLibrarySpec struct {
 	// placed (or skipped), including immediately when there was nothing
 	// to ask. Runs with g.mu held; must capture only scalars.
 	Then func(g *Game) error
+
+	// ThenTail is Then as data (#4301): a registered tail (RegisterTail)
+	// run in the same places, so the ordering prompt carries no closure
+	// and a table waiting on it is a restore point. Set Then or ThenTail,
+	// not both; Then wins.
+	ThenTail KeyedTail
+}
+
+// libraryOrderSnapshot is a libraryOrderKeyed on disk.
+type libraryOrderSnapshot struct {
+	From    ZoneKind           `json:"from,omitempty"`
+	Depth   int                `json:"depth,omitempty"`
+	Counter bool               `json:"counter,omitempty"`
+	Then    *keyedTailSnapshot `json:"then"`
+}
+
+func snapshotLibraryOrder(k *libraryOrderKeyed) *libraryOrderSnapshot {
+	return &libraryOrderSnapshot{From: k.how.from, Depth: k.how.depth, Counter: k.how.counter, Then: snapshotKeyedTail(k.then)}
+}
+
+func restoreLibraryOrder(s *libraryOrderSnapshot) *libraryOrderKeyed {
+	return &libraryOrderKeyed{
+		how:  libraryOrderHow{from: s.From, depth: s.Depth, counter: s.Counter},
+		then: restoreKeyedTail(s.Then),
+	}
+}
+
+// libraryOrderKeyed is a PendingChoicePutInLibrary's continuation as data
+// (#4301): how the cards move once the answer is in, and the registered
+// tail that is the rest of the effect. The chooser is the prompt's.
+// Written to a restore point (pendingChoiceSnapshot.LibraryOrder).
+type libraryOrderKeyed struct {
+	how  libraryOrderHow
+	then KeyedTail
 }
 
 // PutInLibraryInChosenOrderThenForEffect raises the ordering prompt for
@@ -139,10 +173,10 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 	}
 	how := libraryOrderHow{from: spec.From, depth: spec.TopDepth, counter: spec.Counter}
 	cards := g.libraryOrderLiveCardsLocked(how, spec.Cards)
-	then := spec.Then
+	then, tail := spec.Then, spec.ThenTail
 	finish := func(g *Game) error {
 		if then == nil {
-			return nil
+			return g.runKeyedTailLocked(tail, nil, 0)
 		}
 		return then(g)
 	}
@@ -173,7 +207,7 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 	if reason == "" {
 		reason = defaultPutInLibraryReason(placement)
 	}
-	id := g.QueueChoiceForEffect(PendingChoice{
+	prompt := PendingChoice{
 		Kind:             PendingChoicePutInLibrary,
 		Chooser:          chooser,
 		FromPlayer:       chooser,
@@ -184,10 +218,16 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		LibraryPlacement: placement,
 		LibraryTopCount:  topCount,
 		LibraryTopDepth:  spec.TopDepth,
-		libraryOrderResume: func(g *Game, top, bottom []uuid.UUID) error {
+	}
+	if then == nil && !tail.IsZero() {
+		// #4301: the continuation as data, so the prompt is a restore point.
+		prompt.libraryOrderKeyed = &libraryOrderKeyed{how: how, then: copyKeyedTail(tail)}
+	} else {
+		prompt.libraryOrderResume = func(g *Game, top, bottom []uuid.UUID) error {
 			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
-		},
-	})
+		}
+	}
+	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {
 		// The chooser is not seated (#864). Nobody can answer, so
 		// nothing is placed — but the rest of the effect still runs.
@@ -292,7 +332,17 @@ func (g *Game) ResolvePutInLibrary(choiceID, chooserID uuid.UUID, bottom, topOrd
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
-	if resume := choice.libraryOrderResume; resume != nil {
+	resume := choice.libraryOrderResume
+	if k := choice.libraryOrderKeyed; resume == nil && k != nil {
+		// #4301: the keyed form, rebuilt from its data.
+		chooser, how, tail := choice.Chooser, k.how, k.then
+		resume = func(g *Game, top, bottom []uuid.UUID) error {
+			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, func(g *Game) error {
+				return g.runKeyedTailLocked(tail, nil, 0)
+			})
+		}
+	}
+	if resume != nil {
 		// Copies, so a replay of the same continuation after an undo
 		// never sees this call's slices.
 		top := append([]uuid.UUID(nil), topOrder...)

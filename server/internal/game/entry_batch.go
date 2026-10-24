@@ -97,7 +97,18 @@ type entryBatch struct {
 	// then is the caller's continuation, run exactly once when the
 	// batch reaches its end. Cleared as it runs.
 	then func(g *Game, entered []uuid.UUID) error
-	opts ZoneEntryOptions
+	// keyed is `then` as data (#4253 slice 3): a registered tail, told
+	// the permanents that entered as TailOutcome.IDs. Set one or neither.
+	keyed KeyedTail
+	opts  ZoneEntryOptions
+	// done and landed are set as the batch finishes: what entered. A
+	// synchronous door reads them on its next line instead of handing
+	// the batch a closure over a local (putOntoBattlefieldFromZoneLocked),
+	// so a batch paused on a question holds no closure. A batch that
+	// paused returns before it is done, and the door reports nothing, as
+	// it always did.
+	done   bool
+	landed []uuid.UUID
 }
 
 // entryBatchMember is one card of an entryBatch.
@@ -195,6 +206,14 @@ func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, 
 }
 
 func (g *Game) startPreparedEntryBatchLocked(cards []BatchEntry, b *entryBatch) error {
+	// #1997: a batch begun inside PutByEnteringPlayerForEffect, or a
+	// manifest or cloak (the player who manifests puts the card, and it
+	// enters under them, CR 701.40a, CR 701.58a), is put by the player
+	// each card enters under. Captured now: a later member may land
+	// after a pause, when the scope has ended.
+	if g.putByEntering > 0 || b.opts.FaceDown == FaceDownManifested || b.opts.FaceDown == FaceDownCloaked {
+		b.opts.PutByEnteringPlayer = true
+	}
 	opts := b.opts
 	refuse := func(err error) error {
 		if tailErr := g.finishEntryBatchThenLocked(b, nil); tailErr != nil {
@@ -320,6 +339,8 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 			// replacement effect inspecting the entry sees it.
 			FaceDown:       b.opts.FaceDown,
 			FaceDownListed: b.opts.FaceDownListed,
+			// #1997: who put it, for Arboria.
+			putByEntering: b.opts.PutByEnteringPlayer,
 			// #1322: the batch can be resumed, because what it still
 			// owes — the other cards' windows, the landing, the
 			// announcement and the caller's continuation — rides on
@@ -386,6 +407,10 @@ func (g *Game) recordEntryBatchMemberLocked(b *entryBatch, i int, out *Replaceme
 		// back to it; nothing may re-enter the batch through it.
 		out.entryTail.batch = nil
 	}
+	// #4193: the putting effect's per-card "if it's a <type>" counters,
+	// judged now that this member's window has settled (so after any
+	// copy it was told to enter as) and before anything lands.
+	g.seedEntryCountersIfTypeLocked(b.opts.EntersWithCountersIfType, out)
 	b.members[i].out = out
 }
 
@@ -525,11 +550,14 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) error {
-	then := b.then
-	b.then = nil
+	then, keyed := b.then, b.keyed
+	b.then, b.keyed = nil, KeyedTail{}
+	b.done, b.landed = true, entered
 	var thenErr error
 	if then != nil {
 		thenErr = then(g, entered)
+	} else {
+		thenErr = g.runKeyedTailLocked(keyed, entered, 0)
 	}
 	if b.firstErr != nil {
 		return b.firstErr

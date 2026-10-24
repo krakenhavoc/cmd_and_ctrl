@@ -2,6 +2,8 @@ package effects
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -20,27 +22,44 @@ func init() {
 				return err
 			}
 			controller, source := item.Controller, item.SourceCardID
-			apply := func(damage, treasures int) func(*game.Game) error {
-				return func(g *game.Game) error {
-					var targets []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.IsCreature() {
-							targets = append(targets, c.InstanceID)
-						}
-					}
-					return g.DealDamageEachThenForEffect(source, targets, damage, func(g *game.Game, _ int) error { return treasureTokens(g, controller, treasures) })
-				}
-			}
 			if rolls[0] == rolls[1] {
-				return apply(rolls[0], rolls[1])(ctx.Game)
+				return recklessEndeavorApply(ctx.Game, source, controller, rolls[0], rolls[1])
 			}
-			ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
-				Chooser: controller, Source: source, Question: "Reckless Endeavor — choose the damage result",
-				AcceptLabel:  fmt.Sprintf("%d damage, %d Treasures", rolls[0], rolls[1]),
-				DeclineLabel: fmt.Sprintf("%d damage, %d Treasures", rolls[1], rolls[0]),
-				OnAccept:     apply(rolls[0], rolls[1]), OnDecline: apply(rolls[1], rolls[0]),
-			})
-			return nil
+			// Keyed (#4298): the two rolls ride the prompt as its word.
+			return MayChoice{
+				Question: "Reckless Endeavor — choose the damage result",
+				YesLabel: fmt.Sprintf("%d damage, %d Treasures", rolls[0], rolls[1]),
+				NoLabel:  fmt.Sprintf("%d damage, %d Treasures", rolls[1], rolls[0]),
+				Then:     recklessEndeavorChoice,
+				Word:     strconv.Itoa(rolls[0]) + " " + strconv.Itoa(rolls[1]),
+			}.Apply(ctx)
 		},
 	})
+}
+
+// recklessEndeavorChoice is "choose one result": a yes is the first roll as
+// the damage and the second as the Treasures, a no the other way round.
+var recklessEndeavorChoice = MayAnswer("confirm/reckless-endeavor-result", func(ctx *Context, r game.ConfirmAnswer) error {
+	first, second, ok := strings.Cut(r.Word, " ")
+	a, errA := strconv.Atoi(first)
+	b, errB := strconv.Atoi(second)
+	if !ok || errA != nil || errB != nil {
+		return nil
+	}
+	if !r.Accepted {
+		a, b = b, a
+	}
+	return recklessEndeavorApply(ctx.Game, r.Source, ctx.Controller(), a, b)
+})
+
+// recklessEndeavorApply is the rest of the card: damage equal to the chosen
+// result to each creature, then Treasures equal to the other.
+func recklessEndeavorApply(g *game.Game, source, controller uuid.UUID, damage, treasures int) error {
+	var targets []uuid.UUID
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.IsCreature() {
+			targets = append(targets, c.InstanceID)
+		}
+	}
+	return g.DealDamageEachThenForEffect(source, targets, damage, func(g *game.Game, _ int) error { return treasureTokens(g, controller, treasures) })
 }

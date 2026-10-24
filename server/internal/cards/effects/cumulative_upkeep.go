@@ -100,39 +100,51 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 			}
 			owed := each.times(age, noun, plural)
 			cost, action := owed.prompt()
-			return UpkeepPayUnless{
-				Chooser:   ctx.Controller(),
-				Cost:      cost,
-				Action:    action,
-				Question:  label,
-				OnDecline: func(ctx *Context) error { return SacrificePermanent{Target: source}.Apply(ctx) },
-				OnPay:     flipCoinsOnPay(label, owed, source),
-			}.Apply(ctx)
+			prompt := UpkeepPayUnless{
+				Chooser:  ctx.Controller(),
+				Cost:     cost,
+				Action:   action,
+				Question: label,
+			}
+			if owed.Flips > 0 {
+				// The flips are the payment, queued once it is made
+				// (cumulativeUpkeepFlipCoins).
+				prompt.Else = cumulativeUpkeepFlipCoins
+			} else {
+				// #4264: keyed, so a table waiting on the payer is a
+				// restore point.
+				prompt.Else = upkeepSacrificeSource
+			}
+			return prompt.Apply(ctx)
 		})
 	})
 	t.Keyword = game.KeywordCumulativeUpkeep
 	return t
 }
 
-// flipCoinsOnPay is the payment of "Cumulative upkeep—Flip a coin" (#4063,
-// Karplusan Minotaur): saying yes costs nothing to say, and the flips are
-// the payment, queued once it is made, under one call for the age counters'
-// worth (CR 705.2). Nil for every other payment, which has nothing to do
-// once it is paid.
-func flipCoinsOnPay(label string, owed UpkeepPayment, source uuid.UUID) func(*Context) error {
-	if owed.Flips <= 0 {
-		return nil
-	}
-	return func(ctx *Context) error {
+// cumulativeUpkeepFlipCoins is the two answers of "Cumulative upkeep—Flip
+// a coin" (#4063, Karplusan Minotaur), keyed (#4264): saying yes costs
+// nothing to say, and the flips are the payment, queued once it is made,
+// under one call for the age counters' worth (CR 705.2); a decline
+// sacrifices the permanent. A coin per age counter is the Minotaur's
+// payment; the coins and the words are worked out from the counters when
+// the answer arrives, which is what the prompt was queued with, because the
+// upkeep holds the table until it is answered. The question is the asking
+// trigger's label.
+var cumulativeUpkeepFlipCoins = PayUnlessBranches("pay-unless/cumulative-upkeep-flip-coins",
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		owed := FlipCoinsPayment(1).times(counterCountOn(ctx.Game, r.Source, game.CounterAge), "", "")
 		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
 			Flipper:  ctx.Controller(),
-			Source:   source,
-			Question: label + ": " + strings.ToLower(owed.Words[:1]) + owed.Words[1:],
+			Source:   r.Source,
+			Question: ctx.Item.Label + ": " + strings.ToLower(owed.Words[:1]) + owed.Words[1:],
 			Coins:    owed.Flips,
 		})
 		return nil
-	}
-}
+	},
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return SacrificePermanent{Target: r.Source}.Apply(ctx)
+	})
 
 // CumulativeUpkeepGrant is the ADR 0093 bundle for a QUOTED cumulative
 // upkeep that another effect gives a permanent (#3869): Mana Chains'

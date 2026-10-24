@@ -119,6 +119,20 @@ type AlternativeCost struct {
 	// permissive posture decide only the mana (ADR 0129 §4).
 	Energy int
 
+	// SpendOnlySources is "Spend only mana produced by <sources> to cast
+	// it this way" (Security Rhox's Treasures, #2575): the mana paid
+	// while this cost is claimed must come from one of these kinds of
+	// source. The card-wide Spec.SpendOnlySources (#2556, ADR 0040's
+	// 2026-10-07 amendment) restricts every way of casting the card;
+	// this restricts only this one. ManaSpendForCastParams reads it into
+	// the cast's ManaSpendContext.SourceOnly, so the pool
+	// (allowsToken), the auto-tapper (excludeNonQualifyingSourcesLocked),
+	// internal/legal's probe and the preview hold the payment to it
+	// exactly as they hold the card-wide one. Catalog data on a printed
+	// offer; effects refuses it beside a card-wide restriction, since one
+	// payment has one SourceOnly.
+	SpendOnlySources ManaSourceKinds
+
 	// ExileFromHand is "exile a blue card from your hand" (Force of
 	// Will) or "exile a white card from your hand" (Solitude's evoke
 	// cost), as a spec matched against the caster's hand. The caster
@@ -1192,11 +1206,15 @@ func (g *Game) payAlternativeCostLocked(playerID, castID uuid.UUID, alt *Alterna
 	// payment half way through it. #1420: MustSettleNow extends that
 	// indivisible-payment rule to CR 616 ordering prompts; a spell may
 	// not sit on the stack while the card paying for it is still in its
-	// old zone.
+	// old zone. #4281: every move here is a cost of the spell being cast
+	// (escape's exile, a pitch, a return), so it names that cost.
 	move := func(id uuid.UUID, dst ZoneKind) error {
 		_, err := g.routeCardToZoneLocked(zoneRoute{
 			CardID:          id,
 			Dst:             dst,
+			Actor:           playerID,
+			Source:          castID,
+			Cause:           spellCostCause(playerID, castID),
 			MustSettleNow:   true,
 			commanderAnswer: commanderAnswerFor(answers, id),
 		})

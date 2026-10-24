@@ -178,6 +178,20 @@ type Card struct {
 	// the ~78% of real cards that print no keyword at all.
 	Keywords []string
 
+	// AttractionLights are the numbers lit up on this printing of an
+	// Attraction (CR 717.1), ascending, from Scryfall's
+	// attraction_lights. Printing data like the image: two printings of
+	// one Attraction can light different numbers, so the deck's chosen
+	// printing decides them (ADR 0207 §3). Nil on every other card.
+	AttractionLights []int
+
+	// Stickers are the stickers on this object (CR 123, ADR 0208), in
+	// the order they were put on. Plain data the layer pass reads
+	// (sticker.go). Kept on a move between public zones and dropped on
+	// a move to a hidden zone (CR 123.5, MoveCard); never part of the
+	// copiable values (CR 123.1), so a copy or a token never has them.
+	Stickers []PlacedSticker
+
 	// GrantedAbilities are the catalog keys of ability bundles a
 	// CR 707.9a copy effect granted to this object — Phantasmal
 	// Image's "and it has 'when this creature becomes the target of a
@@ -539,6 +553,12 @@ type Card struct {
 	// other card. See meld.go.
 	Meld *MeldPrint
 
+	// StickerSheet is set only on the pseudo-card the deck importer
+	// hands the game for one sticker sheet (ADR 0208 §2): seatDeckCard
+	// turns it into Player.StickerSheetPool and the card itself goes
+	// nowhere. Nil on every card in any zone.
+	StickerSheet *StickerSheet
+
 	// MeldedFrom is the two cards a MELDED permanent is (CR 712.4a): the
 	// object on the battlefield is one permanent with the combined back
 	// face's characteristics, and these are the cards that represent
@@ -781,6 +801,22 @@ type Card struct {
 	// ResolveCardNameChoice and by nothing else. Added for #1210; see
 	// choose_card_name.go.
 	ChosenName string
+
+	// ChosenSecondName is the SECOND card name chosen for this
+	// permanent, by another player: Null Chamber's "you and an opponent
+	// each choose a card name" (#1997, ADR 0109 amendment 2026-10-23),
+	// whose opponent's answer lands here while its controller's lands in
+	// ChosenName. Empty is "no second name": every other card, and the
+	// window before the opponent answers.
+	//
+	// Exactly ChosenName's lifecycle, as ChosenSecondPlayer is
+	// ChosenPlayer's: per INSTANCE, carried by the snapshot and by clone,
+	// cleared when the permanent leaves the battlefield (CR 400.7), and
+	// not a copiable value (CR 707.2). Free text, compared with
+	// CardNameMatches or SpellOrLandHasName, never with ==. Read it with
+	// ChosenNamesOf; written by ResolveCardNameChoice for a prompt whose
+	// SecondName is set, and by nothing else.
+	ChosenSecondName string
 
 	// ChosenOption is the NAMED OPTION chosen for this permanent by an
 	// "as this enters, choose <A> or <B>" instruction (CR 614.12) —
@@ -1179,6 +1215,18 @@ type Card struct {
 	// the snapshot.
 	EncodedOn PermissionCardRef
 
+	// CreatedWith is the link from a TOKEN to the permanent OBJECT
+	// {instance, epoch} whose ability created it (#1997, CR 607.1d):
+	// Tombstone Stairwell's "destroy all tokens created with this
+	// enchantment". Stamped as the token is minted, from
+	// TokenGroup.CreatedWith, so only a creation that asked for the link
+	// carries it, and a token COPY of a linked token is not linked (the
+	// group's zero value overwrites whatever the template carried). The
+	// epoch pins the incarnation: a Stairwell that leaves and returns is
+	// a new object with no claim on the old one's tokens (CR 400.7).
+	// Carried by the snapshot.
+	CreatedWith PermissionCardRef
+
 	// PutInGraveyardFrom is the zone the card was put into THIS
 	// graveyard from — the arrival record "put into your graveyard from
 	// anywhere other than the battlefield this turn" reads (Banon, the
@@ -1390,6 +1438,17 @@ type Card struct {
 	// the card after an effect brings it into a hand. It grants
 	// nothing.
 	IsSideboard bool
+
+	// AstrotoriumBack marks a card with the Astrotorium card back (CR
+	// 717.1): an Attraction card. It is a fact about the physical card,
+	// stamped by the importer from the printed type line, so it holds
+	// in every zone and whatever an effect does to the object's types,
+	// and it is not copiable: a token copy of an Attraction is not a
+	// card and has no back. It seats the card in its owner's Attraction
+	// deck (ADR 0207 §2) and drives the CR 717.6 junkyard replacement
+	// (attractions.go). Read through HasAstrotoriumBack, which also
+	// refuses a token.
+	AstrotoriumBack bool
 
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a
@@ -1787,6 +1846,23 @@ type Card struct {
 	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
 	// for alignment.
 	EnchantSwapped bool
+
+	// ReturnedAura is the Aura form of a card that "returns to the
+	// battlefield. It's an Aura enchantment with enchant <clause> and
+	// '<ability>'. It loses all other abilities" (Harold and Bob, First
+	// Numens; Bronzehide Lion's wording; ADR 0154's 2026-10-23
+	// amendment, returned_aura.go). Set as the entry lands, before the
+	// CR 303.4f host is attached and before EventETB, by
+	// ReturnFromGraveyardAsAuraForEffect. The card's own statics read it
+	// (effects.ReturnedAuraForm): the layer-4 type set, the layer-6
+	// removal and the grant to the enchanted permanent. The enchant
+	// clause is CardDef.ReturnedAura, read first by attachmentLegalLocked
+	// when this is set.
+	//
+	// Cleared at both CR 400.7 sites on every zone change, so a card that
+	// dies as an Aura comes back as the creature card it prints. Not a
+	// copiable value (CR 707.2). Carried by clone and the snapshot.
+	ReturnedAura bool
 
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a
 	// battlefield host is judged by it (#3159; documented beside

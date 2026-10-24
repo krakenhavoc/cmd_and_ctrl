@@ -49,12 +49,18 @@ func init() {
 					// the ability resolves (CR 612.2, 608.2h; #3984).
 					eldrazi := ctx.TextSubtype("Eldrazi")
 					return PlayFromOutside{
-						Name:   "Spawnsire of Ulamog",
+						Pick:   spawnsireOfUlamogCast,
+						Word:   eldrazi,
 						Clause: "any number of Eldrazi cards",
-						Match:  func(c game.Card) bool { return c.HasSubtype(eldrazi) && !c.IsLand() },
 					}.Apply(ctx)
 				},
 			},
 		},
 	})
 }
+
+// spawnsireOfUlamogCast is the {20} ability's keyed pick (#4256). The
+// subtype is the card's word, which a text-changing effect may have
+// changed, so it rides on the prompt.
+var spawnsireOfUlamogCast = registerPlayFromOutside("choose-cards/spawnsire-of-ulamog-cast", "Spawnsire of Ulamog",
+	func(c game.Card, eldrazi string) bool { return c.HasSubtype(eldrazi) && !c.IsLand() })

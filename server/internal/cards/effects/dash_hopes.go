@@ -23,7 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
 		Triggered: []game.TriggeredAbility{
-			anyPlayerMayCounterThisSpell("Dash Hopes", "pay 5 life", LifePayment(5), nil),
+			anyPlayerMayCounterThisSpell("Dash Hopes", "pay 5 life", LifePayment(5), anyPlayerCounterThisSpell),
 		},
 		OnResolve: counterTheTargetSpell,
 	})

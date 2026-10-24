@@ -51,6 +51,7 @@ func init() {
 			},
 			{
 				Label:   "{2}, Sacrifice two artifacts: Target creature gets -4/-4 until end of turn",
+				Purpose: ForTargets(HarmUntilEOT(0, -4, -4)),
 				Cost:    cost,
 				Targets: TargetCreature("target creature"),
 				Effect: func(g *game.Game, item *game.StackItem) error {

@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3501a839-eef5-44e4-8637-b5754780454e",
 		Name:         "Expedite",
+		Purpose:      game.Purpose{Draws: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "haste"))},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

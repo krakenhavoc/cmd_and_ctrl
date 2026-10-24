@@ -194,12 +194,62 @@ const MonolithDeckID = "monolith-battle"
 // answers-battle`. Synthetic, so it needs no Scryfall dump.
 const AnswersDeckID = "answers-battle"
 
+// TricksDeckID is the arena deck id of TricksBattleDeck: `--decks
+// tricks-battle`. Synthetic, so it needs no Scryfall dump.
+const TricksDeckID = "tricks-battle"
+
 // IsSynthetic reports whether a deck id is dealt by this package with no
 // Scryfall dump behind it: the empty id (BattleDeck), exert-battle,
-// monolith-battle and answers-battle.
+// monolith-battle, answers-battle and tricks-battle.
 func IsSynthetic(id string) bool {
-	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID
+	return id == "" || id == ExertDeckID || id == MonolithDeckID || id == AnswersDeckID || id == TricksDeckID
 }
+
+// TricksBattleDeck is BattleDeck with the changes until end of turn #4312
+// prices in it, for its arena measurement: four Brute Force ("target
+// creature gets +3/+3 until end of turn"), three Dismember (-5/-5), four
+// Mother of Runes and three Center Soul (protection from the colour of
+// your choice), and a Rogue's Passage ("can't be blocked this turn"),
+// with seven Plains for the white. No curated deck holds a pump spell, and
+// only two hold Mother of Runes. Dealt by oracle ID so the catalog gives
+// each its effect; the printed costs and stats are the cards' own.
+func TricksBattleDeck(owner uuid.UUID) []game.Card {
+	deck := BattleDeck(owner)
+	out := make([]game.Card, 0, len(deck))
+	drop := map[string]int{"Bear": 8, "Ogre": 4, "Drake": 2, "Mountain": 8}
+	for _, c := range deck {
+		if drop[c.Name] > 0 {
+			drop[c.Name]--
+			continue
+		}
+		out = append(out, c)
+	}
+	add := func(n int, name, oracle, typeLine, cost string, colors []string, power, toughness int) {
+		for i := 0; i < n; i++ {
+			c := game.NewCard(name, owner)
+			c.OracleID, c.TypeLine, c.ManaCost = oracle, typeLine, cost
+			c.Colors = colors
+			c.Power, c.Toughness = power, toughness
+			out = append(out, c)
+		}
+	}
+	add(4, "Brute Force", oracleBruteForce, "Instant", "{R}", []string{"R"}, 0, 0)
+	add(3, "Dismember", oracleDismember, "Instant", "{1}{B/P}{B/P}", []string{"B"}, 0, 0)
+	add(4, "Mother of Runes", oracleMotherOfRunes, "Creature — Human Cleric", "{W}", []string{"W"}, 1, 1)
+	add(3, "Center Soul", oracleCenterSoul, "Instant", "{1}{W}", []string{"W"}, 0, 0)
+	add(7, "Plains", "", "Basic Land — Plains", "", nil, 0, 0)
+	add(1, "Rogue's Passage", oracleRoguesPassage, "Land", "", nil, 0, 0)
+	return out
+}
+
+// The tricks deck's catalog keys.
+const (
+	oracleBruteForce    = "9880ba09-d5b8-4675-bfb4-2161d86d2d41"
+	oracleDismember     = "fd74f8eb-0253-42dd-8277-186d4934da38"
+	oracleMotherOfRunes = "60433b48-d27f-413c-905c-43839b1943f1"
+	oracleCenterSoul    = "686b44ec-3446-4e1f-a15f-9d8557db6d70"
+	oracleRoguesPassage = "f29dc596-2121-4421-8463-15f6c2e8b9b3"
+)
 
 // AnswersBattleDeck is BattleDeck with ten Basalt Gargoyles and eight
 // Selfless Spirits in it, for #2939's arena checks of ADR 0142's answer

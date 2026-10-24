@@ -74,8 +74,12 @@ func interceptorMayReturn(g *game.Game, item *game.StackItem) error {
 		Cost:       "{2}{B}",
 		Question:   "Interceptor, Shadow's Hound — pay {2}{B}: return it from your graveyard to the battlefield tapped and attacking?",
 		InThisStep: true,
-		OnPay: func(ctx *Context) error {
-			return putAttackingYourChoice(ctx, card, game.ZoneGraveyard, "Interceptor, Shadow's Hound")
-		},
+		Then:       interceptorPaid,
 	}.Apply(NewContext(g, item))
 }
+
+// interceptorPaid is the paid half, keyed (#4264).
+var interceptorPaid = PayUnlessBranches("pay-unless/interceptor-shadows-hound-return",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return putAttackingYourChoice(ctx, ctx.Source(), game.ZoneGraveyard, "Interceptor, Shadow's Hound")
+	}, nil)

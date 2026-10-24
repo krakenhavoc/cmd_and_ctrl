@@ -53,6 +53,14 @@ const (
 	rngStreamRandomOrder = "random_order"
 	rngStreamRoll        = "roll"
 	rngStreamFlip        = "flip"
+	// rngStreamAttractionShuffle shuffles an Attraction deck before the
+	// game begins (CR 103.3a, ADR 0207 §2), apart from the library's
+	// stream so a deck with Attractions draws the same library order.
+	rngStreamAttractionShuffle = "attraction_shuffle"
+	// rngStreamStickerSheets chooses the three sticker sheets a player
+	// has access to (CR 103.2d, ADR 0208 §2), apart from the library's
+	// stream for the same reason.
+	rngStreamStickerSheets = "sticker_sheets"
 	// rngStreamTable is ADR 0121 §5's table roll. It is NOT drawn
 	// through randForLocked: its counter is Game.tableRollNext, per
 	// game and never reset, and it never touches rngCounters.

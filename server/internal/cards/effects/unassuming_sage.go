@@ -25,11 +25,15 @@ func init() {
 						Chooser:  item.Controller,
 						Cost:     "{2}",
 						Question: "Unassuming Sage — pay {2} to create a Sorcerer Role token attached to it?",
-						OnPay: func(ctx *Context) error {
-							return createRoleOnThis(RoleSorcerer)(ctx.Game, ctx.Item)
-						},
+						Then:     unassumingSagePaid,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// unassumingSagePaid is the paid half, keyed (#4264).
+var unassumingSagePaid = PayUnlessBranches("pay-unless/unassuming-sage-sorcerer-role",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		return createRoleOnThis(RoleSorcerer)(ctx.Game, ctx.Item)
+	}, nil)

@@ -87,9 +87,8 @@ func init() {
 					YesLabel: "Pay 1 life",
 					NoLabel:  "Decline",
 					LifeCost: gixLifePayment,
-					OnYes: func(ctx *Context) error {
-						return payLifeThenDrawFor(ctx, payer, gixLifePayment, 1)
-					},
+					Then:     mayPayLifeDraw,
+					Word:     "1",
 				}.Apply(NewContext(g, item))
 			},
 		}},

@@ -1,6 +1,9 @@
 <script lang="ts">
   // PileBar renders the three pile controls in the player rail:
   // LIBRARY / GRAVEYARD on top, EXILE below. LIBRARY shows a card back.
+  // ADR 0207 adds two more for a seat playing with Attractions, each
+  // only while it holds a card: the face-down Attraction deck (a count)
+  // and the face-up junkyard (opens the zone browser).
   // #2962: clicking your own library opens a small menu (Draw a card,
   // Shuffle library) rather than drawing at once, because a stray click
   // while reaching for the pile drew a card nobody meant to draw.
@@ -34,6 +37,7 @@
   import type { CastSourceZone } from "../../targeting";
   import { heldPlayableCount } from "../../exileGrants";
   import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
+  import { L } from "../../labels";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -77,6 +81,24 @@
   // #2559: on another seat's pile, the exiled cards THAT seat may play
   // (Memory Vessel, Rocco). The viewer's own are the "ready" count.
   const exileHeld = $derived(isSelf ? 0 : heldPlayableCount(exile.cards, seat.id));
+
+  // ADR 0207 (#2121): a seat playing with Attractions has two more piles
+  // in the command zone, each drawn only while it holds a card. The
+  // Attraction deck is face down, so it is a count and a back, and not a
+  // button anyone can open; the junkyard is face up and opens the zone
+  // browser like the graveyard.
+  const attractionDeck = $derived<ZoneView>({
+    kind: "attraction_deck",
+    owner: seat.id,
+    count: seat.attraction_deck_count ?? 0,
+    cards: [],
+  });
+  const junkyard = $derived<ZoneView>({
+    kind: "junkyard",
+    owner: seat.id,
+    count: seat.junkyard?.length ?? 0,
+    cards: seat.junkyard ?? [],
+  });
 
   // S42 / CR 401.5: "you may look at the top card of your library any
   // time" and "play with the top card of your library revealed" both
@@ -167,6 +189,9 @@
   }
   function openExile(): void {
     openZoneBrowser({ zoneKind: "exile", ownerID: seat.id, ownerName: seat.name });
+  }
+  function openJunkyard(): void {
+    openZoneBrowser({ zoneKind: "junkyard", ownerID: seat.id, ownerName: seat.name });
   }
 </script>
 
@@ -269,6 +294,27 @@
     readyCount={exileReady}
     note={exileHeld > 0 ? `${exileHeld} theirs to play` : undefined}
   />
+  {#if attractionDeck.count > 0}
+    <PileButton
+      label={L.attractionDeck}
+      pile="attraction-deck"
+      owner={seat.id}
+      zone={attractionDeck}
+      faceDown
+      disabled
+      hint="face down in the command zone; opening an Attraction takes the top card"
+    />
+  {/if}
+  {#if junkyard.count > 0}
+    <PileButton
+      label={L.junkyard}
+      pile="junkyard"
+      owner={seat.id}
+      zone={junkyard}
+      onClick={openJunkyard}
+      hint="Attractions the rules put into the command zone"
+    />
+  {/if}
 </div>
 
 <style>

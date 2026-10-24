@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -18,8 +16,9 @@ import (
 // Bargain is the shared optional cost (g2Bargain, exile_if_dies_g2.go). The
 // search exiles face down, so the table sees a card back. Bargained,
 // the card is offered as a free cast capped at mana value 4
-// (Game.CastExiledFreeOrToHandForEffect): declined, passed on or over
-// the cap, it goes into its owner's hand. Not bargained, it goes
+// (Game.CastExiledFreeOrToHandForEffect), cast inside the spell's
+// resolution (CR 608.2g, #4250): declined or over the cap, it goes into
+// its owner's hand. Not bargained, it goes
 // straight to the hand, a Diabolic Tutor that hides the card on the
 // way.
 //
@@ -32,28 +31,32 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{g2Bargain()},
 		Purpose:       game.Purpose{Tutors: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller, source := ctx.Controller(), ctx.Source()
-			bargained := g2WasBargained(ctx)
+			maxMV := -1
+			if g2WasBargained(ctx) {
+				maxMV = 4
+			}
 			return SearchLibrary{
-				Player:   controller,
+				Player:   ctx.Controller(),
 				Limit:    1,
 				Dest:     game.ZoneExile,
 				FaceDown: game.FaceDownPermitted,
 				Shuffle:  true,
 				Reason:   "Beseech the Mirror — search your library for a card",
-				Then: func(g *game.Game, found []uuid.UUID) error {
-					for _, id := range found {
-						maxMV := -1
-						if bargained {
-							maxMV = 4
-						}
-						if err := g.CastExiledFreeOrToHandForEffect(controller, source, id, maxMV); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				// #4253 slice 4: the mana value cap rides the tail.
+				ThenTail: ctx.TailN(beseechTheMirrorCast, maxMV),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// beseechTheMirrorCast is "you may cast it without paying its mana cost if
+// its mana value is Tail.N or less (any, when N is negative); put it into
+// your hand if you don't". An on-disk key.
+var beseechTheMirrorCast = game.RegisterTail("beseech-the-mirror/cast-or-to-hand", func(g *game.Game, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		if err := g.CastExiledFreeOrToHandForEffect(o.Tail.Player, o.Tail.Source, id, o.Tail.N); err != nil {
+			return err
+		}
+	}
+	return nil
+})

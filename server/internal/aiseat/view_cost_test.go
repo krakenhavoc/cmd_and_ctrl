@@ -71,7 +71,7 @@ func TestASeatWithNoDecisionBuildsNoView(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	p := &orderCounter{}
-	r := aiseat.Start(ctx, room, idle, p, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, idle, p, aiseat.Config{}, nil, testLogger())
 	waitFor(t, "the idle seat's runner to park", r.Idle)
 
 	if n := p.orders.Load(); n != 0 {
@@ -99,7 +99,7 @@ func TestASeatWithADecisionStillOrdersItsMoves(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	p := &orderCounter{}
-	r := aiseat.Start(ctx, room, holder, p, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, holder, p, aiseat.Config{}, nil, testLogger())
 	waitFor(t, "the holder to decide", func() bool { return p.decided.Load() > 0 })
 	waitFor(t, "the holder's runner to park", r.Idle)
 
@@ -153,7 +153,7 @@ func TestAViewBlindActiveBotStillHoldsForBlockers(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(9, 9)),
+	r := startBot(t, ctx, room, bot.ID, aiseat.NewRandomPolicy(rand.NewPCG(9, 9)),
 		aiseat.Config{BlockGrace: 2 * time.Second}, nil, testLogger())
 	time.Sleep(300 * time.Millisecond)
 	// The pass is HELD, not merely unanswered: with no runner on the

@@ -95,6 +95,18 @@ func SacrificePayment(n int, noun, plural string, of game.PermanentQuery) Upkeep
 	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionSacrifice, Count: n, Of: of}, Words: words}
 }
 
+// TapPayment is "Tap N untapped <noun> you control" as a payment (#1997,
+// Koskun Falls): `noun` and `plural` are the printed words ("creature",
+// "creatures"), `of` the permanents that may pay. Only untapped ones can
+// (CR 701.26a), which the engine checks.
+func TapPayment(n int, noun, plural string, of game.PermanentQuery) UpkeepPayment {
+	words := "Tap an untapped " + noun + " you control"
+	if n != 1 {
+		words = "Tap " + numberWord(n) + " untapped " + plural + " you control"
+	}
+	return UpkeepPayment{Action: &game.PayAction{Kind: game.PayActionTap, Count: n, Of: of}, Words: words}
+}
+
 // times is the payment made `n` times over, all at once: a cumulative
 // upkeep's cost for each age counter (CR 702.24a). A mana cost repeats
 // its symbols; a discard, sacrifice or life payment (LifePayment,
@@ -184,16 +196,7 @@ func EchoPaying(label string, price func(ctx *Context) UpkeepPayment) game.Trigg
 				Cost:     cost,
 				Action:   action,
 				Question: label + ": pay it, or sacrifice it?",
-				OnDecline: func(ctx *Context) error {
-					if sourceIsNewObject(ctx.Game, ctx.Item) {
-						return nil
-					}
-					return SacrificeThisIfStillOnBattlefield(ctx.Game, ctx.Item)
-				},
-				OnPay: func(ctx *Context) error {
-					ctx.Game.AnnounceEchoPaidForEffect(source, ctx.Item.Controller)
-					return nil
-				},
+				Else:     echoPaidOrSacrificed,
 			}.Apply(ctx)
 		},
 	}
@@ -206,3 +209,21 @@ func WhenEchoIsPaid(label string, effect Effect) game.TriggeredAbility {
 		return ev.CardID == source.InstanceID
 	}, label, effect)
 }
+
+// echoPaidOrSacrificed is echo's two answers, keyed (#4264): a payment
+// announces that the echo cost was paid, and a decline sacrifices the
+// permanent unless it is a new object by then (CR 400.7). The asking item
+// carries the permanent's object (SourceObject, with its epoch), so a
+// table waiting on the payer is a restore point and a permanent that left
+// and came back is not sacrificed in its old self's place.
+var echoPaidOrSacrificed = PayUnlessBranches("pay-unless/echo-sacrifice-or-announce",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		ctx.Game.AnnounceEchoPaidForEffect(ctx.Source(), ctx.Controller())
+		return nil
+	},
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if sourceIsNewObject(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return SacrificeThisIfStillOnBattlefield(ctx.Game, ctx.Item)
+	})

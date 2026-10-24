@@ -236,10 +236,8 @@ func TestBeseechTheMirrorUnbargainedPutsTheCardIntoHand(t *testing.T) {
 	if !me.Hand.Contains(wanted) {
 		t.Error("the found card is not in hand")
 	}
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
-			t.Error("an unbargained Beseech offered a free cast")
-		}
+	if keywordCastPromptFor(g, me.ID) != nil {
+		t.Error("an unbargained Beseech offered a free cast")
 	}
 }
 
@@ -263,6 +261,9 @@ func TestBeseechTheMirrorBargainedOffersAFreeCast(t *testing.T) {
 	}
 }
 
+// The bargained offer is made inside Beseech's resolution (CR 608.2g,
+// #4250): the card carries a {0} grant capped at 4 under a resolution_cast
+// prompt, and casting it puts it on the stack before Beseech finishes.
 func TestBeseechTheMirrorAcceptedGrantLapsesToHand(t *testing.T) {
 	g, me, wanted := mcBeseechTable(t, "{1}{B}")
 	token := pushTokens(g, me.ID, RedGoblinToken(), 1)[0]
@@ -271,7 +272,6 @@ func TestBeseechTheMirrorAcceptedGrantLapsesToHand(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 	answerSearchByID(t, g, me.ID, wanted)
-	answerMayCastPrompt(t, g, me.ID, true)
 	var grant *game.CastPermission
 	for i := range me.CastPermissions {
 		if me.CastPermissions[i].LapseOnPass == game.LapseToHand {
@@ -279,16 +279,42 @@ func TestBeseechTheMirrorAcceptedGrantLapsesToHand(t *testing.T) {
 		}
 	}
 	if grant == nil {
-		t.Fatal("accepting granted no pass-closed free cast")
+		t.Fatal("the offer granted no free cast")
 	}
 	if grant.Cost != "{0}" || grant.MaxSpellManaValue == nil || *grant.MaxSpellManaValue != 4 {
 		t.Errorf("grant = cost %q cap %v, want {0} capped at 4", grant.Cost, grant.MaxSpellManaValue)
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatal(err)
+	c := keywordCastPromptFor(g, me.ID)
+	if c == nil || c.MayCastKeyword != game.MayCastKeywordFreeOrHand || !g.ResolutionPaused() {
+		t.Fatalf("prompt = %+v, want a free_or_hand resolution_cast holding Beseech's resolution", c)
 	}
-	if !me.Hand.Contains(wanted) {
-		t.Error("passing without casting did not put the card into hand")
+	answerMayCastPrompt(t, g, me.ID, true)
+	if !g.Stack.Contains(wanted) || g.ResolutionPaused() {
+		t.Error("the free cast is not on the stack, or Beseech is still resolving")
+	}
+}
+
+// A table paused on the offer is a restore point, and the restored
+// decline puts the card into the hand.
+func TestBeseechTheMirrorOfferSurvivesARestoreMidPrompt(t *testing.T) {
+	g, me, wanted := mcBeseechTable(t, "{1}{B}")
+	token := pushTokens(g, me.ID, RedGoblinToken(), 1)[0]
+	if _, err := castWithOptionalCosts(t, g, "Beseech the Mirror", "Sorcery", mcBeseechOracle, nil, []int{0}, []uuid.UUID{token}); err != nil {
+		t.Fatalf("bargained cast: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	answerSearchByID(t, g, me.ID, wanted)
+	restored := restoreRoundTrip(t, g, true)
+	rme := restored.PlayerByIDForEffect(me.ID)
+	if rc := keywordCastPromptFor(restored, rme.ID); rc == nil || keywordCastCard(rc) != wanted {
+		t.Fatalf("the restored table lost the offer: %+v", rc)
+	}
+	answerMayCastPrompt(t, restored, rme.ID, false)
+	if !rme.Hand.Contains(wanted) {
+		t.Error("the restored decline did not put the card into hand")
+	}
+	if restored.ResolutionPaused() {
+		t.Error("the restored resolution did not finish")
 	}
 }
 

@@ -8,6 +8,7 @@ import {
   permanentAttackTargets,
 } from "./attackTargets";
 import { buildMenuSections } from "./contextMenu.logic";
+import { legalActionsOf } from "./legalActions";
 
 // attackTargets.test.ts — S27, CR 506.2 / 508.1d.
 //
@@ -146,6 +147,29 @@ describe("the declare-attacker menu", () => {
     expect(ids).toContain(`combat-attack-${third.id}`);
     expect(ids).toContain("combat-attack-c-walker");
     expect(ids).toContain("combat-attack-c-siege");
+  });
+
+  it("greys a defender the server won't accept for this creature (#4197)", () => {
+    // Pramikon chose left: the bear may attack only Them and Them's
+    // planeswalker. The digest says so, and the menu follows it.
+    const v = view({
+      legal_actions: {
+        pass: true,
+        sources: {
+          "c-bear": { kinds: ["attack"], moves: 2, attack_targets: [them.id, walker.instance_id] },
+        },
+      },
+    } as Partial<GameView>);
+    const gate = legalActionsOf(v);
+    const sections = buildMenuSections(v, bear, me.id, false, gate, gate);
+    const attack = sections.flatMap((s) => s.items).find((i) => i.id === "combat-attack")!;
+    const row = (id: string) => (attack.items ?? []).find((i) => i.id === `combat-attack-${id}`)!;
+    expect(row(them.id).disabled).toBeFalsy();
+    expect(row(walker.instance_id).disabled).toBeFalsy();
+    for (const refused of [third.id, siege.instance_id]) {
+      expect(row(refused).disabled).toBe(true);
+      expect(row(refused).action).toBeUndefined();
+    }
   });
 
   it("sends the permanent's instance id as declare_attacker's target", () => {

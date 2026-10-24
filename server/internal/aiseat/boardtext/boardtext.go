@@ -214,6 +214,14 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		} else if s.SideboardCount > 0 {
 			fmt.Fprintf(&b, "  sideboard (outside the game): %d cards\n", s.SideboardCount)
 		}
+		// ADR 0207: a seat's Attraction deck is face down, so every seat,
+		// its own included, is a count; the junkyard is public.
+		if s.AttractionDeckCount > 0 {
+			fmt.Fprintf(&b, "  attraction deck (face down, command zone): %d cards\n", s.AttractionDeckCount)
+		}
+		if jy := cardNames(s.Junkyard, max, opts); jy != "" {
+			fmt.Fprintf(&b, "  junkyard (command zone): %s\n", jy)
+		}
 		if s.ID == me {
 			if hand := describeCards(s.Hand.Cards, max, opts); hand != "" {
 				fmt.Fprintf(&b, "  your hand: %s\n", hand)
@@ -517,6 +525,14 @@ func permanentLabelWith(c *protocol.CardView, opts Options, extra []string) stri
 	if c.RingBearer {
 		// ADR 0114 §7: whose Ring-bearer it is, is its controller.
 		flags = append(flags, "Ring-bearer")
+	}
+	if len(c.AttractionLights) > 0 {
+		// ADR 0207, CR 717.1: the numbers a roll to visit must match.
+		lit := make([]string, len(c.AttractionLights))
+		for i, n := range c.AttractionLights {
+			lit[i] = strconv.Itoa(n)
+		}
+		flags = append(flags, "lit "+strings.Join(lit, ", "))
 	}
 	if c.Suspected {
 		// CR 701.60: the menace and the can't-block are in the ability

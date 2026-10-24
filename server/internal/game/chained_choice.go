@@ -247,6 +247,14 @@ type ConfirmPrompt struct {
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040): accepting
 	// would continue a loop the table is already in.
 	DeclineEndsLoop bool
+	// Asked, Word and Objects are what a KEYED confirm hands its answer
+	// beside the carried IDs (QueueConfirmKeyedForEffect, #4291): the
+	// asking stack item as data (NewAskedItem), the one word of the card's
+	// text, and the objects with the epoch each had. A closure-form prompt
+	// leaves them empty.
+	Asked   *AskedItem
+	Word    string
+	Objects []ObjectRef
 	// OnAccept / OnDecline are the branches. Either may be nil. Both
 	// run with g.mu held and may queue further choices.
 	OnAccept, OnDecline func(g *Game) error
@@ -351,6 +359,15 @@ type ChooseCardsPrompt struct {
 	// the continuation re-checks what it needs.
 	ThenKey ChooseCardsThen
 	Carry   []uuid.UUID
+	// LiveZone opts a KEYED pick into the live-zone re-check a closure pick
+	// gets from Zone (#4291): the pick is refused for, and withdrawn when,
+	// its candidates are no longer in that zone, and the withdrawal runs the
+	// continuation with nothing picked. Ignored without ThenKey.
+	LiveZone ZoneKind
+	// CarryWord is the one word of the card's text a keyed continuation
+	// is handed (CardsChosen.Word, #4264): plain data on the prompt
+	// (PendingChoice.PickMatchArg).
+	CarryWord string
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
@@ -426,7 +443,11 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			ChooseMax:         hi,
 			ChooseDestination: p.Destination,
 			PickThen:          key,
+			PickMatchArg:      p.CarryWord,
 			OptionCarry:       copyUUIDs(p.Carry),
+			ChooseLiveZone:    p.LiveZone,
+			// #4290: a keyed leg of a prompted run.
+			promptRun: p.promptRun,
 		})
 	}
 	return g.QueueChoiceForEffect(PendingChoice{
@@ -494,7 +515,7 @@ func (g *Game) ResolveConfirm(choiceID, chooserID uuid.UUID, accept bool) error 
 // answered prompt's branch, so a prompt it queues is keyed from this
 // one's (§2). Caller must hold g.mu.
 func (g *Game) answerConfirmLocked(idx int, choice *PendingChoice, chooserID uuid.UUID, accept, auto bool) {
-	frame := choice.confirmResume
+	frame := confirmFrameOf(choice)
 	source := choice.Source
 	g.answerChoiceLocked(idx, auto)
 	if frame == nil {
@@ -575,17 +596,27 @@ func (g *Game) resolveCardSetPick(kind PendingChoiceKind, choiceID, chooserID uu
 		// #2040: a keyed pick's continuation, looked up by its key.
 		keyed := *choice
 		g.dequeueChoiceLocked(idx)
+		if keyed.Kind == PendingChoiceRevealPick {
+			// The closure leg narrates the pick (revealPickLegThen); a
+			// keyed one does too.
+			g.emitCardsChosenLocked(chooserID, keyed.Source, picks)
+		}
 		g.emitChoiceEffectErrorLocked(chooserID, keyed.Source, g.runKeyedChooseCardsLocked(&keyed, picks, true))
 		g.runStateChecksLocked()
 		return nil
 	}
 	frame := choice.chooseCardsResume
 	source := choice.Source
+	// #4281: a pick (a discard's, for one) that a keyed branch queued is
+	// answered under that branch's cause.
+	cause := carriedCauseOfChoice(choice)
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || frame.then == nil {
 		return nil
 	}
-	if err := frame.then(g, append([]uuid.UUID(nil), picks...)); err != nil {
+	if err := g.withCarriedCauseLocked(cause, func() error {
+		return frame.then(g, append([]uuid.UUID(nil), picks...))
+	}); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooserID,
@@ -630,11 +661,11 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 			return ErrInvalidParam
 		}
 		seen[id] = true
-		if frame != nil && frame.zone != "" {
+		if zone := choice.liveZone(); zone != "" {
 			// Re-checked against the LIVE zone, not the frozen
 			// candidate list: the prompt is asynchronous and a card
 			// can leave between the question and the answer.
-			if !g.pickStillInPickZoneLocked(choice, frame.zone, id) {
+			if !g.pickStillInPickZoneLocked(choice, zone, id) {
 				return ErrCardNotFound
 			}
 		}
@@ -642,13 +673,28 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	// Skipped for an empty pick, so a zero-floor prompt's "choose
 	// nothing" stays the answer nothing can refuse (see
 	// ChooseCardsPrompt.Validate).
-	if frame == nil || frame.validate == nil || len(picks) == 0 {
+	//
+	// The rule is the closure frame's, or, for a keyed pick, the one
+	// registered with its continuation (#4264).
+	var validate func([]Card) bool
+	outside := false
+	switch {
+	case frame != nil && frame.validate != nil:
+		validate, outside = frame.validate, frame.zone == ZoneOutside
+	case frame == nil && choice.PickThen != "":
+		if rule := lookupChooseCardsRule(choice.PickThen); rule != nil {
+			// A keyed pick has no zone of its own, so a card the table
+			// cannot find is read from the sideboards too.
+			validate, outside = rule, true
+		}
+	}
+	if validate == nil || len(picks) == 0 {
 		return nil
 	}
 	chosen := make([]Card, 0, len(picks))
 	for _, id := range picks {
 		card, ok := g.LookupCardForEffect(id)
-		if !ok && frame.zone == ZoneOutside {
+		if !ok && outside {
 			card, ok = g.LookupOutsideCardForEffect(id)
 		}
 		if !ok {
@@ -656,7 +702,7 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 		}
 		chosen = append(chosen, card)
 	}
-	if !frame.validate(chosen) {
+	if !validate(chosen) {
 		return ErrChoiceSetRejected
 	}
 	return nil

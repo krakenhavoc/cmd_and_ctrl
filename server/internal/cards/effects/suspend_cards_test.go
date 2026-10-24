@@ -157,13 +157,11 @@ func TestRiftBoltSuspendsTicksAndCastsFree(t *testing.T) {
 	advanceToUpkeepOf(t, g, g.Turn.ActiveSeat)
 	passPriorityAroundTable(t, g)
 
-	offer := latestChoiceOfKind(g, game.PendingChoiceMayCast)
+	offer := latestChoiceOfKind(g, game.PendingChoiceResolutionCast)
 	if offer == nil {
 		t.Fatal("the last time counter coming off offered no cast")
 	}
-	if err := g.ResolveMayCast(offer.ID, active.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
+	// #4250: the cast below answers the resolution_cast prompt.
 
 	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	before := victim.Life

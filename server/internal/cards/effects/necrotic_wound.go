@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a30159ae-f6a6-4e29-bca2-769d3657d310",
 		Name:         "Necrotic Wound",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

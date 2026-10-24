@@ -25,10 +25,12 @@ import {
   attackAllParams,
   attackAllTaxLabel,
   attackTaxOn,
+  eligibleAt,
   exertChoiceAt,
   planAttackAll,
   seatLabel,
 } from "./attackAll";
+import { attackLifeAsks, attackLifeSymbols, clampAttackLife } from "./attackLife";
 import { L } from "./labels";
 import { grantedFromLabel, isBorrowedRow } from "./abilityRef";
 import { collapseBorrowed, splitBorrowed, unautomatedLines } from "./borrowedRows";
@@ -49,6 +51,7 @@ import { isPlaneswalker } from "./cardTypes";
 import { counterCostBlocked } from "./counterCost";
 import {
   NO_LEGAL_ACTIONS,
+  attackTargetOpen,
   digestRefusesManaRow,
   digestRefusesRow,
   digestRefusesSpecial,
@@ -1859,34 +1862,86 @@ function combatItems(
         exert
           ? { attacker: card.instance_id, target, auto_tap: true, exert: true }
           : { attacker: card.instance_id, target, auto_tap: true };
-      return [
-        ...defenders.map((s) => ({
-          id: `${prefix}-${s.id}`,
-          label: s.display_name || s.name,
-          // ADR 0080 (#1063): the seat's CR 508.1a attack tax, stated
-          // on the control that charges it. Read off the server's
-          // price, never derived.
-          hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
-          action: {
-            type: "declare_attacker" as ActionType,
-            // auto_tap: the tax may need lands tapped for it. Inert
-            // at a table with no attack tax on it.
-            params: params(s.id),
+      // #4197: in the declare attackers step, a defender the server would
+      // refuse for this creature (Pramikon's or Teyo's direction, "can't
+      // attack its owner", a "can't attack you" grant) is shown but not
+      // clickable: the same gate the board's defender click uses
+      // (attackTargetOpen). No list, or a re-point, keeps every row open.
+      const gated = (item: MenuItem, target: string): MenuItem =>
+        view.turn?.step === "declare_attackers" &&
+        !attackTargetOpen(gate, card, card.instance_id, target)
+          ? {
+              id: item.id,
+              label: item.label,
+              hint: "this creature can't attack that right now",
+              disabled: true,
+            }
+          : item;
+      // #4198: a Phyrexian attack tax (Norn's Annex's {W/P}) is mana or
+      // 2 life per symbol. The row stays the mana payment; a sibling row
+      // pays every symbol of this one creature's tax with life, when the
+      // life total allows it.
+      const controllerLife = view.seats.find((x) => x.id === card.controller)?.life;
+      const withLifeRow = (item: MenuItem, target: string): MenuItem[] => {
+        const act = item.action;
+        if (!act || item.disabled || !attackLifeAsks(view, [target], controllerLife)) return [item];
+        const symbols = attackLifeSymbols(view, [target]).total;
+        const pay = clampAttackLife(symbols, symbols, controllerLife);
+        if (pay <= 0) return [item];
+        return [
+          item,
+          {
+            id: `${item.id}-life`,
+            label: `${item.label} (pay with life)`,
+            hint: `pays ${pay * 2} life instead of mana for ${pay} Phyrexian symbol${pay === 1 ? "" : "s"} of the tax`,
+            action: { ...act, params: { ...act.params, phyrexian_life: pay } },
           },
-        })),
+        ];
+      };
+      return [
+        ...defenders.flatMap((s) =>
+          withLifeRow(
+            gated(
+              {
+                id: `${prefix}-${s.id}`,
+                label: s.display_name || s.name,
+                // ADR 0080 (#1063): the seat's CR 508.1h attack tax, stated
+                // on the control that charges it. Read off the server's
+                // price, never derived.
+                hint: attackTaxOn(view, s.id) ? `costs ${attackTaxOn(view, s.id)}` : undefined,
+                action: {
+                  type: "declare_attacker" as ActionType,
+                  // auto_tap: the tax may need lands tapped for it. Inert
+                  // at a table with no attack tax on it.
+                  params: params(s.id),
+                },
+              },
+              s.id,
+            ),
+            s.id,
+          ),
+        ),
         // S27: planeswalkers and battles are attackable too
         // (CR 508.1d). Same verb, same payload — only the id differs,
         // which is what makes the polymorphic target cheap on this
         // side. The set is the server's; see attackTargets.ts.
-        ...permanentAttackTargets(view, card.controller).map((t) => ({
-          id: `${prefix}-${t.id}`,
-          label: t.label,
-          hint: attackTargetHint(view, t),
-          action: {
-            type: "declare_attacker" as ActionType,
-            params: params(t.id),
-          },
-        })),
+        ...permanentAttackTargets(view, card.controller).flatMap((t) =>
+          withLifeRow(
+            gated(
+              {
+                id: `${prefix}-${t.id}`,
+                label: t.label,
+                hint: attackTargetHint(view, t),
+                action: {
+                  type: "declare_attacker" as ActionType,
+                  params: params(t.id),
+                },
+              },
+              t.id,
+            ),
+            t.id,
+          ),
+        ),
       ];
     };
     items.push({
@@ -1939,6 +1994,24 @@ function combatItems(
                 id: `combat-attack-all-${s.id}`,
                 label: seatLabel(s),
                 hint: "a creature here may be exerted — choose in the dock's Attack with all",
+                disabled: true,
+              },
+            ];
+          }
+          // #4198: likewise a Phyrexian attack tax: mana or life per
+          // symbol is the dock picker's question.
+          if (
+            attackLifeAsks(
+              view,
+              eligibleAt(plan, s.id).map(() => s.id),
+              view.seats.find((x) => x.id === card.controller)?.life,
+            )
+          ) {
+            return [
+              {
+                id: `combat-attack-all-${s.id}`,
+                label: seatLabel(s),
+                hint: "the tax has Phyrexian mana — choose mana or life in the dock's Attack with all",
                 disabled: true,
               },
             ];

@@ -61,6 +61,15 @@ describe("payCards", () => {
     expect(payCardsVerb(surger)).toBe("Choose 2 cards to sacrifice.");
   });
 
+  it("reads a tap's options from the battlefield (#1997, Koskun Falls)", () => {
+    const card = (id: string, name: string) => ({ instance_id: id, name }) as CardView;
+    const me = { id: "p1", hand: { cards: [card("h1", "In hand")] } } as PlayerView;
+    const tap: PayCardsView = { action: "tap", count: 1, options: ["b2", "b1"] };
+    const bf = [card("b1", "Bear One"), card("b2", "Bear Two")];
+    expect(payCardsOptions(tap, bf, me).map((c) => c.name)).toEqual(["Bear Two", "Bear One"]);
+    expect(payCardsVerb(tap)).toBe("Choose one card to tap.");
+  });
+
   it("sends card_ids beside apply on a Pay, never on a decline", () => {
     const choice = {
       id: "c1",

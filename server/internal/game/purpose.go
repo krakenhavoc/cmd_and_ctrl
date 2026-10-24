@@ -201,6 +201,16 @@ type Purpose struct {
 	// payoffs by it.
 	LandfallExtraTriggers int
 
+	// ExtraLoyaltyActivations is how many more times this turn each
+	// planeswalker its controller controls may activate a loyalty
+	// ability (#4191): The Chain Veil's "{4}, {T}: For each planeswalker
+	// you control, you may activate one of its loyalty abilities once
+	// this turn as though none of its loyalty abilities have been
+	// activated this turn" 1. The engine's own record is
+	// Game.LoyaltyExtraActivationsThisTurn; the heuristic activates such
+	// a row only in its own main phase, with planeswalkers to use it.
+	ExtraLoyaltyActivations int
+
 	// Impulse is how many cards it exiles from the top of its
 	// controller's library that its controller may play this turn
 	// (#2480): Professional Face-Breaker's "Exile the top card of your
@@ -365,7 +375,46 @@ type TargetPurpose struct {
 	// graveyard (#3161): Reanimate, Animate Dead, Zombify. The bot prices
 	// the pick as the permanent it becomes, not as a card it would cast.
 	Reanimates bool
+	// UntilEndOfTurn says which way a change the clause makes to the
+	// target PERMANENT cuts for that permanent's controller, when the
+	// whole change ends with the turn (#4302). "Another target creature
+	// gains lifelink until end of turn" (Heliod, Sun-Crowned) and "target
+	// creature gets +2/+2 until end of turn" are TargetBenefit; "target
+	// creature gets -2/-2 until end of turn" is TargetHarm. Nothing else
+	// on the wire tells the two apart, so the bot priced every opposing
+	// pick as removal and gave an opponent's creature lifelink. The zero
+	// value is "not declared", which keeps that price.
+	//
+	// A spell declares it too (#4312): Giant Growth's +3/+3, Dismember's
+	// -5/-5. A lasting part that helps the same target as well (Beast
+	// Mode's teamwork counter, Monstrous Rage's Role) does not stop a
+	// benefit being declared; it is left unpriced, so the price is a
+	// floor. A change that is partly a harm and partly a benefit, or
+	// whose direction is chosen at resolution, declares nothing.
+	UntilEndOfTurn TargetEffect
+	// Pump is what the change is, when it is printed in amounts: the
+	// power and toughness it adds (negative for a harm's -N/-N), the
+	// keywords a benefit grants, lowercase as the wire's `abilities`
+	// spells them ("protection" for protection from a quality chosen at
+	// resolution), and "can't be blocked this turn" (#4312). Nil for an
+	// amount counted at resolution (+X/+X) with nothing else printed.
+	// Declared only beside UntilEndOfTurn. A pointer so TargetPurpose
+	// stays comparable.
+	Pump *Pump
 }
+
+// TargetEffect is TargetPurpose.UntilEndOfTurn: which way a change that
+// ends with the turn cuts for the target's controller (#4302).
+type TargetEffect string
+
+const (
+	// TargetBenefit helps the target: a pump, a keyword, protection,
+	// "can't be blocked". A bot aims it at its own permanent.
+	TargetBenefit TargetEffect = "benefit"
+	// TargetHarm hurts the target: -N/-N, "can't block", "loses all
+	// abilities". A bot aims it at an opponent's permanent.
+	TargetHarm TargetEffect = "harm"
+)
 
 // TargetReturn is what a removal spell hands the controller of the
 // permanent it removes, as printed amounts (#2679). A removal that
@@ -400,7 +449,8 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.DamagePerTapped == 0 && t.Returns.IsZero() && !t.Reanimates
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.DamagePerTapped == 0 && t.Returns.IsZero() && !t.Reanimates &&
+		t.UntilEndOfTurn == "" && t.Pump == nil
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a
@@ -437,6 +487,11 @@ type Pump struct {
 	Power     int
 	Toughness int
 	Keywords  []string
+	// CantBeBlocked is "can't be blocked this turn" (#4312): Rogue's
+	// Passage, Artful Dodge. Not a keyword, so not in Keywords; the bot
+	// reads it as the `cant_be_blocked` restriction the creature will
+	// have.
+	CantBeBlocked bool
 }
 
 // Saves is the permanents a `survive` or `protect` row covers besides, or
@@ -669,6 +724,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
 		LandfallExtraTriggers:     p.LandfallExtraTriggers + o.LandfallExtraTriggers,
+		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations + o.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse + o.Impulse,
 		Answers:                   p.Answers | o.Answers,
 	}

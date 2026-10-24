@@ -1,6 +1,10 @@
 package effects
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // dredge_signal_test.go — #2390. The heuristic bot prices a dredge offer
 // from the prompt's `dredge` count and its Source (the card the yes
@@ -8,7 +12,9 @@ import "testing"
 // that broke either would be priced wrongly without anything failing:
 //
 //   - every dredge — every graveyard "may" on a draw — declares its N,
-//     so the prompt can say what the yes mills; and
+//     so the prompt can say what the yes mills (a graveyard "may" that
+//     replaces a keyword action instead, Retriever Phoenix's learn, has
+//     no mill to price and takes the default yes); and
 //   - a dredge that names no card (its effect is not in the graveyard,
 //     so the prompt has no Source) returns a LAND, because that is what
 //     aiseat/heuristic/dredge.go prices it as. The Necrobloom's "land
@@ -17,7 +23,7 @@ import "testing"
 func TestOnlyTheNecrobloomGrantsDredgeWithoutACard(t *testing.T) {
 	for _, s := range All() {
 		for i, r := range s.Replacements {
-			if r.FromGraveyard && r.Optional && r.Dredge <= 0 {
+			if r.FromGraveyard && r.Optional && r.Dredge <= 0 && r.KeywordInstead == (game.KeywordInsteadRef{}) {
 				t.Errorf("%s replacement %d is a graveyard \"may\" with no Dredge count; the bot cannot price its mill", s.Name, i)
 			}
 			if r.Dredge > 0 && !r.FromGraveyard && s.Name != "The Necrobloom" {

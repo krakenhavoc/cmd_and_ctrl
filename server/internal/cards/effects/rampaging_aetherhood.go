@@ -40,14 +40,20 @@ func init() {
 						Question: "Rampaging Aetherhood — pay one or more {E} for that many +1/+1 counters",
 						Unit:     game.PayAmountCounters,
 						Goal:     AsMuchAsYouCan,
-						Then: func(ctx *Context, paid int) error {
-							if paid <= 0 || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-								return nil
-							}
-							return plusOneCountersOnThis(paid)(ctx.Game, ctx.Item)
-						},
+						Then:     rampagingAetherhoodCounters,
 					}.Apply(ctx)
 				}),
 		},
 	})
 }
+
+// rampagingAetherhoodCounters is the paid half (#4294): that many +1/+1
+// counters on the Hydra, if it is still the permanent that triggered
+// (CR 400.7), read off the asking trigger's source object.
+var rampagingAetherhoodCounters = NumberThen("number/rampaging-aetherhood-plus-one-counters-on-this",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 || !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return plusOneCountersOnThis(r.Number)(ctx.Game, ctx.Item)
+	})

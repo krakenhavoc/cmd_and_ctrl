@@ -36,28 +36,32 @@ func init() {
 		WantsColors:    []string{"U"},
 		Targets:        TargetCreature("target creature"),
 		Purpose:        ForTargets(DamageToTarget(0, 4)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := ctx.Game.DamageInstanceForEffect(func() error {
-				for _, ref := range ctx.LegalTargets() {
-					if err := (DealDamage{
-						Source: item.SourceCardID,
-						Target: ref.ID,
-						Amount: 4,
-					}).Apply(ctx); err != nil {
-						return err
+		// The life and the draw wait for a prompt the damage asks (a CR 616 order; CR 608.2c,
+		// #4155), and the draw for one the life asks.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					for _, ref := range ctx.LegalTargets() {
+						if err := (DealDamage{
+							Source: ctx.Item.SourceCardID,
+							Target: ref.ID,
+							Amount: 4,
+						}).Apply(ctx); err != nil {
+							return err
+						}
 					}
+					return nil
+				})
+			}),
+			Instruction(func(ctx *Context) error {
+				return GainLife{Player: ctx.Item.Controller, Amount: 4}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				if ctx.ManaSpent().Count("U") > 0 {
+					return DrawCards{Player: ctx.Item.Controller, N: 1}.Apply(ctx)
 				}
 				return nil
-			}); err != nil {
-				return err
-			}
-			if err := (GainLife{Player: item.Controller, Amount: 4}).Apply(ctx); err != nil {
-				return err
-			}
-			if ctx.ManaSpent().Count("U") > 0 {
-				return (DrawCards{Player: item.Controller, N: 1}).Apply(ctx)
-			}
-			return nil
-		},
+			}),
+		),
 	})
 }

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Entrust the Spark — Sorcery {3}{G}{U}:
 //
@@ -35,31 +39,43 @@ func init() {
 				Question: "Entrust the Spark — sacrifice a planeswalker to search for a planeswalker?",
 				YesLabel: "Sacrifice a planeswalker",
 				NoLabel:  "Don't",
-				OnYes:    entrustTheSparkSacrificeThenSearch,
+				Then:     entrustTheSparkAnswer,
 			}.Apply(ctx)
 		},
 	})
 }
 
 func entrustTheSparkSacrificeThenSearch(ctx *Context) error {
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on the sacrifice is a restore point.
 	item := ctx.Item
-	return ctx.Game.PlayerSacrificesThenForEffect(
+	return ctx.Game.PlayerSacrificesThenKeyedForEffect(
 		item.SourceCardID, item.Controller,
 		sacrificeSpec("a planeswalker", Planeswalker()),
 		"Entrust the Spark — sacrifice a planeswalker",
 		1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if sacrificed.Count() == 0 {
-				return nil
-			}
-			return SearchLibrary{
-				Player:    item.Controller,
-				Predicate: func(c game.Card) bool { return c.IsPlaneswalker() },
-				Dest:      game.ZoneBattlefield,
-				Limit:     1,
-				Shuffle:   true,
-				Reason:    "Entrust the Spark — a planeswalker card",
-				Source:    item.SourceCardID,
-			}.Apply(NewContext(g, item))
-		})
+		entrustTheSparkSearch, []uuid.UUID{item.Controller})
 }
+
+// entrustTheSparkAnswer is the "yes": sacrifice a planeswalker, then search.
+// Keyed (#4291).
+var entrustTheSparkAnswer = MayYes("confirm/entrust-the-spark-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return entrustTheSparkSacrificeThenSearch(ctx)
+})
+
+// entrustTheSparkSearch is "if you do, search your library for a
+// planeswalker card", once the planeswalker has really been sacrificed.
+var entrustTheSparkSearch = game.RegisterPromptRunThen("prompt-run/entrust-the-spark-search", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 || r.Sacrifices().Count() == 0 {
+		return nil
+	}
+	return SearchLibrary{
+		Player:    r.Carry[0],
+		Predicate: func(c game.Card) bool { return c.IsPlaneswalker() },
+		Dest:      game.ZoneBattlefield,
+		Limit:     1,
+		Shuffle:   true,
+		Reason:    "Entrust the Spark — a planeswalker card",
+		Source:    r.Source,
+	}.Apply(keyedContext(g, r.Carry[0], r.Source))
+})

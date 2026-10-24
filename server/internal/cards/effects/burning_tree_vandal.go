@@ -27,7 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks(burningTreeVandalLabel, func(g *game.Game, item *game.StackItem) error {
 				return b39MayDiscardThenDraw(1, false, burningTreeVandalLabel,
-					func(discarded int) int { return discarded })(NewContext(g, item))
+					drawAsManyAsDiscarded)(NewContext(g, item))
 			}),
 		},
 	})

@@ -60,6 +60,22 @@ func CountersPerKick(kind string, per int) game.EntryCountersFromCast {
 	}
 }
 
+// XCountersIfKicked is "If this creature was kicked, it enters with X
+// <kind> counters on it", where X is the {X} of its kicker (Emblazoned
+// Golem, #2575; CR 107.3m reads the spell's X for the entry). An
+// unkicked cast announces no X and gets none.
+func XCountersIfKicked(kind string) game.EntryCountersFromCast {
+	return game.EntryCountersFromCast{
+		Kind: kind,
+		Count: func(cast game.CastCounts) int {
+			if cast.Kicked <= 0 {
+				return 0
+			}
+			return cast.X
+		},
+	}
+}
+
 // CountersIfKickedWith is "if this creature was kicked with its
 // <cost> kicker, it enters with <n> <kind> counters on it" (CR
 // 702.33f, #2360) — the Volvers. `cost` is spelled as the card's

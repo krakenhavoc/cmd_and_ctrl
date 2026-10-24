@@ -41,18 +41,45 @@ func libCard(owner uuid.UUID, name, typeLine, manaCost string) Card {
 	return c
 }
 
-// answerMayCast finds the outstanding may-cast prompt and answers it.
-func answerMayCast(t *testing.T, g *Game, chooser uuid.UUID, apply bool) {
+// cascadeResolving resolves a stack item whose effect is a cascade for me
+// off a spell of mana value lessThan, so the cast is offered inside an open
+// resolution (CR 608.2g, #4243). It returns with the resolution_cast prompt
+// still open.
+func cascadeResolving(t *testing.T, g *Game, me uuid.UUID, lessThan int) {
 	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			if err := g.ResolveMayCast(c.ID, chooser, apply); err != nil {
-				t.Fatalf("ResolveMayCast: %v", err)
-			}
-			return
-		}
+	pushAbilityItem(g, StackItemTriggered, me, uuid.Nil, "Fixture cascade", func(g *Game, _ *StackItem) error {
+		return g.CascadeForEffect(me, uuid.New(), lessThan)
+	})
+	resolveTop(t, g)
+}
+
+// answerResolutionCast answers chooser's open resolution_cast prompt: cast
+// the card it offers (from exile, as cascade and discover leave it) or
+// decline it.
+func answerResolutionCast(t *testing.T, g *Game, chooser uuid.UUID, cast bool) {
+	t.Helper()
+	c := resolutionCastPrompt(g, chooser)
+	if c == nil {
+		t.Fatalf("no resolution_cast prompt outstanding")
 	}
-	t.Fatalf("no may_cast prompt outstanding")
+	if !cast {
+		if err := g.ResolvePendingChoice(c.ID, chooser, nil); err != nil {
+			t.Fatalf("declining the cast: %v", err)
+		}
+		return
+	}
+	if len(c.DiscardOptions) != 1 {
+		t.Fatalf("the prompt offers %d cards, want the one hit", len(c.DiscardOptions))
+	}
+	zone := ZoneExile
+	g.WithWriteLock(func() {
+		if _, z, ok := g.ResolutionCastCandidateLocked(chooser, c.DiscardOptions[0]); ok {
+			zone = z
+		}
+	})
+	if err := g.CastForResolutionChoice(chooser, c.ID, c.DiscardOptions[0], CastSpellParams{FromZone: string(zone)}); err != nil {
+		t.Fatalf("casting the hit: %v", err)
+	}
 }
 
 func libraryIDs(p *Player) []uuid.UUID {
@@ -77,26 +104,22 @@ func TestCascadeStopsOnTheFirstCheaperNonland(t *testing.T) {
 	deep := libCard(me.ID, "Never Reached", "Instant", "{U}")
 	libraryOf(t, me, deep, hit, tooBig, land)
 
-	g.WithWriteLock(func() {
-		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
-	})
+	cascadeResolving(t, g, me.ID, 4)
 
 	// The prompt is about the Counterspell, not the Mountain and not
 	// Emrakul.
-	found := false
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			found = true
-			if c.MayCastCard != hit.InstanceID {
-				t.Errorf("cascade hit the wrong card: %s", c.MayCastCard)
-			}
-			if c.Chooser != me.ID {
-				t.Errorf("chooser = %s, want the caster", c.Chooser)
-			}
-		}
+	c := resolutionCastPrompt(g, me.ID)
+	if c == nil {
+		t.Fatalf("no resolution_cast prompt queued")
 	}
-	if !found {
-		t.Fatalf("no may_cast prompt queued")
+	if len(c.DiscardOptions) != 1 || c.DiscardOptions[0] != hit.InstanceID {
+		t.Errorf("cascade hit the wrong card: %v", c.DiscardOptions)
+	}
+	if c.MayCastKeyword != MayCastKeywordCascade || c.AcceptLabel == "" || c.DeclineLabel == "" {
+		t.Errorf("prompt words = %q / %q / %q, want cascade's", c.MayCastKeyword, c.AcceptLabel, c.DeclineLabel)
+	}
+	if len(c.CastPile) != 2 {
+		t.Errorf("the prompt carries %d passed-over cards, want the Mountain and Emrakul", len(c.CastPile))
 	}
 	// The card below the hit was never reached.
 	if !me.Library.Contains(deep.InstanceID) {
@@ -114,12 +137,10 @@ func TestCascadeAcceptGrantsFreeCastAndBottomsTheRest(t *testing.T) {
 	floor := libCard(me.ID, "Bottom Card", "Instant", "{U}")
 	libraryOf(t, me, floor, hit, land)
 
-	g.WithWriteLock(func() {
-		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
-	})
-	answerMayCast(t, g, me.ID, true)
+	cascadeResolving(t, g, me.ID, 4)
 
-	// The hit is in exile with a free-cast permission.
+	// The hit is in exile with a free-cast permission, and the cards
+	// passed over wait in exile for the answer.
 	c, ok := g.cardInZoneLocked(g.Exile, hit.InstanceID)
 	if !ok {
 		t.Fatalf("hit left exile")
@@ -135,8 +156,16 @@ func TestCascadeAcceptGrantsFreeCastAndBottomsTheRest(t *testing.T) {
 		t.Errorf("cascade grants a CAST, not a play")
 	}
 
-	// The Mountain went to the BOTTOM — below the card that was
-	// already the bottom card.
+	if !g.Exile.Contains(land.InstanceID) {
+		t.Errorf("the passed-over Mountain left exile before the cast was answered")
+	}
+	// Cast it, during the resolution: it is on the stack, and the
+	// Mountain went to the BOTTOM — below the card that was already the
+	// bottom card.
+	answerResolutionCast(t, g, me.ID, true)
+	if g.Stack == nil || !g.Stack.Contains(hit.InstanceID) {
+		t.Fatalf("the cascaded spell is not on the stack")
+	}
 	ids := libraryIDs(me)
 	if len(ids) != 2 || ids[0] != land.InstanceID || ids[1] != floor.InstanceID {
 		t.Errorf("library (bottom first) = %v, want [Mountain, Bottom Card]", ids)
@@ -159,11 +188,12 @@ func TestCascadeDeclineBottomsTheHitToo(t *testing.T) {
 	land := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
 	libraryOf(t, me, hit, land)
 
-	g.WithWriteLock(func() {
-		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
-	})
-	answerMayCast(t, g, me.ID, false)
+	cascadeResolving(t, g, me.ID, 4)
+	answerResolutionCast(t, g, me.ID, false)
 
+	if g.ResolutionPaused() || resolutionCastPrompt(g, me.ID) != nil {
+		t.Errorf("the decline did not let the resolution finish")
+	}
 	if len(g.Exile.Cards) != 0 {
 		t.Errorf("declining left %d cards in exile", len(g.Exile.Cards))
 	}
@@ -175,9 +205,10 @@ func TestCascadeDeclineBottomsTheHitToo(t *testing.T) {
 	}
 }
 
-// Accepting and then never casting must not leave the card available:
-// the grant closes on the caster's next priority pass and the hit goes
-// to the bottom then (ADR 0099 owner decision 2). Before ADR 0099 it
+// Outside an open resolution there is no prompt to hold: the grant is
+// the window. Never casting must not leave the card available: the
+// grant closes on the caster's next priority pass and the hit goes to
+// the bottom then (ADR 0099 owner decision 2). Before ADR 0099 it
 // stayed castable until the end step and a delayed trigger bottomed it,
 // which let a player hold a free spell for the rest of the turn.
 func TestUncastCascadeHitGoesToTheBottomOnTheNextPass(t *testing.T) {
@@ -189,7 +220,9 @@ func TestUncastCascadeHitGoesToTheBottomOnTheNextPass(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
 	})
-	answerMayCast(t, g, me.ID, true)
+	if resolutionCastPrompt(g, me.ID) != nil {
+		t.Fatalf("a prompt was queued with no resolution open")
+	}
 	if len(g.DelayedTriggers) != 0 {
 		t.Fatalf("accepting queued %d delayed triggers; the window is the pass now", len(g.DelayedTriggers))
 	}
@@ -218,11 +251,6 @@ func TestCascadeGrantIsFlashTimedAndCapped(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
 	})
-	c := discoverPrompt(t, g)
-	if c.MayCastKeyword != MayCastKeywordCascade {
-		t.Errorf("cascade prompt keyword = %q", c.MayCastKeyword)
-	}
-	answerMayCast(t, g, me.ID, true)
 	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
 	if perm == nil || perm.Timing != TimingFlash || perm.MaxSpellManaValue == nil || *perm.MaxSpellManaValue != 3 || perm.LapseOnPass != LapseToLibraryBottom {
 		t.Fatalf("cascade grant = %+v", perm)
@@ -250,13 +278,9 @@ func TestCascadeWithNoLegalHitPutsEverythingBack(t *testing.T) {
 	b := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
 	libraryOf(t, me, a, b)
 
-	g.WithWriteLock(func() {
-		if err := g.CascadeForEffect(me.ID, uuid.New(), 2); err != nil {
-			t.Fatalf("CascadeForEffect: %v", err)
-		}
-	})
+	cascadeResolving(t, g, me.ID, 2)
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
+		if c != nil && c.Kind == PendingChoiceResolutionCast {
 			t.Fatalf("prompted with no legal hit")
 		}
 	}
@@ -292,10 +316,8 @@ func TestCascadeBottomOrderIsReproducible(t *testing.T) {
 		// bottom → top: hit first means it is found LAST.
 		cards := append([]Card{hit}, pile...)
 		libraryOf(t, me, cards...)
-		g.WithWriteLock(func() {
-			_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
-		})
-		answerMayCast(t, g, me.ID, false)
+		cascadeResolving(t, g, me.ID, 4)
+		answerResolutionCast(t, g, me.ID, false)
 		return libraryIDs(me)
 	}
 	// Same seed (newActiveGame pins rand.NewPCG(1, 2)) and the same
@@ -385,9 +407,8 @@ func TestFromStackTriggerFiresOnCastAndOthersDoNot(t *testing.T) {
 	}
 }
 
-// The pile is saved before the may-cast prompt. A card that leaves
-// exile while the question is open stays where it went, on either
-// answer.
+// The pile is saved on the prompt. A card that leaves exile while the
+// question is open stays where it went, on either answer.
 func TestCascadeBottomSkipsCardsThatLeftExileDuringThePrompt(t *testing.T) {
 	for _, accept := range []bool{true, false} {
 		g := newActiveGame(t)
@@ -396,8 +417,8 @@ func TestCascadeBottomSkipsCardsThatLeftExileDuringThePrompt(t *testing.T) {
 		land := libCard(me.ID, "Mountain", "Basic Land — Mountain", "")
 		libraryOf(t, me, hit, land)
 
+		cascadeResolving(t, g, me.ID, 4)
 		g.WithWriteLock(func() {
-			_ = g.CascadeForEffect(me.ID, uuid.New(), 4)
 			if _, err := MoveCard(g.Exile, me.Hand, land.InstanceID); err != nil {
 				t.Fatal(err)
 			}
@@ -407,7 +428,7 @@ func TestCascadeBottomSkipsCardsThatLeftExileDuringThePrompt(t *testing.T) {
 				}
 			}
 		})
-		answerMayCast(t, g, me.ID, accept)
+		answerResolutionCast(t, g, me.ID, accept)
 
 		if !me.Hand.Contains(land.InstanceID) || me.Library.Contains(land.InstanceID) {
 			t.Errorf("accept=%v: a passed-over card that left exile was pulled back to the library", accept)

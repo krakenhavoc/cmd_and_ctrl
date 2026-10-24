@@ -45,7 +45,7 @@ export const ErrorCode = {
   // the blocker. The client never re-derives the rule.
   IllegalBlock: "illegal_block",
   // #1063 (ADR 0080): a declare_attacker / declare_attackers refused
-  // for want of the CR 508.1a attack tax. `reason` carries the whole
+  // for want of the CR 508.1h attack tax. `reason` carries the whole
   // declaration's price as a cost string ("{2}{2}"), not a
   // BlockRefusalReason token — see ErrorPayload.reason. `missing` is
   // the symbols the pool and the tapper together could not cover.
@@ -406,6 +406,16 @@ export const CHAT_BOT_NOTICE = "bot_notice";
 
 // View types mirror server/internal/protocol/view.go.
 
+/** One attack-direction rule in force (GameView.attack_directions, ADR 0206). */
+export interface AttackDirectionView {
+  /** "left" (the next player in turn order) or "right" (the one before). */
+  direction: string;
+  /** What said so: "Pramikon, Sky Rampart". */
+  source?: string;
+  /** Player id to the opponent that rule lets them attack; absent for a player with none that way. */
+  nearest?: Record<string, string>;
+}
+
 export interface GameView {
   id: string;
   state: "lobby" | "active" | "ended";
@@ -528,6 +538,12 @@ export interface GameView {
   // Harm's Way, Kor Chant), oldest first, already worded for the banner.
   // Absent on nearly every turn.
   damage_redirections?: string[];
+  // ADR 0206 (#4211): one row per live "each player may attack only the
+  // nearest opponent in the chosen direction and planeswalkers
+  // controlled by that opponent" rule (Pramikon, Sky Rampart; Teyo,
+  // Geometric Tactician's −2). The dock says which way attacks go.
+  // Public and identical for every viewer; absent on nearly every turn.
+  attack_directions?: AttackDirectionView[];
   // ADR 0109 §6 (CR 601.2c): one line per live static that stops cards in
   // graveyards being targeted, the printed clause and its card ("Cards in
   // graveyards can't be the targets of spells or abilities. — Ground
@@ -898,6 +914,11 @@ export interface LegalMoveView {
   // ControlledPlaySheet lists exactly these, and the server never folds
   // them into the capped list's one-per-card.
   controlled_play?: string;
+  // #2947, CR 608.2g: the resolution_cast prompt this move answers — one
+  // way of casting a copy during the resolution that made it, or "don't
+  // cast". ResolutionCastSheet lists exactly these, and the server never
+  // folds them into the capped list's one-per-card.
+  resolution_cast?: string;
   // #1307: true on a cast or activation whose chosen targets include
   // an object on the stack — a counterspell, a Stifle, a redirect.
   // Smart autopass reads it to tell "can answer the thing on the
@@ -973,7 +994,7 @@ export interface MoveCost {
   // paid with a planeswalker's loyalty).
   counters?: { card_id: string; counter: string; n: number }[];
   // A mana cost string the move charges that `params` cannot name.
-  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1a attack
+  // On a declare_attacker move (ADR 0080, #1063): the CR 508.1h attack
   // tax ("{2}" for an attack into Propaganda). On every cast_spell move
   // (ADR 0136 §2): the total mana the cast charges (CR 601.2f), with
   // the commander tax, X, alternative costs and the board's increases
@@ -1291,7 +1312,8 @@ export type LogKind =
   // player, `card_id` the card whose effect it is (Emrakul).
   | "player_control_scheduled"
   | "player_control_began"
-  | "player_control_ended";
+  | "player_control_ended"
+  | "sticker_placed";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -1452,6 +1474,20 @@ export interface PendingChoiceView {
     // as that player, or {choice_id} with no cards, "it can't be
     // played", which the server takes only when that is true.
     | "controlled_play"
+    // #2947, CR 707.12 / 608.2g: an effect made copies of cards and the
+    // chooser may cast any of them while it is still resolving.
+    // `options` are the copies still on offer (face up, in exile or a
+    // graveyard); for a keyword cast (cascade and discover, #4243; rebound,
+    // suspend, madness, exile_until, paid_or_else and free_or_hand, #4250)
+    // the one real card on offer (in exile, or for free_or_hand off the top
+    // of the chooser's library, where the knower filter keeps it from
+    // every other viewer), with `may_cast_keyword` naming the rule and
+    // `accept_label` / `decline_label` the two answers. Answered by one of
+    // the legal moves naming it
+    // (`resolution_cast`), a cast_spell sent with `resolution_cast` set to
+    // the prompt's id and no priority needed, or {choice_id, card_ids: []},
+    // "cast no more of them", which is always legal.
+    | "resolution_cast"
     | "mana_pick"
     | "replacement_order"
     | "optional_replacement"
@@ -2020,7 +2056,10 @@ export interface PendingChoiceView {
   accept_label?: string;
   decline_label?: string;
   // ADR 0099 §7: populated for kind "may_cast". The rule the offer is
-  // asked under ("cascade", "discover", "suspend", "madness") and the
+  // asked under ("play_or_hand", or absent for an offer that is only its
+  // card's text; every keyword cast asks a "resolution_cast", which
+  // carries the keyword and labels: cascade and discover since #4243, the
+  // rest since #4250) and the
   // instance id of the exiled card it offers. A may_cast also carries
   // accept_label / decline_label when the server named its branches.
   may_cast_keyword?: string;
@@ -2467,6 +2506,19 @@ export interface ManaPoolRun {
   count: number;
 }
 
+// IgnorableEffectView is one CR 116.2d special action a seat may take
+// (#1986): ignore a static ability's effect until end of turn by
+// sacrificing a permanent of its choice (Damping Engine). `source_id` is
+// the permanent whose effect it is, which `special_action` names as its
+// `card_id`; `sacrifice_ids` are the permanents the seat may give up, in
+// the order a "choose for me" would take them. Its own frame only.
+export interface IgnorableEffectView {
+  source_id: string;
+  source_name: string;
+  label: string;
+  sacrifice_ids: string[];
+}
+
 export interface PlayerView {
   id: string;
   name: string;
@@ -2663,6 +2715,19 @@ export interface PlayerView {
   // How many cards this seat owns outside the game. Public, like a
   // hand's size. Absent for a seat with none.
   sideboard_count?: number;
+  // ADR 0207 (#2121): how many cards are in this seat's Attraction deck
+  // (CR 717.2), face down in the command zone. Public, like a library's
+  // size; the cards are on nobody's wire. Absent for a seat with none.
+  attraction_deck_count?: number;
+  // ADR 0207: this seat's junkyard (CR 717.6a), the Attraction cards the
+  // rules put into the command zone, face up for every viewer. Absent for
+  // a seat with none.
+  junkyard?: CardView[];
+  // ADR 0208 (#2138): the three sticker sheets this seat plays with (CR
+  // 103.2d), public because they "remain revealed" (CR 123.2c). A sticker
+  // with `in_use` is on an object now and can't go on another (CR 123.3).
+  // Absent for a seat with none. Tickets are `counters.ticket`.
+  sticker_sheets?: StickerSheetView[];
   // #3955 (Wish): the seat's live "you may play a card you own from outside
   // the game this turn" right, OWNER-ONLY. `can_name` is true when the seat's
   // pool is the card database, so the `outside_play` action is how it names
@@ -2725,6 +2790,12 @@ export interface PlayerView {
   // from your hand — Memory Vessel"). While it is set `cant_play_lands`
   // carries the same clause; the badge row shows one NO HAND badge.
   cant_play_from_hand?: string;
+  // #1986 (CR 116.2d): the static abilities that bear on this seat and
+  // that it may ignore until end of turn by sacrificing a permanent
+  // (Damping Engine). Its own frame only. Each row is a button that asks
+  // which permanent to give up, then sends `special_action
+  // { kind: "ignore_effect", card_id: source_id, sacrifice_id }`.
+  ignorable_effects?: IgnorableEffectView[];
   // ADR 0199 (#3953, CR 701.20a): why this seat plays with its hand
   // revealed right now ("Telepathy", "Stromgald Spy"). While it is set the
   // hand's cards reach every seat face up, cards drawn later included.
@@ -3242,8 +3313,9 @@ export interface PayAmountView {
 
 export interface PayCardsView {
   // "exile_graveyard" (ADR 0187 §3): options are the chooser's own
-  // graveyard, public to every seat.
-  action: "discard" | "sacrifice" | "exile_graveyard";
+  // graveyard, public to every seat. "tap" (#1997): the untapped
+  // permanents of the clause's kind the chooser controls.
+  action: "discard" | "sacrifice" | "exile_graveyard" | "tap";
   count: number;
   options: string[];
 }
@@ -3840,7 +3912,7 @@ export interface PurposeView {
   sweep?: SweepView;
   death_payoff?: boolean;
   // ADR 0130 (amendment of 2026-10-07): what an exert row does.
-  pump?: { power?: number; toughness?: number; keywords?: string[] };
+  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
   extra_combat?: number;
   // ADR 0188 Decision 10 (#3566): extra turns its controller takes
   // after this one (CR 500.7) and next turns it makes them skip
@@ -3861,6 +3933,10 @@ export interface PurposeView {
   // #3146: on the card of a landfall doubler (Ancient Greenwarden), how
   // many additional times each landfall trigger of its controller's fires.
   landfall_extra_triggers?: number;
+  // #4191: on The Chain Veil's activated row, how many more times this
+  // turn each of its controller's planeswalkers may activate a loyalty
+  // ability.
+  extra_loyalty_activations?: number;
   // #3165: on a row that pays for each creature that enters under its
   // controller's control.
   creature_enter_payoff?: LandfallPayoffView;
@@ -3893,6 +3969,11 @@ export interface TargetPurposeView {
   reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
+  // #4302: which way a change to the picked permanent that ends with the
+  // turn cuts for its controller.
+  until_end_of_turn?: "benefit" | "harm";
+  // #4302: that change in printed amounts (negative for a harm).
+  pump?: { power?: number; toughness?: number; keywords?: string[]; cant_be_blocked?: boolean };
 }
 
 // TargetReturnView is what a removal spell hands the controller of the
@@ -4021,6 +4102,10 @@ export interface LegalTargetsView {
   // #2055: on a pick_target an opponent answers for such a clause, the
   // player whose spell or ability it is (the one still targeting).
   chosen_for?: string;
+  // #4249: on a pick_target, the clause's effect hurts the permanent
+  // picked (The Abyss's destroy), so a bot gives up its least valuable.
+  // Also on a cast-path clause view (#4314: Simulacrum).
+  harmful?: boolean;
   // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
   // picks may share a key ("that each have a different mana value",
   // "controlled by different players"). The picker greys a candidate
@@ -4380,6 +4465,25 @@ export interface LandTypeEffect {
   source?: string;
 }
 
+// ADR 0208 (#2138): one sticker, on an object or on a sheet. `kind` is
+// CR 123.1's four; `text` is a name sticker's word(s), an ability
+// sticker's ability or a power and toughness sticker's "2/3", empty for an
+// art sticker.
+export interface StickerView {
+  kind: "name" | "ability" | "pt" | "art";
+  text?: string;
+  ticket_cost?: number;
+  sheet?: string;
+  in_use?: boolean;
+}
+
+// ADR 0208: one sticker sheet a seat plays with.
+export interface StickerSheetView {
+  name: string;
+  scryfall_id?: string;
+  stickers: StickerView[];
+}
+
 export interface CardView extends CastSurfaceView {
   instance_id: string;
   /**
@@ -4424,6 +4528,12 @@ export interface CardView extends CastSurfaceView {
   // ADR 0172 §3: a deck's revealed companion, outside the game or after
   // it has come into the game. Public; drives the "Companion" badge.
   is_companion?: boolean;
+  // ADR 0207: the numbers lit up on an Attraction (CR 717.1), ascending.
+  // A roll to visit that matches one visits it. Absent on every other card.
+  attraction_lights?: number[];
+  // ADR 0208: the stickers on this object (CR 123), oldest first. Absent
+  // when it has none.
+  stickers?: StickerView[];
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
@@ -5202,7 +5312,7 @@ export interface ManaAbilityView {
 export interface AttackTargetView {
   kind: "player" | "planeswalker" | "battle";
   id: string;
-  // ADR 0080 (#1063): the CR 508.1a price ONE creature pays to attack
+  // ADR 0080 (#1063): the CR 508.1h price ONE creature pays to attack
   // this target — "{2}" against a seat with Propaganda out, "{2}{2}"
   // against one with Propaganda and Ghostly Prison, absent when
   // attacking it is free. A declaration's real price is this once per
@@ -5213,6 +5323,16 @@ export interface AttackTargetView {
   // in the client re-derives what an attack costs, for the same
   // reason nothing re-derives who may attack (#429, ADR 0045 §6).
   tax?: string;
+  // #4198: how many symbols in ONE creature's `tax` carry CR 107.4f's
+  // "or 2 life" option (Norn's Annex's {W/P} is 1). Absent when none
+  // does. A declaration of n attackers prints n times as many, and the
+  // answer is sent as `phyrexian_life` on declare_attacker /
+  // declare_attackers. The client parses no mana string to find it.
+  tax_phyrexian?: number;
+  // Of those, how many are payable with life only because the active
+  // seat controls a life-for-mana grant (ADR 0131), not because the tax
+  // prints a Phyrexian symbol.
+  tax_phyrexian_granted?: number;
   // #1533 (ADR 0045 Decision 46): how many MORE creatures may be
   // declared attacking this target this combat under a CR 508.1c count
   // limit (Silent Arbiter, Crawlspace), after the ones already

@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,18 +9,20 @@ import (
 )
 
 // #3270: "you may cast a spell from your hand without paying its mana cost"
-// is cast WHILE the ability resolves (CR 608.2g), ignoring timing, and the
-// chance ends when the holder passes. These tests drive Buster Sword through
-// a real combat to the combat damage step, where a sorcery is not castable
-// on its own, and then play the client's half (the cast_spell the free-cast
-// chain sends) against the engine.
+// is cast WHILE the ability resolves (CR 608.2g), ignoring timing. These
+// tests drive Buster Sword through a real combat to the combat damage step,
+// where a sorcery is not castable on its own.
+//
+// #4250: the cast is the resolution_cast prompt's answer, made inside the
+// trigger's resolution: one permission over every card the offer names,
+// spent by the one cast, and a decline that leaves the cards in hand.
 
 const mindRotOracle = "ad44cf74-b717-48fb-9fa2-77512024d76a"
 
 // busterTable is a combat with Buster Sword's carrier connecting for 5: the
 // game sits in the combat damage step with the draw already resolved and the
-// free-cast pick pending. `black` makes the carrier black, so Doom Blade has
-// no legal target on the table.
+// free-cast offer pending. `black` makes the carrier black, so Doom Blade
+// has no legal target on the table.
 type busterTable struct {
 	g       *game.Game
 	me, opp *game.Player
@@ -61,38 +62,19 @@ func newBusterTable(t *testing.T, black bool) *busterTable {
 	return tb
 }
 
-// pick answers the free-cast prompt with `id` (uuid.Nil for none).
-func (tb *busterTable) pick(t *testing.T, id uuid.UUID) {
+// offer is the free-cast offer waiting inside the trigger's resolution.
+func (tb *busterTable) offer(t *testing.T) *game.PendingChoice {
 	t.Helper()
-	p := latestChoiceOfKindFor(tb.g, game.PendingChoiceChooseCards, tb.me.ID)
-	if p == nil {
-		t.Fatal("no free-cast pick is waiting")
-	}
-	if p.ChooseDestination != game.ChooseCastFree {
-		t.Fatalf("the pick declares destination %q, want %q (the client opens the cast on it)",
-			p.ChooseDestination, game.ChooseCastFree)
-	}
-	if id == uuid.Nil {
-		if err := tb.g.ResolveChooseCards(p.ID, tb.me.ID, nil); err != nil {
-			t.Fatalf("choosing nothing: %v", err)
-		}
-		return
-	}
-	if !hasID(p.ChooseCards, id) {
-		t.Fatalf("card not offered: %v", p.ChooseCards)
-	}
-	if err := tb.g.ResolveChooseCards(p.ID, tb.me.ID, []uuid.UUID{id}); err != nil {
-		t.Fatalf("choosing the free cast: %v", err)
-	}
+	return mustResolutionCastOffer(t, tb.g, tb.me.ID, game.MayCastKeywordHandCast)
 }
 
-// castFree is the client's cast_spell once the pick opens the chain: the
-// granted offer claimed, an empty pool, strict mana.
+// castFree is the cast_spell the sheet sends: strict mana, an empty pool.
+// It names no claim: the prompt holds a hand card's cast to the granted
+// offer (#4250).
 func (tb *busterTable) castFree(id uuid.UUID, targets ...game.TargetRef) error {
 	return tb.g.CastSpell(tb.me.ID, id, game.CastSpellParams{
-		Strict:          true,
-		Targets:         targets,
-		AlternativeCost: game.AltCostKeyGrantedCost,
+		Strict:  true,
+		Targets: targets,
 	})
 }
 
@@ -109,17 +91,22 @@ func TestBusterSwordPickedInstantIsCastWithItsTargetAndResolves(t *testing.T) {
 	}
 	// Mana value 1 is within the 5 damage dealt, and the hand also holds
 	// Fodder ({6}), which must not be offered.
-	p := latestChoiceOfKindFor(tb.g, game.PendingChoiceChooseCards, tb.me.ID)
-	if p == nil || hasID(p.ChooseCards, tb.fodder) {
-		t.Fatalf("the pick offers a card above the damage: %v", p)
+	p := tb.offer(t)
+	if hasID(p.DiscardOptions, tb.fodder) || !hasID(p.DiscardOptions, tb.bolt) {
+		t.Fatalf("the offer is %v, want every spell within the damage and not Fodder", p.DiscardOptions)
 	}
-	tb.pick(t, tb.bolt)
-
 	if err := tb.castFree(tb.bolt, game.TargetRef{Kind: game.TargetPlayer, ID: tb.opp.ID}); err != nil {
 		t.Fatalf("the free cast: %v", err)
 	}
-	if tb.me.Hand.Contains(tb.bolt) {
-		t.Fatal("the spell did not leave the hand")
+	if tb.me.Hand.Contains(tb.bolt) || !tb.g.Stack.Contains(tb.bolt) {
+		t.Fatal("the spell did not go from the hand to the stack")
+	}
+	// One spell: the cast spent the offer, and the resolution let go.
+	if resolutionCastOfferFor(tb.g, tb.me.ID) != nil || tb.g.ResolutionPaused() {
+		t.Fatal("the offer outlived its one cast")
+	}
+	if tb.permissionOn(tb.mindRot) != nil {
+		t.Error("the other candidates kept the free cast")
 	}
 	passPriorityAroundTable(t, tb.g)
 	if tb.opp.Life != 32 {
@@ -132,16 +119,13 @@ func TestBusterSwordPickedInstantIsCastWithItsTargetAndResolves(t *testing.T) {
 
 func TestBusterSwordPickedSorceryIsCastInTheCombatDamageStep(t *testing.T) {
 	tb := newBusterTable(t, false)
-	// Control: a sorcery nobody picked is refused here on its own timing.
-	err := tb.g.CastSpell(tb.me.ID, tb.mindRot, game.CastSpellParams{
-		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: tb.opp.ID}},
-	})
-	if err == nil {
-		t.Fatal("an unpicked sorcery was castable in the combat damage step")
+	// Control: a card the offer does not name is refused.
+	if err := tb.castFree(tb.fodder); err == nil {
+		t.Fatal("a card above the damage was cast during the offer")
 	}
-	tb.pick(t, tb.mindRot)
+	tb.offer(t)
 	if err := tb.castFree(tb.mindRot, game.TargetRef{Kind: game.TargetPlayer, ID: tb.opp.ID}); err != nil {
-		t.Fatalf("a sorcery picked in the combat damage step must be castable: %v", err)
+		t.Fatalf("a sorcery offered in the combat damage step must be castable: %v", err)
 	}
 	passPriorityAroundTable(t, tb.g)
 	// Mind Rot resolved: the target now owes its two discards.
@@ -158,67 +142,84 @@ func TestBusterSwordPickedSorceryIsCastInTheCombatDamageStep(t *testing.T) {
 
 func TestBusterSwordPickingNoneOpensNothing(t *testing.T) {
 	tb := newBusterTable(t, false)
-	tb.pick(t, uuid.Nil)
+	tb.offer(t)
+	declineResolutionCast(t, tb.g, tb.me.ID)
 	for _, id := range []uuid.UUID{tb.bolt, tb.mindRot} {
 		if tb.permissionOn(id) != nil {
-			t.Errorf("card %s holds a cast permission after picking nothing", id)
+			t.Errorf("card %s holds a cast permission after the decline", id)
+		}
+		if !tb.me.Hand.Contains(id) {
+			t.Errorf("card %s left the hand on the decline", id)
 		}
 	}
-	err := tb.castFree(tb.bolt, game.TargetRef{Kind: game.TargetPlayer, ID: tb.opp.ID})
+	if tb.g.ResolutionPaused() {
+		t.Error("the decline did not let the resolution finish")
+	}
+	err := tb.g.CastSpell(tb.me.ID, tb.bolt, game.CastSpellParams{
+		Strict:          true,
+		Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: tb.opp.ID}},
+		AlternativeCost: game.AltCostKeyGrantedCost,
+	})
 	if err == nil {
-		t.Fatal("the free cast opened without a pick")
+		t.Fatal("the free cast opened after the decline")
 	}
 }
 
 func TestBusterSwordUncastablePickStaysInHand(t *testing.T) {
 	// Doom Blade needs a nonblack creature; the only one on the table is
-	// black, so the pick can not be cast.
+	// black, so it can not be cast.
 	tb := newBusterTable(t, true)
-	tb.pick(t, tb.doom)
-	err := tb.castFree(tb.doom)
-	if err == nil {
+	tb.offer(t)
+	if err := tb.castFree(tb.doom); err == nil {
 		t.Fatal("Doom Blade was cast with no legal target")
 	}
 	if !tb.me.Hand.Contains(tb.doom) {
-		t.Fatal("the uncastable pick left the hand")
+		t.Fatal("the uncastable card left the hand")
 	}
-	// And it can not be held: passing ends the chance.
-	if err := tb.g.PassPriority(); err != nil {
-		t.Fatalf("pass: %v", err)
-	}
+	// The refused cast leaves the offer open for another card or a decline.
+	tb.offer(t)
+	declineResolutionCast(t, tb.g, tb.me.ID)
 	if tb.permissionOn(tb.doom) != nil {
-		t.Error("the grant survived the holder's pass")
+		t.Error("the grant survived the decline")
 	}
 	if !tb.me.Hand.Contains(tb.doom) {
-		t.Error("the lapse moved the card out of the hand")
+		t.Error("the decline moved the card out of the hand")
 	}
 }
 
 func TestBusterSwordPassingEndsTheChance(t *testing.T) {
 	tb := newBusterTable(t, false)
-	tb.pick(t, tb.bolt)
+	tb.offer(t)
 	if tb.permissionOn(tb.bolt) == nil {
-		t.Fatal("the pick opened no cast")
+		t.Fatal("the offer opened no cast")
 	}
-	if err := tb.g.PassPriority(); err != nil {
-		t.Fatalf("pass: %v", err)
+	// Nobody receives priority while the offer is open (CR 608.2g).
+	if err := tb.g.PassPriority(); err == nil {
+		t.Fatal("priority was passed while the free cast was being offered")
 	}
+	declineResolutionCast(t, tb.g, tb.me.ID)
 	if tb.permissionOn(tb.bolt) != nil {
-		t.Fatal("the free cast outlived the holder's pass")
+		t.Fatal("the free cast outlived the decline")
 	}
 	if !tb.me.Hand.Contains(tb.bolt) {
-		t.Fatal("passing moved the card")
+		t.Fatal("declining moved the card")
 	}
-	err := tb.castFree(tb.bolt, game.TargetRef{Kind: game.TargetPlayer, ID: tb.opp.ID})
-	if err == nil || strings.Contains(err.Error(), "illegal target") {
-		t.Fatalf("a free cast after the pass must be refused for its price, got %v", err)
+	err := tb.g.CastSpell(tb.me.ID, tb.bolt, game.CastSpellParams{
+		Strict:          true,
+		Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: tb.opp.ID}},
+		AlternativeCost: game.AltCostKeyGrantedCost,
+	})
+	if err == nil {
+		t.Fatal("a free cast after the decline must be refused")
 	}
 }
 
 // The other four offers share the helper, so one table proves each one wires
-// it: the pick declares the cast, a sorcery picked in the combat damage step
-// is castable free, and passing instead ends the chance with the card still
-// in hand.
+// it: the offer is the resolution_cast, a sorcery offered in the combat
+// damage step is castable free, and declining instead ends the chance with
+// the card still in hand. Kari Zev's, Rishkar's and Surtland's run here
+// outside a resolution, through the keyed pick (#4246) that is still the
+// offer there; Great Intelligence's Plan resolves for real.
 func TestHandFreeCastOffersOpenTheCastAtAnyTiming(t *testing.T) {
 	offers := map[string]func(t *testing.T, g *game.Game, me, opp *game.Player){
 		"Kari Zev's Expertise": func(t *testing.T, g *game.Game, me, _ *game.Player) {
@@ -238,7 +239,7 @@ func TestHandFreeCastOffersOpenTheCastAtAnyTiming(t *testing.T) {
 	}
 	for name, offer := range offers {
 		for _, cast := range []bool{true, false} {
-			label := name + "/pass"
+			label := name + "/decline"
 			if cast {
 				label = name + "/cast"
 			}
@@ -256,36 +257,49 @@ func TestHandFreeCastOffersOpenTheCastAtAnyTiming(t *testing.T) {
 					attackWith(t, g, opp.ID, bear)
 				}
 				offer(t, g, me, opp)
-
-				pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
-				if pick == nil {
-					t.Fatal("no free-cast pick")
-				}
-				if pick.ChooseDestination != game.ChooseCastFree {
-					t.Fatalf("destination %q, want %q", pick.ChooseDestination, game.ChooseCastFree)
-				}
-				if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{rot}); err != nil {
-					t.Fatalf("pick: %v", err)
-				}
 				params := game.CastSpellParams{
 					Strict:          true,
 					Targets:         []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
 					AlternativeCost: game.AltCostKeyGrantedCost,
 				}
-				if !cast {
-					if err := g.PassPriority(); err != nil {
-						t.Fatalf("pass: %v", err)
+				if resolutionCastOfferFor(g, me.ID) != nil {
+					mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, rot)
+					if !cast {
+						declineResolutionCast(t, g, me.ID)
+						if !me.Hand.Contains(rot) {
+							t.Fatal("declining moved the card out of the hand")
+						}
+						if err := g.CastSpell(me.ID, rot, params); err == nil {
+							t.Fatal("the free cast outlived the decline")
+						}
+						return
 					}
-					if !me.Hand.Contains(rot) {
-						t.Fatal("passing moved the card out of the hand")
+				} else {
+					pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
+					if pick == nil {
+						t.Fatal("no free-cast offer")
 					}
-					if err := g.CastSpell(me.ID, rot, params); err == nil {
-						t.Fatal("the free cast outlived the pass")
+					if pick.ChooseDestination != game.ChooseCastFree {
+						t.Fatalf("destination %q, want %q", pick.ChooseDestination, game.ChooseCastFree)
 					}
-					return
+					if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{rot}); err != nil {
+						t.Fatalf("pick: %v", err)
+					}
+					if !cast {
+						if err := g.PassPriority(); err != nil {
+							t.Fatalf("pass: %v", err)
+						}
+						if !me.Hand.Contains(rot) {
+							t.Fatal("passing moved the card out of the hand")
+						}
+						if err := g.CastSpell(me.ID, rot, params); err == nil {
+							t.Fatal("the free cast outlived the pass")
+						}
+						return
+					}
 				}
 				if err := g.CastSpell(me.ID, rot, params); err != nil {
-					t.Fatalf("a sorcery picked in the combat damage step must be castable: %v", err)
+					t.Fatalf("a sorcery offered in the combat damage step must be castable: %v", err)
 				}
 				if me.Hand.Contains(rot) {
 					t.Fatal("the spell did not leave the hand")

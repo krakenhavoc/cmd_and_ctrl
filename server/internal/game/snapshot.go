@@ -408,6 +408,13 @@ type GameSnapshot struct {
 	// loyalty activation of a permanent that may make two. Additive.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
 
+	// LoyaltyExtraActivationsThisTurn and
+	// LoyaltyExtraActivationsUsedThisTurn are Game's (#4191, ADR 0145
+	// amendment 2026-10-21): The Chain Veil's grants per player, and the
+	// grants each permanent has spent per player. Additive.
+	LoyaltyExtraActivationsThisTurn     map[uuid.UUID]int               `json:"loyaltyExtraActivationsThisTurn,omitempty"`
+	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int `json:"loyaltyExtraActivationsUsedThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -500,6 +507,30 @@ type GameSnapshot struct {
 	// the old behaviour (the resolution had already finished). No
 	// schema bump.
 	PausedResolutionTail *resolutionTailSnapshot `json:"pausedResolutionTail,omitempty"`
+
+	// ReplacementSerials / NextReplacementSerial are
+	// Game.replacementObjectSerials and its next serial (#3482): the
+	// object serials a catalog or graveyard ReplacementEffectID packs.
+	// Written only beside a keyed CR 616 frame (#4253), whose IDs must
+	// name the same objects after the restore. Additive within the
+	// version.
+	ReplacementSerials    []replacementSerialSnapshot `json:"replacementSerials,omitempty"`
+	NextReplacementSerial int                         `json:"nextReplacementSerial,omitempty"`
+
+	// EnteringTokens is Game.enteringTokens (#4253 slice 3): the created
+	// tokens staged for their battlefield entry, which are in no zone.
+	// Written only beside a keyed CR 616 frame, whose token entry needs
+	// them. Additive within the version.
+	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
+
+	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
+	// multi-seat instructions in flight whose continuation is a
+	// registered key, each with its outstanding count, ask order, what
+	// each seat has landed, its key, carry and source. A run whose
+	// continuation is a closure is counted by the census and not
+	// written. A file written before it restores none, which is the old
+	// behaviour (no keyed run existed). Additive within the version.
+	PromptRuns []promptRunSnapshot `json:"promptRuns,omitempty"`
 
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
@@ -615,6 +646,16 @@ type GameSnapshot struct {
 	// writes itself, so carrying it makes nothing worse for it.
 	LastKnownStack []lastKnownSpellSnapshot `json:"lastKnownStack,omitempty"`
 
+	// Resolving is the stack item whose resolution is in flight, as
+	// plain data (#4270, resolving_item.go): the item, the card the
+	// stack held for a spell, and the source's object epoch for an
+	// ability. Absent when the slot is empty, which is every file
+	// written before it. Additive within v9: a binary before it drops
+	// the key, which loses the slot's one reader across a restore
+	// (a "copy that spell" copies nothing: weaker than printed, never
+	// stronger).
+	Resolving *resolvingSnapshot `json:"resolving,omitempty"`
+
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
 	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
@@ -699,6 +740,23 @@ type playerSnapshot struct {
 	// binary drops it, and the player loses the cards an effect could
 	// have brought in: weaker than printed, never stronger.
 	Sideboard *zoneSnapshot `json:"sideboard,omitempty"`
+	// AttractionDeck and Junkyard are Player.AttractionDeck and
+	// Player.Junkyard (ADR 0207 §5): the face-down Attraction deck and
+	// the face-up junkyard, both in the command zone. Written only
+	// while they hold a card. Additive within v9: absent means none,
+	// which is right for every file written before Attractions could
+	// be seated. An older binary drops them, and the player can open
+	// nothing more: weaker than printed, never stronger.
+	AttractionDeck *zoneSnapshot `json:"attractionDeck,omitempty"`
+	Junkyard       *zoneSnapshot `json:"junkyard,omitempty"`
+	// StickerSheetPool and StickerSheets are Player.StickerSheetPool and
+	// Player.StickerSheets (ADR 0208 §2): the sheets the deck revealed
+	// and the three chosen, plain data. Additive within v9; absent means
+	// none, which is right for every file written before sheets could be
+	// seated. An older binary drops them and the player has no stickers
+	// to put on anything: weaker than printed, never stronger.
+	StickerSheetPool []StickerSheet `json:"stickerSheetPool,omitempty"`
+	StickerSheets    []StickerSheet `json:"stickerSheets,omitempty"`
 	// HasSideboard is Player.HasSideboard (ADR 0198 §2): the deck seated
 	// a sideboard, so it is the pool even once it is empty. Additive
 	// within v9. A file without the key restores it from the sideboard
@@ -737,7 +795,12 @@ type playerSnapshot struct {
 	// written before it restores with none, which reads as "nothing
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
-	Eliminated      bool           `json:"eliminated"`
+	// LastTurnCastOrPut is Player.LastTurnCastOrPut (#1997, Arboria).
+	// Additive within v9: a file written before it restores with false,
+	// which reads as "did nothing last turn" until the player's next turn
+	// ends.
+	LastTurnCastOrPut bool `json:"lastTurnCastOrPut,omitempty"`
+	Eliminated        bool `json:"eliminated"`
 	// Removed is Player.Removed (#3093): an admin removed the seat from
 	// a started game. Additive: a file written before it restores with
 	// false for every seat, which is what none of them were.
@@ -747,6 +810,10 @@ type playerSnapshot struct {
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
+	// MulliganBottoming is Player.mulliganBottoming (#4301): the seat has
+	// kept and its London-mulligan cards are not down yet, so the window
+	// stays open for it. Additive.
+	MulliganBottoming bool `json:"mulliganBottoming,omitempty"`
 	// TriggerOrderAlwaysAsk is #1530's always-ask flag, true when
 	// Player.TriggerOrder is "always". Still written beside TriggerOrder
 	// so a binary from before #1968, which reads only this key, restores
@@ -916,6 +983,20 @@ type cardSnapshot struct {
 	// v8; absent means not a sideboard card. An older binary drops it
 	// and loses nothing it read.
 	IsSideboard bool `json:"isSideboard,omitempty"`
+	// AstrotoriumBack and AttractionLights are Card.AstrotoriumBack and
+	// Card.AttractionLights (ADR 0207 §5): printed facts the importer
+	// stamps. Additive within v9; absent means an ordinary card with no
+	// lights, which every card in an older file is. An older binary
+	// drops them: its Attractions are ordinary artifacts that never
+	// visit, and a junkyard-bound one goes to its graveyard.
+	AstrotoriumBack  bool  `json:"astrotoriumBack,omitempty"`
+	AttractionLights []int `json:"attractionLights,omitempty"`
+	// Stickers is Card.Stickers (ADR 0208 §3): the stickers on the
+	// object, plain data. Additive within v9; absent means none, which
+	// every card in an older file has. An older binary drops them and
+	// the object loses what they gave it: weaker than printed, never
+	// stronger.
+	Stickers []PlacedSticker `json:"stickers,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -1016,6 +1097,10 @@ type cardSnapshot struct {
 	// came back with an empty name would silently stop restricting
 	// the card it was played to stop.
 	ChosenName string `json:"chosenName,omitempty"`
+	// ChosenSecondName is the opponent's half of Null Chamber's two
+	// names (#1997). Carried for ChosenName's reason. Old snapshots have
+	// no key and read "no second name". Additive within v9.
+	ChosenSecondName string `json:"chosenSecondName,omitempty"`
 	// ChosenOption is the CR 614.12 "as this enters, choose <A> or
 	// <B>" answer (#1572) — a Siege's anchor word. Carried for
 	// ChosenPlayer's reason: it is the whole of what decides which of
@@ -1134,6 +1219,14 @@ type cardSnapshot struct {
 	// is every Aura before this change.
 	EnchantSwapped  bool       `json:"enchantSwapped,omitempty"`
 	EnchantReturned *ObjectRef `json:"enchantReturned,omitempty"`
+	// ReturnedAura is the Aura form of a card that returned to the
+	// battlefield as an Aura (returned_aura.go, ADR 0154's 2026-10-23
+	// amendment). Carried for Bestowed's reason: a restore that dropped it
+	// would turn Harold and Bob's Aura back into the 3/3 creature it
+	// printed, still attached to a Forest. Additive within the current
+	// version: an older binary ignores the key and a file without it
+	// restores every card as printed.
+	ReturnedAura bool `json:"returnedAura,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -1204,8 +1297,15 @@ type cardSnapshot struct {
 	// without them restores no encoding, which is every game before it.
 	// A pointer, so a card that is not encoded writes nothing (the
 	// #1492 omitzero rule).
-	EncodedOn         *PermissionCardRef `json:"encodedOn,omitempty"`
-	EncodedAt         int64              `json:"encodedAt,omitempty"`
+	EncodedOn *PermissionCardRef `json:"encodedOn,omitempty"`
+	EncodedAt int64              `json:"encodedAt,omitempty"`
+	// CreatedWith is a token's link to the permanent object whose
+	// ability created it (#1997, CR 607.1d: Tombstone Stairwell). Carried
+	// because nothing else records it, and additive within this version:
+	// a file without it restores tokens created with nothing, which is
+	// every game before it. A pointer, so an unlinked card writes
+	// nothing (the #1492 omitzero rule).
+	CreatedWith       *PermissionCardRef `json:"createdWith,omitempty"`
 	StartingDefense   int                `json:"startingDefense,omitempty"`
 	ProtectorPlayerID uuid.UUID          `json:"protectorPlayerId,omitempty"`
 
@@ -1300,6 +1400,14 @@ func catalogAbilityCounts(key string) AbilityCounts {
 	}
 	if CatalogStaticAbilities != nil {
 		n.Static = len(CatalogStaticAbilities(key))
+	}
+	// #4236: a card's printed keywords used to be one more static, a
+	// self-only layer-6 row. They are the baseline now and no static, but
+	// the census still counts the line as one, so a restore point written
+	// by a binary on either side of that change compares equal and no
+	// card comes back flagged manual.
+	if CatalogPrintedKeywords != nil && len(CatalogPrintedKeywords(key)) > 0 {
+		n.Static++
 	}
 	if CatalogReplacements != nil {
 		n.Replacements = len(CatalogReplacements(key))
@@ -1412,6 +1520,8 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Emblems)
 		walk(p.Companion)
 		walk(p.Sideboard)
+		walk(p.AttractionDeck)
+		walk(p.Junkyard)
 	}
 	return out
 }
@@ -1700,6 +1810,10 @@ type pendingChoiceSnapshot struct {
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
 	DiscardLabel   string      `json:"discardLabel,omitempty"`
+	// CastPile is PendingChoice.CastPile (#4243): a resolution_cast's
+	// passed-over cards, bottomed when it is answered. Additive within
+	// the version.
+	CastPile []uuid.UUID `json:"castPile,omitempty"`
 	// #2115: a revealed_hand_pick's variant — where the chosen card
 	// goes, whether choosing nothing is an answer, whether the
 	// revealing player's graveyard is offered, and the KEY of its
@@ -1710,6 +1824,12 @@ type pendingChoiceSnapshot struct {
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
+	// #4256: the word a keyed outside-the-game collection pick's filter
+	// is handed (its key rides pickThen). Additive within the version.
+	PickMatchArg string `json:"pickMatchArg,omitempty"`
+	// ChooseLiveZone is PendingChoice's (#4291): the zone a keyed
+	// choose_cards pick's candidates are re-checked against.
+	ChooseLiveZone ZoneKind `json:"chooseLiveZone,omitempty"`
 	// #3516: the source object a PickExile pick links its exiled card to
 	// (CR 607.2a). A pointer so a prompt that links nothing writes
 	// nothing; additive within the version.
@@ -1717,7 +1837,11 @@ type pendingChoiceSnapshot struct {
 	CopyOptions    []uuid.UUID        `json:"copyOptions,omitempty"`
 	ExchangesText  bool               `json:"exchangesText,omitempty"`
 	ExcludedTypes  []string           `json:"excludedTypes,omitempty"`
-	ScryCards      []uuid.UUID        `json:"scryCards,omitempty"`
+	// #1997: Null Chamber's second name and its "other than a basic
+	// land card name". Additive within v9.
+	SecondName       bool        `json:"secondName,omitempty"`
+	NotBasicLandName bool        `json:"notBasicLandName,omitempty"`
+	ScryCards        []uuid.UUID `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
 	// #1298: the put_in_library top lane's exact count and depth.
@@ -1739,6 +1863,10 @@ type pendingChoiceSnapshot struct {
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040).
 	DeclineEndsLoop bool   `json:"declineEndsLoop,omitempty"`
 	DeclineLabel    string `json:"declineLabel,omitempty"`
+	// Private is PendingChoice.private (ADR 0133, #4298): the prompt names a
+	// card in a hidden zone, so the wire strips its words from every viewer
+	// but the chooser. Carried since the opening-hand offer is keyed.
+	Private bool `json:"private,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -1750,6 +1878,41 @@ type pendingChoiceSnapshot struct {
 	// and because the ID is the only route back to what the
 	// question was about.
 	GuardsStackItem uuid.UUID `json:"guardsStackItem,omitempty"`
+	// PayActionClause is PendingChoice's (#4264): a keyed pay-unless's
+	// non-mana payment, plain data. A pointer so a mana prompt writes
+	// nothing; additive within the version.
+	PayActionClause *PayAction `json:"payActionClause,omitempty"`
+	// PayTap is PendingChoice's (#4264): a keyed pay-unless's waterbend
+	// clause as its kind and extra cost. Additive within the version.
+	PayTap *PayTapSpec `json:"payTap,omitempty"`
+	// PayAmount, MayPayX and PickNumber are PendingChoice's (#4289): a
+	// keyed MayPayX's "choose X" prompt (its bounds, the clause that asks
+	// the next question) and the X a keyed pay-unless's branches are
+	// handed. Additive within the version.
+	PayAmount  *PayAmountPrompt `json:"payAmount,omitempty"`
+	MayPayX    *MayPayXClause   `json:"mayPayX,omitempty"`
+	PickNumber int              `json:"pickNumber,omitempty"`
+	// PickWords and PickNums are PendingChoice's (#4294): the words and
+	// numbers a keyed number prompt's branch is handed. Additive within
+	// the version.
+	PickWords []string `json:"pickWords,omitempty"`
+	PickNums  []int    `json:"pickNums,omitempty"`
+	// AttackSplit is PendingChoice's (#4294): a tokens-attacking split's
+	// state, the template through the card mirror. A pointer so every other
+	// prompt writes nothing; additive within the version.
+	AttackSplit *attackSplitSnapshot `json:"attackSplit,omitempty"`
+	// Assist is PendingChoice's (#4294): an assist helper's prompt, its
+	// parked cast and the spend context as data. A pointer so every other
+	// prompt writes nothing; additive within the version.
+	Assist *AssistPrompt `json:"assist,omitempty"`
+	// OptionObjects is PendingChoice's (#4264): the objects, with their
+	// epochs, a keyed pay-unless or any-player prompt's branches are
+	// handed. Additive within the version.
+	OptionObjects []ObjectRef `json:"optionObjects,omitempty"`
+	// Asked is PendingChoice's (#4264): the item that queued a keyed
+	// pay-unless or any-player prompt, plain data. A pointer so a prompt
+	// that has none writes nothing; additive within the version.
+	Asked *AskedItem `json:"asked,omitempty"`
 	// OptionalItem / OptionalTradeFor are PendingChoice's (#2494): the
 	// resolving item whose CR 603.5 "you may" a trigger_prompt asks, and
 	// what a "yes" trades for. Plain data: the item rides the parked
@@ -1783,6 +1946,10 @@ type pendingChoiceSnapshot struct {
 	// #2854: the IDs a keyed option pick's continuation is handed
 	// (option_pick_keyed.go). Its key rides pickThen.
 	OptionCarry []uuid.UUID `json:"optionCarry,omitempty"`
+	// #4279: the cause a keyed pay-unless was queued under (the
+	// resolving item's controller and ID). Additive within v7.
+	PayCauseController uuid.UUID `json:"payCauseController,omitempty"`
+	PayCauseItem       uuid.UUID `json:"payCauseItem,omitempty"`
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
@@ -1808,6 +1975,32 @@ type pendingChoiceSnapshot struct {
 	AutoAnswerCard   string      `json:"autoAnswerCard,omitempty"`
 	AutoAnswerPrompt string      `json:"autoAnswerPrompt,omitempty"`
 	AskedByHand      AskedByHand `json:"askedByHand,omitempty"`
+
+	// ReplacementResume is a CR 616 prompt's resume frame written as
+	// data (#4253, replacement_resume_keyed.go): the paused event, the
+	// pending replacement set and the marks. Written only for a frame
+	// that holds no closure; its tail key rides PickThen, so a binary
+	// from before it refuses the file. Additive within the version.
+	ReplacementResume *replacementResumeSnapshot `json:"replacementResume,omitempty"`
+
+	// ScryThen is PendingChoice.scryThen (#4253 slice 3): a scry's or a
+	// surveil's keyed "then". Its key also rides PickThen, so a binary
+	// from before it, which reads a PickThen it does not know as a
+	// revealed-hand pick's, refuses the file instead of restoring the
+	// prompt without the rest of its card. Additive within the version.
+	ScryThen *keyedTailSnapshot `json:"scryThen,omitempty"`
+
+	// PromptRun is PendingChoice.promptRun (#4290): the run this prompt
+	// is one leg of, by its ID in PromptRuns. Additive: a file without it
+	// is a prompt that is no run's leg.
+	PromptRun uuid.UUID `json:"promptRun,omitempty"`
+
+	// LibraryOrder is PendingChoice.libraryOrderKeyed (#4301): a put_in_library
+	// prompt's way of moving the cards and its keyed "then". The tail's key
+	// also rides PickThen, so a binary from before it refuses the file
+	// instead of restoring the prompt without the rest of its card.
+	// Additive within the version.
+	LibraryOrder *libraryOrderSnapshot `json:"libraryOrder,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -2180,6 +2373,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
 	s.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
+	s.LoyaltyExtraActivationsThisTurn = copyIntMap(g.LoyaltyExtraActivationsThisTurn)
+	s.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(g.LoyaltyExtraActivationsUsedThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
@@ -2214,12 +2409,36 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.AttackHandoff = cloneAttackHandoff(g.AttackHandoff)
 
 	if len(g.PendingChoices) > 0 {
+		keyedFrames := false
 		s.PendingChoices = make([]pendingChoiceSnapshot, 0, len(g.PendingChoices))
 		for _, c := range g.PendingChoices {
 			if c == nil {
 				continue
 			}
-			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
+			key := g.replacementFrameKeyable(c)
+			pc := snapshotPendingChoiceFrame(c, cen, key != "")
+			if t := snapshotKeyedTail(c.scryThen); t != nil && carriesLookAtThen(c.Kind) {
+				// #4253 slice 3: the look-at's keyed "then".
+				pc.ScryThen, pc.PickThen = t, t.Key
+			}
+			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
+				// #4301: the ordering prompt's keyed "then".
+				pc.LibraryOrder = snapshotLibraryOrder(k)
+				pc.PickThen = k.then.Ref.key
+			}
+			if key != "" {
+				// #4253: the frame is data; it is written, not counted.
+				pc.ReplacementResume = g.snapshotReplacementResume(c.replacementResume, cen)
+				pc.PickThen = key
+				keyedFrames = true
+			}
+			s.PendingChoices = append(s.PendingChoices, pc)
+		}
+		if keyedFrames {
+			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
+			for _, c := range g.enteringTokens {
+				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
+			}
 		}
 	}
 	// #3665: a combat damage step's damage held behind its
@@ -2249,6 +2468,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.StepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
+	// #4290: the prompted runs in flight. A keyed run is written; a run
+	// whose continuation is a closure is counted.
+	s.PromptRuns = snapshotPromptRuns(g.promptRuns, cen)
 
 	switch n := len(g.Events); {
 	case n == 0:
@@ -2279,6 +2501,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
+	s.Resolving = snapshotResolving(g)
 
 	// The turn-scoped block-rule registry retired with ADR 0041 tier
 	// 3b, alongside its replacement twin: a Gingerbrute is a
@@ -2337,6 +2560,15 @@ func restoreCompanionZone(z *zoneSnapshot) *Zone {
 		return nil
 	}
 	return restoreZone(z, ZoneOutside)
+}
+
+// restoreCommandPile is restoreZone for Player.AttractionDeck and
+// Player.Junkyard (ADR 0207 §5): absent stays nil, which is "none".
+func restoreCommandPile(z *zoneSnapshot) *Zone {
+	if z == nil {
+		return nil
+	}
+	return restoreZone(z, ZoneCommand)
 }
 
 func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
@@ -2463,6 +2695,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
+		AstrotoriumBack:          c.AstrotoriumBack,
+		AttractionLights:         append([]int(nil), c.AttractionLights...),
+		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2502,6 +2737,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefPtr(c.ChosenPermanent),
@@ -2516,6 +2752,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:             c.ReturnedAura,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2532,6 +2769,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        snapshotExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                snapshotEncodedOn(c.EncodedOn),
+		CreatedWith:              snapshotEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
@@ -2576,16 +2814,22 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Emblems:               snapshotZone(p.Emblems, cen),
 		Companion:             snapshotCompanionZone(p.Companion, cen),
 		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
+		AttractionDeck:        snapshotCompanionZone(p.AttractionDeck, cen),
+		Junkyard:              snapshotCompanionZone(p.Junkyard, cen),
+		StickerSheetPool:      cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:         cloneStickerSheets(p.StickerSheets),
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut:     p.LastTurnCastOrPut,
 		Eliminated:            p.Eliminated,
 		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
+		MulliganBottoming:     p.mulliganBottoming,
 		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
 		TriggerOrder:          string(p.TriggerOrder),
 		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
@@ -2835,6 +3079,13 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 }
 
 func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingChoiceSnapshot {
+	return snapshotPendingChoiceFrame(c, cen, false)
+}
+
+// snapshotPendingChoiceFrame is snapshotPendingChoice with the CR 616
+// frame already written as data (keyedFrame, #4253), so it is not
+// counted.
+func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyedFrame bool) pendingChoiceSnapshot {
 	out := pendingChoiceSnapshot{
 		ID:                    c.ID,
 		Kind:                  c.Kind,
@@ -2883,16 +3134,21 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeNotChosen:         c.ModeNotChosen,
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		CastPile:              copyUUIDs(c.CastPile),
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
+		PickMatchArg:          c.PickMatchArg,
+		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithSnapshot(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		SecondName:            c.SecondName,
+		NotBasicLandName:      c.NotBasicLandName,
 		ScryCards:             copyUUIDs(c.ScryCards),
 		LibraryPlacement:      c.LibraryPlacement,
 		LibraryTopCount:       c.LibraryTopCount,
@@ -2911,8 +3167,20 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
+		Private:               c.private,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
+		PayActionClause:       copyPayAction(c.PayActionClause),
+		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
+		PayAmount:             copyPayAmountPrompt(c.PayAmount),
+		MayPayX:               copyMayPayXClause(c.MayPayX),
+		PickNumber:            c.PickNumber,
+		PickWords:             copyStrings(c.PickWords),
+		PickNums:              copyInts(c.PickNums),
+		Assist:                cloneAssistPrompt(c.Assist),
+		AttackSplit:           snapshotAttackSplit(c.AttackSplit, cen),
+		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,
@@ -2925,6 +3193,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseMax:             c.ChooseMax,
 		PickOptions:           cloneChoiceOptions(c.PickOptions),
 		OptionCarry:           copyUUIDs(c.OptionCarry),
+		PayCauseController:    c.PayCauseController,
+		PayCauseItem:          c.PayCauseItem,
 		CouncilVote:           cloneCouncilVote(c.CouncilVote),
 		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
@@ -2936,6 +3206,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		AutoAnswerCard:        c.AutoAnswerCard,
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
+		PromptRun:             c.promptRun,
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -2947,7 +3218,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 	}
 	// The continuation slots, one by one. Each is a paused effect.
 	for name, present := range map[string]bool{
-		"replacementResume": c.replacementResume != nil,
+		"replacementResume": c.replacementResume != nil && !keyedFrame,
 		// #1397: a parked cost announcement waiting on a commander's
 		// owner. Dropping it drops the announcement, not half of it —
 		// nothing was paid — but the census still says so.
@@ -2970,22 +3241,23 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		// continuation like any other, and an entry missing here
 		// would let the server write a restore point that silently
 		// drops the rest of the card. See chained_choice.go.
-		"confirmResume":     c.confirmResume != nil,
-		"chooseCardsResume": c.chooseCardsResume != nil,
+		"confirmResume": c.confirmResume != nil,
+		// #4253 slice 2: a keyed entry card choice's zone frame is
+		// rebuilt from its prompt kind (entryCardChoiceFrameIsData).
+		"chooseCardsResume": c.chooseCardsResume != nil && !(keyedFrame && isEntryCardChoiceKind(c.Kind)) &&
+			// #4290: a keyed permanent-pick run's leg frame is rebuilt
+			// from the prompt (permanentPickLegIsData).
+			!permanentPickLegIsData(c),
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		"optionPickResume":  c.optionPickResume != nil,
 		"chooseValueResume": c.chooseValueResume != nil,
 		"modePickResume":    c.modePickResume != nil,
 		"coinFlipResume":    c.coinFlipResume != nil,
-		// #1019's / #1027's prompted run — a sacrifice's or a
-		// discard's. Not a frame ON the choice — the continuation
-		// lives on the Game, keyed by this id, because the prompts of
-		// one run share it — but it is a continuation the snapshot
-		// cannot carry all the same, and a restore point taken
-		// mid-fan-out would drop the rest of the card. Counted here so
-		// the census says so.
-		"promptRun": c.promptRun != uuid.Nil,
+		// #1019's / #1027's prompted run is not counted here since
+		// #4290: the link (promptRun) is carried, and the run itself is
+		// counted once, on the Game, when its continuation is a closure
+		// (snapshotPromptRuns).
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -3122,6 +3394,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.pausedStepWalk = restoreStepWalk(s.PausedStepWalk)
 	g.stepRecords = cloneStepRecords(s.StepRecords)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
+	g.promptRuns = restorePromptRuns(s.PromptRuns)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
@@ -3242,6 +3515,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
 	g.LoyaltyActivatedTwiceThisTurn = copyBoolMap(s.LoyaltyActivatedTwiceThisTurn)
+	g.LoyaltyExtraActivationsThisTurn = copyIntMap(s.LoyaltyExtraActivationsThisTurn)
+	g.LoyaltyExtraActivationsUsedThisTurn = copyNestedIntMap(s.LoyaltyExtraActivationsUsedThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
@@ -3305,6 +3580,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.lastKnownPermanents = cloneLastKnownPermanents(s.LastKnownPermanents)
 	g.lastKnownStack = restoreLastKnownStack(s.LastKnownStack)
+	g.resolving = restoreResolving(s.Resolving)
 
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
@@ -3318,6 +3594,39 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// lastResolvedVersion is what forces that.
 	g.lastResolvedVersion.Store(s.LastResolvedVersion)
 	g.layerVersion.Store(s.LayerVersion + 1)
+
+	// #4253: the keyed CR 616 frames, rebuilt last because the gather
+	// that finds their effects again reads the whole restored board.
+	for i := range s.PendingChoices {
+		// #4253 slice 3: a look-at's keyed "then", whose key rode PickThen.
+		if t := s.PendingChoices[i].ScryThen; t != nil && carriesLookAtThen(s.PendingChoices[i].Kind) {
+			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
+			g.PendingChoices[i].PickThen = ""
+		}
+		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
+			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)
+			g.PendingChoices[i].PickThen = ""
+		}
+	}
+	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)
+	for i := range s.EnteringTokens {
+		// #4253 slice 3: before the frames, whose gather reads a staged
+		// token's entry off them.
+		g.enteringTokens = append(g.enteringTokens, restoreCard(&s.EnteringTokens[i]))
+	}
+	for i := range s.PendingChoices {
+		rs := s.PendingChoices[i].ReplacementResume
+		if rs == nil || !keyedReplacementPromptKind(s.PendingChoices[i].Kind) {
+			continue
+		}
+		g.PendingChoices[i].PickThen = ""
+		g.PendingChoices[i].replacementResume = g.rebuildReplacementResumeLocked(rs)
+		if kind := s.PendingChoices[i].Kind; isEntryCardChoiceKind(kind) {
+			// The live-zone re-check's frame, which for these kinds is
+			// the zone and nothing else.
+			g.PendingChoices[i].chooseCardsResume = &chooseCardsFrame{zone: entryCardChoiceZone(kind)}
+		}
+	}
 	return g
 }
 
@@ -3410,6 +3719,9 @@ func restoreCard(c *cardSnapshot) Card {
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
 		IsSideboard:              c.IsSideboard,
+		AstrotoriumBack:          c.AstrotoriumBack,
+		AttractionLights:         append([]int(nil), c.AttractionLights...),
+		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3448,6 +3760,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
+		ChosenSecondName:         c.ChosenSecondName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
 		ChosenPermanent:          objectRefValue(c.ChosenPermanent),
@@ -3462,6 +3775,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:             c.ReturnedAura,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -3478,6 +3792,7 @@ func restoreCard(c *cardSnapshot) Card {
 		ExiledWith:               c.ExiledWith,
 		ExiledWithAbility:        restoreExiledWithAbility(c.ExiledWithAbility),
 		EncodedOn:                restoreEncodedOn(c.EncodedOn),
+		CreatedWith:              restoreEncodedOn(c.CreatedWith),
 		EncodedAt:                c.EncodedAt,
 		PhasedOutBy:              c.PhasedOutBy,
 		PhaseInLockedBy:          c.PhaseInLockedBy,
@@ -3555,15 +3870,21 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		Companion:          restoreCompanionZone(p.Companion),
 		Sideboard:          restoreCompanionZone(p.Sideboard),
+		AttractionDeck:     restoreCommandPile(p.AttractionDeck),
+		Junkyard:           restoreCommandPile(p.Junkyard),
+		StickerSheetPool:   cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		LastTurnCastOrPut:  p.LastTurnCastOrPut,
 		Eliminated:         p.Eliminated,
 		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
+		mulliganBottoming:  p.MulliganBottoming,
 		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
 		AutoAnswers:        copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:     p.MulligansTaken,
@@ -3812,16 +4133,21 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeNotChosen:         c.ModeNotChosen,
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		CastPile:              copyUUIDs(c.CastPile),
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
 		PickFromGraveyard:     c.PickFromGraveyard,
 		PickThen:              c.PickThen,
+		PickMatchArg:          c.PickMatchArg,
+		ChooseLiveZone:        c.ChooseLiveZone,
 		PickMeasures:          copyInts(c.PickMeasures),
 		PickExiledWith:        pickExiledWithRestored(c.PickExiledWith),
 		CopyOptions:           copyUUIDs(c.CopyOptions),
 		ExchangesText:         c.ExchangesText,
 		ExcludedTypes:         copyStrings(c.ExcludedTypes),
+		SecondName:            c.SecondName,
+		NotBasicLandName:      c.NotBasicLandName,
 		ScryCards:             copyUUIDs(c.ScryCards),
 		LibraryPlacement:      c.LibraryPlacement,
 		LibraryTopCount:       c.LibraryTopCount,
@@ -3840,8 +4166,20 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		DeclineLabel:          c.DeclineLabel,
 		LifeCost:              c.LifeCost,
 		DeclineEndsLoop:       c.DeclineEndsLoop,
+		private:               c.Private,
 		OwedInStep:            c.OwedInStep,
 		GuardsStackItem:       c.GuardsStackItem,
+		PayActionClause:       copyPayAction(c.PayActionClause),
+		Asked:                 copyAskedItem(c.Asked),
+		PayTap:                copyPayTapSpec(c.PayTap),
+		PayAmount:             copyPayAmountPrompt(c.PayAmount),
+		MayPayX:               copyMayPayXClause(c.MayPayX),
+		PickNumber:            c.PickNumber,
+		PickWords:             copyStrings(c.PickWords),
+		PickNums:              copyInts(c.PickNums),
+		Assist:                cloneAssistPrompt(c.Assist),
+		AttackSplit:           restoreAttackSplit(c.AttackSplit),
+		OptionObjects:         cloneObjectRefs(c.OptionObjects),
 		OptionalItem:          c.OptionalItem,
 		OptionalTradeFor:      c.OptionalTradeFor,
 		NoGain:                c.NoGain,
@@ -3854,6 +4192,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseMax:             c.ChooseMax,
 		PickOptions:           cloneChoiceOptions(c.PickOptions),
 		OptionCarry:           copyUUIDs(c.OptionCarry),
+		PayCauseController:    c.PayCauseController,
+		PayCauseItem:          c.PayCauseItem,
 		CouncilVote:           cloneCouncilVote(c.CouncilVote),
 		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
@@ -3865,10 +4205,15 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AutoAnswerCard:        c.AutoAnswerCard,
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
+		// #4290: the run this prompt is one leg of (PromptRuns).
+		promptRun: c.PromptRun,
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
 	}
+	// #4290: except a keyed permanent-pick leg's, which is a function
+	// of the prompt's own fields.
+	restorePermanentPickLeg(out)
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)
@@ -3994,6 +4339,24 @@ func copyUUIDPairMap(in map[uuid.UUID]uuid.UUID) map[uuid.UUID]uuid.UUID {
 	out := make(map[uuid.UUID]uuid.UUID, len(in))
 	for k, v := range in {
 		out[k] = v
+	}
+	return out
+}
+
+// copyNestedIntMap deep-copies a two-level count map, dropping empty
+// inner maps (#4191).
+func copyNestedIntMap(in map[uuid.UUID]map[uuid.UUID]int) map[uuid.UUID]map[uuid.UUID]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[uuid.UUID]map[uuid.UUID]int, len(in))
+	for k, v := range in {
+		if inner := copyIntMap(v); inner != nil {
+			out[k] = inner
+		}
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

@@ -49,7 +49,7 @@ func init() {
 			return MayChoice{
 				Player:   item.Controller,
 				Question: "Sevinne's Reclamation — copy it? (you may choose a new target for the copy)",
-				OnYes:    copyThisSpellFor(item.Controller),
+				Then:     mayCopyThisSpell,
 			}.Apply(ctx)
 		},
 	})

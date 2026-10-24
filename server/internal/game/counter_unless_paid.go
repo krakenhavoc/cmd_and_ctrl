@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -109,6 +110,21 @@ type CounterUnlessPaidPrompt struct {
 	// arrives at and must capture no game state.
 	OnPaid func(g *Game) error
 
+	// Then is OnDecline and OnPaid as REGISTERED branches
+	// (RegisterPayUnlessBranches, #4264), and Carry the plain data they
+	// are handed (the guarded object rides PayUnlessAnswer.Guards): a
+	// prompt queued with one holds no closure, so a table waiting on it
+	// is a restore point. With it OnDecline and OnPaid must be nil. A
+	// prompt with none of the three, the printed "counter that spell", is
+	// keyed by the engine itself (counterGuardedDecline).
+	Then  PayUnlessElse
+	Carry []uuid.UUID
+
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed branch as PayUnlessAnswer.Item (#4264). Nil when the branch
+	// reads none.
+	Asked *AskedItem
+
 	// Cost is the printed payment ("{1}", "{2}"), parsed by
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
@@ -161,6 +177,27 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 		chooser = guarded.Controller
 	}
 	stackID := p.StackItem
+	// #4264: the registered branches, or the engine's own for the plain
+	// "counter that spell", leave the prompt without a closure. A
+	// waterbend payment keeps its frame.
+	then, carry := p.Then, p.Carry
+	if then.key != "" && (p.OnDecline != nil || p.OnPaid != nil) {
+		return fmt.Errorf("%w: keyed counter-unless-pays %q also sets a closure", ErrInvalidParam, then.key)
+	}
+	// A waterbend clause stays a closure unless its kind is registered
+	// (RegisterTapCost), which is what lets a prompt carry it as data.
+	tap := payTapSpecOf(p.Waterbend)
+	keyable := p.Waterbend == nil || tap != nil
+	if then.key == "" && p.OnDecline == nil && p.OnPaid == nil && keyable {
+		then, carry = counterGuardedDecline, nil
+	}
+	if then.key != "" && keyable {
+		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+			Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
+			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost, Asked: p.Asked,
+			Tap: tap,
+		})
+	}
 	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }
 	if p.OnDecline != nil {
 		custom := p.OnDecline
@@ -176,6 +213,15 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost, onPay: p.OnPaid})
 }
 
+// counterGuardedDecline is the printed "counter that spell", as the
+// keyed decline of every counter-unless-pays that sets no consequence of
+// its own (#4264): the guarded object rides the prompt (GuardsStackItem),
+// so the prompt needs no closure and a table waiting on it is a restore
+// point. A spell that has left the stack by the answer is not an error.
+var counterGuardedDecline = RegisterPayUnlessElse("pay-unless/counter-guarded", func(g *Game, r PayUnlessAnswer) error {
+	return g.counterIfStillOnStackLocked(r.Guards)
+})
+
 // counterIfStillOnStackLocked counters `stackID` unless it has
 // already left the stack, in which case the "unless" clause bought
 // off nothing and that is not an error. Caller must hold g.mu.
@@ -187,6 +233,19 @@ func (g *Game) counterIfStillOnStackLocked(stackID uuid.UUID) error {
 		return err
 	}
 	return nil
+}
+
+// CounterIfStillOnStackForEffect counters `stackID` unless it has already
+// left the stack, in which case the "unless" clause bought off nothing and
+// that is not an error. It is the decline a keyed counter-unless-pays names
+// when it also has a payment branch of its own (Assimilate Essence's "if
+// they do, you incubate 2"): a registered key's branches replace the
+// engine's own "counter that spell", so a card that registers a pay branch
+// registers this as its decline.
+//
+// Caller must hold g.mu.
+func (g *Game) CounterIfStillOnStackForEffect(stackID uuid.UUID) error {
+	return g.counterIfStillOnStackLocked(stackID)
 }
 
 // choiceGuardsALiveStackItem reports whether `c` is a prompt whose

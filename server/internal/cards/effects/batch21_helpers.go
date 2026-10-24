@@ -168,13 +168,20 @@ func b21DrainEachOpponentAndGainTheTotal(g *game.Game, item *game.StackItem, n i
 	}
 	ctx := NewContext(g, item)
 	controller, source := item.Controller, ctx.Source()
-	return g.LoseLifeEachThenForEffect(source, ctx.Opponents(), n, func(g *game.Game, totalLost int) error {
-		if totalLost <= 0 {
-			return nil
-		}
-		return g.ChangePlayerLifeForEffect(source, controller, totalLost)
-	})
+	// #4253 slice 3: the batch and the gain are data, so a CR 616
+	// ordering prompt over an opponent's loss is a restore point.
+	return g.LoseLifeEachKeyedForEffect(source, ctx.Opponents(), n,
+		game.KeyedTail{Ref: drainGainTheTotal, Player: controller, Source: source})
 }
+
+// drainGainTheTotal is "you gain life equal to the life lost this way",
+// told the total once every opponent's loss has settled. An on-disk key.
+var drainGainTheTotal = game.RegisterTail("drain/gain-the-life-lost", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, o.Amount)
+})
 
 // b21DamageEachOpponentAndTheirCreaturesAndWalkers is End the
 // Festivities' body: N damage to each opponent, and to each creature

@@ -38,17 +38,23 @@ func init() {
 				Question: "Aether Spike — pay any amount of {E}; its controller must pay {1} for each or it is countered",
 				Unit:     game.PayAmountTax,
 				Goal:     AsMuchAsYouCan,
-				Then: func(ctx *Context, paid int) error {
-					if paid <= 0 {
-						return nil
-					}
-					return CounterUnlessPaid{
-						StackID:  ctx.Item.Targets[0].ID,
-						Cost:     fmt.Sprintf("{%d}", paid),
-						Question: fmt.Sprintf("Aether Spike — pay {%d}, or your spell is countered?", paid),
-					}.Apply(ctx)
-				},
+				Then:     aetherSpikeCounterUnless,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// aetherSpikeCounterUnless is the paid half (#4294): the spell it chose is
+// countered unless its controller pays {1} for each {E} paid, a tax of the
+// amount, read off the asking item's target.
+var aetherSpikeCounterUnless = NumberThen("number/aether-spike-counter-unless-paid",
+	func(ctx *Context, r game.NumberAnswer) error {
+		if r.Number <= 0 || ctx.Item == nil || len(ctx.Item.Targets) == 0 {
+			return nil
+		}
+		return CounterUnlessPaid{
+			StackID:  ctx.Item.Targets[0].ID,
+			Cost:     fmt.Sprintf("{%d}", r.Number),
+			Question: fmt.Sprintf("Aether Spike — pay {%d}, or your spell is countered?", r.Number),
+		}.Apply(ctx)
+	})

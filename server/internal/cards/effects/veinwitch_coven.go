@@ -45,14 +45,11 @@ func init() {
 					if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 						return nil
 					}
-					id := item.Targets[0].ID
 					return MayPay{
 						Chooser:  item.Controller,
 						Cost:     "{B}",
 						Question: "Veinwitch Coven — pay {B} to return a creature card from your graveyard to your hand?",
-						OnPay: func(ctx *Context) error {
-							return ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}.Apply(ctx)
-						},
+						Then:     veinwitchCovenPaid,
 					}.Apply(NewContext(g, item))
 				}),
 				TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature()),
@@ -60,3 +57,12 @@ func init() {
 		},
 	})
 }
+
+// veinwitchCovenPaid is the paid half, keyed (#4264): the card is the asking item's target.
+var veinwitchCovenPaid = PayUnlessBranches("pay-unless/veinwitch-coven-return",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if len(ctx.Item.Targets) == 0 || ctx.Item.Targets[0].Kind != game.TargetCard {
+			return nil
+		}
+		return ReturnFromGraveyard{Target: ctx.Item.Targets[0].ID, Dest: game.ZoneHand}.Apply(ctx)
+	}, nil)

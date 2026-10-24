@@ -510,7 +510,7 @@ func (g *Game) settleOrphanedHandoffLocked() {
 }
 
 // freeAttackAvailableLocked reports whether c could be pointed at some
-// target without paying anything (CR 508.1a's tax): a target it may
+// target without paying anything (CR 508.1h's tax): a target it may
 // attack, that no count limit or requirement refuses it, at no price.
 // Exactly the free re-points the enumerator offers.
 //

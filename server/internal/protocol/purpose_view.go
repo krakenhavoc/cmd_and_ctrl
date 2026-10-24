@@ -108,6 +108,10 @@ type PurposeView struct {
 	// card of a permanent that doubles them (#3146): Ancient
 	// Greenwarden 1.
 	LandfallExtraTriggers int `json:"landfall_extra_triggers,omitempty"`
+	// ExtraLoyaltyActivations is how many more times this turn each
+	// planeswalker its controller controls may activate a loyalty
+	// ability (#4191): The Chain Veil's activated row 1.
+	ExtraLoyaltyActivations int `json:"extra_loyalty_activations,omitempty"`
 	// Impulse is the cards it exiles from the top of its controller's
 	// library that its controller may play this turn (#2480).
 	Impulse int `json:"impulse,omitempty"`
@@ -225,6 +229,15 @@ type TargetPurposeView struct {
 	// Reanimates: the spell puts the picked graveyard card onto the
 	// battlefield under its caster's control (#3161).
 	Reanimates bool `json:"reanimates,omitempty"`
+	// UntilEndOfTurn is "benefit" or "harm": which way a change that ends
+	// with the turn cuts for the picked permanent's controller (#4302).
+	// Absent when the entry declares none.
+	UntilEndOfTurn string `json:"until_end_of_turn,omitempty"`
+	// Pump is that change in printed amounts: the power and toughness it
+	// adds (negative for a harm) and the keywords a benefit grants.
+	// Absent for an amount counted at resolution or a change that is not
+	// a pump. A pointer so TargetPurposeView stays comparable.
+	Pump *PumpView `json:"pump,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -252,6 +265,9 @@ type PumpView struct {
 	Power     int      `json:"power,omitempty"`
 	Toughness int      `json:"toughness,omitempty"`
 	Keywords  []string `json:"keywords,omitempty"`
+	// CantBeBlocked: the change makes the creature unblockable this turn
+	// (#4312).
+	CantBeBlocked bool `json:"cant_be_blocked,omitempty"`
 }
 
 // DiscardPayoffView is game.DiscardPayoff on the wire: which discarded
@@ -351,12 +367,13 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
 		LandfallExtraTriggers:     p.LandfallExtraTriggers,
+		ExtraLoyaltyActivations:   p.ExtraLoyaltyActivations,
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
 	}
 	if pm := p.Pump; pm != nil {
-		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}
+		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{
@@ -392,6 +409,10 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, ExtraTurns: t.ExtraTurns, Tokens: t.Tokens,
 				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, DamagePerTapped: t.DamagePerTapped, Reanimates: t.Reanimates,
+				UntilEndOfTurn: string(t.UntilEndOfTurn),
+			}
+			if pm := t.Pump; pm != nil {
+				out[i].Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

@@ -1471,6 +1471,11 @@ estimate.
 > a rules gate read by both the cast gate and the land-play gate (#1987, Shaman's Trance), is one more
 > additive kind under schema v9, with one fixture (`v9/shamans_trance.json`).
 
+> **Amended by [ADR 0109](0109-rule-gates-land-types-mana-and-cost-components.md)** (2026-10-23): `ignoreEffect`,
+> a rules gate read by both the cast gate and the land-play gate (#1986, Damping Engine's "ignore this effect until
+> end of turn"), is one more additive kind under schema v9, with one fixture (`v9/damping_engine_ignore.json`).
+> Its `source` is the ignored permanent as an object (id and epoch), so a returned permanent is not ignored.
+
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing
 `ScopedEffect` instead. There are three reasons:
@@ -2733,3 +2738,67 @@ here, against P3 and P9:
 - **Back-out.** Drop `StepRecords` from the restore, and the probe in
   `effects/then_steps_test.go` draws nothing after a strict restore taken
   mid-pause.
+
+## Amendment — 2026-10-24: the resolving slot is carried (#4270)
+
+`Game.resolving` (#920, ADR 0043) is the item whose resolution is in
+flight, plus the card a spell was. It was classed `dropped` on a premise:
+a resolution paused on a prompt always holds a resume frame, which
+`ContinuationCensus.ChoiceResumeFrames` counts, so no snapshot is a restore
+point while the slot is set. ADR 0127's keyed prompts (a pay-unless, a
+confirm, a choice with a `ThenKey`) broke it: they carry no frame, so a
+table waiting on one IS a restore point, and its answer can read the slot.
+Wandering Archaic's "copy that spell?" is the case that found it. The Bolt
+had already resolved when the question was answered, so `CopySpellForEffect`
+reaches it only through the slot, and after a restore "yes" copied nothing.
+
+- **Decision.** The slot is plain data and is carried:
+  `GameSnapshot.Resolving` (`resolvingSnapshot`: the item as a
+  `stackItemSnapshot`, the spell's card as a `cardSnapshot` when there is
+  one, and the ability source's object epoch). Additive within v9 and absent
+  when the slot is empty; an older file restores with the slot empty, as
+  before. The drift row for `resolving` is now `carried`.
+- **The closure cost is nil.** Every reader takes a field off the item or the
+  card (controller, targets, label, source object, catalog ref), and the
+  item's `Effect` already ran before any prompt could pause the resolution.
+  `restoreStackItem` re-derives an `Effect` and a target clause when the item
+  names a catalog row and leaves them nil otherwise, as it does for a spell
+  in `lastKnownStack`. Capture reads the slot through a throwaway census, so
+  a spent item that happens to hold a bare closure does not turn a keyed
+  prompt's restore point into a refused one. No `Game` route to a func is
+  added: `closure_fields.txt` does not move.
+- **Lifetime.** One event batch, restored or live. The slot is set as an item
+  begins to resolve and cleared by `beginEventBatchLocked`; `eventBatch` is
+  carried, so the first batch opened after a restore clears a restored slot
+  at the point it would have cleared the live one. A restored slot is not
+  re-opened by anything.
+- **What this does not change.** `enteringTokens`, `outsideEntering` and the
+  other fields classed `dropped` because a replacement or choice prompt
+  carries a frame keep that reason; if one of those prompts is ever keyed,
+  the same question has to be asked of its field.
+- **Back-out.** Drop `g.resolving = restoreResolving(s.Resolving)` from
+  `restoreGame` and `TestWanderingArchaicCopyConfirmIsARestorePoint` takes 3
+  damage instead of 6, and `TestKeyedDiscardAnswerAfterARestoreStillNamesTheResolvingSpellAsItsCause`
+  finds the discards with no cause.
+
+## Amendment — 2026-10-24: a keyed prompt carries the asking item, named objects, a tap clause and a per-object offer's state (#4264)
+
+Four additive fields within `SnapshotSchemaVersion` 9, recorded with `-update-shape` and no fixture edited; each is absent from a file that has no such prompt, and each restores as empty from an earlier file. `pendingChoices[].asked` is `game.AskedItem`, the plain data of the stack item that queued a keyed pay-unless, may-pay, upkeep, counter-unless-pays or any-player prompt (ID, kind, controller, owner, source card, the source object with its epoch, the label, the targets, the triggering event, X and the modes; ADR 0018's amendment of 2026-10-24). `pendingChoices[].optionObjects` is a list of named objects with their epochs. `pendingChoices[].payTap` is a keyed pay-unless's waterbend clause as its kind and extra cost. `anyPlayerOffer.objects`, `.picks` and `.noun` are a keyed per-object any-player offer's state (ADR 0187's amendment). A new ledger kind, `tapcost <kind>`, names the tap clause; `checkEffectKeys` refuses a file naming a kind the binary lacks. Nothing here adds a route from `Game` to a func (`closure_fields.txt` is unchanged).
+
+## Amendment — 2026-10-24: a keyed "choose X" is a restore point (#4289)
+
+Three more additive fields within `SnapshotSchemaVersion` 9, recorded with `-update-shape` and no fixture edited, absent from a file with no such prompt: `pendingChoices[].payAmount` (`game.PayAmountPrompt`, the bounds, goal and unit of a `pay_amount`; JSON-tagged for this, the wire view has its own struct), `pendingChoices[].mayPayX` (`game.MayPayXClause`, the words and cost the next question is built from) and `pendingChoices[].pickNumber` (the X a keyed pay-unless's branches are handed). `PayAmount` was classed `dropped` because every `pay_amount` carried a `chooseValueResume` frame; the one a keyed "you may pay {X}" queues carries none, and a `pay_amount` that still carries one is still counted by `ContinuationCensus.ChoiceResumeFrames` and not written. Capture, restore and the undo clone copy all three. A restore refuses a `pay_amount` naming a pay-unless key this binary does not have. The fixed energy payments are the existing pay-unless prompt with a `PayActionEnergy` payment and add no field. See ADR 0129's amendment of the same date.
+
+## Amendment — 2026-10-24: a keyed number prompt is a restore point (#4294)
+
+Four more additive fields within `SnapshotSchemaVersion` 9, recorded with `-update-shape` and no fixture edited, absent from a file with no such prompt: `pendingChoices[].pickWords` and `.pickNums` (the words and numbers a keyed number branch is handed), `.attackSplit` (a tokens-attacking split's state, `game.AttackSplit`: the template through the card mirror, the count, the things to attack in asking order, the shares so far and a keyed tail) and `.assist` (`game.AssistPrompt`, now with the parked cast as `AssistAnnounce` and the spend context as plain data). `PendingChoice.Assist` was classed `dropped` because every assist prompt carried a `chooseValueResume` frame; it is `carried` now, and `AttackSplit`, `PickWords` and `PickNums` are `carried` too. A `pay_amount` whose `pickThen` is a `RegisterNumberThen` key holds no frame, so it is not counted by `ContinuationCensus.ChoiceResumeFrames`; one that still carries a frame (a colour, a creature type or a card name) is. `closure_fields.txt` gains two `rebuilt` lines (`PendingChoice.AttackSplit`, `AttackSplit.Template`, a card written through the card mirror and rebuilt by the running binary) and no ceiling moves. A restore refuses a `pay_amount` naming a number branch this binary does not have, and a split naming a tail it does not have (`checkEffectKeys`). See ADR 0129's amendment of the same date.
+
+## Amendment — 2026-10-24: a keyed prompted run is carried (#4290)
+
+`Game.promptRuns` and `PendingChoice.promptRun` were classed `dropped`: a run's continuation was a closure, so every leg was counted (`ChoiceResumeFrames`, through the leg's link) and no table waiting on a multi-seat discard or sacrifice was a restore point. ADR 0013's amendment of the same date lets a run carry its continuation as a registered key (`run <key>` in the ledger).
+
+- **Decision.** A keyed run is plain data and is carried: `GameSnapshot.promptRuns` (`promptRunSnapshot`: the run's ID, how many legs are outstanding, the seats in ask order, what each seat has landed so far, the key, the carry and the source card), and each prompt's link as `pendingChoices[].promptRun`. Both are additive within v9 and absent when empty; a file without them restores no run, which is what such a file held. The drift rows for `promptRuns` and `promptRun` are now `carried`, and `snapshot_carried_test.go` round-trips a keyed run.
+- **The census.** A run is counted once, on the Game, when its continuation is a closure (`snapshotPromptRuns`), and such a run is not written; a leg is no longer counted for its link. That one count keeps a table holding a closure run from being a restore point whatever its legs are (a sacrifice leg is data either way).
+- **Refusal.** `checkEffectKeys` refuses a run whose key this binary lacks. An older binary does not read `promptRuns` at all, so the legs carry the refusal: a keyed discard leg names `choose-cards/discard-leg` and a keyed sacrifice or permanent-pick leg names its run's key in `pickThen`, and a binary without either refuses the file rather than restoring a leg that settles into nothing.
+- **The closure cost is nil.** `promptRun` gains a string and two IDs; no route from `Game` to a func is added and `closure_fields.txt` does not move.
+- **A permanent-pick leg's frame.** An `own_permanents` / `their_permanents` leg of a keyed run with no set rule holds only the battlefield re-check and the leg settle, both functions of the prompt's own fields; it is not counted and `restorePendingChoice` rebuilds it (`restorePermanentPickLeg`), the way an entry card choice's zone frame is rebuilt from its kind (#4253).

@@ -36,15 +36,19 @@ func init() {
 						Chooser:  item.Controller,
 						Cost:     "{U}{U}{U}",
 						Question: "Island Fish Jasconius — pay {U}{U}{U} to untap it?",
-						OnPay: func(ctx *Context) error {
-							if !onBattlefield(ctx.Game, ctx.Item.SourceCardID) {
-								return nil
-							}
-							return UntapTarget{Target: ctx.Item.SourceCardID}.Apply(ctx)
-						},
+						Then:     islandFishJasconiusPaid,
 					}.Apply(NewContext(g, item))
 				}),
 			WhenYouControlNo(q, "Island Fish Jasconius — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
 }
+
+// islandFishJasconiusPaid is the paid half, keyed (#4264).
+var islandFishJasconiusPaid = PayUnlessBranches("pay-unless/island-fish-jasconius-untap",
+	func(ctx *Context, _ game.PayUnlessAnswer) error {
+		if !onBattlefield(ctx.Game, ctx.Item.SourceCardID) {
+			return nil
+		}
+		return UntapTarget{Target: ctx.Item.SourceCardID}.Apply(ctx)
+	}, nil)

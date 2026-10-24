@@ -103,6 +103,17 @@ type entryTail struct {
 	// batch's own, run once for the whole entry.
 	batch      *entryBatch
 	batchIndex int
+
+	// search is a library search's remaining work as data (#4253 slice
+	// 3): `then`'s closure-free twin for a battlefield search, run by
+	// runSearchEntryStepLocked. Cleared through the pointer as it runs,
+	// as `then` is. Never set together with `then` or `batch`.
+	search *searchEntryRun
+
+	// tokens is a token batch's remaining entries as data (#4253 slice
+	// 3), run by runTokenEntryStepLocked. Cleared through the pointer
+	// as it runs, as `then` is.
+	tokens *tokenEntryRun
 }
 
 // runEntryTailLocked runs a settled entry's continuation exactly once.
@@ -121,7 +132,18 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 	if b, i, ok := ev.takeEntryBatch(); ok {
 		return g.resumeEntryBatchLocked(b, i, nil)
 	}
-	if ev == nil || ev.entryTail == nil || ev.entryTail.then == nil {
+	if ev == nil || ev.entryTail == nil {
+		return nil
+	}
+	if r := ev.entryTail.search; r != nil {
+		ev.entryTail.search = nil
+		return g.runSearchEntryStepLocked(r, entered)
+	}
+	if r := ev.entryTail.tokens; r != nil {
+		ev.entryTail.tokens = nil
+		return g.runTokenEntryStepLocked(r, entered)
+	}
+	if ev.entryTail.then == nil {
 		return nil
 	}
 	then := ev.entryTail.then
@@ -162,6 +184,8 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 //
 // Caller must hold g.mu.
 func (g *Game) enterBattlefieldThroughPipelineLocked(ev *ReplacementEvent) (entered uuid.UUID, err error) {
+	// #1997: who puts it, stamped before any pause.
+	g.stampPutByEnteringLocked(ev)
 	paused := false
 	defer func() {
 		if paused {
@@ -326,6 +350,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.ChosenPlayer = uuid.Nil
 		c.ChosenSecondPlayer = uuid.Nil
 		c.ChosenName = ""
+		c.ChosenSecondName = ""
 		c.ChosenOption = ""
 		c.ChosenNumber = 0
 		c.ChosenPermanent = ObjectRef{}
@@ -342,6 +367,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Bestowed = false
 		c.EnchantSwapped = false
 		c.EnchantReturned = ObjectRef{}
+		c.ReturnedAura = false
 		c.Saddled = false
 		c.SaddledBy = nil
 		c.Suspected = false

@@ -8,6 +8,7 @@
   import type { ServerErrorLike } from "../choiceRejection";
   import ChoicePromptModal from "../components/board/ChoicePromptModal.svelte";
   import ControlledPlaySheet from "../components/board/ControlledPlaySheet.svelte";
+  import ResolutionCastSheet from "../components/board/ResolutionCastSheet.svelte";
   import ActionDock from "../components/board/ActionDock.svelte";
 
   const {
@@ -25,6 +26,7 @@
 
 <ChoicePromptModal {snap} {viewerID} {sendAction} {lastError} />
 <ControlledPlaySheet {snap} {viewerID} {sendAction} />
+<ResolutionCastSheet {snap} {viewerID} {sendAction} />
 <ActionDock
   view={snap}
   viewerHasPriority={false}

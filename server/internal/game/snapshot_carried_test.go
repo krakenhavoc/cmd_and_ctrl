@@ -202,6 +202,10 @@ var carriedFixture = map[string]any{
 			// refused at restore when this binary does not know them.
 			c.PickThen = carriedTestPickKey.Key()
 			c.PickDestination = PickExile
+			// #4264: so is a keyed pay-unless's tap clause kind.
+			if c.PayTap != nil {
+				c.PayTap.Kind = carriedTestTapKind
+			}
 			// ADR 0146: so is a ballot's vote continuation.
 			if c.CouncilVote != nil {
 				c.CouncilVote.Then = carriedTestVoteKey.Key()
@@ -218,7 +222,18 @@ var carriedFixture = map[string]any{
 		out.Then = carriedTestVoteKey.Key()
 		return out
 	},
+	// #4294: a tokens-attacking split's tail is a registered key too.
+	"PendingChoice.AttackSplit": func(*Game) any {
+		v, err := generateNonZero(reflect.TypeOf(&AttackSplit{}), "PendingChoice.AttackSplit", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().(*AttackSplit)
+		out.Tail.Ref = attackSplitTail
+		return out
+	},
 	"PendingChoice.PickThen":        carriedTestPickKey.Key(),
+	"PendingChoice.PayTap":          &PayTapSpec{Kind: carriedTestTapKind, Extra: "{4}"},
 	"PendingChoice.PickDestination": PickExile,
 	// A mod's kind is a closed vocabulary, and restore REFUSES a kind
 	// it does not know (ErrUnknownEffectKey, ADR 0041 P4) — so an
@@ -350,6 +365,21 @@ var carriedFixture = map[string]any{
 				SourceCardID: id, Label: "drift-Game.lastKnownStack", XValue: 5, Seq: 5151},
 		}}
 	},
+	// #4270: the slot holds a card and an item, and a generated item
+	// would name an invented body and be refused, as
+	// Game.lastKnownStack's would.
+	"Game.resolving": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.resolving"))
+		me := g.Seats[0].ID
+		return &resolvingItem{
+			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.resolving", XValue: 6, Seq: 5454},
+			card: Card{InstanceID: id, Name: "drift-Game.resolving", TypeLine: "Instant",
+				Owner: me, Controller: me},
+			hasCard:     true,
+			sourceEpoch: -1,
+		}
+	},
 	// #2789: a generated item would name an invented body and be
 	// refused, as Game.lastKnownStack's would.
 	"Game.pausedModeWalk": func(g *Game) any {
@@ -399,6 +429,22 @@ var carriedFixture = map[string]any{
 			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
 				SourceCardID: id, Label: "drift-Game.pausedResolutionTail", XValue: 2, Seq: 5353},
 		}
+	},
+	// #4290: a keyed prompted run. A generated run would name an
+	// invented continuation and be refused, and a generated closure
+	// could not be written at all.
+	"Game.promptRuns": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.promptRuns"))
+		a, b := g.Seats[0].ID, g.Seats[1].ID
+		card := uuid.NewSHA1(uuid.Nil, []byte("Game.promptRuns/card"))
+		return map[uuid.UUID]*promptRun{id: {
+			outstanding: 1,
+			seats:       []uuid.UUID{a, b},
+			landed:      map[uuid.UUID][]uuid.UUID{a: {card}},
+			thenKey:     carriedTestPromptRunKey,
+			carry:       []uuid.UUID{b},
+			source:      card,
+		}}
 	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
 	"StackItem.CastFromZone": ZoneGraveyard,
@@ -466,6 +512,13 @@ var carriedNotRoundTrippable = map[string]string{
 		"its characteristics instead of serving the cache it dropped (restoreGame). " +
 		"TestSnapshotRoundTripIsExact asserts the bump, and TestSnapshotRoundTripKeepsGameUsable " +
 		"asserts the recompute it buys.",
+	"PendingChoice.libraryOrderKeyed": "#4301: written only on a put_in_library prompt, whose PickThen it " +
+		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestPortentLookIsARestorePoint (effects).",
+	"PendingChoice.scryThen": "#4253 slice 3: written only on a scry, surveil or look-at-top prompt, whose PickThen it " +
+		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +
+		"v9/preordain_scry.json corpus board (effects).",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.
@@ -938,6 +991,15 @@ var (
 	// ADR 0146: a ballot's vote continuation key.
 	carriedTestVoteKey = RegisterVoteThen(testEffectKeyPrefix+"carried-vote",
 		func(*Game, VoteResult) error { return nil })
+	// #4264: a keyed pay-unless's tap clause kind.
+	carriedTestTapKind = func() string {
+		kind := testEffectKeyPrefix + "carried-tap"
+		RegisterTapCost(kind, func(extra string) *TapPermanentsCost { return &TapPermanentsCost{Key: kind, Extra: extra} })
+		return kind
+	}()
+	// #4290: a keyed prompted run's continuation.
+	carriedTestPromptRunKey = RegisterPromptRunThen(testEffectKeyPrefix+"carried-run",
+		func(*Game, RunDone) error { return nil }).Key()
 	// #4162: a continuation written as steps.
 	carriedTestThenStepsKey = func() string {
 		RegisterThenStepsKey(testEffectKeyPrefix + "carried-steps")

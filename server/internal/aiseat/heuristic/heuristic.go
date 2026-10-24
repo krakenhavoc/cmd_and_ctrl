@@ -278,6 +278,39 @@ type Config struct {
 	// face_up_pump.go) by the attack it enables this turn, so a flip for
 	// lethal is taken. Off (the baseline) prices the flip without it.
 	PriceFaceUpPump bool
+	// PriceTemporaryEffects prices a pick whose declared target entry
+	// says the change ends with the turn (TargetPurpose.UntilEndOfTurn,
+	// #4302, temporary_effect.go): a benefit aimed at an opponent's
+	// permanent, or a harm at the bot's own, costs that permanent's
+	// value; a benefit on the bot's own creature is worth the attack it
+	// adds this turn, plus CombatGrant while that creature is in combat;
+	// a harm that kills its pick is removal and one that does not is
+	// worth CombatGrant on a creature in combat and nothing elsewhere.
+	// Such a move with spare mana in combat clears LeftoverThreshold.
+	// Off (the baseline) prices every opposing pick as removal and the
+	// bot's own as OwnPermanentTarget.
+	PriceTemporaryEffects bool
+	// CombatGrant is what a change until end of turn is worth on a
+	// creature that is attacking or blocking, before combat damage, on
+	// top of the attack it adds (PriceTemporaryEffects).
+	CombatGrant float64
+	// PriceGrantSaves prices a benefit until end of turn aimed at the
+	// bot's own permanent that the stack would remove, when the grant
+	// keeps it (#4312, grant_save.go): hexproof, shroud or protection
+	// against what targets it, indestructible against destroy and
+	// damage, toughness against damage it outgrows. Worth what
+	// answerSave pays an untargeted row: the permanent's value times the
+	// chance it is lost. Such a save costing only mana and taps, with
+	// mana to spare, clears LeftoverThreshold. Off prices the grant by
+	// the attack it adds, as #4302 did. Read only with
+	// PriceTemporaryEffects and PriceAnswers on.
+	PriceGrantSaves bool
+	// PriceEvasionGrants prices the evasion a benefit until end of turn
+	// gives an attacker before blockers (#4312, face_up_pump.go): a
+	// declared "can't be blocked this turn" as the restriction it puts on
+	// the creature, and a trample grant by the damage it puts over the
+	// defender's biggest blocker. Off, neither adds to the attack.
+	PriceEvasionGrants bool
 	// PriceReanimation prices a graveyard target a spell declares it
 	// reanimates (TargetPurpose.Reanimates, #3161) as the permanent it
 	// becomes, whoever owns the graveyard: the creature's value, with no
@@ -736,7 +769,7 @@ type Config struct {
 	AttackReserve int
 	ReserveLife   int
 
-	// AttackTaxPenalty is what one point of CR 508.1a attack tax costs
+	// AttackTaxPenalty is what one point of CR 508.1h attack tax costs
 	// an attack's value (ADR 0080, #1063) — Propaganda's {2} is worth
 	// 2 × this. It is a MANA price rather than a life or card price,
 	// so it is tuned against DamageToOpponent: at the default, {2}
@@ -804,6 +837,13 @@ func DefaultConfig() Config {
 		// #3802, #3776: a body that leaves this turn, and a flip that wins.
 		PriceTemporaryBodies: true,
 		PriceFaceUpPump:      true,
+		// #4302: a change until end of turn, priced by what it does now.
+		PriceTemporaryEffects: true,
+		CombatGrant:           0.50,
+		// #4312: a grant that saves a permanent, and evasion before
+		// blockers.
+		PriceGrantSaves:    true,
+		PriceEvasionGrants: true,
 
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
@@ -963,6 +1003,11 @@ func BaselineConfig() Config {
 	c.HoldFlashSacrifice = false
 	c.PriceTemporaryBodies = false
 	c.PriceFaceUpPump = false
+	// #4302: a change until end of turn priced as an ordinary target.
+	c.PriceTemporaryEffects = false
+	c.CombatGrant = 0
+	c.PriceGrantSaves = false
+	c.PriceEvasionGrants = false
 	// #3161: a reanimation target priced as the permanent it becomes.
 	c.PriceReanimation = false
 	c.DamageByLethality = false
@@ -1090,6 +1135,10 @@ type Policy struct {
 	// freeThisTurn is the free activations the policy chose this turn
 	// (#2777, free_repeat.go).
 	freeThisTurn *turnFreeActivations
+	// grantsThisTurn is the changes until end of turn with no amount the
+	// policy chose this turn, per row and target (#4302,
+	// temporary_effect.go).
+	grantsThisTurn *turnFreeActivations
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -1121,6 +1170,7 @@ func (p *Policy) Reset() {
 	p.tail = nil
 	p.heldThisTurn = nil
 	p.freeThisTurn = nil
+	p.grantsThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1378,6 +1428,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	p.notePlan(st, in.Moves, plan)
 	p.noteHolds(st, in.Moves, plan)
 	p.noteFreeActivation(st, in.Moves, d)
+	p.noteTemporaryGrant(st, in.Moves, d)
 	return d, plan, nil
 }
 
@@ -1433,6 +1484,16 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			// spends nothing it would keep, §5's premise, in any window.
 			bar = p.cfg.LeftoverThreshold
 			reason += ", dying anyway"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.spareCombatGrant(st, moves[i]) {
+			// #4302: a change until end of turn on a creature in combat,
+			// with mana the rest of the turn does not need.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", spare mana in combat"
+		} else if p.cfg.LeftoverThreshold < threshold && v <= threshold && p.spareGrantSave(st, moves[i]) {
+			// #4312: a grant that keeps a permanent the stack would
+			// remove, with mana the rest of the turn does not need.
+			bar = p.cfg.LeftoverThreshold
+			reason += ", spare mana for a save"
 		}
 		if v > bar && (take < 0 || v > takeVal) {
 			take, takeVal, takeReason = i, v, reason

@@ -30,6 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e89a3ce0-6b38-4326-a7af-8575af371baa",
 		Name:         "Leap",
+		Purpose:      game.Purpose{Draws: 1, Targets: game.ForTargets(BenefitUntilEOT(0, 0, 0, "flying"))},
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -261,7 +261,7 @@ func playGameWith(t *testing.T, room *ws.Room, seed uint64, policies []aiseat.Po
 		if lockstep {
 			runners = append(runners, aiseat.NewSteppedRunner(room, p.ID, policies[i], cfg, testLogger()))
 		} else {
-			runners = append(runners, aiseat.Start(ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
+			runners = append(runners, startBot(t, ctx, room, p.ID, policies[i], cfg, nil, testLogger()))
 		}
 	}
 
@@ -678,7 +678,7 @@ func TestRunnerConcedesThroughTheConcederInterface(t *testing.T) {
 	bot := g.Seats[0]
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot.ID, alwaysConcedes{}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot.ID, alwaysConcedes{}, aiseat.Config{}, nil, testLogger())
 	waitForRunner(t, "the runner to exit after its policy conceded", r)
 	var eliminated bool
 	g.ReadSnapshot(func() { eliminated = g.Seats[0].Eliminated })
@@ -746,10 +746,10 @@ func TestHeuristicConcedesAHopelessSeat(t *testing.T) {
 	cfg.ConcedeTurns = 1
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, bot.ID, heuristic.NewWithConfig(cfg), aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, bot.ID, heuristic.NewWithConfig(cfg), aiseat.Config{}, nil, testLogger())
 	// A pass-only opponent keeps the cursor moving without ever
 	// attacking, so the elimination below can only be the concede.
-	aiseat.Start(ctx, room, opp.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
+	startBot(t, ctx, room, opp.ID, &scripted{}, aiseat.Config{}, nil, testLogger())
 	// The runner exiting is the concede: nothing else ends it while
 	// the context is live. Waited for through the package's one wait
 	// primitive, whose budget is a backstop for a wedged runner and
@@ -795,8 +795,8 @@ func TestHeuristicDoesNotConcedeAWinnableGame(t *testing.T) {
 	cfg.ConcedeTurns = 1
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	aiseat.Start(ctx, room, bot.ID, heuristic.NewWithConfig(cfg), aiseat.Config{}, nil, testLogger())
-	aiseat.Start(ctx, room, opp.ID, heuristic.New(), aiseat.Config{}, nil, testLogger())
+	startBot(t, ctx, room, bot.ID, heuristic.NewWithConfig(cfg), aiseat.Config{}, nil, testLogger())
+	startBot(t, ctx, room, opp.ID, heuristic.New(), aiseat.Config{}, nil, testLogger())
 	// "It did not scoop" has to be measured in TURNS, not in seconds:
 	// the concede rule counts consecutive hopeless turns, so a wall
 	// clock says nothing about how many chances the bot was given. A

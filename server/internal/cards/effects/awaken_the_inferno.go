@@ -29,17 +29,21 @@ func init() {
 			TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1),
 		),
 		Purpose: ForTargets(DamageToTarget(0, 6)),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 6}).Apply(ctx); err != nil {
-					return err
+		// The counter waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
+					return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 6}.Apply(ctx)
 				}
-			}
-			if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
-				return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-			}
-			return nil
-		},
+				return nil
+			}),
+			Instruction(func(ctx *Context) error {
+				if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
+					return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+				}
+				return nil
+			}),
+		),
 		Activated: []ActivatedAbility{BasicLandcycling("{2}")},
 	})
 }

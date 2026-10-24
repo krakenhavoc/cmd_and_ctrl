@@ -56,16 +56,35 @@ import (
 //
 // # The free play
 //
-// "You may play that card without paying its mana cost" is the grant
-// every resolution-time free cast takes (free_cast_hand.go, ADR 0099
-// §4): Cost "{0}" claimed as a granted cost, any timing (CR 608.2g),
-// cast-only (a spell is never a land), closing on the holder's next
-// priority pass with the card staying in exile. It names the
-// countering player, not the spell's owner, and is granted only if the
-// card really landed in exile (a commander whose owner took the command
-// zone, CR 903.9, was not exiled and is not offered). The same sandbox
-// simplification the others carry: the cast is an ordinary cast_spell
-// taken after the counterspell finished resolving.
+// "You may play that card without paying its mana cost" is made while the
+// countering spell or ability resolves (CR 608.2g: "If an effect
+// specifically instructs or allows a player to cast a spell during
+// resolution, they do so by following the steps in rules 601.2a-i, except
+// no player receives priority after it's cast"). So once the card has
+// landed in exile the window asks the resolution_cast prompt over it
+// (OfferResolutionCastForEffect, #4286, the door every other
+// resolution-time "you may cast it" takes since #4250): the countering
+// player casts it there and then, before the counterspell finishes, or
+// declines and the card stays in exile. The permission is
+// FreeCastFromExilePermission: Cost "{0}" claimed as a granted cost,
+// cast-only (a spell is never a land) and, for the pass-closed fallback,
+// closing on the holder's next priority pass with the card staying in
+// exile. It names the countering player, not the spell's owner, and is
+// offered only if the card really landed in exile (a commander whose owner
+// took the command zone, CR 903.9, was not exiled and is not offered).
+//
+// Every counter the engine has reaches this window inside an open
+// resolution, because counterSpellByEffectLocked opens it only when a
+// resolving spell or ability is the cause (resolutionCauseLocked): a hard
+// counter, a declined counter-unless-pays (whose prompt holds the
+// countering spell's resolution open), a ward's triggered ability, and the
+// destination counters (Remand, Memory Lapse, Hinder, Devious Cover-Up).
+// A CR 616.1 ordering prompt put to the countered spell's controller holds
+// the resolution open too, so the resume that finishes the counter offers
+// the cast inside it. The one case that is not open is a cause a caller
+// carried past the end of its resolution (carriedCause, #4279: a
+// non-blocking pay-unless answered after the table moved on). There the
+// door answers false and the pass-closed grant is what is left.
 
 // counterInstead is a replacement's answer to a counter: not countered,
 // exiled, and a player may play the card for free. Plain data; the
@@ -111,10 +130,12 @@ func (g *Game) ExileCounteredSpellInsteadForEffect(ev *ReplacementEvent, mayPlay
 	return nil
 }
 
-// FreeCastFromExilePermission is the grant a replaced counter stamps over
-// the exiled card: free, any timing (CR 608.2g), cast-only and
+// FreeCastFromExilePermission is the permission a replaced counter puts
+// over the exiled card: free, any timing (CR 608.2g), cast-only and
 // pass-closed, with the card staying in exile when the window shuts.
-// FreeCastFromHandPermission's sibling for a card in exile.
+// FreeCastFromHandPermission's sibling for a card in exile. Inside an open
+// resolution it is the permission the resolution_cast prompt casts under
+// (#4286); outside one it is granted alone and is the whole window.
 //
 // Caller must hold g.mu.
 func (g *Game) FreeCastFromExilePermission(player, source uuid.UUID, sourceName string) CastPermission {
@@ -156,10 +177,7 @@ func (g *Game) counterSpellByEffectLocked(spellID uuid.UUID, dst *ZoneRef, at Tu
 		_, err = g.routeCardToZoneLocked(r)
 		return err
 	}
-	var source uuid.UUID
-	if g.resolving != nil && g.resolving.item != nil {
-		source = g.resolving.item.SourceCardID
-	}
+	source := g.resolutionSourceLocked()
 	ev := &ReplacementEvent{
 		Kind:            RepEventCounterSpell,
 		Actor:           cause.Controller,
@@ -230,8 +248,22 @@ func (g *Game) finishCounterSpellLocked(ev *ReplacementEvent) error {
 	return g.exitSpellFromStackLocked(spellID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, func(g *Game) error {
 		if plan.mayPlayFreeBy != uuid.Nil && g.landedInZoneLocked(spellID, ZoneExile, uuid.Nil) {
 			if c, ok := g.cardInZoneLocked(g.Exile, spellID); ok {
-				g.GrantCastPermissionToCardsForEffect(
-					g.FreeCastFromExilePermission(plan.mayPlayFreeBy, plan.source, plan.sourceName), []Card{c})
+				perm := g.FreeCastFromExilePermission(plan.mayPlayFreeBy, plan.source, plan.sourceName)
+				// #4286, CR 608.2g: the play is made during the
+				// resolution of the countering spell or ability.
+				asked := g.OfferResolutionCastForEffect(ResolutionCastOffer{
+					Chooser:      plan.mayPlayFreeBy,
+					Source:       plan.source,
+					Reason:       plan.sourceName,
+					Cards:        []uuid.UUID{spellID},
+					Permission:   &perm,
+					Keyword:      MayCastKeywordFreeCast,
+					AcceptLabel:  "Cast it free",
+					DeclineLabel: "Leave it in exile",
+				})
+				if !asked {
+					g.GrantCastPermissionToCardsForEffect(perm, []Card{c})
+				}
 			}
 		}
 		if orig == nil {

@@ -165,9 +165,9 @@ func PlayFromTopOfYourLibrary(filter game.PermissionFilter, label string) game.C
 // (game.CastPermission.ExileInsteadOfGraveyard, #3863).
 //
 // It is Torrential Gearhulk's grant with the price left at "its mana
-// cost" and a FollowUp. The offer is flash-timed and closed by the
-// holder's next priority pass (LapseStaysInHand: an uncast card simply
-// stays in the graveyard), and it is claimed under the shared
+// cost" and a FollowUp. The offer is flash-timed and made during the
+// resolution (#4250). The holder's next priority pass closes it only as the
+// fallback (LapseStaysInHand: an uncast card simply stays in the graveyard), and it is claimed under the shared
 // "granted-cost" key rather than "flashback", so a card that prints
 // flashback is still cast for its MANA cost here (a flashback claim
 // would take the card's own flashback price), and the cast counts as
@@ -177,6 +177,10 @@ func PlayFromTopOfYourLibrary(filter game.PermissionFilter, label string) game.C
 // #2173), which is what lets "do this only once each turn" count a
 // cast and not a declined or lapsed offer. The body is handed the
 // permission's Source, the ability's source object.
+//
+// #4250: the cast is made during the resolution, through the
+// resolution_cast prompt over the card (paid, so the caster may tap mana
+// for it then); the decline leaves it in the graveyard.
 type OfferGraveyardCast struct {
 	// Target is the card in the controller's graveyard.
 	Target uuid.UUID
@@ -210,5 +214,6 @@ func (e OfferGraveyardCast) Apply(ctx *Context) error {
 		SourceName:              e.SourceName,
 		Label:                   e.SourceName + " — cast " + c.Name + " from your graveyard",
 	}, []game.Card{c})
+	offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), e.SourceName, game.MayCastKeywordPaidCast, declineLeaveInGraveyard, c.InstanceID)
 	return nil
 }

@@ -25,8 +25,8 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Counter target noncreature spell unless its controller pays {2}.",
 				TargetSpell("target noncreature spell", Noncreature()), rfSpellBCounterNoncreatureUnlessPays),
-			ModeDoing("Target creature gets -2/-2 until end of turn.",
-				TargetCreature("target creature"), BoostTheModesTarget(-2, -2, "Theorix Charm — -2/-2")),
+			ModeWithPurpose(ModeDoing("Target creature gets -2/-2 until end of turn.",
+				TargetCreature("target creature"), BoostTheModesTarget(-2, -2, "Theorix Charm — -2/-2")), ForTargets(HarmUntilEOT(0, -2, -2))),
 			ModeDoing("Mill three cards, then draw a card.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
 					return MillToZone{N: 3, Then: func(c *Context, _ []uuid.UUID) error {

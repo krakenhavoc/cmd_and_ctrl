@@ -158,6 +158,15 @@ type AttackTargetRestriction struct {
 	// not a relation read live off the attacker. A battle that player
 	// protects is not covered, because the text does not say it.
 	NotPlayer uuid.UUID `json:",omitempty"`
+	// PlayerMustHaveActedLastTurn forbids attacking a PLAYER who neither
+	// cast a spell nor put a nontoken permanent onto the battlefield
+	// during their last turn: Arboria's "Creatures can't attack a player
+	// unless that player cast a spell or put a nontoken permanent onto
+	// the battlefield during their last turn" (#1997, CR 508.1c). Read
+	// live at declaration off Player.LastTurnCastOrPut. Players only: a
+	// planeswalker or a battle may still be attacked (the 2022 ruling),
+	// so it is not a defending-player clause.
+	PlayerMustHaveActedLastTurn bool `json:",omitempty"`
 }
 
 // Equal reports whether r and o are the same restriction. A method rather
@@ -171,7 +180,23 @@ func (r AttackTargetRestriction) Equal(o AttackTargetRestriction) bool {
 		r.DefenderGraveyardAtLeast == o.DefenderGraveyardAtLeast &&
 		samePermanentQueries(r.ControllerMustControlMore, o.ControllerMustControlMore) &&
 		r.NotAlreadyAttackedThisTurn == o.NotAlreadyAttackedThisTurn && r.NotPlayer == o.NotPlayer &&
-		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing
+		r.ControllerMustHaveCitysBlessing == o.ControllerMustHaveCitysBlessing &&
+		r.PlayerMustHaveActedLastTurn == o.PlayerMustHaveActedLastTurn
+}
+
+// inactiveLastTurnRefuses is the PlayerMustHaveActedLastTurn clause:
+// `target` is a player who cast no spell and put no nontoken permanent
+// onto the battlefield during their last turn.
+//
+// Caller must hold g.mu.
+func (r AttackTargetRestriction) inactiveLastTurnRefuses(g *Game, target uuid.UUID) bool {
+	return r.PlayerMustHaveActedLastTurn && g.classifyAttackTargetLocked(target) == AttackTargetPlayer &&
+		!g.CastOrPutDuringLastTurnForEffect(target)
+}
+
+// inactiveLastTurnReason is that clause's reason, in a player's words.
+func inactiveLastTurnReason(name string) string {
+	return name + " didn't cast a spell or put a nontoken permanent onto the battlefield during their last turn"
 }
 
 // asksOfTheDefender reports whether r has any clause about the target's
@@ -298,6 +323,9 @@ func (r AttackTargetRestriction) refuses(g *Game, attacker *Card, target uuid.UU
 	}
 	if r.notPlayerRefuses(g, target) {
 		return true, uuid.Nil, ""
+	}
+	if r.inactiveLastTurnRefuses(g, target) {
+		return true, target, inactiveLastTurnReason(g.playerNameLocked(target))
 	}
 	if r.asksOfTheDefender() {
 		// CR 508.5: the player attacked, a planeswalker's controller,
@@ -427,6 +455,9 @@ type DefenderRefusal struct {
 	// Why is the clause they do not meet, in a player's words: "Bob
 	// controls no Island", "Bob isn't the monarch".
 	Why string
+	// PlayerOnly is set for a refusal that covers the player alone and
+	// not their planeswalkers or battles (Arboria's, #1997).
+	PlayerOnly bool
 }
 
 // DefenderRefusalsForEffect lists, for each restriction on `c` with a
@@ -440,6 +471,15 @@ func (g *Game) DefenderRefusalsForEffect(c *Card) []DefenderRefusal {
 	}
 	var out []DefenderRefusal
 	for _, r := range c.Effective().AttackTargetRestrictions {
+		if r.PlayerMustHaveActedLastTurn {
+			// #1997: a player clause, not a defending-player one.
+			for _, p := range g.Seats {
+				if p == nil || p.Eliminated || p.ID == c.Controller || !r.inactiveLastTurnRefuses(g, p.ID) {
+					continue
+				}
+				out = append(out, DefenderRefusal{Player: p.ID, Restriction: r, Why: inactiveLastTurnReason(g.playerNameLocked(p.ID)), PlayerOnly: true})
+			}
+		}
 		if !r.asksOfTheDefender() {
 			continue
 		}
@@ -493,6 +533,11 @@ func (g *Game) canAttackTargetWithLocked(attacker *Card, target uuid.UUID) error
 	if err := g.playerCantAttackRefusalLocked(attacker, target); err != nil {
 		return err
 	}
+	// ADR 0206 (#4197): "each player may attack only the nearest
+	// opponent in the chosen direction", a rule on every player.
+	if err := g.attackDirectionRefusalLocked(attacker, target); err != nil {
+		return err
+	}
 	if err := g.attackTargetRestrictionRefusalLocked(attacker, target); err != nil {
 		return err
 	}
@@ -518,12 +563,13 @@ func (g *Game) AttackTargetsForAttackerForEffect(attacker *Card) []AttackTargetR
 	}
 	all := g.AttackTargetsForEffect(attacker.Controller)
 	if len(attacker.Effective().AttackTargetRestrictions) == 0 && !g.playerHasCantAttackGrantLocked(attacker.Controller) &&
-		!HasKeyword(attacker, "defender") {
+		!HasKeyword(attacker, "defender") && !g.attackDirectionInForceLocked(attacker.Controller) {
 		return all
 	}
 	out := all[:0:0]
 	for _, t := range all {
 		if g.playerCantAttackRefusalLocked(attacker, t.ID) == nil &&
+			g.attackDirectionRefusalLocked(attacker, t.ID) == nil &&
 			g.attackTargetRestrictionRefusalLocked(attacker, t.ID) == nil &&
 			g.defenderRefusalLocked(attacker, t.ID) == nil {
 			out = append(out, t)

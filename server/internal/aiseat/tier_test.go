@@ -98,7 +98,7 @@ func TestStartBotsSkipsSeatsWithNoPolicy(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
 	l := lobby.NewLobby(mgr)
-	host := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, log)
+	host := newManager(t, nil, aiseat.Config{}, log)
 	l.SetBotHost(host)
 
 	meta, _ := l.Create("Rolled back")

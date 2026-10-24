@@ -86,16 +86,8 @@ func TestCallForthTheTempestCountsItsCascadedSpells(t *testing.T) {
 	castWithCost(t, g, "Call Forth the Tempest", "Sorcery", "{5}{R}{R}{R}", callForthTheTempestOracle)
 	hits := 0
 	for i := 0; i < 16 && !stackFullyEmpty(g); i++ {
-		answerAllMayCast(t, g, me.ID, true)
-		for _, c := range g.Exile.Cards {
-			if permissionLive(g, g.CastPermissionOnCardByIDForEffect(c.InstanceID), me.ID) {
-				if err := g.CastSpell(me.ID, c.InstanceID, game.CastSpellParams{FromZone: "exile"}); err != nil {
-					t.Fatalf("casting the cascade hit: %v", err)
-				}
-				hits++
-				break
-			}
-		}
+		// Each hit is cast while its cascade resolves (CR 608.2g, #4243).
+		hits += answerAllMayCast(t, g, me.ID, true)
 		passPriorityAroundTable(t, g)
 	}
 	if hits != 2 {

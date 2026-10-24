@@ -34,14 +34,20 @@ func init() {
 					Question:     "Barbarian Bully — take 4 damage to stop the +2/+2?",
 					AcceptLabel:  "Take 4 damage",
 					DeclineLabel: "Don't",
-					OnNobody: func(ctx *Context) error {
-						if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-							return nil
-						}
-						return thisGetsUntilEndOfTurn(2, 2, "Barbarian Bully — +2/+2 until end of turn")(ctx.Game, ctx.Item)
-					},
+					Then:         barbarianBullyPump,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// barbarianBullyPump is "if no one does", keyed (#4264): the asking item carries the Bully's object (CR 400.7).
+var barbarianBullyPump = AnyPlayerConsequences("any-player/barbarian-bully-pump",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return thisGetsUntilEndOfTurn(2, 2, "Barbarian Bully — +2/+2 until end of turn")(ctx.Game, ctx.Item)
+	},
+	nil)

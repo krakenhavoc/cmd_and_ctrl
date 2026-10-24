@@ -12,6 +12,8 @@ import {
   groupCardsByBucket,
   requestDeck,
   shouldOfferPaste,
+  sideboardNote,
+  attractionsNote,
   type CoverageCard,
   type CoverageReport,
 } from "./deckcheck";
@@ -127,6 +129,46 @@ describe("canRequestCards", () => {
       counts: { manual: 0, unreviewed: 0, caveats: 6, automated: 40, no_effect: 20 },
     });
     expect(canRequestCards(r)).toBe(false);
+  });
+});
+
+describe("sideboardNote", () => {
+  it("is null for a deck with no sideboard", () => {
+    expect(sideboardNote(null)).toBeNull();
+    expect(sideboardNote(report())).toBeNull();
+    expect(sideboardNote(report({ sideboard: [] }))).toBeNull();
+  });
+
+  it("counts the copies and says when all of it plays as printed", () => {
+    const r = report({
+      sideboard: [
+        card({ name: "Cunning Wish", bucket: "automated" }),
+        card({ name: "Forest", bucket: "no_effect", count: 2 }),
+      ],
+    });
+    expect(sideboardNote(r)).toBe(
+      "Sideboard: 3 cards, outside the game. All of it plays as printed.",
+    );
+  });
+
+  it("names the cards the engine would not play as printed", () => {
+    const r = report({
+      sideboard: [
+        card({ name: "Wishmonger", bucket: "manual" }),
+        card({ name: "Pop Quiz", bucket: "automated" }),
+        card({ name: "Odd Card", bucket: "caveats", caveats: ["A simplification."] }),
+      ],
+    });
+    expect(sideboardNote(r)).toBe(
+      "Sideboard: 3 cards, outside the game. Wishmonger (not automated), Odd Card (automated, with caveats).",
+    );
+  });
+
+  it("says one card in the singular", () => {
+    const r = report({ sideboard: [card({ name: "Cunning Wish", bucket: "automated" })] });
+    expect(sideboardNote(r)).toBe(
+      "Sideboard: 1 card, outside the game. All of it plays as printed.",
+    );
   });
 });
 
@@ -354,5 +396,24 @@ describe("requestDeck", () => {
     expect(err).toBeInstanceOf(DeckCheckError);
     expect((err as DeckCheckError).status).toBe(403);
     expect((err as DeckCheckError).message).toMatch(/discord identity/i);
+  });
+});
+
+describe("attractionsNote", () => {
+  it("is null for a deck with no Attractions", () => {
+    expect(attractionsNote(null)).toBeNull();
+    expect(attractionsNote(report())).toBeNull();
+  });
+
+  it("counts the cards outside the 100 and names what is not automated", () => {
+    const r = report({
+      attractions: [
+        card({ name: "Ferris Wheel", bucket: "automated" }),
+        card({ name: "Odd Ride", bucket: "manual" }),
+      ],
+    });
+    expect(attractionsNote(r)).toBe(
+      "Attraction deck: 2 cards, outside the 100. Odd Ride (not automated).",
+    );
   });
 });

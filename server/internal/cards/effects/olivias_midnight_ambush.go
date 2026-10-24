@@ -15,6 +15,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a3b8a08b-5409-4d5f-9bab-8a7a6376a5b9",
 		Name:         "Olivia's Midnight Ambush",
+		Purpose:      ForTargets(HarmUntilEOT(0, 0, 0)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

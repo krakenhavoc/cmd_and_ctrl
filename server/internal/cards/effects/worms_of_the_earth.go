@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -46,14 +44,20 @@ func init() {
 							DamagePayment(5),
 						),
 						Question: "Worms of the Earth — sacrifice two lands or take 5 damage to destroy it?",
-						OnPaid: func(ctx *Context, _ uuid.UUID) error {
-							if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-								return nil
-							}
-							return ctx.Game.DestroyPermanentForEffect(ctx.Item.SourceCardID)
-						},
+						Then:     wormsOfTheEarthDestroyed,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// wormsOfTheEarthDestroyed is "if a player does", keyed (#4264): the asking item carries the enchantment's object (CR 400.7).
+var wormsOfTheEarthDestroyed = AnyPlayerConsequences("any-player/worms-of-the-earth-destroy",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+			return nil
+		}
+		return ctx.Game.DestroyPermanentForEffect(ctx.Item.SourceCardID)
+	},
+	nil,
+	nil)

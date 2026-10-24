@@ -24,6 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "61e09dd9-7870-48c2-9177-d6abc3162692",
 		Name:         "Titanic Growth",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 4, 4)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

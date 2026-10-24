@@ -58,19 +58,24 @@ func staffRoomTurnUpOrCounter(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	counter := func(ctx *Context) error {
-		return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-	}
 	if !canTurnFaceUpByEffect(g, id) {
-		return counter(ctx)
+		return AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
 	}
 	return MayChoice{
 		Question: "Staff Room — turn that creature face up, or put a +1/+1 counter on it?",
 		YesLabel: "Turn it face up",
 		NoLabel:  "Put a +1/+1 counter",
-		OnYes: func(ctx *Context) error {
-			return TurnFaceUp{Targets: []uuid.UUID{id}}.Apply(ctx)
-		},
-		OnNo: counter,
+		Then:     staffRoomAnswer,
+		Carry:    []uuid.UUID{id},
 	}.Apply(ctx)
 }
+
+// staffRoomAnswer is the Staff Room's choice: turn the creature (the carried
+// ID) face up, or put a +1/+1 counter on it. Keyed (#4291).
+var staffRoomAnswer = MayYesNo("confirm/staff-room-face-up-or-counter",
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		return TurnFaceUp{Targets: []uuid.UUID{carryAt(r, 0)}}.Apply(ctx)
+	},
+	func(ctx *Context, r game.ConfirmAnswer) error {
+		return AddCounter{Target: carryAt(r, 0), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+	})

@@ -16,8 +16,9 @@ import (
 //
 // The ability is a stored cast permission over the one targeted card
 // (#2173, game/cast_follow_up.go), the shape cascade uses for "cast it
-// as part of the resolution" (CR 608.2g): flash-timed, closed by the
-// holder's next priority pass, an uncast card simply staying in the
+// as part of the resolution" (CR 608.2g): flash-timed. The cast is offered
+// during the resolution (#4250); the holder's next priority pass closes the
+// permission only as the fallback, an uncast card simply staying in the
 // graveyard. Three of the printed clauses are data on it:
 //
 //   - "If you haven't cast a spell this turn" is read as the ability
@@ -82,6 +83,10 @@ func init() {
 						SourceName:           "Conduit of Worlds",
 						Label:                "Conduit of Worlds — cast it from your graveyard",
 					}, []game.Card{c})
+					// #4250: cast during the resolution (CR 608.2g),
+					// paying its mana cost then.
+					offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Conduit of Worlds",
+						game.MayCastKeywordPaidCast, declineLeaveInGraveyard, c.InstanceID)
 				}
 				return nil
 			},

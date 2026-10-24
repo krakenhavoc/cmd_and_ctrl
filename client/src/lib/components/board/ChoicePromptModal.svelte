@@ -150,7 +150,6 @@
     isFreeCastPick,
     isLibraryFreeCastPick,
     isOutsideCastPick,
-    mayCastKeywordsThatOpenACast,
     outsideCastRequest,
   } from "../../freeCastRequest";
 
@@ -210,6 +209,9 @@
       // ADR 0166: Word of Command's forced play has its own sheet
       // (ControlledPlaySheet.svelte).
       if (c.kind === "controlled_play") continue;
+      // #2947: so has a copy cast during a resolution
+      // (ResolutionCastSheet.svelte).
+      if (c.kind === "resolution_cast") continue;
       if (c.chooser === viewerID) return c;
     }
     return null;
@@ -1074,10 +1076,11 @@
   // impulse grant; "No" puts it on the bottom of the library with
   // the rest of the cards cascade turned over.
   //
-  // ADR 0099 §7: the same prompt serves discover, suspend and madness,
-  // each of which does something different on "no". The server names
-  // the rule (may_cast_keyword) and the branches; mayCastCopy words
-  // them. The offered card is in exile face up, found by may_cast_card.
+  // ADR 0099 §7: the server names the rule (may_cast_keyword) and the
+  // branches; mayCastCopy words them. Since #4250 the keyword casts ask a
+  // resolution_cast instead (ResolutionCastSheet), so what reaches this
+  // prompt is the land play of play_or_hand and card-text offers. The
+  // offered card is found by may_cast_card.
   const isMayCast = $derived(active?.kind === "may_cast");
   const mayCastCard = $derived(
     active?.may_cast_card
@@ -1586,16 +1589,9 @@
       answer(payUnlessAnswer(active, apply, payTaps, payCardPicks, phyrexianLife));
       return;
     }
-    // ADR 0099 §7: "Cast it free" hands the card to Board's cast chain
-    // once the snapshot carrying the grant arrives.
-    if (
-      apply &&
-      isMayCast &&
-      active.may_cast_card &&
-      mayCastKeywordsThatOpenACast.has(active.may_cast_keyword ?? "")
-    ) {
-      freeCastRequest.set(active.may_cast_card);
-    }
+    // No may_cast opens a cast any more: every keyword cast is a
+    // resolution_cast, cast from its own sheet inside the resolution
+    // (#4243, #4250). What is left is a land play and card-text offers.
     answer({ apply });
   }
 

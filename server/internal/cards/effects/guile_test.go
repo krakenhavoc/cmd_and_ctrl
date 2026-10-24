@@ -63,8 +63,9 @@ func TestGuileIsRegisteredFullWithItsThreeLines(t *testing.T) {
 
 // The headline: the opponent's Counterspell resolves, the Bears are
 // exiled and NOT countered, the Counterspell's controller (not the
-// Bears' owner) may cast them for free, and when they do they enter
-// under that player's control.
+// Bears' owner) may cast them for free while it resolves (CR 608.2g,
+// #4286), and when they do they enter under that player's control. The
+// Counterspell finishes after the cast.
 func TestGuileExilesTheCounteredSpellAndTheCountererMayPlayItFree(t *testing.T) {
 	g, me, opp, bear, counterspell := counterABear(t, 1)
 	passPriorityAroundTable(t, g)
@@ -72,8 +73,8 @@ func TestGuileExilesTheCounteredSpellAndTheCountererMayPlayItFree(t *testing.T) 
 	if !g.Exile.Contains(bear) || me.Graveyard.Contains(bear) || g.Stack.Contains(bear) {
 		t.Fatal("the countered spell is not in exile")
 	}
-	if !opp.Graveyard.Contains(counterspell) {
-		t.Error("the Counterspell itself goes to its owner's graveyard")
+	if !g.Stack.Contains(counterspell) {
+		t.Error("the Counterspell finished before the free play was made")
 	}
 	if n := countEvents(g, game.EventCounterSpell); n != 0 {
 		t.Errorf("%d EventCounterSpell: an exiled-instead spell is not countered", n)
@@ -85,18 +86,22 @@ func TestGuileExilesTheCounteredSpellAndTheCountererMayPlayItFree(t *testing.T) 
 	if perm.Player != opp.ID || perm.Cost != "{0}" || perm.Zone != game.ZoneExile {
 		t.Errorf("grant %+v: want a free cast from exile for Guile's controller", perm)
 	}
+	mustResolutionCastOffer(t, g, opp.ID, game.MayCastKeywordFreeCast, bear)
 
 	// The Bears' owner holds no permission over their own spell.
 	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "exile", Strict: true}); err == nil {
 		t.Error("the spell's owner cast an exiled spell they had no permission over")
 	}
-	// Guile's controller casts them with an empty pool.
-	if err := g.CastSpell(opp.ID, bear, game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
+	// Guile's controller casts them with an empty pool, through the prompt.
+	if err := castThroughResolutionCast(t, g, opp.ID, bear, game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
 		t.Fatalf("the free cast: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 	if c := findBattlefieldCardForTest(g, bear); c == nil || c.Controller != opp.ID {
 		t.Errorf("the Bears did not enter under Guile's controller: %+v", c)
+	}
+	if !opp.Graveyard.Contains(counterspell) {
+		t.Error("the Counterspell itself goes to its owner's graveyard")
 	}
 }
 

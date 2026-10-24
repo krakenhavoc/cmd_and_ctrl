@@ -369,10 +369,26 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleSelfUntap(src, cp) {
 			return idleEquipMove, "untap for no net mana"
 		}
+		// #4191: one more loyalty activation for each of the bot's
+		// planeswalkers (loyalty_grant.go), worth something only in its
+		// own main phase with walkers to use it.
+		if !across && src != nil {
+			if gv, ok := st.loyaltyGrantValue(p.cfg, src, cp.AbilityIndex); ok {
+				if gv < 0 {
+					return gv, "extra loyalty activation it cannot use"
+				}
+				return gv, "extra loyalty activation for its planeswalkers"
+			}
+		}
 		// #2777: a free activation the bot already made this turn
 		// buys nothing more (free_repeat.go).
 		if !across && p.repeatsFreeActivation(st, m) {
 			return freeRepeat, "free activation already made this turn"
+		}
+		// #4302: a no-amount grant the row already gave the same
+		// creature this turn (temporary_effect.go).
+		if !across && p.repeatsTemporaryGrant(st, m) {
+			return redundantGrant, "grant already made this turn"
 		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
@@ -382,7 +398,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		purposed := false
 		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
 		// declares an entry for is priced by what the row does to it.
-		targetV, targetsPriced := p.pricedTargetsValue(st, cp.Targets, func(t targetRef) *protocol.TargetPurposeView {
+		targetV, targetsPriced := p.pricedTargetsHarm(st, cp.Targets, func(t targetRef) bool {
+			return rowHarmful(src, cp.AbilityIndex, t)
+		}, func(t targetRef) *protocol.TargetPurposeView {
 			return entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue)
 		}, nil, src)
 		if !across {
@@ -595,6 +613,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			return p.valueOfCompanion(st, sp)
 		case "turn_face_up":
 			return p.valueOfTurnFaceUp(st, m, sp)
+		case "ignore_effect":
+			return p.valueOfIgnoreEffect(st, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
@@ -629,7 +649,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// ADR 0126's amendment of 2026-10-08: a pick the cast's purpose
 	// declares an entry for is priced by what the spell does to it, and
 	// the cast is then priced by its purpose rather than its mana value.
-	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
+	targetV, targetsPriced := p.pricedTargetsHarm(st, targets, func(t targetRef) bool {
+		return castHarmful(card, cp, t)
+	}, func(t targetRef) *protocol.TargetPurposeView {
 		return entryAtTapped(entryAtX(castEntryFor(card, cp, t), cp.XValue), len(cp.TeamworkIDs))
 	}, card, card)
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Tenured Tethermage — Creature — Human Artificer {1}{R}{G}, 1/1:
 //
@@ -43,15 +47,21 @@ func init() {
 }
 
 func tenuredTethermageETB(g *game.Game, item *game.StackItem) error {
-	return g.PlayerSacrificesThenForEffect(
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on the sacrifice is a restore point.
+	return g.PlayerSacrificesThenKeyedForEffect(
 		item.SourceCardID, item.Controller,
 		sacrificeSpec("a land", Land()),
 		"Tenured Tethermage — sacrifice a land",
 		1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if !sacrificed.Sacrificed(item.Controller) {
-				return nil
-			}
-			return CreateTokenAdvanced{Spec: Token(HeartwoodToken()).EntersTapped(), N: 2}.Apply(NewContext(g, item))
-		})
+		tenuredTethermageTokens, []uuid.UUID{item.Controller})
 }
+
+// tenuredTethermageTokens is "if you do, create two tapped Heartwood
+// tokens", once the land has really been sacrificed.
+var tenuredTethermageTokens = game.RegisterPromptRunThen("prompt-run/tenured-tethermage-tokens", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return CreateTokenAdvanced{Spec: Token(HeartwoodToken()).EntersTapped(), N: 2}.Apply(keyedContext(g, r.Carry[0], r.Source))
+})

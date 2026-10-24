@@ -64,16 +64,16 @@ func init() {
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return source.ManaSpentToCast().FromTreasure()
 			}), "Hired Hexblade — draw a card and lose 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-					// "and you lose 1 life" — printed order, drawn
-					// first, and a real loss rather than a cost, so
-					// a life-loss replacement (#808) sees it.
-					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -1)
-				}),
+				// The loss waits for a prompt the draw asks (a dredge offer; CR 608.2c, #4155).
+				Do(
+					DrawCards{N: 1},
+					Instruction(func(ctx *Context) error {
+						// "and you lose 1 life" — printed order, drawn
+						// first, and a real loss rather than a cost, so
+						// a life-loss replacement (#808) sees it.
+						return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
+					}),
+				)),
 		},
 	})
 }

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Repulsor Blast — {3}{R} Sorcery:
 //
@@ -14,6 +18,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // as the spell resolves, before the 5 damage is dealt — the creature is
 // still on the battlefield then, and a controller read after a lethal
 // hit would find it in a graveyard. No simplification.
+// repulsorBlastRecord files the controller of the creature hit, read before the damage.
+const repulsorBlastRecord = "repulsor-blast/controller"
+
 func init() {
 	Register(Spec{
 		OracleID:      "150f920c-c942-4feb-824f-79dd9b531687",
@@ -22,19 +29,26 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{Teamwork(2)},
 		Targets:       TargetCreature("target creature"),
 		Purpose:       ForTargets(DamageToTarget(0, 5)),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			t, ok := ctx.ClauseTarget(0)
-			if !ok {
-				return nil
-			}
-			victim, found := ctx.Game.LookupCardForEffect(t.ID)
-			if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 5}).Apply(ctx); err != nil {
-				return err
-			}
-			if !found || !ctx.UsedTeamwork() {
-				return nil
-			}
-			return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: 2}.Apply(ctx)
-		},
+		// The damage to its controller waits for a prompt the first damage asks (a CR 616
+		// order; CR 608.2c, #4155). The controller is read before the creature can die.
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				t, ok := ctx.ClauseTarget(0)
+				if !ok {
+					return nil
+				}
+				if victim, found := ctx.Game.LookupCardForEffect(t.ID); found {
+					ctx.RecordStep(repulsorBlastRecord, []uuid.UUID{victim.Controller})
+				}
+				return DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 5}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				owners := ctx.StepRecord(repulsorBlastRecord).IDs
+				if len(owners) == 0 || !ctx.UsedTeamwork() {
+					return nil
+				}
+				return DealDamage{Source: ctx.Source(), Target: owners[0], Amount: 2}.Apply(ctx)
+			}),
+		),
 	})
 }

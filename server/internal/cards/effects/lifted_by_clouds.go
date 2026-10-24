@@ -10,6 +10,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "ef742509-4474-42d0-8bca-71ec2be3d4f1",
 		Name:         "Lifted by Clouds",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 		Completeness: CompletenessFull,
 		Splice:       SpliceOntoArcane("{1}{U}"),
 		Targets:      TargetCreature("target creature"),

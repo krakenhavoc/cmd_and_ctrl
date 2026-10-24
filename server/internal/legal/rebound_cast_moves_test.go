@@ -2,9 +2,9 @@ package legal_test
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
@@ -12,11 +12,11 @@ import (
 // rebound_cast_moves_test.go — #1854: the bot half of rebound.
 //
 // Rebound adds no enumerator code, which is the claim under test. The
-// upkeep offer is a may_cast prompt (choices.go's PendingChoiceMayCast
-// arm), and the cast is an ordinary granted cast out of exile. What a
-// bot must not do is stall: it is offered both answers to the prompt,
-// and once it takes the offer it is offered the free cast of a SORCERY
-// in the upkeep, because the grant carries CR 608.2g's timing.
+// upkeep offer is a resolution_cast prompt (#4250, resolution_cast.go),
+// and the cast is an ordinary granted cast out of exile made during the
+// trigger's resolution. What a bot must not do is stall: it is offered
+// the free cast of a SORCERY in the upkeep, because the grant carries
+// CR 608.2g's timing, and the always-legal decline, and nothing else.
 func TestTheEnumeratorOffersTheReboundCastInTheUpkeep(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
@@ -53,7 +53,7 @@ func TestTheEnumeratorOffersTheReboundCastInTheUpkeep(t *testing.T) {
 	var offer *game.PendingChoice
 	for i := 0; i < 8 && offer == nil; i++ {
 		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceMayCast {
+			if c != nil && c.Kind == game.PendingChoiceResolutionCast {
 				offer = c
 			}
 		}
@@ -68,25 +68,20 @@ func TestTheEnumeratorOffersTheReboundCastInTheUpkeep(t *testing.T) {
 	}
 
 	moves := legal.EnumerateFor(g, me.ID)
-	var accept *legal.Move
-	for i, m := range moves {
-		if m.Type != legal.TypeResolveChoice {
-			t.Errorf("a seat owing may_cast was offered %q as well", m.Label)
+	var casts []legal.Move
+	declines := 0
+	for _, m := range moves {
+		switch {
+		case m.ResolutionCast != offer.ID.String():
+			t.Errorf("a seat owing the rebound cast was offered %q as well", m.Label)
+		case m.Type == legal.TypeResolveChoice && m.AlwaysLegal:
+			declines++
+		case m.Kind == legal.KindCast && m.Source == id:
+			casts = append(casts, m)
 		}
-		if strings.HasSuffix(m.Label, ": cast it") {
-			accept = &moves[i]
-		}
 	}
-	if len(moves) != 2 || accept == nil {
-		t.Fatalf("enumerated %v, want the two may_cast answers", labels(moves))
-	}
-	if err := g.ResolveMayCast(offer.ID, me.ID, true); err != nil {
-		t.Fatalf("ResolveMayCast: %v", err)
-	}
-
-	casts := castMovesFor(legal.EnumerateFor(g, me.ID), id)
-	if len(casts) != 1 {
-		t.Fatalf("rebound cast moves in the upkeep = %d, want 1", len(casts))
+	if len(casts) != 1 || declines != 1 {
+		t.Fatalf("enumerated %v, want the one free cast and the decline", labels(moves))
 	}
 	var params struct {
 		FromZone string `json:"from_zone"`
@@ -96,5 +91,13 @@ func TestTheEnumeratorOffersTheReboundCastInTheUpkeep(t *testing.T) {
 	}
 	if params.FromZone != "exile" {
 		t.Errorf("from_zone = %q, want exile", params.FromZone)
+	}
+	// The move is accepted as written: the cast answers the prompt.
+	m := casts[0]
+	if err := actions.Dispatch(g, actions.Action{Type: actions.Type(m.Type), Player: m.Player, Caller: me.ID, Params: m.Params}); err != nil {
+		t.Fatalf("the enumerated cast was refused: %v", err)
+	}
+	if !g.Stack.Contains(id) || g.ResolutionPaused() {
+		t.Error("the rebound cast is not on the stack, or the trigger is still resolving")
 	}
 }

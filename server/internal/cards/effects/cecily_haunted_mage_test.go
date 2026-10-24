@@ -44,22 +44,18 @@ func TestCecilyWithElevenCardsCastsASorceryFreeInCombat(t *testing.T) {
 	if me.Hand.Size() != 11 {
 		t.Fatalf("drew to eleven: %d", me.Hand.Size())
 	}
-	p := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
-	if p == nil || p.ChooseDestination != game.ChooseCastFree {
-		t.Fatalf("a cast_free pick: %+v", p)
-	}
-	if len(p.ChooseCards) != 1 || p.ChooseCards[0] != sorcery {
-		t.Fatalf("only the instant or sorcery is offered: %v", p.ChooseCards)
-	}
-	if err := g.ResolveChooseCards(p.ID, me.ID, []uuid.UUID{sorcery}); err != nil {
-		t.Fatalf("pick: %v", err)
+	// #4250: the free cast is offered inside the trigger's resolution.
+	p := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, sorcery)
+	if len(p.DiscardOptions) != 1 {
+		t.Fatalf("only the instant or sorcery is offered: %v", p.DiscardOptions)
 	}
 	if g.Turn.Step == game.StepPrecombatMain || g.Turn.Step == game.StepPostcombatMain {
 		t.Fatalf("the test wants a combat step, got %v", g.Turn.Step)
 	}
-	if err := g.CastSpell(me.ID, sorcery, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedCost}); err != nil {
+	if err := castThroughResolutionCast(t, g, me.ID, sorcery, game.CastSpellParams{Strict: true}); err != nil {
 		t.Fatalf("a sorcery cast free during combat: %v", err)
 	}
+	castInsideTheResolution(t, g, sorcery)
 	passPriorityAroundTable(t, g)
 	if !me.Graveyard.Contains(sorcery) {
 		t.Error("the free sorcery resolved")
@@ -72,6 +68,9 @@ func TestCecilyWithFewerThanElevenCardsOffersNothing(t *testing.T) {
 		t.Errorf("drew and lost 1: hand %d life %d → %d", me.Hand.Size(), life, me.Life)
 	}
 	if p := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID); p != nil {
+		t.Errorf("ten cards in hand offers no free cast: %+v", p)
+	}
+	if p := resolutionCastOfferFor(g, me.ID); p != nil {
 		t.Errorf("ten cards in hand offers no free cast: %+v", p)
 	}
 }

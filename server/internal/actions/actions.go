@@ -284,7 +284,7 @@ var ErrMissingParams = errors.New("actions: missing required params")
 const MaxBulkAttackers = 256
 
 // attackTaxParams is the payment posture both declaration verbs carry
-// for the CR 508.1a attack tax (ADR 0080, #1063) — the same trio
+// for the CR 508.1h attack tax (ADR 0080, #1063) — the same trio
 // cast_spell, activate_ability and special_action already send.
 //
 // Embedded in each verb's params struct rather than written twice, so
@@ -669,7 +669,11 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0166 §4: the controlled_play prompt this cast answers.
 			// Word of Command's forced play is cast during its
 			// resolution (CR 608.2g), so nobody holds priority for it.
-			ControlledPlay string           `json:"controlled_play,omitempty"`
+			ControlledPlay string `json:"controlled_play,omitempty"`
+			// #2947, CR 608.2g: the resolution_cast prompt this cast
+			// answers. A copy cast during the resolution that made it
+			// needs no priority either.
+			ResolutionCast string           `json:"resolution_cast,omitempty"`
 			InstanceID     string           `json:"instance_id"`
 			FromZone       string           `json:"from_zone,omitempty"`
 			Targets        []castTargetWire `json:"targets,omitempty"`
@@ -800,7 +804,7 @@ func dispatch(g *game.Game, a Action) error {
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		if p.ControlledPlay == "" {
+		if p.ControlledPlay == "" && p.ResolutionCast == "" {
 			// A controller casts as the player they control only to
 			// make the play the effect demands (ADR 0166), or while
 			// they play that player's whole turn (ADR 0167 §4) or one
@@ -964,6 +968,20 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("cast_spell controlled_play: %w", err)
 			}
 			return g.ControlledPlayCast(a.Actor, choiceID, instanceID, params)
+		}
+		if p.ResolutionCast != "" {
+			choiceID, err := uuid.Parse(p.ResolutionCast)
+			if err != nil {
+				return fmt.Errorf("cast_spell resolution_cast: %w", err)
+			}
+			// The prompt's chooser casts, as themselves: a controller
+			// casting as a player they control arrives here re-addressed
+			// (routeControlledPlayer), and is refused unless that player
+			// is the chooser.
+			if a.Actor != a.Caller && !g.ControlUntilOfPlayer(a.Caller).PlaysForThem() {
+				return game.ErrPlayerControlled
+			}
+			return g.CastForResolutionChoice(a.Player, choiceID, instanceID, params)
 		}
 		return g.CastSpell(a.Player, instanceID, params)
 
@@ -2781,6 +2799,10 @@ func dispatch(g *game.Game, a Action) error {
 			// ADR 0189: which turn_face_up offer — "mana_cost",
 			// "morph" or "disguise". Empty takes the first.
 			Route string `json:"route,omitempty"`
+			// CR 116.2d (#1986): the permanent an ignore_effect action
+			// sacrifices as its cost. Required for that kind, refused
+			// for every other.
+			SacrificeID string `json:"sacrifice_id,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -2788,6 +2810,13 @@ func dispatch(g *game.Game, a Action) error {
 		cardID, err := uuid.Parse(p.CardID)
 		if err != nil {
 			return fmt.Errorf("special_action card_id: %w", err)
+		}
+		var sacrificeID uuid.UUID
+		if p.SacrificeID != "" {
+			sacrificeID, err = uuid.Parse(p.SacrificeID)
+			if err != nil {
+				return fmt.Errorf("special_action sacrifice_id: %w", err)
+			}
 		}
 		route, routeOK := game.ParseTurnFaceUpRoute(p.Route)
 		if !routeOK {
@@ -2803,6 +2832,8 @@ func dispatch(g *game.Game, a Action) error {
 			Cost:    p.Cost,
 			Door:    door,
 			Route:   route,
+
+			SacrificeID: sacrificeID,
 		})
 
 	case TypeSacrificePermanent:

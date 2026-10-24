@@ -24,11 +24,10 @@ import (
 // and an uncast card stays in exile. One grant per card, so casting one
 // leaves the others open. Lands exiled on the way stay in exile.
 //
-// SANDBOX SIMPLIFICATION, cascade's (cascade.go): the casts are made
-// right after the spell finishes resolving rather than during it,
-// because an inline cast would need the whole announce under a paused
-// resolution frame. The pass-closed window keeps it no stronger than
-// printed.
+// #4250: the casts are made DURING the resolution (CR 608.2g), each its
+// own answer to the resolution_cast prompt over the exiled cards, until
+// the caster declines or none is left; the decline leaves the rest in
+// exile. Nobody receives priority in between.
 //
 // Rebound is the engine's keyword (game/rebound.go, #1854).
 func init() {
@@ -70,6 +69,13 @@ func feveredSuspicionExile(ctx *Context, opponents, hits []uuid.UUID) error {
 // nonland card still in exile.
 func feveredSuspicionGrantCasts(ctx *Context, hits []uuid.UUID) {
 	g := ctx.Game
+	var granted []uuid.UUID
+	defer func() {
+		// #4250: "any number of spells", each its own answer during the
+		// resolution (CR 608.2g).
+		offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Fevered Suspicion",
+			game.MayCastKeywordFreeCast, declineLeaveInExile, granted...)
+	}()
 	for _, id := range hits {
 		c, ok := g.LookupCardForEffect(id)
 		if z := g.FindCardZoneForEffect(id); !ok || z == nil || z.Kind != game.ZoneExile {
@@ -87,5 +93,6 @@ func feveredSuspicionGrantCasts(ctx *Context, hits []uuid.UUID) {
 			SourceName:  "Fevered Suspicion",
 			Label:       "Fevered Suspicion — cast it without paying its mana cost",
 		}, []game.Card{c})
+		granted = append(granted, id)
 	}
 }

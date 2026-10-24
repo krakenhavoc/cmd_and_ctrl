@@ -98,6 +98,10 @@ export const ICONS = {
   bolt: [p("M13 2 4 14h7l-1 8 9-12h-7l1-8z")],
   // A speedometer: the dial's arc and its needle (ADR 0138, a player's
   // speed).
+  // ADR 0208: a ticket counter ({TK}), perforated on the right.
+  ticket: [p("M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"), p("M15 7v2m0 2v2m0 2v2")],
+  // ADR 0208: a sticker, its corner peeling.
+  sticker: [p("M5 4h9l5 5v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"), p("M14 4v4a1 1 0 0 0 1 1h4")],
   gauge: [p("M4 17a8 8 0 1 1 16 0"), p("M12 17l4-5"), c(12, 17, 1.2, true)],
   star: [p("M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z")],
   rad: [

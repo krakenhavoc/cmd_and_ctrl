@@ -32,6 +32,9 @@ import (
 // target that dies before the trigger resolves is still counted.
 //
 // No simplification.
+// arceeVictimRecord files the creature the damage was dealt to.
+const arceeVictimRecord = "arcee-sharpshooter/victim"
+
 const arceeOracleID = "9fba3097-d53f-4ea4-b5d2-8adddaa09524"
 
 func init() {
@@ -45,24 +48,29 @@ func init() {
 			Label:   "{1}, Remove one or more +1/+1 counters from Arcee: It deals that much damage to target creature. Convert Arcee.",
 			Cost:    Plus(ManaCost("{1}"), RemoveCountersXFromThis(game.CounterPlusOne, 1)),
 			Targets: TargetCreature("target creature"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				n := ctx.CountersRemoved()
-				var victim uuid.UUID
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						victim = t.ID
-						break
+			// The conversion waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					var victim uuid.UUID
+					for _, t := range ctx.LegalTargets() {
+						if t.Kind == game.TargetCard {
+							victim = t.ID
+							break
+						}
 					}
-				}
-				if victim == uuid.Nil {
-					return nil // the target is gone: the whole ability does nothing (CR 608.2b)
-				}
-				if err := (DealDamage{Source: item.SourceCardID, Target: victim, Amount: n}).Apply(ctx); err != nil {
-					return err
-				}
-				return ConvertThis{}.Apply(ctx)
-			},
+					if victim == uuid.Nil {
+						return nil // the target is gone: the whole ability does nothing (CR 608.2b)
+					}
+					ctx.RecordStep(arceeVictimRecord, []uuid.UUID{victim})
+					return DealDamage{Source: ctx.Item.SourceCardID, Target: victim, Amount: ctx.CountersRemoved()}.Apply(ctx)
+				}),
+				Instruction(func(ctx *Context) error {
+					if len(ctx.StepRecord(arceeVictimRecord).IDs) == 0 {
+						return nil
+					}
+					return ConvertThis{}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 	Register(Spec{
@@ -81,15 +89,17 @@ func init() {
 				item.Params.Amount = arceeTargetsYouControl(g, ev, source.Controller)
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item) {
-					if err := (AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: item.Params.Amount}).Apply(ctx); err != nil {
-						return err
+			// The conversion waits for a prompt the counters ask (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					item := ctx.Item
+					if onBattlefield(ctx.Game, item.SourceCardID) && !sourceIsNewObject(ctx.Game, item) {
+						return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: item.Params.Amount}.Apply(ctx)
 					}
-				}
-				return ConvertThis{}.Apply(ctx)
-			},
+					return nil
+				}),
+				ConvertThis{},
+			),
 		}},
 	})
 }

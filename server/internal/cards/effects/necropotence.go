@@ -77,31 +77,42 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    PayLife(1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				var exiled []uuid.UUID
-				if err := (ExileTopFaceDown{
-					Player: item.Controller,
-					N:      1,
-					Exiled: &exiled,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				if len(exiled) == 0 {
-					// Empty library. The life is still paid (it was
-					// a cost, paid at announce) and there is nothing
-					// to schedule a delivery for.
-					return nil
-				}
-				return ScheduleDelayedTrigger{
-					At:                 game.StepEnd,
-					ControllerTurnOnly: true,
-					Label:              "Necropotence — put the exiled card into your hand",
-					Cards:              exiled,
-					Body:               necropotenceDeliverBody,
-				}.Apply(ctx)
+				// The delivery is scheduled from Then, which runs once the
+				// exile is done: a prompt on it (a CR 616.1 ordering of
+				// replacements, a CR 903.9 choice) leaves the card on the
+				// library until it is answered, and the list read straight
+				// after Apply came back empty (#4259).
+				//
+				// #4253 slice 3: a registered tail, so that prompt is a
+				// restore point.
+				return ExileTopFaceDown{
+					Player:   item.Controller,
+					N:        1,
+					ThenTail: game.KeyedTail{Ref: necropotenceDelivery},
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
+}
+
+// necropotenceDelivery is the exile's keyed Then. An on-disk key.
+var necropotenceDelivery = ExileTopFaceDownThen("necropotence/schedule-delivery", necropotenceScheduleDelivery)
+
+// necropotenceScheduleDelivery is the exile's Then: schedule the return of the
+// card it took.
+func necropotenceScheduleDelivery(ctx *Context, exiled []uuid.UUID) error {
+	if len(exiled) == 0 {
+		// Empty library. The life is still paid (it was a cost, paid at
+		// announce) and there is nothing to schedule a delivery for.
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:                 game.StepEnd,
+		ControllerTurnOnly: true,
+		Label:              "Necropotence — put the exiled card into your hand",
+		Cards:              exiled,
+		Body:               necropotenceDeliverBody,
+	}.Apply(ctx)
 }
 
 // necropotenceExileDiscarded exiles a just-discarded card from its

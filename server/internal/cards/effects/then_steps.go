@@ -133,6 +133,12 @@ func (c *Context) RecordStep(key string, ids []uuid.UUID, ns ...int) {
 	c.Game.RecordStepForEffect(c.Item, key, game.StepRecord{IDs: ids, Ns: ns})
 }
 
+// RecordStepRecord files a whole record, one that carries words too
+// (Strs, #4228), under key.
+func (c *Context) RecordStepRecord(key string, rec game.StepRecord) {
+	c.Game.RecordStepForEffect(c.Item, key, rec)
+}
+
 // StepRecord is what an earlier step filed under key; the zero record
 // when none did.
 func (c *Context) StepRecord(key string) game.StepRecord {

@@ -44,7 +44,10 @@ func init() {
 // allHandCardIDs (brainstorm.go) is the type-agnostic list, filtered
 // here against "nonland, mana value 5 or less".
 func rishkarsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	offerFreeHandCast(ctx, controller, "Rishkar's Expertise",
+	offerFreeHandCast(ctx, controller, rishkarsExpertiseFreeCast,
 		"a spell with mana value 5 or less", ManaValueLE(5))
 	return nil
 }
+
+// rishkarsExpertiseFreeCast is the offer's keyed continuation (#4246).
+var rishkarsExpertiseFreeCast = registerFreeHandCastOffer("choose-cards/rishkars-expertise-cast", "Rishkar's Expertise")

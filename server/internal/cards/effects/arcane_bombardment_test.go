@@ -91,10 +91,11 @@ func TestArcaneBombardmentOnlyTriggersOnTheFirstInstantOrSorceryEachTurn(t *test
 		t.Fatalf("%d copies after the first instant, want 1", n)
 	}
 	// A second instant the same turn does not trigger again.
+	declineResolutionCasts(t, g, me.ID)
 	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
 	passPriorityAroundTable(t, g)
 	if len(cardCopies(g)) != 0 {
-		t.Error("copies remain after the window closed")
+		t.Error("copies remain after they were declined")
 	}
 	exiled := 0
 	for _, c := range g.Exile.Cards {
@@ -120,7 +121,8 @@ func TestArcaneBombardmentCopiesEveryCardExiledWithIt(t *testing.T) {
 		t.Fatalf("first trigger: %d copies, want 1", n)
 	}
 	firstCopy := cardCopies(g)[0]
-	// Decline the first window, then it is "next turn".
+	// Decline the first copy, then it is "next turn".
+	declineResolutionCasts(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if len(cardCopies(g)) != 0 {
 		t.Fatal("the declined copy ceased")
@@ -152,6 +154,7 @@ func TestArcaneBombardmentWithNothingToExileStillCopiesThePile(t *testing.T) {
 	gyCard(me, "Shock", "Instant", "{R}", shockOracleForCopies)
 	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{playerTarget(opp.ID)})
 	passUntilCopies(t, g)
+	declineResolutionCasts(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	g.WithWriteLock(func() { g.SpellsCastThisTurn = nil })
 	dropBoltsFromGraveyard(me)

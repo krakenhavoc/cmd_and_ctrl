@@ -657,6 +657,15 @@ func (e *InsufficientManaError) Unwrap() error { return ErrInsufficientMana }
 func (g *Game) CastSpell(playerID, cardID uuid.UUID, params CastSpellParams) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	// #2947, CR 608.2g: a copy a resolution is offering its chooser is
+	// cast as that resolution's answer however the cast arrives, so the
+	// prompt cannot be left offering a copy that has gone, and no action
+	// is noted (nobody receives priority after it).
+	if g.State == StateActive {
+		if idx := g.resolutionCastChoiceForCardLocked(playerID, cardID); idx >= 0 {
+			return g.castForResolutionChoiceLocked(g.PendingChoices[idx].ID, playerID, cardID, params)
+		}
+	}
 	if err := g.castSpellLocked(playerID, cardID, params); err != nil {
 		return err
 	}
@@ -2243,7 +2252,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// it. The record names the objects that landed in exile, which is
 	// what CR 607.2q links the permanent to.
 	if len(params.DelveIDs) > 0 {
-		delved, err := g.payDelveLocked(params.DelveIDs, params.commanderAnswers)
+		delved, err := g.payDelveLocked(playerID, cardID, params.DelveIDs, params.commanderAnswers)
 		if item := g.StackMeta[cardID]; item != nil {
 			item.Paid.Delved = delved
 		}
@@ -2354,6 +2363,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3174: a once-each-turn granted offer (Warped Space, Access Maze)
 	// is spent by the cast it paid for, here where the cast is made.
 	g.noteGrantedOfferClaimedLocked(alt)
+	// #2128: void's "a spell was warped this turn" (CR 702.185c).
+	g.noteSpellWarpedLocked(alt)
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
 	// designation at the time the spell becomes cast" — here, with
 	// every cost paid and just before EventCast announces the cast.
@@ -2661,8 +2672,14 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	}
 	// #1600: the cost as this caster may pay it — the same widening
 	// applyCastCostLocked will pay under, so the plan funds exactly
-	// what the payment accepts.
-	cost = g.costAsPaidByLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue)
+	// what the payment accepts. #2575: a "no more than one mana of each
+	// color" clause chooses its colours by what the plan below can
+	// reach, so it is read with the plan's exclusions.
+	var excluded map[uuid.UUID]bool
+	if cost.SpendOnly != nil && cost.SpendOnly.Distinct {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
+	cost = g.costAsPaidByExcludingLocked(p.ID, ManaSpendForCastParams(card, params), cost, params.XValue, excluded)
 	// The Phyrexian symbols being paid with life are not the
 	// auto-tapper's business: tapping a land for a pip the caster
 	// announced they would pay with 2 life is exactly the stranding
@@ -2703,7 +2720,9 @@ func (g *Game) applyAutoTapLocked(p *Player, card Card, params CastSpellParams) 
 	// offered to Village Rites and leave the sacrifice nothing to pay
 	// with, after the mana was made. One list, shared with the
 	// legal-move enumerator: see CastAutoTapExclusions.
-	excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
+	if excluded == nil {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
 	// #1212: the spell's own source wish. A card whose text reads
 	// which mana paid for it ("if mana from a Treasure was spent to
 	// cast it") prefers a source it can read back — a tiebreak in the
@@ -6414,7 +6433,9 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 			destZone = g.Exile
 			dest = ZoneExile
 		} else {
-			destZone = cmdOwner.Command
+			// ADR 0207, CR 717.6a: or the owner's junkyard, for a
+			// card with the Astrotorium back.
+			destZone = cmdOwner.commandPileFor(card)
 			actor = cmdOwner.ID
 		}
 	case ZoneExile:
@@ -9348,6 +9369,16 @@ func (g *Game) passPriorityAsHolderLocked() error {
 	// stack or on the table, exactly as if the discover had put the
 	// card into their hand during its resolution; they pass again to
 	// move on.
+	//
+	// #2947: a pass the choice gate refuses changes nothing, so the gate
+	// is asked before any window closes. Otherwise the refused pass of a
+	// holder paused on a resolution_cast prompt would lapse the very
+	// offers that prompt is asking about (resolution_copy_cast.go).
+	if g.State == StateActive && !g.TurnChangePending {
+		if c := g.blockingChoiceLocked(); c != nil {
+			return choicePendingErrorLocked(c)
+		}
+	}
 	if h := g.Turn.PriorityHolder; h >= 0 && h < len(g.Seats) && g.Seats[h] != nil {
 		if g.closePassWindowsLocked(g.Seats[h].ID) {
 			if g.blockingChoiceLocked() != nil || len(g.PendingTriggers) > 0 {
@@ -9613,7 +9644,7 @@ func (g *Game) DeclareAttacker(attackerID, targetPlayerID uuid.UUID) error {
 	return g.DeclareAttackerWith(attackerID, targetPlayerID, DeclareAttackersParams{})
 }
 
-// DeclareAttackerWith is DeclareAttacker with the CR 508.1a payment
+// DeclareAttackerWith is DeclareAttacker with the CR 508.1j payment
 // posture named (ADR 0080, #1063) — whether the attack tax may tap
 // lands, which lands are locked, and how many Phyrexian symbols are
 // being paid with life.
@@ -9703,7 +9734,7 @@ func (g *Game) DeclareAttackerDeclWith(one AttackDeclaration, params DeclareAtta
 			if !CanAttack(card) {
 				return ErrCantAttack
 			}
-			// CR 508.1a, ADR 0080: the attack tax. Priced against the
+			// CR 508.1h, ADR 0080: the attack tax. Priced against the
 			// one attack this verb declares, and paid BEFORE anything
 			// is staged, so a refusal leaves the creature untapped,
 			// undeclared and the board exactly as it was.
@@ -9846,7 +9877,7 @@ type AttackDeclaration struct {
 // these creatures) is enforced one layer up, in actions.Dispatch.
 //
 // ADR 0080 adds the one exception to "skip what doesn't fit": the
-// CR 508.1a attack tax is ALL OR NOTHING. See DeclareAttackersWith.
+// CR 508.1j attack tax is ALL OR NOTHING. See DeclareAttackersWith.
 // #1507 adds the second, for the same reason: a CR 508.1c count limit
 // (Silent Arbiter, Crawlspace) refuses the whole eligible set with an
 // *AttackLimitError rather than choosing which creatures to drop.
@@ -9854,7 +9885,7 @@ func (g *Game) DeclareAttackers(decls []AttackDeclaration) ([]uuid.UUID, error) 
 	return g.DeclareAttackersWith(decls, DeclareAttackersParams{})
 }
 
-// DeclareAttackersWith is DeclareAttackers with the CR 508.1a payment
+// DeclareAttackersWith is DeclareAttackers with the CR 508.1j payment
 // posture named (ADR 0080, #1063).
 //
 // The tax is priced against the ELIGIBLE set — what this verb would
@@ -9906,7 +9937,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 
 	// ADR 0080 split what used to be one loop into two passes. The
 	// first decides WHICH entries are declarations; the second stages
-	// them. The CR 508.1a payment goes between, because it is priced
+	// them. The CR 508.1j payment goes between, because it is priced
 	// against the eligible set (charging for an attack that gets
 	// skipped would be wrong) and because an unpayable tax must leave
 	// nothing staged (a half-declared swing is not a declaration).
@@ -9985,7 +10016,7 @@ func (g *Game) DeclareAttackersWith(decls []AttackDeclaration, params DeclareAtt
 	if err := g.validateExertChoicesLocked(eligible); err != nil {
 		return nil, err
 	}
-	// CR 508.1a, before anything is staged and before the CR 508.1f
+	// CR 508.1h, before anything is staged and before the CR 508.1f
 	// taps: the declaration's attack tax, all or nothing.
 	//
 	// Priced for every payer BEFORE any of them is charged, so a
@@ -11533,7 +11564,7 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 		p.Seat = i
 		// Lobby seats compact after a departure. Keep deck source ordinals
 		// aligned so a later join cannot reuse a surviving card's ordinal.
-		for _, zone := range []*Zone{p.Library, p.Command, p.Companion, p.Sideboard} {
+		for _, zone := range []*Zone{p.Library, p.Command, p.Companion, p.Sideboard, p.AttractionDeck} {
 			if zone == nil {
 				continue
 			}

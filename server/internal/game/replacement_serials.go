@@ -24,9 +24,11 @@ import "github.com/google/uuid"
 // (CR 400.7). Serials are never reused, so an ID whose object has gone
 // names nothing rather than its neighbour.
 //
-// Not in the snapshot: a game paused on a replacement prompt is never a
-// restore point (its resume frame is in the continuation census), and
-// between prompts no ID outlives the action that minted it. Clone and
+// In the snapshot only beside a keyed CR 616 frame (#4253,
+// replacement_resume_keyed.go), whose IDs must name the same objects
+// after the restore; a frame that is not keyed is in the continuation
+// census, and between prompts no ID outlives the action that minted it,
+// so a file with neither mints afresh. Clone and
 // RestoreFrom copy the registry, so an undo into an open prompt answers
 // against the serials the prompt was built with.
 
@@ -80,7 +82,9 @@ func (g *Game) mintReplacementObjectSerialLocked(ref ObjectRef) int {
 	} else if len(g.replacementObjectSerials) >= g.replacementSerialsCompactAt {
 		for r := range g.replacementObjectSerials {
 			if c, ok := g.LookupCardForEffect(r.ID); !ok || c.ObjectEpoch != r.Epoch {
-				delete(g.replacementObjectSerials, r)
+				if !g.isEmblemRefLocked(r) {
+					delete(g.replacementObjectSerials, r)
+				}
 			}
 		}
 		g.replacementSerialsCompactAt = 2*len(g.replacementObjectSerials) + 64
@@ -130,6 +134,11 @@ func cloneReplacementObjectSerials(in map[ObjectRef]int) map[ObjectRef]int {
 //
 // Caller must hold g.mu.
 func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplacement, bool) {
+	if a.lost {
+		// #4253: a restored frame's effect the running binary no longer
+		// has. It has gone, as a source that left takes its effect.
+		return a, false
+	}
 	if a.sourceRef.ID == uuid.Nil {
 		return a, true
 	}
@@ -140,5 +149,48 @@ func (g *Game) liveReplacementSourceLocked(a activeReplacement) (activeReplaceme
 			return a, true
 		}
 	}
-	return a, false
+	// An emblem's effect (#4192): the emblem is in its owner's command
+	// zone and nothing removes it, so it is found the same way.
+	found := false
+	g.forEachEmblemLocked(func(c *Card) bool {
+		if c.InstanceID == a.sourceRef.ID && c.ObjectEpoch == a.sourceRef.Epoch {
+			a.source, found = c, true
+			return false
+		}
+		return true
+	})
+	return a, found
+}
+
+// emblemWithSerialLocked is the emblem holding the object serial, for a
+// reader that resolves a catalog replacement ID back to its source.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) emblemWithSerialLocked(serial int) *Card {
+	var out *Card
+	g.forEachEmblemLocked(func(c *Card) bool {
+		if s, ok := g.replacementObjectSerialOfLocked(c); ok && s == serial {
+			out = c
+			return false
+		}
+		return true
+	})
+	return out
+}
+
+// isEmblemRefLocked reports whether ref names an emblem that exists, so
+// the serial registry's compaction keeps its entry: an emblem is in no
+// card index (LookupCardForEffect cannot find one).
+//
+// Caller must hold g.mu.
+func (g *Game) isEmblemRefLocked(ref ObjectRef) bool {
+	found := false
+	g.forEachEmblemLocked(func(c *Card) bool {
+		if c.InstanceID == ref.ID && c.ObjectEpoch == ref.Epoch {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }

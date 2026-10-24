@@ -34,12 +34,8 @@ func init() {
 		OracleID:     "4baa6145-216e-476b-b178-aaaa1e633701",
 		Name:         "Tempt with Discovery",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			controller, source, opponents := ctx.Controller(), ctx.Source(), ctx.Opponents()
-			return b07TemptWithDiscoveryCasterSearch(ctx.Game, controller, source,
-				func(g *game.Game) error {
-					return b07TemptWithDiscoveryOffer(g, controller, source, opponents, 0)
-				})
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			return b07TemptWithDiscoveryCasterSearch(ctx, ctx.Opponents())
 		},
 	})
 }

@@ -70,7 +70,15 @@ type CardDef struct {
 	// when there is one, else the legacy free-form string.
 	TargetMode string
 	Targets    *TargetSpec
-	Modes      *ModeSpec
+
+	// ReturnedAura is the enchant clause of the card's Aura form: "enchant
+	// Forest you control" on a creature that returns to the battlefield as
+	// an Aura (Harold and Bob, First Numens). Not Targets, which a creature
+	// spell would read as its own cast-time target. Read through
+	// ReturnedAuraSpecFor, and only for a permanent whose Card.ReturnedAura
+	// is set. Nil for every card but the ones that return as an Aura.
+	ReturnedAura *TargetSpec
+	Modes        *ModeSpec
 
 	// Purpose is what the card does, declared on its Spec (ADR 0126
 	// §6): the spell's resolution or a permanent's enters effect. Read
@@ -162,7 +170,7 @@ type CardDef struct {
 	BoastLimits []BoastLimit
 	// AttackTaxes are the "creatures can't attack you unless their
 	// controller pays {N}" statics this permanent contributes
-	// (CR 508.1a, ADR 0080) — Propaganda, Ghostly Prison, Windborn
+	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an
@@ -263,6 +271,12 @@ type CardDef struct {
 	// PERMANENT imposes (ADR 0109 §4, #1895). Read from the battlefield
 	// through CatalogAbilityKey, like CastRestrictions.
 	LandPlayRestrictions []LandPlayRestriction
+	// IgnorableEffect says this PERMANENT's static ability may be
+	// ignored by the player it bears on, by sacrificing a permanent
+	// (CR 116.2d, #1986, ignore_effect.go): Damping Engine. The
+	// restrictions that are that ability carry Ignorable. Read from the
+	// battlefield through CatalogAbilityKey.
+	IgnorableEffect *IgnorableEffect
 	// EntryRestrictions are the "can't enter the battlefield" statics
 	// this PERMANENT imposes (#1985, entry_gate.go): Worms of the
 	// Earth's lands, Grafdigger's Cage's creature cards in graveyards
@@ -580,8 +594,10 @@ type CardDef struct {
 	// controller's top library card visible (CR 401.5) — "you may look
 	// at the top card of your library any time" is LibraryTopOwner,
 	// "play with the top card of your library revealed" is
-	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
-	// library_top.go.
+	// LibraryTopRevealed, and "players play with the top card of their
+	// libraries revealed" (Field of Dreams, #1997) is
+	// LibraryTopRevealedEachPlayer, which reaches every library. Read
+	// through CatalogLibraryTopVisible; see library_top.go.
 	LibraryTopVisible LibraryTopVisibility
 
 	// HandsRevealed is whose hands this permanent's static reveals:
@@ -590,6 +606,14 @@ type CardDef struct {
 	// (Revelation) HandRevealEachPlayer. Read through
 	// CatalogHandsRevealed; see hand_revealed.go (ADR 0199).
 	HandsRevealed HandRevealScope
+
+	// AttackOnlyNearestOpponentInChosenDirection is "each player may
+	// attack only the nearest opponent in the chosen direction and
+	// planeswalkers controlled by that opponent" (Pramikon, Sky
+	// Rampart), with the direction read off the permanent's "choose
+	// left or right" answer (Card.ChosenOption). Read by
+	// attackDirectionRulesLocked; see attack_direction.go (ADR 0206).
+	AttackOnlyNearestOpponentInChosenDirection bool
 
 	// DiscardByOpponent and DiscardByOpponentForHand are what the card
 	// declares about "if a spell or ability an opponent controls causes
@@ -908,6 +932,12 @@ func init() {
 	CatalogLandPlayRestrictions = func(key string) []LandPlayRestriction {
 		if d := catalogDef(key); d != nil {
 			return d.LandPlayRestrictions
+		}
+		return nil
+	}
+	CatalogIgnorableEffect = func(key string) *IgnorableEffect {
+		if d := catalogDef(key); d != nil {
+			return d.IgnorableEffect
 		}
 		return nil
 	}

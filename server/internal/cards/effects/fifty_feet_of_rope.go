@@ -23,6 +23,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Climb Over — {T}: Target Wall can't block this turn.",
+				Purpose: ForTargets(HarmUntilEOT(0, 0, 0)),
 				Cost:    TapCost(),
 				Targets: TargetPermanent("target Wall", Subtype("Wall")),
 				Effect: func(g *game.Game, item *game.StackItem) error {

@@ -23,20 +23,27 @@ import (
 // planeswalker" leaves out Ajani himself, by object. A creature that is
 // also another planeswalker gets both counters.
 //
-// −7 IS NOT OFFERED. Its emblem's ability is a prevention effect, and an
-// emblem can only carry statics, triggers and rule gates today
-// (EmblemSpec has no Replacements slot), so the emblem would be a chip
-// that prevents nothing. ADR 0032 and the Emblems section of
-// docs/adding-cards.md say to leave such an ultimate out rather than
-// charge seven loyalty for nothing; the seam is #4192.
+// −7 makes an emblem whose one ability is a prevention effect
+// (EmblemSpec.Replacements, #4192): the replacement gather walks every
+// seat's emblems with the emblem as the source and its owner as "you"
+// (CR 114.2). Damage to the owner, or to a planeswalker the owner
+// controls, from any source is cut to 1 when it is above 1 (CR 615.1a);
+// damage of 1 or 0 is untouched. The emblem is ordered against other
+// prevention and replacement effects by the affected player (CR 616.1),
+// and "that damage can't be prevented" leaves it prevented-nothing like
+// any other prevention (CR 615.12, Prevention: true).
 //
 // Guffster's Party deck request (#4184).
 func init() {
 	Register(Spec{
 		OracleID:     "90249526-1875-450a-882d-bf6f6bfd37a6",
 		Name:         "Ajani Steadfast",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The −7 emblem isn't implemented yet, so that ability can't be activated."},
+		Completeness: CompletenessFull,
+		Emblem: &EmblemSpec{
+			Label:        "Ajani Steadfast emblem",
+			Text:         "If a source would deal damage to you or a planeswalker you control, prevent all but 1 of that damage.",
+			Replacements: []game.ReplacementEffect{ajaniSteadfastEmblemPrevention()},
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label:   "+1: Until end of turn, up to one target creature gets +1/+1 and gains first strike, vigilance, and lifelink.",
@@ -63,8 +70,43 @@ func init() {
 				Cost:   LoyaltyCost(-2),
 				Effect: ajaniSteadfastCounters,
 			},
+			{
+				Label: "−7: You get an emblem with \"If a source would deal damage to you or a planeswalker you control, prevent all but 1 of that damage.\"",
+				Cost:  LoyaltyCost(-7),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return CreateEmblem{}.Apply(NewContext(g, item))
+				},
+			},
 		},
 	})
+}
+
+// ajaniSteadfastEmblemPrevention is the emblem's "prevent all but 1 of
+// that damage": for damage to the emblem's owner or to a planeswalker
+// they control, the event's amount drops to 1. `src` is the emblem; its
+// controller is its owner and never changes (CR 114.2).
+func ajaniSteadfastEmblemPrevention() game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches:    []game.EventKind{game.EventDealDamage},
+		Prevention: true, // CR 615.1a — "prevent"; CR 615.12 reads it
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if src == nil || ev.Kind != game.RepEventDamage || ev.DamageAmount <= 1 {
+				return false
+			}
+			if ev.DamageTarget == src.Controller {
+				return true
+			}
+			c, ok := g.LookupCardForEffect(ev.DamageTarget)
+			return ok && g.Battlefield.Contains(ev.DamageTarget) && c.IsPlaneswalker() && c.Controller == src.Controller
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.DamageAmount = 1
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
+		Label:      "Ajani Steadfast emblem — prevent all but 1 of that damage",
+		RowLabel:   "Prevent all but 1 of the damage dealt to you or a planeswalker you control.",
+	}
 }
 
 // ajaniSteadfastCounters puts a +1/+1 counter on each creature the

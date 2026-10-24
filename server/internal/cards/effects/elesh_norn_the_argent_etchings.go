@@ -148,14 +148,11 @@ func eleshNornPayOrLose(g *game.Game, item *game.StackItem) error {
 	if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
 		return nil
 	}
-	source := item.SourceCardID
 	return PayUnless{
 		Chooser:  victim,
 		Cost:     "{1}",
 		Question: "Elesh Norn — pay {1}, or lose 2 life?",
-		OnDecline: func(ctx *Context) error {
-			return ctx.Game.ChangePlayerLifeForEffect(source, victim, -2)
-		},
+		Else:     eleshNornArgentEtchingsDecline,
 	}.Apply(NewContext(g, item))
 }
 
@@ -176,3 +173,10 @@ func argentEtchingsChapterThree(g *game.Game, item *game.StackItem) error {
 		},
 	}.Apply(NewContext(g, item))
 }
+
+// eleshNornArgentEtchingsDecline is the 2 life the payer loses when they
+// do not pay, keyed (#4256): a table waiting on the payer is a restore
+// point.
+var eleshNornArgentEtchingsDecline = PayUnlessElse("pay-unless/elesh-norn-argent-etchings-lose-two", func(ctx *Context, r game.PayUnlessAnswer) error {
+	return ctx.Game.ChangePlayerLifeForEffect(r.Source, r.Chooser, -2)
+})

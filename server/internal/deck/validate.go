@@ -39,6 +39,16 @@ const (
 	// lose for the player and a saved deck with a large sideboard or
 	// maybeboard section still seats.
 	CodeSideboardTooLarge = "sideboard_too_large"
+	// CodeAttractionDeckIllegal flags an Attraction deck that breaks CR
+	// 717.2a (fewer than ten cards, or two with one English name). ADR
+	// 0207 §2: NON-fatal, like an oversized sideboard. The deck imports
+	// and seats with no Attraction deck (List.SeatedAttractions), so the
+	// server never picks which Attractions to keep.
+	CodeAttractionDeckIllegal = "attraction_deck_illegal"
+	// CodeStickerSheetsIllegal flags a deck's sticker sheets that break
+	// CR 123.2a (fewer than ten, or one twice). Non-fatal: the deck
+	// seats with no sheets (List.SeatedStickerSheets, ADR 0208 §2).
+	CodeStickerSheetsIllegal = "sticker_sheets_illegal"
 	// CodeUnsupportedLayout names cards whose printing carries more
 	// faces than the engine can play (ADR 0034). Non-fatal: the card
 	// imports as its front face and works as that half. The message
@@ -288,6 +298,51 @@ func Validate(list *List) error {
 			Code: CodeSideboardUnsupported,
 			Message: fmt.Sprintf("deck has %d sideboard cards; Commander doesn't use a sideboard, so they stay outside the game and "+
 				"only a card that brings one in from outside the game (a wish, Extrapolate the Impossible) can use them", n),
+		})
+	}
+
+	// The Attraction deck (ADR 0207 §2, CR 717.2). Not one of the 100,
+	// so the count, singleton and colour identity above never saw it.
+	// Each card is held to the format's legality like a deck card (the
+	// acorn Attractions are not legal); the deck as a whole to CR
+	// 717.2a, and an illegal one is said and not seated.
+	for _, c := range list.Attractions {
+		legal, ok := c.Legalities["commander"]
+		if !ok || legal == "not_legal" || legal == "banned" {
+			vs = append(vs, Violation{
+				Code:    CodeNotLegalInFormat,
+				Card:    c.Name,
+				Message: fmt.Sprintf("%q is not legal in the commander format (status: %q)", c.Name, legal),
+			})
+		}
+	}
+	if n := len(list.Attractions); n > 0 && !attractionDeckLegal(list.Attractions) {
+		vs = append(vs, Violation{
+			Code: CodeAttractionDeckIllegal,
+			Message: fmt.Sprintf("the Attraction deck has %d cards; it needs at least %d, each with a different name, "+
+				"so it is left out of the game until it has them", n, MinAttractionDeck),
+		})
+	}
+
+	// The sticker sheets (ADR 0208 §2, CR 123.2a). Not cards, so the
+	// count, singleton and colour identity never saw them. Each sheet is
+	// held to the format's legality; the pool to CR 123.2a, and an
+	// illegal one is said and not seated.
+	for _, c := range list.StickerSheets {
+		legal, ok := c.Legalities["commander"]
+		if !ok || legal == "not_legal" || legal == "banned" {
+			vs = append(vs, Violation{
+				Code:    CodeNotLegalInFormat,
+				Card:    c.Name,
+				Message: fmt.Sprintf("%q is not legal in the commander format (status: %q)", c.Name, legal),
+			})
+		}
+	}
+	if n := len(list.StickerSheets); n > 0 && !stickerSheetsLegal(list.StickerSheets) {
+		vs = append(vs, Violation{
+			Code: CodeStickerSheetsIllegal,
+			Message: fmt.Sprintf("the deck has %d sticker sheets; playing with stickers needs at least %d, each different, "+
+				"so they are left out of the game until it has them", n, MinStickerSheets),
 		})
 	}
 

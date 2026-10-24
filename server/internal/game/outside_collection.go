@@ -139,7 +139,10 @@ func CollectionSuggestionsForEffect(match func(Card) bool, limit int) []string {
 // queueCollectionPickLocked is QueueOutsidePickForEffect's half for a
 // player whose pool is the card database. It reports false, and queues
 // nothing, when no collection is installed or nothing in it matches.
-func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt) bool {
+//
+// `match` is the per-card filter, the closure form's Match or the keyed
+// form's registered one with its word bound (outsidePickMatch).
+func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt, match func(Card) bool) bool {
 	if OutsideCollection == nil {
 		return false
 	}
@@ -165,9 +168,30 @@ func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt) bool {
 			limit = collectionSearchCap
 		}
 	}
-	suggestions := CollectionSuggestionsForEffect(p.Match, limit)
+	suggestions := CollectionSuggestionsForEffect(match, limit)
 	if len(suggestions) == 0 {
 		return false
+	}
+	if key := p.Keyed.Key(); key != "" {
+		// #4256: the keyed pick carries its key, its filter's word and
+		// its carried IDs, and no frame, so a table waiting on it is a
+		// restore point. The answer finds the filter by the key.
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:                  PendingChoiceOutsideCollection,
+			Chooser:               p.Player,
+			FromPlayer:            p.Player,
+			Count:                 max,
+			Source:                p.Source,
+			Reason:                p.Question,
+			ChooseMin:             min,
+			ChooseMax:             max,
+			ChooseDestination:     p.outsideDestination(),
+			CollectionSuggestions: suggestions,
+			PickThen:              key,
+			PickMatchArg:          p.MatchArg,
+			OptionCarry:           copyUUIDs(p.Carry),
+		})
+		return true
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:                  PendingChoiceOutsideCollection,
@@ -214,7 +238,8 @@ func (g *Game) collectionChoiceLocked(choiceID uuid.UUID) (int, *PendingChoice) 
 // before it dequeues and the enumerator runs it (CollectionPickLegalLocked)
 // before it offers an answer.
 func collectionTemplatesLocked(choice *PendingChoice, names []string) ([]Card, error) {
-	if choice == nil || choice.searchResume == nil {
+	pred, validate, ok := collectionFilterLocked(choice)
+	if !ok {
 		return nil, ErrInvalidParam
 	}
 	if len(names) < choice.ChooseMin || len(names) > choice.ChooseMax {
@@ -227,7 +252,6 @@ func collectionTemplatesLocked(choice *PendingChoice, names []string) ([]Card, e
 	if src == nil {
 		return nil, ErrInvalidParam
 	}
-	spec := choice.searchResume.spec
 	out := make([]Card, 0, len(names))
 	for _, n := range names {
 		n = strings.TrimSpace(n)
@@ -238,12 +262,12 @@ func collectionTemplatesLocked(choice *PendingChoice, names []string) ([]Card, e
 		if !ok {
 			return nil, ErrCardNotFound
 		}
-		if spec.Pred != nil && !spec.Pred(c) {
+		if pred != nil && !pred(c) {
 			return nil, ErrInvalidParam
 		}
 		out = append(out, c)
 	}
-	if spec.Validate != nil && !spec.Validate(out) {
+	if validate != nil && !validate(out) {
 		return nil, ErrInvalidParam
 	}
 	return out, nil
@@ -296,7 +320,11 @@ func (g *Game) SearchOutsideCollection(choiceID, player uuid.UUID, q string, lim
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	_, choice := g.collectionChoiceLocked(choiceID)
-	if choice == nil || choice.Chooser != player || choice.searchResume == nil {
+	if choice == nil || choice.Chooser != player {
+		return nil, ErrNotACollectionPick
+	}
+	pred, _, ok := collectionFilterLocked(choice)
+	if !ok {
 		return nil, ErrNotACollectionPick
 	}
 	src := OutsideCollection
@@ -307,7 +335,6 @@ func (g *Game) SearchOutsideCollection(choiceID, player uuid.UUID, q string, lim
 	if limit <= 0 || limit > collectionSearchCap {
 		limit = collectionSearchCap
 	}
-	pred := choice.searchResume.spec.Pred
 	// Over-fetch: the filter may reject most of a name match ("Burning
 	// Wish" against "wish" is mostly creatures and enchantments).
 	var out []Card
@@ -363,8 +390,13 @@ func (g *Game) ResolveOutsideCollection(choiceID, chooserID uuid.UUID, names []s
 			ids = append(ids, g.mintFromCollectionLocked(chooserID, t))
 		}
 	}
-	if then := choice.searchResume.spec.Then; then != nil {
-		if err := then(g, ids); err != nil {
+	if choice.searchResume == nil {
+		// #4256: a keyed pick's continuation, looked up by its key and
+		// handed the minted cards as a sideboard pick's is handed the
+		// cards it named.
+		g.emitChoiceEffectErrorLocked(chooserID, choice.Source, g.runKeyedChooseCardsLocked(choice, ids, true))
+	} else if spec := choice.searchResume.spec; spec.Then != nil || !spec.ThenTail.IsZero() {
+		if err := g.runSearchThenLocked(spec, ids); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				Actor:    chooserID,
@@ -415,6 +447,7 @@ func (g *Game) mintFromCollectionLocked(player uuid.UUID, template Card) uuid.UU
 	c.IsCommander = false
 	c.IsCompanion = false
 	c.Counters = nil
+	c.Stickers = nil
 	c.CounterStampedAt = nil
 	c.LostLastCounter = false
 	c.Tapped = false

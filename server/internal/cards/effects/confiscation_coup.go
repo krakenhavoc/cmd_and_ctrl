@@ -2,6 +2,18 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var confiscationCoupPaid = energyPaid("pay-unless/confiscation-coup-gain-control",
+	func(g *game.Game, item *game.StackItem) error {
+		if len(item.Targets) == 0 {
+			return nil
+		}
+		return GainControl{
+			Target:   item.Targets[0].ID,
+			Duration: game.IndefiniteDuration(),
+			Label:    "Confiscation Coup — gain control",
+		}.Apply(NewContext(g, item))
+	})
+
 // Confiscation Coup — Sorcery {3}{U}{U}:
 //
 //	"Choose target artifact or creature. You get {E}{E}{E}{E} (four
@@ -30,13 +42,7 @@ func init() {
 			return MayPayEnergy{
 				N:        firstTargetManaValue(ctx.Game, item),
 				Question: "Confiscation Coup — pay {E} equal to its mana value to gain control of it?",
-				OnPay: func(ctx *Context) error {
-					return GainControl{
-						Target:   ctx.Item.Targets[0].ID,
-						Duration: game.IndefiniteDuration(),
-						Label:    "Confiscation Coup — gain control",
-					}.Apply(ctx)
-				},
+				Then:     confiscationCoupPaid,
 			}.Apply(ctx)
 		},
 	})

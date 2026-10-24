@@ -11,6 +11,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "6c3faf4f-83c1-4098-98b8-bae15d59b0de",
 		Name:         "Bleed Dry",
+		Purpose:      ForTargets(HarmUntilEOT(0, -13, -13)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve:    shrinkFirstTargetExileIfItDies(13),

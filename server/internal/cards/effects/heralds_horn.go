@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -74,13 +76,17 @@ func heraldsHornUpkeep(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	player := item.Controller
-	source := item.SourceCardID
 	return MayChoice{
 		Player:   player,
 		Question: "Herald's Horn — reveal the top card and put it into your hand?",
-		OnYes: func(ctx *Context) error {
-			ctx.Game.RevealTopOfLibraryForEffect(player, source, 1, "Herald's Horn — reveal the top card")
-			return ctx.Game.BounceToHandForEffect(top)
-		},
+		Then:     heraldsHornAnswer,
+		Carry:    []uuid.UUID{top},
 	}.Apply(ctx)
 }
+
+// heraldsHornAnswer is the "yes": reveal the top card of the library and
+// put it into the hand (the carried ID). Keyed (#4291).
+var heraldsHornAnswer = MayYes("confirm/heralds-horn-take", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.Game.RevealTopOfLibraryForEffect(r.Chooser, ctx.Source(), 1, "Herald's Horn — reveal the top card")
+	return ctx.Game.BounceToHandForEffect(carryAt(r, 0))
+})

@@ -34,18 +34,21 @@ func Mobilize(name string, n int) game.TriggeredAbility {
 			Tapped:      true,
 			Prefer:      triggerAttackTarget(item),
 			Label:       name,
-			Then:        mobilizeSacrificeAtEndStep,
+			Tail:        game.KeyedTail{Ref: mobilizeSacrificeAtEndStep},
 		}.Apply(NewContext(g, item))
 	})
 }
 
-func mobilizeSacrificeAtEndStep(ctx *Context, created []uuid.UUID) error {
-	if len(created) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: "Mobilize — sacrifice the Warriors",
-		Cards: created,
-		Body:  sacrificeListedCardsBody,
-	}.Apply(ctx)
-}
+// mobilizeSacrificeAtEndStep is the Warriors' tail, keyed (#4294): the
+// end step trigger that sacrifices them.
+var mobilizeSacrificeAtEndStep = AttackingTokensThen("attacking-tokens/mobilize-sacrifice-the-warriors",
+	func(ctx *Context, created []uuid.UUID, _ game.KeyedTail) error {
+		if len(created) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			Label: "Mobilize — sacrifice the Warriors",
+			Cards: created,
+			Body:  sacrificeListedCardsBody,
+		}.Apply(ctx)
+	})

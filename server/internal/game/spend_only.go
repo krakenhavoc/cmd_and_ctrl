@@ -99,6 +99,15 @@ type ManaSpendOnly struct {
 	// only black mana on X". Unset, it is the whole mana cost — "Spend
 	// only mana of the chosen color to activate this ability".
 	XOnly bool `json:"x_only,omitempty"`
+
+	// Distinct is "No more than one mana of each color may be spent
+	// this way" (Emblazoned Golem, #2575): each restricted mana must be
+	// a different one of Colors, so at most len(Colors) of them can be
+	// paid. Declared on the "on X" form only (effects refuses the
+	// rest). The fold pays it as one exact requirement per colour of a
+	// subset of Colors, and costAsPaidByLocked picks the subset (see
+	// "One mana of each colour" below).
+	Distinct bool `json:"distinct,omitempty"`
 }
 
 // noManaColor is the option a folded symbol carries when no colour may
@@ -117,7 +126,7 @@ func (s *ManaSpendOnly) ResolveFor(source Card) *ManaSpendOnly {
 	if s == nil {
 		return nil
 	}
-	out := &ManaSpendOnly{XOnly: s.XOnly}
+	out := &ManaSpendOnly{XOnly: s.XOnly, Distinct: s.Distinct}
 	for _, c := range s.Colors {
 		out.Colors = appendColorOnce(out.Colors, strings.ToUpper(c))
 	}
@@ -197,6 +206,27 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 		n = satAddMana(n, c.Generic)
 		out.Generic = 0
 	}
+	// #2575: "no more than one mana of each color" is one requirement
+	// per colour, each naming exactly one, so neither solver can pay two
+	// of them with one colour. The colours are the first n of the
+	// clause's: costAsPaidByLocked narrows them to the subset it chose
+	// first, so a payment reaches here with exactly n. More restricted
+	// mana than there are colours is a cost no mana can pay, whatever
+	// the pool holds (X = 6 needs a sixth colour).
+	//
+	// They are listed in Required, not written as the counted run, so
+	// the pool solver does not mark them as the mana that paid X
+	// (ManaToken.ForX): no card with this clause reads that record.
+	if lim.Distinct {
+		for i := 0; i < n && i < len(allowed); i++ {
+			req = append(req, ColorRequirement{Options: []string{allowed[i]}})
+		}
+		if n > len(allowed) {
+			req = append(req, ColorRequirement{Options: []string{noManaColor}})
+		}
+		out.Required = req
+		return out
+	}
 	// Every announced X is bounded by MaxAnnouncedX first
 	// (x_bound.go), so n is too; a larger n can only come from a caller
 	// that skipped that gate, and is written as one requirement no mana
@@ -216,6 +246,79 @@ func (c ParsedCost) foldSpendOnly(x int) ParsedCost {
 	return out
 }
 
+// # One mana of each colour (#2575)
+//
+// Emblazoned Golem: "Kicker {X}. Spend only colored mana on X. No more
+// than one mana of each color may be spent this way." Paid, the X is
+// one mana of each of X different colours, so it is exactly some
+// X-colour subset of WUBRG paid as {W}{U}… — a cost the solvers already
+// pay. Which subset is the caster's choice of which mana to spend (CR
+// 601.2h), the same choice the pool solver already makes for them
+// between a {W/U} and a {U}.
+//
+// So the fold stays pure and is handed the subset, and the subset is
+// chosen in the one place every payment and probe already reads the
+// cost (costAsPaidByLocked): the first, in WUBRG order, the floating
+// pool pays on its own; failing that, the first the pool and an
+// auto-tap plan pay together (autoTapTopUpLocked, under the payer's
+// exclusions); failing both, the first, which nothing can pay. The
+// cast's auto-tap, its payment, internal/legal's probe and the preview
+// all ask that function with the same board, so they choose alike and
+// cannot disagree about whether the cast is payable. The solvers are
+// untouched: "each of a different colour" never reaches them.
+
+// distinctSpendChoices is every subset of colours a "no more than one
+// mana of each color" clause could be paid with at X = x, in WUBRG
+// order of the clause's colours. Nil when there is nothing to choose:
+// no such clause, no restricted mana, or at least as much restricted
+// mana as there are colours (every colour, plus an unpayable rest).
+func (c ParsedCost) distinctSpendChoices(x int) [][]string {
+	lim := c.SpendOnly
+	if lim == nil || !lim.Distinct {
+		return nil
+	}
+	n := c.XMana(x)
+	if !lim.XOnly {
+		n = satAddMana(n, c.Generic)
+	}
+	if n <= 0 || n >= len(lim.Colors) {
+		return nil
+	}
+	return colorSubsets(lim.Colors, n)
+}
+
+// colorSubsets is every n-element subset of colors, each in the order
+// colors lists them, the subsets in lexicographic order of position.
+func colorSubsets(colors []string, n int) [][]string {
+	var out [][]string
+	var pick func(from int, chosen []string)
+	pick = func(from int, chosen []string) {
+		if len(chosen) == n {
+			out = append(out, slices.Clone(chosen))
+			return
+		}
+		for i := from; i <= len(colors)-(n-len(chosen)); i++ {
+			pick(i+1, append(chosen, colors[i]))
+		}
+	}
+	pick(0, make([]string, 0, n))
+	return out
+}
+
+// withSpendColors is c with its spend-only clause narrowed to colors,
+// copied so the caller's restriction is not written into.
+func (c ParsedCost) withSpendColors(colors []string) ParsedCost {
+	lim := *c.SpendOnly
+	lim.Colors = colors
+	c.SpendOnly = &lim
+	return c
+}
+
+// maxUnfoldedRun caps how many requirements unfolded writes out. No
+// real cost comes near it; it exists so the allocation size cannot
+// overflow.
+const maxUnfoldedRun = 1 << 20
+
 // requiredCount is how many coloured requirements the cost has: the
 // listed ones and the folded run.
 func (c ParsedCost) requiredCount() int {
@@ -233,9 +336,12 @@ func (c ParsedCost) unfolded() ParsedCost {
 		return c
 	}
 	out := c
-	out.Required = make([]ColorRequirement, 0, len(c.Required)+c.folded.n)
+	// Bound the size arithmetic: a run so long the sum overflows int
+	// (or exceeds any real cost) is clamped, never allocated.
+	n := min(c.folded.n, maxUnfoldedRun)
+	out.Required = make([]ColorRequirement, 0, len(c.Required)+n)
 	out.Required = append(out.Required, c.Required...)
-	for range c.folded.n {
+	for range n {
 		out.Required = append(out.Required, c.folded.req)
 	}
 	out.folded = reqRun{}

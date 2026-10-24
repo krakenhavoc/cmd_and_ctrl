@@ -78,7 +78,7 @@ func uginsBindingMayExile(g *game.Game, item *game.StackItem) error {
 		Question: "Ugin's Binding — exile it from your graveyard to return each nonland permanent you don't control to its owner's hand?",
 		YesLabel: "Exile it",
 		NoLabel:  "Leave it",
-		OnYes:    uginsBindingExileThenBounce,
+		Then:     uginsBindingAnswer,
 	}.Apply(NewContext(g, item))
 }
 
@@ -111,3 +111,9 @@ func uginsBindingStillInGraveyard(ctx *Context, self uuid.UUID) bool {
 	ref := ctx.Item.SourceObject
 	return ref.ID != self || ref.Epoch == card.ObjectEpoch
 }
+
+// uginsBindingAnswer is the "yes": exile the card from the graveyard, then
+// return each nonland permanent you don't control. Keyed (#4291).
+var uginsBindingAnswer = MayYes("confirm/ugins-binding-exile", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return uginsBindingExileThenBounce(ctx)
+})

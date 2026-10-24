@@ -38,10 +38,11 @@ import (
 // and the caster's cost less n. If either is short nothing is tapped or
 // spent, the card stays where it was, and the caster gets a log line.
 //
-// The prompt's continuation rides the existing chooseValueResume frame
-// rather than a frame of its own, so the closure ratchet
-// (closure_fields.txt) gains no route; a table waiting on a helper is
-// not a restore point, as no pay_amount table is.
+// The prompt carries no closure (#4294): the announcement it parks is
+// plain data (AssistPrompt.Announce), the spend context the helper's
+// funds are read in is too (AssistPrompt.Spend), and the answer is the
+// registered number branch assistHelpThen, so a table waiting on a helper
+// is a restore point.
 
 // The refusals of a bad assist announcement. Each wraps
 // ErrInvalidParam: the announcement is malformed, not unaffordable.
@@ -80,23 +81,120 @@ const PayAmountAssist = "assist"
 type AssistPrompt struct {
 	// Caster is the player casting the spell; the prompt's Chooser is
 	// the helper.
-	Caster uuid.UUID
+	Caster uuid.UUID `json:"caster"`
 	// Spell is the card being cast, still where it was cast from.
 	// SpellName and ManaCost are its name and its total cost as the
 	// caster announced it ("{3}{B}"), carried because the card is in a
 	// zone the helper may not see.
-	Spell     uuid.UUID
-	SpellName string
-	ManaCost  string
+	Spell     uuid.UUID `json:"spell"`
+	SpellName string    `json:"spellName"`
+	ManaCost  string    `json:"manaCost"`
 	// Generic is the generic part of the spell's total cost, G: the
 	// most anyone could help with. The prompt's Max is the smaller of G
 	// and what the helper could make when asked.
-	Generic int
+	Generic int `json:"generic"`
 
-	// spend is the cast's mana spend context, so an answer is checked
+	// Spend is the cast's mana spend context, so an answer is checked
 	// against what may pay for THIS spell ("spend only on creature
-	// spells" mana may help cast Fan Favorite).
-	spend ManaSpendContext
+	// spells" mana may help cast Fan Favorite). Plain data; the wish
+	// inside it is an ordering input only and is not written.
+	Spend ManaSpendContext `json:"spend"`
+
+	// Announce is the parked announcement the helper's answer re-runs
+	// (#4294), as data.
+	Announce *AssistAnnounce `json:"announce,omitempty"`
+}
+
+// AssistAnnounce is the cast a parked assist prompt re-runs once the
+// helper has answered, as plain data a restore point can carry (#4294).
+// The cast's own parameters are the exported fields of CastSpellParams;
+// what a re-run also reads and JSON cannot reach is the three unexported
+// answers a cast gathers before it parks (the CR 903.9 answers of the
+// commanders' owners, the opponents' target picks and the spliced
+// targets), carried beside it.
+type AssistAnnounce struct {
+	Params CastSpellParams `json:"params"`
+	// Commander is CastSpellParams.commanderAnswers.
+	Commander map[uuid.UUID]bool `json:"commander,omitempty"`
+	// Opponent is CastSpellParams.opponentPicks.
+	Opponent []AssistOpponentPick `json:"opponent,omitempty"`
+	// Spliced is CastSpellParams.splicedRefs.
+	Spliced []TargetRef `json:"spliced,omitempty"`
+}
+
+// AssistOpponentPick is an opponentPick as data.
+type AssistOpponentPick struct {
+	Mode     int         `json:"mode"`
+	Slot     int         `json:"slot"`
+	Chooser  uuid.UUID   `json:"chooser"`
+	Answered bool        `json:"answered,omitempty"`
+	Refs     []TargetRef `json:"refs,omitempty"`
+}
+
+// newAssistAnnounce is the data of an announcement.
+func newAssistAnnounce(p CastSpellParams) *AssistAnnounce {
+	out := &AssistAnnounce{Params: p, Spliced: append([]TargetRef(nil), p.splicedRefs...)}
+	out.Params.splicedRefs, out.Params.commanderAnswers, out.Params.opponentPicks = nil, nil, nil
+	if len(p.commanderAnswers) > 0 {
+		out.Commander = make(map[uuid.UUID]bool, len(p.commanderAnswers))
+		for k, v := range p.commanderAnswers {
+			out.Commander[k] = v
+		}
+	}
+	for _, o := range p.opponentPicks {
+		out.Opponent = append(out.Opponent, AssistOpponentPick{
+			Mode: o.mode, Slot: o.slot, Chooser: o.chooser, Answered: o.answered,
+			Refs: append([]TargetRef(nil), o.refs...),
+		})
+	}
+	return out
+}
+
+// params rebuilds the announcement a re-run makes: a fresh value each
+// call, with its own copy of the three answers a re-run adds to (the
+// cast's other lists are read, never written, as a parked announcement's
+// always were).
+func (a *AssistAnnounce) params() CastSpellParams {
+	c := a.clone()
+	p := c.Params
+	p.splicedRefs = c.Spliced
+	if len(c.Commander) > 0 {
+		p.commanderAnswers = c.Commander
+	}
+	for _, o := range c.Opponent {
+		p.opponentPicks = append(p.opponentPicks, opponentPick{
+			mode: o.Mode, slot: o.Slot, chooser: o.Chooser, answered: o.Answered, refs: o.Refs,
+		})
+	}
+	return p
+}
+
+// clone is a deep copy of the data, nil for nil.
+func (a *AssistAnnounce) clone() *AssistAnnounce {
+	if a == nil {
+		return nil
+	}
+	out := *a
+	out.Params.splicedRefs, out.Params.commanderAnswers, out.Params.opponentPicks = nil, nil, nil
+	if len(a.Commander) > 0 {
+		out.Commander = make(map[uuid.UUID]bool, len(a.Commander))
+		for k, v := range a.Commander {
+			out.Commander[k] = v
+		}
+	}
+	out.Opponent = make([]AssistOpponentPick, len(a.Opponent))
+	for i, o := range a.Opponent {
+		o.Refs = append([]TargetRef(nil), o.Refs...)
+		out.Opponent[i] = o
+	}
+	if len(a.Opponent) == 0 {
+		out.Opponent = nil
+	}
+	out.Spliced = append([]TargetRef(nil), a.Spliced...)
+	if len(a.Spliced) == 0 {
+		out.Spliced = nil
+	}
+	return &out
 }
 
 // assistAnswer is the helper's answer, attached to the parked
@@ -227,7 +325,6 @@ func (g *Game) parkForAssistLocked(p *Player, card Card, cardID uuid.UUID, param
 	}
 	caster := p.ID
 	spellName := card.Name
-	announce := params
 	id := g.QueueChoiceForEffect(PendingChoice{
 		Kind:    PendingChoicePayAmount,
 		Chooser: helper,
@@ -243,22 +340,37 @@ func (g *Game) parkForAssistLocked(p *Player, card Card, cardID uuid.UUID, param
 			SpellName: spellName,
 			ManaCost:  g.assistCostTextLocked(p, card, params),
 			Generic:   generic,
-			spend:     spend,
+			Spend:     spend,
+			Announce:  newAssistAnnounce(params),
 		},
-		chooseValueResume: &chooseValueFrame{then: func(g *Game, value string) error {
-			// "" is the drop: the helper left (CR 800.4f), so they paid
-			// nothing and the cast goes on unassisted.
-			n, err := strconv.Atoi(value)
-			if err != nil || n < 0 {
-				n = 0
-			}
-			return g.resumeAssistedCastLocked(caster, cardID, spellName, announce, helper, n)
-		}},
+		// #4294: the answer is a registered branch, so the prompt holds no
+		// closure. The drop (the helper left, CR 800.4f) answers "" and
+		// the branch reads it as nothing paid.
+		PickThen: assistHelpKey,
 	})
 	if id == uuid.Nil {
 		return false, nil
 	}
 	return true, nil
+}
+
+// assistHelpKey is the helper's answer as a number branch (number_then.go),
+// an on-disk identity: never renamed, never reused. The branch is the
+// parked cast made again with the amount attached; the amount is 0 when
+// the helper paid nothing, declined or left, and the cast goes on
+// unassisted. It needs the prompt's AssistPrompt, which numberFrameOf
+// hands it as NumberAnswer.assist. Registered from init: it refers to
+// castSpellLocked, which refers back to the park.
+const assistHelpKey = "assist/help-pay-for-a-spell"
+
+func init() {
+	RegisterNumberThen(assistHelpKey, func(g *Game, r NumberAnswer) error {
+		a := r.assist
+		if a == nil || a.Announce == nil {
+			return fmt.Errorf("%w: assist branch with no parked cast", ErrInvalidParam)
+		}
+		return g.resumeAssistedCastLocked(a.Caster, a.Spell, a.SpellName, a.Announce.params(), r.Chooser, max(r.Number, 0))
+	})
 }
 
 // assistCostTextLocked is the spell's total cost as announced, for the
@@ -353,7 +465,14 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 		return nil // refused by the payment itself, before anything is spent
 	}
 	spend := ManaSpendForCastParams(card, params)
-	cost = g.costAsPaidByLocked(p.ID, spend, cost, params.XValue)
+	// #2575: read with the auto-tap's exclusions, as applyAutoTapLocked
+	// reads it, so a "no more than one mana of each color" clause
+	// chooses the colours the payment will.
+	var excluded map[uuid.UUID]bool
+	if params.AutoTap {
+		excluded = g.castAutoTapExclusionsLocked(p.ID, card, params)
+	}
+	cost = g.costAsPaidByExcludingLocked(p.ID, spend, cost, params.XValue, excluded)
 	cost, _, err = g.strikePhyrexianLifeLocked(p, card.Name, cost, spend, params.PhyrexianLife, nil)
 	if err != nil {
 		return nil
@@ -362,7 +481,6 @@ func (g *Game) castManaShortLocked(p *Player, card Card, params CastSpellParams)
 		return nil
 	}
 	if params.AutoTap {
-		excluded := g.castAutoTapExclusionsLocked(p.ID, card, params)
 		plan, short, ok := g.autoTapTopUpLocked(p.ID, cost, params.XValue, spend, excluded, WantedManaSourcesFor(card))
 		if ok && g.planFundsLocked(p, plan, short, cost, params.XValue, spend) {
 			return nil
@@ -498,5 +616,6 @@ func cloneAssistPrompt(a *AssistPrompt) *AssistPrompt {
 		return nil
 	}
 	out := *a
+	out.Announce = a.Announce.clone()
 	return &out
 }

@@ -38,16 +38,23 @@ func init() {
 					}
 					return MayChoice{
 						Question: "Cloak of Confusion — have the enchanted creature assign no combat damage this turn? (if you do, defending player discards a card at random)",
-						OnYes: func(ctx *Context) error {
-							enchantedAssignsNoCombatDamage(ctx, host, "Cloak of Confusion — assigns no combat damage this turn")
-							if !defendingPlayerStillIn(ctx.Game, defender) {
-								return nil
-							}
-							return DiscardCards{Player: defender, N: 1}.Apply(ctx)
-						},
+						Then:     cloakOfConfusionAnswer,
+						Carry:    []uuid.UUID{host, defender},
 					}.Apply(ctx)
 				},
 			},
 		},
 	})
 }
+
+// cloakOfConfusionAnswer is the "yes": the enchanted creature (the first
+// carried ID) assigns no combat damage, and the defending player (the
+// second) discards a card at random. Keyed (#4291).
+var cloakOfConfusionAnswer = MayYes("confirm/cloak-of-confusion-no-damage", func(ctx *Context, r game.ConfirmAnswer) error {
+	host, defender := carryAt(r, 0), carryAt(r, 1)
+	enchantedAssignsNoCombatDamage(ctx, host, "Cloak of Confusion — assigns no combat damage this turn")
+	if !defendingPlayerStillIn(ctx.Game, defender) {
+		return nil
+	}
+	return DiscardCards{Player: defender, N: 1}.Apply(ctx)
+})

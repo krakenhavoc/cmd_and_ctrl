@@ -73,8 +73,13 @@ func vildinPackAlphaTransform(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Vildin-Pack Alpha — transform " + name + "?",
-		OnYes: func(ctx *Context) error {
-			return Transform{Target: id}.Apply(ctx)
-		},
+		Then:     geierReachBanditTransform,
+		Carry:    []uuid.UUID{id},
 	}.Apply(NewContext(g, item))
 }
+
+// geierReachBanditTransform is the "yes": transform the Werewolf (the
+// carried ID). Keyed (#4291).
+var geierReachBanditTransform = MayYes("confirm/geier-reach-bandit-transform", func(ctx *Context, r game.ConfirmAnswer) error {
+	return Transform{Target: carryAt(r, 0)}.Apply(ctx)
+})

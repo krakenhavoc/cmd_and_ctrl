@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "9880ba09-d5b8-4675-bfb4-2161d86d2d41",
 		Name:         "Brute Force",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 3, 3)),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

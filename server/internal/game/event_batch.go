@@ -133,6 +133,17 @@ func (g *Game) beginEventBatchLocked() {
 	g.dropRedirectOrdersLocked(0)
 }
 
+// BeginEventBatchForTest opens a new event batch from outside the package:
+// play has moved on, so the resolving slot is empty. A test that answers a
+// keyed prompt in the same call as the resolution that asked it would
+// otherwise answer inside the batch the item resolved in, which a real
+// answer never does.
+func (g *Game) BeginEventBatchForTest() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.beginEventBatchLocked()
+}
+
 // currentEventBatchLocked is the batch EmitEvent stamps. The counter
 // starts at zero on a freshly constructed Game and the first event of
 // a game would then carry the un-stamped sentinel, so the first read
@@ -142,6 +153,16 @@ func (g *Game) currentEventBatchLocked() uint64 {
 		g.eventBatch = 1
 	}
 	return g.eventBatch
+}
+
+// CurrentEventBatchForEffect is the event batch a resolving effect's
+// events are stamped with: inside a resolution, the batch it opened, so
+// "for each card drawn this way" can count the draws this resolution
+// made off this turn's log (Struggle for Project Purity, #2809). A read;
+// it opens batch 1 on a game that has never emitted an event, as
+// EmitEvent would. Caller must hold g.mu in write mode.
+func (g *Game) CurrentEventBatchForEffect() uint64 {
+	return g.currentEventBatchLocked()
 }
 
 // oncePerBatchKeyLocked is the ability key the guard below is keyed

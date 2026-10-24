@@ -840,6 +840,16 @@ type tapSource struct {
 	// painBudgetFor.
 	Pain int
 
+	// Table marks a candidate whose declared rider acts on the
+	// controller's opponents (#4189): Grove of the Burnwillows gives each
+	// of them life, Zhur-Taa Druid damages each. The planner taps it like
+	// any source, but a click that casts a spell should not also feed or
+	// ping the table when a quieter source could pay, so it shares the
+	// pain tier (costTier) and is reached for only after every painless,
+	// energy-free source. It spends nothing, so it needs no budget and
+	// sorts ahead of a source that costs life (Pain is still 0).
+	Table bool
+
 	// Energy is the energy this candidate spends (ADR 0129 §5): its
 	// ability's "Pay {E}" cost (Aether Hub). A tier of both comparators,
 	// after every source that spends nothing but its tap and before the
@@ -1074,7 +1084,8 @@ func gatherSourcesRaw(g *Game, controller uuid.UUID, excluded map[uuid.UUID]bool
 				// once-each-turn one.
 				FreeOncePerTurn: autoTapFreeOncePerTurn(*picked),
 				// #2392: life the payment spends.
-				Pain: picked.LifeCost + picked.RiderSelfDamage,
+				Pain:  picked.LifeCost + picked.RiderSelfDamage + g.selfLifeGainLossLocked(controller, c.InstanceID, picked),
+				Table: picked.touchesOpponents(),
 				// ADR 0129 §5: energy the payment spends.
 				Energy: picked.EnergyCost,
 				// #2455: the mana the ability owes; zero unless costed.
@@ -1426,9 +1437,11 @@ func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry
 //
 //   - a life cost the player cannot pay right now (CR 119.4, CR 119.8).
 //     A payable one is planned since #2392, in the pain tier, and so is
-//     a rider that declares its damage (RiderSelfDamage), or the life
-//     it gains (RiderSelfLifeGain, #4185); a rider that declares
-//     neither is a closure the planner cannot read, and it stays out;
+//     a rider that declares its damage (RiderSelfDamage), the life it
+//     gains (RiderSelfLifeGain, #4185) or what it does to each opponent
+//     (RiderOpponentLifeGain, RiderOpponentDamage, #4189); a rider that
+//     declares none of these is a closure the planner cannot read, and
+//     it stays out;
 //
 //   - a MANA cost is recursive (the Signet cycle, Cabal Coffers): the
 //     planner would have to solve a second cost to fund the first, so
@@ -1676,9 +1689,10 @@ func (g *Game) autoTapAcceptsBesidesManaCost(asker uuid.UUID, source Card, a Man
 	// not at all while the total can't change) — and so is a rider
 	// that declares the damage it deals. #4185: and so is one that
 	// declares the life it gains (The Great Henge), which spends
-	// nothing. An opaque rider stays out: the planner cannot know what
-	// it does.
-	if a.Rider != nil && a.RiderSelfDamage <= 0 && a.RiderSelfLifeGain <= 0 {
+	// nothing. #4189: and one that declares what it does to each
+	// opponent (Grove of the Burnwillows, Zhur-Taa Druid). An opaque
+	// rider stays out: the planner cannot know what it does.
+	if a.Rider != nil && !a.riderDeclared() {
 		return false
 	}
 	if a.LifeCost > 0 && !g.CanPayLifeLocked(g.playerByIDLocked(asker), a.LifeCost) {
@@ -1850,6 +1864,24 @@ func autoTapFreeOncePerTurn(a ManaAbilityShape) bool {
 		return false
 	}
 	return true
+}
+
+// riderDeclared reports whether the ability's Rider says what it does in
+// data the planner can read: the damage or life it gives its controller,
+// or what it gives each opponent. A Rider that declares none of them is
+// an opaque closure and keeps its source out of every plan. Written once
+// so the picker and the tier bit below cannot disagree about which
+// riders are declared.
+func (a ManaAbilityShape) riderDeclared() bool {
+	return a.RiderSelfDamage > 0 || a.RiderSelfLifeGain > 0 || a.touchesOpponents()
+}
+
+// touchesOpponents reports whether a declared rider acts on the
+// controller's opponents (Grove of the Burnwillows, Zhur-Taa Druid). Such
+// a source is planned, but in the last tier before life-spending ones
+// (tapSource.Table).
+func (a ManaAbilityShape) touchesOpponents() bool {
+	return a.RiderOpponentLifeGain > 0 || a.RiderOpponentDamage > 0
 }
 
 // autoManaExileAbilityFor is autoTapAbilityFor for a source that is

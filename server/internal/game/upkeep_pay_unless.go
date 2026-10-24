@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // upkeep_pay_unless.go — "at the beginning of your upkeep, pay <cost>
 // or <consequence>", and the rule #997 is about: while that question
@@ -95,6 +99,20 @@ type UpkeepPayUnlessPrompt struct {
 	// OnPay, when set, runs once the payment has been made: echo's
 	// EventEchoPaid (ADR 0108 §5). Nil for every other card.
 	OnPay func(g *Game) error
+
+	// Then is the "or else" (and the payment's own branch, if the card
+	// has one) as REGISTERED branches (RegisterPayUnlessBranches,
+	// #4264), and Carry the plain data they are handed: a prompt queued
+	// with one holds no closure, so a table waiting on it is a restore
+	// point, and the halt on its step is the same. With it OnDecline and
+	// OnPay must be nil.
+	Then  PayUnlessElse
+	Carry []uuid.UUID
+
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed branch as PayUnlessAnswer.Item (#4264). Nil when the branch
+	// reads none.
+	Asked *AskedItem
 }
 
 // QueueUpkeepPayUnlessForEffect queues the CR 118.12 prompt and
@@ -108,6 +126,15 @@ type UpkeepPayUnlessPrompt struct {
 //
 // Caller must hold g.mu. Added in #997.
 func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
+	if p.Then.key != "" {
+		if p.OnDecline != nil || p.OnPay != nil {
+			return fmt.Errorf("%w: keyed upkeep pay-unless %q also sets a closure", ErrInvalidParam, p.Then.key)
+		}
+		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+			Chooser: p.Chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
+			Then: p.Then, Carry: p.Carry, Action: p.Action, InThisStep: true, Asked: p.Asked,
+		})
+	}
 	var action *PayAction
 	if p.Action != nil {
 		a := *p.Action

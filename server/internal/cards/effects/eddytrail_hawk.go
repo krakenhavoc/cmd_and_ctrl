@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var eddytrailHawkFlyingPaid = energyPaid("pay-unless/eddytrail-hawk-flying",
+	firstTargetGainsUntilEndOfTurn(0, "Eddytrail Hawk — flying until end of turn", "flying"))
+
 // Eddytrail Hawk — Creature — Bird {1}{W}, 1/2:
 //
 //	"Flying
@@ -22,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Eddytrail Hawk", 2),
 			anotherAttackerMayPayEnergy("Eddytrail Hawk", "give it flying",
-				firstTargetGainsUntilEndOfTurn(0, "Eddytrail Hawk — flying until end of turn", "flying")),
+				eddytrailHawkFlyingPaid),
 		},
 	})
 }

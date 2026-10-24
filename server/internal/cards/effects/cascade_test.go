@@ -55,11 +55,82 @@ func seedCheapLibrary(g *game.Game, p *game.Player, cheap int) {
 	}
 }
 
+// isKeywordCastPrompt reports whether c is an offer to cast one card: a
+// may_cast prompt, or the resolution_cast prompt cascade and discover
+// (#4243), and rebound, suspend, madness and the other keyword and
+// effect offers (#4250), ask. A keyword's resolution_cast names its
+// keyword; a copy's does not.
+func isKeywordCastPrompt(c *game.PendingChoice) bool {
+	if c == nil {
+		return false
+	}
+	if c.Kind == game.PendingChoiceMayCast {
+		return true
+	}
+	return c.Kind == game.PendingChoiceResolutionCast && c.MayCastKeyword != ""
+}
+
+// keywordCastPromptFor is chooser's open keyword cast, or nil.
+func keywordCastPromptFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
+	for _, c := range g.PendingChoices {
+		if isKeywordCastPrompt(c) && c.Chooser == chooser {
+			return c
+		}
+	}
+	return nil
+}
+
+// offeredZone is the zone a resolution_cast's card is cast from: exile
+// for most, the library for Ziatora's Envoy's top card.
+func offeredZone(g *game.Game, chooser, card uuid.UUID) game.ZoneKind {
+	zone := game.ZoneExile
+	g.WithWriteLock(func() {
+		if _, z, ok := g.ResolutionCastCandidateLocked(chooser, card); ok {
+			zone = z
+		}
+	})
+	return zone
+}
+
+// keywordCastCard is the card a cascade or discover offer is about.
+func keywordCastCard(c *game.PendingChoice) uuid.UUID {
+	if c.Kind == game.PendingChoiceResolutionCast {
+		if len(c.DiscardOptions) == 0 {
+			return uuid.Nil
+		}
+		return c.DiscardOptions[0]
+	}
+	return c.MayCastCard
+}
+
+// answerKeywordCast answers one such offer. Taking it casts the card
+// during the resolution (a resolution_cast) or opens the free cast (a
+// may_cast); declining is the keyword's own decline.
+func answerKeywordCast(t *testing.T, g *game.Game, c *game.PendingChoice, apply bool) {
+	t.Helper()
+	if c.Kind == game.PendingChoiceResolutionCast {
+		if !apply {
+			if err := g.ResolvePendingChoice(c.ID, c.Chooser, nil); err != nil {
+				t.Fatalf("declining the cast: %v", err)
+			}
+			return
+		}
+		card := keywordCastCard(c)
+		if err := g.CastForResolutionChoice(c.Chooser, c.ID, card, game.CastSpellParams{FromZone: string(offeredZone(g, c.Chooser, card))}); err != nil {
+			t.Fatalf("casting the offered card: %v", err)
+		}
+		return
+	}
+	if err := g.ResolveMayCast(c.ID, c.Chooser, apply); err != nil {
+		t.Fatalf("ResolveMayCast: %v", err)
+	}
+}
+
 // countMayCastPrompts reports how many cascade offers are waiting.
 func countMayCastPrompts(g *game.Game) int {
 	n := 0
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
+		if isKeywordCastPrompt(c) {
 			n++
 		}
 	}
@@ -73,19 +144,17 @@ func answerAllMayCast(t *testing.T, g *game.Game, chooser uuid.UUID, apply bool)
 	t.Helper()
 	answered := 0
 	for i := 0; i < 8; i++ {
-		var id uuid.UUID
+		var found *game.PendingChoice
 		for _, c := range g.PendingChoices {
-			if c != nil && c.Kind == game.PendingChoiceMayCast && c.Chooser == chooser {
-				id = c.ID
+			if isKeywordCastPrompt(c) && c.Chooser == chooser {
+				found = c
 				break
 			}
 		}
-		if id == uuid.Nil {
+		if found == nil {
 			return answered
 		}
-		if err := g.ResolveMayCast(id, chooser, apply); err != nil {
-			t.Fatalf("ResolveMayCast: %v", err)
-		}
+		answerKeywordCast(t, g, found, apply)
 		answered++
 	}
 	return answered
@@ -194,8 +263,10 @@ func TestImotiGrantsCascadeToSixDrops(t *testing.T) {
 	answerAllMayCast(t, g, me.ID, false)
 }
 
-// Accepting an offer really does leave a castable card in exile —
-// the end-to-end claim the keyword makes.
+// Taking the offer really does cast the card, for free and during the
+// cascade trigger's resolution (CR 608.2g, #4243) — the end-to-end claim
+// the keyword makes. The cast is strict with an empty pool: the only way
+// it succeeds is if the permission really made it free.
 func TestCascadeHitIsCastableForFree(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -203,20 +274,20 @@ func TestCascadeHitIsCastableForFree(t *testing.T) {
 
 	castWithCost(t, g, "Shardless Agent", "Artifact Creature — Human Rogue", "{1}{G}{U}", shardlessAgentOracle)
 	passPriorityAroundTable(t, g)
+	if got := countMayCastPrompts(g); got != 1 || !g.ResolutionPaused() {
+		t.Fatalf("%d cascade offers, resolution paused %v: want one offer holding the trigger's resolution", got, g.ResolutionPaused())
+	}
 	answerAllMayCast(t, g, me.ID, true)
-
-	var hit uuid.UUID
-	for _, c := range g.Exile.Cards {
-		if permissionLive(g, g.CastPermissionOnCardByIDForEffect(c.InstanceID), me.ID) {
-			hit = c.InstanceID
+	if g.ResolutionPaused() {
+		t.Errorf("the resolution is still held after the cast")
+	}
+	found := false
+	for _, c := range g.Stack.Cards {
+		if c.Name == "Cheap Spell" {
+			found = true
 		}
 	}
-	if hit == uuid.Nil {
-		t.Fatalf("no free-cast grant in exile after accepting")
-	}
-	// Strict mana with an empty pool: the only way this succeeds is
-	// if the grant really made it free.
-	if err := g.CastSpell(me.ID, hit, game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
-		t.Fatalf("casting the cascade hit for free: %v", err)
+	if !found {
+		t.Fatalf("the cascaded Cheap Spell is not on the stack above the Shardless Agent")
 	}
 }

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Harsh Scrutiny — Sorcery {B}:
 //
 //	"Target opponent reveals their hand. You choose a creature card
@@ -20,15 +18,16 @@ func init() {
 		Name:         "Harsh Scrutiny",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player: TargetedPlayer(ctx),
-				Filter: Creature(),
-				Label:  "creature card",
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return Scry{N: 1}.Apply(ctx)
-		},
+		// The scry waits for the choice from the revealed hand (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return ChooseFromRevealedHand{
+					Player: TargetedPlayer(ctx),
+					Filter: Creature(),
+					Label:  "creature card",
+				}.Apply(ctx)
+			}),
+			Scry{N: 1},
+		),
 	})
 }

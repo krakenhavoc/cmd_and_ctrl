@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -25,14 +23,12 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			source, controller := item.SourceCardID, item.Controller
 			return SearchLibrary{
-				Player:  controller,
-				Dest:    game.ZoneHand,
-				Limit:   1,
-				Shuffle: true,
-				Reason:  "Grim Tutor — search your library for a card",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.ChangePlayerLifeForEffect(source, controller, -3)
-				},
+				Player:   controller,
+				Dest:     game.ZoneHand,
+				Limit:    1,
+				Shuffle:  true,
+				Reason:   "Grim Tutor — search your library for a card",
+				ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: controller, Source: source, N: -3},
 			}.Apply(ctx)
 		},
 	})

@@ -61,6 +61,24 @@ const theLegendOfYangchenOracleID = "521a63cf-5e83-4649-9800-c62b2fc474d6"
 // three cards. If you do, draw three cards." — the "you may" belongs
 // to the chapter's controller, asked as the chapter resolves; the
 // target opponent was already chosen at announce (CR 603.3d).
+// yangchenRecord files the opponent who draws.
+const yangchenRecord = "the-legend-of-yangchen/opponent"
+
+// yangchenDraws is the opponent's draw and then yours: yours waits for a
+// prompt theirs asks (a dredge offer; CR 608.2c, #4155).
+var yangchenDraws = RegisterThenSteps("then-steps/the-legend-of-yangchen-draws",
+	Instruction(func(ctx *Context) error {
+		ids := ctx.StepRecord(yangchenRecord).IDs
+		if len(ids) == 0 {
+			return nil
+		}
+		return DrawCards{Player: ids[0], N: 3}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)
+	}),
+)
+
 func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
@@ -71,12 +89,8 @@ func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 		return MayChoice{
 			Question: "The Legend of Yangchen — have target opponent draw three cards?",
 			Draws:    3, Drawer: opponent,
-			OnYes: func(ctx *Context) error {
-				if err := (DrawCards{Player: opponent, N: 3}).Apply(ctx); err != nil {
-					return err
-				}
-				return DrawCards{Player: ctx.Controller(), N: 3}.Apply(ctx)
-			},
+			Then:  yangchenAnswer,
+			Carry: []uuid.UUID{opponent},
 		}.Apply(ctx)
 	}
 	// CR 608.2b: the target left before this resolved.
@@ -143,3 +157,10 @@ func seatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// yangchenAnswer is the "yes": the target opponent (the carried ID) draws
+// three. Keyed (#4291).
+var yangchenAnswer = MayYes("confirm/the-legend-of-yangchen-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	ctx.RecordStep(yangchenRecord, []uuid.UUID{carryAt(r, 0)})
+	return yangchenDraws.Run(ctx)
+})

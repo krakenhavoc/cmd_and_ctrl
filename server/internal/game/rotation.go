@@ -212,6 +212,9 @@ func (g *Game) closeTurnLocked() {
 	// ADR 0108 §6: the turn that is ending is its player's last turn
 	// from here on. Before g.Turn and the tally are replaced.
 	g.recordLastTurnAttacksLocked()
+	// #1997: and whether its player cast a spell or put a nontoken
+	// permanent onto the battlefield (Arboria).
+	g.recordLastTurnCastOrPutLocked()
 	// ADR 0132, CR 502.2: and the spells its active player cast, which
 	// the NEXT untap step's day/night check reads.
 	g.recordPrevTurnSpellsLocked()
@@ -434,6 +437,8 @@ func (g *Game) onTurnBeganLocked() {
 		g.LoyaltyActivatedThisTurn = nil
 	}
 	g.LoyaltyActivatedTwiceThisTurn = nil
+	g.LoyaltyExtraActivationsThisTurn = nil
+	g.LoyaltyExtraActivationsUsedThisTurn = nil
 	if g.SpellsCastThisTurn != nil {
 		g.SpellsCastThisTurn = nil
 	}

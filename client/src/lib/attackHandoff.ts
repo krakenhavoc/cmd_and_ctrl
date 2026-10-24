@@ -56,11 +56,17 @@ export function chosenAttacksCost(view: GameView, attacks: ChosenAttack[]): stri
 }
 
 /** The declare_attackers payload that confirms the attacks as they stand. */
-export function confirmAttacksParams(attacks: ChosenAttack[]): {
+export function confirmAttacksParams(
+  attacks: ChosenAttack[],
+  phyrexianLife = 0,
+): {
   attackers: ChosenAttack[];
   auto_tap: boolean;
+  phyrexian_life?: number;
 } {
-  return { attackers: attacks, auto_tap: true };
+  return phyrexianLife > 0
+    ? { attackers: attacks, auto_tap: true, phyrexian_life: phyrexianLife }
+    : { attackers: attacks, auto_tap: true };
 }
 
 /**

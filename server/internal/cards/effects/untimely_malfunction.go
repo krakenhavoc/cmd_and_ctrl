@@ -26,8 +26,8 @@ func init() {
 			Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
 			Mode("Change the target of target spell or ability with a single target.",
 				TargetSpellOrAbility("target spell or ability with a single target", ItemHasASingleTarget())),
-			Mode("One or two target creatures can't block this turn.",
-				TargetCreature("one or two target creatures").WithCount(1, 2)),
+			ModeWithPurpose(Mode("One or two target creatures can't block this turn.",
+				TargetCreature("one or two target creatures").WithCount(1, 2)), ForTargets(HarmUntilEOT(0, 0, 0))),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			switch {

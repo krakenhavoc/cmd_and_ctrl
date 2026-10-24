@@ -44,9 +44,7 @@ func init() {
 						Pay:       SacrificePayment(1, "creature", "creatures", QueryType("creature")),
 						Opponents: true,
 						Question:  "Innocent Traveler — sacrifice a creature to stop it transforming?",
-						OnNobody: func(ctx *Context) error {
-							return TransformThis{}.Apply(ctx)
-						},
+						Then:      innocentTravelerTransforms,
 					}.Apply(NewContext(g, item))
 				}),
 		},
@@ -69,3 +67,9 @@ func init() {
 		}},
 	})
 }
+
+// innocentTravelerTransforms is "if no one does", keyed (#4264).
+var innocentTravelerTransforms = AnyPlayerConsequences("any-player/innocent-traveler-transform",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error { return TransformThis{}.Apply(ctx) },
+	nil)

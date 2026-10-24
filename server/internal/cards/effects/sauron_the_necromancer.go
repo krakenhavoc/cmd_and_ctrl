@@ -77,21 +77,29 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 				Tapped:     true,
 				Prefer:     prefer,
 				Label:      "Sauron, the Necromancer",
-				Then: func(ctx *Context, created []uuid.UUID) error {
-					if len(created) == 0 {
-						return nil
-					}
-					return ScheduleDelayedTrigger{
-						Label:  "Sauron, the Necromancer — exile the Wraith unless Sauron is your Ring-bearer",
-						Cards:  created,
-						Body:   sauronNecromancerExileBody,
-						Params: game.EffectParams{Object: sauron},
-					}.Apply(ctx)
-				},
+				// The object Sauron was when the trigger resolved (CR 400.7)
+				// rides the tail as data: its ID and its epoch.
+				Tail: game.KeyedTail{Ref: sauronNecromancerExile, Carry: []uuid.UUID{sauron.ID}, N: sauron.Epoch},
 			}.Apply(NewContext(ctx.Game, item))
 		},
 	}.Apply(ctx)
 }
+
+// sauronNecromancerExile is the Wraith's tail, keyed (#4294): the end step
+// trigger that exiles it unless Sauron is your Ring-bearer, for the Sauron
+// that made it.
+var sauronNecromancerExile = AttackingTokensThen("attacking-tokens/sauron-the-necromancer-exile-the-wraith",
+	func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error {
+		if len(created) == 0 || len(tail.Carry) == 0 {
+			return nil
+		}
+		return ScheduleDelayedTrigger{
+			Label:  "Sauron, the Necromancer — exile the Wraith unless Sauron is your Ring-bearer",
+			Cards:  created,
+			Body:   sauronNecromancerExileBody,
+			Params: game.EffectParams{Object: game.ObjectRef{ID: tail.Carry[0], Epoch: tail.N}},
+		}.Apply(ctx)
+	})
 
 // sauronWraithException is "except it's a 3/3 black Wraith with
 // menace", on a template that is also tapped: the colors and the

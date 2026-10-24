@@ -220,6 +220,21 @@ type DiscardPrompt struct {
 	// already; `discarded` is nil for an empty hand, which is the
 	// case this still fires for.
 	Then func(g *Game, seat uuid.UUID, discarded []uuid.UUID) error
+
+	// keyed and carry are a keyed discard-then's continuation and its
+	// plain data (PlayerDiscardsThenKeyedForEffect, discard_run_keyed.go,
+	// #4256). Unexported because the one entry point sets them.
+	keyed ChooseCardsThen
+	carry []uuid.UUID
+
+	// keyedLeg queues this prompt as a keyed leg (#4290,
+	// discard_run_keyed.go): a choose_cards pick under the engine's own
+	// discard continuation (choose-cards/discard-leg), linked to its run
+	// by the run id, so it holds no closure. runThen is the keyed run's
+	// key, whose per-seat tail runs at once for a seat asked nothing.
+	// Unexported because discardRunLocked sets them.
+	keyedLeg bool
+	runThen  string
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -320,6 +335,8 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 				})
 			}
 		}
+		// #4290: a keyed run's per-seat tail is that Then, by key.
+		g.runLegTailLocked(p.runThen, p.Player, p.Source, nil, p.carry)
 		return uuid.Nil
 	}
 	hand := make([]uuid.UUID, 0, player.Hand.Size())
@@ -336,6 +353,42 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	question := p.Question
 	if question == "" {
 		question = g.discardQuestionLocked(p.Source, n, p.UpTo)
+	}
+	if p.keyed.key != "" {
+		// #4256: a keyed discard-then. The prompt holds no closure and
+		// no run link, so a table waiting on it is a restore point; the
+		// continuation discards the picks and runs the rest of the card
+		// (discard_run_keyed.go).
+		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    p.Player,
+			FromPlayer: p.Player,
+			Source:     p.Source,
+			Question:   question,
+			Cards:      hand,
+			Min:        lo,
+			Max:        n,
+			ThenKey:    p.keyed,
+			Carry:      p.carry,
+		})
+	}
+	if p.keyedLeg {
+		// #4290: a keyed leg. The engine's discard continuation discards
+		// the picks, runs the run's per-seat tail and settles the leg
+		// (discard_run_keyed.go); the prompt holds no closure.
+		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    p.Player,
+			FromPlayer: p.Player,
+			Source:     p.Source,
+			Question:   question,
+			Cards:      hand,
+			Min:        lo,
+			Max:        n,
+			ThenKey:    discardLegThen,
+			Carry:      p.carry,
+			// The closure leg's Zone re-check and prune, kept (#4291).
+			LiveZone:  ZoneHand,
+			promptRun: run,
+		})
 	}
 	discarder, source := p.Player, p.Source
 	legThen := p.Then
@@ -500,6 +553,31 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // `then` takes the live *Game rather than capturing one, on the same
 // undo-safety contract every other continuation frame follows.
 func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
+	var tail *lifeTail
+	if then != nil {
+		tail = &lifeTail{then: then}
+	}
+	return g.changePlayerLifeWithTailLocked(source, playerID, delta, tail)
+}
+
+// ChangePlayerLifeKeyedForEffect is ChangePlayerLifeThenForEffect with
+// the continuation as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the amount that moved as TailOutcome.Amount. A
+// CR 616 ordering prompt over the change is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) ChangePlayerLifeKeyedForEffect(source, playerID uuid.UUID, delta int, then KeyedTail) error {
+	var tail *lifeTail
+	if !then.IsZero() {
+		tail = &lifeTail{keyed: then}
+	}
+	return g.changePlayerLifeWithTailLocked(source, playerID, delta, tail)
+}
+
+// changePlayerLifeWithTailLocked is the one body of the doors above.
+//
+// Caller must hold g.mu.
+func (g *Game) changePlayerLifeWithTailLocked(source, playerID uuid.UUID, delta int, tail *lifeTail) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -510,10 +588,7 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 		// see. Not an error — an effect reaching for a seat that
 		// conceded mid-resolution has done nothing wrong — but still a
 		// terminal outcome, so the continuation is told zero.
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return g.runLifeTailLocked(&ReplacementEvent{lifeTail: tail}, 0)
 	}
 	// The event is built before the pipeline runs and carries
 	// everything the tail needs — the continuation included — because a
@@ -524,9 +599,7 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 		Source:     source,
 		LifePlayer: playerID,
 		LifeDelta:  delta,
-	}
-	if then != nil {
-		ev.lifeTail = &lifeTail{then: then}
+		lifeTail:   tail,
 	}
 	_, err := g.changeLifeThroughReplacementsLocked(ev)
 	return err
@@ -593,6 +666,19 @@ func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amo
 		return nil
 	}
 	return then(g, lostSoFar)
+}
+
+// LoseLifeEachKeyedForEffect is LoseLifeEachThenForEffect with the rest
+// of the effect as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the total actually lost as TailOutcome.Amount.
+// The batch walks the players on a data tail (lifeEachRun), so a CR 616
+// ordering prompt over one player's loss is a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) LoseLifeEachKeyedForEffect(source uuid.UUID, players []uuid.UUID, amount int, then KeyedTail) error {
+	return g.loseLifeEachKeyedStepLocked(&lifeEachRun{
+		Source: source, Rest: copyUUIDs(players), Amount: amount, Then: snapshotKeyedTail(then),
+	})
 }
 
 // PayLifeForEffect pays `amount` life as a COST (CR 118.3) — a spell's
@@ -1462,6 +1548,81 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
+	plan, err := g.exileTopFaceDownPlanLocked(playerID, n)
+	if err != nil || len(plan) == 0 {
+		return nil, err
+	}
+	// #529, #4245: through the shared exit primitive, one card at a time
+	// from the previous card's continuation (exileFaceDownLegsLocked). A leg
+	// that opens a prompt (a CR 616.1 ordering of replacements) leaves its
+	// card ON the library and resumes the rest of the batch from the
+	// answer, so the cards after it are exiled then rather than never.
+	// Looping here and stopping at the pause, as this did, exiled one card
+	// of a batch of three.
+	//
+	// The list is what had landed when the call returned: every card on a
+	// clean run, and the cards before the pause on a paused one. A card
+	// that is waiting on the prompt is not in it. A caller that must act on
+	// the finished batch (Necropotence schedules a delivery of the card)
+	// reads ExileTopFaceDownThenForEffect instead (#4259).
+	//
+	// NO production caller reads the list any more (#4262: Doomsday
+	// Excruciator was the last, and chains ExileTopFaceDownThenForEffect per
+	// player). It is unreliable on a paused batch, so a new caller that needs
+	// the cards must use the Then form; the list stays for the tests that pin
+	// what had landed.
+	// #4253 slice 3: the batch's end is read off a report rather than a
+	// closure over these locals, so a leg's prompt is a restore point.
+	report := &faceDownExileReport{}
+	err = g.exileFaceDownLegsKeyedLocked(&faceDownExileRun{Player: playerID, Rest: plan, report: report})
+	out, done := report.landed, report.done
+	if !done {
+		// Paused: the cards before the prompt are already in exile.
+		for _, id := range plan {
+			if g.landedInZoneLocked(id, ZoneExile, uuid.Nil) {
+				out = append(out, id)
+			}
+		}
+	}
+	return out, err
+}
+
+// ExileTopFaceDownThenForEffect is ExileTopFaceDownForEffect for a clause
+// that acts on the cards the exile took ("Exile the top card of your library
+// face down. Put that card into your hand at the beginning of your next end
+// step", #4259). `then` runs once the whole batch is done, with the cards that
+// landed in exile, top card first: at once when nothing paused, and from the
+// answer to a CR 616.1 ordering prompt (or a CR 903.9 choice) when a leg did.
+// The list ExileTopFaceDownForEffect returns is empty or short on a paused
+// batch, so a caller that reads it loses the cards for good.
+//
+// `then` also runs, with an empty list, when there was nothing to exile (an
+// empty library or n of zero), so a clause that is gated on "if you do" checks
+// the length. A nil `then` is a plain exile. Nothing is exiled when the player
+// is not found: the error is returned and `then` does not run.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) ExileTopFaceDownThenForEffect(playerID uuid.UUID, n int, then func(g *Game, exiled []uuid.UUID) error) error {
+	plan, err := g.exileTopFaceDownPlanLocked(playerID, n)
+	if err != nil {
+		return err
+	}
+	if then == nil {
+		// #4253 slice 3: nothing to run afterwards, so the batch is data.
+		return g.exileFaceDownLegsKeyedLocked(&faceDownExileRun{Player: playerID, Rest: plan})
+	}
+	return g.exileFaceDownLegsLocked(playerID, plan, nil, then)
+}
+
+// exileTopFaceDownPlanLocked chooses the cards a face-down exile of the top n
+// takes: up front, top first, so that the answer to a prompt on one of them
+// does not shift which cards the rest of the batch names (the millPlanLocked
+// argument). The library's top is the LAST element, the same read PopTop and
+// ExileTopWithPermissionForEffect use. The list is empty when the exile has
+// nothing to take.
+//
+// Caller must hold g.mu.
+func (g *Game) exileTopFaceDownPlanLocked(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return nil, ErrPlayerNotFound
@@ -1469,37 +1630,62 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	if g.Exile == nil || n <= 0 {
 		return nil, nil
 	}
-	out := make([]uuid.UUID, 0, n)
-	for i := 0; i < n; i++ {
-		if p.Library.Size() == 0 {
-			return out, nil
-		}
-		// The library's top is the LAST element — the same read
-		// PopTop and ExileTopWithPermissionForEffect use.
-		top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-		// #529: through the shared exit primitive so a commander
-		// exiled off the top of its owner's library still gets the CR
-		// 903.9 choice. A queued prompt leaves the card ON the
-		// library, so the loop has to stop rather than read the same
-		// top card again — see MillToZoneForEffect for the same
-		// hazard handled without losing the rest of the batch. Here
-		// the batch is Necropotence-shaped (n is 1 in every printed
-		// case), so stopping costs nothing worth the machinery.
-		paused, err := g.routeCardToZoneLocked(zoneRoute{
-			CardID:   top,
-			Dst:      ZoneExile,
-			Actor:    playerID,
-			FaceDown: FaceDownExiled,
-		})
-		if err != nil {
-			return out, err
-		}
-		if paused {
-			return out, nil
-		}
-		out = append(out, top)
+	avail := len(p.Library.Cards)
+	if n > avail {
+		n = avail
 	}
-	return out, nil
+	plan := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		plan = append(plan, p.Library.Cards[avail-1-i].InstanceID)
+	}
+	return plan, nil
+}
+
+// exileFaceDownLegsLocked exiles the head of `ids` face down and carries on
+// with the rest from that leg's continuation, so a leg paused on a prompt
+// holds the rest of the batch behind it and the answer runs it. The empty
+// list is the base case: `then` is told which legs landed in exile.
+//
+// A leg is skipped, not routed, when its card is no longer in the player's
+// library: it was taken out while an earlier leg waited on its prompt, and
+// exiling it from wherever it went would pull it out of a hand or a graveyard
+// that the effect never named (routeAllThenLocked checks only that the card
+// is not already in its destination, which is not enough here).
+//
+// `landed` is carried by value, never appended in place, so two runs of one
+// continuation (an undo, then the same answer again) cannot see each other's
+// entries.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) exileFaceDownLegsLocked(
+	player uuid.UUID,
+	ids, landed []uuid.UUID,
+	then func(g *Game, landed []uuid.UUID) error,
+) error {
+	for len(ids) > 0 {
+		if z := g.findCardZoneLocked(ids[0]); z != nil && z.Kind == ZoneLibrary && z.Owner == player {
+			break
+		}
+		ids = ids[1:]
+	}
+	if len(ids) == 0 {
+		return then(g, landed)
+	}
+	next, rest := ids[0], ids[1:]
+	_, err := g.routeCardToZoneLocked(zoneRoute{
+		CardID:   next,
+		Dst:      ZoneExile,
+		Actor:    player,
+		FaceDown: FaceDownExiled,
+		then: func(g *Game) error {
+			out := landed
+			if g.landedInZoneLocked(next, ZoneExile, uuid.Nil) {
+				out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
+			}
+			return g.exileFaceDownLegsLocked(player, rest, out, then)
+		},
+	})
+	return err
 }
 
 // BounceToHandForEffect moves a card from wherever it is to its
@@ -2259,7 +2445,7 @@ func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.
 // enters with. FaceDownNone is every face-up return; nil counters is
 // every return that names none.
 func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
-	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, nil)
+	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, nil)
 }
 
 // ReturnFromGraveyardToBattlefieldThenForEffect is
@@ -2288,7 +2474,7 @@ func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller 
 		}
 		return nil
 	}
-	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, then)
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, false, then)
 	return err
 }
 
@@ -2310,13 +2496,13 @@ func (g *Game) ReturnFromGraveyardWithCountersThenForEffect(cardID, controller u
 		}
 		return nil
 	}
-	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, then)
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, then)
 	return err
 }
 
 // returnFromGraveyardEntryLocked is the body of every graveyard return,
 // with the caller's continuation for a battlefield entry (nil for none).
-func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, asAura bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2389,6 +2575,8 @@ func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, c
 			FaceDown:       faceDown,
 			FaceDownListed: listed,
 			entryResumable: true,
+			// ADR 0154's 2026-10-23 amendment: "return it … It's an Aura".
+			entersAsAura: asAura,
 		}
 		// #1584: the effect's own "with N counters on it", seeded
 		// before the window opens so a counter replacement sees it.
@@ -2593,6 +2781,14 @@ type SearchLibrarySpec struct {
 	// like Fabled Passage's "then ... untap THAT LAND" can name what
 	// it found instead of re-deriving it.
 	Then func(g *Game, found []uuid.UUID) error
+
+	// ThenTail is Then as data (#4253 slice 3): a registered
+	// continuation (RegisterTail), told the found cards as TailOutcome.IDs.
+	// A search whose remaining work is all data — a battlefield search
+	// whose fetched permanent stops for an entry question (a fetchland's
+	// shockland) — is then a restore point while it waits. Set Then or
+	// ThenTail, not both; Then wins.
+	ThenTail KeyedTail
 
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
@@ -3216,7 +3412,16 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 		return g.finishSearchLocked(spec, p, found)
 	}
 	head, rest := ids[0], ids[1:]
-	return g.searchEnterBattlefieldLocked(spec, p, head, func(g *Game, entered uuid.UUID) error {
+	if searchSpecIsData(spec) {
+		// #4253 slice 3: the rest of the search is data, so the entry's
+		// prompt (a fetched shockland's "pay 2 life?") is a restore
+		// point. The step is runSearchEntryStepLocked, the closure's
+		// twin below.
+		return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
+			Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
+		}})
+	}
+	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{then: func(g *Game, entered uuid.UUID) error {
 		out := found
 		if entered != uuid.Nil {
 			// A fresh slice rather than an append in place: two runs of
@@ -3225,7 +3430,7 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 			out = append(append(make([]uuid.UUID, 0, len(found)+1), found...), entered)
 		}
 		return g.searchEnterEachThenFinishLocked(spec, rest, out)
-	})
+	}})
 }
 
 // searchEnterBattlefieldLocked puts one fetched card onto the
@@ -3264,13 +3469,15 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 // the prompt was still queued, the player still answered it, and the
 // card was still in the library afterwards.
 //
-// `then` is handed the entering permanent's ID, or uuid.Nil when
-// nothing entered — cancelled, redirected, or its prompt taken away. It
-// runs from every terminal outcome, which is what lets the search
-// sequence its remaining takes through it.
+// `tail` carries the rest of the search: handed the entering
+// permanent's ID, or uuid.Nil when nothing entered — cancelled,
+// redirected, or its prompt taken away. It runs from every terminal
+// outcome, which is what lets the search sequence its remaining takes
+// through it. It is a closure or, since #4253 slice 3, data
+// (entryTail.search).
 //
 // Caller must hold g.mu.
-func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, then func(g *Game, entered uuid.UUID) error) error {
+func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, tail *entryTail) error {
 	// The controller has to be stamped before the pipeline runs:
 	// Authority of the Consuls asks whose permanent is entering, and
 	// a self-replacement's condition ("unless you control two or
@@ -3307,7 +3514,11 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// paused for a prompt would otherwise come back untapped.
 		EntersTapped:   spec.TappedOnEntry,
 		entryResumable: true,
-		entryTail:      &entryTail{then: then},
+		entryTail:      tail,
+		// #1997: the searcher puts what they find, and it enters under
+		// them (Path to Exile's "its controller may search … put that
+		// card onto the battlefield").
+		putByEntering: true,
 		// Copied: the event owns its map (replacements add to it), and
 		// the spec is shared with a pending prompt.
 		EntersWithCounters: copyCounterMap(spec.EntersWithCounters),
@@ -3377,10 +3588,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		// library was not searched: no EventSearchLibrary (an
 		// Archivist of Oghma must not fire), no shuffle. The
 		// instruction after the search still happens.
-		if spec.Then != nil {
-			return spec.Then(g, thenFound)
-		}
-		return nil
+		return g.runSearchThenLocked(spec, thenFound)
 	}
 	label := ""
 	if spec.Shuffle {
@@ -3432,10 +3640,18 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 			p.Library.InsertFromTop(c, spec.Depth)
 		}
 	}
+	return g.runSearchThenLocked(spec, thenFound)
+}
+
+// runSearchThenLocked runs a search's continuation: the closure when
+// there is one, else the keyed tail.
+//
+// Caller must hold g.mu.
+func (g *Game) runSearchThenLocked(spec SearchLibrarySpec, found []uuid.UUID) error {
 	if spec.Then != nil {
-		return spec.Then(g, thenFound)
+		return spec.Then(g, found)
 	}
-	return nil
+	return g.runKeyedTailLocked(spec.ThenTail, found, 0)
 }
 
 // CreateTokenForEffect creates n tokens under `controller`'s control
@@ -3520,14 +3736,14 @@ type TokenEntryOptions struct {
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
+	// #4253 slice 3: the result is written as the creation finishes
+	// rather than handed to a closure over a local, so a creation paused
+	// on a question holds no closure and is a restore point.
 	var made []uuid.UUID
-	err := g.CreateTokensThenForEffect(TokenCreation{
+	err := g.createTokensWithTailLocked(TokenCreation{
 		Controller: controller,
 		Groups:     []TokenGroup{{Template: template, Count: n, Entry: opts}},
-	}, func(_ *Game, created []uuid.UUID) error {
-		made = created
-		return nil
-	})
+	}, &tokenTail{report: &made})
 	return made, err
 }
 
@@ -3628,7 +3844,25 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after)
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after, KeyedTail{})
+}
+
+// ScryKeyedForEffect is ScryThenForEffect with the continuation as data
+// (#4253 slice 3): `after` is a registered tail (RegisterTail). The scry
+// prompt, and a CR 616 ordering prompt over the scry, are then restore
+// points.
+//
+// Caller must hold g.mu.
+func (g *Game) ScryKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, nil, after)
+}
+
+// SurveilKeyedForEffect is SurveilThenForEffect with the continuation as
+// data, as ScryKeyedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) SurveilKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, nil, after)
 }
 
 // SurveilThenForEffect is surveil N with a continuation (CR 701.25):
@@ -3649,7 +3883,7 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 //
 // Caller must hold g.mu.
 func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after)
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after, KeyedTail{})
 }
 
 // keywordLookAtTopForEffect is the scry / surveil entry point: it
@@ -3669,9 +3903,9 @@ func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after fun
 // continuation still runs, in lookAtTopForEffect, exactly as it did.
 //
 // Caller must hold g.mu.
-func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	if n <= 0 {
-		return g.lookAtTopForEffect(kind, playerID, source, n, after)
+		return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, keyed)
 	}
 	looked, err := g.runKeywordActionLocked(&ReplacementEvent{
 		Kind:               RepEventKeywordAction,
@@ -3679,7 +3913,7 @@ func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoic
 		Source:             source,
 		KeywordAction:      action,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{choice: kind, then: after},
+		keywordAction:      &keywordActionTail{choice: kind, then: after, keyed: keyed},
 	})
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3707,6 +3941,15 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, after)
 }
 
+// LookAtTopKeyedForEffect is LookAtTopThenForEffect with the continuation as
+// data (#4301): `after` is a registered tail (RegisterTail), so the look-at
+// prompt is a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.lookAtTopWithTailLocked(PendingChoiceLookAtTop, playerID, source, n, nil, after)
+}
+
 // lookAtTopForEffect queues the "look at the top N cards of your
 // library, then put them somewhere" prompt that scry and surveil
 // share. It marks the chooser — and ONLY the chooser — a knower of
@@ -3725,18 +3968,18 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 //
 // Caller must hold g.mu.
 func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, KeyedTail{})
+}
+
+// lookAtTopWithTailLocked is lookAtTopForEffect with the continuation in
+// either form: the closure, or a registered tail (#4253 slice 3) the
+// prompt carries as data (PendingChoice.scryThen).
+//
+// Caller must hold g.mu.
+func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
-		if after != nil {
-			if err := after(g); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					Actor:    playerID,
-					Source:   source,
-					ErrorMsg: err.Error(),
-				})
-			}
-		}
+		g.runScryAfterLocked(playerID, source, after, keyed)
 	}
 	if n <= 0 {
 		runAfter()
@@ -3772,6 +4015,7 @@ func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.
 		Reason:     reason(len(ids)),
 		ScryCards:  ids,
 		scryResume: after,
+		scryThen:   keyed,
 	})
 	return len(ids)
 }

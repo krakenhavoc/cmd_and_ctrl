@@ -112,8 +112,8 @@ type arenaFlags struct {
 func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	fs := flag.NewFlagSet("arena", flag.ContinueOnError)
 	fs.SetOutput(out)
-	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, heuristic-baseline (the heuristic frozen before S66), heuristic-noexert (today's heuristic with ADR 0130's exert pricing off) or heuristic-noplan (today's heuristic with ADR 0136's turn plan off) (e.g. assisted,heuristic,heuristic,heuristic)")
-	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck, exert-battle its exert variant (ADR 0130 §9), monolith-battle one with the two Monoliths (#2500), and answers-battle one with ten Basalt Gargoyles and eight Selfless Spirits (#2939)")
+	seats := fs.String("seats", "", "comma-separated contestants, one per chair: a tier, heuristic-baseline (the heuristic frozen before S66), heuristic-noexert (today's heuristic with ADR 0130's exert pricing off), heuristic-noplan (today's heuristic with ADR 0136's turn plan off), heuristic-notemporary (today's heuristic with #4302's pricing of a change until end of turn off) or heuristic-nogrants (today's heuristic with #4312's grant saves and evasion grants off) (e.g. assisted,heuristic,heuristic,heuristic)")
+	decks := fs.String("decks", "", "comma-separated curated deck ids, one per chair; empty deals the synthetic battle deck, exert-battle its exert variant (ADR 0130 §9), monolith-battle one with the two Monoliths (#2500), answers-battle one with ten Basalt Gargoyles and eight Selfless Spirits (#2939), and tricks-battle one with pump, shrink and protection spells, Mother of Runes and a Rogue's Passage (#4312)")
 	names := fs.String("names", "", "comma-separated tally names, one per chair; empty tallies each chair under its tier")
 	games := fs.Int("games", 10, "how many games to play")
 	seed := fs.Uint64("seed", 1, "seed of the first game; game i uses seed+i")

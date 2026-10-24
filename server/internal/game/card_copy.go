@@ -48,11 +48,16 @@ import (
 //     which the shared stack exit ends; a permanent spell becomes a token
 //     as it resolves (CR 707.10b).
 //
-// SANDBOX SIMPLIFICATION, the one every "you may cast it" a resolution
-// offers takes (ADR 0066, ADR 0091, discover.go): the cast is a GRANT taken
-// with an ordinary cast_spell after the resolution rather than an inline
-// CR 608.2g cast inside it. The window closes on the holder's next priority
-// pass, so a free copy cannot be held across the turn.
+// THE CAST happens during the resolution (CR 707.12, CR 608.2g) when the
+// offer says DuringResolution, which every caller does (CopyAndCast, cipher,
+// paradigm): a resolution_cast prompt over the copies holds the resolution
+// open while the caster casts them (resolution_copy_cast.go, ADR 0066's
+// 2026-10-22 and 2026-10-23 amendments). Without it, or outside an open
+// resolution, the cast is the GRANT taken with an ordinary cast_spell after
+// the resolution, the stand-in every other "you may cast it" a resolution
+// offers takes (ADR 0091, discover.go). The window closes on the holder's
+// next priority pass either way, so a free copy cannot be held across the
+// turn.
 
 // CardCopyOffer says who may cast the copies CopyCardsAndOfferCastsForEffect
 // makes, for what, and how the window behaves. Plain data: every field
@@ -100,6 +105,17 @@ type CardCopyOffer struct {
 	// skips a card that is not in exile or a graveyard, as CR 608.2b
 	// does for a target. Meant for graveyard cards only.
 	LastKnown bool
+
+	// DuringResolution is CR 707.12 and CR 608.2g taken literally: the
+	// copies are cast while the effect that made them is still
+	// resolving. A resolution_cast prompt over them is queued inside the
+	// open resolution (resolution_copy_cast.go), so the caster casts any
+	// of them, or none, before the resolution finishes and before
+	// anyone receives priority. False keeps the pass-closed window
+	// alone, the grant model's stand-in; no caller leaves it false since
+	// cipher and paradigm moved over (#4243). Ignored outside a
+	// resolution.
+	DuringResolution bool
 
 	// ManaValueBudget is "total mana value N or less" over the copies
 	// (Uldaros Theorix, #2017): one permission names every copy and the
@@ -208,11 +224,14 @@ func (g *Game) CopyCardsAndOfferCastsForEffect(offer CardCopyOffer, cards []uuid
 		for _, z := range order {
 			grant(byZone[z], z, offer.SourceName+" — cast copies with total mana value "+strconv.Itoa(*offer.ManaValueBudget)+" or less")
 		}
-		return copies
+	} else {
+		for _, cp := range made {
+			z := g.findCardZoneLocked(cp.InstanceID)
+			grant([]Card{cp}, z.Kind, offer.SourceName+" — cast a copy of "+cp.Name)
+		}
 	}
-	for _, cp := range made {
-		z := g.findCardZoneLocked(cp.InstanceID)
-		grant([]Card{cp}, z.Kind, offer.SourceName+" — cast a copy of "+cp.Name)
+	if offer.DuringResolution {
+		g.queueResolutionCastLocked(offer, copies)
 	}
 	return copies
 }

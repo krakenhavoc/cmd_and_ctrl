@@ -38,9 +38,10 @@ import (
 //
 // Keyword abilities are left out. Their own chips (`abilities`,
 // `protection`) already show them, or the keyword says what the row
-// does: a trigger with a Keyword (prowess, cascade, ward), the static
-// synthesised from Spec.PrintedKeywords (StaticAbility.Keywords), and
-// the activated keyword abilities whose whole meaning is the keyword
+// does: a trigger with a Keyword (prowess, cascade, ward), a static that
+// is a keyword line (StaticAbility.Keywords: a station card's "{N+} |
+// Flying"; Spec.PrintedKeywords are no static at all, #4236), and the
+// activated keyword abilities whose whole meaning is the keyword
 // (equip, crew, cycling — IsKeywordActivatedAbility). An ability that
 // only borrows a keyword's frame for its own effect ("Exhaust — {4}:
 // Earthbend 4", "Boast — …") is the card's own and is counted.
@@ -305,6 +306,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "GrantedAlternativeCosts", elemLabel: grantedAlternativeCostRow},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 	{field: "HandsRevealed", label: handsRevealedRows},
+	{field: "AttackOnlyNearestOpponentInChosenDirection", label: boolRow("Each player may attack only the nearest opponent in the chosen direction and planeswalkers controlled by that opponent.")},
 }
 
 // staticRowSlotIndex is each staticRowSlots entry's field index in
@@ -426,6 +428,8 @@ func libraryTopRows(v reflect.Value) []string {
 		return []string{"You may look at the top card of your library any time."}
 	case LibraryTopRevealed:
 		return []string{"Play with the top card of your library revealed."}
+	case LibraryTopRevealedEachPlayer:
+		return []string{"Players play with the top card of their libraries revealed."}
 	}
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 // special_action.go — CR 116.2 special actions, ADR 0062 Decision 4.
 //
 // A special action is a game action a player takes WITHOUT using the
-// stack and without passing priority. CR 116.2 lists them; six are
+// stack and without passing priority. CR 116.2 lists them; seven are
 // built here:
 //
 //	foretell      CR 116.2h, 702.143a  pay {2}, exile the card face down
@@ -22,6 +22,9 @@ import (
 //	companion     CR 116.2g, 702.139a  pay {3} and put your companion
 //	                                   into your hand from outside the
 //	                                   game (companion.go, ADR 0172)
+//	ignore_effect CR 116.2d            sacrifice a permanent to ignore a
+//	                                   static ability's effect until end
+//	                                   of turn (ignore_effect.go, #1986)
 //
 // ONE VERB, not one per keyword. The rules group these precisely
 // because their contract is identical — no stack, no announce, no
@@ -57,6 +60,9 @@ import (
 //	companion     CR 116.2g            the same window as plot: your main
 //	                                   phase, priority, an empty stack;
 //	                                   once per game
+//	ignore_effect CR 116.2d            any time you have priority, on any
+//	                                   turn, with anything on the stack;
+//	                                   LEGAL under split second
 //
 // The split-second asymmetry is the one thing in this file that is
 // easy to get wrong and invisible when you do. CR 702.61b stops
@@ -309,6 +315,12 @@ type SpecialActionParams struct {
 	// (ADR 0189 decision 4). Empty takes the first. Refused on every
 	// other kind.
 	Route TurnFaceUpRoute
+
+	// SacrificeID is the permanent an `ignore_effect` action sacrifices
+	// as its cost (CR 116.2d; ignore_effect.go): the player's choice, so
+	// it is named, never picked for them. Required for that kind and
+	// refused on every other.
+	SacrificeID uuid.UUID
 }
 
 // SpecialActionTimingOKLocked is the per-kind timing table, and the
@@ -392,6 +404,14 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// is neither), and nothing here asks them.
 		return g.SorcerySpeedOpenLocked(playerID)
 
+	case SpecialActionIgnoreEffect:
+		// CR 116.2d: "any time they have priority". No turn restriction,
+		// no empty-stack requirement, and LEGAL UNDER SPLIT SECOND for
+		// foretell's reason: a special action is neither a cast nor an
+		// activation (CR 702.61b). Whether the effect bears on the actor
+		// is IgnoreEffectOffersLocked's answer (ignore_effect.go).
+		return true
+
 	case SpecialActionCompanion:
 		// CR 116.2g: "any time they have priority and the stack is
 		// empty during a main phase of their turn" — the plot and
@@ -432,6 +452,16 @@ func (g *Game) PerformSpecialAction(playerID, cardID uuid.UUID, kind SpecialActi
 	// ADR 0189: a route only means something to turn_face_up, so it is
 	// refused on any other kind before the card is even looked for.
 	if params.Route != "" && kind != SpecialActionTurnFaceUp {
+		return ErrInvalidParam
+	}
+	// CR 116.2d (#1986): ignoring a static ability's effect is taken on a
+	// permanent the actor need not control, so it does not go through the
+	// card-in-the-actor's-zone lookup below. Its sacrifice is named; no
+	// other kind takes one.
+	if kind == SpecialActionIgnoreEffect {
+		return g.performIgnoreEffectLocked(p, cardID, params)
+	}
+	if params.SacrificeID != uuid.Nil {
 		return ErrInvalidParam
 	}
 	// WHERE the card is, is the kind's business (specialActionZone).

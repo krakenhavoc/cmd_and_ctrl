@@ -51,7 +51,7 @@ func TestARunnerPostsItsPolicysNoticeOnceAsTheSeat(t *testing.T) {
 	defer cancel()
 	bc := &chatBroadcaster{}
 	inner := &noticer{notice: "I can't use my owner's model key any more."}
-	r := aiseat.Start(ctx, room, bot, wrapper{inner}, aiseat.Config{}, bc, testLogger())
+	r := startBot(t, ctx, room, bot, wrapper{inner}, aiseat.Config{}, bc, testLogger())
 
 	// A line that has been posted stays posted: a monotone wait.
 	waitFor(t, "the notice to be posted", func() bool { return bc.count() >= 1 })

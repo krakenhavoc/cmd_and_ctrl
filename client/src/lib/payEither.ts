@@ -23,7 +23,12 @@ export function eitherBranches(c: Pick<PendingChoiceView, "pay_either"> | null |
 // (a sacrifice, a discard, a graveyard exile) rather than by yes alone
 // (damage, life, energy).
 export function branchNamesCards(b: PayOptionView): boolean {
-  return b.action === "sacrifice" || b.action === "discard" || b.action === "exile_graveyard";
+  return (
+    b.action === "sacrifice" ||
+    b.action === "discard" ||
+    b.action === "exile_graveyard" ||
+    b.action === "tap"
+  );
 }
 
 // branchPicker is a card-naming branch in the shape the shared card

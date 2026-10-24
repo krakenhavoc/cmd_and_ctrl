@@ -117,10 +117,23 @@ func wretchedBonemassKeywords(materials []game.Card) []string {
 	return append(out, protections...)
 }
 
+// altarOfTheWretchedRecord files the sacrificed creature's power.
+const altarOfTheWretchedRecord = "altar-of-the-wretched/power"
+
+// altarOfTheWretchedDrawMill is the draw and then the mill: the mill waits for
+// a prompt the draws ask (a dredge offer; CR 608.2c, #4155).
+var altarOfTheWretchedDrawMill = RegisterThenSteps("then-steps/altar-of-the-wretched-draw-mill",
+	Instruction(func(ctx *Context) error {
+		return DrawCards{Player: ctx.Controller(), N: ctx.StepRecord(altarOfTheWretchedRecord).N()}.Apply(ctx)
+	}),
+	Instruction(func(ctx *Context) error {
+		return MillCards{Player: ctx.Controller(), N: ctx.StepRecord(altarOfTheWretchedRecord).N()}.Apply(ctx)
+	}),
+)
+
 // altarOfTheWretchedEnters is the enters trigger: the optional
 // sacrifice, then draw X and mill X for that creature's power.
 func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
-	nontokenCreature := And(Creature(), Not(IsTokenPredicate()))
 	if countControlled(g, item.Controller, func(c game.Card) bool { return c.IsCreature() && !IsToken(c) }) == 0 {
 		return nil
 	}
@@ -128,27 +141,30 @@ func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
 		Question: "Altar of the Wretched — sacrifice a nontoken creature to draw and mill cards equal to its power?",
 		YesLabel: "Sacrifice a creature",
 		NoLabel:  "Don't",
-		OnYes: func(ctx *Context) error {
-			return ctx.Game.PlayerSacrificesThenForEffect(
-				item.SourceCardID, item.Controller,
-				sacrificeSpec("a nontoken creature", nontokenCreature),
-				"Altar of the Wretched — sacrifice a nontoken creature",
-				1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					ids := sacrificed.Cards()
-					if len(ids) == 0 {
-						return nil
-					}
-					info, ok := g.LastKnownPermanentForEffect(ids[0])
-					if !ok || info.Power <= 0 {
-						return nil
-					}
-					ctx := NewContext(g, item)
-					if err := (DrawCards{Player: item.Controller, N: info.Power}).Apply(ctx); err != nil {
-						return err
-					}
-					return MillCards{Player: item.Controller, N: info.Power}.Apply(ctx)
-				})
-		},
+		Then:     altarOfTheWretchedSacrifice,
 	}.Apply(NewContext(g, item))
 }
+
+// altarOfTheWretchedSacrifice is the "yes": sacrifice a nontoken creature,
+// then draw and mill for its power. Keyed (#4291).
+var altarOfTheWretchedSacrifice = MayYes("confirm/altar-of-the-wretched-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	return ctx.Game.PlayerSacrificesThenForEffect(
+		item.SourceCardID, item.Controller,
+		sacrificeSpec("a nontoken creature", And(Creature(), Not(IsTokenPredicate()))),
+		"Altar of the Wretched — sacrifice a nontoken creature",
+		1,
+		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
+			ids := sacrificed.Cards()
+			if len(ids) == 0 {
+				return nil
+			}
+			info, ok := g.LastKnownPermanentForEffect(ids[0])
+			if !ok || info.Power <= 0 {
+				return nil
+			}
+			ctx := NewContext(g, item)
+			ctx.RecordStep(altarOfTheWretchedRecord, nil, info.Power)
+			return altarOfTheWretchedDrawMill.Run(ctx)
+		})
+})

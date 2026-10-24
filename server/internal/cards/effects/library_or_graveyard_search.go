@@ -27,18 +27,8 @@ func mayFetchNamedFromLibraryOrGraveyard(self, named string) game.TriggeredAbili
 		func(g *game.Game, item *game.StackItem) error {
 			return MayChoice{
 				Question: self + " — search your library and/or graveyard for a card named " + named + "?",
-				OnYes: func(ctx *Context) error {
-					return SearchLibrary{
-						Player:        ctx.Controller(),
-						Predicate:     func(c game.Card) bool { return c.Name == named },
-						Dest:          game.ZoneHand,
-						Limit:         1,
-						Reveal:        true,
-						Shuffle:       true,
-						AlsoGraveyard: true,
-						Reason:        "Choose a card named " + named + " to put into your hand",
-					}.Apply(ctx)
-				},
+				Then:     maySearchNamedLibraryOrGraveyard,
+				Word:     named,
 			}.Apply(NewContext(g, item))
 		})
 }

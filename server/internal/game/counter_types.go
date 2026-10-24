@@ -100,6 +100,12 @@ const (
 	// milled that way — not a draw-based trigger. The trigger is
 	// rad_counters.go (#2042).
 	CounterRad = "rad"
+	// CounterTicket is the ticket counter (CR 107.17: "The ticket symbol
+	// is {TK}. It represents one ticket counter."). "You get {TK}" puts
+	// one on the player; a sticker's ticket cost removes them (CR
+	// 107.17a, 123.3c). No game-loss condition. See sticker.go and ADR
+	// 0208.
+	CounterTicket = "ticket"
 )
 
 // PoisonLethal is the poison-counter total at which a player loses
@@ -133,4 +139,5 @@ var KnownPlayerCounters = []string{
 	CounterEnergy,
 	CounterExperience,
 	CounterRad,
+	CounterTicket,
 }

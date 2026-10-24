@@ -79,6 +79,22 @@ type List struct {
 	// Standard-style decklist by mistake.
 	Sideboard []cards.Card `json:"sideboard,omitempty"`
 
+	// Attractions is the deck's Attraction deck (CR 717.2, ADR 0207
+	// §2): every Attraction card the list names, wherever it was listed
+	// (Resolve routes them by type line), because an Attraction never
+	// begins the game in the deck. Not one of the 100: the count,
+	// singleton and colour-identity checks never see it. It seats face
+	// down in the command zone (game.Player.AttractionDeck), when it is
+	// a legal Attraction deck (SeatedAttractions).
+	Attractions []cards.Card `json:"attractions,omitempty"`
+
+	// StickerSheets are the deck's sticker sheets (CR 123.2, ADR 0208
+	// §2): every record whose type line is "Stickers", wherever the list
+	// named it. Not cards and not one of the 100. They reach the game as
+	// data (game.Player.StickerSheetPool) when the pool is legal
+	// (SeatedStickerSheets, CR 123.2a).
+	StickerSheets []cards.Card `json:"sticker_sheets,omitempty"`
+
 	// ParsedAt is wall-clock time when this list was resolved against
 	// the Scryfall index. The validator uses this to cross-check
 	// against the game's format-pin date.
@@ -174,6 +190,14 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 			for range e.Count {
 				list.Commanders = append(list.Commanders, c)
 			}
+		case PrintsStickerSheet(c):
+			// ADR 0208 §2, CR 123.2: a sticker sheet is not a card. It
+			// is one of the deck's sheets whichever section named it
+			// (a "Stickers:" heading, Moxfield's stickers board, or a
+			// plain list).
+			for range e.Count {
+				list.StickerSheets = append(list.StickerSheets, c)
+			}
 		case e.IsCompanion:
 			for range e.Count {
 				list.AddCompanion(c)
@@ -181,6 +205,14 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		case e.IsSideboard:
 			for range e.Count {
 				list.Sideboard = append(list.Sideboard, c)
+			}
+		case PrintsAttraction(c):
+			// ADR 0207 §2, CR 717.2: an Attraction card is in the
+			// Attraction deck, never the 100, whichever section named
+			// it (an "Attractions:" heading, Moxfield's attractions
+			// board, or a plain list).
+			for range e.Count {
+				list.Attractions = append(list.Attractions, c)
 			}
 		default:
 			for range e.Count {
@@ -310,7 +342,65 @@ func (l *List) ToGameCards() []game.Card {
 		card.IsSideboard = true
 		out = append(out, card)
 	}
+	// ADR 0207 §2: the Attraction deck, after everything else. Each card
+	// carries AstrotoriumBack (toGameCard), which seats it there.
+	for _, c := range l.SeatedAttractions() {
+		out = append(out, toGameCard(c, false))
+	}
+	// ADR 0208 §2: the sticker sheets, as pseudo-cards the game seats
+	// as data (game.Player.StickerSheetPool), never in a zone.
+	for _, c := range l.SeatedStickerSheets() {
+		out = append(out, stickerSheetCard(c))
+	}
 	return out
+}
+
+// MinAttractionDeck is the smallest Attraction deck constructed play
+// allows (CR 717.2a): ten cards, each with a different English name.
+const MinAttractionDeck = 10
+
+// SeatedAttractions is the Attraction deck that reaches the game: the
+// whole of it when it is a legal constructed Attraction deck (CR
+// 717.2a: at least ten cards, every name different), and nothing
+// otherwise (ADR 0207 §2). Validate says so with a warning, the way an
+// oversized sideboard is said and not seated; the server never chooses
+// which cards of an illegal one to keep.
+func (l *List) SeatedAttractions() []cards.Card {
+	if !attractionDeckLegal(l.Attractions) {
+		return nil
+	}
+	return l.Attractions
+}
+
+// attractionDeckLegal is CR 717.2a for a constructed deck.
+func attractionDeckLegal(deck []cards.Card) bool {
+	if len(deck) < MinAttractionDeck {
+		return false
+	}
+	seen := make(map[string]bool, len(deck))
+	for _, c := range deck {
+		if seen[c.Name] {
+			return false
+		}
+		seen[c.Name] = true
+	}
+	return true
+}
+
+// PrintsAttraction reports whether a card is an Attraction card (CR
+// 717.1): the Attraction subtype on its printed type line. Every such
+// card has the Astrotorium back.
+func PrintsAttraction(c cards.Card) bool {
+	_, subtypes, ok := strings.Cut(c.TypeLine, "—")
+	if !ok {
+		return false
+	}
+	for _, s := range strings.Fields(subtypes) {
+		if s == game.AttractionSubtype {
+			return true
+		}
+	}
+	return false
 }
 
 // SeatedSideboard is the sideboard that reaches the game: the whole of
@@ -892,6 +982,11 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// ADR 0145: a meld card carries its pair's combined back face,
 		// which the meld ability turns the two cards into.
 		Meld: printedMeld(c),
+		// ADR 0207: the Astrotorium back, which seats the card in its
+		// owner's Attraction deck and sends it to the junkyard (CR
+		// 717.6), and the printing's lit numbers (CR 717.1).
+		AstrotoriumBack:  PrintsAttraction(c),
+		AttractionLights: append([]int(nil), c.AttractionLights...),
 	}
 	// Materialise face 0. For the ~33,000 single-faced oracle IDs
 	// this is a no-op and every field above stands as written; for a

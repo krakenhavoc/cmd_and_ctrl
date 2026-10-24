@@ -58,15 +58,8 @@ func snortAsk(ctx *Context, players []uuid.UUID, discarded []uuid.UUID) error {
 		Player:   player,
 		Question: "Snort — discard your hand and draw five cards?",
 		Draws:    5,
-		OnYes: func(c *Context) error {
-			c.RecordStep(snortPlayerRecord, []uuid.UUID{player})
-			c.RecordStep(snortRestRecord, rest)
-			c.RecordStep(snortDiscardedRecord, append(slices.Clone(discarded), player))
-			return snortWheel.Run(c)
-		},
-		OnNo: func(c *Context) error {
-			return snortAsk(c, rest, discarded)
-		},
+		Then:     snortAnswer,
+		Carry:    joinCarry(discarded, rest),
 	}.Apply(ctx)
 }
 
@@ -107,4 +100,24 @@ func init() {
 			return snortAsk(ctx, ctx.StepRecord(snortRestRecord).IDs, ctx.StepRecord(snortDiscardedRecord).IDs)
 		}),
 	)
+}
+
+// snortAnswer is one player's answer to "discard your hand and draw five
+// cards?": a yes runs the wheel for them, a no asks the next player. The
+// carried IDs are the players who have discarded, a Nil, then the players
+// still to ask. Registered in init because the no asks through snortAsk,
+// which names it. Keyed (#4291).
+var snortAnswer game.ConfirmThen
+
+func init() {
+	snortAnswer = MayAnswer("confirm/snort-wheel", func(c *Context, r game.ConfirmAnswer) error {
+		discarded, rest := splitCarry(r)
+		if !r.Accepted {
+			return snortAsk(c, rest, discarded)
+		}
+		c.RecordStep(snortPlayerRecord, []uuid.UUID{r.Chooser})
+		c.RecordStep(snortRestRecord, rest)
+		c.RecordStep(snortDiscardedRecord, append(slices.Clone(discarded), r.Chooser))
+		return snortWheel.Run(c)
+	})
 }

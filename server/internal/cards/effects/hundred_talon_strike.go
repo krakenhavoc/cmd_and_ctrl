@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "fbfaf009-8276-4687-a3db-5a71dc13f174",
 		Name:         "Hundred-Talon Strike",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 0, "first strike")),
 		Completeness: CompletenessFull,
 		Splice: SpliceOntoArcaneCost(
 			SpliceTapUntapped("an untapped white creature you control", Creature(), OfColor("W"))),

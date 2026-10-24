@@ -351,6 +351,35 @@ the bot is the CONTROLLER, its enumerator names no target for such a
 clause and the "which opponent" question is the choose-a-player prompt
 above.
 
+**A pick the bot makes for itself that hurts what it picks
+([#4249](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4249)).**
+The Abyss and Magus of the Abyss ("destroy target nonartifact creature
+that player controls of their choice") are chosen by the player whose
+upkeep it is. On the controller's own upkeep that is the controller, so
+the prompt has no `chosen_for`, and `targetsValue` gave every permanent
+the bot controls the same flat `OwnPermanentTarget`: it destroyed
+whichever creature was listed first, its best one included. The clause is
+now declared `Harmful` (`effects.Harmful`, `game.TargetSpec.Harmful`),
+which the prompt carries as `pick_target.harmful`, and the heuristic
+prices such a pick with `opponentsChoiceValue` for itself: a permanent of
+its own costs what losing it does, so the least valuable creature goes,
+and a legal permanent of an opponent's, when there is one, still comes
+first. The opponent's-upkeep case (`chosen_for` set) is unchanged.
+
+The flag also rides the cast-path clause views (`legal_targets` and
+`clauses` of a card, an alternative cost, a mode and an activated row,
+[#4314](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4314)), and
+`pricedTargetsHarm` (`heuristic/harmful_target.go`) prices a pick of the
+bot's own permanent in such a clause with `opponentsChoiceValue`, so
+Simulacrum ("deals that much damage to target creature you control")
+and Plague Belcher's enters trigger (two -1/-1 counters on "target
+creature you control") go at its least valuable creature. A casting that
+can only hurt the bot's own permanent now scores below what it did, so
+the bot casts such a spell less often. Only those three clauses use the
+flag today; a new self-harm clause (one the controller must aim at their
+own permanent, never one that may also be aimed at an opponent's) declares
+it the same way. A blink (Cloudshift, Ephemerate) is not harmful.
+
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the
 existing card-set enumeration offers the subsets — including the empty
@@ -865,7 +894,7 @@ per-card branches anywhere in it.
 | `benefit` | Heraldic Banner, Selective Obliteration | the same, with the colour it has most of on its **own board** breaking ties. Selective Obliteration's chosen colour is the one that *survives*, so "name what you want to keep" is the same question the anthem asks |
 | `harm` | Wash Out | the colour that costs the **opposition** most net of what it costs the bot, priced with the same `permanentValue` the board evaluation uses |
 | `filter` | Oona, Queen of the Fae | the colour most common among the opponents' **known** cards — their battlefield, their graveyards and the stack. Libraries and hands are counts on the wire and stay that way ([ADR 0033 §3](decisions/0033-ai-bot-seat.md)), so this is a proxy, and on a board that has shown nothing every colour ties and the enumerator's order decides |
-| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
+| `protect` | Mother of Runes (Story Circle and the Circles of Protection are unwritten) | the colour of an opponent's spell or ability on the stack that targets one of the bot's permanents, first (#4312: what the grant is answering); then the **biggest threat** pointed this way: a declared attacker first (doubled, because protection is bought a beat before it is needed), then any creature, then any other permanent, then a spell on the stack |
 
 **An undeclared prompt keeps the old rule.** The purpose is a string,
 its zero value is "nothing was said", and the default arm is the
@@ -1257,6 +1286,109 @@ that:
 Only a target an opponent controls is netted, and a return does not make
 the move purpose-priced.
 
+**A change until end of turn is priced by whose permanent it is and what
+it does this turn**
+([#4302](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4302),
+`PriceTemporaryEffects`, `temporary_effect.go`). With nothing on the wire
+to say what "{1}{W}: Another target creature gains lifelink until end of
+turn" does to its pick, Heliod, Sun-Crowned's row priced an opponent's
+creature as removed (about 2.5 for a 3/3, plus `ActivateBase`). That beat
+casting a two-drop or the commander, and since nothing was removed the
+same move was on offer at the same price in the next window, until the
+mana ran out. A target entry now declares `until_end_of_turn`, `benefit`
+or `harm`, with the printed `pump` when there is one (`BenefitUntilEOT`,
+`HarmUntilEOT` in `effects`):
+
+- A benefit on an opponent's permanent, or a harm on the bot's own, costs
+  that permanent's value, as a misplaced Aura does.
+- A benefit on the bot's own creature is worth the attack it adds this
+  turn: the pumped creature's attack less the plain one (more damage
+  through, lifelink's life, an evasion past the blockers, haste on a
+  summoning-sick creature), plus `LethalBonus` when it makes the kill.
+  That is the price Unstable Hulk's flip gets. While the creature is
+  attacking or blocking and damage is still to come, it is worth
+  `CombatGrant` (0.50) more. Anywhere else the change ends at cleanup
+  (CR 514.2) having done nothing, and is worth nothing.
+- A benefit that adds nothing is below a pass: lifelink on a creature
+  that has it (CR 702.15f), or a grant with no power or toughness to it
+  that the same row already gave the same creature this turn. The policy
+  remembers those for the turn, as it remembers a free activation,
+  because a grant still on the stack shows nothing on the creature yet.
+- A harm on an opponent's permanent is removal when its declared -N/-N
+  kills (CR 704.5f, 704.5g), `CombatGrant` on a creature in combat when it
+  does not, and nothing elsewhere. One with no printed amount (-X/-X,
+  "can't block") keeps the old removal price.
+- In combat, such a move costing only mana and taps clears
+  `LeftoverThreshold` when the mana left after it still pays for the
+  biggest card in the bot's hand or command zone that its mana could cast
+  (`spareCombatGrant`). On another player's turn all of the bot's mana is
+  spare. Otherwise it needs `InstantThreshold`, so the bot keeps the mana
+  for its second main phase.
+
+So Heliod's lifelink goes on the bot's own attacker, once, with mana the
+turn does not need, and a cast that develops the board comes first.
+`TestUntilEndOfTurnRowsDeclareTheirDirection` holds every catalog activated
+row whose text changes a target until end of turn to a direction that
+matches its words (74 rows; Liliana of the Dark Realms, Soulbright Seeker
+and Zack Fair are exempt, each for a reason the test names). The arena's
+`heuristic-notemporary` is today's heuristic with the switch off.
+
+**Spells declare it too**
+([#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)).
+Giant Growth's "+3/+3 until end of turn", Dismember's -5/-5, Blossoming
+Defense's +2/+2 and hexproof: every catalog instant, sorcery and mode
+whose text changes a permanent it targets until end of turn declares the
+direction on that target's entry, with the printed amounts, the keywords
+(`protection` for protection from the colour of your choice) and
+`cant_be_blocked` for "can't be blocked this turn". Before, the pick was
+priced as removal, so a Giant Growth was worth casting at an opponent's
+attacker. `TestUntilEndOfTurnSpellsDeclareTheirDirection` holds 106 spell
+clauses to their words, from the oracle fixtures; Berserk, Fated Clash and
+Martyrdom are exempt, each for a reason it names. An amount the spell
+decides at resolution (-X/-X, Tragic Slip's morbid -13/-13) declares only
+the direction, which keeps the removal price for a harm. A lasting rider
+that helps the same creature (Beast Mode's counter, Monstrous Rage's
+Role) does not stop the declaration and is left unpriced. A rider with an
+amount the purpose can say is declared beside it (Expedite's card,
+Ancestors' Aid's Treasure); scry, learn and the like are not priced. A
+declared spell is priced by its purpose, so it loses the mana-value proxy,
+as declared damage does.
+
+**A grant that saves is priced as the save**
+(#4312, `PriceGrantSaves`, `grant_save.go`). A targeted row cannot
+declare `answers` (ADR 0142 §2), so Mother of Runes, Liliana the
+Faultless and Plaza of Heroes were priced by the attack they add, which on
+an opponent's turn is nothing. When the stack would remove the bot's
+permanent, a benefit aimed at it is now worth what `answerSave` pays an
+untargeted row (the permanent's value times the chance it is lost) when it
+keeps the permanent:
+
+- hexproof, shroud or protection, from what an opponent aims at it, not
+  from a sweep (CR 608.2b, 702.11b, 702.18a, 702.16b). Protection from a
+  colour of the bot's choice needs every targeting threat to share a
+  colour, and the bot names it: an opponent's stack item aimed at one of
+  the bot's permanents is the biggest threat in the `protect` colour
+  policy;
+- indestructible (and undying and persist, priced alike) from destruction
+  and lethal damage, half of that against a targeted removal that
+  declares no damage (CR 702.12b);
+- toughness from declared damage and -N/-N it outgrows.
+
+A save the bot already has on the stack for the same permanent is not
+made twice. Such a move that costs only mana and taps clears
+`LeftoverThreshold` when its mana is spare, as a combat grant does. So
+Mother of Runes answers a Murder, and names black.
+
+**Evasion is priced before attacks** (#4312, `PriceEvasionGrants`).
+"Can't be blocked this turn" (Rogue's Passage, Artful Dodge) is the
+`cant_be_blocked` restriction the creature will have, so a grant made in
+the first main phase is worth the attack it turns from blocked into
+unblocked. A trample grant is worth the damage over the defender's
+biggest blocker (CR 702.19b). After blockers are declared neither changes
+anything (CR 509.1h) and only `CombatGrant` is left. +X/+X is still not
+priced before combat. The arena's `heuristic-nogrants` turns both of
+these off, and `--decks tricks-battle` deals a deck with the cards in it.
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
@@ -1518,6 +1650,19 @@ opponent's Tatyova, it keeps the Hart.
   the one it sacrifices is ramp. So a fetch with no payoff out is
   cracked as before.
 
+### One more loyalty activation (#4191)
+
+The Chain Veil's "{4}, {T}: For each planeswalker you control, you may
+activate one of its loyalty abilities once this turn as though none of
+its loyalty abilities have been activated this turn" declares
+`extra_loyalty_activations: 1` on the row. `loyalty_grant.go` prices it
+at `ActivateBase` per grant for each of the bot's planeswalkers with a
+loyalty row, in its own main phase with an empty stack, and below
+passing anywhere else (another player's turn, its own combat, no
+walker), where the grant cannot be used before the turn ends. After it
+resolves, the enumerator offers the walkers' loyalty rows again and they
+are priced as usual.
+
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
 An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
@@ -1666,7 +1811,9 @@ creature.
 
 Not covered: a combat grant (the combat planner's business), a `sac_outlet`
 whose sacrifice is chosen at resolution (no catalog row has one), and
-spells, which declare no answers yet.
+spells, which declare no answers yet. A targeted grant on the threatened
+creature, row or spell, is priced from its target entry instead (#4312,
+`grant_save.go`, above).
 
 ### The old prices, kept runnable
 
@@ -2402,8 +2549,8 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
-| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, and `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary` or `heuristic-nogrants`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
 | `--lockstep` | plays each game on one goroutine, seat by seat, so the same `--seed` replays the same games move for move (#1503). Off by default — see "Lockstep runs" below for what it changes. |
@@ -3280,7 +3427,7 @@ Mana Cache, or its own; the auto-tapper does not plan a source with no
 ## Never offered an attack it cannot pay for (#1063)
 
 The same shape, one step over. Propaganda, Ghostly Prison and Sphere of
-Safety make attacking their controller cost mana at CR 508.1a
+Safety make attacking their controller cost mana at CR 508.1h
 ([ADR 0080](decisions/0080-attack-taxes.md)), and an attack tax is the
 first thing that can make a DECLARATION fail for want of it.
 
@@ -4151,6 +4298,7 @@ Rules the bot seat code depends on. AGENTS.md §5 summarises them.
 - Endpoints: `GET /bot/options`, `POST /games/{id}/seats/bot`, `DELETE /games/{id}/seats/bot/{player_id}` — see [docs/lobby.md](lobby.md).
 - **`aiseat.Start` subscribes before it returns (#938).** The room subscription is taken on the CALLER's goroutine, so "Start returned" means "this seat is listening from now on" — the only ordering a caller can establish, since nobody schedules the runner goroutine. Taking it inside the loop left a window in which a commit reached every other seat and not this one; the first step still reads the live game, so no state was lost, but a seat that DECLINES a window parks until the next commit, and a commit that landed in the window is a wake that is never coming. Anything new that starts a runner keeps that property: do not move the `room.Subscribe()` back onto the runner's goroutine.
 - **A wait in these tests must poll a MONOTONE predicate (#634).** A bot table moves on a goroutine the test does not schedule — one turn cycle of the two-seat runner fixture is ~95ms — so any condition the table merely passes through can be missed outright by a test goroutine that loses the processor for a cycle, and then either never comes true again (a 30s `waitFor` timeout) or comes true one turn late against the wrong board. `n == 1 land`, `ActiveSeat == 1` and any `== k` on a counter that keeps climbing are all that shape. Wait for a thing that has HAPPENED and stays happened — a `>=` on a monotone counter, a latch, or a tally over the runner's own decision log (`aiseat.Config.Observer`), which is a complete history rather than a sample. `waitFor` / `waitForRunner` / `waitForChan` in `runner_test.go` are the only wait primitives; the budget is a backstop, never an assertion (#848). `waitForChan` is for the handshakes that are a channel rather than a predicate — a policy reporting that it was asked, a blocking call reporting that it returned — and it exists so that a `select` on a channel against a `time.After` never has to be written here again (#1048). `internal/aiseat` now has no `select` on a channel against a `time.After` at all; what is left is two deliberate short sleeps inside negative assertions (`runner_test.go`'s 300ms block grace, `manager_decisionlog_test.go`'s 50ms after `Shutdown`), which a slow machine makes MORE likely to pass (#876).
+- **A test starts runners and managers only through `startBot`, `newManager`, `newTierManager` or `startRunner` (#4219).** Each registers a `t.Cleanup` that cancels the runner and waits for `Done`, so no runner outlives its test. `defer cancel()` is not enough: it only asks, and a runner still inside a step reads process-wide hooks such as `game.CatalogTriggers` through the room's view, which races the next test when that one swaps the hook (`installTriggerLoop`, `withCatalogTriggers`). `TestNoTestStartsARunnerItDoesNotStop` fails a raw `aiseat.Start`, `aiseat.NewManager` or `aiseat.NewManagerWithConfig` in a test file.
 - **The bot reads one `Spec`-level signal, and only one (#686).** `protocol.CardView.Unimplemented` — `game.Unimplemented(c)`, i.e. `c.NeedsEffect && !IsAutoCard(CatalogKey(c))`, the same bit behind the deck-upload summary and the stack overlay's `manual` chip — is what tells an `assisted` / `strong` seat that a spell it just cast resolved into silence and is a candidate for ADR 0033 §8 improvisation (`aiseat/model/improvise.go`). Two consequences for anyone changing coverage: a card that stops being flagged stops being improvised, silently; and the bit reaches the bot through the WIRE VIEW, not through the catalog, so `aiseat/` still imports nothing from `internal/game` (`heuristic/imports_test.go` enforces it). Nothing else in `aiseat/` reads a catalog signal at all — the whole point of ADR 0033 §3 is that a policy sees a filtered view and a move list.
 - **Pacing is per-decision, not per-seat (ADR 0075 §2.2, sub-PR 6).** `aiseat.Config`'s base pacing is still `MinThink` 700ms, `MaxThink` 2s (5s for `strong`, which `CMDCTRL_BOT_MAX_THINK` can widen for the model tiers) — but that is only the floor now. When `Config.FollowTablePace` is set (true for every production Config: `DefaultConfig`, `ConfigFor`, every tier's `RunnerConfig`), the runner re-reads `g.Settings.BotPace` — a `game.TableSettings` field a host can change mid-game — through `TableSettingsSnapshot()` before EVERY decision and remaps `MinThink`/`MaxThink` to that preset (`fast` 0/2s, `normal` 700ms/2s, `slow` 2s/8s), so a pace change is live on a bot's very next move with no seat restart. `MaxThink` is always the larger of the preset and the Config's own value, so `strong`'s longer deadline is never shortened by a `fast` table. `FollowTablePace` defaults to **off**, which is what keeps a hand-built `Config` — the zero value tests and `NewManagerWithConfig` use to strip `MinThink` to 0 for a fast whole-game test — in charge of its own numbers regardless of what `BotPace` the game carries. Each preset also carries a `StackHold` ([ADR 0119](decisions/0119-a-stack-you-can-follow.md) §2: `fast` 0, `normal` 2s, `slow` 3s): a pass on another seat's top stack item waits until that item has been on the stack that long, measured from the commit at which the runner first saw it. It overlaps `MinThink`, re-reads the stack every 100ms, and re-enumerates if the top item changes (the window is reported as `ForcedStackChanged`). With `FollowTablePace` off, or on a stepped runner, there is no stack hold.
 - **The arena lives OUTSIDE `aiseat/`**, at `server/internal/botarena/`, and that is not a style choice: `heuristic/imports_test.go` bans `internal/game` from every subpackage of `aiseat/` — including their `_test.go` files, over Imports, TestImports *and* XTestImports — because a **policy** holding authoritative state could read an opponent's hand. An arena has to hold the `*game.Game` and the `*ws.Room`, so it sits above the ban and hands each policy nothing but the filtered `aiseat.Input` a runner would. `botarena.BattleDeck` is the whole-game tests' deck moved here verbatim; the copy in `heuristic_game_test.go` stays where it is, because those tests may not import this package.

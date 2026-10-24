@@ -29,21 +29,26 @@ func init() {
 			ModeDoing("Target opponent reveals their hand. You choose an instant or sorcery card from it. That player discards that card.",
 				TargetPlayer("target opponent", Opponent()),
 				ModeTargetRevealsYouChooseDiscard(Or(Instant(), Sorcery()), "instant or sorcery card")),
-			ModeDoing("Target creature gets -2/-2 until end of turn.",
+			ModeWithPurpose(ModeDoing("Target creature gets -2/-2 until end of turn.",
 				TargetCreature("target creature"),
-				BoostTheModesTarget(-2, -2, "Collective Brutality")),
-			ModeDoing("Target opponent loses 2 life and you gain 2 life.",
+				BoostTheModesTarget(-2, -2, "Collective Brutality")), ForTargets(HarmUntilEOT(0, -2, -2))),
+			// The gain waits for a prompt the loss asks (a CR 616 order; CR 608.2c, #4155).
+			ModeSteps("Target opponent loses 2 life and you gain 2 life.",
 				TargetPlayer("target opponent", Opponent()),
-				func(item *game.StackItem, ctx *Context, occ int) error {
-					t, ok := ModeTarget(ctx, occ)
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
 					if !ok || t.Kind != game.TargetPlayer {
 						return nil
 					}
-					if err := (GainLife{Player: t.ID, Amount: -2}).Apply(ctx); err != nil {
-						return err
-					}
-					return GainLife{Player: item.Controller, Amount: 2}.Apply(ctx)
+					return GainLife{Player: t.ID, Amount: -2}.Apply(ctx)
 				}),
+				Instruction(func(ctx *Context) error {
+					t, ok := ModeTarget(ctx, ctx.Occurrence())
+					if !ok || t.Kind != game.TargetPlayer {
+						return nil
+					}
+					return GainLife{Player: ctx.Controller(), Amount: 2}.Apply(ctx)
+				})),
 		), EscalateDiscard(1)),
 	})
 }

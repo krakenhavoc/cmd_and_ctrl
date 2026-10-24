@@ -164,9 +164,7 @@ func braidsArisenNightmareResolve(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "Braids, Arisen Nightmare — sacrifice an artifact, creature, enchantment, land, or planeswalker?",
-		OnYes: func(ctx *Context) error {
-			return braidsChoosePermanentToSacrifice(ctx, controller, candidates)
-		},
+		Then:     braidsAnswer,
 	}.Apply(ctx)
 }
 
@@ -322,3 +320,10 @@ func braidsFlagsFromBits(n int) braidsCardTypeFlags {
 		battle:       n&(1<<5) != 0,
 	}
 }
+
+// braidsAnswer is the "yes": pick the permanent to sacrifice among the ones
+// still legal. Keyed (#4291).
+var braidsAnswer = MayYes("confirm/braids-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	controller := ctx.Controller()
+	return braidsChoosePermanentToSacrifice(ctx, controller, braidsSacrificeCandidates(ctx.Game, controller))
+})

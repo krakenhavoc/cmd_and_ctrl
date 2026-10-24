@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -52,7 +50,6 @@ func confluxSearchColor(ctx *Context, i int) error {
 	c := confluxColors[i]
 	symbol := c.symbol
 	last := i == len(confluxColors)-1
-	item := ctx.Item
 	search := SearchLibrary{
 		Player:    ctx.Controller(),
 		Predicate: func(card game.Card) bool { return card.HasColor(symbol) },
@@ -63,9 +60,20 @@ func confluxSearchColor(ctx *Context, i int) error {
 		Reason:    "Conflux — a " + c.word + " card",
 	}
 	if !last {
-		search.Then = func(g *game.Game, _ []uuid.UUID) error {
-			return confluxSearchColor(NewContext(g, item), i+1)
-		}
+		// #4253 slice 4: the next search is a registered tail, its index Tail.N.
+		search.ThenTail = ctx.ItemTail(confluxNextSearch)
+		search.ThenTail.N = i + 1
 	}
 	return search.Apply(ctx)
+}
+
+// confluxNextSearch is the search for the next colour, once the previous
+// one has settled. An on-disk key. Registered in init: it runs the search
+// that names it.
+var confluxNextSearch game.TailRef
+
+func init() {
+	confluxNextSearch = CardTail("conflux/next-search", func(ctx *Context, o game.TailOutcome) error {
+		return confluxSearchColor(ctx, o.Tail.N)
+	})
 }

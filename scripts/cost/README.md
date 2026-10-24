@@ -63,6 +63,6 @@ plan history when it changes.
 |---|---|
 | `claude_usage.py` | Transcripts → your ledger; `--push` publishes it |
 | `cost_report.py` | Repo + GitHub + ledgers + config → the report |
-| `post_discussion.py` | Creates or updates the discussion; `--comment` adds the weekly change |
+| `post_discussion.py` | Creates or updates the discussion; `--comment` adds the weekly change; `--as-comment` (CI) posts the full report as a new comment and never edits the body |
 | `config.json` | Prices, plans and every human-estimate assumption |
 | `../../.github/workflows/cost-report.yml` | Mondays 12:00 UTC, and on demand |

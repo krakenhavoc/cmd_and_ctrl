@@ -76,8 +76,8 @@ func runWithObserverUntil(t *testing.T, policy aiseat.Policy, cfg aiseat.Config,
 
 	c := &collector{}
 	cfg.Observer = c
-	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, policy, cfg, nil, testLogger())
-	aiseat.Start(ctx, room, room.Game.Seats[1].ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, room.Game.Seats[0].ID, policy, cfg, nil, testLogger())
+	startBot(t, ctx, room, room.Game.Seats[1].ID, &scripted{prefer: []string{"Keep hand"}}, aiseat.Config{}, nil, testLogger())
 	waitFor(t, what, func() bool { return ready(c) })
 	cancel()
 	<-r.Done()
@@ -379,7 +379,7 @@ func TestRunnerObserverReportsAWindowCancelledDuringPacing(t *testing.T) {
 	// MinThink far longer than the cancel below, so the runner is
 	// certain to be inside pace() when the context ends.
 	cfg := aiseat.Config{MinThink: 2 * time.Second, Observer: c}
-	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, &scripted{prefer: []string{"Keep hand"}}, cfg, nil, testLogger())
+	r := startBot(t, ctx, room, room.Game.Seats[0].ID, &scripted{prefer: []string{"Keep hand"}}, cfg, nil, testLogger())
 	// The window is decided before it is paced, so a counted decision
 	// is the runner on its way into the 2s hold — the state this test
 	// needs, said by the runner instead of guessed at with a sleep
@@ -428,7 +428,7 @@ func TestRunnerObserverKeepsTheFallbackWhenItForcesAnAnswer(t *testing.T) {
 
 	c := &collector{}
 	pol := &millOnPick{t: t, room: room, seat: me.ID}
-	r := aiseat.Start(ctx, room, me.ID, pol, aiseat.Config{
+	r := startBot(t, ctx, room, me.ID, pol, aiseat.Config{
 		MaxThink:              time.Second,
 		MaxConsecutiveRejects: 2,
 		Observer:              c,

@@ -153,6 +153,32 @@ type Player struct {
 	// restore of a seat with none: every reader asks SideboardCards.
 	Sideboard *Zone
 
+	// AttractionDeck is this player's supplementary Attraction deck
+	// (CR 717.2, ADR 0207 §1): face down, shuffled before the game
+	// begins, in the command zone. Kind ZoneCommand, built the way
+	// Emblems is and for the same reason: every reader of Command.Cards
+	// means "commander card", no ZoneRef resolves to it and the card
+	// index does not cover it, so nothing but opening an Attraction
+	// (CR 701.51, OpenAttractionsThenForEffect) takes a card out. Nil
+	// for a deck with no Attractions; every reader asks
+	// AttractionDeckCards.
+	AttractionDeck *Zone
+
+	// Junkyard is the face-up pile of this player's Astrotorium-backed
+	// cards the CR 717.6 replacement put into the command zone (CR
+	// 717.6a: "not its own zone"). Kind ZoneCommand, unreachable by any
+	// ZoneRef or the card index, like AttractionDeck. Nothing takes a
+	// card out of it. Nil until the first card arrives.
+	Junkyard *Zone
+
+	// StickerSheetPool is every sticker sheet this player's deck revealed
+	// (CR 123.2a, ADR 0208 §2): plain data, not cards, in no zone.
+	// StickerSheets are the three of them chosen at random as the game
+	// began (CR 103.2d): the stickers the player has access to (CR
+	// 123.2c). Both nil for a deck with no sheets.
+	StickerSheetPool []StickerSheet
+	StickerSheets    []StickerSheet
+
 	// HasSideboard is whether this player's deck SEATED a sideboard,
 	// which makes the sideboard their pool of cards outside the game
 	// (ADR 0191). False means the pool is the card database (ADR 0198):
@@ -230,6 +256,16 @@ type Player struct {
 	// AttackedDuringControllersLastTurn and AttackedYouDuringTheirLastTurn.
 	LastTurnAttacks []AttackRecord
 
+	// LastTurnCastOrPut is whether this player cast a spell or put a
+	// nontoken permanent onto the battlefield during the last turn they
+	// took (#1997, last_turn_actions.go): Arboria's "unless that player
+	// cast a spell or put a nontoken permanent onto the battlefield
+	// during their last turn". Written as each of their turns ends, from
+	// that turn's CastTally and PlayerTurnTally.NontokenPermanentsPut,
+	// and kept until their next turn ends. False before their first
+	// turn. Read through CastOrPutDuringLastTurnForEffect.
+	LastTurnCastOrPut bool
+
 	// Eliminated is set when the player leaves the game: a concession,
 	// a state-based loss or an effect loss (ADR 0057, game_end.go). An
 	// eliminated player still occupies their seat for spectating. The
@@ -298,9 +334,9 @@ type Player struct {
 
 	// mulliganBottoming is true from this player's keep until the cards
 	// the London mulligan owes are on the bottom of its library (ADR
-	// 0168 decision 4): the window does not close while it is set. Not
-	// persisted: it is set only while the bottoming prompts are open,
-	// and a table waiting on them is not a restore point.
+	// 0168 decision 4): the window does not close while it is set. Written
+	// to a restore point (playerSnapshot.MulliganBottoming, #4301): the
+	// bottoming prompts are keyed, so a table waiting on them is one.
 	mulliganBottoming bool
 
 	// DeckImported is true once the player has had a real deck

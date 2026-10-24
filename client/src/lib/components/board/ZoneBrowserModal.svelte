@@ -159,6 +159,8 @@
         return "stack";
       case "sideboard":
         return "sideboard";
+      case "junkyard":
+        return "junkyard";
     }
   });
 
@@ -338,6 +340,11 @@
     ) {
       base.push({ kind: "sideboard", label: "sideboard" });
     }
+    // ADR 0207: the junkyard is public, so it is a tab for every viewer
+    // while the seat has one.
+    if ((own?.junkyard?.length ?? 0) > 0) {
+      base.push({ kind: "junkyard", label: "junkyard" });
+    }
     return base;
   });
   const showTabs = $derived(zoneKind !== "stack");
@@ -419,6 +426,12 @@
     {#each targetBans as ban (ban)}
       <p class="zb-ban" role="note">{ban}</p>
     {/each}
+    {#if zoneKind === "junkyard"}
+      <p class="zb-ban" role="note">
+        Attraction cards the rules put into the command zone instead of a graveyard, hand or
+        library. Face up for the whole table, and read only: nothing takes a card out of here.
+      </p>
+    {/if}
     {#if zoneKind === "sideboard"}
       <p class="zb-ban" role="note">
         Cards you own outside the game, for you alone: opponents see a count. Only an effect can
@@ -437,7 +450,7 @@
             <Card
               {card}
               ready={legal.isReady(card.instance_id)}
-              readyZone={zoneKind === "stack"
+              readyZone={zoneKind === "stack" || zoneKind === "junkyard"
                 ? undefined
                 : zoneKind === "sideboard"
                   ? "outside"

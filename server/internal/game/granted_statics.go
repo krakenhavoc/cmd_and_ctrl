@@ -72,6 +72,8 @@ func GrantedStaticProblem(s StaticAbility) string {
 		return "a granted static needs AppliesTo and Apply"
 	case s.RemovesAbilities, s.ContinuesAfterRemoval, len(s.GrantAbilities) > 0, s.Borrows != nil:
 		return "a granted static cannot remove, grant or borrow abilities"
+	case s.ReadsAbilities:
+		return "a granted static cannot read abilities: the layer-6 dependency order is kept for the battlefield's own statics (ADR 0067 amendment 2026-10-23)"
 	case s.ActiveWhen.IsGate():
 		return "a granted static cannot declare ActiveWhen — a designation is the host's"
 	case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "" || len(s.AffectsZones) > 0:
@@ -210,18 +212,54 @@ func (st *layerPassState) grantTimestamp(host *Card, ga GrantedAbility) int64 {
 // effect just granted into the part of the bucket still to run (see the
 // file comment). A bucket that grants no static-bearing bundle runs
 // exactly as the plain loop did.
+//
+// Before each effect, while a static that reads an ability is still to
+// run, nextAbilityEffectLocked picks which effect goes next: a reader
+// waits for every effect that would change what it applies to (CR
+// 613.8b, ADR 0067 amendment 2026-10-23). A bucket with no reader pays
+// one walk to count them.
 func (g *Game) applyGrantingBucketLocked(bucket []ContinuousEffect, bucketIndex int, st *layerPassState) {
-	if st == nil {
-		for _, eff := range bucket {
-			g.applyOneEffectLocked(eff, bucketIndex, st)
-		}
-		return
-	}
+	readers := countAbilityReaders(bucket)
 	queue := bucket
-	seen := len(st.granted)
+	// owned: queue is this function's own slice and may be reordered in
+	// place. The bucket applyLayerLocked built is never written through.
+	owned := false
+	seen := 0
+	if st != nil {
+		seen = len(st.granted)
+	}
+	// waitsOn is the position in queue of an effect the reader at the
+	// head was last found waiting on, or -1: nextAbilityEffectLocked's hint.
+	waitsOn := -1
 	for i := 0; i < len(queue); i++ {
+		if readers > 0 {
+			hint := -1
+			if waitsOn > i {
+				hint = waitsOn - i
+			}
+			k, on := g.nextAbilityEffectLocked(queue[i:], hint)
+			waitsOn = -1
+			if k > 0 {
+				if !owned {
+					queue = append([]ContinuousEffect(nil), queue...)
+					owned = true
+				}
+				moveToFront(queue[i:], k)
+				// The waiting reader is now at i+1, and everything that
+				// was in [i, i+k) moved one place later with it.
+				switch {
+				case on > k:
+					waitsOn = i + on
+				case on >= 0 && on < k:
+					waitsOn = i + on + 1
+				}
+			}
+			if readsAbilities(queue[i]) {
+				readers--
+			}
+		}
 		g.applyOneEffectLocked(queue[i], bucketIndex, st)
-		if len(st.granted) == seen {
+		if st == nil || len(st.granted) == seen {
 			continue
 		}
 		fresh := st.granted[seen:]
@@ -239,6 +277,8 @@ func (g *Game) applyGrantingBucketLocked(bucket []ContinuousEffect, bucketIndex 
 					timestamp: grantedStaticTimestamp(gs.host, gs.ts),
 				}
 				queue = g.insertGrantedStaticLocked(queue, i+1, eff)
+				owned = true
+				waitsOn = -1
 			}
 		}
 	}

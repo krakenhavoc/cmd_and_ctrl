@@ -30,15 +30,20 @@ func discoverEvents(g *Game) []Event {
 	return out
 }
 
-func discoverPrompt(t *testing.T, g *Game) *PendingChoice {
+// discoverResolving resolves a stack item whose effect is a discover N for
+// me, so the cast is offered inside an open resolution (CR 608.2g, #4243).
+// It returns what the discover found, with the resolution_cast prompt (if
+// there was a hit) still open.
+func discoverResolving(t *testing.T, g *Game, me, source uuid.UUID, n int) DiscoverResult {
 	t.Helper()
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			return c
-		}
-	}
-	t.Fatalf("no may_cast prompt outstanding")
-	return nil
+	var res DiscoverResult
+	pushAbilityItem(g, StackItemTriggered, me, source, "Fixture discover", func(g *Game, _ *StackItem) error {
+		var err error
+		res, err = g.DiscoverForEffect(me, source, n)
+		return err
+	})
+	resolveTop(t, g)
+	return res
 }
 
 // The stopping rule: lands and cards over N are passed over, and a card
@@ -54,14 +59,16 @@ func TestDiscoverStopsOnTheFirstNonlandWithManaValueNOrLess(t *testing.T) {
 	libraryOf(t, me, deep, hit, tooBig, land)
 
 	source := uuid.New()
-	g.WithWriteLock(func() {
-		if err := g.DiscoverThenForEffect(me.ID, source, 3, nil); err != nil {
-			t.Fatalf("DiscoverThenForEffect: %v", err)
-		}
-	})
-	c := discoverPrompt(t, g)
-	if c.MayCastCard != hit.InstanceID {
-		t.Fatalf("discover hit the wrong card")
+	res := discoverResolving(t, g, me.ID, source, 3)
+	c := resolutionCastPrompt(g, me.ID)
+	if c == nil || len(c.DiscardOptions) != 1 || c.DiscardOptions[0] != hit.InstanceID {
+		t.Fatalf("discover hit the wrong card: %+v", c)
+	}
+	if res.Discovered != hit.InstanceID || res.ManaValue != 3 {
+		t.Errorf("result = %+v, want the Divination", res)
+	}
+	if len(c.CastPile) != 2 {
+		t.Errorf("the prompt carries %d passed-over cards, want the Island and the Big Thing", len(c.CastPile))
 	}
 	if c.MayCastKeyword != MayCastKeywordDiscover || c.AcceptLabel == "" || c.DeclineLabel == "" {
 		t.Errorf("prompt words = %q / %q / %q, want discover's", c.MayCastKeyword, c.AcceptLabel, c.DeclineLabel)
@@ -76,7 +83,7 @@ func TestDiscoverStopsOnTheFirstNonlandWithManaValueNOrLess(t *testing.T) {
 
 // Declining: the hit goes into the discoverer's HAND (not the bottom),
 // the rest go to the bottom, the discover is announced with the card
-// and N, and the continuation sees the discovered card.
+// and N, and what the discover found was known at once.
 func TestDiscoverDeclinePutsTheCardIntoHand(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -86,19 +93,14 @@ func TestDiscoverDeclinePutsTheCardIntoHand(t *testing.T) {
 	libraryOf(t, me, floor, hit, land)
 
 	source := uuid.New()
-	var got DiscoverResult
-	ran := 0
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, source, 4, func(_ *Game, r DiscoverResult) error {
-			got = r
-			ran++
-			return nil
-		})
-	})
-	if ran != 0 {
-		t.Fatalf("Then ran before the prompt was answered")
+	got := discoverResolving(t, g, me.ID, source, 4)
+	if got.Discovered != hit.InstanceID || got.N != 4 || got.ManaValue != 3 {
+		t.Errorf("result %+v", got)
 	}
-	answerMayCast(t, g, me.ID, false)
+	if len(discoverEvents(g)) != 0 || !g.ResolutionPaused() {
+		t.Fatalf("the discover did not wait for the discoverer's answer")
+	}
+	answerResolutionCast(t, g, me.ID, false)
 
 	if !me.Hand.Contains(hit.InstanceID) {
 		t.Fatalf("declined discover hit is not in hand")
@@ -107,8 +109,8 @@ func TestDiscoverDeclinePutsTheCardIntoHand(t *testing.T) {
 	if len(ids) != 2 || ids[0] != land.InstanceID || ids[1] != floor.InstanceID {
 		t.Errorf("library (bottom first) = %v, want [Island, Bottom Card]", ids)
 	}
-	if ran != 1 || got.Discovered != hit.InstanceID || got.N != 4 || got.ManaValue != 3 {
-		t.Errorf("Then ran %d times with %+v", ran, got)
+	if g.ResolutionPaused() {
+		t.Errorf("the decline did not let the resolution finish")
 	}
 	evs := discoverEvents(g)
 	if len(evs) != 1 || evs[0].Actor != me.ID || evs[0].Source != source || evs[0].Amount != 4 || evs[0].CardID != hit.InstanceID {
@@ -127,10 +129,7 @@ func TestDiscoverAcceptGrantsACappedFlashFreeCast(t *testing.T) {
 	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
 	libraryOf(t, me, hit)
 
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 3, nil)
-	})
-	answerMayCast(t, g, me.ID, true)
+	discoverResolving(t, g, me.ID, uuid.New(), 3)
 
 	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
 	if perm == nil || !g.CastPermissionActiveForEffect(perm, me.ID) {
@@ -149,8 +148,12 @@ func TestDiscoverAcceptGrantsACappedFlashFreeCast(t *testing.T) {
 	if g.Turn.Step == StepPrecombatMain || g.Turn.Step == StepPostcombatMain {
 		t.Fatalf("test needs a non-main step to prove the flash timing")
 	}
-	if err := g.CastSpell(me.ID, hit.InstanceID, CastSpellParams{FromZone: string(ZoneExile)}); err != nil {
-		t.Fatalf("casting the discovered sorcery outside a main phase: %v", err)
+	if !g.ResolutionPaused() {
+		t.Fatalf("the resolution is not held open for the cast")
+	}
+	answerResolutionCast(t, g, me.ID, true)
+	if g.ResolutionPaused() || !g.Stack.Contains(hit.InstanceID) {
+		t.Fatalf("the cast did not finish the resolution with the spell on the stack")
 	}
 	// EventDiscover comes after the EventCast of the discovered spell.
 	castAt, discoverAt := -1, -1
@@ -189,9 +192,8 @@ func TestDiscoverGrantLapsesIntoHandOnTheNextPass(t *testing.T) {
 	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
 	libraryOf(t, me, hit)
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 3, nil)
+		_, _ = g.DiscoverForEffect(me.ID, uuid.New(), 3)
 	})
-	answerMayCast(t, g, me.ID, true)
 	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
 		t.Fatalf("test needs the discoverer to hold priority")
 	}
@@ -217,9 +219,8 @@ func TestDiscoverGrantIgnoresOtherPlayersPasses(t *testing.T) {
 	hit := libCard(opp.ID, "Divination", "Sorcery", "{2}{U}")
 	libraryOf(t, opp, hit)
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(opp.ID, uuid.New(), 3, nil)
+		_, _ = g.DiscoverForEffect(opp.ID, uuid.New(), 3)
 	})
-	answerMayCast(t, g, opp.ID, true)
 	if g.Seats[g.Turn.PriorityHolder].ID != me.ID {
 		t.Fatalf("test needs the active player, not the discoverer, to hold priority")
 	}
@@ -263,9 +264,8 @@ func TestDiscoverLapseThatTriggersKeepsPriority(t *testing.T) {
 	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
 	libraryOf(t, me, hit)
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 3, nil)
+		_, _ = g.DiscoverForEffect(me.ID, uuid.New(), 3)
 	})
-	answerMayCast(t, g, me.ID, true)
 	holder := g.Turn.PriorityHolder
 	if err := g.PassPriority(); err != nil {
 		t.Fatalf("PassPriority: %v", err)
@@ -285,30 +285,22 @@ func TestDiscoverLapseThatTriggersKeepsPriority(t *testing.T) {
 }
 
 // Nothing to discover, and an empty library: everything goes back, the
-// player has still discovered (CR 701.57b), and Then runs with no card.
+// player has still discovered (CR 701.57b), and the result names no card.
 func TestDiscoverWithNoHitStillDiscovers(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	big := libCard(me.ID, "Big Thing", "Creature — Beast", "{5}{G}")
 	land := libCard(me.ID, "Forest", "Basic Land — Forest", "")
 	libraryOf(t, me, big, land)
-	var got *DiscoverResult
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 2, func(_ *Game, r DiscoverResult) error {
-			got = &r
-			return nil
-		})
-	})
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == PendingChoiceMayCast {
-			t.Fatalf("prompted with no hit")
-		}
+	got := discoverResolving(t, g, me.ID, uuid.New(), 2)
+	if resolutionCastPrompt(g, me.ID) != nil {
+		t.Fatalf("prompted with no hit")
 	}
 	if me.Library.Size() != 2 || len(g.Exile.Cards) != 0 {
 		t.Errorf("library %d, exile %d: want everything back", me.Library.Size(), len(g.Exile.Cards))
 	}
-	if got == nil || got.Discovered != uuid.Nil || got.ManaValue != 0 {
-		t.Errorf("Then = %+v, want no discovered card", got)
+	if got.Discovered != uuid.Nil || got.ManaValue != 0 {
+		t.Errorf("result = %+v, want no discovered card", got)
 	}
 	evs := discoverEvents(g)
 	if len(evs) != 1 || evs[0].CardID != uuid.Nil || evs[0].Amount != 2 {
@@ -316,15 +308,9 @@ func TestDiscoverWithNoHitStillDiscovers(t *testing.T) {
 	}
 
 	me.Library.Cards = nil
-	ran := false
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 4, func(*Game, DiscoverResult) error {
-			ran = true
-			return nil
-		})
-	})
-	if !ran || len(discoverEvents(g)) != 2 {
-		t.Errorf("empty library: Then ran %v, events %d", ran, len(discoverEvents(g)))
+	discoverResolving(t, g, me.ID, uuid.New(), 4)
+	if len(discoverEvents(g)) != 2 {
+		t.Errorf("empty library: %d events, want the discover announced", len(discoverEvents(g)))
 	}
 }
 
@@ -343,9 +329,8 @@ func TestDiscoverCapRefusesAnExpensiveBackFace(t *testing.T) {
 	c.SetFace(0)
 	libraryOf(t, me, c)
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 2, nil)
+		_, _ = g.DiscoverForEffect(me.ID, uuid.New(), 2)
 	})
-	answerMayCast(t, g, me.ID, true)
 
 	err := g.CastSpell(me.ID, c.InstanceID, CastSpellParams{FromZone: string(ZoneExile), Face: 1})
 	if !errors.Is(err, ErrSpellManaValueTooHigh) {
@@ -365,21 +350,14 @@ func TestDiscoverCapRefusesAnExpensiveBackFace(t *testing.T) {
 	}
 }
 
-// A discoverer who has left the game is not asked; the discover still
-// runs its continuation.
-func TestDiscoverByAPlayerWhoLeftRunsThen(t *testing.T) {
+// A discoverer who has left the game is not asked and finds nothing.
+func TestDiscoverByAPlayerWhoLeftIsNotAsked(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	me.Eliminated = true
-	ran := false
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 3, func(*Game, DiscoverResult) error {
-			ran = true
-			return nil
-		})
-	})
-	if !ran {
-		t.Errorf("Then did not run for a departed discoverer")
+	got := discoverResolving(t, g, me.ID, uuid.New(), 3)
+	if got.Discovered != uuid.Nil || resolutionCastPrompt(g, me.ID) != nil {
+		t.Errorf("a departed discoverer discovered %+v", got)
 	}
 }
 
@@ -391,9 +369,8 @@ func TestDiscoverGrantLapsesAtTheEndOfTurnSweep(t *testing.T) {
 	hit := libCard(me.ID, "Divination", "Sorcery", "{2}{U}")
 	libraryOf(t, me, hit)
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, uuid.New(), 3, nil)
+		_, _ = g.DiscoverForEffect(me.ID, uuid.New(), 3)
 	})
-	answerMayCast(t, g, me.ID, true)
 	g.WithWriteLock(func() {
 		g.sweepCastPermissionsLocked(true)
 	})
@@ -405,9 +382,10 @@ func TestDiscoverGrantLapsesAtTheEndOfTurnSweep(t *testing.T) {
 	}
 }
 
-// ADR 0099 §8: an open discover prompt is a continuation (counted, like
-// cascade's), and once it is answered the table is a restore point
-// again — the grant is plain data and survives the round trip whole.
+// ADR 0099 §8: the grant is plain data and survives the round trip whole.
+// (The table with the discover's own prompt open is the effects package's
+// restore test, over a catalogued card: a fixture item here carries a Go
+// effect, which no restore point can hold.)
 func TestDiscoverGrantSurvivesARestore(t *testing.T) {
 	g := newRestorableGame(t)
 	me := g.Seats[0]
@@ -415,15 +393,11 @@ func TestDiscoverGrantSurvivesARestore(t *testing.T) {
 	libraryOf(t, me, hit)
 	source := uuid.New()
 	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, source, 3, nil)
+		_, _ = g.DiscoverForEffect(me.ID, source, 3)
 	})
-	if g.CaptureSnapshot().Restorable() {
-		t.Fatalf("a table with the discover prompt open claims to be a restore point")
-	}
-	answerMayCast(t, g, me.ID, true)
 	snap, restored := roundTrip(t, g)
 	if !snap.Restorable() {
-		t.Fatalf("an answered discover left the table unrestorable: %+v", snap.Continuations)
+		t.Fatalf("a discover's grant left the table unrestorable: %+v", snap.Continuations)
 	}
 	var perm *CastPermission
 	for _, p := range restored.Seats {

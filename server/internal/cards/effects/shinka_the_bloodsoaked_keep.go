@@ -24,6 +24,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{R}, {T}: Target legendary creature gains first strike until end of turn",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "first strike")),
 			Cost:    Plus(ManaCost("{R}"), TapCost()),
 			Targets: TargetCreature("target legendary creature", Legendary()),
 			Effect: func(g *game.Game, item *game.StackItem) error {

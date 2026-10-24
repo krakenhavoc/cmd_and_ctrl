@@ -47,8 +47,8 @@ func init() {
 				Question: "Expel from Orazca — put that permanent on top of its owner's library instead of returning it to hand?",
 				YesLabel: "Top of library",
 				NoLabel:  "Return to hand",
-				OnYes:    expelToTopOfLibrary(t.ID),
-				OnNo:     expelToHand(t.ID),
+				Then:     expelAnswer,
+				Carry:    []uuid.UUID{t.ID},
 			}.Apply(ctx)
 		},
 	})
@@ -75,3 +75,9 @@ func expelToHand(id uuid.UUID) func(ctx *Context) error {
 		return BounceToHand{Target: id}.Apply(ctx)
 	}
 }
+
+// expelAnswer is the "yes": the permanent (the carried ID) goes on top of
+// its owner's library; on a "no" it returns to hand. Keyed (#4291).
+var expelAnswer = MayYesNo("confirm/expel-from-orazca-top-or-hand",
+	func(ctx *Context, r game.ConfirmAnswer) error { return expelToTopOfLibrary(carryAt(r, 0))(ctx) },
+	func(ctx *Context, r game.ConfirmAnswer) error { return expelToHand(carryAt(r, 0))(ctx) })

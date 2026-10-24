@@ -24,13 +24,14 @@ func init() {
 		Purpose:      game.Purpose{Tokens: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Scurry of Gremlins — two Gremlins, then {E} for each creature you control",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					if err := (CreateToken{Template: TokenCard("1/1 red Gremlin"), N: 2}).Apply(ctx); err != nil {
-						return err
-					}
-					return GetEnergy{N: b04CreaturesControlled(g, item.Controller)}.Apply(ctx)
-				}),
+				// The energy waits for a prompt the tokens' creation asks (a CR 616 order;
+				// CR 608.2c, #4155) and counts the creatures when it runs.
+				Do(
+					CreateToken{Template: TokenCard("1/1 red Gremlin"), N: 2},
+					Instruction(func(ctx *Context) error {
+						return GetEnergy{N: b04CreaturesControlled(ctx.Game, ctx.Controller())}.Apply(ctx)
+					}),
+				)),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste until end of turn.",

@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Burn the Accursed — Instant {4}{R}:
 //
 //	"Burn the Accursed deals 5 damage to target creature and 2 damage to
@@ -27,26 +25,35 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		Purpose:      ForTargets(DamageToTarget(0, 5)),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			id, ok := b16FirstLegalTargetCard(ctx)
-			if !ok {
-				return nil
-			}
-			victim, ok := ctx.Game.LookupCardForEffect(id)
-			if !ok {
-				return nil
-			}
-			// One sentence, one damage instance (CR 615.8, ADR 0108 PR 0).
-			err := ctx.Game.DamageInstanceForEffect(func() error {
-				if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: 5}).Apply(ctx); err != nil {
-					return err
+		// The exile rider waits for a prompt the damage asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
 				}
-				return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: 2}.Apply(ctx)
-			})
-			if err != nil {
-				return err
-			}
-			return ExileIfItWouldDieThisTurn{Target: id}.Apply(ctx)
-		},
+				victim, ok := ctx.Game.LookupCardForEffect(id)
+				if !ok {
+					return nil
+				}
+				// One sentence, one damage instance (CR 615.8, ADR 0108 PR 0).
+				return ctx.Game.DamageInstanceForEffect(func() error {
+					if err := (DealDamage{Source: ctx.Source(), Target: id, Amount: 5}).Apply(ctx); err != nil {
+						return err
+					}
+					return DealDamage{Source: ctx.Source(), Target: victim.Controller, Amount: 2}.Apply(ctx)
+				})
+			}),
+			Instruction(func(ctx *Context) error {
+				id, ok := b16FirstLegalTargetCard(ctx)
+				if !ok {
+					return nil
+				}
+				if _, ok := ctx.Game.LookupCardForEffect(id); !ok {
+					return nil
+				}
+				return ExileIfItWouldDieThisTurn{Target: id}.Apply(ctx)
+			}),
+		),
 	})
 }

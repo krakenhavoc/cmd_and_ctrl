@@ -82,6 +82,20 @@ export interface CoverageReport {
    * for a deck with none.
    */
   companion?: CoverageCard;
+  /**
+   * ADR 0191 (#3525): the deck's sideboard, which seats outside the game,
+   * bucketed like `cards` but in none of the counts, so the copies still
+   * total the deck's size. Absent for a deck with none.
+   */
+  sideboard?: CoverageCard[];
+  /**
+   * ADR 0207 §2: the deck's Attraction cards (the Attraction deck, CR
+   * 717.2), bucketed like `cards` but in none of the counts. Absent for
+   * a deck with none.
+   */
+  attractions?: CoverageCard[];
+  /** ADR 0208 §2: the deck's sticker sheets, kept out of the counts too. */
+  sticker_sheets?: CoverageCard[];
 }
 
 export type DeckCheckRequest = { url: string } | { text: string };
@@ -275,6 +289,42 @@ export const BUCKET_LABELS: Record<CoverageBucket, string> = {
   automated: "Fully automated",
   no_effect: "Nothing to automate (lands, vanilla)",
 };
+
+/**
+ * sideboardNote is the one line the report shows for the deck's sideboard
+ * (ADR 0191): how many cards sit outside the game, and which of them the
+ * engine would not play as printed. Null for a deck with none.
+ */
+export function sideboardNote(report: CoverageReport | null | undefined): string | null {
+  const rows = report?.sideboard ?? [];
+  if (rows.length === 0) return null;
+  const copies = rows.reduce((n, c) => n + c.count, 0);
+  const head = `Sideboard: ${copies} ${copies === 1 ? "card" : "cards"}, outside the game`;
+  const flagged = rows.filter(
+    (c) => c.bucket === "manual" || c.bucket === "unreviewed" || c.bucket === "caveats",
+  );
+  if (flagged.length === 0) return `${head}. All of it plays as printed.`;
+  return `${head}. ${flagged.map((c) => `${c.name} (${BUCKET_LABELS[c.bucket].toLowerCase()})`).join(", ")}.`;
+}
+
+/**
+ * attractionsNote is the one line the report shows for the deck's
+ * Attraction deck (ADR 0207 §2): how many cards, outside the 100, and
+ * which of them the engine would not play as printed. Null for a deck
+ * with none. The rule that it needs ten different names is the server's
+ * violation, shown with the others.
+ */
+export function attractionsNote(report: CoverageReport | null | undefined): string | null {
+  const rows = report?.attractions ?? [];
+  if (rows.length === 0) return null;
+  const copies = rows.reduce((n, c) => n + c.count, 0);
+  const head = `Attraction deck: ${copies} ${copies === 1 ? "card" : "cards"}, outside the 100`;
+  const flagged = rows.filter(
+    (c) => c.bucket === "manual" || c.bucket === "unreviewed" || c.bucket === "caveats",
+  );
+  if (flagged.length === 0) return `${head}. All of it plays as printed.`;
+  return `${head}. ${flagged.map((c) => `${c.name} (${BUCKET_LABELS[c.bucket].toLowerCase()})`).join(", ")}.`;
+}
 
 /** One-line explanation for each bucket, for a legend beside the counts. */
 export const BUCKET_BLURBS: Record<CoverageBucket, string> = {

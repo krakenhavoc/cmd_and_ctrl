@@ -24,7 +24,7 @@ func init() {
 		Madness:      "{1}{B}",
 		Triggered: []game.TriggeredAbility{
 			anyPlayerMayCounterThisSpell("Brain Gorgers", "sacrifice a creature",
-				SacrificePayment(1, "creature", "creatures", QueryType("creature")), nil),
+				SacrificePayment(1, "creature", "creatures", QueryType("creature")), anyPlayerCounterThisSpell),
 		},
 	})
 }

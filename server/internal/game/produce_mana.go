@@ -379,7 +379,13 @@ func (g *Game) producesManaReplacementsExistLocked() bool {
 //     Birds of Paradise is still ONE pick, so it cannot pay {W}{U}.
 //   - a slot the window empties is dropped, and a source left with no
 //     slots is not a mana source (gatherTapSources drops it before
-//     tapping it, the CR 903.4f posture).
+//     tapping it, the CR 903.4f posture);
+//   - an option the window turns into mana of ONE other colour is booked
+//     as that colour (#1997, Hall of Gemstone's "lands tapped for mana
+//     produce mana of the chosen color instead"): a Forest under red is
+//     an {R} slot, and a {W}/{U} dual's two options both become {R}, one
+//     option. The executor still produces from the printed slot and the
+//     real window recolours it, so the pool holds what the plan booked.
 //
 // Slots are returned unchanged when nothing changes, which is every
 // board with no production replacement on it.
@@ -403,14 +409,30 @@ func (g *Game) priceProducedSlotsLocked(
 	changed := false
 	for _, slot := range slots {
 		amounts := make(map[string]int, len(slot.Options))
+		var recolor map[string]string
 		differs := false
 		for _, color := range slot.Options {
 			base := slot.AmountFor(color)
-			n := len(g.producedManaPreviewLocked(playerID, cardID, repeatColor(color, base), fromTap))
+			made := g.producedManaPreviewLocked(playerID, cardID, repeatColor(color, base), fromTap)
+			n := len(made)
 			amounts[color] = n
 			if n != base {
 				differs = true
 			}
+			// #1997: the window changed the COLOUR, to one other colour.
+			if to, ok := oneManaColor(made); ok && to != color {
+				if recolor == nil {
+					recolor = make(map[string]string, len(slot.Options))
+				}
+				recolor[color] = to
+				differs = true
+			}
+		}
+		as := func(color string) string {
+			if to, ok := recolor[color]; ok {
+				return to
+			}
+			return color
 		}
 		if !differs {
 			out = append(out, slot)
@@ -428,7 +450,7 @@ func (g *Game) priceProducedSlotsLocked(
 		if len(slot.Options) == 1 {
 			color := slot.Options[0]
 			for k := 0; k < amounts[color]; k++ {
-				out = append(out, ProducedManaEntry{Options: []string{color}})
+				out = append(out, ProducedManaEntry{Options: []string{as(color)}})
 			}
 			continue
 		}
@@ -440,10 +462,28 @@ func (g *Game) priceProducedSlotsLocked(
 				// same reason.
 				continue
 			}
-			live.Options = append(live.Options, color)
-			live.Amounts[color] = amounts[color]
+			to := as(color)
+			if prev, seen := live.Amounts[to]; seen {
+				// Two printed options that come out as one colour are
+				// one option (#1997); the pick makes the larger amount.
+				if amounts[color] > prev {
+					live.Amounts[to] = amounts[color]
+				}
+				continue
+			}
+			live.Options = append(live.Options, to)
+			live.Amounts[to] = amounts[color]
 		}
 		if len(live.Options) == 0 {
+			continue
+		}
+		if len(live.Options) == 1 {
+			// One option left: ordinary slots, the parser's own shape for
+			// a single-option amount.
+			to := live.Options[0]
+			for k := 0; k < live.Amounts[to]; k++ {
+				out = append(out, ProducedManaEntry{Options: []string{to}})
+			}
 			continue
 		}
 		out = append(out, live)
@@ -566,6 +606,20 @@ func firstSlotOffering(slots []ProducedManaEntry, color string) int {
 // repeatColor is n copies of one colour — the produced-mana list a slot
 // of amount n adds, and the shape every caller of produceManaLocked
 // builds.
+// oneManaColor reports the one colour every mana of `made` shares, or
+// false for no mana or mana of two colours.
+func oneManaColor(made []string) (string, bool) {
+	if len(made) == 0 {
+		return "", false
+	}
+	for _, c := range made[1:] {
+		if c != made[0] {
+			return "", false
+		}
+	}
+	return made[0], true
+}
+
 func repeatColor(color string, n int) []string {
 	if color == "" || n <= 0 {
 		return nil

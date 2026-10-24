@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Syphon Mind — Sorcery {3}{B} (EDHREC rank 1049):
 //
@@ -47,15 +51,25 @@ func init() {
 		Name:         "Syphon Mind",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			caster := item.Controller
-			return ctx.Game.EachPlayerDiscardsThenForEffect(caster,
+			// Keyed (#4290): the caster rides the run as its carry, so
+			// a table waiting on any opponent's discard is a restore
+			// point.
+			return ctx.Game.EachPlayerDiscardsThenKeyedForEffect(item.Controller,
 				game.DiscardPrompt{Source: item.SourceCardID, N: 1},
-				func(g *game.Game, discarded game.PromptedDiscards) error {
-					if n := discarded.Count(); n > 0 {
-						return g.DrawNForEffect(caster, n)
-					}
-					return nil
-				})
+				syphonMindDraw, []uuid.UUID{item.Controller})
 		},
 	})
 }
+
+// syphonMindDraw is "you draw a card for each card discarded this way",
+// run once after the last opponent's discard has landed. The caster is
+// the carry.
+var syphonMindDraw = game.RegisterPromptRunThen("prompt-run/syphon-mind-draw", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	if n := r.Discards().Count(); n > 0 {
+		return g.DrawNForEffect(r.Carry[0], n)
+	}
+	return nil
+})

@@ -321,7 +321,12 @@ func (g *Game) ResolveEntryRiot(choiceID, chooserID uuid.UUID, counter bool) err
 	}
 	ev := frame.ev
 	chosen := frame.applicable[0]
-	if counter {
+	if _, present := g.liveReplacementSourceLocked(chosen); !present {
+		// #4253: a restored frame whose riot the running binary no
+		// longer gathers. It no longer applies (CR 616.1f): neither
+		// answer does anything.
+		g.markReplacementAppliedLocked(ev, chosen.id)
+	} else if counter {
 		g.settleRiotOnTheCounterLocked(ev, chosen)
 	} else {
 		g.markReplacementAppliedLocked(ev, chosen.id)

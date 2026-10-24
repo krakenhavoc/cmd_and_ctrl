@@ -45,7 +45,7 @@ func TestRunnerPolicyStatsAbsentForARandomSeat(t *testing.T) {
 	room := newRoom(t, 2, 101)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, aiseat.NewRandomPolicy(nil), aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, room.Game.Seats[0].ID, aiseat.NewRandomPolicy(nil), aiseat.Config{}, nil, testLogger())
 	t.Cleanup(func() { cancel(); <-r.Done() })
 	// The random tier has no model.Policy anywhere in its chain: it
 	// IS the whole chain, and it does not implement PolicyStatser.
@@ -59,7 +59,7 @@ func TestRunnerPolicyStatsFromTheOutermostPolicy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	want := aiseat.PolicyStats{Windows: 7, ModelCalls: 3}
-	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, statsPolicy{stats: want}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, room.Game.Seats[0].ID, statsPolicy{stats: want}, aiseat.Config{}, nil, testLogger())
 	t.Cleanup(func() { cancel(); <-r.Done() })
 	waitFor(t, "the seat to decide at least once", func() bool {
 		s := r.Stats()
@@ -83,7 +83,7 @@ func TestRunnerPolicyStatsForwardsThroughAWrapper(t *testing.T) {
 	defer cancel()
 	want := aiseat.PolicyStats{Windows: 1}
 	inner := statsPolicy{stats: want}
-	r := aiseat.Start(ctx, room, room.Game.Seats[0].ID, wrapPolicy{inner}, aiseat.Config{}, nil, testLogger())
+	r := startBot(t, ctx, room, room.Game.Seats[0].ID, wrapPolicy{inner}, aiseat.Config{}, nil, testLogger())
 	t.Cleanup(func() { cancel(); <-r.Done() })
 	waitFor(t, "the seat to decide at least once", func() bool {
 		s := r.Stats()

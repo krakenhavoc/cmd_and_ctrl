@@ -40,21 +40,25 @@ func init() {
 }
 
 func graveResearcherUpkeep(g *game.Game, item *game.StackItem) error {
-	controller, source := item.Controller, item.SourceCardID
-	return Surveil{N: 1, Then: func(g *game.Game) error {
-		p := g.PlayerByIDForEffect(controller)
-		if p == nil {
-			return nil
-		}
-		n := 0
-		for _, c := range p.Graveyard.Cards {
-			if c.IsCreature() {
-				n++
-			}
-		}
-		if n < 3 {
-			return nil
-		}
-		return BecomePrepared{Target: source}.Apply(NewContext(g, item))
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return Surveil{N: 1, ThenTail: ctx.ItemTail(graveResearcherPrepare)}.Apply(ctx)
 }
+
+// graveResearcherPrepare is "if there are three or more creature cards in
+// your graveyard, this creature becomes prepared". An on-disk key.
+var graveResearcherPrepare = CardTail("grave-researcher/become-prepared", func(ctx *Context, o game.TailOutcome) error {
+	p := ctx.Game.PlayerByIDForEffect(o.Tail.Player)
+	if p == nil {
+		return nil
+	}
+	n := 0
+	for _, c := range p.Graveyard.Cards {
+		if c.IsCreature() {
+			n++
+		}
+	}
+	if n < 3 {
+		return nil
+	}
+	return BecomePrepared{Target: o.Tail.Source}.Apply(ctx)
+})

@@ -48,17 +48,15 @@ func init() {
 			Label:   "{4}: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Then creatures you control gain haste until end of turn.",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker | game.AnswerCombatGrant},
 			Cost:    ManaCost("{4}"),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return GrantKeywordUntilEOT{
+			// The haste waits for a prompt the token's creation asks (a CR 616 order; CR 608.2c, #4155).
+			Effect: Do(
+				CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1},
+				GrantKeywordUntilEOT{
 					Match:    And(Creature(), YouControl()),
 					Keywords: []string{"haste"},
 					Label:    "Ingris Stingerquill — haste until end of turn",
-				}.Apply(ctx)
-			},
+				},
+			),
 		}},
 	})
 }

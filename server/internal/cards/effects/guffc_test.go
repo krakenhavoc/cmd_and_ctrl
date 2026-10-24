@@ -23,7 +23,7 @@ const (
 )
 
 func TestGuffcSliceCompleteness(t *testing.T) {
-	full := []string{guffcOnakkeOracle, guffcSarkhan, guffcNarsetOracle, guffcVronosOracle, guffcShowdown}
+	full := []string{guffcOnakkeOracle, guffcTeyoOracle, guffcSarkhan, guffcNarsetOracle, guffcVronosOracle, guffcShowdown, guffcRewrites}
 	for _, oracle := range full {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -34,19 +34,9 @@ func TestGuffcSliceCompleteness(t *testing.T) {
 			t.Errorf("%s: %v with caveats %v, want full with none", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
-	for _, oracle := range []string{guffcTeyoOracle, guffcRewrites} {
-		spec, ok := Lookup(oracle)
-		if !ok {
-			t.Errorf("%s is not registered", oracle)
-			continue
-		}
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-			t.Errorf("%s: %v with caveats %v, want one caveat", spec.Name, spec.Completeness, spec.Caveats)
-		}
-	}
-	// Teyo's −2 is left out, not shipped empty: two rows, both priced.
-	if spec, _ := Lookup(guffcTeyoOracle); len(spec.Activated) != 1 {
-		t.Errorf("Teyo has %d activated rows, want only +1", len(spec.Activated))
+	// Teyo's −2 shipped with ADR 0206 (#4197): both loyalty rows.
+	if spec, _ := Lookup(guffcTeyoOracle); len(spec.Activated) != 2 {
+		t.Errorf("Teyo has %d activated rows, want +1 and −2", len(spec.Activated))
 	}
 }
 
@@ -451,11 +441,11 @@ func TestGuffcRewritesHistoryShufflesAndOffersEachPlayerACast(t *testing.T) {
 	// stop on it or on the Divination.
 	prompts := 0
 	for _, c := range g.PendingChoices {
-		if c == nil || c.Kind != game.PendingChoiceMayCast {
+		if !isKeywordCastPrompt(c) {
 			continue
 		}
 		prompts++
-		card, ok := cardInZone(g.Exile, c.MayCastCard)
+		card, ok := cardInZone(g.Exile, keywordCastCard(c))
 		if !ok || card.Owner != c.Chooser || card.IsLand() {
 			t.Errorf("%s was offered %s (in exile %v), want a nonland card of their own", c.Chooser, card.Name, ok)
 		}
@@ -466,4 +456,69 @@ func TestGuffcRewritesHistoryShufflesAndOffersEachPlayerACast(t *testing.T) {
 	if prompts != len(g.Seats) {
 		t.Errorf("%d may-cast offers, want one per player (%d)", prompts, len(g.Seats))
 	}
+}
+
+// #4205: a player who declines the free cast keeps the card in exile;
+// the cards the walk passed over go to the bottom of their library.
+func TestGuffcRewritesHistoryDeclinedCardStaysInExile(t *testing.T) {
+	g := newCatalogGame(t)
+	var targets []uuid.UUID
+	hits := map[uuid.UUID]uuid.UUID{}
+	lands := map[uuid.UUID]uuid.UUID{}
+	for _, p := range g.Seats {
+		targets = append(targets, pushVanillaCreature(g, p.ID, "Bear of "+p.Name, 2, 2))
+		hit, land := uuid.New(), uuid.New()
+		hits[p.ID], lands[p.ID] = hit, land
+		// The top is the last pushed: a land, then the Divination. The
+		// shuffled-in bear may land above either, so the offered card is
+		// read from the prompt, not assumed.
+		guffcLib(p, game.Card{InstanceID: hit, Name: "Divination", TypeLine: "Sorcery", ManaCost: "{2}{U}"},
+			game.Card{InstanceID: lands[p.ID], Name: "Island", TypeLine: "Basic Land — Island"})
+	}
+	castCatalogSpell(t, g, "Guff Rewrites History", "Instant", guffcRewrites, guffcRefs(targets...))
+	passPriorityAroundTable(t, g)
+
+	var offered []uuid.UUID
+	for _, c := range g.PendingChoices {
+		if isKeywordCastPrompt(c) {
+			offered = append(offered, keywordCastCard(c))
+		}
+	}
+	if len(offered) != len(g.Seats) {
+		t.Fatalf("%d offers, want %d", len(offered), len(g.Seats))
+	}
+	for len(pendingMayCasts(g)) > 0 {
+		c := pendingMayCasts(g)[0]
+		if err := g.ResolvePendingChoice(c.ID, c.Chooser, nil); err != nil {
+			t.Fatalf("decline: %v", err)
+		}
+	}
+	for _, id := range offered {
+		if !g.Exile.Contains(id) {
+			t.Errorf("declined card %s left exile", id)
+		}
+		for _, p := range g.Seats {
+			if p.Library.Contains(id) {
+				t.Errorf("declined card %s went to %s's library", id, p.Name)
+			}
+		}
+	}
+	if len(g.Exile.Cards) != len(offered) {
+		t.Errorf("exile holds %d cards, want only the %d declined ones", len(g.Exile.Cards), len(offered))
+	}
+	for _, p := range g.Seats {
+		if g.Exile.Contains(lands[p.ID]) {
+			t.Errorf("%s's passed-over land stayed in exile", p.Name)
+		}
+	}
+}
+
+func pendingMayCasts(g *game.Game) []*game.PendingChoice {
+	var out []*game.PendingChoice
+	for _, c := range g.PendingChoices {
+		if isKeywordCastPrompt(c) {
+			out = append(out, c)
+		}
+	}
+	return out
 }

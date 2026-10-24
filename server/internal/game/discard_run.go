@@ -206,6 +206,13 @@ func (g *Game) discardRunLocked(
 		landedThen = func(g *Game, landed []SeatCards) error {
 			return then(g, PromptedDiscards(landed))
 		}
+	} else if p.Then == nil && p.Validate == nil && p.keyed.key == "" {
+		// #4290: nothing waits on the run and nothing rides the leg, so
+		// each leg is a keyed prompt and holds no closure — Tasigur's
+		// Cruelty, the voting helper's "each opponent discards", and
+		// Momentum Breaker's discard for the seats that could not
+		// sacrifice are restore points while they wait.
+		p.keyedLeg = true
 	}
 	return g.runPromptsLocked(asks, landedThen, func(seat, run uuid.UUID) bool {
 		// CR 701.9a's "as many as you can": a seat with an empty hand

@@ -74,6 +74,7 @@
   import { manaRowNeedsPicker } from "../../manaSource";
   import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
+  import StickerBadge from "./StickerBadge.svelte";
   import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
@@ -1137,6 +1138,7 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <StickerBadge stickers={card.stickers} />
     <!-- #2219: an art tile has no rules text, so it adds the ⚡ / ◆ / ↻
          ability chips after the keywords. A full card prints its own. -->
     <KeywordBadgeRow
@@ -1311,6 +1313,7 @@
       </span>
     {/if}
     <CounterPips counters={card.counters} />
+    <StickerBadge stickers={card.stickers} />
     <KeywordBadgeRow
       abilities={card.abilities}
       chosenColor={card.chosen_color}

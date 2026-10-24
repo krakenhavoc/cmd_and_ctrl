@@ -299,6 +299,23 @@ type Game struct {
 	// is. ADR 0145.
 	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool
 
+	// LoyaltyExtraActivationsThisTurn counts, per PLAYER, the one-turn
+	// grants "for each planeswalker you control, you may activate one
+	// of its loyalty abilities once this turn as though none of its
+	// loyalty abilities have been activated this turn" (The Chain Veil,
+	// #4191). Each is one more activation for every planeswalker that
+	// player controls, now or later this turn. Flushed at the turn
+	// boundary, like ExtraLandDropsThisTurn.
+	// ADR 0145 amendment 2026-10-21; loyalty_limit.go.
+	LoyaltyExtraActivationsThisTurn map[uuid.UUID]int
+
+	// LoyaltyExtraActivationsUsedThisTurn counts, per permanent and then
+	// per player, the grants in LoyaltyExtraActivationsThisTurn that
+	// permanent has spent this turn: an activation made once CR 606.3's
+	// ordinary limit was used up. Keyed, cleared and forgotten exactly
+	// as LoyaltyActivatedThisTurn is.
+	LoyaltyExtraActivationsUsedThisTurn map[uuid.UUID]map[uuid.UUID]int
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped
@@ -879,6 +896,15 @@ type Game struct {
 	// persisted snapshot does not carry it, for enteringTokens' reason.
 	outsideEntering uuid.UUID
 
+	// attractionEntering is the one card of an Attraction deck
+	// (Player.AttractionDeck) the card index may see: the Attraction
+	// being opened, for the span of its entry (CR 701.51b, ADR 0207 §4).
+	// The deck is in no zone the index reaches, and the entry batch
+	// reads the card through it, as outsideEntering's land is read.
+	// uuid.Nil between opens. Clone copies it so an undo across a paused
+	// entry still finds the card; the snapshot does not carry it.
+	attractionEntering uuid.UUID
+
 	// resolving is the stack item whose resolution is in flight, plus
 	// the card it was (CR 608.2n last-known information), held for
 	// exactly one event batch — see resolving_item.go (#920).
@@ -900,10 +926,16 @@ type Game struct {
 	// crossed by, because a resolution-time prompt blocks the table.
 	//
 	// Clone carries it so an undo across that prompt still has the
-	// source; the persisted snapshot drops it, for the reason
-	// enteringTokens is dropped — it is non-empty between actions only
-	// for a resolution paused on a prompt, and that prompt's resume
-	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
+	// source, and since #4270 so does the persisted snapshot
+	// (GameSnapshot.Resolving, plain data). It used to drop it on the
+	// premise that a prompt paused inside a resolution always holds a
+	// resume frame, so no snapshot was ever a restore point while the
+	// slot was set. Keyed prompts (ADR 0127: a pay-unless, a confirm)
+	// carry no frame, and a table waiting on one is a restore point
+	// whose answer can read the slot; Wandering Archaic's "copy that
+	// spell?" reads the spell that had already resolved. A restored slot
+	// is cleared by the same beginEventBatchLocked as a live one, because
+	// eventBatch restores with it.
 	resolving *resolvingItem
 
 	// resolutionOpen says a stack item has begun to resolve and the
@@ -922,6 +954,19 @@ type Game struct {
 	// is zero between actions by construction.
 	resolutionOpen  bool
 	resolutionDepth int
+
+	// carriedCause is the cause a keyed pay-unless's branch runs under
+	// (#4279), set for the length of that one call and nil otherwise.
+	// Never carried across a Clone or a snapshot: it lives inside one
+	// locked call.
+	carriedCause *carriedCause
+
+	// putByEntering counts the PutByEnteringPlayerForEffect scopes open
+	// on the Go stack (#1997): while above zero, an entry is put by the
+	// player it enters under. Zero between actions by construction, like
+	// resolutionDepth; an entry that pauses inside the scope carries the
+	// answer on its own event.
+	putByEntering int
 
 	// pausedModeWalk is the rest of a modal item's chosen bullets,
 	// parked behind a prompt an earlier bullet queued (#2789, CR
@@ -1232,6 +1277,9 @@ func NewGame() *Game {
 	g.BuiltinReplacements = append(g.BuiltinReplacements,
 		commanderZoneReplacement,
 		regenerationShieldReplacement,
+		// ADR 0207, CR 717.6: an Astrotorium-backed card goes to its
+		// owner's junkyard instead of a hand, library or graveyard.
+		astrotoriumJunkyardReplacement,
 		// #662, CR 702.16e. Order in this slice is not precedence —
 		// the protection built-in declares Preemptive, which is what
 		// puts it ahead of every other applicable replacement and
@@ -1353,6 +1401,10 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Companion = nil
 	p.Sideboard = nil
 	p.HasSideboard = false
+	p.AttractionDeck = nil
+	p.Junkyard = nil
+	p.StickerSheetPool = nil
+	p.StickerSheets = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID
@@ -2266,6 +2318,12 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// which is the same boundary every other turn-based action
 		// uses.
 		g.advanceSagasForActiveSeatLocked()
+		// ADR 0207, CR 717.4 / 703.4g: immediately after the lore
+		// counters, a player who controls an Attraction rolls to visit
+		// their Attractions. Same turn-based-action boundary: the visit
+		// triggers it fires are drained onto the stack with the
+		// chapters'.
+		g.rollToVisitForActiveSeatLocked()
 		// S30: announce the precombat main phase so "at the beginning
 		// of your precombat main phase" triggers auto-fire through
 		// the harvester. Same shape as the upkeep and end-step

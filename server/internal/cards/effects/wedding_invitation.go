@@ -23,6 +23,7 @@ func init() {
 		Triggered:    []game.TriggeredAbility{samiDrawOnETB("Wedding Invitation")},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Sacrifice this artifact: Target creature can't be blocked this turn. If it's a Vampire, it also gains lifelink until end of turn",
+			Purpose: ForTargets(CantBeBlockedUntilEOT(0, 0, 0)),
 			Cost:    Plus(TapCost(), SacrificeThis()),
 			Targets: TargetCreature("target creature"),
 			Effect:  weddingInvitationResolve,

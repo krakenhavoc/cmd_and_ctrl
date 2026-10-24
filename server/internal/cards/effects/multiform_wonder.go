@@ -55,15 +55,20 @@ func init() {
 						Question: "Multiform Wonder — +2/-2 or -2/+2 until end of turn?",
 						YesLabel: "+2/-2",
 						NoLabel:  "-2/+2",
-						OnYes: func(ctx *Context) error {
-							return thisGetsUntilEndOfTurn(2, -2, "Multiform Wonder — +2/-2 until end of turn")(ctx.Game, ctx.Item)
-						},
-						OnNo: func(ctx *Context) error {
-							return thisGetsUntilEndOfTurn(-2, 2, "Multiform Wonder — -2/+2 until end of turn")(ctx.Game, ctx.Item)
-						},
+						Then:     multiformWonderPump,
 					}.Apply(NewContext(g, item))
 				},
 			},
 		},
 	})
 }
+
+// multiformWonderPump is Multiform Wonder's choice: +2/-2 on a yes, -2/+2 on
+// a no. Keyed (#4291).
+var multiformWonderPump = MayYesNo("confirm/multiform-wonder-pump",
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		return thisGetsUntilEndOfTurn(2, -2, "Multiform Wonder — +2/-2 until end of turn")(ctx.Game, ctx.Item)
+	},
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		return thisGetsUntilEndOfTurn(-2, 2, "Multiform Wonder — -2/+2 until end of turn")(ctx.Game, ctx.Item)
+	})

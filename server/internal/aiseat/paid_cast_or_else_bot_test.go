@@ -1,26 +1,22 @@
 package aiseat_test
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/google/uuid"
 
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	_ "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // paid_cast_or_else_bot_test.go — #3510 through the real card, the real
 // enumerator and the real heuristic. Chandra, Torch of Defiance's first +1
-// asks a paid_or_else may_cast; the enumerator offers both answers (the
-// decline always legal), the heuristic takes the cast, and the next
-// decision is the paid cast from exile, which the engine accepts.
+// asks a paid_or_else resolution_cast inside its resolution (#4250, CR
+// 608.2g); the enumerator offers the paid cast from exile and the
+// always-legal decline, the heuristic takes the cast, and the engine
+// accepts it.
 //
 // Not behind AISEAT_GAME_TESTS: one resolution, a few decisions.
 
@@ -31,7 +27,8 @@ func TestHeuristicSeatAnswersChandraTorchAndCastsTheExiledCard(t *testing.T) {
 }
 
 // #3521: a better spell in hand wants the same two mana. The exiled card
-// is the one the next pass loses, so it is cast first.
+// is the one the decline loses, and nothing else can be cast while the
+// offer holds the resolution, so it is cast.
 func TestHeuristicSeatTakesThePassClosedCastBeforeSpendingTheManaElsewhere(t *testing.T) {
 	chandraPaidCast(t, 3521, true)
 }
@@ -85,20 +82,18 @@ func chandraPaidCast(t *testing.T, seed uint64, rival bool) {
 		t.Fatal("Chandra's +1 asked nothing")
 	}
 
-	// The prompt is answerable both ways, and the decline is the
-	// always-legal way out.
+	// The prompt is answerable both ways, every move names it, and the
+	// decline is the always-legal way out.
 	moves := legal.EnumerateFor(g, me.ID)
 	var accept, decline bool
 	for _, mv := range moves {
-		if mv.Type != legal.TypeResolveChoice {
-			continue
-		}
-		var p struct {
-			Apply *bool `json:"apply"`
-		}
-		if json.Unmarshal(mv.Params, &p) == nil && p.Apply != nil {
-			accept = accept || *p.Apply
-			decline = decline || !*p.Apply
+		switch {
+		case mv.ResolutionCast == "":
+			t.Errorf("move %q does not answer the paid_or_else offer", mv.Label)
+		case mv.Type == legal.TypeCastSpell && mv.Source == bears:
+			accept = true
+		case mv.Type == legal.TypeResolveChoice && mv.AlwaysLegal:
+			decline = true
 		}
 	}
 	if !accept || !decline {
@@ -106,37 +101,15 @@ func chandraPaidCast(t *testing.T, seed uint64, rival bool) {
 	}
 
 	pol := heuristic.New()
-	if taken := driveChoices(t, g, pol, me.ID, 4); len(taken) != 1 {
+	taken := driveChoices(t, g, pol, me.ID, 4)
+	if len(taken) != 1 {
 		t.Fatalf("answered the prompt with %v", taken)
 	}
-
-	// The next decisions: anything that keeps the window open (a land
-	// drop) is fine, but the bot must cast the Bears before it passes,
-	// because its pass is the "don't".
-	cast := false
-	for step := 0; step < 6 && !cast; step++ {
-		moves = legal.EnumerateFor(g, me.ID)
-		in := aiseat.Input{View: protocol.ViewOfGameFor(g, me.ID.String()), Seat: me.ID, Moves: moves}
-		d, err := pol.Decide(context.Background(), in)
-		if err != nil {
-			t.Fatalf("Decide: %v", err)
-		}
-		if d.Index < 0 || d.Index >= len(moves) {
-			t.Fatalf("decision %d out of range of %d moves", d.Index, len(moves))
-		}
-		mv := moves[d.Index]
-		if mv.Type == legal.TypePassPriority {
-			t.Fatalf("the bot passed with the exiled Bears castable; moves %v", attackLabels(moves))
-		}
-		cast = mv.Type == legal.TypeCastSpell && mv.Source == bears
-		if err := actions.Dispatch(g, actions.Action{
-			Type: actions.Type(mv.Type), Player: mv.Player, Caller: me.ID, Params: mv.Params,
-		}); err != nil {
-			t.Fatalf("the engine refused the enumerated move %q: %v", mv.Label, err)
-		}
+	if !g.Stack.Contains(bears) {
+		t.Fatalf("the bot did not cast the exiled Bears (took %v)", taken)
 	}
-	if !cast {
-		t.Fatal("the bot never cast the exiled Bears")
+	if g.ResolutionPaused() {
+		t.Error("the +1 is still resolving after the cast")
 	}
 	for i := 0; i < 16 && g.Stack.Size() > 0; i++ {
 		if err := g.PassPriority(); err != nil {

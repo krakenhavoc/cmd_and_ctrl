@@ -213,6 +213,10 @@ const runAtProbeOracle = "test-4155-run-at-probe"
 // runAtProbeRan is the players the probe's last step ran for, in order.
 var runAtProbeRan []uuid.UUID
 
+// runAtProbeChosen is the number's keyed branch: it does nothing.
+var runAtProbeChosen = NumberThen("test/run-at-probe-chosen",
+	func(*Context, game.NumberAnswer) error { return nil })
+
 // runAtProbeSteps is "choose a number, then note which player you are": the
 // first step asks the player the occurrence names, the second runs after the
 // answer and reads the occurrence again.
@@ -220,6 +224,7 @@ var runAtProbeSteps = RegisterThenSteps("test/run-at-probe",
 	Instruction(func(ctx *Context) error {
 		return ChooseNumber{
 			Chooser: seatAtOccurrence(ctx), Min: 0, Max: 1, Question: "Run At Probe — how many?", Unit: game.PayAmountCards,
+			Then: runAtProbeChosen,
 		}.Apply(ctx)
 	}),
 	Instruction(func(ctx *Context) error {

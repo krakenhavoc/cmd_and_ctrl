@@ -74,26 +74,7 @@ func hunterSacrifice(g *game.Game, item *game.StackItem) error {
 	}
 	return MayChoice{
 		Question: "High-Society Hunter — sacrifice another creature to put a +1/+1 counter on it?",
-		OnYes: func(ctx *Context) error {
-			// Recomputed after the answer: the board can change while
-			// the question is open.
-			fodder := hunterFodder(ctx.Game, item)
-			if len(fodder) == 0 {
-				return nil
-			}
-			return SacrificeChoice{
-				Player:     item.Controller,
-				Candidates: fodder,
-				Question:   "High-Society Hunter — sacrifice another creature",
-				Then: func(ctx *Context) error {
-					return AddCounter{
-						Target: item.SourceCardID,
-						Kind:   game.CounterPlusOne,
-						N:      1,
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
-		},
+		Then:     hunterAnswer,
 	}.Apply(ctx)
 }
 
@@ -108,3 +89,27 @@ func hunterFodder(g *game.Game, item *game.StackItem) []uuid.UUID {
 	}
 	return out
 }
+
+// hunterAnswer is the "yes": pick another creature to sacrifice, and the
+// counter lands only once it has gone. Keyed (#4291).
+var hunterAnswer = MayYes("confirm/high-society-hunter-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	// Recomputed after the answer: the board can change while the question
+	// is open.
+	fodder := hunterFodder(ctx.Game, item)
+	if len(fodder) == 0 {
+		return nil
+	}
+	return SacrificeChoice{
+		Player:     item.Controller,
+		Candidates: fodder,
+		Question:   "High-Society Hunter — sacrifice another creature",
+		Then: func(ctx *Context) error {
+			return AddCounter{
+				Target: item.SourceCardID,
+				Kind:   game.CounterPlusOne,
+				N:      1,
+			}.Apply(ctx)
+		},
+	}.Apply(ctx)
+})

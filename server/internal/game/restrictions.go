@@ -63,7 +63,7 @@ import "github.com/google/uuid"
 //     (ADR 0080, #1063). A bit cannot carry a cost, and the shape it
 //     wanted was the one this note predicted: an attack-cost pipeline
 //     keyed on the DEFENDING player rather than on the attacker,
-//     consulted by the declaration verbs at CR 508.1a. Nothing about
+//     consulted by the declaration verbs at CR 508.1h. Nothing about
 //     the five bits changed to make room for it.
 //   - "no more than two creatures can attack you each combat"
 //     (Crawlspace) and "no more than one creature can attack each

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -36,15 +34,21 @@ func init() {
 						Pay:       SacrificePayment(1, "creature", "creatures", QueryType("creature")),
 						Opponents: true,
 						Question:  "Desecration Demon — sacrifice a creature to tap it and put a +1/+1 counter on it?",
-						OnPaid: func(ctx *Context, _ uuid.UUID) error {
-							demon := ctx.Item.SourceCardID
-							if err := (TapTarget{Target: demon}).Apply(ctx); err != nil {
-								return err
-							}
-							return AddCounter{Target: demon, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-						},
+						Then:      desecrationDemonTapped,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// desecrationDemonTapped is "if a player does", keyed (#4264).
+var desecrationDemonTapped = AnyPlayerConsequences("any-player/desecration-demon-tap",
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		demon := ctx.Item.SourceCardID
+		if err := (TapTarget{Target: demon}).Apply(ctx); err != nil {
+			return err
+		}
+		return AddCounter{Target: demon, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+	},
+	nil,
+	nil)

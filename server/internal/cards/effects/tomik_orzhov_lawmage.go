@@ -35,6 +35,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: Target creature with a +1/+1 counter on it gains flying until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "flying")),
 			Cost:    TapCost(),
 			Targets: TargetCreature("target creature with a +1/+1 counter on it", tomikHasPlusCounter),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var consulsShieldguardIndestructiblePaid = energyPaid("pay-unless/consuls-shieldguard-indestructible",
+	firstTargetGainsUntilEndOfTurn(0, "Consul's Shieldguard — indestructible until end of turn", "indestructible"))
+
 // Consul's Shieldguard — Creature — Dwarf Soldier {3}{W}, 3/4:
 //
 //	"When this creature enters, you get {E}{E} (two energy counters).
@@ -22,7 +25,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Consul's Shieldguard", 2),
 			anotherAttackerMayPayEnergy("Consul's Shieldguard", "give it indestructible",
-				firstTargetGainsUntilEndOfTurn(0, "Consul's Shieldguard — indestructible until end of turn", "indestructible")),
+				consulsShieldguardIndestructiblePaid),
 		},
 	})
 }

@@ -145,8 +145,9 @@ func TestMizzixsMasteryCopiesAndCastsTheExiledCardForFree(t *testing.T) {
 	}
 }
 
-// Declining the offer — passing priority — ends the copy.
-func TestMizzixsMasteryUncastCopyCeasesWhenThePlayerPasses(t *testing.T) {
+// Declining the offer ends the copy. Passing priority is not a decline:
+// nobody has priority while Mastery resolves (CR 608.2g, #2947).
+func TestMizzixsMasteryUncastCopyCeasesWhenThePlayerDeclines(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	bolt := gyCard(me, "Lightning Bolt", "Instant", "{R}", lightningBoltOracle)
@@ -156,11 +157,12 @@ func TestMizzixsMasteryUncastCopyCeasesWhenThePlayerPasses(t *testing.T) {
 	if n := len(cardCopies(g)); n != 1 {
 		t.Fatalf("%d copies after resolution, want 1 waiting to be cast", n)
 	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
+	if err := g.PassPriority(); err == nil {
+		t.Fatal("a pass went through while Mastery was resolving")
 	}
+	declineResolutionCasts(t, g, me.ID)
 	if n := len(cardCopies(g)); n != 0 {
-		t.Errorf("%d copies after the caster passed, want none (CR 704.5e)", n)
+		t.Errorf("%d copies after the caster declined, want none (CR 704.5e)", n)
 	}
 	if !inExile(g, bolt) {
 		t.Error("the original stays exiled")
@@ -210,7 +212,8 @@ func TestMizzixsMasteryOverloadOffersACopyOfEverythingAtOnce(t *testing.T) {
 	if top := g.Stack.Cards[len(g.Stack.Cards)-1]; top.InstanceID != boltCopy.InstanceID {
 		t.Errorf("the last copy cast is on top of the stack, got %q", top.Name)
 	}
-	// The third copy (Shock) is never cast: passing ends it.
+	// The third copy (Shock) is never cast: declining the rest ends it.
+	declineResolutionCasts(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if n := len(cardCopies(g)); n != 0 {
 		t.Errorf("%d copies left, want none: cast ones resolved, the uncast one ceased", n)

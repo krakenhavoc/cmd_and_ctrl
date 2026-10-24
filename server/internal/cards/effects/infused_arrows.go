@@ -22,6 +22,7 @@ func init() {
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Remove X charge counters from this artifact: Target creature gets -X/-X until end of turn.",
+			Purpose: ForTargets(HarmUntilEOT(0, 0, 0)),
 			Cost:    Plus(TapCost(), RemoveCountersXFromThis(game.CounterCharge, 0)),
 			Targets: TargetCreature("target creature"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

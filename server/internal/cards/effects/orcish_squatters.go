@@ -23,7 +23,7 @@ func init() {
 		Name:         "Orcish Squatters",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			withTargetsFrom(unblockedAttackerMay("Orcish Squatters", "gain control of target land defending player controls",
+			withTargetsFrom(unblockedAttackerMay("Orcish Squatters", "gain control of target land defending player controls", "orcish-squatters-gain-control",
 				func(ctx *Context, target uuid.UUID) error {
 					d, ok := DurationWhileYouControlSource(ctx, ctx.Source(), ctx.Controller())
 					if !ok {

@@ -2,6 +2,9 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var riparianTigerPumpPaid = energyPaid("pay-unless/riparian-tiger-pump",
+	thisGetsUntilEndOfTurn(2, 2, "Riparian Tiger — +2/+2 until end of turn"))
+
 // Riparian Tiger — Creature — Cat {3}{G}{G}, 4/4:
 //
 //	"Trample
@@ -23,7 +26,7 @@ func init() {
 		Purpose:         game.Purpose{Energy: 2},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersYouGetEnergy("Riparian Tiger", 2),
-			whenThisAttacksMayPayEnergy("Riparian Tiger", 2, "have it get +2/+2", thisGetsUntilEndOfTurn(2, 2, "Riparian Tiger — +2/+2 until end of turn")),
+			whenThisAttacksMayPayEnergy("Riparian Tiger", 2, "have it get +2/+2", riparianTigerPumpPaid),
 		},
 	})
 }

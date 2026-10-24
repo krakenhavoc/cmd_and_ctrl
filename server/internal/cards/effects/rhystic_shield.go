@@ -26,10 +26,16 @@ func init() {
 			return AnyPlayerPays{
 				Cost:     "{2}",
 				Question: "Rhystic Shield — pay {2} to stop the additional +0/+2?",
-				OnNobody: func(ctx *Context) error {
-					return BoostUntilEOT{Match: And(Creature(), YouControl()), Toughness: 2, Label: "Rhystic Shield — an additional +0/+2"}.Apply(ctx)
-				},
+				Then:     rhysticShieldExtra,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// rhysticShieldExtra is "if no one does", keyed (#4264).
+var rhysticShieldExtra = AnyPlayerConsequences("any-player/rhystic-shield-extra",
+	nil,
+	func(ctx *Context, _ game.AnyPlayerAnswer) error {
+		return BoostUntilEOT{Match: And(Creature(), YouControl()), Toughness: 2, Label: "Rhystic Shield — an additional +0/+2"}.Apply(ctx)
+	},
+	nil)

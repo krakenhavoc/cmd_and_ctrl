@@ -56,21 +56,26 @@ func falconSacrificeOffer(g *game.Game, item *game.StackItem) error {
 	return MayChoice{
 		Player:   item.Controller,
 		Question: "The Falcon — sacrifice it to return a creature card from your graveyard to the battlefield?",
-		OnYes: func(ctx *Context) error {
-			// "Sacrifice it": a Falcon that left and came back is a new
-			// object, not "it" (CR 400.7).
-			if sourceIsNewObject(ctx.Game, item) {
-				return nil
-			}
-			return ctx.Game.SacrificeThenForEffect(item.SourceCardID, item.SourceCardID, func(g *game.Game, sacrificed bool) error {
-				if !sacrificed {
-					return nil
-				}
-				return ReflexiveTrigger{
-					Label: "The Falcon, Airship Restored — return target creature card from your graveyard to the battlefield",
-					Body:  falconReturnBody,
-				}.Apply(NewContext(g, item))
-			})
-		},
+		Then:     falconAnswer,
 	}.Apply(NewContext(g, item))
 }
+
+// falconAnswer is the "yes": sacrifice The Falcon, then raise the reflexive
+// return once it has gone. Keyed (#4291).
+var falconAnswer = MayYes("confirm/the-falcon-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	item := ctx.Item
+	// "Sacrifice it": a Falcon that left and came back is a new object, not
+	// "it" (CR 400.7).
+	if sourceIsNewObject(ctx.Game, item) {
+		return nil
+	}
+	return ctx.Game.SacrificeThenForEffect(item.SourceCardID, item.SourceCardID, func(g *game.Game, sacrificed bool) error {
+		if !sacrificed {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: "The Falcon, Airship Restored — return target creature card from your graveyard to the battlefield",
+			Body:  falconReturnBody,
+		}.Apply(NewContext(g, item))
+	})
+})

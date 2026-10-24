@@ -245,3 +245,134 @@ func attackLabels(moves []legal.Move) []string {
 	}
 	return out
 }
+
+// botNornsAnnexOracle is Norn's Annex (#4198): {W/P} per attacking
+// creature, so a seat with no white mana pays 2 life per creature.
+const botNornsAnnexOracle = "9a1fbe72-4a17-42be-8e23-d7d30a5e59c1"
+
+// TestTheBotPaysNornsAnnexWithLife is the bot half of #4198. The seat has
+// no lands and no mana, so {W/P} can only be paid with life: the
+// enumerator offers the attack with phyrexian_life 1, the dispatcher
+// accepts it byte for byte, and the seat's life drops by 2.
+func TestTheBotPaysNornsAnnexWithLife(t *testing.T) {
+	g := newSettledTable(t, 31)
+	me, them := g.Seats[0], g.Seats[1]
+	push := func(owner *game.Player, name, typeLine, oracle string, power, tough int) uuid.UUID {
+		c := game.Card{
+			InstanceID: uuid.New(),
+			Name:       name, TypeLine: typeLine, OracleID: oracle,
+			Power: power, Toughness: tough,
+			Owner: owner.ID, Controller: owner.ID,
+		}
+		c.AddKnowersAll(seatIDs(g))
+		g.Battlefield.PushTop(c)
+		return c.InstanceID
+	}
+	attacker := push(me, "Ogre", "Creature — Ogre", "", 4, 4)
+	push(them, "Norn's Annex", "Artifact", botNornsAnnexOracle, 0, 0)
+	advanceToStep(t, g, game.StepDeclareAttackers)
+
+	moves := legal.EnumerateFor(g, me.ID)
+	if n := attackMovesOn(moves, them.ID); n == 0 {
+		t.Fatalf("no attack offered into Norn's Annex though 2 life pays {W/P}: %v", attackLabels(moves))
+	}
+	d, err := heuristic.New().Decide(context.Background(), aiseat.Input{
+		View:  protocol.ViewOfGameFor(g, me.ID.String()),
+		Seat:  me.ID,
+		Moves: moves,
+	})
+	if err != nil {
+		t.Fatalf("policy: %v", err)
+	}
+	pick := moves[d.Index]
+	if pick.Kind != legal.KindAttack {
+		t.Fatalf("a 4/4 into an empty board for 2 life should attack; the policy took %q", pick.Label)
+	}
+	var p struct {
+		PhyrexianLife int `json:"phyrexian_life"`
+	}
+	if err := json.Unmarshal(pick.Params, &p); err != nil || p.PhyrexianLife != 1 {
+		t.Fatalf("the attack params %s claim %d life symbols (%v), want 1", pick.Params, p.PhyrexianLife, err)
+	}
+	before := me.Life
+	if err := actions.Dispatch(g, actions.Action{
+		Type:   actions.Type(pick.Type),
+		Player: pick.Player,
+		Caller: me.ID,
+		Params: pick.Params,
+	}); err != nil {
+		t.Fatalf("the engine refused an enumerated attack: %v", err)
+	}
+	if me.Life != before-2 {
+		t.Errorf("life %d -> %d, want 2 paid", before, me.Life)
+	}
+	var declared bool
+	g.ReadSnapshot(func() {
+		for i := range g.Battlefield.Cards {
+			if c := &g.Battlefield.Cards[i]; c.InstanceID == attacker && c.AttackingTarget == them.ID {
+				declared = true
+			}
+		}
+	})
+	if !declared {
+		t.Error("the attacker was not declared against the taxed seat")
+	}
+}
+
+// TestNornsAnnexBulkDeclarationTakesPhyrexianLifeOffTheWire is the human
+// half of #4198 at the wire: the dock's declare_attackers carries
+// phyrexian_life, two creatures into Norn's Annex cost two symbols, and
+// one is paid with life while the other has no {W} and so is refused
+// until the claim covers it.
+func TestNornsAnnexBulkDeclarationTakesPhyrexianLifeOffTheWire(t *testing.T) {
+	g := newSettledTable(t, 31)
+	me, them := g.Seats[0], g.Seats[1]
+	push := func(owner *game.Player, name, typeLine, oracle string) uuid.UUID {
+		c := game.Card{
+			InstanceID: uuid.New(),
+			Name:       name, TypeLine: typeLine, OracleID: oracle,
+			Power: 2, Toughness: 2,
+			Owner: owner.ID, Controller: owner.ID,
+		}
+		c.AddKnowersAll(seatIDs(g))
+		g.Battlefield.PushTop(c)
+		return c.InstanceID
+	}
+	a := push(me, "Bear A", "Creature — Bear", "")
+	b := push(me, "Bear B", "Creature — Bear", "")
+	push(them, "Norn's Annex", "Artifact", botNornsAnnexOracle)
+	advanceToStep(t, g, game.StepDeclareAttackers)
+
+	send := func(life int) error {
+		body, err := json.Marshal(map[string]any{
+			"attackers": []map[string]string{
+				{"attacker": a.String(), "target": them.ID.String()},
+				{"attacker": b.String(), "target": them.ID.String()},
+			},
+			"auto_tap":       true,
+			"phyrexian_life": life,
+		})
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		return actions.Dispatch(g, actions.Action{
+			Type:   actions.Type("declare_attackers"),
+			Player: me.ID,
+			Caller: me.ID,
+			Params: body,
+		})
+	}
+	before := me.Life
+	if err := send(1); err == nil {
+		t.Fatal("one symbol with life and no {W} for the other should be refused")
+	}
+	if me.Life != before {
+		t.Fatalf("a refused declaration cost %d life", before-me.Life)
+	}
+	if err := send(2); err != nil {
+		t.Fatalf("both symbols with life: %v", err)
+	}
+	if me.Life != before-4 {
+		t.Errorf("life %d -> %d, want 4 paid", before, me.Life)
+	}
+}

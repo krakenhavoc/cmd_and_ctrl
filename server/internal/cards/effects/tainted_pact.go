@@ -36,7 +36,25 @@ func init() {
 			return taintedPactStep(ctx, nil)
 		},
 	})
+	// The names already exiled this way ride the prompt as its word, one per
+	// line, and the card just exiled as its carried ID: the repeat is data on
+	// the prompt, so a table waiting on the question is a restore point
+	// (#4298). Registered in init, because the "no" repeats the step.
+	taintedPactAnswer = MayYesNo("confirm/tainted-pact-take",
+		func(ctx *Context, r game.ConfirmAnswer) error {
+			id := carryAt(r, 0)
+			if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
+				return nil
+			}
+			return ctx.Game.BounceToHandForEffect(id)
+		},
+		func(ctx *Context, r game.ConfirmAnswer) error {
+			return taintedPactStep(ctx, strings.Split(r.Word, "\n"))
+		})
 }
+
+// taintedPactAnswer is the answer to "put that card into your hand?".
+var taintedPactAnswer game.ConfirmThen
 
 // taintedPactStep exiles the next card and asks about it. `seen` is the
 // names of the cards already exiled this way.
@@ -65,24 +83,15 @@ func taintedPactStep(ctx *Context, seen []string) error {
 				}
 			}
 			next := append(append([]string(nil), seen...), name)
-			item := ctx.Item
-			ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
-				Chooser:      player,
-				Source:       ctx.Source(),
-				Question:     "Tainted Pact — put " + name + " into your hand?",
-				AcceptLabel:  "Put it into my hand",
-				DeclineLabel: "Exile the next card",
-				OnAccept: func(g *game.Game) error {
-					if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneExile {
-						return nil
-					}
-					return g.BounceToHandForEffect(id)
-				},
-				OnDecline: func(g *game.Game) error {
-					return taintedPactStep(NewContext(g, item), next)
-				},
-			})
-			return nil
+			return MayChoice{
+				Player:   player,
+				Question: "Tainted Pact — put " + name + " into your hand?",
+				YesLabel: "Put it into my hand",
+				NoLabel:  "Exile the next card",
+				Then:     taintedPactAnswer,
+				Carry:    []uuid.UUID{id},
+				Word:     strings.Join(next, "\n"),
+			}.Apply(ctx)
 		},
 	}.Apply(ctx)
 }

@@ -165,7 +165,7 @@ func TestAGameProducesOneSpendRecord(t *testing.T) {
 	dlog := &spendLog{}
 	logs := &capturingHandler{}
 
-	mgr := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, slog.New(logs))
+	mgr := newManager(t, nil, aiseat.Config{}, slog.New(logs))
 	mgr.SetPolicyFactory(spendFactory{spend: per})
 	mgr.SetDecisionLogger(spendLogger{log: dlog})
 	mgr.StartBots(room, []aiseat.SeatSpec{
@@ -253,7 +253,7 @@ func TestAGameProducesOneSpendRecord(t *testing.T) {
 func TestAFinishedGameStillProducesItsSpendRecord(t *testing.T) {
 	room := newRoom(t, 2, 7352)
 	logs := &capturingHandler{}
-	mgr := aiseat.NewManagerWithConfig(nil, aiseat.Config{}, slog.New(logs))
+	mgr := newManager(t, nil, aiseat.Config{}, slog.New(logs))
 	mgr.SetPolicyFactory(spendFactory{spend: seatSpend(3, 0, 50, 2)})
 	// No decision logger at all: the admin line is the only surface,
 	// and it is the one an operator actually has.
@@ -297,7 +297,7 @@ func TestAFinishedGameStillProducesItsSpendRecord(t *testing.T) {
 func TestATableWithNoModelStillReportsZero(t *testing.T) {
 	room := newRoom(t, 2, 7353)
 	logs := &capturingHandler{}
-	mgr := aiseat.NewManagerWithConfig(nil, aiseat.Config{MinThink: time.Hour}, slog.New(logs))
+	mgr := newManager(t, nil, aiseat.Config{MinThink: time.Hour}, slog.New(logs))
 	mgr.StartBots(room, []aiseat.SeatSpec{
 		{PlayerID: room.Game.Seats[0].ID, Tier: string(aiseat.TierRandom)},
 		{PlayerID: room.Game.Seats[1].ID, Tier: string(aiseat.TierRandom)},

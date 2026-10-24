@@ -29,25 +29,34 @@ func init() {
 			Cost:         ManaCost("{2}{U}"),
 			SorcerySpeed: true,
 			Targets:      Another(TargetCreature("another target creature")),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				model := FirstLegalBattlefieldTarget(ctx)
-				if model == uuid.Nil {
+			// Each sentence waits for the prompt the one before asks (a CR 616 order on the
+			// counter; CR 608.2c, #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					if model := FirstLegalBattlefieldTarget(ctx); model != uuid.Nil {
+						return TapTarget{Target: model}.Apply(ctx)
+					}
 					return nil
-				}
-				if err := (TapTarget{Target: model}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (AddCounter{Target: model, Kind: game.CounterStun, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-				return BecomeCopy{
-					Targets:  []uuid.UUID{ctx.Source()},
-					Of:       model,
-					Duration: CopyWhileOfRemainsTapped,
-					Label:    "Zygon Infiltrator — a copy of that creature while it remains tapped",
-				}.Apply(ctx)
-			},
+				}),
+				Instruction(func(ctx *Context) error {
+					if model := FirstLegalBattlefieldTarget(ctx); model != uuid.Nil {
+						return AddCounter{Target: model, Kind: game.CounterStun, N: 1}.Apply(ctx)
+					}
+					return nil
+				}),
+				Instruction(func(ctx *Context) error {
+					model := FirstLegalBattlefieldTarget(ctx)
+					if model == uuid.Nil {
+						return nil
+					}
+					return BecomeCopy{
+						Targets:  []uuid.UUID{ctx.Source()},
+						Of:       model,
+						Duration: CopyWhileOfRemainsTapped,
+						Label:    "Zygon Infiltrator — a copy of that creature while it remains tapped",
+					}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

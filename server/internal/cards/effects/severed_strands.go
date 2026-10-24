@@ -22,15 +22,18 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		Targets:        TargetCreature("target creature an opponent controls", OpponentControls()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (GainLife{Amount: sacrificedToughness(ctx)}).Apply(ctx); err != nil {
-				return err
-			}
-			legal := ctx.LegalTargets()
-			if len(legal) == 0 || legal[0].Kind != game.TargetCard {
-				return nil
-			}
-			return DestroyTarget{Target: legal[0].ID}.Apply(ctx)
-		},
+		// The destruction waits for a prompt the life gain asks (a CR 616 order; CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return GainLife{Amount: sacrificedToughness(ctx)}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				legal := ctx.LegalTargets()
+				if len(legal) == 0 || legal[0].Kind != game.TargetCard {
+					return nil
+				}
+				return DestroyTarget{Target: legal[0].ID}.Apply(ctx)
+			}),
+		),
 	})
 }

@@ -87,3 +87,32 @@ func putAPlusOneCounterOnEachYouControl(match CardPredicate) Effect {
 		return b13PutCounterOnEach(NewContext(g, item), ids)
 	}
 }
+
+// putCountersOnEachYouControlThat is "put n <kind> counters on each
+// creature you control that's a <type>" (Vault 12: The Necropolis,
+// chapter III): every creature the resolving item's controller
+// controls that `match` admits, as ONE placement of n counters per
+// creature, so a counter replacement applies once and a "one or more
+// counters" watcher sees one placement. The set is read before the
+// first counter goes on, and a creature that left meanwhile is
+// skipped.
+func putCountersOnEachYouControlThat(kind string, n int, match CardPredicate) Effect {
+	return func(g *game.Game, item *game.StackItem) error {
+		var ids []uuid.UUID
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.IsCreature() && c.Controller == item.Controller && match(g, item.Controller, c) {
+				ids = append(ids, c.InstanceID)
+			}
+		}
+		ctx := NewContext(g, item).asGroupMember()
+		for _, id := range ids {
+			if !onBattlefield(g, id) {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: kind, N: n}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}

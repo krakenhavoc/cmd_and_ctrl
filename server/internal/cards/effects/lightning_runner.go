@@ -2,6 +2,15 @@ package effects
 
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
+var lightningRunnerPaid = energyPaid("pay-unless/lightning-runner-untap-and-extra-combat",
+	func(g *game.Game, item *game.StackItem) error {
+		ctx := NewContext(g, item)
+		if err := (UntapAllCreaturesYouControl{}).Apply(ctx); err != nil {
+			return err
+		}
+		return ExtraCombatAfterThisPhase().Apply(ctx)
+	})
+
 // Lightning Runner — Creature — Human Warrior {3}{R}{R}, 2/2:
 //
 //	"Double strike, haste
@@ -34,12 +43,7 @@ func init() {
 					return MayPayEnergy{
 						N:        8,
 						Question: "Lightning Runner — pay eight {E} to untap all creatures you control and get an additional combat phase?",
-						OnPay: func(ctx *Context) error {
-							if err := (UntapAllCreaturesYouControl{}).Apply(ctx); err != nil {
-								return err
-							}
-							return ExtraCombatAfterThisPhase().Apply(ctx)
-						},
+						Then:     lightningRunnerPaid,
 					}.Apply(ctx)
 				}),
 		},

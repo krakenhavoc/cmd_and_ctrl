@@ -91,20 +91,84 @@ type MoveCause struct {
 	Controller uuid.UUID
 
 	// Item is the stack item whose resolution moved the card
-	// (MoveCauseEffect only). Equal to the spell's card ID for a
+	// (MoveCauseEffect), or the spell being cast whose cost moved it
+	// (MoveCauseCost from spellCostCause, #4281; other costs leave it
+	// zero). Equal to the spell's card ID for a
 	// spell, a minted ID for an ability — see StackItem.ID.
 	Item uuid.UUID
+}
+
+// spellCostCause is the cause of a move that pays a cost of the spell
+// being cast (#4281): the caster, and the spell as the item. Delve's and
+// escape's exiles, a pitch and a return name it, so a cast made from
+// inside a resolution is never read as that resolution's effect.
+func spellCostCause(caster, spell uuid.UUID) MoveCause {
+	return MoveCause{Kind: MoveCauseCost, Controller: caster, Item: spell}
 }
 
 // resolutionCauseLocked is the cause of a move made while a stack item
 // is resolving, and the zero MoveCause when nothing is. Caller must
 // hold g.mu.
 func (g *Game) resolutionCauseLocked() MoveCause {
-	if g.resolving == nil || g.resolving.item == nil {
+	if g.carriedCause != nil {
+		return g.carriedCause.MoveCause
+	}
+	// #4279: the slot is stale once the resolution has closed (a
+	// non-blocking pay-unless answered after the table moved on). With
+	// nothing open, nothing is resolving, unless the caller carries a
+	// cause (carriedCause).
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
 		return MoveCause{}
 	}
 	it := g.resolving.item
 	return MoveCause{Kind: MoveCauseEffect, Controller: it.Controller, Item: it.ID}
+}
+
+// carriedCause is a cause a caller hands the engine for one call, with
+// the card that asked (#4279). See Game.carriedCause.
+type carriedCause struct {
+	MoveCause
+	Source uuid.UUID
+}
+
+// withCarriedCauseLocked runs fn with c as the cause of every effect
+// move it makes, in place of the resolving slot. A zero cause runs fn
+// as it was. Caller must hold g.mu.
+func (g *Game) withCarriedCauseLocked(c carriedCause, fn func() error) error {
+	if c.Kind == "" {
+		return fn()
+	}
+	prev := g.carriedCause
+	g.carriedCause = &c
+	defer func() { g.carriedCause = prev }()
+	return fn()
+}
+
+// carriedCauseOfChoice is the cause a prompt was queued under (#4279,
+// #4281): a keyed pay-unless's, or a follow-up prompt a keyed branch
+// queued while it ran under one (QueueChoiceForEffect stamps it). The
+// zero carriedCause, which withCarriedCauseLocked runs as it was, when
+// the prompt carries none. The source is the prompt's own.
+func carriedCauseOfChoice(c *PendingChoice) carriedCause {
+	if c == nil || c.PayCauseController == uuid.Nil {
+		return carriedCause{}
+	}
+	return carriedCause{
+		MoveCause: MoveCause{Kind: MoveCauseEffect, Controller: c.PayCauseController, Item: c.PayCauseItem},
+		Source:    c.Source,
+	}
+}
+
+// resolutionSourceLocked is the card behind resolutionCauseLocked's
+// cause, uuid.Nil when there is none.
+func (g *Game) resolutionSourceLocked() uuid.UUID {
+	if g.carriedCause != nil {
+		return g.carriedCause.Source
+	}
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
+		return uuid.Nil
+	}
+	return g.resolving.item.SourceCardID
 }
 
 // stampCause copies a cause onto an event. A zero cause leaves the

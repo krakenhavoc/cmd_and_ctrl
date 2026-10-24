@@ -53,20 +53,24 @@ func proteusStaffResolve(g *game.Game, item *game.StackItem) error {
 	}
 	run, hit := revealUntil(ctx, player, func(c game.Card) bool { return c.IsCreature() },
 		"Proteus Staff — reveal until a creature card")
-	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-		All:    true,
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-				Chooser:   player,
-				Source:    res.Source,
-				Cards:     res.Rest,
-				From:      game.ZoneLibrary,
-				Placement: game.LibraryPlaceBottom,
-				Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
-			})
-		},
-	}.Apply(ctx)
+	// #1997: "The player puts that card onto the battlefield" (CR
+	// 110.2a), which Arboria reads.
+	return g.PutByEnteringPlayerForEffect(func() error {
+		return PutFromLibraryOntoBattlefield{
+			Player: player,
+			Cards:  run,
+			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:    true,
+			Then: func(g *game.Game, res PutFromLibraryResult) error {
+				return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+					Chooser:   player,
+					Source:    res.Source,
+					Cards:     res.Rest,
+					From:      game.ZoneLibrary,
+					Placement: game.LibraryPlaceBottom,
+					Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
+				})
+			},
+		}.Apply(ctx)
+	})
 }

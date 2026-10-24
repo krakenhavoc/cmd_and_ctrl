@@ -32,21 +32,20 @@ import (
 //
 // THE WALK. Each of those players, in APNAP order, exiles until a
 // nonland card and puts the rest on the bottom in a random order, then
-// is asked whether to cast that card free (ExileUntilCastFreeForEffect,
-// cascade's body). The cast uses the shared stand-in cascade and
-// Tibalt's Trickery use: a free grant taken right after the spell
-// resolves rather than a cast inside its resolution.
+// is asked whether to cast that card free
+// (ExileUntilCastFreeKeepingForEffect, cascade's body with one
+// difference). The cast is made inside the spell's resolution, as
+// cascade's and Tibalt's Trickery's are: a resolution_cast prompt for
+// each player over their card (CR 608.2g, #4250).
 //
-// One difference from the printed card, and the reason for the caveat:
-// a card the player declines (or doesn't cast before passing) goes to
-// the bottom of their library with the rest; printed, it stays in
-// exile. Guffster's Party deck request (#4184).
+// A card the player declines stays in exile as printed; only the rest of
+// the pile goes to the bottom (#4205).
+// Guffster's Party deck request (#4184).
 func init() {
 	Register(Spec{
 		OracleID:     "7ff7af5f-e4e3-40af-8882-756564bfa479",
 		Name:         "Guff Rewrites History",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A card a player chooses not to cast goes to the bottom of their library instead of staying in exile."},
+		Completeness: CompletenessFull,
 		Targets:      guffRewritesHistoryClauses(),
 		OnResolve:    guffRewritesHistoryResolve,
 	})
@@ -99,7 +98,7 @@ func guffRewritesHistoryResolve(item *game.StackItem, ctx *Context) error {
 			if !controlled[p] {
 				continue
 			}
-			if err := g.ExileUntilCastFreeForEffect(p, source, func(c game.Card) bool { return !c.IsLand() }); err != nil {
+			if err := g.ExileUntilCastFreeKeepingForEffect(p, source, func(c game.Card) bool { return !c.IsLand() }); err != nil {
 				return err
 			}
 		}

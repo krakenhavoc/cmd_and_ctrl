@@ -47,7 +47,14 @@ var CatalogOpponentEffectProtections func(key string) []OpponentEffectProtection
 // effectCauseControllerLocked is the controller of the spell or ability
 // currently resolving, or uuid.Nil when none is. Caller must hold g.mu.
 func (g *Game) effectCauseControllerLocked() uuid.UUID {
-	if g.resolving == nil || g.resolving.item == nil {
+	// #4279: a keyed pay-unless's branch answered after its resolution
+	// closed runs under the cause it was queued with.
+	if g.carriedCause != nil {
+		return g.carriedCause.Controller
+	}
+	// #4281: the slot outlives its resolution until play moves on, so it
+	// is read only while one is open, as resolutionCauseLocked reads it.
+	if !g.resolutionOpen || g.resolving == nil || g.resolving.item == nil {
 		return uuid.Nil
 	}
 	return g.resolving.item.Controller

@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -55,22 +53,28 @@ func fabledPassageFetch(g *game.Game, item *game.StackItem) error {
 		Shuffle:       true,
 		TappedOnEntry: true,
 		Reason:        "Fabled Passage — a basic land",
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			// A whiffed or declined search still cost the land; there
-			// is nothing to untap.
-			if len(found) == 0 {
-				return nil
-			}
-			lands := 0
-			for _, c := range g.BattlefieldCardsForEffect() {
-				if c.IsLand() && c.Controller == controller {
-					lands++
-				}
-			}
-			if lands < 4 {
-				return nil
-			}
-			return g.UntapTargetForEffect(found[0])
-		},
+		// #4253 slice 4: a registered tail, so the fetched land's entry
+		// question is a restore point.
+		ThenTail: game.KeyedTail{Ref: fabledPassageUntap, Player: controller},
 	}.Apply(NewContext(g, item))
 }
+
+// fabledPassageUntap is "then if you control four or more lands, untap that
+// land", told the land that was found. An on-disk key.
+var fabledPassageUntap = game.RegisterTail("fabled-passage/untap-that-land", func(g *game.Game, o game.TailOutcome) error {
+	// A whiffed or declined search still cost the land; there
+	// is nothing to untap.
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	lands := 0
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.IsLand() && c.Controller == o.Tail.Player {
+			lands++
+		}
+	}
+	if lands < 4 {
+		return nil
+	}
+	return g.UntapTargetForEffect(o.IDs[0])
+})

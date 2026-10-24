@@ -16,10 +16,12 @@ import (
 
 func TestParseContestant(t *testing.T) {
 	for in, want := range map[string]botarena.SeatSpec{
-		"heuristic":          {Tier: tiers.Heuristic},
-		"random":             {Tier: tiers.Random},
-		"heuristic-baseline": {Tier: tiers.Heuristic, Variant: botarena.VariantBaseline},
-		"heuristic-noplan":   {Tier: tiers.Heuristic, Variant: botarena.VariantNoPlan},
+		"heuristic":             {Tier: tiers.Heuristic},
+		"random":                {Tier: tiers.Random},
+		"heuristic-baseline":    {Tier: tiers.Heuristic, Variant: botarena.VariantBaseline},
+		"heuristic-noplan":      {Tier: tiers.Heuristic, Variant: botarena.VariantNoPlan},
+		"heuristic-notemporary": {Tier: tiers.Heuristic, Variant: botarena.VariantNoTemporary},
+		"heuristic-nogrants":    {Tier: tiers.Heuristic, Variant: botarena.VariantNoGrants},
 	} {
 		got, err := botarena.ParseContestant(in)
 		if err != nil {
@@ -41,7 +43,7 @@ func TestParseContestant(t *testing.T) {
 // heuristic-baseline is an ARENA name, not a tier: tiers.Parse, which
 // the lobby and GET /bot/options read, must not know it.
 func TestBaselineIsNotATier(t *testing.T) {
-	for _, name := range []string{botarena.BaselineContestant, botarena.NoPlanContestant} {
+	for _, name := range []string{botarena.BaselineContestant, botarena.NoPlanContestant, botarena.NoTemporaryContestant, botarena.NoGrantsContestant} {
 		if _, err := tiers.Parse(name); err == nil {
 			t.Fatalf("tiers.Parse accepts %q; it would be offered in the lobby", name)
 		}

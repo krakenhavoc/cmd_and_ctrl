@@ -53,7 +53,7 @@ func elderDragonWarRummage(g *game.Game, item *game.StackItem) error {
 	}
 	return b39MayDiscardThenDraw(hand, false,
 		"The Elder Dragon War — discard any number of cards, then draw that many",
-		func(discarded int) int { return discarded })(ctx)
+		drawAsManyAsDiscarded)(ctx)
 }
 
 // elderDragonWarDragon is chapter III.

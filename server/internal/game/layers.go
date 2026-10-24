@@ -195,6 +195,27 @@ type StaticAbility struct {
 	// See ContinuousEffect.ContinuesAfterRemoval; ADR 0067 §2.
 	ContinuesAfterRemoval bool
 
+	// ReadsAbilities declares a layer-6 static whose AppliesTo (or
+	// Apply) reads the abilities of the objects it looks at — Sephara,
+	// Sky's Blade's "Other creatures you control with flying have
+	// indestructible", Kwende, Pride of Femeref's "Creatures you control
+	// with first strike have double strike". Flying and first strike are
+	// themselves added and removed in layer 6, so such a grant depends
+	// on every effect in the bucket that would add or remove the
+	// ability it reads (CR 613.8a), and waits for them whatever the
+	// timestamps (CR 613.8b).
+	//
+	// The engine finds WHICH effects it depends on by ADR 0067's trial
+	// application, run for this static's rows only (ADR 0067 amendment
+	// of 2026-10-23, layer_dependency.go). The declaration says only
+	// that the trial is worth running: a layer-6 effect that reads no
+	// ability can't depend on another in that layer, and the bucket
+	// holds every lord, Equipment and grant on the board, so the trial is
+	// not paid for anything that does not declare this. effects.Register
+	// refuses it outside layer 6 and beside a removal or a borrow, and
+	// a granted bundle can't carry it (GrantedStaticProblem).
+	ReadsAbilities bool
+
 	// StartsAtCounters declares a static whose effect begins when its
 	// SOURCE gets its Nth counter of a kind — Idol of False Gods' "As
 	// long as this artifact has eight or more +1/+1 counters on it" —
@@ -489,23 +510,13 @@ type StaticAbility struct {
 	// and never read by the layer pass.
 	Label string
 
-	// Keywords names the keyword abilities this row IS, when it is
-	// one: the self-only layer-6 static the effects package
-	// synthesises from Spec.PrintedKeywords carries them here. The
-	// tile's keyword chips already show those, so AbilityRowsOf
+	// Keywords names the keyword abilities this row IS, when it is one: a
+	// station card's "{N+} | Flying" line (effects.ThresholdKeywords).
+	// The tile's keyword chips already show those, so AbilityRowsOf
 	// leaves such a row out rather than counting it twice (#2219).
-	// Catalog data; not persisted and never read by the layer pass.
+	// Printed keywords are not a row at all (#4236). Catalog data; not
+	// persisted and never read by the layer pass.
 	Keywords []string
-
-	// PrintedKeywordRow marks that synthesised row and no other. It is
-	// engine-owned: effects.buildDef sets it on the row it makes from
-	// Spec.PrintedKeywords and clears it on every row a card file
-	// wrote. The row applies the object's own printed keywords to the
-	// object itself and reads nothing else, so changing the object
-	// cannot change what it does to any other; the trigger-order
-	// independence check does not count it as a rule the object
-	// shapes (defBearsRules, #3013). Catalog data; not persisted.
-	PrintedKeywordRow bool
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter
@@ -637,6 +648,9 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// its own CR 613.7c timestamp. One more source list into the same
 	// gather; see keyword_counters.go.
 	out = append(out, g.keywordCounterEffectsLocked()...)
+	// ADR 0208 / CR 123.6-123.8: stickers, each in its layer at its
+	// CR 613.7k timestamp. One more source list; see sticker.go.
+	out = append(out, g.stickerContinuousEffectsLocked()...)
 	// CR 701.60c (#2698): a suspected permanent has menace and can't
 	// block. One more source list into the same gather; see suspect.go.
 	out = append(out, g.suspectContinuousEffectsLocked()...)

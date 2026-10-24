@@ -181,6 +181,14 @@ type GameView struct {
 	// are announced as the effect is made. Battlefield statics that say
 	// the same (Pariah) are not listed.
 	DamageRedirections []string `json:"damage_redirections,omitempty"`
+	// AttackDirections is one row per live "each player may attack only
+	// the nearest opponent in the chosen direction and planeswalkers
+	// controlled by that opponent" rule (ADR 0206, #4211): a Pramikon,
+	// Sky Rampart that chose, or Teyo, Geometric Tactician's −2 until
+	// its controller's next turn. The table shows each as a chip beside
+	// the turn line. Public and identical for every viewer; omitted when
+	// no such rule is in force, which is nearly always.
+	AttackDirections []AttackDirectionView `json:"attack_directions,omitempty"`
 	// GraveyardTargetBans is one line per live static that stops cards
 	// in graveyards being targeted (ADR 0109 §6, #1885; CR 601.2c),
 	// worded for the graveyard viewer's banner: the printed clause and
@@ -1144,6 +1152,15 @@ type LegalTargetsView struct {
 	// answers themselves.
 	ChosenFor string `json:"chosen_for,omitempty"`
 
+	// Harmful is, on a pick_target prompt, the clause's declared harm
+	// (game.PendingChoice.PickTargetHarmful, #4249): what the effect does
+	// to the permanent picked is bad for its controller, as The Abyss's
+	// destroy is. A bot that must pick one of its own gives up the least
+	// valuable. On a cast-path clause view (legal_targets, clauses,
+	// #4314) it is the clause's own flag, which a bot reads to price a
+	// pick of its own permanent by what losing it costs. Absent otherwise.
+	Harmful bool `json:"harmful,omitempty"`
+
 	// Different is the clause's rule over the chosen SET (#1559, CR
 	// 601.2c): no two picks may share a key — "that each have a
 	// different mana value", "controlled by different players". The
@@ -1982,14 +1999,15 @@ type TapCostView struct {
 // what it does, how many cards it takes, and which cards could pay it
 // right now.
 type PayCardsView struct {
-	// Action is "discard", "sacrifice" or "exile_graveyard" (ADR 0187
-	// §3).
+	// Action is "discard", "sacrifice", "exile_graveyard" (ADR 0187
+	// §3) or "tap" (#1997: tap untapped permanents you control).
 	Action string `json:"action"`
 	// Count is exactly how many of Options one payment names.
 	Count int `json:"count"`
 	// Options are the instance IDs that could pay: the chooser's hand
 	// for a discard, the permanents of the clause's kind they control
 	// for a sacrifice (in the payment order "Choose for me" uses), the
+	// untapped ones of the clause's kind they control for a tap, the
 	// chooser's own graveyard for an exile_graveyard. Only a discard's
 	// are withheld from the other seats: a sacrifice's and a
 	// graveyard's are public. Present-and-empty when there is nothing
@@ -2668,6 +2686,23 @@ type PlayerView struct {
 	// PUBLIC, the way a hand's size is; absent for a seat with none.
 	SideboardCount int `json:"sideboard_count,omitempty"`
 
+	// AttractionDeckCount is how many cards are in this seat's
+	// Attraction deck (CR 717.2, ADR 0207 §6). PUBLIC, the way a
+	// library's size is; the cards are face down and nobody sees them.
+	// Absent for a seat with none.
+	AttractionDeckCount int `json:"attraction_deck_count,omitempty"`
+
+	// Junkyard is this seat's junkyard (CR 717.6a): its Astrotorium-
+	// backed cards the rules put into the command zone, face up. PUBLIC
+	// and unredacted, like emblems. Absent for a seat with none.
+	Junkyard []CardView `json:"junkyard,omitempty"`
+
+	// StickerSheets are the three sticker sheets this seat plays with
+	// (CR 103.2d, ADR 0208 §6). PUBLIC: they "remain revealed" (CR
+	// 123.2c). Each sticker says whether it is on an object now, and so
+	// can't be put on another (CR 123.3). Absent for a seat with none.
+	StickerSheets []StickerSheetView `json:"sticker_sheets,omitempty"`
+
 	// OutsidePlay is the seat's live "you may play a card you own from
 	// outside the game this turn" right (Wish, #3955): present while it
 	// is held and unspent. OWNER-ONLY, like the sideboard. The card is
@@ -2749,6 +2784,18 @@ type PlayerView struct {
 	// is set, `cant_play_lands` carries the same clause too, because
 	// the ban refuses every land out of the hand.
 	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
+
+	// IgnorableEffects are the CR 116.2d special actions this player may
+	// take right now: a static ability that bears on them and that they
+	// may ignore until end of turn by sacrificing a permanent (Damping
+	// Engine, #1986). Each is a button on the seat's own panel that asks
+	// which permanent to give up and sends `special_action
+	// {kind: "ignore_effect", card_id: source_id, sacrifice_id}`. The
+	// seat's own (and the controller's, while they play it), like the
+	// companion's row: another seat's frame drops it, since the list of
+	// permanents it would pay with is nobody else's to read. Empty for
+	// almost every seat in almost every game.
+	IgnorableEffects []IgnorableEffectView `json:"ignorable_effects,omitempty"`
 
 	// HandRevealed names why this player plays with their hand revealed
 	// right now ("Telepathy", "Stromgald Spy"), or is empty (ADR 0199,
@@ -2991,6 +3038,15 @@ type CardView struct {
 	// outside the game or after it has come into the game. Public: the
 	// card was revealed to the table. The client's "Companion" badge.
 	IsCompanion bool `json:"is_companion,omitempty"`
+	// AttractionLights are the numbers lit up on an Attraction (CR
+	// 717.1, ADR 0207 §6): a die result that matches one visits it.
+	// Printing data, so redacted with the rest of a hidden card's
+	// identity. Absent on every other card.
+	AttractionLights []int `json:"attraction_lights,omitempty"`
+	// Stickers are the stickers on this object (CR 123, ADR 0208 §6), in
+	// the order they were put on. Public on a public object, redacted
+	// with the rest of a hidden card's identity. Absent when it has none.
+	Stickers []StickerView `json:"stickers,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -5444,7 +5500,7 @@ type AttackTargetView struct {
 	ID   string `json:"id"`
 
 	// Tax is what ONE creature pays to attack this target under
-	// CR 508.1a — "{2}" against a seat with Propaganda out, "{2}{2}"
+	// CR 508.1h — "{2}" against a seat with Propaganda out, "{2}{2}"
 	// against one with Propaganda and Ghostly Prison, "" when
 	// attacking it is free. ADR 0080 (#1063).
 	//
@@ -5462,6 +5518,26 @@ type AttackTargetView struct {
 	// IS per creature — is the honest reading for a client that needs
 	// one. The field would go then, rather than grow a caveat.
 	Tax string `json:"tax,omitempty"`
+
+	// TaxPhyrexian is how many symbols in ONE creature's `tax` carry
+	// CR 107.4f's "or 2 life" option — 1 for Norn's Annex's {W/P}. A
+	// declaration of n attackers at this target prints n times as many
+	// (the tax is concatenated once per attacker), and the attack dock
+	// offers a stepper bounded by that count and by the attacker's life
+	// total, sent as `phyrexian_life` on declare_attackers (#4198).
+	//
+	// Shipped as a count for the reason `phyrexian_symbols` is on a
+	// card: a client that read the `tax` string for it would be a
+	// second parser of the mana-cost syntax. Counted as the active seat
+	// will pay it, so a symbol K'rrik makes payable with life is in it
+	// and in TaxPhyrexianGranted.
+	TaxPhyrexian int `json:"tax_phyrexian,omitempty"`
+	// TaxPhyrexianGranted is how many of `tax_phyrexian` are payable
+	// with life only because the active seat controls a life-for-mana
+	// grant (ADR 0131), not because the tax prints a Phyrexian symbol.
+	// The dock asks about the printed ones up front and the granted
+	// ones only once the tax is refused, as a cast does.
+	TaxPhyrexianGranted int `json:"tax_phyrexian_granted,omitempty"`
 
 	// AttackLimit is how many MORE creatures may be declared attacking
 	// this target this combat under a CR 508.1c count limit — Silent
@@ -5562,6 +5638,7 @@ func ViewOfGame(g *game.Game) GameView {
 			DamageShields:         g.DamageShieldLabels(),
 			DamageMultipliers:     g.DamageMultiplierLines(),
 			DamageRedirections:    g.DamageRedirectionLines(),
+			AttackDirections:      viewOfAttackDirections(g.AttackDirectionsInForceForView()),
 			GraveyardTargetBans:   graveyardTargetBanLines(g),
 			DiscardPending:        viewOfDiscardPending(g.DiscardPending),
 			PendingChoices:        viewOfPendingChoices(g),
@@ -5838,7 +5915,7 @@ func capOnePlayersMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 	for _, m := range moves {
 		// ADR 0166: a forced play's ways are the whole of the decision
 		// its prompt shows, so none of them is an alternative to fold.
-		if m.ControlledPlay != "" {
+		if m.ControlledPlay != "" || m.ResolutionCast != "" {
 			out = append(out, m)
 			continue
 		}
@@ -7629,7 +7706,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -8946,6 +9023,7 @@ func stampCombatTargets(g *game.Game, view *GameView) {
 				Attacker: probe,
 				Target:   t.ID,
 			}}).Cost
+			row.TaxPhyrexian, row.TaxPhyrexianGranted = phyrexianSymbolsIn(g, active.ID, row.Tax)
 		}
 		// #1533: the CR 508.1c room left under any attack limit.
 		if room, limited := g.AttackLimitRoomForEffect(t.ID); limited {
@@ -9037,7 +9115,7 @@ func stampDefenderRefusals(g *game.Game, view *ZoneView) {
 		for _, r := range g.DefenderRefusalsForEffect(card) {
 			view.Cards[i].AttackTargetRestrictions = append(view.Cards[i].AttackTargetRestrictions, AttackTargetRestrictionView{
 				Player:        r.Player.String(),
-				Planeswalkers: true,
+				Planeswalkers: !r.PlayerOnly,
 				Source:        r.Restriction.SourceName,
 				Unless:        game.PermanentQueriesNoun(r.Restriction.DefenderMustControl),
 				Reason:        r.Why,
@@ -9382,6 +9460,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 			v.Eligible = cardIDStrings(c.DiscardOptions)
 		}
+		// #2947: a resolution_cast shows the copies still on offer,
+		// which sit face up in exile or a graveyard.
+		if c.Kind == game.PendingChoiceResolutionCast {
+			for _, id := range c.DiscardOptions {
+				if card, _, ok := g.ResolutionCastCandidateLocked(c.Chooser, id); ok {
+					v.Options = append(v.Options, viewOfCard(card))
+					v.Eligible = append(v.Eligible, id.String())
+				}
+			}
+		}
 		// For discard_from_hand, inline the source player's hand
 		// as Options. Per-viewer redaction in FilterViewFor
 		// projects the cards through isKnower — the Thoughtseize
@@ -9560,6 +9648,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if c.MayCastCard != uuid.Nil {
 				v.MayCastCard = c.MayCastCard.String()
 			}
+		}
+		// #4243: cascade's and discover's cast is a resolution_cast, worded
+		// the way their may_cast was: the keyword and the two branches.
+		if c.Kind == game.PendingChoiceResolutionCast {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.MayCastKeyword = c.MayCastKeyword
 		}
 		// PendingChoiceLoopShortcut — the CR 732 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the
@@ -9787,6 +9882,17 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// what the Locked suffix means.
 		if c.Kind == game.PendingChoiceCardName {
 			v.NameOptions = g.PublicCardNamesLocked()
+			// #1997: a prompt that refuses a basic land card's name
+			// (Null Chamber) does not suggest one.
+			if c.NotBasicLandName {
+				kept := v.NameOptions[:0]
+				for _, n := range v.NameOptions {
+					if !game.IsBasicLandCardName(n) {
+						kept = append(kept, n)
+					}
+				}
+				v.NameOptions = kept
+			}
 		}
 		// ADR 0198: a pick from the card database as the chooser's
 		// collection. The suggestions are plain names on the choice; the
@@ -9862,6 +9968,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			if c.PickTargetFor != uuid.Nil {
 				pt.ChosenFor = c.PickTargetFor.String()
 			}
+			pt.Harmful = c.PickTargetHarmful
 			v.PickTarget = pt
 		}
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each
@@ -10180,6 +10287,11 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 	for _, c := range p.SideboardCards() {
 		sideboard = append(sideboard, viewOfCard(c))
 	}
+	// ADR 0207 §6: the Attraction deck's size and the junkyard, public.
+	var junkyard []CardView
+	for _, c := range p.JunkyardCards() {
+		junkyard = append(junkyard, viewOfCard(c))
+	}
 	pv := PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
@@ -10229,11 +10341,15 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		Companion:           companion,
 		Sideboard:           sideboard,
 		SideboardCount:      len(sideboard),
+		AttractionDeckCount: len(p.AttractionDeckCards()),
+		Junkyard:            junkyard,
+		StickerSheets:       viewOfStickerSheets(g, p),
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
 		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
+		IgnorableEffects:    viewOfIgnorableEffects(g, p.ID),
 		HandRevealed:        g.HandRevealedLocked(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
@@ -10351,6 +10467,39 @@ func cloneStringIntMap(in map[string]int) map[string]int {
 	out := make(map[string]int, len(in))
 	for k, v := range in {
 		out[k] = v
+	}
+	return out
+}
+
+// AttackDirectionView is one attack-direction rule in force (ADR 0206,
+// #4211).
+type AttackDirectionView struct {
+	// Direction is "left" (the next player in turn order) or "right"
+	// (the previous one).
+	Direction string `json:"direction"`
+	// Source names what said so: "Pramikon, Sky Rampart".
+	Source string `json:"source,omitempty"`
+	// Nearest maps a player ID to the opponent that rule lets them
+	// attack (the nearest opponent that way). A player with no
+	// opponent that way has no entry.
+	Nearest map[string]string `json:"nearest,omitempty"`
+}
+
+// viewOfAttackDirections projects the rules in force to wire format.
+func viewOfAttackDirections(in []game.AttackDirectionInForce) []AttackDirectionView {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]AttackDirectionView, 0, len(in))
+	for _, r := range in {
+		v := AttackDirectionView{Direction: string(r.Direction), Source: r.SourceName}
+		if len(r.Nearest) > 0 {
+			v.Nearest = make(map[string]string, len(r.Nearest))
+			for from, to := range r.Nearest {
+				v.Nearest[from.String()] = to.String()
+			}
+		}
+		out = append(out, v)
 	}
 	return out
 }
@@ -10616,6 +10765,11 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
+		// #1986: the ignore buttons are the seat's own (or its
+		// controller's), as the companion's {3} row is.
+		if viewerID != "" && p.ID != viewerID && !slices.Contains(playingFor, p.ID) {
+			out.IgnorableEffects = nil
+		}
 		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
 			out.TriggerOrder = ""
@@ -10773,6 +10927,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		DamageShields:         v.DamageShields,
 		DamageMultipliers:     v.DamageMultipliers,
 		DamageRedirections:    v.DamageRedirections,
+		AttackDirections:      v.AttackDirections,
 		GraveyardTargetBans:   v.GraveyardTargetBans,
 		DiscardPending:        v.DiscardPending,
 		PendingChoices:        filterPendingChoices(v.PendingChoices, isKnower, viewerID),
@@ -10961,6 +11116,18 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			}
 			out[i].AcceptLabel = ""
 			out[i].DeclineLabel = ""
+			// #4301: a private choose_cards pick (the London mulligan's
+			// bottom pick, ADR 0168) is a pick over the chooser's hand: its
+			// candidates and bounds go with its words, as a choose_cards
+			// pick's do below. This branch continues before that one, so
+			// the cards were reaching every seat.
+			if c.Kind == string(game.PendingChoiceChooseCards) {
+				out[i].Options = nil
+				out[i].ChooseMin = 0
+				out[i].ChooseMax = 0
+				out[i].ChooseDestination = ""
+				out[i].ChooseSuggested = nil
+			}
 			continue
 		}
 		// choose_cards candidates are usually cards in a hand. The
@@ -11403,6 +11570,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Counters = nil
 	out.IsCommander = false
 	out.IsCompanion = false
+	out.AttractionLights = nil
+	out.Stickers = nil
 	out.ManaCost = ""
 	out.Abilities = nil
 	// #3898: a block refusal's sentence names the card, and a minimum
@@ -11891,6 +12060,10 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		Counters:      counters,
 		IsCommander:   c.IsCommander,
 		IsCompanion:   c.IsCompanion,
+		// ADR 0207: printed, like the name.
+		AttractionLights: append([]int(nil), c.AttractionLights...),
+		// ADR 0208: what is stuck on it, public like its name.
+		Stickers: viewOfStickers(c),
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the
@@ -13145,7 +13318,7 @@ func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarget
 	// (Nova Pentacle, #2055) or the engine draws at random (Goblin Test
 	// Pilot, #4051) is one the client's walk skips. Without them the
 	// picker opened and the announcement it sent was refused.
-	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}

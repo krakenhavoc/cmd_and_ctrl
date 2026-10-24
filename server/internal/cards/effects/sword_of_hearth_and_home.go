@@ -25,7 +25,7 @@ import (
 // blinked, Warhound first would read the lands before the new basic
 // arrived (its intervening-if, CR 603.4, sees one land too few), and
 // land first would leave a landfall creature entering alongside it
-// blind to it. Game.PutOntoBattlefieldTogetherThenForEffect takes the
+// blind to it. Game.PutOntoBattlefieldTogetherKeyedForEffect takes the
 // two cards from their two zones as one simultaneous entry
 // (server/internal/game/entry_batch.go).
 //
@@ -98,12 +98,18 @@ func swordOfHearthAndHomeResolve(g *game.Game, item *game.StackItem) error {
 			// printed after the put, and runs from its continuation.
 			ToTop:  true,
 			Reason: "Sword of Hearth and Home — search for a basic land card",
-			Then: func(g *game.Game, found []uuid.UUID) error {
-				return swordOfHearthAndHomePutBoth(g, you, exiled, found)
-			},
+			// #4253 slice 4: the exiled card rides the tail.
+			ThenTail: game.KeyedTail{Ref: swordOfHearthAndHomePutBothTail, Player: you, Source: source, Carry: exiled},
 		})
 	})
 }
+
+// swordOfHearthAndHomePutBothTail runs swordOfHearthAndHomePutBoth: the
+// exiled cards ride Tail.Carry and the found land is the outcome. An
+// on-disk key.
+var swordOfHearthAndHomePutBothTail = game.RegisterTail("sword-of-hearth-and-home/put-both", func(g *game.Game, o game.TailOutcome) error {
+	return swordOfHearthAndHomePutBoth(g, o.Tail.Player, o.Tail.Carry, o.IDs)
+})
 
 // swordOfHearthAndHomePutBoth is "put both cards onto the battlefield
 // under your control, then shuffle": one simultaneous entry of the
@@ -123,11 +129,18 @@ func swordOfHearthAndHomePutBoth(g *game.Game, you uuid.UUID, exiled, found []uu
 		}
 		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneLibrary})
 	}
-	shuffle := func(g *game.Game, _ []uuid.UUID) error {
+	if len(entries) == 0 {
 		return g.ShuffleLibraryForEffect(you)
 	}
-	if len(entries) == 0 {
-		return shuffle(g, nil)
-	}
-	return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: you}, shuffle)
+	// The shuffle is a registered tail (#4253 slice 3), so a card of the
+	// entry that stops to ask (a Clone's copy) is a restore point.
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: you},
+		game.KeyedTail{Ref: swordOfHearthAndHomeShuffle, Player: you})
 }
+
+// swordOfHearthAndHomeShuffle is "then shuffle", once the entry is done.
+// An on-disk key: never renamed, never reused.
+var swordOfHearthAndHomeShuffle = game.RegisterTail("sword-of-hearth-and-home/shuffle",
+	func(g *game.Game, o game.TailOutcome) error {
+		return g.ShuffleLibraryForEffect(o.Tail.Player)
+	})

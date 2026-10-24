@@ -19,16 +19,15 @@ func init() {
 		Name:         "Hexhaven Battalion",
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Tokens: 3},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{
-				Controller: item.Controller,
-				Template:   TokenCard("2/2 colorless Wizard Soldier named Cadet"),
-				N:          3,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return EmpowerJace{N: 2}.Apply(ctx)
-		},
+		// Empower Jace waits for a prompt the tokens' creation asks (a CR 616 order; CR 608.2c,
+		// #4155).
+		OnResolve: ResolveSteps(
+			CreateToken{
+				Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"),
+				N:        3,
+			},
+			EmpowerJace{N: 2},
+		),
 		Activated: []ActivatedAbility{BasicLandcycling("{2}")},
 	})
 }

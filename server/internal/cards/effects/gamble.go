@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -36,15 +34,13 @@ func init() {
 				Limit:   1,
 				Shuffle: true,
 				Reason:  "Gamble — search your library for a card",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					// "THEN discard a card at random." The discard has
-					// to be chained: since S22 the search returns while
-					// its prompt is open, and discarding before the
-					// tutored card is in hand would take the random
-					// card from the wrong hand — which is precisely
-					// the joke the card is built on.
-					return g.DiscardRandomForEffect(controller, 1)
-				},
+				// "THEN discard a card at random." The discard has
+				// to be chained: since S22 the search returns while
+				// its prompt is open, and discarding before the
+				// tutored card is in hand would take the random
+				// card from the wrong hand — which is precisely
+				// the joke the card is built on.
+				ThenTail: game.KeyedTail{Ref: thenDiscardAtRandom, Player: controller, N: 1},
 			}.Apply(ctx)
 		},
 	})

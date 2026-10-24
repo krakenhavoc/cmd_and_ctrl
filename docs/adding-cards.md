@@ -39,6 +39,8 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Spells you control can't be countered" (ADR 0106, #1806)](#spells-you-control-cant-be-countered-adr-0106-1806)
   - ["If a spell or ability you control would counter a spell, instead …" (ADR 0113 amendment 2026-10-19, #4056)](#if-a-spell-or-ability-you-control-would-counter-a-spell-instead--adr-0113-amendment-2026-10-19-4056)
   - ["Play with their hands revealed" (ADR 0199, #3953)](#play-with-their-hands-revealed-adr-0199-3953)
+  - [Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)](#six-small-shapes-from-the-world-enchantments-adr-0109-amendment-2026-10-23-1997)
+  - [Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)](#who-put-it-that-players-choice-and-two-chosen-names-adr-0109-amendment-2026-10-23-second-part-1997)
   - ["Can't draw more than one card each turn" (#3927, CR 121.2b)](#cant-draw-more-than-one-card-each-turn-3927-cr-1212b)
   - [Attaching, and an ability whose source has gone (#812)](#attaching-and-an-ability-whose-source-has-gone-812)
   - [Adding a block-rule card (S37+, #750)](#adding-a-block-rule-card-s37-750)
@@ -88,6 +90,10 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Blitz (CR 702.152, #3772)](#blitz-cr-702152-3772)
   - [Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)](#attacking-statics-tokens-that-enter-attacking-or-blocking-magecraft-copies-and-damage-by-toughness-3172)
   - ["Activate only … before attackers are declared", forced attacks, and "remains tapped" from activation (#4062, #4061, #4052)](#activate-only--before-attackers-are-declared-forced-attacks-and-remains-tapped-from-activation-4062-4061-4052)
+  - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
+  - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
+  - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
+  - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -896,8 +902,19 @@ The colour clause is stamped on the cast's price and folded like an
 ability's; the source clause is read from the cast's spend context by the
 pool and by the auto-tapper's planner. A spell's clause is the "on X" form
 only, and `Register` refuses it beside delve or convoke / waterbend.
-Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
-2026-10-03 and 2026-10-07 amendments.
+Two more shapes (#2575, ADR 0040's 2026-10-22 amendment):
+
+```go
+SpendOnly: SpellSpendOnlyColoredOnXOneOfEach(), // Emblazoned Golem: "Spend only colored mana on X. No more than one mana of each color …"
+AlternativeCosts: []game.AlternativeCost{{Key: "security-rhox", ManaCost: "{R}{G}",
+	SpendOnlySources: SpendOnlyManaFromTreasures}}, // Security Rhox: "…produced by Treasures to cast it this way"
+```
+
+The one-of-each-colour cap is paid as an exact {W}{U}… for a subset of the
+colours, which the engine chooses by what the caster can pay. A source clause
+on an alternative cost restricts only a cast that claims that cost, and
+`Register` refuses it beside a card-wide `SpendOnlySources`. See ADR 0040's
+2026-10-03, 2026-10-07 and 2026-10-22 amendments.
 
 **Counts have a ceiling (#3040).** The engine pins counters, power and
 toughness at `game.MaxCount` (2^30) and a single production's mana at
@@ -1019,6 +1036,7 @@ func init() {
 - Keyword grant — `c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)`, which dedupes a redundant keyword and keeps every instance of a cumulative one (toxic, #748)
 - CDA P/T — `c.Power = computed; c.Toughness = computed + 1`
 - Keyword lockout ("lose X and can't have or gain X", the Archetypes) — not a hand-written removal, which a later grant undoes (CR 613.7). Use `effects.LoseAndCantHave(applies, "x")`, or `LoseAndCantHaveUntilEOT` for a resolving ability (Arcane Lighthouse). The engine strips the keyword after the whole layer-6 bucket (ADR 0038, amendment of 2026-09-28)
+- A grant that reads a keyword ("Other creatures you control with flying have indestructible", Sephara; "Creatures you control with first strike have double strike", Kwende) — use `effects.WithKeywordHave(scope, "flying", label, "indestructible")`. It declares `ReadsAbilities`, so the engine applies the grant after every layer-6 effect that would add or remove the keyword it reads, whatever the timestamps (CR 613.8b; ADR 0067, amendment of 2026-10-23). A layer-6 static whose `AppliesTo` reads `HasKeyword` without that declaration is applied in timestamp order and misses a creature that gains the keyword later. A layer-7c anthem over "creatures with flying" (Empyrean Eagle) needs nothing: layer 6 is over by then
 
 **Tests** — see [anthem_test.go](../server/internal/cards/effects/anthem_test.go) and [tarmogoyf_test.go](../server/internal/cards/effects/tarmogoyf_test.go) for the layer-aware pattern. Use `pushBattlefieldCardWithTimestamp` (fires `EventZoneMove` so the listener stamps `EnteredBattlefieldAt` + bumps `layerVersion`); read effective characteristics via `effectivePower` / `effectiveToughness` / `effectiveTypes` / `effectiveAbilities` helpers.
 
@@ -1674,18 +1692,34 @@ step it was asked in, so an attack trigger's counter lands before
 blockers.
 
 ```go
-MayPayEnergy{N: 2, Question: "…", OnPay: func(ctx *Context) error { … }}        // "you may pay {E}{E}. If you do, …"
-PayEnergyUnless{N: 2, Question: "…", OnDecline: func(ctx *Context) error { … }} // "sacrifice it unless you pay {E}{E}"
+MayPayEnergy{N: 2, Question: "…", Then: heroPaid}                              // "you may pay {E}{E}. If you do, …"
+PayEnergyUnless{N: 2, Question: "…", Else: heroDeclined}                        // "sacrifice it unless you pay {E}{E}"
 PayEnergyOrElse{N: 2, OrElse: func(ctx *Context) error { … }}                    // "pay {E}{E}. If you can't, …" (asks nothing)
 PayEnergyAmount{Min: 0, Unit: game.PayAmountDamage, Goal: lethalDamageGoal,      // "you may pay any amount of {E}"
-	Then: func(ctx *Context, paid int) error { … }}                               // Min: 1 for "one or more"
+	Then: heroDamages}                                                            // a NumberThen; Min: 1 for "one or more"
 ```
 
 `MayPayEnergy` / `PayEnergyUnless` are the `pay_unless` prompt with an
 energy payment: "Pay" is a payment only when the payer has the energy
 (CR 118.3), and an amount computed at resolution ("an amount of {E}
-equal to its mana value") is just `N`. `PayEnergyAmount` is the
-`pay_amount` prompt: `Then` always runs exactly once, with 0 when
+equal to its mana value") is just `N`. The consequence is a REGISTERED
+branch (#4289), so a table waiting on the payer is a restore point:
+`var heroPaid = energyPaid("pay-unless/<card>-<clause>", func(g *game.Game,
+item *game.StackItem) error { … })` (or `energyDeclined` for "unless you
+pay"), a package-level var in the card's file. The branch runs against a
+copy of the asking item rebuilt from the prompt, so it reads the trigger's
+event, the targets and the source object as a closure over the item did.
+Cards whose consequence is the same sentence share one key (see the
+shared handles in `energy_resolution.go`); the key is an on-disk identity,
+never renamed and never reused, and is appended to the ledger. `PayEnergyAmount` is the
+`pay_amount` prompt: `Then` is a registered number branch (#4294), `var heroDamages
+= NumberThen("number/<card>-<clause>", func(ctx *Context, r game.NumberAnswer)
+error { … })`, handed the amount as `r.Number` and the asking item as `ctx.Item`
+(its targets, event and source object), so a table waiting on the payer is a restore
+point. Put what the branch needs beyond the item in `Carry` (IDs; the controller
+rides first and is stripped for you), `Words` or `Nums`; capture nothing. Share a key
+where the consequence is the same sentence (`dealThatMuchDamageToTheTarget`). `Then`
+always runs exactly once, with 0 when
 nothing was paid (no energy, declined, or the payer left), so the rest
 of the card ("Destroy all creatures") lives inside it. `Goal` is the
 amount the card is for, computed when it is asked (the lethal damage,
@@ -1694,7 +1728,8 @@ the bot pays it and the stepper opens on it. A reflexive "When you do,
 …" is `WhenYouDo(...)` applied inside `OnPay`. The shared lines are in
 `effects/energy_resolution.go`: `whenThisAttacksMayPayEnergy`,
 `mayPayEnergyThen`, `sacrificeThisUnlessYouPayEnergy`,
-`getEnergyThenPayAnyAmountToDamageTarget`.
+`getEnergyThenPayAnyAmountToDamageTarget`; the first two take the handle an
+`energyPaid` returns, not an `Effect`.
 
 **Energy in other costs** (PR 4). An alternative cost takes
 `AlternativeCost.Energy`, checked with the offer (a caster short of it is
@@ -2056,6 +2091,21 @@ A permanent that did not come from a spell — reanimated, put onto the
 battlefield, a token — enters with none, because the seeding site is
 the spell's entry and nothing else (CR 107.3b).
 
+The PUTTING effect's own clause is the fourth slot. "Return it to the
+battlefield with an additional +1/+1 counter on it" gives every card of
+the put the same counters: `game.ZoneEntryOptions.EntersWithCounters`
+(Generous Revival uses `ReturnFromGraveyardWithCountersForEffect`).
+"Each of them enters with an additional +1/+1 counter on it if it's a
+creature and an additional loyalty counter on it if it's a planeswalker"
+(Semester's End, #4193) gives each card its own, in ONE put:
+`ReturnFromExileTogether{CountersIfType: []game.EntryCountersIfType{…}}`,
+or `ZoneEntryOptions.EntersWithCountersIfType` on any batch door. Each
+card is judged as it would exist on the battlefield (CR 614.12, the
+entry look-ahead), after the copy it was told to enter as, so a Spark
+Double returning as a copy of a planeswalker gets the loyalty counter.
+Loyalty counters a planeswalker enters with are added to its printed
+loyalty (CR 306.5b), never in place of it.
+
 Whatever seeds them, the settled map is **drained by one helper**,
 `(*Game).applyEntryCountersLocked`
 ([game/entry_counters.go](../server/internal/game/entry_counters.go)) —
@@ -2134,6 +2184,25 @@ queued no prompt when the entry point returns;
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
 then draw a card" draws whether or not the scry happened.
+
+**Write the "then" as a registered tail** (#4253 slices 3 and 4). A scry or
+surveil, and a library search, can take its "then" as data instead of a
+closure: `Scry{ThenTail: …}`, `Surveil{ThenTail: …}`,
+`SearchLibrary{ThenTail: …}`. A table waiting on a scry or on the entry
+question of a fetched permanent is then a restore point; a closure keeps
+the frame off the disk. Register the body once, from a package-level var,
+under a key that is never renamed or reused (`CardTail("card/what", …)`,
+ledgered `tail card/what`), and build the tail with `ctx.Tail(ref)` (the
+effect's controller and source card), `ctx.TailN(ref, n)` for one number, or
+`ctx.ItemTail(ref)` when the body reads more of the item (its targets, its
+X, the words of its text), which then rides the tail as data. What the
+closure captured goes on the tail: `Player`, `Source`, `N`, `Carry` (IDs),
+and the search's found cards arrive as `o.IDs`. The shared tails are
+`then/shuffle`, `then/draw-n-cards`, `then/change-life` (N below zero loses
+life), `then/discard-at-random`, `then/get-energy` and
+`then/put-found-lands-onto-battlefield-tapped` (`effects/keyed_tails.go`);
+use one rather than registering a twin. A tail that runs the effect that
+names it again (a chain of searches) is registered in `init`.
 
 **Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
 asks: once the window above has settled it queues a
@@ -2246,7 +2315,8 @@ the body runs once the window has settled, may queue a prompt, and
 calls `done` when it finishes so the rest of a multi-card draw ("draw
 three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
 replacement apply from the drawing player's graveyard instead of the
-battlefield. See `game/draw_instead.go`.
+battlefield (and, for a learn, the learning player's: Retriever Phoenix,
+`game/learn_action.go`). See `game/draw_instead.go`.
 
 **"Except the first one you draw in each of your draw steps"** reads the
 completed-draw tally `Game.DrawnThisStep`, reset at every step boundary.
@@ -2844,12 +2914,14 @@ fails anything else.
 Creatures with printed combat keywords (flying, reach, deathtouch,
 lifelink, trample, vigilance, first strike, double strike, menace,
 defender, haste, flash) declare those keywords through a single
-`Spec.PrintedKeywords []string` slot. The engine auto-generates a
-Layer 6 `StaticAbility` at catalog load time that appends each
-keyword to the card's own `Characteristic.Abilities`, so
-battlefield-side consumers see the same surface Lord of Atlantis
-uses for granted keywords. The same list feeds off-battlefield
-reads (flash gating on a card in hand).
+`Spec.PrintedKeywords []string` slot. The list is the object's own
+characteristics (CR 613.1), so it is in the baseline the layer pass
+starts from and is no static of its own (#4236): a removal of any
+timestamp ("loses flying", "loses all abilities") takes the keyword
+away, and a grant that sorts after the removal gives it back. Consumers
+on the battlefield read it from `Characteristic.Abilities`, the same
+surface Lord of Atlantis uses for granted keywords. The same list feeds
+off-battlefield reads (flash gating on a card in hand).
 
 ```go
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -3341,11 +3413,26 @@ over-taxes.
 
 **The engine charges it; you do not.** `Game.PriceAttackDeclaration`
 is the one pricer, `DeclareAttackerWith` / `DeclareAttackersWith` pay
-it at CR 508.1a before anything is staged, ALL OR NOTHING, and
+it at CR 508.1j before anything is staged, ALL OR NOTHING, and
 `internal/legal` calls the same pricer so an unaffordable attack is
 never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
+
+**A Phyrexian symbol in the tax** (Norn's Annex's `{W/P}`, #4198) needs
+nothing in the card file: `AttackTax("{W/P}", …)` is the whole tax. Each
+symbol is paid with the colour or 2 life (CR 107.4f), announced with the
+declaration as `phyrexian_life` on `declare_attacker` and
+`declare_attackers` (`game.DeclareAttackersParams.PhyrexianLife`), which
+goes through the same strike-and-pay helper a cast uses; auto-tap never
+pays life. The view ships the count per creature as
+`turn.attack_targets[].tax_phyrexian` (and `tax_phyrexian_granted` for a
+K'rrik-style grant), so the client parses no mana string. The attack
+dock asks for it: the attackers picker has a "Pay with life" stepper, and
+"Attack all", "Attack with N" and the chosen-attackers confirm open the
+same question for a printed Phyrexian symbol
+(`client/src/lib/attackLife.ts`). The enumerator offers the life
+payment to a bot seat when mana falls short (`attackTaxPayment`).
 
 **A tax that LASTS FOR A WHILE** ("Until your next turn, creatures can't
 attack you unless their controller pays {2} for each of those
@@ -3425,6 +3512,14 @@ LandPlayRestrictions: []game.LandPlayRestriction{
 - Read from the battlefield through `CatalogAbilityKey`, like a cast
   restriction, so nothing is stored and the source leaving lifts the ban.
   `Register` refuses a restriction with no `Label` or no `Forbids`.
+- **"…may sacrifice a permanent … to ignore this effect until end of turn"**
+  (Damping Engine, #1986, CR 116.2d): set `Spec.IgnorableEffect =
+  &game.IgnorableEffect{Label, Applies}` (`Applies` is whether the ability
+  bears on that player right now) and mark the restrictions that ARE the
+  ability `Ignorable: true`, on `CastRestrictions` and `LandPlayRestrictions`
+  alike. The special action, its sacrifice, the per-player record and both
+  gates are the engine's (`game/ignore_effect.go`); `Register` refuses one
+  without the other. See `damping_engine.go`.
 - **A ban from a resolved spell or ability** ("target player can't play
   lands this turn": Turf Wound, Solfatara, Pardic Miner, Moonhold) is not
   this slot. Its source is gone the moment it resolves, so it is stored:
@@ -3481,8 +3576,9 @@ EntryRestrictions: []game.EntryRestriction{
 ### "Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)
 
 - **Every player over their own exiled cards** (Memory Vessel, Rocco,
-  Street Chef): `EachPlayerExilesTopAndMayPlay(g, n, d)`
-  (`effects/impulse_exile.go`). One stored permission per seated player,
+  Street Chef): `EachPlayerExilesTopAndMayPlay(ctx, n, d, done)`
+  (`effects/impulse_exile.go`; one library at a time in APNAP order, #4268,
+  and `done` is where a clause that follows the last exile goes). One stored permission per seated player,
   held by that player, over the cards they exiled. Stamp `d` against the
   card's controller: `g.UntilYourNextTurnDuration(controller)`,
   `g.UntilYourNextEndStepDuration(controller)`. It is play, not cast, so a
@@ -3705,10 +3801,14 @@ right, and the replacement knows who is countering. Declare
 - **Answer with `Game.ExileCounteredSpellInsteadForEffect(ev, who,
   source, name)`**: exile the spell instead (not countered) and let `who`
   (the countering player, not the spell's owner) cast it free. The free
-  cast is `FreeCastFromExilePermission`, the same now-or-never grant
-  every resolution-time free cast takes. A different "instead" (to the
-  bottom of a library, to the hand) is a new answer on the same event,
-  not a new event.
+  cast is made during the countering spell's resolution (CR 608.2g,
+  #4286): the exile is followed by the `resolution_cast` prompt over the
+  card (`OfferResolutionCastForEffect`, ADR 0066's 2026-10-24 note), under
+  `FreeCastFromExilePermission` (free, cast-only, X is 0); a decline
+  leaves the card in exile. Only a counter made with no resolution open
+  falls back to that permission granted alone, closing on the player's
+  next priority pass. A different "instead" (to the bottom of a library,
+  to the hand) is a new answer on the same event, not a new event.
 - **It can pause.** Two replacements that disagree are ordered by the
   countered spell's controller (CR 616.1), with nothing moved while the
   prompt is open.
@@ -3725,6 +3825,71 @@ label, source, d)` with a duration from `durations.go` (Stromgald Spy uses
 false). Never stamp `KnownBy` on the hand's cards for these: the view
 derives the reveal per frame (`game.HandRevealedLocked`), so cards drawn
 later are shown and the hand is hidden again when the effect ends.
+
+### Six small shapes from the world enchantments (ADR 0109 amendment 2026-10-23, #1997)
+
+Each of these was built for one world enchantment and is there for the
+next card that prints the same words:
+
+- **"Tokens created with this"** (Tombstone Stairwell): set
+  `CreatedWith: game.PermissionCardRef(ref)` on the `game.TokenGroup`
+  you hand `g.CreateTokensThenForEffect`, with `ref` from
+  `ctx.SourceRef()`. Read the set back with
+  `g.TokensCreatedWithForEffect(ref)`. A leaves trigger's own
+  `SourceRef()` names the object that left, so it still finds them.
+- **"Sacrifice it unless you tap an untapped creature you control"**
+  (Koskun Falls): `TapPayment(n, noun, plural, of)` beside
+  `SacrificePayment`, handed to `UpkeepPayUnless` or a cumulative upkeep.
+- **"Players play with the top card of their libraries revealed"**
+  (Field of Dreams): `LibraryTopVisible: game.LibraryTopRevealedEachPlayer`.
+- **"If the player hasn't played the card"** (Elkin Lair): don't record
+  the play. Name the exiled card as an object in the delayed trigger's
+  params, and act only while it is still that object in exile.
+- **A triggered mana ability that also stops the land untapping**
+  (Winter's Night): `TappedSkipsNextUntap: true` on the
+  `game.ManaTrigger`.
+- **"Lands tapped for mana produce mana of the chosen color instead"**
+  until end of turn (Hall of Gemstone):
+  `g.LandsTappedProduceColorThisTurnForEffect(source, controller, color,
+  label)`. The auto-tap planner already prices the new colour.
+
+### Who put it, "that player's choice", and two chosen names (ADR 0109 amendment 2026-10-23, second part, #1997)
+
+Built for the last three world enchantments:
+
+- **A player who "puts" a permanent onto the battlefield.** The engine
+  counts who put each nontoken permanent onto the battlefield. A land
+  play counts for its player, a permanent spell for its controller, and
+  an effect's put for the controller of the resolving spell or ability
+  (CR 608.2c). That holds even when the permanent enters under someone
+  else, as "return it under its owner's control" does. A search counts
+  for the searcher, and a manifest or cloak for the player who manifests.
+  **If your card's text tells ANOTHER player to put or return a card
+  onto the battlefield** ("each player puts", "its controller reveals …
+  and puts that card onto the battlefield", "they put it onto the
+  battlefield"), run that put inside
+  `ctx.Game.PutByEnteringPlayerForEffect(func() error { … })`. Every
+  permanent the put lands is then counted for the player it enters
+  under (CR 110.2a), and Arboria reads the right player. Exhume, Living
+  Death, Chaos Warp and Proteus Staff are examples.
+- **"Creatures can't attack a player unless that player cast a spell or
+  put a nontoken permanent onto the battlefield during their last turn"**
+  (Arboria): `Static: []game.StaticAbility{CreaturesCantAttackPlayersWhoDidNothingLastTurn()}`.
+  A card that asks the same question reads
+  `g.CastOrPutDuringLastTurnForEffect(player)`.
+- **"Target … that player controls of their choice" on a trigger** (The
+  Abyss, Magus of the Abyss): wrap the clause as
+  `TheyControl(OfThatPlayersChoice(TargetCreature(…)))`. The player the
+  triggering event names (the player whose upkeep it is) answers the
+  prompt, and legality is judged for the trigger's controller. Triggers
+  only.
+- **Two card names, one chosen by an opponent, and "other than a basic
+  land card name"** (Null Chamber): queue
+  `g.QueueCardNamePromptForEffect(game.CardNamePrompt{…, SecondName: true,
+  NotBasicLandName: true})`. Read both names back with
+  `game.ChosenNamesOn(&source)`. Compare a spell or a land being played
+  with `game.SpellOrLandHasName`, which asks only the face being cast or
+  played.
 
 ### "Can't draw more than one card each turn" (#3927, CR 121.2b)
 
@@ -4039,8 +4204,12 @@ next through a Go variable, because a restore between them would lose
 it. Read what the earlier piece did from the game instead. When the game
 keeps no record of it (a count discarded, the tokens just made, a number
 a player chose), the earlier piece writes one, `ctx.RecordStep(name, ids,
-n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). A
-record lives for one resolution. For something an instruction's own
+n…)`, and the later piece reads it, `ctx.StepRecord(name)` (#4163). Words
+go in the record's `Strs` (`ctx.RecordStepRecord(name, game.StepRecord{…})`,
+#4228: Rhys, the Evermore's counter kinds). A keyed continuation runs with no
+item of its own, so a card that reads the record from one carries the
+resolving item's ID on the prompt (`Carry`). A record lives for one
+resolution. For something an instruction's own
 prompt decides (which tokens it really made, who really drew), record
 the event log's last sequence number (`b25LastEventSeq`) before it and
 read the events after it in the next piece (Martial Coup, Cut a Deal). A
@@ -5588,6 +5757,23 @@ primitive with `To: game.ZoneExile`, and it is not a mill — no
 `EventMill`, no mill payoff. See
 [ADR 0013 §5l](decisions/0013-replacement-effects.md).
 
+**Several libraries: one at a time, in APNAP order (#4266).** "Each
+player mills", "each opponent mills" and "exile the top card of each
+player's library" must not be a `for` loop over `MillCards` or
+`ExileTopWithPermission`: each call can open its own CR 616.1 ordering
+prompt, so every library with something to ask opens one at once, where
+CR 101.4 and CR 616.1 have the players choose in APNAP order. Use
+`millEachPlayerInTurn(ctx, players, n, done)` or
+`exileTopEachPlayerInTurn(ctx, players, template, done)`
+(`each_player_in_turn.go`): they put the players in APNAP order, start
+each library from the previous one's continuation, and run `done` with
+every player's milled or exiled cards (`[]PlayerCards`) after the last.
+Anything the card does after the mills (a count, a pick, a cast) goes in
+`done`, or in the next `ResolveSteps` step, which waits for the last
+prompt. A count that reads the table (cards in hand) is the `n` func,
+which is asked for every player before the first mill. A template whose
+holder is each library's owner sets `GrantToOwner` (Memory Vessel).
+
 **Every arrival in a graveyard goes through the window (#931).** "If a
 card would be put into a graveyard from anywhere, exile it instead"
 (Rest in Peace, Leyline of the Void) is one sentence whose whole
@@ -5704,6 +5890,23 @@ seat. `then` is handed `game.PromptedDiscards`, which reads exactly
 like `PromptedSacrifices`: `.Count()` is "a card for each card
 discarded this way", `.Discarded(seat)` is "if you discard a card this
 way", `.By(seat)` and `.Cards()` are the cards.
+
+For one seat, write it KEYED (#4256) so a table waiting on the discard is
+a restore point: `g.PlayerDiscardsThenKeyedForEffect(prompt, then, carry)`
+with `var then = game.RegisterDiscardThen("choose-cards/<card>-<clause>",
+func(g *game.Game, r game.DiscardsDone) error { … })` in the card's file.
+`r.Player`, `r.Source`, `r.Discarded` and `r.Carry` are all it gets, so a
+continuation that needs the stack item builds a stand-in Context. The
+prompt's `Then` and `Validate` must be nil. Learn, Abandon Attachments and
+Charming Scoundrel are written this way, and so are Last Rites, Pia, Eriette's
+Whisper, Mishra's Command, Malcolm, Occult Epiphany, Banon, Jiang Yanggu,
+Archon of Cruelty, Tomb of Annihilation's Veils of Fear and every "discard N,
+then draw" card (#4264). Put what the continuation needs on `carry` as IDs
+(Eriette's Whisper's caster and creature, Last Rites' target). A set rule over
+the discard ("exactly two or none") is `game.RegisterDiscardThenRule(key, rule,
+fn)`, never a `Validate` on the prompt. The "discard up to N, then draw" family
+shares five registered draw rules (`registerDiscardDraw`, `batch39_helpers.go`):
+pass the rule, not a closure, to `b39MayDiscardThenDraw`.
 
 What counts as discarded is CR 701.9a's move OUT of the hand, so a
 madness card exiled instead of binned counts, a Library of Leng card
@@ -6991,10 +7194,9 @@ Triggered: []game.TriggeredAbility{WhenThisDies("Primordial Gnawer — discover 
 
 return Discover{N: x}.Apply(ctx)                        // "discover X, where X is …"
 return Discover{Player: owner, N: mv}.Apply(ctx)        // Zoyowa's Justice: "that player discovers"
-return Discover{N: 10, Then: func(ctx *Context, r game.DiscoverResult) error {
-    // Hit the Mother Lode: r.Discovered is uuid.Nil on an empty walk,
-    // r.ManaValue is the discovered card's mana value (CR 701.57c).
-}}.Apply(ctx)
+OnResolve: ResolveSteps(Discover{N: 10}, Instruction(treasures))  // Hit the Mother Lode
+// treasures reads ctx.StepRecord(DiscoverStepKey): IDs[0] is the discovered
+// card (empty on an empty walk), N() its mana value (CR 701.57c).
 Triggered: []game.TriggeredAbility{WheneverYouDiscover(label, effect)} // item.Trigger.Event.Amount is N
 ```
 
@@ -7004,17 +7206,22 @@ implemented" caveat. Work out N first: a board read ("the greatest
 power among them") at resolution, a fact about the triggering event
 ("that spell's mana value") captured on the item or read off
 `ctx.Trigger()` / the payload. Anything printed after the discover goes
-in `Then`, which runs once on every outcome.
+in a LATER STEP of a `ResolveSteps` (or `Do`) sequence that reads the result
+from `ctx.StepRecord(DiscoverStepKey)`: the discoverer's answer is asked after
+`Apply` returns, so the later step waits for it as data (`step_walk.go`), runs on
+every outcome, and survives a restore. There is no `Then` closure.
 
 The engine does the rest, and it is shared with cascade: the
-exile-until walk, the `may_cast` prompt ("Cast it free" / "Put it into
-your hand"), a `{0}` grant that is flash-timed (CR 608.2g) and capped at
-N against the face actually cast, and a window that closes on the
-discoverer's next priority pass — the card then goes to their hand.
+exile-until walk, a `{0}` grant that is flash-timed (CR 608.2g) and capped
+at N against the face actually cast, and a `resolution_cast` prompt over
+the card ("Cast it free" / "Put it into your hand") that holds the
+resolution open while the discoverer casts it, or declines and the card
+goes to their hand (#4243, ADR 0066's 2026-10-23 amendment). The cast is
+made during the resolution, so a later step of the card has not run yet.
 `EventDiscover` fires once the card is settled, right after the
 discovered spell's `EventCast` when it is cast. Cascade's grant has the
-same cap (one below the cascading spell), timing and pass-closed window;
-its uncast hit goes to the bottom on the pass.
+same cap (one below the cascading spell) and timing, and the same prompt;
+its uncast hit goes to the bottom with the cards it passed over.
 
 **Exile until a card matches, then a free cast (#3213, [ADR 0099](decisions/0099-discover.md) amendment 2026-10-13):** cascade and discover are keywords; a card that prints the same walk with its own test calls the shared body:
 
@@ -7137,8 +7344,8 @@ must set it with `t.SetCopyExceptionColors("B")`, never `t.Colors = ...`
 (#2322, CR 707.9d): the copied object's colour-defining ability is not
 copied, so a devoid creature's token copy is not devoid. The helper
 strips devoid from `Keywords` and sets `Card.ColorCDADropped`, which the
-printed-keyword merge and the catalog's synthesised keyword static both
-honour; the mark is a copiable value, so a copy of that token has no
+printed-keyword baseline and the catalog's `PrintedKeywordsHonouringCopy`
+both honour; the mark is a copiable value, so a copy of that token has no
 devoid either.
 
 **Event picker.** Each row is the `when` for `On(kind, when, label, effect)`; the rows with a name in `triggers_common.go` are the constructors above.
@@ -7290,6 +7497,115 @@ captured in a `Build`, which would put the row on the legacy list) and
 read the controller off the `Context` inside `OnDecline`. See
 [rhystic_study.go](../server/internal/cards/effects/rhystic_study.go),
 whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
+Write the decline KEYED (#4256): `Else: smotheringTitheDecline` with
+`var smotheringTitheDecline = PayUnlessElse("pay-unless/smothering-tithe-treasure",
+func(ctx *Context, r game.PayUnlessAnswer) error { … })` in the card's file, so a
+table waiting on the payer is a restore point. The decline's `Context` is bound
+to a copy of the asking item rebuilt from data the prompt carries (#4264,
+`game.AskedItem`): its controller and owner, its source card and the source
+object with its epoch (CR 400.7, so `ctx.SourceRef()` and `sourceIsNewObject`
+read what they do for a closure), its targets, its triggering event
+(`ctx.Trigger()`), X and modes. It has no `Effect`, no target clause and no
+`Params`; anything else the branch needs rides on `PayUnless.Carry` as IDs
+(`r.Carry`: Wandering Archaic's spell, Goblin Vandal's artifact, Ripples of
+Undeath's milled cards) or, for a permanent with its epoch,
+`MayPay.CarryObjects` (`r.Objects`: Dance of the Dead's creature). The key is an
+on-disk identity, ledgered as `payunless <key>`. A closure `OnDecline` still
+works and is not a restore point.
+A keyed pay-unless carries the cause it was queued under (the asking spell or
+ability's controller and ID, `PendingChoice.PayCauseController` and
+`PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered
+after the table moved on still records the right cause and still meets a "can't
+cause you to discard" gate. Outside a resolution, and outside such a branch,
+there is no cause: `resolutionCauseLocked` and `effectCauseControllerLocked`
+read `Game.resolving` only while `resolutionOpen`. A prompt such a branch queues
+(a keyed confirm, option pick or choose-cards, the discard or sacrifice its
+answer asks for) takes the cause with it and answers under it (#4281), so a chain
+of follow-ups keeps the first spell's cause. Delve's and escape's exiles (and a
+pitch or a return paid as a cost) name `spellCostCause`, the caster and the spell
+being cast, never the resolving slot (#4281).
+
+The other pay-unless shapes are keyed the same way (#4264), with the key from
+`PayUnlessBranches(key, onPay, onDecline)` (either may be nil), one handle for
+both branches: `UpkeepPayUnless{Else}` ("sacrifice it unless you pay", which
+still holds its step; Stasis, Haazda Shield Mate, Koskun Falls, Pact of
+Negation, every cumulative upkeep that is not a coin flip),
+`MayPay{Then}` ("you may pay. If you do", `InThisStep` too; Extort, Hellkite
+Charger, Banon), `GuardedPayUnless{Else}` (Divert; the guarded spell is
+`r.Guards`) and `CounterUnlessPaid{Then}` for a consequence on the paid half.
+A plain `CounterUnlessPaid` (Daze, Mana Leak, ward's mana half) is keyed by the
+engine and needs nothing from the card. A non-mana payment (a discard, a
+sacrifice, a tap) is plain data on the prompt (`PayActionClause`). The any-player
+offers are `AnyPlayerPays{Then, Carry}` with `AnyPlayerConsequences(key, onPaid,
+onNobody, perPayer)` (`anyPlayerMayCounterThisSpell` is the shared helper; Dash
+Hopes, Brain Gorgers, Phantasmagorian, Temporal Extortion). Echo is
+`UpkeepPayUnless{Else: echoPaidOrSacrificed}`, whose one key names both answers.
+A key's branches replace the engine's own "counter that spell", so a
+`CounterUnlessPaid{Then}` with a paid half also registers the decline
+(`Game.CounterIfStillOnStackForEffect(r.Guards)`: Assimilate Essence). A ward's
+waterbend clause is rebuilt from its kind and extra cost (`PendingChoice.PayTap`,
+`game.RegisterTapCost`), so it needs nothing from the card. The per-object offer
+is `AnyPlayerPaysForEach{Then, Carry}` with `AnyPlayerEachConsequence(key, func(ctx,
+r game.AnyPlayerEachAnswer) error { … })` (`r.Unsaved` are the objects nobody
+paid for; Cleansing), ledgered as `choose <key>`. The energy payments
+(`MayPayEnergy{Then}`, `PayEnergyUnless{Else}`) and `MayPayX{Then}` are keyed
+the same way (#4289; `MayPayX`'s branch reads X as `r.Number`).
+
+**A "you may" asked of a resolving effect** (`MayChoice`) is keyed with `Then:
+mayAnswer`, `var mayAnswer = MayYes("confirm/<card>-<clause>", func(ctx
+*Context, r game.ConfirmAnswer) error { … })` (#4264, #4291). `MayYes` does
+something only on a yes, `MayYesNo` has a body for each reply and `MayAnswer`
+one body that reads `r.Accepted`. Every caller in the catalog is keyed, so a
+table waiting on any "you may" is a restore point. A keyed prompt carries the
+asking item as data (`game.AskedItem`), so the body runs against a copy of it:
+`ctx.Trigger()`, `ctx.Item.Targets`, `sourceIsNewObject` and the source
+object's epoch read what a closure over the item used to. Everything else the
+body needs rides the prompt as plain data: `Carry` (IDs; `r.Carry`),
+`Word` (one string, an amount or a name; `r.Word`, `wordInt(r)`), `LifeCost`
+(`r.LifeCost`) and `Objects` (`r.Objects`, with epochs). The state is frozen
+while a prompt is open, so work out a target or a candidate before asking and
+carry it; do not recompute it from the item. A recursive "ask each player in
+turn" body names the function that asks the next player, so register its key in
+`init` (`var x game.ConfirmThen; func init() { x = MayAnswer(…) }`) to avoid a
+package initialization cycle, and pass its two lists in one `Carry` with
+`joinCarry` / `splitCarry` (Kwain, Model of Unity, the Second Doctor, Snort,
+Mog, Myriad). **Share a key when the consequence is word for word the same**
+(`may_shared.go`): `mayDrawCards` (Word is N), `mayGainLife`,
+`mayCreateTokens` (`tokenWord(n, template)`), `mayCopyThisSpell`,
+`mayPayLifeDraw` (the life is `LifeCost`, the draw the Word),
+`maySearchNamedLibraryOrGraveyard`, `mayFabricate`. A closure `OnYes` / `OnNo`
+still works and is not a restore point.
+
+**A loop is data on the prompt** (#4298). A "repeat until" or "for each of those
+cards" confirm carries its progress rather than a closure over it: Tainted Pact
+puts the names exiled so far in `Word` (one per line) and the card just exiled in
+`Carry`; Sylvan Library carries the chosen cards still to settle; Tempt with
+Discovery carries the opponents still to ask. The answer reads them back and,
+for the next round, asks again with the shorter list. `MayChoice{DeclineEndsLoop}`
+is the bot's hint (Channel Harm). An engine confirm that is not a card's "you
+may" uses the same door: `game.RegisterConfirmThen` and `QueueConfirmKeyedForEffect`
+(the opening-hand offer, explore's graveyard question, The Creation of Avacyn's
+third chapter). A prompt whose words name a card in a hidden zone sets
+`PendingChoice.private`, which is written to the snapshot.
+
+**The prompt that leads into a confirm is keyed too** (#4301). A look-at-top or an
+ordering prompt asks its "then" through a tail, not a closure: `LookAtTop{ThenTail:
+ctx.ItemTail(ref)}` (Ponder) and `LookAtLibraryThenPlace{ThenTail: tail}` /
+`PutInLibraryInAnyOrder{ThenTail: tail}` (Portent), where `ref` is a
+`CardTail("<card>/<name>", func(ctx *Context, o game.TailOutcome) error {...})` and
+what the body reads rides the tail (`Carry`, `N`, the asking item). A pick over
+cards is `game.RegisterChooseCardsThen` with `ThenKey` (Sylvan Library, Lazav),
+and `LiveZone` keeps a hand re-check. A search prompt (`searchResume`) is not keyed
+yet, so a card that asks one is still not a restore point at that prompt.
+
+**A ward's life, sacrifice and discard confirms** are keyed too (#4291):
+`confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
+`confirm/ward-discard` (the Word is the count, then `random`), and for a
+sacrifice cost one `confirm/ward-sacrifice-<label>` and one
+`choose-cards/ward-sacrifice-<label>` per distinct label, registered when
+`WardSacrifice` is validated at boot. The cost's predicate is a function and
+cannot ride a prompt, so the label IS the cost: two costs with one label must
+be the same cost.
 
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card
@@ -7577,12 +7893,17 @@ the board.
 is ADR 0129 §3's `pay_amount` prompt, with `Resource` saying what each
 point costs. Three builders:
 
-- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then}`:
+- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then, Carry}`:
   "an amount of damage of your choice" (Volcano Hellion). Nothing is
   paid; `NoMax` is a number with no printed ceiling (CR 107.1b).
 - `PayLifeAmount{Unit, Goal, Then}`: "you may pay any amount of life. If
   you do, …" (Necrodominance). The ceiling is the payer's life total
   (CR 119.4); `Then` gets the life paid, 0 on a decline.
+
+`Then` on all three is a registered number branch (`NumberThen`, #4294), the
+same as `PayEnergyAmount`'s: the number is `r.Number`, the card's own IDs are
+`r.Carry` (give them as `Carry`), and a chain of questions keeps its place in
+`Words` / `Nums`. No closure: the prompt is a restore point.
 - `PayAnyAmountOfLifeAsEnters(label, unit, goal)` for `Spec.AsEnters`:
   "As this enters, pay any amount of life" (Phyrexian Processor). The
   amount lands on `game.Card.ChosenNumber`; read it in the permanent's
@@ -7597,21 +7918,27 @@ worth offering a bot.
 
 **A payment with {X} in it** (#2727, the same ADR's next amendment,
 [may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
-`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, OnPay}`: "you may
+`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, Then}`: "you may
 pay {X}{R}. If you do, …" (Tilonalli's Summoner, Flameblast Dragon).
 X is asked first, from 0 to the most the chooser can pay now, then the
-cost with X settled is an ordinary `MayPay`. `OnPay` gets X and runs
-only once the mana is paid. `Goal` gets that ceiling
+cost with X settled is an ordinary `MayPay`. `Then` is a registered branch
+(`PayUnlessBranches`, #4289) that gets X as `r.Number` and runs only once the
+mana is paid; both prompts are restore points. `Goal` gets that ceiling
 (`XAsHighAsYouCan` for "more is better"); nil keeps a bot's mana. Set
 `InThisStep` when what X buys belongs to the step in progress (tokens
 that enter attacking).
 
 **Tokens "that are tapped and attacking"** with no player named are
 `CreateTokensAttackingYourChoice{Template, N, Tapped, Prefer, Label,
-Then}`: CR 508.4 lets the controller choose what each attacks, so with
+Tail}`: CR 508.4 lets the controller choose what each attacks, so with
 more than one player, planeswalker or battle to attack they are asked
 how many go at each, `Prefer` (what the creature whose trigger it is
-attacks) first. Prefer it to `CreateTokensAttackingForEffect` with a
+attacks) first. The rest of the card is a registered tail (#4294),
+`var thing = AttackingTokensThen("attacking-tokens/<card>-<clause>",
+func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error { … })`
+and `Tail: game.KeyedTail{Ref: thing}` (`Carry` and `N` carry what it
+reads); it runs against a stand-in for the item, so a card that needs the
+item itself keeps `Then` (a closure, and not a restore point). Prefer it to `CreateTokensAttackingForEffect` with a
 fixed defender, which is a caveat ("attacks the player X attacked
 rather than a player of your choice").
 
@@ -7666,8 +7993,11 @@ Resourceful Defense) is `chooseCounters` in
 [choose_counters.go](../server/internal/cards/effects/choose_counters.go):
 a `ChooseNumber` per kind of counter on the permanent, in sorted order,
 each bounded by what it has and by what is left of the ceiling, handing
-`then` a kind-to-count map. Give it a `counterGoal` so a bot knows which
-kinds it wants gone.
+the clause's final step a kind-to-count map. Register the clause with
+`registerCounterChoice(key, goal, final)` (a package-level var, #4294) and
+call `.choose(ctx, perm, extra, ceiling, question)`; give it a
+`counterGoal` so a bot knows which kinds it wants gone. The chain's place
+rides the prompt, so each question is a restore point.
 
 **"Discard two cards unless you discard a <kind> card"** (Thirst for
 Knowledge, Thirst for Discovery) is `discardTwoUnlessOne` in
@@ -7687,7 +8017,7 @@ question first: `MayChoice` for a draw (Mystic Remora, Kwain: one
 `ChooseNumber` for "up to two" (Arcane Denial's victim, from a delayed
 trigger's body), `DiscardPrompt{UpTo: true}` with `Then` gated on
 `done.Discarded(player)` for "you may discard a card. If you do"
-(Abandon Attachments), and a `QueueConfirmForEffect` ahead of a
+(Abandon Attachments), and a keyed `MayChoice` ahead of a
 non-optional search when "who searches" matters (Tempt with Discovery:
 a searcher may still fail to find, and still counts as having searched).
 
@@ -8395,10 +8725,13 @@ Hand it the cards that REALLY reached exile (the continuation of
 `ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
 gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
 free-cast offer, all at once with no cap; the player casts them in the order
-they like. A copy not cast by the player's next priority pass ceases to
-exist, and a cast one ceases on resolution (a permanent becomes a token). It
-is an exact copy, so the catalog resolves it as the original. See ADR 0066's
-2026-10-13 amendment.
+they like, while the effect is still resolving (a `resolution_cast` prompt
+holds the resolution open, CR 608.2g, #2947), or declines the rest. A copy not
+cast ceases to exist, and a cast one ceases on resolution (a permanent becomes
+a token). It is an exact copy, so the catalog resolves it as the original. See
+ADR 0066's 2026-10-13 and 2026-10-22 amendments. Anything the card's body does
+after `CopyAndCast` runs before the casts; write it as a later step if a cast
+must come first.
 
 "Any number of spells with total mana value N or less from among the copies"
 (Uldaros Theorix) adds `TotalManaValueAtMost`:
@@ -9551,6 +9884,15 @@ Three things to know:
   every seat's emblems after the battlefield, with the emblem as the
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
+- **An emblem's replacement and prevention effects** (ADR 0109 amendment
+  2026-10-20, #4192) are `EmblemSpec.Replacements`, built with the same
+  constructors and flags as `Spec.Replacements` (declare `Prevention: true`
+  on a prevention). The replacement gather walks every seat's emblems after
+  the battlefield, with the emblem as the `src` an `AppliesTo`/`Replace`
+  receives and its owner as "you": `src.Controller` is the owner, so
+  `ev.DamageTarget == src.Controller` is "damage to you" (Ajani
+  Steadfast's emblem, `ajaniSteadfastEmblemPrevention`). The owner orders
+  it against every other effect (CR 616.1).
 
 ### Compleated (CR 702.150a, ADR 0183, #2946)
 
@@ -9639,6 +9981,14 @@ applied from the spell's `OnResolve`. It stores a plain-data statement on the pl
 2026-10-09 amendment), unlike the derived `ThisSourcesLoyaltyAbilitiesAtInstantSpeed` and
 `LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed` a permanent or an emblem declares. An empty `Subtype` is
 every planeswalker you control. It opens the window only; the once-per-permanent count still holds.
+
+**"For each planeswalker you control, you may activate one of its loyalty abilities once this turn as though
+none of its loyalty abilities have been activated this turn"** (The Chain Veil, #4191) is
+`g.GrantExtraLoyaltyActivationForEffect(item.Controller)` from the row's `Effect`, with
+`Purpose: game.Purpose{Answers: game.AnswerValue, ExtraLoyaltyActivations: 1}` for the bot. The grant is the player's for the rest of the
+turn, so a walker that arrives later is covered; each call adds one, and it stacks with
+`LoyaltyTwiceEachTurn` / `YourPlaneswalkersLoyaltyTwiceEachTurn` (ADR 0145 amendment 2026-10-21). The timing of
+each activation is unchanged.
 
 **Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
@@ -10097,9 +10447,32 @@ On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mill
   trigger makes. A replacement reads `ev.LifeFromRadiation` on a
   `RepEventLife`; a trigger reads `ev.FromRadiation` on the landed
   `EventChangeLife`.
-- **"One or more nonland cards are milled"** (Mirelurk Queen, The Wise
-  Mothman) is a batch trigger, not `ANonlandCardWasMilled`, which fires
-  once per card. Nothing builds that batch yet (#2809).
+- **"One or more nonland cards are milled"** (Mirelurk Queen, Screeching
+  Scorchbeast, The Wise Mothman) is `WheneverOneOrMoreNonlandCardsAreMilled`
+  (`effects/nonland_cards_milled.go`, #2809), not `ANonlandCardWasMilled`,
+  which fires once per card. It is one trigger per event batch (AtBatchEnd
+  with `ThatManyEvents`), whoever milled, and `nonlandCardsMilledThisWay(item)`
+  is "that many" / X. A battlefield ability only. "This ability triggers
+  only once each turn" is `TriggersOnlyOnceEachTurn(t)`; "do this only once
+  each turn" is the `b28DoneThisTurn` record (Screeching Scorchbeast).
+- **"A card in a graveyard that was milled this turn"** (Tato Farmer, The
+  Master, Transcendent) is the target predicate `MilledThisTurn()`: the
+  card's latest graveyard arrival this turn was an `EventMill`, read off
+  this turn's log as `discardedOrMilledThisTurn` is.
+- **Milled means a mill** (CR 701.17a). A surveil's graveyard leg is an
+  `EventZoneMove`, not an `EventMill` (ADR 0013 amendment 2026-10-23), so a
+  "milled" payoff never sees it. "Put into your graveyard from your
+  library" watches both kinds and reads the zone pair:
+  `cardPutIntoYourGraveyardFromYourLibrary` and
+  `cardsPutIntoGraveyardFromLibraryInBatch` (`library_to_graveyard.go`).
+- **A graveyard trigger's "if this card is in your graveyard"** (Infesting
+  Radroach) is `InterveningIf(CondThisInYourGraveyard{}, InGraveyard(…))`:
+  the same object must still be there as it resolves, and an optional one
+  is removed without asking once it has gone.
+- **"You gain life rather than lose life from radiation"** is
+  `youGainLifeRatherThanLoseLifeFromRadiation` (Strong, the Brutish
+  Thespian), and an enrage that triggers once per damage event is
+  `AtBatchEnd: ThatMuchDamage()`.
 
 Tests give counters with `g.AddPlayerCounter(player, game.CounterRad, n)`
 and read `p.Counters[game.CounterRad]`: see `rad_counter_cards_test.go`.
@@ -10674,14 +11047,32 @@ nothing else:
 ```go
 // "You may reveal a sorcery card you own from outside the game and put it
 // into your hand. Exile ~."  (Burning Wish)
-TakeFromOutside{Match: func(c game.Card) bool { return c.IsSorcery() }, Question: "…", Reveal: true}.Apply(ctx)
+TakeFromOutside{Pick: burningWishTake, Question: "…"}.Apply(ctx)
 exileThisSpell(item, ctx)
+
+// in the card's file: the pick's filter, whether it reveals, and its key
+var burningWishTake = registerOutsideTake("choose-cards/burning-wish-take",
+	func(c game.Card) bool { return c.IsSorcery() }, true)
 ```
 
 `TakeFromOutside` (`effects/outside_game.go`) is the whole of the common
 shape: it asks the owner (a `choose_cards` over their sideboard, `Required`
-for "put a card" with no "may"), reveals the choice when `Reveal` is set,
-and brings it into the hand. With nothing to choose from it asks nothing. A
+for "put a card" with no "may"), reveals the choice when the pick was
+registered to, and brings it into the hand. With nothing to choose from it
+asks nothing. The pick is keyed (#4256): `registerOutsideTake` registers its
+filter and continuation under one key (`game.RegisterOutsidePick`), so a
+table waiting on it is a restore point on the sideboard and on the database.
+The key is an on-disk identity; append it to `game/testdata/effect_keys.txt`
+(`-update-effect-keys`). The filter captures nothing but constants of the
+card's text; a filter that reads a word a text-changing effect may change
+(Coax from the Blind Eternities' "Eldrazi") is `registerOutsideTakeOfWord`,
+with the word passed as `TakeFromOutside.Word`, which rides on the prompt. A
+set rule over the whole answer ("exactly two cards with different names") is
+`game.RegisterOutsidePickRule(key, filter, rule, then)`, registered with the
+pick and looked up by its key (#4264). The exile half of "from outside the game
+or in exile" is `registerExileOrOutside` (Karn, Coax), a keyed `choose_cards`
+whose "none" asks the outside pick with the spell's word, which rides the prompt
+as `ChooseCardsPrompt.CarryWord` (`CardsChosen.Word`). A
 card that needs more composes the game-level calls itself:
 `QueueOutsidePickForEffect` (with a set-level `Validate`),
 `RevealOutsideForEffect` and `BringFromOutsideForEffect`, as Extrapolate
@@ -10699,8 +11090,11 @@ the cast half of the same seam. The cast itself is a `cast_spell` with
 ```go
 // a free cast of cards PICKED now: a pass-closed {0} permission per card
 // (game.FreeCastFromOutsidePermission); the cards not cast stay outside
-PlayFromOutside{Name: "Spawnsire of Ulamog", Clause: "any number of Eldrazi cards",
-    Match: func(c game.Card) bool { return c.HasSubtype("Eldrazi") && !c.IsLand() }}
+PlayFromOutside{Pick: spawnsireOfUlamogCast, Word: ctx.TextSubtype("Eldrazi"),
+    Clause: "any number of Eldrazi cards"}
+// with, in the card's file (keyed, #4256):
+//   var spawnsireOfUlamogCast = registerPlayFromOutside("choose-cards/spawnsire-of-ulamog-cast",
+//       "Spawnsire of Ulamog", func(c game.Card, eldrazi string) bool { return c.HasSubtype(eldrazi) && !c.IsLand() })
 // a right to play a card chosen LATER: standing, one use, until end of turn
 GrantOutsidePlayRight{Name: "Wish"}
 ```
@@ -10716,10 +11110,54 @@ that is weaker than printed. A card file never declares the container in
 copy's sideboard. Tests: `castFromOutside` in `play_from_outside_test.go`,
 `resolveWish` / `nameWished` in `wish_test.go`.
 
-What is still missing: Research // Development (shuffling cards in from outside
-the game) and learn. Cunning, Glittering, Golden and Death Wish and Fae of
-Wishes // Granted are the same `TakeFromOutside` with their own clause (#3525);
-Coax from the Blind Eternities and Karn, the Great Creator shipped with ADR 0198.
+Cunning, Glittering, Golden and Death Wish and Fae of Wishes // Granted are the
+same `TakeFromOutside` with their own clause (#3525), each with its own
+registered pick; Coax from the Blind Eternities and Karn, the Great Creator
+shipped with ADR 0198. Their exile half (`TakeFromExileOrOutside`) still
+resumes through a closure; the pick from outside the game it falls back to is
+keyed.
+
+**Shuffling cards in from outside the game** (Research, #3525) is
+`ShuffleFromOutside{Pick: researchShuffle, Max: 4, Question: "…"}` in
+`effects/outside_game.go`, with `registerOutsideShuffle(key, filter)` for the pick: a pick
+of up to `Max` cards, which `game.PutFromOutsideIntoLibraryForEffect` puts in the
+library unrevealed (the second door out of the container, beside
+`BringFromOutsideForEffect`), then a shuffle. The library is shuffled even when
+nothing was chosen or there was nothing to choose from (CR 701.24d).
+
+**Learn** (CR 701.48a, #3525) is `Learn{}` in `effects/learn.go`, the last
+instruction of every printing:
+
+```go
+OnResolve: ResolveSteps(GainLife{Amount: 4}, Learn{})                  // Cram Session
+Triggered: []game.TriggeredAbility{WhenThisEnters("… — learn", Do(Learn{}))} // Gnarled Professor
+Effect:    Do(Learn{})                                                  // Overgrown Arch's {2}, sacrifice
+```
+
+It asks "you may discard a card" (a floor of zero, so an empty hand is asked
+nothing), draws for a player who did, and for one who did not asks a
+`TakeFromOutside` for a Lesson (`c.HasSubtype("Lesson")`, revealed), over the
+sideboard or, for a deck with none, the card database. Write the spell's earlier
+clauses as steps (`ResolveSteps`) so learn waits for an answer one of them
+asked. `OnTheTargetCard(func(ctx, id) error)` is the step for "do X to the
+target, then learn". Both of learn's questions are keyed (#4256): the discard
+is a keyed discard-then (`learnAfterDiscard`) and the Lesson a keyed outside
+pick (`learnLessonTake`), so a table with either open is a restore point. A
+Retriever Phoenix question before them is the CR 616 optional-replacement
+prompt, which is not (#4253).
+
+Learn is an event a replacement can apply to (#3525, ADR 0191's amendment of
+2026-10-23): `Learn{}` opens a CR 614 window (`game.LearnForEffect`, a
+`RepEventKeywordAction` with `KeywordActionLearn`) and performs the learn only
+if nothing replaced it. "If you would learn, you may instead return this card
+to the battlefield" is `ReturnThisInsteadOfLearning(name)` on
+`Spec.Replacements` (Retriever Phoenix): `FromGraveyard` (the learner's
+graveyard, as dredge's is for a draw), `Optional`, and `KeywordInstead`, a
+body registered with `game.RegisterKeywordInstead(key, body)` that runs once
+the window has settled and calls `done`. A new "if you would learn" card is a
+`ReplacementEffect` that watches `game.EventKeywordAction` and narrows
+`ev.KeywordAction` to `game.KeywordActionLearn`; set `KeywordInstead`
+instead of `Replace` for an "instead" with a body that may ask.
 
 ### Renown (CR 702.112, #2049)
 
@@ -11046,10 +11484,13 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
-- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, "Buster Sword",
-  "a spell with mana value N or less", ManaValueLE(N))`: one prompt, then the pass-closed any-timing `{0}` cast (#3270).
-  Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
-  castable all turn.
+- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, busterSwordFreeCast,
+  "a spell with mana value N or less", ManaValueLE(N))`, with `var busterSwordFreeCast =
+  registerFreeHandCastOffer("choose-cards/buster-sword-cast", "Buster Sword")` in the card's file. Inside the
+  resolution it asks the `resolution_cast` prompt over the hand (#4250), one pass-closed any-timing `{0}` permission
+  over every candidate, spent by the one cast; the keyed pick (#4246) is the offer outside a resolution and what an old
+  save restores into. The key is an on-disk identity; append it to `game/testdata/effect_keys.txt`. Never write a
+  keyless `CastPermission` by hand: the card would stay castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
@@ -11062,9 +11503,9 @@ Six small pieces, each in a 2026-10-13 amendment of the ADR that owns it
 [0066](decisions/0066-granted-cast-and-play-permissions.md)).
 
 ```go
-MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, OnPay: func(ctx *Context, x int) error {
-    return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: x}}.Apply(ctx)
-}}.Apply(ctx)                                                                  // "pay any amount of {R}. When you do …"
+MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, Then: leylineTyrantPaid}.Apply(ctx) // "pay any amount of {R}. When you do …"
+// var leylineTyrantPaid = PayUnlessBranches("pay-unless/…", func(ctx *Context, r game.PayUnlessAnswer) error {
+//     return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: r.Number}}.Apply(ctx) }, nil)
 ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(id, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error { … }) // It Doesn't Add Up
 v.SetCardTypes("Artifact")                                                     // "except it's an artifact" (no "in addition")
 {Mana: []ManaAbility{…}}                                                       // an AbilityGrant a COPY can take: v.GrantAbility(key)
@@ -11133,18 +11574,29 @@ ctx.SourcePermanent()                                                           
   claimed under `AltCostKeyGrantedCost`, `CastOnly`, `TimingFlash` and `LapseOnPass: game.LapseStaysInHand`, so the
   holder's next pass ends it and the card stays in hand. "You may cast a spell from your hand" with a pick (Buster
   Sword, Kari Zev's and Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan) is
-  `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
-  The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
-  enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
-  its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
-  `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+  `offerFreeHandCast` in `free_hand_cast.go`. Since #4250 it stamps one permission over every candidate and asks the
+  `resolution_cast` prompt over them inside the resolution (`Game.OfferResolutionCastForEffect`, keyword `hand_cast`):
+  the cast is the prompt's answer, held to the permission's claim, and the decline leaves the cards in hand. "Every
+  card in your hand" (The Great Synthesis) writes the same grant over each card with its own `AltCostKey`, asks the
+  same prompt, and runs "exile this Saga, then return it" as the prompt's continuation, after the casts. Each card
+  still registers its own `registerFreeHandCastOffer(key, name)`: the keyed pick is the offer outside a resolution.
+  A pick behind a draw (Cecily, Haunted Mage) is a step after the draw (#4228); `offerFreeHandCastFrom(g, controller,
+  source, ...)` is the form that takes no Context.
   "Any number of spells from your hand" (Aetherflux Conduit) is `grantFreeHandCastsFrom`: the same grant, one per
-  nonland card in hand and no pick, because a grant naming several cards is spent by the first cast. "Look at the top
-  N cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the
-  bottom in a random order" (Aetherworks Marvel) is `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private
-  look, a `ChooseCastFreeFromLibrary` pick over the nonland cards, the rest bottomed, and
-  `Game.FreeCastFromLibraryPermission` over the pick (an uncast pick goes to the bottom too). ADR 0099 amendment
-  2026-10-15 (#2110).
+  nonland card in hand, because a grant naming several cards is spent by the first cast, and the prompt over all of
+  them, each cast its own answer. "Look at the top N cards of your library. You may cast a spell from among them
+  without paying its mana cost. Put the rest on the bottom in a random order" (Aetherworks Marvel) is
+  `lookAtTopAndOfferFreeCast` in `free_library_cast.go`: a private look, one `Game.FreeCastFromLibraryPermission` over
+  the nonland cards where they sit, the prompt over them (`free_cast`), and the rest bottomed by the prompt's
+  continuation once it is answered. ADR 0099 amendment 2026-10-15 (#2110), ADR 0066 amendment 2026-10-24 (#4250).
+- **Any other "you may cast it" a resolution offers** (#4250): stamp the permission as before (flash timing,
+  `LapseOnPass`), then call `offerResolutionCastOver(g, controller, source, name, keyword, decline, ids...)`
+  (`free_cast_grants.go`) over the cards, with `game.MayCastKeywordFreeCast` or `game.MayCastKeywordPaidCast` and the
+  decline label that says where an uncast card stays ("Leave it in exile", "Leave it in the graveyard"). One
+  permission over several cards is "cast a spell from among them"; one per card is "any number". Something the card
+  does AFTER the casts ("then each player who owns a spell you cast this way loses life") is a `ChooseCardsThen` key
+  passed as the offer's `Then`, with the cards in `Carry` (Kefka, Dancing Mad). "Until end of turn, you may cast that
+  card" is a real window: no prompt, no lapse (Nicol Bolas, God-Pharaoh).
 - **"Exile the top card of your library. You may cast that card. If you don't, X"** (Chandra, Torch of Defiance) is
   `g.ExileTopThenPaidCastOrElseForEffect(game.PaidCastOrElse{Player, Source, SourceName, IfNotCast, DeclineLabel})`
   (`game/cast_paid_or_else.go`, #3510). The cast is PAID at the card's own cost and ignores timing (CR 608.2g); X is a
@@ -11252,13 +11704,28 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   (`PermanentInfo.Copiable`); Unstable Shapeshifter reads it.
 - **A cost of tapping several named permanents is a mana ability's `TapOthers`** (Heritage Druid's shape, The Cabbage Merchant's two
   Foods), and a discard is `DiscardACard()` in `Plus(...)` (Trading Post).
-- **"Cast one of the revealed cards" from the library, as printed:** bottom the rest first, so the pick IS the top card (still
-  known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
-  `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
+- **"Cast one of the revealed cards" from the library, as printed:** one `ScopeCards` permission in `ZoneLibrary` over the
+  eligible cards where they sit, the `resolution_cast` prompt over them, and the rest bottomed by the prompt's continuation
+  (`lookedAtRestToBottom`) once it is answered (#4250). Sunbird's Invocation.
 - **Cards that stay caveated**, with the gap named: Vorinclex, Monstrous Raider (counter placements that name no
   placer). Tower Winder landed Full with #3217, The Warring Triad
   with #3845 (mill as a cost), and Transmutation Font with #3940 (a "different names" rule on a sacrifice clause,
   `SacrificeNDifferent`).
+
+### Void and revolt: "left the battlefield this turn" (#2128, #2148)
+
+Two turn-tally facts, one per printed word. **Revolt** is "a permanent you controlled left the battlefield this turn" and is per player (`PlayerTurnTally.PermanentsLeft`, `cards/effects/revolt.go`). **Void** is "a nonland permanent left the battlefield this turn or a spell was warped this turn" and is the whole table's (`TurnTally.NonlandPermanentsLeft` and `SpellsWarped`, `cards/effects/void.go`, ADR 0049's 2026-10-23 amendment). Never walk `g.Events` for either.
+
+```go
+WhenThisEntersIfVoid(label, effect)         // "Void — When this enters, if …"
+WheneverThisAttacksIfVoid(label, effect)    // "Void — Whenever this attacks, if …"
+AtYourEndStepIfVoid(label, effect)          // "Void — At the beginning of your end step, if …"
+AtYourEndStepUnlessVoid(label, effect)      // "… unless …": not an intervening if
+SelfCostModifiers: []game.CostModifier{CostsLessIfVoid(2, "This spell costs {2} less to cast if …")}
+if Void(ctx.Game) { … }                     // a spell's "instead if", read as it resolves
+```
+
+The three `…IfVoid` triggers are intervening ifs (CR 603.4): checked as the trigger fires and again as it resolves, and an `effect` that is a `Do` keeps its steps, so a later step still waits for an earlier step's prompt. Set `Targets` on the returned ability for a targeted body. A land (a land creature too) leaving does not count; a token ceasing to exist does; a spell cast for any alternative cost that carries the warp exile clause counts whether or not it resolves.
 
 ### Adding a `Spec` slot (#622)
 
@@ -11296,6 +11763,114 @@ reading the `CardDef` and are not set by the catalog any more.
   players still to ask), and "whenever a card is drawn this way" is one reflexive trigger per card that reached a hand
   (`len(Game.DrawnThisTurn[player])` before and after), its clause `ChosenAtRandom(TargetPlayer("…", Opponent()))` on the
   `ReflexiveBody`. Explosion of Riches.
+
+### "Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)
+
+Left is the next player in turn order and right the previous one (CR 101.4); players who have left the game are
+skipped. The engine half is `game/attack_direction.go`, the card half `effects/attack_direction.go`.
+
+```go
+// A permanent's static (Pramikon, Sky Rampart):
+AsEnters: ChooseLeftOrRightAsEnters("Pramikon, Sky Rampart"),
+AttackOnlyNearestOpponentInChosenDirection: true,
+
+// A resolved ability with a duration (Teyo, Geometric Tactician's −2):
+var teyoDirection = AttackDirectionUntilYourNextTurnThen("option-pick/teyo-geometric-tactician-direction", name)
+Effect: ChooseLeftOrRightThenEachPlayerAttacksOnlyThatWayUntilYourNextTurn(name, teyoDirection),
+```
+
+- The static reads the permanent's "Left"/"Right" answer live; before the answer, on a copy that never chose, or once
+  it has lost its abilities, it restricts nothing.
+- A resolved ability writes `PlayerStatic.AttackDirection` on every player (`Game.GrantAttackDirectionForEffect`).
+  Another duration is a new `…Then` constructor beside `AttackDirectionUntilYourNextTurnThen`; its key is an on-disk
+  identity.
+- Every rule in force applies at once (rules that disagree leave nobody to attack), battles are never attackable under
+  one, and creatures put onto the battlefield attacking are exempt (CR 508.4c). All of that is the engine's, through
+  `canAttackTargetWithLocked`; a card file says nothing about it.
+
+### Attractions (ADR 0207, #2121)
+
+An Attraction card needs nothing to reach its pile: the importer reads the
+Attraction subtype off the printed type line, stamps `Card.AstrotoriumBack` and
+the printing's `Card.AttractionLights`, and the game seats it in the player's
+Attraction deck. The engine runs the rest (opening, the roll to visit as each
+precombat main phase begins, the CR 717.6 junkyard). A card says only what it
+prints, with `cards/effects/attractions.go`:
+
+```go
+// "When this creature enters, open an Attraction."
+Triggered: []game.TriggeredAbility{WhenThisEntersOpenAnAttraction("Rad Rascal")},
+// "Open two Attractions." (a spell)
+OnResolve: ResolveSteps(OpenAttractions{N: 2}),
+// "When this creature enters, roll to visit your Attractions."
+WhenThisEnters("Line Cutter — roll to visit your Attractions", Do(RollToVisitYourAttractions{})),
+// An Attraction's "Visit — Draw a card."
+Triggered: []game.TriggeredAbility{Visit("Information Booth", Do(DrawCards{N: 1}))},
+// "Visit — Tap target creature an opponent controls." (a targeted visit)
+Targeting(Visit("Spinny Ride", b36TapChosenCreature), TargetCreature("target creature an opponent controls", OpponentControls())),
+// "Destroy target Attraction." (it goes to the junkyard by the rules, not by the card)
+TargetPermanent("target Attraction", Attraction()),
+```
+
+- A visit ability watches `game.EventVisitAttraction`, which the engine emits
+  only for an Attraction whose lights match the roll, so write no lights check.
+- "Whenever you open an Attraction" watches `game.EventAttractionOpened`;
+  "whenever you roll to visit your Attractions" watches `game.EventRollToVisit`
+  (Amount is the result). "Attractions you've visited this turn" counts this
+  turn's `EventVisitAttraction` events for the player.
+- The roll to visit is an ordinary die roll (`EventRollDie`, six sides), so
+  "whenever you roll a 1" sees it with no extra work.
+- In a test, give a seat an Attraction deck with `p.AttractionDeck =
+  &game.Zone{Kind: game.ZoneCommand, Owner: p.ID}` and `PushTop`, and give an
+  Attraction every light (`1..6`) when the test is about what its visit does.
+  Walk to the precombat main phase BEFORE putting an Attraction on the
+  battlefield, or the turn-based roll there visits it too.
+- Stickers and tickets ({TK}) are ADR 0208, below.
+
+### Stickers and ticket counters (ADR 0208, #2138)
+
+A ticket is a player counter (`game.CounterTicket`) and a sticker is data on
+the object it is on; the engine asks the questions and runs the layers. A card
+says only what it prints, with `cards/effects/stickers.go`:
+
+```go
+// "When this creature enters, you get {TK}, then you may put a sticker on a nonland permanent you own."
+Triggered: []game.TriggeredAbility{WhenThisEntersGetTicketsThenSticker("Ticketomaton", 1)},
+// "{3}, {T}: You get {TK}."
+Effect: Do(GetTickets{N: 1}),
+// "you may put a power and toughness sticker on a creature you own" (any kinds; On defaults to nonland permanents)
+PutASticker{On: StickerOnCreatureYouOwn, Kinds: []game.StickerKind{game.StickerPT}},
+// "This creature has vigilance as long as you control a stickered permanent."
+KeywordGrant(selfWhileYouControlA(Stickered()), "vigilance"),
+// "another target creature with a name sticker on it"
+Another(TargetCreature("another target creature with a name sticker on it", WithSticker(game.StickerName))),
+// "Whenever you place a sticker, …" (PlacedStickerKind(item) says which kind, and on what)
+WheneverYouPlaceASticker("Goblin Airbrusher — create a Treasure token", effect),
+```
+
+- `PutASticker` queues three keyed questions (which object or none, which
+  sticker, where a name sticker goes); the ticket cost is paid as the sticker
+  goes on. In a `Do` or `ResolveSteps`, later steps wait for the answers, so
+  write the card's sentences in printed order (Finishing Move).
+- **A sticker sheet** is a catalog entry with `StickerSheet` set and nothing
+  else that applies to cards. It says, per ability sticker in printed order,
+  what that sticker gives: keyword tokens, or the key of a bundle in the same
+  Spec's `Grants` (ADR 0093), whose "this creature" is the object the sticker
+  is on and whose "you" is its controller. The name, power and toughness, and
+  art stickers need nothing: the importer reads them off the sheet's record.
+
+```go
+StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
+    {Keywords: []string{game.CounterMenace}},
+    {Grant: bamboozleAttackTicket}, // a bundle declared in Grants
+}},
+```
+
+- In a test, give a seat sheets with `p.StickerSheets = []game.StickerSheet{
+  deck.StickerSheetOf(cards.Card{…})}` and tickets with
+  `AddPlayerCounterByForEffect(p.ID, p.ID, game.CounterTicket, n)`; answer
+  the questions with `ResolveChooseCards` and `ResolveOptionPick`
+  (`stkPutOn` in `stickers_cards_test.go`).
 
 ### When in doubt
 

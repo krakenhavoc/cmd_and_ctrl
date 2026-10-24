@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:      "98b99d7c-d006-471a-8583-0468743c1597",
 		Name:          "Team Tactics",
+		Purpose:       ForTargets(BenefitUntilEOT(0, 0, 0, "double strike")),
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(1)},
 		Targets:       TargetCreature("target creature"),

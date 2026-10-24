@@ -4347,3 +4347,382 @@ and reads the Trance as it did, which is weaker than printed, never stronger.
 
 Tests: `cards/effects/shamans_trance_reach_test.go`. Back-out: make `permissionReachesPileLocked` ignore the flag and the Breach
 escape, the end-of-turn and the restore tests fail.
+
+## Amendment — 2026-10-22 (#2947, #2910): a copy of a card is cast during the resolution that made it
+
+The 2026-10-13 card-copy amendment used a permission that lapses on the holder's next priority pass as a stand-in for CR
+608.2g. Kaervek, the Punisher was then declared Full on that composition (#3478), but resolving a real crime trigger left no
+decision inside the resolution: the trigger finished, the active player received priority, and the copy was cast afterwards,
+after anyone who held priority first had been able to act. CR 707.12 says the copy is created "and then cast while another
+spell or ability is resolving", and CR 608.2g says a spell cast that way is cast "except no player receives priority after
+it's cast. That spell becomes the topmost object on the stack, and the currently resolving spell or ability continues to
+resolve". Every `CopyAndCast` card prints the same instruction, so the stand-in was wrong for all of them in the same way.
+
+A draft of this amendment (2026-10-14, branch `fix/2947-resolution-copy-casts`) proposed a separate door used by Kaervek
+alone. That is replaced here by one flag on the existing offer, set by every `CopyAndCast` card.
+
+### Decision
+
+1. **The door.** `CardCopyOffer.DuringResolution` asks for the cast inside the resolution. `CopyCardsAndOfferCastsForEffect`
+   still makes the copies and their exact permissions (one per copy, or one over the set for a mana value budget), then queues
+   a `resolution_cast` prompt over the copies (`game/resolution_copy_cast.go`). `effects.CopyAndCast` always sets the flag, so
+   Mizzix's Mastery, Psionic Ritual, Arcane Bombardment, Isochron Scepter, Blue Mage's Cane, Spellweaver Volute, Uldaros
+   Theorix and Kaervek all move to it. Cipher's and paradigm's offers call the engine door without the flag and keep the
+   pass-closed window. Outside an open resolution the flag does nothing.
+2. **The prompt is data.** `PendingChoiceResolutionCast` carries the chooser, the source, its name (`Reason`) and the copies
+   still on offer (`DiscardOptions`). It is queued while the resolution is open, so it is stamped `midResolution`: it blocks the
+   table and holds the CR 704.3 boundary (`resolution_pause.go`). No Go continuation is stored. Answering it lets the existing
+   resolution bookend carry on (step walks, mode walks, the resolution tail), and the permissions, the copies and
+   `ResolutionOpen` already persist. A table paused on it is a restore point.
+3. **The cast answer.** A `cast_spell` with `resolution_cast` set to the prompt's id goes to `Game.CastForResolutionChoice`,
+   which checks the chooser and the candidate, then calls `castSpellLocked` through the copy's own permission. The actions
+   layer asks for no priority for it, as it does for Word of Command's `controlled_play`. An ordinary `CastSpell` of a
+   candidate by its chooser is routed to the same path, so the prompt can never be left offering a copy that has gone. The
+   price, X, targets, modes, additional costs, cast prohibitions, split second and the "if you do" follow-up are all the
+   existing ones. Payment is strict, `force_cast` and a paper payment are ignored, and the auto-tapper may use every ordinary
+   mana source the caster does not lock out (CR 608.2g lets them activate mana abilities). Word of Command's land-only rule is
+   not used: nobody else is making the choices. The cast notes no action, since nobody receives priority after it.
+4. **Settling.** A successful cast takes its copy, and any copy that can no longer be cast, off the prompt. The prompt stays
+   open while a copy is left (CR 707.12a: each is its own "may") and is answered once none is. A refused cast (unpaid, an
+   illegal target) leaves it open for another try or a decline. Each cast copy becomes the topmost object on the stack, so the
+   order of the casts is the order the player chose.
+5. **Declining.** The empty `resolve_choice` is "cast no more of them". It is always legal, and it withdraws every permission
+   naming the copies left, so the CR 704.5e sweep at the boundary removes them. The originals stay where the earlier
+   instruction put them.
+6. **Passing priority is not an answer.** `passPriorityAsHolderLocked` now asks the choice gate before it closes the holder's
+   pass-closed windows. Before, a refused pass still lapsed those windows, which would have ended the copy's offer under its
+   own open prompt. A refused pass now changes nothing, for every blocking prompt.
+7. **What waits for the resolution.** Spell-cast triggers (a copy aimed at an opponent is a crime, and Kaervek triggers again)
+   and state-based actions are put on the stack and performed at the boundary after the last answer, so they land above the
+   copies (CR 603.3). Kaervek's 2 life is the permission's follow-up: it is lost as the copy is cast, inside the resolution,
+   and a life replacement prompt it raises is mid-resolution too.
+8. **Legal moves and the client.** The enumerator answers the prompt with every cast of each copy that the engine would take
+   (`castMovesFromZone` over the copy's zone, each move naming the prompt) and the always-legal decline
+   (`legal/resolution_cast.go`). Bots and MCP clients use the same moves. The view lists the copies still on offer as the
+   prompt's `options` and `eligible`, face up (they are printed on a face-up card in a public zone), and the wire cap does not
+   fold moves that carry `resolution_cast`. The client's `ResolutionCastSheet` shows the copies, the casts and "Don't cast".
+9. **Departure.** A chooser who leaves takes the prompt with them (CR 800.4a; the departure table drops it) and the resolution
+   finishes without the casts.
+
+### Limits, stated
+
+- An instruction the card's Go body runs after `CopyAndCast` (Mizzix's Mastery's and Psionic Ritual's "Exile this") runs
+  before the casts rather than after them, because it is the same body. No card on this door has a later instruction whose
+  outcome a cast could change. A later instruction that needs the casts first would be a step (`step_walk.go`).
+- Casting a card from hand during a resolution (#2110, `offerFreeHandCast`), discover, cascade, cipher and paradigm keep the
+  grant stand-in. They are separate doors and are not changed here.
+
+### Snapshot
+
+No new field and no schema bump. `resolution_cast` is a new value of the pending-choice kind, and a binary that does not know it
+refuses the restore point (`KnownChoiceKind`). The frozen corpus is untouched.
+
+Tests: `game/resolution_copy_cast_test.go`, `legal/resolution_cast_test.go`, `protocol/resolution_cast_view_test.go`,
+`cards/effects/kaervek_the_punisher_test.go` and the other `CopyAndCast` cards' tests, and
+`client/src/lib/resolutionCast.render.test.ts`. Back-outs: drop the `queueResolutionCastLocked` call and
+`TestKaervekResolutionQueuesOptionalCastDecision` and `TestResolutionCastHoldsTheResolutionAndCastsInAnyOrder` fail; drop the
+early gate in `passPriorityAsHolderLocked` and `TestKaervekDecliningTheCopyLosesNoLife` fails; drop the withdrawal in
+`resolveResolutionCastLocked` and `TestResolutionCastRefusalsAndDecline` fails.
+
+## Amendment — 2026-10-23 (#4243): cipher, cascade, discover and paradigm cast during their resolution
+
+The 2026-10-22 amendment moved the `CopyAndCast` cards onto a `resolution_cast` prompt and left four doors on the grant
+stand-in: cipher's copy, paradigm's copy, cascade's hit and discover's card. Under the stand-in the cast came after the
+trigger had finished, once the holder passed priority, so on another player's turn the active player received priority first
+and the table could act before the cast; the "cast" and the "resolving" the rules describe were two moments. The rules name one
+moment for each:
+
+- CR 702.85a: cascade's "You may cast that card without paying its mana cost ... Then put all cards exiled this way that
+  weren't cast on the bottom of your library in a random order."
+- CR 701.57a: discover's "You may cast that card without paying its mana cost ... If you don't cast it, put that card into your
+  hand. Put the remaining exiled cards on the bottom of your library in a random order."
+- CR 702.99a: cipher's "you may copy the encoded card and you may cast the copy without paying its mana cost".
+- CR 702.192a: paradigm's "create a copy of this object in exile. You may cast the copy without paying its mana cost".
+- CR 707.12 and CR 608.2g: each is cast "while another spell or ability is resolving", with no priority after it and the
+  resolving ability continuing to resolve.
+
+### Decision
+
+1. **Cipher and paradigm** set `CardCopyOffer.DuringResolution`. That is the whole change: the offer, the copies, the prompt and
+   the answers are the 2026-10-22 ones. After this, no caller of `CopyCardsAndOfferCastsForEffect` leaves the flag false; it
+   stays on the offer for the tests that build one by hand, and outside an open resolution it still does nothing.
+2. **Cascade and discover** offer the hit through the same prompt. `CascadeForEffect` and `DiscoverForEffect` walk the library as
+   before and stamp the same pass-closed permission on the hit (`{0}`, flash timing, cast only, the mana value cap, and
+   `LapseToLibraryBottom` or `LapseToHand` with the `DiscoverGrant`), then queue a `resolution_cast` over the one hit
+   (`queueResolutionCastOfferLocked`). The candidate is a real card in exile, not a copy, so `ResolutionCastCandidateLocked` no
+   longer asks for `Card.CardCopy`; a card is on offer when one of the chooser's `ScopeCards` permissions names it. The old yes/no
+   (`may_cast`) is gone for these two: the prompt's casts are "yes" and its decline is "no", so the cast's targets, modes and X
+   are chosen in the one answer.
+3. **The cards passed over** ride the prompt as `PendingChoice.CastPile`, plain data. When the prompt is answered, by a cast or a
+   decline, `finishResolutionCastLocked` puts the pile on the bottom of the library in a random order together with the hit when it
+   was not cast, so the hit's place in the order is as random as the rest (before, an accepted cascade bottomed the pile at the
+   answer and the hit later on its own, which left an uncast hit always below the pile).
+4. **Declining** is the empty `resolve_choice`. It now lapses the permission exactly as the pass it replaces would have
+   (`lapseCastPermissionCollectingLocked`): a discovered card goes to the hand and the discover completes (`EventDiscover`, a
+   commander's CR 903.9b question included), a cascade hit joins the pile for the random bottom, and a copy is only withdrawn, as
+   before. A cast consumes the permission through `castSpellLocked` as before, and completes the discover right after
+   `EventCast`.
+5. **What a later instruction reads.** `Discover.Then` was a Go closure that ran on the answer. It is gone. `DiscoverForEffect`
+   answers the walk's result at once (CR 701.57c: the discovered card and its mana value do not depend on the answer), and
+   `effects.Discover` files it as a step record under `DiscoverStepKey` ("discover": `IDs[0]` the card, `Ns[0]` its mana value). The
+   one card that read it, Hit the Mother Lode, is now `ResolveSteps(Discover{N: 10}, Instruction(treasures))`: the step walk parks
+   the Treasures behind the prompt and a restored table still makes them (`step_walk.go`, `step_record.go`).
+6. **Restore.** Nothing but `CastPile` is new, and the closures are gone from these four doors: the cascade trigger is a keyed
+   catalog item, the paradigm and cipher triggers are keyed bodies, and the prompt, the permission and the pile are data. A table
+   paused on any of them is a restore point and resumes (tests below). `closure_fields.txt` is unchanged. A table written by a
+   binary from before this change that holds a cascade or discover permission keeps the pass-closed window, which this change
+   leaves in place as the fallback for an offer made with no open resolution (nothing in play makes one).
+7. **Wire and client.** The prompt carries `may_cast_keyword` ("cascade", "discover"), `accept_label` and `decline_label`, the
+   fields the `may_cast` it replaces carried. `ResolutionCastSheet` names the exiled card and what the decline does ("Put it on the
+   bottom", "Put it into your hand"). `PendingChoice.CastPile` is not on the wire. The enumerator needed no change: it offers each
+   cast of the card in the prompt's `DiscardOptions` through `castMovesFromZone`, and the decline. The bot's heuristic answers it
+   as any cast: it casts the free spell (`aiseat/resolution_keyword_cast_bot_test.go`).
+
+### Limits, stated
+
+- Casting a card from hand during a resolution (#2110, `offerFreeHandCast` and the other free-cast-from-hand grants) and the
+  other impulse-style grants (Chandra, Torch of Defiance's paid cast, the free-or-hand offers) keep the grant stand-in. They are
+  separate doors with their own prompts and are not changed here (#4250).
+- The 2026-10-22 "Limits, stated" bullet that listed discover, cascade, cipher and paradigm among the doors that keep the
+  stand-in no longer holds for those four.
+- `mayCast.ts`'s cascade and discover wording is now unreachable from a live table (no `may_cast` is asked under either keyword);
+  it stays for a restore of an old table.
+
+### Snapshot
+
+One additive field, `pendingChoices[].castPile` (`omitempty`), recorded with `-update-shape`. A binary from before it reads a
+cascade or discover prompt without the pile and so leaves the passed-over cards in exile when the prompt is answered: weaker than
+printed, never stronger, and only for a table rolled back across this change while one of those prompts is open. The frozen corpus
+is untouched.
+
+Tests: `game/cascade_test.go`, `game/discover_test.go` and `game/paradigm_test.go` (the cast before the resolution finishes,
+the decline, the pile and the hit bottomed together, the fallback window), `cards/effects/resolution_keyword_cast_test.go` (a
+real cascade card, Hit the Mother Lode, and a cipher card: the cast before the trigger finishes, the decline, a restore
+mid-prompt for each, and the Treasures after a restored answer), `legal/resolution_cast_test.go`,
+`protocol/resolution_cast_view_test.go`, `aiseat/resolution_keyword_cast_bot_test.go` and
+`client/src/lib/resolutionCast.render.test.ts`. Back-outs: drop the `queueResolutionCastOfferLocked` call in
+`CascadeForEffect` and `TestCascadeCastsTheHitBeforeTheTriggerFinishes` fails; drop `DuringResolution` in `castCipherCopyLocked`
+and `TestCipherCopyIsCastBeforeTheTriggerFinishes` fails, and in `paradigmCopy` `TestParadigmCopyIsCastBeforeTheTriggerFinishes`
+fails; drop the `lapse` in `withdrawCardCopyOffersLocked` and `TestDiscoverDeclinePutsTheCardIntoHand` fails; drop `CastPile` from
+the snapshot capture and `TestCascadeOfferSurvivesARestoreMidPrompt` fails.
+
+
+## Amendment — 2026-10-23 (#4250): rebound, suspend, madness and the impulse-style offers cast during their resolution
+
+The 2026-10-23 #4243 amendment moved cipher, cascade, discover and paradigm onto the `resolution_cast` prompt and left the
+other "you may cast it" doors that a resolution offers on the grant stand-in: a yes/no `may_cast`, then a permission the holder
+used with an ordinary `cast_spell` after the resolution had finished, closing on their next priority pass. On another player's
+turn the active player received priority first (CR 117.3b) and the table could act before the cast. The rules put each of these
+casts inside the resolution:
+
+- CR 702.88a: rebound's delayed trigger, "you may cast this card from exile without paying its mana cost".
+- CR 702.62a: suspend's third ability, "you may play it without paying its mana cost if able. If you don't, it remains exiled."
+- CR 702.35a: madness's trigger, "its owner may cast it by paying [cost] rather than paying its mana cost. If that player
+  doesn't, they put this card into their graveyard."
+- CR 608.2g for the effects that print the cast: Tibalt's Trickery's and Guff Rewrites History's exile-until walk, Chandra,
+  Torch of Defiance's paid "you may cast that card. If you don't, ...", and the free-or-hand offers (Ziatora's Envoy and
+  Rashmi, Eternities Crafter from the top of the library, Beseech the Mirror from exile). CR 608.2g: "If an effect specifically
+  instructs or allows a player to cast a spell during resolution, they do so by following the steps in rules 601.2a–i, except
+  no player receives priority after it's cast."
+
+### Decision
+
+1. **Seven doors ask the `resolution_cast` prompt**, each the #4243 shape: stamp the permission the `may_cast`'s "yes" used to
+   stamp, then `queueResolutionCastOfferLocked` over the one card, naming the keyword and the two answers. The doors are
+   `reboundCast` (`rebound`), `offerSuspendedCastLocked` (`suspend`), `offerMadnessCastLocked` (`madness`),
+   `exileUntilCastFreeLocked` (`exile_until`, both the bottoming and the keeping form), `OfferPaidCastFromExileForEffect`
+   (`paid_or_else`), the spell branch of `OfferFreePlayFromTopOrHandForEffect` and `CastExiledFreeOrToHandForEffect` (both
+   `free_or_hand`). The `may_cast` yes/no is gone for all of them; a cast through the prompt is "yes" and the empty
+   `resolve_choice` is "no". The prompt's cast is the existing one: strict payment with the auto-tapper (a madness cost and a
+   paid-or-else card's own cost are paid there, CR 601.2g and CR 608.2g's "option to pay mana"), no priority after it.
+2. **Each decline is the door's own**, and it is the permission's lapse, as #4243's is (`withdrawCardCopyOffersLocked` lapses a
+   pass-closed permission it withdraws):
+   - rebound, the keeping exile-until form and paid-or-else: `LapseStaysInExile`, so the card stays in exile; paid-or-else's
+     `IfNotCast` follow-up ("if you don't") runs from the lapse, inside the resolution.
+   - suspend: its permission was never pass-closed (it held for the turn). Withdrawn with no lapse, so the card stays exiled with
+     no counters, CR 702.62a's "it remains exiled".
+   - madness: a new lapse, `LapseToGraveyard` (on-disk value `"graveyard"`, additive), puts the card into its owner's graveyard
+     through the exit primitive (`putIntoOwnersGraveyardLocked`); it is not a discard. The madness permission now carries it, so
+     the fallback below is pass-closed too. The end-step reclaim (`scheduleMadnessGraveyardLocked`) is scheduled only for that
+     fallback.
+   - the bottoming exile-until form: `LapseToLibraryBottom`, and the cards the walk passed over ride the prompt as
+     `PendingChoice.CastPile` (#4243's field), so the hit joins them in one random order, as cascade's does.
+   - free-or-hand: `LapseToHand`. For Ziatora's Envoy the card is still on top of the library; the lapse reads the permission's
+     zone, as the pass-closed window already did.
+3. **A library card is a candidate.** `ResolutionCastCandidateLocked` now accepts a card in a library as well as in exile or a
+   graveyard, when one of the chooser's stored `ScopeCards` permissions names it; only Ziatora's Envoy's grant opens a library
+   card that way. The enumerator needed no change (`castMovesFromZone` already walks a library card under a permission). The
+   view needed none either: a resolution_cast's `options` go through the same knower filter as every prompt's cards, so a
+   looked-at top card is the chooser's alone, and the prompt's `reason` names the source, not the card.
+4. **Restore.** The prompt, the permission and the pile are data, and the closures are gone from these doors (each `may_cast`
+   carried an `OnAccept` and `OnDecline` frame, a census blocker). A table paused on any of them is a restore point and resumes.
+   `closure_fields.txt` is unchanged: `mayCastFrame` is still used by the land play and the card-text offers.
+5. **The fallback.** Outside an open resolution (no catalog card reaches one; every one of these runs as a trigger, a spell or
+   an ability resolves) there is nothing to hold open, and the permission alone is the window, closing on the holder's next pass
+   as before. The tests drive it directly.
+6. **Wire and client.** The prompt carries `may_cast_keyword`, `accept_label` and `decline_label` as #4243's does.
+   `ResolutionCastSheet` words every keyword offer through `keywordCastWords` (`mayCast.ts`): the rule tag, the price ("without
+   paying its mana cost", "for its madness cost", "paying its mana cost") and what the decline does. The `may_cast` wording for
+   these keywords, and `mayCastKeywordsThatOpenACast` with the modal's "open the cast chain on yes" branch, are gone: no
+   `may_cast` is asked under any of them, and a `may_cast` was never a restore point, so no restored table can hold one.
+
+### Cards that changed behaviour
+
+Every rebound card (Staggershock, Ephemerate, Quantum Misalignment, Distortion Strike, World at War, ...), every suspend card
+(Rift Bolt, Ancestral Vision, Lotus Bloom, Nihilith, Judoon Enforcers, ...), every madness card (Fiery Temper, Big Game Hunter,
+Avacyn's Judgment, Shadowgrange Archfiend, ...), Tibalt's Trickery, Guff Rewrites History, Chandra, Torch of Defiance, Ziatora's
+Envoy, Rashmi, Eternities Crafter and Beseech the Mirror. No card's `Completeness` or `Caveats` changed: the change removes a
+response window paper does not have.
+
+### Limits, stated
+
+- Casting from hand during a resolution (`offerFreeHandCast`, `lookAtTopAndOfferFreeCast`: Buster Sword, Kari Zev's Expertise,
+  Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan, Cecily, Aetherworks Marvel, Aetherflux Conduit) keeps
+  the keyed pick (#4246) and the pass-closed grant. A hand card on a `resolution_cast` needs the cast held to the permission's
+  claim, since a hand card also has its ordinary cast. It is the next PR of #4250.
+- The one-off pass-closed grants in `cards/effects/` (Torrential Gearhulk, Arcane Heist, Memory Plunder, Strago and Relm,
+  Crabomination, Jin-Gitaxias's chapter III, Fevered Suspicion, Kefka, the Sieges, ...) keep the stand-in. #4250 lists each with
+  whether its Oracle text casts during the resolution or opens a real window.
+- Ziatora's Envoy's land play stays a `may_cast` (`play_or_hand`): it is a land played during the resolution, already made
+  inline when the answer comes in, not a cast.
+- The #4243 "Limits, stated" bullet that named Chandra's paid cast and the free-or-hand offers among the doors that keep the
+  stand-in no longer holds for them.
+
+### Snapshot
+
+Nothing new in the shape. `PermissionLapse` gains the value `"graveyard"`, written only by a madness permission made after this
+change; a binary from before it reads an unknown lapse as no lapse, so on a table rolled back across this change while a madness
+prompt is open, a declined card stays in exile rather than going to the graveyard: weaker than printed, never stronger. Two
+corpus boards build a different history now (the cast is logged before its trigger's `resolution_finished`), so their files
+stay as written and are still restored, and the boards are registered under new names with new files
+(`rebound_free_cast_offered_during_resolution.json`, `suspend_haste_cast_during_resolution.json`), as #2494 did.
+
+Tests: `game/rebound_test.go`, `game/suspend_test.go`, `game/madness_test.go`, `game/exile_until_cast_test.go` and
+`game/cast_paid_or_else_test.go` (the cast before the resolution finishes, each decline, the fallback window, a restore
+mid-prompt for rebound, madness and paid-or-else); `cards/effects` tests for Tibalt's Trickery, Chandra, Torch of Defiance,
+Beseech the Mirror and Ziatora's Envoy (each with a restore mid-prompt), and the rebound, suspend, madness, Guff and Rashmi
+card tests moved onto the prompt; `legal/rebound_cast_moves_test.go` and `legal/free_play_from_top_test.go`;
+`protocol/free_play_from_top_view_test.go`; `aiseat/resolution_door_cast_bot_test.go` (rebound, madness, the top-of-library
+cast) and `aiseat/paid_cast_or_else_bot_test.go`; `client/src/lib/mayCast.test.ts` and `resolutionCast.render.test.ts`.
+Back-outs: drop the `queueResolutionCastOfferLocked` call in `reboundCast` and `TestReboundOffersAFreeCastAtYourNextUpkeep`
+fails, in `offerSuspendedCastLocked` and `TestTheLastTickOffersTheFreeCast` fails, in `OfferPaidCastFromExileForEffect` and
+`TestPaidCastOrElseAsksOverTheExiledCardAndDeclineRunsIfNotCast` fails, in `CastExiledFreeOrToHandForEffect` and
+`TestBeseechTheMirrorAcceptedGrantLapsesToHand` fails, in `OfferFreePlayFromTopOrHandForEffect` and
+`TestZiatorasEnvoyCastsTheTopSpellFromTheLibrary` fails; drop the madness permission's `LapseToGraveyard` and
+`TestDecliningMadnessPutsTheCardInTheGraveyard` fails; drop the exile-until offer's `Pile` and
+`TestExileUntilCastCastsTheHitBeforeTheResolutionFinishes` fails; drop `ZoneLibrary` from `ResolutionCastCandidateLocked` and
+`TestEnumeratorOffersAFreeCastFromTheLookedAtTop` fails.
+
+
+## Amendment — 2026-10-24 (#4250, part 2): the hand-cast offers and the one-off grants cast during their resolution
+
+The 2026-10-23 #4250 amendment left two groups on the pass-closed stand-in: the "cast a spell from your hand without paying its
+mana cost" offers (a keyed pick, #4246, then a pass-closed grant) and the one-off pass-closed grants that card code in
+`cards/effects/` stamps from a resolution. Each prints a cast made while its spell or ability resolves (CR 608.2g: "If an effect
+specifically instructs or allows a player to cast a spell during resolution, they do so by following the steps in rules
+601.2a–i, except no player receives priority after it's cast"). Each now asks the `resolution_cast` prompt inside that resolution.
+
+### Decision
+
+1. **One door for card code.** `Game.OfferResolutionCastForEffect(ResolutionCastOffer)` raises the prompt over cards a stored
+   `ScopeCards` permission of the chooser's names. With `Permission` set it first stamps that permission over all the cards as
+   ONE permission; a pass-closed one is spent whole by the first cast (`consumePassClosedGrantLocked`), which is "cast a spell
+   from among them". Per-card permissions, or an `AnyNumber` or budget permission, leave the prompt open after each cast (CR
+   707.12a's reading, as #2947 does for copies), until the chooser declines or none is left. A land is never a candidate (CR
+   116.2a and CR 305.9: a land is played, never cast). The door answers false, and stamps nothing, outside an open resolution; card code then
+   keeps its old offer, which no catalog card reaches. `effects.offerResolutionCastOver` is the card-side wrapper.
+2. **A hand card is a candidate, held to its claim.** `ResolutionCastCandidateLocked` accepts a card in the chooser's hand that a
+   stored permission names. A hand card also has its ordinary cast (CR 601.2), and a hand permission prices only the cast that
+   claims its offer (`CastPermission.ForClaim`, #1665), so `castForResolutionChoiceLocked` names the permission's
+   `AltCostKey` (`ResolutionCastClaimLocked`; `granted-cost` for the free offers, `great-synthesis-free` for chapter III)
+   whatever the cast sent, and `legal/resolution_cast.go` keeps only the casts that claim it. The view needed no change: a hand
+   card on the prompt goes through the knower filter, so the table sees that a seat owes an answer and not which cards.
+3. **"And then", after the casts.** The prompt carries an optional continuation, a registered `ChooseCardsThen` key in
+   `PendingChoice.PickThen` with the caller's cards in `OptionCarry` (both existing, persisted fields). `finishResolutionCastLocked`
+   runs it once the prompt is answered, by the last cast or the decline, with the cards of the carry now on the stack as its
+   picks (nobody received priority since, so nothing else moved them). Three continuations: The Great Synthesis's "Exile this
+   Saga, then return it to the battlefield" (`resolution-cast/great-synthesis-flicker`), Kefka's "Then each player who owns a
+   spell you cast this way loses life equal to its mana value" (`resolution-cast/kefka-life-loss`), and "put the rest on the
+   bottom of your library in a random order" for Aetherworks Marvel and Sunbird's Invocation
+   (`resolution-cast/looked-at-rest-to-bottom`). A restore refuses a file whose resolution_cast names a key this binary lacks.
+4. **The doors moved.** The hand offers: `offerFreeHandCastOver` (Buster Sword, Kari Zev's Expertise, Rishkar's Expertise,
+   Surtland Elementalist, Great Intelligence's Plan, Cecily, Haunted Mage, the Mad Wizard's Lair room) and the "any number" form
+   (Aetherflux Conduit, The Great Synthesis's chapter III), keyword `hand_cast`, decline "Keep it in your hand"; the library look
+   (Aetherworks Marvel, Sunbird's Invocation), keyword `free_cast`, one permission over the eligible cards where they sit, decline
+   "Put them on the bottom". The one-off grants: `grantFreeCasts` when it closes on a pass (Emergent Ultimatum, Ensnared by the
+   Mara, Etali, Primal Conqueror, The Key to the Vault, Cosmium Catalyst), `OfferGraveyardCast` (Emet-Selch of the Third Seat,
+   paid), Torrential Gearhulk, Arcane Heist, Memory Plunder, Strago and Relm, Crabomination, `exileUntilNonlandGrantingCast` (Amped
+   Raptor's energy and The Infamous Cruelclaw's discard, `paid_cast`), Fevered Suspicion, Kefka, Dancing Mad, the budgeted
+   `ExileTopWithPermission` (Hazoret's Undying Fury, Primeval Spawn), Conduit of Worlds (paid), Goliath Daydreamer, Power Pack's
+   delayed upkeep trigger, Summon: Esper Valigarmanda's chapters (paid, with the mana the chapter adds) and the Sieges
+   (`SiegeDefeated`, the back face cast from exile). Uldaros Theorix's casts were already on the prompt (#2947's copies).
+5. **What stays.** Nicol Bolas, God-Pharaoh's +2 ("Until end of turn, you may cast that card") opens a real window and keeps it:
+   `grantFreeCasts` with no lapse asks no prompt. The keyed picks #4246 registered (`choose-cards/<card>-cast`) stay registered,
+   so a table saved while waiting on one still restores and answers; they are also the hand and library offers outside an open
+   resolution. Kefka's per-cast `kefka-dancing-mad-life-loss` follow-up stays registered and is still the life loss outside one.
+6. **Wire and client.** Three new `may_cast_keyword` values, `hand_cast`, `free_cast` and `paid_cast` (on-disk, additive), worded
+   by `keywordCastWords` (`mayCast.ts`): free, or "paying its cost", and where a declined card stays, read off the decline
+   label. With more than one card on offer the sheet's heading says "a spell from your hand" or "a spell from among them".
+
+### Cards that changed behaviour
+
+Every card in decision 4. The cast is made inside the resolution: nobody gets priority between the offer and the cast, and a
+"then" waits for the casts. Two fixes ride on that order. The Great Synthesis is exiled and returned AFTER its free casts, so the
+returned Jin-Gitaxias no longer draws for spells cast through chapter III (it used to be on the battlefield first, which was
+stronger than printed). Kefka's life loss now happens after every cast rather than with each. No card's `Completeness` or
+`Caveats` changed.
+
+### Snapshot
+
+Nothing new in the shape: the prompt's continuation and carry are the existing `pickThen` and `optionCarry`, and the keywords are
+new values of the existing `mayCastKeyword`. A binary from before this change reads a resolution_cast's `pickThen` as a
+revealed-hand pick's continuation and refuses the file (unknown key), so a rollback across this change with one of the three
+continuations open fails loudly rather than skipping the rest of a resolution. Tables saved on the old keyed picks restore and
+answer as before.
+
+Tests: `cards/effects/resolution_cast_one_offs_4250_test.go` (each one-off card and door: the cast logged before the resolution
+finishes, the decline leaving the card where it was, a strict restore mid-prompt and the cast on the restored table);
+`free_hand_cast_3270_test.go`, `free_cast_keyed_restore_test.go` (the hand and library offers mid-prompt and restored, the old
+keyed pick restored and answered, an unknown continuation refused), `aether_free_casts_test.go`, `raffine_a_praetors_test.go`
+(chapter III casts before the flicker, and Jin-Gitaxias draws nothing for them), `kuja_a_kefka_test.go` (the life loss waits for
+every cast; a restore mid-prompt) and the moved card tests; `protocol/hand_cast_offer_view_test.go`;
+`aiseat/free_hand_cast_bot_test.go` (only the claimed casts are offered for a hand card) and
+`aiseat/one_off_resolution_cast_bot_test.go` (graveyard, exile with a continuation, library); `client/src/lib/mayCast.test.ts`
+and `resolutionCast.render.test.ts`. Back-outs are listed in the PR.
+
+### Note — 2026-10-24 (#4286): Guile's play is made during the counterspell's resolution
+
+Decision 4 left one pass-closed grant out: Guile's "If a spell or ability you control would counter a spell, instead exile that
+spell and you may play that card without paying its mana cost" (ADR 0113's 2026-10-19 amendment, `finishCounterSpellLocked` in
+`game/counter_spell.go`). It stamped `FreeCastFromExilePermission` and returned, so the play was an ordinary `cast_spell` taken
+after the counterspell had finished, and it closed on the player's next pass. The play is made while the countering spell or
+ability resolves (CR 608.2g), so it now takes the door every other resolution-time cast takes.
+
+- **The change.** Once the spell has landed in exile, the finisher calls `OfferResolutionCastForEffect` with that permission as
+  `Permission`, keyword `free_cast`, accept "Cast it free" and decline "Leave it in exile", over the one exiled card, for the
+  countering player (never the spell's owner). The cast is made before the counterspell finishes; a decline leaves the card in
+  exile and the counterspell finishes. Nothing changed in the rules the permission carries: free, cast-only, X is 0 (CR 107.3b),
+  and offered only if the card really landed in exile. No wire change (`free_cast` is decision 6's value) and no snapshot change
+  (the prompt is the existing `resolution_cast`).
+- **Every counter runs inside an open resolution.** `counterSpellByEffectLocked` opens the window only when a resolving spell or
+  ability is the cause, and every counter in the catalog reaches it there: a hard counter (Counterspell); a declined
+  counter-unless-pays (Spell Pierce, and the any-player offers: the prompt guards the countering spell, so it holds the
+  resolution open until the answer); a ward (the warded permanent's controller's triggered ability, whose counter runs on the
+  payer's decline); and the destination counters (Hinder's top or bottom, Devious Cover-Up's exile, and Remand's hand and
+  Memory Lapse's library, which are the same two verbs). A CR 616.1 ordering prompt put to the countered spell's controller holds
+  the resolution open too, so the resume that finishes the counter offers the cast inside it.
+- **What stays.** If the door answers false, which is a counter whose cause was carried past the end of its resolution (a
+  non-blocking pay-unless answered after the table moved on, `carriedCause`, #4279), the replaced counter still grants the
+  pass-closed permission alone, as before. No catalog counter reaches it today (checked: every counter-unless-pays prompt
+  guards its stack item and so holds the resolution open); it stays so that no future counter can lose the free play.
+- **A commander** (ADR 0115) lands in exile at once and is offered like any card; if its owner then takes the command zone
+  (CR 903.9a), the countering player's permission no longer opens anything.
+
+Tests: `game/counter_spell_resolution_cast_4286_test.go` (each counter verb, including the hand, exile and both library
+destinations, asks the prompt for the countering player alone; a decline leaves the card exiled with no permission; X is locked at
+0; no open resolution keeps the pass-closed grant; a commander); `cards/effects/guile_resolution_cast_4286_test.go` (Counterspell,
+a declined Spell Pierce, a ward, Hinder to the top and to the bottom, Devious Cover-Up: the cast is logged before the countering
+resolution finishes, a decline leaves the card in exile, a strict restore mid-prompt keeps the offer and the cast is made on the
+restored table) and the updated `guile_test.go`; `aiseat/guile_resolution_cast_bot_test.go` (the bot answers for a hard counter,
+a declined Pierce, a ward and Hinder). Back-outs: asking no prompt in `finishCounterSpellLocked` fails every one of those;
+dropping the pass-closed fallback fails `TestAReplacedCounterWithNoResolutionOpenKeepsThePassClosedGrant`.

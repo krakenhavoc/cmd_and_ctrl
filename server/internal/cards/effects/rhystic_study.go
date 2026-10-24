@@ -40,17 +40,28 @@ func init() {
 					Chooser:  ctx.Trigger().Event.Actor,
 					Cost:     "{1}",
 					Question: "Rhystic Study — pay {1}?",
-					OnDecline: func(ctx *Context) error {
-						return MayChoice{
-							Question: "Rhystic Study — draw a card?",
-							Draws:    1,
-							OnYes: func(ctx *Context) error {
-								return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-							},
-						}.Apply(ctx)
-					},
+					Else:     rhysticStudyDecline,
 				}.Apply(ctx)
 			},
 		}},
 	})
 }
+
+// rhysticStudyDecline is "you may draw a card" once the tax is not paid,
+// keyed (#4256): a table waiting on the payer is a restore point.
+var rhysticStudyDecline = PayUnlessElse("pay-unless/rhystic-study-may-draw", func(ctx *Context, _ game.PayUnlessAnswer) error {
+	return MayChoice{
+		Question: "Rhystic Study — draw a card?",
+		Draws:    1,
+		Then:     rhysticStudyDraw,
+	}.Apply(ctx)
+})
+
+// rhysticStudyDraw is the Study's controller's answer to "draw a card?",
+// keyed (#4264): a table waiting on it is a restore point.
+var rhysticStudyDraw = MayAnswer("confirm/rhystic-study-draw", func(ctx *Context, r game.ConfirmAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

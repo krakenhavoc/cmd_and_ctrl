@@ -815,6 +815,27 @@ type ManaAbilityShape struct {
 	// nothing else; never beside RiderSelfDamage.
 	RiderSelfLifeGain int
 
+	// RiderOpponentLifeGain is the life Rider gives EACH OPPONENT of the
+	// ability's controller, when Rider is exactly "Each opponent gains N
+	// life" (effects.ManaAbility.OpponentsGainLife builds both): Grove of
+	// the Burnwillows' coloured half. Zero for an opaque rider, or none.
+	//
+	// Declared for the auto-tapper (#4189), as RiderSelfLifeGain is. A
+	// source that gives the table something is still a mana source
+	// (CR 605.1a), so the planner taps it and the move list counts its
+	// mana; but it acts on other players, so it sits in the same last
+	// tier as a life-spending source (tapSource.Table) and is reached for
+	// only when nothing quieter could pay. Set it with Rider or with
+	// nothing else.
+	RiderOpponentLifeGain int
+
+	// RiderOpponentDamage is the damage Rider deals each opponent of the
+	// ability's controller, in one damage instance, when Rider is exactly
+	// "this creature deals N damage to each opponent" (effects.ManaAbility.
+	// PingOpponents builds both): Zhur-Taa Druid. Zero for an opaque rider,
+	// or none. Declared and tiered as RiderOpponentLifeGain is.
+	RiderOpponentDamage int
+
 	// PreRider is Rider's mirror image: everything the oracle text
 	// says BEFORE the "Add …" clause, run once the cost is paid and
 	// BEFORE the produced string is computed (Produced / ProducedFunc
@@ -929,10 +950,10 @@ var CatalogReplacements func(oracleID string) []ReplacementEffect
 // package alongside the other catalog hooks.
 //
 // Two consumers:
-//   - On-battlefield: wire.go synthesizes a self-only Layer 6
-//     StaticAbility that appends each entry to the card's own
-//     Characteristic.Abilities, so HasKeyword naturally picks them
-//     up via Effective().Abilities.
+//   - On-battlefield: the entries are in the baseline the layer pass
+//     starts from (printedInputs), so HasKeyword naturally picks them
+//     up via Effective().Abilities, and a removal of any timestamp
+//     takes them away (#4236).
 //   - Off-battlefield: HasKeyword (keywords.go) reads directly from
 //     this hook when the card has no `effective` cache (e.g. a card
 //     in hand needs flash gating before cast). The layer engine
@@ -1096,10 +1117,7 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 	if card.Counters[CounterLoyalty] > 0 {
 		return
 	}
-	loyalty := card.StartingLoyalty
-	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
-		loyalty = CatalogStartingLoyalty(oracleID)
-	}
+	loyalty := startingLoyaltyOf(card, oracleID)
 	if loyalty <= 0 {
 		// Nothing printed and nothing in the catalog. Leave it at
 		// zero and let CR 704.5i do its job — inventing a loyalty
@@ -1126,6 +1144,25 @@ func (g *Game) stampStartingLoyaltyLocked(cardID uuid.UUID, oracleID string) {
 		})
 	}
 }
+
+// startingLoyaltyOf is the loyalty the CR 306.5b stamp places: the
+// printed value, else the catalog's fallback (see
+// stampStartingLoyaltyLocked's source precedence). Zero or less means
+// the stamp opens no counter event at all.
+func startingLoyaltyOf(c *Card, oracleID string) int {
+	loyalty := c.StartingLoyalty
+	if loyalty <= 0 && CatalogStartingLoyalty != nil && oracleID != "" {
+		loyalty = CatalogStartingLoyalty(oracleID)
+	}
+	return loyalty
+}
+
+// StartingLoyaltyForEffect is the starting loyalty the CR 306.5b stamp
+// would give `c` as it enters (#4193). A replacement that adds to the
+// stamp's own event (Oath of Gideon) asks it to tell whether that event
+// will happen: for a walker with none (Jeska, Thrice Reborn), the only
+// loyalty it enters with is the entry's own "enters with" counters.
+func StartingLoyaltyForEffect(c Card) int { return startingLoyaltyOf(&c, catalogKeyOf(&c)) }
 
 // IsAutoCard is the exported wrapper for the view layer. Returns
 // true when the card's oracle ID is in the catalog. Called from

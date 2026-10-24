@@ -48,15 +48,20 @@ func init() {
 						Question: "Endling — +1/-1 or -1/+1 until end of turn?",
 						YesLabel: "+1/-1",
 						NoLabel:  "-1/+1",
-						OnYes: func(ctx *Context) error {
-							return thisGetsUntilEndOfTurn(1, -1, "Endling — +1/-1 until end of turn")(ctx.Game, ctx.Item)
-						},
-						OnNo: func(ctx *Context) error {
-							return thisGetsUntilEndOfTurn(-1, 1, "Endling — -1/+1 until end of turn")(ctx.Game, ctx.Item)
-						},
+						Then:     endlingPump,
 					}.Apply(NewContext(g, item))
 				},
 			},
 		},
 	})
 }
+
+// endlingPump is Endling's choice: +1/-1 on a yes, -1/+1 on a no. Keyed
+// (#4291).
+var endlingPump = MayYesNo("confirm/endling-pump",
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		return thisGetsUntilEndOfTurn(1, -1, "Endling — +1/-1 until end of turn")(ctx.Game, ctx.Item)
+	},
+	func(ctx *Context, _ game.ConfirmAnswer) error {
+		return thisGetsUntilEndOfTurn(-1, 1, "Endling — -1/+1 until end of turn")(ctx.Game, ctx.Item)
+	})

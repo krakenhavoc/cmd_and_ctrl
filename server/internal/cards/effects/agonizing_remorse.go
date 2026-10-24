@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Agonizing Remorse — Sorcery {1}{B}:
 //
 //	"Target opponent reveals their hand. You choose a nonland card from
@@ -31,17 +29,20 @@ func init() {
 		Name:         "Agonizing Remorse",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (ChooseFromRevealedHand{
-				Player:        TargetedPlayer(ctx),
-				Filter:        Nonland(),
-				Label:         "nonland card",
-				Exile:         true,
-				FromGraveyard: true,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
-		},
+		// The life loss waits for the pick from the revealed hand (CR 608.2c, #4155).
+		OnResolve: ResolveSteps(
+			Instruction(func(ctx *Context) error {
+				return ChooseFromRevealedHand{
+					Player:        TargetedPlayer(ctx),
+					Filter:        Nonland(),
+					Label:         "nonland card",
+					Exile:         true,
+					FromGraveyard: true,
+				}.Apply(ctx)
+			}),
+			Instruction(func(ctx *Context) error {
+				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -1)
+			}),
+		),
 	})
 }

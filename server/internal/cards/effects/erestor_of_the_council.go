@@ -30,21 +30,26 @@ func init() {
 		Purpose:      game.Purpose{Draws: 1},
 		Triggered: []game.TriggeredAbility{
 			WheneverPlayersFinishVoting("Erestor of the Council — Treasures for those who voted with you, scry for those who didn't, draw a card",
-				func(g *game.Game, item *game.StackItem) error {
-					ctx := NewContext(g, item)
-					for _, opp := range OpponentsWhoVotedForAChoiceYouVotedFor(ctx) {
-						if err := (CreateToken{Controller: opp, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
-							return err
+				// The scry waits for a prompt a Treasure's creation asks (a CR 616 order; CR 608.2c, #4155).
+				Do(
+					Instruction(func(ctx *Context) error {
+						for _, opp := range OpponentsWhoVotedForAChoiceYouVotedFor(ctx) {
+							if err := (CreateToken{Controller: opp, Template: TreasureToken(), N: 1}).Apply(ctx); err != nil {
+								return err
+							}
 						}
-					}
-					me := ctx.Controller()
-					x := len(OpponentsWhoVotedForAChoiceYouDidntVoteFor(ctx))
-					return Scry{
-						Player: me,
-						N:      x,
-						Then:   func(g *game.Game) error { return g.DrawNForEffect(me, 1) },
-					}.Apply(ctx)
-				}),
+						return nil
+					}),
+					Instruction(func(ctx *Context) error {
+						me := ctx.Controller()
+						x := len(OpponentsWhoVotedForAChoiceYouDidntVoteFor(ctx))
+						return Scry{
+							Player:   me,
+							N:        x,
+							ThenTail: ctx.TailN(thenDrawCards, 1),
+						}.Apply(ctx)
+					}),
+				)),
 		},
 	})
 }

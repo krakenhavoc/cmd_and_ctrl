@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -46,19 +44,23 @@ func init() {
 				Limit:     1,
 				Reveal:    true,
 				Reason:    "Invent — choose up to one instant card to put into your hand",
-				Then: func(g *game.Game, _ []uuid.UUID) error {
-					return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-						Player:  controller,
-						Source:  source,
-						Pred:    func(c game.Card) bool { return c.IsSorcery() },
-						Dest:    game.ZoneHand,
-						Limit:   1,
-						Reveal:  true,
-						Shuffle: true,
-						Reason:  "Invent — choose up to one sorcery card to put into your hand",
-					})
-				},
+				ThenTail:  game.KeyedTail{Ref: inventSorcerySearch, Player: controller, Source: source},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// inventSorcerySearch is the sorcery half of Invent's search, run once the
+// instant search has settled. An on-disk key.
+var inventSorcerySearch = game.RegisterTail("invent/sorcery-search", func(g *game.Game, o game.TailOutcome) error {
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player:  o.Tail.Player,
+		Source:  o.Tail.Source,
+		Pred:    func(c game.Card) bool { return c.IsSorcery() },
+		Dest:    game.ZoneHand,
+		Limit:   1,
+		Reveal:  true,
+		Shuffle: true,
+		Reason:  "Invent — choose up to one sorcery card to put into your hand",
+	})
+})

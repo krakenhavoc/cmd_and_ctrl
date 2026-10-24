@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "894015d5-ee78-45df-8d37-53df963c59a6",
 		Name:            "Emerge Unscathed",
+		Purpose:         ForTargets(BenefitUntilEOT(0, 0, 0, "protection")),
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		Targets:         TargetCreature("target creature you control", YouControl()),

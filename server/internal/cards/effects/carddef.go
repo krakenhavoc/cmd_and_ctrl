@@ -9,8 +9,8 @@ import (
 // carddef.go — builds the engine's view of a Spec once, at Register
 // (#622). Everything the twenty-two per-slot hooks used to compute on
 // every call is computed here, one time per card: the mana and
-// activated ability shapes, the printed-keyword static (closure and
-// all), the resolve and as-enters wrappers, the target-mode hint.
+// activated ability shapes, the resolve and as-enters wrappers, the
+// target-mode hint.
 
 // defs is the engine-facing catalog, keyed exactly as registry is.
 var defs = map[string]*game.CardDef{}
@@ -105,6 +105,8 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			Rider:                     manaRider(a),
 			RiderSelfDamage:           a.PainToYou,
 			RiderSelfLifeGain:         a.GainLife,
+			RiderOpponentLifeGain:     a.OpponentsGainLife,
+			RiderOpponentDamage:       a.PingOpponents,
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
@@ -122,15 +124,23 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 }
 
 // manaRider is the built ability's rider: the declared Rider, the
-// PainRider a PainToYou declaration stands for (#2392), or the
-// GainLifeRider a GainLife declaration stands for (#4185). Register
-// refuses a spec that sets two, so at most one is non-zero here.
+// PainRider a PainToYou declaration stands for (#2392), the
+// GainLifeRider a GainLife declaration stands for (#4185), or the
+// opponent-facing riders OpponentsGainLife and PingOpponents stand for
+// (#4189). Register refuses a spec that sets two, so at most one is
+// non-zero here.
 func manaRider(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) error {
 	if a.PainToYou > 0 {
 		return PainRider(a.PainToYou)
 	}
 	if a.GainLife > 0 {
 		return GainLifeRider(a.GainLife)
+	}
+	if a.OpponentsGainLife > 0 {
+		return EachOpponentGainsLifeRider(a.OpponentsGainLife)
+	}
+	if a.PingOpponents > 0 {
+		return PingEachOpponentRider(a.PingOpponents)
 	}
 	return a.Rider
 }
@@ -181,6 +191,7 @@ func buildDef(spec Spec) *game.CardDef {
 		StartingLoyalty:                     spec.StartingLoyalty,
 		TargetMode:                          spec.TargetMode,
 		Targets:                             spec.Targets,
+		ReturnedAura:                        spec.ReturnedAura,
 		Modes:                               spec.Modes,
 		Purpose:                             spec.Purpose,
 		Replacements:                        spec.Replacements,
@@ -267,16 +278,18 @@ func buildDef(spec Spec) *game.CardDef {
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
 		HandsRevealed:                       spec.HandsRevealed,
-		DiscardByOpponent:                   spec.DiscardByOpponent,
-		DiscardByOpponentForHand:            spec.DiscardByOpponentForHand,
-		CastCondition:                       spec.CastCondition,
-		CastConditionLabel:                  spec.CastConditionLabel,
-		CastRestrictions:                    spec.CastRestrictions,
-		LandPlayRestrictions:                spec.LandPlayRestrictions,
-		EntryRestrictions:                   spec.EntryRestrictions,
-		TargetingRestrictions:               spec.TargetingRestrictions,
-		ActivationRestrictions:              spec.ActivationRestrictions,
-		ActivationTimings:                   spec.ActivationTimings,
+		AttackOnlyNearestOpponentInChosenDirection: spec.AttackOnlyNearestOpponentInChosenDirection,
+		DiscardByOpponent:                          spec.DiscardByOpponent,
+		DiscardByOpponentForHand:                   spec.DiscardByOpponentForHand,
+		CastCondition:                              spec.CastCondition,
+		CastConditionLabel:                         spec.CastConditionLabel,
+		CastRestrictions:                           spec.CastRestrictions,
+		LandPlayRestrictions:                       spec.LandPlayRestrictions,
+		IgnorableEffect:                            spec.IgnorableEffect,
+		EntryRestrictions:                          spec.EntryRestrictions,
+		TargetingRestrictions:                      spec.TargetingRestrictions,
+		ActivationRestrictions:                     spec.ActivationRestrictions,
+		ActivationTimings:                          spec.ActivationTimings,
 
 		// Oath of Teferi (#4184), set apart so the block above keeps its
 		// alignment.
@@ -370,37 +383,14 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
-	// S18 sub-PR 2: the printed keywords become one self-only Layer 6
-	// static, appended after the hand-written ones. Built here, once,
-	// rather than on every layer recompute.
+	// #4236: the printed keywords are NOT a static. They are the object's
+	// own characteristics, so they are in the baseline the layer pass
+	// starts from (CR 613.1; printedInputs.characteristicFrom reads
+	// CatalogPrintedKeywords), where every removal, whenever it began,
+	// takes them away (CR 613.1f, CR 613.7). They used to be re-applied
+	// here as a self-only layer-6 row at the creature's own timestamp,
+	// which put a keyword back after any older "loses flying".
 	d.Static = spec.Static
-	for i := range d.Static {
-		if d.Static[i].PrintedKeywordRow {
-			// Engine-owned (#3013): only the row below may carry it.
-			d.Static = append([]game.StaticAbility(nil), spec.Static...)
-			for j := range d.Static {
-				d.Static[j].PrintedKeywordRow = false
-			}
-			break
-		}
-	}
-	if len(spec.PrintedKeywords) > 0 {
-		kws := append([]string(nil), spec.PrintedKeywords...)
-		synth := game.StaticAbility{
-			Layer:     game.Layer6Ability,
-			AppliesTo: selfOnly,
-			// #2219: this row IS the printed keywords, which the
-			// tile already shows as keyword chips.
-			Keywords:          kws,
-			PrintedKeywordRow: true,
-			Apply: func(c *game.Characteristic, target *game.Card, _ *game.Game, _ *game.Card) {
-				// CR 707.9d (#2322): a copy whose colour exception
-				// dropped devoid does not get it back from the entry.
-				appendKeywordsTo(c, target.PrintedKeywordsHonouringCopy(kws))
-			},
-		}
-		d.Static = append(append([]game.StaticAbility(nil), d.Static...), synth)
-	}
 	if len(d.Static) == 0 {
 		d.Static = nil
 	}

@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:      "a465f8a9-d5aa-4dfa-b674-7aa1798cb0bd",
 		Name:          "Beast Mode",
+		Purpose:       ForTargets(BenefitUntilEOT(0, 2, 2, "trample")),
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(1)},
 		Targets:       TargetCreature("target creature"),

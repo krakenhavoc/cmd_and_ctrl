@@ -67,22 +67,30 @@ func init() {
 			// one else. The bot never reaches across for it: it declares
 			// no Draws or ControllerLosesLife (ADR 0106 §1 decision 8).
 			Purpose: game.Purpose{Answers: game.AnswerPrevent},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				spell, ok := g.AbilitySourceSpellForEffect(item)
-				if !ok {
-					return nil
-				}
-				if err := g.AddCounterByForEffect(item.Controller, spell, game.CounterCharge, 2); err != nil {
-					return err
-				}
-				return ChangeTargets{
-					StackID:  spell,
-					Chooser:  item.Controller,
-					Policy:   game.RetargetChooseNew,
-					Optional: true,
-					Reason:   "Lightning Storm — you may choose a new target",
-				}.Apply(NewContext(g, item))
-			},
+			// The new-target offer waits for a prompt the counters ask (a CR 616 order; CR 608.2c,
+			// #4155).
+			Effect: Do(
+				Instruction(func(ctx *Context) error {
+					spell, ok := ctx.Game.AbilitySourceSpellForEffect(ctx.Item)
+					if !ok {
+						return nil
+					}
+					return ctx.Game.AddCounterByForEffect(ctx.Controller(), spell, game.CounterCharge, 2)
+				}),
+				Instruction(func(ctx *Context) error {
+					spell, ok := ctx.Game.AbilitySourceSpellForEffect(ctx.Item)
+					if !ok {
+						return nil
+					}
+					return ChangeTargets{
+						StackID:  spell,
+						Chooser:  ctx.Controller(),
+						Policy:   game.RetargetChooseNew,
+						Optional: true,
+						Reason:   "Lightning Storm — you may choose a new target",
+					}.Apply(ctx)
+				}),
+			),
 		}},
 	})
 }

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Springbloom Druid — Creature — Elf Druid {2}{G}, 1/1 (EDHREC rank
 // 779):
@@ -69,25 +73,30 @@ func init() {
 //
 // Caller holds g.mu.
 func springbloomDruidSacrificeThenSearch(g *game.Game, item *game.StackItem) error {
-	return g.PlayerSacrificesThenForEffect(item.SourceCardID, item.Controller,
+	// Keyed (#4290): the controller rides the run as its carry, so a
+	// table waiting on the sacrifice is a restore point.
+	return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, item.Controller,
 		sacrificeSpec("a land you control", Land()),
 		"Springbloom Druid — sacrifice a land", 1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			// "If you do" — CR 701.17a's sacrifice really happened for
-			// this seat. A prompt withdrawn because the land left
-			// under it, or a CR 614 window that cancelled the move,
-			// searches for nothing.
-			if !sacrificed.Sacrificed(item.Controller) {
-				return nil
-			}
-			return SearchLibrary{
-				Player:        item.Controller,
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         2,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        "Springbloom Druid — up to two basic land cards, tapped",
-			}.Apply(NewContext(g, item))
-		})
+		springbloomDruidSearch, []uuid.UUID{item.Controller})
 }
+
+// springbloomDruidSearch is "if you do, search your library for up to
+// two basic land cards, put them onto the battlefield tapped".
+var springbloomDruidSearch = game.RegisterPromptRunThen("prompt-run/springbloom-druid-search", func(g *game.Game, r game.RunDone) error {
+	// "If you do" — CR 701.17a's sacrifice really happened for this
+	// seat. A prompt withdrawn because the land left under it, or a
+	// CR 614 window that cancelled the move, searches for nothing.
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return SearchLibrary{
+		Player:        r.Carry[0],
+		Predicate:     IsBasicLand,
+		Dest:          game.ZoneBattlefield,
+		Limit:         2,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Reason:        "Springbloom Druid — up to two basic land cards, tapped",
+	}.Apply(keyedContext(g, r.Carry[0], r.Source))
+})

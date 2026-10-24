@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Wandering Archaic // Explore the Vastlands — modal double-faced card
 // (slice 296-m; the back face #1743):
@@ -105,23 +109,48 @@ func wanderingArchaicPayOrCopy(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	spellID := ctx.Trigger().Event.CardID
 	caster := ctx.Trigger().Event.Actor
-	controller := item.Controller
+	// The pay_unless below does not stop the table (choice_gate.go), so
+	// the spell can resolve and the step move on before the caster
+	// answers: hold its last-known information for the copy (#4276).
+	ctx.Game.HoldSpellForEffect(spellID)
 	return PayUnless{
 		Chooser:  caster,
 		Cost:     "{2}",
 		Question: "Wandering Archaic — pay {2}?",
-		OnDecline: func(ctx *Context) error {
-			return MayChoice{
-				Player:   controller,
-				Question: "Wandering Archaic — copy that spell?",
-				OnYes: func(ctx *Context) error {
-					return CopySpell{
-						StackID:          spellID,
-						Controller:       controller,
-						ChooseNewTargets: true,
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
-		},
+		Else:     wanderingArchaicDecline,
+		Carry:    []uuid.UUID{spellID},
 	}.Apply(ctx)
 }
+
+// wanderingArchaicDecline is "you may copy that spell" once the tax is
+// not paid, keyed (#4256): a table waiting on the payer is a restore
+// point. The spell rides on the prompt as its Carry.
+var wanderingArchaicDecline = PayUnlessElse("pay-unless/wandering-archaic-may-copy", func(ctx *Context, r game.PayUnlessAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return MayChoice{
+		Player:   ctx.Controller(),
+		Question: "Wandering Archaic — copy that spell?",
+		Then:     wanderingArchaicCopy,
+		Carry:    []uuid.UUID{r.Carry[0]},
+	}.Apply(ctx)
+})
+
+// wanderingArchaicCopy is Wandering Archaic's controller's answer to
+// "copy that spell?", keyed (#4264): a table waiting on it is a restore
+// point. The spell rides on the prompt as its Carry.
+var wanderingArchaicCopy = MayAnswer("confirm/wandering-archaic-copy", func(ctx *Context, r game.ConfirmAnswer) error {
+	if !r.Accepted || len(r.Carry) == 0 {
+		return nil
+	}
+	return CopySpell{
+		StackID:    r.Carry[0],
+		Controller: ctx.Controller(),
+		// "Copy that spell" names it and does not target it, so it is
+		// copied from last-known information when it has left the
+		// stack (CR 608.2h), as the table may have moved on (#4276).
+		FromLastKnown:    true,
+		ChooseNewTargets: true,
+	}.Apply(ctx)
+})

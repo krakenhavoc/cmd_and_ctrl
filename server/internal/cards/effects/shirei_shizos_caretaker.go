@@ -110,8 +110,13 @@ func shireiReturn(g *game.Game, item *game.StackItem, p game.EffectParams) error
 		Question: "Shirei, Shizo's Caretaker — return " + c.Name + " to the battlefield?",
 		YesLabel: "Return it",
 		NoLabel:  "Leave it",
-		OnYes: func(ctx *Context) error {
-			return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}.Apply(ctx)
-		},
+		Then:     shireiAnswer,
+		Carry:    []uuid.UUID{id},
 	}.Apply(NewContext(g, item))
 }
+
+// shireiAnswer is the "yes": return the creature (the carried ID) to the
+// battlefield. Keyed (#4291).
+var shireiAnswer = MayYes("confirm/shirei-return", func(ctx *Context, r game.ConfirmAnswer) error {
+	return ReturnFromGraveyard{Target: carryAt(r, 0), Dest: game.ZoneBattlefield}.Apply(ctx)
+})

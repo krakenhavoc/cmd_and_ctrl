@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "694cb93a-bcc5-44b0-a76c-19ae4a4e5e0f",
 		Name:         "Ranger's Guile",
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 1, "hexproof")),
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you control", YouControl()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

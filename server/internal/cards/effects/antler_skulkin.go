@@ -18,6 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{2}: Target white creature gains persist until end of turn.",
+			Purpose: ForTargets(BenefitUntilEOT(0, 0, 0, "persist")),
 			Cost:    ManaCost("{2}"),
 			Targets: TargetCreature("target white creature", OfColor("W")),
 			Effect: func(g *game.Game, item *game.StackItem) error {

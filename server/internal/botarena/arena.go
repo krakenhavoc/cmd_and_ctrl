@@ -107,8 +107,31 @@ const VariantNoPlan = "noplan"
 // NoPlanContestant is VariantNoPlan's contestant name.
 const NoPlanContestant = string(tiers.Heuristic) + "-" + VariantNoPlan
 
+// VariantNoTemporary is today's heuristic with #4302's pricing of a
+// change until end of turn off (Config.PriceTemporaryEffects false),
+// seated as `heuristic-notemporary`: a target that a declared benefit or
+// harm is aimed at is priced as it was before #4302, so a run against
+// `heuristic` measures that pricing alone. An arena name only, like
+// heuristic-baseline.
+const VariantNoTemporary = "notemporary"
+
+// NoTemporaryContestant is VariantNoTemporary's contestant name.
+const NoTemporaryContestant = string(tiers.Heuristic) + "-" + VariantNoTemporary
+
+// VariantNoGrants is today's heuristic with #4312's two prices of a
+// benefit until end of turn off (Config.PriceGrantSaves and
+// PriceEvasionGrants false), seated as `heuristic-nogrants`: a protection
+// grant in answer to removal and an evasion grant before attacks are
+// priced as #4302 priced them, so a run against `heuristic` measures
+// those two alone. An arena name only, like heuristic-baseline.
+const VariantNoGrants = "nogrants"
+
+// NoGrantsContestant is VariantNoGrants's contestant name.
+const NoGrantsContestant = string(tiers.Heuristic) + "-" + VariantNoGrants
+
 // ParseContestant reads one `--seats` entry: a tier,
-// `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`.
+// `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
+// `heuristic-notemporary` or `heuristic-nogrants`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -117,10 +140,14 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoExert}, nil
 	case NoPlanContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoPlan}, nil
+	case NoTemporaryContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTemporary}, nil
+	case NoGrantsContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoGrants}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -309,7 +336,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants:
 		return true
 	}
 	return false
@@ -762,6 +789,15 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 		h := heuristic.DefaultConfig()
 		h.PlanTurnMana = false
 		opt.Heuristic = &h
+	case VariantNoTemporary:
+		h := heuristic.DefaultConfig()
+		h.PriceTemporaryEffects = false
+		opt.Heuristic = &h
+	case VariantNoGrants:
+		h := heuristic.DefaultConfig()
+		h.PriceGrantSaves = false
+		h.PriceEvasionGrants = false
+		opt.Heuristic = &h
 	}
 	if spec.Tier.NeedsModel() && spec.Deck != "" {
 		// The static, prompt-cached half of a model seat's prompt is
@@ -793,6 +829,8 @@ func seatDeck(cfg Config, spec SeatSpec) ([]game.Card, error) {
 		return MonolithBattleDeck(uuid.Nil), nil
 	case AnswersDeckID:
 		return AnswersBattleDeck(uuid.Nil), nil
+	case TricksDeckID:
+		return TricksBattleDeck(uuid.Nil), nil
 	}
 	return CuratedDeck(cfg.Index, spec.Deck)
 }

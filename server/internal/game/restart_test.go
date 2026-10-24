@@ -394,17 +394,26 @@ func TestRestartClassifiesEveryPlayerField(t *testing.T) {
 		"IsBot": true, "BotTier": true, "BotDeck": true, "Agent": true, "AgentClient": true,
 		"TriggerOrder": true, "AutoAnswers": true,
 		"Companion": true, "Sideboard": true, "HasSideboard": true,
+		// ADR 0208: the sticker sheets the deck revealed are outside
+		// the game too (CR 123.2).
+		"StickerSheetPool": true,
 	}
 	reset := map[string]bool{
 		"Life": true, "Poison": true, "Energy": true, "Speed": true,
 		"Library": true, "Hand": true, "Graveyard": true, "Command": true, "Emblems": true,
 		"CommanderDamage": true, "LifeHistory": true, "TurnsBegun": true, "UpkeepsBegun": true,
-		"EndStepTurn": true, "LastTurnAttacks": true, "Eliminated": true, "Removed": true,
+		"EndStepTurn": true, "LastTurnAttacks": true, "LastTurnCastOrPut": true, "Eliminated": true, "Removed": true,
 		"HandKept": true, "MulliganDecided": true, "TriggerOrderMemory": true, "MulligansTaken": true,
 		"mulliganBottoming": true, "UndosRemaining": true, "AttemptedEmptyDraw": true,
 		"CommanderCasts": true, "Counters": true, "MaxHandSize": true, "MaxHandSizeAt": true,
 		"LandDropsPerTurn": true, "ManaPool": true, "CastPermissions": true, "Statics": true,
 		"CitysBlessing": true, "Dungeon": true, "CompletedDungeons": true,
+		// ADR 0207: rebuilt by the restart from every Attraction card the
+		// player owns (CR 727.2), so neither pile is carried as it was.
+		"AttractionDeck": true, "Junkyard": true,
+		// ADR 0208: the new game chooses its three sheets afresh as it
+		// begins (CR 103.2d).
+		"StickerSheets": true,
 	}
 	typ := reflect.TypeOf(Player{})
 	for i := 0; i < typ.NumField(); i++ {

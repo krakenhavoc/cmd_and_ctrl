@@ -75,7 +75,7 @@ func edenMillTwoThenMaySacrifice(g *game.Game, item *game.StackItem) error {
 		Question: "Eden, Seat of the Sanctum — sacrifice it to return a permanent card from your graveyard?",
 		YesLabel: "Sacrifice Eden",
 		NoLabel:  "Keep it",
-		OnYes:    edenSacrificeThenReturn,
+		Then:     edenAnswer,
 	}.Apply(ctx)
 }
 
@@ -113,3 +113,9 @@ func edenSacrificeThenReturn(ctx *Context) error {
 func edenReturnChosenFromGraveyard(g *game.Game, item *game.StackItem) error {
 	return b34ReturnChosenGraveyardCardToHand(NewContext(g, item))
 }
+
+// edenAnswer is the "yes": sacrifice Eden, then return a permanent card.
+// Keyed (#4291).
+var edenAnswer = MayYes("confirm/eden-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
+	return edenSacrificeThenReturn(ctx)
+})

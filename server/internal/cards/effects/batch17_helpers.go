@@ -204,55 +204,6 @@ func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	return p
 }
 
-// b17MilledCreatureCards is the batch of creature cards `owner`
-// milled in the mill that fired the event at `seq` — Colossal
-// Grave-Reaver's "one or more creature cards are put into your
-// graveyard from your library". A mill emits one EventMill per card
-// with nothing of its own in between; only the harvester's
-// EventTrigger breadcrumbs (the first creature milled fires this
-// very trigger) interleave. The batch is therefore every EventMill
-// by `owner` from the firing event forward until the first event
-// that is neither, read at resolution when every card of it is in
-// the graveyard. Cards that have since left the graveyard are
-// dropped.
-func b17MilledCreatureCards(g *game.Game, owner uuid.UUID, seq uint64) []uuid.UUID {
-	start := -1
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		if g.Events[i].Seq == seq {
-			start = i
-			break
-		}
-	}
-	if start < 0 {
-		return nil
-	}
-	p := g.PlayerByIDForEffect(owner)
-	if p == nil || p.Graveyard == nil {
-		return nil
-	}
-	var out []uuid.UUID
-	for i := start; i < len(g.Events); i++ {
-		ev := g.Events[i]
-		switch ev.Kind {
-		case game.EventTrigger:
-			continue
-		case game.EventMill:
-			if ev.Actor != owner || ev.NewZone != game.ZoneGraveyard {
-				return out
-			}
-		default:
-			return out
-		}
-		if !p.Graveyard.Contains(ev.CardID) {
-			continue
-		}
-		if c, ok := g.LookupCardForEffect(ev.CardID); ok && c.IsCreature() {
-			out = append(out, ev.CardID)
-		}
-	}
-	return out
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b17SelfOrZombieYouControlDied is Undead Augur's condition: the
@@ -463,6 +414,11 @@ func b17ExileFromGraveyardAndMayPlay(g *game.Game, item *game.StackItem, player,
 // condition holds, as the printed "repeat this process" does.
 func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error {
 	controller, source := item.Controller, item.SourceCardID
+	var tail game.KeyedTail
+	if again {
+		// #4253 slice 4: the repeat is a registered tail.
+		tail = NewContext(g, item).ItemTail(b17ClaimJumperRepeat)
+	}
 	return SearchLibrary{
 		Player:        controller,
 		Predicate:     IsLandWithSubtype("Plains"),
@@ -473,13 +429,22 @@ func b17ClaimJumperSearch(g *game.Game, item *game.StackItem, again bool) error 
 		Optional:      true,
 		Reason:        "Claim Jumper — a Plains card, onto the battlefield tapped",
 		Source:        source,
-		Then: func(g *game.Game, _ []uuid.UUID) error {
-			if !again || !b03OpponentControlsMoreLands(g, controller) {
-				return nil
-			}
-			return b17ClaimJumperSearch(g, item, false)
-		},
+		ThenTail:      tail,
 	}.Apply(NewContext(g, item))
+}
+
+// b17ClaimJumperRepeat is "then if an opponent controls more lands than you,
+// repeat this process once": one more pass, with no repeat of its own. An
+// on-disk key. Registered in init: it runs the search that names it.
+var b17ClaimJumperRepeat game.TailRef
+
+func init() {
+	b17ClaimJumperRepeat = CardTail("claim-jumper/repeat", func(ctx *Context, o game.TailOutcome) error {
+		if !b03OpponentControlsMoreLands(ctx.Game, o.Tail.Player) {
+			return nil
+		}
+		return b17ClaimJumperSearch(ctx.Game, ctx.Item, false)
+	})
 }
 
 // destroyFirstLegalTarget destroys the first announce-time target

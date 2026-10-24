@@ -361,8 +361,8 @@ func (g *Game) DeclineSearchLibrary(choiceID, chooserID uuid.UUID) error {
 	}
 	spec := choice.searchResume.spec
 	g.dequeueChoiceLocked(idx)
-	if spec.Then != nil {
-		if err := spec.Then(g, nil); err != nil {
+	if spec.Then != nil || !spec.ThenTail.IsZero() {
+		if err := g.runSearchThenLocked(spec, nil); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				Actor:    chooserID,
