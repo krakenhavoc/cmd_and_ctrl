@@ -17,7 +17,7 @@ import (
 //
 // Discover is cascade's relative and is built from cascade's parts
 // (cascade.go): the same exile-until walk (exileUntilLocked, shared),
-// the same may_cast prompt, the same "{0}" cast permission and the same
+// the same resolution_cast prompt, the same "{0}" cast permission and the same
 // keyed random bottom. What discover adds, and what ADR 0099 moved
 // cascade onto as well:
 //
@@ -31,18 +31,23 @@ import (
 //     without casting is the decline, run late: a discovered card goes
 //     to its owner's hand, a cascade hit to the bottom of the library.
 //
-// SANDBOX SIMPLIFICATION, the one every "you may cast it" a resolution
-// offers takes (ADR 0066, ADR 0091): the free cast is a GRANT, taken
-// with an ordinary cast_spell after the resolution, rather than an
-// inline CR 608.2g cast inside it. The active player receives priority
-// first (CR 117.3b), so on another player's turn the table may act
-// before the discoverer casts. Because the window closes on the
-// discoverer's next pass, they cannot hold a free spell across the turn
-// and still keep the card.
+// THE CAST happens during the resolution that discovers (CR 608.2g,
+// #4243), as cascade's does (cascade.go): a resolution_cast prompt
+// (resolution_copy_cast.go, ADR 0066's 2026-10-23 amendment) holds the
+// resolution open while the discoverer casts the card, its targets,
+// modes and X chosen then, or puts it into their hand. The remaining
+// exiled cards go to the bottom of the library when the prompt is
+// answered. The prompt is plain data, so a table paused on it is a
+// restore point.
+//
+// The card still carries the pass-closed permission above; a cast
+// consumes it (and completes the discover), a decline lapses it into the
+// hand. Outside an open resolution the permission alone is the window,
+// closing on the discoverer's next pass as before.
 //
 // Discover is an instruction, not a trigger: a spell's resolution, a
 // triggered ability's effect, an activated ability and a loyalty
-// ability all call DiscoverThenForEffect the same way.
+// ability all call DiscoverForEffect the same way.
 
 // PermissionLapse is where a pass-closed permission's card goes when
 // its holder passes without casting it (CastPermission.LapseOnPass).
@@ -66,7 +71,7 @@ type DiscoverGrant struct {
 	Source uuid.UUID `json:"source,omitempty"`
 }
 
-// DiscoverResult is what a discover's continuation is handed.
+// DiscoverResult is what DiscoverForEffect found.
 type DiscoverResult struct {
 	// N is the number the instruction named.
 	N int
@@ -92,84 +97,68 @@ const (
 	MayCastKeywordMadness  = "madness"
 )
 
-// DiscoverThenForEffect performs "discover N" for `player`, with
-// `source` the discovering card, and hands `then` the result once the
-// discoverer has answered (or at once, when there is nothing to ask).
+// DiscoverForEffect performs "discover N" for `player`, with `source`
+// the discovering card, and answers what it found (CR 701.57a).
 //
-// `then` runs exactly once, on every outcome — a hit cast, a hit put
-// into hand, no hit at all, and a discoverer who is no longer in the
-// game — which is CR 701.57b's "even if some or all of those actions
-// were impossible" and the #865 rule that a Then always runs. It runs
-// at the ANSWER; the discovered spell, if the discoverer took the free
-// cast, is cast afterwards. Hit the Mother Lode's Treasures, which read
-// only the discovered card's mana value, do not care.
+// The discovered card is cast, or put into the hand, as the discoverer
+// answers the resolution_cast prompt this queues; the answer is not
+// known when this returns, but what a later instruction reads is:
+// CR 701.57c's discovered card and its mana value are the walk's, cast
+// or not. A card whose text reads them (Hit the Mother Lode's Treasures)
+// writes them to a step record and runs its later steps after the answer
+// (effects.Discover).
 //
-// Returns nil in every "nothing happened" case, for cascade's reason
-// (CR 608.2c).
+// Returns the zero result, and a nil error, in every "nothing happened"
+// case, for cascade's reason (CR 608.2c), and the discover is still
+// completed (CR 701.57b).
 //
 // Caller must hold g.mu (this runs from a resolving effect).
-func (g *Game) DiscoverThenForEffect(player, source uuid.UUID, n int, then func(g *Game, r DiscoverResult) error) error {
+func (g *Game) DiscoverForEffect(player, source uuid.UUID, n int) (DiscoverResult, error) {
 	res := DiscoverResult{N: n}
-	finish := func(g *Game) error {
-		if then != nil {
-			return then(g, res)
-		}
-		return nil
-	}
 	p := g.playerByIDLocked(player)
 	if p == nil || p.Eliminated {
-		return finish(g)
+		return res, nil
 	}
 	pile, hit, err := g.exileUntilLocked(player, func(c Card) bool { return discoverHit(c, n) })
 	if err != nil {
-		return err
+		return res, err
 	}
 	if hit == uuid.Nil {
 		// Nothing to discover. Everything exiled goes back to the
 		// bottom, and the player has still discovered (CR 701.57b).
 		if err := g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile); err != nil {
-			return err
+			return res, err
 		}
 		g.emitDiscoverLocked(player, source, n, uuid.Nil)
-		return finish(g)
+		return res, nil
 	}
 	res.Discovered = hit
-	hitName := "the exiled card"
 	if c, ok := g.cardInZoneLocked(g.Exile, hit); ok {
-		hitName = c.Name
 		if mv, ok := c.ParsedManaValue(); ok {
 			res.ManaValue = mv
 		}
 	}
-	return g.QueueMayCastPromptForEffect(MayCastPrompt{
+	g.grantDiscoverCastLocked(player, source, hit, n)
+	if _, _, ok := g.ResolutionCastCandidateLocked(player, hit); !ok {
+		// The card was not there to cast (the grant says so by
+		// announcing the discover itself): the rest go to the bottom.
+		return res, g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
+	}
+	if g.queueResolutionCastOfferLocked(resolutionCastOffer{
 		Chooser:      player,
 		Source:       source,
-		Card:         hit,
-		Question:     "Discover " + strconv.Itoa(n) + " — cast " + hitName + " without paying its mana cost?",
+		Reason:       "Discover " + strconv.Itoa(n),
+		Candidates:   []uuid.UUID{hit},
 		Keyword:      MayCastKeywordDiscover,
 		AcceptLabel:  "Cast it free",
 		DeclineLabel: "Put it into your hand",
-		OnAccept: func(g *Game) error {
-			g.grantDiscoverCastLocked(player, source, hit, n)
-			if err := g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile); err != nil {
-				return err
-			}
-			return finish(g)
-		},
-		OnDecline: func(g *Game) error {
-			// "If you don't cast it, put that card into your hand. Put
-			// the remaining exiled cards on the bottom" — in that
-			// order. The hand is a CR 903.9b destination, so a
-			// discovered commander may stop here to ask; the rest of
-			// the sentence waits for the answer.
-			return g.putDiscoveredIntoHandLocked(player, source, n, hit, func(g *Game) error {
-				if err := g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile); err != nil {
-					return err
-				}
-				return finish(g)
-			})
-		},
-	})
+		Pile:         pile,
+	}) != uuid.Nil {
+		return res, nil
+	}
+	// Outside a resolution: the permission is the window, and the
+	// remaining cards go to the bottom now.
+	return res, g.PutOnBottomInRandomOrderForEffect(player, ZoneExile, pile)
 }
 
 // discoverHit reports whether an exiled card stops a discover N: a
@@ -371,6 +360,16 @@ func (g *Game) lapsePassClosedGrantsLocked(holder uuid.UUID) bool {
 //
 // Caller must hold g.mu (write).
 func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) {
+	g.lapseCastPermissionCollectingLocked(holder, perm, nil)
+}
+
+// lapseCastPermissionCollectingLocked is lapseCastPermissionLocked with
+// the bottom of the library handed to the caller: with bottom set, a
+// card that would be put on the bottom of the library out of exile is
+// appended to it and left in exile for the caller to put there with the
+// others (a cascade's pile and its uncast hit share one random order,
+// CR 702.85a).
+func (g *Game) lapseCastPermissionCollectingLocked(holder uuid.UUID, perm CastPermission, bottom *[]uuid.UUID) {
 	for _, ref := range perm.Cards {
 		present := false
 		if zone := g.findCardZoneLocked(ref.ID); zone != nil && zone.Kind == perm.Zone {
@@ -399,7 +398,9 @@ func (g *Game) lapseCastPermissionLocked(holder uuid.UUID, perm CastPermission) 
 			}
 			_ = g.BounceToHandForEffect(ref.ID)
 		case LapseToLibraryBottom:
-			if present {
+			if present && bottom != nil && perm.Zone == ZoneExile {
+				*bottom = append(*bottom, ref.ID)
+			} else if present {
 				_ = g.PutOnBottomInRandomOrderForEffect(holder, perm.Zone, []uuid.UUID{ref.ID})
 			}
 		}

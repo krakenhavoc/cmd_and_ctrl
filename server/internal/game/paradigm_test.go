@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -190,21 +191,92 @@ func TestParadigmOffersAFreeCopyEachOfYourPrecombatMains(t *testing.T) {
 	}
 }
 
-// Passing with the copy uncast declines it: the copy ceases to exist
-// and the original stays in exile for the next turn's offer.
+// CR 702.192a, CR 707.12, CR 608.2g (#4243): the copy is cast while the
+// trigger is still resolving, so the table is held on the offer: nobody
+// receives priority, and the pass that used to decline it is refused.
+// Declining is the answer, and the copy then ceases to exist and the
+// original stays in exile for the next turn's offer.
 func TestParadigmCopyNotCastCeasesToExist(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	id := castAndResolveParadigm(t, g, me, "Test Paradigm")
 	reachParadigmOffer(t, g, 0)
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
+	c := resolutionCastPrompt(g, me.ID)
+	if c == nil || !g.ResolutionPaused() {
+		t.Fatalf("the paradigm copy is not offered inside the trigger's resolution: %+v", c)
+	}
+	if err := g.PassPriority(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("PassPriority = %v, want the choice gate's refusal", err)
+	}
+	if n := len(paradigmCopiesInExile(g)); n != 1 {
+		t.Fatalf("the refused pass left %d copies, want the one still on offer", n)
+	}
+	if err := g.ResolvePendingChoice(c.ID, me.ID, nil); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	if n := len(paradigmCopiesInExile(g)); n != 0 {
-		t.Errorf("%d copies left after the holder passed", n)
+		t.Errorf("%d copies left after the decline", n)
 	}
 	if !g.Exile.Contains(id) || len(paradigmTriggers(g)) != 1 {
 		t.Error("declining the copy cost the original or the record")
+	}
+}
+
+// The copy is cast before the trigger finishes resolving: on the stack
+// the moment it is cast, the trigger's resolution still open until it is.
+func TestParadigmCopyIsCastBeforeTheTriggerFinishes(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	castAndResolveParadigm(t, g, me, "Test Paradigm")
+	cp := reachParadigmOffer(t, g, 0)
+	if g.Stack.Contains(cp.InstanceID) || !g.ResolutionPaused() {
+		t.Fatal("the copy is on the stack before it was cast, or the resolution is not held")
+	}
+	c := resolutionCastPrompt(g, me.ID)
+	if err := g.CastForResolutionChoice(me.ID, c.ID, cp.InstanceID, CastSpellParams{FromZone: "exile"}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	if !g.Stack.Contains(cp.InstanceID) || g.ResolutionPaused() || resolutionCastPrompt(g, me.ID) != nil {
+		t.Error("the cast copy is not on the stack, or the resolution is still held")
+	}
+}
+
+// A table paused on the paradigm offer is a restore point (the trigger is
+// keyed data), and the restored table resumes: the copy casts, or the
+// decline lets the resolution finish.
+func TestParadigmOfferSurvivesARestoreMidPrompt(t *testing.T) {
+	for _, cast := range []bool{true, false} {
+		g := newActiveGame(t)
+		me := g.Seats[0]
+		id := castAndResolveParadigm(t, g, me, "Test Paradigm")
+		cp := reachParadigmOffer(t, g, 0)
+
+		snap, restored := roundTrip(t, g)
+		if !snap.Restorable() {
+			t.Fatalf("a table on the paradigm offer is not a restore point: %+v", snap.Continuations)
+		}
+		c := resolutionCastPrompt(restored, me.ID)
+		if c == nil || len(c.DiscardOptions) != 1 || c.DiscardOptions[0] != cp.InstanceID || !restored.ResolutionPaused() {
+			t.Fatalf("cast=%v: the restored table lost the offer: %+v", cast, c)
+		}
+		if cast {
+			if err := restored.CastForResolutionChoice(me.ID, c.ID, cp.InstanceID, CastSpellParams{FromZone: "exile"}); err != nil {
+				t.Fatalf("cast after the restore: %v", err)
+			}
+			if !restored.Stack.Contains(cp.InstanceID) {
+				t.Error("the restored cast did not reach the stack")
+			}
+		} else {
+			if err := restored.ResolvePendingChoice(c.ID, me.ID, nil); err != nil {
+				t.Fatalf("decline after the restore: %v", err)
+			}
+			if n := len(paradigmCopiesInExile(restored)); n != 0 {
+				t.Errorf("%d copies after the restored decline", n)
+			}
+		}
+		if restored.ResolutionPaused() || !restored.Exile.Contains(id) || len(paradigmTriggers(restored)) != 1 {
+			t.Errorf("cast=%v: the restored resolution did not finish with the original and the record intact", cast)
+		}
 	}
 }
 

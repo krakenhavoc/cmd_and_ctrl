@@ -400,3 +400,12 @@ The SANDBOX SIMPLIFICATION of §Decision 4 stands: each cast is an ordinary `cas
 **Back-out.** Granting only the first hand card (`break` in `grantFreeHandCastsFrom`) fails `TestAetherfluxConduitDrawsSevenAndCastsAnyNumberOfSpellsFree`; dropping `LapseOnPass` from the library permission fails `TestAetherworksMarvelUncastPickAndDeclinedLookGoToTheBottom`; dropping the `ChooseCastFreeFromLibrary` destination fails `TestAetherworksMarvelPaysSixLooksAtSixAndCastsOneFreeOfThem` and the view test `TestLibraryFreeCastPickPromptDeclaresTheCastToItsChooserOnly`; `PayEnergy(0)` fails `TestAetherfluxConduitRefusesWithFortyNineEnergy`; a zero amount on Conduit's item fails `TestAetherfluxConduitCastingASpellGivesEnergyEqualToTheManaSpent`; removing the empty-type-list shortcut fails `TestAetherworksMarvelGivesEnergyForEachPermanentYouControlPutIntoAGraveyard`. `TestALookedAtLibraryPickIsCastableForItsOwnerOnly` pins that no other seat sees the pick or the grant.
 
 **Snapshot impact.** None new. The grants are the existing `CastPermission`, and `cast_free_library` is one more value of the open `ChooseDestination` string a restore carries as itself.
+
+## Amendment 2026-10-23: the cast is made during the resolution (#4243)
+
+Cascade's and discover's "you may cast it" is no longer a `may_cast` yes/no followed by a pass-closed cast after the resolution.
+Both ask the `resolution_cast` prompt of [ADR 0066](0066-granted-cast-and-play-permissions.md)'s 2026-10-23 amendment, inside the
+resolution (CR 608.2g): the hit is cast there or declined there, and the passed-over cards are bottomed when it is answered.
+The permission this ADR describes (§3, §4) is unchanged and still the data under that prompt; the pass-closed window is now only
+the fallback for an offer made with no open resolution. `DiscoverThenForEffect` and `effects.Discover.Then` are replaced by
+`DiscoverForEffect` and a step record (`effects.DiscoverStepKey`).

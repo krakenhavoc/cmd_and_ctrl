@@ -47,7 +47,19 @@ import (
 // The prompt is plain data — the chooser, the source and the candidate
 // list in DiscardOptions — and the permissions, the copies and
 // Game.resolutionOpen already persist, so a table paused on it is a
-// restore point with no new snapshot field.
+// restore point.
+//
+// #4243: the same prompt is cascade's, discover's, cipher's and
+// paradigm's cast (cascade.go, discover.go, cipher.go, paradigm.go). For
+// cascade and discover the candidate is a real card in exile rather than
+// a copy, under the pass-closed permission those keywords already
+// stamped (so a restore point written before this change keeps working
+// through the pass-closed window), and the prompt also carries the cards
+// the keyword passed over (PendingChoice.CastPile). The decline lapses
+// the permission as a pass would have, sending the card where its keyword
+// says (the bottom of the library, or the hand), and the pile and any
+// card that goes to the bottom are put there together, in one random
+// order, once the prompt is answered (CR 702.85a, CR 701.57a).
 
 // PendingChoiceResolutionCast is the open "you may cast the copy"
 // inside a resolution (CR 707.12, CR 608.2g). Chooser casts, Source is
@@ -60,31 +72,66 @@ const PendingChoiceResolutionCast PendingChoiceKind = "resolution_cast"
 // offered. Nothing is queued outside a resolution, where the offer's
 // permissions alone are the window. Caller must hold g.mu.
 func (g *Game) queueResolutionCastLocked(offer CardCopyOffer, copies []uuid.UUID) uuid.UUID {
-	if len(copies) == 0 || !g.resolutionOpen || !g.playerInGameLocked(offer.Player) {
+	return g.queueResolutionCastOfferLocked(resolutionCastOffer{
+		Chooser:    offer.Player,
+		Source:     offer.Source,
+		Reason:     offer.SourceName,
+		Candidates: copies,
+	})
+}
+
+// resolutionCastOffer is what a resolution_cast prompt asks: who may
+// cast which cards, under what name, and what else rides on the answer.
+type resolutionCastOffer struct {
+	Chooser, Source uuid.UUID
+	// Reason names the effect (the prompt's header).
+	Reason string
+	// Candidates are the cards on offer. Each one is named by a stored
+	// ScopeCards permission of Chooser's.
+	Candidates []uuid.UUID
+	// Keyword, AcceptLabel and DeclineLabel word the prompt for a
+	// keyword that has its own rule ("cascade", "discover"). Empty for
+	// the copies.
+	Keyword, AcceptLabel, DeclineLabel string
+	// Pile is cascade's or discover's passed-over cards, bottomed when
+	// the prompt is answered.
+	Pile []uuid.UUID
+}
+
+// queueResolutionCastOfferLocked raises the prompt for o, or answers
+// uuid.Nil when there is nothing to hold open: no resolution is open, no
+// card is on offer, or the chooser is not in the game. The caller then
+// settles the offer without a prompt. Caller must hold g.mu.
+func (g *Game) queueResolutionCastOfferLocked(o resolutionCastOffer) uuid.UUID {
+	if len(o.Candidates) == 0 || !g.resolutionOpen || !g.playerInGameLocked(o.Chooser) {
 		return uuid.Nil
 	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:           PendingChoiceResolutionCast,
-		Chooser:        offer.Player,
+		Chooser:        o.Chooser,
 		Count:          1,
-		Source:         offer.Source,
-		Reason:         offer.SourceName,
-		DiscardOptions: slices.Clone(copies),
+		Source:         o.Source,
+		Reason:         o.Reason,
+		DiscardOptions: slices.Clone(o.Candidates),
+		CastPile:       slices.Clone(o.Pile),
+		MayCastKeyword: o.Keyword,
+		AcceptLabel:    o.AcceptLabel,
+		DeclineLabel:   o.DeclineLabel,
 	})
 }
 
-// ResolutionCastCandidateLocked reports whether id is a copy chooser
-// may still cast through a resolution_cast prompt: a copy of a card,
-// still in exile or a graveyard, that one of chooser's stored
-// permissions names. It answers the zone it sits in. Caller must hold
-// g.mu.
+// ResolutionCastCandidateLocked reports whether id is a card chooser
+// may still cast through a resolution_cast prompt: a copy of a card, or
+// the card a cascade or discover hit (#4243), still in exile or a
+// graveyard, that one of chooser's stored permissions names. It answers
+// the zone it sits in. Caller must hold g.mu.
 func (g *Game) ResolutionCastCandidateLocked(chooser, id uuid.UUID) (Card, ZoneKind, bool) {
 	z := g.findCardZoneLocked(id)
 	if z == nil || (z.Kind != ZoneExile && z.Kind != ZoneGraveyard) {
 		return Card{}, "", false
 	}
 	c, ok := g.cardInZoneLocked(z, id)
-	if !ok || !c.CardCopy {
+	if !ok {
 		return Card{}, "", false
 	}
 	p := g.playerByIDLocked(chooser)
@@ -167,9 +214,9 @@ func (g *Game) castForResolutionChoiceLocked(choiceID, caster, cardID uuid.UUID,
 }
 
 // settleResolutionCastLocked takes cast, and every candidate that can
-// no longer be cast, off the prompt, and answers the prompt once none
-// is left. The queue entry is replaced, not written through, since an
-// undo entry may share it. Caller must hold g.mu.
+// no longer be cast, off the prompt, and answers the prompt once none is
+// left. The queue entry is replaced, not written through, since an undo
+// entry may share it. Caller must hold g.mu.
 func (g *Game) settleResolutionCastLocked(choiceID, cast uuid.UUID) {
 	i := g.choiceIndexLocked(choiceID)
 	if i < 0 {
@@ -187,6 +234,7 @@ func (g *Game) settleResolutionCastLocked(choiceID, cast uuid.UUID) {
 	}
 	if len(left) == 0 {
 		g.dequeueChoiceLocked(i)
+		g.finishResolutionCastLocked(c, nil)
 		return
 	}
 	next := *c
@@ -199,25 +247,46 @@ func (g *Game) settleResolutionCastLocked(choiceID, cast uuid.UUID) {
 // resolveResolutionCastLocked answers a resolution_cast prompt with
 // resolve_choice. The only answer it takes is the empty one, "cast no
 // more of them", which is always legal; the casts are
-// CastForResolutionChoice. The offers over the copies left are
-// withdrawn, so each ceases to exist at the boundary (CR 704.5e).
-// Caller must hold g.mu.
+// CastForResolutionChoice. The offers over the cards left are withdrawn:
+// a copy ceases to exist at the boundary (CR 704.5e), and a card a
+// keyword exiled goes where not casting it sends it (CR 702.85a, CR
+// 701.57a). Caller must hold g.mu.
 func (g *Game) resolveResolutionCastLocked(idx int, c *PendingChoice, picks []uuid.UUID) error {
 	if len(picks) != 0 {
 		return ErrInvalidParam
 	}
 	g.dequeueChoiceLocked(idx)
-	g.withdrawCardCopyOffersLocked(c.Chooser, c.DiscardOptions)
+	g.finishResolutionCastLocked(c, c.DiscardOptions)
 	g.runStateChecksLocked()
 	return nil
 }
 
+// finishResolutionCastLocked ends a resolution_cast prompt that has
+// just left the queue. declined are the cards the chooser did not cast:
+// their offers are withdrawn, each lapsing as a pass would have sent it
+// (a copy only stops being offered, a cascade hit goes to the bottom, a
+// discovered card to the hand, and an "if you don't" follow-up runs).
+// The pile the prompt carries and any card that goes to the bottom are
+// put there together in a random order. Caller must hold g.mu.
+func (g *Game) finishResolutionCastLocked(c *PendingChoice, declined []uuid.UUID) {
+	bottom := slices.Clone(c.CastPile)
+	g.withdrawCardCopyOffersLocked(c.Chooser, declined, &bottom)
+	if len(bottom) > 0 {
+		_ = g.PutOnBottomInRandomOrderForEffect(c.Chooser, ZoneExile, bottom)
+	}
+}
+
 // withdrawCardCopyOffersLocked drops every ScopeCards permission holder
-// holds that names one of the copies in ids, whatever its epoch. The
-// copies were made for one offer, so nothing else names them. A fresh
-// slice, for the reason lapsePassClosedGrantsLocked gives. Caller must
-// hold g.mu.
-func (g *Game) withdrawCardCopyOffersLocked(holder uuid.UUID, ids []uuid.UUID) {
+// holds that names one of the cards in ids, whatever its epoch. The
+// cards were offered for one prompt, so nothing else names them. A fresh
+// slice, for the reason lapsePassClosedGrantsLocked gives.
+//
+// A permission that is pass-closed lapses as the pass it would have
+// closed on would (lapseCastPermissionLocked); a card that would go to
+// the bottom of the library is appended to bottom instead of being put
+// there alone, so it lands in the same random order as the rest of its
+// cascade (CR 702.85a). Caller must hold g.mu.
+func (g *Game) withdrawCardCopyOffersLocked(holder uuid.UUID, ids []uuid.UUID, bottom *[]uuid.UUID) {
 	p := g.playerByIDLocked(holder)
 	if p == nil || len(p.CastPermissions) == 0 || len(ids) == 0 {
 		return
@@ -234,17 +303,24 @@ func (g *Game) withdrawCardCopyOffersLocked(holder uuid.UUID, ids []uuid.UUID) {
 		return false
 	}
 	kept := p.CastPermissions[:0:0]
+	var gone []CastPermission
 	for _, perm := range p.CastPermissions {
 		if names(perm) {
+			gone = append(gone, perm)
 			continue
 		}
 		kept = append(kept, perm)
 	}
-	if len(kept) == len(p.CastPermissions) {
+	if len(gone) == 0 {
 		return
 	}
 	if len(kept) == 0 {
 		kept = nil
 	}
 	p.CastPermissions = kept
+	for _, perm := range gone {
+		if perm.LapseOnPass != "" {
+			g.lapseCastPermissionCollectingLocked(holder, perm, bottom)
+		}
+	}
 }

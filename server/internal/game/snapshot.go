@@ -1731,6 +1731,10 @@ type pendingChoiceSnapshot struct {
 	// ADR 0116: the revealed-hand pick's legal cards and their label.
 	DiscardOptions []uuid.UUID `json:"discardOptions,omitempty"`
 	DiscardLabel   string      `json:"discardLabel,omitempty"`
+	// CastPile is PendingChoice.CastPile (#4243): a resolution_cast's
+	// passed-over cards, bottomed when it is answered. Additive within
+	// the version.
+	CastPile []uuid.UUID `json:"castPile,omitempty"`
 	// #2115: a revealed_hand_pick's variant — where the chosen card
 	// goes, whether choosing nothing is an answer, whether the
 	// revealing player's graveyard is offered, and the KEY of its
@@ -2923,6 +2927,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ModeNotChosen:         c.ModeNotChosen,
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		CastPile:              copyUUIDs(c.CastPile),
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,
@@ -3859,6 +3864,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ModeNotChosen:         c.ModeNotChosen,
 		SacrificeOptions:      copyUUIDs(c.SacrificeOptions),
 		DiscardOptions:        copyUUIDs(c.DiscardOptions),
+		CastPile:              copyUUIDs(c.CastPile),
 		DiscardLabel:          c.DiscardLabel,
 		PickDestination:       c.PickDestination,
 		PickOptional:          c.PickOptional,

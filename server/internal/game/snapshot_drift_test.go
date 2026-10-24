@@ -1076,6 +1076,7 @@ var pendingChoiceFields = plan(
 	// same reason SacrificeOptions is — a restored game that forgot
 	// them would let the chooser take a land with Thoughtseize.
 	"DiscardOptions", carried, "",
+	"CastPile", carried, "",
 	"DiscardLabel", carried, "",
 	// #2115: a revealed_hand_pick's variant. Carried for the same
 	// reason: a restored pick that forgot them would discard what it

@@ -3309,6 +3309,8 @@ pendingChoices[].askedByHand	string
 pendingChoices[].autoAnswerCard	string
 pendingChoices[].autoAnswerKey	string
 pendingChoices[].autoAnswerPrompt	string
+pendingChoices[].castPile	array
+pendingChoices[].castPile[]	custom(uuid.UUID)
 pendingChoices[].chooseCards	array
 pendingChoices[].chooseCards[]	custom(uuid.UUID)
 pendingChoices[].chooseDestination	string

@@ -159,3 +159,87 @@ func TestEnumeratorAnswersAResolutionCast(t *testing.T) {
 		}
 	}
 }
+
+// #4243: cascade's hit is a card, not a copy. The same prompt offers every
+// cast of it, each naming the prompt, and the always-legal decline; the
+// actions layer accepts each from the caster, and the decline sends the hit
+// where cascade says (the bottom of the library).
+func TestEnumeratorAnswersACascadeResolutionCast(t *testing.T) {
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+	mana(g, seat, 3)
+	agent := handCard(seat, game.Card{
+		Name: "Shardless Agent", TypeLine: "Artifact Creature — Human Rogue", ManaCost: "{2}{U}",
+		OracleID: "2afbaa9a-c171-4a8b-90f3-5250d8498356",
+	})
+	hit := game.Card{InstanceID: uuid.New(), Name: "Cheap Spell", TypeLine: "Instant", ManaCost: "{U}", Owner: seat.ID, Controller: seat.ID}
+	seat.Library.Cards = []game.Card{hit}
+	var cast *legal.Move
+	for _, m := range legal.EnumerateFor(g, seat.ID) {
+		if m.Kind == legal.KindCast && m.Source == agent {
+			cast = &m
+			break
+		}
+	}
+	if cast == nil {
+		t.Fatal("the Agent is not castable")
+	}
+	if err := actions.Dispatch(g, actions.Action{Type: actions.Type(cast.Type), Player: seat.ID, Caller: seat.ID, Params: cast.Params}); err != nil {
+		t.Fatalf("cast the Agent: %v", err)
+	}
+	var c *game.PendingChoice
+	for i := 0; i < 8 && c == nil; i++ {
+		for _, pc := range g.PendingChoices {
+			if pc != nil && pc.Kind == game.PendingChoiceResolutionCast {
+				c = pc
+			}
+		}
+		if c == nil {
+			if err := g.PassPriority(); err != nil {
+				t.Fatalf("PassPriority: %v", err)
+			}
+		}
+	}
+	if c == nil || len(c.DiscardOptions) != 1 || c.DiscardOptions[0] != hit.InstanceID || c.MayCastKeyword != game.MayCastKeywordCascade {
+		t.Fatalf("cascade did not offer its hit: %+v", c)
+	}
+
+	moves := legal.EnumerateFor(g, seat.ID)
+	casts, declines := 0, 0
+	for _, m := range moves {
+		if m.ResolutionCast != c.ID.String() {
+			t.Errorf("move %q does not answer the open prompt", m.Label)
+			continue
+		}
+		switch m.Kind {
+		case legal.KindCast:
+			if m.Source != hit.InstanceID {
+				t.Errorf("cast %q is not of the hit", m.Label)
+			}
+			casts++
+		case legal.KindChoice:
+			if !m.AlwaysLegal {
+				t.Errorf("decline %q is not marked always legal", m.Label)
+			}
+			declines++
+		}
+	}
+	if casts == 0 || declines != 1 {
+		t.Fatalf("%d casts and %d declines: %v", casts, declines, labels(moves))
+	}
+	dispatchAll(t, g, seat.ID, moves)
+
+	// The decline, played for real, bottoms the hit.
+	for _, m := range moves {
+		if m.Kind == legal.KindChoice {
+			if err := actions.Dispatch(g, actions.Action{Type: actions.Type(m.Type), Player: seat.ID, Caller: seat.ID, Params: m.Params}); err != nil {
+				t.Fatalf("decline: %v", err)
+			}
+		}
+	}
+	if !seat.Library.Contains(hit.InstanceID) || g.Exile.Contains(hit.InstanceID) {
+		t.Error("the declined hit did not go to the bottom of the library")
+	}
+}

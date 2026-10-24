@@ -10,6 +10,12 @@
   // legal set of targets, modes and X, at its offer's price. The sheet
   // shows the copies and those moves, and sends the one picked exactly as
   // the server wrote it. "Don't cast" is always there and always legal.
+  //
+  // #4243: cascade's and discover's cast is the same prompt over the one
+  // card they exiled (CR 702.85a, CR 701.57a), not a copy. The server names
+  // the keyword (`may_cast_keyword`) and the words of the decline
+  // (`decline_label`: "Put it on the bottom", "Put it into your hand"),
+  // and the sheet speaks in those terms.
 
   import type { ActionType, GameView, LegalMoveView } from "../../protocol";
   import Card from "./Card.svelte";
@@ -33,6 +39,10 @@
   );
   const copies = $derived(active?.options ?? []);
   const source = $derived(active?.reason || "The effect");
+  // cascade and discover offer the card they exiled, not a copy of one.
+  const keyword = $derived(active?.may_cast_keyword ?? "");
+  const exiledHit = $derived(keyword === "cascade" || keyword === "discover");
+  const declineLabel = $derived(active?.decline_label || "Don't cast");
 
   // The moves for this prompt, the server's labels without the prompt's
   // own name in front of each.
@@ -62,27 +72,40 @@
     casts.length === 1
       ? confirmAction(moveLabel(casts[0]), () => send(casts[0]))
       : casts.length === 0
-        ? confirmAction("Don't cast", sendDecline, { enter: false })
+        ? confirmAction(declineLabel, sendDecline, { enter: false })
         : null,
   );
   const secondary = $derived(
-    casts.length > 0 ? [{ id: "decline", label: "Don't cast", onPress: sendDecline }] : [],
+    casts.length > 0 ? [{ id: "decline", label: declineLabel, onPress: sendDecline }] : [],
+  );
+  const heading = $derived(
+    exiledHit
+      ? `${source}: you may cast ${copies[0]?.name ?? "it"} without paying its mana cost`
+      : `${source}: you may cast ${copies.length === 1 ? `the copy of ${copies[0].name}` : "the copies"}`,
   );
 </script>
 
 {#if active}
   <DockSheet
     rank="choice"
-    label={`${source}: you may cast ${copies.length === 1 ? `the copy of ${copies[0].name}` : "the copies"}`}
-    src="CR 707.12"
+    label={heading}
+    src={keyword === "cascade" ? "CR 702.85" : keyword === "discover" ? "CR 701.57" : "CR 707.12"}
     width={560}
     sheetKey={`resolution-cast:${active.id}:${copies.length}`}
     {primary}
     {secondary}
   >
     <p class="prompt-hint">
-      {source} is still resolving. Cast {copies.length === 1 ? "the copy" : "any of the copies"} now,
-      or don't. A copy you don't cast stops existing.
+      {#if exiledHit}
+        {source} is still resolving. Cast {copies[0]?.name ?? "it"} now, for nothing, or don't. If you
+        don't, {keyword === "discover"
+          ? "it goes into your hand"
+          : "it goes to the bottom of your library"}; the rest of the exiled cards go to the bottom
+        either way.
+      {:else}
+        {source} is still resolving. Cast {copies.length === 1 ? "the copy" : "any of the copies"} now,
+        or don't. A copy you don't cast stops existing.
+      {/if}
     </p>
     <div class="body">
       {#if copies.length > 0}
