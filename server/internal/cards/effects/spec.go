@@ -153,6 +153,18 @@ type Spec struct {
 	// means no structured targeting.
 	Targets *game.TargetSpec
 
+	// ReturnedAura is the enchant clause of the card's Aura form, for a
+	// creature that "returns to the battlefield. It's an Aura enchantment
+	// with enchant Forest you control …" (Harold and Bob, First Numens;
+	// ADR 0154's 2026-10-23 amendment): EnchantLand(Subtype("Forest"),
+	// YouControl()). Not Targets, which a creature spell would read as its
+	// own cast-time target. Read only for a permanent whose
+	// game.Card.ReturnedAura is set, by the CR 303.4f host choice as it
+	// enters and by the CR 704.5m legality check afterwards. A card that
+	// sets it carries ReturnedAuraForm's statics and returns itself with
+	// WhenThisDiesReturnItAsAnAura.
+	ReturnedAura *game.TargetSpec
+
 	// ManaAbilities is the list of activated mana abilities the card
 	// exposes from the battlefield. Each entry is one tap-or-cost-
 	// for-mana ability — Sol Ring's "{T}: Add {C}{C}", Birds of

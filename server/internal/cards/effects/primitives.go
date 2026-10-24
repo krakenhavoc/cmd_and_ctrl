@@ -1029,9 +1029,22 @@ type ReturnFromGraveyard struct {
 	// decision 6). Only meaningful for Dest == ZoneBattlefield. A card
 	// that is not a flip card is left where it is.
 	Flipped bool
+
+	// AsAura returns the card as an Aura: "return it to the battlefield.
+	// It's an Aura enchantment with enchant …" (Harold and Bob, First
+	// Numens; ADR 0154's 2026-10-23 amendment). The controller chooses
+	// what it enchants as it enters (CR 303.4f) from the card's own
+	// Spec.ReturnedAura clause, and with no legal host it stays in the
+	// graveyard (CR 303.4g). Only meaningful for Dest == ZoneBattlefield;
+	// a card with no Aura form is left where it is.
+	AsAura bool
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
+	if r.AsAura {
+		_, err := ctx.Game.ReturnFromGraveyardAsAuraForEffect(r.Target, r.Controller, r.Tapped)
+		return nothingIfGone(err)
+	}
 	if r.Flipped {
 		_, err := ctx.Game.ReturnFromGraveyardFlippedForEffect(r.Target, r.Controller, r.Tapped)
 		return nothingIfGone(err)

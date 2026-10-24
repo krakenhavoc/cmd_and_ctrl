@@ -464,6 +464,12 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		if c.EnchantSwapped && c.IsAura() {
 			return false
 		}
+		// ADR 0154's 2026-10-23 amendment: a card that returned as an Aura
+		// prints no clause on its Targets, so the exemption below would keep
+		// one that is attached to nothing. It is as illegal as any Aura.
+		if c.ReturnedAura && c.IsAura() {
+			return false
+		}
 		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
@@ -543,7 +549,7 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		return g.bestowedAttachmentLegalLocked(c)
 	}
 	if c.IsAura() {
-		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil {
+		if spec := auraEnchantSpecOf(c); spec != nil {
 			// The enchant clause is the Aura's own text, so its words read
 			// as that text now says them (CR 612.2, #3872): Utopia
 			// Sprawl's "Enchant Forest" under a Magical Hack is "Enchant

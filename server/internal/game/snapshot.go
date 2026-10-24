@@ -1150,6 +1150,14 @@ type cardSnapshot struct {
 	// is every Aura before this change.
 	EnchantSwapped  bool       `json:"enchantSwapped,omitempty"`
 	EnchantReturned *ObjectRef `json:"enchantReturned,omitempty"`
+	// ReturnedAura is the Aura form of a card that returned to the
+	// battlefield as an Aura (returned_aura.go, ADR 0154's 2026-10-23
+	// amendment). Carried for Bestowed's reason: a restore that dropped it
+	// would turn Harold and Bob's Aura back into the 3/3 creature it
+	// printed, still attached to a Forest. Additive within the current
+	// version: an older binary ignores the key and a file without it
+	// restores every card as printed.
+	ReturnedAura bool `json:"returnedAura,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -2558,6 +2566,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:             c.ReturnedAura,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -3512,6 +3521,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Bestowed:                 c.Bestowed,
 		EnchantSwapped:           c.EnchantSwapped,
 		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
+		ReturnedAura:             c.ReturnedAura,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,

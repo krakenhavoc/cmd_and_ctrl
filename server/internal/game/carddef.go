@@ -70,7 +70,15 @@ type CardDef struct {
 	// when there is one, else the legacy free-form string.
 	TargetMode string
 	Targets    *TargetSpec
-	Modes      *ModeSpec
+
+	// ReturnedAura is the enchant clause of the card's Aura form: "enchant
+	// Forest you control" on a creature that returns to the battlefield as
+	// an Aura (Harold and Bob, First Numens). Not Targets, which a creature
+	// spell would read as its own cast-time target. Read through
+	// ReturnedAuraSpecFor, and only for a permanent whose Card.ReturnedAura
+	// is set. Nil for every card but the ones that return as an Aura.
+	ReturnedAura *TargetSpec
+	Modes        *ModeSpec
 
 	// Purpose is what the card does, declared on its Spec (ADR 0126
 	// §6): the spell's resolution or a permanent's enters effect. Read

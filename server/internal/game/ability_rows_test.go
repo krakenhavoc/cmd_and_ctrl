@@ -26,6 +26,7 @@ var abilityRowFieldsNotRows = map[string]string{
 	"BattleDefense":              "a characteristic (defense), shown on the card",
 	"TargetMode":                 "the spell's target hint",
 	"Targets":                    "the spell's target clause",
+	"ReturnedAura":               "the enchant clause of the card's Aura form, read by CR 303.4f's host choice and CR 704.5m (#2809)",
 	"Modes":                      "the spell's modes",
 	"Purpose":                    "the catalog's declared purpose for the bot (ADR 0126 §6), already the card's own purpose field",
 	"ManaAbilities":              "mana abilities: ADR 0105's drop pip and the mana menu are their surface",
