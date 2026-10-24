@@ -917,10 +917,16 @@ type Game struct {
 	// crossed by, because a resolution-time prompt blocks the table.
 	//
 	// Clone carries it so an undo across that prompt still has the
-	// source; the persisted snapshot drops it, for the reason
-	// enteringTokens is dropped — it is non-empty between actions only
-	// for a resolution paused on a prompt, and that prompt's resume
-	// frame is already counted in ContinuationCensus.ChoiceResumeFrames.
+	// source, and since #4270 so does the persisted snapshot
+	// (GameSnapshot.Resolving, plain data). It used to drop it on the
+	// premise that a prompt paused inside a resolution always holds a
+	// resume frame, so no snapshot was ever a restore point while the
+	// slot was set. Keyed prompts (ADR 0127: a pay-unless, a confirm)
+	// carry no frame, and a table waiting on one is a restore point
+	// whose answer can read the slot; Wandering Archaic's "copy that
+	// spell?" reads the spell that had already resolved. A restored slot
+	// is cleared by the same beginEventBatchLocked as a live one, because
+	// eventBatch restores with it.
 	resolving *resolvingItem
 
 	// resolutionOpen says a stack item has begun to resolve and the

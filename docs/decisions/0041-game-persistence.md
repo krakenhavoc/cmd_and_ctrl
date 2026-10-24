@@ -2738,3 +2738,45 @@ here, against P3 and P9:
 - **Back-out.** Drop `StepRecords` from the restore, and the probe in
   `effects/then_steps_test.go` draws nothing after a strict restore taken
   mid-pause.
+
+## Amendment — 2026-10-24: the resolving slot is carried (#4270)
+
+`Game.resolving` (#920, ADR 0043) is the item whose resolution is in
+flight, plus the card a spell was. It was classed `dropped` on a premise:
+a resolution paused on a prompt always holds a resume frame, which
+`ContinuationCensus.ChoiceResumeFrames` counts, so no snapshot is a restore
+point while the slot is set. ADR 0127's keyed prompts (a pay-unless, a
+confirm, a choice with a `ThenKey`) broke it: they carry no frame, so a
+table waiting on one IS a restore point, and its answer can read the slot.
+Wandering Archaic's "copy that spell?" is the case that found it. The Bolt
+had already resolved when the question was answered, so `CopySpellForEffect`
+reaches it only through the slot, and after a restore "yes" copied nothing.
+
+- **Decision.** The slot is plain data and is carried:
+  `GameSnapshot.Resolving` (`resolvingSnapshot`: the item as a
+  `stackItemSnapshot`, the spell's card as a `cardSnapshot` when there is
+  one, and the ability source's object epoch). Additive within v9 and absent
+  when the slot is empty; an older file restores with the slot empty, as
+  before. The drift row for `resolving` is now `carried`.
+- **The closure cost is nil.** Every reader takes a field off the item or the
+  card (controller, targets, label, source object, catalog ref), and the
+  item's `Effect` already ran before any prompt could pause the resolution.
+  `restoreStackItem` re-derives an `Effect` and a target clause when the item
+  names a catalog row and leaves them nil otherwise, as it does for a spell
+  in `lastKnownStack`. Capture reads the slot through a throwaway census, so
+  a spent item that happens to hold a bare closure does not turn a keyed
+  prompt's restore point into a refused one. No `Game` route to a func is
+  added: `closure_fields.txt` does not move.
+- **Lifetime.** One event batch, restored or live. The slot is set as an item
+  begins to resolve and cleared by `beginEventBatchLocked`; `eventBatch` is
+  carried, so the first batch opened after a restore clears a restored slot
+  at the point it would have cleared the live one. A restored slot is not
+  re-opened by anything.
+- **What this does not change.** `enteringTokens`, `outsideEntering` and the
+  other fields classed `dropped` because a replacement or choice prompt
+  carries a frame keep that reason; if one of those prompts is ever keyed,
+  the same question has to be asked of its field.
+- **Back-out.** Drop `g.resolving = restoreResolving(s.Resolving)` from
+  `restoreGame` and `TestWanderingArchaicCopyConfirmIsARestorePoint` takes 3
+  damage instead of 6, and `TestKeyedDiscardAnswerAfterARestoreStillNamesTheResolvingSpellAsItsCause`
+  finds the discards with no cause.

@@ -223,9 +223,11 @@ func latestChoiceOfKindForTest(g *Game, kind PendingChoiceKind) *PendingChoice {
 	return out
 }
 
-// TestResolvingSlotIsDroppedBySnapshotAndRestoresEmpty — the drift
-// plan says dropped; this is what dropped looks like.
-func TestResolvingSlotIsDroppedBySnapshotAndRestoresEmpty(t *testing.T) {
+// TestResolvingSlotIsCarriedBySnapshotAndRestoresWhole — the drift plan
+// says carried (#4270); this is what carried looks like. It used to be
+// dropped, on the premise that a resolution paused on a prompt always
+// holds a resume frame, which a keyed prompt does not.
+func TestResolvingSlotIsCarriedBySnapshotAndRestoresWhole(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	pushResolvingSpell(t, g, me.ID, func(*Game, *StackItem) error { return nil })
@@ -234,12 +236,22 @@ func TestResolvingSlotIsDroppedBySnapshotAndRestoresEmpty(t *testing.T) {
 			t.Fatalf("resolveTopOfStackLocked: %v", err)
 		}
 	})
+	var live *resolvingItem
+	g.ReadSnapshot(func() { live = g.resolving })
+	if live == nil || !live.hasCard {
+		t.Fatalf("the resolved spell is not in the slot: %+v", live)
+	}
 	snap := g.CaptureSnapshot()
 	back, err := snap.Restore()
 	if err != nil {
 		t.Fatalf("Restore: %v", err)
 	}
-	if back.resolving != nil {
-		t.Errorf("the restored game carries a resolving item: %+v", back.resolving)
+	if back.resolving == nil || !back.resolving.hasCard {
+		t.Fatalf("the restored game lost the resolving spell: %+v", back.resolving)
+	}
+	if back.resolving.item.ID != live.item.ID || back.resolving.card.Name != live.card.Name ||
+		back.resolving.item.Controller != live.item.Controller {
+		t.Errorf("restored slot = %+v / %q, want the live item %v / %q",
+			back.resolving.item, back.resolving.card.Name, live.item.ID, live.card.Name)
 	}
 }

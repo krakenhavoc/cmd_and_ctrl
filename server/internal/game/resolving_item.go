@@ -47,6 +47,18 @@ import "github.com/google/uuid"
 // paused continuations belonging to the resolution that opened it,
 // and not one event past it.
 //
+// # Across a restore (#4270)
+//
+// The snapshot carries the slot (resolvingSnapshot, below). It used to
+// drop it, on the premise that a prompt paused inside a resolution always
+// holds a resume frame and so no snapshot is a restore point while the
+// slot is set. A KEYED prompt (ADR 0127: a pay-unless, a confirm, a
+// ThenKey choice) holds none, so a table waiting on one is a restore
+// point whose answer reads the slot: Wandering Archaic's "copy that
+// spell?" finds the Bolt that already resolved only here. A restored
+// slot has the same lifetime as a live one, because eventBatch is
+// carried and beginEventBatchLocked clears the slot at the next batch.
+//
 // Nothing else reads it. stackSpellLocked consults it only when the
 // requested ID is not on the stack AND is this item's own — so an
 // ordinary Reverberate pointed at a spell that has already left still
@@ -133,4 +145,73 @@ func (g *Game) resolvingSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) 
 		return Card{}, nil, false
 	}
 	return r.card, r.item, true
+}
+
+// resolvingSnapshot is the resolving slot as plain data (#4270). It
+// exists because a keyed prompt (ADR 0127: a pay-unless, a confirm, a
+// choice with a ThenKey) carries no resume frame, so a table waiting on
+// one is a restore point, and the answer's continuation can read this
+// slot. Wandering Archaic's "copy that spell?" found it: the cast Bolt
+// had already resolved when the question was answered, so it is
+// reachable only through the slot, and a restore that dropped the slot
+// answered "yes" with nothing to copy.
+//
+// The slot is data, not behaviour. Every reader takes a field off the
+// item or the card (its controller, its targets, its label, its source
+// object, its catalog ref), so nothing here needs a closure, and the
+// item's Effect is not needed either: it ran before any prompt could
+// pause the resolution. restoreStackItem re-derives the Effect and the
+// target clause when the item names a catalog row and leaves them nil
+// when it does not, as it does for a spell in lastKnownStack.
+type resolvingSnapshot struct {
+	Item stackItemSnapshot `json:"item"`
+	// Card is the spell as the stack held it (CR 608.2n last-known
+	// information). Nil for an ability item, which has no card on the
+	// stack at all.
+	Card *cardSnapshot `json:"card,omitempty"`
+	// SourceEpoch is resolvingItem.sourceEpoch: -1 when the source was
+	// in no zone or the item is a spell.
+	SourceEpoch int `json:"sourceEpoch"`
+}
+
+// snapshotResolving is the capture half; nil for an empty slot. The
+// slot is spent (the item's effect has run), so what a bare closure
+// would cost a restore point is not counted: a throwaway census takes
+// the item and the card, and the live one never sees them. Caller must
+// hold g.mu.
+func snapshotResolving(g *Game) *resolvingSnapshot {
+	r := g.resolving
+	if r == nil || r.item == nil {
+		return nil
+	}
+	var spent ContinuationCensus
+	oracleID := oracleIDOfLocked(g, r.item.SourceCardID)
+	if r.hasCard {
+		oracleID = r.card.OracleID
+	}
+	out := &resolvingSnapshot{
+		Item:        snapshotStackItemAs(r.item, oracleID, &spent),
+		SourceEpoch: r.sourceEpoch,
+	}
+	if r.hasCard {
+		c := snapshotCard(r.card, &spent)
+		out.Card = &c
+	}
+	return out
+}
+
+// restoreResolving is the restore half. The batch counter restores with
+// the slot, so the next beginEventBatchLocked clears a restored slot at
+// the same point it would have cleared a live one.
+func restoreResolving(in *resolvingSnapshot) *resolvingItem {
+	if in == nil {
+		return nil
+	}
+	item, _ := restoreStackItem(&in.Item)
+	r := &resolvingItem{item: item, sourceEpoch: in.SourceEpoch}
+	if in.Card != nil {
+		r.card = restoreCard(in.Card)
+		r.hasCard = true
+	}
+	return r
 }

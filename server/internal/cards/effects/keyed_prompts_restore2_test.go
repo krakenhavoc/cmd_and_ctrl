@@ -82,11 +82,11 @@ func TestMysticRemoraDrawConfirmIsARestorePoint(t *testing.T) {
 // open: the prompt keeps its key and the carried controller and spell,
 // and the answer runs on the restored table without an error.
 //
-// The copy itself is not made after a restore. The Bolt is the item
-// whose resolution is in flight (Game.resolving), which the snapshot
-// drops, so CopySpellForEffect finds nothing to copy; that is the
-// state the first prompt's restore (#4256) already leaves, not this
-// one's, and is filed as #4270.
+// The copy is made after the restore, and it is the Bolt's: the cast
+// spell had already resolved when the question was answered, so the
+// copy reads it through the resolving slot (Game.resolving), which the
+// snapshot carries since #4270. Before that the answer copied nothing
+// and the controller took 3 damage, not 6.
 func TestWanderingArchaicCopyConfirmIsARestorePoint(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -96,6 +96,7 @@ func TestWanderingArchaicCopyConfirmIsARestorePoint(t *testing.T) {
 			t.Fatalf("AdvanceStep: %v", err)
 		}
 	}
+	lifeBefore := me.Life
 	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle, []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
 	passPriorityAroundTable(t, g)
 	answerPayUnless(t, g, opp.ID, false)
@@ -113,11 +114,15 @@ func TestWanderingArchaicCopyConfirmIsARestorePoint(t *testing.T) {
 	var before int
 	g.ReadSnapshot(func() { before = len(g.Events) })
 	answerMayChoice(t, g, me.ID, true)
+	settleThroughCopyRetarget(t, g, me.ID, me.ID)
 	if n := countCatalogEvents(g, game.EventEffectError, before); n != 0 {
 		t.Errorf("the keyed answer on the restored table raised %d effect errors", n)
 	}
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("the answered confirm left %d prompts open", len(g.PendingChoices))
+	}
+	if got := lifeBefore - me.Life; got != 6 {
+		t.Errorf("restored at the confirm, then copied: took %d damage, want 6 (bolt + copy)", got)
 	}
 }
 

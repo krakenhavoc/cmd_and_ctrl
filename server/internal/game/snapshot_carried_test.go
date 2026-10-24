@@ -350,6 +350,21 @@ var carriedFixture = map[string]any{
 				SourceCardID: id, Label: "drift-Game.lastKnownStack", XValue: 5, Seq: 5151},
 		}}
 	},
+	// #4270: the slot holds a card and an item, and a generated item
+	// would name an invented body and be refused, as
+	// Game.lastKnownStack's would.
+	"Game.resolving": func(g *Game) any {
+		id := uuid.NewSHA1(uuid.Nil, []byte("Game.resolving"))
+		me := g.Seats[0].ID
+		return &resolvingItem{
+			item: &StackItem{ID: id, Kind: StackItemSpell, Controller: me, Owner: me,
+				SourceCardID: id, Label: "drift-Game.resolving", XValue: 6, Seq: 5454},
+			card: Card{InstanceID: id, Name: "drift-Game.resolving", TypeLine: "Instant",
+				Owner: me, Controller: me},
+			hasCard:     true,
+			sourceEpoch: -1,
+		}
+	},
 	// #2789: a generated item would name an invented body and be
 	// refused, as Game.lastKnownStack's would.
 	"Game.pausedModeWalk": func(g *Game) any {
