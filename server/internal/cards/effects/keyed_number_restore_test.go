@@ -375,13 +375,13 @@ func TestAttackSplitWithAnUnknownTailIsRefused(t *testing.T) {
 // nothing: a payment was not made (CR 800.4f) and the card goes on with 0.
 func TestRestoredNumberPromptDropsWithItsChooser(t *testing.T) {
 	g := newCatalogGame(t)
-	me, opp := g.Seats[0], g.Seats[1]
+	opp := g.Seats[1]
 	victim := pushVanillaCreature(g, opp.ID, "Victim", 3, 3)
 	castCatalogSpell(t, g, "Harnessed Lightning", "Instant", erHarnessed,
 		[]game.TargetRef{{Kind: game.TargetCard, ID: victim}})
 	passPriorityAroundTable(t, g)
 	g = restoreRoundTrip(t, g, true)
-	me = g.Seats[0]
+	me := g.Seats[0]
 	numberPrompt(t, g, me.ID)
 	if err := g.Concede(me.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
