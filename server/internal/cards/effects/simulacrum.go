@@ -22,13 +22,16 @@ import (
 // the spell's own, so it is subject to prevention and to the creature's
 // protection like any other.
 //
+// The clause is Harmful (#4314): it damages a creature the caster controls,
+// so a bot aims it at its least valuable one.
+//
 // No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "20d69989-7250-40c7-a064-8ed78ccbe556",
 		Name:         "Simulacrum",
 		Completeness: CompletenessFull,
-		Targets:      TargetCreature("target creature you control", YouControl()),
+		Targets:      Harmful(TargetCreature("target creature you control", YouControl())),
 		// The damage waits for the life gain's prompt (a CR 616 order; CR 608.2c, #4155). The
 		// total is read once, as the spell begins to resolve, and filed for the second step.
 		OnResolve: ResolveSteps(

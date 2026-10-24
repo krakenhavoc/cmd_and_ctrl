@@ -364,10 +364,21 @@ which the prompt carries as `pick_target.harmful`, and the heuristic
 prices such a pick with `opponentsChoiceValue` for itself: a permanent of
 its own costs what losing it does, so the least valuable creature goes,
 and a legal permanent of an opponent's, when there is one, still comes
-first. The opponent's-upkeep case (`chosen_for` set) is unchanged. Only
-those two cards use the flag today; a new forced self-harm clause (one
-that the controller or upkeep player must aim at their own permanent)
-declares it the same way.
+first. The opponent's-upkeep case (`chosen_for` set) is unchanged.
+
+The flag also rides the cast-path clause views (`legal_targets` and
+`clauses` of a card, an alternative cost, a mode and an activated row,
+[#4314](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4314)), and
+`pricedTargetsHarm` (`heuristic/harmful_target.go`) prices a pick of the
+bot's own permanent in such a clause with `opponentsChoiceValue`, so
+Simulacrum ("deals that much damage to target creature you control")
+and Plague Belcher's enters trigger (two -1/-1 counters on "target
+creature you control") go at its least valuable creature. A casting that
+can only hurt the bot's own permanent now scores below what it did, so
+the bot casts such a spell less often. Only those three clauses use the
+flag today; a new self-harm clause (one the controller must aim at their
+own permanent, never one that may also be aimed at an opponent's) declares
+it the same way. A blink (Cloudshift, Ephemerate) is not harmful.
 
 **A pile split** needs no policy of its own. Its first half is an
 ordinary `choose_cards` prompt over public, revealed cards, so the

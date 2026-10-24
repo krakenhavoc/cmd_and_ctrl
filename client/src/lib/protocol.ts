@@ -4104,6 +4104,7 @@ export interface LegalTargetsView {
   chosen_for?: string;
   // #4249: on a pick_target, the clause's effect hurts the permanent
   // picked (The Abyss's destroy), so a bot gives up its least valuable.
+  // Also on a cast-path clause view (#4314: Simulacrum).
   harmful?: boolean;
   // #1559: the clause's rule over the chosen SET (CR 601.2c) — no two
   // picks may share a key ("that each have a different mana value",

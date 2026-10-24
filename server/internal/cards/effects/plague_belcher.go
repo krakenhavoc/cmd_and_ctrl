@@ -22,6 +22,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that was a Zombie only through a grant; the life is LOST, not
 // dealt, so no prevention shield sees it.
 //
+// The clause is Harmful (#4249, #4314): the counters hurt the creature
+// picked, so a bot puts them on its least valuable one.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -33,7 +36,7 @@ func init() {
 			{
 				Watches:   []game.EventKind{game.EventETB},
 				AppliesTo: b06SelfETB,
-				Targets:   TargetCreature("target creature you control", YouControl()),
+				Targets:   Harmful(TargetCreature("target creature you control", YouControl())),
 				Key:       "Plague Belcher — put two -1/-1 counters on target creature you control",
 				Effect:    b35PutMinusCountersOnChosen(2),
 			},
