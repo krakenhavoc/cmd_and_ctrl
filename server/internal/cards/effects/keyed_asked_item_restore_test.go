@@ -651,3 +651,49 @@ func TestWaterbendWardWithAnUnknownTapKindIsRefused(t *testing.T) {
 		t.Fatalf("restoring a prompt with an unknown tap kind = %v, want ErrUnknownEffectKey", err)
 	}
 }
+
+// Dance of the Dead: "that player may pay {1}{B}. If the player does,
+// untap that creature." The enchanted creature rides the prompt with the
+// epoch it had when the trigger resolved (PayUnlessKeyedPrompt.Objects), so
+// the offer is a restore point that still untaps that creature, and one
+// that left and came back while the payer decided is a new object that
+// stays tapped (CR 400.7).
+func TestDanceOfTheDeadOfferCarriesTheCreaturesEpochAcrossARestore(t *testing.T) {
+	for _, flicker := range []bool{false, true} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		zombie := adGraveyardCreature(opp, "Gravecrawler")
+		aura := adAnimate(t, g, "Dance of the Dead", danceOfTheDeadOracle, zombie)
+		advanceToUpkeepOf(t, g, 0)
+		if triggerOnStack(g, aura) == nil {
+			t.Fatal("Dance of the Dead's upkeep trigger is not on the stack")
+		}
+		passPriorityAroundTable(t, g)
+		c := untapStaticPendingPay(t, g, me.ID)
+		if c.PickThen != mayPayUntapEnchantedCreaturePaid.Key() || len(c.OptionObjects) != 1 || c.OptionObjects[0].ID != zombie {
+			t.Fatalf("flicker=%v: the offer carries %d objects under key %q, want the enchanted creature", flicker, len(c.OptionObjects), c.PickThen)
+		}
+		epoch := c.OptionObjects[0].Epoch
+
+		g = restoreRoundTrip(t, g, true)
+		me = g.Seats[0]
+		c = untapStaticPendingPay(t, g, me.ID)
+		if len(c.OptionObjects) != 1 || c.OptionObjects[0].ID != zombie || c.OptionObjects[0].Epoch != epoch {
+			t.Fatalf("flicker=%v: restored offer carries %+v, want the creature at epoch %d", flicker, c.OptionObjects, epoch)
+		}
+		if flicker {
+			g.BeginEventBatchForTest()
+			flickerInResponse(t, g, zombie)
+			if err := g.TapCard(zombie, true); err != nil {
+				t.Fatal(err)
+			}
+		}
+		fillPoolColored(me, "B", 2)
+		if err := g.ResolvePayUnless(c.ID, me.ID, true); err != nil {
+			t.Fatalf("flicker=%v: answer: %v", flicker, err)
+		}
+		if tapped := adCard(t, g, zombie).Tapped; tapped != flicker {
+			t.Errorf("flicker=%v: the creature is tapped = %v, want %v (a new object stays tapped, the same one untaps)", flicker, tapped, flicker)
+		}
+	}
+}
