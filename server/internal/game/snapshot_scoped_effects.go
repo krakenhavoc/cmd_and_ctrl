@@ -418,6 +418,7 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		StackMeta           []map[string]json.RawMessage `json:"stackMeta"`
 		PendingTriggers     []map[string]json.RawMessage `json:"pendingTriggers"`
 		LastKnownStack      []map[string]json.RawMessage `json:"lastKnownStack"`
+		Resolving           map[string]json.RawMessage   `json:"resolving"`
 		PreventionFollowUps []map[string]json.RawMessage `json:"preventionFollowUps"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil {
@@ -537,6 +538,21 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 			}
 		}
 	}
+	// #4270: the resolving slot is a stack item and a card of its own.
+	if envelope.Resolving != nil {
+		if current {
+			check("the resolving slot", envelope.Resolving, resolvingJSONKeys)
+		}
+		it, err := object(envelope.Resolving["item"])
+		if err != nil {
+			return nil, err
+		}
+		if it != nil {
+			if err := stackItem("the resolving slot's item", it); err != nil {
+				return nil, err
+			}
+		}
+	}
 	sort.Strings(out)
 	return out, nil
 }
@@ -622,6 +638,7 @@ var (
 	abilityRefJSONKeys            = jsonKeysOf(reflect.TypeOf(AbilityRef{}))
 	stackItemJSONKeys             = jsonKeysOf(reflect.TypeOf(stackItemSnapshot{}))
 	lastKnownSpellJSONKeys        = jsonKeysOf(reflect.TypeOf(lastKnownSpellSnapshot{}))
+	resolvingJSONKeys             = jsonKeysOf(reflect.TypeOf(resolvingSnapshot{}))
 	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
 	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )

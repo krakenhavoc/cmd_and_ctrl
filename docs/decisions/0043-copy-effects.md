@@ -1250,3 +1250,15 @@ talking).
 
 Back-out: drop the guard in `copySpellFromLocked` and `TestRoonbSeeDoubleCantBeCopied` fails; drop it in
 `CopySpellKeepingTargetsForEffect` and `TestRoonbSeeDoubleRefusesTheKeepTargetsCopyDoor` fails.
+
+## Amendment (2026-10-24, [#4270](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4270)): the resolving slot survives a restore
+
+The "Snapshot classification" paragraph of the #920 section says `resolving`
+is `dropped`. It is carried now (ADR 0041's amendment of 2026-10-24): a keyed
+prompt holds no resume frame, so a table waiting on Wandering Archaic's "copy
+that spell?" is a restore point, and the copy reads the spell that already
+resolved through this slot. `CopySpell` also logs, rather than silently
+swallows, the case where the spell it was told to copy is nowhere (not on the
+stack, not resolving, no last-known record): CR 608.2b makes that the right
+outcome for a spell countered under an effect that targets it, and the log is
+how a loss of the engine's own record shows up.

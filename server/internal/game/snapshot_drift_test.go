@@ -326,7 +326,14 @@ var gameFields = plan(
 	"promptRuns", dropped, "non-empty between actions only for a printed sacrifice, discard or resolution-time pick instruction paused on its prompts (#1214), and each of those prompts is counted in ContinuationCensus.ChoiceResumeFrames through PendingChoice.promptRun; the run holds a continuation closure the snapshot could not carry anyway; Clone deep-copies it for undo (#1019, #1027)",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
-	"resolving", dropped, "the CR 707.10 self-copy source (#920); set between actions only for a resolution paused on a prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; it holds a *StackItem, whose Effect is a closure the snapshot could not carry anyway; Clone shares it for undo",
+	// #4270: the CR 707.10 self-copy source (#920) and every other reader
+	// of the item whose resolution is in flight. Carried as plain data
+	// (GameSnapshot.Resolving): a keyed prompt carries no resume frame,
+	// so a table waiting on one is a restore point, and its answer reads
+	// the slot (Wandering Archaic's "copy that spell?" reads the cast
+	// spell through it). Cleared by the next beginEventBatchLocked, the
+	// batch counter being carried too. Clone shares it for undo.
+	"resolving", carried, "GameSnapshot.Resolving",
 	"recomputeCount", dropped, "test instrumentation for the layer fast-path, not game state",
 	"simultaneousExit", dropped, "per-sweep scope, defer-cleared; a snapshot is never taken mid-wipe, so it is always empty between mutations",
 	// ADR 0107 §1: the state-trigger check's hold count and re-entrancy

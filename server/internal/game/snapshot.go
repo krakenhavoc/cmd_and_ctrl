@@ -622,6 +622,16 @@ type GameSnapshot struct {
 	// writes itself, so carrying it makes nothing worse for it.
 	LastKnownStack []lastKnownSpellSnapshot `json:"lastKnownStack,omitempty"`
 
+	// Resolving is the stack item whose resolution is in flight, as
+	// plain data (#4270, resolving_item.go): the item, the card the
+	// stack held for a spell, and the source's object epoch for an
+	// ability. Absent when the slot is empty, which is every file
+	// written before it. Additive within v9: a binary before it drops
+	// the key, which loses the slot's one reader across a restore
+	// (a "copy that spell" copies nothing: weaker than printed, never
+	// stronger).
+	Resolving *resolvingSnapshot `json:"resolving,omitempty"`
+
 	RNG               rngSnapshot          `json:"rng"`
 	SourceOrdinals    map[uuid.UUID]uint64 `json:"sourceOrdinals,omitempty"`
 	SourceOrdinalNext uint64               `json:"sourceOrdinalNext,omitempty"`
@@ -2335,6 +2345,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
+	s.Resolving = snapshotResolving(g)
 
 	// The turn-scoped block-rule registry retired with ADR 0041 tier
 	// 3b, alongside its replacement twin: a Gingerbrute is a
@@ -3372,6 +3383,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 	g.lastKnownPermanents = cloneLastKnownPermanents(s.LastKnownPermanents)
 	g.lastKnownStack = restoreLastKnownStack(s.LastKnownStack)
+	g.resolving = restoreResolving(s.Resolving)
 
 	restoreRNG(g, s.RNG)
 	g.sourceOrdinals = cloneSourceOrdinals(s.SourceOrdinals)
