@@ -210,9 +210,8 @@ func TestUrSphinxOffersAcrossARestoreBetweenOffers(t *testing.T) {
 	}
 }
 
-// Lands a player milled are not offered, and a card another effect moved out of
-// the graveyard before its offer is not either: both are read at the offer.
-func TestUrSphinxOffersOnlyCastableCardsStillInTheGraveyard(t *testing.T) {
+// A land a player milled is not offered: the offer reads the cards at the offer.
+func TestUrSphinxDoesNotOfferAMilledLand(t *testing.T) {
 	g := newCatalogGame(t)
 	toMain(t, g)
 	me := g.Seats[g.Turn.ActiveSeat]

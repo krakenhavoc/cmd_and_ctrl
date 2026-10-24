@@ -1792,6 +1792,5 @@ func, and the closures these bodies used are replaced by keys and steps.
 
 Tests: `effects/resolution_steps_state_test.go`. Rhys across a strict
 restore before each of three questions and on an undo. The Ur-Sphinx across
-a strict restore before each of four offers, a land and a card that left the
-graveyard not offered. Cecily on a dredge offer, live and on an undo.
+a strict restore before each of four offers, a milled land not offered. Cecily on a dredge offer, live and on an undo.
 Flamewar's marking step on the live table, an undo and a restored table.
