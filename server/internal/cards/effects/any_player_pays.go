@@ -71,10 +71,12 @@ type AnyPlayerPays struct {
 // reused, ledgered "anyplayer <key>"): `onPaid` is "if a player does,
 // ...", `onNobody` "if no one does, ..." and `perPayer` the payment
 // worked out for each player. Any may be nil, but not all three. The
-// bodies run against a Context bound to a stand-in for the asking item:
-// the effect's controller and its source card, because the item itself
+// bodies run against a Context bound to a copy of the asking item rebuilt
+// from data the offer carries (game.AskedItem), because the item itself
 // has long resolved by the time anyone answers (and a restore does not
-// carry it). Call it once, from a package-level var.
+// carry it). An offer queued without one gets a stand-in with the
+// effect's controller and its source card. Call it once, from a
+// package-level var.
 func AnyPlayerConsequences(key string,
 	onPaid, onNobody func(ctx *Context, r game.AnyPlayerAnswer) error,
 	perPayer game.AnyPlayerPerPayerFunc,

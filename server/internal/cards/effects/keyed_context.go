@@ -7,11 +7,14 @@ import (
 )
 
 // keyedContext is the Context a keyed continuation runs its steps
-// against (#4264): a stand-in for the asking item, carrying the two
-// things a step reads, the controller and the source card. The item
-// itself has long resolved by the time the prompt is answered, and a
-// restore does not carry it, so a keyed continuation takes what it needs
-// as data (the prompt's chooser, source and carried IDs) and builds this.
+// against (#4264) when the prompt carries no asking item: a stand-in,
+// carrying the two things a step reads, the controller and the source
+// card. The item itself has long resolved by the time the prompt is
+// answered, and a restore does not carry it, so a keyed continuation takes
+// what it needs as data (the prompt's chooser, source and carried IDs) and
+// builds this. A pay-unless, upkeep, counter-unless-pays or any-player
+// prompt carries the item as data (game.AskedItem) and runs against a copy
+// of it instead.
 func keyedContext(g *game.Game, controller, source uuid.UUID) *Context {
 	return NewContext(g, &game.StackItem{
 		Kind:         game.StackItemTriggered,

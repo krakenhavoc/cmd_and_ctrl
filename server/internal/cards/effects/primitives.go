@@ -1258,10 +1258,12 @@ type PayUnless struct {
 // PayUnlessElse registers a keyed pay-unless decline under `key`, an
 // on-disk identity (never renamed, never reused, ledgered "payunless
 // <key>"). Call it once, from a package-level var. The body runs against
-// a Context bound to a stand-in for the asking item: its controller and
-// its source card, the two things a decline reads, because the item
-// itself has long resolved by the time the payer answers (and a restore
-// does not carry it). r.Carry is the card's own Carry.
+// a Context bound to a copy of the asking item rebuilt from data the
+// prompt carries (game.AskedItem: its controller, source card and source
+// object with its epoch, targets, triggering event, X and modes), because
+// the item itself has long resolved by the time the payer answers (and a
+// restore does not carry it). A prompt queued without one gets a stand-in
+// with the controller and the source card. r.Carry is the card's own Carry.
 func PayUnlessElse(key string, body func(ctx *Context, r game.PayUnlessAnswer) error) game.PayUnlessElse {
 	return game.RegisterPayUnlessElse(key, payUnlessBranch(body))
 }
