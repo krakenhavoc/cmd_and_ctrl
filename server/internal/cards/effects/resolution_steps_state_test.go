@@ -277,7 +277,7 @@ func TestCecilyLifeLossAndFreeCastWaitForTheDrawsDredgeOffer(t *testing.T) {
 	if me.Life != life {
 		t.Fatalf("life %d with dredge open, want %d: the loss ran before the answer", me.Life, life)
 	}
-	if latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID) != nil {
+	if latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID) != nil || resolutionCastOfferFor(g, me.ID) != nil {
 		t.Fatal("the free-cast offer opened before the draw was answered")
 	}
 	undo := g.Clone()
@@ -290,9 +290,9 @@ func TestCecilyLifeLossAndFreeCastWaitForTheDrawsDredgeOffer(t *testing.T) {
 		if p.Hand.Size() != 11 {
 			t.Fatalf("hand %d after the draw, want 11", p.Hand.Size())
 		}
-		pick := latestChoiceOfKindFor(table, game.PendingChoiceChooseCards, p.ID)
-		if pick == nil || len(pick.ChooseCards) != 1 || pick.ChooseCards[0] != sorcery {
-			t.Fatalf("the free-cast offer after the answer is %+v, want the sorcery", pick)
+		offer := resolutionCastOfferFor(table, p.ID)
+		if offer == nil || len(offer.DiscardOptions) != 1 || offer.DiscardOptions[0] != sorcery {
+			t.Fatalf("the free-cast offer after the answer is %+v, want the sorcery", offer)
 		}
 	}
 }

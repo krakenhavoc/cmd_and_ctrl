@@ -4612,3 +4612,80 @@ fails, in `offerSuspendedCastLocked` and `TestTheLastTickOffersTheFreeCast` fail
 `TestDecliningMadnessPutsTheCardInTheGraveyard` fails; drop the exile-until offer's `Pile` and
 `TestExileUntilCastCastsTheHitBeforeTheResolutionFinishes` fails; drop `ZoneLibrary` from `ResolutionCastCandidateLocked` and
 `TestEnumeratorOffersAFreeCastFromTheLookedAtTop` fails.
+
+
+## Amendment — 2026-10-24 (#4250, part 2): the hand-cast offers and the one-off grants cast during their resolution
+
+The 2026-10-23 #4250 amendment left two groups on the pass-closed stand-in: the "cast a spell from your hand without paying its
+mana cost" offers (a keyed pick, #4246, then a pass-closed grant) and the one-off pass-closed grants that card code in
+`cards/effects/` stamps from a resolution. Each prints a cast made while its spell or ability resolves (CR 608.2g: "If an effect
+specifically instructs or allows a player to cast a spell during resolution, they do so by following the steps in rules
+601.2a–i, except no player receives priority after it's cast"). Each now asks the `resolution_cast` prompt inside that resolution.
+
+### Decision
+
+1. **One door for card code.** `Game.OfferResolutionCastForEffect(ResolutionCastOffer)` raises the prompt over cards a stored
+   `ScopeCards` permission of the chooser's names. With `Permission` set it first stamps that permission over all the cards as
+   ONE permission; a pass-closed one is spent whole by the first cast (`consumePassClosedGrantLocked`), which is "cast a spell
+   from among them". Per-card permissions, or an `AnyNumber` or budget permission, leave the prompt open after each cast (CR
+   707.12a's reading, as #2947 does for copies), until the chooser declines or none is left. A land is never a candidate (CR
+   116.2a and CR 305.9: a land is played, never cast). The door answers false, and stamps nothing, outside an open resolution; card code then
+   keeps its old offer, which no catalog card reaches. `effects.offerResolutionCastOver` is the card-side wrapper.
+2. **A hand card is a candidate, held to its claim.** `ResolutionCastCandidateLocked` accepts a card in the chooser's hand that a
+   stored permission names. A hand card also has its ordinary cast (CR 601.2), and a hand permission prices only the cast that
+   claims its offer (`CastPermission.ForClaim`, #1665), so `castForResolutionChoiceLocked` names the permission's
+   `AltCostKey` (`ResolutionCastClaimLocked`; `granted-cost` for the free offers, `great-synthesis-free` for chapter III)
+   whatever the cast sent, and `legal/resolution_cast.go` keeps only the casts that claim it. The view needed no change: a hand
+   card on the prompt goes through the knower filter, so the table sees that a seat owes an answer and not which cards.
+3. **"And then", after the casts.** The prompt carries an optional continuation, a registered `ChooseCardsThen` key in
+   `PendingChoice.PickThen` with the caller's cards in `OptionCarry` (both existing, persisted fields). `finishResolutionCastLocked`
+   runs it once the prompt is answered, by the last cast or the decline, with the cards of the carry now on the stack as its
+   picks (nobody received priority since, so nothing else moved them). Three continuations: The Great Synthesis's "Exile this
+   Saga, then return it to the battlefield" (`resolution-cast/great-synthesis-flicker`), Kefka's "Then each player who owns a
+   spell you cast this way loses life equal to its mana value" (`resolution-cast/kefka-life-loss`), and "put the rest on the
+   bottom of your library in a random order" for Aetherworks Marvel and Sunbird's Invocation
+   (`resolution-cast/looked-at-rest-to-bottom`). A restore refuses a file whose resolution_cast names a key this binary lacks.
+4. **The doors moved.** The hand offers: `offerFreeHandCastOver` (Buster Sword, Kari Zev's Expertise, Rishkar's Expertise,
+   Surtland Elementalist, Great Intelligence's Plan, Cecily, Haunted Mage, the Mad Wizard's Lair room) and the "any number" form
+   (Aetherflux Conduit, The Great Synthesis's chapter III), keyword `hand_cast`, decline "Keep it in your hand"; the library look
+   (Aetherworks Marvel, Sunbird's Invocation), keyword `free_cast`, one permission over the eligible cards where they sit, decline
+   "Put them on the bottom". The one-off grants: `grantFreeCasts` when it closes on a pass (Emergent Ultimatum, Ensnared by the
+   Mara, Etali, Primal Conqueror, The Key to the Vault, Cosmium Catalyst), `OfferGraveyardCast` (Emet-Selch of the Third Seat,
+   paid), Torrential Gearhulk, Arcane Heist, Memory Plunder, Strago and Relm, Crabomination, `exileUntilNonlandGrantingCast` (Amped
+   Raptor's energy and The Infamous Cruelclaw's discard, `paid_cast`), Fevered Suspicion, Kefka, Dancing Mad, the budgeted
+   `ExileTopWithPermission` (Hazoret's Undying Fury, Primeval Spawn), Conduit of Worlds (paid), Goliath Daydreamer, Power Pack's
+   delayed upkeep trigger, Summon: Esper Valigarmanda's chapters (paid, with the mana the chapter adds) and the Sieges
+   (`SiegeDefeated`, the back face cast from exile). Uldaros Theorix's casts were already on the prompt (#2947's copies).
+5. **What stays.** Nicol Bolas, God-Pharaoh's +2 ("Until end of turn, you may cast that card") opens a real window and keeps it:
+   `grantFreeCasts` with no lapse asks no prompt. The keyed picks #4246 registered (`choose-cards/<card>-cast`) stay registered,
+   so a table saved while waiting on one still restores and answers; they are also the hand and library offers outside an open
+   resolution. Kefka's per-cast `kefka-dancing-mad-life-loss` follow-up stays registered and is still the life loss outside one.
+6. **Wire and client.** Three new `may_cast_keyword` values, `hand_cast`, `free_cast` and `paid_cast` (on-disk, additive), worded
+   by `keywordCastWords` (`mayCast.ts`): free, or "paying its cost", and where a declined card stays, read off the decline
+   label. With more than one card on offer the sheet's heading says "a spell from your hand" or "a spell from among them".
+
+### Cards that changed behaviour
+
+Every card in decision 4. The cast is made inside the resolution: nobody gets priority between the offer and the cast, and a
+"then" waits for the casts. Two fixes ride on that order. The Great Synthesis is exiled and returned AFTER its free casts, so the
+returned Jin-Gitaxias no longer draws for spells cast through chapter III (it used to be on the battlefield first, which was
+stronger than printed). Kefka's life loss now happens after every cast rather than with each. No card's `Completeness` or
+`Caveats` changed.
+
+### Snapshot
+
+Nothing new in the shape: the prompt's continuation and carry are the existing `pickThen` and `optionCarry`, and the keywords are
+new values of the existing `mayCastKeyword`. A binary from before this change reads a resolution_cast's `pickThen` as a
+revealed-hand pick's continuation and refuses the file (unknown key), so a rollback across this change with one of the three
+continuations open fails loudly rather than skipping the rest of a resolution. Tables saved on the old keyed picks restore and
+answer as before.
+
+Tests: `cards/effects/resolution_cast_one_offs_4250_test.go` (each one-off card and door: the cast logged before the resolution
+finishes, the decline leaving the card where it was, a strict restore mid-prompt and the cast on the restored table);
+`free_hand_cast_3270_test.go`, `free_cast_keyed_restore_test.go` (the hand and library offers mid-prompt and restored, the old
+keyed pick restored and answered, an unknown continuation refused), `aether_free_casts_test.go`, `raffine_a_praetors_test.go`
+(chapter III casts before the flicker, and Jin-Gitaxias draws nothing for them), `kuja_a_kefka_test.go` (the life loss waits for
+every cast; a restore mid-prompt) and the moved card tests; `protocol/hand_cast_offer_view_test.go`;
+`aiseat/free_hand_cast_bot_test.go` (only the claimed casts are offered for a hand card) and
+`aiseat/one_off_resolution_cast_bot_test.go` (graveyard, exile with a continuation, library); `client/src/lib/mayCast.test.ts`
+and `resolutionCast.render.test.ts`. Back-outs are listed in the PR.

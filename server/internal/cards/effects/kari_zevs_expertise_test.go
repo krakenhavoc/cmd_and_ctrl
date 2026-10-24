@@ -43,16 +43,32 @@ func TestKariZevsExpertiseStealsUntapsHastesAndOffersAFreeCast(t *testing.T) {
 	}
 	assertKeywords(t, g, victim, "haste")
 
-	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
-	if pick == nil {
-		t.Fatal("no free-cast pick over the hand")
-	}
-	if hasID(pick.ChooseCards, expensive) {
+	// #4250: the free cast is offered inside the spell's resolution.
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, cheapSpell)
+	if hasID(offer.DiscardOptions, expensive) {
 		t.Error("a mana value 5 spell should not be offered for free")
 	}
-	if !hasID(pick.ChooseCards, cheapSpell) {
-		t.Error("a mana value 1 spell should be offered for free")
+	if !g.Stack.Contains(kariZevsExpertiseOnStack(g)) {
+		t.Error("Kari Zev's Expertise left the stack before the free cast was answered")
 	}
+	if err := castThroughResolutionCast(t, g, me.ID, cheapSpell, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	if !g.Stack.Contains(cheapSpell) {
+		t.Fatal("the free spell is not on the stack")
+	}
+	castInsideTheResolution(t, g, cheapSpell)
+}
+
+// kariZevsExpertiseOnStack is the resolving Expertise's card, still in the
+// stack zone while its resolution is held.
+func kariZevsExpertiseOnStack(g *game.Game) uuid.UUID {
+	for _, c := range g.Stack.Cards {
+		if c.OracleID == kariZevsExpertiseOracle {
+			return c.InstanceID
+		}
+	}
+	return uuid.Nil
 }
 
 func TestKariZevsExpertiseFreeCastCanBeDeclined(t *testing.T) {
@@ -65,14 +81,12 @@ func TestKariZevsExpertiseFreeCastCanBeDeclined(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetCard, ID: victim}})
 	passPriorityAroundTable(t, g)
 
-	pick := latestChoiceOfKindFor(g, game.PendingChoiceChooseCards, me.ID)
-	if pick == nil {
-		t.Fatal("no free-cast pick over the hand")
-	}
-	if err := g.ResolveChooseCards(pick.ID, me.ID, nil); err != nil {
-		t.Fatalf("declining the free cast: %v", err)
-	}
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, cheapSpell)
+	declineResolutionCast(t, g, me.ID)
 	if !me.Hand.Contains(cheapSpell) {
 		t.Error("declining the free cast must leave the card in hand")
+	}
+	if g.CastPermissionOnCardByIDForEffect(cheapSpell) != nil || g.ResolutionPaused() {
+		t.Error("the decline left the grant, or held the resolution")
 	}
 }

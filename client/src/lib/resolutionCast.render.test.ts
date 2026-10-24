@@ -238,3 +238,53 @@ describe("ResolutionCastSheet — rebound, madness and the other keyword casts (
     );
   });
 });
+
+describe("ResolutionCastSheet — an effect's own cast (#4250, part 2)", () => {
+  const hitDialog = (reason: string): Element | null =>
+    document.querySelector(`[role="dialog"][aria-label^="${reason}"]`);
+
+  it("words a free cast from the hand and its decline", () => {
+    mount([castMove("Cast Dark Ritual"), declineMove], "me", {
+      keyword: "hand_cast",
+      reason: "Buster Sword",
+      decline: "Keep it in your hand",
+    });
+    expect(nameOf(hitDialog("Buster Sword")!)).toBe(
+      "Buster Sword: you may cast Dark Ritual without paying its mana cost",
+    );
+    expect(document.body.textContent).toContain("it stays in your hand");
+    const buttons = [...document.querySelectorAll("button")].map((b) => nameOf(b));
+    expect(buttons).toContain("Keep it in your hand");
+  });
+
+  it("names several cards on offer as a spell from among them", () => {
+    const snap = snapWith([declineMove], "me", {
+      keyword: "free_cast",
+      reason: "Etali, Primal Conqueror",
+      decline: "Leave it in exile",
+    });
+    const second = { ...ritualCopy, instance_id: "copy-2", name: "Opt" } as CardView;
+    (snap.pending_choices![0] as { options: CardView[] }).options = [ritualCopy, second];
+    render(
+      ChoiceDockHarness as never,
+      { snap, viewerID: "me", sendAction: () => {}, lastError: null } as never,
+    );
+    expect(nameOf(hitDialog("Etali, Primal Conqueror")!)).toBe(
+      "Etali, Primal Conqueror: you may cast a spell from among them without paying its mana cost",
+    );
+  });
+
+  it("words a paid cast from a graveyard", () => {
+    mount([declineMove], "me", {
+      keyword: "paid_cast",
+      reason: "Conduit of Worlds",
+      decline: "Leave it in the graveyard",
+    });
+    expect(nameOf(hitDialog("Conduit of Worlds")!)).toBe(
+      "Conduit of Worlds: you may cast Dark Ritual paying its cost",
+    );
+    expect(document.body.textContent).toContain("it stays in the graveyard");
+    const primary = barPrimary();
+    expect(primary && nameOf(primary)).toBe("Leave it in the graveyard");
+  });
+});

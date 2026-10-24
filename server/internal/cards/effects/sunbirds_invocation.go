@@ -97,6 +97,44 @@ func sunbirdsReveal(g *game.Game, item *game.StackItem) error {
 	if len(eligible) == 0 {
 		return finish(g, nil)
 	}
+	// #4250: the cast is made during the trigger's resolution (CR
+	// 608.2g), through the resolution_cast prompt over the eligible cards
+	// where they sit in the library: ONE free, capped permission, spent by
+	// the one cast. Once the prompt is answered, the rest of the revealed
+	// cards still in the library go to the bottom in a random order
+	// (lookedAtRestToBottom). The prompt is plain data, so a table waiting
+	// on it is a restore point. The pick below is the offer outside an open
+	// resolution, which the trigger never reaches.
+	limit := x
+	perm := game.CastPermission{
+		Player:            controller,
+		Zone:              game.ZoneLibrary,
+		Duration:          g.UntilEndOfTurnDuration(),
+		Cost:              "{0}",
+		Timing:            game.TimingFlash,
+		CastOnly:          true,
+		MaxSpellManaValue: &limit,
+		// Nothing moves on the decline: the continuation bottoms every
+		// revealed card left, in one random order.
+		LapseOnPass: game.LapseStaysInHand,
+		Source:      source,
+		SourceName:  "Sunbird's Invocation",
+		Label:       "Sunbird's Invocation — cast it without paying its mana cost",
+	}
+	if g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+		Chooser:      controller,
+		Source:       source,
+		Reason:       "Sunbird's Invocation",
+		Cards:        eligible,
+		Permission:   &perm,
+		Keyword:      game.MayCastKeywordFreeCast,
+		AcceptLabel:  "Cast it free",
+		DeclineLabel: "Put them on the bottom",
+		Then:         lookedAtRestToBottom,
+		Carry:        revealed,
+	}) {
+		return nil
+	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  controller,
 		Source:   source,

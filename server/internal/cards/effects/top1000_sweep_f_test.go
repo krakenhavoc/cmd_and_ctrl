@@ -745,6 +745,11 @@ func TestSweepFEtaliTransformsAndPoisons(t *testing.T) {
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%4]
 	etali := importToBattlefield(t, g, etaliRow(), me)
 	passPriorityAroundTable(t, g)
+	// #4250: the entry trigger's free casts are offered inside its
+	// resolution; this test declines them.
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		declineResolutionCast(t, g, me.ID)
+	}
 	toMainForCost(t, g)
 	sweepFAddMana(g, me.ID, "{C}{C}{C}{C}{C}{C}{C}{C}{C}{G}")
 	if err := g.ActivateCatalogAbility(me.ID, etali, 0, game.ActivateAbilityParams{}); err != nil {

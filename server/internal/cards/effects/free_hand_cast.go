@@ -14,14 +14,21 @@ import (
 // grant, so the pick opened nothing: the player had to find the card and
 // cast it by hand, at the card's own timing, any time that turn.
 //
-// The offer is now one prompt, tagged game.ChooseCastFree so the client
-// opens the cast chain as soon as it is answered and the bot prices the
-// pick as a cast, whose grant is the pass-closed any-timing free cast
-// game.FreeCastFromHandPermission describes.
+// #4250: the cast is made DURING the resolution that offers it (CR
+// 608.2g), through the resolution_cast prompt
+// (game.OfferResolutionCastForEffect). The offer stamps ONE pass-closed,
+// any-timing free permission (game.FreeCastFromHandPermission) over every
+// candidate and asks the prompt over them: the first cast spends the
+// permission, which is "cast a spell" (one), and the decline lapses it,
+// with the cards left in hand. A hand card also has its ordinary cast, so
+// the prompt's cast is held to the permission's claim (the engine names
+// game.AltCostKeyGrantedCost on it). The prompt is plain data: a table
+// waiting on it is a restore point.
 //
-// The pick is KEYED (#4246, choose_cards_keyed.go): its continuation is a
-// registered key, one per card, and what the answer needs rides on the
-// prompt as plain data. A table waiting on the offer is a restore point.
+// The keyed pick (#4246, choose_cards_keyed.go) that came before it stays
+// registered under each card's key, so a table saved while waiting on one
+// still restores and answers. It is also the offer outside an open
+// resolution, which no catalog card reaches.
 
 // freeHandCastOffer is one card's free-cast offer: the name that heads the
 // question and labels the grant, and the registered continuation the pick
@@ -85,10 +92,25 @@ func offerFreeHandCastFrom(g *game.Game, controller, source uuid.UUID, offer fre
 		freeCastHandCandidates(g, controller, pred))
 }
 
-// offerFreeHandCastOver queues the keyed offer over `candidates`, cards in
-// `controller`'s hand, under `question`. Nothing is queued for none.
+// offerFreeHandCastOver offers the free cast over `candidates`, cards in
+// `controller`'s hand: the resolution_cast prompt inside an open
+// resolution (#4250), else the keyed pick under `question`. Nothing is
+// queued for none.
 func offerFreeHandCastOver(g *game.Game, controller, source uuid.UUID, offer freeHandCastOffer, question string, candidates []uuid.UUID) {
 	if len(candidates) == 0 {
+		return
+	}
+	perm := g.FreeCastFromHandPermission(controller, source, offer.name)
+	if g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+		Chooser:      controller,
+		Source:       source,
+		Reason:       offer.name,
+		Cards:        candidates,
+		Permission:   &perm,
+		Keyword:      game.MayCastKeywordHandCast,
+		AcceptLabel:  "Cast it free",
+		DeclineLabel: "Keep it in your hand",
+	}) {
 		return
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
@@ -124,20 +146,49 @@ func freeCastHandCandidates(g *game.Game, controller uuid.UUID, pred CardPredica
 // grantFreeHandCastsFrom is "you may cast any number of spells from your
 // hand without paying their mana costs" (Aetherflux Conduit, #2110):
 // the same pass-closed, any-timing free cast, over every candidate at
-// once instead of one picked card. There is no prompt, because there is
-// no single choice to ask for. Each card carries its own grant, so
+// once instead of one picked card. Each card carries its own grant, so
 // casting one leaves the rest open (a grant that named all of them would
-// be spent by the first cast), and the holder's next priority pass ends
-// every one of them together: the cards stay in hand.
+// be spent by the first cast).
+//
+// #4250: inside the resolution the casts are the resolution_cast prompt
+// over every candidate, each cast its own answer until the player
+// declines or none is left (CR 608.2g); the decline lapses the rest, with
+// the cards left in hand. `then` is what the resolution does after the
+// casts (The Great Synthesis's flicker), run once the prompt is answered;
+// the zero value is nothing. Outside a resolution the grants alone are
+// the window, closing on the holder's next priority pass.
 //
 // Returns how many cards were granted. Cards drawn by the same
 // resolution are included, so this runs from the draw's continuation.
 func grantFreeHandCastsFrom(g *game.Game, controller, source uuid.UUID, name string, pred CardPredicate) int {
-	n := 0
-	for _, id := range freeCastHandCandidates(g, controller, pred) {
-		if g.FreeCastFromHandForEffect(controller, source, id, name) {
-			n++
+	return offerFreeHandCastsOf(g, controller, source, name, freeCastHandCandidates(g, controller, pred),
+		func(id uuid.UUID) bool { return g.FreeCastFromHandForEffect(controller, source, id, name) },
+		game.ChooseCardsThen{})
+}
+
+// offerFreeHandCastsOf grants each of `candidates` with `grant` and asks
+// the resolution_cast prompt over the ones granted (grantFreeHandCastsFrom).
+func offerFreeHandCastsOf(g *game.Game, controller, source uuid.UUID, name string, candidates []uuid.UUID,
+	grant func(uuid.UUID) bool, then game.ChooseCardsThen) int {
+	var granted []uuid.UUID
+	for _, id := range candidates {
+		if grant(id) {
+			granted = append(granted, id)
 		}
 	}
-	return n
+	if !g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+		Chooser:      controller,
+		Source:       source,
+		Reason:       name,
+		Cards:        granted,
+		Keyword:      game.MayCastKeywordHandCast,
+		AcceptLabel:  "Cast it free",
+		DeclineLabel: "Cast no more",
+		Then:         then,
+		Carry:        granted,
+	}) && then.Key() != "" {
+		// No resolution to hold open: the rest of it runs now.
+		g.RunResolutionCastThenForEffect(then, controller, source, nil)
+	}
+	return len(granted)
 }

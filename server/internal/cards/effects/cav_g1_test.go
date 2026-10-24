@@ -234,18 +234,13 @@ func TestBusterSwordDrawsThenOffersAFreeCastCappedByTheDamage(t *testing.T) {
 	if got := me.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("drew %d cards, want 1", got)
 	}
-	pick := latestChooseCardsFor(g, me.ID)
-	if pick == nil {
-		t.Fatalf("no free-cast pick was offered: %+v", g.PendingChoices)
-	}
-	if !hasID(pick.ChooseCards, fits) || hasID(pick.ChooseCards, tooBig) || hasID(pick.ChooseCards, land) {
-		t.Errorf("offered %v, want only the mana value 5 spell", pick.ChooseCards)
-	}
-	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{fits}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
+	// #4250: the free cast is offered inside the trigger's resolution.
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, fits)
+	if hasID(offer.DiscardOptions, tooBig) || hasID(offer.DiscardOptions, land) {
+		t.Errorf("offered %v, want only the mana value 5 spell", offer.DiscardOptions)
 	}
 	if perm := g.CastPermissionOnCardByIDForEffect(fits); perm == nil || perm.Cost != "{0}" {
-		t.Errorf("the chosen card must carry a free-cast permission: %+v", perm)
+		t.Errorf("the offered card must carry a free-cast permission: %+v", perm)
 	}
 }
 

@@ -50,6 +50,28 @@ describe("keywordCastWords (#4243, #4250)", () => {
     expect(keywordCastWords("paid_or_else")?.how).toBe("paying its mana cost");
   });
 
+  // #4250, part 2: an effect's own cast, from the hand, free from elsewhere,
+  // or at a price; the decline label says where the card stays.
+  it("words the effect casts and where a declined card stays", () => {
+    expect(keywordCastWords("hand_cast")).toEqual({
+      src: "CR 608.2g",
+      how: "without paying its mana cost",
+      ifNot: "it stays in your hand",
+      many: "a spell from your hand",
+    });
+    expect(keywordCastWords("free_cast", "Leave it in exile")?.ifNot).toBe("it stays in exile");
+    expect(keywordCastWords("free_cast", "Leave it in the graveyard")?.ifNot).toBe(
+      "it stays in the graveyard",
+    );
+    expect(keywordCastWords("free_cast", "Put them on the bottom")?.ifNot).toBe(
+      "it goes to the bottom of your library with the rest",
+    );
+    expect(keywordCastWords("paid_cast", "Leave it in exile")?.how).toBe("paying its cost");
+    expect(keywordCastWords("paid_cast", "Leave it in the graveyard")?.ifNot).toBe(
+      "it stays in the graveyard",
+    );
+  });
+
   it("tells the exile-until shape's two declines apart by the server's label", () => {
     expect(keywordCastWords("exile_until", "Put it on the bottom")?.ifNot).toMatch(
       /^it goes to the bottom/,

@@ -731,17 +731,16 @@ func TestB02cRishkarsExpertiseDrawsAndOffersAFreeCast(t *testing.T) {
 	if me.Hand.Size() != handBefore+5 {
 		t.Fatalf("hand = %d, want %d (drew 5)", me.Hand.Size(), handBefore+5)
 	}
-	pick := latestChooseCardsFor(g, me.ID)
-	if pick == nil {
-		t.Fatalf("Rishkar's Expertise must offer a free-cast pick: %+v", g.PendingChoices)
-	}
-	if err := g.ResolveChooseCards(pick.ID, me.ID, []uuid.UUID{cheap}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
-	}
+	// #4250: the free cast is offered inside the resolution.
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, cheap)
 	perm := g.CastPermissionOnCardByIDForEffect(cheap)
 	if perm == nil || perm.Cost != "{0}" {
-		t.Errorf("the chosen card must carry a free-cast permission: %+v", perm)
+		t.Errorf("the offered card must carry a free-cast permission: %+v", perm)
 	}
+	if err := castThroughResolutionCast(t, g, me.ID, cheap, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("the free cast: %v", err)
+	}
+	castInsideTheResolution(t, g, cheap)
 }
 
 func TestB02cSevinnesReclamationReanimatesAndFlashbackOffersACopy(t *testing.T) {

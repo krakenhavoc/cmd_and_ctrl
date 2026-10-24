@@ -130,8 +130,9 @@ func TestPrimevalSpawnLandIsExiledAndNotCastable(t *testing.T) {
 	}
 }
 
-// The window is the resolving ability's: once the caster passes, the
-// permission is gone and the cards not cast stay in exile.
+// The window is the resolving ability's (#4250: its resolution_cast
+// prompt): each cast is made during the resolution, and once the caster
+// declines the permission is gone and the cards not cast stay in exile.
 func TestPrimevalSpawnWindowClosesOnPassAndLeavesTheRestInExile(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -139,9 +140,12 @@ func TestPrimevalSpawnWindowClosesOnPassAndLeavesTheRestInExile(t *testing.T) {
 	a := pushLibraryCardForTest(me, game.Card{Name: "A", TypeLine: "Artifact", ManaCost: "{2}"})
 	b := pushLibraryCardForTest(me, game.Card{Name: "B", TypeLine: "Artifact", ManaCost: "{3}"})
 	spawnLeaves(t, g, me)
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, a, b)
 	if err := spawnCast(g, me, a); err != nil {
 		t.Fatal(err)
 	}
+	declineResolutionCast(t, g, me.ID)
+	castInsideTheResolution(t, g, a)
 	passPriorityAroundTable(t, g)
 	if !inExile(g, b) {
 		t.Error("the card that was not cast stays in exile (neither bottomed nor put in hand)")

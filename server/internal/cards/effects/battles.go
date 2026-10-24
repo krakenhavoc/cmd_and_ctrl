@@ -106,20 +106,15 @@ const SiegeBackFace = 1
 // # The cast window
 //
 // Printed, the cast happens as the defeated trigger resolves and
-// ignores timing (CR 608.2g). Here the trigger stamps a permission and
-// the controller casts it with an ordinary cast_spell action, the way
-// rebound, cascade and discover do: flash timing (the card's own timing
-// is ignored), so a Siege defeated on anyone's turn can be cast in any
-// step, and LapseOnPass closes the window the next time the holder
-// passes priority, leaving the back face in exile (a Siege whose cast
-// is declined stays exiled). An end-of-turn duration backs it up so the
-// grant cannot outlive the turn.
-//
-// An inline cast would have to collect targets, modes and X from inside
-// a resolution, and the announce path has no frame for a half-validated
-// cast, so the window is the engine's stand-in for it. The only
-// difference a player can see is that the cast is a separate action
-// before the holder passes, not part of the trigger's resolution.
+// ignores timing (CR 608.2g). The trigger stamps a permission (flash
+// timing, so a Siege defeated on anyone's turn can be cast in any step)
+// and, since #4250, asks the resolution_cast prompt over the exiled card
+// inside the trigger's resolution: the cast is made then, with its
+// targets and modes, and nobody receives priority in between. The
+// decline lapses the permission (LapseStaysInExile), leaving the back
+// face in exile (a Siege whose cast is declined stays exiled). Outside a
+// resolution the permission alone is the window, closing on the holder's
+// next pass, and an end-of-turn duration backs it up.
 //
 // A back face left uncast stays in exile, which is where printed
 // leaves a Siege whose transformed cast is countered, so nothing has
@@ -153,7 +148,11 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		// attackable by everyone else, so the two are routinely
 		// different players and the card is unambiguous about which
 		// one gets the back face.
-		return g.ExileCardWithPermissionForEffect(battleID, game.CastPermission{
+		//
+		// #4250: the cast is made during the trigger's resolution (CR
+		// 608.2g), through the resolution_cast prompt over the exiled
+		// card; the decline leaves it in exile.
+		return exileWithPermissionThenOffer(g, battleID, battleID, game.CastPermission{
 			Player:      item.Controller,
 			Cost:        "{0}",
 			CastOnly:    true,
@@ -161,6 +160,6 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 			LapseOnPass: game.LapseStaysInExile,
 			Faces:       []int{SiegeBackFace},
 			Label:       "Cast it transformed, without paying its mana cost",
-		})
+		}, "", game.MayCastKeywordFreeCast)
 	}
 }

@@ -54,6 +54,8 @@ func init() {
 					SourceName:  "Torrential Gearhulk",
 					Label:       "Torrential Gearhulk — cast " + c.Name + " without paying its mana cost",
 				}, []game.Card{c})
+				// #4250: cast during the resolution (CR 608.2g).
+				offerResolutionCastOver(g, item.Controller, item.SourceCardID, "Torrential Gearhulk", game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
 				return nil
 			}
 			return nil

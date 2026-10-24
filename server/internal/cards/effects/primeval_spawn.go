@@ -40,10 +40,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // mana value 10 or less" accept the same casts. A land among the ten
 // cannot be cast and stays in exile.
 //
-// As with every "you may cast it" a resolution offers (ADR 0066, ADR
-// 0091), the casts are grants taken with ordinary cast_spell actions
-// after the ability resolves, and the window closes when the caster next
-// passes priority; the cards not cast stay in exile.
+// #4250: the casts are made DURING the ability's resolution (CR 608.2g),
+// each its own answer to the resolution_cast prompt over the exiled
+// cards, until the caster declines or none is left; the cards not cast
+// stay in exile.
 //
 // A waived payment (strict mana off with too little in the pool, or Cast
 // anyway) no longer leaves this card guessing: it declares ReadsManaSpent,

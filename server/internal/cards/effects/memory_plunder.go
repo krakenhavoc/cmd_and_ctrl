@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // target is an instant or sorcery card an opponent owns, and as Memory
 // Plunder resolves its caster is granted a cast of that card from the
 // graveyard for {0}, flash-timed so a stolen sorcery can be cast with
-// the resolution still behind it (CR 608.2g), closed by the caster's
-// next priority pass — the posture every "you may cast it" a resolution
-// offers takes. Declining is not casting it. The card is the real card,
+// the resolution still behind it (CR 608.2g). Since #4250 the cast is
+// made during the resolution, through the resolution_cast prompt over the
+// card. Declining is not casting it. The card is the real card,
 // not a copy, so once it resolves or is countered it goes to its
 // owner's graveyard, where it came from. A target that left the
 // graveyard in response makes Memory Plunder do nothing (CR 608.2b).
@@ -55,6 +55,8 @@ func nghaMemoryPlunderOffer(_ *game.StackItem, ctx *Context) error {
 			SourceName:  "Memory Plunder",
 			Label:       "Memory Plunder — cast " + c.Name + " without paying its mana cost",
 		}, []game.Card{c})
+		// #4250: cast during the resolution (CR 608.2g).
+		offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Memory Plunder", game.MayCastKeywordFreeCast, declineLeaveInGraveyard, c.InstanceID)
 		return nil
 	}
 	return nil

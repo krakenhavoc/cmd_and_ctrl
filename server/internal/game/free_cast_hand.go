@@ -27,14 +27,13 @@ import "github.com/google/uuid"
 // pick's prompt carries ChooseCastFree), so the player never has to find
 // the card; the enumerator offers the same cast to a bot.
 //
-// SANDBOX SIMPLIFICATION, the one every "you may cast it" a resolution
-// offers takes (ADR 0066, ADR 0091): the cast is an ordinary cast_spell
-// taken after the pick rather than a frame inside the resolution. The
-// rest of the resolution has already run when the pick is asked (Buster
-// Sword draws first, Great Intelligence's Plan has already drawn and
-// faced the villainous choice), and the active player receives priority
-// first (CR 117.3b), so on another player's turn the table may act
-// before the caster does.
+// #4250: inside a resolution the permission is stamped over every
+// candidate at once and the cast is the resolution_cast prompt's answer
+// (OfferResolutionCastForEffect, resolution_copy_cast.go), made during
+// the resolution with nobody receiving priority in between; the prompt's
+// cast of a hand card is held to the permission's claim. The pick and the
+// pass-closed window above are what is left outside a resolution, and
+// what a table saved on the keyed pick (#4246) still restores into.
 
 // FreeCastFromHandPermission is the grant FreeCastFromHandForEffect
 // stamps: a free, any-timing, pass-closed cast of one hand card.

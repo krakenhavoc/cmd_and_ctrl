@@ -19,6 +19,12 @@
   // names the keyword (`may_cast_keyword`) and the words of the decline
   // (`decline_label`: "Put it on the bottom", "Leave it in exile", ...),
   // and the sheet speaks in those terms (keywordCastWords).
+  //
+  // #4250, part 2: an effect's own "you may cast it" is the same sheet,
+  // under `hand_cast`, `free_cast` or `paid_cast`, often over several real
+  // cards at once (Etali's exiled cards, a hand for Buster Sword). With more
+  // than one on offer the heading names "a spell from among them" rather
+  // than the first card.
 
   import type { ActionType, GameView, LegalMoveView } from "../../protocol";
   import Card from "./Card.svelte";
@@ -81,9 +87,14 @@
   const secondary = $derived(
     casts.length > 0 ? [{ id: "decline", label: declineLabel, onPress: sendDecline }] : [],
   );
+  // What the heading and the hint call the card on offer: its name, or
+  // the keyword's word for several.
+  const subject = $derived(
+    copies.length > 1 && words?.many ? words.many : (copies[0]?.name ?? "it"),
+  );
   const heading = $derived(
     words
-      ? `${source}: you may cast ${copies[0]?.name ?? "it"} ${words.how}`
+      ? `${source}: you may cast ${subject} ${words.how}`
       : `${source}: you may cast ${copies.length === 1 ? `the copy of ${copies[0].name}` : "the copies"}`,
   );
 </script>
@@ -100,7 +111,7 @@
   >
     <p class="prompt-hint">
       {#if words}
-        {source} is still resolving. Cast {copies[0]?.name ?? "it"} now, or don't. If you don't,
+        {source} is still resolving. Cast {subject} now, or don't. If you don't,
         {words.ifNot}.
       {:else}
         {source} is still resolving. Cast {copies.length === 1 ? "the copy" : "any of the copies"} now,

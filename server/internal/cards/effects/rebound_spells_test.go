@@ -133,11 +133,18 @@ func TestReboundSpellFeveredSuspicionOffersEachOpponentsNonlandCard(t *testing.T
 			t.Fatalf("an opponent's nonland card was not exiled")
 		}
 	}
-	// Cast the first one for free, at sorcery speed or not.
+	// Cast the first one for free, during the resolution (#4250), then
+	// decline the rest.
 	me.ManaPool = nil
+	mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast, hits...)
 	if err := g.CastSpell(me.ID, hits[0], game.CastSpellParams{FromZone: "exile", Strict: true}); err != nil {
 		t.Fatalf("free cast of an exiled card: %v", err)
 	}
+	if resolutionCastOfferFor(g, me.ID) == nil {
+		t.Fatal("one cast closed the \"any number\" offer")
+	}
+	declineResolutionCast(t, g, me.ID)
+	castInsideTheResolution(t, g, hits[0])
 	passPriorityAroundTable(t, g)
 	if g.Exile.Contains(hits[0]) {
 		t.Error("the cast card is still in exile")

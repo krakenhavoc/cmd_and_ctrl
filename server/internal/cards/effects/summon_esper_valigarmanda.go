@@ -39,13 +39,10 @@ import (
 //     mana — pays any part of it (CR 106.1b: colourless included).
 //     Cards not cast stay exiled, linked, for the next chapter.
 //
-// SANDBOX SIMPLIFICATION, cascade's and Fevered Suspicion's: the cast is
-// made in a window that opens when the chapter finishes resolving and
-// closes when its controller next passes priority, rather than inside
-// the resolution, because an inline cast would need the whole announce
-// under a paused resolution frame. The window keeps it no stronger than
-// printed: it cannot be held across a pass, so a card not cast now waits
-// for the next chapter exactly as it would.
+// #4250: the cast is made DURING the chapter's resolution (CR 608.2g),
+// through the resolution_cast prompt over the cards exiled with the Saga,
+// paid then with the mana the chapter added; one permission, one cast. A
+// card not cast waits for the next chapter, as printed.
 func init() {
 	const name = "Summon: Esper Valigarmanda"
 	chapter := func(n int) game.TriggeredAbility {
@@ -167,5 +164,13 @@ func valigarmandaManaAndCast(g *game.Game, item *game.StackItem) error {
 		SourceName:  "Summon: Esper Valigarmanda",
 		Label:       "Summon: Esper Valigarmanda — cast an exiled instant or sorcery card, spending mana of any type",
 	}, cards)
+	// #4250: cast during the chapter's resolution (CR 608.2g), paying for
+	// it then with the mana just added; one permission, one cast.
+	ids := make([]uuid.UUID, 0, len(cards))
+	for _, c := range cards {
+		ids = append(ids, c.InstanceID)
+	}
+	offerResolutionCastOver(g, ctx.Controller(), ctx.Source(), "Summon: Esper Valigarmanda",
+		game.MayCastKeywordPaidCast, declineLeaveInExile, ids...)
 	return nil
 }

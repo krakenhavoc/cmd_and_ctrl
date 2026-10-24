@@ -85,6 +85,9 @@ func powerPackCastExiled(g *game.Game, item *game.StackItem) error {
 			SourceName:              "Power Pack",
 			Label:                   "Power Pack — cast " + c.Name + " without paying its mana cost",
 		}, []game.Card{c})
+		// #4250: cast as the delayed trigger resolves (CR 608.2g).
+		offerResolutionCastOver(g, item.Controller, item.SourceCardID, "Power Pack",
+			game.MayCastKeywordFreeCast, declineLeaveInExile, c.InstanceID)
 	}
 	return nil
 }

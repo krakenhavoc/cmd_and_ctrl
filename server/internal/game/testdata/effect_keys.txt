@@ -479,3 +479,6 @@ keywordinstead return-this-instead-of-learning
 resume replacement-resume/draw
 resume replacement-resume/keyword-action
 resume replacement-resume/move
+choose resolution-cast/great-synthesis-flicker
+choose resolution-cast/looked-at-rest-to-bottom
+choose resolution-cast/kefka-life-loss

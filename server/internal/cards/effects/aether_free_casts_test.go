@@ -85,7 +85,9 @@ func TestAetherfluxConduitRefusesWithFortyNineEnergy(t *testing.T) {
 
 // The ability draws seven, pays fifty, and opens a free cast over every
 // nonland card in hand (the drawn ones included), any number of them, in
-// any timing; the next pass closes all of them and the cards stay.
+// any timing. #4250: the casts are made inside the ability's resolution,
+// each its own answer to the resolution_cast prompt, and the decline
+// closes the rest with the cards left in hand.
 func TestAetherfluxConduitDrawsSevenAndCastsAnyNumberOfSpellsFree(t *testing.T) {
 	g, me, conduit := aetherfluxTable(t)
 	older := handCardFull(me, "Held Sorcery", "Sorcery", "{4}{B}", "", []string{"B"})
@@ -115,21 +117,27 @@ func TestAetherfluxConduitDrawsSevenAndCastsAnyNumberOfSpellsFree(t *testing.T) 
 	if granted != 6 {
 		t.Errorf("grants over hand cards = %d, want 6 (one held sorcery and five drawn; no land)", granted)
 	}
-	// Several free casts in one go: the first cast leaves the others open.
+	offer := mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordHandCast, older, drawn[0])
+	if len(offer.DiscardOptions) != 6 || hasID(offer.DiscardOptions, heldLand) {
+		t.Fatalf("the offer is %v, want the six nonland cards", offer.DiscardOptions)
+	}
+	// Several free casts in one go: each cast leaves the others open.
 	for _, id := range append([]uuid.UUID{older}, drawn[:2]...) {
-		if err := g.CastSpell(me.ID, id, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedCost}); err != nil {
+		if err := castThroughResolutionCast(t, g, me.ID, id, game.CastSpellParams{Strict: true}); err != nil {
 			t.Fatalf("free cast of %v: %v", id, err)
+		}
+		if resolutionCastOfferFor(g, me.ID) == nil {
+			t.Fatal("one cast closed the \"any number\" offer")
 		}
 	}
 	if err := g.CastSpell(me.ID, heldLand, game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedCost}); err == nil {
 		t.Error("a land was cast as a spell")
 	}
-	// The window closes on the holder's next pass.
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
-	}
+	// The decline closes the rest; the resolution then finishes.
+	declineResolutionCast(t, g, me.ID)
+	castInsideTheResolution(t, g, drawn[1])
 	if err := g.CastSpell(me.ID, drawn[3], game.CastSpellParams{Strict: true, AlternativeCost: game.AltCostKeyGrantedCost}); err == nil {
-		t.Error("the free cast outlived the holder's pass")
+		t.Error("the free cast outlived the decline")
 	}
 	if !me.Hand.Contains(drawn[3]) {
 		t.Error("an uncast card stays in hand")
@@ -199,11 +207,8 @@ func aetherworksLook(t *testing.T, g *game.Game, me *game.Player, marvel uuid.UU
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityUntilChoice(t, g)
-	c := chooseCardsChoiceFor(g, me.ID)
-	if c == nil {
-		t.Fatal("the look should offer a free cast")
-	}
-	return c
+	// #4250: the cast is offered inside the ability's resolution.
+	return mustResolutionCastOffer(t, g, me.ID, game.MayCastKeywordFreeCast)
 }
 
 func TestAetherworksMarvelPaysSixLooksAtSixAndCastsOneFreeOfThem(t *testing.T) {
@@ -216,20 +221,17 @@ func TestAetherworksMarvelPaysSixLooksAtSixAndCastsOneFreeOfThem(t *testing.T) {
 	if energyOf(me) != 1 {
 		t.Errorf("energy after paying six from seven = %d, want 1", energyOf(me))
 	}
-	if c.ChooseDestination != game.ChooseCastFreeFromLibrary {
-		t.Errorf("destination = %q, want the library free cast", c.ChooseDestination)
-	}
 	for _, id := range lands {
-		if hasID(c.ChooseCards, id) {
+		if hasID(c.DiscardOptions, id) {
 			t.Errorf("a land was offered as a spell: %v", id)
 		}
 	}
 	for _, id := range spells {
-		if !hasID(c.ChooseCards, id) {
+		if !hasID(c.DiscardOptions, id) {
 			t.Errorf("a looked-at spell %v was not offered (no mana value cap)", id)
 		}
 	}
-	if hasID(c.ChooseCards, deep) {
+	if hasID(c.DiscardOptions, deep) {
 		t.Error("the seventh card was not looked at")
 	}
 	// Looked at, not revealed: only the looker knows any of the six.
@@ -240,27 +242,27 @@ func TestAetherworksMarvelPaysSixLooksAtSixAndCastsOneFreeOfThem(t *testing.T) {
 		}
 	}
 
+	// An 8-mana creature cast for nothing, from where it sits in the
+	// library, while the ability is still resolving.
 	wurm := spells[1]
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{wurm}); err != nil {
-		t.Fatalf("pick: %v", err)
+	if err := castThroughResolutionCast(t, g, me.ID, wurm, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("free cast from the library: %v", err)
 	}
-	if libraryIndex(me, wurm) != len(me.Library.Cards)-1 {
-		t.Errorf("the pick waits on top of the library, at %d", libraryIndex(me, wurm))
+	castInsideTheResolution(t, g, wurm)
+	// One spell: the cast spent the offer, and the rest went to the bottom.
+	if resolutionCastOfferFor(g, me.ID) != nil {
+		t.Error("the offer outlived its one cast")
 	}
 	for _, id := range append(append([]uuid.UUID{}, lands...), spells[0], spells[2], spells[3]) {
 		if i := libraryIndex(me, id); i < 0 || i > 4 {
-			t.Errorf("the rest go to the bottom (indices 0-4 above the deep card), found %d", i)
+			t.Errorf("the rest go to the bottom (indices 0-4 under the deep card), found %d", i)
 		}
 	}
-	if i := libraryIndex(me, deep); i != len(me.Library.Cards)-2 {
-		t.Errorf("the deep card sits directly under the pick, found %d", i)
+	if i := libraryIndex(me, deep); i != len(me.Library.Cards)-1 {
+		t.Errorf("the deep card is the top card once the rest go under, found %d", i)
 	}
 	if err := g.CastSpell(me.ID, spells[0], game.CastSpellParams{FromZone: "library"}); err == nil {
-		t.Error("the grant opens the pick and no other card")
-	}
-	// An 8-mana creature cast for nothing, in the main phase and at flash timing.
-	if err := g.CastSpell(me.ID, wurm, game.CastSpellParams{FromZone: "library", Strict: true}); err != nil {
-		t.Fatalf("free cast from the library: %v", err)
+		t.Error("a second looked-at card was castable")
 	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(wurm) {
@@ -268,29 +270,17 @@ func TestAetherworksMarvelPaysSixLooksAtSixAndCastsOneFreeOfThem(t *testing.T) {
 	}
 }
 
-// An uncast pick, and a declined look, both end at the bottom.
+// A declined look ends with all six at the bottom, and opens nothing.
 func TestAetherworksMarvelUncastPickAndDeclinedLookGoToTheBottom(t *testing.T) {
-	g, me, marvel := aetherworksTable(t)
-	spells, _, _ := aetherworksLibrary(me)
-	c := aetherworksLook(t, g, me, marvel)
-	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{spells[0]}); err != nil {
-		t.Fatalf("pick: %v", err)
-	}
-	if err := g.PassPriority(); err != nil {
-		t.Fatalf("PassPriority: %v", err)
-	}
-	if i := libraryIndex(me, spells[0]); i < 0 || i > 5 {
-		t.Errorf("an uncast pick goes to the bottom with the rest, found %d", i)
-	}
-	if err := g.CastSpell(me.ID, spells[0], game.CastSpellParams{FromZone: "library"}); err == nil {
-		t.Error("the window closed on the pass")
-	}
-
 	g2, me2, marvel2 := aetherworksTable(t)
 	spells2, _, deep2 := aetherworksLibrary(me2)
-	c2 := aetherworksLook(t, g2, me2, marvel2)
-	if err := g2.ResolveChooseCards(c2.ID, me2.ID, nil); err != nil {
-		t.Fatalf("decline: %v", err)
+	aetherworksLook(t, g2, me2, marvel2)
+	declineResolutionCast(t, g2, me2.ID)
+	if g2.ResolutionPaused() {
+		t.Error("the decline did not let the resolution finish")
+	}
+	if err := g2.CastSpell(me2.ID, spells2[0], game.CastSpellParams{FromZone: "library"}); err == nil {
+		t.Error("the decline left a looked-at card castable")
 	}
 	for _, id := range spells2 {
 		if i := libraryIndex(me2, id); i < 0 || i > 5 {
