@@ -14,9 +14,9 @@ import (
 // The cast is a grant, the way every "you may cast it" a resolution
 // offers is (ADR 0099 §4): a free ({0}, so X is locked at 0 and
 // additional costs are still paid), any-timing (CR 608.2g), cast-only,
-// pass-closed permission over the target card in the graveyard. The
-// holder's next priority pass closes it and the card simply stays where
-// it is. "If that spell would be put into your graveyard, exile it
+// permission over the target card in the graveyard, offered during the
+// resolution (#4250). The holder's next priority pass closes it only as the
+// fallback, and the card simply stays where it is. "If that spell would be put into your graveyard, exile it
 // instead" is the permission's ExileInsteadOfGraveyard (#3863): the
 // spell is exiled whether it resolves, is countered or fizzles, and a
 // spell returned to its owner's hand or put into a library goes there,

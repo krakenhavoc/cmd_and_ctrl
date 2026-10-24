@@ -23,8 +23,9 @@ import (
 // order, one library after another, then grants Etali's controller a
 // free cast of every nonland card that landed (grantFreeCasts): cast
 // only, at flash speed because the casts are part of this resolution
-// (CR 608.2g), closing on the controller's next pass and leaving an
-// uncast card in exile. The lands exiled on the way stay exiled.
+// (CR 608.2g), offered during the resolution (#4250). The controller's next
+// pass closes the window only as the fallback, leaving an uncast card in
+// exile. The lands exiled on the way stay exiled.
 //
 // The transform is TransformThis at sorcery speed; {G/P} is Phyrexian
 // mana, payable with {G} or 2 life (CR 107.4f).

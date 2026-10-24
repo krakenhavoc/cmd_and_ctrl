@@ -14,9 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ExileTopWithPermission.EachManaValueAtMost): each cast is free, capped at
 // mana value 5 on its own and, unlike Primeval Spawn's running total, spends
 // nothing but its own card, so any number of them may be cast (CR 608.2g).
-// The casts are taken after the spell resolves and the window closes when
-// the caster next passes priority, as for every resolution-time cast (ADR
-// 0066); a card not cast, a land among the four and a spell over mana value
+// The casts are offered during the resolution (#4250), and the window closes
+// when the caster next passes priority only as the fallback, as for every
+// resolution-time cast (ADR 0066); a card not cast, a land among the four and a spell over mana value
 // 5 stay in exile. The last clause is #3995's player-wide skip over the
 // caster's lands, read at their next untap step, so a land played before
 // then stays tapped too.
