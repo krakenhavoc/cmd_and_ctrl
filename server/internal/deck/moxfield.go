@@ -43,6 +43,8 @@ func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 			// main-deck rows; Resolve routes Attraction cards to the
 			// Attraction deck by type line.
 			Attractions moxfieldBoard `json:"attractions"`
+			// ADR 0208 §2: the sticker sheets, routed by type line.
+			Stickers moxfieldBoard `json:"stickers"`
 		} `json:"boards"`
 	}
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -60,6 +62,7 @@ func ParseMoxfield(raw []byte) (name string, entries []Entry, err error) {
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Mainboard, nil)...)
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Sideboard, func(e *Entry) { e.IsSideboard = true })...)
 	entries = append(entries, collectMoxfieldBoard(doc.Boards.Attractions, nil)...)
+	entries = append(entries, collectMoxfieldBoard(doc.Boards.Stickers, nil)...)
 	return doc.Name, entries, nil
 }
 

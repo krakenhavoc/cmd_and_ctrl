@@ -2688,6 +2688,12 @@ type PlayerView struct {
 	// and unredacted, like emblems. Absent for a seat with none.
 	Junkyard []CardView `json:"junkyard,omitempty"`
 
+	// StickerSheets are the three sticker sheets this seat plays with
+	// (CR 103.2d, ADR 0208 §6). PUBLIC: they "remain revealed" (CR
+	// 123.2c). Each sticker says whether it is on an object now, and so
+	// can't be put on another (CR 123.3). Absent for a seat with none.
+	StickerSheets []StickerSheetView `json:"sticker_sheets,omitempty"`
+
 	// OutsidePlay is the seat's live "you may play a card you own from
 	// outside the game this turn" right (Wish, #3955): present while it
 	// is held and unspent. OWNER-ONLY, like the sideboard. The card is
@@ -3028,6 +3034,10 @@ type CardView struct {
 	// Printing data, so redacted with the rest of a hidden card's
 	// identity. Absent on every other card.
 	AttractionLights []int `json:"attraction_lights,omitempty"`
+	// Stickers are the stickers on this object (CR 123, ADR 0208 §6), in
+	// the order they were put on. Public on a public object, redacted
+	// with the rest of a hidden card's identity. Absent when it has none.
+	Stickers []StickerView `json:"stickers,omitempty"`
 	// DamageMarked is the damage currently noted on this creature
 	// (S13.1 — feeds the lethal-damage SBA). Cleared by the
 	// cleanup-step turn-based action and on zone exit. Only
@@ -10323,6 +10333,7 @@ func viewOfPlayer(g *game.Game, p *game.Player, ids *idStrings) PlayerView {
 		SideboardCount:      len(sideboard),
 		AttractionDeckCount: len(p.AttractionDeckCards()),
 		Junkyard:            junkyard,
+		StickerSheets:       viewOfStickerSheets(g, p),
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
@@ -11538,6 +11549,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.IsCommander = false
 	out.IsCompanion = false
 	out.AttractionLights = nil
+	out.Stickers = nil
 	out.ManaCost = ""
 	out.Abilities = nil
 	// #3898: a block refusal's sentence names the card, and a minimum
@@ -12028,6 +12040,8 @@ func viewOfCardPtrIDs(c *game.Card, ids *idStrings) CardView {
 		IsCompanion:   c.IsCompanion,
 		// ADR 0207: printed, like the name.
 		AttractionLights: append([]int(nil), c.AttractionLights...),
+		// ADR 0208: what is stuck on it, public like its name.
+		Stickers: viewOfStickers(c),
 		// BattleX / BattleY are deliberately NOT stamped here: they
 		// are battlefield-only, and viewOfCard has no idea which zone
 		// it is projecting. viewOfZone fills them in for the

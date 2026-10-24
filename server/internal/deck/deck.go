@@ -88,6 +88,13 @@ type List struct {
 	// a legal Attraction deck (SeatedAttractions).
 	Attractions []cards.Card `json:"attractions,omitempty"`
 
+	// StickerSheets are the deck's sticker sheets (CR 123.2, ADR 0208
+	// §2): every record whose type line is "Stickers", wherever the list
+	// named it. Not cards and not one of the 100. They reach the game as
+	// data (game.Player.StickerSheetPool) when the pool is legal
+	// (SeatedStickerSheets, CR 123.2a).
+	StickerSheets []cards.Card `json:"sticker_sheets,omitempty"`
+
 	// ParsedAt is wall-clock time when this list was resolved against
 	// the Scryfall index. The validator uses this to cross-check
 	// against the game's format-pin date.
@@ -182,6 +189,14 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 		case e.IsCommander:
 			for range e.Count {
 				list.Commanders = append(list.Commanders, c)
+			}
+		case PrintsStickerSheet(c):
+			// ADR 0208 §2, CR 123.2: a sticker sheet is not a card. It
+			// is one of the deck's sheets whichever section named it
+			// (a "Stickers:" heading, Moxfield's stickers board, or a
+			// plain list).
+			for range e.Count {
+				list.StickerSheets = append(list.StickerSheets, c)
 			}
 		case e.IsCompanion:
 			for range e.Count {
@@ -331,6 +346,11 @@ func (l *List) ToGameCards() []game.Card {
 	// carries AstrotoriumBack (toGameCard), which seats it there.
 	for _, c := range l.SeatedAttractions() {
 		out = append(out, toGameCard(c, false))
+	}
+	// ADR 0208 §2: the sticker sheets, as pseudo-cards the game seats
+	// as data (game.Player.StickerSheetPool), never in a zone.
+	for _, c := range l.SeatedStickerSheets() {
+		out = append(out, stickerSheetCard(c))
 	}
 	return out
 }

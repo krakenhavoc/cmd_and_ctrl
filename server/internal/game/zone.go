@@ -457,6 +457,13 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// while it sits in exile" true with no special case: a move
 	// within a zone is not a move, and never reaches here.
 	c.ClearFaceDown()
+	// CR 123.5 (ADR 0208): stickers come off a card that moves to a
+	// hidden zone, and out of the game; every other move keeps them, an
+	// exception to CR 400.7. Keyed on the destination, as the rule is.
+	switch dst.Kind {
+	case ZoneLibrary, ZoneHand, ZoneOutside:
+		c.Stickers = nil
+	}
 	// ADR 0066 amendment 2026-10-15 (#3769): the graveyard-arrival
 	// record. Every move rewrites it, so a card that leaves a graveyard
 	// names nothing and one that arrives names where it came from.

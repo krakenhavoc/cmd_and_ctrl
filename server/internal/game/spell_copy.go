@@ -515,6 +515,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.Controller = controller
 	copyCard.KnownBy = nil
 	copyCard.Counters = nil
+	copyCard.Stickers = nil
 	copyCard.CounterStampedAt = nil
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}

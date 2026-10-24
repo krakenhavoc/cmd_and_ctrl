@@ -749,6 +749,14 @@ type playerSnapshot struct {
 	// nothing more: weaker than printed, never stronger.
 	AttractionDeck *zoneSnapshot `json:"attractionDeck,omitempty"`
 	Junkyard       *zoneSnapshot `json:"junkyard,omitempty"`
+	// StickerSheetPool and StickerSheets are Player.StickerSheetPool and
+	// Player.StickerSheets (ADR 0208 §2): the sheets the deck revealed
+	// and the three chosen, plain data. Additive within v9; absent means
+	// none, which is right for every file written before sheets could be
+	// seated. An older binary drops them and the player has no stickers
+	// to put on anything: weaker than printed, never stronger.
+	StickerSheetPool []StickerSheet `json:"stickerSheetPool,omitempty"`
+	StickerSheets    []StickerSheet `json:"stickerSheets,omitempty"`
 	// HasSideboard is Player.HasSideboard (ADR 0198 §2): the deck seated
 	// a sideboard, so it is the pool even once it is empty. Additive
 	// within v9. A file without the key restores it from the sideboard
@@ -979,6 +987,12 @@ type cardSnapshot struct {
 	// visit, and a junkyard-bound one goes to its graveyard.
 	AstrotoriumBack  bool  `json:"astrotoriumBack,omitempty"`
 	AttractionLights []int `json:"attractionLights,omitempty"`
+	// Stickers is Card.Stickers (ADR 0208 §3): the stickers on the
+	// object, plain data. Additive within v9; absent means none, which
+	// every card in an older file has. An older binary drops them and
+	// the object loses what they gave it: weaker than printed, never
+	// stronger.
+	Stickers []PlacedSticker `json:"stickers,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -2667,6 +2681,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,
 		AttractionLights:         append([]int(nil), c.AttractionLights...),
+		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2785,6 +2800,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
 		AttractionDeck:        snapshotCompanionZone(p.AttractionDeck, cen),
 		Junkyard:              snapshotCompanionZone(p.Junkyard, cen),
+		StickerSheetPool:      cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:         cloneStickerSheets(p.StickerSheets),
 		HasSideboard:          p.HasSideboard,
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
@@ -3683,6 +3700,7 @@ func restoreCard(c *cardSnapshot) Card {
 		IsSideboard:              c.IsSideboard,
 		AstrotoriumBack:          c.AstrotoriumBack,
 		AttractionLights:         append([]int(nil), c.AttractionLights...),
+		Stickers:                 append([]PlacedSticker(nil), c.Stickers...),
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3833,6 +3851,8 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Sideboard:          restoreCompanionZone(p.Sideboard),
 		AttractionDeck:     restoreCommandPile(p.AttractionDeck),
 		Junkyard:           restoreCommandPile(p.Junkyard),
+		StickerSheetPool:   cloneStickerSheets(p.StickerSheetPool),
+		StickerSheets:      cloneStickerSheets(p.StickerSheets),
 		HasSideboard:       p.HasSideboard || p.Sideboard != nil,
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,

@@ -1835,14 +1835,19 @@ var items = []Item{
 		EngineNotes: "**Shipped** (#3654): `effects.Improvise()` is convoke's twin over artifacts with no colour clause (a tapped artifact pays generic only, and the tap budget is the generic alone). `game.NextSpellPromise.Improvise` is a one-use promise: `TapPermanentsCostForCastLocked` offers `game.ImproviseTapCost` to the caster's next matching spell, so validation, pricing and the cast view agree, and the next spell cast spends it. The bot enumerator enumerates no tap payments, as for convoke.",
 	},
 	{
-		Slug: "stickers", Name: "Stickers and ticket counters", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Unfinity's sticker sheets and the ticket counters that pay for them.",
-		Missing:     "Stickers and ticket counters aren't supported.",
-		Rules:       []string{"123.1"},
-		Issue:       2138,
-		Tracked:     "#2138 (found landing the undying and persist pool, #2075)",
-		Waiting:     []string{"Night Brushwagg Ringmaster", "Phyrexian Midway Bamboozle"},
-		EngineNotes: "no ticket counters and no sticker sheets: the two sticker cards that print undying or persist behind a {TK} cost can't gate the keyword on a sticker being placed.",
+		Slug: "stickers", Name: "Stickers and ticket counters", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Unfinity's sticker sheets, the stickers you put on your permanents, and the ticket counters that pay for them.",
+		Rules:    []string{"123", "107.17", "103.2d"},
+		Issue:    2138,
+		ADR:      "0208-stickers-and-ticket-counters.md",
+		Examples: []string{"Night Brushwagg Ringmaster", "Phyrexian Midway Bamboozle", "Ticketomaton"},
+		EngineNotes: "**Shipped** (#2138, [ADR 0208](decisions/0208-stickers-and-ticket-counters.md)). Tickets are a player counter (`game.CounterTicket`): `effects.GetTickets` gives them and a sticker's ticket cost is `payTicketsLocked`, the one path that spends them (CR 107.17a, 123.3c). " +
+			"A sticker sheet is not a card (CR 123.2): `deck.PrintsStickerSheet` routes every Scryfall record typed `Stickers` to `deck.List.StickerSheets` (a `Stickers:` heading, Moxfield's `stickers` board or none), never one of the 100; fewer than ten, or one twice, is warned (`sticker_sheets_illegal`, CR 123.2a) and none is seated. `deck.StickerSheetOf` reads the sheet's name, ability, power/toughness and art stickers off the record. " +
+			"The game keeps the sheets as data (`Player.StickerSheetPool`, and the three chosen at random as the game begins on the `sticker_sheets` stream, `Player.StickerSheets`, CR 103.2d) and a placed sticker as data on its object (`Card.Stickers`): kept on a move between public zones, dropped on a move to a hidden zone (CR 123.5), never copied (CR 707.2). " +
+			"The layer pass reads them as one more source list (`stickerContinuousEffectsLocked`): a name sticker in layer 3, an ability sticker in layer 6 (the catalog's `Spec.StickerSheet`: keywords, or a grant bundle) and a power/toughness sticker in layer 7b, each at its CR 613.7k timestamp. " +
+			"`Game.PutStickerForEffect` asks three keyed questions (which object, which sticker, where a name sticker goes), each a restore point. `EventStickerPlaced` is logged and watched (Wee Champion, Goblin Airbrusher, Tusk and Whiskers). No new route to a func or a card container: the closure ceilings do not move. " +
+			"Wire: `PlayerView.sticker_sheets`, `CardView.stickers`; tickets ride `counters.ticket`. **Cards (29, all Full):** the two sheets, Ticketomaton, Aerialephant, Minotaur de Force, Stiltstrider, Carnival Carnivore, Glitterflitter, Grabby Tabby, Scared Stiff, Sanguine Sipper, Croakid Amphibonaut, Big Winner, Ticket Turbotubes, Blorbian Buddy, Prize Wall, Bioluminary, Costume Shop, Wee Champion, Goblin Airbrusher, Tusk and Whiskers, Robo-Piñata, Command Performance, Finishing Move, Baaallerina, Sword-Swallowing Seraph, Proficient Pyrodancer, Lineprancers and Park Bleater. " +
+			"**Still open:** the other 46 legal sheets' ability stickers (each a catalog entry; their name, power/toughness and art stickers already work), sticker kicker (Wicker Picker), \"has all abilities of ability stickers\" (Pin Collection, Clandestine Chameleon), name-sticker word and vowel counts (the `_____` cards), and stickers on cards in a graveyard (Scampire, Roxi).",
 	},
 	{
 		// ADR 0108 §5 (#1888, Delivery PR 4). Closed; history in

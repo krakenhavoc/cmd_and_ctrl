@@ -447,6 +447,7 @@ func (g *Game) mintFromCollectionLocked(player uuid.UUID, template Card) uuid.UU
 	c.IsCommander = false
 	c.IsCompanion = false
 	c.Counters = nil
+	c.Stickers = nil
 	c.CounterStampedAt = nil
 	c.LostLastCounter = false
 	c.Tapped = false

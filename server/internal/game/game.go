@@ -1403,6 +1403,8 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.HasSideboard = false
 	p.AttractionDeck = nil
 	p.Junkyard = nil
+	p.StickerSheetPool = nil
+	p.StickerSheets = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID

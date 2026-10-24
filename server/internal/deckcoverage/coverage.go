@@ -117,6 +117,11 @@ type Report struct {
 	// The companion is not in it (it has its own field above). Additive
 	// (ADR 0095 §1 style).
 	Sideboard []Card `json:"sideboard,omitempty"`
+	// StickerSheets are the deck's sticker sheets (ADR 0208 §2): not
+	// cards and not one of the 100, so kept out of Cards, Counts and
+	// Copies. Each is bucketed by what the catalog runs of its ability
+	// stickers. Sorted like Cards. Absent for a deck with none. Additive.
+	StickerSheets []Card `json:"sticker_sheets,omitempty"`
 }
 
 // AsPrinted is how many distinct cards play exactly as printed
@@ -245,10 +250,14 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 			}
 			continue
 		}
+		sheet := !e.IsCommander && deck.PrintsStickerSheet(c)
 		for range e.Count {
 			switch {
 			case e.IsCommander:
 				list.Commanders = append(list.Commanders, c)
+			case sheet:
+				// ADR 0208 §2: a sticker sheet, wherever it was listed.
+				list.StickerSheets = append(list.StickerSheets, c)
 			case e.IsCompanion:
 				list.AddCompanion(c)
 			case e.IsSideboard:
@@ -257,7 +266,7 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 				list.Mainboard = append(list.Mainboard, c)
 			}
 		}
-		if e.IsSideboard || e.IsCompanion {
+		if e.IsSideboard || e.IsCompanion || sheet {
 			continue
 		}
 		if e.IsCommander {
@@ -317,6 +326,8 @@ func BuildWith(idx *cards.Index, d Deck, verdicts map[string]catalog.Entry) (*Re
 	// ADR 0191: the sideboard, read after the companion is settled so a
 	// lone companion kept there is not listed twice.
 	r.Sideboard = sideboardCards(list.Sideboard, verdicts)
+	// ADR 0208 §2: the sticker sheets, bucketed the same way.
+	r.StickerSheets = sideboardCards(list.StickerSheets, verdicts)
 
 	if err := deck.Validate(list); err != nil {
 		var ve *deck.ValidationError

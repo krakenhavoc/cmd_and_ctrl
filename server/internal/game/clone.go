@@ -644,6 +644,14 @@ func deepenCard(out *Card) {
 	if len(out.AttractionLights) > 0 {
 		out.AttractionLights = append([]int(nil), out.AttractionLights...)
 	}
+	// ADR 0208: the stickers on the object, plain values.
+	if len(out.Stickers) > 0 {
+		out.Stickers = append([]PlacedSticker(nil), out.Stickers...)
+	}
+	if out.StickerSheet != nil {
+		sheet := cloneStickerSheet(*out.StickerSheet)
+		out.StickerSheet = &sheet
+	}
 	// #1706: a multi-blocker's further attackers.
 	if len(out.AlsoBlocking) > 0 {
 		out.AlsoBlocking = append([]uuid.UUID(nil), out.AlsoBlocking...)
@@ -772,6 +780,9 @@ func clonePlayer(p *Player) *Player {
 	out.Companion = cloneZone(p.Companion)
 	out.Sideboard = cloneZone(p.Sideboard)
 	out.AttractionDeck = cloneZone(p.AttractionDeck)
+	// ADR 0208: the revealed sticker sheets and the three chosen.
+	out.StickerSheetPool = cloneStickerSheets(p.StickerSheetPool)
+	out.StickerSheets = cloneStickerSheets(p.StickerSheets)
 	out.Junkyard = cloneZone(p.Junkyard)
 	// ADR 0018's eighth amendment: game state, cloned with the seat.
 	out.TriggerOrderMemory = copyTriggerOrderMemory(p.TriggerOrderMemory)

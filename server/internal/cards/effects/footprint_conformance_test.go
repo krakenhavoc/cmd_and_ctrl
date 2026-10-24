@@ -127,6 +127,8 @@ var footprintConformanceCases = map[string]conformanceCase{
 	}}, EachOpponentLosesLife{N: 2}, nil),
 	// Counted and X amounts (#3033).
 	"CreateXByXToken": {step: CreateXByXToken{Template: game.Card{Name: "Treefolk", TypeLine: "Token Creature — Treefolk"}}, x: 3},
+	// ADR 0208: Goblin Airbrusher's count reads the triggering placement.
+	"CreateTokensForPlacedSticker": {step: CreateTokensForPlacedSticker{Template: TokenCard("1/1 green Elf Warrior"), N: 1, ArtN: 2}},
 	"CreateTokensForEach": {step: CreateTokensForEach{
 		Template: TokenCard("1/1 white Rabbit"), Name: "creature",
 		Count: func(ctx *Context) int { return len(ctx.Game.Battlefield.Cards) },

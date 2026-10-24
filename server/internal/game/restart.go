@@ -355,6 +355,11 @@ func restartedPlayer(p *Player) *Player {
 	np.Companion = p.Companion
 	np.Sideboard = p.Sideboard
 	np.HasSideboard = p.HasSideboard
+	// ADR 0208: the sticker sheets the deck revealed are not in the
+	// game either (CR 123.2). The new game chooses its three afresh as
+	// it begins (CR 103.2d), and every sticker came off its card as the
+	// card went to its library (CR 123.5).
+	np.StickerSheetPool = cloneStickerSheets(p.StickerSheetPool)
 	return np
 }
 

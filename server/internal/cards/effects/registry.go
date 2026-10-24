@@ -35,6 +35,8 @@ func Register(spec Spec) {
 	}
 	// ADR 0126 §6: what a declared Purpose may say, slot by slot.
 	checkSpecPurposes(spec)
+	// ADR 0208 §5: a sticker sheet's ability stickers.
+	registerStickerSheet(spec)
 	if spec.Modes != nil {
 		if spec.Targets != nil {
 			panic(fmt.Sprintf("effects.Register: %q declares both Targets and Modes — put the target clause on the mode", spec.Name))

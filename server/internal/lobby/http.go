@@ -3136,6 +3136,10 @@ type uploadDeckResponse struct {
 	// deck (ADR 0207 §2): not part of CardCount. Zero for none, and for
 	// an Attraction deck that breaks CR 717.2a (a warning says so).
 	Attractions int `json:"attractions,omitempty"`
+	// StickerSheets is how many sticker sheets the deck seats (ADR 0208
+	// §2): not cards and not part of CardCount. Zero for none, and for a
+	// pool that breaks CR 123.2a (a warning says so).
+	StickerSheets int `json:"sticker_sheets,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -3294,6 +3298,9 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				if v.Code == deck.CodeSideboardUnsupported ||
 					v.Code == deck.CodeSideboardTooLarge ||
 					v.Code == deck.CodeAttractionDeckIllegal ||
+					// ADR 0208 §2: so is a sticker sheet pool that
+					// breaks CR 123.2a.
+					v.Code == deck.CodeStickerSheetsIllegal ||
 					v.Code == deck.CodeUnsupportedLayout ||
 					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
@@ -3437,6 +3444,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Companion:     companionName(list),
 		Sideboard:     len(list.SeatedSideboard()),
 		Attractions:   len(list.SeatedAttractions()),
+		StickerSheets: len(list.SeatedStickerSheets()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3652,6 +3660,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		Companion:     companionName(list),
 		Sideboard:     len(list.SeatedSideboard()),
 		Attractions:   len(list.SeatedAttractions()),
+		StickerSheets: len(list.SeatedStickerSheets()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})

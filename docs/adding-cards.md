@@ -93,6 +93,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - ["Each player may attack only the nearest opponent in the chosen direction" (ADR 0206, #4197)](#each-player-may-attack-only-the-nearest-opponent-in-the-chosen-direction-adr-0206-4197)
   - [Void and revolt: "left the battlefield this turn" (#2128, #2148)](#void-and-revolt-left-the-battlefield-this-turn-2128-2148)
   - [Attractions (ADR 0207, #2121)](#attractions-adr-0207-2121)
+  - [Stickers and ticket counters (ADR 0208, #2138)](#stickers-and-ticket-counters-adr-0208-2138)
   - [Adding a `Spec` slot (#622)](#adding-a-spec-slot-622)
   - [When in doubt](#when-in-doubt)
 
@@ -11814,7 +11815,52 @@ TargetPermanent("target Attraction", Attraction()),
   Attraction every light (`1..6`) when the test is about what its visit does.
   Walk to the precombat main phase BEFORE putting an Attraction on the
   battlefield, or the turn-based roll there visits it too.
-- Stickers and tickets ({TK}) are #2138, not this vocabulary.
+- Stickers and tickets ({TK}) are ADR 0208, below.
+
+### Stickers and ticket counters (ADR 0208, #2138)
+
+A ticket is a player counter (`game.CounterTicket`) and a sticker is data on
+the object it is on; the engine asks the questions and runs the layers. A card
+says only what it prints, with `cards/effects/stickers.go`:
+
+```go
+// "When this creature enters, you get {TK}, then you may put a sticker on a nonland permanent you own."
+Triggered: []game.TriggeredAbility{WhenThisEntersGetTicketsThenSticker("Ticketomaton", 1)},
+// "{3}, {T}: You get {TK}."
+Effect: Do(GetTickets{N: 1}),
+// "you may put a power and toughness sticker on a creature you own" (any kinds; On defaults to nonland permanents)
+PutASticker{On: StickerOnCreatureYouOwn, Kinds: []game.StickerKind{game.StickerPT}},
+// "This creature has vigilance as long as you control a stickered permanent."
+KeywordGrant(selfWhileYouControlA(Stickered()), "vigilance"),
+// "another target creature with a name sticker on it"
+Another(TargetCreature("another target creature with a name sticker on it", WithSticker(game.StickerName))),
+// "Whenever you place a sticker, …" (PlacedStickerKind(item) says which kind, and on what)
+WheneverYouPlaceASticker("Goblin Airbrusher — create a Treasure token", effect),
+```
+
+- `PutASticker` queues three keyed questions (which object or none, which
+  sticker, where a name sticker goes); the ticket cost is paid as the sticker
+  goes on. In a `Do` or `ResolveSteps`, later steps wait for the answers, so
+  write the card's sentences in printed order (Finishing Move).
+- **A sticker sheet** is a catalog entry with `StickerSheet` set and nothing
+  else that applies to cards. It says, per ability sticker in printed order,
+  what that sticker gives: keyword tokens, or the key of a bundle in the same
+  Spec's `Grants` (ADR 0093), whose "this creature" is the object the sticker
+  is on and whose "you" is its controller. The name, power and toughness, and
+  art stickers need nothing: the importer reads them off the sheet's record.
+
+```go
+StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
+    {Keywords: []string{game.CounterMenace}},
+    {Grant: bamboozleAttackTicket}, // a bundle declared in Grants
+}},
+```
+
+- In a test, give a seat sheets with `p.StickerSheets = []game.StickerSheet{
+  deck.StickerSheetOf(cards.Card{…})}` and tickets with
+  `AddPlayerCounterByForEffect(p.ID, p.ID, game.CounterTicket, n)`; answer
+  the questions with `ResolveChooseCards` and `ResolveOptionPick`
+  (`stkPutOn` in `stickers_cards_test.go`).
 
 ### When in doubt
 
