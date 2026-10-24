@@ -77,31 +77,36 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    PayLife(1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				var exiled []uuid.UUID
-				if err := (ExileTopFaceDown{
+				// The delivery is scheduled from Then, which runs once the
+				// exile is done: a prompt on it (a CR 616.1 ordering of
+				// replacements, a CR 903.9 choice) leaves the card on the
+				// library until it is answered, and the list read straight
+				// after Apply came back empty (#4259).
+				return ExileTopFaceDown{
 					Player: item.Controller,
 					N:      1,
-					Exiled: &exiled,
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				if len(exiled) == 0 {
-					// Empty library. The life is still paid (it was
-					// a cost, paid at announce) and there is nothing
-					// to schedule a delivery for.
-					return nil
-				}
-				return ScheduleDelayedTrigger{
-					At:                 game.StepEnd,
-					ControllerTurnOnly: true,
-					Label:              "Necropotence — put the exiled card into your hand",
-					Cards:              exiled,
-					Body:               necropotenceDeliverBody,
-				}.Apply(ctx)
+					Then:   necropotenceScheduleDelivery,
+				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
+}
+
+// necropotenceScheduleDelivery is the exile's Then: schedule the return of the
+// card it took.
+func necropotenceScheduleDelivery(ctx *Context, exiled []uuid.UUID) error {
+	if len(exiled) == 0 {
+		// Empty library. The life is still paid (it was a cost, paid at
+		// announce) and there is nothing to schedule a delivery for.
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:                 game.StepEnd,
+		ControllerTurnOnly: true,
+		Label:              "Necropotence — put the exiled card into your hand",
+		Cards:              exiled,
+		Body:               necropotenceDeliverBody,
+	}.Apply(ctx)
 }
 
 // necropotenceExileDiscarded exiles a just-discarded card from its

@@ -1462,26 +1462,9 @@ func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return nil, ErrPlayerNotFound
-	}
-	if g.Exile == nil || n <= 0 {
-		return nil, nil
-	}
-	avail := len(p.Library.Cards)
-	if n > avail {
-		n = avail
-	}
-	// The cards are chosen UP FRONT, top first, and moved by ID (the
-	// millPlanLocked argument). The library's top is the LAST element,
-	// the same read PopTop and ExileTopWithPermissionForEffect use.
-	plan := make([]uuid.UUID, 0, n)
-	for i := 0; i < n; i++ {
-		plan = append(plan, p.Library.Cards[avail-1-i].InstanceID)
-	}
-	if len(plan) == 0 {
-		return nil, nil
+	plan, err := g.exileTopFaceDownPlanLocked(playerID, n)
+	if err != nil || len(plan) == 0 {
+		return nil, err
 	}
 	// #529, #4245: through the shared exit primitive, one card at a time
 	// from the previous card's continuation (exileFaceDownLegsLocked). A leg
@@ -1493,12 +1476,12 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	//
 	// The list is what had landed when the call returned: every card on a
 	// clean run, and the cards before the pause on a paused one. A card
-	// that is waiting on the prompt is not in it, as before. A caller that
-	// must act on the finished batch needs a continuation form, which no
-	// printed case has asked for.
+	// that is waiting on the prompt is not in it. A caller that must act on
+	// the finished batch (Necropotence schedules a delivery of the card)
+	// reads ExileTopFaceDownThenForEffect instead (#4259).
 	var out []uuid.UUID
 	done := false
-	err := g.exileFaceDownLegsLocked(playerID, plan, nil, func(_ *Game, landed []uuid.UUID) error {
+	err = g.exileFaceDownLegsLocked(playerID, plan, nil, func(_ *Game, landed []uuid.UUID) error {
 		out, done = landed, true
 		return nil
 	})
@@ -1511,6 +1494,59 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 		}
 	}
 	return out, err
+}
+
+// ExileTopFaceDownThenForEffect is ExileTopFaceDownForEffect for a clause
+// that acts on the cards the exile took ("Exile the top card of your library
+// face down. Put that card into your hand at the beginning of your next end
+// step", #4259). `then` runs once the whole batch is done, with the cards that
+// landed in exile, top card first: at once when nothing paused, and from the
+// answer to a CR 616.1 ordering prompt (or a CR 903.9 choice) when a leg did.
+// The list ExileTopFaceDownForEffect returns is empty or short on a paused
+// batch, so a caller that reads it loses the cards for good.
+//
+// `then` also runs, with an empty list, when there was nothing to exile (an
+// empty library or n of zero), so a clause that is gated on "if you do" checks
+// the length. A nil `then` is a plain exile. Nothing is exiled when the player
+// is not found: the error is returned and `then` does not run.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) ExileTopFaceDownThenForEffect(playerID uuid.UUID, n int, then func(g *Game, exiled []uuid.UUID) error) error {
+	plan, err := g.exileTopFaceDownPlanLocked(playerID, n)
+	if err != nil {
+		return err
+	}
+	if then == nil {
+		then = func(*Game, []uuid.UUID) error { return nil }
+	}
+	return g.exileFaceDownLegsLocked(playerID, plan, nil, then)
+}
+
+// exileTopFaceDownPlanLocked chooses the cards a face-down exile of the top n
+// takes: up front, top first, so that the answer to a prompt on one of them
+// does not shift which cards the rest of the batch names (the millPlanLocked
+// argument). The library's top is the LAST element, the same read PopTop and
+// ExileTopWithPermissionForEffect use. The list is empty when the exile has
+// nothing to take.
+//
+// Caller must hold g.mu.
+func (g *Game) exileTopFaceDownPlanLocked(playerID uuid.UUID, n int) ([]uuid.UUID, error) {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil, ErrPlayerNotFound
+	}
+	if g.Exile == nil || n <= 0 {
+		return nil, nil
+	}
+	avail := len(p.Library.Cards)
+	if n > avail {
+		n = avail
+	}
+	plan := make([]uuid.UUID, 0, n)
+	for i := 0; i < n; i++ {
+		plan = append(plan, p.Library.Cards[avail-1-i].InstanceID)
+	}
+	return plan, nil
 }
 
 // exileFaceDownLegsLocked exiles the head of `ids` face down and carries on
