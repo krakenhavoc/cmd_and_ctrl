@@ -44,4 +44,6 @@ func init() {
 // "counter that spell", so the decline is named here.
 var assimilateEssencePaid = PayUnlessBranches("pay-unless/assimilate-essence-incubate",
 	func(ctx *Context, _ game.PayUnlessAnswer) error { return Incubate{N: 2}.Apply(ctx) },
-	func(ctx *Context, r game.PayUnlessAnswer) error { return ctx.Game.CounterIfStillOnStackForEffect(r.Guards) })
+	func(ctx *Context, r game.PayUnlessAnswer) error {
+		return ctx.Game.CounterIfStillOnStackForEffect(r.Guards)
+	})

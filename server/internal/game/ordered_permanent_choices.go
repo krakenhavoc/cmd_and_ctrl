@@ -32,8 +32,20 @@ type permanentChoiceReceipt struct {
 // EarlierPermanentChoicesForEffect returns earlier public choices, in the
 // supplied seat order. Copies prevent a consumer from mutating the frame.
 func (c *PendingChoice) EarlierPermanentChoicesForEffect() []SeatCards {
-	if c == nil || c.chooseCardsResume == nil {
+	if c == nil {
 		return nil
+	}
+	if c.chooseCardsResume == nil {
+		// A keyed per-object any-player leg (#4264) carries the earlier
+		// seats' picks on its offer.
+		if c.AnyPlayerOffer == nil || len(c.AnyPlayerOffer.Picks) == 0 {
+			return nil
+		}
+		out := make([]SeatCards, len(c.AnyPlayerOffer.Picks))
+		for i, p := range c.AnyPlayerOffer.Picks {
+			out[i] = SeatCards{Seat: p.Seat, Cards: copyUUIDs(p.Cards)}
+		}
+		return out
 	}
 	return copyPermanentChoices(c.chooseCardsResume.earlierPermanentChoices)
 }

@@ -370,9 +370,35 @@ type AnyPlayerPaysForEach struct {
 	// OnUnsaved is the effect on the objects nobody paid for. It is
 	// handed only objects that are still the same objects.
 	OnUnsaved func(ctx *Context, unsaved []uuid.UUID) error
+
+	// Then is OnUnsaved as a REGISTERED consequence
+	// (AnyPlayerEachConsequence, #4264), and Carry the plain data it is
+	// handed: every leg of an offer queued with one holds no closure, so a
+	// table waiting on any seat's pick is a restore point. Set Then or
+	// OnUnsaved, not both.
+	Then  game.AnyPlayerEachThen
+	Carry []uuid.UUID
+}
+
+// AnyPlayerEachConsequence registers a keyed per-object offer's
+// consequence under `key`, an on-disk identity (never renamed, never
+// reused, ledgered "choose <key>", the offer's choose_cards continuation):
+// `onUnsaved` is "the objects nobody paid for ...", handed them in r.Unsaved
+// and run against a Context bound to the asking item the offer carried.
+// Call it once, from a package-level var.
+func AnyPlayerEachConsequence(key string, onUnsaved func(ctx *Context, r game.AnyPlayerEachAnswer) error) game.AnyPlayerEachThen {
+	return game.RegisterAnyPlayerPaysEach(key, func(g *game.Game, r game.AnyPlayerEachAnswer) error {
+		if r.Item != nil {
+			return onUnsaved(NewContext(g, r.Item), r)
+		}
+		return onUnsaved(keyedContext(g, r.Controller, r.Source), r)
+	})
 }
 
 func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
+	if a.Then.Key() != "" && a.OnUnsaved != nil {
+		return fmt.Errorf("%w: AnyPlayerPaysForEach %q sets both Then and OnUnsaved", game.ErrInvalidParam, a.Then.Key())
+	}
 	item := ctx.Item
 	var objects []uuid.UUID
 	if a.Objects != nil {
@@ -393,6 +419,9 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		Noun:       a.Noun,
 		Question:   a.Question,
 		OnUnsaved:  onUnsaved,
+		Then:       a.Then,
+		Carry:      a.Carry,
+		Asked:      game.NewAskedItem(item),
 	})
 }
 

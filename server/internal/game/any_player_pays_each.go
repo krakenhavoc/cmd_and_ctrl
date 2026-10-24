@@ -67,6 +67,18 @@ type AnyPlayerPaysForEach struct {
 	// same objects (ObjectEpoch-checked), and runs exactly once, after
 	// every payment. Optional.
 	OnUnsaved func(g *Game, unsaved []uuid.UUID) error
+
+	// Then is OnUnsaved as a REGISTERED consequence
+	// (RegisterAnyPlayerPaysEach, #4264), and Carry the plain data it is
+	// handed: every leg of an offer queued with one holds no closure, so a
+	// table waiting on any seat's pick is a restore point. With it
+	// OnUnsaved must be nil.
+	Then  AnyPlayerEachThen
+	Carry []uuid.UUID
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed consequence as AnyPlayerEachAnswer.Item. Nil when it reads
+	// none.
+	Asked *AskedItem
 }
 
 // QueueAnyPlayerPaysForEachForEffect runs the offer described at the
@@ -75,6 +87,9 @@ type AnyPlayerPaysForEach struct {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueAnyPlayerPaysForEachForEffect(p AnyPlayerPaysForEach) error {
+	if p.Then.key != "" && p.OnUnsaved != nil {
+		return fmt.Errorf("%w: keyed per-object any-player offer %q also sets OnUnsaved", ErrInvalidParam, p.Then.key)
+	}
 	// Freeze the objects with the epoch each has now, so a land that
 	// leaves and comes back during the picks is a different object.
 	var objects []uuid.UUID
@@ -87,6 +102,9 @@ func (g *Game) QueueAnyPlayerPaysForEachForEffect(p AnyPlayerPaysForEach) error 
 			epochs[id] = c.ObjectEpoch
 			objects = append(objects, id)
 		}
+	}
+	if p.Then.key != "" {
+		return g.queueAnyPlayerPaysForEachKeyedLocked(p, objects, epochs)
 	}
 	unsaved := func(g *Game, saved map[uuid.UUID]bool) error {
 		if p.OnUnsaved == nil {
