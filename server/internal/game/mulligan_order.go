@@ -127,25 +127,8 @@ func (g *Game) queueMulliganBottomLocked(p *Player, n int) {
 	if n > 1 {
 		cards = fmt.Sprintf("%d cards", n)
 	}
-	order := func(g *Game, picked []uuid.UUID) error {
-		return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
-			Chooser:   seat,
-			Cards:     picked,
-			From:      ZoneHand,
-			Placement: LibraryPlaceBottom,
-			Reason:    "London mulligan — in what order do they go on the bottom? (the first is nearest the top)",
-			// The cards are down: this seat stops gating the window.
-			Then: func(g *Game) error {
-				if q := g.playerByIDLocked(seat); q != nil {
-					q.mulliganBottoming = false
-				}
-				g.settleMulliganLocked()
-				return nil
-			},
-		})
-	}
 	if n == len(hand) {
-		_ = order(g, hand)
+		_ = g.orderMulliganBottomLocked(seat, hand)
 		return
 	}
 	id := g.QueueChooseCardsForEffect(ChooseCardsPrompt{
@@ -154,8 +137,10 @@ func (g *Game) queueMulliganBottomLocked(p *Player, n int) {
 		Cards:    hand,
 		Min:      n,
 		Max:      n,
-		Zone:     ZoneHand,
-		Then:     order,
+		// #4301: keyed, so the pick is a restore point. The seat is the
+		// prompt's chooser; the live-zone re-check rides LiveZone.
+		ThenKey:  londonMulliganPick,
+		LiveZone: ZoneHand,
 
 		Destination: ChooseLibraryBottom,
 	})
@@ -163,6 +148,46 @@ func (g *Game) queueMulliganBottomLocked(p *Player, n int) {
 	if _, c := g.findChoiceLocked(id); c != nil {
 		c.private = true
 	}
+}
+
+// londonMulliganPick is the seat's pick of the cards to bottom (#4301), a
+// registered continuation: the cards are the answer and the seat the
+// prompt's chooser, so nothing is captured. A pick that ended unanswered
+// (the seat left, or its cards did) orders nothing and still releases the
+// window. An on-disk key.
+var londonMulliganPick ChooseCardsThen
+
+// londonMulliganDown is "the cards are down" (#4301), the tail of the
+// order prompt: the seat stops gating the window. Tail.Player is the seat.
+// An on-disk key.
+var londonMulliganDown TailRef
+
+func init() {
+	londonMulliganPick = RegisterChooseCardsThen("choose-cards/london-mulligan-bottom", func(g *Game, r CardsChosen) error {
+		return g.orderMulliganBottomLocked(r.Chooser, r.Picked)
+	})
+	londonMulliganDown = RegisterTail("london-mulligan/cards-down", func(g *Game, o TailOutcome) error {
+		if q := g.playerByIDLocked(o.Tail.Player); q != nil {
+			q.mulliganBottoming = false
+		}
+		g.settleMulliganLocked()
+		return nil
+	})
+}
+
+// orderMulliganBottomLocked asks `seat` for the order of the cards it is
+// putting on the bottom of its library. The prompt is keyed
+// (ThenTail, #4301). Caller must hold g.mu.
+func (g *Game) orderMulliganBottomLocked(seat uuid.UUID, picked []uuid.UUID) error {
+	return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
+		Chooser:   seat,
+		Cards:     picked,
+		From:      ZoneHand,
+		Placement: LibraryPlaceBottom,
+		Reason:    "London mulligan — in what order do they go on the bottom? (the first is nearest the top)",
+		// The cards are down: this seat stops gating the window.
+		ThenTail: KeyedTail{Ref: londonMulliganDown, Player: seat},
+	})
 }
 
 // MulliganDeciderLocked returns the seat that decides next, or -1 when

@@ -478,3 +478,8 @@ back on top afterwards gives the CR 701.24g result, so no shuffle is deferred.
 each of the three batch positions (one shuffle, an order over exactly the two, the chosen order on
 top, the "then" waiting); one saved card put back on top after a later shuffle; library, graveyard
 and exile in one discard; undo to the open CR 616 prompt and replay.
+
+
+## Amendment 2026-10-24 — the ordering prompt can carry its "then" as data (#4301)
+
+`PutInLibrarySpec.ThenTail` (a `game.KeyedTail`, a registered `game.RegisterTail`) is `Then` as data, also on `PutInLibraryInAnyOrder` and `LookAtLibraryThenPlace`. A prompt queued with it holds `PendingChoice.libraryOrderKeyed` instead of the `libraryOrderResume` closure and is written to a restore point (`pendingChoices[].libraryOrder`), so a table waiting on the order is saveable. Portent and the London mulligan use it ([ADR 0018](0018-triggers-on-the-stack.md) and [ADR 0168](0168-the-london-mulligan.md), amendments of the same date); the closure form stays for the cards that have not moved.

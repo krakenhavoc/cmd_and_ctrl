@@ -92,12 +92,13 @@ func init() {
 						// player has fewer than two left to
 						// choose from (they discarded one, or an
 						// opponent's effect took it).
-						Min:  min(2, len(drawn)),
-						Max:  min(2, len(drawn)),
-						Zone: game.ZoneHand,
-						Then: func(g *game.Game, picked []uuid.UUID) error {
-							return sylvanLibrarySettle(NewContext(g, item), picked)
-						},
+						Min: min(2, len(drawn)),
+						Max: min(2, len(drawn)),
+						// #4301: keyed, so a table waiting on the pick is a
+						// restore point. The cards must still be in the
+						// hand when the answer arrives (LiveZone).
+						ThenKey:  sylvanLibraryChosen,
+						LiveZone: game.ZoneHand,
 					})
 					return nil
 				}),
@@ -205,6 +206,14 @@ func init() {
 		return sylvanLibraryPay.Run(ctx)
 	})
 }
+
+// sylvanLibraryChosen is the answer to "choose two cards in your hand drawn
+// this turn" (#4301): the prompt's chooser is the controller and its source
+// the card, so the chain runs against a stand-in for the long-gone trigger,
+// as the payments after it do. An on-disk key.
+var sylvanLibraryChosen = game.RegisterChooseCardsThen("choose-cards/sylvan-library-chosen", func(g *game.Game, r game.CardsChosen) error {
+	return sylvanLibrarySettle(keyedContext(g, r.Chooser, r.Source), r.Picked)
+})
 
 // sylvanLibraryRecord is the chosen cards still to settle.
 const sylvanLibraryRecord = "sylvan-library/rest"

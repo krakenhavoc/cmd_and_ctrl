@@ -754,6 +754,7 @@ func clonePlayer(p *Player) *Player {
 		Removed:           p.Removed,
 		HandKept:          p.HandKept,
 		MulliganDecided:   p.MulliganDecided,
+		mulliganBottoming: p.mulliganBottoming,
 		TriggerOrder:      p.TriggerOrder,
 		AutoAnswers:       copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:    p.MulligansTaken,

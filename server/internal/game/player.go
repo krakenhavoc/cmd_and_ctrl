@@ -334,9 +334,9 @@ type Player struct {
 
 	// mulliganBottoming is true from this player's keep until the cards
 	// the London mulligan owes are on the bottom of its library (ADR
-	// 0168 decision 4): the window does not close while it is set. Not
-	// persisted: it is set only while the bottoming prompts are open,
-	// and a table waiting on them is not a restore point.
+	// 0168 decision 4): the window does not close while it is set. Written
+	// to a restore point (playerSnapshot.MulliganBottoming, #4301): the
+	// bottoming prompts are keyed, so a table waiting on them is one.
 	mulliganBottoming bool
 
 	// DeckImported is true once the player has had a real deck

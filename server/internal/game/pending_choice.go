@@ -1257,6 +1257,12 @@ type PendingChoice struct {
 	// in the snapshot census. See library_order.go.
 	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
 
+	// libraryOrderKeyed is libraryOrderResume as data (#4301): how the
+	// cards move and the registered tail that is the rest of the effect.
+	// Written to a restore point (pendingChoiceSnapshot.LibraryOrder), its
+	// key riding PickThen. Set one of the two or neither.
+	libraryOrderKeyed *libraryOrderKeyed
+
 	// midResolution says the prompt was queued while a stack item was
 	// resolving and is part of that resolution (#1289, CR 608.2 /
 	// CR 704.3): while it is open and blocks the table, the resolution

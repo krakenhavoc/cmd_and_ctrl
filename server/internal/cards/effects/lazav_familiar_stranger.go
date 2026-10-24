@@ -92,7 +92,6 @@ func lazavFamiliarStrangerEffect(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 
-	resolving := item
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
 		Source:   self,
@@ -100,24 +99,32 @@ func lazavFamiliarStrangerEffect(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		// No Zone: the candidates span every seat's graveyard, not one
-		// player's, so there is no single owner to re-check against.
-		// ExileTarget below does its own existence handling for a
-		// card that has moved by the time this is answered.
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ExileTarget{Target: picked[0], Then: func(ctx *Context, exiled bool) error {
-				if !exiled {
-					return nil
-				}
-				return lazavFamiliarStrangerOfferCopy(ctx, picked[0])
-			}}.Apply(NewContext(g, resolving))
-		},
+		// No live-zone re-check: the candidates span every seat's
+		// graveyard, not one player's, so there is no single owner to
+		// re-check against. ExileTarget does its own existence handling
+		// for a card that has moved by the time this is answered. Keyed
+		// (#4301), so a table waiting on the pick is a restore point.
+		ThenKey: lazavFamiliarStrangerExile,
 	})
 	return nil
 }
+
+// lazavFamiliarStrangerExile is the answer to "you may exile a card from a
+// graveyard" (#4301): the chooser is the controller and the source Lazav, so
+// the exile and the copy offer after it run against a stand-in for the
+// trigger, as the offer's answer does. An on-disk key.
+var lazavFamiliarStrangerExile = game.RegisterChooseCardsThen("choose-cards/lazav-familiar-stranger-exile", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	card := r.Picked[0]
+	return ExileTarget{Target: card, Then: func(ctx *Context, exiled bool) error {
+		if !exiled {
+			return nil
+		}
+		return lazavFamiliarStrangerOfferCopy(ctx, card)
+	}}.Apply(keyedContext(g, r.Chooser, r.Source))
+})
 
 // lazavFamiliarStrangerOfferCopy is "if a creature card was exiled
 // this way, you may have Lazav become a copy of that card until end

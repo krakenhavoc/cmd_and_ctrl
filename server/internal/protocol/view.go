@@ -11106,6 +11106,18 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			}
 			out[i].AcceptLabel = ""
 			out[i].DeclineLabel = ""
+			// #4301: a private choose_cards pick (the London mulligan's
+			// bottom pick, ADR 0168) is a pick over the chooser's hand: its
+			// candidates and bounds go with its words, as a choose_cards
+			// pick's do below. This branch continues before that one, so
+			// the cards were reaching every seat.
+			if c.Kind == string(game.PendingChoiceChooseCards) {
+				out[i].Options = nil
+				out[i].ChooseMin = 0
+				out[i].ChooseMax = 0
+				out[i].ChooseDestination = ""
+				out[i].ChooseSuggested = nil
+			}
 			continue
 		}
 		// choose_cards candidates are usually cards in a hand. The

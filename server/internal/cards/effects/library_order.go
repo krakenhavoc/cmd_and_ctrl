@@ -56,6 +56,11 @@ type PutInLibraryInAnyOrder struct {
 
 	// Then is the rest of the effect. Runs once the pile is placed.
 	Then func(g *game.Game) error
+
+	// ThenTail is Then as data (#4301): a registered tail
+	// (game.RegisterTail, Context.Tail), so the ordering prompt is a
+	// restore point. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (p PutInLibraryInAnyOrder) Apply(ctx *Context) error {
@@ -74,6 +79,7 @@ func (p PutInLibraryInAnyOrder) Apply(ctx *Context) error {
 		Counter:   p.Counter,
 		Reason:    p.Label,
 		Then:      p.Then,
+		ThenTail:  tailDefaults(p.ThenTail, chooser, ctx.Source()),
 	})
 }
 
@@ -112,6 +118,8 @@ type LookAtLibraryThenPlace struct {
 	// Then runs once the cards are placed (or at once, when the library
 	// was empty).
 	Then func(g *game.Game) error
+	// ThenTail is Then as data (#4301), as PutInLibraryInAnyOrder.ThenTail.
+	ThenTail game.KeyedTail
 }
 
 func (l LookAtLibraryThenPlace) Apply(ctx *Context) error {
@@ -132,6 +140,7 @@ func (l LookAtLibraryThenPlace) Apply(ctx *Context) error {
 		TopDepth:  l.TopDepth,
 		Label:     l.Label,
 		Then:      l.Then,
+		ThenTail:  l.ThenTail,
 	}.Apply(ctx)
 }
 

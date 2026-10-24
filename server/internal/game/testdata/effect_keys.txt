@@ -794,3 +794,9 @@ run prompt-run/vicious-rumors-gain
 choose sticker/choose-object
 option sticker/choose-sticker
 option sticker/name-position
+choose choose-cards/lazav-familiar-stranger-exile
+choose choose-cards/london-mulligan-bottom
+choose choose-cards/sylvan-library-chosen
+tail london-mulligan/cards-down
+tail ponder/ask-shuffle
+tail portent/ask-shuffle
