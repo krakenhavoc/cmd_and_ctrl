@@ -1156,7 +1156,9 @@ type LegalTargetsView struct {
 	// (game.PendingChoice.PickTargetHarmful, #4249): what the effect does
 	// to the permanent picked is bad for its controller, as The Abyss's
 	// destroy is. A bot that must pick one of its own gives up the least
-	// valuable. Absent on every other prompt and on a clause view.
+	// valuable. On a cast-path clause view (legal_targets, clauses,
+	// #4314) it is the clause's own flag, which a bot reads to price a
+	// pick of its own permanent by what losing it costs. Absent otherwise.
 	Harmful bool `json:"harmful,omitempty"`
 
 	// Different is the clause's rule over the chosen SET (#1559, CR
@@ -7704,7 +7706,7 @@ func stampTargetSetRule(g *game.Game, v *LegalTargetsView, cards []uuid.UUID, sp
 }
 
 func viewOfLegalTargets(lt game.LegalTargets, spec *game.TargetSpec) *LegalTargetsView {
-	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
+	view := &LegalTargetsView{Min: spec.Min, Max: spec.Max, CountFromX: spec.CountFromX, UpToX: spec.CountFromX && spec.UpToX, Distinct: spec.Distinct, Divide: divideView(spec.Divide), ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		view.Players = append(view.Players, id.String())
 	}
@@ -13316,7 +13318,7 @@ func abilityClauseView(lt game.LegalTargets, spec *game.TargetSpec) *LegalTarget
 	// (Nova Pentacle, #2055) or the engine draws at random (Goblin Test
 	// Pilot, #4051) is one the client's walk skips. Without them the
 	// picker opened and the announcement it sent was refused.
-	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom}
+	out := &LegalTargetsView{Min: spec.Min, Max: spec.Max, ChosenByOpponent: spec.ChosenByOpponent, AtRandom: spec.AtRandom, Harmful: spec.Harmful}
 	for _, id := range lt.Players {
 		out.Players = append(out.Players, id.String())
 	}
