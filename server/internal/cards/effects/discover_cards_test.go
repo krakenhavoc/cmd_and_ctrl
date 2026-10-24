@@ -65,11 +65,11 @@ func genericCost(n int) string {
 	return out
 }
 
-// discoverPromptFor is the open may_cast prompt addressed to chooser,
-// or nil.
+// discoverPromptFor is the open discover prompt (a resolution_cast, #4243)
+// addressed to chooser, or nil.
 func discoverPromptFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast && c.Chooser == chooser {
+		if c != nil && c.Kind == game.PendingChoiceResolutionCast && c.Chooser == chooser {
 			return c
 		}
 	}
@@ -85,9 +85,9 @@ func expectDiscovered(t *testing.T, g *game.Game, chooser, want uuid.UUID) {
 		t.Fatalf("no discover prompt for the discoverer")
 	}
 	if c.MayCastKeyword != game.MayCastKeywordDiscover {
-		t.Fatalf("the prompt is a %q may_cast, not a discover", c.MayCastKeyword)
+		t.Fatalf("the prompt is a %q cast, not a discover", c.MayCastKeyword)
 	}
-	if c.MayCastCard != want {
+	if keywordCastCard(c) != want {
 		t.Fatalf("discover offered the wrong card — the N is wrong")
 	}
 	answerMayCastPrompt(t, g, chooser, false)
@@ -224,7 +224,7 @@ func TestZoyowasJusticeMakesTheOwnerDiscover(t *testing.T) {
 	// The shuffled library holds only the Ogre, which has mana value 3,
 	// so the owner's discover 3 offers it.
 	c := discoverPromptFor(g, opp.ID)
-	if c == nil || c.MayCastCard != target {
+	if c == nil || keywordCastCard(c) != target {
 		t.Fatalf("the owner was not offered their own discover 3: %+v", c)
 	}
 }
@@ -394,17 +394,17 @@ func TestMonstrousVortexDiscoversTheBigSpellsManaValue(t *testing.T) {
 func TestCuratorDiscoversAgainOnceEachTurn(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	curator := pushCatalogPermanent(g, me.ID, "Curator of Sun's Creation", "Creature — Human Artificer", curatorOracle, false)
-	first := discoverLibraryCard(me.ID, "First", "Artifact", "{2}")
-	second := discoverLibraryCard(me.ID, "Second", "Artifact", "{2}")
-	third := discoverLibraryCard(me.ID, "Third", "Artifact", "{2}")
+	advanceToMain(t, g)
+	pushCatalogPermanent(g, me.ID, "Curator of Sun's Creation", "Creature — Human Artificer", curatorOracle, false)
+	cave := pushCatalogPermanent(g, me.ID, "Hidden Courtyard", "Land — Cave", hiddenCourtyardOracle, false)
+	first := discoverLibraryCard(me.ID, "First", "Artifact", "{4}")
+	second := discoverLibraryCard(me.ID, "Second", "Artifact", "{4}")
+	third := discoverLibraryCard(me.ID, "Third", "Artifact", "{4}")
 	me.Library.Cards = []game.Card{third, second, first}
-	g.WithWriteLock(func() {
-		_ = g.DiscoverThenForEffect(me.ID, curator, 2, nil)
-	})
+	b16Activate(t, g, me.ID, cave, 0, game.ActivateAbilityParams{})
 	expectDiscovered(t, g, me.ID, first.InstanceID)
 	passPriorityAroundTable(t, g)
-	// "Discover again for the same value": 2.
+	// "Discover again for the same value": 4.
 	expectDiscovered(t, g, me.ID, second.InstanceID)
 	passPriorityAroundTable(t, g)
 	if discoverPromptFor(g, me.ID) != nil {
@@ -440,7 +440,7 @@ func TestPantlazaDiscoversTheDinosaursToughnessOnceEachTurn(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 	for _, c := range g.PendingChoices {
-		if c != nil && (c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoiceMayCast) {
+		if c != nil && (c.Kind == game.PendingChoiceTriggerPrompt || isKeywordCastPrompt(c)) {
 			t.Fatalf("Pantlaza offered a second discover this turn")
 		}
 	}

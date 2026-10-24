@@ -7117,10 +7117,9 @@ Triggered: []game.TriggeredAbility{WhenThisDies("Primordial Gnawer — discover 
 
 return Discover{N: x}.Apply(ctx)                        // "discover X, where X is …"
 return Discover{Player: owner, N: mv}.Apply(ctx)        // Zoyowa's Justice: "that player discovers"
-return Discover{N: 10, Then: func(ctx *Context, r game.DiscoverResult) error {
-    // Hit the Mother Lode: r.Discovered is uuid.Nil on an empty walk,
-    // r.ManaValue is the discovered card's mana value (CR 701.57c).
-}}.Apply(ctx)
+OnResolve: ResolveSteps(Discover{N: 10}, Instruction(treasures))  // Hit the Mother Lode
+// treasures reads ctx.StepRecord(DiscoverStepKey): IDs[0] is the discovered
+// card (empty on an empty walk), N() its mana value (CR 701.57c).
 Triggered: []game.TriggeredAbility{WheneverYouDiscover(label, effect)} // item.Trigger.Event.Amount is N
 ```
 
@@ -7130,17 +7129,22 @@ implemented" caveat. Work out N first: a board read ("the greatest
 power among them") at resolution, a fact about the triggering event
 ("that spell's mana value") captured on the item or read off
 `ctx.Trigger()` / the payload. Anything printed after the discover goes
-in `Then`, which runs once on every outcome.
+in a LATER STEP of a `ResolveSteps` (or `Do`) sequence that reads the result
+from `ctx.StepRecord(DiscoverStepKey)`: the discoverer's answer is asked after
+`Apply` returns, so the later step waits for it as data (`step_walk.go`), runs on
+every outcome, and survives a restore. There is no `Then` closure.
 
 The engine does the rest, and it is shared with cascade: the
-exile-until walk, the `may_cast` prompt ("Cast it free" / "Put it into
-your hand"), a `{0}` grant that is flash-timed (CR 608.2g) and capped at
-N against the face actually cast, and a window that closes on the
-discoverer's next priority pass — the card then goes to their hand.
+exile-until walk, a `{0}` grant that is flash-timed (CR 608.2g) and capped
+at N against the face actually cast, and a `resolution_cast` prompt over
+the card ("Cast it free" / "Put it into your hand") that holds the
+resolution open while the discoverer casts it, or declines and the card
+goes to their hand (#4243, ADR 0066's 2026-10-23 amendment). The cast is
+made during the resolution, so a later step of the card has not run yet.
 `EventDiscover` fires once the card is settled, right after the
 discovered spell's `EventCast` when it is cast. Cascade's grant has the
-same cap (one below the cascading spell), timing and pass-closed window;
-its uncast hit goes to the bottom on the pass.
+same cap (one below the cascading spell) and timing, and the same prompt;
+its uncast hit goes to the bottom with the cards it passed over.
 
 **Exile until a card matches, then a free cast (#3213, [ADR 0099](decisions/0099-discover.md) amendment 2026-10-13):** cascade and discover are keywords; a card that prints the same walk with its own test calls the shared body:
 

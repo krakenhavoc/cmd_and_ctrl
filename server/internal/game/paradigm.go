@@ -36,8 +36,10 @@ import "github.com/google/uuid"
 //     the shape Full Throttle's "each combat this turn" uses, stretched
 //     to "for the rest of the game". Its body makes the copy and offers
 //     the cast through the card-copy machinery (card_copy.go, #3258):
-//     a {0} grant with flash timing that closes on the holder's next
-//     pass, after which an uncast copy ceases to exist (CR 704.5e).
+//     a {0} grant with flash timing, cast while the trigger resolves
+//     (CR 707.12, CR 608.2g; a resolution_cast prompt, ADR 0066's
+//     2026-10-23 amendment, #4243), after which an uncast copy ceases
+//     to exist (CR 704.5e).
 //
 // # What the copy is a copy of
 //
@@ -155,6 +157,9 @@ func paradigmCopy(g *Game, item *StackItem, p EffectParams) error {
 		Cost:       "{0}",
 		Timing:     TimingFlash,
 		Lapse:      LapseStaysInExile,
+		// CR 702.192a, CR 707.12, CR 608.2g: the copy is cast while the
+		// trigger resolves (#4243).
+		DuringResolution: true,
 	}, []uuid.UUID{p.Object.ID})
 	return nil
 }

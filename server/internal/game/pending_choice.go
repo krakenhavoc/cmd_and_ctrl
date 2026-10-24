@@ -667,6 +667,14 @@ type PendingChoice struct {
 	// QueueDiscardFromRevealedHand queues has a non-empty list.
 	DiscardOptions []uuid.UUID
 
+	// CastPile is a resolution_cast's cards passed over (#4243):
+	// cascade's and discover's exiled cards that were not the hit. They
+	// go to the bottom of the library in a random order once the prompt
+	// is answered, together with the hit when it was not cast (CR
+	// 702.85a). Plain data, never written in place, so a table paused on
+	// the prompt is a restore point. Nil for the copies' prompt.
+	CastPile []uuid.UUID
+
 	// DiscardLabel names what DiscardOptions holds, the way the card
 	// prints it — "nonland card", "card with mana value 3 or greater".
 	// Client copy only; never read by the resolver.

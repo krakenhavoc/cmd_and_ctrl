@@ -56,9 +56,10 @@ import "github.com/google/uuid"
 // (CipherCastBody), so a table waiting on it is still a restore point.
 // As it resolves, the encoded card — if it is still in exile — is copied
 // and the copy is offered free (CopyCardsAndOfferCastsForEffect, the
-// engine's one copy-and-cast door, ADR 0066's 2026-10-13 amendment):
-// the "you may" is taking the offer, and a copy not cast ceases to exist
-// (CR 704.5e).
+// engine's one copy-and-cast door, ADR 0066's 2026-10-13 amendment), and
+// cast during that resolution (CR 707.12, CR 608.2g; a resolution_cast
+// prompt, ADR 0066's 2026-10-23 amendment, #4243): the "you may" is
+// casting it or not, and a copy not cast ceases to exist (CR 704.5e).
 
 // KeywordCipher is CR 702.99's canonical token.
 const KeywordCipher = "cipher"
@@ -300,6 +301,9 @@ func (g *Game) castCipherCopyLocked(item *StackItem, cardID uuid.UUID) {
 		Cost:   "{0}",
 		Timing: TimingFlash,
 		Lapse:  LapseStaysInExile,
+		// CR 702.99a, CR 707.12, CR 608.2g: the copy is cast while the
+		// trigger resolves (#4243).
+		DuringResolution: true,
 	}
 	if host := findBattlefieldCard(g, item.SourceCardID); host != nil {
 		offer.SourceName = host.Name

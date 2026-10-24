@@ -4423,3 +4423,85 @@ Tests: `game/resolution_copy_cast_test.go`, `legal/resolution_cast_test.go`, `pr
 `TestKaervekResolutionQueuesOptionalCastDecision` and `TestResolutionCastHoldsTheResolutionAndCastsInAnyOrder` fail; drop the
 early gate in `passPriorityAsHolderLocked` and `TestKaervekDecliningTheCopyLosesNoLife` fails; drop the withdrawal in
 `resolveResolutionCastLocked` and `TestResolutionCastRefusalsAndDecline` fails.
+
+## Amendment — 2026-10-23 (#4243): cipher, cascade, discover and paradigm cast during their resolution
+
+The 2026-10-22 amendment moved the `CopyAndCast` cards onto a `resolution_cast` prompt and left four doors on the grant
+stand-in: cipher's copy, paradigm's copy, cascade's hit and discover's card. Under the stand-in the cast came after the
+trigger had finished, once the holder passed priority, so on another player's turn the active player received priority first
+and the table could act before the cast; the "cast" and the "resolving" the rules describe were two moments. The rules name one
+moment for each:
+
+- CR 702.85a: cascade's "You may cast that card without paying its mana cost ... Then put all cards exiled this way that
+  weren't cast on the bottom of your library in a random order."
+- CR 701.57a: discover's "You may cast that card without paying its mana cost ... If you don't cast it, put that card into your
+  hand. Put the remaining exiled cards on the bottom of your library in a random order."
+- CR 702.99a: cipher's "you may copy the encoded card and you may cast the copy without paying its mana cost".
+- CR 702.192a: paradigm's "create a copy of this object in exile. You may cast the copy without paying its mana cost".
+- CR 707.12 and CR 608.2g: each is cast "while another spell or ability is resolving", with no priority after it and the
+  resolving ability continuing to resolve.
+
+### Decision
+
+1. **Cipher and paradigm** set `CardCopyOffer.DuringResolution`. That is the whole change: the offer, the copies, the prompt and
+   the answers are the 2026-10-22 ones. After this, no caller of `CopyCardsAndOfferCastsForEffect` leaves the flag false; it
+   stays on the offer for the tests that build one by hand, and outside an open resolution it still does nothing.
+2. **Cascade and discover** offer the hit through the same prompt. `CascadeForEffect` and `DiscoverForEffect` walk the library as
+   before and stamp the same pass-closed permission on the hit (`{0}`, flash timing, cast only, the mana value cap, and
+   `LapseToLibraryBottom` or `LapseToHand` with the `DiscoverGrant`), then queue a `resolution_cast` over the one hit
+   (`queueResolutionCastOfferLocked`). The candidate is a real card in exile, not a copy, so `ResolutionCastCandidateLocked` no
+   longer asks for `Card.CardCopy`; a card is on offer when one of the chooser's `ScopeCards` permissions names it. The old yes/no
+   (`may_cast`) is gone for these two: the prompt's casts are "yes" and its decline is "no", so the cast's targets, modes and X
+   are chosen in the one answer.
+3. **The cards passed over** ride the prompt as `PendingChoice.CastPile`, plain data. When the prompt is answered, by a cast or a
+   decline, `finishResolutionCastLocked` puts the pile on the bottom of the library in a random order together with the hit when it
+   was not cast, so the hit's place in the order is as random as the rest (before, an accepted cascade bottomed the pile at the
+   answer and the hit later on its own, which left an uncast hit always below the pile).
+4. **Declining** is the empty `resolve_choice`. It now lapses the permission exactly as the pass it replaces would have
+   (`lapseCastPermissionCollectingLocked`): a discovered card goes to the hand and the discover completes (`EventDiscover`, a
+   commander's CR 903.9b question included), a cascade hit joins the pile for the random bottom, and a copy is only withdrawn, as
+   before. A cast consumes the permission through `castSpellLocked` as before, and completes the discover right after
+   `EventCast`.
+5. **What a later instruction reads.** `Discover.Then` was a Go closure that ran on the answer. It is gone. `DiscoverForEffect`
+   answers the walk's result at once (CR 701.57c: the discovered card and its mana value do not depend on the answer), and
+   `effects.Discover` files it as a step record under `DiscoverStepKey` ("discover": `IDs[0]` the card, `Ns[0]` its mana value). The
+   one card that read it, Hit the Mother Lode, is now `ResolveSteps(Discover{N: 10}, Instruction(treasures))`: the step walk parks
+   the Treasures behind the prompt and a restored table still makes them (`step_walk.go`, `step_record.go`).
+6. **Restore.** Nothing but `CastPile` is new, and the closures are gone from these four doors: the cascade trigger is a keyed
+   catalog item, the paradigm and cipher triggers are keyed bodies, and the prompt, the permission and the pile are data. A table
+   paused on any of them is a restore point and resumes (tests below). `closure_fields.txt` is unchanged. A table written by a
+   binary from before this change that holds a cascade or discover permission keeps the pass-closed window, which this change
+   leaves in place as the fallback for an offer made with no open resolution (nothing in play makes one).
+7. **Wire and client.** The prompt carries `may_cast_keyword` ("cascade", "discover"), `accept_label` and `decline_label`, the
+   fields the `may_cast` it replaces carried. `ResolutionCastSheet` names the exiled card and what the decline does ("Put it on the
+   bottom", "Put it into your hand"). `PendingChoice.CastPile` is not on the wire. The enumerator needed no change: it offers each
+   cast of the card in the prompt's `DiscardOptions` through `castMovesFromZone`, and the decline. The bot's heuristic answers it
+   as any cast: it casts the free spell (`aiseat/resolution_keyword_cast_bot_test.go`).
+
+### Limits, stated
+
+- Casting a card from hand during a resolution (#2110, `offerFreeHandCast` and the other free-cast-from-hand grants) and the
+  other impulse-style grants (Chandra, Torch of Defiance's paid cast, the free-or-hand offers) keep the grant stand-in. They are
+  separate doors with their own prompts and are not changed here (#4250).
+- The 2026-10-22 "Limits, stated" bullet that listed discover, cascade, cipher and paradigm among the doors that keep the
+  stand-in no longer holds for those four.
+- `mayCast.ts`'s cascade and discover wording is now unreachable from a live table (no `may_cast` is asked under either keyword);
+  it stays for a restore of an old table.
+
+### Snapshot
+
+One additive field, `pendingChoices[].castPile` (`omitempty`), recorded with `-update-shape`. A binary from before it reads a
+cascade or discover prompt without the pile and so leaves the passed-over cards in exile when the prompt is answered: weaker than
+printed, never stronger, and only for a table rolled back across this change while one of those prompts is open. The frozen corpus
+is untouched.
+
+Tests: `game/cascade_test.go`, `game/discover_test.go` and `game/paradigm_test.go` (the cast before the resolution finishes,
+the decline, the pile and the hit bottomed together, the fallback window), `cards/effects/resolution_keyword_cast_test.go` (a
+real cascade card, Hit the Mother Lode, and a cipher card: the cast before the trigger finishes, the decline, a restore
+mid-prompt for each, and the Treasures after a restored answer), `legal/resolution_cast_test.go`,
+`protocol/resolution_cast_view_test.go`, `aiseat/resolution_keyword_cast_bot_test.go` and
+`client/src/lib/resolutionCast.render.test.ts`. Back-outs: drop the `queueResolutionCastOfferLocked` call in
+`CascadeForEffect` and `TestCascadeCastsTheHitBeforeTheTriggerFinishes` fails; drop `DuringResolution` in `castCipherCopyLocked`
+and `TestCipherCopyIsCastBeforeTheTriggerFinishes` fails, and in `paradigmCopy` `TestParadigmCopyIsCastBeforeTheTriggerFinishes`
+fails; drop the `lapse` in `withdrawCardCopyOffersLocked` and `TestDiscoverDeclinePutsTheCardIntoHand` fails; drop `CastPile` from
+the snapshot capture and `TestCascadeOfferSurvivesARestoreMidPrompt` fails.

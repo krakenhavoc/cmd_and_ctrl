@@ -16,10 +16,8 @@ import (
 func answerMayCastPrompt(t *testing.T, g *game.Game, chooser uuid.UUID, apply bool) {
 	t.Helper()
 	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast {
-			if err := g.ResolveMayCast(c.ID, chooser, apply); err != nil {
-				t.Fatalf("ResolveMayCast: %v", err)
-			}
+		if isKeywordCastPrompt(c) && c.Chooser == chooser {
+			answerKeywordCast(t, g, c, apply)
 			return
 		}
 	}
@@ -30,7 +28,11 @@ func discoverLibraryCard(owner uuid.UUID, name, typeLine, cost string) game.Card
 	return game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, ManaCost: cost, Owner: owner, Controller: owner}
 }
 
-func TestDiscoverPrimitiveDefaultsToTheControllerAndHandsThenAContext(t *testing.T) {
+// Outside an open resolution there is no prompt to hold (the catalog's
+// cards discover from inside one, and their tests answer the prompt): the
+// primitive defaults to the controller, files what it found as a step
+// record, and leaves the card in exile under the free-cast grant.
+func TestDiscoverPrimitiveDefaultsToTheControllerAndFilesTheResult(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	me.Library.Cards = nil
@@ -38,25 +40,19 @@ func TestDiscoverPrimitiveDefaultsToTheControllerAndHandsThenAContext(t *testing
 	pushLibraryCardForTest(me, hit)
 
 	source := uuid.New()
-	var got game.DiscoverResult
-	var ctxController uuid.UUID
+	item := &game.StackItem{Controller: me.ID, SourceCardID: source}
 	g.WithWriteLock(func() {
-		item := &game.StackItem{Controller: me.ID, SourceCardID: source}
-		err := Discover{N: 2, Then: func(ctx *Context, r game.DiscoverResult) error {
-			got = r
-			ctxController = ctx.Controller()
-			return nil
-		}}.Apply(NewContext(g, item))
-		if err != nil {
+		if err := (Discover{N: 2}).Apply(NewContext(g, item)); err != nil {
 			t.Fatalf("Discover: %v", err)
 		}
 	})
-	answerMayCastPrompt(t, g, me.ID, false)
-	if !me.Hand.Contains(hit.InstanceID) {
-		t.Fatalf("declined discover hit is not in the controller's hand")
+	rec, ok := g.StepRecordForEffect(item, DiscoverStepKey)
+	if !ok || len(rec.IDs) != 1 || rec.IDs[0] != hit.InstanceID || rec.N() != 1 {
+		t.Errorf("step record = %+v (filed %v), want the hit and its mana value 1", rec, ok)
 	}
-	if got.Discovered != hit.InstanceID || got.N != 2 || got.ManaValue != 1 || ctxController != me.ID {
-		t.Errorf("Then saw %+v with controller %s", got, ctxController)
+	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
+	if perm == nil || perm.Player != me.ID || perm.Cost != "{0}" || perm.Discover == nil || perm.Discover.N != 2 {
+		t.Errorf("the controller's free-cast grant on the hit = %+v", perm)
 	}
 }
 
@@ -70,14 +66,9 @@ func TestDiscoverPrimitiveNamesAnotherPlayer(t *testing.T) {
 		item := &game.StackItem{Controller: me.ID}
 		_ = Discover{Player: opp.ID, N: 1}.Apply(NewContext(g, item))
 	})
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceMayCast && c.Chooser != opp.ID {
-			t.Fatalf("the discover prompt went to %s, not the named player", c.Chooser)
-		}
-	}
-	answerMayCastPrompt(t, g, opp.ID, false)
-	if !opp.Hand.Contains(hit.InstanceID) {
-		t.Errorf("the named player's discovered card is not in their hand")
+	perm := g.CastPermissionOnCardByIDForEffect(hit.InstanceID)
+	if perm == nil || perm.Player != opp.ID {
+		t.Fatalf("the grant on the named player's card = %+v, want it theirs", perm)
 	}
 }
 

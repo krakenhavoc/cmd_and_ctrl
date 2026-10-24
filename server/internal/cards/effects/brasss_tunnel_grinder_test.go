@@ -189,7 +189,7 @@ func TestTecutlanDiscoversOffAPermanentSpellItsManaPaysFor(t *testing.T) {
 			passPriorityAroundTable(t, g)
 			var prompt *game.PendingChoice
 			for _, c := range g.PendingChoices {
-				if c != nil && c.Kind == game.PendingChoiceMayCast {
+				if isKeywordCastPrompt(c) {
 					prompt = c
 				}
 			}
@@ -199,7 +199,7 @@ func TestTecutlanDiscoversOffAPermanentSpellItsManaPaysFor(t *testing.T) {
 				}
 				return
 			}
-			if prompt == nil || prompt.MayCastCard != hit.InstanceID {
+			if prompt == nil || keywordCastCard(prompt) != hit.InstanceID {
 				t.Fatalf("discover 1 did not offer the one-drop: %+v", prompt)
 			}
 		})

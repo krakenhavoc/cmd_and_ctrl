@@ -49,14 +49,15 @@ import (
 //     as it resolves (CR 707.10b).
 //
 // THE CAST happens during the resolution (CR 707.12, CR 608.2g) when the
-// offer says DuringResolution, which every CopyAndCast card does: a
-// resolution_cast prompt over the copies holds the resolution open while
-// the caster casts them (resolution_copy_cast.go, ADR 0066's 2026-10-22
-// amendment). Without it (cipher's and paradigm's offers) the cast is
-// still the GRANT taken with an ordinary cast_spell after the resolution,
-// the stand-in every other "you may cast it" a resolution offers takes
-// (ADR 0091, discover.go). The window closes on the holder's next
-// priority pass either way, so a free copy cannot be held across the turn.
+// offer says DuringResolution, which every caller does (CopyAndCast, cipher,
+// paradigm): a resolution_cast prompt over the copies holds the resolution
+// open while the caster casts them (resolution_copy_cast.go, ADR 0066's
+// 2026-10-22 and 2026-10-23 amendments). Without it, or outside an open
+// resolution, the cast is the GRANT taken with an ordinary cast_spell after
+// the resolution, the stand-in every other "you may cast it" a resolution
+// offers takes (ADR 0091, discover.go). The window closes on the holder's
+// next priority pass either way, so a free copy cannot be held across the
+// turn.
 
 // CardCopyOffer says who may cast the copies CopyCardsAndOfferCastsForEffect
 // makes, for what, and how the window behaves. Plain data: every field
@@ -111,8 +112,9 @@ type CardCopyOffer struct {
 	// open resolution (resolution_copy_cast.go), so the caster casts any
 	// of them, or none, before the resolution finishes and before
 	// anyone receives priority. False keeps the pass-closed window
-	// alone, the grant model's stand-in (cipher, paradigm). Ignored
-	// outside a resolution.
+	// alone, the grant model's stand-in; no caller leaves it false since
+	// cipher and paradigm moved over (#4243). Ignored outside a
+	// resolution.
 	DuringResolution bool
 
 	// ManaValueBudget is "total mana value N or less" over the copies

@@ -103,12 +103,10 @@ func TestCascadeIntoAnXSpellLocksXAtZero(t *testing.T) {
 	hit := xSorcery(me.ID, "test-stroke")
 	libraryOf(t, me, libCard(me.ID, "Bottom Card", "Instant", "{U}"), hit)
 
-	g.WithWriteLock(func() {
-		// {X}{G} is mana value 1 off the stack (CR 202.3e), so a
-		// cascade off a two-drop stops on it.
-		_ = g.CascadeForEffect(me.ID, uuid.New(), 2)
-	})
-	answerMayCast(t, g, me.ID, true)
+	// {X}{G} is mana value 1 off the stack (CR 202.3e), so a cascade off
+	// a two-drop stops on it. The cast is the resolution_cast prompt's
+	// (#4243), which takes the announcement the same way.
+	cascadeResolving(t, g, me.ID, 2)
 
 	err := g.CastSpell(me.ID, hit.InstanceID, CastSpellParams{Strict: true, FromZone: "exile", XValue: 5})
 	if !errors.Is(err, ErrInvalidParam) {

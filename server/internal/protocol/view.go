@@ -9614,6 +9614,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.MayCastCard = c.MayCastCard.String()
 			}
 		}
+		// #4243: cascade's and discover's cast is a resolution_cast, worded
+		// the way their may_cast was: the keyword and the two branches.
+		if c.Kind == game.PendingChoiceResolutionCast {
+			v.AcceptLabel = c.AcceptLabel
+			v.DeclineLabel = c.DeclineLabel
+			v.MayCastKeyword = c.MayCastKeyword
+		}
 		// PendingChoiceLoopShortcut — the CR 732 proposal (#804). The
 		// count is the N in "has resolved N times this turn" and the
 		// max is the ceiling on the client's number field; Reason

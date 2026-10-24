@@ -45,7 +45,13 @@ const declineMove = {
   resolution_cast: "rc-1",
 } as LegalMoveView;
 
-const snapWith = (moves: LegalMoveView[], chooser = "me"): GameView =>
+interface CascadeOffer {
+  keyword: string;
+  reason: string;
+  decline: string;
+}
+
+const snapWith = (moves: LegalMoveView[], chooser = "me", offer?: CascadeOffer): GameView =>
   ({
     id: "g",
     state: "active",
@@ -64,9 +70,16 @@ const snapWith = (moves: LegalMoveView[], chooser = "me"): GameView =>
         kind: "resolution_cast",
         chooser,
         count: 1,
-        reason: "Kaervek, the Punisher",
+        reason: offer?.reason ?? "Kaervek, the Punisher",
         options: [ritualCopy],
         eligible: ["copy-1"],
+        ...(offer
+          ? {
+              may_cast_keyword: offer.keyword,
+              accept_label: "Cast it free",
+              decline_label: offer.decline,
+            }
+          : {}),
       },
     ],
     legal_moves: moves,
@@ -78,12 +91,12 @@ interface Sent {
   player?: string;
 }
 
-function mount(moves: LegalMoveView[], chooser = "me"): { sent: Sent[] } {
+function mount(moves: LegalMoveView[], chooser = "me", offer?: CascadeOffer): { sent: Sent[] } {
   const sent: Sent[] = [];
   render(
     ChoiceDockHarness as never,
     {
-      snap: snapWith(moves, chooser),
+      snap: snapWith(moves, chooser, offer),
       viewerID: "me",
       sendAction: (type: ActionType, params?: unknown, player?: string) =>
         sent.push({ type, params, player }),
@@ -143,5 +156,41 @@ describe("ResolutionCastSheet — cast a copy during the resolution (#2947)", ()
   it("is not shown to another seat", () => {
     mount([], "them");
     expect(dialog()).toBeNull();
+  });
+});
+
+describe("ResolutionCastSheet — cascade and discover (#4243)", () => {
+  const cascadeOffer = { keyword: "cascade", reason: "Cascade", decline: "Put it on the bottom" };
+  const discoverOffer = {
+    keyword: "discover",
+    reason: "Discover 4",
+    decline: "Put it into your hand",
+  };
+  const hitDialog = (reason: string): Element | null =>
+    document.querySelector(`[role="dialog"][aria-label^="${reason}"]`);
+
+  it("names the exiled card and what the decline does", () => {
+    mount([castMove("Cast Dark Ritual"), declineMove], "me", cascadeOffer);
+    expect(nameOf(hitDialog("Cascade")!)).toBe(
+      "Cascade: you may cast Dark Ritual without paying its mana cost",
+    );
+    expect(document.body.textContent).toContain("it goes to the bottom of your library");
+    const buttons = [...document.querySelectorAll("button")].map((b) => nameOf(b));
+    expect(buttons).toContain("Put it on the bottom");
+    expect(buttons).not.toContain("Don't cast");
+  });
+
+  it("words discover's decline as the hand, and sends the decline as written", () => {
+    const { sent } = mount([declineMove], "me", discoverOffer);
+    expect(nameOf(hitDialog("Discover 4")!)).toBe(
+      "Discover 4: you may cast Dark Ritual without paying its mana cost",
+    );
+    expect(document.body.textContent).toContain("it goes into your hand");
+    const primary = barPrimary();
+    expect(primary && nameOf(primary)).toBe("Put it into your hand");
+    click(primary!);
+    expect(sent).toEqual([
+      { type: "resolve_choice", player: "me", params: { choice_id: "rc-1", card_ids: [] } },
+    ]);
   });
 });
