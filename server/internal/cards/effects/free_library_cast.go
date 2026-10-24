@@ -32,11 +32,45 @@ import (
 // when the answer was "none". The cast itself is the ordinary cast_spell
 // taken right after the pick (ADR 0066, ADR 0091, ADR 0099 §4).
 
+// freeLibraryCastOffer is one card's look-and-cast offer: the name that
+// heads the question and labels the grant, and the registered
+// continuation the pick resumes through (#4246). The looked-at cards ride
+// on the prompt as its Carry and the looker is its Chooser, so a table
+// waiting on the pick is a restore point. The name is bound to the key
+// for freeHandCastOffer's reason.
+type freeLibraryCastOffer struct {
+	name string
+	then game.ChooseCardsThen
+}
+
+// registerFreeLibraryCastOffer registers a card's look-and-cast
+// continuation under `key`, an on-disk identity (never renamed, never
+// reused). Call it once, from a package-level var. The continuation
+// captures only `name`, a constant of the card's text. A pick that ended
+// unanswered (the looker left the game) does nothing: their library left
+// with them.
+func registerFreeLibraryCastOffer(key, name string) freeLibraryCastOffer {
+	return freeLibraryCastOffer{
+		name: name,
+		then: game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
+			if !r.Answered {
+				return nil
+			}
+			var chosen uuid.UUID
+			if len(r.Picked) > 0 {
+				chosen = r.Picked[0]
+			}
+			return finishFreeCastFromLooked(g, r.Chooser, r.Source, name, r.Carry, chosen)
+		}),
+	}
+}
+
 // lookAtTopAndOfferFreeCast looks at the top n cards of `controller`'s
 // library and asks which nonland card of them, if any, to cast free. The
 // rest go to the bottom in a random order. Nothing is queued when no
 // card of them can be cast, but the rest still go to the bottom.
-func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, name string, n int) error {
+func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, offer freeLibraryCastOffer, n int) error {
+	name := offer.name
 	looked := g.LookAtTopOfLibraryForEffect(controller, n)
 	if len(looked) == 0 {
 		return nil
@@ -47,10 +81,11 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, name 
 			eligible = append(eligible, id)
 		}
 	}
-	finish := freeCastFromLookedFinisher(controller, source, name, looked)
 	if len(eligible) == 0 {
-		return finish(g, nil)
+		return finishFreeCastFromLooked(g, controller, source, name, looked, uuid.Nil)
 	}
+	// Keyed (#4246): the looked-at cards ride on the prompt as its Carry,
+	// so a table waiting on the pick is a restore point.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     controller,
 		Source:      source,
@@ -58,36 +93,34 @@ func lookAtTopAndOfferFreeCast(g *game.Game, controller, source uuid.UUID, name 
 		Cards:       eligible,
 		Min:         0,
 		Max:         1,
-		Zone:        game.ZoneLibrary,
 		Destination: game.ChooseCastFreeFromLibrary,
-		Then:        finish,
+		ThenKey:     offer.then,
+		Carry:       looked,
 	})
 	return nil
 }
 
-// freeCastFromLookedFinisher is what happens once the pick is known: the
-// rest of the looked-at cards go to the bottom in a random order, and
-// the chosen card, if any, keeps its place and gets its free cast there.
-// Everything it captures is an ID or a scalar, so an undo across the
-// prompt resolves against the restored game.
-func freeCastFromLookedFinisher(controller, source uuid.UUID, name string, looked []uuid.UUID) func(g *game.Game, picked []uuid.UUID) error {
-	return func(g *game.Game, picked []uuid.UUID) error {
-		var chosen uuid.UUID
-		if len(picked) > 0 {
-			chosen = picked[0]
+// finishFreeCastFromLooked is what happens once the pick is known: the
+// rest of the looked-at cards still in a library go to the bottom in a
+// random order, and the chosen card, if any and still in a library, keeps
+// its place and gets its free cast there. A keyed pick has no live-zone
+// re-check of its own (choose_cards_keyed.go), so the library check here
+// is it.
+func finishFreeCastFromLooked(g *game.Game, controller, source uuid.UUID, name string, looked []uuid.UUID, chosen uuid.UUID) error {
+	var rest []uuid.UUID
+	stillThere := false
+	for _, id := range cardsStillInALibrary(g, looked) {
+		if id == chosen {
+			stillThere = true
+			continue
 		}
-		var rest []uuid.UUID
-		for _, id := range cardsStillInALibrary(g, looked) {
-			if id != chosen {
-				rest = append(rest, id)
-			}
-		}
-		if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil {
-			return err
-		}
-		if chosen != uuid.Nil {
-			g.FreeCastFromLibraryForEffect(controller, source, chosen, name)
-		}
-		return nil
+		rest = append(rest, id)
 	}
+	if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil {
+		return err
+	}
+	if stillThere {
+		g.FreeCastFromLibraryForEffect(controller, source, chosen, name)
+	}
+	return nil
 }

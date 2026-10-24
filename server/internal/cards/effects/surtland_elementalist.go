@@ -37,7 +37,10 @@ func init() {
 // Kari Zev's Expertise's free cast with the predicate swapped from
 // "mana value 2 or less" to "instant or sorcery".
 func surtlandElementalistOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	offerFreeHandCast(ctx, controller, "Surtland Elementalist",
+	offerFreeHandCast(ctx, controller, surtlandElementalistFreeCast,
 		"an instant or sorcery spell", Or(Instant(), Sorcery()))
 	return nil
 }
+
+// surtlandElementalistFreeCast is the offer's keyed continuation (#4246).
+var surtlandElementalistFreeCast = registerFreeHandCastOffer("choose-cards/surtland-elementalist-cast", "Surtland Elementalist")

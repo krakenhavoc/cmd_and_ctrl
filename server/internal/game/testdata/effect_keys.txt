@@ -379,3 +379,11 @@ option option-pick/rhys-the-evermore-remove
 option option-pick/null-chamber-opponent
 body nuka-nuke-launcher/defender-gets-two-rad-counters
 condition nuka-nuke-launcher/defender-casts-a-spell
+choose choose-cards/aetherworks-marvel-cast
+choose choose-cards/buster-sword-cast
+choose choose-cards/cecily-haunted-mage-cast
+choose choose-cards/great-intelligences-plan-cast
+choose choose-cards/kari-zevs-expertise-cast
+choose choose-cards/mad-wizards-lair-cast
+choose choose-cards/rishkars-expertise-cast
+choose choose-cards/surtland-elementalist-cast

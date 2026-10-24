@@ -18,7 +18,8 @@ import (
 // attack trigger is a Do of three steps (#4228, CR 608.2c), so the life
 // loss and the hand count wait for a draw that pauses on a prompt (a dredge
 // offer, a draw-instead pick) and for one the life loss asks. The free cast
-// is the #3270 pick (offerFreeHandCastFrom, #2110): a pass-closed, any-timing {0} cast of
+// is the #3270 pick (offerFreeHandCast, keyed in #4246 so a table waiting on
+// it is a restore point): a pass-closed, any-timing {0} cast of
 // one instant or sorcery in hand, cast as the trigger resolves (CR
 // 608.2g), so a sorcery is castable in the declare attackers step.
 // Partner—Friends forever is a deck-construction rule the deck importer
@@ -55,6 +56,10 @@ func cecilyFreeCast(ctx *Context) error {
 	if p == nil || p.Hand == nil || len(p.Hand.Cards) < 11 {
 		return nil
 	}
-	offerFreeHandCastFrom(ctx.Game, ctx.Controller(), ctx.Source(), "Cecily, Haunted Mage", "an instant or sorcery spell", Or(Instant(), Sorcery()))
+	offerFreeHandCast(ctx, ctx.Controller(), cecilyFreeCastOffer, "an instant or sorcery spell", Or(Instant(), Sorcery()))
 	return nil
 }
+
+// cecilyFreeCastOffer is the offer's keyed continuation (#4246), so a
+// table waiting on it is a restore point.
+var cecilyFreeCastOffer = registerFreeHandCastOffer("choose-cards/cecily-haunted-mage-cast", "Cecily, Haunted Mage")

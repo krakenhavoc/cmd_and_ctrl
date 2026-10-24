@@ -11257,10 +11257,12 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
-- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, "Buster Sword",
-  "a spell with mana value N or less", ManaValueLE(N))`: one prompt, then the pass-closed any-timing `{0}` cast (#3270).
-  Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
-  castable all turn.
+- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, busterSwordFreeCast,
+  "a spell with mana value N or less", ManaValueLE(N))`, with `var busterSwordFreeCast =
+  registerFreeHandCastOffer("choose-cards/buster-sword-cast", "Buster Sword")` in the card's file: one keyed prompt,
+  so a table waiting on it is a restore point (#4246), then the pass-closed any-timing `{0}` cast (#3270). The key
+  is an on-disk identity; append it to `game/testdata/effect_keys.txt`. Never write the pick and a keyless
+  `CastPermission` by hand: the pick would open nothing and the card would stay castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
@@ -11347,8 +11349,10 @@ ctx.SourcePermanent()                                                           
   `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
   The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
-  its own `AltCostKey` and no pick (#3270). A pick behind a draw (Cecily, Haunted Mage) runs from a
-  `game.DrawThen` body through `offerFreeHandCastFrom(g, controller, source, ...)`, the Context-free form (#2110).
+  its own `AltCostKey` and no pick (#3270). The pick is keyed (#4246): each card registers its
+  own `registerFreeHandCastOffer(key, name)` and passes it in, so a table waiting on the offer is a restore point.
+  A pick behind a draw (Cecily, Haunted Mage) is a step after the draw (#4228); `offerFreeHandCastFrom(g, controller,
+  source, ...)` is the form that takes no Context.
   "Any number of spells from your hand" (Aetherflux Conduit) is `grantFreeHandCastsFrom`: the same grant, one per
   nonland card in hand and no pick, because a grant naming several cards is spent by the first cast. "Look at the top
   N cards of your library. You may cast a spell from among them without paying its mana cost. Put the rest on the
