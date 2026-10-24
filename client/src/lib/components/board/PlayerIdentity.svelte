@@ -42,6 +42,8 @@
   import { isAgentSeat } from "../../agentSeat";
   import { presenceChip, standInSinceText } from "../../away";
   import { voiceSeatBadge, voiceSeats } from "../../voiceRoom";
+  import { L } from "../../labels";
+  import { freeStickerCount, sheetsTitle, ticketCostText } from "../../stickers";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
 
@@ -283,6 +285,10 @@
   const standIn = $derived(!isBot && Boolean(seat.stand_in));
   // ADR 0188 Decision 9 (#3559): the "Skips next turn" chip.
   const skipChip = $derived(turnSkipChip(seat.turn_skips));
+  // ADR 0208: the seat's tickets and its three sticker sheets.
+  const tickets = $derived(seat.counters?.ticket ?? 0);
+  const stickerSheets = $derived(seat.sticker_sheets ?? []);
+  const ticketTitle = (n: number) => ticketCostText(n);
 </script>
 
 <div
@@ -597,6 +603,14 @@
             }}>+</button
           >
         </span>
+        <!-- ADR 0208: tickets ({TK}) are a player counter only the rules
+             give and spend (a sticker's ticket cost), so a count, not a
+             stepper. -->
+        {#if tickets > 0}
+          <span class="marker counter ticket" title={ticketTitle(tickets)} aria-label={L.tickets}>
+            <Icon name="ticket" size={11} />{tickets}
+          </span>
+        {/if}
       {:else}
         {#if isMonarch}
           <span class="marker monarch active" title="monarch" aria-label="monarch"
@@ -620,7 +634,11 @@
         {/if}
         {#if seat.counters}
           {#each Object.entries(seat.counters) as [name, count] (name)}
-            {#if count > 0 && name !== "poison" && name !== "energy"}
+            {#if count > 0 && name === "ticket"}
+              <span class="marker counter ticket" title={ticketTitle(count)} aria-label={L.tickets}>
+                <Icon name="ticket" size={11} />{count}
+              </span>
+            {:else if count > 0 && name !== "poison" && name !== "energy"}
               <span class="marker counter" title={`${count} ${name}`} aria-label={name}>
                 {#if name === "experience"}<Icon
                     name="star"
@@ -645,6 +663,18 @@
           aria-label="speed"
         >
           <Icon name="gauge" size={11} />{seat.speed}
+        </span>
+      {/if}
+      <!-- ADR 0208: the three sticker sheets this seat plays with are
+           public (CR 123.2c); the count is the stickers still free to put
+           on something, and the hover lists them. -->
+      {#if stickerSheets.length > 0}
+        <span
+          class="marker counter sticker-sheets"
+          title={sheetsTitle(stickerSheets)}
+          aria-label={L.stickerSheets}
+        >
+          <Icon name="sticker" size={11} />{freeStickerCount(stickerSheets)}
         </span>
       {/if}
     </div>

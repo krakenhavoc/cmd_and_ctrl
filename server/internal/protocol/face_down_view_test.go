@@ -254,6 +254,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		IsCommander:           true,
 		IsCompanion:           true,
 		AttractionLights:      []int{2, 6},
+		Stickers:              []StickerView{{Kind: "ability", Text: "Menace", TicketCost: 2, Sheet: "Night Brushwagg Ringmaster"}},
 		DamageMarked:          1,
 		RegenerationShields:   2,
 		ExiledIfItDies:        []string{"Lava Coil"},

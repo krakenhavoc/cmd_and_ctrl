@@ -171,6 +171,14 @@ type Player struct {
 	// card out of it. Nil until the first card arrives.
 	Junkyard *Zone
 
+	// StickerSheetPool is every sticker sheet this player's deck revealed
+	// (CR 123.2a, ADR 0208 §2): plain data, not cards, in no zone.
+	// StickerSheets are the three of them chosen at random as the game
+	// began (CR 103.2d): the stickers the player has access to (CR
+	// 123.2c). Both nil for a deck with no sheets.
+	StickerSheetPool []StickerSheet
+	StickerSheets    []StickerSheet
+
 	// HasSideboard is whether this player's deck SEATED a sideboard,
 	// which makes the sideboard their pool of cards outside the game
 	// (ADR 0191). False means the pool is the card database (ADR 0198):

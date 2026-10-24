@@ -1778,6 +1778,11 @@ type Spec struct {
 	// server/internal/game/copy_grants.go.
 	Grants []AbilityGrant
 
+	// StickerSheet marks this entry as a sticker sheet's (CR 123.2, ADR
+	// 0208 §5) and says what each of its ability stickers gives. A sheet
+	// is not a card: nothing else on the Spec applies to it.
+	StickerSheet *StickerSheetSpec
+
 	// Purpose is what the card does, as printed amounts, declared by
 	// hand for the bot like Completeness (ADR 0126 §6): the spell's
 	// resolution (Night's Whisper {Draws: 2}, Harrow {Lands: 2}, Wrath

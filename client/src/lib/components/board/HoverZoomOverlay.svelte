@@ -32,6 +32,7 @@
   import { L } from "../../labels";
   import { cardArt } from "../../cardArt";
   import { isToken } from "../../tokenGroups";
+  import { stickerText } from "../../stickers";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
   import type { GameView, PlayerView } from "../../protocol";
   import { playerColor } from "../../avatarColor";
@@ -484,7 +485,7 @@
           {/if}
         </section>
       {/if}
-      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
+      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || (card.stickers?.length ?? 0) > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
         <footer class="info-foot">
           {#if isToken(card)}
             <!-- #3043: a token copy shows the original's art and oracle
@@ -540,6 +541,12 @@
           {/if}
           {#each counterChips as chip (chip.name)}
             <span class="state">{chip.name} ×{chip.n}</span>
+          {/each}
+          <!-- ADR 0208: what is stuck on it (CR 123). -->
+          {#each card.stickers ?? [] as sticker, i (i)}
+            <span class="state" title={sticker.sheet ? `from ${sticker.sheet}` : undefined}
+              >sticker: {stickerText(sticker)}</span
+            >
           {/each}
           {#if damage}
             <span class="state state-damage" title={damage.title}>{damage.summary}</span>

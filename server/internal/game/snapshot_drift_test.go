@@ -404,6 +404,9 @@ var cardFields = plan(
 	// ADR 0207 §5: printed facts about an Attraction card.
 	"AstrotoriumBack", carried, "",
 	"AttractionLights", carried, "",
+	// ADR 0208: the stickers on the object, plain data.
+	"Stickers", carried, "",
+	"StickerSheet", dropped, "always empty on a card in a zone: set only on the deck importer's pseudo-card for a sticker sheet, which seatDeckCard turns into Player.StickerSheetPool (ADR 0208 §2)",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -715,6 +718,8 @@ var playerFields = plan(
 	// Written only while they hold a card.
 	"AttractionDeck", carried, "",
 	"Junkyard", carried, "",
+	"StickerSheetPool", carried, "",
+	"StickerSheets", carried, "",
 	"HasSideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",

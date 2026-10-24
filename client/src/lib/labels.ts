@@ -208,6 +208,27 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PileBar.svelte`],
     doc: "a seat's face-up junkyard in the rail (ADR 0207, CR 717.6a), drawn only while it holds a card; opens the zone browser's junkyard tab",
   }),
+  tickets: label({
+    name: "tickets",
+    kind: "aria",
+    role: "status",
+    owners: [`${BOARD}PlayerIdentity.svelte`],
+    doc: "a seat's ticket counters ({TK}, ADR 0208, CR 107.17) in its marker column, drawn only while it has one; a count, no stepper",
+  }),
+  stickerSheets: label({
+    name: "sticker sheets",
+    kind: "aria",
+    role: "status",
+    owners: [`${BOARD}PlayerIdentity.svelte`],
+    doc: "a seat's three sticker sheets (ADR 0208, CR 123.2c): how many stickers are still free, the sheets and their stickers on hover",
+  }),
+  stickersOnCard: label({
+    name: "stickers",
+    kind: "aria",
+    role: "status",
+    owners: [`${BOARD}StickerBadge.svelte`],
+    doc: "the stickers on a card (ADR 0208, CR 123): a count on the card's left edge, the stickers on hover",
+  }),
   commandZone: dynamicLabel({
     stem: " command zone, ",
     match: "contains",

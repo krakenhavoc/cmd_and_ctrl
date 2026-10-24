@@ -509,6 +509,8 @@ func (g *Game) mintTokenLocked(grp TokenGroup, controller uuid.UUID) Card {
 	tok.CounterStampedAt = nil
 	tok.LostLastCounter = false
 	tok.KnownBy = nil
+	// CR 123.1, 707.2: stickers are not copiable values (ADR 0208).
+	tok.Stickers = nil
 	// #1997: assigned, not inherited — a copy of a linked token is not
 	// linked, since the template is the copied token.
 	tok.CreatedWith = grp.CreatedWith

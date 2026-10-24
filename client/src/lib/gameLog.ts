@@ -185,6 +185,8 @@ const LOG_TONE: Record<LogKind, string> = {
   player_control_scheduled: "tone-step",
   player_control_began: "tone-step",
   player_control_ended: "tone-step",
+  // ADR 0208: a sticker put on an object, and its ticket cost.
+  sticker_placed: "tone-quiet",
   // A spawn is not a play. It reads like one on the board, which is
   // exactly why the line has to stand out from the turn around it.
   spawn: "tone-cast",

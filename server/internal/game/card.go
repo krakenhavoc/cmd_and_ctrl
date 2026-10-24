@@ -185,6 +185,13 @@ type Card struct {
 	// printing decides them (ADR 0207 §3). Nil on every other card.
 	AttractionLights []int
 
+	// Stickers are the stickers on this object (CR 123, ADR 0208), in
+	// the order they were put on. Plain data the layer pass reads
+	// (sticker.go). Kept on a move between public zones and dropped on
+	// a move to a hidden zone (CR 123.5, MoveCard); never part of the
+	// copiable values (CR 123.1), so a copy or a token never has them.
+	Stickers []PlacedSticker
+
 	// GrantedAbilities are the catalog keys of ability bundles a
 	// CR 707.9a copy effect granted to this object — Phantasmal
 	// Image's "and it has 'when this creature becomes the target of a
@@ -545,6 +552,12 @@ type Card struct {
 	// Urza, Lord Protector is not a meld card (CR 701.42b). nil on every
 	// other card. See meld.go.
 	Meld *MeldPrint
+
+	// StickerSheet is set only on the pseudo-card the deck importer
+	// hands the game for one sticker sheet (ADR 0208 §2): seatDeckCard
+	// turns it into Player.StickerSheetPool and the card itself goes
+	// nowhere. Nil on every card in any zone.
+	StickerSheet *StickerSheet
 
 	// MeldedFrom is the two cards a MELDED permanent is (CR 712.4a): the
 	// object on the battlefield is one permanent with the combined back

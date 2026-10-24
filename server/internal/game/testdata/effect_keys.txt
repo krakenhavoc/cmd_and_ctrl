@@ -791,3 +791,6 @@ run prompt-run/springbloom-druid-search
 run prompt-run/syphon-mind-draw
 run prompt-run/tenured-tethermage-tokens
 run prompt-run/vicious-rumors-gain
+choose sticker/choose-object
+option sticker/choose-sticker
+option sticker/name-position
