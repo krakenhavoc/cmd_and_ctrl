@@ -1885,27 +1885,44 @@ type ExileTopFaceDown struct {
 	// N is how many cards come off the top.
 	N int
 
-	// Exiled, when non-nil, is filled with the instance IDs that
-	// moved, top card first. Necropotence needs them to hand to the
-	// delayed trigger that puts them into hand later; diffing the
-	// exile zone afterwards would be wrong the moment anything else
-	// exiled a card during the same resolution.
-	Exiled *[]uuid.UUID
+	// Then, when non-nil, is the clause that acts on the cards that left
+	// ("Put that card into your hand at the beginning of your next end
+	// step", Necropotence). It runs once the whole batch is done with the
+	// instance IDs that landed in exile, top card first, and runs from the
+	// answer when a leg paused on a prompt (a CR 616.1 ordering of
+	// replacements, a CR 903.9 choice). It also runs with an empty list when
+	// nothing was exiled (an empty library), so check the length.
+	//
+	// This replaced an `Exiled *[]uuid.UUID` out-parameter (#4259), which
+	// read the list at the end of Apply. A paused batch had not landed yet,
+	// so the list came back empty and Necropotence never scheduled the
+	// return of its card. Diffing the exile zone afterwards would be wrong
+	// the moment anything else exiled a card during the same resolution, so
+	// the cards come from the batch, not the zone.
+	Then func(ctx *Context, exiled []uuid.UUID) error
 }
 
 func (e ExileTopFaceDown) Apply(ctx *Context) error {
 	if e.N <= 0 {
+		if e.Then != nil {
+			return e.Then(ctx, nil)
+		}
 		return nil
 	}
 	player := e.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	moved, err := ctx.Game.ExileTopFaceDownForEffect(player, e.N)
-	if e.Exiled != nil {
-		*e.Exiled = moved
+	if e.Then == nil {
+		return ctx.Game.ExileTopFaceDownThenForEffect(player, e.N, nil)
 	}
-	return err
+	// The context is rebuilt inside the continuation from the live *Game,
+	// the contract massEffect.apply explains: an undo restores this game's
+	// fields in place, so a captured *Game would be the wrong one.
+	item := ctx.Item
+	return ctx.Game.ExileTopFaceDownThenForEffect(player, e.N, func(g *game.Game, exiled []uuid.UUID) error {
+		return e.Then(NewContext(g, item), exiled)
+	})
 }
 
 // RevealCards is "reveal" (CR 701.20): show the named cards to every
