@@ -66,7 +66,7 @@ func TestFailedExpandedDrawStillFinishesSiblingAndThen(t *testing.T) {
 	stockLibrary(p, 0)
 	stockLibrary(other, 5)
 	before := other.Hand.Size()
-	then := RegisterDrawThen("test-failed-expanded-draw-then", func(g *Game, d DrawThen) error {
+	then := RegisterDrawThen("test/failed-expanded-draw-then", func(g *Game, d DrawThen) error {
 		g.playerByIDLocked(d.Player).Life++
 		return nil
 	})

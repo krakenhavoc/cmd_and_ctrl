@@ -1711,6 +1711,11 @@ type activeReplacement struct {
 	// an effect that has no stable identity — see
 	// replacementIdentity.
 	identity replacementIdentity
+	// lost marks an entry of a restored CR 616 frame whose effect the
+	// running binary no longer gathers (#4253, replacement_resume_keyed.go):
+	// its catalog row is gone. It is an effect that no longer applies
+	// (CR 616.1f), so no resolve path fires it.
+	lost bool
 }
 
 // replacementIdentity names one declared replacement effect: the
@@ -2397,7 +2402,7 @@ func (g *Game) optionalReplacementResumableLocked(ev *ReplacementEvent) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) bool {
-	if ev == nil || g.replacementsAppliedThisEvent[ev.ID][a.id] {
+	if ev == nil || a.lost || g.replacementsAppliedThisEvent[ev.ID][a.id] {
 		return false
 	}
 	if !eventKindMatches(a.effect.Watches, ev.Kind) {

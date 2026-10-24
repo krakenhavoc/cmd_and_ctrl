@@ -610,7 +610,49 @@ func corpusBoards() []corpusBoard {
 		// rule kind naming the player, its source the Engine as an object
 		// with its CR 400.7 epoch, until end of turn).
 		{"damping_engine_ignore", corpusDampingEngineIgnore},
+		// v9, added by #4253 (ADR 0013 amendment 2026-10-23) as new files:
+		// two CR 616 prompts whose resume frame is data. A draw paused on
+		// Golgari Thug's dredge offer (pendingChoices[].replacementResume
+		// over a draw, the tail key on pickThen, the object serials beside
+		// the prompts); and a riot creature spell's entry paused on riot's
+		// question, its frame carrying the resolving spell
+		// (replacementResume.event.stackItem).
+		{"dredge_offer", corpusDredgeOffer},
+		{"riot_entry", corpusRiotEntry},
 	}
+}
+
+// corpusDredgeOffer is a draw paused on a dredge offer (#4253).
+func corpusDredgeOffer(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	p := g.Seats[g.Turn.ActiveSeat]
+	gyCardWithOracle(p, "Golgari Thug", "Creature — Human Warrior", golgariThugOracle)
+	drawN(g, p, 1)
+	if optionalOffer(g, p) == nil {
+		t.Fatal("setup: Golgari Thug's dredge was not offered")
+	}
+	return g
+}
+
+// corpusRiotEntry is a riot creature spell's entry paused on riot's
+// question (#4253).
+func corpusRiotEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	id := uuid.New()
+	me.Hand.PushTop(game.Card{
+		InstanceID: id, Name: "Zhur-Taa Goblin", TypeLine: "Creature — Goblin Berserker",
+		Power: 2, Toughness: 2, Keywords: []string{game.KeywordRiot}, Owner: me.ID, Controller: me.ID,
+	})
+	advanceToMain(t, g)
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceEntryRiot) == nil {
+		t.Fatal("setup: riot was not asked")
+	}
+	return g
 }
 
 // corpusDampingEngineIgnore is #1986's stored shape: the ignore record a

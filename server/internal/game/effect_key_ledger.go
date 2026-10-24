@@ -115,6 +115,16 @@ func ledgerLineResolves(line string) bool {
 		return KnownConfirmThen(fields[1])
 	case "anyplayer":
 		return KnownAnyPlayerPays(fields[1])
+	// #4253: these registries' keys may hold spaces (a "then discard"
+	// body is keyed by its question), so the key is the rest of the line.
+	case "resume":
+		return KnownReplacementResume(ledgerLineKey(line))
+	case "drawinstead":
+		return KnownDrawInstead(ledgerLineKey(line))
+	case "drawthen":
+		return KnownDrawThen(ledgerLineKey(line))
+	case "keywordinstead":
+		return KnownKeywordInstead(ledgerLineKey(line))
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()
@@ -167,3 +177,9 @@ const effectKeysHeader = `# effect_keys.txt — ADR 0041 phase 3's effect-key le
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
 
 `
+
+// ledgerLineKey is everything after a ledger line's kind.
+func ledgerLineKey(line string) string {
+	_, key, _ := strings.Cut(strings.TrimSpace(line), " ")
+	return key
+}

@@ -8,6 +8,9 @@
 # "pick <key>" is a revealed-hand pick's continuation (#2115), which
 # has no alias: never rename one. "steps <key>" is a continuation
 # written as steps (#4162, effects.RegisterThenSteps), likewise.
+# "resume <key>" is a keyed CR 616 frame's tail, and "drawinstead",
+# "drawthen" and "keywordinstead" the bodies its event names (#4253);
+# their keys may hold spaces, so the key is the rest of the line.
 #
 # Append new keys with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys
@@ -441,3 +444,38 @@ payunless pay-unless/extort-drain
 payunless pay-unless/hellkite-charger-extra-combat
 payunless pay-unless/pact-lose-the-game
 payunless pay-unless/upkeep-sacrifice-source
+drawinstead dredge-2
+drawinstead dredge-3
+drawinstead dredge-4
+drawinstead dredge-5
+drawinstead dredge-6
+drawinstead forbidden-crypt
+drawinstead necrobloom-dredge-2
+drawinstead underrealm-lich
+drawthen aetherflux-conduit-after-draw
+drawthen brainstorm-put-back
+drawthen brainsurge-put-back
+drawthen development-after-draw
+drawthen discard-two-unless-artifact
+drawthen discard-two-unless-basic-land
+drawthen discard-two-unless-creature
+drawthen discard-unless-attacked
+drawthen discard:
+drawthen discard:Anvil of Bogardan — discard a card
+drawthen discard:Arni, Humble Scribe — discard a card
+drawthen discard:Depth Defiler — discard a card
+drawthen dungeon/mad-wizards-lair
+drawthen enter-the-infinite-put-back
+drawthen glacial-dragonhunt/may-discard
+drawthen malcolm-discard
+drawthen messenger-jays-discard
+drawthen narset-of-the-ancient-way/may-discard
+drawthen occult-epiphany-discard
+drawthen seasoned-cryomancer/discard-two
+drawthen teferi-akosa-discard
+drawthen the-theorist/counters-equal-to-hand
+drawthen yunas-decision/put
+keywordinstead return-this-instead-of-learning
+resume replacement-resume/draw
+resume replacement-resume/keyword-action
+resume replacement-resume/move

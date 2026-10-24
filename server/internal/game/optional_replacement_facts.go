@@ -8,8 +8,9 @@ package game
 // rather than take it needs the one fact the effect knows: how many
 // cards a dredge mills, and where a commander goes if its owner
 // declines CR 903.9b. Both are computed from the frame on every view,
-// never stored. A restore point carries no frame, and so no prompt to
-// describe (snapshot.go's continuation census).
+// never stored. A restore point carries the frame only when it is keyed
+// (#4253, replacement_resume_keyed.go), and restore rebuilds it, so the
+// facts read the same after a restore.
 
 // DredgeOffer is N when this prompt offers a dredge — an
 // optional_replacement whose effect declares ReplacementEffect.Dredge

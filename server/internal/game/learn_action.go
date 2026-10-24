@@ -40,15 +40,15 @@ import (
 // none; with a replacement that is not a graveyard "may" in the same
 // window the ordinary CR 616 ordering prompt applies.
 //
-// # What is not a restore point
+// # Restore points
 //
 // A learn that has not been performed yet is not paused anywhere: the
 // window either settles in one call or queues the replacement's yes/no.
-// That prompt carries the generic CR 616 resume frame
-// (ContinuationCensus.ChoiceResumeFrames), exactly as a dredge offer
-// does, so a table with it open is not a restore point. The learn
-// prompts that follow (the discard and the Lesson pick) are the
-// closures learn.go already documents. This file adds no closure: the
+// That prompt carries the generic CR 616 resume frame, exactly as a
+// dredge offer does, and since #4253 the frame of a learn (a keyword
+// action with no tail) is written to a restore point as data
+// (replacement_resume_keyed.go), so a table with it open is one. This
+// file adds no closure: the
 // body is registered by key, the event carries data only, and nothing
 // is added to the Game struct.
 

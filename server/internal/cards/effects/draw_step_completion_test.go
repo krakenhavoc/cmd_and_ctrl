@@ -112,7 +112,7 @@ func TestExpandedDrawPauseCloneAndThenWaitForEverySibling(t *testing.T) {
 	p := g.Seats[1]
 	bfCardWithOracle(g, p, "Thought Reflection", "Enchantment", thoughtReflectionOracle)
 	bfCardWithOracle(g, p, "Underrealm Lich", "Creature — Zombie Elf Shaman", underrealmLichOracle)
-	then := game.RegisterDrawThen("test-expanded-draw-finish", func(g *game.Game, d game.DrawThen) error {
+	then := game.RegisterDrawThen("test/expanded-draw-finish", func(g *game.Game, d game.DrawThen) error {
 		return g.ChangePlayerLifeForEffect(uuid.Nil, d.Player, 1)
 	})
 	lifeBefore, handBefore := p.Life, p.Hand.Size()

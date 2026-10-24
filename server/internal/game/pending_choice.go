@@ -475,7 +475,9 @@ type PendingChoice struct {
 	// a PendingChoiceReplacementOrder entry: the in-flight
 	// ReplacementEvent + the gathered applicable list. Not
 	// serialised to the wire. Consumed by ResolveReplacementOrder
-	// on submit. Added in S17 sub-PR 2.
+	// on submit. Added in S17 sub-PR 2. Written to a restore point as
+	// data when its event holds no closure (#4253,
+	// replacement_resume_keyed.go).
 	replacementResume *replacementResumeFrame
 
 	// costCommanderResume is the parked announcement behind a CR 903.9
