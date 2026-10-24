@@ -642,7 +642,181 @@ func corpusBoards() []corpusBoard {
 		{"counter_order", corpusCounterOrder},
 		{"life_order", corpusLifeOrder},
 		{"entry_sacrifice", corpusEntrySacrifice},
+		// v9, added by #4253 slice 3 (ADR 0013 amendment 2026-10-24) as
+		// new files: CR 616 prompts whose event carries a continuation
+		// that is now data. A fetched shockland's question with the rest
+		// of the search on its entry tail (entryTail.search); the second
+		// question of a two-card put, the first card's settled event in
+		// the batch (entryTail.batch); a token creation's ordering prompt
+		// (the event mirror's token fields) and a token copy's entry
+		// question with the staged tokens beside it (entryTail.tokens,
+		// enteringTokens); Monstrosity's counters (counterTail.then); an
+		// extort drain over an opponent's loss (lifeTail.each); a
+		// face-down exile leg under Necropotence (zoneRoute.faceDownLegs);
+		// and Preordain's scry with its keyed draw (pendingChoices[].scryThen).
+		{"fetched_shockland", corpusFetchedShockland},
+		{"put_batch_second_question", corpusPutBatchSecondQuestion},
+		{"token_creation_order", corpusTokenCreationOrder},
+		{"token_copy_entry", corpusTokenCopyEntry},
+		{"monstrosity_order", corpusMonstrosityOrder},
+		{"drain_order", corpusDrainOrder},
+		{"face_down_exile_leg", corpusFaceDownExileLeg},
+		{"preordain_scry", corpusPreordainScry},
 	}
+}
+
+// corpusFetchedShockland is Polluted Delta cracked for Watery Grave,
+// paused on the Grave's "pay 2 life?" with the rest of the search (the
+// shuffle) on its entry tail (#4253 slice 3).
+func corpusFetchedShockland(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	delta := pushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", pollutedDeltaOracle, false)
+	pushLibraryCardForTest(me, game.Card{
+		Name: "Watery Grave", TypeLine: "Land — Island Swamp", OracleID: shocklandOracleIDs["Watery Grave"],
+	})
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the fetched Grave did not ask")
+	}
+	return g
+}
+
+// corpusPutBatchSecondQuestion is two shocklands put together, the first
+// answered and the second asking (#4253 slice 3).
+func corpusPutBatchSecondQuestion(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	fountain := pushLibraryCardForTest(me, game.Card{
+		Name: "Hallowed Fountain", TypeLine: "Land — Plains Island", OracleID: hallowedFountainOracle,
+	})
+	crypt := pushLibraryCardForTest(me, game.Card{
+		Name: "Blood Crypt", TypeLine: "Land — Swamp Mountain", OracleID: bloodCryptOracle,
+	})
+	g.WithWriteLock(func() {
+		if _, err := g.PutCardsFromLibraryOntoBattlefieldForEffect([]uuid.UUID{fountain, crypt},
+			game.LibraryEntryOptions{Controller: me.ID}); err != nil {
+			t.Fatal(err)
+		}
+	})
+	answerEntryPayLife(t, g, me.ID, true)
+	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
+		t.Fatal("setup: the second land did not ask")
+	}
+	return g
+}
+
+// corpusTokenCreationOrder is a Treasure's creation paused on the
+// ordering prompt between Doubling Season and Academy Manufactor
+// (#4253 slice 3).
+func corpusTokenCreationOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	pushTokenReplacementCard(g, doublingSeasonOracle, "Doubling Season", "Enchantment", me)
+	pushTokenReplacementCard(g, academyManufactorOracle, "Academy Manufactor", "Artifact Creature — Assembly-Worker", me)
+	makeTokens(t, g, me, TreasureToken(), 1)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the creation did not ask for an order")
+	}
+	return g
+}
+
+// corpusTokenCopyEntry is the first of two token copies of Clone paused
+// on its "enter as a copy?", the second staged behind it (#4253 slice 3).
+func corpusTokenCopyEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	clone := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Clone", TypeLine: "Creature — Shapeshifter", OracleID: oracleClone,
+		Owner: me.ID, Controller: me.ID,
+	})
+	g.WithWriteLock(func() {
+		tmpl, ok := TokenCopyTemplate(g, clone)
+		if !ok {
+			t.Fatal("setup: TokenCopyTemplate failed")
+		}
+		if err := g.CreateTokenForEffect(me.ID, tmpl, 2); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceCopyTarget) == nil {
+		t.Fatal("setup: the token copy did not ask")
+	}
+	return g
+}
+
+// corpusMonstrosityOrder is Monstrosity 2 paused on the ordering prompt
+// between Hardened Scales and Doubling Season, "it becomes monstrous"
+// waiting as a keyed tail (#4253 slice 3).
+func corpusMonstrosityOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	seedReplacementPermanent(g, hardenedScalesOracle, "Hardened Scales", me)
+	seedReplacementPermanent(g, doublingSeasonOracle, "Doubling Season", me)
+	bear := seedCreature(g, "Bears", me)
+	g.WithWriteLock(func() {
+		if err := g.MonstrosityForEffect(bear, 2); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: Monstrosity did not ask for an order")
+	}
+	return g
+}
+
+// corpusDrainOrder is an extort drain paused on the opponent's ordering
+// prompt between Bloodletter of Aclazotz and a life-loss probe, the gain
+// waiting as a keyed tail (#4253 slice 3).
+func corpusDrainOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	blood := seedReplacementPermanent(g, bloodletterOracle, "Bloodletter of Aclazotz", me.ID)
+	seedReplacementPermanent(g, lifeLossPlusOneProbeOracle, "Life Loss Probe", me.ID)
+	g.WithWriteLock(func() {
+		if err := b21DrainEachOpponentAndGainTheTotal(g, &game.StackItem{Controller: me.ID, SourceCardID: blood}, 1); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the drain did not ask for an order")
+	}
+	return g
+}
+
+// corpusFaceDownExileLeg is Necropotence's face-down exile paused on an
+// ordering prompt, the delivery waiting as a keyed tail (#4253 slice 3).
+func corpusFaceDownExileLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	necro := seedReplacementPermanent(g, necropotenceOracle, "Necropotence", me.ID)
+	pushLibraryTopForTest(me, "Needle")
+	seedExileOrderProbes(g, me.ID)
+	if err := g.ActivateCatalogAbility(me.ID, necro, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the exile did not ask for an order")
+	}
+	return g
+}
+
+// corpusPreordainScry is Preordain's scry 2 waiting, its "then draw a
+// card" a keyed tail on the prompt (#4253 slice 3).
+func corpusPreordainScry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	castCatalogSpell(t, g, "Preordain", "Sorcery", preordainOracle, nil)
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceScry) == nil {
+		t.Fatal("setup: Preordain did not scry")
+	}
+	return g
 }
 
 // corpusCounterOrder is a +1/+1 counter paused on the ordering prompt

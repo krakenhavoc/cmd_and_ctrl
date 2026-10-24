@@ -293,6 +293,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownPayUnlessElse(c.PickThen) {
 				unknown = append(unknown, "pay-unless branches "+c.PickThen)
 			}
+		case isScryOrSurveil(c.Kind):
+			// #4253 slice 3: a look-at's keyed "then".
+			if c.ScryThen == nil || c.ScryThen.Key != c.PickThen || !KnownTail(c.PickThen) {
+				unknown = append(unknown, "look-at continuation "+c.PickThen)
+			}
 		case c.Kind == PendingChoiceConfirm:
 			// #4264: a keyed confirm's answer.
 			if !KnownConfirmThen(c.PickThen) {

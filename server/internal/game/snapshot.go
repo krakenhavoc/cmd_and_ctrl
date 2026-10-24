@@ -517,6 +517,12 @@ type GameSnapshot struct {
 	ReplacementSerials    []replacementSerialSnapshot `json:"replacementSerials,omitempty"`
 	NextReplacementSerial int                         `json:"nextReplacementSerial,omitempty"`
 
+	// EnteringTokens is Game.enteringTokens (#4253 slice 3): the created
+	// tokens staged for their battlefield entry, which are in no zone.
+	// Written only beside a keyed CR 616 frame, whose token entry needs
+	// them. Additive within the version.
+	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -1911,6 +1917,13 @@ type pendingChoiceSnapshot struct {
 	// from before it refuses the file. Additive within the version.
 	ReplacementResume *replacementResumeSnapshot `json:"replacementResume,omitempty"`
 
+	// ScryThen is PendingChoice.scryThen (#4253 slice 3): a scry's or a
+	// surveil's keyed "then". Its key also rides PickThen, so a binary
+	// from before it, which reads a PickThen it does not know as a
+	// revealed-hand pick's, refuses the file instead of restoring the
+	// prompt without the rest of its card. Additive within the version.
+	ScryThen *keyedTailSnapshot `json:"scryThen,omitempty"`
+
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
 	ResumeFrames []string `json:"resumeFrames,omitempty"`
@@ -2326,6 +2339,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			key := g.replacementFrameKeyable(c)
 			pc := snapshotPendingChoiceFrame(c, cen, key != "")
+			if t := snapshotKeyedTail(c.scryThen); t != nil && (c.Kind == PendingChoiceScry || c.Kind == PendingChoiceSurveil) {
+				// #4253 slice 3: the look-at's keyed "then".
+				pc.ScryThen, pc.PickThen = t, t.Key
+			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
 				pc.ReplacementResume = g.snapshotReplacementResume(c.replacementResume, cen)
@@ -2336,6 +2353,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
+			for _, c := range g.enteringTokens {
+				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
+			}
 		}
 	}
 	// #3665: a combat damage step's damage held behind its
@@ -3467,7 +3487,19 @@ func (s *GameSnapshot) restoreGame() *Game {
 
 	// #4253: the keyed CR 616 frames, rebuilt last because the gather
 	// that finds their effects again reads the whole restored board.
+	for i := range s.PendingChoices {
+		// #4253 slice 3: a look-at's keyed "then", whose key rode PickThen.
+		if t := s.PendingChoices[i].ScryThen; t != nil && isScryOrSurveil(s.PendingChoices[i].Kind) {
+			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
+			g.PendingChoices[i].PickThen = ""
+		}
+	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)
+	for i := range s.EnteringTokens {
+		// #4253 slice 3: before the frames, whose gather reads a staged
+		// token's entry off them.
+		g.enteringTokens = append(g.enteringTokens, restoreCard(&s.EnteringTokens[i]))
+	}
 	for i := range s.PendingChoices {
 		rs := s.PendingChoices[i].ReplacementResume
 		if rs == nil || !keyedReplacementPromptKind(s.PendingChoices[i].Kind) {

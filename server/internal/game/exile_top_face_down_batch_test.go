@@ -205,10 +205,12 @@ func TestExileTopFaceDownBatchReplaysAfterAnUndoIntoThePrompt(t *testing.T) {
 	}
 }
 
-// The table is the restore point it was: an ordering prompt holds a
-// continuation (the snapshot census counts it), so it is not one while the
-// prompt is open and the fix must not change that; once the batch has
-// finished, it is, and a restored table has the three cards face down.
+// Once the batch has finished the table is a restore point, and a restored
+// table has the three cards face down. While the prompt is open it is not,
+// here, only because its replacements are test-injected (a restore could not
+// gather them): #4253 slice 3 made the batch's continuation data, and
+// TestAFaceDownExileBatchIsARestorePointMidBatch (effects) restores a table
+// paused the same way over catalog replacements.
 func TestExileTopFaceDownBatchLeavesARestorePointOnceItIsDone(t *testing.T) {
 	g, me, ids := exileTopTable(t, 8, 0)
 	exileTopFaceDown(t, g, me, 3)

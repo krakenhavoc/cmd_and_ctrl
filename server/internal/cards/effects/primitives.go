@@ -1681,12 +1681,21 @@ type Scry struct {
 	// unanswerable, because the drawn card is no longer in the library
 	// for the reorder to put back.
 	Then func(g *game.Game) error
+
+	// ThenTail is Then as data (#4253 slice 3): a registered tail
+	// (game.RegisterTail), so the scry prompt is a restore point. Set
+	// Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (s Scry) Apply(ctx *Context) error {
 	player := s.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
+	}
+	if s.Then == nil && !s.ThenTail.IsZero() {
+		ctx.Game.ScryKeyedForEffect(player, ctx.Source(), s.N, s.ThenTail)
+		return nil
 	}
 	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
 	return nil
@@ -1724,6 +1733,9 @@ type Surveil struct {
 	// chosen — and also leaves the prompt unanswerable, because the
 	// drawn card is no longer in the library to put back.
 	Then func(g *game.Game) error
+
+	// ThenTail is Then as data, as Scry.ThenTail.
+	ThenTail game.KeyedTail
 }
 
 func (s Surveil) Apply(ctx *Context) error {
@@ -1731,9 +1743,19 @@ func (s Surveil) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
+	if s.Then == nil && !s.ThenTail.IsZero() {
+		ctx.Game.SurveilKeyedForEffect(player, ctx.Source(), s.N, s.ThenTail)
+		return nil
+	}
 	ctx.Game.SurveilThenForEffect(player, ctx.Source(), s.N, s.Then)
 	return nil
 }
+
+// thenDrawACard is "then draw a card" after a look-at (Opt, Preordain,
+// Consider): Tail.Player draws one. An on-disk key (#4253 slice 3).
+var thenDrawACard = game.RegisterTail("then/draw-a-card", func(g *game.Game, o game.TailOutcome) error {
+	return g.DrawNForEffect(o.Tail.Player, 1)
+})
 
 // LookAtTop is "look at the top N cards of your library, then put
 // them back in any order" — Ponder, Sensei's Divining Top,
@@ -2048,12 +2070,49 @@ type ExileTopFaceDown struct {
 	// the moment anything else exiled a card during the same resolution, so
 	// the cards come from the batch, not the zone.
 	Then func(ctx *Context, exiled []uuid.UUID) error
+
+	// ThenTail is Then as data (#4253 slice 3): a registered tail
+	// (ExileTopFaceDownThen), told the cards that landed as
+	// TailOutcome.IDs. A leg's prompt is then a restore point. Set Then
+	// or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
+}
+
+// ExileTopFaceDownThen registers a keyed ExileTopFaceDown.ThenTail body
+// under `key`, an on-disk identity (never renamed, never reused,
+// ledgered "tail <key>"). The body runs against a Context bound to a
+// stand-in for the exiling item: its controller and its source card.
+// Call it once, from a package-level var, and pass the result as
+// ExileTopFaceDown.ThenTail.Ref.
+func ExileTopFaceDownThen(key string, body func(ctx *Context, exiled []uuid.UUID) error) game.TailRef {
+	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
+		return body(keyedContext(g, o.Tail.Player, o.Tail.Source), o.IDs)
+	})
+}
+
+// thenTail is ThenTail with the exiling item's controller and source
+// filled in where the card left them zero.
+func (e ExileTopFaceDown) thenTail(ctx *Context) game.KeyedTail {
+	t := e.ThenTail
+	if t.IsZero() {
+		return t
+	}
+	if t.Player == uuid.Nil {
+		t.Player = ctx.Controller()
+	}
+	if t.Source == uuid.Nil {
+		t.Source = ctx.Source()
+	}
+	return t
 }
 
 func (e ExileTopFaceDown) Apply(ctx *Context) error {
 	if e.N <= 0 {
 		if e.Then != nil {
 			return e.Then(ctx, nil)
+		}
+		if !e.ThenTail.IsZero() {
+			return e.thenTail(ctx).Run(ctx.Game, nil)
 		}
 		return nil
 	}
@@ -2062,7 +2121,7 @@ func (e ExileTopFaceDown) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	if e.Then == nil {
-		return ctx.Game.ExileTopFaceDownThenForEffect(player, e.N, nil)
+		return ctx.Game.ExileTopFaceDownKeyedForEffect(player, e.N, e.thenTail(ctx))
 	}
 	// The context is rebuilt inside the continuation from the live *Game,
 	// the contract massEffect.apply explains: an undo restores this game's

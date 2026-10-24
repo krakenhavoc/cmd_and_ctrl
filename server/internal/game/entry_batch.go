@@ -97,7 +97,18 @@ type entryBatch struct {
 	// then is the caller's continuation, run exactly once when the
 	// batch reaches its end. Cleared as it runs.
 	then func(g *Game, entered []uuid.UUID) error
-	opts ZoneEntryOptions
+	// keyed is `then` as data (#4253 slice 3): a registered tail, told
+	// the permanents that entered as TailOutcome.IDs. Set one or neither.
+	keyed KeyedTail
+	opts  ZoneEntryOptions
+	// done and landed are set as the batch finishes: what entered. A
+	// synchronous door reads them on its next line instead of handing
+	// the batch a closure over a local (putOntoBattlefieldFromZoneLocked),
+	// so a batch paused on a question holds no closure. A batch that
+	// paused returns before it is done, and the door reports nothing, as
+	// it always did.
+	done   bool
+	landed []uuid.UUID
 }
 
 // entryBatchMember is one card of an entryBatch.
@@ -539,11 +550,14 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) error {
-	then := b.then
-	b.then = nil
+	then, keyed := b.then, b.keyed
+	b.then, b.keyed = nil, KeyedTail{}
+	b.done, b.landed = true, entered
 	var thenErr error
 	if then != nil {
 		thenErr = then(g, entered)
+	} else {
+		thenErr = g.runKeyedTailLocked(keyed, entered, 0)
 	}
 	if b.firstErr != nil {
 		return b.firstErr

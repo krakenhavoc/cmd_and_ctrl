@@ -86,6 +86,18 @@ const (
 	ReplacementResumeMove          = "replacement-resume/move"
 	ReplacementResumeCounter       = "replacement-resume/counter"
 	ReplacementResumeLife          = "replacement-resume/life"
+	// #4253 slice 3: a token creation instruction (CR 701.7a).
+	ReplacementResumeCreateTokens = "replacement-resume/create-tokens"
+
+	// #4253 slice 3: the same event kinds when the event carries a tail
+	// that is data (eventCarriesDataTail). A separate key so that a
+	// binary from before the tail was carried, which would silently drop
+	// the JSON field it does not know and restore the prompt without the
+	// rest of its effect, refuses the file instead (ErrUnknownEffectKey).
+	ReplacementResumeMoveTail          = "replacement-resume/move-tail"
+	ReplacementResumeCounterTail       = "replacement-resume/counter-tail"
+	ReplacementResumeLifeTail          = "replacement-resume/life-tail"
+	ReplacementResumeKeywordActionTail = "replacement-resume/keyword-action-tail"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -97,6 +109,63 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeMove:          RepEventMove,
 	ReplacementResumeCounter:       RepEventCounter,
 	ReplacementResumeLife:          RepEventLife,
+	ReplacementResumeCreateTokens:  RepEventCreateTokens,
+
+	ReplacementResumeMoveTail:          RepEventMove,
+	ReplacementResumeCounterTail:       RepEventCounter,
+	ReplacementResumeLifeTail:          RepEventLife,
+	ReplacementResumeKeywordActionTail: RepEventKeywordAction,
+}
+
+// replacementResumeBaseKeys is the key a frame of each kind is written
+// under, and replacementResumeTailedKeys the key when its event carries
+// a data tail.
+var (
+	replacementResumeBaseKeys = map[ReplacementEventKind]string{
+		RepEventDraw:          ReplacementResumeDraw,
+		RepEventKeywordAction: ReplacementResumeKeywordAction,
+		RepEventMove:          ReplacementResumeMove,
+		RepEventCounter:       ReplacementResumeCounter,
+		RepEventLife:          ReplacementResumeLife,
+		RepEventCreateTokens:  ReplacementResumeCreateTokens,
+	}
+	replacementResumeTailedKeys = map[ReplacementEventKind]string{
+		RepEventMove:          ReplacementResumeMoveTail,
+		RepEventCounter:       ReplacementResumeCounterTail,
+		RepEventLife:          ReplacementResumeLifeTail,
+		RepEventKeywordAction: ReplacementResumeKeywordActionTail,
+		// A token creation's key is new with its tail.
+		RepEventCreateTokens: ReplacementResumeCreateTokens,
+	}
+)
+
+// eventCarriesDataTail reports whether a keyable event carries a tail
+// written as data (#4253 slice 3), so its frame takes the tailed key.
+func eventCarriesDataTail(ev *ReplacementEvent) bool {
+	if t := ev.entryTail; t != nil && (t.search != nil || t.batch != nil || t.tokens != nil) {
+		return true
+	}
+	if r := ev.zoneRoute; r != nil && r.faceDownLegs != nil {
+		return true
+	}
+	if t := ev.keywordAction; t != nil && !t.keyed.IsZero() {
+		return true
+	}
+	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil
+}
+
+// snapshotCarriesDataTail is eventCarriesDataTail over the mirror.
+func snapshotCarriesDataTail(ev *replacementEventSnapshot) bool {
+	if t := ev.EntryTail; t != nil && (t.Search != nil || t.Batch != nil || t.Tokens != nil) {
+		return true
+	}
+	if r := ev.ZoneRoute; r != nil && r.FaceDownLegs != nil {
+		return true
+	}
+	if t := ev.KeywordActionTail; t != nil && t.Then != nil {
+		return true
+	}
+	return ev.CounterTail != nil || ev.LifeTail != nil || ev.TokenTail != nil
 }
 
 // KnownReplacementResume reports whether key names a registered tail.
@@ -107,12 +176,7 @@ func KnownReplacementResume(key string) bool {
 
 // replacementResumeKeyFor is the tail key for an event kind, or "".
 func replacementResumeKeyFor(kind ReplacementEventKind) string {
-	for k, v := range replacementResumeTails {
-		if v == kind {
-			return k
-		}
-	}
-	return ""
+	return replacementResumeBaseKeys[kind]
 }
 
 // keyedReplacementPromptKind reports whether a prompt of this kind
@@ -183,6 +247,7 @@ func registeredReplacementResumeKeys() []string {
 		out = append(out, "keywordinstead "+k)
 	}
 	keywordInsteadMu.RUnlock()
+	out = append(out, registeredTailKeys()...)
 	sort.Strings(out)
 	return out
 }
@@ -315,41 +380,49 @@ var replacementEventFields = map[string]replacementEventField{
 	"LifePlayer":                 repFieldCarried,
 	"LifeDelta":                  repFieldCarried,
 	"LifeFromRadiation":          repFieldCarried,
+	// #4253 slice 3: a tail's data half — a keyed continuation, or a
+	// lose-life batch's remaining players — is carried; a closure gates
+	// (replacementEventKeyable).
+	"counterTail": repFieldCarried,
+	"lifeTail":    repFieldCarried,
+
+	// A token creation (#4253 slice 3). Its tail's data half — a keyed
+	// continuation — is carried; a closure `then` gates
+	// (replacementFrameKeyable), and so does a template the card mirror
+	// cannot write whole.
+	"TokenController":         repFieldCarried,
+	"TokenGroups":             repFieldCarried,
+	"TokenAttacking":          repFieldCarried,
+	"TokenTogether":           repFieldCarried,
+	"TokenAttackChoicesLabel": repFieldCarried,
+	"tokenTail":               repFieldCarried, // its data half; see replacementEventKeyable
 
 	// The event kinds this file does not key.
-	"ManaPlayer":              repFieldGate,
-	"ManaSource":              repFieldGate,
-	"ManaColors":              repFieldGate,
-	"ManaFromTap":             repFieldGate,
-	"DiscardPlayer":           repFieldGate,
-	"DiscardCause":            repFieldGate,
-	"DiscardCauseController":  repFieldGate,
-	"TokenController":         repFieldGate,
-	"TokenGroups":             repFieldGate,
-	"TokenAttacking":          repFieldGate,
-	"TokenTogether":           repFieldGate,
-	"TokenAttackChoicesLabel": repFieldGate,
-	"tokenTail":               repFieldGate,
-	"MillPlayer":              repFieldGate,
-	"MillCount":               repFieldGate,
-	"mill":                    repFieldGate,
-	"counterTail":             repFieldGate,
-	"lifeTail":                repFieldGate,
-	"DamageSource":            repFieldGate,
-	"DamageTarget":            repFieldGate,
-	"DamageAmount":            repFieldGate,
-	"IsCombatDamage":          repFieldGate,
-	"DamageInstance":          repFieldGate,
-	"SourceLKI":               repFieldGate,
-	"damageTail":              repFieldGate,
-	"StepTransitionStep":      repFieldGate,
-	"StepTransitionSeat":      repFieldGate,
-	"ExtraTurnSeat":           repFieldGate,
-	"ExtraTurnRef":            repFieldGate,
-	"CounterSpellID":          repFieldGate,
-	"CounterBy":               repFieldGate,
-	"CounterBySource":         repFieldGate,
-	"counterInstead":          repFieldGate,
+	"ManaPlayer":             repFieldGate,
+	"ManaSource":             repFieldGate,
+	"ManaColors":             repFieldGate,
+	"ManaFromTap":            repFieldGate,
+	"DiscardPlayer":          repFieldGate,
+	"DiscardCause":           repFieldGate,
+	"DiscardCauseController": repFieldGate,
+	"MillPlayer":             repFieldGate,
+	"MillCount":              repFieldGate,
+	"mill":                   repFieldGate,
+	"DamageSource":           repFieldGate,
+	"DamageTarget":           repFieldGate,
+	"DamageAmount":           repFieldGate,
+	"IsCombatDamage":         repFieldGate,
+	"DamageInstance":         repFieldGate,
+	"SourceLKI":              repFieldGate,
+	"damageTail":             repFieldGate,
+	"StepTransitionStep":     repFieldGate,
+	"StepTransitionSeat":     repFieldGate,
+	"ExtraTurnSeat":          repFieldGate,
+	"ExtraTurnRef":           repFieldGate,
+	"CounterSpellID":         repFieldGate,
+	"CounterBy":              repFieldGate,
+	"CounterBySource":        repFieldGate,
+	"counterInstead":         repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is
@@ -386,35 +459,11 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	}
 	ev := f.ev
 	key := replacementResumeKeyFor(ev.Kind)
-	if key == "" || !replacementEventGatesClear(ev) {
+	if key == "" || !g.replacementEventKeyable(ev) {
 		return ""
 	}
-	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil || t.armySubtype != "" ||
-		!reflect.ValueOf(t.armyToken).IsZero()) {
-		return ""
-	}
-	if ev.CardID != uuid.Nil {
-		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
-			// A created token's entry: the token is in no zone, only in
-			// Game.enteringTokens, which a restore point does not carry.
-			return ""
-		}
-	}
-	if r := ev.zoneRoute; r != nil && (r.then != nil || len(r.simultaneousExit) > 0 || r.simultaneousEntry != nil) {
-		return ""
-	}
-	if t := ev.entryTail; t != nil && (t.then != nil || t.batch != nil) {
-		return ""
-	}
-	if ev.stackItem != nil {
-		// The resolving spell a permanent's entry carries. Written with
-		// the frame through the stack-item mirror; one the mirror cannot
-		// carry whole keeps the frame off the disk.
-		var scratch ContinuationCensus
-		_ = snapshotStackItem(g, ev.stackItem, &scratch)
-		if !scratch.Empty() {
-			return ""
-		}
+	if eventCarriesDataTail(ev) {
+		key = replacementResumeTailedKeys[ev.Kind]
 	}
 	for _, a := range f.applicable {
 		if a.id >= testReplacementIDBase && a.id < builtinReplacementIDBase {
@@ -424,6 +473,74 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 		}
 	}
 	return key
+}
+
+// replacementEventKeyable reports whether an event, its tail included,
+// is data: every gate field clear and no tail holding a closure. A
+// paused simultaneous entry's settled member events are checked the same
+// way (entryBatchKeyable).
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
+	if !replacementEventGatesClear(ev) {
+		return false
+	}
+	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil || t.armySubtype != "" ||
+		!reflect.ValueOf(t.armyToken).IsZero()) {
+		return false
+	}
+	if ev.CardID != uuid.Nil {
+		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
+			// A created token's entry: the token is in no zone, only in
+			// Game.enteringTokens. #4253 slice 3: that is written with a
+			// keyed frame (GameSnapshot.EnteringTokens), so the entry is
+			// data when the rest of its batch is (entryTail.tokens) and
+			// every staged token is written whole.
+			if ev.entryTail == nil || ev.entryTail.tokens == nil || !g.stagedTokensAreData() {
+				return false
+			}
+		}
+	}
+	if t := ev.tokenTail; t != nil && t.then != nil {
+		return false
+	}
+	if t := ev.counterTail; t != nil && t.then != nil {
+		return false
+	}
+	if t := ev.lifeTail; t != nil && t.then != nil {
+		return false
+	}
+	for _, grp := range ev.TokenGroups {
+		var scratch ContinuationCensus
+		_ = snapshotCard(grp.Template, &scratch)
+		if !scratch.Empty() {
+			return false
+		}
+	}
+	if r := ev.zoneRoute; r != nil && (r.then != nil || len(r.simultaneousExit) > 0 || r.simultaneousEntry != nil) {
+		return false
+	}
+	if t := ev.entryTail; t != nil {
+		if t.then != nil {
+			return false
+		}
+		if t.batch != nil && !g.entryBatchKeyable(t.batch) {
+			// #4253 slice 3: a simultaneous entry is data when its
+			// continuation is and its settled members are.
+			return false
+		}
+	}
+	if ev.stackItem != nil {
+		// The resolving spell a permanent's entry carries. Written with
+		// the frame through the stack-item mirror; one the mirror cannot
+		// carry whole keeps the frame off the disk.
+		var scratch ContinuationCensus
+		_ = snapshotStackItem(g, ev.stackItem, &scratch)
+		if !scratch.Empty() {
+			return false
+		}
+	}
+	return true
 }
 
 // --- the mirror -------------------------------------------------------
@@ -519,6 +636,49 @@ type replacementEventSnapshot struct {
 	LifePlayer                 *uuid.UUID                 `json:"lifePlayer,omitempty"`
 	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
 	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
+
+	// #4253 slice 3: a token creation instruction.
+	TokenController         *uuid.UUID           `json:"tokenController,omitempty"`
+	TokenGroups             []tokenGroupSnapshot `json:"tokenGroups,omitempty"`
+	TokenAttacking          *uuid.UUID           `json:"tokenAttacking,omitempty"`
+	TokenTogether           bool                 `json:"tokenTogether,omitempty"`
+	TokenAttackChoicesLabel string               `json:"tokenAttackChoicesLabel,omitempty"`
+	TokenTail               *tokenTailSnapshot   `json:"tokenTail,omitempty"`
+	// A counter placement's and a life change's tail, as data.
+	CounterTail *counterTailSnapshot `json:"counterTail,omitempty"`
+	LifeTail    *lifeTailSnapshot    `json:"lifeTail,omitempty"`
+}
+
+// counterTailSnapshot is a counterTail's data half, present exactly when
+// the event had a tail.
+type counterTailSnapshot struct {
+	Then *keyedTailSnapshot `json:"then,omitempty"`
+}
+
+// lifeTailSnapshot is a lifeTail's data half, present exactly when the
+// event had a tail.
+type lifeTailSnapshot struct {
+	Then *keyedTailSnapshot `json:"then,omitempty"`
+	Each *lifeEachRun       `json:"each,omitempty"`
+}
+
+// tokenGroupSnapshot is a TokenGroup: its template through the card
+// mirror.
+type tokenGroupSnapshot struct {
+	Template       cardSnapshot       `json:"template"`
+	Count          int                `json:"count"`
+	Entry          tokenEntrySnapshot `json:"entry"`
+	Attacking      *uuid.UUID         `json:"attacking,omitempty"`
+	AttackOpponent *uuid.UUID         `json:"attackOpponent,omitempty"`
+	CreatedWith    PermissionCardRef  `json:"createdWith"`
+	Blocking       *uuid.UUID         `json:"blocking,omitempty"`
+}
+
+// tokenTailSnapshot is a tokenTail's data half: present exactly when the
+// event had a tail. A tail with a closure is never written; a
+// synchronous door's result is not either.
+type tokenTailSnapshot struct {
+	Then *keyedTailSnapshot `json:"then,omitempty"`
 }
 
 // keywordActionTailSnapshot is a keywordActionTail's data half: a tail
@@ -530,6 +690,8 @@ type keywordActionTailSnapshot struct {
 	Ask     bool              `json:"ask,omitempty"`
 	Choice  PendingChoiceKind `json:"choice,omitempty"`
 	Land    *uuid.UUID        `json:"land,omitempty"`
+	// #4253 slice 3: a keyed "then" (Preordain's draw).
+	Then *keyedTailSnapshot `json:"then,omitempty"`
 }
 
 // pendingDrawSnapshot is a pendingDraw: an expanded draw's sibling.
@@ -560,6 +722,12 @@ type entryTailSnapshot struct {
 	NewObject   bool        `json:"newObject,omitempty"`
 	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
 	BatchIndex  int         `json:"batchIndex,omitempty"`
+	// #4253 slice 3: a library search's remaining work, the
+	// simultaneous entry this event is one card of, and a token batch's
+	// remaining entries.
+	Search *searchEntryRun     `json:"search,omitempty"`
+	Batch  *entryBatchSnapshot `json:"batch,omitempty"`
+	Tokens *tokenEntryRun      `json:"tokens,omitempty"`
 }
 
 // zoneRouteSnapshot is a zoneRoute's data half: a route with a `then`,
@@ -591,6 +759,8 @@ type zoneRouteSnapshot struct {
 	StateBased          bool                `json:"stateBased,omitempty"`
 	AsCommander         bool                `json:"asCommander,omitempty"`
 	CommanderAnswer     commanderZoneAnswer `json:"commanderAnswer,omitempty"`
+	// #4253 slice 3: one leg of a face-down exile batch.
+	FaceDownLegs *faceDownExileRun `json:"faceDownLegs,omitempty"`
 }
 
 // moveLifeSnapshot is a lifeInstruction (ADR 0178).
@@ -714,11 +884,32 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LifePlayer:                 uuidPtrOrNil(ev.LifePlayer),
 		LifeDelta:                  ev.LifeDelta,
 		LifeFromRadiation:          ev.LifeFromRadiation,
+
+		TokenController:         uuidPtrOrNil(ev.TokenController),
+		TokenAttacking:          uuidPtrOrNil(ev.TokenAttacking),
+		TokenTogether:           ev.TokenTogether,
+		TokenAttackChoicesLabel: ev.TokenAttackChoicesLabel,
+	}
+	for _, grp := range ev.TokenGroups {
+		out.TokenGroups = append(out.TokenGroups, tokenGroupSnapshot{
+			Template: snapshotCard(grp.Template, cen), Count: grp.Count, Entry: snapshotTokenEntry(grp.Entry),
+			Attacking: uuidPtrOrNil(grp.Attacking), AttackOpponent: uuidPtrOrNil(grp.AttackOpponent),
+			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking),
+		})
+	}
+	if t := ev.tokenTail; t != nil {
+		out.TokenTail = &tokenTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
+	}
+	if t := ev.counterTail; t != nil {
+		out.CounterTail = &counterTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
+	}
+	if t := ev.lifeTail; t != nil {
+		out.LifeTail = &lifeTailSnapshot{Then: snapshotKeyedTail(t.keyed), Each: cloneLifeEachRun(t.each)}
 	}
 	if t := ev.keywordAction; t != nil {
 		out.KeywordActionTail = &keywordActionTailSnapshot{
 			Cards: copyUUIDs(t.cards), Players: copyUUIDs(t.players), Ask: t.ask, Choice: t.choice,
-			Land: uuidPtrOrNil(t.land),
+			Land: uuidPtrOrNil(t.land), Then: snapshotKeyedTail(t.keyed),
 		}
 	}
 	for _, p := range ev.drawPending {
@@ -748,6 +939,10 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 	if t := ev.entryTail; t != nil {
 		out.EntryTail = &entryTailSnapshot{
 			NewObject: t.newObject, CraftedWith: append([]ObjectRef(nil), t.craftedWith...), BatchIndex: t.batchIndex,
+			Search: cloneSearchEntryRun(t.search), Tokens: cloneTokenEntryRun(t.tokens),
+		}
+		if t.batch != nil {
+			out.EntryTail.Batch = g.snapshotEntryBatch(t.batch, cen)
 		}
 	}
 	if r := ev.zoneRoute; r != nil {
@@ -760,7 +955,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 			CauseKind: r.Cause.Kind, CauseController: uuidPtrOrNil(r.Cause.Controller), CauseItem: uuidPtrOrNil(r.Cause.Item),
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
-			CommanderAnswer: r.commanderAnswer,
+			CommanderAnswer: r.commanderAnswer, FaceDownLegs: cloneFaceDownExileRun(r.faceDownLegs),
 		}
 		if r.ExiledWithAbility != (AbilityRef{}) {
 			a := r.ExiledWithAbility
@@ -838,11 +1033,33 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		LifePlayer:                 uuidOrNil(s.LifePlayer),
 		LifeDelta:                  s.LifeDelta,
 		LifeFromRadiation:          s.LifeFromRadiation,
+
+		TokenController:         uuidOrNil(s.TokenController),
+		TokenAttacking:          uuidOrNil(s.TokenAttacking),
+		TokenTogether:           s.TokenTogether,
+		TokenAttackChoicesLabel: s.TokenAttackChoicesLabel,
+	}
+	for i := range s.TokenGroups {
+		grp := &s.TokenGroups[i]
+		ev.TokenGroups = append(ev.TokenGroups, TokenGroup{
+			Template: restoreCard(&grp.Template), Count: grp.Count, Entry: grp.Entry.options(),
+			Attacking: uuidOrNil(grp.Attacking), AttackOpponent: uuidOrNil(grp.AttackOpponent),
+			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking),
+		})
+	}
+	if t := s.TokenTail; t != nil {
+		ev.tokenTail = &tokenTail{keyed: restoreKeyedTail(t.Then)}
+	}
+	if t := s.CounterTail; t != nil {
+		ev.counterTail = &counterTail{keyed: restoreKeyedTail(t.Then)}
+	}
+	if t := s.LifeTail; t != nil {
+		ev.lifeTail = &lifeTail{keyed: restoreKeyedTail(t.Then), each: cloneLifeEachRun(t.Each)}
 	}
 	if t := s.KeywordActionTail; t != nil {
 		ev.keywordAction = &keywordActionTail{
 			cards: copyUUIDs(t.Cards), players: copyUUIDs(t.Players), ask: t.Ask, choice: t.Choice,
-			land: uuidOrNil(t.Land),
+			land: uuidOrNil(t.Land), keyed: restoreKeyedTail(t.Then),
 		}
 	}
 	for _, p := range s.DrawPending {
@@ -871,7 +1088,10 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.stackItem, _ = restoreStackItem(s.StackItem)
 	}
 	if t := s.EntryTail; t != nil {
-		ev.entryTail = &entryTail{newObject: t.NewObject, craftedWith: append([]ObjectRef(nil), t.CraftedWith...), batchIndex: t.BatchIndex}
+		ev.entryTail = &entryTail{
+			newObject: t.NewObject, craftedWith: append([]ObjectRef(nil), t.CraftedWith...), batchIndex: t.BatchIndex,
+			search: cloneSearchEntryRun(t.Search), batch: restoreEntryBatch(t.Batch), tokens: cloneTokenEntryRun(t.Tokens),
+		}
 	}
 	if r := s.ZoneRoute; r != nil {
 		ev.zoneRoute = &zoneRoute{
@@ -883,7 +1103,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 			Cause:     MoveCause{Kind: r.CauseKind, Controller: uuidOrNil(r.CauseController), Item: uuidOrNil(r.CauseItem)},
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
-			commanderAnswer: r.CommanderAnswer,
+			commanderAnswer: r.CommanderAnswer, faceDownLegs: cloneFaceDownExileRun(r.FaceDownLegs),
 		}
 		if r.ExiledWithAbility != nil {
 			ev.zoneRoute.ExiledWithAbility = *r.ExiledWithAbility
@@ -911,24 +1131,58 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
 	case f.Event.Kind != kind:
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
+	case snapshotCarriesDataTail(&f.Event) && c.PickThen != replacementResumeTailedKeys[kind]:
+		// #4253 slice 3: a tail written as data under the key a binary
+		// that drops it would accept.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
 	}
 	if f == nil {
 		return unknown
 	}
-	if r := f.Event.DrawInstead; r != nil && !KnownDrawInstead(r.Key) {
+	return append(unknown, unknownReplacementEventKeys(&f.Event)...)
+}
+
+// unknownReplacementEventKeys is the event's half: the bodies, tails and
+// stack item it names.
+func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
+	var unknown []string
+	if r := ev.DrawInstead; r != nil && !KnownDrawInstead(r.Key) {
 		unknown = append(unknown, "draw-instead body "+r.Key)
 	}
-	if r := f.Event.KeywordInstead; r != nil && !KnownKeywordInstead(r.Key) {
+	if r := ev.KeywordInstead; r != nil && !KnownKeywordInstead(r.Key) {
 		unknown = append(unknown, "keyword-instead body "+r.Key)
 	}
-	if d := f.Event.DrawThen; d != nil && !KnownDrawThen(d.Key) {
+	if t := ev.EntryTail; t != nil {
+		unknown = append(unknown, unknownSearchEntryKeys(t.Search)...)
+		unknown = append(unknown, unknownEntryBatchKeys(t.Batch)...)
+		unknown = append(unknown, unknownTokenEntryKeys(t.Tokens)...)
+	}
+	if t := ev.TokenTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+	}
+	if r := ev.ZoneRoute; r != nil {
+		unknown = append(unknown, unknownFaceDownExileKeys(r.FaceDownLegs)...)
+	}
+	if t := ev.CounterTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+	}
+	if t := ev.LifeTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+		if t.Each != nil {
+			unknown = append(unknown, unknownKeyedTail(t.Each.Then)...)
+		}
+	}
+	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)
 	}
-	if t := f.Event.KeywordActionTail; t != nil && t.Choice != "" && !KnownChoiceKind(t.Choice) {
+	if t := ev.KeywordActionTail; t != nil && t.Choice != "" && !KnownChoiceKind(t.Choice) {
 		// The prompt a settled scry or surveil queues.
 		unknown = append(unknown, "keyword-action prompt kind "+string(t.Choice))
 	}
-	if it := f.Event.StackItem; it != nil {
+	if t := ev.KeywordActionTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+	}
+	if it := ev.StackItem; it != nil {
 		if it.Body != "" && !KnownEffectBody(it.Body) {
 			unknown = append(unknown, "stack-item body "+it.Body)
 		}

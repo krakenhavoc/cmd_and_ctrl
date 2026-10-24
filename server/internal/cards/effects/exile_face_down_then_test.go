@@ -141,13 +141,14 @@ func TestNecropotenceOrderingPromptReplaysAfterAnUndo(t *testing.T) {
 }
 
 // A restore point taken once the answer is in holds the scheduled delivery:
-// the restored table delivers the card at the end step. (While the prompt is
-// open the table is not a restore point, the same as any prompt that holds a
-// continuation.)
+// the restored table delivers the card at the end step. #4253 slice 3: the
+// open prompt is a restore point too, once its replacements are catalog rows
+// (keyedExileOrderPaused); here they are test-injected, which a restore point
+// cannot carry, and only that keeps this table off the disk.
 func TestNecropotenceDeliveryScheduledFromAPromptSurvivesARestore(t *testing.T) {
 	g, _, needle := necroPaused(t)
 	if g.CaptureSnapshot().Restorable() {
-		t.Fatal("a table with an ordering prompt open is a restore point: the census no longer counts it")
+		t.Fatal("a prompt over test-injected replacements is a restore point: the restored binary could not gather them")
 	}
 	answerExileOrder(t, g)
 

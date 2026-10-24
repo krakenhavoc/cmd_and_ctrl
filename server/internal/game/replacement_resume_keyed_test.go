@@ -52,6 +52,7 @@ func keyedFrameSample() *ReplacementEvent {
 		KeywordAction:  KeywordActionLearn, KeywordActionCount: 1,
 		keywordAction: &keywordActionTail{
 			cards: []uuid.UUID{id("kc")}, players: []uuid.UUID{id("kp")}, ask: true, choice: PendingChoiceScry, land: id("land"),
+			keyed: KeyedTail{Ref: TailRef{key: "kt"}, Player: id("ktp")},
 		},
 		CounterTarget: id("ct"), CounterName: CounterPlusOne, CounterDelta: 3, CounterPlayer: id("cp"),
 		StartingLoyalty: true, CounterPlacer: id("placer"), CounterFromCombatDamage: true, CounterFromCost: true,
@@ -70,8 +71,36 @@ func keyedFrameSample() *ReplacementEvent {
 		putByEntering:      true,
 		EntersWithCounters: map[string]int{CounterPlusOne: 2},
 		entryResumable:     true,
-		entryTail:          &entryTail{newObject: true, craftedWith: []ObjectRef{{ID: id("crafted"), Epoch: 1}}, batchIndex: 2},
-		landPlay:           true, landPlayer: id("lander"),
+		entryTail: &entryTail{
+			newObject: true, craftedWith: []ObjectRef{{ID: id("crafted"), Epoch: 1}}, batchIndex: 2,
+			// #4253 slice 3: a search's remaining work, a token batch's
+			// and a simultaneous entry, all as data.
+			search: &searchEntryRun{
+				Spec: searchTailSpec{
+					Player: id("searcher"), Source: id("search-src"), Dest: ZoneBattlefield, Limit: 2, Shuffle: true,
+					TappedOnEntry: true, EntersWithCounters: map[string]int{CounterPlusOne: 1},
+					EntersAttachedTo: &TargetRef{Kind: TargetCard, ID: id("search-host")},
+					ThenTail:         &keyedTailSnapshot{Key: "k", Player: uuidPtrOrNil(id("tp")), Carry: []uuid.UUID{id("tc")}, N: 3},
+					LibraryUntouched: true, ExileFoundFor: id("agent"),
+				},
+				Rest: []uuid.UUID{id("rest")}, Found: []uuid.UUID{id("found")},
+			},
+			tokens: &tokenEntryRun{
+				Token: id("tok"), Blocking: id("blocked"), Source: id("tok-src"),
+				Rest:    []tokenEntryStep{{ID: id("tok2"), Entry: tokenEntrySnapshot{Tapped: true, Counters: map[string]int{CounterPlusOne: 1}}}},
+				Created: []uuid.UUID{id("made")}, Then: &keyedTailSnapshot{Key: "tt"},
+			},
+			batch: &entryBatch{
+				source: id("batch-src"), next: 1, keyed: KeyedTail{Ref: TailRef{key: "bt"}, Player: id("bp"), Carry: []uuid.UUID{id("bc")}, N: 2},
+				opts: ZoneEntryOptions{Controller: id("bctl"), Tapped: true, EntersWithCounters: map[string]int{CounterPlusOne: 1}},
+				members: []entryBatchMember{
+					{cardID: id("m0"), from: ZoneLibrary, controller: id("bctl"), priorController: id("prior0"),
+						out: &ReplacementEvent{ID: 40, Kind: RepEventMove, CardID: id("m0"), OldZone: ZoneLibrary, NewZone: ZoneBattlefield, EntersTapped: true}},
+					{cardID: id("m1"), from: ZoneHand, controller: id("bctl")},
+				},
+			},
+		},
+		landPlay: true, landPlayer: id("lander"),
 		entryControllerSet: true, entryControllerPrior: id("prior"),
 		zoneRoute: &zoneRoute{
 			CardID: id("card"), Dst: ZoneHand, DstOwner: id("owner"), Actor: id("actor"), ToBottom: true, Depth: 2,
@@ -81,7 +110,21 @@ func keyedFrameSample() *ReplacementEvent {
 			Countered: true, Cause: MoveCause{Kind: MoveCauseKind("effect"), Controller: id("cc"), Item: id("ci")},
 			Sacrifice: true, ViaBattlefieldLeave: true, Destruction: true, CantBeRegenerated: true, StateBased: true,
 			AsCommander: true, commanderAnswer: commanderZoneAccept,
+			faceDownLegs: &faceDownExileRun{
+				Player: id("fdp"), Leg: id("fdl"), Rest: []uuid.UUID{id("fdr")}, Landed: []uuid.UUID{id("fdx")},
+				Then: &keyedTailSnapshot{Key: "fd"},
+			},
 		},
+		TokenController: id("tctl"), TokenAttacking: id("tatk"), TokenTogether: true, TokenAttackChoicesLabel: "split",
+		TokenGroups: []TokenGroup{{
+			Template: Card{Name: "Treasure"}, Count: 2, Entry: TokenEntryOptions{Tapped: true},
+			Attacking: id("gatk"), AttackOpponent: id("gopp"), CreatedWith: PermissionCardRef{ID: id("cw"), Epoch: 1}, Blocking: id("gblk"),
+		}},
+		tokenTail:   &tokenTail{keyed: KeyedTail{Ref: TailRef{key: "tk"}, Source: id("tks")}},
+		counterTail: &counterTail{keyed: KeyedTail{Ref: TailRef{key: "ck"}, N: 1}},
+		lifeTail: &lifeTail{keyed: KeyedTail{Ref: TailRef{key: "lk"}}, each: &lifeEachRun{
+			Source: id("les"), Rest: []uuid.UUID{id("ler")}, Amount: 2, Lost: 1, Then: &keyedTailSnapshot{Key: "le"},
+		}},
 		lifeAfterMove:       []lifeInstruction{{Source: id("ls"), Player: id("lp"), Delta: -2}},
 		extraTurnsAfterMove: []extraTurnInstruction{{Source: id("xs"), Player: id("xp")}},
 		asCommanderMove:     true,
@@ -131,6 +174,13 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		t.Errorf("stack item %+v, want %+v", got.stackItem, ev.stackItem)
 	}
 	got.stackItem, ev.stackItem = nil, nil
+	// The token templates go through the card mirror, which has its own
+	// round-trip tests; here only that each one came back.
+	if len(got.TokenGroups) != 1 || got.TokenGroups[0].Template.Name != "Treasure" {
+		t.Errorf("token groups %+v", got.TokenGroups)
+	} else {
+		got.TokenGroups[0].Template = ev.TokenGroups[0].Template
+	}
 	if !reflect.DeepEqual(got, ev) {
 		t.Errorf("the event did not round-trip:\n got %+v\nwant %+v\nroute got %+v\nroute want %+v", got, ev, got.zoneRoute, ev.zoneRoute)
 	}
@@ -162,12 +212,45 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.Kind = PendingChoiceEntrySacrifice
 			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneBattlefield}
 		},
+		// #4253 slice 3: continuations that are data.
+		"a search's remaining work": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{search: &searchEntryRun{}}
+		},
+		"an entry batch with no continuation": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{}}
+		},
+		"an entry batch with a keyed continuation": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{keyed: KeyedTail{Ref: TailRef{key: "k"}}}}
+		},
+		"a token creation with a keyed continuation": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventCreateTokens
+			c.replacementResume.ev.TokenGroups = []TokenGroup{{Count: 1, Template: Card{Name: "Treasure"}}}
+			c.replacementResume.ev.tokenTail = &tokenTail{keyed: KeyedTail{Ref: TailRef{key: "k"}}}
+		},
+		"a keyed counter tail": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventCounter
+			c.replacementResume.ev.counterTail = &counterTail{keyed: KeyedTail{Ref: TailRef{key: "k"}}}
+		},
+		"a keyed life tail": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventLife
+			c.replacementResume.ev.lifeTail = &lifeTail{keyed: KeyedTail{Ref: TailRef{key: "k"}}}
+		},
+		"a lose-life batch as data": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventLife
+			c.replacementResume.ev.lifeTail = &lifeTail{each: &lifeEachRun{Amount: 2}}
+		},
+		"a staged token's entry with its batch as data": func(c *PendingChoice) {
+			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
+			c.replacementResume.ev.entryTail = &entryTail{tokens: &tokenEntryRun{}}
+			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID, Name: "Treasure"}}
+		},
 	} {
 		c := base()
 		mut(c)
 		if key := g.replacementFrameKeyable(c); key == "" {
 			t.Errorf("%s: the frame is not keyed", name)
 		}
+		g.enteringTokens = nil
 	}
 	for name, mut := range map[string]func(c *PendingChoice){
 		"a route's then": func(c *PendingChoice) {
@@ -176,11 +259,42 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"an entry tail's then": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
 		},
-		"an entry batch": func(c *PendingChoice) { c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{}} },
-		"a life tail":    func(c *PendingChoice) { c.replacementResume.ev.lifeTail = &lifeTail{} },
-		"a counter tail": func(c *PendingChoice) {
+		"an entry batch with a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{then: func(*Game, []uuid.UUID) error { return nil }}}
+		},
+		"an entry batch that has failed": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{firstErr: ErrInvalidParam}}
+		},
+		"an entry batch of tokens": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{token: true}}}}
+		},
+		"an entry batch whose settled member holds a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{
+				out: &ReplacementEvent{Kind: RepEventMove, zoneRoute: &zoneRoute{then: func(*Game) error { return nil }}},
+			}}}}
+		},
+		"a token creation with a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventCreateTokens
+			c.replacementResume.ev.tokenTail = &tokenTail{then: func(*Game, []uuid.UUID) error { return nil }}
+		},
+		"a token template the mirror cannot write": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventCreateTokens
+			c.replacementResume.ev.TokenGroups = []TokenGroup{{Count: 1, Template: Card{
+				Name: "Odd", ActivatedAbilities: []ActivatedAbilityShape{{}},
+			}}}
+		},
+		"a staged token's entry whose batch is a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
+			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
+			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}
+		},
+		"a life tail's closure": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventLife
+			c.replacementResume.ev.lifeTail = &lifeTail{then: func(*Game, int) error { return nil }}
+		},
+		"a counter tail's closure": func(c *PendingChoice) {
 			c.replacementResume.ev.Kind = RepEventCounter
-			c.replacementResume.ev.counterTail = &counterTail{}
+			c.replacementResume.ev.counterTail = &counterTail{then: func(*Game, int) error { return nil }}
 		},
 		"a keyword action's then": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{then: func(*Game) error { return nil }}
@@ -289,6 +403,20 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 		"a counter tail over a move": func(c *pendingChoiceSnapshot) { c.PickThen = ReplacementResumeCounter },
 		"a frame on an unkeyed prompt kind": func(c *pendingChoiceSnapshot) {
 			c.Kind = PendingChoiceSacrifice
+		},
+		// #4253 slice 3.
+		"a data tail under the untailed key": func(c *pendingChoiceSnapshot) {
+			c.ReplacementResume.Event.ZoneRoute.FaceDownLegs = &faceDownExileRun{}
+		},
+		"an unknown keyed tail": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.ZoneRoute.FaceDownLegs = &faceDownExileRun{Then: &keyedTailSnapshot{Key: "never-registered"}}
+		},
+		"an unknown tail in a batch's settled member": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Batch: &entryBatchSnapshot{Members: []entryBatchMemberSnapshot{{
+				Out: &replacementEventSnapshot{Kind: RepEventMove, LifeTail: &lifeTailSnapshot{Then: &keyedTailSnapshot{Key: "never-registered"}}},
+			}}}}
 		},
 	} {
 		snap := throughJSON(t, g.CaptureSnapshot())

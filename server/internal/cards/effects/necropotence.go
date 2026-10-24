@@ -82,15 +82,21 @@ func init() {
 				// replacements, a CR 903.9 choice) leaves the card on the
 				// library until it is answered, and the list read straight
 				// after Apply came back empty (#4259).
+				//
+				// #4253 slice 3: a registered tail, so that prompt is a
+				// restore point.
 				return ExileTopFaceDown{
-					Player: item.Controller,
-					N:      1,
-					Then:   necropotenceScheduleDelivery,
+					Player:   item.Controller,
+					N:        1,
+					ThenTail: game.KeyedTail{Ref: necropotenceDelivery},
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// necropotenceDelivery is the exile's keyed Then. An on-disk key.
+var necropotenceDelivery = ExileTopFaceDownThen("necropotence/schedule-delivery", necropotenceScheduleDelivery)
 
 // necropotenceScheduleDelivery is the exile's Then: schedule the return of the
 // card it took.

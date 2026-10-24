@@ -219,6 +219,13 @@ type lifeTail struct {
 	// runs with g.mu held, so it may start the next life change or
 	// queue the next prompt itself.
 	then func(g *Game, applied int) error
+
+	// keyed is `then` as data (#4253 slice 3): a registered tail, told
+	// the amount that moved as TailOutcome.Amount. each is a batch's
+	// remaining life changes as data (LoseLifeEachKeyedForEffect). Set
+	// at most one of the three.
+	keyed KeyedTail
+	each  *lifeEachRun
 }
 
 // runLifeTailLocked runs a settled life event's continuation exactly
@@ -239,10 +246,13 @@ func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
 	}
 	tail := ev.lifeTail
 	ev.lifeTail = nil
-	if tail.then == nil {
-		return nil
+	switch {
+	case tail.then != nil:
+		return tail.then(g, applied)
+	case tail.each != nil:
+		return g.runLifeEachStepLocked(tail.each, applied)
 	}
-	return tail.then(g, applied)
+	return g.runKeyedTailLocked(tail.keyed, nil, applied)
 }
 
 // payLifeAsCostLocked pays `amount` life as a COST (CR 118.3) rather

@@ -572,3 +572,15 @@ payunless pay-unless/smelted-chargebug-pump-and-menace
 payunless pay-unless/t-45-power-armor-untap-and-counter
 payunless pay-unless/tilonallis-summoner-attacking-elementals
 payunless pay-unless/voltaic-brawler-pump
+resume replacement-resume/create-tokens
+tail sword-of-hearth-and-home/shuffle
+tail drain/gain-the-life-lost
+tail engine/become-monstrous
+tail engine/become-renowned
+tail engine/evolved
+tail necropotence/schedule-delivery
+tail then/draw-a-card
+resume replacement-resume/counter-tail
+resume replacement-resume/keyword-action-tail
+resume replacement-resume/life-tail
+resume replacement-resume/move-tail

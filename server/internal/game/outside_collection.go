@@ -395,8 +395,8 @@ func (g *Game) ResolveOutsideCollection(choiceID, chooserID uuid.UUID, names []s
 		// handed the minted cards as a sideboard pick's is handed the
 		// cards it named.
 		g.emitChoiceEffectErrorLocked(chooserID, choice.Source, g.runKeyedChooseCardsLocked(choice, ids, true))
-	} else if then := choice.searchResume.spec.Then; then != nil {
-		if err := then(g, ids); err != nil {
+	} else if spec := choice.searchResume.spec; spec.Then != nil || !spec.ThenTail.IsZero() {
+		if err := g.runSearchThenLocked(spec, ids); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				Actor:    chooserID,

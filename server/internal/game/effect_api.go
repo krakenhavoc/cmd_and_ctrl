@@ -523,6 +523,31 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // `then` takes the live *Game rather than capturing one, on the same
 // undo-safety contract every other continuation frame follows.
 func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
+	var tail *lifeTail
+	if then != nil {
+		tail = &lifeTail{then: then}
+	}
+	return g.changePlayerLifeWithTailLocked(source, playerID, delta, tail)
+}
+
+// ChangePlayerLifeKeyedForEffect is ChangePlayerLifeThenForEffect with
+// the continuation as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the amount that moved as TailOutcome.Amount. A
+// CR 616 ordering prompt over the change is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) ChangePlayerLifeKeyedForEffect(source, playerID uuid.UUID, delta int, then KeyedTail) error {
+	var tail *lifeTail
+	if !then.IsZero() {
+		tail = &lifeTail{keyed: then}
+	}
+	return g.changePlayerLifeWithTailLocked(source, playerID, delta, tail)
+}
+
+// changePlayerLifeWithTailLocked is the one body of the doors above.
+//
+// Caller must hold g.mu.
+func (g *Game) changePlayerLifeWithTailLocked(source, playerID uuid.UUID, delta int, tail *lifeTail) error {
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
 		return ErrPlayerNotFound
@@ -533,10 +558,7 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 		// see. Not an error — an effect reaching for a seat that
 		// conceded mid-resolution has done nothing wrong — but still a
 		// terminal outcome, so the continuation is told zero.
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return g.runLifeTailLocked(&ReplacementEvent{lifeTail: tail}, 0)
 	}
 	// The event is built before the pipeline runs and carries
 	// everything the tail needs — the continuation included — because a
@@ -547,9 +569,7 @@ func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta i
 		Source:     source,
 		LifePlayer: playerID,
 		LifeDelta:  delta,
-	}
-	if then != nil {
-		ev.lifeTail = &lifeTail{then: then}
+		lifeTail:   tail,
 	}
 	_, err := g.changeLifeThroughReplacementsLocked(ev)
 	return err
@@ -616,6 +636,19 @@ func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amo
 		return nil
 	}
 	return then(g, lostSoFar)
+}
+
+// LoseLifeEachKeyedForEffect is LoseLifeEachThenForEffect with the rest
+// of the effect as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the total actually lost as TailOutcome.Amount.
+// The batch walks the players on a data tail (lifeEachRun), so a CR 616
+// ordering prompt over one player's loss is a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) LoseLifeEachKeyedForEffect(source uuid.UUID, players []uuid.UUID, amount int, then KeyedTail) error {
+	return g.loseLifeEachKeyedStepLocked(&lifeEachRun{
+		Source: source, Rest: copyUUIDs(players), Amount: amount, Then: snapshotKeyedTail(then),
+	})
 }
 
 // PayLifeForEffect pays `amount` life as a COST (CR 118.3) — a spell's
@@ -1508,12 +1541,11 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	// player). It is unreliable on a paused batch, so a new caller that needs
 	// the cards must use the Then form; the list stays for the tests that pin
 	// what had landed.
-	var out []uuid.UUID
-	done := false
-	err = g.exileFaceDownLegsLocked(playerID, plan, nil, func(_ *Game, landed []uuid.UUID) error {
-		out, done = landed, true
-		return nil
-	})
+	// #4253 slice 3: the batch's end is read off a report rather than a
+	// closure over these locals, so a leg's prompt is a restore point.
+	report := &faceDownExileReport{}
+	err = g.exileFaceDownLegsKeyedLocked(&faceDownExileRun{Player: playerID, Rest: plan, report: report})
+	out, done := report.landed, report.done
 	if !done {
 		// Paused: the cards before the prompt are already in exile.
 		for _, id := range plan {
@@ -1546,7 +1578,8 @@ func (g *Game) ExileTopFaceDownThenForEffect(playerID uuid.UUID, n int, then fun
 		return err
 	}
 	if then == nil {
-		then = func(*Game, []uuid.UUID) error { return nil }
+		// #4253 slice 3: nothing to run afterwards, so the batch is data.
+		return g.exileFaceDownLegsKeyedLocked(&faceDownExileRun{Player: playerID, Rest: plan})
 	}
 	return g.exileFaceDownLegsLocked(playerID, plan, nil, then)
 }
@@ -2719,6 +2752,14 @@ type SearchLibrarySpec struct {
 	// it found instead of re-deriving it.
 	Then func(g *Game, found []uuid.UUID) error
 
+	// ThenTail is Then as data (#4253 slice 3): a registered
+	// continuation (RegisterTail), told the found cards as TailOutcome.IDs.
+	// A search whose remaining work is all data — a battlefield search
+	// whose fetched permanent stops for an entry question (a fetchland's
+	// shockland) — is then a restore point while it waits. Set Then or
+	// ThenTail, not both; Then wins.
+	ThenTail KeyedTail
+
 	// ToTop puts the found cards on TOP of the library, after the
 	// shuffle, when Dest is ZoneLibrary. It is what the "search your
 	// library for a card, then shuffle and PUT THAT CARD ON TOP"
@@ -3341,7 +3382,16 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 		return g.finishSearchLocked(spec, p, found)
 	}
 	head, rest := ids[0], ids[1:]
-	return g.searchEnterBattlefieldLocked(spec, p, head, func(g *Game, entered uuid.UUID) error {
+	if searchSpecIsData(spec) {
+		// #4253 slice 3: the rest of the search is data, so the entry's
+		// prompt (a fetched shockland's "pay 2 life?") is a restore
+		// point. The step is runSearchEntryStepLocked, the closure's
+		// twin below.
+		return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
+			Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
+		}})
+	}
+	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{then: func(g *Game, entered uuid.UUID) error {
 		out := found
 		if entered != uuid.Nil {
 			// A fresh slice rather than an append in place: two runs of
@@ -3350,7 +3400,7 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 			out = append(append(make([]uuid.UUID, 0, len(found)+1), found...), entered)
 		}
 		return g.searchEnterEachThenFinishLocked(spec, rest, out)
-	})
+	}})
 }
 
 // searchEnterBattlefieldLocked puts one fetched card onto the
@@ -3389,13 +3439,15 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 // the prompt was still queued, the player still answered it, and the
 // card was still in the library afterwards.
 //
-// `then` is handed the entering permanent's ID, or uuid.Nil when
-// nothing entered — cancelled, redirected, or its prompt taken away. It
-// runs from every terminal outcome, which is what lets the search
-// sequence its remaining takes through it.
+// `tail` carries the rest of the search: handed the entering
+// permanent's ID, or uuid.Nil when nothing entered — cancelled,
+// redirected, or its prompt taken away. It runs from every terminal
+// outcome, which is what lets the search sequence its remaining takes
+// through it. It is a closure or, since #4253 slice 3, data
+// (entryTail.search).
 //
 // Caller must hold g.mu.
-func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, then func(g *Game, entered uuid.UUID) error) error {
+func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, id uuid.UUID, tail *entryTail) error {
 	// The controller has to be stamped before the pipeline runs:
 	// Authority of the Consuls asks whose permanent is entering, and
 	// a self-replacement's condition ("unless you control two or
@@ -3432,7 +3484,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// paused for a prompt would otherwise come back untapped.
 		EntersTapped:   spec.TappedOnEntry,
 		entryResumable: true,
-		entryTail:      &entryTail{then: then},
+		entryTail:      tail,
 		// #1997: the searcher puts what they find, and it enters under
 		// them (Path to Exile's "its controller may search … put that
 		// card onto the battlefield").
@@ -3506,10 +3558,7 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 		// library was not searched: no EventSearchLibrary (an
 		// Archivist of Oghma must not fire), no shuffle. The
 		// instruction after the search still happens.
-		if spec.Then != nil {
-			return spec.Then(g, thenFound)
-		}
-		return nil
+		return g.runSearchThenLocked(spec, thenFound)
 	}
 	label := ""
 	if spec.Shuffle {
@@ -3561,10 +3610,18 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 			p.Library.InsertFromTop(c, spec.Depth)
 		}
 	}
+	return g.runSearchThenLocked(spec, thenFound)
+}
+
+// runSearchThenLocked runs a search's continuation: the closure when
+// there is one, else the keyed tail.
+//
+// Caller must hold g.mu.
+func (g *Game) runSearchThenLocked(spec SearchLibrarySpec, found []uuid.UUID) error {
 	if spec.Then != nil {
-		return spec.Then(g, thenFound)
+		return spec.Then(g, found)
 	}
-	return nil
+	return g.runKeyedTailLocked(spec.ThenTail, found, 0)
 }
 
 // CreateTokenForEffect creates n tokens under `controller`'s control
@@ -3649,14 +3706,14 @@ type TokenEntryOptions struct {
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int, opts TokenEntryOptions) ([]uuid.UUID, error) {
+	// #4253 slice 3: the result is written as the creation finishes
+	// rather than handed to a closure over a local, so a creation paused
+	// on a question holds no closure and is a restore point.
 	var made []uuid.UUID
-	err := g.CreateTokensThenForEffect(TokenCreation{
+	err := g.createTokensWithTailLocked(TokenCreation{
 		Controller: controller,
 		Groups:     []TokenGroup{{Template: template, Count: n, Entry: opts}},
-	}, func(_ *Game, created []uuid.UUID) error {
-		made = created
-		return nil
-	})
+	}, &tokenTail{report: &made})
 	return made, err
 }
 
@@ -3757,7 +3814,25 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 //
 // Caller must hold g.mu.
 func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after)
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after, KeyedTail{})
+}
+
+// ScryKeyedForEffect is ScryThenForEffect with the continuation as data
+// (#4253 slice 3): `after` is a registered tail (RegisterTail). The scry
+// prompt, and a CR 616 ordering prompt over the scry, are then restore
+// points.
+//
+// Caller must hold g.mu.
+func (g *Game) ScryKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, nil, after)
+}
+
+// SurveilKeyedForEffect is SurveilThenForEffect with the continuation as
+// data, as ScryKeyedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) SurveilKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, nil, after)
 }
 
 // SurveilThenForEffect is surveil N with a continuation (CR 701.25):
@@ -3778,7 +3853,7 @@ func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g
 //
 // Caller must hold g.mu.
 func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after)
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after, KeyedTail{})
 }
 
 // keywordLookAtTopForEffect is the scry / surveil entry point: it
@@ -3798,9 +3873,9 @@ func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after fun
 // continuation still runs, in lookAtTopForEffect, exactly as it did.
 //
 // Caller must hold g.mu.
-func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	if n <= 0 {
-		return g.lookAtTopForEffect(kind, playerID, source, n, after)
+		return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, keyed)
 	}
 	looked, err := g.runKeywordActionLocked(&ReplacementEvent{
 		Kind:               RepEventKeywordAction,
@@ -3808,7 +3883,7 @@ func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoic
 		Source:             source,
 		KeywordAction:      action,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{choice: kind, then: after},
+		keywordAction:      &keywordActionTail{choice: kind, then: after, keyed: keyed},
 	})
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3854,18 +3929,18 @@ func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after f
 //
 // Caller must hold g.mu.
 func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
+	return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, KeyedTail{})
+}
+
+// lookAtTopWithTailLocked is lookAtTopForEffect with the continuation in
+// either form: the closure, or a registered tail (#4253 slice 3) the
+// prompt carries as data (PendingChoice.scryThen).
+//
+// Caller must hold g.mu.
+func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
-		if after != nil {
-			if err := after(g); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					Actor:    playerID,
-					Source:   source,
-					ErrorMsg: err.Error(),
-				})
-			}
-		}
+		g.runScryAfterLocked(playerID, source, after, keyed)
 	}
 	if n <= 0 {
 		runAfter()
@@ -3901,6 +3976,7 @@ func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.
 		Reason:     reason(len(ids)),
 		ScryCards:  ids,
 		scryResume: after,
+		scryThen:   keyed,
 	})
 	return len(ids)
 }

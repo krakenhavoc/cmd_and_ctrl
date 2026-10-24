@@ -197,25 +197,32 @@ func (g *Game) becomeRenownedLocked(placer, cardID uuid.UUID, n int) error {
 	if n < 0 {
 		n = 0
 	}
-	return g.AddCounterByThenForEffect(placer, cardID, CounterPlusOne, n, func(g *Game, _ int) error {
-		// Re-find: the placement may have paused on a CR 616 prompt,
-		// and the permanent pointer is not stable across an action.
-		c := findBattlefieldCard(g, cardID)
-		if c == nil || c.Renowned {
-			return nil
-		}
-		c.Renowned = true
-		g.EmitEvent(Event{
-			Kind:   EventBecameRenowned,
-			Actor:  c.Controller,
-			Source: cardID,
-			CardID: cardID,
-			Target: cardID,
-			Amount: n,
-		})
-		return nil
-	})
+	// #4253 slice 3: the continuation is a registered tail, so an
+	// ordering prompt over the counters is a restore point.
+	return g.AddCounterByKeyedForEffect(placer, cardID, CounterPlusOne, n, KeyedTail{Ref: tailBecomeRenowned, Source: cardID, N: n})
 }
+
+// tailBecomeRenowned is renown's "it becomes renowned" (CR 702.112a),
+// once the counters have landed. An on-disk key.
+var tailBecomeRenowned = RegisterTail("engine/become-renowned", func(g *Game, o TailOutcome) error {
+	cardID, n := o.Tail.Source, o.Tail.N
+	// Re-find: the placement may have paused on a CR 616 prompt, and
+	// the permanent pointer is not stable across an action.
+	c := findBattlefieldCard(g, cardID)
+	if c == nil || c.Renowned {
+		return nil
+	}
+	c.Renowned = true
+	g.EmitEvent(Event{
+		Kind:   EventBecameRenowned,
+		Actor:  c.Controller,
+		Source: cardID,
+		CardID: cardID,
+		Target: cardID,
+		Amount: n,
+	})
+	return nil
+})
 
 // IsRenowned reports whether the named battlefield permanent is
 // renowned — "if it's renowned" (Enshrouding Mist). False for anything
