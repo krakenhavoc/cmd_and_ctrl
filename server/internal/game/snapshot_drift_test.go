@@ -223,6 +223,7 @@ var gameFields = plan(
 	// #3613: the end of that resolution, parked behind the same prompt.
 	"pausedResolutionTail", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
+	"carriedCause", dropped, "not game state: the cause a keyed pay-unless branch runs under, set for that one locked call and nil between actions (#4279)",
 	"putByEntering", dropped, "not game state: it counts PutByEnteringPlayerForEffect scopes on the Go stack, so it is zero between actions (#1997)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.
@@ -1181,6 +1182,8 @@ var pendingChoiceFields = plan(
 	// continuation: a restored prompt that forgot them would answer
 	// about nothing.
 	"OptionCarry", carried, "",
+	"PayCauseController", carried, "",
+	"PayCauseItem", carried, "",
 	// ADR 0146: a ballot's vote so far. Carried because it is the
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.

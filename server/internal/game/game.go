@@ -946,6 +946,12 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// carriedCause is the cause a keyed pay-unless's branch runs under
+	// (#4279), set for the length of that one call and nil otherwise.
+	// Never carried across a Clone or a snapshot: it lives inside one
+	// locked call.
+	carriedCause *carriedCause
+
 	// putByEntering counts the PutByEnteringPlayerForEffect scopes open
 	// on the Go stack (#1997): while above zero, an entry is put by the
 	// player it enters under. Zero between actions by construction, like

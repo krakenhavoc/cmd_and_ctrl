@@ -68,7 +68,10 @@ func TestResolvingAbilityKeepsItsSourceEpochAcrossARestore(t *testing.T) {
 		ID: uuid.New(), Kind: StackItemTriggered, Controller: me, Owner: me,
 		SourceCardID: src, SourceObject: ObjectRef{ID: src, Epoch: 4}, Label: "Test trigger", Seq: 78,
 	}
-	g.WithWriteLock(func() { g.resolving = &resolvingItem{item: item, sourceEpoch: 4} })
+	g.WithWriteLock(func() {
+		g.resolving = &resolvingItem{item: item, sourceEpoch: 4}
+		g.resolutionOpen = true // #4279: a cause is read only inside a resolution
+	})
 
 	_, restored := roundTrip(t, g)
 	restored.WithWriteLock(func() {

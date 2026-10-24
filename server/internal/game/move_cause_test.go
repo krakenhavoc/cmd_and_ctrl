@@ -32,6 +32,7 @@ func resolvingAbilityOf(g *Game, controller uuid.UUID) *StackItem {
 		Controller: controller, Owner: controller, SourceCardID: uuid.New(),
 	}
 	g.beginResolvingLocked(item)
+	g.resolutionOpen = true // #4279: a cause is read only inside a resolution
 	return item
 }
 

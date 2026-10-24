@@ -16,6 +16,7 @@ import (
 // a spell" reads.
 func counteringFor(g *Game, p *Player) {
 	g.WithWriteLock(func() {
+		g.resolutionOpen = true // #4279: a cause is read only inside a resolution
 		g.resolving = &resolvingItem{item: &StackItem{
 			ID: uuid.New(), Kind: StackItemSpell, Controller: p.ID, SourceCardID: uuid.New(),
 		}}

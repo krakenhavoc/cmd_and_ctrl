@@ -7463,6 +7463,13 @@ stand-in for the asking item (its controller and its source card), and anything
 else it needs rides on `PayUnless.Carry` as IDs (Wandering Archaic's spell,
 Arcum's Whistle's creature). The key is an on-disk identity, ledgered as
 `payunless <key>`. A closure `OnDecline` still works and is not a restore point.
+A keyed pay-unless carries the cause it was queued under (the asking spell or
+ability's controller and ID, `PendingChoice.PayCauseController` and
+`PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered
+after the table moved on still records the right cause and still meets a "can't
+cause you to discard" gate. Outside a resolution, and outside such a branch,
+there is no cause: `resolutionCauseLocked` reads `Game.resolving` only while
+`resolutionOpen`.
 
 The other pay-unless shapes are keyed the same way (#4264), with the key from
 `PayUnlessBranches(key, onPay, onDecline)` (either may be nil), one handle for

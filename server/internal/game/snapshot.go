@@ -1847,6 +1847,10 @@ type pendingChoiceSnapshot struct {
 	// #2854: the IDs a keyed option pick's continuation is handed
 	// (option_pick_keyed.go). Its key rides pickThen.
 	OptionCarry []uuid.UUID `json:"optionCarry,omitempty"`
+	// #4279: the cause a keyed pay-unless was queued under (the
+	// resolving item's controller and ID). Additive within v7.
+	PayCauseController uuid.UUID `json:"payCauseController,omitempty"`
+	PayCauseItem       uuid.UUID `json:"payCauseItem,omitempty"`
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
@@ -3001,6 +3005,8 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseMax:             c.ChooseMax,
 		PickOptions:           cloneChoiceOptions(c.PickOptions),
 		OptionCarry:           copyUUIDs(c.OptionCarry),
+		PayCauseController:    c.PayCauseController,
+		PayCauseItem:          c.PayCauseItem,
 		CouncilVote:           cloneCouncilVote(c.CouncilVote),
 		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
@@ -3942,6 +3948,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseMax:             c.ChooseMax,
 		PickOptions:           cloneChoiceOptions(c.PickOptions),
 		OptionCarry:           copyUUIDs(c.OptionCarry),
+		PayCauseController:    c.PayCauseController,
+		PayCauseItem:          c.PayCauseItem,
 		CouncilVote:           cloneCouncilVote(c.CouncilVote),
 		TurnSkipOrder:         cloneTurnSkipOrder(c.TurnSkipOrder),
 		AnyPlayerOffer:        cloneAnyPlayerOffer(c.AnyPlayerOffer),
