@@ -5947,6 +5947,8 @@ pendingChoices[].ordered.asked.trigger.Event.unpaid	bool
 pendingChoices[].ordered.asked.trigger.Event.vote_options	array
 pendingChoices[].ordered.asked.trigger.Event.vote_options[]	string
 pendingChoices[].ordered.asked.trigger.Event.won	bool
+pendingChoices[].ordered.asked.trigger.Event.words	array
+pendingChoices[].ordered.asked.trigger.Event.words[]	string
 pendingChoices[].ordered.asked.trigger.Object	object
 pendingChoices[].ordered.asked.trigger.Object.AltCost	string
 pendingChoices[].ordered.asked.trigger.Object.AltCostObjects	array
@@ -6633,6 +6635,8 @@ pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.unp
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.vote_options	array
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.vote_options[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.won	bool
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.words	array
+pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Event.words[]	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object	object
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.AltCost	string
 pendingChoices[].replacementResume.event.entryTail.keyed.asked.trigger.Object.AltCostObjects	array
@@ -9791,6 +9795,8 @@ promptRuns[].asked.trigger.Event.unpaid	bool
 promptRuns[].asked.trigger.Event.vote_options	array
 promptRuns[].asked.trigger.Event.vote_options[]	string
 promptRuns[].asked.trigger.Event.won	bool
+promptRuns[].asked.trigger.Event.words	array
+promptRuns[].asked.trigger.Event.words[]	string
 promptRuns[].asked.trigger.Object	object
 promptRuns[].asked.trigger.Object.AltCost	string
 promptRuns[].asked.trigger.Object.AltCostObjects	array
