@@ -342,10 +342,12 @@ func b14MillUntilLandThen(ctx *Context, player uuid.UUID, then func(g *game.Game
 	// arrive beside a second card.
 	mill := MillToZone{
 		Player: player,
-		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),
+		Until:  UntilLand,
 	}
 	if then != nil {
-		mill.Then = func(ctx *Context, milled []uuid.UUID) error { return then(ctx.Game, milled) }
+		// A chained caller (eachPlayerInTurn) still hands a closure: the
+		// closure door, with the clause as its predicate.
+		return ctx.Game.MillToZoneThenForEffect(player, 0, game.ZoneGraveyard, mill.Until.Pred(), then)
 	}
 	return mill.Apply(ctx)
 }

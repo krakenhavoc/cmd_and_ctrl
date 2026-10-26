@@ -64,9 +64,7 @@ func shuffleThisCardIntoItsOwnersLibrary(g *game.Game, item *game.StackItem) err
 	if !thisCardStillInTheGraveyard(g, item) {
 		return g.ShuffleLibraryForEffect(owner)
 	}
-	return g.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }
 
 // thisCardStillInTheGraveyard reports whether the trigger's card is in a

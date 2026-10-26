@@ -32,7 +32,7 @@ func init() {
 			WhenThisEntersExileFromASingleGraveyard("Gravegouger", 2, ExileTargetCards),
 			On(game.EventLTB, Self, "Gravegouger — return the exiled cards to their owner's graveyard",
 				func(g *game.Game, item *game.StackItem) error {
-					return g.PutCardsIntoGraveyardThenForEffect(b27ExiledWith(g, item.SourceCardID, gravegougerExileLabel), nil)
+					return g.PutCardsIntoGraveyardKeyedForEffect(b27ExiledWith(g, item.SourceCardID, gravegougerExileLabel), game.KeyedTail{})
 				}),
 		},
 	})

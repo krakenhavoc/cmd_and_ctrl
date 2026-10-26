@@ -49,14 +49,20 @@ func init() {
 			}
 			owner := victim.Controller
 			return ExileTarget{
-				Target: item.Targets[0].ID,
-				Then: func(ctx *Context, exiled bool) error {
-					if !exiled {
-						return nil
-					}
-					return CreateToken{Controller: owner, Template: ClueToken(), N: 1}.Apply(ctx)
-				},
+				Target:   item.Targets[0].ID,
+				ThenTail: withCarry(ctx.ItemTail(zukosExileExiled), owner),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// zukosExileExiled is the clause after the exile (#4253 slice 9).
+var zukosExileExiled = CardTail("zukos-exile/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	owner := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return CreateToken{Controller: owner, Template: ClueToken(), N: 1}.Apply(ctx)
+})

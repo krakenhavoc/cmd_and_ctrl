@@ -134,7 +134,7 @@ func spellweaverVoluteMove(g *game.Game, volute uuid.UUID, enchanted game.Object
 	if !g.CardInGraveyardForEffect(enchanted) {
 		return nil
 	}
-	return g.ExileCardThenForEffect(enchanted.ID, nil)
+	return g.ExileCardKeyedForEffect(enchanted.ID, game.KeyedTail{})
 }
 
 // spellweaverVoluteStillEnchants reports whether the Volute is on the

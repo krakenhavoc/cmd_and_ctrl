@@ -46,14 +46,17 @@ func init() {
 // source, whether or not the card reached exile.
 func exileLinkedTargetThenCounterOnThis(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	counter := func(ctx *Context, _ bool) error {
-		return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-	}
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		return ExileTarget{Target: t.ID, Linked: true, Then: counter}.Apply(ctx)
+		return ExileTarget{Target: t.ID, Linked: true, ThenTail: ctx.ItemTail(darkImpostorExiled)}.Apply(ctx)
 	}
 	return nil
 }
+
+// darkImpostorExiled is the clause after the exile (#4253 slice 9).
+var darkImpostorExiled = CardTail("dark-impostor/after-exile", func(ctx *Context, o game.TailOutcome) error {
+
+	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+})

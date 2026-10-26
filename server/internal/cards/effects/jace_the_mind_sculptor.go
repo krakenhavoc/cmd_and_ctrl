@@ -115,10 +115,14 @@ func jaceUltimate(g *game.Game, victim uuid.UUID) error {
 	for _, c := range p.Library.Cards {
 		library = append(library, c.InstanceID)
 	}
-	return g.ExileCardsThenForEffect(library, func(g *game.Game, _ []uuid.UUID) error {
-		return g.TuckCardsToLibraryThenForEffect(allHandCardIDs(g, victim), game.TuckOptions{},
-			func(g *game.Game, _ []uuid.UUID) error {
-				return g.ShuffleLibraryForEffect(victim)
-			})
-	})
+	return g.ExileCardsKeyedForEffect(library, game.KeyedTail{Ref: jaceTuckHandThenShuffle, Player: victim})
 }
+
+// jaceTuckHandThenShuffle is the rest of the -12 after the library's
+// exile (#4253 slice 9): the victim (the tail's Player) tucks the hand,
+// then shuffles (then/shuffle).
+var jaceTuckHandThenShuffle = game.RegisterTail("jace-the-mind-sculptor/tuck-hand-then-shuffle", func(g *game.Game, o game.TailOutcome) error {
+	victim := o.Tail.Player
+	return g.TuckCardsToLibraryKeyedForEffect(allHandCardIDs(g, victim), game.TuckOptions{},
+		game.KeyedTail{Ref: thenShuffle, Player: victim})
+})

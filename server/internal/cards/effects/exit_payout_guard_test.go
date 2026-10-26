@@ -149,7 +149,7 @@ type exitVerb struct {
 }
 
 var (
-	exileVerb = exitVerb{kind: "exile", fix: "ExileTarget.Then, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
+	exileVerb = exitVerb{kind: "exile", fix: "ExileTarget.ThenTail, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
 		"or g.ExileCardThenForEffect / g.ExileCardsThenForEffect, and gate the clause on `exiled`"}
 	destroyVerb = exitVerb{kind: "destroy", fix: "DestroyAllMatching.Then or g.DestroyPermanentsThenForEffect " +
 		"(a set of one is fine), and gate the clause on the `destroyed` list"}
@@ -168,7 +168,7 @@ var (
 		"g.BounceToHandThenForEffect / g.BounceCardsToHandThenForEffect, and gate the clause on `bounced`"}
 	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckToLibraryThenForEffect / g.TuckCardsToLibraryThenForEffect, " +
 		"and gate the clause on `tucked`"}
-	millVerb = exitVerb{kind: "mill", fix: "MillToZone.Then or g.MillToZoneThenForEffect, and gate the clause " +
+	millVerb = exitVerb{kind: "mill", fix: "MillToZone.ThenTail or g.MillToZoneThenForEffect, and gate the clause " +
 		"on the `milled` list"}
 	discardVerb = exitVerb{kind: "random discard", fix: "g.DiscardRandomThenForEffect (#1027, ADR 0013 §5y), " +
 		"and gate the clause on the `discarded` list — a discard is an exit (ADR 0013 §5g), so a " +
@@ -600,7 +600,7 @@ func fireAndForgetExit(call *ast.CallExpr) (exitVerb, bool) {
 		if !ok {
 			continue
 		}
-		if k, ok := kv.Key.(*ast.Ident); ok && k.Name == "Then" {
+		if k, ok := kv.Key.(*ast.Ident); ok && (k.Name == "Then" || k.Name == "ThenTail") {
 			return exitVerb{}, false
 		}
 	}
@@ -934,7 +934,7 @@ func syphonMind(ctx *Context, item *game.StackItem, source uuid.UUID) error {
 		{"tuck: a gate on a pre-tuck local", tuckOffender, 1},
 		{"tuck: TuckToLibraryThenForEffect", tuckAnswer, 0},
 		{"mill: a gate on a pre-mill local", millOffender, 1},
-		{"mill: MillToZone.Then", millAnswer, 0},
+		{"mill: MillToZone.ThenTail", millAnswer, 0},
 		{"a prompted sacrifice: a gate on the count of QUESTIONS", sacrificePromptOffender, 1},
 		{"a prompted sacrifice: EachPlayerSacrificesThenForEffect", sacrificePromptAnswer, 0},
 		{"a graveyard arrival: a gate on a pre-move local", graveyardOffender, 1},

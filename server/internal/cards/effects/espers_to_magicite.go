@@ -46,24 +46,7 @@ func init() {
 			// The clause behind "exile" reads what really reached exile
 			// (a replacement may have sent a card elsewhere), so it runs
 			// from the exile's continuation.
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				var creatures []uuid.UUID
-				for _, id := range exiled {
-					if creature[id] {
-						creatures = append(creatures, id)
-					}
-				}
-				// No creature card exiled: the reflexive trigger would
-				// have nothing to choose, so it is not raised.
-				if len(creatures) == 0 {
-					return nil
-				}
-				return ReflexiveTrigger{
-					Label: "Espers to Magicite — copy a creature card exiled this way as an artifact token",
-					Cards: creatures,
-					Body:  espersCopyBody,
-				}.Apply(NewContext(g, item))
-			})
+			return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.ItemTail(espersToMagiciteExiled))
 		},
 	})
 }
@@ -88,3 +71,31 @@ func espersCopy(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// espersToMagiciteExiled raises the copy trigger over the creature cards that reached exile (#4253 slice 9).
+var espersToMagiciteExiled = CardTail("espers-to-magicite/copy-a-creature-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	creature := map[uuid.UUID]bool{}
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			creature[id] = c.IsCreature()
+		}
+	}
+
+	var creatures []uuid.UUID
+	for _, id := range exiled {
+		if creature[id] {
+			creatures = append(creatures, id)
+		}
+	}
+	// No creature card exiled: the reflexive trigger would
+	// have nothing to choose, so it is not raised.
+	if len(creatures) == 0 {
+		return nil
+	}
+	return ReflexiveTrigger{
+		Label: "Espers to Magicite — copy a creature card exiled this way as an artifact token",
+		Cards: creatures,
+		Body:  espersCopyBody,
+	}.Apply(NewContext(g, item))
+})

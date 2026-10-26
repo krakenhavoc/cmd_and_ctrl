@@ -61,9 +61,7 @@ var thisIsHowItEndsChoice = NewVillainousChoice("this-is-how-it-ends",
 					if len(picked) == 0 {
 						return nil
 					}
-					return g.TuckToLibraryThenForEffect(picked[0], game.TuckOptions{}, func(g *game.Game, _ bool) error {
-						return g.ShuffleLibraryForEffect(owner)
-					})
+					return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{picked[0]}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 				},
 			})
 			return nil

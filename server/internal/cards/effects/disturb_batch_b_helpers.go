@@ -50,8 +50,5 @@ func shuffleTargetsIntoYourLibrary(g *game.Game, item *game.StackItem) error {
 			ids = append(ids, t.ID)
 		}
 	}
-	controller := item.Controller
-	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		return g.ShuffleLibraryForEffect(controller)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: item.Controller})
 }

@@ -32,7 +32,7 @@ func init() {
 			On(game.EventETB, Self, "Dissection Tools — manifest dread, then attach this Equipment to that creature",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					return ManifestDread{Then: AttachSourceToManifested(ctx)}.Apply(ctx)
+					return ManifestDread{ThenTail: AttachSourceToManifested(ctx)}.Apply(ctx)
 				}),
 		},
 		Activated: []ActivatedAbility{

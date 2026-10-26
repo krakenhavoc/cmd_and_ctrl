@@ -83,17 +83,7 @@ func pheliaExile(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEnd,
-			Label: "Phelia, Exuberant Shepherd — return the exiled card",
-			Cards: exiled,
-			Body:  pheliaReturnBody,
-		}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(pheliaScheduleReturn))
 }
 
 // pheliaReturn is the delayed trigger: return the card under its
@@ -134,4 +124,19 @@ var pheliaGrow = EnteredTail("phelia-exuberant-shepherd/counter-if-yours", func(
 		return nil
 	}
 	return g.AddCounterForEffect(phelia, "+1/+1", 1)
+})
+
+// pheliaScheduleReturn schedules the end-step return of what reached exile (#4253 slice 9).
+var pheliaScheduleReturn = CardTail("phelia-exuberant-shepherd/schedule-return", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEnd,
+		Label: "Phelia, Exuberant Shepherd — return the exiled card",
+		Cards: exiled,
+		Body:  pheliaReturnBody,
+	}.Apply(NewContext(g, item))
 })

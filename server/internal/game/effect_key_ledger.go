@@ -133,6 +133,9 @@ func ledgerLineResolves(line string) bool {
 	case "searchrule":
 		// #4253 slice 5: a search prompt's set rule (RegisterSearchRule).
 		return KnownSearchRule(fields[1])
+	case "milluntil":
+		// #4253 slice 9: a keyed mill run's stop clause.
+		return KnownMillUntil(ledgerLineKey(line))
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

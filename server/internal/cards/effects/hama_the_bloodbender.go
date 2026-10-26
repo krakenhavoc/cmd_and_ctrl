@@ -57,10 +57,33 @@ func hamaEnters(g *game.Game, item *game.StackItem) error {
 	if g.PlayerByIDForEffect(opp) == nil {
 		return nil
 	}
-	return g.MillToZoneThenForEffect(opp, 3, game.ZoneGraveyard, nil, func(g *game.Game, _ []uuid.UUID) error {
-		return hamaChooseFromGraveyard(g, item, opp)
-	})
+	tail := NewContext(g, item).ItemTail(hamaMilled)
+	tail.Carry = []uuid.UUID{opp}
+	return g.MillToZoneKeyedForEffect(opp, 3, game.ZoneGraveyard, game.MillUntil{}, tail)
 }
+
+// hamaMilled, hamaPicked and hamaExiled are Hama's rest of the trigger as
+// registered continuations (#4253 slice 9): the opponent rides the carry
+// and the trigger rides the tail, so a table waiting on a milled card's
+// prompt, the pick or the exile is a restore point.
+var (
+	hamaMilled = CardTail("hama/choose-from-graveyard", func(ctx *Context, o game.TailOutcome) error {
+		if len(o.Tail.Carry) == 0 {
+			return nil
+		}
+		return hamaChooseFromGraveyard(ctx.Game, ctx.Item, o.Tail.Carry[0])
+	})
+	hamaPicked = game.RegisterChooseCardsThen("hama/exile-pick", func(g *game.Game, r game.CardsChosen) error {
+		if len(r.Picked) == 0 || r.Asked == nil {
+			return nil
+		}
+		return hamaExile(g, r.Asked, r.Picked[0])
+	})
+	hamaExiled = CardTail("hama/grant-waterbend-cast", func(ctx *Context, o game.TailOutcome) error {
+		hamaGrantCasts(ctx.Game, ctx.Item, o.IDs)
+		return nil
+	})
+)
 
 // hamaChooseFromGraveyard asks Hama's controller for up to one
 // noncreature, nonland card in the opponent's graveyard.
@@ -87,36 +110,35 @@ func hamaChooseFromGraveyard(g *game.Game, item *game.StackItem, opp uuid.UUID) 
 		Min:        0,
 		Max:        1,
 		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return hamaExile(g, item, picked[0])
-		},
+		ThenKey:    hamaPicked,
+		Asked:      game.NewAskedItem(item),
+		LiveZone:   game.ZoneGraveyard,
 	})
 	return nil
 }
 
 // hamaExile exiles the pick and, if it landed in exile, grants the cast.
 func hamaExile(g *game.Game, item *game.StackItem, id uuid.UUID) error {
-	return g.ExileCardsThenForEffect([]uuid.UUID{id}, func(g *game.Game, exiled []uuid.UUID) error {
-		for _, eid := range exiled {
-			c, ok := g.LookupCardForEffect(eid)
-			if !ok {
-				continue
-			}
-			g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-				Player:             item.Controller,
-				Zone:               game.ZoneExile,
-				CastOnly:           true,
-				Timing:             game.TimingYourTurnOnly,
-				WaterbendManaValue: true,
-				Duration:           forAsLongAsYouControlThisWindow(g, item),
-				Source:             item.SourceCardID,
-				SourceName:         "Hama, the Bloodbender",
-				Label:              "You may cast it during your turn by waterbending its mana value, for as long as you control Hama",
-			}, []game.Card{c})
+	return g.ExileCardsKeyedForEffect([]uuid.UUID{id}, NewContext(g, item).ItemTail(hamaExiled))
+}
+
+// hamaGrantCasts grants the waterbend cast of each card exiled this way.
+func hamaGrantCasts(g *game.Game, item *game.StackItem, exiled []uuid.UUID) {
+	for _, eid := range exiled {
+		c, ok := g.LookupCardForEffect(eid)
+		if !ok {
+			continue
 		}
-		return nil
-	})
+		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+			Player:             item.Controller,
+			Zone:               game.ZoneExile,
+			CastOnly:           true,
+			Timing:             game.TimingYourTurnOnly,
+			WaterbendManaValue: true,
+			Duration:           forAsLongAsYouControlThisWindow(g, item),
+			Source:             item.SourceCardID,
+			SourceName:         "Hama, the Bloodbender",
+			Label:              "You may cast it during your turn by waterbending its mana value, for as long as you control Hama",
+		}, []game.Card{c})
+	}
 }

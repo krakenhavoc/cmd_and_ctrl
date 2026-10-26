@@ -41,33 +41,11 @@ func init() {
 	dig := func(g *game.Game, item *game.StackItem) error {
 		ctx := NewContext(g, item)
 		controller := item.Controller
-		window := forAsLongAsThisRemainsWindow(g, item)
 		return MillToZone{
-			Player: controller,
-			To:     game.ZoneExile,
-			Until:  UntilCard(func(c game.Card) bool { return c.IsLegendary() }),
-			Then: func(ctx *Context, exiled []uuid.UUID) error {
-				var rest []uuid.UUID
-				granted := false
-				for _, id := range exiled {
-					c, ok := ctx.Game.LookupCardForEffect(id)
-					z := ctx.Game.FindCardZoneForEffect(id)
-					if !granted && ok && c.IsLegendary() && z != nil && z.Kind == game.ZoneExile {
-						granted = true
-						ctx.Game.GrantCastPermissionToCardsForEffect(game.CastPermission{
-							Player:     controller,
-							Zone:       game.ZoneExile,
-							Duration:   window,
-							Source:     item.SourceCardID,
-							SourceName: name,
-							Label:      "You may play that card for as long as this Saga remains on the battlefield",
-						}, []game.Card{c})
-						continue
-					}
-					rest = append(rest, id)
-				}
-				return ctx.Game.PutOnBottomInRandomOrderForEffect(controller, game.ZoneExile, rest)
-			},
+			Player:   controller,
+			To:       game.ZoneExile,
+			Until:    UntilLegendary,
+			ThenTail: ctx.ItemTail(theDayOfTheDoctorMilled),
 		}.Apply(ctx)
 	}
 	digLabel := "exile until a legendary card; you may play it while this Saga remains"
@@ -140,4 +118,34 @@ var dayOfTheDoctorAnswer = MayYes("confirm/the-day-of-the-doctor-exile-others", 
 		return err
 	}
 	return DamageController{N: 13}.Apply(ctx)
+})
+
+// theDayOfTheDoctorMilled is the clause after the mill (#4253 slice 9).
+var theDayOfTheDoctorMilled = CardTail("the-day-of-the-doctor/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	const name = "The Day of the Doctor"
+	item := ctx.Item
+	controller := item.Controller
+	window := forAsLongAsThisRemainsWindow(ctx.Game, item)
+	exiled := o.IDs
+
+	var rest []uuid.UUID
+	granted := false
+	for _, id := range exiled {
+		c, ok := ctx.Game.LookupCardForEffect(id)
+		z := ctx.Game.FindCardZoneForEffect(id)
+		if !granted && ok && c.IsLegendary() && z != nil && z.Kind == game.ZoneExile {
+			granted = true
+			ctx.Game.GrantCastPermissionToCardsForEffect(game.CastPermission{
+				Player:     controller,
+				Zone:       game.ZoneExile,
+				Duration:   window,
+				Source:     item.SourceCardID,
+				SourceName: name,
+				Label:      "You may play that card for as long as this Saga remains on the battlefield",
+			}, []game.Card{c})
+			continue
+		}
+		rest = append(rest, id)
+	}
+	return ctx.Game.PutOnBottomInRandomOrderForEffect(controller, game.ZoneExile, rest)
 })

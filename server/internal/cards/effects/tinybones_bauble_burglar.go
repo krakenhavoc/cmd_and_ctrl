@@ -85,12 +85,18 @@ func tinybonesStashDiscarded(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ExileTarget{
-		Target: id,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return ctx.Game.AddCounterForEffect(id, tinybonesStashCounter, 1)
-		},
+		Target:   id,
+		ThenTail: withCarry(NewContext(g, item).ItemTail(tinybonesBaubleBurglarExiled), id),
 	}.Apply(NewContext(g, item))
 }
+
+// tinybonesBaubleBurglarExiled is the clause after the exile (#4253 slice 9).
+var tinybonesBaubleBurglarExiled = CardTail("tinybones-bauble-burglar/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	id := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return ctx.Game.AddCounterForEffect(id, tinybonesStashCounter, 1)
+})

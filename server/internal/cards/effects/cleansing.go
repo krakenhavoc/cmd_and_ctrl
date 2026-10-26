@@ -49,5 +49,5 @@ func init() {
 // one batch.
 var cleansingDestroysTheUnsaved = AnyPlayerEachConsequence("any-player-each/cleansing-destroy",
 	func(ctx *Context, r game.AnyPlayerEachAnswer) error {
-		return ctx.Game.DestroyPermanentsThenForEffect(r.Unsaved, func(*game.Game, []uuid.UUID) error { return nil })
+		return ctx.Game.DestroyPermanentsKeyedForEffect(r.Unsaved, game.KeyedTail{})
 	})

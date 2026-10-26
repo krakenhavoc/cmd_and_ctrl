@@ -65,24 +65,21 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 	if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
 		sauron.Epoch = c.ObjectEpoch
 	}
-	return ExileTarget{
-		Target: ids[0],
-		Then: func(ctx *Context, _ bool) error {
-			item := ctx.Item
-			return CreateTokensAttackingYourChoice{
-				Controller: item.Controller,
-				Template:   tmpl,
-				Copy:       true,
-				N:          1,
-				Tapped:     true,
-				Prefer:     prefer,
-				Label:      "Sauron, the Necromancer",
-				// The object Sauron was when the trigger resolved (CR 400.7)
-				// rides the tail as data: its ID and its epoch.
-				Tail: game.KeyedTail{Ref: sauronNecromancerExile, Carry: []uuid.UUID{sauron.ID}, N: sauron.Epoch},
-			}.Apply(NewContext(ctx.Game, item))
-		},
-	}.Apply(ctx)
+	return exileTargetThen(ctx, ids[0], func(ctx *Context, _ bool) error {
+		item := ctx.Item
+		return CreateTokensAttackingYourChoice{
+			Controller: item.Controller,
+			Template:   tmpl,
+			Copy:       true,
+			N:          1,
+			Tapped:     true,
+			Prefer:     prefer,
+			Label:      "Sauron, the Necromancer",
+			// The object Sauron was when the trigger resolved (CR 400.7)
+			// rides the tail as data: its ID and its epoch.
+			Tail: game.KeyedTail{Ref: sauronNecromancerExile, Carry: []uuid.UUID{sauron.ID}, N: sauron.Epoch},
+		}.Apply(NewContext(ctx.Game, item))
+	})
 }
 
 // sauronNecromancerExile is the Wraith's tail, keyed (#4294): the end step

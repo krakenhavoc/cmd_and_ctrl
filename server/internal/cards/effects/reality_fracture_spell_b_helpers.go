@@ -14,40 +14,12 @@ import (
 // into their hand; `then` runs once that is settled (also when nothing
 // was milled or nothing is eligible).
 func rfSpellBMillThenMayTakePermanent(ctx *Context, n int, question string, then func(ctx *Context) error) error {
+	// `then` is a caller's closure, so this mill still takes the closure
+	// door.
 	item := ctx.Item
-	return MillToZone{N: n, Then: func(ctx *Context, milled []uuid.UUID) error {
-		var eligible []uuid.UUID
-		for _, id := range milled {
-			if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-				continue
-			}
-			if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.IsPermanent() {
-				eligible = append(eligible, id)
-			}
-		}
-		if len(eligible) == 0 {
-			return then(ctx)
-		}
-		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:  item.Controller,
-			Source:   item.SourceCardID,
-			Question: question,
-			Cards:    eligible,
-			Min:      0,
-			Max:      1,
-			Zone:     game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				c := NewContext(g, item)
-				if len(picked) > 0 {
-					if err := (ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneHand}).Apply(c); err != nil {
-						return err
-					}
-				}
-				return then(c)
-			},
-		})
-		return nil
-	}}.Apply(ctx)
+	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), n, game.ZoneGraveyard, nil, func(g *game.Game, milled []uuid.UUID) error {
+		return rfSpellBMayTakeFromMilled(NewContext(g, item), item, question, then, milled)
+	})
 }
 
 // rfSpellBGreatestPowerYouControl is the greatest power among creatures
@@ -88,4 +60,41 @@ func rfSpellBCounterNoncreatureUnlessPays(_ *game.StackItem, ctx *Context, occ i
 		Cost:     "{2}",
 		Question: "Theorix Charm — pay {2} or your spell is countered",
 	}.Apply(ctx)
+}
+
+// rfSpellBMayTakeFromMilled offers a permanent card from among the milled
+// ones, then runs `then`.
+func rfSpellBMayTakeFromMilled(ctx *Context, item *game.StackItem, question string, then func(ctx *Context) error, milled []uuid.UUID) error {
+
+	var eligible []uuid.UUID
+	for _, id := range milled {
+		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+			continue
+		}
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.IsPermanent() {
+			eligible = append(eligible, id)
+		}
+	}
+	if len(eligible) == 0 {
+		return then(ctx)
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  item.Controller,
+		Source:   item.SourceCardID,
+		Question: question,
+		Cards:    eligible,
+		Min:      0,
+		Max:      1,
+		Zone:     game.ZoneGraveyard,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			c := NewContext(g, item)
+			if len(picked) > 0 {
+				if err := (ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneHand}).Apply(c); err != nil {
+					return err
+				}
+			}
+			return then(c)
+		},
+	})
+	return nil
 }

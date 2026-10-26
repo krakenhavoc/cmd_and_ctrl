@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -64,11 +62,8 @@ func init() {
 // four, then offer the graveyard.
 func overlordOfTheBalemurkMill(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		N: 4,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			return mayTakeOneFromYourGraveyard(ctx, nonAvatarCreatureOrPlaneswalker(),
-				"Overlord of the Balemurk — you may return a non-Avatar creature card or a planeswalker card from your graveyard to your hand")
-		},
+		N:        4,
+		ThenTail: NewContext(g, item).ItemTail(overlordOfTheBalemurkMilled),
 	}.Apply(NewContext(g, item))
 }
 
@@ -76,3 +71,10 @@ func overlordOfTheBalemurkMill(g *game.Game, item *game.StackItem) error {
 func nonAvatarCreatureOrPlaneswalker() CardPredicate {
 	return Or(And(Creature(), Not(OfSubtype("Avatar"))), Planeswalker())
 }
+
+// overlordOfTheBalemurkMilled is the clause after the mill (#4253 slice 9).
+var overlordOfTheBalemurkMilled = CardTail("overlord-of-the-balemurk/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return mayTakeOneFromYourGraveyard(ctx, nonAvatarCreatureOrPlaneswalker(),
+		"Overlord of the Balemurk — you may return a non-Avatar creature card or a planeswalker card from your graveyard to your hand")
+})

@@ -66,11 +66,16 @@ func werewolfRansackerDestroy(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	controller := c.Controller
-	source := item.SourceCardID
-	return g.DestroyPermanentsThenForEffect([]uuid.UUID{target}, func(g *game.Game, destroyed []uuid.UUID) error {
-		if len(destroyed) == 0 {
-			return nil
-		}
-		return DealDamage{Source: source, Target: controller, Amount: 3}.Apply(NewContext(g, item))
-	})
+	return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{target}, withCarry(NewContext(g, item).ItemTail(afflictedDeserterDestroyed), controller))
 }
+
+// afflictedDeserterDestroyed deals 3 to the destroyed artifact's controller (#4253 slice 9).
+var afflictedDeserterDestroyed = CardTail("afflicted-deserter/damage-controller-if-destroyed", func(ctx *Context, o game.TailOutcome) error {
+	g, item, destroyed := ctx.Game, ctx.Item, o.IDs
+	controller, source := tailCarry0(o), ctx.Source()
+
+	if len(destroyed) == 0 {
+		return nil
+	}
+	return DealDamage{Source: source, Target: controller, Amount: 3}.Apply(NewContext(g, item))
+})

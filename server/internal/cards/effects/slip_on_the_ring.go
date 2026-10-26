@@ -22,25 +22,30 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you own", YouOwn()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			tempt := ringTemptsYouNext(item)
 			ids := legalTargetIDs(ctx)
 			if len(ids) == 0 {
 				return nil
 			}
 			target := ids[0]
 			return ExileTarget{
-				Target: target,
-				Then: func(ctx *Context, exiled bool) error {
-					if !exiled {
-						return tempt(ctx.Game)
-					}
-					return ReturnFromExile{
-						Target:     target,
-						Controller: ctx.Controller(),
-						ThenTail:   ctx.ItemTail(ringTemptsYouTail),
-					}.Apply(ctx)
-				},
+				Target:   target,
+				ThenTail: withCarry(ctx.ItemTail(slipOnTheRingExiled), target),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// slipOnTheRingExiled is the clause after the exile (#4253 slice 9).
+var slipOnTheRingExiled = CardTail("slip-on-the-ring/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	target, tempt := tailCarry0(o), ringTemptsYouNext(ctx.Item)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return tempt(ctx.Game)
+	}
+	return ReturnFromExile{
+		Target:     target,
+		Controller: ctx.Controller(),
+		ThenTail:   ctx.ItemTail(ringTemptsYouTail),
+	}.Apply(ctx)
+})

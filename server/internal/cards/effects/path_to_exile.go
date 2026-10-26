@@ -63,21 +63,26 @@ func init() {
 				// a separate sentence rather than an "if you do", so
 				// the search happens either way and only its ORDER
 				// changes.
-				Then: func(ctx *Context, _ bool) error {
-					// Search the controller's library for any basic land.
-					return SearchLibrary{
-						Player:        controller,
-						Predicate:     IsBasicLand,
-						Dest:          game.ZoneBattlefield,
-						Limit:         1,
-						Reveal:        true,
-						Shuffle:       true,
-						TappedOnEntry: true,
-						Optional:      true,
-						Reason:        "Path to Exile — you may search for a basic land",
-					}.Apply(ctx)
-				},
+				ThenTail: withCarry(ctx.ItemTail(pathToExileExiled), controller),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// pathToExileExiled is the clause after the exile (#4253 slice 9).
+var pathToExileExiled = CardTail("path-to-exile/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	controller := tailCarry0(o)
+
+	// Search the controller's library for any basic land.
+	return SearchLibrary{
+		Player:        controller,
+		Predicate:     IsBasicLand,
+		Dest:          game.ZoneBattlefield,
+		Limit:         1,
+		Reveal:        true,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Optional:      true,
+		Reason:        "Path to Exile — you may search for a basic land",
+	}.Apply(ctx)
+})

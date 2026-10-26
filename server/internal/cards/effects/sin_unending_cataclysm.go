@@ -193,7 +193,5 @@ func sinDies(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }

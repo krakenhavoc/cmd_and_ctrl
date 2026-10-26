@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -16,7 +14,7 @@ import (
 //
 // Greenhouse is Chromatic Lantern's layer-6 grant (ADR 0093) behind the
 // left door's gate. Rickety Gazebo picks from the cards the mill
-// actually put into the graveyard (MillToZone.Then), through
+// actually put into the graveyard (MillToZone.ThenTail), through
 // mayTakeUpToFromAmongThem.
 //
 // No simplification.
@@ -36,10 +34,15 @@ func init() {
 
 func ricketyGazeboMill(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		N: 4,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return mayTakeUpToFromAmongThem(ctx, milled, 2, Permanent(),
-				"Rickety Gazebo — return up to two permanent cards from among them to your hand")
-		},
+		N:        4,
+		ThenTail: NewContext(g, item).ItemTail(greenhouseRicketyGazeboMilled),
 	}.Apply(NewContext(g, item))
 }
+
+// greenhouseRicketyGazeboMilled is the clause after the mill (#4253 slice 9).
+var greenhouseRicketyGazeboMilled = CardTail("greenhouse-rickety-gazebo/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return mayTakeUpToFromAmongThem(ctx, milled, 2, Permanent(),
+		"Rickety Gazebo — return up to two permanent cards from among them to your hand")
+})

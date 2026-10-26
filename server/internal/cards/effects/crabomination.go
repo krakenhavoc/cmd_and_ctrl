@@ -86,34 +86,38 @@ func crabominationExile(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	controller, source := item.Controller, item.SourceCardID
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		cards := make([]game.Card, 0, len(exiled))
-		for _, id := range exiled {
-			if c, ok := g.LookupCardForEffect(id); ok {
-				cards = append(cards, c)
-			}
-		}
-		if len(cards) == 0 {
-			return nil
-		}
-		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-			Player:      controller,
-			Zone:        game.ZoneExile,
-			Duration:    g.UntilEndOfTurnDuration(),
-			Cost:        "{0}",
-			Timing:      game.TimingFlash,
-			CastOnly:    true,
-			CastsLeft:   1,
-			LapseOnPass: game.LapseStaysInExile,
-			Source:      source,
-			SourceName:  crabominationName,
-			Label:       crabominationName + " — cast a spell from among the exiled cards without paying its mana cost",
-		}, cards)
-		// #4250: cast during the resolution (CR 608.2g); the one
-		// permission is spent by the one cast.
-		offerResolutionCastOver(g, controller, source, crabominationName,
-			game.MayCastKeywordFreeCast, declineLeaveInExile, exiled...)
-		return nil
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(crabominationExiled))
 }
+
+// crabominationExiled grants and offers the free cast from what reached exile (#4253 slice 9).
+var crabominationExiled = CardTail("crabomination/cast-from-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, exiled, controller, source := ctx.Game, o.IDs, ctx.Controller(), ctx.Source()
+
+	cards := make([]game.Card, 0, len(exiled))
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			cards = append(cards, c)
+		}
+	}
+	if len(cards) == 0 {
+		return nil
+	}
+	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+		Player:      controller,
+		Zone:        game.ZoneExile,
+		Duration:    g.UntilEndOfTurnDuration(),
+		Cost:        "{0}",
+		Timing:      game.TimingFlash,
+		CastOnly:    true,
+		CastsLeft:   1,
+		LapseOnPass: game.LapseStaysInExile,
+		Source:      source,
+		SourceName:  crabominationName,
+		Label:       crabominationName + " — cast a spell from among the exiled cards without paying its mana cost",
+	}, cards)
+	// #4250: cast during the resolution (CR 608.2g); the one
+	// permission is spent by the one cast.
+	offerResolutionCastOver(g, controller, source, crabominationName,
+		game.MayCastKeywordFreeCast, declineLeaveInExile, exiled...)
+	return nil
+})

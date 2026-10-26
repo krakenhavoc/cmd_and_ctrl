@@ -80,25 +80,24 @@ func RegisterDiscardThenRule(key string, rule SetRuleFunc, fn DiscardThenFunc) D
 	if fn == nil {
 		panic(fmt.Sprintf("game: discard-then continuation %q has no function", key))
 	}
+	discardThenMu.Lock()
+	discardThenFns[key] = fn
+	discardThenMu.Unlock()
 	then := RegisterChooseCardsThenRule(key, rule, func(g *Game, r CardsChosen) error {
-		done := func(g *Game, landed []uuid.UUID) error {
-			return fn(g, DiscardsDone{
-				Player:    r.Chooser,
-				Source:    r.Source,
-				Discarded: PromptedDiscards{{Seat: r.Chooser, Cards: landed}},
-				Carry:     r.Carry,
-			})
-		}
+		// #4253 slice 9: the rest of the card after the discard is a
+		// registered tail naming this continuation, so a discard leg's
+		// prompt is a restore point.
+		done := KeyedTail{Ref: discardThenDone, Player: r.Chooser, Source: r.Source, Carry: copyUUIDs(r.Carry), Word: key}
 		if !r.Answered {
 			// The chooser left with the prompt open: they discarded
 			// nothing, and the rest of the card still runs, as the run's
 			// withdrawn leg does (settleRunLegLocked).
-			return done(g, nil)
+			return done.Run(g, nil)
 		}
 		return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
 			cause:  DiscardCauseEffect,
 			source: r.Source,
-			then:   done,
+			keyed:  done,
 		})
 	})
 	return DiscardThen{then: then, fn: fn}
@@ -153,12 +152,7 @@ var discardLegThen = RegisterChooseCardsThen("choose-cards/discard-leg", func(g 
 	return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
 		cause:  DiscardCauseEffect,
 		source: r.Source,
-		then: func(g *Game, landed []uuid.UUID) error {
-			if run := g.promptRuns[r.Run]; run != nil {
-				g.runLegTailLocked(run.thenKey, r.Chooser, r.Source, landed, run.carry)
-			}
-			return g.settleRunLegLocked(r.Run, r.Chooser, landed)
-		},
+		keyed:  discardLegSettledTail(r.Run, r.Chooser, r.Source),
 	})
 })
 

@@ -35,9 +35,7 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			owner, self := item.Owner, ctx.Source()
 			shuffle := func(g *game.Game, _ int) error {
-				return g.TuckToLibraryThenForEffect(self, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-					return g.ShuffleLibraryForEffect(owner)
-				})
+				return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{self}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 			}
 			t, ok := firstLegalTarget(ctx)
 			if !ok {

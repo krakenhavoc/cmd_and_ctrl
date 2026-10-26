@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Beacon of Unrest — Sorcery {3}{B}{B}:
 //
@@ -27,9 +31,7 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			reanimateSingleTarget(ctx, ctx.Controller())
 			owner := item.Owner
-			return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				return g.ShuffleLibraryForEffect(owner)
-			})
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 		},
 	})
 }

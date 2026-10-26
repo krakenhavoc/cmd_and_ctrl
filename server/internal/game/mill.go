@@ -187,6 +187,13 @@ type millTail struct {
 	// data, so the tail stays a restore point; false for every caller but
 	// MillToZoneThenMovedForEffect.
 	allMoved bool
+
+	// keyed is `then` as data (#4253 slice 9, mill_keyed.go): non-nil
+	// for the keyed doors, which always sequence, even with a zero tail.
+	// run is a keyed "until" run's repetition in flight. Cleared through
+	// the pointer as they run, as `then` is.
+	keyed *KeyedTail
+	run   *millUntilRun
 }
 
 // millRun is one "mills a card, then repeats this process until …"
@@ -537,6 +544,25 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 		ids = append(ids, c.InstanceID)
 	}
 	r := millRoute(ev.MillPlayer, tail.dest)
+	if run := tail.run; run != nil {
+		// #4253 slice 9: a keyed run's repetition; the run rides the
+		// batch, and the batch's end asks the clause.
+		tail.run = nil
+		rep := cloneMillUntilRun(run)
+		for _, c := range plan {
+			var scratch ContinuationCensus
+			rep.Planned = append(rep.Planned, snapshotCard(c, &scratch))
+		}
+		return nil, g.routeAllRunLocked(r, ids, &routeBatchRun{Mill: rep})
+	}
+	if k := tail.keyed; k != nil {
+		tail.keyed = nil
+		run := &routeBatchRun{Then: snapshotKeyedTail(*k), AllMoved: tail.allMoved}
+		if tail.allMoved {
+			run.Planned = copyUUIDs(ids)
+		}
+		return nil, g.routeAllRunLocked(r, ids, run)
+	}
 	if tail.then == nil {
 		// Fire-and-forget: every leg is routed on this line and one
 		// that pauses on CR 903.9 lands later without holding the rest
@@ -589,6 +615,16 @@ func (g *Game) leftLibraryLocked(ids []uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu.
 func (g *Game) abandonMillLocked(ev *ReplacementEvent) error {
+	if ev != nil && ev.mill != nil && ev.mill.run != nil {
+		run := ev.mill.run
+		ev.mill.run = nil
+		return g.continueMillUntilRunKeyedLocked(run, nil)
+	}
+	if ev != nil && ev.mill != nil && ev.mill.keyed != nil {
+		k := *ev.mill.keyed
+		ev.mill.keyed = nil
+		return g.runKeyedTailLocked(k, nil, 0)
+	}
 	if ev == nil || ev.mill == nil || ev.mill.then == nil {
 		return nil
 	}

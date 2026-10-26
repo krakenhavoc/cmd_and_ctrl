@@ -29,7 +29,7 @@ func init() {
 					return nil
 				}
 				if equipmentOK {
-					return g.ExileCardThenForEffect(equipment.ID, func(g *game.Game, _ bool) error { return next(g) })
+					return g.ExileCardKeyedForEffect(equipment.ID, fieryAnnihilationTail(g, item, creatureOK, creature.ID))
 				}
 				return next(g)
 			}
@@ -41,4 +41,26 @@ func init() {
 			return DealDamageThen(ctx, creature.ID, 5, func(g *game.Game, _ uuid.UUID, _ int) error { return after(g) })
 		},
 	})
+}
+
+// fieryAnnihilationExiled is "if that creature would die this turn, exile it instead" after the Equipment's exile (#4253 slice 9).
+var fieryAnnihilationExiled = CardTail("fiery-annihilation/exile-if-it-would-die", func(ctx *Context, o game.TailOutcome) error {
+	g, item := ctx.Game, ctx.Item
+	next := func(g *game.Game) error {
+		if len(o.Tail.Carry) > 0 {
+			return ExileIfItWouldDieThisTurn{Target: o.Tail.Carry[0]}.Apply(NewContext(g, item))
+		}
+		return nil
+	}
+	return next(g)
+})
+
+// fieryAnnihilationTail is the Equipment exile's tail: the creature rides the
+// carry when it was a legal target.
+func fieryAnnihilationTail(g *game.Game, item *game.StackItem, creatureOK bool, creature uuid.UUID) game.KeyedTail {
+	t := NewContext(g, item).ItemTail(fieryAnnihilationExiled)
+	if creatureOK {
+		t.Carry = []uuid.UUID{creature}
+	}
+	return t
 }

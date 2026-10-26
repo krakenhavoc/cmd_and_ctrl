@@ -40,24 +40,7 @@ func summonersSendingExile(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	exiledID := ts[0].ID
-	return ExileTarget{Target: exiledID, Then: func(ctx *Context, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		big := false
-		if c, ok := ctx.Game.LookupCardForEffect(exiledID); ok {
-			big = c.ManaValue() >= 4
-		}
-		bigN := 0
-		if big {
-			bigN = 1
-		}
-		return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
-			Controller: ctx.Controller(),
-			Source:     ctx.Source(),
-			Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 white Spirit with flying")), Count: 1}},
-		}, ctx.TailN(summonersSendingCounter, bigN))
-	}}.Apply(ctx)
+	return ExileTarget{Target: exiledID, ThenTail: withCarry(ctx.ItemTail(summonersSendingExiled), exiledID)}.Apply(ctx)
 }
 
 // summonersSendingCounter is "if its mana value was 4 or greater, put a
@@ -73,4 +56,27 @@ var summonersSendingCounter = CardTail("summoners-sending/counter-if-big", func(
 		}
 	}
 	return nil
+})
+
+// summonersSendingExiled is the clause after the exile (#4253 slice 9).
+var summonersSendingExiled = CardTail("summoners-sending/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	exiledID := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	big := false
+	if c, ok := ctx.Game.LookupCardForEffect(exiledID); ok {
+		big = c.ManaValue() >= 4
+	}
+	bigN := 0
+	if big {
+		bigN = 1
+	}
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: ctx.Controller(),
+		Source:     ctx.Source(),
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 white Spirit with flying")), Count: 1}},
+	}, ctx.TailN(summonersSendingCounter, bigN))
 })

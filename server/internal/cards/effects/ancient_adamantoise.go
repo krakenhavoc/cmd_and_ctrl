@@ -49,14 +49,21 @@ func init() {
 
 func ancientAdamantoiseDies(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	treasures := func(ctx *Context) error {
-		return b13CreateTappedTreasures(ctx, item.Controller, 10)
-	}
 	if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneGraveyard {
-		return treasures(ctx)
+		return ancientAdamantoiseTreasures(ctx)
 	}
 	return ExileTarget{
-		Target: item.SourceCardID,
-		Then:   func(ctx *Context, _ bool) error { return treasures(ctx) },
+		Target:   item.SourceCardID,
+		ThenTail: ctx.ItemTail(ancientAdamantoiseExiled),
 	}.Apply(ctx)
+}
+
+// ancientAdamantoiseExiled is the clause after the exile (#4253 slice 9).
+var ancientAdamantoiseExiled = CardTail("ancient-adamantoise/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	return ancientAdamantoiseTreasures(ctx)
+})
+
+// ancientAdamantoiseTreasures creates the ten tapped Treasures.
+func ancientAdamantoiseTreasures(ctx *Context) error {
+	return b13CreateTappedTreasures(ctx, ctx.Controller(), 10)
 }

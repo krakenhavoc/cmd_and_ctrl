@@ -233,5 +233,5 @@ func tragicArroganceSacrificeTheRest(ctx *Context, picked game.PromptedPicks) er
 	if len(doomed) == 0 {
 		return nil
 	}
-	return g.SacrificeAllThenForEffect(ctx.Source(), doomed, nil)
+	return g.SacrificeAllKeyedForEffect(ctx.Source(), doomed, game.KeyedTail{})
 }

@@ -67,25 +67,8 @@ func kotoseEnters(g *game.Game, item *game.StackItem) error {
 	}
 	victim, name := card.Owner, card.Name
 	return ExileTarget{
-		Target: target,
-		Then: func(ctx *Context, exiled bool) error {
-			var first []uuid.UUID
-			if exiled {
-				first = []uuid.UUID{target}
-			}
-			return SearchLibrary{
-				Player:               item.Controller,
-				LibraryOwner:         victim,
-				Predicate:            func(c game.Card) bool { return name != "" && c.Name == name },
-				Dest:                 game.ZoneExile,
-				Unbounded:            true,
-				AlsoGraveyardAndHand: true,
-				Shuffle:              true,
-				Reason:               "Kotose, the Silent Spider — search their graveyard, hand and library for cards named " + name,
-				// #4253 slice 4: the first card rides the tail.
-				ThenTail: kotoseTail(ctx, first),
-			}.Apply(ctx)
-		},
+		Target:   target,
+		ThenTail: withWord(withCarry(ctx.ItemTail(kotoseTheSilentSpiderExiled), target, victim), name),
 	}.Apply(ctx)
 }
 
@@ -128,3 +111,27 @@ func kotoseGrant(g *game.Game, item *game.StackItem, ids []uuid.UUID) error {
 	}, cards)
 	return nil
 }
+
+// kotoseTheSilentSpiderExiled is the clause after the exile (#4253 slice 9).
+var kotoseTheSilentSpiderExiled = CardTail("kotose-the-silent-spider/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	item := ctx.Item
+	target, victim, name := o.Tail.Carry[0], o.Tail.Carry[1], o.Tail.Word
+	exiled := len(o.IDs) == 1
+
+	var first []uuid.UUID
+	if exiled {
+		first = []uuid.UUID{target}
+	}
+	return SearchLibrary{
+		Player:               item.Controller,
+		LibraryOwner:         victim,
+		Predicate:            func(c game.Card) bool { return name != "" && c.Name == name },
+		Dest:                 game.ZoneExile,
+		Unbounded:            true,
+		AlsoGraveyardAndHand: true,
+		Shuffle:              true,
+		Reason:               "Kotose, the Silent Spider — search their graveyard, hand and library for cards named " + name,
+		// #4253 slice 4: the first card rides the tail.
+		ThenTail: kotoseTail(ctx, first),
+	}.Apply(ctx)
+})

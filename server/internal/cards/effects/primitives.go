@@ -230,7 +230,7 @@ type SacrificePermanent struct {
 	// really left the battlefield. Optional; leave it nil for a plain
 	// sacrifice with nothing hanging off it.
 	//
-	// #993, and the same shape as ExileTarget.Then (#870). A sacrifice
+	// #993, and the same shape as ExileTarget.ThenTail (#870). A sacrifice
 	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
 	// an ordinary zone change, so a replacement's window opens and the
 	// permanent is still on the battlefield while its question is open
@@ -297,7 +297,11 @@ type ExileTarget struct {
 	// asks its owner afterwards (ADR 0115). Write the clause as
 	// something that acts on what it is told, not as the next line of
 	// the card.
-	Then func(ctx *Context, exiled bool) error
+	//
+	// #4253 slice 9: it is a registered tail (CardTail), told the card as
+	// TailOutcome.IDs when it reached exile and nothing when it did not,
+	// so a table waiting on the exile's prompt is a restore point.
+	ThenTail game.KeyedTail
 
 	// Linked stamps CR 607.2a's "exiled with this" link on the card as
 	// it lands in exile (Card.ExiledWith, ADR 0155 §8): the resolving
@@ -313,34 +317,22 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	// object; see source_object_guard.go.
 	// Flicker and ExileThenIfItWas route through here.
 	if ctx.isNewSourceObject(e.Target) {
-		if e.Then != nil {
-			return e.Then(ctx, false)
-		}
-		return nil
+		return e.ThenTail.Run(ctx.Game, nil)
 	}
 	var link game.ObjectRef
 	if e.Linked {
 		link, _ = ctx.SourceRef()
 	}
-	if e.Then == nil {
+	if e.ThenTail.IsZero() {
 		if e.Linked {
 			return nothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
 		}
 		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
 	if e.Linked {
-		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, func(g *game.Game, exiled []uuid.UUID) error {
-			return e.Then(NewContext(g, item), len(exiled) == 1)
-		})
+		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, e.ThenTail)
 	}
-	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
-		return e.Then(NewContext(g, item), exiled)
-	})
+	return ctx.Game.ExileCardKeyedForEffect(e.Target, e.ThenTail)
 }
 
 // ExileFirstTarget is "exile target <whatever>" with no trailing
@@ -374,7 +366,7 @@ func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
 // replacement sent the card somewhere else, and when the move merely
 // PAUSED on a replacement's prompt. All three paid out
 // anyway — life, a +1/+1 counter, a Zombie — for a card that was still
-// sitting in its graveyard. So the clause hangs off `ExileTarget.Then`
+// sitting in its graveyard. So the clause hangs off `ExileTarget.ThenTail`
 // and is gated on `exiled`, CR 400.7's reading: the card that ARRIVED
 // in exile is the one the effect exiled.
 //
@@ -427,24 +419,24 @@ func (e ExileThenIfItWas) Apply(ctx *Context) error {
 	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok {
 		was = e.Was == nil || e.Was(c)
 	}
-	return ExileTarget{
-		Target: e.Target,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				// Nothing was exiled, so there is no "it" for the
-				// clause to be about. Neither branch.
-				return nil
-			}
-			clause := e.Then
-			if !was {
-				clause = e.Otherwise
-			}
-			if clause == nil {
-				return nil
-			}
-			return clause(ctx)
-		},
-	}.Apply(ctx)
+	// The clauses are closures (Then, Otherwise), so the exile takes the
+	// closure door.
+	return exileTargetThen(ctx, e.Target, func(ctx *Context, exiled bool) error {
+
+		if !exiled {
+			// Nothing was exiled, so there is no "it" for the
+			// clause to be about. Neither branch.
+			return nil
+		}
+		clause := e.Then
+		if !was {
+			clause = e.Otherwise
+		}
+		if clause == nil {
+			return nil
+		}
+		return clause(ctx)
+	})
 }
 
 // ReturnFromExile puts a card that is currently in exile back onto
@@ -532,14 +524,13 @@ type Flicker struct {
 }
 
 func (f Flicker) Apply(ctx *Context) error {
+	tapped := 0
+	if f.Tapped {
+		tapped = 1
+	}
 	return ExileTarget{
-		Target: f.Target,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
-		},
+		Target:   f.Target,
+		ThenTail: withN(withCarry(ctx.ItemTail(flickerReturnExiled), f.Target, f.Controller), tapped),
 	}.Apply(ctx)
 }
 
@@ -660,7 +651,7 @@ type BounceToHand struct {
 	// `bounced` is whether the card actually reached a hand. Optional;
 	// leave it nil for a plain bounce with nothing hanging off it.
 	//
-	// #993, and the same shape as ExileTarget.Then (#870). A hand is a
+	// #993, and the same shape as ExileTarget.ThenTail (#870). A hand is a
 	// CR 903.9 destination, so every bounce can pause: a commander
 	// returned to its owner's hand stops to ask them about the command
 	// zone, and a clause written on the next line runs with the
@@ -1943,9 +1934,15 @@ type MillToZone struct {
 	// accumulator over successive calls: the engine may ask it again
 	// for the same prefix when an undo replays the answer to a CR
 	// 903.9 prompt, and a closure counting as it goes would be wrong
-	// the second time. UntilCard and UntilTotalManaValue below are the
-	// two shapes the catalog needs; reach for them first.
-	Until func(landed []game.Card) bool
+	// the second time.
+	//
+	// #4253 slice 9: the clause is a registered stop clause
+	// (game.RegisterMillUntil) and the number it reads, so a run is data
+	// and a table waiting on one of its legs is a restore point.
+	// UntilNonland, UntilLand, UntilLegendary, UntilTotalManaValueOf and
+	// UntilCreatureOrCount (route_batch_tails.go) are the shapes the
+	// catalog needs.
+	Until game.MillUntil
 
 	// Then is the "for each card milled this way" clause, and `milled`
 	// holds the instance IDs that actually reached To, in library
@@ -1953,7 +1950,7 @@ type MillToZone struct {
 	// nothing hanging off it.
 	//
 	// #893: it runs from a CONTINUATION, for the reason
-	// ExileTarget.Then and DestroyAllMatching.Then do — a mill opens
+	// ExileTarget.ThenTail and DestroyAllMatching.Then do — a mill opens
 	// the CR 614 window per card, so a replacement may stop to ask
 	// and what was milled is not knowable on the next line. `milled`
 	// is CR 400.7's reading: a card a replacement sent somewhere else
@@ -1961,19 +1958,20 @@ type MillToZone struct {
 	// anywhere, exile it instead") is not in it, however thoroughly it left the
 	// library. Write the clause as something that acts on what it is
 	// told, not as the next line of the card.
-	Then func(ctx *Context, milled []uuid.UUID) error
+	//
+	// #4253 slice 9: it is a registered tail (CardTail), told the cards
+	// milled this way as TailOutcome.IDs, so a table waiting on a milled
+	// card's prompt is a restore point.
+	ThenTail game.KeyedTail
 }
 
 func (m MillToZone) Apply(ctx *Context) error {
-	if m.N <= 0 && m.Until == nil {
-		if m.Then == nil {
-			return nil
-		}
+	if m.N <= 0 && m.Until.IsZero() {
 		// A mill of nothing is still an answer. A caller sequencing
 		// several mills through the continuation has to be told, or it
 		// waits forever — the rule runRouteTailLocked follows for every
 		// terminal outcome of a routed move.
-		return m.Then(ctx, nil)
+		return m.ThenTail.Run(ctx.Game, nil)
 	}
 	dest := m.To
 	if dest == "" {
@@ -1983,7 +1981,7 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if m.Then == nil && m.Until == nil {
+	if m.ThenTail.IsZero() && m.Until.IsZero() {
 		// Nothing is waiting on the list and nothing is watching what
 		// lands, so the mill stays fire-and-forget: every card is
 		// routed on this line and a replacement's prompt lands its own
@@ -1991,102 +1989,10 @@ func (m MillToZone) Apply(ctx *Context) error {
 		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest)
 		return err
 	}
-	if m.Then == nil {
-		// An Until with nothing hanging off it still SEQUENCES (#1161):
-		// the clause is answered about cards that have arrived, and
-		// only the continuation form waits for them. The returned list
-		// this form gives up was discarded on the line above anyway.
-		return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until, nil)
-	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
-	return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until,
-		func(g *game.Game, milled []uuid.UUID) error {
-			return m.Then(NewContext(g, item), milled)
-		})
-}
-
-// UntilCard is MillToZone.Until for the common clause: the run ends on
-// the card that arrived, judged on its own — "until a creature card is
-// put into their graveyard", "until they reveal a land card".
-//
-// Pure by construction: it reads only the last entry of the list it is
-// handed, so replaying it over the same prefix gives the same answer.
-// See MillToZone.Until for why that matters.
-func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		return len(landed) > 0 && pred(landed[len(landed)-1])
-	}
-}
-
-// UntilCount is MillToZone.Until for the COUNT clause: the run ends
-// once `n` cards have landed — Helm of Obedience's "or X cards have
-// been put into their graveyard this way".
-//
-// #1161, and the reason it is a clause rather than MillToZone.N. N is
-// the mill AMOUNT: CR 701.17b counts the cards the instruction moves,
-// so a card a replacement diverts on the way to the graveyard (a
-// commander taking the command zone, Rest in Peace's "exile it
-// instead") spends one of it without ever arriving — and it is the
-// number a mill-amount replacement doubles. This bound counts
-// ARRIVALS, exactly as the rest of the same sentence does, which is
-// what makes Helm mill a whole library under Rest in Peace and what
-// makes a diverted card cost it nothing.
-//
-// Pure: it reads the length of the list it is handed and nothing else,
-// so replaying it over the same prefix gives the same answer.
-//
-// n <= 0 never ends the run. A card that prints a bound of zero prints
-// no run at all, and "stop before you start" is better expressed by
-// not milling.
-func UntilCount(n int) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		return n > 0 && len(landed) >= n
-	}
-}
-
-// UntilAny is "whichever comes first": the run ends as soon as ANY of
-// the clauses accepts the landed list.
-//
-// Helm of Obedience is the card — "until a creature card OR X cards
-// have been put into their graveyard this way, whichever comes first"
-// is two stop conditions on one list, and the engine takes ONE
-// predicate, so the card composes them here rather than the mill
-// growing a second clause field (#1161).
-//
-// Pure as long as its parts are, which is the property MillToZone.Until
-// requires of all of them.
-func UntilAny(clauses ...func([]game.Card) bool) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		for _, clause := range clauses {
-			if clause != nil && clause(landed) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-// UntilTotalManaValue is MillToZone.Until for the running-total
-// clause: the run ends once the cards that LANDED total `threshold`
-// mana value or more — "until you exile cards with total mana value 4
-// or greater" (Improvisation Capstone, Echocasting Symposium).
-//
-// The total is recomputed from the whole landed list every time rather
-// than accumulated across calls, which is what makes it pure and what
-// makes a card the CR 614 window diverted contribute nothing: it never
-// arrived, so it is not in the list (#1159).
-func UntilTotalManaValue(threshold int) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		total := 0
-		for _, c := range landed {
-			total += c.ManaValue()
-		}
-		return total >= threshold
-	}
+	// An Until with nothing hanging off it still SEQUENCES (#1161): the
+	// clause is answered about cards that have arrived, and only the
+	// continuation form waits for them.
+	return ctx.Game.MillToZoneKeyedForEffect(player, m.N, dest, m.Until, m.ThenTail)
 }
 
 // ExileTopFaceDown is "exile the top N cards of your library face
@@ -2303,4 +2209,31 @@ func SacrificeThisIfStillOnBattlefield(g *game.Game, item *game.StackItem) error
 		return nil
 	}
 	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
+}
+
+// flickerReturnExiled is a flicker's return of the card that reached exile
+// (#4253 slice 9): the card and the controller it returns under ride the
+// carry, and N is 1 for "tapped".
+var flickerReturnExiled = CardTail("flicker/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+	exiled := len(o.IDs) == 1
+	f := Flicker{Target: o.Tail.Carry[0], Controller: o.Tail.Carry[1], Tapped: o.Tail.N == 1}
+
+	if !exiled {
+		return nil
+	}
+	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+})
+
+// exileTargetThen is ExileTarget with its "then" as a closure, for a caller
+// whose clause reads what a registered tail cannot carry: a cast
+// permission, a token template, a caller's own closure (#4253 slice 9). A
+// table waiting on the exile's prompt is then not a restore point.
+func exileTargetThen(ctx *Context, target uuid.UUID, then func(ctx *Context, exiled bool) error) error {
+	if ctx.isNewSourceObject(target) {
+		return then(ctx, false)
+	}
+	item := ctx.Item
+	return ctx.Game.ExileCardThenForEffect(target, func(g *game.Game, exiled bool) error {
+		return then(NewContext(g, item), exiled)
+	})
 }

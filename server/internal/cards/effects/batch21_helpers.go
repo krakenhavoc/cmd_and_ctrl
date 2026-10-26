@@ -267,14 +267,9 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	// runs the continuation for it — the basic land on top of the
 	// library is the whole of that case.
 	return MillToZone{
-		Player: player,
-		N:      above,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			if land == uuid.Nil {
-				return nil
-			}
-			return BounceToHand{Target: land}.Apply(ctx)
-		},
+		Player:   player,
+		N:        above,
+		ThenTail: withCarry(ctx.ItemTail(batch21HelpersMilled), land),
 	}.Apply(ctx)
 }
 
@@ -301,30 +296,7 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 		// the four cards are not all in it yet on the line after the
 		// exile — a replacement's prompt may stop a leg, and a card it
 		// sends elsewhere never reaches exile at all.
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			// CR 406.3a: a card exiled face down (a foretold card) has
-			// no characteristics, so it is not a land card and is not
-			// offered.
-			lands := exiledCardIDs(ctx, func(c game.Card) bool {
-				return c.Owner == victim && !c.FaceDown && c.IsLand()
-			})
-			if len(lands) == 0 {
-				return nil
-			}
-			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:    item.Controller,
-				FromPlayer: victim,
-				Source:     item.SourceCardID,
-				Question:   "Oblivion Sower — put any number of these land cards onto the battlefield under your control",
-				Cards:      lands,
-				Min:        0,
-				Max:        len(lands),
-				ThenKey:    oblivionSowerLands,
-				LiveZone:   game.ZoneExile,
-				Asked:      game.NewAskedItem(item),
-			})
-			return nil
-		},
+		ThenTail: ctx.ItemTail(batch21HelpersMilled2),
 	}.Apply(ctx)
 }
 
@@ -347,3 +319,42 @@ func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) err
 		}),
 	}.Apply(ctx)
 }
+
+// batch21HelpersMilled is the clause after the mill (#4253 slice 9).
+var batch21HelpersMilled = CardTail("batch21-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	land := tailCarry0(o)
+
+	if land == uuid.Nil {
+		return nil
+	}
+	return BounceToHand{Target: land}.Apply(ctx)
+})
+
+// batch21HelpersMilled2 is the clause after the mill (#4253 slice 9).
+var batch21HelpersMilled2 = CardTail("batch21-helpers/after-mill-2", func(ctx *Context, o game.TailOutcome) error {
+	item := ctx.Item
+	victim := item.Targets[0].ID
+
+	// CR 406.3a: a card exiled face down (a foretold card) has
+	// no characteristics, so it is not a land card and is not
+	// offered.
+	lands := exiledCardIDs(ctx, func(c game.Card) bool {
+		return c.Owner == victim && !c.FaceDown && c.IsLand()
+	})
+	if len(lands) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: victim,
+		Source:     item.SourceCardID,
+		Question:   "Oblivion Sower — put any number of these land cards onto the battlefield under your control",
+		Cards:      lands,
+		Min:        0,
+		Max:        len(lands),
+		ThenKey:    oblivionSowerLands,
+		LiveZone:   game.ZoneExile,
+		Asked:      game.NewAskedItem(item),
+	})
+	return nil
+})

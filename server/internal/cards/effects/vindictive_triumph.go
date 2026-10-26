@@ -37,20 +37,9 @@ func init() {
 			}
 			mv, known := ctx.Game.ManaValueForEffect(card)
 			small := known && mv <= 3
-			caster := ctx.Controller()
 			return ExileTarget{
-				Target: target,
-				Then: func(ctx *Context, exiled bool) error {
-					if !exiled || !small {
-						return nil
-					}
-					return ReturnFromExile{
-						Target:     target,
-						Controller: caster,
-						Tapped:     true,
-						ThenTail:   ctx.Tail(vindictiveTriumphExile),
-					}.Apply(ctx)
-				},
+				Target:   target,
+				ThenTail: withN(withCarry(ctx.ItemTail(vindictiveTriumphExiled), target), boolToInt(small)),
 			}.Apply(ctx)
 		},
 	})
@@ -72,4 +61,20 @@ var vindictiveTriumphExile = EnteredTail("vindictive-triumph/exile-at-end-step",
 		Body:         exileListedCardsBody,
 	})
 	return nil
+})
+
+// vindictiveTriumphExiled is the clause after the exile (#4253 slice 9).
+var vindictiveTriumphExiled = CardTail("vindictive-triumph/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	target, small, caster := tailCarry0(o), o.Tail.N == 1, ctx.Controller()
+	exiled := len(o.IDs) == 1
+
+	if !exiled || !small {
+		return nil
+	}
+	return ReturnFromExile{
+		Target:     target,
+		Controller: caster,
+		Tapped:     true,
+		ThenTail:   ctx.Tail(vindictiveTriumphExile),
+	}.Apply(ctx)
 })

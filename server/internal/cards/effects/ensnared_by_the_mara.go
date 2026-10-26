@@ -44,20 +44,10 @@ var maraChoice = NewVillainousChoice("ensnared-by-the-mara",
 		Harm:  2,
 		Body: func(ctx *Context, f Facing) error {
 			return MillToZone{
-				Player: f.Player,
-				To:     game.ZoneExile,
-				Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
-				Then: func(ctx *Context, exiled []uuid.UUID) error {
-					var hit []uuid.UUID
-					for _, id := range exiled {
-						if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
-							hit = append(hit, id)
-						}
-					}
-					grantFreeCasts(ctx.Game, ctx.Controller(), ctx.Source(), "Ensnared by the Mara",
-						game.TimingFlash, game.LapseStaysInExile, hit)
-					return nil
-				},
+				Player:   f.Player,
+				To:       game.ZoneExile,
+				Until:    UntilNonland,
+				ThenTail: ctx.ItemTail(ensnaredByTheMaraMilled),
 			}.Apply(ctx)
 		},
 	},
@@ -66,18 +56,10 @@ var maraChoice = NewVillainousChoice("ensnared-by-the-mara",
 		Harm:  1,
 		Body: func(ctx *Context, f Facing) error {
 			return MillToZone{
-				Player: f.Player,
-				N:      4,
-				To:     game.ZoneExile,
-				Then: func(ctx *Context, exiled []uuid.UUID) error {
-					total := 0
-					for _, id := range exiled {
-						if c, ok := ctx.Game.LookupCardForEffect(id); ok {
-							total += c.ManaValue()
-						}
-					}
-					return DealDamage{Source: ctx.Source(), Target: f.Player, Amount: total}.Apply(ctx)
-				},
+				Player:   f.Player,
+				N:        4,
+				To:       game.ZoneExile,
+				ThenTail: withCarry(ctx.ItemTail(ensnaredByTheMaraMilled2), f.Player),
 			}.Apply(ctx)
 		},
 	})
@@ -92,3 +74,32 @@ func init() {
 		},
 	})
 }
+
+// ensnaredByTheMaraMilled is the clause after the mill (#4253 slice 9).
+var ensnaredByTheMaraMilled = CardTail("ensnared-by-the-mara/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	exiled := o.IDs
+
+	var hit []uuid.UUID
+	for _, id := range exiled {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
+			hit = append(hit, id)
+		}
+	}
+	grantFreeCasts(ctx.Game, ctx.Controller(), ctx.Source(), "Ensnared by the Mara",
+		game.TimingFlash, game.LapseStaysInExile, hit)
+	return nil
+})
+
+// ensnaredByTheMaraMilled2 is the clause after the mill (#4253 slice 9).
+var ensnaredByTheMaraMilled2 = CardTail("ensnared-by-the-mara/after-mill-2", func(ctx *Context, o game.TailOutcome) error {
+	f := Facing{Player: tailCarry0(o)}
+	exiled := o.IDs
+
+	total := 0
+	for _, id := range exiled {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+			total += c.ManaValue()
+		}
+	}
+	return DealDamage{Source: ctx.Source(), Target: f.Player, Amount: total}.Apply(ctx)
+})

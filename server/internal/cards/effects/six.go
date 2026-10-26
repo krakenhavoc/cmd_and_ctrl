@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -71,10 +69,15 @@ func init() {
 // from among them.
 func sixAttackMill(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		N: 3,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return mayTakeOneFromAmongThem(ctx, milled, Land(),
-				"Six — you may put a land card from among them into your hand")
-		},
+		N:        3,
+		ThenTail: NewContext(g, item).ItemTail(sixMilled),
 	}.Apply(NewContext(g, item))
 }
+
+// sixMilled is the clause after the mill (#4253 slice 9).
+var sixMilled = CardTail("six/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return mayTakeOneFromAmongThem(ctx, milled, Land(),
+		"Six — you may put a land card from among them into your hand")
+})

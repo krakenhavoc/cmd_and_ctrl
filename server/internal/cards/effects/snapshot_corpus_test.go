@@ -681,7 +681,77 @@ func corpusBoards() []corpusBoard {
 		// (searchPrompt.undecided).
 		{"myriad_landscape_search", corpusMyriadLandscapeSearch},
 		{"trophy_search_undecided", corpusTrophySearchUndecided},
+		// #4253 slice 9: a route batch paused on its second card with the
+		// rest of the batch as data (zoneRoute.batchLegs), a discard leg
+		// (zoneRoute.discardLegs, the discard's own event fields), and a
+		// discard a replacement turned into an entry (entryTail.batch.discard).
+		{"crypt_incursion_exile_leg", corpusCryptIncursionExileLeg},
+		{"mind_rot_discard_leg", corpusMindRotDiscardLeg},
+		{"obstinate_baloth_discard_entry", corpusObstinateBalothDiscardEntry},
 	}
+}
+
+// corpusCryptIncursionExileLeg is Crypt Incursion's exile of two creature
+// cards paused on the second's ordering prompt (#4253 slice 9).
+func corpusCryptIncursionExileLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	for _, name := range []string{"First", "Needle"} {
+		opp.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Test", Owner: opp.ID, Controller: opp.ID})
+	}
+	seedExileOrderProbes(g, opp.ID)
+	castCatalogSpell(t, g, "Crypt Incursion", "Instant", b42CryptIncursionOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the Needle's exile did not ask for an order")
+	}
+	return g
+}
+
+// corpusHandCard files a card in p's hand, known to p.
+func corpusHandCard(g *game.Game, p *game.Player, name, typeLine, oracle string) uuid.UUID {
+	c := game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, OracleID: oracle, Owner: p.ID, Controller: p.ID, Power: 4, Toughness: 4}
+	c.AddKnower(p.ID)
+	g.WithWriteLock(func() { p.Hand.PushTop(c) })
+	return c.InstanceID
+}
+
+// corpusMindRotDiscard casts an opponent's Mind Rot at the other seat and
+// discards a filler and `second`, which asks.
+func corpusMindRotDiscard(t *testing.T, g *game.Game, victim *game.Player, second uuid.UUID, filler uuid.UUID) {
+	t.Helper()
+	castCatalogSpell(t, g, "Mind Rot", "Sorcery", mindRotOracleID, []game.TargetRef{{Kind: game.TargetPlayer, ID: victim.ID}})
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, victim.ID, filler, second)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the second discarded card did not ask for an order")
+	}
+}
+
+// corpusMindRotDiscardLeg is an opponent's Mind Rot over a filler and a
+// Needle, paused on the Needle's discard order (#4253 slice 9).
+func corpusMindRotDiscardLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	filler := corpusHandCard(g, victim, "Filler", "Sorcery", "")
+	needle := corpusHandCard(g, victim, "Needle", "Sorcery", "")
+	seedOrderProbes(g, victim.ID, graveyardOrderProbeOracles, "Graveyard Order Probe")
+	corpusMindRotDiscard(t, g, victim, needle, filler)
+	return g
+}
+
+// corpusObstinateBalothDiscardEntry is an opponent's Mind Rot over a filler
+// and an Obstinate Baloth whose entry asks for an order, the rest of the
+// discard on the entry (#4253 slice 9).
+func corpusObstinateBalothDiscardEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	filler := corpusHandCard(g, victim, "Filler", "Sorcery", "")
+	baloth := corpusHandCard(g, victim, "Obstinate Baloth", "Creature — Beast", obstinateBalothOracle)
+	seedOrderProbes(g, victim.ID, entryOrderProbeOracles, "Entry Order Probe")
+	corpusMindRotDiscard(t, g, victim, baloth, filler)
+	return g
 }
 
 // corpusItDoesntAddUpClone is It Doesn't Add Up returning a Clone, paused on

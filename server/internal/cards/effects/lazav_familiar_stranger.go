@@ -118,12 +118,7 @@ var lazavFamiliarStrangerExile = game.RegisterChooseCardsThen("choose-cards/laza
 		return nil
 	}
 	card := r.Picked[0]
-	return ExileTarget{Target: card, Then: func(ctx *Context, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		return lazavFamiliarStrangerOfferCopy(ctx, card)
-	}}.Apply(keyedContext(g, r.Chooser, r.Source))
+	return ExileTarget{Target: card, ThenTail: game.KeyedTail{Ref: lazavFamiliarStrangerExiled, Player: r.Chooser, Source: r.Source, Carry: []uuid.UUID{card}}}.Apply(keyedContext(g, r.Chooser, r.Source))
 })
 
 // lazavFamiliarStrangerOfferCopy is "if a creature card was exiled
@@ -160,4 +155,15 @@ var lazavFamiliarStrangerCopy = MayYes("confirm/lazav-familiar-stranger-copy", f
 		Values:  &own,
 		Label:   "Lazav, Familiar Stranger — becomes a copy until end of turn",
 	}.Apply(ctx)
+})
+
+// lazavFamiliarStrangerExiled is the clause after the exile (#4253 slice 9).
+var lazavFamiliarStrangerExiled = CardTail("lazav-familiar-stranger/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	card := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return lazavFamiliarStrangerOfferCopy(ctx, card)
 })

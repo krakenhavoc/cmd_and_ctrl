@@ -38,12 +38,7 @@ func init() {
 				Cost:    LoyaltyCost(1),
 				Targets: upToNCardsFromASingleGraveyard(2),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return exileTargetCardsThen(NewContext(g, item), func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
-						if !anyWasCreature(exiled, wasCreature) {
-							return nil
-						}
-						return GainLife{Player: ctx.Controller(), Amount: 2}.Apply(ctx)
-					})
+					return exileTargetCardsThen(NewContext(g, item), kayaGainIfCreature)
 				},
 			},
 			{
@@ -83,3 +78,12 @@ func kayaOrzhovUsurperUltimate(g *game.Game, item *game.StackItem) error {
 	}
 	return GainLife{Player: item.Controller, Amount: n}.Apply(ctx)
 }
+
+// kayaGainIfCreature is "you gain 2 life if at least one creature card was
+// exiled this way" (#4253 slice 9).
+var kayaGainIfCreature = GraveyardExileTail("kaya-orzhov-usurper/gain-2-if-creature", func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
+	if !anyWasCreature(exiled, wasCreature) {
+		return nil
+	}
+	return GainLife{Player: ctx.Controller(), Amount: 2}.Apply(ctx)
+})

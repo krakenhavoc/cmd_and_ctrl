@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -66,13 +64,17 @@ func herigastAsk(g *game.Game, item *game.StackItem) error {
 // and draws three when it has finished, however many cards it held.
 func herigastExileHandThenDraw(ctx *Context) error {
 	controller := ctx.Controller()
-	item := ctx.Item
-	return ctx.Game.ExileCardsThenForEffect(allHandCardIDs(ctx.Game, controller), func(g *game.Game, _ []uuid.UUID) error {
-		return DrawCards{Player: controller, N: 3}.Apply(NewContext(g, item))
-	})
+	return ctx.Game.ExileCardsKeyedForEffect(allHandCardIDs(ctx.Game, controller), ctx.ItemTail(herigastDrawThree))
 }
 
 // herigastAnswer is the "yes": exile the hand and draw three. Keyed (#4291).
 var herigastAnswer = MayYes("confirm/herigast-exile-hand-draw", func(ctx *Context, _ game.ConfirmAnswer) error {
 	return herigastExileHandThenDraw(ctx)
+})
+
+// herigastDrawThree is "then draw three cards" after the hand's exile (#4253 slice 9).
+var herigastDrawThree = CardTail("herigast-erupting-nullkite/draw-three", func(ctx *Context, o game.TailOutcome) error {
+	g, item, controller := ctx.Game, ctx.Item, ctx.Controller()
+
+	return DrawCards{Player: controller, N: 3}.Apply(NewContext(g, item))
 })

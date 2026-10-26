@@ -94,15 +94,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordParadigm},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller, source := item.Controller, item.SourceCardID
+			controller := item.Controller
 			return MillToZone{
-				Player: controller,
-				To:     game.ZoneExile,
-				Until:  UntilTotalManaValue(improvisationCapstoneThreshold),
-				Then: func(ctx *Context, exiled []uuid.UUID) error {
-					improvisationCapstoneGrantCasts(ctx.Game, controller, source, exiled)
-					return nil
-				},
+				Player:   controller,
+				To:       game.ZoneExile,
+				Until:    UntilTotalManaValueOf(improvisationCapstoneThreshold),
+				ThenTail: ctx.ItemTail(improvisationCapstoneMilled),
 			}.Apply(ctx)
 		},
 	})
@@ -134,3 +131,12 @@ func improvisationCapstoneGrantCasts(g *game.Game, controller, source uuid.UUID,
 		})
 	}
 }
+
+// improvisationCapstoneMilled is the clause after the mill (#4253 slice 9).
+var improvisationCapstoneMilled = CardTail("improvisation-capstone/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	controller, source := ctx.Controller(), ctx.Source()
+	exiled := o.IDs
+
+	improvisationCapstoneGrantCasts(ctx.Game, controller, source, exiled)
+	return nil
+})

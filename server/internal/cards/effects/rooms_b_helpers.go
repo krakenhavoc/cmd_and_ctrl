@@ -61,9 +61,7 @@ func roomsBEachOpponentLosesLifePerCardTypeMilled(g *game.Game, item *game.Stack
 // The pick is mandatory; with one candidate there is nothing to choose.
 func roomsBMillThenReturnAChosenCreatureCard(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return MillToZone{N: n, Then: func(ctx *Context, _ []uuid.UUID) error {
-			return roomsBReturnAChosenCreatureCard(ctx)
-		}}.Apply(NewContext(g, item))
+		return MillToZone{N: n, ThenTail: NewContext(g, item).ItemTail(roomsBHelpersMilled)}.Apply(NewContext(g, item))
 	}
 }
 
@@ -105,4 +103,10 @@ var roomsBChosenCreatureReturn = askedPick("choose-cards/rooms-b-return-chosen-c
 		return nil
 	}
 	return ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneBattlefield}.Apply(ctx)
+})
+
+// roomsBHelpersMilled is the clause after the mill (#4253 slice 9).
+var roomsBHelpersMilled = CardTail("rooms-b-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return roomsBReturnAChosenCreatureCard(ctx)
 })

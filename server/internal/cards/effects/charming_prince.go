@@ -58,16 +58,21 @@ func charmingPrinceExileAndReturn(item *game.StackItem, ctx *Context, occ int) e
 		return nil
 	}
 	exiled := t.ID
-	controller := item.Controller
-	return ExileTarget{Target: exiled, Then: func(ctx *Context, ok bool) error {
-		if !ok {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label:      "Charming Prince — return the exiled creature",
-			Controller: controller,
-			Cards:      []uuid.UUID{exiled},
-			Body:       returnExiledToOwnersBody,
-		}.Apply(ctx)
-	}}.Apply(ctx)
+	return ExileTarget{Target: exiled, ThenTail: withCarry(ctx.ItemTail(charmingPrinceExiled), exiled)}.Apply(ctx)
 }
+
+// charmingPrinceExiled is the clause after the exile (#4253 slice 9).
+var charmingPrinceExiled = CardTail("charming-prince/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	exiled, controller := tailCarry0(o), ctx.Controller()
+	ok := len(o.IDs) == 1
+
+	if !ok {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		Label:      "Charming Prince — return the exiled creature",
+		Controller: controller,
+		Cards:      []uuid.UUID{exiled},
+		Body:       returnExiledToOwnersBody,
+	}.Apply(ctx)
+})

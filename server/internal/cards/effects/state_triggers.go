@@ -191,12 +191,12 @@ func ExileThisThen(then func(ctx *Context) error) Effect {
 		if !onBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return ExileTarget{Target: item.SourceCardID, Then: func(ctx *Context, exiled bool) error {
+		return exileTargetThen(NewContext(g, item), item.SourceCardID, func(ctx *Context, exiled bool) error {
 			if !exiled || then == nil {
 				return nil
 			}
 			return then(ctx)
-		}}.Apply(NewContext(g, item))
+		})
 	}
 }
 

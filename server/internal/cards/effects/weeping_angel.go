@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Weeping Angel — Artifact Creature — Alien Angel {1}{U}{B}, 2/2:
 //
@@ -73,7 +77,5 @@ func weepingAngelShuffle(g *game.Game, item *game.StackItem, _ game.EffectParams
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckToLibraryThenForEffect(it, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{it}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }

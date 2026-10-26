@@ -72,13 +72,8 @@ func init() {
 					// that takes the offer is not exiled and
 					// gets nothing.
 					return ExileTarget{
-						Target: dead,
-						Then: func(ctx *Context, exiled bool) error {
-							if !exiled {
-								return nil
-							}
-							return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
-						},
+						Target:   dead,
+						ThenTail: withCarry(NewContext(g, item).ItemTail(mariTheKillingQuillExiled), dead),
 					}.Apply(NewContext(g, item))
 				},
 			},
@@ -100,3 +95,14 @@ func init() {
 		},
 	})
 }
+
+// mariTheKillingQuillExiled is the clause after the exile (#4253 slice 9).
+var mariTheKillingQuillExiled = CardTail("mari-the-killing-quill/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	dead := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return AddCounter{Target: dead, Kind: "hit", N: 1}.Apply(ctx)
+})

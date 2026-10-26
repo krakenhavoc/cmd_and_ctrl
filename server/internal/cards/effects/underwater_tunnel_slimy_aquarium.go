@@ -23,7 +23,7 @@ func init() {
 		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorRight, "Slimy Aquarium — manifest dread, then put a +1/+1 counter on that creature",
-				Do(ManifestDread{Then: PutCountersOnManifested(CounterAmount{Kind: game.CounterPlusOne, N: 1})})),
+				Do(ManifestDread{ThenTail: PutCountersOnManifested(CounterAmount{Kind: game.CounterPlusOne, N: 1})})),
 		}},
 	}))
 }

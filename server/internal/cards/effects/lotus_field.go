@@ -78,5 +78,5 @@ func lotusFieldSacrifice(ctx *Context, picked game.PromptedPicks) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return ctx.Game.SacrificeAllThenForEffect(ctx.Source(), ids, nil)
+	return ctx.Game.SacrificeAllKeyedForEffect(ctx.Source(), ids, game.KeyedTail{})
 }

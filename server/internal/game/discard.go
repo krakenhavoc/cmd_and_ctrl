@@ -103,6 +103,12 @@ type discardOptions struct {
 	// cost_commander_choice.go), keyed by card. Only a cost discard
 	// sets it: every other discard can pause, and asks at the move.
 	commanderAnswers map[uuid.UUID]bool
+
+	// keyed is `then` as data (#4253 slice 9, discard_keyed.go): a
+	// registered tail told the cards discarded this way. A batch with no
+	// closure `then` and no cost answers is always the keyed batch, so a
+	// leg's prompt is a restore point.
+	keyed KeyedTail
 }
 
 // discardedThisWayLocked reports whether a settled discard of cardID
@@ -208,6 +214,9 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
+	if opts.then == nil && opts.commanderAnswers == nil {
+		return g.discardCardsKeyedLocked(playerID, cards, opts.cause, opts.source, opts.keyed)
+	}
 	return g.discardBatchLocked(playerID, cards, nil, nil, opts)
 }
 

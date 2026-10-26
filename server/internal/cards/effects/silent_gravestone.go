@@ -51,7 +51,5 @@ func silentGravestoneExile(g *game.Game, item *game.StackItem) error {
 		ids = append([]uuid.UUID{item.SourceCardID}, ids...)
 	}
 	you := item.Controller
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, _ []uuid.UUID) error {
-		return g.DrawNForEffect(you, 1)
-	})
+	return g.ExileCardsKeyedForEffect(ids, game.KeyedTail{Ref: thenDrawCards, Player: you, N: 1})
 }

@@ -100,7 +100,11 @@ type entryBatch struct {
 	// keyed is `then` as data (#4253 slice 3): a registered tail, told
 	// the permanents that entered as TailOutcome.IDs. Set one or neither.
 	keyed KeyedTail
-	opts  ZoneEntryOptions
+	// discard is the rest of a keyed discard batch whose leg became this
+	// entry (#4253 slice 9, discard_entry.go), run after the entry
+	// instead of a caller's continuation.
+	discard *discardEntryRun
+	opts    ZoneEntryOptions
 	// done and landed are set as the batch finishes: what entered. A
 	// synchronous door reads them on its next line instead of handing
 	// the batch a closure over a local (putOntoBattlefieldFromZoneLocked),
@@ -550,13 +554,16 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) error {
-	then, keyed := b.then, b.keyed
-	b.then, b.keyed = nil, KeyedTail{}
+	then, keyed, discard := b.then, b.keyed, b.discard
+	b.then, b.keyed, b.discard = nil, KeyedTail{}, nil
 	b.done, b.landed = true, entered
 	var thenErr error
-	if then != nil {
+	switch {
+	case then != nil:
 		thenErr = then(g, entered)
-	} else {
+	case discard != nil:
+		thenErr = g.finishDiscardEntryLocked(discard)
+	default:
 		thenErr = g.runKeyedTailLocked(keyed, entered, 0)
 	}
 	if b.firstErr != nil {

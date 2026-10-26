@@ -124,8 +124,13 @@ func uldarosTheorixResolve(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		budget := uldarosTheorixBudget
-		return CopyAndCast{Cards: exiled, Free: true, TotalManaValueAtMost: &budget}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(uldarosCopyExiled))
 }
+
+// uldarosCopyExiled casts copies of what reached exile within the budget (#4253 slice 9).
+var uldarosCopyExiled = CardTail("uldaros-theorix/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	budget := uldarosTheorixBudget
+	return CopyAndCast{Cards: exiled, Free: true, TotalManaValueAtMost: &budget}.Apply(NewContext(g, item))
+})

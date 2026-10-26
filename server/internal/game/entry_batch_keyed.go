@@ -46,6 +46,9 @@ type entryBatchSnapshot struct {
 	Next              int                        `json:"next,omitempty"`
 	Then              *keyedTailSnapshot         `json:"then,omitempty"`
 	Opts              zoneEntryOptionsSnapshot   `json:"opts"`
+	// Discard is a keyed discard batch's leg that became this entry
+	// (#4253 slice 9, entryBatch.discard).
+	Discard *discardEntryRun `json:"discard,omitempty"`
 }
 
 // entryBatchMemberSnapshot is one card of a paused batch. Out is its
@@ -116,6 +119,7 @@ func (g *Game) snapshotEntryBatch(b *entryBatch, cen *ContinuationCensus) *entry
 		Source: uuidPtrOrNil(b.source), Next: b.next, Then: snapshotKeyedTail(b.keyed),
 		Opts:    snapshotZoneEntryOptions(b.opts),
 		Members: make([]entryBatchMemberSnapshot, 0, len(b.members)),
+		Discard: cloneDiscardEntryRun(b.discard),
 	}
 	for _, m := range b.members {
 		ms := entryBatchMemberSnapshot{
@@ -138,7 +142,7 @@ func restoreEntryBatch(s *entryBatchSnapshot) *entryBatch {
 	b := &entryBatch{
 		exchangeSource: uuidOrNil(s.ExchangeSource), exchangeSacrifice: uuidOrNil(s.ExchangeSacrifice),
 		source: uuidOrNil(s.Source), next: s.Next, keyed: restoreKeyedTail(s.Then),
-		opts: restoreZoneEntryOptions(s.Opts),
+		opts: restoreZoneEntryOptions(s.Opts), discard: cloneDiscardEntryRun(s.Discard),
 	}
 	for _, m := range s.Members {
 		bm := entryBatchMember{
@@ -159,6 +163,9 @@ func unknownEntryBatchKeys(s *entryBatchSnapshot) []string {
 		return nil
 	}
 	unknown := unknownKeyedTail(s.Then)
+	if s.Discard != nil {
+		unknown = append(unknown, unknownDiscardBatchKeys(s.Discard.Legs)...)
+	}
 	for _, m := range s.Members {
 		if m.Out != nil {
 			unknown = append(unknown, unknownReplacementEventKeys(m.Out)...)

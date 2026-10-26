@@ -76,5 +76,5 @@ var bindingNegotiationOtherwise = RevealedPickThen("revealed-pick/binding-negoti
 // graveyard, keyed (#4253): it reads nothing but the cards.
 var bindingNegotiationGraveyard = game.RegisterChooseCardsThen("choose-cards/binding-negotiation-exiled-to-graveyard",
 	func(g *game.Game, r game.CardsChosen) error {
-		return g.PutCardsIntoGraveyardThenForEffect(r.Picked, nil)
+		return g.PutCardsIntoGraveyardKeyedForEffect(r.Picked, game.KeyedTail{})
 	})

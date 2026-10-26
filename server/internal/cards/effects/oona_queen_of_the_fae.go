@@ -73,24 +73,30 @@ func init() {
 
 func oonaExileAndMakeFaeries(ctx *Context, victim uuid.UUID, x int, color string) error {
 	return MillToZone{
-		Player: victim,
-		N:      x,
-		To:     game.ZoneExile,
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			n := 0
-			for _, id := range exiled {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
-					n++
-				}
-			}
-			if n == 0 {
-				return nil
-			}
-			return CreateToken{
-				Controller: ctx.Controller(),
-				Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
-				N:          n,
-			}.Apply(ctx)
-		},
+		Player:   victim,
+		N:        x,
+		To:       game.ZoneExile,
+		ThenTail: withWord(ctx.ItemTail(oonaQueenOfTheFaeMilled), color),
 	}.Apply(ctx)
 }
+
+// oonaQueenOfTheFaeMilled is the clause after the mill (#4253 slice 9).
+var oonaQueenOfTheFaeMilled = CardTail("oona-queen-of-the-fae/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	color := o.Tail.Word
+	exiled := o.IDs
+
+	n := 0
+	for _, id := range exiled {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
+			n++
+		}
+	}
+	if n == 0 {
+		return nil
+	}
+	return CreateToken{
+		Controller: ctx.Controller(),
+		Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
+		N:          n,
+	}.Apply(ctx)
+})

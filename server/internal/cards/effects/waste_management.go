@@ -35,7 +35,7 @@ func init() {
 		Targets:       upToNCardsFromASingleGraveyard(2),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if !ctx.WasKicked() {
-				return exileTargetCardsThen(ctx, wasteManagementRogues)
+				return exileTargetCardsThen(ctx, wasteManagementRoguesTail)
 			}
 			t, ok := ctx.ClauseTarget(0)
 			if !ok || t.Kind != game.TargetPlayer {
@@ -49,7 +49,7 @@ func init() {
 			for _, c := range p.Graveyard.Cards {
 				ids = append(ids, c.InstanceID)
 			}
-			return exileCardsThen(ctx, ids, wasteManagementRogues)
+			return exileCardsThen(ctx, ids, wasteManagementRoguesTail)
 		},
 	})
 }
@@ -63,3 +63,7 @@ func wasteManagementRogues(ctx *Context, exiled []uuid.UUID, wasCreature map[uui
 	}
 	return CreateToken{Controller: ctx.Controller(), Template: TokenCard("2/2 black Rogue"), N: n}.Apply(ctx)
 }
+
+// wasteManagementRoguesTail is wasteManagementRogues after the exile
+// (#4253 slice 9).
+var wasteManagementRoguesTail = GraveyardExileTail("waste-management/rogue-per-creature", wasteManagementRogues)

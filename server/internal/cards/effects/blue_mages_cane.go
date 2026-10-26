@@ -90,7 +90,12 @@ func blueMagesCaneExileAndCopy(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(blueMagesCaneCopy))
 }
+
+// blueMagesCaneCopy copies the card that reached exile (#4253 slice 9).
+var blueMagesCaneCopy = CardTail("blue-mages-cane/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(NewContext(g, item))
+})

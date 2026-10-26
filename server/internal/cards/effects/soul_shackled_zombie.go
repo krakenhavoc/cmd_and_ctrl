@@ -26,12 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersExileFromASingleGraveyard("Soul-Shackled Zombie", 2, func(g *game.Game, item *game.StackItem) error {
-				return exileTargetCardsThen(NewContext(g, item), func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
-					if !anyWasCreature(exiled, wasCreature) {
-						return nil
-					}
-					return soulShackledZombieDrain.Run(ctx)
-				})
+				return exileTargetCardsThen(NewContext(g, item), soulShackledZombieAfterExile)
 			}),
 		},
 	})
@@ -45,3 +40,12 @@ var soulShackledZombieDrain = RegisterThenSteps("then-steps/soul-shackled-zombie
 	}),
 	GainLife{Amount: 2},
 )
+
+// soulShackledZombieAfterExile is the drain if a creature card was exiled
+// (#4253 slice 9).
+var soulShackledZombieAfterExile = GraveyardExileTail("soul-shackled-zombie/drain-if-creature", func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
+	if !anyWasCreature(exiled, wasCreature) {
+		return nil
+	}
+	return soulShackledZombieDrain.Run(ctx)
+})

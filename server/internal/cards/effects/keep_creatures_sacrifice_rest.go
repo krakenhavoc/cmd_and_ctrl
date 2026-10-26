@@ -106,7 +106,7 @@ func sacrificeTheRest(ctx *Context, r game.RunDone) error {
 	if len(rest) == 0 {
 		return nil
 	}
-	return ctx.Game.SacrificeAllThenForEffect(r.Source, rest, nil)
+	return ctx.Game.SacrificeAllKeyedForEffect(r.Source, rest, game.KeyedTail{})
 }
 
 // keepsAll reports whether a seat's whole creature list is a legal keep

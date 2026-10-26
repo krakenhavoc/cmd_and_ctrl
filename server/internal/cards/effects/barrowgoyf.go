@@ -3,8 +3,6 @@ package effects
 import (
 	"strconv"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -108,10 +106,15 @@ func barrowgoyfMill(n int) Effect {
 // (#4291).
 var barrowgoyfAnswer = MayYes("confirm/barrowgoyf-mill", func(ctx *Context, r game.ConfirmAnswer) error {
 	return MillToZone{
-		N: wordInt(r),
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return mayTakeOneFromAmongThem(ctx, milled, Creature(),
-				"Barrowgoyf — you may put a creature card from among them into your hand")
-		},
+		N:        wordInt(r),
+		ThenTail: ctx.ItemTail(barrowgoyfMilled),
 	}.Apply(ctx)
+})
+
+// barrowgoyfMilled is the clause after the mill (#4253 slice 9).
+var barrowgoyfMilled = CardTail("barrowgoyf/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return mayTakeOneFromAmongThem(ctx, milled, Creature(),
+		"Barrowgoyf — you may put a creature card from among them into your hand")
 })

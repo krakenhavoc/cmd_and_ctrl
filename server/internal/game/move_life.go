@@ -104,11 +104,13 @@ func (g *Game) runMoveTailLocked(ev *ReplacementEvent) error {
 	seq := moveLifeSequence{remaining: ev.lifeAfterMove, mustSettleNow: ev.mustSettleNow}
 	ev.lifeAfterMove = nil
 	if r := ev.zoneRoute; r != nil {
-		if r.then != nil {
-			seq.route = *r
+		if r.hasTail() {
+			// #4253 slice 9: a keyed batch's or face-down leg's run is a
+			// continuation too, and waits for the life change as `then`
+			// does.
+			seq.route = r.detachTail()
 			seq.route.simultaneousEntry = nil
 			seq.hasRoute = true
-			r.then = nil
 		}
 		if err := g.runRouteTailLocked(r); err != nil {
 			return err
