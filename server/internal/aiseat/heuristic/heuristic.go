@@ -146,6 +146,10 @@ type Config struct {
 	// A's value-only rule for the tier (rules.Options). Off (the zero
 	// value) is the heuristic before ADR 0142.
 	PriceAnswers bool
+	// PriceAnswerOnlyRows holds purely defensive rows with nothing on
+	// the stack to answer, and charges their self-sacrifice in response
+	// (#4318). Needs PriceAnswers. Off preserves the pre-fix prices.
+	PriceAnswerOnlyRows bool
 	// PriceRepeatedPumps prices a declared `pump` row that needs more
 	// than one activation to keep a creature alive (#2939 gap 2,
 	// answers.go): Evernight Shade's {B}: +1/+1 against a Bolt for 3.
@@ -918,9 +922,10 @@ func DefaultConfig() Config {
 		SacrificeDyingAnyway: true,
 		DeathPayoff:          0.60,
 
-		PriceAnswers:       true,
-		PriceRepeatedPumps: true,
-		PriceSaveOthers:    true,
+		PriceAnswers:        true,
+		PriceAnswerOnlyRows: true,
+		PriceRepeatedPumps:  true,
+		PriceSaveOthers:     true,
 
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
@@ -1040,6 +1045,7 @@ func BaselineConfig() Config {
 	c.DeathPayoff = 0
 	// ADR 0142 decision 6: declared answers.
 	c.PriceAnswers = false
+	c.PriceAnswerOnlyRows = false
 	// #2939 gap 2: a pump that takes several activations.
 	c.PriceRepeatedPumps = false
 	// #2939 gap 3: a row that saves the bot's other permanents.
