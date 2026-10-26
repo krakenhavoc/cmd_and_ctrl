@@ -100,12 +100,17 @@ func lichsMasteryExile(g *game.Game, item *game.StackItem) error {
 		Cards:    pool,
 		Min:      n,
 		Max:      n,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return lichsMasteryExilePicked(g, you, pool, picked, n)
-		},
+		ThenKey:  lichsMasteryExilePick,
 	})
 	return nil
 }
+
+// lichsMasteryExilePick is the picks exiled, the shortfall made up from the
+// rest of the pool, keyed (#4253): the pool is the prompt's own candidates,
+// the count its minimum and the controller its chooser.
+var lichsMasteryExilePick = game.RegisterChooseCardsThen("choose-cards/lichs-mastery-exile", func(g *game.Game, r game.CardsChosen) error {
+	return lichsMasteryExilePicked(g, r.Chooser, r.Candidates, r.Picked, r.Min)
+})
 
 // lichsMasteryPool is every permanent `you` control, then every card in
 // their hand, then every card in their graveyard.

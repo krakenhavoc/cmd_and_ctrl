@@ -74,11 +74,9 @@ func init() {
 }
 
 // karnPlusFour asks the target player to exile a card from their hand.
-// Package-level; its continuation captures only the Karn object ref,
-// which is plain data.
+// Its pick is keyed (karnExilePick).
 func karnPlusFour(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	link, _ := ctx.SourceRef()
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetPlayer {
 			continue
@@ -101,17 +99,24 @@ func karnPlusFour(g *game.Game, item *game.StackItem) error {
 			Max:        1,
 			// Re-checked on submit: the pick must still be in that
 			// player's hand when the answer arrives.
-			Zone: game.ZoneHand,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				if len(picked) == 0 {
-					return nil
-				}
-				return g.ExileLinkedForEffect(link, picked[0])
-			},
+			ThenKey:  karnExilePick,
+			LiveZone: game.ZoneHand,
+			Asked:    game.NewAskedItem(item),
 		})
 	}
 	return nil
 }
+
+// karnExilePick is the card the target player picked, exiled linked to the
+// Karn object that asked, keyed (#4253): the asking item (and the object it
+// names) rides the prompt as data.
+var karnExilePick = askedPick("choose-cards/karn-liberated-exile-from-hand", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	link, _ := ctx.SourceRef()
+	return ctx.Game.ExileLinkedForEffect(link, r.Picked[0])
+})
 
 // karnMinusThree exiles the target permanent, linked to this Karn.
 func karnMinusThree(g *game.Game, item *game.StackItem) error {

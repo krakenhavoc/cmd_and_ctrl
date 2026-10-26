@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Ledger Shredder — Creature — Bird Advisor {1}{U}, 1/3:
 //
@@ -55,22 +51,25 @@ func ledgerShredderConnive(g *game.Game, item *game.StackItem) error {
 	if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {
 		return err
 	}
-	source := item.SourceCardID
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   item.Controller,
-		Source:   source,
+		Source:   item.SourceCardID,
 		N:        1,
 		Question: "Ledger Shredder — connive: discard a card",
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			if len(discarded) == 0 {
-				return nil
-			}
-			card, ok := g.LookupCardForEffect(discarded[0])
-			if !ok || card.IsLand() {
-				return nil
-			}
-			return AddCounter{Target: source, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-		},
-	})
-	return nil
+	}, ledgerShredderDiscarded, nil)
 }
+
+// ledgerShredderDiscarded is the counter once the discard has settled: only
+// for a nonland card really discarded. Keyed (#4253): the Shredder is the
+// prompt's source.
+var ledgerShredderDiscarded = game.RegisterDiscardThen("choose-cards/ledger-shredder-connive", func(g *game.Game, r game.DiscardsDone) error {
+	discarded := r.Discarded.Cards()
+	if len(discarded) == 0 {
+		return nil
+	}
+	card, ok := g.LookupCardForEffect(discarded[0])
+	if !ok || card.IsLand() {
+		return nil
+	}
+	return AddCounter{Target: r.Source, Kind: game.CounterPlusOne, N: 1}.Apply(keyedContext(g, r.Player, r.Source))
+})
