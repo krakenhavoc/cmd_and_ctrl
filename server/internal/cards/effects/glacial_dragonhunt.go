@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -42,29 +40,31 @@ var (
 	// the draw has landed. A nonland discard creates the reflexive
 	// trigger. The key is an on-disk identity.
 	glacialDragonhuntDiscard = game.RegisterDrawThen("glacial-dragonhunt/may-discard", func(g *game.Game, d game.DrawThen) error {
-		parent := &game.StackItem{Controller: d.Player, SourceCardID: d.Source, Label: "Glacial Dragonhunt"}
-		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player:   d.Player,
 			Source:   d.Source,
 			N:        1,
 			UpTo:     true,
 			Question: "Glacial Dragonhunt — you may discard a card",
-			Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-				nonland := false
-				for _, id := range discarded {
-					if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-						nonland = true
-					}
-				}
-				if !nonland {
-					return nil
-				}
-				t := WhenYouDo("Glacial Dragonhunt — 3 damage to target creature", glacialDragonhuntDamageBody)
-				t.Params = game.EffectParams{Amount: 3}
-				return t.Apply(NewContext(g, parent))
-			},
-		})
-		return nil
+		}, glacialDragonhuntDiscarded, nil)
+	})
+
+	// The discard's answer, keyed (#4253): a nonland discard creates the
+	// reflexive trigger. The key is an on-disk identity.
+	glacialDragonhuntDiscarded = game.RegisterDiscardThen("choose-cards/glacial-dragonhunt-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		nonland := false
+		for _, id := range r.Discarded.Cards() {
+			if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
+				nonland = true
+			}
+		}
+		if !nonland {
+			return nil
+		}
+		parent := &game.StackItem{Controller: r.Player, SourceCardID: r.Source, Label: "Glacial Dragonhunt"}
+		t := WhenYouDo("Glacial Dragonhunt — 3 damage to target creature", glacialDragonhuntDamageBody)
+		t.Params = game.EffectParams{Amount: 3}
+		return t.Apply(NewContext(g, parent))
 	})
 
 	// "When you discard a nonland card this way, Glacial Dragonhunt deals

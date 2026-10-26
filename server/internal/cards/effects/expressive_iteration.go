@@ -51,45 +51,51 @@ func expressiveIterationBottomAndExile(g *game.Game, res TakeFromLibraryResult) 
 	case 0:
 		return nil
 	case 1:
-		return expressiveIterationBottom(g, res.Player, res.Source, rest[0], nil)
+		return expressiveIterationBottom(g, res.Player, res.Source, rest[0], uuid.Nil)
 	}
-	player, source := res.Player, res.Source
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  player,
+		Chooser:  res.Player,
 		Source:   res.Source,
 		Question: "Expressive Iteration — put one of them on the bottom of your library (the other is exiled, and you may play it this turn)",
 		Cards:    rest,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			var exile uuid.UUID
-			for _, id := range cardsStillInALibrary(g, rest) {
-				if id != picked[0] {
-					exile = id
-					break
-				}
-			}
-			return expressiveIterationBottom(g, player, source, picked[0], func(g *game.Game) error {
-				if exile == uuid.Nil {
-					return nil
-				}
-				return g.ExileCardWithPermissionForEffect(exile, game.CastPermission{
-					Player: player,
-					Label:  "Expressive Iteration — play it this turn",
-				})
-			})
-		},
+		LiveZone: game.ZoneLibrary,
+		ThenKey:  expressiveIterationBottomPicked,
+		Carry:    rest,
 	})
 	return nil
 }
 
+// expressiveIterationBottomPicked is the card put on the bottom and the other
+// exiled, keyed (#4253): the cards looked at ride the prompt as its carry.
+var expressiveIterationBottomPicked = game.RegisterChooseCardsThen("choose-cards/expressive-iteration-bottom", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	var exile uuid.UUID
+	for _, id := range cardsStillInALibrary(g, r.Carry) {
+		if id != r.Picked[0] {
+			exile = id
+			break
+		}
+	}
+	return expressiveIterationBottom(g, r.Chooser, r.Source, r.Picked[0], exile)
+})
+
 // expressiveIterationBottom puts one looked-at card on the bottom of its
-// owner's library, then runs `then`.
-func expressiveIterationBottom(g *game.Game, player, source, card uuid.UUID, then func(g *game.Game) error) error {
+// owner's library, then exiles `exile` (when it is not uuid.Nil) so that
+// `player` may play it this turn.
+func expressiveIterationBottom(g *game.Game, player, source, card, exile uuid.UUID) error {
+	var then func(g *game.Game) error
+	if exile != uuid.Nil {
+		then = func(g *game.Game) error {
+			return g.ExileCardWithPermissionForEffect(exile, game.CastPermission{
+				Player: player,
+				Label:  "Expressive Iteration — play it this turn",
+			})
+		}
+	}
 	return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
 		Chooser:   player,
 		Source:    source,

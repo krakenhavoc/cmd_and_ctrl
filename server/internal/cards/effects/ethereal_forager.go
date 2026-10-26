@@ -68,15 +68,19 @@ func etherealForagerReturn(g *game.Game, item *game.StackItem) error {
 		Source:   item.SourceCardID,
 		Question: "Ethereal Forager — you may return an instant or sorcery card exiled with it to its owner's hand",
 		Cards:    ids,
-		Zone:     game.ZoneExile,
+		LiveZone: game.ZoneExile,
 		Min:      0,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.BounceToHandForEffect(picked[0])
-		},
+		ThenKey:  etherealForagerReturned,
 	})
 	return nil
 }
+
+// etherealForagerReturned is the chosen card returned to its owner's hand,
+// keyed (#4253): a table waiting on the pick is a restore point.
+var etherealForagerReturned = game.RegisterChooseCardsThen("choose-cards/ethereal-forager-return", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return g.BounceToHandForEffect(r.Picked[0])
+})

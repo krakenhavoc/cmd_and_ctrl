@@ -7941,6 +7941,18 @@ asked — an empty pool or a chooser who has left — in which case
 `ctx.ChosenPlayer()` is `uuid.Nil`, so **every branch checks before it
 acts**.
 
+**`ChoosePlayerKeyed{Chooser, Among, Except, Question, Then, Carry}`**
+(#4253, `sweep02_helpers.go`) is `ChoosePlayer` with the answer as a
+registered continuation, so a table waiting on the choice is a restore point
+(a `ChoosePlayer.Then` is a closure and is not). Register the body once, from
+a package-level var, with `ChoosePlayerThen("option-pick/<card>-<what>",
+func(ctx *Context, chosen uuid.UUID, carry []uuid.UUID) error {…})` (an
+on-disk key, ledgered): the body gets a Context rebuilt from the controller
+and the source card, the player chosen (`uuid.Nil` when none could be asked),
+and the `Carry` the card put on the prompt. It reads no
+`ctx.ChosenPlayer()`: the answer is not recorded on the item. Sol'Kanar the
+Tainted, Zuko and the face-down pile cards are written this way.
+
 **`ChoosePlayerAsEnters(label, pool)`** (same file) is the CR 614.12
 form — "As this enters, choose a player" (True-Name Nemesis, Sawhorn
 Nemesis), #980. It goes in `Spec.AsEnters`, and the difference from

@@ -58,8 +58,6 @@ func ghostlyDancersEnters(g *game.Game, item *game.StackItem) error {
 			break
 		}
 	}
-	returnCard := func(ctx *Context) error { return ghostlyDancersReturn(ctx, enchantments) }
-	unlock := func(ctx *Context) error { return UnlockALockedDoorOfARoomYouControl{Player: me}.Apply(ctx) }
 	switch {
 	case len(enchantments) > 0 && hasLockedDoor:
 		return PickOption{
@@ -69,23 +67,28 @@ func ghostlyDancersEnters(g *game.Game, item *game.StackItem) error {
 				{Label: "Return an enchantment card from your graveyard to your hand"},
 				{Label: "Unlock a locked door of a Room you control"},
 			},
-			Then: func(ctx *Context, index int) error {
-				switch index {
-				case 0:
-					return returnCard(ctx)
-				case 1:
-					return unlock(ctx)
-				}
-				return nil
-			},
+			ThenKey: ghostlyDancersChosen,
+			Carry:   enchantments,
 		}.Apply(ctx)
 	case len(enchantments) > 0:
-		return returnCard(ctx)
+		return ghostlyDancersReturn(ctx, enchantments)
 	case hasLockedDoor:
-		return unlock(ctx)
+		return UnlockALockedDoorOfARoomYouControl{Player: me}.Apply(ctx)
 	}
 	return nil
 }
+
+// ghostlyDancersChosen is the chosen branch, keyed (#4253): the enchantment
+// cards offered ride the prompt as its carry.
+var ghostlyDancersChosen = OptionPickThen("option-pick/ghostly-dancers-return-or-unlock", func(ctx *Context, r game.OptionPicked) error {
+	switch r.Index {
+	case 0:
+		return ghostlyDancersReturn(ctx, r.Carry)
+	case 1:
+		return UnlockALockedDoorOfARoomYouControl{Player: ctx.Controller()}.Apply(ctx)
+	}
+	return nil
+})
 
 // ghostlyDancersReturn puts the chosen enchantment card from the
 // controller's graveyard into their hand; one candidate is not asked.
