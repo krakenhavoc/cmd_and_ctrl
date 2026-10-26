@@ -21,8 +21,8 @@ func init() {
 		OracleID:     "65d63518-3261-40b5-87b8-19c152b29ee3",
 		Name:         "Roiling Regrowth",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return sacrificeALandThenFetchTwoTapped(item, ctx, "Roiling Regrowth")
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return sacrificeALandThenFetchTwoTapped(ctx, "Roiling Regrowth", roilingRegrowthFetch)
 		},
 	})
 }
@@ -30,22 +30,33 @@ func init() {
 // sacrificeALandThenFetchTwoTapped is "Sacrifice a land. Search your
 // library for up to two basic land cards, put them onto the battlefield
 // tapped, then shuffle." (Roiling Regrowth, Cycle of Renewal).
-func sacrificeALandThenFetchTwoTapped(item *game.StackItem, ctx *Context, name string) error {
-	controller := ctx.Controller()
-	return ctx.Game.PlayerSacrificesThenForEffect(
-		ctx.Source(), controller,
+func sacrificeALandThenFetchTwoTapped(ctx *Context, name string, then game.PromptRunThen) error {
+	return ctx.SacrificeThen(ctx.Controller(),
 		sacrificeSpec("a land", Land()),
 		name+" — sacrifice a land",
-		1,
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return SearchLibrary{
-				Player:        controller,
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         2,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        name + " — up to two basic lands onto the battlefield tapped",
-			}.Apply(NewContext(g, item))
-		})
+		1, then)
+}
+
+// roilingRegrowthFetch and cycleOfRenewalFetch are the search once the land
+// has gone, keyed (#4290): one key per card, because the prompt names it.
+var (
+	roilingRegrowthFetch = fetchTwoBasicsTapped("prompt-run/roiling-regrowth-fetch", "Roiling Regrowth")
+	cycleOfRenewalFetch  = fetchTwoBasicsTapped("prompt-run/cycle-of-renewal-fetch", "Cycle of Renewal")
+)
+
+// fetchTwoBasicsTapped registers "search your library for up to two basic
+// land cards, put them onto the battlefield tapped, then shuffle" under key,
+// for the card called name.
+func fetchTwoBasicsTapped(key, name string) game.PromptRunThen {
+	return RunThen(key, func(ctx *Context, _ game.RunDone) error {
+		return SearchLibrary{
+			Player:        ctx.Controller(),
+			Predicate:     IsBasicLand,
+			Dest:          game.ZoneBattlefield,
+			Limit:         2,
+			Shuffle:       true,
+			TappedOnEntry: true,
+			Reason:        name + " — up to two basic lands onto the battlefield tapped",
+		}.Apply(ctx)
+	})
 }

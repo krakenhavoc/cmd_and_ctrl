@@ -210,7 +210,21 @@ var carriedFixture = map[string]any{
 			if c.CouncilVote != nil {
 				c.CouncilVote.Then = carriedTestVoteKey.Key()
 			}
+			// #4290: and a keyed ordered collection's.
+			if c.ordered != nil {
+				c.ordered.Key = carriedTestPromptRunKey
+			}
 		}
+		return out
+	},
+	// #4290: a keyed ordered collection names its run continuation.
+	"PendingChoice.ordered": func(*Game) any {
+		v, err := generateNonZero(reflect.TypeOf(&orderedPicks{}), "PendingChoice.ordered", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().(*orderedPicks)
+		out.Key = carriedTestPromptRunKey
 		return out
 	},
 	"PendingChoice.CouncilVote": func(*Game) any {
@@ -444,6 +458,9 @@ var carriedFixture = map[string]any{
 			thenKey:     carriedTestPromptRunKey,
 			carry:       []uuid.UUID{b},
 			source:      card,
+			nums:        []int{3, 5},
+			asked: &AskedItem{ID: id, Kind: StackItemTriggered, Controller: a, Owner: a, SourceCardID: card,
+				Label: "drift-Game.promptRuns", Targets: []TargetRef{{Kind: TargetPlayer, ID: b}}, XValue: 2},
 		}}
 	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).

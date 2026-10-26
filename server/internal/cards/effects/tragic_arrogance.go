@@ -57,12 +57,18 @@ func init() {
 				Question:   "Tragic Arrogance — choose an artifact, a creature, an enchantment and a planeswalker that player keeps",
 				Of:         seatsFromActive(ctx.Game),
 				Candidates: tragicArroganceCandidates,
-				Validate:   tragicArroganceAssignable,
-				Then:       tragicArroganceSacrificeTheRest,
+				Keyed:      tragicArroganceChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// tragicArroganceChosen is the keyed pick (#4290): the set rule over what a
+// player keeps, and sacrificing everything else.
+var tragicArroganceChosen = RegisterPermanentsPick("prompt-run/tragic-arrogance-sacrifice-the-rest", PermanentsDef{
+	Validate: tragicArroganceAssignable,
+	Then:     tragicArroganceSacrificeTheRest,
+})
 
 // tragicArroganceTypes are the four slots, in the card's printed order.
 var tragicArroganceTypes = []func(game.Card) bool{

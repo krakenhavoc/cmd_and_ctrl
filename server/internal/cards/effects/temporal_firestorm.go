@@ -50,16 +50,22 @@ func init() {
 					}
 					return out, 0, x
 				},
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					if err := (PhaseOut{Targets: picked.Cards()}).Apply(ctx); err != nil {
-						return err
-					}
-					return temporalFirestormDamage(ctx)
-				},
+				Keyed: temporalFirestormChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// temporalFirestormChosen is the chosen permanents phasing out and then the
+// damage, keyed (#4290).
+var temporalFirestormChosen = RegisterPermanentsPick("prompt-run/temporal-firestorm-phase-out", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		if err := (PhaseOut{Targets: picked.Cards()}).Apply(ctx); err != nil {
+			return err
+		}
+		return temporalFirestormDamage(ctx)
+	},
+})
 
 // temporalFirestormDamage is "5 damage to each creature and each
 // planeswalker", as one damage instance.

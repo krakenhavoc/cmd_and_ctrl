@@ -429,7 +429,7 @@ func TestAKeyedPermanentPickRunIsARestorePointWithALegAnswered(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, testKeyedRun, []uuid.UUID{opp.ID}); err != nil {
+		}, testKeyedRun, RunData{Carry: []uuid.UUID{opp.ID}}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
@@ -469,7 +469,7 @@ func TestAKeyedPermanentPickWithAValidateIsRefused(t *testing.T) {
 		_, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: me.ID, Of: []uuid.UUID{me.ID},
 			Validate: func([]Card) bool { return true },
-		}, testKeyedRun, nil)
+		}, testKeyedRun, RunData{})
 		if !errors.Is(err, ErrInvalidParam) {
 			t.Errorf("err = %v, want ErrInvalidParam", err)
 		}
@@ -488,7 +488,7 @@ func TestAKeyedPermanentPickLegWithAnUnknownKeyIsRefused(t *testing.T) {
 			Chooser: victim.ID, Question: "sacrifice one",
 			Of:         []uuid.UUID{victim.ID},
 			Candidates: annihilatorCandidates(1),
-		}, testKeyedRun, nil); err != nil {
+		}, testKeyedRun, RunData{}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
@@ -516,7 +516,7 @@ func TestAChooserLeavingSettlesTheirKeyedPermanentPick(t *testing.T) {
 			Chooser: leaver.ID, Source: source, Question: "sacrifice one",
 			Of:         []uuid.UUID{leaver.ID},
 			Candidates: annihilatorCandidates(1),
-		}, testKeyedRun, nil); err != nil {
+		}, testKeyedRun, RunData{}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})

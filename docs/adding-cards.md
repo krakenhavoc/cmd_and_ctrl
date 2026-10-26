@@ -5874,6 +5874,27 @@ nothing waiting, `g.PlayerSacrificesNForEffect` — never a hand-written
 loop reading the count, which the payout lint now flags. See
 [ADR 0013 §5x](decisions/0013-replacement-effects.md).
 
+**Write the rest of a prompted run as a registered continuation, not a
+closure (#4290).** A multi-seat sacrifice, a `choose_cards` fan-out and a
+permanent pick are restore points only when nothing in them is a Go
+closure, so the catalog uses the keyed forms: `effects.RunThen(key,
+body)` registers "the rest of the card" under an on-disk key (ledgered
+`run <key>`, never renamed, never reused) and `ctx.RunData(carry,
+nums...)` hands it the asking item, IDs and numbers; the body runs
+against a Context rebuilt from that item, so it reads the item's targets,
+its X and the words of its text as it did. `ctx.SacrificeThen` and
+`ctx.PlayersSacrificeThen` queue the sacrifice runs,
+`effects.EachPlayerSacrifices{Keyed: RegisterEdictThen(…)}` the edicts,
+`ChooseCardsRunThenKeyedForEffect` the fan-outs (a leg's set rule is
+registered with `RegisterChooseCardsRunLegRule`), and
+`ChoosePermanents{Keyed: RegisterPermanentsPick(key, PermanentsDef{Validate,
+Sacrifice, Then})}` the picks. `ChoosePermanents` no longer takes a
+closure. A body that asks the next seat names its own key again, so it is
+registered from `init`. A registered function captures nothing: what it
+read from the Go frame goes on the carry, the numbers or the asking item.
+See the 2026-10-26 amendments of [ADR 0013](decisions/0013-replacement-effects.md)
+and [ADR 0175](decisions/0175-players-choose-before-simultaneous-sacrifices.md).
+
 **A PROMPTED discard is the same RUN, and the same rule (#1027).**
 `g.QueueDiscardChoiceForEffect` discards nothing either — it queues a
 question over the player's own hand and hands back the prompt's ID —

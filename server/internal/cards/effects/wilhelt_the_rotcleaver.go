@@ -45,14 +45,16 @@ func init() {
 			AtYourEndStep("Wilhelt, the Rotcleaver — you may sacrifice a Zombie to draw a card",
 				func(g *game.Game, item *game.StackItem) error {
 					return maySacrificeOne(g, item, "Wilhelt, the Rotcleaver — sacrifice a Zombie to draw a card?",
-						HasSubtype("Zombie"), false,
-						func(ctx *Context, _ uuid.UUID) error {
-							return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-						})
+						HasSubtype("Zombie"), false, wilheltDraw)
 				}),
 		},
 	})
 }
+
+// wilheltDraw is the draw once a Zombie has really gone, keyed (#4290).
+var wilheltDraw = RegisterSacrificedOne("prompt-run/wilhelt-the-rotcleaver-draw", func(ctx *Context, _ uuid.UUID) error {
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})
 
 // anotherUndecayedZombieYouControlDied is Wilhelt's trigger condition:
 // another Zombie the source's controller controlled died, and it did

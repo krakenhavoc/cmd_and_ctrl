@@ -110,11 +110,8 @@ func seizeTheSpotlightFortuneStepList() []Applier {
 
 // seizeTheSpotlightResolve runs the fame half, then the fortune half.
 func seizeTheSpotlightResolve(ctx *Context, fame []uuid.UUID, fortune int) error {
-	fortuneHalf := func(ctx *Context) error {
-		return seizeTheSpotlightFortune(ctx, fortune)
-	}
 	if len(fame) == 0 {
-		return fortuneHalf(ctx)
+		return seizeTheSpotlightFortune(ctx, fortune)
 	}
 	return ChoosePermanents{
 		Question: "Seize the Spotlight — gain control of a creature that player controls",
@@ -131,27 +128,39 @@ func seizeTheSpotlightResolve(ctx *Context, fame []uuid.UUID, fortune int) error
 			}
 			return out, 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (GainControl{
-					Target:   id,
-					Duration: DurationUntilEndOfTurn(ctx),
-					Label:    "Seize the Spotlight — gain control until end of turn",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-				if err := (GrantKeywordUntilEOT{
-					Target:   id,
-					Keywords: []string{"haste"},
-					Label:    "Seize the Spotlight — haste until end of turn",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return fortuneHalf(ctx)
-		},
+		Keyed: seizeTheSpotlightChosen,
+		Nums:  []int{fortune},
 	}.Apply(ctx)
 }
+
+// seizeTheSpotlightChosen is gaining control of each creature chosen, then
+// the fortune half, keyed (#4290): how many fortunes are owed is the run's
+// number.
+var seizeTheSpotlightChosen = RegisterPermanentsPick("prompt-run/seize-the-spotlight-gain-control", PermanentsDef{
+	ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+		for _, id := range picked.Cards() {
+			if err := (GainControl{
+				Target:   id,
+				Duration: DurationUntilEndOfTurn(ctx),
+				Label:    "Seize the Spotlight — gain control until end of turn",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+			if err := (GrantKeywordUntilEOT{
+				Target:   id,
+				Keywords: []string{"haste"},
+				Label:    "Seize the Spotlight — haste until end of turn",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		fortune := 0
+		if len(r.Nums) > 0 {
+			fortune = r.Nums[0]
+		}
+		return seizeTheSpotlightFortune(ctx, fortune)
+	},
+})

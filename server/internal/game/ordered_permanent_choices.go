@@ -35,6 +35,14 @@ func (c *PendingChoice) EarlierPermanentChoicesForEffect() []SeatCards {
 	if c == nil {
 		return nil
 	}
+	if c.ordered != nil {
+		// A keyed ordered collection (#4290) carries them on its state.
+		out := make([]SeatCards, len(c.ordered.Earlier))
+		for i, p := range c.ordered.Earlier {
+			out[i] = SeatCards{Seat: p.Seat, Cards: copyUUIDs(p.Cards)}
+		}
+		return out
+	}
 	if c.chooseCardsResume == nil {
 		// A keyed per-object any-player leg (#4264) carries the earlier
 		// seats' picks on its offer.

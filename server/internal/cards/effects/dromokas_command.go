@@ -113,6 +113,10 @@ func dromokasCommandSacrifice(ctx *Context, player uuid.UUID) error {
 			}
 			return ids, 1, 1
 		},
-		Sacrifice: true,
+		Keyed: dromokasCommandSacrificed,
 	}.Apply(ctx)
 }
+
+// dromokasCommandSacrificed is the chosen enchantment sacrificed, keyed
+// (#4290).
+var dromokasCommandSacrificed = RegisterPermanentsPick("prompt-run/dromokas-command-sacrifice", PermanentsDef{Sacrifice: true})

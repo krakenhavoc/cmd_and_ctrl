@@ -148,23 +148,24 @@ func altarOfTheWretchedEnters(g *game.Game, item *game.StackItem) error {
 // altarOfTheWretchedSacrifice is the "yes": sacrifice a nontoken creature,
 // then draw and mill for its power. Keyed (#4291).
 var altarOfTheWretchedSacrifice = MayYes("confirm/altar-of-the-wretched-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
-	item := ctx.Item
-	return ctx.Game.PlayerSacrificesThenForEffect(
-		item.SourceCardID, item.Controller,
+	return ctx.SacrificeThen(ctx.Controller(),
 		sacrificeSpec("a nontoken creature", And(Creature(), Not(IsTokenPredicate()))),
 		"Altar of the Wretched — sacrifice a nontoken creature",
-		1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			ids := sacrificed.Cards()
-			if len(ids) == 0 {
-				return nil
-			}
-			info, ok := g.LastKnownPermanentForEffect(ids[0])
-			if !ok || info.Power <= 0 {
-				return nil
-			}
-			ctx := NewContext(g, item)
-			ctx.RecordStep(altarOfTheWretchedRecord, nil, info.Power)
-			return altarOfTheWretchedDrawMill.Run(ctx)
-		})
+		1, altarOfTheWretchedPayout)
+})
+
+// altarOfTheWretchedPayout files the sacrificed creature's power as the
+// step record and runs the draw and the mill, keyed (#4290): the item
+// rides the run as data, so the record is filed under the same item.
+var altarOfTheWretchedPayout = RunThen("prompt-run/altar-of-the-wretched-payout", func(ctx *Context, r game.RunDone) error {
+	ids := r.Sacrifices().Cards()
+	if len(ids) == 0 {
+		return nil
+	}
+	info, ok := ctx.Game.LastKnownPermanentForEffect(ids[0])
+	if !ok || info.Power <= 0 {
+		return nil
+	}
+	ctx.RecordStep(altarOfTheWretchedRecord, nil, info.Power)
+	return altarOfTheWretchedDrawMill.Run(ctx)
 })

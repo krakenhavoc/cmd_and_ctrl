@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -314,26 +316,24 @@ type ChoosePermanents struct {
 	// g.mu held and must not write.
 	Candidates func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int)
 
-	// Validate is #1017's set-level legality hook, applied to every
-	// leg — Tragic Arrogance's "an artifact, a creature, an
-	// enchantment, and a planeswalker" is a rule about the SET.
-	Validate func(picked []game.Card) bool
-
-	// Sacrifice sacrifices everything chosen, across every leg, before
-	// Then runs — "target opponent sacrifices the creature you choose".
-	// The permanents leave through the one sacrifice path
-	// (SacrificeAllThenForEffect), so a sacrificed commander goes to the
-	// graveyard like any other permanent (CR 903.9a offers it the
-	// command zone afterwards, ADR 0115), and Then really does run
-	// after the permanents have gone.
+	// Keyed is the choice's set rule, its sacrifice and everything printed
+	// after it, as a REGISTERED definition (RegisterPermanentsPick, #4290):
+	// PermanentsDef.Validate is #1017's set-level legality hook, applied to
+	// every leg (Tragic Arrogance's "an artifact, a creature, an
+	// enchantment, and a planeswalker" is a rule about the SET);
+	// PermanentsDef.Sacrifice sacrifices everything chosen, across every
+	// leg, before Then runs ("target opponent sacrifices the creature you
+	// choose"; the permanents leave through the one sacrifice path, so a
+	// sacrificed commander goes to the graveyard like any other permanent,
+	// CR 903.9a, ADR 0115, and Then really does run after they have gone);
+	// and Then is the rest. The legs hold no closure, so a table waiting on
+	// any seat's pick is a restore point.
 	//
-	// A card that sacrifices something OTHER than what was chosen —
-	// Tragic Arrogance sacrifices the rest — leaves this false and does
-	// its own work in Then.
-	Sacrifice bool
-
-	// Then is everything printed after the choice. Runs with g.mu held.
-	Then func(ctx *Context, picked game.PromptedPicks) error
+	// Carry and Nums are the plain data its body reads beside the
+	// resolving item, which rides the run (Context.RunData).
+	Keyed PermanentsThen
+	Carry []uuid.UUID
+	Nums  []int
 }
 
 func (p ChoosePermanents) Apply(ctx *Context) error {
@@ -345,30 +345,16 @@ func (p ChoosePermanents) Apply(ctx *Context) error {
 	if len(of) == 0 {
 		of = []uuid.UUID{chooser}
 	}
-	item := ctx.Item
-	then := p.Then
-	sacrifice := p.Sacrifice
-	_, err := ctx.Game.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+	if !p.Keyed.run.Valid() {
+		return fmt.Errorf("%w: ChoosePermanents with no registered pick (RegisterPermanentsPick)", game.ErrInvalidParam)
+	}
+	_, err := ctx.Game.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 		Chooser:    chooser,
 		Source:     ctx.Source(),
 		Question:   p.Question,
 		Of:         of,
 		Candidates: p.Candidates,
-		Validate:   p.Validate,
-	}, func(g *game.Game, picked game.PromptedPicks) error {
-		if !sacrifice || picked.Count() == 0 {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), picked)
-		}
-		return g.SacrificeAllThenForEffect(uuid.Nil, picked.Cards(), func(g *game.Game, _ []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), picked)
-		})
-	})
+	}, p.Keyed.run, ctx.RunData(p.Carry, p.Nums...))
 	return err
 }
 

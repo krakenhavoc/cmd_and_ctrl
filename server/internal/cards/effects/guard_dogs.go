@@ -39,12 +39,16 @@ func init() {
 						}
 						return ids, 1, 1
 					},
-					Then: guardDogsCompare,
+					Keyed: guardDogsChosen,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// guardDogsChosen is comparing the chosen permanent with the target,
+// keyed (#4290).
+var guardDogsChosen = RegisterPermanentsPick("prompt-run/guard-dogs-compare", PermanentsDef{Then: guardDogsCompare})
 
 // guardDogsCompare shields the target when it shares a colour with the
 // chosen permanent, both read now.

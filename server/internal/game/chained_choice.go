@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // chained_choice.go — composition for the pending-choice queue: how one
 // prompt asks the next one.
@@ -184,7 +188,11 @@ type chooseCardsFrame struct {
 	permanentEpochs         map[uuid.UUID]int
 	zone                    ZoneKind
 	validate                func(picked []Card) bool
-	then                    func(g *Game, picked []uuid.UUID) error
+	// keyedRule marks a validate that is a registered set rule
+	// (RegisterPromptRunThenRule, #4290), not a card closure: the frame is
+	// rebuilt on restore and the census does not count it.
+	keyedRule bool
+	then      func(g *Game, picked []uuid.UUID) error
 }
 
 // runWithNoChoice runs the frame as though the chooser picked nothing.
@@ -724,6 +732,14 @@ func (g *Game) pickStillInPickZoneLocked(choice *PendingChoice, zone ZoneKind, i
 		c := findBattlefieldCard(g, id)
 		epoch, exists := frame.permanentEpochs[id]
 		if c == nil || !exists || c.ObjectEpoch != epoch {
+			return false
+		}
+	}
+	if o := choice.ordered; o != nil && o.Next >= 0 && o.Next < len(o.Legs) {
+		// #4290: a keyed ordered collection binds each candidate to the
+		// object it was when the collection began.
+		c := findBattlefieldCard(g, id)
+		if c == nil || !slices.ContainsFunc(o.Legs[o.Next].Cards, func(r ObjectRef) bool { return r.ID == id && r.Epoch == c.ObjectEpoch }) {
 			return false
 		}
 	}

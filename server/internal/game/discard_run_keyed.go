@@ -203,7 +203,7 @@ func (g *Game) discardRunKeyedLocked(asks []uuid.UUID, p DiscardPrompt, then Pro
 	p.keyedLeg = true
 	p.runThen = then.key
 	p.carry = copyUUIDs(carry)
-	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, carry, func(seat, run uuid.UUID) bool {
+	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, RunData{Carry: carry}, func(seat, run uuid.UUID) bool {
 		leg := p
 		leg.Player = seat
 		return g.queueDiscardPromptLocked(leg, run) != uuid.Nil

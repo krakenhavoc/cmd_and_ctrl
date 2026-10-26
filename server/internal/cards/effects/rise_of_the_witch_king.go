@@ -38,28 +38,27 @@ func init() {
 		OracleID:     "3c86541c-3601-4a38-8872-39705e41303a",
 		Name:         "Rise of the Witch-king",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller, self := ctx.Controller(), ctx.Source()
-			return ctx.Game.EachPlayerSacrificesThenForEffect(
-				self, uuid.Nil,
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(
+				ctx.Source(), uuid.Nil,
 				sacrificeSpec("a creature", Creature()),
 				"Rise of the Witch-king — sacrifice a creature",
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					if !sacrificed.Sacrificed(controller) {
-						return nil
-					}
-					// A fresh Context bound to the same stack item: an
-					// undo restores the game's fields in place, so the
-					// *Game captured when the prompts went up can be
-					// the wrong object by the time they are answered
-					// (resumeClause's contract).
-					return ReturnChosenFromGraveyard{
-						Player:   controller,
-						Question: "Rise of the Witch-king — you may return another permanent card from your graveyard to the battlefield",
-						Except:   self,
-						Max:      1,
-					}.Apply(NewContext(g, item))
-				})
+				riseOfTheWitchKingReturn, ctx.RunData([]uuid.UUID{ctx.Controller()}))
 		},
 	})
 }
+
+// riseOfTheWitchKingReturn is "if you sacrificed a creature this way, you
+// may return another permanent card" once the sacrifices have landed, keyed
+// (#4290): the controller is the run's carry, Rise itself its source.
+var riseOfTheWitchKingReturn = RunThen("prompt-run/rise-of-the-witch-king-return", func(ctx *Context, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return ReturnChosenFromGraveyard{
+		Player:   r.Carry[0],
+		Question: "Rise of the Witch-king — you may return another permanent card from your graveyard to the battlefield",
+		Except:   r.Source,
+		Max:      1,
+	}.Apply(ctx)
+})

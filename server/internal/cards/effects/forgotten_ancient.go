@@ -66,11 +66,17 @@ func forgottenAncientMove(g *game.Game, item *game.StackItem) error {
 			}
 			return ids, 0, len(ids)
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			return forgottenAncientMoveOnto(ctx, self, picked.Cards())
-		},
+		Keyed: forgottenAncientMoved,
 	}.Apply(ctx)
 }
+
+// forgottenAncientMoved is moving counters onto the chosen creatures,
+// keyed (#4290); the Ancient is the run's source.
+var forgottenAncientMoved = RegisterPermanentsPick("prompt-run/forgotten-ancient-move", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		return forgottenAncientMoveOnto(ctx, ctx.Source(), picked.Cards())
+	},
+})
 
 // forgottenAncientMoveOnto asks, for the first creature in `onto`, how
 // many of the Ancient's +1/+1 counters to move there, moves them, and

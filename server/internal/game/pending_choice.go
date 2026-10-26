@@ -798,6 +798,13 @@ type PendingChoice struct {
 	// continuation link.
 	promptRun uuid.UUID
 
+	// ordered is the state of a KEYED ordered collection this prompt is one
+	// seat's turn of (ordered_picks_keyed.go, #4290, ADR 0175): the seats
+	// still to ask, the picks so far and the registered continuation. Plain
+	// data, written to a restore point (pendingChoices[].ordered) and
+	// cloned for an undo; nil on every other prompt.
+	ordered *orderedPicks
+
 	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
 	// may be copied from — "any creature on the battlefield" for
 	// Clone, "a creature or planeswalker you control" for Spark

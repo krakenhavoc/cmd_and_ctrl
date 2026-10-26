@@ -62,11 +62,67 @@ type EachManifestsFromHand struct {
 	N int
 
 	// Then, when set, runs once after the entry, told the permanents
-	// that entered, in APNAP order. It runs with g.mu held, may queue
-	// further prompts, and must not capture a *Card or a pointer into a
-	// zone (the context it is handed is rebuilt for the resolving
-	// item).
-	Then func(ctx *Context, manifested []uuid.UUID) error
+	// that entered, in APNAP order. It is a registered continuation
+	// (RegisterManifestThen, #4290), so a table waiting on a player's pick
+	// is a restore point; its Context is rebuilt from the resolving item
+	// as data.
+	Then ManifestThen
+}
+
+// ManifestThen is a registered "for each card manifested this way" rest of
+// the card. Hold one only from RegisterManifestThen; the zero value is no
+// rest.
+type ManifestThen struct{ run game.PromptRunThen }
+
+// RegisterManifestThen registers the rest of a card after
+// EachManifestsFromHand under key (ledgered "run <key>": never renamed,
+// never reused). `body` (nil for none) is handed a Context rebuilt from the
+// resolving item and the permanents that entered. Call it once, from a
+// package-level var.
+func RegisterManifestThen(key string, body func(ctx *Context, manifested []uuid.UUID) error) ManifestThen {
+	return ManifestThen{run: RunThen(key, func(ctx *Context, r game.RunDone) error {
+		return manifestPicked(ctx, r, body)
+	})}
+}
+
+// manifestNoThen is the run of a manifest with no rest of the card.
+var manifestNoThen = RegisterManifestThen("prompt-run/manifest-from-hand", nil)
+
+// manifestPicked is the run's continuation: manifest every player's cards
+// in one entry and run the card's rest. The carry is the players in APNAP
+// order, then, for each player who manifests their whole hand without a
+// choice, a list led by the player and followed by that hand.
+func manifestPicked(ctx *Context, r game.RunDone, then func(ctx *Context, manifested []uuid.UUID) error) error {
+	lists := unpackIDLists(r.Carry)
+	if len(lists) == 0 {
+		// Nobody to manifest: the rest of the card still runs, on nothing.
+		lists = [][]uuid.UUID{nil}
+	}
+	auto := map[uuid.UUID][]uuid.UUID{}
+	for _, l := range lists[1:] {
+		if len(l) > 0 {
+			auto[l[0]] = l[1:]
+		}
+	}
+	picks := r.Picks()
+	var all []uuid.UUID
+	for _, id := range lists[0] {
+		if hand, ok := auto[id]; ok {
+			all = append(all, hand...)
+			continue
+		}
+		all = append(all, picks.By(id)...)
+	}
+	finish := func(g *game.Game, manifested []uuid.UUID) error {
+		if then == nil {
+			return nil
+		}
+		return then(NewContext(g, ctx.Item), manifested)
+	}
+	if len(all) == 0 {
+		return finish(ctx.Game, nil)
+	}
+	return ctx.Game.ManifestFromHandsThenForEffect(all, finish)
 }
 
 func (e EachManifestsFromHand) Apply(ctx *Context) error {
@@ -86,14 +142,14 @@ func (e EachManifestsFromHand) Apply(ctx *Context) error {
 			players = append(players, id)
 		}
 	}
-	auto := make(map[uuid.UUID][]uuid.UUID, len(players))
+	autos := [][]uuid.UUID{players}
 	var legs []game.ChooseCardsPrompt
 	for _, id := range players {
 		hand := handCardIDs(g, id)
 		switch {
 		case len(hand) == 0 || n <= 0:
 		case len(hand) <= n:
-			auto[id] = hand
+			autos = append(autos, append([]uuid.UUID{id}, hand...))
 		default:
 			legs = append(legs, game.ChooseCardsPrompt{
 				Chooser:     id,
@@ -108,27 +164,13 @@ func (e EachManifestsFromHand) Apply(ctx *Context) error {
 			})
 		}
 	}
-	resolving, then := ctx.Item, e.Then
-	_, err := g.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-		var all []uuid.UUID
-		for _, id := range players {
-			if hand, ok := auto[id]; ok {
-				all = append(all, hand...)
-				continue
-			}
-			all = append(all, picks.By(id)...)
-		}
-		finish := func(g *game.Game, manifested []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, resolving), manifested)
-		}
-		if len(all) == 0 {
-			return finish(g, nil)
-		}
-		return g.ManifestFromHandsThenForEffect(all, finish)
-	})
+	then := e.Then.run
+	if !then.Valid() {
+		then = manifestNoThen.run
+	}
+	// Keyed (#4290): the players and the hands manifested without a choice
+	// ride the run as its carry, the resolving item as its asking item.
+	_, err := g.ChooseCardsRunThenKeyedForEffect(legs, then, source, ctx.RunData(packIDLists(autos...)))
 	return err
 }
 

@@ -61,8 +61,13 @@ func zimoneLandfall(g *game.Game, item *game.StackItem) error {
 			}
 			return ids, 0, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			return TurnFaceUp{Targets: picked.Cards()}.Apply(ctx)
-		},
+		Keyed: zimoneChosen,
 	}.Apply(ctx)
 }
+
+// zimoneChosen is the chosen permanent turned face up, keyed (#4290).
+var zimoneChosen = RegisterPermanentsPick("prompt-run/zimone-mystery-unraveler-turn-face-up", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		return TurnFaceUp{Targets: picked.Cards()}.Apply(ctx)
+	},
+})

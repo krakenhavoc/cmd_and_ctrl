@@ -140,16 +140,19 @@ var direBlunderbussAnswer = MayYes("confirm/dire-blunderbuss-sacrifice", func(ct
 	eligible := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 		return c.IsArtifact() && !exclude[c.InstanceID]
 	}
-	return ctx.Game.PlayerSacrificesThenForEffect(
-		item.SourceCardID, item.Controller,
+	return ctx.SacrificeThen(item.Controller,
 		sacrificeSpec("an artifact other than Dire Blunderbuss", eligible),
 		"Dire Blunderbuss — sacrifice an artifact",
-		1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if sacrificed.Count() == 0 {
-				return nil
-			}
-			return WhenYouDo("Dire Blunderbuss — this creature deals damage equal to its power to target creature",
-				direBlunderbussDamageBody).Apply(NewContext(g, item))
-		})
+		1, direBlunderbussSacrificed)
+})
+
+// direBlunderbussSacrificed raises the reflexive damage once the artifact
+// has really been sacrificed, keyed (#4290): the granted trigger's item
+// rides the run as data, so the reflexive trigger names the same source.
+var direBlunderbussSacrificed = RunThen("prompt-run/dire-blunderbuss-sacrificed", func(ctx *Context, r game.RunDone) error {
+	if r.Sacrifices().Count() == 0 {
+		return nil
+	}
+	return WhenYouDo("Dire Blunderbuss — this creature deals damage equal to its power to target creature",
+		direBlunderbussDamageBody).Apply(ctx)
 })

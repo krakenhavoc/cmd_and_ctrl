@@ -41,7 +41,7 @@ func init() {
 			WhenThisEnters("Lotus Field — sacrifice two lands", Do(ChoosePermanents{
 				Question:   "Lotus Field — sacrifice two lands",
 				Candidates: lotusFieldLands,
-				Then:       lotusFieldSacrifice,
+				Keyed:      lotusFieldChosen,
 			})),
 		},
 		ManaAbilities: []ManaAbility{{
@@ -51,6 +51,9 @@ func init() {
 		}},
 	})
 }
+
+// lotusFieldChosen is the chosen lands sacrificed, keyed (#4290).
+var lotusFieldChosen = RegisterPermanentsPick("prompt-run/lotus-field-sacrifice", PermanentsDef{Then: lotusFieldSacrifice})
 
 // lotusFieldLands offers every land the chooser controls, exactly two
 // to be picked (clamped by the engine when there are fewer).

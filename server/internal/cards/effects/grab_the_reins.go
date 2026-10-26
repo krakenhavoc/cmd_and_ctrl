@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Grab the Reins — Instant {3}{R}:
 //
@@ -63,19 +67,28 @@ func grabTheReinsFling(item *game.StackItem, ctx *Context, occ int) error {
 	// in this same resolution: settle the layers so the creature
 	// it took is among "a creature" you control to sacrifice.
 	ctx.Game.RecomputeLayersIfStaleLocked()
-	return ctx.Game.PlayerSacrificesThenForEffect(item.SourceCardID, ctx.Controller(),
+	// Keyed (#4290): the bullet's target, when still legal, rides the run
+	// as its carry.
+	var carry []uuid.UUID
+	if legal {
+		carry = []uuid.UUID{target.ID}
+	}
+	return ctx.SacrificeThen(ctx.Controller(),
 		sacrificeSpec("a creature", Creature()),
-		"Grab the Reins — sacrifice a creature", 1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			ids := sacrificed.By(item.Controller)
-			if len(ids) == 0 || !legal {
-				return nil
-			}
-			power := departedCreaturePower(g, ids[0])
-			if power <= 0 {
-				return nil
-			}
-			c := NewContext(g, item)
-			return DealDamage{Source: c.Source(), Target: target.ID, Amount: power}.Apply(c)
-		})
+		"Grab the Reins — sacrifice a creature", 1, grabTheReinsDamage, carry...)
 }
+
+// grabTheReinsDamage is "Grab the Reins deals damage equal to that
+// creature's power to any target" once the creature has really been
+// sacrificed, keyed (#4290): the target is the run's carry.
+var grabTheReinsDamage = RunThen("prompt-run/grab-the-reins-damage", func(ctx *Context, r game.RunDone) error {
+	ids := r.Sacrifices().By(ctx.Controller())
+	if len(ids) == 0 || len(r.Carry) == 0 {
+		return nil
+	}
+	power := departedCreaturePower(ctx.Game, ids[0])
+	if power <= 0 {
+		return nil
+	}
+	return DealDamage{Source: ctx.Source(), Target: r.Carry[0], Amount: power}.Apply(ctx)
+})

@@ -274,20 +274,30 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 // sequence, and an opponent at 2 life lost it before choosing what to
 // sacrifice.
 func b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(g *game.Game, item *game.StackItem, players []uuid.UUID, life int) error {
-	source := item.SourceCardID
 	players = append([]uuid.UUID(nil), players...)
-	return g.PlayersSacrificeThenForEffect(source, players,
+	ctx := NewContext(g, item)
+	// Keyed (#4290): the players ride the run as its carry and the life as
+	// its number.
+	return ctx.PlayersSacrificeThen(players,
 		sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
 		"Will of the Abzan — sacrifice a creature with the greatest power",
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			for _, player := range players {
-				if err := g.ChangePlayerLifeForEffect(source, player, -life); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		willOfTheAbzanLoseLife, ctx.RunData(players, life))
 }
+
+// willOfTheAbzanLoseLife is each player losing life once the sacrifices have
+// landed, in the order given, keyed (#4290). Carry is the players, and the
+// number the life.
+var willOfTheAbzanLoseLife = RunThen("prompt-run/will-of-the-abzan-lose-life", func(ctx *Context, r game.RunDone) error {
+	if len(r.Nums) == 0 {
+		return nil
+	}
+	for _, player := range r.Carry {
+		if err := ctx.Game.ChangePlayerLifeForEffect(r.Source, player, -r.Nums[0]); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // b24ReturnGraveyardTargetsToBattlefield puts up to `n` of the
 // spell's still-legal graveyard targets onto the battlefield under

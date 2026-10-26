@@ -97,13 +97,19 @@ func breenaEffect(g *game.Game, item *game.StackItem) error {
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			return permanentsControlledByMatching(g, of, Creature()), 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Keyed: breenaCounters,
 	}.Apply(ctx)
 }
+
+// breenaCounters is two +1/+1 counters on the chosen creature, keyed
+// (#4290).
+var breenaCounters = RegisterPermanentsPick("prompt-run/breena-the-demagogue-counters", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 2}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

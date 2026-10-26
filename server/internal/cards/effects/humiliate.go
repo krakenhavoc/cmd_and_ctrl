@@ -35,18 +35,24 @@ func init() {
 			ChoosePermanents{
 				Question:   "Humiliate — put a +1/+1 counter on a creature you control",
 				Candidates: humiliateCreatures,
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					for _, id := range picked.Cards() {
-						if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Keyed:      humiliateChosen,
 			},
 		),
 	})
 }
+
+// humiliateChosen is a +1/+1 counter on the chosen creature, keyed
+// (#4290).
+var humiliateChosen = RegisterPermanentsPick("prompt-run/humiliate-counter", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})
 
 // humiliateCreatures offers exactly one of the creatures `of` controls,
 // or nothing when they control none.

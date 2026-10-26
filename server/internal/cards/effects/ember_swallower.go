@@ -46,6 +46,7 @@ func emberSwallowerEdict(g *game.Game, item *game.StackItem) error {
 			asks = append(asks, p.ID, p.ID, p.ID)
 		}
 	}
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, asks,
-		sacrificeSpec("a land", Land()), "Sacrifice a land", nil)
+	g.PlayersSacrificeForEffect(item.SourceCardID, asks,
+		sacrificeSpec("a land", Land()), "Sacrifice a land")
+	return nil
 }

@@ -69,17 +69,21 @@ func controlsAnArtifactOrCreature(g *game.Game, player uuid.UUID) bool {
 
 // reactorRaidSacrifice is the "if you do" branch.
 func reactorRaidSacrifice(ctx *Context) error {
-	item, me := ctx.Item, ctx.Controller()
-	return ctx.Game.PlayersSacrificeThenForEffect(item.SourceCardID, []uuid.UUID{me},
+	me := ctx.Controller()
+	return ctx.PlayersSacrificeThen([]uuid.UUID{me},
 		sacrificeSpec("an artifact or creature", Or(Artifact(), Creature())),
 		"Reactor Raid — sacrifice an artifact or creature",
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if !sacrificed.Sacrificed(me) {
-				return nil
-			}
-			return DrawCards{Player: me, N: 2}.Apply(NewContext(g, item))
-		})
+		reactorRaidDraw, ctx.RunData([]uuid.UUID{me}))
 }
+
+// reactorRaidDraw is "if you do, draw two cards" once the sacrifice has
+// landed, keyed (#4290): the controller is the run's carry.
+var reactorRaidDraw = RunThen("prompt-run/reactor-raid-draw", func(ctx *Context, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return DrawCards{Player: r.Carry[0], N: 2}.Apply(ctx)
+})
 
 // reactorRaidAnswer is the "yes": sacrifice an artifact or creature, then
 // draw two cards. Keyed (#4291).

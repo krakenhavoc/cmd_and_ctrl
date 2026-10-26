@@ -92,13 +92,19 @@ var suppressionRayStun = NumberThen("number/suppression-ray-stun-counters",
 				}
 				return still, 0, hi
 			},
-			Then: func(ctx *Context, picked game.PromptedPicks) error {
-				for _, id := range picked.Cards() {
-					if err := ctx.Game.AddCounterByForEffect(ctx.Controller(), id, game.CounterStun, 1); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Keyed: suppressionRayStunned,
 		}.Apply(ctx)
 	})
+
+// suppressionRayStunned is a stun counter on each creature chosen, keyed
+// (#4290, #4294).
+var suppressionRayStunned = RegisterPermanentsPick("prompt-run/suppression-ray-stun", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := ctx.Game.AddCounterByForEffect(ctx.Controller(), id, game.CounterStun, 1); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

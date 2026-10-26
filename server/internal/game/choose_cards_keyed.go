@@ -73,6 +73,9 @@ type CardsChosen struct {
 	// itself: the run's own continuation does that, once, after the last
 	// leg.
 	Run uuid.UUID
+	// ordered is the keyed ordered collection this pick is one seat's turn
+	// of (ordered_picks_keyed.go, #4290); nil on every other pick.
+	ordered *orderedPicks
 }
 
 // SetRuleFunc is a registered set rule: is `picked`, the live cards in
@@ -191,6 +194,7 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Offer:      cloneAnyPlayerOffer(c.AnyPlayerOffer),
 			Asked:      c.Asked.StackItem(),
 			Run:        c.promptRun,
+			ordered:    cloneOrderedPicks(c.ordered),
 		})
 	})
 }

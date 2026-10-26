@@ -77,31 +77,40 @@ func init() {
 		Name:         "Explore the Vastlands",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			source := ctx.Source()
 			return EachPlayerTakesFromLibrary{
 				N: 5,
 				Take: TakeFromLibraryToHand{
-					Slots: []TakeSlot{
-						{Label: "a land card", Match: Land(), Max: 1},
-						{Label: "an instant or sorcery card", Match: Or(Instant(), Sorcery()), Max: 1},
-					},
 					Optional: true,
-					Reveal:   true,
 					Label:    "Explore the Vastlands — you may reveal a land card and/or an instant or sorcery card",
-					Then:     TakeRestOnBottomInRandomOrder,
 				},
-				Then: func(g *game.Game, _ []TakeFromLibraryResult) error {
-					for _, player := range apnapPlayers(g) {
-						if err := g.ChangePlayerLifeForEffect(source, player, 3); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Keyed: exploreTheVastlandsTakes,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// exploreTheVastlandsTakes is the keyed fan-out (#4290): each player may
+// reveal a land card and/or an instant or sorcery card from among their
+// top five and puts the rest on the bottom in a random order; then each
+// player gains 3 life.
+var exploreTheVastlandsTakes = RegisterEachTake("prompt-run/explore-the-vastlands-takes", "choose-cards/explore-the-vastlands-take",
+	TakeDef{
+		Reveal: true,
+		Label:  "Explore the Vastlands — you may reveal a land card and/or an instant or sorcery card",
+		Slots: []TakeSlot{
+			{Label: "a land card", Match: Land(), Max: 1},
+			{Label: "an instant or sorcery card", Match: Or(Instant(), Sorcery()), Max: 1},
+		},
+		Then: TakeRestOnBottomInRandomOrder,
+	},
+	func(ctx *Context, _ []TakeFromLibraryResult) error {
+		for _, player := range apnapPlayers(ctx.Game) {
+			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), player, 3); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 const wanderingArchaicOracleID = "6556c4c0-b10d-4208-821b-0c0a49abd188"
 

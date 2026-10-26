@@ -326,6 +326,7 @@ func (g *Game) cloneLocked() *Game {
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)
 			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
+			cloned.ordered = cloneOrderedPicks(c.ordered)
 			cloned.Assist = cloneAssistPrompt(c.Assist)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —

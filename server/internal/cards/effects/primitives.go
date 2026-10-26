@@ -1628,10 +1628,10 @@ type EachPlayerSacrifices struct {
 	// Label is the picker's banner copy: "a creature".
 	Label string
 
-	// Then is the clause printed after the edict — "if you sacrificed
-	// a creature this way, …", "then you draw a card". Optional; leave
-	// it nil for an edict with nothing hanging off it, which is most
-	// of them.
+	// Keyed is the clause printed after the edict — "if you sacrificed
+	// a creature this way, …", "then you draw a card" — as a REGISTERED
+	// continuation (RegisterEdictThen, #4290). Optional; leave it unset for
+	// an edict with nothing hanging off it, which is most of them.
 	//
 	// #1019, and the same shape as SacrificePermanent.Then (#993). The
 	// prompts are a QUESTION per seat and return how many seats were
@@ -1645,7 +1645,10 @@ type EachPlayerSacrifices struct {
 	// (game.PromptedSacrifices). A commander that took the command
 	// zone is in it; a leg the CR 614 window cancelled is not. Write
 	// the clause as something that acts on what it is told.
-	Then func(ctx *Context, sacrificed game.PromptedSacrifices) error
+	//
+	// The collection holds no closure (ADR 0175 amendment of 2026-10-26),
+	// so a table waiting on any seat's choice is a restore point.
+	Keyed EdictThen
 }
 
 func (e EachPlayerSacrifices) Apply(ctx *Context) error {
@@ -1661,19 +1664,11 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	if label == "" {
 		label = "a permanent"
 	}
-	if e.Then == nil {
+	if !e.Keyed.run.Valid() {
 		ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
 		return nil
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
-	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), except, spec, "Sacrifice "+label,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			return e.Then(NewContext(g, item), sacrificed)
-		})
+	return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(ctx.Source(), except, spec, "Sacrifice "+label, e.Keyed.run, ctx.RunData(nil))
 }
 
 // Scry is "scry N" (CR 701.22) — look at the top N cards of your

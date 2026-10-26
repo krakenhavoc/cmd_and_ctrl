@@ -75,12 +75,7 @@ func init() {
 					return EachPlayerSacrifices{
 						Match: Creature(),
 						Label: "a creature",
-						Then: func(ctx *Context, sacrificed game.PromptedSacrifices) error {
-							if !sacrificed.Sacrificed(ctx.Controller()) {
-								return nil
-							}
-							return CreateToken{Template: TokenCard("4/4 green Beast with trample"), N: 1}.Apply(ctx)
-						},
+						Keyed: garrukVeiledButcherEdicted,
 					}.Apply(NewContext(g, item))
 				},
 			},
@@ -92,6 +87,15 @@ func init() {
 		},
 	})
 }
+
+// garrukVeiledButcherEdicted is the Beast once the edict has landed and
+// the controller sacrificed a creature, keyed (#4290).
+var garrukVeiledButcherEdicted = RegisterEdictThen("prompt-run/garruk-veiled-butcher-beast", func(ctx *Context, sacrificed game.PromptedSacrifices) error {
+	if !sacrificed.Sacrificed(ctx.Controller()) {
+		return nil
+	}
+	return CreateToken{Template: TokenCard("4/4 green Beast with trample"), N: 1}.Apply(ctx)
+})
 
 func garrukVeiledButcherMinusThree(g *game.Game, item *game.StackItem) error {
 	// Keyed (#4290): the controller rides the run as its carry, so a

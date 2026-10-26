@@ -70,11 +70,15 @@ func grimCaptainAttacks(g *game.Game, item *game.StackItem) error {
 		ExceptController: true,
 		Match:            Nonland(),
 		Label:            "a nonland permanent",
-		Then: func(ctx *Context, _ game.PromptedSacrifices) error {
-			return grimCaptainMayPut(ctx)
-		},
+		Keyed:            grimCaptainEdicted,
 	}.Apply(NewContext(g, item))
 }
+
+// grimCaptainEdicted is the optional put once the edict has landed, keyed
+// (#4290).
+var grimCaptainEdicted = RegisterEdictThen("prompt-run/throne-of-the-grim-captain-put", func(ctx *Context, _ game.PromptedSacrifices) error {
+	return grimCaptainMayPut(ctx)
+})
 
 // grimCaptainMayPut offers a creature card among the Captain's
 // materials still in exile.

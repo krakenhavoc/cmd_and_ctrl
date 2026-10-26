@@ -18,8 +18,8 @@ func init() {
 		OracleID:     "77eda626-5cef-496d-b291-cfa1ee6fc1fb",
 		Name:         "Cycle of Renewal",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return sacrificeALandThenFetchTwoTapped(item, ctx, "Cycle of Renewal")
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return sacrificeALandThenFetchTwoTapped(ctx, "Cycle of Renewal", cycleOfRenewalFetch)
 		},
 	})
 }

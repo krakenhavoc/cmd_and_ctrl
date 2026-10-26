@@ -48,25 +48,15 @@ func init() {
 		OracleID:     "df39fbee-6ddc-4733-a32e-cdaf369ecccf",
 		Name:         "Bound",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if err := ctx.Game.ExileCardForEffect(ctx.Source()); err != nil {
 				return err
 			}
 			controller := ctx.Controller()
-			return ctx.Game.PlayerSacrificesThenForEffect(
-				ctx.Source(), controller,
+			return ctx.SacrificeThen(controller,
 				sacrificeSpec("a creature", Creature()),
 				"Bound — sacrifice a creature",
-				1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					x := 0
-					for _, id := range sacrificed.By(controller) {
-						if info, ok := g.LastKnownPermanentForEffect(id); ok {
-							x = boundColorCount(info.Characteristic.Colors)
-						}
-					}
-					return boundReturnUpToX(g, item, controller, x)
-				})
+				1, boundSacrificed)
 		},
 	})
 	Register(Spec{
@@ -84,10 +74,24 @@ func init() {
 	})
 }
 
+// boundSacrificed is Bound's X once the creature has really been
+// sacrificed, keyed (#4290): the number of colors it was as it last existed
+// (CR 608.2h), then the second choice.
+var boundSacrificed = RunThen("prompt-run/bound-sacrificed", func(ctx *Context, r game.RunDone) error {
+	controller := ctx.Controller()
+	x := 0
+	for _, id := range r.Sacrifices().By(controller) {
+		if info, ok := ctx.Game.LastKnownPermanentForEffect(id); ok {
+			x = boundColorCount(info.Characteristic.Colors)
+		}
+	}
+	return boundReturnUpToX(ctx.Game, ctx.Source(), controller, x)
+})
+
 // boundReturnUpToX is Bound's second choice: up to x cards from the
 // caster's graveyard, picked now, return to their owner's hand. A card
 // that left the graveyard before the answer is skipped.
-func boundReturnUpToX(g *game.Game, item *game.StackItem, controller uuid.UUID, x int) error {
+func boundReturnUpToX(g *game.Game, source, controller uuid.UUID, x int) error {
 	p := g.PlayerByIDForEffect(controller)
 	if x <= 0 || p == nil || p.Graveyard == nil || len(p.Graveyard.Cards) == 0 {
 		return nil
@@ -98,27 +102,31 @@ func boundReturnUpToX(g *game.Game, item *game.StackItem, controller uuid.UUID, 
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  controller,
-		Source:   item.SourceCardID,
+		Source:   source,
 		Question: "Bound — return up to " + strconv.Itoa(x) + " cards from your graveyard to your hand",
 		Cards:    cards,
 		Min:      0,
 		Max:      x,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			ctx := NewContext(g, item)
-			for _, id := range picked {
-				if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
-					continue
-				}
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  boundReturned,
 	})
 	return nil
 }
+
+// boundReturned is Bound's second choice answered, keyed (#4290): each
+// picked card still in the graveyard returns to its owner's hand.
+var boundReturned = game.RegisterChooseCardsThen("choose-cards/bound-return", func(g *game.Game, r game.CardsChosen) error {
+	ctx := keyedContext(g, r.Chooser, r.Source)
+	for _, id := range r.Picked {
+		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneGraveyard {
+			continue
+		}
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // boundColorCount is "the number of colors that creature was": the
 // distinct colours among W, U, B, R and G it had. A colorless creature

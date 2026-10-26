@@ -65,10 +65,9 @@ const (
 // (max 1) and the back's attack trigger (any number).
 func sephirothSacrificeOthersThenDraw(g *game.Game, item *game.StackItem, max int) error {
 	self := item.SourceCardID
-	controller := item.Controller
 	return ChoosePermanents{
-		Question:  "Sephiroth — you may sacrifice other creatures to draw that many cards",
-		Sacrifice: true,
+		Question: "Sephiroth — you may sacrifice other creatures to draw that many cards",
+		Keyed:    sephirothSacrificed,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
 			for _, c := range g.BattlefieldCardsForEffect() {
@@ -78,9 +77,17 @@ func sephirothSacrificeOthersThenDraw(g *game.Game, item *game.StackItem, max in
 			}
 			return out, 0, max
 		},
-		Then: drawOnePerPicked(controller),
 	}.Apply(NewContext(g, item))
 }
+
+// sephirothSacrificed is the chosen creatures sacrificed and a card drawn
+// for each that really left, keyed (#4290).
+var sephirothSacrificed = RegisterPermanentsPick("prompt-run/sephiroth-sacrifice-draw", PermanentsDef{
+	Sacrifice: true,
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		return drawOnePerPicked(ctx.Controller())(ctx, picked)
+	},
+})
 
 // sephirothDrainAndMaybeTransform is the front face's death trigger:
 // the drain, then the fourth-resolution transform.
