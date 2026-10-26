@@ -222,7 +222,7 @@ func TestMyriadSplitWithAnUnknownKeyIsRefused(t *testing.T) {
 	found := false
 	for i := range snap.PendingChoices {
 		if s := snap.PendingChoices[i].AttackSplit; s != nil && s.Tail != nil {
-			if s.Tail.Key != "attacking-tokens/myriad-exile-the-copies" || s.Tail.Word == "" || s.Tail.Asked == nil {
+			if s.Tail.Key != "myriad/exile-tokens-at-end-of-combat" || s.Tail.Word == "" || s.Tail.Asked == nil {
 				t.Fatalf("the split's tail = %+v, want the myriad exile with the granting card and the asking item", s.Tail)
 			}
 			s.Tail.Key = "attacking-tokens/never-registered"
@@ -283,8 +283,8 @@ func TestCalamityPickAndSplitAreRestorePoints(t *testing.T) {
 	// The copy has two or more things to attack: the split is a restore
 	// point, and its tail carries the asking item.
 	c := splitPrompt(t, g, me.ID, "token/attack-split")
-	if c.AttackSplit.Tail.Asked == nil || c.AttackSplit.Tail.N != 2 {
-		t.Fatalf("the split's tail = %+v, want the asking item and two rounds", c.AttackSplit.Tail)
+	if c.AttackSplit.Tail.Asked == nil || c.AttackSplit.Tail.N != 1 {
+		t.Fatalf("the split's tail = %+v, want the asking item and one round after this", c.AttackSplit.Tail)
 	}
 	g = restoreRoundTrip(t, g, true)
 	me = g.Seats[0]

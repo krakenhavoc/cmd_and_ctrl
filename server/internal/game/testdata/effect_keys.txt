@@ -1031,3 +1031,5 @@ tail will-of-the-sultai/counters-and-trample
 tail yawgmoths-vile-offering/destroy-then-exile-this
 tail zara-renegade-recruiter/return-at-end-step
 tail zombie-apocalypse/destroy-humans
+choose choose-cards/calamity-galloping-inferno-copy
+number token/settled-split
