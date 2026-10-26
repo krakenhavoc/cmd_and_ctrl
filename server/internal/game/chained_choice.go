@@ -376,6 +376,13 @@ type ChooseCardsPrompt struct {
 	// is handed (CardsChosen.Word, #4264): plain data on the prompt
 	// (PendingChoice.PickMatchArg).
 	CarryWord string
+	// CarryNums are numbers a keyed continuation is handed
+	// (CardsChosen.Nums, #4294): a round of a repeated process, in
+	// PendingChoice.PickNums. Asked is the asking stack item as data
+	// (NewAskedItem), handed to it as CardsChosen.Asked. Both are ignored
+	// without ThenKey.
+	CarryNums []int
+	Asked     *AskedItem
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
@@ -452,6 +459,8 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			ChooseDestination: p.Destination,
 			PickThen:          key,
 			PickMatchArg:      p.CarryWord,
+			PickNums:          copyInts(p.CarryNums),
+			Asked:             copyAskedItem(p.Asked),
 			OptionCarry:       copyUUIDs(p.Carry),
 			ChooseLiveZone:    p.LiveZone,
 			// #4290: a keyed leg of a prompted run.

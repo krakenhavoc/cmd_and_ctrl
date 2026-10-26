@@ -110,7 +110,10 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 	}
 	run := func(g *Game, n int) error {
 		if !p.Branch.IsZero() {
-			return g.runNumberBranchNow(p.Branch, p.Chooser, p.Source, n)
+			// A split's state rides the answer, also when nobody is asked.
+			r := p.Branch.answer(p.Chooser, p.Source, n)
+			r.split = cloneAttackSplit(p.split)
+			return g.runNumberBranch(p.Branch.Then.key, r, carriedCause{})
 		}
 		if then == nil {
 			return nil

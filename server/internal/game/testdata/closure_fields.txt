@@ -63,6 +63,7 @@ ActivatedAbilityShape.Modes                  census:IntrinsicAbilityCards       
 ActivatedAbilityShape.Targets                census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Targets
 AnnouncedClause.Clause                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps.Clause
 AttackSplit.Template                         rebuilt                            # Game.PendingChoices.AttackSplit.Template
+AttackSplit.settled                          rebuilt                            # Game.PendingChoices.AttackSplit.settled
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
@@ -234,6 +235,8 @@ resolvingItem.card                           census:ChoiceResumeFrames          
 resolvingItem.item                           census:ChoiceResumeFrames          # Game.resolving.item
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
 searchResumeFrame.spec                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec
+settledCreation.Chosen                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Chosen
+settledCreation.Groups                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Groups
 stepWalk.item                                keyed                              # Game.pausedStepWalk.item
 stepWalk.outer                               keyed                              # Game.pausedStepWalk.outer
 tokenTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail.then

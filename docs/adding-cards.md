@@ -7978,8 +7978,10 @@ attacks) first. The rest of the card is a registered tail (#4294),
 `var thing = AttackingTokensThen("attacking-tokens/<card>-<clause>",
 func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error { … })`
 and `Tail: game.KeyedTail{Ref: thing}` (`Carry` and `N` carry what it
-reads); it runs against a stand-in for the item, so a card that needs the
-item itself keeps `Then` (a closure, and not a restore point). Prefer it to `CreateTokensAttackingForEffect` with a
+reads); it runs against a stand-in for the item, or, built with
+`ctx.ItemTail(thing)`, against the asking item itself rebuilt from data
+(Calamity's next round reads its saddlers off it). There is no closure
+form. Prefer it to `CreateTokensAttackingForEffect` with a
 fixed defender, which is a caveat ("attacks the player X attacked
 rather than a player of your choice").
 

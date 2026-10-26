@@ -918,13 +918,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		TokenTogether:           ev.TokenTogether,
 		TokenAttackChoicesLabel: ev.TokenAttackChoicesLabel,
 	}
-	for _, grp := range ev.TokenGroups {
-		out.TokenGroups = append(out.TokenGroups, tokenGroupSnapshot{
-			Template: snapshotCard(grp.Template, cen), Count: grp.Count, Entry: snapshotTokenEntry(grp.Entry),
-			Attacking: uuidPtrOrNil(grp.Attacking), AttackOpponent: uuidPtrOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking),
-		})
-	}
+	out.TokenGroups = snapshotTokenGroups(ev.TokenGroups, cen)
 	if t := ev.tokenTail; t != nil {
 		out.TokenTail = &tokenTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
 	}
@@ -1068,14 +1062,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		TokenTogether:           s.TokenTogether,
 		TokenAttackChoicesLabel: s.TokenAttackChoicesLabel,
 	}
-	for i := range s.TokenGroups {
-		grp := &s.TokenGroups[i]
-		ev.TokenGroups = append(ev.TokenGroups, TokenGroup{
-			Template: restoreCard(&grp.Template), Count: grp.Count, Entry: grp.Entry.options(),
-			Attacking: uuidOrNil(grp.Attacking), AttackOpponent: uuidOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking),
-		})
-	}
+	ev.TokenGroups = restoreTokenGroups(s.TokenGroups)
 	if t := s.TokenTail; t != nil {
 		ev.tokenTail = &tokenTail{keyed: restoreKeyedTail(t.Then)}
 	}
