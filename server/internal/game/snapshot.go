@@ -532,6 +532,12 @@ type GameSnapshot struct {
 	// behaviour (no keyed run existed). Additive within the version.
 	PromptRuns []promptRunSnapshot `json:"promptRuns,omitempty"`
 
+	// ParkedDraws is Game.parkedDraws (#4253 slice 10c, draw_done.go): the
+	// tails of draws a draw-instead body handed to a prompt, by the ID that
+	// prompt carries. Plain data, never counted. A file written before it
+	// restores none. Additive within the version.
+	ParkedDraws []parkedDrawSnapshot `json:"parkedDraws,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -1995,6 +2001,17 @@ type pendingChoiceSnapshot struct {
 	// ride PickThen, which is the pick's own; the keys it names are checked
 	// on restore all the same. Additive within the version.
 	PickTail *keyedTailSnapshot `json:"pickTail,omitempty"`
+	// NameThen is PendingChoice.nameThen (#4253 slice 10c): a
+	// resolution-time card-name prompt's keyed "then". Its key also rides
+	// PickThen, so a binary from before it refuses the file instead of
+	// restoring the prompt with a name that lands nowhere. Additive within
+	// the version.
+	NameThen *keyedTailSnapshot `json:"nameThen,omitempty"`
+
+	// SourceShield is PendingChoice.sourceShield (#4253 slice 10c): a
+	// choose_source prompt's shield, redirection or multiplier, as data.
+	// Its continuation's key rides PickThen. Additive within the version.
+	SourceShield *sourceShieldSnapshot `json:"sourceShield,omitempty"`
 
 	// PromptRun is PendingChoice.promptRun (#4290): the run this prompt
 	// is one leg of, by its ID in PromptRuns. Additive: a file without it
@@ -2450,6 +2467,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4253 slice 8: a keyed choose_cards pick's tail.
 				pc.PickTail = t
 			}
+			pc.SourceShield = snapshotSourceShield(c.sourceShield)
+			if t := snapshotKeyedTail(c.nameThen); t != nil && c.Kind == PendingChoiceCardName {
+				// #4253 slice 10c: the card-name prompt's keyed "then".
+				pc.NameThen, pc.PickThen = t, t.Key
+			}
 			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
 				// #4301: the ordering prompt's keyed "then".
 				pc.LibraryOrder = snapshotLibraryOrder(k)
@@ -2508,6 +2530,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// #4290: the prompted runs in flight. A keyed run is written; a run
 	// whose continuation is a closure is counted.
 	s.PromptRuns = snapshotPromptRuns(g.promptRuns, cen)
+	s.ParkedDraws = snapshotParkedDraws(g.parkedDraws)
 
 	switch n := len(g.Events); {
 	case n == 0:
@@ -3435,6 +3458,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.stepRecords = cloneStepRecords(s.StepRecords)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.promptRuns = restorePromptRuns(s.PromptRuns)
+	g.parkedDraws = restoreParkedDraws(s.ParkedDraws)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
@@ -3645,6 +3669,13 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		if t := s.PendingChoices[i].PickTail; t != nil && s.PendingChoices[i].Kind == PendingChoiceChooseCards {
 			g.PendingChoices[i].pickTail = restoreKeyedTail(t)
+		}
+		if sh := s.PendingChoices[i].SourceShield; sh != nil && s.PendingChoices[i].Kind == PendingChoiceChooseSource {
+			g.PendingChoices[i].sourceShield = restoreSourceShield(sh)
+		}
+		if t := s.PendingChoices[i].NameThen; t != nil && s.PendingChoices[i].Kind == PendingChoiceCardName {
+			g.PendingChoices[i].nameThen = restoreKeyedTail(t)
+			g.PendingChoices[i].PickThen = ""
 		}
 		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
 			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)

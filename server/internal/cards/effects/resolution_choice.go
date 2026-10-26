@@ -82,6 +82,11 @@ type PickOption struct {
 	// that reads the item's own words, targets or source stamp (#4253
 	// slice 8). Ignored without ThenKey.
 	WithItem bool
+	// Words and Nums are a keyed continuation's other plain data (#4253
+	// slice 10c): the walk of lands a player activates mana abilities of
+	// keeps its place in them. Handed back as OptionPicked.Words and Nums.
+	Words []string
+	Nums  []int
 }
 
 // OptionPickThen registers a keyed option pick's continuation, as a
@@ -133,12 +138,15 @@ func (p PickOption) Apply(ctx *Context) error {
 			ThenKey:    p.ThenKey,
 			Carry:      carry,
 			Asked:      asked,
+			Words:      p.Words,
+			Nums:       p.Nums,
 		})
 		if queued != uuid.Nil {
 			return nil
 		}
 		return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
 			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
+			Words: append([]string(nil), p.Words...), Nums: append([]int(nil), p.Nums...),
 		})
 	}
 	item := ctx.Item

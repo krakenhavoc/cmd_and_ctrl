@@ -23,8 +23,9 @@ import (
 // they chose to pay is never asked, and their own Fleshbag Marauder
 // still bites.
 //
-// The +1 asks for a name at resolution (QueueCardNameChoiceThenForEffect)
-// and carries the rest of the sentence in its continuation: nothing is
+// The +1 asks for a name at resolution (QueueCardNameChoiceKeyedForEffect)
+// and carries the rest of the sentence in its continuation, a registered
+// tail that is told the name as its Word: nothing is
 // revealed until the name is in. The name is free text (CR 201.2 admits
 // any card name), so "nonland" is enforced where the engine can: a land
 // card is never a match, which is what naming a land would be if it were
@@ -54,31 +55,31 @@ func init() {
 	})
 }
 
-// tamiyoCollectorPlusOne asks for the name, then reveals and takes. A
-// package-level func capturing only scalars, as every continuation must.
+// tamiyoCollectorPlusOne asks for the name; the rest of the +1 is a
+// registered tail told the name.
 func tamiyoCollectorPlusOne(g *game.Game, item *game.StackItem) error {
 	player, source := item.Controller, item.SourceCardID
-	g.QueueCardNameChoiceThenForEffect(player, source,
+	g.QueueCardNameChoiceKeyedForEffect(player, source,
 		"Tamiyo, Collector of Tales — choose a nonland card name",
-		tamiyoRevealAndTake(player, source))
+		game.KeyedTail{Ref: tamiyoNamed, Player: player, Source: source})
 	return nil
 }
 
-// tamiyoRevealAndTake is the rest of the +1 once the name is known.
-func tamiyoRevealAndTake(player, source uuid.UUID) func(g *game.Game, name string) error {
-	return func(g *game.Game, name string) error {
-		const label = "Tamiyo, Collector of Tales — reveal the top four cards of your library"
-		cards := g.RevealTopOfLibraryForEffect(player, source, 4, label)
-		match := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-			return !c.IsLand() && game.CardNameMatches(c, name)
-		}
-		return TakeFromLibraryToHand{
-			Player: player,
-			Cards:  cards,
-			Match:  match,
-			All:    true,
-			Label:  label,
-			Key:    takeRestGraveyard,
-		}.Apply(NewContext(g, &game.StackItem{Controller: player, SourceCardID: source}))
+// tamiyoNamed is the rest of the +1 once the name (the tail's Word) is
+// known. An on-disk key.
+var tamiyoNamed = CardTail("then/tamiyo-collector-named", func(ctx *Context, o game.TailOutcome) error {
+	player, source, name := o.Tail.Player, o.Tail.Source, o.Tail.Word
+	const label = "Tamiyo, Collector of Tales — reveal the top four cards of your library"
+	cards := ctx.Game.RevealTopOfLibraryForEffect(player, source, 4, label)
+	match := func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return !c.IsLand() && game.CardNameMatches(c, name)
 	}
-}
+	return TakeFromLibraryToHand{
+		Player: player,
+		Cards:  cards,
+		Match:  match,
+		All:    true,
+		Label:  label,
+		Key:    takeRestGraveyard,
+	}.Apply(ctx)
+})

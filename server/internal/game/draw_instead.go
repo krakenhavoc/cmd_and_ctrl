@@ -41,11 +41,11 @@ import (
 // frame copies by value, so undo and a snapshot taken mid-pause replay
 // the answer against the same remaining count.
 //
-// The closures a body queues must capture scalars only (the
-// StackItem.Effect contract): `done` captures a player ID and a
-// count, and nothing else. The body itself is not stored on the event:
-// it records a registered key (drawInsteadRun) and the body is looked
-// up when the window settles.
+// `done` is a DrawDone (draw_done.go), plain data: the drawing player, the
+// draws still owed and the instruction's "then". A body that asks hands it
+// to its prompt by ID (DrawDone.Park), so the prompt holds no closure. The
+// body itself is not stored on the event: it records a registered key
+// (drawInsteadRun) and the body is looked up when the window settles.
 //
 // # Declared simplification, weaker than printed
 //
@@ -70,9 +70,12 @@ import (
 
 // DrawInsteadFunc is the body of a draw replaced by an effect. It runs
 // with g.mu held once the replacement window has settled, may queue
-// prompts, and must call done exactly once when it has finished.
-// `source` is the card the effect belongs to.
-type DrawInsteadFunc func(g *Game, drawer, source uuid.UUID, done func(g *Game) error) error
+// prompts, and must run done (DrawDone.Run) exactly once when it has
+// finished. `source` is the card the effect belongs to. `done` is data
+// (draw_done.go): a body that hands it to a prompt parks it first
+// (DrawDone.Park) and puts the ID on the prompt's Carry, so a table waiting
+// on that prompt is a restore point (#4253 slice 10c).
+type DrawInsteadFunc func(g *Game, drawer, source uuid.UUID, done DrawDone) error
 
 // DrawInsteadRef names a registered DrawInsteadFunc. The key is
 // unexported, so the only way to hold one is RegisterDrawInstead, which
@@ -276,12 +279,11 @@ func (g *Game) runDrawInsteadLocked(ev *ReplacementEvent) error {
 	ev.drawInstead = drawInsteadRun{}
 	// Capture the frame by value: a substitute may pause, and its
 	// continuation must not mutate a frame shared with an undo clone.
-	tail := *ev
-	finish := func(g *Game) error { return g.finishDrawTailLocked(&tail) }
+	finish := DrawDone{frame: newParkedDraw(ev)}
 	if body := run.body(); body != nil {
 		return body(g, ev.DrawPlayer, run.source, finish)
 	}
-	return finish(g)
+	return finish.Run(g)
 }
 
 // finishDrawTailLocked is what a RESUMED draw owes once its own card

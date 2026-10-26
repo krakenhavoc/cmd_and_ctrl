@@ -299,7 +299,7 @@ func (p PreventDamageFromSource) Apply(ctx *Context) error {
 		}
 	}
 	pick := shieldSourcePick{Choose: p.Choose, FromThis: p.FromThis, From: p.From, Queries: p.Queries, Question: p.Question}
-	return pick.resolve(ctx, registerSourceShield(shield))
+	return pick.resolve(ctx, game.SourceShield{Prevent: &shield})
 }
 
 // filter is the shield's Filter with the objects pinned as it resolves
@@ -333,17 +333,6 @@ func (p PreventDamageFromSource) filter(ctx *Context) (game.DamageSourceFilter, 
 		f.ExceptObjects = nil
 	}
 	return f, true
-}
-
-// registerSourceShield finishes a source shield once its source is
-// pinned. It captures the shield's plain description and nothing else.
-func registerSourceShield(shield game.DamageShield) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
-	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-		s := shield
-		s.Source, s.SourceZone = ref, zone
-		g.PreventDamageFromSourceThisTurnForEffect(s)
-		return nil
-	}
 }
 
 // sourceShieldSpell is an instant's OnResolve whose whole effect is a

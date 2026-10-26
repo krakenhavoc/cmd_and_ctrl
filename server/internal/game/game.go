@@ -1208,6 +1208,12 @@ type Game struct {
 	// a seat early.
 	promptRuns map[uuid.UUID]*promptRun
 
+	// parkedDraws holds the tails of draws a draw-instead body handed to a
+	// prompt (draw_done.go, #4253 slice 10c): what the replaced draw still
+	// owes, as plain data, by the ID the prompt carries. Cloned by undo,
+	// written to a restore point as GameSnapshot.ParkedDraws.
+	parkedDraws map[uuid.UUID]*parkedDraw
+
 	mu sync.RWMutex
 }
 

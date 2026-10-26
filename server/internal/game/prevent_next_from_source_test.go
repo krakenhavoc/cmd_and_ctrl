@@ -453,16 +453,12 @@ func TestChooseDamageSourcePinsTheAnswer(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	red := pushColouredCreature(g, opp, "Red", []string{"R"})
 	_ = pushColouredCreature(g, opp, "Green", []string{"G"})
-	var got ObjectRef
-	var gotZone ZoneKind
+	chooseSourceProbeSeen = nil
 	g.WithWriteLock(func() {
 		queued, err := g.ChooseDamageSourceThenForEffect(ChooseSourcePrompt{
 			Chooser: me.ID, Question: "choose a red source",
 			Queries: []PermanentQuery{{Colors: []string{"R"}}},
-			Then: func(_ *Game, ref ObjectRef, zone ZoneKind) error {
-				got, gotZone = ref, zone
-				return nil
-			},
+			Then:    chooseSourceProbe,
 		})
 		if err != nil || !queued {
 			t.Fatalf("queued %v, err %v", queued, err)
@@ -484,8 +480,8 @@ func TestChooseDamageSourcePinsTheAnswer(t *testing.T) {
 	if err := g.ResolveChooseSource(c.ID, me.ID, []uuid.UUID{red}); err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != red || gotZone != ZoneBattlefield {
-		t.Errorf("Then got %+v in %q, want the red creature on the battlefield", got, gotZone)
+	if len(chooseSourceProbeSeen) != 1 || chooseSourceProbeSeen[0].Ref.ID != red || chooseSourceProbeSeen[0].Zone != ZoneBattlefield {
+		t.Errorf("Then got %+v, want the red creature on the battlefield", chooseSourceProbeSeen)
 	}
 }
 
@@ -493,20 +489,17 @@ func TestChooseDamageSourcePinsTheAnswer(t *testing.T) {
 func TestChooseDamageSourceWithNoCandidate(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	ran := false
+	chooseSourceProbeSeen = nil
 	g.WithWriteLock(func() {
 		queued, err := g.ChooseDamageSourceThenForEffect(ChooseSourcePrompt{
 			Chooser: me.ID, Queries: []PermanentQuery{{Colors: []string{"R"}}},
-			Then: func(_ *Game, ref ObjectRef, _ ZoneKind) error {
-				ran = ref.ID == uuid.Nil
-				return nil
-			},
+			Then: chooseSourceProbe,
 		})
 		if err != nil || queued {
 			t.Fatalf("queued %v, err %v; want nothing asked", queued, err)
 		}
 	})
-	if !ran {
+	if len(chooseSourceProbeSeen) != 1 || chooseSourceProbeSeen[0].Ref.ID != uuid.Nil {
 		t.Error("Then did not run with the zero ref")
 	}
 }

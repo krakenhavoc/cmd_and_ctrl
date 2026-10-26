@@ -320,6 +320,8 @@ func (g *Game) cloneLocked() *Game {
 			cloned.PayAmount = copyPayAmountPrompt(c.PayAmount)
 			cloned.MayPayX = copyMayPayXClause(c.MayPayX)
 			cloned.AttackSplit = cloneAttackSplit(c.AttackSplit)
+			cloned.nameThen = copyKeyedTail(c.nameThen)
+			cloned.sourceShield = cloneSourceShield(c.sourceShield)
 			cloned.PickWords = copyStrings(c.PickWords)
 			cloned.PickNums = copyInts(c.PickNums)
 			cloned.OptionObjects = cloneObjectRefs(c.OptionObjects)
@@ -588,6 +590,8 @@ func (g *Game) cloneLocked() *Game {
 	// lists, shallow in the continuation closure — clonePromptRuns
 	// says why, and it is the same split cloneReplacementResume makes.
 	out.promptRuns = clonePromptRuns(g.promptRuns)
+	// #4253 slice 10c: the tails of draws parked behind a prompt.
+	out.parkedDraws = cloneParkedDraws(g.parkedDraws)
 	// S16 layer-engine version counters. Atomics can't be struct-
 	// copied; mirror via Load/Store so the clone's staleness state
 	// matches the original's at capture time.
@@ -1378,6 +1382,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #1019, #1027: a half-answered prompted run rewinds with the
 	// prompts still owing it — see cloneLocked.
 	g.promptRuns = src.promptRuns
+	g.parkedDraws = src.parkedDraws
 	g.enteringTokens = src.enteringTokens
 	g.outsideEntering = src.outsideEntering
 	g.attractionEntering = src.attractionEntering

@@ -141,24 +141,45 @@ func IsBasicLandCardName(name string) bool {
 	return basicLandCardNames[strings.ToLower(strings.TrimSpace(name))]
 }
 
-// QueueCardNameChoiceThenForEffect queues the AT-RESOLUTION form: the
-// answer is handed to `then` and stored nowhere, so the permanent's
-// ChosenName is untouched. `then` runs with g.mu held and may queue
-// further prompts.
+// QueueCardNameChoiceKeyedForEffect queues the AT-RESOLUTION form: the
+// answer is handed to a registered tail (RegisterTail) as its Word, with
+// the plain data the tail reads, and stored nowhere, so the permanent's
+// ChosenName is untouched (#4253 slice 10c). A table waiting on the name is
+// a restore point. The tail runs with g.mu held and may queue further
+// prompts. (The closure form, QueueCardNameChoiceThenForEffect, is gone:
+// its two callers, Demonic Consultation and Tamiyo, are keyed.)
+//
+// The key rides PickThen, so a binary that lacks the tail refuses a
+// restore point naming it. The prompt takes
+// the cause it is queued under (as a keyed number prompt does), so the
+// answer, given after a restore, still names the spell or ability that
+// asked. Returns the choice ID, or uuid.Nil when the chooser has left.
 //
 // Caller must hold g.mu.
-func (g *Game) QueueCardNameChoiceThenForEffect(chooser, source uuid.UUID, reason string, then func(g *Game, name string) error) uuid.UUID {
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:    PendingChoiceCardName,
-		Chooser: chooser,
-		Count:   1,
-		Source:  source,
-		Reason:  reason,
-		// The ceiling on resume-frame routes only falls
-		// (closure_fields.txt), so this rides the colour prompt's
-		// frame: both are "hand the single string answer to a
-		// closure", and the census already counts it.
-		chooseValueResume: &chooseValueFrame{then: then},
+func (g *Game) QueueCardNameChoiceKeyedForEffect(chooser, source uuid.UUID, reason string, then KeyedTail) uuid.UUID {
+	c := PendingChoice{
+		Kind:     PendingChoiceCardName,
+		Chooser:  chooser,
+		Count:    1,
+		Source:   source,
+		Reason:   reason,
+		PickThen: then.Ref.key,
+		nameThen: copyKeyedTail(then),
+	}
+	cause := g.resolutionCauseLocked()
+	c.PayCauseController, c.PayCauseItem = cause.Controller, cause.Item
+	return g.QueueChoiceForEffect(c)
+}
+
+// runCardNameTail finishes a keyed card-name prompt: its tail, told the
+// name as its Word, under the cause the prompt was queued under.
+//
+// Caller must hold g.mu.
+func (g *Game) runCardNameTail(choice *PendingChoice, name string) error {
+	t := copyKeyedTail(choice.nameThen)
+	t.Word = name
+	return g.withCarriedCauseLocked(carriedCauseOfChoice(choice), func() error {
+		return g.runKeyedTailLocked(t, nil, 0)
 	})
 }
 
@@ -212,22 +233,21 @@ func (g *Game) ResolveCardNameChoice(choiceID, chooserID uuid.UUID, name string)
 	}
 	g.dequeueChoiceLocked(idx)
 
-	if frame := choice.chooseValueResume; frame != nil {
+	if !choice.nameThen.IsZero() {
+		// #4253 slice 10c: the keyed at-resolution form.
 		g.EmitEvent(Event{
 			Kind:   EventCardNameChosen,
 			Actor:  chooserID,
 			CardID: choice.Source,
 			Label:  chosen,
 		})
-		if frame.then != nil {
-			if err := frame.then(g, chosen); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					Actor:    chooserID,
-					Source:   choice.Source,
-					ErrorMsg: err.Error(),
-				})
-			}
+		if err := g.runCardNameTail(choice, chosen); err != nil {
+			g.EmitEvent(Event{
+				Kind:     EventEffectError,
+				Actor:    chooserID,
+				Source:   choice.Source,
+				ErrorMsg: err.Error(),
+			})
 		}
 		g.runStateChecksLocked()
 		return nil

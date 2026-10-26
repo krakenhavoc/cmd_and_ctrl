@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Desperate Gambit — Instant {R}:
 //
@@ -30,21 +34,30 @@ func init() {
 		Name:         "Desperate Gambit",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller, source, self := ctx.Controller(), ctx.Source(), item.ID
+			controller, source := ctx.Controller(), ctx.Source()
 			_, err := ctx.Game.ChooseDamageSourceThenForEffect(game.ChooseSourcePrompt{
 				Chooser:    controller,
 				Source:     source,
 				Controller: controller,
 				Question:   "Desperate Gambit — choose a source you control",
-				Then: func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-					NextTimeFlip{Source: ref, SourceZone: zone}.queue(g, nextTimeFlipBy{
-						controller: controller, source: source, self: self,
-						kind: game.StackItemSpell, name: "Desperate Gambit",
-					})
-					return nil
-				},
+				Then:       desperateGambitChosen,
+				Carry:      []uuid.UUID{controller, item.ID},
 			})
 			return err
 		},
 	})
 }
+
+// desperateGambitChosen is the rest of the spell once the source is pinned:
+// the coin is called for it. Carry is the caster and the spell's stack item.
+// An on-disk key.
+var desperateGambitChosen = game.RegisterChooseSourceThen("choose-source/desperate-gambit", func(g *game.Game, r game.ChosenSource) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	NextTimeFlip{Source: r.Ref, SourceZone: r.Zone}.queue(g, nextTimeFlipBy{
+		controller: r.Carry[0], source: r.Source, self: r.Carry[1],
+		kind: game.StackItemSpell, name: "Desperate Gambit",
+	})
+	return nil
+})

@@ -195,7 +195,7 @@ func (p PreventNextDamageFromSource) Apply(ctx *Context) error {
 	if !p.protect(ctx, &shield) {
 		return nil
 	}
-	return p.pick().resolve(ctx, registerChosenShield(shield))
+	return p.pick().resolve(ctx, game.SourceShield{Next: &shield})
 }
 
 // pick is the shield's "which source" half.
@@ -215,10 +215,11 @@ type shieldSourcePick struct {
 	Question string
 }
 
-// resolve pins the source and hands it to `register` — at once, or once
-// the controller has chosen. A choice that finds no source (no legal
+// resolve pins the source and completes `shield` with it — at once, or
+// once the controller has chosen: the shield rides the choose_source prompt
+// as data (#4253 slice 10c). A choice that finds no source (no legal
 // candidate, a chooser who left) makes no shield (CR 609.7a).
-func (s shieldSourcePick) resolve(ctx *Context, register func(*game.Game, game.ObjectRef, game.ZoneKind) error) error {
+func (s shieldSourcePick) resolve(ctx *Context, shield game.SourceShield) error {
 	g := ctx.Game
 	switch {
 	case s.FromThis:
@@ -226,13 +227,15 @@ func (s shieldSourcePick) resolve(ctx *Context, register func(*game.Game, game.O
 		if !ok {
 			return nil
 		}
-		return register(g, ref, game.ZoneBattlefield)
+		shield.Register(g, ref, game.ZoneBattlefield)
+		return nil
 	case s.From != uuid.Nil:
 		ref, zone, ok := g.DamageSourceRefLocked(s.From)
 		if !ok {
 			return nil
 		}
-		return register(g, ref, zone)
+		shield.Register(g, ref, zone)
+		return nil
 	case s.Choose:
 		question := s.Question
 		if question == "" {
@@ -243,22 +246,12 @@ func (s shieldSourcePick) resolve(ctx *Context, register func(*game.Game, game.O
 			Source:   ctx.Source(),
 			Question: question,
 			Queries:  s.Queries,
-			Then:     registerPickedSource(register),
+			Shield:   &shield,
 		})
 		return err
 	}
-	return register(g, game.ObjectRef{}, "")
-}
-
-// registerPickedSource is a choose_source continuation: no source chosen
-// is no shield.
-func registerPickedSource(register func(*game.Game, game.ObjectRef, game.ZoneKind) error) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
-	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-		if ref.ID == uuid.Nil {
-			return nil
-		}
-		return register(g, ref, zone)
-	}
+	shield.Register(g, game.ObjectRef{}, "")
+	return nil
 }
 
 // shieldSourceName is the card making the shield, for its labels.
@@ -267,17 +260,6 @@ func shieldSourceName(ctx *Context) string {
 		return c.Name
 	}
 	return "Shield"
-}
-
-// registerChosenShield finishes a next-damage shield once its source is
-// pinned. It captures the shield's plain description and nothing else.
-func registerChosenShield(shield game.NextDamageShield) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
-	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-		s := shield
-		s.Source, s.SourceZone = ref, zone
-		g.PreventNextDamageFromSourceForEffect(s)
-		return nil
-	}
 }
 
 // protect fills in what the shield protects. False when there is
