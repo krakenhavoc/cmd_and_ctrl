@@ -129,9 +129,15 @@ const VariantNoGrants = "nogrants"
 // NoGrantsContestant is VariantNoGrants's contestant name.
 const NoGrantsContestant = string(tiers.Heuristic) + "-" + VariantNoGrants
 
+// VariantNoIdleAnswers disables only the #4318 defensive-row prices.
+const VariantNoIdleAnswers = "noidleanswers"
+
+// NoIdleAnswersContestant is an arena name only.
+const NoIdleAnswersContestant = string(tiers.Heuristic) + "-" + VariantNoIdleAnswers
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
-// `heuristic-notemporary` or `heuristic-nogrants`.
+// `heuristic-notemporary`, `heuristic-nogrants` or `heuristic-noidleanswers`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -142,12 +148,14 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoPlan}, nil
 	case NoTemporaryContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTemporary}, nil
+	case NoIdleAnswersContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoIdleAnswers}, nil
 	case NoGrantsContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoGrants}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -336,7 +344,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers:
 		return true
 	}
 	return false
@@ -792,6 +800,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoTemporary:
 		h := heuristic.DefaultConfig()
 		h.PriceTemporaryEffects = false
+		opt.Heuristic = &h
+	case VariantNoIdleAnswers:
+		h := heuristic.DefaultConfig()
+		h.PriceAnswerOnlyRows = false
 		opt.Heuristic = &h
 	case VariantNoGrants:
 		h := heuristic.DefaultConfig()

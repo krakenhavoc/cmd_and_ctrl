@@ -408,6 +408,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			ps.add(rowPurpose(src, cp.AbilityIndex))
 			ps.targetsPriced = targetsPriced
 			row := rowAt(src, cp.AbilityIndex)
+			answerOnly := p.cfg.PriceAnswers && p.cfg.PriceAnswerOnlyRows && row != nil &&
+				len(cp.Targets) == 0 && defensiveAnswerOnly(row.Purpose)
+			if answerOnly && len(st.view.StackItems) == 0 {
+				return valueInResponse, "defensive answer: nothing on the stack to answer"
+			}
 			// #3146: a fetch land keeps the flat ActivateBase, and the
 			// lands it puts down add what the bot's landfall payoffs pay
 			// (landfall.go). Its declared lands are read nowhere else.
@@ -427,8 +432,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
 			// Strip Mine targeting itself would otherwise beat passing.
-			// Untargeted rows without a priced purpose retain their proxy.
-			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0) {
+			// #4318: purely defensive rows pay this cost in response too;
+			// other untargeted rows without a priced purpose retain their proxy.
+			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly) {
 				v -= p.selfSacrificeCost(st, src)
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`

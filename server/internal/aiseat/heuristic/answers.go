@@ -8,7 +8,9 @@ import (
 
 // answers.go is ADR 0142 decision 6: the bot reads the answers an
 // activated row declares (`activated_abilities[].purpose.answers`) and
-// prices them in a window with something on the stack.
+// prices them in a window with something on the stack. With
+// PriceAnswerOnlyRows (#4318), a purely defensive row with nothing
+// to answer is held, and a self-sacrifice in response pays for its source.
 //
 // Before it, every non-tap activation without a priced purpose was the
 // flat ActivateBase (0.50), under InstantThreshold (1.50) in a response
@@ -54,6 +56,23 @@ import (
 // valueInResponse is what a declared-value activation is worth while
 // the stack is not empty: below passing, so the bot waits for the stack.
 const valueInResponse = -0.5
+
+// defensiveAnswerOnly is a row whose entire declared benefit is a
+// defensive answer. Priced excludes rows with a draw, pump, targeted
+// effect or other payoff that can be useful without a stack item.
+func defensiveAnswerOnly(pv *protocol.PurposeView) bool {
+	if pv == nil || pv.Priced() || pv.Answers == nil || len(*pv.Answers) == 0 {
+		return false
+	}
+	for _, answer := range *pv.Answers {
+		switch answer {
+		case "survive", "protect", "prevent", "restrict":
+		default:
+			return false
+		}
+	}
+	return true
+}
 
 // threatKind is how a stack item would take a creature off the
 // battlefield.
@@ -457,9 +476,11 @@ func (p *Policy) valueWaits(st *state, src *protocol.CardView, row *protocol.Act
 // selfSacrificeCost is what a targeted or purpose-priced row pays for
 // sacrificing its own source: the whole source, and under PriceAnswers
 // its value times the chance the bot would have kept it. An untargeted
-// row with no priced purpose still pays nothing, as before ADR 0142: its
-// payoff is the flat ActivateBase, and charging a Mind Stone's whole
-// value against that would never crack it.
+// row with no priced purpose, except a declared defensive answer under
+// PriceAnswerOnlyRows (#4318), still pays nothing, as before ADR 0142: its
+// payoff is the flat ActivateBase, which cannot cover an undeclared
+// benefit when charged the full source. Declared draw rows already
+// price their draw and pay this cost.
 func (p *Policy) selfSacrificeCost(st *state, src *protocol.CardView) float64 {
 	if !p.cfg.PriceAnswers || !p.cfg.SacrificeDyingAnyway {
 		return st.permanentValue(src)

@@ -1736,7 +1736,16 @@ Every catalog activated row in scope declares what it can do in
 response (`activated_abilities[].purpose.answers`,
 [ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)).
 With `PriceAnswers` on (`answers.go`), the bot reads it while anything
-is on the stack:
+is on the stack. With `PriceAnswerOnlyRows` also on (#4318), an
+untargeted row that declares only `survive`, `protect`, `prevent` or
+`restrict` is held when the stack is empty. In response it pays for
+sacrificing its source even when its benefit has no declared amount.
+A draw, pump, target entry or other declared payoff keeps its existing
+price, as do fetch lands. This stops Selfless Spirit and Ranger-Captain
+of Eos sacrificing themselves in an idle main phase. Proactive uses of
+these defensive effects in combat or to stop future spells are not yet
+valued. `heuristic-noidleanswers` turns off only this change in the arena;
+`BaselineConfig` leaves it off too.
 
 - **Saving a creature.** When an opponent's item on the stack targets
   one of the bot's creatures, or a declared sweep would remove it, an
@@ -1776,9 +1785,10 @@ is on the stack:
   sacrifices its own source (Sakura-Tribe Elder) pays for the source at
   the dying-anyway price, and so does the creature a `sac_outlet` row
   exiles (The Soul Stone). A self-sacrifice row with no priced purpose
-  (Mind Stone's draw, declared only `value`) still pays nothing for its
-  source, as before. Each clears `LeftoverThreshold` when that is
-  all it costs besides mana and taps. So a targeted Elder is sacrificed
+  still keeps its proxy unless it declares only a defensive answer
+  under `PriceAnswerOnlyRows`. Mind Stone declares its draw amount and
+  is priced by that amount less the source it spends. Each clears
+  `LeftoverThreshold` when that is all it costs besides mana and taps. So a targeted Elder is sacrificed
   for its land in response, and an untargeted one is not.
 
 Layer A has a matching rule, `value-only`: a window with something on
@@ -2549,7 +2559,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary` or `heuristic-nogrants`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers` or `heuristic-nogrants`. `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
