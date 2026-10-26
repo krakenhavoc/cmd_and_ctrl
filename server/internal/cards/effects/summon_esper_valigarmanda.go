@@ -101,8 +101,6 @@ func valigarmandaPickFrom(ctx *Context, seats, picked []uuid.UUID) error {
 	case 1:
 		return valigarmandaPickFrom(ctx, rest, append(append([]uuid.UUID(nil), picked...), cands[0]))
 	}
-	item := ctx.Item
-	so := append([]uuid.UUID(nil), picked...)
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    ctx.Controller(),
 		FromPlayer: seat,
@@ -111,12 +109,26 @@ func valigarmandaPickFrom(ctx *Context, seats, picked []uuid.UUID) error {
 		Cards:      cands,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, answer []uuid.UUID) error {
-			return valigarmandaPickFrom(NewContext(g, item), rest, append(so, answer...))
-		},
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    valigarmandaPick,
+		Asked:      game.NewAskedItem(ctx.Item),
+		// The seats still to ask, then the cards picked so far.
+		Carry: packIDLists(rest, picked),
 	})
 	return nil
+}
+
+// valigarmandaPick is one graveyard's card chosen, keyed (#4253 sweep): the
+// seats still to ask and the picks so far ride the prompt as data, and the
+// chapter's item as the asking item. Registered in init, because the body
+// asks the next graveyard with it.
+var valigarmandaPick game.ChooseCardsThen
+
+func init() {
+	valigarmandaPick = askedPick("choose-cards/summon-esper-valigarmanda-exile-each", func(ctx *Context, r game.CardsChosen) error {
+		rest, so := unpackIDPair(r.Carry)
+		return valigarmandaPickFrom(ctx, rest, append(so, r.Picked...))
+	})
 }
 
 // valigarmandaExile exiles the picks together, linked to the Saga.

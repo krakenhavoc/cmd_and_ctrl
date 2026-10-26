@@ -68,27 +68,33 @@ func gitrogRavenousRideSacrifice(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			target := picked[0]
-			return SacrificePermanent{Target: target, Then: func(ctx *Context, sacrificed bool) error {
-				if !sacrificed {
-					return nil
-				}
-				info, ok := ctx.Game.LastKnownPermanentForEffect(target)
-				if !ok || info.Power <= 0 {
-					return nil
-				}
-				ctx.RecordStep(gitrogRavenousRideRecord, nil, info.Power)
-				return gitrogRavenousRideDrawAndPut.Run(ctx)
-			}}.Apply(NewContext(g, item))
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  gitrogRavenousRidePick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// gitrogRavenousRidePick is the saddling creature chosen to be sacrificed,
+// keyed (#4253 sweep): the asking item rides the prompt as data. The
+// sacrifice's own Then is SacrificePermanent's, which slice 10a keys.
+var gitrogRavenousRidePick = askedPick("choose-cards/the-gitrog-ravenous-ride-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	target := r.Picked[0]
+	return SacrificePermanent{Target: target, Then: func(ctx *Context, sacrificed bool) error {
+		if !sacrificed {
+			return nil
+		}
+		info, ok := ctx.Game.LastKnownPermanentForEffect(target)
+		if !ok || info.Power <= 0 {
+			return nil
+		}
+		ctx.RecordStep(gitrogRavenousRideRecord, nil, info.Power)
+		return gitrogRavenousRideDrawAndPut.Run(ctx)
+	}}.Apply(ctx)
+})
 
 // gitrogRavenousRideRecord is X, the sacrificed creature's power.
 const gitrogRavenousRideRecord = "the-gitrog-ravenous-ride/x"

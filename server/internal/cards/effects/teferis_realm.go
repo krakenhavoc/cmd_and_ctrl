@@ -60,18 +60,23 @@ func teferisRealmUpkeep(g *game.Game, item *game.StackItem) error {
 		Player:   player,
 		Question: "Teferi's Realm — choose a type. All nontoken permanents of that type phase out.",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(teferisRealmTypes) {
-				return nil
-			}
-			match := teferisRealmTypes[index].match
-			var ids []uuid.UUID
-			for _, c := range ctx.Game.BattlefieldCardsForEffect() {
-				if !c.IsToken() && match(c) {
-					ids = append(ids, c.InstanceID)
-				}
-			}
-			return PhaseOut{Targets: ids}.Apply(ctx)
-		},
+		ThenKey:  teferisRealmChosen,
 	}.Apply(ctx)
 }
+
+// teferisRealmChosen is the type chosen and the nontoken permanents of it
+// phasing out, keyed (#4253 sweep): the answer is the index into the four
+// types, so the prompt carries nothing else.
+var teferisRealmChosen = OptionPickThen("option-pick/teferis-realm-phase-out", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(teferisRealmTypes) {
+		return nil
+	}
+	match := teferisRealmTypes[r.Index].match
+	var ids []uuid.UUID
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if !c.IsToken() && match(c) {
+			ids = append(ids, c.InstanceID)
+		}
+	}
+	return PhaseOut{Targets: ids}.Apply(ctx)
+})

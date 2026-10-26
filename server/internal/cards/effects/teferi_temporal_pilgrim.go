@@ -158,13 +158,18 @@ func teferiPilgrimMinusTwelve(g *game.Game, item *game.StackItem) error {
 		Cards:      perms,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return teferiPilgrimReturnThenShuffle(g, opp, picked)
-		},
+		LiveZone:   game.ZoneBattlefield,
+		ThenKey:    teferiPilgrimReturn,
 	})
 	return nil
 }
+
+// teferiPilgrimReturn is the permanent the opponent chose to return, keyed
+// (#4253 sweep): the opponent is the chooser. The bounce and the tuck behind
+// it are route doors that slice 9 keys.
+var teferiPilgrimReturn = game.RegisterChooseCardsThen("choose-cards/teferi-temporal-pilgrim-return", func(g *game.Game, r game.CardsChosen) error {
+	return teferiPilgrimReturnThenShuffle(g, r.Chooser, r.Picked)
+})
 
 // teferiPilgrimReturnThenShuffle returns the pick to its owner's hand
 // and, once that has settled, shuffles the rest away. A pick the

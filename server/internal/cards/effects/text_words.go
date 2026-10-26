@@ -22,9 +22,14 @@ import (
 // text" means in an engine whose rules are closures, is
 // game/text_words.go.
 //
-// The pick holds a closure continuation, so a table waiting on it is not
-// a restore point (the census counts it). The answer comes within the
-// resolution that asked, as for a pile split.
+// A change with nothing printed after it (every card but Crystal Spray and
+// Balduvian Shaman) asks both picks as keyed option picks (changeTextWordFirst,
+// changeTextWordSecond; #4253 sweep), so a table waiting on either is a
+// restore point. A change with a Then, and a creature-type change
+// (ChangeCreatureTypeWord, which needs a keyed creature-type prompt), still
+// hold a closure continuation, so a table waiting on them is not (the census
+// counts it). The answer comes within the resolution that asked, as for a
+// pile split.
 
 // textWordChoice is one word a change can replace.
 type textWordChoice struct {
@@ -93,13 +98,20 @@ func (t ChangeTextWord) Apply(ctx *Context) error {
 	}
 	g := ctx.Game
 	chooser, source, target, eot, then := ctx.Controller(), ctx.Source(), t.Target, t.UntilEndOfTurn, t.Then
-	if then == nil {
-		then = func(*game.Game) error { return nil }
-	}
 	name := cardNameFor(g, source)
 	options := make([]game.ChoiceOption, len(words))
 	for i, w := range words {
 		options[i] = game.ChoiceOption{Label: w.label}
+	}
+	if then == nil {
+		// Nothing printed after the change: the two picks are keyed (#4253
+		// sweep), so a table waiting on either is a restore point.
+		return PickOption{
+			Question: name + " — choose the word to replace",
+			Options:  options,
+			ThenKey:  changeTextWordFirst,
+			Carry:    append([]uuid.UUID{target}, intsToCarry([]int{textWordKindsMask(t.Kinds), textWordDuration(eot)})...),
+		}.Apply(ctx)
 	}
 	queued := g.QueueOptionPickForEffect(game.OptionPickPrompt{
 		Chooser:  chooser,
@@ -143,6 +155,108 @@ func (t ChangeTextWord) Apply(ctx *Context) error {
 		return then(g)
 	}
 	return nil
+}
+
+// textWordKindsMask writes the classes of words as bits (colour 1, basic land
+// type 2), for a prompt that carries only IDs and small numbers. The order the
+// card named them in is not kept: textWordChoices lists colours first.
+func textWordKindsMask(kinds []game.TextWordKind) int {
+	mask := 0
+	for _, k := range kinds {
+		switch k {
+		case game.TextWordColor:
+			mask |= 1
+		case game.TextWordBasicLandType:
+			mask |= 2
+		}
+	}
+	return mask
+}
+
+// textWordKindsFromMask is the inverse of textWordKindsMask.
+func textWordKindsFromMask(mask int) []game.TextWordKind {
+	var kinds []game.TextWordKind
+	if mask&1 != 0 {
+		kinds = append(kinds, game.TextWordColor)
+	}
+	if mask&2 != 0 {
+		kinds = append(kinds, game.TextWordBasicLandType)
+	}
+	return kinds
+}
+
+// textWordDuration is the change's duration as a small number for a prompt's
+// Carry: 1 for until end of turn, 0 for indefinitely.
+func textWordDuration(untilEndOfTurn bool) int {
+	if untilEndOfTurn {
+		return 1
+	}
+	return 0
+}
+
+// textWordReplacements is the words `from` can become: every word of its own
+// class but itself ("it can't change a word to the same word").
+func textWordReplacements(from textWordChoice) []textWordChoice {
+	var to []textWordChoice
+	for _, w := range textWordChoices([]game.TextWordKind{from.kind}) {
+		if w.word != from.word {
+			to = append(to, w)
+		}
+	}
+	return to
+}
+
+// changeTextWordFirst is the word to replace, chosen, keyed (#4253 sweep): the
+// target, the classes of words (textWordKindsMask) and the duration ride the
+// prompt as IDs. Registered in init, because the body asks the second pick,
+// which is registered beside it.
+var changeTextWordFirst game.OptionPickThen
+
+// changeTextWordSecond is the word that replaces it, chosen: the same data and
+// the index of the word replaced.
+var changeTextWordSecond game.OptionPickThen
+
+func init() {
+	changeTextWordFirst = OptionPickThen("option-pick/change-text-word-replace", func(ctx *Context, r game.OptionPicked) error {
+		if len(r.Carry) < 3 {
+			return nil
+		}
+		nums := carryToInts(r.Carry[1:3])
+		words := textWordChoices(textWordKindsFromMask(nums[0]))
+		if r.Index < 0 || r.Index >= len(words) {
+			return nil
+		}
+		from := words[r.Index]
+		to := textWordReplacements(from)
+		toOptions := make([]game.ChoiceOption, len(to))
+		for j, w := range to {
+			toOptions[j] = game.ChoiceOption{Label: w.label}
+		}
+		return PickOption{
+			Question: fmt.Sprintf("%s — replace %s with", cardNameFor(ctx.Game, ctx.Source()), from.label),
+			Options:  toOptions,
+			ThenKey:  changeTextWordSecond,
+			Carry:    append(append([]uuid.UUID(nil), r.Carry...), intsToCarry([]int{r.Index})...),
+		}.Apply(ctx)
+	})
+	changeTextWordSecond = OptionPickThen("option-pick/change-text-word-with", func(ctx *Context, r game.OptionPicked) error {
+		if len(r.Carry) < 4 {
+			return nil
+		}
+		nums := carryToInts(r.Carry[1:4])
+		words := textWordChoices(textWordKindsFromMask(nums[0]))
+		if nums[2] < 0 || nums[2] >= len(words) {
+			return nil
+		}
+		from := words[nums[2]]
+		to := textWordReplacements(from)
+		if r.Index < 0 || r.Index >= len(to) {
+			return nil
+		}
+		g, source := ctx.Game, ctx.Source()
+		changeTextWordNow(g, source, r.Carry[0], from.kind, from.word, to[r.Index].word, from.label, to[r.Index].label, cardNameFor(g, source), nums[1] != 0)
+		return nil
+	})
 }
 
 // ChangeCreatureTypeWord is ChangeTextWord for a creature type

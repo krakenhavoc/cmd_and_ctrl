@@ -76,23 +76,29 @@ func init() {
 // "when you discard a card this way" trigger.
 func summonKujataFire(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	finish := func(g *game.Game, discarded []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		ctx.RecordStep(summonKujataRecord, discarded)
-		return summonKujataDrawThenDamage.Run(ctx)
-	}
 	if p := g.PlayerByIDForEffect(controller); p == nil || p.Hand.Size() == 0 {
-		return finish(g, nil)
+		return summonKujataFinish(g, controller, item.SourceCardID, nil)
 	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player: controller,
 		Source: item.SourceCardID,
 		N:      1,
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			return finish(g, discarded)
-		},
-	})
-	return nil
+	}, summonKujataDiscarded, nil)
+}
+
+// summonKujataDiscarded is the discard answered, keyed (#4253 sweep): the
+// player and the Saga are the prompt, so a table waiting on the discard is a
+// restore point.
+var summonKujataDiscarded = game.RegisterDiscardThen("choose-cards/summon-kujata-fire-discard", func(g *game.Game, r game.DiscardsDone) error {
+	return summonKujataFinish(g, r.Player, r.Source, r.Discarded.Cards())
+})
+
+// summonKujataFinish records the card discarded, if any, and runs the draw and
+// the damage trigger.
+func summonKujataFinish(g *game.Game, controller, source uuid.UUID, discarded []uuid.UUID) error {
+	ctx := keyedContext(g, controller, source)
+	ctx.RecordStep(summonKujataRecord, discarded)
+	return summonKujataDrawThenDamage.Run(ctx)
 }
 
 // summonKujataFireEffect is the reflexive half: Kujata deals damage

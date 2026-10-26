@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -34,20 +32,23 @@ func init() {
 var tetherTechnicianStrikeBody = game.ReflexiveBody("tether-technician/strike", breechesBlastEffect, constTargets(TargetAny))
 
 func tetherTechnicianETB(g *game.Game, item *game.StackItem) error {
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   item.Controller,
 		Source:   item.SourceCardID,
 		N:        1,
 		UpTo:     true,
 		Question: "Tether Technician — you may discard a card to deal 2 damage to any target",
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			if len(discarded) == 0 {
-				return nil
-			}
-			t := WhenYouDo("Tether Technician — 2 damage to any target", tetherTechnicianStrikeBody)
-			t.Params = game.EffectParams{Amount: 2}
-			return t.Apply(NewContext(g, item))
-		},
-	})
-	return nil
+	}, tetherTechnicianDiscarded, nil)
 }
+
+// tetherTechnicianDiscarded is the optional discard answered, keyed (#4253
+// sweep): the player and the Technician are the prompt, and the reflexive
+// trigger reads nothing else of the asking trigger.
+var tetherTechnicianDiscarded = game.RegisterDiscardThen("choose-cards/tether-technician-strike", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Discarded.Cards()) == 0 {
+		return nil
+	}
+	t := WhenYouDo("Tether Technician — 2 damage to any target", tetherTechnicianStrikeBody)
+	t.Params = game.EffectParams{Amount: 2}
+	return t.Apply(keyedContext(g, r.Player, r.Source))
+})

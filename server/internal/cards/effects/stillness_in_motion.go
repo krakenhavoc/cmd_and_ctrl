@@ -51,29 +51,18 @@ func stillnessInMotionRestack(ctx *Context) error {
 	if len(yard) == 0 {
 		return nil
 	}
-	label := "Stillness in Motion — put five cards from your graveyard on top of your library"
-	order := func(g *game.Game, picked []uuid.UUID) error {
-		return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-			Chooser:   player,
-			Source:    source,
-			Cards:     picked,
-			From:      game.ZoneGraveyard,
-			Placement: game.LibraryPlaceTop,
-			Reason:    label + " — in what order? (the first is on top)",
-		})
-	}
 	if len(yard) <= stillnessInMotionReturned {
-		return order(ctx.Game, yard)
+		return stillnessInMotionOrder(ctx.Game, player, source, yard)
 	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   source,
-		Question: label,
+		Question: stillnessInMotionLabel,
 		Cards:    yard,
 		Min:      stillnessInMotionReturned,
 		Max:      stillnessInMotionReturned,
-		Zone:     game.ZoneGraveyard,
-		Then:     order,
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  stillnessInMotionPick,
 	})
 	return nil
 }
@@ -93,3 +82,23 @@ var stillnessInMotionExiled = CardTail("stillness-in-motion/after-exile", func(c
 
 	return stillnessInMotionRestack(ctx)
 })
+
+const stillnessInMotionLabel = "Stillness in Motion — put five cards from your graveyard on top of your library"
+
+// stillnessInMotionPick is the five cards chosen, keyed (#4253 sweep): the
+// chooser and the source card are the prompt, and the order is asked next.
+var stillnessInMotionPick = game.RegisterChooseCardsThen("choose-cards/stillness-in-motion-restack", func(g *game.Game, r game.CardsChosen) error {
+	return stillnessInMotionOrder(g, r.Chooser, r.Source, r.Picked)
+})
+
+// stillnessInMotionOrder asks the order the cards go on top of the library.
+func stillnessInMotionOrder(g *game.Game, player, source uuid.UUID, picked []uuid.UUID) error {
+	return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+		Chooser:   player,
+		Source:    source,
+		Cards:     picked,
+		From:      game.ZoneGraveyard,
+		Placement: game.LibraryPlaceTop,
+		Reason:    stillnessInMotionLabel + " — in what order? (the first is on top)",
+	})
+}

@@ -111,16 +111,28 @@ func spellweaverVoluteExileAndReattach(g *game.Game, f game.CastFollowUp) error 
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			host := uuid.Nil
-			if len(picked) == 1 {
-				host = picked[0]
-			}
-			return spellweaverVoluteMove(g, volute, enchanted, host)
-		},
+		ThenKey:  spellweaverVoluteHost,
+		// The card the copy was made from: its ID is the carry, its object epoch
+		// (CR 400.7) the number.
+		Carry:     []uuid.UUID{enchanted.ID},
+		CarryNums: []int{enchanted.Epoch},
 	})
 	return nil
 }
+
+// spellweaverVoluteHost is the instant card the Volute is attached to,
+// keyed (#4253 sweep): the Volute is the prompt's source and the card the
+// copy was made from is plain data on it.
+var spellweaverVoluteHost = game.RegisterChooseCardsThen("choose-cards/spellweaver-volute-reattach", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 || len(r.Nums) == 0 {
+		return nil
+	}
+	host := uuid.Nil
+	if len(r.Picked) == 1 {
+		host = r.Picked[0]
+	}
+	return spellweaverVoluteMove(g, r.Source, game.ObjectRef{ID: r.Carry[0], Epoch: r.Nums[0]}, host)
+})
 
 // spellweaverVoluteMove attaches the Volute to `host` (none for
 // uuid.Nil), while it still enchants the card, then exiles that card if

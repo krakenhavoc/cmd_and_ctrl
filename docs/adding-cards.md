@@ -7701,6 +7701,17 @@ ask as the carry. `PutFromHandOntoBattlefield` queues a keyed pick
 (`choose-cards/put-from-hand-onto-battlefield`, "tapped" as the one carried number)
 when it has no `Validate` and no `ThenTail`; with either it is still a closure.
 
+**An option pick that needs numbers** (#4253 sweep 06): an option pick's `Carry` is
+IDs only, so a count or an index (the answers a chain of prompts has so far, the class
+of words a text change picks from) goes through `intsToCarry` / `carryToInts`
+(`effects/carry_ints.go`, 0 to 254 each) beside the IDs, joined with `packIDLists`
+(Shah of Naar Isle, `ChangeTextWord`). A keyed single-seat discard
+(`PlayerDiscardsThenKeyedForEffect`) hands its body the player and the source card
+only, so its context is `keyedContext` and not the asking item; a set rule over what is
+discarded is registered with the key (`RegisterDiscardThenRule`) and reads the picks
+alone, so a rule that depended on a count the prompt was asked with (Teferi Akosa's
+hand of one) is two keys.
+
 **A ward's life, sacrifice and discard confirms** are keyed too (#4291):
 `confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
 `confirm/ward-discard` (the Word is the count, then `random`), and for a
