@@ -99,6 +99,26 @@ func (g *Game) ReturnFromGraveyardAsAuraForEffect(cardID, controller uuid.UUID, 
 	return g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, true, entryThen{})
 }
 
+// BecomeAuraForEffect is "it becomes an Aura with <the enchant clause
+// CardDef.ReturnedAura names>" for a permanent already on the battlefield
+// (Last Voyage of the _____, #4307): it takes the Aura form the way a card
+// that returns as one has it, the flag its statics and the CR 704.5m check
+// read. Reports whether the permanent was there to change. The clause is
+// held until the permanent leaves the battlefield (CR 400.7), and an Aura
+// of this form attached to nothing is illegal like any other.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) BecomeAuraForEffect(auraID uuid.UUID) bool {
+	c := findBattlefieldCard(g, auraID)
+	if c == nil {
+		return false
+	}
+	c.ReturnedAura = true
+	c.effective = nil
+	g.layerVersion.Add(1)
+	return true
+}
+
 // seedReturnedAuraEntryLocked makes the permanent that has just landed
 // the Aura form of its card. After the CR 400.7 reset and before the
 // Aura attach and EventETB in announceEntryLocked, so the attach finds

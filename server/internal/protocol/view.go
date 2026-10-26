@@ -7498,7 +7498,9 @@ type ProtectionView struct {
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
 	// "everything", "player", "mana_value_at_most" (Value is the
-	// bound N, #2181), "ring_bearer" (#2145) or "opponents" (#2745).
+	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
+	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
+	// "noncreature_permanents" (#4307).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`

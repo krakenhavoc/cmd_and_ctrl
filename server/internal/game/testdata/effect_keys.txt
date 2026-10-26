@@ -1036,3 +1036,8 @@ number token/settled-split
 searchrule search/basics-share-a-land-type
 searchrule search/different-names
 searchrule search/total-mana-value-at-most
+body fight-the-blank-fight/fight
+body wolf-in-blank-clothing/shrink
+choose choose-cards/last-voyage-of-the-blank-return
+option option-pick/blank-blank-rocketship-letter
+option option-pick/done-for-the-day-reward

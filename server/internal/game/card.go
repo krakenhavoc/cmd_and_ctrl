@@ -1862,6 +1862,11 @@ type Card struct {
 	// Cleared at both CR 400.7 sites on every zone change, so a card that
 	// dies as an Aura comes back as the creature card it prints. Not a
 	// copiable value (CR 707.2). Carried by clone and the snapshot.
+	//
+	// Also set on a permanent that "becomes an Aura with enchant
+	// creature" while it is on the battlefield (BecomeAuraForEffect,
+	// Last Voyage of the _____): the same Aura form, the same clause
+	// lookup, ended by the same zone change.
 	ReturnedAura bool
 
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a

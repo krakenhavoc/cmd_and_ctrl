@@ -58,6 +58,15 @@ const (
 	// StickerOnCreatureYouOwnThatEnteredThisTurn is "a creature you own
 	// that entered this turn" (Park Bleater).
 	StickerOnCreatureYouOwnThatEnteredThisTurn
+	// StickerOnThis is "on it" / "on this <permanent>": the card whose
+	// ability this is (the _____ Goblin, the Rocketship).
+	StickerOnThis
+	// StickerOnCreatureCardInYourGraveyard is "a creature card in your
+	// graveyard" (Scampire): a sticker is kept on a card that moves
+	// between public zones (CR 123.5), so the graveyard holds stickered
+	// cards, and a name or ability sticker applies there (CR 123.6,
+	// 123.7).
+	StickerOnCreatureCardInYourGraveyard
 )
 
 // PutASticker is "you may put a sticker on <On>", optionally of one kind
@@ -66,6 +75,12 @@ const (
 type PutASticker struct {
 	On    StickerOn
 	Kinds []game.StickerKind
+	// MaxCostIsCastX is "with ticket cost X or less", X the X this
+	// permanent was cast with (Pin Collection).
+	MaxCostIsCastX bool
+	// Free is "without paying that sticker's ticket cost": the sticker is
+	// offered whatever tickets its owner has, and none are paid.
+	Free bool
 }
 
 // Apply asks the controller.
@@ -73,7 +88,55 @@ func (e PutASticker) Apply(ctx *Context) error {
 	g := ctx.Game
 	you := ctx.Controller()
 	g.RecomputeLayersIfStaleLocked()
+	g.PutStickerForEffect(game.StickerRequest{
+		Player:   you,
+		Source:   ctx.Source(),
+		Objects:  e.objects(ctx, you),
+		Kinds:    append([]game.StickerKind(nil), e.Kinds...),
+		Limit:    e.limit(ctx),
+		Question: e.question(),
+	})
+	return nil
+}
+
+// limit is the narrowing beyond kind: a ticket-cost cap, free of cost.
+func (e PutASticker) limit(ctx *Context) game.StickerLimit {
+	lim := game.StickerLimit{Free: e.Free}
+	if e.MaxCostIsCastX {
+		lim.HasMax = true
+		if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
+			lim.MaxCost = c.CastX()
+		}
+	}
+	return lim
+}
+
+// objects are the objects the instruction names that `you` own.
+func (e PutASticker) objects(ctx *Context, you uuid.UUID) []uuid.UUID {
+	g := ctx.Game
 	var objects []uuid.UUID
+	switch e.On {
+	case StickerOnThis:
+		// "On it": the permanent this ability came from, still the
+		// same object (CR 400.7). One that has left is a new object
+		// the sticker was not meant for.
+		if g.AbilitySourceGoneForEffect(ctx.Item) {
+			return nil
+		}
+		if c, ok := g.LookupCardForEffect(ctx.Source()); ok && c.Owner == you {
+			objects = append(objects, c.InstanceID)
+		}
+		return objects
+	case StickerOnCreatureCardInYourGraveyard:
+		if p := g.PlayerByIDForEffect(you); p != nil && p.Graveyard != nil {
+			for i := range p.Graveyard.Cards {
+				if c := p.Graveyard.Cards[i]; c.Owner == you && c.IsCreature() {
+					objects = append(objects, c.InstanceID)
+				}
+			}
+		}
+		return objects
+	}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Owner != you {
 			continue
@@ -94,14 +157,7 @@ func (e PutASticker) Apply(ctx *Context) error {
 		}
 		objects = append(objects, c.InstanceID)
 	}
-	g.PutStickerForEffect(game.StickerRequest{
-		Player:   you,
-		Source:   ctx.Source(),
-		Objects:  objects,
-		Kinds:    append([]game.StickerKind(nil), e.Kinds...),
-		Question: e.question(),
-	})
-	return nil
+	return objects
 }
 
 func (e PutASticker) question() string {
@@ -120,12 +176,20 @@ func (e PutASticker) question() string {
 	}
 	on := "a nonland permanent you own"
 	switch e.On {
+	case StickerOnThis:
+		on = "it"
+	case StickerOnCreatureCardInYourGraveyard:
+		on = "a creature card in your graveyard"
 	case StickerOnCreatureYouOwn:
 		on = "a creature you own"
 	case StickerOnCreatureYouOwnThatEnteredThisTurn:
 		on = "a creature you own that entered this turn"
 	}
-	return "You may put " + kind + " on " + on + ". Choose it, or none."
+	suffix := ""
+	if e.Free {
+		suffix = " without paying its ticket cost"
+	}
+	return "You may put " + kind + " on " + on + suffix + ". Choose it, or none."
 }
 
 // GetTicketsThenSticker is the line most sticker cards print: "you get N
@@ -227,6 +291,10 @@ type StickerSheetSpec struct {
 type StickerAbilitySpec struct {
 	Keywords []string
 	Grant    string
+	// GraveyardCastLife is "You may cast this card from your graveyard by
+	// paying N life in addition to paying its other costs" (Eldrazi
+	// Guacamole Tightrope): N. See game.StickerAbilityDef.
+	GraveyardCastLife int
 }
 
 // stickerSheetSpecs indexes Spec.StickerSheet by the sheet's oracle ID.
@@ -244,7 +312,7 @@ func registerStickerSheet(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: sticker sheet %q declares no ability stickers", spec.Name))
 	}
 	for i, a := range sheet.Abilities {
-		if len(a.Keywords) == 0 && a.Grant == "" {
+		if len(a.Keywords) == 0 && a.Grant == "" && a.GraveyardCastLife <= 0 {
 			panic(fmt.Sprintf("effects.Register: sticker sheet %q ability sticker %d gives nothing", spec.Name, i))
 		}
 		if a.Grant == "" {
@@ -271,6 +339,114 @@ func init() {
 			return game.StickerAbilityDef{}, false
 		}
 		a := s.Abilities[ordinal]
-		return game.StickerAbilityDef{Keywords: append([]string(nil), a.Keywords...), Grant: a.Grant}, true
+		return game.StickerAbilityDef{Keywords: append([]string(nil), a.Keywords...), Grant: a.Grant, GraveyardCastLife: a.GraveyardCastLife}, true
+	}
+}
+
+// ---------------------------------------------------------------------
+// "That sticker" and the counts on a name sticker (CR 123.6d, 123.6e)
+
+// placedSticker is the latest sticker the resolving instruction put on an
+// object (game.StickerPlacedByForEffect): what an earlier PutASticker step
+// of the same resolution did, read from the game so a later step still
+// finds it after a restore (#4163). False when none went on.
+func placedSticker(ctx *Context) (kind game.StickerKind, text string, object uuid.UUID, ok bool) {
+	return ctx.Game.StickerPlacedByForEffect(ctx.Source())
+}
+
+// placedNameSticker is the name sticker the instruction just before put
+// on ("a name sticker on it. … that sticker"): its word and the object it
+// is on.
+func placedNameSticker(ctx *Context) (text string, ok bool) {
+	kind, text, _, ok := placedSticker(ctx)
+	if !ok || kind != game.StickerName {
+		return "", false
+	}
+	return text, true
+}
+
+// uniqueVowelsOnPlacedSticker is "the number of unique vowels on that
+// sticker" (CR 123.6e): zero when the instruction put no name sticker on.
+func uniqueVowelsOnPlacedSticker(ctx *Context) int {
+	text, ok := placedNameSticker(ctx)
+	if !ok {
+		return 0
+	}
+	return game.StickerUniqueVowels(text)
+}
+
+// nameStickersOn is the words of the name stickers on an object, oldest
+// first.
+func nameStickersOn(c game.Card) []string {
+	var out []string
+	for _, s := range c.Stickers {
+		if s.Print.Kind == game.StickerName {
+			out = append(out, s.Print.Text)
+		}
+	}
+	return out
+}
+
+// nameStickerCount is "each name sticker on it that <matches>".
+func nameStickerCount(c game.Card, matches func(text string) bool) int {
+	n := 0
+	for _, t := range nameStickersOn(c) {
+		if matches == nil || matches(t) {
+			n++
+		}
+	}
+	return n
+}
+
+// ---------------------------------------------------------------------
+// Sticker kicker (CR 702.33h)
+
+// StickerKicker is "Sticker kicker [cost]": "Kicker [cost]" and "As an
+// additional cost to cast this spell, if it's kicked, you get a ticket
+// counter and you may put a sticker on this spell" (CR 702.33h). The
+// kicker is an optional additional cost keyed game.StickerKickerKey; the
+// ticket and the sticker question are the engine's, asked as the spell
+// becomes cast (game.payStickerKickerLocked), so a card declares only the
+// cost:
+//
+//	GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave( // Wicker Picker
+//	    "Creature spells you cast have sticker kicker {1}.", Creature(), StickerKicker("{1}"))},
+func StickerKicker(mana string) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.StickerKickerKey,
+		ManaCost: mana,
+		Label:    "Sticker kicker " + mana,
+	}
+}
+
+// ---------------------------------------------------------------------
+// "Has all abilities of ability stickers on …" (CR 123.7a)
+
+// HasAllAbilitiesOfAbilityStickers is a layer-6 static: every object it
+// applies to has the abilities of the ability stickers `lenders` names, as
+// the stickers give them (CR 123.7, 613.1f). "The ability of an ability
+// sticker" is the ability that sticker grants to the object it is on, even
+// when that object has lost its abilities (CR 123.7a), so the lenders are
+// read as data (their stickers), not as the abilities their objects have
+// now. The recipient is "this creature" in each (game.GiveAbilityOfSticker),
+// and its controller "you". A sticker the catalog does not run lends
+// nothing.
+//
+// `lenders` runs inside a layer pass, possibly under the read lock: walk
+// the zones directly and return the stickers, oldest object first.
+func HasAllAbilitiesOfAbilityStickers(label string, appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool,
+	lenders func(g *game.Game, source *game.Card) []game.PlacedSticker) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     label,
+		Layer:     game.Layer6Ability,
+		AppliesTo: appliesTo,
+		Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
+			for _, s := range lenders(g, source) {
+				if s.Print.Kind == game.StickerAbility {
+					game.GiveAbilityOfSticker(c, s, target)
+				}
+			}
+		},
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -88,6 +89,15 @@ import (
 // out of the game (CR 123.5), and keeps them on every other move. A token
 // or a copy never inherits them (CR 123.1, 707.2).
 
+// StickerKickerKey is the optional-cost key sticker kicker is announced
+// under (CR 702.33h, #4307). It is a kicker ability, but not the kicker a
+// card prints: an "if it was kicked" ability is linked to the kicker
+// printed on its own object (CR 702.33e), so it has a key of its own, which
+// KickedTimesPaid does not count, and which a granted copy
+// (effects.StickerKicker, Wicker Picker) can sit beside a printed kicker
+// without the offer dropping it as a duplicate.
+const StickerKickerKey = "sticker-kicker"
+
 // StickerKind is one of CR 123.1's four kinds.
 type StickerKind string
 
@@ -148,6 +158,14 @@ type PlacedSticker struct {
 type StickerAbilityDef struct {
 	Keywords []string
 	Grant    string
+	// GraveyardCastLife, when above zero, makes the sticker give the card
+	// "You may cast this card from your graveyard by paying N life in
+	// addition to paying its other costs" (Eldrazi Guacamole Tightrope's
+	// second sticker): a static ability that functions from the graveyard
+	// (CR 123.7: an ability sticker gives its ability to a card in any
+	// zone). It is a derived cast permission (stickerGraveyardPermissionLocked),
+	// not a layered ability, so it needs neither keywords nor a bundle.
+	GraveyardCastLife int
 }
 
 // CatalogStickerAbility is the catalog's answer for the ordinal-th
@@ -352,6 +370,19 @@ func (g *Game) StickersInUseLocked(owner uuid.UUID) map[uuid.UUID]bool {
 	return g.stickersInUseLocked(owner)
 }
 
+// StickerLimit narrows the stickers an instruction allows beyond their
+// kind: Pin Collection's "an ability sticker with ticket cost X or less on
+// it without paying that sticker's ticket cost".
+type StickerLimit struct {
+	// MaxCost caps the sticker's ticket cost when HasMax is set.
+	MaxCost int
+	HasMax  bool
+	// Free puts the sticker on without paying its ticket cost, so it is
+	// offered whatever the owner has (CR 123.3c asks the payment only of
+	// the one who must make it).
+	Free bool
+}
+
 // AvailableStickersLocked are the stickers `owner` may put on an object
 // they own right now, in sheet then printed order: on a sheet they have
 // access to, not on any object they own (CR 123.3), of one of `kinds`
@@ -360,6 +391,11 @@ func (g *Game) StickersInUseLocked(owner uuid.UUID) map[uuid.UUID]bool {
 //
 // Caller must hold g.mu.
 func (g *Game) AvailableStickersLocked(owner uuid.UUID, kinds []StickerKind) []StickerChoice {
+	return g.availableStickersLimitedLocked(owner, kinds, StickerLimit{})
+}
+
+// availableStickersLimitedLocked is AvailableStickersLocked under a limit.
+func (g *Game) availableStickersLimitedLocked(owner uuid.UUID, kinds []StickerKind, lim StickerLimit) []StickerChoice {
 	p := g.playerByIDLocked(owner)
 	if p == nil || len(p.StickerSheets) == 0 {
 		return nil
@@ -373,7 +409,13 @@ func (g *Game) AvailableStickersLocked(owner uuid.UUID, kinds []StickerKind) []S
 				continue
 			}
 			id := StickerID(sheet.OracleID, i)
-			if used[id] || s.TicketCost > tickets {
+			if used[id] {
+				continue
+			}
+			if lim.HasMax && s.TicketCost > lim.MaxCost {
+				continue
+			}
+			if !lim.Free && s.TicketCost > tickets {
 				continue
 			}
 			out = append(out, StickerChoice{ID: id, Sheet: sheet.OracleID, SheetName: sheet.Name, Index: i, Print: s})
@@ -397,9 +439,10 @@ func stickerKindIn(k StickerKind, kinds []StickerKind) bool {
 	return false
 }
 
-// stickerChoiceByIDLocked finds one of `owner`'s available stickers by ID.
-func (g *Game) stickerChoiceByIDLocked(owner, id uuid.UUID) (StickerChoice, bool) {
-	for _, s := range g.AvailableStickersLocked(owner, nil) {
+// stickerChoiceByIDLocked finds one of `owner`'s available stickers by ID,
+// under a limit.
+func (g *Game) stickerChoiceByIDLocked(owner, id uuid.UUID, lim StickerLimit) (StickerChoice, bool) {
+	for _, s := range g.availableStickersLimitedLocked(owner, nil, lim) {
 		if s.ID == id {
 			return s, true
 		}
@@ -436,15 +479,27 @@ func (g *Game) stickerHostLocked(cardID uuid.UUID) *Card {
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) placeStickerLocked(owner, cardID, id uuid.UUID, after int, source uuid.UUID) bool {
+	return g.placeStickerUnderLocked(owner, cardID, id, after, source, StickerLimit{})
+}
+
+// placeStickerUnderLocked is placeStickerLocked under a limit: a Free one
+// pays no ticket cost.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) placeStickerUnderLocked(owner, cardID, id uuid.UUID, after int, source uuid.UUID, lim StickerLimit) bool {
 	host := g.stickerHostLocked(cardID)
 	if host == nil || host.Owner != owner {
 		return false
 	}
-	choice, ok := g.stickerChoiceByIDLocked(owner, id)
+	choice, ok := g.stickerChoiceByIDLocked(owner, id, lim)
 	if !ok {
 		return false
 	}
-	if !g.payTicketsLocked(owner, choice.Print.TicketCost, source) {
+	paid := choice.Print.TicketCost
+	if lim.Free {
+		paid = 0
+	}
+	if !g.payTicketsLocked(owner, paid, source) {
 		return false
 	}
 	// The payment may have moved nothing, but look again: the counter
@@ -468,15 +523,103 @@ func (g *Game) placeStickerLocked(owner, cardID, id uuid.UUID, after int, source
 	host.Stickers = append(host.Stickers[:len(host.Stickers):len(host.Stickers)], placed)
 	host.effective = nil
 	g.layerVersion.Add(1)
+	g.recordStickerPlacedLocked(source, cardID, placed)
 	g.EmitEvent(Event{
 		Kind:   EventStickerPlaced,
 		Actor:  owner,
 		CardID: cardID,
 		Source: source,
 		Label:  string(choice.Print.Kind) + ":" + choice.Print.Text,
-		Amount: choice.Print.TicketCost,
+		Amount: paid,
+		Words:  nameStickerWords(host.Stickers),
 	})
 	return true
+}
+
+// StickerPlacedRecordKey is the step record (#4163) a placement files
+// for the instruction that asked for it, so a later step of the same
+// resolution can read "that sticker": "put a name sticker on it. Add {R}
+// for each unique vowel on that sticker." It is filed under the asking
+// card (the placement's source) and lives for the one resolution.
+const StickerPlacedRecordKey = "sticker/placed"
+
+// recordStickerPlacedLocked files the placement for the asking card:
+// IDs gets the object, Strs the "kind:text" of the sticker, in the order
+// they went on. A placement with no source files nothing.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) recordStickerPlacedLocked(source, object uuid.UUID, placed PlacedSticker) {
+	if source == uuid.Nil {
+		return
+	}
+	holder := &StackItem{ID: source}
+	rec, _ := g.StepRecordForEffect(holder, StickerPlacedRecordKey)
+	rec.IDs = append(rec.IDs, object)
+	rec.Strs = append(rec.Strs, string(placed.Print.Kind)+":"+placed.Print.Text)
+	g.RecordStepForEffect(holder, StickerPlacedRecordKey, rec)
+}
+
+// StickerPlacedByForEffect is the latest sticker the card `source` put
+// on an object in the resolution that is open now: its kind, what it
+// says, the object it went on and whether there is one. False when the
+// instruction put none on (declined, or nothing qualified).
+//
+// Caller must hold g.mu.
+func (g *Game) StickerPlacedByForEffect(source uuid.UUID) (kind StickerKind, text string, object uuid.UUID, ok bool) {
+	rec, found := g.StepRecordForEffect(&StackItem{ID: source}, StickerPlacedRecordKey)
+	if !found || len(rec.IDs) == 0 || len(rec.Strs) == 0 {
+		return "", "", uuid.Nil, false
+	}
+	i := min(len(rec.IDs), len(rec.Strs)) - 1
+	k, t, _ := strings.Cut(rec.Strs[i], ":")
+	return StickerKind(k), t, rec.IDs[i], true
+}
+
+// nameStickerWords are the words of the name stickers in `stickers`, in
+// the order they went on.
+func nameStickerWords(stickers []PlacedSticker) []string {
+	var out []string
+	for _, s := range stickers {
+		if s.Print.Kind == StickerName {
+			out = append(out, s.Print.Text)
+		}
+	}
+	return out
+}
+
+// stickerKickerPaidLocked is how many sticker kicker costs were paid for
+// the spell `card` that was just cast: its own (by index) and any a
+// permanent granted (by key).
+func (g *Game) stickerKickerPaidLocked(card Card, paid PaidCost) int {
+	return OptionalCostTimesPaid(card, paid.OptionalCosts, StickerKickerKey) + GrantedOptionalTimesPaid(paid, StickerKickerKey)
+}
+
+// payStickerKickerLocked is the second half of CR 702.33h: "As an
+// additional cost to cast this spell, if it's kicked, you get a ticket
+// counter and you may put a sticker on this spell." Called as the spell
+// becomes cast, with every cost paid and before EventCast, so the sticker
+// is on the spell when the cast triggers look at it and before anyone has
+// priority. One ticket and one question per sticker kicker cost paid. The
+// sticker goes on the spell card on the stack, which keeps it as the
+// spell becomes a permanent or goes to the graveyard (CR 123.5); a spell
+// the caster does not own takes none (CR 123.3b).
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) payStickerKickerLocked(player uuid.UUID, card Card) {
+	item := g.StackMeta[card.InstanceID]
+	if item == nil {
+		return
+	}
+	n := g.stickerKickerPaidLocked(card, item.Paid)
+	for i := 0; i < n; i++ {
+		_ = g.AddPlayerCounterByForEffect(player, player, CounterTicket, 1)
+		g.PutStickerForEffect(StickerRequest{
+			Player:   player,
+			Source:   card.InstanceID,
+			Objects:  []uuid.UUID{card.InstanceID},
+			Question: "Sticker kicker: you may put a sticker on " + card.Name + ". Choose it, or none.",
+		})
+	}
 }
 
 // StickerEventKindText reads an EventStickerPlaced's Label: the kind of
@@ -551,6 +694,60 @@ func InsertNameWord(name, word string, after int) string {
 }
 
 // ---------------------------------------------------------------------
+// Counting letters on a name sticker (CR 123.6d, 123.6e)
+
+// StickerLetters is the number of letters on a name sticker's text: its
+// words without spaces, hyphens or other punctuation.
+func StickerLetters(text string) int {
+	n := 0
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			n++
+		}
+	}
+	return n
+}
+
+// StickerLetterCount is how many times `letter` appears on a name
+// sticker's text. A lowercase letter and its uppercase equivalent are the
+// same letter (CR 123.6d).
+func StickerLetterCount(text string, letter rune) int {
+	want := unicode.ToLower(letter)
+	n := 0
+	for _, r := range text {
+		if unicode.ToLower(r) == want {
+			n++
+		}
+	}
+	return n
+}
+
+// StickerUniqueVowels is the number of different vowels on a name
+// sticker's text, however many times each appears (CR 123.6e). The
+// vowels are A, E, I, O, U and Y; case does not matter.
+func StickerUniqueVowels(text string) int {
+	seen := map[rune]bool{}
+	for _, r := range text {
+		switch l := unicode.ToLower(r); l {
+		case 'a', 'e', 'i', 'o', 'u', 'y':
+			seen[l] = true
+		}
+	}
+	return len(seen)
+}
+
+// StickerBeginsWith reports whether a name sticker's first letter is
+// `letter` (CR 123.6d: case does not matter).
+func StickerBeginsWith(text string, letter rune) bool {
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			return unicode.ToLower(r) == unicode.ToLower(letter)
+		}
+	}
+	return false
+}
+
+// ---------------------------------------------------------------------
 // The layer pass (CR 613.1c, 613.1f, 613.4b, 613.7k)
 
 // stickerEffect is one sticker on one permanent as a continuous effect.
@@ -589,12 +786,7 @@ func (e stickerEffect) Apply(c *Characteristic, target *Card, _ *Game) {
 	case StickerName:
 		c.Name = InsertNameWord(c.Name, e.sticker.Print.Text, e.sticker.After)
 	case StickerAbility:
-		for _, kw := range e.ability.Keywords {
-			c.Abilities = AppendKeywordAbility(c.Abilities, kw)
-		}
-		if e.ability.Grant != "" && target != nil {
-			c.GrantAbility(e.ability.Grant, target.InstanceID, target.Controller)
-		}
+		applyStickerAbility(c, e.ability, target)
 	case StickerPT:
 		c.Power = e.sticker.Print.Power
 		c.Toughness = e.sticker.Print.Toughness
@@ -603,6 +795,31 @@ func (e stickerEffect) Apply(c *Characteristic, target *Card, _ *Game) {
 
 func (e stickerEffect) RemovesAbilities() bool      { return false }
 func (e stickerEffect) ContinuesAfterRemoval() bool { return false }
+
+// applyStickerAbility writes an ability sticker's ability onto `c`: its
+// keywords, and its bundle granted with `recipient` as "this creature".
+func applyStickerAbility(c *Characteristic, ab StickerAbilityDef, recipient *Card) {
+	for _, kw := range ab.Keywords {
+		c.Abilities = AppendKeywordAbility(c.Abilities, kw)
+	}
+	if ab.Grant != "" && recipient != nil {
+		c.GrantAbility(ab.Grant, recipient.InstanceID, recipient.Controller)
+	}
+}
+
+// GiveAbilityOfSticker is "<recipient> has the ability of that ability
+// sticker" (CR 123.7a): the ability the sticker grants to the object it is
+// on, written onto the recipient's characteristic with the recipient as
+// "this creature" and its controller as "you". It reads the sticker, not
+// the object it is on, so it is the ability even when that object has lost
+// its abilities. A sticker of another kind, or one the catalog does not
+// run, gives nothing. For a layer-6 static's Apply (Pin Collection,
+// Clandestine Chameleon).
+func GiveAbilityOfSticker(c *Characteristic, s PlacedSticker, recipient *Card) {
+	if ab, ok := stickerAbilityOf(s); ok {
+		applyStickerAbility(c, ab, recipient)
+	}
+}
 
 // stickerTimestamp is CR 613.7k: the later of the moment the sticker was
 // put on and just after the object's own latest timestamp.
@@ -714,4 +931,72 @@ func StickerSheetsOf(p *Player) []StickerSheet {
 		return nil
 	}
 	return cloneStickerSheets(p.StickerSheets)
+}
+
+// ---------------------------------------------------------------------
+// "You may cast this card from your graveyard" (CR 123.7, #4307)
+
+// AltCostKeyStickerGraveyard is the offer the derived permission below
+// is claimed under: the card's mana cost and N life.
+const AltCostKeyStickerGraveyard = "sticker-graveyard"
+
+// stickerGraveyardLifeOf is N in "by paying N life" for a card with an
+// ability sticker that lets it be cast from the graveyard, or 0.
+func stickerGraveyardLifeOf(c Card) int {
+	for _, s := range c.Stickers {
+		if ab, ok := stickerAbilityOf(s); ok && ab.GraveyardCastLife > 0 {
+			return ab.GraveyardCastLife
+		}
+	}
+	return 0
+}
+
+// stickerGraveyardPermissionLocked is the cast permission an ability
+// sticker gives its card while the card is in its owner's graveyard:
+// "You may cast this card from your graveyard by paying 2 life in addition
+// to paying its other costs." It is derived on every query, never stored,
+// so it lasts exactly as long as the sticker is on the card (a sticker
+// stays on a card that goes to a graveyard, CR 123.5, and comes off one
+// that goes to a hand or a library).
+//
+// The extra life is the offer's: the cast claims AltCostKeyStickerGraveyard,
+// which charges the card's printed mana cost and the life
+// (CastPermission.AlternativeCostFor). Timing, targets and every other cost
+// are the spell's own; a land has no cast to permit.
+//
+// Caller must hold g.mu.
+func (g *Game) stickerGraveyardPermissionLocked(playerID uuid.UUID, card Card) *CastPermission {
+	if len(card.Stickers) == 0 || card.Owner != playerID || card.IsLand() || stickerGraveyardLifeOf(card) == 0 {
+		return nil
+	}
+	return &CastPermission{
+		Player:     playerID,
+		Zone:       ZoneGraveyard,
+		Scope:      ScopeCards,
+		Cards:      []PermissionCardRef{{ID: card.InstanceID, Epoch: card.ObjectEpoch}},
+		Duration:   IndefiniteDuration(),
+		CastOnly:   true,
+		AltCostKey: AltCostKeyStickerGraveyard,
+		Source:     card.InstanceID,
+		SourceName: card.Name,
+		Label:      card.Name + " — cast from your graveyard, paying " + strconv.Itoa(stickerGraveyardLifeOf(card)) + " life",
+	}
+}
+
+// anyStickerGraveyardCastLocked is AnyCastPermissionsForEffect's fast
+// positive for the derived permission above: a graveyard holds a card with
+// a sticker that gives it.
+func (g *Game) anyStickerGraveyardCastLocked() bool {
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for i := range p.Graveyard.Cards {
+			c := &p.Graveyard.Cards[i]
+			if len(c.Stickers) > 0 && stickerGraveyardLifeOf(*c) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -11923,6 +11923,43 @@ StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
   the questions with `ResolveChooseCards` and `ResolveOptionPick`
   (`stkPutOn` in `stickers_cards_test.go`).
 
+- **Ability stickers beyond a keyword** (#4307, ADR 0208's 2026-10-26
+  amendment). 47 of the 48 Commander-legal sheets are catalogued
+  (`stickers_sheets_data_test.go` lists all 48; `stkSheetsNotCatalogued` in
+  `stickers_sheets_test.go` names the one left out and why). A sheet's bundle
+  can carry anything a grant can (ADR 0093): `Afflict(n, name)` and
+  `BattleCry(name)` are triggered rows beside `Bushido` and `Ward`; a
+  `Hellbent` / `Threshold` / `Metalcraft` static is the bundle's own `Static`
+  (a layer-6 static there is noted as the sticker applies,
+  `noteAppendedGrants`; a granted static may declare `DependsOnHandSize`);
+  `StickerAbilitySpec{GraveyardCastLife: 2}` is "you may cast this card from
+  your graveyard by paying 2 life", derived from the sticker on every query,
+  never stored. Every activated row in a bundle declares `Purpose.Answers`
+  like any other row.
+- **Where a sticker goes.** `PutASticker{On: StickerOnThis}` (the spell or
+  permanent itself), `StickerOnCreatureCardInYourGraveyard` (a name sticker
+  applies there, CR 123.6); `MaxCostIsCastX` and `Free` are Pin Collection's
+  "ticket cost X or less ... without paying its ticket cost" (a limit that
+  rides the first prompt's carry word, so older prompts still read).
+  `StickerKicker("{1}")` is an optional cost under `game.StickerKickerKey`
+  (CR 702.33h); `Spec.GrantedOptionalCosts` is how Wicker Picker grants it.
+- **Name stickers.** A placement files a step record
+  (`game.StickerPlacedRecordKey`), so a later step reads "that sticker" with
+  `placedNameSticker(ctx)`. Count with `game.StickerUniqueVowels`,
+  `StickerLetterCount`, `StickerLetters`, `StickerBeginsWith` (CR 123.6d/e)
+  or `nameStickerCount` over a card. The event
+  `EventStickerPlaced` carries the words of the object's name stickers in
+  `Event.Words`, so a trigger's target count reads them from its trigger
+  context (Make a _____ Splash). A blank in a name is kept, not a word
+  (CR 123.6a). The `_____` cards ask letters and words with keyed prompts
+  (`option-pick/blank-blank-rocketship-letter`).
+- **"Has all abilities of ability stickers on ..."** is
+  `HasAllAbilitiesOfAbilityStickers(label, appliesTo, lenders)`, a layer-6
+  static writing `game.GiveAbilityOfSticker` for each sticker its lenders
+  hold (CR 123.7a).
+- **No card moves a sticker** (CR 123.3d): no Commander-legal card does, so
+  nothing implements it; the dump search is in the amendment.
+
 ### When in doubt
 
 [ADR 0010](decisions/0010-card-effect-catalog.md) captures every

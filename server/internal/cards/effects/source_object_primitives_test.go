@@ -461,16 +461,17 @@ func TestADiesTriggerStillActsOnTheCardInTheZoneItWentTo(t *testing.T) {
 // decides which.
 func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 	exempt := map[string]string{
-		"DealDamage":                  "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
-		"ReturnFromGraveyard":         "follows the card: the card is in a graveyard, never a permanent that left and came back",
-		"ReturnFromGraveyardTogether": "follows the cards: each is in a graveyard, never a permanent that left and came back",
-		"ReturnFromExile":             "follows the card: the card is in exile",
-		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
-		"GrantFlashbackToCard":        "a card in a graveyard",
-		"GrantHarmonizeToCard":        "a card in a graveyard",
-		"OfferGraveyardCast":          "a card in a graveyard, refused unless it is still there",
-		"PlotExiled":                  "a card in exile",
-		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
+		"DealDamage":                          "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
+		"ReturnFromGraveyard":                 "follows the card: the card is in a graveyard, never a permanent that left and came back",
+		"ReturnFromGraveyardTogether":         "follows the cards: each is in a graveyard, never a permanent that left and came back",
+		"ReturnFromExile":                     "follows the card: the card is in exile",
+		"ReturnFromExileTogether":             "follows the cards: each is in exile, never a permanent that left and came back",
+		"GrantFlashbackToCard":                "a card in a graveyard",
+		"GrantHarmonizeToCard":                "a card in a graveyard",
+		"OfferGraveyardCast":                  "a card in a graveyard, refused unless it is still there",
+		"PlotExiled":                          "a card in exile",
+		"CastTargetFromYourGraveyardThisTurn": "a card in a graveyard, a permission over the card itself",
+		"CreateTokenCopy":                     "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
 	}
 	ps := scanPrimitives(t)
 	structs, applies, guarded := ps.structs, ps.applies, ps.guarded
