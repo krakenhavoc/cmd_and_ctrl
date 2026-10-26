@@ -40,68 +40,79 @@ func init() {
 
 func coinOfFateResolve(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	if len(ctx.Exiled()) == 0 {
-		return coinOfFateMonarch(g, item)
+	exiled := ctx.Exiled()
+	if len(exiled) == 0 {
+		return coinOfFateMonarch(g, item.Controller, item.SourceCardID)
 	}
 	// "An opponent chooses": the controller names which opponent. With
 	// only one opponent left there is nothing to name, so no prompt.
 	if opps := ctx.Opponents(); len(opps) == 1 {
-		return coinOfFateAsk(g, item, opps[0])
+		return coinOfFateAsk(g, item.Controller, item.SourceCardID, exiled, opps[0])
 	}
+	// Keyed (#4253): the exiled cards ride the prompt as its Carry.
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Coin of Fate — choose an opponent to choose one of the exiled cards",
-		Then:     coinOfFateOpponentChosen,
+		ThenKey:  coinOfFateOpponentChosen,
+		Carry:    exiled,
 	}.Apply(ctx)
 }
 
 // coinOfFateOpponentChosen runs once the controller has named the
 // opponent. Nobody to name (no opponent could be asked about) leaves the
-// controller to choose, the only seat left to ask.
-func coinOfFateOpponentChosen(ctx *Context) error {
-	chooser := ctx.ChosenPlayer()
-	if chooser == uuid.Nil {
-		chooser = ctx.Controller()
+// controller to choose, the only seat left to ask. An on-disk key: never
+// renamed, never reused.
+var coinOfFateOpponentChosen = OptionPickThen("option-pick/coin-of-fate-opponent", func(ctx *Context, r game.OptionPicked) error {
+	chooser := ctx.Controller()
+	if r.Option != nil && r.Option.Player != uuid.Nil {
+		chooser = r.Option.Player
 	}
-	return coinOfFateAsk(ctx.Game, ctx.Item, chooser)
-}
+	return coinOfFateAsk(ctx.Game, ctx.Controller(), r.Source, r.Carry, chooser)
+})
 
-func coinOfFateMonarch(g *game.Game, item *game.StackItem) error {
-	return BecomeTheMonarch{}.Apply(NewContext(g, item))
+func coinOfFateMonarch(g *game.Game, controller, source uuid.UUID) error {
+	return BecomeTheMonarch{}.Apply(keyedContext(g, controller, source))
 }
 
 // coinOfFateAsk puts the "choose one of the exiled cards" prompt to
-// `chooser`.
-func coinOfFateAsk(g *game.Game, item *game.StackItem, chooser uuid.UUID) error {
-	ctx := NewContext(g, item)
-	exiled := ctx.Exiled()
+// `chooser`. The controller is the prompt's FromPlayer and the exiled
+// cards its Carry, so the prompt holds no closure (#4253).
+func coinOfFateAsk(g *game.Game, controller, source uuid.UUID, exiled []uuid.UUID, chooser uuid.UUID) error {
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    chooser,
-		FromPlayer: ctx.Controller(),
-		Source:     ctx.Source(),
+		FromPlayer: controller,
+		Source:     source,
 		Question:   "Coin of Fate — choose one of the exiled cards to go on the bottom of their library; the other returns to the battlefield tapped",
 		Cards:      exiled,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			ctx := NewContext(g, item)
-			if len(picked) == 0 {
-				return coinOfFateMonarch(g, item)
-			}
-			return PutIntoLibrary{Card: picked[0], ToBottom: true, Then: func(g *game.Game, _ bool) error {
-				ctx := NewContext(g, item)
-				for _, id := range exiled {
-					if id == picked[0] {
-						continue
-					}
-					if err := (ReturnFromExile{Target: id, Tapped: true}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return coinOfFateMonarch(g, item)
-			}}.Apply(ctx)
-		},
+		ThenKey:    coinOfFatePicked,
+		LiveZone:   game.ZoneExile,
+		Carry:      exiled,
 	})
 	return nil
 }
+
+// coinOfFatePicked is the keyed answer to "choose one of the exiled cards":
+// the chosen one goes to the bottom of its owner's library, the other
+// returns tapped, and the crown is taken whatever happens to the cards. An
+// on-disk key: never renamed, never reused.
+var coinOfFatePicked = game.RegisterChooseCardsThen("choose-cards/coin-of-fate-picked", func(g *game.Game, r game.CardsChosen) error {
+	controller, source, exiled := r.From, r.Source, r.Carry
+	if len(r.Picked) == 0 {
+		return coinOfFateMonarch(g, controller, source)
+	}
+	picked := r.Picked[0]
+	return PutIntoLibrary{Card: picked, ToBottom: true, Then: func(g *game.Game, _ bool) error {
+		ctx := keyedContext(g, controller, source)
+		for _, id := range exiled {
+			if id == picked {
+				continue
+			}
+			if err := (ReturnFromExile{Target: id, Tapped: true}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return coinOfFateMonarch(g, controller, source)
+	}}.Apply(keyedContext(g, controller, source))
+})

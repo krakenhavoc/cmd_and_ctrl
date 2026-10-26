@@ -104,34 +104,61 @@ func chainSacrificeALandToCopy(ctx *Context, controller uuid.UUID, name string) 
 }
 
 // chainSacrificeLand is the yes branch: they pick the land, and the
-// copy question follows once it has actually gone.
-//
-// A package-level function closing over one scalar — the
-// StackItem.Effect contract, so an undo across either prompt resolves
-// it against the restored game. The candidate list is recomputed at
-// this point rather than captured, because the board can change
-// between the question and the answer.
-func chainSacrificeLand(player uuid.UUID, name string) func(ctx *Context) error {
-	return func(ctx *Context) error {
-		return SacrificeChoice{
-			Player:     player,
-			Candidates: landsControlledByPlayer(ctx.Game, player),
-			Question:   name + " — sacrifice a land",
-			Then:       chainMayCopy(player, name),
-		}.Apply(ctx)
+// copy question follows once it has actually gone. The pick is a keyed
+// choose_cards prompt (#4253), as SacrificeChoice's was: the asking spell
+// rides it as data and the card's name as its word, so a table waiting on
+// the pick is a restore point. The candidate list is read when the prompt
+// is queued. The answer is not read: the prompt is mandatory, so the copy
+// clause is "then", not "if you do".
+func chainSacrificeLand(ctx *Context, player uuid.UUID, name string) error {
+	var lands []uuid.UUID
+	for _, id := range landsControlledByPlayer(ctx.Game, player) {
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice.
+		if !ctx.Game.CantBeSacrificedForEffect(id) {
+			lands = append(lands, id)
+		}
 	}
+	if len(lands) == 0 {
+		return chainOfferCopy(ctx.Game, ctx.Item, player, name)
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    player,
+		FromPlayer: player,
+		Source:     ctx.Source(),
+		Question:   name + " — sacrifice a land",
+		Cards:      lands,
+		Min:        1,
+		Max:        1,
+		ThenKey:    chainLandPicked,
+		LiveZone:   game.ZoneBattlefield,
+		CarryWord:  name,
+		Carry:      []uuid.UUID{player},
+		Asked:      game.NewAskedItem(ctx.Item),
+	})
+	return nil
 }
 
-// chainMayCopy is "they may copy this spell and may choose a new target
-// for that copy" (CR 707.10, 707.10b).
-func chainMayCopy(player uuid.UUID, name string) func(ctx *Context) error {
-	return func(ctx *Context) error {
-		return MayChoice{
-			Player:   player,
-			Question: name + " — copy it? (you may choose a new target for the copy)",
-			Then:     mayCopyThisSpell,
-		}.Apply(ctx)
+// chainLandPicked sacrifices the pick and, once it has gone, offers the
+// copy. An on-disk key: never renamed, never reused.
+var chainLandPicked = game.RegisterChooseCardsThen("choose-cards/chain-sacrifice-a-land", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 || r.Asked == nil {
+		return nil
 	}
+	player, item, name := r.Carry[0], r.Asked, r.Word
+	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
+		return chainOfferCopy(g, item, player, name)
+	})
+})
+
+// chainOfferCopy is "they may copy this spell and may choose a new target
+// for that copy" (CR 707.10, 707.10b).
+func chainOfferCopy(g *game.Game, item *game.StackItem, player uuid.UUID, name string) error {
+	return MayChoice{
+		Player:   player,
+		Question: name + " — copy it? (you may choose a new target for the copy)",
+		Then:     mayCopyThisSpell,
+	}.Apply(NewContext(g, item))
 }
 
 // copyThisSpellFor copies the spell currently resolving under
@@ -175,5 +202,5 @@ func landsControlledByPlayer(g *game.Game, playerID uuid.UUID) []uuid.UUID {
 // chainSacrificeLandAnswer is the "yes": they pick the land (Word is the
 // card asking), then may copy the spell. Keyed (#4291).
 var chainSacrificeLandAnswer = MayYes("confirm/chain-sacrifice-a-land", func(ctx *Context, r game.ConfirmAnswer) error {
-	return chainSacrificeLand(r.Chooser, r.Word)(ctx)
+	return chainSacrificeLand(ctx, r.Chooser, r.Word)
 })

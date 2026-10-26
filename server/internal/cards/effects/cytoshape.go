@@ -49,19 +49,26 @@ func init() {
 				Cards:    candidates,
 				Min:      1,
 				Max:      1,
-				Zone:     game.ZoneBattlefield,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) == 0 {
-						return nil
-					}
-					return BecomeCopy{
-						Targets: []uuid.UUID{target},
-						Of:      picked[0],
-						Label:   "Cytoshape — becomes a copy until end of turn",
-					}.Apply(NewContext(g, item))
-				},
+				ThenKey:  cytoshapeCopy,
+				LiveZone: game.ZoneBattlefield,
+				Carry:    []uuid.UUID{target},
+				Asked:    game.NewAskedItem(item),
 			})
 			return nil
 		},
 	})
 }
+
+// cytoshapeCopy is the keyed answer to "which creature to copy" (#4253): the
+// target rides the prompt as its Carry, the asking spell as data. An on-disk
+// key: never renamed, never reused.
+var cytoshapeCopy = game.RegisterChooseCardsThen("choose-cards/cytoshape-copy", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 || r.Asked == nil {
+		return nil
+	}
+	return BecomeCopy{
+		Targets: []uuid.UUID{r.Carry[0]},
+		Of:      r.Picked[0],
+		Label:   "Cytoshape — becomes a copy until end of turn",
+	}.Apply(NewContext(g, r.Asked))
+})

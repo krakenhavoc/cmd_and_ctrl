@@ -809,11 +809,10 @@ var stepsSkipped = map[string]string{
 	"Fatal Grudge":              "exclusive arms: the draw, or the sacrifices and the draw in their Then",
 	"Earth's Mightiest Heroes":  "no prompt: a reveal asks nothing, and the cards it names are the put's input",
 	// Batch 6.
-	"Surreal Memoir":        "no prompt: the card is picked at random",
-	"Burn the Accursed":     "one batch: the damage to the creature and to its controller are one instance (the exile rider after it is a step)",
-	"Devour Intellect":      "exclusive arms: the choice from the revealed hand, or the discard",
-	"Demonlord of Ashmouth": "exclusive arms: the sacrifice, or the exile",
-	"Earthen Arms":          "exclusive arms: with no target awaken at once, else the counters' Then awakens",
+	"Surreal Memoir":    "no prompt: the card is picked at random",
+	"Burn the Accursed": "one batch: the damage to the creature and to its controller are one instance (the exile rider after it is a step)",
+	"Devour Intellect":  "exclusive arms: the choice from the revealed hand, or the discard",
+	"Earthen Arms":      "exclusive arms: with no target awaken at once, else the counters' Then awakens",
 	// Batch 7.
 	"Repeat Offender":        "exclusive arms: the counter, or the suspect",
 	"Gruesome Discovery":     "exclusive arms: the reveal and choice, or the plain discard",

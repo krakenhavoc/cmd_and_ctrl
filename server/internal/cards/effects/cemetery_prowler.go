@@ -59,7 +59,6 @@ func cemeteryProwlerExile(g *game.Game, item *game.StackItem) error {
 	if len(candidates) == 0 {
 		return nil
 	}
-	resolving := item
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  item.Controller,
 		Source:   item.SourceCardID,
@@ -68,15 +67,21 @@ func cemeteryProwlerExile(g *game.Game, item *game.StackItem) error {
 		Min:      1,
 		Max:      1,
 		// No Zone: the candidates span every seat's graveyard.
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ExileTarget{Target: picked[0], Linked: true}.Apply(NewContext(g, resolving))
-		},
+		ThenKey: cemeteryProwlerExiled,
+		Asked:   game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// cemeteryProwlerExiled is the keyed answer to "which card": it exiles the
+// pick, linked to the asking trigger (#4253). Its key is an on-disk
+// identity: never renamed, never reused.
+var cemeteryProwlerExiled = game.RegisterChooseCardsThen("choose-cards/cemetery-prowler-exile", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || r.Asked == nil {
+		return nil
+	}
+	return ExileTarget{Target: r.Picked[0], Linked: true}.Apply(NewContext(g, r.Asked))
+})
 
 // cemeteryProwlerDiscount is the number of card types the spell shares
 // with the cards exiled with the modifier's source by its trigger.

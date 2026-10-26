@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -122,6 +124,17 @@ type ChoosePlayer struct {
 	// Then runs once the answer is in (or once it is settled that
 	// there is none). Runs with g.mu held; may queue further choices.
 	Then func(ctx *Context) error
+
+	// ThenKey is Then as a registered continuation (OptionPickThen, #4253),
+	// and Carry the IDs it is handed: a prompt queued with a key holds no
+	// closure, so a table waiting on the answer is a restore point. The
+	// answer is r.Option.Player (r.Option is nil when no question could be
+	// asked, and the continuation still runs), and the Context is a
+	// stand-in built from the controller and the source card, not the
+	// resolving item, so ctx.ChosenPlayer() reads nothing: read the
+	// answer. Set ThenKey or Then, not both.
+	ThenKey game.OptionPickThen
+	Carry   []uuid.UUID
 }
 
 func (c ChoosePlayer) Apply(ctx *Context) error {
@@ -134,6 +147,27 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 	pool := c.Only
 	if pool == nil {
 		pool = c.Among.seats(ctx, chooser)
+	}
+	if c.ThenKey.Key() != "" {
+		if then != nil {
+			return fmt.Errorf("%w: ChoosePlayer %q sets both ThenKey and Then", game.ErrInvalidParam, c.ThenKey.Key())
+		}
+		carry := append([]uuid.UUID{ctx.Controller()}, c.Carry...)
+		if ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
+			Chooser:  chooser,
+			Among:    exceptPlayers(pool, c.Except),
+			Source:   ctx.Source(),
+			Question: c.Question,
+			ThenKey:  c.ThenKey,
+			Carry:    carry,
+		}) != uuid.Nil {
+			return nil
+		}
+		// Nothing could be asked: the rest of the card still happens, with
+		// nobody chosen.
+		return ctx.Game.RunOptionPickThenForEffect(c.ThenKey, game.OptionPicked{
+			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry,
+		})
 	}
 	queued := ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
 		Chooser:  chooser,

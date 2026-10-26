@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -52,10 +50,15 @@ func celestusSanctifierLook(g *game.Game, item *game.StackItem) error {
 		Cards:    looked,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return restIntoGraveyard(g, picked)
-		},
+		ThenKey:  celestusSanctifierPut,
+		LiveZone: game.ZoneLibrary,
 	})
 	return nil
 }
+
+// celestusSanctifierPut is the keyed answer to "which one goes into your
+// graveyard" (#4253). Its key is an on-disk identity: never renamed, never
+// reused.
+var celestusSanctifierPut = game.RegisterChooseCardsThen("choose-cards/celestus-sanctifier-put", func(g *game.Game, r game.CardsChosen) error {
+	return restIntoGraveyard(g, r.Picked)
+})

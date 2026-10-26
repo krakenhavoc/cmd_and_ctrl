@@ -54,19 +54,30 @@ func chainOfSmogDiscard(ctx *Context) error {
 	} else if t.Kind != game.TargetPlayer {
 		return nil
 	}
-	item := ctx.Item
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	// The spell rides the discard as data (its ID and its controller): the
+	// copy offer that follows names it, and the prompt holds no closure, so
+	// a table waiting on the discard is a restore point (#4253).
+	return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   player,
 		Source:   ctx.Source(),
 		N:        2,
 		Question: "Chain of Smog — discard two cards",
-		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-			return MayChoice{
-				Player:   player,
-				Question: "Chain of Smog — copy it? (you may choose a new target for the copy)",
-				Then:     mayCopyThisSpell,
-			}.Apply(NewContext(g, item))
-		},
-	})
-	return nil
+	}, chainOfSmogDiscarded, []uuid.UUID{ctx.Item.ID, ctx.Controller()})
 }
+
+// chainOfSmogDiscarded offers the copy once the two cards are in the
+// graveyard, and also for a hand too small to ask about: the copy clause is
+// not conditional on the discard. Keyed (#4253); an on-disk key.
+var chainOfSmogDiscarded = game.RegisterDiscardThen("choose-cards/chain-of-smog-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	ctx := keyedContext(g, r.Carry[1], r.Source)
+	ctx.Item.ID = r.Carry[0]
+	ctx.Item.Kind = game.StackItemSpell
+	return MayChoice{
+		Player:   r.Player,
+		Question: "Chain of Smog — copy it? (you may choose a new target for the copy)",
+		Then:     mayCopyThisSpell,
+	}.Apply(ctx)
+})

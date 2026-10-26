@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -77,6 +79,7 @@ var emergentUltimatumChooseTail = CardTail("emergent-ultimatum/choose", func(ctx
 })
 
 // emergentUltimatumChoose has an opponent pick one of the exiled cards.
+// Keyed (#4253): the found cards ride the prompts as data.
 func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {
 	if len(found) == 0 {
 		return emergentUltimatumExileSelf(ctx)
@@ -84,23 +87,47 @@ func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Emergent Ultimatum — choose an opponent to pick one of the exiled cards",
-		Then: func(ctx *Context) error {
-			opp := ctx.ChosenPlayer()
-			if opp == uuid.Nil {
-				return emergentUltimatumExileSelf(ctx)
-			}
-			return RevealPick{
-				Player:   opp,
-				Owner:    ctx.Controller(),
-				Question: "Emergent Ultimatum — choose one of these cards; it is shuffled into their library and they may cast the others for free",
-				Cards:    found,
-				Min:      1,
-				Max:      1,
-				Then:     emergentUltimatumSettle,
-			}.Apply(ctx)
-		},
+		ThenKey:  emergentUltimatumOpponent,
+		Carry:    found,
 	}.Apply(ctx)
 }
+
+// emergentUltimatumOpponent is the answer to "choose an opponent": that
+// opponent picks one of the found cards. Nobody to name leaves the spell
+// to exile itself. An on-disk key: never renamed, never reused.
+var emergentUltimatumOpponent = OptionPickThen("option-pick/emergent-ultimatum-opponent", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || r.Option.Player == uuid.Nil {
+		return emergentUltimatumExileSelf(ctx)
+	}
+	queued, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
+		Chooser:  r.Option.Player,
+		Owner:    ctx.Controller(),
+		Source:   r.Source,
+		Question: "Emergent Ultimatum — choose one of these cards; it is shuffled into their library and they may cast the others for free",
+		Cards:    r.Carry,
+		Min:      1,
+		Max:      1,
+		ThenKey:  emergentUltimatumPicked,
+	}, nil)
+	if err != nil || queued > 0 {
+		return err
+	}
+	// Nobody could be asked: nothing is picked and every card is left.
+	return emergentUltimatumSettle(ctx, nil, r.Carry)
+})
+
+// emergentUltimatumPicked is the answer to the opponent's pick: the cards
+// they did not choose are the ones the caster may cast. An on-disk key:
+// never renamed, never reused.
+var emergentUltimatumPicked = game.RegisterChooseCardsThen("choose-cards/emergent-ultimatum-picked", func(g *game.Game, r game.CardsChosen) error {
+	var left []uuid.UUID
+	for _, id := range r.Candidates {
+		if !slices.Contains(r.Picked, id) {
+			left = append(left, id)
+		}
+	}
+	return emergentUltimatumSettle(keyedContext(g, r.From, r.Source), r.Picked, left)
+})
 
 // emergentUltimatumSettle shuffles the chosen card into its owner's
 // library, then offers the other cards, then exiles the spell.

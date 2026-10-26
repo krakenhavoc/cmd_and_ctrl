@@ -7953,6 +7953,15 @@ and the `Carry` the card put on the prompt. It reads no
 `ctx.ChosenPlayer()`: the answer is not recorded on the item. Sol'Kanar the
 Tainted, Zuko and the face-down pile cards are written this way.
 
+`Then` holds a closure, so a table waiting on the question is not a
+restore point. Write the rest of the card as `ThenKey:
+effects.OptionPickThen("option-pick/<card>-<what>", fn)` with `Carry` for
+the IDs it reads (#4253): the answer is `r.Option.Player` (`r.Option` is nil
+when nobody could be asked, and `fn` still runs), and the Context is a
+stand-in built from the controller and the source card, so
+`ctx.ChosenPlayer()` reads nothing there. Coin of Fate and Emergent
+Ultimatum are the worked examples.
+
 **`ChoosePlayerAsEnters(label, pool)`** (same file) is the CR 614.12
 form — "As this enters, choose a player" (True-Name Nemesis, Sawhorn
 Nemesis), #980. It goes in `Spec.AsEnters`, and the difference from

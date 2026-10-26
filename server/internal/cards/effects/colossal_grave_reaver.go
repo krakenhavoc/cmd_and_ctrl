@@ -85,17 +85,24 @@ func b17ReanimateOneMilled(g *game.Game, item *game.StackItem, from uuid.UUID, q
 		Cards:      creatures,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromGraveyard{
-				Target:     picked[0],
-				Dest:       game.ZoneBattlefield,
-				Controller: item.Controller,
-			}.Apply(NewContext(g, item))
-		},
+		ThenKey:    b17ReanimatePicked,
+		LiveZone:   game.ZoneGraveyard,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// b17ReanimatePicked is the keyed answer to "put one of them onto the
+// battlefield" (#4253): the asking item rides the prompt as data. Shared by
+// every card that reanimates one of a milled batch. An on-disk key: never
+// renamed, never reused.
+var b17ReanimatePicked = game.RegisterChooseCardsThen("choose-cards/reanimate-one-milled", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || r.Asked == nil {
+		return nil
+	}
+	return ReturnFromGraveyard{
+		Target:     r.Picked[0],
+		Dest:       game.ZoneBattlefield,
+		Controller: r.Asked.Controller,
+	}.Apply(NewContext(g, r.Asked))
+})

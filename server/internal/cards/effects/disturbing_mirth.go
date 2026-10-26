@@ -51,18 +51,25 @@ func disturbingMirthSacrifice(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					return nil
-				}
-				return g.DrawNForEffect(me, 2)
-			})
-		},
+		ThenKey:  disturbingMirthSacrificed,
+		LiveZone: game.ZoneBattlefield,
 	})
 	return nil
 }
+
+// disturbingMirthSacrificed is the keyed answer to "you may sacrifice another
+// enchantment or creature" (#4253): the chooser draws two cards once the
+// pick has really been sacrificed. An on-disk key: never renamed, never
+// reused.
+var disturbingMirthSacrificed = game.RegisterChooseCardsThen("choose-cards/disturbing-mirth-sacrifice", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	me := r.Chooser
+	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, sacrificed []uuid.UUID) error {
+		if len(sacrificed) == 0 {
+			return nil
+		}
+		return g.DrawNForEffect(me, 2)
+	})
+})
