@@ -410,11 +410,9 @@ func (p *Policy) opposingCreatures(st *state) int {
 }
 
 // declaredAgainst counts this seat's creatures already attacking a
-// defender, and the damage they carry. It is what turns a string of
-// one-at-a-time declarations into an alpha strike: once the attack
-// outnumbers the blockers, every further attacker is unblockable, and
-// a planner that cannot see that will sit behind an even board until
-// somebody's library runs out.
+// defender, and the damage they carry. Outnumbering blockers creates
+// damage opportunities, but the defender still chooses which attackers
+// to block; these counts do not reserve blocks for earlier attackers.
 //
 // With powered set (Config.FocusNeedsValue, #2675) an attacker with no
 // power is not counted: it deals no damage, so the defender need not
@@ -633,10 +631,20 @@ func (p *Policy) attackValue(st *state, atk *protocol.CardView, def *SeatEval, d
 			blockers = append(blockers, c)
 		}
 	}
-	// Every creature already attacking this seat is a blocker it has
-	// to spend; what is left over is what can answer THIS attacker.
+	// Earlier attackers can draw blocks, but do not reserve them. With
+	// PriceOutnumberLoss, a defender that kills THIS attacker for free
+	// still gets that choice even when attackers outnumber blockers.
 	free := len(blockers) - declared
-	if free <= 0 {
+	exposed := false
+	if free <= 0 && p.cfg.PriceOutnumberLoss {
+		for _, b := range blockers {
+			if kills(b, atk) && !kills(atk, b) {
+				exposed = true
+				break
+			}
+		}
+	}
+	if free <= 0 && !exposed {
 		if declaredPower+combatPower(atk) >= def.Life {
 			return damage + p.cfg.LethalBonus, "lethal, unblockable"
 		}

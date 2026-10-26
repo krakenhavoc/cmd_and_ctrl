@@ -675,6 +675,11 @@ type Config struct {
 	// rather than Weights.Power per point. Off (the zero value) checks
 	// single blocks only and prices a given-up attack by power.
 	GangAwareAttacks bool
+	// PriceOutnumberLoss keeps the best single-block loss price for a
+	// late attacker that a blocker kills without dying (#4316), even
+	// when earlier declarations outnumber blockers. The exact lethal
+	// push still overrides that price. Off restores the free-damage price.
+	PriceOutnumberLoss bool
 	// RaceEndsSoonest changes which swing the two-turn race and the
 	// attrition horizon send among the ones that qualify (#2400). Off
 	// (the zero value) sends the smallest: the shortest prefix of the
@@ -927,12 +932,13 @@ func DefaultConfig() Config {
 		PriceRepeatedPumps:  true,
 		PriceSaveOthers:     true,
 
-		DamageToOpponent: 0.30,
-		DesperateDamage:  2.00,
-		FocusBonus:       1.00,
-		FocusNeedsValue:  true,
-		GangAwareAttacks: true,
-		RaceEndsSoonest:  true,
+		DamageToOpponent:   0.30,
+		DesperateDamage:    2.00,
+		FocusBonus:         1.00,
+		FocusNeedsValue:    true,
+		GangAwareAttacks:   true,
+		PriceOutnumberLoss: true,
+		RaceEndsSoonest:    true,
 		// #2400: trample overflow and the recast chump measured no
 		// better under RaceEndsSoonest, so they stay off.
 		FreeCommanderNeedsTax: true,
@@ -1064,9 +1070,10 @@ func BaselineConfig() Config {
 	c.PriceMillCost = false
 	// #3966: a library exile cost, read as free before it.
 	c.PriceLibraryExileCost = false
-	// #2675, #2690, #2676: combat priced by what combat does.
+	// #2675, #2690, #2676, #4316: combat priced by what combat does.
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
+	c.PriceOutnumberLoss = false
 	c.Weights.BlockOnlyBody = 0
 	// #2400: the race and the attrition horizon sent the smallest swing
 	// that qualifies, and counted the free answer the #2310 way.
