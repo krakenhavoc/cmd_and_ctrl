@@ -98,17 +98,22 @@ func offerAttachToACreatureYouControl(g *game.Game, source, controller, attachme
 		Cards:    creatures,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			host, ok := g.LookupCardForEffect(picked[0])
-			if !ok || host.Controller != controller {
-				return nil
-			}
-			return g.AttachForEffect(attachment, game.TargetRef{Kind: game.TargetCard, ID: picked[0]})
-		},
+		ThenKey:  armoredSkyhunterAttach,
+		LiveZone: game.ZoneBattlefield,
+		Carry:    []uuid.UUID{attachment},
 	})
 	return nil
 }
+
+// armoredSkyhunterAttach is the Equipment attaching to the creature chosen,
+// keyed (#4253): the Equipment is the carry and the controller the chooser.
+var armoredSkyhunterAttach = game.RegisterChooseCardsThen("choose-cards/armored-skyhunter-attach", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 {
+		return nil
+	}
+	host, ok := g.LookupCardForEffect(r.Picked[0])
+	if !ok || host.Controller != r.Chooser {
+		return nil
+	}
+	return g.AttachForEffect(r.Carry[0], game.TargetRef{Kind: game.TargetCard, ID: r.Picked[0]})
+})

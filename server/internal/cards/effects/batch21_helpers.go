@@ -319,15 +319,20 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 				Cards:      lands,
 				Min:        0,
 				Max:        len(lands),
-				Zone:       game.ZoneExile,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					return ReturnFromExileTogether{Targets: picked, Controller: item.Controller}.Apply(NewContext(g, item))
-				},
+				ThenKey:    oblivionSowerLands,
+				LiveZone:   game.ZoneExile,
+				Asked:      game.NewAskedItem(item),
 			})
 			return nil
 		},
 	}.Apply(ctx)
 }
+
+// oblivionSowerLands is the chosen land cards entering together, keyed
+// (#4253): the asking item rides the prompt as data.
+var oblivionSowerLands = askedPick("choose-cards/oblivion-sower-lands", func(ctx *Context, r game.CardsChosen) error {
+	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
+})
 
 // b21ReturnAllArtifactAndEnchantmentCards is Brilliant Restoration's
 // body: every artifact and enchantment card in `player`'s graveyard

@@ -110,14 +110,49 @@ func breechesSacrifice(spell uuid.UUID) func(ctx *Context) error {
 		if len(artifacts) == 0 {
 			return nil
 		}
-		return SacrificeChoice{
-			Player:     ctx.Controller(),
-			Candidates: artifacts,
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice, and with none left the flip follows at once.
+		var candidates []uuid.UUID
+		for _, id := range artifacts {
+			if !ctx.Game.CantBeSacrificedForEffect(id) {
+				candidates = append(candidates, id)
+			}
+		}
+		if len(candidates) == 0 {
+			return breechesFlip(spell)(ctx)
+		}
+		// The pick is a keyed choose_cards pick (#4253): the spell that
+		// triggered the ability is the carry and the asking item rides the
+		// prompt as data.
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    ctx.Controller(),
+			FromPlayer: ctx.Controller(),
+			Source:     ctx.Source(),
 			Question:   "Breeches, the Blastmaker — sacrifice an artifact",
-			Then:       breechesFlip(spell),
-		}.Apply(ctx)
+			Cards:      candidates,
+			Min:        1,
+			Max:        1,
+			LiveZone:   game.ZoneBattlefield,
+			ThenKey:    breechesSacrificed,
+			Carry:      []uuid.UUID{spell},
+			Asked:      game.NewAskedItem(ctx.Item),
+		})
+		return nil
 	}
 }
+
+// breechesSacrificed is the artifact chosen, keyed (#4253): it goes through
+// the sacrifice's own continuation, so the coin is flipped once the
+// permanent has gone. The spell that triggered the ability is the carry.
+var breechesSacrificed = askedPick("choose-cards/breeches-the-blastmaker-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	spell, item := r.Carry[0], ctx.Item
+	return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
+		return resumeClause(g, item, breechesFlip(spell))
+	})
+})
 
 // breechesFlip is "if you do, flip a coin".
 func breechesFlip(spell uuid.UUID) func(ctx *Context) error {

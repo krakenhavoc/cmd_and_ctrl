@@ -100,13 +100,18 @@ func aminatousAuguryPayoff(g *game.Game, item *game.StackItem, you uuid.UUID, ex
 		Cards:      lands,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromExileTogether{Targets: picked, Controller: you}.Apply(NewContext(g, item))
-		},
+		ThenKey:    aminatousAuguryLand,
+		LiveZone:   game.ZoneExile,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// aminatousAuguryLand is the land card put onto the battlefield, keyed
+// (#4253): the asking item rides the prompt as data.
+var aminatousAuguryLand = askedPick("choose-cards/aminatous-augury-land", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
+})

@@ -67,11 +67,12 @@ func breachAskNext(g *game.Game, item *game.StackItem, order, chosen []uuid.UUID
 			Cards:      candidates,
 			Min:        1,
 			Max:        1,
-			Zone:       game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				next := append(append([]uuid.UUID(nil), chosen...), picked...)
-				return breachAskNext(g, item, rest, next)
-			},
+			ThenKey:    breachPick,
+			LiveZone:   game.ZoneGraveyard,
+			// The players still to ask and the cards chosen so far are the
+			// carry (#4253).
+			Carry: packIDLists(rest, chosen),
+			Asked: game.NewAskedItem(item),
 		})
 		return nil
 	}
@@ -80,6 +81,19 @@ func breachAskNext(g *game.Game, item *game.StackItem, order, chosen []uuid.UUID
 		Controller: item.Controller,
 		ThenTail:   breachPhyrexiansTail,
 	}.Apply(ctx)
+}
+
+// breachPick is one graveyard's pick answered, keyed (#4253): the next
+// graveyard is asked, or the chosen cards enter together. Registered in init
+// because it asks the next graveyard, which names the key again.
+var breachPick game.ChooseCardsThen
+
+func init() {
+	breachPick = askedPick("choose-cards/breach-the-multiverse-graveyard", func(ctx *Context, r game.CardsChosen) error {
+		rest, chosen := unpackIDPair(r.Carry)
+		next := append(append([]uuid.UUID(nil), chosen...), r.Picked...)
+		return breachAskNext(ctx.Game, ctx.Item, rest, next)
+	})
 }
 
 // breachPhyrexiansTail is breachPhyrexians as a keyed tail (#4253 slice 6).

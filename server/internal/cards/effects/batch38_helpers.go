@@ -189,11 +189,13 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 			Max:        1,
 			// Re-checked on submit: a graveyard can be emptied
 			// between the question and the answer.
-			Zone: game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				next := append(append([]uuid.UUID(nil), chosen...), picked...)
-				return b38ReanimateAskNext(g, item, question, rest, next)
-			},
+			LiveZone: game.ZoneGraveyard,
+			// The players still to ask and the cards chosen so far are the
+			// carry, the question's words the word (#4253).
+			ThenKey:   b38ReanimatePick,
+			Carry:     packIDLists(rest, chosen),
+			CarryWord: question,
+			Asked:     game.NewAskedItem(item),
 		})
 		return nil
 	}
@@ -201,6 +203,19 @@ func b38ReanimateAskNext(g *game.Game, item *game.StackItem, question string, or
 	// enters under (CR 110.2a), which Arboria reads.
 	return g.PutByEnteringPlayerForEffect(func() error {
 		return ReturnFromGraveyardTogether{Targets: chosen}.Apply(ctx)
+	})
+}
+
+// b38ReanimatePick is one player's pick answered, keyed (#4253): the next
+// player is asked, or the chosen cards enter together. Registered in init
+// because it asks the next player, which names the key again.
+var b38ReanimatePick game.ChooseCardsThen
+
+func init() {
+	b38ReanimatePick = askedPick("choose-cards/each-player-reanimates-one", func(ctx *Context, r game.CardsChosen) error {
+		rest, chosen := unpackIDPair(r.Carry)
+		next := append(append([]uuid.UUID(nil), chosen...), r.Picked...)
+		return b38ReanimateAskNext(ctx.Game, ctx.Item, r.Word, rest, next)
 	})
 }
 

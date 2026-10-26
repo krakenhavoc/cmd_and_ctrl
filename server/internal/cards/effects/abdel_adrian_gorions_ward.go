@@ -52,13 +52,18 @@ func abdelAdrianEnters(g *game.Game, item *game.StackItem) error {
 		Cards:    mine,
 		Min:      0,
 		Max:      0, // "any number"
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return abdelExileNext(NewContext(g, item), picked, 0)
-		},
+		ThenKey:  abdelExilePick,
+		LiveZone: game.ZoneBattlefield,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// abdelExilePick is the picks being exiled one by one, keyed (#4253): the
+// asking item rides the prompt as data.
+var abdelExilePick = askedPick("choose-cards/abdel-adrian-exile", func(ctx *Context, r game.CardsChosen) error {
+	return abdelExileNext(ctx, r.Picked, 0)
+})
 
 // abdelExileNext exiles the picks one by one through each exile's
 // continuation, counting the ones that landed, and makes the Soldiers

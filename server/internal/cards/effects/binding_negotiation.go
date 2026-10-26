@@ -66,10 +66,15 @@ var bindingNegotiationOtherwise = RevealedPickThen("revealed-pick/binding-negoti
 			Cards:      offer,
 			Min:        0,
 			Max:        1,
-			Zone:       game.ZoneExile,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				return g.PutCardsIntoGraveyardThenForEffect(picked, nil)
-			},
+			ThenKey:    bindingNegotiationGraveyard,
+			LiveZone:   game.ZoneExile,
 		})
 		return nil
+	})
+
+// bindingNegotiationGraveyard is the chosen exiled card going to its owner's
+// graveyard, keyed (#4253): it reads nothing but the cards.
+var bindingNegotiationGraveyard = game.RegisterChooseCardsThen("choose-cards/binding-negotiation-exiled-to-graveyard",
+	func(g *game.Game, r game.CardsChosen) error {
+		return g.PutCardsIntoGraveyardThenForEffect(r.Picked, nil)
 	})
