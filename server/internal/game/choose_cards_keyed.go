@@ -60,6 +60,9 @@ type CardsChosen struct {
 	// Word is the one word of the card's text the queuing card put on
 	// the prompt (ChooseCardsPrompt.CarryWord, #4264). Empty when none.
 	Word string
+	// Nums are the numbers the queuing card put on the prompt
+	// (ChooseCardsPrompt.CarryNums, #4294). Nil when none.
+	Nums []int
 	// Key is the continuation's own key, as it rode the prompt.
 	Key string
 	// Offer and Asked are the any-player offer and the asking item a leg
@@ -190,6 +193,7 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Carry:      copyUUIDs(c.OptionCarry),
 			Question:   c.Reason,
 			Word:       c.PickMatchArg,
+			Nums:       copyInts(c.PickNums),
 			Key:        c.PickThen,
 			Offer:      cloneAnyPlayerOffer(c.AnyPlayerOffer),
 			Asked:      c.Asked.StackItem(),

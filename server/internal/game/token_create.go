@@ -435,7 +435,7 @@ func (g *Game) createTokensLocked(ev *ReplacementEvent) error {
 func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	for _, grp := range ev.TokenGroups {
 		if grp.AttackOpponent != uuid.Nil {
-			return g.chooseTokenAttackGroupsLocked(ev, 0, nil)
+			return g.startSettledSplitLocked(ev)
 		}
 	}
 	batch := make([]stagedToken, 0, ev.TokenCount())
