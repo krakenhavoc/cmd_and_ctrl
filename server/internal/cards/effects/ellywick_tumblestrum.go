@@ -101,17 +101,22 @@ func ellywickLook(g *game.Game, item *game.StackItem) error {
 		Match:    Creature(),
 		Max:      1,
 		Optional: true,
-		Reveal:   true,
 		Label:    "Ellywick Tumblestrum — you may reveal a creature card from among them and put it into your hand",
-		Then: func(g *game.Game, res TakeFromLibraryResult) error {
-			for _, id := range res.Taken {
-				if c, ok := g.LookupCardForEffect(id); ok && Legendary()(g, res.Player, c) {
-					if err := g.ChangePlayerLifeForEffect(res.Source, res.Player, 3); err != nil {
-						return err
-					}
-				}
-			}
-			return TakeRestOnBottomInRandomOrder(g, res)
-		},
+		Key:      ellywickTake,
 	}.Apply(ctx)
+}
+
+// ellywickTake is the −2's take, keyed (#4253): the card is revealed and
+// taken, a legendary one gains 3 life, and the rest go to the bottom.
+var ellywickTake = RegisterTake("choose-cards/ellywick-tumblestrum-take", TakeDef{Reveal: true, Then: ellywickGainForLegend})
+
+func ellywickGainForLegend(g *game.Game, res TakeFromLibraryResult) error {
+	for _, id := range res.Taken {
+		if c, ok := g.LookupCardForEffect(id); ok && Legendary()(g, res.Player, c) {
+			if err := g.ChangePlayerLifeForEffect(res.Source, res.Player, 3); err != nil {
+				return err
+			}
+		}
+	}
+	return TakeRestOnBottomInRandomOrder(g, res)
 }

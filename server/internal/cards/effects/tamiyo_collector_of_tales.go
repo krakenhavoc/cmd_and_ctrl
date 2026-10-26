@@ -78,7 +78,7 @@ func tamiyoRevealAndTake(player, source uuid.UUID) func(g *game.Game, name strin
 			Match:  match,
 			All:    true,
 			Label:  label,
-			Then:   TakeRestIntoGraveyard,
+			Key:    takeRestGraveyard,
 		}.Apply(NewContext(g, &game.StackItem{Controller: player, SourceCardID: source}))
 	}
 }

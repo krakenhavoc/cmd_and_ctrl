@@ -5922,6 +5922,16 @@ read from the Go frame goes on the carry, the numbers or the asking item.
 See the 2026-10-26 amendments of [ADR 0013](decisions/0013-replacement-effects.md)
 and [ADR 0175](decisions/0175-players-choose-before-simultaneous-sacrifices.md).
 
+**A look-and-take names a registered take (#4253 slice 8).**
+`TakeFromLibraryToHand{Key: …}` takes the reveal, the set rule and "the rest"
+from a `RegisterTake` registration (`take_defs.go` has the shared ones: the
+rest on the bottom in a random or any order, with or without the reveal, or
+into the graveyard), so the pick holds no closure. A rider that reads the
+card it looked at reads it from `TakeFromLibraryResult.Looked`, not from a
+captured variable. `ReturnChosenFromGraveyard` and `putAttackingYourChoice`
+are keyed the same way; a pick that asks "what does it attack?" carries the
+card and the targets as the prompt's carry.
+
 **A PROMPTED discard is the same RUN, and the same rule (#1027).**
 `g.QueueDiscardChoiceForEffect` discards nothing either — it queues a
 question over the player's own hand and hands back the prompt's ID —

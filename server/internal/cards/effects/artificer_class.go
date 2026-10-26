@@ -84,6 +84,6 @@ func artificerClassRevealUntilArtifact(g *game.Game, item *game.StackItem) error
 		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
 		All:    true,
 		Label:  "Artificer Class — put the artifact card into your hand",
-		Then:   TakeRestOnBottomInRandomOrder,
+		Key:    takeRestBottomRandom,
 	}.Apply(ctx)
 }

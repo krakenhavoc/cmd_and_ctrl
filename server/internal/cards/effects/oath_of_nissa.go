@@ -45,8 +45,7 @@ func oathOfNissaDig(g *game.Game, item *game.StackItem) error {
 		Match:    Or(Creature(), Land(), Planeswalker()),
 		Max:      1,
 		Optional: true,
-		Reveal:   true,
 		Label:    "Oath of Nissa — reveal a creature, land, or planeswalker card and put it into your hand",
-		Then:     TakeRestOnBottomInAnyOrder,
+		Key:      takeRevealRestBottomAny,
 	}.Apply(ctx)
 }

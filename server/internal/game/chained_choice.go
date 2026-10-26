@@ -383,6 +383,10 @@ type ChooseCardsPrompt struct {
 	// without ThenKey.
 	CarryNums []int
 	Asked     *AskedItem
+	// Tail is a registered tail the continuation hands on (CardsChosen.Tail,
+	// #4253 slice 8): the rest of a keyword action this pick is the middle
+	// of. Ignored without ThenKey.
+	Tail KeyedTail
 
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
@@ -461,6 +465,7 @@ func (g *Game) QueueChooseCardsForEffect(p ChooseCardsPrompt) uuid.UUID {
 			PickMatchArg:      p.CarryWord,
 			PickNums:          copyInts(p.CarryNums),
 			Asked:             copyAskedItem(p.Asked),
+			pickTail:          copyKeyedTail(p.Tail),
 			OptionCarry:       copyUUIDs(p.Carry),
 			ChooseLiveZone:    p.LiveZone,
 			// #4290: a keyed leg of a prompted run.

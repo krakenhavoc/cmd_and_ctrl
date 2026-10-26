@@ -404,6 +404,7 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = g.withCarriedCauseLocked(carriedCauseOfChoice(c), func() error {
 			return runOptionPickThen(g, c.PickThen, OptionPicked{
 				Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry), dice: c.dice,
+				Asked: c.Asked.StackItem(),
 			})
 		})
 	default:
@@ -494,6 +495,12 @@ type OptionPickPrompt struct {
 	// dice is a paused dice roll (#4307, dice_roll.go), written with the
 	// prompt; set only by the dice flow, with a ThenKey.
 	dice *diceRollPause
+
+	// Asked is the asking stack item as data (NewAskedItem), handed to a
+	// keyed continuation as OptionPicked.Asked (#4253 slice 8): the
+	// attack-target pick of a card whose entry rides a tail that reads the
+	// item (Ultra Magnus, Tactician). Ignored without ThenKey.
+	Asked *AskedItem
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -545,6 +552,7 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		c.PickThen = key
 		c.OptionCarry = copyUUIDs(p.Carry)
 		c.dice = p.dice
+		c.Asked = copyAskedItem(p.Asked)
 		return g.QueueChoiceForEffect(c)
 	}
 	then := p.Then
@@ -707,11 +715,13 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	if key := choice.PickThen; key != "" {
 		carry := copyUUIDs(choice.OptionCarry)
 		dice := choice.dice
+		asked := choice.Asked.StackItem()
 		cause := carriedCauseOfChoice(choice) // #4281
 		g.dequeueChoiceLocked(idx)
 		g.emitChoiceEffectErrorLocked(chooserID, source, g.withCarriedCauseLocked(cause, func() error {
 			return runOptionPickThen(g, key, OptionPicked{
 				Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry, dice: dice,
+				Asked: asked,
 			})
 		}))
 		g.runStateChecksLocked()

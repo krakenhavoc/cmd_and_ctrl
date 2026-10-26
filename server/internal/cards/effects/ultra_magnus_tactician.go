@@ -71,7 +71,8 @@ func ultraMagnusPutAttacker(g *game.Game, item *game.StackItem) error {
 	if len(candidates) == 0 {
 		return nil
 	}
-	prefer := triggerAttackTarget(item)
+	// The put is keyed (#4253 slice 8): the defender Magnus is attacking
+	// rides the prompt as the first of its carry, and the item as data.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Destination: game.ChooseOntoBattlefieldTapped,
 		Chooser:     me,
@@ -80,16 +81,26 @@ func ultraMagnusPutAttacker(g *game.Game, item *game.StackItem) error {
 		Cards:       candidates,
 		Min:         0,
 		Max:         1,
-		Zone:        game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ultraMagnusChooseDefender(g, item, picked[0], prefer)
-		},
+		ThenKey:     ultraMagnusPicked,
+		LiveZone:    game.ZoneHand,
+		Carry:       []uuid.UUID{triggerAttackTarget(item)},
+		Asked:       game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// ultraMagnusPicked is the choice of a creature card to put in, keyed.
+var ultraMagnusPicked = game.RegisterChooseCardsThen("choose-cards/ultra-magnus-tactician-put",
+	func(g *game.Game, r game.CardsChosen) error {
+		if !r.Answered || len(r.Picked) == 0 || r.Asked == nil {
+			return nil
+		}
+		var prefer uuid.UUID
+		if len(r.Carry) > 0 {
+			prefer = r.Carry[0]
+		}
+		return ultraMagnusChooseDefender(g, r.Asked, r.Picked[0], prefer)
+	})
 
 // ultraMagnusChooseDefender asks what the entering creature attacks when
 // there is more than one choice (CR 508.4), Magnus's own defender first.
@@ -115,14 +126,27 @@ func ultraMagnusChooseDefender(g *game.Game, item *game.StackItem, card, prefer 
 	return PickOption{
 		Question: "Ultra Magnus, Tactician — what does it attack?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(targets) {
-				index = 0
-			}
-			return ultraMagnusPut(ctx.Game, item, card, targets[index])
-		},
+		ThenKey:  ultraMagnusAttacks,
+		WithItem: true,
+		Carry:    append([]uuid.UUID{card}, targets...),
 	}.Apply(NewContext(g, item))
 }
+
+// ultraMagnusAttacks is the answer to "what does it attack?", keyed: the
+// card and the defenders in the order the options list them ride the
+// prompt, and the item as data.
+var ultraMagnusAttacks = OptionPickThen("option-pick/ultra-magnus-tactician-attacks",
+	func(ctx *Context, r game.OptionPicked) error {
+		if len(r.Carry) < 2 {
+			return nil
+		}
+		card, targets := r.Carry[0], r.Carry[1:]
+		index := r.Index
+		if index < 0 || index >= len(targets) {
+			index = 0
+		}
+		return ultraMagnusPut(ctx.Game, ctx.Item, card, targets[index])
+	})
 
 func ultraMagnusPut(g *game.Game, item *game.StackItem, card, attacking uuid.UUID) error {
 	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != game.ZoneHand {

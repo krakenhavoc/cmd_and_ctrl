@@ -1262,6 +1262,13 @@ type PendingChoice struct {
 	// restore point (pendingChoiceSnapshot.ScryThen). Set one or neither.
 	scryThen KeyedTail
 
+	// pickTail is a keyed choose_cards pick's registered tail as data
+	// (#4253 slice 8): the rest of a keyword action the pick is the middle
+	// of (amass's "choose an Army" hands CR 701.47c's clause on). Written
+	// to a restore point (pendingChoiceSnapshot.PickTail); it never touches
+	// PickThen, which is the pick's own key.
+	pickTail KeyedTail
+
 	// libraryOrderResume is a PendingChoicePutInLibrary's
 	// continuation: it is handed the validated answer (both lanes
 	// top-first) and places the cards, then runs the rest of the

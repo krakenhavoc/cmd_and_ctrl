@@ -37,7 +37,7 @@ func init() {
 				Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 3),
 				Max:    1,
 				Label:  "Expressive Iteration — put one of them into your hand",
-				Then:   expressiveIterationBottomAndExile,
+				Key:    expressiveIterationTake,
 			}.Apply(ctx)
 		},
 	})

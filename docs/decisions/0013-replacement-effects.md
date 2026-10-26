@@ -5277,3 +5277,32 @@ Slice 3 gave a counter placement and a life change a keyed tail (`AddCounterByKe
 
 - Sending Devouring Greed back to `ChangePlayerLifeThenForEffect` fails `TestDevouringGreedIsARestorePointAtTheLifeLossOrderPrompt` (the frame is not keyed) and `TestNoCatalogCardCallsAClosureCounterOrLifeDoor`.
 - Sending the cumulative upkeep's counter back to `AddCounterThenForEffect` fails `TestCumulativeUpkeepIsARestorePointAtTheAgeCounterOrderPrompt`.
+
+## Amendment 2026-10-26 — the look-and-take callers, the last prompt of the graveyard-return chains and the attack-target picks are keyed (#4253, slice 8)
+
+Slice 6 left three families of closures at the end of otherwise keyed chains, and #4331 and #4297 had already built the keyed forms for them. This slice is the move of their callers, so a table waiting on any of those prompts is a restore point. It adds no event and no resume frame.
+
+**The takes.** All 26 callers of `TakeFromLibraryToHand` that still passed a `Validate`, a `Reveal` or a `Then` name a registered take (`RegisterTake`, `take_keyed.go`), through `take_defs.go` and a few of the cards' own. What a take needs after the pick is the looked-at cards (the prompt's carry), the player and the source (the prompt's chooser and source), and the clause's reveal and "the rest", which are card text and live in the registration. Cards whose consequence is the same share a key: `choose-cards/take-rest-bottom-random` (Fomori Vault, Memory Deluge, The Lady of Otaria, Marina Vendrell, Yuna's Whistle, Artificer Class, Prophetic Titan), `take-rest-bottom-any-order` (Dig Through Time, Stock Up, the look-at helper and `RevealTopThenTakeToHand`), `take-reveal-rest-bottom-random` (Monumental Henge and `LookAtTopThenMayTakeToHand`), `take-reveal-rest-bottom-any-order` (Duskwatch Recruiter, Growing Rites of Itlimoc, Gavony Dawnguard, Oath of Nissa) and `take-rest-graveyard` (Wail of the Forgotten, Tamiyo, Collector of Tales). The cards with a rider of their own register it under their own key: Sorin the Mirthless, Ellywick Tumblestrum, Narset Transcendent, Expressive Iteration, Darkstar Augur and Twilight Prophet. The last two read a mana value they used to capture in a closure; `TakeFromLibraryResult` gains `Looked`, the cards the take was offered in the order given, and the rider reads the mana value off the first of them. A card the take moved to the command zone (CR 903.9b) is still read.
+
+**The graveyard-return chains.** `ReturnChosenFromGraveyard` queues a keyed `choose_cards` pick, `choose-cards/return-chosen-from-graveyard`, whose two flags (tapped, to hand) are `CarryNums` and whose asking item rides the prompt (`Asked`), so Rise of the Witch-king, Lich-Knights' Conquest, Sail into the West, Travel Through Caradhras and Grapple with the Past run the same continuation against a copy of their item. The live-zone check is `LiveZone`. The Grim Captain's "may put an exiled creature card" is `choose-cards/the-grim-captain-put`.
+
+**The attack-target picks.** `putAttackingYourChoice` asks "what does it attack?" as a keyed option pick, one registration per zone the card comes from (`option-pick/put-attacking-from-graveyard` for Chorale of the Void and Interceptor, Shadow's Hound; `…-from-exile` for the Grim Captain). The card and the attack targets, in the order the options list them, are the prompt's carry, so the answer's index names one. Ultra Magnus, Tactician needs the resolving item for its convert tail (it records the turn-over count of Magnus), so `OptionPickPrompt` gains `Asked` and `OptionPicked` gains `Asked`, written to `PendingChoice.Asked` like every other keyed prompt that carries its item; `PickOption.WithItem` sets it. Both of Magnus's prompts are keyed (`choose-cards/ultra-magnus-tactician-put`, `option-pick/ultra-magnus-tactician-attacks`).
+
+**Amass's "choose an Army".** The pick is keyed when the clause holds no closure (`choose-cards/amass-army`): the amassing player and the card are the chooser and source, the count is a number, the creature type the prompt's word, and CR 701.47c's tail rides the prompt as `ChooseCardsPrompt.Tail`, `CardsChosen.Tail` and, on disk, `pendingChoices[].pickTail` (additive in v9, recorded with `-update-shape`; the keys it names are checked on restore, so a binary that does not register the tail refuses the file). This closes the last item of slice 6's "still a closure" list that is not a different family.
+
+**Still a closure**, counted as before:
+
+- Underrealm Lich's take (`underrealm_lich.go`): its rest is the draw-instead's `done`, which the draw run supplies as a closure.
+- Expressive Iteration's pick of the two cards left after its take, and its put-in-library order, which queue a `choose_cards` closure and a `PutInLibrarySpec.Then`.
+- Tamiyo, Collector of Tales's card-name choice, which hands the take its player and source in a closure.
+- Demonic Consultation's `TakeFromLibraryToHandThenForEffect` (the engine door's closure form).
+- `AmassForEffect`'s closure form, which has no production caller left and remains for the tests in `game`.
+
+**Compatibility.** Schema v9 gains `pendingChoices[].pickTail` (and under it the existing `keyedTailSnapshot` shape); nothing is renamed or retyped, and no fixture is edited. 18 `choose` and `option` lines are appended to the effect-key ledger, never renamed or reused.
+
+**Tests.** `effects/keyed_take_attack_restore_test.go`, each a strict restore with the prompt open, answered on the restored table: Stock Up, Memory Deluge, Monumental Henge, Oath of Nissa and Wail of the Forgotten (one for each shared take key), Rise of the Witch-king's return pick, Chorale of the Void's attack pick, Ultra Magnus's two prompts, the Grim Captain's two prompts, and the Army pick of an amass (Widespread Brutality), and a refusal for a binary that does not register the take or the return key.
+
+**Back-outs**, each restored:
+
+- Sending Stock Up back to a `Then` closure fails `TestStockUpTakeIsARestorePoint`.
+- Taking the keyed branch out of `chooseAmassArmyLocked` fails `TestAnAmassArmyPickIsARestorePoint`.

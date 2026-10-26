@@ -70,6 +70,9 @@ type CardsChosen struct {
 	// pick.
 	Offer *AnyPlayerOffer
 	Asked *StackItem
+	// Tail is the registered tail the queuing code put on the prompt
+	// (ChooseCardsPrompt.Tail, #4253 slice 8); the zero tail when none.
+	Tail KeyedTail
 	// Run is the prompted run this pick is one leg of
 	// (PendingChoice.promptRun, #4290), or uuid.Nil. A leg settles its
 	// run (settleRunLegLocked) rather than running the rest of the card
@@ -197,6 +200,7 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Key:        c.PickThen,
 			Offer:      cloneAnyPlayerOffer(c.AnyPlayerOffer),
 			Asked:      c.Asked.StackItem(),
+			Tail:       copyKeyedTail(c.pickTail),
 			Run:        c.promptRun,
 			ordered:    cloneOrderedPicks(c.ordered),
 		})

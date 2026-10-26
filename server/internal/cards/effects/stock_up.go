@@ -26,7 +26,7 @@ func init() {
 				Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 5),
 				Max:    2,
 				Label:  "Stock Up — put two of them into your hand",
-				Then:   TakeRestOnBottomInAnyOrder,
+				Key:    takeRestBottomAny,
 			}.Apply(ctx)
 		},
 	})

@@ -40,8 +40,7 @@ func gavonyDawnguardDig(g *game.Game, item *game.StackItem) error {
 		Match:    And(Creature(), ManaValueLE(3)),
 		Max:      1,
 		Optional: true,
-		Reveal:   true,
 		Label:    "Gavony Dawnguard — you may reveal a creature card with mana value 3 or less and put it into your hand",
-		Then:     TakeRestOnBottomInAnyOrder,
+		Key:      takeRevealRestBottomAny,
 	}.Apply(ctx)
 }

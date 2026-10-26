@@ -272,7 +272,7 @@ func LookAtTopThenTakeOneRestOnBottom(n int, label string) Effect {
 			Cards:  g.LookAtTopOfLibraryForEffect(player, n),
 			Max:    1,
 			Label:  label,
-			Then:   TakeRestOnBottomInAnyOrder,
+			Key:    takeRestBottomAny,
 		}.Apply(ctx)
 	}
 }

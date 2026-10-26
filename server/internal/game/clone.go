@@ -315,6 +315,7 @@ func (g *Game) cloneLocked() *Game {
 			// own Either list.
 			cloned.PayActionClause = copyPayAction(c.PayActionClause)
 			cloned.Asked = copyAskedItem(c.Asked)
+			cloned.pickTail = copyKeyedTail(c.pickTail)
 			cloned.PayTap = copyPayTapSpec(c.PayTap)
 			cloned.PayAmount = copyPayAmountPrompt(c.PayAmount)
 			cloned.MayPayX = copyMayPayXClause(c.MayPayX)

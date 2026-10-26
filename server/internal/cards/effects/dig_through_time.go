@@ -32,7 +32,7 @@ func init() {
 				Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 7),
 				Max:    2,
 				Label:  "Dig Through Time — put two of them into your hand",
-				Then:   TakeRestOnBottomInAnyOrder,
+				Key:    takeRestBottomAny,
 			}.Apply(ctx)
 		},
 	})

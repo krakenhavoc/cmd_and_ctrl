@@ -76,6 +76,12 @@ type PickOption struct {
 	// waits. Set ThenKey or Then, not both.
 	ThenKey game.OptionPickThen
 	Carry   []uuid.UUID
+	// WithItem hands the keyed continuation a Context rebuilt from the
+	// resolving item (carried as data, game.AskedItem) instead of the
+	// stand-in built from the controller and source: for a continuation
+	// that reads the item's own words, targets or source stamp (#4253
+	// slice 8). Ignored without ThenKey.
+	WithItem bool
 }
 
 // OptionPickThen registers a keyed option pick's continuation, as a
@@ -95,6 +101,9 @@ func OptionPickThen(key string, body func(ctx *Context, r game.OptionPicked) err
 			// first; the card's own Carry follows it.
 			controller, r.Carry = r.Carry[0], r.Carry[1:]
 		}
+		if r.Asked != nil {
+			return body(NewContext(g, r.Asked), r)
+		}
 		return body(NewContext(g, &game.StackItem{
 			Kind:         game.StackItemSpell,
 			Controller:   controller,
@@ -111,6 +120,10 @@ func (p PickOption) Apply(ctx *Context) error {
 	}
 	if p.ThenKey.Key() != "" {
 		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
+		var asked *game.AskedItem
+		if p.WithItem {
+			asked = game.NewAskedItem(ctx.Item)
+		}
 		queued := ctx.Game.QueueOptionPickForEffect(game.OptionPickPrompt{
 			Chooser:    chooser,
 			FromPlayer: p.From,
@@ -119,12 +132,13 @@ func (p PickOption) Apply(ctx *Context) error {
 			Options:    p.Options,
 			ThenKey:    p.ThenKey,
 			Carry:      carry,
+			Asked:      asked,
 		})
 		if queued != uuid.Nil {
 			return nil
 		}
 		return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
-			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry,
+			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
 		})
 	}
 	item := ctx.Item

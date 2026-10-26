@@ -332,6 +332,27 @@ func (g *Game) chooseAmassArmyLocked(ev *ReplacementEvent, armies []uuid.UUID) e
 	case 1:
 		return g.finishAmassLocked(ev, armies[0])
 	}
+	if ev.keywordAction.amassed == nil {
+		// #4253 slice 8: no closure anywhere in the clause, so the pick is
+		// keyed. What the answer needs rides the prompt as data: the amassing
+		// player and the card are its chooser and source, the count is a
+		// number, the creature type a word, and CR 701.47c's tail the tail.
+		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    ev.Actor,
+			FromPlayer: ev.Actor,
+			Source:     ev.Source,
+			Question:   amassQuestion(ev.KeywordActionCount, ev.keywordAction.armySubtype),
+			Cards:      armies,
+			Min:        1,
+			Max:        1,
+			ThenKey:    amassArmyPicked,
+			LiveZone:   ZoneBattlefield,
+			CarryNums:  []int{ev.KeywordActionCount},
+			CarryWord:  ev.keywordAction.armySubtype,
+			Tail:       ev.keywordAction.keyed,
+		})
+		return nil
+	}
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    ev.Actor,
 		FromPlayer: ev.Actor,
@@ -353,6 +374,30 @@ func (g *Game) chooseAmassArmyLocked(ev *ReplacementEvent, armies []uuid.UUID) e
 	})
 	return nil
 }
+
+// amassArmyPicked is the keyed answer to "choose an Army you control"
+// (#4253 slice 8): the action's event is rebuilt from the prompt's data and
+// the amass finishes as it does after any other choice. An unanswered
+// prompt (its chooser left) still runs CR 701.47c's clause, with no Army.
+// An on-disk key: never renamed, never reused.
+var amassArmyPicked = RegisterChooseCardsThen("choose-cards/amass-army", func(g *Game, r CardsChosen) error {
+	n := 0
+	if len(r.Nums) > 0 {
+		n = r.Nums[0]
+	}
+	ev := &ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              r.Chooser,
+		Source:             r.Source,
+		KeywordAction:      KeywordActionAmass,
+		KeywordActionCount: n,
+		keywordAction:      &keywordActionTail{armySubtype: r.Word, keyed: copyKeyedTail(r.Tail)},
+	}
+	if !r.Answered || len(r.Picked) == 0 {
+		return g.runAmassThenLocked(ev.keywordAction, uuid.Nil)
+	}
+	return g.finishAmassLocked(ev, r.Picked[0])
+})
 
 // amassQuestion is the prompt's header, written the way the card is.
 func amassQuestion(n int, subtype string) string {
