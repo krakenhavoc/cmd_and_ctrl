@@ -1329,7 +1329,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModBecomeCopy: true, ModExchangeText: true, ModChangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true, ModCantBeBlockedByColor: true, ModSetCreatureTypes: true, ModLoseSubtypes: true,
-	ModCantBeBlockedBySubtypes: true,
+	ModCantBeBlockedBySubtypes: true, ModCantBeBlockedByObject: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects

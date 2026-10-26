@@ -591,9 +591,22 @@ func staticOnBattlefieldLocked(g *Game, want func(StaticAbility) bool) bool {
 		return false
 	}
 	for i := range g.Battlefield.Cards {
-		for _, ab := range staticAbilitiesOf(&g.Battlefield.Cards[i]) {
+		c := &g.Battlefield.Cards[i]
+		for _, ab := range staticAbilitiesOf(c) {
 			if want(ab) {
 				return true
+			}
+		}
+		// A static a layer-6 grant gave this permanent (an ability sticker's
+		// bundle, ADR 0208) declares its hints too: the grants of the last
+		// pass are on its layered characteristic.
+		if c.effective != nil {
+			for _, ga := range c.effective.GrantedAbilities {
+				for _, ab := range bundleStatics(ga.Key) {
+					if want(ab) {
+						return true
+					}
+				}
 			}
 		}
 	}

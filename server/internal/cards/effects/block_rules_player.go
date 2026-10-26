@@ -105,3 +105,30 @@ func (r CantBeBlockedThisTurnBySubtypes) Apply(ctx *Context) error {
 		Label:    eotLabel(r.Label, "can't be blocked by "+r.Text+" this turn"),
 	}.Apply(ctx)
 }
+
+// CantBlockThisCreatureThisTurn registers "<Blocker> can't block
+// <Attacker> this turn" (a Wrinkly Monkey Shenanigans ability sticker,
+// #4307, CR 509.1b): a cantBeBlockedByObject ScopedEffect record pinned to
+// the attacker at resolution (CR 611.2c), naming the blocker as the object
+// it is now (CR 400.7), swept at the turn's end. Nothing happens if either
+// has left the battlefield.
+type CantBlockThisCreatureThisTurn struct {
+	Blocker  uuid.UUID
+	Attacker uuid.UUID
+	Label    string
+}
+
+// Apply registers the record. Caller is inside the resolution frame
+// (holds g.mu write).
+func (r CantBlockThisCreatureThisTurn) Apply(ctx *Context) error {
+	blocker, ok := ctx.Game.LookupCardForEffect(r.Blocker)
+	if !ok || !onBattlefield(ctx.Game, r.Blocker) || !onBattlefield(ctx.Game, r.Attacker) {
+		return nil
+	}
+	return ScopedEffectFor{
+		Target:   r.Attacker,
+		Mods:     []game.Mod{game.CantBeBlockedByObjectMod(game.ObjectRef{ID: blocker.InstanceID, Epoch: blocker.ObjectEpoch}, blocker.Name)},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    eotLabel(r.Label, blocker.Name+" can't block it this turn"),
+	}.Apply(ctx)
+}

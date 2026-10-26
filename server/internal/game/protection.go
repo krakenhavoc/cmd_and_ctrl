@@ -152,6 +152,25 @@ const (
 	// ProtectionQualityAnyColor matches a source with at least one
 	// colour: "hexproof from each color". Hexproof-only, as above.
 	ProtectionQualityAnyColor
+	// ProtectionQualityManaValueOdd and ProtectionQualityManaValueEven are
+	// "protection from odd mana values" / "from even mana values" (CR
+	// 702.16a over CR 202.3; Squid Fire Knight's and Weird Angel Flame's
+	// ability stickers, #4307): the source's mana value is compared by
+	// parity. An unreadable cost matches nothing, as for the bound above.
+	ProtectionQualityManaValueOdd
+	ProtectionQualityManaValueEven
+	// ProtectionQualityMultitypedCreatures is "protection from creatures
+	// with two or more creature types" (Notorious Sliver War's ability
+	// sticker, #4307): a creature source with at least two creature types,
+	// a changeling being every one (CR 702.73a).
+	ProtectionQualityMultitypedCreatures
+	// ProtectionQualityNoncreaturePermanents is "protection from
+	// noncreature permanents" (Wild Ogre Bupkis's ability sticker,
+	// #4307): the source is a permanent on the battlefield that is not a
+	// creature. A spell is not a permanent, so a noncreature spell's
+	// damage and targeting are not stopped by it; its LAST-KNOWN source
+	// after it left is still the permanent it was.
+	ProtectionQualityNoncreaturePermanents
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -181,6 +200,14 @@ func (k ProtectionQualityKind) String() string {
 		return "monocolored"
 	case ProtectionQualityAnyColor:
 		return "any_color"
+	case ProtectionQualityManaValueOdd:
+		return "mana_value_odd"
+	case ProtectionQualityManaValueEven:
+		return "mana_value_even"
+	case ProtectionQualityMultitypedCreatures:
+		return "multityped_creatures"
+	case ProtectionQualityNoncreaturePermanents:
+		return "noncreature_permanents"
 	}
 	return ""
 }
@@ -271,6 +298,19 @@ func parseQuality(raw string) (ProtectionQuality, bool) {
 	// carries a number, so it is matched whole: "mana value N or less".
 	if n, ok := parseManaValueAtMost(lower); ok {
 		return ProtectionQuality{Kind: ProtectionQualityManaValueAtMost, Value: strconv.Itoa(n), Printed: printed}, true
+	}
+	// Mana value parity, and two qualities of an object that are not a
+	// single characteristic (#4307). Whole phrases, as printed: the grammar
+	// stays closed.
+	switch lower {
+	case "odd mana values":
+		return ProtectionQuality{Kind: ProtectionQualityManaValueOdd, Printed: printed}, true
+	case "even mana values":
+		return ProtectionQuality{Kind: ProtectionQualityManaValueEven, Printed: printed}, true
+	case "creatures with two or more creature types":
+		return ProtectionQuality{Kind: ProtectionQualityMultitypedCreatures, Printed: printed}, true
+	case "noncreature permanents":
+		return ProtectionQuality{Kind: ProtectionQualityNoncreaturePermanents, Printed: printed}, true
 	}
 	// A designation as a quality (CR 701.54b). Plural, as printed.
 	if lower == protectionRingBearers {
@@ -620,6 +660,14 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		// source whose value the engine could not price is not "0".
 		n, err := strconv.Atoi(q.Value)
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue <= n
+	case ProtectionQualityManaValueOdd:
+		return src.SourceManaValueKnown && src.SourceManaValue%2 == 1
+	case ProtectionQualityManaValueEven:
+		return src.SourceManaValueKnown && src.SourceManaValue%2 == 0
+	case ProtectionQualityMultitypedCreatures:
+		return typeListHas(src.Types, "creature") && creatureTypeCount(src) >= 2
+	case ProtectionQualityNoncreaturePermanents:
+		return src.SourceIsPermanent && !typeListHas(src.Types, "creature")
 	case ProtectionQualityRingBearer:
 		return src.SourceRingBearer
 	case ProtectionQualityMonocolored:
@@ -640,6 +688,23 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return src.AllCreatureTypes && IsCreatureType(q.Value)
 	}
 	return false
+}
+
+// creatureTypeCount is how many creature types a source has (CR 205.3m):
+// every one for a changeling (CR 702.73a), else the creature types among
+// its subtypes. Artifact and other subtypes ("Equipment") are not creature
+// types.
+func creatureTypeCount(src *Characteristic) int {
+	if src.AllCreatureTypes {
+		return len(AllCreatureTypes)
+	}
+	seen := map[string]bool{}
+	for _, st := range src.Subtypes {
+		if canon, ok := CanonicalCreatureType(st); ok {
+			seen[canon] = true
+		}
+	}
+	return len(seen)
 }
 
 // ProtectedFrom reports whether `protected` has protection from a
@@ -715,9 +780,10 @@ func SourceCharacteristicsX(c *Card, x int) *Characteristic {
 	return ch
 }
 
-// stampSourceFacts writes the two facts about a protection SOURCE that
-// are not characteristics a layer computes: its mana value (CR 202.3)
-// and whether it is its controller's Ring-bearer (CR 701.54e). x is
+// stampSourceFacts writes the facts about a protection SOURCE that are
+// not characteristics a layer computes: its mana value (CR 202.3),
+// whether it is its controller's Ring-bearer (CR 701.54e) and whether it
+// is a permanent. x is
 // the announced X of a spell on the stack, zero everywhere else. A
 // face-down permanent has no mana cost (CR 708.2a), so it is 0.
 func stampSourceFacts(ch *Characteristic, c *Card, x int) {
@@ -729,4 +795,7 @@ func stampSourceFacts(ch *Characteristic, c *Card, x int) {
 		ch.SourceManaValue, ch.SourceManaValueKnown = 0, false
 	}
 	ch.SourceRingBearer = IsRingBearerOf(*c, ch.Controller)
+	// A permanent has a layered characteristic; a spell on the stack, or a
+	// card anywhere else, has none (#4307).
+	ch.SourceIsPermanent = c.effective != nil
 }

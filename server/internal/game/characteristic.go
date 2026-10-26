@@ -84,6 +84,10 @@ type Characteristic struct {
 	SourceManaValue      int
 	SourceManaValueKnown bool
 	SourceRingBearer     bool
+	// SourceIsPermanent says the source is a permanent on the battlefield
+	// (or was, for a last-known source) rather than a spell: "protection
+	// from noncreature permanents" reads it (#4307).
+	SourceIsPermanent bool
 
 	// AbilitiesRemoved records that a CR 613.1f ability-removing
 	// continuous effect ("loses all abilities", "is a colorless

@@ -388,6 +388,7 @@ func lastKnownSourceCharacteristics(rec PermanentInfo) *Characteristic {
 	// neither of which survives the zone change on the card itself.
 	ch.SourceManaValue, ch.SourceManaValueKnown = rec.ManaValue, true
 	ch.SourceRingBearer = rec.RingBearer
+	ch.SourceIsPermanent = true
 	return ch
 }
 
