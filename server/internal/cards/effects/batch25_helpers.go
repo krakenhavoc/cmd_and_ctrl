@@ -224,18 +224,24 @@ func b25MillThreeThenReturnLandTapped(g *game.Game, item *game.StackItem, min in
 		Cards:      candidates,
 		Min:        min,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:    b25ReturnLandTapped,
+		LiveZone:   game.ZoneGraveyard,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// b25ReturnLandTapped is the chosen land card returning to the battlefield
+// tapped (Teval, Blossoming Tortoise), keyed (#4253): the asking item rides
+// the prompt as data.
+var b25ReturnLandTapped = askedPick("choose-cards/mill-three-return-land-tapped", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // b25MillThreeThenReturnLandTappedAlways is Blossoming Tortoise's body:
 // the same, with the return not optional.

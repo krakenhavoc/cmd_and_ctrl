@@ -173,7 +173,6 @@ func braidsArisenNightmareResolve(g *game.Game, item *game.StackItem) error {
 // reuse — nothing else can act on the battlefield while this
 // resolution's own prompts are open).
 func braidsChoosePermanentToSacrifice(ctx *Context, controller uuid.UUID, candidates []uuid.UUID) error {
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    controller,
 		FromPlayer: controller,
@@ -182,32 +181,41 @@ func braidsChoosePermanentToSacrifice(ctx *Context, controller uuid.UUID, candid
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				// The chooser left the game between the offer and the
-				// pick (CR 800.4a) — nothing to sacrifice, so the "if
-				// you do" clause never fires.
-				return nil
-			}
-			var types braidsCardTypeFlags
-			if c, ok := g.LookupCardForEffect(picked[0]); ok {
-				types = braidsTypesOf(c)
-			}
-			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					// The sacrifice did not land (a departed chooser
-					// mid-CR-903.9-window would be the only real way);
-					// "if you do" was not satisfied.
-					return nil
-				}
-				fresh := NewContext(g, item)
-				return braidsOpponentsStep(fresh, controller, types, fresh.Opponents())
-			})
-		},
+		LiveZone:   game.ZoneBattlefield,
+		ThenKey:    braidsSacrificePick,
+		Asked:      game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// braidsSacrificePick is the permanent chosen to sacrifice, keyed (#4253):
+// the asking item rides the prompt as data. Its card types are frozen
+// before it leaves, then each opponent is asked once it has gone.
+var braidsSacrificePick = askedPick("choose-cards/braids-arisen-nightmare-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	g := ctx.Game
+	controller := r.Chooser
+	if len(r.Picked) == 0 {
+		// The chooser left the game between the offer and the
+		// pick (CR 800.4a) — nothing to sacrifice, so the "if
+		// you do" clause never fires.
+		return nil
+	}
+	var types braidsCardTypeFlags
+	if c, ok := g.LookupCardForEffect(r.Picked[0]); ok {
+		types = braidsTypesOf(c)
+	}
+	item := ctx.Item
+	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, sacrificed []uuid.UUID) error {
+		if len(sacrificed) == 0 {
+			// The sacrifice did not land (a departed chooser
+			// mid-CR-903.9-window would be the only real way);
+			// "if you do" was not satisfied.
+			return nil
+		}
+		fresh := NewContext(g, item)
+		return braidsOpponentsStep(fresh, controller, types, fresh.Opponents())
+	})
+})
 
 // braidsOpponentsStep asks the next opponent still owed a question,
 // one at a time, in the order Context.Opponents() returns — the same

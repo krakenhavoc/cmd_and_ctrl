@@ -95,17 +95,23 @@ func avatarDestinyChooseMilledCreature(ctx *Context, milled []uuid.UUID) error {
 		Cards:    creatures,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			pick := uuid.Nil
-			if len(picked) > 0 {
-				pick = picked[0]
-			}
-			return avatarDestinyReturn(NewContext(g, item), pick)
-		},
+		ThenKey:  avatarDestinyPick,
+		LiveZone: game.ZoneGraveyard,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// avatarDestinyPick is the milled creature card chosen, keyed (#4253): the
+// asking item rides the prompt as data, so the Aura's "still the card that
+// fell off" check reads the object it came from.
+var avatarDestinyPick = askedPick("choose-cards/avatar-destiny-milled-creature", func(ctx *Context, r game.CardsChosen) error {
+	pick := uuid.Nil
+	if len(r.Picked) > 0 {
+		pick = r.Picked[0]
+	}
+	return avatarDestinyReturn(ctx, pick)
+})
 
 // avatarDestinyReturn puts this card into its owner's hand (if it is
 // still the Aura that fell off) and then `creature`, if any, onto the

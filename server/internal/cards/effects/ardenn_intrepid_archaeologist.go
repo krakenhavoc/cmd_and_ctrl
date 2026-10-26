@@ -103,18 +103,33 @@ func ardennAttach(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      len(candidates),
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.AttachForEffect(id, host); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:  ardennAttachPick,
+		LiveZone: game.ZoneBattlefield,
+		// The host the pick attaches to: its ID is the carry and its kind
+		// ("permanent" or "player") the word.
+		Carry:     []uuid.UUID{host.ID},
+		CarryWord: ardennHostWord(host),
 	})
 	return nil
 }
+
+// ardennAttachPick is the picked Auras and Equipment being attached to the
+// host, keyed (#4253): the host is plain data on the prompt.
+var ardennAttachPick = game.RegisterChooseCardsThen("choose-cards/ardenn-intrepid-archaeologist-attach", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	host := game.TargetRef{Kind: game.TargetCard, ID: r.Carry[0]}
+	if r.Word == "player" {
+		host.Kind = game.TargetPlayer
+	}
+	for _, id := range r.Picked {
+		if err := g.AttachForEffect(id, host); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // ardennAuraEnchantsPlayer reports whether an Aura's enchant clause
 // admits this player (a Curse's "Enchant player", "Enchant opponent"),

@@ -7654,6 +7654,16 @@ cards is `game.RegisterChooseCardsThen` with `ThenKey` (Sylvan Library, Lazav),
 and `LiveZone` keeps a hand re-check. A search prompt (`searchResume`) is not keyed
 yet, so a card that asks one is still not a restore point at that prompt.
 
+**A pick whose rest reads the asking item** (#4253's sweep): register it with
+`askedPick("choose-cards/<card>-<what>", func(ctx *Context, r game.CardsChosen) error {...})`
+(`effects/asked_pick.go`; `askedPickRule` for a set rule) and queue the prompt with
+`ThenKey`, `LiveZone` and `Asked: game.NewAskedItem(item)`. The body runs against a
+Context rebuilt from that item, so it reads the controller, the source object, the
+targets and the trigger's event as the old closure did. What else the closure
+captured is plain data on the prompt: `Carry` (IDs, joined with `packIDLists`),
+`CarryNums`, `CarryWord`. A walk that asks the next player from its own answer
+(Exhume, Breach the Multiverse) registers its key in `init`, since the body names it.
+
 **A ward's life, sacrifice and discard confirms** are keyed too (#4291):
 `confirm/ward-pay-life` (the life is the prompt's `LifeCost`),
 `confirm/ward-discard` (the Word is the count, then `random`), and for a

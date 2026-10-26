@@ -59,23 +59,43 @@ func (b Bolster) Apply(ctx *Context) error {
 	case 1:
 		return b.finish(ctx, least[0])
 	}
-	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	prompt := game.ChooseCardsPrompt{
 		Chooser:  me,
 		Source:   ctx.Source(),
 		Question: "Bolster — choose a creature with the least toughness among creatures you control",
 		Cards:    least,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
+	}
+	if b.Then == nil {
+		// Nothing hangs off the choice, so it is data: the counters' number
+		// rides the prompt and the table stays a restore point (#4253).
+		prompt.ThenKey = bolsterPick
+		prompt.LiveZone = game.ZoneBattlefield
+		prompt.CarryNums = []int{b.N}
+	} else {
+		item := ctx.Item
+		prompt.Zone = game.ZoneBattlefield
+		prompt.Then = func(g *game.Game, picked []uuid.UUID) error {
 			if len(picked) != 1 {
 				return nil
 			}
-			return b.finish(NewContext(g, ctx.Item), picked[0])
-		},
-	})
+			return b.finish(NewContext(g, item), picked[0])
+		}
+	}
+	g.QueueChooseCardsForEffect(prompt)
 	return nil
 }
+
+// bolsterPick is the chosen creature getting its counters, keyed (#4253)
+// for a bolster with no "then": the number of counters is the prompt's one
+// carried number.
+var bolsterPick = game.RegisterChooseCardsThen("choose-cards/bolster", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) != 1 || len(r.Nums) == 0 {
+		return nil
+	}
+	return Bolster{N: r.Nums[0]}.finish(keyedContext(g, r.Chooser, r.Source), r.Picked[0])
+})
 
 // finish puts the counters on the chosen creature and runs Then. It
 // calls AddCounterForEffect directly rather than AddCounter: the chosen
