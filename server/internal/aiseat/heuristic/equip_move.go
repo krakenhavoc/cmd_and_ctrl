@@ -47,10 +47,19 @@ const idleEquipMove = -1.0
 // idleEquip reports whether this activation of src is an equip that
 // moves src between two of the bot's own creatures, or onto the one it
 // is already on, without the new host being the better creature.
-func (st *state) idleEquip(src *protocol.CardView, cp activateParams) bool {
+// With PriceReconfigure, it also covers reconfigure attaches and holds
+// the unattach half until its body-for-boost trade can be priced.
+func (st *state) idleEquip(cfg Config, src *protocol.CardView, cp activateParams) bool {
 	row := rowAt(src, cp.AbilityIndex)
-	if row == nil || !row.Equip {
+	if row == nil || (!row.Equip && !(cfg.PriceReconfigure && row.Reconfigure)) {
 		return false
+	}
+	// An unattach has no target. Its returned body and the boost lost
+	// by the host are not declared on the row, so a flat activation
+	// bonus would pay to detach and then attach again (#4321). Hold it
+	// until that trade can be priced. Ordinary equips are unaffected.
+	if row.Reconfigure && cfg.PriceReconfigure && len(cp.Targets) == 0 {
+		return true
 	}
 	host := st.attach.hostOf(src)
 	if host == nil || host.Controller != st.me || !isCreature(host) {

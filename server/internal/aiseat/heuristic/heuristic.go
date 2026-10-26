@@ -278,6 +278,10 @@ type Config struct {
 	// face_up_pump.go) by the attack it enables this turn, so a flip for
 	// lethal is taken. Off (the baseline) prices the flip without it.
 	PriceFaceUpPump bool
+	// PriceReconfigure applies the equip host comparison to reconfigure
+	// attaches and holds unattach rows whose benefit is not modelled (#4321).
+	// Off preserves the flat activation price for arena comparisons.
+	PriceReconfigure bool
 	// PriceTemporaryEffects prices a pick whose declared target entry
 	// says the change ends with the turn (TargetPurpose.UntilEndOfTurn,
 	// #4302, temporary_effect.go): a benefit aimed at an opponent's
@@ -839,6 +843,7 @@ func DefaultConfig() Config {
 		PriceFaceUpPump:      true,
 		// #4302: a change until end of turn, priced by what it does now.
 		PriceTemporaryEffects: true,
+		PriceReconfigure:      true,
 		CombatGrant:           0.50,
 		// #4312: a grant that saves a permanent, and evasion before
 		// blockers.
@@ -1005,6 +1010,7 @@ func BaselineConfig() Config {
 	c.PriceFaceUpPump = false
 	// #4302: a change until end of turn priced as an ordinary target.
 	c.PriceTemporaryEffects = false
+	c.PriceReconfigure = false
 	c.CombatGrant = 0
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false

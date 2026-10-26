@@ -3871,6 +3871,8 @@ export interface ActivatedAbilityView {
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
+  // #4321: either reconfigure half; the attach row names a target.
+  reconfigure?: boolean;
   // #2500: a row whose whole effect is untapping its own source
   // (Basalt Monolith). Bot data; the client does not read it.
   untap_self?: boolean;
