@@ -75,6 +75,12 @@ const (
 type PutASticker struct {
 	On    StickerOn
 	Kinds []game.StickerKind
+	// MaxCostIsCastX is "with ticket cost X or less", X the X this
+	// permanent was cast with (Pin Collection).
+	MaxCostIsCastX bool
+	// Free is "without paying that sticker's ticket cost": the sticker is
+	// offered whatever tickets its owner has, and none are paid.
+	Free bool
 }
 
 // Apply asks the controller.
@@ -87,9 +93,22 @@ func (e PutASticker) Apply(ctx *Context) error {
 		Source:   ctx.Source(),
 		Objects:  e.objects(ctx, you),
 		Kinds:    append([]game.StickerKind(nil), e.Kinds...),
+		Limit:    e.limit(ctx),
 		Question: e.question(),
 	})
 	return nil
+}
+
+// limit is the narrowing beyond kind: a ticket-cost cap, free of cost.
+func (e PutASticker) limit(ctx *Context) game.StickerLimit {
+	lim := game.StickerLimit{Free: e.Free}
+	if e.MaxCostIsCastX {
+		lim.HasMax = true
+		if c, ok := ctx.Game.LookupCardForEffect(ctx.Source()); ok {
+			lim.MaxCost = c.CastX()
+		}
+	}
+	return lim
 }
 
 // objects are the objects the instruction names that `you` own.
@@ -166,7 +185,11 @@ func (e PutASticker) question() string {
 	case StickerOnCreatureYouOwnThatEnteredThisTurn:
 		on = "a creature you own that entered this turn"
 	}
-	return "You may put " + kind + " on " + on + ". Choose it, or none."
+	suffix := ""
+	if e.Free {
+		suffix = " without paying its ticket cost"
+	}
+	return "You may put " + kind + " on " + on + suffix + ". Choose it, or none."
 }
 
 // GetTicketsThenSticker is the line most sticker cards print: "you get N
@@ -379,4 +402,57 @@ func lettersOnNameStickers(c game.Card, letter rune) int {
 		n += game.StickerLetterCount(t, letter)
 	}
 	return n
+}
+
+// ---------------------------------------------------------------------
+// Sticker kicker (CR 702.33h)
+
+// StickerKicker is "Sticker kicker [cost]": "Kicker [cost]" and "As an
+// additional cost to cast this spell, if it's kicked, you get a ticket
+// counter and you may put a sticker on this spell" (CR 702.33h). The
+// kicker is an optional additional cost keyed game.StickerKickerKey; the
+// ticket and the sticker question are the engine's, asked as the spell
+// becomes cast (game.payStickerKickerLocked), so a card declares only the
+// cost:
+//
+//	GrantedOptionalCosts: []game.GrantedOptionalCost{SpellsYouCastHave( // Wicker Picker
+//	    "Creature spells you cast have sticker kicker {1}.", Creature(), StickerKicker("{1}"))},
+func StickerKicker(mana string) game.AdditionalCost {
+	return game.AdditionalCost{
+		Optional: true,
+		Key:      game.StickerKickerKey,
+		ManaCost: mana,
+		Label:    "Sticker kicker " + mana,
+	}
+}
+
+// ---------------------------------------------------------------------
+// "Has all abilities of ability stickers on …" (CR 123.7a)
+
+// HasAllAbilitiesOfAbilityStickers is a layer-6 static: every object it
+// applies to has the abilities of the ability stickers `lenders` names, as
+// the stickers give them (CR 123.7, 613.1f). "The ability of an ability
+// sticker" is the ability that sticker grants to the object it is on, even
+// when that object has lost its abilities (CR 123.7a), so the lenders are
+// read as data (their stickers), not as the abilities their objects have
+// now. The recipient is "this creature" in each (game.GiveAbilityOfSticker),
+// and its controller "you". A sticker the catalog does not run lends
+// nothing.
+//
+// `lenders` runs inside a layer pass, possibly under the read lock: walk
+// the zones directly and return the stickers, oldest object first.
+func HasAllAbilitiesOfAbilityStickers(label string, appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool,
+	lenders func(g *game.Game, source *game.Card) []game.PlacedSticker) game.StaticAbility {
+	return game.StaticAbility{
+		Label:     label,
+		Layer:     game.Layer6Ability,
+		AppliesTo: appliesTo,
+		Apply: func(c *game.Characteristic, target *game.Card, g *game.Game, source *game.Card) {
+			for _, s := range lenders(g, source) {
+				if s.Print.Kind == game.StickerAbility {
+					game.GiveAbilityOfSticker(c, s, target)
+				}
+			}
+		},
+	}
 }
