@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Brass's Tunnel-Grinder — Legendary Artifact {2}{R}, the front face of
 // Brass's Tunnel-Grinder // Tecutlan, the Searing Rift (#1112):
@@ -78,13 +82,25 @@ func brassTunnelGrinderBore(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	source := item.SourceCardID
-	return g.AddCounterThenForEffect(source, brassTunnelGrinderBoreCounter, 1, func(g *game.Game, _ int) error {
-		n := b39CountersOn(g, source, brassTunnelGrinderBoreCounter)
-		if n < 3 {
-			return nil
-		}
-		return g.AddCounterThenForEffect(source, brassTunnelGrinderBoreCounter, -n, func(g *game.Game, _ int) error {
-			return TransformThis{}.Apply(NewContext(g, item))
-		})
-	})
+	return g.AddCounterByKeyedForEffect(uuid.Nil, source, brassTunnelGrinderBoreCounter, 1,
+		NewContext(g, item).ItemTail(brassTunnelGrinderCheckBore))
 }
+
+// brassTunnelGrinderCheckBore is "if there are three or more bore counters on
+// it, remove all of them and transform it", once the new counter has landed.
+// An on-disk key: never renamed, never reused.
+var brassTunnelGrinderCheckBore = CardTail("brass-tunnel-grinder/check-bore", func(ctx *Context, _ game.TailOutcome) error {
+	source := ctx.Item.SourceCardID
+	n := b39CountersOn(ctx.Game, source, brassTunnelGrinderBoreCounter)
+	if n < 3 {
+		return nil
+	}
+	return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, source, brassTunnelGrinderBoreCounter, -n,
+		ctx.ItemTail(brassTunnelGrinderTransform))
+})
+
+// brassTunnelGrinderTransform is the transform behind the bore counters'
+// removal. An on-disk key: never renamed, never reused.
+var brassTunnelGrinderTransform = CardTail("brass-tunnel-grinder/transform", func(ctx *Context, _ game.TailOutcome) error {
+	return TransformThis{}.Apply(ctx)
+})

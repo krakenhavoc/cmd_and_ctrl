@@ -43,7 +43,7 @@ import (
 //
 // Caller holds g.mu, as every effect body does.
 func exchangeLifeTotals(ctx *Context, a, b uuid.UUID) error {
-	return exchangeLifeTotalsThen(ctx, a, b, nil)
+	return exchangeLifeTotalsThen(ctx, a, b, game.KeyedTail{})
 }
 
 // exchangeLifeTotalsThen is exchangeLifeTotals with a continuation
@@ -59,24 +59,24 @@ func exchangeLifeTotals(ctx *Context, a, b uuid.UUID) error {
 //
 // `then` runs once, after BOTH halves, and is told zero on every path
 // where no life moved — a continuation that is never called is a
-// resolution that never finishes.
-func exchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then func(g *game.Game, appliedToA int) error) error {
-	finish := func(g *game.Game, applied int) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, applied)
+// resolution that never finishes. It is a registered tail (#4253 slice
+// 7), told the applied delta as TailOutcome.Amount, so a CR 616 ordering
+// prompt over either half is a restore point.
+func exchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then game.KeyedTail) error {
+	// Nothing moved: the tail is told zero.
+	finish := func(g *game.Game) error {
+		return then.RunTold(g, nil, 0)
 	}
 	if a == uuid.Nil || b == uuid.Nil || a == b {
-		return finish(ctx.Game, 0)
+		return finish(ctx.Game)
 	}
 	pa, pb := ctx.PlayerByID(a), ctx.PlayerByID(b)
 	if pa == nil || pb == nil {
-		return finish(ctx.Game, 0)
+		return finish(ctx.Game)
 	}
 	lifeA, lifeB := pa.Life, pb.Life
 	if lifeA == lifeB {
-		return finish(ctx.Game, 0)
+		return finish(ctx.Game)
 	}
 	// CR 119.7 and 119.8: a player who can't gain life can't make an
 	// exchange that would raise their total, and a player whose total
@@ -88,21 +88,37 @@ func exchangeLifeTotalsThen(ctx *Context, a, b uuid.UUID, then func(g *game.Game
 	}
 	if ctx.Game.PlayerCantGainLifeLocked(gainer) ||
 		ctx.Game.PlayerLifeTotalCantChangeLocked(pa) || ctx.Game.PlayerLifeTotalCantChangeLocked(pb) {
-		return finish(ctx.Game, 0)
+		return finish(ctx.Game)
 	}
 	source := ctx.Source()
-	return ctx.Game.ChangePlayerLifeThenForEffect(source, a, lifeB-lifeA, func(g *game.Game, applied int) error {
-		// The second half is written from the CAPTURED total, not
-		// from `applied`: "becomes lifeA" is what the exchange says,
-		// whatever the first half's replacements did to the first
-		// player. Re-read b's live total so the delta lands on
-		// whatever it is now — a life replacement on the first half
-		// can have moved it.
+	second := game.KeyedTail{Ref: lifeExchangeSecondHalf, Source: source, Carry: []uuid.UUID{b}, N: lifeA}
+	if !then.IsZero() {
+		second.Next = &then
+	}
+	return ctx.Game.ChangePlayerLifeKeyedForEffect(source, a, lifeB-lifeA, second)
+}
+
+// lifeExchangeSecondHalf is the exchange's second half, once the first has
+// settled: Carry is the other player, N the first player's captured total, and
+// Next the caller's own tail, handed the delta applied to the first player.
+// An on-disk key: never renamed, never reused.
+var lifeExchangeSecondHalf = game.RegisterTail("life-exchange/second-half", func(g *game.Game, o game.TailOutcome) error {
+	// The second half is written from the CAPTURED total, not
+	// from `applied`: "becomes lifeA" is what the exchange says,
+	// whatever the first half's replacements did to the first
+	// player. Re-read b's live total so the delta lands on
+	// whatever it is now — a life replacement on the first half
+	// can have moved it.
+	if len(o.Tail.Carry) > 0 {
+		b, lifeA := o.Tail.Carry[0], o.Tail.N
 		if p := g.PlayerByIDForEffect(b); p != nil && p.Life != lifeA {
-			if err := g.ChangePlayerLifeForEffect(source, b, lifeA-p.Life); err != nil {
+			if err := g.ChangePlayerLifeForEffect(o.Tail.Source, b, lifeA-p.Life); err != nil {
 				return err
 			}
 		}
-		return finish(g, applied)
-	})
-}
+	}
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return o.Tail.Next.RunTold(g, nil, o.Amount)
+})

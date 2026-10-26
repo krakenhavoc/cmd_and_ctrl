@@ -85,7 +85,7 @@ func removeTimeCounterRider(g *game.Game, _, source uuid.UUID) error {
 	if c, ok := g.LookupCardForEffect(source); !ok || c.Counters["time"] <= 0 {
 		return nil
 	}
-	return g.AddCounterThenForEffect(source, "time", -1, nil)
+	return g.AddCounterForEffect(source, "time", -1)
 }
 
 // sourceHasNoTimeCounters gates Temple of Cyclical Time's transform:

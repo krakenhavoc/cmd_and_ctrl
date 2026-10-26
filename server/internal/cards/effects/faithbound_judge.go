@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Faithbound Judge // Sinner's Judgment (#1855, ADR 0107 §4) — a
 // disturb card whose back face is a Curse.
@@ -111,14 +115,20 @@ func sinnersJudgmentUpkeep(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	curse := item.SourceCardID
-	return g.AddCounterThenForEffect(curse, judgmentCounter, 1, func(g *game.Game, _ int) error {
-		if b39CountersOn(g, curse, judgmentCounter) < 3 {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(curse)
-		if !ok || c.AttachedTo.Kind != game.TargetPlayer {
-			return nil
-		}
-		return LoseTheGame{Player: c.AttachedTo.ID}.Apply(NewContext(g, item))
-	})
+	return g.AddCounterByKeyedForEffect(uuid.Nil, curse, judgmentCounter, 1, NewContext(g, item).ItemTail(sinnersJudgmentCheck))
 }
+
+// sinnersJudgmentCheck is "if enchanted player has three or more judgment
+// counters on it, that player loses the game", read once the counter has
+// landed. An on-disk key: never renamed, never reused.
+var sinnersJudgmentCheck = CardTail("sinners-judgment/check", func(ctx *Context, _ game.TailOutcome) error {
+	curse := ctx.Item.SourceCardID
+	if b39CountersOn(ctx.Game, curse, judgmentCounter) < 3 {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(curse)
+	if !ok || c.AttachedTo.Kind != game.TargetPlayer {
+		return nil
+	}
+	return LoseTheGame{Player: c.AttachedTo.ID}.Apply(ctx)
+})

@@ -2,6 +2,8 @@ package effects
 
 import (
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -117,31 +119,42 @@ func heroicSacrificeDies(g *game.Game, item *game.StackItem) error {
 	if !ok || len(info.Counters) == 0 {
 		return draw(g)
 	}
-	return putCountersThen(g, controller, target, info.Counters, draw)
+	kinds := make([]string, 0, len(info.Counters))
+	for k, n := range info.Counters {
+		if n > 0 {
+			kinds = append(kinds, k+"="+strconv.Itoa(n))
+		}
+	}
+	// A fixed order, so a log reads the same twice.
+	sort.Strings(kinds)
+	t := ctx.ItemTail(heroicSacrificePutCounters)
+	t.Carry = []uuid.UUID{target}
+	t.Word = strings.Join(kinds, "\n")
+	return t.Run(g, nil)
 }
 
-// putCountersThen puts each kind in `counters` on `target`, in a fixed
-// order so a log reads the same twice, one placement after another, and
-// runs `then` once the last has landed.
-func putCountersThen(g *game.Game, placer, target uuid.UUID, counters map[string]int, then func(g *game.Game) error) error {
-	kinds := make([]string, 0, len(counters))
-	for k, n := range counters {
-		if n > 0 {
-			kinds = append(kinds, k)
-		}
+// heroicSacrificePutCounters is "put its counters on up to one target
+// creature you control and draw a card", one kind after another, each behind
+// the last one's placement (#4253 slice 7). The tail's Word is the kinds
+// still owed, "kind=count" a line, and Carry the target; with none left the
+// draw runs. An on-disk key: never renamed, never reused.
+var heroicSacrificePutCounters = CardTail("heroic-sacrifice/put-counters", func(ctx *Context, o game.TailOutcome) error {
+	if o.Tail.Word == "" || len(o.Tail.Carry) == 0 {
+		return DrawCards{Player: o.Tail.Player, N: 1}.Apply(ctx)
 	}
-	sort.Strings(kinds)
-	var next func(g *game.Game, i int) error
-	next = func(g *game.Game, i int) error {
-		if i == len(kinds) {
-			return then(g)
-		}
-		return g.AddCounterByThenForEffect(placer, target, kinds[i], counters[kinds[i]], func(g *game.Game, _ int) error {
-			return next(g, i+1)
-		})
+	head, rest, _ := strings.Cut(o.Tail.Word, "\n")
+	cut := strings.LastIndex(head, "=")
+	if cut < 0 {
+		return nil
 	}
-	return next(g, 0)
-}
+	n, err := strconv.Atoi(head[cut+1:])
+	if err != nil {
+		return nil
+	}
+	next := o.Tail
+	next.Word = rest
+	return ctx.Game.AddCounterByKeyedForEffect(o.Tail.Player, o.Tail.Carry[0], head[:cut], n, next)
+})
 
 // fatalFissureDies is the fired trigger's body: earthbend 4 on the land
 // it targeted.

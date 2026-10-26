@@ -7656,6 +7656,23 @@ sacrifice cost one `confirm/ward-sacrifice-<label>` and one
 cannot ride a prompt, so the label IS the cost: two costs with one label must
 be the same cost.
 
+**The "then" of a counter placement or a life change is a tail too** (#4253,
+slice 7). "Put a counter, then draw a card for each counter on it" is
+`g.AddCounterByKeyedForEffect(uuid.Nil, id, kind, n, ctx.ItemTail(ref))` and
+"you lose life, then …" is `g.ChangePlayerLifeKeyedForEffect(src, who, delta,
+tail)` (`LoseLifeEachKeyedForEffect` for a batch, `EarthbendKeyedForEffect` and
+`AmassKeyedForEffect` for those keyword actions), where `ref` is a
+`CardTail("<card>/<what>", …)`. The body is told what settled as
+`o.Amount` (the counters placed, the life that moved, negative for a loss) and
+reads the rest off the tail: `Carry` (the permanent), `N`, `Word` (a counter
+kind) and the asking item. `ctx.Tail(ref)` omits the item, for a body that reads
+only IDs. The closure doors (`AddCounterThenForEffect`, `ChangePlayerLifeThenForEffect`,
+`LoseLifeEachThenForEffect`) are for tests that record what a continuation was
+told; `TestNoCatalogCardCallsAClosureCounterOrLifeDoor` refuses a new catalog
+caller. A tail that two cards share is one key (`counter/double-plus-one`,
+`counter/draw-per-counter`, `life/gain-equal-to-lost`, `counter/put-on-each-next`
+for a list of placements); a cumulative upkeep is keyed by its label.
+
 **Dies triggers** get the CR 603.10 last-known-information
 characteristics as the third `AppliesTo` / `Build` argument — the card
 is already in the graveyard when they run, so read power / toughness /

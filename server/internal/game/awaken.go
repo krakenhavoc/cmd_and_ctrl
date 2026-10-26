@@ -67,16 +67,37 @@ func (g *Game) AwakenForEffect(actor, source, land uuid.UUID, n int) error {
 		return nil
 	}
 	stamp := c.EnteredBattlefieldAt
-	animate := func(g *Game, _ int) error {
-		now, ok := g.battlefieldCardLocked(land)
-		if !ok || now.EnteredBattlefieldAt != stamp {
-			return nil
-		}
-		g.animateLandLocked(source, land, stamp, awakenLabel, "Elemental")
+	if n <= 0 {
+		return g.awakenAnimateLocked(source, land, stamp)
+	}
+	// #4253 slice 7: the animation is the counters' keyed tail, so a CR 616
+	// ordering prompt over the placement is a restore point. The land and its
+	// entry stamp ride the tail as data.
+	return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, KeyedTail{
+		Ref: awakenAnimateTail, Source: source, Player: actor, Carry: []uuid.UUID{land}, N: int(stamp),
+	})
+}
+
+// awakenAnimateTail is the half of an awaken after its counters: animate the
+// land, if it is still the object it was (the tail's Carry and N). An
+// on-disk key: never renamed, never reused.
+var awakenAnimateTail = RegisterTail("engine/awaken-animate", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-	if n <= 0 {
-		return animate(g, 0)
+	return g.awakenAnimateLocked(o.Tail.Source, o.Tail.Carry[0], int64(o.Tail.N))
+})
+
+// awakenAnimateLocked makes land a 0/0 Elemental creature with haste when it
+// is still the object (entry stamp) the awaken was aimed at; a land that left
+// or came back is skipped.
+//
+// Caller must hold g.mu.
+func (g *Game) awakenAnimateLocked(source, land uuid.UUID, stamp int64) error {
+	now, ok := g.battlefieldCardLocked(land)
+	if !ok || now.EnteredBattlefieldAt != stamp {
+		return nil
 	}
-	return g.AddCounterByThenForEffect(actor, land, CounterPlusOne, n, animate)
+	g.animateLandLocked(source, land, stamp, awakenLabel, "Elemental")
+	return nil
 }

@@ -298,14 +298,20 @@ func b31FetchPlainsTapped(g *game.Game, item *game.StackItem) error {
 // is answered — read early, the check would see the counter still
 // there and never sacrifice.
 func b31RemoveMiningCounterOrSacrifice(g *game.Game, _, source uuid.UUID) error {
-	return g.AddCounterThenForEffect(source, "mining", -1, func(g *game.Game, _ int) error {
-		c, ok := g.LookupCardForEffect(source)
-		if !ok || c.Counters["mining"] > 0 {
-			return nil
-		}
-		return g.SacrificePermanentForEffect(source)
-	})
+	return g.AddCounterByKeyedForEffect(uuid.Nil, source, "mining", -1,
+		game.KeyedTail{Ref: gemstoneMineSacrificeIfEmpty, Source: source})
 }
+
+// gemstoneMineSacrificeIfEmpty is "if there are no mining counters on this
+// land, sacrifice it", read once the removal has landed. An on-disk key:
+// never renamed, never reused.
+var gemstoneMineSacrificeIfEmpty = game.RegisterTail("gemstone-mine/sacrifice-if-empty", func(g *game.Game, o game.TailOutcome) error {
+	c, ok := g.LookupCardForEffect(o.Tail.Source)
+	if !ok || c.Counters["mining"] > 0 {
+		return nil
+	}
+	return g.SacrificePermanentForEffect(o.Tail.Source)
+})
 
 // b31HasMiningCounter gates Gemstone Mine's activation: at least one
 // mining counter must be there to remove (CR 601.2h — unpayable

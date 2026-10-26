@@ -42,12 +42,22 @@ func init() {
 			if land == uuid.Nil {
 				return nil
 			}
-			return Earthbend{Target: land, N: 3, Then: func(ctx *Context) error {
-				return earthshapeShield(ctx, land)
-			}}.Apply(ctx)
+			then := ctx.ItemTail(earthshapeShieldTail)
+			then.Carry = []uuid.UUID{land}
+			return Earthbend{Target: land, N: 3, Then: then}.Apply(ctx)
 		},
 	})
 }
+
+// earthshapeShieldTail is "Then each creature you control with power less
+// than or equal to that land's power gains hexproof…" once the counters have
+// landed; Carry is the land. An on-disk key: never renamed, never reused.
+var earthshapeShieldTail = CardTail("earthshape/shield", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return earthshapeShield(ctx, o.Tail.Carry[0])
+})
 
 // earthshapeShield is everything after "Then".
 func earthshapeShield(ctx *Context, land uuid.UUID) error {

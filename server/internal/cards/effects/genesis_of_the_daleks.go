@@ -48,7 +48,7 @@ var genesisChoice = NewVillainousChoice("genesis-of-the-daleks",
 					if n <= 0 {
 						return nil
 					}
-					return ctx.Game.LoseLifeEachThenForEffect(ctx.Source(), ctx.Opponents(), n, nil)
+					return ctx.Game.LoseLifeEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, game.KeyedTail{})
 				},
 			}.Apply(ctx)
 		},

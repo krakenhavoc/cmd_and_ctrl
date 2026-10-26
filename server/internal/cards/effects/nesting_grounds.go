@@ -3,6 +3,8 @@ package effects
 import (
 	"sort"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -47,6 +49,16 @@ func init() {
 	})
 }
 
+// nestingGroundsRemove takes the moved counter off the first permanent, if it
+// landed on the second (the outcome's Amount); Carry is the first permanent
+// and Word the counter kind. An on-disk key: never renamed, never reused.
+var nestingGroundsRemove = game.RegisterTail("nesting-grounds/remove", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.AddCounterForEffect(o.Tail.Carry[0], o.Tail.Word, -1)
+})
+
 func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	from, ok := ctx.ClauseTarget(0)
@@ -73,12 +85,10 @@ func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
 		if _, ok := g.LookupCardForEffect(toID); !ok {
 			return nil
 		}
-		return g.AddCounterByThenForEffect(item.Controller, toID, kind, 1, func(g *game.Game, placed int) error {
-			if placed <= 0 {
-				return nil
-			}
-			return g.AddCounterForEffect(fromID, kind, -1)
-		})
+		then := ctx.Tail(nestingGroundsRemove)
+		then.Carry = []uuid.UUID{fromID}
+		then.Word = kind
+		return g.AddCounterByKeyedForEffect(item.Controller, toID, kind, 1, then)
 	}
 	switch len(kinds) {
 	case 0:
