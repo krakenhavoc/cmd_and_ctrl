@@ -380,26 +380,37 @@ func (g *Game) MeldForEffect(sourceID, partnerID, controller uuid.UUID) error {
 		if err := g.meldInExileLocked(m); err != nil {
 			return err
 		}
-		names := m.MeldedFrom[0].Name + " and " + m.MeldedFrom[1].Name
-		return g.ReturnFromExileToBattlefieldThenForEffect(m.InstanceID, controller, false, func(g *Game, entered uuid.UUID) error {
-			if entered == uuid.Nil {
-				g.unmeldInExileLocked(m.InstanceID)
-				return nil
-			}
-			c := findBattlefieldCard(g, entered)
-			if c == nil {
-				return nil
-			}
-			g.EmitEvent(Event{
-				Kind:   EventMeld,
-				CardID: entered,
-				Actor:  c.Controller,
-				Label:  names,
-			})
-			return nil
-		})
+		return g.ReturnFromExileToBattlefieldKeyedForEffect(m.InstanceID, controller, false,
+			KeyedTail{Ref: meldEnteredRef, Carry: []uuid.UUID{m.InstanceID}})
 	})
 }
+
+// meldEnteredRef is the melded permanent's entry tail as a registered tail
+// (#4253 slice 6): an entry that fails puts the two cards back in exile as
+// two cards, and one that lands announces the meld, naming the two cards
+// the permanent is melded from. The melded object's exile ID is the tail's
+// Carry. An on-disk key: never renamed, never reused.
+var meldEnteredRef = RegisterTail("engine/meld-entered", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	if len(o.IDs) == 0 {
+		g.unmeldInExileLocked(o.Tail.Carry[0])
+		return nil
+	}
+	entered := o.IDs[0]
+	c := findBattlefieldCard(g, entered)
+	if c == nil || len(c.MeldedFrom) < 2 {
+		return nil
+	}
+	g.EmitEvent(Event{
+		Kind:   EventMeld,
+		CardID: entered,
+		Actor:  c.Controller,
+		Label:  c.MeldedFrom[0].Name + " and " + c.MeldedFrom[1].Name,
+	})
+	return nil
+})
 
 // meldInExileLocked swaps the two exiled cards for the melded object
 // that is about to enter: the carrier's slot holds it, the other card

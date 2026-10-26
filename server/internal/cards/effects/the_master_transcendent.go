@@ -62,22 +62,27 @@ func theMasterReanimate(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyardTogether{
 		Targets:    []uuid.UUID{id},
 		Controller: ctx.Controller(),
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			for _, e := range entered {
-				if err := (ScopedEffectFor{
-					Target: e,
-					Mods: []game.Mod{
-						game.SetCreatureTypesMod(ctx.TextSubtypes("Mutant")...),
-						game.SetColorsMod(ctx.TextColors("G")...),
-						game.SetBasePowerMod(3), game.SetBaseToughnessMod(3),
-					},
-					Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), e),
-					Label:    "The Master, Transcendent — a green Mutant with base power and toughness 3/3",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenTail:   theMasterTranscendentMutant,
 	}.Apply(ctx)
 }
+
+// theMasterTranscendentMutant is "it's a green Mutant with base power and
+// toughness 3/3" as a keyed tail (#4253 slice 6). An on-disk key.
+var theMasterTranscendentMutant = TogetherTail("the-master-transcendent/green-mutant",
+	func(ctx *Context, entered []uuid.UUID, _ int) error {
+		for _, e := range entered {
+			if err := (ScopedEffectFor{
+				Target: e,
+				Mods: []game.Mod{
+					game.SetCreatureTypesMod(ctx.TextSubtypes("Mutant")...),
+					game.SetColorsMod(ctx.TextColors("G")...),
+					game.SetBasePowerMod(3), game.SetBaseToughnessMod(3),
+				},
+				Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), e),
+				Label:    "The Master, Transcendent — a green Mutant with base power and toughness 3/3",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

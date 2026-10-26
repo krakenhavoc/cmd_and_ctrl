@@ -71,7 +71,7 @@ func lastMarchPutCreatures(g *game.Game, item *game.StackItem) error {
 			if len(entries) == 0 {
 				return nil
 			}
-			return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: player}, nil)
+			return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: player}, game.KeyedTail{})
 		},
 	})
 	return nil

@@ -39,7 +39,7 @@ func init() {
 					}
 					return nil
 				},
-				Then: PutRestOnBottomInRandomOrder,
+				ThenTail: PutRestOnBottomInRandomOrderTail,
 			}.Apply(ctx)
 		},
 	})

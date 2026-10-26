@@ -44,7 +44,7 @@ func init() {
 				Match:    ManaValueLE(x),
 				Optional: true,
 				Label:    "Genesis Wave — put any number of permanent cards with mana value X or less onto the battlefield",
-				Then:     PutRestIntoGraveyard,
+				ThenTail: PutRestIntoGraveyardTail,
 			}.Apply(ctx)
 		},
 	})

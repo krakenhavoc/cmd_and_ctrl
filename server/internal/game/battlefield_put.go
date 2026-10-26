@@ -348,6 +348,15 @@ func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
 	return entered[0], nil
 }
 
+// ManifestFromHandsKeyedForEffect is ManifestFromHandsThenForEffect with the
+// continuation as data (#4253 slice 6): `then` is a registered tail
+// (RegisterTail), told the permanents that entered as TailOutcome.IDs.
+//
+// Caller must hold g.mu.
+func (g *Game) ManifestFromHandsKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {
+	return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(ids, HandEntryOptions{FaceDown: FaceDownManifested}, then)
+}
+
 // ManifestFromHandsThenForEffect is "<player> manifests <cards> from
 // their hand" (CR 701.40a; Kozilek, the Broken Reality, Scroll of Fate,
 // ADR 0189 decision 3): every card in `ids` is turned face down and put
@@ -470,6 +479,27 @@ func (g *Game) PutOntoBattlefieldTogetherKeyedForEffect(cards []BatchEntry, opts
 // Caller must hold g.mu.
 func (g *Game) PutCardsFromHandOntoBattlefieldThenForEffect(ids []uuid.UUID, opts HandEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
 	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), opts, then)
+}
+
+// PutCardsFromHandOntoBattlefieldKeyedForEffect is
+// PutCardsFromHandOntoBattlefieldThenForEffect with the continuation as
+// data (#4253 slice 6): `then` is a registered tail (RegisterTail), told
+// the permanents that entered as TailOutcome.IDs. A card's question
+// asked on the way is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) PutCardsFromHandOntoBattlefieldKeyedForEffect(ids []uuid.UUID, opts HandEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), &entryBatch{keyed: then, opts: opts})
+}
+
+// PutFromHandOntoBattlefieldKeyedForEffect is the single-card hand door
+// with the continuation as data (#4253 slice 6): `then` is told the
+// entering permanent as TailOutcome.IDs, which is empty when nothing
+// entered.
+//
+// Caller must hold g.mu.
+func (g *Game) PutFromHandOntoBattlefieldKeyedForEffect(cardID uuid.UUID, opts HandEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, &entryBatch{keyed: then, opts: opts})
 }
 
 // PutFromHandOntoBattlefieldThenForEffect is the hand door with a

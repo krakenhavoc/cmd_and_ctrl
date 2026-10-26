@@ -68,16 +68,34 @@ func yawgmothsVileOfferingResolve(item *game.StackItem, ctx *Context) error {
 	return ReturnFromGraveyardTogether{
 		Targets:    back,
 		Controller: ctx.Controller(),
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
-				if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			if ctx.Item != nil && ctx.Item.IsCopy {
-				return nil
-			}
-			return ctx.Game.ExileCardForEffect(item.SourceCardID)
-		},
+		ThenTail:   yawgmothsVileOfferingRest,
+		ThenN:      copyFlag(item),
 	}.Apply(ctx)
+}
+
+// yawgmothsVileOfferingRest is "destroy up to one target legendary
+// creature or planeswalker, then exile this spell unless it's a copy" as
+// a keyed tail (#4253 slice 6). Whether the spell is a copy rides the
+// tail as N, as the asking item does not carry it. An on-disk key.
+var yawgmothsVileOfferingRest = TogetherTail("yawgmoths-vile-offering/destroy-then-exile-this",
+	func(ctx *Context, _ []uuid.UUID, isCopy int) error {
+		if t, ok := ctx.ClauseTarget(1); ok && t.Kind == game.TargetCard {
+			if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		if isCopy == 1 {
+			return nil
+		}
+		return ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID)
+	})
+
+// copyFlag is 1 for a stack item that is a copy of a spell or ability, else
+// 0: the one bit of a resolving item a keyed tail's body reads that
+// game.AskedItem does not carry.
+func copyFlag(item *game.StackItem) int {
+	if item != nil && item.IsCopy {
+		return 1
+	}
+	return 0
 }

@@ -66,25 +66,12 @@ var selvalasStampedeVoted = VoteResultThen("vote/selvalas-stampede", func(ctx *C
 	run, hits := revealUntilCount(ctx, player, func(c game.Card) bool { return c.IsCreature() },
 		wild, "Selvala's Stampede — reveal until a creature card for each wild vote")
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return selvalasStampedeIsHit(hits, c.InstanceID) },
-		All:    true,
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			// "Then shuffle the rest into your library": the rest are
-			// still in it, so shuffling is putting them in.
-			if err := g.ShuffleLibraryForEffect(res.Player); err != nil {
-				return err
-			}
-			// Rebuilt from the live game: this runs after any entry
-			// question, and undo restores a clone.
-			return selvalasStampedeFree(NewContext(g, &game.StackItem{
-				Kind:         game.StackItemSpell,
-				Controller:   res.Player,
-				Owner:        res.Player,
-				SourceCardID: res.Source,
-			}), free)
-		},
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return selvalasStampedeIsHit(hits, c.InstanceID) },
+		All:      true,
+		ThenTail: selvalasStampedeShuffleThenFree,
+		ThenN:    free,
 	}.Apply(ctx)
 })
 
@@ -111,3 +98,24 @@ func selvalasStampedeFree(ctx *Context, n int) error {
 		Label:    "Selvala's Stampede — you may put a permanent card from your hand onto the battlefield for each free vote",
 	}.Apply(ctx)
 }
+
+// selvalasStampedeShuffleThenFree is the rider as a keyed tail (#4253
+// slice 6): shuffle the rest in, then offer the free votes' hand puts
+// (N). An on-disk key.
+var selvalasStampedeShuffleThenFree = PutFromLibraryTail("selvalas-stampede/shuffle-then-free",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		// "Then shuffle the rest into your library": the rest are
+		// still in it, so shuffling is putting them in.
+		if err := g.ShuffleLibraryForEffect(res.Player); err != nil {
+			return err
+		}
+		// Rebuilt from the live game: this runs after any entry
+		// question, and undo restores a clone.
+		return selvalasStampedeFree(NewContext(g, &game.StackItem{
+			Kind:         game.StackItemSpell,
+			Controller:   res.Player,
+			Owner:        res.Player,
+			SourceCardID: res.Source,
+		}), res.N)
+	})

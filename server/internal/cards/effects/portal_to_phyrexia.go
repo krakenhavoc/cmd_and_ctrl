@@ -79,15 +79,22 @@ func portalToPhyrexiaReanimate(g *game.Game, item *game.StackItem) error {
 	if target == uuid.Nil {
 		return nil
 	}
-	return g.PutOntoBattlefieldTogetherThenForEffect(
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(
 		[]game.BatchEntry{{CardID: target, From: game.ZoneGraveyard}},
 		game.ZoneEntryOptions{Controller: item.Controller},
-		func(g *game.Game, entered []uuid.UUID) error {
-			if len(entered) == 0 {
-				return nil
-			}
-			return (ScopedEffectFor{Target: entered[0], Mods: []game.Mod{game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Phyrexian")...)},
-				Duration: g.PinnedTo(game.IndefiniteDuration(), entered[0]),
-				Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(NewContext(g, item))
-		})
+		ctx.ItemTail(portalToPhyrexiaPhyrexian))
 }
+
+// portalToPhyrexiaPhyrexian is "it's a Phyrexian in addition to its other
+// types" as a keyed tail (#4253 slice 6): "Phyrexian" is a word of the
+// Portal's text, which the asking item that rides the tail gives back. An
+// on-disk key.
+var portalToPhyrexiaPhyrexian = CardTail("portal-to-phyrexia/phyrexian", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	g := ctx.Game
+	return (ScopedEffectFor{Target: o.IDs[0], Mods: []game.Mod{game.AddSubtypesMod(g.TextReaderForEffect(ctx.Item).TextSubtypes("Phyrexian")...)},
+		Duration: g.PinnedTo(game.IndefiniteDuration(), o.IDs[0]),
+		Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(ctx)
+})

@@ -58,11 +58,11 @@ func theRingGoesSouthReveal(ctx *Context, _ uuid.UUID) error {
 		Cards:  run,
 	})
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return lands[c.InstanceID] },
-		All:    true,
-		Tapped: true,
-		Then:   PutRestOnBottomInRandomOrder,
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return lands[c.InstanceID] },
+		All:      true,
+		Tapped:   true,
+		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }

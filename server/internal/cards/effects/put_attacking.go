@@ -32,9 +32,9 @@ func putAttackingYourChoice(ctx *Context, card uuid.UUID, from game.ZoneKind, na
 		if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != from {
 			return nil
 		}
-		return g.PutOntoBattlefieldTogetherThenForEffect(
+		return g.PutOntoBattlefieldTogetherKeyedForEffect(
 			[]game.BatchEntry{{CardID: card, From: from}},
-			game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target}, nil)
+			game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target}, game.KeyedTail{})
 	}
 	if len(refs) == 1 {
 		return put(ctx.Game, refs[0].ID)

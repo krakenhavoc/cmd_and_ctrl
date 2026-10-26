@@ -103,6 +103,6 @@ func lonisCryptozoologistDig(ctx *Context, x int) error {
 		Max:          1,
 		Optional:     true,
 		Label:        "Lonis, Cryptozoologist — you may put a nonland permanent card with mana value X or less onto the battlefield under your control",
-		Then:         PutRestOnBottomInRandomOrder,
+		ThenTail:     PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }

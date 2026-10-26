@@ -38,7 +38,7 @@ func queueLibraryPutWithSetRule(t *testing.T, g *game.Game, player uuid.UUID, n,
 			Optional: optional,
 			Validate: b23TotalManaValueAtMost(limit),
 			Label:    "test — total mana value " + string(rune('0'+limit)) + " or less",
-			Then:     PutRestOnBottomInRandomOrder,
+			ThenTail: PutRestOnBottomInRandomOrderTail,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

@@ -77,7 +77,7 @@ func aoTheDawnSkyDiesTrigger() game.TriggeredAbility {
 					// five-card answers only one of which is legal.
 					Validate: b23TotalManaValueAtMost(4),
 					Label:    "Ao, the Dawn Sky — put any number of nonland permanent cards with total mana value 4 or less onto the battlefield",
-					Then:     PutRestOnBottomInRandomOrder,
+					ThenTail: PutRestOnBottomInRandomOrderTail,
 				}.Apply(ctx)
 			}),
 		ModeDoing("Put two +1/+1 counters on each permanent you control that's a creature or Vehicle.",

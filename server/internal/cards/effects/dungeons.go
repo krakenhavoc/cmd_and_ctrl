@@ -269,19 +269,26 @@ func undercityThrone(g *game.Game, item *game.StackItem) error {
 		Max:      1,
 		Counters: map[string]int{"+1/+1": 3},
 		Label:    "Undercity — Throne of the Dead Three: put a creature card from among them onto the battlefield",
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			c := NewContext(g, item)
-			for _, id := range res.Entered {
-				if err := (ScopedEffectFor{
-					Target:   id,
-					Mods:     []game.Mod{game.AddKeywordsMod("hexproof")},
-					Duration: DurationUntilYourNextTurn(c, you),
-					Label:    "Undercity — Throne of the Dead Three: hexproof until your next turn",
-				}).Apply(c); err != nil {
-					return err
-				}
-			}
-			return ShuffleLibrary{Player: you}.Apply(c)
-		},
+		ThenTail: undercityThroneRest,
+		ThenItem: true,
 	}.Apply(ctx)
 }
+
+// undercityThroneRest is the rider as a keyed tail (#4253 slice 6):
+// hexproof until your next turn on what entered, then shuffle. The
+// asking item rides the tail. An on-disk key.
+var undercityThroneRest = PutFromLibraryTail("undercity-throne-of-the-dead-three/hexproof-then-shuffle",
+	func(c *Context, res PutFromLibraryResult) error {
+		you := res.Player
+		for _, id := range res.Entered {
+			if err := (ScopedEffectFor{
+				Target:   id,
+				Mods:     []game.Mod{game.AddKeywordsMod("hexproof")},
+				Duration: DurationUntilYourNextTurn(c, you),
+				Label:    "Undercity — Throne of the Dead Three: hexproof until your next turn",
+			}).Apply(c); err != nil {
+				return err
+			}
+		}
+		return ShuffleLibrary{Player: you}.Apply(c)
+	})

@@ -42,10 +42,14 @@ func init() {
 		Name:         "Widespread Brutality",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return Amass{Subtype: "Zombie", N: 2, Then: widespreadBrutalitySweep}.Apply(ctx)
+			return Amass{Subtype: "Zombie", N: 2, ThenTail: widespreadBrutalitySweepTail}.Apply(ctx)
 		},
 	})
 }
+
+// widespreadBrutalitySweepTail is widespreadBrutalitySweep as a keyed tail
+// (#4253 slice 6). An on-disk key.
+var widespreadBrutalitySweepTail = AmassTail("widespread-brutality/sweep", widespreadBrutalitySweep)
 
 // widespreadBrutalitySweep is "then the Army you amassed deals damage
 // equal to its power to each non-Army creature".

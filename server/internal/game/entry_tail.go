@@ -114,6 +114,44 @@ type entryTail struct {
 	// 3), run by runTokenEntryStepLocked. Cleared through the pointer
 	// as it runs, as `then` is.
 	tokens *tokenEntryRun
+
+	// keyed is the caller's "then" as data (#4253 slice 6): a registered
+	// tail (RegisterTail) told the entering permanent as TailOutcome.IDs
+	// (empty when nothing entered), run exactly where `then` is. The
+	// closure-free twin of `then` for the graveyard, exile and hand
+	// returns of a single permanent. Cleared through the pointer as it
+	// runs, as `then` is. Never set together with `then`.
+	keyed KeyedTail
+}
+
+// entryThen is the continuation a single-permanent entry door takes:
+// the closure form or the registered tail (#4253 slice 6), never both.
+type entryThen struct {
+	fn    func(g *Game, entered uuid.UUID) error
+	keyed KeyedTail
+}
+
+// isZero reports whether no continuation is recorded.
+func (t entryThen) isZero() bool { return t.fn == nil && t.keyed.IsZero() }
+
+// run runs the continuation at once, told the permanent that entered
+// (uuid.Nil for none): for a door whose entry never began.
+//
+// Caller must hold g.mu.
+func (t entryThen) run(g *Game, entered uuid.UUID) error {
+	if t.fn != nil {
+		return t.fn(g, entered)
+	}
+	return g.runKeyedTailLocked(t.keyed, entryTailIDs(entered), 0)
+}
+
+// entryTailIDs is the outcome a single-permanent entry tells a keyed
+// tail: the permanent that entered, or nothing.
+func entryTailIDs(entered uuid.UUID) []uuid.UUID {
+	if entered == uuid.Nil {
+		return nil
+	}
+	return []uuid.UUID{entered}
 }
 
 // runEntryTailLocked runs a settled entry's continuation exactly once.
@@ -142,6 +180,10 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 	if r := ev.entryTail.tokens; r != nil {
 		ev.entryTail.tokens = nil
 		return g.runTokenEntryStepLocked(r, entered)
+	}
+	if k := ev.entryTail.keyed; !k.IsZero() {
+		ev.entryTail.keyed = KeyedTail{}
+		return g.runKeyedTailLocked(k, entryTailIDs(entered), 0)
 	}
 	if ev.entryTail.then == nil {
 		return nil

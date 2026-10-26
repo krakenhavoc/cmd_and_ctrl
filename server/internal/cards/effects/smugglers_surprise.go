@@ -140,14 +140,19 @@ func smugglersSurprisePut(g *game.Game, item *game.StackItem) error {
 			for _, id := range picked {
 				entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneHand})
 			}
-			return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: player},
-				func(g *game.Game, _ []uuid.UUID) error {
-					return smugglersSurpriseProtect(g, item)
-				})
+			return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: player},
+				NewContext(g, item).ItemTail(smugglersSurpriseProtectTail))
 		},
 	})
 	return nil
 }
+
+// smugglersSurpriseProtectTail is the third bullet, run once the second
+// has entered, as a keyed tail (#4253 slice 6): the spell's modes ride the
+// tail. An on-disk key.
+var smugglersSurpriseProtectTail = CardTail("smugglers-surprise/protect", func(ctx *Context, _ game.TailOutcome) error {
+	return smugglersSurpriseProtect(ctx.Game, ctx.Item)
+})
 
 // smugglersSurpriseProtect is the third bullet. The affected set is
 // the creatures you control with power 4 or greater NOW (CR 611.2c),

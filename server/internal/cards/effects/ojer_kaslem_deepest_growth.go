@@ -57,7 +57,7 @@ func ojerKaslemReveal(g *game.Game, item *game.StackItem) error {
 		Optional: true,
 		Validate: ojerKaslemCreatureAndOrLand,
 		Label:    "Ojer Kaslem — you may put a creature card and/or a land card onto the battlefield",
-		Then:     PutRestOnBottomInRandomOrder,
+		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }
 

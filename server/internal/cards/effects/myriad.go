@@ -86,16 +86,9 @@ func myriadGroups(tmpl game.Card, chosen []uuid.UUID) []game.TokenGroup {
 // again when the answer arrives.
 func myriadChooseOpponents(ctx *Context, name string, obj game.ObjectRef, tmpl game.Card, opponents, chosen []uuid.UUID) error {
 	if len(opponents) == 0 {
-		item := ctx.Item
-		return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+		return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 			Controller: ctx.Controller(), Source: ctx.Source(), Groups: myriadGroups(tmpl, chosen), Together: true, AttackChoicesLabel: name + " — myriad",
-		}, func(g *game.Game, tokens []uuid.UUID) error {
-			if len(tokens) == 0 {
-				return nil
-			}
-			return (ScheduleDelayedTrigger{At: game.StepEndCombat, Controller: item.Controller,
-				Label: name + " — exile the myriad tokens", Cards: tokens, Body: exileListedCardsBody}).Apply(NewContext(g, item))
-		})
+		}, withWord(ctx.ItemTail(myriadExileTokens), name))
 	}
 	opponent := opponents[0]
 	p := ctx.Game.PlayerByIDForEffect(opponent)
@@ -110,6 +103,17 @@ func myriadChooseOpponents(ctx *Context, name string, obj game.ObjectRef, tmpl g
 		Objects: []game.ObjectRef{obj},
 	}).Apply(ctx)
 }
+
+// myriadExileTokens is "exile the tokens at end of combat" as a keyed tail
+// (#4253 slice 6): the card granting myriad is the tail's Word, the asking
+// item rides it as data. An on-disk key.
+var myriadExileTokens = CardTail("myriad/exile-tokens-at-end-of-combat", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return (ScheduleDelayedTrigger{At: game.StepEndCombat, Controller: ctx.Item.Controller,
+		Label: o.Tail.Word + " — exile the myriad tokens", Cards: o.IDs, Body: exileListedCardsBody}).Apply(ctx)
+})
 
 // myriadAnswer is one opponent's offer of a token copy: a yes adds them to
 // the opponents chosen (the carried IDs before the Nil; the one asked is the

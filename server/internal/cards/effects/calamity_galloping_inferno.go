@@ -81,10 +81,9 @@ func calamityRound(g *game.Game, item *game.StackItem, left int) error {
 			if len(picked) == 0 {
 				return nil
 			}
-			next := func(g *game.Game) error { return calamityRound(g, item, left-1) }
 			tmpl, ok := TokenCopyTemplate(g, picked[0])
 			if !ok {
-				return next(g)
+				return calamityRound(g, item, left-1)
 			}
 			return CreateTokensAttackingYourChoice{
 				Template: tmpl,
@@ -93,20 +92,36 @@ func calamityRound(g *game.Game, item *game.StackItem, left int) error {
 				Tapped:   true,
 				Prefer:   triggerAttackTarget(item),
 				Label:    "Calamity, Galloping Inferno",
-				Then: func(ctx *Context, created []uuid.UUID) error {
-					if len(created) > 0 {
-						if err := (ScheduleDelayedTrigger{
-							Label: "Calamity, Galloping Inferno — sacrifice the token",
-							Cards: created,
-							Body:  sacrificeListedCardsBody,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return next(ctx.Game)
-				},
+				Tail:     withN(NewContext(g, item).ItemTail(calamityNextRound), left-1),
 			}.Apply(NewContext(g, item))
 		},
 	})
 	return nil
+}
+
+// calamityNextRound is "sacrifice the token at the next end step", then the
+// next copy, as a registered tail (#4253 slice 6): the rounds left are the
+// tail's N and the asking item rides it as data. An on-disk key.
+var calamityNextRound game.TailRef
+
+func init() {
+	// Registered here, not in the var, because the body starts the next
+	// round, which names this tail.
+	calamityNextRound = AttackingTokensThen("attacking-tokens/calamity-sacrifice-then-next-round",
+		func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error {
+			item := tail.Asked.StackItem()
+			if item == nil {
+				return nil
+			}
+			if len(created) > 0 {
+				if err := (ScheduleDelayedTrigger{
+					Label: "Calamity, Galloping Inferno — sacrifice the token",
+					Cards: created,
+					Body:  sacrificeListedCardsBody,
+				}).Apply(NewContext(ctx.Game, item)); err != nil {
+					return err
+				}
+			}
+			return calamityRound(ctx.Game, item, tail.N)
+		})
 }

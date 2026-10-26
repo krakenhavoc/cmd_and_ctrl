@@ -81,19 +81,25 @@ func lilianaDeathsMajestyReanimate(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ReturnFromGraveyardTogether{
-		Targets: ids,
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			for _, id := range entered {
-				if err := (ScopedEffectFor{
-					Target:   id,
-					Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Zombie")...), game.AddColorsMod(ctx.TextColors("B")...)},
-					Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
-					Label:    "Liliana, Death's Majesty — it is a black Zombie in addition to its other colors and types",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Targets:  ids,
+		ThenTail: lilianaDeathsMajestyZombies,
 	}.Apply(ctx)
 }
+
+// lilianaDeathsMajestyZombies is "they're black Zombies in addition to
+// their other colors and types" as a keyed tail (#4253 slice 6). An
+// on-disk key.
+var lilianaDeathsMajestyZombies = TogetherTail("liliana-deaths-majesty/black-zombies",
+	func(ctx *Context, entered []uuid.UUID, _ int) error {
+		for _, id := range entered {
+			if err := (ScopedEffectFor{
+				Target:   id,
+				Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Zombie")...), game.AddColorsMod(ctx.TextColors("B")...)},
+				Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
+				Label:    "Liliana, Death's Majesty — it is a black Zombie in addition to its other colors and types",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

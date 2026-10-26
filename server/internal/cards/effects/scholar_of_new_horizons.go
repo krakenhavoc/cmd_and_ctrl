@@ -81,9 +81,7 @@ var scholarOfNewHorizonsPlace = game.RegisterTail("scholar-of-new-horizons/battl
 		Optional: true,
 		Tapped:   true,
 		Label:    "Scholar of New Horizons — you may put the Plains onto the battlefield tapped (otherwise it goes into your hand)",
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			return scholarOfNewHorizonsToHand(g, res.Rest)
-		},
+		ThenTail: scholarOfNewHorizonsRestToHand,
 	}.Apply(NewContext(g, &game.StackItem{Controller: controller, SourceCardID: source}))
 })
 
@@ -100,3 +98,10 @@ func scholarOfNewHorizonsToHand(g *game.Game, ids []uuid.UUID) error {
 	}
 	return nil
 }
+
+// scholarOfNewHorizonsRestToHand is "otherwise it goes into your hand" as
+// a keyed tail (#4253 slice 6). An on-disk key.
+var scholarOfNewHorizonsRestToHand = PutFromLibraryTail("scholar-of-new-horizons/rest-into-hand",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		return scholarOfNewHorizonsToHand(ctx.Game, res.Rest)
+	})

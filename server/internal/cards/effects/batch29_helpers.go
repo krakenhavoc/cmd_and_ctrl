@@ -279,12 +279,17 @@ func b29ReturnZombieCardsTappedThenDestroyHumans(ctx *Context) error {
 		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
 			return c.IsCreature() && c.HasSubtype(zombie)
 		}),
-		Tapped: true,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			return DestroyAllMatching{Match: HasSubtype("Human")}.Apply(ctx)
-		},
+		Tapped:   true,
+		ThenTail: zombieApocalypseDestroyHumans,
 	}.Apply(ctx)
 }
+
+// zombieApocalypseDestroyHumans is "then destroy all Humans" as a keyed
+// tail (#4253 slice 6). An on-disk key.
+var zombieApocalypseDestroyHumans = TogetherTail("zombie-apocalypse/destroy-humans",
+	func(ctx *Context, _ []uuid.UUID, _ int) error {
+		return DestroyAllMatching{Match: HasSubtype("Human")}.Apply(ctx)
+	})
 
 // b29LightPawsLabel is the stack label of Light-Paws' Aura trigger.
 const b29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to attach to it"

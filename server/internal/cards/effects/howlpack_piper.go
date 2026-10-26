@@ -50,7 +50,8 @@ func init() {
 					Match:    Creature(),
 					Optional: true,
 					Label:    "Howlpack Piper — you may put a creature card from your hand onto the battlefield",
-					Then:     howlpackPiperUntap(ctx.TextSubtype("Wolf"), ctx.TextSubtype("Werewolf")),
+					ThenTail: howlpackPiperUntap,
+					ThenItem: true,
 				}.Apply(ctx)
 			},
 		}},
@@ -76,18 +77,20 @@ func init() {
 }
 
 // howlpackPiperUntap is "If it's a Wolf or Werewolf, untap this
-// creature", `wolf` and `werewolf` being the types as the Piper's text
-// reads them: the permanent that arrived is read through the layers, and
-// the Piper must still be in play to untap.
-func howlpackPiperUntap(wolf, werewolf string) func(*game.Game, PutFromHandResult) error {
-	return func(g *game.Game, res PutFromHandResult) error {
-		if res.Entered == uuid.Nil {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(res.Entered)
-		if !ok || !(c.HasSubtype(wolf) || c.HasSubtype(werewolf)) {
-			return nil
-		}
-		return UntapTarget{Target: res.Source}.Apply(NewContext(g, &game.StackItem{SourceCardID: res.Source, Controller: res.Player}))
+// creature", as a keyed tail (#4253 slice 6). "Wolf" and "Werewolf" are
+// the types as the Piper's text reads them, which the asking item that
+// rides the tail (ThenItem) gives back: the permanent that arrived is
+// read through the layers, and the Piper must still be in play to untap.
+// An on-disk key.
+var howlpackPiperUntap = PutFromHandTail("howlpack-piper/untap-if-wolf", func(ctx *Context, res PutFromHandResult) error {
+	if res.Entered == uuid.Nil {
+		return nil
 	}
-}
+	g := ctx.Game
+	wolf, werewolf := ctx.TextSubtype("Wolf"), ctx.TextSubtype("Werewolf")
+	c, ok := g.LookupCardForEffect(res.Entered)
+	if !ok || !(c.HasSubtype(wolf) || c.HasSubtype(werewolf)) {
+		return nil
+	}
+	return UntapTarget{Target: res.Source}.Apply(NewContext(g, &game.StackItem{SourceCardID: res.Source, Controller: res.Player}))
+})

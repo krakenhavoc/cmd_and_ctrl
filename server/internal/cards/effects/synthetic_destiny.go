@@ -72,12 +72,10 @@ func syntheticDestinyReveal(g *game.Game, item *game.StackItem, params game.Effe
 		})
 	}
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() },
-		All:    true,
-		Then: func(g *game.Game, _ PutFromLibraryResult) error {
-			return g.ShuffleLibraryForEffect(player)
-		},
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() },
+		All:      true,
+		ThenTail: thenShuffle,
 	}.Apply(ctx)
 }

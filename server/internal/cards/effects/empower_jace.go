@@ -160,8 +160,15 @@ func RegisterEmpowerThen(key string, then func(ctx *Context) error) EmpowerThen 
 			return empowerPutOn(ctx.Game, ctx.Controller(), chosen[0], n, finish)
 		},
 	})
-	return EmpowerThen{pick: pick, then: then}
+	rest := EmpowerThen{pick: pick, then: then}
+	empowerThens[key] = rest
+	return rest
 }
+
+// empowerThens is every registered rest by key, so a creation's tail can name
+// the one it was started with (#4253 slice 6). Written only by
+// RegisterEmpowerThen, at package initialisation.
+var empowerThens = map[string]EmpowerThen{}
 
 // empowerNoThen is Empower Jace with nothing after it.
 var empowerNoThen = RegisterEmpowerThen("prompt-run/empower-jace-choose", nil)
@@ -190,25 +197,44 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 	if !rest.pick.run.Valid() {
 		rest = empowerNoThen
 	}
-	finish := func(g *game.Game) error { return resumeClause(g, item, rest.then) }
-	place := func(g *game.Game) error {
-		return empowerChosenJaceLocked(g, item, player, n, finish, rest.pick)
-	}
 	if len(JaceTokensControlledBy(ctx.Game, player)) > 0 {
-		return place(ctx.Game)
+		return empowerJacePlaceCounters(ctx.Game, item, player, n, rest)
 	}
 	// "If you don't control a Jace planeswalker token, create" one.
 	// Through the one creation path, so the CR 701.7b window applies:
 	// a Doubling Season makes two Jaces, and the "choose" below picks
 	// which of them gets the counters (the other has 0 loyalty and
 	// goes at the next state-based action check, CR 704.5i).
-	return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+	//
+	// #4253 slice 6: the placing is the creation's keyed tail, so a CR 616
+	// ordering prompt over the token's creation is a restore point. The
+	// registered rest is named by its key (the tail's Word).
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: player,
 		Source:     ctx.Source(),
 		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(JaceToken()), Count: 1}},
-	}, func(g *game.Game, _ []uuid.UUID) error {
-		return place(g)
-	})
+	}, withWord(withN(ctx.ItemTail(empowerJacePlace), n), rest.pick.run.Key()))
+}
+
+// empowerJacePlace is the half of the keyword action after the Jace token
+// has been made: choose a Jace and put the counters on it. The count is the
+// tail's N, the player its Player, the asking item rides it as data, and the
+// card's own rest is named by its key (the Word). An on-disk key.
+var empowerJacePlace = CardTail("empower-jace/place-counters", func(ctx *Context, o game.TailOutcome) error {
+	rest, ok := empowerThens[o.Tail.Word]
+	if !ok {
+		rest = empowerNoThen
+	}
+	return empowerJacePlaceCounters(ctx.Game, ctx.Item, o.Tail.Player, o.Tail.N, rest)
+})
+
+// empowerJacePlaceCounters is "choose a Jace planeswalker token you control.
+// Put N loyalty counters on it", then the card's own rest.
+//
+// Caller must hold g.mu.
+func empowerJacePlaceCounters(g *game.Game, item *game.StackItem, player uuid.UUID, n int, rest EmpowerThen) error {
+	finish := func(g *game.Game) error { return resumeClause(g, item, rest.then) }
+	return empowerChosenJaceLocked(g, item, player, n, finish, rest.pick)
 }
 
 // empowerChosenJaceLocked is the "choose a Jace planeswalker token you

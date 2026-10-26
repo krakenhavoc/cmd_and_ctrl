@@ -106,7 +106,7 @@ func putSacrificedCardOntoBattlefield(ctx *Context, card, controller uuid.UUID) 
 	case game.ZoneExile:
 		return ReturnFromExile{Target: card, Controller: controller}.Apply(ctx)
 	case game.ZoneLibrary, game.ZoneCommand, game.ZoneHand:
-		return putCardsFromZoneTogether(ctx, z.Kind, []uuid.UUID{card}, controller, false, nil)
+		return putCardsFromZoneTogether(ctx, z.Kind, []uuid.UUID{card}, controller, false)
 	}
 	return nil
 }

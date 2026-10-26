@@ -51,11 +51,25 @@ func rohirrimChargersFetch(g *game.Game, item *game.StackItem) error {
 	run, hit := revealUntil(ctx, player, func(c game.Card) bool { return c.HasSubtype("Equipment") },
 		"Rohirrim Chargers — revealed until an Equipment card")
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-		All:    true,
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
+		Player:    player,
+		Cards:     run,
+		Match:     func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+		All:       true,
+		ThenTail:  rohirrimChargersAttach,
+		ThenCarry: []uuid.UUID{exerted.ID},
+		ThenN:     exerted.Epoch,
+	}.Apply(ctx)
+}
+
+// rohirrimChargersAttach is the rider as a keyed tail (#4253 slice 6):
+// attach the Equipment to the exerted creature if it is still the same
+// object, then the rest to the bottom. The exerted creature rides the
+// tail as its ID (carried) and its epoch (N). An on-disk key.
+var rohirrimChargersAttach = PutFromLibraryTailCarrying("rohirrim-chargers/attach-then-rest", 1,
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		if len(res.Carry) == 1 {
+			exerted := game.ObjectRef{ID: res.Carry[0], Epoch: res.N}
 			host, ok := g.LookupCardForEffect(exerted.ID)
 			if ok && onBattlefield(g, exerted.ID) && host.ObjectEpoch == exerted.Epoch {
 				for _, id := range res.Entered {
@@ -67,7 +81,6 @@ func rohirrimChargersFetch(g *game.Game, item *game.StackItem) error {
 					}
 				}
 			}
-			return PutRestOnBottomInRandomOrder(g, res)
-		},
-	}.Apply(ctx)
-}
+		}
+		return PutRestOnBottomInRandomOrder(g, res)
+	})

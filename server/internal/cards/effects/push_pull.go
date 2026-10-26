@@ -47,11 +47,16 @@ func init() {
 			return ReturnFromGraveyardTogether{
 				Targets:    legalTargetCardIDs(ctx),
 				Controller: ctx.Controller(),
-				Then:       pullHasteThenSacrifice,
+				ThenTail:   pullHasteThenSacrificeTail,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// pullHasteThenSacrificeTail is pullHasteThenSacrifice as a keyed tail
+// (#4253 slice 6). An on-disk key.
+var pullHasteThenSacrificeTail = TogetherTail("push-pull/haste-then-sacrifice",
+	func(ctx *Context, entered []uuid.UUID, _ int) error { return pullHasteThenSacrifice(ctx, entered) })
 
 // pullHasteThenSacrifice is the rest of Pull, once its creatures have
 // entered: haste until end of turn, and a delayed trigger that

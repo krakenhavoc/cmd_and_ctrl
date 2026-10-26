@@ -75,16 +75,12 @@ func init() {
 // more creatures.
 func rabbleRousingResolve(g *game.Game, item *game.StackItem, ref game.PermissionCardRef, n int) error {
 	controller := item.Controller
-	offer := func(g *game.Game, _ []uuid.UUID) error {
-		if b14CreaturesControlled(g, controller) >= 10 {
-			grantHiddenPlay(g, controller, ref, "Rabble Rousing — play the exiled card without paying its mana cost")
-		}
-		return nil
-	}
+	// The exiled card rides the tail: its ID as Carry, its epoch as N.
+	offer := game.KeyedTail{Ref: rabbleRousingOffer, Player: controller, Source: item.SourceCardID, Carry: []uuid.UUID{ref.ID}, N: ref.Epoch}
 	if n <= 0 {
-		return offer(g, nil)
+		return offer.Run(g, nil)
 	}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
@@ -93,3 +89,18 @@ func rabbleRousingResolve(g *game.Game, item *game.StackItem, ref game.Permissio
 		}},
 	}, offer)
 }
+
+// rabbleRousingOffer is "if you control ten or more creatures, you may play
+// the exiled card without paying its mana cost" as a keyed tail (#4253 slice
+// 6). An on-disk key.
+var rabbleRousingOffer = CardTail("rabble-rousing/offer-the-exiled-card", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	g, controller := ctx.Game, o.Tail.Player
+	ref := game.PermissionCardRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N}
+	if b14CreaturesControlled(g, controller) >= 10 {
+		grantHiddenPlay(g, controller, ref, "Rabble Rousing — play the exiled card without paying its mana cost")
+	}
+	return nil
+})

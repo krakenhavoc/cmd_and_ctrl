@@ -58,7 +58,7 @@ func init() {
 			Instruction(func(ctx *Context) error {
 				incubate := Incubate{N: 2}
 				if ctx.HasMode(1) {
-					incubate.Then = chooseAnIncubatorAndTransformIt
+					incubate.ThenTail = chooseAnIncubatorTail
 				} else if !ctx.HasMode(0) {
 					return nil
 				}
@@ -67,6 +67,12 @@ func init() {
 		),
 	})
 }
+
+// chooseAnIncubatorTail is chooseAnIncubatorAndTransformIt as a keyed tail
+// (#4253 slice 6). An on-disk key.
+var chooseAnIncubatorTail = CardTail("sunder-the-gateway/choose-an-incubator-and-transform", func(ctx *Context, _ game.TailOutcome) error {
+	return chooseAnIncubatorAndTransformIt(ctx)
+})
 
 // chooseAnIncubatorAndTransformIt is "transform an Incubator token you
 // control": the controller picks one of their Incubator tokens as the

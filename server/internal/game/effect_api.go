@@ -2445,7 +2445,7 @@ func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.
 // enters with. FaceDownNone is every face-up return; nil counters is
 // every return that names none.
 func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
-	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, nil)
+	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, entryThen{})
 }
 
 // ReturnFromGraveyardToBattlefieldThenForEffect is
@@ -2468,13 +2468,33 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
+	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, nil, entryThen{fn: then})
+}
+
+// ReturnFromGraveyardToBattlefieldKeyedForEffect is
+// ReturnFromGraveyardToBattlefieldThenForEffect with the rest of the
+// effect as data (#4253 slice 6): `then` is a registered tail
+// (RegisterTail), told the entering permanent as TailOutcome.IDs (empty
+// when nothing entered). A question the entry asks (a Clone's copy, a
+// shockland's life) is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardToBattlefieldKeyedForEffect(cardID, controller uuid.UUID, tapped bool, then KeyedTail) error {
+	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, nil, entryThen{keyed: then})
+}
+
+// returnFromGraveyardThenLocked is the body of the graveyard-to-
+// battlefield doors with a continuation, in either form.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromGraveyardThenLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then entryThen) error {
 	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
-		if then != nil {
-			return then(g, uuid.Nil)
+		if !then.isZero() {
+			return then.run(g, uuid.Nil)
 		}
 		return nil
 	}
-	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, false, then)
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, then)
 	return err
 }
 
@@ -2490,19 +2510,22 @@ func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller 
 // `controller` uuid.Nil is "under its owner's control". Caller must
 // hold g.mu. Added for #3172 (cav-h1).
 func (g *Game) ReturnFromGraveyardWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
-	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
-		if then != nil {
-			return then(g, uuid.Nil)
-		}
-		return nil
-	}
-	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, false, then)
-	return err
+	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, counters, entryThen{fn: then})
+}
+
+// ReturnFromGraveyardWithCountersKeyedForEffect is
+// ReturnFromGraveyardWithCountersThenForEffect with the rest of the
+// effect as data (#4253 slice 6), as
+// ReturnFromGraveyardToBattlefieldKeyedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardWithCountersKeyedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then KeyedTail) error {
+	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, counters, entryThen{keyed: then})
 }
 
 // returnFromGraveyardEntryLocked is the body of every graveyard return,
 // with the caller's continuation for a battlefield entry (nil for none).
-func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, asAura bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, asAura bool, then entryThen) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2583,10 +2606,10 @@ func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, c
 		for name, n := range counters {
 			ev.AddCounterAtETB(name, n)
 		}
-		if then != nil {
+		if !then.isZero() {
 			// ADR 0154: the caller's continuation, run from the landing
 			// whether the entry settled inline or on a resume.
-			ev.entryTail = &entryTail{then: then}
+			ev.entryTail = &entryTail{then: then.fn, keyed: then.keyed}
 		}
 		return g.enterBattlefieldThroughPipelineLocked(ev)
 	}
@@ -3768,11 +3791,11 @@ func (g *Game) CreateTokensForEffect(controller uuid.UUID, template Card, n int,
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Card, n int, defender uuid.UUID) error {
-	return g.CreateTokensThenForEffect(TokenCreation{
+	return g.CreateTokensKeyedForEffect(TokenCreation{
 		Controller: controller,
 		Groups:     []TokenGroup{{Template: template, Count: n}},
 		Attacking:  defender,
-	}, nil)
+	}, KeyedTail{})
 }
 
 // CreateTokensBlockingForEffect creates n copies of template under
@@ -3784,10 +3807,10 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 //
 // Caller must hold g.mu.
 func (g *Game) CreateTokensBlockingForEffect(controller uuid.UUID, template Card, n int, attacker uuid.UUID) error {
-	return g.CreateTokensThenForEffect(TokenCreation{
+	return g.CreateTokensKeyedForEffect(TokenCreation{
 		Controller: controller,
 		Groups:     []TokenGroup{{Template: template, Count: n, Blocking: attacker}},
-	}, nil)
+	}, KeyedTail{})
 }
 
 // ScryForEffect performs a scry N (CR 701.22): the player looks at the
@@ -4144,7 +4167,7 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, nil)
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, entryThen{})
 }
 
 // ReturnFromExileToBattlefieldThenForEffect is the exile return with the
@@ -4170,7 +4193,19 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, then)
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, entryThen{fn: then})
+	return err
+}
+
+// ReturnFromExileToBattlefieldKeyedForEffect is
+// ReturnFromExileToBattlefieldThenForEffect with the rest of the effect
+// as data (#4253 slice 6): `then` is a registered tail (RegisterTail),
+// told the permanent's NEW instance ID as TailOutcome.IDs (empty when
+// nothing entered). A question the entry asks is then a restore point.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileToBattlefieldKeyedForEffect(cardID, controller uuid.UUID, tapped bool, then KeyedTail) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, entryThen{keyed: then})
 	return err
 }
 
@@ -4186,7 +4221,17 @@ func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, then)
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, entryThen{fn: then})
+	return err
+}
+
+// ReturnFromExileWithCountersKeyedForEffect is
+// ReturnFromExileWithCountersThenForEffect with the rest of the effect
+// as data (#4253 slice 6), as ReturnFromExileToBattlefieldKeyedForEffect.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileWithCountersKeyedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then KeyedTail) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, entryThen{keyed: then})
 	return err
 }
 
@@ -4194,19 +4239,19 @@ func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.
 // doors.
 //
 // Caller must hold g.mu.
-func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then entryThen) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
 	// named is the one whose new ID the caller is told.
 	if partner := g.meldSplitPartnerInExileLocked(cardID); partner != uuid.Nil {
-		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
+		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil, entryThen{}); err != nil && !errors.Is(err, ErrCardNotFound) {
 			return uuid.Nil, err
 		}
 	}
 	if g.Exile == nil || !g.Exile.Contains(cardID) {
-		if then != nil {
-			if err := then(g, uuid.Nil); err != nil {
+		if !then.isZero() {
+			if err := then.run(g, uuid.Nil); err != nil {
 				return uuid.Nil, errors.Join(ErrCardNotFound, err)
 			}
 		}
@@ -4220,8 +4265,8 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 	// Not an error: the instruction legally does nothing (#1872).
 	for i := range g.Exile.Cards {
 		if g.Exile.Cards[i].InstanceID == cardID && g.Exile.Cards[i].IsToken() {
-			if then != nil {
-				return uuid.Nil, then(g, uuid.Nil)
+			if !then.isZero() {
+				return uuid.Nil, then.run(g, uuid.Nil)
 			}
 			return uuid.Nil, nil
 		}
@@ -4266,7 +4311,7 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 		// #1327: and the caller's continuation, run from the landing
 		// with the NEW ID, whether the entry settled inline or on a
 		// resume.
-		entryTail: &entryTail{newObject: true, then: then},
+		entryTail: &entryTail{newObject: true, then: then.fn, keyed: then.keyed},
 	})
 }
 

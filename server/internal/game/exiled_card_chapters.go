@@ -93,10 +93,22 @@ var exiledCreatureOrHandAnswer = RegisterConfirmThen("confirm/exiled-creature-ba
 	if !r.Accepted {
 		return g.putExiledIntoHandLocked(player, source, cardID)
 	}
-	return g.ReturnFromExileToBattlefieldThenForEffect(cardID, player, false, func(g *Game, entered uuid.UUID) error {
-		if entered != uuid.Nil || g.Exile == nil || !g.Exile.Contains(cardID) {
-			return nil
-		}
-		return g.putExiledIntoHandLocked(player, source, cardID)
-	})
+	return g.ReturnFromExileToBattlefieldKeyedForEffect(cardID, player, false,
+		KeyedTail{Ref: exiledCreatureOrHandRest, Player: player, Source: source, Carry: []uuid.UUID{cardID}})
+})
+
+// exiledCreatureOrHandRest is the entry's tail as a registered tail (#4253
+// slice 6): an entry a replacement turned away leaves the card in exile,
+// and "if you don't put it onto the battlefield" puts it into the hand. The
+// exiled card is the tail's Carry, the player and the Saga its Player and
+// Source. An on-disk key: never renamed, never reused.
+var exiledCreatureOrHandRest = RegisterTail("engine/exiled-creature-or-hand", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) > 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	cardID := o.Tail.Carry[0]
+	if g.Exile == nil || !g.Exile.Contains(cardID) {
+		return nil
+	}
+	return g.putExiledIntoHandLocked(o.Tail.Player, o.Tail.Source, cardID)
 })

@@ -52,14 +52,18 @@ func mechanizedProductionUpkeep(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return mechanizedProductionCheckWin(g, item)
 	}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups:     []game.TokenGroup{{Template: copiedToken(tmpl), Count: 1}},
-	}, func(g *game.Game, _ []uuid.UUID) error {
-		return mechanizedProductionCheckWin(g, item)
-	})
+	}, NewContext(g, item).ItemTail(mechanizedProductionWin))
 }
+
+// mechanizedProductionWin is the win check once the token is in play, as a
+// keyed tail (#4253 slice 6). An on-disk key.
+var mechanizedProductionWin = CardTail("mechanized-production/check-win", func(ctx *Context, _ game.TailOutcome) error {
+	return mechanizedProductionCheckWin(ctx.Game, ctx.Item)
+})
 
 // mechanizedProductionCheckWin is "then if you control eight or more
 // artifacts with the same name as one another, you win the game".

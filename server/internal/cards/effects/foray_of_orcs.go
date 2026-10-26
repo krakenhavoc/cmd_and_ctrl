@@ -30,19 +30,24 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Amass{
-				Subtype: "Orc",
-				N:       2,
-				Then: func(ctx *Context, army uuid.UUID) error {
-					return ReflexiveTrigger{
-						Label: "Foray of Orcs — damage equal to the amassed Army's power",
-						Cards: []uuid.UUID{army},
-						Body:  forayOfOrcsDamageBody,
-					}.Apply(ctx)
-				},
+				Subtype:  "Orc",
+				N:        2,
+				ThenTail: forayOfOrcsReflexive,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// forayOfOrcsReflexive is "when you do, the Army deals damage equal to its
+// power to target creature an opponent controls" as a keyed tail (#4253
+// slice 6). An on-disk key.
+var forayOfOrcsReflexive = AmassTail("foray-of-orcs/reflexive-damage", func(ctx *Context, army uuid.UUID) error {
+	return ReflexiveTrigger{
+		Label: "Foray of Orcs — damage equal to the amassed Army's power",
+		Cards: []uuid.UUID{army},
+		Body:  forayOfOrcsDamageBody,
+	}.Apply(ctx)
+})
 
 // forayOfOrcsDamage is the reflexive body: the chosen creature takes
 // damage equal to the Army's power, which is zero when the Army is not

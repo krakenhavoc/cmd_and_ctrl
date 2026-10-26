@@ -63,13 +63,11 @@ func blessedReincarnationReveal(ctx *Context, player uuid.UUID) error {
 	// 110.2a), which Arboria reads.
 	return ctx.Game.PutByEnteringPlayerForEffect(func() error {
 		return PutFromLibraryOntoBattlefield{
-			Player: player,
-			Cards:  run,
-			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-			All:    true,
-			Then: func(g *game.Game, _ PutFromLibraryResult) error {
-				return g.ShuffleLibraryForEffect(player)
-			},
+			Player:   player,
+			Cards:    run,
+			Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:      true,
+			ThenTail: thenShuffle,
 		}.Apply(ctx)
 	})
 }

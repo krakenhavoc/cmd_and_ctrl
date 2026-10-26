@@ -121,5 +121,5 @@ func returnTheObjectsTogetherUnderYourControl(g *game.Game, item *game.StackItem
 	if len(entries) == 0 {
 		return nil
 	}
-	return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: item.Controller}, nil)
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: item.Controller}, game.KeyedTail{})
 }

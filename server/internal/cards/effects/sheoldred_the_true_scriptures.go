@@ -146,8 +146,14 @@ func trueScripturesChapterThree(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyardTogether{
 		Targets:    ids,
 		Controller: item.Controller,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			return Flicker{Target: item.SourceCardID, Controller: item.Controller}.Apply(ctx)
-		},
+		ThenTail:   sheoldredFlickerThis,
 	}.Apply(ctx)
 }
+
+// sheoldredFlickerThis is "then exile this Saga, then return it" as a keyed
+// tail (#4253 slice 6), told its own card and controller by the asking
+// item. An on-disk key.
+var sheoldredFlickerThis = TogetherTail("sheoldred-the-true-scriptures/flicker-this",
+	func(ctx *Context, _ []uuid.UUID, _ int) error {
+		return Flicker{Target: ctx.Item.SourceCardID, Controller: ctx.Item.Controller}.Apply(ctx)
+	})

@@ -87,17 +87,36 @@ func tombstoneStairwellCreate(g *game.Game, item *game.StackItem, link game.Perm
 		if n == 0 {
 			continue
 		}
-		rest := order
 		ctx := NewContext(g, item)
-		return g.CreateTokensThenForEffect(game.TokenCreation{
+		// The Stairwell object (ID, epoch) and the players still to make
+		// theirs ride the tail: the object as Carry[0] and N, the players
+		// after it.
+		next := ctx.ItemTail(tombstoneStairwellNext)
+		next.Carry = append([]uuid.UUID{link.ID}, order...)
+		next.N = link.Epoch
+		return g.CreateTokensKeyedForEffect(game.TokenCreation{
 			Controller: player,
 			Source:     item.SourceCardID,
 			Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard(tombstoneStairwellToken)), Count: n, CreatedWith: link}},
-		}, func(g *game.Game, _ []uuid.UUID) error {
-			return tombstoneStairwellCreate(g, item, link, rest)
-		})
+		}, next)
 	}
 	return nil
+}
+
+// tombstoneStairwellNext makes the next player's Tombspawn once the last
+// has landed, as a keyed tail (#4253 slice 6). An on-disk key.
+var tombstoneStairwellNext game.TailRef
+
+func init() {
+	// Registered here, not in the var, because the body makes the next
+	// player's Tombspawn, which names this tail.
+	tombstoneStairwellNext = CardTail("tombstone-stairwell/next-players-tombspawn", func(ctx *Context, o game.TailOutcome) error {
+		if len(o.Tail.Carry) == 0 {
+			return nil
+		}
+		link := game.PermissionCardRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N}
+		return tombstoneStairwellCreate(ctx.Game, ctx.Item, link, o.Tail.Carry[1:])
+	})
 }
 
 // tombstoneStairwellDestroy destroys every token linked to the source

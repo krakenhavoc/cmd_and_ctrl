@@ -71,9 +71,14 @@ var ghoulsNightOutReturned = RunThen("prompt-run/ghouls-night-out-return", func(
 	return ReturnFromGraveyardTogether{
 		Targets:    r.Picks().Cards(),
 		Controller: ctx.Controller(),
-		Then:       ghoulsNightOutRiders,
+		ThenTail:   ghoulsNightOutRidersTail,
 	}.Apply(ctx)
 })
+
+// ghoulsNightOutRidersTail is ghoulsNightOutRiders as a keyed tail (#4253
+// slice 6). An on-disk key.
+var ghoulsNightOutRidersTail = TogetherTail("ghouls-night-out/black-zombies",
+	func(ctx *Context, entered []uuid.UUID, _ int) error { return ghoulsNightOutRiders(ctx, entered) })
 
 // ghoulsNightOutRiders makes each returned creature a black Zombie in
 // addition to its other colours and types, with decayed, for as long as

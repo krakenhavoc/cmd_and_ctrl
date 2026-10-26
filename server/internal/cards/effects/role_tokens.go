@@ -249,23 +249,33 @@ func (r CreateRoleToken) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	host := game.TargetRef{Kind: game.TargetCard, ID: r.Host}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	tail := ctx.Tail(roleAttachToHost)
+	tail.Carry = []uuid.UUID{r.Host}
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: controller,
 		Source:     ctx.Source(),
 		Groups: []game.TokenGroup{{
 			Template: ruleDefinedToken(tokenFromCatalog(roleBuilder(r.Role))),
 			Count:    1,
 		}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		for _, id := range created {
-			if err := g.AttachForEffect(id, host); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}, tail)
 }
+
+// roleAttachToHost is "attached to <Host>" as a keyed tail (#4253 slice 6):
+// the Role enters, then attaches to the host that rides the tail as its
+// Carry. Shared by every Role token. An on-disk key.
+var roleAttachToHost = CardTail("role-tokens/attach-to-host", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	host := game.TargetRef{Kind: game.TargetCard, ID: o.Tail.Carry[0]}
+	for _, id := range o.IDs {
+		if err := ctx.Game.AttachForEffect(id, host); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // AttachedToThis is the sacrifice-cost clause "an Aura attached to
 // this creature" (Faunsbane Troll): the activator's own permanents that

@@ -2204,6 +2204,26 @@ life), `then/discard-at-random`, `then/get-energy` and
 use one rather than registering a twin. A tail that runs the effect that
 names it again (a chain of searches) is registered in `init`.
 
+Slice 6 (#4253) gives the put and return doors and token creation the same
+form, and removes their closure form from the primitives. `Then` is gone from
+`PutFromLibraryOntoBattlefield`, `PutFromHandOntoBattlefield`, `ReturnFromExile`,
+`ReturnFromGraveyardTogether`, `ReturnFromExileTogether`, `Amass`, `Incubate`
+and `CreateTokensAttackingYourChoice`; each takes a `ThenTail` instead
+(`EmpowerJace` and `EachManifestsFromHand` take the registered rests of #4290,
+`RegisterEmpowerThen` and `RegisterManifestThen`). Register the body with the helper that fits the
+door, each taking a `Context` rebuilt from the tail: `PutFromLibraryTail` (told
+`Entered` and `Rest`; `PutRestOnBottomInRandomOrderTail` and
+`PutRestIntoGraveyardTail` are the shared riders), `PutFromHandTail`,
+`EnteredTail` (a single return from exile or a graveyard: told the entering
+permanent, `uuid.Nil` when none), `TogetherTail` (the `...Together` primitives),
+`AmassTail` (told the Army). For a token creation write
+`g.CreateTokensKeyedForEffect(spec, ctx.ItemTail(ref))` and read `o.IDs`; a
+tail that makes the next round of itself (incubate, a per-player Tombspawn) is
+registered in `init`. Two fields let a tail carry what a closure captured: `Word`
+(a creature type, a keyword, a card's name) and `Next` (the tail to run after
+this one, as data). The resolving item's `IsCopy`, `Params` and `AltCost` do not
+ride `ItemTail`: put the one bit a body reads in `N`.
+
 **Proliferate is the player's choice** (#2525, CR 701.34a). `Proliferate{}`
 asks: once the window above has settled it queues a
 `PendingChoiceProliferate` offering every permanent and player with a

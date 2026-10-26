@@ -53,6 +53,13 @@ type KeyedTail struct {
 	// the way a keyed pay-unless answer does. Nil when the card put none
 	// there.
 	Asked *AskedItem
+	// Word is a word the body reads (#4253 slice 6): a creature type, a
+	// name. Empty when the body reads none.
+	Word string
+	// Next is the tail to run after this one, as data (#4253 slice 6): an
+	// engine tail that finishes a keyword action (amass) and then hands
+	// the card's own tail what it produced. Nil when there is none.
+	Next *KeyedTail
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -149,6 +156,10 @@ func carriesLookAtThen(k PendingChoiceKind) bool {
 func copyKeyedTail(t KeyedTail) KeyedTail {
 	t.Carry = copyUUIDs(t.Carry)
 	t.Asked = copyAskedItem(t.Asked)
+	if t.Next != nil {
+		n := copyKeyedTail(*t.Next)
+		t.Next = &n
+	}
 	return t
 }
 
@@ -160,6 +171,9 @@ type keyedTailSnapshot struct {
 	Carry  []uuid.UUID `json:"carry,omitempty"`
 	N      int         `json:"n,omitempty"`
 	Asked  *AskedItem  `json:"asked,omitempty"`
+	// Word and Next (#4253 slice 6).
+	Word string             `json:"word,omitempty"`
+	Next *keyedTailSnapshot `json:"next,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -169,24 +183,42 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 	return &keyedTailSnapshot{
 		Key: t.Ref.key, Player: uuidPtrOrNil(t.Player), Source: uuidPtrOrNil(t.Source),
 		Carry: copyUUIDs(t.Carry), N: t.N, Asked: copyAskedItem(t.Asked),
+		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
 	}
+}
+
+// nextTailValue is the tail a Next points at, or the zero tail.
+func nextTailValue(n *KeyedTail) KeyedTail {
+	if n == nil {
+		return KeyedTail{}
+	}
+	return *n
 }
 
 func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 	if s == nil {
 		return KeyedTail{}
 	}
-	return KeyedTail{
+	out := KeyedTail{
 		Ref: TailRef{key: s.Key}, Player: uuidOrNil(s.Player), Source: uuidOrNil(s.Source),
-		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked),
+		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
 	}
+	if s.Next != nil {
+		n := restoreKeyedTail(s.Next)
+		out.Next = &n
+	}
+	return out
 }
 
 // unknownKeyedTail is checkEffectKeys' line for a tail the running
 // binary does not register.
 func unknownKeyedTail(s *keyedTailSnapshot) []string {
-	if s == nil || KnownTail(s.Key) {
+	if s == nil {
 		return nil
 	}
-	return []string{"tail " + s.Key}
+	var out []string
+	if !KnownTail(s.Key) {
+		out = append(out, "tail "+s.Key)
+	}
+	return append(out, unknownKeyedTail(s.Next)...)
 }
