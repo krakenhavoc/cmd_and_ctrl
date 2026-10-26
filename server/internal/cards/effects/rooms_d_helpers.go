@@ -32,7 +32,6 @@ func mayTakeUpToFromAmongThem(ctx *Context, milled []uuid.UUID, max int, match C
 	if len(candidates) == 0 {
 		return nil
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   ctx.Source(),
@@ -40,15 +39,9 @@ func mayTakeUpToFromAmongThem(ctx *Context, milled []uuid.UUID, max int, match C
 		Cards:    candidates,
 		Min:      0,
 		Max:      max,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  mayTakeUpToFromMilled,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
@@ -62,3 +55,14 @@ func distinctDoorNames(g *game.Game, player uuid.UUID) int {
 	}
 	return len(seen)
 }
+
+// mayTakeUpToFromMilled is the cards chosen going to the hand, keyed
+// (#4253): the asking item rides the prompt as data.
+var mayTakeUpToFromMilled = askedPick("choose-cards/rooms-d-take-up-to-from-milled", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

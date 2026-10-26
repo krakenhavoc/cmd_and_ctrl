@@ -28,16 +28,28 @@ func sacrificeThisUnlessYouSacrificeALand(name string) Effect {
 				{Label: "Sacrifice a land"},
 				{Label: "Sacrifice " + name},
 			},
-			Then: func(ctx *Context, index int) error {
-				if index == 0 {
-					return SacrificeChoice{
-						Player:     controller,
-						Candidates: lands,
-						Question:   name + " — sacrifice a land",
-					}.Apply(ctx)
-				}
-				return SacrificePermanent{Target: source}.Apply(ctx)
-			},
+			ThenKey: sacrificeALandOrThisAnswer,
 		}.Apply(ctx)
 	}
 }
+
+// sacrificeALandOrThisAnswer is the upkeep tax's choice answered, keyed
+// (#4253): it reads only the controller and the permanent, both on the
+// prompt.
+var sacrificeALandOrThisAnswer = OptionPickThen("option-pick/sacrifice-this-unless-you-sacrifice-a-land", func(ctx *Context, r game.OptionPicked) error {
+	source := ctx.Source()
+	if r.Index == 0 {
+		name := "this permanent"
+		if c, ok := ctx.Game.LookupCardForEffect(source); ok && c.Name != "" {
+			name = c.Name
+		}
+		// The land is asked as a choose_cards prompt that still holds a
+		// closure (SacrificeChoice), until that primitive is keyed.
+		return SacrificeChoice{
+			Player:     ctx.Controller(),
+			Candidates: permanentsControlledByMatching(ctx.Game, ctx.Controller(), Land()),
+			Question:   name + " — sacrifice a land",
+		}.Apply(ctx)
+	}
+	return SacrificePermanent{Target: source}.Apply(ctx)
+})

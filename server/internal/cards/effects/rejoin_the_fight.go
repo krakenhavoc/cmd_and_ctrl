@@ -65,7 +65,6 @@ func rejoinAsk(ctx *Context, opponents, chosen []uuid.UUID) error {
 	if len(candidates) == 0 {
 		return rejoinAsk(ctx, rest, chosen)
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    chooser,
 		FromPlayer: controller,
@@ -74,10 +73,24 @@ func rejoinAsk(ctx *Context, opponents, chosen []uuid.UUID) error {
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return rejoinAsk(NewContext(g, item), rest, append(append([]uuid.UUID(nil), chosen...), picked...))
-		},
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    rejoinPick,
+		// The opponents still to ask and the cards chosen so far are the
+		// carry; the item is the caster's spell (#4253).
+		Carry: packIDLists(rest, chosen),
+		Asked: game.NewAskedItem(ctx.Item),
 	})
 	return nil
+}
+
+// rejoinPick is one opponent's choice answered, keyed (#4253): the next
+// opponent is asked, or the chosen cards return. Registered in init because
+// it asks the next opponent, which names the key again.
+var rejoinPick game.ChooseCardsThen
+
+func init() {
+	rejoinPick = askedPick("choose-cards/rejoin-the-fight-pick", func(ctx *Context, r game.CardsChosen) error {
+		rest, chosen := unpackIDPair(r.Carry)
+		return rejoinAsk(ctx, rest, append(append([]uuid.UUID(nil), chosen...), r.Picked...))
+	})
 }

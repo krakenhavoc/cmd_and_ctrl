@@ -7672,7 +7672,18 @@ Context rebuilt from that item, so it reads the controller, the source object, t
 targets and the trigger's event as the old closure did. What else the closure
 captured is plain data on the prompt: `Carry` (IDs, joined with `packIDLists`),
 `CarryNums`, `CarryWord`. A walk that asks the next player from its own answer
-(Exhume, Breach the Multiverse) registers its key in `init`, since the body names it.
+(Exhume, Breach the Multiverse, Rejoin the Fight) registers its key in `init`, since the body names it.
+
+**An option pick that carries what it is about** (#4253, batch 05): `PickOption{ThenKey,
+Carry}` with `OptionPickThen`. The branch taken is read off the option chosen
+(`r.Option.Label`, and `r.Option.Cards` for the permanent an option names), not off a
+branch list built beside the options, so nothing but the IDs has to ride the prompt
+(Psychic Puppetry, `tapOrUntapPermanent`, the Rooms' door choices). The repeated
+punisher (`punisher_repeat.go`, Torment of Hailfire and Rottenmouth Viper) registers
+one answer and one discard per card in `registerPunisher`, with the opponents still to
+ask as the carry. `PutFromHandOntoBattlefield` queues a keyed pick
+(`choose-cards/put-from-hand-onto-battlefield`, "tapped" as the one carried number)
+when it has no `Validate` and no `ThenTail`; with either it is still a closure.
 
 **A ward's life, sacrifice and discard confirms** are keyed too (#4291):
 `confirm/ward-pay-life` (the life is the prompt's `LifeCost`),

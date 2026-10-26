@@ -292,11 +292,7 @@ func (u UnlockALockedDoorOfARoomYouControl) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	type pick struct {
-		room uuid.UUID
-		door game.DoorSide
-	}
-	var picks []pick
+	var rooms []uuid.UUID
 	var opts []game.ChoiceOption
 	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
 		if c.Controller != player || !game.HasSharedTypeLine(c) {
@@ -306,31 +302,69 @@ func (u UnlockALockedDoorOfARoomYouControl) Apply(ctx *Context) error {
 			if c.Unlocked.Has(door) {
 				continue
 			}
-			picks = append(picks, pick{c.InstanceID, door})
+			rooms = append(rooms, c.InstanceID)
 			opts = append(opts, game.ChoiceOption{
 				Label: "Unlock " + c.Faces[game.FaceOfDoor(door)].Name,
 				Cards: []uuid.UUID{c.InstanceID},
 			})
 		}
 	}
-	switch len(picks) {
+	switch len(opts) {
 	case 0:
 		return nil
 	case 1:
-		return ctx.Game.UnlockDoorForEffect(picks[0].room, picks[0].door, player)
+		c, _ := ctx.Game.LookupCardForEffect(rooms[0])
+		door, _, ok := doorNamedBy(c, opts[0].Label)
+		if !ok {
+			return nil
+		}
+		return ctx.Game.UnlockDoorForEffect(rooms[0], door, player)
 	}
 	return PickOption{
 		Player:   player,
 		Question: "Unlock a locked door of a Room you control",
 		Options:  opts,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(picks) {
-				return nil
-			}
-			return ctx.Game.UnlockDoorForEffect(picks[index].room, picks[index].door, player)
-		},
+		ThenKey:  unlockALockedDoorAnswer,
 	}.Apply(ctx)
 }
+
+// doorNamedBy reads which door of a Room an option names and whether it
+// unlocks or locks it: the option label is "Unlock <face name>" or "Lock
+// <face name>", and the two faces of a Room have different names.
+func doorNamedBy(c game.Card, label string) (door game.DoorSide, unlock, ok bool) {
+	if len(c.Faces) < 2 {
+		return 0, false, false
+	}
+	for _, d := range []game.DoorSide{game.DoorLeft, game.DoorRight} {
+		name := c.Faces[game.FaceOfDoor(d)].Name
+		switch label {
+		case "Unlock " + name:
+			return d, true, true
+		case "Lock " + name:
+			return d, false, true
+		}
+	}
+	return 0, false, false
+}
+
+// unlockALockedDoorAnswer is the door chosen unlocked, keyed (#4253): the
+// option names the Room (its Cards) and the door (its label), the chooser is
+// the player who unlocks it.
+var unlockALockedDoorAnswer = OptionPickThen("option-pick/unlock-a-locked-door-of-a-room-you-control", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || len(r.Option.Cards) == 0 {
+		return nil
+	}
+	room := r.Option.Cards[0]
+	c, ok := ctx.Game.LookupCardForEffect(room)
+	if !ok {
+		return nil
+	}
+	door, _, ok := doorNamedBy(c, r.Option.Label)
+	if !ok {
+		return nil
+	}
+	return ctx.Game.UnlockDoorForEffect(room, door, r.Chooser)
+})
 
 // chooseDoorThen asks `player` which door of `room` to act on — a
 // locked one to unlock when `unlock`, an unlocked one to lock when
@@ -385,9 +419,21 @@ func chooseDoorThen(ctx *Context, player, room uuid.UUID, unlock, lock bool, the
 	case 1:
 		return do(ctx, acts[0])
 	}
+	question := "Choose a door of " + c.Faces[0].Name + " // " + c.Faces[1].Name
+	if then == nil {
+		// Nothing hangs off the choice, so it is data: the Room rides the
+		// prompt and the table stays a restore point (#4253).
+		return PickOption{
+			Player:   player,
+			Question: question,
+			Options:  opts,
+			ThenKey:  chooseDoorAnswer,
+			Carry:    []uuid.UUID{room},
+		}.Apply(ctx)
+	}
 	return PickOption{
 		Player:   player,
-		Question: "Choose a door of " + c.Faces[0].Name + " // " + c.Faces[1].Name,
+		Question: question,
 		Options:  opts,
 		Then: func(ctx *Context, index int) error {
 			if index < 0 || index >= len(acts) {
@@ -397,3 +443,26 @@ func chooseDoorThen(ctx *Context, player, room uuid.UUID, unlock, lock bool, the
 		},
 	}.Apply(ctx)
 }
+
+// chooseDoorAnswer is the door chosen locked or unlocked, keyed (#4253) for
+// a choice with nothing after it: the Room is the one carried ID, the door
+// and the action are the option's label, and the chooser is the player who
+// acts.
+var chooseDoorAnswer = OptionPickThen("option-pick/choose-a-door", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || len(r.Carry) == 0 {
+		return nil
+	}
+	room := r.Carry[0]
+	c, ok := ctx.Game.LookupCardForEffect(room)
+	if !ok {
+		return nil
+	}
+	door, unlock, ok := doorNamedBy(c, r.Option.Label)
+	if !ok {
+		return nil
+	}
+	if unlock {
+		return ctx.Game.UnlockDoorForEffect(room, door, r.Chooser)
+	}
+	return ctx.Game.LockDoorForEffect(room, door, r.Chooser)
+})

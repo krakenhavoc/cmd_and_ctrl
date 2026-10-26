@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -90,28 +88,32 @@ func realmbreakerMillAndSteal(g *game.Game, item *game.StackItem) error {
 	if len(candidates) == 0 {
 		return nil
 	}
-	controller := item.Controller
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    controller,
+		Chooser:    item.Controller,
 		FromPlayer: victim,
 		Source:     item.SourceCardID,
 		Question:   "Realmbreaker — put a land card from their graveyard onto the battlefield tapped under your control",
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				c := NewContext(g, item)
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: controller, Tapped: true}).Apply(c); err != nil {
-					return err
-				}
-				if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneBattlefield {
-					ExileInsteadOfLeavingBattlefield(g, id, controller, "Realmbreaker: if this land would leave the battlefield, exile it instead")
-				}
-			}
-			return nil
-		},
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    realmbreakerSteal,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// realmbreakerSteal is the land chosen entering under the controller's
+// control, tapped, keyed (#4253): the asking item rides the prompt as data.
+var realmbreakerSteal = askedPick("choose-cards/realmbreaker-steal-land", func(ctx *Context, r game.CardsChosen) error {
+	g, controller := ctx.Game, ctx.Controller()
+	for _, id := range r.Picked {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: controller, Tapped: true}).Apply(ctx); err != nil {
+			return err
+		}
+		if z := g.FindCardZoneForEffect(id); z != nil && z.Kind == game.ZoneBattlefield {
+			ExileInsteadOfLeavingBattlefield(g, id, controller, "Realmbreaker: if this land would leave the battlefield, exile it instead")
+		}
+	}
+	return nil
+})

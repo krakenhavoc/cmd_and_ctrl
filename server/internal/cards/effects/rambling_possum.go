@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -45,18 +43,23 @@ func init() {
 					Cards:    saddlers,
 					Min:      0,
 					Max:      len(saddlers),
-					Zone:     game.ZoneBattlefield,
-					Then: func(g *game.Game, picked []uuid.UUID) error {
-						for _, id := range picked {
-							if err := (BounceToHand{Target: id}).Apply(NewContext(g, item)); err != nil {
-								return err
-							}
-						}
-						return nil
-					},
+					LiveZone: game.ZoneBattlefield,
+					ThenKey:  ramblingPossumReturn,
+					Asked:    game.NewAskedItem(item),
 				})
 				return nil
 			}),
 		},
 	})
 }
+
+// ramblingPossumReturn is the saddlers chosen returning to their owners' hands,
+// keyed (#4253): the asking item rides the prompt as data.
+var ramblingPossumReturn = askedPick("choose-cards/rambling-possum-return-saddlers", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

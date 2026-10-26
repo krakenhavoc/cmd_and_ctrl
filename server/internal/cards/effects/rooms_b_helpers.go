@@ -84,7 +84,6 @@ func roomsBReturnAChosenCreatureCard(ctx *Context) error {
 	case 1:
 		return ReturnFromGraveyard{Target: candidates[0], Dest: game.ZoneBattlefield}.Apply(ctx)
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
 		Source:   ctx.Source(),
@@ -92,13 +91,18 @@ func roomsBReturnAChosenCreatureCard(ctx *Context) error {
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
-		},
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  roomsBChosenCreatureReturn,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// roomsBChosenCreatureReturn is the creature card chosen returning to the
+// battlefield, keyed (#4253): the asking item rides the prompt as data.
+var roomsBChosenCreatureReturn = askedPick("choose-cards/rooms-b-return-chosen-creature", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneBattlefield}.Apply(ctx)
+})

@@ -439,18 +439,22 @@ func rfPutCardFromHandOnBottom(ctx *Context, question string) error {
 		Cards:    hand,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: game.ZoneHand,
+		ThenKey:  rfHandCardOnBottom,
 	})
 	return nil
 }
+
+// rfHandCardOnBottom is the card chosen from the hand tucked on the bottom
+// of the library, keyed (#4253).
+var rfHandCardOnBottom = game.RegisterChooseCardsThen("choose-cards/reality-fracture-hand-card-on-bottom", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // rfRemoveUpToCounters is "remove up to N counters from <permanent>":
 // the chooser removes them one at a time, naming the kind each time,

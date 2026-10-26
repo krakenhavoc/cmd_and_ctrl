@@ -513,15 +513,24 @@ func tapOrUntapPermanent(ctx *Context, cardName string, target uuid.UUID) error 
 			{Label: "Tap it"},
 			{Label: "Untap it"},
 		},
-		Then: func(ctx *Context, index int) error {
-			switch index {
-			case 0:
-				return TapTarget{Target: target}.Apply(ctx)
-			case 1:
-				return UntapTarget{Target: target}.Apply(ctx)
-			default:
-				return nil
-			}
-		},
+		ThenKey: tapOrUntapAnswer,
+		Carry:   []uuid.UUID{target},
 	}.Apply(ctx)
 }
+
+// tapOrUntapAnswer is the tap-or-untap choice answered, keyed (#4253): the
+// permanent rides the prompt as its one carried ID.
+var tapOrUntapAnswer = OptionPickThen("option-pick/tap-or-untap-that-permanent", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	target := r.Carry[0]
+	switch r.Index {
+	case 0:
+		return TapTarget{Target: target}.Apply(ctx)
+	case 1:
+		return UntapTarget{Target: target}.Apply(ctx)
+	default:
+		return nil
+	}
+})

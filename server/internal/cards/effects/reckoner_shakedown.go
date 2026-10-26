@@ -67,16 +67,20 @@ var reckonerShakedownIfYouDont = RevealedPickThen("revealed-pick/reckoner-shaked
 			Max:        1,
 			// Re-checked on submit: a permanent can leave between the
 			// question and the answer.
-			Zone: game.ZoneBattlefield,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				for _, id := range picked {
-					// You put them (CR 120.3d's placer).
-					if err := g.AddCounterByForEffect(you, id, "+1/+1", 2); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			LiveZone: game.ZoneBattlefield,
+			ThenKey:  reckonerShakedownCounters,
 		})
 		return nil
 	})
+
+// reckonerShakedownCounters is the creature or Vehicle chosen getting its
+// two counters, keyed (#4253): the chooser is "you", the counters' placer.
+var reckonerShakedownCounters = askedPick("choose-cards/reckoner-shakedown-counters", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		// You put them (CR 120.3d's placer).
+		if err := ctx.Game.AddCounterByForEffect(r.Chooser, id, "+1/+1", 2); err != nil {
+			return err
+		}
+	}
+	return nil
+})

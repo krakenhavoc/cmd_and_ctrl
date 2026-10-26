@@ -120,25 +120,7 @@ func rinoaReturnOne(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) != 1 || g.ResolvedThisTurn(rinoa, rinoaDoneLabel) > 0 {
-				return nil
-			}
-			_, err := g.ReturnFromGraveyardWithCountersForEffect(picked[0], uuid.Nil, true,
-				map[string]int{game.CounterFlying: 1})
-			if errors.Is(err, game.ErrCardNotFound) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			// The return happened when the card left the graveyard (an
-			// entry that paused on a replacement prompt has left it too).
-			if z := g.FindCardZoneForEffect(picked[0]); z == nil || z.Kind != game.ZoneGraveyard {
-				g.NoteDoneThisTurn(rinoa, rinoaDoneLabel)
-			}
-			return nil
-		},
+		ThenKey:  rinoaReturnPick,
 	}
 	// The live re-check on submit reads one owner's graveyard. Every
 	// candidate is almost always in yours; when they span graveyards
@@ -147,8 +129,32 @@ func rinoaReturnOne(g *game.Game, item *game.StackItem) error {
 		for owner := range owners {
 			prompt.FromPlayer = owner
 		}
-		prompt.Zone = game.ZoneGraveyard
+		prompt.LiveZone = game.ZoneGraveyard
 	}
 	g.QueueChooseCardsForEffect(prompt)
 	return nil
 }
+
+// rinoaReturnPick is the card chosen returning tapped with a flying counter,
+// keyed (#4253): Rinoa is the prompt's source, and the once-a-turn latch is
+// read off the game.
+var rinoaReturnPick = game.RegisterChooseCardsThen("choose-cards/rinoa-angel-wing-return", func(g *game.Game, r game.CardsChosen) error {
+	rinoa, picked := r.Source, r.Picked
+	if len(picked) != 1 || g.ResolvedThisTurn(rinoa, rinoaDoneLabel) > 0 {
+		return nil
+	}
+	_, err := g.ReturnFromGraveyardWithCountersForEffect(picked[0], uuid.Nil, true,
+		map[string]int{game.CounterFlying: 1})
+	if errors.Is(err, game.ErrCardNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	// The return happened when the card left the graveyard (an
+	// entry that paused on a replacement prompt has left it too).
+	if z := g.FindCardZoneForEffect(picked[0]); z == nil || z.Kind != game.ZoneGraveyard {
+		g.NoteDoneThisTurn(rinoa, rinoaDoneLabel)
+	}
+	return nil
+})

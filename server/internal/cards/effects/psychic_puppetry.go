@@ -30,16 +30,25 @@ func init() {
 					{Label: "Untap it", Cards: []uuid.UUID{target}},
 					{Label: "Leave it as it is", Cards: []uuid.UUID{target}},
 				},
-				Then: func(ctx *Context, index int) error {
-					switch index {
-					case 0:
-						return TapTarget{Target: target}.Apply(ctx)
-					case 1:
-						return UntapTarget{Target: target}.Apply(ctx)
-					}
-					return nil
-				},
+				ThenKey: psychicPuppetryAnswer,
+				Carry:   []uuid.UUID{target},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// psychicPuppetryAnswer is the tap-or-untap choice answered, keyed (#4253):
+// the permanent rides the prompt as its one carried ID.
+var psychicPuppetryAnswer = OptionPickThen("option-pick/psychic-puppetry-tap-or-untap", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	target := r.Carry[0]
+	switch r.Index {
+	case 0:
+		return TapTarget{Target: target}.Apply(ctx)
+	case 1:
+		return UntapTarget{Target: target}.Apply(ctx)
+	}
+	return nil
+})
