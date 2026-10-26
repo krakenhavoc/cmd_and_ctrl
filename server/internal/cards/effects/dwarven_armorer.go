@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Dwarven Armorer — Creature — Dwarf {R}, 0/2 (#1664):
 //
@@ -46,11 +50,17 @@ func dwarvenArmorerCounter(g *game.Game, item *game.StackItem) error {
 			{Label: "Put a " + dwarvenArmorerKinds[0] + " counter on it"},
 			{Label: "Put a " + dwarvenArmorerKinds[1] + " counter on it"},
 		},
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(dwarvenArmorerKinds) {
-				return nil
-			}
-			return AddCounter{Target: target, Kind: dwarvenArmorerKinds[index], N: 1}.Apply(ctx)
-		},
+		ThenKey: dwarvenArmorerChose,
+		Carry:   []uuid.UUID{target},
 	}.Apply(ctx)
 }
+
+// dwarvenArmorerChose is the keyed answer to "which counter" (#4253): the
+// target rides the prompt as its Carry. An on-disk key: never renamed,
+// never reused.
+var dwarvenArmorerChose = OptionPickThen("option-pick/dwarven-armorer-counter", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(dwarvenArmorerKinds) || len(r.Carry) == 0 {
+		return nil
+	}
+	return AddCounter{Target: r.Carry[0], Kind: dwarvenArmorerKinds[r.Index], N: 1}.Apply(ctx)
+})

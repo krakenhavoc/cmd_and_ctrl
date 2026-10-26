@@ -38,31 +38,49 @@ func (c ConniveEach) Apply(ctx *Context) error {
 	return conniveChain(ctx.Game, ctx.Item, c.Controller, append([]uuid.UUID(nil), c.Creatures...))
 }
 
-func conniveChain(g *game.Game, item *game.StackItem, controller uuid.UUID, ids []uuid.UUID) error {
+func conniveChain(g *game.Game, _ *game.StackItem, controller uuid.UUID, ids []uuid.UUID) error {
+	return conniveNext(g, controller, ids)
+}
+
+// conniveNext makes the first of `ids` connive and, from the discard's
+// continuation, the rest. The creatures still to go ride the discard as its
+// Carry (#4253), so a table waiting on the discard is a restore point; the
+// creature conniving is the prompt's source.
+func conniveNext(g *game.Game, controller uuid.UUID, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
 	creature, rest := ids[0], ids[1:]
-	if err := (DrawCards{Player: controller, N: 1}).Apply(NewContext(g, item)); err != nil {
+	if err := g.DrawNForEffect(controller, 1); err != nil {
 		return err
 	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   controller,
 		Source:   creature,
 		N:        1,
 		Question: "Connive: discard a card",
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			if len(discarded) > 0 {
-				if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() && onBattlefield(g, creature) {
-					if err := g.AddCounterForEffect(creature, game.CounterPlusOne, 1); err != nil {
-						return err
-					}
+	}, conniveDiscarded, rest)
+}
+
+// conniveDiscarded puts the +1/+1 counter for a nonland card discarded and
+// goes on to the next creature. An on-disk key: never renamed, never reused.
+//
+// Registered in init, not at package level: the answer connives the next
+// creature, so it refers to itself.
+var conniveDiscarded game.DiscardThen
+
+func init() {
+	conniveDiscarded = game.RegisterDiscardThen("choose-cards/connive-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		creature := r.Source
+		if discarded := r.Discarded.By(r.Player); len(discarded) > 0 {
+			if card, ok := g.LookupCardForEffect(discarded[0]); ok && !card.IsLand() && onBattlefield(g, creature) {
+				if err := g.AddCounterForEffect(creature, game.CounterPlusOne, 1); err != nil {
+					return err
 				}
 			}
-			return conniveChain(g, item, controller, rest)
-		},
+		}
+		return conniveNext(g, r.Player, r.Carry)
 	})
-	return nil
 }
 
 // ConniveX makes ONE creature connive X (CR 701.50): draw X cards, then
@@ -91,23 +109,29 @@ func (c ConniveX) Apply(ctx *Context) error {
 	if err := (DrawCards{Player: c.Controller, N: c.X}).Apply(ctx); err != nil {
 		return err
 	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   c.Controller,
 		Source:   c.Creature,
 		N:        c.X,
 		Question: "Connive: discard cards",
-		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-			nonland := 0
-			for _, id := range discarded {
-				if card, ok := g.LookupCardForEffect(id); ok && !card.IsLand() {
-					nonland++
-				}
-			}
-			if nonland == 0 || !onBattlefield(g, c.Creature) {
-				return nil
-			}
-			return g.AddCounterForEffect(c.Creature, game.CounterPlusOne, nonland)
-		},
-	})
-	return nil
+	}, conniveXDiscarded, []uuid.UUID{c.Creature})
 }
+
+// conniveXDiscarded puts a +1/+1 counter on the creature for each nonland
+// card discarded. An on-disk key: never renamed, never reused.
+var conniveXDiscarded = game.RegisterDiscardThen("choose-cards/connive-x-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	creature := r.Carry[0]
+	nonland := 0
+	for _, id := range r.Discarded.By(r.Player) {
+		if card, ok := g.LookupCardForEffect(id); ok && !card.IsLand() {
+			nonland++
+		}
+	}
+	if nonland == 0 || !onBattlefield(g, creature) {
+		return nil
+	}
+	return g.AddCounterForEffect(creature, game.CounterPlusOne, nonland)
+})

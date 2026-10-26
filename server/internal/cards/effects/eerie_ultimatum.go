@@ -3,8 +3,6 @@ package effects
 import (
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -50,16 +48,26 @@ func init() {
 				Cards:      candidates,
 				Min:        0,
 				Max:        0,
-				Zone:       game.ZoneGraveyard,
-				Validate:   allDifferentNames,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					return ReturnFromGraveyardTogether{Targets: picked}.Apply(NewContext(g, item))
-				},
+				ThenKey:    eerieUltimatumReturn,
+				LiveZone:   game.ZoneGraveyard,
+				Asked:      game.NewAskedItem(item),
 			})
 			return nil
 		},
 	})
 }
+
+// eerieUltimatumReturn is the keyed answer to "which cards": the set rule
+// ("with different names") is registered with it, and the asking spell
+// rides the prompt as data (#4253). An on-disk key: never renamed, never
+// reused.
+var eerieUltimatumReturn = game.RegisterChooseCardsThenRule("choose-cards/eerie-ultimatum-return", allDifferentNames,
+	func(g *game.Game, r game.CardsChosen) error {
+		if r.Asked == nil {
+			return nil
+		}
+		return ReturnFromGraveyardTogether{Targets: r.Picked}.Apply(NewContext(g, r.Asked))
+	})
 
 // allDifferentNames is "with different names" over a picked set: no
 // two cards share a (case-folded) current name. A card with no name

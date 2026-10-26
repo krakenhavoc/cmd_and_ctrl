@@ -38,27 +38,67 @@ func demonlordExileUnlessSacrifice(g *game.Game, item *game.StackItem) error {
 	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
 		return nil
 	}
-	var others []uuid.UUID
+	hasOther := false
 	for _, id := range permanentsControlledByMatching(g, item.Controller, Creature()) {
 		if id != item.SourceCardID {
-			others = append(others, id)
+			hasOther = true
+			break
 		}
 	}
-	if len(others) == 0 {
+	if !hasOther {
 		return demonlordExileItself(ctx)
 	}
 	return PickOption{
 		Question: "Demonlord of Ashmouth — sacrifice another creature, or exile Demonlord of Ashmouth",
-		Options:  []game.ChoiceOption{{Label: "Exile Demonlord of Ashmouth"}, {Label: "Sacrifice another creature"}},
-		Then: func(ctx *Context, index int) error {
-			if index == 1 {
-				return SacrificeChoice{Player: item.Controller, Candidates: others,
-					Question: "Demonlord of Ashmouth — sacrifice another creature"}.Apply(ctx)
-			}
-			return demonlordExileItself(ctx)
-		},
+		Options:  []game.ChoiceOption{{Label: demonlordExileLabel}, {Label: demonlordSacrificeLabel}},
+		ThenKey:  demonlordChose,
 	}.Apply(ctx)
 }
+
+const (
+	demonlordExileLabel     = "Exile Demonlord of Ashmouth"
+	demonlordSacrificeLabel = "Sacrifice another creature"
+)
+
+// demonlordChose is the keyed answer to "sacrifice another creature, or exile
+// Demonlord" (#4253): the sacrifice pick is a keyed choose_cards prompt, so
+// a table waiting on either prompt is a restore point. An on-disk key:
+// never renamed, never reused.
+var demonlordChose = OptionPickThen("option-pick/demonlord-of-ashmouth-choice", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || r.Option.Label != demonlordSacrificeLabel {
+		return demonlordExileItself(ctx)
+	}
+	var others []uuid.UUID
+	for _, id := range permanentsControlledByMatching(ctx.Game, ctx.Controller(), Creature()) {
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice.
+		if id != ctx.Source() && !ctx.Game.CantBeSacrificedForEffect(id) {
+			others = append(others, id)
+		}
+	}
+	if len(others) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    ctx.Controller(),
+		FromPlayer: ctx.Controller(),
+		Source:     ctx.Source(),
+		Question:   "Demonlord of Ashmouth — sacrifice another creature",
+		Cards:      others,
+		Min:        1,
+		Max:        1,
+		ThenKey:    demonlordSacrificed,
+		LiveZone:   game.ZoneBattlefield,
+	})
+	return nil
+})
+
+// demonlordSacrificed sacrifices the pick; nothing more is printed after the
+// sacrifice. An on-disk key: never renamed, never reused.
+var demonlordSacrificed = game.RegisterChooseCardsThen("choose-cards/demonlord-of-ashmouth-sacrifice", func(g *game.Game, r game.CardsChosen) error {
+	g.SacrificeAllForEffect(uuid.Nil, r.Picked)
+	return nil
+})
 
 // demonlordExileItself exiles the trigger's source, the Demonlord.
 func demonlordExileItself(ctx *Context) error {

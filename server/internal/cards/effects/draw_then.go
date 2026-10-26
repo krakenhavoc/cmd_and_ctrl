@@ -68,6 +68,10 @@ func drawThenDiscard(g *game.Game, player, source uuid.UUID, draw, discard int, 
 // Compulsive Research shape). A hand of one card is discarded whole, and
 // an empty one asks nothing (CR 701.9a).
 func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) game.DrawThenRef {
+	// The prompt is keyed (#4253): its set rule is registered with the
+	// discard continuation, so a table waiting on the discard is a restore
+	// point. The continuation itself does nothing: the discard is the clause.
+	asked := discardTwoUnlessOneRule("choose-cards/"+key, qualifies)
 	return game.RegisterDrawThen(key, func(g *game.Game, d game.DrawThen) error {
 		p := g.PlayerByIDForEffect(d.Player)
 		if p == nil {
@@ -78,27 +82,34 @@ func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) g
 			return nil
 		case 1:
 			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: 1, Question: question})
-		default:
-			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player:   d.Player,
-				Source:   d.Source,
-				N:        d.N,
-				Min:      1,
-				Question: question,
-				Validate: func(picked []game.Card) bool {
-					switch len(picked) {
-					case d.N:
-						return true
-					case 1:
-						return qualifies(picked[0])
-					default:
-						return false
-					}
-				},
-			})
+			return nil
 		}
-		return nil
+		return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+			Player:   d.Player,
+			Source:   d.Source,
+			N:        d.N,
+			Min:      1,
+			Question: question,
+		}, asked, nil)
 	})
+}
+
+// discardTwoUnlessOneRule registers the keyed discard behind "discard two
+// cards unless you discard <a card that qualifies>": a single card is a
+// legal answer only when it qualifies, two cards of any kind are (the
+// Compulsive Research shape). The key is an on-disk identity ("choose
+// <key>"): never renamed, never reused.
+func discardTwoUnlessOneRule(key string, qualifies func(game.Card) bool) game.DiscardThen {
+	return game.RegisterDiscardThenRule(key, func(picked []game.Card) bool {
+		switch len(picked) {
+		case 2:
+			return true
+		case 1:
+			return qualifies(picked[0])
+		default:
+			return false
+		}
+	}, func(*game.Game, game.DiscardsDone) error { return nil })
 }
 
 var (

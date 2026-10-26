@@ -78,37 +78,39 @@ func init() {
 				if len(p.Hand.Cards) == 0 {
 					return nil
 				}
-				prompt := game.DiscardPrompt{
+				// Keyed (#4253): the discard holds no closure, and the set rule
+				// of the two-card ask is registered with its continuation.
+				prompt, then := game.DiscardPrompt{
 					Player:   who,
 					Source:   ctx.Source(),
 					N:        1,
 					Question: "Compulsive Research — discard your last card",
-				}
+				}, compulsiveResearchLastCard
 				if len(p.Hand.Cards) > 1 {
-					prompt = game.DiscardPrompt{
+					prompt, then = game.DiscardPrompt{
 						Player:   who,
 						Source:   ctx.Source(),
 						N:        2,
 						Min:      1,
 						Question: "Compulsive Research — discard two cards, or one land card",
-						Validate: func(picked []game.Card) bool {
-							switch len(picked) {
-							case 2:
-								return true
-							case 1:
-								return picked[0].IsLand()
-							default:
-								return false
-							}
-						},
-					}
+					}, compulsiveResearchDiscard
 				}
-				ctx.Game.QueueDiscardChoiceForEffect(prompt)
-				return nil
+				return ctx.Game.PlayerDiscardsThenKeyedForEffect(prompt, then, nil)
 			}),
 		),
 	})
 }
+
+// compulsiveResearchDiscard is the keyed discard: two cards, or one land
+// card. An on-disk key: never renamed, never reused.
+var compulsiveResearchDiscard = discardTwoUnlessOneRule("choose-cards/compulsive-research-discard",
+	func(c game.Card) bool { return c.IsLand() })
+
+// compulsiveResearchLastCard is the keyed discard of a one-card hand: no set
+// rule, because there is no "two cards" to demand. An on-disk key: never
+// renamed, never reused.
+var compulsiveResearchLastCard = game.RegisterDiscardThen("choose-cards/compulsive-research-last-card",
+	func(*game.Game, game.DiscardsDone) error { return nil })
 
 // compulsiveResearchTarget is the targeted player, or false when the target is gone.
 func compulsiveResearchTarget(ctx *Context) (uuid.UUID, bool) {
