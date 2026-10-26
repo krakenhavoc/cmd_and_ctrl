@@ -26,6 +26,7 @@ func init() {
 		Name:         "Unlawful Entry",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(BenefitUntilEOT(0, 1, 0, "flying")),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
 			if !ok {

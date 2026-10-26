@@ -23,12 +23,7 @@ func init() {
 		Name:         "Bloodcrazed Hoplite",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			heroic("Bloodcrazed Hoplite — a +1/+1 counter on it (heroic)", func(g *game.Game, item *game.StackItem) error {
-				if sourceIsNewObject(g, item) || !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-			}),
+			heroic("Bloodcrazed Hoplite — a +1/+1 counter on it (heroic)", thisGetsAPlusOneCounter),
 			Targeting(WheneverACounterIsPutOnThis(game.CounterPlusOne, "Bloodcrazed Hoplite — remove a +1/+1 counter from target creature an opponent controls",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

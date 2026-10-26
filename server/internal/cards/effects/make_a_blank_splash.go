@@ -27,7 +27,7 @@ import (
 func init() {
 	tap := On(game.EventStickerPlaced, aStickerWentOnThis,
 		"Make a _____ Splash — tap up to X target creatures, X the number of u's in name stickers on it",
-		makeABlankSplashTap)
+		tapLegalCardTargets)
 	tap.TargetsFrom = makeABlankSplashTargets
 	Register(Spec{
 		OracleID:        "fe2601a4-cbd5-4866-92a2-5586f737c9af",
@@ -51,14 +51,4 @@ func makeABlankSplashTargets(tc game.TriggerContext, _ *game.Card, _ *game.Game)
 		return nil
 	}
 	return TargetCreature(fmt.Sprintf("up to %d target creatures (X = %d)", x, x)).WithCount(0, x)
-}
-
-func makeABlankSplashTap(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, id := range legalTargetCardIDs(ctx) {
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
 }

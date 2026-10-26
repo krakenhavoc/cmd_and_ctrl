@@ -29,13 +29,7 @@ func init() {
 					Label:   "{2}, {T}: This permanent deals 2 damage to any target.",
 					Cost:    Plus(ManaCost("{2}"), TapCost()),
 					Targets: TargetAny(),
-					Effect: func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
-							return nil
-						}
-						return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 2}.Apply(ctx)
-					},
+					Effect:  thisDealsTwoToItsTarget,
 				}},
 				Text: "{2}, {T}: This permanent deals 2 damage to any target.",
 			},

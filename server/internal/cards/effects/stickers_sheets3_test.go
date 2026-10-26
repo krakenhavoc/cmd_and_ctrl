@@ -244,3 +244,116 @@ func TestStkWrinklyMonkeyMorbidAfterADeath(t *testing.T) {
 		t.Errorf("drew %d, want 1", got)
 	}
 }
+
+// Eldrazi Guacamole Tightrope: a stickered card in its owner's graveyard
+// can be cast from it, paying 2 life besides its other costs.
+func TestStkTightropeCastsFromTheGraveyardForTwoLife(t *testing.T) {
+	g, me := stkTableWith(t, 12, "Eldrazi Guacamole Tightrope")
+	advanceToMain(t, g)
+	card := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: card, Name: "Grizzly Bears", TypeLine: "Creature — Bear", ManaCost: "{1}{G}",
+			Power: 2, Toughness: 2, OracleID: "00000000-0000-0000-0000-0000000000a3", Owner: me.ID, Controller: me.ID})
+	})
+	cast := func(claim string) error {
+		return g.CastSpell(me.ID, card, game.CastSpellParams{FromZone: "graveyard", AlternativeCost: claim})
+	}
+	if err := cast(game.AltCostKeyStickerGraveyard); err == nil {
+		t.Fatal("a card with no sticker was cast from the graveyard")
+	}
+	stkGive(t, g, me, card, "cast this card from your graveyard")
+	life := me.Life
+	if err := cast(""); err == nil {
+		t.Fatal("cast without paying the life")
+	}
+	if err := cast(game.AltCostKeyStickerGraveyard); err != nil {
+		t.Fatalf("cast from the graveyard: %v", err)
+	}
+	if got := life - me.Life; got != 2 {
+		t.Errorf("life paid = %d, want 2", got)
+	}
+	passPriorityAroundTable(t, g)
+	if !onBattlefield(g, card) {
+		t.Fatal("the creature did not enter the battlefield")
+	}
+	// The sticker came with it (CR 123.5).
+	if c := stkCard(t, g, card); len(c.Stickers) != 1 {
+		t.Errorf("stickers = %+v, want the Tightrope sticker", c.Stickers)
+	}
+}
+
+// ... only by its owner, only from the graveyard, and not once the sticker
+// is gone with a trip to a hand.
+func TestStkTightropePermissionIsTheOwnersAndLastsWhileStickered(t *testing.T) {
+	g, me := stkTableWith(t, 12, "Eldrazi Guacamole Tightrope")
+	advanceToMain(t, g)
+	card := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: card, Name: "Grizzly Bears", TypeLine: "Creature — Bear", ManaCost: "{1}{G}",
+			OracleID: "00000000-0000-0000-0000-0000000000a4", Owner: me.ID, Controller: me.ID})
+	})
+	stkGive(t, g, me, card, "cast this card from your graveyard")
+	perm := func(player uuid.UUID) *game.CastPermission {
+		var out *game.CastPermission
+		g.ReadSnapshot(func() {
+			c, _ := g.LookupCardForEffect(card)
+			out = g.CastPermissionForLocked(player, c, game.ZoneGraveyard)
+		})
+		return out
+	}
+	if perm(me.ID) == nil {
+		t.Fatal("the owner has no permission")
+	}
+	if perm(g.Seats[1].ID) != nil {
+		t.Error("an opponent may cast the card from the graveyard")
+	}
+	g.WithWriteLock(func() { _ = g.ReturnFromGraveyardForEffect(card, game.ZoneHand) })
+	g.ReadSnapshot(func() {
+		c, _ := g.LookupCardForEffect(card)
+		if len(c.Stickers) != 0 || g.CastPermissionForLocked(me.ID, c, game.ZoneGraveyard) != nil {
+			t.Errorf("a card in a hand kept its sticker or its permission: %+v", c.Stickers)
+		}
+	})
+}
+
+// A land has no cast to permit.
+func TestStkTightropeGivesALandNothing(t *testing.T) {
+	g, me := stkTableWith(t, 12, "Eldrazi Guacamole Tightrope")
+	land := uuid.New()
+	g.WithWriteLock(func() {
+		me.Graveyard.PushTop(game.Card{InstanceID: land, Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
+	})
+	stkGive(t, g, me, land, "cast this card from your graveyard")
+	g.ReadSnapshot(func() {
+		c, _ := g.LookupCardForEffect(land)
+		if g.CastPermissionForLocked(me.ID, c, game.ZoneGraveyard) != nil {
+			t.Error("a land card has a cast permission")
+		}
+	})
+}
+
+const chickenTroupeOracle = "68982532-c0c8-477b-9dd4-180c6d22731e"
+
+// Chicken Troupe: a ticket, then a sticker, and ward {2}.
+func TestStkChickenTroupeGetsATicketThenAStickerAndHasWard(t *testing.T) {
+	g, me := stkTableWith(t, 0, "Night Brushwagg Ringmaster")
+	id := castAndResolveCreature(t, g, "Chicken Troupe", "Creature — Bird Performer", chickenTroupeOracle)
+	passPriorityAroundTable(t, g)
+	if got := stkTickets(g, me); got != 1 {
+		t.Fatalf("tickets = %d, want 1", got)
+	}
+	stkPutOn(t, g, me, id, "“Night”", 0)
+	if got := stkNames(stkCard(t, g, id)); got != "Night Chicken Troupe" {
+		t.Errorf("name = %q, want %q", got, "Night Chicken Troupe")
+	}
+	opp := g.Seats[1]
+	castAtWardedCreature(t, g, opp, id)
+	for i := 0; i < 8 && !hasPayUnlessFor(g, opp.ID); i++ {
+		if err := g.PassPriority(); err != nil {
+			t.Fatalf("PassPriority: %v", err)
+		}
+	}
+	if !hasPayUnlessFor(g, opp.ID) {
+		t.Fatal("no ward payment prompt for the spell's controller")
+	}
+}

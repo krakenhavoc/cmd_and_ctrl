@@ -3,8 +3,8 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 const (
-	primalElderKittyPump  = "primal-elder-kitty/pump"
-	primalElderKittyDies  = "primal-elder-kitty/dies-counters"
+	primalElderKittyPump = "primal-elder-kitty/pump"
+	primalElderKittyDies = "primal-elder-kitty/dies-counters"
 )
 
 // Primal Elder Kitty — Stickers (an Unfinity sticker sheet, CR 123.2; ADR 0208, #4307):
@@ -29,9 +29,10 @@ func init() {
 			{
 				Key: primalElderKittyPump,
 				Activated: []ActivatedAbility{{
-					Label:  "{1}: This creature gets +1/-1 until end of turn.",
-					Cost:   ManaCost("{1}"),
-					Effect: thisGetsUntilEndOfTurn(1, -1, "Primal Elder Kitty sticker — +1/-1"),
+					Label:   "{1}: This creature gets +1/-1 until end of turn.",
+					Cost:    ManaCost("{1}"),
+					Purpose: game.Purpose{Answers: game.AnswerPump},
+					Effect:  thisGetsUntilEndOfTurn(1, -1, "Primal Elder Kitty sticker — +1/-1"),
 				}},
 				Text: "{1}: This creature gets +1/-1 until end of turn.",
 			},

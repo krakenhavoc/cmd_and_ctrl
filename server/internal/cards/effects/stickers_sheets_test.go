@@ -16,6 +16,15 @@ import (
 // of its ability stickers gives, and the ability works when the sticker is
 // on a permanent.
 
+// stkSheetsNotCatalogued are the sheets with no entry, and why. A sheet
+// with an ability sticker the engine cannot run is left out whole rather
+// than shipped weaker than printed (AGENTS.md section 7): its stickers go on
+// and do nothing, and the deck checker lists the sheet as not automated.
+var stkSheetsNotCatalogued = map[string]string{
+	"Squid Fire Knight": "its first ability sticker replaces a dice roll and lets a second player choose a roll to ignore after seeing the dice, " +
+		"which every dice-rolling card would have to be able to wait for (they all read the rolls on the next line)",
+}
+
 // TestStkEverySheetIsCatalogued: each of the 48 Commander-legal sheets has
 // a Full catalog entry that names, per printed ability sticker, a keyword
 // or a bundle that is registered.
@@ -25,6 +34,12 @@ func TestStkEverySheetIsCatalogued(t *testing.T) {
 	}
 	for _, p := range stkPrintedSheets {
 		spec, ok := Lookup(p.Oracle)
+		if why, left := stkSheetsNotCatalogued[p.Name]; left {
+			if ok {
+				t.Errorf("%s is catalogued now: drop it from stkSheetsNotCatalogued (%s)", p.Name, why)
+			}
+			continue
+		}
 		if !ok {
 			t.Errorf("%s: no catalog entry", p.Name)
 			continue
@@ -54,7 +69,7 @@ func TestStkEverySheetIsCatalogued(t *testing.T) {
 				t.Errorf("%s ability sticker %d: not catalogued", p.Name, i)
 				continue
 			}
-			if len(def.Keywords) == 0 && def.Grant == "" {
+			if len(def.Keywords) == 0 && def.Grant == "" && def.GraveyardCastLife == 0 {
 				t.Errorf("%s ability sticker %d gives nothing", p.Name, i)
 			}
 			for _, kw := range def.Keywords {

@@ -29,8 +29,9 @@ func init() {
 			{
 				Key: unstableRobotDragonSwitch,
 				Activated: []ActivatedAbility{{
-					Label: "{1}: Switch this creature's power and toughness until end of turn.",
-					Cost:  ManaCost("{1}"),
+					Label:   "{1}: Switch this creature's power and toughness until end of turn.",
+					Cost:    ManaCost("{1}"),
+					Purpose: game.Purpose{Answers: game.AnswerPump},
 					Effect: func(g *game.Game, item *game.StackItem) error {
 						return SwitchPTUntilEOT{Target: item.SourceCardID, Label: "Unstable Robot Dragon sticker — switch power and toughness"}.Apply(NewContext(g, item))
 					},

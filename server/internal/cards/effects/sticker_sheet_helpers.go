@@ -84,3 +84,14 @@ func supertypesTypesAndSubtypesOf(c game.Card) int {
 	}
 	return n
 }
+
+// thisDealsTwoToItsTarget is "this permanent deals 2 damage to" the one
+// target the ability chose, if it is still legal as the ability resolves
+// (CR 608.2b).
+func thisDealsTwoToItsTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
+		return nil
+	}
+	return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 2}.Apply(ctx)
+}

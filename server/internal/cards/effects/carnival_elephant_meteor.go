@@ -29,9 +29,10 @@ func init() {
 			{
 				Key: carnivalElephantSacrifice,
 				Activated: []ActivatedAbility{{
-					Label:  "Sacrifice this permanent: Draw two cards.",
-					Cost:   SacrificeThis(),
-					Effect: Do(DrawCards{N: 2}),
+					Label:   "Sacrifice this permanent: Draw two cards.",
+					Cost:    SacrificeThis(),
+					Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+					Effect:  Do(DrawCards{N: 2}),
 				}},
 				Text: "Sacrifice this permanent: Draw two cards.",
 			},

@@ -68,6 +68,19 @@ func TestManaAbilityTextAgreesWithTheCatalog(t *testing.T) {
 			continue
 		}
 		text := faces[face].Text
+		if spec.StickerSheet != nil {
+			// A sticker sheet's mana ability is the ability sticker's
+			// grant bundle (CR 123.7), given to the object the sticker
+			// goes on; the sheet card is not a permanent and has none of
+			// its own (#4307).
+			var kept []string
+			for _, line := range strings.Split(text, "\n") {
+				if !strings.HasPrefix(line, "{TK}") {
+					kept = append(kept, line)
+				}
+			}
+			text = strings.Join(kept, "\n")
+		}
 		// The engine's view: the catalog's rows, plus the intrinsic
 		// ability a basic land type gives a land (CR 305.6), which the
 		// engine derives from the subtypes rather than the catalog.

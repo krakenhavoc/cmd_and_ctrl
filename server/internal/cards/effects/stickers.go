@@ -291,6 +291,10 @@ type StickerSheetSpec struct {
 type StickerAbilitySpec struct {
 	Keywords []string
 	Grant    string
+	// GraveyardCastLife is "You may cast this card from your graveyard by
+	// paying N life in addition to paying its other costs" (Eldrazi
+	// Guacamole Tightrope): N. See game.StickerAbilityDef.
+	GraveyardCastLife int
 }
 
 // stickerSheetSpecs indexes Spec.StickerSheet by the sheet's oracle ID.
@@ -308,7 +312,7 @@ func registerStickerSheet(spec Spec) {
 		panic(fmt.Sprintf("effects.Register: sticker sheet %q declares no ability stickers", spec.Name))
 	}
 	for i, a := range sheet.Abilities {
-		if len(a.Keywords) == 0 && a.Grant == "" {
+		if len(a.Keywords) == 0 && a.Grant == "" && a.GraveyardCastLife <= 0 {
 			panic(fmt.Sprintf("effects.Register: sticker sheet %q ability sticker %d gives nothing", spec.Name, i))
 		}
 		if a.Grant == "" {
@@ -335,7 +339,7 @@ func init() {
 			return game.StickerAbilityDef{}, false
 		}
 		a := s.Abilities[ordinal]
-		return game.StickerAbilityDef{Keywords: append([]string(nil), a.Keywords...), Grant: a.Grant}, true
+		return game.StickerAbilityDef{Keywords: append([]string(nil), a.Keywords...), Grant: a.Grant, GraveyardCastLife: a.GraveyardCastLife}, true
 	}
 }
 
@@ -353,18 +357,18 @@ func placedSticker(ctx *Context) (kind game.StickerKind, text string, object uui
 // placedNameSticker is the name sticker the instruction just before put
 // on ("a name sticker on it. … that sticker"): its word and the object it
 // is on.
-func placedNameSticker(ctx *Context) (text string, object uuid.UUID, ok bool) {
-	kind, text, object, ok := placedSticker(ctx)
+func placedNameSticker(ctx *Context) (text string, ok bool) {
+	kind, text, _, ok := placedSticker(ctx)
 	if !ok || kind != game.StickerName {
-		return "", uuid.Nil, false
+		return "", false
 	}
-	return text, object, true
+	return text, true
 }
 
 // uniqueVowelsOnPlacedSticker is "the number of unique vowels on that
 // sticker" (CR 123.6e): zero when the instruction put no name sticker on.
 func uniqueVowelsOnPlacedSticker(ctx *Context) int {
-	text, _, ok := placedNameSticker(ctx)
+	text, ok := placedNameSticker(ctx)
 	if !ok {
 		return 0
 	}
@@ -390,16 +394,6 @@ func nameStickerCount(c game.Card, matches func(text string) bool) int {
 		if matches == nil || matches(t) {
 			n++
 		}
-	}
-	return n
-}
-
-// lettersOnNameStickers is "the number of <letter>'s in name stickers on
-// it" (CR 123.6d), summed over every name sticker.
-func lettersOnNameStickers(c game.Card, letter rune) int {
-	n := 0
-	for _, t := range nameStickersOn(c) {
-		n += game.StickerLetterCount(t, letter)
 	}
 	return n
 }

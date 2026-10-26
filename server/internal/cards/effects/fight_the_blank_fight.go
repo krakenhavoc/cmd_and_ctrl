@@ -59,7 +59,7 @@ func nameStickersWithAtLeastLetters(n int) func(g *game.Game, source *game.Card)
 // fightTheBlankFightWhenYouDo creates the reflexive trigger once a sticker
 // went on.
 func fightTheBlankFightWhenYouDo(ctx *Context) error {
-	if _, _, ok := placedNameSticker(ctx); !ok {
+	if _, ok := placedNameSticker(ctx); !ok {
 		return nil
 	}
 	return ReflexiveTrigger{

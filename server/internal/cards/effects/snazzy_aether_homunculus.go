@@ -3,7 +3,7 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 const (
-	snazzyAetherHomunculusTypes    = "snazzy-aether-homunculus/all-creature-types"
+	snazzyAetherHomunculusTypes     = "snazzy-aether-homunculus/all-creature-types"
 	snazzyAetherHomunculusMagecraft = "snazzy-aether-homunculus/magecraft-draw"
 )
 

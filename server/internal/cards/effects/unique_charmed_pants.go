@@ -32,7 +32,7 @@ func init() {
 				Triggered: []game.TriggeredAbility{{
 					Watches: []game.EventKind{game.EventAttack},
 					AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-						return ThisAttacked(ev, source, lki, g) && !source.HasSubtype("Brushwagg")
+						return ThisAttacked(ev, source, lki, g) && !source.HasSubtype(source.TextSubtype("Brushwagg"))
 					},
 					Key: "Unique Charmed Pants sticker — if it's not a Brushwagg, it gets +X/+0 until end of turn, X the number of its supertypes, card types and subtypes",
 					Effect: func(g *game.Game, item *game.StackItem) error {
@@ -41,7 +41,7 @@ func init() {
 							return nil
 						}
 						c, ok := g.LookupCardForEffect(item.SourceCardID)
-						if !ok || c.HasSubtype("Brushwagg") {
+						if !ok || c.HasSubtype(ctx.TextSubtype("Brushwagg")) {
 							return nil
 						}
 						return BoostUntilEOT{Target: c.InstanceID, Power: supertypesTypesAndSubtypesOf(c), Label: "Unique Charmed Pants sticker"}.Apply(ctx)

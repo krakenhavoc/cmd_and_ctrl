@@ -29,9 +29,10 @@ func init() {
 			{
 				Key: geekLotusWarriorPump,
 				Activated: []ActivatedAbility{{
-					Label:  "{2}: This creature gets +2/+0 until end of turn.",
-					Cost:   ManaCost("{2}"),
-					Effect: thisGetsUntilEndOfTurn(2, 0, "Geek Lotus Warrior sticker — +2/+0"),
+					Label:   "{2}: This creature gets +2/+0 until end of turn.",
+					Cost:    ManaCost("{2}"),
+					Purpose: game.Purpose{Answers: game.AnswerPump},
+					Effect:  thisGetsUntilEndOfTurn(2, 0, "Geek Lotus Warrior sticker — +2/+0"),
 				}},
 				Text: "{2}: This creature gets +2/+0 until end of turn.",
 			},
@@ -41,13 +42,7 @@ func init() {
 					Targeting(
 						On(game.EventETB, CreatureEnteredUnderYourControl,
 							"Geek Lotus Warrior sticker — this permanent deals 2 damage to target player",
-							func(g *game.Game, item *game.StackItem) error {
-								ctx := NewContext(g, item)
-								if len(item.Targets) == 0 || !ctx.IsTargetLegal(item.Targets[0]) {
-									return nil
-								}
-								return DealDamage{Source: item.SourceCardID, Target: item.Targets[0].ID, Amount: 2}.Apply(ctx)
-							}),
+							thisDealsTwoToItsTarget),
 						TargetPlayer("target player")),
 				},
 				Text: "Whenever a creature enters under your control, this permanent deals 2 damage to target player.",

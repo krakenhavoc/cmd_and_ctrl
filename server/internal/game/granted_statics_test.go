@@ -236,7 +236,7 @@ func TestGrantedStaticProblemNamesWhatAGrantCannotCarry(t *testing.T) {
 		"nested":     {grants, "remove, grant or borrow"},
 		"borrow":     {borrows, "remove, grant or borrow"},
 		"zone":       {StaticAbility{Layer: Layer6Ability, AppliesTo: ok, Apply: apply, GrantZone: ZoneHand}, "battlefield"},
-		"hint":       {StaticAbility{Layer: Layer6Ability, AppliesTo: ok, Apply: apply, DependsOnHandSize: true}, "invalidation hint"},
+		"hint":       {StaticAbility{Layer: Layer6Ability, AppliesTo: ok, Apply: apply, DependsOnLifeTotal: true}, "invalidation hint"},
 		"designated": {StaticAbility{Layer: Layer6Ability, AppliesTo: ok, Apply: apply, ActiveWhen: ClassLevel(2)}, "ActiveWhen"},
 	} {
 		if p := GrantedStaticProblem(tc.s); !strings.Contains(p, tc.want) {

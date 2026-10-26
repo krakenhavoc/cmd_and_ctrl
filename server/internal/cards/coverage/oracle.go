@@ -407,6 +407,13 @@ func abilityLines(text string, names []string) []oracleLine {
 			l.keys = oracletext.CostKeys(cost, names)
 			l.words = oracletext.ContentWords(oracletext.Normalize(effect, names))
 			l.checkable = oracletext.IsCostPrefix(cost) && !oracletext.IsManaEffect(effect)
+			// An ability sticker's line ("{TK}{TK} — Sacrifice this
+			// permanent: Draw two cards.") is a bundle the Spec's
+			// StickerSheet names, not a row of the sheet card's own, so
+			// the MISSING check has no registered row to find (#4307).
+			if strings.HasPrefix(line, "{TK}") {
+				l.checkable = false
+			}
 		}
 		out = append(out, l)
 	}

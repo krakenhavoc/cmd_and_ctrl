@@ -3,7 +3,7 @@ package effects
 import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 const (
-	familiarBeebleUntap = "familiar-beeble-mascot/attacks-untap"
+	familiarBeebleUntap  = "familiar-beeble-mascot/attacks-untap"
 	familiarBeebleAnthem = "familiar-beeble-mascot/creature-enters-pump"
 )
 

@@ -80,7 +80,7 @@ func tapOpponentsCreaturesWithTheSamePowerOrToughness(g *game.Game, item *game.S
 		}
 	}
 	for _, id := range victims {
-		if err := (TapTarget{Target: id}).Apply(ctx); err != nil {
+		if err := (TapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
 			return err
 		}
 	}

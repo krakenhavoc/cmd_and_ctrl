@@ -158,6 +158,14 @@ type PlacedSticker struct {
 type StickerAbilityDef struct {
 	Keywords []string
 	Grant    string
+	// GraveyardCastLife, when above zero, makes the sticker give the card
+	// "You may cast this card from your graveyard by paying N life in
+	// addition to paying its other costs" (Eldrazi Guacamole Tightrope's
+	// second sticker): a static ability that functions from the graveyard
+	// (CR 123.7: an ability sticker gives its ability to a card in any
+	// zone). It is a derived cast permission (stickerGraveyardPermissionLocked),
+	// not a layered ability, so it needs neither keywords nor a bundle.
+	GraveyardCastLife int
 }
 
 // CatalogStickerAbility is the catalog's answer for the ordinal-th
@@ -923,4 +931,72 @@ func StickerSheetsOf(p *Player) []StickerSheet {
 		return nil
 	}
 	return cloneStickerSheets(p.StickerSheets)
+}
+
+// ---------------------------------------------------------------------
+// "You may cast this card from your graveyard" (CR 123.7, #4307)
+
+// AltCostKeyStickerGraveyard is the offer the derived permission below
+// is claimed under: the card's mana cost and N life.
+const AltCostKeyStickerGraveyard = "sticker-graveyard"
+
+// stickerGraveyardLifeOf is N in "by paying N life" for a card with an
+// ability sticker that lets it be cast from the graveyard, or 0.
+func stickerGraveyardLifeOf(c Card) int {
+	for _, s := range c.Stickers {
+		if ab, ok := stickerAbilityOf(s); ok && ab.GraveyardCastLife > 0 {
+			return ab.GraveyardCastLife
+		}
+	}
+	return 0
+}
+
+// stickerGraveyardPermissionLocked is the cast permission an ability
+// sticker gives its card while the card is in its owner's graveyard:
+// "You may cast this card from your graveyard by paying 2 life in addition
+// to paying its other costs." It is derived on every query, never stored,
+// so it lasts exactly as long as the sticker is on the card (a sticker
+// stays on a card that goes to a graveyard, CR 123.5, and comes off one
+// that goes to a hand or a library).
+//
+// The extra life is the offer's: the cast claims AltCostKeyStickerGraveyard,
+// which charges the card's printed mana cost and the life
+// (CastPermission.AlternativeCostFor). Timing, targets and every other cost
+// are the spell's own; a land has no cast to permit.
+//
+// Caller must hold g.mu.
+func (g *Game) stickerGraveyardPermissionLocked(playerID uuid.UUID, card Card) *CastPermission {
+	if len(card.Stickers) == 0 || card.Owner != playerID || card.IsLand() || stickerGraveyardLifeOf(card) == 0 {
+		return nil
+	}
+	return &CastPermission{
+		Player:     playerID,
+		Zone:       ZoneGraveyard,
+		Scope:      ScopeCards,
+		Cards:      []PermissionCardRef{{ID: card.InstanceID, Epoch: card.ObjectEpoch}},
+		Duration:   IndefiniteDuration(),
+		CastOnly:   true,
+		AltCostKey: AltCostKeyStickerGraveyard,
+		Source:     card.InstanceID,
+		SourceName: card.Name,
+		Label:      card.Name + " — cast from your graveyard, paying " + strconv.Itoa(stickerGraveyardLifeOf(card)) + " life",
+	}
+}
+
+// anyStickerGraveyardCastLocked is AnyCastPermissionsForEffect's fast
+// positive for the derived permission above: a graveyard holds a card with
+// a sticker that gives it.
+func (g *Game) anyStickerGraveyardCastLocked() bool {
+	for _, p := range g.Seats {
+		if p == nil || p.Graveyard == nil {
+			continue
+		}
+		for i := range p.Graveyard.Cards {
+			c := &p.Graveyard.Cards[i]
+			if len(c.Stickers) > 0 && stickerGraveyardLifeOf(*c) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }

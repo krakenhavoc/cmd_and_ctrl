@@ -35,7 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginEndStep,
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return ev.Actor == source.Controller && controlsAnyOfEmployeePerformerRobot(g, source.Controller)
+					return ev.Actor == source.Controller && controlsAnyOfEmployeePerformerRobot(g, source.Controller, source.TextSubtype)
 				},
 				"Done for the Day — you may get {TK} or create a Treasure token. If you control an Employee, a Performer and a Robot, you may put a sticker on a nonland permanent you own",
 				Do(
@@ -47,20 +47,20 @@ func init() {
 }
 
 // controlledEmployeePerformerRobot says which of the three `you` control.
-func controlledEmployeePerformerRobot(g *game.Game, you uuid.UUID) (employee, performer, robot bool) {
+func controlledEmployeePerformerRobot(g *game.Game, you uuid.UUID, tr func(string) string) (employee, performer, robot bool) {
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller != you {
 			continue
 		}
-		employee = employee || c.HasSubtype("Employee")
-		performer = performer || c.HasSubtype("Performer")
-		robot = robot || c.HasSubtype("Robot")
+		employee = employee || c.HasSubtype(tr("Employee"))
+		performer = performer || c.HasSubtype(tr("Performer"))
+		robot = robot || c.HasSubtype(tr("Robot"))
 	}
 	return employee, performer, robot
 }
 
-func controlsAnyOfEmployeePerformerRobot(g *game.Game, you uuid.UUID) bool {
-	e, p, r := controlledEmployeePerformerRobot(g, you)
+func controlsAnyOfEmployeePerformerRobot(g *game.Game, you uuid.UUID, tr func(string) string) bool {
+	e, p, r := controlledEmployeePerformerRobot(g, you, tr)
 	return e || p || r
 }
 
@@ -77,7 +77,7 @@ var doneForTheDayRewardPick = OptionPickThen("option-pick/done-for-the-day-rewar
 })
 
 func doneForTheDayReward(ctx *Context) error {
-	if !controlsAnyOfEmployeePerformerRobot(ctx.Game, ctx.Controller()) {
+	if !controlsAnyOfEmployeePerformerRobot(ctx.Game, ctx.Controller(), ctx.TextSubtype) {
 		return nil
 	}
 	return PickOption{
@@ -92,7 +92,7 @@ func doneForTheDayReward(ctx *Context) error {
 }
 
 func doneForTheDaySticker(ctx *Context) error {
-	e, p, r := controlledEmployeePerformerRobot(ctx.Game, ctx.Controller())
+	e, p, r := controlledEmployeePerformerRobot(ctx.Game, ctx.Controller(), ctx.TextSubtype)
 	if !(e && p && r) {
 		return nil
 	}

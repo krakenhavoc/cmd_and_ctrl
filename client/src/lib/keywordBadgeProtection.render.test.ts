@@ -113,6 +113,25 @@ describe("the protection badge", () => {
     ]);
   });
 
+  // #4307: the sticker sheets' four new qualities.
+  it("renders the odd/even mana value, multityped and noncreature qualities", () => {
+    const { container } = mount({
+      abilities: [
+        "protection from odd mana values",
+        "protection from even mana values",
+        "protection from creatures with two or more creature types",
+        "protection from noncreature permanents",
+      ],
+      protection: [
+        { printed: "odd mana values", kind: "mana_value_odd" },
+        { printed: "even mana values", kind: "mana_value_even" },
+        { printed: "creatures with two or more creature types", kind: "multityped_creatures" },
+        { printed: "noncreature permanents", kind: "noncreature_permanents" },
+      ],
+    });
+    expect(badges(container).map((b) => b.text)).toEqual(["MV odd", "MV even", "2+T", "NCP"]);
+  });
+
   it("renders protection from Ring-bearers as RNG", () => {
     const { container } = mount({
       abilities: ["protection from Ring-bearers"],

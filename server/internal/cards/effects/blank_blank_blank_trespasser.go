@@ -24,9 +24,10 @@ func init() {
 				Do(PutASticker{On: StickerOnThis, Kinds: []game.StickerKind{game.StickerName}})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{U}: This creature gets +1/+0 until end of turn for each name sticker on it. It can't be blocked this turn.",
-			Cost:   ManaCost("{3}{U}"),
-			Effect: blankTrespasserPump,
+			Label:   "{3}{U}: This creature gets +1/+0 until end of turn for each name sticker on it. It can't be blocked this turn.",
+			Cost:    ManaCost("{3}{U}"),
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Effect:  blankTrespasserPump,
 		}},
 	})
 }

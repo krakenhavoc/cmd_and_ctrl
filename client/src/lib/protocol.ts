@@ -5106,7 +5106,9 @@ export interface ProtectionView {
   // Which characteristic of a source the quality is compared
   // against: "color", "card_type", "subtype", "everything",
   // "player", "mana_value_at_most" (value = the bound N, #2181),
-  // "ring_bearer" (#2145) or "opponents" (#2745).
+  // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
+  // "mana_value_even", "multityped_creatures" or "noncreature_permanents"
+  // (#4307).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

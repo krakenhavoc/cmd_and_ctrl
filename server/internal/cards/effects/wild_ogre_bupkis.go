@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	wildOgreBupkisCounter   = "wild-ogre-bupkis/attacks-counter"
+	wildOgreBupkisCounter    = "wild-ogre-bupkis/attacks-counter"
 	wildOgreBupkisMetalcraft = "wild-ogre-bupkis/metalcraft-protection"
 )
 

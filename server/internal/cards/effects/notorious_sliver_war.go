@@ -26,8 +26,9 @@ func init() {
 			{
 				Key: notoriousSliverWarPump,
 				Activated: []ActivatedAbility{{
-					Label: "{5}: Creatures you control get +1/+1 until end of turn.",
-					Cost:  ManaCost("{5}"),
+					Label:   "{5}: Creatures you control get +1/+1 until end of turn.",
+					Cost:    ManaCost("{5}"),
+					Purpose: game.Purpose{Answers: game.AnswerPump},
 					Effect: func(g *game.Game, item *game.StackItem) error {
 						return BoostUntilEOT{Match: And(Creature(), YouControl()), Power: 1, Toughness: 1, Label: "Notorious Sliver War sticker — +1/+1"}.Apply(NewContext(g, item))
 					},

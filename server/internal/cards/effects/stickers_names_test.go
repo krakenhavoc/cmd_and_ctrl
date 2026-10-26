@@ -154,11 +154,11 @@ func TestStkBlankGoblinOffersOnlyNameStickers(t *testing.T) {
 // The count survives a restore taken while a sticker question is open: the
 // record of what was put on is data (step record), not a Go variable.
 func TestStkBlankGoblinSurvivesARestoreBetweenTheQuestions(t *testing.T) {
-	g, me := stkTableWith(t, 0, "Night Brushwagg Ringmaster")
+	g, _ := stkTableWith(t, 0, "Night Brushwagg Ringmaster")
 	id := castAndResolveCreature(t, g, "_____ Goblin", "Creature — Goblin Guest", blankGoblinOracle)
 	passPriorityAroundTable(t, g)
 	g = restoreRoundTrip(t, g, true)
-	me = g.Seats[0]
+	me := g.Seats[0]
 	pick := latestChooseCardsFor(g, me.ID)
 	if pick == nil {
 		t.Fatal("the restored table lost the object question")

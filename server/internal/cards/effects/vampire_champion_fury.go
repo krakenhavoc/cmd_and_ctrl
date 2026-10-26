@@ -50,8 +50,9 @@ func init() {
 			{
 				Key: vampireChampionFuryDamage,
 				Activated: []ActivatedAbility{{
-					Label: "{2}, Sacrifice this creature: It deals X damage divided as you choose among any number of target creatures, where X is its power.",
-					Cost:  Plus(ManaCost("{2}"), SacrificeThis()),
+					Label:   "{2}, Sacrifice this creature: It deals X damage divided as you choose among any number of target creatures, where X is its power.",
+					Cost:    Plus(ManaCost("{2}"), SacrificeThis()),
+					Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 					Targets: TargetCreature("any number of target creatures").WithCount(0, 0).
 						Dividing(DivideBy(DivideSourcePower)),
 					Effect: func(g *game.Game, item *game.StackItem) error {
