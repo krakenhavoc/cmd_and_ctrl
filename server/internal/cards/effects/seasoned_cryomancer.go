@@ -51,28 +51,30 @@ var (
 
 	// The loot's discard half, run once both draws have landed.
 	seasonedCryomancerDiscard = game.RegisterDrawThen("seasoned-cryomancer/discard-two", func(g *game.Game, d game.DrawThen) error {
-		parent := &game.StackItem{Controller: d.Player, SourceCardID: d.Source, Label: "Seasoned Cryomancer"}
-		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player:   d.Player,
 			Source:   d.Source,
 			N:        d.N,
 			Question: "Seasoned Cryomancer — discard two cards",
-			Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-				nonland := 0
-				for _, id := range discarded {
-					if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-						nonland++
-					}
-				}
-				if nonland == 0 {
-					return nil
-				}
-				t := WhenYouDo("Seasoned Cryomancer — tap up to "+strconv.Itoa(nonland)+" target creatures and put a stun counter on each", seasonedCryomancerStunBody)
-				t.Params = game.EffectParams{Amount: nonland}
-				return t.Apply(NewContext(g, parent))
-			},
-		})
-		return nil
+		}, seasonedCryomancerDiscarded, nil)
+	})
+
+	// The loot's discard answered, keyed (#4253): the reflexive trigger for
+	// the nonland cards that really left the hand.
+	seasonedCryomancerDiscarded = game.RegisterDiscardThen("choose-cards/seasoned-cryomancer-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		nonland := 0
+		for _, id := range r.Discarded.By(r.Player) {
+			if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
+				nonland++
+			}
+		}
+		if nonland == 0 {
+			return nil
+		}
+		parent := &game.StackItem{Controller: r.Player, SourceCardID: r.Source, Label: "Seasoned Cryomancer"}
+		t := WhenYouDo("Seasoned Cryomancer — tap up to "+strconv.Itoa(nonland)+" target creatures and put a stun counter on each", seasonedCryomancerStunBody)
+		t.Params = game.EffectParams{Amount: nonland}
+		return t.Apply(NewContext(g, parent))
 	})
 )
 

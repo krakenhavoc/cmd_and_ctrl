@@ -60,13 +60,17 @@ func ripplesChoosePhaseOut(g *game.Game, controller, source uuid.UUID, countered
 		Cards:    mine,
 		Min:      0,
 		Max:      0, // "any number"
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.PhaseOutForEffect(source, picked...)
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  ripplesPhaseOut,
 	})
 	return nil
 }
+
+// ripplesPhaseOut is the permanents chosen phasing out, keyed (#4253): the
+// card that asked is the prompt's source.
+var ripplesPhaseOut = game.RegisterChooseCardsThen("choose-cards/ripples-of-potential-phase-out", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return g.PhaseOutForEffect(r.Source, r.Picked...)
+})

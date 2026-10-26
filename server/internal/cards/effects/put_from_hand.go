@@ -173,7 +173,7 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 	if tapped {
 		dest = game.ChooseOntoBattlefieldTapped
 	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	prompt := game.ChooseCardsPrompt{
 		Destination: dest,
 		Chooser:     player,
 		Source:      source,
@@ -181,34 +181,60 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		Cards:       candidates,
 		Min:         floor,
 		Max:         max,
-		Validate:    p.Validate,
-		// Re-checked on submit: the pick must still be in that
-		// player's hand when the answer arrives.
-		Zone: game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return keyed.Run(g, nil)
-			}
-			if len(picked) > 1 {
-				// One simultaneous entry (entry_batch.go), told what
-				// entered when the last card's window has settled.
-				return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(picked, game.HandEntryOptions{
-					Controller: player,
-					Tapped:     tapped,
-				}, keyed)
-			}
-			// Through the keyed door (#1322, #4253 slice 6): the land may
-			// stop to ask its own question (a shockland's life), and a
-			// rider on the result (Spelunking's Cave) has to wait for the
-			// answer rather than read an entry that has not happened.
-			return g.PutFromHandOntoBattlefieldKeyedForEffect(picked[0], game.HandEntryOptions{
-				Controller: player,
-				Tapped:     tapped,
-			}, keyed)
-		},
-	})
+	}
+	if p.Validate == nil && keyed.IsZero() {
+		// Nothing hangs off the pick, so it is data: the "tapped" rider
+		// rides the prompt as a number and the table stays a restore point
+		// (#4253). A clause with a set rule or a tail is still a closure.
+		prompt.ThenKey = putFromHandPick
+		prompt.LiveZone = game.ZoneHand
+		if tapped {
+			prompt.CarryNums = []int{1}
+		}
+		ctx.Game.QueueChooseCardsForEffect(prompt)
+		return nil
+	}
+	prompt.Validate = p.Validate
+	// Re-checked on submit: the pick must still be in that
+	// player's hand when the answer arrives.
+	prompt.Zone = game.ZoneHand
+	prompt.Then = func(g *game.Game, picked []uuid.UUID) error {
+		return putFromHandPicked(g, player, picked, tapped, keyed)
+	}
+	ctx.Game.QueueChooseCardsForEffect(prompt)
 	return nil
 }
+
+// putFromHandPicked puts the cards picked from the hand onto the battlefield
+// and runs the keyed tail, if any, with what entered.
+func putFromHandPicked(g *game.Game, player uuid.UUID, picked []uuid.UUID, tapped bool, keyed game.KeyedTail) error {
+	if len(picked) == 0 {
+		return keyed.Run(g, nil)
+	}
+	if len(picked) > 1 {
+		// One simultaneous entry (entry_batch.go), told what
+		// entered when the last card's window has settled.
+		return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(picked, game.HandEntryOptions{
+			Controller: player,
+			Tapped:     tapped,
+		}, keyed)
+	}
+	// Through the keyed door (#1322, #4253 slice 6): the land may
+	// stop to ask its own question (a shockland's life), and a
+	// rider on the result (Spelunking's Cave) has to wait for the
+	// answer rather than read an entry that has not happened.
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(picked[0], game.HandEntryOptions{
+		Controller: player,
+		Tapped:     tapped,
+	}, keyed)
+}
+
+// putFromHandPick is a PutFromHandOntoBattlefield pick with no set rule and
+// no tail, keyed (#4253): the chooser is the player, and the one carried
+// number says whether the cards enter tapped.
+var putFromHandPick = game.RegisterChooseCardsThen("choose-cards/put-from-hand-onto-battlefield", func(g *game.Game, r game.CardsChosen) error {
+	return putFromHandPicked(g, r.Chooser, r.Picked, len(r.Nums) > 0 && r.Nums[0] == 1, game.KeyedTail{})
+})
 
 // PutFromHandTail registers a PutFromHandOntoBattlefield rider as a keyed
 // tail (#4253 slice 6): the body is handed what the rider is told, with a
