@@ -69,22 +69,26 @@ func nautiloidShipReturnACreature(g *game.Game, item *game.StackItem) error {
 	if len(creatures) == 0 {
 		return nil
 	}
-	controller := item.Controller
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
+		Chooser:  item.Controller,
 		Source:   item.SourceCardID,
 		Question: "Nautiloid Ship — you may put a creature card exiled with it onto the battlefield under your control",
 		Cards:    creatures,
-		Zone:     game.ZoneExile,
+		LiveZone: game.ZoneExile,
 		Min:      0,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			_, err := g.ReturnFromExileToBattlefieldForEffect(picked[0], controller, false)
-			return err
-		},
+		ThenKey:  nautiloidShipReturn,
 	})
 	return nil
 }
+
+// nautiloidShipReturn is the creature card put onto the battlefield, keyed
+// (#4253): the chooser is the trigger's controller, and the pick is all it
+// reads.
+var nautiloidShipReturn = game.RegisterChooseCardsThen("choose-cards/nautiloid-ship-return", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	_, err := g.ReturnFromExileToBattlefieldForEffect(r.Picked[0], r.Chooser, false)
+	return err
+})

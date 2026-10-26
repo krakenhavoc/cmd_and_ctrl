@@ -68,15 +68,19 @@ func memoryTheftAdventure(g *game.Game, item *game.StackItem, victim uuid.UUID) 
 		Cards:      offer,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.PutIntoGraveyardForEffect(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone:   game.ZoneExile,
+		ThenKey:    memoryTheftBin,
 	})
 	return nil
 }
+
+// memoryTheftBin is the Adventure card put into its owner's graveyard, keyed
+// (#4253). It reads nothing but the pick.
+var memoryTheftBin = game.RegisterChooseCardsThen("choose-cards/memory-theft-adventure-to-graveyard", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.PutIntoGraveyardForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
+})
