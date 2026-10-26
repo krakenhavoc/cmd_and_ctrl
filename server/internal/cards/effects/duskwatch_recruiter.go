@@ -40,9 +40,8 @@ func init() {
 					Match:    Creature(),
 					Max:      1,
 					Optional: true,
-					Reveal:   true,
 					Label:    "Duskwatch Recruiter — you may reveal a creature card from among them and put it into your hand",
-					Then:     TakeRestOnBottomInAnyOrder,
+					Key:      takeRevealRestBottomAny,
 				}.Apply(ctx)
 			},
 		}},

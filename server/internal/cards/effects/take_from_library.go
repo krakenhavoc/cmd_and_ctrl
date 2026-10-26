@@ -172,6 +172,11 @@ type TakeFromLibraryResult struct {
 	// rest", "the cards revealed this way that weren't put into your
 	// hand" — in the order Cards gave them.
 	Rest []uuid.UUID
+	// Looked are the cards the take was offered, in the order Cards gave
+	// them, wherever they are now: a clause that reads a characteristic of
+	// the card it looked at ("its mana value") reads it here, as data,
+	// rather than capturing it (#4253).
+	Looked []uuid.UUID
 }
 
 func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
@@ -286,6 +291,7 @@ func finishTake(g *game.Game, source, player uuid.UUID, cards []uuid.UUID, revea
 			Player: player,
 			Taken:  taken,
 			Rest:   cardsStillInALibrary(g, cards),
+			Looked: append([]uuid.UUID(nil), cards...),
 		})
 	}
 	if len(picked) == 0 {
@@ -554,9 +560,8 @@ func LookAtTopThenMayTakeToHand(n int, match CardPredicate, max int, label strin
 			Match:    match,
 			Max:      max,
 			Optional: true,
-			Reveal:   true,
 			Label:    label,
-			Then:     TakeRestOnBottomInRandomOrder,
+			Key:      takeRevealRestBottomRandom,
 		}.Apply(ctx)
 	}
 }
@@ -576,7 +581,7 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 		Match:  match,
 		All:    true,
 		Label:  label,
-		Then:   TakeRestOnBottomInAnyOrder,
+		Key:    takeRestBottomAny,
 	}.Apply(ctx)
 }
 

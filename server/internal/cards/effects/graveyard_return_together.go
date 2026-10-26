@@ -268,10 +268,12 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 	if r.Tapped {
 		dest = game.ChooseOntoBattlefieldTapped
 	}
-	item, tapped, toHand := ctx.Item, r.Tapped, r.ToHand
+	toHand := r.ToHand
 	if toHand {
 		dest = ""
 	}
+	// The pick is keyed (#4253 slice 8): the rest of the card is a registered
+	// continuation, and the two flags it needs are numbers on the prompt.
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     player,
 		FromPlayer:  player,
@@ -280,23 +282,34 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 		Cards:       candidates,
 		Min:         r.Min,
 		Max:         r.Max,
-		Zone:        game.ZoneGraveyard,
 		Destination: dest,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			if toHand {
-				hctx := NewContext(g, item)
-				for _, id := range picked {
-					if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(hctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-			return ReturnFromGraveyardTogether{Targets: picked, Tapped: tapped}.Apply(NewContext(g, item))
-		},
+		ThenKey:     returnChosenFromGraveyardThen,
+		LiveZone:    game.ZoneGraveyard,
+		CarryNums:   []int{boolToInt(r.Tapped), boolToInt(toHand)},
+		Asked:       game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// returnChosenFromGraveyardThen is ReturnChosenFromGraveyard's answer:
+// the chosen cards come back together, or go to hand one by one. Its
+// numbers are Tapped and ToHand. A card that left the graveyard while the
+// question was open is skipped by the entry itself, and a prompt whose
+// candidates all left is withdrawn with nothing picked.
+var returnChosenFromGraveyardThen = game.RegisterChooseCardsThen("choose-cards/return-chosen-from-graveyard",
+	func(g *game.Game, r game.CardsChosen) error {
+		if !r.Answered || len(r.Picked) == 0 {
+			return nil
+		}
+		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		tapped, toHand := len(r.Nums) > 0 && r.Nums[0] != 0, len(r.Nums) > 1 && r.Nums[1] != 0
+		if toHand {
+			for _, id := range r.Picked {
+				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		return ReturnFromGraveyardTogether{Targets: r.Picked, Tapped: tapped}.Apply(ctx)
+	})

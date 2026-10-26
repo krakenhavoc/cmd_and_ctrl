@@ -92,7 +92,11 @@ func narsetLookAtTheTop(g *game.Game, item *game.StackItem) error {
 		Match:    And(Noncreature(), Nonland()),
 		Max:      1,
 		Optional: true,
-		Reveal:   true,
 		Label:    "Narset Transcendent — you may reveal it and put it into your hand",
+		Key:      narsetTake,
 	}.Apply(NewContext(g, item))
 }
+
+// narsetTake is the +1's pick, keyed (#4253): the card taken is revealed,
+// and nothing else follows.
+var narsetTake = RegisterTake("choose-cards/narset-transcendent-take", TakeDef{Reveal: true})

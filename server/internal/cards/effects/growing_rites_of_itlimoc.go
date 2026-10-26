@@ -46,9 +46,8 @@ func init() {
 						Match:    Creature(),
 						Max:      1,
 						Optional: true,
-						Reveal:   true,
 						Label:    "Growing Rites of Itlimoc — reveal a creature card and put it into your hand",
-						Then:     TakeRestOnBottomInAnyOrder,
+						Key:      takeRevealRestBottomAny,
 					}.Apply(ctx)
 				}),
 			On(game.EventBeginEndStep, growingRitesHasFourCreatures,

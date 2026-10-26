@@ -58,6 +58,9 @@ type OptionPicked struct {
 	// dice is a paused dice roll's state (#4307, dice_roll.go), set only
 	// on the dice flow's own prompts.
 	dice *diceRollPause
+	// Asked is a copy of the asking item when the card put it on the
+	// prompt (OptionPickPrompt.Asked, #4253 slice 8); nil otherwise.
+	Asked *StackItem
 }
 
 // OptionPickFunc is a registered continuation. It runs with g.mu held,

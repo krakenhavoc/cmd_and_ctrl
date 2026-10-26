@@ -1252,6 +1252,7 @@ var pendingChoiceFields = plan(
 	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", dropped, "continuation frame: written as data on a library search whose spec has no closure set rule or then (#4253 slice 5, pendingChoices[].searchPrompt, search_prompt_keyed.go), otherwise counted in ContinuationCensus.ChoiceResumeFrames",
 	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"pickTail", carried, "#4253 slice 8: a keyed choose_cards pick's tail, as PickTail",
 	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",
 	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"libraryOrderKeyed", carried, "#4301: an ordering prompt's keyed then, as LibraryOrder (its key rides PickThen)",

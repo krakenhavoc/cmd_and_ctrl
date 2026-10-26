@@ -282,6 +282,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownChooseCardsThen(c.PickThen) {
 				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
 			}
+			// #4253 slice 8: and the tail it hands on.
+			unknown = append(unknown, unknownKeyedTail(c.PickTail)...)
 		case c.Kind == PendingChoiceOutsideCollection:
 			// #4256: a keyed collection pick's filter and continuation,
 			// registered under one key.

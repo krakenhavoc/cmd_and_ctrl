@@ -1990,6 +1990,12 @@ type pendingChoiceSnapshot struct {
 	// prompt without the rest of its card. Additive within the version.
 	ScryThen *keyedTailSnapshot `json:"scryThen,omitempty"`
 
+	// PickTail is PendingChoice.pickTail (#4253 slice 8): a keyed
+	// choose_cards pick's registered tail. Unlike ScryThen its key does not
+	// ride PickThen, which is the pick's own; the keys it names are checked
+	// on restore all the same. Additive within the version.
+	PickTail *keyedTailSnapshot `json:"pickTail,omitempty"`
+
 	// PromptRun is PendingChoice.promptRun (#4290): the run this prompt
 	// is one leg of, by its ID in PromptRuns. Additive: a file without it
 	// is a prompt that is no run's leg.
@@ -2439,6 +2445,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			if t := snapshotKeyedTail(c.scryThen); t != nil && carriesLookAtThen(c.Kind) {
 				// #4253 slice 3: the look-at's keyed "then".
 				pc.ScryThen, pc.PickThen = t, t.Key
+			}
+			if t := snapshotKeyedTail(c.pickTail); t != nil && c.Kind == PendingChoiceChooseCards {
+				// #4253 slice 8: a keyed choose_cards pick's tail.
+				pc.PickTail = t
 			}
 			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
 				// #4301: the ordering prompt's keyed "then".
@@ -3632,6 +3642,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if t := s.PendingChoices[i].ScryThen; t != nil && carriesLookAtThen(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
 			g.PendingChoices[i].PickThen = ""
+		}
+		if t := s.PendingChoices[i].PickTail; t != nil && s.PendingChoices[i].Kind == PendingChoiceChooseCards {
+			g.PendingChoices[i].pickTail = restoreKeyedTail(t)
 		}
 		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
 			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)
