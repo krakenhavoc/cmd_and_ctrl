@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -45,15 +43,20 @@ func goldenArgosyExile(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEnd,
-			Label: "Golden Argosy — return the exiled creatures tapped",
-			Cards: exiled,
-			Body:  returnExiledToOwnersTappedBody,
-		}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(goldenArgosyScheduleReturn))
 }
+
+// goldenArgosyScheduleReturn schedules the tapped return of the crew that reached exile (#4253 slice 9).
+var goldenArgosyScheduleReturn = CardTail("golden-argosy/schedule-return-tapped", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEnd,
+		Label: "Golden Argosy — return the exiled creatures tapped",
+		Cards: exiled,
+		Body:  returnExiledToOwnersTappedBody,
+	}.Apply(NewContext(g, item))
+})

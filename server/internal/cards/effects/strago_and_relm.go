@@ -73,41 +73,52 @@ func stragoAndRelmSketch(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return MillToZone{
-		Player: victim,
-		To:     game.ZoneExile,
-		Until:  UntilCard(stragoAndRelmHit),
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			if len(exiled) == 0 {
-				return nil
-			}
-			hit := exiled[len(exiled)-1]
-			c, ok := ctx.Game.LookupCardForEffect(hit)
-			if z := ctx.Game.FindCardZoneForEffect(hit); !ok || z == nil || z.Kind != game.ZoneExile || !stragoAndRelmHit(c) {
-				return nil
-			}
-			ctx.Game.GrantCastPermissionToCardsForEffect(game.CastPermission{
-				Player:         ctx.Controller(),
-				Zone:           game.ZoneExile,
-				Cost:           "{0}",
-				Timing:         game.TimingFlash,
-				CastOnly:       true,
-				Duration:       ctx.Game.UntilEndOfTurnDuration(),
-				LapseOnPass:    game.LapseStaysInExile,
-				GainsKeywords:  []string{"haste"},
-				GainsAbilities: []string{stragoAndRelmSacrificeGrant},
-				Source:         ctx.Source(),
-				SourceName:     "Strago and Relm",
-				Label:          "Strago and Relm — cast it without paying its mana cost",
-			}, []game.Card{c})
-			// #4250: cast during the resolution (CR 608.2g).
-			offerResolutionCastOver(ctx.Game, ctx.Controller(), ctx.Source(), "Strago and Relm",
-				game.MayCastKeywordFreeCast, declineLeaveInExile, hit)
-			return nil
-		},
+		Player:   victim,
+		To:       game.ZoneExile,
+		Until:    game.MillUntil{Ref: stragoAndRelmUntil},
+		ThenTail: ctx.ItemTail(stragoAndRelmMilled),
 	}.Apply(ctx)
 }
+
+// stragoAndRelmUntil is the run's stop clause (#4253 slice 9): the last
+// card exiled is a hit.
+var stragoAndRelmUntil = game.RegisterMillUntil("until/strago-and-relm-hit", func(landed []game.Card, _ int) bool {
+	return len(landed) > 0 && stragoAndRelmHit(landed[len(landed)-1])
+})
 
 // stragoAndRelmHit is "an instant, sorcery, or creature card".
 func stragoAndRelmHit(c game.Card) bool {
 	return c.IsInstant() || c.IsSorcery() || c.IsCreature()
 }
+
+// stragoAndRelmMilled is the clause after the mill (#4253 slice 9).
+var stragoAndRelmMilled = CardTail("strago-and-relm/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	exiled := o.IDs
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	hit := exiled[len(exiled)-1]
+	c, ok := ctx.Game.LookupCardForEffect(hit)
+	if z := ctx.Game.FindCardZoneForEffect(hit); !ok || z == nil || z.Kind != game.ZoneExile || !stragoAndRelmHit(c) {
+		return nil
+	}
+	ctx.Game.GrantCastPermissionToCardsForEffect(game.CastPermission{
+		Player:         ctx.Controller(),
+		Zone:           game.ZoneExile,
+		Cost:           "{0}",
+		Timing:         game.TimingFlash,
+		CastOnly:       true,
+		Duration:       ctx.Game.UntilEndOfTurnDuration(),
+		LapseOnPass:    game.LapseStaysInExile,
+		GainsKeywords:  []string{"haste"},
+		GainsAbilities: []string{stragoAndRelmSacrificeGrant},
+		Source:         ctx.Source(),
+		SourceName:     "Strago and Relm",
+		Label:          "Strago and Relm — cast it without paying its mana cost",
+	}, []game.Card{c})
+	// #4250: cast during the resolution (CR 608.2g).
+	offerResolutionCastOver(ctx.Game, ctx.Controller(), ctx.Source(), "Strago and Relm",
+		game.MayCastKeywordFreeCast, declineLeaveInExile, hit)
+	return nil
+})

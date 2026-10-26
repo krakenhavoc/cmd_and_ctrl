@@ -179,43 +179,49 @@ func b18EachPlayerDrawsAndLosesLife(g *game.Game, item *game.StackItem) error {
 // so the prompts arrive in a stable order; each shuffles as it
 // finishes, which nothing can observe.
 func b18ExileCreaturesThenControllersFetch(ctx *Context, creatures []game.Card, reason string) error {
-	controllers := make(map[uuid.UUID]uuid.UUID, len(creatures))
 	ids := make([]uuid.UUID, 0, len(creatures))
 	for _, c := range creatures {
 		if z := ctx.Game.FindCardZoneForEffect(c.InstanceID); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
 		ids = append(ids, c.InstanceID)
+	}
+	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(b18ExiledControllersFetch), reason))
+}
+
+// b18ExiledControllersFetch is the controllers' basic-land search after the exile (#4253 slice 9). The prompt reason is the Word.
+var b18ExiledControllersFetch = CardTail("batch18/exiled-creatures-controllers-fetch", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled, reason := ctx.Game, ctx.Item, o.IDs, o.Tail.Word
+	// The controllers as the creatures left (CR 603.10): the batch's
+	// last-known copies.
+	controllers := map[uuid.UUID]uuid.UUID{}
+	for _, c := range g.SimultaneousExitCardsForEffect(exiled) {
 		controllers[c.InstanceID] = c.Controller
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains.
-	item := ctx.Item
-	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		owed := map[uuid.UUID]int{}
-		var order []uuid.UUID
-		for _, id := range exiled {
-			controller := controllers[id]
-			if owed[controller] == 0 {
-				order = append(order, controller)
-			}
-			owed[controller]++
+
+	owed := map[uuid.UUID]int{}
+	var order []uuid.UUID
+	for _, id := range exiled {
+		controller := controllers[id]
+		if owed[controller] == 0 {
+			order = append(order, controller)
 		}
-		ctx := NewContext(g, item)
-		for _, player := range order {
-			if err := (SearchLibrary{
-				Player:        player,
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         owed[player],
-				Reveal:        true,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        reason,
-			}).Apply(ctx); err != nil {
-				return err
-			}
+		owed[controller]++
+	}
+	ctx = NewContext(g, item)
+	for _, player := range order {
+		if err := (SearchLibrary{
+			Player:        player,
+			Predicate:     IsBasicLand,
+			Dest:          game.ZoneBattlefield,
+			Limit:         owed[player],
+			Reveal:        true,
+			Shuffle:       true,
+			TappedOnEntry: true,
+			Reason:        reason,
+		}).Apply(ctx); err != nil {
+			return err
 		}
-		return nil
-	})
-}
+	}
+	return nil
+})

@@ -26,11 +26,16 @@ func init() {
 				return nil
 			}
 			return ExileTarget{
-				Target: item.Targets[0].ID,
-				Then: func(c *Context, _ bool) error {
-					return Populate{}.Apply(c)
-				},
+				Target:   item.Targets[0].ID,
+				ThenTail: ctx.ItemTail(trostanisJudgmentExiled),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// trostanisJudgmentExiled is the clause after the exile (#4253 slice 9).
+var trostanisJudgmentExiled = CardTail("trostanis-judgment/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	c := ctx
+
+	return Populate{}.Apply(c)
+})

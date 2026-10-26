@@ -57,5 +57,5 @@ func exileTheModesTargetCards(_ *game.StackItem, ctx *Context, occ int) error {
 		}
 		ids = append(ids, t.ID)
 	}
-	return exileCardsThen(ctx, ids, nil)
+	return exileCardsThen(ctx, ids, game.TailRef{})
 }

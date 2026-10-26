@@ -239,7 +239,7 @@ func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, except func(t 
 		}
 		id := t.ID
 		controller := item.Controller
-		return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
+		return exileTargetThen(ctx, id, func(ctx *Context, exiled bool) error {
 			if !exiled {
 				return nil
 			}
@@ -249,7 +249,7 @@ func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, except func(t 
 				N:          1,
 				Except:     except,
 			}.Apply(ctx)
-		}}.Apply(ctx)
+		})
 	}
 	return nil
 }

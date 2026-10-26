@@ -6323,7 +6323,7 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// CR 903.9 answer, given before the payment.
 		commanderAnswer: r.commanderAnswer,
 	}
-	if then != nil {
+	if then != nil || r.batchLegs != nil {
 		r.CardID = cardID
 		r.ViaBattlefieldLeave = true
 		r.simultaneousExit = batch

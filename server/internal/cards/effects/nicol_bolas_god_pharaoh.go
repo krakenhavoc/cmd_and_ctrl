@@ -90,21 +90,11 @@ func nicolBolasPlusTwo(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	controller, source := ctx.Controller(), ctx.Source()
 	return MillToZone{
-		Player: target,
-		To:     game.ZoneExile,
-		Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			var hits []uuid.UUID
-			for _, id := range exiled {
-				if c, found := ctx.Game.LookupCardForEffect(id); found && !c.IsLand() {
-					hits = append(hits, id)
-				}
-			}
-			grantFreeCasts(ctx.Game, controller, source, "Nicol Bolas, God-Pharaoh", game.TimingNormal, "", hits)
-			return nil
-		},
+		Player:   target,
+		To:       game.ZoneExile,
+		Until:    UntilNonland,
+		ThenTail: ctx.ItemTail(nicolBolasGodPharaohMilled),
 	}.Apply(ctx)
 }
 
@@ -138,3 +128,18 @@ func nicolBolasPlusOne(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// nicolBolasGodPharaohMilled is the clause after the mill (#4253 slice 9).
+var nicolBolasGodPharaohMilled = CardTail("nicol-bolas-god-pharaoh/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	controller, source := ctx.Controller(), ctx.Source()
+	exiled := o.IDs
+
+	var hits []uuid.UUID
+	for _, id := range exiled {
+		if c, found := ctx.Game.LookupCardForEffect(id); found && !c.IsLand() {
+			hits = append(hits, id)
+		}
+	}
+	grantFreeCasts(ctx.Game, controller, source, "Nicol Bolas, God-Pharaoh", game.TimingNormal, "", hits)
+	return nil
+})

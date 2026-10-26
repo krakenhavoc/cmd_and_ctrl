@@ -103,7 +103,7 @@ func eachPlayerFrom(
 // mills nothing and is still in the results, with no cards.
 //
 // `ctx` is only used for its item and game; `done` gets a context rebuilt from
-// the live game, as MillToZone.Then does.
+// the live game, as MillToZone.ThenTail does.
 func millEachPlayerInTurn(
 	ctx *Context,
 	players []uuid.UUID,
@@ -117,13 +117,8 @@ func millEachPlayerInTurn(
 	item := ctx.Item
 	return eachPlayerInTurn(ctx.Game, players,
 		func(g *game.Game, player uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
-			return MillToZone{
-				Player: player,
-				N:      counts[player],
-				Then: func(ctx *Context, milled []uuid.UUID) error {
-					return next(ctx.Game, milled)
-				},
-			}.Apply(NewContext(g, item))
+			// The chain's `next` is a closure, so the closure door.
+			return g.MillToZoneThenForEffect(player, counts[player], game.ZoneGraveyard, nil, next)
 		},
 		contextDone(item, done))
 }

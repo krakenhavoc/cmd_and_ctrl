@@ -38,22 +38,7 @@ var dimirDoppelgangerAbility = ActivatedAbility{
 			return nil
 		}
 		card := targets[0].ID
-		self := ctx.Source()
-		return ExileTarget{Target: card, Then: func(ctx *Context, _ bool) error {
-			c, ok := ctx.Game.LookupCardForEffect(card)
-			if !ok {
-				return nil
-			}
-			own := game.OwnPrintedValues(c)
-			return BecomeCopy{
-				Targets:  []uuid.UUID{self},
-				Of:       card,
-				Values:   &own,
-				Duration: CopyIndefinite,
-				Except:   func(v *game.PrintedValues) { v.GrantAbility(dimirDoppelgangerGrant) },
-				Label:    "Dimir Doppelganger — becomes a copy",
-			}.Apply(ctx)
-		}}.Apply(ctx)
+		return ExileTarget{Target: card, ThenTail: withCarry(ctx.ItemTail(dimirDoppelgangerExiled), card)}.Apply(ctx)
 	},
 }
 
@@ -70,3 +55,22 @@ func init() {
 		Activated: []ActivatedAbility{dimirDoppelgangerAbility},
 	})
 }
+
+// dimirDoppelgangerExiled is the clause after the exile (#4253 slice 9).
+var dimirDoppelgangerExiled = CardTail("dimir-doppelganger/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	card, self := tailCarry0(o), ctx.Source()
+
+	c, ok := ctx.Game.LookupCardForEffect(card)
+	if !ok {
+		return nil
+	}
+	own := game.OwnPrintedValues(c)
+	return BecomeCopy{
+		Targets:  []uuid.UUID{self},
+		Of:       card,
+		Values:   &own,
+		Duration: CopyIndefinite,
+		Except:   func(v *game.PrintedValues) { v.GrantAbility(dimirDoppelgangerGrant) },
+		Label:    "Dimir Doppelganger — becomes a copy",
+	}.Apply(ctx)
+})

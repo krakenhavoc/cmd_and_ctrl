@@ -53,22 +53,28 @@ func init() {
 			owner := victim.Controller
 			copyOf := victim.InstanceID
 			return ExileTarget{
-				Target: copyOf,
-				Then: func(ctx *Context, exiled bool) error {
-					if !exiled {
-						return nil
-					}
-					for _, p := range apnapPlayers(ctx.Game) {
-						if p == owner {
-							continue
-						}
-						if err := (CreateTokenCopy{Controller: p, Copy: copyOf, N: 1}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Target:   copyOf,
+				ThenTail: withCarry(ctx.ItemTail(fracturedIdentityExiled), copyOf, owner),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// fracturedIdentityExiled is the clause after the exile (#4253 slice 9).
+var fracturedIdentityExiled = CardTail("fractured-identity/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	copyOf, owner := o.Tail.Carry[0], o.Tail.Carry[1]
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	for _, p := range apnapPlayers(ctx.Game) {
+		if p == owner {
+			continue
+		}
+		if err := (CreateTokenCopy{Controller: p, Copy: copyOf, N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

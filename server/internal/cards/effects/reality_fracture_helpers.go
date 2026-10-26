@@ -412,13 +412,8 @@ func rfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.Stac
 		return nil
 	}
 	return ExileTarget{
-		Target: id,
-		Then: func(next *Context, _ bool) error {
-			return RevealUntilThenPutOntoBattlefield{
-				Match:  func(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() },
-				Reason: "revealed until a creature or planeswalker card",
-			}.Apply(next)
-		},
+		Target:   id,
+		ThenTail: ctx.ItemTail(realityFractureHelpersExiled),
 	}.Apply(ctx)
 }
 
@@ -449,7 +444,7 @@ func rfPutCardFromHandOnBottom(ctx *Context, question string) error {
 // of the library, keyed (#4253).
 var rfHandCardOnBottom = game.RegisterChooseCardsThen("choose-cards/reality-fracture-hand-card-on-bottom", func(g *game.Game, r game.CardsChosen) error {
 	for _, id := range r.Picked {
-		if err := g.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, nil); err != nil {
+		if err := g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{ToBottom: true}, game.KeyedTail{}); err != nil {
 			return err
 		}
 	}
@@ -530,3 +525,13 @@ func rfDamageFirstLegalTarget(amount int) Effect {
 		return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: amount}.Apply(ctx)
 	}
 }
+
+// realityFractureHelpersExiled is the clause after the exile (#4253 slice 9).
+var realityFractureHelpersExiled = CardTail("reality-fracture-helpers/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	next := ctx
+
+	return RevealUntilThenPutOntoBattlefield{
+		Match:  func(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() },
+		Reason: "revealed until a creature or planeswalker card",
+	}.Apply(next)
+})

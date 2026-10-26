@@ -72,9 +72,7 @@ func init() {
 				Cost:    Plus(ManaCost("{4}"), TapCost()),
 				Targets: TargetCardInGraveyard("four target cards from a single graveyard").WithCount(4, 4).AllShare(FromASingleGraveyard()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return exileTargetCardsThen(NewContext(g, item), func(ctx *Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
-						return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
-					})
+					return exileTargetCardsThen(NewContext(g, item), pestilentCauldronDraw)
 				},
 			},
 		},
@@ -105,3 +103,8 @@ func init() {
 }
 
 const pestilentCauldronOracleID = "78780f37-f215-4ae1-adce-6255b0146873"
+
+// pestilentCauldronDraw is "draw a card" after the exile (#4253 slice 9).
+var pestilentCauldronDraw = GraveyardExileTail("pestilent-cauldron/draw-a-card", func(ctx *Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

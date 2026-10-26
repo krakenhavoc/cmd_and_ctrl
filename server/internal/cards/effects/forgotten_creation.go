@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -55,7 +53,12 @@ func forgottenCreationWheel(g *game.Game, item *game.StackItem) error {
 	if p == nil {
 		return nil
 	}
-	return g.DiscardRandomThenForEffect(item.Controller, p.Hand.Size(), func(g *game.Game, discarded []uuid.UUID) error {
-		return DrawCards{Player: item.Controller, N: len(discarded)}.Apply(NewContext(g, item))
-	})
+	return g.DiscardRandomKeyedForEffect(item.Controller, p.Hand.Size(), NewContext(g, item).ItemTail(forgottenCreationDraw))
 }
+
+// forgottenCreationDraw draws a card per card discarded (#4253 slice 9).
+var forgottenCreationDraw = CardTail("forgotten-creation/draw-per-discarded", func(ctx *Context, o game.TailOutcome) error {
+	g, item, discarded := ctx.Game, ctx.Item, o.IDs
+
+	return DrawCards{Player: item.Controller, N: len(discarded)}.Apply(NewContext(g, item))
+})

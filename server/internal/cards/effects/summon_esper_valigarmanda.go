@@ -125,7 +125,7 @@ func valigarmandaExile(ctx *Context, picked []uuid.UUID) error {
 		return nil
 	}
 	link, _ := ctx.SourceRef() // no link when the Saga has gone: nothing will read it
-	return ctx.Game.ExileLinkedThenForEffect(link, picked, nil)
+	return ctx.Game.ExileLinkedKeyedForEffect(link, picked, game.KeyedTail{})
 }
 
 // valigarmandaManaAndCast is chapters II-IV: the mana, then the offer.

@@ -82,10 +82,16 @@ func exileTargetWithCounter(kind string) Effect {
 // exileCardWithCounter exiles one card and, once it is in exile, puts one
 // `kind` counter on it.
 func exileCardWithCounter(ctx *Context, id uuid.UUID, kind string) error {
-	return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		return AddCounter{Target: id, Kind: kind, N: 1}.Apply(ctx)
-	}}.Apply(ctx)
+	return ExileTarget{Target: id, ThenTail: withWord(withCarry(ctx.ItemTail(rexCyberHoundExiled), id), kind)}.Apply(ctx)
 }
+
+// rexCyberHoundExiled is the clause after the exile (#4253 slice 9).
+var rexCyberHoundExiled = CardTail("rex-cyber-hound/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	id, kind := tailCarry0(o), o.Tail.Word
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return AddCounter{Target: id, Kind: kind, N: 1}.Apply(ctx)
+})

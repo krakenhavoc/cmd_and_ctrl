@@ -40,7 +40,7 @@ func init() {
 		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorRight, "Weight Room — manifest dread, then put three +1/+1 counters on that creature",
-				Do(ManifestDread{Then: PutCountersOnManifested(CounterAmount{Kind: game.CounterPlusOne, N: 3})})),
+				Do(ManifestDread{ThenTail: PutCountersOnManifested(CounterAmount{Kind: game.CounterPlusOne, N: 3})})),
 		}},
 	}))
 }

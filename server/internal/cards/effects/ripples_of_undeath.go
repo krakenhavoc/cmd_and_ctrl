@@ -28,7 +28,7 @@ import (
 //     elsewhere — a commander that took CR 903.9's offer, an "exile
 //     it instead" effect — was not milled and is not a candidate, and
 //     the mill can pause on that prompt, so the list is not knowable
-//     on the line after the mill (MillToZone.Then, #893).
+//     on the line after the mill (MillToZone.ThenTail, #893).
 //   - "You may pay {1} and 3 life" is an optional cost paid DURING
 //     RESOLUTION, which is MayPay.
 //
@@ -78,10 +78,10 @@ const ripplesOfUndeathLife = 3
 // actually arrived to the optional-cost offer.
 func ripplesOfUndeathMillThenOffer(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		Player: item.Controller,
-		N:      3,
-		To:     game.ZoneGraveyard,
-		Then:   ripplesOfUndeathOffer,
+		Player:   item.Controller,
+		N:        3,
+		To:       game.ZoneGraveyard,
+		ThenTail: NewContext(g, item).ItemTail(ripplesOfUndeathMilled),
 	}.Apply(NewContext(g, item))
 }
 
@@ -147,3 +147,9 @@ func ripplesOfUndeathTakeOne(ctx *Context, milled []uuid.UUID) error {
 // ripplesOfUndeathPaid is the paid half, keyed (#4264): the cards that were milled ride the prompt.
 var ripplesOfUndeathPaid = PayUnlessBranches("pay-unless/ripples-of-undeath-take-one",
 	func(ctx *Context, r game.PayUnlessAnswer) error { return ripplesOfUndeathTakeOne(ctx, r.Carry) }, nil)
+
+// ripplesOfUndeathMilled is the clause after the mill (#4253 slice 9).
+var ripplesOfUndeathMilled = CardTail("ripples-of-undeath/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return ripplesOfUndeathOffer(ctx, o.IDs)
+})

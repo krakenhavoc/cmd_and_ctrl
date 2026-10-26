@@ -39,11 +39,7 @@ func init() {
 				approachCastsThisGame(ctx.Game, ctx.Controller(), ctx.Source()) >= 1 {
 				return WinTheGame{}.Apply(ctx)
 			}
-			controller := ctx.Controller()
-			return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{Depth: 7},
-				func(g *game.Game, _ bool) error {
-					return g.ChangePlayerLifeForEffect(item.SourceCardID, controller, 7)
-				})
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{Depth: 7}, ctx.ItemTail(approachOfTheSecondSunGain))
 		},
 	})
 }
@@ -73,3 +69,10 @@ func approachCastsThisGame(g *game.Game, player, self uuid.UUID) int {
 	}
 	return n
 }
+
+// approachOfTheSecondSunGain is "you gain 7 life" after the tuck (#4253 slice 9).
+var approachOfTheSecondSunGain = CardTail("approach-of-the-second-sun/gain-seven", func(ctx *Context, o game.TailOutcome) error {
+	g, item, controller := ctx.Game, ctx.Item, ctx.Controller()
+
+	return g.ChangePlayerLifeForEffect(item.SourceCardID, controller, 7)
+})

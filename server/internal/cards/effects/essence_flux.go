@@ -36,16 +36,8 @@ func init() {
 			}
 			target := item.Targets[0].ID
 			return ExileTarget{
-				Target: target,
-				Then: func(ctx *Context, exiled bool) error {
-					if !exiled {
-						return nil
-					}
-					return ReturnFromExile{
-						Target:   target,
-						ThenTail: ctx.ItemTail(essenceFluxCounter),
-					}.Apply(ctx)
-				},
+				Target:   target,
+				ThenTail: withCarry(ctx.ItemTail(essenceFluxExiled), target),
 			}.Apply(ctx)
 		},
 	})
@@ -65,4 +57,18 @@ var essenceFluxCounter = EnteredTail("essence-flux/counter-if-spirit", func(ctx 
 		return nil
 	}
 	return g.AddCounterForEffect(entered, "+1/+1", 1)
+})
+
+// essenceFluxExiled is the clause after the exile (#4253 slice 9).
+var essenceFluxExiled = CardTail("essence-flux/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	target := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return ReturnFromExile{
+		Target:   target,
+		ThenTail: ctx.ItemTail(essenceFluxCounter),
+	}.Apply(ctx)
 })

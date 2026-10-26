@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,9 +29,7 @@ func init() {
 			if len(ids) == 0 {
 				return nil
 			}
-			return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				return CopyAndCast{Cards: exiled, Free: true}.Apply(NewContext(g, item))
-			})
+			return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(rovingActuatorCopy))
 		})
 	enters.Targets = TargetCardInGraveyard("up to one target instant or sorcery card with mana value 2 or less in your graveyard",
 		YouOwn(), Or(Instant(), Sorcery()), ManaValueLE(2)).WithCount(0, 1)
@@ -44,3 +40,10 @@ func init() {
 		Triggered:    []game.TriggeredAbility{enters},
 	})
 }
+
+// rovingActuatorCopy copies what reached exile (#4253 slice 9).
+var rovingActuatorCopy = CardTail("roving-actuator/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return CopyAndCast{Cards: exiled, Free: true}.Apply(NewContext(g, item))
+})

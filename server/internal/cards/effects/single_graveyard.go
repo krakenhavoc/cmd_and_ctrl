@@ -71,7 +71,7 @@ func WhenThisEntersExileFromASingleGraveyard(name string, n int, effect Effect) 
 // exileTargetCardsOnResolve is ExileTargetCards as a spell's OnResolve
 // — Decompose, Scarab Feast, Rapid Decay, Shred Memory.
 func exileTargetCardsOnResolve(_ *game.StackItem, ctx *Context) error {
-	return exileTargetCardsThen(ctx, nil)
+	return exileTargetCardsThen(ctx, game.TailRef{})
 }
 
 // ExileTargetCards exiles every card target that is still legal as the
@@ -79,7 +79,7 @@ func exileTargetCardsOnResolve(_ *game.StackItem, ctx *Context) error {
 // target that left its graveyard in response is skipped, and the rest
 // still go. Decompose, Carrion Beetles, Digsite Conservator.
 func ExileTargetCards(g *game.Game, item *game.StackItem) error {
-	return exileTargetCardsThen(NewContext(g, item), nil)
+	return exileTargetCardsThen(NewContext(g, item), game.TailRef{})
 }
 
 // exileTargetCardsThen is ExileTargetCards with a clause hanging off
@@ -92,7 +92,7 @@ func ExileTargetCards(g *game.Game, item *game.StackItem) error {
 //
 // The context is rebuilt inside the continuation from the live *Game,
 // the contract massEffect.apply explains.
-func exileTargetCardsThen(ctx *Context, then func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error) error {
+func exileTargetCardsThen(ctx *Context, then game.TailRef) error {
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
@@ -106,22 +106,38 @@ func exileTargetCardsThen(ctx *Context, then func(ctx *Context, exiled []uuid.UU
 // exileCardsThen is exileTargetCardsThen over a list of cards that are
 // not targets — Waste Management's kicked "exile target player's
 // graveyard", which still counts the creature cards exiled this way.
-func exileCardsThen(ctx *Context, cards []uuid.UUID, then func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error) error {
+//
+// #4253 slice 9: `then` is a registered tail (GraveyardExileTail), or the
+// zero ref for none, so a table waiting on a CR 616 prompt in the middle
+// of the exile is a restore point.
+func exileCardsThen(ctx *Context, cards []uuid.UUID, then game.TailRef) error {
 	var ids []uuid.UUID
-	wasCreature := map[uuid.UUID]bool{}
 	for _, id := range cards {
-		card, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok {
+		if _, ok := ctx.Game.LookupCardForEffect(id); !ok {
 			continue
 		}
 		ids = append(ids, id)
-		wasCreature[id] = card.IsCreature()
 	}
-	item := ctx.Item
-	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if then == nil {
-			return nil
+	var t game.KeyedTail
+	if then.Key() != "" {
+		t = ctx.ItemTail(then)
+	}
+	return ctx.Game.ExileCardsKeyedForEffect(ids, t)
+}
+
+// GraveyardExileTail registers the clause hanging off a graveyard exile
+// (exileTargetCardsThen, exileCardsThen), told the cards that reached exile
+// and which of them are creature cards. A graveyard card keeps what it is
+// on its way to exile, so the creature cards are read off the exiled
+// cards.
+func GraveyardExileTail(key string, body func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		wasCreature := make(map[uuid.UUID]bool, len(o.IDs))
+		for _, id := range o.IDs {
+			if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+				wasCreature[id] = c.IsCreature()
+			}
 		}
-		return then(NewContext(g, item), exiled, wasCreature)
+		return body(ctx, o.IDs, wasCreature)
 	})
 }

@@ -23,7 +23,7 @@ import (
 // the second bullet counts "the number of lands you control", so with
 // both chosen the counters include every land the first bullet
 // returned — milled ones among them when the target player is you. The
-// mill is the sequencing form (MillToZone.Then), so a milled commander
+// mill is the sequencing form (MillToZone.ThenTail), so a milled commander
 // pausing the run on CR 903.9's offer holds the return and the counters
 // until it is answered, rather than letting them run a card early.
 //
@@ -55,10 +55,10 @@ func init() {
 				return willOfTheSultaiLandsThenCounters(ctx, nil)
 			}
 			return MillToZone{
-				Player: targets[0].ID,
-				N:      3,
-				To:     game.ZoneGraveyard,
-				Then:   willOfTheSultaiLandsThenCounters,
+				Player:   targets[0].ID,
+				N:        3,
+				To:       game.ZoneGraveyard,
+				ThenTail: ctx.ItemTail(willOfTheSultaiMilled),
 			}.Apply(ctx)
 		},
 	})
@@ -111,3 +111,9 @@ var willOfTheSultaiBullet = RegisterThenSteps("then-steps/will-of-the-sultai-bul
 		return nil
 	}),
 )
+
+// willOfTheSultaiMilled is the clause after the mill (#4253 slice 9).
+var willOfTheSultaiMilled = CardTail("will-of-the-sultai/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return willOfTheSultaiLandsThenCounters(ctx, o.IDs)
+})

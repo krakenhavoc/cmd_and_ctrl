@@ -127,15 +127,20 @@ var currencyConverterPutAway = game.RegisterChooseCardsThen("choose-cards/curren
 		return nil
 	}
 	isLand := chosen.IsLand()
-	return g.PutIntoGraveyardThenForEffect(r.Picked[0], func(g *game.Game, landed bool) error {
-		if !landed {
-			return nil
-		}
-		// One token, a Treasure or a Rogue: one instruction.
-		template := TokenCard("2/2 black Rogue")
-		if isLand {
-			template = TreasureToken()
-		}
-		return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(NewContext(g, item))
-	})
+	return g.PutCardsIntoGraveyardKeyedForEffect(r.Picked[:1], withN(NewContext(g, item).ItemTail(currencyConverterToken), boolToInt(isLand)))
+})
+
+// currencyConverterToken creates the Treasure or Rogue after the card reaches the graveyard (#4253 slice 9).
+var currencyConverterToken = CardTail("currency-converter/token-for-graveyarded-card", func(ctx *Context, o game.TailOutcome) error {
+	g, item, landed, isLand := ctx.Game, ctx.Item, len(o.IDs) == 1, o.Tail.N == 1
+
+	if !landed {
+		return nil
+	}
+	// One token, a Treasure or a Rogue: one instruction.
+	template := TokenCard("2/2 black Rogue")
+	if isLand {
+		template = TreasureToken()
+	}
+	return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(NewContext(g, item))
 })

@@ -280,14 +280,9 @@ func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
 		return nil
 	}
 	return MillToZone{
-		Player: victim,
-		N:      2,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
-				return nil
-			}
-			return b35TutelageMillPass(ctx, victim, guard+1)
-		},
+		Player:   victim,
+		N:        2,
+		ThenTail: withN(withCarry(ctx.ItemTail(batch35HelpersMilled), victim), guard),
 	}.Apply(ctx)
 }
 
@@ -526,13 +521,8 @@ func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackIte
 		return nil
 	}
 	return ExileTarget{
-		Target: item.SourceCardID,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return b34ReturnChosenGraveyardCardToHand(ctx)
-		},
+		Target:   item.SourceCardID,
+		ThenTail: ctx.ItemTail(batch35HelpersExiled),
 	}.Apply(ctx)
 }
 
@@ -544,4 +534,29 @@ var b35TenDamageToEachOpponentIfThirtyCounters = Do(If{
 		return b35CountersOnArtifactsAndCreaturesYouControl(ctx.Game, ctx.Controller()) >= 30
 	}},
 	Then: []Applier{DamageEachOpponent{N: 10}},
+})
+
+// batch35HelpersMilled is the clause after the mill (#4253 slice 9).
+var batch35HelpersMilled game.TailRef
+
+func init() {
+	batch35HelpersMilled = CardTail("batch35-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+		victim, guard := tailCarry0(o), o.Tail.N
+		milled := o.IDs
+
+		if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
+			return nil
+		}
+		return b35TutelageMillPass(ctx, victim, guard+1)
+	})
+}
+
+// batch35HelpersExiled is the clause after the exile (#4253 slice 9).
+var batch35HelpersExiled = CardTail("batch35-helpers/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return b34ReturnChosenGraveyardCardToHand(ctx)
 })

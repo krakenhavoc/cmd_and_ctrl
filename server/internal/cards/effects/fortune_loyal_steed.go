@@ -91,7 +91,12 @@ func fortuneExileAndReturn(g *game.Game, item *game.StackItem, chosen []uuid.UUI
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(fortuneReturnTogether))
 }
+
+// fortuneReturnTogether returns what reached exile, together (#4253 slice 9).
+var fortuneReturnTogether = CardTail("fortune-loyal-steed/return-exiled-together", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+})

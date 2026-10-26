@@ -49,12 +49,10 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			you := item.Controller
 			return MillToZone{
-				Player: you,
-				N:      8,
-				To:     game.ZoneExile,
-				Then: func(ctx *Context, exiled []uuid.UUID) error {
-					return aminatousAuguryPayoff(ctx.Game, item, you, exiled)
-				},
+				Player:   you,
+				N:        8,
+				To:       game.ZoneExile,
+				ThenTail: ctx.ItemTail(aminatousAuguryMilled),
 			}.Apply(ctx)
 		},
 	})
@@ -114,4 +112,12 @@ var aminatousAuguryLand = askedPick("choose-cards/aminatous-augury-land", func(c
 		return nil
 	}
 	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
+})
+
+// aminatousAuguryMilled is the clause after the mill (#4253 slice 9).
+var aminatousAuguryMilled = CardTail("aminatous-augury/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	item, you := ctx.Item, ctx.Controller()
+	exiled := o.IDs
+
+	return aminatousAuguryPayoff(ctx.Game, item, you, exiled)
 })

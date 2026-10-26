@@ -63,18 +63,10 @@ func etaliExileFrom(ctx *Context, players, hits []uuid.UUID) error {
 	}
 	rest := players[1:]
 	return MillToZone{
-		Player: players[0],
-		To:     game.ZoneExile,
-		Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			next := append([]uuid.UUID(nil), hits...)
-			for _, id := range exiled {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
-					next = append(next, id)
-				}
-			}
-			return etaliExileFrom(ctx, rest, next)
-		},
+		Player:   players[0],
+		To:       game.ZoneExile,
+		Until:    UntilNonland,
+		ThenTail: withN(withCarry(ctx.ItemTail(etaliPrimalConquerorMilled), append(append([]uuid.UUID(nil), rest...), hits...)...), len(rest)),
 	}.Apply(ctx)
 }
 
@@ -114,3 +106,21 @@ func init() {
 }
 
 const etaliOracleID = "7514e401-7aa1-405d-9f7a-312b4e630cc2"
+
+// etaliPrimalConquerorMilled is the clause after the mill (#4253 slice 9).
+var etaliPrimalConquerorMilled game.TailRef
+
+func init() {
+	etaliPrimalConquerorMilled = CardTail("etali-primal-conqueror/after-mill", func(ctx *Context, o game.TailOutcome) error {
+		rest, hits := o.Tail.Carry[:o.Tail.N], o.Tail.Carry[o.Tail.N:]
+		exiled := o.IDs
+
+		next := append([]uuid.UUID(nil), hits...)
+		for _, id := range exiled {
+			if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
+				next = append(next, id)
+			}
+		}
+		return etaliExileFrom(ctx, rest, next)
+	})
+}

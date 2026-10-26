@@ -58,27 +58,7 @@ func elkinLairUpkeep(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	card := pick[0]
-	return g.ExileCardThenForEffect(card, func(g *game.Game, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(card)
-		if !ok {
-			return nil
-		}
-		g.GrantCastPermissionOverCardForEffect(card, game.CastPermission{
-			Player:   player,
-			Zone:     game.ZoneExile,
-			Duration: g.UntilEndOfTurnDuration(),
-		})
-		return ScheduleDelayedTrigger{
-			At:     game.StepEnd,
-			Label:  "Elkin Lair — if " + c.Name + " wasn't played, it goes to the graveyard",
-			Cards:  []uuid.UUID{card},
-			Body:   elkinLairToGraveyardBody,
-			Params: game.EffectParams{Player: player, Object: game.ObjectRef{ID: card, Epoch: c.ObjectEpoch}},
-		}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardKeyedForEffect(card, game.KeyedTail{Ref: elkinLairExiled, Player: player, Source: ctx.Source(), Asked: game.NewAskedItem(item)})
 }
 
 // elkinLairToGraveyard puts the exiled card into its owner's graveyard
@@ -95,3 +75,33 @@ func elkinLairToGraveyard(g *game.Game, _ *game.StackItem, p game.EffectParams) 
 	}
 	return g.PutIntoGraveyardForEffect(id)
 }
+
+// elkinLairExiled lets the player play the card that reached exile this turn (#4253 slice 9).
+var elkinLairExiled = CardTail("elkin-lair/may-play-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, player := ctx.Game, ctx.Item, o.Tail.Player
+	exiled := len(o.IDs) == 1
+	card := uuid.Nil
+	if exiled {
+		card = o.IDs[0]
+	}
+
+	if !exiled {
+		return nil
+	}
+	c, ok := g.LookupCardForEffect(card)
+	if !ok {
+		return nil
+	}
+	g.GrantCastPermissionOverCardForEffect(card, game.CastPermission{
+		Player:   player,
+		Zone:     game.ZoneExile,
+		Duration: g.UntilEndOfTurnDuration(),
+	})
+	return ScheduleDelayedTrigger{
+		At:     game.StepEnd,
+		Label:  "Elkin Lair — if " + c.Name + " wasn't played, it goes to the graveyard",
+		Cards:  []uuid.UUID{card},
+		Body:   elkinLairToGraveyardBody,
+		Params: game.EffectParams{Player: player, Object: game.ObjectRef{ID: card, Epoch: c.ObjectEpoch}},
+	}.Apply(NewContext(g, item))
+})

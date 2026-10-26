@@ -393,6 +393,27 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 	}
 	discarder, source := p.Player, p.Source
 	legThen := p.Then
+	if legThen == nil {
+		// #4253 slice 9: with no per-prompt "then" the batch's own
+		// continuation is the run's leg settle, a registered tail, so a
+		// discard leg's CR 616 prompt is a restore point.
+		opts := discardOptions{cause: DiscardCauseEffect, source: p.Source, keyed: withTailN(discardLegSettledTail(run, discarder, source), 1)}
+		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			Chooser:    p.Player,
+			FromPlayer: p.Player,
+			Source:     p.Source,
+			Question:   question,
+			Cards:      hand,
+			Min:        lo,
+			Max:        n,
+			Zone:       ZoneHand,
+			Validate:   p.Validate,
+			promptRun:  run,
+			Then: func(g *Game, picked []uuid.UUID) error {
+				return g.discardCardsLocked(discarder, picked, opts)
+			},
+		})
+	}
 	opts := discardOptions{
 		cause:  DiscardCauseEffect,
 		source: p.Source,

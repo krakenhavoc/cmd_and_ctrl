@@ -61,37 +61,47 @@ var taintedPactAnswer game.ConfirmThen
 func taintedPactStep(ctx *Context, seen []string) error {
 	player := ctx.Controller()
 	return MillToZone{
-		Player: player,
-		N:      1,
-		To:     game.ZoneExile,
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			if len(exiled) == 0 {
-				// The library is empty, or the card went somewhere a
-				// replacement sent it: nothing was exiled this way, and
-				// there is nothing left to repeat on.
-				return nil
-			}
-			id := exiled[0]
-			c, ok := ctx.Game.LookupCardForEffect(id)
-			if !ok {
-				return nil
-			}
-			name := strings.TrimSpace(c.Name)
-			for _, n := range seen {
-				if strings.EqualFold(n, name) {
-					return nil // two cards with the same name: the process ends
-				}
-			}
-			next := append(append([]string(nil), seen...), name)
-			return MayChoice{
-				Player:   player,
-				Question: "Tainted Pact — put " + name + " into your hand?",
-				YesLabel: "Put it into my hand",
-				NoLabel:  "Exile the next card",
-				Then:     taintedPactAnswer,
-				Carry:    []uuid.UUID{id},
-				Word:     strings.Join(next, "\n"),
-			}.Apply(ctx)
-		},
+		Player:   player,
+		N:        1,
+		To:       game.ZoneExile,
+		ThenTail: withWord(ctx.ItemTail(taintedPactMilled), strings.Join(seen, "\n")),
 	}.Apply(ctx)
 }
+
+// taintedPactMilled is the clause after the mill (#4253 slice 9).
+var taintedPactMilled = CardTail("tainted-pact/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	player := ctx.Controller()
+	var seen []string
+	if o.Tail.Word != "" {
+		seen = strings.Split(o.Tail.Word, "\n")
+	}
+	exiled := o.IDs
+
+	if len(exiled) == 0 {
+		// The library is empty, or the card went somewhere a
+		// replacement sent it: nothing was exiled this way, and
+		// there is nothing left to repeat on.
+		return nil
+	}
+	id := exiled[0]
+	c, ok := ctx.Game.LookupCardForEffect(id)
+	if !ok {
+		return nil
+	}
+	name := strings.TrimSpace(c.Name)
+	for _, n := range seen {
+		if strings.EqualFold(n, name) {
+			return nil // two cards with the same name: the process ends
+		}
+	}
+	next := append(append([]string(nil), seen...), name)
+	return MayChoice{
+		Player:   player,
+		Question: "Tainted Pact — put " + name + " into your hand?",
+		YesLabel: "Put it into my hand",
+		NoLabel:  "Exile the next card",
+		Then:     taintedPactAnswer,
+		Carry:    []uuid.UUID{id},
+		Word:     strings.Join(next, "\n"),
+	}.Apply(ctx)
+})

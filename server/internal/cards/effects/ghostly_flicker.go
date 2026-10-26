@@ -36,10 +36,14 @@ func init() {
 			if len(ids) == 0 {
 				return nil
 			}
-			controller := ctx.Controller()
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				return ReturnFromExileTogether{Targets: exiled, Controller: controller}.Apply(NewContext(g, item))
-			})
+			return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.ItemTail(ghostlyFlickerReturn))
 		},
 	})
 }
+
+// ghostlyFlickerReturn returns what reached exile under your control (#4253 slice 9).
+var ghostlyFlickerReturn = CardTail("ghostly-flicker/return-under-your-control", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled, controller := ctx.Game, ctx.Item, o.IDs, ctx.Controller()
+
+	return ReturnFromExileTogether{Targets: exiled, Controller: controller}.Apply(NewContext(g, item))
+})

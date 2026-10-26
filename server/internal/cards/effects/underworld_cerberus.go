@@ -54,10 +54,8 @@ func underworldCerberusDies(g *game.Game, item *game.StackItem) error {
 		return eachPlayerReturnsCreatureCardsToHand(ctx)
 	}
 	return ExileTarget{
-		Target: item.SourceCardID,
-		Then: func(ctx *Context, _ bool) error {
-			return eachPlayerReturnsCreatureCardsToHand(ctx)
-		},
+		Target:   item.SourceCardID,
+		ThenTail: ctx.ItemTail(underworldCerberusExiled),
 	}.Apply(ctx)
 }
 
@@ -72,3 +70,9 @@ func eachPlayerReturnsCreatureCardsToHand(ctx *Context) error {
 	ctx.Game.BounceCardsToHandForEffect(ids)
 	return nil
 }
+
+// underworldCerberusExiled is the clause after the exile (#4253 slice 9).
+var underworldCerberusExiled = CardTail("underworld-cerberus/after-exile", func(ctx *Context, o game.TailOutcome) error {
+
+	return eachPlayerReturnsCreatureCardsToHand(ctx)
+})

@@ -36,22 +36,27 @@ func init() {
 			}
 			// With no targets the continuation runs at once, with nothing
 			// exiled.
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				if len(exiled) > 0 {
-					if err := (ScheduleDelayedTrigger{
-						At:    game.StepEnd,
-						Label: "Morningtide's Light — return the exiled cards tapped",
-						Cards: exiled,
-						Body:  returnExiledToOwnersTappedBody,
-					}).Apply(NewContext(g, item)); err != nil {
-						return err
-					}
-				}
-				if err := (PreventDamageFromSource{Protect: ShieldYou, UntilYourNextTurn: true}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-				return g.ExileCardForEffect(item.SourceCardID)
-			})
+			return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.ItemTail(morningtidesLightExiled))
 		},
 	})
 }
+
+// morningtidesLightExiled schedules the return, prevents the damage and exiles the spell (#4253 slice 9).
+var morningtidesLightExiled = CardTail("morningtides-light/schedule-return-prevent-exile-self", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	if len(exiled) > 0 {
+		if err := (ScheduleDelayedTrigger{
+			At:    game.StepEnd,
+			Label: "Morningtide's Light — return the exiled cards tapped",
+			Cards: exiled,
+			Body:  returnExiledToOwnersTappedBody,
+		}).Apply(NewContext(g, item)); err != nil {
+			return err
+		}
+	}
+	if err := (PreventDamageFromSource{Protect: ShieldYou, UntilYourNextTurn: true}).Apply(NewContext(g, item)); err != nil {
+		return err
+	}
+	return g.ExileCardForEffect(item.SourceCardID)
+})

@@ -195,7 +195,7 @@ var lilianaKeepRest = game.RegisterPromptRunThen("prompt-run/liliana-dreadhorde-
 	if len(rest) == 0 {
 		return nil
 	}
-	return g.SacrificeAllThenForEffect(r.Source, rest, nil)
+	return g.SacrificeAllKeyedForEffect(r.Source, rest, game.KeyedTail{})
 })
 
 // permanentTypeMask is a set of permanent types as a bit set over

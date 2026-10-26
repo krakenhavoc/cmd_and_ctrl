@@ -38,7 +38,7 @@ import (
 // stop conditions and the same verb governing both — "put into their
 // graveyard this way", CR 400.7's arrived object. #1159 fixed the
 // creature half; this is the other half, and it is written as what it
-// is: UntilAny(UntilCard(creature), UntilCount(X)) over the cards
+// is: UntilCreatureOrCount(X) over the cards
 // that landed.
 //
 // So the Helm asks for an UNBOUNDED mill and stops itself. X is not
@@ -132,35 +132,14 @@ func helmOfObedienceMill(g *game.Game, item *game.StackItem) error {
 		// command zone neither ends the run nor spends one of the X —
 		// the Helm mills another card in its place, which is what the
 		// card says.
-		Until: UntilAny(
-			UntilCard(func(c game.Card) bool { return c.IsCreature() }),
-			UntilCount(ctx.X()),
-		),
+		Until: UntilCreatureOrCount(ctx.X()),
 		// #893: the reanimation reads what was PUT INTO THE GRAVEYARD,
 		// so it runs from the continuation. A milled commander stops to
 		// answer CR 903.9 and the creature card to reanimate is not
 		// knowable until it does — the Helm used to read the list with
 		// that prompt still open, find nothing, and drop its own second
 		// half on the floor.
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			var creatures []uuid.UUID
-			for _, id := range milled {
-				c, ok := ctx.Game.LookupCardForEffect(id)
-				if ok && c.IsCreature() {
-					creatures = append(creatures, id)
-				}
-			}
-			if len(creatures) == 0 {
-				return nil
-			}
-			// "sacrifice this artifact AND put one of them onto the
-			// battlefield" — in that order, so an aristocrats payoff
-			// watching the Helm die sees it before the creature arrives.
-			if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
-				return err
-			}
-			return helmReanimateOneOfThem(ctx, item, victim, creatures)
-		},
+		ThenTail: ctx.ItemTail(helmOfObedienceMilled),
 	}.Apply(ctx)
 }
 
@@ -188,3 +167,28 @@ func helmReanimateOneOfThem(ctx *Context, item *game.StackItem, victim uuid.UUID
 		"Helm of Obedience — put one of the milled creature cards onto the battlefield under your control",
 		creatures)
 }
+
+// helmOfObedienceMilled is the clause after the mill (#4253 slice 9).
+var helmOfObedienceMilled = CardTail("helm-of-obedience/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	item := ctx.Item
+	victim := item.Targets[0].ID
+	milled := o.IDs
+
+	var creatures []uuid.UUID
+	for _, id := range milled {
+		c, ok := ctx.Game.LookupCardForEffect(id)
+		if ok && c.IsCreature() {
+			creatures = append(creatures, id)
+		}
+	}
+	if len(creatures) == 0 {
+		return nil
+	}
+	// "sacrifice this artifact AND put one of them onto the
+	// battlefield" — in that order, so an aristocrats payoff
+	// watching the Helm die sees it before the creature arrives.
+	if err := (SacrificePermanent{Target: item.SourceCardID}).Apply(ctx); err != nil {
+		return err
+	}
+	return helmReanimateOneOfThem(ctx, item, victim, creatures)
+})

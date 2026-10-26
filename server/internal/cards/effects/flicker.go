@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -123,20 +125,7 @@ func exileCardsThenScheduleReturnBody(ctx *Context, ids []uuid.UUID, label strin
 	if len(ids) == 0 {
 		return nil
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains.
-	item := ctx.Item
-	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEnd,
-			Label: label,
-			Cards: exiled,
-			Body:  body,
-		}.Apply(NewContext(g, item))
-	})
+	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(flickerScheduleReturn), body.Key()+"|"+label))
 }
 
 // returnExiledCardsWithAdditionalCounters is Semester's End's return:
@@ -177,35 +166,7 @@ func exileTargetsThenReturnOnOwnersEndStep(ctx *Context, label string) error {
 		}
 		ids = append(ids, t.ID)
 	}
-	item := ctx.Item
-	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		// Group by owner, in the order the cards reached exile, so
-		// the schedule order is stable.
-		var owners []uuid.UUID
-		byOwner := map[uuid.UUID][]uuid.UUID{}
-		for _, id := range exiled {
-			c, ok := g.LookupCardForEffect(id)
-			if !ok || c.Owner == uuid.Nil {
-				continue
-			}
-			if _, seen := byOwner[c.Owner]; !seen {
-				owners = append(owners, c.Owner)
-			}
-			byOwner[c.Owner] = append(byOwner[c.Owner], id)
-		}
-		for _, owner := range owners {
-			if err := (ScheduleDelayedTrigger{
-				At:     game.StepEnd,
-				Label:  label,
-				TurnOf: owner,
-				Cards:  byOwner[owner],
-				Body:   returnExiledToOwnersBody,
-			}).Apply(NewContext(g, item)); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	return ctx.Game.ExileCardsKeyedForEffect(ids, withWord(ctx.ItemTail(flickerReturnOnOwnersEndStep), label))
 }
 
 // exileThisThenReturnUnderAnOpponentsControl is "Exile <this>, then
@@ -237,3 +198,55 @@ var flickerUnderTheChosenOpponent = ChoosePlayerThen("option-pick/flicker-return
 		}
 		return Flicker{Target: carry[0], Controller: opp}.Apply(ctx)
 	})
+
+// flickerScheduleReturn schedules the end-step return of what reached exile (#4253 slice 9): the return's body key and the label ride the Word.
+var flickerScheduleReturn = CardTail("flicker/schedule-return-at-end-step", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	bodyKey, label, _ := strings.Cut(o.Tail.Word, "|")
+	body, ok := game.BodyRefByKey(bodyKey)
+	if !ok {
+		return nil
+	}
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEnd,
+		Label: label,
+		Cards: exiled,
+		Body:  body,
+	}.Apply(NewContext(g, item))
+})
+
+// flickerReturnOnOwnersEndStep schedules each owner's end-step return of what reached exile (#4253 slice 9); the label is the Word.
+var flickerReturnOnOwnersEndStep = CardTail("flicker/return-on-owners-end-step", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled, label := ctx.Game, ctx.Item, o.IDs, o.Tail.Word
+
+	// Group by owner, in the order the cards reached exile, so
+	// the schedule order is stable.
+	var owners []uuid.UUID
+	byOwner := map[uuid.UUID][]uuid.UUID{}
+	for _, id := range exiled {
+		c, ok := g.LookupCardForEffect(id)
+		if !ok || c.Owner == uuid.Nil {
+			continue
+		}
+		if _, seen := byOwner[c.Owner]; !seen {
+			owners = append(owners, c.Owner)
+		}
+		byOwner[c.Owner] = append(byOwner[c.Owner], id)
+	}
+	for _, owner := range owners {
+		if err := (ScheduleDelayedTrigger{
+			At:     game.StepEnd,
+			Label:  label,
+			TurnOf: owner,
+			Cards:  byOwner[owner],
+			Body:   returnExiledToOwnersBody,
+		}).Apply(NewContext(g, item)); err != nil {
+			return err
+		}
+	}
+	return nil
+})

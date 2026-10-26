@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -55,18 +54,24 @@ func init() {
 func tabletOfDiscoveryMill(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
 	return MillToZone{
-		Player: controller,
-		N:      1,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			for _, id := range milled {
-				ctx.Game.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
-					Player: controller,
-					Zone:   game.ZoneGraveyard,
-					Source: ctx.Source(),
-					Label:  "Tablet of Discovery — you may play that card this turn",
-				})
-			}
-			return nil
-		},
+		Player:   controller,
+		N:        1,
+		ThenTail: NewContext(g, item).ItemTail(tabletOfDiscoveryMilled),
 	}.Apply(NewContext(g, item))
 }
+
+// tabletOfDiscoveryMilled is the clause after the mill (#4253 slice 9).
+var tabletOfDiscoveryMilled = CardTail("tablet-of-discovery/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	controller := ctx.Controller()
+	milled := o.IDs
+
+	for _, id := range milled {
+		ctx.Game.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player: controller,
+			Zone:   game.ZoneGraveyard,
+			Source: ctx.Source(),
+			Label:  "Tablet of Discovery — you may play that card this turn",
+		})
+	}
+	return nil
+})

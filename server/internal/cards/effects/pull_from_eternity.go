@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Pull from Eternity -- Instant {W}:
 //
@@ -23,7 +27,7 @@ func init() {
 		Targets:      TargetCardInExile("target face-up exiled card", FaceUp()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
-				if err := ctx.Game.PutIntoGraveyardThenForEffect(t.ID, nil); err != nil {
+				if err := ctx.Game.PutCardsIntoGraveyardKeyedForEffect([]uuid.UUID{t.ID}, game.KeyedTail{}); err != nil {
 					return err
 				}
 			}

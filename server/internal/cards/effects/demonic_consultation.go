@@ -50,30 +50,35 @@ func init() {
 // named card.
 func demonicConsultationExileSix(ctx *Context, player uuid.UUID, name string) error {
 	return MillToZone{
-		Player: player,
-		N:      6,
-		To:     game.ZoneExile,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			run, hit := revealUntil(ctx, player, func(c game.Card) bool {
-				return game.CardNameMatches(c, name)
-			}, "Demonic Consultation — reveal until a card named "+name)
-			var rest []uuid.UUID
-			for _, id := range run {
-				if id != hit {
-					rest = append(rest, id)
-				}
-			}
-			exileRest := func(g *game.Game) error {
-				if len(rest) == 0 {
-					return nil
-				}
-				return g.ExileCardsThenForEffect(cardsStillInALibrary(g, rest), nil)
-			}
-			if hit == uuid.Nil {
-				return exileRest(ctx.Game)
-			}
-			return ctx.Game.TakeFromLibraryToHandThenForEffect(player, []uuid.UUID{hit},
-				func(g *game.Game, _ []uuid.UUID) error { return exileRest(g) })
-		},
+		Player:   player,
+		N:        6,
+		To:       game.ZoneExile,
+		ThenTail: withWord(withCarry(ctx.ItemTail(demonicConsultationMilled), player), name),
 	}.Apply(ctx)
 }
+
+// demonicConsultationMilled is the clause after the mill (#4253 slice 9).
+var demonicConsultationMilled = CardTail("demonic-consultation/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	player, name := tailCarry0(o), o.Tail.Word
+
+	run, hit := revealUntil(ctx, player, func(c game.Card) bool {
+		return game.CardNameMatches(c, name)
+	}, "Demonic Consultation — reveal until a card named "+name)
+	var rest []uuid.UUID
+	for _, id := range run {
+		if id != hit {
+			rest = append(rest, id)
+		}
+	}
+	exileRest := func(g *game.Game) error {
+		if len(rest) == 0 {
+			return nil
+		}
+		return g.ExileCardsKeyedForEffect(cardsStillInALibrary(g, rest), game.KeyedTail{})
+	}
+	if hit == uuid.Nil {
+		return exileRest(ctx.Game)
+	}
+	return ctx.Game.TakeFromLibraryToHandThenForEffect(player, []uuid.UUID{hit},
+		func(g *game.Game, _ []uuid.UUID) error { return exileRest(g) })
+})

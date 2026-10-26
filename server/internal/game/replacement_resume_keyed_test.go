@@ -58,6 +58,8 @@ func keyedFrameSample() *ReplacementEvent {
 		StartingLoyalty: true, CounterPlacer: id("placer"), CounterFromCombatDamage: true, CounterFromCost: true,
 		CounterFromTurnBasedAction: true,
 		LifePlayer:                 id("lifer"), LifeDelta: -4, LifeFromRadiation: true,
+		// #4253 slice 9: a discard.
+		DiscardPlayer: id("discarder"), DiscardCause: DiscardCauseEffect, DiscardCauseController: id("dcc"),
 		CardID: id("card"), OldZone: ZoneStack, NewZone: ZoneBattlefield, NewZoneOwner: id("owner"),
 		ShuffleDestinationLibrary: true, ExiledWith: PermissionCardRef{ID: id("ew"), Epoch: 2},
 		ExileCounter: "egg", Destruction: true, CantBeRegenerated: true, StateBasedDestruction: true,
@@ -99,6 +101,9 @@ func keyedFrameSample() *ReplacementEvent {
 			batch: &entryBatch{
 				source: id("batch-src"), next: 1, keyed: KeyedTail{Ref: TailRef{key: "bt"}, Player: id("bp"), Carry: []uuid.UUID{id("bc")}, N: 2},
 				opts: ZoneEntryOptions{Controller: id("bctl"), Tapped: true, EntersWithCounters: map[string]int{CounterPlusOne: 1}},
+				// #4253 slice 9: an entry a keyed discard leg became.
+				discard: &discardEntryRun{Card: id("de"), Actor: id("dea"), DiscardCause: DiscardCauseEffect, CauseKind: MoveCauseKind("effect"),
+					CauseController: uuidPtrOrNil(id("dec")), Legs: &discardBatchRun{Player: id("dep"), Then: &keyedTailSnapshot{Key: "det"}}},
 				members: []entryBatchMember{
 					{cardID: id("m0"), from: ZoneLibrary, controller: id("bctl"), priorController: id("prior0"),
 						out: &ReplacementEvent{ID: 40, Kind: RepEventMove, CardID: id("m0"), OldZone: ZoneLibrary, NewZone: ZoneBattlefield, EntersTapped: true}},
@@ -119,6 +124,21 @@ func keyedFrameSample() *ReplacementEvent {
 			faceDownLegs: &faceDownExileRun{
 				Player: id("fdp"), Leg: id("fdl"), Rest: []uuid.UUID{id("fdr")}, Landed: []uuid.UUID{id("fdx")},
 				Then: &keyedTailSnapshot{Key: "fd"},
+			},
+			// #4253 slice 9: a keyed route batch's leg, its last-known
+			// copies, and a keyed discard's leg.
+			batchLegs: &routeBatchRun{
+				Leg: id("rbl"), Rest: []uuid.UUID{id("rbr")}, Landed: []uuid.UUID{id("rbx")},
+				Then: &keyedTailSnapshot{Key: "rb"}, Planned: []uuid.UUID{id("rbp")}, AllMoved: true,
+				Mill: &millUntilRun{Player: id("mup"), Dest: ZoneExile, Until: "mu", UntilN: 2, Repetitions: 3, Done: 1, Depth: 9,
+					Landed: []uuid.UUID{id("mul")}, Seen: []cardSnapshot{{InstanceID: id("mul"), Name: "Seen"}},
+					Planned: []cardSnapshot{{InstanceID: id("mupl"), Name: "Planned"}}, Then: &keyedTailSnapshot{Key: "mt"}},
+			},
+			simultaneousExit: []Card{{InstanceID: id("lki"), Name: "Gone", Controller: id("lkic")}},
+			discardLegs: &discardBatchRun{
+				Player: id("dlp"), Source: id("dls"), Cause: DiscardCauseEffect, Leg: id("dll"), Mark: 7,
+				Rest: []uuid.UUID{id("dlr")}, Landed: []uuid.UUID{id("dlx")}, Tops: []discardTopSnapshot{{ID: id("dlt"), Epoch: 2}},
+				Then: &keyedTailSnapshot{Key: "dl"},
 			},
 		},
 		TokenController: id("tctl"), TokenAttacking: id("tatk"), TokenTogether: true, TokenAttackChoicesLabel: "split",
@@ -245,6 +265,21 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.Kind = RepEventLife
 			c.replacementResume.ev.lifeTail = &lifeTail{each: &lifeEachRun{Amount: 2}}
 		},
+		// #4253 slice 9: route batches, discards and a discard's entry.
+		"a keyed route batch's leg": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{batchLegs: &routeBatchRun{Then: &keyedTailSnapshot{Key: "k"}}}
+		},
+		"a keyed route batch's leg with its last-known copies": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{batchLegs: &routeBatchRun{},
+				simultaneousExit: []Card{{InstanceID: uuid.New(), Name: "Bear"}}}
+		},
+		"a keyed discard's leg": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventDiscard
+			c.replacementResume.ev.zoneRoute = &zoneRoute{Discard: true, discardLegs: &discardBatchRun{}}
+		},
+		"an entry a keyed discard leg became": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{discard: &discardEntryRun{Legs: &discardBatchRun{}}}}
+		},
 		"a staged token's entry with its batch as data": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			c.replacementResume.ev.entryTail = &entryTail{tokens: &tokenEntryRun{}}
@@ -312,6 +347,23 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{Name: "Army"}}
 		},
 		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
+		// #4253 slice 9: last-known copies with no keyed batch, or ones
+		// the card mirror cannot write whole, and a mill amount.
+		"a route's last-known copies with no keyed batch": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{simultaneousExit: []Card{{Name: "Bear"}}}
+		},
+		"a keyed batch whose last-known copies hold a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{batchLegs: &routeBatchRun{},
+				simultaneousExit: []Card{{Name: "Odd", ActivatedAbilities: []ActivatedAbilityShape{{}}}}}
+		},
+		"a discard's closure": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventDiscard
+			c.replacementResume.ev.zoneRoute = &zoneRoute{Discard: true, then: func(*Game) error { return nil }}
+		},
+		"a mill amount": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventMill
+			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard}
+		},
 		"a test replacement": func(c *PendingChoice) {
 			c.replacementResume.applicable = []activeReplacement{{id: testReplacementIDBase}}
 		},
@@ -435,6 +487,30 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Keyed: &keyedTailSnapshot{
 				Key: entryKeyedProbe.Key(), Next: &keyedTailSnapshot{Key: "never-registered"},
 			}}
+		},
+		// #4253 slice 9: each new run under its own key, and an unknown
+		// key inside one.
+		"a route batch under the move-tail key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.ZoneRoute.BatchLegs = &routeBatchRun{}
+		},
+		"an unknown tail in a route batch": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveBatch
+			c.ReplacementResume.Event.ZoneRoute.BatchLegs = &routeBatchRun{Then: &keyedTailSnapshot{Key: "never-registered"}}
+		},
+		"an unknown stop clause in a mill run": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveBatch
+			c.ReplacementResume.Event.ZoneRoute.BatchLegs = &routeBatchRun{Mill: &millUntilRun{Until: "never-registered"}}
+		},
+		"a discard entry under the move-tail key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Batch: &entryBatchSnapshot{Discard: &discardEntryRun{Legs: &discardBatchRun{}}}}
+		},
+		"an unknown tail in a discard entry's legs": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeDiscardEntry
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Batch: &entryBatchSnapshot{Discard: &discardEntryRun{
+				Legs: &discardBatchRun{Then: &keyedTailSnapshot{Key: "never-registered"}},
+			}}}
 		},
 		"an unknown tail in a batch's settled member": func(c *pendingChoiceSnapshot) {
 			c.PickThen = ReplacementResumeMoveTail

@@ -113,11 +113,16 @@ func (c CopyAndCast) Apply(ctx *Context) error {
 // cards that really reached exile with a free-cast offer each (CR
 // 707.12), then exile the spell itself ("Exile <this>").
 func exileCopyCastThenExileSelf(item *game.StackItem, ctx *Context, ids []uuid.UUID) error {
-	return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		if err := (CopyAndCast{Cards: exiled, Free: true}).Apply(ctx); err != nil {
-			return err
-		}
-		return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
-	})
+	return ctx.Game.ExileCardsKeyedForEffect(ids, NewContext(ctx.Game, item).ItemTail(exileCopyCastThenExileSelfTail))
 }
+
+// exileCopyCastThenExileSelfTail casts copies of what reached exile, then exiles the source (#4253 slice 9).
+var exileCopyCastThenExileSelfTail = CardTail("copy-and-cast/cast-copies-then-exile-self", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	ctx = NewContext(g, item)
+	if err := (CopyAndCast{Cards: exiled, Free: true}).Apply(ctx); err != nil {
+		return err
+	}
+	return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
+})

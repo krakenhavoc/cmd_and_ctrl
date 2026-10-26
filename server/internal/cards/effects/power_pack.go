@@ -36,18 +36,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
-				if !exiled {
-					return nil
-				}
-				return ScheduleDelayedTrigger{
-					At:                 game.StepUpkeep,
-					ControllerTurnOnly: true,
-					Label:              "Power Pack — you may cast that card without paying its mana cost",
-					Cards:              []uuid.UUID{id},
-					Body:               powerPackCastExiledBody,
-				}.Apply(ctx)
-			}}.Apply(ctx)
+			return ExileTarget{Target: id, ThenTail: withCarry(ctx.ItemTail(powerPackExiled), id)}.Apply(ctx)
 		})
 	hit.Targets = ChosenAtRandom(TargetCardInGraveyard("target instant or sorcery card from your graveyard chosen at random",
 		Or(Instant(), Sorcery()), YouOwn()))
@@ -92,3 +81,20 @@ func powerPackCastExiled(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// powerPackExiled is the clause after the exile (#4253 slice 9).
+var powerPackExiled = CardTail("power-pack/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	id := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:                 game.StepUpkeep,
+		ControllerTurnOnly: true,
+		Label:              "Power Pack — you may cast that card without paying its mana cost",
+		Cards:              []uuid.UUID{id},
+		Body:               powerPackCastExiledBody,
+	}.Apply(ctx)
+})

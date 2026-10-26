@@ -55,7 +55,12 @@ func bragoBlinkTargets(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(bragoReturn))
 }
+
+// bragoReturn returns the cards that reached exile, together (#4253 slice 9).
+var bragoReturn = CardTail("brago-king-eternal/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+})

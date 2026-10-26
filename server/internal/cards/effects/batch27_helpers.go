@@ -434,10 +434,12 @@ func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshol
 	mill := MillToZone{
 		Player: player,
 		To:     game.ZoneExile,
-		Until:  UntilTotalManaValue(threshold),
+		Until:  UntilTotalManaValueOf(threshold),
 	}
 	if then != nil {
-		mill.Then = func(ctx *Context, exiled []uuid.UUID) error { return then(ctx.Game, exiled) }
+		// A chained caller (eachPlayerInTurn) still hands a closure: the
+		// closure door, with the clause as its predicate.
+		return ctx.Game.MillToZoneThenForEffect(player, 0, game.ZoneExile, mill.Until.Pred(), then)
 	}
 	return mill.Apply(ctx)
 }

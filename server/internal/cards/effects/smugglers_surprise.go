@@ -35,7 +35,7 @@ import (
 // stack item and rebuilds its Context from the game it is handed, so
 // an undo across a prompt resolves against the restored game.
 //
-// "From among the milled cards" is MillToZone.Then's list — the cards
+// "From among the milled cards" is MillToZone.ThenTail's list — the cards
 // that actually reached the graveyard — re-checked against the
 // graveyard when the prompt is built (mill_then_take.go's reasoning).
 // The two creature cards from hand enter as ONE simultaneous event
@@ -66,11 +66,9 @@ func smugglersSurpriseMill(g *game.Game, item *game.StackItem) error {
 		return smugglersSurprisePut(g, item)
 	}
 	return MillToZone{
-		Player: item.Controller,
-		N:      4,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return smugglersSurpriseTakeMilled(ctx.Game, ctx.Item, milled)
-		},
+		Player:   item.Controller,
+		N:        4,
+		ThenTail: ctx.ItemTail(smugglersSurpriseMilled),
 	}.Apply(ctx)
 }
 
@@ -168,3 +166,10 @@ func smugglersSurpriseProtect(g *game.Game, item *game.StackItem) error {
 		Label:    "Smuggler's Surprise — hexproof and indestructible until end of turn",
 	}.Apply(ctx)
 }
+
+// smugglersSurpriseMilled is the clause after the mill (#4253 slice 9).
+var smugglersSurpriseMilled = CardTail("smugglers-surprise/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return smugglersSurpriseTakeMilled(ctx.Game, ctx.Item, milled)
+})

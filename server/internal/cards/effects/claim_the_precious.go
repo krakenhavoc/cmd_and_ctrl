@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -25,8 +23,7 @@ func init() {
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ids := legalTargetIDs(ctx)
-			tempt := ringTemptsYouNext(item)
-			return ctx.Game.DestroyPermanentsThenForEffect(ids, func(g *game.Game, _ []uuid.UUID) error { return tempt(g) })
+			return ctx.Game.DestroyPermanentsKeyedForEffect(ids, ctx.ItemTail(ringTemptsYouTail))
 		},
 	})
 }

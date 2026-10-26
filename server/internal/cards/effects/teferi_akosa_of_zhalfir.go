@@ -331,9 +331,7 @@ func teferiAkosaShuffleIntoLibrary(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckToLibraryThenForEffect(t.ID, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{t.ID}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }
 
 // untappedCreaturesControlledBy returns the untapped creatures a

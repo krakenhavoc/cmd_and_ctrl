@@ -42,7 +42,7 @@ func init() {
 				})),
 			ModeDoing("Exile up to three target cards from a single graveyard.", upToNCardsFromASingleGraveyard(3),
 				func(_ *game.StackItem, ctx *Context, _ int) error {
-					return exileTargetCardsThen(ctx, nil)
+					return exileTargetCardsThen(ctx, game.TailRef{})
 				}),
 			ModeWithPurpose(ModeDoing("Target creature gains fear until end of turn.", TargetCreature("target creature"),
 				func(_ *game.StackItem, ctx *Context, occ int) error {

@@ -367,6 +367,28 @@ type zoneRoute struct {
 	// batch (#4253 slice 3, exile_face_down_keyed.go). Cleared through
 	// the pointer as it runs, as `then` is. Never set together with it.
 	faceDownLegs *faceDownExileRun
+
+	// batchLegs is `then` as data for one leg of a route batch (#4253
+	// slice 9, route_batch_keyed.go), and discardLegs for one leg of a
+	// discard batch (discard_keyed.go). Cleared through the pointer as
+	// they run, as `then` is. Never set together with it or each other.
+	batchLegs   *routeBatchRun
+	discardLegs *discardBatchRun
+}
+
+// hasTail reports whether the route carries a continuation, as a closure
+// or as data.
+func (r *zoneRoute) hasTail() bool {
+	return r != nil && (r.then != nil || r.faceDownLegs != nil || r.batchLegs != nil || r.discardLegs != nil)
+}
+
+// detachTail takes the continuation off the route and returns a route
+// value that still carries it, for a caller that runs it later (the ADR
+// 0178 life-after-move sequence, a discard that became an entry).
+func (r *zoneRoute) detachTail() zoneRoute {
+	out := *r
+	r.then, r.faceDownLegs, r.batchLegs, r.discardLegs = nil, nil, nil, nil
+	return out
 }
 
 // runRouteTailLocked runs a settled route's continuation exactly once.
@@ -400,6 +422,14 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 	if legs := r.faceDownLegs; legs != nil && r.then == nil {
 		r.faceDownLegs = nil
 		return g.runFaceDownExileStepLocked(legs)
+	}
+	if legs := r.batchLegs; legs != nil && r.then == nil {
+		r.batchLegs = nil
+		return g.runRouteBatchLegLocked(r, legs)
+	}
+	if legs := r.discardLegs; legs != nil && r.then == nil {
+		r.discardLegs = nil
+		return g.runDiscardBatchLegLocked(legs)
 	}
 	if r.then == nil {
 		return nil

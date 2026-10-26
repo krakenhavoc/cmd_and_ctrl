@@ -55,13 +55,18 @@ func init() {
 var clashOfElementsAnswer = MayYesNo("confirm/clash-of-elements-top-or-bottom",
 	func(ctx *Context, r game.ConfirmAnswer) error {
 		owner := r.Chooser
-		return ctx.Game.TuckToLibraryThenForEffect(carryAt(r, 0), game.TuckOptions{}, func(g *game.Game, tucked bool) error {
-			if !tucked {
-				return nil
-			}
-			return DealDamage{Source: ctx.Item.SourceCardID, Target: owner, Amount: 2}.Apply(NewContext(g, ctx.Item))
-		})
+		return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{carryAt(r, 0)}, game.TuckOptions{}, withCarry(ctx.ItemTail(clashOfElementsTucked), owner))
 	},
 	func(ctx *Context, r game.ConfirmAnswer) error {
 		return ctx.Game.TuckToLibraryForEffect(carryAt(r, 0), true)
 	})
+
+// clashOfElementsTucked deals 2 to the tucked card's owner (#4253 slice 9).
+var clashOfElementsTucked = CardTail("clash-of-elements/damage-owner-if-tucked", func(ctx *Context, o game.TailOutcome) error {
+	g, owner, tucked := ctx.Game, tailCarry0(o), len(o.IDs) == 1
+
+	if !tucked {
+		return nil
+	}
+	return DealDamage{Source: ctx.Item.SourceCardID, Target: owner, Amount: 2}.Apply(NewContext(g, ctx.Item))
+})

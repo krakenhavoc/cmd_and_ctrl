@@ -94,7 +94,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 	}
 	target := e.Target
 	then := e.Then
-	return ExileTarget{Target: target, Then: func(ctx *Context, exiled bool) error {
+	return exileTargetThen(ctx, target, func(ctx *Context, exiled bool) error {
 		if !exiled {
 			if then != nil {
 				return then(ctx, false)
@@ -113,7 +113,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 			return then(ctx, true)
 		}
 		return nil
-	}}.Apply(ctx)
+	})
 }
 
 // exileChosenTargetUntilThisLeaves is the Oblivion Ring family's entry

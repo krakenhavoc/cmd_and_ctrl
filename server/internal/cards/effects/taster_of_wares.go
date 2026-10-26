@@ -117,32 +117,41 @@ func tasterOfWaresEnters(g *game.Game, item *game.StackItem) error {
 // tasterOfWaresExile is "that player exiles it", and the cast permission
 // when an instant or sorcery card lands in exile.
 func tasterOfWaresExile(g *game.Game, item *game.StackItem, id uuid.UUID) error {
-	card, ok := g.LookupCardForEffect(id)
-	if !ok {
+	if _, ok := g.LookupCardForEffect(id); !ok {
 		return nil
 	}
-	spell := card.IsInstant() || card.IsSorcery()
-	return g.ExileCardsThenForEffect([]uuid.UUID{id}, func(g *game.Game, exiled []uuid.UUID) error {
-		if !spell {
-			return nil
-		}
-		for _, eid := range exiled {
-			c, ok := g.LookupCardForEffect(eid)
-			if !ok {
-				continue
-			}
-			g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-				Player:     item.Controller,
-				Zone:       game.ZoneExile,
-				CastOnly:   true,
-				AnyColor:   true,
-				AnyType:    true,
-				Duration:   forAsLongAsYouControlThisWindow(g, item),
-				Source:     item.SourceCardID,
-				SourceName: "Taster of Wares",
-				Label:      "You may cast it for as long as you control Taster of Wares",
-			}, []game.Card{c})
-		}
-		return nil
-	})
+	return g.ExileCardsKeyedForEffect([]uuid.UUID{id}, NewContext(g, item).ItemTail(tasterOfWaresGrant))
 }
+
+// tasterOfWaresGrant grants the cast of the instant or sorcery card that reached exile (#4253 slice 9).
+var tasterOfWaresGrant = CardTail("taster-of-wares/grant-cast-of-exiled-spell", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	spell := false
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok && (c.IsInstant() || c.IsSorcery()) {
+			spell = true
+		}
+	}
+
+	if !spell {
+		return nil
+	}
+	for _, eid := range exiled {
+		c, ok := g.LookupCardForEffect(eid)
+		if !ok {
+			continue
+		}
+		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+			Player:     item.Controller,
+			Zone:       game.ZoneExile,
+			CastOnly:   true,
+			AnyColor:   true,
+			AnyType:    true,
+			Duration:   forAsLongAsYouControlThisWindow(g, item),
+			Source:     item.SourceCardID,
+			SourceName: "Taster of Wares",
+			Label:      "You may cast it for as long as you control Taster of Wares",
+		}, []game.Card{c})
+	}
+	return nil
+})

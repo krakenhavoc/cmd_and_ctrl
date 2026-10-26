@@ -189,7 +189,8 @@ func TestTheThenClauseOfASkippedSelfActHearsNo(t *testing.T) {
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, item)
 		_ = SacrificePermanent{Target: src, Then: func(_ *Context, ok bool) error { heard["sacrifice"] = ok; return nil }}.Apply(ctx)
-		_ = ExileTarget{Target: src, Then: func(_ *Context, ok bool) error { heard["exile"] = ok; return nil }}.Apply(ctx)
+		testHeardExile = heard
+		_ = ExileTarget{Target: src, ThenTail: ctx.Tail(testHeardExileTail)}.Apply(ctx)
 		_ = BounceToHand{Target: src, Then: func(_ *Context, ok bool) error { heard["bounce"] = ok; return nil }}.Apply(ctx)
 	})
 	for _, k := range []string{"sacrifice", "exile", "bounce"} {
@@ -561,7 +562,9 @@ func scanPrimitives(t *testing.T) primitiveScan {
 	// until-end-of-turn duration, and so eotSnapshot underneath (#1497).
 	// ApplyReports is BecomeCopy's Apply with the "if you do" report
 	// (#3774): Apply delegates to it, and the guard lives there.
-	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true, "ApplyReports": true}
+	// exileTargetThen is ExileTarget with a closure "then" (#4253 slice 9),
+	// and asks the same question first.
+	markers := map[string]bool{"isNewSourceObject": true, "isNewSourceObjectAsThis": true, "withoutNewSourceObject": true, "eotSnapshot": true, "applyFor": true, "untilEndOfTurn": true, "ApplyReports": true, "exileTargetThen": true}
 	guarded := map[string]bool{}
 	for changed := true; changed; {
 		changed = false
@@ -760,3 +763,13 @@ func exprString(e ast.Expr) string {
 	}
 	return ""
 }
+
+// testHeardExile and testHeardExileTail let a test hear ExileTarget's keyed
+// "then" (#4253 slice 9): the tail writes whether the card was exiled.
+var (
+	testHeardExile     map[string]bool
+	testHeardExileTail = CardTail("test/4253-heard-exile", func(_ *Context, o game.TailOutcome) error {
+		testHeardExile["exile"] = len(o.IDs) == 1
+		return nil
+	})
+)
