@@ -57,19 +57,15 @@ func init() {
 // creature token and suspect it": the suspect rides the token
 // creation's continuation.
 func caseOfTheStashedSkeletonEnters(g *game.Game, item *game.StackItem) error {
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	ctx := NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: NewContext(g, item).TextToken(TokenCard("2/1 black Skeleton")),
+			Template: ctx.TextToken(TokenCard("2/1 black Skeleton")),
 			Count:    1,
 		}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		for _, id := range created {
-			g.SuspectForEffect(id)
-		}
-		return nil
-	})
+	}, ctx.Tail(thenSuspectEach))
 }
 
 // youControlNoSuspectedSkeletons is the Case's solve condition.

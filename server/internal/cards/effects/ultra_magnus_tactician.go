@@ -128,21 +128,25 @@ func ultraMagnusPut(g *game.Game, item *game.StackItem, card, attacking uuid.UUI
 	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != game.ZoneHand {
 		return nil
 	}
-	return g.PutFromHandOntoBattlefieldThenForEffect(card, game.HandEntryOptions{
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(card, game.HandEntryOptions{
 		Controller: item.Controller,
 		Tapped:     true,
 		Attacking:  attacking,
-	}, func(g *game.Game, entered uuid.UUID) error {
-		if entered == uuid.Nil {
-			return nil // "If you do": nothing entered
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEndCombat,
-			Label: "Ultra Magnus, Tactician — convert Ultra Magnus at end of combat",
-			Body:  transformersConvertThisBody,
-		}.Apply(NewContext(g, item))
-	})
+	}, NewContext(g, item).ItemTail(ultraMagnusConvert))
 }
+
+// ultraMagnusConvert is "if you do, convert Ultra Magnus at end of
+// combat" as a keyed tail (#4253 slice 6). An on-disk key.
+var ultraMagnusConvert = EnteredTail("ultra-magnus-tactician/convert-at-end-of-combat", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	if entered == uuid.Nil {
+		return nil // "If you do": nothing entered
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEndCombat,
+		Label: "Ultra Magnus, Tactician — convert Ultra Magnus at end of combat",
+		Body:  transformersConvertThisBody,
+	}.Apply(ctx)
+})
 
 func ultraMagnusFormidable(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

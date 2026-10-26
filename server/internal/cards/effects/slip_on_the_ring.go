@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -39,7 +37,7 @@ func init() {
 					return ReturnFromExile{
 						Target:     target,
 						Controller: ctx.Controller(),
-						Then:       func(g *game.Game, _ uuid.UUID) error { return tempt(g) },
+						ThenTail:   ctx.ItemTail(ringTemptsYouTail),
 					}.Apply(ctx)
 				},
 			}.Apply(ctx)

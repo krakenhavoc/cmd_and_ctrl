@@ -60,8 +60,8 @@ func TestChooseCardsOverLibraryCardsHonoursASetRule(t *testing.T) {
 				}
 				return total <= 4
 			},
-			Label: "test — put any number with total mana value 4 or less onto the battlefield",
-			Then:  effects.PutRestOnBottomInRandomOrder,
+			Label:    "test — put any number with total mana value 4 or less onto the battlefield",
+			ThenTail: effects.PutRestOnBottomInRandomOrderTail,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

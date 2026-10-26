@@ -64,7 +64,7 @@ import (
 // but it cannot read the answer, and a Do run from inside a hand-written
 // closure does not wait at all. So "the rest on the bottom of your
 // library in a random order" — which must know which cards were NOT
-// chosen — goes in Then. Then runs in every case:
+// chosen — goes in ThenTail. ThenTail runs in every case:
 // after the answer, immediately when there was nothing to choose from,
 // immediately when All or a forced answer made the choice for the
 // player, and even when the put itself returned an error (with whatever
@@ -157,14 +157,24 @@ type PutFromLibraryOntoBattlefield struct {
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
-	// Then runs after the put with what happened. It is the only
-	// correct place for "the rest" and for any rider on the result.
-	// It runs with g.mu held, may queue further prompts, and must
-	// capture only scalars.
-	Then func(g *game.Game, res PutFromLibraryResult) error
+	// ThenTail runs after the put with what happened, as a registered
+	// tail (PutFromLibraryTail; #4253 slice 6): a key plus plain data, so
+	// a table waiting on a put card's entry question is a restore point.
+	// It is the only correct place for "the rest" and for any rider on
+	// the result. It runs with g.mu held and may queue further prompts.
+	// The tail is told the revealed cards (to compute "the rest"), the
+	// chooser and the source card; ThenN is a number it reads, ThenCarry
+	// IDs it reads (ahead of the revealed cards on the tail: register it
+	// with PutFromLibraryTailCarrying), and ThenItem carries the
+	// resolving item (its targets, its X, its text) as data for a body
+	// that reads more than that.
+	ThenTail  game.TailRef
+	ThenN     int
+	ThenItem  bool
+	ThenCarry []uuid.UUID
 }
 
-// PutFromLibraryResult is what Then is told about the put.
+// PutFromLibraryResult is what ThenTail is told about the put.
 type PutFromLibraryResult struct {
 	// Source is the card whose clause this was.
 	Source uuid.UUID
@@ -178,6 +188,10 @@ type PutFromLibraryResult struct {
 	// rest", "all cards revealed this way that weren't put onto the
 	// battlefield" — in the order Cards gave them.
 	Rest []uuid.UUID
+	// N and Carry are what the keyed tail carried
+	// (PutFromLibraryOntoBattlefield.ThenN, ThenCarry).
+	N     int
+	Carry []uuid.UUID
 }
 
 func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
@@ -187,32 +201,27 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	}
 	source := ctx.Source()
 	cards := append([]uuid.UUID(nil), p.Cards...)
-	then := p.Then
+	var keyed game.KeyedTail
+	if p.ThenTail.Key() != "" {
+		keyed = game.KeyedTail{Ref: p.ThenTail, Player: player, Source: source, Carry: append(append([]uuid.UUID(nil), p.ThenCarry...), cards...), N: p.ThenN}
+		if p.ThenItem {
+			keyed.Asked = game.NewAskedItem(ctx.Item)
+		}
+	}
 	if p.CountersFor != nil && (p.All || p.Max != 1) {
 		return fmt.Errorf("PutFromLibraryOntoBattlefield: CountersFor needs a clause that puts exactly one card (Max 1, not All)")
 	}
 	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped, EntersWithCounters: p.Counters}
-	report := func(g *game.Game, entered []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, PutFromLibraryResult{
-			Source:  source,
-			Player:  player,
-			Entered: entered,
-			Rest:    cardsStillInALibrary(g, cards),
-		})
-	}
 	finish := func(g *game.Game, picked []uuid.UUID) error {
 		if len(picked) == 0 {
-			return report(g, nil)
+			return keyed.Run(g, nil)
 		}
-		// Through the Then door (#1322): a card of the batch may stop
+		// Through the keyed door (#1322, #4253 slice 6): a card of the batch may stop
 		// to ask its own question (a shockland's life, a Clone's copy),
 		// and until it is answered the card is still in the library.
 		// "The rest" is computed when the entry is complete, so a card
 		// still waiting to enter is never put on the bottom with the
-		// pile. An error still reports whatever did enter and Then
+		// pile. An error still reports whatever did enter and the tail
 		// still runs, so the revealed or looked-at rest is never left
 		// on top with its knowers.
 		entry := opts
@@ -230,7 +239,7 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 				}
 			}
 		}
-		return g.PutCardsFromLibraryOntoBattlefieldThenForEffect(picked, entry, report)
+		return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(picked, entry, keyed)
 	}
 
 	candidates := libraryCardsMatching(ctx.Game, player, cards, p.Match)
@@ -327,6 +336,48 @@ func cardsStillInALibrary(g *game.Game, ids []uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// PutFromLibraryTail registers a PutFromLibraryOntoBattlefield rider as
+// a keyed tail (#4253 slice 6): the body is handed what Then would be,
+// with a Context rebuilt from the tail (the asking item's copy when the
+// primitive's ThenItem carried it, else a stand-in with the chooser as
+// controller and the source card). The key is an on-disk identity
+// (ledgered "tail <key>"): never renamed, never reused. Call it once,
+// from a package-level var.
+func PutFromLibraryTail(key string, body func(ctx *Context, res PutFromLibraryResult) error) game.TailRef {
+	return PutFromLibraryTailCarrying(key, 0, body)
+}
+
+// PutFromLibraryTailCarrying is PutFromLibraryTail for a tail that reads
+// `extra` IDs the card put in PutFromLibraryOntoBattlefield.ThenCarry
+// (handed to the body as PutFromLibraryResult.Carry).
+func PutFromLibraryTailCarrying(key string, extra int, body func(ctx *Context, res PutFromLibraryResult) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		carry := o.Tail.Carry
+		extra := extra
+		if extra > len(carry) {
+			extra = len(carry)
+		}
+		return body(ctx, PutFromLibraryResult{
+			Source:  o.Tail.Source,
+			Player:  o.Tail.Player,
+			Entered: o.IDs,
+			Rest:    cardsStillInALibrary(ctx.Game, carry[extra:]),
+			N:       o.Tail.N,
+			Carry:   carry[:extra],
+		})
+	})
+}
+
+// PutRestOnBottomInRandomOrderTail and PutRestIntoGraveyardTail are the shared riders
+// as keyed tails: "put the rest on the bottom of your library in a
+// random order" and "put the rest into your graveyard". On-disk keys.
+var (
+	PutRestOnBottomInRandomOrderTail = PutFromLibraryTail("put-from-library/rest-on-bottom-in-random-order",
+		func(ctx *Context, res PutFromLibraryResult) error { return PutRestOnBottomInRandomOrder(ctx.Game, res) })
+	PutRestIntoGraveyardTail = PutFromLibraryTail("put-from-library/rest-into-graveyard",
+		func(ctx *Context, res PutFromLibraryResult) error { return PutRestIntoGraveyard(ctx.Game, res) })
+)
 
 // PutRestOnBottomInRandomOrder is the Then for "put the rest on the
 // bottom of your library in a random order" — The Regalia, Ureni, Atla
@@ -460,12 +511,12 @@ func (r RevealUntilThenPutOntoBattlefield) Apply(ctx *Context) error {
 	// With no hit the match refuses everything, nothing enters, and
 	// Then still bottoms the whole run.
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-		All:    true,
-		Tapped: r.Tapped,
-		Then:   PutRestOnBottomInRandomOrder,
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+		All:      true,
+		Tapped:   r.Tapped,
+		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }
 
@@ -524,7 +575,7 @@ func LookAtTopThenMayPutOntoBattlefield(n int, match CardPredicate, max int, lab
 			Max:      max,
 			Optional: true,
 			Label:    label,
-			Then:     PutRestOnBottomInRandomOrder,
+			ThenTail: PutRestOnBottomInRandomOrderTail,
 		}.Apply(ctx)
 	}
 }

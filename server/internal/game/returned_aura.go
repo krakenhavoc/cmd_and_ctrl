@@ -96,7 +96,7 @@ func (g *Game) ReturnFromGraveyardAsAuraForEffect(cardID, controller uuid.UUID, 
 	if ReturnedAuraSpecFor(key) == nil {
 		return uuid.Nil, ErrInvalidParam
 	}
-	return g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, true, nil)
+	return g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, true, entryThen{})
 }
 
 // seedReturnedAuraEntryLocked makes the permanent that has just landed

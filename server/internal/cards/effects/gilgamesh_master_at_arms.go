@@ -54,21 +54,29 @@ func gilgameshLookAndPut(g *game.Game, item *game.StackItem) error {
 		Max:      0,
 		Optional: true,
 		Label:    "Gilgamesh — put any number of Equipment cards from among them onto the battlefield",
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
-				return err
-			}
-			if len(res.Entered) == 0 {
-				return nil
-			}
-			return ReflexiveTrigger{
-				Label: "Gilgamesh, Master-at-Arms — you may attach one of the Equipment to a Samurai you control",
-				Cards: res.Entered,
-				Body:  gilgameshAttachBody,
-			}.Apply(NewContext(g, item))
-		},
+		ThenTail: gilgameshRest,
+		ThenItem: true,
 	}.Apply(ctx)
 }
+
+// gilgameshRest is the rider as a keyed tail (#4253 slice 6): the rest to
+// the bottom, then the reflexive attach trigger over the Equipment that
+// entered. The asking item rides the tail. An on-disk key.
+var gilgameshRest = PutFromLibraryTail("gilgamesh-master-at-arms/rest-then-attach-trigger",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
+			return err
+		}
+		if len(res.Entered) == 0 {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: "Gilgamesh, Master-at-Arms — you may attach one of the Equipment to a Samurai you control",
+			Cards: res.Entered,
+			Body:  gilgameshAttachBody,
+		}.Apply(ctx)
+	})
 
 // gilgameshAttach is the reflexive half: pick one of the Equipment that
 // entered (a floor of zero is the "may"), then the Samurai it goes on.

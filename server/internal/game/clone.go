@@ -1159,6 +1159,7 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// batch on, and an undone-then-redone answer would skip
 			// the rest of the entry.
 			tail.batch = cloneEntryBatch(f.ev.entryTail.batch)
+			tail.keyed = copyKeyedTail(f.ev.entryTail.keyed)
 			ev.entryTail = &tail
 		}
 		out.ev = &ev

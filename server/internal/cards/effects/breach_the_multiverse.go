@@ -78,9 +78,14 @@ func breachAskNext(g *game.Game, item *game.StackItem, order, chosen []uuid.UUID
 	return ReturnFromGraveyardTogether{
 		Targets:    chosen,
 		Controller: item.Controller,
-		Then:       breachPhyrexians,
+		ThenTail:   breachPhyrexiansTail,
 	}.Apply(ctx)
 }
+
+// breachPhyrexiansTail is breachPhyrexians as a keyed tail (#4253 slice 6).
+// An on-disk key.
+var breachPhyrexiansTail = TogetherTail("breach-the-multiverse/phyrexians",
+	func(ctx *Context, entered []uuid.UUID, _ int) error { return breachPhyrexians(ctx, entered) })
 
 // breachPhyrexians makes each creature the caster controls a Phyrexian
 // in addition to its other types.

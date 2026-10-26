@@ -108,7 +108,23 @@ type Amass struct {
 	//
 	// nil for a card whose sentence ends at the amass, which is most
 	// of them.
-	Then func(ctx *Context, army uuid.UUID) error
+	ThenTail game.TailRef
+}
+
+// AmassTail registers CR 701.47c's "the Army you amassed" clause as a keyed
+// tail (#4253 slice 6), for Amass.ThenTail: the body is handed the Army the
+// amass chose, uuid.Nil when there was none to choose and none to make
+// (CR 701.47b), with a Context rebuilt from the asking item, which rides the
+// tail. The key is an on-disk identity (ledgered "tail <key>"): never
+// renamed, never reused. Call it once, from a package-level var.
+func AmassTail(key string, body func(ctx *Context, army uuid.UUID) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		army := uuid.Nil
+		if len(o.IDs) > 0 {
+			army = o.IDs[0]
+		}
+		return body(ctx, army)
+	})
 }
 
 func (a Amass) Apply(ctx *Context) error {
@@ -116,18 +132,14 @@ func (a Amass) Apply(ctx *Context) error {
 	if controller == uuid.Nil {
 		controller = ctx.Controller()
 	}
-	item := ctx.Item
-	then := a.Then
-	var tail func(g *game.Game, army uuid.UUID) error
-	if then != nil {
-		tail = func(g *game.Game, army uuid.UUID) error {
-			return then(NewContext(g, item), army)
-		}
+	var tail game.KeyedTail
+	if a.ThenTail.Key() != "" {
+		tail = ctx.ItemTail(a.ThenTail)
 	}
 	// "Amass Orcs 2": the creature type is a word of the text of the
 	// object that amasses (CR 612.2, #3984).
 	subtype := ctx.TextSubtype(a.Subtype)
-	return ctx.Game.AmassForEffect(controller, ctx.Source(), ArmyToken(subtype), subtype, a.N, tail)
+	return ctx.Game.AmassKeyedForEffect(controller, ctx.Source(), ArmyToken(subtype), subtype, a.N, tail)
 }
 
 // Army passes for an Army creature — the read side of "an Army you

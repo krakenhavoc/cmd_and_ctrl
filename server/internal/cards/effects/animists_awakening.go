@@ -36,25 +36,12 @@ func init() {
 			revealed := ctx.Game.RevealTopOfLibraryForEffect(item.Controller, ctx.Source(), ctx.X(),
 				"Animist's Awakening — revealed from the top of the library")
 			return PutFromLibraryOntoBattlefield{
-				Player: item.Controller,
-				Cards:  revealed,
-				Match:  Land(),
-				All:    true,
-				Tapped: true,
-				Then: func(g *game.Game, res PutFromLibraryResult) error {
-					if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
-						return err
-					}
-					if !spellMastery(g, res.Player) {
-						return nil
-					}
-					for _, id := range res.Entered {
-						if err := g.UntapTargetForEffect(id); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Player:   item.Controller,
+				Cards:    revealed,
+				Match:    Land(),
+				All:      true,
+				Tapped:   true,
+				ThenTail: animistsAwakeningRest,
 			}.Apply(ctx)
 		},
 	})
@@ -76,3 +63,23 @@ func spellMastery(g *game.Game, player uuid.UUID) bool {
 	}
 	return n >= 2
 }
+
+// animistsAwakeningRest is the rider as a keyed tail (#4253 slice 6):
+// the rest to the bottom, then untap the lands that entered with spell
+// mastery. An on-disk key.
+var animistsAwakeningRest = PutFromLibraryTail("animists-awakening/rest-then-untap",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
+			return err
+		}
+		if !spellMastery(g, res.Player) {
+			return nil
+		}
+		for _, id := range res.Entered {
+			if err := g.UntapTargetForEffect(id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

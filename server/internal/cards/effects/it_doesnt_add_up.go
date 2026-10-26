@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -33,12 +31,7 @@ func init() {
 			}
 			// CR 608.2b: a creature that left the graveyard in response is
 			// told to the tail as uuid.Nil, and nothing is suspected.
-			return ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(target, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error {
-				if entered != uuid.Nil {
-					g.SuspectForEffect(entered)
-				}
-				return nil
-			})
+			return ctx.Game.ReturnFromGraveyardToBattlefieldKeyedForEffect(target, ctx.Controller(), false, ctx.Tail(thenSuspectEach))
 		},
 	})
 }

@@ -57,20 +57,27 @@ func proteusStaffResolve(g *game.Game, item *game.StackItem) error {
 	// 110.2a), which Arboria reads.
 	return g.PutByEnteringPlayerForEffect(func() error {
 		return PutFromLibraryOntoBattlefield{
-			Player: player,
-			Cards:  run,
-			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-			All:    true,
-			Then: func(g *game.Game, res PutFromLibraryResult) error {
-				return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-					Chooser:   player,
-					Source:    res.Source,
-					Cards:     res.Rest,
-					From:      game.ZoneLibrary,
-					Placement: game.LibraryPlaceBottom,
-					Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
-				})
-			},
+			Player:   player,
+			Cards:    run,
+			Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:      true,
+			ThenTail: proteusStaffRest,
 		}.Apply(ctx)
 	})
 }
+
+// proteusStaffRest is the rider as a keyed tail (#4253 slice 6): the
+// chooser puts the rest on the bottom of their library in any order. An
+// on-disk key.
+var proteusStaffRest = PutFromLibraryTail("proteus-staff/rest-on-bottom-in-any-order",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+			Chooser:   res.Player,
+			Source:    res.Source,
+			Cards:     res.Rest,
+			From:      game.ZoneLibrary,
+			Placement: game.LibraryPlaceBottom,
+			Reason:    libraryOrderLabel(g, res.Source, "put the rest on the bottom of your library in any order"),
+		})
+	})

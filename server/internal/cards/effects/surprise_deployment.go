@@ -56,19 +56,20 @@ func init() {
 				Match:    And(Creature(), Not(OfColor("W"))),
 				Optional: true,
 				Label:    "Surprise Deployment — you may put a nonwhite creature card from your hand onto the battlefield",
-				Then:     surpriseDeploymentReturn,
+				ThenTail: surpriseDeploymentReturn,
 			}.Apply(ctx)
 		},
 	})
 }
 
-// surpriseDeploymentReturn is the Then of the put: with a creature on
-// the battlefield, schedule its return to hand at the next end step.
-// Package-level, so the continuation captures nothing.
-func surpriseDeploymentReturn(g *game.Game, res PutFromHandResult) error {
+// surpriseDeploymentReturn is the Then of the put, as a keyed tail
+// (#4253 slice 6): with a creature on the battlefield, schedule its
+// return to hand at the next end step. An on-disk key.
+var surpriseDeploymentReturn = PutFromHandTail("surprise-deployment/return-at-end-step", func(ctx *Context, res PutFromHandResult) error {
 	if res.Entered == uuid.Nil {
 		return nil
 	}
+	g := ctx.Game
 	c, ok := g.LookupCardForEffect(res.Entered)
 	if !ok {
 		return nil
@@ -86,4 +87,4 @@ func surpriseDeploymentReturn(g *game.Game, res PutFromHandResult) error {
 		Params:       game.EffectParams{Object: game.ObjectRef{ID: res.Entered, Epoch: c.ObjectEpoch}},
 	})
 	return nil
-}
+})

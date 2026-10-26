@@ -87,19 +87,24 @@ func sorinVengefulReturn(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return ReturnFromGraveyardTogether{
-		Targets: ids,
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			for _, id := range entered {
-				if err := (ScopedEffectFor{
-					Target:   id,
-					Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Vampire")...)},
-					Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
-					Label:    "Sorin, Vengeful Bloodlord — it is a Vampire in addition to its other types",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Targets:  ids,
+		ThenTail: sorinVengefulBloodlordVampires,
 	}.Apply(ctx)
 }
+
+// sorinVengefulBloodlordVampires is "it's a Vampire in addition to its
+// other types" as a keyed tail (#4253 slice 6). An on-disk key.
+var sorinVengefulBloodlordVampires = TogetherTail("sorin-vengeful-bloodlord/vampires",
+	func(ctx *Context, entered []uuid.UUID, _ int) error {
+		for _, id := range entered {
+			if err := (ScopedEffectFor{
+				Target:   id,
+				Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Vampire")...)},
+				Duration: ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
+				Label:    "Sorin, Vengeful Bloodlord — it is a Vampire in addition to its other types",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

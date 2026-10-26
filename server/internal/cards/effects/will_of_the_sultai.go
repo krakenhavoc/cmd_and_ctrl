@@ -68,13 +68,17 @@ func init() {
 // then, if it was chosen, the second: the order the card prints them.
 func willOfTheSultaiLandsThenCounters(ctx *Context, _ []uuid.UUID) error {
 	return ReturnFromGraveyardTogether{
-		Targets: graveyardCardIDs(ctx, ctx.Controller(), game.Card.IsLand),
-		Tapped:  true,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			return willOfTheSultaiCounters(ctx)
-		},
+		Targets:  graveyardCardIDs(ctx, ctx.Controller(), game.Card.IsLand),
+		Tapped:   true,
+		ThenTail: willOfTheSultaiCountersTail,
 	}.Apply(ctx)
 }
+
+// willOfTheSultaiCountersTail is the second bullet as a keyed tail (#4253
+// slice 6): the asking item's modes and targets ride the tail. An on-disk
+// key.
+var willOfTheSultaiCountersTail = TogetherTail("will-of-the-sultai/counters-and-trample",
+	func(ctx *Context, _ []uuid.UUID, _ int) error { return willOfTheSultaiCounters(ctx) })
 
 // willOfTheSultaiCounters is the second bullet: X +1/+1 counters, X
 // counted as it resolves, and trample until end of turn.

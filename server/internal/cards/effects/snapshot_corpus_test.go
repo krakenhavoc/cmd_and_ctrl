@@ -668,7 +668,48 @@ func corpusBoards() []corpusBoard {
 		{"cultivate_fetch", corpusCultivateFetch},
 		{"hour_of_promise_fetch", corpusHourOfPromiseFetch},
 		{"eye_of_jace_surveil", corpusEyeOfJaceSurveil},
+		// #4253 slice 6: a single permanent's return keeps its tail on the
+		// entry (entryTail.keyed), and an amass's token creation carries the
+		// keyword action's data and the card's own tail (keyed tail word and
+		// next).
+		{"it_doesnt_add_up_clone", corpusItDoesntAddUpClone},
+		{"amass_army_order", corpusAmassArmyOrder},
 	}
+}
+
+// corpusItDoesntAddUpClone is It Doesn't Add Up returning a Clone, paused on
+// its "copy a creature?" question with the suspect on the entry's tail as
+// data (#4253 slice 6).
+func corpusItDoesntAddUpClone(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0]
+	seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	clone := uuid.New()
+	me.Graveyard.PushTop(game.Card{
+		InstanceID: clone, Name: "Clone", TypeLine: "Creature — Shapeshifter", OracleID: oracleClone,
+		ManaCost: "{3}{U}", Owner: me.ID, Controller: me.ID,
+	})
+	castCatalogSpell(t, g, "It Doesn't Add Up", "Instant", sbItDoesntAddUp, dgCardRef(clone))
+	passPriorityAroundTable(t, g)
+	if copyPrompt(g) == nil {
+		t.Fatal("setup: the returning Clone did not ask")
+	}
+	return g
+}
+
+// corpusAmassArmyOrder is Widespread Brutality's amass with the Army's
+// creation held on the CR 616 order prompt, the amass's data and the
+// card's sweep on the creation's tail (#4253 slice 6).
+func corpusAmassArmyOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	tokenOrderBoard(g, me.ID)
+	castCatalogSpell(t, g, "Widespread Brutality", "Sorcery", widespreadBrutalityOracl, nil)
+	passPriorityAroundTable(t, g)
+	if !orderPromptOpen(g) {
+		t.Fatal("setup: the Army's creation did not ask for an order")
+	}
+	return g
 }
 
 // corpusFetchedShockland is Polluted Delta cracked for Watery Grave,

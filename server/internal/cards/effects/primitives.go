@@ -477,16 +477,18 @@ type ReturnFromExile struct {
 	// counter replacement sees them and an enters trigger finds them.
 	Counters map[string]int
 
-	// Then is the rest of the sentence about the permanent that
+	// ThenTail is the rest of the sentence about the permanent that
 	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
-	// under your control, put a +1/+1 counter on Phelia". `entered` is
-	// the NEW object's ID (CR 400.7), uuid.Nil when nothing entered.
-	// It runs once the entry is complete, which is one action later
-	// when the entry stopped to ask something (a returning Clone, a
-	// blinked shockland), so never read the result on the next line.
-	// Not run when the card is no longer in exile, which is "nothing to
-	// return". Capture only scalars.
-	Then func(g *game.Game, entered uuid.UUID) error
+	// under your control, put a +1/+1 counter on Phelia" — as a
+	// registered tail (EnteredTail; #4253 slice 6), built with ctx.Tail,
+	// ctx.TailN or ctx.ItemTail: a key plus plain data, told the NEW
+	// object's ID (CR 400.7), empty when nothing entered. It runs once
+	// the entry is complete, which is one action later when the entry
+	// stopped to ask something (a returning Clone, a blinked shockland),
+	// so never read the result on the next line, and a table waiting on
+	// that question is a restore point. Not run when the card is no
+	// longer in exile, which is "nothing to return".
+	ThenTail game.KeyedTail
 }
 
 func (r ReturnFromExile) Apply(ctx *Context) error {
@@ -495,10 +497,10 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 		return nil
 	}
 	if len(r.Counters) > 0 {
-		return ctx.Game.ReturnFromExileWithCountersThenForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.Then)
+		return ctx.Game.ReturnFromExileWithCountersKeyedForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.ThenTail)
 	}
-	if r.Then != nil {
-		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)
+	if !r.ThenTail.IsZero() {
+		return ctx.Game.ReturnFromExileToBattlefieldKeyedForEffect(r.Target, r.Controller, r.Tapped, r.ThenTail)
 	}
 	_, err := ctx.Game.ReturnFromExileToBattlefieldForEffect(r.Target, r.Controller, r.Tapped)
 	return err

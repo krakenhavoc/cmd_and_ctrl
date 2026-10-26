@@ -3,7 +3,6 @@ package effects
 import (
 	"fmt"
 	"slices"
-	"strconv"
 
 	"github.com/google/uuid"
 
@@ -101,9 +100,8 @@ func XAsHighAsYouCan(_ *Context, ceiling int) int { return ceiling }
 // (CR 508.4a: they are made, not attacking). It is a registered tail
 // (AttackingTokensThen, #4294) and the split between the things to attack
 // is plain data (game.AttackSplit), so a table waiting on one of the
-// questions is a restore point. Then is the same as a closure, kept for
-// the one card whose rest needs the asking item itself (Calamity); a
-// table waiting on its question is not a restore point.
+// questions is a restore point. A card whose rest reads the asking item
+// itself (Calamity) puts it on the tail (Context.ItemTail).
 //
 // Template is a description in the effect's text, read through it as
 // the tokens are made (Context.TextToken, #4005), unless Copy (copiable
@@ -122,7 +120,6 @@ type CreateTokensAttackingYourChoice struct {
 	// Tail is the rest of the card as data; the effect's controller and
 	// source fill its Player and Source where the card left them zero.
 	Tail game.KeyedTail
-	Then func(ctx *Context, created []uuid.UUID) error
 }
 
 // AttackingTokensThen registers a CreateTokensAttackingYourChoice.Tail
@@ -152,31 +149,25 @@ func (c CreateTokensAttackingYourChoice) Apply(ctx *Context) error {
 	if i := slices.Index(targets, c.Prefer); i > 0 {
 		targets = append([]uuid.UUID{c.Prefer}, slices.Delete(targets, i, i+1)...)
 	}
-	if c.Then == nil {
-		tail := c.Tail
-		if !tail.IsZero() {
-			if tail.Player == uuid.Nil {
-				tail.Player = ctx.Controller()
-			}
-			if tail.Source == uuid.Nil {
-				tail.Source = ctx.Source()
-			}
+	tail := c.Tail
+	if !tail.IsZero() {
+		if tail.Player == uuid.Nil {
+			tail.Player = ctx.Controller()
 		}
-		return ctx.Game.StartAttackSplitForEffect(game.AttackSplit{
-			Controller: controller,
-			Source:     ctx.Source(),
-			Template:   c.template(ctx),
-			Count:      c.N,
-			Tapped:     c.Tapped,
-			Targets:    targets,
-			Label:      c.Label,
-			Tail:       tail,
-		})
+		if tail.Source == uuid.Nil {
+			tail.Source = ctx.Source()
+		}
 	}
-	if len(targets) <= 1 {
-		return c.create(ctx, controller, targets, []int{c.N})
-	}
-	return c.ask(ctx, controller, targets, nil, c.N)
+	return ctx.Game.StartAttackSplitForEffect(game.AttackSplit{
+		Controller: controller,
+		Source:     ctx.Source(),
+		Template:   c.template(ctx),
+		Count:      c.N,
+		Tapped:     c.Tapped,
+		Targets:    targets,
+		Label:      c.Label,
+		Tail:       tail,
+	})
 }
 
 // template is the token as it is made: read through the effect's text
@@ -191,67 +182,6 @@ func (c CreateTokensAttackingYourChoice) template(ctx *Context) game.Card {
 		return ruleDefinedToken(c.Template)
 	}
 	return ctx.TextToken(c.Template)
-}
-
-// ask places the tokens still unplaced: `shares` holds how many attack
-// each of targets[:len(shares)], and `left` are still to go.
-func (c CreateTokensAttackingYourChoice) ask(ctx *Context, controller uuid.UUID, targets []uuid.UUID, shares []int, left int) error {
-	i := len(shares)
-	if left == 0 || i == len(targets)-1 {
-		return c.create(ctx, controller, targets, append(slices.Clone(shares), left))
-	}
-	goal := 0
-	if i == 0 {
-		goal = left
-	}
-	item := ctx.Item
-	return ctx.Game.QueueChooseNumberForEffect(game.ChooseNumber{
-		Chooser:  controller,
-		Source:   ctx.Source(),
-		Resource: game.PayResourceNone,
-		Max:      left,
-		Goal:     goal,
-		Question: c.Label + " — how many of the " + strconv.Itoa(left) + " tokens attack " + attackTargetName(ctx.Game, targets[i]) + "?",
-		Then: func(g *game.Game, n int) error {
-			n = min(max(n, 0), left)
-			return c.ask(NewContext(g, item), controller, targets, append(slices.Clone(shares), n), left-n)
-		},
-	})
-}
-
-// create makes the tokens in one creation, shares[i] of them attacking
-// targets[i] (or none attacking when there is no target).
-func (c CreateTokensAttackingYourChoice) create(ctx *Context, controller uuid.UUID, targets []uuid.UUID, shares []int) error {
-	tmpl := ctx.TextToken(c.Template)
-	switch {
-	case c.Copy:
-		tmpl = copiedToken(c.Template)
-	case c.RuleDefined:
-		tmpl = ruleDefinedToken(c.Template)
-	}
-	var groups []game.TokenGroup
-	for i, n := range shares {
-		if n <= 0 {
-			continue
-		}
-		grp := game.TokenGroup{Template: tmpl, Count: n, Entry: game.TokenEntryOptions{Tapped: c.Tapped}}
-		if i < len(targets) {
-			grp.Attacking = targets[i]
-		}
-		groups = append(groups, grp)
-	}
-	item := ctx.Item
-	then := c.Then
-	return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
-		Controller: controller,
-		Groups:     groups,
-		Source:     ctx.Source(),
-	}, func(g *game.Game, created []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(NewContext(g, item), created)
-	})
 }
 
 // attackTargetName is a player's or a permanent's name for a question.

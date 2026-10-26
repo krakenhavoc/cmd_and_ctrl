@@ -43,7 +43,7 @@ func init() {
 				Cards:    revealed,
 				Optional: true,
 				Label:    "Majestic Genesis — put any number of permanent cards onto the battlefield",
-				Then:     PutRestOnBottomInRandomOrder,
+				ThenTail: PutRestOnBottomInRandomOrderTail,
 			}.Apply(ctx)
 		},
 	})

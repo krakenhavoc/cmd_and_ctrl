@@ -60,18 +60,12 @@ func presumedDeadReturnsAndSuspects(g *game.Game, item *game.StackItem) error {
 	if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
 		return nil
 	}
-	return g.ReturnFromGraveyardToBattlefieldThenForEffect(item.SourceCardID, uuid.Nil, false,
-		func(g *game.Game, entered uuid.UUID) error {
-			if entered == uuid.Nil {
-				return nil
-			}
-			// The game mutator, not the Suspect primitive: this ability's
-			// source IS the card that came back, a new object since it
-			// died, and the primitive's #1432 guard would read that as "the
-			// old object's ability must not reach the new one" and do
-			// nothing. Here the new object is exactly what the instruction
-			// names.
-			g.SuspectForEffect(entered)
-			return nil
-		})
+	// The suspect is the keyed tail thenSuspectEach, the game mutator and
+	// not the Suspect primitive: this ability's source IS the card that
+	// came back, a new object since it died, and the primitive's #1432
+	// guard would read that as "the old object's ability must not reach
+	// the new one" and do nothing. Here the new object is exactly what the
+	// instruction names.
+	return g.ReturnFromGraveyardToBattlefieldKeyedForEffect(item.SourceCardID, uuid.Nil, false,
+		NewContext(g, item).Tail(thenSuspectEach))
 }

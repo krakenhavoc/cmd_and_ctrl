@@ -55,13 +55,10 @@ func init() {
 				DrawCards{N: 1},
 				Instruction(func(ctx *Context) error {
 					item := ctx.Item
-					owner := item.Controller
-					if c, ok := ctx.Game.LookupCardForEffect(item.SourceCardID); ok && c.Owner != uuid.Nil {
-						owner = c.Owner
-					}
 					put := MayPutALandFromHand("Pendant of Prosperity")
 					put.Player = item.Controller
-					put.Then = pendantOwnersHalf(owner, item)
+					put.ThenTail = pendantOwnersHalf
+					put.ThenItem = true
 					return put.Apply(ctx)
 				}),
 			),
@@ -71,17 +68,20 @@ func init() {
 
 // pendantOwnersHalf is the ability's second sentence, run once the
 // controller has answered their land prompt: the owner draws, then may
-// put a land. It captures only scalars, on the continuation contract.
-func pendantOwnersHalf(owner uuid.UUID, item *game.StackItem) func(*game.Game, PutFromHandResult) error {
-	return func(g *game.Game, _ PutFromHandResult) error {
-		if p := g.PlayerByIDForEffect(owner); p == nil || p.Eliminated {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		ctx.RecordStep(pendantOwnerRecord, []uuid.UUID{owner})
-		return pendantOwnersDrawThenPut.Run(ctx)
+// put a land. A keyed tail (#4253 slice 6), told the asking item; the owner
+// is read off the artifact again, as the ability read it. An on-disk key.
+var pendantOwnersHalf = PutFromHandTail("pendant-of-prosperity/owners-half", func(ctx *Context, _ PutFromHandResult) error {
+	g, item := ctx.Game, ctx.Item
+	owner := item.Controller
+	if c, ok := g.LookupCardForEffect(item.SourceCardID); ok && c.Owner != uuid.Nil {
+		owner = c.Owner
 	}
-}
+	if p := g.PlayerByIDForEffect(owner); p == nil || p.Eliminated {
+		return nil
+	}
+	ctx.RecordStep(pendantOwnerRecord, []uuid.UUID{owner})
+	return pendantOwnersDrawThenPut.Run(ctx)
+})
 
 // pendantOwnerRecord is the artifact's owner.
 const pendantOwnerRecord = "pendant-of-prosperity/owner"

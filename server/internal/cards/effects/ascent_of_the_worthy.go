@@ -79,22 +79,24 @@ func ascentOfTheWorthyReturn(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	angelWarrior := ctx.TextSubtypes("Angel", "Warrior")
-	source, controller := item.SourceCardID, item.Controller
-	return g.ReturnFromGraveyardWithCountersThenForEffect(ids[0], controller, false,
-		map[string]int{game.CounterFlying: 1},
-		func(g *game.Game, entered uuid.UUID) error {
-			// A graveyard return keeps the card's ID; the tail runs from a
-			// resume as well as inline, so it holds plain values only.
-			if entered == uuid.Nil || !onBattlefield(g, entered) {
-				return nil
-			}
-			tail := NewContext(g, &game.StackItem{SourceCardID: source, Controller: controller})
-			return ScopedEffectFor{
-				Target:   entered,
-				Mods:     []game.Mod{game.AddSubtypesMod(angelWarrior...)},
-				Duration: g.PinnedTo(game.IndefiniteDuration(), entered),
-				Label:    "Ascent of the Worthy — it is an Angel Warrior in addition to its other types",
-			}.Apply(tail)
-		})
+	return g.ReturnFromGraveyardWithCountersKeyedForEffect(ids[0], item.Controller, false,
+		map[string]int{game.CounterFlying: 1}, ctx.ItemTail(ascentOfTheWorthyType))
 }
+
+// ascentOfTheWorthyType is the entry's tail as a keyed tail (#4253 slice
+// 6): it is an Angel Warrior in addition to its other types, the two
+// types as the spell's text reads them, which the asking item that rides
+// the tail gives back. An on-disk key.
+var ascentOfTheWorthyType = EnteredTail("ascent-of-the-worthy/angel-warrior", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	g := ctx.Game
+	// A graveyard return keeps the card's ID.
+	if entered == uuid.Nil || !onBattlefield(g, entered) {
+		return nil
+	}
+	return ScopedEffectFor{
+		Target:   entered,
+		Mods:     []game.Mod{game.AddSubtypesMod(ctx.TextSubtypes("Angel", "Warrior")...)},
+		Duration: g.PinnedTo(game.IndefiniteDuration(), entered),
+		Label:    "Ascent of the Worthy — it is an Angel Warrior in addition to its other types",
+	}.Apply(ctx)
+})

@@ -94,15 +94,18 @@ type PutFromHandOntoBattlefield struct {
 	// card" (at most one of each). Nil accepts any set within Max.
 	Validate func(picked []game.Card) bool
 
-	// Then, when set, runs after the answer. It is the only correct
-	// place for a rider on the result ("if you put a Cave onto the
-	// battlefield this way…"), because everything sequenced after
-	// this primitive has already run by the time it is called.
-	//
-	// Same contract as any other continuation: it runs with g.mu
-	// held, may queue further prompts, and must capture only scalars
-	// — never a *Card or a pointer into a zone.
-	Then func(g *game.Game, res PutFromHandResult) error
+	// ThenTail, when set, runs after the answer, as a registered tail
+	// (PutFromHandTail; #4253 slice 6): a key plus plain data, so a table
+	// waiting on a put card's entry question is a restore point. It is
+	// the only correct place for a rider on the result ("if you put a
+	// Cave onto the battlefield this way…"), because everything
+	// sequenced after this primitive has already run by the time it is
+	// called. It runs with g.mu held and may queue further prompts.
+	// ThenN is a number the tail reads and ThenItem carries the
+	// resolving item as data.
+	ThenTail game.TailRef
+	ThenN    int
+	ThenItem bool
 }
 
 // PutFromHandResult is what Then is told about the put: everything
@@ -126,6 +129,9 @@ type PutFromHandResult struct {
 	// EnteredAll is every permanent that arrived, in the order
 	// picked: one entry for a single put, up to Max for a batch.
 	EnteredAll []uuid.UUID
+
+	// N is the number the keyed tail carried (PutFromHandOntoBattlefield.ThenN).
+	N int
 }
 
 func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
@@ -133,14 +139,17 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	then := p.Then
 	source := ctx.Source()
+	var keyed game.KeyedTail
+	if p.ThenTail.Key() != "" {
+		keyed = game.KeyedTail{Ref: p.ThenTail, Player: player, Source: source, N: p.ThenN}
+		if p.ThenItem {
+			keyed.Asked = game.NewAskedItem(ctx.Item)
+		}
+	}
 	candidates := handCardsMatching(ctx.Game, player, p.Match)
 	if len(candidates) == 0 {
-		if then != nil {
-			return then(ctx.Game, PutFromHandResult{Source: source, Player: player})
-		}
-		return nil
+		return keyed.Run(ctx.Game, nil)
 	}
 	max := p.Max
 	if max < 1 {
@@ -177,47 +186,43 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		// player's hand when the answer arrives.
 		Zone: game.ZoneHand,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
-			report := func(g *game.Game, entered uuid.UUID) error {
-				if then != nil {
-					res := PutFromHandResult{Source: source, Player: player, Entered: entered}
-					if entered != uuid.Nil {
-						res.EnteredAll = []uuid.UUID{entered}
-					}
-					return then(g, res)
-				}
-				return nil
-			}
 			if len(picked) == 0 {
-				return report(g, uuid.Nil)
+				return keyed.Run(g, nil)
 			}
 			if len(picked) > 1 {
 				// One simultaneous entry (entry_batch.go), told what
 				// entered when the last card's window has settled.
-				return g.PutCardsFromHandOntoBattlefieldThenForEffect(picked, game.HandEntryOptions{
+				return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(picked, game.HandEntryOptions{
 					Controller: player,
 					Tapped:     tapped,
-				}, func(g *game.Game, in []uuid.UUID) error {
-					if then == nil {
-						return nil
-					}
-					res := PutFromHandResult{Source: source, Player: player, EnteredAll: in}
-					if len(in) > 0 {
-						res.Entered = in[0]
-					}
-					return then(g, res)
-				})
+				}, keyed)
 			}
-			// Through the Then door (#1322): the land may stop to ask
-			// its own question (a shockland's life), and a rider on
-			// the result (Spelunking's Cave) has to wait for the
+			// Through the keyed door (#1322, #4253 slice 6): the land may
+			// stop to ask its own question (a shockland's life), and a
+			// rider on the result (Spelunking's Cave) has to wait for the
 			// answer rather than read an entry that has not happened.
-			return g.PutFromHandOntoBattlefieldThenForEffect(picked[0], game.HandEntryOptions{
+			return g.PutFromHandOntoBattlefieldKeyedForEffect(picked[0], game.HandEntryOptions{
 				Controller: player,
 				Tapped:     tapped,
-			}, report)
+			}, keyed)
 		},
 	})
 	return nil
+}
+
+// PutFromHandTail registers a PutFromHandOntoBattlefield rider as a keyed
+// tail (#4253 slice 6): the body is handed what the rider is told, with a
+// Context rebuilt from the tail. The key is an on-disk identity
+// (ledgered "tail <key>"): never renamed, never reused. Call it once,
+// from a package-level var.
+func PutFromHandTail(key string, body func(ctx *Context, res PutFromHandResult) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		res := PutFromHandResult{Source: o.Tail.Source, Player: o.Tail.Player, EnteredAll: o.IDs, N: o.Tail.N}
+		if len(o.IDs) > 0 {
+			res.Entered = o.IDs[0]
+		}
+		return body(ctx, res)
+	})
 }
 
 // MayPutALandFromHand is the printed clause five catalog cards share

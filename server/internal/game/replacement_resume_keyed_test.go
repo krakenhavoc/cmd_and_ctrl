@@ -73,6 +73,12 @@ func keyedFrameSample() *ReplacementEvent {
 		entryResumable:     true,
 		entryTail: &entryTail{
 			newObject: true, craftedWith: []ObjectRef{{ID: id("crafted"), Epoch: 1}}, batchIndex: 2,
+			// #4253 slice 6: the caller's "then" of a single permanent's
+			// return, as a registered tail, with a word and a next tail.
+			keyed: KeyedTail{
+				Ref: TailRef{key: "ek"}, Player: id("ekp"), Source: id("eks"), Carry: []uuid.UUID{id("ekc")}, N: 4, Word: "Orc",
+				Next: &KeyedTail{Ref: TailRef{key: "en"}, N: 1},
+			},
 			// #4253 slice 3: a search's remaining work, a token batch's
 			// and a simultaneous entry, all as data.
 			search: &searchEntryRun{
@@ -386,6 +392,9 @@ func TestABouncedCommandersPromptIsARestorePoint(t *testing.T) {
 	}
 }
 
+// entryKeyedProbe is a registered tail the refusal cases below name.
+var entryKeyedProbe = RegisterTail(testEffectKeyPrefix+"entry-keyed-probe", func(*Game, TailOutcome) error { return nil })
+
 // The rollback case: a binary that does not know the tail refuses the
 // file rather than restoring a prompt with nothing behind it.
 func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
@@ -411,6 +420,21 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 		"an unknown keyed tail": func(c *pendingChoiceSnapshot) {
 			c.PickThen = ReplacementResumeMoveTail
 			c.ReplacementResume.Event.ZoneRoute.FaceDownLegs = &faceDownExileRun{Then: &keyedTailSnapshot{Key: "never-registered"}}
+		},
+		// #4253 slice 6: a single permanent's entry tail has a key of its own.
+		"an entry tail under the move-tail key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Keyed: &keyedTailSnapshot{Key: entryKeyedProbe.Key()}}
+		},
+		"an unknown entry tail": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveEntryTail
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Keyed: &keyedTailSnapshot{Key: "never-registered"}}
+		},
+		"an unknown tail chained as a tail's next": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveEntryTail
+			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Keyed: &keyedTailSnapshot{
+				Key: entryKeyedProbe.Key(), Next: &keyedTailSnapshot{Key: "never-registered"},
+			}}
 		},
 		"an unknown tail in a batch's settled member": func(c *pendingChoiceSnapshot) {
 			c.PickThen = ReplacementResumeMoveTail

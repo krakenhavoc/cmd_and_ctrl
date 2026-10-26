@@ -72,32 +72,39 @@ func dackFaydenEnters(g *game.Game, item *game.StackItem) error {
 	run, hits := revealUntilCount(ctx, player, func(c game.Card) bool { return c.IsCreature() },
 		len(ctx.Opponents()), "Dack Fayden, Helping Hand — reveal until X creature cards")
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return selvalasStampedeIsHit(hits, c.InstanceID) },
-		All:    true,
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			// "Then shuffle": the rest are still in the library.
-			if err := g.ShuffleLibraryForEffect(res.Player); err != nil {
-				return err
-			}
-			var perms []uuid.UUID
-			for _, id := range res.Entered {
-				if g.GoadForRestOfGameForEffect(id, res.Player) {
-					perms = append(perms, id)
-				}
-			}
-			// Rebuilt from the live game: this runs after any entry
-			// question, and undo restores a clone.
-			return dackFaydenAsk(NewContext(g, &game.StackItem{
-				Kind:         game.StackItemSpell,
-				Controller:   res.Player,
-				Owner:        res.Player,
-				SourceCardID: res.Source,
-			}), perms, nil)
-		},
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return selvalasStampedeIsHit(hits, c.InstanceID) },
+		All:      true,
+		ThenTail: dackFaydenShuffleAndGoad,
 	}.Apply(ctx)
 }
+
+// dackFaydenShuffleAndGoad is the rider as a keyed tail (#4253 slice 6):
+// shuffle, goad what entered, then hand the permanents out. An on-disk
+// key.
+var dackFaydenShuffleAndGoad = PutFromLibraryTail("dack-fayden-helping-hand/shuffle-goad-and-give",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		// "Then shuffle": the rest are still in the library.
+		if err := g.ShuffleLibraryForEffect(res.Player); err != nil {
+			return err
+		}
+		var perms []uuid.UUID
+		for _, id := range res.Entered {
+			if g.GoadForRestOfGameForEffect(id, res.Player) {
+				perms = append(perms, id)
+			}
+		}
+		// Rebuilt from the live game: this runs after any entry
+		// question, and undo restores a clone.
+		return dackFaydenAsk(NewContext(g, &game.StackItem{
+			Kind:         game.StackItemSpell,
+			Controller:   res.Player,
+			Owner:        res.Player,
+			SourceCardID: res.Source,
+		}), perms, nil)
+	})
 
 // dackFaydenCarry packs the permanents still to hand out and the
 // opponents already chosen into one ID list: the permanents, a

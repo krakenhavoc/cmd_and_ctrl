@@ -99,7 +99,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("The Argent Etchings", 1, "incubate 2 five times, then transform all Incubator tokens you control"),
 				func(g *game.Game, item *game.StackItem) error {
-					return Incubate{N: 2, Times: 5, Then: TransformAllIncubators}.Apply(NewContext(g, item))
+					return Incubate{N: 2, Times: 5, ThenTail: transformAllIncubatorsTail}.Apply(NewContext(g, item))
 				}),
 			ChapterTrigger(2, SagaChapterLabel("The Argent Etchings", 2, "creatures you control get +1/+1 and gain double strike until end of turn"),
 				func(g *game.Game, item *game.StackItem) error {

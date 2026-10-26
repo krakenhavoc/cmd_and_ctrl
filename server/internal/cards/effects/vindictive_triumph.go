@@ -37,7 +37,7 @@ func init() {
 			}
 			mv, known := ctx.Game.ManaValueForEffect(card)
 			small := known && mv <= 3
-			caster, source := ctx.Controller(), ctx.Source()
+			caster := ctx.Controller()
 			return ExileTarget{
 				Target: target,
 				Then: func(ctx *Context, exiled bool) error {
@@ -48,23 +48,28 @@ func init() {
 						Target:     target,
 						Controller: caster,
 						Tapped:     true,
-						Then: func(g *game.Game, entered uuid.UUID) error {
-							if entered == uuid.Nil {
-								return nil
-							}
-							g.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
-								Controller:   caster,
-								SourceCardID: source,
-								Label:        "Vindictive Triumph — exile the returned permanent",
-								At:           game.StepEnd,
-								Cards:        []uuid.UUID{entered},
-								Body:         exileListedCardsBody,
-							})
-							return nil
-						},
+						ThenTail:   ctx.Tail(vindictiveTriumphExile),
 					}.Apply(ctx)
 				},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// vindictiveTriumphExile is "exile it at the beginning of the next end
+// step" as a keyed tail (#4253 slice 6): the caster is the tail's Player
+// and the spell its Source. An on-disk key.
+var vindictiveTriumphExile = EnteredTail("vindictive-triumph/exile-at-end-step", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
+	if entered == uuid.Nil {
+		return nil
+	}
+	ctx.Game.ScheduleDelayedTriggerForEffect(game.DelayedTrigger{
+		Controller:   o.Tail.Player,
+		SourceCardID: o.Tail.Source,
+		Label:        "Vindictive Triumph — exile the returned permanent",
+		At:           game.StepEnd,
+		Cards:        []uuid.UUID{entered},
+		Body:         exileListedCardsBody,
+	})
+	return nil
+})

@@ -50,11 +50,11 @@ func openTheWayReveal(ctx *Context, x int) error {
 		return found >= x
 	}, "Open the Way — revealed until X land cards")
 	return PutFromLibraryOntoBattlefield{
-		Player: ctx.Controller(),
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLand() },
-		All:    true,
-		Tapped: true,
-		Then:   PutRestOnBottomInRandomOrder,
+		Player:   ctx.Controller(),
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsLand() },
+		All:      true,
+		Tapped:   true,
+		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }

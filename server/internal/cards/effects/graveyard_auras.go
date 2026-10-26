@@ -76,18 +76,28 @@ func (a AnimateEnchantedCard) Apply(ctx *Context) error {
 		return nil
 	}
 	auraRef := game.ObjectRef{ID: auraID, Epoch: aura.ObjectEpoch}
-	name := aura.Name
 	controller := item.Controller
 	g.SwapEnchantClauseForEffect(auraID)
 	card, ok := g.EnchantedGraveyardCardForEffect(auraID)
 	if !ok {
 		return nil
 	}
-	return g.ReturnFromGraveyardToBattlefieldThenForEffect(card, controller, a.Tapped,
-		func(g *game.Game, entered uuid.UUID) error {
-			return animateAttachAndSchedule(g, auraRef, name, controller, entered)
-		})
+	return g.ReturnFromGraveyardToBattlefieldKeyedForEffect(card, controller, a.Tapped,
+		ctx.TailN(animateAttachTail, auraRef.Epoch))
 }
+
+// animateAttachTail is steps 5 and 6 as a keyed tail (#4253 slice 6): the
+// Aura is the tail's Source (its ID) and its object epoch is N, the
+// controller is the Player, and the Aura's name is read off the card.
+// Shared by Animate Dead's family and the Aura-becoming reanimators. An
+// on-disk key.
+var animateAttachTail = EnteredTail("graveyard-auras/attach-and-schedule-sacrifice", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
+	name := ""
+	if c, ok := ctx.Game.LookupCardForEffect(o.Tail.Source); ok {
+		name = c.Name
+	}
+	return animateAttachAndSchedule(ctx.Game, game.ObjectRef{ID: o.Tail.Source, Epoch: o.Tail.N}, name, o.Tail.Player, entered)
+})
 
 // animateAttachAndSchedule is steps 5 and 6, run once the return has
 // settled. `entered` is the returned permanent, or uuid.Nil when nothing
@@ -246,22 +256,18 @@ func (BecomeAnAuraAndReanimateTarget) Apply(ctx *Context) error {
 	if len(targets) == 0 || targets[0].Kind != game.TargetCard {
 		return nil
 	}
-	auraRef := game.ObjectRef{ID: auraID, Epoch: aura.ObjectEpoch}
-	name := aura.Name
 	controller := item.Controller
 	if err := (ScopedEffectFor{
 		Target:   auraID,
 		Mods:     []game.Mod{game.AddSubtypesMod("Aura")},
 		Duration: g.PinnedTo(game.IndefiniteDuration(), auraID),
-		Label:    name + " — it becomes an Aura",
+		Label:    aura.Name + " — it becomes an Aura",
 	}).Apply(ctx); err != nil {
 		return err
 	}
 	g.SwapEnchantClauseForEffect(auraID)
-	return g.ReturnFromGraveyardToBattlefieldThenForEffect(targets[0].ID, controller, false,
-		func(g *game.Game, entered uuid.UUID) error {
-			return animateAttachAndSchedule(g, auraRef, name, controller, entered)
-		})
+	return g.ReturnFromGraveyardToBattlefieldKeyedForEffect(targets[0].ID, controller, false,
+		ctx.TailN(animateAttachTail, aura.ObjectEpoch))
 }
 
 // mayPayUntapEnchantedCreaturePaid is the paid half of

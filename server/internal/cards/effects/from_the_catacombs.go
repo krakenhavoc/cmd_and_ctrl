@@ -61,22 +61,21 @@ func fromTheCatacombsResolve(item *game.StackItem, ctx *Context) error {
 	if len(targets) == 0 || targets[0].Kind != game.TargetCard {
 		return nil
 	}
-	if err := ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(targets[0].ID, you, false,
-		map[string]int{"corpse": 1}, fromTheCatacombsExileInstead(you)); err != nil {
+	if err := ctx.Game.ReturnFromGraveyardWithCountersKeyedForEffect(targets[0].ID, you, false,
+		map[string]int{"corpse": 1}, ctx.Tail(fromTheCatacombsExileInstead)); err != nil {
 		return nothingIfGone(err)
 	}
 	return TakeTheInitiative{Player: you}.Apply(ctx)
 }
 
-// fromTheCatacombsExileInstead is the entry's continuation: the
-// creature that entered gets the leave-the-battlefield redirect.
-func fromTheCatacombsExileInstead(you uuid.UUID) func(g *game.Game, entered uuid.UUID) error {
-	return func(g *game.Game, entered uuid.UUID) error {
-		if entered == uuid.Nil {
-			return nil
-		}
-		ExileInsteadOfLeavingBattlefield(g, entered, you,
-			"From the Catacombs: if that creature would leave the battlefield, exile it instead")
+// fromTheCatacombsExileInstead is the entry's continuation, a keyed tail
+// (#4253 slice 6): the creature that entered gets the leave-the-battlefield
+// redirect, for the tail's Player. An on-disk key.
+var fromTheCatacombsExileInstead = EnteredTail("from-the-catacombs/exile-instead", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
+	if entered == uuid.Nil {
 		return nil
 	}
-}
+	ExileInsteadOfLeavingBattlefield(ctx.Game, entered, o.Tail.Player,
+		"From the Catacombs: if that creature would leave the battlefield, exile it instead")
+	return nil
+})

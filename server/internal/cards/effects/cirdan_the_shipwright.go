@@ -136,5 +136,5 @@ func cirdanAskToPut(g *game.Game, source uuid.UUID, players, chosen []uuid.UUID)
 	if len(still) == 0 {
 		return nil
 	}
-	return g.PutCardsFromHandOntoBattlefieldThenForEffect(still, game.HandEntryOptions{}, nil)
+	return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(still, game.HandEntryOptions{}, game.KeyedTail{})
 }

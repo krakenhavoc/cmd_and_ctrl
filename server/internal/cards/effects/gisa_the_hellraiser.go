@@ -42,10 +42,10 @@ func init() {
 }
 
 func gisaHellraiserCreateTokens(g *game.Game, item *game.StackItem) error {
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller, Source: item.SourceCardID, Together: true,
 		Groups: []game.TokenGroup{{Template: NewContext(g, item).TextToken(gisaHellraiserZombieRogueToken()), Count: 2, Entry: game.TokenEntryOptions{Tapped: true}}},
-	}, nil)
+	}, game.KeyedTail{})
 }
 
 func gisaHellraiserZombieRogueToken() game.Card {

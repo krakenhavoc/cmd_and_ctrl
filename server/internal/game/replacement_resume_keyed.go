@@ -98,6 +98,12 @@ const (
 	ReplacementResumeCounterTail       = "replacement-resume/counter-tail"
 	ReplacementResumeLifeTail          = "replacement-resume/life-tail"
 	ReplacementResumeKeywordActionTail = "replacement-resume/keyword-action-tail"
+
+	// #4253 slice 6: a move whose single-permanent entry carries the
+	// caller's "then" as a registered tail (entryTail.keyed). Its own key
+	// again: a binary from before it knows the move-tail key but drops the
+	// field, and would restore the prompt without the rest of its card.
+	ReplacementResumeMoveEntryTail = "replacement-resume/move-entry-tail"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -112,6 +118,7 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeCreateTokens:  RepEventCreateTokens,
 
 	ReplacementResumeMoveTail:          RepEventMove,
+	ReplacementResumeMoveEntryTail:     RepEventMove,
 	ReplacementResumeCounterTail:       RepEventCounter,
 	ReplacementResumeLifeTail:          RepEventLife,
 	ReplacementResumeKeywordActionTail: RepEventKeywordAction,
@@ -142,7 +149,7 @@ var (
 // eventCarriesDataTail reports whether a keyable event carries a tail
 // written as data (#4253 slice 3), so its frame takes the tailed key.
 func eventCarriesDataTail(ev *ReplacementEvent) bool {
-	if t := ev.entryTail; t != nil && (t.search != nil || t.batch != nil || t.tokens != nil) {
+	if t := ev.entryTail; t != nil && (t.search != nil || t.batch != nil || t.tokens != nil || !t.keyed.IsZero()) {
 		return true
 	}
 	if r := ev.zoneRoute; r != nil && r.faceDownLegs != nil {
@@ -154,9 +161,27 @@ func eventCarriesDataTail(ev *ReplacementEvent) bool {
 	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil
 }
 
+// replacementResumeTailedKeyOf is the key a keyable event is written under
+// when it carries a data tail: its kind's tailed key, or the move-entry-tail
+// key when the tail is a single permanent's entry tail (#4253 slice 6).
+func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
+	if ev.Kind == RepEventMove && ev.entryTail != nil && !ev.entryTail.keyed.IsZero() {
+		return ReplacementResumeMoveEntryTail
+	}
+	return replacementResumeTailedKeys[ev.Kind]
+}
+
+// snapshotTailedKeyOf is replacementResumeTailedKeyOf over the mirror.
+func snapshotTailedKeyOf(ev *replacementEventSnapshot, kind ReplacementEventKind) string {
+	if kind == RepEventMove && ev.EntryTail != nil && ev.EntryTail.Keyed != nil {
+		return ReplacementResumeMoveEntryTail
+	}
+	return replacementResumeTailedKeys[kind]
+}
+
 // snapshotCarriesDataTail is eventCarriesDataTail over the mirror.
 func snapshotCarriesDataTail(ev *replacementEventSnapshot) bool {
-	if t := ev.EntryTail; t != nil && (t.Search != nil || t.Batch != nil || t.Tokens != nil) {
+	if t := ev.EntryTail; t != nil && (t.Search != nil || t.Batch != nil || t.Tokens != nil || t.Keyed != nil) {
 		return true
 	}
 	if r := ev.ZoneRoute; r != nil && r.FaceDownLegs != nil {
@@ -463,7 +488,7 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 		return ""
 	}
 	if eventCarriesDataTail(ev) {
-		key = replacementResumeTailedKeys[ev.Kind]
+		key = replacementResumeTailedKeyOf(ev)
 	}
 	for _, a := range f.applicable {
 		if a.id >= testReplacementIDBase && a.id < builtinReplacementIDBase {
@@ -728,6 +753,9 @@ type entryTailSnapshot struct {
 	Search *searchEntryRun     `json:"search,omitempty"`
 	Batch  *entryBatchSnapshot `json:"batch,omitempty"`
 	Tokens *tokenEntryRun      `json:"tokens,omitempty"`
+	// #4253 slice 6: the caller's "then" of a single permanent's return,
+	// as a registered tail.
+	Keyed *keyedTailSnapshot `json:"keyed,omitempty"`
 }
 
 // zoneRouteSnapshot is a zoneRoute's data half: a route with a `then`,
@@ -940,6 +968,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		out.EntryTail = &entryTailSnapshot{
 			NewObject: t.newObject, CraftedWith: append([]ObjectRef(nil), t.craftedWith...), BatchIndex: t.batchIndex,
 			Search: cloneSearchEntryRun(t.search), Tokens: cloneTokenEntryRun(t.tokens),
+			Keyed: snapshotKeyedTail(t.keyed),
 		}
 		if t.batch != nil {
 			out.EntryTail.Batch = g.snapshotEntryBatch(t.batch, cen)
@@ -1091,6 +1120,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.entryTail = &entryTail{
 			newObject: t.NewObject, craftedWith: append([]ObjectRef(nil), t.CraftedWith...), batchIndex: t.BatchIndex,
 			search: cloneSearchEntryRun(t.Search), batch: restoreEntryBatch(t.Batch), tokens: cloneTokenEntryRun(t.Tokens),
+			keyed: restoreKeyedTail(t.Keyed),
 		}
 	}
 	if r := s.ZoneRoute; r != nil {
@@ -1131,7 +1161,7 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
 	case f.Event.Kind != kind:
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
-	case snapshotCarriesDataTail(&f.Event) && c.PickThen != replacementResumeTailedKeys[kind]:
+	case snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
 		// #4253 slice 3: a tail written as data under the key a binary
 		// that drops it would accept.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
@@ -1156,6 +1186,7 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 		unknown = append(unknown, unknownSearchEntryKeys(t.Search)...)
 		unknown = append(unknown, unknownEntryBatchKeys(t.Batch)...)
 		unknown = append(unknown, unknownTokenEntryKeys(t.Tokens)...)
+		unknown = append(unknown, unknownKeyedTail(t.Keyed)...)
 	}
 	if t := ev.TokenTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)

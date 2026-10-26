@@ -307,20 +307,25 @@ func b35LootOne(g *game.Game, item *game.StackItem) error {
 // the counters go on once the entry has finished.
 func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyardTogether{
-		Targets: legalTargetCardIDs(NewContext(g, item)),
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			for _, id := range entered {
-				if !onBattlefield(ctx.Game, id) {
-					continue
-				}
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Targets:  legalTargetCardIDs(NewContext(g, item)),
+		ThenTail: smileAtDeathCounters,
 	}.Apply(NewContext(g, item))
 }
+
+// smileAtDeathCounters is "put a +1/+1 counter on each of them" as a keyed
+// tail (#4253 slice 6). An on-disk key.
+var smileAtDeathCounters = TogetherTail("smile-at-death/plus-one-counters",
+	func(ctx *Context, entered []uuid.UUID, _ int) error {
+		for _, id := range entered {
+			if !onBattlefield(ctx.Game, id) {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 // b35NecrobloomLandfall is The Necrobloom's landfall body: a 0/1
 // green Plant, or a 2/2 black Zombie instead when the controller

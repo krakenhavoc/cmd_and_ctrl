@@ -22,7 +22,7 @@ import (
 // EachManifestsFromHand has each of `Players` choose `N` cards from
 // their own hand and manifest them: the chosen cards enter the
 // battlefield face down as 2/2 creatures under their owner's control,
-// all in one entry (game.ManifestFromHandsThenForEffect).
+// all in one entry (game.ManifestFromHandsKeyedForEffect).
 //
 // # What each player is asked
 //
@@ -80,8 +80,17 @@ type ManifestThen struct{ run game.PromptRunThen }
 // resolving item and the permanents that entered. Call it once, from a
 // package-level var.
 func RegisterManifestThen(key string, body func(ctx *Context, manifested []uuid.UUID) error) ManifestThen {
+	// The entry's own continuation is a registered tail too (#4253 slice
+	// 6), named after the run's key, so a table waiting on a manifested
+	// card's entry question is a restore point.
+	var tail game.TailRef
+	if body != nil {
+		tail = CardTail("manifest-from-hand/"+key, func(ctx *Context, o game.TailOutcome) error {
+			return body(ctx, o.IDs)
+		})
+	}
 	return ManifestThen{run: RunThen(key, func(ctx *Context, r game.RunDone) error {
-		return manifestPicked(ctx, r, body)
+		return manifestPicked(ctx, r, tail)
 	})}
 }
 
@@ -92,7 +101,7 @@ var manifestNoThen = RegisterManifestThen("prompt-run/manifest-from-hand", nil)
 // in one entry and run the card's rest. The carry is the players in APNAP
 // order, then, for each player who manifests their whole hand without a
 // choice, a list led by the player and followed by that hand.
-func manifestPicked(ctx *Context, r game.RunDone, then func(ctx *Context, manifested []uuid.UUID) error) error {
+func manifestPicked(ctx *Context, r game.RunDone, tail game.TailRef) error {
 	lists := unpackIDLists(r.Carry)
 	if len(lists) == 0 {
 		// Nobody to manifest: the rest of the card still runs, on nothing.
@@ -113,16 +122,14 @@ func manifestPicked(ctx *Context, r game.RunDone, then func(ctx *Context, manife
 		}
 		all = append(all, picks.By(id)...)
 	}
-	finish := func(g *game.Game, manifested []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(NewContext(g, ctx.Item), manifested)
+	var then game.KeyedTail
+	if tail.Key() != "" {
+		then = ctx.ItemTail(tail)
 	}
 	if len(all) == 0 {
-		return finish(ctx.Game, nil)
+		return then.Run(ctx.Game, nil)
 	}
-	return ctx.Game.ManifestFromHandsThenForEffect(all, finish)
+	return ctx.Game.ManifestFromHandsKeyedForEffect(all, then)
 }
 
 func (e EachManifestsFromHand) Apply(ctx *Context) error {

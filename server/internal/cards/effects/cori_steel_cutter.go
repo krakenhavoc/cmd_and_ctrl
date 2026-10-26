@@ -57,27 +57,31 @@ func init() {
 // package-level func: it captures nothing and reads everything off the
 // item it is handed, so it survives the Clone an undo restores.
 func coriSteelCutterFlurry(g *game.Game, item *game.StackItem) error {
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	ctx := NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
-			Template: NewContext(g, item).TextToken(TokenCard("1/1 white Monk with prowess")),
+			Template: ctx.TextToken(TokenCard("1/1 white Monk with prowess")),
 			Count:    1,
 		}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		if len(created) == 0 {
-			return nil
-		}
-		monk := created[0]
-		return MayChoice{
-			Question: "Cori-Steel Cutter — attach it to the Monk?",
-			YesLabel: "Attach",
-			NoLabel:  "Don't attach",
-			Then:     coriSteelCutterAttach,
-			Carry:    []uuid.UUID{monk},
-		}.Apply(NewContext(g, item))
-	})
+	}, ctx.ItemTail(coriSteelCutterOffer))
 }
+
+// coriSteelCutterOffer is "then you may attach this Equipment to it" as a
+// keyed tail (#4253 slice 6). An on-disk key.
+var coriSteelCutterOffer = CardTail("cori-steel-cutter/offer-attach", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return MayChoice{
+		Question: "Cori-Steel Cutter — attach it to the Monk?",
+		YesLabel: "Attach",
+		NoLabel:  "Don't attach",
+		Then:     coriSteelCutterAttach,
+		Carry:    []uuid.UUID{o.IDs[0]},
+	}.Apply(ctx)
+})
 
 // coriSteelCutterAttach is the "yes": attach the Cutter to the Monk (the
 // carried ID). Keyed (#4291).

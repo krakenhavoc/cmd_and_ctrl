@@ -38,18 +38,20 @@ func init() {
 			// asks a question as it enters (a Clone's copy pick) still gets
 			// it once the pick is answered. Plain values only; the tail
 			// runs from a resume as well as inline.
-			source, controller := item.SourceCardID, item.Controller
-			return ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(ts[0].ID, controller, false,
-				map[string]int{"mannequin": 1},
-				func(g *game.Game, entered uuid.UUID) error {
-					// A graveyard return keeps the card's ID (Gift of Immortality).
-					if entered == uuid.Nil || !onBattlefield(g, entered) {
-						return nil
-					}
-					tail := NewContext(g, &game.StackItem{SourceCardID: source, Controller: controller})
-					return grantWhileItHasCounter(tail, entered, "mannequin",
-						"Makeshift Mannequin — sacrifice it when it becomes a target, while it has a mannequin counter", makeshiftMannequinGrant)
-				})
+			return ctx.Game.ReturnFromGraveyardWithCountersKeyedForEffect(ts[0].ID, item.Controller, false,
+				map[string]int{"mannequin": 1}, ctx.Tail(makeshiftMannequinGrantTail))
 		},
 	})
 }
+
+// makeshiftMannequinGrantTail is the entry's tail as a keyed tail (#4253
+// slice 6): the sacrifice grant while it has a mannequin counter. An
+// on-disk key.
+var makeshiftMannequinGrantTail = EnteredTail("makeshift-mannequin/grant-while-counter", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	// A graveyard return keeps the card's ID (Gift of Immortality).
+	if entered == uuid.Nil || !onBattlefield(ctx.Game, entered) {
+		return nil
+	}
+	return grantWhileItHasCounter(ctx, entered, "mannequin",
+		"Makeshift Mannequin — sacrifice it when it becomes a target, while it has a mannequin counter", makeshiftMannequinGrant)
+})

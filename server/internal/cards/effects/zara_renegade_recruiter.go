@@ -143,26 +143,30 @@ func zaraPutAttacking(g *game.Game, item *game.StackItem, card, attacking uuid.U
 	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != game.ZoneHand {
 		return nil
 	}
-	return g.PutFromHandOntoBattlefieldThenForEffect(card, game.HandEntryOptions{
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(card, game.HandEntryOptions{
 		Controller: item.Controller,
 		Tapped:     true,
 		Attacking:  attacking,
-	}, func(g *game.Game, entered uuid.UUID) error {
-		if entered == uuid.Nil {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(entered)
-		if !ok {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
-			Cards:  []uuid.UUID{entered},
-			Body:   zaraReturnToHandBody,
-			Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
-		}.Apply(NewContext(g, item))
-	})
+	}, NewContext(g, item).ItemTail(zaraReturnTail))
 }
+
+// zaraReturnTail is "return that creature to its owner's hand at the next
+// end step" as a keyed tail (#4253 slice 6). An on-disk key.
+var zaraReturnTail = EnteredTail("zara-renegade-recruiter/return-at-end-step", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	if entered == uuid.Nil {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(entered)
+	if !ok {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
+		Cards:  []uuid.UUID{entered},
+		Body:   zaraReturnToHandBody,
+		Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
+	}.Apply(ctx)
+})
 
 // zaraReturnToHand is the delayed trigger's body (zaraReturnToHandBody,
 // delayed_bodies.go): bounce the creature if it is still the object
