@@ -93,23 +93,29 @@ func zenosMyFirstFriend(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			chosen := uuid.Nil
-			if len(picked) == 1 {
-				for _, c := range g.BattlefieldCardsForEffect() {
-					if c.InstanceID == picked[0] {
-						chosen = c.InstanceID
-						g.SetChosenPermanentForEffect(zenos, game.ObjectRef{ID: chosen, Epoch: c.ObjectEpoch})
-						break
-					}
-				}
-			}
-			return zenosShrinkOthers(NewContext(g, item), zenos, chosen)
-		},
+		ThenKey:  zenosChose,
+		LiveZone: game.ZoneBattlefield,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// zenosChose is the choice of the creature to spare, keyed (#4253): Zenos
+// is the asking card and the item rides the prompt as data.
+var zenosChose = askedPick("choose-cards/zenos-yae-galvus-first-friend", func(ctx *Context, r game.CardsChosen) error {
+	g, zenos := ctx.Game, r.Source
+	chosen := uuid.Nil
+	if len(r.Picked) == 1 {
+		for _, c := range g.BattlefieldCardsForEffect() {
+			if c.InstanceID == r.Picked[0] {
+				chosen = c.InstanceID
+				g.SetChosenPermanentForEffect(zenos, game.ObjectRef{ID: chosen, Epoch: c.ObjectEpoch})
+				break
+			}
+		}
+	}
+	return zenosShrinkOthers(ctx, zenos, chosen)
+})
 
 // zenosShrinkOthers is "until end of turn, creatures other than Zenos
 // and the chosen creature get -2/-2", the set fixed now.

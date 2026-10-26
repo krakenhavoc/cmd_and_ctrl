@@ -51,6 +51,22 @@ func (u UntapUpToLands) Apply(ctx *Context) error {
 		}
 		return then(ctx)
 	}
+	if then == nil {
+		// Nothing printed after the untap: the pick is keyed (#4253), so a
+		// table waiting on it is a restore point.
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:  ctx.Controller(),
+			Source:   ctx.Source(),
+			Question: u.Question,
+			Cards:    tapped,
+			Min:      0,
+			Max:      u.N,
+			ThenKey:  untapLandsChosen,
+			LiveZone: game.ZoneBattlefield,
+			Asked:    game.NewAskedItem(ctx.Item),
+		})
+		return nil
+	}
 	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
@@ -78,3 +94,19 @@ func (u UntapUpToLands) Apply(ctx *Context) error {
 	})
 	return nil
 }
+
+// untapLandsChosen untaps each land picked that is still on the battlefield:
+// UntapUpToLands' keyed answer when nothing is printed after the untap
+// (#4253). The asking item rides the prompt as data.
+var untapLandsChosen = askedPick("choose-cards/untap-up-to-lands", func(ctx *Context, r game.CardsChosen) error {
+	next := ctx.asGroupMember()
+	for _, id := range r.Picked {
+		if !onBattlefield(ctx.Game, id) {
+			continue
+		}
+		if err := (UntapTarget{Target: id}).Apply(next); err != nil {
+			return err
+		}
+	}
+	return nil
+})

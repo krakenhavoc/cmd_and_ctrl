@@ -65,16 +65,12 @@ func victorReanimate(ctx *Context) error {
 		}
 	}
 	me := ctx.Controller()
-	put := func(c *Context, id uuid.UUID) error {
-		return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: me}.Apply(c)
-	}
 	switch len(candidates) {
 	case 0:
 		return nil
 	case 1:
-		return put(ctx, candidates[0])
+		return victorPut(ctx, candidates[0])
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  me,
 		Source:   ctx.Source(),
@@ -82,12 +78,24 @@ func victorReanimate(ctx *Context) error {
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return put(NewContext(g, item), picked[0])
-		},
+		ThenKey:  victorPicked,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// victorPut puts the creature card onto the battlefield under the
+// effect's controller's control.
+func victorPut(ctx *Context, id uuid.UUID) error {
+	return ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+}
+
+// victorPicked is the choice of which creature card to put, keyed (#4253):
+// the asking item rides the prompt as data. The pick spans every
+// graveyard, so it holds no zone re-check, as before.
+var victorPicked = askedPick("choose-cards/victor-valgavoths-seneschal-reanimate", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return victorPut(ctx, r.Picked[0])
+})

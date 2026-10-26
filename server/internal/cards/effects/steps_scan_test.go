@@ -802,7 +802,6 @@ var stepsSkipped = map[string]string{
 	"Coercive Portal":            "exclusive arms: the draw, or the sacrifice and the destruction",
 	"Diviner's Portent":          "exclusive arms: the draw, or the scry's Then",
 	"Tyrant's Choice":            "exclusive arms: the sacrifices, or the life loss",
-	"Ultimate Magic: Meteor":     "exclusive arms: the choice loop returns when it asks, and the destruction runs once it has none left (the damage-then-choice order is steps)",
 	// Batch 5.
 	"Galadriel, Elven-Queen":    "exclusive arms: the draw, or the Ring tempts and the counter",
 	"Vault 11: Voter's Dilemma": "exclusive arms: every player draws, or the voted creatures are destroyed",

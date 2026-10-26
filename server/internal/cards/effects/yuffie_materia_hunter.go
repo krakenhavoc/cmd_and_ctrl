@@ -67,17 +67,24 @@ func yuffieETB(g *game.Game, item *game.StackItem) error {
 		Cards:    equipment,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 || !g.Battlefield.Contains(yuffie) || !g.Battlefield.Contains(picked[0]) {
-				return nil
-			}
-			eq, ok := g.LookupCardForEffect(picked[0])
-			if !ok || eq.Controller != controller || !eq.HasSubtype("Equipment") {
-				return nil
-			}
-			return g.AttachForEffect(picked[0], game.TargetRef{Kind: game.TargetCard, ID: yuffie})
-		},
+		ThenKey:  yuffieAttached,
+		LiveZone: game.ZoneBattlefield,
 	})
 	return nil
 }
+
+// yuffieAttached is the optional Equipment attach, keyed (#4253): Yuffie is
+// the asking card and the chooser her controller, so the prompt carries
+// nothing else.
+var yuffieAttached = game.RegisterChooseCardsThen("choose-cards/yuffie-materia-hunter-attach",
+	func(g *game.Game, r game.CardsChosen) error {
+		yuffie, controller := r.Source, r.Chooser
+		if len(r.Picked) == 0 || !g.Battlefield.Contains(yuffie) || !g.Battlefield.Contains(r.Picked[0]) {
+			return nil
+		}
+		eq, ok := g.LookupCardForEffect(r.Picked[0])
+		if !ok || eq.Controller != controller || !eq.HasSubtype("Equipment") {
+			return nil
+		}
+		return g.AttachForEffect(r.Picked[0], game.TargetRef{Kind: game.TargetCard, ID: yuffie})
+	})

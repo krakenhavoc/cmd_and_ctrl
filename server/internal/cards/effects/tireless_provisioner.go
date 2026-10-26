@@ -34,15 +34,21 @@ func init() {
 							{Label: "Create a Treasure token"},
 							{Label: "Create a Food token"},
 						},
-						Then: func(ctx *Context, index int) error {
-							template := TreasureToken()
-							if index == 1 {
-								template = FoodToken()
-							}
-							return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(ctx)
-						},
+						ThenKey: tirelessProvisionerToken,
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// tirelessProvisionerToken is the answer to "Food or Treasure?", keyed
+// (#4253): the controller is the stand-in context's, as the old closure's
+// item.Controller was.
+var tirelessProvisionerToken = OptionPickThen("option-pick/tireless-provisioner-token",
+	func(ctx *Context, r game.OptionPicked) error {
+		template := TreasureToken()
+		if r.Index == 1 {
+			template = FoodToken()
+		}
+		return CreateToken{Controller: ctx.Controller(), Template: template, N: 1}.Apply(ctx)
+	})

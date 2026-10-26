@@ -98,16 +98,25 @@ func zaraLookAndPut(g *game.Game, item *game.StackItem, defender uuid.UUID) erro
 		Cards:      creatures,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return zaraChooseAttackTarget(g, item, defender, picked[0])
-		},
+		ThenKey:    zaraPicked,
+		LiveZone:   game.ZoneHand,
+		Carry:      []uuid.UUID{defender},
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// zaraPicked is the optional put from their hand, keyed (#4253): the
+// defending player rides the prompt as its carry, and the trigger's item as
+// data. The "what does it attack?" question it can open is still a closure
+// (it needs PickOption.WithItem, #4337).
+var zaraPicked = game.RegisterChooseCardsThen("choose-cards/zara-renegade-recruiter-put",
+	func(g *game.Game, r game.CardsChosen) error {
+		if len(r.Picked) == 0 || len(r.Carry) == 0 || r.Asked == nil {
+			return nil
+		}
+		return zaraChooseAttackTarget(g, r.Asked, r.Carry[0], r.Picked[0])
+	})
 
 // zaraChooseAttackTarget asks what the creature attacks when the
 // defending player controls a planeswalker, and puts it straight in
