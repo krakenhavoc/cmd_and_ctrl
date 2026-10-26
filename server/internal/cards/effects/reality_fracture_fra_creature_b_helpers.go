@@ -201,19 +201,6 @@ func rfCreatureBAnOpponentWasDealtNoncombatDamage(g *game.Game, controller uuid.
 	return false
 }
 
-// rfCreatureBDistinctNames is the Validate for "cards with different
-// names": no two picked cards share a name.
-func rfCreatureBDistinctNames(picked []game.Card) bool {
-	seen := make(map[string]bool, len(picked))
-	for _, c := range picked {
-		if seen[c.Name] {
-			return false
-		}
-		seen[c.Name] = true
-	}
-	return true
-}
-
 // rfCreatureBModeTargetDoes lifts "do <f> to the chosen target" into a
 // modal bullet's body: the bullet's own target group, first target
 // still legal as it resolves (CR 608.2b). Divining Duelist's tap and

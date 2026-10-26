@@ -187,8 +187,10 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 		}
 		chosen = append(chosen, card)
 	}
-	spec := choice.searchResume.spec
-	if spec.Validate != nil && len(chosen) > 0 && !spec.Validate(chosen) {
+	// The set rule, a closure or a registered one (#4253 slice 5). The
+	// per-card predicate is not read here: it listed the candidates, and
+	// the picks were checked against that list above.
+	if len(chosen) > 0 && !choice.searchResume.spec.setAllows(chosen) {
 		return ErrInvalidParam
 	}
 	return nil

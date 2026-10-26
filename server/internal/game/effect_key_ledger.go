@@ -130,6 +130,9 @@ func ledgerLineResolves(line string) bool {
 	case "tail":
 		// #4253 slice 3: a keyed event continuation (RegisterTail).
 		return KnownTail(ledgerLineKey(line))
+	case "searchrule":
+		// #4253 slice 5: a search prompt's set rule (RegisterSearchRule).
+		return KnownSearchRule(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

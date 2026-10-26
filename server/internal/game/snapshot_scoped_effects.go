@@ -252,7 +252,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// with no tail key, is a newer binary's shape.
 			unknown = append(unknown, fmt.Sprintf("replacement resume frame on a %s prompt with tail %q", c.Kind, c.PickThen))
 		}
+		if c.SearchPrompt != nil && c.Kind != PendingChoiceSearchLibrary {
+			// #4253 slice 5: a search frame on another kind is a newer
+			// binary's shape.
+			unknown = append(unknown, fmt.Sprintf("search prompt frame on a %s prompt", c.Kind))
+		}
 		switch {
+		case c.Kind == PendingChoiceSearchLibrary && (c.PickThen != "" || c.SearchPrompt != nil):
+			// #4253 slice 5: a written search prompt names the marker, its
+			// set rule and the card's tail.
+			unknown = append(unknown, unknownSearchPromptKeys(&c)...)
 		case c.PickThen == "":
 		case keyedReplacementPromptKind(c.Kind):
 			// #4253: a keyed CR 616 frame's tail, and the bodies and stack

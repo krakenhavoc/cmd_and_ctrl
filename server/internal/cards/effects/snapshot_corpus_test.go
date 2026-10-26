@@ -674,6 +674,13 @@ func corpusBoards() []corpusBoard {
 		// next).
 		{"it_doesnt_add_up_clone", corpusItDoesntAddUpClone},
 		{"amass_army_order", corpusAmassArmyOrder},
+		// #4253 slice 5: the library-search prompt itself, written as data
+		// (pendingChoices[].searchPrompt, its marker on pickThen). Myriad
+		// Landscape's, whose set rule is registered (searchPrompt.rule);
+		// and Assassin's Trophy's "you may search", asked before it begins
+		// (searchPrompt.undecided).
+		{"myriad_landscape_search", corpusMyriadLandscapeSearch},
+		{"trophy_search_undecided", corpusTrophySearchUndecided},
 	}
 }
 
@@ -898,6 +905,47 @@ func corpusHourOfPromiseFetch(t *testing.T) *game.Game {
 	answerSearchByID(t, g, me.ID, ids[0], ids[1])
 	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
 		t.Fatal("setup: the fetched Blood Crypt did not ask")
+	}
+	return g
+}
+
+// corpusMyriadLandscapeSearch is Myriad Landscape's search prompt open: two
+// basic lands that share a land type, the set rule registered (#4253
+// slice 5).
+func corpusMyriadLandscapeSearch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	landscape := pushCatalogPermanent(g, me.ID, "Myriad Landscape", "Land", myriadLandscapeOracle, false)
+	seedSearchLibrary(me,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"},
+		game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"},
+	)
+	if err := g.ActivateCatalogAbility(me.ID, landscape, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceSearchLibrary) == nil {
+		t.Fatal("setup: Myriad Landscape did not search")
+	}
+	return g
+}
+
+// corpusTrophySearchUndecided is Assassin's Trophy's victim asked whether
+// they search, before the search begins (#4253 slice 5).
+func corpusTrophySearchUndecided(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	target := seedPermanentFor(g, victim.ID, "Gaea's Cradle", "Legendary Land")
+	seedSearchLibrary(victim,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
+	)
+	castCatalogSpell(t, g, "Assassin's Trophy", "Instant", assassinsTrophyOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: target}})
+	passPriorityAroundTable(t, g)
+	if c := pendingOfKind(g, game.PendingChoiceSearchLibrary); c == nil || !c.SearchIsUndecided() || c.Chooser != victim.ID {
+		t.Fatal("setup: the victim was not asked whether they search")
 	}
 	return g
 }

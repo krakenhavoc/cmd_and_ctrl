@@ -254,7 +254,7 @@ func b23SearchCreaturesWithTotalManaValue(g *game.Game, item *game.StackItem, li
 		Dest:      game.ZoneBattlefield,
 		Limit:     p.Library.Size(),
 		Shuffle:   true,
-		Validate:  b23TotalManaValueAtMost(limit),
+		Rule:      searchRuleTotalManaValueAtMost.WithN(limit),
 		Reason:    reason,
 	}.Apply(ctx)
 }

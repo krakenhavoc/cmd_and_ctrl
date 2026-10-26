@@ -2008,6 +2008,14 @@ type pendingChoiceSnapshot struct {
 	// Additive within the version.
 	LibraryOrder *libraryOrderSnapshot `json:"libraryOrder,omitempty"`
 
+	// SearchPrompt is a library-search prompt's frame written as data
+	// (#4253 slice 5, search_prompt_keyed.go): the spec's data half, its
+	// set rule by key, the undecided flag and a TakeAll search's graveyard
+	// finds. Written only for a spec with no closure set rule and no
+	// closure continuation. PickThen says SearchPromptKey, so a binary
+	// from before it refuses the file. Additive within the version.
+	SearchPrompt *searchPromptSnapshot `json:"searchPrompt,omitempty"`
+
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
 	ResumeFrames []string `json:"resumeFrames,omitempty"`
@@ -2431,6 +2439,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4301: the ordering prompt's keyed "then".
 				pc.LibraryOrder = snapshotLibraryOrder(k)
 				pc.PickThen = k.then.Ref.key
+			}
+			if sp := snapshotSearchPrompt(c); sp != nil {
+				// #4253 slice 5: the search prompt's frame, as data.
+				pc.SearchPrompt, pc.PickThen = sp, SearchPromptKey
 			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
@@ -3239,8 +3251,10 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"triggerResume":        c.triggerResume != nil,
 		"payUnlessResume":      c.payUnlessResume != nil,
 		"mayCastResume":        c.mayCastResume != nil,
-		"searchResume":         c.searchResume != nil,
-		"scryResume":           c.scryResume != nil,
+		// #4253 slice 5: a search prompt with no closure set rule or
+		// continuation is written (pendingChoices[].searchPrompt).
+		"searchResume": c.searchResume != nil && !searchPromptIsData(c),
+		"scryResume":   c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
@@ -3612,6 +3626,11 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
 			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)
+			g.PendingChoices[i].PickThen = ""
+		}
+		if sp := s.PendingChoices[i].SearchPrompt; sp != nil && s.PendingChoices[i].Kind == PendingChoiceSearchLibrary {
+			// #4253 slice 5: a search prompt's frame, its marker on PickThen.
+			g.PendingChoices[i].searchResume = restoreSearchPrompt(sp)
 			g.PendingChoices[i].PickThen = ""
 		}
 	}
