@@ -132,9 +132,7 @@ func b23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
 // nothing here depends on a different creature's placement having
 // settled first.
 func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
-	item := ctx.Item
 	for _, id := range ids {
-		id := id
 		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
 			continue
 		}
@@ -142,18 +140,28 @@ func b23GrowThenDoubleEach(ctx *Context, ids []uuid.UUID) error {
 		if c, ok := ctx.Game.LookupCardForEffect(id); ok {
 			before = c.Counters["+1/+1"]
 		}
-		if err := ctx.Game.AddCounterThenForEffect(id, "+1/+1", 1, func(g *game.Game, _ int) error {
-			c, ok := g.LookupCardForEffect(id)
-			if !ok || c.Counters["+1/+1"] <= before {
-				return nil
-			}
-			return b23DoublePlusOneCountersOn(NewContext(g, item), id)
-		}); err != nil {
+		then := ctx.ItemTail(b23DoubleIfGrew)
+		then.Carry = []uuid.UUID{id}
+		then.N = before
+		if err := ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, id, "+1/+1", 1, then); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+// b23DoubleIfGrew is Fangs of Kalonia's second half for one creature: once
+// its counter has landed, double its +1/+1 counters if the count rose. Carry
+// is the creature and N the count it had before the placement. An on-disk
+// key: never renamed, never reused.
+var b23DoubleIfGrew = CardTail("counter/double-if-grew", func(ctx *Context, o game.TailOutcome) error {
+	id := carryFirst(o.Tail)
+	c, ok := ctx.Game.LookupCardForEffect(id)
+	if !ok || c.Counters["+1/+1"] <= o.Tail.N {
+		return nil
+	}
+	return b23DoublePlusOneCountersOn(ctx, id)
+})
 
 // b23CreaturesYouControl lists the controller's creatures, the set
 // snapshotted before anything is placed (CR 608.2).
@@ -212,13 +220,10 @@ func b23ChargeThenDrawPerCharge(g *game.Game, item *game.StackItem) error {
 	// Scales board pauses the placement on a CR 616 prompt, and
 	// reading before it resumes would draw for the pre-placement
 	// count.
-	return g.AddCounterThenForEffect(id, "charge", 1, func(g *game.Game, _ int) error {
-		charges := 0
-		if c, ok := g.LookupCardForEffect(id); ok {
-			charges = c.Counters["charge"]
-		}
-		return DrawCards{Player: item.Controller, N: charges}.Apply(NewContext(g, item))
-	})
+	then := NewContext(g, item).ItemTail(thenDrawPerCounter)
+	then.Carry = []uuid.UUID{id}
+	then.Word = "charge"
+	return g.AddCounterByKeyedForEffect(uuid.Nil, id, "charge", 1, then)
 }
 
 // b23TotalManaValueAtMost is Protean Hulk's set constraint: the

@@ -33,12 +33,8 @@ func init() {
 			}
 			src, me := ctx.Source(), item.Controller
 			loss := 2 + 2*ctx.Sacrificed()
-			return ctx.Game.ChangePlayerLifeThenForEffect(src, legal[0].ID, -loss, func(g *game.Game, applied int) error {
-				if applied >= 0 {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(src, me, -applied)
-			})
+			return ctx.Game.ChangePlayerLifeKeyedForEffect(src, legal[0].ID, -loss,
+				game.KeyedTail{Ref: thenGainLifeEqualToLost, Player: me, Source: src})
 		},
 	})
 }

@@ -75,22 +75,25 @@ func blitzwingEndStep(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		lost := b18LifeLostThisTurn(g, t.ID)
-		convert := func(g *game.Game, applied int) error {
-			if applied < 0 {
-				return nil // life was lost this way
-			}
-			// "If no life is lost this way, convert Blitzwing."
-			return ConvertThis{}.Apply(NewContext(g, item))
-		}
+		convert := ctx.ItemTail(blitzwingConvert)
 		if lost <= 0 {
-			return convert(g, 0)
+			return convert.Run(g, nil)
 		}
-		return g.ChangePlayerLifeThenForEffect(item.SourceCardID, t.ID, -lost, convert)
+		return g.ChangePlayerLifeKeyedForEffect(item.SourceCardID, t.ID, -lost, convert)
 	}
 	// With no legal target the ability is removed from the stack
 	// (CR 608.2b) and nothing, the convert included, happens.
 	return nil
 }
+
+// blitzwingConvert is "If no life is lost this way, convert Blitzwing", told
+// the life that moved. An on-disk key: never renamed, never reused.
+var blitzwingConvert = CardTail("blitzwing/convert-if-none-lost", func(ctx *Context, o game.TailOutcome) error {
+	if o.Amount < 0 {
+		return nil // life was lost this way
+	}
+	return ConvertThis{}.Apply(ctx)
+})
 
 func blitzwingRandomAbility(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

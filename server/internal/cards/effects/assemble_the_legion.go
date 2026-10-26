@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Assemble the Legion — Enchantment {3}{R}{W} (EDHREC rank 2212):
 //
@@ -38,17 +42,11 @@ func init() {
 			},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				lastKnown := item.Params.Amount
-				muster := func(g *game.Game, n int) error {
-					if n <= 0 {
-						return nil
-					}
-					return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(NewContext(g, item))
-				}
 				// #1432: a new object the card became is not
 				// "this enchantment" — it gets no counter, and
 				// the muster reads the one that triggered.
 				if !b15OnBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) {
-					return muster(g, lastKnown)
+					return assembleTheLegionMuster(NewContext(g, item), lastKnown)
 				}
 				// #1290: the count that matters is what the
 				// counter LANDED AT, not the pre-placement
@@ -57,14 +55,29 @@ func init() {
 				// prompt, and reading Counters["muster"] on
 				// the next line would see the pre-placement
 				// count.
-				return g.AddCounterThenForEffect(item.SourceCardID, "muster", 1, func(g *game.Game, _ int) error {
-					n := lastKnown
-					if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
-						n = c.Counters["muster"]
-					}
-					return muster(g, n)
-				})
+				then := NewContext(g, item).ItemTail(assembleTheLegionMusterTail)
+				then.N = lastKnown
+				return g.AddCounterByKeyedForEffect(uuid.Nil, item.SourceCardID, "muster", 1, then)
 			},
 		}},
 	})
 }
+
+// assembleTheLegionMuster creates a Soldier for each of n muster counters.
+func assembleTheLegionMuster(ctx *Context, n int) error {
+	if n <= 0 {
+		return nil
+	}
+	return CreateToken{Controller: ctx.Controller(), Template: TokenCard("1/1 red and white Soldier with haste"), N: n}.Apply(ctx)
+}
+
+// assembleTheLegionMusterTail is the muster, read at what the counter landed
+// at; the tail's N is the count the trigger saw, kept if the enchantment is
+// gone by then. An on-disk key: never renamed, never reused.
+var assembleTheLegionMusterTail = CardTail("assemble-the-legion/muster", func(ctx *Context, o game.TailOutcome) error {
+	n := o.Tail.N
+	if c, ok := ctx.Game.LookupCardForEffect(ctx.Item.SourceCardID); ok {
+		n = c.Counters["muster"]
+	}
+	return assembleTheLegionMuster(ctx, n)
+})

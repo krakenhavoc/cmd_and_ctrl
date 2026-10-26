@@ -150,14 +150,13 @@ func RegisterEmpowerThen(key string, then func(ctx *Context) error) EmpowerThen 
 			if len(r.Nums) > 0 {
 				n = r.Nums[0]
 			}
-			finish := func(g *game.Game) error { return resumeClause(g, ctx.Item, then) }
 			chosen := picked.Cards()
 			if len(chosen) == 0 {
 				// Every Jace on offer left before the answer: nothing to
 				// put the counters on.
-				return finish(ctx.Game)
+				return resumeClause(ctx.Game, ctx.Item, then)
 			}
-			return empowerPutOn(ctx.Game, ctx.Controller(), chosen[0], n, finish)
+			return empowerPutOn(ctx.Game, ctx.Item, ctx.Controller(), chosen[0], n, empowerThens[key])
 		},
 	})
 	rest := EmpowerThen{pick: pick, then: then}
@@ -174,11 +173,22 @@ var empowerThens = map[string]EmpowerThen{}
 var empowerNoThen = RegisterEmpowerThen("prompt-run/empower-jace-choose", nil)
 
 // empowerPutOn puts n loyalty counters on the chosen Jace, then finishes.
-func empowerPutOn(g *game.Game, player, jace uuid.UUID, n int, finish func(*game.Game) error) error {
-	return g.AddCounterByThenForEffect(player, jace, game.CounterLoyalty, n, func(g *game.Game, _ int) error {
-		return finish(g)
-	})
+//
+// #4253 slice 7: what follows is the placement's keyed tail. The asking item
+// rides it as data and the card's own rest is named by its key (the Word).
+func empowerPutOn(g *game.Game, item *game.StackItem, player, jace uuid.UUID, n int, rest EmpowerThen) error {
+	then := NewContext(g, item).ItemTail(empowerJaceFinish)
+	then.Word = rest.pick.run.Key()
+	return g.AddCounterByKeyedForEffect(player, jace, game.CounterLoyalty, n, then)
 }
+
+// empowerJaceFinish is the card's own rest of an Empower Jace, run once the
+// loyalty counters have landed; the tail's Word names it. An on-disk key:
+// never renamed, never reused.
+var empowerJaceFinish = CardTail("empower-jace/finish", func(ctx *Context, o game.TailOutcome) error {
+	// A rest that is not registered has nothing after it (the no-then rest).
+	return resumeClause(ctx.Game, ctx.Item, empowerThens[o.Tail.Word].then)
+})
 
 // Apply runs the action for the resolving item's controller: the
 // player who "empowers Jace" is always the one who controls the
@@ -233,8 +243,7 @@ var empowerJacePlace = CardTail("empower-jace/place-counters", func(ctx *Context
 //
 // Caller must hold g.mu.
 func empowerJacePlaceCounters(g *game.Game, item *game.StackItem, player uuid.UUID, n int, rest EmpowerThen) error {
-	finish := func(g *game.Game) error { return resumeClause(g, item, rest.then) }
-	return empowerChosenJaceLocked(g, item, player, n, finish, rest.pick)
+	return empowerChosenJaceLocked(g, item, player, n, rest)
 }
 
 // empowerChosenJaceLocked is the "choose a Jace planeswalker token you
@@ -251,13 +260,14 @@ func empowerJacePlaceCounters(g *game.Game, item *game.StackItem, player uuid.UU
 // cost (ADR 0032 §8's distinction), so the replacements apply.
 //
 // Caller must hold g.mu.
-func empowerChosenJaceLocked(g *game.Game, item *game.StackItem, player uuid.UUID, n int, finish func(*game.Game) error, pick PermanentsThen) error {
+func empowerChosenJaceLocked(g *game.Game, item *game.StackItem, player uuid.UUID, n int, rest EmpowerThen) error {
+	pick := rest.pick
 	jaces := JaceTokensControlledBy(g, player)
 	switch len(jaces) {
 	case 0:
-		return finish(g)
+		return resumeClause(g, item, rest.then)
 	case 1:
-		return empowerPutOn(g, player, jaces[0], n, finish)
+		return empowerPutOn(g, item, player, jaces[0], n, rest)
 	}
 	return ChoosePermanents{
 		Player:   player,

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Caldera Pyremaw — Creature — Dragon {3}{R}{R}, 3/3 (EDHREC rank
 // 4489):
@@ -55,21 +59,9 @@ func init() {
 			Targets: TargetPlayer("target opponent", Opponent()),
 			Key:     "Caldera Pyremaw — a +1/+1 counter, then damage equal to its power to target opponent",
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				dealDamage := func(g *game.Game) error {
-					ctx := NewContext(g, item)
-					power := b43PowerNowOrLastKnown(g, item.SourceCardID)
-					if power <= 0 {
-						return nil
-					}
-					for _, t := range ctx.LegalTargets() {
-						if t.Kind == game.TargetPlayer {
-							return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
-						}
-					}
-					return nil
-				}
+				ctx := NewContext(g, item)
 				if !b09SourceStillOnBattlefield(g, item) {
-					return dealDamage(g)
+					return ctx.ItemTail(calderaPyremawDamage).Run(g, nil)
 				}
 				// #1290: power has to be read AFTER the
 				// counter LANDS, not on the next line — a
@@ -77,10 +69,25 @@ func init() {
 				// pauses the placement on a CR 616 prompt, and
 				// reading power before that resumes would
 				// measure the pre-placement power.
-				return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-					return dealDamage(g)
-				})
+				return g.AddCounterByKeyedForEffect(uuid.Nil, item.SourceCardID, game.CounterPlusOne, 1, ctx.ItemTail(calderaPyremawDamage))
 			},
 		}},
 	})
 }
+
+// calderaPyremawDamage is "this creature deals damage equal to its power to
+// target opponent", measured once the counter has landed. An on-disk key:
+// never renamed, never reused.
+var calderaPyremawDamage = CardTail("caldera-pyremaw/damage", func(ctx *Context, _ game.TailOutcome) error {
+	item := ctx.Item
+	power := b43PowerNowOrLastKnown(ctx.Game, item.SourceCardID)
+	if power <= 0 {
+		return nil
+	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: power}.Apply(ctx)
+		}
+	}
+	return nil
+})

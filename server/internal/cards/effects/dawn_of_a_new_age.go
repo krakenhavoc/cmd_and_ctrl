@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Dawn of a New Age — Enchantment {1}{W} (EDHREC rank 4147):
 //
@@ -87,12 +91,17 @@ func b39DawnOfANewAgeEndStep(g *game.Game, item *game.StackItem) error {
 		// nothing until the prompt is answered — read on the next
 		// line, the check would still see the last hope counter and
 		// never cash the enchantment in.
-		return g.AddCounterThenForEffect(source, b39HopeCounter, -1, func(g *game.Game, _ int) error {
-			return b39DawnOfANewAgeDrawThenCashIn.Run(NewContext(g, item))
-		})
+		return g.AddCounterByKeyedForEffect(uuid.Nil, source, b39HopeCounter, -1,
+			NewContext(g, item).ItemTail(dawnOfANewAgeAfterRemoval))
 	}
 	return b39DawnOfANewAgeCashIn(g, item)
 }
+
+// dawnOfANewAgeAfterRemoval is the draw and the zero check behind the hope
+// counter's removal. An on-disk key: never renamed, never reused.
+var dawnOfANewAgeAfterRemoval = CardTail("dawn-of-a-new-age/after-removal", func(ctx *Context, _ game.TailOutcome) error {
+	return b39DawnOfANewAgeDrawThenCashIn.Run(ctx)
+})
 
 // b39DawnOfANewAgeCashIn is the end step's last sentence: with no hope
 // counters left, sacrifice the enchantment and gain 4 life.

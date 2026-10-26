@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -73,13 +75,9 @@ func init() {
 				if !ok {
 					return nil
 				}
-				return ctx.Game.AddCounterThenForEffect(mine.ID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-					c, ok := g.LookupCardForEffect(mine.ID)
-					if !ok {
-						return nil
-					}
-					return DealDamage{Source: mine.ID, Target: theirs.ID, Amount: c.CurrentPower()}.Apply(NewContext(g, item))
-				})
+				then := ctx.ItemTail(archdruidsCharmBite)
+				then.Carry = []uuid.UUID{mine.ID, theirs.ID}
+				return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, mine.ID, game.CounterPlusOne, 1, then)
 			case ctx.HasMode(2):
 				if t, ok := ModeTarget(ctx, 0); ok {
 					return ExileTarget{Target: t.ID}.Apply(ctx)
@@ -89,3 +87,19 @@ func init() {
 		},
 	})
 }
+
+// archdruidsCharmBite is "It deals damage equal to its power to target
+// creature you don't control" once the counter has landed; Carry is the
+// creature you control, then the other. An on-disk key: never renamed, never
+// reused.
+var archdruidsCharmBite = CardTail("archdruids-charm/bite", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	mine, theirs := o.Tail.Carry[0], o.Tail.Carry[1]
+	c, ok := ctx.Game.LookupCardForEffect(mine)
+	if !ok {
+		return nil
+	}
+	return DealDamage{Source: mine, Target: theirs, Amount: c.CurrentPower()}.Apply(ctx)
+})

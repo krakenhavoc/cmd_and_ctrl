@@ -48,11 +48,16 @@ func simicFluxmageMove(g *game.Game, item *game.StackItem) error {
 	if !ok || !onBattlefield(g, item.SourceCardID) || self.Counters[game.CounterPlusOne] <= 0 {
 		return nil
 	}
-	source := item.SourceCardID
-	return g.AddCounterByThenForEffect(item.Controller, targets[0].ID, game.CounterPlusOne, 1, func(g *game.Game, placed int) error {
-		if placed <= 0 {
-			return nil
-		}
-		return g.AddCounterForEffect(source, game.CounterPlusOne, -1)
-	})
+	then := ctx.Tail(simicFluxmageTakeOne)
+	return g.AddCounterByKeyedForEffect(item.Controller, targets[0].ID, game.CounterPlusOne, 1, then)
 }
+
+// simicFluxmageTakeOne is "remove a +1/+1 counter from this creature", if the
+// one onto the target landed (the outcome's Amount). An on-disk key: never
+// renamed, never reused.
+var simicFluxmageTakeOne = game.RegisterTail("simic-fluxmage/take-one", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 {
+		return nil
+	}
+	return g.AddCounterForEffect(o.Tail.Source, game.CounterPlusOne, -1)
+})

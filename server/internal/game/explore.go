@@ -77,14 +77,31 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 		})
 		return err
 	}
-	ask := func(g *Game, _ int) error {
-		return g.queueExploreGraveyardQuestionLocked(source, controller, explorer.ID, top)
-	}
+	// #4253 slice 7: the question is the counter's keyed tail (the explorer
+	// and the revealed card ride it as data), so a CR 616 ordering prompt over
+	// the +1/+1 counter is a restore point.
+	ask := KeyedTail{Ref: exploreAskTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer.ID, top.InstanceID}}
 	if perm := findBattlefieldCard(g, explorer.ID); perm != nil && perm.ObjectEpoch == explorer.Epoch {
-		return g.AddCounterByThenForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
+		return g.AddCounterByKeyedForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
 	}
-	return ask(g, 0)
+	return ask.Run(g, nil)
 }
+
+// exploreAskTail is the half of an explore after its counter: ask whether
+// the revealed card goes into the graveyard. Carry is the explorer, then the
+// revealed card. An on-disk key: never renamed, never reused.
+var exploreAskTail = RegisterTail("engine/explore-ask", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	revealed := Card{InstanceID: o.Tail.Carry[1]}
+	if p := g.playerByIDLocked(o.Tail.Player); p != nil {
+		if c, ok := g.cardInZoneLocked(p.Library, revealed.InstanceID); ok {
+			revealed = c
+		}
+	}
+	return g.queueExploreGraveyardQuestionLocked(o.Tail.Source, o.Tail.Player, o.Tail.Carry[0], revealed)
+})
 
 // finishExploreLocked is CR 701.44b: the permanent has explored.
 //

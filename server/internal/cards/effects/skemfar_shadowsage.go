@@ -65,7 +65,7 @@ func b43ShadowsageTrigger() game.TriggeredAbility {
 				if n <= 0 {
 					return nil
 				}
-				return ctx.Game.LoseLifeEachThenForEffect(item.SourceCardID, ctx.Opponents(), n, nil)
+				return ctx.Game.LoseLifeEachKeyedForEffect(item.SourceCardID, ctx.Opponents(), n, game.KeyedTail{})
 			}),
 		ModeDoing("You gain X life, where X is the greatest number of creatures you control that have a creature type in common.",
 			nil,

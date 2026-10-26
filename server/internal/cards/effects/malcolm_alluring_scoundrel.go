@@ -94,12 +94,18 @@ func malcolmChorusAndLoot(g *game.Game, item *game.StackItem) error {
 	// two independent prompts open with no guaranteed order, so
 	// malcolmOfferFreeCast's "four or more" check could read the
 	// pre-placement count.
-	return g.AddCounterThenForEffect(source, malcolmChorusCounter, 1, func(g *game.Game, _ int) error {
-		return g.DrawNThenForEffect(controller, 1, game.DrawThen{
-			Ref: malcolmDiscardThen, Player: controller, Source: source,
-		})
-	})
+	return g.AddCounterByKeyedForEffect(uuid.Nil, source, malcolmChorusCounter, 1,
+		game.KeyedTail{Ref: malcolmDrawAfterCounter, Player: controller, Source: source})
 }
+
+// malcolmDrawAfterCounter is the draw and discard behind the chorus counter,
+// once it has landed (#4253 slice 7). An on-disk key: never renamed, never
+// reused.
+var malcolmDrawAfterCounter = game.RegisterTail("malcolm/draw-after-counter", func(g *game.Game, o game.TailOutcome) error {
+	return g.DrawNThenForEffect(o.Tail.Player, 1, game.DrawThen{
+		Ref: malcolmDiscardThen, Player: o.Tail.Player, Source: o.Tail.Source,
+	})
+})
 
 // malcolmOfferFreeCast is the last sentence. It is reached even when
 // nothing was discarded (an empty hand discards as many as it can,

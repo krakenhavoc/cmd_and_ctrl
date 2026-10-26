@@ -108,7 +108,7 @@ import (
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
-	return g.EarthbendThenForEffect(actor, source, land, n, nil)
+	return g.earthbendLocked(actor, source, land, n, nil, KeyedTail{})
 }
 
 // EarthbendThenForEffect is EarthbendForEffect with the rest of the
@@ -127,11 +127,30 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
+	return g.earthbendLocked(actor, source, land, n, then, KeyedTail{})
+}
+
+// EarthbendKeyedForEffect is EarthbendThenForEffect with the rest of the
+// sentence as data (#4253 slice 7): `then` is a registered tail
+// (RegisterTail), run once the counters have landed, and told nothing. An
+// earthbend whose counters stop on a CR 616 ordering prompt (a Doubling
+// Season beside a Hardened Scales) is then a restore point.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) EarthbendKeyedForEffect(actor, source, land uuid.UUID, n int, then KeyedTail) error {
+	return g.earthbendLocked(actor, source, land, n, nil, then)
+}
+
+// earthbendLocked is the one body of the two earthbend doors: the closure
+// form or the keyed form of the rest of the sentence, never both.
+//
+// Caller must hold g.mu.
+func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error, keyed KeyedTail) error {
 	if land == uuid.Nil {
 		if then != nil {
 			return then(g)
 		}
-		return nil
+		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	_, err := g.runKeywordActionLocked(&ReplacementEvent{
 		Kind:               RepEventKeywordAction,
@@ -139,7 +158,7 @@ func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then
 		Source:             source,
 		KeywordAction:      KeywordActionEarthbend,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{land: land, then: then},
+		keywordAction:      &keywordActionTail{land: land, then: then, keyed: keyed},
 	})
 	return err
 }
@@ -168,12 +187,12 @@ func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then
 // cannot die before the counters land.
 //
 // Caller must hold g.mu.
-func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
+func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error, keyed KeyedTail) error {
 	rest := func(g *Game) error {
-		if then == nil {
-			return nil
+		if then != nil {
+			return then(g)
 		}
-		return then(g)
+		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	c, ok := g.battlefieldCardLocked(land)
 	if !ok {
@@ -202,10 +221,30 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 	// real-card proof test). The recompute is a no-op when nothing is
 	// stale.
 	g.RecomputeLayersIfStaleLocked()
+	if then == nil {
+		// #4253 slice 7: no closure anywhere in the sentence, so what follows
+		// the counters is data too. The counters' tail is the engine's
+		// earthbendCountersTail, which hands the card's own tail on as Next.
+		placed := KeyedTail{Ref: earthbendCountersTail}
+		if !keyed.IsZero() {
+			placed.Next = &keyed
+		}
+		return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, placed)
+	}
 	return g.AddCounterByThenForEffect(actor, land, CounterPlusOne, n, func(g *Game, _ int) error {
 		return rest(g)
 	})
 }
+
+// earthbendCountersTail runs the rest of the sentence once an earthbend's
+// counters have settled (#4253 slice 7): the card's own tail, its Next. An
+// on-disk key: never renamed, never reused.
+var earthbendCountersTail = RegisterTail("engine/earthbend-counters-placed", func(g *Game, o TailOutcome) error {
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return g.runKeyedTailLocked(*o.Tail.Next, nil, 0)
+})
 
 // earthbendLabel is the attribution the continuous effect and
 // the delayed trigger share. One string so a stall dump, the layer

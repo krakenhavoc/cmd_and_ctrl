@@ -61,10 +61,15 @@ func misterNegativeInversion(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	return exchangeLifeTotalsThen(ctx, item.Controller, victim, func(g *game.Game, applied int) error {
-		if applied >= 0 {
-			return nil
-		}
-		return g.DrawNForEffect(item.Controller, -applied)
-	})
+	return exchangeLifeTotalsThen(ctx, item.Controller, victim, ctx.Tail(misterNegativeDraw))
 }
+
+// misterNegativeDraw is "if you lost life this way, draw that many cards",
+// told the delta applied to the controller. An on-disk key: never renamed,
+// never reused.
+var misterNegativeDraw = game.RegisterTail("mister-negative/draw", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount >= 0 {
+		return nil
+	}
+	return g.DrawNForEffect(o.Tail.Player, -o.Amount)
+})

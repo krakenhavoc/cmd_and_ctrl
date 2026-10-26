@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Go Nuts! — {G} Sorcery:
 //
@@ -44,28 +48,38 @@ func init() {
 					fightOcc = occ
 				}
 			}
-			fight := func(g *game.Game) error {
-				if fightOcc < 0 {
-					return nil
-				}
-				c := NewContext(g, item)
-				mine, ok := ModeClauseTarget(c, fightOcc, 0)
-				if !ok {
-					return nil
-				}
-				theirs, ok := ModeClauseTarget(c, fightOcc, 1)
-				if !ok {
-					return nil
-				}
-				return b10Fight(c, mine.ID, theirs.ID)
-			}
 			if counterOcc >= 0 {
 				if t, ok := ModeTarget(ctx, counterOcc); ok {
-					return ctx.Game.AddCounterThenForEffect(t.ID, game.CounterPlusOne, 1,
-						func(g *game.Game, _ int) error { return fight(g) })
+					// The fight waits for the counter (#4253 slice 7): the mode's
+					// occurrence rides the tail as its N.
+					return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, t.ID, game.CounterPlusOne, 1,
+						withN(ctx.ItemTail(goNutsFight), fightOcc))
 				}
 			}
-			return fight(ctx.Game)
+			return goNutsFightClause(ctx, fightOcc)
 		},
 	})
 }
+
+// goNutsFightClause is "target creature you control fights target creature an
+// opponent controls", if that mode was chosen (occ >= 0).
+func goNutsFightClause(c *Context, fightOcc int) error {
+	if fightOcc < 0 {
+		return nil
+	}
+	mine, ok := ModeClauseTarget(c, fightOcc, 0)
+	if !ok {
+		return nil
+	}
+	theirs, ok := ModeClauseTarget(c, fightOcc, 1)
+	if !ok {
+		return nil
+	}
+	return b10Fight(c, mine.ID, theirs.ID)
+}
+
+// goNutsFight is the fight behind the counter: the tail's N is the fight
+// mode's occurrence, -1 for none. An on-disk key: never renamed, never reused.
+var goNutsFight = CardTail("go-nuts/fight", func(ctx *Context, o game.TailOutcome) error {
+	return goNutsFightClause(ctx, o.Tail.N)
+})

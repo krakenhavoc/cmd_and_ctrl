@@ -145,6 +145,15 @@ func (t KeyedTail) Run(g *Game, ids []uuid.UUID) error {
 	return g.runKeyedTailLocked(t, ids, 0)
 }
 
+// RunTold is Run with the amount the event settled with (the counters placed,
+// the life that moved), for a tail that hands what it was told on to the next
+// one (#4253 slice 7).
+//
+// Caller must hold g.mu.
+func (t KeyedTail) RunTold(g *Game, ids []uuid.UUID, amount int) error {
+	return g.runKeyedTailLocked(t, ids, amount)
+}
+
 // carriesLookAtThen reports whether a prompt kind can carry a keyed look-at
 // continuation (PendingChoice.scryThen): a scry, a surveil, and (#4301) a
 // look at the top of the library to put the cards back in any order.

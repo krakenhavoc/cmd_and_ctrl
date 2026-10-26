@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Turtle Van — {3} Artifact — Vehicle, 4/4:
 //
@@ -46,20 +50,25 @@ func turtleVanCounter(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	// "Mutant, Ninja or Turtle" are words of the source's text (CR 612.2, #3984).
-	mutant, ninja, turtle := ctx.TextSubtype("Mutant"), ctx.TextSubtype("Ninja"), ctx.TextSubtype("Turtle")
-	return g.AddCounterThenForEffect(id, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-		c, found := g.LookupCardForEffect(id)
-		if !found || !onBattlefield(g, id) {
-			return nil
-		}
-		if !c.HasSubtype(mutant) && !c.HasSubtype(ninja) && !c.HasSubtype(turtle) {
-			return nil
-		}
-		n := c.Counters[game.CounterPlusOne]
-		if n <= 0 {
-			return nil
-		}
-		return AddCounter{Target: id, Kind: game.CounterPlusOne, N: n}.Apply(NewContext(g, item))
-	})
+	then := ctx.ItemTail(turtleVanDouble)
+	then.Carry = []uuid.UUID{id}
+	return g.AddCounterByKeyedForEffect(uuid.Nil, id, game.CounterPlusOne, 1, then)
 }
+
+// turtleVanDouble is "if it's a Mutant, Ninja or Turtle, double the number of
+// +1/+1 counters on it" once the counter has landed; Carry[0] is the creature.
+// "Mutant, Ninja or Turtle" are words of the source's text (CR 612.2, #3984),
+// read when the tail runs, as the asking item's text. An on-disk key: never
+// renamed, never reused.
+var turtleVanDouble = CardTail("turtle-van/double", func(ctx *Context, o game.TailOutcome) error {
+	id := carryFirst(o.Tail)
+	mutant, ninja, turtle := ctx.TextSubtype("Mutant"), ctx.TextSubtype("Ninja"), ctx.TextSubtype("Turtle")
+	c, found := ctx.Game.LookupCardForEffect(id)
+	if !found || !onBattlefield(ctx.Game, id) {
+		return nil
+	}
+	if !c.HasSubtype(mutant) && !c.HasSubtype(ninja) && !c.HasSubtype(turtle) {
+		return nil
+	}
+	return b23DoublePlusOneCountersOn(ctx, id)
+})

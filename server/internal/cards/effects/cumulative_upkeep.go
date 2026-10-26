@@ -1,7 +1,9 @@
 package effects
 
 import (
+	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -76,6 +78,7 @@ func CumulativeUpkeep(label, cost string) game.TriggeredAbility {
 // The trigger carries game.KeywordCumulativeUpkeep (#3869), which is
 // how game.HasCumulativeUpkeep finds an instance, printed or granted.
 func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural string) game.TriggeredAbility {
+	ref := cumulativeUpkeepTail(label, each, noun, plural)
 	t := AtYourUpkeep(label, func(g *game.Game, item *game.StackItem) error {
 		source := item.SourceCardID
 		// CR 702.24a's "if this permanent is on the battlefield": a
@@ -92,34 +95,64 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 		// (a Doubling Season / Hardened Scales board), which can pause
 		// it on a CR 616 prompt; reading before that resumes would
 		// charge for the pre-placement age count.
-		return g.AddCounterThenForEffect(source, game.CounterAge, 1, func(g *game.Game, _ int) error {
-			ctx := NewContext(g, item)
-			age := counterCountOn(g, source, game.CounterAge)
-			if age <= 0 {
-				return nil
-			}
-			owed := each.times(age, noun, plural)
-			cost, action := owed.prompt()
-			prompt := UpkeepPayUnless{
-				Chooser:  ctx.Controller(),
-				Cost:     cost,
-				Action:   action,
-				Question: label,
-			}
-			if owed.Flips > 0 {
-				// The flips are the payment, queued once it is made
-				// (cumulativeUpkeepFlipCoins).
-				prompt.Else = cumulativeUpkeepFlipCoins
-			} else {
-				// #4264: keyed, so a table waiting on the payer is a
-				// restore point.
-				prompt.Else = upkeepSacrificeSource
-			}
-			return prompt.Apply(ctx)
-		})
+		return g.AddCounterByKeyedForEffect(uuid.Nil, source, game.CounterAge, 1, NewContext(g, item).ItemTail(ref))
 	})
 	t.Keyword = game.KeywordCumulativeUpkeep
 	return t
+}
+
+// cumulativeUpkeepPrints is the payment each registered cumulative upkeep
+// tail was made for, by key, so two abilities that share a label cannot
+// silently share a body that charges them differently. Written only at
+// package initialisation.
+var (
+	cumulativeUpkeepMu     sync.Mutex
+	cumulativeUpkeepPrints = map[string]string{}
+)
+
+// cumulativeUpkeepTail registers the continuation of a cumulative upkeep
+// trigger (#4253 slice 7): once the age counter has landed, charge for the
+// counters that are there. The payment is the ability's own printed data, so
+// the tail is keyed by the ability's label as a slug, "cumulative-upkeep/<slug>"
+// (ledgered "tail <key>": never renamed, never reused); abilities that print
+// the same label and payment (a quoted "Cumulative upkeep {1}" granted by
+// several cards) share one. Call it once per ability, from a card's init.
+func cumulativeUpkeepTail(label string, each UpkeepPayment, noun, plural string) game.TailRef {
+	key := "cumulative-upkeep/" + wardSlug(label)
+	fp := fmt.Sprintf("%s|%s|%d|%t|%s|%s", each.Mana, each.Words, each.Flips, each.Action != nil, noun, plural)
+	cumulativeUpkeepMu.Lock()
+	if prev, ok := cumulativeUpkeepPrints[key]; ok {
+		if prev != fp {
+			panic("effects: cumulative upkeep label " + label + " is used for two different payments")
+		}
+	}
+	cumulativeUpkeepPrints[key] = fp
+	cumulativeUpkeepMu.Unlock()
+	return CardTail(key, func(ctx *Context, _ game.TailOutcome) error {
+		source := ctx.Item.SourceCardID
+		age := counterCountOn(ctx.Game, source, game.CounterAge)
+		if age <= 0 {
+			return nil
+		}
+		owed := each.times(age, noun, plural)
+		cost, action := owed.prompt()
+		prompt := UpkeepPayUnless{
+			Chooser:  ctx.Controller(),
+			Cost:     cost,
+			Action:   action,
+			Question: label,
+		}
+		if owed.Flips > 0 {
+			// The flips are the payment, queued once it is made
+			// (cumulativeUpkeepFlipCoins).
+			prompt.Else = cumulativeUpkeepFlipCoins
+		} else {
+			// #4264: keyed, so a table waiting on the payer is a
+			// restore point.
+			prompt.Else = upkeepSacrificeSource
+		}
+		return prompt.Apply(ctx)
+	})
 }
 
 // cumulativeUpkeepFlipCoins is the two answers of "Cumulative upkeep—Flip

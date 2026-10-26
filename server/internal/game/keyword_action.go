@@ -411,7 +411,16 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		// undo-safe: the counter event's snapshot carries the closure,
 		// and an undone-then-redone answer to the ordering prompt runs
 		// it again instead of finding a cleared pointer.
-		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, takeKeywordActionThen(tail))
+		//
+		// #4253 slice 7: a keyed rest (and no closure) goes to the counters as
+		// data; a closure, or a keyed rest handed on to a closure part, is the
+		// old path.
+		if tail.then == nil && !tail.keyed.IsZero() {
+			keyed := tail.keyed
+			tail.keyed = KeyedTail{}
+			return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, nil, keyed)
+		}
+		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, takeKeywordActionThen(tail), KeyedTail{})
 	}
 	// An action kind nothing takes yet. Telling the caller is the only
 	// safe answer: a continuation nobody runs waits forever.
