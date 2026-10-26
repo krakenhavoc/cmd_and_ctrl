@@ -52,6 +52,39 @@ The four-seat null is 25%. These wide intervals do not establish a
 strength gain. Reports, the streaming counter and compressed decision
 logs are local under `data/arena-4318/` (gitignored).
 
+## Reconfigure comparison (#4321, S75)
+
+`heuristic-noreconfigure` is today's heuristic with `PriceReconfigure`
+turned off. Compare it with `heuristic` using the same seeds and rotated
+chairs. The curated `boros-voltron` and `mono-white-weenie` decks include
+Rabbit Battery and Lion Sash; synthetic battle decks do not exercise this
+change. Decision logs expose the row's `reconfigure` flag and the source's
+`attached_to` relation, so activations onto the current host can be counted
+without guessing from labels. The position tests cover better and worse
+hosts, first attachment and the back-out. The ungated whole-engine test
+plays Rabbit Battery's turn through the real enumerator and policy.
+
+The 2026-10-26 evaluation used base `01645dea7` plus #4321, the four
+decks listed below, seeds 2000–2047, rotation and lockstep, with all four seats
+using either `heuristic` or `heuristic-noreconfigure` (48 games each).
+All 96 games ended with a winner and none stalled. Attachments onto the
+current host fell from **27 to 0** (Rabbit Battery 21 → 0, Lion Sash
+6 → 0); first attachments remained in use (8 → 10). Neither run chose
+an unattach. The 42-position labelled suite retained 100% agreement,
+with no errors, timeouts or rejected choices.
+
+| Deck | Back-out wins / 48 (Wilson 95%) | Fixed wins / 48 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 9, 18.8% (10.2–31.9%) | 7, 14.6% (7.2–27.2%) |
+| mono-white-weenie | 27, 56.2% (42.3–69.3%) | 28, 58.3% (44.3–71.2%) |
+| mono-green-stompy | 7, 14.6% (7.2–27.2%) | 7, 14.6% (7.2–27.2%) |
+| wubrg-dragons | 5, 10.4% (4.5–22.2%) | 6, 12.5% (5.9–24.7%) |
+
+The four-seat null rate is 25%. These runs establish that the repeated
+attachment stops; their wide intervals do not establish a strength gain.
+Local reports, the streaming counter and decision logs are under
+`data/arena-4321/` (gitignored). Full decision logs stay local.
+
 ## Test knobs
 
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them; `server-test` is sharded across five runners by `scripts/ci-test-shard.sh`, the same flags on each, and `aiseat` is in the `rest` shard, #2766):

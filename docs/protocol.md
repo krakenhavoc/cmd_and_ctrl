@@ -3818,6 +3818,15 @@ two of its own creatures buys only what the new host gains, and a free
 equip priced like a pump was moved back and forth forever (#2449). The
 client does not read it. Public with the row.
 
+## Reconfigure rows identify both halves (#4321, 2026-10-25)
+
+Additive, `v` unmoved. `reconfigure: true` on an activated ability row
+copies the engine's reconfigure flag. Both the attach and unattach rows
+carry it; the attach row names a target and the unattach row names none.
+It is public bot data, like `equip`, and absent on other rows. The client
+carries the optional field without using it. Reconfigure stays distinct
+from equip, including for effects that change equip timing.
+
 ## A self-untap row says it is one (#2500, 2026-10-08)
 
 Additive, `v` unmoved.

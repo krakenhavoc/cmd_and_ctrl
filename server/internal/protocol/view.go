@@ -5042,6 +5042,9 @@ type ActivatedAbilityView struct {
 	// other "target creature you control" row without it. Public with
 	// the row; the client does not read it.
 	Equip bool `json:"equip,omitempty"`
+	// Reconfigure marks either half of a reconfigure ability (#4321).
+	// The attach half names a target; the unattach half names none.
+	Reconfigure bool `json:"reconfigure,omitempty"`
 	// UntapSelf marks a row whose whole effect is untapping its own
 	// source (game.ActivatedAbility.UntapSelf, #2500): Basalt and Grim
 	// Monolith. Absent on every other row. Bot data: with the source's
@@ -12735,6 +12738,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			OwnerOnly:     a.OwnerOnly,
 			GrantorOnly:   a.GrantorOnly,
 			Equip:         a.Equip,
+			Reconfigure:   a.Reconfigure,
 			UntapSelf:     a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
