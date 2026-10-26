@@ -9,6 +9,87 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Late attackers and optional blocks (#4316, S75)
+
+`heuristic-nooutnumber` is today's heuristic with `PriceOutnumberLoss`
+off. It restores the old free-damage price for a late attacker even when
+a legal single blocker kills it without dying. The fixed policy retains
+the usual best-block loss price in that case. Exact lethal pushes, race
+and attrition plans still take their existing swings.
+
+The 2026-10-26 comparison used develop `7f87ca32c` plus #4316, the
+four pool2 decks, seeds 2000–2047, rotation and lockstep. All four seats
+used either `heuristic` or `heuristic-nooutnumber` (48 games each).
+All 96 games ended with a winner and none stalled. The labelled suite
+retained 42/42 agreement without errors or timeouts.
+
+Applied declarations of named, non-token attackers were joined to the
+next matching public attack event. Deaths count battlefield-to-graveyard
+moves in either combat damage step; a combat without a kill is one in
+which no declared blocker died. Bounces, exile and removal before damage
+are not counted as combat deaths. Public log sequences were deduplicated
+across seat views. All declarations matched an attack event. Final
+combats without a subsequent step in the decision logs are censored,
+including lethal attacks: 181 back-out and 182 fixed declarations.
+The table uses only the observed, completed combats; those censored
+attacks are not silently counted as survivors.
+
+| Attack reason | Back-out observed | Died | Without a kill | Fixed observed | Died | Without a kill |
+|---|---:|---:|---:|---:|---:|---:|
+| undefended | 295 | 0 | 0 | 318 | 0 | 0 |
+| blockers can't profit | 188 | 14 | 6 | 205 | 16 | 7 |
+| attrition | 240 | 22 | 1 | 222 | 21 | 0 |
+| two-turn race | 280 | 50 | 9 | 281 | 53 | 9 |
+| all-in for the kill | 285 | 31 | 31 | 300 | 30 | 26 |
+| outnumbers their blockers | 101 | 48 | 34 | 50 | 10 | 0 |
+| blocked at a loss | 44 | 18 | 2 | 45 | 20 | 3 |
+| gang-blocked at a loss | 6 | 2 | 0 | 6 | 1 | 0 |
+| lethal, unblockable | 1 | 0 | 0 | 1 | 0 | 0 |
+
+For the targeted outnumber attacks, deaths fell from **48/101 (47.5%)
+to 10/50 (20.0%)**, and deaths in a combat without a kill from **34 to
+0**. Across all observed reasons, deaths without a kill fell from 83
+to 45. These counts measure the behavior fix; changed attacks produce
+different later positions, so they are not independent per-creature trials.
+
+| Deck | Back-out wins / 48 (Wilson 95%) | Fixed wins / 48 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 9, 18.8% (10.2–31.9%) | 12, 25.0% (14.9–38.8%) |
+| mono-white-weenie | 27, 56.2% (42.3–69.3%) | 26, 54.2% (40.3–67.4%) |
+| mono-green-stompy | 6, 12.5% (5.9–24.7%) | 6, 12.5% (5.9–24.7%) |
+| wubrg-dragons | 6, 12.5% (5.9–24.7%) | 4, 8.3% (3.3–19.6%) |
+
+The four-seat null is 25%. The intervals overlap broadly; this does not
+establish a strength gain or rule out a deck-specific regression. The
+lower dragons win count prompted the additional mixed-table comparison
+below. Full Cards reports, the scanner and compressed decision logs stay
+local under `data/arena-4316/` (gitignored).
+
+### Mixed-table strength check
+
+An additional 96 games used the same pool2 decks and seeds, with two
+fixed seats and two back-out seats at each table. The first 48 used
+`heuristic,heuristic-nooutnumber,heuristic,heuristic-nooutnumber`;
+the second 48 swapped both policies across the four decks. Rotation
+and lockstep remained on, giving each policy 48 games on each deck.
+All 96 games ended with a winner without stalls. No decision logs were
+needed for this strength check; the behavioral audit above is separate.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 7/48, 14.6% (7.2–27.2%) | 13/48, 27.1% (16.6–41.0%) |
+| mono-green-stompy | 7/48, 14.6% (7.2–27.2%) | 5/48, 10.4% (4.5–22.2%) |
+| mono-white-weenie | 25/48, 52.1% (38.3–65.5%) | 29/48, 60.4% (46.3–73.0%) |
+| wubrg-dragons | 5/48, 10.4% (4.5–22.2%) | 5/48, 10.4% (4.5–22.2%) |
+
+The fixed seats won 52 tables and the back-out seats 44. Per seat,
+that is 27.1% (Wilson 95% 21.3–33.8%) versus 22.9% (17.5–29.4%),
+against the 25% four-seat null. Dragons' point estimate did not fall
+in this mixed check, and voltron improved. These wide, overlapping
+intervals still do not establish a strength gain or prove noninferiority.
+The mixed results support shipping the behavior fix while retaining
+the arena back-out for broader measurements.
+
 ## Defensive answers with nothing to answer (#4318, S75)
 
 `heuristic-noidleanswers` is today's heuristic with `PriceAnswerOnlyRows`

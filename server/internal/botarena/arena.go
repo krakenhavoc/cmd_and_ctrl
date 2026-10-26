@@ -141,10 +141,16 @@ const VariantNoReconfigure = "noreconfigure"
 // NoReconfigureContestant is an arena name only.
 const NoReconfigureContestant = string(tiers.Heuristic) + "-" + VariantNoReconfigure
 
+// VariantNoOutnumber disables only #4316's late-attacker loss pricing.
+const VariantNoOutnumber = "nooutnumber"
+
+// NoOutnumberContestant is an arena name only.
+const NoOutnumberContestant = string(tiers.Heuristic) + "-" + VariantNoOutnumber
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
-// `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`
-// or `heuristic-noreconfigure`.
+// `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
+// `heuristic-noreconfigure` or `heuristic-nooutnumber`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -159,12 +165,14 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoIdleAnswers}, nil
 	case NoReconfigureContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoReconfigure}, nil
+	case NoOutnumberContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoOutnumber}, nil
 	case NoGrantsContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoGrants}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -353,7 +361,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure, VariantNoOutnumber:
 		return true
 	}
 	return false
@@ -817,6 +825,10 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoReconfigure:
 		h := heuristic.DefaultConfig()
 		h.PriceReconfigure = false
+		opt.Heuristic = &h
+	case VariantNoOutnumber:
+		h := heuristic.DefaultConfig()
+		h.PriceOutnumberLoss = false
 		opt.Heuristic = &h
 	case VariantNoGrants:
 		h := heuristic.DefaultConfig()

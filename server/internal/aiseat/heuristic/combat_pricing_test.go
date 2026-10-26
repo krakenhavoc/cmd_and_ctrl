@@ -99,9 +99,13 @@ func TestDeclaredZeroPowerAttackersDoNotOutnumberTheBlockers(t *testing.T) {
 	if ok, got := attacksIn(t, heuristic.New(), in); ok {
 		t.Fatalf("attacked: %s; the 2/4 is free to block and kill the Bear", got)
 	}
-	off := withConfig(func(c *heuristic.Config) { c.FocusNeedsValue = false })
+	// Isolate #2675's old price from #4316's independent loss guard.
+	off := withConfig(func(c *heuristic.Config) {
+		c.FocusNeedsValue = false
+		c.PriceOutnumberLoss = false
+	})
 	if ok, got := attacksIn(t, off, in); !ok || !strings.Contains(got, "outnumbers") {
-		t.Fatalf("with FocusNeedsValue off the Bear attacked as outnumbering; got %s", got)
+		t.Fatalf("with both guards off the Bear attacked as outnumbering; got %s", got)
 	}
 }
 

@@ -2559,7 +2559,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure` or `heuristic-nogrants`. `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`, `heuristic-notemporary`, `heuristic-noidleanswers`, `heuristic-noreconfigure`, `heuristic-nooutnumber` or `heuristic-nogrants`. `heuristic-nooutnumber` disables only #4316's late-attacker loss pricing (`PriceOutnumberLoss`). `heuristic-noreconfigure` disables only #4321's reconfigure pricing (`PriceReconfigure`). `heuristic-noidleanswers` disables only #4318's defensive-row pricing (`PriceAnswerOnlyRows`). `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. `heuristic-notemporary` is today's heuristic with #4302's pricing of a change until end of turn off (`PriceTemporaryEffects`). `heuristic-nogrants` is today's heuristic with #4312's grant saves and evasion grants off (`PriceGrantSaves`, `PriceEvasionGrants`). Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's, `answers-battle` is that deck with ten Basalt Gargoyles and eight Selfless Spirits, for [#2939](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2939)'s answer-pricing checks, and `tricks-battle` is that deck with Brute Force, Dismember, Mother of Runes, Center Soul and a Rogue's Passage, for [#4312](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4312)'s. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -3608,6 +3608,18 @@ Three fixes from the 2026-10-08 review games, each a knob that
   a 3/3 with a Plant at 23 life rather than take the hit. A creature
   card keeps its body price, so a real creature still does not chump at
   a healthy life total.
+
+### Late attackers still face the defender's best block (#4316, S75)
+
+With `Config.PriceOutnumberLoss`, outnumbering blockers does not make a
+late attacker safe: if a legal single blocker can kill it without dying,
+the attacker keeps the existing best-block loss price, including commander
+recast cost. Earlier declarations do not reserve the defender's blocks.
+The exact `lethalPush` matching still overrides the loss for a killing
+swing, and the race and attrition planners keep their existing matching.
+Surviving attackers retain the old outnumber price. This is a conservative
+single-block guard; it does not solve a joint assignment of all blocks.
+`heuristic-nooutnumber` restores only the previous late-attacker price.
 
 ### The attrition horizon (#1548)
 
