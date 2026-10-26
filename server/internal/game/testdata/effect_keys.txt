@@ -1094,3 +1094,15 @@ tail sinners-judgment/check
 tail survival-cache/compare
 tail turtle-van/double
 tail vigorbloom-charm/fight
+option dice/ignore-roll
+option dice/order-replacements
+tail dice/ancient-copper-dragon-treasures
+tail dice/ancient-gold-dragon-tokens
+tail dice/ancient-silver-dragon-draw
+tail dice/berserkers-frenzy-result
+tail dice/component-pouch-counters
+tail dice/diviners-portent-result
+tail dice/hoarding-ogre-treasures
+tail dice/maddening-hex-burn-and-move
+tail dice/reckless-endeavor-rolled
+tail dice/roll-to-visit

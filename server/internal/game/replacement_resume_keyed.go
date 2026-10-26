@@ -444,10 +444,15 @@ var replacementEventFields = map[string]replacementEventField{
 	"StepTransitionSeat":     repFieldGate,
 	"ExtraTurnSeat":          repFieldGate,
 	"ExtraTurnRef":           repFieldGate,
-	"CounterSpellID":         repFieldGate,
-	"CounterBy":              repFieldGate,
-	"CounterBySource":        repFieldGate,
-	"counterInstead":         repFieldGate,
+	// #4307: a dice roll's window never pauses (mustSettleNow).
+	"RollPlayer":      repFieldGate,
+	"RollSides":       repFieldGate,
+	"RollCount":       repFieldGate,
+	"rollShields":     repFieldGate,
+	"CounterSpellID":  repFieldGate,
+	"CounterBy":       repFieldGate,
+	"CounterBySource": repFieldGate,
+	"counterInstead":  repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is

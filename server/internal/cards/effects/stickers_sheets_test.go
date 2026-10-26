@@ -20,10 +20,9 @@ import (
 // with an ability sticker the engine cannot run is left out whole rather
 // than shipped weaker than printed (AGENTS.md section 7): its stickers go on
 // and do nothing, and the deck checker lists the sheet as not automated.
-var stkSheetsNotCatalogued = map[string]string{
-	"Squid Fire Knight": "its first ability sticker replaces a dice roll and lets a second player choose a roll to ignore after seeing the dice, " +
-		"which every dice-rolling card would have to be able to wait for (they all read the rolls on the next line)",
-}
+//
+// Empty since Squid Fire Knight's dice replacement shipped (#4307).
+var stkSheetsNotCatalogued = map[string]string{}
 
 // TestStkEverySheetIsCatalogued: each of the 48 Commander-legal sheets has
 // a Full catalog entry that names, per printed ability sticker, a keyword

@@ -153,6 +153,11 @@ func replacementModProblem(m Mod) string {
 		if m.Player == uuid.Nil {
 			return "a gainNoLife replacement names no player"
 		}
+	case ModRollExtraDieIgnoreOne:
+		// #4307: Squid Fire Knight's sticker names the player who rolls.
+		if m.Player == uuid.Nil {
+			return "a rollExtraDieIgnoreOne replacement names no player"
+		}
 	case ModLandManaIsColor:
 		// #1997: Hall of Gemstone's chosen colour.
 		return landManaColorProblem(m)
@@ -168,6 +173,8 @@ var (
 	watchDamage   = []EventKind{EventDealDamage}
 	watchZoneMove = []EventKind{EventZoneMove}
 	watchLife     = []EventKind{EventChangeLife}
+	// watchRollDie is a dice roll instruction (RepEventRollDice, #4307).
+	watchRollDie = []EventKind{EventRollDie}
 	// watchMoveOrDiscard is "from anywhere": a discard is its own
 	// replacement window (RepEventDiscard, #650), not a RepEventMove.
 	watchMoveOrDiscard = []EventKind{EventZoneMove, EventDiscardCard}
@@ -184,6 +191,8 @@ func scopedReplacementWatches(kind ModKind) []EventKind {
 		return watchZoneMove
 	case ModGainNoLife:
 		return watchLife
+	case ModRollExtraDieIgnoreOne:
+		return watchRollDie
 	case ModExileInsteadOfYourGraveyard:
 		return watchMoveOrDiscard
 	case ModLandManaIsColor:
@@ -593,7 +602,9 @@ func scopedReplacementEffect(seq int64, mod int, kind ModKind, label string) Rep
 			}
 			switch kind {
 			case ModPreventCombatDamage, ModPreventDamage, ModPreventNextFromSource, ModPreventNextCombatFromSource,
-				ModPreventFromSource, ModRedirectDamage:
+				ModPreventFromSource, ModRedirectDamage,
+				// #4307: the roller orders dice replacements (CR 616.1).
+				ModRollExtraDieIgnoreOne:
 				// CR 616.1 gives the ordering choice to the AFFECTED
 				// player — whoever is being dealt the damage — so a
 				// prevention shield or a redirection reports no
@@ -699,6 +710,8 @@ func scopedReplacementMeetsLocked(g *Game, e ScopedEffect, m Mod, ev *Replacemen
 		// CR 119.10: "if a player would gain life" — a positive change
 		// only. A gain of 0 is no life gain event at all.
 		return ev.Kind == RepEventLife && ev.LifeDelta > 0 && ev.LifePlayer == m.Player
+	case ModRollExtraDieIgnoreOne:
+		return rollExtraDieAppliesLocked(m, ev)
 	case ModLandManaIsColor:
 		return landManaColorAppliesLocked(g, m, ev)
 	case ModExileIfWouldDie:
@@ -775,6 +788,8 @@ func (g *Game) applyScopedReplacementLocked(e ScopedEffect, mod int, m Mod, ev *
 		// replacement. No EventChangeLife, so "whenever you gain life"
 		// sees nothing.
 		ev.Cancel()
+	case ModRollExtraDieIgnoreOne:
+		g.applyRollExtraDieLocked(e, ev)
 	case ModLandManaIsColor:
 		// #1997: every coloured mana becomes the chosen colour.
 		applyLandManaColorLocked(m, ev)

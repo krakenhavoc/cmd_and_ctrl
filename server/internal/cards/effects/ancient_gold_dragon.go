@@ -12,15 +12,13 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisDealsCombatDamageToAPlayer("Ancient Gold Dragon — roll a d20 and create Faerie Dragons", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				results, err := rollDice(ctx, 20, 1)
-				if err != nil || len(results) == 0 {
-					return err
-				}
-				t := ctx.TextToken(TokenCard("1/1 blue Faerie Dragon with flying"))
-				return g.CreateTokenForEffect(item.Controller, t, results[0])
-			}),
+			WheneverThisDealsCombatDamageToAPlayer("Ancient Gold Dragon — roll a d20 and create Faerie Dragons", Do(RollDice{Sides: 20, N: 1, Then: ancientGoldDragonTokens})),
 		},
 	})
 }
+
+// ancientGoldDragonTokens is the Faerie Dragons, after the d20 (#4307).
+var ancientGoldDragonTokens = DiceTail("dice/ancient-gold-dragon-tokens", func(ctx *Context, rolls []int) error {
+	t := ctx.TextToken(TokenCard("1/1 blue Faerie Dragon with flying"))
+	return ctx.Game.CreateTokenForEffect(ctx.Controller(), t, rolls[0])
+})

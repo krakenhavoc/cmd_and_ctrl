@@ -55,6 +55,9 @@ type OptionPicked struct {
 	Option *ChoiceOption
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// dice is a paused dice roll's state (#4307, dice_roll.go), set only
+	// on the dice flow's own prompts.
+	dice *diceRollPause
 }
 
 // OptionPickFunc is a registered continuation. It runs with g.mu held,

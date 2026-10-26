@@ -38,6 +38,7 @@ import (
 //   - popExtraTurnLocked → RepEventExtraTurn (#2529, extra_turns.go)
 //   - the effect counter verbs (CounterTargetForEffect and its two
 //     siblings) → RepEventCounterSpell (#4056, counter_spell.go)
+//   - RollDiceThenForEffect → RepEventRollDice (#4307, dice_roll.go)
 //
 // The six *ForEffect helpers in effect_api.go route through the same
 // pipeline so catalog-driven mutations fire replacements too.
@@ -65,6 +66,7 @@ import (
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 //	"extra_turn"   — RepEventExtraTurn — ExtraTurnSeat, ExtraTurnRef (CR 500.7 / 614.10)
 //	"counter_spell"— RepEventCounterSpell — CounterSpellID, CounterBy, CounterBySource (CR 701.6a / 614.1a)
+//	"roll_dice"    — RepEventRollDice — RollPlayer, RollSides, RollCount (CR 706.1)
 type ReplacementEventKind string
 
 const (
@@ -221,6 +223,16 @@ const (
 	// has moved while the prompt is open, and the resume finishes
 	// exactly as the unpaused path does (finishCounterSpellLocked).
 	RepEventCounterSpell ReplacementEventKind = "counter_spell"
+
+	// RepEventRollDice is one instruction to roll one or more dice (CR
+	// 706.1), opened before any die is rolled (#4307, dice_roll.go).
+	// Squid Fire Knight's sticker replaces it ("instead they roll that
+	// many dice plus one, then you choose one of those rolls to ignore").
+	// The window settles inline (mustSettleNow): the only replacements of
+	// this kind add a die and a chooser, so a CR 616.1 order among them
+	// is only the order of the choosers, which the dice flow asks the
+	// roller itself (diceOrderKey). The affected player is the roller.
+	RepEventRollDice ReplacementEventKind = "roll_dice"
 )
 
 // isExitMove reports whether a kind is a routed move OUT of a zone — an
@@ -1255,6 +1267,20 @@ type ReplacementEvent struct {
 	// (Guile). Set only through ExileCounteredSpellInsteadForEffect;
 	// plain data, so a copy for an undo snapshot is a struct copy.
 	counterInstead *counterInstead
+
+	// --- RepEventRollDice fields (#4307, dice_roll.go) ---
+
+	// RollPlayer is the player who would roll, RollSides the kind of die
+	// and RollCount how many (CR 706.1). A replacement that adds dice
+	// raises RollCount; one that also has a player choose a roll to
+	// ignore (Squid Fire Knight's sticker) appends to rollShields.
+	RollPlayer uuid.UUID
+	RollSides  int
+	RollCount  int
+	// rollShields are the "then you choose one of those rolls to ignore"
+	// riders the applied replacements added, in the order they applied.
+	// Plain data; a replacement appends to a fresh slice.
+	rollShields []diceShield
 
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked
@@ -2899,6 +2925,11 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// countered" in a TriggeredAbility.Watches, and no code reads
 		// one as the other. #4056.
 		want = EventCounterSpell
+	case RepEventRollDice:
+		// CR 706.1. EventRollDie is the post-event twin, one per kept die
+		// after the roll; this window opens once per instruction, before
+		// any die is rolled. The same reuse as RepEventMill's.
+		want = EventRollDie
 	case RepEventExtraTurn:
 		// CR 500.7 / 614.10. EventExtraTurnAdded is the twin of QUEUING
 		// the turn, which happens long before this window and under a
