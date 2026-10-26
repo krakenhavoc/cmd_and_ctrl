@@ -60,7 +60,7 @@ func reselectTargetedAttacker(g *game.Game, item *game.StackItem) error {
 			Chooser:  item.Controller,
 			Attacker: t.ID,
 			Source:   item.SourceCardID,
-			Question: "Reselect which player or permanent " + attackerName(g, t.ID) + " is attacking?",
+			Question: g.ReselectAttackQuestion(t.ID),
 		})
 		return nil
 	}
@@ -88,32 +88,17 @@ func reselectEachAttacker(g *game.Game, item *game.StackItem) error {
 			attackers = append(attackers, c.InstanceID)
 		}
 	}
-	chooser, source := item.Controller, item.SourceCardID
-	var ask func(g *game.Game, i int)
-	ask = func(g *game.Game, i int) {
-		if i >= len(attackers) {
-			return
-		}
-		g.QueueReselectAttackForEffect(game.ReselectAttackPrompt{
-			Chooser:  chooser,
-			Attacker: attackers[i],
-			Source:   source,
-			Question: "Reselect which player or permanent " + attackerName(g, attackers[i]) + " is attacking?",
-			Then: func(g *game.Game) error {
-				ask(g, i+1)
-				return nil
-			},
-		})
+	if len(attackers) == 0 {
+		return nil
 	}
-	ask(g, 0)
+	// Keyed (#4253 slice 10b): the attackers still to ask about ride the
+	// prompt as data, so each question is a restore point.
+	g.QueueReselectAttackForEffect(game.ReselectAttackPrompt{
+		Chooser:  item.Controller,
+		Attacker: attackers[0],
+		Source:   item.SourceCardID,
+		Question: g.ReselectAttackQuestion(attackers[0]),
+		Next:     attackers[1:],
+	})
 	return nil
-}
-
-// attackerName is the attacker's name for a prompt header, or "that
-// creature" when it cannot be found.
-func attackerName(g *game.Game, id uuid.UUID) string {
-	if c, ok := g.LookupCardForEffect(id); ok && c.Name != "" {
-		return c.Name
-	}
-	return "that creature"
 }

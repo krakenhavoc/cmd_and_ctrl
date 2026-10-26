@@ -64,12 +64,8 @@ func planeswalkerTypesAmong(g *game.Game, player uuid.UUID) int {
 }
 
 // tamProliferate proliferates `n` times in sequence: each repetition waits
-// for the previous prompt to be answered. Captures scalars only.
+// for the previous prompt to be answered. Keyed (#4253 slice 10b): the
+// repetitions still owed are the tail's number.
 func tamProliferate(g *game.Game, player, source uuid.UUID, n int) error {
-	if n <= 0 {
-		return nil
-	}
-	return g.ProliferateChoosingForEffect(player, source, func(g *game.Game) error {
-		return tamProliferate(g, player, source, n-1)
-	})
+	return proliferateTimesKeyed(g, player, source, n)
 }

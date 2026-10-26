@@ -5827,7 +5827,7 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
 	// "then" mean what it says.
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen)
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
@@ -5836,12 +5836,16 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 // keyed tail (#4253 slice 3), reporting a failure as an effect error.
 //
 // Caller must hold g.mu.
-func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, resume func(*Game) error, keyed KeyedTail) {
+func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, resume func(*Game) error, keyed KeyedTail, kept int) {
 	var err error
 	if resume != nil {
 		err = resume(g)
 	} else {
-		err = g.runKeyedTailLocked(keyed, nil, 0)
+		// #4253 slice 10b: a keyed tail is told how many cards went back
+		// on top (TailOutcome.Amount): "for each card you put on top of
+		// your library" (Starving Revenant). Zero when nothing was looked
+		// at.
+		err = g.runKeyedTailLocked(keyed, nil, kept)
 	}
 	if err != nil {
 		g.EmitEvent(Event{
@@ -5935,7 +5939,7 @@ func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.U
 	for i := len(topOrder) - 1; i >= 0; i-- {
 		p.Library.PushTop(pulled[topOrder[i]])
 	}
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen)
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
@@ -6097,7 +6101,7 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		// The rest of the effect, now that the library is in the order
 		// the player chose and every card that was going to a graveyard
 		// has settled.
-		g.runScryAfterLocked(chooserID, source, resume, keyed)
+		g.runScryAfterLocked(chooserID, source, resume, keyed, len(topOrder))
 		return nil
 	})
 	if err != nil {

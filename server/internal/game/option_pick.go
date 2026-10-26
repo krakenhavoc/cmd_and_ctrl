@@ -405,7 +405,7 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 			return runOptionPickThen(g, c.PickThen, OptionPicked{
 				Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry), dice: c.dice,
 				Asked: c.Asked.StackItem(),
-				Words: copyStrings(c.PickWords), Nums: copyInts(c.PickNums),
+				Words: copyStrings(c.PickWords), Nums: copyInts(c.PickNums), Tail: copyKeyedTail(c.pickTail),
 			})
 		})
 	default:
@@ -503,10 +503,13 @@ type OptionPickPrompt struct {
 	// item (Ultra Magnus, Tactician). Ignored without ThenKey.
 	Asked *AskedItem
 	// Words and Nums are a keyed continuation's other plain data (#4253
-	// slice 10c): handed back as OptionPicked.Words and Nums, written
-	// with the prompt as PickWords and PickNums.
+	// slice 10c, 10b): handed back as OptionPicked.Words and Nums, written
+	// with the prompt as PickWords and PickNums. Tail is a registered tail
+	// it hands on (OptionPicked.Tail; #4253 slice 10b: a pile split's rest
+	// of the card). Ignored without ThenKey.
 	Words []string
 	Nums  []int
+	Tail  KeyedTail
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -560,6 +563,7 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		c.dice = p.dice
 		c.Asked = copyAskedItem(p.Asked)
 		c.PickWords, c.PickNums = copyStrings(p.Words), copyInts(p.Nums)
+		c.pickTail = copyKeyedTail(p.Tail)
 		return g.QueueChoiceForEffect(c)
 	}
 	then := p.Then
@@ -723,14 +727,14 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		carry := copyUUIDs(choice.OptionCarry)
 		dice := choice.dice
 		asked := choice.Asked.StackItem()
-		words, nums := copyStrings(choice.PickWords), copyInts(choice.PickNums)
+		words, nums, tail := copyStrings(choice.PickWords), copyInts(choice.PickNums), copyKeyedTail(choice.pickTail)
 		cause := carriedCauseOfChoice(choice) // #4281
 		g.dequeueChoiceLocked(idx)
 		g.emitChoiceEffectErrorLocked(chooserID, source, g.withCarriedCauseLocked(cause, func() error {
 			return runOptionPickThen(g, key, OptionPicked{
 				Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry, dice: dice,
 				Asked: asked,
-				Words: words, Nums: nums,
+				Words: words, Nums: nums, Tail: tail,
 			})
 		}))
 		g.runStateChecksLocked()
@@ -803,6 +807,12 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 //
 // Caller must hold g.mu.
 func (g *Game) QueuePileSplitForEffect(p PileSplitPrompt) {
+	if p.Then == nil && !p.ThenTail.IsZero() {
+		// #4253 slice 10b: both links and the rest are data
+		// (pile_split_keyed.go).
+		g.queuePileSplitKeyedLocked(p)
+		return
+	}
 	if len(p.Cards) == 0 || p.Then == nil {
 		if p.Then != nil {
 			if err := p.Then(g, nil, nil); err != nil {
@@ -873,6 +883,12 @@ type PileSplitPrompt struct {
 	// Then receives the pile the chooser took and the pile they left,
 	// in that order. Runs with g.mu held.
 	Then func(g *Game, taken, left []uuid.UUID) error
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
+	// the pile taken and then the pile left as its IDs, with how many were
+	// taken as its Amount. Both prompts are then keyed, so a table waiting
+	// on either is a restore point. Set Then or ThenTail, not both; Then
+	// wins.
+	ThenTail KeyedTail
 	// FaceDown makes this the "face-down pile and a face-up pile" split
 	// (Sauron's Ransom, Fortune's Favor, Atris, Riddles in the Dark,
 	// Curator of Destinies; #2147). The splitter's cards are picked as the

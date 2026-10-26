@@ -58,29 +58,43 @@ func plasmaCasterFlip(g *game.Game, item *game.StackItem) error {
 	}
 	ref, hasRef := ctx.SourceRef()
 	controller, source, self := item.Controller, item.SourceCardID, item.ID
+	refNum := 0
+	if hasRef {
+		refNum = 1
+	}
 	g.FlipCoinForEffect(game.CoinFlipSpec{
 		Flipper:  controller,
 		Source:   source,
 		Question: "Plasma Caster — call the coin flip",
-		Then: func(g *game.Game, result game.CoinFlipResult) error {
-			c := NewContext(g, &game.StackItem{
-				ID: self, Kind: game.StackItemActivated,
-				Controller: controller, Owner: controller, SourceCardID: source,
-			})
-			if !onBattlefield(g, target) {
-				return nil
-			}
-			if len(result.Won) > 0 && result.Won[0] {
-				return plasmaCasterExile(c, target)
-			}
-			if !hasRef {
-				return nil
-			}
-			return DealDamage{SourceObject: &ref, Target: target, Amount: 1}.Apply(c)
-		},
+		// Keyed (#4253 slice 10b): the blocker, the ability and the
+		// Equipment as it was pinned now (CR 400.7) ride the call.
+		ThenKey: plasmaCasterFlipped,
+		Carry:   []uuid.UUID{target, self, ref.ID},
+		Nums:    []int{refNum, ref.Epoch},
 	})
 	return nil
 }
+
+// plasmaCasterFlipped is the settled call. An on-disk key: never renamed,
+// never reused.
+var plasmaCasterFlipped = game.RegisterCoinFlipThen("coin-flip/plasma-caster", func(g *game.Game, r game.CoinFlipped) error {
+	target := carriedID(r.Carry, 0)
+	c := NewContext(g, &game.StackItem{
+		ID: carriedID(r.Carry, 1), Kind: game.StackItemActivated,
+		Controller: r.Flipper, Owner: r.Flipper, SourceCardID: r.Source,
+	})
+	if !onBattlefield(g, target) {
+		return nil
+	}
+	if wonFirstFlip(r) {
+		return plasmaCasterExile(c, target)
+	}
+	if carriedNum(r.Nums, 0) == 0 {
+		return nil
+	}
+	ref := game.ObjectRef{ID: carriedID(r.Carry, 2), Epoch: carriedNum(r.Nums, 1)}
+	return DealDamage{SourceObject: &ref, Target: target, Amount: 1}.Apply(c)
+})
 
 // plasmaCasterExile is the won flip: the chosen creature is exiled.
 func plasmaCasterExile(ctx *Context, target uuid.UUID) error {

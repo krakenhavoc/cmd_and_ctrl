@@ -136,6 +136,9 @@ func ledgerLineResolves(line string) bool {
 	case "milluntil":
 		// #4253 slice 9: a keyed mill run's stop clause.
 		return KnownMillUntil(ledgerLineKey(line))
+	case "coinflip":
+		// #4253 slice 10b: a keyed coin flip's continuation.
+		return KnownCoinFlipThen(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

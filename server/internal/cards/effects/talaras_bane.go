@@ -59,6 +59,7 @@ var talarasBaneGainToughness = RevealedPickFirst("revealed-pick/talaras-bane-gai
 		if gain == 0 {
 			return pick.Done(ctx.Game)
 		}
-		return ctx.Game.ChangePlayerLifeThenForEffect(pick.Source, ctx.Controller(), gain,
-			func(g *game.Game, _ int) error { return pick.Done(g) })
+		// Keyed (#4253 slice 10b): the discard is the life change's tail as
+		// data, so a CR 616 prompt over the gain is a restore point.
+		return ctx.Game.ChangePlayerLifeKeyedForEffect(pick.Source, ctx.Controller(), gain, pick.DoneTail)
 	})

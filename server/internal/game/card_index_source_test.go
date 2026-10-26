@@ -139,7 +139,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"queueRelatedRetargetLocked":              "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"auraHostCandidatesLocked":                "LegalTargets.Cards: candidate UUIDs, not zone cards (#3158)",
 		"snapshotZone":                            "zoneSnapshot.Cards",
-		"QueueReselectAttackForEffect":            "an option's Cards []uuid.UUID",
+		"reselectAttackOptionsLocked":             "an option's Cards []uuid.UUID",
 		"GrantCastPermissionToCardsForEffect":     "CastPermission.Cards",
 		"spendManaValueBudget":                    "CastPermission.Cards: the cast card struck from a budgeted permission's named objects (#2017)",
 		"cloneCastPermissions":                    "CastPermission.Cards",

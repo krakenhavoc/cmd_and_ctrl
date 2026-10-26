@@ -314,9 +314,10 @@ func settleMinotaurTrigger(t *testing.T, g *game.Game, owner uuid.UUID) {
 }
 
 // The coin is the seeded stream of the game. A table with the coin call open
-// is not a restore point (the call holds a continuation), so the flip is
-// answered first; a restore taken after it then draws the next flip exactly
-// as the original does, and the Minotaur answers it the same way.
+// is a restore point since #4253 slice 10b (a flip with nothing hanging off it
+// is keyed, coin-flip/nothing); the flip is answered first here, and a restore
+// taken after it then draws the next flip exactly as the original does, and
+// the Minotaur answers it the same way.
 func TestKarplusanMinotaurFlipIsReproducibleAfterARestore(t *testing.T) {
 	g := newCatalogGame(t)
 	owner := g.Seats[1]
@@ -331,8 +332,8 @@ func TestKarplusanMinotaurFlipIsReproducibleAfterARestore(t *testing.T) {
 	if flip == nil {
 		t.Fatal("no coin call after paying")
 	}
-	if g.CaptureSnapshot().Restorable() {
-		t.Error("a table with an open coin call is a restore point")
+	if !g.CaptureSnapshot().Restorable() {
+		t.Error("a table with an open coin call is not a restore point")
 	}
 	if err := g.ResolveCoinCall(flip.ID, owner.ID, "heads"); err != nil {
 		t.Fatal(err)

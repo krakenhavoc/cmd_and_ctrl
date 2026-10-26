@@ -91,18 +91,18 @@ func factOrFictionSplit(revealed []uuid.UUID) func(ctx *Context) error {
 			SplitQuestion: "Fact or Fiction — separate these five cards into two piles",
 			PickQuestion:  "Fact or Fiction — take one pile into your hand; the other goes to your graveyard",
 			Cards:         revealed,
-			Then:          factOrFictionTake,
+			// Keyed (#4253 slice 10b): both prompts carry the tail.
+			ThenTail: ctx.Tail(factOrFictionTake),
 		}.Apply(ctx)
 	}
 }
 
 // factOrFictionTake is the continuation both prompts lead to: the
-// chosen pile goes to hand, the other to the graveyard.
-//
-// Caller holds g.mu.
-func factOrFictionTake(ctx *Context, taken, left []uuid.UUID) error {
+// chosen pile goes to hand, the other to the graveyard. An on-disk key:
+// never renamed, never reused.
+var factOrFictionTake = PileTail("then/fact-or-fiction-take", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
 	return factOrFictionSettle(ctx.Game, taken, left)
-}
+})
 
 // factOrFictionSettle moves the two piles. A card that is no longer
 // where the split found it is skipped rather than erroring — the

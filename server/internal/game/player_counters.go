@@ -159,6 +159,38 @@ func (g *Game) addPlayerCounterByThenLocked(placer, playerID uuid.UUID, name str
 	return g.placeCountersThroughReplacementsLocked(ev)
 }
 
+// addPlayerCounterByKeyedLocked is addPlayerCounterByThenLocked with the
+// continuation as data (#4253 slice 10b): a registered tail, told the delta
+// that landed, so a CR 616 prompt over the placement is a restore point.
+// A zero tail is no continuation.
+//
+// Caller must hold g.mu.
+func (g *Game) addPlayerCounterByKeyedLocked(placer, playerID uuid.UUID, name string, delta int, then KeyedTail) error {
+	if name == "" {
+		return ErrInvalidParam
+	}
+	if delta == 0 {
+		return then.RunTold(g, nil, 0)
+	}
+	switch p := g.playerByIDLocked(playerID); {
+	case p == nil:
+		return ErrPlayerNotFound
+	case p.Eliminated:
+		return ErrPlayerEliminated
+	}
+	ev := &ReplacementEvent{
+		Kind:          RepEventCounter,
+		CounterPlayer: playerID,
+		CounterPlacer: placer,
+		CounterName:   name,
+		CounterDelta:  delta,
+	}
+	if !then.IsZero() {
+		ev.counterTail = &counterTail{keyed: copyKeyedTail(then)}
+	}
+	return g.placeCountersThroughReplacementsLocked(ev)
+}
+
 // applyPlayerCounterLocked is the landed body of a settled player
 // counter placement: the map write, the legacy int mirror and the
 // event. The counterpart of applyCounterLocked, and reached from the

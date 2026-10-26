@@ -573,9 +573,18 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	if !replacementEventGatesClear(ev) {
 		return false
 	}
-	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil || t.armySubtype != "" ||
-		!reflect.ValueOf(t.armyToken).IsZero()) {
+	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil) {
 		return false
+	}
+	if t := ev.keywordAction; t != nil && !reflect.ValueOf(t.armyToken).IsZero() {
+		// #4253 slice 10b: an amass's Army token template is written
+		// through the card mirror, as a token group's is; one the mirror
+		// cannot carry whole keeps the frame off the disk.
+		var scratch ContinuationCensus
+		_ = snapshotCard(t.armyToken, &scratch)
+		if !scratch.Empty() {
+			return false
+		}
 	}
 	if ev.CardID != uuid.Nil {
 		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
@@ -887,6 +896,11 @@ type keywordActionTailSnapshot struct {
 	Land    *uuid.UUID        `json:"land,omitempty"`
 	// #4253 slice 3: a keyed "then" (Preordain's draw).
 	Then *keyedTailSnapshot `json:"then,omitempty"`
+	// #4253 slice 10b: an amass's two printed parameters (CR 701.47a),
+	// the Army token template through the card mirror and the creature
+	// type.
+	ArmyToken   *cardSnapshot `json:"armyToken,omitempty"`
+	ArmySubtype string        `json:"armySubtype,omitempty"`
 }
 
 // pendingDrawSnapshot is a pendingDraw: an expanded draw's sibling.
@@ -1116,6 +1130,11 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		out.KeywordActionTail = &keywordActionTailSnapshot{
 			Cards: copyUUIDs(t.cards), Players: copyUUIDs(t.players), Ask: t.ask, Choice: t.choice,
 			Land: uuidPtrOrNil(t.land), Then: snapshotKeyedTail(t.keyed),
+			ArmySubtype: t.armySubtype,
+		}
+		if !reflect.ValueOf(t.armyToken).IsZero() {
+			army := snapshotCard(t.armyToken, cen)
+			out.KeywordActionTail.ArmyToken = &army
 		}
 	}
 	for _, p := range ev.drawPending {
@@ -1270,7 +1289,10 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 	if t := s.KeywordActionTail; t != nil {
 		ev.keywordAction = &keywordActionTail{
 			cards: copyUUIDs(t.Cards), players: copyUUIDs(t.Players), ask: t.Ask, choice: t.Choice,
-			land: uuidOrNil(t.Land), keyed: restoreKeyedTail(t.Then),
+			land: uuidOrNil(t.Land), keyed: restoreKeyedTail(t.Then), armySubtype: t.ArmySubtype,
+		}
+		if t.ArmyToken != nil {
+			ev.keywordAction.armyToken = restoreCard(t.ArmyToken)
 		}
 	}
 	for _, p := range s.DrawPending {

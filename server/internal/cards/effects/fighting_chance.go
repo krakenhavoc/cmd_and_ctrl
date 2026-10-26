@@ -33,14 +33,22 @@ func init() {
 				Source:   ctx.Source(),
 				Question: "Fighting Chance — call the coin flips (one per blocking creature)",
 				Coins:    len(blockers),
-				Then: func(g *game.Game, result game.CoinFlipResult) error {
-					return fightingChanceShields(NewContext(g, item), blockers, result)
-				},
+				// Keyed (#4253 slice 10b): the blockers ride the call, one
+				// per coin, in battlefield order.
+				ThenKey: fightingChanceFlipped,
+				Carry:   blockers,
+				Asked:   game.NewAskedItem(item),
 			})
 			return nil
 		},
 	})
 }
+
+// fightingChanceFlipped is the settled call: each blocker whose flip was won
+// is shielded. An on-disk key: never renamed, never reused.
+var fightingChanceFlipped = CoinFlipThen("coin-flip/fighting-chance-shields", func(ctx *Context, r game.CoinFlipped) error {
+	return fightingChanceShields(ctx, r.Carry, r.Result)
+})
 
 // fightingChanceShields shields each blocker whose flip was won.
 func fightingChanceShields(ctx *Context, blockers []uuid.UUID, result game.CoinFlipResult) error {

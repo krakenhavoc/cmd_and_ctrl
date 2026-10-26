@@ -7997,26 +7997,36 @@ asked — an empty pool or a chooser who has left — in which case
 `ctx.ChosenPlayer()` is `uuid.Nil`, so **every branch checks before it
 acts**.
 
-**`ChoosePlayerKeyed{Chooser, Among, Except, Question, Then, Carry}`**
-(#4253, `sweep02_helpers.go`) is `ChoosePlayer` with the answer as a
-registered continuation, so a table waiting on the choice is a restore point
-(a `ChoosePlayer.Then` is a closure and is not). Register the body once, from
-a package-level var, with `ChoosePlayerThen("option-pick/<card>-<what>",
-func(ctx *Context, chosen uuid.UUID, carry []uuid.UUID) error {…})` (an
-on-disk key, ledgered): the body gets a Context rebuilt from the controller
-and the source card, the player chosen (`uuid.Nil` when none could be asked),
-and the `Carry` the card put on the prompt. It reads no
-`ctx.ChosenPlayer()`: the answer is not recorded on the item. Sol'Kanar the
-Tainted, Zuko and the face-down pile cards are written this way.
+**`ChoosePlayer{…, ThenKey, Carry}`** (#4253 slice 10b) is `ChoosePlayer`
+with the answer as a registered continuation, so a table waiting on the
+choice is a restore point (a `ChoosePlayer.Then` is a closure and is not).
+Register the body once, from a package-level var, with
+`ChoosePlayerThen("option-pick/<card>-<what>", func(ctx *Context, chosen
+uuid.UUID, carry []uuid.UUID) error {…})` (an on-disk key, ledgered). The
+asking item rides the prompt, and the body runs against a copy of it with
+the answer recorded on it, so `ctx.ChosenPlayer()` and `ctx.ChosenPlayers()`
+read as they do after a `Then`, and a later question (Gluntch's "a second
+player") reads every answer before it, after a restore too. The body also
+gets the player chosen (`uuid.Nil` when none could be asked) and the `Carry`
+the card put on the prompt. Gluntch, the Bestower, Sauron's Ransom, the
+flicker helper and the face-down pile cards are written this way. (Sweep batch
+02's `ChoosePlayerKeyed` was folded into this form.)
+
+The other prompt-level primitives have keyed forms too (#4253 slice 10b):
+pass the rest of the card as a registered tail instead of a closure and the
+prompt is data. `SacrificeChoice.ThenTail`, `Bolster.ThenTail` (told the
+chosen creature), `Populate.ThenTail` (told the tokens made),
+`TheRingTemptsYou.ThenTail` (`RingTail`, told the Ring-bearer),
+`Proliferate.ThenTail`, `PileSplit.ThenTail` (`PileTail`, told the pile taken
+and the pile left), `PutFromLibraryOntoBattlefield`'s pick (keyed whenever it
+has no `Validate`, `CountersFor` or `Counters`), `CoinFlipSpec.ThenKey`
+(`CoinFlipThen`, handed the result), a `ReselectAttackPrompt` with no `Then`
+(its `Next` attackers asked in turn) and `RevealedPick.DoneTail`. Each is
+taken whenever the caller passes no closure.
 
 `Then` holds a closure, so a table waiting on the question is not a
-restore point. Write the rest of the card as `ThenKey:
-effects.OptionPickThen("option-pick/<card>-<what>", fn)` with `Carry` for
-the IDs it reads (#4253): the answer is `r.Option.Player` (`r.Option` is nil
-when nobody could be asked, and `fn` still runs), and the Context is a
-stand-in built from the controller and the source card, so
-`ctx.ChosenPlayer()` reads nothing there. Coin of Fate and Emergent
-Ultimatum are the worked examples.
+restore point: register the rest with `ChoosePlayerThen` as above. Coin of
+Fate and Emergent Ultimatum are worked examples too.
 
 **`ChoosePlayerAsEnters(label, pool)`** (same file) is the CR 614.12
 form — "As this enters, choose a player" (True-Name Nemesis, Sawhorn

@@ -44,19 +44,27 @@ func init() {
 				Flipper:  controller,
 				Source:   source,
 				Question: "Invert Polarity — call the coin flip",
-				Then: func(g *game.Game, result game.CoinFlipResult) error {
-					c := invertPolarityContext(g, self, controller, source)
-					if len(result.Won) > 0 && result.Won[0] {
-						return GainControlOfSpell{Spell: spell, ChooseNewTargets: true,
-							Label: "Invert Polarity — gain control of that spell"}.Apply(c)
-					}
-					return CounterTarget{StackID: spell}.Apply(c)
-				},
+				// Keyed (#4253 slice 10b): the spell and the resolving
+				// spell's own ID ride the call.
+				ThenKey: invertPolarityFlipped,
+				Carry:   []uuid.UUID{spell, self},
 			})
 			return nil
 		},
 	})
 }
+
+// invertPolarityFlipped is the settled call: a won flip takes the spell, a
+// lost one counters it. An on-disk key: never renamed, never reused.
+var invertPolarityFlipped = CoinFlipThen("coin-flip/invert-polarity", func(ctx *Context, r game.CoinFlipped) error {
+	spell := carriedID(r.Carry, 0)
+	c := invertPolarityContext(ctx.Game, carriedID(r.Carry, 1), r.Flipper, r.Source)
+	if wonFirstFlip(r) {
+		return GainControlOfSpell{Spell: spell, ChooseNewTargets: true,
+			Label: "Invert Polarity — gain control of that spell"}.Apply(c)
+	}
+	return CounterTarget{StackID: spell}.Apply(c)
+})
 
 // invertPolarityContext rebuilds the resolving spell's context inside
 // the flip's continuation from values, never from the item it began

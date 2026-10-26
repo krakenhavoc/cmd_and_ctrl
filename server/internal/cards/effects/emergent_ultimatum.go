@@ -94,17 +94,18 @@ func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {
 
 // emergentUltimatumOpponent is the answer to "choose an opponent": that
 // opponent picks one of the found cards. Nobody to name leaves the spell
-// to exile itself. An on-disk key: never renamed, never reused.
-var emergentUltimatumOpponent = OptionPickThen("option-pick/emergent-ultimatum-opponent", func(ctx *Context, r game.OptionPicked) error {
-	if r.Option == nil || r.Option.Player == uuid.Nil {
+// to exile itself. An on-disk key: never renamed, never reused. #4253 slice
+// 10b: the one keyed ChoosePlayer form (ChoosePlayerThen), the same key.
+var emergentUltimatumOpponent = ChoosePlayerThen("option-pick/emergent-ultimatum-opponent", func(ctx *Context, chosen uuid.UUID, found []uuid.UUID) error {
+	if chosen == uuid.Nil {
 		return emergentUltimatumExileSelf(ctx)
 	}
 	queued, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
-		Chooser:  r.Option.Player,
+		Chooser:  chosen,
 		Owner:    ctx.Controller(),
-		Source:   r.Source,
+		Source:   ctx.Source(),
 		Question: "Emergent Ultimatum — choose one of these cards; it is shuffled into their library and they may cast the others for free",
-		Cards:    r.Carry,
+		Cards:    found,
 		Min:      1,
 		Max:      1,
 		ThenKey:  emergentUltimatumPicked,
@@ -113,7 +114,7 @@ var emergentUltimatumOpponent = OptionPickThen("option-pick/emergent-ultimatum-o
 		return err
 	}
 	// Nobody could be asked: nothing is picked and every card is left.
-	return emergentUltimatumSettle(ctx, nil, r.Carry)
+	return emergentUltimatumSettle(ctx, nil, found)
 })
 
 // emergentUltimatumPicked is the answer to the opponent's pick: the cards

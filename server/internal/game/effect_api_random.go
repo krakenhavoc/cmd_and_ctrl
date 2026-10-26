@@ -130,6 +130,18 @@ type CoinFlipSpec struct {
 	MaxUsefulWins int
 	Wins          int
 	Then          func(*Game, CoinFlipResult) error
+
+	// ThenKey is Then as a registered continuation (RegisterCoinFlipThen,
+	// #4253 slice 10b), and Carry, Nums, Words and Asked the plain data it
+	// is handed (CoinFlipped): a call queued with a key, or with no
+	// continuation at all, holds no closure, so a table waiting on it is a
+	// restore point. Set ThenKey or Then, not both; with Then set the key
+	// and its data are ignored.
+	ThenKey CoinFlipThen
+	Carry   []uuid.UUID
+	Nums    []int
+	Words   []string
+	Asked   *AskedItem
 }
 
 type CoinFlipResult struct {
@@ -149,12 +161,19 @@ func (g *Game) FlipCoinForEffect(spec CoinFlipSpec) uuid.UUID {
 	if spec.Coins <= 0 {
 		spec.Coins = 1
 	}
-	return g.QueueChoiceForEffect(PendingChoice{
+	c := PendingChoice{
 		Kind: PendingChoiceCoinCall, Chooser: spec.Flipper, FromPlayer: spec.Flipper,
 		Source: spec.Source, Reason: spec.Question, CoinAllowStop: spec.AllowStop,
 		CoinCount: spec.Coins, CoinMaxUsefulWins: spec.MaxUsefulWins, CoinWins: spec.Wins,
-		coinFlipResume: &coinFlipFrame{spec: spec},
-	})
+	}
+	if spec.Then != nil {
+		c.coinFlipResume = &coinFlipFrame{spec: spec}
+	} else {
+		// #4253 slice 10b: a keyed call, or one with nothing hanging off
+		// it, is data (coin_flip_keyed.go).
+		spec.keyedCoinFlip(&c)
+	}
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveCoinCall settles a coin-call prompt. call is heads, tails, or stop
@@ -181,11 +200,12 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 	if call == "stop" && !choice.CoinAllowStop {
 		return ErrInvalidParam
 	}
-	frame := choice.coinFlipResume
+	spec, ok := coinFlipSpecOf(choice)
 	g.dequeueChoiceLocked(idx)
-	if frame == nil {
+	if !ok {
 		return nil
 	}
+	frame := &coinFlipFrame{spec: spec}
 	result := CoinFlipResult{Call: call, Stopped: call == "stop"}
 	if result.Stopped {
 		result.Call = ""
@@ -207,10 +227,15 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 			g.EmitEvent(Event{Kind: EventFlipCoin, Actor: frame.spec.Flipper, Source: frame.spec.Source, Label: label, Call: call, Won: won, BatchSeq: batch})
 		}
 	}
-	if frame.spec.Then != nil {
-		if err := frame.spec.Then(g, result); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: frame.spec.Source, ErrorMsg: err.Error()})
-		}
+	var err error
+	switch {
+	case frame.spec.Then != nil:
+		err = frame.spec.Then(g, result)
+	case frame.spec.ThenKey.key != "":
+		err = g.runCoinFlipThen(frame.spec, result)
+	}
+	if err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: frame.spec.Source, ErrorMsg: err.Error()})
 	}
 	g.runStateChecksLocked()
 	return nil

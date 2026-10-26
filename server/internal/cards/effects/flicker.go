@@ -181,10 +181,10 @@ func exileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackIt
 		return nil
 	}
 	self := item.SourceCardID
-	return ChoosePlayerKeyed{
+	return ChoosePlayer{
 		Among:    Opponents,
 		Question: name + " — choose an opponent to return it under",
-		Then:     flickerUnderTheChosenOpponent,
+		ThenKey:  flickerUnderTheChosenOpponent,
 		Carry:    []uuid.UUID{self},
 	}.Apply(ctx)
 }

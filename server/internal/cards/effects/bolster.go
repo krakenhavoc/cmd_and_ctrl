@@ -33,6 +33,13 @@ import (
 type Bolster struct {
 	N    int
 	Then func(ctx *Context, chosen uuid.UUID) error
+
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
+	// the chosen creature as its one ID, once the counters are on it. A
+	// bolster with no Then asks a keyed pick carrying it (and the asking
+	// item, so a CardTail body reads it), so a table waiting on the choice
+	// is a restore point. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (b Bolster) Apply(ctx *Context) error {
@@ -68,11 +75,14 @@ func (b Bolster) Apply(ctx *Context) error {
 		Max:      1,
 	}
 	if b.Then == nil {
-		// Nothing hangs off the choice, so it is data: the counters' number
-		// rides the prompt and the table stays a restore point (#4253).
+		// Nothing hangs off the choice but data, so the pick is keyed: the
+		// counters' number and the tail ride the prompt and the table stays a
+		// restore point (#4253, slice 10b).
 		prompt.ThenKey = bolsterPick
 		prompt.LiveZone = game.ZoneBattlefield
 		prompt.CarryNums = []int{b.N}
+		prompt.Tail = b.ThenTail
+		prompt.Asked = game.NewAskedItem(ctx.Item)
 	} else {
 		item := ctx.Item
 		prompt.Zone = game.ZoneBattlefield
@@ -90,11 +100,14 @@ func (b Bolster) Apply(ctx *Context) error {
 // bolsterPick is the chosen creature getting its counters, keyed (#4253)
 // for a bolster with no "then": the number of counters is the prompt's one
 // carried number.
+// Since slice 10b the prompt also carries the bolster's tail (CardsChosen.Tail)
+// and the asking item.
 var bolsterPick = game.RegisterChooseCardsThen("choose-cards/bolster", func(g *game.Game, r game.CardsChosen) error {
 	if len(r.Picked) != 1 || len(r.Nums) == 0 {
 		return nil
 	}
-	return Bolster{N: r.Nums[0]}.finish(keyedContext(g, r.Chooser, r.Source), r.Picked[0])
+	ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+	return Bolster{N: r.Nums[0], ThenTail: r.Tail}.finish(ctx, r.Picked[0])
 })
 
 // finish puts the counters on the chosen creature and runs Then. It
@@ -108,7 +121,7 @@ func (b Bolster) finish(ctx *Context, chosen uuid.UUID) error {
 		}
 	}
 	if b.Then == nil {
-		return nil
+		return b.ThenTail.Run(ctx.Game, []uuid.UUID{chosen})
 	}
 	return b.Then(ctx, chosen)
 }

@@ -49,6 +49,12 @@ type AskedItem struct {
 	// Modes are the modes a modal spell was cast with, which a target
 	// re-check reads.
 	Modes []int `json:"modes,omitempty"`
+	// Payload is what the item recorded as it resolved (#4253 slice 10b):
+	// the players a ChoosePlayer chose (ChosenPlayerOn, ChosenPlayersOn)
+	// and the cards a clause filed. A keyed answer that asks again reads
+	// the answers before it, as Gluntch, the Bestower's "a second player"
+	// does.
+	Payload []TargetRef `json:"payload,omitempty"`
 }
 
 // NewAskedItem is the data of `item` that a keyed prompt carries. Nil for
@@ -71,6 +77,7 @@ func NewAskedItem(item *StackItem) *AskedItem {
 		Trigger:         cloneTriggerContext(item.Trigger),
 		XValue:          item.XValue,
 		Modes:           copyInts(item.Modes),
+		Payload:         copyTargetRefs(item.Payload),
 	}
 }
 
@@ -95,6 +102,7 @@ func (a *AskedItem) StackItem() *StackItem {
 		Trigger:         cloneTriggerContext(a.Trigger),
 		XValue:          a.XValue,
 		Modes:           copyInts(a.Modes),
+		Payload:         copyTargetRefs(a.Payload),
 	}
 }
 
@@ -111,5 +119,6 @@ func copyAskedItem(a *AskedItem) *AskedItem {
 	out.Targets = copyTargetRefs(a.Targets)
 	out.Trigger = cloneTriggerContext(a.Trigger)
 	out.Modes = copyInts(a.Modes)
+	out.Payload = copyTargetRefs(a.Payload)
 	return &out
 }

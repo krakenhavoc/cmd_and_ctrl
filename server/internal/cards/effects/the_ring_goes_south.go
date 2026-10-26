@@ -26,12 +26,16 @@ func init() {
 		Name:         "The Ring Goes South",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return TheRingTemptsYou{Then: theRingGoesSouthReveal}.Apply(ctx)
+			// Keyed (#4253 slice 10b): the reveal is the tempt's tail.
+			return TheRingTemptsYou{ThenTail: ctx.ItemTail(theRingGoesSouthTail)}.Apply(ctx)
 		},
 	})
 }
 
 // theRingGoesSouthReveal is the sentence after the tempt.
+// An on-disk key: never renamed, never reused.
+var theRingGoesSouthTail = RingTail("then/the-ring-goes-south-reveal", theRingGoesSouthReveal)
+
 func theRingGoesSouthReveal(ctx *Context, _ uuid.UUID) error {
 	player := ctx.Controller()
 	x := len(legendaryCreaturesYouControl(ctx.Game, player))
