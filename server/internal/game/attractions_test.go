@@ -198,14 +198,16 @@ func TestRollToVisitVisitsTheAttractionsLitForTheResult(t *testing.T) {
 	high := putAttraction(g, me.ID, "High", 4, 5, 6)
 	theirs := putAttraction(g, opp.ID, "Theirs", 1, 2, 3, 4, 5, 6)
 	before := len(g.Events)
-	var result int
 	g.WithWriteLock(func() {
-		var err error
-		if result, err = g.RollToVisitForEffect(me.ID, uuid.Nil); err != nil {
+		if err := g.RollToVisitForEffect(me.ID, uuid.Nil); err != nil {
 			t.Fatal(err)
 		}
 	})
 	rolls := attrEvents(g, before, EventRollDie)
+	result := 0
+	if len(rolls) == 1 {
+		result = rolls[0].Amount
+	}
 	if len(rolls) != 1 || rolls[0].Sides != 6 || rolls[0].Amount != result || rolls[0].Actor != me.ID {
 		t.Fatalf("die rolls %+v for result %d", rolls, result)
 	}

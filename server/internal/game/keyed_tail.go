@@ -73,6 +73,9 @@ type TailOutcome struct {
 	Tail   KeyedTail
 	IDs    []uuid.UUID
 	Amount int
+	// Rolls is a dice roll's kept results, in the order rolled (#4307,
+	// dice_roll.go): the rolls an ignored one was dropped from.
+	Rolls []int
 }
 
 // TailFunc is the body of a keyed continuation. It runs with g.mu held,
@@ -134,6 +137,23 @@ func (g *Game) runKeyedTailLocked(t KeyedTail, ids []uuid.UUID, amount int) erro
 		return nil
 	}
 	return body(g, TailOutcome{Tail: copyKeyedTail(t), IDs: copyUUIDs(ids), Amount: amount})
+}
+
+// runKeyedRollTailLocked runs a dice roll's recorded continuation, told
+// the kept rolls (#4307).
+//
+// Caller must hold g.mu.
+func (g *Game) runKeyedRollTailLocked(t KeyedTail, rolls []int) error {
+	if t.IsZero() {
+		return nil
+	}
+	tailMu.RLock()
+	body := tailBodies[t.Ref.key]
+	tailMu.RUnlock()
+	if body == nil {
+		return nil
+	}
+	return body(g, TailOutcome{Tail: copyKeyedTail(t), Amount: len(rolls), Rolls: append([]int(nil), rolls...)})
 }
 
 // Run runs the tail at once, told ids: for a caller whose event never

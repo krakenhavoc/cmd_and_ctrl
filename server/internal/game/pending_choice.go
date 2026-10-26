@@ -1275,6 +1275,13 @@ type PendingChoice struct {
 	// key riding PickThen. Set one of the two or neither.
 	libraryOrderKeyed *libraryOrderKeyed
 
+	// dice is a paused dice roll (#4307, dice_roll.go): the roll, the
+	// rolls still in play and the choosers still to answer, plain data
+	// beside the dice flow's keyed option pick. Written to a restore point
+	// (pendingChoiceSnapshot.DiceRoll). Never mutated once queued, so a
+	// clone shares it.
+	dice *diceRollPause
+
 	// midResolution says the prompt was queued while a stack item was
 	// resolving and is part of that resolution (#1289, CR 608.2 /
 	// CR 704.3): while it is open and blocks the table, the resolution
@@ -2532,6 +2539,11 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 	switch ev.Kind {
 	case RepEventDraw:
 		return ev.DrawPlayer
+	case RepEventRollDice:
+		// #4307. The player who would roll (CR 616.1). The window sets
+		// mustSettleNow, so this is never asked; the dice flow asks the
+		// roller the order of the choosers itself (dice_roll.go).
+		return ev.RollPlayer
 	case RepEventLife:
 		return ev.LifePlayer
 	case RepEventCounter:
@@ -2904,6 +2916,11 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// rotation seam has no resume), so no event of this kind ever
 		// queues a prompt, and the turn it describes is begun or
 		// skipped by popExtraTurnLocked itself.
+		return nil
+	case RepEventRollDice:
+		// #4307: unreachable. The window sets mustSettleNow, so no roll
+		// queues a CR 616 prompt; the dice flow asks its own keyed
+		// questions after the window settles (dice_roll.go).
 		return nil
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
@@ -3279,6 +3296,11 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// #2529: a cancelled extra turn is a SKIPPED one, and
 		// popExtraTurnLocked acts on that verdict itself, inline. The
 		// window never pauses, so nothing resumes into here.
+		return nil
+	case RepEventRollDice:
+		// #4307: RollDiceThenForEffect reads a cancelled roll inline (no
+		// dice, and the tail told so). The window never pauses, so
+		// nothing resumes into here.
 		return nil
 	case RepEventProduceMana:
 		// #1222: a production cannot even reach this function — it

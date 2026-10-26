@@ -2015,6 +2015,11 @@ type pendingChoiceSnapshot struct {
 	// closure continuation. PickThen says SearchPromptKey, so a binary
 	// from before it refuses the file. Additive within the version.
 	SearchPrompt *searchPromptSnapshot `json:"searchPrompt,omitempty"`
+	// DiceRoll is PendingChoice.dice (#4307, dice_roll.go): the paused
+	// dice roll a dice/... option pick belongs to. Additive within the
+	// version; its keys ride PickThen, so a binary from before it refuses
+	// the file.
+	DiceRoll *diceRollPauseSnapshot `json:"diceRoll,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -2443,6 +2448,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			if sp := snapshotSearchPrompt(c); sp != nil {
 				// #4253 slice 5: the search prompt's frame, as data.
 				pc.SearchPrompt, pc.PickThen = sp, SearchPromptKey
+			}
+			if d := c.dice; d != nil && c.Kind == PendingChoiceOptionPick {
+				// #4307: a paused dice roll.
+				pc.DiceRoll = snapshotDiceRollPause(d)
 			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
@@ -3632,6 +3641,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 			// #4253 slice 5: a search prompt's frame, its marker on PickThen.
 			g.PendingChoices[i].searchResume = restoreSearchPrompt(sp)
 			g.PendingChoices[i].PickThen = ""
+		}
+		if d := s.PendingChoices[i].DiceRoll; d != nil && s.PendingChoices[i].Kind == PendingChoiceOptionPick {
+			// #4307: a paused dice roll.
+			g.PendingChoices[i].dice = restoreDiceRollPause(d)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)

@@ -158,3 +158,16 @@ Also found and added: **Chicken Troupe**, a legal sticker card the issue did not
 ### Snapshots and the ratchet
 
 Additive within v9, recorded with `-update-shape`: `Event.Words`. `Characteristic.SourceIsPermanent` rides the last-known snapshots (`lastKnownBattlefield`, `lastKnownPermanents`), recorded with the same flag, additive and read as false when absent (a source snapshot, like `SourceManaValue`). `CastPermission` is unchanged: the sticker permission is derived. The closure ceilings do not move: every prompt is keyed (`sticker/…` unchanged, `choose-cards/last-voyage-of-the-blank-return`, `option-pick/blank-blank-rocketship-letter`, `option-pick/done-for-the-day-reward`) and the two reflexive bodies are registered (`wolf-in-blank-clothing/shrink`, `fight-the-blank-fight/fight`); all are in the effect-key ledger.
+
+## Amendment 2026-10-26 (second) — Squid Fire Knight (#4307)
+
+The sheet the first amendment left out ("Not built" above) ships, Full. Its first ability sticker gives "{T}: The next
+time target player would roll one or more dice this turn, instead they roll that many dice plus one, then you choose
+one of those rolls to ignore", through ADR 0054's amendment of the same date: a dice roll is now a replaceable event
+(`RepEventRollDice`) that can pause for the choice, every dice-rolling card's follow-up is a registered tail, and the
+ability writes a one-use `ModRollExtraDieIgnoreOne` record (`game.RollExtraDieNextTimeForEffect`) whose controller is
+the ability's. Its second gives protection from odd mana values (the quality the first amendment added). All 48
+Commander-legal sheets are catalogued; `stkSheetsNotCatalogued` is empty and the deck checker reports Squid Fire Knight
+as automated. Snapshots: `pendingChoices[].diceRoll`, additive within v9, recorded with `-update-shape`. The closure
+ceilings do not move: the two prompts are keyed (`option dice/ignore-roll`, `option dice/order-replacements`) and every
+follow-up is a ledgered tail.

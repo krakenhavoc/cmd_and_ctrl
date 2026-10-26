@@ -242,37 +242,25 @@ func finishOpen(g *Game, opened []uuid.UUID, then func(g *Game, opened []uuid.UU
 
 // RollToVisitForEffect is "roll to visit your Attractions" (CR
 // 701.52a): roll a six-sided die, then every Attraction the player
-// controls with that number lit up is visited. Returns the result. The
-// roll is an ordinary die roll (EventRollDie, the "roll" stream), then
-// EventRollToVisit, then one EventVisitAttraction per visited
-// Attraction. A player with no Attractions still rolls when an effect
-// tells them to (Line Cutter); the turn-based action asks only a player
-// who controls one (CR 717.4).
+// controls with that number lit up is visited. The roll is an ordinary
+// die roll through the one dice door (RollDiceThenForEffect, #4307), so a
+// replacement of the roll (Squid Fire Knight's sticker) applies and may
+// pause it; the visits are its registered tail (rollToVisitSettled):
+// EventRollDie, then EventRollToVisit, then one EventVisitAttraction per
+// visited Attraction. A player with no Attractions still rolls when an
+// effect tells them to (Line Cutter); the turn-based action asks only a
+// player who controls one (CR 717.4).
 //
 // Caller must hold g.mu.
-func (g *Game) RollToVisitForEffect(player, source uuid.UUID) (int, error) {
+func (g *Game) RollToVisitForEffect(player, source uuid.UUID) error {
 	p := g.playerByIDLocked(player)
 	if p == nil || p.Eliminated {
-		return 0, ErrPlayerNotFound
+		return ErrPlayerNotFound
 	}
-	rolls, err := g.RollDiceForEffect(RandomDraw{Player: player, Source: source}, AttractionDieSides, 1)
-	if err != nil || len(rolls) == 0 {
-		return 0, err
-	}
-	result := rolls[0]
-	// Collected before anything is announced: the harvester runs inside
-	// EmitEvent, so the board read is the one the roll was made on.
-	var visited []uuid.UUID
-	for _, c := range g.Battlefield.Cards {
-		if c.Controller == player && IsAttraction(c) && AttractionLit(c, result) {
-			visited = append(visited, c.InstanceID)
-		}
-	}
-	g.EmitEvent(Event{Kind: EventRollToVisit, Actor: player, Source: source, Amount: result})
-	for _, id := range visited {
-		g.EmitEvent(Event{Kind: EventVisitAttraction, Actor: player, CardID: id, Source: source, Amount: result})
-	}
-	return result, nil
+	return g.RollDiceThenForEffect(DiceRoll{
+		Player: player, Source: source, Sides: AttractionDieSides, N: 1,
+		Then: KeyedTail{Ref: rollToVisitTail, Player: player, Source: source},
+	})
 }
 
 // ControlsAttractionLocked reports whether the player controls one or
@@ -304,7 +292,7 @@ func (g *Game) rollToVisitForActiveSeatLocked() {
 	if active == nil || active.Eliminated || !g.ControlsAttractionLocked(active.ID) {
 		return
 	}
-	if _, err := g.RollToVisitForEffect(active.ID, uuid.Nil); err != nil {
+	if err := g.RollToVisitForEffect(active.ID, uuid.Nil); err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 	}
 }

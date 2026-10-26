@@ -1102,3 +1102,38 @@ form "roll n dice and ignore the lowest k".
 Berserker's Frenzy is Full: the kept d20 picks the row (1-14: `ChoosePermanents` over every board, then a block
 requirement until end of turn on each creature chosen; 15-20: a blockers-only `DeclarationControl` for the turn, ADR
 0167's second amendment). Its cast window is the cursor's (ADR 0020's #4180 amendment, point 4).
+
+## Amendment (2026-10-26): a roll is a replaceable event that can pause (#4307)
+
+**Issue:** [#4307](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4307), the last piece of ADR 0208's stickers. Checked
+against `MagicCompRules 20260925.txt`: CR 706.1, 706.6, 614.1a, 616.1.
+
+Squid Fire Knight's ability sticker says "The next time target player would roll one or more dice this turn, instead
+they roll that many dice plus one, then you choose one of those rolls to ignore." That is the hook on the roll itself
+the previous amendment left out, and its choice is a second player's, made after seeing the dice, so every card that
+reads its rolls on the next line has to be able to wait.
+
+- **One door.** `Game.RollDiceThenForEffect(DiceRoll)` (`game/dice_roll.go`) is how every card rolls: the roller, the
+  source, the kind and number of dice, the card's own "ignore the lowest", and the rest of the effect as a registered
+  tail (`KeyedTail`), told the kept rolls (`TailOutcome.Rolls`). With nothing to ask, the tail runs at once and the roll
+  behaves exactly as before. Card side, `effects.RollDice{Sides, N, IgnoreLowest, Then}` and `effects.DiceTail`.
+  `RollDiceForEffect` and `RollDiceIgnoringLowestForEffect` stay as the unreplaceable roll (the starting player's roll,
+  and the tests that pin the stream); `TestNoCardRollsAroundTheDiceDoor` keeps every catalog file off them.
+- **The window.** `RepEventRollDice` opens through the ordinary replacement pipeline before any die is rolled. Its one
+  replacement is a scoped record, `ModRollExtraDieIgnoreOne` (ADR 0041 P8): one more die, its controller appended as a
+  chooser, and the record dropped as it applies ("the next time"). The window settles inline (`mustSettleNow`): a CR
+  616.1 order among these replacements changes only the order of the choosers, and the dice flow asks the roller that
+  itself (`dice/order-replacements`), once per remaining player, before the dice are rolled.
+- **The choice.** Every die is drawn from the roll stream at once, in order. Each chooser in turn picks one of the
+  rolls still in play to ignore (`dice/ignore-roll`); then the card's own "ignore the lowest" applies to what is left;
+  then one `EventRollDie` per kept roll in one batch, then the tail. An ignored roll is never announced (CR 706.6). A
+  chooser who has left the game chooses nothing, and the die the replacement added (the last rolled) is the one
+  ignored.
+- **Restore points.** Both questions are keyed option picks, and the paused roll rides the prompt as plain data
+  (`PendingChoice.dice`, written as `pendingChoiceSnapshot.diceRoll`, additive within v9). No closure is stored, so the
+  closure census does not move.
+- **Cards converted** (each one's follow-up is now a registered tail under `dice/…`): Ancient Silver, Gold and Copper
+  Dragon, Hoarding Ogre, Component Pouch, Maddening Hex, Diviner's Portent, Berserker's Frenzy, Reckless Endeavor, and
+  the roll to visit your Attractions (`dice/roll-to-visit`, the engine's own tail, so Line Cutter, Command Performance
+  and the turn-based roll of CR 717.4 go through it). Vexing Puzzlebox's mana ability rolls through the door with no
+  tail: nothing of that ability follows the roll, so only the "whenever you roll" triggers wait for its question.

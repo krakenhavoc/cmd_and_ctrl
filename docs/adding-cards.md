@@ -552,7 +552,14 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
 
 ### Random effects (#744)
 
-Use `Game.RollDiceForEffect(RandomDraw{Player, Source}, sides, n)`,
+Roll dice with `effects.RollDice{Sides, N, IgnoreLowest, Then}`, where
+`Then` is a `DiceTail("dice/<card>-…", func(ctx, rolls) error)`: the rest
+of the effect, told the kept rolls (#4307, ADR 0054's 2026-10-26
+amendment). The roll is a replaceable event that can pause (Squid Fire
+Knight's sticker adds a die and lets its controller ignore one), so never
+read the rolls on the next line, and never call `Game.RollDiceForEffect`
+from a card: that roll is unreplaceable, and
+`TestNoCardRollsAroundTheDiceDoor` fails a catalog file that calls it. Use
 `FlipCoinsForEffect(draw, n)` for uncalled faces, and
 `ChooseAtRandomForEffect(draw, ids, k)` for selections. These consume
 keyed, persisted streams that undo rewinds; do not create a private RNG.
@@ -11941,9 +11948,9 @@ StickerSheet: &StickerSheetSpec{Abilities: []StickerAbilitySpec{
   (`stkPutOn` in `stickers_cards_test.go`).
 
 - **Ability stickers beyond a keyword** (#4307, ADR 0208's 2026-10-26
-  amendment). 47 of the 48 Commander-legal sheets are catalogued
-  (`stickers_sheets_data_test.go` lists all 48; `stkSheetsNotCatalogued` in
-  `stickers_sheets_test.go` names the one left out and why). A sheet's bundle
+  amendment). All 48 Commander-legal sheets are catalogued
+  (`stickers_sheets_data_test.go` lists them; `stkSheetsNotCatalogued` in
+  `stickers_sheets_test.go` would name one left out, and is empty). A sheet's bundle
   can carry anything a grant can (ADR 0093): `Afflict(n, name)` and
   `BattleCry(name)` are triggered rows beside `Bushido` and `Ward`; a
   `Hellbent` / `Threshold` / `Metalcraft` static is the bundle's own `Static`

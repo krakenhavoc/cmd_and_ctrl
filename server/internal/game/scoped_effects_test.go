@@ -318,6 +318,9 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
 		ModDamageCantBePrevented: true, ModDamageCantBeRedirected: true,
 		ModCantGainLife: true, ModGainNoLife: true,
+		// #4307: Squid Fire Knight's dice replacement, read by no layer.
+		// Its cases are in dice_roll_test.go and cards/effects.
+		ModRollExtraDieIgnoreOne: true,
 		// ADR 0107 §6: the next-damage shield is a replacement. Its
 		// cases are in prevent_next_from_source_test.go.
 		ModPreventNextFromSource: true,

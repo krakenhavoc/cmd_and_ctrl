@@ -6,7 +6,11 @@ import "github.com/google/uuid"
 type RandomDraw struct{ Player, Source uuid.UUID }
 
 // RollDiceForEffect rolls n natural d-sides results and emits one event per
-// die. Caller must hold g.mu.
+// die. It is the UNREPLACEABLE roll: no replacement sees it (#4307). A
+// card's instruction to roll goes through RollDiceThenForEffect
+// (dice_roll.go) instead, which a replacement of the roll can change and
+// pause; this door is the starting player's roll (opening_roll.go) and the
+// tests that pin the roll stream. Caller must hold g.mu.
 func (g *Game) RollDiceForEffect(d RandomDraw, sides, n int) ([]int, error) {
 	return g.RollDiceIgnoringLowestForEffect(d, sides, n, 0)
 }

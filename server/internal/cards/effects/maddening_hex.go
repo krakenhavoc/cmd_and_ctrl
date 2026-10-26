@@ -16,7 +16,7 @@ import (
 //
 // Curse of Opulence's attachment to a player, a Kambal-shaped cast
 // trigger, and the keyed random stream (random_effects.go): the d6 is
-// rolled through rollDice, so a "whenever you roll" card sees it, and
+// rolled through RollDice, so a "whenever you roll" card sees it, and
 // the new host is drawn from the same stream (ChooseAtRandomForEffect). The
 // damage is dealt by the Aura itself, as printed, to the player who
 // cast the spell (read off the item's triggering event, so a curse that
@@ -45,19 +45,19 @@ func init() {
 				return ok && !spell.IsCreature()
 			},
 			Key:    "Maddening Hex — roll a d6, deal that much damage to that player, then attach to another opponent at random",
-			Effect: maddeningHexRollAndMove,
+			Effect: Do(RollDice{Sides: 6, N: 1, Then: maddeningHexBurnAndMove}),
 		}},
 	})
 }
 
-// maddeningHexRollAndMove is the whole trigger: roll, burn the caster,
-// then move the Aura to a random other opponent of its controller.
-func maddeningHexRollAndMove(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	caster := item.Trigger.Event.Actor
-	results, err := rollDice(ctx, 6, 1)
-	if err != nil || len(results) == 0 {
-		return err
+// maddeningHexBurnAndMove is the rest of the trigger after the d6 (#4307:
+// a replaced roll waits for its chooser): burn the caster, then move the
+// Aura to a random other opponent of its controller.
+var maddeningHexBurnAndMove = DiceTail("dice/maddening-hex-burn-and-move", func(ctx *Context, results []int) error {
+	g, item := ctx.Game, ctx.Item
+	caster := uuid.Nil
+	if item.Trigger != nil {
+		caster = item.Trigger.Event.Actor
 	}
 	if p := g.PlayerByIDForEffect(caster); p != nil && !p.Eliminated {
 		if err := (DealDamage{Source: item.SourceCardID, Target: caster, Amount: results[0]}).Apply(ctx); err != nil {
@@ -86,4 +86,4 @@ func maddeningHexRollAndMove(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return g.AttachForEffect(item.SourceCardID, game.TargetRef{Kind: game.TargetPlayer, ID: pick[0]})
-}
+})

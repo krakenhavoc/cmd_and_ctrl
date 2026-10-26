@@ -480,6 +480,10 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// a cancelled one. Before this the continuation went out with
 		// the frame.
 		return g.abandonKeywordActionLocked(ev)
+	case RepEventRollDice:
+		// #4307: unreachable. A roll's window never pauses
+		// (mustSettleNow), so it has no prompt to drop or prune.
+		return nil
 	case RepEventMill:
 		// #569: an abandoned MILL has read no cards off the library —
 		// the plan is made after the amount settles — and the caller

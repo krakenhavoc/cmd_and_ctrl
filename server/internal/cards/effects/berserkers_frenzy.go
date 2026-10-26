@@ -16,7 +16,7 @@ import (
 //	 creatures block."
 //
 // The roll is two d20 from the keyed random stream with the lower one
-// ignored (Game.RollDiceIgnoringLowestForEffect, CR 706.6, #4174): only
+// ignored (RollDice{IgnoreLowest: 1}, CR 706.6, #4174, #4307): only
 // the higher roll exists as far as the game is concerned, so it is the
 // only die a "whenever you roll" ability sees and the only result the
 // table reads.
@@ -51,37 +51,41 @@ func init() {
 			return beforeBlockersAreDeclared(g)
 		},
 		CastConditionLabel: "Cast this spell only before combat or during combat before blockers are declared.",
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			rolls, err := rollDiceIgnoringLowest(ctx, 20, 2, 1)
-			if err != nil || len(rolls) == 0 {
-				return err
-			}
-			if rolls[0] >= 15 {
-				ctx.Game.BeginDeclarationControlForEffect(game.DeclarationControl{
-					Declarer:   item.Controller,
-					Source:     item.SourceCardID,
-					SourceName: "Berserker's Frenzy",
-					Blockers:   true,
-				})
-				return nil
-			}
-			return ChoosePermanents{
-				Question: "Berserker's Frenzy — choose any number of creatures; they block this turn if able",
-				Of:       apnapLivingSeats(ctx.Game),
-				Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
-					var out []uuid.UUID
-					for _, c := range g.BattlefieldCardsForEffect() {
-						if c.Controller == of && c.IsCreature() {
-							out = append(out, c.InstanceID)
-						}
-					}
-					return out, 0, len(out)
-				},
-				Keyed: berserkersFrenzyChosen,
-			}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return RollDice{Sides: 20, N: 2, IgnoreLowest: 1, Then: berserkersFrenzyResult}.Apply(ctx)
 		},
 	})
 }
+
+// berserkersFrenzyResult is the results table, after the roll (#4307: a
+// replaced roll waits for its chooser, and the lower of what is left is
+// ignored after that).
+var berserkersFrenzyResult = DiceTail("dice/berserkers-frenzy-result", func(ctx *Context, rolls []int) error {
+	item := ctx.Item
+	if rolls[0] >= 15 {
+		ctx.Game.BeginDeclarationControlForEffect(game.DeclarationControl{
+			Declarer:   item.Controller,
+			Source:     item.SourceCardID,
+			SourceName: "Berserker's Frenzy",
+			Blockers:   true,
+		})
+		return nil
+	}
+	return ChoosePermanents{
+		Question: "Berserker's Frenzy — choose any number of creatures; they block this turn if able",
+		Of:       apnapLivingSeats(ctx.Game),
+		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
+			var out []uuid.UUID
+			for _, c := range g.BattlefieldCardsForEffect() {
+				if c.Controller == of && c.IsCreature() {
+					out = append(out, c.InstanceID)
+				}
+			}
+			return out, 0, len(out)
+		},
+		Keyed: berserkersFrenzyChosen,
+	}.Apply(ctx)
+})
 
 // berserkersFrenzyChosen is each chosen creature blocking this turn if
 // able, keyed (#4290).

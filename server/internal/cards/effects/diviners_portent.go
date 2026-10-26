@@ -25,20 +25,26 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			x := ctx.X()
-			results, err := rollDice(ctx, 20, 1)
-			if err != nil || len(results) == 0 {
-				return err
-			}
-			total := results[0]
-			if p := ctx.Game.PlayerByIDForEffect(controller); p != nil && p.Hand != nil {
-				total += p.Hand.Size()
-			}
-			if total < 15 {
-				return DrawCards{Player: controller, N: x}.Apply(ctx)
-			}
-			return Scry{Player: controller, N: x, ThenTail: ctx.TailN(thenDrawCards, x)}.Apply(ctx)
+			return RollDice{Sides: 20, N: 1, Then: divinersPortentResult, TailN: ctx.X()}.Apply(ctx)
 		},
 	})
 }
+
+// divinersPortentResult is the results table, after the d20 (#4307: a
+// replaced roll waits for its chooser). X was read as the spell resolved
+// (the tail's N); the hand is counted as the roll settles.
+var divinersPortentResult = CardTail("dice/diviners-portent-result", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Rolls) == 0 {
+		return nil
+	}
+	controller := ctx.Controller()
+	x := o.Tail.N
+	total := o.Rolls[0]
+	if p := ctx.Game.PlayerByIDForEffect(controller); p != nil && p.Hand != nil {
+		total += p.Hand.Size()
+	}
+	if total < 15 {
+		return DrawCards{Player: controller, N: x}.Apply(ctx)
+	}
+	return Scry{Player: controller, N: x, ThenTail: ctx.TailN(thenDrawCards, x)}.Apply(ctx)
+})

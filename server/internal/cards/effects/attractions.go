@@ -70,8 +70,7 @@ func (r RollToVisitYourAttractions) Apply(ctx *Context) error {
 	if ctx.Game.PlayerByIDForEffect(player) == nil {
 		return nil
 	}
-	_, err := ctx.Game.RollToVisitForEffect(player, ctx.Source())
-	return err
+	return ctx.Game.RollToVisitForEffect(player, ctx.Source())
 }
 
 // thisAttractionVisited is the trigger condition of a visit ability (CR

@@ -1103,6 +1103,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModMultiplyDamage: {reader: readerReplacement},
 	// ADR 0108 §9 (#1905): damage dealt to something else instead.
 	ModRedirectDamage: {reader: readerReplacement},
+	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a
+	// chooser for the roll to ignore.
+	ModRollExtraDieIgnoreOne: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},

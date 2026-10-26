@@ -271,6 +271,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownOptionPickThen(c.PickThen) {
 				unknown = append(unknown, "option pick continuation "+c.PickThen)
 			}
+			if c.DiceRoll != nil {
+				// #4307: a paused dice roll's keyed "then".
+				unknown = append(unknown, unknownKeyedTail(c.DiceRoll.Then)...)
+			}
 		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick:
 			// #2040: a keyed choose_cards pick's continuation. #4250: a
 			// resolution_cast's "after the casts" is one too. #4264: and a
