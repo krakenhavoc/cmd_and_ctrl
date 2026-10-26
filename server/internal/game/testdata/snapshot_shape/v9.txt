@@ -6342,6 +6342,8 @@ pendingChoices[].pickTail.asked.trigger.Event.unpaid	bool
 pendingChoices[].pickTail.asked.trigger.Event.vote_options	array
 pendingChoices[].pickTail.asked.trigger.Event.vote_options[]	string
 pendingChoices[].pickTail.asked.trigger.Event.won	bool
+pendingChoices[].pickTail.asked.trigger.Event.words	array
+pendingChoices[].pickTail.asked.trigger.Event.words[]	string
 pendingChoices[].pickTail.asked.trigger.Object	object
 pendingChoices[].pickTail.asked.trigger.Object.AltCost	string
 pendingChoices[].pickTail.asked.trigger.Object.AltCostObjects	array
