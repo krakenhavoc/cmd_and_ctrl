@@ -94,7 +94,7 @@ func cloudstoneReturnAnother(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, 1
 		},
-		Then: bouncePickedToHand,
+		Keyed: bouncedChosen,
 	}.Apply(ctx)
 }
 

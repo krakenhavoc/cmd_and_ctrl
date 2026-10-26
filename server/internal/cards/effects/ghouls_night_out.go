@@ -58,17 +58,22 @@ func init() {
 			if len(legs) == 0 {
 				return nil
 			}
-			_, err := ctx.Game.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-				return ReturnFromGraveyardTogether{
-					Targets:    picks.Cards(),
-					Controller: item.Controller,
-					Then:       ghoulsNightOutRiders,
-				}.Apply(NewContext(g, item))
-			})
+			// Keyed (#4290): the item rides the run as data.
+			_, err := ctx.Game.ChooseCardsRunThenKeyedForEffect(legs, ghoulsNightOutReturned, item.SourceCardID, ctx.RunData(nil))
 			return err
 		},
 	})
 }
+
+// ghoulsNightOutReturned returns the chosen creature cards together once
+// every pick is made, keyed (#4290).
+var ghoulsNightOutReturned = RunThen("prompt-run/ghouls-night-out-return", func(ctx *Context, r game.RunDone) error {
+	return ReturnFromGraveyardTogether{
+		Targets:    r.Picks().Cards(),
+		Controller: ctx.Controller(),
+		Then:       ghoulsNightOutRiders,
+	}.Apply(ctx)
+})
 
 // ghoulsNightOutRiders makes each returned creature a black Zombie in
 // addition to its other colours and types, with decayed, for as long as

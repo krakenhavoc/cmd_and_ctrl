@@ -31,14 +31,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power", func(g *game.Game, item *game.StackItem) error {
-				return maySacrificeOne(g, item, "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?", Creature(), true,
-					func(ctx *Context, sacrificed uuid.UUID) error {
-						// The draw waits for a prompt the life gain asks
-						// (#4162, CR 608.2c).
-						ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(ctx.Game, sacrificed))
-						return gainThenDrawSacrificedPower.Run(ctx)
-					})
+				return maySacrificeOne(g, item, "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?", Creature(), true, discipleOfFreyalisePayout)
 			}),
 		},
 	})
 }
+
+// discipleOfFreyalisePayout is the life gain and the draw once the creature
+// has really gone, keyed (#4290).
+var discipleOfFreyalisePayout = RegisterSacrificedOne("prompt-run/disciple-of-freyalise-payout", func(ctx *Context, sacrificed uuid.UUID) error {
+	// The draw waits for a prompt the life gain asks (#4162, CR 608.2c).
+	ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(ctx.Game, sacrificed))
+	return gainThenDrawSacrificedPower.Run(ctx)
+})

@@ -27,7 +27,11 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return keepCreaturesThenSacrificeTheRest(ctx.Game, item, apnapPlayers(ctx.Game),
 				"Slaughter the Strong — choose any number of creatures with total power 4 or less to keep; the rest are sacrificed",
-				0, totalPowerAtMost(4))
+				0, slaughterKeep)
 		},
 	})
 }
+
+// slaughterKeep is the keyed rest of the card (#4290): the set rule is
+// total power 4 or less, registered with the leg.
+var slaughterKeep = newKeepRun("prompt-run/slaughter-the-strong-keep", "choose-cards/slaughter-the-strong-keep-leg", totalPowerAtMost(4))

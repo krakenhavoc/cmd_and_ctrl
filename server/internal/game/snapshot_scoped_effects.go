@@ -326,6 +326,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}
+		// #4290: a keyed ordered collection names its continuation.
+		unknown = append(unknown, unknownOrderedPicksKeys(c.Ordered)...)
 		// #4294: a tokens-attacking split's tail is a registered key too.
 		if c.AttackSplit != nil {
 			unknown = append(unknown, unknownKeyedTail(c.AttackSplit.Tail)...)

@@ -35,12 +35,18 @@ func init() {
 			return ChoosePermanents{
 				Question:   "Scapeshift — sacrifice any number of lands",
 				Candidates: scapeshiftLands,
-				Sacrifice:  true,
-				Then:       scapeshiftFetch,
+				Keyed:      scapeshiftChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// scapeshiftChosen is the chosen lands sacrificed and the search for that
+// many, keyed (#4290).
+var scapeshiftChosen = RegisterPermanentsPick("prompt-run/scapeshift-sacrifice", PermanentsDef{
+	Sacrifice: true,
+	Then:      scapeshiftFetch,
+})
 
 // scapeshiftLands is every land the chooser controls, with a floor of
 // zero and no ceiling but the board — "any number".

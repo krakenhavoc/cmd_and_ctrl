@@ -335,15 +335,18 @@ const b29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another
 // Nothing follows when nothing was sacrificed: "when you do" is
 // conditional on the doing.
 func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?", Creature(), true,
-		func(ctx *Context, sacrificed uuid.UUID) error {
-			return ReflexiveTrigger{
-				Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
-				Cards: []uuid.UUID{sacrificed},
-				Body:  ziatoraFlingBody,
-			}.Apply(ctx)
-		})
+	return maySacrificeOne(g, item, "Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?", Creature(), true, ziatoraSacrificed)
 }
+
+// ziatoraSacrificed raises the reflexive trigger once the creature has
+// really gone, keyed (#4290).
+var ziatoraSacrificed = RegisterSacrificedOne("prompt-run/ziatora-the-incinerator-sacrifice", func(ctx *Context, sacrificed uuid.UUID) error {
+	return ReflexiveTrigger{
+		Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
+		Cards: []uuid.UUID{sacrificed},
+		Body:  ziatoraFlingBody,
+	}.Apply(ctx)
+})
 
 // b29ZiatoraFling is Ziatora's reflexive body: damage equal to the
 // power of the creature this trigger carries, as it last stood, to
@@ -370,14 +373,17 @@ func b29ZiatoraFling(g *game.Game, item *game.StackItem) error {
 // and the counter follows only a token that really went, and only while
 // the Chitterspitter is still in play.
 func b29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error {
-	return maySacrificeOne(g, item, "Chitterspitter — sacrifice a token to put an acorn counter on it?", IsTokenPredicate(), false,
-		func(ctx *Context, _ uuid.UUID) error {
-			if !onBattlefield(ctx.Game, item.SourceCardID) {
-				return nil
-			}
-			return AddCounter{Target: item.SourceCardID, Kind: "acorn", N: 1}.Apply(ctx)
-		})
+	return maySacrificeOne(g, item, "Chitterspitter — sacrifice a token to put an acorn counter on it?", IsTokenPredicate(), false, chitterspitterAcorn)
 }
+
+// chitterspitterAcorn is the acorn counter once a token has really gone,
+// keyed (#4290): only while the Chitterspitter is still in play.
+var chitterspitterAcorn = RegisterSacrificedOne("prompt-run/chitterspitter-acorn", func(ctx *Context, _ uuid.UUID) error {
+	if !onBattlefield(ctx.Game, ctx.Source()) {
+		return nil
+	}
+	return AddCounter{Target: ctx.Source(), Kind: "acorn", N: 1}.Apply(ctx)
+})
 
 // b29FoodForSacrificedCreature is Witch's Oven's activation: one
 // Food, or two if the creature sacrificed to pay had toughness 4 or
@@ -403,7 +409,7 @@ func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 // the run's continuation is what makes it the printed one. A target
 // with no creature is never asked and the Wizard still comes, which
 // is the continuation running with nothing sacrificed.
-func b29TargetOpponentSacrificesACreatureThenWizard(item *game.StackItem, ctx *Context) error {
+func b29TargetOpponentSacrificesACreatureThenWizard(_ *game.StackItem, ctx *Context) error {
 	var victims []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind == game.TargetPlayer {
@@ -411,14 +417,17 @@ func b29TargetOpponentSacrificesACreatureThenWizard(item *game.StackItem, ctx *C
 			break
 		}
 	}
-	return ctx.Game.PlayersSacrificeThenForEffect(item.SourceCardID, victims,
+	return ctx.PlayersSacrificeThen(victims,
 		sacrificeSpec("a creature", Creature()),
 		"Cornered by Black Mages — sacrifice a creature",
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return CreateToken{Controller: item.Controller, Template: NoncreatureCastWizardToken(), N: 1}.
-				Apply(NewContext(g, item))
-		})
+		corneredByBlackMagesWizard, ctx.RunData(nil))
 }
+
+// corneredByBlackMagesWizard is the Wizard once the sacrifice has landed,
+// keyed (#4290).
+var corneredByBlackMagesWizard = RunThen("prompt-run/cornered-by-black-mages-wizard", func(ctx *Context, _ game.RunDone) error {
+	return CreateToken{Controller: ctx.Controller(), Template: NoncreatureCastWizardToken(), N: 1}.Apply(ctx)
+})
 
 // b29TapAllCreaturesControlledBy taps every untapped creature
 // `player` controls — Naya Charm's third mode. Snapshot then tap, so

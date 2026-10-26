@@ -455,6 +455,18 @@ func init() {
 	tombSandfallThen = OptionPickThen("option-pick/tomb-of-annihilation-sandfall-cell", func(ctx *Context, r game.OptionPicked) error {
 		return tombUnlessAnswered(ctx, tombSandfall, r)
 	})
+	tombSandfallSacrificed = RunThen("prompt-run/tomb-of-annihilation-sandfall-sacrificed", func(ctx *Context, r game.RunDone) error {
+		return tombUnlessStep(ctx, tombSandfall, r.Carry)
+	})
+	oublietteSacrificed[0] = RunThen("prompt-run/tomb-of-annihilation-oubliette-creature", func(ctx *Context, _ game.RunDone) error {
+		return oublietteSacrifice(ctx, 1)
+	})
+	oublietteSacrificed[1] = RunThen("prompt-run/tomb-of-annihilation-oubliette-artifact", func(ctx *Context, _ game.RunDone) error {
+		return oublietteSacrifice(ctx, 2)
+	})
+	oublietteSacrificed[2] = RunThen("prompt-run/tomb-of-annihilation-oubliette-land", func(ctx *Context, _ game.RunDone) error {
+		return oublietteSacrifice(ctx, 3)
+	})
 }
 
 // tombVeilsDiscarded is the next player's question once the discard
@@ -471,8 +483,6 @@ var tombVeilsDiscarded = game.RegisterDiscardThen("choose-cards/tomb-of-annihila
 // degrades to the life loss.
 func tombUnlessAnswered(ctx *Context, kind tombUnless, r game.OptionPicked) error {
 	victim, rest := r.Chooser, append([]uuid.UUID(nil), r.Carry...)
-	item := ctx.Item
-	next := func(g *game.Game) error { return tombUnlessStep(NewContext(g, item), kind, rest) }
 	if r.Index == 1 {
 		switch kind {
 		case tombVeils:
@@ -488,9 +498,11 @@ func tombUnlessAnswered(ctx *Context, kind tombUnless, r game.OptionPicked) erro
 			}
 		default:
 			if len(ctx.Game.EffectSacrificeCandidatesForEffect(victim, tombSandfallSpec())) > 0 {
-				return ctx.Game.PlayerSacrificesThenForEffect(ctx.Source(), victim, tombSandfallSpec(),
+				// Keyed (#4290): the players still to be asked ride the run
+				// as its carry.
+				return ctx.SacrificeThen(victim, tombSandfallSpec(),
 					"Tomb of Annihilation — Sandfall Cell: sacrifice a creature, artifact, or land", 1,
-					func(g *game.Game, _ game.PromptedSacrifices) error { return next(g) })
+					tombSandfallSacrificed, rest...)
 			}
 		}
 	}
@@ -499,8 +511,14 @@ func tombUnlessAnswered(ctx *Context, kind tombUnless, r game.OptionPicked) erro
 			return err
 		}
 	}
-	return next(ctx.Game)
+	return tombUnlessStep(ctx, kind, rest)
 }
+
+// tombSandfallSacrificed is the next player's question once a Sandfall Cell
+// sacrifice has landed, keyed (#4290): Carry is the players still to be
+// asked. Registered in init, like the option answers, because it asks the
+// next player, which names the key again.
+var tombSandfallSacrificed game.PromptRunThen
 
 // tombOubliette: discard a card and sacrifice a creature, an artifact,
 // and a land. One permanent fills one of the three: the sacrifices are
@@ -519,7 +537,7 @@ func tombOubliette(g *game.Game, item *game.StackItem) error {
 			Question: "Tomb of Annihilation — Oubliette: discard a card",
 		})
 	}
-	return oublietteSacrifice(g, ctx.Source(), you, 0)
+	return oublietteSacrifice(ctx, 0)
 }
 
 // oublietteSacrifices are Oubliette's three sacrifices, in the order
@@ -533,16 +551,18 @@ var oublietteSacrifices = []struct {
 	{"a land", Land},
 }
 
+// oublietteSacrificed is the keyed step after each of the three
+// sacrifices (#4290): the run's continuation asks the next one. Registered
+// in init because each asks the next, which names the keys again.
+var oublietteSacrificed [3]game.PromptRunThen
+
 // oublietteSacrifice asks for Oubliette's i-th sacrifice and, once it
 // has settled, the next.
-func oublietteSacrifice(g *game.Game, source, you uuid.UUID, i int) error {
+func oublietteSacrifice(ctx *Context, i int) error {
 	if i >= len(oublietteSacrifices) {
 		return nil
 	}
 	s := oublietteSacrifices[i]
-	return g.PlayerSacrificesThenForEffect(source, you, TargetPermanent(s.label, s.pred()),
-		"Tomb of Annihilation — Oubliette: sacrifice "+s.label, 1,
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return oublietteSacrifice(g, source, you, i+1)
-		})
+	return ctx.SacrificeThen(ctx.Controller(), TargetPermanent(s.label, s.pred()),
+		"Tomb of Annihilation — Oubliette: sacrifice "+s.label, 1, oublietteSacrificed[i])
 }

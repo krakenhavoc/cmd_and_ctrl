@@ -77,25 +77,31 @@ func init() {
 					}
 					return out, 0, len(out)
 				},
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					for _, id := range picked.Cards() {
-						if !onBattlefield(ctx.Game, id) {
-							continue
-						}
-						if err := (BlockRequirementUntilEOT{
-							Target: id,
-							Kind:   game.BlockRequirementBlocks,
-							Label:  "Berserker's Frenzy — blocks this turn if able",
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
+				Keyed: berserkersFrenzyChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// berserkersFrenzyChosen is each chosen creature blocking this turn if
+// able, keyed (#4290).
+var berserkersFrenzyChosen = RegisterPermanentsPick("prompt-run/berserkers-frenzy-block", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if !onBattlefield(ctx.Game, id) {
+				continue
+			}
+			if err := (BlockRequirementUntilEOT{
+				Target: id,
+				Kind:   game.BlockRequirementBlocks,
+				Label:  "Berserker's Frenzy — blocks this turn if able",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})
 
 // beforeBlockersAreDeclared is Berserker's Frenzy's cast window, "before
 // combat or during combat before blockers are declared" (CR 506.8b: before

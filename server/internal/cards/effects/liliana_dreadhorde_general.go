@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -125,18 +128,14 @@ func lilianaEachPlayerSacrificesTwo(g *game.Game, item *game.StackItem) error {
 			Destination: game.ChooseSacrifice,
 		})
 	}
-	return g.ChoosePermanentsInOrderThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-		chosen := picks.Cards()
-		if len(chosen) == 0 {
-			return nil
-		}
-		return g.SacrificeAllThenForEffect(source, chosen, nil)
-	})
+	// The collection is plain data (#4290, ADR 0175), so a table waiting on
+	// a seat's choice is a restore point.
+	return g.ChoosePermanentsInOrderSacrificeForEffect(source, legs)
 }
 
 func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error {
 	var legs []game.ChooseCardsPrompt
-	asked := map[uuid.UUID]bool{}
+	var asked []uuid.UUID
 	for _, seat := range opponentsInTurnOrder(g, item.Controller) {
 		if !g.CanEffectCauseSacrificeForEffect(seat) {
 			continue
@@ -156,7 +155,7 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 		if valid(cards) {
 			continue
 		}
-		asked[seat] = true
+		asked = append(asked, seat)
 		legs = append(legs, game.ChooseCardsPrompt{
 			Chooser:    seat,
 			FromPlayer: seat,
@@ -166,35 +165,72 @@ func lilianaOpponentsKeepOneOfEachType(g *game.Game, item *game.StackItem) error
 			Min:        1,
 			Max:        len(present),
 			Zone:       game.ZoneBattlefield,
-			Validate:   valid,
+			ThenKey:    lilianaKeepLegs[permanentTypeMask(present)],
 		})
 	}
 	if len(legs) == 0 {
 		return nil
 	}
-	source := item.SourceCardID
-	return g.ChoosePermanentsInOrderThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-		kept := map[uuid.UUID]bool{}
-		for _, id := range picks.Cards() {
-			kept[id] = true
-		}
-		var rest []uuid.UUID
-		for _, seat := range opponentsInTurnOrder(g, item.Controller) {
-			if !asked[seat] {
-				continue
-			}
-			for _, id := range permanentsControlledByMatching(g, seat, nil) {
-				if !kept[id] {
-					rest = append(rest, id)
-				}
-			}
-		}
-		if len(rest) == 0 {
-			return nil
-		}
-		return g.SacrificeAllThenForEffect(source, rest, nil)
-	})
+	// Keyed (#4290, ADR 0175): the seats asked ride the run as its carry,
+	// and each leg's set rule is registered for the types its board has.
+	return g.ChoosePermanentsInOrderKeyedForEffect(legs, lilianaKeepRest, item.SourceCardID, game.RunData{Carry: asked})
 }
+
+// lilianaKeepRest is "the rest are sacrificed": everything the asked
+// seats control that they did not keep, as one simultaneous exit, keyed
+// (#4290). Carry is the seats asked, in turn order.
+var lilianaKeepRest = game.RegisterPromptRunThen("prompt-run/liliana-dreadhorde-general-keep", func(g *game.Game, r game.RunDone) error {
+	kept := map[uuid.UUID]bool{}
+	for _, id := range r.Picks().Cards() {
+		kept[id] = true
+	}
+	var rest []uuid.UUID
+	for _, seat := range r.Carry {
+		for _, id := range permanentsControlledByMatching(g, seat, nil) {
+			if !kept[id] {
+				rest = append(rest, id)
+			}
+		}
+	}
+	if len(rest) == 0 {
+		return nil
+	}
+	return g.SacrificeAllThenForEffect(r.Source, rest, nil)
+})
+
+// permanentTypeMask is a set of permanent types as a bit set over
+// permanentTypeNames.
+func permanentTypeMask(types []string) int {
+	mask := 0
+	for i, name := range permanentTypeNames {
+		if slices.Contains(types, name) {
+			mask |= 1 << i
+		}
+	}
+	return mask
+}
+
+// lilianaKeepLegs are the −9's per-seat set rules, one for each set of
+// permanent types a board can have (the rule depends on them, and a
+// registered rule is a function of the picked cards alone): every type in
+// the set is covered by a kept permanent, each kept for a different type.
+// Registered under keys named for the types ("…-keep-artifact-creature"),
+// which are on-disk identities: never renamed, never reused.
+var lilianaKeepLegs = func() (legs [1 << 6]game.ChooseCardsThen) {
+	// permanentTypeNames has the six permanent types (CR 110.4a).
+	for mask := 1; mask < 1<<len(permanentTypeNames); mask++ {
+		var present []string
+		for i, name := range permanentTypeNames {
+			if mask&(1<<i) != 0 {
+				present = append(present, name)
+			}
+		}
+		legs[mask] = game.RegisterOrderedPickLegRule(
+			"choose-cards/liliana-dreadhorde-general-keep-"+strings.Join(present, "-"),
+			lilianaKeepsOneOfEachType(present))
+	}
+	return legs
+}()
 
 // permanentTypeNames are the permanent types (CR 110.4a), lowercase.
 var permanentTypeNames = []string{"artifact", "battle", "creature", "enchantment", "land", "planeswalker"}

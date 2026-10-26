@@ -45,10 +45,10 @@ func init() {
 				if len(losers) == 0 {
 					return nil
 				}
-				return g.PlayersSacrificeThenForEffect(item.SourceCardID, losers,
+				g.PlayersSacrificeForEffect(item.SourceCardID, losers,
 					sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
-					"Papalymo Totolymo — sacrifice a creature with the greatest power",
-					func(*game.Game, game.PromptedSacrifices) error { return nil })
+					"Papalymo Totolymo — sacrifice a creature with the greatest power")
+				return nil
 			},
 		}},
 	})

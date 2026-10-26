@@ -193,6 +193,22 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 	return seats
 }
 
+// PlayersSacrificeForEffect is "each of these players sacrifices N
+// permanents of their choice" with nothing waiting on the answer: the seats
+// are asked once each for min(owed, candidates) (a name listed N times owes
+// N), one at a time in APNAP order, each seeing the earlier choices, and
+// then everything chosen is sacrificed together (EachPlayerSacrificesForEffect
+// is this with the seats worked out). Returns how many seats will be asked.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayersSacrificeForEffect(source uuid.UUID, players []uuid.UUID, spec *TargetSpec, reason string) int {
+	asked, err := g.sacrificeTogetherLocked(source, players, spec, reason, nil)
+	if err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
+	}
+	return asked
+}
+
 // PlayerSacrificesForEffect queues ONE sacrifice prompt, for one
 // player — "sacrifice another permanent" (Korvold), "sacrifice a
 // creature" as the rider on a resolving effect rather than as a

@@ -53,19 +53,25 @@ func ascentOfTheWorthyRedirect(g *game.Game, item *game.StackItem) error {
 	return ChoosePermanents{
 		Question:   "Ascent of the Worthy — choose a creature you control",
 		Candidates: humiliateCreatures,
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			cards := picked.Cards()
-			if len(cards) != 1 {
-				return nil
-			}
-			return RedirectDamage{
-				Protect:           ShieldCreaturesYouControl,
-				To:                RedirectToObject(cards[0]),
-				UntilYourNextTurn: true,
-			}.Apply(ctx)
-		},
+		Keyed:      ascentOfTheWorthyChosen,
 	}.Apply(NewContext(g, item))
 }
+
+// ascentOfTheWorthyChosen is the chosen creature taking the redirected
+// damage, keyed (#4290).
+var ascentOfTheWorthyChosen = RegisterPermanentsPick("prompt-run/ascent-of-the-worthy-redirect", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		cards := picked.Cards()
+		if len(cards) != 1 {
+			return nil
+		}
+		return RedirectDamage{
+			Protect:           ShieldCreaturesYouControl,
+			To:                RedirectToObject(cards[0]),
+			UntilYourNextTurn: true,
+		}.Apply(ctx)
+	},
+})
 
 func ascentOfTheWorthyReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

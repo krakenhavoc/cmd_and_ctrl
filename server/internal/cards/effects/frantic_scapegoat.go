@@ -78,13 +78,19 @@ func franticScapegoatPassTheBlame(g *game.Game, item *game.StackItem) error {
 		Candidates: func(*game.Game, uuid.UUID) ([]uuid.UUID, int, int) {
 			return offer, 0, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if ctx.Game.SuspectForEffect(id) {
-					ctx.Game.UnsuspectForEffect(goat)
-				}
-			}
-			return nil
-		},
+		Keyed: franticScapegoatChosen,
 	}.Apply(ctx)
 }
+
+// franticScapegoatChosen is suspecting the chosen creature and, if that
+// worked, no longer the Goat, keyed (#4290); the Goat is the run's source.
+var franticScapegoatChosen = RegisterPermanentsPick("prompt-run/frantic-scapegoat-suspect", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if ctx.Game.SuspectForEffect(id) {
+				ctx.Game.UnsuspectForEffect(ctx.Source())
+			}
+		}
+		return nil
+	},
+})

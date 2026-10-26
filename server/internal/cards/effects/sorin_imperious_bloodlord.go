@@ -96,12 +96,15 @@ func sorinImperiousGrant(g *game.Game, item *game.StackItem) error {
 // then the reflexive strike for a Vampire that really went.
 func sorinImperiousMaySacrifice(g *game.Game, item *game.StackItem) error {
 	return maySacrificeOne(g, item, "Sorin, Imperious Bloodlord — sacrifice a Vampire to deal 3 damage to any target and gain 3 life?",
-		HasSubtype("Vampire"), false,
-		func(ctx *Context, _ uuid.UUID) error {
-			return WhenYouDo("Sorin, Imperious Bloodlord — 3 damage to any target and gain 3 life",
-				sorinImperiousStrikeBody).Apply(ctx)
-		})
+		HasSubtype("Vampire"), false, sorinImperiousSacrificed)
 }
+
+// sorinImperiousSacrificed is the reflexive strike once a Vampire has
+// really gone, keyed (#4290).
+var sorinImperiousSacrificed = RegisterSacrificedOne("prompt-run/sorin-imperious-bloodlord-sacrifice", func(ctx *Context, _ uuid.UUID) error {
+	return WhenYouDo("Sorin, Imperious Bloodlord — 3 damage to any target and gain 3 life",
+		sorinImperiousStrikeBody).Apply(ctx)
+})
 
 // sorinImperiousStrike is the reflexive trigger's body: Sorin deals 3
 // damage to the target chosen as it went on the stack, if still legal,

@@ -63,10 +63,9 @@ func init() {
 func bontuSacrificeThenDraw(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	self := item.SourceCardID
-	controller := item.Controller
 	return ChoosePermanents{
-		Question:  "God-Eternal Bontu — sacrifice any number of other permanents",
-		Sacrifice: true,
+		Question: "God-Eternal Bontu — sacrifice any number of other permanents",
+		Keyed:    bontuSacrificed,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
 			for _, c := range g.BattlefieldCardsForEffect() {
@@ -76,6 +75,14 @@ func bontuSacrificeThenDraw(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, 0 // "any number" — 0 min, uncapped max
 		},
-		Then: drawOnePerPicked(controller),
 	}.Apply(ctx)
 }
+
+// bontuSacrificed is the chosen permanents sacrificed and a card drawn for
+// each that really left, keyed (#4290).
+var bontuSacrificed = RegisterPermanentsPick("prompt-run/god-eternal-bontu-sacrifice", PermanentsDef{
+	Sacrifice: true,
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		return drawOnePerPicked(ctx.Controller())(ctx, picked)
+	},
+})

@@ -40,8 +40,11 @@ func init() {
 					victim = item.Trigger.Event.Actor
 				}
 				return keepCreaturesThenSacrificeTheRest(g, item, []uuid.UUID{victim},
-					"Archfiend of Depravity — choose up to two creatures to keep; the rest are sacrificed", 2, nil)
+					"Archfiend of Depravity — choose up to two creatures to keep; the rest are sacrificed", 2, archfiendKeep)
 			},
 		}},
 	})
 }
+
+// archfiendKeep is the keyed rest of the card (#4290): no set rule.
+var archfiendKeep = newKeepRun("prompt-run/archfiend-of-depravity-keep", "", nil)

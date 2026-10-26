@@ -319,23 +319,31 @@ func b33GainLifeThenDraw(life, draw int) func(g *game.Game, item *game.StackItem
 // to hang it on, which put a land-count trigger and a landfall watcher
 // in the wrong order relative to each other.
 func b33SacrificeLandsThenSearchBasicsTapped(item *game.StackItem, ctx *Context, lands, n int) error {
-	return ctx.Game.PlayerSacrificesThenForEffect(
+	// Keyed (#4290): the number of basics rides the run as a number.
+	return ctx.Game.PlayerSacrificesThenKeyedDataForEffect(
 		item.SourceCardID, item.Controller,
 		sacrificeSpec("a land", Land()),
 		"Planar Engineering — sacrifice a land",
-		lands,
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return SearchLibrary{
-				Player:        item.Controller,
-				Predicate:     b30IsBasicLandCard,
-				Dest:          game.ZoneBattlefield,
-				Limit:         n,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
-			}.Apply(NewContext(g, item))
-		})
+		lands, planarEngineeringSearch, ctx.RunData(nil, n))
 }
+
+// planarEngineeringSearch is "search your library for up to four basic land
+// cards, put them onto the battlefield tapped, then shuffle" once the lands
+// have gone, keyed (#4290). Nums[0] is how many.
+var planarEngineeringSearch = RunThen("prompt-run/planar-engineering-search", func(ctx *Context, r game.RunDone) error {
+	if len(r.Nums) == 0 {
+		return nil
+	}
+	return SearchLibrary{
+		Player:        ctx.Controller(),
+		Predicate:     b30IsBasicLandCard,
+		Dest:          game.ZoneBattlefield,
+		Limit:         r.Nums[0],
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Reason:        "Planar Engineering — choose up to four basic land cards to put onto the battlefield tapped",
+	}.Apply(ctx)
+})
 
 // b33DoubleUnspentMana is Doubling Cube's ProducedFunc: one slot of
 // the same colour for every token in the controller's pool, read

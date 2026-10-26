@@ -148,6 +148,13 @@ type TakeFromLibraryToHand struct {
 	// runs with g.mu held, may queue further prompts, and must capture
 	// only scalars.
 	Then func(g *game.Game, res TakeFromLibraryResult) error
+
+	// Key is the take as a REGISTERED definition (RegisterTake,
+	// take_keyed.go, #4290): its reveal, set rule and Then live in the
+	// registration, so the prompt holds no closure and a table waiting on
+	// the pick is a restore point. With it Slots, Validate, Reveal and
+	// Then must be unset.
+	Key TakeThen
 }
 
 // TakeFromLibraryResult is what Then is told about the take.
@@ -173,6 +180,9 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	source := ctx.Source()
+	if p.Key.key != "" {
+		return p.applyKeyed(ctx, player, source)
+	}
 	finish := p.finisher(source, player)
 	prompt, answer := p.ask(ctx.Game, player, source)
 	if prompt == nil {
@@ -255,44 +265,53 @@ func (p TakeFromLibraryToHand) finisher(source, player uuid.UUID) func(g *game.G
 	reveal, label := p.Reveal, p.Label
 
 	return func(g *game.Game, picked []uuid.UUID) error {
-		reported := false
-		report := func(g *game.Game, taken []uuid.UUID) error {
-			reported = true
-			if then == nil {
-				return nil
-			}
-			return then(g, TakeFromLibraryResult{
-				Source: source,
-				Player: player,
-				Taken:  taken,
-				Rest:   cardsStillInALibrary(g, cards),
-			})
-		}
-		if len(picked) == 0 {
-			return report(g, nil)
-		}
-		if reveal {
-			revealTaken(g, player, source, label, picked)
-		}
-		moveErr := g.TakeFromLibraryToHandThenForEffect(player, picked, report)
-		if moveErr != nil && !reported {
-			// A leg failed and the route returned before reaching its
-			// continuation, so "the rest" has not been dealt with.
-			// Run it anyway: the looked-at cards must not be left on
-			// TOP of the library — with the looker still a knower of
-			// them — because one card of the batch failed. This is the
-			// rule put_from_library.go states and keeps, and the doc
-			// above promises.
-			//
-			// Taken is empty rather than partial: the route reports
-			// what landed only through the continuation it did not
-			// reach. Rest is read off the live board, so it is right
-			// either way, which is what the rest leg actually needs.
-			thenErr := report(g, nil)
-			_ = thenErr // the move's error is the one worth returning
-		}
-		return moveErr
+		return finishTake(g, source, player, cards, reveal, label, then, picked)
 	}
+}
+
+// finishTake is the finisher's body, shared with the keyed take
+// (take_keyed.go): `cards` are the looked-at cards, `picked` what the
+// player took.
+func finishTake(g *game.Game, source, player uuid.UUID, cards []uuid.UUID, reveal bool, label string,
+	then func(g *game.Game, res TakeFromLibraryResult) error, picked []uuid.UUID,
+) error {
+	reported := false
+	report := func(g *game.Game, taken []uuid.UUID) error {
+		reported = true
+		if then == nil {
+			return nil
+		}
+		return then(g, TakeFromLibraryResult{
+			Source: source,
+			Player: player,
+			Taken:  taken,
+			Rest:   cardsStillInALibrary(g, cards),
+		})
+	}
+	if len(picked) == 0 {
+		return report(g, nil)
+	}
+	if reveal {
+		revealTaken(g, player, source, label, picked)
+	}
+	moveErr := g.TakeFromLibraryToHandThenForEffect(player, picked, report)
+	if moveErr != nil && !reported {
+		// A leg failed and the route returned before reaching its
+		// continuation, so "the rest" has not been dealt with.
+		// Run it anyway: the looked-at cards must not be left on
+		// TOP of the library — with the looker still a knower of
+		// them — because one card of the batch failed. This is the
+		// rule put_from_library.go states and keeps, and the doc
+		// above promises.
+		//
+		// Taken is empty rather than partial: the route reports
+		// what landed only through the continuation it did not
+		// reach. Rest is read off the live board, so it is right
+		// either way, which is what the rest leg actually needs.
+		thenErr := report(g, nil)
+		_ = thenErr // the move's error is the one worth returning
+	}
+	return moveErr
 }
 
 // revealTaken makes the TAKEN cards public while they are still in the
@@ -621,9 +640,20 @@ type EachPlayerTakesFromLibrary struct {
 	// It runs with g.mu held, may queue further prompts, and must
 	// capture only scalars.
 	Then func(g *game.Game, res []TakeFromLibraryResult) error
+
+	// Keyed is the whole fan-out as a REGISTERED definition
+	// (RegisterEachTake, take_keyed.go, #4290): every player's reveal, set
+	// rule and Then, and the rest of the card, live in the registration,
+	// so no prompt holds a closure and a table waiting on any player's
+	// pick is a restore point. With it Take.Slots, Take.Validate,
+	// Take.Reveal, Take.Then and Then must be unset.
+	Keyed EachTakeThen
 }
 
 func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
+	if e.Keyed.run.Valid() {
+		return e.applyKeyed(ctx)
+	}
 	g := ctx.Game
 	source := ctx.Source()
 	players := e.Players

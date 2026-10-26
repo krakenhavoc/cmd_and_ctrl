@@ -144,21 +144,29 @@ func b09ArchonOfCrueltyTrigger(g *game.Game, item *game.StackItem) error {
 	if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
 		return nil
 	}
-	source := item.SourceCardID
-	return g.PlayerSacrificesThenForEffect(source, victim,
+	// Keyed (#4290): the victim and the controller ride the run as its carry.
+	return g.PlayerSacrificesThenKeyedForEffect(item.SourceCardID, victim,
 		sacrificeSpec("a creature or planeswalker", Or(Creature(), Planeswalker())),
 		"Archon of Cruelty — sacrifice a creature or planeswalker", 1,
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return g.PlayerDiscardsThenKeyedForEffect(
-				game.DiscardPrompt{Player: victim, Source: source, N: 1},
-				b09ArchonOfCrueltyPaid, []uuid.UUID{item.Controller})
-		})
+		b09ArchonOfCrueltySacrificed, []uuid.UUID{victim, item.Controller})
 }
+
+// b09ArchonOfCrueltySacrificed is the discard once the sacrifice has landed,
+// whichever way it went (nothing on this card is conditional), keyed
+// (#4290). Carry is the victim, then the controller.
+var b09ArchonOfCrueltySacrificed = game.RegisterPromptRunThen("prompt-run/archon-of-cruelty-sacrificed", func(g *game.Game, r game.RunDone) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	return g.PlayerDiscardsThenKeyedForEffect(
+		game.DiscardPrompt{Player: r.Carry[0], Source: r.Source, N: 1},
+		b09ArchonOfCrueltyPaid, []uuid.UUID{r.Carry[1]})
+})
 
 // b09ArchonOfCrueltyPaid is the payout once the discard has landed, keyed
 // (#4264): the controller rides the prompt as its Carry, so a table
 // waiting on the discard is a restore point. The discard prompt itself
-// is the sacrifice's continuation, which is still a closure.
+// is the sacrifice's continuation, which is keyed too (#4290).
 var b09ArchonOfCrueltyPaid = game.RegisterDiscardThen("choose-cards/archon-of-cruelty-payout", func(g *game.Game, r game.DiscardsDone) error {
 	if len(r.Carry) == 0 {
 		return nil

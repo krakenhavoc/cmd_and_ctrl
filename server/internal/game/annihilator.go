@@ -279,7 +279,7 @@ func (g *Game) annihilatorSacrificeLocked(item *StackItem, recorded uuid.UUID, n
 		Question:   item.Label + " — choose " + permanentsPhrase(n) + " to sacrifice",
 		Of:         []uuid.UUID{defender},
 		Candidates: annihilatorCandidates(n),
-	}, annihilatorSacrificed, nil)
+	}, annihilatorSacrificed, RunData{})
 	return err
 }
 

@@ -61,8 +61,9 @@ func portalToPhyrexiaEdict(g *game.Game, item *game.StackItem) error {
 			asks = append(asks, p.ID, p.ID, p.ID)
 		}
 	}
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, asks,
-		sacrificeSpec("a creature", Creature()), "Sacrifice a creature", nil)
+	g.PlayersSacrificeForEffect(item.SourceCardID, asks,
+		sacrificeSpec("a creature", Creature()), "Sacrifice a creature")
+	return nil
 }
 
 // portalToPhyrexiaReanimate is the upkeep trigger's body.

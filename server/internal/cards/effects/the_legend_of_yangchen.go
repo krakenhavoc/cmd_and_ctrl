@@ -133,10 +133,29 @@ func yangchenChoose(ctx *Context, players []uuid.UUID, i int, chosen []uuid.UUID
 			}
 			return pool, 0, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
+		Keyed: yangchenChosen,
+		Carry: packIDLists(players, taken),
+		Nums:  []int{i},
+	}.Apply(ctx)
+}
+
+// yangchenChosen is one player's pick, then the next player's, keyed
+// (#4290). The carry is the players in order, then the permanents chosen
+// so far; the number is which player this was. Registered in init because
+// the answer asks the next player, which names the key again.
+var yangchenChosen PermanentsThen
+
+func init() {
+	yangchenChosen = RegisterPermanentsPick("prompt-run/the-legend-of-yangchen-exile", PermanentsDef{
+		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+			players, taken := unpackIDPair(r.Carry)
+			i := 0
+			if len(r.Nums) > 0 {
+				i = r.Nums[0]
+			}
 			return yangchenChoose(ctx, players, i+1, append(taken, picked.Cards()...))
 		},
-	}.Apply(ctx)
+	})
 }
 
 // seatsStartingWith lists the seats still in the game in turn order,

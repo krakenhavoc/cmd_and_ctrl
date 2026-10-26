@@ -100,8 +100,22 @@ func valeforSonicWings(ctx *Context, opps, chosen []uuid.UUID) error {
 			}
 			return ids, 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
+		Keyed: valeforChosen,
+		Carry: packIDLists(rest, so),
+	}.Apply(ctx)
+}
+
+// valeforChosen is one opponent's pick, then the next opponent's, keyed
+// (#4290). The carry is the opponents still to ask, then the creatures
+// chosen so far. Registered in init because the answer asks the next
+// opponent, which names the key again.
+var valeforChosen PermanentsThen
+
+func init() {
+	valeforChosen = RegisterPermanentsPick("prompt-run/summon-valefor-sonic-wings", PermanentsDef{
+		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+			rest, so := unpackIDPair(r.Carry)
 			return valeforSonicWings(ctx, rest, append(so, picked.Cards()...))
 		},
-	}.Apply(ctx)
+	})
 }

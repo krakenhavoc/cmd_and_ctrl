@@ -127,6 +127,12 @@ type promptRun struct {
 	thenKey string
 	carry   []uuid.UUID
 	source  uuid.UUID
+	// nums and asked are the rest of a keyed run's plain data (RunData):
+	// the numbers the continuation reads, and the stack item that asked as
+	// data (NewAskedItem), for a continuation that reads its targets, its X
+	// or its text.
+	nums  []int
+	asked *AskedItem
 }
 
 // answer builds the continuation's argument: the ask order, with each
@@ -176,13 +182,16 @@ func (g *Game) runPromptsKeyedLocked(
 	asks []uuid.UUID,
 	then PromptRunThen,
 	source uuid.UUID,
-	carry []uuid.UUID,
+	data RunData,
 	queue func(seat, run uuid.UUID) bool,
 ) (int, error) {
 	if then.key == "" {
 		return 0, fmt.Errorf("%w: keyed prompted run with no continuation", ErrInvalidParam)
 	}
-	return g.startRunLocked(asks, &promptRun{thenKey: then.key, source: source, carry: copyUUIDs(carry)}, queue)
+	return g.startRunLocked(asks, &promptRun{
+		thenKey: then.key, source: source,
+		carry: copyUUIDs(data.Carry), nums: copyInts(data.Nums), asked: copyAskedItem(data.Asked),
+	}, queue)
 }
 
 // startRunLocked is the body of both: `run` arrives with its
@@ -292,7 +301,10 @@ func (g *Game) finishRunLocked(run *promptRun) error {
 		if !ok {
 			return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, run.thenKey)
 		}
-		return fn(g, RunDone{Source: run.source, Landed: answer, Carry: copyUUIDs(run.carry)})
+		return fn(g, RunDone{
+			Source: run.source, Landed: answer,
+			Carry: copyUUIDs(run.carry), Nums: copyInts(run.nums), Asked: copyAskedItem(run.asked),
+		})
 	}
 	return nil
 }
@@ -319,6 +331,8 @@ func clonePromptRuns(in map[uuid.UUID]*promptRun) map[uuid.UUID]*promptRun {
 		cp := *run
 		cp.seats = append([]uuid.UUID(nil), run.seats...)
 		cp.carry = copyUUIDs(run.carry)
+		cp.nums = copyInts(run.nums)
+		cp.asked = copyAskedItem(run.asked)
 		cp.landed = make(map[uuid.UUID][]uuid.UUID, len(run.landed))
 		for seat, cards := range run.landed {
 			cp.landed[seat] = append([]uuid.UUID(nil), cards...)

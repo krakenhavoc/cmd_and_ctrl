@@ -106,26 +106,33 @@ func megatronMaySacrifice(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			cards := picked.Cards()
-			if len(cards) == 0 {
-				return nil
-			}
-			mv := 0
-			if c, ok := ctx.Game.LookupCardForEffect(cards[0]); ok {
-				mv, _ = ctx.Game.ManaValueForEffect(c)
-			}
-			return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					return nil
-				}
-				t := WhenYouDo("Megatron, Destructive Force — damage equal to the sacrificed artifact's mana value to target creature", megatronStrikeBody)
-				t.Params = game.EffectParams{Amount: mv}
-				return t.Apply(NewContext(g, ctx.Item))
-			})
-		},
+		Keyed: megatronSacrificed,
 	}.Apply(NewContext(g, item))
 }
+
+// megatronSacrificed is the chosen artifact sacrificed and the reflexive
+// damage raised once it has gone, keyed (#4290).
+var megatronSacrificed = RegisterPermanentsPick("prompt-run/megatron-tyrant-sacrifice", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		cards := picked.Cards()
+		if len(cards) == 0 {
+			return nil
+		}
+		mv := 0
+		if c, ok := ctx.Game.LookupCardForEffect(cards[0]); ok {
+			mv, _ = ctx.Game.ManaValueForEffect(c)
+		}
+		item := ctx.Item
+		return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
+			if len(sacrificed) == 0 {
+				return nil
+			}
+			t := WhenYouDo("Megatron, Destructive Force — damage equal to the sacrificed artifact's mana value to target creature", megatronStrikeBody)
+			t.Params = game.EffectParams{Amount: mv}
+			return t.Apply(NewContext(g, item))
+		})
+	},
+})
 
 // megatronStrike is the reflexive trigger's body: Megatron deals the
 // carried mana value to the target creature, split at its lethal line;

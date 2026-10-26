@@ -45,13 +45,18 @@ func whitePlumeUntap(g *game.Game, item *game.StackItem) error {
 	return ChoosePermanents{
 		Question:   "White Plume Adventurer — untap a creature you control",
 		Candidates: humiliateCreatures,
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Keyed:      whitePlumeChosen,
 	}.Apply(ctx)
 }
+
+// whitePlumeChosen is untapping the chosen creature, keyed (#4290).
+var whitePlumeChosen = RegisterPermanentsPick("prompt-run/white-plume-adventurer-untap", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := (UntapTarget{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

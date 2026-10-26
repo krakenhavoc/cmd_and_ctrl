@@ -34,11 +34,15 @@ func init() {
 				Player:     item.Targets[0].ID,
 				Question:   "Dead Drop — sacrifice two creatures",
 				Candidates: deadDropCreatures,
-				Sacrifice:  true,
+				Keyed:      deadDropSacrifice,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// deadDropSacrifice is the two chosen creatures sacrificed together, keyed
+// (#4290).
+var deadDropSacrifice = RegisterPermanentsPick("prompt-run/dead-drop-sacrifice", PermanentsDef{Sacrifice: true})
 
 // deadDropCreatures offers every creature the chooser controls, exactly
 // two to be picked (clamped by the engine when there are fewer).

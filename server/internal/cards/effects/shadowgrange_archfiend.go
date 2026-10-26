@@ -47,21 +47,24 @@ func init() {
 
 func shadowgrangeArchfiendETB(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	controller := item.Controller
-	gain := func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-		best := 0
-		for _, id := range sacrificed.Cards() {
-			if info, ok := g.LastKnownPermanentForEffect(id); ok && info.Power > best {
-				best = info.Power
-			}
-		}
-		return GainLife{Player: controller, Amount: best}.Apply(NewContext(g, item))
-	}
 	opponents := ctx.Opponents()
 	if len(opponents) == 0 {
 		return nil
 	}
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, opponents,
+	return ctx.PlayersSacrificeThen(opponents,
 		sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
-		"Shadowgrange Archfiend — sacrifice a creature with the greatest power", gain)
+		"Shadowgrange Archfiend — sacrifice a creature with the greatest power", shadowgrangeArchfiendGain, ctx.RunData(nil))
 }
+
+// shadowgrangeArchfiendGain is "you gain that much life": the greatest power
+// among the creatures sacrificed this way, as each last stood, keyed
+// (#4290).
+var shadowgrangeArchfiendGain = RunThen("prompt-run/shadowgrange-archfiend-gain", func(ctx *Context, r game.RunDone) error {
+	best := 0
+	for _, id := range r.Sacrifices().Cards() {
+		if info, ok := ctx.Game.LastKnownPermanentForEffect(id); ok && info.Power > best {
+			best = info.Power
+		}
+	}
+	return GainLife{Player: ctx.Controller(), Amount: best}.Apply(ctx)
+})

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -162,6 +164,105 @@ func (g *Game) sacrificeTogetherLocked(
 	reason string,
 	then func(g *Game, sacrificed PromptedSacrifices) error,
 ) (int, error) {
+	legs := g.sacrificeTogetherLegsLocked(source, asks, spec, reason)
+	if then == nil {
+		// Nothing waits on the answer: the collection is plain data
+		// (ordered_picks_keyed.go), so a table waiting on a seat is a
+		// restore point.
+		return len(legs), g.startOrderedPicksLocked(legs, orderedPicks{Source: source, Sacrifice: true})
+	}
+	err := g.ChoosePermanentsInOrderThenForEffect(legs, func(g *Game, picks PromptedPicks) error {
+		finish := func(g *Game, sacrificed []uuid.UUID) error {
+			landed := make(map[uuid.UUID]bool, len(sacrificed))
+			for _, id := range sacrificed {
+				landed[id] = true
+			}
+			out := make(PromptedSacrifices, 0, len(picks))
+			for _, pick := range picks {
+				entry := SeatCards{Seat: pick.Seat}
+				for _, id := range pick.Cards {
+					if landed[id] {
+						entry.Cards = append(entry.Cards, id)
+					}
+				}
+				out = append(out, entry)
+			}
+			return then(g, out)
+		}
+		chosen := picks.Cards()
+		if len(chosen) == 0 {
+			return finish(g, nil)
+		}
+		return g.SacrificeAllThenForEffect(source, chosen, finish)
+	})
+	return len(legs), err
+}
+
+// sacrificeTogetherKeyedLocked is sacrificeTogetherLocked with the rest of
+// the card as a registered run continuation (RegisterPromptRunThen) and
+// `data` the plain data it is handed (#4290, ADR 0175 amendment): the
+// collection is plain data (ordered_picks_keyed.go), so a table waiting on
+// any seat's choice is a restore point. The continuation reads
+// RunDone.Sacrifices().
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificeTogetherKeyedLocked(
+	source uuid.UUID,
+	asks []uuid.UUID,
+	spec *TargetSpec,
+	reason string,
+	then PromptRunThen,
+	data RunData,
+) error {
+	if then.key == "" {
+		return fmt.Errorf("%w: keyed sacrifice with no continuation", ErrInvalidParam)
+	}
+	legs := g.sacrificeTogetherLegsLocked(source, asks, spec, reason)
+	return g.startOrderedPicksLocked(legs, orderedPicks{
+		Key: then.key, Source: source, Sacrifice: true,
+		Carry: data.Carry, Nums: data.Nums, Asked: data.Asked,
+	})
+}
+
+// EachPlayerSacrificesThenKeyedForEffect is EachPlayerSacrificesThenForEffect
+// with the rest of the card as a registered run continuation
+// (RegisterPromptRunThen) and `data` the plain data it is handed (#4290).
+// It reads the answer as RunDone.Sacrifices(), one entry per seat that was
+// asked, and runs even when nobody could be asked.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) EachPlayerSacrificesThenKeyedForEffect(
+	source, except uuid.UUID,
+	spec *TargetSpec,
+	reason string,
+	then PromptRunThen,
+	data RunData,
+) error {
+	return g.sacrificeTogetherKeyedLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, then, data)
+}
+
+// PlayersSacrificeThenKeyedForEffect is PlayersSacrificeThenForEffect with
+// the rest of the card as a registered run continuation; see
+// EachPlayerSacrificesThenKeyedForEffect.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayersSacrificeThenKeyedForEffect(
+	source uuid.UUID,
+	players []uuid.UUID,
+	spec *TargetSpec,
+	reason string,
+	then PromptRunThen,
+	data RunData,
+) error {
+	return g.sacrificeTogetherKeyedLocked(source, players, spec, reason, then, data)
+}
+
+// sacrificeTogetherLegsLocked is the ordered collector's legs for "each of
+// these players sacrifices N permanents": one per seat that has a legal
+// candidate, in APNAP order, asked for min(owed, candidates).
+//
+// Caller must hold g.mu.
+func (g *Game) sacrificeTogetherLegsLocked(source uuid.UUID, asks []uuid.UUID, spec *TargetSpec, reason string) []ChooseCardsPrompt {
 	owed := make(map[uuid.UUID]int, len(asks))
 	for _, seat := range asks {
 		owed[seat]++
@@ -186,34 +287,7 @@ func (g *Game) sacrificeTogetherLocked(
 			Destination: ChooseSacrifice,
 		})
 	}
-	err := g.ChoosePermanentsInOrderThenForEffect(legs, func(g *Game, picks PromptedPicks) error {
-		finish := func(g *Game, sacrificed []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			landed := make(map[uuid.UUID]bool, len(sacrificed))
-			for _, id := range sacrificed {
-				landed[id] = true
-			}
-			out := make(PromptedSacrifices, 0, len(picks))
-			for _, pick := range picks {
-				entry := SeatCards{Seat: pick.Seat}
-				for _, id := range pick.Cards {
-					if landed[id] {
-						entry.Cards = append(entry.Cards, id)
-					}
-				}
-				out = append(out, entry)
-			}
-			return then(g, out)
-		}
-		chosen := picks.Cards()
-		if len(chosen) == 0 {
-			return finish(g, nil)
-		}
-		return g.SacrificeAllThenForEffect(source, chosen, finish)
-	})
-	return len(legs), err
+	return legs
 }
 
 // PlayerSacrificesThenForEffect is PlayerSacrificesForEffect with the
@@ -331,7 +405,24 @@ func (g *Game) PlayerSacrificesThenKeyedForEffect(
 	then PromptRunThen,
 	carry []uuid.UUID,
 ) error {
-	_, err := g.runPromptsKeyedLocked(repeatSeat(playerID, count), then, source, carry, func(seat, run uuid.UUID) bool {
+	return g.PlayerSacrificesThenKeyedDataForEffect(source, playerID, spec, reason, count, then, RunData{Carry: carry})
+}
+
+// PlayerSacrificesThenKeyedDataForEffect is PlayerSacrificesThenKeyedForEffect
+// with the run's whole plain data: IDs, numbers and the asking stack item
+// (NewAskedItem), for a continuation that reads the item's targets, its X
+// or its text (#4290).
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayerSacrificesThenKeyedDataForEffect(
+	source, playerID uuid.UUID,
+	spec *TargetSpec,
+	reason string,
+	count int,
+	then PromptRunThen,
+	data RunData,
+) error {
+	_, err := g.runPromptsKeyedLocked(repeatSeat(playerID, count), then, source, data, func(seat, run uuid.UUID) bool {
 		return g.queueSacrificePromptLocked(source, seat, spec, reason, run, then.key)
 	})
 	return err

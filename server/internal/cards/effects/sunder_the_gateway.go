@@ -84,6 +84,10 @@ func chooseAnIncubatorAndTransformIt(ctx *Context) error {
 			}
 			return out, 1, 1
 		},
-		Then: TransformPicked,
+		Keyed: sunderTheGatewayChosen,
 	}.Apply(ctx)
 }
+
+// sunderTheGatewayChosen is the chosen Incubator transformed, keyed
+// (#4290).
+var sunderTheGatewayChosen = RegisterPermanentsPick("prompt-run/sunder-the-gateway-transform", PermanentsDef{Then: TransformPicked})

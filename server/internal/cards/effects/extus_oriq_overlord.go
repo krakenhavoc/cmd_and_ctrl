@@ -63,13 +63,17 @@ func init() {
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-				Then: func(ctx *Context, _ game.PromptedSacrifices) error {
-					return CreateToken{Template: BloodAvatarToken(), N: 1}.Apply(ctx)
-				},
+				Keyed:            extusEdicted,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// extusEdicted is the Blood Avatar token once the edict has landed, keyed
+// (#4290).
+var extusEdicted = RegisterEdictThen("prompt-run/extus-oriq-overlord-avatar", func(ctx *Context, _ game.PromptedSacrifices) error {
+	return CreateToken{Template: BloodAvatarToken(), N: 1}.Apply(ctx)
+})
 
 const extusOracleID = "0b299983-9f0f-404a-acd1-8f142572b1f1"
 

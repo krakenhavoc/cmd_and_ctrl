@@ -39,10 +39,14 @@ func init() {
 				Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 					return sharesACardTypeWith(info, c)
 				},
-				Then: func(ctx *Context, _ game.PromptedSacrifices) error {
-					return DrawCards{N: 1}.Apply(ctx)
-				},
+				Keyed: fatalGrudgeEdicted,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// fatalGrudgeEdicted is the card drawn once the edict has landed, keyed
+// (#4290).
+var fatalGrudgeEdicted = RegisterEdictThen("prompt-run/fatal-grudge-draw", func(ctx *Context, _ game.PromptedSacrifices) error {
+	return DrawCards{N: 1}.Apply(ctx)
+})

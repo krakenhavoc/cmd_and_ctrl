@@ -68,17 +68,21 @@ func illGottenGainsReturn(ctx *Context) error {
 			Zone:       game.ZoneGraveyard,
 		})
 	}
-	resolving := ctx.Item
-	_, err := ctx.Game.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-		next := NewContext(g, resolving)
-		for _, id := range players {
-			for _, card := range picks.By(id) {
-				if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneHand}).Apply(next); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
+	// Keyed (#4290): the players, in ask order, ride the run as its carry.
+	_, err := ctx.Game.ChooseCardsRunThenKeyedForEffect(legs, illGottenGainsReturned, ctx.Source(), ctx.RunData(players))
 	return err
 }
+
+// illGottenGainsReturned is the cards the players chose returning to their
+// hands, once every player has chosen, keyed (#4290).
+var illGottenGainsReturned = RunThen("prompt-run/ill-gotten-gains-return", func(ctx *Context, r game.RunDone) error {
+	picks := r.Picks()
+	for _, id := range r.Carry {
+		for _, card := range picks.By(id) {
+			if err := (ReturnFromGraveyard{Target: card, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+})

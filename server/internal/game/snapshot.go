@@ -1995,6 +1995,12 @@ type pendingChoiceSnapshot struct {
 	// is a prompt that is no run's leg.
 	PromptRun uuid.UUID `json:"promptRun,omitempty"`
 
+	// Ordered is PendingChoice.ordered (#4290, ADR 0175): a keyed ordered
+	// collection's state (the seats still to ask, the picks so far, the
+	// registered continuation and its data). Additive: a file without it
+	// is a prompt that is no collection's turn.
+	Ordered *orderedPicks `json:"ordered,omitempty"`
+
 	// LibraryOrder is PendingChoice.libraryOrderKeyed (#4301): a put_in_library
 	// prompt's way of moving the cards and its keyed "then". The tail's key
 	// also rides PickThen, so a binary from before it refuses the file
@@ -3207,6 +3213,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
 		PromptRun:             c.promptRun,
+		Ordered:               cloneOrderedPicks(c.ordered),
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -4207,6 +4214,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AskedByHand:           c.AskedByHand,
 		// #4290: the run this prompt is one leg of (PromptRuns).
 		promptRun: c.PromptRun,
+		ordered:   cloneOrderedPicks(c.Ordered),
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.

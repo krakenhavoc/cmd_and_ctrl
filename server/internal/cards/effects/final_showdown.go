@@ -69,20 +69,26 @@ func finalShowdownIndestructible(item *game.StackItem, ctx *Context, _ int) erro
 		Candidates: func(_ *game.Game, _ uuid.UUID) ([]uuid.UUID, int, int) {
 			return ids, 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if !ctx.Game.Battlefield.Contains(id) {
-					continue
-				}
-				if err := (GrantKeywordUntilEOT{
-					Target:   id,
-					Keywords: []string{"indestructible"},
-					Label:    "Final Showdown — indestructible until end of turn",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Keyed: finalShowdownChosen,
 	}.Apply(ctx)
 }
+
+// finalShowdownChosen is the chosen creature gaining indestructible until
+// end of turn, keyed (#4290).
+var finalShowdownChosen = RegisterPermanentsPick("prompt-run/final-showdown-indestructible", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if !ctx.Game.Battlefield.Contains(id) {
+				continue
+			}
+			if err := (GrantKeywordUntilEOT{
+				Target:   id,
+				Keywords: []string{"indestructible"},
+				Label:    "Final Showdown — indestructible until end of turn",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

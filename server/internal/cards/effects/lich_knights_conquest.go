@@ -40,35 +40,41 @@ func init() {
 		OracleID:     "b0e533dd-baf2-482a-b9e1-872eb5e47439",
 		Name:         "Lich-Knights' Conquest",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{
 				Question:   "Lich-Knights' Conquest — sacrifice any number of artifacts, enchantments, and/or tokens",
 				Candidates: lichKnightsFodder,
-				// Sacrificed here rather than with Sacrifice: true,
-				// because "that many" is what LEFT, not what was
-				// clicked.
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					if picked.Count() == 0 {
-						return nil
-					}
-					return ctx.Game.SacrificeAllThenForEffect(ctx.Source(), picked.Cards(),
-						func(g *game.Game, sacrificed []uuid.UUID) error {
-							n := len(sacrificed)
-							if n == 0 {
-								return nil
-							}
-							return ReturnChosenFromGraveyard{
-								Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
-								Match:    game.Card.IsCreature,
-								Min:      n,
-								Max:      n,
-							}.Apply(NewContext(g, item))
-						})
-				},
+				Keyed:      lichKnightsChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// lichKnightsChosen is the chosen permanents sacrificed and that many
+// creature cards returned, keyed (#4290). Sacrificed in the body rather
+// than with Sacrifice: true, because "that many" is what LEFT, not what was
+// clicked.
+var lichKnightsChosen = RegisterPermanentsPick("prompt-run/lich-knights-conquest-sacrifice", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		if picked.Count() == 0 {
+			return nil
+		}
+		item := ctx.Item
+		return ctx.Game.SacrificeAllThenForEffect(ctx.Source(), picked.Cards(),
+			func(g *game.Game, sacrificed []uuid.UUID) error {
+				n := len(sacrificed)
+				if n == 0 {
+					return nil
+				}
+				return ReturnChosenFromGraveyard{
+					Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
+					Match:    game.Card.IsCreature,
+					Min:      n,
+					Max:      n,
+				}.Apply(NewContext(g, item))
+			})
+	},
+})
 
 // lichKnightsFodder is every artifact, enchantment and token the
 // chooser controls, with a floor of zero and no ceiling but the board —

@@ -469,14 +469,16 @@ func (g *Game) PermanentsPickedThenForEffect(p PermanentPickPrompt, then func(g 
 // settle, rebuilt on restore from the prompt (permanentPickLegIsData) —
 // so a table waiting on any leg is a restore point. The legs name the
 // run's key in PickThen, so a binary without it refuses the file. The
-// prompt's Validate must be nil: it is a closure.
+// prompt's Validate must be nil: it is a closure. A set rule over the
+// picks is registered with the run (RegisterPromptRunThenRule), and each
+// leg checks its answer against it.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PermanentsPickedThenKeyedForEffect(p PermanentPickPrompt, then PromptRunThen, carry []uuid.UUID) (int, error) {
+func (g *Game) PermanentsPickedThenKeyedForEffect(p PermanentPickPrompt, then PromptRunThen, data RunData) (int, error) {
 	if p.Validate != nil {
-		return 0, fmt.Errorf("%w: keyed permanent pick %q also sets a closure", ErrInvalidParam, then.key)
+		return 0, fmt.Errorf("%w: keyed permanent pick %q also sets a closure; register the set rule with the run (RegisterPromptRunThenRule)", ErrInvalidParam, then.key)
 	}
-	return g.runPromptsKeyedLocked(p.Of, then, p.Source, carry, func(seat, run uuid.UUID) bool {
+	return g.runPromptsKeyedLocked(p.Of, then, p.Source, data, func(seat, run uuid.UUID) bool {
 		return g.queuePermanentPickLocked(p, seat, run, then.key) != uuid.Nil
 	})
 }
@@ -491,7 +493,7 @@ func permanentPickLegIsData(c *PendingChoice) bool {
 		return false
 	}
 	f := c.chooseCardsResume
-	return f != nil && f.validate == nil && f.earlierPermanentChoices == nil && f.permanentEpochs == nil &&
+	return f != nil && (f.validate == nil || f.keyedRule) && f.earlierPermanentChoices == nil && f.permanentEpochs == nil &&
 		f.zone == ZoneBattlefield
 }
 
@@ -507,9 +509,12 @@ func restorePermanentPickLeg(c *PendingChoice) {
 	if c == nil || !isPermanentPickKind(c.Kind) || c.PickThen == "" || c.promptRun == uuid.Nil {
 		return
 	}
+	rule := lookupPromptRunRule(c.PickThen)
 	c.chooseCardsResume = &chooseCardsFrame{
-		zone: ZoneBattlefield,
-		then: permanentPickLegThen(c.promptRun, c.Chooser, c.FromPlayer, c.Source),
+		zone:      ZoneBattlefield,
+		validate:  rule,
+		keyedRule: rule != nil,
+		then:      permanentPickLegThen(c.promptRun, c.Chooser, c.FromPlayer, c.Source),
 	}
 }
 
@@ -543,6 +548,11 @@ func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID
 	if of == p.Chooser {
 		kind = PendingChoiceOwnPermanents
 	}
+	validate := p.Validate
+	if key != "" {
+		// #4290: a keyed run's set rule is the one registered with it.
+		validate = lookupPromptRunRule(key)
+	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:        kind,
 		Chooser:     p.Chooser,
@@ -562,9 +572,10 @@ func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID
 			// (pruneCardSetChoicesLocked): a permanent can leave
 			// between the question and the answer, and a prompt that
 			// still offered it would be one the resolver refuses.
-			zone:     ZoneBattlefield,
-			validate: p.Validate,
-			then:     permanentPickLegThen(run, p.Chooser, of, p.Source),
+			zone:      ZoneBattlefield,
+			validate:  validate,
+			keyedRule: key != "" && validate != nil,
+			then:      permanentPickLegThen(run, p.Chooser, of, p.Source),
 		},
 	})
 }

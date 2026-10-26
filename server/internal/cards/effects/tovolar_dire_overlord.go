@@ -124,6 +124,9 @@ func tovolarUpkeep(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, len(out)
 		},
-		Then: TransformPicked,
+		Keyed: tovolarChosen,
 	}.Apply(ctx)
 }
+
+// tovolarChosen is the chosen Human Werewolves transformed, keyed (#4290).
+var tovolarChosen = RegisterPermanentsPick("prompt-run/tovolar-dire-overlord-transform", PermanentsDef{Then: TransformPicked})

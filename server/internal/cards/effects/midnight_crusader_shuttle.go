@@ -63,15 +63,26 @@ var shuttleChoice = NewVillainousChoice("midnight-crusader-shuttle",
 					}
 					return ids, 1, 1
 				},
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					for _, id := range picked.Cards() {
-						return shuttleTakeAndAttack(ctx, id, f.Player)
-					}
-					return nil
-				},
+				Keyed: shuttleChosen,
+				Carry: []uuid.UUID{f.Player},
 			}.Apply(ctx)
 		},
 	})
+
+// shuttleChosen is gaining control of the chosen creature and attacking
+// the player it came from with it, keyed (#4290): the carry is that
+// player.
+var shuttleChosen = RegisterPermanentsPick("prompt-run/midnight-crusader-shuttle-take", PermanentsDef{
+	ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		for _, id := range picked.Cards() {
+			return shuttleTakeAndAttack(ctx, id, r.Carry[0])
+		}
+		return nil
+	},
+})
 
 // shuttleTakeAndAttack gains control of `id` until end of turn and, if
 // that worked, taps it and puts it into combat attacking `defender`.

@@ -127,7 +127,50 @@ type EmpowerJace struct {
 	// creation or the counters, or on the question of which Jace gets
 	// them — so anything after it goes here, never on the next line.
 	// It runs once the counters are on, whether or not any were placed.
-	Then func(ctx *Context) error
+	// It is registered (RegisterEmpowerThen, #4290), so a table waiting on
+	// the question of which Jace is a restore point.
+	Then EmpowerThen
+}
+
+// EmpowerThen is the registered rest of an Empower Jace: the question of
+// which Jace gets the counters, and the card's own "then". The zero value
+// is no rest.
+type EmpowerThen struct {
+	pick PermanentsThen
+	then func(ctx *Context) error
+}
+
+// RegisterEmpowerThen registers the rest of an Empower Jace under key
+// (ledgered "run <key>"): `then` (nil for none) runs once the counters are
+// on. Call it once, from a package-level var.
+func RegisterEmpowerThen(key string, then func(ctx *Context) error) EmpowerThen {
+	pick := RegisterPermanentsPick(key, PermanentsDef{
+		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+			n := 0
+			if len(r.Nums) > 0 {
+				n = r.Nums[0]
+			}
+			finish := func(g *game.Game) error { return resumeClause(g, ctx.Item, then) }
+			chosen := picked.Cards()
+			if len(chosen) == 0 {
+				// Every Jace on offer left before the answer: nothing to
+				// put the counters on.
+				return finish(ctx.Game)
+			}
+			return empowerPutOn(ctx.Game, ctx.Controller(), chosen[0], n, finish)
+		},
+	})
+	return EmpowerThen{pick: pick, then: then}
+}
+
+// empowerNoThen is Empower Jace with nothing after it.
+var empowerNoThen = RegisterEmpowerThen("prompt-run/empower-jace-choose", nil)
+
+// empowerPutOn puts n loyalty counters on the chosen Jace, then finishes.
+func empowerPutOn(g *game.Game, player, jace uuid.UUID, n int, finish func(*game.Game) error) error {
+	return g.AddCounterByThenForEffect(player, jace, game.CounterLoyalty, n, func(g *game.Game, _ int) error {
+		return finish(g)
+	})
 }
 
 // Apply runs the action for the resolving item's controller: the
@@ -143,10 +186,13 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 		n = 0
 	}
 	item := ctx.Item
-	then := e.Then
-	finish := func(g *game.Game) error { return resumeClause(g, item, then) }
+	rest := e.Then
+	if !rest.pick.run.Valid() {
+		rest = empowerNoThen
+	}
+	finish := func(g *game.Game) error { return resumeClause(g, item, rest.then) }
 	place := func(g *game.Game) error {
-		return empowerChosenJaceLocked(g, item, player, n, finish)
+		return empowerChosenJaceLocked(g, item, player, n, finish, rest.pick)
 	}
 	if len(JaceTokensControlledBy(ctx.Game, player)) > 0 {
 		return place(ctx.Game)
@@ -179,18 +225,13 @@ func (e EmpowerJace) Apply(ctx *Context) error {
 // cost (ADR 0032 §8's distinction), so the replacements apply.
 //
 // Caller must hold g.mu.
-func empowerChosenJaceLocked(g *game.Game, item *game.StackItem, player uuid.UUID, n int, finish func(*game.Game) error) error {
-	putOn := func(g *game.Game, jace uuid.UUID) error {
-		return g.AddCounterByThenForEffect(player, jace, game.CounterLoyalty, n, func(g *game.Game, _ int) error {
-			return finish(g)
-		})
-	}
+func empowerChosenJaceLocked(g *game.Game, item *game.StackItem, player uuid.UUID, n int, finish func(*game.Game) error, pick PermanentsThen) error {
 	jaces := JaceTokensControlledBy(g, player)
 	switch len(jaces) {
 	case 0:
 		return finish(g)
 	case 1:
-		return putOn(g, jaces[0])
+		return empowerPutOn(g, player, jaces[0], n, finish)
 	}
 	return ChoosePermanents{
 		Player:   player,
@@ -198,15 +239,8 @@ func empowerChosenJaceLocked(g *game.Game, item *game.StackItem, player uuid.UUI
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			return JaceTokensControlledBy(g, of), 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			chosen := picked.Cards()
-			if len(chosen) == 0 {
-				// Every Jace on offer left before the answer:
-				// nothing to put the counters on.
-				return finish(ctx.Game)
-			}
-			return putOn(ctx.Game, chosen[0])
-		},
+		Keyed: pick,
+		Nums:  []int{n},
 	}.Apply(NewContext(g, item))
 }
 

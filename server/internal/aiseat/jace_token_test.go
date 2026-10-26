@@ -16,6 +16,16 @@ import (
 // Jace tokens' own loyalty abilities are on offer to the seat that owns
 // them the whole time, so a refused loyalty activation would wedge the
 // run too.
+// jaceTokenTestThen counts the card's rest running, through a package
+// variable: a registered continuation captures nothing (#4290).
+var (
+	jaceThenAnswers   *int
+	jaceTokenTestThen = effects.RegisterEmpowerThen("test/jace-token-then", func(*effects.Context) error {
+		*jaceThenAnswers++
+		return nil
+	})
+)
+
 func TestHeuristicAnswersEmpowerJaceAndPlaysPastTheJaceTokens(t *testing.T) {
 	resolutionPickBotRun(t, func(t *testing.T, g *game.Game, seat, _ *game.Player, answers *int) {
 		t.Helper()
@@ -31,10 +41,8 @@ func TestHeuristicAnswersEmpowerJaceAndPlaysPastTheJaceTokens(t *testing.T) {
 				}
 				jaces = append(jaces, ids[0])
 			}
-			err := effects.EmpowerJace{N: 2, Then: func(*effects.Context) error {
-				*answers++
-				return nil
-			}}.Apply(effects.NewContext(g, &game.StackItem{
+			jaceThenAnswers = answers
+			err := effects.EmpowerJace{N: 2, Then: jaceTokenTestThen}.Apply(effects.NewContext(g, &game.StackItem{
 				Kind: game.StackItemSpell, Controller: seat.ID, Owner: seat.ID,
 			}))
 			if err != nil {

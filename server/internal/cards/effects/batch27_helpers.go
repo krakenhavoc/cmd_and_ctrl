@@ -451,12 +451,13 @@ const b27GooseMotherAttackLabel = "The Goose Mother — sacrifice a Food to draw
 // resolves (maySacrificeOne), and the draw follows only a Food that
 // really went.
 func b27SacrificeChosenThenDraw(g *game.Game, item *game.StackItem) error {
-	controller := item.Controller
-	return maySacrificeOne(g, item, "The Goose Mother — sacrifice a Food to draw a card?", HasSubtype("Food"), false,
-		func(ctx *Context, _ uuid.UUID) error {
-			return DrawCards{Player: controller, N: 1}.Apply(ctx)
-		})
+	return maySacrificeOne(g, item, "The Goose Mother — sacrifice a Food to draw a card?", HasSubtype("Food"), false, gooseMotherDraw)
 }
+
+// gooseMotherDraw is the draw once a Food has really gone, keyed (#4290).
+var gooseMotherDraw = RegisterSacrificedOne("prompt-run/the-goose-mother-sacrifice-draw", func(ctx *Context, _ uuid.UUID) error {
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})
 
 // b27SacrificeSelfThenTutorColorlessCreature is Sanctum of Ugin's
 // "you may sacrifice this land. If you do, search your library for a
