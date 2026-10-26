@@ -107,3 +107,33 @@ func TestSettledCreationSplitSurvivesARestoreAtEachQuestion(t *testing.T) {
 		t.Errorf("the tail ran %v, want once with the four tokens", attackSplitTailSeen)
 	}
 }
+
+// A split whose chooser has left is not asked: every share is 0 and the
+// last takes the rest, and the split still has its state to do that with (a
+// keyed branch run without a prompt used to be handed none).
+func TestSplitOfAChooserWhoLeftAsksNothingAndKeepsItsState(t *testing.T) {
+	attackSplitTailSeen = nil
+	g := newActiveGameWithSeats(t, 4)
+	me := g.Seats[0]
+	var targets []uuid.UUID
+	for _, s := range g.Seats[1:] {
+		targets = append(targets, s.ID)
+	}
+	me.Eliminated = true
+	g.WithWriteLock(func() {
+		err := g.StartAttackSplitForEffect(AttackSplit{
+			Controller: me.ID, Source: uuid.New(), Count: 2, Label: "Split Probe",
+			Template: Card{Name: "Elemental", TypeLine: "Token Creature — Elemental", Power: 1, Toughness: 1},
+			Targets:  targets, Tail: KeyedTail{Ref: attackSplitTail, Player: me.ID},
+		})
+		if err != nil {
+			t.Fatalf("a split of a chooser who left: %v", err)
+		}
+	})
+	if payAmountChoice(g) != nil {
+		t.Fatal("a question was asked of a chooser who left")
+	}
+	if len(attackSplitTailSeen) != 1 {
+		t.Errorf("the tail ran %v, want once", attackSplitTailSeen)
+	}
+}

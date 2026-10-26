@@ -357,6 +357,45 @@ func TestCalamityRestoredPickRechecksTheBattlefield(t *testing.T) {
 	}
 }
 
+// The second round is asked from the first copy's tail, against the
+// trigger's item rebuilt from data: it still knows what Calamity attacked
+// (the first thing offered) and which saddlers it has, restored or not.
+func TestCalamitySecondRoundReadsTheAskingItemFromTheTail(t *testing.T) {
+	g := newCatalogGame(t)
+	me, defender := g.Seats[0], g.Seats[2]
+	calamity := pushCalamity(g, me.ID)
+	saddler := pushProbeSaddler(g, me.ID)
+
+	choice := calamityAttackPrompt(t, g, me, defender.ID, calamity, saddler)
+	if choice == nil {
+		t.Fatal("no pick")
+	}
+	if err := g.ResolveChooseCards(choice.ID, me.ID, []uuid.UUID{saddler}); err != nil {
+		t.Fatal(err)
+	}
+	c := splitPrompt(t, g, me.ID, "token/attack-split")
+	if c.AttackSplit.Targets[0] != defender.ID {
+		t.Fatalf("round one offers %v first, want Calamity's defender %s", c.AttackSplit.Targets, defender.ID)
+	}
+	if err := g.ResolvePayAmount(c.ID, me.ID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	g = restoreRoundTrip(t, g, true)
+	me = g.Seats[0]
+	choice = keyedPick(t, g, me.ID, calamityPick.Key())
+	if len(choice.ChooseCards) != 1 || choice.ChooseCards[0] != saddler {
+		t.Fatalf("round two offers %v, want the saddler", choice.ChooseCards)
+	}
+	if err := g.ResolveChooseCards(choice.ID, me.ID, []uuid.UUID{saddler}); err != nil {
+		t.Fatal(err)
+	}
+	c = splitPrompt(t, g, me.ID, "token/attack-split")
+	if c.AttackSplit.Targets[0] != defender.ID {
+		t.Errorf("round two offers %v first, want Calamity's defender %s: the tail lost the trigger's item", c.AttackSplit.Targets, defender.ID)
+	}
+}
+
 // A binary that lacks the pick's key, or the tail the split carries,
 // refuses the file.
 func TestCalamityWithAnUnknownKeyIsRefused(t *testing.T) {
