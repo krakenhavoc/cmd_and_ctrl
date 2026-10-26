@@ -1,7 +1,11 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
 // face_down_piles.go — "look at the top N cards of your library and
@@ -74,27 +78,45 @@ func opponentSeparatesFaceDownPiles(ctx *Context, source string, n int, splitter
 // hand.
 func youSeparateFaceDownPiles(ctx *Context, source string, n int) error {
 	// The look comes first, as printed; the opponent is named after.
+	chooser, ok := faceDownPilesChoosers[source]
+	if !ok {
+		return fmt.Errorf("%w: face-down piles for %q are not registered", game.ErrInvalidParam, source)
+	}
 	looked := ctx.Game.LookAtTopOfPlayersLibraryForEffect(ctx.Controller(), ctx.Controller(), n)
-	return ChoosePlayer{
+	return ChoosePlayerKeyed{
 		Among:    Opponents,
 		Question: source + " — choose an opponent to choose one of the piles",
-		Then: func(ctx *Context) error {
-			chooser := ctx.ChosenPlayer()
-			if chooser == uuid.Nil {
-				return nil
-			}
-			return PileSplit{
-				Splitter:      ctx.Controller(),
-				Chooser:       chooser,
-				Owner:         ctx.Controller(),
-				SplitQuestion: source + " — choose the cards for the face-down pile; the rest go face up",
-				PickQuestion:  source + " — choose a pile; it goes into their hand and the other into their graveyard",
-				Cards:         looked,
-				FaceDown:      true,
-				Then:          faceDownPilesToHand,
-			}.Apply(ctx)
-		},
+		Then:     chooser,
+		Carry:    looked,
 	}.Apply(ctx)
+}
+
+// faceDownPilesChoosers is, per card that keeps the split and hands the
+// choice of a pile to an opponent, the opponent named, keyed (#4253): the
+// cards looked at ride the prompt as its carry. The card's name is the
+// registration's, since the questions are written with it. PileSplit itself
+// still takes its own closure (game.PileSplitPrompt).
+var faceDownPilesChoosers = map[string]game.OptionPickThen{
+	"Curator of Destinies": faceDownPilesChooser("option-pick/face-down-piles-curator-of-destinies", "Curator of Destinies"),
+	"Riddles in the Dark":  faceDownPilesChooser("option-pick/face-down-piles-riddles-in-the-dark", "Riddles in the Dark"),
+}
+
+func faceDownPilesChooser(key, source string) game.OptionPickThen {
+	return ChoosePlayerThen(key, func(ctx *Context, chooser uuid.UUID, looked []uuid.UUID) error {
+		if chooser == uuid.Nil {
+			return nil
+		}
+		return PileSplit{
+			Splitter:      ctx.Controller(),
+			Chooser:       chooser,
+			Owner:         ctx.Controller(),
+			SplitQuestion: source + " — choose the cards for the face-down pile; the rest go face up",
+			PickQuestion:  source + " — choose a pile; it goes into their hand and the other into their graveyard",
+			Cards:         looked,
+			FaceDown:      true,
+			Then:          faceDownPilesToHand,
+		}.Apply(ctx)
+	})
 }
 
 // opponentTarget is the item's still-legal player target, or uuid.Nil

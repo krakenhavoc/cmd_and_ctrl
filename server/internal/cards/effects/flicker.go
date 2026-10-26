@@ -220,15 +220,20 @@ func exileThisThenReturnUnderAnOpponentsControl(ctx *Context, item *game.StackIt
 		return nil
 	}
 	self := item.SourceCardID
-	return ChoosePlayer{
+	return ChoosePlayerKeyed{
 		Among:    Opponents,
 		Question: name + " — choose an opponent to return it under",
-		Then: func(ctx *Context) error {
-			opp := ctx.ChosenPlayer()
-			if opp == uuid.Nil {
-				return nil
-			}
-			return Flicker{Target: self, Controller: opp}.Apply(ctx)
-		},
+		Then:     flickerUnderTheChosenOpponent,
+		Carry:    []uuid.UUID{self},
 	}.Apply(ctx)
 }
+
+// flickerUnderTheChosenOpponent is the opponent named, and the permanent
+// (the carry) exiled and returned under their control, keyed (#4253).
+var flickerUnderTheChosenOpponent = ChoosePlayerThen("option-pick/flicker-return-under-an-opponent",
+	func(ctx *Context, opp uuid.UUID, carry []uuid.UUID) error {
+		if opp == uuid.Nil || len(carry) == 0 {
+			return nil
+		}
+		return Flicker{Target: carry[0], Controller: opp}.Apply(ctx)
+	})

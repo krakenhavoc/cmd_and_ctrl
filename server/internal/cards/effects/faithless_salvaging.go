@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -14,7 +12,7 @@ import (
 //	 card from exile without paying its mana cost.)"
 //
 // A rummage: the discard is chosen first, and the draw waits for it
-// (DiscardPrompt.Then). With an empty hand nothing is discarded and the
+// (a registered continuation, #4253). With an empty hand nothing is discarded and the
 // card is still drawn (CR 701.9a). Rebound is the engine's keyword
 // (game/rebound.go, #1854).
 //
@@ -26,16 +24,13 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			player := ctx.Controller()
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player: player,
+			// "Discard a card, then draw a card", keyed (#4253): the draw
+			// is Charming Scoundrel's registered rummage.
+			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+				Player: ctx.Controller(),
 				Source: item.SourceCardID,
 				N:      1,
-				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-					return g.DrawNForEffect(player, 1)
-				},
-			})
-			return nil
+			}, charmingScoundrelDraw, nil)
 		},
 	})
 }

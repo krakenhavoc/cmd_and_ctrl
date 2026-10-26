@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -49,15 +47,20 @@ func init() {
 					Cards:    candidates,
 					Min:      1,
 					Max:      1,
-					Then: func(g *game.Game, picked []uuid.UUID) error {
-						if len(picked) == 0 {
-							return nil
-						}
-						return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneBattlefield, Controller: controller}.Apply(NewContext(g, item))
-					},
+					ThenKey:  extractFromDarknessPicked,
+					Asked:    game.NewAskedItem(item),
 				})
 				return nil
 			}),
 		),
 	})
 }
+
+// extractFromDarknessPicked is the chosen creature card entering under the
+// caster's control, keyed (#4253): the spell rides the prompt as data.
+var extractFromDarknessPicked = itemChoice("choose-cards/extract-from-darkness-reanimate", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
+})
