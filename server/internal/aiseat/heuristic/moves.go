@@ -361,8 +361,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// #2449: moving an Equipment between the bot's own creatures
 		// buys only what the new host gains (equip_move.go). Priced
 		// flat, a free equip beat passing from either side for ever.
-		if !across && src != nil && st.idleEquip(src, cp) {
-			return idleEquipMove, "re-equip for no gain"
+		if !across && src != nil && st.idleEquip(p.cfg, src, cp) {
+			return idleEquipMove, "equip or reconfigure for no proven gain"
 		}
 		// #2500: an untap of its own source that costs as much mana as
 		// the source makes nets nothing (untap_self.go).
