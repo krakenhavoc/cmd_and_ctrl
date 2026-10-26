@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 )
@@ -468,6 +469,7 @@ func (g *Game) placeStickerLocked(owner, cardID, id uuid.UUID, after int, source
 	host.Stickers = append(host.Stickers[:len(host.Stickers):len(host.Stickers)], placed)
 	host.effective = nil
 	g.layerVersion.Add(1)
+	g.recordStickerPlacedLocked(source, cardID, placed)
 	g.EmitEvent(Event{
 		Kind:   EventStickerPlaced,
 		Actor:  owner,
@@ -475,8 +477,60 @@ func (g *Game) placeStickerLocked(owner, cardID, id uuid.UUID, after int, source
 		Source: source,
 		Label:  string(choice.Print.Kind) + ":" + choice.Print.Text,
 		Amount: choice.Print.TicketCost,
+		Words:  nameStickerWords(host.Stickers),
 	})
 	return true
+}
+
+// StickerPlacedRecordKey is the step record (#4163) a placement files
+// for the instruction that asked for it, so a later step of the same
+// resolution can read "that sticker": "put a name sticker on it. Add {R}
+// for each unique vowel on that sticker." It is filed under the asking
+// card (the placement's source) and lives for the one resolution.
+const StickerPlacedRecordKey = "sticker/placed"
+
+// recordStickerPlacedLocked files the placement for the asking card:
+// IDs gets the object, Strs the "kind:text" of the sticker, in the order
+// they went on. A placement with no source files nothing.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) recordStickerPlacedLocked(source, object uuid.UUID, placed PlacedSticker) {
+	if source == uuid.Nil {
+		return
+	}
+	holder := &StackItem{ID: source}
+	rec, _ := g.StepRecordForEffect(holder, StickerPlacedRecordKey)
+	rec.IDs = append(rec.IDs, object)
+	rec.Strs = append(rec.Strs, string(placed.Print.Kind)+":"+placed.Print.Text)
+	g.RecordStepForEffect(holder, StickerPlacedRecordKey, rec)
+}
+
+// StickerPlacedByForEffect is the latest sticker the card `source` put
+// on an object in the resolution that is open now: its kind, what it
+// says, the object it went on and whether there is one. False when the
+// instruction put none on (declined, or nothing qualified).
+//
+// Caller must hold g.mu.
+func (g *Game) StickerPlacedByForEffect(source uuid.UUID) (kind StickerKind, text string, object uuid.UUID, ok bool) {
+	rec, found := g.StepRecordForEffect(&StackItem{ID: source}, StickerPlacedRecordKey)
+	if !found || len(rec.IDs) == 0 || len(rec.Strs) == 0 {
+		return "", "", uuid.Nil, false
+	}
+	i := min(len(rec.IDs), len(rec.Strs)) - 1
+	k, t, _ := strings.Cut(rec.Strs[i], ":")
+	return StickerKind(k), t, rec.IDs[i], true
+}
+
+// nameStickerWords are the words of the name stickers in `stickers`, in
+// the order they went on.
+func nameStickerWords(stickers []PlacedSticker) []string {
+	var out []string
+	for _, s := range stickers {
+		if s.Print.Kind == StickerName {
+			out = append(out, s.Print.Text)
+		}
+	}
+	return out
 }
 
 // StickerEventKindText reads an EventStickerPlaced's Label: the kind of
@@ -548,6 +602,60 @@ func InsertNameWord(name, word string, after int) string {
 	out = append(out, word)
 	out = append(out, tokens[at:]...)
 	return strings.Join(out, " ")
+}
+
+// ---------------------------------------------------------------------
+// Counting letters on a name sticker (CR 123.6d, 123.6e)
+
+// StickerLetters is the number of letters on a name sticker's text: its
+// words without spaces, hyphens or other punctuation.
+func StickerLetters(text string) int {
+	n := 0
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			n++
+		}
+	}
+	return n
+}
+
+// StickerLetterCount is how many times `letter` appears on a name
+// sticker's text. A lowercase letter and its uppercase equivalent are the
+// same letter (CR 123.6d).
+func StickerLetterCount(text string, letter rune) int {
+	want := unicode.ToLower(letter)
+	n := 0
+	for _, r := range text {
+		if unicode.ToLower(r) == want {
+			n++
+		}
+	}
+	return n
+}
+
+// StickerUniqueVowels is the number of different vowels on a name
+// sticker's text, however many times each appears (CR 123.6e). The
+// vowels are A, E, I, O, U and Y; case does not matter.
+func StickerUniqueVowels(text string) int {
+	seen := map[rune]bool{}
+	for _, r := range text {
+		switch l := unicode.ToLower(r); l {
+		case 'a', 'e', 'i', 'o', 'u', 'y':
+			seen[l] = true
+		}
+	}
+	return len(seen)
+}
+
+// StickerBeginsWith reports whether a name sticker's first letter is
+// `letter` (CR 123.6d: case does not matter).
+func StickerBeginsWith(text string, letter rune) bool {
+	for _, r := range text {
+		if unicode.IsLetter(r) {
+			return unicode.ToLower(r) == unicode.ToLower(letter)
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------

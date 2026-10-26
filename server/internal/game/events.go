@@ -1722,6 +1722,15 @@ type Event struct {
 	// what each ballot was for. Empty on every other kind.
 	VoteOptions []string `json:"vote_options,omitempty"`
 
+	// Words are, on EventStickerPlaced, the words of every name sticker on
+	// the object once this one went on, oldest first (ADR 0208). A trigger
+	// that counts letters on the object's name stickers ("tap up to X
+	// target creatures, X the number of u's in name stickers on this
+	// enchantment") reads them from its trigger context, so the clause it
+	// announces under is the same on a restored table. Empty on every
+	// other kind.
+	Words []string `json:"words,omitempty"`
+
 	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
 	// game's tableRollNext after the roll, so 1 for the first table
 	// roll of a game. It survives the re-emission an undo makes, where

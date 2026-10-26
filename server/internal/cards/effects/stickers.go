@@ -58,6 +58,15 @@ const (
 	// StickerOnCreatureYouOwnThatEnteredThisTurn is "a creature you own
 	// that entered this turn" (Park Bleater).
 	StickerOnCreatureYouOwnThatEnteredThisTurn
+	// StickerOnThis is "on it" / "on this <permanent>": the card whose
+	// ability this is (the _____ Goblin, the Rocketship).
+	StickerOnThis
+	// StickerOnCreatureCardInYourGraveyard is "a creature card in your
+	// graveyard" (Scampire): a sticker is kept on a card that moves
+	// between public zones (CR 123.5), so the graveyard holds stickered
+	// cards, and a name or ability sticker applies there (CR 123.6,
+	// 123.7).
+	StickerOnCreatureCardInYourGraveyard
 )
 
 // PutASticker is "you may put a sticker on <On>", optionally of one kind
@@ -73,7 +82,42 @@ func (e PutASticker) Apply(ctx *Context) error {
 	g := ctx.Game
 	you := ctx.Controller()
 	g.RecomputeLayersIfStaleLocked()
+	g.PutStickerForEffect(game.StickerRequest{
+		Player:   you,
+		Source:   ctx.Source(),
+		Objects:  e.objects(ctx, you),
+		Kinds:    append([]game.StickerKind(nil), e.Kinds...),
+		Question: e.question(),
+	})
+	return nil
+}
+
+// objects are the objects the instruction names that `you` own.
+func (e PutASticker) objects(ctx *Context, you uuid.UUID) []uuid.UUID {
+	g := ctx.Game
 	var objects []uuid.UUID
+	switch e.On {
+	case StickerOnThis:
+		// "On it": the permanent this ability came from, still the
+		// same object (CR 400.7). One that has left is a new object
+		// the sticker was not meant for.
+		if g.AbilitySourceGoneForEffect(ctx.Item) {
+			return nil
+		}
+		if c, ok := g.LookupCardForEffect(ctx.Source()); ok && c.Owner == you {
+			objects = append(objects, c.InstanceID)
+		}
+		return objects
+	case StickerOnCreatureCardInYourGraveyard:
+		if p := g.PlayerByIDForEffect(you); p != nil && p.Graveyard != nil {
+			for i := range p.Graveyard.Cards {
+				if c := p.Graveyard.Cards[i]; c.Owner == you && c.IsCreature() {
+					objects = append(objects, c.InstanceID)
+				}
+			}
+		}
+		return objects
+	}
 	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Owner != you {
 			continue
@@ -94,14 +138,7 @@ func (e PutASticker) Apply(ctx *Context) error {
 		}
 		objects = append(objects, c.InstanceID)
 	}
-	g.PutStickerForEffect(game.StickerRequest{
-		Player:   you,
-		Source:   ctx.Source(),
-		Objects:  objects,
-		Kinds:    append([]game.StickerKind(nil), e.Kinds...),
-		Question: e.question(),
-	})
-	return nil
+	return objects
 }
 
 func (e PutASticker) question() string {
@@ -120,6 +157,10 @@ func (e PutASticker) question() string {
 	}
 	on := "a nonland permanent you own"
 	switch e.On {
+	case StickerOnThis:
+		on = "it"
+	case StickerOnCreatureCardInYourGraveyard:
+		on = "a creature card in your graveyard"
 	case StickerOnCreatureYouOwn:
 		on = "a creature you own"
 	case StickerOnCreatureYouOwnThatEnteredThisTurn:
@@ -273,4 +314,69 @@ func init() {
 		a := s.Abilities[ordinal]
 		return game.StickerAbilityDef{Keywords: append([]string(nil), a.Keywords...), Grant: a.Grant}, true
 	}
+}
+
+// ---------------------------------------------------------------------
+// "That sticker" and the counts on a name sticker (CR 123.6d, 123.6e)
+
+// placedSticker is the latest sticker the resolving instruction put on an
+// object (game.StickerPlacedByForEffect): what an earlier PutASticker step
+// of the same resolution did, read from the game so a later step still
+// finds it after a restore (#4163). False when none went on.
+func placedSticker(ctx *Context) (kind game.StickerKind, text string, object uuid.UUID, ok bool) {
+	return ctx.Game.StickerPlacedByForEffect(ctx.Source())
+}
+
+// placedNameSticker is the name sticker the instruction just before put
+// on ("a name sticker on it. … that sticker"): its word and the object it
+// is on.
+func placedNameSticker(ctx *Context) (text string, object uuid.UUID, ok bool) {
+	kind, text, object, ok := placedSticker(ctx)
+	if !ok || kind != game.StickerName {
+		return "", uuid.Nil, false
+	}
+	return text, object, true
+}
+
+// uniqueVowelsOnPlacedSticker is "the number of unique vowels on that
+// sticker" (CR 123.6e): zero when the instruction put no name sticker on.
+func uniqueVowelsOnPlacedSticker(ctx *Context) int {
+	text, _, ok := placedNameSticker(ctx)
+	if !ok {
+		return 0
+	}
+	return game.StickerUniqueVowels(text)
+}
+
+// nameStickersOn is the words of the name stickers on an object, oldest
+// first.
+func nameStickersOn(c game.Card) []string {
+	var out []string
+	for _, s := range c.Stickers {
+		if s.Print.Kind == game.StickerName {
+			out = append(out, s.Print.Text)
+		}
+	}
+	return out
+}
+
+// nameStickerCount is "each name sticker on it that <matches>".
+func nameStickerCount(c game.Card, matches func(text string) bool) int {
+	n := 0
+	for _, t := range nameStickersOn(c) {
+		if matches == nil || matches(t) {
+			n++
+		}
+	}
+	return n
+}
+
+// lettersOnNameStickers is "the number of <letter>'s in name stickers on
+// it" (CR 123.6d), summed over every name sticker.
+func lettersOnNameStickers(c game.Card, letter rune) int {
+	n := 0
+	for _, t := range nameStickersOn(c) {
+		n += game.StickerLetterCount(t, letter)
+	}
+	return n
 }
