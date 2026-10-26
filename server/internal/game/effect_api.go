@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strconv"
@@ -2797,6 +2798,13 @@ type SearchLibrarySpec struct {
 	// legal — you may always fail to find).
 	Validate func([]Card) bool
 
+	// Rule is Validate as data (#4253 slice 5): a registered set rule
+	// (RegisterSearchRule) and the number it reads. A search prompt whose
+	// set rule is a Rule, and whose continuation is ThenTail, is written
+	// with the table, so it is a restore point. Set Validate or Rule, not
+	// both.
+	Rule SearchRule
+
 	// Then is the rest of the effect, run once the search has
 	// finished — immediately when no prompt was needed, and from
 	// ResolveSearchLibrary when one was. It receives the instance
@@ -2914,6 +2922,13 @@ type SearchLibrarySpec struct {
 	// card they find" applies (#3998, search_control.go): the player the
 	// exiled cards are granted to. Never set by a card.
 	exileFoundFor uuid.UUID
+
+	// namesQuality is set by queueSearchChoiceLocked, on the copy the
+	// prompt holds, when the search names a quality (statedQuality): the
+	// prompt drops Pred, which nothing after the listing reads, and keeps
+	// this one fact of it (#4253 slice 5, search_prompt_keyed.go). Never
+	// set by a card.
+	namesQuality bool
 }
 
 // statedQuality reports whether the search names something the card
@@ -2924,7 +2939,7 @@ type SearchLibrarySpec struct {
 // a nil Pred with no Validate is the unconditional search (Demonic
 // Tutor, Gamble, Entomb, Intuition).
 func (spec SearchLibrarySpec) statedQuality() bool {
-	return spec.Pred != nil || spec.Validate != nil
+	return spec.Pred != nil || spec.Validate != nil || !spec.Rule.IsZero() || spec.namesQuality
 }
 
 // searchesGraveyard reports whether the library owner's graveyard is
@@ -3081,6 +3096,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	if p == nil {
 		return ErrPlayerNotFound
 	}
+	if spec.Validate != nil && !spec.Rule.IsZero() {
+		// #4253 slice 5: one set rule. A closure beside a key would be
+		// dropped on a restore.
+		return fmt.Errorf("%w: search sets both Validate and the rule %q", ErrInvalidParam, spec.Rule.key)
+	}
+	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
+		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
+	}
 	// #4033: "all cards" has no count.
 	takeAllInGraveyard := spec.TakeAll && spec.AlsoGraveyardAndHand
 	if takeAllInGraveyard {
@@ -3163,7 +3186,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		spec.Limit = len(matches)
 	}
 	if spec.floorZones(libMatches, len(gyMatches)+len(handMatches)) == len(matches) && len(matches) <= spec.Limit &&
-		(spec.Validate == nil || spec.Validate(matched)) {
+		spec.setAllows(matched) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
 		// library of exactly that many). A search for a stated quality
@@ -3256,7 +3279,9 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		// searcher already looks at the whole hand
 		// (SearchLibraryThenForEffect marks it).
 		SearchHandCards: append([]uuid.UUID(nil), handMatches...),
-		searchResume:    &searchResumeFrame{spec: spec, undecided: undecided},
+		// #4253 slice 5: the prompt holds the spec without its predicate,
+		// which listed the candidates above and is not read again.
+		searchResume: &searchResumeFrame{spec: spec.forPrompt(), undecided: undecided},
 	})
 	// #3998: "You control your opponents while they're searching their
 	// libraries" — for as long as this prompt is open. Only a search of

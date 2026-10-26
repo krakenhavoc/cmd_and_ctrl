@@ -65,7 +65,7 @@ func emergentUltimatumSearch(ctx *Context) error {
 		Limit:    3,
 		Reveal:   true,
 		Reason:   "Emergent Ultimatum — up to three monocolored cards with different names, to exile",
-		Validate: DifferentNames,
+		Rule:     searchRuleDifferentNames,
 		ThenTail: ctx.ItemTail(emergentUltimatumChooseTail),
 	})
 }

@@ -469,6 +469,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredTapCostKeysLocked()...)
 	// #4290: a keyed prompted run's continuation.
 	out = append(out, registeredPromptRunKeysLocked()...)
+	// #4253 slice 5: a search prompt's set rule.
+	out = append(out, registeredSearchRuleKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

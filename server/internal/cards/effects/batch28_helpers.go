@@ -400,19 +400,6 @@ func b28ReturnSelfToOwnersHand(g *game.Game, item *game.StackItem) error {
 	return BounceToHand{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }
 
-// b28DifferentNames is a SearchLibrary Validate for "cards that each
-// have different names" — Tiamat. An empty pick is always legal.
-func b28DifferentNames(cards []game.Card) bool {
-	seen := map[string]bool{}
-	for _, c := range cards {
-		if seen[c.Name] {
-			return false
-		}
-		seen[c.Name] = true
-	}
-	return true
-}
-
 // b28SearchDragonsNotNamed is Tiamat's search: up to five Dragon cards
 // not named `except` with different names, revealed, to hand, then
 // shuffle. Effective subtypes are not readable in a library, so the
@@ -425,12 +412,12 @@ func b28SearchDragonsNotNamed(g *game.Game, item *game.StackItem, except string,
 			// SearchLibrary lends the source's text (CR 612.2, #3984).
 			return c.HasSubtypeWord("Dragon") && c.Name != except
 		},
-		Dest:     game.ZoneHand,
-		Limit:    5,
-		Reveal:   true,
-		Shuffle:  true,
-		Validate: b28DifferentNames,
-		Reason:   reason,
+		Dest:    game.ZoneHand,
+		Limit:   5,
+		Reveal:  true,
+		Shuffle: true,
+		Rule:    searchRuleDifferentNames,
+		Reason:  reason,
 	}.Apply(NewContext(g, item))
 }
 

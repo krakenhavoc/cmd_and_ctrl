@@ -59,7 +59,7 @@ func init() {
 					Reveal:    true,
 					Shuffle:   true,
 					Reason:    "Fblthp, Knows the Way — up to X basic land cards with different names",
-					Validate:  rfCreatureBDistinctNames,
+					Rule:      searchRuleDifferentNames,
 					Source:    item.SourceCardID,
 				}.Apply(NewContext(g, item))
 			},

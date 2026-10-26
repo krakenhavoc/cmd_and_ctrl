@@ -1123,6 +1123,12 @@ type SearchLibrary struct {
 	// per-card predicate can express — Myriad Landscape's "two basic
 	// land cards that share a land type".
 	Validate func([]game.Card) bool
+	// Rule is Validate as data (#4253 slice 5): a registered set rule
+	// (search_rules.go, or game.RegisterSearchRule) and the number it
+	// reads. With Rule and no Then, a table waiting on the search prompt
+	// is a restore point; a closure Validate keeps it off the disk. Set
+	// Validate or Rule, not both.
+	Rule game.SearchRule
 	// Then is the rest of the effect, receiving the cards actually
 	// found. Runs inline when no prompt was needed and from the
 	// resolve path when one was.
@@ -1245,6 +1251,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		UpTo:                 s.UpTo,
 		Reason:               s.Reason,
 		Validate:             s.Validate,
+		Rule:                 s.Rule,
 		Then:                 s.Then,
 		ThenTail:             s.thenTail(source),
 		ToTop:                s.ToTop,

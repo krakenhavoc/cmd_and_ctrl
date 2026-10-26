@@ -73,7 +73,7 @@ func giftsUngivenResolve(item *game.StackItem, ctx *Context) error {
 		// order it imposes.
 		ToTop:    true,
 		Reason:   "Gifts Ungiven — search your library for up to four cards with different names",
-		Validate: DifferentNames,
+		Rule:     searchRuleDifferentNames,
 		ThenTail: giftsUngivenTail(ctx, opp),
 	})
 }

@@ -1033,3 +1033,6 @@ tail zara-renegade-recruiter/return-at-end-step
 tail zombie-apocalypse/destroy-humans
 choose choose-cards/calamity-galloping-inferno-copy
 number token/settled-split
+searchrule search/basics-share-a-land-type
+searchrule search/different-names
+searchrule search/total-mana-value-at-most
