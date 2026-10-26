@@ -17,13 +17,19 @@ import (
 // card if it is still in exile. The caller fills in the price, timing,
 // lapse and labels; Player and Zone are set here.
 func exileUntilNonlandGrantingCast(ctx *Context, perm game.CastPermission) error {
-	// perm is a CastPermission, which a registered tail cannot carry, so
-	// this run still takes the closure door.
-	item := ctx.Item
-	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), 0, game.ZoneExile, UntilNonland.Pred(), func(g *game.Game, exiled []uuid.UUID) error {
-		return exileUntilNonlandGrant(NewContext(g, item), perm, exiled)
-	})
+	// #4253 slice 10a: the permission rides the run's keyed tail as data.
+	t := ctx.ItemTail(exileUntilNonlandGranted)
+	t.Permission = &perm
+	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 0, game.ZoneExile, UntilNonland, t)
 }
+
+// exileUntilNonlandGranted is the run's "then", told the cards exiled.
+var exileUntilNonlandGranted = CardTail("exile-until-nonland/grant-cast", func(ctx *Context, o game.TailOutcome) error {
+	if o.Tail.Permission == nil {
+		return nil
+	}
+	return exileUntilNonlandGrant(ctx, *o.Tail.Permission, o.IDs)
+})
 
 // exileUntilNonlandGrant grants perm over the nonland card exiled.
 func exileUntilNonlandGrant(ctx *Context, perm game.CastPermission, exiled []uuid.UUID) error {

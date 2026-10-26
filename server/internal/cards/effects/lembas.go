@@ -47,11 +47,6 @@ func lembasShuffleBack(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	owner := card.Owner
-	return PutIntoLibrary{Card: id, Then: func(g *game.Game, placed bool) error {
-		if !placed {
-			return nil
-		}
-		return g.ShuffleLibraryForEffect(owner)
-	}}.Apply(ctx)
+	// Keyed (#4253 slice 10a): the owner rides the tail.
+	return PutIntoLibrary{Card: id, ThenTail: game.KeyedTail{Ref: thenShuffleIfItWent, Player: card.Owner}}.Apply(ctx)
 }

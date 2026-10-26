@@ -41,16 +41,7 @@ var genesisChoice = NewVillainousChoice("genesis-of-the-daleks",
 		Label: "Destroy all Dalek creatures; each opponent of the controller loses life equal to the total power of Daleks that died this turn",
 		Harm:  2,
 		Body: func(ctx *Context, _ Facing) error {
-			return DestroyAllMatching{
-				Match: genesisDalekCreature(),
-				Then: func(ctx *Context, _ []game.Card, _ int) error {
-					n := ctx.Game.DiedPowerWithSubtypeThisTurn(ctx.TextSubtype("Dalek"))
-					if n <= 0 {
-						return nil
-					}
-					return ctx.Game.LoseLifeEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, game.KeyedTail{})
-				},
-			}.Apply(ctx)
+			return DestroyAllMatching{Match: genesisDalekCreature(), ThenTail: ctx.ItemTail(genesisDalekDrain)}.Apply(ctx)
 		},
 	},
 	VillainousOption{
@@ -104,3 +95,14 @@ func init() {
 		},
 	})
 }
+
+// genesisDalekDrain is option A's "each opponent loses life equal to the
+// total power of Daleks that died this turn", read after the sweep, keyed
+// (#4253 slice 10a).
+var genesisDalekDrain = MassTail("mass/genesis-of-the-daleks-drain", func(ctx *Context, _ []game.Card, _ int) error {
+	n := ctx.Game.DiedPowerWithSubtypeThisTurn(ctx.TextSubtype("Dalek"))
+	if n <= 0 {
+		return nil
+	}
+	return ctx.Game.LoseLifeEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, game.KeyedTail{})
+})

@@ -53,34 +53,8 @@ func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label s
 // The body Terminus and Trial of a Time Lord share ("the owner of each
 // card puts that card on the bottom of their library").
 func tuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
-	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{ToBottom: true}, func(g *game.Game, tucked []uuid.UUID) error {
-		// Rebuilt from the live *Game, the contract every continuation
-		// follows: undo restores this game's fields in place.
-		ctx := NewContext(g, item)
-		byOwner := map[uuid.UUID][]uuid.UUID{}
-		for _, id := range tucked {
-			if c, ok := g.LookupCardForEffect(id); ok {
-				byOwner[c.Owner] = append(byOwner[c.Owner], id)
-			}
-		}
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated {
-				continue
-			}
-			own := byOwner[p.ID]
-			if len(own) < 2 {
-				continue
-			}
-			if err := (PutInLibraryInAnyOrder{
-				Chooser:   p.ID,
-				Cards:     own,
-				From:      game.ZoneLibrary,
-				Placement: game.LibraryPlaceBottom,
-				Label:     label,
-			}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	// Keyed (#4253 slice 10a): the ordering prompts are the tuck's tail,
+	// run against the asking item.
+	tail := withWord(withN(NewContext(ctx.Game, item).ItemTail(tuckEachOwnerOrders), tuckOrderBottom), label)
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{ToBottom: true}, tail)
 }

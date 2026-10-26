@@ -36,18 +36,19 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{
-				Match: Creature(),
-				Then: func(ctx *Context, swept []game.Card, destroyed int) error {
-					paid := destroyed
-					for _, c := range swept {
-						if IsToken(c) {
-							paid--
-						}
-					}
-					return b13CreateTappedTreasures(ctx, ctx.Controller(), paid)
-				},
-			}.Apply(ctx)
+			return DestroyAllMatching{Match: Creature(), ThenTail: ctx.ItemTail(bloodMoneyTreasures)}.Apply(ctx)
 		},
 	})
 }
+
+// bloodMoneyTreasures is "create a tapped Treasure token for each nontoken
+// creature destroyed this way", keyed (#4253 slice 10a).
+var bloodMoneyTreasures = MassTail("mass/blood-money-treasures", func(ctx *Context, swept []game.Card, destroyed int) error {
+	paid := destroyed
+	for _, c := range swept {
+		if IsToken(c) {
+			paid--
+		}
+	}
+	return b13CreateTappedTreasures(ctx, ctx.Controller(), paid)
+})

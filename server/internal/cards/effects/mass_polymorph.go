@@ -26,12 +26,13 @@ func init() {
 		Purpose: game.Purpose{Sweep: game.Sweep{
 			Matches: game.SweepCreatures, How: game.SweepExile, Partial: true}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ExileAllMatching{
-				Match: And(Creature(), YouControl()),
-				Then: func(ctx *Context, _ []game.Card, exiled int) error {
-					return rfReprintAMassPolymorphReveal(ctx, exiled)
-				},
-			}.Apply(ctx)
+			return ExileAllMatching{Match: And(Creature(), YouControl()), ThenTail: ctx.ItemTail(massPolymorphReveal)}.Apply(ctx)
 		},
 	})
 }
+
+// massPolymorphReveal is "reveal cards until that many creature cards",
+// keyed (#4253 slice 10a).
+var massPolymorphReveal = MassTail("mass/mass-polymorph-reveal", func(ctx *Context, _ []game.Card, exiled int) error {
+	return rfReprintAMassPolymorphReveal(ctx, exiled)
+})

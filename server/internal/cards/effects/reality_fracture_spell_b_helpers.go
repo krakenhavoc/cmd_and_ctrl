@@ -11,14 +11,23 @@ import (
 
 // rfSpellBMillThenMayTakePermanent is Something Worth Saving: mill n
 // cards, then the controller may put a permanent card from among them
-// into their hand; `then` runs once that is settled (also when nothing
-// was milled or nothing is eligible).
-func rfSpellBMillThenMayTakePermanent(ctx *Context, n int, question string, then func(ctx *Context) error) error {
-	// `then` is a caller's closure, so this mill still takes the closure
-	// door.
-	item := ctx.Item
-	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), n, game.ZoneGraveyard, nil, func(g *game.Game, milled []uuid.UUID) error {
-		return rfSpellBMayTakeFromMilled(NewContext(g, item), item, question, then, milled)
+// into their hand; the `then` milled was registered with
+// (rfSpellBTakeFromMilledTail) runs once that is settled (also when
+// nothing was milled or nothing is eligible).
+//
+// #4253 slice 10a: the mill's "then" is a keyed tail, the question its
+// Word. The pick after it is still a closure.
+func rfSpellBMillThenMayTakePermanent(ctx *Context, n int, question string, milled game.TailRef) error {
+	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), n, game.ZoneGraveyard, game.MillUntil{},
+		withWord(ctx.ItemTail(milled), question))
+}
+
+// rfSpellBTakeFromMilledTail registers the mill's tail for one card under
+// key (an on-disk identity): the pick over what was milled, then `then`.
+// Call it once, from a package-level var.
+func rfSpellBTakeFromMilledTail(key string, then func(ctx *Context) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		return rfSpellBMayTakeFromMilled(ctx, ctx.Item, o.Tail.Word, then, o.IDs)
 	})
 }
 

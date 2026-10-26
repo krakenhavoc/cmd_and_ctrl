@@ -87,21 +87,27 @@ func boseijuChannel(g *game.Game, item *game.StackItem) error {
 	if victim == uuid.Nil || owner == uuid.Nil {
 		return nil
 	}
-	source := item.SourceCardID
-	return g.DestroyPermanentsThenForEffect([]uuid.UUID{victim},
-		func(g *game.Game, _ []uuid.UUID) error {
-			return SearchLibrary{
-				Player:    owner,
-				Source:    source,
-				Predicate: hasABasicLandType,
-				Dest:      game.ZoneBattlefield,
-				Limit:     1,
-				Optional:  true,
-				Shuffle:   true,
-				Reason:    "Boseiju, Who Endures — you may search for a land card with a basic land type",
-			}.Apply(NewContext(g, item))
-		})
+	return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{victim}, withCarry(ctx.ItemTail(boseijuSearch), owner))
 }
+
+// boseijuSearch is "that permanent's controller may search …", after the
+// destruction, keyed (#4253 slice 10a): the controller is Carry[0].
+var boseijuSearch = CardTail("then/boseiju-who-endures-search", func(ctx *Context, o game.TailOutcome) error {
+	owner := tailCarry0(o)
+	if owner == uuid.Nil {
+		return nil
+	}
+	return SearchLibrary{
+		Player:    owner,
+		Source:    ctx.Source(),
+		Predicate: hasABasicLandType,
+		Dest:      game.ZoneBattlefield,
+		Limit:     1,
+		Optional:  true,
+		Shuffle:   true,
+		Reason:    "Boseiju, Who Endures — you may search for a land card with a basic land type",
+	}.Apply(ctx)
+})
 
 // hasABasicLandType is "a land card with a basic land type" — the
 // land TYPE, not the basic supertype, so a shockland or a Triome

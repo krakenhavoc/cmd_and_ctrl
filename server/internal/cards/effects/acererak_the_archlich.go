@@ -57,12 +57,8 @@ var acererakThen game.OptionPickThen
 
 // acererakReturn returns Acererak to its owner's hand and ventures.
 func acererakReturn(g *game.Game, item *game.StackItem) error {
-	return BounceToHand{
-		Target: item.SourceCardID,
-		Then: func(ctx *Context, _ bool) error {
-			return VentureIntoTheDungeon{}.Apply(ctx)
-		},
-	}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return BounceToHand{Target: item.SourceCardID, ThenTail: ctx.ItemTail(thenVentureIntoTheDungeon)}.Apply(ctx)
 }
 
 // acererakAttack asks each opponent in turn order.

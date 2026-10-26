@@ -58,16 +58,13 @@ func init() {
 			}
 			target := item.Targets[0].ID
 			youControlled, ok := controllerOfTarget(ctx, target)
-			drawer := ctx.Controller()
-			return BounceToHand{
-				Target: target,
-				Then: func(ctx *Context, _ bool) error {
-					if !ok || youControlled != drawer {
-						return nil
-					}
-					return DrawCards{Player: drawer, N: 1}.Apply(ctx)
-				},
-			}.Apply(ctx)
+			// The draw waits behind the bounce (#4253 slice 10a, keyed):
+			// one card when you controlled it, none otherwise.
+			draws := 0
+			if ok && youControlled == ctx.Controller() {
+				draws = 1
+			}
+			return BounceToHand{Target: target, ThenTail: withN(ctx.Tail(thenDrawCards), draws)}.Apply(ctx)
 		},
 	})
 }

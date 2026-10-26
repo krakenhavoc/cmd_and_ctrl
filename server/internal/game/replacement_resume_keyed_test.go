@@ -135,6 +135,10 @@ func keyedFrameSample() *ReplacementEvent {
 					Planned: []cardSnapshot{{InstanceID: id("mupl"), Name: "Planned"}}, Then: &keyedTailSnapshot{Key: "mt"}},
 			},
 			simultaneousExit: []Card{{InstanceID: id("lki"), Name: "Gone", Controller: id("lkic")}},
+			// #4253 slice 10a: an exchange's settled entry.
+			simultaneousEntry: &settledExchangeEntry{CardID: id("xe"), Actor: id("xea"), NewZoneOwner: id("xeo"),
+				OldZone: ZoneGraveyard, NewZone: ZoneBattlefield, Tapped: true, Counters: map[string]int{CounterPlusOne: 1},
+				FaceDown: FaceDownKind("morph"), Listed: &FaceDownListing{Types: []string{"Creature"}, Power: 2, Toughness: 2}},
 			discardLegs: &discardBatchRun{
 				Player: id("dlp"), Source: id("dls"), Cause: DiscardCauseEffect, Leg: id("dll"), Mark: 7,
 				Rest: []uuid.UUID{id("dlr")}, Landed: []uuid.UUID{id("dlx")}, Tops: []discardTopSnapshot{{ID: id("dlt"), Epoch: 2}},
@@ -151,6 +155,13 @@ func keyedFrameSample() *ReplacementEvent {
 		lifeTail: &lifeTail{keyed: KeyedTail{Ref: TailRef{key: "lk"}}, each: &lifeEachRun{
 			Source: id("les"), Rest: []uuid.UUID{id("ler")}, Amount: 2, Lost: 1, Then: &keyedTailSnapshot{Key: "le"},
 		}},
+		// #4253 slice 10a: a mill instruction's amount window, its tail
+		// data (a keyed "then" carrying a cast permission, and a run).
+		MillPlayer: id("millp"), MillCount: 3,
+		mill: &millTail{dest: ZoneExile, allMoved: true,
+			keyed: &KeyedTail{Ref: TailRef{key: "mk"}, Player: id("mkp"),
+				Permission: &CastPermission{Player: id("permp"), Zone: ZoneExile, Cards: []PermissionCardRef{{ID: id("permc"), Epoch: 2}}}},
+			run: &millUntilRun{Player: id("mrp"), Dest: ZoneGraveyard, Until: "mru", Then: &keyedTailSnapshot{Key: "mrt"}}},
 		lifeAfterMove:       []lifeInstruction{{Source: id("ls"), Player: id("lp"), Delta: -2}},
 		extraTurnsAfterMove: []extraTurnInstruction{{Source: id("xs"), Player: id("xp")}},
 		asCommanderMove:     true,
@@ -174,7 +185,8 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		val  reflect.Value
 		skip map[string]bool
 	}{
-		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true, "simultaneousEntry": true}},
+		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true}},
+		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"then": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true, "armySubtype": true}},
 	} {
@@ -280,6 +292,19 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"an entry a keyed discard leg became": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{discard: &discardEntryRun{Legs: &discardBatchRun{}}}}
 		},
+		// #4253 slice 10a: a mill's amount window whose tail is data, and
+		// an exchange's exit.
+		"a mill amount with a keyed then": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventMill
+			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard, keyed: &KeyedTail{Ref: TailRef{key: "k"}}}
+		},
+		"a fire-and-forget mill amount": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventMill
+			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard}
+		},
+		"an exchange's exit": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{Dst: ZoneGraveyard, simultaneousEntry: &settledExchangeEntry{CardID: uuid.New()}}
+		},
 		"a staged token's entry with its batch as data": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			c.replacementResume.ev.entryTail = &entryTail{tokens: &tokenEntryRun{}}
@@ -360,9 +385,13 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.Kind = RepEventDiscard
 			c.replacementResume.ev.zoneRoute = &zoneRoute{Discard: true, then: func(*Game) error { return nil }}
 		},
-		"a mill amount": func(c *PendingChoice) {
+		"a mill amount whose then is a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.Kind = RepEventMill
-			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard}
+			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard, then: func(*Game, []uuid.UUID) error { return nil }}
+		},
+		"an exchange whose exit has a closure": func(c *PendingChoice) {
+			c.replacementResume.ev.zoneRoute = &zoneRoute{simultaneousEntry: &settledExchangeEntry{CardID: uuid.New()},
+				then: func(*Game) error { return nil }}
 		},
 		"a test replacement": func(c *PendingChoice) {
 			c.replacementResume.applicable = []activeReplacement{{id: testReplacementIDBase}}
@@ -511,6 +540,30 @@ func TestAKeyedFrameWithAnUnknownTailIsRefused(t *testing.T) {
 			c.ReplacementResume.Event.EntryTail = &entryTailSnapshot{Batch: &entryBatchSnapshot{Discard: &discardEntryRun{
 				Legs: &discardBatchRun{Then: &keyedTailSnapshot{Key: "never-registered"}},
 			}}}
+		},
+		// #4253 slice 10a: an exchange under the plain move key, and an
+		// unknown tail or stop clause in a mill's amount window.
+		"an exchange under the move key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMove
+			c.ReplacementResume.Event.ZoneRoute.Exchange = &exchangeEntrySnapshot{CardID: uuid.New()}
+		},
+		"an exchange under the move-tail key": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMoveTail
+			c.ReplacementResume.Event.ZoneRoute.Exchange = &exchangeEntrySnapshot{CardID: uuid.New()}
+		},
+		"an unknown tail in a mill's amount window": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMill
+			c.ReplacementResume.Event.Kind = RepEventMill
+			c.ReplacementResume.Event.MillTail = &millTailSnapshot{Dest: ZoneGraveyard, Sequenced: true, Then: &keyedTailSnapshot{Key: "never-registered"}}
+		},
+		"an unknown stop clause in a mill's amount window": func(c *pendingChoiceSnapshot) {
+			c.PickThen = ReplacementResumeMill
+			c.ReplacementResume.Event.Kind = RepEventMill
+			c.ReplacementResume.Event.MillTail = &millTailSnapshot{Dest: ZoneGraveyard, Run: &millUntilRun{Until: "never-registered"}}
+		},
+		"a mill under the move key": func(c *pendingChoiceSnapshot) {
+			c.ReplacementResume.Event.Kind = RepEventMill
+			c.ReplacementResume.Event.MillTail = &millTailSnapshot{Dest: ZoneGraveyard}
 		},
 		"an unknown tail in a batch's settled member": func(c *pendingChoiceSnapshot) {
 			c.PickThen = ReplacementResumeMoveTail

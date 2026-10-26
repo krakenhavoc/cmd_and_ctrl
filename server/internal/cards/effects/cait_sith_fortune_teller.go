@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Cait Sith, Fortune Teller — Legendary Artifact Creature — Cat Moogle
 // {3}{R}, 3/3 (#3656):
@@ -41,22 +37,25 @@ func init() {
 // caitSithImpulseExile is "then exile the top card of your library; you may
 // play it this turn", and the reflexive boost it earns. An on-disk key.
 var caitSithImpulseExile = CardTail("cait-sith-fortune-teller/impulse-exile", func(ctx *Context, _ game.TailOutcome) error {
-	item := ctx.Item
-	return b12ImpulseExileForTurnThen(ctx.Game, item, 1, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		card, ok := g.LookupCardForEffect(exiled[0])
-		if !ok {
-			return nil
-		}
-		return ReflexiveTrigger{
-			Label:  "Cait Sith, Fortune Teller — target creature you control gets +X/+0 until end of turn",
-			Cards:  exiled,
-			Body:   caitSithBoostBody,
-			Params: game.EffectParams{Amount: card.ManaValue()},
-		}.Apply(NewContext(g, item))
-	})
+	return b12ImpulseExileForTurnThen(ctx.Game, ctx.Item, 1, caitSithExiled)
+})
+
+// caitSithExiled is the reflexive boost the exiled card earns, keyed
+// (#4253 slice 10a).
+var caitSithExiled = CardTail("then/cait-sith-fortune-teller-boost", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	card, ok := ctx.Game.LookupCardForEffect(o.IDs[0])
+	if !ok {
+		return nil
+	}
+	return ReflexiveTrigger{
+		Label:  "Cait Sith, Fortune Teller — target creature you control gets +X/+0 until end of turn",
+		Cards:  o.IDs,
+		Body:   caitSithBoostBody,
+		Params: game.EffectParams{Amount: card.ManaValue()},
+	}.Apply(ctx)
 })
 
 // caitSithBoost is the reflexive half: the chosen creature gets

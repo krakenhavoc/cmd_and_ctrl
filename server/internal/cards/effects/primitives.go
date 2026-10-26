@@ -247,17 +247,36 @@ type SacrificePermanent struct {
 	// clause as something that acts on what it is told, not as the next
 	// line of the card.
 	Then func(ctx *Context, sacrificed bool) error
+
+	// ThenTail is Then as a registered tail (#4253 slice 10a), told the
+	// permanent as TailOutcome.IDs when it was sacrificed and nothing
+	// when it was not (oneWentThisWay reads it), so a table waiting on the
+	// sacrifice's prompt is a restore point. Set it instead of Then; it
+	// wins when both are.
+	ThenTail game.KeyedTail
 }
+
+// oneWentThisWay is a single-card door's `sacrificed`, `bounced`,
+// `tucked` or `exiled` read off its keyed tail (SacrificePermanent.ThenTail,
+// BounceToHand.ThenTail): whether the one card went this way (CR 400.7).
+func oneWentThisWay(o game.TailOutcome) bool { return len(o.IDs) == 1 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	// "If you do" is told no: nothing was sacrificed.
 	if ctx.isNewSourceObject(s.Target) {
+		if !s.ThenTail.IsZero() {
+			return s.ThenTail.Run(ctx.Game, nil)
+		}
 		if s.Then != nil {
 			return s.Then(ctx, false)
 		}
 		return nil
+	}
+	if !s.ThenTail.IsZero() {
+		// The source is uuid.Nil for the reason the closure form's is.
+		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{s.Target}, s.ThenTail)
 	}
 	if s.Then == nil {
 		return nothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
@@ -407,6 +426,33 @@ type ExileThenIfItWas struct {
 	// same conditional's other branch, so it runs only when the card
 	// reached exile and Was said no. Optional.
 	Otherwise func(ctx *Context) error
+
+	// Keyed is Then and Otherwise as one registered tail (IfItWasTail,
+	// #4253 slice 10a), so a table waiting on the exile's prompt is a
+	// restore point. Set it instead of Then and Otherwise; it wins when
+	// set.
+	Keyed game.TailRef
+}
+
+// IfItWasTail registers ExileThenIfItWas's two branches as one keyed tail
+// under key (ledgered "tail <key>", an on-disk identity): `then` runs when
+// the card reached exile and was what Was asked, `otherwise` (optional)
+// when it reached exile and was not. Call it once, from a package-level
+// var.
+func IfItWasTail(key string, then, otherwise func(ctx *Context) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if !oneWentThisWay(o) {
+			return nil
+		}
+		clause := then
+		if o.Tail.N == 0 {
+			clause = otherwise
+		}
+		if clause == nil {
+			return nil
+		}
+		return clause(ctx)
+	})
 }
 
 // WasCreatureCard is the predicate behind the printed phrase "if it
@@ -418,6 +464,14 @@ func (e ExileThenIfItWas) Apply(ctx *Context) error {
 	was := false
 	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok {
 		was = e.Was == nil || e.Was(c)
+	}
+	if e.Keyed.Key() != "" {
+		// The answer to Was rides the tail as its N.
+		n := 0
+		if was {
+			n = 1
+		}
+		return ExileTarget{Target: e.Target, ThenTail: withN(ctx.ItemTail(e.Keyed), n)}.Apply(ctx)
 	}
 	// The clauses are closures (Then, Otherwise), so the exile takes the
 	// closure door.
@@ -667,16 +721,28 @@ type BounceToHand struct {
 	// about a player) simply ignores the argument and gets the ordering
 	// for free.
 	Then func(ctx *Context, bounced bool) error
+
+	// ThenTail is Then as a registered tail (#4253 slice 10a), told the
+	// card as TailOutcome.IDs when it reached a hand and nothing when it
+	// did not (oneWentThisWay reads it). Set it instead of Then; it wins
+	// when both are.
+	ThenTail game.KeyedTail
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	if ctx.isNewSourceObject(b.Target) {
+		if !b.ThenTail.IsZero() {
+			return b.ThenTail.Run(ctx.Game, nil)
+		}
 		if b.Then != nil {
 			return b.Then(ctx, false)
 		}
 		return nil
+	}
+	if !b.ThenTail.IsZero() {
+		return ctx.Game.BounceCardsToHandKeyedForEffect([]uuid.UUID{b.Target}, b.ThenTail)
 	}
 	if b.Then == nil {
 		return nothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))

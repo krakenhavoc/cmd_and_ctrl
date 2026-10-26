@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Stay Hidden, Stay Silent — Enchantment — Aura {1}{U}:
 //
@@ -55,11 +59,17 @@ func stayHiddenShuffleAndManifest(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return manifest(g)
 	}
-	owner := victim.Owner
-	return g.TuckToLibraryThenForEffect(victim.InstanceID, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		if err := g.ShuffleLibraryForEffect(owner); err != nil {
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{victim.InstanceID}, game.TuckOptions{},
+		withCarry(ctx.ItemTail(stayHiddenShuffleThenManifest), victim.Owner))
+}
+
+// stayHiddenShuffleThenManifest is "its owner shuffles, then you manifest
+// dread", after the tuck, keyed (#4253 slice 10a): the owner is Carry[0].
+var stayHiddenShuffleThenManifest = CardTail("then/stay-hidden-shuffle-manifest", func(ctx *Context, o game.TailOutcome) error {
+	if owner := tailCarry0(o); owner != uuid.Nil {
+		if err := ctx.Game.ShuffleLibraryForEffect(owner); err != nil {
 			return err
 		}
-		return manifest(g)
-	})
-}
+	}
+	return ManifestDread{}.Apply(ctx)
+})

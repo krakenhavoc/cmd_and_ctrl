@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Bonehoard Dracosaur — Creature — Dinosaur Dragon {3}{R}{R}, 5/5
 // (EDHREC rank 1375):
@@ -39,29 +35,32 @@ func init() {
 				// prompt, and the fire-and-forget form's return would
 				// be short or empty right when this needs it most
 				// (#1587).
-				return b12ImpulseExileForTurnThen(g, item, 2, func(g *game.Game, exiled []uuid.UUID) error {
-					land, nonland := 0, 0
-					for _, id := range exiled {
-						c, ok := g.LookupCardForEffect(id)
-						if !ok {
-							continue
-						}
-						if c.IsLand() {
-							land = 1
-						} else {
-							nonland = 1
-						}
-					}
-					// The Treasure waits for a prompt the Dinosaur asks
-					// (a CR 616 order of two token replacements; #4162).
-					ctx := NewContext(g, item)
-					ctx.RecordStep(bonehoardRecord, nil, land, nonland)
-					return bonehoardTokens.Run(ctx)
-				})
+				return b12ImpulseExileForTurnThen(g, item, 2, bonehoardExiled)
 			}),
 		},
 	})
 }
+
+// bonehoardExiled reads what was exiled and makes the tokens, keyed (#4253
+// slice 10a).
+var bonehoardExiled = CardTail("then/bonehoard-dracosaur-exiled", func(ctx *Context, o game.TailOutcome) error {
+	land, nonland := 0, 0
+	for _, id := range o.IDs {
+		c, ok := ctx.Game.LookupCardForEffect(id)
+		if !ok {
+			continue
+		}
+		if c.IsLand() {
+			land = 1
+		} else {
+			nonland = 1
+		}
+	}
+	// The Treasure waits for a prompt the Dinosaur asks (a CR 616 order
+	// of two token replacements; #4162).
+	ctx.RecordStep(bonehoardRecord, nil, land, nonland)
+	return bonehoardTokens.Run(ctx)
+})
 
 // bonehoardRecord is whether a land and whether a nonland card was
 // exiled, as 0 or 1.

@@ -51,9 +51,36 @@ func init() {
 			// The counters follow the destruction (printed order), from its
 			// continuation, so a replacement that pauses it cannot reorder them.
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-				return ctx.Game.DestroyPermanentsThenForEffect([]uuid.UUID{t.ID}, counters)
+				// Keyed (#4253 slice 10a): the player rides the tail.
+				var who []uuid.UUID
+				if havePlayer {
+					who = []uuid.UUID{p.ID}
+				}
+				return ctx.Game.DestroyPermanentsKeyedForEffect([]uuid.UUID{t.ID}, withCarry(ctx.ItemTail(twistedFatesCounters), who...))
 			}
 			return counters(ctx.Game, nil)
 		},
 	})
 }
+
+// twistedFatesCounters is "put a +1/+1 counter on each creature target
+// player controls", after the destruction: Carry[0] is the player, absent
+// when there was none (#4253 slice 10a).
+var twistedFatesCounters = CardTail("then/twisted-fates-counters", func(ctx *Context, o game.TailOutcome) error {
+	player := tailCarry0(o)
+	if player == uuid.Nil {
+		return nil
+	}
+	var ids []uuid.UUID
+	for _, card := range ctx.Game.BattlefieldCardsForEffect() {
+		if card.IsCreature() && card.Controller == player {
+			ids = append(ids, card.InstanceID)
+		}
+	}
+	for _, id := range ids {
+		if err := (AddCounter{Target: id, Kind: "+1/+1", N: 1}).Apply(ctx.asGroupMember()); err != nil {
+			return err
+		}
+	}
+	return nil
+})

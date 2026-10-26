@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Horses of the Bruinen — Sorcery {3}{U}{U}:
 //
@@ -24,12 +20,14 @@ func init() {
 		Name:         "Horses of the Bruinen",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("up to two target creatures").WithCount(0, 2),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ids := legalTargetIDs(ctx)
-			return ctx.Game.BounceCardsToHandThenForEffect(ids, func(g *game.Game, _ []uuid.UUID) error {
-				fresh := NewContext(g, item)
-				return Scry{N: 1, ThenTail: fresh.ItemTail(ringTemptsYouTail)}.Apply(fresh)
-			})
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return ctx.Game.BounceCardsToHandKeyedForEffect(legalTargetIDs(ctx), ctx.ItemTail(horsesScryThenTempt))
 		},
 	})
 }
+
+// horsesScryThenTempt is "scry 1, then the Ring tempts you" after the
+// bounce, keyed (#4253 slice 10a).
+var horsesScryThenTempt = CardTail("then/horses-of-the-bruinen-scry", func(ctx *Context, _ game.TailOutcome) error {
+	return Scry{N: 1, ThenTail: ctx.ItemTail(ringTemptsYouTail)}.Apply(ctx)
+})

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Chaos Warp — Instant {2}{R}:
 //
@@ -50,27 +54,33 @@ func init() {
 			if !ok {
 				return nil
 			}
-			owner := c.Owner
-			source := ctx.Source()
-			// The continuation takes the live *Game rather than
-			// capturing one, the contract every continuation in the
-			// engine follows: an undo restores this game's fields in
-			// place, so a captured *Game would be the wrong one.
-			return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				if err := g.ShuffleLibraryForEffect(owner); err != nil {
-					return err
-				}
-				// #1997: "they put it onto the battlefield" — the
-				// owner puts it (CR 110.2a), which Arboria reads.
-				return g.PutByEnteringPlayerForEffect(func() error {
-					_, err := revealTopThenPutIfMatch(g, source, owner, chaosWarpAnyPermanent,
-						false, "Chaos Warp — revealed from the top of the library")
-					return err
-				})
-			})
+			// The rest of the card is the tuck's keyed tail (#4253 slice
+			// 10a): the owner rides it as data.
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{},
+				withCarry(ctx.Tail(chaosWarpShuffleReveal), c.Owner))
 		},
 	})
 }
+
+// chaosWarpShuffleReveal is "the owner shuffles, then reveals the top card
+// of their library; if it's a permanent card, they put it onto the
+// battlefield": Carry[0] is the owner, Source the Chaos Warp.
+var chaosWarpShuffleReveal = game.RegisterTail("then/chaos-warp-shuffle-reveal", func(g *game.Game, o game.TailOutcome) error {
+	owner := tailCarry0(o)
+	if owner == uuid.Nil {
+		return nil
+	}
+	if err := g.ShuffleLibraryForEffect(owner); err != nil {
+		return err
+	}
+	// #1997: "they put it onto the battlefield" — the owner puts it
+	// (CR 110.2a), which Arboria reads.
+	return g.PutByEnteringPlayerForEffect(func() error {
+		_, err := revealTopThenPutIfMatch(g, o.Tail.Source, owner, chaosWarpAnyPermanent,
+			false, "Chaos Warp — revealed from the top of the library")
+		return err
+	})
+})
 
 // chaosWarpAnyPermanent is "if it's a permanent card"; the reveal
 // helper already refuses nonpermanents and tokens, so every card it

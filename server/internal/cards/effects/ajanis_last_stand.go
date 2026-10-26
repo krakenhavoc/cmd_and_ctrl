@@ -82,7 +82,11 @@ func ajanisLastStandSacrifice(g *game.Game, item *game.StackItem) error {
 // ajanisLastStandAnswer is the "yes": sacrifice the enchantment, and only
 // then the token. Keyed (#4291).
 var ajanisLastStandAnswer = MayYes("confirm/ajanis-last-stand-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return SacrificeThisThen(func(ctx *Context) error {
-		return CreateToken{Template: TokenCard("4/4 white Avatar with flying"), N: 1}.Apply(ctx)
-	})(ctx.Game, ctx.Item)
+	return ajanisLastStandSacrificeThen(ctx.Game, ctx.Item)
+})
+
+// ajanisLastStandSacrificeThen is the sacrifice and, if it went, the
+// token (#4253 slice 10a, keyed).
+var ajanisLastStandSacrificeThen = SacrificeThisThen("then/ajanis-last-stand-avatar", func(ctx *Context) error {
+	return CreateToken{Template: TokenCard("4/4 white Avatar with flying"), N: 1}.Apply(ctx)
 })

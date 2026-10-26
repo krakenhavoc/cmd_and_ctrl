@@ -49,6 +49,19 @@ func RegisterSacrificedOne(key string, then func(ctx *Context, sacrificed uuid.U
 // RegisterSacrificedOneRun is RegisterSacrificedOne for a body that also
 // reads the numbers the asking card put on the run.
 func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uuid.UUID, r game.RunDone) error) SacrificedOne {
+	// #4253 slice 10a: "if you do" is the sacrifice's keyed tail, under a
+	// key derived from the run's ("sacrificed-one/<key>"), with the run's
+	// carry, its one number and the asking item as data.
+	sacrificed := CardTail("sacrificed-one/"+key, func(ctx *Context, o game.TailOutcome) error {
+		if len(o.IDs) == 0 {
+			return nil
+		}
+		r := game.RunDone{Source: o.Tail.Source, Carry: o.Tail.Carry, Asked: o.Tail.Asked}
+		if o.Tail.Word == sacrificedOneHasNum {
+			r.Nums = []int{o.Tail.N}
+		}
+		return then(ctx, o.IDs[0], r)
+	})
 	return SacrificedOne{pick: RegisterPermanentsPick(key, PermanentsDef{
 		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
 			cards := picked.Cards()
@@ -61,15 +74,28 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 			// sacrifice, and a commander that goes to the command zone
 			// afterwards was still sacrificed (CR 701.17a, ADR 0115).
 			item := ctx.Item
-			return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					return nil
-				}
-				return then(NewContext(g, item), sacrificed[0], r)
-			})
+			if len(r.Nums) > 1 {
+				// More numbers than a tail carries: the closure door.
+				return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
+					if len(sacrificed) == 0 {
+						return nil
+					}
+					return then(NewContext(g, item), sacrificed[0], r)
+				})
+			}
+			tail := game.KeyedTail{Ref: sacrificed, Player: ctx.Controller(), Source: r.Source,
+				Carry: append([]uuid.UUID(nil), r.Carry...), Asked: game.NewAskedItem(item)}
+			if len(r.Nums) == 1 {
+				tail.N, tail.Word = r.Nums[0], sacrificedOneHasNum
+			}
+			return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, cards, tail)
 		},
 	})}
 }
+
+// sacrificedOneHasNum marks a sacrificed-one tail whose run carried one
+// number (its N).
+const sacrificedOneHasNum = "num"
 
 // mustSacrificeOne is maySacrificeOne without the "may": "sacrifice a
 // non-Demon creature. If you do, …" (Dreadfeast Demon). The prompt has

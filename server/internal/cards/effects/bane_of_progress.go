@@ -47,19 +47,19 @@ func init() {
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return DestroyAllMatching{
-					Match: Or(Artifact(), Enchantment()),
-					Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-						if destroyed <= 0 {
-							return nil
-						}
-						return AddCounter{
-							Target: item.SourceCardID,
-							Kind:   game.CounterPlusOne,
-							N:      destroyed,
-						}.Apply(ctx)
-					},
+					Match:    Or(Artifact(), Enchantment()),
+					ThenTail: ctx.ItemTail(baneOfProgressCounters),
 				}.Apply(ctx)
 			},
 		}},
 	})
 }
+
+// baneOfProgressCounters is "put a +1/+1 counter on Bane of Progress for
+// each permanent destroyed this way", keyed (#4253 slice 10a).
+var baneOfProgressCounters = MassTail("mass/bane-of-progress-counters", func(ctx *Context, _ []game.Card, destroyed int) error {
+	if destroyed <= 0 {
+		return nil
+	}
+	return AddCounter{Target: ctx.Item.SourceCardID, Kind: game.CounterPlusOne, N: destroyed}.Apply(ctx)
+})

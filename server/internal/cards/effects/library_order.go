@@ -367,19 +367,28 @@ type PutIntoLibrary struct {
 	// Then runs after the move, told whether the card reached a
 	// library (false when a replacement or CR 903.9 sent it elsewhere).
 	Then func(g *game.Game, placed bool) error
+	// ThenTail is Then as a registered tail (#4253 slice 10a), told the
+	// card when it reached a library and nothing when it did not
+	// (oneWentThisWay), so a table waiting on the move's prompt is a
+	// restore point. Set it instead of Then; it wins when both are.
+	ThenTail game.KeyedTail
 }
 
 func (p PutIntoLibrary) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(p.Card) { // #1432
+		if !p.ThenTail.IsZero() {
+			return p.ThenTail.Run(ctx.Game, nil)
+		}
 		if p.Then != nil {
 			return p.Then(ctx.Game, false)
 		}
 		return nil
 	}
-	return ctx.Game.TuckToLibraryThenForEffect(p.Card, game.TuckOptions{
-		ToBottom: p.ToBottom,
-		Depth:    p.Depth,
-	}, p.Then)
+	opts := game.TuckOptions{ToBottom: p.ToBottom, Depth: p.Depth}
+	if !p.ThenTail.IsZero() {
+		return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{p.Card}, opts, p.ThenTail)
+	}
+	return ctx.Game.TuckToLibraryThenForEffect(p.Card, opts, p.Then)
 }
 
 // libraryOrderLabel is "<source card name> — <clause>", or the clause

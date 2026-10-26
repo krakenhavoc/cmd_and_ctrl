@@ -41,9 +41,7 @@ func init() {
 						return nil
 					}
 					ctx := NewContext(g, item)
-					return BounceToHand{Target: item.SourceCardID, Then: func(ctx *Context, _ bool) error {
-						return ManifestDread{}.Apply(ctx)
-					}}.Apply(ctx)
+					return BounceToHand{Target: item.SourceCardID, ThenTail: ctx.ItemTail(thenManifestDread)}.Apply(ctx)
 				}),
 			OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !combatDamageToPlayerBy(ev, source.Controller, g) {

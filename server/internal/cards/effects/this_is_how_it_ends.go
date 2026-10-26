@@ -95,16 +95,21 @@ func init() {
 			if !ok {
 				return nil
 			}
-			owner := c.Owner
-			return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				if err := g.ShuffleLibraryForEffect(owner); err != nil {
-					return err
-				}
-				return FaceVillainousChoice{
-					Players: []uuid.UUID{owner},
-					Choice:  thisIsHowItEndsChoice,
-				}.Apply(NewContext(g, item))
-			})
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{},
+				withCarry(ctx.ItemTail(thisIsHowItEndsTucked), c.Owner))
 		},
 	})
 }
+
+// thisIsHowItEndsTucked is "its owner shuffles, then faces a villainous
+// choice", after the tuck, keyed (#4253 slice 10a): the owner is Carry[0].
+var thisIsHowItEndsTucked = CardTail("then/this-is-how-it-ends-shuffle-choice", func(ctx *Context, o game.TailOutcome) error {
+	owner := tailCarry0(o)
+	if owner == uuid.Nil {
+		return nil
+	}
+	if err := ctx.Game.ShuffleLibraryForEffect(owner); err != nil {
+		return err
+	}
+	return FaceVillainousChoice{Players: []uuid.UUID{owner}, Choice: thisIsHowItEndsChoice}.Apply(ctx)
+})

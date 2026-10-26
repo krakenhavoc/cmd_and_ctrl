@@ -216,12 +216,17 @@ func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 	// cast during the resolution (CR 608.2g), each cast its own answer to
 	// the resolution_cast prompt over the cards that landed, until the
 	// player declines or none is left.
-	grantTo, source, name := e.grantee(), ctx.Source(), perm.SourceName
-	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, grantTo, n, perm, func(g *game.Game, landed []uuid.UUID) error {
-		offerResolutionCastOver(g, grantTo, source, name, game.MayCastKeywordFreeCast, declineLeaveInExile, landed...)
-		return nil
-	})
+	// Keyed (#4253 slice 10a): the offer is the grant's Next, its holder,
+	// source and heading as data.
+	return ctx.Game.ExileTopWithPermissionKeyedForEffect(e.From, e.grantee(), n, perm,
+		game.KeyedTail{Ref: impulseExileOfferCasts, Player: e.grantee(), Source: ctx.Source(), Word: perm.SourceName})
 }
+
+// impulseExileOfferCasts offers the free casts over the cards that landed.
+var impulseExileOfferCasts = game.RegisterTail("impulse-exile/offer-free-casts", func(g *game.Game, o game.TailOutcome) error {
+	offerResolutionCastOver(g, o.Tail.Player, o.Tail.Source, o.Tail.Word, game.MayCastKeywordFreeCast, declineLeaveInExile, o.IDs...)
+	return nil
+})
 
 // ExileTopNUntilYourNextTurn exiles the top n cards of the resolving
 // effect's controller and lets them play it until the end of their

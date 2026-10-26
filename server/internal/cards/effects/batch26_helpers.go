@@ -288,37 +288,10 @@ func b26TuckAttackersTopOrBottomByOwnersChoice(ctx *Context) error {
 	for _, c := range attackers {
 		ids = append(ids, c.InstanceID)
 	}
-	item := ctx.Item
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract every continuation in the engine follows: an
-	// undo restores this game's fields in place, so a captured *Game
-	// would be the wrong one.
-	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, tucked []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		byOwner := map[uuid.UUID][]uuid.UUID{}
-		for _, id := range tucked {
-			if c, ok := g.LookupCardForEffect(id); ok {
-				byOwner[c.Owner] = append(byOwner[c.Owner], id)
-			}
-		}
-		for _, p := range g.Seats {
-			if p == nil || p.Eliminated {
-				continue
-			}
-			if own := byOwner[p.ID]; len(own) > 0 {
-				if err := (PutInLibraryInAnyOrder{
-					Chooser:   p.ID,
-					Cards:     own,
-					From:      game.ZoneLibrary,
-					Placement: game.LibraryPlaceTopOrBottom,
-					Label:     "Aetherspouts — put each on the top or the bottom of your library",
-				}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	})
+	// Keyed (#4253 slice 10a): the ordering prompts are the tuck's tail.
+	tail := withWord(withN(ctx.ItemTail(tuckEachOwnerOrders), tuckOrderTopOrBottom),
+		"Aetherspouts — put each on the top or the bottom of your library")
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, tail)
 }
 
 // b26ReturnCreatureCardsWithManaValueAtMostFromGraveyard is Raise the

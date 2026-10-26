@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -98,25 +100,41 @@ func offerResolutionCastOver(g *game.Game, controller, source uuid.UUID, name, k
 // a commander to the command zone) is offered nothing. An empty name heads
 // the offer with the exiled card's own.
 func exileWithPermissionThenOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name, keyword string) error {
-	land := func(g *game.Game) {
-		perm.Zone = game.ZoneExile
-		if !g.GrantCastPermissionOverCardForEffect(cardID, perm) {
-			return
-		}
-		reason := name
-		if c, found := g.LookupCardForEffect(cardID); found && reason == "" {
-			reason = c.Name
-		}
-		offerResolutionCastOver(g, perm.Player, source, reason, keyword, declineLeaveInExile, cardID)
-	}
 	if z := g.FindCardZoneForEffect(cardID); z != nil && z.Kind == game.ZoneExile {
-		land(g)
+		exiledWithPermissionOffer(g, cardID, source, perm, name, keyword)
 		return nil
 	}
-	return g.ExileCardThenForEffect(cardID, func(g *game.Game, exiled bool) error {
-		if exiled {
-			land(g)
-		}
+	// Keyed (#4253 slice 10a): the permission, the offer's heading and its
+	// keyword ride the exile's tail.
+	return g.ExileCardKeyedForEffect(cardID, game.KeyedTail{Ref: exiledThenOffer, Source: source, Permission: &perm,
+		Word: keyword + freeCastWordSep + name})
+}
+
+// freeCastWordSep separates exiledThenOffer's keyword from its heading in
+// the tail's Word.
+const freeCastWordSep = "\x1f"
+
+// exiledThenOffer is exileWithPermissionThenOffer's continuation, told the
+// card when it reached exile.
+var exiledThenOffer = game.RegisterTail("exile/grant-permission-then-offer", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) != 1 || o.Tail.Permission == nil {
 		return nil
-	})
+	}
+	keyword, name, _ := strings.Cut(o.Tail.Word, freeCastWordSep)
+	exiledWithPermissionOffer(g, o.IDs[0], o.Tail.Source, *o.Tail.Permission, name, keyword)
+	return nil
+})
+
+// exiledWithPermissionOffer grants perm over the exiled card and offers the
+// cast over it.
+func exiledWithPermissionOffer(g *game.Game, cardID, source uuid.UUID, perm game.CastPermission, name, keyword string) {
+	perm.Zone = game.ZoneExile
+	if !g.GrantCastPermissionOverCardForEffect(cardID, perm) {
+		return
+	}
+	reason := name
+	if c, found := g.LookupCardForEffect(cardID); found && reason == "" {
+		reason = c.Name
+	}
+	offerResolutionCastOver(g, perm.Player, source, reason, keyword, declineLeaveInExile, cardID)
 }

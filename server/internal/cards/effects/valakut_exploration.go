@@ -157,18 +157,22 @@ func valakutExplorationSweep(g *game.Game, item *game.StackItem) error {
 	if len(stillExiled) == 0 {
 		return nil
 	}
-	return g.PutCardsIntoGraveyardThenForEffect(stillExiled, func(g *game.Game, landed []uuid.UUID) error {
-		if len(landed) == 0 {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		return ctx.Game.DamageInstanceForEffect(func() error {
-			for _, opp := range ctx.Opponents() {
-				if err := g.DealDamageToPlayerForEffect(item.SourceCardID, opp, len(landed)); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	})
+	return g.PutCardsIntoGraveyardKeyedForEffect(stillExiled, NewContext(g, item).ItemTail(valakutExplorationDamage))
 }
+
+// valakutExplorationDamage deals each opponent damage equal to the number
+// of cards put into the graveyard this way, keyed (#4253 slice 10a).
+var valakutExplorationDamage = CardTail("then/valakut-exploration-damage", func(ctx *Context, o game.TailOutcome) error {
+	landed := len(o.IDs)
+	if landed == 0 {
+		return nil
+	}
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			if err := ctx.Game.DealDamageToPlayerForEffect(ctx.Source(), opp, landed); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+})

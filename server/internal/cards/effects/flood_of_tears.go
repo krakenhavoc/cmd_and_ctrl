@@ -43,26 +43,28 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepBounce}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			return BounceAllMatching{
-				Match: Nonland(),
-				Then: func(ctx *Context, swept []game.Card, _ int) error {
-					yours := 0
-					for _, c := range swept {
-						if c.Controller == controller && !IsToken(c) {
-							yours++
-						}
-					}
-					if yours < 4 {
-						return nil
-					}
-					return PutFromHandOntoBattlefield{
-						Player:   controller,
-						Optional: true,
-						Label:    "Flood of Tears — you may put a permanent card from your hand onto the battlefield",
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
+			return BounceAllMatching{Match: Nonland(), ThenTail: ctx.ItemTail(floodOfTearsPut)}.Apply(ctx)
 		},
 	})
 }
+
+// floodOfTearsPut is "if four or more nontoken permanents you controlled
+// were returned to hand this way, you may put a permanent card from your
+// hand onto the battlefield", keyed (#4253 slice 10a).
+var floodOfTearsPut = MassTail("mass/flood-of-tears-put", func(ctx *Context, swept []game.Card, _ int) error {
+	controller := ctx.Controller()
+	yours := 0
+	for _, c := range swept {
+		if c.Controller == controller && !IsToken(c) {
+			yours++
+		}
+	}
+	if yours < 4 {
+		return nil
+	}
+	return PutFromHandOntoBattlefield{
+		Player:   controller,
+		Optional: true,
+		Label:    "Flood of Tears — you may put a permanent card from your hand onto the battlefield",
+	}.Apply(ctx)
+})

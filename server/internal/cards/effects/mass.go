@@ -82,6 +82,11 @@ type massEffect struct {
 	// moved — of everything that was swept under `move`, and of
 	// exactly what LANDED under `moveThen`, which knows.
 	then func(ctx *Context, swept []game.Card, moved int) error
+	// moveKeyed is the keyed door (#4253 slice 10a): the verb's batch
+	// with its "then" as a registered tail (MassTail), told the cards
+	// that moved this way. Set, with tail, when the verb's ThenTail is.
+	moveKeyed func(g *game.Game, ids []uuid.UUID, tail game.KeyedTail) error
+	tail      game.KeyedTail
 }
 
 func (m massEffect) apply(ctx *Context) error {
@@ -93,6 +98,12 @@ func (m massEffect) apply(ctx *Context) error {
 	if m.narrow != nil {
 		ids = m.narrow(ctx.Game, ids)
 		swept = keepCards(swept, ids)
+	}
+	if m.moveKeyed != nil {
+		// #4253 slice 10a: the clause is data on the batch, so a leg's
+		// prompt is a restore point. The tail reads the batch's
+		// pre-move copies itself (MassTail).
+		return m.moveKeyed(ctx.Game, ids, m.tail)
 	}
 	if m.moveThen != nil {
 		// The context is rebuilt inside the continuation from the live
@@ -211,6 +222,12 @@ type DestroyAllMatching struct {
 	// as the next line of the card.
 	Then func(ctx *Context, swept []game.Card, destroyed int) error
 
+	// ThenTail is Then as a registered tail (MassTail, #4253 slice 10a):
+	// the same clause, told the permanents destroyed this way, so a
+	// table waiting on a leg's prompt is a restore point. Set it instead
+	// of Then; it wins when both are.
+	ThenTail game.KeyedTail
+
 	// CantBeRegenerated is the clause Damnation, Damn, Day of
 	// Judgment, Decree of Pain, Winds of Rath and Shatterstorm print:
 	// this destruction ignores regeneration shields (CR 701.19c), and
@@ -224,6 +241,13 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 		match:  d.Match,
 		narrow: (*game.Game).DestructibleForEffect,
 		then:   d.Then,
+	}
+	if !d.ThenTail.IsZero() {
+		m.moveKeyed = func(g *game.Game, ids []uuid.UUID, tail game.KeyedTail) error {
+			return g.DestroyPermanentsKeyedForEffect(ids, tail, opts)
+		}
+		m.tail = d.ThenTail
+		return m.apply(ctx)
 	}
 	if d.Then == nil {
 		// Nothing is waiting on the count, so the sweep stays
@@ -266,10 +290,19 @@ type ExileAllMatching struct {
 	// A commander is in it: it is exiled first and CR 903.9a asks its
 	// owner afterwards (ADR 0115).
 	Then func(ctx *Context, swept []game.Card, exiled int) error
+
+	// ThenTail is Then as a registered tail (MassTail, #4253 slice 10a),
+	// told the cards exiled this way. Set it instead of Then.
+	ThenTail game.KeyedTail
 }
 
 func (e ExileAllMatching) Apply(ctx *Context) error {
 	m := massEffect{match: e.Match, then: e.Then}
+	if !e.ThenTail.IsZero() {
+		m.moveKeyed = (*game.Game).ExileCardsKeyedForEffect
+		m.tail = e.ThenTail
+		return m.apply(ctx)
+	}
 	if e.Then == nil {
 		// Nothing is waiting on the count, so the sweep stays
 		// fire-and-forget: every leg is exiled on this line, and a
@@ -299,10 +332,19 @@ type BounceAllMatching struct {
 	// the same continuation shape and the same CR 400.7 reading as
 	// ExileAllMatching's. Optional.
 	Then func(ctx *Context, swept []game.Card, bounced int) error
+
+	// ThenTail is Then as a registered tail (MassTail, #4253 slice 10a),
+	// told the permanents returned this way. Set it instead of Then.
+	ThenTail game.KeyedTail
 }
 
 func (b BounceAllMatching) Apply(ctx *Context) error {
 	m := massEffect{match: b.Match, then: b.Then}
+	if !b.ThenTail.IsZero() {
+		m.moveKeyed = (*game.Game).BounceCardsToHandKeyedForEffect
+		m.tail = b.ThenTail
+		return m.apply(ctx)
+	}
 	if b.Then == nil {
 		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.BounceCardsToHandForEffect(ids) }
 	} else {
@@ -331,9 +373,16 @@ type ReturnAllToHand struct {
 	// from the bounce's continuation for the reason
 	// BounceAllMatching.Then is (#866). Optional.
 	Then func(ctx *Context, bounced int) error
+
+	// ThenTail is Then as a registered tail (#4253 slice 10a), told the
+	// cards returned this way as TailOutcome.IDs. Set it instead of Then.
+	ThenTail game.KeyedTail
 }
 
 func (r ReturnAllToHand) Apply(ctx *Context) error {
+	if !r.ThenTail.IsZero() {
+		return ctx.Game.BounceCardsToHandKeyedForEffect(r.Cards, r.ThenTail)
+	}
 	if r.Then == nil {
 		ctx.Game.BounceCardsToHandForEffect(r.Cards)
 		return nil

@@ -122,16 +122,19 @@ var megatronSacrificed = RegisterPermanentsPick("prompt-run/megatron-tyrant-sacr
 		if c, ok := ctx.Game.LookupCardForEffect(cards[0]); ok {
 			mv, _ = ctx.Game.ManaValueForEffect(c)
 		}
-		item := ctx.Item
-		return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
-			if len(sacrificed) == 0 {
-				return nil
-			}
-			t := WhenYouDo("Megatron, Destructive Force — damage equal to the sacrificed artifact's mana value to target creature", megatronStrikeBody)
-			t.Params = game.EffectParams{Amount: mv}
-			return t.Apply(NewContext(g, item))
-		})
+		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, cards, withN(ctx.ItemTail(megatronWhenYouDo), mv))
 	},
+})
+
+// megatronWhenYouDo raises the reflexive damage once the artifact has
+// gone, keyed (#4253 slice 10a): N is its mana value.
+var megatronWhenYouDo = CardTail("then/megatron-when-you-do", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	t := WhenYouDo("Megatron, Destructive Force — damage equal to the sacrificed artifact's mana value to target creature", megatronStrikeBody)
+	t.Params = game.EffectParams{Amount: o.Tail.N}
+	return t.Apply(ctx)
 })
 
 // megatronStrike is the reflexive trigger's body: Megatron deals the

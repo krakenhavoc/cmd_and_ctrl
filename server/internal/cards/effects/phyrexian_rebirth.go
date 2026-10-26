@@ -34,17 +34,15 @@ func init() {
 		Name:         "Phyrexian Rebirth",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{
-				Match: Creature(),
-				Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   b41PhyrexianHorrorToken(destroyed),
-						N:          1,
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return DestroyAllMatching{Match: Creature(), ThenTail: ctx.ItemTail(phyrexianRebirthHorror)}.Apply(ctx)
 		},
 	})
 }
+
+// phyrexianRebirthHorror is "then create an X/X colorless Phyrexian Horror
+// artifact creature token, where X is the number of creatures destroyed
+// this way", keyed (#4253 slice 10a).
+var phyrexianRebirthHorror = MassTail("mass/phyrexian-rebirth-horror", func(ctx *Context, _ []game.Card, destroyed int) error {
+	return CreateToken{Controller: ctx.Controller(), Template: b41PhyrexianHorrorToken(destroyed), N: 1}.Apply(ctx)
+})

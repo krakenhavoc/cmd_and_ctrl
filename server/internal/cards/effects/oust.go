@@ -36,14 +36,12 @@ func init() {
 			if !ok {
 				return nil
 			}
-			controller := card.Controller
-			source := ctx.Source()
+			// Keyed (#4253 slice 10a): the controller's life gain is the
+			// move's tail.
 			return PutIntoLibrary{
-				Card:  targetID,
-				Depth: 2,
-				Then: func(g *game.Game, _ bool) error {
-					return g.ChangePlayerLifeForEffect(source, controller, 3)
-				},
+				Card:     targetID,
+				Depth:    2,
+				ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: card.Controller, Source: ctx.Source(), N: 3},
 			}.Apply(ctx)
 		},
 	})

@@ -19,9 +19,13 @@ func init() {
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return rfSpellBMillThenMayTakePermanent(ctx, 4,
 				"Something Worth Saving — put a permanent card milled this way into your hand",
-				func(c *Context) error {
-					return GainLife{Player: c.Controller(), Amount: 1}.Apply(c)
-				})
+				somethingWorthSavingMilled)
 		},
 	})
 }
+
+// somethingWorthSavingMilled is the mill's keyed "then": the pick, then
+// "you gain 1 life" (#4253 slice 10a).
+var somethingWorthSavingMilled = rfSpellBTakeFromMilledTail("mill-then-take/something-worth-saving", func(c *Context) error {
+	return GainLife{Player: c.Controller(), Amount: 1}.Apply(c)
+})

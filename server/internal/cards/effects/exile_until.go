@@ -93,6 +93,20 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		return nil
 	}
 	target := e.Target
+	if e.ThisLeaves && e.Then == nil && len(e.On) == 0 && e.Condition.Key() == "" {
+		// #4253 slice 10a: "until this leaves the battlefield" with no
+		// clause of its own (the Oblivion Ring family, Hostage Taker) is
+		// a keyed tail: the record and the grant ride it as data.
+		t := game.KeyedTail{Ref: exileUntilRecorded, Player: u.Controller, Source: u.SourceCardID, Word: e.Label}
+		if e.Grant != nil {
+			grant := *e.Grant
+			t.Permission = &grant
+		}
+		if record {
+			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
+		}
+		return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
+	}
 	then := e.Then
 	return exileTargetThen(ctx, target, func(ctx *Context, exiled bool) error {
 		if !exiled {
@@ -115,6 +129,33 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		return nil
 	})
 }
+
+// exileUntilRecorded is ExileUntil's keyed tail (#4253 slice 10a), told
+// the card when it reached exile: the grant (the tail's Permission) and the
+// return's record, "until <Carry[0] at epoch N> leaves the battlefield",
+// labelled with the tail's Word, for the effect of Player and Source. A
+// tail with no Carry exiles with no record (an item that names no source
+// object). An on-disk key.
+var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) != 1 {
+		return nil
+	}
+	target := o.IDs[0]
+	if p := o.Tail.Permission; p != nil {
+		perm := *p
+		perm.Zone = game.ZoneExile
+		g.GrantCastPermissionOverCardForEffect(target, perm)
+	}
+	if len(o.Tail.Carry) > 0 {
+		g.ScheduleUntilReturnForEffect(target, game.UntilReturn{
+			Controller:   o.Tail.Player,
+			SourceCardID: o.Tail.Source,
+			Label:        o.Tail.Word,
+			Leaves:       game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N},
+		})
+	}
+	return nil
+})
 
 // exileChosenTargetUntilThisLeaves is the Oblivion Ring family's entry
 // trigger body: exile the card the pick stamped into the item, if it is

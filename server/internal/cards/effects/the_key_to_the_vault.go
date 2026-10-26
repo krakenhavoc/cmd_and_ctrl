@@ -59,34 +59,11 @@ func keyToTheVaultLook(g *game.Game, item *game.StackItem) error {
 			eligible = append(eligible, id)
 		}
 	}
-	finish := func(g *game.Game, picked []uuid.UUID) error {
-		var chosen uuid.UUID
-		if len(picked) > 0 {
-			chosen = picked[0]
-		}
-		var rest []uuid.UUID
-		for _, id := range cardsStillInALibrary(g, looked) {
-			if id != chosen {
-				rest = append(rest, id)
-			}
-		}
-		bottomRestThenCast := func(g *game.Game, exiled bool) error {
-			if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil {
-				return err
-			}
-			if exiled {
-				grantFreeCasts(g, controller, source, "The Key to the Vault", game.TimingFlash, game.LapseStaysInExile, []uuid.UUID{chosen})
-			}
-			return nil
-		}
-		if chosen == uuid.Nil {
-			return bottomRestThenCast(g, false)
-		}
-		return g.ExileCardThenForEffect(chosen, bottomRestThenCast)
-	}
 	if len(eligible) == 0 {
-		return finish(g, nil)
+		return keyToTheVaultFinish(g, controller, source, looked, nil)
 	}
+	// Keyed (#4253 slice 10a): the pick's continuation is registered, and
+	// the cards looked at ride it as its Carry.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  controller,
 		Source:   source,
@@ -95,7 +72,47 @@ func keyToTheVaultLook(g *game.Game, item *game.StackItem) error {
 		Min:      0,
 		Max:      1,
 		Zone:     game.ZoneLibrary,
-		Then:     finish,
+		ThenKey:  keyToTheVaultPicked,
+		Carry:    looked,
 	})
 	return nil
 }
+
+// keyToTheVaultPicked is the answer to the pick: the cards looked at are
+// its Carry.
+var keyToTheVaultPicked = game.RegisterChooseCardsThen("choose-cards/the-key-to-the-vault", func(g *game.Game, r game.CardsChosen) error {
+	return keyToTheVaultFinish(g, r.Chooser, r.Source, r.Carry, r.Picked)
+})
+
+// keyToTheVaultFinish exiles the chosen card, then puts the rest on the
+// bottom in a random order and grants the free cast over the exiled card.
+func keyToTheVaultFinish(g *game.Game, controller, source uuid.UUID, looked, picked []uuid.UUID) error {
+	var chosen uuid.UUID
+	if len(picked) > 0 {
+		chosen = picked[0]
+	}
+	var rest []uuid.UUID
+	for _, id := range cardsStillInALibrary(g, looked) {
+		if id != chosen {
+			rest = append(rest, id)
+		}
+	}
+	tail := game.KeyedTail{Ref: keyToTheVaultExiled, Player: controller, Source: source, Carry: rest}
+	if chosen == uuid.Nil {
+		return tail.Run(g, nil)
+	}
+	return g.ExileCardKeyedForEffect(chosen, tail)
+}
+
+// keyToTheVaultExiled is the exile's tail: the rest (its Carry) to the
+// bottom in a random order, then the free cast over the card that reached
+// exile.
+var keyToTheVaultExiled = game.RegisterTail("then/the-key-to-the-vault-bottom-then-cast", func(g *game.Game, o game.TailOutcome) error {
+	if err := g.PutOnBottomInRandomOrderForEffect(o.Tail.Player, game.ZoneLibrary, o.Tail.Carry); err != nil {
+		return err
+	}
+	if len(o.IDs) == 1 {
+		grantFreeCasts(g, o.Tail.Player, o.Tail.Source, "The Key to the Vault", game.TimingFlash, game.LapseStaysInExile, o.IDs)
+	}
+	return nil
+})
