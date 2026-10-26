@@ -8900,6 +8900,8 @@ pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.unpaid	bool
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.vote_options	array
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.vote_options[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.won	bool
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.words	array
+pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Event.words[]	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object	object
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.AltCost	string
 pendingChoices[].searchPrompt.spec.thenTail.asked.trigger.Object.AltCostObjects	array
