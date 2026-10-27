@@ -225,8 +225,21 @@ func (g *Game) PutCardsIntoGraveyardKeyedForEffect(ids []uuid.UUID, then KeyedTa
 	return g.routeAllKeyedLocked(graveyardRoute, ids, then)
 }
 
-// DestroyPermanentsKeyedForEffect is DestroyPermanentsThenForEffect with
-// the continuation as data.
+// DestroyPermanentsKeyedForEffect destroys every permanent in `ids` as one
+// simultaneous event and tells `then` (a registered tail) the ones that
+// were actually DESTROYED, as TailOutcome.IDs — "for each creature
+// destroyed this way" (Fumigate's life gain, Deadly Tempest's life loss,
+// Bane of Progress's counters, Blood Money's treasures).
+//
+// It is a continuation rather than a return value because any leg can
+// pause on a replacement's prompt and the number is not knowable until it
+// is answered: the legs are destroyed in sequence, the rest of the batch
+// riding each leg as data, so a paused leg's prompt is a restore point.
+// The pre-move copies are taken once, before the first move, so a Blood
+// Artist still sees the whole board die with it. Indestructible is
+// filtered first, exactly as the fire-and-forget form does. (The closure
+// form, DestroyPermanentsThenForEffect, was deleted in #4253's last part
+// once only tests called it.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DestroyPermanentsKeyedForEffect(ids []uuid.UUID, then KeyedTail, opts ...DestroyOptions) error {

@@ -166,7 +166,7 @@ func isResolutionPickKind(kind PendingChoiceKind) bool {
 // no entry at all. `Picked` reads the same for it as for a seat that
 // was asked and chose nothing.
 //
-// ChooseCardsRunThenForEffect (#1743) hands its continuation the same
+// ChooseCardsRunThenKeyedForEffect (#1743) hands its continuation the same
 // type, and there the seat on each entry IS the chooser: every seat
 // chooses from its own look, so "whose cards" and "who chose" are one
 // player.
@@ -440,7 +440,7 @@ type PermanentPickPrompt struct {
 	Validate func(picked []Card) bool
 }
 
-// PermanentsPickedThenForEffect queues the run and returns once every
+// PermanentsPickedThenKeyedForEffect queues the run and returns once every
 // prompt is up. `then` runs ONCE, after the last leg has settled, and
 // is handed one entry per seat that was asked.
 //
@@ -455,23 +455,11 @@ type PermanentPickPrompt struct {
 // `then` runs even when nothing could be asked, for the #544 / #1006
 // reason every other run gives.
 //
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PermanentsPickedThenForEffect(p PermanentPickPrompt, then func(g *Game, picked PromptedPicks) error) (int, error) {
-	var landedThen func(*Game, []SeatCards) error
-	if then != nil {
-		landedThen = func(g *Game, landed []SeatCards) error {
-			return then(g, PromptedPicks(landed))
-		}
-	}
-	return g.runPromptsLocked(p.Of, landedThen, func(seat, run uuid.UUID) bool {
-		return g.queuePermanentPickLocked(p, seat, run, "") != uuid.Nil
-	})
-}
-
-// PermanentsPickedThenKeyedForEffect is PermanentsPickedThenForEffect
-// with the rest of the card as a registered run continuation
-// (RegisterPromptRunThen) and `carry` the plain data it is handed:
-// annihilator's "defending player sacrifices N permanents" (#4290).
+// The rest of the card is a registered run continuation
+// (RegisterPromptRunThen), handed `data` beside the answer: annihilator's
+// "defending player sacrifices N permanents" (#4290). (The closure form,
+// PermanentsPickedThenForEffect, was deleted in #4253's last part once
+// only tests called it.)
 //
 // Each leg's frame is then data — the battlefield re-check and the leg
 // settle, rebuilt on restore from the prompt (permanentPickLegIsData) —

@@ -37,14 +37,12 @@ func TestConfirmEnumeratesBothBranches(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(game.ConfirmPrompt{
+		queueConfirmHooked(g, game.ConfirmPrompt{
 			Chooser:      me.ID,
 			Question:     "Sylvan Library — pay 4 life to keep it?",
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
-			OnAccept:     func(*game.Game) error { return nil },
-			OnDecline:    func(*game.Game) error { return nil },
-		})
+		}, func(*game.Game) error { return nil }, func(*game.Game) error { return nil })
 	})
 
 	moves := legal.EnumerateFor(g, me.ID)
@@ -73,7 +71,7 @@ func TestConfirmIsTheOnlyThingOnOffer(t *testing.T) {
 		t.Fatal("setup: the active seat should have moves in its main phase")
 	}
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(game.ConfirmPrompt{Chooser: me.ID, Question: "?"})
+		queueConfirmHooked(g, game.ConfirmPrompt{Chooser: me.ID, Question: "?"}, nil, nil)
 	})
 	moves := legal.EnumerateFor(g, me.ID)
 	for _, m := range moves {

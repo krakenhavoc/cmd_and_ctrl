@@ -29,12 +29,13 @@ func TestTakeFromLibraryToHandMovesAndReportsWhatLanded(t *testing.T) {
 
 	var landed []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.TakeFromLibraryToHandThenForEffect(me.ID, []uuid.UUID{a, b},
-			func(_ *Game, taken []uuid.UUID) error {
+		if err := g.TakeFromLibraryToHandKeyedForEffect(me.ID, []uuid.UUID{a, b},
+			hookTail(func(_ *Game, o TailOutcome) error {
+				taken := o.IDs
 				landed = append([]uuid.UUID(nil), taken...)
 				return nil
-			}); err != nil {
-			t.Fatalf("TakeFromLibraryToHandThenForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("TakeFromLibraryToHandKeyedForEffect: %v", err)
 		}
 	})
 	if len(landed) != 2 {
@@ -62,12 +63,13 @@ func TestTakeFromLibraryToHandSkipsACardThatIsNotInALibrary(t *testing.T) {
 
 	var landed []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.TakeFromLibraryToHandThenForEffect(me.ID, []uuid.UUID{onBoard, inLibrary},
-			func(_ *Game, taken []uuid.UUID) error {
+		if err := g.TakeFromLibraryToHandKeyedForEffect(me.ID, []uuid.UUID{onBoard, inLibrary},
+			hookTail(func(_ *Game, o TailOutcome) error {
+				taken := o.IDs
 				landed = append([]uuid.UUID(nil), taken...)
 				return nil
-			}); err != nil {
-			t.Fatalf("TakeFromLibraryToHandThenForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("TakeFromLibraryToHandKeyedForEffect: %v", err)
 		}
 	})
 	if len(landed) != 1 || landed[0] != inLibrary {
@@ -91,8 +93,8 @@ func TestTakeFromLibraryToHandGoesToTheOwnersHand(t *testing.T) {
 	theirs := pushLibraryTop(g, owner, "Goblin Matron")
 
 	g.WithWriteLock(func() {
-		if err := g.TakeFromLibraryToHandThenForEffect(taker.ID, []uuid.UUID{theirs}, nil); err != nil {
-			t.Fatalf("TakeFromLibraryToHandThenForEffect: %v", err)
+		if err := g.TakeFromLibraryToHandKeyedForEffect(taker.ID, []uuid.UUID{theirs}, KeyedTail{}); err != nil {
+			t.Fatalf("TakeFromLibraryToHandKeyedForEffect: %v", err)
 		}
 	})
 	if !owner.Hand.Contains(theirs) {
@@ -115,8 +117,8 @@ func TestTakeFromLibraryToHandRunsItsContinuationAfterTheMove(t *testing.T) {
 
 	ran := 0
 	g.WithWriteLock(func() {
-		if err := g.TakeFromLibraryToHandThenForEffect(me.ID, []uuid.UUID{taken},
-			func(g *Game, _ []uuid.UUID) error {
+		if err := g.TakeFromLibraryToHandKeyedForEffect(me.ID, []uuid.UUID{taken},
+			hookTail(func(g *Game, o TailOutcome) error {
 				ran++
 				if !me.Hand.Contains(taken) {
 					t.Error("the continuation ran before the move landed")
@@ -125,8 +127,8 @@ func TestTakeFromLibraryToHandRunsItsContinuationAfterTheMove(t *testing.T) {
 					t.Error("the continuation cannot see the rest of the library")
 				}
 				return nil
-			}); err != nil {
-			t.Fatalf("TakeFromLibraryToHandThenForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("TakeFromLibraryToHandKeyedForEffect: %v", err)
 		}
 	})
 	if ran != 1 {
@@ -141,9 +143,9 @@ func TestTakeFromLibraryToHandWithNothingToTakeStillContinues(t *testing.T) {
 	me := g.Seats[0]
 	ran := false
 	g.WithWriteLock(func() {
-		if err := g.TakeFromLibraryToHandThenForEffect(me.ID, nil,
-			func(*Game, []uuid.UUID) error { ran = true; return nil }); err != nil {
-			t.Fatalf("TakeFromLibraryToHandThenForEffect: %v", err)
+		if err := g.TakeFromLibraryToHandKeyedForEffect(me.ID, nil,
+			hookTail(func(_ *Game, o TailOutcome) error { ran = true; return nil })); err != nil {
+			t.Fatalf("TakeFromLibraryToHandKeyedForEffect: %v", err)
 		}
 	})
 	if !ran {

@@ -29,7 +29,7 @@ func eitherOffer(t *testing.T, lands int) (*game.Game, *game.Player, []legal.Mov
 	}
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Worms", TypeLine: "Enchantment", Owner: controller.ID, Controller: controller.ID, KnownBy: known})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller.ID, Cost: "sacrifice two lands or take 5 damage", Question: "Worms?",
 			Action: &game.PayAction{Kind: game.PayActionEither, Either: []game.PayAction{
 				{Kind: game.PayActionSacrifice, Count: 2, Of: game.PermanentQuery{Types: []string{"land"}}, Words: "sacrifice two lands"},
@@ -151,7 +151,7 @@ func TestEitherPaymentOffersALifeBranchOnlyWhenTheSeatHasTheLife(t *testing.T) {
 		source := uuid.New()
 		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Enchantment", Owner: controller.ID, Controller: controller.ID})
 		g.WithWriteLock(func() {
-			if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+			if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 				Source: source, Controller: controller.ID, Cost: "pay life or take 5 damage", Question: "Thing?",
 				Action: &game.PayAction{Kind: game.PayActionEither, Either: []game.PayAction{
 					{Kind: game.PayActionLife, Count: tc.life},

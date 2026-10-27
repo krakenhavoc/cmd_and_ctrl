@@ -21,9 +21,14 @@ func dreadLibrary(g *Game) (top, second uuid.UUID) {
 
 func runManifestDread(t *testing.T, g *Game, then func(*Game, ManifestDreadResult) error) {
 	t.Helper()
+	tail := KeyedTail{}
+	if then != nil {
+		tail = hookTail(func(g *Game, o TailOutcome) error { return then(g, ManifestDreadOutcome(o)) })
+		tail.Player = g.Seats[0].ID
+	}
 	g.WithWriteLock(func() {
-		if err := g.ManifestDreadThenForEffect(g.Seats[0].ID, uuid.Nil, then); err != nil {
-			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		if err := g.ManifestDreadKeyedForEffect(g.Seats[0].ID, uuid.Nil, tail); err != nil {
+			t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 		}
 	})
 }

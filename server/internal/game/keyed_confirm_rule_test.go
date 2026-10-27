@@ -109,20 +109,6 @@ func TestKeyedConfirmRefusesAnUnknownKeyAtRestore(t *testing.T) {
 	}
 }
 
-// A keyed confirm that also sets a closure would lose it on a restore.
-func TestKeyedConfirmRefusesAClosure(t *testing.T) {
-	g := newActiveGame(t)
-	g.WithWriteLock(func() {
-		_, err := g.QueueConfirmKeyedForEffect(ConfirmPrompt{
-			Chooser:  g.Seats[0].ID,
-			OnAccept: func(*Game) error { return nil },
-		}, keyedConfirm, nil)
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("err = %v, want ErrInvalidParam", err)
-		}
-	})
-}
-
 // --- a keyed choose_cards pick's set rule and word --------------------
 
 var (

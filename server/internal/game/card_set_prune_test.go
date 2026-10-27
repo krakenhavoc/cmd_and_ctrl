@@ -33,13 +33,13 @@ func discardRunOverOneSeat(t *testing.T, g *Game, p DiscardPrompt) *discardRunCa
 	t.Helper()
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(p, func(_ *Game, discarded PromptedDiscards) error {
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{p.Player}, p, func(_ *Game, discarded PromptedDiscards) error {
 			out.ran++
 			out.got = discarded
 			return nil
 		})
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	return out

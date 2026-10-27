@@ -191,7 +191,7 @@ func TestKrenkoCounterThenGoblinsEqualToItsNewPower(t *testing.T) {
 // ordering prompt, and the Goblin count has to read Krenko's power
 // AFTER the counter lands — not on the next line, which is where it
 // used to be read before the fix moved it onto
-// AddCounterThenForEffect.
+// AddCounterByKeyedForEffect.
 func TestKrenkoCounterThenGoblinsAfterAPausedPlacement(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

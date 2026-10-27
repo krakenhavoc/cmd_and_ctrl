@@ -234,7 +234,7 @@ func TestTwoNexusesDestroyedTogetherAreBothExiled(t *testing.T) {
 	b := seedNexus(g, g.Seats[me].ID)
 
 	g.WithWriteLock(func() {
-		if err := g.DestroyPermanentsThenForEffect([]uuid.UUID{a, b}, nil); err != nil {
+		if err := g.DestroyPermanentsKeyedForEffect([]uuid.UUID{a, b}, game.KeyedTail{}); err != nil {
 			t.Fatalf("destroy: %v", err)
 		}
 	})

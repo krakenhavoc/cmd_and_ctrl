@@ -17,7 +17,7 @@ import (
 // Every hand is discarded before anyone chooses, so the cards just
 // discarded are candidates. Then each player is asked, about THEIR OWN
 // graveyard (CR 101.4: asked in turn order, answered in secret), for up
-// to three cards. The questions are one run (ChooseCardsRunThenForEffect)
+// to three cards. The questions are one run (ChooseCardsRunThenKeyedForEffect)
 // so nothing moves until the last player has answered, which is the
 // "returns" being simultaneous; a player whose graveyard is empty is
 // not asked.

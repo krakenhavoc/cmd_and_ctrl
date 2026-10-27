@@ -37,7 +37,7 @@ import (
 // # Secrecy (CR 101.4)
 //
 // The questions go up together, in APNAP order, as ONE run
-// (game.ChooseCardsRunThenForEffect): nothing moves until every player
+// (game.ChooseCardsRunThenKeyedForEffect): nothing moves until every player
 // has answered, so no seat learns another's picks first. Asking each
 // player in turn would make the picks public one by one and leak them
 // to the later choosers. Nobody but the chooser sees the prompt or the

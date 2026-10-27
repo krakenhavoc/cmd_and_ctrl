@@ -987,7 +987,7 @@ func (st *state) valueTakenFromLibrary(cfg Config, ch *protocol.PendingChoiceVie
 	return v, true
 }
 
-// manifestDreadReason opens the question game.ManifestDreadThenForEffect
+// manifestDreadReason opens the question game.ManifestDreadKeyedForEffect
 // asks. The heuristic may not import internal/game, and the prompt
 // carries no purpose field, so the wire text is the signal; the aiseat
 // manifest-dread test fails if the engine's wording drifts from it.

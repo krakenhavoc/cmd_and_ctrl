@@ -402,8 +402,8 @@ var replacementEventFields = map[string]replacementEventField{
 
 	// A keyword action. Its tail's data half (a proliferate's lists or
 	// its "ask", a scry's or surveil's prompt kind, an earthbend's land)
-	// is carried; a tail with a "then", an amass's Army or its "the Army
-	// you amassed" keeps the frame off the disk (replacementFrameKeyable).
+	// is carried; a tail with a closure "then" keeps the frame off the
+	// disk (replacementFrameKeyable).
 	// Learn has no tail at all.
 	"KeywordAction":      repFieldCarried,
 	"KeywordActionCount": repFieldCarried,
@@ -588,7 +588,7 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	if !replacementEventGatesClear(ev) {
 		return false
 	}
-	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil) {
+	if t := ev.keywordAction; t != nil && t.then != nil {
 		return false
 	}
 	if t := ev.keywordAction; t != nil && !reflect.ValueOf(t.armyToken).IsZero() {

@@ -56,12 +56,12 @@ func destroyRecordingLife(t *testing.T, g *Game, me *Player, ids []uuid.UUID) *[
 	t.Helper()
 	var seen []int
 	g.WithWriteLock(func() {
-		err := g.DestroyPermanentsThenForEffect(ids, func(_ *Game, _ []uuid.UUID) error {
+		err := g.DestroyPermanentsKeyedForEffect(ids, hookTail(func(_ *Game, o TailOutcome) error {
 			seen = append(seen, me.Life)
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("DestroyPermanentsThenForEffect: %v", err)
+			t.Fatalf("DestroyPermanentsKeyedForEffect: %v", err)
 		}
 	})
 	return &seen

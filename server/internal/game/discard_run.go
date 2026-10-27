@@ -83,36 +83,20 @@ func (d PromptedDiscards) Cards() []uuid.UUID { return seatCardsFlat(d) }
 // Syphon Mind draws that many.
 func (d PromptedDiscards) Count() int { return seatCardsCount(d) }
 
-// PlayerDiscardsThenForEffect is QueueDiscardChoiceForEffect with the
-// rest of the card attached: "target opponent … discards a card, and
-// loses 3 life" (Archon of Cruelty), "discard two cards, then draw
-// three".
-//
-// `p.Player` is the seat asked. One prompt goes up, however many cards
-// the instruction asks for — a discard of N is one question over the
-// hand, not N questions — so this run has exactly one leg.
-//
-// `then` runs once that leg has settled AND the cards it named have
-// finished moving, and it runs even when nothing was discarded,
-// including when the hand was empty and no prompt went up: a
-// continuation is the rest of a card that is paused mid-resolution
-// (#544, #1006), and one that is silently never called is a card that
-// stops halfway.
-//
-// Note what this does NOT replace: `p.Then` is this PROMPT's own
-// "then", the rest of its own sentence, and a card may set both — see
-// DiscardPrompt.Then. The prompt's runs first.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PlayerDiscardsThenForEffect(p DiscardPrompt, then func(g *Game, discarded PromptedDiscards) error) error {
-	_, err := g.discardRunLocked([]uuid.UUID{p.Player}, p, then)
-	return err
-}
-
 // PlayersDiscardThenForEffect is the GENERAL form: one prompt per
 // entry in `players`, in the order given, with one continuation over
 // the lot — the seats being a spell's targets rather than the whole
 // table.
+//
+// One prompt goes up per seat, however many cards the instruction asks
+// for — a discard of N is one question over the hand, not N questions.
+// `then` runs once the last leg has settled AND the cards it named have
+// finished moving, and it runs even when nothing was discarded,
+// including when a hand was empty and no prompt went up (#544, #1006). A
+// prompt's own Then (DiscardPrompt.Then) is the rest of its own
+// sentence and runs first. (The one-seat closure form,
+// PlayerDiscardsThenForEffect, was deleted in #4253's last part once only
+// tests called it; a card uses PlayerDiscardsThenKeyedForEffect.)
 //
 // `p.Player` is IGNORED; the seats come from `players`. Everything
 // else on the prompt (the count, the "up to", the set-level Validate,

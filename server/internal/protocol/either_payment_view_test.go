@@ -20,7 +20,7 @@ func queueEitherView(t *testing.T, g *game.Game, branches ...game.PayAction) {
 	source := uuid.New()
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Worms", TypeLine: "Enchantment", Owner: controller, Controller: controller})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller, Cost: "sacrifice two lands or take 5 damage", Question: "Worms?",
 			Action: &game.PayAction{Kind: game.PayActionEither, Either: branches},
 		}); err != nil {

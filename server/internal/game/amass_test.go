@@ -28,7 +28,7 @@ import (
 
 // amassTestToken is effects.ArmyToken's output, spelled here because
 // internal/game owns no token templates — the same 0/0 black Army the
-// catalog hands AmassForEffect.
+// catalog hands AmassKeyedForEffect.
 func amassTestToken(subtype string) Card {
 	return Card{
 		Name:           subtype + " " + ArmySubtype,
@@ -46,13 +46,14 @@ func amass(t *testing.T, g *Game, actor *Player, subtype string, n int) uuid.UUI
 	t.Helper()
 	var army uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.AmassForEffect(actor.ID, uuid.Nil, amassTestToken(subtype), subtype, n,
-			func(_ *Game, chosen uuid.UUID) error {
+		err := g.AmassKeyedForEffect(actor.ID, uuid.Nil, amassTestToken(subtype), subtype, n,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				chosen := tailFirstID(o)
 				army = chosen
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("AmassForEffect(%s, %d): %v", subtype, n, err)
+			t.Fatalf("AmassKeyedForEffect(%s, %d): %v", subtype, n, err)
 		}
 	})
 	return army
@@ -244,13 +245,14 @@ func TestAmassPromptsWhenYouControlTwoArmies(t *testing.T) {
 	var chosen uuid.UUID
 	ran := 0
 	g.WithWriteLock(func() {
-		if err := g.AmassForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 3,
-			func(_ *Game, army uuid.UUID) error {
+		if err := g.AmassKeyedForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 3,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				army := tailFirstID(o)
 				ran++
 				chosen = army
 				return nil
-			}); err != nil {
-			t.Fatalf("AmassForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("AmassKeyedForEffect: %v", err)
 		}
 	})
 
@@ -426,13 +428,14 @@ func TestACancelledAmassStillRunsTheRestOfTheSentence(t *testing.T) {
 	ran := 0
 	chosen := uuid.New()
 	g.WithWriteLock(func() {
-		if err := g.AmassForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 2,
-			func(_ *Game, army uuid.UUID) error {
+		if err := g.AmassKeyedForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 2,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				army := tailFirstID(o)
 				ran++
 				chosen = army
 				return nil
-			}); err != nil {
-			t.Fatalf("AmassForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("AmassKeyedForEffect: %v", err)
 		}
 	})
 
@@ -457,12 +460,12 @@ func TestTheAmassContinuationRunsExactlyOnce(t *testing.T) {
 
 	ran := 0
 	g.WithWriteLock(func() {
-		if err := g.AmassForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 1,
-			func(_ *Game, _ uuid.UUID) error {
+		if err := g.AmassKeyedForEffect(me.ID, uuid.Nil, amassTestToken("Zombie"), "Zombie", 1,
+			hookTail(func(_ *Game, o TailOutcome) error {
 				ran++
 				return nil
-			}); err != nil {
-			t.Fatalf("AmassForEffect: %v", err)
+			})); err != nil {
+			t.Fatalf("AmassKeyedForEffect: %v", err)
 		}
 	})
 	if ran != 1 {

@@ -1634,7 +1634,7 @@ type Card struct {
 	// for alignment.
 
 	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
-	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
+	// §3). Set by the Ring's temptation (RingTemptsKeyedForEffect) and by
 	// nothing else; the one write site first clears every other
 	// permanent the chooser controls, which keeps one Ring-bearer per
 	// player. Cleared when the permanent leaves the battlefield (CR

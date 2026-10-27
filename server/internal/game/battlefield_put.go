@@ -385,7 +385,7 @@ func (g *Game) ManifestFromHandsKeyedForEffect(ids []uuid.UUID, then KeyedTail) 
 // uses a Then door instead —
 // PutCardsFromLibraryOntoBattlefieldThenForEffect,
 // PutFromHandOntoBattlefieldThenForEffect or
-// PutOntoBattlefieldTogetherThenForEffect.
+// PutOntoBattlefieldTogetherKeyedForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, opts ZoneEntryOptions) ([]uuid.UUID, error) {
@@ -435,9 +435,40 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldKeyedForEffect(ids []uuid.UUID,
 	return g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), &entryBatch{keyed: then, opts: opts})
 }
 
-// PutOntoBattlefieldTogetherKeyedForEffect is
-// PutOntoBattlefieldTogetherThenForEffect with the continuation as data
-// (#4253 slice 3), as PutCardsFromLibraryOntoBattlefieldKeyedForEffect.
+// PutOntoBattlefieldTogetherKeyedForEffect puts every named card onto the
+// battlefield as ONE simultaneous entry, from whichever zones they are
+// in, and then runs `then`, a registered tail (#4253 slice 3), told the
+// permanents that entered as TailOutcome.IDs — Sword of
+// Hearth and Home's "exile up to one target creature you own, then
+// search your library for a basic land card. Put both cards onto the
+// battlefield under your control" (#1324).
+//
+// It is the batch the hand and library "put" doors already were, with
+// the source zone per card rather than per call. Two entries one after
+// the other are observably different from this one: CR 603.6a checks
+// every permanent on the battlefield, newcomers included, against the
+// event that put them there, so with the creature and the land entering
+// together a landfall creature sees the land and an intervening-if
+// ("if an opponent controls more lands than you") reads the board with
+// both of them on it.
+//
+// Every card's CR 614 window can ask its question (a shockland's life,
+// a Clone's copy, a reveal-land's reveal), one card at a time, before
+// anything moves; see the file comment. `then` runs exactly once, on
+// every outcome but a pause — immediately when nothing asked, and from
+// the answer to the last question when something did. It is told
+// uuid.Nil-free IDs in the order given, with an exiled card's NEW ID.
+// Like every continuation, it takes the live *Game.
+//
+// Every entry is validated before anything happens, as the single-zone
+// batch does: a card not in the zone it is named from
+// (ErrCardNotFound), a zone this door does not put from, a nonpermanent
+// card or a token (ErrInvalidParam) refuses the whole batch, and `then`
+// is still told nothing entered. A repeated ID is taken once.
+//
+// Every question is a restore point: the continuation is data. (The
+// closure form, PutOntoBattlefieldTogetherThenForEffect, was deleted in
+// #4253's last part once only tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) PutOntoBattlefieldTogetherKeyedForEffect(cards []BatchEntry, opts ZoneEntryOptions, then KeyedTail) error {

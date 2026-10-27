@@ -119,7 +119,7 @@ func theOneRingUpkeepBurden(g *game.Game, item *game.StackItem) error {
 // activation.
 //
 // #1290: the draw reads the count AFTER the counter LANDS, via
-// AddCounterThenForEffect's continuation, not on the next line — a
+// AddCounterByKeyedForEffect's continuation, not on the next line — a
 // Doubling Season / Hardened Scales board pauses the placement on a
 // CR 616 prompt, and reading before it resumes would draw for the
 // pre-placement count.

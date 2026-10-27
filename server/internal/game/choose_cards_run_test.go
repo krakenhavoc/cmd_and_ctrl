@@ -8,7 +8,7 @@ import (
 )
 
 // choose_cards_run_test.go pins #1743's engine half:
-// ChooseCardsRunThenForEffect, "each player chooses from their own
+// ChooseCardsRunThenKeyedForEffect, "each player chooses from their own
 // look" asked as ONE instruction. Each leg is an ordinary choose_cards
 // prompt; what the run adds is one continuation after the last answer.
 
@@ -18,8 +18,9 @@ type chooseRunCall struct {
 }
 
 // lookLeg looks at the top `n` cards of p's library for p and builds
-// an optional "choose up to max" leg over them.
-func lookLeg(g *Game, p *Player, source uuid.UUID, n, max int, validate func([]Card) bool) ChooseCardsPrompt {
+// an optional "choose up to max" leg over them. `rule` names a leg with a
+// registered set rule (RegisterChooseCardsRunLegRule); zero is none.
+func lookLeg(g *Game, p *Player, source uuid.UUID, n, max int, rule ChooseCardsThen) ChooseCardsPrompt {
 	return ChooseCardsPrompt{
 		Chooser:  p.ID,
 		Source:   source,
@@ -28,7 +29,7 @@ func lookLeg(g *Game, p *Player, source uuid.UUID, n, max int, validate func([]C
 		Min:      0,
 		Max:      max,
 		Zone:     ZoneLibrary,
-		Validate: validate,
+		ThenKey:  rule,
 	}
 }
 
@@ -38,13 +39,18 @@ func chooseCardsRun(t *testing.T, g *Game, legs func() []ChooseCardsPrompt) (*ch
 	var queued int
 	g.WithWriteLock(func() {
 		var err error
-		queued, err = g.ChooseCardsRunThenForEffect(legs(), func(_ *Game, picks PromptedPicks) error {
+		ls := legs()
+		source := uuid.Nil
+		if len(ls) > 0 {
+			source = ls[0].Source
+		}
+		queued, err = g.ChooseCardsRunThenKeyedForEffect(ls, testRunHookThen, source, runHook(func(_ *Game, r RunDone) error {
 			out.ran++
-			out.got = picks
+			out.got = r.Picks()
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("ChooseCardsRunThenForEffect: %v", err)
+			t.Fatalf("ChooseCardsRunThenKeyedForEffect: %v", err)
 		}
 	})
 	return out, queued
@@ -86,7 +92,7 @@ func TestAChooseCardsRunWaitsForEveryLeg(t *testing.T) {
 	run, queued := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
 		var legs []ChooseCardsPrompt
 		for _, p := range seats {
-			legs = append(legs, lookLeg(g, p, source, 2, 1, nil))
+			legs = append(legs, lookLeg(g, p, source, 2, 1, ChooseCardsThen{}))
 		}
 		return legs
 	})
@@ -137,6 +143,17 @@ func TestAChooseCardsRunWaitsForEveryLeg(t *testing.T) {
 	}
 }
 
+// testNotTwoLandsLeg is a run leg whose set rule refuses two lands.
+var testNotTwoLandsLeg = RegisterChooseCardsRunLegRule("test/4253-not-two-lands", func(picked []Card) bool {
+	lands := 0
+	for _, c := range picked {
+		if c.IsLand() {
+			lands++
+		}
+	}
+	return lands <= 1
+})
+
 // TestAChooseCardsRunLegKeepsItsOwnSetRule: a leg is an ordinary
 // choose_cards prompt, so its Validate refuses a set and leaves the
 // prompt open — the run does not move on a refused answer.
@@ -148,19 +165,10 @@ func TestAChooseCardsRunLegKeepsItsOwnSetRule(t *testing.T) {
 	b := topOfLibraryFor(me, "B", "Land")
 	topOfLibraryFor(them, "C", "Land")
 
-	notTwoLands := func(picked []Card) bool {
-		lands := 0
-		for _, c := range picked {
-			if c.IsLand() {
-				lands++
-			}
-		}
-		return lands <= 1
-	}
 	run, _ := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
 		return []ChooseCardsPrompt{
-			lookLeg(g, me, source, 2, 2, notTwoLands),
-			lookLeg(g, them, source, 1, 1, nil),
+			lookLeg(g, me, source, 2, 2, testNotTwoLandsLeg),
+			lookLeg(g, them, source, 1, 1, ChooseCardsThen{}),
 		}
 	})
 
@@ -189,7 +197,7 @@ func TestAChooseCardsRunSkipsALegWithNoCandidates(t *testing.T) {
 	g.WithWriteLock(func() { them.Library.Cards = nil })
 
 	run, queued := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
-		return []ChooseCardsPrompt{lookLeg(g, me, source, 5, 1, nil), lookLeg(g, them, source, 5, 1, nil)}
+		return []ChooseCardsPrompt{lookLeg(g, me, source, 5, 1, ChooseCardsThen{}), lookLeg(g, them, source, 5, 1, ChooseCardsThen{})}
 	})
 	if queued != 1 || chooseCardsPromptFor(g, them.ID) != nil {
 		t.Fatalf("queued %d prompts; the seat with an empty library must not be asked", queued)
@@ -201,7 +209,7 @@ func TestAChooseCardsRunSkipsALegWithNoCandidates(t *testing.T) {
 
 	g.WithWriteLock(func() { me.Library.Cards = nil })
 	none, queued := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
-		return []ChooseCardsPrompt{lookLeg(g, me, source, 5, 1, nil), lookLeg(g, them, source, 5, 1, nil)}
+		return []ChooseCardsPrompt{lookLeg(g, me, source, 5, 1, ChooseCardsThen{}), lookLeg(g, them, source, 5, 1, ChooseCardsThen{})}
 	})
 	if queued != 0 || none.ran != 1 || len(none.got) != 0 {
 		t.Fatalf("nobody to ask: queued %d, ran %d, got %v — want 0, 1, nothing", queued, none.ran, none.got)
@@ -219,7 +227,7 @@ func TestAChooseCardsRunLegSettlesWhenItsChooserLeaves(t *testing.T) {
 	topOfLibraryFor(leaver, "Theirs", "Land")
 
 	run, _ := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
-		return []ChooseCardsPrompt{lookLeg(g, me, source, 1, 1, nil), lookLeg(g, leaver, source, 1, 1, nil)}
+		return []ChooseCardsPrompt{lookLeg(g, me, source, 1, 1, ChooseCardsThen{}), lookLeg(g, leaver, source, 1, 1, ChooseCardsThen{})}
 	})
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
@@ -246,7 +254,7 @@ func TestAnUndoAcrossAHalfAnsweredChooseCardsRunReplaysIdentically(t *testing.T)
 	theirs := topOfLibraryFor(them, "Theirs", "Land")
 
 	run, _ := chooseCardsRun(t, g, func() []ChooseCardsPrompt {
-		return []ChooseCardsPrompt{lookLeg(g, me, source, 1, 1, nil), lookLeg(g, them, source, 1, 1, nil)}
+		return []ChooseCardsPrompt{lookLeg(g, me, source, 1, 1, ChooseCardsThen{}), lookLeg(g, them, source, 1, 1, ChooseCardsThen{})}
 	})
 	var snapshot *Game
 	g.WithWriteLock(func() { snapshot = g.cloneLocked() })

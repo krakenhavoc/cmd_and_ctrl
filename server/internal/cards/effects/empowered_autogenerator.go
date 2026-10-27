@@ -41,7 +41,7 @@ import (
 // so X reads the count the placement actually landed on rather than
 // predicting it. The placement itself goes through
 // AddCounterMustSettleNowForEffect, not the ordinary
-// AddCounterForEffect / AddCounterThenForEffect: CR 605.3b's mana
+// AddCounterForEffect / AddCounterByKeyedForEffect: CR 605.3b's mana
 // ability resolution has no priority window inside it, so a CR 616
 // ordering prompt (Doubling Season next to a Hardened Scales — which
 // does not apply here; see below) cannot pause here even though it

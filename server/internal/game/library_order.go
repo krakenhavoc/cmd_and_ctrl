@@ -9,7 +9,7 @@ import (
 //
 // The placement half of the library-top row. The LOOK half already had
 // a prompt family (scry, surveil, look_at_top, all on
-// lookAtTopForEffect); what it did not have was a way to order a pile
+// lookAtTopWithTailLocked); what it did not have was a way to order a pile
 // headed to the bottom, to order cards put on top from somewhere other
 // than the top of the library (Brainstorm's hand), or to let a player
 // choose top OR bottom without borrowing scry (Aetherspouts). One

@@ -1605,8 +1605,8 @@ func corpusTheRing(t *testing.T) *game.Game {
 	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
 	var err error
 	g.WithWriteLock(func() {
-		if err = g.RingTemptsForEffect(me, uuid.Nil, nil); err == nil {
-			err = g.RingTemptsForEffect(opp, uuid.Nil, nil)
+		if err = g.RingTemptsKeyedForEffect(me, uuid.Nil, game.KeyedTail{}); err == nil {
+			err = g.RingTemptsKeyedForEffect(opp, uuid.Nil, game.KeyedTail{})
 		}
 	})
 	if err != nil {
@@ -1643,10 +1643,10 @@ func corpusTheRingLevel4(t *testing.T) *game.Game {
 	var err error
 	g.WithWriteLock(func() {
 		for i := 0; i < 4 && err == nil; i++ {
-			err = g.RingTemptsForEffect(me.ID, uuid.Nil, nil)
+			err = g.RingTemptsKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{})
 		}
 		if err == nil {
-			err = g.RingTemptsForEffect(opp.ID, uuid.Nil, nil)
+			err = g.RingTemptsKeyedForEffect(opp.ID, uuid.Nil, game.KeyedTail{})
 		}
 		if err != nil {
 			return
@@ -2948,7 +2948,7 @@ func corpusAmass(t *testing.T) *game.Game {
 	me := g.Seats[0].ID
 	g.WithWriteLock(func() {
 		for _, subtype := range []string{"Zombie", "Orc"} {
-			if err := g.AmassForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, nil); err != nil {
+			if err := g.AmassKeyedForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, game.KeyedTail{}); err != nil {
 				t.Fatalf("amass %s: %v", subtype, err)
 			}
 		}

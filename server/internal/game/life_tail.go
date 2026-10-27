@@ -202,7 +202,7 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 // place the change lands.
 //
 // Unexported engine plumbing. The catalog never builds one; it hands a
-// `then` to ChangePlayerLifeThenForEffect or LoseLifeEachThenForEffect
+// `then` to ChangePlayerLifeThenForEffect or LoseLifeEachKeyedForEffect
 // and the entry point fills this in before the pipeline runs, for the
 // same reason damageTail goes on first: a CR 616 prompt returns without
 // landing anything, and the resume has nothing else to go on.

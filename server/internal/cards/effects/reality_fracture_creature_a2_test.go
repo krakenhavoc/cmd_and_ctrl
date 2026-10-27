@@ -320,7 +320,7 @@ func TestDenziloreFateholdCountersEachCreatureOnScryAndSurveil(t *testing.T) {
 		t.Fatalf("an opponent's creature got %d counters", got)
 	}
 
-	g.WithWriteLock(func() { g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil) })
+	g.WithWriteLock(func() { g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, game.KeyedTail{}) })
 	s := surveilChoiceFor(g, me.ID)
 	if s == nil {
 		t.Fatal("no surveil prompt")

@@ -74,15 +74,26 @@ var demonicConsultationMilled = CardTail("demonic-consultation/after-mill", func
 			rest = append(rest, id)
 		}
 	}
-	exileRest := func(g *game.Game) error {
-		if len(rest) == 0 {
-			return nil
-		}
-		return g.ExileCardsKeyedForEffect(cardsStillInALibrary(g, rest), game.KeyedTail{})
-	}
 	if hit == uuid.Nil {
-		return exileRest(ctx.Game)
+		return demonicConsultationExileRest(ctx.Game, rest)
 	}
-	return ctx.Game.TakeFromLibraryToHandThenForEffect(player, []uuid.UUID{hit},
-		func(g *game.Game, _ []uuid.UUID) error { return exileRest(g) })
+	// #4253: "exile all other cards revealed this way" is the take's keyed
+	// tail, the revealed cards riding its Carry, so a prompt the move to
+	// hand pauses on is a restore point.
+	return ctx.Game.TakeFromLibraryToHandKeyedForEffect(player, []uuid.UUID{hit},
+		game.KeyedTail{Ref: demonicConsultationTaken, Player: player, Source: ctx.Source(), Carry: rest})
 })
+
+// demonicConsultationTaken exiles the other revealed cards (the Carry) once
+// the named card's move to hand has settled. An on-disk key.
+var demonicConsultationTaken = game.RegisterTail("demonic-consultation/taken", func(g *game.Game, o game.TailOutcome) error {
+	return demonicConsultationExileRest(g, o.Tail.Carry)
+})
+
+// demonicConsultationExileRest exiles the revealed cards still in a library.
+func demonicConsultationExileRest(g *game.Game, rest []uuid.UUID) error {
+	if len(rest) == 0 {
+		return nil
+	}
+	return g.ExileCardsKeyedForEffect(cardsStillInALibrary(g, rest), game.KeyedTail{})
+}

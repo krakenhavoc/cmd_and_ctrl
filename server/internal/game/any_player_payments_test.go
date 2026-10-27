@@ -11,8 +11,8 @@ import (
 // any-player offer paid with life, with damage, or with nothing, and a
 // price worked out for each player as they are asked.
 
-func withPayment(a PayAction, words string) func(*AnyPlayerPays) {
-	return func(p *AnyPlayerPays) {
+func withPayment(a PayAction, words string) func(*anyPlayerTestOffer) {
+	return func(p *anyPlayerTestOffer) {
 		p.Action = &a
 		p.Cost = words
 	}
@@ -72,7 +72,7 @@ func TestAPerPayerPriceIsEachPlayersOwnHalfRoundedUp(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	g.Seats[0].Life, g.Seats[1].Life = 40, 7
 	var out offerOutcome
-	queueOffer(t, g, g.Seats[2].ID, "", &out, func(p *AnyPlayerPays) {
+	queueOffer(t, g, g.Seats[2].ID, "", &out, func(p *anyPlayerTestOffer) {
 		p.PerPayer = func(g *Game, payer uuid.UUID) (PayAction, string) {
 			a := PayAction{Kind: PayActionLife, Count: HalfLifeRoundedUp(g.playerByIDLocked(payer).Life)}
 			return a, PayActionWords(a)
@@ -110,7 +110,7 @@ func TestADamagePaymentIsDealtByTheSourceAndAlwaysPays(t *testing.T) {
 	me.Life = 3
 	var out offerOutcome
 	queueOffer(t, g, g.Seats[2].ID, "5 damage", &out, withPayment(PayAction{Kind: PayActionDamage, Count: 5}, "5 damage"),
-		func(p *AnyPlayerPays) { p.AcceptLabel, p.DeclineLabel = "Take 5 damage", "Don't" })
+		func(p *anyPlayerTestOffer) { p.AcceptLabel, p.DeclineLabel = "Take 5 damage", "Don't" })
 	c := onlyPendingChoice(t, g)
 	if c.AcceptLabel != "Take 5 damage" || c.DeclineLabel != "Don't" {
 		t.Errorf("labels %q / %q, want the card's words", c.AcceptLabel, c.DeclineLabel)
@@ -140,7 +140,7 @@ func TestANoPaymentOfferAlwaysPaysAndRefusesCardIDs(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	var out offerOutcome
 	queueOffer(t, g, g.Seats[0].ID, "", &out, withPayment(PayAction{Kind: PayActionNothing}, ""),
-		func(p *AnyPlayerPays) { p.Opponents = true })
+		func(p *anyPlayerTestOffer) { p.Opponents = true })
 	c := onlyPendingChoice(t, g)
 	if c.Chooser != g.Seats[1].ID {
 		t.Fatalf("asked %v first, want seat 1 (the controller is skipped)", c.Chooser)

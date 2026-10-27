@@ -125,7 +125,11 @@ var closureClassCeilings = map[string]int{
 	// already holds (ReplacementEvent.damageTail, damageTail.then),
 	// waiting on a different prompt, and owner decision 4 keeps resume
 	// frames in scope for this counter. The prompts themselves are keyed.
-	"census:ChoiceResumeFrames": 121,
+	//
+	// 120 (#4253's last part): - keywordActionTail.amassed, the amass's
+	// closure "the Army you amassed", gone with AmassForEffect; CR
+	// 701.47c's clause is only ever the keyed tail now.
+	"census:ChoiceResumeFrames": 120,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

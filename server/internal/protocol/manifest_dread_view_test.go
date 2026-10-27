@@ -16,8 +16,8 @@ func TestManifestDreadPromptIsPrivateToItsController(t *testing.T) {
 	g := newTwoSeatGame(t)
 	me, them := g.Seats[0], g.Seats[1]
 	g.WithWriteLock(func() {
-		if err := g.ManifestDreadThenForEffect(me.ID, uuid.Nil, nil); err != nil {
-			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		if err := g.ManifestDreadKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 		}
 	})
 

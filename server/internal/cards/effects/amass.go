@@ -13,7 +13,7 @@ import (
 //	 also an Orc. If you don't control an Army, create a 0/0 black Orc
 //	 Army creature token first.)"
 //
-// The verb itself is `game.AmassForEffect` (game/amass.go), where the
+// The verb itself is `game.AmassKeyedForEffect` (game/amass.go), where the
 // CR 614 window, the find-or-create branch, the multi-Army prompt, the
 // counters and the layer-4 subtype live. This file is the two things
 // the engine end deliberately does not know:

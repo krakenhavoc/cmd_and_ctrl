@@ -20,26 +20,23 @@ func TestConfirmBranchQueuesTheNextPrompt(t *testing.T) {
 	var order []string
 
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser:  me,
 			Question: "first?",
-			OnAccept: func(g *Game) error {
-				order = append(order, "first accepted")
-				g.QueueConfirmForEffect(ConfirmPrompt{
-					Chooser:  me,
-					Question: "second?",
-					OnAccept: func(*Game) error {
-						order = append(order, "second accepted")
-						return nil
-					},
-					OnDecline: func(*Game) error {
-						order = append(order, "second declined")
-						return nil
-					},
-				})
+		}, func(g *Game) error {
+			order = append(order, "first accepted")
+			queueConfirmHooked(g, ConfirmPrompt{
+				Chooser:  me,
+				Question: "second?",
+			}, func(*Game) error {
+				order = append(order, "second accepted")
 				return nil
-			},
-		})
+			}, func(*Game) error {
+				order = append(order, "second declined")
+				return nil
+			})
+			return nil
+		}, nil)
 	})
 
 	if len(g.PendingChoices) != 1 {
@@ -80,12 +77,10 @@ func TestConfirmDeclineRunsTheOtherBranch(t *testing.T) {
 	me := g.Seats[0].ID
 	accepted, declined := false, false
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(ConfirmPrompt{
-			Chooser:   me,
-			Question:  "either?",
-			OnAccept:  func(*Game) error { accepted = true; return nil },
-			OnDecline: func(*Game) error { declined = true; return nil },
-		})
+		queueConfirmHooked(g, ConfirmPrompt{
+			Chooser:  me,
+			Question: "either?",
+		}, func(*Game) error { accepted = true; return nil }, func(*Game) error { declined = true; return nil })
 	})
 	id := g.PendingChoices[0].ID
 	if err := g.ResolveConfirm(id, me, false); err != nil {
@@ -106,7 +101,7 @@ func TestConfirmRejectsTheWrongChooser(t *testing.T) {
 	g := newRestorableGame(t)
 	me, them := g.Seats[0].ID, g.Seats[1].ID
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me, Question: "mine"})
+		queueConfirmHooked(g, ConfirmPrompt{Chooser: me, Question: "mine"}, nil, nil)
 	})
 	id := g.PendingChoices[0].ID
 	if err := g.ResolveConfirm(id, them, true); !errors.Is(err, ErrNotTheChooser) {
@@ -200,20 +195,15 @@ func TestChooseCardsRechecksTheZone(t *testing.T) {
 // TestChainedChoiceFramesAreCensused is the restorability contract, and
 // the reason it is a test: an uncounted continuation would let the
 // server write a restore point that silently drops the rest of a card.
-// Both new frames must make a snapshot non-restorable while open, and
-// answering must give the restore point back.
+// A closure frame must make a snapshot non-restorable while open, and
+// answering must give the restore point back. (The confirm case went with
+// QueueConfirmForEffect in #4253's last part: a confirm's answer is a
+// registered key, and the table waiting on it is a restore point.)
 func TestChainedChoiceFramesAreCensused(t *testing.T) {
 	cases := []struct {
 		name  string
 		queue func(g *Game, me uuid.UUID)
 	}{
-		{"confirm", func(g *Game, me uuid.UUID) {
-			g.QueueConfirmForEffect(ConfirmPrompt{
-				Chooser:  me,
-				Question: "?",
-				OnAccept: func(*Game) error { return nil },
-			})
-		}},
 		{"choose_cards", func(g *Game, me uuid.UUID) {
 			g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 				Chooser: me,
@@ -272,13 +262,12 @@ func TestChainedChoiceDataSurvivesASnapshot(t *testing.T) {
 	p := g.Seats[0]
 	hand := handIDs(p, 2)
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser:      p.ID,
 			Question:     "pay 4 life?",
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
-			OnAccept:     func(*Game) error { return nil },
-		})
+		}, func(*Game) error { return nil }, nil)
 		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 			Chooser: p.ID,
 			Cards:   hand,

@@ -24,6 +24,15 @@ func recordTotals(into *[]int) func(*Game, int) error {
 	}
 }
 
+// recordTotalsTail is recordTotals as a keyed tail, told the total as its
+// Amount.
+func recordTotalsTail(into *[]int) KeyedTail {
+	return hookTail(func(_ *Game, o TailOutcome) error {
+		*into = append(*into, o.Amount)
+		return nil
+	})
+}
+
 // --- (1) the paused leg's player concedes ----------------------------
 
 // TestConcedeDuringLifeOrderingPromptFinishesTheDrain — the regression.
@@ -38,8 +47,8 @@ func TestConcedeDuringLifeOrderingPromptFinishesTheDrain(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(a))
 		g.RegisterReplacementForTest(doubleLifeReplacement(a))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != a {
@@ -77,8 +86,8 @@ func TestConcedeDuringLastLegPromptStillReportsTheTotal(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(b))
 		g.RegisterReplacementForTest(doubleLifeReplacement(b))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 0 {
@@ -106,8 +115,8 @@ func TestLoseLifeEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T) 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(a))
 		g.RegisterReplacementForTest(doubleLifeReplacement(a))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(b); err != nil {
@@ -133,8 +142,8 @@ func TestLoseLifeEachSkipsAPlayerEliminatedBeforeTheDrain(t *testing.T) {
 	}
 	var total []int
 	g.WithWriteLock(func() {
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b, c}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b, c}, 2, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 1 || total[0] != 4 {

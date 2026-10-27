@@ -13,7 +13,7 @@ import (
 // "It" is the NEW object (CR 400.7), so the suspect is aimed at the id
 // the return reports, not at the card's old one.
 //
-// The suspect is the entry's tail (ReturnFromGraveyardToBattlefieldThenForEffect, ADR 0154),
+// The suspect is the entry's tail (ReturnFromGraveyardToBattlefieldKeyedForEffect, ADR 0154),
 // so it runs inline when the creature simply enters and from the
 // player's answer when the entry first asks something — a returned
 // Clone's copy pick, a returned shockland's payment — and it lands on

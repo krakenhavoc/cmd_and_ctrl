@@ -47,14 +47,14 @@ func amassArmy(g *game.Game, p *game.Player, name string) uuid.UUID {
 func queueAmass(t *testing.T, g *game.Game, seat uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		err := g.AmassForEffect(seat, uuid.Nil, game.Card{
+		err := g.AmassKeyedForEffect(seat, uuid.Nil, game.Card{
 			Name:           "Zombie Army",
 			TypeLine:       "Token Creature — Zombie Army",
 			PrintedPTKnown: true,
 			Colors:         []string{"B"},
-		}, "Zombie", 2, nil)
+		}, "Zombie", 2, game.KeyedTail{})
 		if err != nil {
-			t.Fatalf("AmassForEffect: %v", err)
+			t.Fatalf("AmassKeyedForEffect: %v", err)
 		}
 	})
 }

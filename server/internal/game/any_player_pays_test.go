@@ -18,10 +18,10 @@ type offerOutcome struct {
 
 // queueOffer makes `controller`'s offer of `cost` straight at the
 // engine, so the rule is measured without a card in the way.
-func queueOffer(t *testing.T, g *Game, controller uuid.UUID, cost string, out *offerOutcome, mutate ...func(*AnyPlayerPays)) {
+func queueOffer(t *testing.T, g *Game, controller uuid.UUID, cost string, out *offerOutcome, mutate ...func(*anyPlayerTestOffer)) {
 	t.Helper()
 	source := departureTestSource(g, controller, "Rhystic Thing")
-	p := AnyPlayerPays{
+	p := anyPlayerTestOffer{
 		Source:     source,
 		Controller: controller,
 		Cost:       cost,
@@ -39,8 +39,8 @@ func queueOffer(t *testing.T, g *Game, controller uuid.UUID, cost string, out *o
 		m(&p)
 	}
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(p); err != nil {
-			t.Fatalf("QueueAnyPlayerPaysForEffect: %v", err)
+		if err := queueAnyPlayerHooked(g, p); err != nil {
+			t.Fatalf("queueAnyPlayerHooked: %v", err)
 		}
 	})
 }
@@ -202,7 +202,7 @@ func TestAnAnyPlayerOfferGuardsTheSpellItDecides(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	spell := uuid.New()
 	var out offerOutcome
-	queueOffer(t, g, g.Seats[0].ID, "{1}", &out, func(p *AnyPlayerPays) { p.Guards = spell })
+	queueOffer(t, g, g.Seats[0].ID, "{1}", &out, func(p *anyPlayerTestOffer) { p.Guards = spell })
 	c := onlyPendingChoice(t, g)
 	if c.GuardsStackItem != spell {
 		t.Errorf("the link guards %v, want %v", c.GuardsStackItem, spell)
@@ -213,7 +213,7 @@ func TestAnAnyPlayerOfferGuardsTheSpellItDecides(t *testing.T) {
 func TestAnAnyPlayerOfferToOpponentsSkipsTheController(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	var out offerOutcome
-	queueOffer(t, g, g.Seats[0].ID, "{1}", &out, func(p *AnyPlayerPays) { p.Opponents = true })
+	queueOffer(t, g, g.Seats[0].ID, "{1}", &out, func(p *anyPlayerTestOffer) { p.Opponents = true })
 	c := onlyPendingChoice(t, g)
 	if c.Chooser != g.Seats[1].ID || !sameIDs(c.AnyPlayerOffer.Order, seatIDs(g, 1, 2, 3)) || !c.AnyPlayerOffer.Opponents {
 		t.Fatalf("an any-opponent offer asks %v with order %v", c.Chooser, c.AnyPlayerOffer.Order)

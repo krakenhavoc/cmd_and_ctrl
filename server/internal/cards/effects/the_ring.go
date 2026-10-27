@@ -266,7 +266,7 @@ func registerRulesEmblem(key string, e EmblemSpec) {
 // (CR 701.54a): the emblem if the player has none, its count up by
 // one, a Ring-bearer chosen from the creatures they control (asked
 // only when there are two or more), and the event every "whenever the
-// Ring tempts you" ability watches. See game.RingTemptsForEffect.
+// Ring tempts you" ability watches. See game.RingTemptsKeyedForEffect.
 type TheRingTemptsYou struct {
 	// Player is who the Ring tempts. Zero means the effect's
 	// controller, which is what every printed Ring card says.

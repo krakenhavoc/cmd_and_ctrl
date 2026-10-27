@@ -354,13 +354,14 @@ func TestMoxDiamondPutFromHandCannotDiscardASiblingOfTheEntry(t *testing.T) {
 
 	var entered []uuid.UUID
 	g.WithWriteLock(func() {
-		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{
+		_ = g.PutOntoBattlefieldTogetherKeyedForEffect([]game.BatchEntry{
 			{CardID: mox, From: game.ZoneHand},
 			{CardID: sibling, From: game.ZoneHand},
-		}, game.ZoneEntryOptions{}, func(_ *game.Game, ids []uuid.UUID) error {
+		}, game.ZoneEntryOptions{}, hookTail(func(_ *game.Game, o game.TailOutcome) error {
+			ids := o.IDs
 			entered = ids
 			return nil
-		})
+		}))
 	})
 	c := entryChoiceOfKind(g, game.PendingChoiceEntryDiscardFromHand, me.ID)
 	if c == nil {

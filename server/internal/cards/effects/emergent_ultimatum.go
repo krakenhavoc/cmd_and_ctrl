@@ -131,23 +131,32 @@ var emergentUltimatumPicked = game.RegisterChooseCardsThen("choose-cards/emergen
 })
 
 // emergentUltimatumSettle shuffles the chosen card into its owner's
-// library, then offers the other cards, then exiles the spell.
+// library, then offers the other cards, then exiles the spell. The tuck's
+// "then" is a registered tail (#4253), the cards left riding its Carry, so
+// a CR 614 / 616 / 903.9 prompt the tuck pauses on is a restore point.
 func emergentUltimatumSettle(ctx *Context, picked, left []uuid.UUID) error {
-	item := ctx.Item
 	controller, source := ctx.Controller(), ctx.Source()
-	finish := func(g *game.Game, _ bool) error {
-		grantFreeCasts(g, controller, source, emergentUltimatumName, game.TimingFlash, game.LapseStaysInExile, left)
-		return emergentUltimatumExileSelf(NewContext(g, item))
-	}
 	if len(picked) == 0 {
-		return finish(ctx.Game, false)
+		return emergentUltimatumFinish(ctx.Game, controller, source, left)
 	}
-	return ctx.Game.TuckToLibraryThenForEffect(picked[0], game.TuckOptions{}, func(g *game.Game, ok bool) error {
-		if err := g.ShuffleLibraryForEffect(controller); err != nil {
-			return err
-		}
-		return finish(g, ok)
-	})
+	tail := game.KeyedTail{Ref: emergentUltimatumTucked, Player: controller, Source: source, Carry: append([]uuid.UUID(nil), left...)}
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect(picked[:1], game.TuckOptions{}, tail)
+}
+
+// emergentUltimatumTucked is the rest of the spell once the chosen card's
+// tuck has settled: shuffle Player's library, then offer the cards left (the
+// Carry) and exile the spell (Source). An on-disk key.
+var emergentUltimatumTucked = game.RegisterTail("emergent-ultimatum/tucked", func(g *game.Game, o game.TailOutcome) error {
+	if err := g.ShuffleLibraryForEffect(o.Tail.Player); err != nil {
+		return err
+	}
+	return emergentUltimatumFinish(g, o.Tail.Player, o.Tail.Source, o.Tail.Carry)
+})
+
+// emergentUltimatumFinish offers the cards left and exiles the spell.
+func emergentUltimatumFinish(g *game.Game, controller, source uuid.UUID, left []uuid.UUID) error {
+	grantFreeCasts(g, controller, source, emergentUltimatumName, game.TimingFlash, game.LapseStaysInExile, left)
+	return g.ExileCardForEffect(source)
 }
 
 // emergentUltimatumExileSelf is "Exile Emergent Ultimatum."

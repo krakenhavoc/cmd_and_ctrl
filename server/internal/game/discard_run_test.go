@@ -150,14 +150,14 @@ func TestAPromptedDiscardRunWaitsForAPausedLeg(t *testing.T) {
 
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(DiscardPrompt{Player: me.ID, Source: source, N: 1},
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID}, DiscardPrompt{Player: me.ID, Source: source, N: 1},
 			func(_ *Game, discarded PromptedDiscards) error {
 				out.ran++
 				out.got = discarded
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	answerDiscard(t, g, me.ID, commander)
@@ -201,14 +201,14 @@ func TestAMadnessExileCountsAsDiscardedThisWay(t *testing.T) {
 
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(DiscardPrompt{Player: me.ID, Source: source, N: 1},
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID}, DiscardPrompt{Player: me.ID, Source: source, N: 1},
 			func(_ *Game, discarded PromptedDiscards) error {
 				out.ran++
 				out.got = discarded
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	answerDiscard(t, g, me.ID, card)
@@ -247,14 +247,14 @@ func TestACancelledDiscardIsNotDiscardedThisWay(t *testing.T) {
 
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(DiscardPrompt{Player: me.ID, Source: source, N: 1},
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID}, DiscardPrompt{Player: me.ID, Source: source, N: 1},
 			func(_ *Game, discarded PromptedDiscards) error {
 				out.ran++
 				out.got = discarded
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	answerDiscard(t, g, me.ID, card)
@@ -341,7 +341,7 @@ func TestTheLegsOwnThenStillRunsForAnEmptyHand(t *testing.T) {
 
 	legs, run := 0, 0
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID},
 			DiscardPrompt{
 				Player: me.ID,
 				N:      1,
@@ -349,7 +349,7 @@ func TestTheLegsOwnThenStillRunsForAnEmptyHand(t *testing.T) {
 			},
 			func(_ *Game, _ PromptedDiscards) error { run++; return nil })
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 
@@ -473,14 +473,14 @@ func TestPlayerDiscardsThenCountsTheWholeInstruction(t *testing.T) {
 
 	out := &discardRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(DiscardPrompt{Player: me.ID, Source: source, N: 2},
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID}, DiscardPrompt{Player: me.ID, Source: source, N: 2},
 			func(_ *Game, discarded PromptedDiscards) error {
 				out.ran++
 				out.got = discarded
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	if openDiscardPrompts(g) != 1 {
@@ -532,10 +532,10 @@ func TestADiscardRunFinishingClearsTheRegistry(t *testing.T) {
 	card := oneCardHand(t, g, me, "Pitch")
 
 	g.WithWriteLock(func() {
-		err := g.PlayerDiscardsThenForEffect(DiscardPrompt{Player: me.ID, Source: source, N: 1},
+		err := g.PlayersDiscardThenForEffect([]uuid.UUID{me.ID}, DiscardPrompt{Player: me.ID, Source: source, N: 1},
 			func(*Game, PromptedDiscards) error { return nil })
 		if err != nil {
-			t.Fatalf("PlayerDiscardsThenForEffect: %v", err)
+			t.Fatalf("PlayersDiscardThenForEffect: %v", err)
 		}
 	})
 	if len(g.promptRuns) != 1 {

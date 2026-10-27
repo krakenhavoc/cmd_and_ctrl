@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -52,13 +54,21 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 	// #4253 slice 10a: "if you do" is the sacrifice's keyed tail, under a
 	// key derived from the run's ("sacrificed-one/<key>"), with the run's
 	// carry, its one number and the asking item as data.
-	sacrificed := CardTail("sacrificed-one/"+key, func(ctx *Context, o game.TailOutcome) error {
+	tailKey := "sacrificed-one/" + key
+	if rest, ok := strings.CutPrefix(key, "test/"); ok {
+		// A test's run keeps its tail in the ledger's test namespace.
+		tailKey = "test/sacrificed-one-" + rest
+	}
+	sacrificed := CardTail(tailKey, func(ctx *Context, o game.TailOutcome) error {
 		if len(o.IDs) == 0 {
 			return nil
 		}
 		r := game.RunDone{Source: o.Tail.Source, Carry: o.Tail.Carry, Asked: o.Tail.Asked}
-		if o.Tail.Word == sacrificedOneHasNum {
+		switch o.Tail.Word {
+		case sacrificedOneHasNum:
 			r.Nums = []int{o.Tail.N}
+		case sacrificedOneHasNums:
+			r.Nums = o.Tail.Nums
 		}
 		return then(ctx, o.IDs[0], r)
 	})
@@ -73,20 +83,14 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 			// CR 614 window that keeps it on the battlefield cancels the
 			// sacrifice, and a commander that goes to the command zone
 			// afterwards was still sacrificed (CR 701.17a, ADR 0115).
-			item := ctx.Item
-			if len(r.Nums) > 1 {
-				// More numbers than a tail carries: the closure door.
-				return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, cards, func(g *game.Game, sacrificed []uuid.UUID) error {
-					if len(sacrificed) == 0 {
-						return nil
-					}
-					return then(NewContext(g, item), sacrificed[0], r)
-				})
-			}
 			tail := game.KeyedTail{Ref: sacrificed, Player: ctx.Controller(), Source: r.Source,
-				Carry: append([]uuid.UUID(nil), r.Carry...), Asked: game.NewAskedItem(item)}
-			if len(r.Nums) == 1 {
+				Carry: append([]uuid.UUID(nil), r.Carry...), Asked: game.NewAskedItem(ctx.Item)}
+			switch {
+			case len(r.Nums) == 1:
 				tail.N, tail.Word = r.Nums[0], sacrificedOneHasNum
+			case len(r.Nums) > 1:
+				// #4253: more numbers than N holds ride the tail's Nums.
+				tail.Nums, tail.Word = append([]int(nil), r.Nums...), sacrificedOneHasNums
 			}
 			return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, cards, tail)
 		},
@@ -94,8 +98,12 @@ func RegisterSacrificedOneRun(key string, then func(ctx *Context, sacrificed uui
 }
 
 // sacrificedOneHasNum marks a sacrificed-one tail whose run carried one
-// number (its N).
-const sacrificedOneHasNum = "num"
+// number (its N), and sacrificedOneHasNums one whose run carried more (its
+// Nums).
+const (
+	sacrificedOneHasNum  = "num"
+	sacrificedOneHasNums = "nums"
+)
 
 // mustSacrificeOne is maySacrificeOne without the "may": "sacrifice a
 // non-Demon creature. If you do, …" (Dreadfeast Demon). The prompt has

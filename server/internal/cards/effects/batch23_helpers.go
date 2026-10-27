@@ -122,7 +122,7 @@ func b23DoublePlusOneCountersOn(ctx *Context, target uuid.UUID) error {
 // something prevented the counter) is not doubled.
 //
 // #1290: the growth check and the doubling both read the count
-// AFTER the first counter LANDS, via AddCounterThenForEffect's
+// AFTER the first counter LANDS, via AddCounterByKeyedForEffect's
 // continuation, rather than on the next line — a Doubling Season /
 // Hardened Scales board pauses that placement on a CR 616 prompt,
 // and reading before it resumes would see the pre-placement count

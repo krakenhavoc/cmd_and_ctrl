@@ -300,7 +300,7 @@ func TestSurveilPlusOneQueuesTheBiggerPrompt(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionSurveil, plusOneForTest, "surveil one more"))
-		g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 {
 		t.Fatalf("pending choices = %d, want the surveil prompt", len(g.PendingChoices))
@@ -319,7 +319,7 @@ func TestScryReplacementDoesNotTouchSurveil(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "scry one more"))
-		g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].ScryCards) != 1 {
 		t.Fatalf("a scry replacement changed a surveil: %+v", g.PendingChoices)
@@ -335,7 +335,7 @@ func TestLookAtTopIsNotAKeywordAction(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "scry one more"))
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionSurveil, plusOneForTest, "surveil one more"))
-		g.LookAtTopThenForEffect(me.ID, uuid.Nil, 2, nil)
+		g.LookAtTopKeyedForEffect(me.ID, uuid.Nil, 2, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].ScryCards) != 2 {
 		t.Fatalf("a keyword-action replacement reached look-at-top: %+v", g.PendingChoices)

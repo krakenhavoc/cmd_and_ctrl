@@ -207,13 +207,14 @@ func TestBatchEntryTakesCardsFromAGraveyard(t *testing.T) {
 		Label: "test: board watcher",
 	})
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: mine.InstanceID, From: ZoneGraveyard},
 		{CardID: theirs.InstanceID, From: ZoneGraveyard},
-	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -244,8 +245,8 @@ func TestBatchEntryTakesCardsFromAGraveyard(t *testing.T) {
 		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
 	me.Graveyard.PushTop(token)
 	g.mu.Lock()
-	err = g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{{CardID: token.InstanceID, From: ZoneGraveyard}},
-		ZoneEntryOptions{}, nil)
+	err = g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{{CardID: token.InstanceID, From: ZoneGraveyard}},
+		ZoneEntryOptions{}, KeyedTail{})
 	g.mu.Unlock()
 	if !errors.Is(err, ErrInvalidParam) {
 		t.Errorf("a token in a graveyard: err = %v, want ErrInvalidParam (CR 111.8)", err)
@@ -285,13 +286,14 @@ func TestBatchEntryFromTwoZonesIsOneEntry(t *testing.T) {
 	})
 	before := len(g.Events)
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: creature.InstanceID, From: ZoneExile},
 		{CardID: land.InstanceID, From: ZoneLibrary},
-	}, ZoneEntryOptions{Controller: me.ID}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{Controller: me.ID}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -483,13 +485,14 @@ func TestBatchEntryFromExileEntersUnderEachCardsOwner(t *testing.T) {
 		Label: "test: entry controller watcher",
 	})
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: mine.InstanceID, From: ZoneExile},
 		{CardID: theirs.InstanceID, From: ZoneExile},
-	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)

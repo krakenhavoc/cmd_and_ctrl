@@ -5,10 +5,11 @@ import "github.com/google/uuid"
 // life_each_keyed.go — #4253 slice 3: "each of these players loses N
 // life, then …" with the rest of the batch as data.
 //
-// LoseLifeEachThenForEffect walks the players one life change at a time,
-// each from the previous change's continuation, so a CR 616 ordering
-// prompt over one player's loss waits with the others behind it. Its
-// step is a closure over the remaining players and the running total.
+// The batch walks the players one life change at a time, each from the
+// previous change's continuation, so a CR 616 ordering prompt over one
+// player's loss waits with the others behind it. The closure form
+// (LoseLifeEachThenForEffect, deleted in #4253's last part) held its step
+// as a closure over the remaining players and the running total;
 // LoseLifeEachKeyedForEffect walks the same batch on a data tail
 // (lifeTail.each), and finishes with a registered tail: a drain's "you
 // gain life equal to the life lost this way" (Gray Merchant of Asphodel,

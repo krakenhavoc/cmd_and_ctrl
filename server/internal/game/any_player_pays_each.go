@@ -123,7 +123,7 @@ func (g *Game) QueueAnyPlayerPaysForEachForEffect(p AnyPlayerPaysForEach) error 
 	}
 	if p.EachLife <= 0 {
 		// A programming error, surfaced once; the card still does
-		// something, as QueueAnyPlayerPaysForEffect does with an
+		// something, as QueueAnyPlayerPaysKeyedForEffect does with an
 		// unparseable cost.
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,

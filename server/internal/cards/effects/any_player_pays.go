@@ -14,7 +14,7 @@ import (
 // player may pay <Cost>. If no one does, <effect>" (ADR 0150, #1903):
 // the payment is offered to every player still in the game, in APNAP
 // order from the active player, the controller included, until one
-// pays (game.QueueAnyPlayerPaysForEffect). The offer blocks the step
+// pays (game.QueueAnyPlayerPaysKeyedForEffect). The offer blocks the step
 // it was made in and takes no standing answer.
 //
 // The consequences are registered (Then) and run against the resolving
@@ -27,7 +27,7 @@ type AnyPlayerPays struct {
 	// Question is the prompt header each player sees.
 	Question string
 	// HelpsController marks a payment the controller wants made (Icy
-	// Prison's upkeep): game.AnyPlayerPays.HelpsController.
+	// Prison's upkeep): game.AnyPlayerPaysKeyed.HelpsController.
 	HelpsController bool
 
 	// The fields below are ADR 0150 PR 2's (§3): payments other than
