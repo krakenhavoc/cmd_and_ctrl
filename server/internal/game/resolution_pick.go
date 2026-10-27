@@ -239,6 +239,12 @@ type RevealPickPrompt struct {
 	// one prompt, not a run.
 	ThenKey ChooseCardsThen
 	Carry   []uuid.UUID
+	// Asked and Nums are more plain data for a keyed continuation (#4253
+	// sweep, second pass): the asking item (NewAskedItem), handed back as
+	// CardsChosen.Asked, and numbers it fixed as it resolved, handed back
+	// as CardsChosen.Nums. Read only with ThenKey.
+	Asked *AskedItem
+	Nums  []int
 }
 
 // RevealPickThenForEffect asks `p.Chooser` to pick from the revealed
@@ -319,6 +325,8 @@ func (g *Game) queueRevealPickKeyedLocked(p RevealPickPrompt) int {
 		ChooseMax:   hi,
 		PickThen:    p.ThenKey.key,
 		OptionCarry: copyUUIDs(p.Carry),
+		Asked:       copyAskedItem(p.Asked),
+		PickNums:    copyInts(p.Nums),
 	}) == uuid.Nil {
 		return 0
 	}

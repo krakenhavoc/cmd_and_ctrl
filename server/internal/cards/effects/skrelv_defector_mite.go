@@ -24,21 +24,29 @@ func init() {
 				if len(targets) == 0 {
 					return nil
 				}
-				target := targets[0].ID
-				ChooseColorThen(game.ColorForProtection, g, item.Controller, item.SourceCardID,
-					"Skrelv, Defector Mite — choose a color", func(g *game.Game, color string) error {
-						return ScopedEffectFor{
-							Target: target,
-							Mods: []game.Mod{
-								game.AddKeywordsMod("toxic 1", game.HexproofFromColor(color)),
-								game.CantBeBlockedByColorMod(color),
-							},
-							Duration: DurationUntilEndOfTurn(NewContext(g, item)),
-							Label:    "Skrelv, Defector Mite — toxic 1, hexproof and evasion from " + game.ColorName(color),
-						}.Apply(NewContext(g, item))
-					})
+				ChooseColorTail(game.ColorForProtection, g, item.Controller, item.SourceCardID,
+					"Skrelv, Defector Mite — choose a color", withCarry(ctx.ItemTail(skrelvColorChosen), targets[0].ID))
 				return nil
 			},
 		}},
 	})
 }
+
+// skrelvColorChosen grants the target (the tail's one carried ID) toxic 1,
+// hexproof from the colour (its Word) and evasion against it until end of
+// turn. Run against the asking ability. An on-disk key.
+var skrelvColorChosen = CardTail("then/skrelv-defector-mite-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	color := o.Tail.Word
+	return ScopedEffectFor{
+		Target: o.Tail.Carry[0],
+		Mods: []game.Mod{
+			game.AddKeywordsMod("toxic 1", game.HexproofFromColor(color)),
+			game.CantBeBlockedByColorMod(color),
+		},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    "Skrelv, Defector Mite — toxic 1, hexproof and evasion from " + game.ColorName(color),
+	}.Apply(ctx)
+})

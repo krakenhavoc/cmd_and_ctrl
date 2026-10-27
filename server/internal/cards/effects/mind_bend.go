@@ -21,6 +21,6 @@ func init() {
 		Name:         "Mind Bend",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target permanent"),
-		OnResolve:    changeTextOfTarget(textEitherWords, false, nil),
+		OnResolve:    changeTextOfTarget(textEitherWords, false, nothingAfterTheChange),
 	})
 }

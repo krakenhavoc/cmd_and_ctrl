@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -54,13 +52,8 @@ func shieldTargetFromChosenColor(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	target := ts[0].ID
-	ChooseColorThen(game.ColorForProtection, g, item.Controller, item.SourceCardID,
+	ChooseColorTail(game.ColorForProtection, g, item.Controller, item.SourceCardID,
 		shieldSourceName(ctx)+" — choose a color of sources to prevent damage from",
-		func(g *game.Game, color string) error {
-			if color == "" || target == uuid.Nil {
-				return nil
-			}
-			return PreventDamageFromSource{Protect: ShieldObject(target), Queries: []game.PermanentQuery{QueryColors(color)}, ChosenQueries: true}.Apply(NewContext(g, item))
-		})
+		withCarry(ctx.ItemTail(preventDamageFromChosenColor), target))
 	return nil
 }

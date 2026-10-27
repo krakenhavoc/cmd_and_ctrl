@@ -256,16 +256,17 @@ func IsFullyUnlocked(g *game.Game, id uuid.UUID) bool {
 // UnlockADoor is "unlock a door of <Room>" (CR 709.5f): the player
 // chooses a LOCKED door of it and it is unlocked. With one locked door
 // there is nothing to choose; with two, an option_pick asks which. A
-// Room with no locked door, or one that has left, does nothing. Then,
-// if set, runs once the door is unlocked (or nothing happened).
+// Room with no locked door, or one that has left, does nothing. ThenTail,
+// if set, is a registered tail run once the door is unlocked (or nothing
+// happened); it rides the door's prompt as data (#4253).
 type UnlockADoor struct {
-	Room   uuid.UUID
-	Player uuid.UUID
-	Then   func(ctx *Context) error
+	Room     uuid.UUID
+	Player   uuid.UUID
+	ThenTail game.KeyedTail
 }
 
 func (u UnlockADoor) Apply(ctx *Context) error {
-	return chooseDoorThen(ctx, u.Player, u.Room, true, false, u.Then)
+	return chooseDoorThen(ctx, u.Player, u.Room, true, false, u.ThenTail)
 }
 
 // LockOrUnlockADoor is "lock or unlock a door of <Room>" (Keys to the
@@ -277,7 +278,7 @@ type LockOrUnlockADoor struct {
 }
 
 func (u LockOrUnlockADoor) Apply(ctx *Context) error {
-	return chooseDoorThen(ctx, u.Player, u.Room, true, true, nil)
+	return chooseDoorThen(ctx, u.Player, u.Room, true, true, game.KeyedTail{})
 }
 
 // UnlockALockedDoorOfARoomYouControl is "unlock a locked door of a Room
@@ -369,16 +370,15 @@ var unlockALockedDoorAnswer = OptionPickThen("option-pick/unlock-a-locked-door-o
 // chooseDoorThen asks `player` which door of `room` to act on — a
 // locked one to unlock when `unlock`, an unlocked one to lock when
 // `lock` — and does it. Asks only when there is more than one door to
-// choose between (CR 709.5f-g: the player chooses).
-func chooseDoorThen(ctx *Context, player, room uuid.UUID, unlock, lock bool, then func(*Context) error) error {
+// choose between (CR 709.5f-g: the player chooses). `then` runs after,
+// or when nothing could be done; the choice is keyed (chooseDoorAnswer),
+// the tail riding it, so a table waiting on it is a restore point.
+func chooseDoorThen(ctx *Context, player, room uuid.UUID, unlock, lock bool, then game.KeyedTail) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
 	finish := func(ctx *Context) error {
-		if then != nil {
-			return then(ctx)
-		}
-		return nil
+		return then.Run(ctx.Game, nil)
 	}
 	c, ok := ctx.Game.LookupCardForEffect(room)
 	if !ok || !game.HasSharedTypeLine(c) || !ctx.Game.IsUnlockableRoomForEffect(room) {
@@ -419,50 +419,43 @@ func chooseDoorThen(ctx *Context, player, room uuid.UUID, unlock, lock bool, the
 	case 1:
 		return do(ctx, acts[0])
 	}
-	question := "Choose a door of " + c.Faces[0].Name + " // " + c.Faces[1].Name
-	if then == nil {
-		// Nothing hangs off the choice, so it is data: the Room rides the
-		// prompt and the table stays a restore point (#4253).
-		return PickOption{
-			Player:   player,
-			Question: question,
-			Options:  opts,
-			ThenKey:  chooseDoorAnswer,
-			Carry:    []uuid.UUID{room},
-		}.Apply(ctx)
-	}
+	// The choice is data: the Room rides the prompt, and the rest of the
+	// card is its tail (#4253).
 	return PickOption{
 		Player:   player,
-		Question: question,
+		Question: "Choose a door of " + c.Faces[0].Name + " // " + c.Faces[1].Name,
 		Options:  opts,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(acts) {
-				return finish(ctx)
-			}
-			return do(ctx, acts[index])
-		},
+		ThenKey:  chooseDoorAnswer,
+		Carry:    []uuid.UUID{room},
+		Tail:     then,
 	}.Apply(ctx)
 }
 
-// chooseDoorAnswer is the door chosen locked or unlocked, keyed (#4253) for
-// a choice with nothing after it: the Room is the one carried ID, the door
-// and the action are the option's label, and the chooser is the player who
-// acts.
+// chooseDoorAnswer is the door chosen locked or unlocked, keyed (#4253):
+// the Room is the one carried ID, the door and the action are the option's
+// label, and the chooser is the player who acts. The prompt's tail runs
+// after, or in its place when no door was chosen.
 var chooseDoorAnswer = OptionPickThen("option-pick/choose-a-door", func(ctx *Context, r game.OptionPicked) error {
 	if r.Option == nil || len(r.Carry) == 0 {
-		return nil
+		return r.Tail.Run(ctx.Game, nil)
 	}
 	room := r.Carry[0]
 	c, ok := ctx.Game.LookupCardForEffect(room)
 	if !ok {
-		return nil
+		return r.Tail.Run(ctx.Game, nil)
 	}
 	door, unlock, ok := doorNamedBy(c, r.Option.Label)
 	if !ok {
-		return nil
+		return r.Tail.Run(ctx.Game, nil)
 	}
+	var err error
 	if unlock {
-		return ctx.Game.UnlockDoorForEffect(room, door, r.Chooser)
+		err = ctx.Game.UnlockDoorForEffect(room, door, r.Chooser)
+	} else {
+		err = ctx.Game.LockDoorForEffect(room, door, r.Chooser)
 	}
-	return ctx.Game.LockDoorForEffect(room, door, r.Chooser)
+	if err != nil {
+		return err
+	}
+	return r.Tail.Run(ctx.Game, nil)
 })

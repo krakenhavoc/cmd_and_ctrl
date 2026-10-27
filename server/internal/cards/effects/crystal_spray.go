@@ -24,9 +24,11 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1},
 		Targets:      TargetSpellOrPermanent("target spell or permanent", nil, nil),
-		OnResolve: changeTextOfTarget(textEitherWords, true, func(item *game.StackItem) func(*game.Game) error {
-			controller := item.Controller
-			return func(g *game.Game) error { return g.DrawNForEffect(controller, 1) }
-		}),
+		OnResolve:    changeTextOfTarget(textEitherWords, true, crystalSprayDraw),
 	})
 }
+
+// crystalSprayDraw is "Draw a card.", after the change. An on-disk key.
+var crystalSprayDraw = CardTail("then/crystal-spray-draw", func(ctx *Context, o game.TailOutcome) error {
+	return ctx.Game.DrawNForEffect(o.Tail.Player, 1)
+})

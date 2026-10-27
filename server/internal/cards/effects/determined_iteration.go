@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -30,17 +28,18 @@ func init() {
 		Name:         "Determined Iteration",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtBeginningOfYourCombat("Determined Iteration — populate", Do(Populate{
-				Except: TokenCopyGainsHaste,
-				Then:   determinedIterationSacrificeAtEnd,
-			})),
+			AtBeginningOfYourCombat("Determined Iteration — populate", func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				return Populate{Haste: true, ThenTail: ctx.ItemTail(determinedIterationSacrificeAtEnd)}.Apply(ctx)
+			}),
 		},
 	})
 }
 
 // determinedIterationSacrificeAtEnd schedules the sacrifice of the
-// token(s) the populate made.
-func determinedIterationSacrificeAtEnd(ctx *Context, created []uuid.UUID) error {
+// token(s) the populate made (the tail's IDs). An on-disk key.
+var determinedIterationSacrificeAtEnd = CardTail("then/determined-iteration-sacrifice-at-end", func(ctx *Context, o game.TailOutcome) error {
+	created := o.IDs
 	if len(created) == 0 {
 		return nil
 	}
@@ -49,4 +48,4 @@ func determinedIterationSacrificeAtEnd(ctx *Context, created []uuid.UUID) error 
 		Cards: created,
 		Body:  sacrificeListedCardsBody,
 	}.Apply(ctx)
-}
+})

@@ -60,16 +60,23 @@ func init() {
 				if victim == uuid.Nil {
 					return nil
 				}
-				x := ctx.X()
-				ChooseColorThen(game.ColorForFilter, g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
-					func(g *game.Game, color string) error {
-						return oonaExileAndMakeFaeries(NewContext(g, item), victim, x, color)
-					})
+				ChooseColorTail(game.ColorForFilter, g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
+					withCarry(withN(ctx.ItemTail(oonaColorChosen), ctx.X()), victim))
 				return nil
 			},
 		}},
 	})
 }
+
+// oonaColorChosen is the rest of the ability once the colour (the tail's
+// Word) is known: the opponent (its one carried ID) exiles the top X (its N).
+// An on-disk key.
+var oonaColorChosen = CardTail("then/oona-queen-of-the-fae-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return oonaExileAndMakeFaeries(ctx, o.Tail.Carry[0], o.Tail.N, o.Tail.Word)
+})
 
 func oonaExileAndMakeFaeries(ctx *Context, victim uuid.UUID, x int, color string) error {
 	return MillToZone{

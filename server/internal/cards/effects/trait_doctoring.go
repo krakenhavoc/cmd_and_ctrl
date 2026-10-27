@@ -27,6 +27,6 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordCipher},
 		Targets:         TargetPermanent("target permanent"),
-		OnResolve:       changeTextOfTarget(textEitherWords, true, nil),
+		OnResolve:       changeTextOfTarget(textEitherWords, true, nothingAfterTheChange),
 	})
 }

@@ -320,10 +320,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownPayUnlessElse(c.PickThen) {
 				unknown = append(unknown, "pay-unless branches "+c.PickThen)
 			}
-		case c.Kind == PendingChoiceCardName:
-			// #4253 slice 10c: a card-name prompt's keyed "then".
+		case carriesValueThen(c.Kind):
+			// #4253 slice 10c: a card-name prompt's keyed "then"; since the
+			// sweep's second pass, a colour or creature-type prompt's too.
 			if c.NameThen == nil || c.NameThen.Key != c.PickThen {
-				unknown = append(unknown, "card-name continuation "+c.PickThen)
+				unknown = append(unknown, string(c.Kind)+" continuation "+c.PickThen)
 			} else {
 				unknown = append(unknown, unknownKeyedTail(c.NameThen)...)
 			}

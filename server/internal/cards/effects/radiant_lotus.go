@@ -73,17 +73,22 @@ func init() {
 				// choice even though the mana lands on the target.
 				// The purpose is declared (#780) so a chooser with no
 				// other information knows what the answer buys.
-				source, player := item.SourceCardID, receiver.ID
-				ChooseColorThen(game.ColorForMana, g, item.Controller, source,
+				ChooseColorTail(game.ColorForMana, g, item.Controller, item.SourceCardID,
 					"Radiant Lotus — choose a color",
-					func(g *game.Game, color string) error {
-						if color == "" {
-							return nil
-						}
-						return g.AddManaWithOptionsForEffect(player, source, "", game.AddManaOptions{Amount: ManaN(3*paid, color)})
-					})
+					withCarry(ctx.TailN(radiantLotusColorChosen, 3*paid), receiver.ID))
 				return nil
 			},
 		}},
 	})
 }
+
+// radiantLotusColorChosen adds the mana once the colour (the tail's Word) is
+// known: N of it to the target player, the tail's one carried ID. An on-disk
+// key.
+var radiantLotusColorChosen = CardTail("then/radiant-lotus-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	color := o.Tail.Word
+	if color == "" || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return ctx.Game.AddManaWithOptionsForEffect(o.Tail.Carry[0], o.Tail.Source, "", game.AddManaOptions{Amount: ManaN(o.Tail.N, color)})
+})

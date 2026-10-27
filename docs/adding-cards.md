@@ -9134,31 +9134,35 @@ names the chosen type uses `RestrictionsFunc`, not `Restrictions`
 
 **A type chosen as a spell resolves** ("Choose a creature type. Destroy
 all creatures that aren't of the chosen type") is
-`ChooseCreatureTypeThen`, not a stored answer (#2382):
+`ChooseCreatureTypeTail`, not a stored answer (#2382). The rest of the
+card is a registered tail told the type as its Word (#4253), so a table
+waiting on the answer is a restore point:
 
 ```go
 OnResolve: func(item *game.StackItem, ctx *Context) error {
-    ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
-        func(g *game.Game, t string) error {
-            if t == "" { // the chooser left the game: nobody chose
-                return nil
-            }
-            return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
-        })
+    ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
+        ctx.ItemTail(kindredDominanceTypeChosen))
     return nil
 },
+
+// creatureTypeChosen skips the body when nobody chose (the chooser left).
+var kindredDominanceTypeChosen = creatureTypeChosen("then/kindred-dominance-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+    return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(ctx)
+})
 ```
 
 Same prompt, vocabulary and answer as the as-enters form, so the client
 and the bot's enumerator need nothing new. Everything the card prints
-after the choice goes INSIDE the continuation, which receives the
-canonical type (and `""` when the chooser left); the line after the call
-runs before anybody has answered. "Each player chooses" is a chain: ask
-`seatsFromController`, one prompt per seat, from inside the previous
-continuation, carrying the answers by value (Patriarch's Bidding). A
-permanent whose counters depend on the answer (Banner of Kinship) queues
-the same prompt from `AsEnters` and uses `Game.SetNamedTribeForEffect`
-in the continuation.
+after the choice goes in the tail, which is told the canonical type (and
+`""` when the chooser left); the line after the call runs before anybody
+has answered. Put what the body reads on the tail as data (Carry, N,
+Words, the asking item), never in a closure. "Each player chooses" is a
+chain: ask `seatsFromController`, one prompt per seat, from inside the
+previous tail, the seats still to ask riding its Carry and the answers
+so far its Words (Patriarch's Bidding). A permanent whose counters depend
+on the answer (Banner of Kinship) queues the same prompt from `AsEnters`
+with a `game.KeyedTail{Ref, Player, Source}` and uses
+`Game.SetNamedTribeForEffect` in the tail.
 
 **Changeling** (CR 702.73a) is an enforced keyword since S26, so a
 **vanilla changeling needs no catalog entry at all** — the deck
@@ -9302,14 +9306,18 @@ both ways, and it is the only `ProducedFunc` shape "could produce"
 skips.
 
 **At resolution** ("Choose a color. …" inside a spell or ability) stores
-nothing: `ChooseColorThen(purpose, g, chooser, source, question, then)` hands the
-answer to a continuation that runs the rest of the effect (Wash Out,
-Oona). The continuation receives the live `*Game`; rebuild the context
-with `NewContext(g, item)` inside it. "Each player chooses a color" is a
-chain: each answer's continuation asks the next player in APNAP order
-(Selective Obliteration). Thread the answers through the chain as values
-rather than mutating one shared map, so an undo cannot leak an answer
-from an undone branch.
+nothing: `ChooseColorTail(purpose, g, chooser, source, question, then)` hands the
+answer to a registered tail (`CardTail`, built with `ctx.ItemTail`) told the
+colour as its Word, which runs the rest of the effect (Wash Out, Oona). The
+tail runs against the asking item rebuilt from data; carry what it reads
+(a target, X) on the tail, so a table waiting on the colour is a restore
+point (#4253). "Protection from the color of your choice" is the shared
+`chooseProtectionColorFor`; "prevent damage from sources of the color of
+your choice" the shared `preventDamageFromChosenColor`. "Each player
+chooses a color" is a chain: each answer's tail asks the next player in
+APNAP order (Selective Obliteration), the players riding its Carry and
+the answers so far its Words, so an undo cannot leak an answer from an
+undone branch.
 
 **"N mana of any one color"** is ONE pick minting N tokens, never N
 pipe slots, which would let the player take N different colours. Write

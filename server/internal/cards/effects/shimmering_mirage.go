@@ -23,7 +23,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target land", Land()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return TargetLandBecomesChosenTypeThen(ctx, "Shimmering Mirage", DrawCards{N: 1}.Apply)
+			return TargetLandBecomesChosenTypeThen(ctx, "Shimmering Mirage", shimmeringMirageDraw)
 		},
 	})
 }
+
+// shimmeringMirageDraw is "Draw a card.", after the land's type. An on-disk
+// key.
+var shimmeringMirageDraw = CardTail("then/shimmering-mirage-draw", func(ctx *Context, _ game.TailOutcome) error {
+	return DrawCards{N: 1}.Apply(ctx)
+})

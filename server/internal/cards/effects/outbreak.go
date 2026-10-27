@@ -26,19 +26,20 @@ func init() {
 		// so partial.
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 1, Partial: true}},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Outbreak — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return BoostUntilEOT{
-						Match:     OfCreatureType(t),
-						Power:     -1,
-						Toughness: -1,
-						Label:     "Outbreak — -1/-1",
-					}.Apply(NewContext(g, item))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Outbreak — choose a creature type",
+				ctx.ItemTail(outbreakTypeChosen))
 			return nil
 		},
 	})
 }
+
+// outbreakTypeChosen gives creatures of the chosen type -1/-1 until end of
+// turn. An on-disk key.
+var outbreakTypeChosen = creatureTypeChosen("then/outbreak-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	return BoostUntilEOT{
+		Match:     OfCreatureType(t),
+		Power:     -1,
+		Toughness: -1,
+		Label:     "Outbreak — -1/-1",
+	}.Apply(ctx)
+})

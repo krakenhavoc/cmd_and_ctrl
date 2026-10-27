@@ -38,7 +38,7 @@ import (
 var colorPromptBuilders = map[string]bool{
 	"ChooseColorAsEnters":          true,
 	"ChooseColorOtherThanAsEnters": true,
-	"ChooseColorThen":              true,
+	"ChooseColorTail":              true,
 }
 
 // colorPurposeNames is the declared vocabulary, by the identifier a

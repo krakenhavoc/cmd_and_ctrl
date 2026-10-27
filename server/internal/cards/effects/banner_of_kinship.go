@@ -31,14 +31,8 @@ func init() {
 		Name:         "Banner of Kinship",
 		Completeness: CompletenessFull,
 		AsEnters: func(card *game.Card, ctx *Context) error {
-			controller, self := card.Controller, card.InstanceID
-			ChooseCreatureTypeThen(ctx.Game, controller, self, "Banner of Kinship — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return storeTribeAndCountFellowship(g, controller, self, t)
-				})
+			ChooseCreatureTypeTail(ctx.Game, card.Controller, card.InstanceID, "Banner of Kinship — choose a creature type",
+				game.KeyedTail{Ref: bannerOfKinshipTypeChosen, Player: card.Controller, Source: card.InstanceID})
 			return nil
 		},
 		Static: []game.StaticAbility{
@@ -51,6 +45,13 @@ func init() {
 		},
 	})
 }
+
+// bannerOfKinshipTypeChosen stores the type on the Banner (the tail's
+// Source) and counts its controller's fellowship (the tail's Player). An
+// on-disk key.
+var bannerOfKinshipTypeChosen = creatureTypeChosen("then/banner-of-kinship-type-chosen", func(ctx *Context, t string, o game.TailOutcome) error {
+	return storeTribeAndCountFellowship(ctx.Game, o.Tail.Player, o.Tail.Source, t)
+})
 
 func storeTribeAndCountFellowship(g *game.Game, controller, self uuid.UUID, t string) error {
 	if !g.SetNamedTribeForEffect(self, t) {

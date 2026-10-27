@@ -90,6 +90,11 @@ type CreatureTypePrompt struct {
 	// asks several seats finishes (#1006's rule); an answer is never
 	// empty.
 	Then func(g *Game, creatureType string) error
+	// ThenTail is Then as data (#4253): a registered tail (RegisterTail)
+	// told the canonical type as its Word, and "" when the chooser left.
+	// A prompt carrying one holds no closure, so a table waiting on it is
+	// a restore point. Set Then or ThenTail, not both; Then wins.
+	ThenTail KeyedTail
 	// Except names types the answer may not be (ADR 0160's 2026-10-15
 	// amendment): Artificial Evolution's "can't be Wall". Any spelling;
 	// stored canonical on PendingChoice.ExcludedTypes.
@@ -114,15 +119,20 @@ func canonicalCreatureTypes(in []string) []string {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueCreatureTypeChoiceThenForEffect(p CreatureTypePrompt) uuid.UUID {
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoiceCreatureType,
-		Chooser:           p.Chooser,
-		Count:             1,
-		Source:            p.Source,
-		Reason:            p.Question,
-		ExcludedTypes:     canonicalCreatureTypes(p.Except),
-		chooseValueResume: &chooseValueFrame{then: p.Then},
-	})
+	c := PendingChoice{
+		Kind:          PendingChoiceCreatureType,
+		Chooser:       p.Chooser,
+		Count:         1,
+		Source:        p.Source,
+		Reason:        p.Question,
+		ExcludedTypes: canonicalCreatureTypes(p.Except),
+	}
+	if p.Then == nil && !p.ThenTail.IsZero() {
+		g.keyValueThenLocked(&c, p.ThenTail)
+	} else {
+		c.chooseValueResume = &chooseValueFrame{then: p.Then}
+	}
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveCreatureTypeChoice processes a resolve_choice action for a
@@ -169,7 +179,7 @@ func (g *Game) ResolveCreatureTypeChoice(choiceID, chooserID uuid.UUID, creature
 	if !ok || slices.Contains(choice.ExcludedTypes, canonical) {
 		return ErrInvalidParam
 	}
-	frame := choice.chooseValueResume
+	frame := chooseValueFrameOf(choice)
 	g.dequeueChoiceLocked(idx)
 
 	if frame != nil {

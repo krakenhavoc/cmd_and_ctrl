@@ -17,26 +17,43 @@ import (
 // nowhere, so the type outlives nothing but the resolution that asked.
 // Append-only (the clone gate's rule).
 
-// ChooseCreatureTypeThen queues a resolution-time "Choose a creature
-// type." for `chooser` and runs `then` with the canonical type. `then`
-// runs with the game lock held, like every continuation — *ForEffect
-// helpers only — and must not capture a *Card or the *Game it was
-// built against; rebuild a Context from the *Game it is handed.
+// ChooseCreatureTypeTail queues a resolution-time "Choose a creature
+// type." for `chooser` and hands the canonical type to `then`, a
+// registered tail (CardTail or creatureTypeChosen, built with ctx.Tail or
+// ctx.ItemTail) told the type as its Word. The rest of the effect is data
+// (#4253: the closure form, ChooseCreatureTypeThen, is gone), so a table
+// waiting on the answer is a restore point; put what the body reads on the
+// tail (Carry, N, Words, the asking item).
 //
-// `then` receives "" when nobody chose: the chooser left the game with
+// The tail is told "" when nobody chose: the chooser left the game with
 // the prompt open (CR 800.4a). A clause that acts on the type should do
-// nothing for "", and a chain that asks several seats should carry on.
+// nothing for "" (creatureTypeChosen does that), and a chain that asks
+// several seats should carry on.
 //
 // Returns false when nothing was queued (the chooser is out of the
-// game), in which case `then` is never called and a chain must carry on
+// game), in which case the tail is never run and a chain must carry on
 // itself.
-func ChooseCreatureTypeThen(g *game.Game, chooser, source uuid.UUID, question string, then func(g *game.Game, creatureType string) error) bool {
+func ChooseCreatureTypeTail(g *game.Game, chooser, source uuid.UUID, question string, then game.KeyedTail) bool {
 	return g.QueueCreatureTypeChoiceThenForEffect(game.CreatureTypePrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
-		Then:     then,
+		ThenTail: then,
 	}) != uuid.Nil
+}
+
+// creatureTypeChosen registers the tail of a creature-type prompt whose
+// clause acts on the type: `body` is handed the type (the tail's Word) and
+// is not run when nobody chose. It runs against the Context of CardTail.
+// The key is an on-disk identity (ledgered "tail <key>"): never renamed,
+// never reused.
+func creatureTypeChosen(key string, body func(ctx *Context, creatureType string, o game.TailOutcome) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if o.Tail.Word == "" {
+			return nil
+		}
+		return body(ctx, o.Tail.Word, o)
+	})
 }
 
 // permanentsOfTypeYouControl counts `player`'s permanents of creature

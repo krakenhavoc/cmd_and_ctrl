@@ -21,14 +21,15 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Kindred Dominance — choose a creature type",
+				ctx.ItemTail(kindredDominanceTypeChosen))
 			return nil
 		},
 	})
 }
+
+// kindredDominanceTypeChosen destroys every creature not of the chosen
+// type. An on-disk key.
+var kindredDominanceTypeChosen = creatureTypeChosen("then/kindred-dominance-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	return DestroyAllMatching{Match: notOfCreatureType(t)}.Apply(ctx)
+})

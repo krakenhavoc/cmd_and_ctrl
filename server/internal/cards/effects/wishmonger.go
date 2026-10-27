@@ -50,20 +50,8 @@ func init() {
 					if !ok {
 						return nil
 					}
-					target := t.ID
-					ChooseColorThen(game.ColorForProtection, g, chooser, item.SourceCardID,
-						"Wishmonger — choose a color for your creature's protection",
-						func(g *game.Game, color string) error {
-							token := game.ProtectionFromColor(color)
-							if token == "" {
-								return nil
-							}
-							return GrantKeywordUntilEOT{
-								Target:   target,
-								Keywords: []string{token},
-								Label:    "Wishmonger — " + token,
-							}.Apply(NewContext(g, item))
-						})
+					chooseProtectionColorFor(ctx, chooser, t.ID, "Wishmonger",
+						"Wishmonger — choose a color for your creature's protection")
 					return nil
 				}
 				return nil

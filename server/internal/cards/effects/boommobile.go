@@ -14,7 +14,7 @@ import (
 //	 Crew 2"
 //
 // The ETB is a trigger (it uses the stack, so it can be countered) that
-// asks the colour first (`ChooseColorThen`) and then adds four mana of
+// asks the colour first (`ChooseColorTail`) and then adds four mana of
 // it carrying the activate-only spend restriction, so it cannot pay for
 // a spell. The colour is asked separately because the any-colour picker
 // (a pipe slot) cannot carry a spend restriction through its prompt. The mana can still pay the exhaust ability's
@@ -71,13 +71,16 @@ func init() {
 // boommobileMana is the ETB body: choose a colour, then add four mana of
 // it that can only be spent to activate abilities.
 func boommobileMana(g *game.Game, item *game.StackItem) error {
-	controller, source := item.Controller, item.SourceCardID
-	ChooseColorThen(game.ColorForMana, g, controller, source,
+	ChooseColorTail(game.ColorForMana, g, item.Controller, item.SourceCardID,
 		"Boommobile — choose a color of mana to add",
-		func(g *game.Game, color string) error {
-			return g.AddManaWithOptionsForEffect(controller, source,
-				"{"+color+"4}",
-				game.AddManaOptions{Restrictions: []string{ManaRestrictActivate}})
-		})
+		NewContext(g, item).Tail(boommobileColorChosen))
 	return nil
 }
+
+// boommobileColorChosen adds the four mana once the colour (the tail's Word)
+// is known. An on-disk key.
+var boommobileColorChosen = game.RegisterTail("then/boommobile-color-chosen", func(g *game.Game, o game.TailOutcome) error {
+	return g.AddManaWithOptionsForEffect(o.Tail.Player, o.Tail.Source,
+		"{"+o.Tail.Word+"4}",
+		game.AddManaOptions{Restrictions: []string{ManaRestrictActivate}})
+})

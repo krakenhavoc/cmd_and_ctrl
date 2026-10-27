@@ -23,6 +23,6 @@ func init() {
 		Completeness:  CompletenessFull,
 		Targets:       TargetPermanent("target permanent"),
 		OptionalCosts: []game.AdditionalCost{Buyback("{2}")},
-		OnResolve:     changeTextOfTarget(textEitherWords, true, nil),
+		OnResolve:     changeTextOfTarget(textEitherWords, true, nothingAfterTheChange),
 	})
 }

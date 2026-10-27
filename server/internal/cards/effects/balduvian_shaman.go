@@ -51,23 +51,21 @@ func init() {
 }
 
 // balduvianShamanGains is "That enchantment gains 'Cumulative upkeep
-// {1}.'", run once the words are chosen. The target is read off the
-// item, so a target that became illegal (CR 608.2b) gains nothing: the
-// whole ability did nothing.
-func balduvianShamanGains(item *game.StackItem) func(*game.Game) error {
-	return func(g *game.Game) error {
-		ctx := NewContext(g, item)
-		for _, t := range ctx.LegalTargets() {
-			if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
-				continue
-			}
-			return GrantAbilitiesFor{
-				Target:   t.ID,
-				Keys:     []string{balduvianShamanGrant},
-				Duration: g.PinnedTo(game.IndefiniteDuration(), t.ID),
-				Label:    "Balduvian Shaman — gains cumulative upkeep {1}",
-			}.Apply(ctx)
+// {1}.'", run once the words are chosen, against the asking ability. The
+// target is read off the item, so a target that became illegal (CR
+// 608.2b) gains nothing: the whole ability did nothing. An on-disk key.
+var balduvianShamanGains = CardTail("then/balduvian-shaman-gains", func(ctx *Context, _ game.TailOutcome) error {
+	g := ctx.Game
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard || !onBattlefield(g, t.ID) {
+			continue
 		}
-		return nil
+		return GrantAbilitiesFor{
+			Target:   t.ID,
+			Keys:     []string{balduvianShamanGrant},
+			Duration: g.PinnedTo(game.IndefiniteDuration(), t.ID),
+			Label:    "Balduvian Shaman — gains cumulative upkeep {1}",
+		}.Apply(ctx)
 	}
-}
+	return nil
+})
