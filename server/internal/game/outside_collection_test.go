@@ -71,8 +71,6 @@ func standardCollection(t *testing.T) {
 	)
 }
 
-func isInstant(c Card) bool { return c.IsInstant() }
-
 func TestThePoolIsTheSideboardOnlyWhenTheDeckSeatedOne(t *testing.T) {
 	standardCollection(t)
 	g := newSideboardGame(t, sbCard("Lightning Bolt", "Instant"))
@@ -90,11 +88,11 @@ func TestThePoolIsTheSideboardOnlyWhenTheDeckSeatedOne(t *testing.T) {
 		if !g.HasSideboardPool(me.ID) {
 			t.Error("an emptied sideboard stopped being the pool")
 		}
-		if g.QueueOutsidePickForEffect(OutsidePickPrompt{Player: me.ID, Match: isInstant}) {
+		if g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{Player: me.ID}, "instant", nil)) {
 			t.Error("an emptied sideboard fell back to the database")
 		}
 		// The opponent has no sideboard: the database.
-		if !g.QueueOutsidePickForEffect(OutsidePickPrompt{Player: opp.ID, Match: isInstant}) {
+		if !g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{Player: opp.ID}, "instant", nil)) {
 			t.Fatal("a seat with no sideboard was offered nothing")
 		}
 		if c := g.PendingChoices[0]; c.Kind != PendingChoiceOutsideCollection {
@@ -125,20 +123,20 @@ func TestCollectionPickSuggestsOnlyMatchingCards(t *testing.T) {
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
 		// No collection installed: nothing outside the game.
-		if g.QueueOutsidePickForEffect(OutsidePickPrompt{Player: me.ID, Match: isInstant}) {
+		if g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{Player: me.ID}, "instant", nil)) {
 			t.Fatal("a prompt went up with no collection installed")
 		}
 	})
 	standardCollection(t)
 	g.WithWriteLock(func() {
-		if g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Match: func(c Card) bool { return c.IsLand() },
-		}) {
+		if g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID,
+		}, "land", nil)) {
 			t.Error("a prompt went up with nothing in the database matching")
 		}
-		if !g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Question: "an instant", Match: isInstant,
-		}) {
+		if !g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID, Question: "an instant",
+		}, "instant", nil)) {
 			t.Fatal("no prompt for an instant")
 		}
 	})
@@ -161,13 +159,12 @@ func TestCollectionPickMintsARealCardAndRunsThen(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Match: isInstant,
-			Then: func(g *Game, picked []uuid.UUID) error {
-				got = picked
-				return g.BringFromOutsideForEffect(me.ID, picked[0])
-			},
-		})
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID,
+		}, "instant", func(g *Game, picked []uuid.UUID) error {
+			got = picked
+			return g.BringFromOutsideForEffect(me.ID, picked[0])
+		}))
 	})
 	choice := g.PendingChoices[0]
 	handBefore := me.Hand.Size()
@@ -225,10 +222,9 @@ func TestCollectionPickRefusesAnswersTheEffectWouldNot(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	ran := false
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Match: isInstant, Min: 1,
-			Then: func(*Game, []uuid.UUID) error { ran = true; return nil },
-		})
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID, Min: 1,
+		}, "instant", func(*Game, []uuid.UUID) error { ran = true; return nil }))
 	})
 	id := g.PendingChoices[0].ID
 	cases := []struct {
@@ -270,12 +266,10 @@ func TestCollectionPickChecksTheSetRule(t *testing.T) {
 	g := newSideboardGame(t)
 	me := g.Seats[0]
 	var got []uuid.UUID
-	twoNames := func(picked []Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name }
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Min: 0, Max: 2, Validate: twoNames,
-			Then: func(_ *Game, picked []uuid.UUID) error { got = picked; return nil },
-		})
+		g.QueueOutsidePickForEffect(outsideHookedTwoNames(OutsidePickPrompt{
+			Player: me.ID, Min: 0, Max: 2,
+		}, func(_ *Game, picked []uuid.UUID) error { got = picked; return nil }))
 	})
 	c := g.PendingChoices[0]
 	if len(c.CollectionSuggestions) < 2 {
@@ -304,10 +298,9 @@ func TestDecliningACollectionPickRunsThenWithNothing(t *testing.T) {
 	me := g.Seats[0]
 	ran, got := false, []uuid.UUID{uuid.New()}
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Match: isInstant,
-			Then: func(_ *Game, picked []uuid.UUID) error { ran, got = true, picked; return nil },
-		})
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID,
+		}, "instant", func(_ *Game, picked []uuid.UUID) error { ran, got = true, picked; return nil }))
 	})
 	if err := g.ResolveOutsideCollection(g.PendingChoices[0].ID, me.ID, nil); err != nil {
 		t.Fatal(err)
@@ -329,14 +322,13 @@ func TestCollectionIsClosedToAControlledPlayer(t *testing.T) {
 	g.WithWriteLock(func() {
 		control.TurnSeq = g.Turn.Seq
 		g.PlayerControls = append(g.PlayerControls, control)
-		if g.QueueOutsidePickForEffect(OutsidePickPrompt{Player: me.ID, Match: isInstant}) {
+		if g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{Player: me.ID}, "instant", nil)) {
 			t.Error("a controlled player was asked")
 		}
 		g.PlayerControls = nil
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Match: isInstant,
-			Then: func(_ *Game, picked []uuid.UUID) error { got = picked; return nil },
-		})
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID,
+		}, "instant", func(_ *Game, picked []uuid.UUID) error { got = picked; return nil }))
 		g.PlayerControls = append(g.PlayerControls, control)
 	})
 	if err := g.ResolveOutsideCollection(g.PendingChoices[0].ID, me.ID, []string{"Lightning Bolt"}); err != nil {
@@ -352,7 +344,7 @@ func TestSearchOutsideCollectionAnswersOnlyTheChooser(t *testing.T) {
 	g := newSideboardGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{Player: me.ID, Match: isInstant})
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{Player: me.ID}, "instant", nil))
 	})
 	id := g.PendingChoices[0].ID
 	found, err := g.SearchOutsideCollection(id, me.ID, "l", 0)

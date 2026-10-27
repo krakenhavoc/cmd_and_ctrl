@@ -66,7 +66,7 @@ func TestAPickFromTheSideboardIsEnumeratedAndEveryMoveIsAccepted(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Burning Wish — reveal a sorcery card", Max: 1,
-			Match: func(c game.Card) bool { return c.IsSorcery() },
+			Keyed: testLegalSorceryPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))
@@ -125,9 +125,7 @@ func TestAPairPickOffersOnlyPairsWithDifferentNames(t *testing.T) {
 		// registered with its continuation.
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Extrapolate the Impossible", Min: 0, Max: 2,
-			Keyed: game.RegisterOutsidePickRule("test/4361-s7b-pair-"+uuid.NewString(), nil,
-				func(picked []game.Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
-				func(*game.Game, game.CardsChosen) error { return nil }),
+			Keyed: testLegalTwoNamesPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))

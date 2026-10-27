@@ -11,8 +11,8 @@ import (
 // (PendingChoiceSearchLibrary) written as data, so a table waiting on a
 // search is a restore point.
 //
-// The prompt resumed through searchResumeFrame, which holds the whole
-// SearchLibrarySpec. Three of its fields are closures: Pred, Validate and
+// The prompt resumed through searchResumeFrame, which held the whole
+// SearchLibrarySpec. Three of its fields were closures: Pred, Validate and
 // Then. What answering the prompt reads of them is narrower than it looks:
 //
 //   - Pred is read once, when the candidates are listed
@@ -33,13 +33,17 @@ import (
 //   - Then is the card's continuation. Its data form, ThenTail, already
 //     exists (slices 3 and 4).
 //
-// A prompt whose spec has no Validate and no Then is written
-// (pendingChoices[].searchPrompt: the spec's data half, the quality bool,
-// the rule, the undecided flag and a TakeAll search's graveyard finds), and
-// PickThen carries SearchPromptKey, so a binary from before this slice,
-// which reads a PickThen it does not know on this kind as a revealed-hand
-// pick's, refuses the file. A spec with a closure Validate or Then keeps
-// the closure form, and its frame is still counted.
+// A search prompt is written (pendingChoices[].searchPrompt: the spec's
+// data half, the quality bool, the rule, the undecided flag and a TakeAll
+// search's graveyard finds), and PickThen carries SearchPromptKey, so a
+// binary from before this slice, which reads a PickThen it does not know
+// on this kind as a revealed-hand pick's, refuses the file.
+//
+// #4361 S4 finished it: Validate and Then had no production setter left,
+// so they are gone from SearchLibrarySpec, and the frame holds exactly
+// what a restore point writes (searchResumeFrame), never the spec with
+// its predicate. The live table and a restored one answer through the
+// same data, and no search frame is counted.
 
 // SearchPromptKey is what a written search prompt's PickThen says. An
 // on-disk identity: never renamed, never reused.
@@ -111,14 +115,11 @@ func registeredSearchRuleKeysLocked() []string {
 	return out
 }
 
-// setAllows reports whether the spec's set rule, closure or registered,
-// accepts `picked`. An unknown rule key accepts nothing: a binary that
-// cannot judge the answer must not take one (restore refuses such a file
-// before it gets here).
+// setAllows reports whether the spec's registered set rule accepts
+// `picked`. An unknown rule key accepts nothing: a binary that cannot
+// judge the answer must not take one (restore refuses such a file before
+// it gets here).
 func (spec SearchLibrarySpec) setAllows(picked []Card) bool {
-	if spec.Validate != nil && !spec.Validate(picked) {
-		return false
-	}
 	if spec.Rule.IsZero() {
 		return true
 	}
@@ -126,24 +127,27 @@ func (spec SearchLibrarySpec) setAllows(picked []Card) bool {
 	return ok && fn(picked, spec.Rule.N)
 }
 
-// forPrompt is the spec a search prompt holds: the predicate's one
-// remaining fact recorded (namesQuality) and the predicate dropped, since
-// nothing after the candidates are listed reads it. The live table and a
-// restored one then answer through the same spec.
-func (spec SearchLibrarySpec) forPrompt() SearchLibrarySpec {
-	spec.namesQuality = spec.statedQuality()
-	spec.Pred = nil
-	return spec
+// newSearchResumeFrame is the frame a search prompt holds for spec: the
+// predicate's one remaining fact recorded (quality) and the predicate
+// dropped, since nothing after the candidates are listed reads it.
+func newSearchResumeFrame(spec SearchLibrarySpec, undecided bool) *searchResumeFrame {
+	return &searchResumeFrame{
+		data:           searchTailSpecOf(spec),
+		quality:        spec.statedQuality(),
+		rule:           spec.Rule,
+		graveyardFinds: copyUUIDs(spec.graveyardFinds),
+		undecided:      undecided,
+	}
 }
 
-// searchPromptIsData reports whether c is a search prompt whose frame can
-// be written: no closure set rule and no closure continuation.
-func searchPromptIsData(c *PendingChoice) bool {
-	if c == nil || c.Kind != PendingChoiceSearchLibrary || c.searchResume == nil {
-		return false
-	}
-	spec := c.searchResume.spec
-	return spec.Pred == nil && spec.Validate == nil && spec.Then == nil
+// spec is the SearchLibrarySpec the frame stands for, with no predicate:
+// a fresh copy each call, so a caller may change it.
+func (f *searchResumeFrame) spec() SearchLibrarySpec {
+	spec := f.data.searchSpec()
+	spec.namesQuality = f.quality
+	spec.Rule = f.rule
+	spec.graveyardFinds = copyUUIDs(f.graveyardFinds)
+	return spec
 }
 
 // searchPromptSnapshot is a search prompt's frame on disk.
@@ -164,26 +168,28 @@ type searchPromptSnapshot struct {
 }
 
 func snapshotSearchPrompt(c *PendingChoice) *searchPromptSnapshot {
-	if !searchPromptIsData(c) {
+	if c == nil || c.Kind != PendingChoiceSearchLibrary || c.searchResume == nil {
 		return nil
 	}
-	spec := c.searchResume.spec
+	f := c.searchResume
 	return &searchPromptSnapshot{
-		Spec:           searchTailSpecOf(spec),
-		Quality:        spec.statedQuality(),
-		Rule:           spec.Rule.key,
-		RuleN:          spec.Rule.N,
-		Undecided:      c.searchResume.undecided,
-		GraveyardFinds: copyUUIDs(spec.graveyardFinds),
+		Spec:           searchTailSpecOf(f.data.searchSpec()),
+		Quality:        f.quality,
+		Rule:           f.rule.key,
+		RuleN:          f.rule.N,
+		Undecided:      f.undecided,
+		GraveyardFinds: copyUUIDs(f.graveyardFinds),
 	}
 }
 
 func restoreSearchPrompt(s *searchPromptSnapshot) *searchResumeFrame {
-	spec := s.Spec.searchSpec()
-	spec.namesQuality = s.Quality
-	spec.Rule = SearchRule{key: s.Rule, N: s.RuleN}
-	spec.graveyardFinds = copyUUIDs(s.GraveyardFinds)
-	return &searchResumeFrame{spec: spec, undecided: s.Undecided}
+	return &searchResumeFrame{
+		data:           searchTailSpecOf(s.Spec.searchSpec()),
+		quality:        s.Quality,
+		rule:           SearchRule{key: s.Rule, N: s.RuleN},
+		graveyardFinds: copyUUIDs(s.GraveyardFinds),
+		undecided:      s.Undecided,
+	}
 }
 
 // unknownSearchPromptKeys is checkEffectKeys' half for a search prompt:

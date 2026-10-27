@@ -61,9 +61,9 @@ func TestASearchPromptKeepsTheQualityAndDropsThePredicate(t *testing.T) {
 	if c == nil {
 		t.Fatal("no search prompt")
 	}
-	if c.searchResume.spec.Pred != nil || !c.searchResume.spec.namesQuality {
-		t.Fatalf("the live prompt holds a predicate %v, names a quality %v; want none, and true",
-			c.searchResume.spec.Pred != nil, c.searchResume.spec.namesQuality)
+	// #4361 S4: the frame's type has no predicate to hold.
+	if !c.searchResume.quality {
+		t.Fatal("the live prompt does not record that the search names a quality")
 	}
 	if !slices.Equal(c.SearchCards, []uuid.UUID{ids[0], ids[2]}) {
 		t.Fatalf("candidates %v, want the two Islands", c.SearchCards)
@@ -160,12 +160,14 @@ func TestARestoredSearchPromptRunsItsKeyedThen(t *testing.T) {
 	}
 }
 
-// A closure set rule, or a closure "then", keeps the prompt on the closure
-// form: counted, and the table is not a restore point.
-func TestASearchWithAClosureRuleOrThenIsStillCounted(t *testing.T) {
+// #4361 S4: a search has no closure form left, so every search prompt is
+// written, whatever its predicate, set rule or tail: never counted, and the
+// table is a restore point.
+func TestEverySearchPromptIsWritten(t *testing.T) {
 	for name, spec := range map[string]SearchLibrarySpec{
-		"validate": {Validate: func([]Card) bool { return true }, Limit: 2},
-		"then":     {Pred: isBasicNamed("Island"), Then: func(*Game, []uuid.UUID) error { return nil }},
+		"rule":      {Rule: testSearchRuleAtMost.WithN(2), Limit: 2},
+		"predicate": {Pred: isBasicNamed("Island")},
+		"tail":      {Pred: isBasicNamed("Island"), ThenTail: searchHook(func(*Game, []uuid.UUID) error { return nil })},
 	} {
 		g := newActiveGame(t)
 		me := g.Seats[0]
@@ -173,25 +175,24 @@ func TestASearchWithAClosureRuleOrThenIsStillCounted(t *testing.T) {
 		spec.Player, spec.Dest = me.ID, ZoneHand
 		runSearch(t, g, spec)
 		snap := g.CaptureSnapshot()
-		if snap.Restorable() {
-			t.Errorf("%s: a closure search prompt is a restore point", name)
+		if !snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 0 {
+			t.Errorf("%s: a search prompt is not a restore point: %#v", name, snap.Continuations)
 		}
 		for _, c := range snap.PendingChoices {
-			if c.SearchPrompt != nil || c.PickThen != "" || !slices.Contains(c.ResumeFrames, "searchResume") {
-				t.Errorf("%s: the closure prompt was written (%v, %q) or not counted (%v)", name, c.SearchPrompt != nil, c.PickThen, c.ResumeFrames)
+			if c.SearchPrompt == nil || c.PickThen != SearchPromptKey || slices.Contains(c.ResumeFrames, "searchResume") {
+				t.Errorf("%s: the prompt was not written (%v, %q) or was counted (%v)", name, c.SearchPrompt != nil, c.PickThen, c.ResumeFrames)
 			}
 		}
 	}
 }
 
-// A spec with both set rules, or a rule this binary does not know, is
-// refused before any prompt opens.
+// A spec with a rule this binary does not know is refused before any
+// prompt opens.
 func TestASearchWithTwoSetRulesOrAnUnknownRuleIsRefused(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	searchLibraryOf(me, "Island", "Swamp")
 	for name, spec := range map[string]SearchLibrarySpec{
-		"both":    {Validate: func([]Card) bool { return true }, Rule: testSearchRuleAtMost},
 		"unknown": {Rule: SearchRule{key: "test/never-registered"}},
 	} {
 		spec.Player, spec.Dest = me.ID, ZoneHand

@@ -45,12 +45,12 @@ func TestCancelledEntryStillFinishesTheSearch(t *testing.T) {
 		Label: "test: cancel the entry",
 	})
 	err := g.SearchLibraryThenForEffect(SearchLibrarySpec{
-		Player:  me.ID,
-		Pred:    func(c Card) bool { return c.Name == "Bears" },
-		Dest:    ZoneBattlefield,
-		Limit:   1,
-		Shuffle: true,
-		Then:    func(_ *Game, ids []uuid.UUID) error { thenRan++; found = ids; return nil },
+		Player:   me.ID,
+		Pred:     func(c Card) bool { return c.Name == "Bears" },
+		Dest:     ZoneBattlefield,
+		Limit:    1,
+		Shuffle:  true,
+		ThenTail: searchHook(func(_ *Game, ids []uuid.UUID) error { thenRan++; found = ids; return nil }),
 	})
 	g.mu.Unlock()
 	if err != nil {

@@ -351,12 +351,12 @@ func TestEntryPromptIsPrunedWhenTheCardLeavesTheLibrary(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		_ = g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-			Player:  me.ID,
-			Pred:    func(c game.Card) bool { return c.Name == "Azorius Guildgate" },
-			Dest:    game.ZoneBattlefield,
-			Limit:   1,
-			Shuffle: true,
-			Then:    func(_ *game.Game, _ []uuid.UUID) error { thenRan++; return nil },
+			Player:   me.ID,
+			Pred:     func(c game.Card) bool { return c.Name == "Azorius Guildgate" },
+			Dest:     game.ZoneBattlefield,
+			Limit:    1,
+			Shuffle:  true,
+			ThenTail: hookTail(func(*game.Game, game.TailOutcome) error { thenRan++; return nil }),
 		})
 	})
 	takeSearchPrompts(t, g)

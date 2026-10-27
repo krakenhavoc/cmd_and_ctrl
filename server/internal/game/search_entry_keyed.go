@@ -61,13 +61,6 @@ type searchEntryRun struct {
 	Found []uuid.UUID    `json:"found,omitempty"`
 }
 
-// searchSpecIsData reports whether a search's continuation can be
-// written as data: no closure "then". The predicate and the validator
-// are not read after the take.
-func searchSpecIsData(spec SearchLibrarySpec) bool {
-	return spec.Then == nil
-}
-
 func searchTailSpecOf(spec SearchLibrarySpec) searchTailSpec {
 	out := searchTailSpec{
 		Player: spec.Player, Source: spec.Source, Dest: spec.Dest, FaceDown: spec.FaceDown,
