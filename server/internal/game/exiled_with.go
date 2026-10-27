@@ -52,7 +52,7 @@ import "github.com/google/uuid"
 //
 // The FIRE-AND-FORGET form, ExileCardForEffect's contract: nil means no
 // error, never "it is in exile". A caller that reads the outcome uses
-// ExileLinkedThenForEffect. A zero source exiles with no link.
+// ExileLinkedKeyedForEffect. A zero source exiles with no link.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileLinkedForEffect(source ObjectRef, cardID uuid.UUID) error {
@@ -61,18 +61,6 @@ func (g *Game) ExileLinkedForEffect(source ObjectRef, cardID uuid.UUID) error {
 	r.ExiledWith = PermissionCardRef(source)
 	_, err := g.routeCardToZoneLocked(r)
 	return err
-}
-
-// ExileLinkedThenForEffect is ExileLinkedForEffect over several cards as
-// one simultaneous exile, handing `then` the ones that reached exile
-// (ExileCardsThenForEffect's contract): "exile up to three target land
-// cards" on Steward of the Harvest, and any linked exile with a "then".
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) ExileLinkedThenForEffect(source ObjectRef, ids []uuid.UUID, then func(g *Game, exiled []uuid.UUID) error) error {
-	r := exileRoute
-	r.ExiledWith = PermissionCardRef(source)
-	return g.routeAllThenLocked(r, ids, then)
 }
 
 // ExiledWithForEffect lists the cards in exile linked to the source

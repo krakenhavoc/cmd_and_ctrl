@@ -70,30 +70,23 @@ const (
 	resolutionExitAdventure    = "adventure"
 )
 
-// apply rewrites the route the way this exit replaces it.
-func (e resolutionExit) apply(r *zoneRoute) {
+// apply rewrites the route the way this exit replaces it, and returns
+// what follows the move (zero for nothing) as a registered tail, which
+// the caller routes the card with (routeCardKeyedLocked), so a CR 616
+// prompt on the exit is a restore point (#4361 S11b).
+func (e resolutionExit) apply(r *zoneRoute) KeyedTail {
 	cardID, controller := e.card, e.controller
 	switch e.kind {
 	case resolutionExitExileInstead:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, e.owner
 	case resolutionExitRebound:
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-		r.then = func(g *Game) error {
-			g.scheduleReboundLocked(cardID, controller)
-			return nil
-		}
+		return KeyedTail{Ref: reboundExiledTail, Player: controller, Carry: []uuid.UUID{cardID}}
 	case resolutionExitBuyback:
 		r.Dst = ZoneHand
 	case resolutionExitWithCounter:
-		kind := e.counter
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-		r.then = func(g *Game) error {
-			if exiledCardByIDLocked(g, cardID) == nil {
-				return nil
-			}
-			// #3942: the spell's controller puts it.
-			return g.AddCounterByForEffect(controller, cardID, kind, 1)
-		}
+		return KeyedTail{Ref: exiledWithCounterTail, Player: controller, Carry: []uuid.UUID{cardID}, Word: e.counter}
 	case resolutionExitAdventure:
 		// CR 715.3d names the spell's CONTROLLER twice — "its controller
 		// exiles it" and "that player may play it" — so a stolen
@@ -104,12 +97,44 @@ func (e resolutionExit) apply(r *zoneRoute) {
 			controller = e.owner
 		}
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-		r.then = func(g *Game) error {
-			g.grantAdventureCastFromExileLocked(cardID, controller)
+		return KeyedTail{Ref: adventureExiledTail, Player: controller, Carry: []uuid.UUID{cardID}}
+	}
+	return KeyedTail{}
+}
+
+// The exits' continuations as registered tails (#4361 S11b). Player is
+// the stack item's controller (the Adventure's: its owner when it had
+// none) and Carry the spell's card; the exile with a counter's Word is
+// the counter kind. On-disk keys: never renamed, never reused.
+var (
+	// reboundExiledTail: CR 702.88a's delayed trigger, about the card IN
+	// EXILE, created once it is there.
+	reboundExiledTail = RegisterTail("engine/rebound-exiled", func(g *Game, o TailOutcome) error {
+		if len(o.Tail.Carry) == 0 {
 			return nil
 		}
-	}
-}
+		g.scheduleReboundLocked(o.Tail.Carry[0], o.Tail.Player)
+		return nil
+	})
+	// exiledWithCounterTail: Goliath Daydreamer's counter, put on once
+	// the card is really in exile (exile_with_counter.go).
+	exiledWithCounterTail = RegisterTail("engine/exiled-with-counter", func(g *Game, o TailOutcome) error {
+		if len(o.Tail.Carry) == 0 || exiledCardByIDLocked(g, o.Tail.Carry[0]) == nil {
+			return nil
+		}
+		// #3942: the spell's controller puts it.
+		return g.AddCounterByForEffect(o.Tail.Player, o.Tail.Carry[0], o.Tail.Word, 1)
+	})
+	// adventureExiledTail: CR 715.4's permission to cast the creature,
+	// granted once the card is in exile (adventure.go).
+	adventureExiledTail = RegisterTail("engine/adventure-exiled", func(g *Game, o TailOutcome) error {
+		if len(o.Tail.Carry) == 0 {
+			return nil
+		}
+		g.grantAdventureCastFromExileLocked(o.Tail.Carry[0], o.Tail.Player)
+		return nil
+	})
+)
 
 // resolutionExitsLocked lists the replacements that apply to a spell
 // that has just RESOLVED, in the order they are offered: the granted
@@ -252,9 +277,8 @@ func routeResolutionExitLocked(g *Game, carry []uuid.UUID, words []string, index
 		e.counter = words[0]
 	}
 	r := resolutionExitRouteOf(e.card, e.owner)
-	e.apply(&r)
-	_, err := g.routeCardToZoneLocked(r)
-	return err
+	then := e.apply(&r)
+	return g.routeCardKeyedLocked(r, then)
 }
 
 // exilesInsteadOfGraveyard reports whether the spell carries a granted

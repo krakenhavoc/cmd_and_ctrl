@@ -82,22 +82,31 @@ func spellHasParadigm(c Card, item *StackItem) bool {
 // paradigmRouteLocked rewrites a resolved paradigm spell's route: the
 // spell exiles itself (CR 702.192a) and, once it is in exile, the
 // delayed trigger is created if this is the first time its controller
-// resolved a spell with this name.
+// resolved a spell with this name. That second half is the returned
+// tail, which the caller routes the card with (routeCardKeyedLocked), so
+// a CR 616 prompt on the exile is a restore point (#4361 S11b).
 //
 // Caller must hold g.mu (write).
-func paradigmRouteLocked(c Card, item *StackItem, r *zoneRoute) {
+func paradigmRouteLocked(c Card, item *StackItem, r *zoneRoute) KeyedTail {
 	controller := c.Owner
 	if item.Controller != uuid.Nil {
 		controller = item.Controller
 	}
-	cardID, name := c.InstanceID, c.Name
 	r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
 	r.Cause = MoveCause{Kind: MoveCauseEffect, Controller: controller, Item: item.ID}
-	r.then = func(g *Game) error {
-		g.scheduleParadigmLocked(cardID, controller, name)
+	return KeyedTail{Ref: paradigmExiledTail, Player: controller, Carry: []uuid.UUID{c.InstanceID}, Word: c.Name}
+}
+
+// paradigmExiledTail schedules the paradigm delayed trigger once the
+// spell's card is in exile. Player is the spell's controller, Carry the
+// card and Word its name. An on-disk key: never renamed, never reused.
+var paradigmExiledTail = RegisterTail("engine/paradigm-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
 		return nil
 	}
-}
+	g.scheduleParadigmLocked(o.Tail.Carry[0], o.Tail.Player, o.Tail.Word)
+	return nil
+})
 
 // scheduleParadigmLocked creates the paradigm delayed trigger for
 // `controller` and `name`, unless one is already queued: that one is the

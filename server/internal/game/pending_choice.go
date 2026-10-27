@@ -3357,7 +3357,7 @@ type RevealedHandDiscard struct {
 	// ExiledWith links a PickExile pick's exiled card to this source
 	// OBJECT (CR 607.2a, #3516): the card lands in exile with
 	// Card.ExiledWith naming it, through the one linked-exile route
-	// (ExileLinkedThenForEffect), so a standing cast permission filtered
+	// (ExileLinkedKeyedForEffect), so a standing cast permission filtered
 	// on PermissionFilter.ExiledWithSource finds it. The zero ObjectRef
 	// links nothing. Refused with any other Destination: a discard or a
 	// card left in the hand is not exiled with anything.

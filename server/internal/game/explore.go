@@ -67,15 +67,15 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 		return done(g)
 	}
 	if top.IsLand() {
-		_, err := g.routeCardToZoneLocked(zoneRoute{
+		// #4361 S11b: the rest is a registered tail, so a CR 616 prompt
+		// on the land's trip to hand is a restore point.
+		return g.routeCardKeyedLocked(zoneRoute{
 			CardID:   top.InstanceID,
 			Dst:      ZoneHand,
 			DstOwner: controller,
 			Actor:    controller,
 			Source:   source,
-			then:     done,
-		})
-		return err
+		}, exploreDone(source, explorer.ID, controller))
 	}
 	// #4253 slice 7: the question is the counter's keyed tail (the explorer
 	// and the revealed card ride it as data), so a CR 616 ordering prompt over
@@ -102,6 +102,24 @@ var exploreAskTail = RegisterTail("engine/explore-ask", func(g *Game, o TailOutc
 	}
 	return g.queueExploreGraveyardQuestionLocked(o.Tail.Source, o.Tail.Player, o.Tail.Carry[0], revealed)
 })
+
+// exploreDoneTail is CR 701.44b's "has explored" after a move of the
+// revealed card (to hand as a land, or to the graveyard on a yes), as a
+// registered tail (#4361 S11b), so a CR 616 prompt on that move is a
+// restore point. Source is the card whose effect told it to explore,
+// Player the controller and Carry the explorer. An on-disk key: never
+// renamed, never reused.
+var exploreDoneTail = RegisterTail("engine/explore-done", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player)
+})
+
+// exploreDone is exploreDoneTail for one explore.
+func exploreDone(source, explorer, controller uuid.UUID) KeyedTail {
+	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer}}
+}
 
 // finishExploreLocked is CR 701.44b: the permanent has explored.
 //
@@ -152,15 +170,13 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 	if p == nil || p.Library.Size() == 0 || p.Library.Cards[p.Library.Size()-1].InstanceID != revealed {
 		return done(g)
 	}
-	_, err := g.routeCardToZoneLocked(zoneRoute{
+	return g.routeCardKeyedLocked(zoneRoute{
 		CardID:   revealed,
 		Dst:      ZoneGraveyard,
 		DstOwner: controller,
 		Actor:    controller,
 		Source:   source,
-		then:     done,
-	})
-	return err
+	}, exploreDone(source, explorer, controller))
 })
 
 // exploreReason is the reveal banner: "<name> explores".

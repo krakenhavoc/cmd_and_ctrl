@@ -62,6 +62,15 @@ func RegisterCastFollowUp(key string, body CastFollowUpFunc) CastFollowUpKey {
 	return CastFollowUpKey(key)
 }
 
+// KnownCastFollowUp reports whether a follow-up body is registered under
+// key.
+func KnownCastFollowUp(key CastFollowUpKey) bool {
+	castFollowUpMu.RLock()
+	defer castFollowUpMu.RUnlock()
+	_, ok := castFollowUpBodies[string(key)]
+	return ok
+}
+
 // runCastFollowUpLocked runs a registered follow-up. An unknown key (a
 // snapshot from a build that registered more) is a no-op, never a
 // panic.

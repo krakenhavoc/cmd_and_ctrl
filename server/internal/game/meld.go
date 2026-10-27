@@ -344,7 +344,7 @@ func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKin
 // attacking). This verb is the rest:
 //
 //  1. Both permanents are exiled, as one simultaneous exit
-//     (ExileCardsThenForEffect), so a commander is offered the command
+//     (ExileCardsKeyedForEffect), so a commander is offered the command
 //     zone like any other exiled commander (CR 903.9a) and the rest
 //     waits for the answer.
 //  2. If both reached exile and form a meld pair (CanMeld), they are
@@ -367,23 +367,32 @@ func (g *Game) MeldForEffect(sourceID, partnerID, controller uuid.UUID) error {
 	if sourceID == partnerID || findBattlefieldCard(g, sourceID) == nil || findBattlefieldCard(g, partnerID) == nil {
 		return nil
 	}
-	return g.ExileCardsThenForEffect([]uuid.UUID{sourceID, partnerID}, func(g *Game, exiled []uuid.UUID) error {
-		if len(exiled) != 2 || g.Exile == nil {
-			return nil
-		}
-		a, okA := g.cardInZoneLocked(g.Exile, sourceID)
-		b, okB := g.cardInZoneLocked(g.Exile, partnerID)
-		if !okA || !okB || !CanMeld(a, b) {
-			return nil
-		}
-		m := meldedPermanentOf(a, b)
-		if err := g.meldInExileLocked(m); err != nil {
-			return err
-		}
-		return g.ReturnFromExileToBattlefieldKeyedForEffect(m.InstanceID, controller, false,
-			KeyedTail{Ref: meldEnteredRef, Carry: []uuid.UUID{m.InstanceID}})
-	})
+	return g.ExileCardsKeyedForEffect([]uuid.UUID{sourceID, partnerID},
+		KeyedTail{Ref: meldExiledTail, Player: controller, Carry: []uuid.UUID{sourceID, partnerID}})
 }
+
+// meldExiledTail is the rest of a meld once both permanents are exiled,
+// as a registered tail (#4361 S11b), so a CR 616 prompt on either exile is
+// a restore point: two cards that reached exile and form a meld pair enter
+// melded. Player is who it enters under (uuid.Nil: its owner) and Carry
+// the source permanent, then its partner. An on-disk key: never renamed,
+// never reused.
+var meldExiledTail = RegisterTail("engine/meld-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) != 2 || len(o.Tail.Carry) != 2 || g.Exile == nil {
+		return nil
+	}
+	a, okA := g.cardInZoneLocked(g.Exile, o.Tail.Carry[0])
+	b, okB := g.cardInZoneLocked(g.Exile, o.Tail.Carry[1])
+	if !okA || !okB || !CanMeld(a, b) {
+		return nil
+	}
+	m := meldedPermanentOf(a, b)
+	if err := g.meldInExileLocked(m); err != nil {
+		return err
+	}
+	return g.ReturnFromExileToBattlefieldKeyedForEffect(m.InstanceID, o.Tail.Player, false,
+		KeyedTail{Ref: meldEnteredRef, Carry: []uuid.UUID{m.InstanceID}})
+})
 
 // meldEnteredRef is the melded permanent's entry tail as a registered tail
 // (#4253 slice 6): an entry that fails puts the two cards back in exile as
