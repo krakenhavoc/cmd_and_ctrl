@@ -257,7 +257,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// binary's shape.
 			unknown = append(unknown, fmt.Sprintf("search prompt frame on a %s prompt", c.Kind))
 		}
+		if c.TriggerFrame != nil && (!carriesTriggerFrame(c.Kind) || c.PickThen != TriggerFrameKey) {
+			// #4361 S14a: a trigger frame on another kind, or without its
+			// marker, is a newer binary's shape.
+			unknown = append(unknown, fmt.Sprintf("trigger frame on a %s prompt with tail %q", c.Kind, c.PickThen))
+		}
 		switch {
+		case carriesTriggerFrame(c.Kind) && c.PickThen != "":
+			// #4361 S14a: a written trigger frame names its marker and
+			// its catalog row.
+			unknown = append(unknown, unknownTriggerFrameKeys(&c)...)
 		case c.Kind == PendingChoiceSearchLibrary && (c.PickThen != "" || c.SearchPrompt != nil):
 			// #4253 slice 5: a written search prompt names the marker, its
 			// set rule and the card's tail.

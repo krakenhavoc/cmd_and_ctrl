@@ -2052,6 +2052,13 @@ type pendingChoiceSnapshot struct {
 	// version; its keys ride PickThen, so a binary from before it refuses
 	// the file.
 	DiceRoll *diceRollPauseSnapshot `json:"diceRoll,omitempty"`
+	// TriggerFrame is a trigger_prompt's or a mode_pick's trigger frame
+	// written as data (#4361 S14a, trigger_frame_keyed.go): the event,
+	// the source, its LKI, the doubler and the ability by its catalog
+	// row. Written only for an ability with a catalog row (catalogTriggerRowRef).
+	// PickThen says TriggerFrameKey, so a binary from before it refuses
+	// the file. Additive within the version.
+	TriggerFrame *triggerFrameSnapshot `json:"triggerFrame,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -3276,6 +3283,13 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PromptRun:             c.promptRun,
 		Ordered:               cloneOrderedPicks(c.ordered),
 	}
+	// #4361 S14a: a trigger paused in its announcement, written by its
+	// catalog row. nil for an ability that cannot be named (owner
+	// decision D5): its frame is counted below, as a closure.
+	tf := snapshotTriggerFrameOf(c, cen)
+	if tf != nil {
+		out.TriggerFrame, out.PickThen = tf, TriggerFrameKey
+	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
 		// slice is a complete copy.
@@ -3297,7 +3311,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"opponentTargetResume": c.opponentTargetResume != nil,
 		"pickTargetResume":     c.pickTargetResume != nil,
 		"copyResume":           c.copyResume != nil,
-		"triggerResume":        c.triggerResume != nil,
+		"triggerResume":        c.triggerResume != nil && tf == nil,
 		"payUnlessResume":      c.payUnlessResume != nil,
 		// #4253 slice 5: a search prompt with no closure set rule or
 		// continuation is written (pendingChoices[].searchPrompt).
@@ -3319,7 +3333,7 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// #4361: the colour, creature-type and number prompts' and the coin
 		// call's frames are gone; every one is data.
 		"optionPickResume": c.optionPickResume != nil,
-		"modePickResume":   c.modePickResume != nil,
+		"modePickResume":   c.modePickResume != nil && tf == nil,
 		// #1019's / #1027's prompted run is not counted here since
 		// #4290: the link (promptRun) is carried, and the run itself is
 		// written on the Game (snapshotPromptRuns); since #4361 no run
@@ -3696,6 +3710,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if d := s.PendingChoices[i].DiceRoll; d != nil && s.PendingChoices[i].Kind == PendingChoiceOptionPick {
 			// #4307: a paused dice roll.
 			g.PendingChoices[i].dice = restoreDiceRollPause(d)
+		}
+		if f := s.PendingChoices[i].TriggerFrame; f != nil && carriesTriggerFrame(s.PendingChoices[i].Kind) {
+			// #4361 S14a: a trigger paused in its announcement.
+			g.restoreTriggerFrameLocked(g.PendingChoices[i], f)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)

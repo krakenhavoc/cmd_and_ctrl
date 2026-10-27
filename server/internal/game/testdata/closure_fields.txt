@@ -48,6 +48,7 @@
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
+# 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -118,13 +119,13 @@ PendingChoice.confirmResume                  census:ChoiceResumeFrames          
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
-PendingChoice.modePickResume                 census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume
+PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
 PendingChoice.optionPickResume               census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume
 PendingChoice.payUnlessResume                census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume
 PendingChoice.pickTargetResume               census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume
 PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
 PendingChoice.searchResume                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume
-PendingChoice.triggerResume                  census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume
+PendingChoice.triggerResume                  keyed                              # Game.PendingChoices.triggerResume
 Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
 Player.Companion                             census:IntrinsicAbilityCards       # Game.Seats.Companion
@@ -192,8 +193,8 @@ followUpPark.run                             census:ChoiceResumeFrames          
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
 lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item
-modePickFrame.ability                        census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability
-modePickFrame.source                         census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.source
+modePickFrame.ability                        keyed                              # Game.PendingChoices.modePickResume.ability
+modePickFrame.source                         census:IntrinsicAbilityCards       # Game.PendingChoices.modePickResume.source
 modeWalk.item                                keyed                              # Game.pausedModeWalk.item
 optionPickFrame.thenSeat                     census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSeat
 payUnlessFrame.onDecline                     census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onDecline
@@ -216,7 +217,7 @@ settledCreation.Groups                       rebuilt                            
 stepWalk.item                                keyed                              # Game.pausedStepWalk.item
 stepWalk.outer                               keyed                              # Game.pausedStepWalk.outer
 tokenTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail.then
-triggerResumeFrame.ability                   census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.ability
-triggerResumeFrame.source                    census:ChoiceResumeFrames          # Game.PendingChoices.triggerResume.source
+triggerResumeFrame.ability                   keyed                              # Game.PendingChoices.triggerResume.ability
+triggerResumeFrame.source                    census:IntrinsicAbilityCards       # Game.PendingChoices.triggerResume.source
 zoneRoute.simultaneousExit                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute.simultaneousExit
 zoneRoute.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute.then

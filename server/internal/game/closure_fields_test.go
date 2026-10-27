@@ -143,7 +143,16 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 93,
+	"census:ChoiceResumeFrames": 87,
+	//
+	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
+	// PendingChoice.modePickResume, triggerResumeFrame.ability and
+	// modePickFrame.ability to keyed (the frame is written with its
+	// ability as a catalog row ref, trigger_frame_keyed.go; an ability
+	// with no catalog row (catalogTriggerRowRef) is still counted by the runtime
+	// ChoiceResumeFrames counter, owner decision D5);
+	// triggerResumeFrame.source and modePickFrame.source moved to
+	// census:IntrinsicAbilityCards (owner decision D1).
 	// 109 (#4361 S1, 2026-10-27): - CoinFlipSpec.Then, PendingChoice.coinFlipResume
 	// and coinFlipFrame.spec (every flip is keyed); - PendingChoice.chooseValueResume
 	// and chooseValueFrame.then (ChooseNumber.Then and PayEnergyAmount.Then gone,
@@ -198,7 +207,13 @@ var closureClassCeilings = map[string]int{
 	// moved from census:ChoiceResumeFrames. snapshotResolving counts the
 	// card of an open resolution as snapshotCard does, like
 	// lastKnownSpell.card; not a new route.
-	"census:IntrinsicAbilityCards": 54,
+	//
+	// 56 (2026-10-27, #4361 S14a, owner decision D1, the raise Ian
+	// approved for #4361's card-valued frame edges): +
+	// triggerResumeFrame.source and modePickFrame.source. A written
+	// trigger frame's source goes through snapshotCard, which counts a
+	// card whose instance abilities can't be re-derived here.
+	"census:IntrinsicAbilityCards": 56,
 	"transient":                    1,
 }
 
@@ -559,6 +574,7 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # scope for this sprint.
 #
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
+# 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
