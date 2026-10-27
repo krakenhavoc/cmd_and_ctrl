@@ -185,7 +185,20 @@ func TestNecropotenceOnAnEmptyLibrarySchedulesNothing(t *testing.T) {
 	}
 }
 
-// The primitive's Then is the clause that reads the cards. It sees all of
+// testFaceDownHeard is an ExileTopFaceDown tail that records what it was
+// told (#4253 retired the closure Then): the cards, and how many times it
+// ran.
+var (
+	testFaceDownSeen  []uuid.UUID
+	testFaceDownCalls int
+	testFaceDownHeard = ExileTopFaceDownThen("test/4253-face-down-heard", func(_ *Context, exiled []uuid.UUID) error {
+		testFaceDownSeen = exiled
+		testFaceDownCalls++
+		return nil
+	})
+)
+
+// The primitive's tail is the clause that reads the cards. It sees all of
 // them, top first, from the answer to a prompt on the first.
 func TestExileTopFaceDownThenSeesTheWholeBatchAfterAPrompt(t *testing.T) {
 	g := newCatalogGame(t)
@@ -198,51 +211,43 @@ func TestExileTopFaceDownThenSeesTheWholeBatchAfterAPrompt(t *testing.T) {
 	})
 	orderExileOf(g, top[0])
 
-	var seen []uuid.UUID
-	calls := 0
+	testFaceDownSeen, testFaceDownCalls = nil, 0
 	g.WithWriteLock(func() {
-		err := ExileTopFaceDown{Player: me.ID, N: 3, Then: func(_ *Context, exiled []uuid.UUID) error {
-			seen = exiled
-			calls++
-			return nil
-		}}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
+		err := ExileTopFaceDown{Player: me.ID, N: 3, ThenTail: game.KeyedTail{Ref: testFaceDownHeard}}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
 		if err != nil {
 			t.Errorf("Apply: %v", err)
 		}
 	})
-	if calls != 0 {
-		t.Fatalf("Then ran %d times before the prompt was answered", calls)
+	if testFaceDownCalls != 0 {
+		t.Fatalf("the tail ran %d times before the prompt was answered", testFaceDownCalls)
 	}
 	answerExileOrder(t, g)
-	if calls != 1 {
-		t.Fatalf("Then ran %d times, want once", calls)
+	if testFaceDownCalls != 1 {
+		t.Fatalf("the tail ran %d times, want once", testFaceDownCalls)
 	}
-	if len(seen) != 3 || seen[0] != top[0] || seen[1] != top[1] || seen[2] != top[2] {
-		t.Fatalf("Then saw %v, want the three cards %v top first", seen, top)
+	if seen := testFaceDownSeen; len(seen) != 3 || seen[0] != top[0] || seen[1] != top[1] || seen[2] != top[2] {
+		t.Fatalf("the tail saw %v, want the three cards %v top first", seen, top)
 	}
 }
 
-// Then runs with an empty list when there was nothing to exile.
+// The tail runs with an empty list when there was nothing to exile.
 func TestExileTopFaceDownThenRunsWithNothingOnAnEmptyLibraryOrZero(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	for _, n := range []int{0, 2} {
 		g.WithWriteLock(func() { me.Library.Cards = nil })
-		calls := 0
+		testFaceDownSeen, testFaceDownCalls = nil, 0
 		g.WithWriteLock(func() {
-			err := ExileTopFaceDown{Player: me.ID, N: n, Then: func(_ *Context, exiled []uuid.UUID) error {
-				calls++
-				if len(exiled) != 0 {
-					t.Errorf("n=%d: Then saw %d cards from an empty library", n, len(exiled))
-				}
-				return nil
-			}}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
+			err := ExileTopFaceDown{Player: me.ID, N: n, ThenTail: game.KeyedTail{Ref: testFaceDownHeard}}.Apply(NewContext(g, &game.StackItem{Controller: me.ID}))
 			if err != nil {
 				t.Errorf("n=%d: Apply: %v", n, err)
 			}
 		})
-		if calls != 1 {
-			t.Errorf("n=%d: Then ran %d times, want once", n, calls)
+		if len(testFaceDownSeen) != 0 {
+			t.Errorf("n=%d: the tail saw %d cards from an empty library", n, len(testFaceDownSeen))
+		}
+		if testFaceDownCalls != 1 {
+			t.Errorf("n=%d: the tail ran %d times, want once", n, testFaceDownCalls)
 		}
 	}
 }

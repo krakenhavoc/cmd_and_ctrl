@@ -207,7 +207,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 	sourceID := departureTestSource(g, caster.ID, "Fact or Fiction")
 	revealed := handCardOf(t, caster, 3)
 
-	var taken, left []uuid.UUID
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.QueuePileSplitForEffect(PileSplitPrompt{
 			Splitter:      splitter.ID,
@@ -217,10 +217,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 			SplitQuestion: "Separate those cards into two piles",
 			PickQuestion:  "Take a pile",
 			Cards:         revealed,
-			Then: func(_ *Game, tk, lf []uuid.UUID) error {
-				taken, left = tk, lf
-				return nil
-			},
+			ThenTail:      probeTail(),
 		})
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceRevealPick {
@@ -260,7 +257,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 	if err := g.ResolveOptionPick(pickID, caster.ID, 0); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
 	}
-	if len(taken) != 1 || len(left) != len(revealed)-1 {
+	if taken, left, _ := probePiles(); len(taken) != 1 || len(left) != len(revealed)-1 {
 		t.Errorf("the card's continuation saw piles %v / %v", taken, left)
 	}
 }

@@ -430,7 +430,7 @@ var (
 	exileRoute           = zoneRoute{Dst: ZoneExile}
 	bounceRoute          = zoneRoute{Dst: ZoneHand}
 	// graveyardRoute is a plain zone move to a graveyard from
-	// anywhere but the battlefield — PutCardsIntoGraveyardThenForEffect's
+	// anywhere but the battlefield — PutCardsIntoGraveyardKeyedForEffect's
 	// route. Not ViaBattlefieldLeave: that flag is CR 400.7's exit
 	// cleanup and the CR 603.10 LKI snapshot a leaves-the-battlefield
 	// trigger needs, and this route is refused for a battlefield card
@@ -918,44 +918,6 @@ func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exile
 	})
 }
 
-// PutCardsIntoGraveyardThenForEffect puts every card in `ids` into
-// its owner's graveyard as one simultaneous exit and hands `then` the
-// ones that actually reached the graveyard — Valakut Exploration's
-// "put them into their owner's graveyard, then this enchantment deals
-// that much damage" (#1218) needs the count AFTER the move lands, not
-// before: a leg can pause on a replacement's prompt exactly as an
-// exile or a destroy leg can (ADR 0013 §5t), so a caller that read
-// back a pre-move tally would pay out for a move the window has not
-// answered yet. PutIntoGraveyardForEffect (random_bottom.go) is the same exit
-// with no continuation, for a caller that never needs the count.
-//
-// Refuses any id still on the battlefield (ErrInvalidParam), for the
-// same reason PutIntoGraveyardForEffect does: leaving the battlefield
-// for a graveyard is a destroy, a sacrifice or a state-based action,
-// each with its own path and its own event, and none of them is this.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PutCardsIntoGraveyardThenForEffect(ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
-	for _, id := range ids {
-		if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneBattlefield {
-			return ErrInvalidParam
-		}
-	}
-	return g.routeAllThenLocked(graveyardRoute, ids, then)
-}
-
-// PutIntoGraveyardThenForEffect is the single-card form.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PutIntoGraveyardThenForEffect(cardID uuid.UUID, then func(g *Game, landed bool) error) error {
-	return g.PutCardsIntoGraveyardThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, len(landed) == 1)
-	})
-}
-
 // SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
 // simultaneous exit and hands `then` the ones that were actually
 // SACRIFICED — "then draw a card for each permanent sacrificed this
@@ -1054,40 +1016,6 @@ func (g *Game) BounceCardsToHandForEffect(ids []uuid.UUID) int {
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game, bounced []uuid.UUID) error) error {
 	return g.routeAllThenLocked(bounceRoute, ids, then)
-}
-
-// BounceToHandThenForEffect is the SINGLE-CARD form: return one card
-// to its owner's hand and tell `then` whether it actually reached a
-// hand.
-//
-// The fourth of the single-card wrappers, beside ExileCardThenForEffect
-// (#870), SacrificeThenForEffect (#910) and TuckToLibraryThenForEffect
-// (#783), and a WRAPPER over the batch for the reason the first of them
-// gives: a one-card read-back is the same bug as a batch one — the one
-// leg is the leg that can pause — and a second bounce path with its own
-// notion of what landed is how two verbs drift. A batch of one
-// publishes a one-card simultaneous exit, which no watcher can observe.
-//
-// #993 is why it exists. A hand is a CR 903.9 destination, so every
-// bounce can pause, and the catalog had no way to say "return it, THEN
-// …" for one card: Boomerang Basics drew its card and Chain of Vapor
-// opened its chain on the next line, with the bounced commander still
-// on the battlefield and its owner's question still open.
-//
-// `bounced` is false when the CR 614 window cancelled the move, when a
-// replacement sent the card somewhere else, and when a commander took
-// CR 903.9's offer — it left, but not to a hand. The continuation runs
-// on every one of those outcomes, because a caller that is waiting has
-// to be told even when the answer is "nothing happened".
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) BounceToHandThenForEffect(cardID uuid.UUID, then func(g *Game, bounced bool) error) error {
-	return g.BounceCardsToHandThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, len(landed) == 1)
-	})
 }
 
 // TuckCardsToLibraryThenForEffect puts every card in `ids` into its

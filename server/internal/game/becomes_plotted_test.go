@@ -112,7 +112,7 @@ func TestPlainExileIsNotBecomingPlotted(t *testing.T) {
 	spell.Controller = me.ID
 	pushStackSpell(t, g, spell)
 	g.WithWriteLock(func() {
-		if err := g.ExileSpellThenForEffect(spell.InstanceID, nil); err != nil {
+		if err := g.ExileSpellKeyedForEffect(spell.InstanceID, KeyedTail{}); err != nil {
 			t.Fatalf("exile: %v", err)
 		}
 	})

@@ -84,46 +84,17 @@ func vivienPlusOne(g *game.Game, item *game.StackItem) error {
 }
 
 // vivienMinusTwo is the look, the face-down exile with its creature-only
-// grant, and the rest on the bottom in any order. Captures only scalars,
-// so an undo replays it against the restored game.
+// grant, and the rest on the bottom in any order. The pick is keyed
+// (#4253): the looked-at cards ride it as data, so an undo or a restore
+// replays it against the restored game.
 func vivienMinusTwo(g *game.Game, item *game.StackItem) error {
 	controller, source := item.Controller, item.SourceCardID
 	looked := g.LookAtTopOfLibraryForEffect(controller, 3)
 	if len(looked) == 0 {
 		return nil
 	}
-	finish := func(g *game.Game, picked []uuid.UUID) error {
-		var exileErr error
-		if len(picked) > 0 {
-			exileErr = g.ExileCardsFaceDownWithPermissionForEffect(picked[:1], controller, game.CastPermission{
-				CastOnly:   true,
-				Duration:   game.WhileInZoneDuration(),
-				Filter:     game.PermissionFilter{CreatureOnly: true},
-				Source:     source,
-				SourceName: "Vivien, Champion of the Wilds",
-				Label:      "For as long as it remains exiled, you may cast it if it's a creature spell",
-			})
-		}
-		rest := make([]uuid.UUID, 0, len(looked))
-		for _, id := range cardsStillInALibrary(g, looked) {
-			if len(picked) == 0 || id != picked[0] {
-				rest = append(rest, id)
-			}
-		}
-		if err := g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-			Chooser:   controller,
-			Source:    source,
-			Cards:     rest,
-			From:      game.ZoneLibrary,
-			Placement: game.LibraryPlaceBottom,
-			Reason:    "Vivien, Champion of the Wilds — put the rest on the bottom of your library in any order",
-		}); err != nil && exileErr == nil {
-			exileErr = err
-		}
-		return exileErr
-	}
 	if len(looked) == 1 {
-		return finish(g, looked)
+		return vivienMinusTwoFinish(g, controller, source, looked, looked)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  controller,
@@ -132,8 +103,48 @@ func vivienMinusTwo(g *game.Game, item *game.StackItem) error {
 		Cards:    looked,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then:     finish,
+		LiveZone: game.ZoneLibrary,
+		ThenKey:  vivienMinusTwoPicked,
+		Carry:    looked,
 	})
 	return nil
+}
+
+// vivienMinusTwoPicked is the face-down exile answered: the carry is the
+// looked-at cards. An on-disk key: never renamed, never reused.
+var vivienMinusTwoPicked = game.RegisterChooseCardsThen("choose-cards/vivien-champion-of-the-wilds-exile", func(g *game.Game, r game.CardsChosen) error {
+	return vivienMinusTwoFinish(g, r.Chooser, r.Source, r.Carry, r.Picked)
+})
+
+// vivienMinusTwoFinish exiles the pick face down with its grant and puts the
+// rest still in the library on the bottom in the order the player chooses.
+func vivienMinusTwoFinish(g *game.Game, controller, source uuid.UUID, looked, picked []uuid.UUID) error {
+	var exileErr error
+	if len(picked) > 0 {
+		exileErr = g.ExileCardsFaceDownWithPermissionForEffect(picked[:1], controller, game.CastPermission{
+			CastOnly:   true,
+			Duration:   game.WhileInZoneDuration(),
+			Filter:     game.PermissionFilter{CreatureOnly: true},
+			Source:     source,
+			SourceName: "Vivien, Champion of the Wilds",
+			Label:      "For as long as it remains exiled, you may cast it if it's a creature spell",
+		})
+	}
+	rest := make([]uuid.UUID, 0, len(looked))
+	for _, id := range cardsStillInALibrary(g, looked) {
+		if len(picked) == 0 || id != picked[0] {
+			rest = append(rest, id)
+		}
+	}
+	if err := g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+		Chooser:   controller,
+		Source:    source,
+		Cards:     rest,
+		From:      game.ZoneLibrary,
+		Placement: game.LibraryPlaceBottom,
+		Reason:    "Vivien, Champion of the Wilds — put the rest on the bottom of your library in any order",
+	}); err != nil && exileErr == nil {
+		exileErr = err
+	}
+	return exileErr
 }

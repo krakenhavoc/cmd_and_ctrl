@@ -33,7 +33,7 @@ func TestFaceDownSplitIsEnumeratedAtBothSteps(t *testing.T) {
 			PickQuestion:  "Take a pile",
 			Cards:         looked,
 			FaceDown:      true,
-			Then:          func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil },
+			ThenTail:      game.KeyedTail{Ref: testLegalNoopTail},
 		})
 	})
 	if len(looked) != 4 {

@@ -65,11 +65,15 @@ var disturbingMirthSacrificed = game.RegisterChooseCardsThen("choose-cards/distu
 	if len(r.Picked) == 0 {
 		return nil
 	}
-	me := r.Chooser
-	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, sacrificed []uuid.UUID) error {
-		if len(sacrificed) == 0 {
-			return nil
-		}
-		return g.DrawNForEffect(me, 2)
-	})
+	// The draw rides the sacrifice as a keyed tail (#4253).
+	return g.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, game.KeyedTail{Ref: disturbingMirthDraw, Player: r.Chooser, Source: r.Source})
+})
+
+// disturbingMirthDraw is "if you do, draw two cards", told what was really
+// sacrificed. An on-disk key: never renamed, never reused.
+var disturbingMirthDraw = game.RegisterTail("then/disturbing-mirth-draw-two", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return g.DrawNForEffect(o.Tail.Player, 2)
 })

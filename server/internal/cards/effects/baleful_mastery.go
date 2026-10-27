@@ -47,23 +47,24 @@ func init() {
 			return ChoosePlayer{
 				Among:    Opponents,
 				Question: "Baleful Mastery — an opponent draws a card",
-				Then:     balefulMasteryDrawThenExile,
+				ThenKey:  balefulMasteryDrawThenExile,
 			}.Apply(ctx)
 		},
 	})
 }
 
-// balefulMasteryDrawThenExile is the ChoosePlayer.Then contract: it
-// reads only the Context it is handed (ctx.Item, ctx.ChosenPlayer()),
-// so an undo across the prompt resolves it against the restored game.
-func balefulMasteryDrawThenExile(ctx *Context) error {
-	if p := ctx.ChosenPlayer(); p != uuid.Nil {
+// balefulMasteryDrawThenExile is the opponent chosen, keyed (#4253): it
+// reads only the Context it is handed (rebuilt from the asking item, so
+// ctx.Item.Targets are the spell's own), so a restore across the prompt
+// resolves it against the restored game.
+var balefulMasteryDrawThenExile = ChoosePlayerThen("option-pick/baleful-mastery-opponent-draws", func(ctx *Context, p uuid.UUID, _ []uuid.UUID) error {
+	if p != uuid.Nil {
 		if err := (DrawCards{Player: p, N: 1}).Apply(ctx); err != nil {
 			return err
 		}
 	}
 	return balefulMasteryExile(ctx)
-}
+})
 
 // balefulMasteryExile is "Exile target creature or planeswalker",
 // re-checked against the item's own targets rather than a captured

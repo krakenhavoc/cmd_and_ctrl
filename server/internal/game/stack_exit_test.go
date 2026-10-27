@@ -114,16 +114,14 @@ func TestExileSpellIsNotACounter(t *testing.T) {
 	CatalogCantBeCountered = func(oracleID string) bool { return oracleID == "test-cant-be-countered-1318" }
 	t.Cleanup(func() { CatalogCantBeCountered = old })
 
-	var heard []bool
+	resetProbes()
 	g.mu.Lock()
-	err := g.ExileSpellThenForEffect(id, func(_ *Game, exiled bool) error {
-		heard = append(heard, exiled)
-		return nil
-	})
+	err := g.ExileSpellKeyedForEffect(id, probeTail())
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("ExileSpellThenForEffect: %v", err)
+		t.Fatalf("ExileSpellKeyedForEffect: %v", err)
 	}
+	heard := probeExiled()
 	if !g.Exile.Contains(id) {
 		t.Error("a spell that can't be countered is still exiled — CR 701.6 does not apply")
 	}
@@ -137,23 +135,22 @@ func TestExileSpellIsNotACounter(t *testing.T) {
 
 // TestExileSpellRefusesANonSpell: the fire-and-forget form says spell
 // and means it; the Then form treats a spell that has already gone as
-// "nothing happened" and still answers its caller.
+// "nothing happened" and still answers its caller (#4253: the keyed form,
+// ExileSpellKeyedForEffect, since the closure form was retired).
 func TestExileSpellRefusesANonSpell(t *testing.T) {
 	g := newActiveGame(t)
 	bear := pushBear(g, g.Seats[0].ID)
 	g.mu.Lock()
 	err := g.ExileSpellForEffect(bear)
-	var heard []bool
-	thenErr := g.ExileSpellThenForEffect(bear, func(_ *Game, exiled bool) error {
-		heard = append(heard, exiled)
-		return nil
-	})
+	resetProbes()
+	thenErr := g.ExileSpellKeyedForEffect(bear, probeTail())
 	g.mu.Unlock()
+	heard := probeExiled()
 	if !errors.Is(err, ErrCardNotOnStack) {
 		t.Errorf("ExileSpellForEffect on a permanent = %v, want ErrCardNotOnStack", err)
 	}
 	if thenErr != nil {
-		t.Errorf("ExileSpellThenForEffect on a permanent = %v, want nil", thenErr)
+		t.Errorf("ExileSpellKeyedForEffect on a permanent = %v, want nil", thenErr)
 	}
 	if !g.Battlefield.Contains(bear) {
 		t.Error("the permanent moved")
@@ -177,17 +174,14 @@ func TestAPausedSpellExileWaitsForTheAnswer(t *testing.T) {
 	_, _ = g.Stack.Remove(cmdID)
 	pushStackSpell(t, g, top)
 
-	var heard []bool
+	resetProbes()
 	g.mu.Lock()
-	err := g.ExileSpellThenForEffect(cmdID, func(_ *Game, exiled bool) error {
-		heard = append(heard, exiled)
-		return nil
-	})
+	err := g.ExileSpellKeyedForEffect(cmdID, probeTail())
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("ExileSpellThenForEffect: %v", err)
+		t.Fatalf("ExileSpellKeyedForEffect: %v", err)
 	}
-	if len(heard) != 0 {
+	if heard := probeExiled(); len(heard) != 0 {
 		t.Fatalf("then ran before the answer: %v", heard)
 	}
 	if _, ok := g.StackMeta[cmdID]; !ok {
@@ -201,7 +195,7 @@ func TestAPausedSpellExileWaitsForTheAnswer(t *testing.T) {
 	if _, ok := g.StackMeta[cmdID]; ok {
 		t.Error("the record outlived the card's move to the command zone")
 	}
-	if len(heard) != 1 || heard[0] {
+	if heard := probeExiled(); len(heard) != 1 || heard[0] {
 		t.Errorf("then heard %v, want [false] — the card went to the command zone, not to exile", heard)
 	}
 }
@@ -218,17 +212,14 @@ func TestAnExiledCommanderSpellIsExiledThenOffered(t *testing.T) {
 	_, _ = g.Stack.Remove(cmdID)
 	pushStackSpell(t, g, top)
 
-	var heard []bool
+	resetProbes()
 	g.mu.Lock()
-	err := g.ExileSpellThenForEffect(cmdID, func(_ *Game, exiled bool) error {
-		heard = append(heard, exiled)
-		return nil
-	})
+	err := g.ExileSpellKeyedForEffect(cmdID, probeTail())
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("ExileSpellThenForEffect: %v", err)
+		t.Fatalf("ExileSpellKeyedForEffect: %v", err)
 	}
-	if len(heard) != 1 || !heard[0] {
+	if heard := probeExiled(); len(heard) != 1 || !heard[0] {
 		t.Fatalf("then heard %v, want [true] — the commander spell reached exile", heard)
 	}
 	if _, ok := g.StackMeta[cmdID]; ok {

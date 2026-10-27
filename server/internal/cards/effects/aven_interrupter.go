@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // route, which moved the card and left its stack record behind — the
 // same wedge Aang, Swift Savior's airbend of a spell hit. The engine
 // now retires the record on every stack exit, and "exile target spell"
-// is its own primitive (ExileTargetSpell → Game.ExileSpellThenForEffect),
+// is its own primitive (ExileTargetSpell → Game.ExileSpellKeyedForEffect),
 // which does not counter the spell: a spell that can't be countered is
 // exiled all the same.
 //

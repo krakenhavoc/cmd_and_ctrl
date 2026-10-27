@@ -23,32 +23,31 @@ import (
 // the client dialog for no rules difference.
 //
 // Like PayUnless this primitive only QUEUES the prompt — the calling
-// effect has finished by the time the player answers, and OnPay runs
-// later against a fresh Context bound to the same stack item. So
+// effect has finished by the time the player answers, and Then's pay
+// branch runs later against a Context rebuilt from the asking item. So
 // anything the card does AFTER the optional cost must live inside
-// OnPay, not after Apply returns; a statement written after Apply
+// Then, not after Apply returns; a statement written after Apply
 // runs before the player has decided.
 //
 // A "Pay" the chooser cannot fund degrades to a decline (the engine
-// tries pool first, then auto-taps), so OnPay never runs against
-// unpaid mana.
+// tries pool first, then auto-taps), so the pay branch never runs
+// against unpaid mana.
 type MayPay struct {
 	Chooser  uuid.UUID
 	Cost     string
 	Question string
-	OnPay    func(ctx *Context) error
 	// InThisStep holds the table in the current step until the chooser
-	// answers (Game.QueueMayPayInThisStepForEffect). Set it when OnPay
-	// is about the step or phase in progress — "after this phase, there
-	// is an additional combat phase" (Hellkite Charger) — so the answer
-	// cannot arrive after that phase has ended.
+	// answers. Set it when the paid branch is about the step or phase in
+	// progress — "after this phase, there is an additional combat phase"
+	// (Hellkite Charger) — so the answer cannot arrive after that phase
+	// has ended.
 	InThisStep bool
 
-	// Then is OnPay as REGISTERED branches (PayUnlessBranches, #4264),
-	// and Carry the plain data it is handed: a prompt queued with one
-	// holds no closure, so a table waiting on the payer is a restore
-	// point. The key's pay branch runs only when the mana was really
-	// paid. Set Then or OnPay, not both.
+	// Then is the paid branch, REGISTERED (PayUnlessBranches, #4264), and
+	// Carry the plain data it is handed: the prompt holds no closure, so
+	// a table waiting on the payer is a restore point. The key's pay
+	// branch runs only when the mana was really paid. Required (#4253
+	// retired the closure form).
 	Then  game.PayUnlessElse
 	Carry []uuid.UUID
 	// CarryObjects are objects, with the epoch each had, the card names as
@@ -59,29 +58,15 @@ type MayPay struct {
 }
 
 func (p MayPay) Apply(ctx *Context) error {
-	if p.Then.Key() != "" {
-		if p.OnPay != nil {
-			return fmt.Errorf("%w: MayPay %q sets both Then and OnPay", game.ErrInvalidParam, p.Then.Key())
-		}
-		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
-			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
-			Then: p.Then, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
-			InThisStep: p.InThisStep, MayPay: true, Asked: game.NewAskedItem(ctx.Item),
-			Objects: p.CarryObjects,
-		})
+	if p.Then.Key() == "" {
+		return fmt.Errorf("%w: MayPay with no registered branches (PayUnlessBranches)", game.ErrInvalidParam)
 	}
-	item := ctx.Item
-	onPay := p.OnPay
-	then := func(g *game.Game) error {
-		if onPay == nil {
-			return nil
-		}
-		return onPay(NewContext(g, item))
-	}
-	if p.InThisStep {
-		return ctx.Game.QueueMayPayInThisStepForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
-	}
-	return ctx.Game.QueueMayPayForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, then)
+	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+		Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+		Then: p.Then, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		InThisStep: p.InThisStep, MayPay: true, Asked: game.NewAskedItem(ctx.Item),
+		Objects: p.CarryObjects,
+	})
 }
 
 // mayPayDrawACard is "If you do, draw a card" for every may-pay whose paid

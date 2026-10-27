@@ -10,7 +10,8 @@ import (
 // tested as a SHAPE rather than only through the cards that use it:
 // which seats are offered, in what order, where the answer is
 // recorded, what happens when nobody can be asked, and that the whole
-// thing rewinds.
+// thing rewinds. Since #4253 the continuation is always a registered key
+// (ThenKey), so these ask through test-registered ones.
 
 // choosePlayerPromptFor returns the newest open option pick owed by a
 // seat, or nil.
@@ -23,6 +24,29 @@ func choosePlayerPromptFor(g *Game, chooser uuid.UUID) *PendingChoice {
 	}
 	return out
 }
+
+// testChooseItem is the item testRecordChosenThen records answers on: the
+// card side's job since #4253 retired the engine's closure form and its
+// Item (effects.ChoosePlayerThen records on the asked item's copy). The
+// answer is also kept in testProbePicked, as testProbeOptionThen keeps it.
+var (
+	testChooseItem       *StackItem
+	testRecordChosenThen = RegisterOptionPickThen("test/4253-record-chosen-player", func(_ *Game, r OptionPicked) error {
+		seat := uuid.Nil
+		if r.Option != nil {
+			seat = r.Option.Player
+		}
+		recordChosenPlayer(testChooseItem, seat)
+		testProbePicked = append(testProbePicked, r)
+		return nil
+	})
+	testChosenLosesFive = RegisterOptionPickThen("test/4253-chosen-player-loses-five", func(g *Game, r OptionPicked) error {
+		if r.Option == nil {
+			return nil
+		}
+		return g.ChangePlayerLifeForEffect(uuid.Nil, r.Option.Player, -5)
+	})
+)
 
 func optionLabels(c *PendingChoice) []string {
 	out := make([]string, 0, len(c.PickOptions))
@@ -45,15 +69,13 @@ func TestChoosePlayerOffersExactlyTheEligibleSeats(t *testing.T) {
 	g.Seats[1].Life = 12
 	g.Seats[2].Life = 33
 
-	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: me.ID}
-	var got uuid.UUID
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID, g.Seats[3].ID, g.Seats[1].ID},
 			Question: "test — choose a player",
-			Item:     item,
-			Then:     func(_ *Game, chosen uuid.UUID) error { got = chosen; return nil },
+			ThenKey:  testProbeOptionThen,
 		})
 	})
 
@@ -83,14 +105,8 @@ func TestChoosePlayerOffersExactlyTheEligibleSeats(t *testing.T) {
 	if err := g.ResolveOptionPick(c.ID, me.ID, 1); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
 	}
-	if got != g.Seats[1].ID {
-		t.Errorf("Then got %s, want the seat at index 1 (%s)", got, g.Seats[1].ID)
-	}
-	if ChosenPlayerOn(item) != g.Seats[1].ID {
-		t.Errorf("the answer is recorded on the item: %v", item.Payload)
-	}
-	if len(ChosenPlayersOn(item)) != 1 {
-		t.Errorf("one question, one recorded answer: %v", item.Payload)
+	if got := probeChosen(); len(got) != 1 || got[0] != g.Seats[1].ID {
+		t.Errorf("the continuation was handed %v, want once the seat at index 1 (%s)", got, g.Seats[1].ID)
 	}
 }
 
@@ -101,10 +117,11 @@ func TestChoosePlayerRecordsEachAnswerInOrder(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	me := g.Seats[0]
 	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: me.ID}
+	testChooseItem = item
 	ask := func(among []uuid.UUID) {
 		g.WithWriteLock(func() {
 			g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
-				Chooser: me.ID, Among: among, Question: "test", Item: item,
+				Chooser: me.ID, Among: among, Question: "test", ThenKey: testRecordChosenThen,
 			})
 		})
 		c := choosePlayerPromptFor(g, me.ID)
@@ -140,17 +157,19 @@ func TestChoosePlayerRecordsEachAnswerInOrder(t *testing.T) {
 }
 
 // TestChoosePlayerWithNobodyToAskRecordsTheAbsence — an empty pool
-// queues nothing, and the item says so rather than keeping the
-// previous clause's answer. Without the marker a card that asks twice
+// queues nothing; the caller then runs its continuation with nobody chosen
+// (effects.ChoosePlayer does), and the item says so rather than keeping
+// the previous clause's answer. Without the marker a card that asks twice
 // would silently apply its second clause to its first clause's player.
 func TestChoosePlayerWithNobodyToAskRecordsTheAbsence(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: me.ID}
+	testChooseItem = item
 	var queued uuid.UUID
 	g.WithWriteLock(func() {
 		g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
-			Chooser: me.ID, Among: []uuid.UUID{g.Seats[1].ID}, Question: "test", Item: item,
+			Chooser: me.ID, Among: []uuid.UUID{g.Seats[1].ID}, Question: "test", ThenKey: testRecordChosenThen,
 		})
 	})
 	c := choosePlayerPromptFor(g, me.ID)
@@ -166,8 +185,15 @@ func TestChoosePlayerWithNobodyToAskRecordsTheAbsence(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		queued = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
-			Chooser: me.ID, Among: nil, Question: "test — nobody left", Item: item,
+			Chooser: me.ID, Among: nil, Question: "test — nobody left", ThenKey: testRecordChosenThen,
 		})
+		if queued == uuid.Nil {
+			// Nothing could be asked: the caller runs the rest with
+			// nobody chosen, as effects.ChoosePlayer does.
+			if err := g.RunOptionPickThenForEffect(testRecordChosenThen, OptionPicked{Chooser: me.ID, Index: NoChoiceIndex}); err != nil {
+				t.Fatalf("RunOptionPickThenForEffect: %v", err)
+			}
+		}
 	})
 	if queued != uuid.Nil {
 		t.Errorf("an empty pool queues nothing, got %s", queued)
@@ -181,23 +207,23 @@ func TestChoosePlayerWithNobodyToAskRecordsTheAbsence(t *testing.T) {
 }
 
 // TestChoosePlayerDropsWhenTheChooserHasLeft — a chooser who is gone
-// gets no prompt (CR 800.4a), the queue stays clean, and the absence
-// is recorded. Reassigning the choice to another seat is #902's
-// single reassignment function, not this prompt's business.
+// gets no prompt (CR 800.4a), the queue stays clean, and the engine does
+// not run the continuation: the caller runs it with nobody chosen, which
+// records the absence (TestChoosePlayerWithNobodyToAskRecordsTheAbsence).
+// Reassigning the choice to another seat is #902's single reassignment
+// function, not this prompt's business.
 func TestChoosePlayerDropsWhenTheChooserHasLeft(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	gone, other := g.Seats[0], g.Seats[1]
 	gone.Eliminated = true
-	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: gone.ID}
-	ran := false
+	resetProbes()
 	var queued uuid.UUID
 	g.WithWriteLock(func() {
 		queued = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
 			Chooser:  gone.ID,
 			Among:    []uuid.UUID{other.ID},
 			Question: "test — a departed chooser",
-			Item:     item,
-			Then:     func(*Game, uuid.UUID) error { ran = true; return nil },
+			ThenKey:  testProbeOptionThen,
 		})
 	})
 	if queued != uuid.Nil {
@@ -206,11 +232,8 @@ func TestChoosePlayerDropsWhenTheChooserHasLeft(t *testing.T) {
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("no prompt is left behind: %+v", g.PendingChoices)
 	}
-	if ran {
-		t.Error("Then does not run from the engine side when nothing was asked")
-	}
-	if ChosenPlayerOn(item) != uuid.Nil {
-		t.Errorf("the absence is recorded: %v", item.Payload)
+	if len(testProbePicked) != 0 {
+		t.Error("the continuation does not run from the engine side when nothing was asked")
 	}
 }
 
@@ -219,16 +242,12 @@ func TestChoosePlayerDropsWhenTheChooserHasLeft(t *testing.T) {
 func TestChoosePlayerUndoesAcrossThePrompt(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	me := g.Seats[0]
-	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: me.ID}
 	g.WithWriteLock(func() {
 		g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID},
 			Question: "test — choose a player",
-			Item:     item,
-			Then: func(g *Game, chosen uuid.UUID) error {
-				return g.ChangePlayerLifeForEffect(uuid.Nil, chosen, -5)
-			},
+			ThenKey:  testChosenLosesFive,
 		})
 	})
 	before := g.Seats[1].Life

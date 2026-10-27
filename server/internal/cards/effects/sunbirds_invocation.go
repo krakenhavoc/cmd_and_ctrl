@@ -136,24 +136,37 @@ func sunbirdsReveal(g *game.Game, item *game.StackItem) error {
 	}) {
 		return nil
 	}
+	// Keyed (#4253): the revealed cards and X ride the pick as data.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   source,
-		Question: "Sunbird's Invocation — cast a spell with mana value " + strconv.Itoa(x) + " or less without paying its mana cost?",
-		Cards:    eligible,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then:     finish,
+		Chooser:   controller,
+		Source:    source,
+		Question:  "Sunbird's Invocation — cast a spell with mana value " + strconv.Itoa(x) + " or less without paying its mana cost?",
+		Cards:     eligible,
+		Min:       0,
+		Max:       1,
+		LiveZone:  game.ZoneLibrary,
+		ThenKey:   sunbirdsPicked,
+		Carry:     revealed,
+		CarryNums: []int{x},
 	})
 	return nil
 }
 
+// sunbirdsPicked is the pick outside an open resolution answered: the carry
+// is the revealed cards and the number is X. An on-disk key: never renamed,
+// never reused.
+var sunbirdsPicked = game.RegisterChooseCardsThen("choose-cards/sunbirds-invocation-cast", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Nums) == 0 {
+		return nil
+	}
+	return sunbirdsFinisher(r.Chooser, r.Source, r.Nums[0], r.Carry)(g, r.Picked)
+})
+
 // sunbirdsFinisher is what happens once the pick is known: the rest of
 // the revealed cards go to the bottom in a random order, and the chosen
 // card, if any, keeps its place (now the top of the library) and gets
-// its free cast there. Everything it captures is an ID or a scalar, so
-// an undo across the prompt resolves against the restored game.
+// its free cast there. Everything it captures is an ID or a scalar, and it
+// runs at once (the keyed pick, sunbirdsPicked, rebuilds it from data).
 func sunbirdsFinisher(controller, source uuid.UUID, x int, revealed []uuid.UUID) func(g *game.Game, picked []uuid.UUID) error {
 	return func(g *game.Game, picked []uuid.UUID) error {
 		var chosen uuid.UUID

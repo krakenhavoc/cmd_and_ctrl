@@ -750,55 +750,16 @@ func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 // that only says "deal 3 damage to target player" has nothing left to
 // do. A caller that needs to know how much actually landed — "you gain
 // life equal to the damage dealt this way" — must use
-// DealDamageToPlayerThenForEffect or DealDamageEachThenForEffect
+// DealDamageToPlayerKeyedForEffect or DealDamageEachThenForEffect
 // instead, because a damage event can pause on a CR 616 ordering prompt
 // and reading the life total back on the next line reads it before the
 // prompt is answered (#807).
 func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount int) error {
-	return g.DealDamageToPlayerThenForEffect(source, playerID, amount, nil)
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, 0, nil)
 }
 
-// DealDamageToPlayerThenForEffect is damage to a player with a
-// CONTINUATION: `then` runs with the amount that actually landed, once
-// the CR 614 window has settled it. Lock-free.
-//
-// The damage sibling of ChangePlayerLifeThenForEffect, and deliberately
-// the same idiom — card authors learn `...ThenForEffect` once:
-//
-//	g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error {
-//	        return g.ChangePlayerLifeForEffect(src, me, dealt)
-//	})
-//
-// for "~ deals N damage to target opponent. You gain life equal to the
-// damage dealt this way", and DealDamageEachThenForEffect for the
-// each-opponent version of the same sentence.
-//
-// WHAT `then` RECEIVES. The post-replacement amount, non-negative: 6
-// for a Lightning Bolt under Angrath's Marauders, 2 for one under a
-// "prevent 1" shield. Zero means nothing landed — fully prevented,
-// replaced away (CR 614.10, a Fog), or the player has left the game.
-// `then` is told either way, because a caller adding up what several
-// opponents took would otherwise wait forever on the one that took
-// nothing.
-//
-// WHEN IT RUNS. Immediately, on the ordinary path, before this function
-// returns. After the affected player answers the CR 616 ordering prompt
-// when two DIFFERENT damage replacements apply to one event — the case
-// #807 exists for, and the reason `then` is a continuation rather than
-// a return value. Either way it runs with g.mu held and with the
-// event's own EventDealDamage already emitted, so it may start the next
-// damage event or queue the next prompt itself.
-//
-// Returns ErrPlayerNotFound without running `then` when the target is
-// not seated at all, exactly as ChangePlayerLifeThenForEffect does. A
-// seated player who has been eliminated is not an error: nothing is
-// dealt and `then` runs with zero (CR 800.4a, #808). The batch form
-// skips both rather than failing on them.
-func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amount int, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, 0, then)
-}
-
-// dealDamageToPlayerLocked is DealDamageToPlayerThenForEffect's body,
+// dealDamageToPlayerLocked is the closure-continuation body of damage to a
+// player,
 // with the source OBJECT when the caller knows it (#1396,
 // DealDamageFromObjectForEffect). obj only changes where the tail reads
 // the source's lifelink from; see effectDamageTailLocked.
@@ -924,7 +885,7 @@ func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount in
 
 // DealDamageToCreatureThenForEffect is damage to a battlefield
 // permanent with a CONTINUATION — the permanent-target sibling of
-// DealDamageToPlayerThenForEffect, with the identical contract: `then`
+// DealDamageToPlayerKeyedForEffect, with the identical contract: `then`
 // runs once, with the post-replacement amount, and with 0 when the
 // damage was fully prevented, replaced away, or the permanent left
 // between a CR 616 prompt and its answer.
@@ -1594,7 +1555,7 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 		return nil, err
 	}
 	// #529, #4245: through the shared exit primitive, one card at a time
-	// from the previous card's continuation (exileFaceDownLegsLocked). A leg
+	// from the previous card's continuation (exileFaceDownLegsKeyedLocked). A leg
 	// that opens a prompt (a CR 616.1 ordering of replacements) leaves its
 	// card ON the library and resumes the rest of the batch from the
 	// answer, so the cards after it are exiled then rather than never.
@@ -1605,10 +1566,10 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 	// clean run, and the cards before the pause on a paused one. A card
 	// that is waiting on the prompt is not in it. A caller that must act on
 	// the finished batch (Necropotence schedules a delivery of the card)
-	// reads ExileTopFaceDownThenForEffect instead (#4259).
+	// reads ExileTopFaceDownKeyedForEffect's tail instead (#4259).
 	//
 	// NO production caller reads the list any more (#4262: Doomsday
-	// Excruciator was the last, and chains ExileTopFaceDownThenForEffect per
+	// Excruciator was the last, and chains ExileTopFaceDownKeyedForEffect per
 	// player). It is unreliable on a paused batch, so a new caller that needs
 	// the cards must use the Then form; the list stays for the tests that pin
 	// what had landed.
@@ -1626,33 +1587,6 @@ func (g *Game) ExileTopFaceDownForEffect(playerID uuid.UUID, n int) ([]uuid.UUID
 		}
 	}
 	return out, err
-}
-
-// ExileTopFaceDownThenForEffect is ExileTopFaceDownForEffect for a clause
-// that acts on the cards the exile took ("Exile the top card of your library
-// face down. Put that card into your hand at the beginning of your next end
-// step", #4259). `then` runs once the whole batch is done, with the cards that
-// landed in exile, top card first: at once when nothing paused, and from the
-// answer to a CR 616.1 ordering prompt (or a CR 903.9 choice) when a leg did.
-// The list ExileTopFaceDownForEffect returns is empty or short on a paused
-// batch, so a caller that reads it loses the cards for good.
-//
-// `then` also runs, with an empty list, when there was nothing to exile (an
-// empty library or n of zero), so a clause that is gated on "if you do" checks
-// the length. A nil `then` is a plain exile. Nothing is exiled when the player
-// is not found: the error is returned and `then` does not run.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) ExileTopFaceDownThenForEffect(playerID uuid.UUID, n int, then func(g *Game, exiled []uuid.UUID) error) error {
-	plan, err := g.exileTopFaceDownPlanLocked(playerID, n)
-	if err != nil {
-		return err
-	}
-	if then == nil {
-		// #4253 slice 3: nothing to run afterwards, so the batch is data.
-		return g.exileFaceDownLegsKeyedLocked(&faceDownExileRun{Player: playerID, Rest: plan})
-	}
-	return g.exileFaceDownLegsLocked(playerID, plan, nil, then)
 }
 
 // exileTopFaceDownPlanLocked chooses the cards a face-down exile of the top n
@@ -1680,53 +1614,6 @@ func (g *Game) exileTopFaceDownPlanLocked(playerID uuid.UUID, n int) ([]uuid.UUI
 		plan = append(plan, p.Library.Cards[avail-1-i].InstanceID)
 	}
 	return plan, nil
-}
-
-// exileFaceDownLegsLocked exiles the head of `ids` face down and carries on
-// with the rest from that leg's continuation, so a leg paused on a prompt
-// holds the rest of the batch behind it and the answer runs it. The empty
-// list is the base case: `then` is told which legs landed in exile.
-//
-// A leg is skipped, not routed, when its card is no longer in the player's
-// library: it was taken out while an earlier leg waited on its prompt, and
-// exiling it from wherever it went would pull it out of a hand or a graveyard
-// that the effect never named (routeAllThenLocked checks only that the card
-// is not already in its destination, which is not enough here).
-//
-// `landed` is carried by value, never appended in place, so two runs of one
-// continuation (an undo, then the same answer again) cannot see each other's
-// entries.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) exileFaceDownLegsLocked(
-	player uuid.UUID,
-	ids, landed []uuid.UUID,
-	then func(g *Game, landed []uuid.UUID) error,
-) error {
-	for len(ids) > 0 {
-		if z := g.findCardZoneLocked(ids[0]); z != nil && z.Kind == ZoneLibrary && z.Owner == player {
-			break
-		}
-		ids = ids[1:]
-	}
-	if len(ids) == 0 {
-		return then(g, landed)
-	}
-	next, rest := ids[0], ids[1:]
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:   next,
-		Dst:      ZoneExile,
-		Actor:    player,
-		FaceDown: FaceDownExiled,
-		then: func(g *Game) error {
-			out := landed
-			if g.landedInZoneLocked(next, ZoneExile, uuid.Nil) {
-				out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
-			}
-			return g.exileFaceDownLegsLocked(player, rest, out, then)
-		},
-	})
-	return err
 }
 
 // BounceToHandForEffect moves a card from wherever it is to its
@@ -2069,37 +1956,6 @@ func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
 	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, nil)
 }
 
-// ExileSpellThenForEffect is ExileSpellForEffect with the rest of the
-// instruction handed over rather than written on the next line: `then`
-// is told whether the spell actually reached exile. Aven Interrupter's
-// "exile target spell. It becomes plotted." is the caller — the plot
-// is a property of the card in exile, and a commander spell whose
-// owner takes CR 903.9's offer went to the command zone instead, so
-// there is nothing to plot.
-//
-// `exiled` is CR 400.7's reading (landedInZoneLocked): true only when
-// the card is in exile once the move settles. A spell that has already
-// left the stack — countered or resolved in response — is not an error
-// here: the move is "nothing happened" and `then` hears false, the
-// same terminal outcome a cancelled route reports.
-//
-// Caller must hold g.mu.
-func (g *Game) ExileSpellThenForEffect(stackID uuid.UUID, then func(g *Game, exiled bool) error) error {
-	tell := func(g *Game, exiled bool) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, exiled)
-	}
-	if item, ok := g.StackMeta[stackID]; !ok || item == nil || item.Kind != StackItemSpell ||
-		g.Stack == nil || !g.Stack.Contains(stackID) {
-		return tell(g, false)
-	}
-	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, func(g *Game) error {
-		return tell(g, g.landedInZoneLocked(stackID, ZoneExile, uuid.Nil))
-	})
-}
-
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
 // must hold g.mu.
 //
@@ -2136,7 +1992,9 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 //
 // `then` is the caller's continuation, run once the move reaches a
 // terminal outcome (zoneRoute.then) — nil for the fire-and-forget
-// verbs. ExileSpellThenForEffect is the one caller that needs it.
+// verbs. The counter-instead exile (counter_spell.go) is the one caller
+// that passes one; ExileSpellKeyedForEffect carries its tail on a route
+// batch instead.
 //
 // Caller must hold g.mu.
 func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, then func(*Game) error) error {
@@ -2492,7 +2350,7 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 // ReturnFromGraveyardToBattlefieldThenForEffect is
 // ReturnFromGraveyardTappedForEffect to the battlefield with the rest of
 // the effect as a continuation, the graveyard twin of
-// ReturnFromExileToBattlefieldThenForEffect: `then` is told the entering
+// ReturnFromExileToBattlefieldKeyedForEffect: `then` is told the entering
 // permanent's ID (a graveyard return keeps the instance ID) once the
 // entry is complete, or uuid.Nil when nothing entered.
 //
@@ -2539,25 +2397,9 @@ func (g *Game) returnFromGraveyardThenLocked(cardID, controller uuid.UUID, tappe
 	return err
 }
 
-// ReturnFromGraveyardWithCountersThenForEffect is
-// ReturnFromGraveyardToBattlefieldThenForEffect with counters the
-// creature enters with: "return target creature card from your graveyard
-// to the battlefield with a mannequin counter on it. For as long as it
-// has a mannequin counter, it has ..." (Makeshift Mannequin). The
-// counters ride the entry event (CR 614.1c), and `then` runs once the
-// entry is complete, even when the creature first asked a question (a
-// Clone's copy pick), with the entering permanent's ID or uuid.Nil.
-//
-// `controller` uuid.Nil is "under its owner's control". Caller must
-// hold g.mu. Added for #3172 (cav-h1).
-func (g *Game) ReturnFromGraveyardWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
-	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, counters, entryThen{fn: then})
-}
-
 // ReturnFromGraveyardWithCountersKeyedForEffect is
-// ReturnFromGraveyardWithCountersThenForEffect with the rest of the
-// effect as data (#4253 slice 6), as
-// ReturnFromGraveyardToBattlefieldKeyedForEffect.
+// ReturnFromGraveyardToBattlefieldKeyedForEffect with counters the card
+// enters with (#4253 slice 6): the rest of the effect is data.
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardWithCountersKeyedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then KeyedTail) error {
@@ -4235,38 +4077,22 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, entryThen{})
 }
 
-// ReturnFromExileToBattlefieldThenForEffect is the exile return with the
-// rest of the effect as a continuation (#1327): `then` is told the
-// permanent's NEW instance ID once the entry is complete, or uuid.Nil
-// when nothing entered.
+// ReturnFromExileToBattlefieldKeyedForEffect is the exile return with the
+// rest of the effect as data (#1327; #4253 slice 6): `then` is a registered
+// tail (RegisterTail), told the permanent's NEW instance ID as
+// TailOutcome.IDs (empty when nothing entered). A question the entry asks is
+// then a restore point.
 //
 // The synchronous door cannot answer "did it enter, and under whose
-// control?" when the entry pauses — a returning Clone asks what to
-// copy, a blinked shockland asks for its life — because it has
-// returned uuid.Nil by the time the answer arrives. Phelia, Exuberant
-// Shepherd's "if it entered under your control, put a +1/+1 counter on
-// Phelia" is that question, and asking it on the next line is wrong
-// both ways: no counter on a paused entry, or a counter before an
-// entry that could still be cancelled.
-//
-// `then` runs exactly once, from every terminal outcome: at once when
-// nothing paused, from the resume when something did, and with
-// uuid.Nil when the card is not in exile (with ErrCardNotFound
-// returned), when a replacement cancelled or redirected the entry, or
-// when the prompt was taken away. It takes the live *Game, on the
-// undo-safety contract every continuation follows.
-//
-// Caller must hold g.mu.
-func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, entryThen{fn: then})
-	return err
-}
-
-// ReturnFromExileToBattlefieldKeyedForEffect is
-// ReturnFromExileToBattlefieldThenForEffect with the rest of the effect
-// as data (#4253 slice 6): `then` is a registered tail (RegisterTail),
-// told the permanent's NEW instance ID as TailOutcome.IDs (empty when
-// nothing entered). A question the entry asks is then a restore point.
+// control?" when the entry pauses — a returning Clone asks what to copy, a
+// blinked shockland asks for its life. Phelia, Exuberant Shepherd's "if it
+// entered under your control, put a +1/+1 counter on Phelia" is that
+// question. The tail runs exactly once, from every terminal outcome: at once
+// when nothing paused, from the resume when something did, and told nothing
+// when the card is not in exile (with ErrCardNotFound returned), when a
+// replacement cancelled or redirected the entry, or when the prompt was
+// taken away. (The closure form, ReturnFromExileToBattlefieldThenForEffect,
+// was deleted in #4253's cleanup.)
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileToBattlefieldKeyedForEffect(cardID, controller uuid.UUID, tapped bool, then KeyedTail) error {
@@ -4274,25 +4100,9 @@ func (g *Game) ReturnFromExileToBattlefieldKeyedForEffect(cardID, controller uui
 	return err
 }
 
-// ReturnFromExileWithCountersThenForEffect is the exile return for "put
-// it onto the battlefield ... with two additional +1/+1 counters on it"
-// (The Darkness Crystal, #3213). The counters are a CR 614.1c "enters
-// with", so they ride the entry event exactly as
-// ReturnFromGraveyardWithCountersForEffect's do: an enters trigger
-// finds them already on the permanent, a counter replacement (Doubling
-// Season) sees them, and a paused entry still places them. A nil or
-// empty map is ReturnFromExileToBattlefieldThenForEffect. `then` is the
-// same exactly-once continuation, told the new object's ID.
-//
-// Caller must hold g.mu.
-func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, entryThen{fn: then})
-	return err
-}
-
 // ReturnFromExileWithCountersKeyedForEffect is
-// ReturnFromExileWithCountersThenForEffect with the rest of the effect
-// as data (#4253 slice 6), as ReturnFromExileToBattlefieldKeyedForEffect.
+// ReturnFromExileToBattlefieldKeyedForEffect with counters the card
+// enters with (#4253 slice 6): the rest of the effect is data.
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileWithCountersKeyedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then KeyedTail) error {

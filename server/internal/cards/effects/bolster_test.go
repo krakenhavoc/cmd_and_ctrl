@@ -12,23 +12,32 @@ import (
 // bolster_test.go — bolster (CR 701.39, #3277): the primitive on plain
 // creatures, then Optimus Prime, Hero // Optimus Prime, Autobot Leader.
 
+// testBolsterChosen is the creature the bolster's keyed tail
+// (testBolsterHeard) was told; Nil when it never ran.
+var (
+	testBolsterChosen uuid.UUID
+	testBolsterHeard  = CardTail("test/4253-bolster-heard", func(_ *Context, o game.TailOutcome) error {
+		if len(o.IDs) == 1 {
+			testBolsterChosen = o.IDs[0]
+		}
+		return nil
+	})
+)
+
 // runBolster resolves Bolster for the player as if an ability of theirs
-// did, and returns the chosen creature Then was handed (Nil when it
+// did, and returns the chosen creature its tail was told (Nil when it
 // never ran).
 func runBolster(t *testing.T, g *game.Game, me *game.Player, n int) uuid.UUID {
 	t.Helper()
-	var chosen uuid.UUID
+	testBolsterChosen = uuid.Nil
 	g.WithWriteLock(func() {
 		item := &game.StackItem{Kind: game.StackItemSpell, Controller: me.ID, Owner: me.ID}
-		err := Bolster{N: n, Then: func(_ *Context, id uuid.UUID) error {
-			chosen = id
-			return nil
-		}}.Apply(NewContext(g, item))
-		if err != nil {
+		ctx := NewContext(g, item)
+		if err := (Bolster{N: n, ThenTail: ctx.Tail(testBolsterHeard)}).Apply(ctx); err != nil {
 			t.Fatalf("Bolster: %v", err)
 		}
 	})
-	return chosen
+	return testBolsterChosen
 }
 
 func bolsterCounters(t *testing.T, g *game.Game, id uuid.UUID) int {
@@ -93,15 +102,16 @@ func TestBolsterTieIsTheControllersChoice(t *testing.T) {
 	other := pushVanillaCreature(g, me.ID, "Tall", 1, 5)
 	pushVanillaCreature(g, opp.ID, "Theirs", 1, 1)
 
-	var chosen uuid.UUID
+	testBolsterChosen = uuid.Nil
 	g.WithWriteLock(func() {
 		item := &game.StackItem{Kind: game.StackItemSpell, Controller: me.ID, Owner: me.ID}
-		if err := (Bolster{N: 1, Then: func(_ *Context, id uuid.UUID) error { chosen = id; return nil }}).Apply(NewContext(g, item)); err != nil {
+		ctx := NewContext(g, item)
+		if err := (Bolster{N: 1, ThenTail: ctx.Tail(testBolsterHeard)}).Apply(ctx); err != nil {
 			t.Fatal(err)
 		}
 	})
-	if chosen != uuid.Nil {
-		t.Fatal("Then ran before the tie was broken")
+	if testBolsterChosen != uuid.Nil {
+		t.Fatal("the tail ran before the tie was broken")
 	}
 	prompt := chooseCardsChoiceFor(g, me.ID)
 	if prompt == nil {
@@ -112,8 +122,8 @@ func TestBolsterTieIsTheControllersChoice(t *testing.T) {
 	}
 	answerChooseCards(t, g, me.ID, b)
 
-	if chosen != b {
-		t.Errorf("Then was handed %v, want the picked creature", chosen)
+	if testBolsterChosen != b {
+		t.Errorf("the tail was told %v, want the picked creature", testBolsterChosen)
 	}
 	if bolsterCounters(t, g, b) != 1 || bolsterCounters(t, g, a) != 0 || bolsterCounters(t, g, other) != 0 {
 		t.Errorf("counters a=%d b=%d tall=%d, want only the picked tie to have one",

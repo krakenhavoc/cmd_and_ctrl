@@ -19,6 +19,20 @@ const kharnOracle = "3246eff5-8739-469f-a401-e5de927dd6bb"
 
 // kharnPush puts Khârn the Betrayer (5/1) onto the battlefield under
 // `controller`, sick-free.
+
+// testBearDamageTail records the damage marked on its carried creature when
+// the second instruction runs (#4253 retired DealDamageToPlayerThenForEffect's
+// closure).
+var (
+	testBearDamageAfter = -1
+	testBearDamageTail  = game.RegisterTail("test/4253-bear-damage-after", func(g *game.Game, o game.TailOutcome) error {
+		if len(o.Tail.Carry) > 0 {
+			testBearDamageAfter = findBattlefieldCardForTest(g, o.Tail.Carry[0]).DamageMarked
+		}
+		return nil
+	})
+)
+
 func kharnPush(g *game.Game, owner, controller uuid.UUID) uuid.UUID {
 	return apaPush(g, owner, controller, game.Card{Name: "Khârn the Betrayer",
 		TypeLine: "Legendary Creature — Astartes Berserker", OracleID: kharnOracle, Power: 5, Toughness: 1})
@@ -264,26 +278,23 @@ func TestChannelHarmAsksAsTheDamageIsPrevented(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
 	life := me.Life
-	after := -1
+	testBearDamageAfter = -1
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToPlayerThenForEffect(src, me.ID, 3, func(g *game.Game, _ int) error {
-			after = findBattlefieldCardForTest(g, bear).DamageMarked
-			return nil
-		}); err != nil {
+		if err := g.DealDamageToPlayerKeyedForEffect(src, me.ID, 3, game.KeyedTail{Ref: testBearDamageTail, Carry: []uuid.UUID{bear}}); err != nil {
 			t.Fatal(err)
 		}
 	})
 	g.RunStateChecksForTest()
 	ask := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)
-	if ask == nil || me.Life != life || after != -1 {
+	if ask == nil || me.Life != life || testBearDamageAfter != -1 {
 		t.Fatalf("want the damage prevented, a question and the instruction waiting; life %d (want %d), question %v, continuation saw %d",
-			me.Life, life, ask, after)
+			me.Life, life, ask, testBearDamageAfter)
 	}
 	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if damageMarkedOn(g, bear) != 3 || after != 3 {
-		t.Fatalf("bear damage %d, seen by the rest of the instruction %d; want 3 and 3", damageMarkedOn(g, bear), after)
+	if damageMarkedOn(g, bear) != 3 || testBearDamageAfter != 3 {
+		t.Fatalf("bear damage %d, seen by the rest of the instruction %d; want 3 and 3", damageMarkedOn(g, bear), testBearDamageAfter)
 	}
 	pr7Hit(t, g, src, me.ID, 2)
 	ask = latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)

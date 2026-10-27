@@ -245,18 +245,16 @@ type ColorPrompt struct {
 	// in practice: the catalog guard fails a prompt that leaves it
 	// empty, and an empty one falls back to the mana-fixing rule.
 	Purpose ColorPurpose
-	// Then receives the answer. Runs with g.mu held; may queue further
-	// choices.
-	Then func(g *Game, color string) error
-	// ThenTail is Then as data (#4253): a registered tail (RegisterTail)
-	// told the colour as its Word. A prompt carrying one holds no closure,
-	// so a table waiting on it is a restore point. Set Then or ThenTail,
-	// not both; Then wins.
+	// ThenTail receives the answer (#4253): a registered tail
+	// (RegisterTail) told the colour as its Word. It runs with g.mu held
+	// and may queue further choices. The prompt holds no closure, so a
+	// table waiting on it is a restore point. Zero asks and does nothing
+	// with the answer.
 	ThenTail KeyedTail
 }
 
 // QueueColorChoiceThenForEffect queues the AT-RESOLUTION form: the
-// answer is handed to p.Then (or p.ThenTail) and stored nowhere.
+// answer is handed to p.ThenTail and stored nowhere.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
@@ -270,10 +268,10 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		ColorOptions: normaliseColorOptions(p.Options),
 		ColorPurpose: p.Purpose,
 	}
-	if p.Then == nil && !p.ThenTail.IsZero() {
+	if !p.ThenTail.IsZero() {
 		g.keyValueThenLocked(&c, p.ThenTail)
 	} else {
-		c.chooseValueResume = &chooseValueFrame{then: p.Then}
+		c.chooseValueResume = &chooseValueFrame{}
 	}
 	return g.QueueChoiceForEffect(c)
 }

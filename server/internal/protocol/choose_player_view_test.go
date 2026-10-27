@@ -8,6 +8,15 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// testProtocolChoosePlayerThen is a keyed ChoosePlayer continuation that
+// does nothing (#4253 retired the closure Then).
+var testProtocolChoosePlayerThen = game.RegisterOptionPickThen("test/4253-protocol-choose-player",
+	func(*game.Game, game.OptionPicked) error { return nil })
+
+// testProtocolNoopTail is a keyed "then" that does nothing, for prompts
+// whose continuation is beside the point (#4253 retired their closure Then).
+var testProtocolNoopTail = game.RegisterTail("test/4253-protocol-noop", func(*game.Game, game.TailOutcome) error { return nil })
+
 // choose_player_view_test.go — #929 on the wire.
 //
 // A choose-a-player prompt is the one Options-bearing prompt with
@@ -16,7 +25,6 @@ import (
 // option_pick_view_test.go's — every viewer sees the same seat names,
 // the redaction pass drops nothing, and no card IDs ride along that a
 // viewer could correlate later.
-
 func TestChoosePlayerPromptShowsEverySeatToEveryViewer(t *testing.T) {
 	g := buildThreeSeatGame(t)
 	chooser := g.Seats[0]
@@ -25,8 +33,7 @@ func TestChoosePlayerPromptShowsEverySeatToEveryViewer(t *testing.T) {
 			Chooser:  chooser.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID},
 			Question: "Slithermuse — choose an opponent",
-			Item:     &game.StackItem{ID: uuid.New(), Controller: chooser.ID},
-			Then:     func(*game.Game, uuid.UUID) error { return nil },
+			ThenKey:  testProtocolChoosePlayerThen,
 		})
 	})
 

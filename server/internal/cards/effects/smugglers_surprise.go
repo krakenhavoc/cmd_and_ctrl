@@ -109,7 +109,7 @@ func smugglersSurpriseTakeMilled(g *game.Game, item *game.StackItem, milled []uu
 // smugglersSurpriseTaken is the milled cards put into the hand and then the
 // second bullet, keyed (#4253 sweep): the asking item rides the prompt as data.
 var smugglersSurpriseTaken = askedPick("choose-cards/smugglers-surprise-take-milled", func(ctx *Context, r game.CardsChosen) error {
-	if err := ReturnPickedToHand(ctx.Item)(ctx.Game, r.Picked); err != nil {
+	if err := ReturnPickedToHandNow(ctx, r.Picked); err != nil {
 		return err
 	}
 	return smugglersSurprisePut(ctx.Game, ctx.Item)

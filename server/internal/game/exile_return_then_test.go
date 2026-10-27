@@ -22,23 +22,16 @@ func TestExileReturnThenWaitsForAPausedEntry(t *testing.T) {
 	card := ebLand(me.ID, "Fountain")
 	g.Exile.PushTop(card)
 
-	thenRan := 0
-	var got uuid.UUID
-	var sawOnBattlefield bool
+	resetProbes()
+	testEnteredSeen = nil
 	g.mu.Lock()
 	ebPayLifeToUntap(g, card.InstanceID, me.ID, 2)
-	err := g.ReturnFromExileToBattlefieldThenForEffect(card.InstanceID, uuid.Nil, false,
-		func(g *Game, entered uuid.UUID) error {
-			thenRan++
-			got = entered
-			_, sawOnBattlefield = g.battlefieldCardLocked(entered)
-			return nil
-		})
+	err := g.ReturnFromExileToBattlefieldKeyedForEffect(card.InstanceID, uuid.Nil, false, KeyedTail{Ref: testEnteredTail})
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("return: %v", err)
 	}
-	if thenRan != 0 {
+	if len(testProbeHeard) != 0 {
 		t.Fatal("the continuation ran while the entry's question was open")
 	}
 	c := ebPayLifePrompt(g)
@@ -48,9 +41,10 @@ func TestExileReturnThenWaitsForAPausedEntry(t *testing.T) {
 	if err := g.ResolveEntryPayLife(c.ID, me.ID, true); err != nil {
 		t.Fatalf("pay: %v", err)
 	}
-	if thenRan != 1 {
-		t.Fatalf("continuation ran %d times, want 1", thenRan)
+	if len(testProbeHeard) != 1 {
+		t.Fatalf("continuation ran %d times, want 1", len(testProbeHeard))
 	}
+	got, sawOnBattlefield := probeEntered()[0], testEnteredSeen[0]
 	if got == uuid.Nil || got == card.InstanceID {
 		t.Errorf("continuation told %s; want the new object's ID (CR 400.7)", got)
 	}
@@ -70,13 +64,7 @@ func TestExileReturnThenIsToldWhenNothingEnters(t *testing.T) {
 	card := ebLand(me.ID, "Fountain")
 	g.Exile.PushTop(card)
 
-	calls := 0
-	var got []uuid.UUID
-	record := func(_ *Game, entered uuid.UUID) error {
-		calls++
-		got = append(got, entered)
-		return nil
-	}
+	resetProbes()
 	g.mu.Lock()
 	g.RegisterReplacementForTest(ReplacementEffect{
 		Watches: []EventKind{EventZoneMove},
@@ -89,16 +77,17 @@ func TestExileReturnThenIsToldWhenNothingEnters(t *testing.T) {
 		},
 		Label: "test: cancel the return",
 	})
-	if err := g.ReturnFromExileToBattlefieldThenForEffect(card.InstanceID, uuid.Nil, false, record); err != nil {
+	if err := g.ReturnFromExileToBattlefieldKeyedForEffect(card.InstanceID, uuid.Nil, false, probeTail()); err != nil {
 		t.Errorf("cancelled return: %v", err)
 	}
-	err := g.ReturnFromExileToBattlefieldThenForEffect(uuid.New(), uuid.Nil, false, record)
+	err := g.ReturnFromExileToBattlefieldKeyedForEffect(uuid.New(), uuid.Nil, false, probeTail())
 	g.mu.Unlock()
 	if !errors.Is(err, ErrCardNotFound) {
 		t.Errorf("missing card: err = %v, want ErrCardNotFound", err)
 	}
-	if calls != 2 || got[0] != uuid.Nil || got[1] != uuid.Nil {
-		t.Errorf("continuation calls %d with %v; want 2 with uuid.Nil", calls, got)
+	got := probeEntered()
+	if calls := len(got); calls != 2 || got[0] != uuid.Nil || got[1] != uuid.Nil {
+		t.Errorf("continuation calls %d with %v; want 2 with uuid.Nil", len(got), got)
 	}
 	if !g.Exile.Contains(card.InstanceID) {
 		t.Error("a cancelled return leaves the card in exile")

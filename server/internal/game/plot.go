@@ -56,7 +56,8 @@ import "github.com/google/uuid"
 // A card that is not in exile is left alone and is not an error — the
 // instruction reads "it becomes plotted" off a move that may have gone
 // elsewhere (a commander taking CR 903.9's offer), and the caller that
-// cares asks through ExileSpellThenForEffect's `exiled`.
+// cares asks through ExileSpellKeyedForEffect's tail, which is told the
+// card only when it reached exile.
 //
 // It emits EventBecomesPlotted once the permission is in place (#1382),
 // which is what "when this card becomes plotted" watches. The plotter

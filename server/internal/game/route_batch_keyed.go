@@ -198,8 +198,22 @@ func (g *Game) ExileLinkedKeyedForEffect(source ObjectRef, ids []uuid.UUID, then
 	return g.routeAllKeyedLocked(r, ids, then)
 }
 
-// PutCardsIntoGraveyardKeyedForEffect is PutCardsIntoGraveyardThenForEffect
-// with the continuation as data.
+// PutCardsIntoGraveyardKeyedForEffect puts every card in `ids` into its
+// owner's graveyard as one simultaneous exit and tells `then` (a registered
+// tail) the ones that actually reached the graveyard — Valakut Exploration's
+// "put them into their owner's graveyard, then this enchantment deals that
+// much damage" (#1218) needs the count AFTER the move lands, not before: a
+// leg can pause on a replacement's prompt exactly as an exile or a destroy
+// leg can (ADR 0013 §5t), so a caller that read back a pre-move tally would
+// pay out for a move the window has not answered yet.
+// PutIntoGraveyardForEffect (random_bottom.go) is the same exit with no
+// continuation. (The closure form, PutCardsIntoGraveyardThenForEffect, was
+// deleted in #4253's cleanup once nothing called it.)
+//
+// Refuses any id still on the battlefield (ErrInvalidParam), for the same
+// reason PutIntoGraveyardForEffect does: leaving the battlefield for a
+// graveyard is a destroy, a sacrifice or a state-based action, each with its
+// own path and its own event, and none of them is this.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) PutCardsIntoGraveyardKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {
@@ -228,7 +242,13 @@ func (g *Game) SacrificeAllKeyedForEffect(source uuid.UUID, ids []uuid.UUID, the
 }
 
 // BounceCardsToHandKeyedForEffect is BounceCardsToHandThenForEffect with
-// the continuation as data.
+// the continuation as data. It is also the single-card "return it, THEN …"
+// (#993; a batch of one, since #4253's cleanup deleted the closure wrapper
+// BounceToHandThenForEffect): a hand is a CR 903.9 destination, so every
+// bounce can pause, and the tail is told the card only when it reached a
+// hand — not when the CR 614 window cancelled the move, a replacement sent
+// it elsewhere, or a commander took CR 903.9's offer. The tail runs on
+// every one of those outcomes.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) BounceCardsToHandKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {

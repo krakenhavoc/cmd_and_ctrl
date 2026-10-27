@@ -56,41 +56,25 @@ func skullwinderReturn(g *game.Game, item *game.StackItem) error {
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Skullwinder — choose an opponent to return a card from their graveyard",
-		Then:     skullwinderOpponentReturn,
+		ThenKey:  skullwinderOpponentReturn,
 	}.Apply(ctx)
 }
 
-// skullwinderOpponentReturn queues the chosen opponent's own pick.
+// skullwinderOpponentReturn queues the chosen opponent's own pick, keyed
+// (#4253): both prompts carry the trigger as data, so a table waiting on
+// either is a restore point. An on-disk key: never renamed, never reused.
 //
 // Mandatory for them — "that player returns a card" — so the floor is
 // one, and an opponent with an empty graveyard is not prompted at all
 // (CR 608.2, as much as it can).
-func skullwinderOpponentReturn(ctx *Context) error {
-	opp := ctx.ChosenPlayer()
+var skullwinderOpponentReturn = ChoosePlayerThen("option-pick/skullwinder-opponent", func(ctx *Context, opp uuid.UUID, _ []uuid.UUID) error {
 	cards := graveyardCardsOfPlayer(ctx.Game, opp)
 	if opp == uuid.Nil || len(cards) == 0 {
 		return nil
 	}
-	// The resolving item, lifted out so the continuation can bind a
-	// FRESH Context to it against whichever *Game the resolver hands
-	// back — the undo rule every chained prompt here follows (see
-	// may_choice.go).
-	resolving := ctx.Item
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    opp,
-		FromPlayer: opp,
-		Source:     ctx.Source(),
-		Question:   "Skullwinder — return a card from your graveyard to your hand",
-		Cards:      cards,
-		Min:        1,
-		Max:        1,
-		// Re-checked on submit: a card can leave the graveyard
-		// between the question and the answer.
-		Zone: game.ZoneGraveyard,
-		Then: ReturnPickedToHand(resolving),
-	})
+	queueReturnPickedToHand(ctx, opp, "Skullwinder — return a card from your graveyard to your hand", cards)
 	return nil
-}
+})
 
 // graveyardCardsOfPlayer lists a player's graveyard in zone order —
 // the candidate set behind "a card from their graveyard".

@@ -188,15 +188,15 @@ func TestTheThenClauseOfASkippedSelfActHearsNo(t *testing.T) {
 	heard := map[string]bool{}
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, item)
-		_ = SacrificePermanent{Target: src, Then: func(_ *Context, ok bool) error { heard["sacrifice"] = ok; return nil }}.Apply(ctx)
 		testHeardExile = heard
+		_ = SacrificePermanent{Target: src, ThenTail: withWord(ctx.Tail(testHeardThenTail), "sacrifice")}.Apply(ctx)
 		_ = ExileTarget{Target: src, ThenTail: ctx.Tail(testHeardExileTail)}.Apply(ctx)
-		_ = BounceToHand{Target: src, Then: func(_ *Context, ok bool) error { heard["bounce"] = ok; return nil }}.Apply(ctx)
+		_ = BounceToHand{Target: src, ThenTail: withWord(ctx.Tail(testHeardThenTail), "bounce")}.Apply(ctx)
 	})
 	for _, k := range []string{"sacrifice", "exile", "bounce"} {
 		ok, ran := heard[k]
 		if !ran || ok {
-			t.Errorf("%s's Then: ran=%v told=%v, want it told false", k, ran, ok)
+			t.Errorf("%s's tail: ran=%v told=%v, want it told false", k, ran, ok)
 		}
 	}
 	if !onTheBattlefield(g, src) {
@@ -766,10 +766,16 @@ func exprString(e ast.Expr) string {
 
 // testHeardExile and testHeardExileTail let a test hear ExileTarget's keyed
 // "then" (#4253 slice 9): the tail writes whether the card was exiled.
+// testHeardThenTail is the same for any single-card door, under the tail's
+// Word (#4253 retired SacrificePermanent's and BounceToHand's closure Then).
 var (
 	testHeardExile     map[string]bool
 	testHeardExileTail = CardTail("test/4253-heard-exile", func(_ *Context, o game.TailOutcome) error {
 		testHeardExile["exile"] = len(o.IDs) == 1
+		return nil
+	})
+	testHeardThenTail = CardTail("test/4253-heard-then", func(_ *Context, o game.TailOutcome) error {
+		testHeardExile[o.Tail.Word] = oneWentThisWay(o)
 		return nil
 	})
 )

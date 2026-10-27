@@ -28,7 +28,7 @@ func TestDoStepsProbeSeesTheSteps(t *testing.T) {
 func TestSourceBlindRowClassification(t *testing.T) {
 	when := func(game.Event, *game.Card, game.Characteristic, *game.Game) bool { return true }
 	row := func(effect Effect) game.TriggeredAbility { return On(game.EventETB, when, "Probe — x", effect) }
-	scryThen := Scry{N: 1, Then: func(*game.Game) error { return nil }}
+	scryThen := Scry{N: 1, ThenTail: game.KeyedTail{Ref: thenDrawACard}}
 	for _, c := range []struct {
 		name string
 		t    game.TriggeredAbility

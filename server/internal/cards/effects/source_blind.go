@@ -76,17 +76,19 @@ func doStepsOf(e Effect) ([]Applier, bool) {
 //   - GetEnergy: a fixed number of energy counters.
 //   - CreateToken: a fixed number of a fixed token.
 //   - BecomeTheMonarch: the controller becomes the monarch.
-//   - Scry, Surveil with no Then: a fixed number of cards, the source
-//     passed on as the prompt's and the event's attribution. A Then is
-//     a closure the registry cannot read, so it is not on the list.
+//   - Scry, Surveil with no ThenTail: a fixed number of cards, the
+//     source passed on as the prompt's and the event's attribution. A
+//     tail is a registered body the registry cannot read, so it is not on
+//     the list (#4253 retired the closure Then this line used to ask
+//     about; the keyed tail that replaced it is read the same way).
 func sourceBlindStep(a Applier) bool {
 	switch s := a.(type) {
 	case GainLife, DrawCards, MillCards, GetEnergy, CreateToken, BecomeTheMonarch:
 		return true
 	case Scry:
-		return s.Then == nil
+		return s.ThenTail.IsZero()
 	case Surveil:
-		return s.Then == nil
+		return s.ThenTail.IsZero()
 	}
 	return false
 }

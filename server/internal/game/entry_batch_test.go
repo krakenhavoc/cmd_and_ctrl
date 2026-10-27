@@ -517,21 +517,17 @@ func TestExileReturnLeavesATokenInExile(t *testing.T) {
 	token := Card{InstanceID: uuid.New(), Name: "Soldier", TypeLine: "Token Creature — Soldier",
 		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
 	g.Exile.PushTop(token)
-	called := false
+	resetProbes()
 	g.mu.Lock()
-	err := g.ReturnFromExileToBattlefieldThenForEffect(token.InstanceID, uuid.Nil, false, func(_ *Game, entered uuid.UUID) error {
-		called = true
-		if entered != uuid.Nil {
-			t.Errorf("entered = %v, want nothing", entered)
-		}
-		return nil
-	})
+	err := g.ReturnFromExileToBattlefieldKeyedForEffect(token.InstanceID, uuid.Nil, false, probeTail())
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("return: %v", err)
 	}
-	if !called {
+	if got := probeEntered(); len(got) != 1 {
 		t.Error("the continuation is told nothing entered")
+	} else if got[0] != uuid.Nil {
+		t.Errorf("entered = %v, want nothing", got[0])
 	}
 	if g.Battlefield.Size() != 0 {
 		t.Error("a token that left the battlefield came back (CR 111.8)")

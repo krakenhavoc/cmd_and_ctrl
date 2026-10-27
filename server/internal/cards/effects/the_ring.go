@@ -272,19 +272,14 @@ type TheRingTemptsYou struct {
 	// controller, which is what every printed Ring card says.
 	Player uuid.UUID
 
-	// Then is the rest of the sentence, run once the tempt is complete
-	// and handed the creature chosen as the Ring-bearer — uuid.Nil
-	// when the player controlled no creature (the tempt still happened,
-	// CR 701.54d). Ringsight's search and One Ring to Rule Them All's
-	// mill come after the tempt; nil for a card whose sentence ends
-	// there.
-	Then func(ctx *Context, ringBearer uuid.UUID) error
-
-	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
-	// the Ring-bearer as its one ID (none when no creature could be
-	// chosen). A tempt with no Then is keyed, so a table waiting on the
-	// Ring-bearer choice is a restore point. Set Then or ThenTail, not
-	// both; Then wins.
+	// ThenTail is the rest of the sentence, a registered tail (#4253
+	// slice 10b) run once the tempt is complete and told the creature
+	// chosen as the Ring-bearer as its one ID — none when the player
+	// controlled no creature (the tempt still happened, CR 701.54d).
+	// Ringsight's search and One Ring to Rule Them All's mill come after
+	// the tempt; zero for a card whose sentence ends there. The tempt is
+	// keyed, so a table waiting on the Ring-bearer choice is a restore
+	// point.
 	ThenTail game.KeyedTail
 }
 
@@ -293,18 +288,7 @@ func (r TheRingTemptsYou) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if r.Then == nil {
-		return ctx.Game.RingTemptsKeyedForEffect(player, ctx.Source(), r.ThenTail)
-	}
-	item := ctx.Item
-	then := r.Then
-	var tail func(g *game.Game, ringBearer uuid.UUID) error
-	if then != nil {
-		tail = func(g *game.Game, ringBearer uuid.UUID) error {
-			return then(NewContext(g, item), ringBearer)
-		}
-	}
-	return ctx.Game.RingTemptsForEffect(player, ctx.Source(), tail)
+	return ctx.Game.RingTemptsKeyedForEffect(player, ctx.Source(), r.ThenTail)
 }
 
 // RingTail registers a tempt's keyed "then" (TheRingTemptsYou.ThenTail),

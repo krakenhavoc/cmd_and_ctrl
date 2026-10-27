@@ -7,11 +7,12 @@ import "github.com/google/uuid"
 // data.
 //
 // The batch exiles one card at a time, each from the previous leg's
-// route continuation (exileFaceDownLegsLocked), so a leg paused on a CR
-// 616.1 ordering prompt or a commander's CR 903.9 choice holds the rest
-// behind it. That continuation was a closure over the remaining cards,
-// the landed list and the caller's `then`, so the prompt was not a
-// restore point. The keyed form carries the same three things as data on
+// route continuation, so a leg paused on a CR 616.1 ordering prompt or a
+// commander's CR 903.9 choice holds the rest behind it. That continuation
+// was a closure over the remaining cards, the landed list and the caller's
+// `then` (exileFaceDownLegsLocked, deleted with its last caller in #4253's
+// cleanup), so the prompt was not a restore point. The keyed form carries
+// the same three things as data on
 // the route (zoneRoute.faceDownLegs): the remaining IDs, the landed IDs,
 // and the caller's continuation as a registered tail (Necropotence's
 // delivery) or a synchronous door's result.
@@ -52,8 +53,8 @@ func cloneFaceDownExileRun(r *faceDownExileRun) *faceDownExileRun {
 	return &out
 }
 
-// exileFaceDownLegsKeyedLocked is exileFaceDownLegsLocked with the rest
-// of the batch as data.
+// exileFaceDownLegsKeyedLocked exiles the batch's legs one card at a time,
+// with the rest of the batch as data.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) exileFaceDownLegsKeyedLocked(r *faceDownExileRun) error {
@@ -84,7 +85,7 @@ func (g *Game) exileFaceDownLegsKeyedLocked(r *faceDownExileRun) error {
 }
 
 // runFaceDownExileStepLocked counts the leg that just settled and walks
-// on: the keyed form of the leg closure in exileFaceDownLegsLocked.
+// on.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) runFaceDownExileStepLocked(r *faceDownExileRun) error {
@@ -97,10 +98,19 @@ func (g *Game) runFaceDownExileStepLocked(r *faceDownExileRun) error {
 	})
 }
 
-// ExileTopFaceDownKeyedForEffect is ExileTopFaceDownThenForEffect with
-// the continuation as data (#4253 slice 3): `then` is a registered tail
-// (RegisterTail), told the cards that landed in exile, top card first,
-// as TailOutcome.IDs. A leg's prompt is then a restore point.
+// ExileTopFaceDownKeyedForEffect is ExileTopFaceDownForEffect for a clause
+// that acts on the cards the exile took ("Exile the top card of your library
+// face down. Put that card into your hand at the beginning of your next end
+// step", #4259), with the continuation as data (#4253 slice 3): `then` is a
+// registered tail (RegisterTail), told the cards that landed in exile, top
+// card first, as TailOutcome.IDs, once the whole batch is done — at once when
+// nothing paused, and from the answer to a CR 616.1 ordering prompt (or a
+// CR 903.9 choice) when a leg did. A leg's prompt is then a restore point.
+// It also runs, told nothing, when there was nothing to exile (an empty
+// library or n of zero); a zero tail is a plain exile. Nothing is exiled
+// when the player is not found: the error is returned and the tail does not
+// run. (The closure form, ExileTopFaceDownThenForEffect, was deleted in
+// #4253's cleanup.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileTopFaceDownKeyedForEffect(playerID uuid.UUID, n int, then KeyedTail) error {

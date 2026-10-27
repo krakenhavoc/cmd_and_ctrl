@@ -34,6 +34,19 @@ func stampTop(t *testing.T, p *game.Player, typeLines ...string) []uuid.UUID {
 	return out
 }
 
+// testLegalEachTake is the fan-out below as a registered definition (#4253
+// retired the unkeyed EachPlayerTakesFromLibrary, whose legs held closures).
+var testLegalEachTake = effects.RegisterEachTake("test/4253-legal-each-take", "test/4253-legal-each-take-leg",
+	effects.TakeDef{
+		Reveal: true,
+		Label:  "test — you may reveal a land card and/or an instant or sorcery card",
+		Slots: []effects.TakeSlot{
+			{Label: "a land card", Match: effects.Land(), Max: 1},
+			{Label: "an instant or sorcery card", Match: effects.Or(effects.Instant(), effects.Sorcery()), Max: 1},
+		},
+		Then: effects.TakeRestOnBottomInRandomOrder,
+	}, nil)
+
 func TestEachPlayerTakeSlotsEnumeratesOnlyAcceptedSets(t *testing.T) {
 	g := newTable(t)
 	me, them := g.Seats[0], g.Seats[1]
@@ -47,15 +60,10 @@ func TestEachPlayerTakeSlotsEnumeratesOnlyAcceptedSets(t *testing.T) {
 			Players: []uuid.UUID{me.ID, them.ID},
 			N:       5,
 			Take: effects.TakeFromLibraryToHand{
-				Slots: []effects.TakeSlot{
-					{Label: "a land card", Match: effects.Land(), Max: 1},
-					{Label: "an instant or sorcery card", Match: effects.Or(effects.Instant(), effects.Sorcery()), Max: 1},
-				},
 				Optional: true,
-				Reveal:   true,
 				Label:    "test — you may reveal a land card and/or an instant or sorcery card",
-				Then:     effects.TakeRestOnBottomInRandomOrder,
 			},
+			Keyed: testLegalEachTake,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

@@ -17,6 +17,26 @@ import (
 
 // squireTriggersLocked is squireTriggers for a caller that already holds
 // the game's lock: a damage continuation.
+
+// The damage continuations these tests hear, as registered tails (#4253
+// retired DealDamageToPlayerThenForEffect's closure): testSquireSeenTail
+// records how many Selfless Squire triggers (its carried ID) are waiting
+// when the second instruction runs, testDamageRanTail that it ran at all.
+var (
+	testSquireSeen     = -1
+	testSquireSeenTail = game.RegisterTail("test/4253-squire-seen", func(g *game.Game, o game.TailOutcome) error {
+		if len(o.Tail.Carry) > 0 {
+			testSquireSeen = squireTriggersLocked(g, o.Tail.Carry[0])
+		}
+		return nil
+	})
+	testDamageTailRan bool
+	testDamageRanTail = game.RegisterTail("test/4253-damage-ran", func(*game.Game, game.TailOutcome) error {
+		testDamageTailRan = true
+		return nil
+	})
+)
+
 func squireTriggersLocked(g *game.Game, squire uuid.UUID) int {
 	n := 0
 	for _, it := range g.PendingTriggers {
@@ -75,7 +95,6 @@ func TestKharnHoldsSelflessSquiresAnnouncementsUntilTheAnswer(t *testing.T) {
 	squire := castSquire(t, g)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
 	life := me.Life
-	seen := -1
 	g.WithWriteLock(func() {
 		if err := g.DamageInstanceForEffect(func() error {
 			if err := g.DealDamageToCreatureForEffect(src, kharn, 1); err != nil {
@@ -85,10 +104,8 @@ func TestKharnHoldsSelflessSquiresAnnouncementsUntilTheAnswer(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := g.DealDamageToPlayerThenForEffect(src, me.ID, 3, func(g *game.Game, _ int) error {
-			seen = squireTriggersLocked(g, squire)
-			return nil
-		}); err != nil {
+		testSquireSeen = -1
+		if err := g.DealDamageToPlayerKeyedForEffect(src, me.ID, 3, game.KeyedTail{Ref: testSquireSeenTail, Carry: []uuid.UUID{squire}}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -96,12 +113,12 @@ func TestKharnHoldsSelflessSquiresAnnouncementsUntilTheAnswer(t *testing.T) {
 	if latestChoiceOfKindFor(g, game.PendingChoiceOptionPick, me.ID) == nil {
 		t.Fatal("Khârn asked nothing")
 	}
-	if n := squireTriggers(g, squire); n != 0 || seen != -1 {
-		t.Fatalf("%d Squire triggers and the second instruction saw %d while the question is open; want 0 and not run", n, seen)
+	if n := squireTriggers(g, squire); n != 0 || testSquireSeen != -1 {
+		t.Fatalf("%d Squire triggers and the second instruction saw %d while the question is open; want 0 and not run", n, testSquireSeen)
 	}
 	kharnAnswer(t, g, me.ID, third.ID)
-	if seen != 2 {
-		t.Fatalf("the second instruction went on with %d Squire triggers; want 2 — both owed announcements first", seen)
+	if testSquireSeen != 2 {
+		t.Fatalf("the second instruction went on with %d Squire triggers; want 2 — both owed announcements first", testSquireSeen)
 	}
 	if n := squireTriggers(g, squire); n != 2 {
 		t.Fatalf("%d Squire triggers after the answer, want 2: one per application", n)
@@ -168,26 +185,23 @@ func TestChannelHarmAndSelflessSquire(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetCard, ID: bear}})
 	passPriorityAroundTable(t, g)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
-	seen := -1
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToPlayerThenForEffect(src, me.ID, 3, func(g *game.Game, _ int) error {
-			seen = squireTriggersLocked(g, squire)
-			return nil
-		}); err != nil {
+		testSquireSeen = -1
+		if err := g.DealDamageToPlayerKeyedForEffect(src, me.ID, 3, game.KeyedTail{Ref: testSquireSeenTail, Carry: []uuid.UUID{squire}}); err != nil {
 			t.Fatal(err)
 		}
 	})
 	g.RunStateChecksForTest()
 	ask := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)
-	if ask == nil || seen != -1 || squireTriggers(g, squire) != 0 {
+	if ask == nil || testSquireSeen != -1 || squireTriggers(g, squire) != 0 {
 		t.Fatalf("want Channel Harm's question with the trigger and the instruction waiting; question %v, seen %d, triggers %d",
-			ask, seen, squireTriggers(g, squire))
+			ask, testSquireSeen, squireTriggers(g, squire))
 	}
 	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if seen != 1 || damageMarkedOn(g, bear) != 3 {
-		t.Fatalf("after yes: the instruction saw %d Squire triggers (want 1), bear damage %d (want 3)", seen, damageMarkedOn(g, bear))
+	if testSquireSeen != 1 || damageMarkedOn(g, bear) != 3 {
+		t.Fatalf("after yes: the instruction saw %d Squire triggers (want 1), bear damage %d (want 3)", testSquireSeen, damageMarkedOn(g, bear))
 	}
 	passPriorityAroundTable(t, g)
 	if n := countersOn(g, squire, game.CounterPlusOne); n != 3 {
@@ -210,31 +224,28 @@ func TestChannelHarmsDamageMeetsBloodOfTheMartyr(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
 	life := me.Life
-	ran := false
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToPlayerThenForEffect(src, me.ID, 3, func(*game.Game, int) error {
-			ran = true
-			return nil
-		}); err != nil {
+		testDamageTailRan = false
+		if err := g.DealDamageToPlayerKeyedForEffect(src, me.ID, 3, game.KeyedTail{Ref: testDamageRanTail}); err != nil {
 			t.Fatal(err)
 		}
 	})
 	g.RunStateChecksForTest()
 	ask := latestChoiceOfKindFor(g, game.PendingChoiceConfirm, me.ID)
-	if ask == nil || openPrompts(g) != 1 || ran {
-		t.Fatalf("want only Channel Harm's question open and the instruction waiting; question %v, %d open, ran %v", ask, openPrompts(g), ran)
+	if ask == nil || openPrompts(g) != 1 || testDamageTailRan {
+		t.Fatalf("want only Channel Harm's question open and the instruction waiting; question %v, %d open, ran %v", ask, openPrompts(g), testDamageTailRan)
 	}
 	if err := g.ResolveConfirm(ask.ID, me.ID, true); err != nil {
 		t.Fatal(err)
 	}
 	may := rcMayPrompt(t, g, me.ID)
-	if openPrompts(g) != 1 || ran || !g.ResolutionPaused() {
-		t.Fatalf("want only the redirection open, holding the instruction; %d open, ran %v, paused %v", openPrompts(g), ran, g.ResolutionPaused())
+	if openPrompts(g) != 1 || testDamageTailRan || !g.ResolutionPaused() {
+		t.Fatalf("want only the redirection open, holding the instruction; %d open, ran %v, paused %v", openPrompts(g), testDamageTailRan, g.ResolutionPaused())
 	}
 	if err := g.ResolveOptionalReplacement(may.ID, me.ID, true); err != nil {
 		t.Fatal(err)
 	}
-	if !ran {
+	if !testDamageTailRan {
 		t.Fatal("the instruction did not go on after both answers")
 	}
 	if me.Life != life-3 || damageMarkedOn(g, bear) != 0 {

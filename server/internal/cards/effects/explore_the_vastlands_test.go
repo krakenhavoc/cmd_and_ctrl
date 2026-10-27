@@ -252,15 +252,23 @@ func TestExploreTheVastlandsRefusesAnIllegalPick(t *testing.T) {
 	}
 }
 
+// testSlotsTake is the slot rule of TestTakeSlotsACardMatchingBothFillsOneSlot
+// as a registered take (#4253 retired the unkeyed take, whose pick held a
+// closure).
+var testSlotsTake = RegisterTake("test/4253-take-creature-and-or-artifact", TakeDef{
+	Reveal: true,
+	Slots: []TakeSlot{
+		{Label: "a creature card", Match: Creature(), Max: 1},
+		{Label: "an artifact card", Match: Artifact(), Max: 1},
+	},
+	Then: TakeRestOnBottomInRandomOrder,
+})
+
 // TestTakeSlotsACardMatchingBothFillsOneSlot is the primitive, alone,
 // on the case the two Vastlands predicates never print together but
 // real cards do: an artifact creature fits "a creature card" AND "an
 // artifact card", and fills one of them, not both.
 func TestTakeSlotsACardMatchingBothFillsOneSlot(t *testing.T) {
-	slots := []TakeSlot{
-		{Label: "a creature card", Match: Creature(), Max: 1},
-		{Label: "an artifact card", Match: Artifact(), Max: 1},
-	}
 	take := func(t *testing.T, cards []vastCard) (*game.Game, *game.Player, []uuid.UUID, *game.PendingChoice) {
 		t.Helper()
 		g := newCatalogGame(t)
@@ -271,11 +279,9 @@ func TestTakeSlotsACardMatchingBothFillsOneSlot(t *testing.T) {
 			err := TakeFromLibraryToHand{
 				Player:   me.ID,
 				Cards:    g.LookAtTopOfLibraryForEffect(me.ID, len(cards)),
-				Slots:    slots,
 				Optional: true,
-				Reveal:   true,
 				Label:    "test — you may reveal a creature card and/or an artifact card",
-				Then:     TakeRestOnBottomInRandomOrder,
+				Key:      testSlotsTake,
 			}.Apply(ctx)
 			if err != nil {
 				t.Fatalf("Apply: %v", err)

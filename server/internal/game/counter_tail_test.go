@@ -283,27 +283,20 @@ func TestEarthbendThenReadsTheLandAfterAPausedPlacement(t *testing.T) {
 	land := earthbendTestLand(t, g, me, "Forest")
 	registerPausingCounterBoard(g, CounterPlusOne)
 
-	runs, power := 0, -1
+	testEarthbendPower, testEarthbendRuns = -1, 0
 	g.WithWriteLock(func() {
-		err := g.EarthbendThenForEffect(me.ID, uuid.Nil, land, 3, func(g *Game) error {
-			runs++
-			g.RecomputeLayersIfStaleLocked()
-			if c, ok := g.battlefieldCardLocked(land); ok {
-				power = c.CurrentPower()
-			}
-			return nil
-		})
+		err := g.EarthbendKeyedForEffect(me.ID, uuid.Nil, land, 3, KeyedTail{Ref: testEarthbendTail, Carry: []uuid.UUID{land}})
 		if err != nil {
-			t.Fatalf("EarthbendThenForEffect: %v", err)
+			t.Fatalf("EarthbendKeyedForEffect: %v", err)
 		}
 	})
-	if runs != 0 {
-		t.Fatalf("the rest of the sentence ran with the counters still owed (read power %d)", power)
+	if testEarthbendRuns != 0 {
+		t.Fatalf("the rest of the sentence ran with the counters still owed (read power %d)", testEarthbendPower)
 	}
 	answerCounterOrder(t, g)
 	// ×2 then +1: 3 → 6 → 7, on a 0/0 body.
-	if runs != 1 || power != 7 {
-		t.Errorf("after the answer: runs=%d, that land's power=%d; want 1 and 7", runs, power)
+	if testEarthbendRuns != 1 || testEarthbendPower != 7 {
+		t.Errorf("after the answer: runs=%d, that land's power=%d; want 1 and 7", testEarthbendRuns, testEarthbendPower)
 	}
 }
 
@@ -312,17 +305,14 @@ func TestEarthbendThenReadsTheLandAfterAPausedPlacement(t *testing.T) {
 func TestEarthbendThenRunsWhenTheLandHasLeft(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	runs := 0
+	testEarthbendPower, testEarthbendRuns = -1, 0
 	g.WithWriteLock(func() {
-		if err := g.EarthbendThenForEffect(me.ID, uuid.Nil, uuid.New(), 3, func(*Game) error {
-			runs++
-			return nil
-		}); err != nil {
-			t.Fatalf("EarthbendThenForEffect: %v", err)
+		if err := g.EarthbendKeyedForEffect(me.ID, uuid.Nil, uuid.New(), 3, KeyedTail{Ref: testEarthbendTail}); err != nil {
+			t.Fatalf("EarthbendKeyedForEffect: %v", err)
 		}
 	})
-	if runs != 1 {
-		t.Errorf("continuation ran %d times, want 1", runs)
+	if testEarthbendRuns != 1 {
+		t.Errorf("continuation ran %d times, want 1", testEarthbendRuns)
 	}
 }
 

@@ -799,67 +799,22 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 // pile anywhere — which is precisely the failure #1006 named and fixed
 // one leg further along.
 //
-// `then` receives the pile the chooser TOOK first and the other one
+// ThenTail is told the pile the chooser TOOK first and the other one
 // second, both in the order they were split. A splitter who has left
-// the game, or a card list with nothing in it, runs `then` with
-// everything in the first pile and nothing in the second: the reveal
-// still happened and the rest of the card still has to resolve.
+// the game, or a card list with nothing in it, runs it with everything
+// in the first pile and nothing in the second: the reveal still
+// happened and the rest of the card still has to resolve.
 //
 // Caller must hold g.mu.
 func (g *Game) QueuePileSplitForEffect(p PileSplitPrompt) {
-	if p.Then == nil && !p.ThenTail.IsZero() {
-		// #4253 slice 10b: both links and the rest are data
-		// (pile_split_keyed.go).
-		g.queuePileSplitKeyedLocked(p)
+	if p.ThenTail.IsZero() {
+		// Nothing hangs off the split: nothing to ask (#4253 retired the
+		// closure Then; a split with neither asked nothing either).
 		return
 	}
-	if len(p.Cards) == 0 || p.Then == nil {
-		if p.Then != nil {
-			if err := p.Then(g, nil, nil); err != nil {
-				g.emitChoiceEffectErrorLocked(p.Chooser, p.Source, err)
-			}
-		}
-		return
-	}
-	cards := copyUUIDs(p.Cards)
-	chooser := p.Chooser
-	owner := p.Owner
-	if owner == uuid.Nil {
-		owner = chooser
-	}
-	source := p.Source
-	pickQuestion := p.PickQuestion
-	then := p.Then
-	faceDown := p.FaceDown
-	if who := g.playerByIDLocked(p.Splitter); who == nil || who.Eliminated {
-		// The splitter has left the game BEFORE the question could go
-		// up (CR 800.4a). Nobody can separate the cards, so the whole
-		// reveal is one pile and the rest of the card resolves against
-		// it — the answer this shape has always given, kept here
-		// explicitly now that the run below would otherwise settle an
-		// empty first pile instead.
-		if err := then(g, cards, nil); err != nil {
-			g.emitChoiceEffectErrorLocked(chooser, source, err)
-		}
-		return
-	}
-	_, err := g.RevealPickThenForEffect(RevealPickPrompt{
-		Chooser:  p.Splitter,
-		Owner:    owner,
-		Source:   source,
-		Question: p.SplitQuestion,
-		Cards:    cards,
-		Min:      0,
-		Max:      len(cards),
-	}, func(g *Game, picked, _ []uuid.UUID) error {
-		if faceDown {
-			return g.queueFaceDownPilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
-		}
-		return g.queuePilePickLocked(chooser, owner, source, pickQuestion, cards, picked, then)
-	})
-	if err != nil {
-		g.emitChoiceEffectErrorLocked(chooser, source, err)
-	}
+	// #4253 slice 10b: both links and the rest are data
+	// (pile_split_keyed.go).
+	g.queuePileSplitKeyedLocked(p)
 }
 
 // PileSplitPrompt is the queue-side description of a pile split.
@@ -880,14 +835,11 @@ type PileSplitPrompt struct {
 	// Cards are the cards being separated, in the order the table saw
 	// them revealed.
 	Cards []uuid.UUID
-	// Then receives the pile the chooser took and the pile they left,
-	// in that order. Runs with g.mu held.
-	Then func(g *Game, taken, left []uuid.UUID) error
-	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
-	// the pile taken and then the pile left as its IDs, with how many were
-	// taken as its Amount. Both prompts are then keyed, so a table waiting
-	// on either is a restore point. Set Then or ThenTail, not both; Then
-	// wins.
+	// ThenTail is the rest of the card (#4253 slice 10b): a registered
+	// tail told the pile the chooser took and then the pile they left as
+	// its IDs, with how many were taken as its Amount. It runs with g.mu
+	// held. Both prompts are keyed, so a table waiting on either is a
+	// restore point. Required: a zero tail queues nothing.
 	ThenTail KeyedTail
 	// FaceDown makes this the "face-down pile and a face-up pile" split
 	// (Sauron's Ransom, Fortune's Favor, Atris, Riddles in the Dark,
@@ -899,99 +851,6 @@ type PileSplitPrompt struct {
 	// is never revealed, so only the knower set keeps it off the chooser's
 	// wire and the table's.
 	FaceDown bool
-}
-
-// queuePilePickLocked is the second link of a pile split: the chooser
-// takes one of the two piles.
-//
-// A package-level-shaped continuation reading only scalars and frozen
-// slices, for the reason delayed triggers give — the closure has to
-// resolve against whichever *Game it is handed, which after an undo is
-// the restored one and not the one that queued it.
-//
-// Caller must hold g.mu.
-func (g *Game) queuePilePickLocked(
-	chooser, owner, source uuid.UUID,
-	question string,
-	all, first []uuid.UUID,
-	then func(g *Game, taken, left []uuid.UUID) error,
-) error {
-	pileOne, pileTwo := partitionPiles(all, first)
-	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
-		Chooser:    chooser,
-		FromPlayer: owner,
-		Source:     source,
-		Question:   question,
-		Options: []ChoiceOption{
-			{Label: pileLabel(1, pileOne), Cards: pileOne},
-			{Label: pileLabel(2, pileTwo), Cards: pileTwo},
-		},
-		Then: func(g *Game, index int) error {
-			if index == 1 {
-				return then(g, pileTwo, pileOne)
-			}
-			return then(g, pileOne, pileTwo)
-		},
-	})
-	if queued != uuid.Nil {
-		return nil
-	}
-	// The chooser has left the game between the split and the pick.
-	// Take the first pile so the rest of the card still resolves.
-	return then(g, pileOne, pileTwo)
-}
-
-// queueFaceDownPilePickLocked is the second link of a face-down split.
-// `faceDown` is the pile the splitter chose to hide; everything else is
-// the face-up pile, which is revealed to every seat here (CR 701.20a)
-// before the chooser is asked, so the table sees exactly what the
-// chooser sees. The face-down pile is not revealed, so redactChoiceCards
-// drops it from every seat that is not a knower: the splitter keeps it
-// (they looked), the chooser gets backs when the cards are their own and
-// nothing at all when they are not, and the option's label carries the
-// count either way.
-//
-// The options are face-up pile first and face-down second, a fixed order
-// that does not depend on which cards are where, so the order says
-// nothing about them.
-//
-// Caller must hold g.mu.
-func (g *Game) queueFaceDownPilePickLocked(
-	chooser, owner, source uuid.UUID,
-	question string,
-	all, faceDown []uuid.UUID,
-	then func(g *Game, taken, left []uuid.UUID) error,
-) error {
-	down, up := partitionPiles(all, faceDown)
-	g.RevealForEffect(RevealSpec{
-		Player: owner,
-		Source: source,
-		Reason: "face-up pile",
-		Cards:  up,
-	})
-	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
-		Chooser:    chooser,
-		FromPlayer: owner,
-		Source:     source,
-		Question:   question,
-		Options: []ChoiceOption{
-			{Label: facePileLabel("face-up", up), Cards: up},
-			{Label: facePileLabel("face-down", down), Cards: down},
-		},
-		Then: func(g *Game, index int) error {
-			if index == 1 {
-				return then(g, down, up)
-			}
-			return then(g, up, down)
-		},
-	})
-	if queued != uuid.Nil {
-		return nil
-	}
-	// The chooser has left between the split and the pick. Take the
-	// face-up pile, the one the table could see, so the rest of the card
-	// still resolves.
-	return then(g, up, down)
 }
 
 // facePileLabel names a face-up or face-down pile for its option

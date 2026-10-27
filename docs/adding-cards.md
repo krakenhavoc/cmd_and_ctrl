@@ -2236,9 +2236,9 @@ asks: once the window above has settled it queues a
 `PendingChoiceProliferate` offering every permanent and player with a
 counter, with the beneficial pick suggested (and pre-selected, and what
 a bot answers with). It PAUSES the effect that asked, so anything the
-card says after "proliferate" goes in `Proliferate{Then: func(g
-*game.Game) error {…}}` and not on the next line — Steady Progress draws
-from its `Then`. Capture scalars, never the `*Context`. Explicit lists
+card says after "proliferate" goes in `Proliferate{ThenTail: ctx.Tail(ref)}`
+(a registered tail, `game.RegisterTail` or `CardTail`) and not on the next
+line — Steady Progress draws from its tail. Explicit lists
 (`Proliferate{Cards: …, Players: …}`) skip the prompt. A card that only
 proliferates is `CompletenessFull`; there is no caveat to write. A card
 that goes on about what the proliferate did ("permanents that had a
@@ -3959,7 +3959,7 @@ DrawLimits: PlayersCantDrawCards(),                        // Maralen of the Mor
   many"; `MayDraw(row, n)` on a row that builds its `OptionalPrompt` with a
   chooser) instead of `Optional`; the ability then resolves as a "no".
   A `MayChoice` sets `Draws: n` (and `Drawer` when someone else
-  draws, as in Combustible Gearhulk); `OnNo` runs at once. "Draw up to
+  draws, as in Combustible Gearhulk); its `Then` runs at once as a "no". "Draw up to
   N" caps its choice with `Game.DrawChoiceCeilingForEffect(player, N)`.
   A choice to draw multiple cards counts as one choice: under Narset,
   "you may draw two cards" can't be taken at all (CR 121.2b).
@@ -4256,8 +4256,8 @@ read the events after it in the next piece (Martial Coup, Cut a Deal). A
 `Do` wrapped by `InterveningIf` keeps its steps visible to the walk
 (Imoen, Mystic Trickster).
 
-A continuation with more than one instruction (a `Then`, an `OnYes`, the
-callback of a `...ThenForEffect` method) is written as continuation steps
+A continuation with more than one instruction (a registered tail or answer
+body, the callback of a `...ThenForEffect` method) is written as continuation steps
 (#4162): `var x = RegisterThenSteps("then-steps/<card>-<what>", step, …)`
 at package level, and the closure calls `x.Run(ctx)`. Record what the
 steps need from the closure first (the number chosen, the creature
@@ -5435,13 +5435,11 @@ its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
 Prodigy) also reads the hand and is not covered.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
-*after* "then" goes in `Then`, not on the next line:
+*after* "then" goes in `ThenTail`, a registered tail, not on the next line:
 
 ```go
 Scry{Player: ctx.Controller(), N: 1}                       // Viscera Seer
-Scry{Player: c, N: 2, Then: func(g *game.Game) error {     // Preordain: "Scry 2, then draw"
-    return g.DrawNForEffect(c, 1)
-}}
+Scry{N: 2, ThenTail: ctx.Tail(thenDrawACard)}              // Preordain: "Scry 2, then draw"
 ```
 
 `Scry` only QUEUES a prompt — nothing moves until the player answers.
@@ -5558,13 +5556,13 @@ leg that moved nothing. The batch form is built on the single one; don't
 write your own loop that waits. A card that only says "gain 3" keeps
 using `GainLife` / `ChangePlayerLifeForEffect` and needs nothing.
 
-**Damage has the same `Then` forms, for the same reason (#807).** A
+**Damage has the same continuation forms, for the same reason (#807).** A
 damage event runs the CR 614 window too, so "deals N damage to each
 opponent. You gain life equal to the damage dealt this way" (Creeping
 Bloodsucker) is the life drain's twin and reads zero the same way:
 
 ```go
-g.DealDamageToPlayerThenForEffect(src, opp, n, func(g *game.Game, dealt int) error { … })
+g.DealDamageToPlayerKeyedForEffect(src, opp, n, ctx.Tail(ref))   // ref told the player and the damage dealt as its Amount
 g.DealDamageToCreatureThenForEffect(src, card, n, func(g *game.Game, dealt int) error { … })
 g.DealDamageEachThenForEffect(src, ctx.Opponents(), n, func(g *game.Game, total int) error { … })
 ```
@@ -5736,10 +5734,10 @@ other card, and never add a caveat for the command zone.
 
 **"For each X destroyed this way" comes from a continuation too
 (#815).** A destruction can pause on a replacement's prompt, so the
-number is not knowable on the line after the sweep. `DestroyAllMatching`'s `Then` already receives it; what
-changed is that the clause now runs from the sweep's continuation
-(`g.DestroyPermanentsThenForEffect`), so it may run an action later,
-and its two arguments finally describe the same set: `swept` is the
+number is not knowable on the line after the sweep. `DestroyAllMatching`'s `ThenTail` (a `MassTail`) receives it;
+the clause runs from the sweep's continuation
+(`g.DestroyPermanentsKeyedForEffect`), so it may run an action later,
+and its two arguments describe the same set: `swept` is the
 pre-move copies of the permanents that were actually DESTROYED and
 `destroyed` is how many of them there were. Write the clause as
 something that acts on what it is handed, not as the next line of the
@@ -5760,8 +5758,8 @@ the command zone. See
 **"For each X exiled / returned this way" is a continuation too, and
 "this way" means ARRIVED (#866).** `ExileAllMatching`, `BounceAllMatching`
 and `ReturnAllToHand` behave exactly like `DestroyAllMatching`: give one
-a `Then` and it runs from the sweep's continuation
-(`g.ExileCardsThenForEffect` / `g.BounceCardsToHandThenForEffect`) with
+a `ThenTail` (`MassTail`) and it runs from the sweep's continuation
+(`g.ExileCardsKeyedForEffect` / `g.BounceCardsToHandKeyedForEffect`), told
 the cards that actually reached the destination. CR 400.7 decides that
 — a commander that was exiled IS in the list (CR 903.9a asks its owner
 afterwards), but one bounced under CR 903.9b whose owner took the offer
@@ -5775,20 +5773,21 @@ their `int` for a sweep nothing is waiting on. See
 hit counter on it", "you may exile it. If you do, return a card",
 Winds of Abandon's single-target mode: one card is not a smaller
 problem, because the one leg is the one that can pause. So there is no
-per-card exile path to keep in step — `ExileTarget{Target: id, Then:
-func(ctx, exiled bool) error}` and `g.ExileCardThenForEffect` are
-wrappers over the batch, and `exiled` is the batch's CR 400.7 answer.
-`ExileTarget` with no `Then`, and the bare `g.ExileCardForEffect(id)`,
-stay the fire-and-forget form: their `nil` means "no error", never "it
-is in exile". A card that reads the move at all reaches for the `Then`.
+per-card exile path to keep in step — `ExileTarget{Target: id, ThenTail:
+ctx.Tail(ref)}` and `g.ExileCardKeyedForEffect` are wrappers over the
+batch, and the tail is told the card only when it reached exile (the
+batch's CR 400.7 answer; `oneWentThisWay`). `ExileTarget` with no
+`ThenTail`, and the bare `g.ExileCardForEffect(id)`, stay the
+fire-and-forget form: their `nil` means "no error", never "it is in
+exile". A card that reads the move at all reaches for the tail.
 
-**A mill reports what LANDED, through the same `Then` (#893).** A mill
+**A mill reports what LANDED, through the same kind of tail (#893).** A mill
 opens the CR 614 window per card, so a replacement may stop to ask
-and what was milled is not knowable on the next line. `MillToZone{…, Then: func(ctx, milled []uuid.UUID) error}`
-and `g.MillToZoneThenForEffect` are the read-back — `milled` is
+and what was milled is not knowable on the next line. `MillToZone{…, ThenTail: ctx.Tail(ref)}`
+and `g.MillToZoneThenForEffect` are the read-back — what the tail is told is
 CR 400.7's answer, the cards that ARRIVED in the destination, so a
 card an "exile it instead" replacement rewrote is not in it (a milled
-commander is: CR 903.9a asks its owner afterwards). `MillToZone` with no `Then`,
+commander is: CR 903.9a asks its owner afterwards). `MillToZone` with no `ThenTail`,
 `MillCards` and `g.MillToZoneForEffect` stay fire-and-forget: they mill
 AROUND a paused card rather than waiting for it, which is right when
 nothing is waiting on the answer and wrong the moment anything reads
@@ -6290,10 +6289,9 @@ EachPlayerTakesFromLibrary{             // "each player looks at the top five �
             {Label: "a land card", Match: Land(), Max: 1},
             {Label: "an instant or sorcery card", Match: Or(Instant(), Sorcery()), Max: 1},
         },
-        Optional: true, Reveal: true,
-        Then: TakeRestOnBottomInRandomOrder,   // each player's own rest
+        Optional: true,
     },
-    Then: func(g *game.Game, _ []TakeFromLibraryResult) error { … },  // "each player gains 3 life"
+    Keyed: exploreTheVastlandsTakes,   // RegisterEachTake: the reveal, the slots, each player's rest and "each player gains 3 life"
 }.Apply(ctx)
 ```
 
@@ -7571,12 +7569,12 @@ Then you may sacrifice this land") stays a `MayChoice` inside it.
 **"Unless that player pays {N}"** (Rhystic Study, Smothering Tithe,
 Esper Sentinel) is a `PayUnless` primitive the trigger's `Effect`
 applies: it queues a `pay_unless` prompt for the taxed player and
-returns; the "unless" consequence runs later as `OnDecline` when
+returns; the "unless" consequence runs later as its registered `Else` when
 they answer "Don't pay" — or "Pay" without the mana in pool +
 untapped sources. Read the payer's ID off the triggering event at
 resolution (`item.Trigger.Event.Actor` for cast / draw events — not
 captured in a `Build`, which would put the row on the legacy list) and
-read the controller off the `Context` inside `OnDecline`. See
+read the controller off the `Context` inside `Else`. See
 [rhystic_study.go](../server/internal/cards/effects/rhystic_study.go),
 whose `Effect` reads the payer as `ctx.Trigger().Event.Actor`.
 Write the decline KEYED (#4256): `Else: smotheringTitheDecline` with
@@ -7592,8 +7590,9 @@ read what they do for a closure), its targets, its triggering event
 (`r.Carry`: Wandering Archaic's spell, Goblin Vandal's artifact, Ripples of
 Undeath's milled cards) or, for a permanent with its epoch,
 `MayPay.CarryObjects` (`r.Objects`: Dance of the Dead's creature). The key is an
-on-disk identity, ledgered as `payunless <key>`. A closure `OnDecline` still
-works and is not a restore point.
+on-disk identity, ledgered as `payunless <key>`. There is no closure form
+any more (#4253's cleanup retired `OnDecline`, `OnPay` and `OnPaid`); a
+`PayUnless` with no `Else` is a decline that does nothing.
 A keyed pay-unless carries the cause it was queued under (the asking spell or
 ability's controller and ID, `PendingChoice.PayCauseController` and
 `PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered
@@ -7655,8 +7654,9 @@ Mog, Myriad). **Share a key when the consequence is word for word the same**
 (`may_shared.go`): `mayDrawCards` (Word is N), `mayGainLife`,
 `mayCreateTokens` (`tokenWord(n, template)`), `mayCopyThisSpell`,
 `mayPayLifeDraw` (the life is `LifeCost`, the draw the Word),
-`maySearchNamedLibraryOrGraveyard`, `mayFabricate`. A closure `OnYes` / `OnNo`
-still works and is not a restore point.
+`maySearchNamedLibraryOrGraveyard`, `mayFabricate`. There is no closure form
+any more: #4253's cleanup retired `OnYes` / `OnNo`, and a `MayChoice` with no
+`Then` is refused.
 
 **A loop is data on the prompt** (#4298). A "repeat until" or "for each of those
 cards" confirm carries its progress rather than a closure over it: Tainted Pact
@@ -7934,20 +7934,22 @@ land's question is a restore point.
 Three shapes, all addressed by `Player` / `Chooser`, so "you may" and
 "an opponent may" are the same call with a different seat.
 
-**`MayChoice{Player, Question, YesLabel, NoLabel, LifeCost, OnYes,
-OnNo}`** ([may_choice.go](../server/internal/cards/effects/may_choice.go))
+**`MayChoice{Player, Question, YesLabel, NoLabel, LifeCost, Then,
+Carry}`** ([may_choice.go](../server/internal/cards/effects/may_choice.go))
 is the free yes/no a RESOLVING effect asks — "you may [do X]. If you
 do, [Y]" where X is neither a search nor a cost the engine already
 prompts for (Eden's sacrifice after the mill, Combustible Gearhulk's
 question to its target). It is the existing `confirm` prompt underneath,
 so it needs no new kind; `Player` defaults to the controller. Anything
-printed after the decision goes in `OnYes`, not after `Apply` returns
-— `Apply` only queues the prompt, exactly as `Scry.Then` exists.
+printed after the decision goes in its registered `Then` (`MayYes`,
+`MayYesNo`, `MayAnswer`), not after `Apply` returns — `Apply` only queues
+the prompt, exactly as `Scry.ThenTail` exists.
 
-**`PickOption{Player, From, Question, Options, Then}`**
+**`PickOption{Player, From, Question, Options, ThenKey, Carry}`**
 ([resolution_choice.go](../server/internal/cards/effects/resolution_choice.go))
 is "choose one of the following" over three or more branches, on the
-new `option_pick` kind; `Then` gets the chosen INDEX. Build the option
+new `option_pick` kind; `ThenKey` (registered with `OptionPickThen`) gets
+the chosen INDEX. Build the option
 list out of what the chooser can actually DO (CR 608.2) and put a
 branch that always works FIRST — the enumerator marks that one
 always-legal, and a prompt whose every branch can fail is a seat that
@@ -7960,13 +7962,14 @@ does the rest — it drops an option the chooser cannot pay when the
 prompt is queued (CR 118.3), pays the chosen one through the auto-tapper
 as a pay-unless is paid, and refuses it, prompt still open, if the
 board moved in between. A cost on the first option, an `{X}` or an
-unparseable cost is refused as a card bug. `Then` still receives the
+unparseable cost is refused as a card bug. `ThenKey` still receives the
 index the card printed, even when an earlier option was dropped.
 
-**Keyed continuations (`ThenKey`, `Carry`).** A `Then` closure makes
-the table unrestorable while the prompt is open. For a question asked
-once per creature or per player, register the continuation instead:
-`var x game.OptionPickThen` assigned in the card's `init` with
+**Keyed continuations (`ThenKey`, `Carry`).** The continuation is always
+registered (#4253's cleanup retired the closure `Then`, which made the
+table unrestorable while the prompt was open):
+`var x game.OptionPickThen` assigned in the card's `init` (or a
+package-level var) with
 `effects.OptionPickThen("option-pick/<card>-<what>", fn)`, and pass
 `ThenKey: x, Carry: ids`. `fn(ctx, r)` gets a Context rebuilt with the
 asking effect's controller and the card as source, `r.Option` (the
@@ -7977,21 +7980,22 @@ it to the ledger (`go test ./internal/cards/effects -run
 TestEveryPersistedEffectKeyResolves -args -update-effect-keys`). Winter's
 Chill, Lim-Dûl's Hex and Thrull Wizard are the worked examples.
 
-**`PileSplit{Splitter, Chooser, Owner, Cards, Then}`** is "an opponent
+**`PileSplit{Splitter, Chooser, Owner, Cards, ThenTail}`** is "an opponent
 separates those cards into two piles; you take one" — two chained
-prompts to two different seats, and no kind of its own. **Reveal the
+prompts to two different seats, and no kind of its own. `ThenTail` is a
+`PileTail`, told the pile taken and the pile left. **Reveal the
 cards first** (`RevealTopOfLibrary`): the splitter is being asked about
 a zone that is not theirs, and protocol's `redactChoiceCards` shows
 them only what is public, so an unrevealed pool reaches them as an
 empty prompt.
 
-**`ChoosePlayer{Chooser, Among, Except, Question, Then}`**
+**`ChoosePlayer{Chooser, Among, Except, Question, ThenKey, Carry}`**
 ([choose_player.go](../server/internal/cards/effects/choose_player.go))
 is "choose a player" / "choose an opponent", also on `option_pick` —
 one option per eligible seat, labelled with that seat's name.
 `Among` is `Players`, `Opponents` or `OpponentsOf(id)`; `Except` is
 how "choose a SECOND player" is spelled, fed from
-`ctx.ChosenPlayers()`. `Then` reads the answer with
+`ctx.ChosenPlayers()`. `ThenKey` reads the answer with
 `ctx.ChosenPlayer()`, and it runs even when no question could be
 asked — an empty pool or a chooser who has left — in which case
 `ctx.ChosenPlayer()` is `uuid.Nil`, so **every branch checks before it
@@ -7999,7 +8003,8 @@ acts**.
 
 **`ChoosePlayer{…, ThenKey, Carry}`** (#4253 slice 10b) is `ChoosePlayer`
 with the answer as a registered continuation, so a table waiting on the
-choice is a restore point (a `ChoosePlayer.Then` is a closure and is not).
+choice is a restore point. It is the only form: #4253's cleanup retired the
+closure `ChoosePlayer.Then`.
 Register the body once, from a package-level var, with
 `ChoosePlayerThen("option-pick/<card>-<what>", func(ctx *Context, chosen
 uuid.UUID, carry []uuid.UUID) error {…})` (an on-disk key, ledgered). The
@@ -8138,10 +8143,10 @@ set comes back as `ErrChoiceSetRejected` with the prompt **still open**,
 and it is never called for an empty pick, which keeps "choose nothing"
 the answer a zero-floor prompt can always take. Every catalog primitive
 that raises a card-set pick forwards the field verbatim —
-`DiscardPrompt.Validate` (#624), `SearchLibrary.Validate` (#682),
-`PutFromLibraryOntoBattlefield.Validate` and
-`TakeFromLibraryToHand.Validate` (#998) — so **if you add another, add
-the passthrough with it**. One behaviour rides along: a set rule turns
+`DiscardPrompt.Validate` (#624), `SearchLibrary.Rule` (#682; a registered
+search rule since #4253 slice 5), `PutFromLibraryOntoBattlefield.Validate`
+and `TakeDef.Validate` (#998; the registered take) — so **if you add
+another, add the passthrough with it**. One behaviour rides along: a set rule turns
 OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
@@ -9032,7 +9037,7 @@ Do(EachManifestsFromHand{N: 1})                                                 
 (a `choose_cards` tagged `game.ChooseManifest`), all at once and in
 secret, as one run; a hand of `N` cards or fewer is not asked and
 manifests everything; an empty hand is skipped. The picks then enter in
-ONE batch (`Game.ManifestFromHandsThenForEffect`), each under its owner,
+ONE batch (`Game.ManifestFromHandsKeyedForEffect`), each under its owner,
 so a CR 614 window sees the board as it was before any of them arrived.
 `Then` is told the permanents that actually entered, so "for each card
 manifested this way" counts what arrived and not what was picked. Do
@@ -10196,15 +10201,13 @@ that prints one ships without that line and says so in `Caveats`.
 ### The Ring tempts you (ADR 0114, #2076)
 
 "The Ring tempts you" (CR 701.54) is one primitive. Its player is the
-controller, and `Then` is the rest of the sentence, handed the creature
-chosen as the Ring-bearer:
+controller, and `ThenTail` is the rest of the sentence, a registered tail
+(`RingTail`) told the creature chosen as the Ring-bearer:
 
 ```go
 Do(TheRingTemptsYou{})                                  // "the Ring tempts you."
-TheRingTemptsYou{Then: func(ctx *Context, rb uuid.UUID) error {
-    // "Then …" — runs after the tempt, with the new Ring-bearer
-    // (uuid.Nil when you controlled no creature).
-}}
+TheRingTemptsYou{ThenTail: ctx.Tail(ref)}               // "Then …" — runs after the tempt, told the new
+                                                        // Ring-bearer (nothing when you controlled no creature)
 ```
 
 The engine does the rest (`game.RingTemptsForEffect`, `game/ring.go`):
@@ -10390,7 +10393,8 @@ FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply
   controller it died under (CR 603.10a). Check it on the trigger and
   again on resolution.
 - **"If they do, you incubate 2"** after a counter-unless-pays is
-  `CounterUnlessPaid{OnPaid: …}` (#3591, Assimilate Essence): it runs only
+  `CounterUnlessPaid{Then: …}` (a `PayUnlessBranches` pay branch; #3591,
+  Assimilate Essence): it runs only
   after the payment was made, with the caster as the controller, and is
   dropped with the decline when the spell has left the stack.
 - **"A permanent you control enters transformed"** has no event of its
@@ -10676,7 +10680,7 @@ loyalty counters on it.
 EmpowerJace{N: 2}.Apply(ctx)                                    // "Empower Jace 2."
 Do(EmpowerJace{N: 4})                                           // a trigger's Effect: "When this creature enters, empower Jace 4."
 EmpowerJace{Count: func(ctx *Context) int { return … }}         // "Empower Jace X, where X is …", counted as it resolves
-EmpowerJace{N: 6, Then: func(ctx *Context) error { … }}         // "Empower Jace 6. Draw a card."
+EmpowerJace{N: 6, Then: ref}                                    // "Empower Jace 6. Draw a card." (ref from RegisterEmpowerThen)
 AdditionalCost: BeholdOrPay("a", "Jace", "{1}"),                // "behold a Jace or pay {1}" (Countersculpt)
 ```
 
@@ -11721,7 +11725,7 @@ EntryRestrictions: []game.EntryRestriction{CardsInZonesCantEnter(…)}          
 
 ```go
 ctx.Game.ReturnFromGraveyardWithCountersForEffect(id, uuid.Nil, false, map[string]int{"-1/-1": 1})    // Persist
-ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(id, ctrl, false, counters, func(g *game.Game, entered uuid.UUID) error { … }) // Makeshift Mannequin
+ctx.Game.ReturnFromGraveyardWithCountersKeyedForEffect(id, ctrl, false, counters, ctx.Tail(ref))   // Makeshift Mannequin: ref (EnteredTail) told what entered
 InGraveyard(On(game.EventCycle, Self, "…", func(g, item) error { x := item.Trigger.Event.Amount; … })) // Shark Typhoon
 ctx.SourcePermanent()                                                                                  // Ratatwotwo's X, last-known once it has left
 ```
@@ -11808,8 +11812,8 @@ ctx.SourcePermanent()                                                           
 - **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
   if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
   2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
-- **"For each permanent exiled this way"** with an "until" is `ExileUntil{…, Then: func(ctx, exiled bool) error}`,
-  counting the trues (Abdel Adrian).
+- **"For each permanent exiled this way"** with an "until" is `ExileUntil{…, ThenTail: ctx.ItemTail(ref)}`,
+  the tail told the card when it was exiled (Abdel Adrian).
 - **A preparation card's prepare spell that prints an existing spell's text** reuses that spell's body: Grave
   Researcher's Reanimate is `OnResolve: reanimateLosingItsManaValue`.
 - **Casualty N** is `OptionalCosts: []game.AdditionalCost{Casualty(N)}` (`casualty.go`); the copy is the engine's

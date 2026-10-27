@@ -111,28 +111,15 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 	return g.earthbendLocked(actor, source, land, n, nil, KeyedTail{})
 }
 
-// EarthbendThenForEffect is EarthbendForEffect with the rest of the
-// sentence: Earthshape's "Earthbend 3. Then each creature you control
-// with power less than or equal to that land's power gains hexproof".
-//
-// `then` runs once the earthbend has actually finished — after the
-// counters have LANDED, which on a board with two different counter
-// replacements (a Doubling Season beside a Hardened Scales) is when
-// the CR 616 ordering prompt is answered, not when this returns
-// (#1282). It also runs when the earthbend did nothing (replaced away,
-// or its land has left): the sentence after "then" is not conditional
-// on the keyword action having happened.
-//
-// A nil land is a no-op that still runs `then`, for the same reason.
-//
-// Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
-	return g.earthbendLocked(actor, source, land, n, then, KeyedTail{})
-}
-
-// EarthbendKeyedForEffect is EarthbendThenForEffect with the rest of the
-// sentence as data (#4253 slice 7): `then` is a registered tail
-// (RegisterTail), run once the counters have landed, and told nothing. An
+// EarthbendKeyedForEffect is EarthbendForEffect with the rest of the
+// sentence as data (#4253 slice 7): Earthshape's "Earthbend 3. Then each
+// creature you control with power less than or equal to that land's power
+// gains hexproof". `then` is a registered tail (RegisterTail), run once the
+// earthbend has actually finished — after the counters have LANDED (#1282)
+// — and told nothing. It also runs when the earthbend did nothing (replaced
+// away, or its land has left, or a nil land): the sentence after "then" is
+// not conditional on the keyword action having happened. (The closure form,
+// EarthbendThenForEffect, was deleted in #4253's cleanup.) An
 // earthbend whose counters stop on a CR 616 ordering prompt (a Doubling
 // Season beside a Hardened Scales) is then a restore point.
 //

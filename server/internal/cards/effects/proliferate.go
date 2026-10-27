@@ -56,16 +56,11 @@ type Proliferate struct {
 	Cards   []uuid.UUID
 	Players []uuid.UUID
 
-	// Then is the rest of the sentence after "proliferate". It runs
-	// with the game lock held, once the proliferate is finished.
-	// Capture scalars only (the controller's ID), never a *Context or
-	// a *Game: an undone game resolves it against the restored one.
-	Then func(g *game.Game) error
-
-	// ThenTail is Then as data (#4253 slice 10b): a registered tail run in
-	// the same place. A proliferate the player chooses with no Then is
-	// keyed from the prompt to the last counter, so a table waiting on the
-	// choice is a restore point. Set Then or ThenTail, not both; Then wins.
+	// ThenTail is the rest of the sentence after "proliferate", a
+	// registered tail (#4253 slice 10b). It runs with the game lock held,
+	// once the proliferate is finished. A proliferate the player chooses
+	// is keyed from the prompt to the last counter, so a table waiting on
+	// the choice is a restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -75,16 +70,10 @@ func (p Proliferate) Apply(ctx *Context) error {
 		controller = ctx.Controller()
 	}
 	if p.Cards == nil && p.Players == nil {
-		if p.Then == nil {
-			return ctx.Game.ProliferateChoosingKeyedForEffect(controller, ctx.Source(), p.ThenTail)
-		}
-		return ctx.Game.ProliferateChoosingForEffect(controller, ctx.Source(), p.Then)
+		return ctx.Game.ProliferateChoosingKeyedForEffect(controller, ctx.Source(), p.ThenTail)
 	}
 	if err := ctx.Game.ProliferateForEffect(controller, ctx.Source(), p.Cards, p.Players); err != nil {
 		return err
-	}
-	if p.Then != nil {
-		return p.Then(ctx.Game)
 	}
 	return p.ThenTail.Run(ctx.Game, nil)
 }
