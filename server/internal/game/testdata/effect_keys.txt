@@ -1631,3 +1631,8 @@ tail then/tribal-unity-type-chosen
 tail then/vision-charm-basic-type-chosen
 tail then/vision-charm-land-type-chosen
 tail then/wash-out-color-chosen
+resume replacement-resume/damage
+tail then/abdel-adrian-exiled-one
+tail then/aven-interrupter-plot
+tail then/mindbreak-trap-exile-rest
+tail then/screaming-nemesis-cant-gain-life
