@@ -366,6 +366,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if !KnownConfirmThen(c.PickThen) {
 				unknown = append(unknown, "confirm answer "+c.PickThen)
 			}
+		case c.Kind == PendingChoiceMayCast:
+			// #4361: a keyed may_cast's answer.
+			if !KnownMayCastThen(c.PickThen) {
+				unknown = append(unknown, "may-cast answer "+c.PickThen)
+			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}

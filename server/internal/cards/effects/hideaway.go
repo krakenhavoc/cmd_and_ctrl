@@ -208,12 +208,12 @@ func grantHiddenPlay(g *game.Game, player uuid.UUID, source game.PermissionCardR
 		if !g.CanPlayLandDuringResolutionForEffect(player, id) {
 			return
 		}
-		_ = g.QueueMayCastForEffect(player, source.ID, id,
-			label+" — play "+c.Name+"?",
-			func(g *game.Game) error {
-				_, err := g.PlayLandDuringResolutionForEffect(player, id)
-				return err
-			}, nil)
+		_ = g.QueueMayCastKeyedForEffect(game.MayCastPrompt{
+			Chooser:  player,
+			Source:   source.ID,
+			Card:     id,
+			Question: label + " — play " + c.Name + "?",
+		}, hideawayPlayLand, nil)
 		return
 	}
 	g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
@@ -225,3 +225,15 @@ func grantHiddenPlay(g *game.Game, player uuid.UUID, source game.PermissionCardR
 		Label:  label,
 	})
 }
+
+// hideawayPlayLand is the hidden land's offer (#4361): accepting plays it
+// as part of the resolution, and declining leaves it hidden. The player
+// and the land are the prompt's chooser and card. An on-disk key: never
+// renamed, never reused.
+var hideawayPlayLand = game.RegisterMayCastThen("may-cast/hideaway-play-land", func(g *game.Game, r game.MayCastAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	_, err := g.PlayLandDuringResolutionForEffect(r.Chooser, r.Card)
+	return err
+})

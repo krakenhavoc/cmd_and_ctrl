@@ -139,7 +139,11 @@ var closureClassCeilings = map[string]int{
 	// 113 (2026-10-27, #4361 S2): Game.resolving and resolvingItem.item
 	// to keyed (carried since #4270, counted like modeWalk.item);
 	// resolvingItem.card moved to census:IntrinsicAbilityCards (P11).
-	"census:ChoiceResumeFrames": 113,
+	// 110 (2026-10-27, #4361 S5): - PendingChoice.mayCastResume and
+	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
+	// and MayCastPrompt's branches; a may_cast's answer is a registered
+	// key (may_cast_keyed.go).
+	"census:ChoiceResumeFrames": 110,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

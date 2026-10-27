@@ -7684,6 +7684,14 @@ may" uses the same door: `game.RegisterConfirmThen` and `QueueConfirmKeyedForEff
 third chapter). A prompt whose words name a card in a hidden zone sets
 `PendingChoice.private`, which is written to the snapshot.
 
+**A "you may cast / play that card" offer is keyed the same way** (#4361). Register
+the answer with `game.RegisterMayCastThen("may-cast/<name>", fn)` and queue it with
+`QueueMayCastKeyedForEffect(game.MayCastPrompt{...}, key, carry)`; the answer is
+handed the chooser, the source, the offered card and `Accepted` (Malcolm, Alluring
+Scoundrel's free cast, hideaway's land, Ziatora's Envoy's land). There is no
+closure form: `QueueMayCastForEffect` and `MayCastPrompt.OnAccept` / `OnDecline`
+are gone.
+
 **The prompt that leads into a confirm is keyed too** (#4301). A look-at-top or an
 ordering prompt asks its "then" through a tail, not a closure: `LookAtTop{ThenTail:
 ctx.ItemTail(ref)}` (Ponder) and `LookAtLibraryThenPlace{ThenTail: tail}` /
