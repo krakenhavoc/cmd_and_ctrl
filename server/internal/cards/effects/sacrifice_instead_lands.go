@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entering (the Lotus Vale and Scorched Ruins rulings). A land played
 // this way has still used the turn's land drop (CR 116.2a, 305.2).
 //
-// The sacrifice is an effect's (SacrificeAllThenForEffect): every
+// The sacrifice is an effect's (SacrificeAllKeyedForEffect): every
 // EventSacrifice payoff sees it, and "if you do" means every named
 // permanent really left the battlefield. The clause reads effective
 // characteristics, so a land an Urborg made a Swamp is a Swamp.

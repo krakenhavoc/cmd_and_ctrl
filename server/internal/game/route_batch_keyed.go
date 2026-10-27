@@ -5,8 +5,8 @@ import "github.com/google/uuid"
 // route_batch_keyed.go — #4253 slice 9: a route batch with the rest of the
 // batch as data, so a leg paused on a CR 616 prompt is a restore point.
 //
-// routeAllThenLocked routes a batch one leg at a time, each from the
-// previous leg's continuation (zoneRoute.then), so a leg paused on a CR
+// A route batch routes one leg at a time, each from the
+// previous leg's continuation (once zoneRoute.then), so a leg paused on a CR
 // 616 ordering prompt or a "may" replacement's question holds the rest of
 // the batch behind it. That continuation was a closure over the remaining
 // cards, the landed list and the caller's `then`, and the leg's route also
@@ -72,8 +72,9 @@ func cloneRouteBatchRun(r *routeBatchRun) *routeBatchRun {
 	return &out
 }
 
-// routeAllKeyedLocked is routeAllThenLocked with the continuation as data:
-// `then` is a registered tail (RegisterTail), told the cards that landed
+// routeAllKeyedLocked routes every card in `ids` as one simultaneous exit
+// with the continuation as data (#4361 S17 deleted the closure form,
+// routeAllThenLocked): `then` is a registered tail (RegisterTail), told the cards that landed
 // where the route asked as TailOutcome.IDs. A leg's prompt is then a
 // restore point.
 //
@@ -115,8 +116,8 @@ func (g *Game) routeAllRunLocked(r zoneRoute, ids []uuid.UUID, run *routeBatchRu
 // Caller must hold g.mu in write mode.
 func (g *Game) routeBatchStepKeyedLocked(tmpl zoneRoute, batch []Card, run *routeBatchRun) error {
 	ids := run.Rest
-	// A leg with nothing to do is skipped and not counted, as in
-	// routeEachStepLocked.
+	// A leg with nothing to do is skipped and not counted, as
+	// routeLegNothingToDoLocked says.
 	for len(ids) > 0 && g.routeLegNothingToDoLocked(tmpl, ids[0]) {
 		ids = ids[1:]
 	}
@@ -127,19 +128,17 @@ func (g *Game) routeBatchStepKeyedLocked(tmpl zoneRoute, batch []Card, run *rout
 	leg.Leg = ids[0]
 	leg.Rest = copyUUIDs(ids[1:])
 	tmpl.batchLegs = leg
-	return g.routeLegLocked(tmpl, ids[0], batch, nil)
+	return g.routeLegLocked(tmpl, ids[0], batch)
 }
 
 // runRouteBatchLegLocked counts the leg that just settled and routes the
-// next one: the keyed form of routeEachStepLocked's leg closure. r is the
-// settled leg's route, and the next leg's route is it with the card
-// cleared.
+// next one. r is the settled leg's route, and the next leg's route is it
+// with the card cleared.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) runRouteBatchLegLocked(r *zoneRoute, run *routeBatchRun) error {
 	tmpl := *r
 	tmpl.CardID = uuid.Nil
-	tmpl.then = nil
 	tmpl.batchLegs = nil
 	tmpl.simultaneousExit = nil
 	tmpl.simultaneousEntry = nil
@@ -292,8 +291,11 @@ func (g *Game) DestroyPermanentsKeyedForEffect(ids []uuid.UUID, then KeyedTail, 
 	return g.routeAllKeyedLocked(destroyRouteWith(firstDestroyOptions(opts)), g.hostsBeforeAttachmentsLocked(g.DestructibleForEffect(ids)), then)
 }
 
-// SacrificeAllKeyedForEffect is SacrificeAllThenForEffect with the
-// continuation as data.
+// SacrificeAllKeyedForEffect sacrifices every permanent in `ids` as one
+// simultaneous event and tells `then` (a registered tail) the ones that
+// were really sacrificed. (The closure form, SacrificeAllThenForEffect,
+// was deleted in #4361 S17 with its last caller, an entry choice's
+// sacrifice.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) SacrificeAllKeyedForEffect(source uuid.UUID, ids []uuid.UUID, then KeyedTail) error {

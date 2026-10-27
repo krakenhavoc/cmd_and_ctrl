@@ -30,8 +30,9 @@ import "github.com/google/uuid"
 // (cloneReplacementResume), so a replayed answer finds the continuation
 // intact rather than consumed by the live game. No new field reaches a
 // closure from Game (closure_fields.txt, ADR 0041 P3): the route rides an
-// edge the event already has. A life change paused with one is still
-// counted by the census (replacementEventKeyable), as before.
+// edge the event already has. Since #4361 S17 both are written to a
+// restore point (lifeTailSnapshot.Move beside the event's route), so a
+// life change paused with one is a restore point.
 
 // lifeInstruction is one declared life change: who changes, by how much
 // (signed, negative for a loss), and the source the log credits. All

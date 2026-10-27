@@ -973,6 +973,14 @@ type Game struct {
 	// Clone and the persisted snapshot carry it. See mode_walk.go.
 	pausedModeWalk *modeWalk
 
+	// frozenEntries are the paused entries whose entry choice has been
+	// answered with a discard or a sacrifice that is still settling (#4361
+	// S17, owner decision D4, entry_card_choice.go): each frame's event
+	// and the effect that asked, by event ID, until the action's keyed
+	// tail resumes the entry. Copy on write, and a frame is never written
+	// after it is frozen. Clone and the persisted snapshot carry them.
+	frozenEntries []*replacementResumeFrame
+
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the

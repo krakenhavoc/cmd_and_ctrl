@@ -34,7 +34,7 @@ import (
 //     candidate set is filtered to the five printed types — nothing
 //     lets Braids sacrifice a battle, the one permanent type the card
 //     predates and does not name.
-//  3. Once the sacrifice has actually happened (SacrificeAllThenForEffect's
+//  3. Once the sacrifice has actually happened (SacrificeAllKeyedForEffect's
 //     `sacrificed` list, not the pick itself — CR 701.17a's own
 //     "sacrifice is not replaceable" still opens a CR 903.9 window on
 //     the MOVE for a sacrificed commander), each opponent in turn

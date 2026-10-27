@@ -19,7 +19,7 @@ import (
 //  1. "Sacrifice any number" is one own-permanents pick over your
 //     artifacts, enchantments and tokens with a floor of zero
 //     (ChoosePermanents, Scapeshift's shape), and the chosen ones are
-//     sacrificed together (SacrificeAllThenForEffect).
+//     sacrificed together (SacrificeAllKeyedForEffect).
 //  2. "That many" is how many really left the battlefield, read off
 //     the sacrifice's answer rather than off the clicks (#1019's
 //     rule), so a permanent that could not be sacrificed buys nothing.

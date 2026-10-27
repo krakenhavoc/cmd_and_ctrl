@@ -188,7 +188,7 @@ var (
 	graveyardVerb = exitVerb{kind: "graveyard arrival", fix: "there is no continuation form for a graveyard " +
 		"arrival yet — g.PutIntoGraveyardForEffect rides routeCardToZoneLocked and returns before a " +
 		"paused leg lands, so write the wrapper beside g.ExileCardKeyedForEffect " +
-		"(routeAllThenLocked(zoneRoute{Dst: ZoneGraveyard}, …) is the body) rather than reading back " +
+		"(routeAllKeyedLocked(zoneRoute{Dst: ZoneGraveyard}, …) is the body) rather than reading back " +
 		"on the next line"}
 )
 

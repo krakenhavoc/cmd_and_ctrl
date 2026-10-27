@@ -434,6 +434,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	unknown = append(unknown, unknownParkedDrawKeys(s.ParkedDraws)...)
 	// #4253: a keyed damage park's tail is a key too.
 	unknown = append(unknown, unknownFollowUpParkKeys(s.FollowUpParks)...)
+	// #4361 S17: a frozen entry's event names its bodies and tails too.
+	for i := range s.FrozenEntries {
+		unknown = append(unknown, unknownReplacementEventKeys(&s.FrozenEntries[i].Event)...)
+	}
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

@@ -625,7 +625,7 @@ func TestDisturbingMirthSacrificesForCardsAndManifestsWhenItself(t *testing.T) {
 		g, me, top, second := dreadTable(t)
 		mirth := pushPermanentForTest(g, me.ID, "Disturbing Mirth", mdMirthOracle, "Enchantment")
 		g.WithWriteLock(func() {
-			if err := g.SacrificeAllThenForEffect(uuid.Nil, []uuid.UUID{mirth}, nil); err != nil {
+			if err := g.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{mirth}, game.KeyedTail{}); err != nil {
 				t.Fatal(err)
 			}
 		})

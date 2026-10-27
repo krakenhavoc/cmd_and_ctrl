@@ -95,11 +95,11 @@ func discardUnder(t *testing.T, g *Game, p *Player, itemController uuid.UUID, ca
 		}
 		err := g.discardCardsLocked(p.ID, cards, discardOptions{
 			cause: cause,
-			then: func(_ *Game, landed []uuid.UUID) error {
+			keyed: hookTail(func(_ *Game, o TailOutcome) error {
 				got.runs++
-				got.landed = append([]uuid.UUID(nil), landed...)
+				got.landed = append([]uuid.UUID(nil), o.IDs...)
 				return nil
-			},
+			}),
 		})
 		g.resolving = nil // play moves on before any prompt is answered
 		if err != nil {
@@ -593,7 +593,10 @@ func TestADiscardWhoseCardLeftTheHandMovesNothing(t *testing.T) {
 			DiscardCause:  DiscardCauseEffect,
 			zoneRoute: &zoneRoute{
 				CardID: card, Dst: ZoneGraveyard, DstOwner: p.ID, Actor: p.ID, Discard: true,
-				then: func(*Game) error { tailRuns++; return nil },
+				discardLegs: &discardBatchRun{Player: p.ID, Leg: card, Then: snapshotKeyedTail(hookTail(func(*Game, TailOutcome) error {
+					tailRuns++
+					return nil
+				}))},
 			},
 		})
 		if err != nil {

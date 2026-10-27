@@ -56,71 +56,21 @@ import "github.com/google/uuid"
 // Caller must hold g.mu.
 func (g *Game) discardOntoBattlefieldLocked(ev *ReplacementEvent) error {
 	r := ev.zoneRoute
-	if legs := r.discardLegs; legs != nil && r.then == nil {
-		// #4253 slice 9: a keyed discard batch hands its rest to the
-		// entry as data (discardEntryRun), so the entry's prompt is a
-		// restore point too.
-		r.discardLegs = nil
-		return g.discardOntoBattlefieldKeyedLocked(ev, *r, legs)
-	}
-	// Detach the rest of the batch from the route. routeCardToZoneLocked
-	// runs the route's tail when this returns unpaused, and an entry
-	// that pauses returns unpaused from here, so the tail has to belong
-	// to the entry's continuation instead. Cleared through the pointer,
-	// as runRouteTailLocked does; an undo snapshot holds its own copy of
-	// the route (cloneReplacementResume).
-	tail := r.then
-	r.then = nil
-	route := *r
-	finish := func(g *Game) error {
-		if tail == nil {
-			return nil
+	legs := r.discardLegs
+	// #4253 slice 9: a discard batch hands its rest to the entry as data
+	// (discardEntryRun), so the entry's prompt is a restore point. Every
+	// discard is that batch (#4361 S17 deleted the closure batch and this
+	// door's closure branch with it).
+	if legs == nil {
+		// A lone discard route nothing follows: a batch of one.
+		player := ev.DiscardPlayer
+		if player == uuid.Nil {
+			player = r.Actor
 		}
-		return tail(g)
+		legs = &discardBatchRun{Player: player, Source: r.Source, Cause: r.DiscardCause, Leg: ev.CardID}
 	}
-
-	player := ev.DiscardPlayer
-	if player == uuid.Nil {
-		player = r.Actor
-	}
-	p := g.playerByIDLocked(player)
-	if p == nil || p.Hand == nil || !p.Hand.Contains(ev.CardID) {
-		// The card left the hand before the handoff ran: nothing moves,
-		// no discard happened (CR 701.9a), and the batch carries on, as
-		// it does for a stale exit.
-		return finish(g)
-	}
-
-	cardID := ev.CardID
-	discard := Event{
-		Kind:         EventDiscardCard,
-		Actor:        player,
-		Source:       route.Source,
-		CardID:       cardID,
-		OldZone:      ZoneHand,
-		DiscardCause: ev.DiscardCause,
-	}
-	if route.Actor != uuid.Nil {
-		discard.Actor = route.Actor
-	}
-	route.Cause.stampCause(&discard)
-
-	opts := HandEntryOptions{
-		Controller:         player,
-		EntersWithCounters: copyCounterMap(ev.EntersWithCounters),
-	}
-	return g.PutFromHandOntoBattlefieldThenForEffect(cardID, opts, func(g *Game, _ uuid.UUID) error {
-		// Where the card is now. A hand card keeps its ID through the
-		// entry and through a redirect out of the entry window, so the
-		// live zone is the answer. Still in hand: the entry window
-		// cancelled it, the card never left, and there was no discard.
-		if z := g.findCardZoneLocked(cardID); z != nil && z.Kind != ZoneHand {
-			out := discard
-			out.NewZone = z.Kind
-			g.EmitEvent(out)
-		}
-		return finish(g)
-	})
+	r.discardLegs = nil
+	return g.discardOntoBattlefieldKeyedLocked(ev, *r, legs)
 }
 
 // DiscardCausedByOpponent reports whether a discard replacement event

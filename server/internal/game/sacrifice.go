@@ -77,7 +77,7 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
 	r.MustSettleNow = mustSettleNow
-	return g.routeLegLocked(r, cardID, nil, nil)
+	return g.routeLegLocked(r, cardID, nil)
 }
 
 // announceSacrificeLocked emits EventSacrifice for the permanent's

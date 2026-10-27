@@ -30,7 +30,7 @@ import (
 // whose only valid set is every candidate needs no prompt; picks are bound
 // to the original objects, so a permanent that left and came back is not
 // part of the final action. With Sacrifice the final action is one
-// simultaneous sacrifice (SacrificeAllThenForEffect), and the
+// simultaneous sacrifice (SacrificeAllKeyedForEffect), and the
 // continuation is handed the permanents that really left.
 
 // orderedPicks is a keyed ordered collection in flight. A copy rides each

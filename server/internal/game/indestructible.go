@@ -142,7 +142,7 @@ func (g *Game) destroyBattlefieldPermanentLocked(cardID uuid.UUID, opts DestroyO
 	// marks the CR 614 event as a DESTRUCTION, which is the only thing
 	// a regeneration shield is allowed to replace, and what carries
 	// "it can't be regenerated" (CR 701.19c) down to it.
-	return g.routeBattlefieldExitInBatchThenLocked(cardID, destroyRouteWith(opts), nil, nil)
+	return g.routeBattlefieldExitInBatchLocked(cardID, destroyRouteWith(opts), nil)
 }
 
 // DestructibleForEffect narrows a mass-destruction set down to the

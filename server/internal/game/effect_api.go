@@ -3806,7 +3806,7 @@ type HandEntryOptions = ZoneEntryOptions
 // choice, a shockland's life, a reveal-land's reveal — because the put
 // batch it runs through is resumable now (entry_batch.go). On such a
 // pause it returns uuid.Nil and the card lands when the answer
-// arrives; PutFromHandOntoBattlefieldThenForEffect is the door for a
+// arrives; PutFromHandOntoBattlefieldKeyedForEffect is the door for a
 // caller that needs the result.
 //
 // Returns the entering permanent's ID. It is the InstanceID the card

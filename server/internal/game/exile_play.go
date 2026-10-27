@@ -322,7 +322,7 @@ func (g *Game) grantImpulseExilePermissionLocked(perm CastPermission, grantTo uu
 // card and a cast surface on it.
 //
 // The cards are chosen UP FRONT, top first, and moved by ID through
-// the shared exit primitive, one at a time through its continuation:
+// the shared exit primitive, one at a time as a keyed route batch:
 // the millPlanLocked argument, for the same reason. A commander among
 // them is offered the command zone (CR 903.9), the question leaves it
 // ON the library, and re-reading the top would hand back the same
@@ -375,28 +375,33 @@ func (g *Game) ExileCardsFaceDownWithPermissionForEffect(ids []uuid.UUID, grantT
 	return g.exileFaceDownPermittedLocked(append([]uuid.UUID(nil), ids...), grantTo, perm)
 }
 
-// exileFaceDownPermittedLocked moves the first card of `ids` into
-// exile face down and, from the move's continuation, grants `perm`
-// over it if it landed there and moves the rest. Caller must hold g.mu.
+// exileFaceDownPermittedLocked moves `ids` into exile face down, one at a
+// time as a keyed route batch, and grants `perm` over each card that
+// landed there (faceDownPermittedGranted). #4361 S17: the batch's rest
+// and the grant are data on the route, so a leg's CR 616 or CR 903.9
+// prompt is a restore point; before this each leg's grant and the next
+// leg were a closure (zoneRoute.then). Caller must hold g.mu.
 func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, perm CastPermission) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	id, rest := ids[0], ids[1:]
-	_, err := g.routeCardToZoneLocked(zoneRoute{
-		CardID:   id,
-		Dst:      ZoneExile,
-		Actor:    actor,
-		FaceDown: FaceDownPermitted,
-		then: func(g *Game) error {
-			if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneExile {
-				g.GrantCastPermissionOverCardForEffect(id, perm)
-			}
-			return g.exileFaceDownPermittedLocked(rest, actor, perm)
-		},
-	})
-	return err
+	grant := KeyedTail{Ref: faceDownPermittedGranted, Player: actor, Permission: &perm}
+	return g.routeAllKeyedLocked(zoneRoute{Dst: ZoneExile, Actor: actor, FaceDown: FaceDownPermitted}, ids, grant)
 }
+
+// faceDownPermittedGranted grants a face-down exile's permission over each
+// card that landed in exile (#4361 S17). An on-disk key.
+var faceDownPermittedGranted = RegisterTail("engine/face-down-permitted-granted", func(g *Game, o TailOutcome) error {
+	if o.Tail.Permission == nil {
+		return nil
+	}
+	for _, id := range o.IDs {
+		if z := g.findCardZoneLocked(id); z != nil && z.Kind == ZoneExile {
+			g.GrantCastPermissionOverCardForEffect(id, *o.Tail.Permission)
+		}
+	}
+	return nil
+})
 
 // ExileCardWithPermissionForEffect exiles one specific card —
 // typically a targeted battlefield permanent — and grants `perm` over
@@ -441,7 +446,7 @@ func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, pe
 // Vanguard's re-grant calls this on a card an earlier resolution of
 // its own trigger already exiled, purely to refresh the permission's
 // duration, and the exit primitive's "already there" leg is
-// deliberately NOT counted as landing (routeEachStepLocked: "it is
+// deliberately NOT counted as landing (routeLegNothingToDoLocked: "it is
 // already where the route would put it... it did not go THIS way").
 // Routing unconditionally would silently drop every re-grant. This
 // checks the card's current zone first and grants immediately when

@@ -1738,3 +1738,5 @@ castfollowup kaervek-the-punisher-lose-2
 castfollowup kefka-dancing-mad-life-loss
 castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
+tail engine/entry-choice-acted
+tail engine/face-down-permitted-granted

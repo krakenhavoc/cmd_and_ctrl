@@ -373,7 +373,7 @@ func (g *Game) returnUntilObjectsLocked(refs []ObjectRef) error {
 	if len(entries) == 0 {
 		return nil
 	}
-	return g.startEntryBatchLocked(entries, ZoneEntryOptions{}, nil)
+	return g.startEntryBatchLocked(entries, ZoneEntryOptions{})
 }
 
 // untilReturns is the listener half: an event-keyed "until" becomes

@@ -252,7 +252,7 @@ func (g *Game) settleRunLegLocked(runID, seat uuid.UUID, landed []uuid.UUID) err
 	}
 	if len(landed) > 0 {
 		// A fresh slice rather than an append in place, the reason
-		// routeEachStepLocked gives: two runs of the same
+		// a route batch gives: two runs of the same
 		// continuation (an undo, then the same answer again) must not
 		// see each other's entry.
 		prev := run.landed[seat]

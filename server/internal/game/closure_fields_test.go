@@ -143,13 +143,19 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 50,
+	"census:ChoiceResumeFrames": 47,
 	//
 	// 50 (2026-10-27, #4361 S13, owner decision D7): -
 	// PendingChoice.costCommanderResume and costCommanderFrame.announce.
 	// A parked cast or activation is data (parkedAnnouncement,
 	// parked_announcement.go) and the snapshot writes it with the CR
 	// 903.9b question and with the "of an opponent's choice" prompts.
+	//
+	// 47 (2026-10-27, #4361 S17, owner decision D4): - zoneRoute.then,
+	// entryBatch.then and PendingChoice.libraryOrderResume. The entry an
+	// "as this enters, discard or sacrifice" choice pauses is frozen as
+	// data (Game.frozenEntries, keyed), its discard and sacrifice are
+	// keyed batches, and their closure forms went with their last writer.
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and

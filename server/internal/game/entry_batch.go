@@ -95,14 +95,11 @@ type entryBatch struct {
 	// rest) and reports it once everything is done. Held as data
 	// (#4361 S10): its message and the engine sentinel it wraps.
 	firstErr entryBatchErr
-	// then is the caller's continuation, run exactly once when the
-	// batch reaches its end. Cleared as it runs. Its one writer is a
-	// closure discard batch's leg that became this entry
-	// (discardOntoBattlefieldLocked, PutFromHandOntoBattlefieldThenForEffect),
-	// which goes with that batch's closure route (discard.go).
-	then func(g *Game, entered []uuid.UUID) error
-	// keyed is `then` as data (#4253 slice 3): a registered tail, told
-	// the permanents that entered as TailOutcome.IDs. Set one or neither.
+	// keyed is the caller's continuation as data (#4253 slice 3), run
+	// exactly once when the batch reaches its end: a registered tail,
+	// told the permanents that entered as TailOutcome.IDs. Cleared as it
+	// runs. (#4361 S17 deleted the closure form, `then`, with its last
+	// writer, a closure discard batch's leg that became this entry.)
 	keyed KeyedTail
 	// discard is the rest of a keyed discard batch whose leg became this
 	// entry (#4253 slice 9, discard_entry.go), run after the entry
@@ -184,8 +181,8 @@ func cloneEntryBatch(b *entryBatch) *entryBatch {
 // walks its windows.
 //
 // Caller must hold g.mu.
-func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
-	return g.startPreparedEntryBatchLocked(cards, &entryBatch{then: then, opts: opts})
+func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions) error {
+	return g.startPreparedEntryBatchLocked(cards, &entryBatch{opts: opts})
 }
 
 func (g *Game) startPreparedEntryBatchLocked(cards []BatchEntry, b *entryBatch) error {
@@ -450,7 +447,7 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 		if len(b.members) == 1 && b.members[0].out != nil {
 			r.simultaneousEntry = settledExchangeEntryOf(b.members[0].out)
 		}
-		return g.routeLegLocked(r, b.exchangeSacrifice, nil, nil)
+		return g.routeLegLocked(r, b.exchangeSacrifice, nil)
 	}
 	landings := make([]entryLanding, 0, len(b.members))
 	landed := make([]bool, len(b.members))
@@ -529,8 +526,8 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) error {
-	then, keyed, discard, attraction, report := b.then, b.keyed, b.discard, b.attraction, b.report
-	b.then, b.keyed, b.discard, b.attraction, b.report = nil, KeyedTail{}, nil, nil, nil
+	keyed, discard, attraction, report := b.keyed, b.discard, b.attraction, b.report
+	b.keyed, b.discard, b.attraction, b.report = KeyedTail{}, nil, nil, nil
 	b.done, b.landed = true, entered
 	// Tokens entering together: every one that did not land never
 	// existed (CR 111.1), and every one that did is on the battlefield
@@ -545,8 +542,6 @@ func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) er
 	}
 	var thenErr error
 	switch {
-	case then != nil:
-		thenErr = then(g, entered)
 	case discard != nil:
 		thenErr = g.finishDiscardEntryLocked(discard)
 	case attraction != nil:

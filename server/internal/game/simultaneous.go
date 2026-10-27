@@ -518,80 +518,14 @@ func tuckRoute(opts TuckOptions) zoneRoute {
 	return zoneRoute{Dst: ZoneLibrary, ToBottom: opts.ToBottom, Depth: opts.Depth}
 }
 
-// routeAllThenLocked routes every card in `ids` as one simultaneous
-// exit and hands `then` the ones that LANDED where `r` asked.
-//
-// It is a continuation rather than a return value because any leg can
-// pause on the CR 903.9 prompt, so the answer is not knowable on the
-// line after the sweep (ADR 0013 §5b, §5c, §5i). The legs go IN
-// SEQUENCE, each from the previous one's continuation, with the landed
-// list carried forward BY VALUE — the property that makes an undo
-// across the prompt replay identically.
-//
-// The pre-move copies are taken ONCE, before the first move, and
-// re-published from every leg, so a Blood Artist still sees the whole
-// board leave with it on either side of a prompt.
-//
-// Caller must hold g.mu in write mode.
-// There is NO early stop on it, and since #1176 there is nowhere in
-// the engine that wants one. #1159 gave this loop the mill's `until`
-// predicate, because a run that ends "until a creature card is put
-// into their graveyard" ends on the card that ARRIVED and only this
-// loop knows which legs arrived. #1176 took it back, because a run is
-// not one instruction with an early exit: it is a SEQUENCE of one-card
-// mill instructions, each with its own CR 614 window on its own
-// amount, and its verdict is asked between repetitions rather than
-// between legs (millUntilRunLocked). A batch is a batch again.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) routeAllThenLocked(r zoneRoute, ids []uuid.UUID, then func(g *Game, landed []uuid.UUID) error) error {
-	return g.routeEachStepLocked(r, g.simultaneousExitSnapshotLocked(ids), ids, nil, then)
-}
-
-// routeEachStepLocked routes the head of `ids` and continues with the
-// tail from that leg's continuation. The empty list is the base case:
-// the batch is done and `then` gets the landed list.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) routeEachStepLocked(
-	r zoneRoute,
-	batch []Card,
-	ids, landed []uuid.UUID,
-	then func(g *Game, landed []uuid.UUID) error,
-) error {
-	// A leg with nothing to do is skipped rather than routed, and is
-	// not counted: it left while an earlier leg was paused, it was
-	// never there, or it is already where the route would put it. It
-	// did not go THIS way, so it must not be paid out as if it had.
-	for len(ids) > 0 && g.routeLegNothingToDoLocked(r, ids[0]) {
-		ids = ids[1:]
-	}
-	if len(ids) == 0 {
-		if then == nil {
-			return nil
-		}
-		return then(g, landed)
-	}
-	next, rest := ids[0], ids[1:]
-	return g.routeLegLocked(r, next, batch, func(g *Game) error {
-		out := landed
-		if g.routeLegLandedLocked(r, next) {
-			// A fresh slice rather than an append in place: two runs of
-			// the same continuation (an undo, then the same answer
-			// again) must not see each other's entry.
-			out = append(append(make([]uuid.UUID, 0, len(landed)+1), landed...), next)
-		}
-		return g.routeEachStepLocked(r, batch, rest, out, then)
-	})
-}
-
 // routeAllLocked is the FIRE-AND-FORGET form of the same batch: every
 // leg is routed on this line and the count is how many of them had
 // LANDED by the time the call returns.
 //
 // Which is every leg that settled. A leg that paused on the CR 903.9
 // prompt cannot be in it — nothing has moved yet — which is exactly
-// why a card that reads the number uses the `Then` form instead. The
+// why a card that reads the number uses the keyed form
+// (routeAllKeyedLocked) instead. The
 // batch is published for the whole loop here rather than re-published
 // per leg, because nothing in it can pause the loop.
 //
@@ -653,7 +587,7 @@ func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UU
 		if g.routeLegNothingToDoLocked(r, id) {
 			continue
 		}
-		if err := g.routeLegLocked(r, id, nil, nil); err != nil {
+		if err := g.routeLegLocked(r, id, nil); err != nil {
 			continue
 		}
 		if g.routeLegLandedLocked(r, id) {
@@ -663,9 +597,9 @@ func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UU
 	return landed
 }
 
-// routeLegLocked routes ONE card of a batch, with `then` as the
-// route's continuation and `batch` as the simultaneous-exit copies to
-// re-publish around the move.
+// routeLegLocked routes ONE card of a batch, with `batch` as the
+// simultaneous-exit copies to re-publish around the move. The route
+// template carries the continuation, if any (a keyed batch run).
 //
 // The destroy / sacrifice / SBA exit keeps its own mover for the
 // reasons zone_route.go lists, so it is the one leg that does not go
@@ -673,7 +607,7 @@ func (g *Game) routeAllLandedPerLegLocked(ids []uuid.UUID, routeFor func(uuid.UU
 // says so, and it is already the flag the resume path reads.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func(g *Game) error) error {
+func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card) error {
 	if r.ViaBattlefieldLeave {
 		if r.Sacrifice {
 			// Before the window, while the permanent is still there:
@@ -684,11 +618,10 @@ func (g *Game) routeLegLocked(r zoneRoute, id uuid.UUID, batch []Card, then func
 				return err
 			}
 		}
-		return g.routeBattlefieldExitInBatchThenLocked(id, r, batch, then)
+		return g.routeBattlefieldExitInBatchLocked(id, r, batch)
 	}
 	r.CardID = id
 	r.simultaneousExit = batch
-	r.then = then
 	_, err := g.routeCardToZoneLocked(r)
 	return err
 }
@@ -834,44 +767,6 @@ func (g *Game) ExileCardsForEffect(ids []uuid.UUID) int {
 	return g.routeAllLocked(exileRoute, ids)
 }
 
-// SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
-// simultaneous exit and hands `then` the ones that were actually
-// SACRIFICED — "then draw a card for each permanent sacrificed this
-// way" (God-Eternal Bontu), and every "sacrifice all X, then for
-// each …" that could not be written before.
-//
-// #910. Destroy, exile, bounce, tuck and mill have all had this since
-// #815 / #866 / #893; sacrifice had only the per-card call, so Living
-// Death's second pass fired and forgot and any follow-up ran on the
-// next line with a replacement's prompt still open.
-//
-// Sacrifice is not replaceable (CR 701.17a: sacrificing doesn't
-// destroy, so nothing that replaces destruction touches it, and no
-// replacement stops the sacrifice itself) — but the MOVE it makes is
-// an ordinary zone change, so a leg can PAUSE on a replacement's
-// prompt exactly like a destroy leg. That is the whole reason this is
-// a continuation rather than a return value. A sacrificed commander
-// lands in the graveyard first and is offered the command zone
-// afterwards (CR 903.9a, ADR 0115).
-//
-// `sacrificed` is sacrificedThisWayLocked's answer: the permanents that
-// really left the battlefield. A commander IS in it, and so is one an
-// "exile it instead" replacement took.
-//
-// `source` is the card that asked, stamped on each EventSacrifice.
-//
-// This is the closure form, and the engine's own plumbing: a card passes
-// a registered tail to SacrificeAllKeyedForEffect. #4253 left exactly one
-// caller, the sacrifice an entry choice starts ("As this enters, sacrifice
-// a land", ResolveEntryCardChoice), whose continuation resumes a frozen
-// copy of the paused entry (frozenEntryChoice) and so cannot be data until
-// that frame is.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
-	return g.routeAllThenLocked(sacrificeRoute(source), g.sacrificeableLocked(g.unprotectedFromSacrificeLocked(ids)), then)
-}
-
 // SacrificeAllForEffect is the FIRE-AND-FORGET batch: "each player
 // sacrifices all permanents they control that are one or more colors"
 // (All Is Dust), with nothing waiting on the answer.
@@ -885,7 +780,7 @@ func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then
 // The count is how many of the legs that SETTLED were sacrificed. A
 // leg that paused on a replacement's prompt cannot be in it — nothing
 // has left yet — which is why a card that READS the number uses
-// SacrificeAllThenForEffect.
+// SacrificeAllKeyedForEffect.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
