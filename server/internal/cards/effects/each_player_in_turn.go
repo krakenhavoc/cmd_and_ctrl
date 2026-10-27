@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -125,24 +127,75 @@ func millEachPlayerInTurn(
 
 // exileTopEachPlayerInTurn is "exile the top card of each of these players'
 // libraries, and <grant>": template names the grant (its From is overwritten
-// with each player in turn), and `done` gets the cards that reached exile from
-// each library. Face up and unbudgeted only: see ExileTopWithPermission.ApplyThen.
-func exileTopEachPlayerInTurn(
-	ctx *Context,
-	players []uuid.UUID,
-	template ExileTopWithPermission,
-	done func(ctx *Context, results []PlayerCards) error,
-) error {
-	item := ctx.Item
-	return eachPlayerInTurn(ctx.Game, players,
-		func(g *game.Game, player uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
-			e := template
-			e.From = player
-			return e.ApplyThen(NewContext(g, item), func(ctx *Context, landed []uuid.UUID) error {
-				return next(ctx.Game, landed)
-			})
-		},
-		contextDone(item, done))
+// with each player in turn), and `done`, a registered tail, is told every
+// card that reached exile, library by library in APNAP order. Face up and
+// unbudgeted only: the face-down and budgeted forms are refused.
+//
+// The chain is data (#4253): each library's exile is the keyed impulse
+// exile (Game.ExileTopWithPermissionKeyedForEffect), whose tail is the next
+// step, carrying the players still to go and the cards exiled so far. A CR
+// 616.1 prompt any library's exile pauses on is a restore point.
+func exileTopEachPlayerInTurn(ctx *Context, players []uuid.UUID, template ExileTopWithPermission, done game.KeyedTail) error {
+	if template.FaceDown || template.TotalManaValueAtMost != nil || template.EachManaValueAtMost != nil {
+		return fmt.Errorf("exileTopEachPlayerInTurn: the face-down and budgeted forms have no continuation")
+	}
+	n := template.N
+	if n <= 0 {
+		n = 1
+	}
+	perm := template.permission()
+	step := game.KeyedTail{Ref: exileTopEachStep, Source: ctx.Source(), N: n, Permission: &perm}
+	if !template.GrantToOwner {
+		// uuid.Nil is "each library's owner".
+		step.Player = template.GrantTo
+	}
+	if !done.IsZero() {
+		next := done
+		step.Next = &next
+	}
+	return exileTopEachFrom(ctx.Game, step, apnapOrder(ctx.Game, players), nil)
+}
+
+// exileTopEachStep is one step of exileTopEachPlayerInTurn's chain, told the
+// cards that reached exile from the library just done: its Carry is the
+// players still to go and the cards exiled before it (packIDLists), its
+// Permission, N and Player the grant, its count and its holder (uuid.Nil
+// for each library's owner), and its Next the caller's tail, told every
+// card once the last library is done. An on-disk key.
+var exileTopEachStep = game.RegisterTail("each-player/exile-top-step", func(g *game.Game, o game.TailOutcome) error {
+	lists := unpackIDLists(o.Tail.Carry)
+	var remaining, landed []uuid.UUID
+	if len(lists) > 0 {
+		remaining = lists[0]
+	}
+	if len(lists) > 1 {
+		landed = lists[1]
+	}
+	landed = append(append([]uuid.UUID(nil), landed...), o.IDs...)
+	return exileTopEachFrom(g, o.Tail, remaining, landed)
+})
+
+// exileTopEachFrom exiles from the head of `remaining`, the step's tail
+// carrying the rest, or hands `landed` to the caller's tail when no library
+// is left.
+func exileTopEachFrom(g *game.Game, step game.KeyedTail, remaining, landed []uuid.UUID) error {
+	if len(remaining) == 0 {
+		if step.Next == nil {
+			return nil
+		}
+		return step.Next.Run(g, landed)
+	}
+	head := remaining[0]
+	grantee := step.Player
+	if grantee == uuid.Nil {
+		grantee = head
+	}
+	var perm game.CastPermission
+	if step.Permission != nil {
+		perm = *step.Permission
+	}
+	step.Carry = packIDLists(remaining[1:], landed)
+	return g.ExileTopWithPermissionKeyedForEffect(head, grantee, step.N, perm, step)
 }
 
 // contextDone adapts a card's continuation, written over a Context, to

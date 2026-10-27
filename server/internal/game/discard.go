@@ -179,7 +179,7 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 // a value carried forward — the `cards` slice, one card shorter each
 // time — rather than a shared accumulator, which is what makes an undo
 // across the prompt land where a clean run would. Same idiom as
-// LoseLifeEachThenForEffect.
+// LoseLifeEachKeyedForEffect.
 //
 // Two consequences worth stating, because they are what a caller sees:
 //

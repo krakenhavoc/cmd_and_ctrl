@@ -208,7 +208,7 @@ type DiscardPrompt struct {
 	// opponent. The rest of the printed INSTRUCTION, the clause that
 	// runs once after every seat has answered and is told what was
 	// really discarded, is the RUN's continuation instead
-	// (PlayerDiscardsThenForEffect and its two siblings, #1027).
+	// (PlayerDiscardsThenKeyedForEffect and its two siblings, #1027).
 	// Reaching for this one to write a fan-out's payoff gives a card
 	// that pays out per answer, which is what Syphon Mind did.
 	//
@@ -282,7 +282,7 @@ type DiscardPrompt struct {
 // nobody has chosen yet. A card with anything hanging off the answer —
 // "you draw a card for each card discarded this way", or simply a
 // clause printed AFTER the discard, which is Archon of Cruelty's bug —
-// uses PlayerDiscardsThenForEffect and its two siblings
+// uses PlayerDiscardsThenKeyedForEffect and its two siblings
 // (discard_run.go, ADR 0013 §5y).
 //
 // Caller must hold g.mu.
@@ -540,7 +540,7 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 // says "gain 3" has nothing left to do. A caller that needs to know how
 // much actually moved — "you gain life equal to the life lost this
 // way" — must use ChangePlayerLifeThenForEffect or
-// LoseLifeEachThenForEffect instead, because reading the life total
+// LoseLifeEachKeyedForEffect instead, because reading the life total
 // back on the next line reads it before the prompt is answered (#793).
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
 	return g.ChangePlayerLifeThenForEffect(source, playerID, delta, nil)
@@ -560,7 +560,7 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 //	})
 //
 // for "target opponent loses X life; you gain life equal to the life
-// lost this way", and LoseLifeEachThenForEffect for the several-players
+// lost this way", and LoseLifeEachKeyedForEffect for the several-players
 // version of the same sentence.
 //
 // WHAT `then` RECEIVES. The post-replacement delta, signed the way the
@@ -634,7 +634,7 @@ func (g *Game) changePlayerLifeWithTailLocked(source, playerID uuid.UUID, delta 
 	return err
 }
 
-// LoseLifeEachThenForEffect is the batch form: each of `players` loses
+// LoseLifeEachKeyedForEffect is the batch form: each of `players` loses
 // `amount` life, and then `then` runs with the TOTAL actually lost —
 // "each opponent loses X life. You gain life equal to the life lost
 // this way" (Exsanguinate, Debt to the Deathless, Gray Merchant of
@@ -646,7 +646,7 @@ func (g *Game) changePlayerLifeWithTailLocked(source, playerID uuid.UUID, delta 
 // nothing, and the gain follows. It is reported POSITIVE, so the
 // continuation reads the way the card does.
 //
-// Built on ChangePlayerLifeThenForEffect rather than beside it, so
+// Built on the keyed life change (ChangePlayerLifeKeyedForEffect) rather than beside it, so
 // there is one place that knows how to wait rather than one per card.
 // The players are drained IN SEQUENCE, each from the previous one's
 // continuation: that is what makes the running total a plain value
@@ -663,45 +663,13 @@ func (g *Game) changePlayerLifeWithTailLocked(source, playerID uuid.UUID, delta 
 // and sequential in this engine either way; doing them all on the far
 // side of the prompt is the closer of the two, and it is the only one
 // that can report a true total.
-func (g *Game) LoseLifeEachThenForEffect(source uuid.UUID, players []uuid.UUID, amount int, then func(g *Game, totalLost int) error) error {
-	return g.loseLifeEachStepLocked(source, players, amount, 0, then)
-}
-
-// loseLifeEachStepLocked drains the head of `players` and continues
-// with the tail, carrying the running total forward by value. The empty
-// list is the base case: the batch is done and `then` gets the total.
 //
-// Caller must hold g.mu.
-func (g *Game) loseLifeEachStepLocked(source uuid.UUID, players []uuid.UUID, amount, lostSoFar int, then func(g *Game, totalLost int) error) error {
-	for len(players) > 0 {
-		next, rest := players[0], players[1:]
-		if p := g.playerByIDLocked(next); p == nil || p.Eliminated {
-			players = rest
-			continue
-		}
-		return g.ChangePlayerLifeThenForEffect(source, next, -amount, func(g *Game, applied int) error {
-			lost := lostSoFar
-			if applied < 0 {
-				// Only a LOSS counts as life lost this way. A
-				// replacement that turned the loss into a gain lost
-				// nobody anything, and must not be subtracted from
-				// what the others lost either.
-				lost -= applied
-			}
-			return g.loseLifeEachStepLocked(source, rest, amount, lost, then)
-		})
-	}
-	if then == nil {
-		return nil
-	}
-	return then(g, lostSoFar)
-}
-
-// LoseLifeEachKeyedForEffect is LoseLifeEachThenForEffect with the rest
-// of the effect as data (#4253 slice 3): `then` is a registered tail
-// (RegisterTail), told the total actually lost as TailOutcome.Amount.
-// The batch walks the players on a data tail (lifeEachRun), so a CR 616
-// ordering prompt over one player's loss is a restore point.
+// `then` is a registered tail (RegisterTail, #4253 slice 3), told the
+// total actually lost as TailOutcome.Amount. The batch walks the players
+// on a data tail (lifeEachRun), so a CR 616 ordering prompt over one
+// player's loss is a restore point. (The closure form,
+// LoseLifeEachThenForEffect, was deleted in #4253's last part once only
+// tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) LoseLifeEachKeyedForEffect(source uuid.UUID, players []uuid.UUID, amount int, then KeyedTail) error {
@@ -1009,7 +977,7 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 // than before it. The damage is simultaneous in the rules (CR 101.4)
 // and sequential in this engine either way; doing the rest on the far
 // side of the prompt is the closer of the two, and it is the only one
-// that can report a true total. Same trade LoseLifeEachThenForEffect
+// that can report a true total. Same trade LoseLifeEachKeyedForEffect
 // makes, for the same reason.
 //
 // ONE INSTANCE (ADR 0108 PR 0). The whole walk is one damage instruction,
@@ -1306,7 +1274,7 @@ func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]
 // The cost of waiting, which the fire-and-forget form does not pay:
 // the rest of the mill happens when the prompt is answered rather than
 // immediately. That is deliberate and it is the only version that can
-// report a true list — the same trade DestroyPermanentsThenForEffect
+// report a true list — the same trade DestroyPermanentsKeyedForEffect
 // and the discard batch already make.
 //
 // #569 adds a second thing that can pause, and it pauses EARLIER: the
@@ -2346,34 +2314,20 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, false, entryThen{})
 }
 
-// ReturnFromGraveyardToBattlefieldThenForEffect is
-// ReturnFromGraveyardTappedForEffect to the battlefield with the rest of
-// the effect as a continuation, the graveyard twin of
-// ReturnFromExileToBattlefieldKeyedForEffect: `then` is told the entering
-// permanent's ID (a graveyard return keeps the instance ID) once the
-// entry is complete, or uuid.Nil when nothing entered.
-//
-// Animate Dead is the caller (ADR 0154 decision 5): "return enchanted
-// creature card to the battlefield under your control and attach this
-// Aura to it" must attach to the permanent, and a returning Clone or a
-// creature with a pay-life entry pauses the entry, so the attach cannot
-// be written on the line after the return.
-//
-// `then` runs exactly once: at once when nothing paused, from the resume
-// when something did, and with uuid.Nil when the card is not in a
-// graveyard, when a replacement cancelled or redirected the entry, or
-// when the prompt was taken away.
-//
-// Caller must hold g.mu.
-func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	return g.returnFromGraveyardThenLocked(cardID, controller, tapped, nil, entryThen{fn: then})
-}
-
 // ReturnFromGraveyardToBattlefieldKeyedForEffect is
-// ReturnFromGraveyardToBattlefieldThenForEffect with the rest of the
-// effect as data (#4253 slice 6): `then` is a registered tail
-// (RegisterTail), told the entering permanent as TailOutcome.IDs (empty
-// when nothing entered). A question the entry asks (a Clone's copy, a
+// ReturnFromGraveyardTappedForEffect to the battlefield with the rest of
+// the effect as data (#4253 slice 6), the graveyard twin of
+// ReturnFromExileToBattlefieldKeyedForEffect: `then` is a registered tail
+// (RegisterTail), told the entering permanent as TailOutcome.IDs (a
+// graveyard return keeps the instance ID; empty when nothing entered).
+// Animate Dead and Last Voyage of the _____ attach to the permanent from
+// it, because a returning Clone or a creature with a pay-life entry pauses
+// the entry. It runs exactly once: at once when nothing paused, from the
+// resume when something did, and with nothing when the card is not in a
+// graveyard, when a replacement cancelled or redirected the entry, or when
+// the prompt was taken away. (The closure form,
+// ReturnFromGraveyardToBattlefieldThenForEffect, was deleted in #4253's
+// last part once nothing called it.) A question the entry asks (a Clone's copy, a
 // shockland's life) is then a restore point.
 //
 // Caller must hold g.mu.
@@ -3786,41 +3740,35 @@ func (g *Game) ScryKeyedForEffect(playerID, source uuid.UUID, n int, after Keyed
 	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, nil, after)
 }
 
-// SurveilKeyedForEffect is SurveilThenForEffect with the continuation as
-// data, as ScryKeyedForEffect.
+// SurveilKeyedForEffect is surveil N with a continuation (CR 701.25):
+// the player looks at the top N cards of their library and puts any
+// number of them into their graveyard, the rest back on top in any
+// order.
+//
+// Scry's mechanism with the bottom-of-library leg replaced by the
+// graveyard — see lookAtTopWithTailLocked for the shared queueing and
+// ResolveSurveil for what happens on submit. `after`, a registered tail
+// (RegisterTail), carries anything the card prints after "then", for the
+// same reason Preordain's draw does: it must not run until the library is
+// in the order the player chose. The surveil prompt, and a CR 616 ordering
+// prompt over it, are restore points, as ScryKeyedForEffect's are.
+//
+// A surveil is a keyword action (CR 701.25) on the same CR 614 window
+// scry opens — same count, same "that many plus one" shape, same
+// pause. See ScryThenForEffect. (The closure form, SurveilThenForEffect,
+// was deleted in #4253's last part once only tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) SurveilKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
 	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, nil, after)
 }
 
-// SurveilThenForEffect is surveil N with a continuation (CR 701.25):
-// the player looks at the top N cards of their library and puts any
-// number of them into their graveyard, the rest back on top in any
-// order.
-//
-// Scry's mechanism with the bottom-of-library leg replaced by the
-// graveyard — see lookAtTopForEffect for the shared queueing and
-// ResolveSurveil for what happens on submit. `after` carries anything
-// the card prints after "then", for the same reason Preordain's draw
-// does: it must not run until the library is in the order the player
-// chose.
-//
-// A surveil is a keyword action (CR 701.25) on the same CR 614 window
-// scry opens — same count, same "that many plus one" shape, same
-// pause. See ScryThenForEffect.
-//
-// Caller must hold g.mu.
-func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after, KeyedTail{})
-}
-
 // keywordLookAtTopForEffect is the scry / surveil entry point: it
 // opens the CR 614 keyword-action window on the count and, once the
 // window settles, queues the prompt through the same
-// lookAtTopForEffect body every member of the family uses.
+// lookAtTopWithTailLocked body every member of the family uses.
 //
-// LookAtTopThenForEffect deliberately does NOT come through here.
+// LookAtTopKeyedForEffect deliberately does NOT come through here.
 // "Look at the top N cards of your library, then put them back in any
 // order" is not a keyword action — it is a sentence Ponder and
 // Sensei's Divining Top print in full — so there is no "if you would
@@ -3829,7 +3777,7 @@ func (g *Game) SurveilThenForEffect(playerID, source uuid.UUID, n int, after fun
 //
 // A count of zero or less opens no window either: you would not scry,
 // so there is nothing for a replacement to replace. The `after`
-// continuation still runs, in lookAtTopForEffect, exactly as it did.
+// continuation still runs, in lookAtTopWithTailLocked, exactly as it did.
 //
 // Caller must hold g.mu.
 func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
@@ -3855,31 +3803,25 @@ func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoic
 	return looked
 }
 
-// LookAtTopThenForEffect is "look at the top N cards of your library,
+// LookAtTopKeyedForEffect is "look at the top N cards of your library,
 // then put them back in any order" — Ponder, Sensei's Divining Top,
 // Soothsaying.
 //
 // The scry family's third member, with no away lane: every card goes
-// back on top, and the only decision is the order. `after` carries
-// anything the card prints next — Ponder's "draw a card", which must
-// not run until the player has decided which card is on top, for the
-// same reason Preordain's must not.
-//
-// Caller must hold g.mu.
-func (g *Game) LookAtTopThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopForEffect(PendingChoiceLookAtTop, playerID, source, n, after)
-}
-
-// LookAtTopKeyedForEffect is LookAtTopThenForEffect with the continuation as
-// data (#4301): `after` is a registered tail (RegisterTail), so the look-at
-// prompt is a restore point.
+// back on top, and the only decision is the order. `after`, a registered
+// tail (RegisterTail, #4301), carries anything the card prints next —
+// Ponder's "draw a card", which must not run until the player has decided
+// which card is on top, for the same reason Preordain's must not. The
+// look-at prompt is a restore point. (The closure form,
+// LookAtTopThenForEffect, was deleted in #4253's last part once only tests
+// called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
 	return g.lookAtTopWithTailLocked(PendingChoiceLookAtTop, playerID, source, n, nil, after)
 }
 
-// lookAtTopForEffect queues the "look at the top N cards of your
+// lookAtTopWithTailLocked queues the "look at the top N cards of your
 // library, then put them somewhere" prompt that scry and surveil
 // share. It marks the chooser — and ONLY the chooser — a knower of
 // each card, which is what makes both keywords "look at" rather than
@@ -3896,15 +3838,10 @@ func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after 
 // the prompt saying "Scry 2" over three cards.
 //
 // Caller must hold g.mu.
-func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, KeyedTail{})
-}
-
-// lookAtTopWithTailLocked is lookAtTopForEffect with the continuation in
-// either form: the closure, or a registered tail (#4253 slice 3) the
-// prompt carries as data (PendingChoice.scryThen).
 //
-// Caller must hold g.mu.
+// The continuation is in either form: the closure (a scry's, from
+// ScryThenForEffect), or a registered tail (#4253 slice 3) the prompt
+// carries as data (PendingChoice.scryThen).
 func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {

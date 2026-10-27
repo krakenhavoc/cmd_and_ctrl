@@ -16,7 +16,7 @@ import (
 
 // wormsPayment is Worms of the Earth's payment: branch 0 sacrifices two
 // lands, branch 1 takes 5 damage.
-func wormsPayment() func(*AnyPlayerPays) {
+func wormsPayment() func(*anyPlayerTestOffer) {
 	return withPayment(PayAction{
 		Kind: PayActionEither,
 		Either: []PayAction{
@@ -110,8 +110,8 @@ func TestEitherPaymentRefusesAMalformedAnswerAndKeepsThePrompt(t *testing.T) {
 // whatever the payment is: a mana prompt, a card pick, a names-nothing
 // payment.
 func TestAPayOptionOnAPlainPaymentIsRefused(t *testing.T) {
-	for name, mutate := range map[string]func(*AnyPlayerPays){
-		"mana":    func(p *AnyPlayerPays) { p.Cost = "{2}" },
+	for name, mutate := range map[string]func(*anyPlayerTestOffer){
+		"mana":    func(p *anyPlayerTestOffer) { p.Cost = "{2}" },
 		"damage":  withPayment(PayAction{Kind: PayActionDamage, Count: 5}, "5 damage"),
 		"discard": withPayment(PayAction{Kind: PayActionDiscard, Count: 1}, "a card"),
 	} {

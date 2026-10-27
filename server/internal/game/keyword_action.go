@@ -17,7 +17,7 @@ import (
 // "if you would scry, scry that many plus one instead".
 //
 // None of them had a seam. `ProliferateForEffect` applied its choice
-// directly and `lookAtTopForEffect` queued its prompt directly, so
+// directly and `lookAtTopWithTailLocked` queued its prompt directly, so
 // nothing in the CR 614 pipeline ever saw either — Tekuthal shipped
 // with the clause declared as a caveat.
 //
@@ -213,24 +213,11 @@ type keywordActionTail struct {
 	armyToken   Card
 	armySubtype string
 
-	// amassed is CR 701.47c's "the Army you amassed" — the rest of the
-	// sentence, handed the creature that was chosen. It is a second
-	// continuation field beside `then` rather than a reuse of it,
-	// because eight printed cards need the Army's IDENTITY ("the
-	// amassed Army deals damage equal to its power") and `then` has
-	// no argument to give them. uuid.Nil means there was no Army to
-	// choose and none could be made; CR 701.47b still says the player
-	// amassed, so the clause still runs.
-	//
-	// Cleared through the pointer by runAmassThenLocked, exactly as
-	// `then` is by runKeywordActionThenLocked.
-	amassed func(g *Game, army uuid.UUID) error
-
 	// then is the rest of the sentence after the keyword action:
 	// Preordain's "then draw a card". It runs from wherever the
 	// action ends — after the player has put the cards back, or
 	// immediately when the action looked at nothing or was replaced
-	// away entirely — which is the contract lookAtTopForEffect
+	// away entirely — which is the contract lookAtTopWithTailLocked
 	// already documents.
 	then func(g *Game) error
 
@@ -512,8 +499,8 @@ func takeKeywordActionThen(tail *keywordActionTail) func(g *Game) error {
 // was replaced away, so the two paths cannot disagree about whether
 // Preordain drew its card.
 //
-// An amass carries its continuation in `amassed` instead, because the
-// clause needs the Army (CR 701.47c). This runs that one too, with no
+// An amass carries its continuation as its keyed tail instead, because
+// the clause needs the Army (CR 701.47c). This runs that one too, with no
 // Army: the only way here for an amass is the abandoned path — the
 // window cancelled it, or nothing takes this action kind — and a card
 // sequencing work behind a cancelled amass still has to be told, for

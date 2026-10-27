@@ -17,12 +17,12 @@ func TestGraveyardExileLinkShowsItsOptionsToEverySeat(t *testing.T) {
 	source := uuid.New()
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Carrion Thing", TypeLine: "Creature — Rat", Owner: controller, Controller: controller})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller, Cost: "exile two cards from their graveyard",
 			Question: "Carrion Thing?",
 			Action:   &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: 2},
 		}); err != nil {
-			t.Fatalf("QueueAnyPlayerPaysForEffect: %v", err)
+			t.Fatalf("queueAnyPlayerHooked: %v", err)
 		}
 	})
 	chooser := g.PendingChoices[0].Chooser

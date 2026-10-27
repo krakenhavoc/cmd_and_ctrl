@@ -49,7 +49,7 @@ import (
 //     actually LANDED in the graveyard, not what was asked for before
 //     the CR 903.9 window had a chance to redirect a leg — the same
 //     lesson #911 already taught ExileCardsThenForEffect and
-//     DestroyPermanentsThenForEffect.
+//     DestroyPermanentsKeyedForEffect.
 //
 // So the fix for the row this card sat on (docs/engine-seams.md,
 // "Post-departure LKI / 'exiled with this' record") is The Ozolith's

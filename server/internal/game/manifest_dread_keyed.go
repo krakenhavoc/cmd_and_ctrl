@@ -9,9 +9,10 @@ import (
 // manifest_dread_keyed.go — #4253 slice 9: manifest dread (CR 701.62a)
 // with the rest of the action as data.
 //
-// ManifestDreadThenForEffect composes a choose_cards pick, a face-down
-// entry and a graveyard route batch, each handing the next a closure, and
-// ends in the card's own closure. The keyed form is the same three steps
+// The closure form (ManifestDreadThenForEffect, deleted in #4253's last
+// part) composed a choose_cards pick, a face-down entry and a graveyard
+// route batch, each handing the next a closure, and ended in the card's own
+// closure. The keyed form is the same three steps
 // over registered continuations: the pick is a keyed choose_cards prompt
 // (manifest-dread/pick), the entry's tail routes the other card to the
 // graveyard through a keyed route batch (engine/manifest-dread-entered),
@@ -20,11 +21,19 @@ import (
 // face-down entry's prompt or on the graveyard card's prompt is then a
 // restore point.
 
-// ManifestDreadKeyedForEffect is ManifestDreadThenForEffect with the
-// continuation as data: `then` is a registered tail told
-// TailOutcome.IDs = [manifested, graveyarded], either uuid.Nil when it did
-// not happen (ManifestDreadOutcome reads them back). A zero tail is "no
-// continuation".
+// ManifestDreadKeyedForEffect carries out CR 701.62a for `playerID` and
+// tells `then`, a registered tail, what happened: TailOutcome.IDs =
+// [manifested, graveyarded], either uuid.Nil when it did not happen
+// (ManifestDreadOutcome reads them back). A zero tail is "no
+// continuation". `source` is the permanent or spell asking and names the
+// prompt's source; it may be uuid.Nil.
+//
+// The prompt is skipped when the library shows one card (nothing to
+// choose) and the whole action is skipped, with `then` still told an empty
+// result, when it shows none: a "then put counters on that creature"
+// continuation must run so it can find it has no creature. (The closure
+// form, ManifestDreadThenForEffect, was deleted in #4253's last part once
+// only tests called it.)
 //
 // The tail rides the pick prompt packed into its carried data, so it may
 // not set Next (ErrInvalidParam).

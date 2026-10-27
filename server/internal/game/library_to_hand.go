@@ -53,9 +53,13 @@ func takeToHandRoute(player uuid.UUID) zoneRoute {
 	return zoneRoute{Dst: ZoneHand, Actor: player}
 }
 
-// TakeFromLibraryToHandThenForEffect puts every card of `ids` that is
+// TakeFromLibraryToHandKeyedForEffect puts every card of `ids` that is
 // still in a LIBRARY into its owner's hand as one simultaneous exit,
-// and hands `then` the ones that actually arrived in a hand.
+// and tells `then`, a registered tail (RegisterTail, #4253), the ones that
+// actually arrived in a hand, as TailOutcome.IDs. A leg's CR 614 / 616 /
+// 903.9 prompt is a restore point. A zero `then` is "no continuation".
+// (The closure form, TakeFromLibraryToHandThenForEffect, was deleted in
+// #4253's last part once nothing called it.)
 //
 // `player` is who is taking them — the player whose library was looked
 // at or revealed from. It is stamped on the events and is not read as
@@ -77,13 +81,13 @@ func takeToHandRoute(player uuid.UUID) zoneRoute {
 // and not on the next line.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) TakeFromLibraryToHandThenForEffect(player uuid.UUID, ids []uuid.UUID, then func(g *Game, taken []uuid.UUID) error) error {
-	return g.routeAllThenLocked(takeToHandRoute(player), g.cardsInALibraryLocked(ids), then)
+func (g *Game) TakeFromLibraryToHandKeyedForEffect(player uuid.UUID, ids []uuid.UUID, then KeyedTail) error {
+	return g.routeAllKeyedLocked(takeToHandRoute(player), g.cardsInALibraryLocked(ids), then)
 }
 
 // TakeFromLibraryToHandForEffect is the fire-and-forget form, counting
 // what landed. A card that reads the number — or has anything at all to
-// do afterwards — uses the Then form above.
+// do afterwards — uses the Keyed form above.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) TakeFromLibraryToHandForEffect(player uuid.UUID, ids []uuid.UUID) int {

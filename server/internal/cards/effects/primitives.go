@@ -2097,17 +2097,3 @@ var flickerReturnExiled = CardTail("flicker/return-exiled", func(ctx *Context, o
 	}
 	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
 })
-
-// exileTargetThen is ExileTarget with its "then" as a closure, for a caller
-// whose clause reads what a registered tail cannot carry: a cast
-// permission, a token template, a caller's own closure (#4253 slice 9). A
-// table waiting on the exile's prompt is then not a restore point.
-func exileTargetThen(ctx *Context, target uuid.UUID, then func(ctx *Context, exiled bool) error) error {
-	if ctx.isNewSourceObject(target) {
-		return then(ctx, false)
-	}
-	item := ctx.Item
-	return ctx.Game.ExileCardThenForEffect(target, func(g *game.Game, exiled bool) error {
-		return then(NewContext(g, item), exiled)
-	})
-}

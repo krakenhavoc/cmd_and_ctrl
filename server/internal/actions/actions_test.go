@@ -1435,7 +1435,7 @@ func TestDispatchResolveChoiceRoutesSurveilNotScry(t *testing.T) {
 	libBefore := p.Library.Size()
 	topID := p.Library.Cards[libBefore-1].InstanceID
 	g.WithWriteLock(func() {
-		g.SurveilThenForEffect(p.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(p.ID, uuid.Nil, 1, game.KeyedTail{})
 	})
 	choice := pendingChoiceOfKind(g, game.PendingChoiceSurveil)
 	if choice == nil {

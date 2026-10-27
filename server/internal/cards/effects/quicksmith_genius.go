@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // draw written on the next line resolved before the player had even
 // chosen what to pitch, turning a rummage into a strictly-better
 // loot. That is fixed engine-side by the #1019/#1027 prompt-run
-// continuation — PlayerDiscardsThenForEffect settles the discard leg
+// continuation — PlayerDiscardsThenKeyedForEffect settles the discard leg
 // first and only then runs its `Then` callback — which is exactly
 // what b39MayDiscardThenDraw(1, ...) already wraps for "you may
 // discard N. If you do, draw M" (Thrilling Discovery, Cathartic

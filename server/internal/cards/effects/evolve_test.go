@@ -241,9 +241,9 @@ func TestEvolveSeesCreaturesEnteringTogether(t *testing.T) {
 			Power: 1, Toughness: 1, Owner: me, Controller: me})
 	}
 	g.WithWriteLock(func() {
-		if err := g.PutOntoBattlefieldTogetherThenForEffect(
+		if err := g.PutOntoBattlefieldTogetherKeyedForEffect(
 			[]game.BatchEntry{{CardID: a, From: game.ZoneHand}, {CardID: b, From: game.ZoneHand}},
-			game.ZoneEntryOptions{}, nil); err != nil {
+			game.ZoneEntryOptions{}, game.KeyedTail{}); err != nil {
 			t.Fatalf("enter together: %v", err)
 		}
 	})

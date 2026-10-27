@@ -187,7 +187,7 @@ func TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
 }
 
 // TestUndoAcrossAPausedMillLegReplays is the undo contract the
-// continuation signs, the one DestroyPermanentsThenForEffect and
+// continuation signs, the one DestroyPermanentsKeyedForEffect and
 // ExileCardsThenForEffect already sign: rewinding into the open
 // "may" prompt and answering again mills the same cards and reports
 // the same list, because the landed list is carried forward by value.

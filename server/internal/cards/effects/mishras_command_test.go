@@ -114,7 +114,7 @@ func TestMishrasCommandPumpsOneCreatureWhileBurningAnother(t *testing.T) {
 // 608.2c follows the instructions in the order written, so the
 // bullet printed later runs only once the target player has answered
 // (#2789). And the draw counts what was REALLY discarded, not X
-// (#1027, PlayerDiscardsThenForEffect).
+// (#1027, PlayerDiscardsThenKeyedForEffect).
 func TestMishrasCommandDiscardsUpToXThenDrawsExactlyWhatWasDiscarded(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

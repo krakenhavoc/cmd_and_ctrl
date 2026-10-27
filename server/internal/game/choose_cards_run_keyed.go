@@ -10,9 +10,17 @@ import (
 // legs are KEYED (#4290, ADR 0013 §5x / §5y amendment of 2026-10-26), so a
 // table waiting on any seat's pick is a restore point.
 //
-// choose_cards_run.go's ChooseCardsRunThenForEffect gives every leg a
-// closure: its own Then, which settles the run, and a Validate for a set
-// rule. A keyed leg is a keyed choose_cards pick (choose_cards_keyed.go)
+// "Each player chooses …" over cards only that player may see is one
+// choose_cards prompt per seat, asked as ONE printed instruction (#1743,
+// ADR 0013 §5ai): a prompted run (prompt_run.go), one instruction in flight
+// however many prompts it takes, with one continuation that waits for the
+// last of them. Explore the Vastlands is the card: every seat answers its
+// own question, over its own look, and nothing may move until every seat
+// has. (The closure form, ChooseCardsRunThenForEffect, whose legs each
+// held a Then and a Validate, was deleted in #4253's last part once only a
+// test called it.)
+//
+// A keyed leg is a keyed choose_cards pick (choose_cards_keyed.go)
 // whose registered continuation settles the run, and whose set rule, when
 // it has one, is registered under the same key
 // (RegisterChooseCardsRunLegRule). The run's own continuation is the usual
@@ -43,10 +51,14 @@ func RegisterChooseCardsRunLegRule(key string, rule SetRuleFunc) ChooseCardsThen
 	return RegisterChooseCardsThenRule(key, rule, chooseCardsRunLegFn)
 }
 
-// ChooseCardsRunThenKeyedForEffect is ChooseCardsRunThenForEffect with the
-// rest of the card as a registered run continuation (RegisterPromptRunThen)
-// and `data` the plain data it is handed, and every leg a KEYED pick, so a
-// table waiting on any leg is a restore point (#4290).
+// ChooseCardsRunThenKeyedForEffect asks every leg, each an ordinary
+// choose_cards prompt over its seat's own cards, and runs the rest of the
+// card, a registered run continuation (RegisterPromptRunThen) handed `data`
+// and one entry per seat that was asked, in leg order, once the last leg
+// is answered; inline when no leg was queued. A leg with no candidates is
+// not queued, and neither is one whose chooser has left; neither has an
+// entry in the answer. Every leg is a KEYED pick, so a table waiting on any
+// leg is a restore point (#4290). Reports how many prompts were queued.
 //
 // A leg's ThenKey is ChooseCardsRunLeg unless it names a leg with a set
 // rule (RegisterChooseCardsRunLegRule). The legs hold no closure: Then and

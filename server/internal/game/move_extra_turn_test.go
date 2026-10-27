@@ -55,11 +55,11 @@ func TestMoveExtraTurnLandsAfterTheMoveAndBeforeTheContinuation(t *testing.T) {
 	g, _, bear := moveTurnBoard(t)
 	var inExile, queued []bool
 	g.WithWriteLock(func() {
-		err := g.DestroyPermanentsThenForEffect([]uuid.UUID{bear}, func(g *Game, _ []uuid.UUID) error {
+		err := g.DestroyPermanentsKeyedForEffect([]uuid.UUID{bear}, hookTail(func(g *Game, o TailOutcome) error {
 			inExile = append(inExile, g.Exile.Contains(bear))
 			queued = append(queued, len(g.ExtraTurns) == 1)
 			return nil
-		})
+		}))
 		if err != nil {
 			t.Fatalf("destroy: %v", err)
 		}
@@ -126,10 +126,10 @@ func TestMoveExtraTurnSurvivesALaterCancel(t *testing.T) {
 	})
 	ran := 0
 	g.WithWriteLock(func() {
-		_ = g.DestroyPermanentsThenForEffect([]uuid.UUID{bear}, func(*Game, []uuid.UUID) error {
+		_ = g.DestroyPermanentsKeyedForEffect([]uuid.UUID{bear}, hookTail(func(_ *Game, o TailOutcome) error {
 			ran++
 			return nil
-		})
+		}))
 	})
 	if !g.Battlefield.Contains(bear) {
 		t.Fatal("the cancelled move moved the creature")

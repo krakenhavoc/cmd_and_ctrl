@@ -43,13 +43,14 @@ func destroyAllThen(t *testing.T, g *Game, ids []uuid.UUID) (*[]uuid.UUID, *int)
 	var got []uuid.UUID
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.DestroyPermanentsThenForEffect(ids, func(_ *Game, destroyed []uuid.UUID) error {
+		err := g.DestroyPermanentsKeyedForEffect(ids, hookTail(func(_ *Game, o TailOutcome) error {
+			destroyed := o.IDs
 			ran++
 			got = destroyed
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("DestroyPermanentsThenForEffect: %v", err)
+			t.Fatalf("DestroyPermanentsKeyedForEffect: %v", err)
 		}
 	})
 	return &got, &ran

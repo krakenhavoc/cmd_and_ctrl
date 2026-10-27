@@ -27,7 +27,7 @@ import (
 // replacements, and it is wrong.
 //
 // The right shape is the continuation: ChangePlayerLifeThenForEffect /
-// LoseLifeEachThenForEffect on the life side, and
+// LoseLifeEachKeyedForEffect on the life side, and
 // DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect /
 // DealDamageEachKeyedForEffect on the damage side (registered tails,
 // #4253). The engine runs

@@ -10,8 +10,9 @@ import (
 // is a KEY rather than a closure (#4256), so a table waiting on the
 // discard is a restore point.
 //
-// PlayerDiscardsThenForEffect keeps the rest of the card in a prompted
-// run (prompt_run.go): a closure on Game.promptRuns, linked from the
+// The closure form (PlayerDiscardsThenForEffect, deleted in #4253's last
+// part; PlayersDiscardThenForEffect still is one) keeps the rest of the
+// card in a prompted run (prompt_run.go): a closure on Game.promptRuns, linked from the
 // prompt by a run id, and the prompt's own continuation is a closure
 // too. Neither is written to a restore point, so a table waiting on
 // learn's "you may discard a card" could be undone but not saved and
@@ -106,7 +107,8 @@ func RegisterDiscardThenRule(key string, rule SetRuleFunc, fn DiscardThenFunc) D
 	return DiscardThen{then: then, fn: fn}
 }
 
-// PlayerDiscardsThenKeyedForEffect is PlayerDiscardsThenForEffect with
+// PlayerDiscardsThenKeyedForEffect is one seat's discard (the closure
+// form, PlayerDiscardsThenForEffect, deleted in #4253's last part) with
 // the rest of the card as a registered continuation and `carry` the
 // plain data it is handed: learn's "you may discard a card. If you do,
 // draw a card", Abandon Attachments' "you may discard a card. If you do,

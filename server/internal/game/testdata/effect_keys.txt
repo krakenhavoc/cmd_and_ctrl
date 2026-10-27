@@ -1665,3 +1665,13 @@ tail then/gain-life-equal-to-damage-dealt
 tail then/mob-verdict-next-strike
 tail then/reckless-endeavor-treasures
 tail then/ripples-of-potential-proliferated
+tail demonic-consultation/taken
+tail each-player/exile-top-step
+tail emergent-ultimatum/tucked
+tail exile-until/record-event-return
+tail last-voyage-of-the-blank/attach-returned
+tail memory-vessel/ban-hands
+tail permanents-pick/sacrificed
+tail take/each-moved
+tail take/moved
+tail underrealm-lich/taken

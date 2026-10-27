@@ -148,16 +148,17 @@ func TestARedirectedBatchMemberIsMoved(t *testing.T) {
 	var got []uuid.UUID
 	var err error
 	g.WithWriteLock(func() {
-		err = g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+		err = g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 			{CardID: redirected, From: ZoneHand},
 			{CardID: plain, From: ZoneHand},
-		}, ZoneEntryOptions{}, func(_ *Game, entered []uuid.UUID) error {
+		}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error {
+			entered := o.IDs
 			got = entered
 			return nil
-		})
+		}))
 	})
 	if err != nil {
-		t.Fatalf("PutOntoBattlefieldTogetherThenForEffect: %v", err)
+		t.Fatalf("PutOntoBattlefieldTogetherKeyedForEffect: %v", err)
 	}
 	if !me.Graveyard.Contains(redirected) {
 		t.Error("the redirected member is not in its owner's graveyard")

@@ -28,7 +28,7 @@ func TestDispatchResolveChoiceRoutesPayOption(t *testing.T) {
 	}
 	paid := 0
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller.ID, Cost: "sacrifice two lands or take 5 damage", Question: "Worms?",
 			Action: &game.PayAction{Kind: game.PayActionEither, Either: []game.PayAction{
 				{Kind: game.PayActionSacrifice, Count: 2, Of: game.PermanentQuery{Types: []string{"land"}}},
@@ -95,7 +95,7 @@ func TestDispatchPayOptionOnAManaPromptIsRefused(t *testing.T) {
 	g := newGame(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: uuid.New(), Controller: g.Seats[1].ID, Cost: "{2}", Question: "Tax?",
 		}); err != nil {
 			t.Fatalf("queue: %v", err)

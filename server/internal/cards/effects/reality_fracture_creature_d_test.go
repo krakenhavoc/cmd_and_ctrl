@@ -478,7 +478,7 @@ func TestRFDProftConsultingDeclinedPaysNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	proft := rfdPush(g, me.ID, "Proft, Consulting Detective", "Legendary Creature — Human Detective", rfdProftConsultingOracle, 2, 2)
-	g.WithWriteLock(func() { g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil) })
+	g.WithWriteLock(func() { g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, game.KeyedTail{}) })
 	sv := surveilChoiceFor(g, me.ID)
 	if sv == nil {
 		t.Fatal("no surveil prompt")
@@ -641,7 +641,7 @@ func TestRFDSaheeliConsulMakesOneThopterPerTurnOnScryOrSurveil(t *testing.T) {
 	me := g.Seats[0]
 	rfdPush(g, me.ID, "Saheeli, Consul of Oversight", "Legendary Creature — Human Advisor", rfdSaheeliConsulOracle, 4, 4)
 
-	g.WithWriteLock(func() { g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil) })
+	g.WithWriteLock(func() { g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, game.KeyedTail{}) })
 	sv := surveilChoiceFor(g, me.ID)
 	if sv == nil {
 		t.Fatal("no surveil prompt")

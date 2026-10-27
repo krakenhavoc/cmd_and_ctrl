@@ -6,7 +6,7 @@ import "github.com/google/uuid"
 //
 // "Look at" and "reveal" are two different instructions and the
 // engine has only ever had the first. Scry, surveil and Sensei's
-// Divining Top tell ONE player something — lookAtTopForEffect marks
+// Divining Top tell ONE player something — lookAtTopWithTailLocked marks
 // the chooser and only the chooser a knower, and protocol's
 // per-viewer filter redacts the cards for everyone else. A reveal
 // tells the TABLE, and, the part that makes it a primitive rather
@@ -167,7 +167,7 @@ func (g *Game) RevealTopOfLibraryForEffect(playerID, source uuid.UUID, n int, re
 		n = size
 	}
 	// The library's top is the LAST element — the same read PopTop
-	// and lookAtTopForEffect use. Collected top-first so the table
+	// and lookAtTopWithTailLocked use. Collected top-first so the table
 	// sees them in draw order.
 	ids := make([]uuid.UUID, 0, n)
 	for i := 0; i < n; i++ {

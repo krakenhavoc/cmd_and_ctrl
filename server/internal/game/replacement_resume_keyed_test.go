@@ -393,9 +393,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"a keyword action's then": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{then: func(*Game) error { return nil }}
 		},
-		"the Army you amassed": func(c *PendingChoice) {
-			c.replacementResume.ev.keywordAction = &keywordActionTail{amassed: func(*Game, uuid.UUID) error { return nil }}
-		},
 		"an amass's Army the mirror cannot write": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{
 				Name: "Army", ActivatedAbilities: []ActivatedAbilityShape{{}},

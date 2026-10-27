@@ -182,8 +182,8 @@ func TestParanormalAnalystIgnoresAnOpponentsManifestDread(t *testing.T) {
 	handBefore := me.Hand.Size()
 	_, oppSecond := dreadPair(opp)
 	g.WithWriteLock(func() {
-		if err := g.ManifestDreadThenForEffect(opp.ID, uuid.Nil, nil); err != nil {
-			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		if err := g.ManifestDreadKeyedForEffect(opp.ID, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 		}
 	})
 	answerChooseCards(t, g, opp.ID, oppSecond)

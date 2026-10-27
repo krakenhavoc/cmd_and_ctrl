@@ -39,7 +39,7 @@ import (
 // CR 614 window settles: the rest of the effect.
 //
 // Unexported engine plumbing. The catalog never builds one; it hands a
-// `then` to AddCounterThenForEffect and the entry point fills this in
+// `then` to AddCounterByKeyedForEffect and the entry point fills this in
 // before the pipeline runs, because a CR 616 prompt returns without
 // placing anything and the resume has nothing else to go on.
 type counterTail struct {
@@ -111,9 +111,13 @@ func (g *Game) applyResolvedCounterThenLocked(ev *ReplacementEvent) error {
 	return g.runCounterTailLocked(ev, ev.CounterDelta)
 }
 
-// AddCounterThenForEffect is AddCounterForEffect with a continuation:
-// put `delta` `name` counters on `cardID` (a negative delta removes
-// them), and once the placement has actually settled, run `then`.
+// AddCounterByThenForEffect is AddCounterByForEffect with a
+// continuation: `placer` (CR 120.3d) puts `delta` `name` counters on
+// `cardID` (a negative delta removes them), and once the placement has
+// actually settled, `then` runs. A card passes a registered tail to
+// AddCounterByKeyedForEffect instead; this closure form is the engine's
+// own plumbing. (Its no-placer wrapper, AddCounterThenForEffect, was
+// deleted in #4253's last part once only tests called it.)
 //
 // WHEN `then` RUNS. Immediately, before this returns, on the ordinary
 // path. After the affected player answers the CR 616 ordering prompt
@@ -131,14 +135,8 @@ func (g *Game) applyResolvedCounterThenLocked(ev *ReplacementEvent) error {
 // caller with nothing after the placement passes nil, or keeps calling
 // AddCounterForEffect, which is this with nil.
 //
-// Caller must hold g.mu.
-func (g *Game) AddCounterThenForEffect(cardID uuid.UUID, name string, delta int, then func(g *Game, placed int) error) error {
-	return g.AddCounterByThenForEffect(uuid.Nil, cardID, name, delta, then)
-}
-
-// AddCounterByThenForEffect is AddCounterThenForEffect with the
-// CR 120.3d placer named (see AddCounterByForEffect). The one body
-// every card-side counter placement goes through.
+// The one body every counter placement with a continuation goes
+// through.
 //
 // Caller must hold g.mu.
 func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, delta int, then func(g *Game, placed int) error) error {

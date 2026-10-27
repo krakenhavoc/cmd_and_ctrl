@@ -54,11 +54,10 @@ func queueTestTax(t *testing.T, g *Game, payer, drawer uuid.UUID, drew *bool) *P
 	t.Helper()
 	resolvingTestRow(g, func() {
 		err := g.QueuePayUnlessForEffect(payer, uuid.Nil, "{1}", "Test Study — pay {1}?", func(g *Game) error {
-			g.QueueConfirmForEffect(ConfirmPrompt{
+			queueConfirmHooked(g, ConfirmPrompt{
 				Chooser:  drawer,
 				Question: "Test Study — draw a card?",
-				OnAccept: func(*Game) error { *drew = true; return nil },
-			})
+			}, func(*Game) error { *drew = true; return nil }, nil)
 			return nil
 		})
 		if err != nil {
@@ -138,10 +137,10 @@ func TestAutoAnswerNeverCoversABoardDependentPrompt(t *testing.T) {
 				_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{W/P}", "phyrexian", nil)
 			},
 			"a confirm with named branches": func() {
-				g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me, AcceptLabel: "Exile it", DeclineLabel: "Keep it"})
+				queueConfirmHooked(g, ConfirmPrompt{Chooser: me, AcceptLabel: "Exile it", DeclineLabel: "Keep it"}, nil, nil)
 			},
 			"a confirm that costs life": func() {
-				g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me, LifeCost: 4})
+				queueConfirmHooked(g, ConfirmPrompt{Chooser: me, LifeCost: 4}, nil, nil)
 			},
 		}
 		for name, queue := range cases {

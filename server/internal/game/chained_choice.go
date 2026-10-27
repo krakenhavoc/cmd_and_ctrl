@@ -255,44 +255,16 @@ type ConfirmPrompt struct {
 	// DeclineEndsLoop is PendingChoice.DeclineEndsLoop (#2040): accepting
 	// would continue a loop the table is already in.
 	DeclineEndsLoop bool
-	// Asked, Word and Objects are what a KEYED confirm hands its answer
-	// beside the carried IDs (QueueConfirmKeyedForEffect, #4291): the
-	// asking stack item as data (NewAskedItem), the one word of the card's
-	// text, and the objects with the epoch each had. A closure-form prompt
-	// leaves them empty.
+	// Asked, Word and Objects are what a confirm hands its answer beside
+	// the carried IDs (QueueConfirmKeyedForEffect, #4291): the asking stack
+	// item as data (NewAskedItem), the one word of the card's text, and the
+	// objects with the epoch each had. The branches are a registered answer
+	// (RegisterConfirmThen); the closure pair and its door,
+	// QueueConfirmForEffect, were deleted in #4253's last part once only
+	// tests used them.
 	Asked   *AskedItem
 	Word    string
 	Objects []ObjectRef
-	// OnAccept / OnDecline are the branches. Either may be nil. Both
-	// run with g.mu held and may queue further choices.
-	OnAccept, OnDecline func(g *Game) error
-}
-
-// QueueConfirmForEffect queues a two-way prompt and returns its ID.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueConfirmForEffect(p ConfirmPrompt) uuid.UUID {
-	from := p.FromPlayer
-	if from == uuid.Nil {
-		from = p.Chooser
-	}
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:         PendingChoiceConfirm,
-		Chooser:      p.Chooser,
-		FromPlayer:   from,
-		Count:        1,
-		Source:       p.Source,
-		Reason:       p.Question,
-		AcceptLabel:  p.AcceptLabel,
-		DeclineLabel: p.DeclineLabel,
-		LifeCost:     p.LifeCost,
-
-		DeclineEndsLoop: p.DeclineEndsLoop,
-		confirmResume: &confirmFrame{
-			onAccept:  p.OnAccept,
-			onDecline: p.OnDecline,
-		},
-	})
 }
 
 // ChooseCardsPrompt is the queue-side description of a
@@ -391,7 +363,7 @@ type ChooseCardsPrompt struct {
 	// promptRun links the queued prompt to the RUN it is one leg of
 	// (PendingChoice.promptRun, prompt_run.go). Unexported because it
 	// is engine plumbing: two callers set it, the discard prompt
-	// (#1027) and ChooseCardsRunThenForEffect (#1743), and the catalog
+	// (#1027) and ChooseCardsRunThenKeyedForEffect (#1743), and the catalog
 	// never builds a run by hand.
 	promptRun uuid.UUID
 	// Set only by the ordered public permanent collector. Immutable,

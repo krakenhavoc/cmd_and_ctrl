@@ -276,10 +276,10 @@ func TestGuffaOathAddsToAnEntryWithLoyaltyCounters(t *testing.T) {
 	opp.Graveyard.PushTop(game.Card{InstanceID: theirs, Name: "Their Walker", TypeLine: "Legendary Planeswalker — Test",
 		StartingLoyalty: 5, Owner: opp.ID, Controller: opp.ID})
 	g.WithWriteLock(func() {
-		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{{CardID: mine, From: game.ZoneGraveyard}},
-			game.ZoneEntryOptions{Controller: me.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, nil)
-		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{{CardID: theirs, From: game.ZoneGraveyard}},
-			game.ZoneEntryOptions{Controller: opp.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, nil)
+		_ = g.PutOntoBattlefieldTogetherKeyedForEffect([]game.BatchEntry{{CardID: mine, From: game.ZoneGraveyard}},
+			game.ZoneEntryOptions{Controller: me.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, game.KeyedTail{})
+		_ = g.PutOntoBattlefieldTogetherKeyedForEffect([]game.BatchEntry{{CardID: theirs, From: game.ZoneGraveyard}},
+			game.ZoneEntryOptions{Controller: opp.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, game.KeyedTail{})
 	})
 	for name, want := range map[string]int{"My Walker": 8, "Their Walker": 7} {
 		var got int
@@ -304,8 +304,8 @@ func TestGuffaOathAddsToAWalkerWithNoPrintedLoyalty(t *testing.T) {
 	me.Graveyard.PushTop(game.Card{InstanceID: id, Name: "Zero Walker", TypeLine: "Legendary Planeswalker — Test",
 		Owner: me.ID, Controller: me.ID})
 	g.WithWriteLock(func() {
-		_ = g.PutOntoBattlefieldTogetherThenForEffect([]game.BatchEntry{{CardID: id, From: game.ZoneGraveyard}},
-			game.ZoneEntryOptions{Controller: me.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, nil)
+		_ = g.PutOntoBattlefieldTogetherKeyedForEffect([]game.BatchEntry{{CardID: id, From: game.ZoneGraveyard}},
+			game.ZoneEntryOptions{Controller: me.ID, EntersWithCounters: map[string]int{game.CounterLoyalty: 2}}, game.KeyedTail{})
 	})
 	if got := loyaltyOf(g, id); got != 3 {
 		t.Errorf("Zero Walker entered with %d loyalty, want 3", got)

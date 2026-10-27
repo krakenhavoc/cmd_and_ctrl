@@ -323,7 +323,7 @@ func TestPermanentPickRunAsksPerSeatAndSettlesOnce(t *testing.T) {
 	runs := 0
 	var answer PromptedPicks
 	g.WithWriteLock(func() {
-		n, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		n, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser:  me.ID,
 			Source:   source,
 			Question: "Tragic Arrogance — keep one",
@@ -337,11 +337,12 @@ func TestPermanentPickRunAsksPerSeatAndSettlesOnce(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(_ *Game, picked PromptedPicks) error {
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error {
+			picked := r.Picks()
 			runs++
 			answer = picked
 			return nil
-		})
+		}))
 		if err != nil || n != 3 {
 			t.Fatalf("queued %d prompts, err %v", n, err)
 		}
@@ -408,7 +409,7 @@ func TestPermanentPickSkipsASeatWithNothingToOffer(t *testing.T) {
 	runs := 0
 	var answer PromptedPicks
 	g.WithWriteLock(func() {
-		n, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		n, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: me.ID,
 			Of:      []uuid.UUID{me.ID, empty.ID},
 			Candidates: func(g *Game, of uuid.UUID) ([]uuid.UUID, int, int) {
@@ -420,11 +421,12 @@ func TestPermanentPickSkipsASeatWithNothingToOffer(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(_ *Game, picked PromptedPicks) error {
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error {
+			picked := r.Picks()
 			runs++
 			answer = picked
 			return nil
-		})
+		}))
 		if err != nil || n != 1 {
 			t.Fatalf("queued %d prompts, err %v", n, err)
 		}
@@ -451,7 +453,7 @@ func TestOwnPermanentsPickAcceptsAnEmptyAnswer(t *testing.T) {
 
 	var answer PromptedPicks
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: me.ID,
 			Of:      []uuid.UUID{me.ID},
 			Candidates: func(g *Game, of uuid.UUID) ([]uuid.UUID, int, int) {
@@ -463,11 +465,12 @@ func TestOwnPermanentsPickAcceptsAnEmptyAnswer(t *testing.T) {
 				}
 				return out, 0, 0
 			},
-		}, func(_ *Game, picked PromptedPicks) error {
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error {
+			picked := r.Picks()
 			answer = picked
 			return nil
-		}); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
 	c := choicesOfKind(g, PendingChoiceOwnPermanents)[0]
@@ -495,7 +498,7 @@ func TestOwnPermanentsPickIsDroppedAndSettlesItsLeg(t *testing.T) {
 	runs := 0
 	var answer PromptedPicks
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: leaver.ID,
 			Source:  source,
 			Of:      []uuid.UUID{leaver.ID},
@@ -508,12 +511,13 @@ func TestOwnPermanentsPickIsDroppedAndSettlesItsLeg(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(_ *Game, picked PromptedPicks) error {
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error {
+			picked := r.Picks()
 			runs++
 			answer = picked
 			return nil
-		}); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
 	id := choicesOfKind(g, PendingChoiceOwnPermanents)[0].ID
@@ -542,7 +546,7 @@ func TestTheirPermanentsPickIsReassigned(t *testing.T) {
 
 	runs := 0
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: leaver.ID,
 			Source:  source,
 			Of:      []uuid.UUID{third.ID},
@@ -555,11 +559,11 @@ func TestTheirPermanentsPickIsReassigned(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(*Game, PromptedPicks) error {
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error {
 			runs++
 			return nil
-		}); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
 	id := choicesOfKind(g, PendingChoiceTheirPermanents)[0].ID
@@ -596,7 +600,7 @@ func TestPermanentPickPrunesAPermanentThatLeavesUnderIt(t *testing.T) {
 	doomed := permanentOf(g, me.ID, "Doomed")
 
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
 			Chooser: me.ID,
 			Of:      []uuid.UUID{me.ID},
 			Candidates: func(g *Game, of uuid.UUID) ([]uuid.UUID, int, int) {
@@ -608,8 +612,8 @@ func TestPermanentPickPrunesAPermanentThatLeavesUnderIt(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(*Game, PromptedPicks) error { return nil }); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		}, testRunHookThen, runHook(func(_ *Game, r RunDone) error { return nil })); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
 	c := choicesOfKind(g, PendingChoiceOwnPermanents)[0]

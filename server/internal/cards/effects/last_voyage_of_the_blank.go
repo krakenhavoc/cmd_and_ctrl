@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -130,15 +128,21 @@ var lastVoyageReturnThen = game.RegisterChooseCardsThen("choose-cards/last-voyag
 		if !r.Answered || len(r.Picked) == 0 {
 			return nil
 		}
-		aura := r.Source
-		return g.ReturnFromGraveyardToBattlefieldThenForEffect(r.Picked[0], r.Chooser, false,
-			func(g *game.Game, entered uuid.UUID) error {
-				if entered == uuid.Nil || !onBattlefield(g, entered) || !onBattlefield(g, aura) {
-					return nil
-				}
-				return g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: entered})
-			})
+		// #4253: the attach is the entry's keyed tail, so a question the
+		// entry asks (a CR 616 order, a Clone's copy) is a restore point.
+		return g.ReturnFromGraveyardToBattlefieldKeyedForEffect(r.Picked[0], r.Chooser, false,
+			game.KeyedTail{Ref: lastVoyageAttachReturned, Player: r.Chooser, Source: r.Source})
 	})
+
+// lastVoyageAttachReturned attaches the Aura (the tail's Source) to the
+// permanent that entered, when both are on the battlefield. An on-disk key.
+var lastVoyageAttachReturned = game.RegisterTail("last-voyage-of-the-blank/attach-returned", func(g *game.Game, o game.TailOutcome) error {
+	aura := o.Tail.Source
+	if len(o.IDs) == 0 || !onBattlefield(g, o.IDs[0]) || !onBattlefield(g, aura) {
+		return nil
+	}
+	return g.AttachForEffect(aura, game.TargetRef{Kind: game.TargetCard, ID: o.IDs[0]})
+})
 
 // lastVoyageLeftAsAnAura is "When this Aura leaves the battlefield": the
 // source left, and it was an Aura as it left (CR 603.10a).

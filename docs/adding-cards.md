@@ -2440,7 +2440,7 @@ card code:
   `PutFromLibraryOntoBattlefield` / `PutFromHandOntoBattlefield`, which
   already do. The synchronous doors return nothing while a card waits.
 - "Put both cards onto the battlefield" from two zones is
-  `PutOntoBattlefieldTogetherThenForEffect` with a `game.BatchEntry` per
+  `PutOntoBattlefieldTogetherKeyedForEffect` with a `game.BatchEntry` per
   card (Sword of Hearth and Home). Two calls in a row are two events, and
   CR 603.6a can tell: a trigger on the first card would not see the
   second.
@@ -5544,9 +5544,8 @@ g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) er
 })
 
 // "EACH opponent loses X life. You gain life equal to the life lost this way."
-g.LoseLifeEachThenForEffect(src, ctx.Opponents(), x, func(g *game.Game, lost int) error {
-    return g.ChangePlayerLifeForEffect(src, me, lost)      // lost is positive
-})
+// The tail is told the total lost (positive) as its Amount.
+g.LoseLifeEachKeyedForEffect(src, ctx.Opponents(), x, ctx.Tail(thenGainLifeEqualToLost))
 ```
 
 `applied` is the post-replacement amount, and it is `0` when the change
@@ -5954,10 +5953,11 @@ question over the player's own hand and hands back the prompt's ID —
 and a discard can pause for an extra action after the answer, because
 a replacement on the discarded card may ask. So anything printed after a
 discard goes in a run's continuation:
-`g.PlayerDiscardsThenForEffect(prompt, then)` for one seat,
-`g.PlayersDiscardThenForEffect(players, prompt, then)` for a named
-set, `g.EachPlayerDiscardsThenForEffect(except, prompt, then)` for the
-APNAP fan-out, and `g.EachPlayerDiscardsForEffect(except, prompt)` for
+`g.PlayerDiscardsThenKeyedForEffect(prompt, then, carry)` for one seat
+(a `RegisterDiscardThen` continuation),
+`g.PlayersDiscardThenKeyedForEffect(players, prompt, then, carry)` for a
+named set, `g.EachPlayerDiscardsThenKeyedForEffect(except, prompt, then,
+carry)` for the APNAP fan-out (a `RegisterPromptRunThen` continuation), and `g.EachPlayerDiscardsForEffect(except, prompt)` for
 a fan-out with nothing waiting. The prompt you pass is the TEMPLATE —
 its `Player` is ignored by the two multi-seat forms and stamped per
 seat. `then` is handed `game.PromptedDiscards`, which reads exactly
@@ -6272,7 +6272,7 @@ the rest of THEIR library.
 with a `Reveal` flag for "you may REVEAL a creature card from among
 them" (only the TAKEN cards become public; the rest of a private look
 stays private) — over the engine's
-`Game.TakeFromLibraryToHandThenForEffect`. Whole sentences:
+`Game.TakeFromLibraryToHandKeyedForEffect`. Whole sentences:
 `LookAtTopThenMayTakeToHand` (Horn of the Mark) and
 `RevealTopThenTakeToHand` (Goblin Ringleader). **Never `BounceToHand`
 for this.** It appears to work only because the zone router finds a
@@ -7736,9 +7736,9 @@ tail)` (`LoseLifeEachKeyedForEffect` for a batch, `EarthbendKeyedForEffect` and
 `o.Amount` (the counters placed, the life that moved, negative for a loss) and
 reads the rest off the tail: `Carry` (the permanent), `N`, `Word` (a counter
 kind) and the asking item. `ctx.Tail(ref)` omits the item, for a body that reads
-only IDs. The closure doors (`AddCounterThenForEffect`, `ChangePlayerLifeThenForEffect`,
-`LoseLifeEachThenForEffect`) are for tests that record what a continuation was
-told; `TestNoCatalogCardCallsAClosureCounterOrLifeDoor` refuses a new catalog
+only IDs. The closure doors that remain (`AddCounterByThenForEffect`,
+`ChangePlayerLifeThenForEffect`) are the engine's own plumbing;
+`TestNoCatalogCardCallsAClosureCounterOrLifeDoor` refuses a new catalog
 caller. A tail that two cards share is one key (`counter/double-plus-one`,
 `counter/draw-per-counter`, `life/gain-equal-to-lost`, `counter/put-on-each-next`
 for a list of placements); a cumulative upkeep is keyed by its label.
@@ -10217,7 +10217,7 @@ TheRingTemptsYou{ThenTail: ctx.Tail(ref)}               // "Then …" — runs a
                                                         // Ring-bearer (nothing when you controlled no creature)
 ```
 
-The engine does the rest (`game.RingTemptsForEffect`, `game/ring.go`):
+The engine does the rest (`game.RingTemptsKeyedForEffect`, `game/ring.go`):
 the Ring emblem at the first temptation, its count, the choice (asked
 with the `ring_bearer` prompt only when you control two or more
 creatures; one is chosen for you), the Ring-bearer designation and the
@@ -10957,7 +10957,7 @@ entry, so the Aura enters attached and is not asked:
 ```go
 SearchLibrary{…, EntersAttachedTo: game.TargetRef{Kind: game.TargetCard, ID: source}}  // Light-Paws
 ReturnFromGraveyardTogether{Targets: ids, AttachedTo: hostRef}                        // Mantle of the Ancients
-g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{AttachedTo: hostRef}, nil) // Gift of Immortality
+g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{AttachedTo: hostRef}, game.KeyedTail{}) // Gift of Immortality
 game.TokenEntryOptions{AttachedTo: hostRef}                                            // a token created attached
 ```
 
@@ -11705,7 +11705,7 @@ Six small pieces, each in a 2026-10-13 amendment of the ADR that owns it
 MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, Then: leylineTyrantPaid}.Apply(ctx) // "pay any amount of {R}. When you do …"
 // var leylineTyrantPaid = PayUnlessBranches("pay-unless/…", func(ctx *Context, r game.PayUnlessAnswer) error {
 //     return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: r.Number}}.Apply(ctx) }, nil)
-ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(id, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error { … }) // It Doesn't Add Up
+ctx.Game.ReturnFromGraveyardToBattlefieldKeyedForEffect(id, ctx.Controller(), false, ctx.Tail(thenSuspectEach)) // It Doesn't Add Up
 v.SetCardTypes("Artifact")                                                     // "except it's an artifact" (no "in addition")
 {Mana: []ManaAbility{…}}                                                       // an AbilityGrant a COPY can take: v.GrantAbility(key)
 tokenTemplate{Slug: "spirit-cleric", Static: []game.StaticAbility{cda}}        // a token that sizes itself
@@ -11714,7 +11714,7 @@ EntryRestrictions: []game.EntryRestriction{CardsInZonesCantEnter(…)}          
 
 - **"Any amount of {R}" is `MayPayX{Symbol}`**, not a fixed `MayPay`: X is chosen as the ability resolves, from 0 to the red
   the chooser can produce, then paid through the ordinary "you may pay" prompt. Paying 0 is declining.
-- **A "then" that must see the NEW permanent** goes through `ReturnFromGraveyardToBattlefieldThenForEffect` (ADR 0154): the suspect of It Doesn't Add Up
+- **A "then" that must see the NEW permanent** goes through `ReturnFromGraveyardToBattlefieldKeyedForEffect` (ADR 0154): the suspect of It Doesn't Add Up
   lands even when the returned creature first asks a question (a Clone's copy pick).
 - **A copy "except it's an artifact"** replaces the types (`SetCardTypes`); `AddCardType` is the "in addition" form. The
   Effigy's extra "{T}: Add {U}" is a registered mana grant the copy takes with `GrantAbility`.

@@ -23,7 +23,7 @@ func graveyardCards(p *Player, n int) []uuid.UUID {
 	return out
 }
 
-func exilePayment(n int) func(*AnyPlayerPays) {
+func exilePayment(n int) func(*anyPlayerTestOffer) {
 	return withPayment(PayAction{Kind: PayActionExileFromGraveyard, Count: n}, "exile cards from their graveyard")
 }
 
@@ -121,7 +121,7 @@ func TestGraveyardExileRunsOnPaidAfterTheLastCardLands(t *testing.T) {
 	cards := graveyardCards(me, 3)
 	inExileAtPaid := -1
 	var out offerOutcome
-	queueOffer(t, g, g.Seats[2].ID, "three", &out, exilePayment(3), func(p *AnyPlayerPays) {
+	queueOffer(t, g, g.Seats[2].ID, "three", &out, exilePayment(3), func(p *anyPlayerTestOffer) {
 		p.OnPaid = func(g *Game, payer uuid.UUID) error {
 			inExileAtPaid = 0
 			for _, id := range cards {

@@ -132,24 +132,22 @@ func TestHeuristicFinishesPondersShuffleChain(t *testing.T) {
 	handBefore := seat.Hand.Size()
 
 	g.WithWriteLock(func() {
-		g.LookAtTopThenForEffect(seat.ID, uuid.Nil, 3, func(g *game.Game) error {
-			g.QueueConfirmForEffect(game.ConfirmPrompt{
+		g.LookAtTopKeyedForEffect(seat.ID, uuid.Nil, 3, hookTail(func(g *game.Game, o game.TailOutcome) error {
+			queueConfirmHooked(g, game.ConfirmPrompt{
 				Chooser:      seat.ID,
 				Question:     "Ponder — shuffle your library?",
 				AcceptLabel:  "Shuffle",
 				DeclineLabel: "Keep that order",
-				OnAccept: func(g *game.Game) error {
-					if err := g.ShuffleLibraryForEffect(seat.ID); err != nil {
-						return err
-					}
-					return g.DrawNForEffect(seat.ID, 1)
-				},
-				OnDecline: func(g *game.Game) error {
-					return g.DrawNForEffect(seat.ID, 1)
-				},
+			}, func(g *game.Game) error {
+				if err := g.ShuffleLibraryForEffect(seat.ID); err != nil {
+					return err
+				}
+				return g.DrawNForEffect(seat.ID, 1)
+			}, func(g *game.Game) error {
+				return g.DrawNForEffect(seat.ID, 1)
 			})
 			return nil
-		})
+		}))
 	})
 
 	took := driveChoices(t, g, heuristic.New(), seat.ID, 8)
@@ -227,17 +225,16 @@ func TestHeuristicWillNotPayItsLastLifeToAChainedPrompt(t *testing.T) {
 	paid := false
 	g.WithWriteLock(func() {
 		seat.Life = 4
-		g.QueueConfirmForEffect(game.ConfirmPrompt{
+		queueConfirmHooked(g, game.ConfirmPrompt{
 			Chooser:      seat.ID,
 			Question:     "Sylvan Library — pay 4 life to keep it?",
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
 			LifeCost:     4,
-			OnAccept: func(*game.Game) error {
-				paid = true
-				return nil
-			},
-		})
+		}, func(*game.Game) error {
+			paid = true
+			return nil
+		}, nil)
 	})
 
 	took := driveChoices(t, g, heuristic.New(), seat.ID, 4)
@@ -263,19 +260,17 @@ func sylvanChainForTest(g *game.Game, controller uuid.UUID, remaining []uuid.UUI
 		}
 		return sylvanChainForTest(g, controller, rest)
 	}
-	g.QueueConfirmForEffect(game.ConfirmPrompt{
+	queueConfirmHooked(g, game.ConfirmPrompt{
 		Chooser:      controller,
 		Question:     "Sylvan Library — pay 4 life to keep it?",
 		AcceptLabel:  "Pay 4 life",
 		DeclineLabel: "Put it on top",
-		OnAccept: func(g *game.Game) error {
-			if err := g.ChangePlayerLifeForEffect(uuid.Nil, controller, -4); err != nil {
-				return err
-			}
-			return sylvanChainForTest(g, controller, rest)
-		},
-		OnDecline: putBack,
-	})
+	}, func(g *game.Game) error {
+		if err := g.ChangePlayerLifeForEffect(uuid.Nil, controller, -4); err != nil {
+			return err
+		}
+		return sylvanChainForTest(g, controller, rest)
+	}, putBack)
 	return nil
 }
 

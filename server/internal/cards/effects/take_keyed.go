@@ -76,11 +76,27 @@ func RegisterTake(key string, def TakeDef) TakeThen {
 			label = r.Question
 		}
 		// r.Carry is the looked-at cards: "the rest" is read off them.
-		return finishTake(g, r.Source, r.Chooser, r.Carry, def.Reveal, label, def.Then, picked)
+		return finishTake(g, r.Source, r.Chooser, def.Reveal, label, takeMovedTail(key, r.Source, r.Chooser, r.Carry), picked)
 	})
 	takeDefs[key] = takeEntry{def: def, pick: pick}
 	return TakeThen{key: key}
 }
+
+// takeMovedTail is a registered take's keyed rest (#4253): the take's key
+// as Word, who took and for which clause, and the looked-at cards as Carry.
+func takeMovedTail(key string, source, player uuid.UUID, looked []uuid.UUID) game.KeyedTail {
+	return game.KeyedTail{Ref: takeMoved, Player: player, Source: source, Word: key, Carry: append([]uuid.UUID(nil), looked...)}
+}
+
+// takeMoved runs a registered take's own Then once its move to hand has
+// settled, told the cards that reached a hand. An on-disk key.
+var takeMoved = game.RegisterTail("take/moved", func(g *game.Game, o game.TailOutcome) error {
+	e, ok := takeDefs[o.Tail.Word]
+	if !ok || e.def.Then == nil {
+		return nil
+	}
+	return takeThenErr(e.def.Then(g, takeResult(g, o.Tail.Source, o.Tail.Player, o.Tail.Carry, o.IDs)))
+})
 
 // takeRule is the set rule a registered take is answered against: the
 // slots hold every picked card at once, and Validate agrees. Nil when the
@@ -114,7 +130,7 @@ func (p TakeFromLibraryToHand) applyKeyed(ctx *Context, player, source uuid.UUID
 	if !ok {
 		return fmt.Errorf("%w: take %q", game.ErrUnknownEffectKey, p.Key.key)
 	}
-	if p.Then != nil || p.Validate != nil || len(p.Slots) > 0 || p.Reveal {
+	if p.Validate != nil || len(p.Slots) > 0 || p.Reveal {
 		return fmt.Errorf("%w: keyed take %q also sets a closure or a rule the registration owns", game.ErrInvalidParam, p.Key.key)
 	}
 	p.Slots, p.Validate, p.Reveal = e.def.Slots, e.def.Validate, e.def.Reveal
@@ -124,7 +140,7 @@ func (p TakeFromLibraryToHand) applyKeyed(ctx *Context, player, source uuid.UUID
 	}
 	prompt, answer := p.ask(ctx.Game, player, source)
 	if prompt == nil {
-		return finishTake(ctx.Game, source, player, p.Cards, e.def.Reveal, label, e.def.Then, answer)
+		return finishTake(ctx.Game, source, player, e.def.Reveal, label, takeMovedTail(p.Key.key, source, player, p.Cards), answer)
 	}
 	// The registered continuation re-checks nothing but the live zone, and
 	// holds the set rule: the prompt carries the looked-at cards.
@@ -154,10 +170,22 @@ type EachTakeThen struct {
 func RegisterEachTake(runKey, legKey string, def TakeDef, then func(ctx *Context, res []TakeFromLibraryResult) error) EachTakeThen {
 	leg := game.RegisterChooseCardsRunLegRule(legKey, takeRule(def))
 	run := RunThen(runKey, func(ctx *Context, r game.RunDone) error {
-		return eachTakeFinish(ctx, r, def, then)
+		return eachTakeFinish(ctx, r, runKey, def)
 	})
+	eachTakeDefs[runKey] = eachTakeEntry{def: def, then: then}
 	return EachTakeThen{run: run, leg: leg, def: def}
 }
+
+// eachTakeEntry is a registered fan-out's definition and its rest of the
+// card, read by its keyed moves (eachTakeMoved).
+type eachTakeEntry struct {
+	def  TakeDef
+	then func(ctx *Context, res []TakeFromLibraryResult) error
+}
+
+// eachTakeDefs are the registered fan-outs, by run key. Written by package
+// initialisation only.
+var eachTakeDefs = map[string]eachTakeEntry{}
 
 // applyKeyed is Apply for a fan-out that names a registered definition.
 //
@@ -171,7 +199,7 @@ func (e EachPlayerTakesFromLibrary) applyKeyed(ctx *Context) error {
 	if players == nil {
 		players = apnapPlayers(g)
 	}
-	if e.Take.Then != nil || e.Take.Validate != nil || len(e.Take.Slots) > 0 || e.Take.Reveal {
+	if e.Take.Validate != nil || len(e.Take.Slots) > 0 || e.Take.Reveal {
 		return fmt.Errorf("%w: keyed fan-out of takes also sets a closure or a rule the registration owns", game.ErrInvalidParam)
 	}
 	def := e.Keyed.def
@@ -202,7 +230,7 @@ func (e EachPlayerTakesFromLibrary) applyKeyed(ctx *Context) error {
 
 // eachTakeFinish is the fan-out's continuation: every player's take, in
 // order, then the card's rest.
-func eachTakeFinish(ctx *Context, r game.RunDone, def TakeDef, then func(ctx *Context, res []TakeFromLibraryResult) error) error {
+func eachTakeFinish(ctx *Context, r game.RunDone, runKey string, def TakeDef) error {
 	g := ctx.Game
 	lists := unpackIDLists(r.Carry)
 	var players []uuid.UUID
@@ -219,10 +247,10 @@ func eachTakeFinish(ctx *Context, r game.RunDone, def TakeDef, then func(ctx *Co
 		}
 	}
 	picks := r.Picks()
-	takes := make([]TakeFromLibraryToHand, n)
+	looked := make([][]uuid.UUID, n)
 	chosen := make([][]uuid.UUID, n)
 	for i, player := range players {
-		takes[i] = TakeFromLibraryToHand{Player: player, Cards: lists[1+i], Then: def.Then}
+		looked[i] = lists[1+i]
 		if a, ok := auto[player]; ok {
 			chosen[i] = a
 		} else {
@@ -230,14 +258,110 @@ func eachTakeFinish(ctx *Context, r game.RunDone, def TakeDef, then func(ctx *Co
 		}
 	}
 	if def.Reveal {
-		for i, t := range takes {
-			revealTaken(g, t.Player, r.Source, def.Label, chosen[i])
+		for i, player := range players {
+			revealTaken(g, player, r.Source, def.Label, chosen[i])
 		}
 	}
-	item := ctx.Item
-	var rest func(*game.Game, []TakeFromLibraryResult) error
-	if then != nil {
-		rest = func(g *game.Game, res []TakeFromLibraryResult) error { return then(NewContext(g, item), res) }
+	step := eachTakeStep{runKey: runKey, source: r.Source, controller: ctx.Controller(), asked: game.NewAskedItem(ctx.Item),
+		players: players, looked: looked, chosen: chosen}
+	return step.move(g)
+}
+
+// eachTakeStep is the fan-out's moves as data (#4253): player len(done)'s
+// picks move to their hand, and the move's keyed tail (eachTakeMoved) runs
+// that player's own Then and moves the next player's, so a CR 903.9b pause
+// on any player's move is a restore point and holds the rest of the
+// table's moves behind it. The final rest of the card runs once, with every
+// result.
+type eachTakeStep struct {
+	runKey     string
+	source     uuid.UUID
+	controller uuid.UUID
+	asked      *game.AskedItem
+	players    []uuid.UUID
+	looked     [][]uuid.UUID
+	chosen     [][]uuid.UUID
+	done       []TakeFromLibraryResult
+}
+
+// move moves the next player's picks, or runs the card's rest when every
+// player is done.
+func (s eachTakeStep) move(g *game.Game) error {
+	i := len(s.done)
+	if i >= len(s.players) {
+		e, ok := eachTakeDefs[s.runKey]
+		if !ok || e.then == nil {
+			return nil
+		}
+		ctx := tailContext(g, game.KeyedTail{Player: s.controller, Source: s.source, Asked: s.asked})
+		return e.then(ctx, s.done)
 	}
-	return eachPlayerTakeMoves(g, r.Source, takes, chosen, nil, rest)
+	// Every player's take was revealed together, before any card moved.
+	return finishTake(g, s.source, s.players[i], false, "", s.tail(), s.chosen[i])
+}
+
+// tail writes the step as eachTakeMoved's tail: the run key as Word, the
+// asking item, and in Carry (packIDLists) the players, each one's look,
+// each one's picks, and for each player done the cards they took and the
+// rest of their look as it was when their take finished.
+func (s eachTakeStep) tail() game.KeyedTail {
+	lists := [][]uuid.UUID{s.players}
+	lists = append(lists, s.looked...)
+	lists = append(lists, s.chosen...)
+	for _, d := range s.done {
+		lists = append(lists, d.Taken, d.Rest)
+	}
+	return game.KeyedTail{Ref: eachTakeMoved, Player: s.controller, Source: s.source, Word: s.runKey, Asked: s.asked, Carry: packIDLists(lists...)}
+}
+
+// eachTakeStepOf reads a step back from eachTakeMoved's tail; false when the
+// carry does not hold one.
+func eachTakeStepOf(t game.KeyedTail) (eachTakeStep, bool) {
+	s := eachTakeStep{runKey: t.Word, source: t.Source, controller: t.Player, asked: t.Asked}
+	lists := unpackIDLists(t.Carry)
+	if len(lists) == 0 {
+		return s, false
+	}
+	s.players = lists[0]
+	n := len(s.players)
+	if len(lists) < 1+2*n || (len(lists)-1-2*n)%2 != 0 {
+		return s, false
+	}
+	s.looked = lists[1 : 1+n]
+	s.chosen = lists[1+n : 1+2*n]
+	for j, rest := 0, lists[1+2*n:]; j+1 < len(rest); j += 2 {
+		k := len(s.done)
+		s.done = append(s.done, TakeFromLibraryResult{
+			Source: s.source, Player: s.players[k], Taken: rest[j], Rest: rest[j+1],
+			Looked: append([]uuid.UUID(nil), s.looked[k]...),
+		})
+	}
+	return s, len(s.done) < n
+}
+
+// eachTakeMoved is one fan-out step's rest, told the cards that reached the
+// player's hand: that player's own Then, then the next player's move. The
+// player's own Then's error is returned after the rest of the table's moves,
+// as each player's take is its own. An on-disk key. Registered from init:
+// the body moves the next player, whose tail names this one.
+var eachTakeMoved game.TailRef
+
+func init() { eachTakeMoved = game.RegisterTail("take/each-moved", eachTakeMovedBody) }
+
+func eachTakeMovedBody(g *game.Game, o game.TailOutcome) error {
+	s, ok := eachTakeStepOf(o.Tail)
+	if !ok {
+		return nil
+	}
+	i := len(s.done)
+	res := takeResult(g, s.source, s.players[i], s.looked[i], o.IDs)
+	var ownErr error
+	if e, ok := eachTakeDefs[s.runKey]; ok && e.def.Then != nil {
+		ownErr = e.def.Then(g, res)
+	}
+	s.done = append(append(make([]TakeFromLibraryResult, 0, i+1), s.done...), res)
+	if err := unwrapTakeThen(s.move(g)); err != nil {
+		return takeThenErr(err)
+	}
+	return takeThenErr(ownErr)
 }

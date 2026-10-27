@@ -151,8 +151,8 @@ type exitVerb struct {
 var (
 	exileVerb = exitVerb{kind: "exile", fix: "ExileTarget.ThenTail, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
 		"or g.ExileCardThenForEffect / g.ExileCardsThenForEffect, and gate the clause on `exiled`"}
-	destroyVerb = exitVerb{kind: "destroy", fix: "DestroyAllMatching.Then or g.DestroyPermanentsThenForEffect " +
-		"(a set of one is fine), and gate the clause on the `destroyed` list"}
+	destroyVerb = exitVerb{kind: "destroy", fix: "DestroyAllMatching.ThenTail or g.DestroyPermanentsKeyedForEffect " +
+		"(a set of one is fine), and gate the clause on the destroyed list (its IDs)"}
 	sacrificeVerb = exitVerb{kind: "sacrifice", fix: "SacrificePermanent.Then or g.SacrificeThenForEffect / " +
 		"g.SacrificeAllThenForEffect, and gate the clause on `sacrificed`"}
 	sacrificePromptVerb = exitVerb{

@@ -173,17 +173,12 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	myCard := promptingTop(g, me, false)
 	otherCard := promptingTop(g, other, false)
 
-	var results []PlayerCards
-	finished := 0
+	testExileTopEachHeard = nil
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 		err := exileTopEachPlayerInTurn(ctx, []uuid.UUID{other.ID, me.ID},
 			ExileTopWithPermission{GrantTo: me.ID, N: 1, AnyColor: true},
-			func(_ *Context, r []PlayerCards) error {
-				finished++
-				results = r
-				return nil
-			})
+			game.KeyedTail{Ref: testExileTopEachDone})
 		if err != nil {
 			t.Fatalf("exileTopEachPlayerInTurn: %v", err)
 		}
@@ -194,15 +189,15 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	}
 	answerExileOrder(t, g)
 	expectOnePrompt(t, g, "after the first answer")
-	if !stillInLibraryOf(other, otherCard) || finished != 0 {
+	if !stillInLibraryOf(other, otherCard) || len(testExileTopEachHeard) != 0 {
 		t.Fatal("the second library was exiled from, or the continuation ran, before the second answer")
 	}
 	answerExileOrder(t, g)
-	if finished != 1 || len(results) != 2 {
-		t.Fatalf("finished %d times with results %+v", finished, results)
+	if len(testExileTopEachHeard) != 1 || len(testExileTopEachHeard[0]) != 2 {
+		t.Fatalf("the continuation was told %v, want one run with two cards", testExileTopEachHeard)
 	}
-	if results[0].Player != me.ID || results[0].Cards[0] != myCard || results[1].Player != other.ID || results[1].Cards[0] != otherCard {
-		t.Errorf("results %+v are not the active player's card, then the other's", results)
+	if got := testExileTopEachHeard[0]; got[0] != myCard || got[1] != otherCard {
+		t.Errorf("told %v, not the active player's card, then the other's", got)
 	}
 	for _, id := range []uuid.UUID{myCard, otherCard} {
 		if _, ok := findInZone(g.Exile, id); !ok {
@@ -211,7 +206,17 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	}
 }
 
-func TestExileTopWithPermissionApplyThenRefusesTheFormsWithoutAContinuation(t *testing.T) {
+// testExileTopEachHeard is what each run of testExileTopEachDone was told.
+var testExileTopEachHeard [][]uuid.UUID
+
+// testExileTopEachDone records the cards an exileTopEachPlayerInTurn chain
+// exiled.
+var testExileTopEachDone = game.RegisterTail("test/4253-exile-top-each-done", func(_ *game.Game, o game.TailOutcome) error {
+	testExileTopEachHeard = append(testExileTopEachHeard, append([]uuid.UUID(nil), o.IDs...))
+	return nil
+})
+
+func TestExileTopEachPlayerInTurnRefusesTheFormsWithoutAContinuation(t *testing.T) {
 	g := newCatalogGame(t)
 	budget := 3
 	for _, e := range []ExileTopWithPermission{
@@ -220,7 +225,8 @@ func TestExileTopWithPermissionApplyThenRefusesTheFormsWithoutAContinuation(t *t
 		{GrantTo: g.Seats[0].ID, EachManaValueAtMost: &budget},
 	} {
 		g.WithWriteLock(func() {
-			if err := e.ApplyThen(NewContext(g, &game.StackItem{Controller: g.Seats[0].ID}), nil); err == nil {
+			ctx := NewContext(g, &game.StackItem{Controller: g.Seats[0].ID})
+			if err := exileTopEachPlayerInTurn(ctx, []uuid.UUID{g.Seats[0].ID}, e, game.KeyedTail{}); err == nil {
 				t.Errorf("%+v: want an error, got none", e)
 			}
 		})

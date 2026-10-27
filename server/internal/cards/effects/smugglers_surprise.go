@@ -39,7 +39,7 @@ import (
 // that actually reached the graveyard — re-checked against the
 // graveyard when the prompt is built (mill_then_take.go's reasoning).
 // The two creature cards from hand enter as ONE simultaneous event
-// (PutOntoBattlefieldTogetherThenForEffect), so each sees the other
+// (PutOntoBattlefieldTogetherKeyedForEffect), so each sees the other
 // arrive (CR 603.6a).
 //
 // No simplification.

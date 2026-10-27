@@ -204,7 +204,6 @@ entryBatchMember.out                         census:ChoiceResumeFrames          
 entryTail.batch                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch
 entryTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.then
 followUpPark.run                             census:ChoiceResumeFrames          # Game.followUpParks.run
-keywordActionTail.amassed                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.amassed
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 keywordActionTail.then                       census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.then
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card

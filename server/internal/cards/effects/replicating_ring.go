@@ -43,7 +43,7 @@ func init() {
 					return nil
 				}
 				// #1290: the payout check reads the count AFTER the
-				// counter LANDS, via AddCounterThenForEffect's
+				// counter LANDS, via AddCounterByKeyedForEffect's
 				// continuation, not on the next line — a Doubling
 				// Season / Hardened Scales board pauses the placement
 				// on a CR 616 prompt, and reading before it resumes

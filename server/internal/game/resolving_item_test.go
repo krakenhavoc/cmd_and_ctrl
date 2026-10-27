@@ -92,17 +92,16 @@ func TestResolvingSlotSurvivesAPauseAndIsClearedByTheNextOccurrence(t *testing.T
 	id = pushResolvingSpell(t, g, me.ID, func(g *Game, item *StackItem) error {
 		// A paused continuation: the rest of the effect is behind a
 		// prompt and runs long after this returns.
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser:  me.ID,
 			Source:   item.SourceCardID,
 			Question: "test — pause here",
-			OnAccept: func(g *Game) error {
-				if _, _, ok := g.stackSpellLocked(id); !ok {
-					t.Error("the resolving item is gone by the time the prompt is answered")
-				}
-				return nil
-			},
-		})
+		}, func(g *Game) error {
+			if _, _, ok := g.stackSpellLocked(id); !ok {
+				t.Error("the resolving item is gone by the time the prompt is answered")
+			}
+			return nil
+		}, nil)
 		return nil
 	})
 	g.WithWriteLock(func() {
@@ -173,17 +172,16 @@ func TestResolvingSlotRewindsWithAnUndo(t *testing.T) {
 	var id uuid.UUID
 	found := 0
 	id = pushResolvingSpell(t, g, me.ID, func(g *Game, item *StackItem) error {
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser:  me.ID,
 			Source:   item.SourceCardID,
 			Question: "test — pause here",
-			OnAccept: func(g *Game) error {
-				if _, _, ok := g.stackSpellLocked(id); ok {
-					found++
-				}
-				return nil
-			},
-		})
+		}, func(g *Game) error {
+			if _, _, ok := g.stackSpellLocked(id); ok {
+				found++
+			}
+			return nil
+		}, nil)
 		return nil
 	})
 	g.WithWriteLock(func() {

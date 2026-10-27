@@ -21,7 +21,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // open.
 //
 // Both halves lean on machinery that was already here. The look is
-// LookAtTopThenForEffect — the scry family's third member, whose doc
+// LookAtTopKeyedForEffect — the scry family's third member, whose doc
 // comment names this card — so the cards are marked known to the
 // controller ONLY and the wire redacts them for everyone else; a
 // table that could read your Soothsaying is a real information leak,

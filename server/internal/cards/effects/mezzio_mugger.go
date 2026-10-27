@@ -34,5 +34,5 @@ func mezzioMuggerExile(g *game.Game, item *game.StackItem) error {
 	// One library at a time in APNAP order (#4266): a CR 616.1 prompt one
 	// exile asks is the only one open, and the next library waits for it.
 	return exileTopEachPlayerInTurn(ctx, apnapPlayers(g),
-		ExileTopWithPermission{GrantTo: item.Controller, N: 1, AnyColor: true}, nil)
+		ExileTopWithPermission{GrantTo: item.Controller, N: 1, AnyColor: true}, game.KeyedTail{})
 }

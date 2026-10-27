@@ -23,7 +23,7 @@ import (
 // is the same predicate Elspeth, Sun's Champion's emblem uses.
 //
 // THE −6 destroys the (up to three) targets as one simultaneous event
-// (DestroyPermanentsThenForEffect), then returns every one that really
+// (DestroyPermanentsKeyedForEffect), then returns every one that really
 // reached a graveyard — read off the landed outcome, so an indestructible
 // target (never destroyed), a token (it ceases to exist, CR 111.7) and a
 // permanent a replacement sent elsewhere are not returned, as printed.

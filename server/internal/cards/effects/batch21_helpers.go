@@ -158,7 +158,7 @@ func b21TargetAnyNonDragon() *game.TargetSpec {
 // "LIFE LOST THIS WAY" IS NOT N × OPPONENTS. It is what each opponent
 // really lost, which is the same number only while nothing is replacing
 // anybody's life loss. #793: the gain therefore rides
-// LoseLifeEachThenForEffect's continuation, which reports the true
+// LoseLifeEachKeyedForEffect's continuation, which reports the true
 // total once every opponent's own CR 614 window has settled — including
 // the ones that paused on a CR 616 ordering prompt, where reading the
 // life totals back on the next line saw nothing at all and gained zero.

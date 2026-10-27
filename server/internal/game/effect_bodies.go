@@ -326,6 +326,19 @@ func DelayedCondition(key string, fn ConditionFunc) ConditionRef {
 	return ConditionRef{key: key}
 }
 
+// ConditionRefByKey is the ref for a registered event condition, for a
+// keyed tail that names one in its data (#4253: ExileUntil's "until an
+// opponent becomes the monarch" record, written once the card reached
+// exile). False when no condition is registered under key.
+func ConditionRefByKey(key string) (ConditionRef, bool) {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	if _, ok := effectConditions[key]; !ok {
+		return ConditionRef{}, false
+	}
+	return ConditionRef{key: key}, true
+}
+
 // EachConditionFunc is an each-condition's match: the objects a watched
 // event makes the delayed trigger trigger for, in the order they trigger.
 // Empty is "not this trigger's event". Runs under g.mu held in write

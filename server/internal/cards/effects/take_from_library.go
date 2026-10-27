@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 //
 // The sibling of put_from_library.go, clause for clause, and split the
 // same way. The MOVE is engine:
-// game.TakeFromLibraryToHandThenForEffect routes library -> hand like
+// game.TakeFromLibraryToHandKeyedForEffect routes library -> hand like
 // every other zone change, so the CR 614 window opens, a commander is
 // offered CR 903.9b's replacement (a hand is one of its destinations,
 // so this move pauses on it), and the continuation is told what
@@ -144,18 +145,11 @@ type TakeFromLibraryToHand struct {
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
-	// Then is what runs after the move with what happened: the
-	// registered TakeDef.Then, carried here by the keyed fan-out
-	// (take_keyed.go) as it finishes each player's take. Apply refuses a
-	// take that sets it: a card writes "the rest" in its RegisterTake
-	// definition (#4253 retired the closure door).
-	Then func(g *game.Game, res TakeFromLibraryResult) error
-
 	// Key is the take as a REGISTERED definition (RegisterTake,
 	// take_keyed.go, #4290): its reveal, set rule and Then live in the
 	// registration, so the prompt holds no closure and a table waiting on
-	// the pick is a restore point. Required; with it Slots, Validate,
-	// Reveal and Then must be unset.
+	// the pick is a restore point. Required; with it Slots, Validate and
+	// Reveal must be unset.
 	Key TakeThen
 }
 
@@ -256,62 +250,77 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 	}, nil
 }
 
-// finisher is what happens once `player`'s picks are known: reveal
-// them if the clause reveals, move them, and hand Then the result.
-func (p TakeFromLibraryToHand) finisher(source, player uuid.UUID) func(g *game.Game, picked []uuid.UUID) error {
-	cards := append([]uuid.UUID(nil), p.Cards...)
-	then := p.Then
-	reveal, label := p.Reveal, p.Label
-
-	return func(g *game.Game, picked []uuid.UUID) error {
-		return finishTake(g, source, player, cards, reveal, label, then, picked)
-	}
-}
-
-// finishTake is the finisher's body, shared with the keyed take
-// (take_keyed.go): `cards` are the looked-at cards, `picked` what the
-// player took.
-func finishTake(g *game.Game, source, player uuid.UUID, cards []uuid.UUID, reveal bool, label string,
-	then func(g *game.Game, res TakeFromLibraryResult) error, picked []uuid.UUID,
-) error {
-	reported := false
-	report := func(g *game.Game, taken []uuid.UUID) error {
-		reported = true
-		if then == nil {
-			return nil
-		}
-		return then(g, TakeFromLibraryResult{
-			Source: source,
-			Player: player,
-			Taken:  taken,
-			Rest:   cardsStillInALibrary(g, cards),
-			Looked: append([]uuid.UUID(nil), cards...),
-		})
-	}
+// finishTake is what happens once `player`'s picks are known: reveal them if
+// the clause reveals, move them, and run `then`, a registered tail told the
+// cards that reached a hand (#4253: the move's continuation is data, so a
+// CR 614 / 616 / 903.9 prompt it pauses on is a restore point). `picked` is
+// what the player took. The tail builds its TakeFromLibraryResult from what
+// it carries (takeResult).
+//
+// `then` runs in every case: at once when nothing was picked, after the
+// move otherwise, and even when the move itself returned an error before
+// reaching it, so the rest are never left on top because one card failed.
+func finishTake(g *game.Game, source, player uuid.UUID, reveal bool, label string, then game.KeyedTail, picked []uuid.UUID) error {
 	if len(picked) == 0 {
-		return report(g, nil)
+		return unwrapTakeThen(then.Run(g, nil))
 	}
 	if reveal {
 		revealTaken(g, player, source, label, picked)
 	}
-	moveErr := g.TakeFromLibraryToHandThenForEffect(player, picked, report)
-	if moveErr != nil && !reported {
+	moveErr := g.TakeFromLibraryToHandKeyedForEffect(player, picked, then)
+	var thenErr takeThenError
+	if moveErr != nil && !errors.As(moveErr, &thenErr) {
 		// A leg failed and the route returned before reaching its
-		// continuation, so "the rest" has not been dealt with.
-		// Run it anyway: the looked-at cards must not be left on
-		// TOP of the library — with the looker still a knower of
-		// them — because one card of the batch failed. This is the
-		// rule put_from_library.go states and keeps, and the doc
-		// above promises.
+		// continuation, so "the rest" has not been dealt with. Run it
+		// anyway: the looked-at cards must not be left on TOP of the
+		// library — with the looker still a knower of them — because one
+		// card of the batch failed. This is the rule put_from_library.go
+		// states and keeps, and the doc above promises.
 		//
-		// Taken is empty rather than partial: the route reports
-		// what landed only through the continuation it did not
-		// reach. Rest is read off the live board, so it is right
-		// either way, which is what the rest leg actually needs.
-		thenErr := report(g, nil)
-		_ = thenErr // the move's error is the one worth returning
+		// Taken is empty rather than partial: the route reports what
+		// landed only through the continuation it did not reach. Rest is
+		// read off the live board, so it is right either way, which is
+		// what the rest leg actually needs.
+		_ = then.Run(g, nil) // the move's error is the one worth returning
 	}
-	return moveErr
+	return unwrapTakeThen(moveErr)
+}
+
+// takeThenError marks an error a take's own continuation returned, so
+// finishTake can tell it from a failed leg (which never reached it).
+type takeThenError struct{ err error }
+
+func (e takeThenError) Error() string { return e.err.Error() }
+func (e takeThenError) Unwrap() error { return e.err }
+
+// takeThenErr wraps a take continuation's error; nil stays nil.
+func takeThenErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	return takeThenError{err: err}
+}
+
+// unwrapTakeThen returns the error a take continuation wrapped, or err.
+func unwrapTakeThen(err error) error {
+	var t takeThenError
+	if errors.As(err, &t) {
+		return t.err
+	}
+	return err
+}
+
+// takeResult is what a take's keyed continuation reports: Player took
+// `taken` (the cards that reached a hand) from a look at `looked`, for the
+// clause of Source.
+func takeResult(g *game.Game, source, player uuid.UUID, looked, taken []uuid.UUID) TakeFromLibraryResult {
+	return TakeFromLibraryResult{
+		Source: source,
+		Player: player,
+		Taken:  append([]uuid.UUID(nil), taken...),
+		Rest:   cardsStillInALibrary(g, looked),
+		Looked: append([]uuid.UUID(nil), looked...),
+	}
 }
 
 // revealTaken makes the TAKEN cards public while they are still in the
@@ -592,7 +601,7 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 // Every player is asked exactly the question Take would ask them alone
 // — the same candidates, bounds and set rule, from
 // TakeFromLibraryToHand's own ask — as one leg of a choose_cards run
-// (game.ChooseCardsRunThenForEffect). The legs go up together in
+// (game.ChooseCardsRunThenKeyedForEffect). The legs go up together in
 // Players order and may be answered in any order, which is CR 101.4's
 // APNAP order for a choice made face down (CR 101.4a): nothing is
 // revealed and nothing moves until the last player has answered.
@@ -605,15 +614,15 @@ func RevealTopThenTakeToHand(ctx *Context, player uuid.UUID, n int, match CardPr
 // each player TOOK become public — every player's, before any card
 // moves, because the choices are made in turn and the actions happen
 // together — and the rest of every look stays private. "The rest on
-// the bottom of their library in a random order" is Take.Then =
-// TakeRestOnBottomInRandomOrder, run for each player with their own
+// the bottom of their library in a random order" is the registration's
+// Then = TakeRestOnBottomInRandomOrder, run for each player with their own
 // result, on that player's own random-order stream.
 //
 // # After the answers
 //
 // In Players order, each player's picks move to their hand and that
-// player's Take.Then runs; the next player's cards move from inside
-// that continuation, so a commander's CR 903.9b pause (the move is to
+// player's own Then runs; the next player's cards move from inside
+// that continuation (a keyed tail, #4253), so a commander's CR 903.9b pause (the move is to
 // a hand) holds the rest of the table's moves behind it rather than being overtaken. Then runs
 // last, once, with every result. A short library is looked at as far
 // as it goes and an empty one is a look at nothing; a player with no
@@ -629,8 +638,7 @@ type EachPlayerTakesFromLibrary struct {
 	N int
 
 	// Take is one player's clause — Match or Slots, Max, Optional,
-	// Reveal, Validate, Label — and Take.Then is that player's own
-	// "the rest". Take.Player and Take.Cards are filled in per player;
+	// Reveal, Validate, Label. Take.Player and Take.Cards are filled in per player;
 	// whatever they hold here is ignored.
 	Take TakeFromLibraryToHand
 
@@ -640,7 +648,7 @@ type EachPlayerTakesFromLibrary struct {
 	// life", run once with one result per player in Players order), live
 	// in the registration, so no prompt holds a closure and a table
 	// waiting on any player's pick is a restore point. Required; with it
-	// Take.Slots, Take.Validate, Take.Reveal and Take.Then must be unset.
+	// Take.Slots, Take.Validate and Take.Reveal must be unset.
 	Keyed EachTakeThen
 }
 
@@ -649,39 +657,4 @@ func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
 		return fmt.Errorf("%w: EachPlayerTakesFromLibrary with no registered definition (RegisterEachTake)", game.ErrInvalidParam)
 	}
 	return e.applyKeyed(ctx)
-}
-
-// eachPlayerTakeMoves finishes the take of player len(done) — moves
-// their picks and runs their own Then — and goes on to the next player
-// from inside that continuation, then runs `then` with every result.
-//
-// `done` is copied at every step rather than appended in place: the
-// continuation can outlive this frame (a leg paused on CR 903.9b), and an
-// undone-then-replayed answer must not see the first run's entries.
-func eachPlayerTakeMoves(g *game.Game, source uuid.UUID, takes []TakeFromLibraryToHand, chosen [][]uuid.UUID,
-	done []TakeFromLibraryResult, then func(*game.Game, []TakeFromLibraryResult) error,
-) error {
-	i := len(done)
-	if i == len(takes) {
-		if then == nil {
-			return nil
-		}
-		return then(g, done)
-	}
-	t := takes[i]
-	// Every player's take was revealed together, before any card moved.
-	t.Reveal = false
-	own := t.Then
-	t.Then = func(g *game.Game, res TakeFromLibraryResult) error {
-		var ownErr error
-		if own != nil {
-			ownErr = own(g, res)
-		}
-		next := append(append(make([]TakeFromLibraryResult, 0, i+1), done...), res)
-		if err := eachPlayerTakeMoves(g, source, takes, chosen, next, then); err != nil {
-			return err
-		}
-		return ownErr
-	}
-	return t.finisher(source, t.Player)(g, chosen[i])
 }

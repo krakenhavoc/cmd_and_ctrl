@@ -46,5 +46,5 @@ func etaliExileAndOfferCasts(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	return exileTopEachPlayerInTurn(NewContext(g, item), seats,
-		ExileTopWithPermission{GrantTo: item.Controller, N: 1, CastOnly: true, Free: true}, nil)
+		ExileTopWithPermission{GrantTo: item.Controller, N: 1, CastOnly: true, Free: true}, game.KeyedTail{})
 }

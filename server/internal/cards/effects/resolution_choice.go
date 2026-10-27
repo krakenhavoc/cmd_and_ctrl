@@ -351,7 +351,7 @@ func (p RevealPick) Apply(ctx *Context) error {
 // ONE primitive for both engine kinds, because the card does not know
 // which one it is asking: the engine decides per leg, from whether the
 // board being walked belongs to the chooser
-// (game.PermanentsPickedThenForEffect). Tragic Arrogance walks every
+// (game.PermanentsPickedThenKeyedForEffect). Tragic Arrogance walks every
 // player including its own controller, so one printed sentence is both.
 //
 // It does NOT target. A permanent with hexproof, shroud or protection

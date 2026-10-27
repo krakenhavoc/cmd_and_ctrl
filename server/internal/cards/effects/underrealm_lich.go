@@ -109,13 +109,25 @@ var underrealmLichPick = game.RegisterChooseCardsThen("choose-cards/underrealm-l
 })
 
 // underrealmLichTake moves what was picked to hand, puts the rest of the
-// look into the graveyard and then pays the rest of the replaced draw.
+// look into the graveyard and then pays the rest of the replaced draw. The
+// move's rest is a registered tail (#4253), the parked draw and the look
+// riding its Carry, so a prompt the move pauses on is a restore point.
 func underrealmLichTake(g *game.Game, source, drawer uuid.UUID, looked, picked []uuid.UUID, done game.DrawDone) error {
-	return finishTake(g, source, drawer, looked, false, underrealmLichLabel,
-		func(g *game.Game, res TakeFromLibraryResult) error {
-			if err := TakeRestIntoGraveyard(g, res); err != nil {
-				return err
-			}
-			return done.Run(g)
-		}, picked)
+	tail := game.KeyedTail{Ref: underrealmLichTaken, Player: drawer, Source: source,
+		Carry: append([]uuid.UUID{done.Park(g)}, looked...)}
+	return finishTake(g, source, drawer, false, underrealmLichLabel, tail, picked)
 }
+
+// underrealmLichTaken is the rest once the pick has reached the hand: the
+// rest of the look (Carry[1:]) into the graveyard, then the parked draw
+// (Carry[0]) is paid. An on-disk key.
+var underrealmLichTaken = game.RegisterTail("underrealm-lich/taken", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	res := takeResult(g, o.Tail.Source, o.Tail.Player, o.Tail.Carry[1:], o.IDs)
+	if err := TakeRestIntoGraveyard(g, res); err != nil {
+		return takeThenErr(err)
+	}
+	return takeThenErr(game.DrawDoneByID(o.Tail.Carry[0]).Run(g))
+})

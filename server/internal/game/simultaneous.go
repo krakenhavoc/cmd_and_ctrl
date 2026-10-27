@@ -86,7 +86,7 @@ import "github.com/google/uuid"
 // said anything, and so did one the window had CANCELLED outright. The
 // count now comes from the landed outcome (destroyedThisWayLocked),
 // and the caller that needs it waits for any answer through
-// DestroyPermanentsThenForEffect. A commander is destroyed; a creature
+// DestroyPermanentsKeyedForEffect. A commander is destroyed; a creature
 // that an "exile it instead" replacement removed is not (CR 701.7a).
 //
 // #866 finished that: exile and bounce were still counting the attempt
@@ -228,7 +228,7 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 // while the call is still on the stack, so it cannot include a leg
 // that PAUSED on a replacement's prompt — a card that reads "for each
 // creature destroyed this way" must use
-// DestroyPermanentsThenForEffect, which waits (#815).
+// DestroyPermanentsKeyedForEffect, which waits (#815).
 //
 // This is the mass-destruction entry point. A single-target destroy
 // stays on DestroyPermanentForEffect; routing one card through here
@@ -245,37 +245,6 @@ func (g *Game) harvestSimultaneousExitLocked(pass *harvestPass) {
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOptions) int {
 	return g.destroyPermanentsLocked(g.hostsBeforeAttachmentsLocked(g.DestructibleForEffect(ids)), firstDestroyOptions(opts))
-}
-
-// DestroyPermanentsThenForEffect destroys every permanent in `ids` as
-// one simultaneous event and hands `then` the ones that were actually
-// DESTROYED — "for each creature destroyed this way" (Fumigate's life
-// gain, Deadly Tempest's life loss, Bane of Progress's counters, Blood
-// Money's treasures).
-//
-// It is a continuation rather than a return value for the reason
-// LoseLifeEachThenForEffect and DealDamageEachKeyedForEffect are
-// (ADR 0013 §5b, §5c): any leg can pause, on a replacement's "may"
-// (a commander's own CR 903.9a offer is no longer one, ADR 0115: it
-// comes after the destruction), and the number is not knowable until
-// it is answered. The legs are therefore destroyed IN SEQUENCE, each from the
-// previous one's continuation, with the landed list carried forward by
-// value — which is what makes an undo across the prompt replay
-// identically, and what lets the count be true rather than optimistic.
-//
-// The observable cost is the one the drain and the discard batch
-// already pay: a paused leg delays the rest of the sweep until the
-// prompt is answered. What it does NOT cost is the simultaneity —
-// the pre-move copies are taken once, before the first move, and
-// re-published from every leg, so a Blood Artist still sees the whole
-// board die with it.
-//
-// Indestructible is filtered first, exactly as the fire-and-forget
-// form does, so a survivor is neither destroyed nor counted.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) DestroyPermanentsThenForEffect(ids []uuid.UUID, then func(g *Game, destroyed []uuid.UUID) error, opts ...DestroyOptions) error {
-	return g.routeAllThenLocked(destroyRouteWith(firstDestroyOptions(opts)), g.hostsBeforeAttachmentsLocked(g.DestructibleForEffect(ids)), then)
 }
 
 // destroyedThisWayLocked reports whether a settled destruction of
@@ -870,7 +839,7 @@ func (g *Game) ExileCardsForEffect(ids []uuid.UUID) int {
 // EXILE — "for each card exiled this way" (Settle the Wreckage's basic
 // lands, Oona-shaped payoffs).
 //
-// The `Then` half of the same pair DestroyPermanentsThenForEffect is
+// The `Then` half of the same pair DestroyPermanentsKeyedForEffect is
 // the destroy side of (ADR 0013 §5i, §5k), built on the same body for
 // the same reason: any leg can pause on a replacement's prompt, so
 // the number is not knowable on the line after the sweep. The legs are

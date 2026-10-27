@@ -90,7 +90,7 @@ func CumulativeUpkeepPaying(label string, each UpkeepPayment, noun, plural strin
 		}
 		// #1290: what the rule charges for is the counters that are
 		// actually there once the placement LANDS, via
-		// AddCounterThenForEffect's continuation — not on the next
+		// AddCounterByKeyedForEffect's continuation — not on the next
 		// line. The counter may be replaced or doubled on the way in
 		// (a Doubling Season / Hardened Scales board), which can pause
 		// it on a CR 616 prompt; reading before that resumes would
