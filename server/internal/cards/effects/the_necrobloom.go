@@ -63,10 +63,10 @@ func necrobloomDredge() game.ReplacementEffect {
 			return p != nil && p.Library != nil && p.Library.Size() >= 2 &&
 				len(gyCardIDs(g, ev.DrawPlayer, isLandCard)) > 0
 		},
-		DrawInstead: game.RegisterDrawInstead("necrobloom-dredge-2", func(g *game.Game, drawer, source uuid.UUID, done func(*game.Game) error) error {
+		DrawInstead: game.RegisterDrawInstead("necrobloom-dredge-2", func(g *game.Game, drawer, source uuid.UUID, done game.DrawDone) error {
 			lands := gyCardIDs(g, drawer, isLandCard)
 			if len(lands) == 0 {
-				return done(g)
+				return done.Run(g)
 			}
 			g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 				Chooser:  drawer,
@@ -75,13 +75,9 @@ func necrobloomDredge() game.ReplacementEffect {
 				Cards:    lands,
 				Min:      1,
 				Max:      1,
-				Zone:     game.ZoneGraveyard,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) == 0 {
-						return done(g)
-					}
-					return dredgeBody(g, drawer, picked[0], 2, done)
-				},
+				LiveZone: game.ZoneGraveyard,
+				ThenKey:  necrobloomDredgePick,
+				Carry:    []uuid.UUID{done.Park(g)},
 			})
 			return nil
 		}),
@@ -92,3 +88,17 @@ func necrobloomDredge() game.ReplacementEffect {
 		Label:          "The Necrobloom: land cards in your graveyard have dredge 2",
 	}
 }
+
+// necrobloomDredgePick is the land chosen for The Necrobloom's dredge 2:
+// the mill, the return and then the rest of the draw, which the carried ID
+// parked (#4253 slice 10c). An on-disk key.
+var necrobloomDredgePick = game.RegisterChooseCardsThen("choose-cards/necrobloom-dredge-pick", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	done := game.DrawDoneByID(r.Carry[0])
+	if len(r.Picked) == 0 {
+		return done.Run(g)
+	}
+	return dredgeBody(g, r.Chooser, r.Picked[0], 2, done)
+})

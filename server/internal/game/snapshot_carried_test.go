@@ -538,6 +538,12 @@ var carriedNotRoundTrippable = map[string]string{
 	"PendingChoice.pickTail": "#4253 slice 8: written only on a keyed choose_cards prompt that hands a tail on " +
 		"(amass's army pick), and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestAnAmassArmyPickIsARestorePoint (effects).",
+	"PendingChoice.nameThen": "#4253 slice 10c: written only on a card-name prompt, whose PickThen it takes " +
+		"for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round trip is " +
+		"pinned by TestDemonicConsultationNamePromptIsARestorePoint and TestTamiyoNamePromptIsARestorePoint (effects).",
+	"PendingChoice.sourceShield": "#4253 slice 10c: written only on a choose_source prompt, and this probe's " +
+		"prompt is a discard. Its round trip is pinned by TestChooseSourceShieldsSurviveARestore and " +
+		"TestSourceShieldWireRoundTrips.",
 	"PendingChoice.scryThen": "#4253 slice 3: written only on a scry, surveil or look-at-top prompt, whose PickThen it " +
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +

@@ -107,6 +107,16 @@ func RegisterTail(key string, body TailFunc) TailRef {
 	return TailRef{key: key}
 }
 
+// TailRefByKey is the ref for a registered key, for a continuation that
+// carries its tail as a word on a prompt (#4253 slice 10c). False when this
+// binary registers no such body.
+func TailRefByKey(key string) (TailRef, bool) {
+	if !KnownTail(key) {
+		return TailRef{}, false
+	}
+	return TailRef{key: key}, true
+}
+
 // KnownTail reports whether a body is registered under key.
 func KnownTail(key string) bool {
 	tailMu.RLock()

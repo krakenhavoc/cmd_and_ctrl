@@ -36,15 +36,19 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			player, source := ctx.Controller(), ctx.Source()
-			ctx.Game.QueueCardNameChoiceThenForEffect(player, source,
+			ctx.Game.QueueCardNameChoiceKeyedForEffect(player, source,
 				"Demonic Consultation — choose a card name",
-				func(g *game.Game, name string) error {
-					return demonicConsultationExileSix(NewContext(g, item), player, name)
-				})
+				ctx.ItemTail(demonicConsultationNamed))
 			return nil
 		},
 	})
 }
+
+// demonicConsultationNamed is the rest of the spell once the name (the
+// tail's Word) is known, run against the asking spell. An on-disk key.
+var demonicConsultationNamed = CardTail("then/demonic-consultation-named", func(ctx *Context, o game.TailOutcome) error {
+	return demonicConsultationExileSix(ctx, o.Tail.Player, o.Tail.Word)
+})
 
 // demonicConsultationExileSix exiles the top six, then reveals for the
 // named card.

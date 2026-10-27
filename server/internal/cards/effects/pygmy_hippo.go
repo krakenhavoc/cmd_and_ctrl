@@ -58,22 +58,27 @@ var pygmyHippoAnswer = MayYes("confirm/pygmy-hippo-lose-mana", func(ctx *Context
 	return ActivateAManaAbilityOfEachLand{
 		Player: defender,
 		Card:   "Pygmy Hippo",
-		Then: func(ctx *Context, lost []game.ManaToken) error {
-			n := game.TotalMana(lost)
-			if n <= 0 {
-				return nil
-			}
-			step, phase, ok := ctx.Game.NextMainPhaseThisTurnForEffect()
-			if !ok {
-				return nil
-			}
-			return ScheduleDelayedTrigger{
-				At:      step,
-				OnPhase: phase,
-				Label:   "Pygmy Hippo — add {C} × " + strconv.Itoa(n),
-				Body:    pygmyHippoManaBody,
-				Params:  game.EffectParams{Amount: n},
-			}.Apply(ctx)
-		},
+		Then:   pygmyHippoSchedulesTheMana,
+	}.Apply(ctx)
+})
+
+// pygmyHippoSchedulesTheMana is "add {C} × that much at the next main
+// phase this turn": the walk's tail, run with Pygmy Hippo's controller and
+// the card. An on-disk key.
+var pygmyHippoSchedulesTheMana = RegisterLandManaThen("then/pygmy-hippo-schedule-lost-mana", func(ctx *Context, lost []game.ManaToken) error {
+	n := game.TotalMana(lost)
+	if n <= 0 {
+		return nil
+	}
+	step, phase, ok := ctx.Game.NextMainPhaseThisTurnForEffect()
+	if !ok {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:      step,
+		OnPhase: phase,
+		Label:   "Pygmy Hippo — add {C} × " + strconv.Itoa(n),
+		Body:    pygmyHippoManaBody,
+		Params:  game.EffectParams{Amount: n},
 	}.Apply(ctx)
 })

@@ -405,6 +405,7 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 			return runOptionPickThen(g, c.PickThen, OptionPicked{
 				Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry), dice: c.dice,
 				Asked: c.Asked.StackItem(),
+				Words: copyStrings(c.PickWords), Nums: copyInts(c.PickNums),
 			})
 		})
 	default:
@@ -501,6 +502,11 @@ type OptionPickPrompt struct {
 	// attack-target pick of a card whose entry rides a tail that reads the
 	// item (Ultra Magnus, Tactician). Ignored without ThenKey.
 	Asked *AskedItem
+	// Words and Nums are a keyed continuation's other plain data (#4253
+	// slice 10c): handed back as OptionPicked.Words and Nums, written
+	// with the prompt as PickWords and PickNums.
+	Words []string
+	Nums  []int
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -553,6 +559,7 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		c.OptionCarry = copyUUIDs(p.Carry)
 		c.dice = p.dice
 		c.Asked = copyAskedItem(p.Asked)
+		c.PickWords, c.PickNums = copyStrings(p.Words), copyInts(p.Nums)
 		return g.QueueChoiceForEffect(c)
 	}
 	then := p.Then
@@ -716,12 +723,14 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		carry := copyUUIDs(choice.OptionCarry)
 		dice := choice.dice
 		asked := choice.Asked.StackItem()
+		words, nums := copyStrings(choice.PickWords), copyInts(choice.PickNums)
 		cause := carriedCauseOfChoice(choice) // #4281
 		g.dequeueChoiceLocked(idx)
 		g.emitChoiceEffectErrorLocked(chooserID, source, g.withCarriedCauseLocked(cause, func() error {
 			return runOptionPickThen(g, key, OptionPicked{
 				Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry, dice: dice,
 				Asked: asked,
+				Words: words, Nums: nums,
 			})
 		}))
 		g.runStateChecksLocked()

@@ -1421,3 +1421,13 @@ tail tuck/each-owner-orders
 tail then/caustic-bronco-life
 tail then/shuffle-if-it-went
 tail then/doomsday-excruciator-next-exile
+choose choose-cards/draw-instead-graveyard-return
+choose choose-cards/necrobloom-dredge-pick
+choose choose-cards/underrealm-lich-take
+choose choose-source/desperate-gambit
+choose choose-source/shield
+option option-pick/land-mana-each
+tail then/demonic-consultation-named
+tail then/drain-power-add-lost-mana
+tail then/pygmy-hippo-schedule-lost-mana
+tail then/tamiyo-collector-named

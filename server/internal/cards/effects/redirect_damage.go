@@ -190,7 +190,7 @@ func (r RedirectDamage) Apply(ctx *Context) error {
 		return nil
 	}
 	pick := shieldSourcePick{Choose: r.Choose, FromThis: r.FromThis, From: r.From, Queries: r.Queries, Question: r.Question}
-	return pick.resolve(ctx, registerRedirection(red))
+	return pick.resolve(ctx, game.SourceShield{Redirect: &red})
 }
 
 // resolve writes the destination onto the redirection, and reports
@@ -236,17 +236,6 @@ func (t RedirectTo) resolve(ctx *Context, red *game.DamageRedirection) bool {
 		red.To = t.id
 	}
 	return red.To != uuid.Nil || red.ToSourceController
-}
-
-// registerRedirection finishes a redirection once its source is pinned.
-// It captures the redirection's plain description and nothing else.
-func registerRedirection(red game.DamageRedirection) func(*game.Game, game.ObjectRef, game.ZoneKind) error {
-	return func(g *game.Game, ref game.ObjectRef, zone game.ZoneKind) error {
-		r := red
-		r.Source, r.SourceZone = ref, zone
-		g.RedirectDamageThisTurnForEffect(r)
-		return nil
-	}
 }
 
 // redirectRow is an activated ability whose whole effect is a

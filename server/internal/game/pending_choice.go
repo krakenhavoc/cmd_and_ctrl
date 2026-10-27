@@ -1268,6 +1268,19 @@ type PendingChoice struct {
 	// to a restore point (pendingChoiceSnapshot.PickTail); it never touches
 	// PickThen, which is the pick's own key.
 	pickTail KeyedTail
+	// nameThen is a resolution-time card-name prompt's "then" as data
+	// (#4253 slice 10c): a registered tail told the chosen name as its
+	// Word. Written to a restore point (pendingChoiceSnapshot.NameThen), its
+	// key riding PickThen. The zero tail is the closure form
+	// (chooseValueResume) or the stored form (the name lands on the source).
+	nameThen KeyedTail
+
+	// sourceShield is a choose_source prompt's consequence when it is the
+	// engine's own (#4253 slice 10c, choose_source_keyed.go): the shield the
+	// card described, completed with the source once it is pinned. Written
+	// to a restore point (pendingChoiceSnapshot.SourceShield), its
+	// continuation's key riding PickThen. Nil on every other prompt.
+	sourceShield *SourceShield
 
 	// libraryOrderResume is a PendingChoicePutInLibrary's
 	// continuation: it is handed the validated answer (both lanes

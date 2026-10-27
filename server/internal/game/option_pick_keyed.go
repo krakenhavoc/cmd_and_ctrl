@@ -61,6 +61,10 @@ type OptionPicked struct {
 	// Asked is a copy of the asking item when the card put it on the
 	// prompt (OptionPickPrompt.Asked, #4253 slice 8); nil otherwise.
 	Asked *StackItem
+	// Words and Nums are the words and numbers the card put there too
+	// (#4253 slice 10c): a walk over several lands keeps its place in them.
+	Words []string
+	Nums  []int
 }
 
 // OptionPickFunc is a registered continuation. It runs with g.mu held,

@@ -275,7 +275,7 @@ func (s *GameSnapshot) checkEffectKeys() error {
 				// #4307: a paused dice roll's keyed "then".
 				unknown = append(unknown, unknownKeyedTail(c.DiceRoll.Then)...)
 			}
-		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick:
+		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource:
 			// #2040: a keyed choose_cards pick's continuation. #4250: a
 			// resolution_cast's "after the casts" is one too. #4264: and a
 			// keyed reveal pick's.
@@ -284,6 +284,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 			// #4253 slice 8: and the tail it hands on.
 			unknown = append(unknown, unknownKeyedTail(c.PickTail)...)
+			// #4253 slice 10c: a choose_source's shield names its follow-up.
+			unknown = append(unknown, unknownSourceShieldKeys(c.SourceShield)...)
 		case c.Kind == PendingChoiceOutsideCollection:
 			// #4256: a keyed collection pick's filter and continuation,
 			// registered under one key.
@@ -313,6 +315,13 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// #4264, its payment's branch).
 			if !KnownPayUnlessElse(c.PickThen) {
 				unknown = append(unknown, "pay-unless branches "+c.PickThen)
+			}
+		case c.Kind == PendingChoiceCardName:
+			// #4253 slice 10c: a card-name prompt's keyed "then".
+			if c.NameThen == nil || c.NameThen.Key != c.PickThen {
+				unknown = append(unknown, "card-name continuation "+c.PickThen)
+			} else {
+				unknown = append(unknown, unknownKeyedTail(c.NameThen)...)
 			}
 		case carriesLookAtThen(c.Kind):
 			// #4253 slice 3: a look-at's keyed "then".
@@ -367,6 +376,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// #4290: a keyed prompted run names its continuation by key.
 	// Restored without it, the rest of the card would never run.
 	unknown = append(unknown, unknownPromptRunKeys(s.PromptRuns)...)
+	// #4253 slice 10c: a parked draw's "then" body is a key too.
+	unknown = append(unknown, unknownParkedDrawKeys(s.ParkedDraws)...)
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

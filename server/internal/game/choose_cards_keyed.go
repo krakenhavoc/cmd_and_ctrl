@@ -82,6 +82,9 @@ type CardsChosen struct {
 	// ordered is the keyed ordered collection this pick is one seat's turn
 	// of (ordered_picks_keyed.go, #4290); nil on every other pick.
 	ordered *orderedPicks
+	// shield is the engine's own consequence of a choose_source prompt
+	// (choose_source_keyed.go); nil on every other pick.
+	shield *SourceShield
 }
 
 // SetRuleFunc is a registered set rule: is `picked`, the live cards in
@@ -171,7 +174,7 @@ func registeredChooseCardsKeysLocked() []string {
 // isKeyedChooseCards reports whether c is a choose_cards pick, or a
 // reveal pick (#4264, resolution_pick.go), with a registered continuation.
 func isKeyedChooseCards(c *PendingChoice) bool {
-	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick) &&
+	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource) &&
 		c.PickThen != "" && c.chooseCardsResume == nil
 }
 
@@ -203,6 +206,7 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Tail:       copyKeyedTail(c.pickTail),
 			Run:        c.promptRun,
 			ordered:    cloneOrderedPicks(c.ordered),
+			shield:     cloneSourceShield(c.sourceShield),
 		})
 	})
 }

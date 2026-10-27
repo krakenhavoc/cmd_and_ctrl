@@ -2579,6 +2579,19 @@ never stops it. `Next` is one instance of damage (CR 615.8), spent the
 way `PreventNextDamageFromSource` is. "Choose a source you control" is
 `ChooseSourcePrompt.Controller`.
 
+**Choosing a source is a keyed prompt** (#4253 slice 10c). A
+`game.ChooseSourcePrompt` names what happens to the pinned source as data,
+never a closure. The shield, redirection or multiplier the card described
+is `Shield: &game.SourceShield{Next|Prevent|Redirect: &shield}`; the
+engine's own `choose-source/shield` continuation completes it with the
+source and registers it (the `PreventNextDamageFromSource`,
+`PreventDamageFromSource` and `RedirectDamage` helpers do this for you).
+A card that does anything else with the source registers a continuation,
+`game.RegisterChooseSourceThen("choose-source/<card>", func(g, r
+game.ChosenSource) error)` (Desperate Gambit's coin), handed `r.Ref` and
+`r.Zone` (the zero ref when nothing could be chosen) with the `Carry`,
+`Word`, `Nums` and `Asked` item the card put on the prompt.
+
 **A prevention effect that does something with what it prevented**
 ([ADR 0108](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md)
 §8 and owner decision 2, #1906). The additional effect (CR 615.5) is
@@ -7893,6 +7906,14 @@ through the ordinary mana-ability path, empties the whole pool and hands
 player chooses, and a filter land is asked after the others. Drain Power
 adds the lost mana to its caster with `addManaLike`; Pygmy Hippo schedules
 its {C} for `game.NextMainPhaseThisTurnForEffect`.
+
+`Then` is a registered tail, not a closure (#4253 slice 10c):
+`RegisterLandManaThen("then/<card>-<what>", func(ctx, lost) error)` from a
+package-level var. The body runs against a Context whose controller is the
+card's and whose source is the card, and is handed the lost mana. The walk
+itself is data: the lands still to visit ride the option pick that asks
+about the current one (`Carry`, `Nums`, `Words`), so a table waiting on a
+land's question is a restore point.
 
 ### Choices made at resolution (#796, #568)
 

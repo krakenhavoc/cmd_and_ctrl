@@ -30,14 +30,18 @@ func init() {
 			if !ok {
 				return nil
 			}
-			caster := ctx.Controller()
 			return ActivateAManaAbilityOfEachLand{
 				Player: target,
 				Card:   "Drain Power",
-				Then: func(ctx *Context, lost []game.ManaToken) error {
-					return addManaLike(ctx, caster, lost)
-				},
+				Then:   drainPowerAddsTheMana,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// drainPowerAddsTheMana is "you add the mana lost this way": the walk's
+// tail runs with the spell's controller, the caster, as its controller.
+// An on-disk key.
+var drainPowerAddsTheMana = RegisterLandManaThen("then/drain-power-add-lost-mana", func(ctx *Context, lost []game.ManaToken) error {
+	return addManaLike(ctx, ctx.Controller(), lost)
+})
