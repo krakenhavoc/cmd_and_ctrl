@@ -3602,6 +3602,8 @@ Every field is omitted when zero.
 | `draws` | cards its controller draws (on an `any_player` row, the activator) | Night's Whisper 2 |
 | `controller_loses_life` | life the source's controller loses; `any_player` activated rows only (ADR 0106) | Xantcha 2 |
 | `discards` | cards its controller discards on resolution (a discard paid as a cost is `additional_cost`'s) | Faithless Looting 2 |
+| `land_entry` | a land's own catalog entry: `tapped` for an unconditional self-tap replacement, `untapped` when it has no own replacements; absent for conditional or unknown entry. Other permanents' replacements are not predicted (#4317) | Path of Ancestry, Command Tower |
+| `returns_land_on_entry` | the printed mandatory return of a land you control on entry (#4317) | Simic Growth Chamber |
 | `lands` | land cards it puts onto the battlefield | Harrow 2 |
 | `lands_untapped` | how many of those `lands` enter untapped, so their mana can be spent the turn it resolves ([ADR 0136](decisions/0136-planning-the-turns-mana.md) §2). Never more than `lands`; absent when they enter tapped. A land with its own enters-tapped clause still enters tapped | Harrow 2, Nature's Lore 1 |
 | `tutors` | cards it searches out to hand or to the top of the library | Demonic Tutor 1 |

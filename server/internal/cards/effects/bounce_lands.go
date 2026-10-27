@@ -45,6 +45,7 @@ func init() {
 			OracleID:     land.oracleID,
 			Name:         land.name,
 			Completeness: CompletenessFull,
+			Purpose:      game.Purpose{ReturnsLandOnEntry: true},
 			Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 			ManaAbilities: []ManaAbility{{
 				Cost:     ManaAbilityCost{Tap: true},

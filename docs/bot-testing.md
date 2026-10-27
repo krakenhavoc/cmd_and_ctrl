@@ -9,6 +9,90 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Land-drop sequencing (#4317, S75)
+
+`heuristic-nolandorder` is today's heuristic with `OrderLandDrops` off.
+The fixed policy ranks a bounce land behind alternatives on an empty
+board and favours a known untapped land over a known tapped one when
+it unlocks an ordinary printed mana cost. Entry facts come from
+structured catalog metadata, not names or oracle text. Unknown entries
+and competing untapped lands alone do not justify a bonus. The real
+engine regression plays Mountain before Path of Ancestry and casts
+Firebrand Archer that turn.
+
+The 2026-10-27 UTC comparison used develop `bb785912a` plus #4317,
+the std pool (mono-red-aggro, simic-ramp, esper-control and
+mono-black-aristocrats), seeds 1000–1047, rotation and lockstep.
+All four seats used either `heuristic` or `heuristic-nolandorder`
+(48 games each). All 96 games ended with a winner without stalls or
+dropped decision records. The back-out control is reused from the
+initial comparison: its disabled policy did not change when the
+active rule was narrowed. The labelled suite remained 42/42.
+
+The local scanner checks ordinary printed mana costs with coloured
+repeatable sources. It excludes X and additional costs, and skips
+windows with filter/restricted/conditional mana it cannot model. It is a
+sequencing estimate, not proof of future legal casts under all targets,
+taxes, discounts or entry replacements. Applied land drops and the
+offered alternatives come from the seat's decision window.
+
+| Measurement | Back-out | Fixed |
+|---|---:|---:|
+| Applied land drops | 1462 | 1437 |
+| Empty-board bounce drops, all | 13 | 7 |
+| Empty-board bounce with a non-bounce alternative | 6 | 0 |
+| Tapped drops with a known untapped alternative | 87 | 68 |
+| Ordinary mana windows audited | 80 | 57 |
+| Tapped choice strands an ordinary mana cost | 30 | 2 |
+| Complex mana windows skipped | 7 | 11 |
+
+The seven remaining fixed empty-board bounces had no non-bounce land
+alternative. Ordering keeps the only land playable; one-land bounce
+hands remain a mulligan-policy issue. Mulligans were unchanged at 53.
+Opening missed drops (own turns 2–4) fell overall from **59/576 to
+58/576**, with no deck's count increasing. These changed games are not
+independent per-decision trials.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) | Back-out missed drops | Fixed missed drops |
+|---|---|---|---:|---:|
+| esper-control | 8/48, 16.7% (8.7–29.6%) | 10/48, 20.8% (11.7–34.3%) | 11/144 | 11/144 |
+| mono-black-aristocrats | 8/48, 16.7% (8.7–29.6%) | 11/48, 22.9% (13.3–36.5%) | 23/144 | 22/144 |
+| mono-red-aggro | 24/48, 50.0% (36.4–63.6%) | 17/48, 35.4% (23.4–49.6%) | 14/144 | 14/144 |
+| simic-ramp | 8/48, 16.7% (8.7–29.6%) | 10/48, 20.8% (11.7–34.3%) | 11/144 | 11/144 |
+
+The four-seat null is 25%. Aggro's point estimate fell when all seats
+used the fix, prompting the mixed-policy comparison below. The wide
+intervals do not establish a strength gain or rule out a deck-specific
+regression.
+
+### Mixed-table strength check
+
+An additional 96 games used the same decks and seeds with two fixed
+seats and two back-out seats. The first 48 used
+`heuristic,heuristic-nolandorder,heuristic,heuristic-nolandorder`;
+the second 48 swapped both policies across every deck. Rotation and
+lockstep remained on, giving each policy 48 games on each deck.
+All 96 ended with a winner without stalls.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) |
+|---|---|---|
+| esper-control | 11/48, 22.9% (13.3–36.5%) | 9/48, 18.8% (10.2–31.9%) |
+| mono-black-aristocrats | 9/48, 18.8% (10.2–31.9%) | 12/48, 25.0% (14.9–38.8%) |
+| mono-red-aggro | 17/48, 35.4% (23.4–49.6%) | 19/48, 39.6% (27.0–53.7%) |
+| simic-ramp | 11/48, 22.9% (13.3–36.5%) | 8/48, 16.7% (8.7–29.6%) |
+
+Both policies won 48 tables, or 25.0% of seat-games (Wilson 95%
+19.4–31.6%), against the 25% four-seat null. Aggro's mixed-table count
+rose 17 → 19, while simic-ramp and esper-control fell. This supports
+the targeted behavior fix without establishing a strength gain or
+proving noninferiority for every deck.
+
+The narrower scope is deliberate: a preliminary rule also reordered
+unknown entries and competing untapped lands and lost 42–54 in mixed
+tables. It is not shipped. Its reports remain under `data/arena-4317/`;
+the final reports, scanner and compressed decision logs are under
+`data/arena-4317/final/` (gitignored). Full decision logs remain private.
+
 ## Late attackers and optional blocks (#4316, S75)
 
 `heuristic-nooutnumber` is today's heuristic with `PriceOutnumberLoss`
