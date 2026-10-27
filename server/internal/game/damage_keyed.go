@@ -20,7 +20,8 @@ import "github.com/google/uuid"
 // redirected parts, not released from a shield division, and no division
 // or redirection order held for its instance (neither is written to a
 // restore point). The caller's continuation is damageTail.keyed, a
-// registered tail told the target and the damage dealt. Combat damage stays
+// registered tail told the target and the damage dealt, or damageTail.each,
+// the rest of a keyed Each walk (damage_each_keyed.go). Combat damage stays
 // a closure frame: the step it belongs to is not data.
 //
 // When the event ends its instance and a prevention follow-up of that
@@ -39,7 +40,7 @@ const ReplacementResumeDamage = "replacement-resume/damage"
 // is no continuation. A prompt the damage pauses on is a restore point.
 //
 // It is how a card says "~ deals N damage to target opponent. You gain
-// life equal to the damage dealt this way"; DealDamageEachThenForEffect
+// life equal to the damage dealt this way"; DealDamageEachKeyedForEffect
 // is the each-opponent version of the same sentence.
 //
 // WHAT `then` IS TOLD. The post-replacement amount, non-negative: 6 for a
@@ -65,7 +66,7 @@ const ReplacementResumeDamage = "replacement-resume/damage"
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amount int, then KeyedTail) error {
-	return g.dealDamageToPlayerTailLocked(source, nil, playerID, amount, DamageMarks{}, 0, nil, then)
+	return g.dealDamageToPlayerTailLocked(source, nil, playerID, amount, DamageMarks{}, 0, damageThen{keyed: then})
 }
 
 // damageEventIsData reports whether a damage event can be written with its
@@ -111,6 +112,9 @@ type damageTailSnapshot struct {
 	SourceChecked       bool               `json:"sourceChecked,omitempty"`
 	EndsInstance        bool               `json:"endsInstance,omitempty"`
 	Then                *keyedTailSnapshot `json:"then,omitempty"`
+	// Each is the rest of a keyed Each walk the event is a leg of
+	// (damage_each_keyed.go). Additive within v9.
+	Each *damageEachRun `json:"each,omitempty"`
 }
 
 // snapshotDamageEvent writes a damage event's fields onto its mirror.
@@ -129,7 +133,7 @@ func snapshotDamageEvent(ev *ReplacementEvent, out *replacementEventSnapshot) {
 		Deathtouch: t.deathtouch, LifelinkTo: uuidPtrOrNil(t.lifelinkTo), CommanderSource: uuidPtrOrNil(t.commanderSource),
 		Result: t.result, Controller: uuidPtrOrNil(t.controller), Marks: t.marks,
 		SourceUnpreventable: t.sourceUnpreventable, SourceChecked: t.sourceChecked, EndsInstance: t.endsInstance,
-		Then: snapshotKeyedTail(t.keyed),
+		Then: snapshotKeyedTail(t.keyed), Each: cloneDamageEachRun(t.each),
 	}
 }
 
@@ -149,7 +153,7 @@ func restoreDamageEvent(s *replacementEventSnapshot, ev *ReplacementEvent) {
 		deathtouch: t.Deathtouch, lifelinkTo: uuidOrNil(t.LifelinkTo), commanderSource: uuidOrNil(t.CommanderSource),
 		result: t.Result, controller: uuidOrNil(t.Controller), marks: t.Marks,
 		sourceUnpreventable: t.SourceUnpreventable, sourceChecked: t.SourceChecked, endsInstance: t.EndsInstance,
-		keyed: restoreKeyedTail(t.Then),
+		keyed: restoreKeyedTail(t.Then), each: cloneDamageEachRun(t.Each),
 	}
 }
 
@@ -184,7 +188,12 @@ func (g *Game) runFollowUpParkLocked(p followUpPark) error {
 		return p.run(g)
 	}
 	if p.keyed != nil {
-		return g.runKeyedTailLocked(*p.keyed, []uuid.UUID{p.target}, p.dealt)
+		// A keyed Each walk's total names no one recipient.
+		var ids []uuid.UUID
+		if p.target != uuid.Nil {
+			ids = []uuid.UUID{p.target}
+		}
+		return g.runKeyedTailLocked(*p.keyed, ids, p.dealt)
 	}
 	return nil
 }

@@ -52,6 +52,10 @@ func init() {
 	})
 }
 
+// aoTheDawnSkyPick is the first bullet's set rule, "with total mana value
+// 4 or less", registered (#4253). An on-disk key.
+var aoTheDawnSkyPick = RegisterPutRule("choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4", b23TotalManaValueAtMost(4))
+
 // aoTheDawnSkyDiesTrigger is the dies trigger and its two bullets.
 // Each bullet declares its own body (ModeDoing), so the engine runs
 // the chosen one at resolution (CR 608.2c) and this file writes no
@@ -75,7 +79,9 @@ func aoTheDawnSkyDiesTrigger() game.TriggeredAbility {
 					// ceiling of seven and a floor of zero, and
 					// four one-drops and one four-drop are both
 					// five-card answers only one of which is legal.
-					Validate: b23TotalManaValueAtMost(4),
+					// Registered (#4253), so the pick is a restore
+					// point.
+					Rule:     aoTheDawnSkyPick,
 					Label:    "Ao, the Dawn Sky — put any number of nonland permanent cards with total mana value 4 or less onto the battlefield",
 					ThenTail: PutRestOnBottomInRandomOrderTail,
 				}.Apply(ctx)

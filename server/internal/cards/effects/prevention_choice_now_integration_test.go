@@ -266,13 +266,9 @@ func TestKharnAndBloodOfTheMartyrOnOneEvent(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
 	life := me.Life
-	seen := uuid.Nil
+	resetKharnSeen()
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToCreatureThenForEffect(src, kharn, 2, func(g *game.Game, _ int) error {
-			c, _ := g.LookupCardForEffect(kharn)
-			seen = c.Controller
-			return nil
-		}); err != nil {
+		if err := g.DealDamageToCreatureKeyedForEffect(src, kharn, 2, game.KeyedTail{Ref: testKharnSeenTail}); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -290,8 +286,8 @@ func TestKharnAndBloodOfTheMartyrOnOneEvent(t *testing.T) {
 	if may == nil {
 		t.Fatal("the redirection did not go first: swap the order in this test")
 	}
-	if openPrompts(g) != 1 || seen != uuid.Nil {
-		t.Fatalf("%d prompts open, continuation saw %s: want only the redirection, instruction waiting", openPrompts(g), seen)
+	if openPrompts(g) != 1 || testKharnSeen != uuid.Nil {
+		t.Fatalf("%d prompts open, continuation saw %s: want only the redirection, instruction waiting", openPrompts(g), testKharnSeen)
 	}
 	if err := g.ResolveOptionalReplacement(may.ID, me.ID, false); err != nil {
 		t.Fatal(err)
@@ -299,12 +295,12 @@ func TestKharnAndBloodOfTheMartyrOnOneEvent(t *testing.T) {
 	if latestChoiceOfKindFor(g, game.PendingChoiceOptionPick, me.ID) == nil || openPrompts(g) != 1 {
 		t.Fatalf("want Khârn's question alone after the decline; %d open", openPrompts(g))
 	}
-	if seen != uuid.Nil {
+	if testKharnSeen != uuid.Nil {
 		t.Fatal("the rest of the instruction ran before Khârn's question was answered")
 	}
 	kharnAnswer(t, g, me.ID, third.ID)
-	if seen != third.ID {
-		t.Fatalf("the continuation saw controller %s, want %s", seen, third.ID)
+	if testKharnSeen != third.ID {
+		t.Fatalf("the continuation saw controller %s, want %s", testKharnSeen, third.ID)
 	}
 	if me.Life != life || damageMarkedOn(g, kharn) != 0 {
 		t.Fatalf("declined and prevented: life %d (want %d), Khârn damage %d (want 0)", me.Life, life, damageMarkedOn(g, kharn))

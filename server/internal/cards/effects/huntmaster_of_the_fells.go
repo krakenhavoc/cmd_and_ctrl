@@ -80,5 +80,5 @@ func ravagerOfTheFellsDamage(g *game.Game, item *game.StackItem) error {
 	if len(targets) == 0 {
 		return nil
 	}
-	return g.DealDamageEachThenForEffect(item.SourceCardID, targets, 2, nil)
+	return g.DealDamageEachKeyedForEffect(item.SourceCardID, targets, 2, game.KeyedTail{})
 }

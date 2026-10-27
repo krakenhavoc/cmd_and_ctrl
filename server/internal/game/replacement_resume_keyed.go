@@ -195,7 +195,7 @@ func eventCarriesDataTail(ev *ReplacementEvent) bool {
 	if t := ev.keywordAction; t != nil && !t.keyed.IsZero() {
 		return true
 	}
-	if t := ev.damageTail; t != nil && !t.keyed.IsZero() {
+	if t := ev.damageTail; t != nil && (!t.keyed.IsZero() || t.each != nil) {
 		return true
 	}
 	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil || ev.mill != nil
@@ -248,7 +248,7 @@ func snapshotCarriesDataTail(ev *replacementEventSnapshot) bool {
 	if t := ev.KeywordActionTail; t != nil && t.Then != nil {
 		return true
 	}
-	if t := ev.DamageTail; t != nil && t.Then != nil {
+	if t := ev.DamageTail; t != nil && (t.Then != nil || t.Each != nil) {
 		return true
 	}
 	return ev.CounterTail != nil || ev.LifeTail != nil || ev.TokenTail != nil || ev.MillTail != nil
@@ -1448,6 +1448,9 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 	}
 	if t := ev.DamageTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+		if t.Each != nil {
+			unknown = append(unknown, unknownKeyedTail(t.Each.Then)...)
+		}
 	}
 	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)

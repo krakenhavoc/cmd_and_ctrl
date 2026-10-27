@@ -71,8 +71,8 @@ import (
 // DealDamageToPlayerForEffect in place of ChangePlayerLifeForEffect.
 //
 // So damage gets the same public continuation life got:
-// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureThenForEffect
-// for one target, DealDamageEachThenForEffect for the batch, and
+// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect
+// for one target, DealDamageEachKeyedForEffect for the batch, and
 // runDamageTailLocked is the one place `then` runs. Card authors learn
 // `...ThenForEffect` once and it means the same thing on both sides.
 
@@ -258,6 +258,14 @@ type damageTail struct {
 	// Amount. Never set together with `then`. Cleared through the pointer
 	// as it runs, as `then` is.
 	keyed KeyedTail
+
+	// each is the rest of a keyed Each walk this event is one leg of
+	// (#4253, damage_each_keyed.go): the recipients still to be dealt
+	// damage, the running total and the walk's own tail, as data. Never
+	// set together with `then` or `keyed`. Cleared through the pointer as
+	// it runs, as `then` is; the run itself is never written after it is
+	// built, so an undo copy of the tail may share it.
+	each *damageEachRun
 }
 
 // combatDamageTailLocked snapshots a live battlefield source into a
@@ -706,6 +714,12 @@ func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 	if ev.damageTail.endsInstance {
 		ev.damageTail.endsInstance = false
 		paused = g.endDamageInstanceLocked(ev.DamageInstance)
+	}
+	if each := ev.damageTail.each; each != nil {
+		// A leg of a keyed Each walk joins the walk's instance and never
+		// ends it, so it is never parked: the walk goes on.
+		ev.damageTail.each = nil
+		return g.dealDamageEachKeyedStepLocked(each.after(dealt))
 	}
 	if ev.damageTail.then == nil {
 		keyed := ev.damageTail.keyed

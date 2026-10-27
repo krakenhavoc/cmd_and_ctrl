@@ -1657,3 +1657,11 @@ tail then/disturbing-mirth-draw-two
 tail then/do-or-die-destroy-pile
 tail then/sacrifice-choice-done
 tail then/shadow-mysterious-assassin-sacrificed
+choose choose-cards/put-from-library-ao-the-dawn-sky-total-mana-value-4
+choose choose-cards/put-from-library-ojer-kaslem-creature-and-or-land
+tail engine/proliferated-since
+tail then/ballista-wielder-cant-block
+tail then/gain-life-equal-to-damage-dealt
+tail then/mob-verdict-next-strike
+tail then/reckless-endeavor-treasures
+tail then/ripples-of-potential-proliferated

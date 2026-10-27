@@ -16,8 +16,8 @@ import (
 // The damage is the sacrificed creature's last-known power (CR 608.2h),
 // read off the payment record (ADR 0113 §1). The life is the damage
 // actually DEALT, after prevention and doubling, through the same
-// damage-then-total walk Creeping Bloodsucker uses: a prevented point
-// gains nothing.
+// damage-then-total walk Creeping Bloodsucker uses, and its keyed tail
+// (#4253): a prevented point gains nothing.
 //
 // No simplifications.
 func init() {
@@ -32,14 +32,8 @@ func init() {
 			if len(item.Targets) == 0 || n <= 0 {
 				return nil
 			}
-			controller, source := ctx.Controller(), ctx.Source()
-			return ctx.Game.DealDamageEachThenForEffect(source, []uuid.UUID{item.Targets[0].ID}, n,
-				func(g *game.Game, dealt int) error {
-					if dealt <= 0 {
-						return nil
-					}
-					return g.ChangePlayerLifeForEffect(source, controller, dealt)
-				})
+			return ctx.Game.DealDamageEachKeyedForEffect(ctx.Source(), []uuid.UUID{item.Targets[0].ID}, n,
+				ctx.Tail(gainLifeEqualToDamageDealt))
 		},
 	})
 }

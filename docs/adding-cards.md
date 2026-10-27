@@ -2243,10 +2243,11 @@ line — Steady Progress draws from its tail. Explicit lists
 proliferates is `CompletenessFull`; there is no caveat to write. A card
 that goes on about what the proliferate did ("permanents that had a
 counter put on them this way", Ripples of Potential) calls
-`game.ProliferateChoosingThenForEffect`, whose continuation gets a
-`game.Proliferated`: the permanents and players that really received a
-counter, across every pass of "proliferate twice", after every counter
-has landed (#3930). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
+`game.ProliferateChoosingThenKeyedForEffect`, whose registered tail is
+told the permanents and players that really received a counter
+(`TailOutcome.IDs`, the permanents first; `Amount` is how many are
+permanents), across every pass of "proliferate twice", after every counter
+has landed (#3930, #4253). In a test, `settleAnsweringProliferate(t, g)` takes the suggested answer and
 `answerProliferate(t, g, picks…)` takes a chosen one.
 
 **The mill AMOUNT is a replaceable quantity too** (#569,
@@ -5563,12 +5564,15 @@ Bloodsucker) is the life drain's twin and reads zero the same way:
 
 ```go
 g.DealDamageToPlayerKeyedForEffect(src, opp, n, ctx.Tail(ref))   // ref told the player and the damage dealt as its Amount
-g.DealDamageToCreatureThenForEffect(src, card, n, func(g *game.Game, dealt int) error { … })
-g.DealDamageEachThenForEffect(src, ctx.Opponents(), n, func(g *game.Game, total int) error { … })
+g.DealDamageToCreatureKeyedForEffect(src, card, n, ctx.Tail(ref)) // ref told the permanent and the damage dealt
+g.DealDamageEachKeyedForEffect(src, ctx.Opponents(), n, ctx.Tail(ref)) // ref told the total dealt as its Amount
 ```
 
-`dealt` is the post-replacement amount and `0` when nothing landed
-(prevented, Fogged, or the target gone). The batch routes each target
+The amount is the post-replacement damage and `0` when nothing landed
+(prevented, Fogged, or the target gone). The continuations are registered
+tails (#4253), so a CR 616 prompt the damage pauses on is a restore point;
+`then/gain-life-equal-to-damage-dealt` (`gainLifeEqualToDamageDealt`) is
+the shared "you gain life equal to the damage dealt this way". The batch routes each target
 as the kind of thing it is — player or permanent — the way the
 `DealDamage` primitive does, and is built on the single forms. A card
 that only deals damage keeps using `DealDamage` / the plain
@@ -5579,7 +5583,7 @@ the same function.
 
 **One printed damage instruction is one damage instance (ADR 0108 PR 0).**
 The engine stamps each `DealDamage…ForEffect` call, and each
-`DealDamageEachThenForEffect` walk, as an instance of its own. That is
+`DealDamageEachKeyedForEffect` walk, as an instance of its own. That is
 what "it deals 2 damage to you. Then it deals 2 damage to you" needs: two
 instructions, so a "next time" shield prevents only the first (CR 615.8,
 608.2c). But "deals 2 damage to each creature and each player", a fight,
@@ -6241,14 +6245,15 @@ so don't loop the single-card move over them. The whole-sentence
 shapes are named: `LookAtTopThenMayPutOntoBattlefield` (Ureni) and
 `RevealUntilThenPutOntoBattlefield` (The Regalia).
 
-**Counters that depend on the card picked (#4170, Turntimber Symbiosis):**
-"put a creature card from among them onto the battlefield. If that card has
-mana value 3 or less, it enters with three additional +1/+1 counters" is
-`CountersFor: func(g *game.Game, c game.Card) map[string]int`, called with
-the picked card as it sits in the library and added to `Counters` for that
-entry. It is for a clause that puts exactly one card (`Max: 1`, not `All`):
-`Apply` returns an error for any clause that could put more, because one
-entry batch takes one set of counters.
+**Counters on the put (ADR 0203; #4170, Turntimber Symbiosis):** "with
+three +1/+1 counters on it" is `Counters: PutCounters{Kind:
+game.CounterPlusOne, N: 3}`, plain data that rides the pick (#4253). "If
+that card has mana value 3 or less, it enters with three additional +1/+1
+counters" adds `IfManaValueAtMost: true, ManaValueAtMost: 3`, read off the
+picked card as it sits in the library. The gated form is for a clause that
+puts exactly one card (`Max: 1`, not `All`): `Apply` returns an error for
+any clause that could put more, because one entry batch takes one set of
+counters.
 
 **An opponent's library (#4128, Lonis, Cryptozoologist):** "target
 opponent reveals the top X cards of their library. You may put a
@@ -8023,8 +8028,9 @@ prompt is data. `SacrificeChoice.ThenTail`, `Bolster.ThenTail` (told the
 chosen creature), `Populate.ThenTail` (told the tokens made),
 `TheRingTemptsYou.ThenTail` (`RingTail`, told the Ring-bearer),
 `Proliferate.ThenTail`, `PileSplit.ThenTail` (`PileTail`, told the pile taken
-and the pile left), `PutFromLibraryOntoBattlefield`'s pick (keyed whenever it
-has no `Validate`, `CountersFor` or `Counters`), `CoinFlipSpec.ThenKey`
+and the pile left), `PutFromLibraryOntoBattlefield`'s pick (always keyed
+since #4253: its set rule is a `RegisterPutRule` and its counters
+`PutCounters` data), `CoinFlipSpec.ThenKey`
 (`CoinFlipThen`, handed the result), a `ReselectAttackPrompt` with no `Then`
 (its `Next` attackers asked in turn) and `RevealedPick.DoneTail`. Each is
 taken whenever the caller passes no closure.
@@ -8144,8 +8150,9 @@ and it is never called for an empty pick, which keeps "choose nothing"
 the answer a zero-floor prompt can always take. Every catalog primitive
 that raises a card-set pick forwards the field verbatim —
 `DiscardPrompt.Validate` (#624), `SearchLibrary.Rule` (#682; a registered
-search rule since #4253 slice 5), `PutFromLibraryOntoBattlefield.Validate`
-and `TakeDef.Validate` (#998; the registered take) — so **if you add
+search rule since #4253 slice 5), `PutFromLibraryOntoBattlefield.Rule`
+(#998; a `RegisterPutRule` since #4253) and `TakeDef.Validate` (the
+registered take) — so **if you add
 another, add the passthrough with it**. One behaviour rides along: a set rule turns
 OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets

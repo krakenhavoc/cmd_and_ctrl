@@ -37,7 +37,7 @@ import (
 // collects them at the three places an instance of several events is
 // opened:
 //
-//   - an Each walk (DealDamageEachThenForEffect and its per-recipient
+//   - an Each walk (DealDamageEachKeyedForEffect and its per-recipient
 //     sibling) knows its recipients before its first leg: the walk is
 //     asked about up front (walkDivisionEventsLocked) and starts once the
 //     division is made;
@@ -374,7 +374,7 @@ func (g *Game) openDamageStageLocked(inst DamageInstance, all, scope bool) (prev
 
 // stageDamageEventLocked stages `ev` when an open group collects it: an
 // event of the group's instance, with no continuation (a closure or, #4253,
-// a keyed tail), that a charged shield could meet — or any such event, for
+// a keyed tail or a keyed walk's rest), that a charged shield could meet — or any such event, for
 // a combat group. Reports
 // whether it was staged; the caller then treats it as paused.
 //
@@ -382,7 +382,7 @@ func (g *Game) openDamageStageLocked(inst DamageInstance, all, scope bool) (prev
 func (g *Game) stageDamageEventLocked(ev *ReplacementEvent) bool {
 	st := g.damageStage
 	t := ev.damageTail
-	if st == nil || t == nil || t.released || t.then != nil || !t.keyed.IsZero() || t.endsInstance {
+	if st == nil || t == nil || t.released || t.then != nil || !t.keyed.IsZero() || t.each != nil || t.endsInstance {
 		return false
 	}
 	if ev.DamageInstance == 0 || ev.DamageInstance != st.inst || ev.DamageAmount <= 0 {

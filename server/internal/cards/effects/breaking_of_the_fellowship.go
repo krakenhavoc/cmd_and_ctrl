@@ -44,8 +44,10 @@ func init() {
 			if !ok || c.CurrentPower() <= 0 {
 				return tempt(ctx.Game)
 			}
-			return ctx.Game.DealDamageEachThenForEffect(biter.ID, []uuid.UUID{victim.ID}, c.CurrentPower(),
-				func(g *game.Game, _ int) error { return tempt(g) })
+			// The tempt is a keyed tail (#4253), the item riding it, so a
+			// prompt the damage pauses on is a restore point.
+			return ctx.Game.DealDamageEachKeyedForEffect(biter.ID, []uuid.UUID{victim.ID}, c.CurrentPower(),
+				ctx.ItemTail(ringTemptsYouTail))
 		},
 	})
 }

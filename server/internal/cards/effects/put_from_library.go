@@ -109,50 +109,43 @@ type PutFromLibraryOntoBattlefield struct {
 
 	// Tapped is the clause's own "onto the battlefield tapped".
 	Tapped bool
-	// Counters are the counters the put says each card enters with —
-	// the Undercity's Throne of the Dead Three: "Put a creature card
-	// from among them onto the battlefield with three +1/+1 counters on
-	// it" (ADR 0203). Seeded onto the entry, so they are there as the
-	// permanent enters and go through the CR 614 counter pipeline.
-	Counters map[string]int
-
-	// CountersFor is Counters decided by the card that is picked: "Put a
-	// creature card from among them onto the battlefield. If that card
-	// has mana value 3 or less, it enters with three additional +1/+1
-	// counters on it" (Turntimber Symbiosis, #4170). It is called with the
-	// picked card as it sits in the library, and what it returns is added
-	// to Counters for that entry. Nil means no per-card counters.
+	// Counters are the counters the put says each card enters with, as
+	// data (a kind and a count) — the Undercity's Throne of the Dead Three:
+	// "Put a creature card from among them onto the battlefield with three
+	// +1/+1 counters on it" (ADR 0203). Seeded onto the entry, so they are
+	// there as the permanent enters and go through the CR 614 counter
+	// pipeline. With IfManaValueAtMost they are decided by the card picked:
+	// "If that card has mana value 3 or less, it enters with three
+	// additional +1/+1 counters on it" (Turntimber Symbiosis, #4170), read
+	// off the picked card as it sits in the library.
 	//
-	// A clause that puts ONE card (Max 1, not All): the counters belong to
+	// A gated clause puts ONE card (Max 1, not All): the counters belong to
 	// the card, and one entry batch takes one set of options, so Apply
-	// refuses CountersFor on a clause that can put more than one.
-	CountersFor func(g *game.Game, c game.Card) map[string]int
+	// refuses IfManaValueAtMost on a clause that can put more than one.
+	Counters PutCounters
 
-	// Validate is the clause's rule about the picked SET, as opposed
-	// to Match's rule about each card: "any number of nonland
-	// permanent cards with TOTAL MANA VALUE 4 OR LESS from among
-	// them" (Ao, the Dawn Sky). Nil means the bounds and Match are
-	// the whole rule, which is every other card that prints this
-	// sentence.
+	// Rule is the clause's rule about the picked SET, as opposed to
+	// Match's rule about each card: "any number of nonland permanent cards
+	// with TOTAL MANA VALUE 4 OR LESS from among them" (Ao, the Dawn Sky).
+	// The zero value means the bounds and Match are the whole rule, which
+	// is every other card that prints this sentence.
 	//
-	// It is game.ChooseCardsPrompt.Validate, forwarded verbatim, and
-	// it carries that field's whole contract: it is called with the
-	// picks in submitted order as live value copies, never for an
-	// empty pick (so "put none of them" stays the answer nothing can
-	// refuse), it receives no *game.Game and must not write through
-	// the cards it is handed, and it runs BOTH on the submit path and
-	// inside legal.EnumerateFor — so a set the resolver would refuse
-	// is never offered to a bot seat, and a set a client submits
-	// anyway comes back as ErrChoiceSetRejected with the prompt still
-	// open. effects.b23TotalManaValueAtMost is the first validator
-	// written for it.
+	// It is a registered set rule (RegisterPutRule, #4253): a function of
+	// the cards alone, looked up by the pick's key each time an answer is
+	// checked, so the prompt carries no closure. It is called with the
+	// picks in submitted order as live value copies, never for an empty
+	// pick (so "put none of them" stays the answer nothing can refuse), and
+	// it runs BOTH on the submit path and inside legal.EnumerateFor — so a
+	// set the resolver would refuse is never offered to a bot seat, and a
+	// set a client submits anyway comes back as ErrChoiceSetRejected with
+	// the prompt still open.
 	//
-	// It also switches OFF the "the only legal answer is every
-	// candidate" shortcut below: with a set rule, the legal answers
-	// are the SUBSETS that pass it, so a mandatory clause that would
-	// otherwise be answered for the player becomes a real prompt.
-	// It is ignored by All, which is not a choice at all.
-	Validate func([]game.Card) bool
+	// It also switches OFF the "the only legal answer is every candidate"
+	// shortcut below: with a set rule, the legal answers are the SUBSETS
+	// that pass it, so a mandatory clause that would otherwise be answered
+	// for the player becomes a real prompt. It is ignored by All, which is
+	// not a choice at all.
+	Rule PutRule
 
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
@@ -208,46 +201,16 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 			keyed.Asked = game.NewAskedItem(ctx.Item)
 		}
 	}
-	if p.CountersFor != nil && (p.All || p.Max != 1) {
-		return fmt.Errorf("PutFromLibraryOntoBattlefield: CountersFor needs a clause that puts exactly one card (Max 1, not All)")
-	}
-	opts := game.LibraryEntryOptions{Controller: player, Tapped: p.Tapped, EntersWithCounters: p.Counters}
-	finish := func(g *game.Game, picked []uuid.UUID) error {
-		if len(picked) == 0 {
-			return keyed.Run(g, nil)
-		}
-		// Through the keyed door (#1322, #4253 slice 6): a card of the batch may stop
-		// to ask its own question (a shockland's life, a Clone's copy),
-		// and until it is answered the card is still in the library.
-		// "The rest" is computed when the entry is complete, so a card
-		// still waiting to enter is never put on the bottom with the
-		// pile. An error still reports whatever did enter and the tail
-		// still runs, so the revealed or looked-at rest is never left
-		// on top with its knowers.
-		entry := opts
-		if p.CountersFor != nil && len(picked) == 1 {
-			if card, ok := g.LookupCardForEffect(picked[0]); ok {
-				if extra := p.CountersFor(g, card); len(extra) > 0 {
-					merged := make(map[string]int, len(opts.EntersWithCounters)+len(extra))
-					for k, n := range opts.EntersWithCounters {
-						merged[k] += n
-					}
-					for k, n := range extra {
-						merged[k] += n
-					}
-					entry.EntersWithCounters = merged
-				}
-			}
-		}
-		return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(picked, entry, keyed)
+	if p.Counters.IfManaValueAtMost && (p.All || p.Max != 1) {
+		return fmt.Errorf("PutFromLibraryOntoBattlefield: counters gated on the picked card need a clause that puts exactly one card (Max 1, not All)")
 	}
 
 	candidates := libraryCardsMatching(ctx.Game, player, cards, p.Match)
 	if len(candidates) == 0 {
-		return finish(ctx.Game, nil)
+		return putFromLibraryEnter(ctx.Game, player, nil, p.Tapped, p.Counters, keyed)
 	}
 	if p.All {
-		return finish(ctx.Game, candidates)
+		return putFromLibraryEnter(ctx.Game, player, candidates, p.Tapped, p.Counters, keyed)
 	}
 	hi := p.Max
 	if hi <= 0 || hi > len(candidates) {
@@ -257,71 +220,154 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	if p.Optional {
 		lo = 0
 	}
-	if lo == len(candidates) && p.Validate == nil {
+	if lo == len(candidates) && p.Rule.IsZero() {
 		// The only legal answer is every candidate. Not so with a
 		// set rule: it is the rule, not the count, that decides
 		// which subsets are answers, and taking the shortcut would
 		// perform a set the prompt would have refused.
-		return finish(ctx.Game, candidates)
+		return putFromLibraryEnter(ctx.Game, player, candidates, p.Tapped, p.Counters, keyed)
 	}
 	label := p.Label
 	if label == "" {
 		label = "Put a card from among them onto the battlefield"
 	}
-	if p.Validate == nil && p.CountersFor == nil && len(p.Counters) == 0 {
-		// #4253 slice 10b: nothing the pick reads is a closure, so it is
-		// keyed: the entry's "tapped" is its number and the put's tail
-		// its tail. Every pick is re-checked against the library on
-		// submit, as the closure form's Zone is.
-		tapped := 0
-		if p.Tapped {
-			tapped = 1
-		}
-		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:    player,
-			Source:     source,
-			Question:   label,
-			Cards:      candidates,
-			Min:        lo,
-			Max:        hi,
-			LiveZone:   game.ZoneLibrary,
-			FromPlayer: p.LibraryOwner,
-			ThenKey:    putFromLibraryPicked,
-			CarryNums:  []int{tapped},
-			Tail:       keyed,
-		})
-		return nil
+	// #4253: the pick is keyed — its set rule is the key's registered rule,
+	// the entry's "tapped" and counters are its numbers and word, and the
+	// put's tail is its tail — so a table waiting on the answer is a
+	// restore point. Every pick is re-checked against the library on
+	// submit (LiveZone).
+	pick := putFromLibraryPicked
+	if !p.Rule.IsZero() {
+		pick = p.Rule.pick
 	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  player,
-		Source:   source,
-		Question: label,
-		Cards:    candidates,
-		Min:      lo,
-		Max:      hi,
-		// Re-checked on submit: every pick must still be in a
-		// library when the answer arrives. The zone's owner is the
-		// FromPlayer, which defaults to the chooser.
-		Zone:       game.ZoneLibrary,
+		Chooser:    player,
+		Source:     source,
+		Question:   label,
+		Cards:      candidates,
+		Min:        lo,
+		Max:        hi,
+		LiveZone:   game.ZoneLibrary,
 		FromPlayer: p.LibraryOwner,
-		Validate:   p.Validate,
-		Then:       finish,
+		ThenKey:    pick,
+		CarryNums:  p.Counters.nums(p.Tapped),
+		CarryWord:  p.Counters.Kind,
+		Tail:       keyed,
 	})
 	return nil
 }
 
-// putFromLibraryPicked is the keyed answer to "put a card from among them
-// onto the battlefield" (#4253 slice 10b): the picks enter under the
-// chooser's control, tapped when the prompt's number says so, through the
-// keyed door, and the prompt's tail is the put's ThenTail. Nothing picked
-// runs the tail at once. An on-disk key: never renamed, never reused.
-var putFromLibraryPicked = game.RegisterChooseCardsThen("choose-cards/put-from-library-onto-battlefield", func(g *game.Game, r game.CardsChosen) error {
-	if len(r.Picked) == 0 {
-		return r.Tail.Run(g, nil)
+// PutCounters is "with N Kind counters on it" on a put from among
+// revealed or looked-at cards (PutFromLibraryOntoBattlefield.Counters):
+// plain data, so the pick that waits for the answer carries it. With
+// IfManaValueAtMost, only a picked card whose mana value is at most
+// ManaValueAtMost gets them (Turntimber Symbiosis). The zero value is no
+// counters.
+type PutCounters struct {
+	Kind              string
+	N                 int
+	IfManaValueAtMost bool
+	ManaValueAtMost   int
+}
+
+// none reports whether the put places no counters.
+func (c PutCounters) none() bool { return c.Kind == "" || c.N <= 0 }
+
+// nums is the counters and the entry's "tapped" as the pick's numbers:
+// [tapped] alone with no counters, as the pick has always carried it, else
+// [tapped, N, gated, mana value]. The kind is the pick's word.
+func (c PutCounters) nums(tapped bool) []int {
+	t := 0
+	if tapped {
+		t = 1
 	}
-	opts := game.LibraryEntryOptions{Controller: r.Chooser, Tapped: len(r.Nums) > 0 && r.Nums[0] == 1}
-	return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(r.Picked, opts, r.Tail)
-})
+	if c.none() {
+		return []int{t}
+	}
+	gated := 0
+	if c.IfManaValueAtMost {
+		gated = 1
+	}
+	return []int{t, c.N, gated, c.ManaValueAtMost}
+}
+
+// putCountersFromPick is nums' inverse, with the pick's word as the kind.
+func putCountersFromPick(word string, nums []int) (tapped bool, c PutCounters) {
+	tapped = len(nums) > 0 && nums[0] == 1
+	if len(nums) >= 4 && word != "" {
+		c = PutCounters{Kind: word, N: nums[1], IfManaValueAtMost: nums[2] == 1, ManaValueAtMost: nums[3]}
+	}
+	return tapped, c
+}
+
+// putFromLibraryEnter puts `picked` onto the battlefield under `chooser`'s
+// control through the keyed door (#1322, #4253 slice 6), with the put's
+// tail as the entry's tail, or runs the tail at once when nothing was
+// picked. A card of the batch may stop to ask its own question (a
+// shockland's life, a Clone's copy), and until it is answered the card is
+// still in the library; "the rest" is computed when the entry is complete,
+// so a card still waiting to enter is never put on the bottom with the
+// pile. An error still reports whatever did enter and the tail still runs,
+// so the revealed or looked-at rest is never left on top with its knowers.
+//
+// Caller holds g.mu.
+func putFromLibraryEnter(g *game.Game, chooser uuid.UUID, picked []uuid.UUID, tapped bool, c PutCounters, tail game.KeyedTail) error {
+	if len(picked) == 0 {
+		return tail.Run(g, nil)
+	}
+	opts := game.LibraryEntryOptions{Controller: chooser, Tapped: tapped}
+	if !c.none() && (!c.IfManaValueAtMost || (len(picked) == 1 && manaValueInLibraryAtMost(g, picked[0], c.ManaValueAtMost))) {
+		opts.EntersWithCounters = map[string]int{c.Kind: c.N}
+	}
+	return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(picked, opts, tail)
+}
+
+// manaValueInLibraryAtMost reports whether the card's mana value, read off
+// it as it sits in the library, is at most n.
+func manaValueInLibraryAtMost(g *game.Game, id uuid.UUID, n int) bool {
+	card, ok := g.LookupCardForEffect(id)
+	if !ok {
+		return false
+	}
+	mv, ok := g.ManaValueForEffect(card)
+	return ok && mv <= n
+}
+
+// putFromLibraryAnswered is the keyed answer to "put a card from among
+// them onto the battlefield": the picks enter under the chooser's control,
+// tapped and with counters as the prompt's numbers and word say, and the
+// prompt's tail is the put's ThenTail. Nothing picked runs the tail at
+// once.
+func putFromLibraryAnswered(g *game.Game, r game.CardsChosen) error {
+	tapped, counters := putCountersFromPick(r.Word, r.Nums)
+	return putFromLibraryEnter(g, r.Chooser, r.Picked, tapped, counters, r.Tail)
+}
+
+// putFromLibraryPicked is the keyed answer with no set rule (#4253 slice
+// 10b). An on-disk key: never renamed, never reused.
+var putFromLibraryPicked = game.RegisterChooseCardsThen("choose-cards/put-from-library-onto-battlefield", putFromLibraryAnswered)
+
+// PutRule names a registered set rule for PutFromLibraryOntoBattlefield's
+// pick (PutFromLibraryOntoBattlefield.Rule). Hold one only from
+// RegisterPutRule.
+type PutRule struct{ pick game.ChooseCardsThen }
+
+// IsZero reports whether no rule is named.
+func (r PutRule) IsZero() bool { return r.pick.Key() == "" }
+
+// RegisterPutRule registers a set rule for a put's pick under key (#4253):
+// the pick's continuation is the put's, registered under the key with
+// `rule` (game.RegisterChooseCardsThenRule), so a binary that does not
+// know the key refuses the file and one that knows it has the rule. The
+// key is an on-disk identity (ledgered "choose <key>"): never renamed,
+// never reused. Call it once, from a package-level var. The rule must be
+// a function of the cards alone and capture nothing that lives in a game.
+func RegisterPutRule(key string, rule game.SetRuleFunc) PutRule {
+	if rule == nil {
+		panic("effects.RegisterPutRule: a rule is required")
+	}
+	return PutRule{pick: game.RegisterChooseCardsThenRule(key, rule, putFromLibraryAnswered)}
+}
 
 // libraryCardsMatching filters `ids` to the permanent cards still in a
 // library that pass `pred`, in the order given. Characteristics are
@@ -595,7 +641,7 @@ func revealTopThenPutIfMatch(g *game.Game, source, player uuid.UUID, match func(
 //
 // Max is 1 for "a" and 0 for "any number".
 //
-// No Validate parameter: a clause that also rules on the picked SET
+// No Rule parameter: a clause that also rules on the picked SET
 // ("with total mana value 4 or less", Ao, the Dawn Sky) states
 // PutFromLibraryOntoBattlefield directly, the way Armored Skyhunter
 // does for its own rider. Widening this signature for a field two of

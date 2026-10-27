@@ -67,7 +67,36 @@ func kharnAnswer(t *testing.T, g *game.Game, chooser, pick uuid.UUID) {
 }
 
 // The control change happens before the rest of the damage instruction:
-// a ...ThenForEffect continuation reads Khârn's controller after the
+// testKharnSeen and testKharnDealt are what testKharnSeenTail was told:
+// the controller of the permanent dealt damage (as the tail ran) and the
+// damage dealt. #4253 moved these tests onto the keyed damage door, whose
+// continuation is a registered tail.
+var (
+	testKharnSeen     uuid.UUID
+	testKharnDealt    int
+	testKharnSeenTail = game.RegisterTail("test/4253-kharn-seen", func(g *game.Game, o game.TailOutcome) error {
+		if len(o.IDs) > 0 {
+			if c, ok := g.LookupCardForEffect(o.IDs[0]); ok {
+				testKharnSeen = c.Controller
+			}
+		}
+		testKharnDealt = o.Amount
+		return nil
+	})
+	// testDealOneMoreTail deals the told permanent 1 more damage from the
+	// tail's Source.
+	testDealOneMoreTail = game.RegisterTail("test/4253-deal-one-more", func(g *game.Game, o game.TailOutcome) error {
+		if len(o.IDs) == 0 {
+			return nil
+		}
+		return g.DealDamageToCreatureForEffect(o.Tail.Source, o.IDs[0], 1)
+	})
+)
+
+// resetKharnSeen clears what testKharnSeenTail heard.
+func resetKharnSeen() { testKharnSeen, testKharnDealt = uuid.Nil, -1 }
+
+// a ...KeyedForEffect continuation reads Khârn's controller after the
 // answer, not before it (the ruling: "happens immediately, even if you
 // are in the middle of resolving the spell or ability").
 func TestKharnTheBetrayerChangesControlBeforeTheRestOfTheInstruction(t *testing.T) {
@@ -75,27 +104,22 @@ func TestKharnTheBetrayerChangesControlBeforeTheRestOfTheInstruction(t *testing.
 	me, opp, third := g.Seats[0], g.Seats[1], g.Seats[2]
 	kharn := kharnPush(g, me.ID, me.ID)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
-	var seen uuid.UUID
-	dealt := -1
+	resetKharnSeen()
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToCreatureThenForEffect(src, kharn, 3, func(g *game.Game, n int) error {
-			c, _ := g.LookupCardForEffect(kharn)
-			seen, dealt = c.Controller, n
-			return nil
-		}); err != nil {
+		if err := g.DealDamageToCreatureKeyedForEffect(src, kharn, 3, game.KeyedTail{Ref: testKharnSeenTail}); err != nil {
 			t.Fatal(err)
 		}
 	})
 	g.RunStateChecksForTest()
-	if seen != uuid.Nil {
+	if testKharnSeen != uuid.Nil {
 		t.Fatal("the rest of the instruction ran before the opponent was chosen")
 	}
 	if !g.ResolutionPaused() {
 		t.Fatal("the question is not holding the boundary")
 	}
 	kharnAnswer(t, g, me.ID, third.ID)
-	if seen != third.ID || dealt != 0 {
-		t.Fatalf("the continuation saw controller %s and %d dealt; want %s and 0", seen, dealt, third.ID)
+	if testKharnSeen != third.ID || testKharnDealt != 0 {
+		t.Fatalf("the continuation saw controller %s and %d dealt; want %s and 0", testKharnSeen, testKharnDealt, third.ID)
 	}
 	if got := kharnController(t, g, kharn); got != third.ID || damageMarkedOn(g, kharn) != 0 {
 		t.Fatalf("controller %s, damage %d; want %s, 0", got, damageMarkedOn(g, kharn), third.ID)
@@ -115,9 +139,7 @@ func TestKharnTheBetrayerSecondDamageAsksTheNewController(t *testing.T) {
 	kharn := kharnPush(g, me.ID, me.ID)
 	src := pr7Creature(g, opp.ID, "Src", 3, "R")
 	g.WithWriteLock(func() {
-		if err := g.DealDamageToCreatureThenForEffect(src, kharn, 1, func(g *game.Game, _ int) error {
-			return g.DealDamageToCreatureForEffect(src, kharn, 1)
-		}); err != nil {
+		if err := g.DealDamageToCreatureKeyedForEffect(src, kharn, 1, game.KeyedTail{Ref: testDealOneMoreTail, Source: src}); err != nil {
 			t.Fatal(err)
 		}
 	})

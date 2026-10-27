@@ -254,7 +254,7 @@ func (g *Game) DestroyPermanentsForEffect(ids []uuid.UUID, opts ...DestroyOption
 // Money's treasures).
 //
 // It is a continuation rather than a return value for the reason
-// LoseLifeEachThenForEffect and DealDamageEachThenForEffect are
+// LoseLifeEachThenForEffect and DealDamageEachKeyedForEffect are
 // (ADR 0013 §5b, §5c): any leg can pause, on a replacement's "may"
 // (a commander's own CR 903.9a offer is no longer one, ADR 0115: it
 // comes after the destruction), and the number is not knowable until

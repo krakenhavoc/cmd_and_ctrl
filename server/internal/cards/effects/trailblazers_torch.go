@@ -49,5 +49,5 @@ func trailblazersTorchDamage(g *game.Game, item *game.StackItem) error {
 	if len(blockers) == 0 {
 		return nil
 	}
-	return g.DealDamageEachThenForEffect(attacker, blockers, 2, nil)
+	return g.DealDamageEachKeyedForEffect(attacker, blockers, 2, game.KeyedTail{})
 }
