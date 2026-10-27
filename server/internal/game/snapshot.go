@@ -2568,7 +2568,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
-	s.Resolving = snapshotResolving(g)
+	s.Resolving = snapshotResolving(g, cen)
 
 	// The turn-scoped block-rule registry retired with ADR 0041 tier
 	// 3b, alongside its replacement twin: a Gingerbrute is a

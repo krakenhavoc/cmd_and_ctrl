@@ -160,3 +160,94 @@ func TestAFileWithoutAResolvingSlotRestoresEmpty(t *testing.T) {
 		t.Errorf("a file with no resolving key restored a slot: %+v", restored.resolving)
 	}
 }
+
+// unkeyedResolvingAbility is an ability item whose Effect is a bare
+// closure with no catalog row or body behind it, the kind an ability
+// carried on a card instance puts on the stack. Restore cannot rebuild
+// its Effect.
+func unkeyedResolvingAbility(g *Game) *StackItem {
+	me := g.Seats[0].ID
+	src := uuid.New()
+	return &StackItem{
+		ID: uuid.New(), Kind: StackItemActivated, Controller: me, Owner: me,
+		SourceCardID: src, Label: "Test instance ability", Seq: 79,
+		Effect: func(*Game, *StackItem) error { return nil },
+	}
+}
+
+// #4361: a resolution paused on a prompt can still read its item as an
+// object (a copy of the resolving ability carries its Effect), so an
+// item restore cannot rebuild is a blocker, counted where an unkeyed
+// stack item is. It used to be counted into a scratch census, and the
+// table restored with the Effect silently gone.
+func TestAnUnkeyedItemInAnOpenResolutionIsNotARestorePoint(t *testing.T) {
+	g := newRestorableGame(t)
+	item := unkeyedResolvingAbility(g)
+	g.WithWriteLock(func() {
+		g.resolving = &resolvingItem{item: item, sourceEpoch: -1}
+		g.resolutionOpen = true
+	})
+
+	snap := g.CaptureSnapshot()
+	if snap.Restorable() {
+		t.Fatal("a paused resolution whose item has an unkeyed Effect was called a restore point")
+	}
+	if got := snap.Continuations.IntrinsicAbilityCards; got != 1 {
+		t.Errorf("IntrinsicAbilityCards = %d, want 1 (the resolving item): %+v", got, snap.Continuations)
+	}
+}
+
+// The keyed side of #4361: a resolution paused on a keyed prompt whose
+// item and card restore can rebuild (a spell dispatched by oracle ID,
+// no closure, a card with no instance abilities) is a restore point, and
+// a strict restore gives the slot back.
+func TestARebuildableItemInAnOpenResolutionRestoresStrictly(t *testing.T) {
+	g := newRestorableGame(t)
+	slot, id := resolvingSpellSlot(g)
+	g.WithWriteLock(func() {
+		g.resolving = slot
+		g.resolutionOpen = true
+	})
+
+	snap := g.CaptureSnapshot()
+	if !snap.Restorable() {
+		t.Fatalf("a paused resolution of a rebuildable spell is not a restore point: %+v", snap.Continuations)
+	}
+	raw, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded GameSnapshot
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := decoded.RestoreStrict()
+	if err != nil {
+		t.Fatalf("RestoreStrict: %v", err)
+	}
+	restored.WithWriteLock(func() {
+		card, item, ok := restored.resolvingSpellLocked(id)
+		if !ok || card.Name != "Test Bolt" || item.XValue != 3 {
+			t.Fatalf("the strictly restored slot gave %q, %+v, %v", card.Name, item, ok)
+		}
+		if !restored.resolutionOpen {
+			t.Error("the restored resolution is no longer open")
+		}
+	})
+}
+
+// The same item once its resolution has closed is spent: its effect has
+// run, nothing reads more than its fields, and the slot is cleared at
+// the next event batch. That table stays a restore point.
+func TestAnUnkeyedItemInAClosedResolutionStaysARestorePoint(t *testing.T) {
+	g := newRestorableGame(t)
+	item := unkeyedResolvingAbility(g)
+	g.WithWriteLock(func() {
+		g.resolving = &resolvingItem{item: item, sourceEpoch: -1}
+		g.resolutionOpen = false
+	})
+
+	if snap := g.CaptureSnapshot(); !snap.Restorable() {
+		t.Fatalf("a spent resolving slot made the game a non-restore point: %+v", snap.Continuations)
+	}
+}
