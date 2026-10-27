@@ -487,17 +487,37 @@ func rfRemoveUpToCounters(g *game.Game, chooser, source, target uuid.UUID, n int
 		Source:   source,
 		Question: question,
 		Options:  options,
-		Then: func(g *game.Game, index int) error {
-			if index <= 0 || index > len(kinds) {
-				return nil
-			}
-			if err := g.AddCounterForEffect(target, kinds[index-1], -1); err != nil {
-				return err
-			}
-			return rfRemoveUpToCounters(g, chooser, source, target, n-1, question)
-		},
+		ThenKey:  rfRemovedCounter,
+		Carry:    []uuid.UUID{target},
+		// The question, then the kinds offered after the first option, in
+		// the order they were listed; how many more may be removed.
+		Words: append([]string{question}, kinds...),
+		Nums:  []int{n},
 	})
 	return nil
+}
+
+// rfRemovedCounter is the answer to "remove a counter (up to N)", keyed
+// (#4253): the permanent is the prompt's carry, the question and the kinds
+// offered its words, and how many may still be removed its number. An
+// on-disk key: never renamed, never reused. Registered in init because the
+// walk asks again from inside it.
+var rfRemovedCounter game.OptionPickThen
+
+func init() {
+	rfRemovedCounter = game.RegisterOptionPickThen("option-pick/reality-fracture-remove-up-to-counters", func(g *game.Game, r game.OptionPicked) error {
+		if len(r.Carry) == 0 || len(r.Nums) == 0 || len(r.Words) == 0 {
+			return nil
+		}
+		target, n, question, kinds := r.Carry[0], r.Nums[0], r.Words[0], r.Words[1:]
+		if r.Index <= 0 || r.Index > len(kinds) {
+			return nil
+		}
+		if err := g.AddCounterForEffect(target, kinds[r.Index-1], -1); err != nil {
+			return err
+		}
+		return rfRemoveUpToCounters(g, r.Chooser, r.Source, target, n-1, question)
+	})
 }
 
 // rfOpponentCreatureWouldDie is the AppliesTo of "if a creature an

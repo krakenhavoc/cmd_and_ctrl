@@ -108,8 +108,8 @@ func zaraLookAndPut(g *game.Game, item *game.StackItem, defender uuid.UUID) erro
 
 // zaraPicked is the optional put from their hand, keyed (#4253): the
 // defending player rides the prompt as its carry, and the trigger's item as
-// data. The "what does it attack?" question it can open is still a closure
-// (it needs PickOption.WithItem, #4337).
+// data. The "what does it attack?" question it can open is keyed too
+// (zaraAttackChosen).
 var zaraPicked = game.RegisterChooseCardsThen("choose-cards/zara-renegade-recruiter-put",
 	func(g *game.Game, r game.CardsChosen) error {
 		if len(r.Picked) == 0 || len(r.Carry) == 0 || r.Asked == nil {
@@ -136,14 +136,27 @@ func zaraChooseAttackTarget(g *game.Game, item *game.StackItem, defender, card u
 	return PickOption{
 		Question: "Zara, Renegade Recruiter — what does it attack?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(targets) {
-				index = 0
-			}
-			return zaraPutAttacking(ctx.Game, item, card, targets[index])
-		},
+		ThenKey:  zaraAttackChosen,
+		WithItem: true,
+		// The card, then what it may attack, the defending player first.
+		Carry: append([]uuid.UUID{card}, targets...),
 	}.Apply(NewContext(g, item))
 }
+
+// zaraAttackChosen is what the creature attacks, keyed (#4253): the card and
+// the choices ride the prompt as its carry, the trigger's item as data. An
+// on-disk key: never renamed, never reused.
+var zaraAttackChosen = OptionPickThen("option-pick/zara-renegade-recruiter-attack", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	card, targets := r.Carry[0], r.Carry[1:]
+	index := r.Index
+	if index < 0 || index >= len(targets) {
+		index = 0
+	}
+	return zaraPutAttacking(ctx.Game, ctx.Item, card, targets[index])
+})
 
 // zaraPutAttacking puts the card onto the battlefield under Zara's
 // controller's control, tapped and attacking `attacking`, and

@@ -67,7 +67,7 @@ func valakutAwakeningPutThenDraw(ctx *Context, player uuid.UUID) error {
 // valakutAwakeningPicked is the any-number put-back, keyed (#4253): the
 // player is the chooser and the card the source, so the prompt carries
 // nothing else. The order prompt it opens for two or more cards is
-// PutInLibrarySpec's, whose own "then" is still a closure (slice 10b).
+// PutInLibrarySpec's, whose "then" is the keyed draw (thenDrawCards).
 var valakutAwakeningPicked = game.RegisterChooseCardsThen("choose-cards/valakut-awakening-put-back",
 	func(g *game.Game, r game.CardsChosen) error {
 		player, picked := r.Chooser, r.Picked
@@ -81,8 +81,6 @@ var valakutAwakeningPicked = game.RegisterChooseCardsThen("choose-cards/valakut-
 			From:      game.ZoneHand,
 			Placement: game.LibraryPlaceBottom,
 			Reason:    "Valakut Awakening — order the cards on the bottom of your library",
-			Then: func(g *game.Game) error {
-				return g.DrawNForEffect(player, len(picked)+1)
-			},
+			ThenTail:  game.KeyedTail{Ref: thenDrawCards, Player: player, N: len(picked) + 1},
 		})
 	})

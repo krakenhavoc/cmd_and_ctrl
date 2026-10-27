@@ -95,28 +95,36 @@ func masterMakeThemPay(g *game.Game, item *game.StackItem) error {
 	if z := g.FindCardZoneForEffect(deadID); z == nil || z.Kind != game.ZoneExile {
 		return nil
 	}
-	face := func(ctx *Context, opponent uuid.UUID) error {
-		return FaceVillainousChoice{
-			Players: []uuid.UUID{opponent},
-			Choice:  masterChoice,
-			Carry:   []uuid.UUID{deadID},
-		}.Apply(ctx)
-	}
 	most := OpponentsWithTheMostLife(ctx)
 	switch len(most) {
 	case 0:
 		return nil
 	case 1:
-		return face(ctx, most[0])
+		return masterFace(ctx, most[0], deadID)
 	}
 	return ChoosePlayer{
 		Only:     most,
 		Question: "The Master — choose an opponent with the most life",
-		Then: func(ctx *Context) error {
-			if opp := ctx.ChosenPlayer(); opp != uuid.Nil {
-				return face(ctx, opp)
-			}
-			return nil
-		},
+		ThenKey:  masterOpponentChosen,
+		Carry:    []uuid.UUID{deadID},
 	}.Apply(ctx)
 }
+
+// masterFace has `opponent` face the villainous choice over the exiled card.
+func masterFace(ctx *Context, opponent, deadID uuid.UUID) error {
+	return FaceVillainousChoice{
+		Players: []uuid.UUID{opponent},
+		Choice:  masterChoice,
+		Carry:   []uuid.UUID{deadID},
+	}.Apply(ctx)
+}
+
+// masterOpponentChosen is the tied opponent the controller broke the tie
+// for, keyed (#4253): the exiled card rides the prompt as its carry. An
+// on-disk key: never renamed, never reused.
+var masterOpponentChosen = ChoosePlayerThen("option-pick/the-master-gallifreys-end-opponent", func(ctx *Context, opp uuid.UUID, carry []uuid.UUID) error {
+	if opp == uuid.Nil || len(carry) == 0 {
+		return nil
+	}
+	return masterFace(ctx, opp, carry[0])
+})
