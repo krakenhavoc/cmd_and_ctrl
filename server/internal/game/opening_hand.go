@@ -256,15 +256,21 @@ func (g *Game) queueOpeningHandExileLocked(seat, source uuid.UUID, n int) error 
 		Cards:    ids,
 		Min:      n,
 		Max:      n,
-		Zone:     ZoneHand,
-		Then: func(g *Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.ExileCardForEffect(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: ZoneHand,
+		// #4361 S7a: a registered continuation, so a table waiting on
+		// the exile is a restore point.
+		ThenKey: openingHandExileThen,
 	})
 	return nil
 }
+
+// openingHandExileThen exiles the cards picked from the hand. An on-disk
+// key: never renamed, never reused.
+var openingHandExileThen = RegisterChooseCardsThen("choose-cards/opening-hand-exile", func(g *Game, r CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.ExileCardForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
+})

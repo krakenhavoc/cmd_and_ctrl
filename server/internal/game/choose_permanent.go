@@ -36,44 +36,59 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu (an AsEnters hook does).
 func (g *Game) QueueChoosePermanentAsEntersForEffect(chooser, source uuid.UUID, question string, candidates []uuid.UUID) uuid.UUID {
-	epochs := make(map[uuid.UUID]int, len(candidates))
+	seen := make(map[uuid.UUID]bool, len(candidates))
 	ids := make([]uuid.UUID, 0, len(candidates))
+	epochs := make([]int, 0, len(candidates))
 	for _, id := range candidates {
 		c := findBattlefieldCard(g, id)
-		if c == nil || id == source {
+		if c == nil || id == source || seen[id] {
 			continue
 		}
-		if _, dup := epochs[id]; dup {
-			continue
-		}
-		epochs[id] = c.ObjectEpoch
+		seen[id] = true
 		ids = append(ids, id)
+		epochs = append(epochs, c.ObjectEpoch)
 	}
 	if len(ids) == 0 {
 		return uuid.Nil
 	}
-	permanent := source
+	// #4361 S7a: the answer is a registered continuation, and each
+	// candidate's epoch rides the prompt beside it (Carry[i] has
+	// CarryNums[i]), so a table waiting on the answer is a restore point.
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-		Chooser:  chooser,
-		Source:   source,
-		Question: question,
-		Cards:    ids,
-		Min:      0,
-		Max:      1,
-		Zone:     ZoneBattlefield,
-		Then: func(g *Game, picked []uuid.UUID) error {
-			if len(picked) != 1 {
-				return nil
-			}
-			c := findBattlefieldCard(g, picked[0])
-			if c == nil || c.ObjectEpoch != epochs[picked[0]] {
-				return nil
-			}
-			g.SetChosenPermanentForEffect(permanent, ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
-			return nil
-		},
+		Chooser:   chooser,
+		Source:    source,
+		Question:  question,
+		Cards:     ids,
+		Min:       0,
+		Max:       1,
+		LiveZone:  ZoneBattlefield,
+		ThenKey:   choosePermanentAsEntersThen,
+		Carry:     append([]uuid.UUID(nil), ids...),
+		CarryNums: epochs,
 	})
 }
+
+// choosePermanentAsEntersThen stores the chosen permanent on the one that
+// asked (the prompt's Source) when it is still the object it was offered
+// as. An on-disk key: never renamed, never reused.
+var choosePermanentAsEntersThen = RegisterChooseCardsThen("choose-cards/as-enters-permanent", func(g *Game, r CardsChosen) error {
+	if len(r.Picked) != 1 {
+		return nil
+	}
+	picked := r.Picked[0]
+	for i, id := range r.Carry {
+		if id != picked || i >= len(r.Nums) {
+			continue
+		}
+		c := findBattlefieldCard(g, picked)
+		if c == nil || c.ObjectEpoch != r.Nums[i] {
+			return nil
+		}
+		g.SetChosenPermanentForEffect(r.Source, ObjectRef{ID: c.InstanceID, Epoch: c.ObjectEpoch})
+		return nil
+	}
+	return nil
+})
 
 // SetChosenPermanentForEffect stores `chosen` on the battlefield
 // permanent `id` as its ChosenPermanent, and drops the cached layer

@@ -176,7 +176,9 @@ func registeredChooseCardsKeysLocked() []string {
 func isKeyedChooseCards(c *PendingChoice) bool {
 	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource ||
 		// #4253 slice 10b: a keyed proliferate or Ring-bearer choice.
-		c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer) &&
+		c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer ||
+		// #4361 S7a: CR 502.3's untap determination.
+		c.Kind == PendingChoiceUntapChoice) &&
 		c.PickThen != "" && c.chooseCardsResume == nil
 }
 
