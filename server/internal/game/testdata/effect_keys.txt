@@ -1460,3 +1460,16 @@ option option-pick/multiform-wonder-keyword
 option option-pick/nazgul-battle-mace-pay-or-take
 option option-pick/nesting-grounds-counter-kind
 option option-pick/orcish-medicine-keyword
+choose choose-cards/transpose-after-discard
+choose choose-cards/ultimate-magic-meteor-walk
+choose choose-cards/under-the-skin-return
+choose choose-cards/undercity-plague-sacrifice
+choose choose-cards/untap-up-to-lands
+choose choose-cards/valakut-awakening-put-back
+choose choose-cards/victor-valgavoths-seneschal-reanimate
+choose choose-cards/web-of-inertia-exile-or-restrict
+choose choose-cards/yuffie-materia-hunter-attach
+choose choose-cards/zack-fair-move-equipment
+choose choose-cards/zara-renegade-recruiter-put
+choose choose-cards/zenos-yae-galvus-first-friend
+option option-pick/tireless-provisioner-token
