@@ -309,6 +309,9 @@ func unknownKeyedTail(s *keyedTailSnapshot) []string {
 		out = append(out, check(s.Word, s.Words)...)
 	}
 	out = append(out, unknownPayUnlessPaid(s)...)
+	// #4361 S13: a cast permission the tail grants names its follow-ups
+	// by key.
+	out = append(out, unknownCastFollowUps(s.Permission)...)
 	return append(out, unknownKeyedTail(s.Next)...)
 }
 

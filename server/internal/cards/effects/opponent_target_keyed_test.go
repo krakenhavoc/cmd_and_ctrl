@@ -2,7 +2,6 @@ package effects
 
 import (
 	"encoding/json"
-	"slices"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -10,10 +9,9 @@ import (
 
 // opponent_target_keyed_test.go — #4361 slice 6: the controller's "which
 // opponent chooses" question of an "of an opponent's choice" activation
-// is a keyed option pick. Its parked announcement is still not written
-// (owner decision D7, slice 13), so the restore point is still refused,
-// but the only frame it holds is that announcement: no option-pick
-// closure.
+// is a keyed option pick. Since slice 13 (owner decision D7) its parked
+// announcement is written too (pendingChoices[].parked), so the question
+// holds no frame the census counts. census_s13_restore_test.go restores it.
 func TestTheOpponentChooserQuestionHoldsOnlyTheParkedAnnouncement(t *testing.T) {
 	g := newCatalogGame(t)
 	me, a := g.Seats[0], g.Seats[1]
@@ -32,8 +30,9 @@ func TestTheOpponentChooserQuestionHoldsOnlyTheParkedAnnouncement(t *testing.T) 
 	}
 	var snap struct {
 		PendingChoices []struct {
-			ID           string   `json:"id"`
-			ResumeFrames []string `json:"resumeFrames"`
+			ID           string          `json:"id"`
+			ResumeFrames []string        `json:"resumeFrames"`
+			Parked       json.RawMessage `json:"parked"`
 		} `json:"pendingChoices"`
 	}
 	if err := json.Unmarshal(raw, &snap); err != nil {
@@ -45,8 +44,11 @@ func TestTheOpponentChooserQuestionHoldsOnlyTheParkedAnnouncement(t *testing.T) 
 			continue
 		}
 		found = true
-		if !slices.Equal(pc.ResumeFrames, []string{"opponentTargetResume"}) {
-			t.Errorf("the question holds %v, want only the parked announcement", pc.ResumeFrames)
+		if len(pc.ResumeFrames) != 0 {
+			t.Errorf("the question holds %v, want no counted frame", pc.ResumeFrames)
+		}
+		if len(pc.Parked) == 0 {
+			t.Error("the question's parked announcement is not written")
 		}
 	}
 	if !found {

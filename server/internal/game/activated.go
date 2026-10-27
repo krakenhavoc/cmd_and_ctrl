@@ -1934,23 +1934,18 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		parked := params
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
-			controller: playerID,
-			cardID:     cardID,
-			name:       source.Name,
-			activation: true,
-			index:      index,
-			activate:   parked,
+			parkedAnnouncement: activationAnnouncement(playerID, cardID, source.Name, index, parked),
 		}, SourceObject(playerID, source), oppTargets)
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
-		func(g *Game, answers map[uuid.UUID]bool) error {
-			again := params
-			again.commanderAnswers = answers
-			// The payload's own picks: the opponents' answers ride
-			// opponentPicks and are merged in again (#2055).
-			again.Targets = ownTargets
-			return g.activateCatalogAbilityLocked(playerID, cardID, index, again)
-		})
+	// The announcement a CR 903.9b answer makes again (#4361 S13: as
+	// data). The payload's own picks: the opponents' answers ride
+	// opponentPicks and are merged in again (#2055). The commander
+	// answers are the frame's, attached when it is answered.
+	again := params
+	again.Targets = ownTargets
+	again.commanderAnswers = nil
+	asked, answers := g.askCostCommanderLocked(asking, params.commanderAnswers, source.Name,
+		activationAnnouncement(playerID, cardID, source.Name, index, again))
 	if asked {
 		return nil
 	}

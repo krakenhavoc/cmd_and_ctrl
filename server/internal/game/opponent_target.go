@@ -47,7 +47,9 @@ import (
 // error.
 //
 // The frames are plain data: the closure ratchet (closure_fields.txt)
-// gains no route. The choose-an-opponent prompt rides the existing
+// gains no route, and since #4361 S13 the snapshot writes them
+// (parked_announcement.go), so a table waiting on either question is a
+// restore point. The choose-an-opponent prompt rides the existing
 // option-pick continuation; the pick rides opponentTargetFrame.
 //
 // # A trigger walks it
@@ -272,47 +274,30 @@ func (g *Game) opponentStepLegalLocked(src TargetSource, steps []AnnouncedClause
 // opponentTargetFrame is a parked announcement waiting on an
 // opponent's target: what to make again, and which clause is being
 // asked. Plain data and immutable once queued; the answer builds new
-// params rather than writing these.
+// params rather than writing these. Written into the snapshot since
+// #4361 S13 (parked_announcement.go).
 type opponentTargetFrame struct {
-	controller uuid.UUID
-	cardID     uuid.UUID
-	name       string
-	// activation says which announcement: an activated ability (index,
-	// activate) or a spell (cast).
-	activation bool
-	index      int
-	activate   ActivateAbilityParams
-	cast       CastSpellParams
+	parkedAnnouncement
 	// mode / slot are the clause this prompt asks.
 	mode, slot int
 }
 
 // picks is what the parked announcement already carries.
 func (f *opponentTargetFrame) picks() []opponentPick {
-	if f.activation {
-		return f.activate.opponentPicks
-	}
-	return f.cast.opponentPicks
+	return f.opponentPicks()
 }
 
 // rerun makes the announcement again with `picks` attached.
 //
 // Caller must hold g.mu.
 func (f *opponentTargetFrame) rerun(g *Game, picks []opponentPick) error {
-	if f.activation {
-		p := f.activate
-		p.opponentPicks = picks
-		return g.activateCatalogAbilityLocked(f.controller, f.cardID, f.index, p)
-	}
-	p := f.cast
-	p.opponentPicks = picks
-	return g.castSpellLocked(f.controller, f.cardID, p)
+	return f.withOpponentPicks(picks).run(g)
 }
 
 // sameAnnouncement reports whether two frames park the same
 // announcement: one source, one ability (or the spell itself).
 func (f *opponentTargetFrame) sameAnnouncement(o *opponentTargetFrame) bool {
-	return f != nil && o != nil && f.cardID == o.cardID && f.activation == o.activation && f.index == o.index
+	return f != nil && o != nil && f.sameAs(o.parkedAnnouncement)
 }
 
 // parkForOpponentTargetLocked parks a validated announcement on its

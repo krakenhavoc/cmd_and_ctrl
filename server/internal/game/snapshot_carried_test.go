@@ -548,6 +548,14 @@ var carriedNotRoundTrippable = map[string]string{
 	"PendingChoice.sourceShield": "#4253 slice 10c: written only on a choose_source prompt, and this probe's " +
 		"prompt is a discard. Its round trip is pinned by TestChooseSourceShieldsSurviveARestore and " +
 		"TestSourceShieldWireRoundTrips.",
+	"PendingChoice.costCommanderResume": "#4361 S13: written only on an optional_replacement, whose PickThen " +
+		"it takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestANinjutsuCommanderQuestionIsARestorePoint and TestADazeCommanderQuestionIsARestorePoint " +
+		"(effects), strict restores whose answer makes the announcement on the restored table.",
+	"PendingChoice.opponentTargetResume": "#4361 S13: written only on an opponent's pick_target, whose PickThen it " +
+		"takes for its marker, or the controller's option pick, and this probe's prompt is a discard. Its round " +
+		"trip is pinned by TestANovaPentacleOpponentChoiceIsARestorePoint and TestAnEvangelizeOpponentPickIsARestorePoint " +
+		"(effects), and the params' unexported half by TestParkedAnnouncementParamsAreCarriedInFull.",
 	"PendingChoice.scryThen": "#4253 slice 3: written only on a scry, surveil or look-at-top prompt, whose PickThen it " +
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +
@@ -748,6 +756,7 @@ var (
 	uuidType                = reflect.TypeOf(uuid.UUID{})
 	permissionConditionType = reflect.TypeOf(PermissionCondition{})
 	timeType                = reflect.TypeOf(time.Time{})
+	castFollowUpKeyType     = reflect.TypeOf(CastFollowUpKey(""))
 )
 
 // planFor is the drift plan for a domain type, or nil for a type that
@@ -796,6 +805,12 @@ func generateNonZero(rt reflect.Type, seed string, depth int) (reflect.Value, er
 			Trigger:    "drift-" + seed,
 			Production: uuid.NewSHA1(uuid.Nil, []byte(seed+"/production")), Applied: true,
 		}), nil
+	case castFollowUpKeyType:
+		// #4361 S13: restore refuses a cast permission whose FollowUp or
+		// IfNotCast names a body this binary never registered, so an
+		// invented key would fail the restore rather than test the
+		// carry. A registered test key instead.
+		return reflect.ValueOf(carriedTestFollowUpKey), nil
 	case permissionConditionType:
 		// #3192: restore refuses a cast-permission condition whose key
 		// this binary never registered, so an invented key would fail the
@@ -1021,6 +1036,9 @@ func render(v reflect.Value) string {
 var (
 	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
 	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
+	// #4361 S13: a cast permission's follow-up body.
+	carriedTestFollowUpKey = RegisterCastFollowUp(testEffectKeyPrefix+"carried-follow-up",
+		func(*Game, CastFollowUp) error { return nil })
 	// #2115: a revealed-hand pick's continuation key.
 	carriedTestPickKey = RegisterRevealedPickThen(testEffectKeyPrefix+"carried-pick",
 		func(*Game, RevealedPick) error { return nil })

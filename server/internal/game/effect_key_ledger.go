@@ -116,6 +116,10 @@ func ledgerLineResolves(line string) bool {
 	case "maycast":
 		// #4361: a keyed may_cast's answer (RegisterMayCastThen).
 		return KnownMayCastThen(fields[1])
+	case "castfollowup":
+		// #4361 S13: a cast permission's FollowUp or IfNotCast body
+		// (RegisterCastFollowUp).
+		return KnownCastFollowUp(CastFollowUpKey(ledgerLineKey(line)))
 	case "anyplayer":
 		return KnownAnyPlayerPays(fields[1])
 	case "number":

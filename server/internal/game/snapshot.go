@@ -2087,6 +2087,15 @@ type pendingChoiceSnapshot struct {
 	// DivideShieldLandKey, so a binary from before it refuses the file.
 	// Additive within the version.
 	DivideShield *divideShieldSnapshot `json:"divideShield,omitempty"`
+	// Parked is a cast or activation parked on this prompt before
+	// anything was paid, written as data (#4361 S13, owner decision D7,
+	// parked_announcement.go): a CR 903.9b question's frame on an
+	// optional_replacement, an "of an opponent's choice" frame on the
+	// controller's option pick or the opponent's pick_target. PickThen
+	// names it (CostCommanderAnnounceKey, OpponentTargetAnnounceKey, or
+	// the option pick's own key), so a binary from before it refuses the
+	// file. Additive within the version.
+	Parked *parkedAnnouncementSnapshot `json:"parked,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -3335,6 +3344,11 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		out.TargetWalk = tw
 		out.PickThen = targetWalkMarker(c.Kind)
 	}
+	// #4361 S13: a parked cast or activation, written as data.
+	parked, parkedKey := snapshotParkedAnnouncement(c)
+	if parked != nil {
+		out.Parked, out.PickThen = parked, parkedKey
+	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
 		// slice is a complete copy.
@@ -3347,13 +3361,12 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil && !keyedFrame,
 		// #1397: a parked cost announcement waiting on a commander's
-		// owner. Dropping it drops the announcement, not half of it —
-		// nothing was paid — but the census still says so.
-		"costCommanderResume": c.costCommanderResume != nil,
-		// #2055: a parked cast or activation waiting on an opponent's
-		// target (or the controller's choice of opponent). Plain data,
-		// but not written with the prompt, so the census says so.
-		"opponentTargetResume": c.opponentTargetResume != nil,
+		// owner, and #2055: a parked cast or activation waiting on an
+		// opponent's target (or the controller's choice of opponent).
+		// Written as data since #4361 S13 (out.Parked); counted only
+		// when it could not be (a cast already carrying an assist answer).
+		"costCommanderResume":  c.costCommanderResume != nil && parked == nil,
+		"opponentTargetResume": c.opponentTargetResume != nil && parked == nil,
 		// #4361 S14b: written as data (targetWalk) when it can be named.
 		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
 		"copyResume":       c.copyResume != nil,
@@ -3772,6 +3785,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if w := s.PendingChoices[i].TargetWalk; w != nil && carriesTargetWalk(s.PendingChoices[i].Kind) {
 			// #4361 S14b: a trigger's target walk.
 			g.restoreTargetWalkLocked(g.PendingChoices[i], w)
+		}
+		if pa := s.PendingChoices[i].Parked; pa != nil {
+			// #4361 S13: a parked cast or activation.
+			restoreParkedAnnouncement(g.PendingChoices[i], pa)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)

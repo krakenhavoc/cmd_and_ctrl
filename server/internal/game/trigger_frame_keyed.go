@@ -489,7 +489,9 @@ func (g *Game) restoreTargetWalkLocked(c *PendingChoice, s *targetWalkSnapshot) 
 func unknownTargetWalkKeys(c *pendingChoiceSnapshot) []string {
 	w := c.TargetWalk
 	if w == nil {
-		if c.Kind == PendingChoicePickTarget && c.PickThen != "" {
+		// #4361 S13: a parked announcement's pick_target carries its own
+		// marker, checked by unknownParkedAnnouncementKeys.
+		if c.Kind == PendingChoicePickTarget && c.PickThen != "" && c.Parked == nil {
 			return []string{fmt.Sprintf("%s continuation %q", c.Kind, c.PickThen)}
 		}
 		return nil

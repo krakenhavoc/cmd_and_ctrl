@@ -197,6 +197,9 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if perm.Condition != nil && !perm.Condition.Key.Known() {
 				unknown = append(unknown, "cast-permission condition "+string(perm.Condition.Key))
 			}
+			// #4361 S13: and its follow-ups, which an unknown key would
+			// run as nothing (runCastFollowUpLocked).
+			unknown = append(unknown, unknownCastFollowUps(&perm)...)
 		}
 	}
 	// ADR 0109 §11: a mana spend rider's kind, and a counted rider's
@@ -266,7 +269,15 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		// prompt's marker, is a newer binary's shape, and so is a
 		// pick_target marker with no walk.
 		unknown = append(unknown, unknownTargetWalkKeys(&c)...)
+		if c.Parked != nil {
+			// #4361 S13: a parked announcement on a kind that cannot carry
+			// one, under another marker, or without its params.
+			unknown = append(unknown, unknownParkedAnnouncementKeys(&c)...)
+		}
 		switch {
+		case c.Parked != nil && c.Kind != PendingChoiceOptionPick:
+			// #4361 S13: the marker is the parked frame's, checked above;
+			// an option pick's is its own continuation, checked below.
 		case carriesTriggerFrame(c.Kind) && c.PickThen != "":
 			// #4361 S14a: a written trigger frame names its marker and
 			// its catalog row.

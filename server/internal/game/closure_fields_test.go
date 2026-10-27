@@ -143,7 +143,13 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 52,
+	"census:ChoiceResumeFrames": 50,
+	//
+	// 50 (2026-10-27, #4361 S13, owner decision D7): -
+	// PendingChoice.costCommanderResume and costCommanderFrame.announce.
+	// A parked cast or activation is data (parkedAnnouncement,
+	// parked_announcement.go) and the snapshot writes it with the CR
+	// 903.9b question and with the "of an opponent's choice" prompts.
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and
@@ -614,6 +620,7 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 #
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 # 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S13): ChoiceResumeFrames 52 → 50, a parked cast or activation written as data (owner decision D7); PendingChoice.costCommanderResume and costCommanderFrame.announce deleted.
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
