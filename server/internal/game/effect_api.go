@@ -808,16 +808,28 @@ func (g *Game) DealDamageToPlayerThenForEffect(source, playerID uuid.UUID, amoun
 // the open DamageInstanceForEffect scope's instance, or a new one this
 // event ends.
 func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, inst DamageInstance, then func(g *Game, dealt int) error) error {
+	return g.dealDamageToPlayerTailLocked(source, obj, playerID, amount, marks, inst, then, KeyedTail{})
+}
+
+// dealDamageToPlayerTailLocked is dealDamageToPlayerLocked with the
+// caller's continuation as a closure (`then`) or as a registered tail
+// (`keyed`, damageTail.keyed, #4253), never both. The keyed tail is told
+// the player as TailOutcome.IDs and the damage dealt as its Amount, on
+// every terminal outcome the closure is told.
+func (g *Game) dealDamageToPlayerTailLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, inst DamageInstance, then func(g *Game, dealt int) error, keyed KeyedTail) error {
+	nothingDealt := func() error {
+		if then != nil {
+			return then(g, 0)
+		}
+		return g.runKeyedTailLocked(keyed, []uuid.UUID{playerID}, 0)
+	}
 	if amount <= 0 {
 		// Not an event at all — "deals 0 damage" deals no damage
 		// (CR 120.8) and fires no window. The continuation is still an
 		// outcome, and it is zero. Checked before the seat, so a
 		// zero-damage deal at a player who has left stays the no-op it
 		// has always been rather than becoming an error.
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return nothingDealt()
 	}
 	p := g.playerByIDLocked(playerID)
 	if p == nil {
@@ -827,10 +839,7 @@ func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, player
 		// #808, CR 800.4a: no damage reaches a player who has left the
 		// game. A terminal outcome with nothing dealt, like the
 		// zero-damage case above.
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return nothingDealt()
 	}
 	// S22: route through the CR 614 replacement pipeline, the way
 	// combat damage to a player already did. Before this, damage
@@ -861,6 +870,9 @@ func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, player
 	g.stampEffectDamageInstanceLocked(ev, inst)
 	ev.damageTail.marks = marks
 	ev.damageTail.then = then
+	if then == nil {
+		ev.damageTail.keyed = keyed
+	}
 	_, err := g.damageThroughReplacementsLocked(ev)
 	return err
 }

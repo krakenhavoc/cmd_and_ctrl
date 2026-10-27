@@ -8024,6 +8024,14 @@ has no `Validate`, `CountersFor` or `Counters`), `CoinFlipSpec.ThenKey`
 (its `Next` attackers asked in turn) and `RevealedPick.DoneTail`. Each is
 taken whenever the caller passes no closure.
 
+Three more since (#4253): `ExileTargetSpell.ThenTail` (told the spell when it
+reached exile; Mindbreak Trap, Aven Interrupter), `ExileUntil.ThenTail` (told
+the card when it was exiled, after the return is recorded; Abdel Adrian) and
+`Game.DealDamageToPlayerKeyedForEffect` (told the player and, as the
+outcome's `Amount`, the damage dealt; Screaming Nemesis). A non-combat damage
+event's frame is written to the restore point when its tail is data, so a
+CR 616 prompt over it is a restore point.
+
 `Then` holds a closure, so a table waiting on the question is not a
 restore point: register the rest with `ChoosePlayerThen` as above. Coin of
 Fate and Emergent Ultimatum are worked examples too.

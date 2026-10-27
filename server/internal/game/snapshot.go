@@ -476,6 +476,13 @@ type GameSnapshot struct {
 	// (ErrUnknownEffectKey).
 	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
 
+	// FollowUpParks is Game.followUpParks' keyed entries (#4253,
+	// damage_keyed.go): the rest of a damage instruction parked behind a
+	// prompt its instance's follow-up asked, as a registered tail told
+	// the damage's target and amount. A closure park is not written (the
+	// census counts it). Additive within v9.
+	FollowUpParks []followUpParkSnapshot `json:"followUpParks,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -2512,14 +2519,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		cen.note("combat damage step holds its damage behind damage_assignment prompts")
 	}
 	// #2040: the rest of a damage instruction parked behind a prompt
-	// its instance's prevention follow-up asked. A closure, as the
-	// CR 616 resume beside it is: not carried, so a restart rewinds to
-	// before the damage. The owed follow-ups themselves are data
-	// (PreventionFollowUps).
-	if n := len(g.followUpParks); n > 0 {
-		cen.ChoiceResumeFrames += n
-		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", n)
-	}
+	// its instance's prevention follow-up asked. A closure is not
+	// carried, so a restart rewinds to before the damage; #4253: a keyed
+	// one (damage_keyed.go) is written. The owed follow-ups themselves
+	// are data (PreventionFollowUps).
+	s.FollowUpParks = snapshotFollowUpParks(g.followUpParks, cen)
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
@@ -3464,6 +3468,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.parkedDraws = restoreParkedDraws(s.ParkedDraws)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
+	g.followUpParks = restoreFollowUpParks(s.FollowUpParks)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
@@ -3551,6 +3556,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// ADR 0108 PR 0: the damage-instance counter resumes past every
 	// instance a restored record names.
 	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
+	// #4253: and every instance a keyed park names (a keyed damage
+	// frame's is taken as the frame is rebuilt).
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxParkedDamageInstance(g.followUpParks))
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {

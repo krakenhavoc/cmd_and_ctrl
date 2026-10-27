@@ -1,6 +1,10 @@
 package game
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // prevention_then_pause.go — a prevention effect's additional effect
 // that asks a question is answered AT ONCE (#2040, ADR 0108 amendment
@@ -78,6 +82,12 @@ import "slices"
 type followUpPark struct {
 	inst DamageInstance
 	run  func(g *Game) error
+
+	// keyed is `run` as data (#4253, damage_keyed.go): a damage event's
+	// registered tail, told target and dealt. Never set together with run.
+	keyed  *KeyedTail
+	target uuid.UUID
+	dealt  int
 }
 
 // followUpsHeldLocked reports whether a follow-up must wait: the
@@ -176,7 +186,7 @@ func (g *Game) resumeFollowUpParksLocked() bool {
 		if len(g.followUpParks) == 0 {
 			g.followUpParks = nil
 		}
-		if err := p.run(g); err != nil {
+		if err := g.runFollowUpParkLocked(p); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: "damage continuation failed: " + err.Error()})
 		}
 		if g.pausedResolutionChoiceLocked() != nil {

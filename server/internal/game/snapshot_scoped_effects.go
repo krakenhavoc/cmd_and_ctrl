@@ -388,6 +388,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	unknown = append(unknown, unknownPromptRunKeys(s.PromptRuns)...)
 	// #4253 slice 10c: a parked draw's "then" body is a key too.
 	unknown = append(unknown, unknownParkedDrawKeys(s.ParkedDraws)...)
+	// #4253: a keyed damage park's tail is a key too.
+	unknown = append(unknown, unknownFollowUpParkKeys(s.FollowUpParks)...)
 	lastKnown := make([]stackItemSnapshot, 0, len(s.LastKnownStack))
 	for _, e := range s.LastKnownStack {
 		lastKnown = append(lastKnown, e.Item)

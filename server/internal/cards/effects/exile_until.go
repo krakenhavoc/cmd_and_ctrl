@@ -56,6 +56,15 @@ type ExileUntil struct {
 	// is recorded, and not at all when the "until" event had already
 	// happened (nothing was exiled this way).
 	Then func(ctx *Context, exiled bool) error
+
+	// ThenTail is Then as data (#4253): a registered tail (CardTail), told
+	// the card as TailOutcome.IDs when it was exiled and nothing when it
+	// was not, after the return is recorded, and not run at all when the
+	// "until" event had already happened. It rides the keyed exile as the
+	// record's Next, so a prompt the exile pauses on is a restore point.
+	// Used when Then is nil, on the "until this leaves the battlefield"
+	// form.
+	ThenTail game.KeyedTail
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -105,9 +114,25 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		if record {
 			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
 		}
+		if !e.ThenTail.IsZero() {
+			next := e.ThenTail
+			t.Next = &next
+		}
 		return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
 	}
 	then := e.Then
+	if then == nil && !e.ThenTail.IsZero() {
+		// An event-conditioned "until" with a keyed ThenTail still runs
+		// it, told the card when it was exiled; this frame stays a
+		// closure.
+		tail := e.ThenTail
+		then = func(ctx *Context, exiled bool) error {
+			if exiled {
+				return tail.Run(ctx.Game, []uuid.UUID{target})
+			}
+			return tail.Run(ctx.Game, nil)
+		}
+	}
 	return exileTargetThen(ctx, target, func(ctx *Context, exiled bool) error {
 		if !exiled {
 			if then != nil {
@@ -135,11 +160,21 @@ func (e ExileUntil) Apply(ctx *Context) error {
 // return's record, "until <Carry[0] at epoch N> leaves the battlefield",
 // labelled with the tail's Word, for the effect of Player and Source. A
 // tail with no Carry exiles with no record (an item that names no source
-// object). An on-disk key.
+// object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
+// told the same IDs once the record is written. An on-disk key.
 var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *game.Game, o game.TailOutcome) error {
-	if len(o.IDs) != 1 {
-		return nil
+	if len(o.IDs) == 1 {
+		exileUntilRecord(g, o)
 	}
+	if next := o.Tail.Next; next != nil {
+		return next.Run(g, o.IDs)
+	}
+	return nil
+})
+
+// exileUntilRecord is exileUntilRecorded's grant and record, over the card
+// that reached exile.
+func exileUntilRecord(g *game.Game, o game.TailOutcome) {
 	target := o.IDs[0]
 	if p := o.Tail.Permission; p != nil {
 		perm := *p
@@ -154,8 +189,7 @@ var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *
 			Leaves:       game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N},
 		})
 	}
-	return nil
-})
+}
 
 // exileChosenTargetUntilThisLeaves is the Oblivion Ring family's entry
 // trigger body: exile the card the pick stamped into the item, if it is

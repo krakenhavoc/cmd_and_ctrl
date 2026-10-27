@@ -408,18 +408,27 @@ func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 	// damaged through the continuation form, so the grant is written
 	// only when damage was actually dealt — none if it was prevented —
 	// and it is stored on the game, outliving the Nemesis (CR 611.2a).
+	// The continuation is a keyed tail (#4253), the player its Carry, so
+	// a prompt the damage pauses on is a restore point.
 	if ts[0].Kind == game.TargetPlayer {
-		player := ts[0].ID
-		return g.DealDamageToPlayerThenForEffect(item.SourceCardID, player, amount, func(g *game.Game, dealt int) error {
-			if dealt > 0 {
-				g.PlayerCantGainLifeForEffect(item.SourceCardID, player, game.IndefiniteDuration(),
-					"Screaming Nemesis — can't gain life for the rest of the game")
-			}
-			return nil
-		})
+		t := ctx.Tail(b35NemesisCantGainLife)
+		t.Carry = []uuid.UUID{ts[0].ID}
+		return g.DealDamageToPlayerKeyedForEffect(item.SourceCardID, ts[0].ID, amount, t)
 	}
 	return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
 }
+
+// b35NemesisCantGainLife is "if a player is dealt damage this way, they
+// can't gain life for the rest of the game", told the damage dealt; the
+// player is the tail's Carry. An on-disk key.
+var b35NemesisCantGainLife = game.RegisterTail("then/screaming-nemesis-cant-gain-life", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	g.PlayerCantGainLifeForEffect(o.Tail.Source, o.Tail.Carry[0], game.IndefiniteDuration(),
+		"Screaming Nemesis — can't gain life for the rest of the game")
+	return nil
+})
 
 // b35PutCounterOnSelf is Wildwood Scourge's body: one +1/+1 counter
 // on the Scourge, if it is still on the battlefield.
