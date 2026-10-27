@@ -2367,7 +2367,7 @@ func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, c
 		if !then.isZero() {
 			// ADR 0154: the caller's continuation, run from the landing
 			// whether the entry settled inline or on a resume.
-			ev.entryTail = &entryTail{then: then.fn, keyed: then.keyed}
+			ev.entryTail = &entryTail{keyed: then.keyed}
 		}
 		return g.enterBattlefieldThroughPipelineLocked(ev)
 	}
@@ -4035,7 +4035,7 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 		// #1327: and the caller's continuation, run from the landing
 		// with the NEW ID, whether the entry settled inline or on a
 		// resume.
-		entryTail: &entryTail{newObject: true, then: then.fn, keyed: then.keyed},
+		entryTail: &entryTail{newObject: true, keyed: then.keyed},
 	})
 }
 

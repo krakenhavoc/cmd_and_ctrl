@@ -53,11 +53,17 @@ func TestAttractionDeckIsACountAndTheJunkyardIsPublic(t *testing.T) {
 	me := g.Seats[0]
 	var opened []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 2, func(_ *game.Game, got []uuid.UUID) error {
-			opened = got
-			return nil
-		}); err != nil {
+		before := len(g.Events)
+		if err := g.OpenAttractionsForEffect(me.ID, uuid.Nil, 2); err != nil {
 			t.Fatal(err)
+		}
+		for _, ev := range g.Events[before:] {
+			if ev.Kind == game.EventAttractionOpened {
+				opened = append(opened, ev.CardID)
+			}
+		}
+		if len(opened) != 2 {
+			t.Fatalf("opened %d Attractions, want 2", len(opened))
 		}
 		if err := g.DestroyPermanentForEffect(opened[0]); err != nil {
 			t.Fatal(err)

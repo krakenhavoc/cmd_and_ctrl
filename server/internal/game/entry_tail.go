@@ -124,24 +124,21 @@ type entryTail struct {
 	keyed KeyedTail
 }
 
-// entryThen is the continuation a single-permanent entry door takes:
-// the closure form or the registered tail (#4253 slice 6), never both.
+// entryThen is the continuation a single-permanent entry door takes: a
+// registered tail (#4253 slice 6). Its closure form, which no door set,
+// was deleted in #4361 S10.
 type entryThen struct {
-	fn    func(g *Game, entered uuid.UUID) error
 	keyed KeyedTail
 }
 
 // isZero reports whether no continuation is recorded.
-func (t entryThen) isZero() bool { return t.fn == nil && t.keyed.IsZero() }
+func (t entryThen) isZero() bool { return t.keyed.IsZero() }
 
 // run runs the continuation at once, told the permanent that entered
 // (uuid.Nil for none): for a door whose entry never began.
 //
 // Caller must hold g.mu.
 func (t entryThen) run(g *Game, entered uuid.UUID) error {
-	if t.fn != nil {
-		return t.fn(g, entered)
-	}
 	return g.runKeyedTailLocked(t.keyed, entryTailIDs(entered), 0)
 }
 

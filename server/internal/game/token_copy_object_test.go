@@ -2,6 +2,7 @@ package game
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -90,15 +91,22 @@ func TestSimultaneousTokenEntryPauseAndUndo(t *testing.T) {
 	pushReplacementSource(g, "thalia", me)
 	ran := 0
 	g.WithWriteLock(func() {
-		if err := g.CreateTokensThenForEffect(TokenCreation{Controller: them, Together: true,
+		spec := TokenCreation{Controller: them, Together: true,
 			Groups: []TokenGroup{{Template: goblinToken(), Count: 2, Entry: TokenEntryOptions{Counters: map[string]int{CounterPlusOne: 1}}}},
-		}, func(_ *Game, ids []uuid.UUID) error {
+		}
+		// #4361 S10: tokens entering together carry their continuation as
+		// data on the batch. A closure is not data, so it is refused, as a
+		// split creation refuses one.
+		if err := g.CreateTokensThenForEffect(spec, func(*Game, []uuid.UUID) error { return nil }); !errors.Is(err, ErrInvalidParam) {
+			t.Fatalf("a closure tail on tokens entering together: err = %v, want ErrInvalidParam", err)
+		}
+		if err := g.CreateTokensKeyedForEffect(spec, hookTail(func(_ *Game, o TailOutcome) error {
 			ran++
-			if len(ids) != 2 {
-				t.Errorf("continuation got %d tokens, want 2", len(ids))
+			if len(o.IDs) != 2 {
+				t.Errorf("continuation got %d tokens, want 2", len(o.IDs))
 			}
 			return nil
-		}); err != nil {
+		})); err != nil {
 			t.Fatal(err)
 		}
 	})

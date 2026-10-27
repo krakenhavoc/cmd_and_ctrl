@@ -92,10 +92,14 @@ type entryBatch struct {
 	next int
 	// firstErr is the first error a member's window or move reported.
 	// The batch carries on past it (one stale card must not strand the
-	// rest) and reports it once everything is done.
-	firstErr error
+	// rest) and reports it once everything is done. Held as data
+	// (#4361 S10): its message and the engine sentinel it wraps.
+	firstErr entryBatchErr
 	// then is the caller's continuation, run exactly once when the
-	// batch reaches its end. Cleared as it runs.
+	// batch reaches its end. Cleared as it runs. Its one writer is a
+	// closure discard batch's leg that became this entry
+	// (discardOntoBattlefieldLocked, PutFromHandOntoBattlefieldThenForEffect),
+	// which goes with that batch's closure route (discard.go).
 	then func(g *Game, entered []uuid.UUID) error
 	// keyed is `then` as data (#4253 slice 3): a registered tail, told
 	// the permanents that entered as TailOutcome.IDs. Set one or neither.
@@ -104,7 +108,17 @@ type entryBatch struct {
 	// entry (#4253 slice 9, discard_entry.go), run after the entry
 	// instead of a caller's continuation.
 	discard *discardEntryRun
-	opts    ZoneEntryOptions
+	// attraction is the rest of an "open N Attractions" whose open
+	// this entry is (#4361 S10, attractions.go), run after the entry
+	// instead of a caller's continuation.
+	attraction *attractionOpenRun
+	// report is a synchronous token door's result (tokenTail.report),
+	// told the tokens that entered together. Tokens entering together
+	// (enterCreatedTokensTogetherLocked) leave the staging area as the
+	// batch finishes: a member that is a token and did not enter never
+	// existed (CR 111.1).
+	report *[]uuid.UUID
+	opts   ZoneEntryOptions
 	// done and landed are set as the batch finishes: what entered. A
 	// synchronous door reads them on its next line instead of handing
 	// the batch a closure over a local (putOntoBattlefieldFromZoneLocked),
@@ -350,9 +364,7 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 		}
 		g.clearReplacementEventLocked(ev.ID)
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
-			if b.firstErr == nil {
-				b.firstErr = err
-			}
+			b.firstErr.record(err)
 			out = nil
 		}
 		g.recordEntryBatchMemberLocked(b, i, out)
@@ -452,8 +464,8 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 			continue
 		}
 		g.setControllerInZoneLocked(m.cardID, m.from, m.priorController)
-		if err := g.moveRedirectedEntryLocked(m.out); err != nil && b.firstErr == nil {
-			b.firstErr = err
+		if err := g.moveRedirectedEntryLocked(m.out); err != nil {
+			b.firstErr.record(err)
 		}
 	}
 	for i, m := range b.members {
@@ -462,9 +474,7 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 		}
 		l, ok, err := g.landEntryLocked(m.out)
 		if err != nil {
-			if b.firstErr == nil {
-				b.firstErr = err
-			}
+			b.firstErr.record(err)
 			continue
 		}
 		if !ok {
@@ -519,20 +529,93 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishEntryBatchThenLocked(b *entryBatch, entered []uuid.UUID) error {
-	then, keyed, discard := b.then, b.keyed, b.discard
-	b.then, b.keyed, b.discard = nil, KeyedTail{}, nil
+	then, keyed, discard, attraction, report := b.then, b.keyed, b.discard, b.attraction, b.report
+	b.then, b.keyed, b.discard, b.attraction, b.report = nil, KeyedTail{}, nil, nil, nil
 	b.done, b.landed = true, entered
+	// Tokens entering together: every one that did not land never
+	// existed (CR 111.1), and every one that did is on the battlefield
+	// now, so none is staged any longer.
+	for _, m := range b.members {
+		if m.token {
+			g.dropEnteringTokenLocked(m.cardID)
+		}
+	}
+	if report != nil {
+		*report = entered
+	}
 	var thenErr error
 	switch {
 	case then != nil:
 		thenErr = then(g, entered)
 	case discard != nil:
 		thenErr = g.finishDiscardEntryLocked(discard)
+	case attraction != nil:
+		thenErr = g.finishAttractionOpenLocked(attraction, entered)
 	default:
 		thenErr = g.runKeyedTailLocked(keyed, entered, 0)
 	}
-	if b.firstErr != nil {
-		return b.firstErr
+	if err := b.firstErr.err(); err != nil {
+		return err
 	}
 	return thenErr
 }
+
+// entryBatchErr is an error a batch member reported, as data (#4361 S10):
+// its message, and the engine sentinel it wraps (an index into
+// entryBatchErrSentinels, 0 for none), so the batch reaches no interface.
+// The zero value is "no error".
+type entryBatchErr struct {
+	msg      string
+	sentinel int
+	set      bool
+}
+
+// entryBatchErrSentinels are the sentinels a batch's error keeps its
+// identity for: what a member's window, landing or redirected move
+// reports. Index 0 is "none". Never written to disk, so the order is
+// free to change.
+var entryBatchErrSentinels = []error{
+	nil,
+	ErrCardNotFound,
+	ErrZoneNotFound,
+	ErrZoneEmpty,
+	ErrPlayerNotFound,
+	ErrInvalidParam,
+	ErrIllegalTarget,
+	ErrPlayerEliminated,
+	ErrGameNotActive,
+	ErrNotACreature,
+	ErrReplacementIterationExceeded,
+}
+
+// record keeps err when it is the batch's first.
+func (e *entryBatchErr) record(err error) {
+	if err == nil || e.set {
+		return
+	}
+	*e = entryBatchErr{msg: err.Error(), set: true}
+	for i, s := range entryBatchErrSentinels {
+		if s != nil && errors.Is(err, s) {
+			e.sentinel = i
+			break
+		}
+	}
+}
+
+// err is the recorded error, nil when none was: it says what the
+// original said and errors.Is still finds its sentinel.
+func (e entryBatchErr) err() error {
+	if !e.set {
+		return nil
+	}
+	return recordedEntryErr{msg: e.msg, sentinel: entryBatchErrSentinels[e.sentinel]}
+}
+
+// recordedEntryErr is entryBatchErr as an error.
+type recordedEntryErr struct {
+	msg      string
+	sentinel error
+}
+
+func (e recordedEntryErr) Error() string { return e.msg }
+func (e recordedEntryErr) Unwrap() error { return e.sentinel }

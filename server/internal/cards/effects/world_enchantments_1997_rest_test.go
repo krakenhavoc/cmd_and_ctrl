@@ -34,7 +34,7 @@ func ncEnter(t *testing.T, g *game.Game, p *game.Player) uuid.UUID {
 		TypeLine: "World Enchantment", ManaCost: "{3}{W}", Owner: p.ID, Controller: p.ID})
 	var err error
 	g.WithWriteLock(func() {
-		err = g.PutCardsFromHandOntoBattlefieldThenForEffect([]uuid.UUID{id}, game.HandEntryOptions{}, nil)
+		err = g.PutCardsFromHandOntoBattlefieldKeyedForEffect([]uuid.UUID{id}, game.HandEntryOptions{}, game.KeyedTail{})
 	})
 	if err != nil || !g.Battlefield.Contains(id) {
 		t.Fatalf("setup: Null Chamber did not enter (err %v)", err)

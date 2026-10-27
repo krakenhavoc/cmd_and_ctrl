@@ -2442,8 +2442,8 @@ card code:
 
 - If your sentence continues past the put ("put the rest on the
   bottom", "if you put a Cave onto the battlefield this way"), use a
-  Then door — `PutCardsFromLibraryOntoBattlefieldThenForEffect`,
-  `PutFromHandOntoBattlefieldThenForEffect`, or the effects primitives
+  keyed door — `PutCardsFromLibraryOntoBattlefieldKeyedForEffect`,
+  `PutFromHandOntoBattlefieldKeyedForEffect`, or the effects primitives
   `PutFromLibraryOntoBattlefield` / `PutFromHandOntoBattlefield`, which
   already do. The synchronous doors return nothing while a card waits.
 - "Put both cards onto the battlefield" from two zones is

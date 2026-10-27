@@ -104,23 +104,22 @@ func (g *Game) placeSettledGroupLocked(s AttackSplit) error {
 	return g.continueSettledSplitLocked(s)
 }
 
-func (g *Game) enterCreatedTokensTogetherLocked(tokens []stagedToken, source uuid.UUID, done func(*Game, []uuid.UUID) error) error {
-	b := &entryBatch{source: source}
-	ids := make([]uuid.UUID, 0, len(tokens))
+// enterCreatedTokensTogetherLocked enters a creation's tokens as ONE
+// simultaneous entry (TokenCreation.Together). The creation's
+// continuation rides the batch as data (#4361 S10): a keyed tail or a
+// synchronous door's result. A closure is not data, so a creation that
+// enters together refuses one, as a split creation does.
+//
+// Caller must hold g.mu.
+func (g *Game) enterCreatedTokensTogetherLocked(tokens []stagedToken, source uuid.UUID, done tokenDone) error {
+	if done.then != nil {
+		return fmt.Errorf("%w: a creation whose tokens enter together needs a keyed tail", ErrInvalidParam)
+	}
+	b := &entryBatch{source: source, keyed: done.keyed, report: done.report}
 	for _, tok := range tokens {
-		ids = append(ids, tok.card.InstanceID)
 		g.enteringTokens = append(g.enteringTokens, tok.card)
 		b.members = append(b.members, entryBatchMember{cardID: tok.card.InstanceID, controller: tok.card.Controller,
 			token: true, tokenEntry: tok.entry, attacking: tok.card.AttackingTarget})
-	}
-	b.then = func(g *Game, entered []uuid.UUID) error {
-		for _, id := range ids {
-			g.dropEnteringTokenLocked(id)
-		}
-		if done != nil {
-			return done(g, entered)
-		}
-		return nil
 	}
 	return g.continueEntryBatchLocked(b)
 }
