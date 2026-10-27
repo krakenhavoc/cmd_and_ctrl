@@ -84,12 +84,8 @@ func WheneverYouExert(label string, effect Effect) game.TriggeredAbility {
 }
 
 // youExertedACreature is WheneverYouExert's condition.
-func youExertedACreature(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-	if ev.Actor != source.Controller {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature()
+func youExertedACreature(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+	return CreatureActionByYou(ev, source, lki, g)
 }
 
 // untapAllOtherCreaturesYouControl is "untap all other creatures you

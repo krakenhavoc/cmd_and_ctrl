@@ -10,13 +10,7 @@ func init() {
 				g.PlayerSacrificesForEffect(item.SourceCardID, item.Controller, sacrificeSpec("a creature", Creature()), "Smothering Abomination — sacrifice a creature")
 				return nil
 			}),
-			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature()
-			}, "Smothering Abomination — draw a card", Do(DrawCards{N: 1})),
+			On(game.EventSacrifice, CreatureActionByYou, "Smothering Abomination — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }
