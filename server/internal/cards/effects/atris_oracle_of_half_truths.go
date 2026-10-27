@@ -28,7 +28,7 @@ func init() {
 			Key:       "Atris — target opponent separates the top three cards into a face-down and a face-up pile",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return opponentSeparatesFaceDownPiles(ctx, "Atris, Oracle of Half-Truths", 3, opponentTarget(ctx), faceDownPilesToHand)
+				return opponentSeparatesFaceDownPiles(ctx, "Atris, Oracle of Half-Truths", 3, opponentTarget(ctx), faceDownPilesToHandTail)
 			},
 		}},
 	})

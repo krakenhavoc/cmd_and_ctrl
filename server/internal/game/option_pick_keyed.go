@@ -63,8 +63,11 @@ type OptionPicked struct {
 	Asked *StackItem
 	// Words and Nums are the words and numbers the card put there too
 	// (#4253 slice 10c): a walk over several lands keeps its place in them.
+	// Tail is the registered tail the card put on the prompt
+	// (OptionPickPrompt.Tail; #4253 slice 10b).
 	Words []string
 	Nums  []int
+	Tail  KeyedTail
 }
 
 // OptionPickFunc is a registered continuation. It runs with g.mu held,

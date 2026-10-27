@@ -51,8 +51,7 @@ func obNixilisUnshackledPunish(g *game.Game, item *game.StackItem) error {
 		Player:     victim,
 		Candidates: creaturesControlledByPlayer(g, victim),
 		Question:   "Ob Nixilis, Unshackled — sacrifice a creature",
-		Then: func(ctx *Context) error {
-			return ctx.Game.ChangePlayerLifeForEffect(source, victim, -10)
-		},
+		// Keyed (#4253 slice 10b): the loss is the sacrifice's tail.
+		ThenTail: game.KeyedTail{Ref: thenChangeLife, Player: victim, Source: source, N: -10},
 	}.Apply(NewContext(g, item))
 }

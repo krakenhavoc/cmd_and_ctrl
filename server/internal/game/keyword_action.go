@@ -367,6 +367,14 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 			})
 			times = maxKeywordActionRepeats
 		}
+		if tail.ask && tail.then == nil {
+			// #4253 slice 10b: the rest is data (or nothing), so the
+			// choice and every counter it gives run keyed
+			// (proliferate_keyed.go).
+			keyed := tail.keyed
+			tail.keyed = KeyedTail{}
+			return 0, g.proliferateAskKeyedLocked(ev.Actor, ev.Source, times, keyed)
+		}
 		// The rest of the sentence is taken as a VALUE and cleared off
 		// the tail, exactly as earthbend does (#1282): whichever path
 		// finishes the action runs it, and nothing else can.

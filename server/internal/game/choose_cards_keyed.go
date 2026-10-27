@@ -174,8 +174,23 @@ func registeredChooseCardsKeysLocked() []string {
 // isKeyedChooseCards reports whether c is a choose_cards pick, or a
 // reveal pick (#4264, resolution_pick.go), with a registered continuation.
 func isKeyedChooseCards(c *PendingChoice) bool {
-	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource) &&
+	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource ||
+		// #4253 slice 10b: a keyed proliferate or Ring-bearer choice.
+		c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer) &&
 		c.PickThen != "" && c.chooseCardsResume == nil
+}
+
+// carriesPickTail reports whether a prompt kind can carry a keyed pick's
+// tail (PendingChoice.pickTail): a choose_cards pick (#4253 slice 8), and
+// since slice 10b a reveal pick (a pile split's split), a proliferate or
+// Ring-bearer choice, and an option pick (a pile split's pick).
+func carriesPickTail(k PendingChoiceKind) bool {
+	switch k {
+	case PendingChoiceChooseCards, PendingChoiceRevealPick, PendingChoiceProliferate,
+		PendingChoiceRingBearer, PendingChoiceOptionPick:
+		return true
+	}
+	return false
 }
 
 // runKeyedChooseCardsLocked runs c's continuation with `picked`

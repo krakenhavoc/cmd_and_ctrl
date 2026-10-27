@@ -112,6 +112,12 @@ type ChoosePlayerPrompt struct {
 	// chosen. With a key, Then and Item are ignored.
 	ThenKey OptionPickThen
 	Carry   []uuid.UUID
+	// Asked is the asking stack item as data (NewAskedItem, #4253 slice
+	// 10b), handed to the keyed continuation as OptionPicked.Asked: the
+	// card side records the answer on it (effects.ChoosePlayerThen), so a
+	// chain of choices reads the players chosen before it after a restore.
+	// Ignored without ThenKey.
+	Asked *AskedItem
 }
 
 // QueueChoosePlayerForEffect queues a "choose a player" and returns
@@ -146,6 +152,7 @@ func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 			Options:  options,
 			ThenKey:  p.ThenKey,
 			Carry:    p.Carry,
+			Asked:    p.Asked,
 		})
 	}
 	item := p.Item
@@ -495,6 +502,16 @@ func recordChosenPlayer(item *StackItem, chosen uuid.UUID) {
 		return
 	}
 	item.Payload = append(item.Payload, TargetRef{Kind: TargetPlayer, ID: chosen})
+}
+
+// RecordChosenPlayerForEffect records a resolution-time choice of a player on
+// `item` (uuid.Nil records that nobody was chosen), as the closure form of
+// QueueChoosePlayerForEffect does when its prompt is answered. A keyed
+// continuation calls it on the copy of the asking item it runs against
+// (#4253 slice 10b), so ChosenPlayerOn and ChosenPlayersOn read the answer,
+// and the item a later question carries holds every answer before it.
+func RecordChosenPlayerForEffect(item *StackItem, chosen uuid.UUID) {
+	recordChosenPlayer(item, chosen)
 }
 
 // ChosenPlayerOn is the player most recently chosen for this item, or

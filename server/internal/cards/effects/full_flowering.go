@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -31,19 +29,26 @@ func init() {
 }
 
 // populateTimes is "populate n times", chained so each one resolves
-// (prompt included) before the next starts.
+// (prompt included) before the next starts. Keyed (#4253 slice 10b): the
+// populates still owed are the tail's number.
 func populateTimes(ctx *Context, n int) error {
 	if n <= 0 {
 		return nil
 	}
-	return Populate{
-		Then: func(c *Context, created []uuid.UUID) error {
-			if len(created) == 0 {
-				// Nothing was copied (CR 701.36b): every later populate
-				// would find the same board and copy nothing too.
-				return nil
-			}
-			return populateTimes(c, n-1)
-		},
-	}.Apply(ctx)
+	return Populate{ThenTail: withN(ctx.ItemTail(fullFloweringAgain), n)}.Apply(ctx)
+}
+
+// fullFloweringAgain is the next populate, told what this one created: none
+// means every later populate would find the same board and copy nothing too
+// (CR 701.36b). An on-disk key: never renamed, never reused. Registered from
+// init: the body asks again under its own key.
+var fullFloweringAgain game.TailRef
+
+func init() {
+	fullFloweringAgain = CardTail("then/full-flowering-populate-again", func(c *Context, o game.TailOutcome) error {
+		if len(o.IDs) == 0 {
+			return nil
+		}
+		return populateTimes(c, o.Tail.N-1)
+	})
 }

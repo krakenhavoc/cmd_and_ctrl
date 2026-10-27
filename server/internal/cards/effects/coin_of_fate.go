@@ -62,12 +62,15 @@ func coinOfFateResolve(g *game.Game, item *game.StackItem) error {
 // opponent. Nobody to name (no opponent could be asked about) leaves the
 // controller to choose, the only seat left to ask. An on-disk key: never
 // renamed, never reused.
-var coinOfFateOpponentChosen = OptionPickThen("option-pick/coin-of-fate-opponent", func(ctx *Context, r game.OptionPicked) error {
+//
+// #4253 slice 10b: the one keyed ChoosePlayer form (ChoosePlayerThen), the
+// same key.
+var coinOfFateOpponentChosen = ChoosePlayerThen("option-pick/coin-of-fate-opponent", func(ctx *Context, chosen uuid.UUID, exiled []uuid.UUID) error {
 	chooser := ctx.Controller()
-	if r.Option != nil && r.Option.Player != uuid.Nil {
-		chooser = r.Option.Player
+	if chosen != uuid.Nil {
+		chooser = chosen
 	}
-	return coinOfFateAsk(ctx.Game, ctx.Controller(), r.Source, r.Carry, chooser)
+	return coinOfFateAsk(ctx.Game, ctx.Controller(), ctx.Source(), exiled, chooser)
 })
 
 func coinOfFateMonarch(g *game.Game, controller, source uuid.UUID) error {

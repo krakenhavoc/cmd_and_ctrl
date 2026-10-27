@@ -125,16 +125,34 @@ type ChoosePlayer struct {
 	// there is none). Runs with g.mu held; may queue further choices.
 	Then func(ctx *Context) error
 
-	// ThenKey is Then as a registered continuation (OptionPickThen, #4253),
-	// and Carry the IDs it is handed: a prompt queued with a key holds no
-	// closure, so a table waiting on the answer is a restore point. The
-	// answer is r.Option.Player (r.Option is nil when no question could be
-	// asked, and the continuation still runs), and the Context is a
-	// stand-in built from the controller and the source card, not the
-	// resolving item, so ctx.ChosenPlayer() reads nothing: read the
-	// answer. Set ThenKey or Then, not both.
+	// ThenKey is Then as a registered continuation (ChoosePlayerThen,
+	// #4253), and Carry the IDs it is handed: a prompt queued with a key
+	// holds no closure, so a table waiting on the answer is a restore
+	// point. The asking item rides the prompt as data (#4253 slice 10b) and
+	// the answer is recorded on the copy the continuation runs against, so
+	// ctx.ChosenPlayer() and ctx.ChosenPlayers() read it as they do after a
+	// Then, and a later question carries every answer before it. Set
+	// ThenKey or Then, not both.
 	ThenKey game.OptionPickThen
 	Carry   []uuid.UUID
+}
+
+// ChoosePlayerThen registers the answer to a keyed ChoosePlayer (#4253). The
+// body runs against a Context rebuilt from the asking item, with the answer
+// recorded on it (uuid.Nil when nobody could be chosen, or the prompt was
+// dropped: the body runs on every outcome, the way ChoosePlayer.Then does),
+// and is handed the player chosen and the Carry the card put on the prompt.
+// The key is an on-disk identity ("option-pick/<card>-<what>", ledgered
+// "option <key>"): never renamed, never reused.
+func ChoosePlayerThen(key string, body func(ctx *Context, chosen uuid.UUID, carry []uuid.UUID) error) game.OptionPickThen {
+	return OptionPickThen(key, func(ctx *Context, r game.OptionPicked) error {
+		chosen := uuid.Nil
+		if r.Option != nil {
+			chosen = r.Option.Player
+		}
+		game.RecordChosenPlayerForEffect(ctx.Item, chosen)
+		return body(ctx, chosen, r.Carry)
+	})
 }
 
 func (c ChoosePlayer) Apply(ctx *Context) error {
@@ -153,6 +171,7 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 			return fmt.Errorf("%w: ChoosePlayer %q sets both ThenKey and Then", game.ErrInvalidParam, c.ThenKey.Key())
 		}
 		carry := append([]uuid.UUID{ctx.Controller()}, c.Carry...)
+		asked := game.NewAskedItem(item)
 		if ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
 			Chooser:  chooser,
 			Among:    exceptPlayers(pool, c.Except),
@@ -160,13 +179,14 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 			Question: c.Question,
 			ThenKey:  c.ThenKey,
 			Carry:    carry,
+			Asked:    asked,
 		}) != uuid.Nil {
 			return nil
 		}
 		// Nothing could be asked: the rest of the card still happens, with
-		// nobody chosen.
+		// nobody chosen (#544).
 		return ctx.Game.RunOptionPickThenForEffect(c.ThenKey, game.OptionPicked{
-			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry,
+			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
 		})
 	}
 	queued := ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{

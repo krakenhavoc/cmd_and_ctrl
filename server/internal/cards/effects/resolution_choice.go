@@ -203,6 +203,11 @@ type PileSplit struct {
 	// in that order. Runs with g.mu held.
 	Then func(ctx *Context, taken, left []uuid.UUID) error
 
+	// ThenTail is Then as data (#4253 slice 10b): a tail registered with
+	// PileTail, so both prompts are keyed and a table waiting on either is
+	// a restore point. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
+
 	// FaceDown is the "face-down pile and a face-up pile" split
 	// (#2147): the cards were LOOKED at, not revealed, so the caller
 	// must have made the splitter the only knower
@@ -216,6 +221,20 @@ func (p PileSplit) Apply(ctx *Context) error {
 	chooser := p.Chooser
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
+	}
+	if p.Then == nil && !p.ThenTail.IsZero() {
+		ctx.Game.QueuePileSplitForEffect(game.PileSplitPrompt{
+			Splitter:      p.Splitter,
+			Chooser:       chooser,
+			Owner:         p.Owner,
+			Source:        ctx.Source(),
+			SplitQuestion: p.SplitQuestion,
+			PickQuestion:  p.PickQuestion,
+			Cards:         p.Cards,
+			FaceDown:      p.FaceDown,
+			ThenTail:      p.ThenTail,
+		})
+		return nil
 	}
 	item := ctx.Item
 	then := p.Then
@@ -236,6 +255,18 @@ func (p PileSplit) Apply(ctx *Context) error {
 		},
 	})
 	return nil
+}
+
+// PileTail registers a pile split's keyed "then" (PileSplit.ThenTail): the
+// body is told the pile taken and the pile left, each in the order the
+// table saw them, and runs against the Context of CardTail. The key is an
+// on-disk identity (ledgered "tail <key>"): never renamed, never reused.
+// (#4253 slice 10b.)
+func PileTail(key string, body func(ctx *Context, taken, left []uuid.UUID, o game.TailOutcome) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		n := min(max(o.Amount, 0), len(o.IDs))
+		return body(ctx, o.IDs[:n:n], o.IDs[n:], o)
+	})
 }
 
 // RevealPick is "an opponent chooses N of those cards" — Intuition's
@@ -438,7 +469,25 @@ type SacrificeChoice struct {
 	// Then runs once the permanent has gone, or immediately when
 	// there was nothing to sacrifice.
 	Then func(ctx *Context) error
+
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail run in
+	// the same places. A choice with no Then is a keyed pick
+	// (sacrificeChoicePicked) carrying the tail, so a table waiting on it
+	// is a restore point. It still asks when there is one candidate, as the
+	// closure form does. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
+
+// sacrificeChoicePicked is the keyed answer to a SacrificeChoice: the picked
+// permanent goes through the sacrifice's continuation, and the prompt's tail
+// runs once it has gone. The answer is not read for "if you do": the prompt
+// is mandatory. An on-disk key: never renamed, never reused.
+var sacrificeChoicePicked = game.RegisterChooseCardsThen("choose-cards/sacrifice-choice", func(g *game.Game, r game.CardsChosen) error {
+	tail := r.Tail
+	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
+		return tail.Run(g, nil)
+	})
+})
 
 func (s SacrificeChoice) Apply(ctx *Context) error {
 	then := s.Then
@@ -453,9 +502,26 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 	s.Candidates = candidates
 	if len(s.Candidates) == 0 {
 		if then == nil {
-			return nil
+			return s.ThenTail.Run(ctx.Game, nil)
 		}
 		return then(ctx)
+	}
+	if then == nil {
+		// #4253 slice 10b: keyed; the live battlefield is re-checked on
+		// submit as the closure form's Zone is.
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    s.Player,
+			FromPlayer: s.Player,
+			Source:     ctx.Source(),
+			Question:   s.Question,
+			Cards:      s.Candidates,
+			Min:        1,
+			Max:        1,
+			LiveZone:   game.ZoneBattlefield,
+			ThenKey:    sacrificeChoicePicked,
+			Tail:       s.ThenTail,
+		})
+		return nil
 	}
 	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{

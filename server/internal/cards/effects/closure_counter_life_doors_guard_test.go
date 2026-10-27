@@ -35,10 +35,9 @@ var closureDoorCalls = map[string]struct {
 	"game/counter_tail.go": {1, "AddCounterThenForEffect is AddCounterByThenForEffect with no placer"},
 	"game/effect_api.go": {3, "ChangePlayerLifeForEffect and AddCounterForEffect pass a nil then; " +
 		"loseLifeEachStepLocked is the closure form of LoseLifeEachKeyedForEffect"},
-	"game/amass.go":                 {1, "finishAmassLocked's closure form, reached only through AmassForEffect with a closure"},
-	"game/earthbend.go":             {1, "applyEarthbendLocked's closure form, reached only through EarthbendThenForEffect with a closure"},
-	"game/proliferate.go":           {1, "the proliferate counter loop: its rest is still a closure (the ask prompt's chooseCardsFrame.then, ProliferateChoosingForEffect)"},
-	"cards/effects/talaras_bane.go": {1, "pick.Done is an engine closure that moves the chosen cards; it needs to be data first"},
+	"game/amass.go":       {1, "finishAmassLocked's closure form, reached only through AmassForEffect with a closure"},
+	"game/earthbend.go":   {1, "applyEarthbendLocked's closure form, reached only through EarthbendThenForEffect with a closure"},
+	"game/proliferate.go": {1, "the proliferate counter loop: its rest is still a closure (the ask prompt's chooseCardsFrame.then, ProliferateChoosingForEffect)"},
 }
 
 var closureDoorCall = regexp.MustCompile(`\b(AddCounterThenForEffect|AddCounterByThenForEffect|ChangePlayerLifeThenForEffect|LoseLifeEachThenForEffect|AmassForEffect|EarthbendThenForEffect)\(`)

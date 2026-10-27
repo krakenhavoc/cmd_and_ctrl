@@ -39,7 +39,9 @@ func init() {
 					if b15LifeGainedThisTurn(g, item.Controller) < 3 {
 						return nil
 					}
-					return TheRingTemptsYou{Then: frodoAdventurousDraw}.Apply(NewContext(g, item))
+					// Keyed (#4253 slice 10b): the draw is the tempt's tail.
+					ctx := NewContext(g, item)
+					return TheRingTemptsYou{ThenTail: ctx.ItemTail(frodoAdventurousDrawTail)}.Apply(ctx)
 				}),
 		},
 	})
@@ -55,6 +57,9 @@ func youGainedLifeThisTurnAtLeast(n int) When {
 
 // frodoAdventurousDraw is "Then if Frodo is your Ring-bearer and the
 // Ring has tempted you two or more times this game, draw a card."
+// An on-disk key: never renamed, never reused.
+var frodoAdventurousDrawTail = RingTail("then/frodo-adventurous-hobbit-draw", frodoAdventurousDraw)
+
 func frodoAdventurousDraw(ctx *Context, _ uuid.UUID) error {
 	you := ctx.Controller()
 	if game.RingBearerOf(ctx.Game, you) != ctx.Source() || game.RingTemptCount(ctx.Game, you) < 2 {

@@ -279,12 +279,22 @@ type TheRingTemptsYou struct {
 	// mill come after the tempt; nil for a card whose sentence ends
 	// there.
 	Then func(ctx *Context, ringBearer uuid.UUID) error
+
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
+	// the Ring-bearer as its one ID (none when no creature could be
+	// chosen). A tempt with no Then is keyed, so a table waiting on the
+	// Ring-bearer choice is a restore point. Set Then or ThenTail, not
+	// both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (r TheRingTemptsYou) Apply(ctx *Context) error {
 	player := r.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
+	}
+	if r.Then == nil {
+		return ctx.Game.RingTemptsKeyedForEffect(player, ctx.Source(), r.ThenTail)
 	}
 	item := ctx.Item
 	then := r.Then
@@ -295,6 +305,21 @@ func (r TheRingTemptsYou) Apply(ctx *Context) error {
 		}
 	}
 	return ctx.Game.RingTemptsForEffect(player, ctx.Source(), tail)
+}
+
+// RingTail registers a tempt's keyed "then" (TheRingTemptsYou.ThenTail),
+// told the Ring-bearer chosen (uuid.Nil when no creature could be). The
+// body runs against the Context of CardTail; pass Context.ItemTail(ref)
+// so it reads the resolving item. The key is an on-disk identity (ledgered
+// "tail <key>"): never renamed, never reused. (#4253 slice 10b.)
+func RingTail(key string, body func(ctx *Context, ringBearer uuid.UUID) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		rb := uuid.Nil
+		if len(o.IDs) > 0 {
+			rb = o.IDs[0]
+		}
+		return body(ctx, rb)
+	})
 }
 
 // RingTempted is "whenever the Ring tempts you" as a trigger condition:

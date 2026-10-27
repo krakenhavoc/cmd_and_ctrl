@@ -154,21 +154,27 @@ var breechesSacrificed = askedPick("choose-cards/breeches-the-blastmaker-sacrifi
 	})
 })
 
-// breechesFlip is "if you do, flip a coin".
+// breechesFlip is "if you do, flip a coin". The call is keyed (#4253 slice
+// 10b): the spell rides it as its carry and the trigger as its asked item.
 func breechesFlip(spell uuid.UUID) func(ctx *Context) error {
 	return func(ctx *Context) error {
-		item := ctx.Item
 		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
 			Flipper:  ctx.Controller(),
 			Source:   ctx.Source(),
 			Question: "Breeches, the Blastmaker — call the coin flip",
-			Then: func(g *game.Game, result game.CoinFlipResult) error {
-				return breechesFlipResult(g, item, spell, result)
-			},
+			ThenKey:  breechesFlipped,
+			Carry:    []uuid.UUID{spell},
+			Asked:    game.NewAskedItem(ctx.Item),
 		})
 		return nil
 	}
 }
+
+// breechesFlipped is the settled call. An on-disk key: never renamed, never
+// reused.
+var breechesFlipped = CoinFlipThen("coin-flip/breeches-the-blastmaker", func(ctx *Context, r game.CoinFlipped) error {
+	return breechesFlipResult(ctx.Game, ctx.Item, carriedID(r.Carry, 0), r.Result)
+})
 
 // breechesFlipResult creates whichever of the two reflexive triggers
 // the flip called for.

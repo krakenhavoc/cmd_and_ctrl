@@ -86,15 +86,13 @@ var expressiveIterationBottomPicked = game.RegisterChooseCardsThen("choose-cards
 // expressiveIterationBottom puts one looked-at card on the bottom of its
 // owner's library, then exiles `exile` (when it is not uuid.Nil) so that
 // `player` may play it this turn.
+//
+// The exile is the ordering prompt's keyed tail (#4253 slice 10b), so a table
+// waiting on the bottom's order is a restore point.
 func expressiveIterationBottom(g *game.Game, player, source, card, exile uuid.UUID) error {
-	var then func(g *game.Game) error
+	var then game.KeyedTail
 	if exile != uuid.Nil {
-		then = func(g *game.Game) error {
-			return g.ExileCardWithPermissionForEffect(exile, game.CastPermission{
-				Player: player,
-				Label:  "Expressive Iteration — play it this turn",
-			})
-		}
+		then = game.KeyedTail{Ref: expressiveIterationExile, Player: player, Source: source, Carry: []uuid.UUID{exile}}
 	}
 	return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
 		Chooser:   player,
@@ -103,6 +101,19 @@ func expressiveIterationBottom(g *game.Game, player, source, card, exile uuid.UU
 		From:      game.ZoneLibrary,
 		Placement: game.LibraryPlaceBottom,
 		Reason:    "Expressive Iteration — put one of them on the bottom of your library",
-		Then:      then,
+		ThenTail:  then,
 	})
 }
+
+// expressiveIterationExile is "exile the other. You may play it this turn",
+// once the bottom card is placed: Tail.Carry is the card, Tail.Player who may
+// play it. An on-disk key: never renamed, never reused.
+var expressiveIterationExile = game.RegisterTail("then/expressive-iteration-exile", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.ExileCardWithPermissionForEffect(o.Tail.Carry[0], game.CastPermission{
+		Player: o.Tail.Player,
+		Label:  "Expressive Iteration — play it this turn",
+	})
+})

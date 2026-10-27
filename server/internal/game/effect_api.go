@@ -4055,7 +4055,7 @@ func (g *Game) lookAtTopForEffect(kind PendingChoiceKind, playerID, source uuid.
 func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
 	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
-		g.runScryAfterLocked(playerID, source, after, keyed)
+		g.runScryAfterLocked(playerID, source, after, keyed, 0)
 	}
 	if n <= 0 {
 		runAfter()

@@ -63,7 +63,27 @@ type Populate struct {
 	// "creature token you control"; Summon: Good King Mog XII widens it
 	// to "a non-Saga token you control".
 	Match CardPredicate
+
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail told
+	// the tokens the populate created as its IDs. A populate with no Then
+	// and no Except asks a keyed pick (populatePicked) carrying it, so a
+	// table waiting on the choice is a restore point. Set Then or ThenTail,
+	// not both; Then wins.
+	ThenTail game.KeyedTail
 }
+
+// populatePicked is the keyed answer to "choose a creature token you
+// control to copy": the picked token is copied for the chooser and the
+// prompt's tail is told what the copy made. An on-disk key: never renamed,
+// never reused.
+var populatePicked = game.RegisterChooseCardsThen("choose-cards/populate", func(g *game.Game, r game.CardsChosen) error {
+	ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+	p := Populate{ThenTail: r.Tail}
+	if len(r.Picked) == 0 {
+		return p.finish(ctx, nil)
+	}
+	return p.copyOne(ctx, r.Chooser, r.Picked[0])
+})
 
 func (p Populate) Apply(ctx *Context) error {
 	player := p.Player
@@ -81,11 +101,28 @@ func (p Populate) Apply(ctx *Context) error {
 	case populateAllAlike(ctx.Game, candidates):
 		return p.copyOne(ctx, player, candidates[0])
 	}
+	source := ctx.Source()
+	if p.Then == nil && p.Except == nil {
+		// #4253 slice 10b: keyed; the live battlefield is re-checked on
+		// submit as the closure form's Zone is.
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:  player,
+			Source:   source,
+			Question: "Populate — choose a creature token you control to copy",
+			Cards:    candidates,
+			Min:      1,
+			Max:      1,
+			LiveZone: game.ZoneBattlefield,
+			ThenKey:  populatePicked,
+			Asked:    game.NewAskedItem(ctx.Item),
+			Tail:     p.ThenTail,
+		})
+		return nil
+	}
 	// The context is rebuilt inside the continuation from the live
 	// *Game, the contract MillToZone follows: an undo restores the
 	// game's fields in place, so a captured one would be the wrong one.
 	item := ctx.Item
-	source := ctx.Source()
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   source,
@@ -124,7 +161,7 @@ func (p Populate) copyOne(ctx *Context, player, id uuid.UUID) error {
 
 func (p Populate) finish(ctx *Context, created []uuid.UUID) error {
 	if p.Then == nil {
-		return nil
+		return p.ThenTail.Run(ctx.Game, created)
 	}
 	return p.Then(ctx, created)
 }

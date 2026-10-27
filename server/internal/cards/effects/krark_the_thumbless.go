@@ -46,26 +46,30 @@ func krarkFlip(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	controller, source := ctx.Controller(), ctx.Source()
-	self, kind := item.ID, item.Kind
 	g.FlipCoinForEffect(game.CoinFlipSpec{
 		Flipper:  controller,
 		Source:   source,
 		Question: "Krark, the Thumbless — call the coin flip",
-		Then: func(g *game.Game, result game.CoinFlipResult) error {
-			c := NewContext(g, &game.StackItem{
-				ID: self, Kind: kind,
-				Controller: controller, Owner: controller, SourceCardID: source,
-			})
-			if len(result.Won) > 0 && result.Won[0] {
-				return CopySpell{
-					StackID:          spell,
-					Controller:       controller,
-					ChooseNewTargets: true,
-					FromLastKnown:    true,
-				}.Apply(c)
-			}
-			return ReturnSpellToHand{StackID: spell}.Apply(c)
-		},
+		// Keyed (#4253 slice 10b): the spell and the trigger ride the call.
+		ThenKey: krarkFlipped,
+		Carry:   []uuid.UUID{spell},
+		Asked:   game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// krarkFlipped is the settled call: a won flip copies the spell, a lost one
+// returns it to its owner's hand. An on-disk key: never renamed, never
+// reused.
+var krarkFlipped = CoinFlipThen("coin-flip/krark-the-thumbless", func(ctx *Context, r game.CoinFlipped) error {
+	spell := carriedID(r.Carry, 0)
+	if wonFirstFlip(r) {
+		return CopySpell{
+			StackID:          spell,
+			Controller:       ctx.Controller(),
+			ChooseNewTargets: true,
+			FromLastKnown:    true,
+		}.Apply(ctx)
+	}
+	return ReturnSpellToHand{StackID: spell}.Apply(ctx)
+})

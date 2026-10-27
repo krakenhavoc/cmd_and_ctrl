@@ -268,6 +268,30 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	if label == "" {
 		label = "Put a card from among them onto the battlefield"
 	}
+	if p.Validate == nil && p.CountersFor == nil && len(p.Counters) == 0 {
+		// #4253 slice 10b: nothing the pick reads is a closure, so it is
+		// keyed: the entry's "tapped" is its number and the put's tail
+		// its tail. Every pick is re-checked against the library on
+		// submit, as the closure form's Zone is.
+		tapped := 0
+		if p.Tapped {
+			tapped = 1
+		}
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    player,
+			Source:     source,
+			Question:   label,
+			Cards:      candidates,
+			Min:        lo,
+			Max:        hi,
+			LiveZone:   game.ZoneLibrary,
+			FromPlayer: p.LibraryOwner,
+			ThenKey:    putFromLibraryPicked,
+			CarryNums:  []int{tapped},
+			Tail:       keyed,
+		})
+		return nil
+	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   source,
@@ -285,6 +309,19 @@ func (p PutFromLibraryOntoBattlefield) Apply(ctx *Context) error {
 	})
 	return nil
 }
+
+// putFromLibraryPicked is the keyed answer to "put a card from among them
+// onto the battlefield" (#4253 slice 10b): the picks enter under the
+// chooser's control, tapped when the prompt's number says so, through the
+// keyed door, and the prompt's tail is the put's ThenTail. Nothing picked
+// runs the tail at once. An on-disk key: never renamed, never reused.
+var putFromLibraryPicked = game.RegisterChooseCardsThen("choose-cards/put-from-library-onto-battlefield", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return r.Tail.Run(g, nil)
+	}
+	opts := game.LibraryEntryOptions{Controller: r.Chooser, Tapped: len(r.Nums) > 0 && r.Nums[0] == 1}
+	return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(r.Picked, opts, r.Tail)
+})
 
 // libraryCardsMatching filters `ids` to the permanent cards still in a
 // library that pass `pred`, in the order given. Characteristics are

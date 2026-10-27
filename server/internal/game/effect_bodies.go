@@ -246,6 +246,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := promptRunThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a prompted-run continuation", kind, key))
 	}
+	// #4253 slice 10b: and a keyed coin flip's continuation.
+	if _, dup := coinFlipThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a coin-flip continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -471,6 +475,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredPromptRunKeysLocked()...)
 	// #4253 slice 5: a search prompt's set rule.
 	out = append(out, registeredSearchRuleKeysLocked()...)
+	// #4253 slice 10b: a keyed coin flip's continuation.
+	out = append(out, registeredCoinFlipKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

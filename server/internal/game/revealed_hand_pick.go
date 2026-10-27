@@ -110,6 +110,40 @@ type RevealedPick struct {
 	// of something it paused on). For every other continuation it is
 	// nil, because the cards have already moved.
 	Done func(g *Game) error
+	// DoneTail is Done as data (#4253 slice 10b): a registered tail that
+	// moves the chosen cards, for a continuation that finishes from the
+	// keyed "then" of something it paused on (a keyed life change), so the
+	// pause holds no closure. Set exactly when Done is; run one of the two,
+	// once.
+	DoneTail KeyedTail
+}
+
+// revealedPickDoneTail is RevealedPick.DoneTail's body: the chosen cards
+// move to the pick's destination, rebuilt from the tail. Player is the
+// chooser and Source the card that asked; Carry is the revealing player,
+// the exiled-with object's ID and then the chosen cards; N is that
+// object's epoch and Word the destination. An on-disk key: never renamed,
+// never reused.
+var revealedPickDoneTail = RegisterTail("engine/revealed-pick-done", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) < 2 {
+		return nil
+	}
+	s := revealedPickSettle{
+		chooser: t.Player, from: t.Carry[0], source: t.Source,
+		destination: PickDestination(t.Word),
+		exiledWith:  PermissionCardRef{ID: t.Carry[1], Epoch: t.N},
+	}
+	return g.moveRevealedPickLocked(s, copyUUIDs(t.Carry[2:]), nil)
+})
+
+// doneTail is the keyed move of a settled pick's cards.
+func (s revealedPickSettle) doneTail(ids []uuid.UUID) KeyedTail {
+	return KeyedTail{
+		Ref: revealedPickDoneTail, Player: s.chooser, Source: s.source,
+		Carry: append([]uuid.UUID{s.from, s.exiledWith.ID}, ids...),
+		N:     s.exiledWith.Epoch, Word: string(s.destination),
+	}
 }
 
 // ChosenIDs is the chosen cards' instance IDs, in the order chosen.
@@ -460,6 +494,7 @@ func (g *Game) settleRevealedPickLocked(s revealedPickSettle, chosen []Card, mea
 		return move(g, nil)
 	case entry.first:
 		r.Done = func(g *Game) error { return move(g, nil) }
+		r.DoneTail = s.doneTail(ids)
 		return entry.fn(g, r)
 	default:
 		return move(g, func(g *Game) error { return entry.fn(g, r) })

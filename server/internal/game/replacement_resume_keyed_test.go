@@ -52,7 +52,8 @@ func keyedFrameSample() *ReplacementEvent {
 		KeywordAction:  KeywordActionLearn, KeywordActionCount: 1,
 		keywordAction: &keywordActionTail{
 			cards: []uuid.UUID{id("kc")}, players: []uuid.UUID{id("kp")}, ask: true, choice: PendingChoiceScry, land: id("land"),
-			keyed: KeyedTail{Ref: TailRef{key: "kt"}, Player: id("ktp")},
+			keyed:       KeyedTail{Ref: TailRef{key: "kt"}, Player: id("ktp")},
+			armySubtype: "Orc",
 		},
 		CounterTarget: id("ct"), CounterName: CounterPlusOne, CounterDelta: 3, CounterPlayer: id("cp"),
 		StartingLoyalty: true, CounterPlacer: id("placer"), CounterFromCombatDamage: true, CounterFromCost: true,
@@ -188,7 +189,7 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true}},
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"then": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
-		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true, "armySubtype": true}},
+		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -368,8 +369,10 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"the Army you amassed": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{amassed: func(*Game, uuid.UUID) error { return nil }}
 		},
-		"an amass's Army": func(c *PendingChoice) {
-			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{Name: "Army"}}
+		"an amass's Army the mirror cannot write": func(c *PendingChoice) {
+			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{
+				Name: "Army", ActivatedAbilities: []ActivatedAbilityShape{{}},
+			}}
 		},
 		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
 		// #4253 slice 9: last-known copies with no keyed batch, or ones
@@ -612,4 +615,31 @@ func TestALostEffectInARestoredFrameNoLongerApplies(t *testing.T) {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
 	assertOnlyIn(t, cmdID, owner.Hand, owner.Command, restored.Battlefield)
+}
+
+// #4253 slice 10b: an amass's Army token template and creature type ride
+// the frame (the template through the card mirror), so a paused amass is
+// keyed and comes back whole.
+func TestAnAmassFrameCarriesItsArmy(t *testing.T) {
+	g := NewGame()
+	ev := &ReplacementEvent{
+		Kind: RepEventKeywordAction, Actor: uuid.New(), Source: uuid.New(),
+		KeywordAction: KeywordActionAmass, KeywordActionCount: 2,
+		keywordAction: &keywordActionTail{armyToken: Card{Name: "Orc Army"}, armySubtype: "Orc"},
+	}
+	if !g.replacementEventKeyable(ev) {
+		t.Fatal("an amass with a plain Army template is not keyed")
+	}
+	raw, err := json.Marshal(g.snapshotReplacementEvent(ev, &ContinuationCensus{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back replacementEventSnapshot
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatal(err)
+	}
+	got := restoreReplacementEvent(&back)
+	if got.keywordAction == nil || got.keywordAction.armySubtype != "Orc" || got.keywordAction.armyToken.Name != "Orc Army" {
+		t.Fatalf("the amass came back as %+v", got.keywordAction)
+	}
 }

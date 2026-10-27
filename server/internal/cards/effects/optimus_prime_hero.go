@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -76,25 +74,38 @@ func init() {
 	})
 }
 
+// optimusPrimeBolster is "bolster 2"; the rest is the bolster's tail (#4253
+// slice 10b), so the choice of a creature is a restore point.
 func optimusPrimeBolster(g *game.Game, item *game.StackItem) error {
-	return Bolster{N: 2, Then: func(ctx *Context, chosen uuid.UUID) error {
-		if err := (GrantKeywordUntilEOT{
-			Target:   chosen,
-			Keywords: []string{"trample"},
-			Label:    "Optimus Prime, Autobot Leader — the chosen creature gains trample until end of turn",
-		}).Apply(ctx); err != nil {
-			return err
-		}
-		c, ok := ctx.Game.LookupCardForEffect(chosen)
-		if !ok {
-			return nil
-		}
-		return DelayedOnEvent{
-			Label:      "Optimus Prime, Autobot Leader — convert Optimus Prime",
-			On:         []game.EventKind{game.EventDealDamage},
-			Condition:  thatCreatureHitAPlayerCondition,
-			CondParams: game.EffectParams{Object: game.ObjectRef{ID: chosen, Epoch: c.ObjectEpoch}},
-			Body:       transformersConvertThisBody,
-		}.Apply(ctx)
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return Bolster{N: 2, ThenTail: ctx.ItemTail(optimusPrimeBolstered)}.Apply(ctx)
 }
+
+// optimusPrimeBolstered is "The chosen creature gains trample until end of
+// turn. When that creature deals combat damage to a player this turn,
+// convert Optimus Prime", told the chosen creature. An on-disk key: never
+// renamed, never reused.
+var optimusPrimeBolstered = CardTail("then/optimus-prime-bolstered", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	chosen := o.IDs[0]
+	if err := (GrantKeywordUntilEOT{
+		Target:   chosen,
+		Keywords: []string{"trample"},
+		Label:    "Optimus Prime, Autobot Leader — the chosen creature gains trample until end of turn",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	c, ok := ctx.Game.LookupCardForEffect(chosen)
+	if !ok {
+		return nil
+	}
+	return DelayedOnEvent{
+		Label:      "Optimus Prime, Autobot Leader — convert Optimus Prime",
+		On:         []game.EventKind{game.EventDealDamage},
+		Condition:  thatCreatureHitAPlayerCondition,
+		CondParams: game.EffectParams{Object: game.ObjectRef{ID: chosen, Epoch: c.ObjectEpoch}},
+		Body:       transformersConvertThisBody,
+	}.Apply(ctx)
+})

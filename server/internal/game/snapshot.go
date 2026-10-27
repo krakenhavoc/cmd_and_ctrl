@@ -2463,7 +2463,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4253 slice 3: the look-at's keyed "then".
 				pc.ScryThen, pc.PickThen = t, t.Key
 			}
-			if t := snapshotKeyedTail(c.pickTail); t != nil && c.Kind == PendingChoiceChooseCards {
+			if t := snapshotKeyedTail(c.pickTail); t != nil && carriesPickTail(c.Kind) {
 				// #4253 slice 8: a keyed choose_cards pick's tail.
 				pc.PickTail = t
 			}
@@ -3667,7 +3667,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
 			g.PendingChoices[i].PickThen = ""
 		}
-		if t := s.PendingChoices[i].PickTail; t != nil && s.PendingChoices[i].Kind == PendingChoiceChooseCards {
+		if t := s.PendingChoices[i].PickTail; t != nil && carriesPickTail(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].pickTail = restoreKeyedTail(t)
 		}
 		if sh := s.PendingChoices[i].SourceShield; sh != nil && s.PendingChoices[i].Kind == PendingChoiceChooseSource {

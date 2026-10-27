@@ -198,6 +198,55 @@ func ringEmblemOf(p *Player) *Card {
 //
 // Caller must hold g.mu in write mode (it is an effect-time helper).
 func (g *Game) RingTemptsForEffect(player, source uuid.UUID, then func(g *Game, ringBearer uuid.UUID) error) error {
+	return g.ringTemptsLocked(player, source, then, KeyedTail{}, then == nil)
+}
+
+// RingTemptsKeyedForEffect is RingTemptsForEffect with the rest of the
+// sentence as a registered tail (#4253 slice 10b), told the Ring-bearer
+// chosen as its one ID (none when no creature could be chosen). The
+// ring_bearer prompt is then a keyed pick (ringBearerPicked) carrying the
+// tail, so a table waiting on it is a restore point. A zero tail is
+// "nothing more".
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) RingTemptsKeyedForEffect(player, source uuid.UUID, then KeyedTail) error {
+	return g.ringTemptsLocked(player, source, ringTailThen(then), then, true)
+}
+
+// ringTailThen runs a keyed tail as a tempt's synchronous "then", told the
+// Ring-bearer. Nil for the zero tail.
+func ringTailThen(t KeyedTail) func(g *Game, ringBearer uuid.UUID) error {
+	if t.IsZero() {
+		return nil
+	}
+	t = copyKeyedTail(t)
+	return func(g *Game, ringBearer uuid.UUID) error {
+		var ids []uuid.UUID
+		if ringBearer != uuid.Nil {
+			ids = []uuid.UUID{ringBearer}
+		}
+		return t.Run(g, ids)
+	}
+}
+
+// ringBearerPicked is the keyed answer to "choose a creature you control"
+// as your Ring-bearer (#4253 slice 10b): steps 4 to 6 with the prompt's
+// tail as the rest. An empty pick is the drop path. An on-disk key: never
+// renamed, never reused.
+var ringBearerPicked = RegisterChooseCardsThen("choose-cards/ring-bearer", func(g *Game, r CardsChosen) error {
+	chosen := uuid.Nil
+	if len(r.Picked) == 1 {
+		chosen = r.Picked[0]
+	}
+	return g.finishRingTemptLocked(r.From, r.Source, chosen, false, ringTailThen(r.Tail))
+})
+
+// ringTemptsLocked is the tempt's body: `then` runs synchronously, and
+// with `keyed` the prompt, if one is asked, carries `tail` as data instead
+// of `then` as a closure.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) ringTemptsLocked(player, source uuid.UUID, then func(g *Game, ringBearer uuid.UUID) error, tail KeyedTail, keyed bool) error {
 	p := g.playerByIDLocked(player)
 	if p == nil || p.Eliminated {
 		if then == nil {
@@ -240,6 +289,23 @@ func (g *Game) RingTemptsForEffect(player, source uuid.UUID, then func(g *Game, 
 		return g.finishRingTemptLocked(player, source, uuid.Nil, false, then)
 	case 1:
 		return g.finishRingTemptLocked(player, source, cands[0], true, then)
+	}
+	if keyed {
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:           PendingChoiceRingBearer,
+			Chooser:        player,
+			FromPlayer:     player,
+			Count:          1,
+			Source:         source,
+			Reason:         ringBearerQuestion,
+			ChooseCards:    cands,
+			ChooseMin:      1,
+			ChooseMax:      1,
+			PickThen:       ringBearerPicked.key,
+			ChooseLiveZone: ZoneBattlefield,
+			pickTail:       copyKeyedTail(tail),
+		})
+		return nil
 	}
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:        PendingChoiceRingBearer,

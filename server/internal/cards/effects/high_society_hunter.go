@@ -104,12 +104,17 @@ var hunterAnswer = MayYes("confirm/high-society-hunter-sacrifice", func(ctx *Con
 		Player:     item.Controller,
 		Candidates: fodder,
 		Question:   "High-Society Hunter — sacrifice another creature",
-		Then: func(ctx *Context) error {
-			return AddCounter{
-				Target: item.SourceCardID,
-				Kind:   game.CounterPlusOne,
-				N:      1,
-			}.Apply(ctx)
-		},
+		// Keyed (#4253 slice 10b): the counter is the sacrifice's tail.
+		ThenTail: ctx.ItemTail(hunterSacrificed),
+	}.Apply(ctx)
+})
+
+// hunterSacrificed is "put a +1/+1 counter on this creature", once the
+// other creature has gone. An on-disk key: never renamed, never reused.
+var hunterSacrificed = CardTail("then/high-society-hunter-counter", func(ctx *Context, _ game.TailOutcome) error {
+	return AddCounter{
+		Target: ctx.Item.SourceCardID,
+		Kind:   game.CounterPlusOne,
+		N:      1,
 	}.Apply(ctx)
 })

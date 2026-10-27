@@ -61,6 +61,12 @@ type Proliferate struct {
 	// Capture scalars only (the controller's ID), never a *Context or
 	// a *Game: an undone game resolves it against the restored one.
 	Then func(g *game.Game) error
+
+	// ThenTail is Then as data (#4253 slice 10b): a registered tail run in
+	// the same place. A proliferate the player chooses with no Then is
+	// keyed from the prompt to the last counter, so a table waiting on the
+	// choice is a restore point. Set Then or ThenTail, not both; Then wins.
+	ThenTail game.KeyedTail
 }
 
 func (p Proliferate) Apply(ctx *Context) error {
@@ -69,6 +75,9 @@ func (p Proliferate) Apply(ctx *Context) error {
 		controller = ctx.Controller()
 	}
 	if p.Cards == nil && p.Players == nil {
+		if p.Then == nil {
+			return ctx.Game.ProliferateChoosingKeyedForEffect(controller, ctx.Source(), p.ThenTail)
+		}
 		return ctx.Game.ProliferateChoosingForEffect(controller, ctx.Source(), p.Then)
 	}
 	if err := ctx.Game.ProliferateForEffect(controller, ctx.Source(), p.Cards, p.Players); err != nil {
@@ -77,7 +86,33 @@ func (p Proliferate) Apply(ctx *Context) error {
 	if p.Then != nil {
 		return p.Then(ctx.Game)
 	}
-	return nil
+	return p.ThenTail.Run(ctx.Game, nil)
+}
+
+// thenProliferateAgain is "proliferate N more times", each asked once the
+// one before it is answered (Tam, Mindful First-Year; Tromell, Seymour's
+// Butler): Tail.N is how many are still owed, Tail.Player proliferates and
+// Tail.Source is the card. An on-disk key: never renamed, never reused.
+// Registered from init: the body names its own key again.
+var thenProliferateAgain game.TailRef
+
+func init() {
+	thenProliferateAgain = game.RegisterTail("then/proliferate-again", func(g *game.Game, o game.TailOutcome) error {
+		return proliferateTimesKeyed(g, o.Tail.Player, o.Tail.Source, o.Tail.N)
+	})
+}
+
+// proliferateTimesKeyed proliferates n times in a row for `player`, each one
+// asked once the one before it is answered, with the rest as data.
+func proliferateTimesKeyed(g *game.Game, player, source uuid.UUID, n int) error {
+	if n <= 0 {
+		return nil
+	}
+	var rest game.KeyedTail
+	if n > 1 {
+		rest = game.KeyedTail{Ref: thenProliferateAgain, Player: player, Source: source, N: n - 1}
+	}
+	return g.ProliferateChoosingKeyedForEffect(player, source, rest)
 }
 
 // BeneficialProliferateChoice is the pick a proliferate suggests on

@@ -275,7 +275,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 				// #4307: a paused dice roll's keyed "then".
 				unknown = append(unknown, unknownKeyedTail(c.DiceRoll.Then)...)
 			}
-		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource:
+			// #4253 slice 10b: and the tail it hands on.
+			unknown = append(unknown, unknownKeyedTail(c.PickTail)...)
+		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource ||
+			// #4253 slice 10b: a keyed proliferate or Ring-bearer choice.
+			c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer:
 			// #2040: a keyed choose_cards pick's continuation. #4250: a
 			// resolution_cast's "after the casts" is one too. #4264: and a
 			// keyed reveal pick's.
@@ -341,6 +345,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 				unknown = append(unknown, "put-in-library continuation "+c.PickThen)
 			} else {
 				unknown = append(unknown, unknownKeyedTail(c.LibraryOrder.Then)...)
+			}
+		case c.Kind == PendingChoiceCoinCall:
+			// #4253 slice 10b: a keyed coin call's continuation.
+			if !KnownCoinFlipThen(c.PickThen) {
+				unknown = append(unknown, "coin-flip continuation "+c.PickThen)
 			}
 		case c.Kind == PendingChoiceConfirm:
 			// #4264: a keyed confirm's answer.

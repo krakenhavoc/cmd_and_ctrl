@@ -50,13 +50,9 @@ func init() {
 
 // proliferateTimes proliferates n times in a row for `controller`, each
 // one asked once the one before it is answered.
+// Keyed (#4253 slice 10b): the repetitions still owed are the tail's number.
 func proliferateTimes(g *game.Game, controller, source uuid.UUID, n int) error {
-	if n <= 0 {
-		return nil
-	}
-	return g.ProliferateChoosingForEffect(controller, source, func(g *game.Game) error {
-		return proliferateTimes(g, controller, source, n-1)
-	})
+	return proliferateTimesKeyed(g, controller, source, n)
 }
 
 // tromellExtraCounter is "each other nontoken creature you control

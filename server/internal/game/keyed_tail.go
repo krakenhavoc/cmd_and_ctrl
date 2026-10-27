@@ -65,6 +65,11 @@ type KeyedTail struct {
 	// the free-cast grants, the Oblivion Ring family's return record).
 	// Nil when the body grants none.
 	Permission *CastPermission
+	// Nums and Words are more numbers and words the body reads (#4253
+	// slice 10b): a run's position (proliferate's permanent, counter kind
+	// and remaining asks) and the names it walks (the counter kinds).
+	Nums  []int
+	Words []string
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -200,6 +205,8 @@ func carriesLookAtThen(k PendingChoiceKind) bool {
 func copyKeyedTail(t KeyedTail) KeyedTail {
 	t.Carry = copyUUIDs(t.Carry)
 	t.Asked = copyAskedItem(t.Asked)
+	t.Nums = copyInts(t.Nums)
+	t.Words = copyStrings(t.Words)
 	if t.Next != nil {
 		n := copyKeyedTail(*t.Next)
 		t.Next = &n
@@ -230,6 +237,9 @@ type keyedTailSnapshot struct {
 	Next *keyedTailSnapshot `json:"next,omitempty"`
 	// Permission (#4253 slice 10a): a cast permission the body grants.
 	Permission *CastPermission `json:"permission,omitempty"`
+	// Nums and Words (#4253 slice 10b).
+	Nums  []int    `json:"nums,omitempty"`
+	Words []string `json:"words,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -241,6 +251,7 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 		Carry: copyUUIDs(t.Carry), N: t.N, Asked: copyAskedItem(t.Asked),
 		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
 		Permission: copyCastPermissionPtr(t.Permission),
+		Nums:       copyInts(t.Nums), Words: copyStrings(t.Words),
 	}
 }
 
@@ -260,6 +271,7 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 		Ref: TailRef{key: s.Key}, Player: uuidOrNil(s.Player), Source: uuidOrNil(s.Source),
 		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
 		Permission: copyCastPermissionPtr(s.Permission),
+		Nums:       copyInts(s.Nums), Words: copyStrings(s.Words),
 	}
 	if s.Next != nil {
 		n := restoreKeyedTail(s.Next)
