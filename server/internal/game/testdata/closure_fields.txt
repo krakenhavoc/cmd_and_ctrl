@@ -49,6 +49,7 @@
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 # 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S14b): the trigger target walk written by catalog row (pendingChoices[].targetWalk) and its "which opponent chooses" pick keyed; 15 lines keyed, optionPickFrame.thenSeat and PendingChoice.optionPickResume deleted, pickTargetFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -120,9 +121,8 @@ PendingChoice.copyResume                     census:ChoiceResumeFrames          
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
 PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
-PendingChoice.optionPickResume               census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume
 PendingChoice.payUnlessResume                census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume
-PendingChoice.pickTargetResume               census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume
+PendingChoice.pickTargetResume               keyed                              # Game.PendingChoices.pickTargetResume
 PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
 PendingChoice.triggerResume                  keyed                              # Game.PendingChoices.triggerResume
 Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
@@ -160,16 +160,16 @@ TargetSpec.Different                         census:ChoiceResumeFrames          
 TargetSpec.PlayerOK                          census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.PlayerOK
 TargetSpec.Rest                              census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Rest
 TokenGroup.Template                          census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups.Template
-TriggerOptionalPrompt.Chooser                census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt.Chooser
-TriggeredAbility.AppliesTo                   census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.AppliesTo
-TriggeredAbility.BatchKey                    census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.BatchKey
-TriggeredAbility.Build                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Build
-TriggeredAbility.Effect                      census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Effect
-TriggeredAbility.HasLegalTarget              census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.HasLegalTarget
-TriggeredAbility.Modes                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Modes
-TriggeredAbility.OptionalPrompt              census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt
-TriggeredAbility.Targets                     census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.Targets
-TriggeredAbility.TargetsFrom                 census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability.TargetsFrom
+TriggerOptionalPrompt.Chooser                keyed                              # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt.Chooser
+TriggeredAbility.AppliesTo                   keyed                              # Game.PendingChoices.pickTargetResume.ability.AppliesTo
+TriggeredAbility.BatchKey                    keyed                              # Game.PendingChoices.pickTargetResume.ability.BatchKey
+TriggeredAbility.Build                       keyed                              # Game.PendingChoices.pickTargetResume.ability.Build
+TriggeredAbility.Effect                      keyed                              # Game.PendingChoices.pickTargetResume.ability.Effect
+TriggeredAbility.HasLegalTarget              keyed                              # Game.PendingChoices.pickTargetResume.ability.HasLegalTarget
+TriggeredAbility.Modes                       keyed                              # Game.PendingChoices.pickTargetResume.ability.Modes
+TriggeredAbility.OptionalPrompt              keyed                              # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt
+TriggeredAbility.Targets                     keyed                              # Game.PendingChoices.pickTargetResume.ability.Targets
+TriggeredAbility.TargetsFrom                 keyed                              # Game.PendingChoices.pickTargetResume.ability.TargetsFrom
 Zone.Cards                                   census:IntrinsicAbilityCards       # Game.Battlefield.Cards
 activeReplacement.effect                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.effect
 activeReplacement.source                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.source
@@ -192,15 +192,14 @@ lastKnownSpell.item                          keyed                              
 modePickFrame.ability                        keyed                              # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:IntrinsicAbilityCards       # Game.PendingChoices.modePickResume.source
 modeWalk.item                                keyed                              # Game.pausedModeWalk.item
-optionPickFrame.thenSeat                     census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSeat
 payUnlessFrame.onDecline                     census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onDecline
 payUnlessFrame.onPay                         census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onPay
 payUnlessFrame.tap                           census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap
-pickTargetFrame.ability                      census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.ability
-pickTargetFrame.modeSpec                     census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.modeSpec
-pickTargetFrame.source                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.source
-pickTargetFrame.spec                         census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.spec
-pickTargetFrame.steps                        census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps
+pickTargetFrame.ability                      keyed                              # Game.PendingChoices.pickTargetResume.ability
+pickTargetFrame.modeSpec                     keyed                              # Game.PendingChoices.pickTargetResume.modeSpec
+pickTargetFrame.source                       census:IntrinsicAbilityCards       # Game.PendingChoices.pickTargetResume.source
+pickTargetFrame.spec                         keyed                              # Game.PendingChoices.pickTargetResume.spec
+pickTargetFrame.steps                        keyed                              # Game.PendingChoices.pickTargetResume.steps
 replacementResumeFrame.applicable            census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable
 replacementResumeFrame.ev                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev
 resolutionTail.item                          keyed                              # Game.pausedResolutionTail.item

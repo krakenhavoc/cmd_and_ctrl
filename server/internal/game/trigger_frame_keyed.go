@@ -18,7 +18,8 @@ import (
 //     (PendingChoiceTriggerPrompt, triggerResumeFrame);
 //   - the CR 603.3c mode choice (PendingChoiceModePick, modePickFrame);
 //   - the CR 603.3d target walk (PendingChoicePickTarget,
-//     pickTargetFrame). Not written yet: S14b builds on this file.
+//     pickTargetFrame), written by S14b as a targetWalkSnapshot: see
+//     "The target walk" below.
 //
 // Every one of them holds the same five things, triggerFrameParts: the
 // triggering event, a value copy of the source, its last-known
@@ -79,12 +80,45 @@ import (
 //	snap := snapshotTriggerFrame(parts, cen)      // nil: not nameable (D5)
 //	parts, ok := snap.rebuild()                   // !ok: the row is lost (Q3)
 //
-// A frame that holds more than the five (the target walk's cursor,
-// picks and bound amounts) writes the rest beside the triggerFrame and
-// rebuilds its frame from parts plus that. Note for the target walk: its
-// frame holds a clause TargetsFrom already built, so unlike these two it
-// cannot simply re-run TargetsFrom on restore when the row reads the
-// board (TriggeredAbility.TargetsFromReadsBoard).
+// A frame that holds more than the five writes the rest beside them
+// and rebuilds its frame from parts plus that, as the target walk does.
+//
+// # The target walk (#4361 S14b)
+//
+// A pick_target prompt's frame is the five things plus the walk: the
+// clause statement (spec, or the modal ability's modeSpec), the steps
+// the statement announced, the CR 603.3c modes, the cursor, the targets
+// picked so far, the division announced so far (CR 601.2d via CR
+// 603.3d), the opponents named for "of an opponent's choice" steps
+// (#2055) and each divided step's amount as it was fixed (#1657). On
+// disk it is pendingChoices[].targetWalk, and PickThen says
+// TargetWalkKey.
+//
+// The clauses are catalog declarations (predicates), so they are not
+// written: restore asks the rebuilt row for its statement again, exactly
+// as the walk's start did (triggerTargetsLocked with the frame's own
+// event and source copy), and lists its steps with the written modes.
+// What the walk added on top of the row is data and is carried: the
+// picks, the division, the named opponents, and the divided amounts.
+// An amount rule reads the board ("X is the number of lands you
+// control"), and CR 601.2d fixes it as the ability is put on the stack,
+// which is the start of this walk, so the restored walk uses the amount
+// the live one fixed, never the restored board's.
+//
+// A row whose TargetsFrom reads the board (TargetsFromReadsBoard) is
+// not written, and its frame stays a closure counted as D5 counts one.
+// Its statement was fixed when the walk began (CR 601.2c with CR
+// 603.3d: the number and kind of targets are part of the announcement),
+// and the board can move while the prompt is open, so calling
+// TargetsFrom again on the restored board could ask a different
+// question from the one the live table was asking. Carrying the result
+// instead is not possible: it is a clause of predicates. No catalog row
+// sets the flag today.
+//
+// The "which opponent chooses" option pick of a walk's "of an
+// opponent's choice" step holds the same frame as its pickTargetResume,
+// and its keyed answer (triggerOpponentChooserThen) reads it back. It is
+// written the same way, beside its own PickThen.
 
 // TriggerFrameKey is what a written trigger frame's PickThen says. An
 // on-disk identity: never renamed, never reused.
@@ -108,6 +142,11 @@ func (f *triggerResumeFrame) parts() triggerFrameParts {
 
 // parts is the mode pick frame's five things.
 func (f *modePickFrame) parts() triggerFrameParts {
+	return triggerFrameParts{tc: f.tc, source: f.source, lki: f.lki, ability: f.ability, doubledBy: f.doubledBy}
+}
+
+// parts is the target walk's five things.
+func (f *pickTargetFrame) parts() triggerFrameParts {
 	return triggerFrameParts{tc: f.tc, source: f.source, lki: f.lki, ability: f.ability, doubledBy: f.doubledBy}
 }
 
@@ -260,8 +299,15 @@ func unknownTriggerFrameKeys(c *pendingChoiceSnapshot) []string {
 func (s *GameSnapshot) lostTriggerFrames() []LostStackAbility {
 	var out []LostStackAbility
 	for _, c := range s.PendingChoices {
-		f := c.TriggerFrame
-		if f == nil || !carriesTriggerFrame(c.Kind) || !abilityRefLostInCatalog(f.Ability) {
+		var f *triggerFrameSnapshot
+		switch {
+		case c.TriggerFrame != nil && carriesTriggerFrame(c.Kind):
+			f = c.TriggerFrame
+		case c.TargetWalk != nil && carriesTargetWalk(c.Kind):
+			// #4361 S14b: a target walk, or its "which opponent" question.
+			f = &c.TargetWalk.Frame
+		}
+		if f == nil || !abilityRefLostInCatalog(f.Ability) {
 			continue
 		}
 		out = append(out, LostStackAbility{
@@ -273,4 +319,186 @@ func (s *GameSnapshot) lostTriggerFrames() []LostStackAbility {
 		})
 	}
 	return out
+}
+
+// TargetWalkKey is what a written target walk's pick_target PickThen
+// says (#4361 S14b). The walk's "which opponent chooses" option pick
+// keeps its own key there (triggerOpponentChooserThen). An on-disk
+// identity: never renamed, never reused.
+const TargetWalkKey = "trigger/target-walk"
+
+// targetWalkSnapshot is a trigger's CR 603.3d target walk on disk: its
+// five things, and what the walk added to the row's statement.
+type targetWalkSnapshot struct {
+	// Frame is the walk's five things, the ability by its catalog row.
+	Frame triggerFrameSnapshot `json:"frame"`
+	// Modes are the CR 603.3c occurrences chosen, nil for a non-modal
+	// ability. The steps are listed again from these and the row.
+	Modes []int `json:"modes,omitempty"`
+	// Step is the cursor: the step the open prompt asks about.
+	Step int `json:"step"`
+	// Picked are the targets answered so far, each stamped with its
+	// step's Mode and Slot.
+	Picked []TargetRef `json:"picked,omitempty"`
+	// Dist is the division announced so far (#1563).
+	Dist map[uuid.UUID]int `json:"dist,omitempty"`
+	// Choosers are the opponents named for "of an opponent's choice"
+	// steps so far (#2055).
+	Choosers []TargetChooser `json:"choosers,omitempty"`
+	// Divides are the divided steps' amounts as the walk's start fixed
+	// them (#1657, CR 601.2d): one per step whose clause divides.
+	Divides []boundDivideSnapshot `json:"divides,omitempty"`
+}
+
+// boundDivideSnapshot is one divided step's amount, as fixed.
+type boundDivideSnapshot struct {
+	Step        int  `json:"step"`
+	Total       int  `json:"total"`
+	FromX       bool `json:"fromX,omitempty"`
+	DoubleFromX int  `json:"doubleFromX,omitempty"`
+	UpTo        bool `json:"upTo,omitempty"`
+}
+
+// carriesTargetWalk reports whether a prompt kind can hold a trigger's
+// target walk: its pick_target, or the option pick that asks which
+// opponent chooses a step.
+func carriesTargetWalk(kind PendingChoiceKind) bool {
+	return kind == PendingChoicePickTarget || kind == PendingChoiceOptionPick
+}
+
+// targetWalkMarker is the PickThen a written walk on a prompt of this
+// kind says.
+func targetWalkMarker(kind PendingChoiceKind) string {
+	switch kind {
+	case PendingChoicePickTarget:
+		return TargetWalkKey
+	case PendingChoiceOptionPick:
+		return triggerOpponentChooserThen.key
+	}
+	return ""
+}
+
+// snapshotTargetWalkOf writes a prompt's target walk, or nil when it
+// holds none, its ability cannot be named (D5), or its statement reads
+// the board (TargetsFromReadsBoard, see the file comment). Caller holds
+// g.mu.
+func snapshotTargetWalkOf(c *PendingChoice, cen *ContinuationCensus) *targetWalkSnapshot {
+	if c == nil || !carriesTargetWalk(c.Kind) || c.pickTargetResume == nil {
+		return nil
+	}
+	f := c.pickTargetResume
+	if f.ability.TargetsFromReadsBoard {
+		return nil
+	}
+	frame := snapshotTriggerFrame(f.parts(), cen)
+	if frame == nil {
+		return nil
+	}
+	out := &targetWalkSnapshot{
+		Frame:    *frame,
+		Modes:    copyInts(f.modes),
+		Step:     f.step,
+		Picked:   append([]TargetRef(nil), f.picked...),
+		Dist:     cloneDistributionLocked(f.dist),
+		Choosers: copyTargetChoosers(f.choosers),
+	}
+	for i := range f.steps {
+		if d := f.steps[i].Clause.Divide; d != nil {
+			out.Divides = append(out.Divides, boundDivideSnapshot{
+				Step: i, Total: d.Total, FromX: d.FromX, DoubleFromX: d.DoubleFromX, UpTo: d.UpTo,
+			})
+		}
+	}
+	return out
+}
+
+// rebuildTargetWalkLocked is the restore half: the row from the running
+// catalog, its statement and steps listed again exactly as the walk's
+// start listed them, and the walk's own answers and fixed amounts from
+// the file. ok is false when the row is gone (Q3) or no longer makes
+// the statement the walk was answering (another step count, or a step
+// that divides where the file says none did). Caller owns g.
+func (g *Game) rebuildTargetWalkLocked(s *targetWalkSnapshot) (*pickTargetFrame, bool) {
+	p, ok := s.Frame.rebuild()
+	if !ok || p.ability.TargetsFromReadsBoard {
+		return nil, false
+	}
+	spec := g.triggerTargetsLocked(p.ability, p.tc, &p.source)
+	steps := AnnouncedClauses(spec, p.ability.Modes, s.Modes)
+	if s.Step < 0 || s.Step >= len(steps) {
+		return nil, false
+	}
+	bound := make(map[int]boundDivideSnapshot, len(s.Divides))
+	for _, d := range s.Divides {
+		bound[d.Step] = d
+	}
+	dividing := 0
+	for i := range steps {
+		if steps[i].Clause.Divide == nil {
+			continue
+		}
+		b, carried := bound[i]
+		if !carried {
+			return nil, false
+		}
+		dividing++
+		// The steps hold clause copies (AnnouncedClauses), so this never
+		// touches the catalog's clause, as bindDivideAmountsLocked.
+		steps[i].Clause.Divide = &DivideSpec{Total: b.Total, FromX: b.FromX, DoubleFromX: b.DoubleFromX, UpTo: b.UpTo}
+	}
+	if dividing != len(bound) {
+		return nil, false
+	}
+	return &pickTargetFrame{
+		ability:   p.ability,
+		tc:        p.tc,
+		source:    p.source,
+		lki:       p.lki,
+		spec:      spec,
+		modeSpec:  p.ability.Modes,
+		modes:     copyInts(s.Modes),
+		steps:     steps,
+		step:      s.Step,
+		picked:    append([]TargetRef(nil), s.Picked...),
+		dist:      cloneDistributionLocked(s.Dist),
+		choosers:  copyTargetChoosers(s.Choosers),
+		doubledBy: p.doubledBy,
+	}, true
+}
+
+// restoreTargetWalkLocked puts a written walk back on its prompt. A
+// pick_target's marker is cleared; an option pick keeps its key, which
+// is its answer. A walk that cannot be rebuilt (Q3) leaves the prompt
+// with no walk, so answering it does nothing, and flags the source.
+// Caller owns g.
+func (g *Game) restoreTargetWalkLocked(c *PendingChoice, s *targetWalkSnapshot) {
+	if c.Kind == PendingChoicePickTarget {
+		c.PickThen = ""
+	}
+	f, ok := g.rebuildTargetWalkLocked(s)
+	if !ok {
+		g.flagAbilitiesLostLocked(s.Frame.Source.InstanceID)
+		return
+	}
+	c.pickTargetResume = f
+}
+
+// unknownTargetWalkKeys is checkEffectKeys' half for a target walk: the
+// prompt's marker, and a ref this binary can read at all. A well-formed
+// ref whose row is gone is Q3, restored without the walk, not refused.
+func unknownTargetWalkKeys(c *pendingChoiceSnapshot) []string {
+	w := c.TargetWalk
+	if w == nil {
+		if c.Kind == PendingChoicePickTarget && c.PickThen != "" {
+			return []string{fmt.Sprintf("%s continuation %q", c.Kind, c.PickThen)}
+		}
+		return nil
+	}
+	if !carriesTargetWalk(c.Kind) || c.PickThen != targetWalkMarker(c.Kind) {
+		return []string{fmt.Sprintf("target walk on a %s prompt with tail %q", c.Kind, c.PickThen)}
+	}
+	if ref := w.Frame.Ability; ref.Slot != AbilitySlotTriggered || !wellFormedAbilityRef(ref) {
+		return []string{fmt.Sprintf("target walk ability ref %+v", ref)}
+	}
+	return nil
 }

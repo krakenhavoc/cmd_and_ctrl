@@ -194,7 +194,7 @@ func TestAChooserWhoLeavesTakesTheirOwnSeatOffTheReassignedPrompt(t *testing.T) 
 			Source:     source,
 			Question:   "test — choose a player",
 			Options:    g.seatChoiceOptionsLocked(options),
-			ThenSeat:   func(*Game, uuid.UUID) error { return nil },
+			ThenKey:    testRecordChosenThen,
 		})
 		c = findChoice(g, id)
 		// The seat goes, and the departure sweeps do NOT run: this is
@@ -234,7 +234,7 @@ func TestAPromptTheReassignmentWouldEmptyIsNotMoved(t *testing.T) {
 			Source:     source,
 			Question:   "test — choose a player",
 			Options:    g.seatChoiceOptionsLocked([]uuid.UUID{leaver.ID}),
-			ThenSeat:   func(*Game, uuid.UUID) error { return nil },
+			ThenKey:    testRecordChosenThen,
 		})
 		c := findChoice(g, id)
 		leaver.Eliminated = true

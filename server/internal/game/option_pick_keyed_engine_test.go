@@ -68,7 +68,7 @@ func TestChooseOptionAsEntersSurvivesARestore(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	src, c := queueSiegeChoice(t, g, me)
-	if c.optionPickResume != nil || c.PickThen == "" {
+	if c.PickThen == "" {
 		t.Fatalf("the as-enters option prompt holds a closure: %+v", c)
 	}
 	restored := strictRestoreMidPrompt(t, g)
@@ -124,7 +124,7 @@ func TestChooseTwoPlayersAsEntersSurvivesARestoreAtEachPrompt(t *testing.T) {
 	if next == nil {
 		t.Fatal("the second prompt was not asked")
 	}
-	if next.optionPickResume != nil || next.PickThen == "" {
+	if next.PickThen == "" {
 		t.Fatalf("the second prompt holds a closure: %+v", next)
 	}
 	for _, o := range next.PickOptions {
@@ -201,7 +201,7 @@ func TestResolutionExitChoiceSurvivesARestore(t *testing.T) {
 			if choice == nil {
 				t.Fatal("rebound and buyback both applied and nobody was asked")
 			}
-			if choice.optionPickResume != nil || choice.PickThen == "" {
+			if choice.PickThen == "" {
 				t.Fatalf("the resolution exit prompt holds a closure: %+v", choice)
 			}
 			g = strictRestoreMidPrompt(t, g)

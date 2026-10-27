@@ -1793,6 +1793,11 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
+	// PickTargetFor and PickTargetHarmful are the pick_target's wire
+	// fields (#2055, #4249), carried since a trigger's target walk is
+	// written (#4361 S14b). Additive within the version.
+	PickTargetFor     uuid.UUID `json:"pickTargetFor,omitempty"`
+	PickTargetHarmful bool      `json:"pickTargetHarmful,omitempty"`
 	// #1196's CR 115.7 retarget prompt. Carried rather than counted
 	// as a continuation because it IS the prompt: the item whose
 	// targets are being changed, the printed sentence being applied,
@@ -2059,6 +2064,15 @@ type pendingChoiceSnapshot struct {
 	// PickThen says TriggerFrameKey, so a binary from before it refuses
 	// the file. Additive within the version.
 	TriggerFrame *triggerFrameSnapshot `json:"triggerFrame,omitempty"`
+	// TargetWalk is a trigger's CR 603.3d target walk written as data
+	// (#4361 S14b, trigger_frame_keyed.go), on its pick_target or on the
+	// option pick asking which opponent chooses a step: the five things
+	// of TriggerFrame, the modes, the cursor, the picks, the division,
+	// the named opponents and the fixed divided amounts. A pick_target's
+	// PickThen says TargetWalkKey and an option pick's names its keyed
+	// answer, so a binary from before it refuses the file. Additive
+	// within the version.
+	TargetWalk *targetWalkSnapshot `json:"targetWalk,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -3191,6 +3205,8 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickTargetCards:       copyUUIDs(c.PickTargetCards),
 		PickTargetMin:         c.PickTargetMin,
 		PickTargetMax:         c.PickTargetMax,
+		PickTargetFor:         c.PickTargetFor,
+		PickTargetHarmful:     c.PickTargetHarmful,
 		RetargetItem:          c.RetargetItem,
 		RetargetPolicy:        c.RetargetPolicy,
 		RetargetOptional:      c.RetargetOptional,
@@ -3290,6 +3306,13 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 	if tf != nil {
 		out.TriggerFrame, out.PickThen = tf, TriggerFrameKey
 	}
+	// #4361 S14b: a trigger's target walk, likewise. nil for an ability
+	// that cannot be named (D5) or whose statement reads the board.
+	tw := snapshotTargetWalkOf(c, cen)
+	if tw != nil {
+		out.TargetWalk = tw
+		out.PickThen = targetWalkMarker(c.Kind)
+	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
 		// slice is a complete copy.
@@ -3309,10 +3332,11 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// target (or the controller's choice of opponent). Plain data,
 		// but not written with the prompt, so the census says so.
 		"opponentTargetResume": c.opponentTargetResume != nil,
-		"pickTargetResume":     c.pickTargetResume != nil,
-		"copyResume":           c.copyResume != nil,
-		"triggerResume":        c.triggerResume != nil && tf == nil,
-		"payUnlessResume":      c.payUnlessResume != nil,
+		// #4361 S14b: written as data (targetWalk) when it can be named.
+		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
+		"copyResume":       c.copyResume != nil,
+		"triggerResume":    c.triggerResume != nil && tf == nil,
+		"payUnlessResume":  c.payUnlessResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
@@ -3328,9 +3352,9 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		// #4361: the colour, creature-type and number prompts' and the coin
-		// call's frames are gone; every one is data.
-		"optionPickResume": c.optionPickResume != nil,
-		"modePickResume":   c.modePickResume != nil && tf == nil,
+		// call's frames are gone; every one is data. S14b deleted the
+		// option pick's last closure frame (optionPickResume).
+		"modePickResume": c.modePickResume != nil && tf == nil,
 		// #1019's / #1027's prompted run is not counted here since
 		// #4290: the link (promptRun) is carried, and the run itself is
 		// written on the Game (snapshotPromptRuns); since #4361 no run
@@ -3711,6 +3735,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if f := s.PendingChoices[i].TriggerFrame; f != nil && carriesTriggerFrame(s.PendingChoices[i].Kind) {
 			// #4361 S14a: a trigger paused in its announcement.
 			g.restoreTriggerFrameLocked(g.PendingChoices[i], f)
+		}
+		if w := s.PendingChoices[i].TargetWalk; w != nil && carriesTargetWalk(s.PendingChoices[i].Kind) {
+			// #4361 S14b: a trigger's target walk.
+			g.restoreTargetWalkLocked(g.PendingChoices[i], w)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)
@@ -4216,6 +4244,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetCards:       copyUUIDs(c.PickTargetCards),
 		PickTargetMin:         c.PickTargetMin,
 		PickTargetMax:         c.PickTargetMax,
+		PickTargetFor:         c.PickTargetFor,
+		PickTargetHarmful:     c.PickTargetHarmful,
 		RetargetItem:          c.RetargetItem,
 		RetargetPolicy:        c.RetargetPolicy,
 		RetargetOptional:      c.RetargetOptional,
