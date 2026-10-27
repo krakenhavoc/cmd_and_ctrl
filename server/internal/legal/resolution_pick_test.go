@@ -142,7 +142,7 @@ func TestResolutionPicksAreEnumeratedAndAnswerable(t *testing.T) {
 				Cards:    revealed,
 				Min:      1,
 				Max:      1,
-			}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+			}); err != nil {
 				t.Fatalf("RevealPickThenForEffect: %v", err)
 			}
 		})

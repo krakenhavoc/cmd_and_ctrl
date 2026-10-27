@@ -23,7 +23,7 @@ import (
 //
 // "Sacrifice a land" is part of the EFFECT, not a cost (#2876, the
 // Victimize pattern of #2863, ADR 0013's amendment of 2026-10-09). It
-// is a one-seat sacrifice run (PlayerSacrificesThenForEffect): the
+// is a one-seat sacrifice run (PlayerSacrificesThenKeyedForEffect): the
 // caster picks a land as the spell resolves and the search follows,
 // whether or not a land was sacrificed ("Sacrifice a land. Search..." is
 // not an "if you do"). So a countered spell costs no land, and the

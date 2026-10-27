@@ -149,7 +149,7 @@ func TestTheOpponentsPickAmongRevealedCardsIsEnumerated(t *testing.T) {
 		g.RevealOutsideForEffect(game.RevealSpec{Player: me.ID, Reason: "reveal", Cards: ids})
 		if _, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
 			Chooser: opp.ID, Owner: me.ID, Question: "choose one", Min: 1, Max: 1, Cards: ids,
-		}, nil); err != nil {
+		}); err != nil {
 			t.Fatal(err)
 		}
 	})

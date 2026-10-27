@@ -157,7 +157,7 @@ var (
 		"(a set of one is fine), and gate the clause on `sacrificed`"}
 	sacrificePromptVerb = exitVerb{
 		kind: "prompted sacrifice",
-		fix: "g.PlayerSacrificesThenForEffect, g.EachPlayerSacrificesThenKeyedForEffect or " +
+		fix: "g.PlayerSacrificesThenKeyedForEffect, g.EachPlayerSacrificesThenKeyedForEffect or " +
 			"g.PlayersSacrificeThenKeyedForEffect (#1019, ADR 0013 §5x), and gate the clause on the " +
 			"run's answer — `sacrificed.Sacrificed(seat)` for \"if you sacrificed a creature " +
 			"this way\", `sacrificed.Count()` for \"that many\". For a plain \"ask N times\" " +

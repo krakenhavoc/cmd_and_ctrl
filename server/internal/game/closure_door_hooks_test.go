@@ -212,3 +212,104 @@ func eachPlayerSacrificesHooked(g *Game, source, except uuid.UUID, spec *TargetS
 	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Sacrifices()) })
 	return g.EachPlayerSacrificesThenKeyedForEffect(source, except, spec, reason, testRunHookThen, data)
 }
+
+// #4361 deleted the closure forms of the coin call (CoinFlipSpec.Then), the
+// number prompts (ChooseNumber.Then, PayEnergyAmount.Then), the reveal
+// pick's continuation and PlayerSacrificesThenForEffect. Their tests ask
+// through the keyed forms and hear the answer through these hooks.
+
+var (
+	// testCoinHooks are the coin-flip hooks the tests registered, by key.
+	testCoinHooks = map[string]func(g *Game, r CoinFlipResult) error{}
+
+	// testCoinHookThen runs the hook its call's first word names.
+	testCoinHookThen = RegisterCoinFlipThen("test/4361-hook-coinflip", func(g *Game, r CoinFlipped) error {
+		if len(r.Words) == 0 {
+			return nil
+		}
+		testHookMu.Lock()
+		fn := testCoinHooks[r.Words[0]]
+		testHookMu.Unlock()
+		if fn == nil {
+			return nil
+		}
+		return fn(g, r.Result)
+	})
+)
+
+// coinFlipHooked is spec with fn as its keyed continuation.
+func coinFlipHooked(spec CoinFlipSpec, fn func(g *Game, r CoinFlipResult) error) CoinFlipSpec {
+	key := uuid.NewString()
+	testHookMu.Lock()
+	testCoinHooks[key] = fn
+	testHookMu.Unlock()
+	spec.ThenKey, spec.Words = testCoinHookThen, []string{key}
+	return spec
+}
+
+var (
+	// testNumberHooks are the number hooks the tests registered, by key.
+	testNumberHooks = map[string]func(g *Game, n int) error{}
+
+	// testNumberHookThen runs the hook its prompt's first word names.
+	testNumberHookThen = RegisterNumberThen("test/4361-hook-number", func(g *Game, r NumberAnswer) error {
+		if len(r.Words) == 0 {
+			return nil
+		}
+		testHookMu.Lock()
+		fn := testNumberHooks[r.Words[0]]
+		testHookMu.Unlock()
+		if fn == nil {
+			return nil
+		}
+		return fn(g, r.Number)
+	})
+)
+
+// numberHook is a keyed number branch that runs fn with the number.
+func numberHook(fn func(g *Game, n int) error) NumberBranch {
+	key := uuid.NewString()
+	testHookMu.Lock()
+	testNumberHooks[key] = fn
+	testHookMu.Unlock()
+	return NumberBranch{Then: testNumberHookThen, Words: []string{key}}
+}
+
+var (
+	// testRevealPickHooks are the reveal-pick hooks the tests registered,
+	// by the ID each pick carries.
+	testRevealPickHooks = map[uuid.UUID]func(g *Game, picked, left []uuid.UUID) error{}
+
+	// testRevealPickHookThen runs the hook its pick's first carried ID
+	// names, handed the partition of the reveal.
+	testRevealPickHookThen = RegisterChooseCardsThen("test/4361-hook-reveal-pick", func(g *Game, r CardsChosen) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		testHookMu.Lock()
+		fn := testRevealPickHooks[r.Carry[0]]
+		testHookMu.Unlock()
+		if fn == nil {
+			return nil
+		}
+		picked, left := partitionPiles(r.Candidates, r.Picked)
+		return fn(g, picked, left)
+	})
+)
+
+// revealPickHooked is p with fn as its keyed continuation.
+func revealPickHooked(p RevealPickPrompt, fn func(g *Game, picked, left []uuid.UUID) error) RevealPickPrompt {
+	id := uuid.New()
+	testHookMu.Lock()
+	testRevealPickHooks[id] = fn
+	testHookMu.Unlock()
+	p.ThenKey, p.Carry = testRevealPickHookThen, []uuid.UUID{id}
+	return p
+}
+
+// playerSacrificesHooked is a keyed one-seat sacrifice run of `count`
+// prompts (PlayerSacrificesThenKeyedForEffect) whose continuation is fn.
+func playerSacrificesHooked(g *Game, source, player uuid.UUID, spec *TargetSpec, reason string, count int, fn func(g *Game, sacrificed PromptedSacrifices) error) error {
+	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Sacrifices()) })
+	return g.PlayerSacrificesThenKeyedForEffect(source, player, spec, reason, count, testRunHookThen, data.Carry)
+}

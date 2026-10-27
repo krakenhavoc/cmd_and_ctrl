@@ -5906,8 +5906,8 @@ has chosen. Use a RUN whenever ANYTHING follows the prompt, the
 ordering included: `g.EachPlayerSacrificesThenKeyedForEffect(source,
 except, spec, reason, then, data)` for the APNAP fan-out,
 `g.PlayersSacrificeThenKeyedForEffect(source, players, …)` for a named set
-of seats, `g.PlayerSacrificesThenForEffect(source, player, spec,
-reason, count, then)` for one seat asked N times, and
+of seats, `g.PlayerSacrificesThenKeyedForEffect(source, player, spec,
+reason, count, then, carry)` for one seat asked N times, and
 `effects.EachPlayerSacrifices.Then` card-side. A multi-seat
 instruction ("each of these players sacrifices") belongs in ONE call
 of the first two, never one call per seat: one call is what lets the

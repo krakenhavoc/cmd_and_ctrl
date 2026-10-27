@@ -14,7 +14,7 @@ import (
 //	 resolves. At the beginning of your next upkeep, you may cast this
 //	 card from exile without paying its mana cost.)"
 //
-// The life gain waits for the sacrifice (PlayerSacrificesThenForEffect)
+// The life gain waits for the sacrifice (PlayerSacrificesThenKeyedForEffect)
 // and reads the creature's toughness as it last existed on the
 // battlefield (CR 608.2h), so an anthem or a counter on it counts. A
 // player with no creature sacrifices nothing and you gain nothing.

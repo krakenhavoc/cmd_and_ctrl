@@ -1698,3 +1698,4 @@ choose choose-cards/untap-choice
 maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
+tail engine/value-chosen-nothing

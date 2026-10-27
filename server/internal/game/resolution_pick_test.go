@@ -57,7 +57,7 @@ func TestRevealPickAsksTheNamedSeatAndPartitionsTheSet(t *testing.T) {
 	var picked, left []uuid.UUID
 	runs := 0
 	g.WithWriteLock(func() {
-		n, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		n, err := g.RevealPickThenForEffect(revealPickHooked(RevealPickPrompt{
 			Chooser:  opp.ID,
 			Owner:    caster.ID,
 			Source:   source,
@@ -69,7 +69,7 @@ func TestRevealPickAsksTheNamedSeatAndPartitionsTheSet(t *testing.T) {
 			runs++
 			picked, left = gotPicked, gotLeft
 			return nil
-		})
+		}))
 		if err != nil || n != 1 {
 			t.Fatalf("RevealPickThenForEffect queued %d prompts, err %v", n, err)
 		}
@@ -116,10 +116,12 @@ func TestRevealPickAsksTheNamedSeatAndPartitionsTheSet(t *testing.T) {
 	}
 }
 
-// TestRevealPickRunsItsContinuationWithNothingAsked — the #544 / #1006
-// contract at queue time: a chooser who has already left is not asked,
-// and the rest of the card still resolves with nothing picked.
-func TestRevealPickRunsItsContinuationWithNothingAsked(t *testing.T) {
+// TestRevealPickWithNothingAskedReportsZero — the #544 / #1006 contract
+// at queue time: a chooser who has already left is not asked, and the
+// call reports 0 so the caller resolves the rest of the card with nothing
+// picked (every card caller does). The keyed continuation is not run:
+// the closure form that ran itself here is gone (#4361).
+func TestRevealPickWithNothingAskedReportsZero(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, gone := g.Seats[0], g.Seats[1]
 	revealed := handCardOf(t, caster, 3)
@@ -127,20 +129,18 @@ func TestRevealPickRunsItsContinuationWithNothingAsked(t *testing.T) {
 		t.Fatalf("Concede: %v", err)
 	}
 
-	var picked, left []uuid.UUID
 	runs := 0
 	g.WithWriteLock(func() {
-		n, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		n, err := g.RevealPickThenForEffect(revealPickHooked(RevealPickPrompt{
 			Chooser: gone.ID,
 			Owner:   caster.ID,
 			Cards:   revealed,
 			Min:     1,
 			Max:     1,
-		}, func(_ *Game, gotPicked, gotLeft []uuid.UUID) error {
+		}, func(*Game, []uuid.UUID, []uuid.UUID) error {
 			runs++
-			picked, left = gotPicked, gotLeft
 			return nil
-		})
+		}))
 		if err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
@@ -148,11 +148,8 @@ func TestRevealPickRunsItsContinuationWithNothingAsked(t *testing.T) {
 			t.Fatalf("queued %d prompts for a seat that has left", n)
 		}
 	})
-	if runs != 1 {
-		t.Fatalf("the continuation ran %d times, want once", runs)
-	}
-	if len(picked) != 0 || len(left) != 3 {
-		t.Errorf("nothing picked, everything left: %v / %v", picked, left)
+	if runs != 0 || len(choicesOfKind(g, PendingChoiceRevealPick)) != 0 {
+		t.Fatalf("nobody was asked, yet the continuation ran %d times or a prompt is open", runs)
 	}
 }
 
@@ -168,7 +165,7 @@ func TestRevealPickIsReassignedWhenItsChooserLeaves(t *testing.T) {
 	var picked []uuid.UUID
 	runs := 0
 	g.WithWriteLock(func() {
-		if _, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		if _, err := g.RevealPickThenForEffect(revealPickHooked(RevealPickPrompt{
 			Chooser:  leaver.ID,
 			Owner:    caster.ID,
 			Source:   source,
@@ -180,7 +177,7 @@ func TestRevealPickIsReassignedWhenItsChooserLeaves(t *testing.T) {
 			runs++
 			picked = gotPicked
 			return nil
-		}); err != nil {
+		})); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})
@@ -223,7 +220,7 @@ func TestRevealPickUndoesAcrossThePrompt(t *testing.T) {
 	runs := 0
 	var picked []uuid.UUID
 	g.WithWriteLock(func() {
-		if _, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		if _, err := g.RevealPickThenForEffect(revealPickHooked(RevealPickPrompt{
 			Chooser: opp.ID,
 			Owner:   caster.ID,
 			Cards:   revealed,
@@ -233,7 +230,7 @@ func TestRevealPickUndoesAcrossThePrompt(t *testing.T) {
 			runs++
 			picked = gotPicked
 			return nil
-		}); err != nil {
+		})); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})
@@ -271,14 +268,14 @@ func TestRevealPickNarratesTheAnswer(t *testing.T) {
 	before := countEvents(g, EventCardsChosen)
 
 	g.WithWriteLock(func() {
-		if _, err := g.RevealPickThenForEffect(RevealPickPrompt{
+		if _, err := g.RevealPickThenForEffect(revealPickHooked(RevealPickPrompt{
 			Chooser: opp.ID,
 			Owner:   caster.ID,
 			Source:  source,
 			Cards:   revealed,
 			Min:     1,
 			Max:     1,
-		}, func(*Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+		}, func(*Game, []uuid.UUID, []uuid.UUID) error { return nil })); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})

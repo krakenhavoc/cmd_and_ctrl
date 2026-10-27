@@ -43,7 +43,7 @@ func seedRevealPick(t *testing.T, g *game.Game, chooser, owner *game.Player, n i
 			Cards:    ids,
 			Min:      1,
 			Max:      1,
-		}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+		}); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})
@@ -174,7 +174,7 @@ func TestRevealPickAnswerIsNarrated(t *testing.T) {
 			Cards:   ids,
 			Min:     1,
 			Max:     1,
-		}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+		}); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})

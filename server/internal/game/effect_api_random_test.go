@@ -62,7 +62,7 @@ func TestCoinCallUsesWonLossDrawAndValidatesAnswer(t *testing.T) {
 	var got CoinFlipResult
 	var choice uuid.UUID
 	g.WithWriteLock(func() {
-		choice = g.FlipCoinForEffect(CoinFlipSpec{Flipper: p.ID, Coins: 2, Then: func(_ *Game, r CoinFlipResult) error { got = r; return nil }})
+		choice = g.FlipCoinForEffect(coinFlipHooked(CoinFlipSpec{Flipper: p.ID, Coins: 2}, func(_ *Game, r CoinFlipResult) error { got = r; return nil }))
 	})
 	if err := g.ResolveCoinCall(choice, other.ID, "heads"); err != ErrNotTheChooser {
 		t.Fatalf("wrong chooser = %v", err)
@@ -95,7 +95,7 @@ func TestCoinCallStopDoesNotDrawOrRunFaceResult(t *testing.T) {
 	called := false
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.FlipCoinForEffect(CoinFlipSpec{Flipper: p.ID, AllowStop: true, Then: func(_ *Game, r CoinFlipResult) error { called = r.Stopped; return nil }})
+		id = g.FlipCoinForEffect(coinFlipHooked(CoinFlipSpec{Flipper: p.ID, AllowStop: true}, func(_ *Game, r CoinFlipResult) error { called = r.Stopped; return nil }))
 	})
 	if err := g.ResolveCoinCall(id, p.ID, "stop"); err != nil {
 		t.Fatal(err)
@@ -131,18 +131,38 @@ func TestSourcedRandomDrawUsesDeckOrdinalAcrossRuns(t *testing.T) {
 	}
 }
 
-func TestCoinCallSnapshotCensusesContinuation(t *testing.T) {
+// TestCoinCallWithAContinuationIsARestorePoint (#4361): the closure form is
+// gone, so a coin call with something hanging off it holds no frame. A
+// strict restore mid-prompt keeps the call and its continuation, and the
+// restored table answers into it.
+func TestCoinCallWithAContinuationIsARestorePoint(t *testing.T) {
 	g := newActiveGame(t)
 	p := g.Seats[0]
+	g.SetRNGKeyForTest(testRNGKey())
+	var got []CoinFlipResult
 	g.WithWriteLock(func() {
-		g.FlipCoinForEffect(CoinFlipSpec{Flipper: p.ID, Then: func(*Game, CoinFlipResult) error { return nil }})
+		g.FlipCoinForEffect(coinFlipHooked(CoinFlipSpec{Flipper: p.ID, Coins: 2}, func(_ *Game, r CoinFlipResult) error {
+			got = append(got, r)
+			return nil
+		}))
 	})
 	snap := g.CaptureSnapshot()
-	if snap.Continuations.ChoiceResumeFrames != 1 || snap.Restorable() {
+	if snap.Continuations.ChoiceResumeFrames != 0 || !snap.Restorable() {
 		t.Fatalf("coin continuation census = %#v, restorable=%v", snap.Continuations, snap.Restorable())
 	}
-	if got := snap.PendingChoices[0].CoinCount; got != 1 {
-		t.Fatalf("snapshot coin count = %d, want 1", got)
+	if got := snap.PendingChoices[0].CoinCount; got != 2 {
+		t.Fatalf("snapshot coin count = %d, want 2", got)
+	}
+	restored := strictRestore(t, g)
+	c := restored.PendingChoices
+	if len(c) != 1 || c[0].Kind != PendingChoiceCoinCall || c[0].PickThen != testCoinHookThen.Key() {
+		t.Fatalf("restored prompts = %+v, want the keyed coin call", c)
+	}
+	if err := restored.ResolveCoinCall(c[0].ID, p.ID, "heads"); err != nil {
+		t.Fatalf("ResolveCoinCall on the restored table: %v", err)
+	}
+	if len(got) != 1 || len(got[0].Won) != 2 || got[0].Call != "heads" {
+		t.Fatalf("the restored call's continuation ran with %+v, want once with two coins", got)
 	}
 }
 
@@ -269,11 +289,11 @@ func TestCoinStopPreservesNextDrawAndClonedChain(t *testing.T) {
 			}
 			return nil
 		}
-		g.FlipCoinForEffect(CoinFlipSpec{Flipper: p.ID, AllowStop: true, Wins: 1, Then: chain})
+		g.FlipCoinForEffect(coinFlipHooked(CoinFlipSpec{Flipper: p.ID, AllowStop: true, Wins: 1}, chain))
 		return nil
 	}
 	var id uuid.UUID
-	g.WithWriteLock(func() { id = g.FlipCoinForEffect(CoinFlipSpec{Flipper: p.ID, Then: chain}) })
+	g.WithWriteLock(func() { id = g.FlipCoinForEffect(coinFlipHooked(CoinFlipSpec{Flipper: p.ID}, chain)) })
 	if err := g.ResolveCoinCall(id, p.ID, "heads"); err != nil {
 		t.Fatal(err)
 	}

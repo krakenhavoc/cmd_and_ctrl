@@ -263,42 +263,33 @@ type PayEnergyAmount struct {
 	Goal     int
 	Unit     string
 	Question string
-	// Then runs once the energy has been paid, with the amount: 0 when
-	// nothing was paid. It runs exactly once, also when there was
-	// nothing to ask and when the chooser left.
-	Then func(g *Game, paid int) error
-	// Branch is the same consequence as a REGISTERED branch
-	// (RegisterNumberThen, #4294), in place of Then: it is handed the
-	// amount as NumberAnswer.Number, and runs exactly once as Then does.
-	// A prompt queued with one holds no closure, so a table waiting on
-	// the payer is a restore point. Set Branch or Then, not both.
+	// Branch is the rest of the card, a REGISTERED branch
+	// (RegisterNumberThen, #4294) handed the amount paid as
+	// NumberAnswer.Number: 0 when nothing was paid. It runs exactly once,
+	// also when there was nothing to ask and when the chooser left. Zero
+	// is a payment nothing follows. The prompt holds no closure, so a
+	// table waiting on the payer is a restore point (the closure form,
+	// Then, is gone: #4361).
 	Branch NumberBranch
 }
 
 // QueuePayEnergyAmountForEffect asks p.Chooser how much energy to pay.
 // The ceiling is their energy now. When there is nothing to choose — no
-// energy, or less than the floor (CR 118.3) — nobody is asked and Then
+// energy, or less than the floor (CR 118.3) — nobody is asked and Branch
 // runs with 0. A chooser who has left is not asked either.
 //
-// The continuation rides the chooseValueResume frame a resolution-time
-// colour pick uses, with the amount in its decimal form, so the prompt
-// adds no closure route (ADR 0041's ratchet). With a Branch (#4294) it
-// rides no frame at all: the prompt carries the branch's key and data.
+// The prompt rides no frame (#4294, #4361): it carries the branch's key
+// and data, or with no branch nothing at all.
 //
 // Caller must hold g.mu.
 func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
-	if !p.Branch.IsZero() && p.Then != nil {
-		return fmt.Errorf("%w: keyed energy amount %q also sets a closure", ErrInvalidParam, p.Branch.Then.Key())
-	}
-	then := p.Then
+	// run is the branch when nobody is asked; an asked prompt runs it from
+	// its data (numberFrameOf).
 	run := func(g *Game, n int) error {
-		if !p.Branch.IsZero() {
-			return g.runNumberBranchNow(p.Branch, p.Chooser, p.Source, n)
-		}
-		if then == nil {
+		if p.Branch.IsZero() {
 			return nil
 		}
-		return then(g, n)
+		return g.runNumberBranchNow(p.Branch, p.Chooser, p.Source, n)
 	}
 	minimum := p.Min
 	if minimum < 0 {
@@ -333,16 +324,6 @@ func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
 	if !p.Branch.IsZero() {
 		// #4294: the keyed form, a restore point.
 		p.Branch.apply(&prompt, g.resolutionCauseLocked())
-	} else {
-		prompt.chooseValueResume = &chooseValueFrame{then: func(g *Game, value string) error {
-			// "" is the drop (the chooser left, CR 800.4f): nothing
-			// was paid. An answer is always a validated number.
-			n, err := strconv.Atoi(value)
-			if err != nil {
-				n = 0
-			}
-			return run(g, n)
-		}}
 	}
 	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {

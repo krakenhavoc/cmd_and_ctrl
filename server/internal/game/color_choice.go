@@ -192,10 +192,8 @@ var emptyColorOptionsOnce sync.Once
 // rest of the card). `then` receives the chosen colour or canonical
 // creature type and runs with g.mu held, so it may queue a further
 // prompt (Selective Obliteration's next player, Patriarch's Bidding's
-// next seat). Counted in ContinuationCensus like every other frame,
-// which is what makes a snapshot taken while the prompt is open report
-// itself unrestorable rather than silently dropping the rest of the
-// card.
+// next seat). Never stored on a prompt since #4361: chooseValueFrameOf
+// builds one from the prompt's data when the answer comes in.
 type chooseValueFrame struct {
 	then func(g *Game, value string) error
 }
@@ -268,11 +266,8 @@ func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
 		ColorOptions: normaliseColorOptions(p.Options),
 		ColorPurpose: p.Purpose,
 	}
-	if !p.ThenTail.IsZero() {
-		g.keyValueThenLocked(&c, p.ThenTail)
-	} else {
-		c.chooseValueResume = &chooseValueFrame{}
-	}
+	// #4361: keyed even when nothing follows, so the prompt is data.
+	g.keyValueThenOrNothingLocked(&c, p.ThenTail)
 	return g.QueueChoiceForEffect(c)
 }
 

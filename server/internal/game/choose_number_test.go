@@ -30,7 +30,7 @@ func TestChooseNumberPaysLifeUpToTheLifeTotal(t *testing.T) {
 	got := -1
 	queueChooseNumber(t, g, ChooseNumber{
 		Chooser: me.ID, Source: uuid.New(), Resource: PayResourceLife, Goal: 2, Unit: PayAmountCards,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	c := payAmountChoice(g)
 	if c == nil || c.PayAmount == nil {
@@ -62,7 +62,7 @@ func TestChooseNumberLifeDeclinesAndSkipsAnUnpayablePlayer(t *testing.T) {
 	got := -1
 	queueChooseNumber(t, g, ChooseNumber{
 		Chooser: me.ID, Source: uuid.New(), Resource: PayResourceLife,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	if err := g.ResolvePayAmount(payAmountChoice(g).ID, me.ID, 0); err != nil {
 		t.Fatalf("resolve 0: %v", err)
@@ -75,7 +75,7 @@ func TestChooseNumberLifeDeclinesAndSkipsAnUnpayablePlayer(t *testing.T) {
 	got = -1
 	queueChooseNumber(t, g, ChooseNumber{
 		Chooser: me.ID, Source: uuid.New(), Resource: PayResourceLife,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	if got != 0 || payAmountChoice(g) != nil {
 		t.Errorf("no life: handed %d, prompt %v; want 0 and none", got, payAmountChoice(g))
@@ -86,7 +86,7 @@ func TestChooseNumberLifeDeclinesAndSkipsAnUnpayablePlayer(t *testing.T) {
 	got = -1
 	queueChooseNumber(t, g, ChooseNumber{
 		Chooser: me.ID, Source: uuid.New(), Resource: PayResourceLife,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	if got != 0 || payAmountChoice(g) != nil {
 		t.Errorf("life total can't change: handed %d, prompt %v; want 0 and none", got, payAmountChoice(g))
@@ -104,7 +104,7 @@ func TestChooseNumberWithNoCeiling(t *testing.T) {
 	queueChooseNumber(t, g, ChooseNumber{
 		Chooser: me.ID, Source: uuid.New(), Resource: PayResourceNone, NoMax: true,
 		Goal: 3, Marks: []int{20, 3, -2}, Unit: PayAmountDamage, SelfDamage: true,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	c := payAmountChoice(g)
 	if c == nil {

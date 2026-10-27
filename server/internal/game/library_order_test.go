@@ -325,12 +325,15 @@ func TestPutInLibraryReplaysAfterUndo(t *testing.T) {
 	}
 }
 
-// The snapshot carries the placement and counts the continuation.
+// The snapshot carries the placement and counts a closure continuation.
+// (An ordering nothing follows is data since #4361:
+// TestAnOrderingNothingFollowsIsARestorePoint.)
 func TestPutInLibraryIsNotARestorePoint(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	ids := loSeed(me.Hand, me.ID, "X", "Y")
-	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: ids, From: ZoneHand, Placement: LibraryPlaceTop})
+	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: ids, From: ZoneHand, Placement: LibraryPlaceTop,
+		Then: func(*Game) error { return nil }})
 	snap := g.CaptureSnapshot()
 	if snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
 		t.Errorf("an open put_in_library is not a restore point: %#v", snap.Continuations)

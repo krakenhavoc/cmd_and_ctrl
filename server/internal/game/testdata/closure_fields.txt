@@ -47,6 +47,7 @@
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
+# 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -67,7 +68,6 @@ AttackSplit.settled                          rebuilt                            
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
-CoinFlipSpec.Then                            census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec.Then
 CopySelector.Candidates                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Candidates
 CopySelector.Except                          census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Except
 CostModifier.Amount                          census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.Amount
@@ -94,7 +94,6 @@ Game.logProjection                           rebuilt                            
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
 Game.pausedResolutionTail                    keyed                              # Game.pausedResolutionTail
 Game.pausedStepWalk                          keyed                              # Game.pausedStepWalk
-Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
 Game.resolving                               keyed                              # Game.resolving
 Game.scopedEffectMemo                        rebuilt                            # Game.scopedEffectMemo
 Game.simultaneousExit                        transient                          # Game.simultaneousExit
@@ -116,8 +115,6 @@ ModeOption.Targets                           census:ChoiceResumeFrames          
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
 PendingChoice.chooseCardsResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume
-PendingChoice.chooseValueResume              census:ChoiceResumeFrames          # Game.PendingChoices.chooseValueResume
-PendingChoice.coinFlipResume                 census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume
 PendingChoice.confirmResume                  census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
@@ -184,8 +181,6 @@ activeReplacement.effect                     census:ChoiceResumeFrames          
 activeReplacement.source                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.source
 chooseCardsFrame.then                        census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume.then
 chooseCardsFrame.validate                    census:ChoiceResumeFrames          # Game.PendingChoices.chooseCardsResume.validate
-chooseValueFrame.then                        census:ChoiceResumeFrames          # Game.PendingChoices.chooseValueResume.then
-coinFlipFrame.spec                           census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec
 confirmFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onAccept
 confirmFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onDecline
 copyFrame.item                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.item
@@ -219,7 +214,6 @@ pickTargetFrame.modeSpec                     census:ChoiceResumeFrames          
 pickTargetFrame.source                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.source
 pickTargetFrame.spec                         census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.spec
 pickTargetFrame.steps                        census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps
-promptRun.then                               census:ChoiceResumeFrames          # Game.promptRuns.then
 replacementResumeFrame.applicable            census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable
 replacementResumeFrame.ev                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev
 resolutionTail.item                          keyed                              # Game.pausedResolutionTail.item

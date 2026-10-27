@@ -109,7 +109,7 @@ var emergentUltimatumOpponent = ChoosePlayerThen("option-pick/emergent-ultimatum
 		Min:      1,
 		Max:      1,
 		ThenKey:  emergentUltimatumPicked,
-	}, nil)
+	})
 	if err != nil || queued > 0 {
 		return err
 	}

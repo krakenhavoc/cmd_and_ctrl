@@ -325,7 +325,7 @@ var gameFields = plan(
 	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty unless a keyed frame wrote it (#4253, nextReplacementSerial)",
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
 	"parkedDraws", carried, "#4253 slice 10c: the tails of draws a draw-instead body handed to a prompt (draw_done.go), as GameSnapshot.ParkedDraws (the drawing player, the draws still owed, the instruction's then by key); plain data, never counted; Clone deep-copies it for undo",
-	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, numbers, source, asking item) and restored; a run whose continuation is a closure is not written and is counted once in ContinuationCensus.ChoiceResumeFrames (snapshotPromptRuns); Clone deep-copies it for undo",
+	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, numbers, source, asking item) and restored (the closure form is gone since #4361, so every run kept is written); Clone deep-copies it for undo",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
 	"attractionEntering", dropped, "the one card of an Attraction deck the card index may see, for the span of its open's entry (ADR 0207 §4); non-empty between actions only while that entry is paused on a replacement prompt, whose resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
@@ -1055,9 +1055,8 @@ var pendingChoiceFields = plan(
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
 	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	// #4289: a pay_amount that carries a chooseValueResume frame is still
-	// not a restore point (ContinuationCensus.ChoiceResumeFrames); a keyed
-	// MayPayX's "choose X" holds none, so its bounds are written.
+	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are
+	// written; since #4361 no pay_amount holds one.
 	"PayAmount", carried, "",
 	"MayPayX", carried, "",
 	"PickNumber", carried, "",
@@ -1264,9 +1263,7 @@ var pendingChoiceFields = plan(
 	"AutoAnswerPrompt", carried, "",
 	"AskedByHand", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
 	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
 	"ordered", carried, "a keyed ordered collection's state (ADR 0175, #4290): the seats still to ask, the picks so far and the registered continuation with its data; written as pendingChoices[].ordered, so a table waiting on a seat of the collection is a restore point",

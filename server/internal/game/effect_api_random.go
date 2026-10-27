@@ -120,7 +120,7 @@ func (g *Game) ChooseAtRandomForEffect(d RandomDraw, ids []uuid.UUID, k int) []u
 }
 
 // CoinFlipSpec describes a call-and-win/loss flip. Wins is carried through a
-// chain for the client and bot stop hint; Then may queue the next link.
+// chain for the client and bot stop hint; ThenKey may queue the next link.
 type CoinFlipSpec struct {
 	Flipper       uuid.UUID
 	Source        uuid.UUID
@@ -129,14 +129,12 @@ type CoinFlipSpec struct {
 	AllowStop     bool
 	MaxUsefulWins int
 	Wins          int
-	Then          func(*Game, CoinFlipResult) error
 
-	// ThenKey is Then as a registered continuation (RegisterCoinFlipThen,
-	// #4253 slice 10b), and Carry, Nums, Words and Asked the plain data it
-	// is handed (CoinFlipped): a call queued with a key, or with no
-	// continuation at all, holds no closure, so a table waiting on it is a
-	// restore point. Set ThenKey or Then, not both; with Then set the key
-	// and its data are ignored.
+	// ThenKey is the rest of the card as a registered continuation
+	// (RegisterCoinFlipThen, #4253 slice 10b), and Carry, Nums, Words and
+	// Asked the plain data it is handed (CoinFlipped). A call holds no
+	// closure, so a table waiting on it is a restore point. Zero is a flip
+	// with nothing hanging off it. The closure form is gone (#4361).
 	ThenKey CoinFlipThen
 	Carry   []uuid.UUID
 	Nums    []int
@@ -151,8 +149,6 @@ type CoinFlipResult struct {
 	Stopped bool
 }
 
-type coinFlipFrame struct{ spec CoinFlipSpec }
-
 // FlipCoinForEffect queues a coin-call choice. The result is intentionally
 // drawn only when answered, and as won/lost rather than as a face: changing a
 // call after undo changes the face but cannot turn a loss into a win.
@@ -166,13 +162,9 @@ func (g *Game) FlipCoinForEffect(spec CoinFlipSpec) uuid.UUID {
 		Source: spec.Source, Reason: spec.Question, CoinAllowStop: spec.AllowStop,
 		CoinCount: spec.Coins, CoinMaxUsefulWins: spec.MaxUsefulWins, CoinWins: spec.Wins,
 	}
-	if spec.Then != nil {
-		c.coinFlipResume = &coinFlipFrame{spec: spec}
-	} else {
-		// #4253 slice 10b: a keyed call, or one with nothing hanging off
-		// it, is data (coin_flip_keyed.go).
-		spec.keyedCoinFlip(&c)
-	}
+	// #4253 slice 10b: a keyed call, or one with nothing hanging off it, is
+	// data (coin_flip_keyed.go).
+	spec.keyedCoinFlip(&c)
 	return g.QueueChoiceForEffect(c)
 }
 
@@ -205,15 +197,14 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 	if !ok {
 		return nil
 	}
-	frame := &coinFlipFrame{spec: spec}
 	result := CoinFlipResult{Call: call, Stopped: call == "stop"}
 	if result.Stopped {
 		result.Call = ""
 	}
 	if !result.Stopped {
-		r := g.randForLocked(rngStream{kind: rngStreamFlip, player: frame.spec.Flipper, source: frame.spec.Source})
-		result.Faces = make([]bool, frame.spec.Coins)
-		result.Won = make([]bool, frame.spec.Coins)
+		r := g.randForLocked(rngStream{kind: rngStreamFlip, player: spec.Flipper, source: spec.Source})
+		result.Faces = make([]bool, spec.Coins)
+		result.Won = make([]bool, spec.Coins)
 		batch := g.eventSeq + 1
 		for i := range result.Faces {
 			won := r.IntN(2) == 0
@@ -224,18 +215,11 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 			if head {
 				label = "heads"
 			}
-			g.EmitEvent(Event{Kind: EventFlipCoin, Actor: frame.spec.Flipper, Source: frame.spec.Source, Label: label, Call: call, Won: won, BatchSeq: batch})
+			g.EmitEvent(Event{Kind: EventFlipCoin, Actor: spec.Flipper, Source: spec.Source, Label: label, Call: call, Won: won, BatchSeq: batch})
 		}
 	}
-	var err error
-	switch {
-	case frame.spec.Then != nil:
-		err = frame.spec.Then(g, result)
-	case frame.spec.ThenKey.key != "":
-		err = g.runCoinFlipThen(frame.spec, result)
-	}
-	if err != nil {
-		g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: frame.spec.Source, ErrorMsg: err.Error()})
+	if err := g.runCoinFlipThen(spec, result); err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: spec.Source, ErrorMsg: err.Error()})
 	}
 	g.runStateChecksLocked()
 	return nil

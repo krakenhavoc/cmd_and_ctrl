@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The sacrifice is part of the EFFECT, not a cost (#2863, ADR 0013
 // amendment of 2026-10-09). It is a one-seat sacrifice run
-// (PlayerSacrificesThenForEffect, ADR 0013 §5x): the caster picks a
+// (PlayerSacrificesThenKeyedForEffect, ADR 0013 §5x): the caster picks a
 // creature as the spell resolves, and "if you do" is the run's answer
 // for the caster, read once the creature has really left the
 // battlefield. So the spell can be cast with no creature at all (it

@@ -65,11 +65,10 @@ func (g *Game) QueueCreatureTypeChoiceForEffect(chooser, source uuid.UUID, reaso
 	})
 }
 
-// A resolution-time creature-type prompt carries its continuation in
-// the same chooseValueFrame a resolution-time colour prompt does
-// (color_choice.go): both are "a string answer, then the rest of the
-// card", and one frame keeps the ContinuationCensus and the closure
-// ratchet at one line per route rather than one more per prompt kind.
+// A resolution-time creature-type prompt answers through the same
+// chooseValueFrame a resolution-time colour prompt does (color_choice.go):
+// both are "a string answer, then the rest of the card", the frame built
+// from the prompt's keyed tail (value_then_keyed.go).
 
 // CreatureTypePrompt is the queue-side description of a
 // resolution-time "choose a creature type" (Distant Melody, Kindred
@@ -124,11 +123,8 @@ func (g *Game) QueueCreatureTypeChoiceThenForEffect(p CreatureTypePrompt) uuid.U
 		Reason:        p.Question,
 		ExcludedTypes: canonicalCreatureTypes(p.Except),
 	}
-	if !p.ThenTail.IsZero() {
-		g.keyValueThenLocked(&c, p.ThenTail)
-	} else {
-		c.chooseValueResume = &chooseValueFrame{}
-	}
+	// #4361: keyed even when nothing follows, so the prompt is data.
+	g.keyValueThenOrNothingLocked(&c, p.ThenTail)
 	return g.QueueChoiceForEffect(c)
 }
 

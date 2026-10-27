@@ -335,7 +335,7 @@ func (p RevealPick) Apply(ctx *Context) error {
 		ThenKey:  p.Keyed.then,
 		Asked:    game.NewAskedItem(ctx.Item),
 		Nums:     p.Nums,
-	}, nil)
+	})
 	if err != nil || queued > 0 {
 		return err
 	}
