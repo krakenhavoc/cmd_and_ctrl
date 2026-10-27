@@ -86,6 +86,14 @@ func jsonChildren(t reflect.Type) []reflect.Type {
 }
 
 func buildDurationReach() {
+	durationReach = snapshotTypeReach(durationType)
+}
+
+// snapshotTypeReach is the set of types reachable from GameSnapshot
+// whose JSON can hold a value of type target, target included: a fixed
+// point over every type reachable from GameSnapshot, so a recursive type
+// is answered correctly whichever way round the cycle is entered.
+func snapshotTypeReach(target reflect.Type) map[reflect.Type]bool {
 	children := map[reflect.Type][]reflect.Type{}
 	queue := []reflect.Type{reflect.TypeOf(GameSnapshot{})}
 	for len(queue) > 0 {
@@ -97,7 +105,7 @@ func buildDurationReach() {
 		children[t] = jsonChildren(t)
 		queue = append(queue, children[t]...)
 	}
-	reach := map[reflect.Type]bool{durationType: true}
+	reach := map[reflect.Type]bool{target: true}
 	for changed := true; changed; {
 		changed = false
 		for t, kids := range children {
@@ -112,7 +120,7 @@ func buildDurationReach() {
 			}
 		}
 	}
-	durationReach = reach
+	return reach
 }
 
 // customJSON reports whether t writes its own JSON, which reflection
@@ -236,13 +244,21 @@ func unknownDurationFields(data []byte) ([]string, error) {
 // the decoded keys of every Duration object it meets. Only the branches
 // that can hold a Duration are decoded.
 func walkRawDurations(raw json.RawMessage, t reflect.Type, where string, visit func(string, map[string]json.RawMessage)) error {
+	return walkRawTo(raw, t, where, durationType, reachesDuration, visit)
+}
+
+// walkRawTo follows type t through raw JSON, calling visit with the
+// decoded keys of every object of type target it meets (it does not
+// descend into one). Only the branches reaches says can hold a target
+// are decoded.
+func walkRawTo(raw json.RawMessage, t reflect.Type, where string, target reflect.Type, reaches func(reflect.Type) bool, visit func(string, map[string]json.RawMessage)) error {
 	for t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	if len(raw) == 0 || string(raw) == "null" || !reachesDuration(t) {
+	if len(raw) == 0 || string(raw) == "null" || !reaches(t) {
 		return nil
 	}
-	if t == durationType {
+	if t == target {
 		var obj map[string]json.RawMessage
 		if err := json.Unmarshal(raw, &obj); err != nil {
 			return err
@@ -257,7 +273,7 @@ func walkRawDurations(raw json.RawMessage, t reflect.Type, where string, visit f
 			return err
 		}
 		for _, it := range items {
-			if err := walkRawDurations(it, t.Elem(), where+"[]", visit); err != nil {
+			if err := walkRawTo(it, t.Elem(), where+"[]", target, reaches, visit); err != nil {
 				return err
 			}
 		}
@@ -267,7 +283,7 @@ func walkRawDurations(raw json.RawMessage, t reflect.Type, where string, visit f
 			return err
 		}
 		for _, it := range items {
-			if err := walkRawDurations(it, t.Elem(), where+"{}", visit); err != nil {
+			if err := walkRawTo(it, t.Elem(), where+"{}", target, reaches, visit); err != nil {
 				return err
 			}
 		}
@@ -281,7 +297,7 @@ func walkRawDurations(raw json.RawMessage, t reflect.Type, where string, visit f
 			if where != "" {
 				child = where + "." + f.name
 			}
-			if err := walkRawDurations(obj[f.name], f.typ, child, visit); err != nil {
+			if err := walkRawTo(obj[f.name], f.typ, child, target, reaches, visit); err != nil {
 				return err
 			}
 		}
