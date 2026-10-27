@@ -3336,7 +3336,6 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
 		"copyResume":       c.copyResume != nil,
 		"triggerResume":    c.triggerResume != nil && tf == nil,
-		"payUnlessResume":  c.payUnlessResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,

@@ -29,8 +29,8 @@ func queueEnergyPayment(t *testing.T, g *Game, p EnergyPayment) uuid.UUID {
 }
 
 // "You may pay {E}{E}. If you do": paid, the counters come off the payer
-// with one negative player_counter_placed naming the source, and OnPay
-// runs once.
+// with one negative player_counter_placed naming the source, and the pay
+// branch runs once.
 func TestEnergyPaymentPaysAndRunsOnPay(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -39,8 +39,9 @@ func TestEnergyPaymentPaysAndRunsOnPay(t *testing.T) {
 	paid, declined := 0, 0
 	id := queueEnergyPayment(t, g, EnergyPayment{
 		Chooser: me.ID, Source: source, N: 2, Question: "pay {E}{E}?",
-		OnPay:     func(*Game) error { paid++; return nil },
-		OnDecline: func(*Game) error { declined++; return nil },
+		Then: testPayUnlessHook, Carry: payUnlessHookCarry(
+			func(*Game) error { paid++; return nil },
+			func(*Game) error { declined++; return nil }),
 	})
 	c := g.PendingChoices[0]
 	if a := c.PayAction(); a == nil || a.Kind != PayActionEnergy || a.Count != 2 {
@@ -79,8 +80,9 @@ func TestEnergyPaymentShortYesIsTheDecline(t *testing.T) {
 	paid, declined := 0, 0
 	id := queueEnergyPayment(t, g, EnergyPayment{
 		Chooser: me.ID, Source: uuid.New(), N: 2,
-		OnPay:     func(*Game) error { paid++; return nil },
-		OnDecline: func(*Game) error { declined++; return nil },
+		Then: testPayUnlessHook, Carry: payUnlessHookCarry(
+			func(*Game) error { paid++; return nil },
+			func(*Game) error { declined++; return nil }),
 	})
 	if err := g.ResolvePayUnless(id, me.ID, true); err != nil {
 		t.Fatalf("resolve: %v", err)

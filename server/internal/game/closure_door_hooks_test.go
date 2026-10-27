@@ -313,3 +313,45 @@ func playerSacrificesHooked(g *Game, source, player uuid.UUID, spec *TargetSpec,
 	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Sacrifices()) })
 	return g.PlayerSacrificesThenKeyedForEffect(source, player, spec, reason, count, testRunHookThen, data.Carry)
 }
+
+var (
+	// testPayUnlessHooks are the pay-unless branches the tests registered,
+	// by the ID the prompt carries first: pay, then decline (#4361).
+	testPayUnlessHooks = map[uuid.UUID][2]func(g *Game) error{}
+
+	// testPayUnlessHook runs the branch its prompt's first carried ID
+	// names: the stand-in for the pay-unless closures #4361 deleted
+	// (QueuePayUnlessForEffect's decline, OnDecline, OnPay, OnPaid).
+	testPayUnlessHook = RegisterPayUnlessBranches("test/4361-hook-payunless",
+		func(g *Game, r PayUnlessAnswer) error { return runPayUnlessHook(g, r, 0) },
+		func(g *Game, r PayUnlessAnswer) error { return runPayUnlessHook(g, r, 1) })
+)
+
+func runPayUnlessHook(g *Game, r PayUnlessAnswer, branch int) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	testHookMu.Lock()
+	fn := testPayUnlessHooks[r.Carry[0]][branch]
+	testHookMu.Unlock()
+	if fn == nil {
+		return nil
+	}
+	return fn(g)
+}
+
+// payUnlessHookCarry files onPay and onDecline (either may be nil) for a
+// prompt keyed testPayUnlessHook, and returns the Carry that names them.
+func payUnlessHookCarry(onPay, onDecline func(g *Game) error) []uuid.UUID {
+	id := uuid.New()
+	testHookMu.Lock()
+	testPayUnlessHooks[id] = [2]func(g *Game) error{onPay, onDecline}
+	testHookMu.Unlock()
+	return []uuid.UUID{id}
+}
+
+// queuePayUnlessHooked is "unless that player pays <cost>" whose decline
+// is onDecline.
+func queuePayUnlessHooked(g *Game, chooser, source uuid.UUID, cost, question string, onDecline func(g *Game) error) error {
+	return g.QueuePayUnlessKeyedForEffect(chooser, source, cost, question, testPayUnlessHook, payUnlessHookCarry(nil, onDecline))
+}

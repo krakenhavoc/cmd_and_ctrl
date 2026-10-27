@@ -191,7 +191,7 @@ func TestAnyColorSpendPayUnlessIsOfferedUnderTheGrant(t *testing.T) {
 		payer.ManaPool.AddMana(game.ManaToken{Color: "R"})
 		g.WithWriteLock(func() {
 			if err := g.QueuePayUnlessForEffect(payer.ID, uuid.New(), "{U}",
-				"Pay {U}?", func(*game.Game) error { return nil }); err != nil {
+				"Pay {U}?"); err != nil {
 				t.Fatalf("QueuePayUnlessForEffect: %v", err)
 			}
 		})

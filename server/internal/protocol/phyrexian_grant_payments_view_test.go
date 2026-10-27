@@ -48,8 +48,7 @@ func TestManaAbilityViewCountsTheGrant(t *testing.T) {
 func queuePayUnlessView(t *testing.T, g *game.Game, payer uuid.UUID, cost string) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(payer, uuid.New(), cost, "Pay "+cost+"?",
-			func(*game.Game) error { return nil }); err != nil {
+		if err := g.QueuePayUnlessForEffect(payer, uuid.New(), cost, "Pay "+cost+"?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

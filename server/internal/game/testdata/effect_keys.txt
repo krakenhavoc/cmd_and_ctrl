@@ -1725,3 +1725,4 @@ tail engine/paradigm-exiled
 tail engine/rebound-exiled
 tail engine/revealed-pick-then
 option option-pick/trigger-opponent-chooser
+payunless pay-unless/nothing

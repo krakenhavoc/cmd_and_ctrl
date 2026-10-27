@@ -1248,7 +1248,6 @@ var pendingChoiceFields = plan(
 	"pickTargetResume", dropped, "continuation frame: written as data with its ability as a catalog row ref and the walk's answers and fixed amounts (#4361 S14b, pendingChoices[].targetWalk, trigger_frame_keyed.go); a trigger with no catalog row, or whose TargetsFrom reads the board, is counted in ContinuationCensus.ChoiceResumeFrames",
 	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"triggerResume", dropped, "continuation frame: written as data with its ability as a catalog row ref (#4361 S14a, pendingChoices[].triggerFrame, trigger_frame_keyed.go); a trigger with no catalog row is counted in ContinuationCensus.ChoiceResumeFrames",
-	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"searchResume", carried, "#4253 slice 5: a library search's frame, as SearchPrompt (its marker rides PickThen); data only since #4361 S4, so never counted",
 	"pickTail", carried, "#4253 slice 8: a keyed choose_cards pick's tail, as PickTail",
 	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",

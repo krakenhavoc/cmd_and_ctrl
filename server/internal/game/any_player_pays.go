@@ -13,7 +13,7 @@ import "github.com/google/uuid"
 // first is asked; a decline asks the next; the first payer ends the
 // offer and nobody after them is asked; when everyone has declined the
 // effect happens. Each link is a PendingChoicePayUnless built by
-// queuePayUnlessLocked, so its validator, its payment, the enumerator's
+// QueuePayUnlessPromptKeyedForEffect, so its validator, its payment, the enumerator's
 // moves, the dock's prompt and the departure table's decline all answer
 // it unchanged.
 //

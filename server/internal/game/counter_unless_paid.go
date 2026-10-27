@@ -81,42 +81,26 @@ type CounterUnlessPaidPrompt struct {
 	// warded permanent, or the counterspell doing the asking.
 	Source uuid.UUID
 
-	// OnDecline is the consequence of a decline (or an unaffordable
-	// "pay"). Nil is the printed "counter that spell", which is every
-	// counter-unless-pays card. A non-nil effect makes this the
-	// GUARDED PAY-UNLESS (#2365): the same halt, the same live
-	// re-check, a different "or else" — Divert's "change the target
-	// of target spell … unless that spell's controller pays {2}".
-	//
-	// It runs only while StackItem is still on the stack, for the
-	// reason the counter does: an object that has left has nothing
-	// left for the "unless" to protect. It receives the *Game the
-	// answer arrives at, which after an undo is not the one that
-	// asked, so it must capture no game state.
-	OnDecline func(g *Game) error
-
-	// OnPaid is the consequence of a payment that was actually made
-	// (#3591): Assimilate Essence's "If they do, you incubate 2". Nil is
-	// every other counter-unless-pays card, where paying just lets the
-	// object resolve.
-	//
-	// It is the paid half of the same answer OnDecline is the unpaid
-	// half of, so exactly one of the two runs, and it runs under the
-	// same stack guard: answerPayUnlessLocked drops BOTH branches when
-	// the guarded object has left the stack, because the "unless" then
-	// bought off nothing and there is nothing to be paid for. A "Pay"
-	// the chooser cannot fund is a decline, not a payment, so it never
-	// reaches here. Like OnDecline it receives the *Game the answer
-	// arrives at and must capture no game state.
-	OnPaid func(g *Game) error
-
-	// Then is OnDecline and OnPaid as REGISTERED branches
+	// Then is the consequence of each answer as REGISTERED branches
 	// (RegisterPayUnlessBranches, #4264), and Carry the plain data they
-	// are handed (the guarded object rides PayUnlessAnswer.Guards): a
-	// prompt queued with one holds no closure, so a table waiting on it
-	// is a restore point. With it OnDecline and OnPaid must be nil. A
-	// prompt with none of the three, the printed "counter that spell", is
-	// keyed by the engine itself (counterGuardedDecline).
+	// are handed (the guarded object rides PayUnlessAnswer.Guards). The
+	// prompt holds no closure, so a table waiting on it is a restore
+	// point.
+	//
+	// No Then is the printed "counter that spell", which is every
+	// counter-unless-pays card, keyed by the engine itself
+	// (counterGuardedDecline). A decline branch makes this the GUARDED
+	// PAY-UNLESS (#2365): the same halt, the same live re-check, a
+	// different "or else" — Divert's "change the target of target spell
+	// … unless that spell's controller pays {2}". A pay branch is the
+	// consequence of a payment that was actually made (#3591):
+	// Assimilate Essence's "If they do, you incubate 2".
+	//
+	// Exactly one branch runs, and only while StackItem is still on the
+	// stack: answerPayUnlessLocked drops BOTH when the guarded object has
+	// left, because the "unless" then bought off nothing. A "Pay" the
+	// chooser cannot fund is a decline, not a payment. (#4361 deleted the
+	// OnDecline and OnPaid closures these replaced.)
 	Then  PayUnlessElse
 	Carry []uuid.UUID
 
@@ -140,7 +124,9 @@ type CounterUnlessPaidPrompt struct {
 	// 701.67a) — "Ward—Waterbend {4}" (#1311): the chooser may tap
 	// untapped artifacts and creatures they control, each paying {1}
 	// of Cost's generic mana. Nil is an ordinary mana payment. Build
-	// it with effects.Waterbend(Cost), so Extra repeats Cost.
+	// it with effects.Waterbend(Cost), so Extra repeats Cost. Its Key
+	// must be registered (RegisterTapCost): the prompt carries the
+	// clause as data (PayTap), and an unregistered kind is refused.
 	//
 	// Without it a waterbend ward would be charged as plain mana,
 	// which is HARDER to pay than printed — the card stronger than
@@ -161,7 +147,7 @@ type CounterUnlessPaidPrompt struct {
 //
 // A decline — or a "pay" the chooser cannot fund — counters the
 // object if it is still there, and does nothing if it is not. With
-// p.OnDecline set it runs that instead, under the same guard.
+// p.Then set it runs that key's branches instead, under the same guard.
 //
 // Caller must hold g.mu. Added in #951.
 func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error {
@@ -176,41 +162,24 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	if chooser == uuid.Nil {
 		chooser = guarded.Controller
 	}
-	stackID := p.StackItem
 	// #4264: the registered branches, or the engine's own for the plain
-	// "counter that spell", leave the prompt without a closure. A
-	// waterbend payment keeps its frame.
+	// "counter that spell", leave the prompt without a closure.
 	then, carry := p.Then, p.Carry
-	if then.key != "" && (p.OnDecline != nil || p.OnPaid != nil) {
-		return fmt.Errorf("%w: keyed counter-unless-pays %q also sets a closure", ErrInvalidParam, then.key)
-	}
-	// A waterbend clause stays a closure unless its kind is registered
-	// (RegisterTapCost), which is what lets a prompt carry it as data.
-	tap := payTapSpecOf(p.Waterbend)
-	keyable := p.Waterbend == nil || tap != nil
-	if then.key == "" && p.OnDecline == nil && p.OnPaid == nil && keyable {
+	if then.key == "" {
 		then, carry = counterGuardedDecline, nil
 	}
-	if then.key != "" && keyable {
-		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
-			Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
-			Then: then, Carry: carry, Guards: stackID, LifeCost: p.LifeCost, Asked: p.Asked,
-			Tap: tap,
-		})
+	// The waterbend clause rides the prompt as data, rebuilt by its
+	// registered builder (RegisterTapCost). #4361: there is no frame left
+	// to hold a clause of a kind this binary cannot rebuild.
+	tap := payTapSpecOf(p.Waterbend)
+	if p.Waterbend != nil && tap == nil {
+		return fmt.Errorf("%w: counter-unless-pays tap clause %q is not registered", ErrInvalidParam, p.Waterbend.Key)
 	}
-	decline := func(g *Game) error { return g.counterIfStillOnStackLocked(stackID) }
-	if p.OnDecline != nil {
-		custom := p.OnDecline
-		decline = func(g *Game) error {
-			if g.StackItemForEffect(stackID) == nil {
-				return nil
-			}
-			return custom(g)
-		}
-	}
-	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
-		decline,
-		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost, onPay: p.OnPaid})
+	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+		Chooser: chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
+		Then: then, Carry: carry, Guards: p.StackItem, LifeCost: p.LifeCost, Asked: p.Asked,
+		Tap: tap,
+	})
 }
 
 // counterGuardedDecline is the printed "counter that spell", as the

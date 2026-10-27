@@ -7608,7 +7608,10 @@ Undeath's milled cards) or, for a permanent with its epoch,
 `MayPay.CarryObjects` (`r.Objects`: Dance of the Dead's creature). The key is an
 on-disk identity, ledgered as `payunless <key>`. There is no closure form
 any more (#4253's cleanup retired `OnDecline`, `OnPay` and `OnPaid`); a
-`PayUnless` with no `Else` is a decline that does nothing.
+`PayUnless` with no `Else` is a decline that does nothing, keyed by the engine
+as `pay-unless/nothing` (#4361), so a table waiting on it is a restore point too.
+The engine's own pay-unless doors (`CounterUnlessPaidPrompt`,
+`UpkeepPayUnlessPrompt`, `EnergyPayment`) take only `Then` since #4361.
 A keyed pay-unless carries the cause it was queued under (the asking spell or
 ability's controller and ID, `PendingChoice.PayCauseController` and
 `PayCauseItem`, #4279), so a decline that discards or sacrifices and is answered

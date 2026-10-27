@@ -143,7 +143,7 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 64,
+	"census:ChoiceResumeFrames": 59,
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and
@@ -190,6 +190,11 @@ var closureClassCeilings = map[string]int{
 	// 92 (2026-10-27, #4361 S4): - PendingChoice.searchResume,
 	// searchResumeFrame.spec and SearchLibrarySpec.Pred/Then/Validate (the
 	// search frame holds only data; the outside pick is always keyed).
+	// 108 (2026-10-27, #4361 S3): - PendingChoice.payUnlessResume and
+	// payUnlessFrame.{onDecline,onPay,tap}, gone with the closure doors
+	// (every pay-unless is keyed; payUnlessFrameOf builds the frame from
+	// the prompt's data); TapPermanentsCost.Spec moved to
+	// census:IntrinsicAbilityCards (P11, its AbilityCost.Waterbend route).
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
@@ -232,8 +237,12 @@ var closureClassCeilings = map[string]int{
 	// 57 (2026-10-27, #4361 S14b, owner decision D1, the same approved
 	// raise): + pickTargetFrame.source, a written target walk's source,
 	// through snapshotCard like the two above.
-	"census:IntrinsicAbilityCards": 57,
-	"transient":                    1,
+	"census:IntrinsicAbilityCards": 58,
+	// 55 (2026-10-27, #4361 S3, ADR 0041 P11, owner decision D2 approved
+	// by Ian): + TapPermanentsCost.Spec, moved from
+	// census:ChoiceResumeFrames when payUnlessFrame.tap went; its other
+	// route is AbilityCost.Waterbend. Not a new route.
+	"transient": 1,
 }
 
 // isCeilingedClass reports whether a class is one closureClassCeilings

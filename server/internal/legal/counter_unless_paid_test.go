@@ -96,7 +96,7 @@ func TestARhysticTaxStillLeavesTheOtherSeatsPlaying(t *testing.T) {
 	active, payer := g.Seats[0], g.Seats[1]
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(payer.ID, uuid.New(), "{1}",
-			"Rhystic Study — pay {1}?", func(*game.Game) error { return nil }); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})
@@ -126,7 +126,7 @@ func TestAGuardedPayUnlessWithACustomDeclineStopsTheTableAndIsAnswerable(t *test
 		}
 		if err := g.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 			StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
-			OnDecline: func(*game.Game) error { return nil },
+			Then: testNoopDecline,
 		}); err != nil {
 			t.Fatalf("QueueCounterUnlessPaidForEffect: %v", err)
 		}

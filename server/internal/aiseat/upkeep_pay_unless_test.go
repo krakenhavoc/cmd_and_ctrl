@@ -36,10 +36,11 @@ func upkeepTaxAgainstTheBot(t *testing.T, g *game.Game, bot *game.Player, declin
 			Source:   uuid.New(),
 			Cost:     "{U}",
 			Question: "Stasis — pay {U} or sacrifice Stasis?",
-			OnDecline: func(*game.Game) error {
+			Then:     testPayUnlessHook,
+			Carry: payUnlessHookCarry(func(*game.Game) error {
 				*declined++
 				return nil
-			},
+			}),
 		}); err != nil {
 			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}

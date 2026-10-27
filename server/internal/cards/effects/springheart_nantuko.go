@@ -20,7 +20,7 @@ import (
 //
 // The landfall trigger asks its question as it resolves. If the
 // Nantuko is attached to a creature you control then, the offer is a
-// may-pay with a consequence on both answers (QueueMayPayElseForEffect):
+// may-pay with a consequence on both answers (QueueMayPayElseKeyedForEffect):
 // paying creates a token copy of that creature (CreateTokenCopy, its
 // copiable values, CR 707.2); declining, or a "yes" that can't be
 // funded, creates the Insect. Unattached, or attached to a creature you

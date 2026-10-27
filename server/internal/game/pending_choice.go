@@ -907,26 +907,18 @@ type PendingChoice struct {
 	// stays on the effect's EntryLifeCost.
 	PayCost string
 
-	// payUnlessResume is the server-only continuation for a
-	// PendingChoicePayUnless entry: the parsed cost plus the
-	// "unless" consequence to run when the chooser declines or
-	// can't pay. Not serialised. Added in S19 sub-PR 6.
-	payUnlessResume *payUnlessFrame
-
-	// PayActionClause is a KEYED pay-unless's non-mana payment (#4264):
+	// PayActionClause is a pay-unless's non-mana payment (#4264):
 	// "discard a card", "sacrifice two lands", "tap an untapped
-	// creature". Plain data, written to a restore point, so a keyed
-	// prompt carries the payment without a frame (payUnlessFrameOf reads
-	// it back). Nil on every mana prompt and on a framed one, whose
-	// payment rides payUnlessFrame.action.
+	// creature". Plain data, written to a restore point, so the prompt
+	// carries the payment without a frame (payUnlessFrameOf reads it
+	// back). Nil on every mana prompt.
 	PayActionClause *PayAction
 
-	// PayTap is a KEYED pay-unless's waterbend clause (#4264): the kind of
-	// tap clause and the part of the cost its taps may cover, which
+	// PayTap is a pay-unless's waterbend clause (#4264): the kind of tap
+	// clause and the part of the cost its taps may cover, which
 	// RegisterTapCost's builder turns back into the clause
 	// (payUnlessFrameOf, PayTapCost). Plain data. Nil on every plain
-	// payment and on a framed prompt, whose clause rides
-	// payUnlessFrame.tap.
+	// payment.
 	PayTap *PayTapSpec
 
 	// OptionObjects are the objects, with the epoch each had, that a KEYED
@@ -1308,6 +1300,11 @@ type PendingChoice struct {
 // (not a captured one) for the same undo-safety reason
 // StackItem.Effect does. Added in S19 sub-PR 6.
 //
+// No prompt holds one (#4361): payUnlessFrameOf builds it from the
+// prompt's data each time the prompt is read, its branches looked up by
+// the prompt's key, so a table waiting on any pay-unless is a restore
+// point.
+//
 // The two callbacks are the two shapes the same prompt serves:
 //
 //   - onDecline is CR 118.12 "unless that player pays {N}" — Rhystic
@@ -1352,11 +1349,8 @@ func (c *PendingChoice) PayTapCost() *TapPermanentsCost {
 	if c == nil {
 		return nil
 	}
-	if c.payUnlessResume == nil {
-		// A keyed prompt rebuilds its clause from PayTap (#4264).
-		return tapCostOf(c.PayTap)
-	}
-	return c.payUnlessResume.tap
+	// The prompt rebuilds its clause from PayTap (#4264).
+	return tapCostOf(c.PayTap)
 }
 
 // pickTargetFrame is the continuation for a targeted trigger's
@@ -4259,141 +4253,24 @@ func (g *Game) answerTriggerPromptLocked(idx int, choice *PendingChoice, apply, 
 	g.runStateChecksLocked()
 }
 
-// QueuePayUnlessForEffect queues an "unless that player pays
-// <cost>" prompt for `chooser`. Called from a triggered ability's
-// Effect at resolution (Rhystic Study: "you may draw a card unless
-// that player pays {1}") — the ability has resolved, and what's
-// left is the payer's decision. `question` is the dialog header;
-// `source` attributes the prompt to the card for the client.
-// onDecline runs when the chooser answers "no" OR answers "yes"
-// but cannot produce the mana (pool + auto-tap).
+// QueuePayUnlessForEffect queues an "unless that player pays <cost>"
+// prompt for `chooser` with nothing hanging off either answer: the
+// PayUnless primitive with no Else. `question` is the dialog header;
+// `source` attributes the prompt to the card for the client. A card
+// with a consequence names it as registered branches instead
+// (QueuePayUnlessKeyedForEffect, QueuePayUnlessPromptKeyedForEffect).
 //
-// A chooser who is no longer seated / is eliminated can't be
-// asked; the consequence runs immediately (the "unless" clause
-// fails when there is nobody to pay). An unparseable cost is a
-// programming error surfaced as EventEffectError, and the
-// consequence runs so the card still does something.
+// The prompt carries no closure (#4361): its key is the engine's own
+// payUnlessNothing, so a table waiting on it is a restore point. A
+// chooser who is no longer seated is not asked, and an unparseable cost
+// is surfaced as EventEffectError.
 //
 // Caller must hold g.mu. Added in S19 sub-PR 6.
-func (g *Game) QueuePayUnlessForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onDecline func(g *Game) error,
-) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil, nil)
-}
-
-// payUnlessExtras are the parts of a pay-unless only some callers have:
-// a branch for the "yes" (echo's EventEchoPaid) and a non-mana payment.
-type payUnlessExtras struct {
-	onPay    func(g *Game) error
-	action   *PayAction
-	lifeCost int
-	// offer makes the prompt one link of an any-player offer (ADR
-	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
-	offer *AnyPlayerOffer
-	// acceptLabel / declineLabel name the two answers when the card's
-	// words are not "Pay" and "Don't pay" (ADR 0150 §5: "Take 5
-	// damage", "Let them have it"): PendingChoice.AcceptLabel and
-	// DeclineLabel.
-	acceptLabel, declineLabel string
-}
-
-// queuePayUnlessLocked is the one body behind every pay-unless.
-//
-// `owed` is the step the prompt has to be answered in, or the zero
-// TurnStep for one the table may walk past (#997,
-// upkeep_pay_unless.go); `guards` is the stack object whose fate the
-// decline decides, or uuid.Nil for the detached Rhystic shape (#951,
-// counter_unless_paid.go). They are separate because they are facts
-// about different parts of the board — the cursor and the stack. Only
-// an any-player offer about a spell sets both (ADR 0150 decision 2).
-// Both are read LIVE by the gate, so neither can hold the table after
-// the thing it is about has gone.
-func (g *Game) queuePayUnlessLocked(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onDecline func(g *Game) error,
-	owed TurnStep,
-	guards uuid.UUID,
-	tap *TapPermanentsCost,
-	extras ...payUnlessExtras,
-) error {
-	var extra payUnlessExtras
-	if len(extras) > 0 {
-		extra = extras[0]
-	}
-	var parsed ParsedCost
-	var err error
-	if extra.action == nil {
-		parsed, err = ParseCost(cost)
-	} else if extra.action.Kind == PayActionEither && !validEither(extra.action) {
-		// ADR 0187 §5: an either payment needs two or more branches,
-		// none of them an either. A programming error, surfaced once; the
-		// consequence still runs so the card does something.
-		err = ErrInvalidParam
-	}
-	if err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Source:   source,
-			ErrorMsg: "pay-unless: unparseable cost " + cost + ": " + err.Error(),
-		})
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:            PendingChoicePayUnless,
-		Chooser:         chooser,
-		Count:           1,
-		Source:          source,
-		Reason:          question,
-		PayCost:         cost,
-		LifeCost:        extra.lifeCost,
-		OwedInStep:      owed,
-		GuardsStackItem: guards,
-		AnyPlayerOffer:  extra.offer,
-		AcceptLabel:     extra.acceptLabel,
-		DeclineLabel:    extra.declineLabel,
-		payUnlessResume: &payUnlessFrame{
-			cost:      parsed,
-			onDecline: onDecline,
-			onPay:     extra.onPay,
-			tap:       tap,
-			action:    extra.action,
-		},
+func (g *Game) QueuePayUnlessForEffect(chooser, source uuid.UUID, cost, question string) error {
+	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+		Chooser: chooser, Source: source, Cost: cost, Question: question,
+		Then: payUnlessNothing,
 	})
-	return nil
-}
-
-// QueueMayPayElseForEffect is the may-pay (QueueMayPayKeyedForEffect) with a consequence on
-// BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
-// <onDecline>" — Springheart Nantuko's "if you didn't create a token
-// this way, create a 1/1 green Insect". It is the one pay-unless body
-// with the echo-style onPay beside the decline (payUnlessExtras), so
-// the dialog, the auto-tap and the "a yes you can't fund is a no" rule
-// are pay-unless's own.
-//
-// A chooser who is no longer seated is not asked and onDecline runs,
-// pay-unless's default: the answer that can no longer be given is the
-// payment.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayElseForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay, onDecline func(g *Game) error,
-) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline,
-		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
 }
 
 // MayCastPrompt is a may_cast's question with its words: the rule it is

@@ -121,7 +121,6 @@ PendingChoice.copyResume                     census:ChoiceResumeFrames          
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
 PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
-PendingChoice.payUnlessResume                census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume
 PendingChoice.pickTargetResume               keyed                              # Game.PendingChoices.pickTargetResume
 PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
 PendingChoice.triggerResume                  keyed                              # Game.PendingChoices.triggerResume
@@ -152,7 +151,7 @@ StackItem.Effect                             census:ChoiceResumeFrames          
 StackItem.modeSpec                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec
 StackItem.targetSpec                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec
 TapOthersCost.Filter                         census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers.Filter
-TapPermanentsCost.Spec                       census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap.Spec
+TapPermanentsCost.Spec                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.Waterbend.Spec
 TargetDifference.Key                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Different.Key
 TargetSpec.AbilityOK                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.AbilityOK
 TargetSpec.CardOK                            census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.CardOK
@@ -192,9 +191,6 @@ lastKnownSpell.item                          keyed                              
 modePickFrame.ability                        keyed                              # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:IntrinsicAbilityCards       # Game.PendingChoices.modePickResume.source
 modeWalk.item                                keyed                              # Game.pausedModeWalk.item
-payUnlessFrame.onDecline                     census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onDecline
-payUnlessFrame.onPay                         census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onPay
-payUnlessFrame.tap                           census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap
 pickTargetFrame.ability                      keyed                              # Game.PendingChoices.pickTargetResume.ability
 pickTargetFrame.modeSpec                     keyed                              # Game.PendingChoices.pickTargetResume.modeSpec
 pickTargetFrame.source                       census:IntrinsicAbilityCards       # Game.PendingChoices.pickTargetResume.source
