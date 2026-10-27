@@ -25,10 +25,13 @@ import (
 //     own continuation is either data already (a draw's drawTail and
 //     drawThen, a replaced draw's or learn's registered body, an expanded
 //     draw's pending siblings) or is engine code chosen by the event's
-//     kind (finishSettledReplacementLocked). A field that holds a Go
+//     kind (finishSettledReplacementLocked). A field that held a Go
 //     closure — a route's `then`, an entry batch, a token, life, counter,
-//     damage or mill tail — keeps the frame off the disk: such a frame is
-//     still counted by the census, exactly as before.
+//     damage or mill tail — kept the frame off the disk, counted by the
+//     census. #4361 deleted the last of them (S18 reclassified the
+//     frame's closure-ledger lines keyed and rebuilt): what still keeps
+//     a frame off the disk is an event kind this file does not key, a
+//     gate field, or a card or stack item the mirrors cannot write whole.
 //   - The pending replacement set: the IDs of the gathered effects, in
 //     gathered order. The effects themselves are rebuilt by the running
 //     binary, by gathering the restored event again and picking those
@@ -58,13 +61,14 @@ import (
 // ordering prompt between Hardened Scales and Doubling Season, or
 // between two life-gain replacements).
 //
-// Not keyed (the frame stays a closure, counted by the census): a
-// discard, a token creation, damage, a mill, a step transition, a
-// countered spell, and a keyword action, move, entry, counter placement
-// or life change whose tail holds a closure (a route's `then`, a
-// simultaneous exit or exchange, an entry batch or an entry tail's
-// `then`, a counter or life tail, a keyword action's `then` or amass's
-// Army), and the entry of a staged token.
+// Not keyed when this was written (the frame stayed a closure, counted
+// by the census): a discard, a token creation, damage, a mill, a step
+// transition, a countered spell, and a keyword action, move, entry,
+// counter placement or life change whose tail held a closure, and the
+// entry of a staged token. #4253 and #4361 keyed most of those, and no
+// tail holds a closure any more; replacementEventFields' gates (a step
+// transition, a countered spell, mana, an extra turn, dice, combat
+// damage) and replacementEventKeyable say what is still counted.
 //
 // # Prompt kinds
 //

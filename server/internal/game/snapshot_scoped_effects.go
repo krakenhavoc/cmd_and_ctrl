@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // snapshot_scoped_effects.go is the snapshot half of ADR 0041 phase 3's
@@ -547,7 +549,8 @@ func deepCopyScopedEffects(in []ScopedEffect) []ScopedEffect {
 // dropped. ADR 0041 P4.
 //
 // Covered: a scopedEffects record, its affected members and its mods
-// (tier 1) — its duration, like every other stored duration, is
+// (tier 1), and since #4361 S18 every other record the file stores (a
+// keyed tail's records, an extra turn's effects) — its duration, like every other stored duration, is
 // unknownDurationFields' (ADR 0109 Shared machinery 2); and — #1568 review — every EffectParams a
 // delayed trigger or a stack item carries (`params`, `condParams`),
 // down through its `filter`, its `object` and — tier 4 — its `ability`.
@@ -634,24 +637,48 @@ func unknownScopedEffectFields(data []byte, schema int) ([]string, error) {
 		}
 		return nested(where+" object", obj["object"], objectRefJSONKeys, false)
 	}
-	for _, rec := range envelope.ScopedEffects {
-		check("a scoped effect", rec, scopedEffectJSONKeys)
+	record := func(where string, rec map[string]json.RawMessage) error {
+		check(where, rec, scopedEffectJSONKeys)
 		if err := nested("an affected object", rec["affected"], affectedObjectJSONKeys, true); err != nil {
-			return nil, err
+			return err
 		}
 		if err := nested("a mod", rec["mods"], modJSONKeys, true); err != nil {
-			return nil, err
+			return err
 		}
 		// #2026: a shield's source filter is a mod's own vocabulary, so
 		// a key a newer binary added to it is refused here too, down to
 		// its queries and its pinned objects.
 		if err := sourceFilterFields(rec["mods"], nested); err != nil {
-			return nil, err
+			return err
 		}
 		// #2045: so is a shield's recipient filter, down to its queries.
-		if err := recipientFilterFields(rec["mods"], nested); err != nil {
+		return recipientFilterFields(rec["mods"], nested)
+	}
+	for _, rec := range envelope.ScopedEffects {
+		if err := record("a scoped effect", rec); err != nil {
 			return nil, err
 		}
+	}
+	// #4361 S18: a record stored anywhere else in the file is held to the
+	// same keys: a keyed tail's records, wherever a tail is written
+	// (KeyedTail.Records, #4361 S12), and an extra turn's rules effects
+	// (ExtraTurn.Effects, ADR 0188). The routes come from the snapshot
+	// types (reachesScopedEffect), so a field added later that stores
+	// records is covered the day it lands. The top-level list is checked
+	// above, by name.
+	var walkErr error
+	err := walkRawTo(data, reflect.TypeOf(GameSnapshot{}), "", scopedEffectType, reachesScopedEffect,
+		func(where string, rec map[string]json.RawMessage) {
+			if where == "scopedEffects[]" || walkErr != nil {
+				return
+			}
+			walkErr = record("a scoped effect at "+where, rec)
+		})
+	if err == nil {
+		err = walkErr
+	}
+	if err != nil {
+		return nil, err
 	}
 	for _, dt := range envelope.DelayedTriggers {
 		if err := params("a delayed trigger's params", dt["params"]); err != nil {
@@ -798,6 +825,63 @@ var (
 	// ADR 0108 PR 0: an owed follow-up's fields are checked too.
 	preventionFollowUpJSONKeys = jsonKeysOf(reflect.TypeOf(PreventionFollowUp{}))
 )
+
+var (
+	scopedEffectType = reflect.TypeOf(ScopedEffect{})
+
+	scopedEffectReachOnce sync.Once
+	scopedEffectReach     map[reflect.Type]bool
+)
+
+// reachesScopedEffect reports whether a value of type t can hold a
+// ScopedEffect record in the JSON encoding/json writes for it (#4361
+// S18), as reachesDuration does for a Duration.
+func reachesScopedEffect(t reflect.Type) bool {
+	scopedEffectReachOnce.Do(func() { scopedEffectReach = snapshotTypeReach(scopedEffectType) })
+	return scopedEffectReach[derefType(t)]
+}
+
+// scopedEffectRoutes lists every JSON path in a GameSnapshot at which a
+// ScopedEffect record is stored, for tests: array elements are "[]" and
+// map values "{}"; a recursive type is followed one level.
+func scopedEffectRoutes() []string {
+	set := map[string]bool{}
+	var walk func(t reflect.Type, path string, stack []reflect.Type)
+	walk = func(t reflect.Type, path string, stack []reflect.Type) {
+		t = derefType(t)
+		if t == scopedEffectType {
+			set[path] = true
+			return
+		}
+		if !reachesScopedEffect(t) {
+			return
+		}
+		switch t.Kind() {
+		case reflect.Slice, reflect.Array:
+			walk(t.Elem(), path+"[]", stack)
+		case reflect.Map:
+			walk(t.Elem(), path+"{}", stack)
+		case reflect.Struct:
+			if slices.Contains(stack, t) {
+				return
+			}
+			for _, f := range jsonFields(t) {
+				child := f.name
+				if path != "" {
+					child = path + "." + f.name
+				}
+				walk(f.typ, child, append(stack, t))
+			}
+		}
+	}
+	walk(reflect.TypeOf(GameSnapshot{}), "", nil)
+	out := make([]string, 0, len(set))
+	for p := range set {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
 
 // jsonKeysOf is the set of keys encoding/json writes for a struct's
 // exported fields: the tag name, or the field name when untagged.

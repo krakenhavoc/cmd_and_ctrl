@@ -136,3 +136,31 @@ func TestClosureClassCeilingsOnlyFall(t *testing.T) {
 		t.Errorf("a retired class keeps no ceiling: got %v", got)
 	}
 }
+
+// TestNoClosureFrameIsChargedToChoiceResumeFrames pins owner decision
+// D8 (#4361 S18): census:ChoiceResumeFrames has no lines and no ceiling
+// entry, so a new resume frame charged to it fails the ratchet the way
+// an unclassified one does, while the runtime counter of that name stays
+// for paused frames that hold only data but are not written.
+func TestNoClosureFrameIsChargedToChoiceResumeFrames(t *testing.T) {
+	const class = "census:ChoiceResumeFrames"
+	if n, ok := closureClassCeilings[class]; ok {
+		t.Errorf("closureClassCeilings[%q] = %d; the class is at zero lines and keeps no entry (owner decision D8)", class, n)
+	}
+	recorded := readClosureFields(t)
+	for p, c := range recorded {
+		if c == class {
+			t.Errorf("testdata/%s charges %s to %s; write the frame to the restore point instead", closureFieldsFile, p, class)
+		}
+	}
+	// A new frame charged to the class: over a ceiling of zero.
+	recorded["PendingChoice.zzNewResume"] = class
+	got := checkClosureClassCeilings(recorded, closureClassCeilings)
+	if len(got) != 1 || !strings.Contains(got[0], class) || !strings.Contains(got[0], "may only shrink") {
+		t.Errorf("a new %s line: got %v, want one over-ceiling problem", class, got)
+	}
+	// The runtime counter stays (D8).
+	if _, ok := reflect.TypeOf(ContinuationCensus{}).FieldByName("ChoiceResumeFrames"); !ok {
+		t.Error("ContinuationCensus.ChoiceResumeFrames is gone; owner decision D8 keeps the runtime counter")
+	}
+}

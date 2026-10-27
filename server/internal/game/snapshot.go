@@ -2209,7 +2209,12 @@ type ContinuationCensus struct {
 	// end step" instructions.
 	DelayedTriggerEffects int `json:"delayedTriggerEffects,omitempty"`
 
-	// ChoiceResumeFrames is paused prompts holding a continuation.
+	// ChoiceResumeFrames is paused prompts holding a continuation that
+	// is not written. Since #4361 no such continuation is a closure (the
+	// ratchet's census:ChoiceResumeFrames class has no lines); the
+	// counter stays for a pause that is data but not yet written (combat
+	// damage, a trigger with no catalog row, a CR 616 event of a gated
+	// kind), owner decision D8. See docs/snapshots.md.
 	ChoiceResumeFrames int `json:"choiceResumeFrames,omitempty"`
 
 	// ScopedStatics counted floating continuous effects held as

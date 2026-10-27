@@ -14,11 +14,11 @@
 #   test-only          a test injection slot production has no path to
 #
 # A line is one edge, <Type>.<Field>. Where Game reaches the SAME type
-# by several routes the edges into it differ (Game.BuiltinReplacements
-# is rebuilt, a paused prompt's replacementResume is a blocker), and the lines
-# for that type's own fields carry the most restrictive class of every
-# route in: ReplacementEffect.Replace is charged to the blocker until
-# the tier that retires it. The trailing comment is the shortest route.
+# by several routes the edges into it differ (Game.StackMeta is a
+# blocker, a paused target walk's pickTargetFrame.spec is keyed), and the
+# lines for that type's own fields carry the most restrictive class of
+# every route in: TargetSpec.CardOK is charged to the blocker until the
+# tier that retires it. The trailing comment is the shortest route.
 #
 # Tier PRs DELETE lines, and lower closureClassCeilings in
 # closure_fields_test.go to match: every census: and transient class is
@@ -41,12 +41,18 @@
 # counter an unkeyed stack item is folded into; and lastKnownSpell.item
 # to keyed (a countered spell's clauses come back by oracle ID).
 #
-# Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
-# counter that stays allowed after tier 4 — resume frames are out of
-# scope for this sprint.
+# Owner decision 4 (2026-09-24) kept census:ChoiceResumeFrames as the
+# one counter allowed after tier 4: resume frames were out of scope.
+# #4361 (2026-10-27) brought it to no lines. Every resume frame is now
+# written to the restore point and rebuilt on restore, so the class has
+# no closureClassCeilings entry, and a missing entry is a ceiling of
+# zero: a new frame charged to it fails (owner decision D8). The runtime
+# ContinuationCensus.ChoiceResumeFrames counter stays. It counts a
+# paused frame that holds only data but is not written: combat damage
+# held behind its prompts (#4362), a trigger with no catalog row (D5), a
+# TargetsFromReadsBoard row, a CR 616 event of a gated kind, a parked
+# cast already carrying an assist answer.
 #
-# Regenerate (keeps classifications, marks new routes unclassified):
-#   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 # 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S14b): the trigger target walk written by catalog row (pendingChoices[].targetWalk) and its "which opponent chooses" pick keyed; 15 lines keyed, optionPickFrame.thenSeat and PendingChoice.optionPickResume deleted, pickTargetFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
@@ -55,6 +61,10 @@
 # 2026-10-27 (#4361 S17): ChoiceResumeFrames 50 → 47, owner decision D4: the entry-choice frame is written as data (Game.frozenEntries, keyed: GameSnapshot.FrozenEntries, its effect by ReplacementEffectID) and the discard and sacrifice it waits on are keyed; zoneRoute.then, entryBatch.then and PendingChoice.libraryOrderResume deleted with their last writers.
 # 2026-10-27 (#4361 S12): a permanent-spell copy's control records ride its token tail as data (owner decision D6); tokenTail.then, ReplacementEvent.tokenTail and entryTail.then deleted with the closure token door.
 # 2026-10-27 (#4361 S15): the copy new-targets walk written as data (pendingChoices[].copyWalk); 4 lines keyed, copyFrame.src to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S18): ChoiceResumeFrames 39 → 0 and its ceiling entry deleted (owner decision D8). The CR 616 frame and the tails under it to keyed (10 lines: replacementFrameKeyable writes them, rebuildReplacementResumeLocked rebuilds them); the gathered effects to rebuilt (11 lines, gathered again by ReplacementEffectID) and the token templates to rebuilt (3 lines, D1); activeReplacement.source, zoneRoute.simultaneousExit and Game.enteringTokens to census:IntrinsicAbilityCards (D1), and the 12 stack-clause lines too (P11, D2: their other route is Game.StackMeta). census:IntrinsicAbilityCards 59 → 74, the raise Ian approved for #4361 only.
+#
+# Regenerate (keeps classifications, marks new routes unclassified):
+#   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -75,26 +85,26 @@ AttackSplit.settled                          rebuilt                            
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
 Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
-CopySelector.Candidates                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Candidates
-CopySelector.Except                          census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Except
+CopySelector.Candidates                      rebuilt                            # Game.BuiltinReplacements.CopySelector.Candidates
+CopySelector.Except                          rebuilt                            # Game.BuiltinReplacements.CopySelector.Except
 CostModifier.Amount                          census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.Amount
 CostModifier.AppliesTo                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.CostModifiers.AppliesTo
 CounterRemovalCost.From                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.RemoveCounters.From
 DiscardCost.Match                            census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.DiscardCards.Match
-EntryCardChoice.Matches                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryCardChoice.Matches
-EntryCardChoice.Then                         census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryCardChoice.Then
+EntryCardChoice.Matches                      rebuilt                            # Game.BuiltinReplacements.EntryCardChoice.Matches
+EntryCardChoice.Then                         rebuilt                            # Game.BuiltinReplacements.EntryCardChoice.Then
 ExileCost.Match                              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ExileCards.Match
 Game.Battlefield                             census:IntrinsicAbilityCards       # Game.Battlefield
 Game.BuiltinReplacements                     rebuilt                            # Game.BuiltinReplacements
 Game.Exile                                   census:IntrinsicAbilityCards       # Game.Exile
 Game.Listeners                               rebuilt                            # Game.Listeners
-Game.PendingChoices                          census:ChoiceResumeFrames          # Game.PendingChoices
+Game.PendingChoices                          keyed                              # Game.PendingChoices
 Game.PendingTriggers                         census:IntrinsicAbilityCards       # Game.PendingTriggers
 Game.PhasedOut                               census:IntrinsicAbilityCards       # Game.PhasedOut
 Game.Seats                                   census:IntrinsicAbilityCards       # Game.Seats
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:IntrinsicAbilityCards       # Game.StackMeta
-Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
+Game.enteringTokens                          census:IntrinsicAbilityCards       # Game.enteringTokens
 Game.frozenEntries                           keyed                              # Game.frozenEntries
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
@@ -117,14 +127,14 @@ ManaAbilityShape.RestrictionsFunc            census:IntrinsicAbilityCards       
 ManaAbilityShape.Rider                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.Rider
 ManaAbilityShape.SacrificeOther              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.SacrificeOther
 ManaAbilityShape.TapOthers                   census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers
-ModeOption.Effect                            census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Effect
-ModeOption.Targets                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Targets
-ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
+ModeOption.Effect                            census:IntrinsicAbilityCards       # Game.StackMeta.modeSpec.Options.Effect
+ModeOption.Targets                           census:IntrinsicAbilityCards       # Game.StackMeta.modeSpec.Options.Targets
+ModeSpec.Options                             census:IntrinsicAbilityCards       # Game.StackMeta.modeSpec.Options
 PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
 PendingChoice.copyResume                     keyed                              # Game.PendingChoices.copyResume
 PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
 PendingChoice.pickTargetResume               keyed                              # Game.PendingChoices.pickTargetResume
-PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
+PendingChoice.replacementResume              keyed                              # Game.PendingChoices.replacementResume
 PendingChoice.triggerResume                  keyed                              # Game.PendingChoices.triggerResume
 Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
@@ -136,29 +146,29 @@ Player.Junkyard                              census:IntrinsicAbilityCards       
 Player.Library                               census:IntrinsicAbilityCards       # Game.Seats.Library
 Player.Sideboard                             census:IntrinsicAbilityCards       # Game.Seats.Sideboard
 ProjectionCache.v                            rebuilt                            # Game.logProjection.v
-ReplacementEffect.AppliesTo                  census:ChoiceResumeFrames          # Game.BuiltinReplacements.AppliesTo
-ReplacementEffect.Controller                 census:ChoiceResumeFrames          # Game.BuiltinReplacements.Controller
-ReplacementEffect.CopySelector               census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector
-ReplacementEffect.EntryCardChoice            census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryCardChoice
-ReplacementEffect.Replace                    census:ChoiceResumeFrames          # Game.BuiltinReplacements.Replace
-ReplacementEvent.TokenGroups                 census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups
-ReplacementEvent.entryTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail
-ReplacementEvent.keywordAction               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction
-ReplacementEvent.stackItem                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.stackItem
-ReplacementEvent.zoneRoute                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute
+ReplacementEffect.AppliesTo                  rebuilt                            # Game.BuiltinReplacements.AppliesTo
+ReplacementEffect.Controller                 rebuilt                            # Game.BuiltinReplacements.Controller
+ReplacementEffect.CopySelector               rebuilt                            # Game.BuiltinReplacements.CopySelector
+ReplacementEffect.EntryCardChoice            rebuilt                            # Game.BuiltinReplacements.EntryCardChoice
+ReplacementEffect.Replace                    rebuilt                            # Game.BuiltinReplacements.Replace
+ReplacementEvent.TokenGroups                 rebuilt                            # Game.frozenEntries.ev.TokenGroups
+ReplacementEvent.entryTail                   keyed                              # Game.frozenEntries.ev.entryTail
+ReplacementEvent.keywordAction               keyed                              # Game.frozenEntries.ev.keywordAction
+ReplacementEvent.stackItem                   keyed                              # Game.frozenEntries.ev.stackItem
+ReplacementEvent.zoneRoute                   keyed                              # Game.frozenEntries.ev.zoneRoute
 ReturnToHandCost.Filter                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ReturnToHand.Filter
-StackItem.Effect                             census:ChoiceResumeFrames          # Game.StackMeta.Effect
-StackItem.modeSpec                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec
-StackItem.targetSpec                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec
+StackItem.Effect                             census:IntrinsicAbilityCards       # Game.StackMeta.Effect
+StackItem.modeSpec                           census:IntrinsicAbilityCards       # Game.StackMeta.modeSpec
+StackItem.targetSpec                         census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec
 TapOthersCost.Filter                         census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.TapOthers.Filter
 TapPermanentsCost.Spec                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.Waterbend.Spec
-TargetDifference.Key                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Different.Key
-TargetSpec.AbilityOK                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.AbilityOK
-TargetSpec.CardOK                            census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.CardOK
-TargetSpec.Different                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Different
-TargetSpec.PlayerOK                          census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.PlayerOK
-TargetSpec.Rest                              census:ChoiceResumeFrames          # Game.StackMeta.targetSpec.Rest
-TokenGroup.Template                          census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups.Template
+TargetDifference.Key                         census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.Different.Key
+TargetSpec.AbilityOK                         census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.AbilityOK
+TargetSpec.CardOK                            census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.CardOK
+TargetSpec.Different                         census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.Different
+TargetSpec.PlayerOK                          census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.PlayerOK
+TargetSpec.Rest                              census:IntrinsicAbilityCards       # Game.StackMeta.targetSpec.Rest
+TokenGroup.Template                          rebuilt                            # Game.frozenEntries.ev.TokenGroups.Template
 TriggerOptionalPrompt.Chooser                keyed                              # Game.PendingChoices.pickTargetResume.ability.OptionalPrompt.Chooser
 TriggeredAbility.AppliesTo                   keyed                              # Game.PendingChoices.pickTargetResume.ability.AppliesTo
 TriggeredAbility.BatchKey                    keyed                              # Game.PendingChoices.pickTargetResume.ability.BatchKey
@@ -170,15 +180,15 @@ TriggeredAbility.OptionalPrompt              keyed                              
 TriggeredAbility.Targets                     keyed                              # Game.PendingChoices.pickTargetResume.ability.Targets
 TriggeredAbility.TargetsFrom                 keyed                              # Game.PendingChoices.pickTargetResume.ability.TargetsFrom
 Zone.Cards                                   census:IntrinsicAbilityCards       # Game.Battlefield.Cards
-activeReplacement.effect                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.effect
-activeReplacement.source                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.source
+activeReplacement.effect                     rebuilt                            # Game.frozenEntries.applicable.effect
+activeReplacement.source                     census:IntrinsicAbilityCards       # Game.frozenEntries.applicable.source
 copyFrame.item                               keyed                              # Game.PendingChoices.copyResume.item
 copyFrame.src                                census:IntrinsicAbilityCards       # Game.PendingChoices.copyResume.src
 copyFrame.steps                              keyed                              # Game.PendingChoices.copyResume.steps
-entryBatch.members                           census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members
-entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out
-entryTail.batch                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch
-keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
+entryBatch.members                           keyed                              # Game.frozenEntries.ev.entryTail.batch.members
+entryBatchMember.out                         keyed                              # Game.frozenEntries.ev.entryTail.batch.members.out
+entryTail.batch                              keyed                              # Game.frozenEntries.ev.entryTail.batch
+keywordActionTail.armyToken                  rebuilt                            # Game.frozenEntries.ev.keywordAction.armyToken
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
 lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item
 modePickFrame.ability                        keyed                              # Game.PendingChoices.modePickResume.ability
@@ -189,8 +199,8 @@ pickTargetFrame.modeSpec                     keyed                              
 pickTargetFrame.source                       census:IntrinsicAbilityCards       # Game.PendingChoices.pickTargetResume.source
 pickTargetFrame.spec                         keyed                              # Game.PendingChoices.pickTargetResume.spec
 pickTargetFrame.steps                        keyed                              # Game.PendingChoices.pickTargetResume.steps
-replacementResumeFrame.applicable            census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable
-replacementResumeFrame.ev                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev
+replacementResumeFrame.applicable            rebuilt                            # Game.frozenEntries.applicable
+replacementResumeFrame.ev                    keyed                              # Game.frozenEntries.ev
 resolutionTail.item                          keyed                              # Game.pausedResolutionTail.item
 resolvingItem.card                           census:IntrinsicAbilityCards       # Game.resolving.card
 resolvingItem.item                           keyed                              # Game.resolving.item
@@ -201,4 +211,4 @@ stepWalk.item                                keyed                              
 stepWalk.outer                               keyed                              # Game.pausedStepWalk.outer
 triggerResumeFrame.ability                   keyed                              # Game.PendingChoices.triggerResume.ability
 triggerResumeFrame.source                    census:IntrinsicAbilityCards       # Game.PendingChoices.triggerResume.source
-zoneRoute.simultaneousExit                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute.simultaneousExit
+zoneRoute.simultaneousExit                   census:IntrinsicAbilityCards       # Game.frozenEntries.ev.zoneRoute.simultaneousExit
