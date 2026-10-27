@@ -162,17 +162,23 @@ func eleshNornPayOrLose(g *game.Game, item *game.StackItem) error {
 // holds it back instead of racing it.
 func argentEtchingsChapterThree(g *game.Game, item *game.StackItem) error {
 	self := item.SourceCardID
+	ctx := NewContext(g, item)
 	return DestroyAllMatching{
 		// "Phyrexian" is a word of the Saga's text, which the sweep lends
 		// each permanent (MatchingBattlefield; CR 612.2, #3984).
 		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 			return c.InstanceID != self && !c.IsArtifact() && !c.IsLand() && !c.HasSubtypeWord("Phyrexian")
 		},
-		Then: func(ctx *Context, _ []game.Card, _ int) error {
-			return Flicker{Target: self}.Apply(ctx)
-		},
-	}.Apply(NewContext(g, item))
+		ThenTail: ctx.ItemTail(argentEtchingsFlickerSaga),
+	}.Apply(ctx)
 }
+
+// argentEtchingsFlickerSaga is "then exile the Saga and return it", the
+// sweep's keyed tail (#4253): the Saga is the asking item's source. An
+// on-disk key: never renamed, never reused.
+var argentEtchingsFlickerSaga = CardTail("then/elesh-norn-argent-etchings-flicker", func(ctx *Context, _ game.TailOutcome) error {
+	return Flicker{Target: ctx.Item.SourceCardID}.Apply(ctx)
+})
 
 // eleshNornArgentEtchingsDecline is the 2 life the payer loses when they
 // do not pay, keyed (#4256): a table waiting on the payer is a restore

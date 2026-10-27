@@ -110,8 +110,8 @@ func fandanielOpponentsStep(ctx *Context, controller uuid.UUID, remaining []uuid
 
 // fandanielChosen applies one opponent's answer and asks the next, keyed
 // (#4253): Carry is the opponents still to be asked. The sacrifice they
-// choose is SacrificeChoice, whose own continuation is still a closure
-// (the primitives sweep gives it a keyed form).
+// choose is SacrificeChoice, whose continuation is the keyed tail
+// fandanielSacrificedNext.
 var fandanielChosen game.OptionPickThen
 
 // Registered in init: the body asks the next opponent, which names the key
@@ -128,9 +128,7 @@ func fandanielAnswered(ctx *Context, r game.OptionPicked) error {
 			Player:     victim,
 			Candidates: fandanielNontokenCreatures(ctx.Game, victim),
 			Question:   "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature",
-			Then: func(ctx *Context) error {
-				return fandanielOpponentsStep(ctx, controller, rest)
-			},
+			ThenTail:   withCarry(ctx.Tail(fandanielSacrificedNext), rest...),
 		}.Apply(ctx)
 	}
 	if err := fandanielLoseLife(ctx, controller, victim); err != nil {
@@ -138,3 +136,11 @@ func fandanielAnswered(ctx *Context, r game.OptionPicked) error {
 	}
 	return fandanielOpponentsStep(ctx, controller, rest)
 }
+
+// fandanielSacrificedNext asks the next opponent once the sacrifice has
+// gone, keyed (#4253): Carry is the opponents still to be asked, and the
+// tail's Player is Fandaniel's controller. An on-disk key: never renamed,
+// never reused.
+var fandanielSacrificedNext = CardTail("then/fandaniel-telophoroi-ascian-next-opponent", func(ctx *Context, o game.TailOutcome) error {
+	return fandanielOpponentsStep(ctx, ctx.Controller(), append([]uuid.UUID(nil), o.Tail.Carry...))
+})

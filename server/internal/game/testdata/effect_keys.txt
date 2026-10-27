@@ -1579,3 +1579,17 @@ tail rootborn-defenses/grant-indestructible
 tail the-gitrog-ravenous-ride/sacrificed
 tail then/rottenmouth-viper-punisher-sacrificed
 tail then/torment-of-hailfire-punisher-sacrificed
+option option-pick/aragorn-company-leader-counter
+option option-pick/archfiend-of-spite-life-or-sacrifice
+option option-pick/braids-arisen-nightmare-sacrifice-or-lose-life
+tail if-it-was/cling-to-dust-life-or-draw
+tail if-it-was/deluge-of-the-dead-zombie
+tail mass/culling-ritual-mana
+tail mass/deadly-tempest-loss
+tail then/braids-arisen-nightmare-ask-opponents
+tail then/braids-arisen-nightmare-next-opponent
+tail then/chain-of-vapor-offer-chain
+tail then/coin-of-fate-return-others
+tail then/elesh-norn-argent-etchings-flicker
+tail then/fandaniel-telophoroi-ascian-next-opponent
+tail then/unwind-history-surveil

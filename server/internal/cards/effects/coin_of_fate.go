@@ -106,16 +106,25 @@ var coinOfFatePicked = game.RegisterChooseCardsThen("choose-cards/coin-of-fate-p
 		return coinOfFateMonarch(g, controller, source)
 	}
 	picked := r.Picked[0]
-	return PutIntoLibrary{Card: picked, ToBottom: true, Then: func(g *game.Game, _ bool) error {
-		ctx := keyedContext(g, controller, source)
-		for _, id := range exiled {
-			if id == picked {
-				continue
-			}
-			if err := (ReturnFromExile{Target: id, Tapped: true}).Apply(ctx); err != nil {
-				return err
-			}
+	var others []uuid.UUID
+	for _, id := range exiled {
+		if id != picked {
+			others = append(others, id)
 		}
-		return coinOfFateMonarch(g, controller, source)
-	}}.Apply(keyedContext(g, controller, source))
+	}
+	tail := game.KeyedTail{Ref: coinOfFateReturnOthers, Player: controller, Source: source, Carry: others}
+	return PutIntoLibrary{Card: picked, ToBottom: true, ThenTail: tail}.Apply(keyedContext(g, controller, source))
+})
+
+// coinOfFateReturnOthers is the rest after the chosen card has gone to the
+// bottom, keyed (#4253): the other exiled cards (Carry) return tapped, then
+// the controller (the tail's Player) becomes the monarch. An on-disk key:
+// never renamed, never reused.
+var coinOfFateReturnOthers = CardTail("then/coin-of-fate-return-others", func(ctx *Context, o game.TailOutcome) error {
+	for _, id := range o.Tail.Carry {
+		if err := (ReturnFromExile{Target: id, Tapped: true}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return coinOfFateMonarch(ctx.Game, ctx.Controller(), ctx.Source())
 })

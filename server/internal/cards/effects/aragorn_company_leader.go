@@ -64,17 +64,25 @@ func aragornPickACounter(g *game.Game, item *game.StackItem) error {
 	return PickOption{
 		Question: "Aragorn, Company Leader — put your choice of a counter on Aragorn",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(aragornCounterKinds) {
-				return nil
-			}
-			if !onBattlefield(ctx.Game, item.SourceCardID) || sourceIsNewObject(ctx.Game, item) {
-				return nil
-			}
-			return ctx.Game.AddCounterByForEffect(item.Controller, item.SourceCardID, aragornCounterKinds[index], 1)
-		},
+		ThenKey:  aragornCounterChosen,
+		WithItem: true,
 	}.Apply(ctx)
 }
+
+// aragornCounterChosen is the chosen counter put on Aragorn, keyed (#4253):
+// the trigger rides the prompt as data, so the answer still reads whether
+// Aragorn is the object that triggered. An on-disk key: never renamed,
+// never reused.
+var aragornCounterChosen = OptionPickThen("option-pick/aragorn-company-leader-counter", func(ctx *Context, r game.OptionPicked) error {
+	index, item := r.Index, ctx.Item
+	if index < 0 || index >= len(aragornCounterKinds) {
+		return nil
+	}
+	if !onBattlefield(ctx.Game, item.SourceCardID) || sourceIsNewObject(ctx.Game, item) {
+		return nil
+	}
+	return ctx.Game.AddCounterByForEffect(item.Controller, item.SourceCardID, aragornCounterKinds[index], 1)
+})
 
 func aragornCopyTheKinds(g *game.Game, item *game.StackItem) error {
 	if item.Trigger == nil {

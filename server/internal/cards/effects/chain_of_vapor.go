@@ -72,12 +72,17 @@ func chainOfVaporBounce(ctx *Context) error {
 		controller = c.Controller
 	}
 	return BounceToHand{
-		Target: t.ID,
-		Then: func(ctx *Context, _ bool) error {
-			return chainSacrificeALandToCopy(ctx, controller, "Chain of Vapor")
-		},
+		Target:   t.ID,
+		ThenTail: withCarry(ctx.ItemTail(chainOfVaporBounced), controller),
 	}.Apply(ctx)
 }
+
+// chainOfVaporBounced opens the chain once the return has settled, keyed
+// (#4253): the spell rides the tail as data and the bounced permanent's
+// controller its Carry. An on-disk key: never renamed, never reused.
+var chainOfVaporBounced = CardTail("then/chain-of-vapor-offer-chain", func(ctx *Context, o game.TailOutcome) error {
+	return chainSacrificeALandToCopy(ctx, tailCarry0(o), "Chain of Vapor")
+})
 
 // chainSacrificeALandToCopy is the chain's first question, put to the
 // bounced permanent's controller once the return has settled: "that

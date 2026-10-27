@@ -48,11 +48,16 @@ func init() {
 			OpponentControls(), ManaValueLE(3)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
-				return BounceToHand{Target: t.ID, Then: func(c *Context, _ bool) error {
-					return Surveil{Player: c.Controller(), N: 1}.Apply(c)
-				}}.Apply(ctx)
+				return BounceToHand{Target: t.ID, ThenTail: ctx.Tail(unwindHistorySurveil)}.Apply(ctx)
 			}
 			return nil
 		},
 	})
 }
+
+// unwindHistorySurveil is "surveil 1" after the bounce, whether or not the
+// creature reached a hand, keyed (#4253): a table waiting on the bounce's
+// prompt is a restore point. An on-disk key: never renamed, never reused.
+var unwindHistorySurveil = CardTail("then/unwind-history-surveil", func(ctx *Context, _ game.TailOutcome) error {
+	return Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})
