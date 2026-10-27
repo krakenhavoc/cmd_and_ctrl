@@ -1715,3 +1715,4 @@ tail engine/plot-exiled
 tail engine/suspend-exiled
 tail engine/rad-life-lost
 tail engine/rad-milled
+choose engine/outside-pick-plain
