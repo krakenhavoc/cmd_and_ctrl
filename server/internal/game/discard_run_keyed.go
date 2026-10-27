@@ -47,6 +47,9 @@ type DiscardsDone struct {
 	Discarded PromptedDiscards
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// Item is the asking stack item, rebuilt from the data the prompt
+	// carried (DiscardPrompt.Asked), nil when the card put none.
+	Item *StackItem
 }
 
 // DiscardThenFunc is a registered discard-then continuation. It runs
@@ -87,7 +90,7 @@ func RegisterDiscardThenRule(key string, rule SetRuleFunc, fn DiscardThenFunc) D
 		// #4253 slice 9: the rest of the card after the discard is a
 		// registered tail naming this continuation, so a discard leg's
 		// prompt is a restore point.
-		done := KeyedTail{Ref: discardThenDone, Player: r.Chooser, Source: r.Source, Carry: copyUUIDs(r.Carry), Word: key}
+		done := KeyedTail{Ref: discardThenDone, Player: r.Chooser, Source: r.Source, Carry: copyUUIDs(r.Carry), Word: key, Asked: NewAskedItem(r.Asked)}
 		if !r.Answered {
 			// The chooser left with the prompt open: they discarded
 			// nothing, and the rest of the card still runs, as the run's
@@ -130,7 +133,7 @@ func (g *Game) PlayerDiscardsThenKeyedForEffect(p DiscardPrompt, then DiscardThe
 	if g.queueDiscardPromptLocked(p, uuid.Nil) != uuid.Nil {
 		return nil
 	}
-	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry)})
+	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry), Item: p.Asked.StackItem()})
 }
 
 // discardLegThen is the engine's own continuation for a keyed discard

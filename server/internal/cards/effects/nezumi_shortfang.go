@@ -40,17 +40,12 @@ func init() {
 						continue
 					}
 					victim := t.ID
-					g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+					return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 						Player: victim,
 						Source: item.SourceCardID,
 						N:      1,
-						Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-							return flipThisWhen(g, item, func(g *game.Game, _ uuid.UUID) bool {
-								return b14HandSize(g, victim) == 0
-							})
-						},
-					})
-					return nil
+						Asked:  game.NewAskedItem(item),
+					}, nezumiShortfangDiscarded, nil)
 				}
 				return nil
 			},
@@ -72,3 +67,13 @@ func init() {
 		},
 	})
 }
+
+// nezumiShortfangDiscarded is "then if that player has no cards in hand, flip
+// this creature", keyed (#4253): the ability's item rides the prompt as data,
+// and the player who discarded is the one whose hand is read.
+var nezumiShortfangDiscarded = game.RegisterDiscardThen("choose-cards/nezumi-shortfang-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	ctx, _ := askedContext(g, r.Item, r.Player, r.Source, nil)
+	return flipThisWhen(g, ctx.Item, func(g *game.Game, _ uuid.UUID) bool {
+		return b14HandSize(g, r.Player) == 0
+	})
+})

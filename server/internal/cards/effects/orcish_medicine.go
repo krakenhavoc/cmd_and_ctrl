@@ -33,23 +33,28 @@ func init() {
 				target = t
 				break
 			}
-			keywords := []string{"lifelink", "indestructible"}
 			return PickOption{
 				Question: "Orcish Medicine — the creature gains which until end of turn?",
 				Options:  []game.ChoiceOption{{Label: "Lifelink"}, {Label: "Indestructible"}},
-				Then: func(ctx *Context, index int) error {
-					if index >= 0 && index < len(keywords) && target.ID != uuid.Nil {
-						if err := (GrantKeywordUntilEOT{
-							Target:   target.ID,
-							Keywords: []string{keywords[index]},
-							Label:    "Orcish Medicine — " + keywords[index],
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return Amass{Subtype: "Orc", N: 1}.Apply(ctx)
-				},
+				ThenKey:  orcishMedicineKeyword,
+				Carry:    []uuid.UUID{target.ID},
 			}.Apply(ctx)
 		},
 	})
 }
+
+// orcishMedicineKeyword is the keyword chosen, then the Army, keyed (#4253):
+// the target rides the prompt as data.
+var orcishMedicineKeyword = OptionPickThen("option-pick/orcish-medicine-keyword", func(ctx *Context, r game.OptionPicked) error {
+	keywords := []string{"lifelink", "indestructible"}
+	if r.Index >= 0 && r.Index < len(keywords) && len(r.Carry) > 0 && r.Carry[0] != uuid.Nil {
+		if err := (GrantKeywordUntilEOT{
+			Target:   r.Carry[0],
+			Keywords: []string{keywords[r.Index]},
+			Label:    "Orcish Medicine — " + keywords[r.Index],
+		}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return Amass{Subtype: "Orc", N: 1}.Apply(ctx)
+})

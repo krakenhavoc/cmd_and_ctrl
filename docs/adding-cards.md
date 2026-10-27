@@ -5977,7 +5977,10 @@ then draw" card (#4264). Put what the continuation needs on `carry` as IDs
 the discard ("exactly two or none") is `game.RegisterDiscardThenRule(key, rule,
 fn)`, never a `Validate` on the prompt. The "discard up to N, then draw" family
 shares five registered draw rules (`registerDiscardDraw`, `batch39_helpers.go`):
-pass the rule, not a closure, to `b39MayDiscardThenDraw`.
+pass the rule, not a closure, to `b39MayDiscardThenDraw`. A rest that reads
+the item that asked (its source object, its targets, its trigger) puts it on
+the prompt as data, `DiscardPrompt{Asked: game.NewAskedItem(item)}`, and reads
+it back as `r.Item` (#4253: Nezumi Shortfang's flip, Mog's tally).
 
 What counts as discarded is CR 701.9a's move OUT of the hand, so a
 madness card exiled instead of binned counts, a Library of Leng card

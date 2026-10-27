@@ -148,29 +148,36 @@ func init() {
 // it draw and ask the rest (the carried IDs).
 func mogDiscard(c *Context, r game.ConfirmAnswer) error {
 	player, rest := r.Chooser, r.Carry
-	item := c.Item
-	c.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	// The resolving item rides the prompt as data (the step records are
+	// filed under its id), with the controller and then the players still
+	// to ask as the carried IDs.
+	carry := append([]uuid.UUID{c.Controller()}, rest...)
+	return c.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   player,
 		Source:   c.Source(),
 		N:        1,
 		Question: "Mog, Moogle Warrior — discard a card",
-		Then: func(g *game.Game, seat uuid.UUID, discarded []uuid.UUID) error {
-			next := NewContext(g, item)
-			creature, other := mogDanceFlags(next)
-			for _, id := range discarded {
-				if card, ok := g.LookupCardForEffect(id); ok {
-					if card.IsCreature() {
-						creature = true
-					} else {
-						other = true
-					}
-				}
-			}
-			next.RecordStep(mogDanceRecord, nil, boolToInt(creature), boolToInt(other))
-			next.RecordStep(mogSeatRecord, []uuid.UUID{seat}, len(discarded))
-			next.RecordStep(mogRestRecord, rest)
-			return mogDrawThenAsk.Run(next)
-		},
-	})
-	return nil
+		Asked:    game.NewAskedItem(c.Item),
+	}, mogDiscarded, carry)
 }
+
+// mogDiscarded is a player's discard landed, keyed (#4253): the table's
+// running tally is filed, the draw follows and the next player is asked.
+var mogDiscarded = game.RegisterDiscardThen("choose-cards/mog-moogle-warrior-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	next, rest := askedContext(g, r.Item, r.Player, r.Source, r.Carry)
+	discarded := r.Discarded.Cards()
+	creature, other := mogDanceFlags(next)
+	for _, id := range discarded {
+		if card, ok := g.LookupCardForEffect(id); ok {
+			if card.IsCreature() {
+				creature = true
+			} else {
+				other = true
+			}
+		}
+	}
+	next.RecordStep(mogDanceRecord, nil, boolToInt(creature), boolToInt(other))
+	next.RecordStep(mogSeatRecord, []uuid.UUID{r.Player}, len(discarded))
+	next.RecordStep(mogRestRecord, rest)
+	return mogDrawThenAsk.Run(next)
+})

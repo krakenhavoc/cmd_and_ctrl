@@ -71,19 +71,12 @@ const manaVortexCastLabel = "Mana Vortex — counter it unless you sacrifice a l
 // spell is the trigger's source, so its stack ID is the source's card ID.
 func manaVortexCounterUnlessSacrifice(g *game.Game, item *game.StackItem) error {
 	spell := item.SourceCardID
-	counter := func(ctx *Context) error {
-		if ctx.Game.StackItemForEffect(spell) == nil {
-			return nil
-		}
-		return CounterTarget{StackID: spell}.Apply(ctx)
-	}
 	ctx := NewContext(g, item)
 	if g.StackItemForEffect(spell) == nil {
 		return nil
 	}
-	lands := permanentsControlledByMatching(g, item.Controller, Land())
-	if len(lands) == 0 {
-		return counter(ctx)
+	if len(permanentsControlledByMatching(g, item.Controller, Land())) == 0 {
+		return manaVortexCounter(ctx, spell)
 	}
 	return PickOption{
 		Player:   item.Controller,
@@ -92,15 +85,31 @@ func manaVortexCounterUnlessSacrifice(g *game.Game, item *game.StackItem) error 
 			{Label: "Sacrifice a land"},
 			{Label: "Let Mana Vortex be countered"},
 		},
-		Then: func(ctx *Context, index int) error {
-			if index == 0 {
-				return SacrificeChoice{
-					Player:     item.Controller,
-					Candidates: lands,
-					Question:   "Mana Vortex — sacrifice a land",
-				}.Apply(ctx)
-			}
-			return counter(ctx)
-		},
+		ThenKey: manaVortexAnswer,
 	}.Apply(ctx)
 }
+
+// manaVortexCounter counters the spell the trigger came from, if it is still
+// on the stack.
+func manaVortexCounter(ctx *Context, spell uuid.UUID) error {
+	if ctx.Game.StackItemForEffect(spell) == nil {
+		return nil
+	}
+	return CounterTarget{StackID: spell}.Apply(ctx)
+}
+
+// manaVortexAnswer is the cast trigger's choice, keyed (#4253): the spell is
+// the trigger's source and the player the controller, both on the prompt. The
+// land is asked by SacrificeChoice, whose own prompt is still a closure until
+// the primitives are keyed (blocked on 10b).
+var manaVortexAnswer = OptionPickThen("option-pick/mana-vortex-sacrifice-or-counter", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index == 0 {
+		controller := ctx.Controller()
+		return SacrificeChoice{
+			Player:     controller,
+			Candidates: permanentsControlledByMatching(ctx.Game, controller, Land()),
+			Question:   "Mana Vortex — sacrifice a land",
+		}.Apply(ctx)
+	}
+	return manaVortexCounter(ctx, r.Source)
+})

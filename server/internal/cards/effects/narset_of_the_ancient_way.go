@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -110,27 +108,29 @@ var (
 	// draw has landed. A nonland discard creates the reflexive trigger
 	// with the card's mana value. The key is an on-disk identity.
 	narsetAncientWayDiscard = game.RegisterDrawThen("narset-of-the-ancient-way/may-discard", func(g *game.Game, d game.DrawThen) error {
-		parent := &game.StackItem{Controller: d.Player, SourceCardID: d.Source, Label: "Narset of the Ancient Way"}
-		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player:   d.Player,
 			Source:   d.Source,
 			N:        1,
 			UpTo:     true,
 			Question: "Narset of the Ancient Way — you may discard a card",
-			Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-				for _, id := range discarded {
-					c, ok := g.LookupCardForEffect(id)
-					if !ok || c.IsLand() {
-						continue
-					}
-					mv, _ := g.ManaValueForEffect(c)
-					t := WhenYouDo("Narset of the Ancient Way — damage equal to that card's mana value to target creature or planeswalker", narsetAncientWayDamageBody)
-					t.Params = game.EffectParams{Amount: mv}
-					return t.Apply(NewContext(g, parent))
-				}
-				return nil
-			},
-		})
+		}, narsetAncientWayDiscarded, nil)
+	})
+
+	// The -2's reflexive trigger, raised once the discard has landed
+	// (keyed, #4253). The key is an on-disk identity.
+	narsetAncientWayDiscarded = game.RegisterDiscardThen("choose-cards/narset-of-the-ancient-way-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		parent := &game.StackItem{Controller: r.Player, SourceCardID: r.Source, Label: "Narset of the Ancient Way"}
+		for _, id := range r.Discarded.Cards() {
+			c, ok := g.LookupCardForEffect(id)
+			if !ok || c.IsLand() {
+				continue
+			}
+			mv, _ := g.ManaValueForEffect(c)
+			t := WhenYouDo("Narset of the Ancient Way — damage equal to that card's mana value to target creature or planeswalker", narsetAncientWayDamageBody)
+			t.Params = game.EffectParams{Amount: mv}
+			return t.Apply(NewContext(g, parent))
+		}
 		return nil
 	})
 

@@ -119,11 +119,8 @@ func nicolBolasPlusOne(g *game.Game, item *game.StackItem) error {
 			Cards:    hand,
 			Min:      n,
 			Max:      n,
-			Zone:     game.ZoneHand,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				g.ExileCardsForEffect(picked)
-				return nil
-			},
+			LiveZone: game.ZoneHand,
+			ThenKey:  nicolBolasExileTwo,
 		})
 	}
 	return nil
@@ -141,5 +138,12 @@ var nicolBolasGodPharaohMilled = CardTail("nicol-bolas-god-pharaoh/after-mill", 
 		}
 	}
 	grantFreeCasts(ctx.Game, controller, source, "Nicol Bolas, God-Pharaoh", game.TimingNormal, "", hits)
+	return nil
+})
+
+// nicolBolasExileTwo is the two cards exiled from an opponent's hand, keyed
+// (#4253). It reads nothing but the pick.
+var nicolBolasExileTwo = game.RegisterChooseCardsThen("choose-cards/nicol-bolas-god-pharaoh-exile-two", func(g *game.Game, r game.CardsChosen) error {
+	g.ExileCardsForEffect(r.Picked)
 	return nil
 })

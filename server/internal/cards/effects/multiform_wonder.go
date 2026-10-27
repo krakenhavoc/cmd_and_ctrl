@@ -31,18 +31,12 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 				Cost:    PayEnergy(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					keywords := []string{"flying", "vigilance", "lifelink"}
 					return PickOption{
 						Question: "Multiform Wonder gains which until end of turn?",
 						Options: []game.ChoiceOption{
 							{Label: "Flying"}, {Label: "Vigilance"}, {Label: "Lifelink"},
 						},
-						Then: func(ctx *Context, index int) error {
-							if index < 0 || index >= len(keywords) {
-								return nil
-							}
-							return thisGainsKeywordUntilEndOfTurn(keywords[index], "Multiform Wonder — "+keywords[index]+" until end of turn")(ctx.Game, ctx.Item)
-						},
+						ThenKey: multiformWonderKeyword,
 					}.Apply(NewContext(g, item))
 				},
 			},
@@ -72,3 +66,13 @@ var multiformWonderPump = MayYesNo("confirm/multiform-wonder-pump",
 	func(ctx *Context, _ game.ConfirmAnswer) error {
 		return thisGetsUntilEndOfTurn(-2, 2, "Multiform Wonder — -2/+2 until end of turn")(ctx.Game, ctx.Item)
 	})
+
+// multiformWonderKeyword is the keyword chosen, keyed (#4253): the answer is
+// the index into the three options.
+var multiformWonderKeyword = OptionPickThen("option-pick/multiform-wonder-keyword", func(ctx *Context, r game.OptionPicked) error {
+	keywords := []string{"flying", "vigilance", "lifelink"}
+	if r.Index < 0 || r.Index >= len(keywords) {
+		return nil
+	}
+	return thisGainsKeywordUntilEndOfTurn(keywords[r.Index], "Multiform Wonder — "+keywords[r.Index]+" until end of turn")(ctx.Game, ctx.Item)
+})

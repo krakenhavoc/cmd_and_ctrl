@@ -228,6 +228,12 @@ type DiscardPrompt struct {
 	keyed ChooseCardsThen
 	carry []uuid.UUID
 
+	// Asked is the asking stack item as data (NewAskedItem, #4253), for a
+	// keyed discard-then whose rest reads the item that asked: its source
+	// object, its targets, its trigger. It rides the prompt and comes back
+	// as DiscardsDone.Item. Ignored without PlayerDiscardsThenKeyedForEffect.
+	Asked *AskedItem
+
 	// keyedLeg queues this prompt as a keyed leg (#4290,
 	// discard_run_keyed.go): a choose_cards pick under the engine's own
 	// discard continuation (choose-cards/discard-leg), linked to its run
@@ -370,6 +376,7 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 			Max:        n,
 			ThenKey:    p.keyed,
 			Carry:      p.carry,
+			Asked:      copyAskedItem(p.Asked),
 		})
 	}
 	if p.keyedLeg {

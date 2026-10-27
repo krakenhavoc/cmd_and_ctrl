@@ -96,30 +96,36 @@ func dinosaurHeaddressChoose(card *game.Card, ctx *Context) error {
 	if len(creatures) == 0 {
 		return nil
 	}
-	headdress := card.InstanceID
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  card.Controller,
-		Source:   headdress,
+		Source:   card.InstanceID,
 		Question: "Dinosaur Headdress — choose an exiled creature card used to craft it; the equipped creature becomes a copy of it",
 		Cards:    creatures,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			d, ok := g.WhileAttachedToDuration(headdress, host)
-			if !ok {
-				return nil
-			}
-			v, ok := g.CopiableValuesForEffect(picked[0])
-			if !ok {
-				return nil
-			}
-			g.BecomeCopyForEffect(headdress, picked[0], []uuid.UUID{host}, v, d, "Dinosaur Headdress")
-			return nil
-		},
+		LiveZone: game.ZoneExile,
+		ThenKey:  dinosaurHeaddressCopy,
+		Carry:    []uuid.UUID{host},
 	})
 	return nil
 }
+
+// dinosaurHeaddressCopy is the exiled creature card the equipped creature
+// becomes a copy of, keyed (#4253): the Headdress is the prompt's source and
+// the creature it was attached to rides the prompt as the carried ID.
+var dinosaurHeaddressCopy = game.RegisterChooseCardsThen("choose-cards/dinosaur-headdress-copy", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 {
+		return nil
+	}
+	headdress, host := r.Source, r.Carry[0]
+	d, ok := g.WhileAttachedToDuration(headdress, host)
+	if !ok {
+		return nil
+	}
+	v, ok := g.CopiableValuesForEffect(r.Picked[0])
+	if !ok {
+		return nil
+	}
+	g.BecomeCopyForEffect(headdress, r.Picked[0], []uuid.UUID{host}, v, d, "Dinosaur Headdress")
+	return nil
+})

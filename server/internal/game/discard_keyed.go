@@ -217,6 +217,7 @@ var discardThenDone = RegisterTail("engine/discard-then-done", func(g *Game, o T
 		Source:    o.Tail.Source,
 		Discarded: PromptedDiscards{{Seat: o.Tail.Player, Cards: copyUUIDs(o.IDs)}},
 		Carry:     copyUUIDs(o.Tail.Carry),
+		Item:      o.Tail.Asked.StackItem(),
 	})
 })
 

@@ -61,13 +61,18 @@ func myrBattlesphereAttack(g *game.Game, item *game.StackItem) error {
 		Cards:    myr,
 		Min:      0,
 		Max:      0, // "any number"
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return myrBattlesphereTapAndHit(g, item, picked)
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  myrBattlespherePick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// myrBattlespherePick is the Myr chosen to tap, keyed (#4253): the trigger
+// item rides the prompt as data, so the Context reads the attacked player.
+var myrBattlespherePick = askedPick("choose-cards/myr-battlesphere-tap", func(ctx *Context, r game.CardsChosen) error {
+	return myrBattlesphereTapAndHit(ctx.Game, ctx.Item, r.Picked)
+})
 
 // myrBattlesphereTapAndHit taps the picks that are still untapped Myr
 // and, if any were, pumps the Battlesphere and hits what it attacks.
