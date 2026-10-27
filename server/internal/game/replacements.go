@@ -1378,6 +1378,11 @@ func (ev *ReplacementEvent) AddCounterAtETB(name string, n int) {
 // tracking + CR 616 order-choose prompt are all enforced centrally;
 // cards stay declarative.
 type ReplacementEffect struct {
+	// SelfEntersTapped is printed metadata for an unconditional self
+	// replacement, set by the shared constructor (#4317). Read by the
+	// card-purpose projection; never used to execute the replacement.
+	SelfEntersTapped bool
+
 	// ActiveWhen is ADR 0071's designation gate: the replacement exists
 	// only while the gate is satisfied by the permanent it is printed
 	// on. Its zero value is "no gate", which is every replacement in the

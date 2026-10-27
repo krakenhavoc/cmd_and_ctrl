@@ -306,7 +306,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// It is priced above every ordinary cast so the bot plays its
 		// land BEFORE it spends the turn's mana, which is the one
 		// sequencing rule that matters at this level.
-		return p.cfg.LandValue, "land drop"
+		return p.landDropValue(st, m)
 
 	case legal.KindCast:
 		return p.valueOfCast(st, m)

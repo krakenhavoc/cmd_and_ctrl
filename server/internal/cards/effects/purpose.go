@@ -87,6 +87,12 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	fail := func(why string) {
 		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose that %s (ADR 0126 §6)", name, where, why))
 	}
+	if p.LandEntry != "" {
+		fail("sets LandEntry by hand; the catalog replacement projection owns it (#4317)")
+	}
+	if p.ReturnsLandOnEntry && slot != purposeOnCard {
+		fail("sets ReturnsLandOnEntry off the card (#4317)")
+	}
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.ExtraTurns < 0 || p.SkipsTurns < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||

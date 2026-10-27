@@ -38,6 +38,7 @@ func b04BounceLand(oracleID, name, produced string) Spec {
 		OracleID:     oracleID,
 		Name:         name,
 		Completeness: CompletenessFull,
+		Purpose:      game.Purpose{ReturnsLandOnEntry: true},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

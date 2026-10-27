@@ -3886,6 +3886,9 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  // #4317: own catalog entry only; conditional entries remain absent.
+  land_entry?: "tapped" | "untapped";
+  returns_land_on_entry?: boolean;
   // #3309: on an Aura card, what it does to the permanent it enchants.
   aura?: "benefit" | "harm" | string;
   // #3712: the card may be cast as though it had flash and is sacrificed

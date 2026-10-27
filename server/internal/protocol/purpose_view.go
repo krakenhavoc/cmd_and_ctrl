@@ -25,6 +25,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // PurposeView is game.Purpose on the wire. Every field is omitted when
 // zero, and a purpose with nothing declared is not sent at all.
 type PurposeView struct {
+	// LandEntry describes the land's own unconditional entry, not other
+	// permanents' replacements. Empty for unknown/conditional entry.
+	LandEntry          string `json:"land_entry,omitempty"`
+	ReturnsLandOnEntry bool   `json:"returns_land_on_entry,omitempty"`
+
 	// Draws is the cards its controller draws (on an any-player row,
 	// the activator).
 	Draws int `json:"draws,omitempty"`
@@ -343,6 +348,8 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		return nil
 	}
 	v := &PurposeView{
+		LandEntry:                 p.LandEntry,
+		ReturnsLandOnEntry:        p.ReturnsLandOnEntry,
 		Kicked:                    viewOfPurpose(derefPurpose(p.Kicked)),
 		TurnedFaceUp:              viewOfPurpose(derefPurpose(p.FaceUp)),
 		Draws:                     p.Draws,

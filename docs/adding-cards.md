@@ -1476,8 +1476,9 @@ activator floats the mana from the board.
 
 The heuristic bot reads the seat's view and nothing else, and the view
 cannot tell Wrath of God from Divination: both are untargeted sorceries
-with a mana value. `game.Purpose` is the catalog's answer, declared by
-hand like `Completeness` and never derived. The engine never reads it;
+with a mana value. `game.Purpose` is the catalog's answer. Its amounts are declared by
+hand like `Completeness`; structural entry facts can be projected from
+the catalog replacement constructors described below. The engine never reads it;
 it rides the wire as `purpose` (docs/protocol.md, "Declared purpose").
 
 Declare it in the slot that does the thing, in the printed amounts:
@@ -1495,6 +1496,12 @@ TriggerWithPurpose(WheneverACreatureYouControlDies(...), game.Purpose{DeathPayof
 and on an activated row as `Purpose:` beside its `Label` (a loot is
 `{Draws: 1, Discards: 1}`).
 
+- **A bounce land** declares `Purpose: game.Purpose{ReturnsLandOnEntry: true}`
+  on the Spec for its mandatory return of a land you control (#4317).
+  `LandEntry` is projected from the registered replacement shape, rather
+  than declared: `SelfEntersTapped` and `SelfEntersTappedWithCounters`
+  carry an unconditional self-tap marker. Conditional entries leave it
+  absent; do not set that marker on a conditional replacement.
 - **The Spec's own `Purpose`** is the spell's resolution, or a
   permanent's enters effect (Mulldrifter's `{Draws: 2}`, Wood Elves'
   `{Lands: 1}`). A modal spell declares per bullet, an overload on its

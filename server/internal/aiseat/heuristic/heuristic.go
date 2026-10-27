@@ -52,6 +52,10 @@ import (
 // Config tunes the policy on top of the evaluation Weights. The zero
 // value is not usable; DefaultConfig is, and New uses it.
 type Config struct {
+	// OrderLandDrops prefers a land that unlocks a printed mana cost,
+	// and puts a bounce land last when no other land can return (#4317).
+	OrderLandDrops bool
+
 	Weights Weights
 
 	// PassThreshold is how much better than passing a move has to
@@ -810,7 +814,8 @@ type Config struct {
 // DefaultConfig is the shipped tuning.
 func DefaultConfig() Config {
 	return Config{
-		Weights: DefaultWeights(),
+		OrderLandDrops: true,
+		Weights:        DefaultWeights(),
 
 		PassThreshold:    0.25,
 		InstantThreshold: 1.50,
@@ -989,6 +994,7 @@ func DefaultConfig() Config {
 // whatever DefaultConfig becomes.
 func BaselineConfig() Config {
 	c := DefaultConfig()
+	c.OrderLandDrops = false
 	// §2, mana sources (PR 3).
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
@@ -1197,10 +1203,13 @@ func (p *Policy) Reset() {
 // under a millisecond on a four-player board, which is what keeps
 // the policy inside MaxThink with room to spare.
 type state struct {
-	w     Weights
-	me    string
-	view  *protocol.GameView
-	evals map[string]*SeatEval
+	// landChoices are the legal drops whose sequencing can differ (#4317).
+	landChoices []legal.Move
+	landUnlocks map[string]bool
+	w           Weights
+	me          string
+	view        *protocol.GameView
+	evals       map[string]*SeatEval
 	// order is the seat-order list of player IDs: the deterministic
 	// iteration order for anything a decision depends on.
 	order []string
@@ -1261,15 +1270,16 @@ type state struct {
 func (p *Policy) newState(in aiseat.Input) *state {
 	v := &in.View
 	st := &state{
-		w:         p.cfg.Weights,
-		me:        in.Seat.String(),
-		view:      v,
-		bf:        make(map[string]*protocol.CardView, len(v.Battlefield.Cards)),
-		mine:      map[string]*protocol.CardView{},
-		stack:     make(map[string]*protocol.CardView, len(v.Stack.Cards)),
-		graveyard: map[string]*protocol.CardView{},
-		turn:      v.Turn.Seq,
-		step:      v.Turn.Step,
+		landChoices: in.Moves,
+		w:           p.cfg.Weights,
+		me:          in.Seat.String(),
+		view:        v,
+		bf:          make(map[string]*protocol.CardView, len(v.Battlefield.Cards)),
+		mine:        map[string]*protocol.CardView{},
+		stack:       make(map[string]*protocol.CardView, len(v.Stack.Cards)),
+		graveyard:   map[string]*protocol.CardView{},
+		turn:        v.Turn.Seq,
+		step:        v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
 	st.attach = newAttachIndex(v.Battlefield.Cards)
