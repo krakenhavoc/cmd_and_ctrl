@@ -82,19 +82,33 @@ func (g *Game) QueueAttachSourceToPlayerForEffect(source uuid.UUID, question str
 		Source:   source,
 		Question: question,
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		// ThenSeat, not Then, for #994's reason: the answer is the
-		// option's own seat, so a prune that renumbers the list cannot
-		// attach the Aura to the player one place along.
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				// Dropped unanswered (#1006): nobody was chosen, the
-				// Aura stays unattached and CR 704.5m takes it.
-				return nil
-			}
-			return g.AttachForEffect(source, TargetRef{Kind: TargetPlayer, ID: chosen})
-		},
-		attachesSource: true,
+		// Keyed (#4361 slice 6). The key is also the marker
+		// attachPromptOpenForLocked reads, so it survives a restore.
+		ThenKey: attachSourceToPlayerThen,
+		Carry:   []uuid.UUID{source},
 	})
+}
+
+// attachSourceToPlayerThen attaches the Aura, Carry's one ID, to the
+// seat chosen, read off the option rather than an index for #994's
+// reason: a prune that renumbers the list cannot attach the Aura to the
+// player one place along. A dropped prompt (#1006) chooses nobody: the
+// Aura stays unattached and CR 704.5m takes it. An on-disk key: never
+// renamed, never reused.
+var attachSourceToPlayerThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	attachSourceToPlayerThen = RegisterOptionPickThen("option-pick/attach-source-to-player", attachSourceToPlayerAnswered)
+}
+
+func attachSourceToPlayerAnswered(g *Game, r OptionPicked) error {
+	chosen := chosenSeat(r)
+	if len(r.Carry) == 0 || chosen == uuid.Nil {
+		return nil
+	}
+	return g.AttachForEffect(r.Carry[0], TargetRef{Kind: TargetPlayer, ID: chosen})
 }
 
 // attachPromptOpenForLocked reports whether the Aura `id` has its
@@ -105,7 +119,7 @@ func (g *Game) QueueAttachSourceToPlayerForEffect(source uuid.UUID, question str
 func (g *Game) attachPromptOpenForLocked(id uuid.UUID) bool {
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Kind == PendingChoiceOptionPick && c.Source == id &&
-			c.optionPickResume != nil && c.optionPickResume.attachesSource {
+			c.PickThen == attachSourceToPlayerThen.key {
 			return true
 		}
 	}

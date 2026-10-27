@@ -208,57 +208,37 @@ func cloneChoiceOptions(in []ChoiceOption) []ChoiceOption {
 }
 
 // optionPickFrame is the continuation behind a
-// PendingChoiceOptionPick: ONE closure, given the index the chooser
-// picked.
+// PendingChoiceOptionPick that is not keyed: ONE closure, given the
+// seat the chooser picked.
 //
-// One closure rather than one per option, because the branches of a
-// three-way question are nearly always written as one switch in the
-// card's own package-level function — and because a slice of closures
-// would make the continuation census count a number that varies with
-// the card rather than with the prompt.
+// #4361 slice 6 retired the index closure (`then`), the subject closure
+// (`thenSubject`) and the Aura-attach marker: every option pick but one
+// is keyed (OptionPickPrompt.ThenKey, option_pick_keyed.go), and an
+// Aura's "attach it to a player" question is recognised by its key
+// (attachPromptOpenForLocked). What is left is the seat closure of a
+// trigger's "of an opponent's choice" walk (pending_choice.go), which
+// waits on the pick-target frame becoming data.
 //
 // It receives the live *Game (not a captured one) on the same
 // undo-safety contract confirmFrame and StackItem.Effect follow, and
 // runs with g.mu held — so it may queue the next link of a chain.
 type optionPickFrame struct {
-	then func(g *Game, index int) error
-
-	// attachesSource is set on the one prompt that asks where an Aura
-	// is to be attached (QueueAttachSourceToPlayerForEffect). See
-	// OptionPickPrompt.attachesSource.
-	attachesSource bool
-
 	// thenSeat is the continuation for an option list whose branches
-	// are SEATS (choose_player.go). It receives the chosen option's
-	// ChoiceOption.Player instead of its index, and exactly one of the
-	// two is ever set.
+	// are SEATS. It receives the chosen option's ChoiceOption.Player
+	// instead of its index.
 	//
-	// It is a second continuation rather than a `then` that closes over
-	// the seat list because an INDEX into a captured slice is not a
-	// stable answer any more (#994). The option list of a player prompt
-	// is pruned while it is open — a seat that leaves the game comes off
-	// it (CR 800.4a) — so index 2 before the prune and index 2 after it
-	// are different players, and a closure holding the original slice
-	// would record the wrong one. Reading the seat off the option the
-	// chooser actually picked cannot drift from what they were shown,
-	// because it IS what they were shown.
+	// It reads the seat rather than an index into a captured slice
+	// because an INDEX is not a stable answer (#994). The option list of
+	// a player prompt is pruned while it is open — a seat that leaves
+	// the game comes off it (CR 800.4a) — so index 2 before the prune and
+	// index 2 after it are different players. Reading the seat off the
+	// option the chooser actually picked cannot drift from what they were
+	// shown, because it IS what they were shown.
 	thenSeat func(g *Game, seat uuid.UUID) error
-
-	// thenSubject is thenSeat for an option list whose branches are
-	// seats AND permanents — CR 508.7's "reselect which player or
-	// permanent that creature is attacking" (attack_reselect.go,
-	// #1329). It receives the chosen option's SUBJECT: its Player when
-	// it names a seat, else its first card, else uuid.Nil — which is
-	// what an option naming neither (the "keep attacking" branch) and
-	// a dropped prompt (runWithNoChoice) both hand it. Same #994
-	// reason as thenSeat: read the answer off the option the chooser
-	// picked, never off an index into a list the prune may have
-	// renumbered. At most one of the three continuations is set.
-	thenSubject func(g *Game, subject uuid.UUID) error
 }
 
-// subject is what an option is ABOUT, for thenSubject: its seat, or
-// its first card, or nothing.
+// subject is what an option is ABOUT: its seat, or its first card, or
+// nothing.
 func (o ChoiceOption) subject() uuid.UUID {
 	if o.Player != uuid.Nil {
 		return o.Player
@@ -273,25 +253,16 @@ func (o ChoiceOption) subject() uuid.UUID {
 // error the continuation returned, for the caller to report the way it
 // reports every other continuation failure.
 //
-// The one place "nobody chose" is handed to a frame, so what a question
-// that ended without an answer does is one line rather than one line
-// per drop path — and so the two continuation shapes cannot drift: an
-// index frame is run with NoChoiceIndex, a SEAT frame with uuid.Nil
-// (#994's thenSeat), which is the same absence spelled in the currency
-// each one speaks. Both are values their continuations already had to
-// handle, and neither is an answer a client can send.
+// The one place "nobody chose" is handed to a frame: a SEAT frame is
+// run with uuid.Nil (#994's thenSeat), the absence spelled in the
+// currency it speaks, as a keyed pick is run with NoChoiceIndex. It is
+// a value the continuation already has to handle, and not an answer a
+// client can send.
 func (f *optionPickFrame) runWithNoChoice(g *Game) error {
-	switch {
-	case f == nil:
+	if f == nil || f.thenSeat == nil {
 		return nil
-	case f.thenSeat != nil:
-		return f.thenSeat(g, uuid.Nil)
-	case f.thenSubject != nil:
-		return f.thenSubject(g, uuid.Nil)
-	case f.then != nil:
-		return f.then(g, NoChoiceIndex)
 	}
-	return nil
+	return f.thenSeat(g, uuid.Nil)
 }
 
 // defaultDroppedChoiceLocked runs an option pick's continuation with
@@ -404,8 +375,9 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = g.withCarriedCauseLocked(carriedCauseOfChoice(c), func() error {
 			return runOptionPickThen(g, c.PickThen, OptionPicked{
 				Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry), dice: c.dice,
-				Asked: c.Asked.StackItem(),
-				Words: copyStrings(c.PickWords), Nums: copyInts(c.PickNums), Tail: copyKeyedTail(c.pickTail),
+				parked: c.opponentTargetResume,
+				Asked:  c.Asked.StackItem(),
+				Words:  copyStrings(c.PickWords), Nums: copyInts(c.PickNums), Tail: copyKeyedTail(c.pickTail),
 			})
 		})
 	default:
@@ -439,36 +411,18 @@ type OptionPickPrompt struct {
 	// must be a branch that can always be taken.
 	Options []ChoiceOption
 
-	// Then receives the index of the chosen option, or NoChoiceIndex
-	// when the prompt ended without an answer — dropped because its
-	// chooser left the game or because it had no legal answer left
-	// (#1006). Runs with g.mu held; may queue further choices, which
-	// is how a chain continues.
+	// ThenSeat is the closure continuation for an option list whose
+	// branches are SEATS: it receives the chosen option's Player rather
+	// than its index, or uuid.Nil when the prompt ended without an
+	// answer. Its one engine caller is a trigger's "of an opponent's
+	// choice" walk (pending_choice.go), which waits on the pick-target
+	// frame becoming data (#4361); every other option pick is keyed.
 	//
-	// HANDLE NoChoiceIndex. It is the rest of the card running with
-	// the question unanswered, and a continuation that indexes
-	// straight into a captured slice with it is a card that stops
-	// halfway — which is the #544 rule this kind is otherwise careful
-	// about.
-	Then func(g *Game, index int) error
-
-	// ThenSeat is Then for an option list whose branches are SEATS:
-	// it receives the chosen option's Player rather than its index.
-	// Set by choose_player.go and by nothing else; a caller that sets
-	// both gets this one.
-	//
-	// Use it for any option list built out of players. An index is not
-	// a stable answer for one: a seat that leaves the game is pruned
-	// off an OPEN prompt (#994, CR 800.4a), which renumbers everything
-	// after it. See optionPickFrame.thenSeat.
+	// An index is not a stable answer for a seat list: a seat that
+	// leaves the game is pruned off an OPEN prompt (#994, CR 800.4a),
+	// which renumbers everything after it. A keyed continuation reads
+	// the seat off OptionPicked.Option for the same reason.
 	ThenSeat func(g *Game, seat uuid.UUID) error
-
-	// attachesSource marks the prompt as the Aura's own "attach it to a
-	// player" question (attach_transform.go). Unexported on purpose:
-	// only the engine's attach door sets it, and it is read by
-	// attachPromptOpenForLocked, which is what keeps CR 704.5m from
-	// sweeping the Aura away while the question is still open.
-	attachesSource bool
 
 	// walk and parked are #2055's markers, set only by the "which
 	// opponent chooses" question of an "of an opponent's choice" clause
@@ -482,14 +436,14 @@ type OptionPickPrompt struct {
 	walk   *pickTargetFrame
 	parked *opponentTargetFrame
 
-	// ThenKey is Then as a REGISTERED continuation
-	// (RegisterOptionPickThen, option_pick_keyed.go), and Carry is the
-	// plain data it is handed with the answer (#2854). A prompt queued
-	// with a key holds no closure, so a table waiting on it is still a
-	// restore point: the key and the carried IDs are written with the
-	// prompt, and the running binary looks the continuation up when the
-	// answer arrives. Set ThenKey or Then/ThenSeat, never both; with a
-	// key, Then and ThenSeat are ignored.
+	// ThenKey is the REGISTERED continuation (RegisterOptionPickThen,
+	// option_pick_keyed.go), and Carry is the plain data it is handed
+	// with the answer (#2854). A prompt queued with a key holds no
+	// closure, so a table waiting on it is still a restore point: the
+	// key and the carried IDs are written with the prompt, and the
+	// running binary looks the continuation up when the answer arrives.
+	// #4361 slice 6 retired the index closure Then: every engine and
+	// card prompt but one sets this. With a key, ThenSeat is ignored.
 	ThenKey OptionPickThen
 	Carry   []uuid.UUID
 
@@ -518,7 +472,7 @@ type OptionPickPrompt struct {
 // CR 800.4a guard).
 //
 // A caller with more of the effect to run after the answer must check
-// the return: nothing was queued means nothing will call Then, and a
+// the return: nothing was queued means nothing will run ThenKey, and a
 // chain that assumed otherwise stops halfway. That is the same
 // contract QueueDiscardChoiceForEffect documents, pointed the other
 // way — a discard with nothing to pitch still runs Then, because CR
@@ -527,9 +481,9 @@ type OptionPickPrompt struct {
 //
 // Options that carry a ManaCost (#2854) are offered only when the
 // chooser can pay them now (CR 118.3): an unaffordable one is dropped
-// here, and Then is still handed the index the CARD printed, so a
-// dropped option does not renumber the card's switch. A keyed
-// continuation reads the chosen option itself (OptionPicked.Option).
+// here, so the index a keyed continuation is handed is an offset into
+// the list the chooser was SHOWN: it reads the chosen option itself
+// (OptionPicked.Option).
 // A costed option with an unparseable or {X} cost, or a cost on the
 // FIRST option, is a bug in the card: it is reported as an effect
 // error and nothing is queued.
@@ -543,7 +497,7 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 	if from == uuid.Nil {
 		from = p.Chooser
 	}
-	options, printed, err := g.affordableOptionsLocked(p.Chooser, p.Source, p.Options)
+	options, err := g.affordableOptionsLocked(p.Chooser, p.Source, p.Options)
 	if err != nil {
 		g.emitChoiceEffectErrorLocked(p.Chooser, p.Source, err)
 		return uuid.Nil
@@ -557,6 +511,10 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		Reason:      p.Question,
 		PickOptions: options,
 	}
+	// #2055's markers ride either form: an opponent-target chooser is
+	// keyed (#4361 slice 6), a trigger walk's is still a closure.
+	c.pickTargetResume = p.walk
+	c.opponentTargetResume = p.parked
 	if key := p.ThenKey.key; key != "" {
 		c.PickThen = key
 		c.OptionCarry = copyUUIDs(p.Carry)
@@ -566,59 +524,40 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 		c.pickTail = copyKeyedTail(p.Tail)
 		return g.QueueChoiceForEffect(c)
 	}
-	then := p.Then
-	if then != nil && printed != nil {
-		// Hand the card back the index it printed, not the offset into
-		// the shorter list the chooser was shown.
-		inner := then
-		then = func(g *Game, index int) error {
-			if index >= 0 && index < len(printed) {
-				index = printed[index]
-			}
-			return inner(g, index)
-		}
+	if p.ThenSeat != nil {
+		c.optionPickResume = &optionPickFrame{thenSeat: p.ThenSeat}
 	}
-	c.optionPickResume = &optionPickFrame{
-		then:           then,
-		thenSeat:       p.ThenSeat,
-		attachesSource: p.attachesSource,
-	}
-	c.pickTargetResume = p.walk
-	c.opponentTargetResume = p.parked
 	return g.QueueChoiceForEffect(c)
 }
 
 // affordableOptionsLocked is the option list as offered: every option
 // that costs no mana, and every costed one `chooser` can pay right now
 // through the payer ResolveOptionPick will use (canPayCostLocked asks
-// payCostLocked on a throwaway clone). `printed` maps each offered
-// index back to its index in `opts`, or is nil when nothing was
-// dropped. Caller must hold g.mu.
-func (g *Game) affordableOptionsLocked(chooser, source uuid.UUID, opts []ChoiceOption) ([]ChoiceOption, []int, error) {
+// payCostLocked on a throwaway clone). Caller must hold g.mu.
+func (g *Game) affordableOptionsLocked(chooser, source uuid.UUID, opts []ChoiceOption) ([]ChoiceOption, error) {
 	costed := false
 	for i, o := range opts {
 		if o.ManaCost == "" {
 			continue
 		}
 		if i == 0 {
-			return nil, nil, fmt.Errorf("option pick: the first option (%q) is the always-legal one and cannot cost mana", o.Label)
+			return nil, fmt.Errorf("option pick: the first option (%q) is the always-legal one and cannot cost mana", o.Label)
 		}
 		cost, err := ParseCost(o.ManaCost)
 		if err != nil {
-			return nil, nil, fmt.Errorf("option pick: unparseable cost %s: %w", o.ManaCost, err)
+			return nil, fmt.Errorf("option pick: unparseable cost %s: %w", o.ManaCost, err)
 		}
 		if cost.XSlots > 0 {
-			return nil, nil, fmt.Errorf("option pick: cost %s has an X", o.ManaCost)
+			return nil, fmt.Errorf("option pick: cost %s has an X", o.ManaCost)
 		}
 		costed = true
 	}
 	if !costed {
-		return cloneChoiceOptions(opts), nil, nil
+		return cloneChoiceOptions(opts), nil
 	}
 	p := g.playerByIDLocked(chooser)
 	var out []ChoiceOption
-	var printed []int
-	for i, o := range opts {
+	for _, o := range opts {
 		if o.ManaCost != "" {
 			cost, _ := ParseCost(o.ManaCost)
 			if p == nil || !g.canPayCostLocked(p, cost, source) {
@@ -626,13 +565,8 @@ func (g *Game) affordableOptionsLocked(chooser, source uuid.UUID, opts []ChoiceO
 			}
 		}
 		out = append(out, o)
-		printed = append(printed, i)
 	}
-	out = cloneChoiceOptions(out)
-	if len(printed) == len(opts) {
-		return out, nil, nil
-	}
-	return out, printed, nil
+	return cloneChoiceOptions(out), nil
 }
 
 // payChosenOptionLocked pays the chosen option's ManaCost, if it has
@@ -695,7 +629,6 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	// pruned since it was built, so the index is only meaningful
 	// against the list the chooser was shown, which is this one.
 	seat := choice.PickOptions[index].Player
-	subject := choice.PickOptions[index].subject()
 	if frame != nil && frame.thenSeat != nil && seat == uuid.Nil {
 		// A seat continuation answered with an option that names no
 		// seat is a bug in whoever built the list, and it must not
@@ -726,6 +659,7 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	if key := choice.PickThen; key != "" {
 		carry := copyUUIDs(choice.OptionCarry)
 		dice := choice.dice
+		parked := choice.opponentTargetResume
 		asked := choice.Asked.StackItem()
 		words, nums, tail := copyStrings(choice.PickWords), copyInts(choice.PickNums), copyKeyedTail(choice.pickTail)
 		cause := carriedCauseOfChoice(choice) // #4281
@@ -733,28 +667,22 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		g.emitChoiceEffectErrorLocked(chooserID, source, g.withCarriedCauseLocked(cause, func() error {
 			return runOptionPickThen(g, key, OptionPicked{
 				Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry, dice: dice,
-				Asked: asked,
-				Words: words, Nums: nums, Tail: tail,
+				parked: parked,
+				Asked:  asked,
+				Words:  words, Nums: nums, Tail: tail,
 			})
 		}))
 		g.runStateChecksLocked()
 		return nil
 	}
 	g.dequeueChoiceLocked(idx)
-	if frame == nil || (frame.then == nil && frame.thenSeat == nil && frame.thenSubject == nil) {
+	if frame == nil || frame.thenSeat == nil {
 		// Nothing to run. The prompt is gone either way rather than
 		// stuck: an option pick with no frame is a bug in whoever
 		// queued it, and refusing the answer would wedge the seat.
 		return nil
 	}
-	run := frame.then
-	switch {
-	case frame.thenSeat != nil:
-		run = func(g *Game, _ int) error { return frame.thenSeat(g, seat) }
-	case frame.thenSubject != nil:
-		run = func(g *Game, _ int) error { return frame.thenSubject(g, subject) }
-	}
-	if err := run(g, index); err != nil {
+	if err := frame.thenSeat(g, seat); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooserID,

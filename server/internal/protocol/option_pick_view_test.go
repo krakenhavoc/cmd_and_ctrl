@@ -10,6 +10,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// testNoopOptionPick is the keyed continuation for a test prompt whose
+// answer runs nothing (#4361 slice 6 retired the closure Then).
+var testNoopOptionPick = game.RegisterOptionPickThen("test/4361-protocol-noop-option",
+	func(*game.Game, game.OptionPicked) error { return nil })
+
 // option_pick_view_test.go — #568. The redaction pass on a prompt
 // addressed to a seat over cards that are NOT that seat's.
 //
@@ -55,7 +60,7 @@ func seedOptionPickOverLibrary(t *testing.T, g *game.Game, chooser, owner *game.
 				{Label: "Pile 1", Cards: ids[:1]},
 				{Label: "Pile 2", Cards: ids[1:]},
 			},
-			Then: func(*game.Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	return ids
@@ -267,7 +272,7 @@ func TestAVillainousChoiceCarriesItsHintsOnTheWire(t *testing.T) {
 				{Label: "Sacrifice a nontoken creature"},
 				{Label: "Lose 2 life", LifeCost: 2, Harm: 1},
 			},
-			Then: func(*game.Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	for _, viewer := range []string{facing.ID.String(), g.Seats[0].ID.String()} {

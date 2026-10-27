@@ -25,20 +25,30 @@ import (
 //     left — dropChoiceLocked, which is the door every prune in the
 //     tree already goes through.
 
+// droppedPickRecorder counts its runs in *droppedPickRan and records the
+// index it was run with in *droppedPickGot.
+var (
+	droppedPickRan, droppedPickGot *int
+	droppedPickRecorder            = RegisterOptionPickThen(testEffectKeyPrefix+"4361-dropped-pick-recorder",
+		func(_ *Game, r OptionPicked) error {
+			if droppedPickRan != nil {
+				*droppedPickRan++
+				*droppedPickGot = r.Index
+			}
+			return nil
+		})
+)
+
 // optionPickWithAContinuation queues a two-branch option pick whose
 // continuation records the index it was run with. `ran` counts the
 // runs, `got` is the last index.
 func optionPickWithAContinuation(t *testing.T, g *Game, p OptionPickPrompt, ran *int, got *int) uuid.UUID {
 	t.Helper()
-	inner := p.Then
-	p.Then = func(g *Game, index int) error {
-		*ran++
-		*got = index
-		if inner != nil {
-			return inner(g, index)
-		}
-		return nil
-	}
+	// Keyed since #4361 slice 6 retired the closure Then: the recorder
+	// is a package-level key pointed at this test's counters.
+	droppedPickRan, droppedPickGot = ran, got
+	t.Cleanup(func() { droppedPickRan, droppedPickGot = nil, nil })
+	p.ThenKey = droppedPickRecorder
 	if len(p.Options) == 0 {
 		p.Options = []ChoiceOption{{Label: "Lose 3 life", LifeCost: 3}, {Label: "Discard a card"}}
 	}

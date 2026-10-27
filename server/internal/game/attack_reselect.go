@@ -152,19 +152,13 @@ type ReselectAttackPrompt struct {
 	// Question is the prompt's header, written the way the card is.
 	Question string
 
-	// Then runs once the question is settled — answered, declined, or
-	// dropped — and is how a card that asks once per attacking
-	// creature (Windshaper Planetar) chains the next one. It also runs,
-	// inline, when there was nothing to ask. Runs with g.mu held.
-	Then func(g *Game) error
-
 	// Next are the attackers asked about after this one, one after
 	// another, as data (#4253 slice 10b): Windshaper Planetar's "for each
 	// attacking creature" chain without a closure. Each is asked with
 	// ReselectAttackQuestion's header; one no longer attacking, or with
-	// nothing else to attack, is skipped. A prompt with no Then is keyed
-	// (reselectAttackPicked), so a table waiting on it is a restore point.
-	// Set Next or Then, not both; with Then set Next is ignored.
+	// nothing else to attack, is skipped. The prompt is keyed
+	// (reselectAttackPicked), so a table waiting on it is a restore point;
+	// #4361 slice 6 retired the closure Then, which nothing set.
 	Next []uuid.UUID
 }
 
@@ -184,8 +178,9 @@ func (g *Game) ReselectAttackQuestion(attacker uuid.UUID) string {
 // reselectAttackPicked is the keyed answer to a reselect prompt (#4253
 // slice 10b): the attacker is the carry's first ID and the attackers still
 // to ask about the rest. The answer is read off the option picked (its seat,
-// or its one card), never an index, for the #994 reason
-// optionPickFrame.thenSubject gives; the first option, "keep attacking", has
+// or its one card), never an index, for the #994 reason: a seat that
+// leaves the game is pruned off an open prompt, which renumbers the
+// options after it; the first option, "keep attacking", has
 // neither and reselects nothing, as does a dropped prompt. An on-disk key:
 // never renamed, never reused. Registered from init: the answer asks the
 // next question, which names this key.
@@ -240,7 +235,7 @@ func (g *Game) askNextReselectLocked(chooser, source uuid.UUID, attackers []uuid
 // p.Attacker's attack (CR 508.7) and, if so, onto what. Returns the
 // prompt's ID, or uuid.Nil when nothing was queued — the attacker is
 // not attacking, or there is nothing else it could attack — in which
-// case p.Then has already run.
+// case the attackers in p.Next have already been asked about in turn.
 //
 // ONE option_pick, and the "you may" is its FIRST option: "Keep
 // attacking <current>". That is the branch the enumerator marks
@@ -251,7 +246,7 @@ func (g *Game) askNextReselectLocked(chooser, source uuid.UUID, attackers []uuid
 // permanent rather than quoting its name.
 //
 // The answer is read off the OPTION the chooser picked, not an index
-// into a list captured here (optionPickFrame.thenSubject): a seat that
+// into a list captured here (reselectAttackAnswered): a seat that
 // leaves the game is pruned off an open prompt (#994), which renumbers
 // the options after it. The picked target is then re-validated by
 // ReselectAttackTargetForEffect, so an answer the board has since made
@@ -259,69 +254,22 @@ func (g *Game) askNextReselectLocked(chooser, source uuid.UUID, attackers []uuid
 //
 // Caller must hold g.mu.
 func (g *Game) QueueReselectAttackForEffect(p ReselectAttackPrompt) uuid.UUID {
-	then := p.Then
-	finish := func(g *Game) error {
-		if then == nil {
-			return nil
-		}
-		return then(g)
-	}
-	keyed := then == nil
 	options := g.reselectAttackOptionsLocked(p.Attacker)
 	if options == nil {
-		if keyed {
-			// #4253 slice 10b: the rest of the chain is data, asked in turn.
-			g.askNextReselectLocked(p.Chooser, p.Source, p.Next)
-			return uuid.Nil
-		}
-		if err := finish(g); err != nil {
-			g.emitChoiceEffectErrorLocked(p.Chooser, p.Source, err)
-		}
+		// #4253 slice 10b: the rest of the chain is data, asked in turn.
+		g.askNextReselectLocked(p.Chooser, p.Source, p.Next)
 		return uuid.Nil
 	}
-	attacker := p.Attacker
-	if keyed {
-		queued := g.QueueOptionPickForEffect(OptionPickPrompt{
-			Chooser:  p.Chooser,
-			Source:   p.Source,
-			Question: p.Question,
-			Options:  options,
-			ThenKey:  reselectAttackPicked,
-			Carry:    append([]uuid.UUID{attacker}, p.Next...),
-		})
-		if queued == uuid.Nil {
-			g.askNextReselectLocked(p.Chooser, p.Source, p.Next)
-		}
-		return queued
-	}
-	queued := g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceOptionPick,
-		Chooser:     p.Chooser,
-		FromPlayer:  p.Chooser,
-		Count:       1,
-		Source:      p.Source,
-		Reason:      p.Question,
-		PickOptions: options,
-		optionPickResume: &optionPickFrame{
-			thenSubject: func(g *Game, target uuid.UUID) error {
-				if target != uuid.Nil {
-					// An illegal answer — the target left, or its
-					// controller did — reselects nothing. The
-					// question was "you may", and "no" is always a
-					// legal outcome of it.
-					if err := g.ReselectAttackTargetForEffect(attacker, target); err != nil &&
-						!errors.Is(err, ErrNotAttacking) && !errors.Is(err, ErrIllegalAttackTarget) {
-						return err
-					}
-				}
-				return finish(g)
-			},
-		},
+	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  p.Chooser,
+		Source:   p.Source,
+		Question: p.Question,
+		Options:  options,
+		ThenKey:  reselectAttackPicked,
+		Carry:    append([]uuid.UUID{p.Attacker}, p.Next...),
 	})
 	if queued == uuid.Nil {
-		if err := finish(g); err != nil {
-			g.emitChoiceEffectErrorLocked(p.Chooser, p.Source, err)
-		}
+		g.askNextReselectLocked(p.Chooser, p.Source, p.Next)
 	}
 	return queued
 }

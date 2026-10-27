@@ -27,7 +27,7 @@ func queueVillainous(g *game.Game, facing uuid.UUID, a, b game.ChoiceOption) {
 			Chooser:  facing,
 			Question: "Damocles Base — sacrifice a nontoken creature, or lose 2 life?",
 			Options:  []game.ChoiceOption{a, b},
-			Then:     func(*game.Game, int) error { return nil },
+			ThenKey:  testNoopOptionPick,
 		})
 	})
 }

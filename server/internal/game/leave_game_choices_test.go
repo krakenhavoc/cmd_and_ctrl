@@ -355,7 +355,7 @@ func TestOwnMaterialOptionPickIsDroppedNotReassigned(t *testing.T) {
 				{Label: "Lose 3 life", LifeCost: 3},
 				{Label: "Discard a card"},
 			},
-			Then: func(*Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	if id == uuid.Nil {

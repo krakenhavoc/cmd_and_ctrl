@@ -41,151 +41,220 @@ import "github.com/google/uuid"
 // The choice is a PendingChoiceOptionPick asked of the spell's
 // controller while the card waits on the stack, exactly as the CR 903.9
 // commander prompt makes it wait: a pending choice stops priority, so
-// nothing resolves past it. The continuation holds IDs only, never a
-// pointer into the game, so it resolves against whichever game the
-// answer arrives in.
+// nothing resolves past it. The continuation is keyed and holds IDs and
+// words only, never a pointer into the game, so it resolves against
+// whichever game the answer arrives in, a restored one included.
 
 // resolutionExit is one applicable replacement: the words the chooser
-// reads and what it does to the route.
+// reads, which replacement it is (one of the resolutionExit* kinds) and
+// the IDs it needs. It is plain data (#4361 slice 6), so the choice
+// between two of them rides a keyed option pick and a table waiting on
+// it is a restore point.
 type resolutionExit struct {
 	label string
-	apply func(r *zoneRoute)
+	kind  string
+	// card is the spell's card, owner its owner, and controller the
+	// stack item's controller (uuid.Nil with no item).
+	card, owner, controller uuid.UUID
+	// counter is the counter kind of the exile-with-a-counter exit.
+	counter string
+}
+
+// The exits' kinds, written on a waiting prompt (resolutionExitThen's
+// Words): on-disk identities, never renamed, never reused.
+const (
+	resolutionExitExileInstead = "exile-instead"
+	resolutionExitRebound      = "rebound"
+	resolutionExitBuyback      = "buyback"
+	resolutionExitWithCounter  = "exile-with-counter"
+	resolutionExitAdventure    = "adventure"
+)
+
+// apply rewrites the route the way this exit replaces it.
+func (e resolutionExit) apply(r *zoneRoute) {
+	cardID, controller := e.card, e.controller
+	switch e.kind {
+	case resolutionExitExileInstead:
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, e.owner
+	case resolutionExitRebound:
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		r.then = func(g *Game) error {
+			g.scheduleReboundLocked(cardID, controller)
+			return nil
+		}
+	case resolutionExitBuyback:
+		r.Dst = ZoneHand
+	case resolutionExitWithCounter:
+		kind := e.counter
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		r.then = func(g *Game) error {
+			if exiledCardByIDLocked(g, cardID) == nil {
+				return nil
+			}
+			// #3942: the spell's controller puts it.
+			return g.AddCounterByForEffect(controller, cardID, kind, 1)
+		}
+	case resolutionExitAdventure:
+		// CR 715.3d names the spell's CONTROLLER twice — "its controller
+		// exiles it" and "that player may play it" — so a stolen
+		// Adventure is the thief's to cast later (ADR 0104, owner
+		// decision 4). The owner stands in only for an item with no
+		// controller, which no cast produces.
+		if controller == uuid.Nil {
+			controller = e.owner
+		}
+		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+		r.then = func(g *Game) error {
+			g.grantAdventureCastFromExileLocked(cardID, controller)
+			return nil
+		}
+	}
 }
 
 // resolutionExitsLocked lists the replacements that apply to a spell
-// that has just RESOLVED, in the order they are offered: rebound,
-// buyback, the Adventure exile. Empty for an ordinary spell, which goes
-// to its owner's graveyard.
+// that has just RESOLVED, in the order they are offered: the granted
+// cast's exile, rebound, buyback, the exile with a counter, the
+// Adventure exile. Empty for an ordinary spell, which goes to its
+// owner's graveyard.
 //
 // Caller must hold g.mu.
 func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 	var out []resolutionExit
+	exit := func(label, kind string) resolutionExit {
+		e := resolutionExit{label: label, kind: kind, card: c.InstanceID, owner: c.Owner}
+		if item != nil {
+			e.controller = item.Controller
+		}
+		return e
+	}
 	if exilesInsteadOfGraveyard(item) {
 		// #3863: the granted cast's replacement. Offered first: of the
 		// exits, it is the one that gives the player nothing back.
-		owner := c.Owner
-		out = append(out, resolutionExit{
-			label: "Exile it instead of putting it into your graveyard",
-			apply: func(r *zoneRoute) {
-				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, owner
-			},
-		})
+		out = append(out, exit("Exile it instead of putting it into your graveyard", resolutionExitExileInstead))
 	}
 	if spellRebounds(c, item) {
 		// CR 702.88a: exile it and, at the beginning of its
 		// controller's next upkeep, offer the free cast. The delayed
-		// trigger rides the continuation for the reason the Adventure
-		// grant does: it is about the card IN EXILE, and is created only
-		// once the card is there.
-		cardID, controller := c.InstanceID, item.Controller
-		out = append(out, resolutionExit{
-			label: "Rebound — exile it, and you may cast it free at your next upkeep",
-			apply: func(r *zoneRoute) {
-				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-				r.then = func(g *Game) error {
-					g.scheduleReboundLocked(cardID, controller)
-					return nil
-				}
-			},
-		})
+		// trigger rides the route's continuation for the reason the
+		// Adventure grant does: it is about the card IN EXILE, and is
+		// created only once the card is there.
+		out = append(out, exit("Rebound — exile it, and you may cast it free at your next upkeep", resolutionExitRebound))
 	}
 	if item != nil && OptionalCostTimesPaid(c, item.Paid.OptionalCosts, BuybackKey) > 0 {
 		// CR 702.27a. Through the SAME exit primitive, so a bought-back
 		// commander still gets its CR 903.9 choice and a replacement
 		// watching the stack exit still sees one.
-		out = append(out, resolutionExit{
-			label: "Buyback — return it to its owner's hand",
-			apply: func(r *zoneRoute) { r.Dst = ZoneHand },
-		})
+		out = append(out, exit("Buyback — return it to its owner's hand", resolutionExitBuyback))
 	}
 	if item != nil && !item.IsCopy && item.ExileWithCounter != "" {
 		// Goliath Daydreamer: exile it with a counter on it. The counter
 		// goes on once the card is really in exile (exile_with_counter.go).
-		cardID, controller, kind := c.InstanceID, item.Controller, item.ExileWithCounter
-		out = append(out, resolutionExit{
-			label: "Exile it with a " + kind + " counter on it",
-			apply: func(r *zoneRoute) {
-				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-				r.then = func(g *Game) error {
-					if exiledCardByIDLocked(g, cardID) == nil {
-						return nil
-					}
-					// #3942: the spell's controller puts it.
-					return g.AddCounterByForEffect(controller, cardID, kind, 1)
-				}
-			},
-		})
+		e := exit("Exile it with a "+item.ExileWithCounter+" counter on it", resolutionExitWithCounter)
+		e.counter = item.ExileWithCounter
+		out = append(out, e)
 	}
 	if castAsAdventure(c) {
 		// CR 715.3d, and CR 715.4's permission rides the route's
 		// continuation rather than the next line: a route that paused
 		// on a CR 903.9 prompt finishes later, and the grant has to land
 		// when it does. See adventure.go.
-		//
-		// CR 715.3d names the spell's CONTROLLER twice — "its controller
-		// exiles it" and "that player may play it" — so a stolen
-		// Adventure is the thief's to cast later (ADR 0104, owner
-		// decision 4). The owner stands in only for an item with no
-		// controller, which no cast produces.
-		cardID := c.InstanceID
-		controller := c.Owner
-		if item != nil && item.Controller != uuid.Nil {
-			controller = item.Controller
-		}
-		out = append(out, resolutionExit{
-			label: "Adventure — exile it, and you may cast the creature later",
-			apply: func(r *zoneRoute) {
-				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
-				r.then = func(g *Game) error {
-					g.grantAdventureCastFromExileLocked(cardID, controller)
-					return nil
-				}
-			},
-		})
+		out = append(out, exit("Adventure — exile it, and you may cast the creature later", resolutionExitAdventure))
 	}
 	return out
 }
 
 // chooseResolutionExitLocked asks the spell's controller which of
 // `exits` applies (CR 616.1), and routes the card once they answer.
-// `r` is the route as the caller built it, to the owner's graveyard;
-// the chosen exit rewrites it.
+// The route is the one routeStackCardToGraveyardLocked builds, to the
+// owner's graveyard by a rule (resolutionExitRouteOf); the chosen exit
+// rewrites it.
 //
 // A prompt that cannot be asked (the controller has left) or that ends
 // unanswered takes the first exit in the offered order. That is the
 // rest of the resolution running with the question unasked (the
 // NoChoiceIndex rule), and the order is the one written above.
 //
+// Keyed (#4361 slice 6): the card, its owner, the item's controller, the
+// counter kind and the exits' kinds ride the prompt as data
+// (resolutionExitThen), so a table waiting on the answer is a restore
+// point.
+//
 // Caller must hold g.mu (write).
-func (g *Game) chooseResolutionExitLocked(c Card, item *StackItem, r zoneRoute, exits []resolutionExit) error {
+func (g *Game) chooseResolutionExitLocked(c Card, item *StackItem, exits []resolutionExit) error {
 	chooser := c.Owner
 	if item != nil && item.Controller != uuid.Nil {
 		chooser = item.Controller
 	}
-	route := func(g *Game, index int) error {
-		if index < 0 || index >= len(exits) {
-			index = 0
-		}
-		chosen := r
-		exits[index].apply(&chosen)
-		_, err := g.routeCardToZoneLocked(chosen)
-		return err
-	}
 	options := make([]ChoiceOption, len(exits))
+	words := make([]string, 1, len(exits)+1)
 	for i, e := range exits {
 		options[i] = ChoiceOption{Label: e.label}
+		words = append(words, e.kind)
+		if e.counter != "" {
+			words[0] = e.counter
+		}
 	}
+	carry := []uuid.UUID{exits[0].card, exits[0].owner, exits[0].controller}
 	id := g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   c.InstanceID,
 		Question: c.Name + " is resolving — choose which replacement applies",
 		Options:  options,
-		Then:     route,
+		ThenKey:  resolutionExitThen,
+		Carry:    carry,
+		Words:    words,
 	})
 	if id == uuid.Nil {
-		return route(g, NoChoiceIndex)
+		return routeResolutionExitLocked(g, carry, words, NoChoiceIndex)
 	}
 	return nil
+}
+
+// resolutionExitRouteOf is the route a resolved spell's card takes to
+// its owner's graveyard before any exit rewrites it (CR 608.2n; #1320:
+// no spell or ability is moving it, a rule is).
+func resolutionExitRouteOf(card, owner uuid.UUID) zoneRoute {
+	return zoneRoute{
+		CardID: card, Dst: ZoneGraveyard, DstOwner: owner,
+		Cause: MoveCause{Kind: MoveCauseRule},
+	}
+}
+
+// resolutionExitThen is the answer to CR 616.1's choice between a
+// resolved spell's exits. Carry is the card, its owner and the stack
+// item's controller; Words[0] is the exile-with-a-counter exit's counter
+// kind ("" without one) and Words[1:] the exits' kinds in offered order.
+// None costs mana, so the index is an offset into them. An on-disk key:
+// never renamed, never reused. Registered from init: the route it runs
+// can resolve further spells' exits, which name this key.
+var resolutionExitThen OptionPickThen
+
+func init() {
+	resolutionExitThen = RegisterOptionPickThen("option-pick/resolution-exit", func(g *Game, r OptionPicked) error {
+		return routeResolutionExitLocked(g, r.Carry, r.Words, r.Index)
+	})
+}
+
+// routeResolutionExitLocked routes the card by the exit at `index`, or
+// by the first one when the index is out of range (NoChoiceIndex).
+//
+// Caller must hold g.mu (write).
+func routeResolutionExitLocked(g *Game, carry []uuid.UUID, words []string, index int) error {
+	if len(carry) < 3 || len(words) < 2 {
+		return nil
+	}
+	kinds := words[1:]
+	if index < 0 || index >= len(kinds) {
+		index = 0
+	}
+	e := resolutionExit{kind: kinds[index], card: carry[0], owner: carry[1], controller: carry[2]}
+	if e.kind == resolutionExitWithCounter {
+		e.counter = words[0]
+	}
+	r := resolutionExitRouteOf(e.card, e.owner)
+	e.apply(&r)
+	_, err := g.routeCardToZoneLocked(r)
+	return err
 }
 
 // exilesInsteadOfGraveyard reports whether the spell carries a granted

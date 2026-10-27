@@ -7,6 +7,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
+// testNoopOptionPick is the keyed continuation for a test prompt whose
+// answer runs nothing (#4361 slice 6 retired the closure Then).
+var testNoopOptionPick = game.RegisterOptionPickThen("test/4361-legal-noop-option",
+	func(*game.Game, game.OptionPicked) error { return nil })
+
 // option_pick_test.go — #568's enumerator half, and the reason it
 // exists: `EnumerateFor` returns ONLY a choice's answers while a seat
 // owes one, so a kind the enumerator does not know is a bot seat with
@@ -31,7 +36,7 @@ func TestOptionPickEnumeratesEveryBranchForItsChooser(t *testing.T) {
 				{Label: "Sacrifice a nonland permanent"},
 				{Label: "Discard a card"},
 			},
-			Then: func(*game.Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 
@@ -65,7 +70,7 @@ func TestOptionPickPricesTheLifeBranch(t *testing.T) {
 				{Label: "Discard a card"},
 				{Label: "Lose 3 life", LifeCost: 3},
 			},
-			Then: func(*game.Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	moves := legal.EnumerateFor(g, opp.ID)
@@ -100,7 +105,7 @@ func TestOptionPickOffersNothingToAnyoneElse(t *testing.T) {
 			Chooser:  opp.ID,
 			Question: "Torment of Hailfire",
 			Options:  []game.ChoiceOption{{Label: "Lose 3 life", LifeCost: 3}},
-			Then:     func(*game.Game, int) error { return nil },
+			ThenKey:  testNoopOptionPick,
 		})
 	})
 	for _, m := range legal.EnumerateFor(g, me.ID) {

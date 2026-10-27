@@ -203,9 +203,7 @@ millTail.then                                census:ChoiceResumeFrames          
 modePickFrame.ability                        census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.source
 modeWalk.item                                keyed                              # Game.pausedModeWalk.item
-optionPickFrame.then                         census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.then
 optionPickFrame.thenSeat                     census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSeat
-optionPickFrame.thenSubject                  census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSubject
 payUnlessFrame.onDecline                     census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onDecline
 payUnlessFrame.onPay                         census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.onPay
 payUnlessFrame.tap                           census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume.tap

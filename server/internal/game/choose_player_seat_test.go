@@ -67,7 +67,7 @@ func TestAnOptionThatIsNotAboutASeatLeavesTheFieldZero(t *testing.T) {
 				{Label: "Lose 3 life", LifeCost: 3},
 				{Label: "Discard a card"},
 			},
-			Then: func(*Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	c := choosePlayerPromptFor(g, me.ID)
@@ -289,7 +289,7 @@ func TestTheSeatPruneLeavesAPileSplitAlone(t *testing.T) {
 				{Label: "Take pile 1", Cards: pile[:1]},
 				{Label: "Take pile 2", Cards: pile[1:]},
 			},
-			Then: func(*Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	if err := g.Concede(leaver.ID); err != nil {
