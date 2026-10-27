@@ -604,9 +604,6 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 			}
 		}
 	}
-	if t := ev.tokenTail; t != nil && t.then != nil {
-		return false
-	}
 	// #4361 S17: the rest of a replaced move's life changes (ADR 0178,
 	// lifeTail.move) is written with the life tail, and its route rides
 	// the event's zoneRoute, checked below like any other.
@@ -634,9 +631,6 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 		}
 	}
 	if t := ev.entryTail; t != nil {
-		if t.then != nil {
-			return false
-		}
 		if t.batch != nil && !g.entryBatchKeyable(t.batch) {
 			// #4253 slice 3: a simultaneous entry is data when its
 			// continuation is and its settled members are.

@@ -1740,3 +1740,4 @@ castfollowup spellweaver-volute-exile-and-reattach
 castfollowup summon-brynhildr-gestalt-haste
 tail engine/entry-choice-acted
 tail engine/face-down-permitted-granted
+tail engine/spell-copy-token-control

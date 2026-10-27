@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -34,14 +33,6 @@ func TestSettledCreationSplitSurvivesARestoreAtEachQuestion(t *testing.T) {
 		{Template: tok("Second"), Count: 1, AttackOpponent: opp2.ID},
 	}
 	spec := TokenCreation{Controller: me.ID, Source: uuid.New(), Groups: groups, Together: true, AttackChoicesLabel: "Split Probe"}
-
-	// A closure is not data: the split refuses it rather than hold it.
-	g.WithWriteLock(func() {
-		err := g.CreateTokensThenForEffect(spec, func(*Game, []uuid.UUID) error { return nil })
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("a closure tail with a split: err = %v, want ErrInvalidParam", err)
-		}
-	})
 
 	g.WithWriteLock(func() {
 		if err := g.CreateTokensKeyedForEffect(spec, KeyedTail{Ref: attackSplitTail, Player: me.ID}); err != nil {

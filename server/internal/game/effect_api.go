@@ -3249,7 +3249,7 @@ type TokenEntryOptions struct {
 // the tokens are made when it is answered, an action later, and there
 // is nothing to return here. A caller whose sentence continues past
 // the tokens must hand that continuation to
-// CreateTokensThenForEffect rather than read this slice on the next
+// CreateTokensKeyedForEffect rather than read this slice on the next
 // line — the same contract MillToZoneKeyedForEffect and
 // discardCardsLocked carry.
 //

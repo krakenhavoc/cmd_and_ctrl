@@ -682,7 +682,9 @@ type PendingChoice struct {
 	// choice enumerator) then needs no change at all to answer it.
 	// What differs is only what gets built on submit, which is what
 	// the frame decides. Exactly one of pickTargetResume and
-	// copyResume is set.
+	// copyResume is set. Written as data (#4361 S15,
+	// pendingChoices[].copyWalk, copy_walk_keyed.go) when its item can
+	// be written whole.
 	copyResume *copyFrame
 
 	// SacrificeOptions is the set of permanents a

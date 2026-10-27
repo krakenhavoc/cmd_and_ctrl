@@ -355,9 +355,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		g.enteringTokens = nil
 	}
 	for name, mut := range map[string]func(c *PendingChoice){
-		"an entry tail's then": func(c *PendingChoice) {
-			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
-		},
 		"an entry batch that has failed": func(c *PendingChoice) {
 			b := &entryBatch{}
 			b.firstErr.record(ErrInvalidParam)
@@ -371,12 +368,10 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		},
 		"an entry batch whose settled member holds a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{
-				out: &ReplacementEvent{Kind: RepEventMove, entryTail: &entryTail{then: func(*Game, uuid.UUID) error { return nil }}},
+				// #4361 S12: entryTail.then is gone; a resolving item with
+				// a closure and no body is still not data.
+				out: &ReplacementEvent{Kind: RepEventMove, stackItem: &StackItem{Label: "closure", Effect: func(*Game, *StackItem) error { return nil }}},
 			}}}}
-		},
-		"a token creation with a closure": func(c *PendingChoice) {
-			c.replacementResume.ev.Kind = RepEventCreateTokens
-			c.replacementResume.ev.tokenTail = &tokenTail{then: func(*Game, []uuid.UUID) error { return nil }}
 		},
 		"a token template the mirror cannot write": func(c *PendingChoice) {
 			c.replacementResume.ev.Kind = RepEventCreateTokens
@@ -384,9 +379,11 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 				Name: "Odd", ActivatedAbilities: []ActivatedAbilityShape{{}},
 			}}}
 		},
-		"a staged token's entry whose batch is a closure": func(c *PendingChoice) {
+		// #4361 S12: a token batch's closure form is gone; a staged
+		// token whose entry carries no batch run is still not data.
+		"a staged token's entry with no batch run": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
-			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
+			c.replacementResume.ev.entryTail = &entryTail{}
 			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}
 		},
 		"an amass's Army the mirror cannot write": func(c *PendingChoice) {

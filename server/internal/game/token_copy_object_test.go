@@ -2,7 +2,6 @@ package game
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -95,11 +94,7 @@ func TestSimultaneousTokenEntryPauseAndUndo(t *testing.T) {
 			Groups: []TokenGroup{{Template: goblinToken(), Count: 2, Entry: TokenEntryOptions{Counters: map[string]int{CounterPlusOne: 1}}}},
 		}
 		// #4361 S10: tokens entering together carry their continuation as
-		// data on the batch. A closure is not data, so it is refused, as a
-		// split creation refuses one.
-		if err := g.CreateTokensThenForEffect(spec, func(*Game, []uuid.UUID) error { return nil }); !errors.Is(err, ErrInvalidParam) {
-			t.Fatalf("a closure tail on tokens entering together: err = %v, want ErrInvalidParam", err)
-		}
+		// data on the batch (#4361 S12 deleted the closure door).
 		if err := g.CreateTokensKeyedForEffect(spec, hookTail(func(_ *Game, o TailOutcome) error {
 			ran++
 			if len(o.IDs) != 2 {

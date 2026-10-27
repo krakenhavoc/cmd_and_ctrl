@@ -56,7 +56,7 @@ import (
 //  1. FIND-OR-CREATE is the part with no home. Every token-creation
 //     primitive always creates; none of them skips because a matching
 //     permanent is already out. `armiesControlledLocked` is the live
-//     board query and `CreateTokensThenForEffect` is the creation, so
+//     board query and `CreateTokensKeyedForEffect` is the creation, so
 //     the new thing is only the branch between them — and it goes
 //     through the ordinary token pipeline, so ADR 0061's CR 701.7b
 //     window still opens and Doubling Season still doubles.
@@ -230,7 +230,7 @@ func (g *Game) applyAmassLocked(ev *ReplacementEvent) error {
 	// Season really does make two Armies — at which point the choice
 	// below is a real one, which is the ruling.
 	//
-	// CreateTokensThenForEffect and not CreateTokensForEffect: the
+	// CreateTokensKeyedForEffect and not CreateTokensForEffect: the
 	// creation can pause on a CR 616 ordering prompt, and the returned
 	// slice is empty when it does. The rest of the amass is the
 	// continuation, not the next line.
