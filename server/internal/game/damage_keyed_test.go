@@ -22,28 +22,33 @@ func damageFrameEvent() *ReplacementEvent {
 	}
 }
 
-// A shield division or a redirection order held for the event's instance
-// is not written to a restore point, so it keeps the frame off the disk.
-func TestADamageFrameWithAHeldDivisionOrRedirectOrderIsNotKeyed(t *testing.T) {
+// A shield division or a redirection order held for the event's instance,
+// and the event's release from a division, are written beside it (#4361
+// S16), so none of them keeps the frame off the disk.
+func TestADamageFrameWithAHeldDivisionOrRedirectOrderIsKeyed(t *testing.T) {
 	g := NewGame()
+	ev := damageFrameEvent()
 	c := &PendingChoice{Kind: PendingChoiceReplacementOrder, replacementResume: &replacementResumeFrame{
-		ev: damageFrameEvent(), applicable: []activeReplacement{{id: builtinReplacementIDBase}},
+		ev: ev, applicable: []activeReplacement{{id: builtinReplacementIDBase}},
 	}}
 	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
 		t.Fatalf("a plain damage event's frame is keyed %q, want %q", key, ReplacementResumeDamage)
 	}
 	g.shieldDivisions = []ShieldDivision{{Instance: 3}}
-	if key := g.replacementFrameKeyable(c); key != "" {
+	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
 		t.Errorf("a frame with a division held for its instance is keyed %q", key)
 	}
-	g.shieldDivisions = []ShieldDivision{{Instance: 4}}
-	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
-		t.Errorf("another instance's division keeps the frame off the disk (%q)", key)
-	}
-	g.shieldDivisions = nil
 	g.redirectOrders = []redirectOrder{{instance: 3}}
-	if key := g.replacementFrameKeyable(c); key != "" {
+	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
 		t.Errorf("a frame with a redirection order held for its instance is keyed %q", key)
+	}
+	ev.damageTail.released = true
+	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
+		t.Errorf("a frame released from a division is keyed %q", key)
+	}
+	ev.damageTail.redirected = []redirectedDamage{{}}
+	if key := g.replacementFrameKeyable(c); key != "" {
+		t.Errorf("a frame with redirected parts is keyed %q", key)
 	}
 }
 

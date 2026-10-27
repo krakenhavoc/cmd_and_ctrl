@@ -175,7 +175,7 @@ func keyedFrameSample() *ReplacementEvent {
 			deathtouch: true, lifelinkTo: id("dtl"), commanderSource: id("dtc"),
 			result:     DamageResultSource{Infect: true, Wither: true, ToxicTotal: 2},
 			controller: id("dtctl"), marks: DamageMarks{CantBePrevented: true, CantBeRedirected: true},
-			sourceUnpreventable: true, sourceChecked: true, endsInstance: true,
+			sourceUnpreventable: true, sourceChecked: true, endsInstance: true, released: true,
 			keyed: KeyedTail{Ref: TailRef{key: "dk"}, Carry: []uuid.UUID{id("dkc")}},
 			each: &damageEachRun{
 				Source: id("des"), Rest: []uuid.UUID{id("der")}, Amount: 3, Dealt: 2, Instance: 5, Owned: true,
@@ -207,9 +207,9 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"report": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
-		// #4253: combat damage, a release and redirected parts gate the
-		// frame (damageEventIsData).
-		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"then": true, "combat": true, "combatStep": true, "released": true, "redirected": true}},
+		// #4253: combat damage and redirected parts gate the frame
+		// (damageEventIsData); #4361 S16 carries a release.
+		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"combat": true, "combatStep": true, "redirected": true}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -407,10 +407,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"damage with redirected parts": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()
 			c.replacementResume.ev.damageTail.redirected = []redirectedDamage{{to: uuid.New(), amount: 1}}
-		},
-		"a released damage event": func(c *PendingChoice) {
-			c.replacementResume.ev = damageFrameEvent()
-			c.replacementResume.ev.damageTail.released = true
 		},
 		"a sandbox damage mark": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()

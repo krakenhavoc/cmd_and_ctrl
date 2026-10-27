@@ -116,7 +116,6 @@ ModeOption.Effect                            census:ChoiceResumeFrames          
 ModeOption.Targets                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options.Targets
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
-PendingChoice.confirmResume                  census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
@@ -171,8 +170,6 @@ TriggeredAbility.TargetsFrom                 keyed                              
 Zone.Cards                                   census:IntrinsicAbilityCards       # Game.Battlefield.Cards
 activeReplacement.effect                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.effect
 activeReplacement.source                     census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable.source
-confirmFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onAccept
-confirmFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onDecline
 copyFrame.item                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.item
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
 copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps

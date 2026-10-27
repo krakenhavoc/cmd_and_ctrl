@@ -487,8 +487,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
 
 	// A damage event (#4253, damage_keyed.go). Its tail's data half is
-	// carried; a closure `then`, combat damage, redirected parts or a
-	// release gate (damageEventIsData).
+	// carried; combat damage or redirected parts gate (damageEventIsData).
 	"DamageSource":   repFieldCarried,
 	"DamageTarget":   repFieldCarried,
 	"DamageAmount":   repFieldCarried,

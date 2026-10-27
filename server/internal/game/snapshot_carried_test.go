@@ -552,6 +552,9 @@ var carriedNotRoundTrippable = map[string]string{
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +
 		"v9/preordain_scry.json corpus board (effects).",
+	"PendingChoice.DivideShield": "#4361 S16: written only on a divide_shield prompt, whose PickThen it takes " +
+		"for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round trip is " +
+		"pinned by TestDivideShieldMirrorsCarryEveryField and the strict restores in divide_shield_restore_test.go.",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.

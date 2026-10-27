@@ -119,14 +119,6 @@ func (r *damageEachRun) after(dealt int) *damageEachRun {
 	return out
 }
 
-// resumeKeyedDamageWalk is a divided keyed walk's start, once the division
-// is made. The divide_shield prompt's own resume is a closure frame, so a
-// table waiting on that prompt is not a restore point whatever the walk is.
-func resumeKeyedDamageWalk(r *damageEachRun) func(*Game) error {
-	run := cloneDamageEachRun(r)
-	return func(g *Game) error { return g.dealDamageEachKeyedStepLocked(run) }
-}
-
 // dealDamageEachKeyedStepLocked deals the head of the walk's recipients its
 // damage, with the rest of the walk as that event's tail, or, past the
 // last, ends the walk's instance and runs its tail told the total.

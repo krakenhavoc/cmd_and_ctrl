@@ -277,6 +277,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// #4253 slice 5: a written search prompt names the marker, its
 			// set rule and the card's tail.
 			unknown = append(unknown, unknownSearchPromptKeys(&c)...)
+		case c.Kind == PendingChoiceDivideShield:
+			// #4361 S16: a written divide_shield prompt names its landing
+			// step's marker, and a walk's tails.
+			unknown = append(unknown, unknownDivideShieldKeys(&c)...)
 		case c.PickThen == "":
 		case keyedReplacementPromptKind(c.Kind):
 			// #4253: a keyed CR 616 frame's tail, and the bodies and stack
