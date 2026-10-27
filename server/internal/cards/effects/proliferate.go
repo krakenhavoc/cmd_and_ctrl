@@ -19,7 +19,7 @@ import (
 // needs to know nothing about.
 //
 // THE CHOICE IS THE PLAYER'S (#2525). Proliferate{} with no lists asks
-// game.ProliferateChoosingForEffect, which queues a
+// game.ProliferateChoosingKeyedForEffect, which queues a
 // PendingChoiceProliferate once the window has settled: a multi-select
 // over every permanent and player that has a counter, with the
 // engine's beneficial pick suggested (game.ProliferateSuggestionForEffect

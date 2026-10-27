@@ -76,69 +76,14 @@ func (s PromptedSacrifices) Cards() []uuid.UUID { return seatCardsFlat(s) }
 // seat. Lich-Knights' Conquest returns that many creature cards.
 func (s PromptedSacrifices) Count() int { return seatCardsCount(s) }
 
-// EachPlayerSacrificesThenForEffect is EachPlayerSacrificesForEffect
-// with the rest of the card attached: "each player sacrifices a
-// creature of their choice. If you sacrificed a creature this way, …"
-// (Rise of the Witch-king).
-//
-// The seats are asked exactly as the fire-and-forget form asks them —
-// one at a time, APNAP from the active player, a seat with no legal
-// permanent skipped — every pick is sacrificed together after the last
-// answer (#3664), and `then` runs once that exit has finished moving.
-//
-// `then` runs even when nothing was sacrificed, including when nobody
-// could be asked: a continuation is the rest of a card that is paused
-// mid-resolution (#544, #1006), and one that is silently never called
-// is a card that stops halfway. It is handed a PromptedSacrifices
-// whose entries are the seats that were ASKED.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) EachPlayerSacrificesThenForEffect(
-	source, except uuid.UUID,
-	spec *TargetSpec,
-	reason string,
-	then func(g *Game, sacrificed PromptedSacrifices) error,
-) error {
-	_, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, then)
-	return err
-}
-
-// PlayersSacrificeThenForEffect is the GENERAL form: a sacrifice owed
-// per entry in `players`, with one continuation over the lot — "each of two target opponents loses 2 life and sacrifices
-// a creature. You add {B}{B} and draw a card" (Priest of Forgotten
-// Gods), where the seats are the spell's targets rather than the whole
-// table.
-//
-// EachPlayerSacrificesThenForEffect is this one with the seat list
-// worked out (APNAP, minus `except`). A caller that names the same
-// seat N times owes N permanents from that seat: it is asked once, for
-// N of them, and has one entry in the answer (Portal to Phyrexia's
-// "three creatures").
-//
-// Like the each-player form, the seats choose one at a time in APNAP
-// order whatever order they were named in, and every pick is
-// sacrificed together after the last (sacrificeTogetherLocked, #3664).
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PlayersSacrificeThenForEffect(
-	source uuid.UUID,
-	players []uuid.UUID,
-	spec *TargetSpec,
-	reason string,
-	then func(g *Game, sacrificed PromptedSacrifices) error,
-) error {
-	_, err := g.sacrificeTogetherLocked(source, players, spec, reason, then)
-	return err
-}
-
 // sacrificeTogetherLocked is "each [of these] players sacrifices N
 // permanents of their choice" done the CR 101.4 / 608.2e way (#3664):
 // every affected player chooses, one at a time in APNAP order and
 // seeing the earlier choices (CR 101.4b), and only then is every chosen
 // permanent sacrificed, at the same time.
 //
-// It is ADR 0175's ordered collector (ChoosePermanentsInOrderThenForEffect)
-// followed by ONE SacrificeAllThenForEffect, the shape Liliana,
+// It is ADR 0175's ordered collector (startOrderedPicksLocked)
+// followed by ONE SacrificeAllKeyedForEffect, the shape Liliana,
 // Dreadhorde General's −4 introduced. Before this the fan-out queued one
 // sacrifice_choice per seat and each answer sacrificed on the spot, so
 // whoever clicked first lost their permanent first, and its death
@@ -149,10 +94,8 @@ func (g *Game) PlayersSacrificeThenForEffect(
 // put in APNAP order from the active player and each is asked once for
 // min(owed, legal candidates) — CR 701.21a's "if you can". A seat with
 // no legal candidate (or protected from this sacrifice) is not asked
-// and has no entry in the answer. `then`, when set, runs once after
-// the exit has finished — paused replacement legs included — with one
-// entry per seat that chose, holding the picks that really left the
-// battlefield. It runs even when nobody was asked.
+// and has no entry in the answer. Nothing waits on it; a card that reads
+// what each seat sacrificed uses sacrificeTogetherKeyedLocked.
 //
 // Returns how many seats will be asked.
 //
@@ -162,40 +105,12 @@ func (g *Game) sacrificeTogetherLocked(
 	asks []uuid.UUID,
 	spec *TargetSpec,
 	reason string,
-	then func(g *Game, sacrificed PromptedSacrifices) error,
 ) (int, error) {
 	legs := g.sacrificeTogetherLegsLocked(source, asks, spec, reason)
-	if then == nil {
-		// Nothing waits on the answer: the collection is plain data
-		// (ordered_picks_keyed.go), so a table waiting on a seat is a
-		// restore point.
-		return len(legs), g.startOrderedPicksLocked(legs, orderedPicks{Source: source, Sacrifice: true})
-	}
-	err := g.ChoosePermanentsInOrderThenForEffect(legs, func(g *Game, picks PromptedPicks) error {
-		finish := func(g *Game, sacrificed []uuid.UUID) error {
-			landed := make(map[uuid.UUID]bool, len(sacrificed))
-			for _, id := range sacrificed {
-				landed[id] = true
-			}
-			out := make(PromptedSacrifices, 0, len(picks))
-			for _, pick := range picks {
-				entry := SeatCards{Seat: pick.Seat}
-				for _, id := range pick.Cards {
-					if landed[id] {
-						entry.Cards = append(entry.Cards, id)
-					}
-				}
-				out = append(out, entry)
-			}
-			return then(g, out)
-		}
-		chosen := picks.Cards()
-		if len(chosen) == 0 {
-			return finish(g, nil)
-		}
-		return g.SacrificeAllThenForEffect(source, chosen, finish)
-	})
-	return len(legs), err
+	// Nothing waits on the answer: the collection is plain data
+	// (ordered_picks_keyed.go), so a table waiting on a seat is a
+	// restore point.
+	return len(legs), g.startOrderedPicksLocked(legs, orderedPicks{Source: source, Sacrifice: true})
 }
 
 // sacrificeTogetherKeyedLocked is sacrificeTogetherLocked with the rest of
@@ -224,7 +139,7 @@ func (g *Game) sacrificeTogetherKeyedLocked(
 	})
 }
 
-// EachPlayerSacrificesThenKeyedForEffect is EachPlayerSacrificesThenForEffect
+// EachPlayerSacrificesThenKeyedForEffect is EachPlayerSacrificesForEffect
 // with the rest of the card as a registered run continuation
 // (RegisterPromptRunThen) and `data` the plain data it is handed (#4290).
 // It reads the answer as RunDone.Sacrifices(), one entry per seat that was
@@ -241,7 +156,7 @@ func (g *Game) EachPlayerSacrificesThenKeyedForEffect(
 	return g.sacrificeTogetherKeyedLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, then, data)
 }
 
-// PlayersSacrificeThenKeyedForEffect is PlayersSacrificeThenForEffect with
+// PlayersSacrificeThenKeyedForEffect is PlayersSacrificeForEffect with
 // the rest of the card as a registered run continuation; see
 // EachPlayerSacrificesThenKeyedForEffect.
 //

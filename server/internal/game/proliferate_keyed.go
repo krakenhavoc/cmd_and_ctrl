@@ -9,9 +9,9 @@ import (
 // from the prompt to the last counter, so a table waiting on the choice, or
 // on a CR 616 prompt over one of its counters, is a restore point.
 //
-// ProliferateChoosingForEffect's closure form holds the rest of the card on
-// the prompt's chooseCardsResume frame and walks the counters through
-// closures. The keyed form is three registered pieces:
+// The closure form (ProliferateChoosingForEffect, deleted in #4253) held the
+// rest of the card on the prompt's chooseCardsResume frame and walked the
+// counters through closures. The keyed form is three registered pieces:
 //
 //   - the choice is a keyed card-set pick (proliferatePicked): the prompt
 //     carries the proliferates still owed (PickNums) and the rest of the
@@ -25,8 +25,9 @@ import (
 //     new kind mid-placement does not cascade;
 //   - the rest of the sentence is the walk's Next.
 
-// ProliferateChoosingKeyedForEffect is ProliferateChoosingForEffect with
-// the rest of the sentence as a registered tail (#4253 slice 10b): run once
+// ProliferateChoosingKeyedForEffect takes the proliferate keyword action with
+// the choice left to the player and the rest of the sentence as a registered
+// tail (#4253 slice 10b): run once
 // every proliferate of the settled count has been answered and every
 // counter has landed, or at once when there was nothing to do. A zero tail
 // is "nothing more".
@@ -168,6 +169,11 @@ func (g *Game) proliferateStepLocked(run KeyedTail) error {
 		return g.addPlayerCounterByKeyedLocked(placer, id, kinds[k], 1, next)
 	}
 	rest := nextTailValue(run.Next)
+	if remaining > 0 && run.Word == proliferateExplicitWord {
+		// The same explicit choice again, behind this one's last counter.
+		return g.proliferateStepLocked(proliferateExplicitRun(placer, run.Source,
+			run.Carry[:nCards], run.Carry[nCards:], remaining-1, rest))
+	}
 	if remaining > 0 {
 		return g.proliferateAskKeyedLocked(placer, run.Source, remaining, rest)
 	}
@@ -207,3 +213,17 @@ var proliferatedSinceTail = RegisterTail("engine/proliferated-since", func(g *Ga
 	ids := append(copyUUIDs(got.Permanents), got.Players...)
 	return g.runKeyedTailLocked(nextTailValue(o.Tail.Next), ids, len(got.Permanents))
 })
+
+// proliferateExplicitWord marks a walk that repeats ITS OWN choice, not the
+// player's: ProliferateForEffect's explicit lists, applied once for every
+// time the CR 614 window settled on. A walk without it asks for each repeat.
+const proliferateExplicitWord = "explicit"
+
+// proliferateExplicitRun is the walk of an explicit choice: cards and
+// players already named by the caller, `remaining` more times after this
+// one, then the rest of the sentence.
+func proliferateExplicitRun(placer, source uuid.UUID, cards, players []uuid.UUID, remaining int, rest KeyedTail) KeyedTail {
+	run := proliferateRun(placer, source, cards, players, remaining, rest)
+	run.Word = proliferateExplicitWord
+	return run
+}

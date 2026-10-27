@@ -43,21 +43,13 @@ import (
 // before the pipeline runs, because a CR 616 prompt returns without
 // placing anything and the resume has nothing else to go on.
 type counterTail struct {
-	// then runs once the placement has settled, with the delta the
-	// window settled on — the doubled or incremented count for a
-	// placement, negative for a removal — and zero for a placement
-	// that was replaced away (CR 614.10) or whose target has left the
-	// game.
-	//
-	// It takes the live *Game rather than capturing one, on the same
-	// undo-safety contract every other continuation frame follows. It
-	// runs with g.mu held and after the placement's own
-	// EventCounterPlaced, so it may read the counters back or start the
-	// next placement itself.
-	then func(g *Game, placed int) error
-
-	// keyed is `then` as data (#4253 slice 3): a registered tail, told
-	// the delta that settled as TailOutcome.Amount. Set one or neither.
+	// keyed runs once the placement has settled (#4253 slice 3): a
+	// registered tail, told the delta that settled as TailOutcome.Amount
+	// — the doubled or incremented count for a placement, negative for a
+	// removal — and zero for a placement that was replaced away (CR
+	// 614.10) or whose target has left the game. It runs with g.mu held
+	// and after the placement's own EventCounterPlaced, so it may read
+	// the counters back or start the next placement itself.
 	keyed KeyedTail
 }
 
@@ -79,15 +71,12 @@ func (g *Game) runCounterTailLocked(ev *ReplacementEvent, placed int) error {
 	}
 	tail := ev.counterTail
 	ev.counterTail = nil
-	if tail.then == nil {
-		return g.runKeyedTailLocked(tail.keyed, nil, placed)
-	}
-	return tail.then(g, placed)
+	return g.runKeyedTailLocked(tail.keyed, nil, placed)
 }
 
 // applyResolvedCounterThenLocked lands a settled RepEventCounter and
 // then runs its continuation. The one settled exit that carries a
-// tail: the inline path in AddCounterByThenForEffect and the CR 616 /
+// tail: the inline path in AddCounterByKeyedForEffect and the CR 616 /
 // "may" replacement resume in applyResolvedReplacementEventLocked both come
 // through here, so a paused placement and an unpaused one cannot
 // disagree about when the rest of the effect runs.
@@ -111,13 +100,14 @@ func (g *Game) applyResolvedCounterThenLocked(ev *ReplacementEvent) error {
 	return g.runCounterTailLocked(ev, ev.CounterDelta)
 }
 
-// AddCounterByThenForEffect is AddCounterByForEffect with a
-// continuation: `placer` (CR 120.3d) puts `delta` `name` counters on
-// `cardID` (a negative delta removes them), and once the placement has
-// actually settled, `then` runs. A card passes a registered tail to
-// AddCounterByKeyedForEffect instead; this closure form is the engine's
-// own plumbing. (Its no-placer wrapper, AddCounterThenForEffect, was
-// deleted in #4253's last part once only tests called it.)
+// AddCounterByKeyedForEffect is AddCounterByForEffect with a
+// continuation (#4253 slice 3): `placer` (CR 120.3d) puts `delta` `name`
+// counters on `cardID` (a negative delta removes them), and once the
+// placement has actually settled, `then`, a registered tail (RegisterTail),
+// runs, told the delta that settled as TailOutcome.Amount. A CR 616
+// ordering prompt over the placement (Hardened Scales beside Doubling
+// Season) is then a restore point. (The closure form,
+// AddCounterByThenForEffect, was deleted in #4253 once nothing called it.)
 //
 // WHEN `then` RUNS. Immediately, before this returns, on the ordinary
 // path. After the affected player answers the CR 616 ordering prompt
@@ -132,26 +122,8 @@ func (g *Game) applyResolvedCounterThenLocked(ev *ReplacementEvent) error {
 // Anything the effect does AFTER the counters and that reads them —
 // "then it deals damage equal to its power", "then check for lore
 // chapters", "if it has N or more counters" — belongs in `then`. A
-// caller with nothing after the placement passes nil, or keeps calling
-// AddCounterForEffect, which is this with nil.
-//
-// The one body every counter placement with a continuation goes
-// through.
-//
-// Caller must hold g.mu.
-func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, delta int, then func(g *Game, placed int) error) error {
-	var tail *counterTail
-	if then != nil {
-		tail = &counterTail{then: then}
-	}
-	return g.addCounterWithTailLocked(placer, cardID, name, delta, tail)
-}
-
-// AddCounterByKeyedForEffect is AddCounterByThenForEffect with the
-// continuation as data (#4253 slice 3): `then` is a registered tail
-// (RegisterTail), told the delta that settled as TailOutcome.Amount. A
-// CR 616 ordering prompt over the placement (Hardened Scales beside
-// Doubling Season) is then a restore point.
+// caller with nothing after the placement keeps calling
+// AddCounterForEffect, which is this with a zero tail.
 //
 // Caller must hold g.mu.
 func (g *Game) AddCounterByKeyedForEffect(placer, cardID uuid.UUID, name string, delta int, then KeyedTail) error {
@@ -162,7 +134,7 @@ func (g *Game) AddCounterByKeyedForEffect(placer, cardID uuid.UUID, name string,
 	return g.addCounterWithTailLocked(placer, cardID, name, delta, tail)
 }
 
-// addCounterWithTailLocked is the one body of the two doors above.
+// addCounterWithTailLocked is the one body of the counter-placement doors.
 //
 // Caller must hold g.mu.
 func (g *Game) addCounterWithTailLocked(placer, cardID uuid.UUID, name string, delta int, tail *counterTail) error {
@@ -187,7 +159,7 @@ func (g *Game) addCounterWithTailLocked(placer, cardID uuid.UUID, name string, d
 
 // placeCountersThroughReplacementsLocked runs the CR 614 window on a
 // built counter event and lands it. The shared body of
-// AddCounterByThenForEffect and the starting-loyalty stamp, which marks
+// AddCounterByKeyedForEffect and the starting-loyalty stamp, which marks
 // its event first (ReplacementEvent.StartingLoyalty, ADR 0183).
 //
 // Caller must hold g.mu.

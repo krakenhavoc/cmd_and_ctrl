@@ -857,36 +857,6 @@ func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exile
 	return g.routeAllThenLocked(exileRoute, ids, then)
 }
 
-// ExileCardThenForEffect is the SINGLE-CARD form: exile one card and
-// tell `then` whether it actually reached exile.
-//
-// #870. A one-card read-back is the same bug as a batch one and it
-// arrived by the same route: ExileCardForEffect returns nil when the
-// leg merely PAUSED on the CR 903.9 prompt, so "exile it with a hit
-// counter on it" put the counter on a card still in its owner's
-// graveyard. The answer is not a second exile path with its own notion
-// of what landed — that is how exile and destroy drifted apart in the
-// first place (#815, #866) — so this is a WRAPPER over the batch,
-// which already sequences the pause, carries the landed list across it
-// and replays identically under an undo. A batch of one publishes a
-// one-card simultaneous exit, which no watcher can observe: the
-// harvest skips the card whose own move is being reported.
-//
-// `exiled` is CR 400.7's reading, the batch's: true when the card is
-// in exile, false when the window cancelled the move or a
-// replacement sent it somewhere else. A commander counts: it is
-// exiled before CR 903.9a asks its owner (ADR 0115).
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exiled bool) error) error {
-	return g.ExileCardsThenForEffect([]uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, len(landed) == 1)
-	})
-}
-
 // SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
 // simultaneous exit and hands `then` the ones that were actually
 // SACRIFICED — "then draw a card for each permanent sacrificed this
@@ -913,28 +883,16 @@ func (g *Game) ExileCardThenForEffect(cardID uuid.UUID, then func(g *Game, exile
 //
 // `source` is the card that asked, stamped on each EventSacrifice.
 //
+// This is the closure form, and the engine's own plumbing: a card passes
+// a registered tail to SacrificeAllKeyedForEffect. #4253 left exactly one
+// caller, the sacrifice an entry choice starts ("As this enters, sacrifice
+// a land", ResolveEntryCardChoice), whose continuation resumes a frozen
+// copy of the paused entry (frozenEntryChoice) and so cannot be data until
+// that frame is.
+//
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) SacrificeAllThenForEffect(source uuid.UUID, ids []uuid.UUID, then func(g *Game, sacrificed []uuid.UUID) error) error {
 	return g.routeAllThenLocked(sacrificeRoute(source), g.sacrificeableLocked(g.unprotectedFromSacrificeLocked(ids)), then)
-}
-
-// SacrificeThenForEffect is the SINGLE-CARD form: sacrifice one
-// permanent and tell `then` whether it really left the battlefield.
-//
-// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
-// for the reason that one gives: a one-card read-back is the same
-// problem as a batch one — the one leg is the leg that can pause — and
-// a second sacrifice path with its own notion of what happened is how
-// two verbs drift. "Sacrifice a creature. If you do, …" is this call.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) SacrificeThenForEffect(source, cardID uuid.UUID, then func(g *Game, sacrificed bool) error) error {
-	return g.SacrificeAllThenForEffect(source, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, len(landed) == 1)
-	})
 }
 
 // SacrificeAllForEffect is the FIRE-AND-FORGET batch: "each player
@@ -1009,29 +967,4 @@ func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) TuckCardsToLibraryThenForEffect(ids []uuid.UUID, opts TuckOptions, then func(g *Game, tucked []uuid.UUID) error) error {
 	return g.routeAllThenLocked(tuckRoute(opts), ids, then)
-}
-
-// TuckToLibraryThenForEffect is the SINGLE-CARD form: tuck one card and
-// tell `then` whether it actually reached a library.
-//
-// ExileCardThenForEffect's twin (#870), and a WRAPPER over the batch
-// for the reason that one gives: a one-card read-back is the same bug
-// as a batch one, and a second tuck path with its own notion of what
-// landed is how two verbs drift. A batch of one publishes a one-card
-// simultaneous exit, which no watcher can observe.
-//
-// `tucked` is false when the CR 614 window cancelled the move, when a
-// replacement sent the card somewhere else, and when a commander took
-// CR 903.9's offer — it left, but not to a library. The continuation
-// runs on every one of those outcomes, because a caller that is waiting
-// has to be told even when the answer is "nothing happened".
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) TuckToLibraryThenForEffect(cardID uuid.UUID, opts TuckOptions, then func(g *Game, tucked bool) error) error {
-	return g.TuckCardsToLibraryThenForEffect([]uuid.UUID{cardID}, opts, func(g *Game, landed []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, len(landed) == 1)
-	})
 }

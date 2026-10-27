@@ -306,42 +306,89 @@ func (g *Game) finishOrderedPicksLocked(st *orderedPicks) error {
 	picks := g.orderedPicksSoFarLocked(st)
 	key, source := st.Key, st.Source
 	data := RunData{Carry: copyUUIDs(st.Carry), Nums: copyInts(st.Nums), Asked: copyAskedItem(st.Asked)}
-	run := func(g *Game, answer []SeatCards) error {
-		if key == "" {
-			return nil
-		}
-		fn, ok := lookupPromptRunThen(key)
-		if !ok {
-			return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, key)
-		}
-		return fn(g, RunDone{Source: source, Landed: answer, Carry: data.Carry, Nums: data.Nums, Asked: data.Asked})
-	}
 	if !st.Sacrifice {
-		return run(g, picks)
-	}
-	finish := func(g *Game, sacrificed []uuid.UUID) error {
-		landed := make(map[uuid.UUID]bool, len(sacrificed))
-		for _, id := range sacrificed {
-			landed[id] = true
-		}
-		out := make([]SeatCards, 0, len(picks))
-		for _, pick := range picks {
-			entry := SeatCards{Seat: pick.Seat}
-			for _, id := range pick.Cards {
-				if landed[id] {
-					entry.Cards = append(entry.Cards, id)
-				}
-			}
-			out = append(out, entry)
-		}
-		return run(g, out)
+		return g.runOrderedPicksThenLocked(key, source, data, picks)
 	}
 	chosen := picks.Cards()
+	// The sacrifice's continuation is data (#4253): what each seat chose and
+	// the run's own, so a leg of the sacrifice paused on a replacement's
+	// prompt is a restore point.
+	done := orderedPicksSacrificedTail(key, source, data, picks)
 	if len(chosen) == 0 {
-		return finish(g, nil)
+		return done.Run(g, nil)
 	}
-	return g.SacrificeAllThenForEffect(source, chosen, finish)
+	return g.SacrificeAllKeyedForEffect(source, chosen, done)
 }
+
+// runOrderedPicksThenLocked hands an ordered collection's registered
+// continuation (key, when it has one) the answer.
+//
+// Caller must hold g.mu.
+func (g *Game) runOrderedPicksThenLocked(key string, source uuid.UUID, data RunData, answer []SeatCards) error {
+	if key == "" {
+		return nil
+	}
+	fn, ok := lookupPromptRunThen(key)
+	if !ok {
+		return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, key)
+	}
+	return fn(g, RunDone{Source: source, Landed: answer, Carry: data.Carry, Nums: data.Nums, Asked: data.Asked})
+}
+
+// orderedPicksSacrificedTail is the tail of a collection's one simultaneous
+// sacrifice (#4253): the run's key (Word), its card (Source) and its plain
+// data, and what each seat chose, all as data. Carry is the run's carry and
+// then, for each seat, the seat and its picks; Nums is the length of the
+// run's carry, the length of its numbers, the numbers, and then how many
+// picks each seat chose.
+func orderedPicksSacrificedTail(key string, source uuid.UUID, data RunData, picks []SeatCards) KeyedTail {
+	t := KeyedTail{
+		Ref: orderedPicksSacrificed, Source: source, Word: key, Asked: copyAskedItem(data.Asked),
+		Carry: copyUUIDs(data.Carry), Nums: []int{len(data.Carry), len(data.Nums)},
+	}
+	t.Nums = append(t.Nums, data.Nums...)
+	for _, pick := range picks {
+		t.Carry = append(t.Carry, pick.Seat)
+		t.Carry = append(t.Carry, pick.Cards...)
+		t.Nums = append(t.Nums, len(pick.Cards))
+	}
+	return t
+}
+
+// orderedPicksSacrificed runs a collection's continuation once its
+// sacrifice has finished, handed each seat's picks that really left the
+// battlefield. An on-disk key: never renamed, never reused.
+var orderedPicksSacrificed = RegisterTail("engine/ordered-picks-sacrificed", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Nums) < 2 {
+		return nil
+	}
+	nCarry, nNums := t.Nums[0], t.Nums[1]
+	if nCarry < 0 || nNums < 0 || len(t.Nums) < 2+nNums || len(t.Carry) < nCarry {
+		return nil
+	}
+	data := RunData{Carry: copyUUIDs(t.Carry[:nCarry]), Nums: copyInts(t.Nums[2 : 2+nNums]), Asked: copyAskedItem(t.Asked)}
+	landed := make(map[uuid.UUID]bool, len(o.IDs))
+	for _, id := range o.IDs {
+		landed[id] = true
+	}
+	flat := t.Carry[nCarry:]
+	var out []SeatCards
+	for _, n := range t.Nums[2+nNums:] {
+		if n < 0 || len(flat) < 1+n {
+			return nil
+		}
+		entry := SeatCards{Seat: flat[0]}
+		for _, id := range flat[1 : 1+n] {
+			if landed[id] {
+				entry.Cards = append(entry.Cards, id)
+			}
+		}
+		out = append(out, entry)
+		flat = flat[1+n:]
+	}
+	return g.runOrderedPicksThenLocked(t.Word, t.Source, data, out)
+})
 
 // unknownOrderedPicksKeys lists the continuation an ordered collection on
 // disk names, when this binary does not have it.

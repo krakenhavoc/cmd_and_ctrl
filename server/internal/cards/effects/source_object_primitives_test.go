@@ -623,10 +623,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	mutators := map[string]bool{
 		"AddCounterForEffect": true, "AddCounterThenForEffect": true,
 		"TapTargetForEffect": true, "UntapTargetForEffect": true,
-		"SacrificePermanentForEffect": true, "SacrificeThenForEffect": true,
-		"ExileCardForEffect": true, "ExileCardThenForEffect": true,
-		"BounceToHandForEffect": true, "BounceToHandThenForEffect": true,
-		"TuckToLibraryForEffect": true, "TuckToLibraryThenForEffect": true,
+		"SacrificePermanentForEffect": true, "ExileCardForEffect": true, "ExileCardKeyedForEffect": true,
+		"BounceToHandForEffect": true, "BounceToHandThenForEffect": true, "TuckToLibraryForEffect": true,
 		"DestroyPermanentForEffect": true, "RegenerateForEffect": true,
 		"TransformPermanentForEffect": true, "ExileAndReturnTransformedForEffect": true,
 		"SetClassLevelForEffect": true, "SolveCaseForEffect": true, "HarnessForEffect": true,

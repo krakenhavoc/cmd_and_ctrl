@@ -829,7 +829,7 @@ func (g *Game) payCounterAddLocked(playerID, cardID uuid.UUID, ac *CounterAddCos
 // as printed.
 //
 // A zero delta is a no-op with no event, matching
-// AddCounterByThenForEffect's own zero guard: a [0] loyalty ability
+// AddCounterByKeyedForEffect's own zero guard: a [0] loyalty ability
 // still pays its cost (and burns the turn's activation) whether or not
 // anything moves.
 //

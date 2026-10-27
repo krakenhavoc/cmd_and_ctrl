@@ -588,9 +588,6 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	if !replacementEventGatesClear(ev) {
 		return false
 	}
-	if t := ev.keywordAction; t != nil && t.then != nil {
-		return false
-	}
 	if t := ev.keywordAction; t != nil && !reflect.ValueOf(t.armyToken).IsZero() {
 		// #4253 slice 10b: an amass's Army token template is written
 		// through the card mirror, as a token group's is; one the mirror
@@ -614,9 +611,6 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 		}
 	}
 	if t := ev.tokenTail; t != nil && t.then != nil {
-		return false
-	}
-	if t := ev.counterTail; t != nil && t.then != nil {
 		return false
 	}
 	if t := ev.lifeTail; t != nil && t.then != nil {

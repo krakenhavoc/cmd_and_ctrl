@@ -62,7 +62,7 @@ import (
 // continuation, on `keywordActionTail`. A paused proliferate has
 // placed NO counters and a paused scry has queued NO prompt when the
 // entry point returns; the resume does both, through the same
-// function the unpaused path runs. `ScryThenForEffect`'s returned
+// function the unpaused path runs. `ScryKeyedForEffect`'s returned
 // count is therefore 0 on a pause, the contract
 // `CreateTokensForEffect`'s empty ID slice already carries.
 
@@ -213,17 +213,14 @@ type keywordActionTail struct {
 	armyToken   Card
 	armySubtype string
 
-	// then is the rest of the sentence after the keyword action:
-	// Preordain's "then draw a card". It runs from wherever the
-	// action ends — after the player has put the cards back, or
-	// immediately when the action looked at nothing or was replaced
-	// away entirely — which is the contract lookAtTopWithTailLocked
+	// keyed is the rest of the sentence after the keyword action as data
+	// (#4253 slice 3): Preordain's "then draw a card". A registered tail
+	// the settled action hands to its prompt (PendingChoice.scryThen), or
+	// to a proliferate's walk or an earthbend's counters. It runs from
+	// wherever the action ends: after the player has put the cards back,
+	// or immediately when the action looked at nothing or was replaced
+	// away entirely, which is the contract lookAtTopWithTailLocked
 	// already documents.
-	then func(g *Game) error
-
-	// keyed is `then` as data (#4253 slice 3), for a scry or a surveil:
-	// a registered tail the settled action hands to its prompt
-	// (PendingChoice.scryThen). Set one or neither.
 	keyed KeyedTail
 }
 
@@ -260,34 +257,6 @@ func (g *Game) ProliferateForEffect(player, source uuid.UUID, cardIDs, playerIDs
 			cards:   cardIDs,
 			players: playerIDs,
 		},
-	})
-	return err
-}
-
-// ProliferateChoosingForEffect takes the proliferate keyword action
-// with the choice left to `player` (#2525): the CR 614 window settles
-// first, then each proliferate it settled on queues a
-// PendingChoiceProliferate offering the permanents and players with
-// counters, the engine's beneficial pick suggested.
-//
-// `then` is the rest of the sentence ("Proliferate. Draw a card.") and
-// runs once every proliferate has been answered — or at once when the
-// action was cancelled, replaced down to nothing, or had nothing on the
-// board to choose. nil is fine.
-//
-// Unlike ProliferateForEffect this PAUSES in the ordinary case: nothing
-// has been given when it returns, and a caller that sequences work
-// behind it must hand that work to `then`.
-//
-// Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) ProliferateChoosingForEffect(player, source uuid.UUID, then func(g *Game) error) error {
-	_, err := g.runKeywordActionLocked(&ReplacementEvent{
-		Kind:               RepEventKeywordAction,
-		Actor:              player,
-		Source:             source,
-		KeywordAction:      KeywordActionProliferate,
-		KeywordActionCount: 1,
-		keywordAction:      &keywordActionTail{ask: true, then: then},
 	})
 	return err
 }
@@ -354,26 +323,23 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 			})
 			times = maxKeywordActionRepeats
 		}
-		if tail.ask && tail.then == nil {
-			// #4253 slice 10b: the rest is data (or nothing), so the
-			// choice and every counter it gives run keyed
-			// (proliferate_keyed.go).
-			keyed := tail.keyed
-			tail.keyed = KeyedTail{}
-			return 0, g.proliferateAskKeyedLocked(ev.Actor, ev.Source, times, keyed)
-		}
 		// The rest of the sentence is taken as a VALUE and cleared off
 		// the tail, exactly as earthbend does (#1282): whichever path
 		// finishes the action runs it, and nothing else can.
-		then := takeKeywordActionThen(tail)
+		keyed := tail.keyed
+		tail.keyed = KeyedTail{}
 		if tail.ask {
-			return 0, g.proliferateAskLocked(ev.Actor, ev.Source, times, then)
+			// #4253 slice 10b: the choice and every counter it gives run
+			// keyed (proliferate_keyed.go).
+			return 0, g.proliferateAskKeyedLocked(ev.Actor, ev.Source, times, keyed)
 		}
 		// #3930: each proliferate runs behind the last one's counters,
-		// since a placement can pause on a CR 616 prompt.
-		return 0, g.proliferateExplicitLocked(ev.Actor, tail.cards, tail.players, times, then)
+		// since a placement can pause on a CR 616 prompt. The explicit
+		// choice is applied `times` times by the same keyed walk the
+		// player's choice uses (proliferateExplicitRun).
+		return 0, g.proliferateStepLocked(proliferateExplicitRun(ev.Actor, ev.Source, tail.cards, tail.players, times-1, keyed))
 	case KeywordActionScry, KeywordActionSurveil:
-		return g.lookAtTopWithTailLocked(tail.choice, ev.Actor, ev.Source, n, tail.then, tail.keyed), nil
+		return g.lookAtTopWithTailLocked(tail.choice, ev.Actor, ev.Source, n, tail.keyed), nil
 	case KeywordActionLearn:
 		// #3525. Learn is performed by the catalog's body once the
 		// window has left it alone (learn_action.go).
@@ -407,15 +373,10 @@ func (g *Game) applyResolvedKeywordActionLocked(ev *ReplacementEvent) (int, erro
 		// and an undone-then-redone answer to the ordering prompt runs
 		// it again instead of finding a cleared pointer.
 		//
-		// #4253 slice 7: a keyed rest (and no closure) goes to the counters as
-		// data; a closure, or a keyed rest handed on to a closure part, is the
-		// old path.
-		if tail.then == nil && !tail.keyed.IsZero() {
-			keyed := tail.keyed
-			tail.keyed = KeyedTail{}
-			return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, nil, keyed)
-		}
-		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, takeKeywordActionThen(tail), KeyedTail{})
+		// #4253 slice 7: the rest goes to the counters as data.
+		keyed := tail.keyed
+		tail.keyed = KeyedTail{}
+		return 0, g.applyEarthbendLocked(ev.Actor, ev.Source, tail.land, n, keyed)
 	}
 	// An action kind nothing takes yet. Telling the caller is the only
 	// safe answer: a continuation nobody runs waits forever.
@@ -452,44 +413,6 @@ func (g *Game) abandonKeywordActionLocked(ev *ReplacementEvent) error {
 	return g.runKeywordActionThenLocked(ev)
 }
 
-// proliferateExplicitLocked applies the same explicit choice `times`
-// times, each behind the last one's counters, then runs `then`.
-//
-// Caller must hold g.mu.
-func (g *Game) proliferateExplicitLocked(actor uuid.UUID, cards, players []uuid.UUID, times int, then func(g *Game) error) error {
-	if times <= 0 {
-		if then == nil {
-			return nil
-		}
-		return then(g)
-	}
-	return g.applyProliferateThenLocked(actor, cards, players, func(g *Game) error {
-		return g.proliferateExplicitLocked(actor, cards, players, times-1, then)
-	})
-}
-
-// takeKeywordActionThen detaches the plain `then` continuation from a
-// keyword action's tail and returns it, so a verb whose last part can
-// itself pause (earthbend's counter placement, #1282) can hand it on
-// to that part's continuation. Clearing it off the tail is what makes
-// the abandoned path and the settled one mutually exclusive: whichever
-// takes it runs it, and nothing else can.
-func takeKeywordActionThen(tail *keywordActionTail) func(g *Game) error {
-	if tail == nil {
-		return nil
-	}
-	then := tail.then
-	tail.then = nil
-	if then == nil && !tail.keyed.IsZero() {
-		// #4253 slice 3: a keyed tail handed on to a part that takes a
-		// closure; that part's own frame is not keyed.
-		keyed := tail.keyed
-		tail.keyed = KeyedTail{}
-		then = func(g *Game) error { return g.runKeyedTailLocked(keyed, nil, 0) }
-	}
-	return then
-}
-
 // runKeywordActionThenLocked runs the rest of the sentence after the
 // keyword action, exactly once.
 //
@@ -514,16 +437,11 @@ func (g *Game) runKeywordActionThenLocked(ev *ReplacementEvent) error {
 	if err := g.runAmassThenLocked(ev.keywordAction, uuid.Nil); err != nil {
 		return err
 	}
-	if ev.keywordAction.then == nil {
-		keyed := ev.keywordAction.keyed
-		ev.keywordAction.keyed = KeyedTail{}
-		return g.runKeyedTailLocked(keyed, nil, 0)
-	}
 	// Cleared THROUGH the pointer, so a continuation that re-enters
 	// the pipeline on the same tail value cannot run itself twice —
 	// and so cloneReplacementResume has to give an undo snapshot its
 	// own copy of the tail, which it does.
-	then := ev.keywordAction.then
-	ev.keywordAction.then = nil
-	return then(g)
+	keyed := ev.keywordAction.keyed
+	ev.keywordAction.keyed = KeyedTail{}
+	return g.runKeyedTailLocked(keyed, nil, 0)
 }

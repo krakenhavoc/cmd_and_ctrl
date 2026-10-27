@@ -12,7 +12,7 @@ import (
 // BounceCardsToHandKeyedForEffect since #4253's cleanup deleted its closure
 // wrapper, BounceToHandThenForEffect (the fourth beside
 // ExileCardThenForEffect, SacrificeThenForEffect and
-// TuckToLibraryThenForEffect). It exists because a
+// TuckToLibraryThenForEffect, all deleted since). It exists because a
 // hand is a CR 903.9b destination, so EVERY bounce can pause, and the
 // catalog had no way to say "return it, THEN …" for one card.
 //

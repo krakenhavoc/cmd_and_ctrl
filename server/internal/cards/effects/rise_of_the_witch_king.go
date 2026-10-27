@@ -13,7 +13,7 @@ import (
 //	 card from your graveyard to the battlefield."
 //
 // An edict that pays you back. The sacrifice is
-// EachPlayerSacrificesThenForEffect with the controller included —
+// EachPlayerSacrificesThenKeyedForEffect with the controller included —
 // every player picks their own, one prompt each, APNAP, and a player
 // with no creature is skipped (CR 701.21a).
 //

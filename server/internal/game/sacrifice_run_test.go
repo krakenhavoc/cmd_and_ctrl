@@ -10,7 +10,7 @@ import (
 // a continuation, and it runs once, after the LAST asked seat has
 // settled.
 //
-// The fan-out ("each player sacrifices", EachPlayerSacrificesThenForEffect)
+// The fan-out ("each player sacrifices", EachPlayerSacrificesThenKeyedForEffect)
 // is ADR 0175's ordered collector since #3664: one seat is asked at a
 // time in APNAP order, nothing moves until the last has chosen, and
 // every pick then leaves in one simultaneous exit (CR 101.4, 608.2e).
@@ -35,14 +35,14 @@ func eachPlayerSacrificesThen(t *testing.T, g *Game, source, except uuid.UUID) *
 	t.Helper()
 	out := &sacrificeRunCall{}
 	g.WithWriteLock(func() {
-		err := g.EachPlayerSacrificesThenForEffect(source, except, nil, "sacrifice a permanent",
+		err := eachPlayerSacrificesHooked(g, source, except, nil, "sacrifice a permanent",
 			func(_ *Game, sacrificed PromptedSacrifices) error {
 				out.ran++
 				out.got = sacrificed
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("EachPlayerSacrificesThenForEffect: %v", err)
+			t.Fatalf("EachPlayerSacrificesThenKeyedForEffect: %v", err)
 		}
 	})
 	return out

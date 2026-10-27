@@ -129,7 +129,13 @@ var closureClassCeilings = map[string]int{
 	// 120 (#4253's last part): - keywordActionTail.amassed, the amass's
 	// closure "the Army you amassed", gone with AmassForEffect; CR
 	// 701.47c's clause is only ever the keyed tail now.
-	"census:ChoiceResumeFrames": 120,
+	//
+	// 116 (#4253's engine closure doors): - PendingChoice.scryResume (gone
+	// with ScryThenForEffect), - keywordActionTail.then (gone with
+	// ProliferateChoosingForEffect and the earthbend closure branch),
+	// - counterTail.then and so ReplacementEvent.counterTail (gone with
+	// AddCounterByThenForEffect and the proliferate walk's closures).
+	"census:ChoiceResumeFrames": 116,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

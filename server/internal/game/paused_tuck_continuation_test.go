@@ -8,7 +8,7 @@ import (
 
 // paused_tuck_continuation_test.go — #783. A library is a CR 903.9b
 // destination, so every tuck can PAUSE; this file pins the engine half
-// of the answer, the continuation TuckToLibraryThenForEffect hands over
+// of the answer, the continuation TuckCardsToLibraryKeyedForEffect hands over
 // instead of letting its caller write the next line.
 //
 // The contract is the one the exile batch signs (ADR 0013 §5k, §5n):
@@ -22,17 +22,17 @@ func tuckThen(t *testing.T, g *Game, cardID uuid.UUID, opts TuckOptions) (runs *
 	t.Helper()
 	runs, sawTucked, sawZone = new(int), new(bool), new(ZoneKind)
 	g.mu.Lock()
-	err := g.TuckToLibraryThenForEffect(cardID, opts, func(g *Game, tucked bool) error {
+	err := g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{cardID}, opts, hookTail(func(g *Game, o TailOutcome) error {
 		*runs++
-		*sawTucked = tucked
+		*sawTucked = len(o.IDs) == 1
 		if z := g.findCardZoneLocked(cardID); z != nil {
 			*sawZone = z.Kind
 		}
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("TuckToLibraryThenForEffect: %v", err)
+		t.Fatalf("TuckCardsToLibraryKeyedForEffect: %v", err)
 	}
 	return runs, sawTucked, sawZone
 }

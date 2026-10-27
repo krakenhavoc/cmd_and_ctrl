@@ -40,8 +40,8 @@ func countersOf(g *game.Game, id uuid.UUID, kind string) int {
 func startProliferate(t *testing.T, g *game.Game, seat uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		if err := g.ProliferateChoosingForEffect(seat, uuid.Nil, nil); err != nil {
-			t.Fatalf("ProliferateChoosingForEffect: %v", err)
+		if err := g.ProliferateChoosingKeyedForEffect(seat, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("ProliferateChoosingKeyedForEffect: %v", err)
 		}
 	})
 	if !owesChoice(g, seat) {

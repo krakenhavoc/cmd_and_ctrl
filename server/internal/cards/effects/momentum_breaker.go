@@ -61,9 +61,10 @@ var momentumBreakerEdicted = RegisterEdictThen("prompt-run/momentum-breaker-disc
 	if len(cantSacrifice) == 0 {
 		return nil
 	}
-	return ctx.Game.PlayersDiscardThenForEffect(cantSacrifice, game.DiscardPrompt{
+	ctx.Game.PlayersDiscardForEffect(cantSacrifice, game.DiscardPrompt{
 		Source:   ctx.Source(),
 		N:        1,
 		Question: "Momentum Breaker — discard a card",
-	}, nil)
+	})
+	return nil
 })

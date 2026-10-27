@@ -32,13 +32,13 @@ func sacrificeAllThen(t *testing.T, g *Game, ids []uuid.UUID) (*[]uuid.UUID, *in
 	var got []uuid.UUID
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.SacrificeAllThenForEffect(uuid.Nil, ids, func(_ *Game, sacrificed []uuid.UUID) error {
+		err := g.SacrificeAllKeyedForEffect(uuid.Nil, ids, hookTail(func(_ *Game, o TailOutcome) error {
 			ran++
-			got = sacrificed
+			got = o.IDs
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("SacrificeAllThenForEffect: %v", err)
+			t.Fatalf("SacrificeAllKeyedForEffect: %v", err)
 		}
 	})
 	return &got, &ran

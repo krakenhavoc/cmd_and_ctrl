@@ -637,7 +637,7 @@ func TestCensusCountsEveryContinuationKind(t *testing.T) {
 			name: "pending choice resume frame",
 			set: func(g *Game) {
 				g.PendingChoices = []*PendingChoice{
-					{ID: uuid.New(), Kind: PendingChoiceScry, scryResume: func(*Game) error { return nil }},
+					{ID: uuid.New(), Kind: PendingChoiceScry, libraryOrderResume: func(*Game, []uuid.UUID, []uuid.UUID) error { return nil }},
 				}
 			},
 			expect: func(c ContinuationCensus) int { return c.ChoiceResumeFrames },

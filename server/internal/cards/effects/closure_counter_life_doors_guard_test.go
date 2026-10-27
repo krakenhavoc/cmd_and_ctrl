@@ -12,11 +12,10 @@ import (
 	"testing"
 )
 
-// closure_counter_life_doors_guard_test.go — #4253 slice 7: the counter and
-// life-change doors that take a Go closure (AddCounterByThenForEffect,
-// ChangePlayerLifeThenForEffect and the earthbend closure form; #4253's last
-// part deleted AddCounterThenForEffect, LoseLifeEachThenForEffect and
-// AmassForEffect) are called by NO catalog card. A table waiting
+// closure_counter_life_doors_guard_test.go — #4253 slice 7: the life-change
+// door that takes a Go closure (ChangePlayerLifeThenForEffect; #4253 deleted
+// AddCounterByThenForEffect, AddCounterThenForEffect, LoseLifeEachThenForEffect,
+// AmassForEffect and the earthbend closure form) is called by NO catalog card. A table waiting
 // on a CR 616 prompt over a counter placement or a life change whose "then" is a
 // closure is not a restore point, so a card passes a registered tail to the
 // Keyed form instead (AddCounterByKeyedForEffect, ChangePlayerLifeKeyedForEffect,
@@ -33,12 +32,10 @@ var closureDoorCalls = map[string]struct {
 	n   int
 	why string
 }{
-	"game/effect_api.go":  {2, "ChangePlayerLifeForEffect and AddCounterForEffect pass a nil then"},
-	"game/earthbend.go":   {1, "applyEarthbendLocked's closure form, reached only through EarthbendThenForEffect with a closure"},
-	"game/proliferate.go": {1, "the proliferate counter loop: its rest is still a closure (the ask prompt's chooseCardsFrame.then, ProliferateChoosingForEffect)"},
+	"game/effect_api.go": {1, "ChangePlayerLifeForEffect passes a nil then"},
 }
 
-var closureDoorCall = regexp.MustCompile(`\b(AddCounterThenForEffect|AddCounterByThenForEffect|ChangePlayerLifeThenForEffect|LoseLifeEachThenForEffect|AmassForEffect|EarthbendThenForEffect)\(`)
+var closureDoorCall = regexp.MustCompile(`\b(ChangePlayerLifeThenForEffect)\(`)
 
 func TestNoCatalogCardCallsAClosureCounterOrLifeDoor(t *testing.T) {
 	root := filepath.Join("..", "..")

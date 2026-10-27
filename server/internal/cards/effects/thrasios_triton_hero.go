@@ -13,7 +13,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The mana sink that makes every excess mana a land or a card. The
 // ability is a sequence with a real "then": scry 1 is a prompt, and the
 // reveal must read the library in the order the player left it, so the
-// reveal runs in the scry's continuation (ScryThenForEffect) — the
+// reveal runs in the scry's continuation (ScryKeyedForEffect) — the
 // Preordain shape. The land half is #745's library-to-battlefield move,
 // entering tapped as printed and never counting as a land play
 // (CR 305.4); the "otherwise" is an ordinary draw.

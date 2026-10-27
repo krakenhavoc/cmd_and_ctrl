@@ -37,11 +37,11 @@ import "github.com/google/uuid"
 // opened the CR 614 window at all, so a commander impulse-exiled off
 // its owner's library was never offered the command zone (Ragavan,
 // Gonti's older wording, Professional Face-Breaker). It is now a thin
-// wrapper over ExileTopWithPermissionThenForEffect, which does the
+// wrapper over ExileTopWithPermissionKeyedForEffect, which does the
 // routing and the granting; this form just doesn't wait for the
 // answer to hand its own return value back. The grant itself is NOT
 // skipped for a paused card — it is stamped from the route's
-// continuation exactly as it would be for the Then form, so a
+// continuation exactly as it would be for the keyed form, so a
 // commander whose owner declines still gets it once they answer, even
 // though this call has already returned. What is lost by not waiting
 // is only the caller's ability to read the final list synchronously.
@@ -50,7 +50,7 @@ import "github.com/google/uuid"
 // (Bonehoard Dracosaur's "if you exiled a land card this way…") cannot
 // trust THIS return the moment a commander is among them: the list may
 // be short or empty even though the rest of the exile is still coming.
-// Use ExileTopWithPermissionThenForEffect instead — the same routing,
+// Use ExileTopWithPermissionKeyedForEffect instead — the same routing,
 // with `then` handed the true final list once every card has settled.
 //
 // The exiled cards are revealed to everyone: they're face up in a
@@ -59,60 +59,55 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu.
 func (g *Game) ExileTopWithPermissionForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission) ([]uuid.UUID, error) {
-	var out []uuid.UUID
-	err := g.ExileTopWithPermissionThenForEffect(fromPlayer, grantTo, n, perm, func(_ *Game, landed []uuid.UUID) error {
-		out = landed
-		return nil
-	})
-	return out, err
-}
-
-// ExileTopWithPermissionThenForEffect is ExileTopWithPermissionForEffect's
-// CONTINUATION form (#1587): it exiles exactly the same top n cards,
-// but SEQUENCES the batch — each card is routed from the previous
-// one's continuation, exactly as ExileTopFaceDownWithPermissionForEffect
-// already does for its face-down sibling — and hands `then` the full,
-// final landed list once every card has reached a terminal outcome.
-// That is the shape a caller needs the moment it reads what was
-// exiled: Bonehoard Dracosaur's "if you exiled a land card this way,
-// create a…token" cannot be answered from the fire-and-forget form,
-// because a commander among the two cards pauses on its owner's
-// CR 903.9 prompt and the rest of the list is not knowable until they
-// answer.
-//
-// The grant is stamped from THIS continuation, per settled batch, over
-// the cards that actually landed — never before the CR 903.9 question
-// (if any) is answered, and never for a card sent to the command zone
-// instead. This is also what the fire-and-forget form above relies on
-// for its own grant: it calls this function and simply doesn't wait
-// for `then`, but the grant happens here regardless of who is
-// listening, including for a leg that pauses and is answered long
-// after the original call returned.
-//
-// Caller must hold g.mu (write).
-func (g *Game) ExileTopWithPermissionThenForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission, then func(g *Game, landed []uuid.UUID) error) error {
-	if then == nil {
-		then = func(*Game, []uuid.UUID) error { return nil }
-	}
 	plan, err := g.impulseExilePlanLocked(fromPlayer, grantTo, n)
-	if err != nil {
-		return err
+	if err != nil || len(plan) == 0 {
+		return nil, err
 	}
-	if len(plan) == 0 {
-		return then(g, nil)
+	if err := g.ExileTopWithPermissionKeyedForEffect(fromPlayer, grantTo, n, perm, KeyedTail{}); err != nil {
+		return nil, err
 	}
-	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: grantTo}, plan, func(g *Game, landed []uuid.UUID) error {
-		g.grantImpulseExilePermissionLocked(perm, grantTo, landed)
-		return then(g, landed)
-	})
+	// The cards that have landed by now: none while a leg is still
+	// paused (a planned card still in a library is a leg not yet moved,
+	// and the batch has not finished), every planned card that reached
+	// exile otherwise.
+	var out []uuid.UUID
+	for _, id := range plan {
+		z := g.findCardZoneLocked(id)
+		if z == nil {
+			continue
+		}
+		if z.Kind == ZoneLibrary {
+			return nil, nil
+		}
+		if z.Kind == ZoneExile {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 
-// ExileTopWithPermissionKeyedForEffect is ExileTopWithPermissionThenForEffect
-// with the continuation as data (#4253 slice 10a): the grant is an engine
-// tail (engine/impulse-exile-granted) carrying the permission and its
-// holder, and `then` runs after it as that tail's Next, told the cards that
-// landed. A zero `then` is "no continuation". A leg's prompt is a restore
-// point.
+// ExileTopWithPermissionKeyedForEffect is ExileTopWithPermissionForEffect's
+// CONTINUATION form (#1587, #4253 slice 10a): it exiles exactly the same top
+// n cards, but SEQUENCES the batch, each card routed from the previous one's
+// continuation, and hands `then` the full, final landed list once every card
+// has reached a terminal outcome. That is the shape a caller needs the
+// moment it reads what was exiled: Bonehoard Dracosaur's "if you exiled a
+// land card this way, create a…token" cannot be answered from the
+// fire-and-forget form, because a commander among the two cards pauses on
+// its owner's CR 903.9 prompt and the rest of the list is not knowable
+// until they answer.
+//
+// The continuation is data: the grant is an engine tail
+// (engine/impulse-exile-granted) carrying the permission and its holder,
+// stamped per settled batch over the cards that actually landed, never
+// before the CR 903.9 question (if any) is answered and never for a card
+// sent to the command zone instead. `then` runs after it as that tail's
+// Next, told the cards that landed. A zero `then` is "no continuation"; the
+// grant happens regardless of who is listening, including for a leg that
+// pauses and is answered long after the original call returned. A leg's
+// prompt is a restore point. (The closure form,
+// ExileTopWithPermissionThenForEffect, was deleted in #4253 once only the
+// fire-and-forget wrapper called it.)
 //
 // Caller must hold g.mu (write).
 func (g *Game) ExileTopWithPermissionKeyedForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission, then KeyedTail) error {
@@ -403,7 +398,7 @@ func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, pe
 // impulse one in the way that matters. GrantCastPermissionOverCardForEffect
 // fills that default in from the card's current owner.
 //
-// The grant is stamped from ExileCardThenForEffect's continuation, not
+// The grant is stamped from ExileCardKeyedForEffect's continuation, not
 // on the line after a fire-and-forget move — #1336, the same root
 // cause #1332 fixed for the card-side airbend primitive
 // (exileAllWithPermission in effects/airbend.go). An exile can PAUSE
@@ -438,7 +433,7 @@ func (g *Game) exileFaceDownPermittedLocked(ids []uuid.UUID, actor uuid.UUID, pe
 // Routing unconditionally would silently drop every re-grant. This
 // checks the card's current zone first and grants immediately when
 // it is already exile, exactly as the pre-#1336 body did; only a
-// card that still needs to MOVE goes through ExileCardThenForEffect.
+// card that still needs to MOVE goes through ExileCardKeyedForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) ExileCardWithPermissionForEffect(cardID uuid.UUID, perm CastPermission) error {
@@ -447,16 +442,20 @@ func (g *Game) ExileCardWithPermissionForEffect(cardID uuid.UUID, perm CastPermi
 		g.GrantCastPermissionOverCardForEffect(cardID, perm)
 		return nil
 	}
-	return g.ExileCardThenForEffect(cardID, func(g *Game, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		// The card is already publicly known — the exit primitive
-		// marks every seat as a knower on the way in, which is what
-		// the permission needs: one nobody can see is unplayable in
-		// practice.
-		perm.Zone = ZoneExile
-		g.GrantCastPermissionOverCardForEffect(cardID, perm)
-		return nil
-	})
+	return g.ExileCardKeyedForEffect(cardID, KeyedTail{Ref: exileCardGranted, Carry: []uuid.UUID{cardID}, Permission: &perm})
 }
+
+// exileCardGranted stamps an airbend-style exile's permission over the card
+// once it reached exile (the exit primitive marks every seat as a knower on
+// the way in, which is what the permission needs: one nobody can see is
+// unplayable in practice). A card that did not land gets nothing. An
+// on-disk key: never renamed, never reused.
+var exileCardGranted = RegisterTail("engine/exile-card-granted", func(g *Game, o TailOutcome) error {
+	if o.Tail.Permission == nil || len(o.Tail.Carry) == 0 || len(o.IDs) != 1 {
+		return nil
+	}
+	perm := *o.Tail.Permission
+	perm.Zone = ZoneExile
+	g.GrantCastPermissionOverCardForEffect(o.Tail.Carry[0], perm)
+	return nil
+})

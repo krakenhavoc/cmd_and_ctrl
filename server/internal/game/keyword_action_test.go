@@ -352,10 +352,10 @@ func TestCancelledScryQueuesNothingAndStillRunsThen(t *testing.T) {
 	ran := 0
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCancelReplacement(KeywordActionScry))
-		g.ScryThenForEffect(me.ID, uuid.Nil, 2, func(*Game) error {
+		g.ScryKeyedForEffect(me.ID, uuid.Nil, 2, hookTail(func(*Game, TailOutcome) error {
 			ran++
 			return nil
-		})
+		}))
 	})
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("a cancelled scry queued %d prompts, want none", len(g.PendingChoices))
@@ -377,10 +377,10 @@ func TestPausedScryQueuesItsPromptFromTheResume(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "one more"))
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, timesTwoForTest, "twice"))
-		looked = g.ScryThenForEffect(me.ID, uuid.Nil, 1, func(*Game) error {
+		looked = g.ScryKeyedForEffect(me.ID, uuid.Nil, 1, hookTail(func(*Game, TailOutcome) error {
 			ran++
 			return nil
-		})
+		}))
 	})
 	if looked != 0 {
 		t.Errorf("a paused scry reported %d cards looked at, want 0", looked)

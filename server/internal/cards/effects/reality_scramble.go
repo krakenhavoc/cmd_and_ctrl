@@ -24,7 +24,7 @@ import (
 // tucked this way ceases to exist but still had types), and the closure
 // carries only those strings, never a *Card.
 //
-// The tuck goes through TuckToLibraryThenForEffect, so a commander's
+// The tuck goes through TuckCardsToLibraryKeyedForEffect, so a commander's
 // owner is offered the command zone (CR 903.9) and the reveal waits for
 // that answer. The tucked card sits at the bottom, so a library with no
 // other matching card eventually reveals it again; that is the printed

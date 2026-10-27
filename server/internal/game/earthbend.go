@@ -108,7 +108,7 @@ import (
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
-	return g.earthbendLocked(actor, source, land, n, nil, KeyedTail{})
+	return g.earthbendLocked(actor, source, land, n, KeyedTail{})
 }
 
 // EarthbendKeyedForEffect is EarthbendForEffect with the rest of the
@@ -125,18 +125,14 @@ func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendKeyedForEffect(actor, source, land uuid.UUID, n int, then KeyedTail) error {
-	return g.earthbendLocked(actor, source, land, n, nil, then)
+	return g.earthbendLocked(actor, source, land, n, then)
 }
 
-// earthbendLocked is the one body of the two earthbend doors: the closure
-// form or the keyed form of the rest of the sentence, never both.
+// earthbendLocked is the one body of the two earthbend doors.
 //
 // Caller must hold g.mu.
-func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error, keyed KeyedTail) error {
+func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, keyed KeyedTail) error {
 	if land == uuid.Nil {
-		if then != nil {
-			return then(g)
-		}
 		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	_, err := g.runKeywordActionLocked(&ReplacementEvent{
@@ -145,7 +141,7 @@ func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, then func(g
 		Source:             source,
 		KeywordAction:      KeywordActionEarthbend,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{land: land, then: then, keyed: keyed},
+		keywordAction:      &keywordActionTail{land: land, keyed: keyed},
 	})
 	return err
 }
@@ -174,11 +170,8 @@ func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, then func(g
 // cannot die before the counters land.
 //
 // Caller must hold g.mu.
-func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error, keyed KeyedTail) error {
+func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, keyed KeyedTail) error {
 	rest := func(g *Game) error {
-		if then != nil {
-			return then(g)
-		}
 		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	c, ok := g.battlefieldCardLocked(land)
@@ -208,19 +201,14 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 	// real-card proof test). The recompute is a no-op when nothing is
 	// stale.
 	g.RecomputeLayersIfStaleLocked()
-	if then == nil {
-		// #4253 slice 7: no closure anywhere in the sentence, so what follows
-		// the counters is data too. The counters' tail is the engine's
-		// earthbendCountersTail, which hands the card's own tail on as Next.
-		placed := KeyedTail{Ref: earthbendCountersTail}
-		if !keyed.IsZero() {
-			placed.Next = &keyed
-		}
-		return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, placed)
+	// #4253 slice 7: what follows the counters is data. The counters' tail
+	// is the engine's earthbendCountersTail, which hands the card's own tail
+	// on as Next.
+	placed := KeyedTail{Ref: earthbendCountersTail}
+	if !keyed.IsZero() {
+		placed.Next = &keyed
 	}
-	return g.AddCounterByThenForEffect(actor, land, CounterPlusOne, n, func(g *Game, _ int) error {
-		return rest(g)
-	})
+	return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, placed)
 }
 
 // earthbendCountersTail runs the rest of the sentence once an earthbend's

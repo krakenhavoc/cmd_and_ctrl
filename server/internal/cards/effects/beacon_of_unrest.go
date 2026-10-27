@@ -15,7 +15,7 @@ import (
 // The reanimation family's body (reanimateSingleTarget) over any
 // graveyard, then Beacon of Immortality's tail: the spell tucks itself
 // into its owner's library and that library is shuffled, instead of
-// going to the graveyard (TuckToLibraryThenForEffect). With its one
+// going to the graveyard (TuckCardsToLibraryKeyedForEffect). With its one
 // target gone the spell does nothing at all (CR 608.2b), so it is not
 // shuffled away either.
 //

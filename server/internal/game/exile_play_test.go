@@ -460,13 +460,13 @@ func TestImpulseExileThenWaitsForTheWholeBatch(t *testing.T) {
 	var thenCalls int
 	var gotLanded []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.ExileTopWithPermissionThenForEffect(owner.ID, thief.ID, 2, CastPermission{}, func(_ *Game, landed []uuid.UUID) error {
+		err := g.ExileTopWithPermissionKeyedForEffect(owner.ID, thief.ID, 2, CastPermission{}, hookTail(func(_ *Game, o TailOutcome) error {
 			thenCalls++
-			gotLanded = landed
+			gotLanded = o.IDs
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("ExileTopWithPermissionThenForEffect: %v", err)
+			t.Fatalf("ExileTopWithPermissionKeyedForEffect: %v", err)
 		}
 	})
 	if thenCalls != 0 {

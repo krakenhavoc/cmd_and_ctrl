@@ -143,11 +143,17 @@ func TestAKeyedDiscardRunIsARestorePointWithALegAnswered(t *testing.T) {
 // point, and the census counts the run once rather than once per leg.
 func TestAClosureRunIsStillCountedOnce(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
-	source := departureTestSource(g, g.Seats[3].ID, "Syphon Mind")
-	for _, p := range g.Seats[:3] {
-		oneCardHand(t, g, p, "Pitch")
-	}
-	eachPlayerDiscardsThen(t, g, source, g.Seats[3].ID, 1)
+	source := departureTestSource(g, g.Seats[3].ID, "Doomgape")
+	g.WithWriteLock(func() {
+		for i := 0; i < 3; i++ {
+			pushBear(g, g.Seats[0].ID)
+		}
+		err := g.PlayerSacrificesThenForEffect(source, g.Seats[0].ID, nil, "sacrifice a creature", 3,
+			func(*Game, PromptedSacrifices) error { return nil })
+		if err != nil {
+			t.Fatalf("PlayerSacrificesThenForEffect: %v", err)
+		}
+	})
 	snap := g.CaptureSnapshot()
 	if snap.Restorable() {
 		t.Fatal("a closure run is a restore point")

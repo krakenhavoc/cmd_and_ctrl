@@ -183,7 +183,7 @@ const (
 	//
 	// Structurally scry with the bottom-of-library leg replaced by
 	// the graveyard, and it shares scry's plumbing: the looked-at
-	// cards ride in ScryCards, the continuation in scryResume, and
+	// cards ride in ScryCards, the continuation in scryThen, and
 	// the wire projects them through PendingChoiceView.Options with
 	// the same chooser-only redaction. Surveil is "look at", not
 	// "reveal".
@@ -1241,24 +1241,13 @@ type PendingChoice struct {
 	// color_choice.go.
 	chooseValueResume *chooseValueFrame
 
-	// scryResume is the continuation for a PendingChoiceScry: the
-	// rest of the effect, which must not run until the player has
-	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the
-	// case that forces it — the card you leave on top is the card you
-	// draw, so a draw that happens before the reorder is a different
-	// card. Not serialised to the wire.
-	// scryResume is the continuation for a PendingChoiceScry or a
-	// PendingChoiceSurveil: the rest of the effect, which must not
-	// run until the player has finished the look-at. Preordain's
-	// "Scry 2, THEN draw a card" is the case that forces it — the
-	// card you leave on top is the card you draw, so a draw that
-	// happens before the reorder is a different card. Not
-	// serialised to the wire.
-	scryResume func(g *Game) error
-
-	// scryThen is scryResume as data (#4253 slice 3): a registered tail
-	// run once the look-at is done, so a scry or surveil with a "then"
-	// (Preordain's draw) is a restore point while it waits. Written to a
+	// scryThen is the continuation for a PendingChoiceScry or a
+	// PendingChoiceSurveil (#4253 slice 3): a registered tail run once the
+	// look-at is done, which must not run until the player has finished
+	// it. Preordain's "Scry 2, THEN draw a card" is the case that forces
+	// it — the card you leave on top is the card you draw, so a draw that
+	// happens before the reorder is a different card. A scry or surveil
+	// with a "then" is a restore point while it waits. Written to a
 	// restore point (pendingChoiceSnapshot.ScryThen). Set one or neither.
 	scryThen KeyedTail
 
@@ -5205,12 +5194,8 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// no source for a prompted sacrifice today, and giving the leg a
 	// continuation must change the sequencing and nothing else.
 	if err := g.withCarriedCauseLocked(cause, func() error {
-		return g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
-			var landed []uuid.UUID
-			if sacrificed {
-				landed = []uuid.UUID{cardID}
-			}
-			return g.settleRunLegLocked(run, seat, landed)
+		return g.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{cardID}, KeyedTail{
+			Ref: sacrificeLegSettled, Player: seat, Carry: []uuid.UUID{run},
 		})
 	}); err != nil {
 		return err
@@ -5218,6 +5203,17 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	g.runStateChecksLocked()
 	return nil
 }
+
+// sacrificeLegSettled settles a sacrifice prompt's leg of its run (#4253):
+// the leg's seat (Player) and run (Carry), told the permanent that really
+// left the battlefield (nothing when it did not). An on-disk key: never
+// renamed, never reused.
+var sacrificeLegSettled = RegisterTail("engine/sacrifice-leg-settled", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.settleRunLegLocked(o.Tail.Carry[0], o.Tail.Player, o.IDs)
+})
 
 // pruneSacrificeChoicesLocked drops any queued sacrifice choice whose
 // chooser has run out of legal permanents, and trims option lists to
@@ -5748,27 +5744,19 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
 	// "then" mean what it says.
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen, len(topOrder))
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
 
-// runScryAfterLocked runs a look-at's continuation, the closure or the
-// keyed tail (#4253 slice 3), reporting a failure as an effect error.
+// runScryAfterLocked runs a look-at's keyed tail (#4253 slice 3), reporting
+// a failure as an effect error. The tail is told how many cards went back
+// on top (TailOutcome.Amount): "for each card you put on top of your
+// library" (Starving Revenant). Zero when nothing was looked at.
 //
 // Caller must hold g.mu.
-func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, resume func(*Game) error, keyed KeyedTail, kept int) {
-	var err error
-	if resume != nil {
-		err = resume(g)
-	} else {
-		// #4253 slice 10b: a keyed tail is told how many cards went back
-		// on top (TailOutcome.Amount): "for each card you put on top of
-		// your library" (Starving Revenant). Zero when nothing was looked
-		// at.
-		err = g.runKeyedTailLocked(keyed, nil, kept)
-	}
-	if err != nil {
+func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, keyed KeyedTail, kept int) {
+	if err := g.runKeyedTailLocked(keyed, nil, kept); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooser,
@@ -5860,7 +5848,7 @@ func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.U
 	for i := len(topOrder) - 1; i >= 0; i-- {
 		p.Library.PushTop(pulled[topOrder[i]])
 	}
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen, len(topOrder))
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
@@ -5973,7 +5961,7 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 	// Read off the choice before it goes out of scope: the
 	// continuation below may run an action later, from the resume of a
 	// CR 903.9 prompt, and must not close over a dequeued frame.
-	resume, keyed := choice.scryResume, choice.scryThen
+	keyed := choice.scryThen
 	// The size of the surveil, read off the frame for the same reason
 	// the resume is: the continuation below runs later, possibly from
 	// the resume of a CR 903.9 prompt, with the frame dequeued.
@@ -6022,7 +6010,7 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 		// The rest of the effect, now that the library is in the order
 		// the player chose and every card that was going to a graveyard
 		// has settled.
-		g.runScryAfterLocked(chooserID, source, resume, keyed, len(topOrder))
+		g.runScryAfterLocked(chooserID, source, keyed, len(topOrder))
 		return nil
 	})
 	if err != nil {
