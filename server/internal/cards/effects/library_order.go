@@ -356,10 +356,7 @@ func (p PutIntoLibrary) Apply(ctx *Context) error {
 		return p.ThenTail.Run(ctx.Game, nil)
 	}
 	opts := game.TuckOptions{ToBottom: p.ToBottom, Depth: p.Depth}
-	if !p.ThenTail.IsZero() {
-		return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{p.Card}, opts, p.ThenTail)
-	}
-	return ctx.Game.TuckToLibraryThenForEffect(p.Card, opts, nil)
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{p.Card}, opts, p.ThenTail)
 }
 
 // libraryOrderLabel is "<source card name> — <clause>", or the clause

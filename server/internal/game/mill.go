@@ -70,7 +70,7 @@ import (
 //
 // MillToZoneForEffect's returned slice is empty on such a pause — the
 // contract CreateTokensForEffect's empty ID slice and
-// ScryThenForEffect's zero already carry, and the reason #893's doc
+// ScryKeyedForEffect's zero already carry, and the reason #893's doc
 // already told a caller that reads the list to use the Then form.
 //
 // # Where an "until" run ends (#1159)

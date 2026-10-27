@@ -317,6 +317,6 @@ func annihilatorSacrificeThen(source uuid.UUID) func(g *Game, picked PromptedPic
 		if len(ids) == 0 {
 			return nil
 		}
-		return g.SacrificeAllThenForEffect(source, ids, nil)
+		return g.SacrificeAllKeyedForEffect(source, ids, KeyedTail{})
 	}
 }

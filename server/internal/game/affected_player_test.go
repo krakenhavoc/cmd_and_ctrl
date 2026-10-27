@@ -169,11 +169,11 @@ func TestADroppedKeywordActionPromptStillRunsItsThen(t *testing.T) {
 
 	thenRuns := 0
 	g.WithWriteLock(func() {
-		if n := g.ScryThenForEffect(scryer.ID, uuid.Nil, 1, func(*Game) error {
+		if n := g.ScryKeyedForEffect(scryer.ID, uuid.Nil, 1, hookTail(func(*Game, TailOutcome) error {
 			thenRuns++
 			return nil
-		}); n != 0 {
-			t.Fatalf("ScryThenForEffect looked at %d cards, want 0 — the window should have paused", n)
+		})); n != 0 {
+			t.Fatalf("ScryKeyedForEffect looked at %d cards, want 0 — the window should have paused", n)
 		}
 	})
 	p := onlyPrompt(t, g)

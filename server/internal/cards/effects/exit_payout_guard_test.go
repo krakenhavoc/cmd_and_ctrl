@@ -150,15 +150,15 @@ type exitVerb struct {
 
 var (
 	exileVerb = exitVerb{kind: "exile", fix: "ExileTarget.ThenTail, ExileThenIfItWas (the \"if it was a <type> card\" family) " +
-		"or g.ExileCardThenForEffect / g.ExileCardsThenForEffect, and gate the clause on `exiled`"}
+		"or g.ExileCardKeyedForEffect / g.ExileCardsKeyedForEffect, and gate the clause on `exiled`"}
 	destroyVerb = exitVerb{kind: "destroy", fix: "DestroyAllMatching.ThenTail or g.DestroyPermanentsKeyedForEffect " +
 		"(a set of one is fine), and gate the clause on the destroyed list (its IDs)"}
-	sacrificeVerb = exitVerb{kind: "sacrifice", fix: "SacrificePermanent.Then or g.SacrificeThenForEffect / " +
-		"g.SacrificeAllThenForEffect, and gate the clause on `sacrificed`"}
+	sacrificeVerb = exitVerb{kind: "sacrifice", fix: "SacrificePermanent.Then or g.SacrificeAllKeyedForEffect " +
+		"(a set of one is fine), and gate the clause on `sacrificed`"}
 	sacrificePromptVerb = exitVerb{
 		kind: "prompted sacrifice",
-		fix: "g.PlayerSacrificesThenForEffect, g.EachPlayerSacrificesThenForEffect or " +
-			"g.PlayersSacrificeThenForEffect (#1019, ADR 0013 §5x), and gate the clause on the " +
+		fix: "g.PlayerSacrificesThenForEffect, g.EachPlayerSacrificesThenKeyedForEffect or " +
+			"g.PlayersSacrificeThenKeyedForEffect (#1019, ADR 0013 §5x), and gate the clause on the " +
 			"run's answer — `sacrificed.Sacrificed(seat)` for \"if you sacrificed a creature " +
 			"this way\", `sacrificed.Count()` for \"that many\". For a plain \"ask N times\" " +
 			"loop with nothing waiting on it, g.PlayerSacrificesNForEffect",
@@ -166,7 +166,7 @@ var (
 	}
 	bounceVerb = exitVerb{kind: "bounce", fix: "BounceToHand.Then, ReturnAllToHand.Then or " +
 		"g.BounceToHandThenForEffect / g.BounceCardsToHandThenForEffect, and gate the clause on `bounced`"}
-	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckToLibraryThenForEffect / g.TuckCardsToLibraryThenForEffect, " +
+	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckCardsToLibraryKeyedForEffect (a batch of one is fine), " +
 		"and gate the clause on `tucked`"}
 	millVerb = exitVerb{kind: "mill", fix: "MillToZone.ThenTail or g.MillToZoneThenForEffect, and gate the clause " +
 		"on the `milled` list"}
@@ -176,8 +176,8 @@ var (
 		"returns before it lands"}
 	discardPromptVerb = exitVerb{
 		kind: "prompted discard",
-		fix: "g.PlayerDiscardsThenForEffect, g.PlayersDiscardThenForEffect or " +
-			"g.EachPlayerDiscardsThenForEffect (#1027, ADR 0013 §5y), and gate the clause on the " +
+		fix: "g.PlayerDiscardsThenKeyedForEffect, g.PlayersDiscardThenKeyedForEffect or " +
+			"g.EachPlayerDiscardsThenKeyedForEffect (#1027, ADR 0013 §5y), and gate the clause on the " +
 			"run's answer — `discarded.Count()` for \"a card for each card discarded this way\", " +
 			"`discarded.Discarded(seat)` for \"if you discard a card this way\". A clause merely " +
 			"printed AFTER the discard goes in the same continuation with the answer ignored: " +
@@ -187,7 +187,7 @@ var (
 	}
 	graveyardVerb = exitVerb{kind: "graveyard arrival", fix: "there is no continuation form for a graveyard " +
 		"arrival yet — g.PutIntoGraveyardForEffect rides routeCardToZoneLocked and returns before a " +
-		"paused leg lands, so write the wrapper beside g.ExileCardThenForEffect " +
+		"paused leg lands, so write the wrapper beside g.ExileCardKeyedForEffect " +
 		"(routeAllThenLocked(zoneRoute{Dst: ZoneGraveyard}, …) is the body) rather than reading back " +
 		"on the next line"}
 )
@@ -777,14 +777,7 @@ func chaosWarp(ctx *Context, id uuid.UUID) error {
 	const tuckAnswer = `package effects
 
 func chaosWarp(ctx *Context, id uuid.UUID) error {
-	c, _ := ctx.Game.LookupCardForEffect(id)
-	wasPermanent := c.IsPermanent()
-	return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, tucked bool) error {
-		if !tucked || !wasPermanent {
-			return nil
-		}
-		return DrawCards{N: 1}.Apply(ctx)
-	})
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, ctx.Tail(drawIfTucked))
 }
 `
 	const millOffender = `package effects
@@ -827,15 +820,9 @@ func riseOfTheWitchKing(ctx *Context, controller uuid.UUID) error {
 	const sacrificePromptAnswer = `package effects
 
 func riseOfTheWitchKing(ctx *Context, item *game.StackItem, controller uuid.UUID) error {
-	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), uuid.Nil,
-		sacrificeSpec("a creature", Creature()), "sacrifice",
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if !sacrificed.Sacrificed(controller) {
-				return nil
-			}
-			ctx := NewContext(g, item)
-			return ReturnFromGraveyard{Target: ctx.Target(), Dest: game.ZoneBattlefield}.Apply(ctx)
-		})
+	return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(ctx.Source(), uuid.Nil,
+		sacrificeSpec("a creature", Creature()), "sacrifice", riseOfTheWitchKing,
+		game.RunData{Carry: []uuid.UUID{controller}})
 }
 `
 	const graveyardOffender = `package effects
@@ -905,14 +892,8 @@ func mindRot(ctx *Context, victim, source uuid.UUID) error {
 
 func syphonMind(ctx *Context, item *game.StackItem, source uuid.UUID) error {
 	caster := item.Controller
-	return ctx.Game.EachPlayerDiscardsThenForEffect(caster,
-		game.DiscardPrompt{Source: source, N: 1},
-		func(g *game.Game, discarded game.PromptedDiscards) error {
-			if n := discarded.Count(); n > 0 {
-				return g.DrawNForEffect(caster, n)
-			}
-			return nil
-		})
+	return ctx.Game.EachPlayerDiscardsThenKeyedForEffect(caster,
+		game.DiscardPrompt{Source: source, N: 1}, syphonMind, []uuid.UUID{caster})
 }
 `
 	for _, tc := range []struct {
@@ -932,17 +913,17 @@ func syphonMind(ctx *Context, item *game.StackItem, source uuid.UUID) error {
 		{"bounce: a gate on a pre-bounce local", bounceOffender, 1},
 		{"bounce: BounceToHand.Then", bounceAnswer, 0},
 		{"tuck: a gate on a pre-tuck local", tuckOffender, 1},
-		{"tuck: TuckToLibraryThenForEffect", tuckAnswer, 0},
+		{"tuck: TuckCardsToLibraryKeyedForEffect", tuckAnswer, 0},
 		{"mill: a gate on a pre-mill local", millOffender, 1},
 		{"mill: MillToZone.ThenTail", millAnswer, 0},
 		{"a prompted sacrifice: a gate on the count of QUESTIONS", sacrificePromptOffender, 1},
-		{"a prompted sacrifice: EachPlayerSacrificesThenForEffect", sacrificePromptAnswer, 0},
+		{"a prompted sacrifice: EachPlayerSacrificesThenKeyedForEffect", sacrificePromptAnswer, 0},
 		{"a graveyard arrival: a gate on a pre-move local", graveyardOffender, 1},
 		{"a discard: a gate on a pre-discard local", discardOffender, 1},
 		{"a discard: DiscardRandomThenForEffect", discardAnswer, 0},
 		{"a prompted discard: a gate on a count of QUESTIONS", discardPromptOffender, 1},
 		{"a prompted discard: a gate on the prompt ID", discardPromptCountOffender, 1},
-		{"a prompted discard: EachPlayerDiscardsThenForEffect", discardPromptAnswer, 0},
+		{"a prompted discard: EachPlayerDiscardsThenKeyedForEffect", discardPromptAnswer, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fset := token.NewFileSet()

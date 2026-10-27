@@ -1071,7 +1071,7 @@ type ReplacementEvent struct {
 	// counterTail is the counter half's answer to lifeTail and
 	// tokenTail: the rest of the effect that asked for the placement,
 	// run with the delta the window settled on once the counters land.
-	// Set by AddCounterByThenForEffect and read only by
+	// Set by AddCounterByKeyedForEffect and read only by
 	// runCounterTailLocked, which both the inline path and the CR 616
 	// resume reach.
 	//

@@ -145,77 +145,6 @@ func wantsMoreCounters(counters map[string]int, harmful func(string) bool, mine 
 	return seen
 }
 
-// proliferateAskLocked takes `remaining` proliferates one prompt at a
-// time, then runs `then` (the rest of the sentence: Steady Progress's
-// "draw a card"). A proliferate with nothing on the board to choose
-// asks nothing and simply ends the sequence — "any number" includes
-// zero, and a prompt with no candidates would have no answer but the
-// empty one.
-//
-// The continuation captures scalars and the card's own `then` only —
-// the StackItem.Effect contract — and resolves against whichever
-// *Game it is handed, so an undone-then-redone answer works.
-//
-// Caller must hold g.mu.
-func (g *Game) proliferateAskLocked(actor, source uuid.UUID, remaining int, then func(g *Game) error) error {
-	finish := func() error {
-		if then == nil {
-			return nil
-		}
-		return then(g)
-	}
-	if remaining <= 0 {
-		return finish()
-	}
-	cards, players := g.ProliferateCandidatesForEffect()
-	if len(cards)+len(players) == 0 {
-		return finish()
-	}
-	sc, sp := g.ProliferateSuggestionForEffect(actor)
-	n := len(cards) + len(players)
-	id := g.QueueChoiceForEffect(PendingChoice{
-		Kind:            PendingChoiceProliferate,
-		Chooser:         actor,
-		FromPlayer:      actor,
-		Count:           n,
-		Source:          source,
-		Reason:          proliferateQuestion,
-		ChooseCards:     cards,
-		ChoosePlayers:   players,
-		ChooseSuggested: append(sc, sp...),
-		ChooseMin:       0,
-		ChooseMax:       n,
-		chooseCardsResume: &chooseCardsFrame{
-			then: proliferateThen(actor, source, remaining-1, then),
-		},
-	})
-	if id == uuid.Nil {
-		// The proliferating player is gone, so there is nobody to ask
-		// and nothing to give; the rest of the sentence still runs.
-		return finish()
-	}
-	return nil
-}
-
-// proliferateThen is a proliferate prompt's continuation: apply the
-// picks, then, once every counter has landed, ask for the next
-// proliferate of the settled count.
-func proliferateThen(actor, source uuid.UUID, remaining int, then func(g *Game) error) func(g *Game, picked []uuid.UUID) error {
-	return func(g *Game, picked []uuid.UUID) error {
-		var cardIDs, playerIDs []uuid.UUID
-		for _, id := range picked {
-			if g.playerByIDLocked(id) != nil {
-				playerIDs = append(playerIDs, id)
-			} else {
-				cardIDs = append(cardIDs, id)
-			}
-		}
-		return g.applyProliferateThenLocked(actor, cardIDs, playerIDs, func(g *Game) error {
-			return g.proliferateAskLocked(actor, source, remaining, then)
-		})
-	}
-}
-
 // ResolveProliferate answers a PendingChoiceProliferate. `picks` may
 // name permanents and seats; both are checked against the candidates
 // the prompt offered.
@@ -230,8 +159,9 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 // counter of each kind already there."
 //
 // The rule splits cleanly into a CHOICE and an APPLICATION.
-// applyProliferateThenLocked is the application: it takes the chosen
-// permanents and players as arguments and does not decide anything.
+// proliferateStepLocked (proliferate_keyed.go) is the application: it
+// takes the chosen permanents and players as data and does not decide
+// anything.
 // The choice is the PendingChoiceProliferate prompt below (#2525): the
 // proliferating player picks any number of the permanents and players
 // that have counters, with the engine's beneficial pick offered as the
@@ -261,92 +191,6 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 //     places, on permanents and on players alike (CR 701.34: "GIVE
 //     each another counter"). That is what makes Vorinclex halve an
 //     opponent's proliferate onto your creature and double your own.
-
-// applyProliferateThenLocked gives each named permanent and each named
-// player one additional counter of every kind they already have —
-// ONE proliferate, the application half of CR 701.34 with the choice
-// already made and the CR 614 window already settled — and then runs
-// `then`.
-//
-// Both lists may be empty — "any number" includes zero, and a
-// proliferate with nothing worth choosing is a legal no-op rather
-// than an error. IDs that name something that has left the
-// battlefield, or a player who is not seated, are skipped: the
-// choice is made when the effect starts resolving and the board can
-// have moved underneath it.
-//
-// #3930: the counters are placed one at a time, each behind the last
-// one's continuation (AddCounterByThenForEffect), in the order the
-// loop this replaced placed them: permanents in the order named, kinds
-// sorted, then players. On the ordinary path every continuation runs
-// inline, so nothing changes. When a placement pauses on a CR 616
-// ordering prompt (a Doubling Season beside a Hardened Scales), the
-// rest of the proliferate, and `then`, wait for the answer instead of
-// running while the counter is still owed. That is what lets `then`
-// read what the proliferate really did (ProliferateChoosingThenKeyedForEffect).
-//
-// Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) applyProliferateThenLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, then func(g *Game) error) error {
-	return g.proliferateCardsLocked(placer, cardIDs, playerIDs, 0, then)
-}
-
-// proliferateCardsLocked proliferates onto cardIDs[i:], then onto the
-// players. Kinds are snapshotted as each permanent's turn comes, so a
-// replacement that adds a NEW kind mid-placement can't cascade.
-func (g *Game) proliferateCardsLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, i int, then func(g *Game) error) error {
-	for ; i < len(cardIDs); i++ {
-		c, ok := g.LookupCardForEffect(cardIDs[i])
-		if !ok {
-			continue
-		}
-		if kinds := sortedCounterKinds(c.Counters); len(kinds) > 0 {
-			return g.proliferateCardKindsLocked(placer, cardIDs, playerIDs, i, kinds, 0, then)
-		}
-	}
-	return g.proliferatePlayersLocked(placer, playerIDs, 0, then)
-}
-
-// proliferateCardKindsLocked gives cardIDs[i] one counter of kinds[k],
-// and in its continuation the next kind, then the next permanent.
-func (g *Game) proliferateCardKindsLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, i int, kinds []string, k int, then func(g *Game) error) error {
-	if k >= len(kinds) {
-		return g.proliferateCardsLocked(placer, cardIDs, playerIDs, i+1, then)
-	}
-	return g.AddCounterByThenForEffect(placer, cardIDs[i], kinds[k], 1, func(g *Game, _ int) error {
-		return g.proliferateCardKindsLocked(placer, cardIDs, playerIDs, i, kinds, k+1, then)
-	})
-}
-
-// proliferatePlayersLocked is proliferateCardsLocked's player half:
-// playerIDs[i:], one counter of each kind each player already has,
-// then `then`.
-func (g *Game) proliferatePlayersLocked(placer uuid.UUID, playerIDs []uuid.UUID, i int, then func(g *Game) error) error {
-	for ; i < len(playerIDs); i++ {
-		p := g.playerByIDLocked(playerIDs[i])
-		if p == nil || p.Eliminated {
-			continue
-		}
-		if kinds := sortedCounterKinds(p.Counters); len(kinds) > 0 {
-			return g.proliferatePlayerKindsLocked(placer, playerIDs, i, kinds, 0, then)
-		}
-	}
-	if then == nil {
-		return nil
-	}
-	return then(g)
-}
-
-// proliferatePlayerKindsLocked gives playerIDs[i] one counter of
-// kinds[k], and in its continuation the next kind, then the next
-// player.
-func (g *Game) proliferatePlayerKindsLocked(placer uuid.UUID, playerIDs []uuid.UUID, i int, kinds []string, k int, then func(g *Game) error) error {
-	if k >= len(kinds) {
-		return g.proliferatePlayersLocked(placer, playerIDs, i+1, then)
-	}
-	return g.addPlayerCounterByThenLocked(placer, playerIDs[i], kinds[k], 1, func(g *Game, _ int) error {
-		return g.proliferatePlayerKindsLocked(placer, playerIDs, i, kinds, k+1, then)
-	})
-}
 
 // Proliferated is what one proliferate keyword action really gave
 // counters to (#3930): every permanent and every player that received

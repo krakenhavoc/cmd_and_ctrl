@@ -1476,7 +1476,7 @@ func (g *Game) SacrificePermanentForEffect(cardID uuid.UUID) error {
 // Which is why this is the FIRE-AND-FORGET form: nil means "no error",
 // never "it is in exile". A caller with an "if you do" or a "for each
 // card exiled this way" hanging off the move uses
-// ExileCardThenForEffect (one card) or ExileCardsThenForEffect
+// ExileCardKeyedForEffect (one card) or ExileCardsKeyedForEffect
 // (several), which wait for the answer and report what landed (#870).
 func (g *Game) ExileCardForEffect(cardID uuid.UUID) error {
 	_, err := g.routeCardToZoneLocked(zoneRoute{CardID: cardID, Dst: ZoneExile})
@@ -1648,7 +1648,7 @@ type TuckOptions struct {
 // to the bottom whose owner declines still lands on the bottom.
 //
 // #783: this is the FIRE-AND-FORGET half of the pair, on the same
-// route template (tuckRoute) as TuckToLibraryThenForEffect. It returns
+// route template (tuckRoute) as TuckCardsToLibraryKeyedForEffect. It returns
 // nil whether the card moved or a prompt was queued, which is fine for
 // a caller with nothing left to do — Sensei's Divining Top putting
 // itself back is the last instruction on its ability — and wrong for
@@ -2131,10 +2131,10 @@ func (g *Game) AddCounterForEffect(cardID uuid.UUID, name string, delta int) err
 func (g *Game) AddCounterByForEffect(placer, cardID uuid.UUID, name string, delta int) error {
 	// #1282: one body with the continuation form, so the two cannot
 	// drift. A caller that does anything after the placement that reads
-	// the counters wants AddCounterByThenForEffect instead — this
+	// the counters wants AddCounterByKeyedForEffect instead — this
 	// returns nil with NOTHING placed when the window pauses on a
 	// CR 616 ordering prompt.
-	return g.AddCounterByThenForEffect(placer, cardID, name, delta, nil)
+	return g.AddCounterByKeyedForEffect(placer, cardID, name, delta, KeyedTail{})
 }
 
 // ReturnFromGraveyardForEffect moves a card from a player's
@@ -3682,7 +3682,7 @@ func (g *Game) CreateTokensBlockingForEffect(controller uuid.UUID, template Card
 // empty library is not an error, it simply does nothing, and no choice
 // is queued. It is also zero when the CR 614 keyword-action window
 // PAUSED on an ordering prompt, in which case nothing has been queued
-// yet and the resume queues it; see ScryThenForEffect.
+// yet and the resume queues it; see ScryKeyedForEffect.
 //
 // Scry is LOOK AT, not reveal. Only the scrying player becomes a knower
 // of the cards, so the per-viewer wire filter redacts them for everyone
@@ -3697,12 +3697,15 @@ func (g *Game) CreateTokensBlockingForEffect(controller uuid.UUID, template Card
 //
 // Caller must hold g.mu.
 func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
-	return g.ScryThenForEffect(playerID, source, n, nil)
+	return g.ScryKeyedForEffect(playerID, source, n, KeyedTail{})
 }
 
-// ScryThenForEffect is scry N with a continuation: `after` runs once the
-// player has finished putting the cards back, with the library in the
-// order they chose.
+// ScryKeyedForEffect is scry N with a continuation: `after`, a registered
+// tail (RegisterTail, #4253 slice 3), runs once the player has finished
+// putting the cards back, with the library in the order they chose. The
+// scry prompt, and a CR 616 ordering prompt over the scry, are restore
+// points. (The closure form, ScryThenForEffect, was deleted in #4253 once
+// nothing called it.)
 //
 // This exists because of the word "then". Preordain is "Scry 2, THEN
 // draw a card" — the card left on top is the card drawn, so the draw
@@ -3726,18 +3729,8 @@ func (g *Game) ScryForEffect(playerID, source uuid.UUID, n int) int {
 // the scry when the order is answered. See keyword_action.go and #976.
 //
 // Caller must hold g.mu.
-func (g *Game) ScryThenForEffect(playerID, source uuid.UUID, n int, after func(g *Game) error) int {
-	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after, KeyedTail{})
-}
-
-// ScryKeyedForEffect is ScryThenForEffect with the continuation as data
-// (#4253 slice 3): `after` is a registered tail (RegisterTail). The scry
-// prompt, and a CR 616 ordering prompt over the scry, are then restore
-// points.
-//
-// Caller must hold g.mu.
 func (g *Game) ScryKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
-	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, nil, after)
+	return g.keywordLookAtTopForEffect(KeywordActionScry, PendingChoiceScry, playerID, source, n, after)
 }
 
 // SurveilKeyedForEffect is surveil N with a continuation (CR 701.25):
@@ -3755,12 +3748,12 @@ func (g *Game) ScryKeyedForEffect(playerID, source uuid.UUID, n int, after Keyed
 //
 // A surveil is a keyword action (CR 701.25) on the same CR 614 window
 // scry opens — same count, same "that many plus one" shape, same
-// pause. See ScryThenForEffect. (The closure form, SurveilThenForEffect,
+// pause. See ScryKeyedForEffect. (The closure form, SurveilThenForEffect,
 // was deleted in #4253's last part once only tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) SurveilKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
-	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, nil, after)
+	return g.keywordLookAtTopForEffect(KeywordActionSurveil, PendingChoiceSurveil, playerID, source, n, after)
 }
 
 // keywordLookAtTopForEffect is the scry / surveil entry point: it
@@ -3780,9 +3773,9 @@ func (g *Game) SurveilKeyedForEffect(playerID, source uuid.UUID, n int, after Ke
 // continuation still runs, in lookAtTopWithTailLocked, exactly as it did.
 //
 // Caller must hold g.mu.
-func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
+func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoiceKind, playerID, source uuid.UUID, n int, keyed KeyedTail) int {
 	if n <= 0 {
-		return g.lookAtTopWithTailLocked(kind, playerID, source, n, after, keyed)
+		return g.lookAtTopWithTailLocked(kind, playerID, source, n, keyed)
 	}
 	looked, err := g.runKeywordActionLocked(&ReplacementEvent{
 		Kind:               RepEventKeywordAction,
@@ -3790,7 +3783,7 @@ func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoic
 		Source:             source,
 		KeywordAction:      action,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{choice: kind, then: after, keyed: keyed},
+		keywordAction:      &keywordActionTail{choice: kind, keyed: keyed},
 	})
 	if err != nil {
 		g.EmitEvent(Event{
@@ -3818,7 +3811,7 @@ func (g *Game) keywordLookAtTopForEffect(action KeywordAction, kind PendingChoic
 //
 // Caller must hold g.mu.
 func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after KeyedTail) int {
-	return g.lookAtTopWithTailLocked(PendingChoiceLookAtTop, playerID, source, n, nil, after)
+	return g.lookAtTopWithTailLocked(PendingChoiceLookAtTop, playerID, source, n, after)
 }
 
 // lookAtTopWithTailLocked queues the "look at the top N cards of your
@@ -3839,13 +3832,12 @@ func (g *Game) LookAtTopKeyedForEffect(playerID, source uuid.UUID, n int, after 
 //
 // Caller must hold g.mu.
 //
-// The continuation is in either form: the closure (a scry's, from
-// ScryThenForEffect), or a registered tail (#4253 slice 3) the prompt
+// The continuation is a registered tail (#4253 slice 3) the prompt
 // carries as data (PendingChoice.scryThen).
-func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, after func(g *Game) error, keyed KeyedTail) int {
+func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source uuid.UUID, n int, keyed KeyedTail) int {
 	reason := lookAtTopReasonFor(kind)
 	runAfter := func() {
-		g.runScryAfterLocked(playerID, source, after, keyed, 0)
+		g.runScryAfterLocked(playerID, source, keyed, 0)
 	}
 	if n <= 0 {
 		runAfter()
@@ -3880,7 +3872,6 @@ func (g *Game) lookAtTopWithTailLocked(kind PendingChoiceKind, playerID, source 
 		Source:     source,
 		Reason:     reason(len(ids)),
 		ScryCards:  ids,
-		scryResume: after,
 		scryThen:   keyed,
 	})
 	return len(ids)

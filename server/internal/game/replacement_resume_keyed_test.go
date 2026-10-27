@@ -386,13 +386,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.Kind = RepEventLife
 			c.replacementResume.ev.lifeTail = &lifeTail{then: func(*Game, int) error { return nil }}
 		},
-		"a counter tail's closure": func(c *PendingChoice) {
-			c.replacementResume.ev.Kind = RepEventCounter
-			c.replacementResume.ev.counterTail = &counterTail{then: func(*Game, int) error { return nil }}
-		},
-		"a keyword action's then": func(c *PendingChoice) {
-			c.replacementResume.ev.keywordAction = &keywordActionTail{then: func(*Game) error { return nil }}
-		},
 		"an amass's Army the mirror cannot write": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{
 				Name: "Army", ActivatedAbilities: []ActivatedAbilityShape{{}},

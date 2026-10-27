@@ -32,7 +32,7 @@ import "github.com/google/uuid"
 // announcement, in the same order. It stays the FIRE-AND-FORGET form:
 // nil means "no error", never "it left the battlefield", because a
 // sacrificed commander's CR 903.9 prompt can still be open when this
-// returns. A caller that reads the outcome uses SacrificeThenForEffect.
+// returns. A caller that reads the outcome uses SacrificeAllKeyedForEffect.
 //
 // A permanent that is not on the battlefield is ErrCardNotFound and
 // nothing is announced, which is the contract every caller already
@@ -156,19 +156,19 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // has left the battlefield when it returns, and a clause written on
 // the next line pays out for a sacrifice nobody has chosen yet. A
 // card with anything hanging off the answer uses
-// EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
+// EachPlayerSacrificesThenKeyedForEffect (#1019, sacrifice_run.go), which
 // is this with the rest of the card attached.
 //
 // The choices go through ADR 0175's ordered collector: one player is
 // asked at a time, in APNAP order, each seeing the earlier picks, and
 // nothing moves until the last player has chosen. Then every pick
-// leaves in one SacrificeAllThenForEffect, so a Blood Artist sees every
+// leaves in one SacrificeAllKeyedForEffect, so a Blood Artist sees every
 // death in one batch and no death trigger can resolve while a later
 // player is still choosing (sacrificeTogetherLocked, sacrifice_run.go).
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID, spec *TargetSpec, reason string) int {
-	asked, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, nil)
+	asked, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason)
 	if err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
 	}
@@ -202,7 +202,7 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) PlayersSacrificeForEffect(source uuid.UUID, players []uuid.UUID, spec *TargetSpec, reason string) int {
-	asked, err := g.sacrificeTogetherLocked(source, players, spec, reason, nil)
+	asked, err := g.sacrificeTogetherLocked(source, players, spec, reason)
 	if err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
 	}

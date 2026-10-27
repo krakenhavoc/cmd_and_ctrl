@@ -274,13 +274,13 @@ func TestSingleCardExileThenReportsWhatLanded(t *testing.T) {
 
 			got, ran := false, 0
 			g.WithWriteLock(func() {
-				err := g.ExileCardThenForEffect(commander, func(_ *Game, exiled bool) error {
+				err := g.ExileCardKeyedForEffect(commander, hookTail(func(_ *Game, o TailOutcome) error {
 					ran++
-					got = exiled
+					got = len(o.IDs) == 1
 					return nil
-				})
+				}))
 				if err != nil {
-					t.Fatalf("ExileCardThenForEffect: %v", err)
+					t.Fatalf("ExileCardKeyedForEffect: %v", err)
 				}
 			})
 			if ran != 0 {
@@ -312,13 +312,13 @@ func TestSingleCardExileThenIsNotToldAboutACancelledMove(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(leaveBattlefieldReplacement(saved,
 			"it can't be exiled", func(ev *ReplacementEvent) { ev.Cancel() }))
-		err := g.ExileCardThenForEffect(saved, func(_ *Game, exiled bool) error {
+		err := g.ExileCardKeyedForEffect(saved, hookTail(func(_ *Game, o TailOutcome) error {
 			ran++
-			got = exiled
+			got = len(o.IDs) == 1
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("ExileCardThenForEffect: %v", err)
+			t.Fatalf("ExileCardKeyedForEffect: %v", err)
 		}
 	})
 	if ran != 1 {

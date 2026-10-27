@@ -25,8 +25,8 @@ func TestProliferatePromptCarriesItsSeatsAndTheSuggestion(t *testing.T) {
 		t.Fatal(err)
 	}
 	g.WithWriteLock(func() {
-		if err := g.ProliferateChoosingForEffect(me.ID, uuid.Nil, nil); err != nil {
-			t.Fatalf("ProliferateChoosingForEffect: %v", err)
+		if err := g.ProliferateChoosingKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("ProliferateChoosingKeyedForEffect: %v", err)
 		}
 	})
 

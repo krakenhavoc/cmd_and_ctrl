@@ -17,7 +17,7 @@ import (
 // The entry trigger is Ember Swallower's edict with opponents only:
 // each opponent names three creatures, one opponent at a time in APNAP
 // order, and every named creature is sacrificed together once the last
-// has chosen (game.PlayersSacrificeThenForEffect, CR 101.4, #3664). A
+// has chosen (game.PlayersSacrificeThenKeyedForEffect, CR 101.4, #3664). A
 // player with fewer than three creatures sacrifices what they have (CR
 // 701.21a). Not targeted, so a hexproof creature is as sacrificeable as
 // any other.

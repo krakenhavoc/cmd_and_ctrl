@@ -191,3 +191,24 @@ func queueAnyPlayerHooked(g *Game, p anyPlayerTestOffer) error {
 		Then: then, Carry: []uuid.UUID{id},
 	})
 }
+
+// playersDiscardHooked is a keyed discard run (PlayersDiscardThenKeyedForEffect)
+// whose continuation is fn, handed what each seat really discarded.
+func playersDiscardHooked(g *Game, players []uuid.UUID, p DiscardPrompt, fn func(g *Game, discarded PromptedDiscards) error) error {
+	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Discards()) })
+	return g.PlayersDiscardThenKeyedForEffect(players, p, testRunHookThen, data.Carry)
+}
+
+// eachPlayerDiscardsHooked is the APNAP fan-out of playersDiscardHooked.
+func eachPlayerDiscardsHooked(g *Game, except uuid.UUID, p DiscardPrompt, fn func(g *Game, discarded PromptedDiscards) error) error {
+	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Discards()) })
+	return g.EachPlayerDiscardsThenKeyedForEffect(except, p, testRunHookThen, data.Carry)
+}
+
+// eachPlayerSacrificesHooked is a keyed sacrifice run
+// (EachPlayerSacrificesThenKeyedForEffect) whose continuation is fn, handed
+// what each seat really sacrificed.
+func eachPlayerSacrificesHooked(g *Game, source, except uuid.UUID, spec *TargetSpec, reason string, fn func(g *Game, sacrificed PromptedSacrifices) error) error {
+	data := runHook(func(g *Game, r RunDone) error { return fn(g, r.Sacrifices()) })
+	return g.EachPlayerSacrificesThenKeyedForEffect(source, except, spec, reason, testRunHookThen, data)
+}

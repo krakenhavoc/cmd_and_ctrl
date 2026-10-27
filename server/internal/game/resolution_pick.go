@@ -402,7 +402,7 @@ func revealPickLegThen(run, chooser, source uuid.UUID) func(g *Game, picked []uu
 // run: ONE seat answering, one prompt per player whose board the
 // printed instruction walks.
 //
-// The seat template pattern PlayersDiscardThenForEffect uses: `Of` is
+// The seat template pattern PlayersDiscardThenKeyedForEffect uses: `Of` is
 // the ask list and everything else is what each of those seats is
 // asked with, so "for each player, you choose …" is one call.
 type PermanentPickPrompt struct {

@@ -1885,9 +1885,9 @@ CR 903.9b destination (a hand is the other), so "put it into its
 owner's library" opens the window and can stop to ask a commander's
 owner about the command zone. If your card has anything to do AFTER the tuck —
 shuffle, reveal, scry, ask the next question, read the card's zone —
-hand it over as a continuation (`TuckToLibraryThenForEffect`, or
-`TuckCardsToLibraryThenForEffect` for a batch, which reports the cards
-that really reached a library). `TuckToLibraryForEffect` stays
+hand it over as a continuation (`TuckCardsToLibraryKeyedForEffect`, which
+takes a registered tail and reports the cards that really reached a
+library; a single card is a batch of one). `TuckToLibraryForEffect` stays
 fire-and-forget and is right only when the tuck is the LAST instruction
 on the card. A printed position ("on the bottom", "third from the top")
 goes in `game.TuckOptions` so it rides the route and survives the
@@ -2186,7 +2186,7 @@ The window can PAUSE — a doubler and a "plus one" is a CR 616
 ordering prompt, and ×2 then +1 differs from +1 then ×2 — so a
 paused proliferate has placed no counters and a paused scry has
 queued no prompt when the entry point returns;
-`ScryThenForEffect`'s returned count is 0, the contract
+`ScryKeyedForEffect`'s returned count is 0, the contract
 `CreateTokensForEffect`'s empty ID slice already carries. Anything
 after "then" still goes in the continuation (`Scry{Then: …}`), and it
 runs on every terminal outcome, a cancelled action included: "scry 2,
@@ -5853,11 +5853,10 @@ search happens either way). See
 [ADR 0013 §5m](decisions/0013-replacement-effects.md).
 
 **A sacrifice is a batch too, and "sacrificed this way" is not
-"destroyed this way" (#910).** `g.SacrificeAllThenForEffect(source,
-ids, then)` sacrifices a set as ONE simultaneous exit and hands `then`
-the permanents that were really sacrificed;
-`g.SacrificeThenForEffect(source, id, then)` is the single-card
-wrapper for "sacrifice a creature. If you do, …", and
+"destroyed this way" (#910).** `g.SacrificeAllKeyedForEffect(source,
+ids, tail)` sacrifices a set as ONE simultaneous exit and hands the
+registered `tail` the permanents that were really sacrificed (a single
+card, "sacrifice a creature. If you do, …", is a batch of one), and
 `g.SacrificeAllForEffect(source, ids)` the fire-and-forget count for a
 sweep nothing is waiting on. Reach for a `Then` form the moment a card
 reads the result — "draw that many cards", "for each permanent
@@ -5878,7 +5877,7 @@ Pass ordinary `ChooseCardsPrompt` legs in APNAP order, with battlefield
 candidates and exact counts or a set validator. Only the current leg is queued;
 earlier public card IDs are shown to later players. No card moves until `then`.
 Use `EffectSacrificeCandidatesForEffect` to preserve protection against forced
-sacrifices, and call `SacrificeAllThenForEffect` once with the collected set.
+sacrifices, and call `SacrificeAllKeyedForEffect` once with the collected set.
 Liliana, Dreadhorde General demonstrates both exact-two and keep-by-type choices.
 Empty and departed legs advance; valid forced sets are collected without a
 prompt. Receipts bind to object epochs, and dropped choices continue with an
@@ -5894,9 +5893,9 @@ QUEUE a prompt per seat and return how many seats were asked. The
 permanent leaves when a player answers, which is one or more actions
 later, so a clause written on the next line pays out before anybody
 has chosen. Use a RUN whenever ANYTHING follows the prompt, the
-ordering included: `g.EachPlayerSacrificesThenForEffect(source,
-except, spec, reason, then)` for the APNAP fan-out,
-`g.PlayersSacrificeThenForEffect(source, players, …)` for a named set
+ordering included: `g.EachPlayerSacrificesThenKeyedForEffect(source,
+except, spec, reason, then, data)` for the APNAP fan-out,
+`g.PlayersSacrificeThenKeyedForEffect(source, players, …)` for a named set
 of seats, `g.PlayerSacrificesThenForEffect(source, player, spec,
 reason, count, then)` for one seat asked N times, and
 `effects.EachPlayerSacrifices.Then` card-side. A multi-seat
@@ -7736,8 +7735,8 @@ tail)` (`LoseLifeEachKeyedForEffect` for a batch, `EarthbendKeyedForEffect` and
 `o.Amount` (the counters placed, the life that moved, negative for a loss) and
 reads the rest off the tail: `Carry` (the permanent), `N`, `Word` (a counter
 kind) and the asking item. `ctx.Tail(ref)` omits the item, for a body that reads
-only IDs. The closure doors that remain (`AddCounterByThenForEffect`,
-`ChangePlayerLifeThenForEffect`) are the engine's own plumbing;
+only IDs. The closure door that remains (`ChangePlayerLifeThenForEffect`) is
+the engine's own plumbing;
 `TestNoCatalogCardCallsAClosureCounterOrLifeDoor` refuses a new catalog
 caller. A tail that two cards share is one key (`counter/double-plus-one`,
 `counter/draw-per-counter`, `life/gain-equal-to-lost`, `counter/put-on-each-next`
@@ -8914,7 +8913,7 @@ CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(ctx)      // "cast the copy by pay
 ```
 
 Hand it the cards that REALLY reached exile (the continuation of
-`ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
+`ExileCardsKeyedForEffect` / `ExileCardKeyedForEffect`, not a pre-count). Each
 gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
 free-cast offer, all at once with no cap; the player casts them in the order
 they like, while the effect is still resolving (a `resolution_cast` prompt
@@ -9493,7 +9492,7 @@ would fire it in the wrong turn.
 
 A spell that takes the turn and then puts itself back in the library
 (Beacon of Tomorrows) tucks and shuffles the resolving card with
-`TuckToLibraryThenForEffect`, the way Blue Sun's Zenith does; one that
+`TuckCardsToLibraryKeyedForEffect`, the way Blue Sun's Zenith does; one that
 says "if this would be put into a graveyard from anywhere, shuffle it
 into its owner's library instead" (Nexus of Fate, Blightsteel Colossus)
 declares `ShuffleIntoOwnersLibraryInstead(label)` in `Replacements`.
@@ -11850,7 +11849,7 @@ ctx.SourcePermanent()                                                           
 - **"Each opponent chooses a permanent they control of each permanent type and sacrifices the rest"** is a
   `ChooseCardsPrompt` keep-set over the whole board with `Validate: lilianaKeepsOneOfEachType(present)` (Liliana,
   Dreadhorde General); `permanentTypesOf` / `permanentTypesAmong` list the CR 110.4a types.
-- **"Each player sacrifices two creatures"** is one `g.PlayersSacrificeThenForEffect` run naming each seat twice.
+- **"Each player sacrifices two creatures"** is one `g.PlayersSacrificeThenKeyedForEffect` run naming each seat twice.
 - **"Create a token that's a copy of that creature"** on an entry trigger is
   `g.TokenCopyTemplateForObjectForEffect(ctx.Trigger().Object.Ref())` (Necroduality).
 - **"The number of nontoken creatures that died this turn"** is `nontokenCreaturesDiedThisTurn(g)` (Rise of the

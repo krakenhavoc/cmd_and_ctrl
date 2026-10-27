@@ -15,7 +15,7 @@ import "github.com/google/uuid"
 // RevealTopOfLibraryForEffect, the land's trip to hand and the nonland's
 // trip to the graveyard are routeCardToZoneLocked (so a commander in a
 // library still gets its CR 903.9 question), the counter is
-// AddCounterByThenForEffect (so Hardened Scales and friends settle
+// AddCounterByKeyedForEffect (so Hardened Scales and friends settle
 // before the question), and "may put it into your graveyard" is the
 // general confirm prompt. It is not surveil: a "whenever you surveil"
 // payoff must not fire on an explore, so the question is not a surveil

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"sort"
+
 	"github.com/google/uuid"
 )
 
@@ -196,7 +198,7 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		} else {
 			bottom = cards
 		}
-		return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
+		return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, then, tail)
 	}
 	for _, id := range cards {
 		if c := g.findCardByIDLocked(id); c != nil {
@@ -224,7 +226,7 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		prompt.libraryOrderKeyed = &libraryOrderKeyed{how: how, then: copyKeyedTail(tail)}
 	} else {
 		prompt.libraryOrderResume = func(g *Game, top, bottom []uuid.UUID) error {
-			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
+			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, then, tail)
 		}
 	}
 	id := g.QueueChoiceForEffect(prompt)
@@ -337,9 +339,7 @@ func (g *Game) ResolvePutInLibrary(choiceID, chooserID uuid.UUID, bottom, topOrd
 		// #4301: the keyed form, rebuilt from its data.
 		chooser, how, tail := choice.Chooser, k.how, k.then
 		resume = func(g *Game, top, bottom []uuid.UUID) error {
-			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, func(g *Game) error {
-				return g.runKeyedTailLocked(tail, nil, 0)
-			})
+			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, nil, tail)
 		}
 	}
 	if resume != nil {
@@ -432,7 +432,7 @@ type libraryOrderLeg struct {
 // paused leg pauses the pile rather than letting the rest overtake it.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHow, top, bottom []uuid.UUID, then func(g *Game) error) error {
+func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHow, top, bottom []uuid.UUID, then func(g *Game) error, tail KeyedTail) error {
 	legs := make([]libraryOrderLeg, 0, len(top)+len(bottom))
 	for _, id := range bottom {
 		legs = append(legs, libraryOrderLeg{id: id, toBottom: true, laneSize: len(bottom)})
@@ -440,27 +440,35 @@ func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHo
 	for i := len(top) - 1; i >= 0; i-- {
 		legs = append(legs, libraryOrderLeg{id: top[i], depth: how.depth, laneSize: len(top)})
 	}
-	return g.placeLibraryOrderLegsLocked(chooser, how, legs, then)
+	return g.placeLibraryOrderLegsLocked(chooser, how, legs, then, tail)
 }
 
 // placeLibraryOrderLegsLocked places the head of `legs` and continues
-// with the tail from that leg's continuation. The empty list is the
-// base case.
+// with the tail from that leg's continuation. The empty list is the base
+// case, which runs `then` (a closure) or, when there is none, the keyed
+// tail.
+//
+// A pile with no closure in it (#4253: a keyed tail and no counter) walks
+// as data: each tuck leg is a keyed route whose tail carries the rest of
+// the pile (libraryOrderLegLanded), so a leg paused on a commander's CR
+// 903.9 prompt is a restore point. A pile whose rest is a closure, or a
+// Hinder counter (CounterSpellToLibraryThenForEffect, whose stack exit is
+// a closure of its own), walks through closures, as it always did.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, then func(g *Game) error) error {
+func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, then func(g *Game) error, tail KeyedTail) error {
 	for len(legs) > 0 && !g.libraryOrderCardLiveLocked(how, legs[0].id) {
 		legs = legs[1:]
 	}
 	if len(legs) == 0 {
 		if then == nil {
-			return nil
+			return g.runKeyedTailLocked(tail, nil, 0)
 		}
 		return then(g)
 	}
 	leg, rest := legs[0], legs[1:]
 	next := func(g *Game) error {
-		return g.placeLibraryOrderLegsLocked(chooser, how, rest, then)
+		return g.placeLibraryOrderLegsLocked(chooser, how, rest, then, tail)
 	}
 	src := g.findCardZoneLocked(leg.id)
 	card, ok := g.cardInZoneLocked(src, leg.id)
@@ -482,6 +490,10 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHo
 		}
 		return next(g)
 	}
+	if !how.counter && then == nil {
+		return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{leg.id}, at,
+			libraryOrderLegLandedTail(chooser, how, leg.id, knowers, rest, tail))
+	}
 	landed := func(g *Game, placed bool) error {
 		if placed {
 			if c := g.findCardByIDLocked(leg.id); c != nil {
@@ -493,7 +505,82 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHo
 	if how.counter {
 		return g.CounterSpellToLibraryThenForEffect(leg.id, at, landed)
 	}
-	return g.TuckToLibraryThenForEffect(leg.id, at, landed)
+	return g.TuckCardsToLibraryThenForEffect([]uuid.UUID{leg.id}, at, func(g *Game, tucked []uuid.UUID) error {
+		return landed(g, len(tucked) == 1)
+	})
+}
+
+// libraryOrderLegLandedTail is a pile's tuck leg's tail (#4253): what the
+// leg owes once it has settled, as data. Player is the chooser, Word and N
+// the zone the cards must still be in and the top lane's depth (how); Carry
+// is the leg's card, who knows it once it is placed, and then the cards of
+// the legs still to place; Nums is how many of those are knowers and then,
+// for each leg still to place, whether it goes on the bottom, its depth and
+// its lane's size; Next is the pile's own continuation.
+func libraryOrderLegLandedTail(chooser uuid.UUID, how libraryOrderHow, id uuid.UUID, knowers map[uuid.UUID]bool, rest []libraryOrderLeg, tail KeyedTail) KeyedTail {
+	var who []uuid.UUID
+	for k, known := range knowers {
+		if known {
+			who = append(who, k)
+		}
+	}
+	// A stable order, so the tail is the same every time it is written.
+	sort.Slice(who, func(i, j int) bool { return who[i].String() < who[j].String() })
+	t := KeyedTail{
+		Ref: libraryOrderLegLanded, Player: chooser, Word: string(how.from), N: how.depth,
+		Carry: append([]uuid.UUID{id}, who...), Nums: []int{len(who)},
+	}
+	for _, leg := range rest {
+		t.Carry = append(t.Carry, leg.id)
+		bottom := 0
+		if leg.toBottom {
+			bottom = 1
+		}
+		t.Nums = append(t.Nums, bottom, leg.depth, leg.laneSize)
+	}
+	if !tail.IsZero() {
+		next := copyKeyedTail(tail)
+		t.Next = &next
+	}
+	return t
+}
+
+// libraryOrderLegLanded finishes a pile's tuck leg: the card, if it reached
+// a library, is known to who the pile says; then the rest of the pile goes
+// on. An on-disk key: never renamed, never reused. Registered from init: the
+// walk names this tail, which names the walk.
+var libraryOrderLegLanded TailRef
+
+func init() {
+	libraryOrderLegLanded = RegisterTail("engine/library-order-leg-landed", libraryOrderLegLandedBody)
+}
+
+func libraryOrderLegLandedBody(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) == 0 || len(t.Nums) == 0 {
+		return nil
+	}
+	nWho := t.Nums[0]
+	if nWho < 0 || len(t.Carry) < 1+nWho || (len(t.Nums)-1)%3 != 0 || len(t.Carry)-1-nWho != (len(t.Nums)-1)/3 {
+		return nil
+	}
+	if len(o.IDs) == 1 {
+		if c := g.findCardByIDLocked(t.Carry[0]); c != nil {
+			knowers := make(map[uuid.UUID]bool, nWho)
+			for _, k := range t.Carry[1 : 1+nWho] {
+				knowers[k] = true
+			}
+			c.KnownBy = knowers
+		}
+	}
+	var legs []libraryOrderLeg
+	for i, id := range t.Carry[1+nWho:] {
+		legs = append(legs, libraryOrderLeg{
+			id: id, toBottom: t.Nums[1+3*i] == 1, depth: t.Nums[2+3*i], laneSize: t.Nums[3+3*i],
+		})
+	}
+	how := libraryOrderHow{from: ZoneKind(t.Word), depth: t.N}
+	return g.placeLibraryOrderLegsLocked(t.Player, how, legs, nil, nextTailValue(t.Next))
 }
 
 // publicKnowersOfLocked is everyone who can see a card in `z` by virtue

@@ -30,7 +30,7 @@ package game
 //   - StackItem.Effect — what an ability does when it resolves
 //   - StackItem.targetSpec — the clause its targets were legal under
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
-//   - PendingChoice's six resume frames + scryResume — a paused
+//   - PendingChoice's six resume frames — a paused
 //     game literally holds the rest of the effect as a continuation
 //   - (RETIRED by ADR 0041 phase 3 tier 3b: Gingerbrute's and Fog's
 //     block rules and replacements are both ScopedEffect records now)
@@ -3303,7 +3303,6 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// #4253 slice 5: a search prompt with no closure set rule or
 		// continuation is written (pendingChoices[].searchPrompt).
 		"searchResume": c.searchResume != nil && !searchPromptIsData(c),
-		"scryResume":   c.scryResume != nil,
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,

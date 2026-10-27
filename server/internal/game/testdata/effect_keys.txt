@@ -1675,3 +1675,8 @@ tail permanents-pick/sacrificed
 tail take/each-moved
 tail take/moved
 tail underrealm-lich/taken
+tail engine/exile-card-granted
+tail engine/exile-return-transformed
+tail engine/library-order-leg-landed
+tail engine/ordered-picks-sacrificed
+tail engine/sacrifice-leg-settled

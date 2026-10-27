@@ -15,7 +15,7 @@ import (
 //
 // "Each player" includes you. Each seat names three lands, one seat at
 // a time in APNAP order, and every named land is sacrificed together
-// once the last has chosen (PlayersSacrificeThenForEffect owes a seat
+// once the last has chosen (PlayersSacrificeThenKeyedForEffect owes a seat
 // one permanent per time it is named; CR 101.4, #3664). A player with
 // fewer than three lands sacrifices what they have (CR 701.21a, "if
 // you can"). Not targeted, so a hexproof land is as sacrificeable as

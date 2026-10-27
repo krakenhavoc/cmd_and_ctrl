@@ -354,7 +354,7 @@ func (g *Game) runAsTransformsIntoLocked(cardID uuid.UUID) {
 //
 // Built out of the two moves that already exist:
 //
-//  1. ExileCardThenForEffect, the shared exit primitive, so a
+//  1. ExileCardKeyedForEffect, the shared exit primitive, so a
 //     commander that would be exiled is offered the command zone
 //     (CR 903.9) and the second half waits for the answer instead of
 //     firing into a paused move. When the exile is replaced away
@@ -406,15 +406,25 @@ func (g *Game) ExileAndReturnTransformedForEffect(cardID, controller uuid.UUID) 
 		return nil
 	}
 	face := 1 - card.ActiveFace
-	return g.ExileCardThenForEffect(cardID, func(g *Game, exiled bool) error {
-		if !exiled {
-			return nil
-		}
-		setFaceInZoneLocked(g.Exile, cardID, face)
-		_, err := g.ReturnFromExileToBattlefieldForEffect(cardID, controller, false)
-		return err
+	return g.ExileCardKeyedForEffect(cardID, KeyedTail{
+		Ref: exileReturnTransformed, Player: controller, Carry: []uuid.UUID{cardID}, N: face,
 	})
 }
+
+// exileReturnTransformed is ExileAndReturnTransformedForEffect's second half
+// (#4253): once the card reached exile, set its other face and return it
+// under Player's control (the owner's when uuid.Nil). A card the exile did
+// not reach stays where the replacement put it. An on-disk key: never
+// renamed, never reused.
+var exileReturnTransformed = RegisterTail("engine/exile-return-transformed", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 || len(o.IDs) != 1 {
+		return nil
+	}
+	id := o.Tail.Carry[0]
+	setFaceInZoneLocked(g.Exile, id, o.Tail.N)
+	_, err := g.ReturnFromExileToBattlefieldForEffect(id, o.Tail.Player, false)
+	return err
+})
 
 // ReturnCraftedFromExileForEffect is craft's resolution (CR 702.167a,
 // ADR 0137): "Return this card to the battlefield transformed under its

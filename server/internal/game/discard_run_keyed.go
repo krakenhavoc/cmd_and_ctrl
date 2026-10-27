@@ -10,8 +10,8 @@ import (
 // is a KEY rather than a closure (#4256), so a table waiting on the
 // discard is a restore point.
 //
-// The closure form (PlayerDiscardsThenForEffect, deleted in #4253's last
-// part; PlayersDiscardThenForEffect still is one) keeps the rest of the
+// The closure form (PlayerDiscardsThenForEffect, PlayersDiscardThenForEffect
+// and EachPlayerDiscardsThenForEffect, all deleted in #4253) kept the rest of the
 // card in a prompted run (prompt_run.go): a closure on Game.promptRuns, linked from the
 // prompt by a run id, and the prompt's own continuation is a closure
 // too. Neither is written to a restore point, so a table waiting on
@@ -161,7 +161,7 @@ var discardLegThen = RegisterChooseCardsThen("choose-cards/discard-leg", func(g 
 	})
 })
 
-// EachPlayerDiscardsThenKeyedForEffect is EachPlayerDiscardsThenForEffect
+// EachPlayerDiscardsThenKeyedForEffect is EachPlayerDiscardsForEffect
 // with the rest of the card as a registered run continuation
 // (RegisterPromptRunThen) and `carry` the plain data it is handed: "each
 // opponent discards a card. You draw a card for each card discarded this
@@ -179,7 +179,7 @@ func (g *Game) EachPlayerDiscardsThenKeyedForEffect(except uuid.UUID, p DiscardP
 	return g.discardRunKeyedLocked(g.discardFanOutSeatsLocked(except), p, then, carry)
 }
 
-// PlayersDiscardThenKeyedForEffect is PlayersDiscardThenForEffect with
+// PlayersDiscardThenKeyedForEffect is PlayersDiscardForEffect with
 // the rest of the card as a registered run continuation; the seats are
 // `players`, in the order given. See EachPlayerDiscardsThenKeyedForEffect.
 //
