@@ -25,6 +25,9 @@ import (
 //
 // No simplification. Mass Casualty deck request (#3245).
 func init() {
+	abdelExiledOne = CardTail("then/abdel-adrian-exiled-one", func(ctx *Context, o game.TailOutcome) error {
+		return abdelExileNext(ctx, o.Tail.Carry, o.Tail.N+len(o.IDs))
+	})
 	Register(Spec{
 		OracleID:     "cab092f9-b7ff-43b9-935f-310869a4daf8",
 		Name:         "Abdel Adrian, Gorion's Ward",
@@ -67,7 +70,9 @@ var abdelExilePick = askedPick("choose-cards/abdel-adrian-exile", func(ctx *Cont
 
 // abdelExileNext exiles the picks one by one through each exile's
 // continuation, counting the ones that landed, and makes the Soldiers
-// once every pick has settled.
+// once every pick has settled. The continuation is data (#4253): the picks
+// still to exile ride its Carry, the count its N and the asking item its
+// Asked, so a prompt an exile pauses on is a restore point.
 func abdelExileNext(ctx *Context, picked []uuid.UUID, exiled int) error {
 	if len(picked) == 0 {
 		if exiled == 0 {
@@ -76,15 +81,17 @@ func abdelExileNext(ctx *Context, picked []uuid.UUID, exiled int) error {
 		return CreateToken{Template: TokenCard("1/1 white Soldier"), N: exiled}.Apply(ctx)
 	}
 	id, rest := picked[0], picked[1:]
+	t := ctx.ItemTail(abdelExiledOne)
+	t.Carry, t.N = append([]uuid.UUID(nil), rest...), exiled
 	return ExileUntil{
 		Target:     id,
 		ThisLeaves: true,
 		Label:      "Abdel Adrian — returns when Abdel Adrian leaves the battlefield",
-		Then: func(ctx *Context, ok bool) error {
-			if ok {
-				exiled++
-			}
-			return abdelExileNext(ctx, rest, exiled)
-		},
+		ThenTail:   t,
 	}.Apply(ctx)
 }
+
+// abdelExiledOne is one exile settled: counted when the card reached exile,
+// then the next pick. An on-disk key, registered in init (it refers to
+// abdelExileNext, which refers to it).
+var abdelExiledOne game.TailRef

@@ -252,6 +252,12 @@ type damageTail struct {
 	// sandbox mark and every fire-and-forget catalog deal owe their
 	// caller nothing.
 	then func(g *Game, dealt int) error
+
+	// keyed is `then` as data (#4253, damage_keyed.go): a registered tail,
+	// told the target as TailOutcome.IDs and the damage dealt as its
+	// Amount. Never set together with `then`. Cleared through the pointer
+	// as it runs, as `then` is.
+	keyed KeyedTail
 }
 
 // combatDamageTailLocked snapshots a live battlefield source into a
@@ -702,7 +708,18 @@ func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 		paused = g.endDamageInstanceLocked(ev.DamageInstance)
 	}
 	if ev.damageTail.then == nil {
-		return nil
+		keyed := ev.damageTail.keyed
+		if keyed.IsZero() {
+			return nil
+		}
+		ev.damageTail.keyed = KeyedTail{}
+		if paused {
+			// The keyed twin of the park below: the rest of the
+			// instruction as data (followUpPark.keyed).
+			g.parkFollowUpKeyedLocked(ev.DamageInstance, keyed, ev.DamageTarget, dealt)
+			return nil
+		}
+		return g.runKeyedTailLocked(keyed, []uuid.UUID{ev.DamageTarget}, dealt)
 	}
 	then := ev.damageTail.then
 	ev.damageTail.then = nil

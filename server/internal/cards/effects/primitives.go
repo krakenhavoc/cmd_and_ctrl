@@ -880,14 +880,20 @@ func (r ReturnSpellToHand) Apply(ctx *Context) error {
 // command zone instead (CR 903.9), and "it becomes plotted" (Aven
 // Interrupter) has nothing to plot then. A spell that already left the
 // stack in response is not an error; Then hears false.
+//
+// ThenTail is Then as data (#4253): a registered tail (CardTail), told the
+// spell as TailOutcome.IDs when it reached exile and nothing when it did
+// not, so a prompt the exit pauses on is a restore point. Used when Then is
+// nil; a zero ThenTail is no continuation.
 type ExileTargetSpell struct {
-	StackID uuid.UUID
-	Then    func(ctx *Context, exiled bool) error
+	StackID  uuid.UUID
+	Then     func(ctx *Context, exiled bool) error
+	ThenTail game.KeyedTail
 }
 
 func (e ExileTargetSpell) Apply(ctx *Context) error {
 	if e.Then == nil {
-		return ctx.Game.ExileSpellThenForEffect(e.StackID, nil)
+		return ctx.Game.ExileSpellKeyedForEffect(e.StackID, e.ThenTail)
 	}
 	// Rebuilt from the live *Game inside the continuation — the
 	// contract massEffect.apply explains.

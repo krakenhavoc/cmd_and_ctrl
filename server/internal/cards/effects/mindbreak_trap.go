@@ -27,6 +27,9 @@ import (
 //
 // No simplification.
 func init() {
+	mindbreakExileRest = CardTail("then/mindbreak-trap-exile-rest", func(ctx *Context, o game.TailOutcome) error {
+		return mindbreakExileEach(ctx, o.Tail.Carry)
+	})
 	Register(Spec{
 		OracleID:     "48712d36-5c13-4ded-87a4-68106da4a5cd",
 		Name:         "Mindbreak Trap",
@@ -64,13 +67,18 @@ func anOpponentCastThreeOrMoreSpellsThisTurn(g *game.Game, controller uuid.UUID)
 }
 
 // mindbreakExileEach exiles the first spell and hands the rest to the
-// exile's continuation.
+// exile's continuation, as data (#4253): the spells still to exile ride the
+// tail's Carry, so a prompt one exile pauses on is a restore point.
 func mindbreakExileEach(ctx *Context, spells []uuid.UUID) error {
 	if len(spells) == 0 {
 		return nil
 	}
-	rest := spells[1:]
-	return ExileTargetSpell{StackID: spells[0], Then: func(ctx *Context, _ bool) error {
-		return mindbreakExileEach(ctx, rest)
-	}}.Apply(ctx)
+	t := ctx.Tail(mindbreakExileRest)
+	t.Carry = append([]uuid.UUID(nil), spells[1:]...)
+	return ExileTargetSpell{StackID: spells[0], ThenTail: t}.Apply(ctx)
 }
+
+// mindbreakExileRest is the rest of the run, the spells in its Carry. An
+// on-disk key, registered in init (it refers to mindbreakExileEach, which
+// refers to it).
+var mindbreakExileRest game.TailRef

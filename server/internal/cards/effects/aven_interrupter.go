@@ -62,13 +62,19 @@ func avenInterrupterExileAndPlot(g *game.Game, item *game.StackItem) error {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		spell := t.ID
-		return ExileTargetSpell{StackID: spell, Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return PlotExiled{Card: spell}.Apply(ctx)
-		}}.Apply(ctx)
+		return ExileTargetSpell{StackID: t.ID, ThenTail: ctx.Tail(avenInterrupterPlot)}.Apply(ctx)
 	}
 	return nil
 }
+
+// avenInterrupterPlot is "it becomes plotted", told the spell when it
+// reached exile (#4253): a keyed tail, so a prompt the exile pauses on is a
+// restore point. An on-disk key.
+var avenInterrupterPlot = CardTail("then/aven-interrupter-plot", func(ctx *Context, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		if err := (PlotExiled{Card: id}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

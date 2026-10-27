@@ -167,6 +167,17 @@ func keyedFrameSample() *ReplacementEvent {
 		extraTurnsAfterMove: []extraTurnInstruction{{Source: id("xs"), Player: id("xp")}},
 		asCommanderMove:     true,
 		commanderAnswer:     commanderZoneDecline,
+		// #4253: a damage event's fields and its tail's data half.
+		DamageSource: id("dmg-src"), DamageTarget: id("dmg-tgt"), DamageAmount: 3, DamageInstance: 12,
+		SourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
+		damageTail: &damageTail{
+			kind: damageTailPlayer, actor: id("dta"), sourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
+			deathtouch: true, lifelinkTo: id("dtl"), commanderSource: id("dtc"),
+			result:     DamageResultSource{Infect: true, Wither: true, ToxicTotal: 2},
+			controller: id("dtctl"), marks: DamageMarks{CantBePrevented: true, CantBeRedirected: true},
+			sourceUnpreventable: true, sourceChecked: true, endsInstance: true,
+			keyed: KeyedTail{Ref: TailRef{key: "dk"}, Carry: []uuid.UUID{id("dkc")}},
+		},
 	}
 }
 
@@ -190,6 +201,9 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"then": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
+		// #4253: combat damage, a release and redirected parts gate the
+		// frame (damageEventIsData).
+		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"then": true, "combat": true, "combatStep": true, "released": true, "redirected": true}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -306,6 +320,15 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"an exchange's exit": func(c *PendingChoice) {
 			c.replacementResume.ev.zoneRoute = &zoneRoute{Dst: ZoneGraveyard, simultaneousEntry: &settledExchangeEntry{CardID: uuid.New()}}
 		},
+		// #4253: a non-combat damage event whose tail is data.
+		"a damage event to a player with a keyed then": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.keyed = KeyedTail{Ref: TailRef{key: "k"}}
+		},
+		"a fire-and-forget damage event to a permanent": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.kind = damageTailPermanent
+		},
 		"a staged token's entry with its batch as data": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			c.replacementResume.ev.entryTail = &entryTail{tokens: &tokenEntryRun{}}
@@ -375,6 +398,27 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			}}
 		},
 		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
+		// #4253: a damage event whose tail is not data.
+		"a damage tail's closure": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.then = func(*Game, int) error { return nil }
+		},
+		"combat damage": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.IsCombatDamage, c.replacementResume.ev.damageTail.combat = true, true
+		},
+		"damage with redirected parts": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.redirected = []redirectedDamage{{to: uuid.New(), amount: 1}}
+		},
+		"a released damage event": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.released = true
+		},
+		"a sandbox damage mark": func(c *PendingChoice) {
+			c.replacementResume.ev = damageFrameEvent()
+			c.replacementResume.ev.damageTail.kind = damageTailManualMark
+		},
 		// #4253 slice 9: last-known copies with no keyed batch, or ones
 		// the card mirror cannot write whole, and a mill amount.
 		"a route's last-known copies with no keyed batch": func(c *PendingChoice) {

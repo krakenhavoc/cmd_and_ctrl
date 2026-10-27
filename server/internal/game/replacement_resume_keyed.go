@@ -149,6 +149,8 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 
 	ReplacementResumeMill:         RepEventMill,
 	ReplacementResumeMoveExchange: RepEventMove,
+
+	ReplacementResumeDamage: RepEventDamage,
 }
 
 // replacementResumeBaseKeys is the key a frame of each kind is written
@@ -164,6 +166,7 @@ var (
 		RepEventCreateTokens:  ReplacementResumeCreateTokens,
 		RepEventDiscard:       ReplacementResumeDiscard,
 		RepEventMill:          ReplacementResumeMill,
+		RepEventDamage:        ReplacementResumeDamage,
 	}
 	replacementResumeTailedKeys = map[ReplacementEventKind]string{
 		RepEventMove:          ReplacementResumeMoveTail,
@@ -175,6 +178,8 @@ var (
 		RepEventCreateTokens: ReplacementResumeCreateTokens,
 		RepEventDiscard:      ReplacementResumeDiscard,
 		RepEventMill:         ReplacementResumeMill,
+		// #4253: a damage event's key is new with its frame.
+		RepEventDamage: ReplacementResumeDamage,
 	}
 )
 
@@ -188,6 +193,9 @@ func eventCarriesDataTail(ev *ReplacementEvent) bool {
 		return true
 	}
 	if t := ev.keywordAction; t != nil && !t.keyed.IsZero() {
+		return true
+	}
+	if t := ev.damageTail; t != nil && !t.keyed.IsZero() {
 		return true
 	}
 	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil || ev.mill != nil
@@ -238,6 +246,9 @@ func snapshotCarriesDataTail(ev *replacementEventSnapshot) bool {
 		return true
 	}
 	if t := ev.KeywordActionTail; t != nil && t.Then != nil {
+		return true
+	}
+	if t := ev.DamageTail; t != nil && t.Then != nil {
 		return true
 	}
 	return ev.CounterTail != nil || ev.LifeTail != nil || ev.TokenTail != nil || ev.MillTail != nil
@@ -486,18 +497,22 @@ var replacementEventFields = map[string]replacementEventField{
 	"MillCount":  repFieldCarried,
 	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
 
+	// A damage event (#4253, damage_keyed.go). Its tail's data half is
+	// carried; a closure `then`, combat damage, redirected parts or a
+	// release gate (damageEventIsData).
+	"DamageSource":   repFieldCarried,
+	"DamageTarget":   repFieldCarried,
+	"DamageAmount":   repFieldCarried,
+	"DamageInstance": repFieldCarried,
+	"SourceLKI":      repFieldCarried,
+	"damageTail":     repFieldCarried, // its data half; see damageEventIsData
+	"IsCombatDamage": repFieldGate,
+
 	// The event kinds this file does not key.
 	"ManaPlayer":         repFieldGate,
 	"ManaSource":         repFieldGate,
 	"ManaColors":         repFieldGate,
 	"ManaFromTap":        repFieldGate,
-	"DamageSource":       repFieldGate,
-	"DamageTarget":       repFieldGate,
-	"DamageAmount":       repFieldGate,
-	"IsCombatDamage":     repFieldGate,
-	"DamageInstance":     repFieldGate,
-	"SourceLKI":          repFieldGate,
-	"damageTail":         repFieldGate,
 	"StepTransitionStep": repFieldGate,
 	"StepTransitionSeat": repFieldGate,
 	"ExtraTurnSeat":      repFieldGate,
@@ -609,6 +624,9 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	}
 	if t := ev.mill; t != nil && t.then != nil {
 		// #4253 slice 10a: a mill whose caller's "then" is a closure.
+		return false
+	}
+	if ev.Kind == RepEventDamage && !g.damageEventIsData(ev) {
 		return false
 	}
 	for _, grp := range ev.TokenGroups {
@@ -767,6 +785,14 @@ type replacementEventSnapshot struct {
 	MillPlayer *uuid.UUID        `json:"millPlayer,omitempty"`
 	MillCount  int               `json:"millCount,omitempty"`
 	MillTail   *millTailSnapshot `json:"millTail,omitempty"`
+
+	// #4253: a damage event (damage_keyed.go).
+	DamageSource   *uuid.UUID          `json:"damageSource,omitempty"`
+	DamageTarget   *uuid.UUID          `json:"damageTarget,omitempty"`
+	DamageAmount   int                 `json:"damageAmount,omitempty"`
+	DamageInstance DamageInstance      `json:"damageInstance,omitempty"`
+	SourceLKI      *Characteristic     `json:"sourceLki,omitempty"`
+	DamageTail     *damageTailSnapshot `json:"damageTail,omitempty"`
 }
 
 // millTailSnapshot is a millTail's data half, present exactly when the
@@ -1199,6 +1225,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 	for _, x := range ev.extraTurnsAfterMove {
 		out.ExtraTurnsAfterMove = append(out.ExtraTurnsAfterMove, moveTurnSnapshot{Source: uuidPtrOrNil(x.Source), Player: x.Player})
 	}
+	snapshotDamageEvent(ev, &out)
 	return out
 }
 
@@ -1354,6 +1381,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 	for _, x := range s.ExtraTurnsAfterMove {
 		ev.extraTurnsAfterMove = append(ev.extraTurnsAfterMove, extraTurnInstruction{Source: uuidOrNil(x.Source), Player: x.Player})
 	}
+	restoreDamageEvent(s, ev)
 	return ev
 }
 
@@ -1417,6 +1445,9 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 	if t := ev.MillTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
 		unknown = append(unknown, unknownMillUntilKeys(t.Run)...)
+	}
+	if t := ev.DamageTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
 	}
 	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)
@@ -1484,6 +1515,9 @@ func (g *Game) rebuildReplacementResumeLocked(s *replacementResumeSnapshot) *rep
 	if uint64(ev.ID) > g.nextReplacementEventID.Load() {
 		g.nextReplacementEventID.Store(uint64(ev.ID))
 	}
+	// #4253: a damage event's instance is one a later instance must not
+	// reuse.
+	g.damageInstanceSeq = max(g.damageInstanceSeq, uint64(ev.DamageInstance))
 	gathered := g.gatherActiveReplacementsLocked(ev)
 	byID := make(map[ReplacementEffectID]activeReplacement, len(gathered))
 	for _, a := range gathered {
