@@ -188,7 +188,6 @@ copyFrame.src                                census:ChoiceResumeFrames          
 copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
 costCommanderFrame.announce                  census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume.announce
 damageTail.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail.then
-entryBatch.firstErr                          census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.firstErr
 entryBatch.members                           census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members
 entryBatch.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.then
 entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out

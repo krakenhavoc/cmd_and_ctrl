@@ -15,15 +15,16 @@ import "github.com/google/uuid"
 // shockland put by Genesis Wave, a reveal land put by Arboreal Grazer.
 //
 // Not keyed: a batch whose continuation is a closure, one that has
-// recorded an error, a batch of created tokens (their objects live only
-// in Game.enteringTokens), and one whose settled member events would not
-// be keyed on their own.
+// recorded an error, an Attraction's open (the card is in no zone the
+// index reaches while it enters, Game.attractionEntering), a batch of
+// created tokens (their objects live only in Game.enteringTokens), and
+// one whose settled member events would not be keyed on their own.
 
 // entryBatchKeyable reports whether a paused batch can be written as data.
 //
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) entryBatchKeyable(b *entryBatch) bool {
-	if b == nil || b.then != nil || b.firstErr != nil || b.done {
+	if b == nil || b.then != nil || b.firstErr.set || b.attraction != nil || b.report != nil || b.done {
 		return false
 	}
 	for _, m := range b.members {

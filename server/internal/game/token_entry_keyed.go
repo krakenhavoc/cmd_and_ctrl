@@ -43,15 +43,6 @@ func (d tokenDone) run(g *Game, created []uuid.UUID) error {
 	return g.runKeyedTailLocked(d.keyed, created, 0)
 }
 
-// closure is the continuation as one func, for the simultaneous-entry
-// path, which is not keyed. Nil when there is nothing to run.
-func (d tokenDone) closure() func(*Game, []uuid.UUID) error {
-	if d.then == nil && d.keyed.IsZero() && d.report == nil {
-		return nil
-	}
-	return d.run
-}
-
 // tokenEntryStep is one staged token still to enter: its ID (the object
 // is in Game.enteringTokens), the creation's entry clause for it, and
 // the attacker it is put onto the battlefield blocking.

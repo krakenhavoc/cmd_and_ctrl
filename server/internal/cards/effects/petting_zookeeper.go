@@ -8,7 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 When this creature enters, open an Attraction."
 //
 // Opening an Attraction is the engine's (ADR 0207,
-// game.OpenAttractionsThenForEffect): the top card of its controller's
+// game.OpenAttractionsForEffect): the top card of its controller's
 // Attraction deck enters under their control. A player playing without an
 // Attraction deck, or with an empty one, opens nothing (CR 701.51a).
 //

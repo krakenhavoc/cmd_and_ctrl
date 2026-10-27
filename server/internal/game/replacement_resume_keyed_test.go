@@ -357,7 +357,12 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{then: func(*Game, []uuid.UUID) error { return nil }}}
 		},
 		"an entry batch that has failed": func(c *PendingChoice) {
-			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{firstErr: ErrInvalidParam}}
+			b := &entryBatch{}
+			b.firstErr.record(ErrInvalidParam)
+			c.replacementResume.ev.entryTail = &entryTail{batch: b}
+		},
+		"an Attraction's open": func(c *PendingChoice) {
+			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{attraction: &attractionOpenRun{}}}
 		},
 		"an entry batch of tokens": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{token: true}}}}

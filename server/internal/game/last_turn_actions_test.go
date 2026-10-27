@@ -58,7 +58,7 @@ func TestPutterIsTheResolvingControllerUnlessTheInstructionNamesAnother(t *testi
 	a, b := g.Seats[0], g.Seats[1]
 	first := handPermanentForTest(b, "Bear", "Creature — Bear")
 	resolveTriggerForTest(t, g, a, func(g *Game, _ *StackItem) error {
-		return g.PutCardsFromHandOntoBattlefieldThenForEffect([]uuid.UUID{first}, HandEntryOptions{}, nil)
+		return g.PutCardsFromHandOntoBattlefieldKeyedForEffect([]uuid.UUID{first}, HandEntryOptions{}, KeyedTail{})
 	})
 	if c := findBattlefieldCard(g, first); c == nil || c.Controller != b.ID {
 		t.Fatal("setup: the Bear did not enter under its owner")
@@ -73,7 +73,7 @@ func TestPutterIsTheResolvingControllerUnlessTheInstructionNamesAnother(t *testi
 	second := handPermanentForTest(b, "Elk", "Creature — Elk")
 	resolveTriggerForTest(t, g, a, func(g *Game, _ *StackItem) error {
 		return g.PutByEnteringPlayerForEffect(func() error {
-			return g.PutCardsFromHandOntoBattlefieldThenForEffect([]uuid.UUID{second}, HandEntryOptions{}, nil)
+			return g.PutCardsFromHandOntoBattlefieldKeyedForEffect([]uuid.UUID{second}, HandEntryOptions{}, KeyedTail{})
 		})
 	})
 	if got := putCount(g, b); got != 1 {

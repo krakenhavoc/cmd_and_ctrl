@@ -33,7 +33,7 @@ import (
 //     is the only door out, and the junkyard has none.
 //   - SEATING. seatDeckCard puts an Astrotorium-backed card into the
 //     Attraction deck; dealAndBeginLocked shuffles it (CR 103.3a).
-//   - OPEN (CR 701.51). OpenAttractionsThenForEffect puts the top card
+//   - OPEN (CR 701.51). OpenAttractionsForEffect puts the top card
 //     onto the battlefield under the player's control through the
 //     ordinary entry batch, so every CR 614 entry window and ETB
 //     trigger sees it, then announces EventAttractionOpened (CR
@@ -182,62 +182,77 @@ func (g *Game) attractionDeckZoneLocked(cardID uuid.UUID) *Zone {
 	return nil
 }
 
-// OpenAttractionsThenForEffect is "open N Attractions" (CR 701.51):
+// OpenAttractionsForEffect is "open N Attractions" (CR 701.51):
 // N times, the top card of the player's Attraction deck is put onto the
 // battlefield under their control, face up (CR 701.51b). Each open is
 // its own entry, so the second sees the first on the battlefield and
-// each one announces its own EventAttractionOpened. `then` is told the
-// permanents that were opened, once every open has finished, and runs
-// exactly once.
+// each one announces its own EventAttractionOpened.
 //
 // A player who is not playing with an Attraction deck, or whose deck is
 // empty, opens nothing (CR 701.51a); that is not an error. An open whose
 // entry a replacement redirected or cancelled opened nothing, and fires
 // no "whenever you open an Attraction" (CR 701.51c).
 //
+// The opens still to come ride the entry as data (#4361 S10,
+// attractionOpenRun), not as a closure.
+//
 // Caller must hold g.mu.
-func (g *Game) OpenAttractionsThenForEffect(player, source uuid.UUID, n int, then func(g *Game, opened []uuid.UUID) error) error {
-	return g.openAttractionsLocked(player, source, n, nil, then)
+func (g *Game) OpenAttractionsForEffect(player, source uuid.UUID, n int) error {
+	return g.openAttractionsLocked(&attractionOpenRun{Player: player, Source: source, N: n})
 }
 
-func (g *Game) openAttractionsLocked(player, source uuid.UUID, n int, opened []uuid.UUID, then func(g *Game, opened []uuid.UUID) error) error {
-	if n <= 0 {
-		return finishOpen(g, opened, then)
+// attractionOpenRun is an "open N Attractions" in progress: who opens,
+// what opens them, how many opens are left and the card now entering.
+// It rides the open's entry batch (entryBatch.attraction) and is never
+// written after it is built, so an undo snapshot may share it.
+type attractionOpenRun struct {
+	Player uuid.UUID
+	Source uuid.UUID
+	N      int
+	// Card is the Attraction this open is putting onto the battlefield
+	// (Game.attractionEntering while it does).
+	Card uuid.UUID
+}
+
+func (g *Game) openAttractionsLocked(r *attractionOpenRun) error {
+	if r.N <= 0 {
+		return nil
 	}
-	p := g.playerByIDLocked(player)
+	p := g.playerByIDLocked(r.Player)
 	if p == nil || p.Eliminated || p.AttractionDeck == nil || len(p.AttractionDeck.Cards) == 0 {
-		return finishOpen(g, opened, then)
+		return nil
 	}
 	top := p.AttractionDeck.Cards[len(p.AttractionDeck.Cards)-1].InstanceID
 	// The card is in no zone the index reaches; open the one window in
-	// which it does, for the span of its entry. The continuation closes
-	// it, whether the card landed, was redirected or was refused.
+	// which it does, for the span of its entry. The batch's finish
+	// (finishAttractionOpenLocked) closes it, whether the card landed,
+	// was redirected or was refused.
 	g.attractionEntering = top
-	return g.startEntryBatchLocked(
+	return g.startPreparedEntryBatchLocked(
 		[]BatchEntry{{CardID: top, From: ZoneCommand}},
-		ZoneEntryOptions{Controller: player},
-		func(g *Game, entered []uuid.UUID) error {
-			if g.attractionEntering == top {
-				g.attractionEntering = uuid.Nil
-			}
-			if len(entered) == 0 {
-				// Not opened (CR 701.51c). A card still in the deck
-				// would be the top card again on the next pass, so
-				// stop rather than loop on it.
-				return finishOpen(g, opened, then)
-			}
-			id := entered[0]
-			opened = append(opened, id)
-			g.EmitEvent(Event{Kind: EventAttractionOpened, Actor: player, CardID: id, Source: source})
-			return g.openAttractionsLocked(player, source, n-1, opened, then)
+		&entryBatch{
+			opts:       ZoneEntryOptions{Controller: r.Player},
+			attraction: &attractionOpenRun{Player: r.Player, Source: r.Source, N: r.N, Card: top},
 		})
 }
 
-func finishOpen(g *Game, opened []uuid.UUID, then func(g *Game, opened []uuid.UUID) error) error {
-	if then == nil {
+// finishAttractionOpenLocked is one open's terminal outcome: the window
+// it opened closes, and an Attraction that entered is opened
+// (EventAttractionOpened) and the next open begins.
+//
+// Caller must hold g.mu.
+func (g *Game) finishAttractionOpenLocked(r *attractionOpenRun, entered []uuid.UUID) error {
+	if g.attractionEntering == r.Card {
+		g.attractionEntering = uuid.Nil
+	}
+	if len(entered) == 0 {
+		// Not opened (CR 701.51c). A card still in the deck would be
+		// the top card again on the next pass, so stop rather than
+		// loop on it.
 		return nil
 	}
-	return then(g, opened)
+	g.EmitEvent(Event{Kind: EventAttractionOpened, Actor: r.Player, CardID: entered[0], Source: r.Source})
+	return g.openAttractionsLocked(&attractionOpenRun{Player: r.Player, Source: r.Source, N: r.N - 1})
 }
 
 // RollToVisitForEffect is "roll to visit your Attractions" (CR

@@ -474,7 +474,7 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 		done = tokenDone{then: ev.tokenTail.then, keyed: ev.tokenTail.keyed, report: ev.tokenTail.report}
 	}
 	if ev.TokenTogether {
-		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, done.closure())
+		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, done)
 	}
 	if done.then == nil {
 		// #4253 slice 3: the rest of the batch is data, so a token's

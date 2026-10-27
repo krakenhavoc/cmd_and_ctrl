@@ -77,9 +77,9 @@ func TestBatchEntryAsksEachCardInTurnAndLandsTogether(t *testing.T) {
 	g.mu.Lock()
 	ebPayLifeToUntap(g, a.InstanceID, me.ID, 2)
 	ebPayLifeToUntap(g, b.InstanceID, me.ID, 2)
-	err := g.PutCardsFromLibraryOntoBattlefieldThenForEffect(
+	err := g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(
 		[]uuid.UUID{a.InstanceID, b.InstanceID}, LibraryEntryOptions{Controller: me.ID},
-		func(_ *Game, in []uuid.UUID) error { thenRan++; entered = in; return nil })
+		hookTail(func(_ *Game, o TailOutcome) error { thenRan++; entered = o.IDs; return nil }))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -419,9 +419,9 @@ func TestBatchEntryPromptPrunedWhenItsCardLeaves(t *testing.T) {
 	var entered []uuid.UUID
 	g.mu.Lock()
 	ebPayLifeToUntap(g, a.InstanceID, me.ID, 2)
-	err := g.PutCardsFromLibraryOntoBattlefieldThenForEffect(
+	err := g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(
 		[]uuid.UUID{a.InstanceID, b.InstanceID}, LibraryEntryOptions{Controller: me.ID},
-		func(_ *Game, in []uuid.UUID) error { thenRan++; entered = in; return nil })
+		hookTail(func(_ *Game, o TailOutcome) error { thenRan++; entered = o.IDs; return nil }))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
