@@ -132,7 +132,7 @@ func TestARhysticTaxStillLetsTheTablePlayOn(t *testing.T) {
 	spell := guardedSpellOnStack(t, g, caster)
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(caster.ID, uuid.New(), "{1}",
-			"Rhystic Study — pay {1}?", func(*Game) error { return nil }); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})
@@ -390,7 +390,7 @@ func TestAGuardedPayUnlessRunsItsOwnDeclineAndHaltsTheTable(t *testing.T) {
 		g.WithWriteLock(func() {
 			if err := g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
 				StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
-				OnDecline: func(*Game) error { ran++; return nil },
+				Then: testPayUnlessHook, Carry: payUnlessHookCarry(nil, func(*Game) error { ran++; return nil }),
 			}); err != nil {
 				t.Fatalf("queue: %v", err)
 			}
@@ -419,7 +419,7 @@ func TestAGuardedPayUnlessDeclineSkipsADepartedObject(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
 			StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Divert",
-			OnDecline: func(*Game) error { ran = true; return nil },
+			Then: testPayUnlessHook, Carry: payUnlessHookCarry(nil, func(*Game) error { ran = true; return nil }),
 		})
 		_ = g.CounterTargetForEffect(spell)
 	})

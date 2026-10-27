@@ -1324,7 +1324,7 @@ func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game
 func (p PayUnless) Apply(ctx *Context) error {
 	if p.Else.Key() == "" {
 		// Nothing hangs off the answer.
-		return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question, nil)
+		return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question)
 	}
 	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
 		Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,

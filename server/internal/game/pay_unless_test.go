@@ -16,7 +16,7 @@ func queuePayUnless(t *testing.T, g *Game, chooser uuid.UUID, cost string, decli
 	t.Helper()
 	source := uuid.New()
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(chooser, source, cost, "Pay "+cost+"?", func(_ *Game) error {
+		if err := queuePayUnlessHooked(g, chooser, source, cost, "Pay "+cost+"?", func(_ *Game) error {
 			*declined++
 			return nil
 		}); err != nil {
@@ -153,7 +153,7 @@ func TestPayUnlessEliminatedChooserRunsConsequenceImmediately(t *testing.T) {
 	payer.Eliminated = true
 	var declined int
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(payer.ID, uuid.New(), "{1}", "Pay?", func(_ *Game) error {
+		if err := queuePayUnlessHooked(g, payer.ID, uuid.New(), "{1}", "Pay?", func(_ *Game) error {
 			declined++
 			return nil
 		}); err != nil {

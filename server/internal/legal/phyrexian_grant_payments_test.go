@@ -125,7 +125,7 @@ func payUnlessChoices(t *testing.T, g *game.Game, payer *game.Player, cost strin
 	t.Helper()
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(payer.ID, uuid.New(), cost,
-			"Pay "+cost+"?", func(*game.Game) error { return nil }); err != nil {
+			"Pay "+cost+"?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

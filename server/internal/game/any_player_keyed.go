@@ -179,7 +179,7 @@ func (g *Game) QueueAnyPlayerPaysKeyedForEffect(p AnyPlayerPaysKeyed) error {
 		// ADR 0187 §5: an either payment needs two or more branches, none
 		// of them an either. A programming error, surfaced once; the "if no
 		// one does" consequence still runs so the card does something, as
-		// the closure form did through queuePayUnlessLocked (#4253's last
+		// the deleted closure form did (#4253's last
 		// part moved its test here).
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,

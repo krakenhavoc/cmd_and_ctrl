@@ -279,7 +279,7 @@ func TestANonBlockingPromptDoesNotHoldTheSweep(t *testing.T) {
 	bear := bearForPause(g, me.ID)
 	pushAbilityItem(g, StackItemTriggered, me.ID, uuid.Nil, "hurt, then tax", func(g *Game, it *StackItem) error {
 		markLethal(g, bear)
-		return g.QueuePayUnlessForEffect(them.ID, uuid.Nil, "{1}", "Pay {1}?", nil)
+		return g.QueuePayUnlessForEffect(them.ID, uuid.Nil, "{1}", "Pay {1}?")
 	})
 	resolveUntilPrompt(t, g)
 

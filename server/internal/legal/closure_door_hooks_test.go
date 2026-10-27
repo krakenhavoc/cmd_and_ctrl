@@ -155,3 +155,10 @@ func queueAnyPlayerHooked(g *game.Game, p anyPlayerTestOffer) error {
 		Then: then, Carry: []uuid.UUID{id},
 	})
 }
+
+// testNoopDecline is a keyed pay-unless decline that does nothing: a
+// guarded pay-unless whose "or else" is not a counter (Divert's shape),
+// where the test reads only the moves (#4361 deleted the OnDecline
+// closure it used to pass).
+var testNoopDecline = game.RegisterPayUnlessElse("test/4361-legal-noop-decline",
+	func(*game.Game, game.PayUnlessAnswer) error { return nil })

@@ -391,7 +391,7 @@ func TestPayUnlessIsNeverReassigned(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(leaver.ID, sourceID, "{1}",
-			"Rhystic Study — pay {1}?", nil); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

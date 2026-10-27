@@ -28,7 +28,7 @@ import (
 func queueDepartureTax(t *testing.T, g *Game, chooser, source uuid.UUID, then func(*Game) error) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(chooser, source, "{1}",
+		if err := queuePayUnlessHooked(g, chooser, source, "{1}",
 			"Rhystic Study — pay {1}?", then); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
@@ -90,10 +90,11 @@ func TestDroppedPayUnlessOnTheirOwnObjectRunsNothing(t *testing.T) {
 			Source:   sourceID,
 			Cost:     "{1}",
 			Question: "Mystic Remora — cumulative upkeep {1}",
-			OnDecline: func(*Game) error {
+			Then:     testPayUnlessHook,
+			Carry: payUnlessHookCarry(nil, func(*Game) error {
 				ran = true
 				return nil
-			},
+			}),
 		}); err != nil {
 			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}

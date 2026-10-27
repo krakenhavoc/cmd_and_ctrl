@@ -3,6 +3,7 @@ package ws
 import (
 	"io"
 	"log/slog"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -89,15 +90,36 @@ func newAutoAnswerRoom(t *testing.T) (*Room, *game.Game) {
 	return NewRoom(g, slog.New(slog.NewTextHandler(io.Discard, nil)), t.TempDir()), g
 }
 
+var (
+	// testTaxDeclines are the decline counters queueTax handed out, by the
+	// ID its prompt carries (#4361 deleted the closure decline).
+	testTaxDeclinesMu sync.Mutex
+	testTaxDeclines   = map[uuid.UUID]*int{}
+
+	// testTaxDecline bumps the counter its prompt's carried ID names.
+	testTaxDecline = game.RegisterPayUnlessElse("test/4361-ws-tax-decline", func(_ *game.Game, r game.PayUnlessAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		testTaxDeclinesMu.Lock()
+		defer testTaxDeclinesMu.Unlock()
+		if n := testTaxDeclines[r.Carry[0]]; n != nil {
+			*n++
+		}
+		return nil
+	})
+)
+
 // queueTax queues a pay-unless to payer under key, the shape Rhystic
 // Study's tax has, and reports when its decline branch runs.
 func queueTax(g *game.Game, payer uuid.UUID, key string, declined *int) func() error {
 	return func() error {
 		g.WithWriteLock(func() {
-			_ = g.QueuePayUnlessForEffect(payer, uuid.Nil, "{1}", "Test — pay {1}?", func(*game.Game) error {
-				*declined++
-				return nil
-			})
+			id := uuid.New()
+			testTaxDeclinesMu.Lock()
+			testTaxDeclines[id] = declined
+			testTaxDeclinesMu.Unlock()
+			_ = g.QueuePayUnlessKeyedForEffect(payer, uuid.Nil, "{1}", "Test — pay {1}?", testTaxDecline, []uuid.UUID{id})
 			g.PendingChoices[len(g.PendingChoices)-1].AutoAnswerKey = key
 		})
 		return nil

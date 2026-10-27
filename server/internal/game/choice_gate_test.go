@@ -136,7 +136,7 @@ func TestPayUnlessPromptDoesNotBlockTheTable(t *testing.T) {
 	taxed := g.Seats[1]
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(taxed.ID, uuid.New(), "{1}",
-			"Rhystic Study — pay {1}?", nil); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})
@@ -246,7 +246,7 @@ func TestBlockingChoiceSkipsAllowlistedEntriesInTheQueue(t *testing.T) {
 	g := newActiveGame(t)
 	taxed := g.Seats[1]
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(taxed.ID, uuid.New(), "{1}", "tax", nil); err != nil {
+		if err := g.QueuePayUnlessForEffect(taxed.ID, uuid.New(), "{1}", "tax"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

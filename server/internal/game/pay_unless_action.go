@@ -446,9 +446,6 @@ func (c *PendingChoice) PayAction() *PayAction {
 	if c == nil {
 		return nil
 	}
-	if c.payUnlessResume != nil {
-		return copyPayAction(c.payUnlessResume.action)
-	}
-	// A keyed prompt (#4264) carries its payment as data.
+	// The prompt (#4264) carries its payment as data.
 	return copyPayAction(c.PayActionClause)
 }

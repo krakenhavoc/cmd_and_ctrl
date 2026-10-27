@@ -35,8 +35,9 @@ func TestACounterUnlessPaidRunsOnPaidOnlyForAPaymentThatWasMade(t *testing.T) {
 			g.WithWriteLock(func() {
 				if err := g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
 					StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Assimilate",
-					OnPaid:    func(*Game) error { paid++; return nil },
-					OnDecline: func(*Game) error { declined++; return nil },
+					Then: testPayUnlessHook, Carry: payUnlessHookCarry(
+						func(*Game) error { paid++; return nil },
+						func(*Game) error { declined++; return nil }),
 				}); err != nil {
 					t.Fatalf("queue: %v", err)
 				}
@@ -62,7 +63,7 @@ func TestACounterUnlessPaidOnPaidSkipsADepartedObject(t *testing.T) {
 	g.WithWriteLock(func() {
 		_ = g.QueueCounterUnlessPaidForEffect(CounterUnlessPaidPrompt{
 			StackItem: spell, Source: uuid.New(), Cost: "{2}", Question: "Assimilate",
-			OnPaid: func(*Game) error { ran = true; return nil },
+			Then: testPayUnlessHook, Carry: payUnlessHookCarry(func(*Game) error { ran = true; return nil }, nil),
 		})
 		_ = g.CounterTargetForEffect(spell)
 	})

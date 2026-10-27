@@ -1,8 +1,6 @@
 package game
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 )
 
@@ -91,21 +89,16 @@ type UpkeepPayUnlessPrompt struct {
 	// Question is the dialog header.
 	Question string
 
-	// OnDecline is the "or else": sacrifice the permanent, lose the
-	// game. It runs on "no", and on a "yes" the chooser cannot fund,
-	// exactly as it does for an ordinary pay-unless.
-	OnDecline func(g *Game) error
-
-	// OnPay, when set, runs once the payment has been made: echo's
-	// EventEchoPaid (ADR 0108 §5). Nil for every other card.
-	OnPay func(g *Game) error
-
-	// Then is the "or else" (and the payment's own branch, if the card
-	// has one) as REGISTERED branches (RegisterPayUnlessBranches,
-	// #4264), and Carry the plain data they are handed: a prompt queued
-	// with one holds no closure, so a table waiting on it is a restore
-	// point, and the halt on its step is the same. With it OnDecline and
-	// OnPay must be nil.
+	// Then is the "or else" (sacrifice the permanent, lose the game) and
+	// the payment's own branch, if the card has one (echo's
+	// EventEchoPaid, ADR 0108 §5), as REGISTERED branches
+	// (RegisterPayUnlessBranches, #4264), and Carry the plain data they
+	// are handed. The decline runs on "no" and on a "yes" the chooser
+	// cannot fund, exactly as it does for an ordinary pay-unless. The
+	// prompt holds no closure, so a table waiting on it is a restore
+	// point, and the halt on its step is the same. No Then is a payment
+	// with nothing hanging off it (payUnlessNothing). (#4361 deleted the
+	// OnDecline and OnPay closures these replaced.)
 	Then  PayUnlessElse
 	Carry []uuid.UUID
 
@@ -126,23 +119,10 @@ type UpkeepPayUnlessPrompt struct {
 //
 // Caller must hold g.mu. Added in #997.
 func (g *Game) QueueUpkeepPayUnlessForEffect(p UpkeepPayUnlessPrompt) error {
-	if p.Then.key != "" {
-		if p.OnDecline != nil || p.OnPay != nil {
-			return fmt.Errorf("%w: keyed upkeep pay-unless %q also sets a closure", ErrInvalidParam, p.Then.key)
-		}
-		return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
-			Chooser: p.Chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
-			Then: p.Then, Carry: p.Carry, Action: p.Action, InThisStep: true, Asked: p.Asked,
-		})
-	}
-	var action *PayAction
-	if p.Action != nil {
-		a := *p.Action
-		action = &a
-	}
-	return g.queuePayUnlessLocked(p.Chooser, p.Source, p.Cost, p.Question,
-		p.OnDecline, g.currentTurnStepLocked(), uuid.Nil, nil,
-		payUnlessExtras{onPay: p.OnPay, action: action})
+	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+		Chooser: p.Chooser, Source: p.Source, Cost: p.Cost, Question: p.Question,
+		Then: p.Then.orNothing(), Carry: p.Carry, Action: p.Action, InThisStep: true, Asked: p.Asked,
+	})
 }
 
 // currentTurnStepLocked freezes the cursor as an anchor a later read

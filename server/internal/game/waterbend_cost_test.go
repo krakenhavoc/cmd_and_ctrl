@@ -37,6 +37,12 @@ func waterbendTestCost(extra string) *TapPermanentsCost {
 	}
 }
 
+// The engine's tests register effects.Waterbend's builder themselves
+// (cards/effects does in production): since #4361 a waterbend
+// pay-unless carries its clause only as data (PayTap), rebuilt by the
+// registered builder, so an unregistered kind is refused.
+func init() { RegisterTapCost(WaterbendKey, waterbendTestCost) }
+
 // waterbendAbilityCost is effects.WaterbendCost: the mana in the mana
 // component, the clause beside it.
 func waterbendAbilityCost(extra string) AbilityCost {

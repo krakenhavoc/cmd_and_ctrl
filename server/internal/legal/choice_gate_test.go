@@ -38,7 +38,7 @@ func queueTax(t *testing.T, g *game.Game, taxed uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(taxed, uuid.New(), "{1}",
-			"Rhystic Study — pay {1}?", nil); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

@@ -137,3 +137,34 @@ func queueConfirmHooked(g *game.Game, p game.ConfirmPrompt, onAccept, onDecline 
 	}
 	return id
 }
+
+var (
+	// testPayUnlessHooks are the pay-unless declines the tests registered,
+	// by the ID the prompt carries first (#4361).
+	testPayUnlessHooks = map[uuid.UUID]func(g *game.Game) error{}
+
+	// testPayUnlessHook runs the decline its prompt's first carried ID
+	// names: the stand-in for the OnDecline closure #4361 deleted.
+	testPayUnlessHook = game.RegisterPayUnlessElse("test/4361-aiseat-hook-payunless", func(g *game.Game, r game.PayUnlessAnswer) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		testHookMu.Lock()
+		fn := testPayUnlessHooks[r.Carry[0]]
+		testHookMu.Unlock()
+		if fn == nil {
+			return nil
+		}
+		return fn(g)
+	})
+)
+
+// payUnlessHookCarry files onDecline for a prompt keyed testPayUnlessHook
+// and returns the Carry that names it.
+func payUnlessHookCarry(onDecline func(g *game.Game) error) []uuid.UUID {
+	id := uuid.New()
+	testHookMu.Lock()
+	testPayUnlessHooks[id] = onDecline
+	testHookMu.Unlock()
+	return []uuid.UUID{id}
+}

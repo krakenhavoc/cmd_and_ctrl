@@ -20,7 +20,7 @@ func TestAutoAnswerOnlyAnswersWhatTheEnumeratorOffers(t *testing.T) {
 	g := newTable(t)
 	payer := g.Seats[1]
 	g.WithWriteLock(func() {
-		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{1}", "Test — pay {1}?", nil)
+		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{1}", "Test — pay {1}?")
 		g.PendingChoices[len(g.PendingChoices)-1].AutoAnswerKey = "tax"
 	})
 	if err := g.SetAutoAnswers(payer.ID, map[string]game.AutoAnswer{"tax": game.AutoAnswerNever}); err != nil {
