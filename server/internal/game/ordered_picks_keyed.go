@@ -12,9 +12,9 @@ import (
 // any seat's pick of "each player sacrifices a creature of their choice"
 // is a restore point.
 //
-// The closure form (ordered_permanent_choices.go) asks one seat at a time
-// with its remaining legs, the picks so far, the objects' epochs and the
-// card's continuation all held in the closure of the prompt's Then. Every
+// The closure form (gone since #4361 S7b) asked one seat at a time with
+// its remaining legs, the picks so far, the objects' epochs and the card's
+// continuation all held in the closure of the prompt's Then. Every
 // one of those is data: the legs are seats with candidate refs (an ID and
 // the ObjectEpoch it had when the collection began, CR 400.7) and bounds;
 // the picks so far are seats with refs; the continuation is a registered
@@ -159,7 +159,7 @@ func orderedPickLegFn(g *Game, r CardsChosen) error {
 
 // ChoosePermanentsInOrderSacrificeForEffect collects the legs one seat at a
 // time and then sacrifices everything chosen as one simultaneous exit, with
-// nothing waiting on it: ChoosePermanentsInOrderThenForEffect with a
+// nothing waiting on it: ChoosePermanentsInOrderKeyedForEffect with a
 // sacrifice for its end and the whole collection plain data (#4290, ADR
 // 0175 amendment). The legs' Destination should be ChooseSacrifice.
 //
@@ -168,8 +168,9 @@ func (g *Game) ChoosePermanentsInOrderSacrificeForEffect(source uuid.UUID, legs 
 	return g.startOrderedPicksLocked(legs, orderedPicks{Source: source, Sacrifice: true})
 }
 
-// ChoosePermanentsInOrderKeyedForEffect is ChoosePermanentsInOrderThenForEffect
-// with the rest of the card as a registered run continuation
+// ChoosePermanentsInOrderKeyedForEffect is ADR 0175's ordered collector
+// (the closure form, ChoosePermanentsInOrderThenForEffect, is gone since
+// #4361 S7b) with the rest of the card as a registered run continuation
 // (RegisterPromptRunThen) and `data` the plain data it is handed (#4290):
 // the continuation reads RunDone.Picks(). The caller supplies the legs in
 // APNAP order. Leg-level Then, Validate and Zone are rejected.
@@ -187,7 +188,7 @@ func (g *Game) ChoosePermanentsInOrderKeyedForEffect(legs []ChooseCardsPrompt, t
 func (g *Game) startOrderedPicksLocked(legs []ChooseCardsPrompt, st orderedPicks) error {
 	st.Carry, st.Nums, st.Asked = copyUUIDs(st.Carry), copyInts(st.Nums), copyAskedItem(st.Asked)
 	for i, leg := range legs {
-		if leg.Then != nil || leg.Validate != nil || (leg.Zone != "" && leg.Zone != ZoneBattlefield) {
+		if leg.Zone != "" && leg.Zone != ZoneBattlefield {
 			return ErrInvalidParam
 		}
 		if leg.ThenKey.key != "" {

@@ -62,10 +62,14 @@ var yunasDecisionPutRef = game.RegisterDrawThen("yunas-decision/put", func(g *ga
 		Match:    Or(Creature(), Land()),
 		Optional: true,
 		Max:      2,
-		Validate: aCreatureAndALand,
+		Rule:     yunasDecisionPick,
 		Label:    "Yuna's Decision — you may put a creature card and/or a land card from your hand onto the battlefield",
 	}.Apply(NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source}))
 })
+
+// yunasDecisionPick is the put's continuation with its set rule, keyed
+// (#4361 S7b).
+var yunasDecisionPick = PutFromHandRule("choose-cards/yunas-decision-put", aCreatureAndALand)
 
 // aCreatureAndALand is the set rule for "a creature card and/or a land
 // card": at most one of each, a card that is both filling either slot.

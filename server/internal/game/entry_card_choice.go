@@ -71,7 +71,7 @@ import (
 // reveal a card from your hand" prompt (#1198).
 //
 // The three entry kinds carry the CHOOSE-CARDS payload — {card_ids},
-// ChooseMin / ChooseMax, and a chooseCardsFrame pinned to a zone — so
+// ChooseMin / ChooseMax, and a live zone their kind names (liveZone) — so
 // checkChooseCardsPicksLocked (#1017) stays the one copy of "would
 // this answer be accepted", shared with the submit path and with the
 // enumerator through ChooseCardsPickLegalLocked. All three are
@@ -437,24 +437,21 @@ func (g *Game) queueEntryCardChoicePromptLocked(
 		// are their own. It is what filterPendingChoices and the
 		// departure sweep read to tell a question about somebody
 		// else's material from one about the asker's own (#961).
-		FromPlayer:           chooser,
-		Count:                hi,
-		Source:               source,
-		Reason:               question,
-		ChooseCards:          append([]uuid.UUID(nil), candidates...),
-		ChooseMin:            lo,
-		ChooseMax:            hi,
-		ChooseSuggested:      suggested,
+		FromPlayer:      chooser,
+		Count:           hi,
+		Source:          source,
+		Reason:          question,
+		ChooseCards:     append([]uuid.UUID(nil), candidates...),
+		ChooseMin:       lo,
+		ChooseMax:       hi,
+		ChooseSuggested: suggested,
+		// No card-set frame (#4361 S7b): the continuation of this prompt
+		// is a paused replacement event, run by ResolveEntryCardChoice
+		// rather than by resolveCardSetPick, and the live-zone re-check
+		// reads the zone off the kind (liveZone), so
+		// ChooseCardsPickLegalLocked reaches the same rule the resolver
+		// does.
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
-		chooseCardsResume: &chooseCardsFrame{
-			// The zone, and no `then`: the continuation of this
-			// prompt is a paused replacement event, and it is run by
-			// ResolveEntryCardChoice rather than by
-			// resolveCardSetPick. The frame is here for the live-zone
-			// re-check and so that ChooseCardsPickLegalLocked reaches
-			// the same rule the resolver does.
-			zone: spec.zone(),
-		},
 		replacementResume: &replacementResumeFrame{
 			ev:         ev,
 			applicable: []activeReplacement{chosen},

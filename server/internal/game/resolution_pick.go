@@ -1,10 +1,6 @@
 package game
 
-import (
-	"fmt"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 // resolution_pick.go — three resolution-time questions about CARDS
 // and PERMANENTS, asked of a named seat while an effect is resolving
@@ -31,8 +27,8 @@ import (
 //
 // # One payload, three kinds
 //
-// All three carry the choose-cards payload — ChooseCards, ChooseMin,
-// ChooseMax and a chooseCardsFrame — so isCardSetPickKind admits them
+// All three carry the choose-cards payload — ChooseCards, ChooseMin and
+// ChooseMax (#4361 S7b: no closure frame) — so isCardSetPickKind admits them
 // and they inherit, with no second copy of any of it:
 // checkChooseCardsPicksLocked (bounds, candidates, duplicates, the
 // live-zone re-check and #1017's set-level Validate),
@@ -224,19 +220,15 @@ type RevealPickPrompt struct {
 	// Min / Max bound the pick. Max <= 0 means all of them.
 	Min, Max int
 
-	// Validate is #1017's set-level legality hook, with exactly
-	// ChooseCardsPrompt.Validate's shape and rules — including that it
-	// is never called for an empty pick.
-	Validate func(picked []Card) bool
-
 	// ThenKey is the continuation as a REGISTERED choose_cards
 	// continuation (RegisterChooseCardsThen), and Carry the plain data it
 	// is handed (#4264): a reveal pick queued with one holds no closure,
 	// so a table waiting on the opponent's choice is a restore point. The
 	// continuation gets the cards picked in CardsChosen.Picked, the reveal
-	// as CardsChosen.Candidates and the owner as CardsChosen.From. With a
-	// key, Validate is ignored (a set rule rides the key) and the pick is
-	// one prompt, not a run.
+	// as CardsChosen.Candidates and the owner as CardsChosen.From. A set
+	// rule rides the key (RegisterChooseCardsThenRule), and the pick is one
+	// prompt, not a run. (The closure set rule, Validate, is gone: #4361
+	// S7b.)
 	ThenKey ChooseCardsThen
 	Carry   []uuid.UUID
 	// Asked and Nums are more plain data for a keyed continuation (#4253
@@ -359,29 +351,13 @@ func (g *Game) queueRevealPickLocked(p RevealPickPrompt, all []uuid.UUID, choose
 		ChooseCards: copyUUIDs(all),
 		ChooseMin:   lo,
 		ChooseMax:   hi,
-		promptRun:   run,
-		chooseCardsResume: &chooseCardsFrame{
-			// No zone re-check: the cards are revealed where they sit
-			// (Intuition's three are still in a library) and the pick
-			// is a partition of what was revealed, not a claim about
-			// where anything is now. The continuation re-checks each
-			// card as it moves it.
-			validate: p.Validate,
-			then:     revealPickLegThen(run, chooser, p.Source),
-		},
+		// No zone re-check: the cards are revealed where they sit
+		// (Intuition's three are still in a library) and the pick is a
+		// partition of what was revealed, not a claim about where anything
+		// is now. The leg settles from these fields (settlePickLegLocked,
+		// #4361 S7b), so it holds no closure.
+		promptRun: run,
 	})
-}
-
-// revealPickLegThen settles the leg a reveal pick is. A package-level
-// constructor closing over scalars and nothing else, the
-// StackItem.Effect contract: the closure has to resolve against
-// whichever *Game it is handed, which after an undo is the restored
-// one and not the one that queued it.
-func revealPickLegThen(run, chooser, source uuid.UUID) func(g *Game, picked []uuid.UUID) error {
-	return func(g *Game, picked []uuid.UUID) error {
-		g.emitCardsChosenLocked(chooser, source, picked)
-		return g.settleRunLegLocked(run, chooser, picked)
-	}
 }
 
 // PermanentPickPrompt is the queue-side description of a permanent-pick
@@ -419,11 +395,11 @@ type PermanentPickPrompt struct {
 	// possible"). Runs with g.mu held; it must READ and not write.
 	Candidates func(g *Game, of uuid.UUID) (cards []uuid.UUID, min, max int)
 
-	// Validate is #1017's set-level legality hook, applied to every
-	// leg. Tragic Arrogance's "an artifact, a creature, an enchantment
-	// and a planeswalker" is a rule about the SET that no bound on the
-	// count and no per-card predicate can state.
-	Validate func(picked []Card) bool
+	// A set rule over every leg's picks (Tragic Arrogance's "an artifact,
+	// a creature, an enchantment and a planeswalker", a rule about the SET
+	// that no bound on the count and no per-card predicate can state) is
+	// registered with the run (RegisterPromptRunThenRule). The closure
+	// form, Validate, is gone (#4361 S7b).
 }
 
 // PermanentsPickedThenKeyedForEffect queues the run and returns once every
@@ -447,57 +423,23 @@ type PermanentPickPrompt struct {
 // PermanentsPickedThenForEffect, was deleted in #4253's last part once
 // only tests called it.)
 //
-// Each leg's frame is then data — the battlefield re-check and the leg
-// settle, rebuilt on restore from the prompt (permanentPickLegIsData) —
-// so a table waiting on any leg is a restore point. The legs name the
-// run's key in PickThen, so a binary without it refuses the file. The
-// prompt's Validate must be nil: it is a closure. A set rule over the
+// Each leg is data — the battlefield re-check its kind names and the leg
+// settle from its own fields (settlePickLegLocked, #4361 S7b) — so a table
+// waiting on any leg is a restore point. The legs name the run's key in
+// PickThen, so a binary without it refuses the file. A set rule over the
 // picks is registered with the run (RegisterPromptRunThenRule), and each
 // leg checks its answer against it.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) PermanentsPickedThenKeyedForEffect(p PermanentPickPrompt, then PromptRunThen, data RunData) (int, error) {
-	if p.Validate != nil {
-		return 0, fmt.Errorf("%w: keyed permanent pick %q also sets a closure; register the set rule with the run (RegisterPromptRunThenRule)", ErrInvalidParam, then.key)
-	}
 	return g.runPromptsKeyedLocked(p.Of, then, p.Source, data, func(seat, run uuid.UUID) bool {
 		return g.queuePermanentPickLocked(p, seat, run, then.key) != uuid.Nil
 	})
 }
 
-// permanentPickLegIsData reports whether c is a leg of a keyed
-// permanent-pick run whose frame is exactly what queuePermanentPickLocked
-// builds with no set rule: the battlefield re-check and the leg settle,
-// both functions of the prompt's own fields. Such a frame is not counted
-// by the census and is rebuilt on restore (restorePermanentPickLeg).
-func permanentPickLegIsData(c *PendingChoice) bool {
-	if c == nil || !isPermanentPickKind(c.Kind) || c.PickThen == "" || c.promptRun == uuid.Nil {
-		return false
-	}
-	f := c.chooseCardsResume
-	return f != nil && (f.validate == nil || f.keyedRule) && f.earlierPermanentChoices == nil && f.permanentEpochs == nil &&
-		f.zone == ZoneBattlefield
-}
-
 // isPermanentPickKind is the two kinds queuePermanentPickLocked queues.
 func isPermanentPickKind(k PendingChoiceKind) bool {
 	return k == PendingChoiceOwnPermanents || k == PendingChoiceTheirPermanents
-}
-
-// restorePermanentPickLeg rebuilds a keyed permanent-pick leg's frame
-// from the prompt: the leg is keyed by whose permanents were chosen
-// (FromPlayer), as permanentPickLegThen is at queue time.
-func restorePermanentPickLeg(c *PendingChoice) {
-	if c == nil || !isPermanentPickKind(c.Kind) || c.PickThen == "" || c.promptRun == uuid.Nil {
-		return
-	}
-	rule := lookupPromptRunRule(c.PickThen)
-	c.chooseCardsResume = &chooseCardsFrame{
-		zone:      ZoneBattlefield,
-		validate:  rule,
-		keyedRule: rule != nil,
-		then:      permanentPickLegThen(c.promptRun, c.Chooser, c.FromPlayer, c.Source),
-	}
 }
 
 // queuePermanentPickLocked queues ONE permanent pick and reports its
@@ -530,11 +472,6 @@ func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID
 	if of == p.Chooser {
 		kind = PendingChoiceOwnPermanents
 	}
-	validate := p.Validate
-	if key != "" {
-		// #4290: a keyed run's set rule is the one registered with it.
-		validate = lookupPromptRunRule(key)
-	}
 	return g.QueueChoiceForEffect(PendingChoice{
 		Kind:        kind,
 		Chooser:     p.Chooser,
@@ -546,30 +483,17 @@ func (g *Game) queuePermanentPickLocked(p PermanentPickPrompt, of, run uuid.UUID
 		ChooseMin:   lo,
 		ChooseMax:   hi,
 		promptRun:   run,
-		// #4290: a keyed run's leg names the run's key.
+		// #4290: a keyed run's leg names the run's key, whose set rule
+		// the answer is checked against (checkChooseCardsPicksLocked).
+		//
+		// #4361 S7b: no frame. The kind names the battlefield, re-checked
+		// LIVE on submit and pruned off the open prompt as the board moves
+		// (pruneCardSetChoicesLocked): a permanent can leave between the
+		// question and the answer, and a prompt that still offered it
+		// would be one the resolver refuses. The leg settles keyed by
+		// WHOSE permanents were chosen (FromPlayer, see PromptedPicks).
 		PickThen: key,
-		chooseCardsResume: &chooseCardsFrame{
-			// Re-checked against the LIVE battlefield on submit and
-			// pruned off the open prompt as the board moves
-			// (pruneCardSetChoicesLocked): a permanent can leave
-			// between the question and the answer, and a prompt that
-			// still offered it would be one the resolver refuses.
-			zone:      ZoneBattlefield,
-			validate:  validate,
-			keyedRule: key != "" && validate != nil,
-			then:      permanentPickLegThen(run, p.Chooser, of, p.Source),
-		},
 	})
-}
-
-// permanentPickLegThen settles the leg a permanent pick is. The leg is
-// keyed by WHOSE permanents were chosen (`of`), not by who answered —
-// see PromptedPicks.
-func permanentPickLegThen(run, chooser, of, source uuid.UUID) func(g *Game, picked []uuid.UUID) error {
-	return func(g *Game, picked []uuid.UUID) error {
-		g.emitCardsChosenLocked(chooser, source, picked)
-		return g.settleRunLegLocked(run, of, picked)
-	}
 }
 
 // ResolveRevealPick answers a PendingChoiceRevealPick.

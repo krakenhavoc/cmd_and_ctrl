@@ -265,10 +265,9 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		},
 		"a copy prompt":       func(c *PendingChoice) { c.Kind = PendingChoiceCopyTarget },
 		"an aura host prompt": func(c *PendingChoice) { c.Kind, c.replacementResume.applicable = PendingChoiceAuraHost, nil },
-		"an entry sacrifice": func(c *PendingChoice) {
-			c.Kind = PendingChoiceEntrySacrifice
-			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneBattlefield}
-		},
+		// #4361 S7b: an entry card choice holds no frame; its zone is
+		// its kind's.
+		"an entry sacrifice": func(c *PendingChoice) { c.Kind = PendingChoiceEntrySacrifice },
 		// #4253 slice 3: continuations that are data.
 		"a search's remaining work": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{search: &searchEntryRun{}}
@@ -444,15 +443,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		},
 		"an unkeyed prompt kind": func(c *PendingChoice) { c.Kind = PendingChoiceSacrifice },
 		"no gathered effect":     func(c *PendingChoice) { c.replacementResume.applicable = nil },
-		"an entry card choice with a then": func(c *PendingChoice) {
-			c.Kind = PendingChoiceEntryDiscardFromHand
-			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneHand, then: func(*Game, []uuid.UUID) error { return nil }}
-		},
-		"an entry card choice with no zone frame": func(c *PendingChoice) { c.Kind = PendingChoiceEntrySacrifice },
-		"an entry card choice over the wrong zone": func(c *PendingChoice) {
-			c.Kind = PendingChoiceEntrySacrifice
-			c.chooseCardsResume = &chooseCardsFrame{zone: ZoneHand}
-		},
 		"a staged token's entry": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}

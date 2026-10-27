@@ -183,17 +183,16 @@ func TestHeuristicFinishesSylvanLibrarysThreeLinkChain(t *testing.T) {
 	libBefore := seat.Library.Size()
 
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  seat.ID,
 			Question: "Sylvan Library — choose two cards drawn this turn",
 			Cards:    drawn,
 			Min:      2,
 			Max:      2,
 			Zone:     game.ZoneHand,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				return sylvanChainForTest(g, seat.ID, picked)
-			},
-		})
+		}, func(g *game.Game, picked []uuid.UUID) error {
+			return sylvanChainForTest(g, seat.ID, picked)
+		}, nil))
 	})
 
 	took := driveChoices(t, g, heuristic.New(), seat.ID, 12)
@@ -419,12 +418,17 @@ func TestHeuristicRummageDiscardsTheWorstCardThenDraws(t *testing.T) {
 	g.WithWriteLock(func() {
 		seedDiscardBoard(g, seat)
 		libBefore = seat.Library.Size()
-		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		// #4361 S7b: the rest of the card is a keyed discard-then.
+		then := game.RegisterDiscardThen("test/4361-s7b-rummage-"+uuid.NewString(), func(g *game.Game, _ game.DiscardsDone) error {
+			return g.DrawNForEffect(seat.ID, 1)
+		})
+		if err := g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player:   seat.ID,
 			N:        1,
 			Question: "Syphon Mind — discard a card",
-			Then:     func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error { return g.DrawNForEffect(seat.ID, 1) },
-		})
+		}, then, nil); err != nil {
+			t.Fatalf("PlayerDiscardsThenKeyedForEffect: %v", err)
+		}
 	})
 
 	driveChoices(t, g, heuristic.New(), seat.ID, 4)

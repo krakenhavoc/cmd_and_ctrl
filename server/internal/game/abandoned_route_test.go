@@ -76,11 +76,10 @@ func TestADroppedDiscardPromptStillRunsTheRestOfTheBatch(t *testing.T) {
 	w := watchDiscards(g)
 
 	thenRuns := 0
-	queueEffectDiscard(g, DiscardPrompt{
+	queueEffectDiscardThen(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil },
-	})
+	}, func(*Game, uuid.UUID, []uuid.UUID) error { thenRuns++; return nil }, nil)
 	c := discardPromptFor(g, p.ID)
 	if c == nil {
 		t.Fatal("no discard prompt queued")

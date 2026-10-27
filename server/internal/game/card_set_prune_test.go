@@ -300,7 +300,7 @@ func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UU
 	call := &cardSetPickCall{}
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  chooser,
 			Source:   source,
 			Question: "Choose a card in your graveyard",
@@ -308,12 +308,11 @@ func queueGraveyardPick(t *testing.T, g *Game, chooser uuid.UUID, source uuid.UU
 			Min:      1,
 			Max:      1,
 			Zone:     ZoneGraveyard,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				call.ran++
-				call.got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			call.ran++
+			call.got = picked
+			return nil
+		}, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatal("setup: the graveyard pick was not queued")
@@ -400,7 +399,7 @@ func TestALibraryPickIsPrunedWhenACandidateLeavesTheLibrary(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Source:   source,
 			Question: "Choose a card to put onto the battlefield",
@@ -408,8 +407,7 @@ func TestALibraryPickIsPrunedWhenACandidateLeavesTheLibrary(t *testing.T) {
 			Min:      1,
 			Max:      1,
 			Zone:     ZoneLibrary,
-			Then:     func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatal("setup: the library pick was not queued")
@@ -456,7 +454,7 @@ func TestASeatLeavingEmptiesEveryPickAtItsHandInOnePass(t *testing.T) {
 		source := departureTestSource(g, chooser.ID, "Thoughtseize")
 		var id uuid.UUID
 		g.WithWriteLock(func() {
-			id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+			id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 				Chooser:    chooser.ID,
 				FromPlayer: leaver.ID,
 				Source:     source,
@@ -465,8 +463,7 @@ func TestASeatLeavingEmptiesEveryPickAtItsHandInOnePass(t *testing.T) {
 				Min:        1,
 				Max:        1,
 				Zone:       ZoneHand,
-				Then:       func(*Game, []uuid.UUID) error { return nil },
-			})
+			}, func(*Game, []uuid.UUID) error { return nil }, nil))
 		})
 		if id == uuid.Nil {
 			t.Fatal("setup: the pick was not queued")
@@ -507,13 +504,12 @@ func TestAPickWithNoZoneOnItsFrameIsLeftAlone(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Source:   source,
 			Question: "Separate those cards into two piles",
 			Cards:    cards,
-			Then:     func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 
 	g.WithWriteLock(func() {

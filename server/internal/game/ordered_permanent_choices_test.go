@@ -12,15 +12,25 @@ type orderedPermanentCall struct {
 	got  []PromptedPicks
 }
 
+// beginOrderedPermanentChoices starts a keyed ordered collection whose
+// continuation records each answer in out. (#4361 S7b: the closure
+// collector, ChoosePermanentsInOrderThenForEffect, is gone; these tests ask
+// the keyed one, ChoosePermanentsInOrderKeyedForEffect.)
 func beginOrderedPermanentChoices(t *testing.T, g *Game, legs []ChooseCardsPrompt, out *orderedPermanentCall) error {
 	t.Helper()
 	var err error
 	g.WithWriteLock(func() {
-		err = g.ChoosePermanentsInOrderThenForEffect(legs, func(_ *Game, picks PromptedPicks) error {
+		// The asking card is the first leg's Source, as the closure
+		// collector read it.
+		var source uuid.UUID
+		if len(legs) > 0 {
+			source = legs[0].Source
+		}
+		err = g.ChoosePermanentsInOrderKeyedForEffect(legs, testRunHookThen, source, runHook(func(_ *Game, r RunDone) error {
 			out.runs++
-			out.got = append(out.got, picks)
+			out.got = append(out.got, r.Picks())
 			return nil
-		})
+		}))
 	})
 	return err
 }
@@ -132,12 +142,11 @@ func TestOrderedPermanentChoicesAutoAcceptForcedSetsAndSkipEmptyLegs(t *testing.
 	}
 }
 
-func TestOrderedPermanentChoicesRejectsLegContinuationAndNonBattlefieldZone(t *testing.T) {
+func TestOrderedPermanentChoicesRejectsANonBattlefieldZoneOrADuplicate(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	card := pushBear(g, me.ID)
 	for name, mutate := range map[string]func(*ChooseCardsPrompt){
-		"leg Then":             func(p *ChooseCardsPrompt) { p.Then = func(*Game, []uuid.UUID) error { return nil } },
 		"non-battlefield zone": func(p *ChooseCardsPrompt) { p.Zone = ZoneGraveyard },
 		"duplicate candidate":  func(p *ChooseCardsPrompt) { p.Cards = append(p.Cards, card) },
 	} {

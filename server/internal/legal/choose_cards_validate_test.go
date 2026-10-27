@@ -50,16 +50,14 @@ func handOfTypes(p *game.Player, typeLines ...string) []uuid.UUID {
 
 func queueDiscardUnlessCreature(g *game.Game, seat uuid.UUID, cards []uuid.UUID) {
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  seat,
 			Question: "Discard two cards unless you discard a creature card",
 			Cards:    cards,
 			Min:      1,
 			Max:      2,
 			Zone:     game.ZoneHand,
-			Validate: unlessCreature,
-			Then:     func(*game.Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*game.Game, []uuid.UUID) error { return nil }, unlessCreature))
 	})
 }
 
@@ -183,15 +181,13 @@ func TestChooseCardsWithValidateKeepsChooseNothingAlwaysLegal(t *testing.T) {
 	me := g.Seats[0]
 	cards := handOfTypes(me, "Instant", "Sorcery", "Land")
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Question: "Reveal any number",
 			Cards:    cards,
 			Min:      0,
 			Zone:     game.ZoneHand,
-			Validate: func([]game.Card) bool { return false },
-			Then:     func(*game.Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*game.Game, []uuid.UUID) error { return nil }, func([]game.Card) bool { return false }))
 	})
 	moves := legal.EnumerateFor(g, me.ID)
 	if len(moves) != 1 {
@@ -215,16 +211,14 @@ func TestChooseCardsSynthesisesNoFallback(t *testing.T) {
 	me := g.Seats[0]
 	cards := handOfTypes(me, "Instant", "Sorcery")
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Question: "Discard a creature card",
 			Cards:    cards,
 			Min:      1,
 			Max:      1,
 			Zone:     game.ZoneHand,
-			Validate: unlessCreature,
-			Then:     func(*game.Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*game.Game, []uuid.UUID) error { return nil }, unlessCreature))
 	})
 	if moves := legal.EnumerateFor(g, me.ID); len(moves) != 0 {
 		t.Errorf("offered %v for a prompt no set satisfies", labels(moves))

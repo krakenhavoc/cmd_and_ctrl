@@ -160,11 +160,10 @@ func TestEffectDiscardWithNoCardsQueuesNothingAndStillRunsThen(t *testing.T) {
 	g.WithWriteLock(func() { p.Hand.Cards = nil })
 
 	ran := false
-	id := queueEffectDiscard(g, DiscardPrompt{
+	id := queueEffectDiscardThen(g, DiscardPrompt{
 		Player: p.ID,
 		N:      2,
-		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { ran = true; return nil },
-	})
+	}, func(*Game, uuid.UUID, []uuid.UUID) error { ran = true; return nil }, nil)
 	if id != uuid.Nil || discardPromptFor(g, p.ID) != nil {
 		t.Error("an empty hand must queue no prompt")
 	}
@@ -223,11 +222,10 @@ func TestEffectDiscardValidateRefusesASetTheCardForbids(t *testing.T) {
 	p := g.Seats[1]
 	want := p.Hand.Cards[0].InstanceID
 
-	queueEffectDiscard(g, DiscardPrompt{
-		Player:   p.ID,
-		N:        1,
-		Validate: func(picked []Card) bool { return picked[0].InstanceID == want },
-	})
+	queueEffectDiscardThen(g, DiscardPrompt{
+		Player: p.ID,
+		N:      1,
+	}, nil, func(picked []Card) bool { return picked[0].InstanceID == want })
 	c := discardPromptFor(g, p.ID)
 	if c == nil {
 		t.Fatal("no prompt queued")
@@ -257,15 +255,14 @@ func TestEffectDiscardThenRunsAfterTheCardsAreGone(t *testing.T) {
 
 	inGraveyardWhenThenRan := false
 	ran := 0
-	queueEffectDiscard(g, DiscardPrompt{
+	queueEffectDiscardThen(g, DiscardPrompt{
 		Player: p.ID,
 		N:      1,
-		Then: func(g *Game, _ uuid.UUID, _ []uuid.UUID) error {
-			ran++
-			inGraveyardWhenThenRan = p.Graveyard.Contains(pick)
-			return nil
-		},
-	})
+	}, func(g *Game, _ uuid.UUID, _ []uuid.UUID) error {
+		ran++
+		inGraveyardWhenThenRan = p.Graveyard.Contains(pick)
+		return nil
+	}, nil)
 	if ran != 0 {
 		t.Fatal("the rest of the effect must wait for the discard")
 	}
@@ -292,18 +289,13 @@ func TestEffectDiscardForAnEliminatedPlayerStrandsNothing(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	gone, later := g.Seats[1], g.Seats[2]
 
-	ran := false
 	g.WithWriteLock(func() { g.eliminatePlayerLocked(gone) })
 	id := queueEffectDiscard(g, DiscardPrompt{
 		Player: gone.ID,
 		N:      1,
-		Then:   func(*Game, uuid.UUID, []uuid.UUID) error { ran = true; return nil },
 	})
 	if id != uuid.Nil || discardPromptFor(g, gone.ID) != nil {
 		t.Error("a departed seat is not prompted")
-	}
-	if ran {
-		t.Error(`"each player discards, then you draw one per card discarded" draws nothing for a seat that has left`)
 	}
 
 	// Queued first, eliminated after: the prompt goes with them.

@@ -121,18 +121,17 @@ func TestChooseCardsEnforcesItsBounds(t *testing.T) {
 	hand := handIDs(p, 3)
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  p.ID,
 			Question: "pick two",
 			Cards:    hand,
 			Min:      2,
 			Max:      2,
 			Zone:     ZoneHand,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			got = picked
+			return nil
+		}, nil))
 	})
 	id := g.PendingChoices[0].ID
 
@@ -170,14 +169,13 @@ func TestChooseCardsRechecksTheZone(t *testing.T) {
 	p := g.Seats[0]
 	hand := handIDs(p, 2)
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser: p.ID,
 			Cards:   hand,
 			Min:     1,
 			Max:     1,
 			Zone:    ZoneHand,
-			Then:    func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 		// The card is discarded while the prompt is open.
 		if _, err := MoveCard(p.Hand, p.Graveyard, hand[0]); err != nil {
 			t.Fatalf("MoveCard: %v", err)
@@ -189,67 +187,6 @@ func TestChooseCardsRechecksTheZone(t *testing.T) {
 	}
 	if err := g.ResolveChooseCards(id, p.ID, hand[1:]); err != nil {
 		t.Errorf("the card still in hand was rejected: %v", err)
-	}
-}
-
-// TestChainedChoiceFramesAreCensused is the restorability contract, and
-// the reason it is a test: an uncounted continuation would let the
-// server write a restore point that silently drops the rest of a card.
-// A closure frame must make a snapshot non-restorable while open, and
-// answering must give the restore point back. (The confirm case went with
-// QueueConfirmForEffect in #4253's last part: a confirm's answer is a
-// registered key, and the table waiting on it is a restore point.)
-func TestChainedChoiceFramesAreCensused(t *testing.T) {
-	cases := []struct {
-		name  string
-		queue func(g *Game, me uuid.UUID)
-	}{
-		{"choose_cards", func(g *Game, me uuid.UUID) {
-			g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-				Chooser: me,
-				Cards:   handIDs(g.playerByIDLocked(me), 1),
-				Then:    func(*Game, []uuid.UUID) error { return nil },
-			})
-		}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			g := newRestorableGame(t)
-			me := g.Seats[0].ID
-			if !g.CaptureSnapshot().Restorable() {
-				t.Fatal("setup: baseline game is already not a restore point")
-			}
-			g.WithWriteLock(func() { tc.queue(g, me) })
-
-			snap := g.CaptureSnapshot()
-			if snap.Continuations.ChoiceResumeFrames != 1 {
-				t.Errorf("census counted %d resume frames, want 1; census = %+v",
-					snap.Continuations.ChoiceResumeFrames, snap.Continuations)
-			}
-			if snap.Restorable() {
-				t.Fatal("a game holding a chained-choice continuation must not be a restore point")
-			}
-			if _, err := snap.RestoreStrict(); !errors.Is(err, ErrSnapshotNotRestorable) {
-				t.Errorf("RestoreStrict error = %v, want ErrSnapshotNotRestorable", err)
-			}
-
-			// ... and answering it hands the restore point back. The
-			// window is the length of the chain, not the rest of the
-			// game.
-			id := g.PendingChoices[0].ID
-			var err error
-			if tc.name == "confirm" {
-				err = g.ResolveConfirm(id, me, true)
-			} else {
-				err = g.ResolveChooseCards(id, me, nil)
-			}
-			if err != nil {
-				t.Fatalf("resolve: %v", err)
-			}
-			if !g.CaptureSnapshot().Restorable() {
-				t.Error("the restore point did not come back after the chain finished")
-			}
-		})
 	}
 }
 
@@ -268,13 +205,12 @@ func TestChainedChoiceDataSurvivesASnapshot(t *testing.T) {
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
 		}, func(*Game) error { return nil }, nil)
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser: p.ID,
 			Cards:   hand,
 			Min:     1,
 			Max:     2,
-			Then:    func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 
 	restored, err := g.CaptureSnapshot().Restore()

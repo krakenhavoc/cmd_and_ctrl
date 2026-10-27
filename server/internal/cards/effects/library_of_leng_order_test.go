@@ -33,11 +33,15 @@ func lengBoard(t *testing.T, n int) (*game.Game, *game.Player, []uuid.UUID) {
 func lengDiscardThen(t *testing.T, g *game.Game, who *game.Player, ran *int, cards ...uuid.UUID) {
 	t.Helper()
 	var promptID uuid.UUID
+	// #4361 S7b: the "then" is a keyed discard-then.
+	then := game.RegisterDiscardThen("test/4361-s7b-leng-"+uuid.NewString(), func(*game.Game, game.DiscardsDone) error { *ran++; return nil })
 	g.WithWriteLock(func() {
-		promptID = g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-			Player: who.ID, N: len(cards),
-			Then: func(*game.Game, uuid.UUID, []uuid.UUID) error { *ran++; return nil },
-		})
+		if err := g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{Player: who.ID, N: len(cards)}, then, nil); err != nil {
+			t.Fatalf("PlayerDiscardsThenKeyedForEffect: %v", err)
+		}
+		if n := len(g.PendingChoices); n > 0 {
+			promptID = g.PendingChoices[n-1].ID
+		}
 	})
 	if err := g.ResolveChooseCards(promptID, who.ID, cards); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)

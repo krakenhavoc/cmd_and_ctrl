@@ -32,6 +32,10 @@ func TestPerObjectAnyPlayerOfferLegIsOnEverySeatsView(t *testing.T) {
 	g.WithWriteLock(func() {
 		if err := g.QueueAnyPlayerPaysForEachForEffect(game.AnyPlayerPaysForEach{
 			Source: source, Controller: controller.ID, Objects: all, EachLife: 1, Noun: "land",
+			// #4361 S7b: the consequence is registered (the closure form
+			// is gone); this one does nothing.
+			Then: game.RegisterAnyPlayerPaysEach("test/4361-s7b-each-view-"+uuid.NewString(),
+				func(*game.Game, game.AnyPlayerEachAnswer) error { return nil }),
 		}); err != nil {
 			t.Fatalf("QueueAnyPlayerPaysForEachForEffect: %v", err)
 		}

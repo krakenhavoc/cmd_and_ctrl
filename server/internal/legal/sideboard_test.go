@@ -121,9 +121,13 @@ func TestAPairPickOffersOnlyPairsWithDifferentNames(t *testing.T) {
 		sideCard("Twin", "Sorcery"), sideCard("Twin", "Sorcery"), sideCard("Other", "Instant"))
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
+		// #4361 S7b: a pick over a sideboard is keyed, its set rule
+		// registered with its continuation.
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Extrapolate the Impossible", Min: 0, Max: 2,
-			Validate: func(picked []game.Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
+			Keyed: game.RegisterOutsidePickRule("test/4361-s7b-pair-"+uuid.NewString(), nil,
+				func(picked []game.Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
+				func(*game.Game, game.CardsChosen) error { return nil }),
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))

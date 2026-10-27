@@ -121,7 +121,7 @@ func RegisterPromptRunThen(key string, fn PromptRunFunc) PromptRunThen {
 // whose seats each have the rest of their own sentence (Vicious
 // Rumors' "then mills a card"). `leg` runs for each seat as its discard
 // lands, and for a seat asked nothing because its hand was empty (CR
-// 701.9a), exactly as DiscardPrompt.Then does for the closure form.
+// 701.9a), as a discard's "then" always has (#797).
 func RegisterPromptRunThenLeg(key string, leg PromptRunLegFunc, fn PromptRunFunc) PromptRunThen {
 	effectRegistryMu.Lock()
 	defer effectRegistryMu.Unlock()

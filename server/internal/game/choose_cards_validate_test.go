@@ -55,20 +55,18 @@ func TestChooseCardsValidateRejectsWithoutDequeuing(t *testing.T) {
 	ran := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  p.ID,
 			Question: "Discard two cards unless you discard a creature card",
 			Cards:    []uuid.UUID{creature, spellA, spellB},
 			Min:      1,
 			Max:      2,
 			Zone:     ZoneHand,
-			Validate: discardUnlessCreature,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				ran++
-				got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			ran++
+			got = picked
+			return nil
+		}, discardUnlessCreature))
 	})
 	id := g.PendingChoices[0].ID
 
@@ -115,18 +113,16 @@ func TestChooseCardsValidateAcceptsAnyValidSet(t *testing.T) {
 	creature, spellA, spellB := typedHand(t, g, p)
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-			Chooser:  p.ID,
-			Cards:    []uuid.UUID{creature, spellA, spellB},
-			Min:      1,
-			Max:      2,
-			Zone:     ZoneHand,
-			Validate: discardUnlessCreature,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				got = picked
-				return nil
-			},
-		})
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
+			Chooser: p.ID,
+			Cards:   []uuid.UUID{creature, spellA, spellB},
+			Min:     1,
+			Max:     2,
+			Zone:    ZoneHand,
+		}, func(_ *Game, picked []uuid.UUID) error {
+			got = picked
+			return nil
+		}, discardUnlessCreature))
 	})
 	id := g.PendingChoices[0].ID
 	if err := g.ResolveChooseCards(id, p.ID, []uuid.UUID{spellB, spellA}); err != nil {
@@ -147,17 +143,15 @@ func TestChooseCardsValidateIsSkippedForTheEmptyPick(t *testing.T) {
 	hand := handIDs(p, 2)
 	calls := 0
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser: p.ID,
 			Cards:   hand,
 			Min:     0,
 			Zone:    ZoneHand,
-			Validate: func([]Card) bool {
-				calls++
-				return false
-			},
-			Then: func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, func([]Card) bool {
+			calls++
+			return false
+		}))
 	})
 	id := g.PendingChoices[0].ID
 	if err := g.ResolveChooseCards(id, p.ID, hand[:1]); !errors.Is(err, ErrChoiceSetRejected) {
@@ -185,21 +179,19 @@ func TestChooseCardsValidateSeesTheLiveCards(t *testing.T) {
 	creature, spellA, spellB := typedHand(t, g, p)
 	var seen []string
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser: p.ID,
 			Cards:   []uuid.UUID{creature, spellA, spellB},
 			Min:     1,
 			Max:     2,
 			Zone:    ZoneHand,
-			Validate: func(picked []Card) bool {
-				seen = seen[:0]
-				for _, c := range picked {
-					seen = append(seen, c.TypeLine)
-				}
-				return discardUnlessCreature(picked)
-			},
-			Then: func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, func(picked []Card) bool {
+			seen = seen[:0]
+			for _, c := range picked {
+				seen = append(seen, c.TypeLine)
+			}
+			return discardUnlessCreature(picked)
+		}))
 		// The board moves while the prompt is open: the instant is
 		// now (for the purposes of this test) a creature, and the
 		// sorcery is discarded.
@@ -234,15 +226,13 @@ func TestChooseCardsPickLegalLockedAgreesWithTheResolver(t *testing.T) {
 	p := g.Seats[0]
 	creature, spellA, spellB := typedHand(t, g, p)
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-			Chooser:  p.ID,
-			Cards:    []uuid.UUID{creature, spellA, spellB},
-			Min:      1,
-			Max:      2,
-			Zone:     ZoneHand,
-			Validate: discardUnlessCreature,
-			Then:     func(*Game, []uuid.UUID) error { return nil },
-		})
+		g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
+			Chooser: p.ID,
+			Cards:   []uuid.UUID{creature, spellA, spellB},
+			Min:     1,
+			Max:     2,
+			Zone:    ZoneHand,
+		}, func(*Game, []uuid.UUID) error { return nil }, discardUnlessCreature))
 	})
 	sets := [][]uuid.UUID{
 		{creature},

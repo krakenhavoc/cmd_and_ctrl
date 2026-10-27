@@ -72,7 +72,7 @@ func TestAnyPlayerPaysForEachAsksInAPNAPOrderFromTheActivePlayer(t *testing.T) {
 		f.answer(t, seat)
 	}
 	if f.out.runs != 1 {
-		t.Fatalf("OnUnsaved ran %d times, want once after the last leg", f.out.runs)
+		t.Fatalf("the consequence ran %d times, want once after the last leg", f.out.runs)
 	}
 }
 
@@ -117,11 +117,11 @@ func newEachFixtureOn(t *testing.T, g *Game) *eachFixture {
 		err := g.QueueAnyPlayerPaysForEachForEffect(AnyPlayerPaysForEach{
 			Source: f.src, Controller: g.Seats[2].ID,
 			Objects: all, EachLife: 1, Noun: "land",
-			OnUnsaved: func(_ *Game, unsaved []uuid.UUID) error {
+			Then: anyPlayerEachHook(func(_ *Game, unsaved []uuid.UUID) error {
 				f.out.runs++
 				f.out.unsaved = append([]uuid.UUID(nil), unsaved...)
 				return nil
-			},
+			}),
 		})
 		if err != nil {
 			t.Fatalf("QueueAnyPlayerPaysForEachForEffect: %v", err)
@@ -152,7 +152,7 @@ func TestAnyPlayerPaysForEachSkipsAPlayerWhoCannotPay(t *testing.T) {
 	// Seat 0 sits at 0 life, so the state check after the first answer
 	// eliminates it and its two lands leave with it (CR 800.4a).
 	if f.out.runs != 1 || len(f.out.unsaved) != 6 {
-		t.Fatalf("OnUnsaved ran %d times on %d lands, want once on the 6 that remain", f.out.runs, len(f.out.unsaved))
+		t.Fatalf("the consequence ran %d times on %d lands, want once on the 6 that remain", f.out.runs, len(f.out.unsaved))
 	}
 }
 
@@ -170,7 +170,7 @@ func TestAnyPlayerPaysForEachPaysOnlyAfterTheLastLegAsSeparatePayments(t *testin
 		}
 	}
 	if f.out.runs != 0 {
-		t.Fatal("OnUnsaved ran before the last leg")
+		t.Fatal("the consequence ran before the last leg")
 	}
 	f.answer(t, 3, f.lands[2][0])
 	if g.Seats[0].Life != StartingLife-3 || g.Seats[1].Life != StartingLife-1 ||
@@ -185,7 +185,7 @@ func TestAnyPlayerPaysForEachPaysOnlyAfterTheLastLegAsSeparatePayments(t *testin
 		t.Fatalf("paid events = %d, want 3 (one per payer)", paid)
 	}
 	if f.out.runs != 1 || len(f.out.unsaved) != 3 {
-		t.Fatalf("OnUnsaved ran %d times on %d lands, want once on the 3 nobody paid for", f.out.runs, len(f.out.unsaved))
+		t.Fatalf("the consequence ran %d times on %d lands, want once on the 3 nobody paid for", f.out.runs, len(f.out.unsaved))
 	}
 }
 
@@ -202,7 +202,7 @@ func TestAnyPlayerPaysForEachTwoPayersForOneLandBothPay(t *testing.T) {
 		t.Fatalf("life = %d %d, want both payers at 39", g.Seats[0].Life, g.Seats[1].Life)
 	}
 	if f.out.runs != 1 || len(f.out.unsaved) != 7 || containsID(f.out.unsaved, shared) {
-		t.Fatalf("OnUnsaved ran %d times on %d lands (shared among them: %v), want once on the other 7",
+		t.Fatalf("the consequence ran %d times on %d lands (shared among them: %v), want once on the other 7",
 			f.out.runs, len(f.out.unsaved), containsID(f.out.unsaved, shared))
 	}
 }
@@ -255,7 +255,7 @@ func TestAnyPlayerPaysForEachSuggestionIsCutToMax(t *testing.T) {
 	}
 }
 
-// OnUnsaved gets only lands that are still the same object: a land that
+// The consequence gets only lands that are still the same object: a land that
 // left and came back during the picks is a new object and is not
 // destroyed with the rest.
 func TestAnyPlayerPaysForEachUnsavedExcludesAReplacedObject(t *testing.T) {
@@ -297,7 +297,7 @@ func TestAnyPlayerPaysForEachDepartedChooserIsNotReplaced(t *testing.T) {
 		t.Fatalf("life = %d %d, want the departed seat unchanged and seat 1 at 39", g.Seats[0].Life, g.Seats[1].Life)
 	}
 	if f.out.runs != 1 || len(f.out.unsaved) != 5 {
-		t.Fatalf("OnUnsaved ran %d times on %d lands, want once on 5 (6 left, 1 paid for)", f.out.runs, len(f.out.unsaved))
+		t.Fatalf("the consequence ran %d times on %d lands, want once on 5 (6 left, 1 paid for)", f.out.runs, len(f.out.unsaved))
 	}
 }
 
@@ -324,8 +324,9 @@ func TestAnyPlayerPaysForEachLandOfADepartedPlayerIsNotPaidFor(t *testing.T) {
 	}
 }
 
-// The leg blocks the table, a standing answer never answers it, and
-// the table is not a restore point while it is open.
+// The leg blocks the table and a standing answer never answers it. The
+// table is a restore point while it is open: every leg is keyed (#4264;
+// the closure form is gone, #4361 S7b).
 func TestAnyPlayerPaysForEachLegBlocksTheTableAndTakesNoStandingAnswer(t *testing.T) {
 	f := newEachFixture(t)
 	g := f.g
@@ -336,13 +337,13 @@ func TestAnyPlayerPaysForEachLegBlocksTheTableAndTakesNoStandingAnswer(t *testin
 	if c.AutoAnswerKey != "" {
 		t.Fatalf("the leg carries a standing-answer key %q", c.AutoAnswerKey)
 	}
-	if snap := g.CaptureSnapshot(); snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
-		t.Fatalf("a table with a leg open is restorable=%v with %d resume frames, want unrestorable with 1",
+	if snap := g.CaptureSnapshot(); !snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 0 {
+		t.Fatalf("a table with a leg open is restorable=%v with %d resume frames, want restorable with none",
 			snap.Restorable(), snap.Continuations.ChoiceResumeFrames)
 	}
 }
 
-// With nobody to ask, OnUnsaved runs at once on every land; with no
+// With nobody to ask, the consequence runs at once on every land; with no
 // lands it still runs, once, on nothing.
 func TestAnyPlayerPaysForEachRunsOnUnsavedAtOnceWhenNobodyCanPay(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -354,7 +355,7 @@ func TestAnyPlayerPaysForEachRunsOnUnsavedAtOnceWhenNobodyCanPay(t *testing.T) {
 		t.Fatalf("%d prompts open with nobody able to pay", len(g.PendingChoices))
 	}
 	if f.out.runs != 1 || len(f.out.unsaved) != 8 {
-		t.Fatalf("OnUnsaved ran %d times on %d lands, want once on all 8", f.out.runs, len(f.out.unsaved))
+		t.Fatalf("the consequence ran %d times on %d lands, want once on all 8", f.out.runs, len(f.out.unsaved))
 	}
 
 	empty := newFourPlayerActiveGame(t)
@@ -362,13 +363,13 @@ func TestAnyPlayerPaysForEachRunsOnUnsavedAtOnceWhenNobodyCanPay(t *testing.T) {
 	empty.WithWriteLock(func() {
 		if err := empty.QueueAnyPlayerPaysForEachForEffect(AnyPlayerPaysForEach{
 			Source: uuid.New(), Controller: empty.Seats[0].ID, EachLife: 1, Noun: "land",
-			OnUnsaved: func(_ *Game, unsaved []uuid.UUID) error { runs++; return nil },
+			Then: anyPlayerEachHook(func(_ *Game, unsaved []uuid.UUID) error { runs++; return nil }),
 		}); err != nil {
 			t.Fatal(err)
 		}
 	})
 	if runs != 1 || len(empty.PendingChoices) != 0 {
-		t.Fatalf("empty set: OnUnsaved ran %d times with %d prompts open, want once and none", runs, len(empty.PendingChoices))
+		t.Fatalf("empty set: the consequence ran %d times with %d prompts open, want once and none", runs, len(empty.PendingChoices))
 	}
 }
 
@@ -381,7 +382,7 @@ func TestAnyPlayerPaysForEachNonPositiveLifeReportsAndRunsOnUnsaved(t *testing.T
 	g.WithWriteLock(func() {
 		if err := g.QueueAnyPlayerPaysForEachForEffect(AnyPlayerPaysForEach{
 			Source: uuid.New(), Controller: g.Seats[0].ID, Objects: []uuid.UUID{land}, Noun: "land",
-			OnUnsaved: func(_ *Game, unsaved []uuid.UUID) error { runs++; return nil },
+			Then: anyPlayerEachHook(func(_ *Game, unsaved []uuid.UUID) error { runs++; return nil }),
 		}); err != nil {
 			t.Fatal(err)
 		}

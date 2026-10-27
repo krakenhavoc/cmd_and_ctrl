@@ -1,10 +1,6 @@
 package game
 
-import (
-	"fmt"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 // choose_cards_run_keyed.go — a choose_cards run whose continuation and
 // legs are KEYED (#4290, ADR 0013 §5x / §5y amendment of 2026-10-26), so a
@@ -61,18 +57,14 @@ func RegisterChooseCardsRunLegRule(key string, rule SetRuleFunc) ChooseCardsThen
 // leg is a restore point (#4290). Reports how many prompts were queued.
 //
 // A leg's ThenKey is ChooseCardsRunLeg unless it names a leg with a set
-// rule (RegisterChooseCardsRunLegRule). The legs hold no closure: Then and
-// Validate must be nil, and Zone, which a keyed pick has no frame for, is
-// read as the live-zone re-check (ChooseCardsPrompt.LiveZone) the keyed
-// pick does have. The continuation reads RunDone.Picks().
+// rule (RegisterChooseCardsRunLegRule). The legs hold no closure, and Zone
+// is read as the live-zone re-check (ChooseCardsPrompt.LiveZone). The
+// continuation reads RunDone.Picks().
 //
 // Caller must hold g.mu.
 func (g *Game) ChooseCardsRunThenKeyedForEffect(legs []ChooseCardsPrompt, then PromptRunThen, source uuid.UUID, data RunData) (int, error) {
 	asks := make([]uuid.UUID, len(legs))
 	for i, leg := range legs {
-		if leg.Then != nil || leg.Validate != nil {
-			return 0, fmt.Errorf("%w: keyed choose_cards run %q has a leg with a closure; register its set rule (RegisterChooseCardsRunLegRule)", ErrInvalidParam, then.key)
-		}
 		asks[i] = leg.Chooser
 	}
 	// runPromptsKeyedLocked calls queue once per ask, in ask order, so the
