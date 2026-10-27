@@ -1431,3 +1431,15 @@ tail then/demonic-consultation-named
 tail then/drain-power-add-lost-mana
 tail then/pygmy-hippo-schedule-lost-mana
 tail then/tamiyo-collector-named
+choose choose-cards/autumn-tail-kitsune-sage-attach
+choose choose-cards/invasion-of-tarkir-reveal
+choose choose-cards/isochron-scepter-imprint
+choose choose-cards/karn-liberated-exile-from-hand
+choose choose-cards/last-march-of-the-ents-put
+choose choose-cards/least-power-destroy
+choose choose-cards/ledger-shredder-connive
+choose choose-cards/lichs-mastery-exile
+option option-pick/hidden-strings-tap-or-untap
+option option-pick/hunters-axe-keyword
+option option-pick/indulgent-tormentor-answer
+option option-pick/lunar-avenger-keyword
