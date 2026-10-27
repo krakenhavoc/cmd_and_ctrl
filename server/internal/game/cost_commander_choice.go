@@ -112,9 +112,6 @@ func commanderAnswerFor(answers map[uuid.UUID]bool, id uuid.UUID) commanderZoneA
 // than adding to `answers`, so a rewind into the open prompt replays
 // the same announcement with the same earlier answers.
 type costCommanderFrame struct {
-	// payer is the player making the announcement. Not always the
-	// chooser: the chooser is the commander's owner.
-	payer uuid.UUID
 	// card is the commander this prompt is about.
 	card uuid.UUID
 	// headedFor is where the payment puts `card` if its owner declines:
@@ -128,12 +125,15 @@ type costCommanderFrame struct {
 	// of the same payment — a Village Rites paid with two partners'
 	// worth of commanders asks twice, one card at a time.
 	answers map[uuid.UUID]bool
-	// announce re-runs the announcement under g.mu with `answers`
-	// attached. It captures its arguments by value and reads the game
-	// only through the *Game it is handed, so a replay against a
-	// restored game acts on that game.
-	announce func(g *Game, answers map[uuid.UUID]bool) error
+	// announcement is the payment's announcement, made again under g.mu
+	// with the answers attached (#4361 S13: data, not a closure, so the
+	// snapshot writes it, parked_announcement.go). Its controller is the
+	// payer: not always the chooser, who is the commander's owner.
+	announcement parkedAnnouncement
 }
+
+// payer is the player making the announcement.
+func (f *costCommanderFrame) payer() uuid.UUID { return f.announcement.controller }
 
 // refusePausedCostCardsLocked is the other half of that gate (#1445),
 // asked of the same `moving` list immediately before
@@ -239,7 +239,7 @@ func (g *Game) CardExitPausedForEffect(cardID uuid.UUID) bool {
 //   - otherwise a CR 903.9 prompt is queued to the OWNER and the
 //     function reports asked=true. The caller returns nil without
 //     paying: the announcement is parked on the prompt, and
-//     `announce` makes it again when the owner answers.
+//     `announcement` is made again when the owner answers.
 //
 // When nothing is left to ask it returns asked=false and the answers
 // the payment should carry, which may have gained declines for gone
@@ -247,10 +247,11 @@ func (g *Game) CardExitPausedForEffect(cardID uuid.UUID) bool {
 // params never alias a frame's.
 //
 // `what` names the announcement for the prompt ("Viscera Seer",
-// "Thrill of Possibility").
+// "Thrill of Possibility"). `announcement` is the announcement an answer
+// makes again, its commander answers left for the frame to attach.
 //
 // Caller must hold g.mu.
-func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []costCommanderMove, answers map[uuid.UUID]bool, what string, announce func(*Game, map[uuid.UUID]bool) error) (bool, map[uuid.UUID]bool) {
+func (g *Game) askCostCommanderLocked(moving []costCommanderMove, answers map[uuid.UUID]bool, what string, announcement parkedAnnouncement) (bool, map[uuid.UUID]bool) {
 	for _, mv := range moving {
 		id := mv.card
 		if _, answered := answers[id]; answered {
@@ -275,11 +276,10 @@ func (g *Game) askCostCommanderLocked(payer uuid.UUID, moving []costCommanderMov
 			Source:  id,
 			Reason:  reason,
 			costCommanderResume: &costCommanderFrame{
-				payer:     payer,
-				card:      id,
-				headedFor: mv.to,
-				answers:   answers,
-				announce:  announce,
+				card:         id,
+				headedFor:    mv.to,
+				answers:      answers,
+				announcement: announcement,
 			},
 		})
 		if queued == uuid.Nil {
@@ -344,22 +344,23 @@ func withCommanderAnswer(answers map[uuid.UUID]bool, id uuid.UUID, apply bool) m
 //
 // Caller must hold g.mu.
 func (g *Game) resolveCostCommanderChoiceLocked(frame *costCommanderFrame, chooserID uuid.UUID, apply bool) error {
-	if frame == nil || frame.announce == nil {
+	if frame == nil || frame.announcement.cardID == uuid.Nil {
 		return ErrInvalidParam
 	}
-	if g.chooserGoneLocked(frame.payer) || g.playerByIDLocked(frame.payer) == nil {
+	payer := frame.payer()
+	if g.chooserGoneLocked(payer) || g.playerByIDLocked(payer) == nil {
 		return nil
 	}
-	err := frame.announce(g, withCommanderAnswer(frame.answers, frame.card, apply))
+	err := frame.announcement.withCommanderAnswers(withCommanderAnswer(frame.answers, frame.card, apply)).run(g)
 	if err == nil {
 		return nil
 	}
-	if chooserID == frame.payer {
+	if chooserID == payer {
 		return err
 	}
 	g.EmitEvent(Event{
 		Kind:     EventEffectError,
-		Actor:    frame.payer,
+		Actor:    payer,
 		Source:   frame.card,
 		ErrorMsg: "the payment the command-zone answer was for could no longer be made: " + err.Error(),
 	})

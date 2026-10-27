@@ -1731,3 +1731,10 @@ tail engine/counter-exiled-instead
 tail engine/countered-to-library
 tail engine/surveil-routed
 tail pay-unless/paid
+castfollowup chandra-torch-of-defiance-2-to-each-opponent
+castfollowup conduit-of-worlds-no-more-spells
+castfollowup emet-selch-of-the-third-seat-once-each-turn
+castfollowup kaervek-the-punisher-lose-2
+castfollowup kefka-dancing-mad-life-loss
+castfollowup spellweaver-volute-exile-and-reattach
+castfollowup summon-brynhildr-gestalt-haste

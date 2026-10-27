@@ -496,6 +496,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredCoinFlipKeysLocked()...)
 	// #4361: a keyed may_cast's answer.
 	out = append(out, registeredMayCastKeysLocked()...)
+	// #4361 S13: a stored cast permission's follow-up bodies.
+	out = append(out, registeredCastFollowUpKeys()...)
 	sort.Strings(out)
 	return out
 }

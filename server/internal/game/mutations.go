@@ -1892,21 +1892,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		parked := params
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
-			controller: playerID,
-			cardID:     cardID,
-			name:       card.Name,
-			cast:       parked,
+			parkedAnnouncement: castAnnouncement(playerID, cardID, card.Name, parked),
 		}, castSrc, oppTargets)
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
-		func(g *Game, answers map[uuid.UUID]bool) error {
-			again := params
-			again.commanderAnswers = answers
-			// The payload's own picks: the opponents' answers ride
-			// opponentPicks and are merged in again (#2055).
-			again.Targets = ownTargets
-			return g.castSpellLocked(playerID, cardID, again)
-		})
+	// The announcement a CR 903.9b answer makes again (#4361 S13: as
+	// data). The payload's own picks: the opponents' answers ride
+	// opponentPicks and are merged in again (#2055). The commander
+	// answers are the frame's, attached when it is answered.
+	again := params
+	again.Targets = ownTargets
+	again.commanderAnswers = nil
+	asked, answers := g.askCostCommanderLocked(asking, params.commanderAnswers, card.Name,
+		castAnnouncement(playerID, cardID, card.Name, again))
 	if asked {
 		return nil
 	}

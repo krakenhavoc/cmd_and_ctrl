@@ -255,7 +255,7 @@ func TestACopyNeverSpendsANextSpellPromise(t *testing.T) {
 // spell is on the stack — the RegisterCastFollowUp seam, reused.
 func TestNextSpellPromiseRunsItsRegisteredFollowUp(t *testing.T) {
 	var ran []CastFollowUp
-	key := RegisterCastFollowUp("test-1852-follow-up", func(_ *Game, f CastFollowUp) error {
+	key := RegisterCastFollowUp(testEffectKeyPrefix+"1852-follow-up", func(_ *Game, f CastFollowUp) error {
 		ran = append(ran, f)
 		return nil
 	})

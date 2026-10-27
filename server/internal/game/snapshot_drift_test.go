@@ -1241,8 +1241,8 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame: written as data when its event holds no closure (#4253, pendingChoices[].replacementResume, replacement_resume_keyed.go), otherwise counted in ContinuationCensus.ChoiceResumeFrames",
-	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
-	"opponentTargetResume", dropped, "#2055: a parked cast or activation waiting on an opponent's target; counted in ContinuationCensus.ChoiceResumeFrames",
+	"costCommanderResume", carried, "a parked cost announcement (#1397), as Parked (#4361 S13, parked_announcement.go; its marker rides PickThen)",
+	"opponentTargetResume", carried, "#2055: a parked cast or activation waiting on an opponent's target, as Parked (#4361 S13, parked_announcement.go; a pick_target's marker rides PickThen, an option pick's key is its own)",
 	// #4361 S14b: carried since a trigger's target walk is written.
 	"PickTargetFor", carried, "",
 	"PickTargetHarmful", carried, "",

@@ -51,6 +51,7 @@
 # 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S14b): the trigger target walk written by catalog row (pendingChoices[].targetWalk) and its "which opponent chooses" pick keyed; 15 lines keyed, optionPickFrame.thenSeat and PendingChoice.optionPickResume deleted, pickTargetFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S11c): no line moves; the surveil, search-take, counter (Hinder) and hand-size discard writers keyed. entryBatch.then and libraryOrderResume wait on the entry-choice discard's frozen frame (S17).
+# 2026-10-27 (#4361 S13): ChoiceResumeFrames 52 → 50, a parked cast or activation written as data (owner decision D7); PendingChoice.costCommanderResume and costCommanderFrame.announce deleted.
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -117,7 +118,6 @@ ModeOption.Targets                           census:ChoiceResumeFrames          
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
-PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
 PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
 PendingChoice.pickTargetResume               keyed                              # Game.PendingChoices.pickTargetResume
@@ -173,7 +173,6 @@ activeReplacement.source                     census:ChoiceResumeFrames          
 copyFrame.item                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.item
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
 copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
-costCommanderFrame.announce                  census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume.announce
 entryBatch.members                           census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members
 entryBatch.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.then
 entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out
