@@ -143,7 +143,7 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 97,
+	"census:ChoiceResumeFrames": 93,
 	// 109 (#4361 S1, 2026-10-27): - CoinFlipSpec.Then, PendingChoice.coinFlipResume
 	// and coinFlipFrame.spec (every flip is keyed); - PendingChoice.chooseValueResume
 	// and chooseValueFrame.then (ChooseNumber.Then and PayEnergyAmount.Then gone,
@@ -161,6 +161,11 @@ var closureClassCeilings = map[string]int{
 	// and .Validate: every choose_cards pick is keyed, a run's reveal or
 	// permanent pick settles from its own fields, and an entry card
 	// choice's zone is its kind's.
+	// 97 (2026-10-27, #4361 S9): - lifeTail.then, millTail.then and so
+	// ReplacementEvent.lifeTail and ReplacementEvent.mill, gone with
+	// ChangePlayerLifeThenForEffect, MillToZoneThen(Moved)ForEffect and
+	// the closure mill run; rad counters, the mill cost and a replaced
+	// move's life changes carry their rest as data.
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

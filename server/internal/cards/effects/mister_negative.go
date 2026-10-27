@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the turn after.
 //
 // "If you lost life this way" is the APPLIED amount, which is why the
-// controller's half runs through ChangePlayerLifeThenForEffect and
+// controller's half runs through ChangePlayerLifeKeyedForEffect and
 // the draw reads its continuation rather than subtracting the two
 // totals: a replacement can change what actually happened (Rhox
 // Faithmender on the gaining side, a "your life total can't change"

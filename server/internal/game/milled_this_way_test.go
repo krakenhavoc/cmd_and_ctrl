@@ -64,13 +64,13 @@ func millThen(t *testing.T, g *Game, p *Player, n int, dest ZoneKind) (*[]uuid.U
 	var got []uuid.UUID
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, n, dest, nil, func(_ *Game, milled []uuid.UUID) error {
+		err := g.MillToZoneKeyedForEffect(p.ID, n, dest, MillUntil{}, millHook(func(_ *Game, milled []uuid.UUID) error {
 			ran++
 			got = milled
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 	return &got, &ran

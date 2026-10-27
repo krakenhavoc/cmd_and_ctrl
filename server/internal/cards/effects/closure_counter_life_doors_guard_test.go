@@ -12,28 +12,26 @@ import (
 	"testing"
 )
 
-// closure_counter_life_doors_guard_test.go — #4253 slice 7: the life-change
-// door that takes a Go closure (ChangePlayerLifeThenForEffect; #4253 deleted
+// closure_counter_life_doors_guard_test.go — #4253 slice 7: no catalog card
+// calls a life-change or counter door that takes a Go closure. #4253 deleted
 // AddCounterByThenForEffect, AddCounterThenForEffect, LoseLifeEachThenForEffect,
-// AmassForEffect and the earthbend closure form) is called by NO catalog card. A table waiting
+// AmassForEffect and the earthbend closure form, and #4361 S9 deleted the last,
+// ChangePlayerLifeThenForEffect; this guard keeps the name from coming back. A table waiting
 // on a CR 616 prompt over a counter placement or a life change whose "then" is a
 // closure is not a restore point, so a card passes a registered tail to the
 // Keyed form instead (AddCounterByKeyedForEffect, ChangePlayerLifeKeyedForEffect,
 // LoseLifeEachKeyedForEffect, AmassKeyedForEffect, EarthbendKeyedForEffect).
 //
-// The closure doors stay for the engine's own plumbing and for tests that
-// record what a continuation was told. This test counts every other production
-// call, by file, against the list below. THE LIST MAY ONLY FALL: moving a
-// caller onto a tail takes its line out; adding a closure caller is refused.
+// This test counts every production call, by file, against the list below,
+// which is empty now. THE LIST MAY ONLY FALL: adding a closure caller is
+// refused.
 
 // closureDoorCalls is every non-test call of a closure door still in the
 // tree, by file under server/internal, with why it is there.
 var closureDoorCalls = map[string]struct {
 	n   int
 	why string
-}{
-	"game/effect_api.go": {1, "ChangePlayerLifeForEffect passes a nil then"},
-}
+}{}
 
 var closureDoorCall = regexp.MustCompile(`\b(ChangePlayerLifeThenForEffect)\(`)
 

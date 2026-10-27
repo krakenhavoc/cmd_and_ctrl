@@ -26,7 +26,7 @@ import (
 // it passes every test played on a table with fewer than two matching
 // replacements, and it is wrong.
 //
-// The right shape is the continuation: ChangePlayerLifeThenForEffect /
+// The right shape is the continuation: ChangePlayerLifeKeyedForEffect /
 // LoseLifeEachKeyedForEffect on the life side, and
 // DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect /
 // DealDamageEachKeyedForEffect on the damage side (registered tails,
@@ -90,7 +90,7 @@ var lifeReadBacks = readBackPattern{
 	primitives: map[string]bool{"GainLife": true},
 	reads:      map[string]bool{"Life": true},
 	allowlist:  map[string]string{},
-	advice: "Use ChangePlayerLifeThenForEffect (one player) or LoseLifeEachThenForEffect (several) " +
+	advice: "Use ChangePlayerLifeKeyedForEffect (one player) or LoseLifeEachKeyedForEffect (several) " +
 		"and take the amount from the continuation",
 }
 
@@ -279,10 +279,8 @@ func drain(ctx *Context, opp uuid.UUID, x int) error {
 	const lifeAfter = `package effects
 
 func drain(ctx *Context, opp uuid.UUID, x int) error {
-	return ctx.Game.ChangePlayerLifeThenForEffect(ctx.Source(), opp, -x,
-		func(g *game.Game, applied int) error {
-			return GainLife{Player: ctx.Controller(), Amount: -applied}.Apply(ctx)
-		})
+	return ctx.Game.ChangePlayerLifeKeyedForEffect(ctx.Source(), opp, -x,
+		ctx.ItemTail(drainGainTheLoss))
 }
 `
 	const damageBefore = `package effects

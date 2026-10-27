@@ -10,25 +10,21 @@ import (
 
 // mill_keyed.go — #4253 slice 9: a mill whose continuation is data.
 //
-// A mill with a continuation (MillToZoneThenForEffect) routes its planned
-// cards through routeAllThenLocked, so a leg paused on a CR 616 prompt
-// (an ordering prompt between Rest in Peace and Leyline of the Void over
-// one milled card) held the rest of the mill and the caller's "then" in a
-// closure. The keyed doors put the batch on the keyed route batch
-// (route_batch_keyed.go), told the caller's tail what landed.
+// A mill with a continuation used to route its planned cards through
+// routeAllThenLocked, so a leg paused on a CR 616 prompt (an ordering
+// prompt between Rest in Peace and Leyline of the Void over one milled
+// card) held the rest of the mill and the caller's "then" in a closure.
+// The keyed doors put the batch on the keyed route batch
+// (route_batch_keyed.go), told the caller's tail what landed. #4361 S9
+// deleted the closure doors (MillToZoneThenForEffect,
+// MillToZoneThenMovedForEffect) and the closure run (millRun) with them.
 //
-// A "mills a card, then repeats this process until …" run (millRun) held
-// two closures: the caller's "then" and the stop clause. Its keyed twin,
-// millUntilRun, is plain data riding the batch of the repetition in
-// flight (routeBatchRun.Mill): the clause is a registered predicate
+// A "mills a card, then repeats this process until …" run is plain data,
+// millUntilRun, riding the batch of the repetition in flight
+// (routeBatchRun.Mill): the clause is a registered predicate
 // (RegisterMillUntil) and the number it reads, and the run's view of the
 // cards it has landed is their pre-move copies, written through the card
 // mirror. Every other field is a scalar or an ID list.
-//
-// What stays a closure: the mill-AMOUNT window (RepEventMill, Bruvac the
-// Grandiloquent's doubling) carries its tail as a gate field, so an
-// ordering prompt between two mill-amount replacements is not a restore
-// point yet. The per-card legs are.
 
 // MillUntilFunc is a registered stop clause: asked, after each repetition,
 // with the cards that have LANDED in the destination so far (pre-move
@@ -51,20 +47,6 @@ type MillUntil struct {
 
 // IsZero reports whether no clause is set.
 func (u MillUntil) IsZero() bool { return u.Ref.key == "" }
-
-// Pred is the clause as the closure form's predicate, for a caller that
-// still runs a mill through MillToZoneThenForEffect. Nil for the zero
-// clause.
-func (u MillUntil) Pred() func([]Card) bool {
-	if u.IsZero() {
-		return nil
-	}
-	fn, n := lookupMillUntil(u.Ref.key), u.N
-	if fn == nil {
-		return nil
-	}
-	return func(landed []Card) bool { return fn(landed, n) }
-}
 
 var (
 	millUntilMu  sync.RWMutex
@@ -112,7 +94,7 @@ func lookupMillUntil(key string) MillUntilFunc {
 	return millUntilFns[key]
 }
 
-// millUntilRun is millRun as data. Never written after it is built: each
+// millUntilRun is an "until" run as data. Never written after it is built: each
 // repetition's continuation builds a new one.
 type millUntilRun struct {
 	Player      uuid.UUID `json:"player"`
@@ -122,11 +104,11 @@ type millUntilRun struct {
 	Repetitions int       `json:"repetitions,omitempty"`
 	Done        int       `json:"done,omitempty"`
 	// Depth is the library's depth before the repetition in flight
-	// (millRun.stalled).
+	// (a repetition that leaves the library no shorter ends the run).
 	Depth  int         `json:"depth,omitempty"`
 	Landed []uuid.UUID `json:"landed,omitempty"`
 	// Seen is the pre-move copy of each landed card, the run's view of
-	// what it has milled (millRun.before), so the clause reads the cards
+	// what it has milled, so the clause reads the cards
 	// as they were in the library.
 	Seen []cardSnapshot `json:"seen,omitempty"`
 	// Planned is the repetition in flight's planned cards as they were in
@@ -177,7 +159,7 @@ func (r *millUntilRun) stops() bool {
 }
 
 // millUntilRunKeyedLocked runs one repetition of a keyed run, with the
-// run riding that repetition's mill: millUntilRunLocked's keyed twin.
+// run riding that repetition's mill: millUntilRunKeyedLocked's keyed twin.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) millUntilRunKeyedLocked(run *millUntilRun) error {
@@ -190,7 +172,7 @@ func (g *Game) millUntilRunKeyedLocked(run *millUntilRun) error {
 	}
 	rep := cloneMillUntilRun(run)
 	rep.Depth = len(p.Library.Cards)
-	_, err := g.millThroughReplacementsTailLocked(run.Player, 1, run.Dest, nil, &millTail{dest: run.Dest, run: rep})
+	_, err := g.millThroughReplacementsTailLocked(run.Player, 1, run.Dest, &millTail{dest: run.Dest, run: rep})
 	return err
 }
 
@@ -221,12 +203,22 @@ func (g *Game) continueMillUntilRunKeyedLocked(run *millUntilRun, milled []uuid.
 	return g.millUntilRunKeyedLocked(next)
 }
 
-// MillToZoneKeyedForEffect is MillToZoneThenForEffect with the
-// continuation as data (#4253 slice 9): `then` is a registered tail told
-// the cards that landed in `dest`, and `until`, when set, is a registered
-// stop clause that makes this a run (millUntilRunLocked's rules). A zero
-// tail is "no continuation"; the mill still sequences, so a leg's prompt
-// is a restore point.
+// MillToZoneKeyedForEffect is the CONTINUATION form of MillToZoneForEffect
+// (#4253 slice 9): mill exactly what it would, and tell `then`, a
+// registered tail, the cards that LANDED in `dest` (CR 400.7, "for each
+// creature card put into your graveyard this way"). The legs go in
+// sequence, so a leg paused on a replacement's prompt holds the rest, and
+// `then` runs from wherever the mill ends, with an empty list when it was
+// replaced away. A zero tail is "no continuation"; the mill still
+// sequences, so a leg's prompt is a restore point.
+//
+// `until`, when set, is a registered stop clause that makes this a RUN of
+// one-card mill instructions (#1176, millUntilRunKeyedLocked), each with
+// its own CR 614 window on its amount, the clause asked with everything
+// that has landed after each repetition. `n` with `until` caps the
+// repetitions; 0 is "no limit but the library". The clause lives only on a
+// sequencing form (#1161): it asks about cards that have ARRIVED, and only
+// a form that waits for them can answer.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) MillToZoneKeyedForEffect(playerID uuid.UUID, n int, dest ZoneKind, until MillUntil, then KeyedTail) error {
@@ -245,17 +237,19 @@ func (g *Game) MillToZoneKeyedForEffect(playerID uuid.UUID, n int, dest ZoneKind
 		})
 	}
 	t := then
-	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, nil, &millTail{dest: dest, keyed: &t})
+	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, &millTail{dest: dest, keyed: &t})
 	return err
 }
 
-// MillToZoneKeyedMovedForEffect is MillToZoneThenMovedForEffect with the
-// continuation as data: `then` is told every card the mill took out of the
-// library, wherever it went (CR 701.17c).
+// MillToZoneKeyedMovedForEffect is MillToZoneKeyedForEffect for a clause
+// that refers to "those cards" (CR 701.17c, #3846): `then` is told every
+// card the mill took out of the library, wherever it went, rather than
+// only the ones that landed in `dest`. A card Rest in Peace exiled instead
+// is still one of them; a card a CR 614 window left in the library is not.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) MillToZoneKeyedMovedForEffect(playerID uuid.UUID, n int, dest ZoneKind, then KeyedTail) error {
 	t := then
-	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, nil, &millTail{dest: dest, keyed: &t, allMoved: true})
+	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, &millTail{dest: dest, keyed: &t, allMoved: true})
 	return err
 }

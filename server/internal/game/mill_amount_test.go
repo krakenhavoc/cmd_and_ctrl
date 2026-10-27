@@ -243,14 +243,14 @@ func TestAnUntilRunOpensOneAmountWindowPerRepetition(t *testing.T) {
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
+		err := g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(func(landed []Card) bool {
 			return len(landed) >= 2
-		}, func(_ *Game, milled []uuid.UUID) error {
+		}), millHook(func(_ *Game, milled []uuid.UUID) error {
 			got = milled
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 
@@ -281,14 +281,14 @@ func TestAnUntilRunWithNoReplacementMillsOneCardPerRepetition(t *testing.T) {
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func(landed []Card) bool {
+		err := g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(func(landed []Card) bool {
 			return len(landed) >= 2
-		}, func(_ *Game, milled []uuid.UUID) error {
+		}), millHook(func(_ *Game, milled []uuid.UUID) error {
 			got = milled
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 
@@ -311,13 +311,13 @@ func TestAnUntilRunThatNeverStopsEndsAtTheBottomOfTheLibrary(t *testing.T) {
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
-			func(_ *Game, milled []uuid.UUID) error {
+		err := g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(func([]Card) bool { return false }),
+			millHook(func(_ *Game, milled []uuid.UUID) error {
 				got = milled
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 
@@ -348,12 +348,12 @@ func TestACancelledMillStillRunsItsContinuation(t *testing.T) {
 	ran := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.MillToZoneThenForEffect(p.ID, 2, ZoneGraveyard, nil, func(_ *Game, milled []uuid.UUID) error {
+		if err := g.MillToZoneKeyedForEffect(p.ID, 2, ZoneGraveyard, MillUntil{}, millHook(func(_ *Game, milled []uuid.UUID) error {
 			ran++
 			got = milled
 			return nil
-		}); err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 
@@ -435,12 +435,12 @@ func TestAPausedMillHandsItsContinuationTheResumedList(t *testing.T) {
 	ran := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.MillToZoneThenForEffect(p.ID, 2, ZoneGraveyard, nil, func(_ *Game, milled []uuid.UUID) error {
+		if err := g.MillToZoneKeyedForEffect(p.ID, 2, ZoneGraveyard, MillUntil{}, millHook(func(_ *Game, milled []uuid.UUID) error {
 			ran++
 			got = milled
 			return nil
-		}); err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 	if ran != 0 {
@@ -477,12 +477,12 @@ func TestUndoAcrossThePausedMillAmountReplays(t *testing.T) {
 	ran := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.MillToZoneThenForEffect(p.ID, 2, ZoneGraveyard, nil, func(_ *Game, milled []uuid.UUID) error {
+		if err := g.MillToZoneKeyedForEffect(p.ID, 2, ZoneGraveyard, MillUntil{}, millHook(func(_ *Game, milled []uuid.UUID) error {
 			ran++
 			got = append([]uuid.UUID(nil), milled...)
 			return nil
-		}); err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 	promptOpen := g.Clone()
@@ -530,11 +530,11 @@ func TestADroppedMillPromptStillRunsItsContinuation(t *testing.T) {
 
 	ran := 0
 	g.WithWriteLock(func() {
-		if err := g.MillToZoneThenForEffect(p.ID, 2, ZoneGraveyard, nil, func(*Game, []uuid.UUID) error {
+		if err := g.MillToZoneKeyedForEffect(p.ID, 2, ZoneGraveyard, MillUntil{}, millHook(func(*Game, []uuid.UUID) error {
 			ran++
 			return nil
-		}); err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 	if c := onlyPrompt(t, g); c.Chooser != p.ID {
@@ -610,14 +610,14 @@ func TestAnUntilRunEndsWhenEveryRepetitionIsReplacedAway(t *testing.T) {
 	calls := 0
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
-			func(_ *Game, milled []uuid.UUID) error {
+		err := g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(func([]Card) bool { return false }),
+			millHook(func(_ *Game, milled []uuid.UUID) error {
 				calls++
 				got = milled
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 
@@ -661,13 +661,13 @@ func TestAnUntilRunThatLandsNothingStillWalksTheLibrary(t *testing.T) {
 
 	var got []uuid.UUID
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, func([]Card) bool { return false },
-			func(_ *Game, milled []uuid.UUID) error {
+		err := g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(func([]Card) bool { return false }),
+			millHook(func(_ *Game, milled []uuid.UUID) error {
 				got = milled
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 

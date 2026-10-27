@@ -122,7 +122,7 @@ import (
 // mill, which can overshoot it by a card).
 //
 // So each repetition is its own one-card mill instruction
-// (millUntilRunLocked): its own RepEventMill window, its own plan, its
+// (millUntilRunKeyedLocked): its own RepEventMill window, its own plan, its
 // own sequenced routing, and then the clause, asked with everything
 // the run has landed. Both cards of a doubled repetition move — one
 // instruction, one batch — which is where the overshoot comes from.
@@ -136,7 +136,7 @@ import (
 // replaced away — CR 614.10's null replacement cancels a mill, and a
 // replacement that halves an amount turns a mill of one into a mill of
 // none — and a run that asks for a repetition which moves nothing would
-// ask for it forever. millRun.stalled ends the run when a repetition
+// ask for it forever. millUntilRunKeyedLocked ends the run when a repetition
 // leaves the library no shorter than it found it. The measure is the
 // library's DEPTH and not the landed list, because a run under Rest in
 // Peace lands nothing and is still making progress.
@@ -167,123 +167,50 @@ type millTail struct {
 	// this way" against (CR 400.7, ADR 0013 §5l).
 	dest ZoneKind
 
-	// then is the continuation form's callback, run with the cards
-	// that LANDED in dest. nil for the fire-and-forget form, whose
-	// caller reads the returned slice instead.
-	//
-	// #1176: for one repetition of an `until` run this is the run's
-	// own continuation, which appends what landed, asks the clause,
-	// and either finishes the run or starts the next repetition. The
-	// tail carries no `until` of its own any more — an instruction is
-	// an instruction, and the run is a loop over instructions.
-	then func(g *Game, milled []uuid.UUID) error
+	// report is a synchronous door's result (payMillCostLocked): every
+	// card the batch took out of the library, written as the mill
+	// finishes and read on the door's next line, the way tokenTail.report
+	// is. A mill that paused has returned by then, so a restore point
+	// drops it. Not a continuation: #4361 S9 deleted the closure `then`.
+	report *[]uuid.UUID
 
-	// allMoved changes what `then` is handed: not the cards that LANDED
+	// allMoved changes what the tail is handed: not the cards that LANDED
 	// in dest, but every card the mill took out of the library, wherever
 	// it ended up (CR 701.17c, #3846). Rest in Peace sends a milled card
 	// to exile, where it did not "land" in a graveyard and is still a
 	// card that was milled -- Locke, Treasure Hunter's "a spell from
 	// among those cards". The caller reads each card's zone itself. Plain
 	// data, so the tail stays a restore point; false for every caller but
-	// MillToZoneThenMovedForEffect.
+	// MillToZoneKeyedMovedForEffect and the mill cost.
 	allMoved bool
 
-	// keyed is `then` as data (#4253 slice 9, mill_keyed.go): non-nil
-	// for the keyed doors, which always sequence, even with a zero tail.
-	// run is a keyed "until" run's repetition in flight. Cleared through
-	// the pointer as they run, as `then` is.
+	// keyed is the caller's continuation as data (#4253 slice 9,
+	// mill_keyed.go): non-nil for the keyed doors, which always sequence,
+	// even with a zero tail. run is a keyed "until" run's repetition in
+	// flight. Cleared through the pointer as they run.
 	keyed *KeyedTail
 	run   *millUntilRun
 }
 
-// millRun is one "mills a card, then repeats this process until …"
-// run (#1176): the state carried from each repetition to the next.
-//
-// Every field is treated as IMMUTABLE once the value is built.
-// A repetition's continuation builds a FRESH millRun with fresh
-// slices rather than appending in place, which is the same property
-// routeEachStepLocked's landed list has and for the same reason: an
-// undo that rewinds into an open CR 903.9 prompt and replays the
-// answer must ask the clause the same question and get the same
-// answer.
-type millRun struct {
-	player uuid.UUID
-	dest   ZoneKind
-
-	// until is the stop clause, asked with the cards that have LANDED
-	// in dest so far, after each REPETITION. The run ends on the first
-	// list it accepts.
-	until func([]Card) bool
-
-	// then is the caller's continuation, run once, with everything the
-	// whole run landed.
-	then func(g *Game, milled []uuid.UUID) error
-
-	// repetitions caps how many times the process repeats, for a run
-	// that named a number as well as a clause (n > 0 with an Until).
-	// Zero — every card in the catalog — is "no limit but the
-	// library".
-	//
-	// Repetitions and not cards, because a repetition is the
-	// instruction now and a mill-amount replacement can make one of
-	// them move two cards. No printed card uses it; a bound a card
-	// prints is a clause (effects.UntilCount), not this.
-	repetitions int
-
-	// done counts the repetitions that have run.
-	done int
-
-	// landed is every card that has reached dest across the whole run,
-	// in the order it arrived.
-	landed []uuid.UUID
-
-	// before is the run's immutable view of the cards it can mill:
-	// every card in the library as the run BEGAN, by instance ID.
-	//
-	// It is what turns `landed` back into the []Card the clause takes,
-	// and taking it once, up front, is what keeps the clause pure —
-	// a live lookup would read a card that a later leg may have moved
-	// again, and the replayed answer could differ from the first one.
-	before map[uuid.UUID]Card
-}
-
-// millThroughReplacementsLocked is the one body both mill entry points
-// go through: it validates the instruction, opens the CR 614 window on
-// the amount when the instruction is a mill the rules can replace, and
-// plans and routes what the window settles on.
+// millThroughReplacementsTailLocked is the one body every mill entry
+// point goes through: it validates the instruction, opens the CR 614
+// window on the amount when the instruction is a mill the rules can
+// replace, and plans and routes what the window settles on.
 //
 // The returned slice is the cards that LANDED in dest, and it is empty
-// for the continuation form (which reports through `then` instead) and
-// for a mill that PAUSED on a CR 616 prompt (nothing has moved yet;
+// for a sequenced tail (a keyed door, which reports through its tail)
+// and for a mill that PAUSED on a CR 616 prompt (nothing has moved yet;
 // the resume mills when the prompt is answered).
 //
-// #1176: with an `until` clause it is not one instruction at all. See
-// millUntilRunLocked.
-//
-// Caller must hold g.mu.
-func (g *Game) millThroughReplacementsLocked(
-	playerID uuid.UUID,
-	n int,
-	dest ZoneKind,
-	until func([]Card) bool,
-	then func(g *Game, milled []uuid.UUID) error,
-) ([]uuid.UUID, error) {
-	return g.millThroughReplacementsTailLocked(playerID, n, dest, until, &millTail{dest: dest, then: then})
-}
-
-// millThroughReplacementsTailLocked is that body with the tail built by
-// the caller, so a variant can set a tail field (allMoved) the plain
-// entry points never do.
+// An "until" run is not one instruction: see millUntilRunKeyedLocked.
 //
 // Caller must hold g.mu.
 func (g *Game) millThroughReplacementsTailLocked(
 	playerID uuid.UUID,
 	n int,
 	dest ZoneKind,
-	until func([]Card) bool,
 	tail *millTail,
 ) ([]uuid.UUID, error) {
-	then := tail.then
 	// The up-front errors, asked before the window rather than inside
 	// millPlanLocked's copy of them: an unseated player and a
 	// destination that is neither a graveyard nor exile are not mills
@@ -297,18 +224,6 @@ func (g *Game) millThroughReplacementsTailLocked(
 	case ZoneGraveyard, ZoneExile:
 	default:
 		return nil, ErrInvalidParam
-	}
-	if until != nil {
-		// #1176: a run, not an instruction. It reports through `then`,
-		// so the returned slice is empty exactly as the continuation
-		// form's already is.
-		return nil, g.millUntilRunLocked(&millRun{
-			player:      playerID,
-			dest:        dest,
-			until:       until,
-			then:        then,
-			repetitions: n,
-		})
 	}
 	ev := &ReplacementEvent{
 		Kind:       RepEventMill,
@@ -324,157 +239,6 @@ func (g *Game) millThroughReplacementsTailLocked(
 		return g.applyResolvedMillLocked(ev)
 	}
 	return g.runMillLocked(ev)
-}
-
-// millUntilRunLocked runs one repetition of an `until` run and hangs
-// the next one off its continuation (#1176).
-//
-// # Why the run is a loop and not an instruction
-//
-// "Target opponent MILLS A CARD, then repeats this process until a
-// creature card or X cards have been put into their graveyard this
-// way, whichever comes first" (Helm of Obedience). The instruction the
-// card gives is "mill a card", once, and the sentence repeats it. The
-// engine used to model the whole run as one instruction that named no
-// number, which made the bound right (Bruvac the Grandiloquent doubles
-// mills, not bounds — #1161 pins it) and made the AMOUNT invisible:
-// there was no number for a mill-amount replacement to double, so
-// Helm + Bruvac at X=3 milled three cards where paper mills four.
-//
-// Each repetition is now its own one-card mill instruction, so it
-// opens its own RepEventMill window and a mill-amount replacement
-// rewrites it (CR 701.17b). Both cards of a doubled repetition are
-// milled — one instruction, one simultaneous batch — and the clause is
-// asked AFTER the repetition, which is where the card asks it. That is
-// the whole of the paper numbers:
-//
-//	Helm X=1 + Bruvac   2 cards (one doubled repetition)
-//	Helm X=2 + Bruvac   2 cards (the first repetition already reaches X)
-//	Helm X=3 + Bruvac   4 cards (2 + 2, overshooting the bound by one)
-//
-// # What it does NOT reintroduce
-//
-// The over-mill #1177 closed by construction. A run that ends on what
-// ARRIVED has to WAIT for each leg to arrive, and every repetition
-// here goes through MillToZoneThenForEffect's sequencing body: a leg
-// paused on the CR 903.9 prompt holds the rest of its own repetition
-// and the whole run behind it, because the next repetition is started
-// from the previous one's continuation and not from a loop that walks
-// past it. The fire-and-forget entry point still cannot express an
-// `until` at all, and now neither can a routing loop — the verdict is
-// not inside one any more.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) millUntilRunLocked(run *millRun) error {
-	p := g.playerByIDLocked(run.player)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	if run.repetitions > 0 && run.done >= run.repetitions {
-		return run.finish(g)
-	}
-	if len(p.Library.Cards) == 0 {
-		// CR 701.17b: the run ends when the library does, with no error
-		// and no loss. The caller's continuation still owes an answer.
-		return run.finish(g)
-	}
-	if run.before == nil {
-		run.before = make(map[uuid.UUID]Card, len(p.Library.Cards))
-		for _, c := range p.Library.Cards {
-			run.before[c.InstanceID] = c
-		}
-	}
-	// How deep the library was before this repetition. A repetition
-	// that does not shorten it made NO PROGRESS, and repeating it would
-	// make none either — see millRun.stalled.
-	depth := len(p.Library.Cards)
-	// One repetition IS an ordinary one-card mill: the same entry, the
-	// same CR 614 window on its amount, the same plan, the same
-	// sequencing routing loop. Nothing about a repetition knows it is
-	// part of a run.
-	_, err := g.millThroughReplacementsLocked(run.player, 1, run.dest, nil,
-		func(g *Game, milled []uuid.UUID) error {
-			next := run.next(milled)
-			if next.stops() || next.stalled(g, depth) {
-				return next.finish(g)
-			}
-			return g.millUntilRunLocked(next)
-		})
-	return err
-}
-
-// stalled reports whether the repetition that just finished left the
-// library no shorter than `depth` — and so whether the run has to end
-// whatever its clause says.
-//
-// It is the termination guard, and it is needed because a repetition is
-// a real instruction now and a real instruction can be replaced away.
-// CR 614.10's null replacement cancels a mill outright; a replacement
-// that HALVES an amount turns a mill of one into a mill of none. Either
-// way the library is where it was, the clause is where it was, and a
-// run without this check would ask for the same repetition forever.
-// The old model could not reach it: a run named no number, so it opened
-// no amount window and nothing could replace it to nothing.
-//
-// The measure is the library's DEPTH rather than the landed list,
-// because a run under Rest in Peace lands nothing at all and is still
-// making progress — that is the famous Helm combo, and it must still
-// end at the bottom of the library rather than here.
-//
-// A card put BACK on the library by the same repetition (a "put it on
-// top of your library instead" replacement) reads as no progress and
-// ends the run. That is the conservative answer on purpose: the
-// alternative is a run that mills the same card forever.
-func (r *millRun) stalled(g *Game, depth int) bool {
-	p := g.playerByIDLocked(r.player)
-	if p == nil {
-		return true
-	}
-	return len(p.Library.Cards) >= depth
-}
-
-// next is the run one repetition further on, as a NEW value with a new
-// landed slice. Two runs of the same continuation — an undo, then the
-// same answer again — must not see each other's entries.
-func (r *millRun) next(milled []uuid.UUID) *millRun {
-	out := *r
-	out.done = r.done + 1
-	out.landed = append(append(make([]uuid.UUID, 0, len(r.landed)+len(milled)), r.landed...), milled...)
-	return &out
-}
-
-// stops asks the clause about everything that has LANDED so far
-// (CR 400.7, landedInZoneLocked): a card the CR 614 window diverted —
-// a commander taking the command zone, "if a card would be put into a
-// graveyard from anywhere, exile it instead" — was never put into that
-// graveyard, so it is not in the list and does not end the run.
-//
-// Pure: it reads its own immutable fields and nothing else.
-func (r *millRun) stops() bool {
-	if r.until == nil || len(r.landed) == 0 {
-		return false
-	}
-	cards := make([]Card, 0, len(r.landed))
-	for _, id := range r.landed {
-		if c, ok := r.before[id]; ok {
-			cards = append(cards, c)
-		}
-	}
-	return len(cards) > 0 && r.until(cards)
-}
-
-// finish runs the caller's continuation with everything the run
-// landed, once. A run that milled nothing still reports — a caller
-// sequencing work behind it has to be told even when the answer is
-// "none", which is the rule every terminal outcome of a routed move
-// follows.
-func (r *millRun) finish(g *Game) error {
-	if r.then == nil {
-		return nil
-	}
-	then := r.then
-	r.then = nil
-	return then(g, r.landed)
 }
 
 // millAmountIsReplaceable reports whether an instruction is a mill
@@ -561,28 +325,20 @@ func (g *Game) applyResolvedMillLocked(ev *ReplacementEvent) ([]uuid.UUID, error
 		if tail.allMoved {
 			run.Planned = copyUUIDs(ids)
 		}
-		return nil, g.routeAllRunLocked(r, ids, run)
-	}
-	if tail.then == nil {
-		// Fire-and-forget: every leg is routed on this line and one
-		// that pauses on CR 903.9 lands later without holding the rest
-		// of the mill up (#529).
-		return g.routeAllLandedLocked(r, ids), nil
-	}
-	// Cleared THROUGH the pointer, for the reason the token and
-	// keyword-action tails are: a continuation that re-enters the
-	// pipeline on the same tail value must not run itself twice, and an
-	// undo snapshot therefore needs its own copy of the tail (which
-	// cloneReplacementResume gives it).
-	then := tail.then
-	tail.then = nil
-	if tail.allMoved {
-		landed := then
-		then = func(g *Game, _ []uuid.UUID) error {
-			return landed(g, g.leftLibraryLocked(ids))
+		err := g.routeAllRunLocked(r, ids, run)
+		if rep := tail.report; rep != nil {
+			// The mill cost's read-back (payMillCostLocked): every card
+			// the batch has taken out of the library by now, wherever it
+			// went (CR 701.17c).
+			tail.report = nil
+			*rep = g.leftLibraryLocked(ids)
 		}
+		return nil, err
 	}
-	return nil, g.routeAllThenLocked(r, ids, then)
+	// Fire-and-forget: every leg is routed on this line and one that
+	// pauses on CR 903.9 lands later without holding the rest of the
+	// mill up (#529).
+	return g.routeAllLandedLocked(r, ids), nil
 }
 
 // leftLibraryLocked is the subset of `ids`, in order, that is no longer
@@ -625,10 +381,5 @@ func (g *Game) abandonMillLocked(ev *ReplacementEvent) error {
 		ev.mill.keyed = nil
 		return g.runKeyedTailLocked(k, nil, 0)
 	}
-	if ev == nil || ev.mill == nil || ev.mill.then == nil {
-		return nil
-	}
-	then := ev.mill.then
-	ev.mill.then = nil
-	return then(g, nil)
+	return nil
 }

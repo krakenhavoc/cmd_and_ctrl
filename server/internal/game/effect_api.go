@@ -444,31 +444,21 @@ func (g *Game) BattlefieldCardsForEffect() []Card {
 // FIRE-AND-FORGET form and that is fine for it: a caller that only
 // says "gain 3" has nothing left to do. A caller that needs to know how
 // much actually moved — "you gain life equal to the life lost this
-// way" — must use ChangePlayerLifeThenForEffect or
+// way" — must use ChangePlayerLifeKeyedForEffect or
 // LoseLifeEachKeyedForEffect instead, because reading the life total
 // back on the next line reads it before the prompt is answered (#793).
 func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) error {
-	return g.ChangePlayerLifeThenForEffect(source, playerID, delta, nil)
+	return g.changePlayerLifeWithTailLocked(source, playerID, delta, nil)
 }
 
-// ChangePlayerLifeThenForEffect is a life change with a CONTINUATION:
-// `then` runs with the amount that actually moved, once the CR 614
-// window has settled it. Lock-free.
+// ChangePlayerLifeKeyedForEffect is a life change with a CONTINUATION
+// (#793), as data (#4253 slice 3): `then` is a registered tail
+// (RegisterTail), told the amount that actually moved as
+// TailOutcome.Amount, once the CR 614 window has settled it. A CR 616
+// ordering prompt over the change is then a restore point. #4361 S9
+// deleted the closure form, ChangePlayerLifeThenForEffect.
 //
-// This is the life sibling of the search, scry and confirm prompts'
-// `Then`, and card authors should learn it as one idiom: the engine
-// never hands a catalog effect a half-finished answer, it hands the
-// rest of the effect back to the engine. The shape is
-//
-//	g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
-//	        return g.ChangePlayerLifeForEffect(src, me, -applied)
-//	})
-//
-// for "target opponent loses X life; you gain life equal to the life
-// lost this way", and LoseLifeEachKeyedForEffect for the several-players
-// version of the same sentence.
-//
-// WHAT `then` RECEIVES. The post-replacement delta, signed the way the
+// WHAT `then` IS TOLD. The post-replacement delta, signed the way the
 // event is: -3 for three life lost, +6 for a gain of three under Rhox
 // Faithmender. Zero means nothing moved — the change was replaced away
 // (CR 614.10, "your life total can't change") or the player has left
@@ -477,27 +467,11 @@ func (g *Game) ChangePlayerLifeForEffect(source, playerID uuid.UUID, delta int) 
 // lost nothing.
 //
 // WHEN IT RUNS. Immediately, on the ordinary path, before this function
-// returns. After the affected player answers the CR 616 ordering prompt
-// when two different life replacements apply to one event — the case
-// #793 exists for, and the reason `then` is a continuation rather than
-// a return value. Either way it runs with g.mu held and with the
-// change's own EventChangeLife already emitted, so it may start the
-// next life change or queue the next prompt itself.
-//
-// `then` takes the live *Game rather than capturing one, on the same
-// undo-safety contract every other continuation frame follows.
-func (g *Game) ChangePlayerLifeThenForEffect(source, playerID uuid.UUID, delta int, then func(g *Game, applied int) error) error {
-	var tail *lifeTail
-	if then != nil {
-		tail = &lifeTail{then: then}
-	}
-	return g.changePlayerLifeWithTailLocked(source, playerID, delta, tail)
-}
-
-// ChangePlayerLifeKeyedForEffect is ChangePlayerLifeThenForEffect with
-// the continuation as data (#4253 slice 3): `then` is a registered tail
-// (RegisterTail), told the amount that moved as TailOutcome.Amount. A
-// CR 616 ordering prompt over the change is then a restore point.
+// returns; after the affected player answers the CR 616 ordering prompt
+// when two different life replacements apply to one event. Either way it
+// runs with g.mu held and with the change's own EventChangeLife already
+// emitted, so it may start the next life change or queue the next
+// prompt itself.
 //
 // Caller must hold g.mu.
 func (g *Game) ChangePlayerLifeKeyedForEffect(source, playerID uuid.UUID, delta int, then KeyedTail) error {
@@ -1026,7 +1000,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // commander IS in it: it reaches the graveyard before its owner is
 // offered the command zone (CR 903.9a, ADR 0115). A leg that merely
 // PAUSED on a replacement's prompt cannot be in it, because nothing
-// has moved yet; that is what MillToZoneThenForEffect is for, and a caller that
+// has moved yet; that is what MillToZoneKeyedForEffect is for, and a caller that
 // reads the slice should use it.
 //
 // There is NO `until` clause on this form, and #1161 took the
@@ -1037,7 +1011,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // a "stop after the first creature card" that costs one card; with
 // Helm of Obedience's "or X cards", where the bound itself counts
 // arrivals (#1161), it costs the whole library. So the clause lives
-// on MillToZoneThenForEffect alone, which sequences, and the bad
+// on MillToZoneKeyedForEffect alone, which sequences, and the bad
 // combination is not a rule the mill enforces — it is a function
 // signature that cannot spell it. #1176 kept that property and
 // strengthened it: a run is a loop over repetitions now, so no routing
@@ -1047,7 +1021,7 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // CR 701.17b: a player instructed to mill more cards than their
 // library holds "mill[s] as many as possible", and only an attempt to
 // DRAW from an empty library loses the game (CR 704.5b, CR 121.4).
-// The same holds for "exile the top N cards" and for the Then form's
+// The same holds for "exile the top N cards" and for the keyed form's
 // `until` run that never finds its card — both simply end when the
 // library does, exactly as ExileTopFaceDownForEffect stops on an
 // empty library.
@@ -1072,121 +1046,11 @@ func (g *Game) MillNForEffect(playerID uuid.UUID, n int) error {
 // ordering prompt between two amount replacements, and then this
 // returns an EMPTY slice with the mill still owed — the contract
 // CreateTokensForEffect's empty ID slice already carries, and the
-// reason a caller that reads the list should use the Then form.
+// reason a caller that reads the list should use the keyed form.
 //
 // Caller must hold g.mu.
 func (g *Game) MillToZoneForEffect(playerID uuid.UUID, n int, dest ZoneKind) ([]uuid.UUID, error) {
-	return g.millThroughReplacementsLocked(playerID, n, dest, nil, nil)
-}
-
-// MillToZoneThenForEffect is the CONTINUATION form: mill exactly what
-// MillToZoneForEffect would and hand `then` the cards that reached
-// `dest` — "for each creature card put into your graveyard this way",
-// "for each card of the chosen color exiled this way" (Oona).
-//
-// #893, and the same pair ExileCardsThenForEffect / ExileCardsForEffect
-// are two halves of (ADR 0013 §5k). Any leg can pause on a
-// replacement's prompt, so what was milled is not knowable on the
-// line after the mill. (A milled commander is not such a leg since
-// ADR 0115: it lands in the graveyard and CR 903.9a asks afterwards.)
-// The legs therefore go IN
-// SEQUENCE, each from the previous one's continuation, with the landed
-// list carried forward BY VALUE — the property that makes an undo
-// across the prompt replay identically.
-//
-// What "this way" means is CR 400.7's, landedInZoneLocked's: the
-// object that ARRIVED in `dest`. A milled commander was milled, and
-// a card an "exile it instead" replacement rewrote on the way to a
-// graveyard was not.
-//
-// The cost of waiting, which the fire-and-forget form does not pay:
-// the rest of the mill happens when the prompt is answered rather than
-// immediately. That is deliberate and it is the only version that can
-// report a true list — the same trade DestroyPermanentsKeyedForEffect
-// and the discard batch already make.
-//
-// #569 adds a second thing that can pause, and it pauses EARLIER: the
-// CR 614 window on the amount, before any card is chosen. `then` runs
-// from wherever the mill ends either way — inline, from the CR 903.9
-// resume of one leg, or from the amount window's resume — and it runs
-// with an empty list when the mill was replaced away entirely, because
-// a caller sequencing work behind it has to be told even then.
-//
-// # The `until` clause lives HERE, and only here (#1161)
-//
-// `until`, when non-nil, makes this a RUN rather than an instruction
-// (#1176, millUntilRunLocked): "mills a card, then repeats this
-// process until …" is a loop over one-card mill instructions, each
-// with its own CR 614 window on its own amount, and the clause is
-// asked with everything that has LANDED in `dest` so far after each
-// REPETITION. The run ends on the first list it accepts, and the cards
-// of the repetition that ended it all move.
-//
-// That is what makes a mill-amount replacement double the right thing.
-// Bruvac the Grandiloquent doubles a MILL (CR 701.17b) and each
-// repetition is one, so Helm of Obedience at X=3 with Bruvac out mills
-// 2 + 2 = four cards and overshoots its bound by one, exactly as it
-// does in paper. It does NOT double the bound: "until a creature card
-// or X cards have been put into their graveyard this way" is a clause
-// about arrivals, not a number the instruction names, and #1161's
-// TestBruvacDoublesAMillAmountAndNotHelmsBound still pins that.
-//
-// `n` with `until` caps the number of REPETITIONS; 0 — every card in
-// the catalog — is "no limit but the library". A bound a card prints
-// is a clause (effects.UntilCount), not this.
-//
-// Why the clause is on the sequencing form and nowhere else: it is
-// answered about cards that have ARRIVED, and only this form waits for
-// them. The fire-and-forget loop walks past a leg paused on a prompt,
-// which with a landed-count bound would mill the whole library while
-// the prompts piled up. MillToZoneForEffect therefore takes no `until`
-// at all — the combination is unspellable rather than guarded against.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) MillToZoneThenForEffect(
-	playerID uuid.UUID,
-	n int,
-	dest ZoneKind,
-	until func([]Card) bool,
-	then func(g *Game, milled []uuid.UUID) error,
-) error {
-	if then == nil {
-		// The tail's nil-ness is what picks the form inside, so a caller
-		// that passes nil here would silently get the fire-and-forget
-		// one. Refusing is not an option — a mill of nothing is still a
-		// legal mill — so give it a continuation that does nothing.
-		then = func(*Game, []uuid.UUID) error { return nil }
-	}
-	_, err := g.millThroughReplacementsLocked(playerID, n, dest, until, then)
-	return err
-}
-
-// MillToZoneThenMovedForEffect is MillToZoneThenForEffect for a clause
-// that refers to "those cards" (CR 701.17c, #3846): `then` is handed
-// every card the mill took out of the library, wherever it ended up,
-// rather than only the ones that landed in `dest`. A card Rest in Peace
-// exiled instead of milling is still one of them; the caller reads each
-// card's zone. A card a CR 614 window left in the library, or a mill
-// that was cancelled, is not in the list.
-//
-// No `until`: a run is a sequence of one-card instructions whose
-// clause asks what ARRIVED, which is the other form's question.
-// Existing callers are unchanged -- this is a separate entry point, not
-// a flag on theirs.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) MillToZoneThenMovedForEffect(
-	playerID uuid.UUID,
-	n int,
-	dest ZoneKind,
-	then func(g *Game, moved []uuid.UUID) error,
-) error {
-	if then == nil {
-		then = func(*Game, []uuid.UUID) error { return nil }
-	}
-	_, err := g.millThroughReplacementsTailLocked(playerID, n, dest, nil,
-		&millTail{dest: dest, then: then, allMoved: true})
-	return err
+	return g.millThroughReplacementsTailLocked(playerID, n, dest, &millTail{dest: dest})
 }
 
 // millPlanLocked validates a mill and chooses the cards it MAY move,
@@ -3442,7 +3306,7 @@ type TokenEntryOptions struct {
 // is nothing to return here. A caller whose sentence continues past
 // the tokens must hand that continuation to
 // CreateTokensThenForEffect rather than read this slice on the next
-// line — the same contract MillToZoneThenForEffect and
+// line — the same contract MillToZoneKeyedForEffect and
 // discardCardsLocked carry.
 //
 // Caller must hold g.mu.
