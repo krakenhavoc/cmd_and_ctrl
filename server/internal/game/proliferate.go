@@ -283,7 +283,7 @@ func (g *Game) ResolveProliferate(choiceID, chooserID uuid.UUID, picks []uuid.UU
 // ordering prompt (a Doubling Season beside a Hardened Scales), the
 // rest of the proliferate, and `then`, wait for the answer instead of
 // running while the counter is still owed. That is what lets `then`
-// read what the proliferate really did (ProliferateChoosingThenForEffect).
+// read what the proliferate really did (ProliferateChoosingThenKeyedForEffect).
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) applyProliferateThenLocked(placer uuid.UUID, cardIDs, playerIDs []uuid.UUID, then func(g *Game) error) error {
@@ -362,33 +362,6 @@ func (g *Game) proliferatePlayerKindsLocked(placer uuid.UUID, playerIDs []uuid.U
 type Proliferated struct {
 	Permanents []uuid.UUID
 	Players    []uuid.UUID
-}
-
-// ProliferateChoosingThenForEffect is ProliferateChoosingForEffect for
-// a sentence that goes on about what the proliferate did (#3930):
-// `then` runs once every proliferate of the settled count has been
-// answered and every counter has landed, told what really received
-// one. A cancelled, zero-count or empty-board proliferate tells it
-// nothing.
-//
-// The answer is read off the log rather than collected along the way:
-// every counter the proliferate places names the proliferating player
-// as its placer (CR 701.34a, "give"), and since the placements are
-// sequenced (applyProliferateThenLocked), every one of them is logged
-// by the time `then` runs. Only the event sequence number is captured,
-// so the continuation stays plain data plus the caller's own `then`
-// (the StackItem.Effect contract), and an undone-then-redone answer
-// reads the log it is handed.
-//
-// Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) ProliferateChoosingThenForEffect(player, source uuid.UUID, then func(g *Game, got Proliferated) error) error {
-	since := g.eventSeq
-	return g.ProliferateChoosingForEffect(player, source, func(g *Game) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, g.proliferatedSinceLocked(player, since))
-	})
 }
 
 // proliferatedSinceLocked is the permanents and players `player` put

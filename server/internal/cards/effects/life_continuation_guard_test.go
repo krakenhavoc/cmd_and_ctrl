@@ -28,8 +28,9 @@ import (
 //
 // The right shape is the continuation: ChangePlayerLifeThenForEffect /
 // LoseLifeEachThenForEffect on the life side, and
-// DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect /
-// DealDamageEachThenForEffect on the damage side. The engine runs
+// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect /
+// DealDamageEachKeyedForEffect on the damage side (registered tails,
+// #4253). The engine runs
 // `then` with the amount that ACTUALLY moved, whether that is
 // immediately or after the prompt.
 //
@@ -109,8 +110,8 @@ var damageReadBacks = readBackPattern{
 	primitives: map[string]bool{"DealDamage": true},
 	reads:      map[string]bool{"Life": true, "DamageMarked": true},
 	allowlist:  map[string]string{},
-	advice: "Use DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect (one target) " +
-		"or DealDamageEachThenForEffect (several) and take the amount from the continuation",
+	advice: "Use DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect (one target) " +
+		"or DealDamageEachKeyedForEffect (several) and take the amount from the keyed tail",
 }
 
 func TestNoReadBackWithoutAContinuation(t *testing.T) {
@@ -309,10 +310,8 @@ func fight(ctx *Context, target uuid.UUID, n int) error {
 	const damageAfter = `package effects
 
 func bloodsucker(ctx *Context, opps []uuid.UUID, n int) error {
-	return ctx.Game.DealDamageEachThenForEffect(ctx.Source(), opps, n,
-		func(g *game.Game, dealt int) error {
-			return GainLife{Player: ctx.Controller(), Amount: dealt}.Apply(ctx)
-		})
+	return ctx.Game.DealDamageEachKeyedForEffect(ctx.Source(), opps, n,
+		ctx.Tail(gainLifeEqualToDamageDealt))
 }
 `
 	for _, tc := range []struct {

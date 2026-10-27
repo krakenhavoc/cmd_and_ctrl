@@ -53,7 +53,7 @@ func TestOneInstructionToSeveralRecipientsIsOneInstance(t *testing.T) {
 		deal func(g *Game, src, player, creature uuid.UUID) error
 	}{
 		{"each walk", func(g *Game, src, player, creature uuid.UUID) error {
-			return g.DealDamageEachThenForEffect(src, []uuid.UUID{player, creature}, 2, nil)
+			return g.DealDamageEachKeyedForEffect(src, []uuid.UUID{player, creature}, 2, KeyedTail{})
 		}},
 		{"scope", func(g *Game, src, player, creature uuid.UUID) error {
 			return g.DamageInstanceForEffect(func() error {

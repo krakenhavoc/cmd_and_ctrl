@@ -267,7 +267,7 @@ func undercityThrone(g *game.Game, item *game.StackItem) error {
 		Cards:    revealed,
 		Match:    Creature(),
 		Max:      1,
-		Counters: map[string]int{"+1/+1": 3},
+		Counters: PutCounters{Kind: game.CounterPlusOne, N: 3},
 		Label:    "Undercity — Throne of the Dead Three: put a creature card from among them onto the battlefield",
 		ThenTail: undercityThroneRest,
 		ThenItem: true,

@@ -158,21 +158,17 @@ func TestDamageContinuationRunsWithZeroWhenTheDamageIsPrevented(t *testing.T) {
 func TestDamageToPermanentContinuationRunsWithTheReplacedAmount(t *testing.T) {
 	g := newActiveGame(t)
 	id := uuid.New()
-	var got []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		pushTestCreature(g, id, g.Seats[1], 4, 9)
 		g.RegisterReplacementForTest(doubleDamageTo(id))
-		err := g.DealDamageToCreatureThenForEffect(uuid.Nil, id, 3,
-			func(_ *Game, dealt int) error {
-				got = append(got, dealt)
-				return nil
-			})
+		err := g.DealDamageToCreatureKeyedForEffect(uuid.Nil, id, 3, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageToCreatureThenForEffect: %v", err)
+			t.Fatalf("DealDamageToCreatureKeyedForEffect: %v", err)
 		}
 	})
-	if len(got) != 1 || got[0] != 6 {
-		t.Fatalf("continuation saw %v, want [6]", got)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 6 {
+		t.Fatalf("continuation saw %v, want [6]", heardAmounts())
 	}
 	if c := findBattlefieldCard(g, id); c == nil || c.DamageMarked != 6 {
 		t.Errorf("DamageMarked = %v, want 6", c)
@@ -187,20 +183,16 @@ func TestDamageToPermanentContinuationRunsWithTheReplacedAmount(t *testing.T) {
 func TestDealDamageEachThenSumsTheDealtAmounts(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(doubleDamageTo(b))
-		err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 1,
-			func(_ *Game, dealt int) error {
-				total = append(total, dealt)
-				return nil
-			})
+		err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 1, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
-	if len(total) != 1 || total[0] != 3 {
-		t.Fatalf("total dealt = %v, want [3] — 1 to one opponent and 2 to the doubled one", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 3 {
+		t.Fatalf("total dealt = %v, want [3] — 1 to one opponent and 2 to the doubled one", heardAmounts())
 	}
 	if g.Seats[1].Life != StartingLife-1 || g.Seats[2].Life != StartingLife-2 {
 		t.Errorf("lives = %d/%d, want %d/%d",
@@ -220,22 +212,18 @@ func TestDealDamageEachThenSumsTheDealtAmounts(t *testing.T) {
 func TestDealDamageEachThenWaitsForAPausedLeg(t *testing.T) {
 	g := newActiveGameWithSeats(t, 3)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		// Two different replacements on `a` only: that leg prompts.
 		g.RegisterReplacementForTest(preventOneDamageTo(a))
 		g.RegisterReplacementForTest(doubleDamageTo(a))
-		err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3,
-			func(_ *Game, dealt int) error {
-				total = append(total, dealt)
-				return nil
-			})
+		err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
-	if len(total) != 0 {
-		t.Fatalf("the batch reported %v before its paused leg landed", total)
+	if len(heardAmounts()) != 0 {
+		t.Fatalf("the batch reported %v before its paused leg landed", heardAmounts())
 	}
 	if g.Seats[2].Life != StartingLife {
 		t.Fatalf("the second opponent took damage at %d before the first leg's prompt was answered — "+
@@ -245,8 +233,8 @@ func TestDealDamageEachThenWaitsForAPausedLeg(t *testing.T) {
 	answerOnlyPrompt(t, g)
 
 	// a: 3 → 2 → 4. b: 3, untouched. Total dealt = 7.
-	if len(total) != 1 || total[0] != 7 {
-		t.Fatalf("total dealt = %v, want [7] — 4 to the paused opponent plus 3 to the other", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 7 {
+		t.Fatalf("total dealt = %v, want [7] — 4 to the paused opponent plus 3 to the other", heardAmounts())
 	}
 	if g.Seats[1].Life != StartingLife-4 {
 		t.Errorf("paused opponent life = %d, want %d", g.Seats[1].Life, StartingLife-4)
@@ -262,19 +250,15 @@ func TestDealDamageEachThenWaitsForAPausedLeg(t *testing.T) {
 func TestDealDamageEachThenSkipsTargetsThatAreGone(t *testing.T) {
 	g := newActiveGame(t)
 	gone := uuid.New()
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
-		err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{gone, g.Seats[1].ID, gone}, 2,
-			func(_ *Game, dealt int) error {
-				total = append(total, dealt)
-				return nil
-			})
+		err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{gone, g.Seats[1].ID, gone}, 2, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
-	if len(total) != 1 || total[0] != 2 {
-		t.Fatalf("total dealt = %v, want [2]", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 2 {
+		t.Fatalf("total dealt = %v, want [2]", heardAmounts())
 	}
 }
 
@@ -285,20 +269,16 @@ func TestDealDamageEachThenSkipsTargetsThatAreGone(t *testing.T) {
 func TestDealDamageEachThenMixesPlayersAndPermanents(t *testing.T) {
 	g := newActiveGame(t)
 	creature := uuid.New()
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		pushTestCreature(g, creature, g.Seats[1], 2, 9)
-		err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{g.Seats[1].ID, creature}, 2,
-			func(_ *Game, dealt int) error {
-				total = append(total, dealt)
-				return nil
-			})
+		err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{g.Seats[1].ID, creature}, 2, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
-	if len(total) != 1 || total[0] != 4 {
-		t.Fatalf("total dealt = %v, want [4]", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 4 {
+		t.Fatalf("total dealt = %v, want [4]", heardAmounts())
 	}
 	if g.Seats[1].Life != StartingLife-2 {
 		t.Errorf("player life = %d, want %d", g.Seats[1].Life, StartingLife-2)

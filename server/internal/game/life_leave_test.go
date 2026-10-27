@@ -257,12 +257,12 @@ func optionalLifeReplacementControlledBy(controller uuid.UUID) ReplacementEffect
 func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(a))
 		g.RegisterReplacementForTest(doubleDamageTo(a))
-		if err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+		if err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, probeTail()); err != nil {
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 {
@@ -271,8 +271,8 @@ func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 	if err := g.Concede(a); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if len(total) != 1 || total[0] != 2 {
-		t.Fatalf("batch total = %v, want [2]", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 2 {
+		t.Fatalf("batch total = %v, want [2]", heardAmounts())
 	}
 	if g.Seats[2].Life != StartingLife-2 {
 		t.Errorf("B life = %d, want %d", g.Seats[2].Life, StartingLife-2)
@@ -284,12 +284,12 @@ func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 func TestDealDamageEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(a))
 		g.RegisterReplacementForTest(doubleDamageTo(a))
-		if err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+		if err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, probeTail()); err != nil {
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(b); err != nil {
@@ -297,8 +297,8 @@ func TestDealDamageEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T
 	}
 	answerOnlyPrompt(t, g)
 	// Gather order: prevent 1 (2), then double (4).
-	if len(total) != 1 || total[0] != 4 {
-		t.Fatalf("batch total = %v, want [4] — A only", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 4 {
+		t.Fatalf("batch total = %v, want [4] — A only", heardAmounts())
 	}
 	if g.Seats[2].Life != StartingLife {
 		t.Errorf("eliminated B life = %d, want %d", g.Seats[2].Life, StartingLife)

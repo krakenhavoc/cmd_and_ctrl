@@ -66,7 +66,9 @@ var mobVerdictVoted = VoteResultThen("vote/mob-verdict", func(ctx *Context, r ga
 
 // mobVerdictStrike deals one vote's damage, 2 to the first player in
 // hits and to each creature they control, and the rest once it has
-// settled; then the caster draws `draws` cards. Captures only values.
+// settled; then the caster draws `draws` cards. The rest of the strikes
+// is a keyed tail (mobVerdictNext, #4253), so a CR 616 prompt over one
+// vote's damage is a restore point.
 func mobVerdictStrike(g *game.Game, source, caster uuid.UUID, hits []uuid.UUID, draws int) error {
 	if len(hits) == 0 {
 		if draws > 0 && voterStillIn(g, caster) {
@@ -84,7 +86,19 @@ func mobVerdictStrike(g *game.Game, source, caster uuid.UUID, hits []uuid.UUID, 
 			targets = append(targets, c.InstanceID)
 		}
 	}
-	return g.DealDamageEachThenForEffect(source, targets, 2, func(g *game.Game, _ int) error {
-		return mobVerdictStrike(g, source, caster, rest, draws)
+	return g.DealDamageEachKeyedForEffect(source, targets, 2, game.KeyedTail{
+		Ref: mobVerdictNext, Player: caster, Source: source, Carry: append([]uuid.UUID(nil), rest...), N: draws,
+	})
+}
+
+// mobVerdictNext is the strikes still owed once one has settled: the
+// players still to be hit are the tail's Carry, the caster its Player and
+// the cards to draw its N. An on-disk key. Registered from init: the
+// strike it runs names it again.
+var mobVerdictNext game.TailRef
+
+func init() {
+	mobVerdictNext = game.RegisterTail("then/mob-verdict-next-strike", func(g *game.Game, o game.TailOutcome) error {
+		return mobVerdictStrike(g, o.Tail.Source, o.Tail.Player, o.Tail.Carry, o.Tail.N)
 	})
 }

@@ -104,7 +104,7 @@ var chandraTorchTwoToEachOpponent = game.RegisterCastFollowUp("chandra-torch-of-
 		if len(opponents) == 0 {
 			return nil
 		}
-		return g.DealDamageEachThenForEffect(f.Source, opponents, 2, nil)
+		return g.DealDamageEachKeyedForEffect(f.Source, opponents, 2, game.KeyedTail{})
 	})
 
 // chandraTorchEmblemDamage is the emblem trigger's resolution: 5 damage

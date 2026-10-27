@@ -478,6 +478,7 @@ func TestCounterReplacementsSeeTheDamageResult(t *testing.T) {
 	me, opp := g.Seats[0], g.Seats[1]
 	src, victim := uuid.New(), uuid.New()
 	var dealt = -1
+	resetProbes()
 	g.WithWriteLock(func() {
 		pushPrintedKeywordCreature(g, src, me.ID, me.ID, 2, 2, KeywordInfect, "lifelink")
 		pushPrintedKeywordCreature(g, victim, opp.ID, opp.ID, 2, 2)
@@ -497,13 +498,13 @@ func TestCounterReplacementsSeeTheDamageResult(t *testing.T) {
 			Label:      "one fewer",
 		})
 		g.RegisterReplacementForTest(addCardCounters(victim, "one more"))
-		if err := g.DealDamageToCreatureThenForEffect(src, victim, 2, func(_ *Game, n int) error {
-			dealt = n
-			return nil
-		}); err != nil {
-			t.Fatalf("DealDamageToCreatureThenForEffect: %v", err)
+		if err := g.DealDamageToCreatureKeyedForEffect(src, victim, 2, probeTail()); err != nil {
+			t.Fatalf("DealDamageToCreatureKeyedForEffect: %v", err)
 		}
 	})
+	if a := heardAmounts(); len(a) == 1 {
+		dealt = a[0]
+	}
 	if dealt != 2 {
 		t.Errorf("continuation told %d, want 2: the damage dealt, not the counters", dealt)
 	}

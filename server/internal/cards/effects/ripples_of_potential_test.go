@@ -153,6 +153,21 @@ func TestRipplesOfPotentialUnderTekuthalOffersBothPasses(t *testing.T) {
 
 // TestProliferateReportsPermanentsAndPlayers: the engine's report names
 // players as well as permanents.
+//
+// testProliferatedTail records what the keyed form told it (#4253: the
+// permanents are the first Amount IDs, the players the rest).
+var (
+	testProliferatedHeard []game.Proliferated
+	testProliferatedTail  = game.RegisterTail("test/4253-proliferated", func(_ *game.Game, o game.TailOutcome) error {
+		n := min(max(o.Amount, 0), len(o.IDs))
+		testProliferatedHeard = append(testProliferatedHeard, game.Proliferated{
+			Permanents: append([]uuid.UUID(nil), o.IDs[:n]...),
+			Players:    append([]uuid.UUID(nil), o.IDs[n:]...),
+		})
+		return nil
+	})
+)
+
 func TestProliferateReportsPermanentsAndPlayers(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
@@ -163,16 +178,17 @@ func TestProliferateReportsPermanentsAndPlayers(t *testing.T) {
 			t.Fatalf("poison: %v", err)
 		}
 	})
-	var got game.Proliferated
+	testProliferatedHeard = nil
 	g.WithWriteLock(func() {
-		if err := g.ProliferateChoosingThenForEffect(me.ID, uuid.Nil, func(_ *game.Game, p game.Proliferated) error {
-			got = p
-			return nil
-		}); err != nil {
+		if err := g.ProliferateChoosingThenKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{Ref: testProliferatedTail}); err != nil {
 			t.Fatalf("proliferate: %v", err)
 		}
 	})
 	answerProliferate(t, g, bear, opp.ID)
+	if len(testProliferatedHeard) != 1 {
+		t.Fatalf("the keyed tail ran %d times, want once", len(testProliferatedHeard))
+	}
+	got := testProliferatedHeard[0]
 	if !slices.Equal(got.Permanents, []uuid.UUID{bear}) || !slices.Equal(got.Players, []uuid.UUID{opp.ID}) {
 		t.Fatalf("report = %+v, want the bear and the poisoned opponent", got)
 	}

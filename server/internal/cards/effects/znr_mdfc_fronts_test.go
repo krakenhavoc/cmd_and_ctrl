@@ -1022,22 +1022,23 @@ func TestZNR_TurntimberSymbiosisMayPutNothing(t *testing.T) {
 	}
 }
 
-// CountersFor belongs to a clause that puts one card: anything that could
-// put more would hand every card the first one's counters.
+// Counters gated on the picked card belong to a clause that puts one card:
+// anything that could put more would hand every card the first one's
+// counters.
 func TestZNR_PutFromLibraryRefusesPerCardCountersOnAClauseThatPutsMany(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
-	counters := func(*game.Game, game.Card) map[string]int { return map[string]int{game.CounterPlusOne: 1} }
+	counters := PutCounters{Kind: game.CounterPlusOne, N: 1, IfManaValueAtMost: true, ManaValueAtMost: 3}
 	ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 	for name, p := range map[string]PutFromLibraryOntoBattlefield{
-		"any number": {Player: me.ID, Max: 0, Optional: true, CountersFor: counters},
-		"all":        {Player: me.ID, Max: 1, All: true, CountersFor: counters},
-		"up to two":  {Player: me.ID, Max: 2, Optional: true, CountersFor: counters},
+		"any number": {Player: me.ID, Max: 0, Optional: true, Counters: counters},
+		"all":        {Player: me.ID, Max: 1, All: true, Counters: counters},
+		"up to two":  {Player: me.ID, Max: 2, Optional: true, Counters: counters},
 	} {
 		var err error
 		g.WithWriteLock(func() { err = p.Apply(ctx) })
 		if err == nil {
-			t.Errorf("%s: CountersFor was accepted on a clause that can put more than one card", name)
+			t.Errorf("%s: gated counters were accepted on a clause that can put more than one card", name)
 		}
 	}
 }

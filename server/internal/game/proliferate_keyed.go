@@ -173,3 +173,37 @@ func (g *Game) proliferateStepLocked(run KeyedTail) error {
 	}
 	return rest.Run(g, nil)
 }
+
+// ProliferateChoosingThenKeyedForEffect is ProliferateChoosingKeyedForEffect
+// for a sentence that goes on about what the proliferate did (#3930,
+// #4253): `then`, a registered tail, runs once every proliferate of the
+// settled count has been answered and every counter has landed, told what
+// really received one (Proliferated) as TailOutcome.IDs, the permanents
+// first and then the players, with TailOutcome.Amount the number of
+// permanents. A cancelled, zero-count or empty-board proliferate tells it
+// nothing. A zero tail is "nothing more".
+//
+// The answer is read off the log, as the closure form it replaced read it:
+// only the event sequence number the proliferate starts after rides the
+// walk (proliferatedSinceTail's N), so a table waiting on the choice, or on
+// a CR 616 prompt over one of its counters, is a restore point.
+//
+// Caller must hold g.mu (it is an effect-time helper).
+func (g *Game) ProliferateChoosingThenKeyedForEffect(player, source uuid.UUID, then KeyedTail) error {
+	if then.IsZero() {
+		return g.ProliferateChoosingKeyedForEffect(player, source, KeyedTail{})
+	}
+	next := copyKeyedTail(then)
+	read := KeyedTail{Ref: proliferatedSinceTail, Player: player, N: int(g.eventSeq), Next: &next}
+	return g.ProliferateChoosingKeyedForEffect(player, source, read)
+}
+
+// proliferatedSinceTail reads what the proliferate gave counters to
+// (proliferatedSinceLocked, from the event the tail's N names, by its
+// Player) and runs its Next told it. An on-disk key: never renamed, never
+// reused.
+var proliferatedSinceTail = RegisterTail("engine/proliferated-since", func(g *Game, o TailOutcome) error {
+	got := g.proliferatedSinceLocked(o.Tail.Player, uint64(max(o.Tail.N, 0)))
+	ids := append(copyUUIDs(got.Permanents), got.Players...)
+	return g.runKeyedTailLocked(nextTailValue(o.Tail.Next), ids, len(got.Permanents))
+})

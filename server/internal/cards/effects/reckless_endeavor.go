@@ -67,5 +67,12 @@ func recklessEndeavorApply(g *game.Game, source, controller uuid.UUID, damage, t
 			targets = append(targets, c.InstanceID)
 		}
 	}
-	return g.DealDamageEachThenForEffect(source, targets, damage, func(g *game.Game, _ int) error { return treasureTokens(g, controller, treasures) })
+	return g.DealDamageEachKeyedForEffect(source, targets, damage, game.KeyedTail{Ref: recklessEndeavorTreasures, Player: controller, Source: source, N: treasures})
 }
+
+// recklessEndeavorTreasures is "then create a number of Treasure tokens
+// equal to the other result" once the damage has settled: the result is
+// the tail's N (#4253). An on-disk key.
+var recklessEndeavorTreasures = game.RegisterTail("then/reckless-endeavor-treasures", func(g *game.Game, o game.TailOutcome) error {
+	return treasureTokens(g, o.Tail.Player, o.Tail.N)
+})

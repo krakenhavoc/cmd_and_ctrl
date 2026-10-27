@@ -55,11 +55,15 @@ func ojerKaslemReveal(g *game.Game, item *game.StackItem) error {
 		Match:    Or(Creature(), Land()),
 		Max:      2,
 		Optional: true,
-		Validate: ojerKaslemCreatureAndOrLand,
+		Rule:     ojerKaslemPick,
 		Label:    "Ojer Kaslem — you may put a creature card and/or a land card onto the battlefield",
 		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(ctx)
 }
+
+// ojerKaslemPick is the pick's set rule, registered (#4253): an on-disk
+// key.
+var ojerKaslemPick = RegisterPutRule("choose-cards/put-from-library-ojer-kaslem-creature-and-or-land", ojerKaslemCreatureAndOrLand)
 
 // ojerKaslemCreatureAndOrLand is "a creature card and/or a land card":
 // one card of either kind, or two cards that are a creature and a land

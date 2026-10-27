@@ -51,6 +51,17 @@ func resetProbes() {
 // probeTail is a keyed tail on testProbeTail.
 func probeTail() KeyedTail { return KeyedTail{Ref: testProbeTail} }
 
+// heardAmounts is the Amount of every run of testProbeTail, in order: a
+// damage continuation's "damage dealt" (#4253 moved the damage doors'
+// tests onto the keyed forms).
+func heardAmounts() []int {
+	var out []int
+	for _, h := range testProbeHeard {
+		out = append(out, h.Amount)
+	}
+	return out
+}
+
 // probeExiled reports what testProbeTail heard as an exile's "exiled"
 // answers: one bool per run, true when the run was told a card.
 func probeExiled() []bool {

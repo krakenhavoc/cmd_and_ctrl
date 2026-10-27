@@ -32,7 +32,7 @@ package game
 //   - each damage INSTRUCTION takes the next ID from Game.damageInstanceSeq
 //     and stamps it on every damage event it opens
 //     (ReplacementEvent.DamageInstance). An instruction is one
-//     DealDamage…ForEffect call, the whole of a DealDamageEachThenForEffect
+//     DealDamage…ForEffect call, the whole of a DealDamageEachKeyedForEffect
 //     walk, or — for a printed instruction the catalog writes as a loop
 //     ("deals 2 damage to each creature", a fight, "4 damage to the first
 //     target and 3 to each other") — everything inside one

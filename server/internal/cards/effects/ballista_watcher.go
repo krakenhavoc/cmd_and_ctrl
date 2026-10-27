@@ -63,14 +63,19 @@ func ballistaWielderPing(g *game.Game, item *game.StackItem) error {
 	if t.Kind != game.TargetCard {
 		return DealDamage{Source: source, Target: t.ID, Amount: 1}.Apply(ctx)
 	}
-	id := t.ID
-	return g.DealDamageToCreatureThenForEffect(source, id, 1, func(g *game.Game, dealt int) error {
-		if dealt <= 0 {
-			return nil
-		}
-		return ballistaWielderCantBlock(g, controller, source, id)
-	})
+	// The rider is a keyed tail (#4253), told the creature and the damage
+	// dealt, so a prompt the damage pauses on is a restore point.
+	return g.DealDamageToCreatureKeyedForEffect(source, t.ID, 1, game.KeyedTail{Ref: ballistaWielderDealt, Player: controller, Source: source})
 }
+
+// ballistaWielderDealt is "a creature dealt damage this way can't block
+// this turn", told the creature and the damage dealt. An on-disk key.
+var ballistaWielderDealt = game.RegisterTail("then/ballista-wielder-cant-block", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 || len(o.IDs) == 0 {
+		return nil
+	}
+	return ballistaWielderCantBlock(g, o.Tail.Player, o.Tail.Source, o.IDs[0])
+})
 
 func ballistaWielderCantBlock(g *game.Game, controller, source, creature uuid.UUID) error {
 	c, ok := g.LookupCardForEffect(creature)

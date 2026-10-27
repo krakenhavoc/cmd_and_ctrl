@@ -233,8 +233,9 @@ func b14HandSize(g *game.Game, player uuid.UUID) int {
 // shield that ate some of it shrinks the gain and a damage doubler
 // grows it, as printed.
 //
-// #807: the total comes from DealDamageEachThenForEffect's
-// continuation, which reports what really landed. This used to read
+// #807: the total comes from DealDamageEachKeyedForEffect's
+// continuation, which reports what really landed (a keyed tail, #4253, so
+// a CR 616 prompt over one opponent's damage is a restore point). This used to read
 // each opponent's life total back on the line after damaging them, and
 // a damage event runs the CR 614 window — so two DIFFERENT damage
 // replacements on one opponent pause it on a CR 616 ordering prompt,
@@ -246,14 +247,20 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 		return nil
 	}
 	ctx := NewContext(g, item)
-	controller, source := item.Controller, ctx.Source()
-	return g.DealDamageEachThenForEffect(source, ctx.Opponents(), n, func(g *game.Game, totalDealt int) error {
-		if totalDealt <= 0 {
-			return nil
-		}
-		return g.ChangePlayerLifeForEffect(source, controller, totalDealt)
-	})
+	return g.DealDamageEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, ctx.Tail(gainLifeEqualToDamageDealt))
 }
+
+// gainLifeEqualToDamageDealt is "you gain life equal to the damage dealt
+// this way", told the damage dealt as its Amount: the tail's Player gains
+// it, from its Source. Shared by every "deals N damage …, you gain life
+// equal to the damage dealt this way" (Creeping Bloodsucker, Rite of
+// Consumption). An on-disk key.
+var gainLifeEqualToDamageDealt = game.RegisterTail("then/gain-life-equal-to-damage-dealt", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, o.Amount)
+})
 
 // b14EachOpponentMillsUntilLand is Consuming Aberration's rider:
 // every opponent reveals cards from the top of their library until

@@ -177,6 +177,10 @@ func keyedFrameSample() *ReplacementEvent {
 			controller: id("dtctl"), marks: DamageMarks{CantBePrevented: true, CantBeRedirected: true},
 			sourceUnpreventable: true, sourceChecked: true, endsInstance: true,
 			keyed: KeyedTail{Ref: TailRef{key: "dk"}, Carry: []uuid.UUID{id("dkc")}},
+			each: &damageEachRun{
+				Source: id("des"), Rest: []uuid.UUID{id("der")}, Amount: 3, Dealt: 2, Instance: 5, Owned: true,
+				Then: &keyedTailSnapshot{Key: "det", Carry: []uuid.UUID{id("detc")}, N: 4},
+			},
 		},
 	}
 }
