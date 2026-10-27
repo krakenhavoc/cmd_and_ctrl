@@ -89,28 +89,26 @@ func validatedChooseCardsRun(t *testing.T, pickCandidates func([]game.Card) []uu
 			t.Fatalf("draw: %v", err)
 		}
 		cands = pickCandidates(seat.Hand.Cards)
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  seat.ID,
 			Question: "Discard two cards unless you discard a creature card",
 			Cards:    cands,
 			Min:      1,
 			Max:      2,
 			Zone:     game.ZoneHand,
-			Validate: func(picked []game.Card) bool {
-				return len(picked) == 2 || (len(picked) == 1 && picked[0].IsCreature())
-			},
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				answers++
-				taken = picked
-				p := g.PlayerByIDForEffect(seat.ID)
-				for _, id := range picked {
-					if _, err := game.MoveCard(p.Hand, p.Graveyard, id); err != nil {
-						return err
-					}
+		}, func(g *game.Game, picked []uuid.UUID) error {
+			answers++
+			taken = picked
+			p := g.PlayerByIDForEffect(seat.ID)
+			for _, id := range picked {
+				if _, err := game.MoveCard(p.Hand, p.Graveyard, id); err != nil {
+					return err
 				}
-				return nil
-			},
-		})
+			}
+			return nil
+		}, func(picked []game.Card) bool {
+			return len(picked) == 2 || (len(picked) == 1 && picked[0].IsCreature())
+		}))
 	})
 	// 12 is legal's default MaxExpansionPerSource.
 	if len(cands) < 12 {

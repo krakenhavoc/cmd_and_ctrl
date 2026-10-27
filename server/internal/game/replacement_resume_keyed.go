@@ -74,9 +74,9 @@ import (
 // and the entry questions that pause through the same frame: copy_target,
 // entry_controller, the four entry card choices (reveal, discard,
 // sacrifice, choose permanents), aura_host, entry_read_ahead and
-// entry_pay_life (#4253 slice 2). An entry card choice also holds a
-// chooseCardsFrame, which for these kinds is the zone its prompt kind
-// names and nothing else: restore rebuilds it from the kind.
+// entry_pay_life (#4253 slice 2). An entry card choice's live zone is the
+// one its prompt kind names (liveZone), so it needs nothing more (#4361
+// S7b: the zone-only chooseCardsFrame it held is gone).
 
 // The registered tails, one per keyed event kind. On-disk identities:
 // never renamed, never reused. Ledgered as "resume <key>".
@@ -298,16 +298,6 @@ func entryCardChoiceZone(k PendingChoiceKind) ZoneKind {
 		return ZoneBattlefield
 	}
 	return ZoneHand
-}
-
-// entryCardChoiceFrameIsData reports whether an entry card choice's
-// chooseCardsFrame is the one queueEntryCardChoicePromptLocked builds:
-// the zone its kind names and nothing else, so restore can rebuild it
-// from the kind. Anything more keeps the frame off the disk.
-func entryCardChoiceFrameIsData(c *PendingChoice) bool {
-	f := c.chooseCardsResume
-	return f != nil && f.then == nil && f.validate == nil && f.earlierPermanentChoices == nil &&
-		f.permanentEpochs == nil && f.zone == entryCardChoiceZone(c.Kind)
 }
 
 // registeredReplacementResumeKeys lists the ledger lines for the tails
@@ -555,9 +545,6 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	}
 	f := c.replacementResume
 	if f == nil || f.ev == nil || (len(f.applicable) == 0 && keyedPromptNeedsApplicable(c.Kind)) {
-		return ""
-	}
-	if isEntryCardChoiceKind(c.Kind) && !entryCardChoiceFrameIsData(c) {
 		return ""
 	}
 	ev := f.ev

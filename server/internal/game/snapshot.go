@@ -3310,12 +3310,10 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// would let the server write a restore point that silently
 		// drops the rest of the card. See chained_choice.go.
 		"confirmResume": c.confirmResume != nil,
-		// #4253 slice 2: a keyed entry card choice's zone frame is
-		// rebuilt from its prompt kind (entryCardChoiceFrameIsData).
-		"chooseCardsResume": c.chooseCardsResume != nil && !(keyedFrame && isEntryCardChoiceKind(c.Kind)) &&
-			// #4290: a keyed permanent-pick run's leg frame is rebuilt
-			// from the prompt (permanentPickLegIsData).
-			!permanentPickLegIsData(c),
+		// #4361 S7b: the card-set pick's closure frame is gone. Every
+		// choose_cards pick is keyed, a run's reveal or permanent pick
+		// settles from its own fields, and an entry card choice's zone is
+		// its kind's.
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		// #4361: the colour, creature-type and number prompts' and the coin
@@ -3713,11 +3711,6 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		g.PendingChoices[i].PickThen = ""
 		g.PendingChoices[i].replacementResume = g.rebuildReplacementResumeLocked(rs)
-		if kind := s.PendingChoices[i].Kind; isEntryCardChoiceKind(kind) {
-			// The live-zone re-check's frame, which for these kinds is
-			// the zone and nothing else.
-			g.PendingChoices[i].chooseCardsResume = &chooseCardsFrame{zone: entryCardChoiceZone(kind)}
-		}
 	}
 	return g
 }
@@ -4304,9 +4297,6 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
 	}
-	// #4290: except a keyed permanent-pick leg's, which is a function
-	// of the prompt's own fields.
-	restorePermanentPickLeg(out)
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)

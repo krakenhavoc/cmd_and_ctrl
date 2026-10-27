@@ -1706,3 +1706,5 @@ option option-pick/choose-player-as-enters
 option option-pick/choose-second-player-as-enters
 option option-pick/opponent-target-chooser
 option option-pick/resolution-exit
+choose choose-cards/nothing
+choose choose-cards/yunas-decision-put

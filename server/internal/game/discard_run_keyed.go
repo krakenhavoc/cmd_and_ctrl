@@ -28,10 +28,9 @@ import (
 // the card put there (Carry). The key shares the effect-key namespace
 // and is ledgered as a choose-cards continuation ("choose <key>").
 //
-// What it gives up is the closure form's per-prompt extra, the leg's own
-// Then, a closure. The set rule (DiscardPrompt.Validate, "exactly two or
-// none") is registered with the continuation instead
-// (RegisterDiscardThenRule, #4264). A pick that has left the hand by the
+// The set rule ("exactly two or none") is registered with the
+// continuation (RegisterDiscardThenRule, #4264); the closure form's
+// per-prompt Then and Validate are gone (#4361 S7b). A pick that has left the hand by the
 // time the answer comes in is skipped by the discard itself, as every
 // discard skips a card no longer in hand.
 // A discard the CR 903.9 commander prompt pauses part-way is still a
@@ -127,9 +126,6 @@ func (g *Game) PlayerDiscardsThenKeyedForEffect(p DiscardPrompt, then DiscardThe
 	if then.then.key == "" || then.fn == nil {
 		return fmt.Errorf("%w: keyed discard-then with no continuation", ErrInvalidParam)
 	}
-	if p.Then != nil || p.Validate != nil {
-		return fmt.Errorf("%w: keyed discard-then %q also sets a closure", ErrInvalidParam, then.then.key)
-	}
 	p.keyed = then.then
 	p.carry = copyUUIDs(carry)
 	if g.queueDiscardPromptLocked(p, uuid.Nil) != uuid.Nil {
@@ -154,10 +150,17 @@ var discardLegThen = RegisterChooseCardsThen("choose-cards/discard-leg", func(g 
 	if !r.Answered {
 		return g.settleRunLegLocked(r.Run, r.Chooser, nil)
 	}
+	keyed := discardLegSettledTail(r.Run, r.Chooser, r.Source)
+	if r.Run == uuid.Nil {
+		// #4361 S7b: a leg no run waits on (the fire-and-forget prompt)
+		// has no per-seat tail to run, which N 1 says, as the closure
+		// leg it replaces wrote it (snapshot fixtures carry that form).
+		keyed = withTailN(keyed, 1)
+	}
 	return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
 		cause:  DiscardCauseEffect,
 		source: r.Source,
-		keyed:  discardLegSettledTail(r.Run, r.Chooser, r.Source),
+		keyed:  keyed,
 	})
 })
 
@@ -196,10 +199,9 @@ func (g *Game) discardRunKeyedLocked(asks []uuid.UUID, p DiscardPrompt, then Pro
 	if then.key == "" {
 		return fmt.Errorf("%w: keyed discard run with no continuation", ErrInvalidParam)
 	}
-	if p.Then != nil || p.Validate != nil || p.keyed.key != "" {
-		return fmt.Errorf("%w: keyed discard run %q also sets a closure", ErrInvalidParam, then.key)
+	if p.keyed.key != "" {
+		return fmt.Errorf("%w: keyed discard run %q also sets a discard-then", ErrInvalidParam, then.key)
 	}
-	p.keyedLeg = true
 	p.runThen = then.key
 	p.carry = copyUUIDs(carry)
 	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, RunData{Carry: carry}, func(seat, run uuid.UUID) bool {

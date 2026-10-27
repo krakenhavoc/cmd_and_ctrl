@@ -159,14 +159,11 @@ func (g *Game) discardRunLocked(
 	asks []uuid.UUID,
 	p DiscardPrompt,
 ) (int, error) {
-	if p.Then == nil && p.Validate == nil && p.keyed.key == "" {
-		// #4290: nothing waits on the run and nothing rides the leg, so
-		// each leg is a keyed prompt and holds no closure — Tasigur's
-		// Cruelty, the voting helper's "each opponent discards", and
-		// Momentum Breaker's discard for the seats that could not
-		// sacrifice are restore points while they wait.
-		p.keyedLeg = true
-	}
+	// #4290: nothing waits on the run, so each leg is a keyed prompt and
+	// holds no closure — Tasigur's Cruelty, the voting helper's "each
+	// opponent discards", and Momentum Breaker's discard for the seats
+	// that could not sacrifice are restore points while they wait. Since
+	// #4361 S7b no leg can carry a closure (queueDiscardPromptLocked).
 	return g.runPromptsLocked(asks, func(seat, run uuid.UUID) bool {
 		// CR 701.9a's "as many as you can": a seat with an empty hand
 		// is asked nothing and gets no leg, and a seat that has left

@@ -129,14 +129,16 @@ type OutsidePickPrompt struct {
 	// Min / Max bound the pick, clamped to the candidates. Zero Max
 	// means one.
 	Min, Max int
-	// Validate is a legality check on the picked SET, with
-	// ChooseCardsPrompt.Validate's shape and rules (never called for an
-	// empty pick, never handed a *Game). "Exactly two cards with
+	// Validate is a legality check on the picked SET (never called for
+	// an empty pick, never handed a *Game). "Exactly two cards with
 	// different names" is Min 0, Max 2 and a Validate that wants two.
-	Validate func(picked []Card) bool
 	// Then receives the picks, in the order the chooser submitted them,
-	// and runs with g.mu held. It may queue further choices.
-	Then func(g *Game, picked []uuid.UUID) error
+	// and runs with g.mu held. It may queue further choices. Both are
+	// read only by the card-database pick of a seat with no sideboard
+	// (queueCollectionPickLocked): a pick over a sideboard is keyed
+	// (#4361 S7b).
+	Validate func(picked []Card) bool
+	Then     func(g *Game, picked []uuid.UUID) error
 	// Keyed is the pick as a registered filter and continuation
 	// (RegisterOutsidePick, outside_pick_keyed.go, #4256): a prompt
 	// queued with one holds no closure, so a table waiting on it is a
@@ -229,6 +231,18 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 		})
 		return true
 	}
+	if p.Then != nil || p.Validate != nil {
+		// #4361 S7b: a pick over a sideboard with something hanging off
+		// it is keyed (RegisterOutsidePick), so a table waiting on it is a
+		// restore point; the closure pick is gone. (The Wish right's pick
+		// of a seat with no sideboard, from the card database, is above.)
+		g.EmitEvent(Event{Kind: EventEffectError, Actor: p.Player, Source: p.Source,
+			ErrorMsg: "outside pick: a pick over a sideboard with a continuation needs it registered (RegisterOutsidePick)"})
+		return false
+	}
+	// #4361 S7b: nothing hangs off the pick, so its continuation is the
+	// engine's own that does nothing, and the pick is re-checked against
+	// the sideboard as the closure pick was.
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:     p.Player,
 		FromPlayer:  p.Player,
@@ -237,10 +251,9 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 		Cards:       cands,
 		Min:         p.Min,
 		Max:         max,
-		Zone:        ZoneOutside,
-		Validate:    p.Validate,
-		Then:        p.Then,
 		Destination: p.outsideDestination(),
+		ThenKey:     chooseCardsNothing,
+		LiveZone:    ZoneOutside,
 	})
 	return true
 }

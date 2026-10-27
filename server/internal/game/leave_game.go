@@ -519,8 +519,8 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// Since #1225 the action IS a statement about the kind, and the
 	// row is the plain one it looks like. A choose_cards that is no
 	// run's leg still has no run to settle, but it does have the other
-	// thing a paused resolution leaves behind — a chooseCardsFrame
-	// holding the rest of the card — and the drop runs it with nothing
+	// thing a paused resolution leaves behind — its keyed continuation,
+	// the rest of the card (#4361 S7b) — and the drop runs it with nothing
 	// picked, which is what the empty-candidate path at QUEUE time has
 	// always done for the same closure. defaultDroppedChoiceLocked
 	// still branches on the PROMPT rather than on the kind (#1027's

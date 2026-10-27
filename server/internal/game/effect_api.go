@@ -167,59 +167,30 @@ type DiscardPrompt struct {
 	// COUNT is not the whole rule: "discard two cards UNLESS you
 	// discard a creature card" (Teferi Akosa of Zhalfir) accepts a
 	// single card when that card is a creature, so its floor is one
-	// and Validate refuses the one-card sets that are not.
+	// and the set rule registered with the keyed discard-then
+	// (RegisterDiscardThenRule) refuses the one-card sets that are not.
 	//
 	// Zero — the usual case — leaves the floor at N, or at zero with
 	// UpTo. A Min above N is clamped to N, because the hand may be
 	// smaller than the printed count (CR 701.9a). Min and UpTo do
 	// not compose; Min wins, and no printed clause wants both.
 	//
-	// It exists only alongside Validate. A floor below N with
-	// nothing judging the SET would simply be a weaker discard, and
+	// It exists only alongside a registered set rule. A floor below N
+	// with nothing judging the SET would simply be a weaker discard, and
 	// that is what UpTo is for.
 	Min int
 	// Question is the prompt's header. Empty composes one from the
 	// source card's name, so an ordinary "discard a card" caller
 	// stays a one-liner.
 	Question string
-	// Validate is the set-level legality hook, the same one
-	// ChooseCardsPrompt documents: "discard two cards unless you
-	// discard a creature card" is a rule about the SET that no count
-	// can express. It runs before the prompt is dequeued AND inside
-	// the bot enumerator, so an answer `legal` offers is an answer
-	// the resolver accepts (#544, #624).
-	Validate func(picked []Card) bool
-	// Then is everything the card prints after "then" — the rest of
-	// the effect, which must not run until the cards are actually in
-	// the graveyard. A rummage ("discard a card, then draw a card")
-	// is the case that forces it; a loot ("draw a card, then discard
-	// a card") draws before it asks and leaves this nil.
-	//
-	// It also runs, immediately and in the resolving effect's own
-	// frame, when the discard asks for nothing because the hand is
-	// empty: CR 701.9a discards as many as you can, and the
-	// instruction after "then" is not conditional on there having
-	// been cards to pitch. Same contract Scry's Then has for an
-	// empty library.
-	//
-	// IT IS THIS PROMPT'S OWN "then", one leg of the instruction —
-	// Vicious Rumors' "…discards a card, THEN mills a card" per
-	// opponent. The rest of the printed INSTRUCTION, the clause that
-	// runs once after every seat has answered and is told what was
-	// really discarded, is the RUN's continuation instead
-	// (PlayerDiscardsThenKeyedForEffect and its two siblings, #1027).
-	// Reaching for this one to write a fan-out's payoff gives a card
-	// that pays out per answer, which is what Syphon Mind did.
-	//
-	// `seat` is the player who was asked and `discarded` is what they
-	// really discarded (discardedThisWayLocked), both because a
-	// fan-out copies ONE template per seat: a closure that captured
-	// the player would mill the wrong one, and a leg that read the
-	// hand back would count a card a replacement left there. `seat`
-	// is p.Player for a single-seat prompt, where the caller knew it
-	// already; `discarded` is nil for an empty hand, which is the
-	// case this still fires for.
-	Then func(g *Game, seat uuid.UUID, discarded []uuid.UUID) error
+	// The closure set rule and per-prompt "then" (Validate, Then) are
+	// gone (#4361 S7b): a rule about the SET that no count can express
+	// ("discard two cards unless you discard a creature card") is
+	// registered with a keyed discard-then (RegisterDiscardThenRule), and
+	// the rest of the card is that registered continuation
+	// (PlayerDiscardsThenKeyedForEffect) or a run's
+	// (PlayerDiscardsThenKeyedForEffect's two siblings, with a per-seat
+	// tail registered by RegisterPromptRunThenLeg).
 
 	// keyed and carry are a keyed discard-then's continuation and its
 	// plain data (PlayerDiscardsThenKeyedForEffect, discard_run_keyed.go,
@@ -233,14 +204,13 @@ type DiscardPrompt struct {
 	// as DiscardsDone.Item. Ignored without PlayerDiscardsThenKeyedForEffect.
 	Asked *AskedItem
 
-	// keyedLeg queues this prompt as a keyed leg (#4290,
-	// discard_run_keyed.go): a choose_cards pick under the engine's own
-	// discard continuation (choose-cards/discard-leg), linked to its run
-	// by the run id, so it holds no closure. runThen is the keyed run's
-	// key, whose per-seat tail runs at once for a seat asked nothing.
-	// Unexported because discardRunLocked sets them.
-	keyedLeg bool
-	runThen  string
+	// runThen is a keyed run's key, whose per-seat tail runs at once for a
+	// seat asked nothing (#4290). Every prompt that is not a keyed
+	// discard-then is a keyed leg (a choose_cards pick under the engine's
+	// own discard continuation, choose-cards/discard-leg), so the
+	// keyedLeg marker is gone (#4361 S7b). Unexported because
+	// discardRunKeyedLocked sets it.
+	runThen string
 }
 
 // QueueDiscardChoiceForEffect queues a discard the discarding player
@@ -331,16 +301,6 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		// seat that was asked and discarded nothing — both discarded
 		// nothing — which is the rule PromptedSacrifices states for a
 		// seat CR 701.21a excused.
-		if p.Then != nil {
-			if err := p.Then(g, p.Player, nil); err != nil {
-				g.EmitEvent(Event{
-					Kind:     EventEffectError,
-					Actor:    p.Player,
-					Source:   p.Source,
-					ErrorMsg: err.Error(),
-				})
-			}
-		}
 		// #4290: a keyed run's per-seat tail is that Then, by key.
 		g.runLegTailLocked(p.runThen, p.Player, p.Source, nil, p.carry)
 		return uuid.Nil
@@ -378,65 +338,12 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 			Asked:      copyAskedItem(p.Asked),
 		})
 	}
-	if p.keyedLeg {
-		// #4290: a keyed leg. The engine's discard continuation discards
-		// the picks, runs the run's per-seat tail and settles the leg
-		// (discard_run_keyed.go); the prompt holds no closure.
-		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-			Chooser:    p.Player,
-			FromPlayer: p.Player,
-			Source:     p.Source,
-			Question:   question,
-			Cards:      hand,
-			Min:        lo,
-			Max:        n,
-			ThenKey:    discardLegThen,
-			Carry:      p.carry,
-			// The closure leg's Zone re-check and prune, kept (#4291).
-			LiveZone:  ZoneHand,
-			promptRun: run,
-		})
-	}
-	discarder, source := p.Player, p.Source
-	legThen := p.Then
-	if legThen == nil {
-		// #4253 slice 9: with no per-prompt "then" the batch's own
-		// continuation is the run's leg settle, a registered tail, so a
-		// discard leg's CR 616 prompt is a restore point.
-		opts := discardOptions{cause: DiscardCauseEffect, source: p.Source, keyed: withTailN(discardLegSettledTail(run, discarder, source), 1)}
-		return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-			Chooser:    p.Player,
-			FromPlayer: p.Player,
-			Source:     p.Source,
-			Question:   question,
-			Cards:      hand,
-			Min:        lo,
-			Max:        n,
-			Zone:       ZoneHand,
-			Validate:   p.Validate,
-			promptRun:  run,
-			Then: func(g *Game, picked []uuid.UUID) error {
-				return g.discardCardsLocked(discarder, picked, opts)
-			},
-		})
-	}
-	opts := discardOptions{
-		cause:  DiscardCauseEffect,
-		source: p.Source,
-		// Reached once the whole batch has landed. This prompt's own
-		// "then" is the rest of ITS sentence and goes first; the RUN's
-		// leg settle follows, because the run's continuation is the
-		// rest of the printed instruction and must be the last thing
-		// on the far side of the last leg (#1027).
-		then: func(g *Game, landed []uuid.UUID) error {
-			if legThen != nil {
-				if err := legThen(g, discarder, landed); err != nil {
-					g.emitChoiceEffectErrorLocked(discarder, source, err)
-				}
-			}
-			return g.settleRunLegLocked(run, discarder, landed)
-		},
-	}
+	// #4290: a keyed leg. The engine's discard continuation discards the
+	// picks, runs the run's per-seat tail and settles the leg
+	// (discard_run_keyed.go); the prompt holds no closure. Since #4361 S7b
+	// this is every discard prompt that is not a keyed discard-then: the
+	// fire-and-forget prompt (QueueDiscardChoiceForEffect, no run) is one
+	// too, and its continuation only discards.
 	return g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    p.Player,
 		FromPlayer: p.Player,
@@ -445,12 +352,11 @@ func (g *Game) queueDiscardPromptLocked(p DiscardPrompt, run uuid.UUID) uuid.UUI
 		Cards:      hand,
 		Min:        lo,
 		Max:        n,
-		Zone:       ZoneHand,
-		Validate:   p.Validate,
-		promptRun:  run,
-		Then: func(g *Game, picked []uuid.UUID) error {
-			return g.discardCardsLocked(discarder, picked, opts)
-		},
+		ThenKey:    discardLegThen,
+		Carry:      p.carry,
+		// The live-zone re-check and prune (#4291).
+		LiveZone:  ZoneHand,
+		promptRun: run,
 	})
 }
 

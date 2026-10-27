@@ -472,14 +472,13 @@ func TestReassignmentPrunesCandidatesLeavingWithTheChooser(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      append(append([]uuid.UUID{}, mine...), theirs...),
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatalf("setup: the prompt was not queued")
@@ -527,15 +526,14 @@ func TestPromptIsDroppedWhenEveryCandidateLeavesWithTheChooser(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      theirs,
 			Min:        1,
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatalf("setup: the prompt was not queued")
@@ -644,14 +642,13 @@ func TestReassignedChoiceSurvivesASnapshotRoundTrip(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      append(append([]uuid.UUID{}, mine...), theirs...),
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)

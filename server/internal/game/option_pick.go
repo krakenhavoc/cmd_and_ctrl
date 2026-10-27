@@ -347,8 +347,10 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 	switch {
 	case c.promptRun != uuid.Nil:
 		err = g.settleRunLegLocked(c.promptRun, c.Chooser, nil)
-	case c.chooseCardsResume != nil:
-		err = c.chooseCardsResume.runWithNoChoice(g)
+	case isRunLegPickKind(c.Kind) && c.PickThen == "":
+		// #4361 S7b: a reveal pick no run waits on narrates that nobody
+		// chose, as its closure frame did.
+		err = g.settlePickLegLocked(c, nil)
 	case isKeyedChooseCards(c):
 		// #2040: a keyed choose_cards pick, run with nobody's choice.
 		err = g.runKeyedChooseCardsLocked(c, nil, false)

@@ -1263,7 +1263,6 @@ var pendingChoiceFields = plan(
 	"AutoAnswerPrompt", carried, "",
 	"AskedByHand", carried, "",
 	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
 	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
 	"ordered", carried, "a keyed ordered collection's state (ADR 0175, #4290): the seats still to ask, the picks so far and the registered continuation with its data; written as pendingChoices[].ordered, so a table waiting on a seat of the collection is a restore point",

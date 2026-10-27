@@ -172,22 +172,6 @@ func TestAKeyedChooseCardsRunWithAnUnknownKeyIsRefused(t *testing.T) {
 	}
 }
 
-// TestAKeyedChooseCardsRunRefusesALegWithAClosure: a leg's Then and
-// Validate are closures, and the keyed run will not take one.
-func TestAKeyedChooseCardsRunRefusesALegWithAClosure(t *testing.T) {
-	g := newFourPlayerActiveGame(t)
-	me := g.Seats[0]
-	ids := namedHandFor(t, g, me, "Good")
-	g.WithWriteLock(func() {
-		_, err := g.ChooseCardsRunThenKeyedForEffect([]ChooseCardsPrompt{{
-			Chooser: me.ID, Cards: ids, Min: 1, Max: 1, Validate: func([]Card) bool { return true },
-		}}, testKeyedRun, uuid.Nil, RunData{})
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("err = %v, want ErrInvalidParam", err)
-		}
-	})
-}
-
 // TestASeatLeavingSettlesItsKeyedChooseCardsLeg: departure settles a keyed
 // choose_cards leg with nothing chosen, on a restored table, and the run
 // still pays out after the last answer.
@@ -570,18 +554,16 @@ func TestAKeyedCollectionLegRuleSurvivesARestore(t *testing.T) {
 	}
 }
 
-// TestAnOrderedCollectionRefusesALegWithAClosureOrAnUnregisteredKey keeps
-// the keyed door closed to anything a restore could not carry.
-func TestAnOrderedCollectionRefusesALegWithAClosureOrAnUnregisteredKey(t *testing.T) {
+// TestAnOrderedCollectionRefusesALegWithAnUnregisteredKey keeps the keyed
+// door closed to anything a restore could not carry. (A leg cannot hold a
+// closure at all since #4361 S7b deleted ChooseCardsPrompt.Then and
+// .Validate.)
+func TestAnOrderedCollectionRefusesALegWithAnUnregisteredKey(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	me := g.Seats[0]
 	bear := pushBear(g, me.ID)
 	g.WithWriteLock(func() {
-		leg := ChooseCardsPrompt{Chooser: me.ID, Cards: []uuid.UUID{bear}, Min: 0, Max: 1, Validate: func([]Card) bool { return true }}
-		if err := g.ChoosePermanentsInOrderKeyedForEffect([]ChooseCardsPrompt{leg}, testKeyedRun, uuid.Nil, RunData{}); !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("a leg with a closure: err = %v, want ErrInvalidParam", err)
-		}
-		leg = ChooseCardsPrompt{Chooser: me.ID, Cards: []uuid.UUID{bear}, Min: 0, Max: 1, ThenKey: ChooseCardsRunLeg}
+		leg := ChooseCardsPrompt{Chooser: me.ID, Cards: []uuid.UUID{bear}, Min: 0, Max: 1, ThenKey: ChooseCardsRunLeg}
 		if err := g.ChoosePermanentsInOrderKeyedForEffect([]ChooseCardsPrompt{leg}, testKeyedRun, uuid.Nil, RunData{}); !errors.Is(err, ErrInvalidParam) {
 			t.Errorf("a leg naming a run's leg key: err = %v, want ErrInvalidParam", err)
 		}

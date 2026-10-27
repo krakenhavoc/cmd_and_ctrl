@@ -45,10 +45,12 @@ func TestEarlierPermanentChoicesArePublicAndUseFilteredCardIdentities(t *testing
 			{Chooser: second.ID, FromPlayer: second.ID, Cards: []uuid.UUID{faceDownID, faceDownAltID}, Min: 1, Max: 1, Zone: game.ZoneBattlefield},
 			{Chooser: current.ID, FromPlayer: current.ID, Cards: []uuid.UUID{currentID, currentAltID}, Min: 1, Max: 1, Zone: game.ZoneBattlefield},
 		}
-		setupErr = g.ChoosePermanentsInOrderThenForEffect(legs, func(*game.Game, game.PromptedPicks) error { return nil })
+		// #4361 S7b: the keyed collector (the closure one is gone).
+		then := game.RegisterPromptRunThen("test/4361-s7b-earlier-"+uuid.NewString(), func(*game.Game, game.RunDone) error { return nil })
+		setupErr = g.ChoosePermanentsInOrderKeyedForEffect(legs, then, uuid.Nil, game.RunData{})
 	})
 	if setupErr != nil {
-		t.Fatalf("ChoosePermanentsInOrderThenForEffect: %v", setupErr)
+		t.Fatalf("ChoosePermanentsInOrderKeyedForEffect: %v", setupErr)
 	}
 
 	for _, pick := range []struct {

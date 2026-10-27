@@ -5882,7 +5882,9 @@ so a "whenever you sacrifice" payoff is unaffected either way. See
 [ADR 0013 §5r](decisions/0013-replacement-effects.md).
 
 **Public choices followed by a simultaneous action (#2948).** Use
-`ChoosePermanentsInOrderThenForEffect(legs, then)` for one chooser per board.
+`ChoosePermanentsInOrderKeyedForEffect(legs, then, source, data)` (a
+registered run continuation; the closure form is gone since #4361) or
+`ChoosePermanentsInOrderSacrificeForEffect` for one chooser per board.
 Pass ordinary `ChooseCardsPrompt` legs in APNAP order, with battlefield
 candidates and exact counts or a set validator. Only the current leg is queued;
 earlier public card IDs are shown to later players. No card moves until `then`.
@@ -5891,8 +5893,9 @@ sacrifices, and call `SacrificeAllKeyedForEffect` once with the collected set.
 Liliana, Dreadhorde General demonstrates both exact-two and keep-by-type choices.
 Empty and departed legs advance; valid forced sets are collected without a
 prompt. Receipts bind to object epochs, and dropped choices continue with an
-empty pick. A leg's own `Then` is rejected because the final action belongs to
-the collector's one continuation. Existing prompted-sacrifice runs below still
+empty pick. A leg names no continuation of its own (only a set rule,
+`RegisterOrderedPickLegRule`), because the final action belongs to the
+collector's one continuation. Existing prompted-sacrifice runs below still
 move cards as individual answers arrive; they do not provide this simultaneity.
 See [ADR 0175](decisions/0175-players-choose-before-simultaneous-sacrifices.md).
 
@@ -6003,12 +6006,13 @@ while it happens to agree on every board today it is a SECOND reading
 of a rule the engine already answers, which is the kind that drifts the
 first time a replacement does something new.
 
-`DiscardPrompt.Then` is the OTHER continuation and they are not
-interchangeable: it is one LEG's own sentence ("each opponent discards
-a card, THEN mills a card" — Vicious Rumors), it runs per seat, it is
-handed `(g, seat, discarded)` because a fan-out copies one template,
-and it still fires for an empty hand ("discard your hand, then draw
-three"). The run's continuation is the rest of the INSTRUCTION and
+A run's per-seat tail (`RegisterPromptRunThenLeg`) is the OTHER
+continuation and they are not interchangeable: it is one LEG's own
+sentence ("each opponent discards a card, THEN mills a card" — Vicious
+Rumors), it runs per seat, it is handed the seat and what it discarded
+because a fan-out copies one template, and it still fires for an empty
+hand ("discard your hand, then draw three"). (`DiscardPrompt.Then` and
+`.Validate`, the closure forms, are gone since #4361.) The run's continuation is the rest of the INSTRUCTION and
 runs once. A payoff written on the leg pays out per answer, which is
 what Syphon Mind did. For the RANDOM discard (CR 701.9b) the
 continuation is `g.DiscardRandomThenForEffect`. See
@@ -8158,7 +8162,9 @@ has to resolve against that one.
 **A rule about the picked SET, not about each card** — "discard two
 cards unless you discard a creature card", "any number of nonland
 permanent cards with total mana value 4 or less from among them" — is
-`Validate func(picked []game.Card) bool`, and it is enforced in exactly
+a registered set rule (`game.SetRuleFunc`, registered with the pick's
+continuation by `RegisterChooseCardsThenRule` and its siblings; the closure
+`ChooseCardsPrompt.Validate` is gone since #4361), and it is enforced in exactly
 one place: `checkChooseCardsPicksLocked`, which both `ResolveChooseCards`
 and `internal/legal`'s `ChooseCardsPickLegalLocked` go through, so an
 answer the bot is offered is an answer the resolver accepts. A refused
@@ -8166,7 +8172,8 @@ set comes back as `ErrChoiceSetRejected` with the prompt **still open**,
 and it is never called for an empty pick, which keeps "choose nothing"
 the answer a zero-floor prompt can always take. Every catalog primitive
 that raises a card-set pick forwards the field verbatim —
-`DiscardPrompt.Validate` (#624), `SearchLibrary.Rule` (#682; a registered
+`RegisterDiscardThenRule` (#624), `PutFromHandOntoBattlefield.Rule`
+(`PutFromHandRule`, #4361), `SearchLibrary.Rule` (#682; a registered
 search rule since #4253 slice 5), `PutFromLibraryOntoBattlefield.Rule`
 (#998; a `RegisterPutRule` since #4253) and `TakeDef.Validate` (the
 registered take) — so **if you add

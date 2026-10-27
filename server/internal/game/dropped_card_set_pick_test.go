@@ -36,7 +36,7 @@ func midCardCardPick(t *testing.T, g *Game, chooser, source uuid.UUID, cards []u
 	call := &cardSetPickCall{}
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    chooser,
 			FromPlayer: chooser,
 			Source:     source,
@@ -45,12 +45,11 @@ func midCardCardPick(t *testing.T, g *Game, chooser, source uuid.UUID, cards []u
 			Min:        1,
 			Max:        1,
 			Zone:       ZoneBattlefield,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				call.ran++
-				call.got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			call.ran++
+			call.got = picked
+			return nil
+		}, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatal("setup: the mid-card pick was not queued")
@@ -202,7 +201,7 @@ func TestAZeroFloorMidCardPickAlsoRunsOnItsWithdrawal(t *testing.T) {
 	call := &cardSetPickCall{}
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Source:   source,
 			Question: "You may choose a creature",
@@ -210,12 +209,11 @@ func TestAZeroFloorMidCardPickAlsoRunsOnItsWithdrawal(t *testing.T) {
 			Min:      0,
 			Max:      1,
 			Zone:     ZoneBattlefield,
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				call.ran++
-				call.got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			call.ran++
+			call.got = picked
+			return nil
+		}, nil))
 	})
 
 	g.WithWriteLock(func() {

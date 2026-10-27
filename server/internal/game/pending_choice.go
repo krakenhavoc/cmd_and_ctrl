@@ -756,8 +756,8 @@ type PendingChoice struct {
 	// ChooseLiveZone is the zone a KEYED choose_cards pick's candidates are
 	// re-checked against, on submit and by the sweep that withdraws a pick
 	// whose candidates have all left it (#4291, ChooseCardsPrompt.LiveZone).
-	// A closure pick keeps this on its frame (chooseCardsFrame.zone). Empty
-	// on every other prompt, which means no live re-check.
+	// An entry card choice and a permanent pick read theirs off their kind
+	// (liveZone). Empty on every other prompt, which means no live re-check.
 	ChooseLiveZone ZoneKind
 	// PickMeasures is RevealedHandDiscard.Measure's reading of each
 	// candidate, in DiscardOptions order, taken as the pick was raised.
@@ -1164,12 +1164,6 @@ type PendingChoice struct {
 	// a land onto the battlefield as discarding it. The resolver never
 	// reads it; the continuation is what moves the card.
 	ChooseDestination ChooseDestination
-
-	// chooseCardsResume is the server-only continuation for a
-	// PendingChoiceChooseCards: what the picks mean, plus the zone
-	// they are re-checked against. Not serialised. See
-	// chained_choice.go.
-	chooseCardsResume *chooseCardsFrame
 
 	// PickOptions are the branches of a PendingChoiceOptionPick — the
 	// card's own words for each, plus the cards it is about (a pile,
@@ -5157,7 +5151,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // pick is one over somebody else's hand, a graveyard pick names a
 // GRAVEYARD and a reveal-and-take names a LIBRARY — and the question
 // "is this candidate still there" has exactly one answer for all of
-// them, `chooseCardsFrame.zone`. Writing a pruneDiscardChoicesLocked
+// them, the prompt's live zone (liveZone). Writing a pruneDiscardChoicesLocked
 // beside a pruneGraveyardChoicesLocked would be three copies of one
 // rule, which is the shape the catalog's clone gate exists to refuse.
 //
@@ -5171,8 +5165,8 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // the whole table behind it (#791's gate) and, since #1027, a run leg
 // that never settles either.
 //
-// A prompt with no zone on its frame is left alone. Zero means "no
-// live re-check" (see chooseCardsFrame.zone): the continuation owns
+// A prompt with no live zone is left alone. Zero means "no live
+// re-check" (see liveZone): the continuation owns
 // what a pick means, the resolver refuses nothing, and there is
 // nothing for this to be right about.
 //
@@ -5304,13 +5298,17 @@ func (g *Game) pruneCardSetChoicesLocked() {
 }
 
 // liveZone is the zone a card-set pick's candidates are re-checked against:
-// its frame's, or, for a keyed pick, the one it was queued with
-// (ChooseLiveZone, #4291). Empty means no live re-check.
+// for an entry card choice and a permanent pick, the zone its kind names
+// (#4361 S7b: the closure frame that held it is gone); for a keyed pick, the
+// one it was queued with (ChooseLiveZone, #4291). Empty means no live
+// re-check.
 func (c *PendingChoice) liveZone() ZoneKind {
-	if c.chooseCardsResume != nil {
-		return c.chooseCardsResume.zone
-	}
-	if isKeyedChooseCards(c) {
+	switch {
+	case isEntryCardChoiceKind(c.Kind):
+		return entryCardChoiceZone(c.Kind)
+	case isPermanentPickKind(c.Kind):
+		return ZoneBattlefield
+	case isKeyedChooseCards(c):
 		return c.ChooseLiveZone
 	}
 	return ""

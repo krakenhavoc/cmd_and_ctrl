@@ -89,10 +89,12 @@ type PutFromHandOntoBattlefield struct {
 	// the card's sentence rather than a description of the mechanic.
 	Label string
 
-	// Validate is a rule on the picked SET, for a clause no per-card
-	// Match can say: Yuna's Decision's "a creature card and/or a land
-	// card" (at most one of each). Nil accepts any set within Max.
-	Validate func(picked []game.Card) bool
+	// Rule is a rule on the picked SET, for a clause no per-card Match
+	// can say: Yuna's Decision's "a creature card and/or a land card" (at
+	// most one of each), registered with the put's own continuation by
+	// PutFromHandRule. Zero accepts any set within Max. (The closure form,
+	// Validate, is gone: #4361 S7b.)
+	Rule PutFromHandPick
 
 	// ThenTail, when set, runs after the answer, as a registered tail
 	// (PutFromHandTail; #4253 slice 6): a key plus plain data, so a table
@@ -182,24 +184,19 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		Min:         floor,
 		Max:         max,
 	}
-	if p.Validate == nil && keyed.IsZero() {
-		// Nothing hangs off the pick, so it is data: the "tapped" rider
-		// rides the prompt as a number and the table stays a restore point
-		// (#4253). A clause with a set rule or a tail is still a closure.
-		prompt.ThenKey = putFromHandPick
-		prompt.LiveZone = game.ZoneHand
-		if tapped {
-			prompt.CarryNums = []int{1}
-		}
-		ctx.Game.QueueChooseCardsForEffect(prompt)
-		return nil
+	// The pick is data (#4253, #4361 S7b): the "tapped" rider rides the
+	// prompt as a number, the rider on the result as its keyed tail, and a
+	// set rule as the registered continuation it was registered with, so
+	// the table stays a restore point. Re-checked on submit: the pick must
+	// still be in that player's hand when the answer arrives.
+	prompt.ThenKey = putFromHandPick
+	if p.Rule.then.Key() != "" {
+		prompt.ThenKey = p.Rule.then
 	}
-	prompt.Validate = p.Validate
-	// Re-checked on submit: the pick must still be in that
-	// player's hand when the answer arrives.
-	prompt.Zone = game.ZoneHand
-	prompt.Then = func(g *game.Game, picked []uuid.UUID) error {
-		return putFromHandPicked(g, player, picked, tapped, keyed)
+	prompt.LiveZone = game.ZoneHand
+	prompt.Tail = keyed
+	if tapped {
+		prompt.CarryNums = []int{1}
 	}
 	ctx.Game.QueueChooseCardsForEffect(prompt)
 	return nil
@@ -229,12 +226,31 @@ func putFromHandPicked(g *game.Game, player uuid.UUID, picked []uuid.UUID, tappe
 	}, keyed)
 }
 
-// putFromHandPick is a PutFromHandOntoBattlefield pick with no set rule and
-// no tail, keyed (#4253): the chooser is the player, and the one carried
-// number says whether the cards enter tapped.
-var putFromHandPick = game.RegisterChooseCardsThen("choose-cards/put-from-hand-onto-battlefield", func(g *game.Game, r game.CardsChosen) error {
-	return putFromHandPicked(g, r.Chooser, r.Picked, len(r.Nums) > 0 && r.Nums[0] == 1, game.KeyedTail{})
-})
+// putFromHandPick is a PutFromHandOntoBattlefield pick with no set rule,
+// keyed (#4253): the chooser is the player, the one carried number says
+// whether the cards enter tapped, and the pick's tail (#4361 S7b) is the
+// rider on the result.
+var putFromHandPick = game.RegisterChooseCardsThen("choose-cards/put-from-hand-onto-battlefield", putFromHandChosen)
+
+// putFromHandChosen is every PutFromHandOntoBattlefield pick's continuation.
+func putFromHandChosen(g *game.Game, r game.CardsChosen) error {
+	return putFromHandPicked(g, r.Chooser, r.Picked, len(r.Nums) > 0 && r.Nums[0] == 1, r.Tail)
+}
+
+// PutFromHandPick is a PutFromHandOntoBattlefield pick's continuation
+// registered with a set rule (PutFromHandRule).
+type PutFromHandPick struct{ then game.ChooseCardsThen }
+
+// PutFromHandRule registers a PutFromHandOntoBattlefield pick whose picked
+// SET must satisfy `rule` (#4361 S7b): the put's own continuation under
+// `key`, with the rule beside it, so a restored prompt still refuses a set
+// the rule refuses. The rule is never called for an empty pick, is a
+// function of the cards alone, and must capture nothing. The key is an
+// on-disk identity (ledgered "choose <key>"): never renamed, never reused.
+// Call it once, from a package-level var.
+func PutFromHandRule(key string, rule game.SetRuleFunc) PutFromHandPick {
+	return PutFromHandPick{then: game.RegisterChooseCardsThenRule(key, rule, putFromHandChosen)}
+}
 
 // PutFromHandTail registers a PutFromHandOntoBattlefield rider as a keyed
 // tail (#4253 slice 6): the body is handed what the rider is told, with a

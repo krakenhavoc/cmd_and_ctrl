@@ -56,8 +56,8 @@ func TestKeyedChooseSourceSurvivesARestore(t *testing.T) {
 		}
 	})
 	c := openChooseSource(g)
-	if c == nil || c.PickThen != chooseSourceProbe.Key() || c.chooseCardsResume != nil {
-		t.Fatalf("prompt = %+v, want the probe's key and no frame", c)
+	if c == nil || c.PickThen != chooseSourceProbe.Key() {
+		t.Fatalf("prompt = %+v, want the probe's key", c)
 	}
 	if snap := g.CaptureSnapshot(); snap.Continuations.ChoiceResumeFrames != 0 {
 		t.Fatalf("the prompt counts a closure: %+v", snap.Continuations)

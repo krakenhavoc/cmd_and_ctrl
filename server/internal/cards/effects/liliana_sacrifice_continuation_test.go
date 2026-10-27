@@ -139,21 +139,25 @@ func TestSacrificeAllContinuationWaitsForReplacementOrder(t *testing.T) {
 
 	var tailCalls int
 	var sacrificed []uuid.UUID
+	// #4361 S7b: the closure collector is gone; the keyed one hands the
+	// picks to a registered run continuation.
+	then := game.RegisterPromptRunThen("test/4361-s7b-liliana-"+uuid.NewString(), func(g *game.Game, r game.RunDone) error {
+		picks := r.Picks()
+		if len(picks.Cards()) == 0 {
+			return nil
+		}
+		return g.SacrificeAllThenForEffect(uuid.Nil, picks.Cards(), func(_ *game.Game, ids []uuid.UUID) error {
+			tailCalls++
+			sacrificed = append([]uuid.UUID(nil), ids...)
+			return nil
+		})
+	})
 	g.WithWriteLock(func() {
-		if err := g.ChoosePermanentsInOrderThenForEffect([]game.ChooseCardsPrompt{{
+		if err := g.ChoosePermanentsInOrderKeyedForEffect([]game.ChooseCardsPrompt{{
 			Chooser: owner.ID, FromPlayer: owner.ID, Cards: []uuid.UUID{creature},
 			Question: "Choose a permanent", Min: 0, Max: 1, Zone: game.ZoneBattlefield,
-		}}, func(g *game.Game, picks game.PromptedPicks) error {
-			if len(picks.Cards()) == 0 {
-				return nil
-			}
-			return g.SacrificeAllThenForEffect(uuid.Nil, picks.Cards(), func(_ *game.Game, ids []uuid.UUID) error {
-				tailCalls++
-				sacrificed = append([]uuid.UUID(nil), ids...)
-				return nil
-			})
-		}); err != nil {
-			t.Fatalf("ChoosePermanentsInOrderThenForEffect: %v", err)
+		}}, then, uuid.Nil, game.RunData{}); err != nil {
+			t.Fatalf("ChoosePermanentsInOrderKeyedForEffect: %v", err)
 		}
 	})
 	selection := latestChooseCardsFor(g, owner.ID)

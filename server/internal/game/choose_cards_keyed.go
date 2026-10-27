@@ -29,8 +29,7 @@ import (
 // closure frame. A continuation that cares where a pick is now checks it
 // itself, as Immortal Coil's does.
 //
-// A set rule (ChooseCardsPrompt.Validate, "exactly two cards with
-// different names") is registered under the same key as the
+// A set rule ("exactly two cards with different names") is registered under the same key as the
 // continuation (RegisterChooseCardsThenRule, #4264) and looked up by it
 // each time an answer is checked, so a keyed pick keeps its set rule and
 // still carries no closure. And one word of the card's text, which a
@@ -179,7 +178,7 @@ func isKeyedChooseCards(c *PendingChoice) bool {
 		c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer ||
 		// #4361 S7a: CR 502.3's untap determination.
 		c.Kind == PendingChoiceUntapChoice) &&
-		c.PickThen != "" && c.chooseCardsResume == nil
+		c.PickThen != ""
 }
 
 // carriesPickTail reports whether a prompt kind can carry a keyed pick's

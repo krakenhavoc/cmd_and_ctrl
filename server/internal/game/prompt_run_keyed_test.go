@@ -394,8 +394,8 @@ func TestAnnihilatorSacrificeChoiceIsARestorePoint(t *testing.T) {
 	}
 	g = strictRestore(t, g)
 	c := pendingChoiceOfKind(g, PendingChoiceOwnPermanents)
-	if c == nil || c.chooseCardsResume == nil || c.chooseCardsResume.zone != ZoneBattlefield {
-		t.Fatalf("the restored prompt is %+v, want its battlefield frame rebuilt", c)
+	if c == nil || c.liveZone() != ZoneBattlefield {
+		t.Fatalf("the restored prompt is %+v, want its battlefield re-check", c)
 	}
 	if err := g.ResolveOwnPermanents(c.ID, opp.ID, fodder[:2]); err != nil {
 		t.Fatalf("ResolveOwnPermanents: %v", err)
@@ -462,22 +462,6 @@ func TestAKeyedPermanentPickRunIsARestorePointWithALegAnswered(t *testing.T) {
 	if by := picks.By(opp.ID); len(by) != 1 || by[0] != theirs[0] {
 		t.Errorf("their board's pick is %v, want %v", by, theirs[0])
 	}
-}
-
-// TestAKeyedPermanentPickWithAValidateIsRefused: a set rule is a
-// closure, so the keyed form will not take one.
-func TestAKeyedPermanentPickWithAValidateIsRefused(t *testing.T) {
-	g := newActiveGame(t)
-	me := g.Seats[0]
-	g.WithWriteLock(func() {
-		_, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
-			Chooser: me.ID, Of: []uuid.UUID{me.ID},
-			Validate: func([]Card) bool { return true },
-		}, testKeyedRun, RunData{})
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("err = %v, want ErrInvalidParam", err)
-		}
-	})
 }
 
 // TestAKeyedPermanentPickLegWithAnUnknownKeyIsRefused: the leg names its

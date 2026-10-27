@@ -210,15 +210,14 @@ func TestSplitPromptOverAnotherSeatsLibraryShowsOnlyTheRevealedCards(t *testing.
 						ids = append(ids, owner.Library.Cards[size-1-i].InstanceID)
 					}
 				}
-				g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+				g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 					Chooser:    splitter.ID,
 					FromPlayer: owner.ID,
 					Question:   "test — separate them",
 					Cards:      ids,
 					Min:        0,
 					Max:        len(ids),
-					Then:       func(*game.Game, []uuid.UUID) error { return nil },
-				})
+				}, func(*game.Game, []uuid.UUID) error { return nil }, nil))
 			})
 			got := FilterViewFor(ViewOfGame(g), splitter.ID.String())
 			c := choiceFor(t, got, string(game.PendingChoiceChooseCards))
