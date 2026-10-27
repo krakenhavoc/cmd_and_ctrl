@@ -56,17 +56,22 @@ var thisIsHowItEndsChoice = NewVillainousChoice("this-is-how-it-ends",
 				Cards:      owned,
 				Min:        1,
 				Max:        1,
-				Zone:       game.ZoneBattlefield,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) == 0 {
-						return nil
-					}
-					return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{picked[0]}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
-				},
+				LiveZone:   game.ZoneBattlefield,
+				ThenKey:    thisIsHowItEndsShuffled,
 			})
 			return nil
 		},
 	})
+
+// thisIsHowItEndsShuffled is the creature shuffled into its owner's library,
+// keyed (#4253): the chooser owns it and is the player who shuffles. An
+// on-disk key: never renamed, never reused.
+var thisIsHowItEndsShuffled = game.RegisterChooseCardsThen("choose-cards/this-is-how-it-ends-shuffle", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{r.Picked[0]}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: r.Chooser})
+})
 
 // thisIsHowItEndsOwnedCreatures lists the creatures on the battlefield
 // that `owner` owns.

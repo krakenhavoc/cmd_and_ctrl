@@ -65,21 +65,24 @@ func wishclawTutorThenHandOver(g *game.Game, item *game.StackItem) error {
 // wishclawTalismanHandOver is "an opponent gains control of Wishclaw
 // Talisman": its controller chooses which. An on-disk key.
 var wishclawTalismanHandOver = CardTail("wishclaw-talisman/hand-it-over", func(ctx *Context, o game.TailOutcome) error {
-	g, item, controller, talisman := ctx.Game, ctx.Item, o.Tail.Player, o.Tail.Source
-	g.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
-		Chooser:  controller,
-		Among:    ctx.Opponents(),
-		Source:   talisman,
+	return ChoosePlayer{
+		Chooser:  o.Tail.Player,
+		Only:     ctx.Opponents(),
 		Question: "Wishclaw Talisman — choose an opponent to gain control of it",
-		Item:     item,
-		Then: func(g *game.Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil || sourceIsNewObject(g, item) {
-				return nil
-			}
-			g.GainControlForEffect(talisman, talisman, chosen, game.IndefiniteDuration(),
-				"Wishclaw Talisman — an opponent gains control of this artifact")
-			return nil
-		},
-	})
+		ThenKey:  wishclawTalismanChosen,
+	}.Apply(ctx)
+})
+
+// wishclawTalismanChosen is the opponent chosen to gain control of the
+// Talisman, keyed (#4253): the asking item rides the prompt as data. An
+// on-disk key: never renamed, never reused.
+var wishclawTalismanChosen = ChoosePlayerThen("option-pick/wishclaw-talisman-hand-it-over", func(ctx *Context, chosen uuid.UUID, _ []uuid.UUID) error {
+	g, item := ctx.Game, ctx.Item
+	talisman := item.SourceCardID
+	if chosen == uuid.Nil || sourceIsNewObject(g, item) {
+		return nil
+	}
+	g.GainControlForEffect(talisman, talisman, chosen, game.IndefiniteDuration(),
+		"Wishclaw Talisman — an opponent gains control of this artifact")
 	return nil
 })

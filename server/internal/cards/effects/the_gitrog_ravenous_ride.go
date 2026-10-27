@@ -76,24 +76,29 @@ func gitrogRavenousRideSacrifice(g *game.Game, item *game.StackItem) error {
 }
 
 // gitrogRavenousRidePick is the saddling creature chosen to be sacrificed,
-// keyed (#4253 sweep): the asking item rides the prompt as data. The
-// sacrifice's own Then is SacrificePermanent's, which slice 10a keys.
+// keyed (#4253 sweep): the asking item rides the prompt as data, and the
+// sacrifice's rest is a keyed tail.
 var gitrogRavenousRidePick = askedPick("choose-cards/the-gitrog-ravenous-ride-sacrifice", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Picked) == 0 {
 		return nil
 	}
-	target := r.Picked[0]
-	return SacrificePermanent{Target: target, Then: func(ctx *Context, sacrificed bool) error {
-		if !sacrificed {
-			return nil
-		}
-		info, ok := ctx.Game.LastKnownPermanentForEffect(target)
-		if !ok || info.Power <= 0 {
-			return nil
-		}
-		ctx.RecordStep(gitrogRavenousRideRecord, nil, info.Power)
-		return gitrogRavenousRideDrawAndPut.Run(ctx)
-	}}.Apply(ctx)
+	return SacrificePermanent{Target: r.Picked[0], ThenTail: withCarry(ctx.ItemTail(gitrogRavenousRideSacrificed), r.Picked[0])}.Apply(ctx)
+})
+
+// gitrogRavenousRideSacrificed is "draw X cards, then put up to X lands",
+// X being the power the sacrificed creature last had, keyed (#4253): the
+// creature rides the tail as its carried ID, and the tail is told whether
+// it went. An on-disk key: never renamed, never reused.
+var gitrogRavenousRideSacrificed = CardTail("the-gitrog-ravenous-ride/sacrificed", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
+		return nil
+	}
+	info, ok := ctx.Game.LastKnownPermanentForEffect(tailCarry0(o))
+	if !ok || info.Power <= 0 {
+		return nil
+	}
+	ctx.RecordStep(gitrogRavenousRideRecord, nil, info.Power)
+	return gitrogRavenousRideDrawAndPut.Run(ctx)
 })
 
 // gitrogRavenousRideRecord is X, the sacrificed creature's power.

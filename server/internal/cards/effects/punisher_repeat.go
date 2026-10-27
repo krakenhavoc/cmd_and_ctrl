@@ -130,8 +130,9 @@ const (
 // answer to the three-way question and the discard. A card has its own
 // because the name and the life ride the body, not the prompt.
 type punisherKeys struct {
-	answer  game.OptionPickThen
-	discard game.DiscardThen
+	answer    game.OptionPickThen
+	discard   game.DiscardThen
+	sacrifice game.TailRef
 }
 
 // punisherKeysOf is each punisher's keys by its card name, filled by init.
@@ -153,6 +154,12 @@ func registerPunisher(p punisherRepeat, slug string) {
 	keys.discard = game.RegisterDiscardThen("choose-cards/"+slug+"-punisher-discarded", func(g *game.Game, r game.DiscardsDone) error {
 		return next(keyedContext(g, r.Carry[0], r.Source), r.Carry[1:])
 	})
+	// The sacrifice's rest is a keyed tail (SacrificeChoice.ThenTail): the
+	// rest of the queue is its carry, the asking effect's controller and
+	// source the tail's own.
+	keys.sacrifice = CardTail("then/"+slug+"-punisher-sacrificed", func(ctx *Context, o game.TailOutcome) error {
+		return next(ctx, o.Tail.Carry)
+	})
 	keys.answer = OptionPickThen("option-pick/"+slug+"-punisher", func(ctx *Context, r game.OptionPicked) error {
 		victim, rest := r.Chooser, r.Carry
 		if r.Option == nil {
@@ -163,13 +170,11 @@ func registerPunisher(p punisherRepeat, slug string) {
 		}
 		switch r.Option.Label {
 		case punisherSacrificeLabel:
-			// Still a choose_cards prompt with a closure (SacrificeChoice)
-			// until that primitive is keyed; the rest of the queue rides it.
 			return SacrificeChoice{
 				Player:     victim,
 				Candidates: NonlandPermanentsControlledBy(ctx.Game, victim),
 				Question:   p.Name + " — sacrifice a nonland permanent",
-				Then:       func(ctx *Context) error { return next(ctx, rest) },
+				ThenTail:   withCarry(ctx.Tail(keys.sacrifice), rest...),
 			}.Apply(ctx)
 		case punisherDiscardLabel:
 			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
