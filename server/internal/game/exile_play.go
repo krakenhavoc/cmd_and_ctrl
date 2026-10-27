@@ -185,22 +185,35 @@ func (g *Game) ExileTopUntilAnotherForEffect(item *StackItem, n int) error {
 	if err != nil || len(plan) == 0 {
 		return err
 	}
-	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: holder}, plan, func(g *Game, landed []uuid.UUID) error {
-		if len(landed) == 0 || !ok {
-			return nil
-		}
-		g.endSourceExileWindowsLocked(holder, ref)
-		g.grantImpulseExilePermissionLocked(CastPermission{
-			Duration: Duration{
-				Kind:        UntilSourceExilesAnother,
-				Player:      holder,
-				Source:      ref.ID,
-				SourceEpoch: ref.Epoch,
-			},
-		}, holder, landed)
-		return nil
-	})
+	var then KeyedTail
+	if ok {
+		then = KeyedTail{Ref: exileUntilAnotherGranted, Player: holder, Source: ref.ID, N: ref.Epoch}
+	}
+	return g.routeAllKeyedLocked(zoneRoute{Dst: ZoneExile, Actor: holder}, plan, then)
 }
+
+// exileUntilAnotherGranted is ExileTopUntilAnotherForEffect's continuation
+// as data (#4361 S11a), so a CR 616 prompt on the exile is a restore point:
+// once a card has landed it closes the holder's earlier windows from the
+// source object and opens the new one. Player is the holder, Source and N
+// the source object's ID and epoch. An on-disk key.
+var exileUntilAnotherGranted = RegisterTail("engine/exile-until-another-granted", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	holder := o.Tail.Player
+	ref := ObjectRef{ID: o.Tail.Source, Epoch: o.Tail.N}
+	g.endSourceExileWindowsLocked(holder, ref)
+	g.grantImpulseExilePermissionLocked(CastPermission{
+		Duration: Duration{
+			Kind:        UntilSourceExilesAnother,
+			Player:      holder,
+			Source:      ref.ID,
+			SourceEpoch: ref.Epoch,
+		},
+	}, holder, o.IDs)
+	return nil
+})
 
 // endSourceExileWindowsLocked marks Ended every stored permission
 // `holder` has whose UntilSourceExilesAnother duration names `source`

@@ -1708,3 +1708,8 @@ option option-pick/opponent-target-chooser
 option option-pick/resolution-exit
 choose choose-cards/nothing
 choose choose-cards/yunas-decision-put
+tail engine/exile-until-another-granted
+tail engine/foretold-exiled
+tail engine/paid-cast-or-else-exiled
+tail engine/plot-exiled
+tail engine/suspend-exiled

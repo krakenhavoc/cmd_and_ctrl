@@ -131,16 +131,21 @@ func (g *Game) plotExiledCardLocked(cardID, source, plotter uuid.UUID) {
 // Caller must hold g.mu (write).
 func (g *Game) plotLocked(p *Player, cardID uuid.UUID, _ SpecialAction) error {
 	owner := p.ID
-	return g.routeAllThenLocked(zoneRoute{
+	return g.routeAllKeyedLocked(zoneRoute{
 		Dst:   ZoneExile,
 		Actor: owner,
 		// #1320: a special action (CR 702.170a), not a spell or ability.
 		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
-	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if len(landed) != 1 {
-			return nil
-		}
-		g.plotExiledCardLocked(landed[0], landed[0], owner)
-		return nil
-	})
+	}, []uuid.UUID{cardID}, KeyedTail{Ref: plotExiled, Player: owner})
 }
+
+// plotExiled is the plot exile's continuation as data (#4361 S11a), so a
+// CR 616 prompt on the exile is a restore point. Player is the owner. An
+// on-disk key.
+var plotExiled = RegisterTail("engine/plot-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) != 1 {
+		return nil
+	}
+	g.plotExiledCardLocked(o.IDs[0], o.IDs[0], o.Tail.Player)
+	return nil
+})
