@@ -499,8 +499,8 @@ type PendingChoice struct {
 	// DivideShield is the payload of a PendingChoiceDivideShield (ADR
 	// 0108 §7 decision 6, divide_shield.go): the charged shield, its
 	// charge and the damage events it meets. Wire-serialised via
-	// PendingChoiceView.DivideShield. Never captured: the prompt always
-	// carries a confirmResume frame.
+	// PendingChoiceView.DivideShield. Written with the prompt, with the
+	// shields after it and the damage it lands, as data (#4361 S16).
 	DivideShield *DivideShieldPrompt
 
 	// PayAmount is the payload of a PendingChoicePayAmount (ADR 0129 §3,
@@ -1056,11 +1056,6 @@ type PendingChoice struct {
 	// accepts; it is a hint on the wire for a policy that would
 	// otherwise take every offer and ping-pong forever.
 	DeclineEndsLoop bool
-
-	// confirmResume is the server-only continuation pair for a
-	// PendingChoiceConfirm: one closure per branch. Not serialised.
-	// See chained_choice.go.
-	confirmResume *confirmFrame
 
 	// private marks a prompt whose WORDS name a card in a hidden zone
 	// (ADR 0133: the question an opening-hand action asks names the

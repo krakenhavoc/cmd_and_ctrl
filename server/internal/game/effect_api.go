@@ -895,7 +895,7 @@ func (g *Game) DealDamageEachEachKeyedForEffect(source uuid.UUID, targets []uuid
 	if len(needs) == 0 {
 		return g.dealDamageEachKeyedStepLocked(run)
 	}
-	return g.askShieldDivisionsLocked(needs, resumeKeyedDamageWalk(run))
+	return g.askShieldDivisionsLocked(needs, divideShieldLand{walk: cloneDamageEachRun(run)})
 }
 
 // DrawNForEffect draws n cards for the given player, emitting one

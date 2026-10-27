@@ -151,7 +151,9 @@ func isCardSetPickKind(kind PendingChoiceKind) bool {
 // copy this predicate exists to prevent (IsLookAtTopKind's reason).
 func IsCardSetPickKind(kind PendingChoiceKind) bool { return isCardSetPickKind(kind) }
 
-// confirmFrame is the continuation pair behind a PendingChoiceConfirm.
+// confirmFrame is the continuation pair behind a PendingChoiceConfirm,
+// built from the prompt's key when it is answered (confirmFrameOf) and
+// never stored on it (#4361 S16 deleted the last stored one).
 // Both callbacks receive the live *Game (not a captured one) on the
 // same undo-safety contract payUnlessFrame and StackItem.Effect follow,
 // and both run with g.mu held — so either may queue the next link of

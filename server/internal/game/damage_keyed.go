@@ -17,12 +17,14 @@ import "github.com/google/uuid"
 // Now a non-combat damage event to a player or a permanent is written with
 // its frame (replacementEventSnapshot's damage fields and DamageTail, under
 // ReplacementResumeDamage) when its tail is data (since #4361 S8 every
-// tail's continuation is): no redirected parts, not released from a shield division, and no division
-// or redirection order held for its instance (neither is written to a
-// restore point). The caller's continuation is damageTail.keyed, a
-// registered tail told the target and the damage dealt, or damageTail.each,
-// the rest of a keyed Each walk (damage_each_keyed.go). Combat damage stays
-// a closure frame: the step it belongs to is not data.
+// tail's continuation is) and it has no redirected parts. A division or a
+// redirection order held for its instance, and its release from a
+// division, are written beside it since #4361 S16 (divide_shield_keyed.go),
+// so none of them keeps the frame off the disk. The caller's continuation
+// is damageTail.keyed, a registered tail told the target and the damage
+// dealt, or damageTail.each, the rest of a keyed Each walk
+// (damage_each_keyed.go). Combat damage stays a closure frame: the step it
+// belongs to is not data.
 //
 // When the event ends its instance and a prevention follow-up of that
 // instance asks a question (#2040), the keyed continuation is parked as
@@ -76,29 +78,15 @@ func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amou
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
 	t := ev.damageTail
-	if t == nil || t.combat || t.combatStep != "" || ev.IsCombatDamage ||
-		t.released || len(t.redirected) > 0 {
+	if t == nil || t.combat || t.combatStep != "" || ev.IsCombatDamage || len(t.redirected) > 0 {
 		return false
 	}
-	if t.kind != damageTailPlayer && t.kind != damageTailPermanent {
-		return false
-	}
-	for _, d := range g.shieldDivisions {
-		if d.Instance == ev.DamageInstance {
-			return false
-		}
-	}
-	for _, r := range g.redirectOrders {
-		if r.instance == ev.DamageInstance {
-			return false
-		}
-	}
-	return true
+	return t.kind == damageTailPlayer || t.kind == damageTailPermanent
 }
 
 // damageTailSnapshot is a damageTail's data half: present exactly when the
-// event had a tail. A tail of combat damage, with redirected parts or a
-// release is never written.
+// event had a tail. A tail of combat damage or with redirected parts is
+// never written.
 type damageTailSnapshot struct {
 	Kind                damageTailKind     `json:"kind"`
 	Actor               *uuid.UUID         `json:"actor,omitempty"`
@@ -112,7 +100,11 @@ type damageTailSnapshot struct {
 	SourceUnpreventable bool               `json:"sourceUnpreventable,omitempty"`
 	SourceChecked       bool               `json:"sourceChecked,omitempty"`
 	EndsInstance        bool               `json:"endsInstance,omitempty"`
-	Then                *keyedTailSnapshot `json:"then,omitempty"`
+	// Released marks an event a shield division released (its staged
+	// events, landing after the answer): it is never staged again.
+	// Additive within v9 (#4361 S16).
+	Released bool               `json:"released,omitempty"`
+	Then     *keyedTailSnapshot `json:"then,omitempty"`
 	// Each is the rest of a keyed Each walk the event is a leg of
 	// (damage_each_keyed.go). Additive within v9.
 	Each *damageEachRun `json:"each,omitempty"`
@@ -134,7 +126,7 @@ func snapshotDamageEvent(ev *ReplacementEvent, out *replacementEventSnapshot) {
 		Deathtouch: t.deathtouch, LifelinkTo: uuidPtrOrNil(t.lifelinkTo), CommanderSource: uuidPtrOrNil(t.commanderSource),
 		Result: t.result, Controller: uuidPtrOrNil(t.controller), Marks: t.marks,
 		SourceUnpreventable: t.sourceUnpreventable, SourceChecked: t.sourceChecked, EndsInstance: t.endsInstance,
-		Then: snapshotKeyedTail(t.keyed), Each: cloneDamageEachRun(t.each),
+		Released: t.released, Then: snapshotKeyedTail(t.keyed), Each: cloneDamageEachRun(t.each),
 	}
 }
 
@@ -154,7 +146,7 @@ func restoreDamageEvent(s *replacementEventSnapshot, ev *ReplacementEvent) {
 		deathtouch: t.Deathtouch, lifelinkTo: uuidOrNil(t.LifelinkTo), commanderSource: uuidOrNil(t.CommanderSource),
 		result: t.Result, controller: uuidOrNil(t.Controller), marks: t.Marks,
 		sourceUnpreventable: t.SourceUnpreventable, sourceChecked: t.SourceChecked, endsInstance: t.EndsInstance,
-		keyed: restoreKeyedTail(t.Then), each: cloneDamageEachRun(t.Each),
+		released: t.Released, keyed: restoreKeyedTail(t.Then), each: cloneDamageEachRun(t.Each),
 	}
 }
 

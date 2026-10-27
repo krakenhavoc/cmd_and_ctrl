@@ -173,9 +173,6 @@ func confirmFrameOf(c *PendingChoice) *confirmFrame {
 	if c == nil {
 		return nil
 	}
-	if c.confirmResume != nil {
-		return c.confirmResume
-	}
 	if c.Kind != PendingChoiceConfirm || c.PickThen == "" {
 		return nil
 	}

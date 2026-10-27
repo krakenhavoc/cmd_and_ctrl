@@ -143,7 +143,7 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 55,
+	"census:ChoiceResumeFrames": 52,
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and
@@ -201,6 +201,11 @@ var closureClassCeilings = map[string]int{
 	// Game.followUpParks: a non-mana payment's "yes" waits on the payment
 	// as a keyed tail (pay_action_keyed.go), the damage helpers' closure
 	// door's last caller.
+	//
+	// 101 (2026-10-27, #4361 S16, owner decision D3): - PendingChoice.
+	// confirmResume and confirmFrame.{onAccept,onDecline}: a divide_shield
+	// prompt carries its landing step and the shields after it as data
+	// (divide_shield_keyed.go), and every other confirm is keyed.
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

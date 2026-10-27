@@ -208,8 +208,10 @@ var gameFields = plan(
 	// ADR 0108 §10: the life totals each damage instance began with.
 	"damageInstanceLives", rebuilt, "keyed on the transient instance stamp, which no restored event carries: every instance of a restored game is new and records its own life totals as it begins, and a lookup that finds no record reads the live total (damage_as_though.go)",
 	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
-	"shieldDivisions", dropped, "restores empty: a CR 615.7 division is written as its prompt is answered and spent by the events it divides, which land in that action or wait on a CR 616 prompt (not a restore point); an entry left after its events have landed names a finished instance, so a restore that starts with none changes nothing",
-	"redirectOrders", dropped, "restores empty: the order is written as its CR 616 prompt is answered and read by the later events of the same instance, keyed on the transient instance stamp, which no restored event carries (redirect_order.go, #2066)",
+	// #4361 S16: written, so a CR 616 prompt over divided or redirected
+	// damage, and the next shield's divide_shield prompt, are restore points.
+	"shieldDivisions", carried, "",
+	"redirectOrders", carried, "",
 	"damageStage", dropped, "not game state: an instance's events collected for a division, opened and closed inside one mutation, so it is nil between actions",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
@@ -1054,9 +1056,9 @@ var pendingChoiceFields = plan(
 	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
-	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are
 	// written; since #4361 no pay_amount holds one.
+	"DivideShield", carried, "#4361 S16: with the shields after it and the damage it lands (pendingChoiceSnapshot.DivideShield)",
 	"PayAmount", carried, "",
 	"MayPayX", carried, "",
 	"PickNumber", carried, "",
@@ -1261,7 +1263,6 @@ var pendingChoiceFields = plan(
 	"AutoAnswerCard", carried, "",
 	"AutoAnswerPrompt", carried, "",
 	"AskedByHand", carried, "",
-	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
 	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
 	"ordered", carried, "a keyed ordered collection's state (ADR 0175, #4290): the seats still to ask, the picks so far and the registered continuation with its data; written as pendingChoices[].ordered, so a table waiting on a seat of the collection is a restore point",

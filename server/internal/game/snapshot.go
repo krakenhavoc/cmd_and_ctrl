@@ -483,6 +483,14 @@ type GameSnapshot struct {
 	// census counts it). Additive within v9.
 	FollowUpParks []followUpParkSnapshot `json:"followUpParks,omitempty"`
 
+	// ShieldDivisions is Game.shieldDivisions and RedirectOrders is
+	// Game.redirectOrders (#4361 S16, divide_shield_keyed.go): the CR 615.7
+	// divisions made for a damage instance whose events have not all
+	// landed, and the CR 616 order chosen for its redirections. Additive
+	// within v9: a file without them restores none, as before.
+	ShieldDivisions []ShieldDivision        `json:"shieldDivisions,omitempty"`
+	RedirectOrders  []redirectOrderSnapshot `json:"redirectOrders,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -2073,6 +2081,12 @@ type pendingChoiceSnapshot struct {
 	// answer, so a binary from before it refuses the file. Additive
 	// within the version.
 	TargetWalk *targetWalkSnapshot `json:"targetWalk,omitempty"`
+	// DivideShield is a divide_shield prompt's payload (#4361 S16,
+	// divide_shield_keyed.go): the shield, its entries, the shields after
+	// it and the damage it lands, as data. PickThen says
+	// DivideShieldLandKey, so a binary from before it refuses the file.
+	// Additive within the version.
+	DivideShield *divideShieldSnapshot `json:"divideShield,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -2512,6 +2526,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4253 slice 5: the search prompt's frame, as data.
 				pc.SearchPrompt, pc.PickThen = sp, SearchPromptKey
 			}
+			if d := snapshotDivideShield(c.DivideShield); d != nil && c.Kind == PendingChoiceDivideShield {
+				// #4361 S16: the divide_shield prompt and its landing step.
+				pc.DivideShield, pc.PickThen = d, DivideShieldLandKey
+			}
 			if d := c.dice; d != nil && c.Kind == PendingChoiceOptionPick {
 				// #4307: a paused dice roll.
 				pc.DiceRoll = snapshotDiceRollPause(d)
@@ -2545,6 +2563,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// one (damage_keyed.go) is written. The owed follow-ups themselves
 	// are data (PreventionFollowUps).
 	s.FollowUpParks = snapshotFollowUpParks(g.followUpParks)
+	// #4361 S16: the divisions and redirection orders held for an
+	// instance whose damage waits on a prompt.
+	s.ShieldDivisions = snapshotShieldDivisions(g.shieldDivisions)
+	s.RedirectOrders = snapshotRedirectOrders(g.redirectOrders)
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
@@ -3339,15 +3361,16 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// ADR 0088's ordered placement: handed the answer, then
 		// places the pile and runs the rest of the card.
 		"libraryOrderResume": c.libraryOrderResume != nil,
-		// The two chained-choice frames. A chain link is a
-		// continuation like any other, and an entry missing here
-		// would let the server write a restore point that silently
-		// drops the rest of the card. See chained_choice.go.
-		"confirmResume": c.confirmResume != nil,
 		// #4361 S7b: the card-set pick's closure frame is gone. Every
 		// choose_cards pick is keyed, a run's reveal or permanent pick
 		// settles from its own fields, and an entry card choice's zone is
 		// its kind's.
+		// The chained-choice frame. A chain link is a continuation
+		// like any other, and an entry missing here would let the
+		// server write a restore point that silently drops the rest
+		// of the card. See chained_choice.go. (The confirm frame is
+		// built from its key when answered; #4361 S16 deleted the
+		// last stored one, the divide_shield prompt's.)
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
 		// #4361: the colour, creature-type and number prompts' and the coin
@@ -3499,6 +3522,8 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.followUpParks = restoreFollowUpParks(s.FollowUpParks)
+	g.shieldDivisions = snapshotShieldDivisions(s.ShieldDivisions)
+	g.redirectOrders = restoreRedirectOrders(s.RedirectOrders)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
@@ -3589,6 +3614,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// #4253: and every instance a keyed park names (a keyed damage
 	// frame's is taken as the frame is rebuilt).
 	g.damageInstanceSeq = max(g.damageInstanceSeq, maxParkedDamageInstance(g.followUpParks))
+	// #4361 S16: and every instance a division or a redirection order
+	// names (a divide_shield prompt's are taken as it is restored).
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxHeldDivisionInstance(g.shieldDivisions, g.redirectOrders))
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -3713,6 +3741,12 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		if sh := s.PendingChoices[i].SourceShield; sh != nil && s.PendingChoices[i].Kind == PendingChoiceChooseSource {
 			g.PendingChoices[i].sourceShield = restoreSourceShield(sh)
+		}
+		if d := s.PendingChoices[i].DivideShield; d != nil && s.PendingChoices[i].Kind == PendingChoiceDivideShield {
+			// #4361 S16: the divide_shield prompt and its landing step.
+			g.PendingChoices[i].DivideShield = restoreDivideShield(d)
+			g.PendingChoices[i].PickThen = ""
+			g.damageInstanceSeq = max(g.damageInstanceSeq, maxDivideShieldInstance(d))
 		}
 		if t := s.PendingChoices[i].NameThen; t != nil && carriesValueThen(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].nameThen = restoreKeyedTail(t)
