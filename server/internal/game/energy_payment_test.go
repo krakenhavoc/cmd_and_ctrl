@@ -174,7 +174,7 @@ func TestPayAmountBoundsPaysAndHandsOn(t *testing.T) {
 	got := -1
 	queuePayAmount(t, g, PayEnergyAmount{
 		Chooser: me.ID, Source: uuid.New(), Min: 1, Goal: 3, Unit: PayAmountDamage,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	c := payAmountChoice(g)
 	if c == nil || c.PayAmount == nil {
@@ -210,7 +210,7 @@ func TestPayAmountZeroDeclines(t *testing.T) {
 	got := -1
 	queuePayAmount(t, g, PayEnergyAmount{
 		Chooser: me.ID, Source: uuid.New(), Min: 1,
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	c := payAmountChoice(g)
 	if err := g.ResolvePayAmount(c.ID, me.ID, 0); err != nil {
@@ -231,7 +231,7 @@ func TestPayAmountNothingToChoose(t *testing.T) {
 	got := -1
 	queuePayAmount(t, g, PayEnergyAmount{
 		Chooser: me.ID, Source: uuid.New(),
-		Then: func(_ *Game, n int) error { got = n; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; return nil }),
 	})
 	if got != 0 || payAmountChoice(g) != nil {
 		t.Errorf("handed %d, prompt %v; want 0 and none", got, payAmountChoice(g))
@@ -253,7 +253,7 @@ func TestPayAmountDroppedRunsWithNothingPaid(t *testing.T) {
 	got, runs := -1, 0
 	queuePayAmount(t, g, PayEnergyAmount{
 		Chooser: leaver.ID, Source: sourceID,
-		Then: func(_ *Game, n int) error { got = n; runs++; return nil },
+		Branch: numberHook(func(_ *Game, n int) error { got = n; runs++; return nil }),
 	})
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)

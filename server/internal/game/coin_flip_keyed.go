@@ -13,7 +13,8 @@ import (
 //
 // A coin call (PendingChoiceCoinCall) held the rest of the card as a Go
 // closure on its coinFlipResume frame, and a prompt with a frame is not
-// written to a restore point. The keyed form carries no frame: the call's
+// written to a restore point. #4361 deleted the frame and the closure form
+// with it. The keyed form carries no frame: the call's
 // own data (flipper, source, coins, the stop rule, the wins so far) is
 // already on the prompt, and the continuation is a package-level function
 // registered under an on-disk key (RegisterCoinFlipThen), handed the result
@@ -123,12 +124,10 @@ func (spec CoinFlipSpec) keyedCoinFlip(c *PendingChoice) {
 	c.Asked = copyAskedItem(spec.Asked)
 }
 
-// coinFlipSpecOf is the spec a coin call was asked with: its closure
-// frame's, or for a keyed call the prompt's own data.
+// coinFlipSpecOf is the spec a coin call was asked with, from the prompt's
+// own data. False for a call with no key, which FlipCoinForEffect never
+// queues.
 func coinFlipSpecOf(c *PendingChoice) (CoinFlipSpec, bool) {
-	if c.coinFlipResume != nil {
-		return c.coinFlipResume.spec, true
-	}
 	if c.PickThen == "" {
 		return CoinFlipSpec{}, false
 	}

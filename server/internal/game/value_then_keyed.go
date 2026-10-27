@@ -6,13 +6,35 @@ package game
 // creature type (CreatureTypePrompt.ThenTail).
 //
 // All three are "a word, then the rest of the card". The keyed form holds no
-// chooseValueResume frame: the tail rides PendingChoice.nameThen (written to a
+// frame: the tail rides PendingChoice.nameThen (written to a
 // restore point as pendingChoiceSnapshot.NameThen, a field these kinds share)
 // with its key on PickThen, so a binary that lacks the tail refuses the file
 // rather than restoring a prompt whose answer lands nowhere. The answer is the
 // tail's Word. The prompt takes the cause it was queued under, as a keyed
 // number prompt does: the answer may come after a restore, when nothing is
 // resolving.
+//
+// A resolution-time colour or creature type that nothing follows is keyed
+// too (#4361), under valueChosenNothing: it used to hold an empty
+// chooseValueResume frame to tell it apart from the stored form, and that
+// frame made the table no restore point for no reason.
+
+// valueChosenNothing is the tail of a resolution-time colour or
+// creature-type prompt with nothing hanging off the answer: the chosen
+// event is the whole consequence. An on-disk key.
+var valueChosenNothing = RegisterTail("engine/value-chosen-nothing", func(*Game, TailOutcome) error { return nil })
+
+// keyValueThenOrNothingLocked is keyValueThenLocked for a colour or
+// creature-type prompt, with valueChosenNothing standing in for a zero
+// tail, so the prompt is told apart from the stored form by data.
+//
+// Caller must hold g.mu.
+func (g *Game) keyValueThenOrNothingLocked(c *PendingChoice, then KeyedTail) {
+	if then.IsZero() {
+		then = KeyedTail{Ref: valueChosenNothing}
+	}
+	g.keyValueThenLocked(c, then)
+}
 
 // carriesValueThen reports whether a prompt kind may carry a keyed value
 // "then" (nameThen).

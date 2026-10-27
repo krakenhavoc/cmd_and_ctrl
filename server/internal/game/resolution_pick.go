@@ -248,43 +248,29 @@ type RevealPickPrompt struct {
 }
 
 // RevealPickThenForEffect asks `p.Chooser` to pick from the revealed
-// set and runs `then` once they have.
+// set and runs p.ThenKey once they have, handed the cards they PICKED
+// and the whole reveal (CardsChosen.Picked, Candidates) — the
+// partition, because every card of this family does something with both
+// halves ("put the chosen cards into your graveyard and the rest into
+// your hand").
 //
-// `then` receives the cards they PICKED and the cards they LEFT, each
-// in the order the set was revealed — the partition, because every
-// card of this family does something with both halves ("put the chosen
-// cards into your graveyard and the rest into your hand").
-//
-// It runs even when no prompt could go up — an empty set, or a chooser
-// who has left the game (CR 800.4a) — with nothing picked and
-// everything left. A continuation is the rest of a card that is paused
-// mid-resolution, and one that is silently never called is a card that
-// stops halfway (#544, #1006). Callers that need the pre-prompt case
-// to read differently should check the seat themselves before calling.
+// Nothing runs when no prompt could go up — an empty set, or a chooser
+// who has left the game (CR 800.4a): it reports 0 and the caller carries
+// on with nothing picked. The closure form, which ran its continuation
+// itself in that case, is gone (#4361). With no key the pick is asked and
+// nothing waits on it.
 //
 // Reports how many prompts went up (0 or 1), so a caller that has to
 // distinguish "nobody was asked" from "asked and picked nothing" can.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) RevealPickThenForEffect(p RevealPickPrompt, then func(g *Game, picked, left []uuid.UUID) error) (int, error) {
+func (g *Game) RevealPickThenForEffect(p RevealPickPrompt) (int, error) {
 	if p.ThenKey.key != "" {
-		if then != nil {
-			return 0, fmt.Errorf("%w: keyed reveal pick %q also sets a closure", ErrInvalidParam, p.ThenKey.key)
-		}
 		return g.queueRevealPickKeyedLocked(p), nil
 	}
-	// Frozen at the ask, like every other prompt's candidate list: the
-	// partition handed to `then` has to be a partition of what the
-	// chooser was actually shown.
+	// Frozen at the ask, like every other prompt's candidate list.
 	all := copyUUIDs(p.Cards)
-	var landedThen func(*Game, []SeatCards) error
-	if then != nil {
-		landedThen = func(g *Game, landed []SeatCards) error {
-			picked, left := partitionPiles(all, seatCardsFlat(landed))
-			return then(g, picked, left)
-		}
-	}
-	return g.runPromptsLocked([]uuid.UUID{p.Chooser}, landedThen, func(seat, run uuid.UUID) bool {
+	return g.runPromptsLocked([]uuid.UUID{p.Chooser}, func(seat, run uuid.UUID) bool {
 		return g.queueRevealPickLocked(p, all, seat, run) != uuid.Nil
 	})
 }

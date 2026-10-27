@@ -2534,9 +2534,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.StepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
-	// #4290: the prompted runs in flight. A keyed run is written; a run
-	// whose continuation is a closure is counted.
-	s.PromptRuns = snapshotPromptRuns(g.promptRuns, cen)
+	// #4290: the prompted runs in flight, every one keyed and written
+	// (the closure form is gone, #4361).
+	s.PromptRuns = snapshotPromptRuns(g.promptRuns)
 	s.ParkedDraws = snapshotParkedDraws(g.parkedDraws)
 
 	switch n := len(g.Events); {
@@ -3318,14 +3318,14 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 			!permanentPickLegIsData(c),
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
-		"optionPickResume":  c.optionPickResume != nil,
-		"chooseValueResume": c.chooseValueResume != nil,
-		"modePickResume":    c.modePickResume != nil,
-		"coinFlipResume":    c.coinFlipResume != nil,
+		// #4361: the colour, creature-type and number prompts' and the coin
+		// call's frames are gone; every one is data.
+		"optionPickResume": c.optionPickResume != nil,
+		"modePickResume":   c.modePickResume != nil,
 		// #1019's / #1027's prompted run is not counted here since
 		// #4290: the link (promptRun) is carried, and the run itself is
-		// counted once, on the Game, when its continuation is a closure
-		// (snapshotPromptRuns).
+		// written on the Game (snapshotPromptRuns); since #4361 no run
+		// holds a closure.
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)

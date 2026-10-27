@@ -143,7 +143,7 @@ var extrapolateOpponent = OptionPickThen("option-pick/extrapolate-the-impossible
 			Min:      1,
 			Max:      1,
 			ThenKey:  extrapolateTake,
-		}, nil)
+		})
 		return err
 	})
 

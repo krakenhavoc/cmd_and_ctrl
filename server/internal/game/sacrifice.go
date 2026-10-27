@@ -226,7 +226,7 @@ func (g *Game) PlayersSacrificeForEffect(source uuid.UUID, players []uuid.UUID, 
 // THE FIRE-AND-FORGET FORM. The 1 says a QUESTION went up, not that
 // anything was sacrificed — a caller with an "if you do" rider is
 // asking the wrong thing and wants
-// PlayerSacrificesThenForEffect (#1019, sacrifice_run.go).
+// PlayerSacrificesThenKeyedForEffect (#1019, #4290, sacrifice_run.go).
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {

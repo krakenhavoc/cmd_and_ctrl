@@ -95,10 +95,9 @@ func seatCardsCount(in []SeatCards) int {
 // promptRun is one printed instruction in flight: the prompts still
 // outstanding, what has landed so far, and the rest of the card.
 //
-// `then` is a closure and is SHARED with a clone like every other
-// continuation in the engine — a resume reads it and never writes it.
-// Everything else is deep-copied (clonePromptRuns), because everything
-// else is what an answer changes.
+// It is plain data, deep-copied by clonePromptRuns because everything in
+// it is what an answer changes. The closure form of its continuation is
+// gone (#4361): only a keyed run is kept.
 type promptRun struct {
 	// outstanding is how many queued prompts have not settled yet.
 	// The run finishes at zero; it is never re-armed, because a
@@ -114,16 +113,12 @@ type promptRun struct {
 	// landed is what each seat moved, accumulated as the legs settle.
 	landed map[uuid.UUID][]uuid.UUID
 
-	// then is the rest of the card. Nil is a run nobody is waiting on,
-	// which is every caller that used the fire-and-forget entry points.
-	then func(g *Game, landed []SeatCards) error
-
 	// thenKey is the rest of the card as a REGISTERED continuation
-	// (RegisterPromptRunThen, prompt_run_keyed.go, #4290) in place of
-	// `then`, and carry and source are the plain data it is handed. A
-	// run with a key holds no closure, so it is written to a restore
-	// point (GameSnapshot.PromptRuns) and the table waiting on its legs
-	// is one. At most one of `then` and `thenKey` is set.
+	// (RegisterPromptRunThen, prompt_run_keyed.go, #4290), and carry and
+	// source are the plain data it is handed. It is written to a restore
+	// point (GameSnapshot.PromptRuns), so the table waiting on the run's
+	// legs is one. Empty is a run nobody is waiting on, which is every
+	// caller of the fire-and-forget entry points, and is never kept.
 	thenKey string
 	carry   []uuid.UUID
 	source  uuid.UUID
@@ -158,17 +153,16 @@ func (r *promptRun) answer() []SeatCards {
 // the two verbs do differently at queue time.
 //
 // It reports how many prompts it queued, which is what the
-// fire-and-forget forms return, and runs `then` inline when it queued
-// none — there is nothing to wait for and the rest of the card is
-// still owed.
+// fire-and-forget forms return. Nothing waits on the run: the form with
+// the rest of the card attached is runPromptsKeyedLocked (the closure
+// form is gone, #4361).
 //
 // Caller must hold g.mu.
 func (g *Game) runPromptsLocked(
 	asks []uuid.UUID,
-	then func(g *Game, landed []SeatCards) error,
 	queue func(seat, run uuid.UUID) bool,
 ) (int, error) {
-	return g.startRunLocked(asks, &promptRun{then: then}, queue)
+	return g.startRunLocked(asks, &promptRun{}, queue)
 }
 
 // runPromptsKeyedLocked is runPromptsLocked with the rest of the card
@@ -195,7 +189,7 @@ func (g *Game) runPromptsKeyedLocked(
 }
 
 // startRunLocked is the body of both: `run` arrives with its
-// continuation (a closure, a key, or neither) and leaves with its legs.
+// continuation (a key, or none) and leaves with its legs.
 //
 // Caller must hold g.mu.
 func (g *Game) startRunLocked(asks []uuid.UUID, run *promptRun, queue func(seat, run uuid.UUID) bool) (int, error) {
@@ -277,45 +271,40 @@ func (g *Game) settleRunLegLocked(runID, seat uuid.UUID, landed []uuid.UUID) err
 	return g.finishRunLocked(run)
 }
 
-// waited reports whether anything is waiting on the run: a closure or a
-// registered continuation.
-func (r *promptRun) waited() bool { return r.then != nil || r.thenKey != "" }
+// waited reports whether anything is waiting on the run: a registered
+// continuation.
+func (r *promptRun) waited() bool { return r.thenKey != "" }
 
 // finishRunLocked runs the rest of the card once the run's last leg has
-// settled (or when no leg went up): the closure with the answer, or the
-// registered continuation with the answer and the run's plain data.
+// settled (or when no leg went up): the registered continuation with the
+// answer and the run's plain data.
 //
 // Caller must hold g.mu.
 func (g *Game) finishRunLocked(run *promptRun) error {
-	// No seat was asked: the continuation is handed nothing, as the
-	// closure form always was.
+	if run.thenKey == "" {
+		return nil
+	}
+	// No seat was asked: the continuation is handed nothing.
 	var answer []SeatCards
 	if len(run.seats) > 0 {
 		answer = run.answer()
 	}
-	switch {
-	case run.then != nil:
-		return run.then(g, answer)
-	case run.thenKey != "":
-		fn, ok := lookupPromptRunThen(run.thenKey)
-		if !ok {
-			return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, run.thenKey)
-		}
-		return fn(g, RunDone{
-			Source: run.source, Landed: answer,
-			Carry: copyUUIDs(run.carry), Nums: copyInts(run.nums), Asked: copyAskedItem(run.asked),
-		})
+	fn, ok := lookupPromptRunThen(run.thenKey)
+	if !ok {
+		return fmt.Errorf("%w: prompted-run continuation %q", ErrUnknownEffectKey, run.thenKey)
 	}
-	return nil
+	return fn(g, RunDone{
+		Source: run.source, Landed: answer,
+		Carry: copyUUIDs(run.carry), Nums: copyInts(run.nums), Asked: copyAskedItem(run.asked),
+	})
 }
 
 // clonePromptRuns gives an undo snapshot its own copy of every run in
 // flight.
 //
 // Deep in everything an answer writes — the counter, the per-seat
-// landed lists, the ask order — and shallow in the one thing it does
-// not, the continuation closure. That is the same split
-// cloneReplacementResume makes, and it is what makes an undo across a
+// landed lists, the ask order — and in the plain data the continuation
+// is handed. That is what makes an undo across a
 // half-answered fan-out replay identically: restore the queue and the
 // runs together, and the second answer finds exactly the run the
 // first one did.

@@ -507,10 +507,10 @@ type PendingChoice struct {
 	// energy_payment.go): the bounds of the answer, the card's own
 	// threshold and what each counter buys. Wire-serialised via
 	// PendingChoiceView.PayAmount. Plain data, written to a restore point
-	// (#4289, #4294) when the prompt holds no chooseValueResume frame: the
-	// keyed "choose X" of a MayPayX (MayPayX below), and a keyed number
-	// prompt (PickThen is a RegisterNumberThen key, number_then.go). A
-	// pay_amount that does carry a frame is not a restore point.
+	// (#4289, #4294): the keyed "choose X" of a MayPayX (MayPayX below), a
+	// keyed number prompt (PickThen is a RegisterNumberThen key,
+	// number_then.go), and since #4361 (which deleted the closure frame) a
+	// payment nothing follows.
 	PayAmount *PayAmountPrompt
 
 	// MayPayX makes a pay_amount the "choose X" half of a KEYED
@@ -1063,8 +1063,7 @@ type PendingChoice struct {
 	// confirmResume is the server-only continuation pair for a
 	// PendingChoiceConfirm: one closure per branch. Not serialised.
 	// See chained_choice.go.
-	confirmResume  *confirmFrame
-	coinFlipResume *coinFlipFrame
+	confirmResume *confirmFrame
 
 	// private marks a prompt whose WORDS name a card in a hidden zone
 	// (ADR 0133: the question an opening-hand action asks names the
@@ -1232,13 +1231,6 @@ type PendingChoice struct {
 	// every other prompt.
 	TurnSkipOrder *TurnSkipOrder
 
-	// chooseValueResume is the continuation for a resolution-time
-	// PendingChoiceColor (Wash Out's "return all permanents of the
-	// color of your choice"). nil for the stored form, whose answer is
-	// written onto the source permanent instead. Not serialised. See
-	// color_choice.go.
-	chooseValueResume *chooseValueFrame
-
 	// scryThen is the continuation for a PendingChoiceScry or a
 	// PendingChoiceSurveil (#4253 slice 3): a registered tail run once the
 	// look-at is done, which must not run until the player has finished
@@ -1258,10 +1250,11 @@ type PendingChoice struct {
 	// nameThen is a resolution-time card-name prompt's "then" as data
 	// (#4253 slice 10c): a registered tail told the chosen name as its
 	// Word. Written to a restore point (pendingChoiceSnapshot.NameThen), its
-	// key riding PickThen. The zero tail is the closure form
-	// (chooseValueResume) or the stored form (the name lands on the source).
-	// Since the sweep's second pass (#4253) a resolution-time colour or
-	// creature-type prompt carries one too (value_then_keyed.go).
+	// key riding PickThen. The zero tail is the stored form (the name lands
+	// on the source). Since the sweep's second pass (#4253) a
+	// resolution-time colour or creature-type prompt carries one too
+	// (value_then_keyed.go); since #4361 always, valueChosenNothing when
+	// nothing follows the answer.
 	nameThen KeyedTail
 
 	// sourceShield is a choose_source prompt's consequence when it is the

@@ -59,17 +59,17 @@ func TestHeuristicAnswersEveryResolutionPickAndTheTableAdvances(t *testing.T) {
 						Reason: "test — reveal the hand",
 						Cards:  revealed,
 					})
-					if _, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
+					if _, err := g.RevealPickThenForEffect(revealPickHooked(game.RevealPickPrompt{
 						Chooser:  other.ID,
 						Owner:    seat.ID,
 						Question: "test — choose two of those cards",
 						Cards:    revealed,
 						Min:      2,
 						Max:      2,
-					}, func(*game.Game, []uuid.UUID, []uuid.UUID) error {
+					}, func(*game.Game, game.CardsChosen) error {
 						*answers++
 						return nil
-					}); err != nil {
+					})); err != nil {
 						t.Fatalf("RevealPickThenForEffect: %v", err)
 					}
 				})

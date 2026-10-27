@@ -139,38 +139,36 @@ func TestAKeyedDiscardRunIsARestorePointWithALegAnswered(t *testing.T) {
 	}
 }
 
-// TestAClosureRunIsStillCountedOnce: the closure form is not a restore
-// point, and the census counts the run once rather than once per leg.
-func TestAClosureRunIsStillCountedOnce(t *testing.T) {
+// TestAOneSeatSacrificeRunOfThreeRestoresMidRun (#4361): the closure form
+// of a counted one-seat sacrifice (PlayerSacrificesThenForEffect) is gone,
+// and its keyed sibling's three legs are one written run. A strict restore
+// with two legs open keeps the run, and the restored table finishes it
+// once.
+func TestAOneSeatSacrificeRunOfThreeRestoresMidRun(t *testing.T) {
+	resetKeyedRunCall()
 	g := newFourPlayerActiveGame(t)
+	me := g.Seats[0]
 	source := departureTestSource(g, g.Seats[3].ID, "Doomgape")
+	var bears []uuid.UUID
 	g.WithWriteLock(func() {
 		for i := 0; i < 3; i++ {
-			pushBear(g, g.Seats[0].ID)
+			bears = append(bears, pushBear(g, me.ID))
 		}
-		err := g.PlayerSacrificesThenForEffect(source, g.Seats[0].ID, nil, "sacrifice a creature", 3,
-			func(*Game, PromptedSacrifices) error { return nil })
+		err := g.PlayerSacrificesThenKeyedForEffect(source, me.ID, nil, "sacrifice a creature", 3, testKeyedRun, nil)
 		if err != nil {
-			t.Fatalf("PlayerSacrificesThenForEffect: %v", err)
+			t.Fatalf("PlayerSacrificesThenKeyedForEffect: %v", err)
 		}
 	})
-	snap := g.CaptureSnapshot()
-	if snap.Restorable() {
-		t.Fatal("a closure run is a restore point")
+	answerSacrifice(t, g, me.ID, bears[0])
+	g = strictRestore(t, g)
+	me = g.Seats[0]
+	if len(g.promptRuns) != 1 || keyedRunCall.ran != 0 {
+		t.Fatalf("restored %d runs, continuation ran %d times; want one open run", len(g.promptRuns), keyedRunCall.ran)
 	}
-	if len(snap.PromptRuns) != 0 {
-		t.Errorf("a closure run was written: %+v", snap.PromptRuns)
-	}
-	// The legs are closure prompts too (each its own frame), so count
-	// the run's share alone: one note naming the run.
-	runs := 0
-	for _, l := range snap.Continuations.Labels {
-		if l == "a prompted run waits on 3 prompt(s) with a continuation closure" {
-			runs++
-		}
-	}
-	if runs != 1 {
-		t.Errorf("the census names the run %d times, want once: %v", runs, snap.Continuations.Labels)
+	answerSacrifice(t, g, me.ID, bears[1])
+	answerSacrifice(t, g, me.ID, bears[2])
+	if keyedRunCall.ran != 1 || keyedRunCall.got.Sacrifices().Count() != 3 {
+		t.Fatalf("the restored run ran %d times with %v, want once with all three", keyedRunCall.ran, keyedRunCall.got.Landed)
 	}
 }
 

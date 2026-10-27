@@ -393,14 +393,14 @@ func TestPlayerSacrificesThenCountsTheWholeInstruction(t *testing.T) {
 
 	out := &sacrificeRunCall{}
 	g.WithWriteLock(func() {
-		err := g.PlayerSacrificesThenForEffect(source, me.ID, nil, "sacrifice a permanent", 2,
+		err := playerSacrificesHooked(g, source, me.ID, nil, "sacrifice a permanent", 2,
 			func(_ *Game, sacrificed PromptedSacrifices) error {
 				out.ran++
 				out.got = sacrificed
 				return nil
 			})
 		if err != nil {
-			t.Fatalf("PlayerSacrificesThenForEffect: %v", err)
+			t.Fatalf("PlayerSacrificesThenKeyedForEffect: %v", err)
 		}
 	})
 

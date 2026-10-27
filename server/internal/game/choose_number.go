@@ -1,9 +1,7 @@
 package game
 
 import (
-	"fmt"
 	"slices"
-	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -39,15 +37,14 @@ import (
 // stepper and the dispatcher's `amount` answer are the ones energy
 // already has.
 //
-// The continuation rides the chooseValueResume frame, as the energy
-// form's does, so the prompt adds no closure route (ADR 0041's
-// ratchet) and a table holding one is not a restore point
-// (ContinuationCensus.ChoiceResumeFrames).
+// The continuation is a registered branch (ChooseNumber.Branch, #4294),
+// so the prompt holds no closure and a table holding one is a restore
+// point. The closure frame it once rode is gone (#4361).
 //
 // A payment in MANA ("you may pay {X}{R}", Tilonalli's Summoner, #2727)
 // takes exactly that shape (pay_x_on_resolution.go): the number is
 // chosen here with PayResourceNone and a ceiling of what the payer could
-// pay, and Then queues the existing pay_unless prompt for the cost with
+// pay, and its branch queues the existing pay_unless prompt for the cost with
 // X filled in, so the mana is paid through the one path that pays mana
 // for an effect.
 
@@ -77,16 +74,14 @@ type ChooseNumber struct {
 	SelfDamage bool
 	// Question is the prompt's header.
 	Question string
-	// Then runs with the number once it is chosen (and paid). It runs
-	// exactly once, also when there was nothing to ask and when the
-	// chooser left: with 0 for a payment, which was not made, and with
-	// Min for a number that is not paid.
-	Then func(g *Game, n int) error
-	// Branch is the same consequence as a REGISTERED branch
-	// (RegisterNumberThen, #4294), in place of Then: it is handed the
-	// number as NumberAnswer.Number, and runs exactly once as Then does.
-	// A prompt queued with one holds no closure, so a table waiting on
-	// the chooser is a restore point. Set Branch or Then, not both.
+	// Branch is the rest of the card, a REGISTERED branch
+	// (RegisterNumberThen, #4294) handed the number as
+	// NumberAnswer.Number once it is chosen (and paid). It runs exactly
+	// once, also when there was nothing to ask and when the chooser left:
+	// with 0 for a payment, which was not made, and with Min for a number
+	// that is not paid. Zero is a number nothing follows. The prompt holds
+	// no closure, so a table waiting on the chooser is a restore point
+	// (the closure form, Then, is gone: #4361).
 	Branch NumberBranch
 	// split is the engine's attack split's state (attack_split.go).
 	split *AttackSplit
@@ -95,30 +90,25 @@ type ChooseNumber struct {
 // QueueChooseNumberForEffect asks p.Chooser for a number (CR 608.2d).
 // When there is nothing to choose — a life payment whose payer has no
 // life to pay, or whose life total can't change (CR 119.8) — nobody is
-// asked and Then runs with 0. A chooser who has left is not asked either.
+// asked and Branch runs with 0. A chooser who has left is not asked either.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
-	if !p.Branch.IsZero() && p.Then != nil {
-		return fmt.Errorf("%w: keyed choose-number %q also sets a closure", ErrInvalidParam, p.Branch.Then.Key())
-	}
-	then := p.Then
 	floor := max(p.Min, 0)
 	fallback := 0
 	if p.Resource == PayResourceNone {
 		fallback = floor
 	}
+	// run is the branch when nobody is asked; an asked prompt runs it from
+	// its data (numberFrameOf).
 	run := func(g *Game, n int) error {
-		if !p.Branch.IsZero() {
-			// A split's state rides the answer, also when nobody is asked.
-			r := p.Branch.answer(p.Chooser, p.Source, n)
-			r.split = cloneAttackSplit(p.split)
-			return g.runNumberBranch(p.Branch.Then.key, r, carriedCause{})
-		}
-		if then == nil {
+		if p.Branch.IsZero() {
 			return nil
 		}
-		return then(g, n)
+		// A split's state rides the answer, also when nobody is asked.
+		r := p.Branch.answer(p.Chooser, p.Source, n)
+		r.split = cloneAttackSplit(p.split)
+		return g.runNumberBranch(p.Branch.Then.key, r, carriedCause{})
 	}
 	pl := g.playerByIDLocked(p.Chooser)
 	if pl == nil || pl.Eliminated {
@@ -171,17 +161,9 @@ func (g *Game) QueueChooseNumberForEffect(p ChooseNumber) error {
 		// #4294: the keyed form, a restore point.
 		p.Branch.apply(&prompt, g.resolutionCauseLocked())
 		prompt.AttackSplit = cloneAttackSplit(p.split)
-	} else {
-		prompt.chooseValueResume = &chooseValueFrame{then: func(g *Game, value string) error {
-			// "" is the drop (the chooser left, CR 800.4f): a payment
-			// was not made, and a number that is not paid is its floor.
-			n, err := strconv.Atoi(value)
-			if err != nil {
-				n = fallback
-			}
-			return run(g, n)
-		}}
 	}
+	// #4361: with no branch nothing follows the answer, so the prompt
+	// carries no frame and is plain data too.
 	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {
 		return run(g, fallback)

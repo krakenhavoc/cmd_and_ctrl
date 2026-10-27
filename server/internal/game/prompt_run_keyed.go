@@ -235,10 +235,9 @@ type promptRunSeatLanding struct {
 }
 
 // snapshotPromptRuns writes the keyed runs in flight, ordered by ID so
-// two captures of one table are byte-identical, and counts every run
-// whose continuation is a closure: a leg of it is no restore point, and
-// the census says so once per run.
-func snapshotPromptRuns(runs map[uuid.UUID]*promptRun, cen *ContinuationCensus) []promptRunSnapshot {
+// two captures of one table are byte-identical. Every run kept is keyed:
+// the closure form, which the census counted here, is gone (#4361).
+func snapshotPromptRuns(runs map[uuid.UUID]*promptRun) []promptRunSnapshot {
 	if len(runs) == 0 {
 		return nil
 	}
@@ -253,9 +252,9 @@ func snapshotPromptRuns(runs map[uuid.UUID]*promptRun, cen *ContinuationCensus) 
 		if run == nil {
 			continue
 		}
-		if run.then != nil || run.thenKey == "" {
-			cen.ChoiceResumeFrames++
-			cen.note("a prompted run waits on %d prompt(s) with a continuation closure", run.outstanding)
+		if run.thenKey == "" {
+			// Never kept (startRunLocked): a run nobody waits on has no
+			// link. The closure form is gone (#4361).
 			continue
 		}
 		rs := promptRunSnapshot{

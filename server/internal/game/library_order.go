@@ -221,8 +221,9 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		LibraryTopCount:  topCount,
 		LibraryTopDepth:  spec.TopDepth,
 	}
-	if then == nil && !tail.IsZero() {
+	if then == nil {
 		// #4301: the continuation as data, so the prompt is a restore point.
+		// #4361: an ordering nothing follows (a zero tail) is data too.
 		prompt.libraryOrderKeyed = &libraryOrderKeyed{how: how, then: copyKeyedTail(tail)}
 	} else {
 		prompt.libraryOrderResume = func(g *Game, top, bottom []uuid.UUID) error {

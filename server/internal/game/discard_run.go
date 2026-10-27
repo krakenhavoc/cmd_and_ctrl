@@ -167,7 +167,7 @@ func (g *Game) discardRunLocked(
 		// sacrifice are restore points while they wait.
 		p.keyedLeg = true
 	}
-	return g.runPromptsLocked(asks, nil, func(seat, run uuid.UUID) bool {
+	return g.runPromptsLocked(asks, func(seat, run uuid.UUID) bool {
 		// CR 701.9a's "as many as you can": a seat with an empty hand
 		// is asked nothing and gets no leg, and a seat that has left
 		// the game can never answer. Both are

@@ -167,7 +167,7 @@ func TestARevealedSideboardCardIsPublic(t *testing.T) {
 		if _, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
 			Chooser: opp.ID, Owner: owner.ID, Question: "choose one", Min: 1, Max: 1,
 			Cards: []uuid.UUID{side[0].InstanceID, side[1].InstanceID},
-		}, nil); err != nil {
+		}); err != nil {
 			t.Fatal(err)
 		}
 	})

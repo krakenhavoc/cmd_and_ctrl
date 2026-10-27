@@ -74,6 +74,36 @@ func runHook(fn func(g *game.Game, r game.RunDone) error) game.RunData {
 }
 
 var (
+	// testRevealPickHooks are the reveal-pick hooks (#4361: the closure
+	// form of RevealPickThenForEffect is gone), by the ID the pick carries.
+	testRevealPickHooks = map[uuid.UUID]func(g *game.Game, r game.CardsChosen) error{}
+
+	// testRevealPickHookThen runs the hook its pick's first carried ID names.
+	testRevealPickHookThen = game.RegisterChooseCardsThen("test/4361-aiseat-hook-reveal-pick", func(g *game.Game, r game.CardsChosen) error {
+		if len(r.Carry) == 0 {
+			return nil
+		}
+		testHookMu.Lock()
+		fn := testRevealPickHooks[r.Carry[0]]
+		testHookMu.Unlock()
+		if fn == nil {
+			return nil
+		}
+		return fn(g, r)
+	})
+)
+
+// revealPickHooked is p with fn as its keyed continuation.
+func revealPickHooked(p game.RevealPickPrompt, fn func(g *game.Game, r game.CardsChosen) error) game.RevealPickPrompt {
+	id := uuid.New()
+	testHookMu.Lock()
+	testRevealPickHooks[id] = fn
+	testHookMu.Unlock()
+	p.ThenKey, p.Carry = testRevealPickHookThen, []uuid.UUID{id}
+	return p
+}
+
+var (
 	// testConfirmHooks are the confirm branches, accept then decline.
 	testConfirmHooks = map[string][2]func(g *game.Game) error{}
 

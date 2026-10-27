@@ -143,7 +143,12 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 110,
+	"census:ChoiceResumeFrames": 103,
+	// 109 (#4361 S1, 2026-10-27): - CoinFlipSpec.Then, PendingChoice.coinFlipResume
+	// and coinFlipFrame.spec (every flip is keyed); - PendingChoice.chooseValueResume
+	// and chooseValueFrame.then (ChooseNumber.Then and PayEnergyAmount.Then gone,
+	// a tail-less colour or creature type keyed under engine/value-chosen-nothing);
+	// - promptRun.then and so Game.promptRuns (the closure run forms gone).
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
@@ -535,6 +540,8 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
 # counter that stays allowed after tier 4 — resume frames are out of
 # scope for this sprint.
+#
+# 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields

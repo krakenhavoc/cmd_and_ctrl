@@ -205,42 +205,12 @@ func (g *Game) sacrificeTogetherLegsLocked(source uuid.UUID, asks []uuid.UUID, s
 	return legs
 }
 
-// PlayerSacrificesThenForEffect is PlayerSacrificesForEffect with the
-// rest of the card attached, and with a COUNT: "sacrifice two lands"
-// (Lotus Field), "sacrifice that many permanents of their choice"
-// (Phyrexian Obliterator), "sacrifice an artifact, enchantment or
-// token" N times (Lich-Knights' Conquest).
-//
-// The count is here rather than in the caller's loop because the
-// continuation belongs to the whole instruction: N prompts are ONE
-// run, and `then` runs after the last of them. A caller that looped
-// this entry point N times would start N runs and pay out N times.
-//
-// `count` below 1 is treated as 1. A seat that has nothing left to
-// sacrifice stops the queueing early, which is what the fire-and-
-// forget form's `== 0` return meant; a seat with fewer permanents
-// than owed is still asked for all of them, and the surplus prompts
-// are withdrawn by pruneSacrificeChoicesLocked as the board empties —
-// each withdrawal settling its leg with nothing.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PlayerSacrificesThenForEffect(
-	source, playerID uuid.UUID,
-	spec *TargetSpec,
-	reason string,
-	count int,
-	then func(g *Game, sacrificed PromptedSacrifices) error,
-) error {
-	_, err := g.sacrificeRunLocked(source, repeatSeat(playerID, count), spec, reason, then)
-	return err
-}
-
 // PlayerSacrificesNForEffect queues `count` sacrifice prompts for one
 // player with NOTHING waiting on them — Phyrexian Obliterator's "that
 // many permanents of their choice", Lotus Field's two lands,
 // Archfiend of Depravity's "sacrifice all but two".
 //
-// PlayerSacrificesThenForEffect without the continuation, and the loop
+// PlayerSacrificesThenKeyedForEffect without the continuation, and the loop
 // those three helpers used to write out: ask `count` times, stop when
 // the seat has nothing the spec admits. The stop rule is here rather
 // than in three callers because it is one rule (CR 701.21a's "if you
@@ -252,7 +222,7 @@ func (g *Game) PlayerSacrificesThenForEffect(
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesNForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string, count int) int {
-	queued, _ := g.sacrificeRunLocked(source, repeatSeat(playerID, count), spec, reason, nil)
+	queued, _ := g.sacrificeRunLocked(source, repeatSeat(playerID, count), spec, reason)
 	return queued
 }
 
@@ -269,10 +239,10 @@ func repeatSeat(playerID uuid.UUID, count int) []uuid.UUID {
 	return seats
 }
 
-// sacrificeRunLocked is the sacrifice verb's half of a prompted run:
-// the shared body (runPromptsLocked) with the sacrifice prompt as its
-// queue step and PromptedSacrifices as the name its continuation reads
-// the answer under.
+// sacrificeRunLocked is the sacrifice verb's half of a fire-and-forget
+// prompted run: the shared body (runPromptsLocked) with the sacrifice
+// prompt as its queue step. A run something waits on is the keyed form
+// (the closure form, PlayerSacrificesThenForEffect, is gone: #4361).
 //
 // Caller must hold g.mu.
 func (g *Game) sacrificeRunLocked(
@@ -280,15 +250,8 @@ func (g *Game) sacrificeRunLocked(
 	asks []uuid.UUID,
 	spec *TargetSpec,
 	reason string,
-	then func(g *Game, sacrificed PromptedSacrifices) error,
 ) (int, error) {
-	var landedThen func(*Game, []SeatCards) error
-	if then != nil {
-		landedThen = func(g *Game, landed []SeatCards) error {
-			return then(g, PromptedSacrifices(landed))
-		}
-	}
-	return g.runPromptsLocked(asks, landedThen, func(seat, run uuid.UUID) bool {
+	return g.runPromptsLocked(asks, func(seat, run uuid.UUID) bool {
 		// CR 701.21a's "if you can": a seat that controls nothing the
 		// effect admits is skipped rather than handed an empty list —
 		// which is the fire-and-forget form's rule, unchanged. A
@@ -299,7 +262,7 @@ func (g *Game) sacrificeRunLocked(
 	})
 }
 
-// PlayerSacrificesThenKeyedForEffect is PlayerSacrificesThenForEffect
+// PlayerSacrificesThenKeyedForEffect is PlayerSacrificesNForEffect
 // with the rest of the card as a registered run continuation
 // (RegisterPromptRunThen) and `carry` the plain data it is handed:
 // Doomgape's "sacrifice a creature. You gain life equal to that

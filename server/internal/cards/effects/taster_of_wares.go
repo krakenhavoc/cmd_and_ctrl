@@ -121,7 +121,7 @@ func tasterOfWaresRevealAndPick(ctx *Context, controller, opp uuid.UUID, reveale
 		Max:      1,
 		ThenKey:  tasterOfWaresChosen,
 		Asked:    game.NewAskedItem(ctx.Item),
-	}, nil)
+	})
 	return err
 }
 

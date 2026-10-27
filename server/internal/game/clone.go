@@ -346,10 +346,6 @@ func (g *Game) cloneLocked() *Game {
 			// other server-only frame on a PendingChoice: a resume
 			// reads it and never writes it.
 			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
-			if c.coinFlipResume != nil {
-				frame := *c.coinFlipResume
-				cloned.coinFlipResume = &frame
-			}
 			// #1529: the CR 603.3d target walk. Answering a step
 			// MUTATES the frame (the cursor advances and the pick is
 			// appended), so a frame shared with the undo snapshot came

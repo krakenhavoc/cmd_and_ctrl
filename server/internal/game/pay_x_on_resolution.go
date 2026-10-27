@@ -279,17 +279,14 @@ func mayPayXFrameOf(c *PendingChoice) *chooseValueFrame {
 }
 
 // chooseValueFrameOf is the frame a resolution-time value prompt answers
-// through: its own, or, for a keyed MayPayX's "choose X" or a keyed number
-// prompt (number_then.go), or a keyed colour or creature-type prompt
-// (value_then_keyed.go), a frame built from its data. Nil for a prompt
-// with none. Every reader of a
-// chooseValueResume goes through this for a pay_amount.
+// through, built from its data: a keyed MayPayX's "choose X", a keyed
+// number prompt (number_then.go), or a keyed colour or creature-type
+// prompt (value_then_keyed.go). Nil for a prompt with none: a stored
+// colour or type, or a pay_amount nothing follows. No prompt holds a frame
+// of its own since #4361.
 func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
 	if c == nil {
 		return nil
-	}
-	if c.chooseValueResume != nil {
-		return c.chooseValueResume
 	}
 	if f := mayPayXFrameOf(c); f != nil {
 		return f
