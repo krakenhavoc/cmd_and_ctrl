@@ -23,7 +23,7 @@ import (
 // creature's own attack. The (up to one) card is targeted as the trigger
 // goes on the stack, from the graveyard of the player being attacked.
 //
-// "If you do" is the card that REALLY reached exile (ExileCardsThenForEffect
+// "If you do" is the card that REALLY reached exile (ExileCardsKeyedForEffect
 // hands the continuation exactly those), so a card a replacement sent
 // elsewhere, or one that left the graveyard in response, is not copied. The
 // copy is a card copy (CR 707.12): it lives in exile, is offered to the

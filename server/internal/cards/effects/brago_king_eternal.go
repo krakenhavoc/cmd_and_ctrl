@@ -23,7 +23,7 @@ import (
 // with control magic: a permanent you stole comes back to its owner. A
 // token exiled this way ceases to exist (CR 111.8). A commander among
 // the targets pauses on its owner's CR 903.9 question; the return waits
-// on ExileCardsThenForEffect's continuation for the cards that really
+// on ExileCardsKeyedForEffect's continuation for the cards that really
 // reached exile.
 //
 // No simplification. Roon deck request (#4128).

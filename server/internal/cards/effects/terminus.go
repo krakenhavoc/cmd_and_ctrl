@@ -18,7 +18,7 @@ import (
 //
 // Not a destroy: indestructible and regeneration are irrelevant, no
 // dies-trigger fires, and tokens cease to exist. Every creature leaves
-// as ONE simultaneous exit (TuckCardsToLibraryThenForEffect), and each
+// as ONE simultaneous exit (TuckCardsToLibraryKeyedForEffect), and each
 // owner then orders their own cards on the bottom (the owner chooses
 // the relative order). A commander may go to the command zone instead
 // (CR 903.9), and one that does is not among the cards its owner

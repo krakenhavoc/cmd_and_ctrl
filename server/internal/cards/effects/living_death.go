@@ -18,7 +18,7 @@ import (
 // order across the whole table:
 //
 //  1. every seat's graveyard creature cards → exile, as one batch
-//     (ExileCardsThenForEffect);
+//     (ExileCardsKeyedForEffect);
 //  2. every creature on the battlefield → sacrificed, as one batch
 //     (SacrificeAllThenForEffect) — a sacrifice, not a destroy, so
 //     indestructible doesn't save it and "whenever you sacrifice"

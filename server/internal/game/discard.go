@@ -106,8 +106,8 @@ type discardOptions struct {
 
 	// keyed is `then` as data (#4253 slice 9, discard_keyed.go): a
 	// registered tail told the cards discarded this way. A batch with no
-	// closure `then` and no cost answers is always the keyed batch, so a
-	// leg's prompt is a restore point.
+	// closure `then` is always the keyed batch (#4361 S11c: cost answers
+	// included), so a leg's prompt is a restore point.
 	keyed KeyedTail
 }
 
@@ -214,8 +214,8 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
-	if opts.then == nil && opts.commanderAnswers == nil {
-		return g.discardCardsKeyedLocked(playerID, cards, opts.cause, opts.source, opts.keyed)
+	if opts.then == nil {
+		return g.discardCardsAnsweredKeyedLocked(playerID, cards, opts.cause, opts.source, opts.commanderAnswers, opts.keyed)
 	}
 	return g.discardBatchLocked(playerID, cards, nil, nil, opts)
 }

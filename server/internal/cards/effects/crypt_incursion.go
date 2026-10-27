@@ -21,7 +21,7 @@ import (
 // zone instead — it left the graveyard, but it was not "exiled this
 // way" (CR 400.7), so it must not be paid for. The prompt also pauses
 // the resolution, so the number is not knowable on the line after the
-// sweep. ExileCardsThenForEffect sequences the pause and hands back
+// sweep. ExileCardsKeyedForEffect sequences the pause and hands back
 // exactly the cards that reached exile, which is the set the second
 // sentence counts.
 //

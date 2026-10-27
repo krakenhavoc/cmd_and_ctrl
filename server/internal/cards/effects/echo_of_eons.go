@@ -16,7 +16,7 @@ import (
 // Timetwister at the table, on Wheel of Fortune's two-phase shape:
 // every player's hand and graveyard go into their own library FIRST —
 // one simultaneous exit per player, through the same
-// TuckCardsToLibraryThenForEffect batch Jace, the Mind Sculptor's
+// TuckCardsToLibraryKeyedForEffect batch Jace, the Mind Sculptor's
 // ultimate already chains exile→tuck→shuffle through — and only once
 // EVERY player's shuffle has landed does anyone draw. #539's "the
 // commander replacement holds 'from anywhere'" generalization is what makes the graveyard

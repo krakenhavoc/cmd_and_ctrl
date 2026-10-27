@@ -7072,28 +7072,33 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 	// batch has landed.
 	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
 		cause: DiscardCauseCleanup,
-		then: func(g *Game, _ []uuid.UUID) error {
-			delete(g.DiscardPending, playerID)
-			if len(g.DiscardPending) == 0 {
-				g.DiscardPending = nil
-			}
-			// The cleanup step's turn-based actions are finished now
-			// that the discard has landed, so take the one cleanup
-			// exit (cleanup.go): with the pending map empty it runs
-			// the CR 514.3a check and then either ends the turn or
-			// gives the active player priority here. This is where a
-			// trigger watching the hand-size discard gets onto the
-			// stack in the turn it belongs to (#661) — before, this
-			// re-fired the whole step entry, which advanced straight
-			// out of the turn and left the trigger waiting for the
-			// next player's upkeep.
-			if g.Turn.Step == StepCleanup {
-				g.exitCleanupStepOnAnswerLocked()
-			}
-			return nil
-		},
+		// #4361 S11c: the bookkeeping is data (cleanupDiscarded), so a
+		// leg paused on a CR 616 prompt is a restore point.
+		keyed: KeyedTail{Ref: cleanupDiscarded, Player: playerID},
 	})
 }
+
+// cleanupDiscarded is the hand-size discard's bookkeeping once the whole
+// batch has landed (Player is the discarding player). An on-disk key:
+// never renamed, never reused.
+var cleanupDiscarded = RegisterTail("engine/cleanup-discarded", func(g *Game, o TailOutcome) error {
+	delete(g.DiscardPending, o.Tail.Player)
+	if len(g.DiscardPending) == 0 {
+		g.DiscardPending = nil
+	}
+	// The cleanup step's turn-based actions are finished now that the
+	// discard has landed, so take the one cleanup exit (cleanup.go):
+	// with the pending map empty it runs the CR 514.3a check and then
+	// either ends the turn or gives the active player priority here.
+	// This is where a trigger watching the hand-size discard gets onto
+	// the stack in the turn it belongs to (#661) — before, this re-fired
+	// the whole step entry, which advanced straight out of the turn and
+	// left the trigger waiting for the next player's upkeep.
+	if g.Turn.Step == StepCleanup {
+		g.exitCleanupStepOnAnswerLocked()
+	}
+	return nil
+})
 
 // SetMaxHandSize updates the named player's per-player hand-size
 // cap. Sandbox-only — used by the S14+ effect catalog for

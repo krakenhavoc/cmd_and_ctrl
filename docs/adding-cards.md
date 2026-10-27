@@ -5849,7 +5849,7 @@ fires off a card that never discarded. See
 cards from graveyards, then put all cards exiled this way onto the
 battlefield" (Living Death), "exile target creature, then its
 controller searches" (Path to Exile): the second half belongs in
-`ExileTarget.Then` — or, for a set, in `g.ExileCardsThenForEffect`'s
+`ExileTarget.Then` — or, for a set, in `g.ExileCardsKeyedForEffect`'s
 continuation, which also hands over the cards that really reached
 exile. Written as the next line it runs while a replacement's prompt is
 still open (a commander's CR 903.9b offer on a bounce, for one), which
@@ -6014,7 +6014,7 @@ hand ("discard your hand, then draw three"). (`DiscardPrompt.Then` and
 `.Validate`, the closure forms, are gone since #4361.) The run's continuation is the rest of the INSTRUCTION and
 runs once. A payoff written on the leg pays out per answer, which is
 what Syphon Mind did. For the RANDOM discard (CR 701.9b) the
-continuation is `g.DiscardRandomThenForEffect`. See
+continuation is `g.DiscardRandomKeyedForEffect`. See
 [ADR 0013 §5y](decisions/0013-replacement-effects.md).
 
 **"If it WAS a creature card" is a clause about the exiled card, so it

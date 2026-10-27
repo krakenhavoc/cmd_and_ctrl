@@ -26,25 +26,37 @@ import (
 // replaces the fact that an exile put the card in exile — it did not —
 // so an exile batch does not count it.
 
-// exileAllThen runs the exile sweep under the write lock and returns
-// the landed list the continuation was handed, plus how many times the
-// continuation ran.
-func exileAllThen(t *testing.T, g *Game, ids []uuid.UUID) (*[]uuid.UUID, *int) {
+// exileAllThen runs the keyed exile sweep under the write lock with
+// toldProbe as its continuation, and returns a view of what the
+// continuation was handed and how many times it ran.
+func exileAllThen(t *testing.T, g *Game, ids []uuid.UUID) *exileTold {
 	t.Helper()
-	var got []uuid.UUID
-	ran := 0
+	told := &exileTold{g: g, base: len(toldOf(g))}
 	g.WithWriteLock(func() {
-		err := g.ExileCardsThenForEffect(ids, func(_ *Game, exiled []uuid.UUID) error {
-			ran++
-			got = exiled
-			return nil
-		})
-		if err != nil {
-			t.Fatalf("ExileCardsThenForEffect: %v", err)
+		if err := g.ExileCardsKeyedForEffect(ids, KeyedTail{Ref: toldProbe}); err != nil {
+			t.Fatalf("ExileCardsKeyedForEffect: %v", err)
 		}
 	})
-	return &got, &ran
+	return told
 }
+
+// exileTold reads toldProbe's runs on one game from a starting point.
+type exileTold struct {
+	g    *Game
+	base int
+}
+
+func (e *exileTold) ran() int { return len(toldOf(e.g)) - e.base }
+
+func (e *exileTold) got() []uuid.UUID {
+	s := toldOf(e.g)
+	if len(s) <= e.base {
+		return nil
+	}
+	return s[len(s)-1]
+}
+
+func (e *exileTold) reset() { e.base = len(toldOf(e.g)) }
 
 // TestExiledThisWayCountsOnlyWhatLanded is the issue. A sweep hits
 // three creatures: one is exiled, one has its exile cancelled
@@ -67,14 +79,14 @@ func TestExiledThisWayCountsOnlyWhatLanded(t *testing.T) {
 			}))
 	})
 
-	got, ran := exileAllThen(t, g, []uuid.UUID{exiled, saved, binned})
+	told := exileAllThen(t, g, []uuid.UUID{exiled, saved, binned})
 
-	if *ran != 1 {
-		t.Fatalf("the continuation ran %d times, want 1", *ran)
+	if told.ran() != 1 {
+		t.Fatalf("the continuation ran %d times, want 1", told.ran())
 	}
-	if !idsEqual(*got, []uuid.UUID{exiled}) {
+	if !idsEqual(told.got(), []uuid.UUID{exiled}) {
 		t.Errorf("exiled this way = %v, want just the one that reached exile (%v) — "+
-			"CR 400.7, the object that arrived", *got, exiled)
+			"CR 400.7, the object that arrived", told.got(), exiled)
 	}
 	if !g.Exile.Contains(exiled) {
 		t.Error("the plain creature is in exile")
@@ -103,10 +115,10 @@ func TestAPausedExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 			commander := seatDetouredCard(t, g, g.Battlefield, owner)
 			bear := wipeTarget(g, owner)
 
-			got, ran := exileAllThen(t, g, []uuid.UUID{commander, bear})
+			told := exileAllThen(t, g, []uuid.UUID{commander, bear})
 
-			if *ran != 0 {
-				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", *ran)
+			if told.ran() != 0 {
+				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", told.ran())
 			}
 			if findBattlefieldCard(g, bear) == nil {
 				t.Error("the rest of the sweep waits for the paused leg")
@@ -117,8 +129,8 @@ func TestAPausedExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 				t.Fatalf("ResolveOptionalReplacement: %v", err)
 			}
 
-			if *ran != 1 {
-				t.Fatalf("the continuation ran %d times after the answer, want 1", *ran)
+			if told.ran() != 1 {
+				t.Fatalf("the continuation ran %d times after the answer, want 1", told.ran())
 			}
 			want := []uuid.UUID{commander, bear}
 			landed := g.Exile
@@ -128,8 +140,8 @@ func TestAPausedExileLegIsCountedOnlyWhenItLandsInExile(t *testing.T) {
 				want = []uuid.UUID{bear}
 				landed = owner.Command
 			}
-			if !idsEqual(*got, want) {
-				t.Errorf("exiled this way = %v, want %v", *got, want)
+			if !idsEqual(told.got(), want) {
+				t.Errorf("exiled this way = %v, want %v", told.got(), want)
 			}
 			if !landed.Contains(commander) {
 				t.Errorf("the commander is in the %s", landed.Kind)
@@ -147,20 +159,12 @@ func TestReturnedThisWayCountsOnlyWhatLanded(t *testing.T) {
 	commander := seatCommander(t, g.Battlefield, owner)
 	bear := wipeTarget(g, owner)
 
-	var got []uuid.UUID
-	ran := 0
 	g.WithWriteLock(func() {
-		err := g.BounceCardsToHandThenForEffect([]uuid.UUID{commander, bear},
-			func(_ *Game, bounced []uuid.UUID) error {
-				ran++
-				got = bounced
-				return nil
-			})
-		if err != nil {
-			t.Fatalf("BounceCardsToHandThenForEffect: %v", err)
+		if err := g.BounceCardsToHandKeyedForEffect([]uuid.UUID{commander, bear}, KeyedTail{Ref: toldProbe}); err != nil {
+			t.Fatalf("BounceCardsToHandKeyedForEffect: %v", err)
 		}
 	})
-	if ran != 0 {
+	if ran := len(toldOf(g)); ran != 0 {
 		t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0", ran)
 	}
 
@@ -169,10 +173,11 @@ func TestReturnedThisWayCountsOnlyWhatLanded(t *testing.T) {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
 
-	if ran != 1 {
-		t.Fatalf("the continuation ran %d times after the answer, want 1", ran)
+	seen := toldOf(g)
+	if len(seen) != 1 {
+		t.Fatalf("the continuation ran %d times after the answer, want 1", len(seen))
 	}
-	if !idsEqual(got, []uuid.UUID{bear}) {
+	if got := seen[0]; !idsEqual(got, []uuid.UUID{bear}) {
 		t.Errorf("returned this way = %v, want just %v — the commander went to the command zone, "+
 			"not to a hand", got, bear)
 	}
@@ -192,19 +197,19 @@ func TestUndoAcrossAPausedExileLegReplays(t *testing.T) {
 	commander := seatDetouredCard(t, g, g.Battlefield, owner)
 	bear := wipeTarget(g, owner)
 
-	got, ran := exileAllThen(t, g, []uuid.UUID{commander, bear})
+	told := exileAllThen(t, g, []uuid.UUID{commander, bear})
 	promptOpen := g.Clone()
 
 	prompt := expectCommanderPrompt(t, g, owner)
 	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, false); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
-	first := append([]uuid.UUID(nil), (*got)...)
+	first := append([]uuid.UUID(nil), told.got()...)
 	if len(first) != 2 {
 		t.Fatalf("first run exiled %v, want both", first)
 	}
 
-	*ran = 0
+	told.reset()
 	g.WithWriteLock(func() { g.RestoreFrom(promptOpen) })
 	if findBattlefieldCard(g, bear) == nil || findBattlefieldCard(g, commander) == nil {
 		t.Fatal("the rewind puts both permanents back on the battlefield")
@@ -214,11 +219,11 @@ func TestUndoAcrossAPausedExileLegReplays(t *testing.T) {
 	if err := g.ResolveOptionalReplacement(replay.ID, g.Seats[0].ID, false); err != nil {
 		t.Fatalf("ResolveOptionalReplacement (replay): %v", err)
 	}
-	if *ran != 1 {
-		t.Errorf("the continuation ran %d times on the replay, want 1", *ran)
+	if told.ran() != 1 {
+		t.Errorf("the continuation ran %d times on the replay, want 1", told.ran())
 	}
-	if !idsEqual(*got, first) {
-		t.Errorf("replayed exiled this way = %v, want the first run's %v", *got, first)
+	if !idsEqual(told.got(), first) {
+		t.Errorf("replayed exiled this way = %v, want the first run's %v", told.got(), first)
 	}
 }
 

@@ -1726,3 +1726,7 @@ tail engine/rebound-exiled
 tail engine/revealed-pick-then
 option option-pick/trigger-opponent-chooser
 payunless pay-unless/nothing
+tail engine/cleanup-discarded
+tail engine/counter-exiled-instead
+tail engine/countered-to-library
+tail engine/surveil-routed

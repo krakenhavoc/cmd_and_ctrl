@@ -34,7 +34,7 @@ func (g *Game) ExileSpellKeyedForEffect(stackID uuid.UUID, then KeyedTail) error
 	if then.IsZero() {
 		return g.ExileSpellForEffect(stackID)
 	}
-	r, err := g.spellExitRouteLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, TuckOptions{}, nil)
+	r, err := g.spellExitRouteLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, TuckOptions{})
 	if err != nil {
 		return err
 	}

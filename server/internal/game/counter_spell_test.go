@@ -62,16 +62,14 @@ func TestACounterOpensTheWindowAndACancelLeavesTheSpellOnTheStack(t *testing.T) 
 	g.WithWriteLock(func() { g.RegisterReplacementForTest(counterWatcher(opp.ID, "cancel", &seen, cancelCounter)) })
 	counteringFor(g, opp)
 
-	var placed, told bool
 	g.WithWriteLock(func() {
-		err := g.CounterSpellToLibraryThenForEffect(spell, TuckOptions{ToBottom: true}, func(_ *Game, p bool) error {
-			placed, told = p, true
-			return nil
-		})
-		if err != nil {
+		if err := g.CounterSpellToLibraryKeyedForEffect(spell, TuckOptions{ToBottom: true}, KeyedTail{Ref: toldProbe}); err != nil {
 			t.Fatalf("counter: %v", err)
 		}
 	})
+	seenTold := toldOf(g)
+	told := len(seenTold) == 1
+	placed := told && len(seenTold[0]) == 1
 
 	if len(seen) != 1 || seen[0].CounterSpellID != spell || seen[0].CounterBy != opp.ID || seen[0].Actor != opp.ID {
 		t.Fatalf("the replacement saw %+v, want one counter of the spell by the opponent", seen)
@@ -152,13 +150,8 @@ func TestAReplacedCounterExilesTheSpellUncounteredAndGrantsTheFreeCast(t *testin
 			return g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneHand, Owner: g.Seats[0].ID})
 		}},
 		{"counter to the top of the library", func(g *Game, id uuid.UUID, told *bool) error {
-			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{}, func(_ *Game, placed bool) error {
-				if placed {
-					t.Error("a replaced counter reports the spell as placed in the library")
-				}
-				*told = true
-				return nil
-			})
+			*told = true // read back from toldProbe below
+			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{}, KeyedTail{Ref: toldProbe})
 		}},
 	}
 	for _, v := range verbs {
@@ -193,8 +186,14 @@ func TestAReplacedCounterExilesTheSpellUncounteredAndGrantsTheFreeCast(t *testin
 			if perm.Player != opp.ID || perm.Cost != "{0}" || perm.Zone != ZoneExile || !perm.CastOnly {
 				t.Errorf("grant = %+v, want a free cast-only permission in exile for the countering player", perm)
 			}
-			if v.name == "counter to the top of the library" && !told {
-				t.Error("the destination counter's continuation was never told")
+			if told {
+				seen := toldOf(g)
+				if len(seen) != 1 {
+					t.Fatalf("the destination counter's continuation ran %d times, want once", len(seen))
+				}
+				if len(seen[0]) != 0 {
+					t.Error("a replaced counter reports the spell as placed in the library")
+				}
 			}
 		})
 	}
@@ -224,16 +223,12 @@ func TestTwoCounterReplacementsAreOrderedByTheSpellsController(t *testing.T) {
 			})
 			counteringFor(g, opp)
 
-			told := 0
 			g.WithWriteLock(func() {
-				err := g.CounterSpellToLibraryThenForEffect(spell, TuckOptions{}, func(*Game, bool) error {
-					told++
-					return nil
-				})
-				if err != nil {
+				if err := g.CounterSpellToLibraryKeyedForEffect(spell, TuckOptions{}, KeyedTail{Ref: toldProbe}); err != nil {
 					t.Fatalf("counter: %v", err)
 				}
 			})
+			told := len(toldOf(g))
 
 			p := onlyPrompt(t, g)
 			if p.Kind != PendingChoiceReplacementOrder {
@@ -269,7 +264,7 @@ func TestTwoCounterReplacementsAreOrderedByTheSpellsController(t *testing.T) {
 			if hasEventFor(g, EventCounterSpell, spell) {
 				t.Error("a replaced counter was reported as a counter")
 			}
-			if told != 1 {
+			if told := len(toldOf(g)); told != 1 {
 				t.Errorf("the continuation ran %d times, want exactly once", told)
 			}
 		})
@@ -288,15 +283,12 @@ func TestAnAbandonedCounterOrderingPromptStillTellsItsContinuation(t *testing.T)
 	})
 	counteringFor(g, opp)
 
-	told := 0
 	g.WithWriteLock(func() {
-		if err := g.CounterSpellToLibraryThenForEffect(spell, TuckOptions{}, func(*Game, bool) error {
-			told++
-			return nil
-		}); err != nil {
+		if err := g.CounterSpellToLibraryKeyedForEffect(spell, TuckOptions{}, KeyedTail{Ref: toldProbe}); err != nil {
 			t.Fatalf("counter: %v", err)
 		}
 	})
+	told := len(toldOf(g))
 	if p := onlyPrompt(t, g); p.Chooser != me.ID {
 		t.Fatalf("chooser = %s, want the spell's controller", whichSeat(g, p.Chooser))
 	}
@@ -307,7 +299,7 @@ func TestAnAbandonedCounterOrderingPromptStillTellsItsContinuation(t *testing.T)
 	if err := g.Concede(me.ID); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if told != 1 {
+	if told := len(toldOf(g)); told != 1 {
 		t.Errorf("the continuation ran %d times after the prompt was dropped, want 1", told)
 	}
 }

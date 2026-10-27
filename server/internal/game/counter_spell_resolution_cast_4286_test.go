@@ -45,10 +45,10 @@ func counterVerbs() []struct {
 			return g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneExile})
 		}},
 		{"counter to the top of the library (Memory Lapse)", func(g *Game, id uuid.UUID) error {
-			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{}, nil)
+			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{}, KeyedTail{})
 		}},
 		{"counter to the bottom of the library (Spell Crumple)", func(g *Game, id uuid.UUID) error {
-			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{ToBottom: true}, nil)
+			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{ToBottom: true}, KeyedTail{})
 		}},
 	}
 }

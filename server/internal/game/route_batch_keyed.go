@@ -46,6 +46,11 @@ type routeBatchRun struct {
 	// one repetition of this batch belongs to (millUntilRunKeyed). Nil
 	// for every other batch.
 	Mill *millUntilRun `json:"mill,omitempty"`
+	// Search is the library search a hand, graveyard or exile take of
+	// this batch finishes (#4361 S11c, finishSearchLocked): the spec's
+	// data half, told the cards that arrived where it asked. Nil for
+	// every other batch.
+	Search *searchTailSpec `json:"search,omitempty"`
 }
 
 func cloneRouteBatchRun(r *routeBatchRun) *routeBatchRun {
@@ -61,6 +66,9 @@ func cloneRouteBatchRun(r *routeBatchRun) *routeBatchRun {
 		out.Then = t
 	}
 	out.Mill = cloneMillUntilRun(r.Mill)
+	if r.Search != nil {
+		out.Search = &cloneSearchEntryRun(&searchEntryRun{Spec: *r.Search}).Spec
+	}
 	return &out
 }
 
@@ -161,6 +169,14 @@ func (g *Game) finishRouteBatchKeyedLocked(run *routeBatchRun, batch []Card) err
 	// tail that reads the cards that left (SimultaneousExitCardsForEffect)
 	// reads them from any terminal outcome of the last leg.
 	defer g.publishSimultaneousExitLocked(batch)()
+	if run.Search != nil {
+		spec := run.Search.searchSpec()
+		p := g.playerByIDLocked(spec.libraryOwnerID())
+		if p == nil {
+			return ErrPlayerNotFound
+		}
+		return g.finishSearchLocked(spec, p, landed)
+	}
 	return g.runKeyedTailLocked(restoreKeyedTail(run.Then), landed, 0)
 }
 
@@ -183,15 +199,22 @@ func unknownRouteBatchKeys(r *routeBatchRun) []string {
 		return nil
 	}
 	out := unknownKeyedTail(r.Then)
+	if r.Search != nil {
+		out = append(out, unknownKeyedTail(r.Search.ThenTail)...)
+	}
 	return append(out, unknownMillUntilKeys(r.Mill)...)
 }
 
 // --- the verbs ---------------------------------------------------------
 
-// ExileCardsKeyedForEffect is ExileCardsThenForEffect with the
-// continuation as data (#4253 slice 9): `then` is told the cards that
-// reached exile, in batch order, as TailOutcome.IDs. A zero tail is "no
-// continuation". A leg's prompt is a restore point.
+// ExileCardsKeyedForEffect exiles every card in `ids` as one simultaneous
+// event and tells `then` (a registered tail) the ones that actually
+// reached EXILE, in batch order, as TailOutcome.IDs — "for each card
+// exiled this way" (#4253 slice 9). CR 400.7 decides what "this way"
+// means: a leg a replacement sent somewhere else left, but not to exile.
+// A zero tail is "no continuation". A leg's prompt is a restore point.
+// (The closure form, ExileCardsThenForEffect, was deleted in #4361 S11c
+// once only tests called it.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileCardsKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {
@@ -277,8 +300,11 @@ func (g *Game) SacrificeAllKeyedForEffect(source uuid.UUID, ids []uuid.UUID, the
 	return g.routeAllKeyedLocked(sacrificeRoute(source), g.sacrificeableLocked(g.unprotectedFromSacrificeLocked(ids)), then)
 }
 
-// BounceCardsToHandKeyedForEffect is BounceCardsToHandThenForEffect with
-// the continuation as data. It is also the single-card "return it, THEN …"
+// BounceCardsToHandKeyedForEffect returns every card in `ids` to its
+// owner's hand as one simultaneous event and tells `then` (a registered
+// tail) the ones that actually reached a HAND — "for each permanent
+// returned this way". (The closure form, BounceCardsToHandThenForEffect,
+// was deleted in #4361 S11c once only tests called it.) It is also the single-card "return it, THEN …"
 // (#993; a batch of one, since #4253's cleanup deleted the closure wrapper
 // BounceToHandThenForEffect): a hand is a CR 903.9 destination, so every
 // bounce can pause, and the tail is told the card only when it reached a
@@ -291,8 +317,12 @@ func (g *Game) BounceCardsToHandKeyedForEffect(ids []uuid.UUID, then KeyedTail) 
 	return g.routeAllKeyedLocked(bounceRoute, ids, then)
 }
 
-// TuckCardsToLibraryKeyedForEffect is TuckCardsToLibraryThenForEffect with
-// the continuation as data.
+// TuckCardsToLibraryKeyedForEffect puts every card in `ids` into its
+// OWNER's library as one simultaneous exit and tells `then` (a registered
+// tail) the ones that actually reached a LIBRARY (CR 400.7): a library is
+// a CR 903.9 destination, so every tuck can pause (#783). (The closure
+// form, TuckCardsToLibraryThenForEffect, was deleted in #4361 S11c once
+// only tests called it.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) TuckCardsToLibraryKeyedForEffect(ids []uuid.UUID, opts TuckOptions, then KeyedTail) error {

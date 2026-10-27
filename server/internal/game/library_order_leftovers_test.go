@@ -288,15 +288,14 @@ func TestPutInLibraryCounterSkipsASpellThatCantBeCountered(t *testing.T) {
 		InstanceID: spell, Name: "Uncounterable", OracleID: "test-cant-be-countered-1298",
 		Owner: opp.ID, Controller: opp.ID,
 	})
-	ran := 0
 	loQueue(t, g, PutInLibrarySpec{
 		Chooser: me.ID, Cards: []uuid.UUID{spell}, Placement: LibraryPlaceTopOrBottom, Counter: true,
-		Then: func(*Game) error { ran++; return nil },
+		ThenTail: KeyedTail{Ref: toldProbe},
 	})
 	if len(g.PendingChoices) != 0 {
 		t.Error("nothing to ask about a spell the counter cannot counter")
 	}
-	if !g.Stack.Contains(spell) || ran != 1 {
+	if ran := len(toldOf(g)); !g.Stack.Contains(spell) || ran != 1 {
 		t.Errorf("the spell stays on the stack and the effect goes on (stack %v, then ran %d)", g.Stack.Contains(spell), ran)
 	}
 }

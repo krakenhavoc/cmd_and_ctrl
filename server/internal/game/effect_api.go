@@ -935,41 +935,11 @@ func (g *Game) DrawNForEffect(playerID uuid.UUID, n int) error {
 // replacement's prompt can pause the batch (a discarded commander no
 // longer does: it reaches the graveyard first, CR 903.9a, ADR 0115),
 // so nil means "no error", never "the cards are in the graveyard". A card with a
-// clause hanging off the discard uses DiscardRandomThenForEffect.
+// clause hanging off the discard uses DiscardRandomKeyedForEffect (the
+// closure form, DiscardRandomThenForEffect, was deleted in #4361 S11c once
+// only tests called it).
 func (g *Game) DiscardRandomForEffect(playerID uuid.UUID, n int) error {
-	return g.DiscardRandomThenForEffect(playerID, n, nil)
-}
-
-// DiscardRandomThenForEffect is DiscardRandomForEffect with the rest
-// of the card attached — "discard a card at random. If it was a land
-// card, …" — run once the whole batch has reached a terminal outcome
-// and handed the cards that were really discarded
-// (discardedThisWayLocked).
-//
-// It is the random discard's answer to the payout lint's `discardVerb`
-// row (#1027, ADR 0013 §5y). `then` runs even when nothing was
-// discarded, including for an empty hand: a continuation is the rest
-// of a card, and one that is silently never called is a card that
-// stops halfway (#544, #1006).
-//
-// Caller must hold g.mu.
-func (g *Game) DiscardRandomThenForEffect(playerID uuid.UUID, n int, then func(g *Game, discarded []uuid.UUID) error) error {
-	p := g.playerByIDLocked(playerID)
-	if p == nil {
-		return ErrPlayerNotFound
-	}
-	if n <= 0 || p.Hand.Size() == 0 || g.effectDiscardBlockedLocked(playerID) {
-		if then == nil {
-			return nil
-		}
-		return then(g, nil)
-	}
-	ids := make([]uuid.UUID, len(p.Hand.Cards))
-	for i, c := range p.Hand.Cards {
-		ids[i] = c.InstanceID
-	}
-	picked := g.ChooseAtRandomForEffect(RandomDraw{Player: playerID}, ids, n)
-	return g.discardCardsLocked(playerID, picked, discardOptions{cause: DiscardCauseEffect, then: then})
+	return g.DiscardRandomKeyedForEffect(playerID, n, KeyedTail{})
 }
 
 // MillNForEffect moves n cards from the top of playerID's library
@@ -1444,7 +1414,7 @@ func (g *Game) CounterTargetForEffect(stackID uuid.UUID) error {
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellByEffectLocked(stackID, nil, TuckOptions{}, nil)
+		return g.counterSpellByEffectLocked(stackID, nil, TuckOptions{}, KeyedTail{})
 	case StackItemActivated, StackItemTriggered:
 		// #2014: "Spells and abilities can't be countered" (Spider-Punk).
 		// The ability stays a legal target, as a covered spell does.
@@ -1485,7 +1455,7 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 				"spell_id", stackID)
 			return nil
 		}
-		return g.counterSpellByEffectLocked(stackID, &dst, TuckOptions{}, nil)
+		return g.counterSpellByEffectLocked(stackID, &dst, TuckOptions{}, KeyedTail{})
 	case StackItemActivated, StackItemTriggered:
 		if g.abilityCantBeCounteredLocked(item) {
 			slog.Info("counter had no effect: ability can't be countered",
@@ -1498,7 +1468,7 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 	}
 }
 
-// CounterSpellToLibraryThenForEffect is "counter target spell. If that
+// CounterSpellToLibraryKeyedForEffect is "counter target spell. If that
 // spell is countered this way, put it on the bottom of / on top of its
 // owner's library instead of into that player's graveyard" — Spell
 // Crumple's bottom, and each leg of Hinder's "your choice of the top or
@@ -1512,43 +1482,58 @@ func (g *Game) CounterTargetToZoneForEffect(stackID uuid.UUID, dst ZoneRef) erro
 // exit, so CR 903.9 offers a commander the command zone and
 // flashback's CR 702.34a exile still wins.
 //
-// `then` hears whether the card is in its owner's library once the
-// move settles (CR 400.7) — false for every outcome above, and for a
-// commander whose owner took the command zone. Nil is allowed.
+// `then` is a registered tail (RegisterTail), told the spell as
+// TailOutcome.IDs when it is in its owner's library once the move
+// settles (CR 400.7), and no IDs for every outcome above and for a
+// commander whose owner took the command zone. It rides the counter's
+// route as data (#4361 S11c; the closure form,
+// CounterSpellToLibraryThenForEffect, is deleted), so a move paused on a
+// CR 616 prompt is a restore point. A zero tail is "no continuation".
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) CounterSpellToLibraryThenForEffect(stackID uuid.UUID, at TuckOptions, then func(g *Game, placed bool) error) error {
-	tell := func(g *Game, placed bool) error {
-		if then == nil {
-			return nil
-		}
-		return then(g, placed)
-	}
+func (g *Game) CounterSpellToLibraryKeyedForEffect(stackID uuid.UUID, at TuckOptions, then KeyedTail) error {
 	item, ok := g.StackMeta[stackID]
 	if !ok || item == nil {
-		return tell(g, false)
+		return g.runKeyedTailLocked(then, nil, 0)
 	}
 	if item.Kind == StackItemActivated || item.Kind == StackItemTriggered {
 		if g.abilityCantBeCounteredLocked(item) {
 			slog.Info("counter had no effect: ability can't be countered", "ability_id", stackID)
-			return tell(g, false)
+			return g.runKeyedTailLocked(then, nil, 0)
 		}
 		if err := g.counterAbilityLocked(stackID); err != nil {
 			return err
 		}
-		return tell(g, false)
+		return g.runKeyedTailLocked(then, nil, 0)
 	}
 	if !g.counterableSpellOnStackLocked(stackID) {
 		if item.Kind == StackItemSpell {
 			slog.Info("counter had no effect: spell can't be countered", "spell_id", stackID)
 		}
-		return tell(g, false)
+		return g.runKeyedTailLocked(then, nil, 0)
 	}
-	return g.counterSpellByEffectLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, at,
-		func(g *Game) error {
-			return tell(g, g.landedInZoneLocked(stackID, ZoneLibrary, uuid.Nil))
-		})
+	var told KeyedTail
+	if !then.IsZero() {
+		next := copyKeyedTail(then)
+		told = KeyedTail{Ref: counteredToLibrary, Next: &next}
+	}
+	return g.counterSpellByEffectLocked(stackID, &ZoneRef{Kind: ZoneLibrary, Owner: item.Owner}, at, told)
 }
+
+// counteredToLibrary is CounterSpellToLibraryKeyedForEffect's filter on
+// what the counter's route reports: the spell only when it is in a
+// library (a flashback spell's route lands in exile, CR 702.34a, and that
+// is not "put into its owner's library"), then the caller's tail (Next).
+// An on-disk key: never renamed, never reused.
+var counteredToLibrary = RegisterTail("engine/countered-to-library", func(g *Game, o TailOutcome) error {
+	var placed []uuid.UUID
+	for _, id := range o.IDs {
+		if g.landedInZoneLocked(id, ZoneLibrary, uuid.Nil) {
+			placed = append(placed, id)
+		}
+	}
+	return g.runKeyedTailLocked(nextTailValue(o.Tail.Next), placed, 0)
+})
 
 // counterableSpellOnStackLocked reports whether `stackID` is a spell on
 // the stack that a counter would actually counter — what "if that
@@ -1585,7 +1570,7 @@ func (g *Game) counterableSpellOnStackLocked(stackID uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
-	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false, nil)
+	return g.exitSpellFromStackLocked(stackID, nil, ZoneHand, false)
 }
 
 // ExileSpellForEffect exiles a spell from the stack WITHOUT countering
@@ -1612,7 +1597,7 @@ func (g *Game) ReturnSpellToHandForEffect(stackID uuid.UUID) error {
 //
 // Caller must hold g.mu.
 func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
-	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, nil)
+	return g.exitSpellFromStackLocked(stackID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false)
 }
 
 // counterSpellLocked is the lock-free body of CounterSpell. Caller
@@ -1630,7 +1615,7 @@ func (g *Game) ExileSpellForEffect(stackID uuid.UUID) error {
 // prompt is queued nothing has moved, the stack item is still
 // registered, and both complete when the owner answers.
 func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
-	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true, nil)
+	return g.exitSpellFromStackLocked(spellID, dst, ZoneGraveyard, true)
 }
 
 // exitSpellFromStackLocked is the shared body behind counterSpellLocked
@@ -1649,30 +1634,15 @@ func (g *Game) counterSpellLocked(spellID uuid.UUID, dst *ZoneRef) error {
 // vs. an ordinary zone move; it is the one bit the two callers
 // disagree about.
 //
-// `then` is the caller's continuation, run once the move reaches a
-// terminal outcome (zoneRoute.then) — nil for the fire-and-forget
-// verbs. The counter-instead exile (counter_spell.go) is the one caller
-// that passes one; ExileSpellKeyedForEffect carries its tail on a route
-// batch instead.
+// A caller with a continuation carries it on the route as data, as
+// ExileSpellKeyedForEffect and the counter verbs (counter_spell.go) do:
+// they build the route with spellExitRouteLocked. (#4361 S11c deleted the
+// closure continuation this took, once the counter-instead exile, its
+// last caller, was keyed.)
 //
 // Caller must hold g.mu.
-func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, then func(*Game) error) error {
-	return g.exitSpellFromStackAtLocked(spellID, dst, fallback, countered, TuckOptions{}, then)
-}
-
-// exitSpellFromStackAtLocked is exitSpellFromStackLocked with a library
-// POSITION: `at` rides the route exactly as it does on a tuck, so a
-// library destination can be the bottom or N from the top. It exists
-// for #1298's counters — Spell Crumple's "put it on the bottom of its
-// owner's library" and Hinder's "your choice of the top or bottom" —
-// and is ignored for every other destination. The position rides the
-// route rather than being applied afterwards for the reason
-// zoneRoute.Depth gives: a commander whose owner declines CR 903.9's
-// offer still lands where the counter said.
-//
-// Caller must hold g.mu.
-func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) error {
-	r, err := g.spellExitRouteLocked(spellID, dst, fallback, countered, at, then)
+func (g *Game) exitSpellFromStackLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool) error {
+	r, err := g.spellExitRouteLocked(spellID, dst, fallback, countered, TuckOptions{})
 	if err != nil {
 		return err
 	}
@@ -1680,7 +1650,7 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 	return err
 }
 
-// spellExitRouteLocked is exitSpellFromStackAtLocked's first half: the
+// spellExitRouteLocked is exitSpellFromStackLocked's first half: the
 // route that takes a spell off the stack, destination resolved and
 // every stack-exit override (flashback's CR 702.34a exile, #3863's
 // graveyard-to-exile) applied, but nothing moved. The counter verbs
@@ -1688,8 +1658,17 @@ func (g *Game) exitSpellFromStackAtLocked(spellID uuid.UUID, dst *ZoneRef, fallb
 // (counter_spell.go, #4056) and only then route it, so a replacement of
 // the counter sees the move the counter would have made.
 //
+// `at` is a library POSITION: it rides the route exactly as it does on a
+// tuck, so a library destination can be the bottom or N from the top. It
+// exists for #1298's counters — Spell Crumple's "put it on the bottom of
+// its owner's library" and Hinder's "your choice of the top or bottom" —
+// and is ignored for every other destination. The position rides the
+// route rather than being applied afterwards for the reason
+// zoneRoute.Depth gives: a commander whose owner declines CR 903.9's
+// offer still lands where the counter said.
+//
 // Caller must hold g.mu.
-func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions, then func(*Game) error) (zoneRoute, error) {
+func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback ZoneKind, countered bool, at TuckOptions) (zoneRoute, error) {
 	item, ok := g.StackMeta[spellID]
 	if !ok || item == nil || item.Kind != StackItemSpell {
 		return zoneRoute{}, ErrCardNotOnStack
@@ -1739,7 +1718,6 @@ func (g *Game) spellExitRouteLocked(spellID uuid.UUID, dst *ZoneRef, fallback Zo
 		Dst:       destKind,
 		DstOwner:  destOwner,
 		Countered: countered,
-		then:      then,
 	}
 	if destKind == ZoneLibrary {
 		r.ToBottom, r.Depth = at.ToBottom, at.Depth
@@ -2918,7 +2896,7 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// Leyline of the Void) could not see an Entomb, and no CR 903.9
 	// offer for a tutored commander.
 	//
-	// It is the shared batch body (routeAllThenLocked), not a loop,
+	// It is the shared batch body (routeAllRunLocked, keyed since #4361 S11c), not a loop,
 	// because a leg can now PAUSE: the takes are sequenced, each from
 	// the previous one's continuation, and the search finishes — the
 	// EventSearchLibrary, the shuffle, spec.Then — only once they have
@@ -2938,13 +2916,11 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 			route.HiddenBy = spec.LinkTo
 		}
 	}
-	return g.routeAllThenLocked(route, ids, func(g *Game, found []uuid.UUID) error {
-		p := g.playerByIDLocked(spec.libraryOwnerID())
-		if p == nil {
-			return ErrPlayerNotFound
-		}
-		return g.finishSearchLocked(spec, p, found)
-	})
+	// #4361 S11c: the rest of the search is data riding the batch
+	// (routeBatchRun.Search), so a take paused on a CR 616 prompt is a
+	// restore point. finishRouteBatchKeyedLocked finishes it.
+	data := searchTailSpecOf(spec)
+	return g.routeAllRunLocked(route, ids, &routeBatchRun{Search: &data})
 }
 
 // searchEnterEachThenFinishLocked puts the head of `ids` onto the

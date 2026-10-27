@@ -26,7 +26,7 @@ import (
 // resolution (CR 608.2b), so one that changed hands is skipped.
 //
 // THE SHUFFLE. Every still-legal target goes to its owner's library at
-// once (TuckCardsToLibraryThenForEffect, one simultaneous move; a
+// once (TuckCardsToLibraryKeyedForEffect, one simultaneous move; a
 // commander may take CR 903.9's offer instead), then each owner of one
 // shuffles. The players who controlled one are read before the move.
 //

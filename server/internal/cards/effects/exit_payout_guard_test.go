@@ -85,7 +85,7 @@ import (
 // what they hand back is a QUESTION that no clause may gate on.
 //
 // `discardVerb` covers the RANDOM discard beside them, and it names
-// `g.DiscardRandomThenForEffect` (#1027): a random discard is not a
+// `g.DiscardRandomKeyedForEffect` (#1027): a random discard is not a
 // prompt, but it is still an exit, and it can be cancelled or
 // redirected like any other, so the fire-and-forget form is flagged.
 //
@@ -165,12 +165,12 @@ var (
 		returnIsAQuestion: true,
 	}
 	bounceVerb = exitVerb{kind: "bounce", fix: "BounceToHand.Then, ReturnAllToHand.Then or " +
-		"g.BounceToHandThenForEffect / g.BounceCardsToHandThenForEffect, and gate the clause on `bounced`"}
+		"g.BounceCardsToHandKeyedForEffect, and gate the clause on `bounced`"}
 	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckCardsToLibraryKeyedForEffect (a batch of one is fine), " +
 		"and gate the clause on `tucked`"}
 	millVerb = exitVerb{kind: "mill", fix: "MillToZone.ThenTail or g.MillToZoneKeyedForEffect, and gate the clause " +
 		"on the `milled` list"}
-	discardVerb = exitVerb{kind: "random discard", fix: "g.DiscardRandomThenForEffect (#1027, ADR 0013 §5y), " +
+	discardVerb = exitVerb{kind: "random discard", fix: "g.DiscardRandomKeyedForEffect (#1027, ADR 0013 §5y), " +
 		"and gate the clause on the `discarded` list — a discard is an exit (ADR 0013 §5g), so a " +
 		"discarded commander's CR 903.9 prompt holds the batch and the fire-and-forget form " +
 		"returns before it lands"}
@@ -856,12 +856,7 @@ func rummage(ctx *Context, player uuid.UUID) error {
 	const discardAnswer = `package effects
 
 func rummage(ctx *Context, player uuid.UUID) error {
-	return ctx.Game.DiscardRandomThenForEffect(player, 1, func(g *game.Game, discarded []uuid.UUID) error {
-		if len(discarded) == 0 {
-			return nil
-		}
-		return DrawCards{N: 1}.Apply(ctx)
-	})
+	return ctx.Game.DiscardRandomKeyedForEffect(player, 1, ctx.Tail(drawIfDiscarded))
 }
 `
 	const discardPromptOffender = `package effects
@@ -920,7 +915,7 @@ func syphonMind(ctx *Context, item *game.StackItem, source uuid.UUID) error {
 		{"a prompted sacrifice: EachPlayerSacrificesThenKeyedForEffect", sacrificePromptAnswer, 0},
 		{"a graveyard arrival: a gate on a pre-move local", graveyardOffender, 1},
 		{"a discard: a gate on a pre-discard local", discardOffender, 1},
-		{"a discard: DiscardRandomThenForEffect", discardAnswer, 0},
+		{"a discard: DiscardRandomKeyedForEffect", discardAnswer, 0},
 		{"a prompted discard: a gate on a count of QUESTIONS", discardPromptOffender, 1},
 		{"a prompted discard: a gate on the prompt ID", discardPromptCountOffender, 1},
 		{"a prompted discard: EachPlayerDiscardsThenKeyedForEffect", discardPromptAnswer, 0},
