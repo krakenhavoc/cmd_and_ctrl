@@ -23,6 +23,6 @@ func init() {
 		Name:         "Sleight of Mind",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpellOrPermanent("target spell or permanent", nil, nil),
-		OnResolve:    changeTextOfTarget(textColorWords, false, nil),
+		OnResolve:    changeTextOfTarget(textColorWords, false, nothingAfterTheChange),
 	})
 }

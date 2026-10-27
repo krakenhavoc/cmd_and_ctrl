@@ -24,6 +24,6 @@ func init() {
 		Name:         "Magical Hack",
 		Completeness: CompletenessFull,
 		Targets:      TargetSpellOrPermanent("target spell or permanent", nil, nil),
-		OnResolve:    changeTextOfTarget(textLandWords, false, nil),
+		OnResolve:    changeTextOfTarget(textLandWords, false, nothingAfterTheChange),
 	})
 }

@@ -26,17 +26,19 @@ func init() {
 		Name:         "Kindred Charge",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Kindred Charge — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return kindredChargeCopies(NewContext(g, item), item.Controller, creaturesOfTypeYouControl(g, item.Controller, t))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Kindred Charge — choose a creature type",
+				ctx.ItemTail(kindredChargeTypeChosen))
 			return nil
 		},
 	})
 }
+
+// kindredChargeTypeChosen copies each creature of the chosen type the caster
+// controls. An on-disk key.
+var kindredChargeTypeChosen = creatureTypeChosen("then/kindred-charge-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	controller := ctx.Controller()
+	return kindredChargeCopies(ctx, controller, creaturesOfTypeYouControl(ctx.Game, controller, t))
+})
 
 func kindredChargeCopies(ctx *Context, controller uuid.UUID, originals []uuid.UUID) error {
 	cursor := b25LastEventSeq(ctx.Game)

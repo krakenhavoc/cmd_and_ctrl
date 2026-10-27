@@ -19,7 +19,7 @@ import (
 //	ChosenColorAnthem(p, t)                "Creatures you control of the chosen color get +p/+t."
 //	ProducedOneColor(n)                    "Add N mana of any one color."
 //	DifferentColors(n)                     "Add N mana of different colors."
-//	ChooseColorThen(…)                     "Choose a color. <rest of the effect>"
+//	ChooseColorTail(…)                     "Choose a color. <rest of the effect>"
 //
 // Every reader of a stored colour treats "not chosen yet" as the
 // weaker outcome — no mana, no anthem — never as "every colour".
@@ -151,24 +151,73 @@ func OneColorOfAmount(n int) string {
 	return "{" + strings.Join(parts, "|") + "}"
 }
 
-// ChooseColorThen queues a resolution-time "Choose a color." for
-// `chooser` and runs `then` with the answer. Nothing is stored. `then`
-// runs with the game lock held, like every continuation — *ForEffect
-// helpers only.
+// ChooseColorTail queues a resolution-time "Choose a color." for
+// `chooser` and hands the answer to `then`, a registered tail (CardTail,
+// built with ctx.Tail or ctx.ItemTail) told the colour as its Word.
+// Nothing is stored. The rest of the effect is data (#4253: the closure
+// form, ChooseColorThen, is gone), so a table waiting on the answer is a
+// restore point; put what the body reads on the tail (Carry, N, Words,
+// the asking item). Nothing runs when the chooser has left the game.
 //
 // `purpose` is #780's declaration: what the continuation is going to do
 // to the colour it is handed. It leads the argument list because it is
 // a property of the QUESTION, and a reviewer should see it before the
 // wording.
-func ChooseColorThen(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question string, then func(g *game.Game, color string) error) {
+func ChooseColorTail(purpose game.ColorPurpose, g *game.Game, chooser, source uuid.UUID, question string, then game.KeyedTail) {
 	g.QueueColorChoiceThenForEffect(game.ColorPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
 		Purpose:  purpose,
-		Then:     then,
+		ThenTail: then,
 	})
 }
+
+// protectionFromChosenColor is "<the creature> gains protection from the
+// chosen color until end of turn" once the colour is known (Mother of
+// Runes, Sejiri Shelter, Wishmonger, Center Soul and its siblings): the
+// creature is the tail's one carried ID, the label's card name its first
+// Word, and the colour its Word. Run against the asking item. An on-disk key.
+var protectionFromChosenColor = CardTail("then/protection-from-chosen-color-until-eot", func(ctx *Context, o game.TailOutcome) error {
+	token := game.ProtectionFromColor(o.Tail.Word)
+	if token == "" || len(o.Tail.Carry) == 0 || len(o.Tail.Words) == 0 {
+		return nil
+	}
+	return GrantKeywordUntilEOT{
+		Target:   o.Tail.Carry[0],
+		Keywords: []string{token},
+		Label:    o.Tail.Words[0] + " — " + token,
+	}.Apply(ctx)
+})
+
+// chooseProtectionColorFor asks `chooser` for the colour `target` gains
+// protection from until end of turn, keyed (protectionFromChosenColor).
+func chooseProtectionColorFor(ctx *Context, chooser, target uuid.UUID, name, question string) {
+	then := ctx.ItemTail(protectionFromChosenColor)
+	then.Carry = []uuid.UUID{target}
+	then.Words = []string{name}
+	ChooseColorTail(game.ColorForProtection, ctx.Game, chooser, ctx.Source(), question, then)
+}
+
+// preventDamageFromChosenColor is "prevent all damage that sources of the
+// chosen color would deal [to <target>] this turn" once the colour is known
+// (Prismatic Strands, Avacyn, Guardian Angel): the protected object is the
+// tail's one carried ID, or anything when it carries none. Run against the
+// asking item. An on-disk key.
+var preventDamageFromChosenColor = CardTail("then/prevent-damage-from-chosen-color", func(ctx *Context, o game.TailOutcome) error {
+	color := o.Tail.Word
+	if color == "" {
+		return nil
+	}
+	protect := ShieldAnything
+	if len(o.Tail.Carry) > 0 {
+		if o.Tail.Carry[0] == uuid.Nil {
+			return nil
+		}
+		protect = ShieldObject(o.Tail.Carry[0])
+	}
+	return PreventDamageFromSource{Protect: protect, Queries: []game.PermanentQuery{QueryColors(color)}, ChosenQueries: true}.Apply(ctx)
+})
 
 // AnyCombinationOfColors is the produced-mana string for "N mana in
 // any combination of colors" (Selvala, Heart of the Wilds; Chromatic

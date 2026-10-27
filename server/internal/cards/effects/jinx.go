@@ -23,11 +23,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target land", Land()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return TargetLandBecomesChosenTypeThen(ctx, "Jinx", ScheduleDelayedTrigger{
-				At:    game.StepUpkeep,
-				Label: "Jinx — draw a card",
-				Body:  drawOneBody,
-			}.Apply)
+			return TargetLandBecomesChosenTypeThen(ctx, "Jinx", jinxDelayedDraw)
 		},
 	})
 }
+
+// jinxDelayedDraw schedules the draw at the next upkeep, after the land's
+// type. An on-disk key.
+var jinxDelayedDraw = CardTail("then/jinx-delayed-draw", func(ctx *Context, _ game.TailOutcome) error {
+	return ScheduleDelayedTrigger{
+		At:    game.StepUpkeep,
+		Label: "Jinx — draw a card",
+		Body:  drawOneBody,
+	}.Apply(ctx)
+})

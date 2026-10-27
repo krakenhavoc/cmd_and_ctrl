@@ -23,14 +23,8 @@ func init() {
 		Name:         "Reflections of Littjara",
 		Completeness: CompletenessFull,
 		AsEnters: func(card *game.Card, ctx *Context) error {
-			self := card.InstanceID
-			ChooseCreatureTypeThen(ctx.Game, card.Controller, self, "Reflections of Littjara — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t != "" {
-						g.SetNamedTribeForEffect(self, t)
-					}
-					return nil
-				})
+			ChooseCreatureTypeTail(ctx.Game, card.Controller, card.InstanceID, "Reflections of Littjara — choose a creature type",
+				game.KeyedTail{Ref: reflectionsOfLittjaraTypeChosen, Player: card.Controller, Source: card.InstanceID})
 			return nil
 		},
 		Triggered: []game.TriggeredAbility{
@@ -47,3 +41,10 @@ func init() {
 		},
 	})
 }
+
+// reflectionsOfLittjaraTypeChosen stores the type on the enchantment (the
+// tail's Source). An on-disk key.
+var reflectionsOfLittjaraTypeChosen = creatureTypeChosen("then/reflections-of-littjara-type-chosen", func(ctx *Context, t string, o game.TailOutcome) error {
+	ctx.Game.SetNamedTribeForEffect(o.Tail.Source, t)
+	return nil
+})

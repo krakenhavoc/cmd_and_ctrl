@@ -139,6 +139,15 @@ func ledgerLineResolves(line string) bool {
 	case "coinflip":
 		// #4253 slice 10b: a keyed coin flip's continuation.
 		return KnownCoinFlipThen(fields[1])
+	case "run":
+		// #4290: a keyed prompted run's continuation (RegisterPromptRunThen).
+		return KnownPromptRunThen(fields[1])
+	case "steps":
+		// A keyed continuation's recorded steps (RegisterThenStepsKey).
+		return KnownThenSteps(fields[1])
+	case "tapcost":
+		// #4264: a keyed pay-unless's waterbend clause kind.
+		return KnownTapCost(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

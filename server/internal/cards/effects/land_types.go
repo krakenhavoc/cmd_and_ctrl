@@ -66,15 +66,17 @@ func (l LandBecomes) Apply(ctx *Context) error {
 	}.Apply(ctx)
 }
 
-// ChooseBasicLandTypeThen asks the resolving effect's controller to
+// ChooseBasicLandTypeTail asks the resolving effect's controller to
 // choose one of `options` (CR 305.6's five when nil, Tundra Kavu's
-// "a Plains or an Island" when two) and hands the answer to `then`. The
-// choice is made as the effect resolves (CR 608.2), through the
-// ordinary option pick, so the bot and the client answer it unchanged.
-// `then` is not run when no question could be asked.
+// "a Plains or an Island" when two) and hands the answer to `then`, a
+// registered tail told the type as its Word. The choice is made as the
+// effect resolves (CR 608.2), through the ordinary option pick, so the
+// bot and the client answer it unchanged. The pick is keyed
+// (landTypeChosen, #4253 sweep), so a table waiting on it is a restore
+// point. `then` is not run when no answer was given.
 //
 // Vision Charm's "a land type" is the same call over game.LandTypes.
-func ChooseBasicLandTypeThen(ctx *Context, question string, options []string, then func(ctx *Context, landType string) error) error {
+func ChooseBasicLandTypeTail(ctx *Context, question string, options []string, then game.KeyedTail) error {
 	if len(options) == 0 {
 		options = game.BasicLandTypes
 	}
@@ -86,14 +88,23 @@ func ChooseBasicLandTypeThen(ctx *Context, question string, options []string, th
 	return PickOption{
 		Question: question,
 		Options:  choices,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(words) {
-				return nil
-			}
-			return then(ctx, words[index])
-		},
+		ThenKey:  landTypeChosen,
+		Words:    words,
+		Tail:     then,
 	}.Apply(ctx)
 }
+
+// landTypeChosen is ChooseBasicLandTypeTail's answer: the type offered at
+// the index chosen (the prompt's Words) is handed to the tail as its Word.
+// An on-disk key.
+var landTypeChosen = OptionPickThen("option-pick/choose-land-type", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(r.Words) {
+		return nil
+	}
+	then := r.Tail
+	then.Word = r.Words[r.Index]
+	return then.Run(ctx.Game, nil)
+})
 
 // landTypeArticle is "an Island", "a Forest": the type with the article
 // a card prints before it.
@@ -104,25 +115,62 @@ func landTypeArticle(t string) string {
 	return "a " + t
 }
 
+// landDuration is how long a land's new type lasts, as a number a prompt
+// can carry (#4253 sweep): every duration landBecomesOrChoose is given.
+type landDuration int
+
+const (
+	// landUntilEOT is "until end of turn".
+	landUntilEOT landDuration = iota
+	// landWhileSourceRemains is "until this creature leaves the
+	// battlefield" (Gaea's Liege) / "for as long as this creature remains
+	// on the battlefield" (Tide Shaper): the same CR 611.2b duration. A
+	// source that has already left makes the effect never begin.
+	landWhileSourceRemains
+	// landIndefinitely is no duration printed (CR 611.2a), pinned to the
+	// land so it ends when the land stops being that object (CR 400.7).
+	landIndefinitely
+	// landUntilControllersNextTurn is "until its controller's next untap
+	// step": the land's controller as the ability resolves.
+	landUntilControllersNextTurn
+)
+
+// durationFor is the duration `d` names for `land`, and whether the effect
+// begins at all.
+func (d landDuration) durationFor(ctx *Context, land uuid.UUID) (game.Duration, bool) {
+	switch d {
+	case landWhileSourceRemains:
+		dur, ok := DurationWhileSourceRemains(ctx, ctx.Source())
+		// The pin only collects the record once the land is gone (CR
+		// 400.7); the source's condition is what ends it.
+		return ctx.Game.PinnedTo(dur, land), ok
+	case landIndefinitely:
+		return ctx.Game.PinnedTo(game.IndefiniteDuration(), land), true
+	case landUntilControllersNextTurn:
+		c, ok := ctx.Game.LookupCardForEffect(land)
+		if !ok {
+			return game.Duration{}, false
+		}
+		return ctx.Game.PinnedTo(DurationUntilYourNextTurn(ctx, c.Controller), land), true
+	}
+	return DurationUntilEndOfTurn(ctx), true
+}
+
 // landBecomesOrChoose is the shared body: with one type, the land
 // becomes it; with several (or none, meaning all five basic land types)
 // the controller chooses among them first. The land is the first legal
 // battlefield target, and a target gone by resolution changes nothing
 // and asks nothing (CR 608.2b).
 //
-// `after` is the rest of the spell's text, run once the land has its
-// type (CR 608.2c: in the order written), so Shimmering Mirage's "Draw
-// a card" comes after the choice and not before it. Nil for none.
-func landBecomesOrChoose(ctx *Context, name string, dur func(ctx *Context, land uuid.UUID) (game.Duration, bool), inAddition bool, types []string, after func(ctx *Context) error) error {
-	then := func(ctx *Context) error {
-		if after == nil {
-			return nil
-		}
-		return after(ctx)
-	}
+// `after` is the rest of the spell's text, a registered tail run once the
+// land has its type (CR 608.2c: in the order written), so Shimmering
+// Mirage's "Draw a card" comes after the choice and not before it. The
+// zero tail for none. Everything the choice's answer reads rides its tail
+// (landBecomesChosen), so a table waiting on it is a restore point.
+func landBecomesOrChoose(ctx *Context, name string, dur landDuration, inAddition bool, types []string, after game.KeyedTail) error {
 	land := FirstLegalBattlefieldTarget(ctx)
 	if land == uuid.Nil {
-		return then(ctx)
+		return after.Run(ctx.Game, nil)
 	}
 	// The printed types are words of the spell's or ability's text (CR
 	// 612.2, #3872): Tidal Warrior's "becomes an Island" under a Magical
@@ -130,27 +178,59 @@ func landBecomesOrChoose(ctx *Context, name string, dur func(ctx *Context, land 
 	// creates keeps that type whatever the text says later (CR 612.3's
 	// ruling). A choice among them offers each once.
 	types = textSubtypes(ctx, types)
-	become := func(ctx *Context, t string) error {
-		if d, ok := dur(ctx, land); ok {
-			label := name + " — that land is " + landTypeArticle(t)
-			if inAddition {
-				label += " in addition to its other types"
-			}
-			if err := (LandBecomes{Target: land, Types: []string{t}, InAddition: inAddition, Duration: d, Label: label}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return then(ctx)
-	}
 	if len(types) == 1 {
-		return become(ctx, types[0])
+		if err := landBecomeType(ctx, land, types[0], name, dur, inAddition); err != nil {
+			return err
+		}
+		return after.Run(ctx.Game, nil)
 	}
 	question := name + " — choose a basic land type"
 	if len(types) > 1 {
 		question = name + " — choose " + joinOr(types)
 	}
-	return ChooseBasicLandTypeThen(ctx, question, types, become)
+	then := withCarry(withN(ctx.ItemTail(landBecomesChosen), int(dur)), land)
+	then.Words = []string{name}
+	if inAddition {
+		then.Nums = []int{1}
+	}
+	if !after.IsZero() {
+		next := after
+		then.Next = &next
+	}
+	return ChooseBasicLandTypeTail(ctx, question, types, then)
 }
+
+// landBecomeType makes `land` the type `t` for the duration `dur` names.
+func landBecomeType(ctx *Context, land uuid.UUID, t, name string, dur landDuration, inAddition bool) error {
+	d, ok := dur.durationFor(ctx, land)
+	if !ok {
+		return nil
+	}
+	label := name + " — that land is " + landTypeArticle(t)
+	if inAddition {
+		label += " in addition to its other types"
+	}
+	return LandBecomes{Target: land, Types: []string{t}, InAddition: inAddition, Duration: d, Label: label}.Apply(ctx)
+}
+
+// landBecomesChosen is the land's type chosen (the tail's Word): the land
+// is its one carried ID, the card's name its first Word, the duration its
+// N (landDuration), "in addition" its first Num, and the rest of the
+// spell its Next. Run against the asking item. An on-disk key.
+var landBecomesChosen = CardTail("then/land-becomes-chosen-type", func(ctx *Context, o game.TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) == 0 || len(t.Words) == 0 {
+		return nil
+	}
+	inAddition := len(t.Nums) > 0 && t.Nums[0] != 0
+	if err := landBecomeType(ctx, t.Carry[0], t.Word, t.Words[0], landDuration(t.N), inAddition); err != nil {
+		return err
+	}
+	if t.Next == nil {
+		return nil
+	}
+	return t.Next.Run(ctx.Game, nil)
+})
 
 // textSubtypes is `printed` as the text of the object ctx resolves for
 // reads them (Context.TextSubtype), without repeats, in printed order.
@@ -169,12 +249,6 @@ func textSubtypes(ctx *Context, printed []string) []string {
 	return out
 }
 
-// untilEndOfTurnFor is the duration "until end of turn" in the shape
-// landBecomesOrChoose takes.
-func untilEndOfTurnFor(ctx *Context, _ uuid.UUID) (game.Duration, bool) {
-	return DurationUntilEndOfTurn(ctx), true
-}
-
 // TargetLandBecomesUntilEOT is the Effect of "Target land becomes
 // <a type> until end of turn": a fixed type with one argument (Tidal
 // Warrior's Island), a choice among several (Tundra Kavu's "a Plains or
@@ -183,7 +257,7 @@ func untilEndOfTurnFor(ctx *Context, _ uuid.UUID) (game.Duration, bool) {
 // chosen.
 func TargetLandBecomesUntilEOT(name string, types ...string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return landBecomesOrChoose(NewContext(g, item), name, untilEndOfTurnFor, false, types, nil)
+		return landBecomesOrChoose(NewContext(g, item), name, landUntilEOT, false, types, game.KeyedTail{})
 	}
 }
 
@@ -194,13 +268,7 @@ func TargetLandBecomesUntilEOT(name string, types ...string) Effect {
 // ability resolves makes the effect never begin, so nothing happens.
 func TargetLandBecomesWhileSourceRemains(name, landType string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		return landBecomesOrChoose(ctx, name, func(ctx *Context, land uuid.UUID) (game.Duration, bool) {
-			d, ok := DurationWhileSourceRemains(ctx, item.SourceCardID)
-			// The pin only collects the record once the land is gone
-			// (CR 400.7); the source's condition is what ends it.
-			return ctx.Game.PinnedTo(d, land), ok
-		}, false, []string{landType}, nil)
+		return landBecomesOrChoose(NewContext(g, item), name, landWhileSourceRemains, false, []string{landType}, game.KeyedTail{})
 	}
 }
 
@@ -210,9 +278,7 @@ func TargetLandBecomesWhileSourceRemains(name, landType string) Effect {
 // 400.7): Thelonite Monk, Cyclopean Giant.
 func TargetLandBecomesIndefinitely(name, landType string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return landBecomesOrChoose(NewContext(g, item), name, func(ctx *Context, land uuid.UUID) (game.Duration, bool) {
-			return ctx.Game.PinnedTo(game.IndefiniteDuration(), land), true
-		}, false, []string{landType}, nil)
+		return landBecomesOrChoose(NewContext(g, item), name, landIndefinitely, false, []string{landType}, game.KeyedTail{})
 	}
 }
 
@@ -224,13 +290,7 @@ func TargetLandBecomesIndefinitely(name, landType string) Effect {
 // controller as the ability resolves.
 func TargetLandBecomesUntilItsControllersNextTurn(name, landType string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return landBecomesOrChoose(NewContext(g, item), name, func(ctx *Context, land uuid.UUID) (game.Duration, bool) {
-			c, ok := ctx.Game.LookupCardForEffect(land)
-			if !ok {
-				return game.Duration{}, false
-			}
-			return ctx.Game.PinnedTo(DurationUntilYourNextTurn(ctx, c.Controller), land), true
-		}, false, []string{landType}, nil)
+		return landBecomesOrChoose(NewContext(g, item), name, landUntilControllersNextTurn, false, []string{landType}, game.KeyedTail{})
 	}
 }
 
@@ -239,22 +299,33 @@ func TargetLandBecomesUntilItsControllersNextTurn(name, landType string) Effect 
 // (Terraformer, Elsewhere Flask). The lands are the ones you control as
 // it resolves, after the choice (CR 611.2c).
 func eachLandYouControlBecomesChosenTypeUntilEOT(ctx *Context, name string) error {
-	return ChooseBasicLandTypeThen(ctx, name+" — choose a basic land type", nil, func(ctx *Context, t string) error {
-		return LandBecomes{
-			Match:    And(Land(), YouControl()),
-			Types:    []string{t},
-			Duration: DurationUntilEndOfTurn(ctx),
-			Label:    name + " — each land you control is " + landTypeArticle(t),
-		}.Apply(ctx)
-	})
+	then := ctx.ItemTail(eachLandYouControlBecomesChosen)
+	then.Words = []string{name}
+	return ChooseBasicLandTypeTail(ctx, name+" — choose a basic land type", nil, then)
 }
+
+// eachLandYouControlBecomesChosen is the type chosen (the tail's Word) for
+// every land the controller controls, the card's name the tail's first
+// Word. An on-disk key.
+var eachLandYouControlBecomesChosen = CardTail("then/each-land-you-control-becomes-chosen-type", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Words) == 0 {
+		return nil
+	}
+	t, name := o.Tail.Word, o.Tail.Words[0]
+	return LandBecomes{
+		Match:    And(Land(), YouControl()),
+		Types:    []string{t},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    name + " — each land you control is " + landTypeArticle(t),
+	}.Apply(ctx)
+})
 
 // TargetLandBecomesChosenTypeThen is the spell form of "Target land
 // becomes the basic land type of your choice until end of turn", with
-// the rest of the spell's text in `after` (Shimmering Mirage's "Draw a
-// card", Jinx's delayed draw).
-func TargetLandBecomesChosenTypeThen(ctx *Context, name string, after func(ctx *Context) error) error {
-	return landBecomesOrChoose(ctx, name, untilEndOfTurnFor, false, nil, after)
+// the rest of the spell's text in `after`, a registered tail run against
+// the spell (Shimmering Mirage's "Draw a card", Jinx's delayed draw).
+func TargetLandBecomesChosenTypeThen(ctx *Context, name string, after game.TailRef) error {
+	return landBecomesOrChoose(ctx, name, landUntilEOT, false, nil, ctx.ItemTail(after))
 }
 
 // TargetLandYouControlGainsChosenTypeUntilEOT is "Until end of turn,
@@ -264,7 +335,7 @@ func TargetLandBecomesChosenTypeThen(ctx *Context, name string, after func(ctx *
 // ability (CR 205.1b, 305.7's last sentence).
 func TargetLandYouControlGainsChosenTypeUntilEOT(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return landBecomesOrChoose(NewContext(g, item), name, untilEndOfTurnFor, true, nil, nil)
+		return landBecomesOrChoose(NewContext(g, item), name, landUntilEOT, true, nil, game.KeyedTail{})
 	}
 }
 

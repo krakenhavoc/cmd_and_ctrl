@@ -17,22 +17,23 @@ func init() {
 	Register(Spec{
 		OracleID:     "6b4ee935-4474-4757-9fab-978a2e1e72a0",
 		Name:         "Tribal Unity",
+		XMatters:     true,
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Tribal Unity — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					c := NewContext(g, item)
-					return BoostUntilEOT{
-						Match:     OfCreatureType(t),
-						Power:     c.X(),
-						Toughness: c.X(),
-						Label:     "Tribal Unity — +X/+X",
-					}.Apply(c)
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Tribal Unity — choose a creature type",
+				withN(ctx.ItemTail(tribalUnityTypeChosen), ctx.X()))
 			return nil
 		},
 	})
 }
+
+// tribalUnityTypeChosen gives creatures of the chosen type +X/+X until end
+// of turn, X the tail's N. An on-disk key.
+var tribalUnityTypeChosen = creatureTypeChosen("then/tribal-unity-type-chosen", func(ctx *Context, t string, o game.TailOutcome) error {
+	return BoostUntilEOT{
+		Match:     OfCreatureType(t),
+		Power:     o.Tail.N,
+		Toughness: o.Tail.N,
+		Label:     "Tribal Unity — +X/+X",
+	}.Apply(ctx)
+})

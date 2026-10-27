@@ -51,7 +51,8 @@ import (
 // card that says "populate" and nothing more leaves it nil.
 //
 // Except is CreateTokenCopy's "except it …" clause, applied to the
-// copy and not to the original.
+// copy and not to the original. A closure, so a populate with one asks
+// its pick with a closure; Haste is the one clause a card uses, as data.
 //
 // Player defaults to the resolving item's controller.
 type Populate struct {
@@ -70,6 +71,22 @@ type Populate struct {
 	// table waiting on the choice is a restore point. Set Then or ThenTail,
 	// not both; Then wins.
 	ThenTail game.KeyedTail
+
+	// Haste is "except it has haste" (TokenCopyGainsHaste) as data (#4253
+	// sweep, second pass): it rides the keyed pick as its word, so
+	// Determined Iteration's choice is a restore point too.
+	Haste bool
+}
+
+// populateHasteWord is the keyed pick's word for Populate.Haste.
+const populateHasteWord = "haste"
+
+// word is the keyed pick's word: what of the "except" clause is data.
+func (p Populate) word() string {
+	if p.Haste {
+		return populateHasteWord
+	}
+	return ""
 }
 
 // populatePicked is the keyed answer to "choose a creature token you
@@ -78,7 +95,7 @@ type Populate struct {
 // never reused.
 var populatePicked = game.RegisterChooseCardsThen("choose-cards/populate", func(g *game.Game, r game.CardsChosen) error {
 	ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
-	p := Populate{ThenTail: r.Tail}
+	p := Populate{ThenTail: r.Tail, Haste: r.Word == populateHasteWord}
 	if len(r.Picked) == 0 {
 		return p.finish(ctx, nil)
 	}
@@ -106,16 +123,17 @@ func (p Populate) Apply(ctx *Context) error {
 		// #4253 slice 10b: keyed; the live battlefield is re-checked on
 		// submit as the closure form's Zone is.
 		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:  player,
-			Source:   source,
-			Question: "Populate — choose a creature token you control to copy",
-			Cards:    candidates,
-			Min:      1,
-			Max:      1,
-			LiveZone: game.ZoneBattlefield,
-			ThenKey:  populatePicked,
-			Asked:    game.NewAskedItem(ctx.Item),
-			Tail:     p.ThenTail,
+			Chooser:   player,
+			Source:    source,
+			Question:  "Populate — choose a creature token you control to copy",
+			Cards:     candidates,
+			Min:       1,
+			Max:       1,
+			LiveZone:  game.ZoneBattlefield,
+			ThenKey:   populatePicked,
+			Asked:     game.NewAskedItem(ctx.Item),
+			Tail:      p.ThenTail,
+			CarryWord: p.word(),
 		})
 		return nil
 	}
@@ -148,11 +166,15 @@ func (p Populate) Apply(ctx *Context) error {
 // Season) yields two, and a replacement that prevents it yields none.
 func (p Populate) copyOne(ctx *Context, player, id uuid.UUID) error {
 	cursor := b25LastEventSeq(ctx.Game)
+	except := p.Except
+	if except == nil && p.Haste {
+		except = TokenCopyGainsHaste
+	}
 	if err := (CreateTokenCopy{
 		Controller: player,
 		Copy:       id,
 		N:          1,
-		Except:     p.Except,
+		Except:     except,
 	}).Apply(ctx); err != nil {
 		return err
 	}

@@ -11,7 +11,7 @@ import (
 //
 // The card the protection seam row was named after, and it needed
 // nothing new to ship once #662 landed: the colour prompt is #742's
-// existing `choose_color` kind (ChooseColorThen), the grant is the
+// existing `choose_color` kind (ChooseColorTail), the grant is the
 // ordinary layer-6 GrantKeywordUntilEOT, and the token it grants is
 // minted by game.ProtectionFromColor — the one place a colour PICK
 // becomes a protection token, so this file never spells one.
@@ -59,19 +59,7 @@ func init() {
 				// is being protected FROM, so the prompt says so and
 				// a bot names the biggest threat on the board rather
 				// than its own main colour.
-				ChooseColorThen(game.ColorForProtection, g, item.Controller, item.SourceCardID,
-					"Mother of Runes — choose a color",
-					func(g *game.Game, color string) error {
-						token := game.ProtectionFromColor(color)
-						if token == "" {
-							return nil
-						}
-						return GrantKeywordUntilEOT{
-							Target:   target.ID,
-							Keywords: []string{token},
-							Label:    "Mother of Runes — " + token,
-						}.Apply(NewContext(g, item))
-					})
+				chooseProtectionColorFor(ctx, item.Controller, target.ID, "Mother of Runes", "Mother of Runes — choose a color")
 				return nil
 			},
 		}},

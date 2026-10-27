@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -362,6 +363,32 @@ func TestACopiedKeyedAbilityIsStillData(t *testing.T) {
 	}
 	if snap := g.CaptureSnapshot(); !snap.Restorable() {
 		t.Errorf("a copied keyed ability blocks the restore point: %+v", snap.Continuations)
+	}
+}
+
+// TestEveryRegisteredLedgerLineResolvesByItsKind: every line the registry
+// writes to the ledger is one ledgerLineResolves knows how to check, so a
+// kind it has no case for (the "run" lines of a keyed prompted run, #4253)
+// cannot sit in the ledger unchecked. A run, a steps key and a tap clause
+// are registered here so the check covers them however few the engine's
+// own tests register.
+func TestEveryRegisteredLedgerLineResolvesByItsKind(t *testing.T) {
+	n := testEffectKeySeq.Add(1)
+	RegisterPromptRunThen(fmt.Sprintf("%srun-%d", testEffectKeyPrefix, n), func(*Game, RunDone) error { return nil })
+	RegisterThenStepsKey(fmt.Sprintf("%ssteps-%d", testEffectKeyPrefix, n))
+	RegisterTapCost(fmt.Sprintf("%stapcost-%d", testEffectKeyPrefix, n), func(string) *TapPermanentsCost { return nil })
+	seen := map[string]bool{}
+	for _, line := range RegisteredEffectKeys() {
+		kind := strings.Fields(line)[0]
+		seen[kind] = true
+		if !ledgerLineResolves(line) {
+			t.Errorf("ledger line %q does not resolve: ledgerLineResolves has no case for %q", line, kind)
+		}
+	}
+	for _, kind := range []string{"run", "steps", "tapcost"} {
+		if !seen[kind] {
+			t.Errorf("no %q line registered: the check above is vacuous for it", kind)
+		}
 	}
 }
 

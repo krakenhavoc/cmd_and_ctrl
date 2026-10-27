@@ -2005,7 +2005,9 @@ type pendingChoiceSnapshot struct {
 	// resolution-time card-name prompt's keyed "then". Its key also rides
 	// PickThen, so a binary from before it refuses the file instead of
 	// restoring the prompt with a name that lands nowhere. Additive within
-	// the version.
+	// the version. Since the sweep's second pass (#4253) a resolution-time
+	// colour or creature-type prompt carries one too (value_then_keyed.go),
+	// told the colour or the type as its Word.
 	NameThen *keyedTailSnapshot `json:"nameThen,omitempty"`
 
 	// SourceShield is PendingChoice.sourceShield (#4253 slice 10c): a
@@ -2468,8 +2470,9 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				pc.PickTail = t
 			}
 			pc.SourceShield = snapshotSourceShield(c.sourceShield)
-			if t := snapshotKeyedTail(c.nameThen); t != nil && c.Kind == PendingChoiceCardName {
-				// #4253 slice 10c: the card-name prompt's keyed "then".
+			if t := snapshotKeyedTail(c.nameThen); t != nil && carriesValueThen(c.Kind) {
+				// #4253 slice 10c: the card-name prompt's keyed "then"; since
+				// the sweep's second pass, a colour or creature-type prompt's too.
 				pc.NameThen, pc.PickThen = t, t.Key
 			}
 			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
@@ -3673,7 +3676,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if sh := s.PendingChoices[i].SourceShield; sh != nil && s.PendingChoices[i].Kind == PendingChoiceChooseSource {
 			g.PendingChoices[i].sourceShield = restoreSourceShield(sh)
 		}
-		if t := s.PendingChoices[i].NameThen; t != nil && s.PendingChoices[i].Kind == PendingChoiceCardName {
+		if t := s.PendingChoices[i].NameThen; t != nil && carriesValueThen(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].nameThen = restoreKeyedTail(t)
 			g.PendingChoices[i].PickThen = ""
 		}

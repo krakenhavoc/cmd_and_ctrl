@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/google/uuid"
 
@@ -87,6 +88,11 @@ type PickOption struct {
 	// keeps its place in them. Handed back as OptionPicked.Words and Nums.
 	Words []string
 	Nums  []int
+
+	// Tail is a registered tail the keyed answer hands on
+	// (game.OptionPicked.Tail): the rest of the card after a chain of
+	// picks, as data. Read only with ThenKey. (#4253 sweep, second pass.)
+	Tail game.KeyedTail
 }
 
 // OptionPickThen registers a keyed option pick's continuation, as a
@@ -140,13 +146,14 @@ func (p PickOption) Apply(ctx *Context) error {
 			Asked:      asked,
 			Words:      p.Words,
 			Nums:       p.Nums,
+			Tail:       p.Tail,
 		})
 		if queued != uuid.Nil {
 			return nil
 		}
 		return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
 			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
-			Words: append([]string(nil), p.Words...), Nums: append([]int(nil), p.Nums...),
+			Words: append([]string(nil), p.Words...), Nums: append([]int(nil), p.Nums...), Tail: p.Tail,
 		})
 	}
 	item := ctx.Item
@@ -278,11 +285,14 @@ func PileTail(key string, body func(ctx *Context, taken, left []uuid.UUID, o gam
 // have been made a knower of. An unrevealed pool reaches them as an
 // empty prompt.
 //
-// `Then` receives the cards they PICKED and the cards they LEFT, each
-// in the order the set was revealed, because every card of this family
-// does something with both halves. It runs even when nothing could be
-// asked — an empty set, or a chooser who has left the game — with
-// nothing picked and everything left.
+// `Keyed` (RegisterRevealPick) receives the cards they PICKED and the
+// cards they LEFT, each in the order the set was revealed, because every
+// card of this family does something with both halves. It runs even when
+// nothing could be asked — an empty set, or a chooser who has left the
+// game — with nothing picked and everything left. It is a registered
+// continuation (#4253 sweep, second pass) and the asking item rides the
+// prompt as data, so a table waiting on the opponent's pick is a restore
+// point.
 type RevealPick struct {
 	// Player picks. Zero is not meaningful; every printed card of this
 	// family names an opponent.
@@ -303,21 +313,57 @@ type RevealPick struct {
 	// "chooses two" over a set of one is a choice of one.
 	Min, Max int
 
-	// Validate is #1017's set-level legality hook.
-	Validate func(picked []game.Card) bool
+	// Keyed is everything printed after the choice, registered with
+	// RegisterRevealPick; Nums are numbers it reads, fixed as the effect
+	// resolved (Thassa's Oracle's X). Runs with g.mu held, against the
+	// asking item.
+	Keyed RevealPickThen
+	Nums  []int
+}
 
-	// Then is everything printed after the choice. Runs with g.mu held.
-	Then func(ctx *Context, picked, left []uuid.UUID) error
+// RevealPickThen is a reveal pick's registered continuation
+// (RegisterRevealPick).
+type RevealPickThen struct {
+	then game.ChooseCardsThen
+	body func(ctx *Context, picked, left []uuid.UUID, nums []int) error
+}
+
+// RegisterRevealPick registers RevealPick's continuation under key, an
+// on-disk identity ("choose-cards/<card>-<what>", ledgered "choose <key>"):
+// never renamed, never reused. `body` is handed the cards picked and left,
+// each in the order the set was revealed, and RevealPick.Nums. Call it
+// once, from a package-level var. It must capture nothing.
+func RegisterRevealPick(key string, body func(ctx *Context, picked, left []uuid.UUID, nums []int) error) RevealPickThen {
+	then := game.RegisterChooseCardsThen(key, func(g *game.Game, r game.CardsChosen) error {
+		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		picked, left := revealPartition(r.Candidates, r.Picked)
+		return body(ctx, picked, left, r.Nums)
+	})
+	return RevealPickThen{then: then, body: body}
+}
+
+// revealPartition splits the revealed set into the cards picked and the
+// cards left, each in the order the set was revealed.
+func revealPartition(all, picked []uuid.UUID) (in, out []uuid.UUID) {
+	for _, id := range all {
+		if slices.Contains(picked, id) {
+			in = append(in, id)
+		} else {
+			out = append(out, id)
+		}
+	}
+	return in, out
 }
 
 func (p RevealPick) Apply(ctx *Context) error {
+	if p.Keyed.body == nil {
+		return fmt.Errorf("%w: RevealPick with no registered continuation (RegisterRevealPick)", game.ErrInvalidParam)
+	}
 	owner := p.Owner
 	if owner == uuid.Nil {
 		owner = ctx.Controller()
 	}
-	item := ctx.Item
-	then := p.Then
-	_, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
+	queued, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
 		Chooser:  p.Player,
 		Owner:    owner,
 		Source:   ctx.Source(),
@@ -325,14 +371,15 @@ func (p RevealPick) Apply(ctx *Context) error {
 		Cards:    p.Cards,
 		Min:      p.Min,
 		Max:      p.Max,
-		Validate: p.Validate,
-	}, func(g *game.Game, picked, left []uuid.UUID) error {
-		if then == nil {
-			return nil
-		}
-		return then(NewContext(g, item), picked, left)
-	})
-	return err
+		ThenKey:  p.Keyed.then,
+		Asked:    game.NewAskedItem(ctx.Item),
+		Nums:     p.Nums,
+	}, nil)
+	if err != nil || queued > 0 {
+		return err
+	}
+	// Nobody could be asked: nothing is picked and every card is left.
+	return p.Keyed.body(ctx, nil, append([]uuid.UUID(nil), p.Cards...), append([]int(nil), p.Nums...))
 }
 
 // ChoosePermanents is the resolution-time pick over one or more

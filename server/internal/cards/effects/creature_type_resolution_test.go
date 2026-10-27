@@ -489,23 +489,21 @@ func TestResolutionCreatureTypePromptIsAnsweredByTheEnumerator(t *testing.T) {
 	}
 }
 
-// Snapshot mid-pause: a table waiting on the answer holds a closure the
-// snapshot cannot carry, so it must say so rather than write a restore
-// point that drops the rest of the card; once answered it is clean.
-func TestSnapshotMidResolutionCreatureTypePauseIsNotRestorable(t *testing.T) {
+// Snapshot mid-pause: the rest of the card is a registered tail (#4253's
+// second pass, ChooseCreatureTypeTail), so a table waiting on the answer
+// is a restore point, and the restored answer still draws.
+func TestSnapshotMidResolutionCreatureTypePauseIsARestorePoint(t *testing.T) {
 	g := newCatalogGame(t)
-	me := g.Seats[0]
-	pushTribalCreature(g, me.ID, "Llanowar Elves", "Creature — Elf Druid", 1, 1)
+	pushTribalCreature(g, g.Seats[0].ID, "Llanowar Elves", "Creature — Elf Druid", 1, 1)
 	castAndPause(t, g, "Distant Melody", "Sorcery", distantMelodyOracle)
 
-	snap := g.CaptureSnapshot()
-	if snap.Restorable() || snap.Continuations.ChoiceResumeFrames < 1 {
-		t.Fatalf("census = %+v, want the creature-type frame counted and the table unrestorable", snap.Continuations)
-	}
-	if kinds := snap.Continuations.Kinds(); kinds["choiceResumeFrames"] == 0 && len(kinds) == 0 {
-		t.Errorf("Kinds() = %v, want the blocking kind named", kinds)
-	}
+	g = restoreAtKeyedPrompt(t, g, "then/distant-melody-type-chosen")
+	me := g.Seats[0]
+	before := handSize(me)
 	answerCreatureType(t, g, me.ID, "Elf")
+	if handSize(me) != before+1 {
+		t.Errorf("hand %d after the restored answer, want %d (one Elf)", handSize(me), before+1)
+	}
 	if after := g.CaptureSnapshot(); after.Continuations.ChoiceResumeFrames != 0 {
 		t.Errorf("census after the answer = %+v, want no frames", after.Continuations)
 	}

@@ -248,24 +248,34 @@ type ColorPrompt struct {
 	// Then receives the answer. Runs with g.mu held; may queue further
 	// choices.
 	Then func(g *Game, color string) error
+	// ThenTail is Then as data (#4253): a registered tail (RegisterTail)
+	// told the colour as its Word. A prompt carrying one holds no closure,
+	// so a table waiting on it is a restore point. Set Then or ThenTail,
+	// not both; Then wins.
+	ThenTail KeyedTail
 }
 
 // QueueColorChoiceThenForEffect queues the AT-RESOLUTION form: the
-// answer is handed to p.Then and stored nowhere.
+// answer is handed to p.Then (or p.ThenTail) and stored nowhere.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoiceColor,
-		Chooser:           p.Chooser,
-		FromPlayer:        p.Chooser,
-		Count:             1,
-		Source:            p.Source,
-		Reason:            p.Question,
-		ColorOptions:      normaliseColorOptions(p.Options),
-		ColorPurpose:      p.Purpose,
-		chooseValueResume: &chooseValueFrame{then: p.Then},
-	})
+	c := PendingChoice{
+		Kind:         PendingChoiceColor,
+		Chooser:      p.Chooser,
+		FromPlayer:   p.Chooser,
+		Count:        1,
+		Source:       p.Source,
+		Reason:       p.Question,
+		ColorOptions: normaliseColorOptions(p.Options),
+		ColorPurpose: p.Purpose,
+	}
+	if p.Then == nil && !p.ThenTail.IsZero() {
+		g.keyValueThenLocked(&c, p.ThenTail)
+	} else {
+		c.chooseValueResume = &chooseValueFrame{then: p.Then}
+	}
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveColorChoice answers a PendingChoiceColor.
@@ -314,7 +324,7 @@ func (g *Game) ResolveColorChoice(choiceID, chooserID uuid.UUID, color string) e
 	if !legal {
 		return ErrInvalidParam
 	}
-	frame := choice.chooseValueResume
+	frame := chooseValueFrameOf(choice)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 

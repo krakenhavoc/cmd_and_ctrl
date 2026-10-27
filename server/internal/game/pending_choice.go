@@ -1273,6 +1273,8 @@ type PendingChoice struct {
 	// Word. Written to a restore point (pendingChoiceSnapshot.NameThen), its
 	// key riding PickThen. The zero tail is the closure form
 	// (chooseValueResume) or the stored form (the name lands on the source).
+	// Since the sweep's second pass (#4253) a resolution-time colour or
+	// creature-type prompt carries one too (value_then_keyed.go).
 	nameThen KeyedTail
 
 	// sourceShield is a choose_source prompt's consequence when it is the

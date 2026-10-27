@@ -27,15 +27,19 @@ func init() {
 		AdditionalCost: SacrificeCost("a creature", Creature()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := 1 + sacrificedManaValue(ctx)
-			ChooseColorThen(game.ColorForMana, ctx.Game, item.Controller, item.SourceCardID,
+			ChooseColorTail(game.ColorForMana, ctx.Game, item.Controller, item.SourceCardID,
 				"Metamorphosis — choose a color of mana",
-				func(g *game.Game, color string) error {
-					return AddMana{
-						Amount:       ManaN(x, color),
-						Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
-					}.Apply(NewContext(g, item))
-				})
+				withN(ctx.ItemTail(metamorphosisColorChosen), x))
 			return nil
 		},
 	})
 }
+
+// metamorphosisColorChosen adds the tail's N mana of the colour (its Word),
+// spendable only on creature spells. An on-disk key.
+var metamorphosisColorChosen = CardTail("then/metamorphosis-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	return AddMana{
+		Amount:       ManaN(o.Tail.N, o.Tail.Word),
+		Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
+	}.Apply(ctx)
+})

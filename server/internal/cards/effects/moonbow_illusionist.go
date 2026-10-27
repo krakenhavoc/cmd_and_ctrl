@@ -7,7 +7,7 @@ package effects
 //
 // ADR 0109 §1 (#1881): CR 305.7 from a resolved ability. The basic land
 // type is chosen as the ability resolves (CR 608.2), by its controller,
-// through effects.ChooseBasicLandTypeThen; a land that has become an
+// through effects.ChooseBasicLandTypeTail; a land that has become an
 // illegal target by then is left alone and nothing is asked (CR 608.2b).
 // Until end of turn the land's land types are replaced by the chosen one
 // (its other subtypes stay, CR 205.1a), it loses the abilities its rules
