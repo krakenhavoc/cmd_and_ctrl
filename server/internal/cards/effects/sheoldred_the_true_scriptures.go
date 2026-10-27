@@ -137,7 +137,7 @@ var trueScripturesMill = game.RegisterPromptRunThen("prompt-run/sheoldred-the-tr
 		return nil
 	}
 	c := keyedContext(g, r.Carry[0], r.Source)
-	return millEachPlayerInTurn(c, c.Opponents(), constantMill(3), nil)
+	return millEachPlayerInTurn(c, c.Opponents(), constantMill(3), game.KeyedTail{})
 })
 
 func trueScripturesChapterThree(g *game.Game, item *game.StackItem) error {

@@ -77,7 +77,7 @@ func init() {
 					for _, t := range ctx.LegalTargets() {
 						ids = append(ids, t.ID)
 					}
-					return DealDamageToEachThen(ctx, ids, ctx.X(), nil)
+					return DealDamageToEachThen(ctx, ids, ctx.X(), RecipientThen{})
 				},
 			},
 		},

@@ -51,7 +51,7 @@ func init() {
 
 func titansMillAll(g *game.Game, item *game.StackItem) error {
 	// One library at a time in APNAP order (#4266).
-	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(3), nil)
+	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(3), game.KeyedTail{})
 }
 
 func titansExileFromGraveyards(g *game.Game, item *game.StackItem) error {

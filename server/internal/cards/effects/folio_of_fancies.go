@@ -45,7 +45,7 @@ func init() {
 					// before anyone mills; the libraries go one at a time in
 					// APNAP order (#4266).
 					ctx := NewContext(g, item)
-					return millEachPlayerInTurn(ctx, ctx.Opponents(), func(p uuid.UUID) int { return b14HandSize(g, p) }, nil)
+					return millEachPlayerInTurn(ctx, ctx.Opponents(), func(p uuid.UUID) int { return b14HandSize(g, p) }, game.KeyedTail{})
 				},
 			},
 		},

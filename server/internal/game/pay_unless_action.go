@@ -424,7 +424,7 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		// path, so prevention and replacement apply. The payment has
 		// been made once the damage event has settled, however much
 		// of it landed.
-		return g.dealDamageToPlayerLocked(source, nil, chooser, a.Count, DamageMarks{}, 0, func(g *Game, _ int) error {
+		return g.dealDamageToPlayerLocked(source, nil, chooser, a.Count, DamageMarks{}, func(g *Game, _ int) error {
 			if then == nil {
 				return nil
 			}

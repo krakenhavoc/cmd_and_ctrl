@@ -18,30 +18,40 @@ func init() {
 			TargetCreature("target creature"),
 			AttachedToTarget(TargetPermanent("up to one target Equipment attached to that creature", HasSubtype("Equipment")).WithCount(0, 1), 0),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			creature, creatureOK := ctx.ClauseTarget(0)
 			equipment, equipmentOK := ctx.ClauseTarget(1)
-			after := func(g *game.Game) error {
-				next := func(g *game.Game) error {
-					if creatureOK {
-						return ExileIfItWouldDieThisTurn{Target: creature.ID}.Apply(NewContext(g, item))
-					}
-					return nil
-				}
-				if equipmentOK {
-					return g.ExileCardKeyedForEffect(equipment.ID, fieryAnnihilationTail(g, item, creatureOK, creature.ID))
-				}
-				return next(g)
-			}
 			// FDN release notes: if the creature target is illegal, the
 			// Equipment isn't exiled even when it is itself still legal.
 			if !creatureOK {
 				return nil
 			}
-			return DealDamageThen(ctx, creature.ID, 5, func(g *game.Game, _ uuid.UUID, _ int) error { return after(g) })
+			// The rest follows the damage as data (#4253): the creature,
+			// and the Equipment when it is still legal, ride the carry.
+			then := ctx.ItemTail(fieryAnnihilationAfterDamage)
+			then.Carry = []uuid.UUID{creature.ID}
+			if equipmentOK {
+				then.Carry = append(then.Carry, equipment.ID)
+			}
+			return DealDamageThen(ctx, creature.ID, 5, then)
 		},
 	})
 }
+
+// fieryAnnihilationAfterDamage is what follows the 5 damage, whatever it
+// dealt: the Equipment (the carry's second ID, when it was still legal) is
+// exiled and then the creature (the first) is marked, or the creature is
+// marked at once. An on-disk key.
+var fieryAnnihilationAfterDamage = recipientTail("fiery-annihilation/after-damage", func(ctx *Context, _ uuid.UUID, _ int, o game.TailOutcome) error {
+	carry := o.Tail.Carry
+	if len(carry) == 0 {
+		return nil
+	}
+	if len(carry) > 1 {
+		return ctx.Game.ExileCardKeyedForEffect(carry[1], fieryAnnihilationTail(ctx.Game, ctx.Item, true, carry[0]))
+	}
+	return ExileIfItWouldDieThisTurn{Target: carry[0]}.Apply(ctx)
+})
 
 // fieryAnnihilationExiled is "if that creature would die this turn, exile it instead" after the Equipment's exile (#4253 slice 9).
 var fieryAnnihilationExiled = CardTail("fiery-annihilation/exile-if-it-would-die", func(ctx *Context, o game.TailOutcome) error {

@@ -79,18 +79,49 @@ func dealDamageStepsThen(ctx *Context, steps []damageStep, then RecipientThen) e
 }
 
 // dealDamageStepChain deals the head step and continues with the rest
-// from its continuation, once the head's damage has settled.
+// from its continuation, once the head's damage has settled. The chain is
+// data (#4253): the rest of the steps ride damageStepsNext's tail, their
+// recipients as its Carry and their amounts as its Nums, and the
+// per-recipient rider as its Next.
 func dealDamageStepChain(ctx *Context, steps []damageStep, then RecipientThen) error {
+	return dealDamageStepsFrom(ctx.Game, ctx.Tail(damageStepsNext), steps, then)
+}
+
+// dealDamageStepsFrom deals the head of `steps` with `step`, carrying the
+// rest, as its total's tail.
+func dealDamageStepsFrom(g *game.Game, step game.KeyedTail, steps []damageStep, then RecipientThen) error {
 	if len(steps) == 0 {
 		return nil
 	}
-	item := ctx.Item
 	head, rest := steps[0], steps[1:]
-	return ctx.Game.DealDamageEachEachThenForEffect(ctx.Source(), []uuid.UUID{head.Target}, head.Amount, then,
-		func(g *game.Game, _ int) error {
-			return dealDamageStepChain(NewContext(g, item), rest, then)
-		})
+	step.Carry, step.Nums, step.Next = nil, nil, nil
+	for _, s := range rest {
+		step.Carry = append(step.Carry, s.Target)
+		step.Nums = append(step.Nums, s.Amount)
+	}
+	if !then.IsZero() {
+		each := then
+		step.Next = &each
+	}
+	return g.DealDamageEachEachKeyedForEffect(step.Source, []uuid.UUID{head.Target}, head.Amount, then, step)
 }
+
+// damageStepsNext is one link of dealDamageStepChain, run with a step's
+// total once its damage has settled: the next step is dealt. An on-disk
+// key.
+var damageStepsNext = game.RegisterTail("damage-steps/next", func(g *game.Game, o game.TailOutcome) error {
+	var steps []damageStep
+	for i, id := range o.Tail.Carry {
+		if i < len(o.Tail.Nums) {
+			steps = append(steps, damageStep{Target: id, Amount: o.Tail.Nums[i]})
+		}
+	}
+	var then RecipientThen
+	if o.Tail.Next != nil {
+		then = *o.Tail.Next
+	}
+	return dealDamageStepsFrom(g, o.Tail, steps, then)
+})
 
 // damageEachMatchingAndEachPlayerThen is "~ deals N damage to each
 // <creature predicate> and each player" with `then` told each

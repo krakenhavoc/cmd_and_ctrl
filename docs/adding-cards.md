@@ -2526,7 +2526,10 @@ OnResolve: damageAnyTargetExileIfDealtDies(fixedAmount(3), false) // Annihilatin
 ExileIfCreaturesWouldDieThisTurn{OpponentsOnly: true}            // Malicious Eclipse
 ```
 
-The per-recipient continuation is `game.DealDamageEachEachThenForEffect`.
+The per-recipient continuation is `game.DealDamageEachEachKeyedForEffect`:
+a `RecipientThen` is a registered tail (`recipientTail`), told the recipient
+and what it took, so a CR 616 prompt the damage pauses on is a restore point
+(#4253). Two riders on one damage chain through `AllThen`.
 A static regeneration ("If this creature would be destroyed, regenerate
 it", CR 701.19b) is `RegenerateIfThisWouldBeDestroyed()`
 (`static_regeneration.go`); `TestEveryRegenerationAsksTheGate` fails any

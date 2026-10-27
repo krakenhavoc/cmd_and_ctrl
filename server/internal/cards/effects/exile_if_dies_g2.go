@@ -69,13 +69,17 @@ func g2LosesIndestructibleUntilEOT(ctx *Context, id uuid.UUID) error {
 // Within) as a damage continuation: only a creature that was dealt more
 // than 0 damage.
 func g2LosesIndestructibleIfDealtDamage(item *game.StackItem) RecipientThen {
-	return func(g *game.Game, target uuid.UUID, dealt int) error {
-		if !dealtDamagePermanent(g, target, dealt, false) {
-			return nil
-		}
-		return g2LosesIndestructibleUntilEOT(NewContext(g, item), target)
-	}
+	return itemRecipient(item, g2LosesIndestructibleIfDealt)
 }
+
+// g2LosesIndestructibleIfDealt is g2LosesIndestructibleIfDealtDamage's
+// body. An on-disk key.
+var g2LosesIndestructibleIfDealt = recipientTail("recipient/loses-indestructible-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
+	if !dealtDamagePermanent(ctx.Game, target, dealt, false) {
+		return nil
+	}
+	return g2LosesIndestructibleUntilEOT(ctx, target)
+})
 
 // g2CardLeftYourGraveyardThisTurn passes when one or more cards left the
 // caster's graveyard this turn — Wilt in the Heat's "{2} less". A move

@@ -6,15 +6,19 @@ import "github.com/google/uuid"
 // …" and "~ deals N damage to target creature, then …" with the rest of
 // the effect as data.
 //
-// DealDamageEachEachThenForEffect walks its recipients one damage event at
-// a time, each from the previous event's continuation, so a CR 616 ordering
-// prompt over one recipient's damage waits with the others behind it. Its
-// step is a closure over the remaining recipients and the running total.
-// DealDamageEachKeyedForEffect walks the same batch on a data tail
-// (damageTail.each, a damageEachRun), the damage twin of
-// LoseLifeEachKeyedForEffect's lifeEachRun, and finishes with a registered
-// tail told the total dealt. The leg's damage event is then data
+// DealDamageEachKeyedForEffect walks its recipients one damage event at a
+// time, each from the previous event's continuation, so a CR 616 ordering
+// prompt over one recipient's damage waits with the others behind it. The
+// walk is a data tail (damageTail.each, a damageEachRun), the damage twin
+// of LoseLifeEachKeyedForEffect's lifeEachRun, and finishes with a
+// registered tail told the total dealt. The leg's damage event is then data
 // (damageEventIsData), so the prompt is a restore point.
+//
+// DealDamageEachEachKeyedForEffect is the same walk with a PER-RECIPIENT
+// tail as well (damageEachRun.Each), told each recipient and what it took
+// as soon as its own damage has settled. It replaced the closure door
+// DealDamageEachEachThenForEffect, whose step was a closure over the
+// remaining recipients and the running total (#4253).
 //
 // DealDamageToCreatureKeyedForEffect is the permanent-target sibling of
 // DealDamageToPlayerKeyedForEffect (damage_keyed.go).
@@ -47,7 +51,7 @@ func (g *Game) runDamageThenNowLocked(t damageThen, target uuid.UUID, dealt int)
 	case t.fn != nil:
 		return t.fn(g, dealt)
 	case t.each != nil:
-		return g.dealDamageEachKeyedStepLocked(t.each.after(dealt))
+		return g.damageEachLegSettledLocked(t.each, target, dealt)
 	}
 	return g.runKeyedTailLocked(t.keyed, []uuid.UUID{target}, dealt)
 }
@@ -83,6 +87,34 @@ type damageEachRun struct {
 	Instance DamageInstance     `json:"instance"`
 	Owned    bool               `json:"owned,omitempty"`
 	Then     *keyedTailSnapshot `json:"then,omitempty"`
+	// Each is the per-recipient tail (DealDamageEachEachKeyedForEffect),
+	// told each recipient as TailOutcome.IDs and what it took as its
+	// Amount once that recipient's damage has settled. Additive within
+	// snapshot v9.
+	Each *keyedTailSnapshot `json:"each,omitempty"`
+}
+
+// damageEachLegSettledLocked is the end of one leg of a keyed walk: the
+// per-recipient tail, when the walk has one, is told the recipient and
+// what it took, and then the walk goes on with the running total.
+//
+// Caller must hold g.mu (write).
+func (g *Game) damageEachLegSettledLocked(r *damageEachRun, target uuid.UUID, dealt int) error {
+	if r.Each != nil {
+		if err := g.runKeyedTailLocked(restoreKeyedTail(r.Each), []uuid.UUID{target}, dealt); err != nil {
+			return err
+		}
+	}
+	return g.dealDamageEachKeyedStepLocked(r.after(dealt))
+}
+
+// unknownDamageEachKeys lists the keys a walk carries that this binary
+// does not know.
+func unknownDamageEachKeys(r *damageEachRun) []string {
+	if r == nil {
+		return nil
+	}
+	return append(unknownKeyedTail(r.Then), unknownKeyedTail(r.Each)...)
 }
 
 // after is the walk once the leg in hand has settled with `dealt`.
@@ -148,6 +180,9 @@ func cloneDamageEachRun(r *damageEachRun) *damageEachRun {
 	out.Rest = copyUUIDs(r.Rest)
 	if r.Then != nil {
 		out.Then = snapshotKeyedTail(restoreKeyedTail(r.Then))
+	}
+	if r.Each != nil {
+		out.Each = snapshotKeyedTail(restoreKeyedTail(r.Each))
 	}
 	return &out
 }

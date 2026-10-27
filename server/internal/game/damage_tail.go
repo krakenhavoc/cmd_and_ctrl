@@ -719,7 +719,7 @@ func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 		// A leg of a keyed Each walk joins the walk's instance and never
 		// ends it, so it is never parked: the walk goes on.
 		ev.damageTail.each = nil
-		return g.dealDamageEachKeyedStepLocked(each.after(dealt))
+		return g.damageEachLegSettledLocked(each, ev.DamageTarget, dealt)
 	}
 	if ev.damageTail.then == nil {
 		keyed := ev.damageTail.keyed

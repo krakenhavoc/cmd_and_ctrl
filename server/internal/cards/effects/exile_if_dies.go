@@ -102,10 +102,42 @@ func (c CantBeRegeneratedThisTurn) Apply(ctx *Context) error {
 	return nil
 }
 
-// RecipientThen is a damage instruction's per-recipient continuation:
-// told each recipient and how much it was actually dealt, once that
-// damage has settled (game.DealDamageEachEachThenForEffect).
-type RecipientThen func(g *game.Game, target uuid.UUID, dealt int) error
+// RecipientThen is a damage instruction's per-recipient continuation,
+// as data (#4253): a registered tail (recipientTail) told each recipient
+// as TailOutcome.IDs[0] and how much it was actually dealt as its Amount,
+// once that damage has settled (game.DealDamageEachEachKeyedForEffect), so
+// a CR 616 prompt the damage pauses on is a restore point. The zero value
+// is no continuation. Several riders on one damage chain through Next
+// (AllThen).
+type RecipientThen = game.KeyedTail
+
+// recipientTail registers a per-recipient body under key, an on-disk
+// identity: never renamed, never reused, ledgered "tail <key>". The body
+// runs against the Context rebuilt from the tail (CardTail), told the
+// recipient and what it took; the tail's Next, when set, is the next
+// rider, told the same. Call it once, from a package-level var.
+func recipientTail(key string, body func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		target := uuid.Nil
+		if len(o.IDs) > 0 {
+			target = o.IDs[0]
+		}
+		if err := body(ctx, target, o.Amount, o); err != nil {
+			return err
+		}
+		if o.Tail.Next != nil {
+			return o.Tail.Next.RunTold(ctx.Game, o.IDs, o.Amount)
+		}
+		return nil
+	})
+}
+
+// itemRecipient is a per-recipient tail for ref with the resolving item
+// carried as data, for a body that reads the item (the window its source
+// had, CR 400.7).
+func itemRecipient(item *game.StackItem, ref game.TailRef) RecipientThen {
+	return NewContext(nil, item).ItemTail(ref)
+}
 
 // ExileIfDealtDamageWouldDie is "If a creature dealt damage this way
 // would die this turn, exile it instead" as a continuation: a recipient
@@ -114,25 +146,37 @@ type RecipientThen func(g *game.Game, target uuid.UUID, dealt int) error
 // this way", Spikefield Hazard, Underworld Fires) — is marked. A player
 // is not.
 func ExileIfDealtDamageWouldDie(item *game.StackItem, permanents bool) RecipientThen {
-	return func(g *game.Game, target uuid.UUID, dealt int) error {
-		if !dealtDamagePermanent(g, target, dealt, permanents) {
-			return nil
-		}
-		return ExileIfItWouldDieThisTurn{Target: target}.Apply(NewContext(g, item))
+	t := itemRecipient(item, exileIfDealtDamageWouldDie)
+	if permanents {
+		t.N = 1
 	}
+	return t
 }
+
+// exileIfDealtDamageWouldDie is ExileIfDealtDamageWouldDie's body: N 1 is
+// "any permanent". An on-disk key.
+var exileIfDealtDamageWouldDie = recipientTail("recipient/exile-if-dealt-damage-would-die", func(ctx *Context, target uuid.UUID, dealt int, o game.TailOutcome) error {
+	if !dealtDamagePermanent(ctx.Game, target, dealt, o.Tail.N == 1) {
+		return nil
+	}
+	return ExileIfItWouldDieThisTurn{Target: target}.Apply(ctx)
+})
 
 // CantBeRegeneratedIfDealtDamage is "A creature dealt damage this way
 // can't be regenerated this turn" (Incinerate, Flamebreak, Jaya Ballard)
 // as a continuation: a creature that was dealt more than 0 damage.
 func CantBeRegeneratedIfDealtDamage(item *game.StackItem) RecipientThen {
-	return func(g *game.Game, target uuid.UUID, dealt int) error {
-		if !dealtDamagePermanent(g, target, dealt, false) {
-			return nil
-		}
-		return CantBeRegeneratedThisTurn{Target: target}.Apply(NewContext(g, item))
-	}
+	return itemRecipient(item, cantBeRegeneratedIfDealtDamage)
 }
+
+// cantBeRegeneratedIfDealtDamage is CantBeRegeneratedIfDealtDamage's
+// body. An on-disk key.
+var cantBeRegeneratedIfDealtDamage = recipientTail("recipient/cant-be-regenerated-if-dealt-damage", func(ctx *Context, target uuid.UUID, dealt int, _ game.TailOutcome) error {
+	if !dealtDamagePermanent(ctx.Game, target, dealt, false) {
+		return nil
+	}
+	return CantBeRegeneratedThisTurn{Target: target}.Apply(ctx)
+})
 
 // dealtDamagePermanent reports whether `target` was dealt damage and is
 // a creature (or, with permanents set, any permanent) on the battlefield.
@@ -161,28 +205,41 @@ func DealDamageThen(ctx *Context, target uuid.UUID, amount int, then RecipientTh
 // DealDamageToEachThen is "~ deals `amount` damage to each of
 // <targets>" with `then` told each recipient (Anger of the Gods,
 // Flamebreak). The recipients are dealt their damage in order, each
-// after the one before has settled (game.DealDamageEachEachThenForEffect).
+// after the one before has settled (game.DealDamageEachEachKeyedForEffect).
 func DealDamageToEachThen(ctx *Context, targets []uuid.UUID, amount int, then RecipientThen) error {
 	if amount <= 0 || len(targets) == 0 {
 		return nil
 	}
-	return ctx.Game.DealDamageEachEachThenForEffect(ctx.Source(), targets, amount, then, nil)
+	return ctx.Game.DealDamageEachEachKeyedForEffect(ctx.Source(), targets, amount, then, game.KeyedTail{})
 }
 
 // AllThen runs each continuation in order, for a card whose damage has
-// more than one "dealt damage this way" rider (Runesword).
+// more than one "dealt damage this way" rider (Runesword): each rider's
+// Next is the one after it. Every rider must be a recipientTail.
 func AllThen(thens ...RecipientThen) RecipientThen {
-	return func(g *game.Game, target uuid.UUID, dealt int) error {
-		for _, t := range thens {
-			if t == nil {
-				continue
-			}
-			if err := t(g, target, dealt); err != nil {
-				return err
-			}
+	var out RecipientThen
+	for i := len(thens) - 1; i >= 0; i-- {
+		t := thens[i]
+		if t.IsZero() {
+			continue
 		}
-		return nil
+		if !out.IsZero() {
+			t = appendRecipient(t, out)
+		}
+		out = t
 	}
+	return out
+}
+
+// appendRecipient puts `next` at the end of t's rider chain.
+func appendRecipient(t, next RecipientThen) RecipientThen {
+	if t.Next == nil {
+		t.Next = &next
+		return t
+	}
+	inner := appendRecipient(*t.Next, next)
+	t.Next = &inner
+	return t
 }
 
 // --- the shared card bodies ------------------------------------------
