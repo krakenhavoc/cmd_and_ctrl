@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The choice comes before the counter, in the order the card resolves:
 // a `top_or_bottom` prompt (which always asks, even about one card),
-// then CounterSpellToLibraryThenForEffect to the chosen end. So the
+// then CounterSpellToLibraryKeyedForEffect to the chosen end. So the
 // spell is still on the stack while its fate is decided, a commander's
 // owner is offered the command zone (CR 903.9) knowing where it was
 // headed, flashback's exile wins, and a spell that can't be countered

@@ -42,6 +42,10 @@ type discardBatchRun struct {
 	// Then is the caller's continuation, told the cards discarded this
 	// way (discardedThisWayLocked), in batch order, as TailOutcome.IDs.
 	Then *keyedTailSnapshot `json:"then,omitempty"`
+	// Commander is a COST discard's CR 903.9 answers, given before the
+	// payment (#1397, discardOptions.commanderAnswers), keyed by card.
+	// Nil for every other discard, which asks at the move (#4361 S11c).
+	Commander map[uuid.UUID]bool `json:"commander,omitempty"`
 }
 
 // discardTopSnapshot is a discardTopPlacement on disk.
@@ -61,6 +65,12 @@ func cloneDiscardBatchRun(r *discardBatchRun) *discardBatchRun {
 	if r.Then != nil {
 		out.Then = snapshotKeyedTail(restoreKeyedTail(r.Then))
 	}
+	if r.Commander != nil {
+		out.Commander = make(map[uuid.UUID]bool, len(r.Commander))
+		for k, v := range r.Commander {
+			out.Commander[k] = v
+		}
+	}
 	return &out
 }
 
@@ -70,9 +80,25 @@ func cloneDiscardBatchRun(r *discardBatchRun) *discardBatchRun {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsKeyedLocked(playerID uuid.UUID, cards []uuid.UUID, cause DiscardCause, source uuid.UUID, then KeyedTail) error {
-	return g.discardBatchKeyedLocked(&discardBatchRun{
+	return g.discardCardsAnsweredKeyedLocked(playerID, cards, cause, source, nil, then)
+}
+
+// discardCardsAnsweredKeyedLocked is discardCardsKeyedLocked for a cost
+// discard whose commanders' owners answered before the payment
+// (answers, #1397).
+//
+// Caller must hold g.mu.
+func (g *Game) discardCardsAnsweredKeyedLocked(playerID uuid.UUID, cards []uuid.UUID, cause DiscardCause, source uuid.UUID, answers map[uuid.UUID]bool, then KeyedTail) error {
+	run := &discardBatchRun{
 		Player: playerID, Source: source, Cause: cause, Rest: copyUUIDs(cards), Then: snapshotKeyedTail(then),
-	})
+	}
+	if answers != nil {
+		run.Commander = make(map[uuid.UUID]bool, len(answers))
+		for k, v := range answers {
+			run.Commander[k] = v
+		}
+	}
+	return g.discardBatchKeyedLocked(run)
 }
 
 // discardBatchKeyedLocked discards the head of run.Rest with the rest of
@@ -106,7 +132,10 @@ func (g *Game) discardBatchKeyedLocked(run *discardBatchRun) error {
 			Source:        run.Source,
 			Cause:         discardMoveCause(run.Cause, run.Player),
 			MustSettleNow: run.Cause == DiscardCauseCost,
-			discardLegs:   leg,
+			// #1397: a cost discard's CR 903.9 answer, asked before the
+			// payment. Nil everywhere else, which is "unasked".
+			commanderAnswer: commanderAnswerFor(run.Commander, next),
+			discardLegs:     leg,
 		})
 		return err
 	}
@@ -174,9 +203,13 @@ func unknownDiscardBatchKeys(r *discardBatchRun) []string {
 	return unknownKeyedTail(r.Then)
 }
 
-// DiscardRandomKeyedForEffect is DiscardRandomThenForEffect with the
-// continuation as data (#4253 slice 9): `then` is told the cards really
-// discarded, and runs even when nothing was.
+// DiscardRandomKeyedForEffect is DiscardRandomForEffect with the rest of
+// the card as data (#4253 slice 9): "discard a card at random. If it was
+// a land card, …", run once the whole batch has reached a terminal
+// outcome. `then` is told the cards really discarded
+// (discardedThisWayLocked), and runs even when nothing was, including for
+// an empty hand. (The closure form, DiscardRandomThenForEffect, was
+// deleted in #4361 S11c.)
 //
 // Caller must hold g.mu.
 func (g *Game) DiscardRandomKeyedForEffect(playerID uuid.UUID, n int, then KeyedTail) error {

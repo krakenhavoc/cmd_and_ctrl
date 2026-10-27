@@ -171,6 +171,11 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		return ErrInvalidParam
 	}
 	if spec.Counter {
+		if spec.Then != nil {
+			// #4361 S11c: a counter's legs are keyed routes, which a
+			// closure "then" cannot ride. Use ThenTail.
+			return ErrInvalidParam
+		}
 		spec.From = ZoneStack
 	}
 	how := libraryOrderHow{from: spec.From, depth: spec.TopDepth, counter: spec.Counter}
@@ -427,7 +432,7 @@ type libraryOrderLeg struct {
 // A card already in its owner's library is lifted and re-inserted — a
 // reorder, not a zone change, so no window opens and no event fires. A
 // card anywhere else goes through the tuck route, or — for a counter —
-// the stack exit as a counter (CounterSpellToLibraryThenForEffect), so
+// the stack exit as a counter (CounterSpellToLibraryKeyedForEffect), so
 // the CR 614 window opens and a commander is offered the command zone
 // (CR 903.9); the next leg runs from that leg's continuation, so a
 // paused leg pauses the pile rather than letting the rest overtake it.
@@ -449,12 +454,13 @@ func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHo
 // case, which runs `then` (a closure) or, when there is none, the keyed
 // tail.
 //
-// A pile with no closure in it (#4253: a keyed tail and no counter) walks
-// as data: each tuck leg is a keyed route whose tail carries the rest of
-// the pile (libraryOrderLegLanded), so a leg paused on a commander's CR
-// 903.9 prompt is a restore point. A pile whose rest is a closure, or a
-// Hinder counter (CounterSpellToLibraryThenForEffect, whose stack exit is
-// a closure of its own), walks through closures, as it always did.
+// A pile with no closure in it (#4253: a keyed tail) walks as data: each
+// tuck leg is a keyed route whose tail carries the rest of the pile
+// (libraryOrderLegLanded), so a leg paused on a commander's CR 903.9
+// prompt is a restore point. Since #4361 S11c a Hinder counter's legs do
+// too (CounterSpellToLibraryKeyedForEffect). A pile whose rest is a
+// closure (PutInLibrarySpec.Then, never a counter's) walks through
+// closures, as it always did.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, then func(g *Game) error, tail KeyedTail) error {
@@ -491,23 +497,23 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHo
 		}
 		return next(g)
 	}
-	if !how.counter && then == nil {
-		return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{leg.id}, at,
-			libraryOrderLegLandedTail(chooser, how, leg.id, knowers, rest, tail))
+	if then == nil {
+		landed := libraryOrderLegLandedTail(chooser, how, leg.id, knowers, rest, tail)
+		if how.counter {
+			// #4361 S11c: Hinder's leg is a keyed counter route too.
+			return g.CounterSpellToLibraryKeyedForEffect(leg.id, at, landed)
+		}
+		return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{leg.id}, at, landed)
 	}
-	landed := func(g *Game, placed bool) error {
-		if placed {
+	// A pile whose rest is a closure (PutInLibrarySpec.Then, which a
+	// counter may not carry) tucks through the closure batch.
+	return g.routeAllThenLocked(tuckRoute(at), []uuid.UUID{leg.id}, func(g *Game, tucked []uuid.UUID) error {
+		if len(tucked) == 1 {
 			if c := g.findCardByIDLocked(leg.id); c != nil {
 				c.KnownBy = copyKnowers(knowers)
 			}
 		}
 		return next(g)
-	}
-	if how.counter {
-		return g.CounterSpellToLibraryThenForEffect(leg.id, at, landed)
-	}
-	return g.TuckCardsToLibraryThenForEffect([]uuid.UUID{leg.id}, at, func(g *Game, tucked []uuid.UUID) error {
-		return landed(g, len(tucked) == 1)
 	})
 }
 
@@ -530,6 +536,10 @@ func libraryOrderLegLandedTail(chooser uuid.UUID, how libraryOrderHow, id uuid.U
 	t := KeyedTail{
 		Ref: libraryOrderLegLanded, Player: chooser, Word: string(how.from), N: how.depth,
 		Carry: append([]uuid.UUID{id}, who...), Nums: []int{len(who)},
+	}
+	if how.counter {
+		// #4361 S11c: a Hinder pile's legs are counters (Words).
+		t.Words = []string{libraryOrderCounterWord}
 	}
 	for _, leg := range rest {
 		t.Carry = append(t.Carry, leg.id)
@@ -580,9 +590,13 @@ func libraryOrderLegLandedBody(g *Game, o TailOutcome) error {
 			id: id, toBottom: t.Nums[1+3*i] == 1, depth: t.Nums[2+3*i], laneSize: t.Nums[3+3*i],
 		})
 	}
-	how := libraryOrderHow{from: ZoneKind(t.Word), depth: t.N}
+	how := libraryOrderHow{from: ZoneKind(t.Word), depth: t.N, counter: len(t.Words) > 0 && t.Words[0] == libraryOrderCounterWord}
 	return g.placeLibraryOrderLegsLocked(t.Player, how, legs, nil, nextTailValue(t.Next))
 }
+
+// libraryOrderCounterWord marks a pile leg tail whose legs are counters
+// (libraryOrderHow.counter): Hinder's, Spell Crumple's. On disk.
+const libraryOrderCounterWord = "counter"
 
 // publicKnowersOfLocked is everyone who can see a card in `z` by virtue
 // of where it is: every seat for a public zone (CR 400.2 — the

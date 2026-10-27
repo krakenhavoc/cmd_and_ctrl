@@ -20,7 +20,7 @@ import (
 // trigger (see Jackdaw), so nothing is put on the stack between the two
 // halves. "That many" is the number of cards that REALLY reached a
 // graveyard, read off the discard's own continuation
-// (DiscardRandomThenForEffect hands it the cards discarded), not the
+// (DiscardRandomKeyedForEffect hands it the cards discarded), not the
 // size of the hand beforehand: a discard that was blocked, or a card a
 // replacement kept in hand, is not counted, and a discard that pauses
 // for a prompt (madness, a commander's CR 903.9a offer) draws only once

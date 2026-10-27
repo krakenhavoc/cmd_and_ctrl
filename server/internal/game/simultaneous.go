@@ -827,34 +827,11 @@ func (g *Game) sweepDoomedPermanentsLocked(doomed []doomedPermanent) {
 // in it. A commander is in it, since it is exiled before its owner is
 // offered the command zone (CR 903.9a, ADR 0115). A leg that merely
 // PAUSED cannot be in it, which is exactly why a card that reads the number
-// uses ExileCardsThenForEffect, which waits.
+// uses ExileCardsKeyedForEffect, which waits.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) ExileCardsForEffect(ids []uuid.UUID) int {
 	return g.routeAllLocked(exileRoute, ids)
-}
-
-// ExileCardsThenForEffect exiles every card in `ids` as one
-// simultaneous event and hands `then` the ones that actually reached
-// EXILE — "for each card exiled this way" (Settle the Wreckage's basic
-// lands, Oona-shaped payoffs).
-//
-// The `Then` half of the same pair DestroyPermanentsKeyedForEffect is
-// the destroy side of (ADR 0013 §5i, §5k), built on the same body for
-// the same reason: any leg can pause on a replacement's prompt, so
-// the number is not knowable on the line after the sweep. The legs are
-// exiled IN SEQUENCE, each from the previous one's continuation, with
-// the landed list carried forward by value.
-//
-// CR 400.7 decides what "this way" means: the object that ARRIVED in
-// exile is the one the effect exiled. A leg a replacement sent
-// somewhere else — Stone of Erech's graveyard rewrite — left, but not
-// to exile, so it is not in the list. A commander is in it, exiled
-// before its owner is offered the command zone (CR 903.9a, ADR 0115).
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) ExileCardsThenForEffect(ids []uuid.UUID, then func(g *Game, exiled []uuid.UUID) error) error {
-	return g.routeAllThenLocked(exileRoute, ids, then)
 }
 
 // SacrificeAllThenForEffect sacrifices every permanent in `ids` as one
@@ -922,49 +899,9 @@ func (g *Game) SacrificeAllForEffect(source uuid.UUID, ids []uuid.UUID) int {
 //
 // The FIRE-AND-FORGET form, counting the landed outcome for the
 // reasons ExileCardsForEffect gives; a card that reads the number uses
-// BounceCardsToHandThenForEffect.
+// BounceCardsToHandKeyedForEffect.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) BounceCardsToHandForEffect(ids []uuid.UUID) int {
 	return g.routeAllLocked(bounceRoute, ids)
-}
-
-// BounceCardsToHandThenForEffect returns every card in `ids` to its
-// owner's hand as one simultaneous event and hands `then` the ones
-// that actually reached a HAND — "for each permanent returned this
-// way".
-//
-// ExileCardsThenForEffect's twin, and the same CR 400.7 reading: a
-// commander that took CR 903.9's offer went to the command zone, not
-// to a hand, so it was not returned this way. An owner who has left
-// the table has no hand to return to, and their card is skipped rather
-// than counted.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) BounceCardsToHandThenForEffect(ids []uuid.UUID, then func(g *Game, bounced []uuid.UUID) error) error {
-	return g.routeAllThenLocked(bounceRoute, ids, then)
-}
-
-// TuckCardsToLibraryThenForEffect puts every card in `ids` into its
-// OWNER's library as one simultaneous exit and hands `then` the ones
-// that actually reached a LIBRARY — Aetherspouts' "put all attacking
-// creatures on top or bottom of their owners' libraries", after which
-// each owner orders only the cards that arrived.
-//
-// ExileCardsThenForEffect's twin (ADR 0013 §5k, §5n), on the same body,
-// with the same CR 400.7 reading of "this way": a commander that took
-// CR 903.9's offer went to the command zone, not to a library, so it is
-// not in the list and nothing downstream may count it.
-//
-// #783 is the reason the `Then` half exists at all. A library is a
-// CR 903.9 destination, so EVERY tuck can pause — and until this
-// existed the fire-and-forget form was the only one, so a card that had
-// more to do after the tuck (Chaos Warp's shuffle and reveal,
-// Aetherspouts' scry, Sylvan Library's next question) did it on the
-// next line, with the card still on the battlefield and the question
-// still open.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) TuckCardsToLibraryThenForEffect(ids []uuid.UUID, opts TuckOptions, then func(g *Game, tucked []uuid.UUID) error) error {
-	return g.routeAllThenLocked(tuckRoute(opts), ids, then)
 }

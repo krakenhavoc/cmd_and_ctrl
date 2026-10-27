@@ -5560,6 +5560,34 @@ func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, keyed KeyedTail, ke
 	}
 }
 
+// surveilRouted is a surveil's continuation once every card the player
+// put into the graveyard has settled (#4361 S11c): the EventSurveil, then
+// the rest of the effect (Next) with how many cards stayed on top. Player
+// is the surveilling player, N the size of the surveil (the whole
+// looked-at set, which does not move with a replacement) and Nums[0] the
+// number kept on top. The IDs are what the route really put in the
+// graveyard: a leg a Rest in Peace exiled instead is not in them. An
+// on-disk key: never renamed, never reused.
+var surveilRouted = RegisterTail("engine/surveil-routed", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	g.EmitEvent(Event{
+		Kind:     EventSurveil,
+		Actor:    t.Player,
+		Source:   t.Source,
+		Amount:   len(o.IDs),
+		LookedAt: t.N,
+	})
+	kept := 0
+	if len(t.Nums) > 0 {
+		kept = t.Nums[0]
+	}
+	// The rest of the effect, now that the library is in the order the
+	// player chose and every card that was going to a graveyard has
+	// settled.
+	g.runScryAfterLocked(t.Player, t.Source, nextTailValue(t.Next), kept)
+	return nil
+})
+
 // IsLookAtTopKind reports whether a choice kind belongs to the scry
 // family: the prompts that show their chooser a set of cards and ask
 // where in a library they go. Three of them are a look at the top of
@@ -5788,25 +5816,14 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 	// library-to-graveyard zone move (#2809).
 	r.Mill = false
 	r.Source = choice.Source
-	source := choice.Source
-	err = g.routeAllThenLocked(r, graveyard, func(g *Game, milled []uuid.UUID) error {
-		g.EmitEvent(Event{
-			Kind:   EventSurveil,
-			Actor:  chooserID,
-			Source: source,
-			Amount: len(milled),
-			// `milled` is what the route actually put in the
-			// graveyard — a leg a Rest in Peace exiled instead is not
-			// in it — while the size of the surveil is the whole
-			// looked-at set and does not move with the replacement.
-			LookedAt: lookedAt,
-		})
-		// The rest of the effect, now that the library is in the order
-		// the player chose and every card that was going to a graveyard
-		// has settled.
-		g.runScryAfterLocked(chooserID, source, keyed, len(topOrder))
-		return nil
-	})
+	// #4361 S11c: the rest of the surveil is data (surveilRouted), so a
+	// leg paused on a CR 616 prompt is a restore point.
+	after := KeyedTail{Ref: surveilRouted, Player: chooserID, Source: choice.Source, N: lookedAt, Nums: []int{len(topOrder)}}
+	if !keyed.IsZero() {
+		next := copyKeyedTail(keyed)
+		after.Next = &next
+	}
+	err = g.routeAllKeyedLocked(r, graveyard, after)
 	if err != nil {
 		return err
 	}

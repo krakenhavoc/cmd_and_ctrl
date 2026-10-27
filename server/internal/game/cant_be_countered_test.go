@@ -70,7 +70,7 @@ func TestEveryCounterVerbHonoursABattlefieldShield(t *testing.T) {
 			return g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneExile})
 		}},
 		{"counter to the bottom of the library", func(g *Game, id uuid.UUID) error {
-			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{ToBottom: true}, nil)
+			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{ToBottom: true}, KeyedTail{})
 		}},
 	}
 	for _, v := range verbs {
@@ -363,7 +363,7 @@ func TestAnAbilityShieldStopsEveryCounterVerb(t *testing.T) {
 			return g.CounterTargetToZoneForEffect(id, ZoneRef{Kind: ZoneExile})
 		}},
 		{"counter to the bottom of the library", func(g *Game, id uuid.UUID) error {
-			return g.CounterSpellToLibraryThenForEffect(id, TuckOptions{ToBottom: true}, nil)
+			return g.CounterSpellToLibraryKeyedForEffect(id, TuckOptions{ToBottom: true}, KeyedTail{})
 		}},
 		{"counter unless paid, declined", func(g *Game, id uuid.UUID) error { return g.counterIfStillOnStackLocked(id) }},
 	}
