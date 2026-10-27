@@ -1699,3 +1699,10 @@ maycast may-cast/free-play-land-or-hand
 maycast may-cast/hideaway-play-land
 maycast may-cast/malcolm-free-cast
 tail engine/value-chosen-nothing
+option option-pick/attach-source-to-player
+option option-pick/choose-first-player-as-enters
+option option-pick/choose-option-as-enters
+option option-pick/choose-player-as-enters
+option option-pick/choose-second-player-as-enters
+option option-pick/opponent-target-chooser
+option option-pick/resolution-exit
