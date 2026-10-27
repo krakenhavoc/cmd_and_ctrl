@@ -250,6 +250,11 @@ func copyStepsFor(src Card, item *StackItem, spec *TargetSpec) []AnnouncedClause
 // far: `orig` with each answered step's picks in place. `step` is the
 // step the open prompt asks. Answering moves `step` and rewrites `next`,
 // so an undo snapshot gets its own copy of both (cloneCopyFrame).
+//
+// #4361 S15: a restore point writes the frame as data
+// (pendingChoices[].copyWalk, copy_walk_keyed.go): `item` through the
+// stack-item mirror, `src` through the card mirror, and `steps` listed
+// again from the rebuilt item on restore.
 type copyFrame struct {
 	src        Card
 	item       StackItem
@@ -770,7 +775,10 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// changed on the stack keeps that change as the token it becomes.
 	// The copy's object is gone before the token exists, so the
 	// records are copied out here and re-pinned in the creation's
-	// continuation; the originals end with the stack object.
+	// continuation; the originals end with the stack object. #4361 S12
+	// (owner decision D6): the copies ride the tail as data
+	// (KeyedTail.Records), so a creation that stops on a CR 616 prompt
+	// is a restore point whether or not the control changed.
 	controlRecords := g.spellControlRecordsLocked(top.InstanceID, top.ObjectEpoch)
 	controlBase := item.BaseController
 	g.ceaseToExistLocked(top.InstanceID)
@@ -805,8 +813,9 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	bestowed := top.Bestowed
 	// #3158: the copy NAMES its host, so the token enters attached to it
 	// rather than being asked CR 303.4f's question (aura_host.go). A
-	// bestowed copy is a creature card until it is seeded below, which
-	// the entry does not see as an Aura, so it keeps the attach after.
+	// bestowed copy is a creature card until it is seeded in the tail,
+	// which the entry does not see as an Aura, so it keeps the attach
+	// after.
 	var entry TokenEntryOptions
 	if host, ok := singleAuraHost(targets); ok && !bestowed && tmpl.IsAura() {
 		entry.AttachedTo = host
@@ -816,36 +825,31 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1, Entry: entry}},
 		Source:     item.SourceCardID,
 	}
-	if len(controlRecords) == 0 {
-		// #4253 slice 6: nothing the copy's control carried needs a closure,
-		// so the rest is data: the targets ride the asking item, the two
-		// flags ride N. A creation that stops on a CR 616 prompt is then a
-		// restore point. A copy whose control was changed on the stack
-		// (ADR 0104) keeps the closure form below, whose records are
-		// ScopedEffects a tail cannot carry.
-		n := 0
-		if bestowed {
-			n |= spellCopyTokenBestowed
-		}
-		if entry.AttachedTo.Kind == "" {
-			n |= spellCopyTokenAttachResolved
-		}
-		return g.CreateTokensKeyedForEffect(spec, KeyedTail{
-			Ref: spellCopyTokenRef, Player: item.Controller, Source: item.SourceCardID, N: n, Asked: NewAskedItem(item),
-		})
+	// #4253 slice 6: the rest is data: the targets ride the asking item,
+	// the two flags ride N. A creation that stops on a CR 616 prompt is
+	// then a restore point.
+	n := 0
+	if bestowed {
+		n |= spellCopyTokenBestowed
 	}
-	return g.CreateTokensThenForEffect(spec, func(g *Game, created []uuid.UUID) error {
-		for _, id := range created {
-			if bestowed {
-				g.seedBestowedEntryLocked(id, nil)
-			}
-			if entry.AttachedTo.Kind == "" {
-				g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
-			}
-			g.adoptSpellControlLocked(controlRecords, id, controlBase)
+	if entry.AttachedTo.Kind == "" {
+		n |= spellCopyTokenAttachResolved
+	}
+	tail := KeyedTail{
+		Ref: spellCopyTokenRef, Player: item.Controller, Source: item.SourceCardID, N: n, Asked: NewAskedItem(item),
+	}
+	if len(controlRecords) > 0 {
+		// #4361 S12: the control records and the base controller the
+		// token is stamped with. A key of its own, so a binary from
+		// before it refuses the file rather than restoring a token that
+		// silently goes back to the copy's first controller.
+		tail.Ref = spellCopyTokenControlRef
+		tail.Records = controlRecords
+		if controlBase != uuid.Nil {
+			tail.Carry = []uuid.UUID{controlBase}
 		}
-		return nil
-	})
+	}
+	return g.CreateTokensKeyedForEffect(spec, tail)
 }
 
 // The two flags a spellCopyTokenRef tail carries in N.
@@ -863,10 +867,24 @@ const (
 // changed: seed a bestowed copy, attach a copy of an Aura spell to the
 // object it targeted. The copy's targets ride the asking item. An on-disk
 // key: never renamed, never reused.
-var spellCopyTokenRef = RegisterTail("engine/spell-copy-token", func(g *Game, o TailOutcome) error {
+var spellCopyTokenRef = RegisterTail("engine/spell-copy-token", runSpellCopyTokenTail)
+
+// spellCopyTokenControlRef is spellCopyTokenRef for a copy whose control
+// was changed on the stack (ADR 0104, #4361 S12): the tail's Records are
+// the copy's control records, re-pinned onto each token, and Carry[0],
+// when present, is the base controller the token is stamped with (CR
+// 110.2b). An on-disk key: never renamed, never reused.
+var spellCopyTokenControlRef = RegisterTail("engine/spell-copy-token-control", runSpellCopyTokenTail)
+
+// runSpellCopyTokenTail is the body both spell-copy token keys run.
+func runSpellCopyTokenTail(g *Game, o TailOutcome) error {
 	var targets []TargetRef
 	if o.Tail.Asked != nil {
 		targets = copyTargetRefs(o.Tail.Asked.Targets)
+	}
+	var base uuid.UUID
+	if len(o.Tail.Carry) > 0 {
+		base = o.Tail.Carry[0]
 	}
 	for _, id := range o.IDs {
 		if o.Tail.N&spellCopyTokenBestowed != 0 {
@@ -875,9 +893,10 @@ var spellCopyTokenRef = RegisterTail("engine/spell-copy-token", func(g *Game, o 
 		if o.Tail.N&spellCopyTokenAttachResolved != 0 {
 			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
 		}
+		g.adoptSpellControlLocked(o.Tail.Records, id, base)
 	}
 	return nil
-})
+}
 
 // tokenCopyOfSpell builds the token template a resolving copy of a
 // permanent spell becomes: the spell's copiable values (CR 707.2),

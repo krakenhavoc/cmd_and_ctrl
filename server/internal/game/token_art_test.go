@@ -108,11 +108,11 @@ func TestTokenCopyKeepsItsCopiedArtNotTheResolvers(t *testing.T) {
 		ScryfallID: copiedArt, // as TokenCopyTemplate stamps it (CR 707.2)
 	}
 	g.WithWriteLock(func() {
-		if err := g.CreateTokensThenForEffect(TokenCreation{
+		if err := g.CreateTokensKeyedForEffect(TokenCreation{
 			Controller: me.ID,
 			Groups:     []TokenGroup{{Template: copyTemplate, Count: 1}},
-		}, nil); err != nil {
-			t.Fatalf("CreateTokensThenForEffect: %v", err)
+		}, KeyedTail{}); err != nil {
+			t.Fatalf("CreateTokensKeyedForEffect: %v", err)
 		}
 	})
 

@@ -6,10 +6,9 @@ import "github.com/google/uuid"
 // entries, carried as data.
 //
 // A settled creation mints its tokens and enters them one at a time,
-// each from the previous token's entry continuation
-// (enterCreatedTokensLocked, #762), so a token whose entry stops on a
-// question (two enters-tapped effects on an opponent's token) waits with
-// the rest behind it. That continuation was a closure over the minted
+// each from the previous token's entry continuation (#762), so a token
+// whose entry stops on a question (two enters-tapped effects on an
+// opponent's token) waits with the rest behind it. That continuation was a closure over the minted
 // tokens, and the token entering was only in Game.enteringTokens, which
 // a restore point did not carry.
 //
@@ -20,14 +19,13 @@ import "github.com/google/uuid"
 // ever looked up by its ID, and nothing outside the creation knows the
 // ID of one still waiting, so staging it early is invisible. The
 // creation's own continuation rides along as a keyed tail or a
-// synchronous door's result; a creation whose card passes a closure
-// keeps the closure form, and its frame is still counted.
+// synchronous door's result. #4361 S12 deleted the closure form and the
+// one-token-at-a-time closure batch that carried it.
 
 // tokenDone is a creation's continuation, in whichever form it came: a
-// closure, a keyed tail, or a synchronous door's result. A parameter
-// only; the keyed form stores its two data halves (tokenEntryRun).
+// keyed tail, or a synchronous door's result. A parameter only; the
+// keyed form stores its two data halves (tokenEntryRun).
 type tokenDone struct {
-	then   func(g *Game, created []uuid.UUID) error
 	keyed  KeyedTail
 	report *[]uuid.UUID
 }
@@ -36,9 +34,6 @@ type tokenDone struct {
 func (d tokenDone) run(g *Game, created []uuid.UUID) error {
 	if d.report != nil {
 		*d.report = created
-	}
-	if d.then != nil {
-		return d.then(g, created)
 	}
 	return g.runKeyedTailLocked(d.keyed, created, 0)
 }
@@ -113,9 +108,10 @@ func cloneTokenEntryRun(r *tokenEntryRun) *tokenEntryRun {
 	return &out
 }
 
-// enterCreatedTokensKeyedLocked is enterCreatedTokensLocked for a batch
-// whose continuation is data: every token is staged now, and the batch
-// walks on IDs.
+// enterCreatedTokensKeyedLocked enters a settled creation's batch one
+// token at a time, each through enterBattlefieldThroughPipelineLocked,
+// the one entry primitive (#478). Its continuation is data: every token
+// is staged now, and the batch walks on IDs.
 //
 // Caller must hold g.mu.
 func (g *Game) enterCreatedTokensKeyedLocked(batch []stagedToken, created []uuid.UUID, source uuid.UUID, done tokenDone) error {
@@ -164,9 +160,10 @@ func (g *Game) enterStagedTokensLocked(r *tokenEntryRun) error {
 	return err
 }
 
-// runTokenEntryStepLocked is the keyed form of the step closure in
-// enterCreatedTokensLocked: the token that just settled leaves the
-// staging area, is counted when it landed, and the batch walks on.
+// runTokenEntryStepLocked is one step of the batch: the token that just
+// settled leaves the staging area, is counted when it landed, and the
+// batch walks on. A token that never reached the battlefield never
+// existed (CR 111.1), and the rest of the batch still does.
 //
 // Caller must hold g.mu.
 func (g *Game) runTokenEntryStepLocked(r *tokenEntryRun, entered uuid.UUID) error {

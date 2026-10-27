@@ -25,7 +25,7 @@ import (
 // the attach are never separated by a priority boundary.
 //
 // That is also why the attach rides
-// game.CreateTokensThenForEffect's continuation rather than the next
+// game.CreateTokensKeyedForEffect's continuation rather than the next
 // line of Go. Token creation goes through the CR 701.7b replacement
 // window, and a window with two different applicable effects in it
 // (a Doubling Season and an Academy Manufactor) pauses for a CR 616

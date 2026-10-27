@@ -113,15 +113,20 @@ func tokensNamed(g *Game, name string) int {
 }
 
 // createGoblins runs one creation instruction for n Goblins under
-// controller, with an optional continuation.
+// controller, with an optional continuation, heard through a test hook
+// tail (#4361 S12 deleted the closure door).
 func createGoblins(t *testing.T, g *Game, controller uuid.UUID, n int, then func(*Game, []uuid.UUID) error) {
 	t.Helper()
+	var tail KeyedTail
+	if then != nil {
+		tail = hookTail(func(g *Game, o TailOutcome) error { return then(g, o.IDs) })
+	}
 	g.WithWriteLock(func() {
-		if err := g.CreateTokensThenForEffect(TokenCreation{
+		if err := g.CreateTokensKeyedForEffect(TokenCreation{
 			Controller: controller,
 			Groups:     []TokenGroup{{Template: goblinToken(), Count: n}},
-		}, then); err != nil {
-			t.Fatalf("CreateTokensThenForEffect: %v", err)
+		}, tail); err != nil {
+			t.Fatalf("CreateTokensKeyedForEffect: %v", err)
 		}
 	})
 }
@@ -318,11 +323,11 @@ func TestACreationsOwnTappedClauseSurvivesTheWindow(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0].ID
 	g.WithWriteLock(func() {
-		if err := g.CreateTokensThenForEffect(TokenCreation{
+		if err := g.CreateTokensKeyedForEffect(TokenCreation{
 			Controller: me,
 			Groups:     []TokenGroup{{Template: goblinToken(), Count: 1, Entry: TokenEntryOptions{Tapped: true}}},
-		}, nil); err != nil {
-			t.Fatalf("CreateTokensThenForEffect: %v", err)
+		}, KeyedTail{}); err != nil {
+			t.Fatalf("CreateTokensKeyedForEffect: %v", err)
 		}
 	})
 	for _, c := range g.Battlefield.Cards {

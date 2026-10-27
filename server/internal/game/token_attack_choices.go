@@ -18,13 +18,14 @@ import (
 // settled by now, so the split is not part of the CR 614 pipeline and asks
 // no replacement anything; a table waiting on a question is a restore
 // point (#4294). A creation that is split carries a keyed tail, or none:
-// a closure is not data.
+// a synchronous door's result is read on the door's next line, which a
+// split's later answers never reach.
 //
 // Caller must hold g.mu.
 func (g *Game) startSettledSplitLocked(ev *ReplacementEvent) error {
 	var tail KeyedTail
 	if t := ev.tokenTail; t != nil {
-		if t.then != nil || t.report != nil {
+		if t.report != nil {
 			return fmt.Errorf("%w: a creation split between opponents needs a keyed tail", ErrInvalidParam)
 		}
 		tail = copyKeyedTail(t.keyed)
@@ -107,14 +108,10 @@ func (g *Game) placeSettledGroupLocked(s AttackSplit) error {
 // enterCreatedTokensTogetherLocked enters a creation's tokens as ONE
 // simultaneous entry (TokenCreation.Together). The creation's
 // continuation rides the batch as data (#4361 S10): a keyed tail or a
-// synchronous door's result. A closure is not data, so a creation that
-// enters together refuses one, as a split creation does.
+// synchronous door's result.
 //
 // Caller must hold g.mu.
 func (g *Game) enterCreatedTokensTogetherLocked(tokens []stagedToken, source uuid.UUID, done tokenDone) error {
-	if done.then != nil {
-		return fmt.Errorf("%w: a creation whose tokens enter together needs a keyed tail", ErrInvalidParam)
-	}
 	b := &entryBatch{source: source, keyed: done.keyed, report: done.report}
 	for _, tok := range tokens {
 		g.enteringTokens = append(g.enteringTokens, tok.card)

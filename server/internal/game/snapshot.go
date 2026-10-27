@@ -2104,6 +2104,13 @@ type pendingChoiceSnapshot struct {
 	// the option pick's own key), so a binary from before it refuses the
 	// file. Additive within the version.
 	Parked *parkedAnnouncementSnapshot `json:"parked,omitempty"`
+	// CopyWalk is a copy's CR 707.10c "choose new targets" walk written
+	// as data (#4361 S15, copy_walk_keyed.go): the copied item through
+	// the stack-item mirror, the object its targets are judged from, the
+	// controller, the steps' identities, the targets and the cursor. Its
+	// pick_target's PickThen says CopyWalkKey, so a binary from before it
+	// refuses the file. Additive within the version.
+	CopyWalk *copyWalkSnapshot `json:"copyWalk,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -3363,10 +3370,15 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		out.TargetWalk = tw
 		out.PickThen = targetWalkMarker(c.Kind)
 	}
-	// #4361 S13: a parked cast or activation, written as data.
+	// #4361 S13: a parked cast or activation, written as data. A prompt
+	// carries at most one of it and (S15) a copy's new-targets walk; the
+	// walk is nil when its item cannot be written whole.
 	parked, parkedKey := snapshotParkedAnnouncement(c)
+	var cw *copyWalkSnapshot
 	if parked != nil {
 		out.Parked, out.PickThen = parked, parkedKey
+	} else if cw = snapshotCopyWalkOf(c, cen); cw != nil {
+		out.CopyWalk, out.PickThen = cw, CopyWalkKey
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -3386,9 +3398,10 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		// when it could not be (a cast already carrying an assist answer).
 		"costCommanderResume":  c.costCommanderResume != nil && parked == nil,
 		"opponentTargetResume": c.opponentTargetResume != nil && parked == nil,
-		// #4361 S14b: written as data (targetWalk) when it can be named.
+		// #4361 S14b: written as data (targetWalk) when it can be named;
+		// S15: a copy's walk (copyWalk) when its item can be written.
 		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
-		"copyResume":       c.copyResume != nil,
+		"copyResume":       c.copyResume != nil && cw == nil,
 		"triggerResume":    c.triggerResume != nil && tf == nil,
 		// #4361 S7b: the card-set pick's closure frame is gone. Every
 		// choose_cards pick is keyed, a run's reveal or permanent pick
@@ -3805,6 +3818,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 		if pa := s.PendingChoices[i].Parked; pa != nil {
 			// #4361 S13: a parked cast or activation.
 			restoreParkedAnnouncement(g.PendingChoices[i], pa)
+		} else if w := s.PendingChoices[i].CopyWalk; w != nil && s.PendingChoices[i].Kind == PendingChoicePickTarget {
+			// #4361 S15: a copy's new-targets walk.
+			g.restoreCopyWalkLocked(g.PendingChoices[i], w)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)

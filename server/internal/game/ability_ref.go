@@ -594,8 +594,10 @@ func (s *GameSnapshot) LostStackAbilities() []LostStackAbility {
 			})
 		}
 	}
-	// #4361 S14a: a trigger paused in its announcement names its row too.
-	return append(out, s.lostTriggerFrames()...)
+	// #4361 S14a: a trigger paused in its announcement names its row too,
+	// and (S15) so does an ability copy paused on its new targets.
+	out = append(out, s.lostTriggerFrames()...)
+	return append(out, s.lostCopyWalks()...)
 }
 
 // cardNameOf finds a card's name anywhere in the snapshot's zones.

@@ -16,7 +16,7 @@ import (
 // left the graveyard in response, or that a replacement kept out of
 // exile, makes no Spirit. The mana value is the exiled card's, read
 // once it is in exile, and the counter goes on the token as it is
-// created (CreateTokensThenForEffect's continuation names it).
+// created (CreateTokensKeyedForEffect's continuation names it).
 //
 // No simplification.
 func init() {

@@ -29,7 +29,7 @@ import (
 //     land had its counters.
 //
 // The fix is the shape every other pausable primitive already has
-// (CreateTokensThenForEffect, ChangePlayerLifeThenForEffect,
+// (CreateTokensKeyedForEffect, ChangePlayerLifeThenForEffect,
 // MillToZoneThenForEffect, SacrificeAllThenForEffect): the entry point
 // takes `then`, the event carries it across the pause, and the ONE
 // settled exit — applyResolvedCounterThenLocked — runs it, from both

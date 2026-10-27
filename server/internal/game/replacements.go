@@ -949,7 +949,7 @@ type ReplacementEvent struct {
 	// tokenTail is the token half's answer to lifeTail and damageTail:
 	// the rest of the effect that asked for the creation, run with the
 	// IDs of the tokens that were actually made once the pipeline
-	// settles. Set by CreateTokensThenForEffect and read only by
+	// settles. Set by CreateTokensKeyedForEffect and read only by
 	// runTokenTailLocked, which both the inline path and the CR 616
 	// resume reach.
 	//

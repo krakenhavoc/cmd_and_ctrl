@@ -143,7 +143,19 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 47,
+	// 44 (2026-10-27, #4361 S12): - tokenTail.then, ReplacementEvent.tokenTail
+	// and entryTail.then, gone with CreateTokensThenForEffect and the
+	// closure token batch; a permanent-spell copy whose control changed on
+	// the stack carries its control records on its keyed tail
+	// (KeyedTail.Records, owner decision D6).
+	// 39 (2026-10-27, #4361 S15): PendingChoice.copyResume,
+	// copyFrame.{item,steps} and AnnouncedClause.Clause to keyed (the
+	// CR 707.10c walk is written with its item through the stack-item
+	// mirror and its steps listed again from the item, copy_walk_keyed.go;
+	// an item the mirror cannot write whole is still counted by the
+	// runtime ChoiceResumeFrames counter); copyFrame.src moved to
+	// census:IntrinsicAbilityCards (owner decision D1).
+	"census:ChoiceResumeFrames": 39,
 	//
 	// 50 (2026-10-27, #4361 S13, owner decision D7): -
 	// PendingChoice.costCommanderResume and costCommanderFrame.announce.
@@ -260,12 +272,17 @@ var closureClassCeilings = map[string]int{
 	// 57 (2026-10-27, #4361 S14b, owner decision D1, the same approved
 	// raise): + pickTargetFrame.source, a written target walk's source,
 	// through snapshotCard like the two above.
-	"census:IntrinsicAbilityCards": 58,
+	//
 	// 55 (2026-10-27, #4361 S3, ADR 0041 P11, owner decision D2 approved
 	// by Ian): + TapPermanentsCost.Spec, moved from
 	// census:ChoiceResumeFrames when payUnlessFrame.tap went; its other
 	// route is AbilityCost.Waterbend. Not a new route.
-	"transient": 1,
+	//
+	// 59 (2026-10-27, #4361 S15, owner decision D1, the same approved
+	// raise): + copyFrame.src, a written copy walk's source object,
+	// through snapshotCard like the three trigger-frame sources above.
+	"census:IntrinsicAbilityCards": 59,
+	"transient":                    1,
 }
 
 // isCeilingedClass reports whether a class is one closureClassCeilings
@@ -627,6 +644,8 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
 # 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S13): ChoiceResumeFrames 52 → 50, a parked cast or activation written as data (owner decision D7); PendingChoice.costCommanderResume and costCommanderFrame.announce deleted.
+# 2026-10-27 (#4361 S12): a permanent-spell copy's control records ride its token tail as data (owner decision D6); tokenTail.then, ReplacementEvent.tokenTail and entryTail.then deleted with the closure token door.
+# 2026-10-27 (#4361 S15): the copy new-targets walk written as data (pendingChoices[].copyWalk); 4 lines keyed, copyFrame.src to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields

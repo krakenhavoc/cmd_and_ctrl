@@ -38,149 +38,7 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			records = append(append([]ScopedEffect(nil), records...), et.Effects...)
 		}
 	}
-	for _, e := range records {
-		for _, m := range e.Mods {
-			if !KnownModKind(m.Kind) {
-				unknown = append(unknown, "mod kind "+string(m.Kind))
-			}
-			if m.Kind == ModGrantAbilities {
-				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
-			}
-			// ADR 0155 Decision 9: a lent row is a catalog row, and one
-			// this binary does not have would be an ability that
-			// silently does nothing.
-			unknown = append(unknown, unknownLentRows(m)...)
-			// #1593: a copy mod carries exactly one set of values, and
-			// the ability bundles its except clause granted are keys
-			// like a grant mod's — a bundle this binary does not
-			// register would be an ability that silently does nothing.
-			if problem := copyModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0160: a text-box mod carries exactly one text box.
-			if problem := textBoxModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0160's amendment: a text-word mod carries one sound
-			// change.
-			if problem := textWordsModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			for _, v := range m.Copy {
-				for _, k := range v.GrantedAbilities {
-					if k == "" || catalogDef(GrantKey(k)) == nil {
-						unknown = append(unknown, fmt.Sprintf("copied ability-grant bundle %q", k))
-					}
-				}
-			}
-			// #1715: a capacity mod's count is part of what it means.
-			if problem := blockCapacityModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #1597: the requirement a block-requirement mod names is as
-			// much a key as the kind itself.
-			if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
-				unknown = append(unknown, "block requirement "+m.Text)
-			}
-			// Tier 3b: a delayed-trigger body a replacement mod names
-			// (Cosmic Intervention's per-card return) is as much a key
-			// as a delayed trigger's own body.
-			if m.Then != "" && !KnownEffectBody(m.Then) {
-				unknown = append(unknown, "scoped-effect then body "+m.Then)
-			}
-			// ADR 0107 §6: the next-damage shield's fields are part of
-			// what it means, and a source-zone field on another kind is
-			// a newer binary's shape.
-			if problem := nextFromSourceModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0108 §3: a multiplier's vocabulary (Sources,
-			// Recipients) is as much a key as its kind, and its fields
-			// on another kind are a newer binary's shape.
-			if problem := multiplyDamageModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #1879: a granted attack restriction that asks for nothing.
-			if problem := defenderControlsModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0109 §1: a land-type set naming no basic land type.
-			if problem := landTypesModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0108 PR 8: a follow-up's recipient on a mod that has
-			// no follow-up to deal it is a newer binary's shape.
-			if problem := followUpModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0108 §9: a redirection's destination is part of what it
-			// means, and toSourceController on another kind is a newer
-			// binary's shape.
-			if problem := redirectDamageModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #1859: a row removal naming a slot this binary cannot
-			// honour is a newer binary's shape.
-			if problem := loseOwnAbilityModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #2562: a name or type line with nothing in it, or
-			// supertypes on another kind, is a newer binary's shape.
-			if problem := becomeNamedModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #2144: a creature-type set naming no creature type.
-			if problem := setCreatureTypesModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #4072: a subtype loss naming no subtype.
-			if problem := loseSubtypesModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #3398: an attack tax with no player or an unreadable cost.
-			if problem := attackTaxModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0188: a skip debt owed by no one, or owing nothing.
-			if problem := skipTurnsModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// ADR 0188 Decision 3a: a skipped step that names no turn or
-			// no real step, or a step field on another kind.
-			if problem := skipExtraTurnStepModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #3995: a player-wide untap skip naming no player or no
-			// permanent type, or anyController on another kind.
-			if problem := skipNextUntapStepModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-			// #2567: an attack-this-permanent requirement naming no
-			// permanent, or a turn stamp on another kind.
-			if problem := attackPermanentModProblem(m); problem != "" {
-				unknown = append(unknown, problem)
-			}
-		}
-		// ADR 0107 §3: a stack pin may carry only what this binary's
-		// stack step applies (layer 2 control, layer-6 keywords). A
-		// newer binary's spell effect would otherwise restore as a
-		// record that silently does nothing.
-		if problem := stackPinProblem(e.Affected, e.Mods); problem != "" {
-			unknown = append(unknown, "scoped effect "+problem)
-		}
-		// #2045: a recipient set is read only on an unpinned record.
-		if problem := recipientFilterScopeProblem(e.Scope, e.Mods); problem != "" {
-			unknown = append(unknown, problem)
-		}
-		// #1946: a dealt-damage-by record names one dealer per mod, and
-		// its fields on any other record are a newer binary's shape.
-		if problem := dealtDamageByScopeProblem(e.Scope, e.Mods); problem != "" {
-			unknown = append(unknown, problem)
-		}
-		if !KnownAffectedScope(e.Scope) {
-			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
-		}
-	}
+	unknown = append(unknown, unknownScopedEffectRecordKeys(records)...)
 	// ADR 0203: a venture marker on a dungeon or room this binary does
 	// not register.
 	unknown = append(unknown, unknownDungeonKeys(s.Seats)...)
@@ -274,6 +132,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// one, under another marker, or without its params.
 			unknown = append(unknown, unknownParkedAnnouncementKeys(&c)...)
 		}
+		// #4361 S15: a copy walk likewise, and the keys its item names.
+		unknown = append(unknown, unknownCopyWalkKeys(&c)...)
 		switch {
 		case c.Parked != nil && c.Kind != PendingChoiceOptionPick:
 			// #4361 S13: the marker is the parked frame's, checked above;
@@ -283,7 +143,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// its catalog row.
 			unknown = append(unknown, unknownTriggerFrameKeys(&c)...)
 		case c.Kind == PendingChoicePickTarget && c.PickThen != "":
-			// #4361 S14b: checked above (unknownTargetWalkKeys).
+			// #4361 S14b and S15: checked above (unknownTargetWalkKeys,
+			// unknownCopyWalkKeys).
 		case c.Kind == PendingChoiceSearchLibrary && (c.PickThen != "" || c.SearchPrompt != nil):
 			// #4253 slice 5: a written search prompt names the marker, its
 			// set rule and the card's tail.
@@ -508,6 +369,158 @@ func unknownGrantBundles(keys []string) []string {
 		}
 	}
 	return out
+}
+
+// unknownScopedEffectRecordKeys is checkEffectKeys' line for each key or
+// shape in records this binary does not register: the live registry's,
+// an extra turn's queued effects (ADR 0188 Decision 3b) and a keyed
+// tail's (#4361 S12, KeyedTail.Records) alike.
+func unknownScopedEffectRecordKeys(records []ScopedEffect) []string {
+	var unknown []string
+	for _, e := range records {
+		for _, m := range e.Mods {
+			if !KnownModKind(m.Kind) {
+				unknown = append(unknown, "mod kind "+string(m.Kind))
+			}
+			if m.Kind == ModGrantAbilities {
+				unknown = append(unknown, unknownGrantBundles(m.Grants)...)
+			}
+			// ADR 0155 Decision 9: a lent row is a catalog row, and one
+			// this binary does not have would be an ability that
+			// silently does nothing.
+			unknown = append(unknown, unknownLentRows(m)...)
+			// #1593: a copy mod carries exactly one set of values, and
+			// the ability bundles its except clause granted are keys
+			// like a grant mod's — a bundle this binary does not
+			// register would be an ability that silently does nothing.
+			if problem := copyModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0160: a text-box mod carries exactly one text box.
+			if problem := textBoxModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0160's amendment: a text-word mod carries one sound
+			// change.
+			if problem := textWordsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			for _, v := range m.Copy {
+				for _, k := range v.GrantedAbilities {
+					if k == "" || catalogDef(GrantKey(k)) == nil {
+						unknown = append(unknown, fmt.Sprintf("copied ability-grant bundle %q", k))
+					}
+				}
+			}
+			// #1715: a capacity mod's count is part of what it means.
+			if problem := blockCapacityModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #1597: the requirement a block-requirement mod names is as
+			// much a key as the kind itself.
+			if m.Kind == ModAddBlockRequirement && !KnownBlockRequirementKind(BlockRequirementKind(m.Text)) {
+				unknown = append(unknown, "block requirement "+m.Text)
+			}
+			// Tier 3b: a delayed-trigger body a replacement mod names
+			// (Cosmic Intervention's per-card return) is as much a key
+			// as a delayed trigger's own body.
+			if m.Then != "" && !KnownEffectBody(m.Then) {
+				unknown = append(unknown, "scoped-effect then body "+m.Then)
+			}
+			// ADR 0107 §6: the next-damage shield's fields are part of
+			// what it means, and a source-zone field on another kind is
+			// a newer binary's shape.
+			if problem := nextFromSourceModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0108 §3: a multiplier's vocabulary (Sources,
+			// Recipients) is as much a key as its kind, and its fields
+			// on another kind are a newer binary's shape.
+			if problem := multiplyDamageModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #1879: a granted attack restriction that asks for nothing.
+			if problem := defenderControlsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0109 §1: a land-type set naming no basic land type.
+			if problem := landTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0108 PR 8: a follow-up's recipient on a mod that has
+			// no follow-up to deal it is a newer binary's shape.
+			if problem := followUpModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0108 §9: a redirection's destination is part of what it
+			// means, and toSourceController on another kind is a newer
+			// binary's shape.
+			if problem := redirectDamageModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #1859: a row removal naming a slot this binary cannot
+			// honour is a newer binary's shape.
+			if problem := loseOwnAbilityModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #2562: a name or type line with nothing in it, or
+			// supertypes on another kind, is a newer binary's shape.
+			if problem := becomeNamedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #2144: a creature-type set naming no creature type.
+			if problem := setCreatureTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #4072: a subtype loss naming no subtype.
+			if problem := loseSubtypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #3398: an attack tax with no player or an unreadable cost.
+			if problem := attackTaxModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0188: a skip debt owed by no one, or owing nothing.
+			if problem := skipTurnsModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// ADR 0188 Decision 3a: a skipped step that names no turn or
+			// no real step, or a step field on another kind.
+			if problem := skipExtraTurnStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #3995: a player-wide untap skip naming no player or no
+			// permanent type, or anyController on another kind.
+			if problem := skipNextUntapStepModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #2567: an attack-this-permanent requirement naming no
+			// permanent, or a turn stamp on another kind.
+			if problem := attackPermanentModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+		}
+		// ADR 0107 §3: a stack pin may carry only what this binary's
+		// stack step applies (layer 2 control, layer-6 keywords). A
+		// newer binary's spell effect would otherwise restore as a
+		// record that silently does nothing.
+		if problem := stackPinProblem(e.Affected, e.Mods); problem != "" {
+			unknown = append(unknown, "scoped effect "+problem)
+		}
+		// #2045: a recipient set is read only on an unpinned record.
+		if problem := recipientFilterScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
+		// #1946: a dealt-damage-by record names one dealer per mod, and
+		// its fields on any other record are a newer binary's shape.
+		if problem := dealtDamageByScopeProblem(e.Scope, e.Mods); problem != "" {
+			unknown = append(unknown, problem)
+		}
+		if !KnownAffectedScope(e.Scope) {
+			unknown = append(unknown, "scoped-effect scope "+string(e.Scope))
+		}
+	}
+	return unknown
 }
 
 // deepCopyScopedEffects copies records and their inner slices, for the

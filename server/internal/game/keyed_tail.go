@@ -22,8 +22,10 @@ import (
 // reads. The engine's own sequencers (a library search's remaining
 // takes and its shuffle, a token batch's remaining tokens) are data of
 // their own on the tail (searchEntryRun, tokenEntryRun). A caller whose
-// continuation is a card closure still passes the closure, and that
-// frame is still counted by the census exactly as before.
+// continuation is a card closure still passes the closure where its
+// event keeps one, and that frame is still counted by the census
+// exactly as before. A token creation's closure form is gone (#4361
+// S12).
 
 // TailRef names a registered TailFunc. The key is unexported, so a func
 // never reaches an event and a ref is only made by RegisterTail.
@@ -75,6 +77,14 @@ type KeyedTail struct {
 	// (#4361 S8, pay_action_keyed.go): the engine's payUnlessPaidTail
 	// rebuilds the prompt from it. Nil on every card's tail.
 	paid *payUnlessPaid
+	// Records are continuous-effect records the body registers, as data
+	// (#4361 S12, owner decision D6): a copy of a permanent spell whose
+	// control changed on the stack keeps that change on the token it
+	// becomes (ADR 0104, CR 400.7a), and the copy's object is gone
+	// before the token exists, so the records ride the creation's tail
+	// until the body re-pins them. Value copies, never the registry's.
+	// Nil when the body registers none.
+	Records []ScopedEffect
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -218,6 +228,7 @@ func copyKeyedTail(t KeyedTail) KeyedTail {
 	}
 	t.Permission = copyCastPermissionPtr(t.Permission)
 	t.paid = copyPayUnlessPaid(t.paid)
+	t.Records = deepCopyScopedEffects(t.Records)
 	return t
 }
 
@@ -249,6 +260,10 @@ type keyedTailSnapshot struct {
 	// Paid (#4361 S8): an answered pay-unless whose "yes" waits for its
 	// payment. Additive within v9.
 	Paid *payUnlessPaid `json:"paid,omitempty"`
+	// Records (#4361 S12): the continuous-effect records the body
+	// registers, held to the vocabulary checkEffectKeys holds the live
+	// registry to (unknownKeyedTail).
+	Records []ScopedEffect `json:"records,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -261,7 +276,8 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
 		Permission: copyCastPermissionPtr(t.Permission),
 		Nums:       copyInts(t.Nums), Words: copyStrings(t.Words),
-		Paid: copyPayUnlessPaid(t.paid),
+		Paid:    copyPayUnlessPaid(t.paid),
+		Records: deepCopyScopedEffects(t.Records),
 	}
 }
 
@@ -282,7 +298,8 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
 		Permission: copyCastPermissionPtr(s.Permission),
 		Nums:       copyInts(s.Nums), Words: copyStrings(s.Words),
-		paid: copyPayUnlessPaid(s.Paid),
+		paid:    copyPayUnlessPaid(s.Paid),
+		Records: deepCopyScopedEffects(s.Records),
 	}
 	if s.Next != nil {
 		n := restoreKeyedTail(s.Next)
@@ -312,6 +329,9 @@ func unknownKeyedTail(s *keyedTailSnapshot) []string {
 	// #4361 S13: a cast permission the tail grants names its follow-ups
 	// by key.
 	out = append(out, unknownCastFollowUps(s.Permission)...)
+	// #4361 S12: records the body registers are records like the live
+	// registry's, so they are held to the same vocabulary.
+	out = append(out, unknownScopedEffectRecordKeys(s.Records)...)
 	return append(out, unknownKeyedTail(s.Next)...)
 }
 
