@@ -464,24 +464,64 @@ func TestUntapChoiceStopsTheStepEntryAndTheAnswerResumesIt(t *testing.T) {
 	}
 }
 
-// The prompt holds the restore point, and it is counted as a
-// continuation rather than silently dropped (ADR 0041).
-func TestPausedUntapStepIsNotARestorePoint(t *testing.T) {
+// #4361 S7a: the paused step's continuation is a registered key and its
+// plan is data, so the prompt is a restore point. The restored prompt
+// keeps the plan (the set rule still refuses two lands under a cap of
+// one) and its answer untaps the settled permanents with the pick and
+// ends the step.
+func TestPausedUntapStepIsARestorePoint(t *testing.T) {
 	g := newActiveGame(t)
 	seat := g.Seats[0].ID
 	const orb = "winter-orb"
-	pushTappedPermanent(g, seat, "Forest", "", "Land", true)
-	pushTappedPermanent(g, seat, "Island", "", "Land", true)
+	land1 := pushTappedPermanent(g, seat, "Forest", "", "Land", true)
+	land2 := pushTappedPermanent(g, seat, "Island", "", "Land", true)
+	bear := pushTappedPermanent(g, seat, "Bear", "", "Creature", true)
 	pushTappedPermanent(g, seat, "Orb", orb, "Artifact", false)
 	withCatalogUntapCaps(t, capOverLands(orb, 1))
 	g.WithWriteLock(func() { g.performUntapStepLocked(0) })
+	prompt := openUntapChoice(t, g)
 
-	snap := g.CaptureSnapshot()
-	if snap.Restorable() {
-		t.Fatal("a paused untap step wrote a restore point")
+	r := restoreStrictForTest(t, g)
+	if err := r.ResolveUntapChoice(prompt.ID, seat, []uuid.UUID{land1, land2}); err == nil {
+		t.Fatal("two lands under a cap of one was accepted after a restore")
 	}
-	if snap.Continuations.ChoiceResumeFrames == 0 {
-		t.Error("the paused step's continuation is not counted in the census")
+	if err := r.ResolveUntapChoice(prompt.ID, seat, []uuid.UUID{land2}); err != nil {
+		t.Fatalf("ResolveUntapChoice on the restored game: %v", err)
+	}
+	if cardByIDForUntapTest(r, land2).Tapped || cardByIDForUntapTest(r, bear).Tapped {
+		t.Error("the chosen land or the settled creature stayed tapped")
+	}
+	if !cardByIDForUntapTest(r, land1).Tapped {
+		t.Error("the land not chosen untapped")
+	}
+	if r.Turn.Step == StepUntap {
+		t.Error("the restored untap step did not end")
+	}
+}
+
+// The carried plan reads back as the plan, and data that does not spell
+// one reads as none.
+func TestUntapChoicePlanRoundTripsAsData(t *testing.T) {
+	a, b, c := uuid.New(), uuid.New(), uuid.New()
+	plan := &untapChoicePlan{
+		settled:    []uuid.UUID{a},
+		candidates: []uuid.UUID{b, c},
+		optional:   []bool{false, true},
+		capMax:     []int{1},
+		members:    [][]bool{{true, false}},
+	}
+	ids, nums := plan.carried()
+	got := untapChoicePlanOf(ids, nums)
+	if got == nil || len(got.settled) != 1 || got.settled[0] != a || len(got.candidates) != 2 ||
+		got.candidates[0] != b || got.candidates[1] != c || got.optional[0] || !got.optional[1] ||
+		len(got.capMax) != 1 || got.capMax[0] != 1 || !got.members[0][0] || got.members[0][1] {
+		t.Fatalf("round trip = %+v, want %+v", got, plan)
+	}
+	if untapChoicePlanOf(ids, nums[:len(nums)-1]) != nil {
+		t.Error("a short plan read as a plan")
+	}
+	if untapChoicePlanOf(ids, []int{5, 0}) != nil {
+		t.Error("more settled permanents than IDs read as a plan")
 	}
 }
 

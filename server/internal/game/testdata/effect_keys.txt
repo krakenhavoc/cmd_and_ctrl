@@ -1692,3 +1692,6 @@ tail recipient/exile-if-dealt-damage-would-die
 tail recipient/loses-indestructible-if-dealt-damage
 tail red-suns-zenith/shuffle-into-library
 tail tashas-hideous-laughter/exile-step
+choose choose-cards/as-enters-permanent
+choose choose-cards/opening-hand-exile
+choose choose-cards/untap-choice

@@ -675,6 +675,10 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	switch {
 	case frame != nil && frame.validate != nil:
 		validate, outside = frame.validate, frame.zone == ZoneOutside
+	case frame == nil && choice.Kind == PendingChoiceUntapChoice && choice.PickThen != "":
+		// #4361 S7a: CR 502.3's determination checks the plan it
+		// carries as data (untap_choice.go).
+		validate = untapChoiceRule(choice)
 	case frame == nil && choice.PickThen != "":
 		if rule := lookupChooseCardsRule(choice.PickThen); rule != nil {
 			// A keyed pick has no zone of its own, so a card the table

@@ -277,6 +277,15 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 			// #4253 slice 10b: and the tail it hands on.
 			unknown = append(unknown, unknownKeyedTail(c.PickTail)...)
+		case c.Kind == PendingChoiceUntapChoice:
+			// #4361 S7a: a paused untap step names its continuation and
+			// carries its plan as data.
+			if !KnownChooseCardsThen(c.PickThen) {
+				unknown = append(unknown, "choose-cards continuation "+c.PickThen)
+			}
+			if untapChoicePlanOf(c.OptionCarry, c.PickNums) == nil {
+				unknown = append(unknown, "untap choice plan")
+			}
 		case c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceResolutionCast || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource ||
 			// #4253 slice 10b: a keyed proliferate or Ring-bearer choice.
 			c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer:
