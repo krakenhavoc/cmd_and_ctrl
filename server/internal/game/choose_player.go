@@ -203,19 +203,44 @@ func (g *Game) QueueChoosePlayerAsEntersForEffect(chooser, source uuid.UUID, que
 	if len(eligible) == 0 {
 		return uuid.Nil
 	}
-	permanent := source
+	// Keyed (#4361 slice 6), and the answer is the option's own seat
+	// (OptionPicked.Option.Player), so a prune cannot renumber it (#994).
 	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		// ThenSeat for the same reason the resolution-time form uses
-		// it: the answer is the option's own seat, so a prune cannot
-		// renumber it (#994).
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			return g.setChosenPlayerLocked(permanent, chosen)
-		},
+		ThenKey:  choosePlayerAsEntersThen,
+		Carry:    []uuid.UUID{source},
 	})
+}
+
+// chosenSeat is the seat a keyed seat prompt was answered with, or
+// uuid.Nil when it ended unanswered (a dropped prompt hands no Option).
+func chosenSeat(r OptionPicked) uuid.UUID {
+	if r.Option == nil {
+		return uuid.Nil
+	}
+	return r.Option.Player
+}
+
+// choosePlayerAsEntersThen stores an as-enters "choose a player" answer
+// on the permanent, Carry's one ID. A dropped prompt stores uuid.Nil,
+// "protected from nobody", as the closure form did. An on-disk key:
+// never renamed, never reused.
+var choosePlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	choosePlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-player-as-enters", choosePlayerAsEntersAnswered)
+}
+
+func choosePlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return g.setChosenPlayerLocked(r.Carry[0], chosenSeat(r))
 }
 
 // setChosenPlayerLocked stamps the CR 614.12 answer onto the permanent.
@@ -277,32 +302,77 @@ func (g *Game) QueueChooseTwoPlayersAsEntersForEffect(chooser, source uuid.UUID,
 	if len(eligible) == 0 {
 		return uuid.Nil
 	}
-	permanent := source
+	// Keyed (#4361 slice 6): the first prompt carries the permanent, the
+	// seat asked and the candidates; the second only the permanent.
 	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question + " (first)",
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		ThenSeat: func(g *Game, first uuid.UUID) error {
-			if err := g.setChosenPlayerLocked(permanent, first); err != nil {
-				return err
-			}
-			rest := g.eligibleChosenPlayersLocked(without(eligible, first))
-			if len(rest) == 0 {
-				return nil
-			}
-			g.QueueOptionPickForEffect(OptionPickPrompt{
-				Chooser:  chooser,
-				Source:   source,
-				Question: question + " (second)",
-				Options:  g.seatChoiceOptionsLocked(rest),
-				ThenSeat: func(g *Game, second uuid.UUID) error {
-					return g.setChosenSecondPlayerLocked(permanent, second)
-				},
-			})
-			return nil
-		},
+		ThenKey:  chooseFirstPlayerAsEntersThen,
+		Carry:    append([]uuid.UUID{source, chooser}, eligible...),
+		Words:    []string{question},
 	})
+}
+
+// chooseFirstPlayerAsEntersThen stores the first answer of a two-player
+// as-enters choice and asks the second of the candidates left. Carry is
+// the permanent, the seat asked and then the candidates; Words[0] is the
+// question. A dropped first prompt stores uuid.Nil and still asks the
+// second, as the closure form did. An on-disk key: never renamed, never
+// reused.
+var chooseFirstPlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	chooseFirstPlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-first-player-as-enters", chooseFirstPlayerAsEntersAnswered)
+}
+
+func chooseFirstPlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	permanent, chooser, eligible := r.Carry[0], r.Carry[1], r.Carry[2:]
+	first := chosenSeat(r)
+	if err := g.setChosenPlayerLocked(permanent, first); err != nil {
+		return err
+	}
+	rest := g.eligibleChosenPlayersLocked(without(eligible, first))
+	if len(rest) == 0 {
+		return nil
+	}
+	question := ""
+	if len(r.Words) > 0 {
+		question = r.Words[0]
+	}
+	g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   permanent,
+		Question: question + " (second)",
+		Options:  g.seatChoiceOptionsLocked(rest),
+		ThenKey:  chooseSecondPlayerAsEntersThen,
+		Carry:    []uuid.UUID{permanent},
+	})
+	return nil
+}
+
+// chooseSecondPlayerAsEntersThen stores the second answer on the
+// permanent, Carry's one ID. An on-disk key: never renamed, never
+// reused.
+var chooseSecondPlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	chooseSecondPlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-second-player-as-enters", chooseSecondPlayerAsEntersAnswered)
+}
+
+func chooseSecondPlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return g.setChosenSecondPlayerLocked(r.Carry[0], chosenSeat(r))
 }
 
 // without is ids with every occurrence of drop removed.

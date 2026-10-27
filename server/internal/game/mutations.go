@@ -4681,7 +4681,7 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// controller; the card waits on the stack for the answer.
 		exits := resolutionExitsLocked(c, item)
 		if len(exits) > 1 {
-			return g.chooseResolutionExitLocked(c, item, r, exits)
+			return g.chooseResolutionExitLocked(c, item, exits)
 		}
 		if len(exits) == 1 {
 			exits[0].apply(&r)

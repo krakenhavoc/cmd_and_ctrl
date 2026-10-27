@@ -31,7 +31,7 @@ func costedPickTable(t *testing.T, mountains int) (*game.Game, uuid.UUID) {
 				{Label: "Pay {1}", ManaCost: "{1}"},
 				{Label: "Pay {2}", ManaCost: "{2}"},
 			},
-			Then: func(*game.Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	return g, opp.ID

@@ -143,12 +143,16 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 103,
+	"census:ChoiceResumeFrames": 101,
 	// 109 (#4361 S1, 2026-10-27): - CoinFlipSpec.Then, PendingChoice.coinFlipResume
 	// and coinFlipFrame.spec (every flip is keyed); - PendingChoice.chooseValueResume
 	// and chooseValueFrame.then (ChooseNumber.Then and PayEnergyAmount.Then gone,
 	// a tail-less colour or creature type keyed under engine/value-chosen-nothing);
 	// - promptRun.then and so Game.promptRuns (the closure run forms gone).
+	//
+	// 111 (2026-10-27, #4361 slice 6): - optionPickFrame.then and
+	// optionPickFrame.thenSubject, the engine's option picks keyed (as-enters
+	// option and players, Aura attach, resolution exits, opponent chooser).
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,

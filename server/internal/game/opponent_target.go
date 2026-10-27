@@ -346,29 +346,45 @@ func (g *Game) parkForOpponentTargetLocked(f *opponentTargetFrame, src TargetSou
 	case 1:
 		return g.queueOpponentTargetPickLocked(f, src, opp, idx, eligible[0])
 	}
-	frame := f
 	id := g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  f.controller,
 		Source:   f.cardID,
 		Question: f.name + ": choose an opponent to choose " + clauseLabel(&step.Clause),
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		// A marker: a second announcement of the same thing is refused
-		// while this is open (OptionPickPrompt.parked).
-		parked: frame,
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				// Dropped unanswered: the controller has left, and the
-				// announcement they were making with them (CR 800.4a).
-				return nil
-			}
-			picks := withOpponentPick(frame.picks(), opponentPick{mode: frame.mode, slot: frame.slot, chooser: chosen})
-			g.rerunOpponentTargetLocked(frame, picks)
-			return nil
-		},
+		// The parked announcement: a second announcement of the same
+		// thing is refused while this is open, and the keyed answer
+		// reads it back (OptionPicked.parked).
+		parked:  f,
+		ThenKey: opponentTargetChooserThen,
 	})
 	if id == uuid.Nil {
 		return ErrIllegalTarget
 	}
+	return nil
+}
+
+// opponentTargetChooserThen is the controller's answer to "which
+// opponent chooses" (#4361 slice 6): the announcement is made again
+// with that opponent named for the clause. The parked announcement is
+// the prompt's own opponentTargetResume, so the key captures nothing.
+// A dropped prompt (the controller has left, and the announcement they
+// were making with them, CR 800.4a) does nothing. An on-disk key: never
+// renamed, never reused.
+var opponentTargetChooserThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	opponentTargetChooserThen = RegisterOptionPickThen("option-pick/opponent-target-chooser", opponentTargetChooserAnswered)
+}
+
+func opponentTargetChooserAnswered(g *Game, r OptionPicked) error {
+	chosen, frame := chosenSeat(r), r.parked
+	if chosen == uuid.Nil || frame == nil {
+		return nil
+	}
+	picks := withOpponentPick(frame.picks(), opponentPick{mode: frame.mode, slot: frame.slot, chooser: chosen})
+	g.rerunOpponentTargetLocked(frame, picks)
 	return nil
 }
 

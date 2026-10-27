@@ -159,12 +159,12 @@ func TestReselectKeepsABlockedAttackerBlocked(t *testing.T) {
 
 // queueReselect queues the prompt for `attacker`, chosen by `chooser`,
 // and returns it.
-func queueReselect(t *testing.T, g *Game, chooser, attacker uuid.UUID, then func(*Game) error) *PendingChoice {
+func queueReselect(t *testing.T, g *Game, chooser, attacker uuid.UUID) *PendingChoice {
 	t.Helper()
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueReselectAttackForEffect(ReselectAttackPrompt{
-			Chooser: chooser, Attacker: attacker, Question: "reselect?", Then: then,
+			Chooser: chooser, Attacker: attacker, Question: "reselect?",
 		})
 	})
 	if id == uuid.Nil {
@@ -182,7 +182,7 @@ func queueReselect(t *testing.T, g *Game, chooser, attacker uuid.UUID, then func
 // The prompt: "keep" first (the always-legal branch), then every legal
 // target but the current one — seats as seats, a planeswalker as a
 // card. Picking a planeswalker moves the attack onto it; "keep" moves
-// nothing; Then runs either way.
+// nothing; the prompt is gone either way.
 func TestReselectPromptOffersKeepThenEveryOtherTarget(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	attacker := pushReadyAttackerForTest(g, g.Seats[0].ID, "Attacker", 3)
@@ -190,8 +190,7 @@ func TestReselectPromptOffersKeepThenEveryOtherTarget(t *testing.T) {
 	declaredAttackerAt(t, g, attacker, g.Seats[1].ID)
 	chooser := g.Seats[1].ID // a defending player flashing in the card
 
-	thenRuns := 0
-	c := queueReselect(t, g, chooser, attacker, func(*Game) error { thenRuns++; return nil })
+	c := queueReselect(t, g, chooser, attacker)
 	if c.Kind != PendingChoiceOptionPick {
 		t.Fatalf("kind %s, want option_pick", c.Kind)
 	}
@@ -226,15 +225,15 @@ func TestReselectPromptOffersKeepThenEveryOtherTarget(t *testing.T) {
 	}
 
 	// And "keep" leaves it where it is.
-	c = queueReselect(t, g, chooser, attacker, func(*Game) error { thenRuns++; return nil })
+	c = queueReselect(t, g, chooser, attacker)
 	if err := g.ResolveOptionPick(c.ID, chooser, 0); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
 	}
 	if findCard(g, attacker).AttackingTarget != walker {
 		t.Errorf("\"keep\" moved the attack")
 	}
-	if thenRuns != 2 {
-		t.Errorf("Then ran %d times, want once per answered prompt", thenRuns)
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("an answered prompt is still open: %+v", g.PendingChoices)
 	}
 }
 
@@ -247,7 +246,7 @@ func TestReselectPromptAnswerSurvivesASeatPrunedMidQuestion(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	attacker := pushReadyAttackerForTest(g, g.Seats[0].ID, "Attacker", 3)
 	declaredAttackerAt(t, g, attacker, g.Seats[1].ID)
-	c := queueReselect(t, g, g.Seats[0].ID, attacker, nil)
+	c := queueReselect(t, g, g.Seats[0].ID, attacker)
 	// Options: keep, seat 2, seat 3.
 	if len(c.PickOptions) != 3 || c.PickOptions[1].Player != g.Seats[2].ID || c.PickOptions[2].Player != g.Seats[3].ID {
 		t.Fatalf("unexpected option list: %+v", c.PickOptions)
@@ -267,23 +266,22 @@ func TestReselectPromptAnswerSurvivesASeatPrunedMidQuestion(t *testing.T) {
 }
 
 // Nothing to ask — not attacking, or nowhere else to go — queues
-// nothing and still runs Then, so a per-attacker chain moves on.
-func TestReselectPromptWithNothingToAskRunsThen(t *testing.T) {
+// nothing, so a per-attacker chain moves on (#4361 slice 6 retired the
+// closure Then; the chain is ReselectAttackPrompt.Next).
+func TestReselectPromptWithNothingToAskQueuesNothing(t *testing.T) {
 	g := newActiveGameWithSeats(t, 2)
 	attacker := pushReadyAttackerForTest(g, g.Seats[0].ID, "Attacker", 3)
 	declaredAttackerAt(t, g, attacker, g.Seats[1].ID)
-	ran := false
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueReselectAttackForEffect(ReselectAttackPrompt{
-			Chooser: g.Seats[0].ID, Attacker: attacker,
-			Then: func(*Game) error { ran = true; return nil },
+			Chooser: g.Seats[0].ID, Attacker: attacker, Next: []uuid.UUID{attacker},
 		})
 	})
 	if id != uuid.Nil {
 		t.Errorf("a two-player table has nowhere else to attack, but a prompt was queued")
 	}
-	if !ran {
-		t.Errorf("Then did not run when there was nothing to ask")
+	if len(g.PendingChoices) != 0 {
+		t.Errorf("the chain queued a prompt with nothing to ask: %+v", g.PendingChoices)
 	}
 }

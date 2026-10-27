@@ -58,6 +58,11 @@ type OptionPicked struct {
 	// dice is a paused dice roll's state (#4307, dice_roll.go), set only
 	// on the dice flow's own prompts.
 	dice *diceRollPause
+	// parked is the parked cast or activation behind an "of an
+	// opponent's choice" clause's "which opponent" question (#2055,
+	// opponent_target.go; keyed by #4361 slice 6): the prompt's own
+	// opponentTargetResume, nil on every other prompt.
+	parked *opponentTargetFrame
 	// Asked is a copy of the asking item when the card put it on the
 	// prompt (OptionPickPrompt.Asked, #4253 slice 8); nil otherwise.
 	Asked *StackItem
