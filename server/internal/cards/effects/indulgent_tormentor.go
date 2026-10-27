@@ -34,11 +34,11 @@ func init() {
 	})
 }
 
-// The branch keys, parallel to the option list.
+// The branch labels: the answer is told which option was taken (OptionPicked.Option),
+// so the question's branches need no list riding along.
 const (
-	tormentorDraw      = "draw"
-	tormentorSacrifice = "sacrifice"
-	tormentorLife      = "life"
+	tormentorSacrificeLabel = "Sacrifice a creature"
+	tormentorLifeLabel      = "Pay 3 life"
 )
 
 // indulgentTormentorAsk puts the question to the targeted opponent.
@@ -52,43 +52,41 @@ func indulgentTormentorAsk(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	ctx := NewContext(g, item)
-	controller := item.Controller
 
 	options := []game.ChoiceOption{{Label: "Let them draw a card"}}
-	branches := []string{tormentorDraw}
 	creatures := creaturesControlledByPlayer(g, victim)
 	if len(creatures) > 0 {
-		options = append(options, game.ChoiceOption{Label: "Sacrifice a creature"})
-		branches = append(branches, tormentorSacrifice)
+		options = append(options, game.ChoiceOption{Label: tormentorSacrificeLabel})
 	}
 	if p.Life >= 3 {
-		options = append(options, game.ChoiceOption{Label: "Pay 3 life", LifeCost: 3})
-		branches = append(branches, tormentorLife)
+		options = append(options, game.ChoiceOption{Label: tormentorLifeLabel, LifeCost: 3})
 	}
 
 	return PickOption{
 		Player:   victim,
 		Question: "Indulgent Tormentor — let them draw a card, sacrifice a creature, or pay 3 life?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			draw := func(ctx *Context) error {
-				return DrawCards{Player: controller, N: 1}.Apply(ctx)
-			}
-			if index < 0 || index >= len(branches) {
-				return draw(ctx)
-			}
-			switch branches[index] {
-			case tormentorSacrifice:
-				return SacrificeChoice{
-					Player:     victim,
-					Candidates: creaturesControlledByPlayer(ctx.Game, victim),
-					Question:   "Indulgent Tormentor — sacrifice a creature",
-				}.Apply(ctx)
-			case tormentorLife:
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -3)
-			default:
-				return draw(ctx)
-			}
-		},
+		ThenKey:  tormentorAnswer,
 	}.Apply(ctx)
 }
+
+// tormentorAnswer is the opponent's answer: sacrifice a creature, pay 3 life,
+// or (the first option, and what a refusal does) let the controller draw.
+// Keyed (#4253): the opponent is the prompt's chooser, the controller its
+// first carried ID and the branch the option taken.
+var tormentorAnswer = OptionPickThen("option-pick/indulgent-tormentor-answer", func(ctx *Context, r game.OptionPicked) error {
+	victim := r.Chooser
+	if r.Option != nil {
+		switch r.Option.Label {
+		case tormentorSacrificeLabel:
+			return SacrificeChoice{
+				Player:     victim,
+				Candidates: creaturesControlledByPlayer(ctx.Game, victim),
+				Question:   "Indulgent Tormentor — sacrifice a creature",
+			}.Apply(ctx)
+		case tormentorLifeLabel:
+			return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -3)
+		}
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

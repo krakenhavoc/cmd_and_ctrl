@@ -56,8 +56,7 @@ func init() {
 // isochronImprint asks for the card and exiles it linked to the Scepter.
 func isochronImprint(g *game.Game, item *game.StackItem) error {
 	controller, source := item.Controller, item.SourceCardID
-	ref, ok := g.SourceObjectForEffect(item)
-	if !ok {
+	if _, ok := g.SourceObjectForEffect(item); !ok {
 		return nil
 	}
 	p := g.PlayerByIDForEffect(controller)
@@ -80,16 +79,26 @@ func isochronImprint(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.ExileLinkedForEffect(ref, picked[0])
-		},
+		ThenKey:  isochronImprintPick,
+		LiveZone: game.ZoneHand,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// isochronImprintPick is the picked card exiled linked to the Scepter object
+// that asked, keyed (#4253): the asking item (and the object it names) rides
+// the prompt as data.
+var isochronImprintPick = askedPick("choose-cards/isochron-scepter-imprint", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	ref, ok := ctx.Game.SourceObjectForEffect(ctx.Item)
+	if !ok {
+		return nil
+	}
+	return ctx.Game.ExileLinkedForEffect(ref, r.Picked[0])
+})
 
 // isochronCopyAndCast copies the card this Scepter object imprinted and
 // offers the free cast.

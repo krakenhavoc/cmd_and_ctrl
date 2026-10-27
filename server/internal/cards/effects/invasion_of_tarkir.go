@@ -105,14 +105,19 @@ func invasionOfTarkirReveal(g *game.Game, item *game.StackItem) error {
 		Cards:    dragons,
 		Min:      0,
 		// Max 0 means "all of them" — which is what "any number" is.
-		Max:  0,
-		Zone: game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return invasionOfTarkirQueueDamage(g, item, picked)
-		},
+		Max:      0,
+		ThenKey:  invasionOfTarkirRevealed,
+		LiveZone: game.ZoneHand,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// invasionOfTarkirRevealed is the Dragons revealed, then the damage queued,
+// keyed (#4253): the asking item rides the prompt as data.
+var invasionOfTarkirRevealed = askedPick("choose-cards/invasion-of-tarkir-reveal", func(ctx *Context, r game.CardsChosen) error {
+	return invasionOfTarkirQueueDamage(ctx.Game, ctx.Item, r.Picked)
+})
 
 // invasionOfTarkirQueueDamage reveals the picks and puts the printed
 // "when you do" on the stack, carrying the revealed cards as its

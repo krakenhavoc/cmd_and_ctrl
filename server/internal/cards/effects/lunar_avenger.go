@@ -24,20 +24,26 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:    RemoveCountersFromThis(game.CounterPlusOne, 1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				keywords := []string{"flying", "first strike", "haste"}
 				return PickOption{
 					Question: "Lunar Avenger gains which until end of turn?",
 					Options: []game.ChoiceOption{
 						{Label: "Flying"}, {Label: "First strike"}, {Label: "Haste"},
 					},
-					Then: func(ctx *Context, index int) error {
-						if index < 0 || index >= len(keywords) {
-							return nil
-						}
-						return GrantKeywordUntilEOT{Target: item.SourceCardID, Keywords: []string{keywords[index]}}.Apply(ctx)
-					},
+					ThenKey: lunarAvengerAnswer,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// lunarAvengerKeywords are the three choices, in the order the question lists them.
+var lunarAvengerKeywords = []string{"flying", "first strike", "haste"}
+
+// lunarAvengerAnswer is the keyword chosen, granted to the Avenger (the
+// prompt's source) until end of turn. Keyed (#4253).
+var lunarAvengerAnswer = OptionPickThen("option-pick/lunar-avenger-keyword", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(lunarAvengerKeywords) {
+		return nil
+	}
+	return GrantKeywordUntilEOT{Target: r.Source, Keywords: []string{lunarAvengerKeywords[r.Index]}}.Apply(ctx)
+})
