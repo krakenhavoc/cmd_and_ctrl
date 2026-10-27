@@ -50,20 +50,14 @@ type ExileUntil struct {
 	// filled in.
 	Grant *game.CastPermission
 
-	// Then, when set, runs once the exile has settled with whether the
-	// card was exiled: "for each permanent exiled this way" (Abdel
-	// Adrian, Gorion's Ward) counts the trues. It runs after the return
+	// ThenTail is the rest of the effect (#4253): a registered tail
+	// (CardTail), told the card as TailOutcome.IDs when it was exiled and
+	// nothing when it was not — "for each permanent exiled this way"
+	// (Abdel Adrian, Gorion's Ward) counts them. It runs after the return
 	// is recorded, and not at all when the "until" event had already
-	// happened (nothing was exiled this way).
-	Then func(ctx *Context, exiled bool) error
-
-	// ThenTail is Then as data (#4253): a registered tail (CardTail), told
-	// the card as TailOutcome.IDs when it was exiled and nothing when it
-	// was not, after the return is recorded, and not run at all when the
-	// "until" event had already happened. It rides the keyed exile as the
-	// record's Next, so a prompt the exile pauses on is a restore point.
-	// Used when Then is nil, on the "until this leaves the battlefield"
-	// form.
+	// happened (nothing was exiled this way). On the "until this leaves
+	// the battlefield" form it rides the keyed exile as the record's
+	// Next, so a prompt the exile pauses on is a restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -102,7 +96,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		return nil
 	}
 	target := e.Target
-	if e.ThisLeaves && e.Then == nil && len(e.On) == 0 && e.Condition.Key() == "" {
+	if e.ThisLeaves && len(e.On) == 0 && e.Condition.Key() == "" {
 		// #4253 slice 10a: "until this leaves the battlefield" with no
 		// clause of its own (the Oblivion Ring family, Hostage Taker) is
 		// a keyed tail: the record and the grant ride it as data.
@@ -120,25 +114,15 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		}
 		return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
 	}
-	then := e.Then
-	if then == nil && !e.ThenTail.IsZero() {
-		// An event-conditioned "until" with a keyed ThenTail still runs
-		// it, told the card when it was exiled; this frame stays a
-		// closure.
-		tail := e.ThenTail
-		then = func(ctx *Context, exiled bool) error {
-			if exiled {
-				return tail.Run(ctx.Game, []uuid.UUID{target})
-			}
-			return tail.Run(ctx.Game, nil)
-		}
-	}
+	// An event-conditioned "until" (Palace Jailer's monarch): the record's
+	// condition and params are not yet tail data, so this exile's
+	// continuation is still a closure, and a CR 903.9 prompt it pauses on
+	// is not a restore point. The keyed ThenTail is told the card when it
+	// was exiled.
+	tail := e.ThenTail
 	return exileTargetThen(ctx, target, func(ctx *Context, exiled bool) error {
 		if !exiled {
-			if then != nil {
-				return then(ctx, false)
-			}
-			return nil
+			return tail.Run(ctx.Game, nil)
 		}
 		if e.Grant != nil {
 			perm := *e.Grant
@@ -148,10 +132,7 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		if record {
 			ctx.Game.ScheduleUntilReturnForEffect(target, u)
 		}
-		if then != nil {
-			return then(ctx, true)
-		}
-		return nil
+		return tail.Run(ctx.Game, []uuid.UUID{target})
 	})
 }
 

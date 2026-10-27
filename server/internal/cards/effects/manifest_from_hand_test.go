@@ -287,7 +287,7 @@ func TestKozilekPumpsOtherColorlessCreaturesYouControl(t *testing.T) {
 	})
 
 	g.WithWriteLock(func() {
-		if err := g.ManifestFromHandsThenForEffect(hand, nil); err != nil {
+		if err := g.ManifestFromHandsKeyedForEffect(hand, game.KeyedTail{}); err != nil {
 			t.Fatalf("manifest: %v", err)
 		}
 	})
@@ -412,7 +412,7 @@ func TestAManifestedCreatureFromAHandCanBeTurnedUpForItsManaCost(t *testing.T) {
 	emptyHandForTest(g, me)
 	id := putInHand(me, game.Card{Name: "Serra Angel", TypeLine: "Creature — Angel", ManaCost: "{3}{W}{W}", Power: 4, Toughness: 4})
 	g.WithWriteLock(func() {
-		if err := g.ManifestFromHandsThenForEffect([]uuid.UUID{id}, nil); err != nil {
+		if err := g.ManifestFromHandsKeyedForEffect([]uuid.UUID{id}, game.KeyedTail{}); err != nil {
 			t.Fatalf("manifest: %v", err)
 		}
 	})

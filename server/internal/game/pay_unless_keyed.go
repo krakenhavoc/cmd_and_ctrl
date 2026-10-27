@@ -456,9 +456,12 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 	return f
 }
 
-// QueueMayPayKeyedForEffect is QueueMayPayForEffect (and, with
-// inThisStep, QueueMayPayInThisStepForEffect) with the payment's
-// consequence as a registered key (#4264): "you may pay {2}{U}. If you
+// QueueMayPayKeyedForEffect is "you may pay <cost>. If you do, ..." with
+// the payment's consequence as a registered key (#4264; the closure doors
+// QueueMayPayForEffect and QueueMayPayInThisStepForEffect were deleted in
+// #4253's cleanup). With inThisStep the prompt is anchored to the current
+// step (PendingChoice.OwedInStep), so the table cannot walk out of a combat
+// before the answer (Hellkite Charger): "you may pay {2}{U}. If you
 // do, ...". The key's pay branch runs only when the mana was really
 // paid; a payer who cannot be asked runs nothing. The prompt carries no
 // closure, so a table waiting on it is a restore point.

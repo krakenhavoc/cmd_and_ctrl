@@ -69,19 +69,15 @@ func doubleDamageTo(only uuid.UUID) ReplacementEffect {
 // the damage dealt this way" gains 6.
 func TestDamageContinuationRunsWithTheReplacedAmount(t *testing.T) {
 	g := newActiveGame(t)
-	var got []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(doubleDamageTo(uuid.Nil))
-		err := g.DealDamageToPlayerThenForEffect(uuid.Nil, g.Seats[1].ID, 3,
-			func(_ *Game, dealt int) error {
-				got = append(got, dealt)
-				return nil
-			})
+		err := g.DealDamageToPlayerKeyedForEffect(uuid.Nil, g.Seats[1].ID, 3, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageToPlayerThenForEffect: %v", err)
+			t.Fatalf("DealDamageToPlayerKeyedForEffect: %v", err)
 		}
 	})
-	if len(got) != 1 || got[0] != 6 {
+	if got := probeDealt(); len(got) != 1 || got[0] != 6 {
 		t.Fatalf("continuation saw %v, want [6] — the REPLACED amount, once", got)
 	}
 	if g.Seats[1].Life != StartingLife-6 {
@@ -97,20 +93,16 @@ func TestDamageContinuationRunsWithTheReplacedAmount(t *testing.T) {
 // life total that had not moved yet.
 func TestDamageContinuationRunsAfterACR616Pause(t *testing.T) {
 	g := newActiveGame(t)
-	var got []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(uuid.Nil))
 		g.RegisterReplacementForTest(doubleDamageTo(uuid.Nil))
-		err := g.DealDamageToPlayerThenForEffect(uuid.Nil, g.Seats[1].ID, 3,
-			func(_ *Game, dealt int) error {
-				got = append(got, dealt)
-				return nil
-			})
+		err := g.DealDamageToPlayerKeyedForEffect(uuid.Nil, g.Seats[1].ID, 3, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageToPlayerThenForEffect: %v", err)
+			t.Fatalf("DealDamageToPlayerKeyedForEffect: %v", err)
 		}
 	})
-	if len(got) != 0 {
+	if got := probeDealt(); len(got) != 0 {
 		t.Fatalf("continuation ran %v before the prompt was answered — that is the read-back bug with extra steps", got)
 	}
 	if g.Seats[1].Life != StartingLife {
@@ -121,7 +113,7 @@ func TestDamageContinuationRunsAfterACR616Pause(t *testing.T) {
 
 	// Gather order is registration order, so the answer as offered is
 	// prevent-one then double: (3-1)*2 = 4.
-	if len(got) != 1 || got[0] != 4 {
+	if got := probeDealt(); len(got) != 1 || got[0] != 4 {
 		t.Fatalf("continuation saw %v, want [4] — (3-1)*2 after the ordering was answered", got)
 	}
 	if g.Seats[1].Life != StartingLife-4 {
@@ -136,7 +128,7 @@ func TestDamageContinuationRunsAfterACR616Pause(t *testing.T) {
 // took nothing.
 func TestDamageContinuationRunsWithZeroWhenTheDamageIsPrevented(t *testing.T) {
 	g := newActiveGame(t)
-	var got []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(ReplacementEffect{
 			Watches:   []EventKind{EventDealDamage},
@@ -147,16 +139,12 @@ func TestDamageContinuationRunsWithZeroWhenTheDamageIsPrevented(t *testing.T) {
 			},
 			Label: "prevent all damage",
 		})
-		err := g.DealDamageToPlayerThenForEffect(uuid.Nil, g.Seats[1].ID, 4,
-			func(_ *Game, dealt int) error {
-				got = append(got, dealt)
-				return nil
-			})
+		err := g.DealDamageToPlayerKeyedForEffect(uuid.Nil, g.Seats[1].ID, 4, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageToPlayerThenForEffect: %v", err)
+			t.Fatalf("DealDamageToPlayerKeyedForEffect: %v", err)
 		}
 	})
-	if len(got) != 1 || got[0] != 0 {
+	if got := probeDealt(); len(got) != 1 || got[0] != 0 {
 		t.Fatalf("continuation saw %v, want [0]", got)
 	}
 	if g.Seats[1].Life != StartingLife {
@@ -361,17 +349,13 @@ func TestFireAndForgetDamageStillWorks(t *testing.T) {
 // snapshot its own copy; this is the test that says so.
 func TestUndoneDamageAnswerRunsTheContinuationAgain(t *testing.T) {
 	g := newActiveGame(t)
-	var got []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(uuid.Nil))
 		g.RegisterReplacementForTest(doubleDamageTo(uuid.Nil))
-		err := g.DealDamageToPlayerThenForEffect(uuid.Nil, g.Seats[1].ID, 3,
-			func(_ *Game, dealt int) error {
-				got = append(got, dealt)
-				return nil
-			})
+		err := g.DealDamageToPlayerKeyedForEffect(uuid.Nil, g.Seats[1].ID, 3, probeTail())
 		if err != nil {
-			t.Fatalf("DealDamageToPlayerThenForEffect: %v", err)
+			t.Fatalf("DealDamageToPlayerKeyedForEffect: %v", err)
 		}
 	})
 
@@ -381,15 +365,15 @@ func TestUndoneDamageAnswerRunsTheContinuationAgain(t *testing.T) {
 	g.WithWriteLock(func() { snapshot = g.cloneLocked() })
 
 	answerOnlyPrompt(t, g)
-	if len(got) != 1 || got[0] != 4 {
+	if got := probeDealt(); len(got) != 1 || got[0] != 4 {
 		t.Fatalf("continuation saw %v on the first answer, want [4]", got)
 	}
 
 	// Undo: answer the restored game's prompt instead. It must run the
 	// continuation again, with the same amount.
-	got = nil
+	resetProbes()
 	answerOnlyPrompt(t, snapshot)
-	if len(got) != 1 || got[0] != 4 {
+	if got := probeDealt(); len(got) != 1 || got[0] != 4 {
 		t.Fatalf("continuation saw %v after the undo, want [4] — the snapshot shared a consumed tail", got)
 	}
 	if snapshot.Seats[1].Life != StartingLife-4 {

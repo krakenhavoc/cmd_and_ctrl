@@ -1,12 +1,18 @@
 package game
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/google/uuid"
+)
 
 // single_card_bounce_then_test.go — #993's engine half.
 //
-// BounceToHandThenForEffect is the fourth single-card wrapper over the
-// batch, beside ExileCardThenForEffect (#870), SacrificeThenForEffect
-// (#910) and TuckToLibraryThenForEffect (#783). It exists because a
+// The single-card bounce with a continuation is a batch of one through
+// BounceCardsToHandKeyedForEffect since #4253's cleanup deleted its closure
+// wrapper, BounceToHandThenForEffect (the fourth beside
+// ExileCardThenForEffect, SacrificeThenForEffect and
+// TuckToLibraryThenForEffect). It exists because a
 // hand is a CR 903.9b destination, so EVERY bounce can pause, and the
 // catalog had no way to say "return it, THEN …" for one card.
 //
@@ -34,18 +40,14 @@ func TestSingleCardBounceThenReportsWhatLanded(t *testing.T) {
 			owner := g.Seats[0]
 			commander := seatCommander(t, g.Battlefield, owner)
 
-			got, ran := false, 0
+			resetProbes()
 			g.WithWriteLock(func() {
-				err := g.BounceToHandThenForEffect(commander, func(_ *Game, bounced bool) error {
-					ran++
-					got = bounced
-					return nil
-				})
+				err := g.BounceCardsToHandKeyedForEffect([]uuid.UUID{commander}, probeTail())
 				if err != nil {
-					t.Fatalf("BounceToHandThenForEffect: %v", err)
+					t.Fatalf("BounceCardsToHandKeyedForEffect: %v", err)
 				}
 			})
-			if ran != 0 {
+			if ran := len(testProbeHeard); ran != 0 {
 				t.Fatalf("the continuation ran %d times with the CR 903.9 prompt open, want 0 — "+
 					"a clause written on the next line is the #993 bug", ran)
 			}
@@ -54,10 +56,11 @@ func TestSingleCardBounceThenReportsWhatLanded(t *testing.T) {
 			if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, tc.commandZone); err != nil {
 				t.Fatalf("ResolveOptionalReplacement: %v", err)
 			}
-			if ran != 1 {
+			heard := probeExiled()
+			if ran := len(heard); ran != 1 {
 				t.Fatalf("the continuation ran %d times after the answer, want 1", ran)
 			}
-			if got != tc.want {
+			if got := heard[0]; got != tc.want {
 				t.Errorf("bounced = %v, want %v — CR 400.7, the object that arrived", got, tc.want)
 			}
 		})
@@ -73,19 +76,17 @@ func TestSingleCardBounceThenIsToldAboutACancelledMove(t *testing.T) {
 	owner := g.Seats[0]
 	saved := wipeTarget(g, owner)
 
-	got, ran := true, 0
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(leaveBattlefieldReplacement(saved,
 			"it can't be returned to a hand", func(ev *ReplacementEvent) { ev.Cancel() }))
-		err := g.BounceToHandThenForEffect(saved, func(_ *Game, bounced bool) error {
-			ran++
-			got = bounced
-			return nil
-		})
+		err := g.BounceCardsToHandKeyedForEffect([]uuid.UUID{saved}, probeTail())
 		if err != nil {
-			t.Fatalf("BounceToHandThenForEffect: %v", err)
+			t.Fatalf("BounceCardsToHandKeyedForEffect: %v", err)
 		}
 	})
+	heard := probeExiled()
+	ran, got := len(heard), len(heard) > 0 && heard[0]
 	if ran != 1 {
 		t.Fatalf("the continuation ran %d times, want 1 — a cancelled move is still an answer", ran)
 	}

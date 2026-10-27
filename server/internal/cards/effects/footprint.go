@@ -47,11 +47,11 @@ func (s MillCards) footprint() (game.FootprintStep, bool) {
 }
 
 func (s Scry) footprint() (game.FootprintStep, bool) {
-	return game.FootprintStep{Kind: game.FootprintScry, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.Then == nil
+	return game.FootprintStep{Kind: game.FootprintScry, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.ThenTail.IsZero()
 }
 
 func (s Surveil) footprint() (game.FootprintStep, bool) {
-	return game.FootprintStep{Kind: game.FootprintSurveil, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.Then == nil
+	return game.FootprintStep{Kind: game.FootprintSurveil, N: s.N}, s.Player == uuid.Nil && s.N > 0 && s.ThenTail.IsZero()
 }
 
 func (s GetEnergy) footprint() (game.FootprintStep, bool) {

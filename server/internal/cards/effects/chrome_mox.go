@@ -96,20 +96,23 @@ func chromeMoxImprint(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then:     chromeMoxExileThePick,
+		LiveZone: game.ZoneHand,
+		ThenKey:  chromeMoxExileThePick,
 	})
 	return nil
 }
 
 // chromeMoxExileThePick exiles the chosen card, or nothing when the
-// controller declined.
-func chromeMoxExileThePick(g *game.Game, picked []uuid.UUID) error {
-	if len(picked) == 0 {
+// controller declined. Keyed (#4253), and shared with Semblance Anvil's
+// imprint: the pick holds no closure, so a table waiting on it is a restore
+// point. The hand is re-checked on submit. An on-disk key: never renamed,
+// never reused.
+var chromeMoxExileThePick = game.RegisterChooseCardsThen("choose-cards/imprint-exile-from-hand", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
 		return nil
 	}
-	return g.ExileCardForEffect(picked[0])
-}
+	return g.ExileCardForEffect(r.Picked[0])
+})
 
 // chromeMoxImprintCandidates is every nonartifact, nonland card in
 // the controller's hand, in hand order. Tokens cannot be in a hand,

@@ -80,7 +80,7 @@ type MayPayX struct {
 	// Unit is what each point of X buys (PayAmountDamage, …).
 	Unit string
 	// InThisStep holds the payment prompt in the current step
-	// (QueueMayPayInThisStepForEffect): set it when what X buys is
+	// (QueueMayPayKeyedForEffect's inThisStep): set it when what X buys is
 	// about the step in progress — tokens that enter attacking.
 	InThisStep bool
 	// Then is what the card does once the cost has been paid, as

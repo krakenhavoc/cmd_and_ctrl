@@ -146,6 +146,13 @@ func TestLibraryPutSetRulePromptsEvenWhenTheCountWouldForceTheAnswer(t *testing.
 	}
 }
 
+// testBudgetTake is the take-to-hand set rule below as a registered take
+// (#4253 retired the unkeyed take, whose pick held a closure).
+var testBudgetTake = RegisterTake("test/4253-take-total-mana-value-4", TakeDef{
+	Validate: b23TotalManaValueAtMost(4),
+	Then:     TakeRestOnBottomInRandomOrder,
+})
+
 // The same field on the take-to-hand twin, so the two primitives stay
 // clause for clause (#952).
 func TestLibraryTakeSetRuleRefusesOverBudgetAndKeepsAsking(t *testing.T) {
@@ -163,9 +170,8 @@ func TestLibraryTakeSetRuleRefusesOverBudgetAndKeepsAsking(t *testing.T) {
 			Cards:    g.LookAtTopOfLibraryForEffect(me.ID, 3),
 			Max:      0,
 			Optional: true,
-			Validate: b23TotalManaValueAtMost(4),
 			Label:    "test — take any number with total mana value 4 or less",
-			Then:     TakeRestOnBottomInRandomOrder,
+			Key:      testBudgetTake,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

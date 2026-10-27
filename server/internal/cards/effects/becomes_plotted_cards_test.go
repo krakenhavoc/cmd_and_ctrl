@@ -190,7 +190,7 @@ func TestLonghornSharpshooterPlainExileDoesNotTrigger(t *testing.T) {
 		g := newCatalogGame(t)
 		id := castCatalogSpell(t, g, "Longhorn Sharpshooter", "Creature — Minotaur Rogue", longhornSharpshooterOracle, nil)
 		g.WithWriteLock(func() {
-			if err := g.ExileSpellThenForEffect(id, nil); err != nil {
+			if err := g.ExileSpellKeyedForEffect(id, game.KeyedTail{}); err != nil {
 				t.Fatalf("exile: %v", err)
 			}
 		})

@@ -127,20 +127,9 @@ func ripplesOfUndeathTakeOne(ctx *Context, milled []uuid.UUID) error {
 	if len(candidates) == 0 {
 		return nil
 	}
-	resolving := ctx.Item
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:    player,
-		FromPlayer: player,
-		Source:     ctx.Source(),
-		Question:   "Ripples of Undeath — put a card from among the milled cards into your hand",
-		Cards:      candidates,
-		Min:        1,
-		Max:        1,
-		// Re-checked on submit: a card can leave the graveyard
-		// between the question and the answer.
-		Zone: game.ZoneGraveyard,
-		Then: ReturnPickedToHand(resolving),
-	})
+	// Keyed (#4253): the pick carries the asking item, so a table waiting
+	// on it is a restore point.
+	queueReturnPickedToHand(ctx, player, "Ripples of Undeath — put a card from among the milled cards into your hand", candidates)
 	return nil
 }
 

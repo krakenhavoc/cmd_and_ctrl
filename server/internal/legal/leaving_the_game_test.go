@@ -42,7 +42,7 @@ func pileSplitFor(t *testing.T, g *game.Game, caster, splitter *game.Player) uui
 			SplitQuestion: "Separate those cards into two piles",
 			PickQuestion:  "Take a pile",
 			Cards:         cards,
-			Then:          func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil },
+			ThenTail:      game.KeyedTail{Ref: testLegalNoopTail},
 		})
 	})
 	var id uuid.UUID

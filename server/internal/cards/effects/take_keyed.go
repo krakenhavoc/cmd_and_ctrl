@@ -171,7 +171,7 @@ func (e EachPlayerTakesFromLibrary) applyKeyed(ctx *Context) error {
 	if players == nil {
 		players = apnapPlayers(g)
 	}
-	if e.Take.Then != nil || e.Take.Validate != nil || len(e.Take.Slots) > 0 || e.Take.Reveal || e.Then != nil {
+	if e.Take.Then != nil || e.Take.Validate != nil || len(e.Take.Slots) > 0 || e.Take.Reveal {
 		return fmt.Errorf("%w: keyed fan-out of takes also sets a closure or a rule the registration owns", game.ErrInvalidParam)
 	}
 	def := e.Keyed.def

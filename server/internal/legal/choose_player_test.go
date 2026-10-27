@@ -9,13 +9,21 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 )
 
+// testLegalChoosePlayerThen is a keyed ChoosePlayer continuation that does
+// nothing (#4253 retired the closure Then).
+var testLegalChoosePlayerThen = game.RegisterOptionPickThen("test/4253-legal-choose-player",
+	func(*game.Game, game.OptionPicked) error { return nil })
+
+// testLegalNoopTail is a keyed "then" that does nothing, for prompts whose
+// continuation is beside the point (#4253 retired their closure Then).
+var testLegalNoopTail = game.RegisterTail("test/4253-legal-noop", func(*game.Game, game.TailOutcome) error { return nil })
+
 // choose_player_test.go — #929's enumerator half. A choose-a-player
 // prompt is an option pick whose branches are SEATS, so the existing
 // case enumerates it; what this pins is that the seats reach a bot as
 // answers it can take, and in the order the policy documented in
 // docs/bot.md expects (most life first, which is the always-legal
 // first offer a policy with nothing better to say takes).
-
 func TestChoosePlayerEnumeratesOneAnswerPerEligibleSeat(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
@@ -27,8 +35,7 @@ func TestChoosePlayerEnumeratesOneAnswerPerEligibleSeat(t *testing.T) {
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID, g.Seats[3].ID},
 			Question: "Slithermuse",
-			Item:     &game.StackItem{ID: uuid.New(), Controller: me.ID},
-			Then:     func(*game.Game, uuid.UUID) error { return nil },
+			ThenKey:  testLegalChoosePlayerThen,
 		})
 	})
 

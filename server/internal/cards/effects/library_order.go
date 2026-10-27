@@ -18,8 +18,8 @@ import (
 // bottom of its owner's library".
 //
 // Like Scry it only QUEUES: anything the card does after the placement
-// goes in Then, not on the next line, or it runs before the player has
-// answered.
+// goes in ThenTail, not on the next line, or it runs before the player
+// has answered.
 type PutInLibraryInAnyOrder struct {
 	// Chooser orders the pile. Zero means the resolving item's
 	// controller.
@@ -54,12 +54,9 @@ type PutInLibraryInAnyOrder struct {
 	// Label is the prompt banner, "<card> — <the printed clause>".
 	Label string
 
-	// Then is the rest of the effect. Runs once the pile is placed.
-	Then func(g *game.Game) error
-
-	// ThenTail is Then as data (#4301): a registered tail
-	// (game.RegisterTail, Context.Tail), so the ordering prompt is a
-	// restore point. Set Then or ThenTail, not both; Then wins.
+	// ThenTail is the rest of the effect, run once the pile is placed:
+	// a registered tail (#4301; game.RegisterTail, Context.Tail), so the
+	// ordering prompt is a restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -78,7 +75,6 @@ func (p PutInLibraryInAnyOrder) Apply(ctx *Context) error {
 		TopDepth:  p.TopDepth,
 		Counter:   p.Counter,
 		Reason:    p.Label,
-		Then:      p.Then,
 		ThenTail:  tailDefaults(p.ThenTail, chooser, ctx.Source()),
 	})
 }
@@ -101,7 +97,7 @@ func (p PutInLibraryInAnyOrder) Apply(ctx *Context) error {
 // and it puts each card back in its OWNER's library; CR 401.4 decides
 // who knows the order afterwards.
 //
-// Like Scry it only QUEUES: anything after the placement goes in Then.
+// Like Scry it only QUEUES: anything after the placement goes in ThenTail.
 type LookAtLibraryThenPlace struct {
 	// Looker looks and chooses. Zero means the controller.
 	Looker uuid.UUID
@@ -115,10 +111,8 @@ type LookAtLibraryThenPlace struct {
 	TopDepth  int
 	// Label is "<card> — <clause>".
 	Label string
-	// Then runs once the cards are placed (or at once, when the library
-	// was empty).
-	Then func(g *game.Game) error
-	// ThenTail is Then as data (#4301), as PutInLibraryInAnyOrder.ThenTail.
+	// ThenTail runs once the cards are placed (or at once, when the
+	// library was empty), as PutInLibraryInAnyOrder.ThenTail (#4301).
 	ThenTail game.KeyedTail
 }
 
@@ -139,7 +133,6 @@ func (l LookAtLibraryThenPlace) Apply(ctx *Context) error {
 		TopCount:  l.TopCount,
 		TopDepth:  l.TopDepth,
 		Label:     l.Label,
-		Then:      l.Then,
 		ThenTail:  l.ThenTail,
 	}.Apply(ctx)
 }
@@ -163,17 +156,12 @@ type PutIntoLibraryAtDepthOrBottom struct {
 	Chooser uuid.UUID
 	// Label is "<card> — <clause>".
 	Label string
-	// Then runs once the card is placed.
-	Then func(g *game.Game) error
 }
 
 func (p PutIntoLibraryAtDepthOrBottom) Apply(ctx *Context) error {
 	c, ok := ctx.Game.LookupCardForEffect(p.Card)
 	z := ctx.Game.FindCardZoneForEffect(p.Card)
 	if !ok || z == nil || ctx.isNewSourceObject(p.Card) { // #1432
-		if p.Then != nil {
-			return p.Then(ctx.Game)
-		}
 		return nil
 	}
 	chooser := p.Chooser
@@ -187,7 +175,6 @@ func (p PutIntoLibraryAtDepthOrBottom) Apply(ctx *Context) error {
 		Placement: game.LibraryPlaceTopOrBottom,
 		TopDepth:  p.Depth,
 		Label:     p.Label,
-		Then:      p.Then,
 	}.Apply(ctx)
 }
 
@@ -216,19 +203,11 @@ type CounterToLibrary struct {
 	Chooser uuid.UUID
 	// Label is "<card> — <clause>".
 	Label string
-	// Then runs once the spell is placed (or was not countered).
-	Then func(g *game.Game) error
 }
 
 func (c CounterToLibrary) Apply(ctx *Context) error {
 	if item := ctx.Game.StackItemForEffect(c.StackID); item != nil && item.Kind != game.StackItemSpell {
-		if err := ctx.Game.CounterTargetForEffect(c.StackID); err != nil {
-			return err
-		}
-		if c.Then != nil {
-			return c.Then(ctx.Game)
-		}
-		return nil
+		return ctx.Game.CounterTargetForEffect(c.StackID)
 	}
 	return PutInLibraryInAnyOrder{
 		Chooser:   c.Chooser,
@@ -236,7 +215,6 @@ func (c CounterToLibrary) Apply(ctx *Context) error {
 		Placement: c.Placement,
 		Counter:   true,
 		Label:     c.Label,
-		Then:      c.Then,
 	}.Apply(ctx)
 }
 
@@ -296,8 +274,6 @@ type PutFromHandOnTopInAnyOrder struct {
 	N int
 	// Label is "<card> — <clause>".
 	Label string
-	// Then runs once the cards are on the library.
-	Then func(g *game.Game) error
 }
 
 func (p PutFromHandOnTopInAnyOrder) Apply(ctx *Context) error {
@@ -305,46 +281,50 @@ func (p PutFromHandOnTopInAnyOrder) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	then := p.Then
-	finish := func(g *game.Game) error {
-		if then == nil {
-			return nil
-		}
-		return then(g)
-	}
 	hand := allHandCardIDs(ctx.Game, player)
 	if len(hand) == 0 || p.N <= 0 {
-		return finish(ctx.Game)
+		return nil
 	}
 	floor := min(p.N, len(hand))
-	source, label := ctx.Source(), p.Label
-	order := func(g *game.Game, picked []uuid.UUID) error {
-		return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-			Chooser:   player,
-			Source:    source,
-			Cards:     picked,
-			From:      game.ZoneHand,
-			Placement: game.LibraryPlaceTop,
-			Reason:    label + " — in what order? (the first is on top)",
-			Then:      finish,
-		})
-	}
 	if floor == len(hand) {
 		// Every card in hand goes back: there is nothing to pick, only
 		// an order to choose.
-		return order(ctx.Game, hand)
+		return putFromHandOnTopInOrder(ctx.Game, player, ctx.Source(), p.Label, hand)
 	}
+	// Keyed (#4253): the label rides the prompt as its question, so a
+	// table waiting on the pick is a restore point. The hand is
+	// re-checked on submit.
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
-		Source:   source,
-		Question: label,
+		Source:   ctx.Source(),
+		Question: p.Label,
 		Cards:    hand,
 		Min:      floor,
 		Max:      floor,
-		Zone:     game.ZoneHand,
-		Then:     order,
+		LiveZone: game.ZoneHand,
+		ThenKey:  putFromHandOnTopPicked,
 	})
 	return nil
+}
+
+// putFromHandOnTopPicked is the cards picked from the hand, put on top in
+// the order the player chooses next. An on-disk key: never renamed, never
+// reused.
+var putFromHandOnTopPicked = game.RegisterChooseCardsThen("choose-cards/put-from-hand-on-top-in-any-order", func(g *game.Game, r game.CardsChosen) error {
+	return putFromHandOnTopInOrder(g, r.Chooser, r.Source, r.Question, r.Picked)
+})
+
+// putFromHandOnTopInOrder is the second prompt: the order the picked cards
+// go on top of the library in.
+func putFromHandOnTopInOrder(g *game.Game, player, source uuid.UUID, label string, picked []uuid.UUID) error {
+	return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+		Chooser:   player,
+		Source:    source,
+		Cards:     picked,
+		From:      game.ZoneHand,
+		Placement: game.LibraryPlaceTop,
+		Reason:    label + " — in what order? (the first is on top)",
+	})
 }
 
 // PutIntoLibrary is "put <it> into its owner's library <position>":
@@ -364,31 +344,22 @@ type PutIntoLibrary struct {
 	// ToBottom is "on the bottom of its owner's library". Wins over
 	// Depth.
 	ToBottom bool
-	// Then runs after the move, told whether the card reached a
-	// library (false when a replacement or CR 903.9 sent it elsewhere).
-	Then func(g *game.Game, placed bool) error
-	// ThenTail is Then as a registered tail (#4253 slice 10a), told the
-	// card when it reached a library and nothing when it did not
-	// (oneWentThisWay), so a table waiting on the move's prompt is a
-	// restore point. Set it instead of Then; it wins when both are.
+	// ThenTail runs after the move, a registered tail (#4253 slice 10a)
+	// told the card when it reached a library and nothing when it did not
+	// (a replacement or CR 903.9 sent it elsewhere; oneWentThisWay), so a
+	// table waiting on the move's prompt is a restore point.
 	ThenTail game.KeyedTail
 }
 
 func (p PutIntoLibrary) Apply(ctx *Context) error {
 	if ctx.isNewSourceObject(p.Card) { // #1432
-		if !p.ThenTail.IsZero() {
-			return p.ThenTail.Run(ctx.Game, nil)
-		}
-		if p.Then != nil {
-			return p.Then(ctx.Game, false)
-		}
-		return nil
+		return p.ThenTail.Run(ctx.Game, nil)
 	}
 	opts := game.TuckOptions{ToBottom: p.ToBottom, Depth: p.Depth}
 	if !p.ThenTail.IsZero() {
 		return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{p.Card}, opts, p.ThenTail)
 	}
-	return ctx.Game.TuckToLibraryThenForEffect(p.Card, opts, p.Then)
+	return ctx.Game.TuckToLibraryThenForEffect(p.Card, opts, nil)
 }
 
 // libraryOrderLabel is "<source card name> — <clause>", or the clause

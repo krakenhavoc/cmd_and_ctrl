@@ -143,15 +143,21 @@ func breechesSacrifice(spell uuid.UUID) func(ctx *Context) error {
 
 // breechesSacrificed is the artifact chosen, keyed (#4253): it goes through
 // the sacrifice's own continuation, so the coin is flipped once the
-// permanent has gone. The spell that triggered the ability is the carry.
+// permanent has gone. The spell that triggered the ability is the carry,
+// and rides the sacrifice's keyed tail with the trigger as its asked item.
 var breechesSacrificed = askedPick("choose-cards/breeches-the-blastmaker-sacrifice", func(ctx *Context, r game.CardsChosen) error {
 	if len(r.Carry) == 0 {
 		return nil
 	}
-	spell, item := r.Carry[0], ctx.Item
-	return ctx.Game.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
-		return resumeClause(g, item, breechesFlip(spell))
-	})
+	t := ctx.ItemTail(breechesSacrificeDone)
+	t.Carry = []uuid.UUID{r.Carry[0]}
+	return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, t)
+})
+
+// breechesSacrificeDone is the sacrifice settled: flip the coin. An on-disk
+// key: never renamed, never reused.
+var breechesSacrificeDone = CardTail("then/breeches-the-blastmaker-flip", func(ctx *Context, o game.TailOutcome) error {
+	return breechesFlip(carriedID(o.Tail.Carry, 0))(ctx)
 })
 
 // breechesFlip is "if you do, flip a coin". The call is keyed (#4253 slice

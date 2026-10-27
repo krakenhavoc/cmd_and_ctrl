@@ -71,7 +71,7 @@ import (
 // DealDamageToPlayerForEffect in place of ChangePlayerLifeForEffect.
 //
 // So damage gets the same public continuation life got:
-// DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect
+// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureThenForEffect
 // for one target, DealDamageEachThenForEffect for the batch, and
 // runDamageTailLocked is the one place `then` runs. Card authors learn
 // `...ThenForEffect` once and it means the same thing on both sides.

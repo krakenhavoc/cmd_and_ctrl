@@ -210,7 +210,7 @@ func TestAClientCannotAnswerWithTheNoChoiceIndex(t *testing.T) {
 // continuation that moves them went with the prompt.
 //
 // The engine's own queue-time guards already take the first pile when
-// the chooser cannot be asked (queuePilePickLocked); this is the same
+// the chooser cannot be asked (queuePilePickKeyedLocked); this is the same
 // answer at the drop path, reached through the frame rather than by
 // repeating the rule.
 func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
@@ -219,16 +219,11 @@ func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
 	source := departureTestSource(g, owner.ID, "Steam Augury")
 	all := handCardOf(t, owner, 3)
 
-	var taken, left []uuid.UUID
-	ran := 0
+	resetProbes()
 	g.WithWriteLock(func() {
-		if err := g.queuePilePickLocked(chooser.ID, owner.ID, source, "Take a pile",
-			all, all[:1], func(_ *Game, tk, lf []uuid.UUID) error {
-				ran++
-				taken, left = tk, lf
-				return nil
-			}); err != nil {
-			t.Fatalf("queuePilePickLocked: %v", err)
+		if err := g.queuePilePickKeyedLocked(chooser.ID, owner.ID, source, "Take a pile",
+			all, all[:1], false, probeTail()); err != nil {
+			t.Fatalf("queuePilePickKeyedLocked: %v", err)
 		}
 	})
 	c := onlyPendingChoice(t, g)
@@ -237,6 +232,7 @@ func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() { g.dropChoiceLocked(0) })
+	taken, left, ran := probePiles()
 	if ran != 1 {
 		t.Fatalf("the pile split's continuation ran %d times, want 1", ran)
 	}
@@ -258,9 +254,9 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 	caster, chooser := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 	item := &StackItem{ID: uuid.New(), Controller: caster.ID, SourceCardID: source}
+	testChooseItem = item
+	resetProbes()
 
-	ran := 0
-	var chosen uuid.UUID
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
@@ -268,12 +264,7 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 			Among:    []uuid.UUID{g.Seats[2].ID, g.Seats[3].ID},
 			Source:   source,
 			Question: "Choose an opponent",
-			Item:     item,
-			Then: func(_ *Game, seat uuid.UUID) error {
-				ran++
-				chosen = seat
-				return nil
-			},
+			ThenKey:  testRecordChosenThen,
 		})
 	})
 	if id == uuid.Nil {
@@ -284,6 +275,11 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 		idx, _ := g.findChoiceLocked(id)
 		g.dropChoiceLocked(idx)
 	})
+	picked := probeChosen()
+	ran, chosen := len(picked), uuid.Nil
+	if ran == 1 {
+		chosen = picked[0]
+	}
 	if ran != 1 {
 		t.Fatalf("the continuation after the player choice ran %d times, want 1", ran)
 	}
@@ -314,9 +310,9 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 	caster, leaver := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 	item := &StackItem{ID: uuid.New(), Controller: caster.ID, SourceCardID: source}
+	testChooseItem = item
+	resetProbes()
 
-	ran := 0
-	var chosen uuid.UUID
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
@@ -327,12 +323,7 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 			Among:    []uuid.UUID{leaver.ID},
 			Source:   source,
 			Question: "Choose an opponent",
-			Item:     item,
-			Then: func(_ *Game, seat uuid.UUID) error {
-				ran++
-				chosen = seat
-				return nil
-			},
+			ThenKey:  testRecordChosenThen,
 		})
 	})
 	if id == uuid.Nil {
@@ -344,6 +335,11 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 	}
 	if findChoice(g, id) != nil {
 		t.Fatal("a prompt whose every option named the departed seat is still queued")
+	}
+	picked := probeChosen()
+	ran, chosen := len(picked), uuid.Nil
+	if ran == 1 {
+		chosen = picked[0]
 	}
 	if ran != 1 {
 		t.Fatalf("the continuation ran %d times, want 1 — the chooser is still at the table "+

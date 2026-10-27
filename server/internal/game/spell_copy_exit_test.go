@@ -147,15 +147,14 @@ func TestAnExiledSpellCopyCeasesToExist(t *testing.T) {
 	me := g.Seats[0]
 	_, cp := copyOfSpellForTest(t, g, me.ID)
 
-	told, exiled := false, true
+	resetProbes()
 	g.WithWriteLock(func() {
-		if err := g.ExileSpellThenForEffect(cp, func(_ *Game, ok bool) error {
-			told, exiled = true, ok
-			return nil
-		}); err != nil {
-			t.Fatalf("ExileSpellThenForEffect: %v", err)
+		if err := g.ExileSpellKeyedForEffect(cp, probeTail()); err != nil {
+			t.Fatalf("ExileSpellKeyedForEffect: %v", err)
 		}
 	})
+	heard := probeExiled()
+	told, exiled := len(heard) == 1, len(heard) == 1 && heard[0]
 
 	assertCopyGone(t, g, cp)
 	if !told {

@@ -13,28 +13,47 @@ import (
 // enters_tapped.go set: concurrent card batches collide on shared
 // files.
 
-// ReturnPickedToHand is the `Then` of a game.ChooseCardsPrompt over a
-// graveyard whose answer goes to its owner's hand — Skullwinder's
-// "return target card from your graveyard to your hand" and its
-// opponent's mandatory half, Ripples of Undeath's "put a card from
-// among those cards into your hand".
-//
-// It takes the RESOLVING stack item rather than a *Context because
-// the answer arrives later, against whichever *Game the resolver
-// hands back: the continuation binds a FRESH Context to the same
-// item, which is the undo rule every chained prompt follows (see
-// may_choice.go).
+// returnPickedToHand is the keyed continuation (ChooseCardsPrompt.ThenKey)
+// of a pick over a graveyard whose answer goes to its owner's hand —
+// Skullwinder's opponent's mandatory half, Ripples of Undeath's "put a
+// card from among those cards into your hand", Takenuma's channel. The
+// prompt carries the asking item (ChooseCardsPrompt.Asked), so the body
+// runs against a Context rebuilt from it and a table waiting on the pick
+// is a restore point (#4253). An on-disk key: never renamed, never reused.
 //
 // An empty pick is a legal answer to any prompt with a floor of zero
 // and moves nothing.
-func ReturnPickedToHand(resolving *game.StackItem) func(*game.Game, []uuid.UUID) error {
-	return func(g *game.Game, picked []uuid.UUID) error {
-		next := NewContext(g, resolving)
-		for _, id := range picked {
-			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(next); err != nil {
-				return err
-			}
+var returnPickedToHand = askedPick("choose-cards/return-picked-to-hand", func(ctx *Context, r game.CardsChosen) error {
+	return ReturnPickedToHandNow(ctx, r.Picked)
+})
+
+// queueReturnPickedToHand asks `chooser` for one of
+// `cards`, which sit in a graveyard, and returns the picked card to its
+// owner's hand: returnPickedToHand, with the graveyard re-checked on
+// submit, since a card can leave it between the question and the answer.
+func queueReturnPickedToHand(ctx *Context, chooser uuid.UUID, question string, cards []uuid.UUID) {
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    chooser,
+		FromPlayer: chooser,
+		Source:     ctx.Source(),
+		Question:   question,
+		Cards:      cards,
+		Min:        1,
+		Max:        1,
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    returnPickedToHand,
+		Asked:      game.NewAskedItem(ctx.Item),
+	})
+}
+
+// ReturnPickedToHandNow returns each picked graveyard card to its owner's
+// hand, for a keyed body that already holds the answer (Smuggler's
+// Surprise).
+func ReturnPickedToHandNow(ctx *Context, picked []uuid.UUID) error {
+	for _, id := range picked {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+			return err
 		}
-		return nil
 	}
+	return nil
 }

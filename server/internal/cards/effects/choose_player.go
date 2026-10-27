@@ -17,9 +17,9 @@ import (
 // the POOL the clause admits, the seats to leave out, and a branch
 // that is an ordinary ctx-taking effect.
 //
-// Anything printed after the choice goes in Then, not after Apply
-// returns — Apply only queues the prompt, exactly as Scry.Then and
-// MayChoice.OnYes exist.
+// Anything printed after the choice goes in ThenKey, not after Apply
+// returns — Apply only queues the prompt, exactly as Scry.ThenTail and
+// MayChoice.Then exist.
 //
 // "Choose a player" is not "target player". A card that prints
 // "target" declares a TargetSpec and reads item.Targets; this
@@ -90,9 +90,9 @@ func (p PlayerPool) seats(ctx *Context, chooser uuid.UUID) []uuid.UUID {
 }
 
 // ChoosePlayer asks Chooser to name a player while an effect resolves,
-// records the answer on the resolving item, and runs Then.
+// records the answer on the resolving item, and runs ThenKey.
 //
-// Then reads the answer with ctx.ChosenPlayer(). It runs even when no
+// ThenKey reads the answer with ctx.ChosenPlayer(). It runs even when no
 // question could be asked — an empty pool, or a chooser who has left
 // (CR 800.4a) — and ctx.ChosenPlayer() is uuid.Nil in that case, so a
 // branch always checks before it acts. That is the #544 rule: a
@@ -121,18 +121,15 @@ type ChoosePlayer struct {
 	// Question is the prompt's header, written the way the card is.
 	Question string
 
-	// Then runs once the answer is in (or once it is settled that
-	// there is none). Runs with g.mu held; may queue further choices.
-	Then func(ctx *Context) error
-
-	// ThenKey is Then as a registered continuation (ChoosePlayerThen,
-	// #4253), and Carry the IDs it is handed: a prompt queued with a key
-	// holds no closure, so a table waiting on the answer is a restore
-	// point. The asking item rides the prompt as data (#4253 slice 10b) and
-	// the answer is recorded on the copy the continuation runs against, so
-	// ctx.ChosenPlayer() and ctx.ChosenPlayers() read it as they do after a
-	// Then, and a later question carries every answer before it. Set
-	// ThenKey or Then, not both.
+	// ThenKey is the rest of the card, a registered continuation
+	// (ChoosePlayerThen, #4253), and Carry the IDs it is handed. It runs
+	// once the answer is in (or once it is settled that there is none),
+	// with g.mu held, and may queue further choices. The prompt holds no
+	// closure, so a table waiting on the answer is a restore point. The
+	// asking item rides the prompt as data (#4253 slice 10b) and the
+	// answer is recorded on the copy the continuation runs against, so
+	// ctx.ChosenPlayer() and ctx.ChosenPlayers() read it, and a later
+	// question carries every answer before it. Required.
 	ThenKey game.OptionPickThen
 	Carry   []uuid.UUID
 }
@@ -160,52 +157,31 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
 	}
-	item := ctx.Item
-	then := c.Then
+	if c.ThenKey.Key() == "" {
+		return fmt.Errorf("%w: ChoosePlayer with no registered continuation (ChoosePlayerThen)", game.ErrInvalidParam)
+	}
 	pool := c.Only
 	if pool == nil {
 		pool = c.Among.seats(ctx, chooser)
 	}
-	if c.ThenKey.Key() != "" {
-		if then != nil {
-			return fmt.Errorf("%w: ChoosePlayer %q sets both ThenKey and Then", game.ErrInvalidParam, c.ThenKey.Key())
-		}
-		carry := append([]uuid.UUID{ctx.Controller()}, c.Carry...)
-		asked := game.NewAskedItem(item)
-		if ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
-			Chooser:  chooser,
-			Among:    exceptPlayers(pool, c.Except),
-			Source:   ctx.Source(),
-			Question: c.Question,
-			ThenKey:  c.ThenKey,
-			Carry:    carry,
-			Asked:    asked,
-		}) != uuid.Nil {
-			return nil
-		}
-		// Nothing could be asked: the rest of the card still happens, with
-		// nobody chosen (#544).
-		return ctx.Game.RunOptionPickThenForEffect(c.ThenKey, game.OptionPicked{
-			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
-		})
-	}
-	queued := ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
+	carry := append([]uuid.UUID{ctx.Controller()}, c.Carry...)
+	asked := game.NewAskedItem(ctx.Item)
+	if ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
 		Chooser:  chooser,
 		Among:    exceptPlayers(pool, c.Except),
 		Source:   ctx.Source(),
 		Question: c.Question,
-		Item:     item,
-		Then: func(g *game.Game, _ uuid.UUID) error {
-			return resumeClause(g, item, then)
-		},
-	})
-	if queued != uuid.Nil || then == nil {
+		ThenKey:  c.ThenKey,
+		Carry:    carry,
+		Asked:    asked,
+	}) != uuid.Nil {
 		return nil
 	}
-	// Nothing could be asked. The engine has already recorded the
-	// absence on the item, so ctx.ChosenPlayer() reads uuid.Nil here
-	// rather than the previous clause's answer.
-	return then(ctx)
+	// Nothing could be asked: the rest of the card still happens, with
+	// nobody chosen (#544).
+	return ctx.Game.RunOptionPickThenForEffect(c.ThenKey, game.OptionPicked{
+		Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
+	})
 }
 
 // ChoosePlayerAsEnters builds the `Spec.AsEnters` for "As this

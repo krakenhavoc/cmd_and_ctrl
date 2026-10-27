@@ -43,14 +43,13 @@ func TestExileFromGraveyardOfferMovesPastAShortGraveyardAndExiles(t *testing.T) 
 	}
 	fodder(short, 2)
 	cards := fodder(payer, 3)
-	paid, nobody := 0, 0
+	resetAnyPlayerProbe()
 	item := &game.StackItem{Controller: g.Seats[2].ID, SourceCardID: uuid.New()}
 	g.WithWriteLock(func() {
 		err := AnyPlayerPays{
 			Pay:      ExileFromGraveyardPayment(3),
 			Question: "Carrion Thing — exile three cards from your graveyard?",
-			OnPaid:   func(*Context, uuid.UUID) error { paid++; return nil },
-			OnNobody: func(*Context) error { nobody++; return nil },
+			Then:     testAnyPlayerProbe,
 		}.Apply(NewContext(g, item))
 		if err != nil {
 			t.Fatalf("Apply: %v", err)
@@ -78,7 +77,7 @@ func TestExileFromGraveyardOfferMovesPastAShortGraveyardAndExiles(t *testing.T) 
 			t.Errorf("card %v not exiled", id)
 		}
 	}
-	if paid != 1 || nobody != 0 || appOpenLink(g) != nil {
+	if paid, nobody := testAnyPlayerPaid, testAnyPlayerNobody; paid != 1 || nobody != 0 || appOpenLink(g) != nil {
 		t.Errorf("paid %d, nobody %d, open link %v; want 1, 0, none", paid, nobody, appOpenLink(g))
 	}
 }

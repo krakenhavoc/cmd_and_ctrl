@@ -61,8 +61,8 @@ func shadowThrow(g *game.Game, item *game.StackItem) error {
 }
 
 // shadowThrowPick is the permanent chosen to sacrifice, keyed (#4253): the
-// asking item rides the prompt as data. The sacrifice's own continuation
-// (g.SacrificeThenForEffect) is the route batch of slice 9, which keys it.
+// asking item rides the prompt as data, and the sacrifice's continuation is
+// a keyed tail (shadowSacrificed) carrying the item and the mana value.
 var shadowThrowPick = askedPick("choose-cards/shadow-mysterious-assassin-sacrifice", func(ctx *Context, r game.CardsChosen) error {
 	picked := r.Picked
 	if len(picked) == 0 {
@@ -72,15 +72,17 @@ var shadowThrowPick = askedPick("choose-cards/shadow-mysterious-assassin-sacrifi
 	if c, ok := ctx.Game.LookupCardForEffect(picked[0]); ok {
 		mv = c.ManaValue()
 	}
-	item := ctx.Item
-	return ctx.Game.SacrificeThenForEffect(uuid.Nil, picked[0], func(g *game.Game, sacrificed bool) error {
-		if !sacrificed {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		ctx.RecordStep(shadowMysteriousAssassinRecord, nil, mv)
-		return shadowDrainSteps.Run(ctx)
-	})
+	return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, picked[:1], withN(ctx.ItemTail(shadowSacrificed), mv))
+})
+
+// shadowSacrificed is "if you do": the sacrificed permanent's mana value is
+// the tail's N. An on-disk key: never renamed, never reused.
+var shadowSacrificed = CardTail("then/shadow-mysterious-assassin-sacrificed", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
+		return nil
+	}
+	ctx.RecordStep(shadowMysteriousAssassinRecord, nil, o.Tail.N)
+	return shadowDrainSteps.Run(ctx)
 })
 
 // shadowMysteriousAssassinRecord is the sacrificed permanent's mana value.

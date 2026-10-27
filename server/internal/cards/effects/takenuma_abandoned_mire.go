@@ -16,7 +16,7 @@ import (
 //
 // Otawara, Soaring City's shape (Channel — an ActivatedAbility with
 // `Zones: {ZoneHand}` and `AbilityCost.DiscardSelf`, #660) with a
-// different back half: a mill, then `ReturnPickedToHand`
+// different back half: a mill, then `queueReturnPickedToHand`
 // (graveyard_to_hand.go), the shared continuation Skullwinder's own
 // return uses, over a candidate set filtered to creature-or-
 // planeswalker.
@@ -56,22 +56,14 @@ func init() {
 				// The choice from the graveyard waits for a prompt the mill asks (CR 608.2c, #4155).
 				MillCards{N: 3},
 				Instruction(func(ctx *Context) error {
-					g, item := ctx.Game, ctx.Item
-					candidates := takenumaGraveyardCandidates(g, item.Controller)
+					candidates := takenumaGraveyardCandidates(ctx.Game, ctx.Controller())
 					if len(candidates) == 0 {
 						return nil
 					}
-					g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-						Chooser:    item.Controller,
-						FromPlayer: item.Controller,
-						Source:     item.SourceCardID,
-						Question:   "Takenuma, Abandoned Mire — return a creature or planeswalker card from your graveyard to your hand",
-						Cards:      candidates,
-						Min:        1,
-						Max:        1,
-						Zone:       game.ZoneGraveyard,
-						Then:       ReturnPickedToHand(item),
-					})
+					// Keyed (#4253): the pick carries the asking item.
+					queueReturnPickedToHand(ctx, ctx.Controller(),
+						"Takenuma, Abandoned Mire — return a creature or planeswalker card from your graveyard to your hand",
+						candidates)
 					return nil
 				}),
 			),

@@ -29,6 +29,16 @@ import (
 // Four seats, because a concede in a two-player game ends the game
 // before anything can inherit anything (ADR 0060 Decision 5).
 
+// testAISeatSplitTail counts the pile splits that settled (#4253 retired
+// PileSplitPrompt's closure Then).
+var (
+	testAISeatSplitRuns int
+	testAISeatSplitTail = game.RegisterTail("test/4253-aiseat-split-settled", func(*game.Game, game.TailOutcome) error {
+		testAISeatSplitRuns++
+		return nil
+	})
+)
+
 func departureBotDeck(seat int) []game.Card {
 	deck := make([]game.Card, 0, 61)
 	cmdr := game.NewCommander(fmt.Sprintf("Commander %d", seat), uuid.Nil)
@@ -103,7 +113,7 @@ func leaveMidPromptLeavesTheBotTablePlaying(t *testing.T, leave func(*game.Game,
 		caster.Hand.Cards[1].InstanceID,
 		caster.Hand.Cards[2].InstanceID,
 	}
-	split := 0
+	testAISeatSplitRuns = 0
 	g.WithWriteLock(func() {
 		g.QueuePileSplitForEffect(game.PileSplitPrompt{
 			Splitter:      leaver.ID,
@@ -113,10 +123,7 @@ func leaveMidPromptLeavesTheBotTablePlaying(t *testing.T, leave func(*game.Game,
 			SplitQuestion: "Separate those cards into two piles",
 			PickQuestion:  "Take a pile",
 			Cards:         cards,
-			Then: func(*game.Game, []uuid.UUID, []uuid.UUID) error {
-				split++
-				return nil
-			},
+			ThenTail:      game.KeyedTail{Ref: testAISeatSplitTail},
 		})
 	})
 	if len(legal.EnumerateFor(g, leaver.ID)) == 0 {
@@ -150,7 +157,7 @@ func leaveMidPromptLeavesTheBotTablePlaying(t *testing.T, leave func(*game.Game,
 
 	p := heuristic.New()
 	for step := 1; step <= 200; step++ {
-		if split > 0 {
+		if testAISeatSplitRuns > 0 {
 			return
 		}
 		var actor uuid.UUID

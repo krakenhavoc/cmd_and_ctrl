@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -143,17 +144,18 @@ type TakeFromLibraryToHand struct {
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
-	// Then runs after the move with what happened. It is the only
-	// correct place for "the rest" and for any rider on the result. It
-	// runs with g.mu held, may queue further prompts, and must capture
-	// only scalars.
+	// Then is what runs after the move with what happened: the
+	// registered TakeDef.Then, carried here by the keyed fan-out
+	// (take_keyed.go) as it finishes each player's take. Apply refuses a
+	// take that sets it: a card writes "the rest" in its RegisterTake
+	// definition (#4253 retired the closure door).
 	Then func(g *game.Game, res TakeFromLibraryResult) error
 
 	// Key is the take as a REGISTERED definition (RegisterTake,
 	// take_keyed.go, #4290): its reveal, set rule and Then live in the
 	// registration, so the prompt holds no closure and a table waiting on
-	// the pick is a restore point. With it Slots, Validate, Reveal and
-	// Then must be unset.
+	// the pick is a restore point. Required; with it Slots, Validate,
+	// Reveal and Then must be unset.
 	Key TakeThen
 }
 
@@ -184,18 +186,10 @@ func (p TakeFromLibraryToHand) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	source := ctx.Source()
-	if p.Key.key != "" {
-		return p.applyKeyed(ctx, player, source)
+	if p.Key.key == "" {
+		return fmt.Errorf("%w: TakeFromLibraryToHand with no registered definition (RegisterTake)", game.ErrInvalidParam)
 	}
-	finish := p.finisher(source, player)
-	prompt, answer := p.ask(ctx.Game, player, source)
-	if prompt == nil {
-		return finish(ctx.Game, answer)
-	}
-	prompt.Then = finish
-	ctx.Game.QueueChooseCardsForEffect(*prompt)
-	return nil
+	return p.applyKeyed(ctx, player, ctx.Source())
 }
 
 // ask is the question this take puts to `player`: the choose_cards
@@ -640,67 +634,21 @@ type EachPlayerTakesFromLibrary struct {
 	// whatever they hold here is ignored.
 	Take TakeFromLibraryToHand
 
-	// Then runs once, after every player's take has finished, with one
-	// result per player in Players order — "each player gains 3 life".
-	// It runs with g.mu held, may queue further prompts, and must
-	// capture only scalars.
-	Then func(g *game.Game, res []TakeFromLibraryResult) error
-
 	// Keyed is the whole fan-out as a REGISTERED definition
 	// (RegisterEachTake, take_keyed.go, #4290): every player's reveal, set
-	// rule and Then, and the rest of the card, live in the registration,
-	// so no prompt holds a closure and a table waiting on any player's
-	// pick is a restore point. With it Take.Slots, Take.Validate,
-	// Take.Reveal, Take.Then and Then must be unset.
+	// rule and Then, and the rest of the card ("each player gains 3
+	// life", run once with one result per player in Players order), live
+	// in the registration, so no prompt holds a closure and a table
+	// waiting on any player's pick is a restore point. Required; with it
+	// Take.Slots, Take.Validate, Take.Reveal and Take.Then must be unset.
 	Keyed EachTakeThen
 }
 
 func (e EachPlayerTakesFromLibrary) Apply(ctx *Context) error {
-	if e.Keyed.run.Valid() {
-		return e.applyKeyed(ctx)
+	if !e.Keyed.run.Valid() {
+		return fmt.Errorf("%w: EachPlayerTakesFromLibrary with no registered definition (RegisterEachTake)", game.ErrInvalidParam)
 	}
-	g := ctx.Game
-	source := ctx.Source()
-	players := e.Players
-	if players == nil {
-		players = apnapPlayers(g)
-	}
-	// Frozen before the run starts and never written after: the run's
-	// continuation shares them with every undo snapshot.
-	takes := make([]TakeFromLibraryToHand, len(players))
-	answers := make([][]uuid.UUID, len(players))
-	asked := make([]bool, len(players))
-	var legs []game.ChooseCardsPrompt
-	for i, player := range players {
-		t := e.Take
-		t.Player = player
-		t.Cards = g.LookAtTopOfLibraryForEffect(player, e.N)
-		takes[i] = t
-		prompt, answer := t.ask(g, player, source)
-		if prompt == nil {
-			answers[i] = answer
-			continue
-		}
-		asked[i] = true
-		legs = append(legs, *prompt)
-	}
-	reveal, label, then := e.Take.Reveal, e.Take.Label, e.Then
-	_, err := g.ChooseCardsRunThenForEffect(legs, func(g *game.Game, picks game.PromptedPicks) error {
-		chosen := make([][]uuid.UUID, len(takes))
-		for i, t := range takes {
-			chosen[i] = answers[i]
-			if asked[i] {
-				chosen[i] = picks.By(t.Player)
-			}
-		}
-		if reveal {
-			for i, t := range takes {
-				revealTaken(g, t.Player, source, label, chosen[i])
-			}
-		}
-		return eachPlayerTakeMoves(g, source, takes, chosen, nil, then)
-	})
-	return err
+	return e.applyKeyed(ctx)
 }
 
 // eachPlayerTakeMoves finishes the take of player len(done) — moves

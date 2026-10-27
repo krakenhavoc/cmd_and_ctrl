@@ -73,43 +73,60 @@ func hideawayEffect(g *game.Game, item *game.StackItem) error {
 // the library that go, and a commander paused on CR 903.9 on its way
 // to exile is not among them.
 //
-// Captures only scalars and the object reference, so an undo replays
-// it against the restored game.
+// The pick is keyed (#4253): the object reference and the looked-at cards
+// ride it as data, so an undo or a restore replays it against the restored
+// game.
 func hideawayLookAndExile(g *game.Game, controller uuid.UUID, source game.PermissionCardRef, n int, name string) error {
 	looked := g.LookAtTopOfLibraryForEffect(controller, n)
 	if len(looked) == 0 {
 		return nil
 	}
-	finish := func(g *game.Game, picked []uuid.UUID) error {
-		var hidErr error
-		if len(picked) > 0 {
-			_, hidErr = g.ExileHiddenForEffect(source, controller, picked[0])
-		}
-		rest := make([]uuid.UUID, 0, len(looked))
-		for _, id := range cardsStillInALibrary(g, looked) {
-			if len(picked) == 0 || id != picked[0] {
-				rest = append(rest, id)
-			}
-		}
-		if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil && hidErr == nil {
-			hidErr = err
-		}
-		return hidErr
-	}
 	if len(looked) == 1 {
-		return finish(g, looked)
+		return hideawayFinish(g, controller, source, looked, looked)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   source.ID,
-		Question: name + " — exile one of them face down",
-		Cards:    looked,
-		Min:      1,
-		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then:     finish,
+		Chooser:   controller,
+		Source:    source.ID,
+		Question:  name + " — exile one of them face down",
+		Cards:     looked,
+		Min:       1,
+		Max:       1,
+		LiveZone:  game.ZoneLibrary,
+		ThenKey:   hideawayPicked,
+		Carry:     append([]uuid.UUID{source.ID}, looked...),
+		CarryNums: []int{source.Epoch},
 	})
 	return nil
+}
+
+// hideawayPicked is the face-down exile answered: the carry is the
+// hideaway object's ID, then the looked-at cards. An on-disk key: never
+// renamed, never reused.
+var hideawayPicked = game.RegisterChooseCardsThen("choose-cards/hideaway-exile-face-down", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 || len(r.Nums) == 0 {
+		return nil
+	}
+	source := game.PermissionCardRef{ID: r.Carry[0], Epoch: r.Nums[0]}
+	return hideawayFinish(g, r.Chooser, source, r.Carry[1:], r.Picked)
+})
+
+// hideawayFinish exiles the picked card face down and puts the rest of the
+// looked-at cards still in the library on the bottom in a random order.
+func hideawayFinish(g *game.Game, controller uuid.UUID, source game.PermissionCardRef, looked, picked []uuid.UUID) error {
+	var hidErr error
+	if len(picked) > 0 {
+		_, hidErr = g.ExileHiddenForEffect(source, controller, picked[0])
+	}
+	rest := make([]uuid.UUID, 0, len(looked))
+	for _, id := range cardsStillInALibrary(g, looked) {
+		if len(picked) == 0 || id != picked[0] {
+			rest = append(rest, id)
+		}
+	}
+	if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil && hidErr == nil {
+		hidErr = err
+	}
+	return hidErr
 }
 
 // HiddenRefOfActivation is the hideaway permanent an ACTIVATED linked

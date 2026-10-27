@@ -4396,88 +4396,7 @@ func (g *Game) queuePayUnlessLocked(
 	return nil
 }
 
-// QueueMayPayForEffect queues a "you may pay <cost>. If you do,
-// ..." prompt for `chooser` — the same dialog QueuePayUnlessForEffect
-// raises, with the consequence hanging off the other answer.
-// Hashaton, Scarab's Fist ("whenever you discard a creature card,
-// you may pay {2}{U}. If you do, create a token that's a copy of
-// that card") is the shape it was written for.
-//
-// onPay runs only when the chooser answers "Pay" AND the mana
-// actually materialises (pool + auto-tap). A "yes" the chooser can't
-// fund degrades to a decline exactly as it does for pay-unless, and
-// with no onDecline that simply means nothing happens — which is the
-// right reading of "if you do".
-//
-// A chooser who is no longer seated / is eliminated is not asked and
-// onPay does not run. Note this is the OPPOSITE default from
-// pay-unless, and correct for both: the consequence is attached to
-// the answer that can no longer be given.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-) error {
-	return g.queueMayPayLocked(chooser, source, cost, question, onPay, TurnStep{})
-}
-
-// QueueMayPayInThisStepForEffect is QueueMayPayForEffect for a "you may
-// pay. If you do, …" whose consequence is about the step or phase in
-// progress: Hellkite Charger's "untap all attacking creatures and after
-// this phase, there is an additional combat phase". The prompt is
-// anchored to the current step (PendingChoice.OwedInStep, #997's
-// anchor), so the table cannot walk out of the combat before the
-// answer — an answer given in the next phase would add the combat after
-// the wrong one.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayInThisStepForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-) error {
-	return g.queueMayPayLocked(chooser, source, cost, question, onPay, g.currentTurnStepLocked())
-}
-
-// queueMayPayLocked is the one body behind both may-pay doors. `owed`
-// is the step the prompt must be answered in, or the zero TurnStep.
-func (g *Game) queueMayPayLocked(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-	owed TurnStep,
-) error {
-	parsed, err := ParseCost(cost)
-	if err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Source:   source,
-			ErrorMsg: "may-pay: unparseable cost " + cost + ": " + err.Error(),
-		})
-		return nil
-	}
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:       PendingChoicePayUnless,
-		Chooser:    chooser,
-		Count:      1,
-		Source:     source,
-		Reason:     question,
-		PayCost:    cost,
-		OwedInStep: owed,
-		payUnlessResume: &payUnlessFrame{
-			cost:  parsed,
-			onPay: onPay,
-		},
-	})
-	return nil
-}
-
-// QueueMayPayElseForEffect is QueueMayPayForEffect with a consequence on
+// QueueMayPayElseForEffect is the may-pay (QueueMayPayKeyedForEffect) with a consequence on
 // BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
 // <onDecline>" — Springheart Nantuko's "if you didn't create a token
 // this way, create a 1/1 green Insect". It is the one pay-unless body
@@ -4962,9 +4881,9 @@ func (g *Game) runPayUnlessBranchLocked(choice *PendingChoice, chooserID uuid.UU
 //     controls (departedChoiceObjectLocked), so the branch is written
 //     against material CR 800.4a has not just taken off the table.
 //
-// A may-pay frame (QueueMayPayForEffect: "you may pay {2}. If you do,
-// ...") carries no decline branch and nothing happens, which is the
-// right reading of "if you do" for a player who no longer can.
+// A may-pay frame ("you may pay {2}. If you do, ...") carries no decline
+// branch and nothing happens, which is the right reading of "if you do"
+// for a player who no longer can.
 //
 // Caller must hold g.mu.
 func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {

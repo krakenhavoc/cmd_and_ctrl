@@ -5,7 +5,8 @@ import "github.com/google/uuid"
 // damage_keyed.go — #4253: damage to a player with the rest of the effect
 // as data, and the damage event's frame written to a restore point.
 //
-// DealDamageToPlayerThenForEffect hands its caller's continuation to the
+// The closure form (DealDamageToPlayerThenForEffect, deleted in #4253's
+// cleanup once only tests called it) handed its caller's continuation to the
 // damage event as a closure (damageTail.then), and before this no damage
 // event's frame was ever written: damageTail held the closure and the
 // source's last-known traits, and every damage field of ReplacementEvent
@@ -31,12 +32,36 @@ import "github.com/google/uuid"
 // own key, as no binary before it keyed a damage event at all.
 const ReplacementResumeDamage = "replacement-resume/damage"
 
-// DealDamageToPlayerKeyedForEffect is DealDamageToPlayerThenForEffect with
-// the continuation as data: `then` is a registered tail (RegisterTail),
-// told the player as TailOutcome.IDs and the damage that actually landed
-// as TailOutcome.Amount (zero when nothing did), on every terminal outcome
-// the closure form's `then` is told. A zero tail is no continuation. A
-// prompt the damage pauses on is a restore point.
+// DealDamageToPlayerKeyedForEffect is damage to a player with a
+// CONTINUATION as data: `then` is a registered tail (RegisterTail), told
+// the player as TailOutcome.IDs and the damage that actually landed as
+// TailOutcome.Amount, once the CR 614 window has settled it. A zero tail
+// is no continuation. A prompt the damage pauses on is a restore point.
+//
+// It is how a card says "~ deals N damage to target opponent. You gain
+// life equal to the damage dealt this way"; DealDamageEachThenForEffect
+// is the each-opponent version of the same sentence.
+//
+// WHAT `then` IS TOLD. The post-replacement amount, non-negative: 6 for a
+// Lightning Bolt under Angrath's Marauders, 2 for one under a "prevent 1"
+// shield. Zero means nothing landed — fully prevented, replaced away
+// (CR 614.10, a Fog), or the player has left the game. `then` is told
+// either way, because a caller adding up what several opponents took
+// would otherwise wait forever on the one that took nothing.
+//
+// WHEN IT RUNS. Immediately, on the ordinary path, before this function
+// returns. After the affected player answers the CR 616 ordering prompt
+// when two DIFFERENT damage replacements apply to one event — the case
+// #807 exists for, and the reason `then` is a continuation rather than a
+// return value. Either way it runs with g.mu held and with the event's
+// own EventDealDamage already emitted, so it may start the next damage
+// event or queue the next prompt itself.
+//
+// Returns ErrPlayerNotFound without running `then` when the target is not
+// seated at all, exactly as ChangePlayerLifeThenForEffect does. A seated
+// player who has been eliminated is not an error: nothing is dealt and
+// `then` runs with zero (CR 800.4a, #808). The batch form skips both
+// rather than failing on them.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amount int, then KeyedTail) error {

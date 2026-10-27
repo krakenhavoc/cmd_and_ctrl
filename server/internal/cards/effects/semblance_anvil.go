@@ -66,8 +66,8 @@ func semblanceAnvilImprint(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then:     chromeMoxExileThePick,
+		LiveZone: game.ZoneHand,
+		ThenKey:  chromeMoxExileThePick,
 	})
 	return nil
 }

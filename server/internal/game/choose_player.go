@@ -76,11 +76,11 @@ import (
 // target player". The caller computes it; this function drops the
 // seats that have left the game (CR 800.4a) and orders what is left.
 //
-// Item is the stack item the answer is recorded on, and may be nil for
-// a caller that reads the answer out of Then instead. Nothing in the
-// engine re-checks a recorded player against the board — it is a
-// record of a choice, not a target — so an effect that cares whether
-// that seat is still seated asks.
+// The answer is recorded on the asking item by the keyed continuation
+// (effects.ChoosePlayerThen records it on the copy rebuilt from Asked).
+// Nothing in the engine re-checks a recorded player against the board —
+// it is a record of a choice, not a target — so an effect that cares
+// whether that seat is still seated asks.
 type ChoosePlayerPrompt struct {
 	// Chooser answers the prompt. Required, and frequently NOT the
 	// player the options are about.
@@ -95,21 +95,16 @@ type ChoosePlayerPrompt struct {
 	// Question is the prompt's header — the card's own sentence.
 	Question string
 
-	// Item is the stack item the chosen player is recorded on. Nil
-	// records nothing.
-	Item *StackItem
-
-	// Then receives the chosen player, or uuid.Nil when nobody was
-	// chosen — no eligible seat at queue time, or a prompt dropped
-	// before it was answered (#1006). Runs with g.mu held; may queue
-	// further choices, which is how a chain continues.
-	Then func(g *Game, chosen uuid.UUID) error
-
-	// ThenKey is Then as a REGISTERED option-pick continuation, with
-	// Carry the plain data it is handed (#2040, option_pick_keyed.go): a
-	// table waiting on the answer stays a restore point. The chosen seat
-	// is the continuation's Option.Player; Option is nil when nobody was
-	// chosen. With a key, Then and Item are ignored.
+	// ThenKey is the rest of the card, a REGISTERED option-pick
+	// continuation, with Carry the plain data it is handed (#2040,
+	// option_pick_keyed.go): a table waiting on the answer stays a restore
+	// point. The chosen seat is the continuation's Option.Player; Option
+	// is nil when nobody was chosen — no eligible seat at queue time, or a
+	// prompt dropped before it was answered (#1006). It runs with g.mu
+	// held and may queue further choices, which is how a chain continues.
+	// Required: #4253 retired the closure Then and the Item it recorded
+	// the answer on (the card side records it on the asked item,
+	// effects.ChoosePlayerThen).
 	ThenKey OptionPickThen
 	Carry   []uuid.UUID
 	// Asked is the asking stack item as data (NewAskedItem, #4253 slice
@@ -125,74 +120,35 @@ type ChoosePlayerPrompt struct {
 // chooser who has left the game (QueueChoiceForEffect's CR 800.4a
 // guard).
 //
-// When it queues nothing it records the ABSENCE of a choice on the
-// item, so a later ChosenPlayerOn on the same item reads "nobody was
-// chosen" rather than the PREVIOUS clause's answer. A card that asks
-// twice and gets an answer only the first time would otherwise apply
-// the second clause to the first clause's player, which is the one
-// way this shape can be silently wrong.
-//
 // A caller with more of the effect to run must check the return the
 // way QueueOptionPickForEffect's callers do: nothing queued means
-// nothing will call Then.
+// nothing will call ThenKey, and the caller runs it itself with nobody
+// chosen (effects.ChoosePlayer does, through RunOptionPickThenForEffect),
+// which records the ABSENCE of a choice on the item. A later
+// ChosenPlayerOn on the same item then reads "nobody was chosen" rather
+// than the PREVIOUS clause's answer. A prompt with no ThenKey queues
+// nothing (#4253 retired the closure form).
 //
 // Caller must hold g.mu.
 func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 	eligible := g.eligibleChosenPlayersLocked(p.Among)
-	if len(eligible) == 0 {
-		recordChosenPlayer(p.Item, uuid.Nil)
+	if len(eligible) == 0 || p.ThenKey.key == "" {
 		return uuid.Nil
 	}
-	options := g.seatChoiceOptionsLocked(eligible)
-	if p.ThenKey.key != "" {
-		return g.QueueOptionPickForEffect(OptionPickPrompt{
-			Chooser:  p.Chooser,
-			Source:   p.Source,
-			Question: p.Question,
-			Options:  options,
-			ThenKey:  p.ThenKey,
-			Carry:    p.Carry,
-			Asked:    p.Asked,
-		})
-	}
-	item := p.Item
-	then := p.Then
-	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
+	// The answer is read off the chosen option's own seat, never an index
+	// into a slice captured here (#994): a seat that leaves the game is
+	// pruned off this prompt while it is open (CR 800.4a,
+	// pruneDepartedSeatOptionsLocked), which renumbers every option after
+	// it.
+	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  p.Chooser,
 		Source:   p.Source,
 		Question: p.Question,
-		Options:  options,
-		// ThenSeat, not Then: the answer is the option's own seat and
-		// never an index into a slice captured here (#994). A seat that
-		// leaves the game is pruned off this prompt while it is open
-		// (CR 800.4a, pruneDepartedSeatOptionsLocked), which renumbers
-		// every option after it — so a captured candidate list would
-		// record the player one seat along from the one the chooser
-		// clicked. Only a detached item pointer is closed over, which
-		// is the StackItem.Effect contract: the branch resolves against
-		// whichever *Game an undo restores.
-		//
-		// uuid.Nil is NOBODY WAS CHOSEN, not an error: the prompt was
-		// dropped rather than answered (#1006), and the absence is
-		// recorded on the item exactly as it is when there was no
-		// eligible seat to ask about in the first place, so a card that
-		// asks twice does not read this clause's answer off the last
-		// one. An ANSWER can never arrive with a zero seat —
-		// ResolveOptionPick refuses a seat-less option before the frame
-		// runs — which is what leaves this value free to mean the
-		// absence.
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			recordChosenPlayer(item, chosen)
-			if then == nil {
-				return nil
-			}
-			return then(g, chosen)
-		},
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		ThenKey:  p.ThenKey,
+		Carry:    p.Carry,
+		Asked:    p.Asked,
 	})
-	if queued == uuid.Nil {
-		recordChosenPlayer(p.Item, uuid.Nil)
-	}
-	return queued
 }
 
 // EventPlayerChosen records a CR 614.12 "as this enters, choose a

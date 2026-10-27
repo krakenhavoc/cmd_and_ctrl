@@ -41,7 +41,7 @@ import (
 //     "while it's exiled" grant, applied to the OTHER half of the
 //     exile-with-permission pair (ExileTopWithPermissionForEffect,
 //     the library-facing shape impulse draw already uses);
-//   - the exile → graveyard move — PutCardsIntoGraveyardThenForEffect
+//   - the exile → graveyard move — PutCardsIntoGraveyardKeyedForEffect
 //     (simultaneous.go), the one addition this card needed: a
 //     continuation sibling of PutIntoGraveyardForEffect
 //     (random_bottom.go's Genesis Wave primitive: "not a mill, not a
@@ -143,7 +143,7 @@ func valakutExplorationRecordExiled(_ game.Event, source *game.Card, _ game.Char
 // landed there.
 //
 // The damage total is read from the continuation's `landed` list, not
-// counted before the move — PutCardsIntoGraveyardThenForEffect's own
+// counted before the move — PutCardsIntoGraveyardKeyedForEffect's own
 // doc explains why: a leg can pause mid-move (CR 903.9), and reading
 // a pre-move tally would pay out for a move the window has not
 // answered yet (#1218, ADR 0013 §5t).

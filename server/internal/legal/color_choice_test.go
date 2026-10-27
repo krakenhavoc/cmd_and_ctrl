@@ -51,7 +51,7 @@ func TestChooseColorResolutionFormIsAnswerable(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.QueueColorChoiceThenForEffect(game.ColorPrompt{
 			Chooser: me.ID, Question: "Wash Out — choose a color",
-			Then: func(*game.Game, string) error { return nil },
+			ThenTail: game.KeyedTail{Ref: testLegalNoopTail},
 		})
 	})
 	moves := legal.EnumerateFor(g, me.ID)

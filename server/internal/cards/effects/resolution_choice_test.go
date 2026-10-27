@@ -63,13 +63,23 @@ func latestChoiceOfKindFor(g *game.Game, kind game.PendingChoiceKind, chooser uu
 	return out
 }
 
+// testPickRan is what the keyed probe answer (testPickProbe) was handed,
+// in order (#4253 retired PickOption's closure Then).
+var (
+	testPickRan   []int
+	testPickProbe = OptionPickThen("test/4253-pick-option-probe", func(_ *Context, r game.OptionPicked) error {
+		testPickRan = append(testPickRan, r.Index)
+		return nil
+	})
+)
+
 // TestPickOptionRunsTheChosenBranchForAnOpponent is the option pick's
 // core contract: the prompt goes to the named seat, only that seat can
 // answer it, and exactly the chosen branch runs.
 func TestPickOptionRunsTheChosenBranchForAnOpponent(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	var ran []int
+	testPickRan = nil
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 		if err := (PickOption{
@@ -80,7 +90,7 @@ func TestPickOptionRunsTheChosenBranchForAnOpponent(t *testing.T) {
 				{Label: "second"},
 				{Label: "third"},
 			},
-			Then: func(_ *Context, i int) error { ran = append(ran, i); return nil },
+			ThenKey: testPickProbe,
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
@@ -102,7 +112,7 @@ func TestPickOptionRunsTheChosenBranchForAnOpponent(t *testing.T) {
 		t.Fatal("a refused answer leaves the prompt open")
 	}
 	answerOptionPick(t, g, opp.ID, 1)
-	if len(ran) != 1 || ran[0] != 1 {
+	if ran := testPickRan; len(ran) != 1 || ran[0] != 1 {
 		t.Errorf("exactly the chosen branch runs: %v", ran)
 	}
 	if len(g.PendingChoices) != 0 {
@@ -125,7 +135,8 @@ func TestPickOptionUndoesAcrossThePrompt(t *testing.T) {
 				{Label: "lose 3 life", LifeCost: 3},
 				{Label: "nothing"},
 			},
-			Then: pickOptionTestBranch(opp.ID),
+			ThenKey: pickOptionTestBranch,
+			Carry:   []uuid.UUID{opp.ID},
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
@@ -154,16 +165,24 @@ func TestPickOptionUndoesAcrossThePrompt(t *testing.T) {
 	}
 }
 
-// pickOptionTestBranch is a package-level branch — no captured game,
-// no captured player pointer.
-func pickOptionTestBranch(victim uuid.UUID) func(ctx *Context, i int) error {
-	return func(ctx *Context, i int) error {
-		if i != 0 {
-			return nil
-		}
-		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -3)
+// pickOptionTestBranch is a registered branch — no captured game, no
+// captured player pointer: the victim rides the prompt as its Carry.
+var pickOptionTestBranch = OptionPickThen("test/4253-pick-option-lose-three", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index != 0 || len(r.Carry) == 0 {
+		return nil
 	}
-}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), r.Carry[0], -3)
+})
+
+// testPileTaken / testPileLeft are the piles the keyed probe tail
+// (testPileProbe) was told (#4253 retired PileSplit's closure Then).
+var (
+	testPileTaken, testPileLeft []uuid.UUID
+	testPileProbe               = PileTail("test/4253-pile-split-probe", func(_ *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
+		testPileTaken, testPileLeft = taken, left
+		return nil
+	})
+)
 
 // TestPileSplitChainsToTheControllersPick is the two-seat chain: the
 // splitter answers first, the controller's pile pick is queued by that
@@ -172,7 +191,7 @@ func TestPileSplitChainsToTheControllersPick(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	cards := []uuid.UUID{uuid.New(), uuid.New(), uuid.New()}
-	var taken, left []uuid.UUID
+	testPileTaken, testPileLeft = nil, nil
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 		if err := (PileSplit{
@@ -182,10 +201,7 @@ func TestPileSplitChainsToTheControllersPick(t *testing.T) {
 			SplitQuestion: "test — separate them",
 			PickQuestion:  "test — take a pile",
 			Cards:         cards,
-			Then: func(_ *Context, gotTaken, gotLeft []uuid.UUID) error {
-				taken, left = gotTaken, gotLeft
-				return nil
-			},
+			ThenTail:      ctx.Tail(testPileProbe),
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
@@ -218,10 +234,11 @@ func TestPileSplitChainsToTheControllersPick(t *testing.T) {
 	if len(pick.PickOptions[0].Cards) != 1 || len(pick.PickOptions[1].Cards) != 2 {
 		t.Errorf("the piles are the split: %+v", pick.PickOptions)
 	}
-	if taken != nil {
+	if testPileTaken != nil {
 		t.Fatal("nothing settles until the pile is picked")
 	}
 	answerOptionPick(t, g, me.ID, 1)
+	taken, left := testPileTaken, testPileLeft
 	if len(taken) != 2 || len(left) != 1 {
 		t.Errorf("taken %v, left %v — want the second pile taken", taken, left)
 	}
@@ -237,7 +254,7 @@ func TestPileSplitTakesEverythingWhenNobodyCanSplit(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	cards := []uuid.UUID{uuid.New(), uuid.New()}
-	var taken, left []uuid.UUID
+	testPileTaken, testPileLeft = nil, nil
 	g.WithWriteLock(func() {
 		opp.Eliminated = true
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
@@ -246,15 +263,12 @@ func TestPileSplitTakesEverythingWhenNobodyCanSplit(t *testing.T) {
 			Chooser:  me.ID,
 			Owner:    me.ID,
 			Cards:    cards,
-			Then: func(_ *Context, gotTaken, gotLeft []uuid.UUID) error {
-				taken, left = gotTaken, gotLeft
-				return nil
-			},
+			ThenTail: ctx.Tail(testPileProbe),
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
 	})
-	if len(taken) != 2 || len(left) != 0 {
+	if taken, left := testPileTaken, testPileLeft; len(taken) != 2 || len(left) != 0 {
 		t.Errorf("taken %v, left %v — want one pile of everything", taken, left)
 	}
 	if len(g.PendingChoices) != 0 {

@@ -233,6 +233,15 @@ var runAtProbeSteps = RegisterThenSteps("test/run-at-probe",
 	}),
 )
 
+// runAtProbeGo is a player's yes, keyed (#4253 retired MayChoice's OnYes):
+// the player rides the prompt as its Carry.
+var runAtProbeGo = MayYes("test/4253-run-at-probe-go", func(c *Context, r game.ConfirmAnswer) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return runAtProbeSteps.RunAt(c, seatIndexOf(c.Game, r.Carry[0]))
+})
+
 func init() {
 	Register(Spec{
 		OracleID: runAtProbeOracle,
@@ -247,9 +256,8 @@ func init() {
 					if err := (MayChoice{
 						Player:   player,
 						Question: "Run At Probe — go?",
-						OnYes: func(c *Context) error {
-							return runAtProbeSteps.RunAt(c, seatIndexOf(c.Game, player))
-						},
+						Then:     runAtProbeGo,
+						Carry:    []uuid.UUID{player},
 					}).Apply(ctx); err != nil {
 						return err
 					}

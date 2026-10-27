@@ -150,10 +150,22 @@ var chainLandPicked = game.RegisterChooseCardsThen("choose-cards/chain-sacrifice
 	if len(r.Carry) == 0 || r.Asked == nil {
 		return nil
 	}
-	player, item, name := r.Carry[0], r.Asked, r.Word
-	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
-		return chainOfferCopy(g, item, player, name)
+	// The offer rides the sacrifice as a keyed tail (#4253): the player is
+	// its carry, the spell's name its word and the spell its asked item.
+	return g.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, game.KeyedTail{
+		Ref: chainSacrificed, Player: r.Chooser, Source: r.Source,
+		Carry: []uuid.UUID{r.Carry[0]}, Word: r.Word, Asked: game.NewAskedItem(r.Asked),
 	})
+})
+
+// chainSacrificed is the land gone: offer the copy. An on-disk key: never
+// renamed, never reused.
+var chainSacrificed = game.RegisterTail("then/chain-sacrificed-offer-copy", func(g *game.Game, o game.TailOutcome) error {
+	item := o.Tail.Asked.StackItem()
+	if item == nil || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return chainOfferCopy(g, item, o.Tail.Carry[0], o.Tail.Word)
 })
 
 // chainOfferCopy is "they may copy this spell and may choose a new target

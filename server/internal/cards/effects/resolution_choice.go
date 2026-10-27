@@ -38,15 +38,16 @@ import (
 // must be one that always works.
 
 // PickOption asks Player to choose one of Options while an effect
-// resolves, and runs Then with the index they picked.
+// resolves, and runs the registered continuation ThenKey with the index
+// they picked.
 //
-// Anything printed after the choice goes in Then, not after this
+// Anything printed after the choice goes in ThenKey, not after this
 // primitive returns: Apply only queues the prompt.
 //
-// A prompt with no options queues nothing and calls Then with -1, so a
-// card whose whole option list turned out to be impossible still gets
-// to finish. A chooser who has left the game (CR 800.4a) is the same
-// case.
+// A prompt with no options queues nothing and runs ThenKey with
+// game.NoChoiceIndex, so a card whose whole option list turned out to be
+// impossible still gets to finish. A chooser who has left the game
+// (CR 800.4a) is the same case.
 type PickOption struct {
 	// Player is asked. Zero means the resolving effect's controller.
 	Player uuid.UUID
@@ -64,17 +65,15 @@ type PickOption struct {
 	// must be one the chooser can always take.
 	Options []game.ChoiceOption
 
-	// Then receives the index of the chosen option, or -1 when no
-	// question could be asked. Runs with g.mu held; may queue
-	// further choices. An option that costs mana (ChoiceOption.ManaCost,
-	// #2854) and that the chooser cannot pay is not offered, and Then
-	// still receives the index the card printed.
-	Then func(ctx *Context, index int) error
-
-	// ThenKey is Then as a registered continuation (OptionPickThen),
-	// with Carry the IDs it is handed (#2854). A prompt queued with a
-	// key holds no closure, so the table stays a restore point while it
-	// waits. Set ThenKey or Then, not both.
+	// ThenKey is everything printed after the choice, a registered
+	// continuation (OptionPickThen), with Carry the IDs it is handed
+	// (#2854). It receives the index of the chosen option, or
+	// game.NoChoiceIndex when no question could be asked; it runs with
+	// g.mu held and may queue further choices. An option that costs mana
+	// (ChoiceOption.ManaCost) and that the chooser cannot pay is not
+	// offered, and ThenKey still receives the index the card printed. The
+	// prompt holds no closure, so the table stays a restore point while
+	// it waits. Required (#4253 retired the closure form).
 	ThenKey game.OptionPickThen
 	Carry   []uuid.UUID
 	// WithItem hands the keyed continuation a Context rebuilt from the
@@ -129,52 +128,34 @@ func (p PickOption) Apply(ctx *Context) error {
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
 	}
-	if p.ThenKey.Key() != "" {
-		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
-		var asked *game.AskedItem
-		if p.WithItem {
-			asked = game.NewAskedItem(ctx.Item)
-		}
-		queued := ctx.Game.QueueOptionPickForEffect(game.OptionPickPrompt{
-			Chooser:    chooser,
-			FromPlayer: p.From,
-			Source:     ctx.Source(),
-			Question:   p.Question,
-			Options:    p.Options,
-			ThenKey:    p.ThenKey,
-			Carry:      carry,
-			Asked:      asked,
-			Words:      p.Words,
-			Nums:       p.Nums,
-			Tail:       p.Tail,
-		})
-		if queued != uuid.Nil {
-			return nil
-		}
-		return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
-			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
-			Words: append([]string(nil), p.Words...), Nums: append([]int(nil), p.Nums...), Tail: p.Tail,
-		})
+	if p.ThenKey.Key() == "" {
+		return fmt.Errorf("%w: PickOption with no registered continuation (OptionPickThen)", game.ErrInvalidParam)
 	}
-	item := ctx.Item
-	then := p.Then
+	carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
+	var asked *game.AskedItem
+	if p.WithItem {
+		asked = game.NewAskedItem(ctx.Item)
+	}
 	queued := ctx.Game.QueueOptionPickForEffect(game.OptionPickPrompt{
 		Chooser:    chooser,
 		FromPlayer: p.From,
 		Source:     ctx.Source(),
 		Question:   p.Question,
 		Options:    p.Options,
-		Then: func(g *game.Game, index int) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), index)
-		},
+		ThenKey:    p.ThenKey,
+		Carry:      carry,
+		Asked:      asked,
+		Words:      p.Words,
+		Nums:       p.Nums,
+		Tail:       p.Tail,
 	})
-	if queued != uuid.Nil || then == nil {
+	if queued != uuid.Nil {
 		return nil
 	}
-	return then(ctx, -1)
+	return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
+		Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry, Asked: asked.StackItem(),
+		Words: append([]string(nil), p.Words...), Nums: append([]int(nil), p.Nums...), Tail: p.Tail,
+	})
 }
 
 // PileSplit is "an opponent separates those cards into two piles; you
@@ -206,13 +187,11 @@ type PileSplit struct {
 	// table saw them.
 	Cards []uuid.UUID
 
-	// Then receives the pile the chooser TOOK and the pile they left,
-	// in that order. Runs with g.mu held.
-	Then func(ctx *Context, taken, left []uuid.UUID) error
-
-	// ThenTail is Then as data (#4253 slice 10b): a tail registered with
-	// PileTail, so both prompts are keyed and a table waiting on either is
-	// a restore point. Set Then or ThenTail, not both; Then wins.
+	// ThenTail is everything printed after the split, a tail registered
+	// with PileTail (#4253 slice 10b): it is told the pile the chooser
+	// TOOK and the pile they left, in that order, and runs with g.mu
+	// held. Both prompts are keyed, so a table waiting on either is a
+	// restore point.
 	ThenTail game.KeyedTail
 
 	// FaceDown is the "face-down pile and a face-up pile" split
@@ -229,22 +208,9 @@ func (p PileSplit) Apply(ctx *Context) error {
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
 	}
-	if p.Then == nil && !p.ThenTail.IsZero() {
-		ctx.Game.QueuePileSplitForEffect(game.PileSplitPrompt{
-			Splitter:      p.Splitter,
-			Chooser:       chooser,
-			Owner:         p.Owner,
-			Source:        ctx.Source(),
-			SplitQuestion: p.SplitQuestion,
-			PickQuestion:  p.PickQuestion,
-			Cards:         p.Cards,
-			FaceDown:      p.FaceDown,
-			ThenTail:      p.ThenTail,
-		})
-		return nil
+	if p.ThenTail.IsZero() {
+		return fmt.Errorf("%w: PileSplit with no registered tail (PileTail)", game.ErrInvalidParam)
 	}
-	item := ctx.Item
-	then := p.Then
 	ctx.Game.QueuePileSplitForEffect(game.PileSplitPrompt{
 		Splitter:      p.Splitter,
 		Chooser:       chooser,
@@ -254,12 +220,7 @@ func (p PileSplit) Apply(ctx *Context) error {
 		PickQuestion:  p.PickQuestion,
 		Cards:         p.Cards,
 		FaceDown:      p.FaceDown,
-		Then: func(g *game.Game, taken, left []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), taken, left)
-		},
+		ThenTail:      p.ThenTail,
 	})
 	return nil
 }
@@ -480,7 +441,7 @@ func NonlandPermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID
 }
 
 // SacrificeChoice queues "sacrifice one of these permanents" as a
-// chained card pick, and runs Then once the permanent has actually
+// chained card pick, and runs ThenTail once the permanent has actually
 // gone.
 //
 // game.PlayerSacrificesForEffect is the prompt for a sacrifice that is
@@ -489,7 +450,7 @@ func NonlandPermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID
 // of Hailfire repeats X times, and the next repetition must not be
 // asked until this one has finished — so it needs a continuation, and
 // it gets one the way QueueDiscardChoiceForEffect does: by riding
-// PendingChoiceChooseCards, whose frame already carries a `Then` and
+// PendingChoiceChooseCards, whose keyed frame carries a tail and
 // re-checks the live zone on submit.
 //
 // It is not a second sacrifice system. The permanent leaves through
@@ -498,7 +459,7 @@ func NonlandPermanentsControlledBy(g *game.Game, playerID uuid.UUID) []uuid.UUID
 // which prompt kind asked, and the CHOOSE-CARDS kind is the one with a
 // continuation.
 //
-// A player with no candidate permanent is not prompted and Then runs
+// A player with no candidate permanent is not prompted and ThenTail runs
 // immediately — a mandatory sacrifice with nothing to sacrifice does
 // nothing (CR 701.21a), and the rest of the effect still happens.
 type SacrificeChoice struct {
@@ -513,15 +474,12 @@ type SacrificeChoice struct {
 	// Question is the prompt's header.
 	Question string
 
-	// Then runs once the permanent has gone, or immediately when
-	// there was nothing to sacrifice.
-	Then func(ctx *Context) error
-
-	// ThenTail is Then as data (#4253 slice 10b): a registered tail run in
-	// the same places. A choice with no Then is a keyed pick
+	// ThenTail is the rest of the effect, a registered tail (#4253 slice
+	// 10b). It runs once the permanent has gone, or immediately when
+	// there was nothing to sacrifice. The choice is a keyed pick
 	// (sacrificeChoicePicked) carrying the tail, so a table waiting on it
-	// is a restore point. It still asks when there is one candidate, as the
-	// closure form does. Set Then or ThenTail, not both; Then wins.
+	// is a restore point. It still asks when there is one candidate. Zero
+	// means nothing follows.
 	ThenTail game.KeyedTail
 }
 
@@ -530,14 +488,22 @@ type SacrificeChoice struct {
 // runs once it has gone. The answer is not read for "if you do": the prompt
 // is mandatory. An on-disk key: never renamed, never reused.
 var sacrificeChoicePicked = game.RegisterChooseCardsThen("choose-cards/sacrifice-choice", func(g *game.Game, r game.CardsChosen) error {
+	// The prompt's tail rides the sacrifice as the Next of a keyed tail
+	// (#4253), told nothing, as it always was.
 	tail := r.Tail
-	return g.SacrificeAllThenForEffect(uuid.Nil, r.Picked, func(g *game.Game, _ []uuid.UUID) error {
-		return tail.Run(g, nil)
-	})
+	return g.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, game.KeyedTail{Ref: sacrificeChoiceDone, Next: &tail})
+})
+
+// sacrificeChoiceDone is the sacrifice settled: the choice's own tail runs,
+// told nothing. An on-disk key: never renamed, never reused.
+var sacrificeChoiceDone = game.RegisterTail("then/sacrifice-choice-done", func(g *game.Game, o game.TailOutcome) error {
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return o.Tail.Next.Run(g, nil)
 })
 
 func (s SacrificeChoice) Apply(ctx *Context) error {
-	then := s.Then
 	// #3275, CR 101.2: a permanent that can't be sacrificed is not a
 	// legal choice.
 	var candidates []uuid.UUID
@@ -548,29 +514,16 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 	}
 	s.Candidates = candidates
 	if len(s.Candidates) == 0 {
-		if then == nil {
-			return s.ThenTail.Run(ctx.Game, nil)
-		}
-		return then(ctx)
+		return s.ThenTail.Run(ctx.Game, nil)
 	}
-	if then == nil {
-		// #4253 slice 10b: keyed; the live battlefield is re-checked on
-		// submit as the closure form's Zone is.
-		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-			Chooser:    s.Player,
-			FromPlayer: s.Player,
-			Source:     ctx.Source(),
-			Question:   s.Question,
-			Cards:      s.Candidates,
-			Min:        1,
-			Max:        1,
-			LiveZone:   game.ZoneBattlefield,
-			ThenKey:    sacrificeChoicePicked,
-			Tail:       s.ThenTail,
-		})
-		return nil
-	}
-	item := ctx.Item
+	// Re-checked against the live battlefield on submit: the prompt is
+	// asynchronous and a permanent can leave between the question and
+	// the answer. #993: the picked permanent goes through the
+	// sacrifice's CONTINUATION (sacrificeChoicePicked), so the tail
+	// really does run "once the permanent has gone" — Chain of Vapor
+	// once offered its copy while a sacrificed land's owner was still
+	// mid-prompt. The answer is not read: the prompt is mandatory (Min
+	// 1), so a clause hanging off it is "then", not "if you do".
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    s.Player,
 		FromPlayer: s.Player,
@@ -579,27 +532,9 @@ func (s SacrificeChoice) Apply(ctx *Context) error {
 		Cards:      s.Candidates,
 		Min:        1,
 		Max:        1,
-		// Re-checked against the live battlefield on submit: the
-		// prompt is asynchronous and a permanent can leave between
-		// the question and the answer.
-		Zone: game.ZoneBattlefield,
-		// #993: the picked permanent goes through the sacrifice's
-		// CONTINUATION, so `Then` really does run "once the permanent
-		// has gone" the way this type promises. The fire-and-forget
-		// call could return before the permanent had gone (it did while
-		// a sacrificed commander's owner was still answering CR 903.9,
-		// before ADR 0115), and the clause behind it then ran with the
-		// permanent on the battlefield and the question open — Chain of
-		// Vapor offered its copy while the land's owner was
-		// mid-prompt. The continuation stays, because a sacrifice is
-		// still a sequence the clause must follow. The answer is not read: the prompt was mandatory
-		// (Min 1), so a clause hanging off it is "then", not "if you
-		// do".
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, _ []uuid.UUID) error {
-				return resumeClause(g, item, then)
-			})
-		},
+		LiveZone:   game.ZoneBattlefield,
+		ThenKey:    sacrificeChoicePicked,
+		Tail:       s.ThenTail,
 	})
 	return nil
 }

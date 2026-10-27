@@ -27,6 +27,28 @@ func answerMayChoice(t *testing.T, g *game.Game, chooser uuid.UUID, yes bool) {
 	}
 }
 
+// testMayYes / testMayNo / testMayOrder are what the keyed probe answer
+// (testMayProbe) records (#4253 retired the OnYes / OnNo closures): how
+// many times each branch ran, and the order things happened in.
+var (
+	testMayYes, testMayNo int
+	testMayOrder          []string
+	testMayProbe          = MayYesNo("test/4253-may-choice-probe",
+		func(*Context, game.ConfirmAnswer) error {
+			testMayYes++
+			testMayOrder = append(testMayOrder, "yes")
+			return nil
+		},
+		func(*Context, game.ConfirmAnswer) error {
+			testMayNo++
+			testMayOrder = append(testMayOrder, "no")
+			return nil
+		})
+)
+
+// resetMayProbe zeroes testMayProbe's record.
+func resetMayProbe() { testMayYes, testMayNo, testMayOrder = 0, 0, nil }
+
 // latestConfirmFor returns the newest open confirm prompt owed by a
 // seat, or nil.
 func latestConfirmFor(g *game.Game, chooser uuid.UUID) *game.PendingChoice {
@@ -54,30 +76,28 @@ func TestMayChoiceRunsExactlyOneBranchInOrder(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			g := newCatalogGame(t)
 			me := g.Seats[0]
-			var yes, no int
-			var order []string
+			resetMayProbe()
 			g.WithWriteLock(func() {
 				ctx := NewContext(g, &game.StackItem{Controller: me.ID})
-				order = append(order, "before")
+				testMayOrder = append(testMayOrder, "before")
 				if err := (MayChoice{
 					Question: "test — do the thing?",
-					OnYes:    func(*Context) error { yes++; order = append(order, "yes"); return nil },
-					OnNo:     func(*Context) error { no++; order = append(order, "no"); return nil },
+					Then:     testMayProbe,
 				}).Apply(ctx); err != nil {
 					t.Fatalf("Apply: %v", err)
 				}
 			})
-			if yes != 0 || no != 0 {
+			if testMayYes != 0 || testMayNo != 0 {
 				t.Fatal("no branch runs until the prompt is answered")
 			}
 			if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != me.ID {
 				t.Fatalf("the prompt is addressed to the controller: %+v", g.PendingChoices)
 			}
 			answerMayChoice(t, g, me.ID, tc.answer)
-			if yes != tc.wantYes || no != tc.wantNo {
-				t.Errorf("yes ran %d (want %d), no ran %d (want %d)", yes, tc.wantYes, no, tc.wantNo)
+			if testMayYes != tc.wantYes || testMayNo != tc.wantNo {
+				t.Errorf("yes ran %d (want %d), no ran %d (want %d)", testMayYes, tc.wantYes, testMayNo, tc.wantNo)
 			}
-			if len(order) != 2 || order[0] != "before" {
+			if order := testMayOrder; len(order) != 2 || order[0] != "before" {
 				t.Errorf("the branch runs after the rest of the effect, not before it: %v", order)
 			}
 			if len(g.PendingChoices) != 0 {
@@ -92,13 +112,13 @@ func TestMayChoiceRunsExactlyOneBranchInOrder(t *testing.T) {
 func TestMayChoiceCanBeAddressedToAnotherSeat(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	var ran bool
+	resetMayProbe()
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 		if err := (MayChoice{
 			Player:   opp.ID,
 			Question: "test — will you?",
-			OnYes:    func(*Context) error { ran = true; return nil },
+			Then:     testMayProbe,
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
@@ -110,11 +130,11 @@ func TestMayChoiceCanBeAddressedToAnotherSeat(t *testing.T) {
 	if err := g.ResolveConfirm(c.ID, me.ID, true); err == nil {
 		t.Error("only the chooser may answer")
 	}
-	if ran {
+	if testMayYes != 0 || testMayNo != 0 {
 		t.Fatal("a refused answer runs no branch")
 	}
 	answerMayChoice(t, g, opp.ID, true)
-	if !ran {
+	if testMayYes != 1 {
 		t.Error("the opponent's yes runs the branch")
 	}
 }
@@ -127,7 +147,7 @@ func TestMayChoiceBlocksTheTableUntilAnswered(t *testing.T) {
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
-		if err := (MayChoice{Question: "test — do the thing?"}).Apply(ctx); err != nil {
+		if err := (MayChoice{Question: "test — do the thing?", Then: testMayProbe}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
 	})
@@ -149,7 +169,7 @@ func TestMayChoiceUndoesAcrossThePrompt(t *testing.T) {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID, SourceCardID: source})
 		if err := (MayChoice{
 			Question: "test — lose 3 life?",
-			OnYes:    mayChoiceTestLoseThree,
+			Then:     mayChoiceTestLoseThree,
 		}).Apply(ctx); err != nil {
 			t.Fatalf("Apply: %v", err)
 		}
@@ -179,10 +199,10 @@ func TestMayChoiceUndoesAcrossThePrompt(t *testing.T) {
 	}
 }
 
-// mayChoiceTestLoseThree is a package-level branch — the shape the
-// primitive's doc comment asks card files for, and the one that makes
-// the undo test mean something: it captures no game and no player
-// pointer, only what it reads off the Context it is handed.
-func mayChoiceTestLoseThree(ctx *Context) error {
+// mayChoiceTestLoseThree is a registered yes — the shape the primitive's
+// doc comment asks card files for, and the one that makes the undo test
+// mean something: it captures no game and no player pointer, only what it
+// reads off the Context it is handed.
+var mayChoiceTestLoseThree = MayYes("test/4253-may-choice-lose-three", func(ctx *Context, _ game.ConfirmAnswer) error {
 	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -3)
-}
+})

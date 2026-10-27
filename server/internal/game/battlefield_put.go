@@ -322,7 +322,7 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldForEffect(ids []uuid.UUID, opts
 // and the CR 708.9 reveal — and manifest, manifest dread (ManifestDread,
 // manifest_dread.go) and cloak build on it. The turn-face-up special
 // action (CR 116.2g) and the face-down CAST (CR 708.4) live in
-// face_down.go. Manifesting from a HAND is ManifestFromHandsThenForEffect.
+// face_down.go. Manifesting from a HAND is ManifestFromHandsKeyedForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
@@ -348,51 +348,30 @@ func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
 	return entered[0], nil
 }
 
-// ManifestFromHandsKeyedForEffect is ManifestFromHandsThenForEffect with the
-// continuation as data (#4253 slice 6): `then` is a registered tail
-// (RegisterTail), told the permanents that entered as TailOutcome.IDs.
+// ManifestFromHandsKeyedForEffect is "<player> manifests <cards> from
+// their hand" (CR 701.40a; Kozilek, the Broken Reality, Scroll of Fate,
+// ADR 0189 decision 3): every card in `ids` is turned face down and put
+// onto the battlefield as a 2/2 creature under its OWNER's control, and
+// `then` (a registered tail, #4253 slice 6) is told the permanents that
+// entered as TailOutcome.IDs once the entry is complete. (The closure form,
+// ManifestFromHandsThenForEffect, was deleted in #4253's cleanup.)
+//
+// CR 701.40e's "one at a time" covers only a LIBRARY. Cards named from a
+// hand are chosen up front and enter together, as Selvala's Stampede's do:
+// one PutCardsFromHandOntoBattlefieldKeyedForEffect batch with FaceDown
+// set, so every CR 614 window sees the board as it stood before any card
+// arrived. Controller is left unset, so each card enters under its owner;
+// the ids may belong to different players' hands (Kozilek's two targets).
+//
+// Every ID must be in its owner's hand, or the whole call is refused with
+// ErrCardNotFound and nothing moves (the batch's own validation). A
+// nonpermanent card is legal: the object that arrives is a 2/2 creature
+// whatever the card says (CR 701.40a, CR 708.2), and CR 701.40g keeps an
+// instant or sorcery face down when it is turned up.
 //
 // Caller must hold g.mu.
 func (g *Game) ManifestFromHandsKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {
 	return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(ids, HandEntryOptions{FaceDown: FaceDownManifested}, then)
-}
-
-// ManifestFromHandsThenForEffect is "<player> manifests <cards> from
-// their hand" (CR 701.40a; Kozilek, the Broken Reality, Scroll of Fate,
-// ADR 0189 decision 3): every card in `ids` is turned face down and put
-// onto the battlefield as a 2/2 creature under its OWNER's control, and
-// `then` is told which permanents entered once the entry is complete.
-//
-// # One entry, not a series
-//
-// CR 701.40e's "one at a time" covers only a LIBRARY ("manifest
-// multiple cards from their library"), where each card is the new top.
-// Cards named from a hand are chosen up front and enter together, as
-// Selvala's Stampede's do: this is one PutCardsFromHandOntoBattlefield
-// ThenForEffect batch with FaceDown set, so every CR 614 window sees
-// the board as it stood before any card arrived, and a card whose
-// window stops to ask a question waits for the answer. Asking one card
-// at a time would hand a later card a different board than an earlier
-// one, which no rule asks for.
-//
-// # Whose control
-//
-// Controller is left unset, so each card enters under its owner — the
-// player who manifests it. The ids may belong to different players'
-// hands (Kozilek's two targets).
-//
-// # Refusals
-//
-// Every ID must be in its owner's hand, or the whole call is refused
-// with ErrCardNotFound and nothing moves (the batch's own validation).
-// `then` runs exactly once even then. A nonpermanent card is legal:
-// the object that arrives is a 2/2 creature whatever the card says
-// (CR 701.40a, CR 708.2), and CR 701.40g keeps an instant or sorcery
-// face down when it is turned up.
-//
-// Caller must hold g.mu.
-func (g *Game) ManifestFromHandsThenForEffect(ids []uuid.UUID, then func(g *Game, manifested []uuid.UUID) error) error {
-	return g.PutCardsFromHandOntoBattlefieldThenForEffect(ids, HandEntryOptions{FaceDown: FaceDownManifested}, then)
 }
 
 // putOntoBattlefieldFromZoneLocked is the shared body of the hand and

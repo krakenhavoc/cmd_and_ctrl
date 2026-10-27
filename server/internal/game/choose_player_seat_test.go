@@ -35,6 +35,7 @@ func TestASeatOptionCarriesTheSeatItLabels(t *testing.T) {
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID},
 			Question: "test — choose a player",
+			ThenKey:  testProbeOptionThen,
 		})
 	})
 	c := choosePlayerPromptFor(g, me.ID)
@@ -95,6 +96,7 @@ func TestAnOfferedSeatThatLeavesIsPrunedFromAnOpenPrompt(t *testing.T) {
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID, g.Seats[3].ID},
 			Question: "test — choose a player",
+			ThenKey:  testProbeOptionThen,
 		})
 	})
 	c := choosePlayerPromptFor(g, me.ID)
@@ -131,14 +133,14 @@ func TestPruningASeatDoesNotRenumberTheAnswer(t *testing.T) {
 	g.Seats[1].Life, g.Seats[2].Life, g.Seats[3].Life = 40, 30, 20
 
 	item := &StackItem{ID: uuid.New(), Kind: StackItemTriggered, Controller: me.ID}
-	var got uuid.UUID
+	testChooseItem = item
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{g.Seats[1].ID, g.Seats[2].ID, g.Seats[3].ID},
 			Question: "test — choose a player",
-			Item:     item,
-			Then:     func(_ *Game, chosen uuid.UUID) error { got = chosen; return nil },
+			ThenKey:  testRecordChosenThen,
 		})
 	})
 	if err := g.Concede(leaver.ID); err != nil {
@@ -151,6 +153,10 @@ func TestPruningASeatDoesNotRenumberTheAnswer(t *testing.T) {
 	// Index 1 of what is LEFT is seat 3. Before the prune it was seat 2.
 	if err := g.ResolveOptionPick(c.ID, me.ID, 1); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
+	}
+	got := uuid.Nil
+	if c := probeChosen(); len(c) == 1 {
+		got = c[0]
 	}
 	if got != g.Seats[3].ID {
 		t.Errorf("chose %s, want seat 3 (%s) — the answer is the option's own seat, not an index into the list it was built with",
@@ -250,6 +256,7 @@ func TestAPromptWhoseEverySeatHasLeftIsDropped(t *testing.T) {
 			Chooser:  me.ID,
 			Among:    []uuid.UUID{leaver.ID},
 			Question: "test — choose a player",
+			ThenKey:  testProbeOptionThen,
 		})
 	})
 	if choosePlayerPromptFor(g, me.ID) == nil {

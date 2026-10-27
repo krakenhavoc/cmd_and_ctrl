@@ -48,7 +48,7 @@ func init() {
 					Among:    Players,
 					Except:   notMostLife(g),
 					Question: "The Black Gate — choose a player with the most life or tied for most life",
-					Then:     blackGateBar,
+					ThenKey:  blackGateBar,
 				}.Apply(NewContext(g, item))
 			},
 		}},
@@ -80,11 +80,12 @@ func notMostLife(g *game.Game) []uuid.UUID {
 	return out
 }
 
-// blackGateBar is ChoosePlayer.Then: it reads only the Context it is
-// handed, so an undo across the prompt resolves against the restored
-// game. A target that left in response is skipped (CR 608.2b).
-func blackGateBar(ctx *Context) error {
-	p := ctx.ChosenPlayer()
+// blackGateBar is the player chosen, keyed (#4253): it reads only the
+// Context it is handed (rebuilt from the asking item, so its targets are
+// the ability's own), so a restore across the prompt resolves against the
+// restored game. A target that left in response is skipped (CR 608.2b).
+// An on-disk key: never renamed, never reused.
+var blackGateBar = ChoosePlayerThen("option-pick/the-black-gate-most-life", func(ctx *Context, p uuid.UUID, _ []uuid.UUID) error {
 	if p == uuid.Nil {
 		return nil
 	}
@@ -99,4 +100,4 @@ func blackGateBar(ctx *Context) error {
 		}.Apply(ctx)
 	}
 	return nil
-}
+})
