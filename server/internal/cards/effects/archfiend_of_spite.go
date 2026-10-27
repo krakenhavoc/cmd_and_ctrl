@@ -65,13 +65,8 @@ func archfiendOfSpitePunish(g *game.Game, item *game.StackItem) error {
 	if p := g.PlayerByIDForEffect(victim); p == nil || p.Eliminated {
 		return nil
 	}
-	source := item.SourceCardID
-	loseIt := func(ctx *Context) error {
-		return ctx.Game.ChangePlayerLifeForEffect(source, victim, -n)
-	}
-	ctx := NewContext(g, item)
 	if len(PermanentsControlledBy(g, victim)) < n {
-		return loseIt(ctx)
+		return g.ChangePlayerLifeForEffect(item.SourceCardID, victim, -n)
 	}
 	return PickOption{
 		Player:   victim,
@@ -80,12 +75,24 @@ func archfiendOfSpitePunish(g *game.Game, item *game.StackItem) error {
 			{Label: "Lose " + strconv.Itoa(n) + " life"},
 			{Label: "Sacrifice " + strconv.Itoa(n) + " permanents"},
 		},
-		Then: func(ctx *Context, index int) error {
-			if index == 1 && len(PermanentsControlledBy(ctx.Game, victim)) >= n {
-				ctx.Game.PlayerSacrificesNForEffect(source, victim, nil, "Archfiend of Spite — sacrifice a permanent", n)
-				return nil
-			}
-			return loseIt(ctx)
-		},
-	}.Apply(ctx)
+		ThenKey: archfiendOfSpiteAnswered,
+		Carry:   []uuid.UUID{victim},
+		Nums:    []int{n},
+	}.Apply(NewContext(g, item))
 }
+
+// archfiendOfSpiteAnswered is the punished player's answer, keyed (#4253):
+// the player rides the prompt's Carry and the amount its Nums, and the
+// Archfiend is the prompt's source. An on-disk key: never renamed, never
+// reused.
+var archfiendOfSpiteAnswered = OptionPickThen("option-pick/archfiend-of-spite-life-or-sacrifice", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) == 0 || len(r.Nums) == 0 {
+		return nil
+	}
+	victim, n, source := r.Carry[0], r.Nums[0], ctx.Source()
+	if r.Index == 1 && len(PermanentsControlledBy(ctx.Game, victim)) >= n {
+		ctx.Game.PlayerSacrificesNForEffect(source, victim, nil, "Archfiend of Spite — sacrifice a permanent", n)
+		return nil
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(source, victim, -n)
+})

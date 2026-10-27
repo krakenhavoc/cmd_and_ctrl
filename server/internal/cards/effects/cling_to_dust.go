@@ -31,24 +31,28 @@ func init() {
 		Targets:          TargetCardInGraveyard("target card from a graveyard"),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Escape("{3}{B}", 5)},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind != game.TargetCard {
 					continue
 				}
-				controller := item.Controller
 				return ExileThenIfItWas{
 					Target: t.ID,
 					Was:    WasCreatureCard,
-					Then: func(ctx *Context) error {
-						return GainLife{Player: controller, Amount: 3}.Apply(ctx)
-					},
-					Otherwise: func(ctx *Context) error {
-						return DrawCards{Player: controller, N: 1}.Apply(ctx)
-					},
+					Keyed:  clingToDustIfCreature,
 				}.Apply(ctx)
 			}
 			return nil
 		},
 	})
 }
+
+// clingToDustIfCreature is the exile's keyed "if it was a creature card,
+// you gain 3 life. Otherwise, you draw a card" (#4253): the spell rides the
+// tail, so "you" is its controller. An on-disk key: never renamed, never
+// reused.
+var clingToDustIfCreature = IfItWasTail("if-it-was/cling-to-dust-life-or-draw", func(ctx *Context) error {
+	return GainLife{Player: ctx.Controller(), Amount: 3}.Apply(ctx)
+}, func(ctx *Context) error {
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})
