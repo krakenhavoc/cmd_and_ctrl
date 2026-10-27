@@ -19,6 +19,11 @@ import (
 // filter the typed names are checked against. A table waiting on either
 // could be undone but not saved and restored.
 //
+// Since #4361 S4 every outside pick is keyed: the closure form (Match,
+// Validate, Then) had no production caller and is gone, and a pick that
+// names no key of its own (Wish's "name a card to play", which only
+// mints the card into the container) rides outsidePickPlain.
+//
 // A keyed pick registers both halves under one key
 // (RegisterOutsidePick): the continuation, as a keyed choose-cards
 // continuation (choose_cards_keyed.go, ledgered "choose <key>"), and the
@@ -108,18 +113,17 @@ func boundOutsideMatch(fn OutsideMatchFunc, arg string) func(Card) bool {
 	return func(c Card) bool { return fn(c, arg) }
 }
 
+// outsidePickPlain is the pick of an outside-the-game prompt that names
+// no key of its own: every card, no set rule, and nothing after the pick
+// (the answer itself is the effect: a collection pick mints the named
+// card into the container). An on-disk key: never renamed, never reused.
+var outsidePickPlain = RegisterOutsidePick("engine/outside-pick-plain", nil,
+	func(*Game, CardsChosen) error { return nil })
+
 // outsidePickMatch is the filter a prompt queues with: the keyed pick's
-// registered one, or the closure form's Match. A keyed prompt that also
-// sets a closure is a programming error (ErrInvalidParam): the closure
-// would be silently dropped on a restore.
+// registered one, its word bound. p.Keyed must be set.
 func outsidePickMatch(p OutsidePickPrompt) (func(Card) bool, error) {
 	key := p.Keyed.Key()
-	if key == "" {
-		return p.Match, nil
-	}
-	if p.Match != nil || p.Validate != nil || p.Then != nil {
-		return nil, fmt.Errorf("%w: keyed outside pick %q also sets a closure", ErrInvalidParam, key)
-	}
 	fn, ok := lookupOutsideMatch(key)
 	if !ok {
 		return nil, fmt.Errorf("%w: outside pick %q", ErrUnknownEffectKey, key)
@@ -128,16 +132,10 @@ func outsidePickMatch(p OutsidePickPrompt) (func(Card) bool, error) {
 }
 
 // collectionFilterLocked is a collection pick's per-card filter and set
-// rule: the closure form's frame, or the keyed form's registered filter
-// and set rule. ok is false for a choice that is neither.
+// rule: the pick's registered filter and set rule. ok is false for a
+// choice that names no registered pick.
 func collectionFilterLocked(choice *PendingChoice) (pred func(Card) bool, validate func([]Card) bool, ok bool) {
-	if choice == nil {
-		return nil, nil, false
-	}
-	if choice.searchResume != nil {
-		return choice.searchResume.spec.Pred, choice.searchResume.spec.Validate, true
-	}
-	if choice.PickThen == "" {
+	if choice == nil || choice.PickThen == "" {
 		return nil, nil, false
 	}
 	fn, known := lookupOutsideMatch(choice.PickThen)

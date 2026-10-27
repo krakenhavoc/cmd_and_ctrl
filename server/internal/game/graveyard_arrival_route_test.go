@@ -36,12 +36,12 @@ func searchToGraveyard(t *testing.T, g *Game, p *Player, name string, dest ZoneK
 	ran := 0
 	g.WithWriteLock(func() {
 		err := g.SearchLibraryThenForEffect(SearchLibrarySpec{
-			Player:  p.ID,
-			Pred:    func(c Card) bool { return c.Name == name },
-			Dest:    dest,
-			Limit:   1,
-			Shuffle: true,
-			Then:    func(_ *Game, ids []uuid.UUID) error { ran++; found = ids; return nil },
+			Player:   p.ID,
+			Pred:     func(c Card) bool { return c.Name == name },
+			Dest:     dest,
+			Limit:    1,
+			Shuffle:  true,
+			ThenTail: searchHook(func(_ *Game, ids []uuid.UUID) error { ran++; found = ids; return nil }),
 		})
 		if err != nil {
 			t.Fatalf("SearchLibraryThenForEffect: %v", err)

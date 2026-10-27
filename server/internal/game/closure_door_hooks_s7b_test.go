@@ -92,16 +92,3 @@ func anyPlayerEachHook(fn func(g *Game, unsaved []uuid.UUID) error) AnyPlayerEac
 		return fn(g, r.Unsaved)
 	})
 }
-
-// outsidePickHooked is p as a keyed outside pick (RegisterOutsidePickRule)
-// whose continuation is fn, handed the picks, and whose set rule is
-// validate, when non-nil: a pick over a sideboard is keyed since #4361 S7b.
-func outsidePickHooked(p OutsidePickPrompt, fn func(g *Game, picked []uuid.UUID) error, validate func([]Card) bool) OutsidePickPrompt {
-	p.Keyed = RegisterOutsidePickRule("test/4361-s7b-outside-"+uuid.NewString(), nil, validate, func(g *Game, r CardsChosen) error {
-		if fn == nil {
-			return nil
-		}
-		return fn(g, r.Picked)
-	})
-	return p
-}

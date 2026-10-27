@@ -124,7 +124,6 @@ PendingChoice.optionPickResume               census:ChoiceResumeFrames          
 PendingChoice.payUnlessResume                census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume
 PendingChoice.pickTargetResume               census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume
 PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
-PendingChoice.searchResume                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume
 PendingChoice.triggerResume                  keyed                              # Game.PendingChoices.triggerResume
 Player.AttractionDeck                        census:IntrinsicAbilityCards       # Game.Seats.AttractionDeck
 Player.Command                               census:IntrinsicAbilityCards       # Game.Seats.Command
@@ -149,9 +148,6 @@ ReplacementEvent.stackItem                   census:ChoiceResumeFrames          
 ReplacementEvent.tokenTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail
 ReplacementEvent.zoneRoute                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute
 ReturnToHandCost.Filter                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ReturnToHand.Filter
-SearchLibrarySpec.Pred                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Pred
-SearchLibrarySpec.Then                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Then
-SearchLibrarySpec.Validate                   census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec.Validate
 StackItem.Effect                             census:ChoiceResumeFrames          # Game.StackMeta.Effect
 StackItem.modeSpec                           census:ChoiceResumeFrames          # Game.StackMeta.modeSpec
 StackItem.targetSpec                         census:ChoiceResumeFrames          # Game.StackMeta.targetSpec
@@ -211,7 +207,6 @@ resolutionTail.item                          keyed                              
 resolvingItem.card                           census:IntrinsicAbilityCards       # Game.resolving.card
 resolvingItem.item                           keyed                              # Game.resolving.item
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
-searchResumeFrame.spec                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec
 settledCreation.Chosen                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Chosen
 settledCreation.Groups                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Groups
 stepWalk.item                                keyed                              # Game.pausedStepWalk.item

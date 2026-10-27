@@ -48,7 +48,7 @@ func TestACollectionPickShowsItsSuggestionsToTheChooserAlone(t *testing.T) {
 	g.WithWriteLock(func() {
 		if !g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: chooser.ID, Question: "Burning Wish — reveal a sorcery card",
-			Match: func(c game.Card) bool { return c.IsSorcery() },
+			Keyed: testProtocolSorceryPick,
 		}) {
 			t.Fatal("no prompt")
 		}

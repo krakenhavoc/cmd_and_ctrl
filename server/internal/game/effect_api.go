@@ -2317,35 +2317,25 @@ type SearchLibrarySpec struct {
 	// "Search your library".
 	Reason string
 
-	// Validate is an extra legality check on the picked SET, for
-	// clauses the per-card predicate cannot express. Myriad
-	// Landscape's "two basic land cards that SHARE A LAND TYPE" is
-	// the case: no predicate over one card can say it. Called with
-	// the chosen cards (possibly zero of them, which is always
-	// legal — you may always fail to find).
-	Validate func([]Card) bool
-
-	// Rule is Validate as data (#4253 slice 5): a registered set rule
-	// (RegisterSearchRule) and the number it reads. A search prompt whose
-	// set rule is a Rule, and whose continuation is ThenTail, is written
-	// with the table, so it is a restore point. Set Validate or Rule, not
-	// both.
+	// Rule is an extra legality check on the picked SET, for clauses
+	// the per-card predicate cannot express: a registered set rule
+	// (RegisterSearchRule, #4253 slice 5) and the number it reads.
+	// Myriad Landscape's "two basic land cards that SHARE A LAND TYPE"
+	// is the case: no predicate over one card can say it. Never asked
+	// of an empty pick, which is always legal — you may always fail to
+	// find. The closure form (Validate) is gone since #4361 S4: a search
+	// prompt holds only data, so a table waiting on one is a restore
+	// point.
 	Rule SearchRule
 
-	// Then is the rest of the effect, run once the search has
+	// ThenTail is the rest of the effect, run once the search has
 	// finished — immediately when no prompt was needed, and from
-	// ResolveSearchLibrary when one was. It receives the instance
-	// IDs actually taken, in the order they were taken, so an effect
-	// like Fabled Passage's "then ... untap THAT LAND" can name what
-	// it found instead of re-deriving it.
-	Then func(g *Game, found []uuid.UUID) error
-
-	// ThenTail is Then as data (#4253 slice 3): a registered
-	// continuation (RegisterTail), told the found cards as TailOutcome.IDs.
-	// A search whose remaining work is all data — a battlefield search
-	// whose fetched permanent stops for an entry question (a fetchland's
-	// shockland) — is then a restore point while it waits. Set Then or
-	// ThenTail, not both; Then wins.
+	// ResolveSearchLibrary when one was: a registered continuation
+	// (RegisterTail, #4253 slice 3), told the instance IDs actually
+	// taken, in the order they were taken, as TailOutcome.IDs, so an
+	// effect like Fabled Passage's "then ... untap THAT LAND" can name
+	// what it found instead of re-deriving it. A zero tail is "nothing
+	// follows". The closure form (Then) is gone since #4361 S4.
 	ThenTail KeyedTail
 
 	// ToTop puts the found cards on TOP of the library, after the
@@ -2463,10 +2453,10 @@ type SearchLibrarySpec struct {
 // "share a type" clause. CR 701.23b is about exactly these: a search
 // for cards with a stated quality, as opposed to CR 701.23d's search
 // "simply for a quantity of cards". The engine reads it off the spec:
-// a nil Pred with no Validate is the unconditional search (Demonic
+// a nil Pred with no Rule is the unconditional search (Demonic
 // Tutor, Gamble, Entomb, Intuition).
 func (spec SearchLibrarySpec) statedQuality() bool {
-	return spec.Pred != nil || spec.Validate != nil || !spec.Rule.IsZero() || spec.namesQuality
+	return spec.Pred != nil || !spec.Rule.IsZero() || spec.namesQuality
 }
 
 // searchesGraveyard reports whether the library owner's graveyard is
@@ -2589,7 +2579,7 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 }
 
 // SearchLibraryThenForEffect is the real entry point: it runs the
-// search described by spec and then spec.Then.
+// search described by spec and then spec.ThenTail.
 //
 // The searcher chooses. Until S22 the engine took the first matches
 // in library order, which made a fetchland's entire strategic content
@@ -2599,7 +2589,7 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 // offers a real choice, the searcher gets a prompt.
 //
 // "A real choice" means: more matches than the effect may take, or a
-// search the searcher is allowed to come up short on, or a Validate
+// search the searcher is allowed to come up short on, or a set rule
 // constraint the whole match set does not already satisfy. The second
 // is every search for a card with a stated quality (CR 701.23b): the
 // searcher may find nothing even when exactly one match is there, so a
@@ -2622,11 +2612,6 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	p := g.playerByIDLocked(spec.libraryOwnerID())
 	if p == nil {
 		return ErrPlayerNotFound
-	}
-	if spec.Validate != nil && !spec.Rule.IsZero() {
-		// #4253 slice 5: one set rule. A closure beside a key would be
-		// dropped on a restore.
-		return fmt.Errorf("%w: search sets both Validate and the rule %q", ErrInvalidParam, spec.Rule.key)
 	}
 	if !spec.Rule.IsZero() && !KnownSearchRule(spec.Rule.key) {
 		return fmt.Errorf("%w: search rule %q", ErrUnknownEffectKey, spec.Rule.key)
@@ -2808,7 +2793,8 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		SearchHandCards: append([]uuid.UUID(nil), handMatches...),
 		// #4253 slice 5: the prompt holds the spec without its predicate,
 		// which listed the candidates above and is not read again.
-		searchResume: &searchResumeFrame{spec: spec.forPrompt(), undecided: undecided},
+		// #4361 S4: as data, the same frame a restore point rebuilds.
+		searchResume: newSearchResumeFrame(spec, undecided),
 	})
 	// #3998: "You control your opponents while they're searching their
 	// libraries" — for as long as this prompt is open. Only a search of
@@ -2987,24 +2973,12 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 		return g.finishSearchLocked(spec, p, found)
 	}
 	head, rest := ids[0], ids[1:]
-	if searchSpecIsData(spec) {
-		// #4253 slice 3: the rest of the search is data, so the entry's
-		// prompt (a fetched shockland's "pay 2 life?") is a restore
-		// point. The step is runSearchEntryStepLocked, the closure's
-		// twin below.
-		return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
-			Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
-		}})
-	}
-	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{then: func(g *Game, entered uuid.UUID) error {
-		out := found
-		if entered != uuid.Nil {
-			// A fresh slice rather than an append in place: two runs of
-			// the same continuation (an undo, then the same answer
-			// again) must not see each other's entry.
-			out = append(append(make([]uuid.UUID, 0, len(found)+1), found...), entered)
-		}
-		return g.searchEnterEachThenFinishLocked(spec, rest, out)
+	// #4253 slice 3: the rest of the search is data, so the entry's
+	// prompt (a fetched shockland's "pay 2 life?") is a restore point.
+	// The step is runSearchEntryStepLocked. Since #4361 S4 a search has
+	// no closure continuation, so this is the only form.
+	return g.searchEnterBattlefieldLocked(spec, p, head, &entryTail{search: &searchEntryRun{
+		Spec: searchTailSpecOf(spec), Rest: copyUUIDs(rest), Found: copyUUIDs(found),
 	}})
 }
 
@@ -3218,14 +3192,10 @@ func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uui
 	return g.runSearchThenLocked(spec, thenFound)
 }
 
-// runSearchThenLocked runs a search's continuation: the closure when
-// there is one, else the keyed tail.
+// runSearchThenLocked runs a search's continuation, the keyed tail.
 //
 // Caller must hold g.mu.
 func (g *Game) runSearchThenLocked(spec SearchLibrarySpec, found []uuid.UUID) error {
-	if spec.Then != nil {
-		return spec.Then(g, found)
-	}
 	return g.runKeyedTailLocked(spec.ThenTail, found, 0)
 }
 

@@ -55,7 +55,7 @@ func TestACollectionPickIsEnumeratedAndEveryMoveIsAccepted(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Burning Wish — reveal a sorcery card",
-			Match: func(c game.Card) bool { return c.IsSorcery() },
+			Keyed: testLegalSorceryPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))
@@ -104,7 +104,7 @@ func TestACollectionPairOffersOnlyPairsTheSetRuleAccepts(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Extrapolate the Impossible", Min: 0, Max: 2,
-			Validate: func(picked []game.Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
+			Keyed: testLegalTwoNamesPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))

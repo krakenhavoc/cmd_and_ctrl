@@ -986,10 +986,12 @@ type PendingChoice struct {
 	SearchMin int
 
 	// searchResume is the server-only continuation for a
-	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec, which
-	// carries the destination, the reveal / shuffle / tapped flags
-	// and the rest of the effect (Fabled Passage's "then untap that
-	// land", Gamble's random discard). Not serialised to the wire.
+	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec's data,
+	// which carries the destination, the reveal / shuffle / tapped
+	// flags and the rest of the effect as a keyed tail (Fabled
+	// Passage's "then untap that land", Gamble's random discard). Not
+	// serialised to the wire; written to a restore point
+	// (pendingChoices[].searchPrompt). Data only since #4361 S4.
 	searchResume *searchResumeFrame
 
 	// MayCastCard is the one card a PendingChoiceMayCast is offering

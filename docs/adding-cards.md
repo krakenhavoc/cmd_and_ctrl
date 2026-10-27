@@ -2426,7 +2426,7 @@ uses finishes it
 means the line after a fetch, a blink or a reanimation may run one
 action later than the call; if you read the permanent's zone, its ID or
 what arrived, use the effect's own continuation
-(`SearchLibrarySpec.Then`, `ReturnFromExile.Then`) rather than the next
+(`SearchLibrarySpec.ThenTail`, `ReturnFromExile.Then`) rather than the next
 line.
 
 **"Put … onto the battlefield" is one entry, and it can ask too**
@@ -6183,14 +6183,13 @@ g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 })
 ```
 
-`SearchLibrarySpec.Validate` is the same hook for a search, but write a
-search's set rule as a registered rule instead (#4253 slice 5):
+A search's set rule is a registered rule (#4253 slice 5; the closure
+`SearchLibrarySpec.Validate` is gone since #4361):
 `SearchLibrary{Rule: searchRuleDifferentNames}` or
 `searchRuleTotalManaValueAtMost.WithN(6)` (`effects/search_rules.go`, or
 `game.RegisterSearchRule` for a new clause, ledgered `searchrule <key>`).
-A search whose set rule is a `Rule` and whose "then" is a `ThenTail` is a
-restore point while its prompt is open; a closure `Validate` keeps the table
-off the disk. The per-card `Predicate` may stay a closure: it lists the
+With the "then" a `ThenTail`, the only continuation a search takes, the
+open prompt is a restore point. The per-card `Predicate` may stay a closure: it lists the
 candidates when the search starts and the prompt carries that list, so it
 is never read again. Both run before the prompt is dequeued, so a refused set comes back to the
 player as an error (`ErrChoiceSetRejected` for a choose-cards prompt)

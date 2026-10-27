@@ -532,6 +532,10 @@ var carriedNotRoundTrippable = map[string]string{
 	"PendingChoice.libraryOrderKeyed": "#4301: written only on a put_in_library prompt, whose PickThen it " +
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestPortentLookIsARestorePoint (effects).",
+	"PendingChoice.searchResume": "#4361 S4: written only on a search_library prompt, whose PickThen it " +
+		"takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestASearchPromptKeepsTheQualityAndDropsThePredicate and the other strict restores " +
+		"in search_prompt_keyed_test.go.",
 	"PendingChoice.dice": "#4307: written only on an option pick, and this probe's prompt is a discard. Its " +
 		"round trip is pinned by TestSquidFireKnightComponentPouchWaitsAndRestores (effects), a strict restore " +
 		"while the dice question is open whose answer runs the restored roll's tail.",

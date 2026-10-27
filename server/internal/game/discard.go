@@ -309,21 +309,23 @@ func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID,
 	// earlier top placements; they are put back on top here, through
 	// the same prompt (or at once, when there is one card).
 	if top, displaced := g.discardBatchTopPlacementsLocked(playerID, tops); len(top) >= 2 || (len(top) == 1 && displaced) {
-		then := opts.then
-		return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
+		spec := PutInLibrarySpec{
 			Chooser:   playerID,
 			Source:    opts.source,
 			Cards:     top,
 			From:      ZoneLibrary,
 			Placement: LibraryPlaceTop,
 			Reason:    "Put the discarded cards on top of your library in any order",
-			Then: func(g *Game) error {
-				if then == nil {
-					return nil
-				}
-				return then(g, landed)
-			},
-		})
+		}
+		// #4361 S4: a batch nothing follows (a cost discard whose
+		// commanders' owners answered before the payment) orders with a
+		// zero tail, which is data, so the prompt is a restore point. A
+		// closure "then" still needs the closure; it goes when the
+		// closure batch does (discardBatchLocked's route closure).
+		if then := opts.then; then != nil {
+			spec.Then = func(g *Game) error { return then(g, landed) }
+		}
+		return g.PutInLibraryInChosenOrderThenForEffect(spec)
 	}
 	if opts.then == nil {
 		return nil

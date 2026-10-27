@@ -31,9 +31,9 @@ import (
 // Three things keep it honest:
 //
 //   - the filter runs on the minted card's printed characteristics, on
-//     submit, with the same Pred / Validate pair a library search uses
-//     (the frame IS a library search's frame, searchResumeFrame, so the
-//     closure census gains no route);
+//     submit: the pick's registered filter and set rule, looked up by the
+//     key the prompt carries (outside_pick_keyed.go), so the prompt holds
+//     no closure (#4256; since #4361 S4 every collection pick is keyed);
 //   - the human picker searches the database through
 //     SearchOutsideCollection, which applies the same filter, so it only
 //     ever shows a legal card;
@@ -140,8 +140,9 @@ func CollectionSuggestionsForEffect(match func(Card) bool, limit int) []string {
 // player whose pool is the card database. It reports false, and queues
 // nothing, when no collection is installed or nothing in it matches.
 //
-// `match` is the per-card filter, the closure form's Match or the keyed
-// form's registered one with its word bound (outsidePickMatch).
+// `match` is the per-card filter, the pick's registered one with its
+// word bound (outsidePickMatch). p.Keyed is set (QueueOutsidePickForEffect
+// gives a pick with no key of its own outsidePickPlain).
 func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt, match func(Card) bool) bool {
 	if OutsideCollection == nil {
 		return false
@@ -172,27 +173,9 @@ func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt, match func(Card) b
 	if len(suggestions) == 0 {
 		return false
 	}
-	if key := p.Keyed.Key(); key != "" {
-		// #4256: the keyed pick carries its key, its filter's word and
-		// its carried IDs, and no frame, so a table waiting on it is a
-		// restore point. The answer finds the filter by the key.
-		g.QueueChoiceForEffect(PendingChoice{
-			Kind:                  PendingChoiceOutsideCollection,
-			Chooser:               p.Player,
-			FromPlayer:            p.Player,
-			Count:                 max,
-			Source:                p.Source,
-			Reason:                p.Question,
-			ChooseMin:             min,
-			ChooseMax:             max,
-			ChooseDestination:     p.outsideDestination(),
-			CollectionSuggestions: suggestions,
-			PickThen:              key,
-			PickMatchArg:          p.MatchArg,
-			OptionCarry:           copyUUIDs(p.Carry),
-		})
-		return true
-	}
+	// #4256: the keyed pick carries its key, its filter's word and its
+	// carried IDs, and no frame, so a table waiting on it is a restore
+	// point. The answer finds the filter by the key.
 	g.QueueChoiceForEffect(PendingChoice{
 		Kind:                  PendingChoiceOutsideCollection,
 		Chooser:               p.Player,
@@ -204,17 +187,9 @@ func (g *Game) queueCollectionPickLocked(p OutsidePickPrompt, match func(Card) b
 		ChooseMax:             max,
 		ChooseDestination:     p.outsideDestination(),
 		CollectionSuggestions: suggestions,
-		// A library search's frame: Pred is the per-card filter, Validate
-		// the set rule, Then the continuation. Reused so the closure
-		// census (testdata/closure_fields.txt) gains no route.
-		searchResume: &searchResumeFrame{spec: SearchLibrarySpec{
-			Player:   p.Player,
-			Source:   p.Source,
-			Pred:     p.Match,
-			Validate: p.Validate,
-			Then:     p.Then,
-			Reason:   p.Question,
-		}},
+		PickThen:              p.Keyed.Key(),
+		PickMatchArg:          p.MatchArg,
+		OptionCarry:           copyUUIDs(p.Carry),
 	})
 	return true
 }
@@ -390,21 +365,9 @@ func (g *Game) ResolveOutsideCollection(choiceID, chooserID uuid.UUID, names []s
 			ids = append(ids, g.mintFromCollectionLocked(chooserID, t))
 		}
 	}
-	if choice.searchResume == nil {
-		// #4256: a keyed pick's continuation, looked up by its key and
-		// handed the minted cards as a sideboard pick's is handed the
-		// cards it named.
-		g.emitChoiceEffectErrorLocked(chooserID, choice.Source, g.runKeyedChooseCardsLocked(choice, ids, true))
-	} else if spec := choice.searchResume.spec; spec.Then != nil || !spec.ThenTail.IsZero() {
-		if err := g.runSearchThenLocked(spec, ids); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    chooserID,
-				Source:   choice.Source,
-				ErrorMsg: err.Error(),
-			})
-		}
-	}
+	// #4256: the pick's continuation, looked up by its key and handed the
+	// minted cards as a sideboard pick's is handed the cards it named.
+	g.emitChoiceEffectErrorLocked(chooserID, choice.Source, g.runKeyedChooseCardsLocked(choice, ids, true))
 	g.runStateChecksLocked()
 	return nil
 }

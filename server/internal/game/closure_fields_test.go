@@ -143,7 +143,7 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 87,
+	"census:ChoiceResumeFrames": 82,
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and
@@ -175,6 +175,10 @@ var closureClassCeilings = map[string]int{
 	// ChangePlayerLifeThenForEffect, MillToZoneThen(Moved)ForEffect and
 	// the closure mill run; rad counters, the mill cost and a replaced
 	// move's life changes carry their rest as data.
+	//
+	// 92 (2026-10-27, #4361 S4): - PendingChoice.searchResume,
+	// searchResumeFrame.spec and SearchLibrarySpec.Pred/Then/Validate (the
+	// search frame holds only data; the outside pick is always keyed).
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
