@@ -13,7 +13,7 @@ import (
 // The variable sacrifice (ADR 0100 §3), read back from the announcement
 // (ctx.Sacrificed). "That much" is the life actually lost, so the gain
 // waits for the loss to settle through the CR 614 window
-// (ChangePlayerLifeThenForEffect, #793): a player whose life total
+// (ChangePlayerLifeKeyedForEffect, #793): a player whose life total
 // can't change loses nothing, and you gain nothing.
 //
 // Arcane matters only to splice, which reads the type line.

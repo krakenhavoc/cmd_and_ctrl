@@ -87,13 +87,13 @@ func TestLifeContinuationRunsWithTheReplacedAmount(t *testing.T) {
 	var got []int
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(doubleLifeReplacement(uuid.Nil))
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, 3,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, 3,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 1 || got[0] != 6 {
@@ -116,13 +116,13 @@ func TestLifeContinuationRunsAfterACR616Pause(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(uuid.Nil))
 		g.RegisterReplacementForTest(doubleLifeReplacement(uuid.Nil))
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, 3,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, 3,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 0 {
@@ -162,13 +162,13 @@ func TestLifeContinuationRunsWithZeroWhenTheChangeIsReplacedAway(t *testing.T) {
 			},
 			Label: "your life total can't change",
 		})
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, -4,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, -4,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 1 || got[0] != 0 {

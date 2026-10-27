@@ -52,7 +52,7 @@ func TestUnboundedMillUntilThatNeverMatchesDoesNotLose(t *testing.T) {
 	p := g.Seats[1]
 	never := func([]Card) bool { return false }
 	runOutAndCheck(t, g, p, func() error {
-		return g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, never, nil)
+		return g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(never), KeyedTail{})
 	})
 }
 
@@ -65,7 +65,7 @@ func TestBoundedMillUntilPastTheLibraryDoesNotLose(t *testing.T) {
 	size := p.Library.Size()
 	neverInThisLibrary := func(landed []Card) bool { return len(landed) >= size+5 }
 	runOutAndCheck(t, g, p, func() error {
-		return g.MillToZoneThenForEffect(p.ID, 0, ZoneGraveyard, neverInThisLibrary, nil)
+		return g.MillToZoneKeyedForEffect(p.ID, 0, ZoneGraveyard, hookMillUntil(neverInThisLibrary), KeyedTail{})
 	})
 }
 

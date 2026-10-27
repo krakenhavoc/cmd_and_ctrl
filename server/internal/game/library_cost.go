@@ -352,11 +352,11 @@ func (g *Game) payMillCostLocked(playerID uuid.UUID, n int) ([]uuid.UUID, error)
 		return nil, nil
 	}
 	// CR 701.17c: "the milled card" is found wherever it went, so a card
-	// Rest in Peace exiled is still recorded (#3847's allMoved form).
+	// Rest in Peace exiled is still recorded (#3847's allMoved form). The
+	// list is read back through the tail's report, not a closure (#4361
+	// S9), so a prompt over the mill stays a restore point.
 	var moved []uuid.UUID
-	err := g.MillToZoneThenMovedForEffect(playerID, n, ZoneGraveyard, func(_ *Game, ids []uuid.UUID) error {
-		moved = append(moved, ids...)
-		return nil
-	})
+	_, err := g.millThroughReplacementsTailLocked(playerID, n, ZoneGraveyard,
+		&millTail{dest: ZoneGraveyard, keyed: &KeyedTail{}, allMoved: true, report: &moved})
 	return moved, err
 }

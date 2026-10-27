@@ -202,7 +202,9 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		skip map[string]bool
 	}{
 		{reflect.ValueOf(ev.zoneRoute).Elem(), map[string]bool{"then": true, "simultaneousExit": true}},
-		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"then": true}},
+		// #4361 S9: a mill cost's read-back pointer, dropped on a restore
+		// as tokenTail.report is (the door has returned by then).
+		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"report": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
 		// #4253: combat damage, a release and redirected parts gate the
@@ -386,9 +388,11 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
 			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}
 		},
-		"a life tail's closure": func(c *PendingChoice) {
+		// #4361 S9: the life tail's closure is gone; what still gates is
+		// the rest of a replaced move's life changes (ADR 0178).
+		"a replaced move's life sequence": func(c *PendingChoice) {
 			c.replacementResume.ev.Kind = RepEventLife
-			c.replacementResume.ev.lifeTail = &lifeTail{then: func(*Game, int) error { return nil }}
+			c.replacementResume.ev.lifeTail = &lifeTail{move: &moveLifeRest{}}
 		},
 		"an amass's Army the mirror cannot write": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{
@@ -429,10 +433,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"a discard's closure": func(c *PendingChoice) {
 			c.replacementResume.ev.Kind = RepEventDiscard
 			c.replacementResume.ev.zoneRoute = &zoneRoute{Discard: true, then: func(*Game) error { return nil }}
-		},
-		"a mill amount whose then is a closure": func(c *PendingChoice) {
-			c.replacementResume.ev.Kind = RepEventMill
-			c.replacementResume.ev.mill = &millTail{dest: ZoneGraveyard, then: func(*Game, []uuid.UUID) error { return nil }}
 		},
 		"an exchange whose exit has a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.zoneRoute = &zoneRoute{simultaneousEntry: &settledExchangeEntry{CardID: uuid.New()},

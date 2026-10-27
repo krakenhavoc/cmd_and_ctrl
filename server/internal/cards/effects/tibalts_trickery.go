@@ -19,7 +19,7 @@ import (
 // done TO and BY the countered spell's controller, who may be anyone
 // at the table. The number is drawn from the game's keyed random
 // stream (an undo or restore redraws the same one), the mill waits for
-// its CR 614 window through MillToZoneThenForEffect, and the walk is
+// its CR 614 window through MillToZoneKeyedForEffect, and the walk is
 // Game.ExileUntilCastFreeForEffect, which is cascade's body with the
 // hit test passed in: here a nonland card whose name differs from the
 // countered spell's, read BEFORE the counter so a spell that is gone

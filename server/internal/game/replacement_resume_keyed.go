@@ -480,9 +480,8 @@ var replacementEventFields = map[string]replacementEventField{
 	"DiscardCause":           repFieldCarried,
 	"DiscardCauseController": repFieldCarried,
 
-	// A mill instruction's amount window (#4253 slice 10a). Its tail's
-	// data half is carried; a closure `then` gates
-	// (replacementEventKeyable).
+	// A mill instruction's amount window (#4253 slice 10a). Its tail is
+	// data (#4361 S9 deleted the closure `then`).
 	"MillPlayer": repFieldCarried,
 	"MillCount":  repFieldCarried,
 	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
@@ -600,11 +599,9 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	if t := ev.tokenTail; t != nil && t.then != nil {
 		return false
 	}
-	if t := ev.lifeTail; t != nil && t.then != nil {
-		return false
-	}
-	if t := ev.mill; t != nil && t.then != nil {
-		// #4253 slice 10a: a mill whose caller's "then" is a closure.
+	if t := ev.lifeTail; t != nil && t.move != nil {
+		// #4361 S9: the rest of a replaced move's life changes (ADR
+		// 0178). Its route rides the event, and neither is written.
 		return false
 	}
 	if ev.Kind == RepEventDamage && !g.damageEventIsData(ev) {

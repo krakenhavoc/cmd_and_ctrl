@@ -46,7 +46,7 @@ import (
 // replacement exiled instead of milling into a graveyard (Rest in Peace)
 // is still "those cards", and the permission covers it in exile. The mill
 // reports every card it took out of the library
-// (MillToZoneThenMovedForEffect), and the grant is one permission per
+// (MillToZoneKeyedMovedForEffect), and the grant is one permission per
 // zone those cards are in, sharing a single "a spell" (BudgetGroup).
 func init() {
 	Register(Spec{

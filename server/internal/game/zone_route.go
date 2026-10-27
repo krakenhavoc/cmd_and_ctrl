@@ -88,7 +88,7 @@ import (
 // #866 made that sequencing ONE body (routeAllThenLocked,
 // simultaneous.go) shared by every batched exit, and #893 put the mill
 // on it too. The mill above is therefore both shapes at once, on one
-// implementation: MillToZoneThenForEffect sequences through the
+// implementation: MillToZoneKeyedForEffect sequences through the
 // continuation, because a caller that reads what was milled cannot be
 // told while a commander's prompt is open, and the fire-and-forget
 // MillToZoneForEffect keeps the loop that proceeds AROUND a paused

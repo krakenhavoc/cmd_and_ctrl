@@ -100,9 +100,9 @@ func TestLockedLifeChangeEmitsNoEventAndTellsTheContinuationZero(t *testing.T) {
 	before := len(g.Events)
 	applied := -1
 	g.WithWriteLock(func() {
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, me.ID, -4,
-			func(_ *Game, n int) error { applied = n; return nil }); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, me.ID, -4,
+			lifeHook(func(_ *Game, n int) error { applied = n; return nil })); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if applied != 0 {

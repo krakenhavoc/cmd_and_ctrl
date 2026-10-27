@@ -168,7 +168,7 @@ var (
 		"g.BounceToHandThenForEffect / g.BounceCardsToHandThenForEffect, and gate the clause on `bounced`"}
 	tuckVerb = exitVerb{kind: "tuck", fix: "g.TuckCardsToLibraryKeyedForEffect (a batch of one is fine), " +
 		"and gate the clause on `tucked`"}
-	millVerb = exitVerb{kind: "mill", fix: "MillToZone.ThenTail or g.MillToZoneThenForEffect, and gate the clause " +
+	millVerb = exitVerb{kind: "mill", fix: "MillToZone.ThenTail or g.MillToZoneKeyedForEffect, and gate the clause " +
 		"on the `milled` list"}
 	discardVerb = exitVerb{kind: "random discard", fix: "g.DiscardRandomThenForEffect (#1027, ADR 0013 §5y), " +
 		"and gate the clause on the `discarded` list — a discard is an exit (ADR 0013 §5g), so a " +

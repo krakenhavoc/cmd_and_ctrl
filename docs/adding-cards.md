@@ -2286,7 +2286,7 @@ touches it.
 
 It can PAUSE, before any card is chosen, so `MillToZoneForEffect`'s
 slice is empty when it did. If your card reads what was milled, use
-`MillToZone{…, Then: …}` / `g.MillToZoneThenForEffect` — which you
+`MillToZone{…, ThenTail: …}` / `g.MillToZoneKeyedForEffect` — which you
 should be doing anyway, for #893's reason.
 
 **The MANA PRODUCED is a replaceable quantity too** (#1222,
@@ -5549,16 +5549,15 @@ not moved yet, and the card silently drains for nothing. Same lesson as
 
 ```go
 // "Target opponent loses X life. You gain life equal to the life lost this way."
-g.ChangePlayerLifeThenForEffect(src, opp, -x, func(g *game.Game, applied int) error {
-    return g.ChangePlayerLifeForEffect(src, me, -applied)  // applied is negative
-})
+// The tail is told the life that moved (negative for a loss) as its Amount.
+g.ChangePlayerLifeKeyedForEffect(src, opp, -x, ctx.ItemTail(thenGainTheLoss))
 
 // "EACH opponent loses X life. You gain life equal to the life lost this way."
 // The tail is told the total lost (positive) as its Amount.
 g.LoseLifeEachKeyedForEffect(src, ctx.Opponents(), x, ctx.Tail(thenGainLifeEqualToLost))
 ```
 
-`applied` is the post-replacement amount, and it is `0` when the change
+The amount is the post-replacement one, and it is `0` when the change
 was replaced away ("your life total can't change") or the player has
 left — conceded or eliminated, including while the change was waiting on
 their CR 616 prompt (#808) — the continuation is told either way, so a batch never stalls on a
@@ -5797,7 +5796,7 @@ exile". A card that reads the move at all reaches for the tail.
 **A mill reports what LANDED, through the same kind of tail (#893).** A mill
 opens the CR 614 window per card, so a replacement may stop to ask
 and what was milled is not knowable on the next line. `MillToZone{…, ThenTail: ctx.Tail(ref)}`
-and `g.MillToZoneThenForEffect` are the read-back — what the tail is told is
+and `g.MillToZoneKeyedForEffect` are the read-back — what the tail is told is
 CR 400.7's answer, the cards that ARRIVED in the destination, so a
 card an "exile it instead" replacement rewrote is not in it (a milled
 commander is: CR 903.9a asks its owner afterwards). `MillToZone` with no `ThenTail`,
@@ -7757,10 +7756,9 @@ tail)` (`LoseLifeEachKeyedForEffect` for a batch, `EarthbendKeyedForEffect` and
 `o.Amount` (the counters placed, the life that moved, negative for a loss) and
 reads the rest off the tail: `Carry` (the permanent), `N`, `Word` (a counter
 kind) and the asking item. `ctx.Tail(ref)` omits the item, for a body that reads
-only IDs. The closure door that remains (`ChangePlayerLifeThenForEffect`) is
-the engine's own plumbing;
-`TestNoCatalogCardCallsAClosureCounterOrLifeDoor` refuses a new catalog
-caller. A tail that two cards share is one key (`counter/double-plus-one`,
+only IDs. No closure door remains (#4361 S9 deleted
+`ChangePlayerLifeThenForEffect`), and
+`TestNoCatalogCardCallsAClosureCounterOrLifeDoor` keeps it gone. A tail that two cards share is one key (`counter/double-plus-one`,
 `counter/draw-per-counter`, `life/gain-equal-to-lost`, `counter/put-on-each-next`
 for a list of placements); a cumulative upkeep is keyed by its label.
 

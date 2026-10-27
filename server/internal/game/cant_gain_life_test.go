@@ -52,10 +52,10 @@ func TestCantGainLifeStopsTheGainAndItsEvent(t *testing.T) {
 	cut := len(g.Events)
 	g.WithWriteLock(func() {
 		g.PlayersCantGainLifeForEffect(uuid.Nil, me.ID, CantGainLifeEveryone, g.UntilEndOfTurnDuration(), "Skullcrack")
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, me.ID, 4, func(_ *Game, applied int) error {
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, me.ID, 4, lifeHook(func(_ *Game, applied int) error {
 			told = applied
 			return nil
-		}); err != nil {
+		})); err != nil {
 			t.Fatal(err)
 		}
 	})

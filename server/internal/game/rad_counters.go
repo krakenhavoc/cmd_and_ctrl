@@ -48,7 +48,7 @@ import "github.com/google/uuid"
 // it, so a proliferate in response mills one more card.
 //
 // "MILLED THIS WAY". The cards counted are the ones that ARRIVED in the
-// graveyard (MillToZoneThenForEffect, CR 400.7): a card a replacement
+// graveyard (MillToZoneKeyedForEffect, CR 400.7): a card a replacement
 // sent elsewhere ("if a card would be put into a graveyard from
 // anywhere, exile it instead") was not milled, and costs no life and
 // removes no counter. A library smaller than the count mills what it
@@ -129,43 +129,53 @@ func (g *Game) resolveRadTriggerLocked(player uuid.UUID) error {
 	if n <= 0 {
 		return nil
 	}
-	return g.MillToZoneThenForEffect(player, n, ZoneGraveyard, nil, func(g *Game, milled []uuid.UUID) error {
-		nonland := 0
-		for _, id := range milled {
-			if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
-				nonland++
-			}
-		}
-		if nonland == 0 {
-			return nil
-		}
-		return g.loseLifeFromRadiationLocked(player, nonland, func(g *Game, _ int) error {
-			if pl := g.playerByIDLocked(player); pl == nil || pl.Eliminated {
-				return nil
-			}
-			return g.AddPlayerCounterByForEffect(player, player, CounterRad, -nonland)
-		})
-	})
+	return g.MillToZoneKeyedForEffect(player, n, ZoneGraveyard, MillUntil{}, KeyedTail{Ref: radMilledTail, Player: player})
 }
+
+// radMilledTail is the rest of CR 728.1's effect once the mill has
+// settled, told the cards that LANDED in the graveyard (CR 400.7): the
+// nonland ones cost that much life, as one loss. Keyed (#4361 S9), so a
+// CR 616 prompt over the mill or over the loss is a restore point.
+var radMilledTail = RegisterTail("engine/rad-milled", func(g *Game, o TailOutcome) error {
+	player := o.Tail.Player
+	nonland := 0
+	for _, id := range o.IDs {
+		if c, ok := g.LookupCardForEffect(id); ok && !c.IsLand() {
+			nonland++
+		}
+	}
+	if nonland == 0 {
+		return nil
+	}
+	return g.loseLifeFromRadiationLocked(player, nonland, KeyedTail{Ref: radLifeLostTail, Player: player, N: nonland})
+})
+
+// radLifeLostTail removes one rad counter for each nonland card milled
+// (Tail.N), after the loss, also when the loss was replaced: the number
+// removed is the number milled, not the life that moved.
+var radLifeLostTail = RegisterTail("engine/rad-life-lost", func(g *Game, o TailOutcome) error {
+	player := o.Tail.Player
+	if pl := g.playerByIDLocked(player); pl == nil || pl.Eliminated {
+		return nil
+	}
+	return g.AddPlayerCounterByForEffect(player, player, CounterRad, -o.Tail.N)
+})
 
 // loseLifeFromRadiationLocked is `player` losing `amount` life from
 // radiation (CR 728.1a): the ordinary CR 614 life window, with the event
 // marked so a replacement can tell it apart (ReplacementEvent.
 // LifeFromRadiation) and the EventChangeLife it lands as says so too
-// (Event.FromRadiation). `then` runs with the delta that moved, as for
-// ChangePlayerLifeThenForEffect.
+// (Event.FromRadiation). `then` is told the delta that moved, as for
+// ChangePlayerLifeKeyedForEffect.
 //
 // The ability has no source (CR 728.1), so the event's Source is
 // uuid.Nil.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) loseLifeFromRadiationLocked(player uuid.UUID, amount int, then func(g *Game, applied int) error) error {
+func (g *Game) loseLifeFromRadiationLocked(player uuid.UUID, amount int, then KeyedTail) error {
 	p := g.playerByIDLocked(player)
 	if p == nil || p.Eliminated {
-		if then != nil {
-			return then(g, 0)
-		}
-		return nil
+		return g.runKeyedTailLocked(then, nil, 0)
 	}
 	ev := &ReplacementEvent{
 		Kind:              RepEventLife,
@@ -173,8 +183,8 @@ func (g *Game) loseLifeFromRadiationLocked(player uuid.UUID, amount int, then fu
 		LifeDelta:         -amount,
 		LifeFromRadiation: true,
 	}
-	if then != nil {
-		ev.lifeTail = &lifeTail{then: then}
+	if !then.IsZero() {
+		ev.lifeTail = &lifeTail{keyed: then}
 	}
 	_, err := g.changeLifeThroughReplacementsLocked(ev)
 	return err

@@ -144,8 +144,6 @@ ReplacementEvent.TokenGroups                 census:ChoiceResumeFrames          
 ReplacementEvent.damageTail                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail
 ReplacementEvent.entryTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail
 ReplacementEvent.keywordAction               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction
-ReplacementEvent.lifeTail                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.lifeTail
-ReplacementEvent.mill                        census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.mill
 ReplacementEvent.stackItem                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.stackItem
 ReplacementEvent.tokenTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.tokenTail
 ReplacementEvent.zoneRoute                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute
@@ -194,8 +192,6 @@ followUpPark.run                             census:ChoiceResumeFrames          
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
 lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item
-lifeTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.lifeTail.then
-millTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.mill.then
 modePickFrame.ability                        census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.source
 modeWalk.item                                keyed                              # Game.pausedModeWalk.item
