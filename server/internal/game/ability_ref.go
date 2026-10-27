@@ -251,7 +251,20 @@ func triggeredAbilityRefFor(t TriggeredAbility) *AbilityRef {
 // triggeredAbilityRefFor). Exported for the catalog's own lint, which
 // holds every declared row to being nameable.
 func TriggeredAbilityRef(t TriggeredAbility) *AbilityRef {
-	if t.row.key == "" || t.Effect == nil || t.TargetsFromReadsBoard {
+	if t.Effect == nil || t.TargetsFromReadsBoard {
+		return nil
+	}
+	return catalogTriggerRowRef(t)
+}
+
+// catalogTriggerRowRef names the catalog row t is a copy of, or nil when
+// it has no catalog identity or the running catalog does not hand the
+// same row back under the ref. It says nothing about whether an ITEM
+// built from the row can be rebuilt from it (TriggeredAbilityRef asks
+// that); a trigger frame, which holds the row itself and has not built
+// anything yet, needs only this (#4361 S14a, trigger_frame_keyed.go).
+func catalogTriggerRowRef(t TriggeredAbility) *AbilityRef {
+	if t.row.key == "" {
 		return nil
 	}
 	ref := AbilityRef{Key: t.row.key, Slot: AbilitySlotTriggered, Name: t.Key}
@@ -550,7 +563,8 @@ type LostStackAbility struct {
 }
 
 // LostStackAbilities lists every stamped stack item whose row this
-// binary cannot find. It reads the snapshot and the running catalog
+// binary cannot find, and every trigger frame paused on a prompt whose
+// row it cannot find (#4361 S14a; ItemID is then the prompt's ID). It reads the snapshot and the running catalog
 // and nothing else — the same lookup restore makes — so it gives the
 // same answer before or after Restore.
 func (s *GameSnapshot) LostStackAbilities() []LostStackAbility {
@@ -580,7 +594,8 @@ func (s *GameSnapshot) LostStackAbilities() []LostStackAbility {
 			})
 		}
 	}
-	return out
+	// #4361 S14a: a trigger paused in its announcement names its row too.
+	return append(out, s.lostTriggerFrames()...)
 }
 
 // cardNameOf finds a card's name anywhere in the snapshot's zones.
