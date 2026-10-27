@@ -1695,3 +1695,6 @@ tail tashas-hideous-laughter/exile-step
 choose choose-cards/as-enters-permanent
 choose choose-cards/opening-hand-exile
 choose choose-cards/untap-choice
+maycast may-cast/free-play-land-or-hand
+maycast may-cast/hideaway-play-land
+maycast may-cast/malcolm-free-cast
