@@ -1716,3 +1716,11 @@ tail engine/suspend-exiled
 tail engine/rad-life-lost
 tail engine/rad-milled
 choose engine/outside-pick-plain
+tail engine/adventure-exiled
+tail engine/discovered-to-hand
+tail engine/exiled-with-counter
+tail engine/explore-done
+tail engine/meld-exiled
+tail engine/paradigm-exiled
+tail engine/rebound-exiled
+tail engine/revealed-pick-then

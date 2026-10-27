@@ -24,7 +24,7 @@ import (
 //     involved), and the chosen cards leave together. A graveyard with
 //     no instant or sorcery card is skipped, and one with exactly one is
 //     not asked about. The exile is LINKED to the Saga as an object
-//     (CR 607.2a, ExileLinkedThenForEffect): the cards carry
+//     (CR 607.2a, ExileLinkedKeyedForEffect): the cards carry
 //     Card.ExiledWith, so the three later chapters read "exiled with
 //     this Saga" off the card, and a Saga that left and came back is a
 //     new object with no claim on them (CR 400.7).

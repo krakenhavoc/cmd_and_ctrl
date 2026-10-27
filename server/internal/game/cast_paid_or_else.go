@@ -78,6 +78,19 @@ var paidCastOrElseExiled = RegisterTail("engine/paid-cast-or-else-exiled", func(
 	return g.OfferPaidCastFromExileForEffect(offer, o.IDs[0])
 })
 
+func init() {
+	// IfNotCast is the tail's first word (#4361 S11b): a binary that does
+	// not register that "if you don't" body refuses the restore point
+	// (checkEffectKeys) rather than restoring an offer whose decline does
+	// nothing.
+	registerTailWordKeys(paidCastOrElseExiled, func(_ string, words []string) []string {
+		if len(words) == 0 || words[0] == "" || KnownCastFollowUp(CastFollowUpKey(words[0])) {
+			return nil
+		}
+		return []string{"cast follow-up " + words[0]}
+	})
+}
+
 // paidCastOrElseTail writes the offer onto the tail: Player and Source as
 // themselves, SourceName as Word, and IfNotCast and DeclineLabel as Words.
 func paidCastOrElseTail(o PaidCastOrElse) KeyedTail {

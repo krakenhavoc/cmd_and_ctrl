@@ -4662,11 +4662,14 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
 	}
+	// What follows the move, as a registered tail (#4361 S11b): the
+	// paradigm trigger, rebound's, the counter, the Adventure's grant.
+	var then KeyedTail
 	if resolved && spellHasParadigm(c, item) {
 		// CR 702.192a: the spell exiles itself as part of its own
 		// resolution, so nothing is left for flashback, rebound,
 		// buyback or the Adventure to replace (paradigm.go).
-		paradigmRouteLocked(c, item, &r)
+		then = paradigmRouteLocked(c, item, &r)
 	} else if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if !resolved && exilesInsteadOfGraveyard(item) {
@@ -4684,11 +4687,10 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 			return g.chooseResolutionExitLocked(c, item, exits)
 		}
 		if len(exits) == 1 {
-			exits[0].apply(&r)
+			then = exits[0].apply(&r)
 		}
 	}
-	_, err := g.routeCardToZoneLocked(r)
-	return err
+	return g.routeCardKeyedLocked(r, then)
 }
 
 // AbilityParams carries the announce-time choices that flow into an

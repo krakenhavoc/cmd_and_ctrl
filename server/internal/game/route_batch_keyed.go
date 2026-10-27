@@ -74,6 +74,24 @@ func (g *Game) routeAllKeyedLocked(r zoneRoute, ids []uuid.UUID, then KeyedTail)
 	return g.routeAllRunLocked(r, ids, &routeBatchRun{Then: snapshotKeyedTail(then)})
 }
 
+// routeCardKeyedLocked is routeCardToZoneLocked with the continuation as
+// data (#4361 S11b): the route's own card (r.CardID) is routed as a batch
+// of one, and `then` (a registered tail) is told it when it landed where
+// the route asked, nothing when it did not. The tail runs on every
+// outcome, as a route's closure continuation did. A zero tail is the
+// plain route. A CR 616 prompt on the move is a restore point.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) routeCardKeyedLocked(r zoneRoute, then KeyedTail) error {
+	if then.IsZero() {
+		_, err := g.routeCardToZoneLocked(r)
+		return err
+	}
+	id := r.CardID
+	r.CardID = uuid.Nil
+	return g.routeAllKeyedLocked(r, []uuid.UUID{id}, then)
+}
+
 // routeAllRunLocked starts a keyed batch over ids with run's continuation.
 //
 // Caller must hold g.mu in write mode.
@@ -188,8 +206,13 @@ func (g *Game) ExileCardKeyedForEffect(cardID uuid.UUID, then KeyedTail) error {
 	return g.ExileCardsKeyedForEffect([]uuid.UUID{cardID}, then)
 }
 
-// ExileLinkedKeyedForEffect is ExileLinkedThenForEffect with the
-// continuation as data.
+// ExileLinkedKeyedForEffect is ExileLinkedForEffect over several cards as
+// one simultaneous exile, with the continuation as data: `then` (a
+// registered tail) is told the ones that reached exile, as
+// ExileCardsKeyedForEffect's is. "Exile up to three target land cards" on
+// Steward of the Harvest, and any linked exile with a "then". (The closure
+// form, ExileLinkedThenForEffect, was deleted in #4361 S11b once nothing
+// called it.)
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ExileLinkedKeyedForEffect(source ObjectRef, ids []uuid.UUID, then KeyedTail) error {

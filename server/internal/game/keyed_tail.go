@@ -281,7 +281,8 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 }
 
 // unknownKeyedTail is checkEffectKeys' line for a tail the running
-// binary does not register.
+// binary does not register, and for any key the tail holds as a word that
+// it does not register either (registerTailWordKeys).
 func unknownKeyedTail(s *keyedTailSnapshot) []string {
 	if s == nil {
 		return nil
@@ -290,5 +291,31 @@ func unknownKeyedTail(s *keyedTailSnapshot) []string {
 	if !KnownTail(s.Key) {
 		out = append(out, "tail "+s.Key)
 	}
+	tailMu.RLock()
+	check := tailWordKeys[s.Key]
+	tailMu.RUnlock()
+	if check != nil {
+		out = append(out, check(s.Word, s.Words)...)
+	}
 	return append(out, unknownKeyedTail(s.Next)...)
+}
+
+// tailWordKeys holds, per tail key, the check for the keys that tail
+// holds as plain words (#4361 S11b): another registry's key (a
+// revealed-hand pick's continuation, a paid cast's "if you don't" body),
+// written as Word or Words because a tail has no field of that kind. The
+// check returns checkEffectKeys' line for each word this binary does not
+// register, so a restore refuses the file rather than running a
+// continuation that does nothing. Guarded by tailMu.
+var tailWordKeys = map[string]func(word string, words []string) []string{}
+
+// registerTailWordKeys records ref's word-key check. Call it once, from an
+// init, for a tail that holds another registry's key as a word.
+func registerTailWordKeys(ref TailRef, check func(word string, words []string) []string) {
+	if ref.key == "" || check == nil {
+		panic("game.registerTailWordKeys: a registered tail and a check are required")
+	}
+	tailMu.Lock()
+	tailWordKeys[ref.key] = check
+	tailMu.Unlock()
 }
