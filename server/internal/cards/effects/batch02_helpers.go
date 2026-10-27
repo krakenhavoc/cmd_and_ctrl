@@ -84,7 +84,7 @@ func b02ExileAllGraveyards(g *game.Game, item *game.StackItem) error {
 // b02EachPlayerMills is "each player mills a card" (Syr Konrad's
 // activated ability): every live seat, the controller included.
 func b02EachPlayerMills(g *game.Game, item *game.StackItem, n int) error {
-	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(n), nil)
+	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(n), game.KeyedTail{})
 }
 
 // b02PlantsYouControl lists the creatures with the Plant subtype

@@ -1442,9 +1442,7 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 	}
 	if t := ev.DamageTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
-		if t.Each != nil {
-			unknown = append(unknown, unknownKeyedTail(t.Each.Then)...)
-		}
+		unknown = append(unknown, unknownDamageEachKeys(t.Each)...)
 	}
 	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)

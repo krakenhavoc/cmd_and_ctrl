@@ -358,34 +358,38 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 // #893: "each creature card put into a graveyard this way" is what LANDED in
 // a graveyard (CR 400.7), so the tally is read from each mill's results, not
 // from the line after the mill. millEachPlayerInTurn carries them forward by
-// value, which is what makes an undo across a CR 616.1 prompt replay
-// identically rather than counting the first run's creatures twice.
-func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
+// value on its keyed chain (#4253), which is what makes an undo across a CR
+// 616.1 prompt replay identically rather than counting the first run's
+// creatures twice, and a restore at that prompt finish with the same count.
+func b35EachPlayerMillsXThenZombiesPerCreature(_ *game.StackItem, ctx *Context) error {
 	var seats []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p != nil {
 			seats = append(seats, p.ID)
 		}
 	}
-	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), func(ctx *Context, results []PlayerCards) error {
-		creatures := 0
-		for _, r := range results {
-			for _, cardID := range r.Cards {
-				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
-					creatures++
-				}
-			}
-		}
-		if creatures == 0 {
-			return nil
-		}
-		return CreateTokenAdvanced{
-			Controller: item.Controller,
-			Spec:       Token(BlackZombieToken()).EntersTapped(),
-			N:          creatures,
-		}.Apply(ctx)
-	})
+	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), ctx.ItemTail(dreadSummonsZombies))
 }
+
+// dreadSummonsZombies is Dread Summons's tail, told every card the mills
+// put into a graveyard: one tapped 2/2 black Zombie for each creature card
+// among them, for the spell's controller. An on-disk key.
+var dreadSummonsZombies = CardTail("dread-summons/zombie-per-creature-milled", func(ctx *Context, o game.TailOutcome) error {
+	creatures := 0
+	for _, cardID := range o.IDs {
+		if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
+			creatures++
+		}
+	}
+	if creatures == 0 {
+		return nil
+	}
+	return CreateTokenAdvanced{
+		Controller: ctx.Controller(),
+		Spec:       Token(BlackZombieToken()).EntersTapped(),
+		N:          creatures,
+	}.Apply(ctx)
+})
 
 // b35RedirectDamageToChosen is Screaming Nemesis's body: the Nemesis
 // deals the event's amount, stamped onto item.Params.Amount by a

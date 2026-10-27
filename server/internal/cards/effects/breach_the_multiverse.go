@@ -35,7 +35,7 @@ func init() {
 			// prompt one asks is the only one open (#4266); the picks are
 			// parked behind the last of them.
 			Instruction(func(ctx *Context) error {
-				return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(10), nil)
+				return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(10), game.KeyedTail{})
 			}),
 			Instruction(func(ctx *Context) error {
 				return breachAskNext(ctx.Game, ctx.Item, apnapPlayers(ctx.Game), nil)

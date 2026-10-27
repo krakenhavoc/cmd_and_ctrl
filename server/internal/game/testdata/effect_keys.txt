@@ -1680,3 +1680,15 @@ tail engine/exile-return-transformed
 tail engine/library-order-leg-landed
 tail engine/ordered-picks-sacrificed
 tail engine/sacrifice-leg-settled
+tail damage-steps/next
+tail dread-summons/zombie-per-creature-milled
+tail dredge/return-then-draw
+tail each-player/mill-step
+tail each-player/mill-until-land-step
+tail fiery-annihilation/after-damage
+tail recipient/cant-be-regenerated-if-dealt-damage
+tail recipient/drain-life-gain-up-to
+tail recipient/exile-if-dealt-damage-would-die
+tail recipient/loses-indestructible-if-dealt-damage
+tail red-suns-zenith/shuffle-into-library
+tail tashas-hideous-laughter/exile-step

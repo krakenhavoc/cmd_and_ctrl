@@ -45,5 +45,5 @@ func mindskinnerMill(g *game.Game, item *game.StackItem, _ game.EffectParams) er
 		return nil
 	}
 	// One opponent's library at a time in APNAP order (#4266).
-	return millEachPlayerInTurn(NewContext(g, item), b27OtherOpponents(g, item.Controller, uuid.Nil), constantMill(n), nil)
+	return millEachPlayerInTurn(NewContext(g, item), b27OtherOpponents(g, item.Controller, uuid.Nil), constantMill(n), game.KeyedTail{})
 }

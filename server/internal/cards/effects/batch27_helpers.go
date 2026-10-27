@@ -424,22 +424,19 @@ func b27DealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, e
 // reached exile, at once on a clean run and from the answer when a prompt paused
 // it. A player no longer in the game exiles nothing and `then` still runs. It
 // may be nil.
-func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshold int, then func(g *game.Game, exiled []uuid.UUID) error) error {
+func b27ExileTopUntilTotalManaValueThen(ctx *Context, player uuid.UUID, threshold int, then game.KeyedTail) error {
 	if ctx.PlayerByID(player) == nil {
-		if then == nil {
-			return nil
-		}
-		return then(ctx.Game, nil)
+		return then.Run(ctx.Game, nil)
 	}
 	mill := MillToZone{
 		Player: player,
 		To:     game.ZoneExile,
 		Until:  UntilTotalManaValueOf(threshold),
 	}
-	if then != nil {
-		// A chained caller (eachPlayerInTurn) still hands a closure: the
-		// closure door, with the clause as its predicate.
-		return ctx.Game.MillToZoneThenForEffect(player, 0, game.ZoneExile, mill.Until.Pred(), then)
+	if !then.IsZero() {
+		// A chained caller (eachPlayerInTurn) hands a registered tail:
+		// the keyed run (#4253 slice 9).
+		return ctx.Game.MillToZoneKeyedForEffect(player, 0, game.ZoneExile, mill.Until, then)
 	}
 	return mill.Apply(ctx)
 }

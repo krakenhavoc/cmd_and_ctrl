@@ -81,7 +81,7 @@ func init() {
 							ids = append(ids, c.InstanceID)
 						}
 					}
-					return DealDamageToEachThen(ctx, ids, 10, nil)
+					return DealDamageToEachThen(ctx, ids, 10, RecipientThen{})
 				},
 			},
 		},

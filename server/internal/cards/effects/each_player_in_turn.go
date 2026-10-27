@@ -25,14 +25,11 @@ import (
 // the next library is not touched until it is answered. Doomsday
 // Excruciator (doomsdayExileFrom) does the same by hand; a card that does it for
 // several players calls the helpers below instead of writing another copy.
-
-// PlayerCards is one player's share of a multi-player instruction: whose
-// library it was done to and which cards reached the destination zone (CR
-// 400.7, the cards that ARRIVED), top of the library first.
-type PlayerCards struct {
-	Player uuid.UUID
-	Cards  []uuid.UUID
-}
+//
+// The chain is data (#4253): each step is a registered tail
+// (registerEachPlayerStep) carrying the players still to go, the cards done
+// so far and the card's own tail, so a prompt any library's instruction
+// pauses on is a restore point.
 
 // apnapOrder returns the members of `players` that are still in the game, in
 // APNAP order (CR 101.4). A player named twice is listed once.
@@ -50,79 +47,98 @@ func apnapOrder(g *game.Game, players []uuid.UUID) []uuid.UUID {
 	return out
 }
 
-// eachPlayerInTurn runs `act` for each of `players` in APNAP order, each one
-// from the previous one's continuation, and then runs `done` with every
-// player's result in that order. `act` must call `next` exactly once, with the
-// cards it did the instruction to, from wherever its own instruction ends:
-// inline on a clean run, from the answer when a prompt paused it. `done` is
-// where the card does anything that follows the instruction (a count, a cast
-// permission, a reanimation), because that waits for the last player; it may
-// be nil.
-//
-// The results are carried forward BY VALUE, never through a variable the
-// continuations share: an undo across a prompt replays the continuation, and a
-// list built up in a captured slice would count the first run's cards twice
-// (the property Dread Summons, #893, needs).
-func eachPlayerInTurn(
-	g *game.Game,
-	players []uuid.UUID,
-	act func(g *game.Game, player uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error,
-	done func(g *game.Game, results []PlayerCards) error,
-) error {
-	return eachPlayerFrom(g, apnapOrder(g, players), nil, act, done)
-}
+// eachPlayerStepFunc starts one player's share of a keyed each-player
+// chain: `n` is that player's number (its entry in the chain's Nums, 0 when
+// the chain carries none), and `step` is the tail the instruction must end
+// on, told the cards it did the instruction to, from wherever it ends:
+// inline on a clean run, from the answer when a prompt paused it. The ctx
+// is rebuilt from the step (tailContext).
+type eachPlayerStepFunc func(ctx *Context, player uuid.UUID, n int, step game.KeyedTail) error
 
-func eachPlayerFrom(
-	g *game.Game,
-	players []uuid.UUID,
-	results []PlayerCards,
-	act func(g *game.Game, player uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error,
-	done func(g *game.Game, results []PlayerCards) error,
-) error {
-	if len(players) == 0 {
-		if done == nil {
-			return nil
-		}
-		return done(g, results)
-	}
-	head, rest := players[0], players[1:]
-	return act(g, head, func(g *game.Game, cards []uuid.UUID) error {
-		// A fresh slice per step: the previous step's list is not ours to
-		// append into, because an undo replays from it.
-		so := make([]PlayerCards, len(results), len(results)+1)
-		copy(so, results)
-		so = append(so, PlayerCards{Player: head, Cards: append([]uuid.UUID(nil), cards...)})
-		return eachPlayerFrom(g, rest, so, act, done)
+// registerEachPlayerStep registers one step of a keyed each-player chain
+// under key, an on-disk identity: never renamed, never reused, ledgered
+// "tail <key>". The step's Carry is the players still to go and the cards
+// done so far (packIDLists), its Nums the numbers of the players still to
+// go (empty for a chain with none), and its Next the card's own tail, told
+// every card the chain did its instruction to, library by library in APNAP
+// order, once the last player is done. Every other field (Player, Source,
+// N, Asked) is the card's, carried unchanged. Call it once, from a
+// package-level var.
+func registerEachPlayerStep(key string, act eachPlayerStepFunc) game.TailRef {
+	return game.RegisterTail(key, func(g *game.Game, o game.TailOutcome) error {
+		remaining, landed := unpackIDPair(o.Tail.Carry)
+		landed = append(append([]uuid.UUID(nil), landed...), o.IDs...)
+		return eachPlayerStepFrom(g, o.Tail, remaining, o.Tail.Nums, landed, act)
 	})
 }
 
-// millEachPlayerInTurn is "each of these players mills N cards": each library
-// in APNAP order, one prompt at a time, then `done` with what each milled.
-// `n` is asked once per player BEFORE any of them mills, so a count that reads
-// the table ("cards equal to the number of cards in their hand", Folio of
-// Fancies) is read as the instruction begins, as the paper instruction does,
-// and not after an earlier player's mill. A player whose N is not positive
-// mills nothing and is still in the results, with no cards.
+// eachPlayerInTurn starts a keyed each-player chain: `act` is done for each
+// of `players` in APNAP order (CR 101.4), each from the previous one's
+// continuation, and then `done` is told every card the chain did the
+// instruction to. `step` is the chain's registered step
+// (registerEachPlayerStep) with the card's own fields set (Player, Source,
+// N, Asked). `nums`, when not nil, is each player's number, read by `act`.
 //
-// `ctx` is only used for its item and game; `done` gets a context rebuilt from
-// the live game, as MillToZone.ThenTail does.
-func millEachPlayerInTurn(
-	ctx *Context,
-	players []uuid.UUID,
-	n func(player uuid.UUID) int,
-	done func(ctx *Context, results []PlayerCards) error,
-) error {
-	counts := make(map[uuid.UUID]int, len(players))
-	for _, id := range players {
-		counts[id] = n(id)
+// The cards are carried forward BY VALUE on the step's tail, never through
+// a variable the continuations share: an undo across a prompt replays the
+// tail, and a list built up in a captured slice would count the first
+// run's cards twice (the property Dread Summons, #893, needs).
+func eachPlayerInTurn(g *game.Game, step game.KeyedTail, players []uuid.UUID, nums func(uuid.UUID) int, done game.KeyedTail, act eachPlayerStepFunc) error {
+	order := apnapOrder(g, players)
+	var ns []int
+	if nums != nil {
+		for _, id := range order {
+			ns = append(ns, nums(id))
+		}
 	}
-	item := ctx.Item
-	return eachPlayerInTurn(ctx.Game, players,
-		func(g *game.Game, player uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
-			// The chain's `next` is a closure, so the closure door.
-			return g.MillToZoneThenForEffect(player, counts[player], game.ZoneGraveyard, nil, next)
-		},
-		contextDone(item, done))
+	step.Next = nil
+	if !done.IsZero() {
+		next := done
+		step.Next = &next
+	}
+	return eachPlayerStepFrom(g, step, order, ns, nil, act)
+}
+
+// eachPlayerStepFrom does the instruction to the head of `remaining`, the
+// step's tail carrying the rest, or hands `landed` to the card's tail when
+// nobody is left.
+func eachPlayerStepFrom(g *game.Game, step game.KeyedTail, remaining []uuid.UUID, nums []int, landed []uuid.UUID, act eachPlayerStepFunc) error {
+	if len(remaining) == 0 {
+		if step.Next == nil {
+			return nil
+		}
+		return step.Next.Run(g, landed)
+	}
+	head := remaining[0]
+	n := 0
+	var rest []int
+	if len(nums) > 0 {
+		n, rest = nums[0], append([]int(nil), nums[1:]...)
+	}
+	step.Carry = packIDLists(remaining[1:], landed)
+	step.Nums = rest
+	return act(tailContext(g, step), head, n, step)
+}
+
+// millEachPlayerInTurn is "each of these players mills N cards": each library
+// in APNAP order, one prompt at a time, then `done`, a registered tail, is
+// told every card that reached a graveyard, library by library. `n` is asked
+// once per player BEFORE any of them mills, so a count that reads the table
+// ("cards equal to the number of cards in their hand", Folio of Fancies) is
+// read as the instruction begins, as the paper instruction does, and not
+// after an earlier player's mill. A player whose N is not positive mills
+// nothing. `done` may be zero.
+func millEachPlayerInTurn(ctx *Context, players []uuid.UUID, n func(player uuid.UUID) int, done game.KeyedTail) error {
+	return eachPlayerInTurn(ctx.Game, ctx.ItemTail(millEachStep), players, n, done, millEachAct)
+}
+
+// millEachStep is one step of millEachPlayerInTurn's chain. An on-disk key.
+var millEachStep = registerEachPlayerStep("each-player/mill-step", millEachAct)
+
+// millEachAct mills `n` cards from one player's library, the keyed mill
+// (#4253 slice 9), so a leg's CR 616 prompt is a restore point.
+func millEachAct(ctx *Context, player uuid.UUID, n int, step game.KeyedTail) error {
+	return ctx.Game.MillToZoneKeyedForEffect(player, n, game.ZoneGraveyard, game.MillUntil{}, step)
 }
 
 // exileTopEachPlayerInTurn is "exile the top card of each of these players'
@@ -196,17 +212,6 @@ func exileTopEachFrom(g *game.Game, step game.KeyedTail, remaining, landed []uui
 	}
 	step.Carry = packIDLists(remaining[1:], landed)
 	return g.ExileTopWithPermissionKeyedForEffect(head, grantee, step.N, perm, step)
-}
-
-// contextDone adapts a card's continuation, written over a Context, to
-// eachPlayerInTurn's, which is handed the live game.
-func contextDone(item *game.StackItem, done func(ctx *Context, results []PlayerCards) error) func(g *game.Game, results []PlayerCards) error {
-	if done == nil {
-		return nil
-	}
-	return func(g *game.Game, results []PlayerCards) error {
-		return done(NewContext(g, item), results)
-	}
 }
 
 // constantMill is the N of a mill that names one number for every player.

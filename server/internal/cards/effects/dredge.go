@@ -65,17 +65,31 @@ func Dredge(n int) game.ReplacementEffect {
 // mill first (it can pause on a replacement's prompt), then the return.
 // The card is still read from the graveyard when the mill is done, so a
 // card something else removed in between is simply not returned.
+//
+// The return rides the mill as data (#4253): the card and the parked draw
+// (DrawDone.Park) are the keyed tail's Carry, so a CR 616 prompt the mill
+// pauses on is a restore point.
 func dredgeBody(g *game.Game, drawer, card uuid.UUID, n int, done game.DrawDone) error {
-	return g.MillToZoneThenForEffect(drawer, n, game.ZoneGraveyard, nil,
-		func(g *game.Game, _ []uuid.UUID) error {
-			if z := g.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneGraveyard {
-				if err := g.ReturnFromGraveyardForEffect(card, game.ZoneHand); err != nil {
-					return err
-				}
-			}
-			return done.Run(g)
-		})
+	then := game.KeyedTail{Ref: dredgeReturn, Player: drawer, Carry: []uuid.UUID{card, done.Park(g)}}
+	return g.MillToZoneKeyedForEffect(drawer, n, game.ZoneGraveyard, game.MillUntil{}, then)
 }
+
+// dredgeReturn is the end of a dredge's mill: the card (Carry[0]) returns
+// from the graveyard to its owner's hand if it is still there, then the
+// rest of the draw (the parked DrawDone, Carry[1]) is paid. An on-disk
+// key.
+var dredgeReturn = game.RegisterTail("dredge/return-then-draw", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	card := o.Tail.Carry[0]
+	if z := g.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneGraveyard {
+		if err := g.ReturnFromGraveyardForEffect(card, game.ZoneHand); err != nil {
+			return err
+		}
+	}
+	return game.DrawDoneByID(o.Tail.Carry[1]).Run(g)
+})
 
 // gyCardIDs lists the cards in a player's graveyard, oldest
 // first, optionally filtered.

@@ -64,7 +64,7 @@ func init() {
 					if n <= 0 {
 						return nil
 					}
-					return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), nil)
+					return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), game.KeyedTail{})
 				},
 			},
 			{

@@ -55,7 +55,7 @@ var oneRingMillTail = RingTail("then/one-ring-to-rule-them-all-mill", func(ctx *
 		}
 	}
 	// One library at a time in APNAP order (#4266).
-	return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), nil)
+	return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), game.KeyedTail{})
 })
 
 // oneRingDrain is chapter III.
