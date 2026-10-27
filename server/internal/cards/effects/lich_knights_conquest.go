@@ -59,21 +59,23 @@ var lichKnightsChosen = RegisterPermanentsPick("prompt-run/lich-knights-conquest
 		if picked.Count() == 0 {
 			return nil
 		}
-		item := ctx.Item
-		return ctx.Game.SacrificeAllThenForEffect(ctx.Source(), picked.Cards(),
-			func(g *game.Game, sacrificed []uuid.UUID) error {
-				n := len(sacrificed)
-				if n == 0 {
-					return nil
-				}
-				return ReturnChosenFromGraveyard{
-					Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
-					Match:    game.Card.IsCreature,
-					Min:      n,
-					Max:      n,
-				}.Apply(NewContext(g, item))
-			})
+		return ctx.Game.SacrificeAllKeyedForEffect(ctx.Source(), picked.Cards(), ctx.ItemTail(lichKnightsReturn))
 	},
+})
+
+// lichKnightsReturn is "return that many creature cards", told what was
+// really sacrificed, keyed (#4253 slice 10a).
+var lichKnightsReturn = CardTail("then/lich-knights-conquest-return", func(ctx *Context, o game.TailOutcome) error {
+	n := len(o.IDs)
+	if n == 0 {
+		return nil
+	}
+	return ReturnChosenFromGraveyard{
+		Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
+		Match:    game.Card.IsCreature,
+		Min:      n,
+		Max:      n,
+	}.Apply(ctx)
 })
 
 // lichKnightsFodder is every artifact, enchantment and token the

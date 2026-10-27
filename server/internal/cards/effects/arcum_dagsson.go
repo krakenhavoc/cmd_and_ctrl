@@ -50,15 +50,23 @@ func arcumDagssonSacrificeThenSearch(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	return SacrificePermanent{Target: target, Then: func(ctx *Context, _ bool) error {
-		return SearchLibrary{
-			Player:    player,
-			Predicate: func(c game.Card) bool { return c.IsArtifact() && !c.IsCreature() },
-			Dest:      game.ZoneBattlefield,
-			Limit:     1,
-			Shuffle:   true,
-			Optional:  true,
-			Reason:    "Arcum Dagsson — you may search for a noncreature artifact card",
-		}.Apply(ctx)
-	}}.Apply(ctx)
+	return SacrificePermanent{Target: target, ThenTail: withCarry(ctx.ItemTail(arcumDagssonSearch), player)}.Apply(ctx)
 }
+
+// arcumDagssonSearch is "that creature's controller may search their
+// library for a noncreature artifact card", after the sacrifice, keyed
+// (#4253 slice 10a): the controller is Carry[0].
+var arcumDagssonSearch = CardTail("then/arcum-dagsson-search", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return SearchLibrary{
+		Player:    o.Tail.Carry[0],
+		Predicate: func(c game.Card) bool { return c.IsArtifact() && !c.IsCreature() },
+		Dest:      game.ZoneBattlefield,
+		Limit:     1,
+		Shuffle:   true,
+		Optional:  true,
+		Reason:    "Arcum Dagsson — you may search for a noncreature artifact card",
+	}.Apply(ctx)
+})

@@ -28,17 +28,20 @@ func init() {
 			TargetPermanent("target creature or enchantment", Or(Creature(), Enchantment())),
 			TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1),
 		),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// The Role is the sentence after the destruction, so it rides
-			// the destruction's continuation (a replaced or still-pending
-			// move settles first).
-			role := func(g *game.Game, _ []uuid.UUID) error {
-				return createRoleOnClauseTarget(NewContext(g, item), 1, RoleWicked)
-			}
+			// the destruction's keyed tail (a replaced or still-pending
+			// move settles first; #4253 slice 10a).
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-				return ctx.Game.DestroyPermanentsThenForEffect([]uuid.UUID{t.ID}, role)
+				return ctx.Game.DestroyPermanentsKeyedForEffect([]uuid.UUID{t.ID}, ctx.ItemTail(shatterTheOathRole))
 			}
-			return role(ctx.Game, nil)
+			return createRoleOnClauseTarget(ctx, 1, RoleWicked)
 		},
 	})
 }
+
+// shatterTheOathRole is "create a Wicked Role token attached to up to one
+// target creature you control", after the destruction.
+var shatterTheOathRole = CardTail("then/shatter-the-oath-role", func(ctx *Context, _ game.TailOutcome) error {
+	return createRoleOnClauseTarget(ctx, 1, RoleWicked)
+})

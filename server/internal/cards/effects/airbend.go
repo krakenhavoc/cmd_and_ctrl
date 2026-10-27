@@ -86,7 +86,7 @@ func (e ExileWithPermission) Apply(ctx *Context) error {
 	}
 	if e.Linked {
 		link, _ := ctx.SourceRef()
-		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, grantOverLanded(e.permission()))
+		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, grantOverLandedTail(e.permission()))
 	}
 	return exileAllWithPermission(ctx.Game, []uuid.UUID{e.Target}, e.permission())
 }
@@ -132,20 +132,28 @@ func (e ExileWithPermission) permission() game.CastPermission {
 // one airbend of two players' permanents hands each player their own
 // card back.
 func exileAllWithPermission(g *game.Game, ids []uuid.UUID, perm game.CastPermission) error {
-	return g.ExileCardsThenForEffect(ids, grantOverLanded(perm))
+	return g.ExileCardsKeyedForEffect(ids, grantOverLandedTail(perm))
 }
 
-// grantOverLanded is exileAllWithPermission's continuation: `perm` over
-// each card that landed in exile.
-func grantOverLanded(perm game.CastPermission) func(g *game.Game, landed []uuid.UUID) error {
-	return func(g *game.Game, landed []uuid.UUID) error {
-		for _, id := range landed {
-			p := perm
-			p.Zone = game.ZoneExile
-			g.GrantCastPermissionOverCardForEffect(id, p)
-		}
+// grantOverLanded is exileAllWithPermission's continuation, keyed (#4253
+// slice 10a): the tail's Permission over each card that landed in exile,
+// carried as data so a table waiting on the exile's prompt is a restore
+// point. An on-disk key.
+var grantOverLanded = game.RegisterTail("exile/grant-permission-over-landed", func(g *game.Game, o game.TailOutcome) error {
+	if o.Tail.Permission == nil {
 		return nil
 	}
+	for _, id := range o.IDs {
+		p := *o.Tail.Permission
+		p.Zone = game.ZoneExile
+		g.GrantCastPermissionOverCardForEffect(id, p)
+	}
+	return nil
+})
+
+// grantOverLandedTail is grantOverLanded with `perm` on it.
+func grantOverLandedTail(perm game.CastPermission) game.KeyedTail {
+	return game.KeyedTail{Ref: grantOverLanded, Permission: &perm}
 }
 
 // Airbend is the AVATAR keyword action: "Exile it. While it's

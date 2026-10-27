@@ -3,6 +3,8 @@ package effects
 import (
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -49,21 +51,29 @@ func init() {
 			if !ok {
 				return nil
 			}
-			types := append([]string(nil), c.Effective().Types...)
-			shares := func(r game.Card) bool {
-				for _, t := range types {
-					if r.HasCardType(strings.ToLower(t)) {
-						return true
-					}
-				}
-				return false
-			}
-			return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, func(g *game.Game, _ bool) error {
-				return RevealUntilThenPutOntoBattlefield{
-					Match:  shares,
-					Reason: "Reality Scramble — revealed until a card sharing a type",
-				}.Apply(NewContext(g, item))
-			})
+			// Keyed (#4253 slice 10a): the card's types ride the tail's
+			// Word, read before it moved.
+			types := strings.Join(c.Effective().Types, ",")
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{ToBottom: true},
+				withWord(ctx.ItemTail(realityScrambleReveal), types))
 		},
 	})
 }
+
+// realityScrambleReveal is "reveal cards until one that shares a card type
+// with it", after the tuck: the types are the tail's Word.
+var realityScrambleReveal = CardTail("then/reality-scramble-reveal", func(ctx *Context, o game.TailOutcome) error {
+	types := strings.Split(o.Tail.Word, ",")
+	shares := func(r game.Card) bool {
+		for _, t := range types {
+			if t != "" && r.HasCardType(strings.ToLower(t)) {
+				return true
+			}
+		}
+		return false
+	}
+	return RevealUntilThenPutOntoBattlefield{
+		Match:  shares,
+		Reason: "Reality Scramble — revealed until a card sharing a type",
+	}.Apply(ctx)
+})

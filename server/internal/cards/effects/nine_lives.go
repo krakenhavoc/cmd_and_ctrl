@@ -33,7 +33,7 @@ func init() {
 			}),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisHasAtLeast(nineLivesCounter, 9, "Nine Lives — exile it", ExileThisThen(nil)),
+			WhenThisHasAtLeast(nineLivesCounter, 9, "Nine Lives — exile it", ExileThisThen("", nil)),
 			WhenThisLeaves("Nine Lives — you lose the game", Do(LoseTheGame{})),
 		},
 	})

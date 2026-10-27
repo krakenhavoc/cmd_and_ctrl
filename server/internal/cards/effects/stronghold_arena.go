@@ -66,10 +66,14 @@ func strongholdArenaFlip(g *game.Game, item *game.StackItem) error {
 	if err != nil || flipped == uuid.Nil {
 		return err
 	}
-	return BounceToHand{Target: flipped, Then: func(ctx *Context, bounced bool) error {
-		if !bounced || mv == 0 {
-			return nil
-		}
-		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -mv)
-	}}.Apply(ctx)
+	return BounceToHand{Target: flipped, ThenTail: withN(ctx.Tail(strongholdArenaLoseLife), mv)}.Apply(ctx)
 }
+
+// strongholdArenaLoseLife is "you lose life equal to its mana value" once
+// the card is in your hand, keyed (#4253 slice 10a): N is the mana value.
+var strongholdArenaLoseLife = CardTail("then/stronghold-arena-lose-life", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) || o.Tail.N == 0 {
+		return nil
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -o.Tail.N)
+})

@@ -37,14 +37,19 @@ func init() {
 		Targets: TargetCreature("up to one target creature").WithCount(0, 1).
 			Then(TargetPlayer("target player")),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			// The mana spent is read as the spell resolves and rides the
+			// bounce's keyed tail as N (#4253 slice 10a): a tail's context
+			// carries the item's targets and not its payment.
+			black := 0
+			if ctx.ManaSpentOfColor("B") > 0 {
+				black = 1
+			}
 			if ctx.ManaSpentOfColor("U") > 0 {
 				if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
-					return BounceToHand{Target: t.ID, Then: func(ctx *Context, _ bool) error {
-						return riversGraspBlackHalf(ctx)
-					}}.Apply(ctx)
+					return BounceToHand{Target: t.ID, ThenTail: withN(ctx.ItemTail(riversGraspBlack), black)}.Apply(ctx)
 				}
 			}
-			return riversGraspBlackHalf(ctx)
+			return riversGraspBlackIf(ctx, black)
 		},
 	})
 }
@@ -55,12 +60,23 @@ func init() {
 // is in the hand that is revealed, as the printed order has it
 // (CR 608.2c).
 func riversGraspBlackHalf(ctx *Context) error {
-	if ctx.ManaSpentOfColor("B") == 0 {
-		return nil
-	}
 	t, ok := ctx.ClauseTarget(1)
 	if !ok || t.Kind != game.TargetPlayer {
 		return nil
 	}
 	return ChooseFromRevealedHand{Player: t.ID, Filter: Nonland(), Label: "nonland card"}.Apply(ctx)
+}
+
+// riversGraspBlack is the black half after the bounce, keyed (#4253 slice
+// 10a): N is 1 when {B} was spent.
+var riversGraspBlack = CardTail("then/rivers-grasp-black-half", func(ctx *Context, o game.TailOutcome) error {
+	return riversGraspBlackIf(ctx, o.Tail.N)
+})
+
+// riversGraspBlackIf is the black half when black is 1.
+func riversGraspBlackIf(ctx *Context, black int) error {
+	if black == 0 {
+		return nil
+	}
+	return riversGraspBlackHalf(ctx)
 }

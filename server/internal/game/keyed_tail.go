@@ -60,6 +60,11 @@ type KeyedTail struct {
 	// engine tail that finishes a keyword action (amass) and then hands
 	// the card's own tail what it produced. Nil when there is none.
 	Next *KeyedTail
+	// Permission is a cast permission the body grants, as data (#4253
+	// slice 10a): an exile's "you may cast it" (airbend, impulse exile,
+	// the free-cast grants, the Oblivion Ring family's return record).
+	// Nil when the body grants none.
+	Permission *CastPermission
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -189,7 +194,17 @@ func copyKeyedTail(t KeyedTail) KeyedTail {
 		n := copyKeyedTail(*t.Next)
 		t.Next = &n
 	}
+	t.Permission = copyCastPermissionPtr(t.Permission)
 	return t
+}
+
+// copyCastPermissionPtr deep-copies a tail's permission.
+func copyCastPermissionPtr(p *CastPermission) *CastPermission {
+	if p == nil {
+		return nil
+	}
+	out := cloneCastPermissions([]CastPermission{*p})[0]
+	return &out
 }
 
 // keyedTailSnapshot is a KeyedTail on disk.
@@ -203,6 +218,8 @@ type keyedTailSnapshot struct {
 	// Word and Next (#4253 slice 6).
 	Word string             `json:"word,omitempty"`
 	Next *keyedTailSnapshot `json:"next,omitempty"`
+	// Permission (#4253 slice 10a): a cast permission the body grants.
+	Permission *CastPermission `json:"permission,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -213,6 +230,7 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 		Key: t.Ref.key, Player: uuidPtrOrNil(t.Player), Source: uuidPtrOrNil(t.Source),
 		Carry: copyUUIDs(t.Carry), N: t.N, Asked: copyAskedItem(t.Asked),
 		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
+		Permission: copyCastPermissionPtr(t.Permission),
 	}
 }
 
@@ -231,6 +249,7 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 	out := KeyedTail{
 		Ref: TailRef{key: s.Key}, Player: uuidOrNil(s.Player), Source: uuidOrNil(s.Source),
 		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
+		Permission: copyCastPermissionPtr(s.Permission),
 	}
 	if s.Next != nil {
 		n := restoreKeyedTail(s.Next)

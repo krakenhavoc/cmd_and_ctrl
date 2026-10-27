@@ -69,14 +69,19 @@ func starAthleteSacrifice(target, player uuid.UUID) func(ctx *Context) error {
 		if !ok || c.Controller != player || !ctx.Game.Battlefield.Contains(target) {
 			return starAthleteDamage(player)(ctx)
 		}
-		return ctx.Game.SacrificeThenForEffect(ctx.Item.SourceCardID, target, func(g *game.Game, sacrificed bool) error {
-			if sacrificed {
-				return nil
-			}
-			return starAthleteDamage(player)(NewContext(g, ctx.Item))
-		})
+		return ctx.Game.SacrificeAllKeyedForEffect(ctx.Item.SourceCardID, []uuid.UUID{target},
+			withCarry(ctx.ItemTail(starAthleteUnlessSacrificed), player))
 	}
 }
+
+// starAthleteUnlessSacrificed deals the damage when the permanent did not
+// go, keyed (#4253 slice 10a): the player is Carry[0].
+var starAthleteUnlessSacrificed = CardTail("then/star-athlete-damage-unless-sacrificed", func(ctx *Context, o game.TailOutcome) error {
+	if oneWentThisWay(o) {
+		return nil
+	}
+	return starAthleteDamage(tailCarry0(o))(ctx)
+})
 
 // starAthleteDamage is "this creature deals 5 damage to that player".
 func starAthleteDamage(player uuid.UUID) func(ctx *Context) error {

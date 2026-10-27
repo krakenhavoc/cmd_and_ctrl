@@ -58,15 +58,13 @@ func init() {
 			// The payment is the move's continuation (#993): a commander
 			// returned to hand can pause on the CR 903.9 question, and
 			// the life is paid after the card is in hand either way.
-			return BounceToHand{Target: flipped, Then: func(ctx *Context, _ bool) error {
-				if life == 0 {
-					return nil
-				}
-				if item.Params.Amount == 1 {
-					return eachOpponentLosesLife(ctx.Game, item, life)
-				}
-				return ctx.Game.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, -life)
-			}}.Apply(ctx)
+			// Keyed (#4253 slice 10a): the life is N and the saddled arm
+			// rides the tail's Word.
+			tail := withN(ctx.ItemTail(causticBroncoLife), life)
+			if item.Params.Amount == 1 {
+				tail.Word = causticBroncoSaddled
+			}
+			return BounceToHand{Target: flipped, ThenTail: tail}.Apply(ctx)
 		},
 	}
 	Register(Spec{
@@ -77,3 +75,20 @@ func init() {
 		Triggered:    []game.TriggeredAbility{t},
 	})
 }
+
+// causticBroncoSaddled marks the saddled arm on causticBroncoLife's Word.
+const causticBroncoSaddled = "saddled"
+
+// causticBroncoLife is the life the revealed card's mana value costs, once
+// it is in hand (#4253 slice 10a): saddled, each opponent loses it;
+// otherwise you do. N is the mana value.
+var causticBroncoLife = CardTail("then/caustic-bronco-life", func(ctx *Context, o game.TailOutcome) error {
+	life := o.Tail.N
+	if life == 0 {
+		return nil
+	}
+	if o.Tail.Word == causticBroncoSaddled {
+		return eachOpponentLosesLife(ctx.Game, ctx.Item, life)
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), -life)
+})

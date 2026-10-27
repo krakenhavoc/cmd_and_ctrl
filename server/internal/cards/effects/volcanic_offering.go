@@ -54,9 +54,7 @@ func init() {
 			if len(lands) == 0 {
 				return volcanicOfferingDamage(ctx.Game, item)
 			}
-			return ctx.Game.DestroyPermanentsThenForEffect(lands, func(g *game.Game, _ []uuid.UUID) error {
-				return volcanicOfferingDamage(g, item)
-			})
+			return ctx.Game.DestroyPermanentsKeyedForEffect(lands, ctx.ItemTail(volcanicOfferingDestroyed))
 		},
 	})
 }
@@ -78,3 +76,9 @@ func volcanicOfferingDamage(g *game.Game, item *game.StackItem) error {
 		return nil
 	})
 }
+
+// volcanicOfferingDestroyed deals the 7s once the lands' destruction has
+// settled, keyed (#4253 slice 10a).
+var volcanicOfferingDestroyed = CardTail("then/volcanic-offering-damage", func(ctx *Context, _ game.TailOutcome) error {
+	return volcanicOfferingDamage(ctx.Game, ctx.Item)
+})

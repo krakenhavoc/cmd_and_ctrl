@@ -59,13 +59,5 @@ var ogreHeadHelmWheel = RegisterThenSteps("then-steps/ogre-head-helm-wheel",
 // ogreHeadHelmAnswer is the "yes": sacrifice the Helm, then discard the hand
 // and draw three. Keyed (#4291).
 var ogreHeadHelmAnswer = MayYes("confirm/ogre-head-helm-sacrifice", func(ctx *Context, _ game.ConfirmAnswer) error {
-	return SacrificePermanent{
-		Target: ctx.Source(),
-		Then: func(ctx *Context, sacrificed bool) error {
-			if !sacrificed {
-				return nil
-			}
-			return ogreHeadHelmWheel.Run(ctx)
-		},
-	}.Apply(ctx)
+	return SacrificePermanent{Target: ctx.Source(), ThenTail: ctx.ifItWentThen(ogreHeadHelmWheel)}.Apply(ctx)
 })

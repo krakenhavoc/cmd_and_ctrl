@@ -47,8 +47,13 @@ func init() {
 // ardynStarscourge exiles the chosen card and, if it was exiled, makes
 // the Demon copy.
 func ardynStarscourge(g *game.Game, item *game.StackItem) error {
-	return ExileTargetThenTokenCopy(g, item, ardynDemonExceptionThrough(g.TextReaderForEffect(item)))
+	return ExileTargetThenTokenCopy(g, item, ardynDemonCopy)
 }
+
+// ardynDemonCopy is the exile's keyed "then" (#4253 slice 10a).
+var ardynDemonCopy = ExileThenTokenCopyTail("exile-then-token-copy/ardyn-the-usurper", func(ctx *Context) func(t *game.Card) {
+	return ardynDemonExceptionThrough(ctx.Game.TextReaderForEffect(ctx.Item))
+})
 
 // ardynDemonExceptionThrough is "except it's a 5/5 black Demon", with
 // "black" and "Demon" read through `reader`, the text of the ability

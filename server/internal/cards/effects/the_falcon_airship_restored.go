@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // The Falcon, Airship Restored — Legendary Artifact — Vehicle {2}{B},
 // 4/3 (deck request #3655):
@@ -69,13 +73,17 @@ var falconAnswer = MayYes("confirm/the-falcon-sacrifice", func(ctx *Context, _ g
 	if sourceIsNewObject(ctx.Game, item) {
 		return nil
 	}
-	return ctx.Game.SacrificeThenForEffect(item.SourceCardID, item.SourceCardID, func(g *game.Game, sacrificed bool) error {
-		if !sacrificed {
-			return nil
-		}
-		return ReflexiveTrigger{
-			Label: "The Falcon, Airship Restored — return target creature card from your graveyard to the battlefield",
-			Body:  falconReturnBody,
-		}.Apply(NewContext(g, item))
-	})
+	return ctx.Game.SacrificeAllKeyedForEffect(item.SourceCardID, []uuid.UUID{item.SourceCardID}, ctx.ItemTail(falconSacrificed))
+})
+
+// falconSacrificed raises the reflexive return once The Falcon has gone,
+// keyed (#4253 slice 10a).
+var falconSacrificed = CardTail("then/the-falcon-when-you-do", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
+		return nil
+	}
+	return ReflexiveTrigger{
+		Label: "The Falcon, Airship Restored — return target creature card from your graveyard to the battlefield",
+		Body:  falconReturnBody,
+	}.Apply(ctx)
 })

@@ -5341,3 +5341,72 @@ Slices 3 to 8 keyed every CR 616 frame whose event or tail was data. What was le
 - Not restoring `zoneRoute.batchLegs` fails the same three: the mill stops at the Needle and Hama's pick never opens, Crypt Incursion gains nothing, manifest dread never announces itself.
 - Not restoring `zoneRoute.discardLegs` fails `TestAKeyedDiscardsThenRunsAfterARestoreMidBatch`; not restoring `entryBatch.discard` fails `TestObstinateBalothsEntryIsARestorePointMidDiscard` (the Baloth's discard is never logged).
 - A stop clause that never stops fails `TestAnExileUntilRunIsARestorePointMidRun` (the run passes the nonland card).
+
+## Amendment 2026-10-26 — the mass and single-permanent verbs, their card clauses, a cast permission as data, the mill-amount window and an exchange (#4253, slice 10a)
+
+Slice 9 keyed the route batches but left several things on closures: every caller whose "then" read something a tail could not carry yet, the mass and single-permanent verbs' own `Then` closures, the mill-amount window (`RepEventMill`) and the exit half of an exchange (`zoneRoute.simultaneousEntry`). A table could be undone, but not saved and restored, while it waited on an ordering prompt over one leg of a Fumigate, a Chaos Warp's tuck, an Oblivion Ring's exile, a Goblin Welder's sacrifice or a pair of mill-amount replacements.
+
+**Decision: the clause is a registered tail on the keyed doors slice 9 built, and what it reads is carried as data, within schema v9.** Nothing is renamed or removed. Each verb keeps its closure field beside the new one, so a caller not moved here keeps its closure door, and its frame is still counted.
+
+- **The verbs.** `DestroyAllMatching`, `ExileAllMatching`, `BounceAllMatching`, `ReturnAllToHand`, `SacrificePermanent`, `BounceToHand` and `PutIntoLibrary` gain `ThenTail game.KeyedTail`, which wins over `Then` when both are set. A mass verb's tail is registered with `MassTail`, or with `MassTailOf` for a body that reads the tail's own N, Carry or Word. It is told the pre-move copies of what went this way (CR 603.10). A single-card door's tail is told the card when it went this way and nothing when it did not (`oneWentThisWay`, CR 400.7). `ExileThenIfItWas` gains `Keyed`: `IfItWasTail` registers both branches as one tail, with the answer to `Was` as its N. `SacrificeThisThen` and `ExileThisThen` take a key and register their "if you do" once, from the card's init. `ExileTargetThenTokenCopy` takes a tail registered with `ExileThenTokenCopyTail`, which builds the exception against the asking item's text (CR 612.2).
+- **A cast permission as data.** `KeyedTail.Permission` (`*CastPermission`, written whole through the mirror the game snapshot already uses) carries an exile's grant. Its users are airbend and `ExileWithPermission` (`exile/grant-permission-over-landed`), the free-cast grant helper (`exile/grant-permission-then-offer`), the exile-until-nonland grant (`exile-until-nonland/grant-cast`), Kefka (`exile/kefka-dancing-mad-grant`) and `ExileUntil` (`exile-until/record-return`). `ExileUntil`'s tail also carries the "until this leaves the battlefield" record: the object as Carry and N, and its label as Word. Impulse exile has a keyed door, `ExileTopWithPermissionKeyedForEffect`: the grant is an engine tail (`engine/impulse-exile-granted`), and the caller's tail is its `Next`. Every tail that reads a permission is a new key, so a binary from before the field refuses the file instead of dropping the grant.
+- **The mill-amount window** is keyed (`replacement-resume/mill`). `MillPlayer`, `MillCount` and `mill` move from gate to carried. The tail's data half is written as `millTail`: the destination, `allMoved`, whether a keyed door sequenced the mill, its keyed tail and its keyed "until" run. A tail with a closure `then` still gates.
+- **An exchange.** The settled entry an exchange's exit lands with (`settledExchangeEntry`, already plain data) is written beside the route (`zoneRoute.exchange`) under `replacement-resume/move-exchange`. It has a key of its own because a binary from before it knows the move key and would drop the entry. `replacementEventKeyable` no longer refuses a route because of `simultaneousEntry`.
+
+**Classification re-checked** (`replacementEventFields`): `MillPlayer`, `MillCount` and `mill` are carried. The round-trip sample now sets them, an exchange's entry and a keyed tail's permission. The gate test keys a mill window with a keyed tail or none, and an exchange's exit. It keeps counted a mill window with a closure `then` and an exchange whose exit has one. The refusal test adds an exchange under the move and move-tail keys, a mill under the move key, and an unknown tail or stop clause in a mill window.
+
+**Callers moved.**
+
+- The mass verbs' users: Fumigate, Avenge (`destroyAllCreaturesGainLifeForEach`) and Ob Nixilis, the Ascended (these three share `mass/gain-life-for-each`), Bane of Progress, Blood Money, Kaya's Wrath, Phyrexian Rebirth, Starfall Invocation, The Battle of Bywater, Genesis of the Daleks, the Settle-the-Wreckage helper, Mass Polymorph, Sunfall, Overwrite the Multiverse, Synthetic Destiny and Flood of Tears.
+- The single verbs' users: Acererak, Arcum Dagsson, Boomerang Basics, Caustic Bronco, Glitch Interpreter, Unnerving Grasp, River's Grasp, Sorin, Grim Nemesis, Stronghold Arena, Ogre-Head Helm (`then/if-it-went-run-steps`), Lembas, Oust, and every `SacrificeThisThen` and `ExileThisThen` card (Ajani's Last Stand, Dark Depths, Deadly Designs, Plague Boiler, Mazemind Tome, Nine Lives). River's Grasp's mana spent rides the tail, because an asked item does not carry its payment.
+- The direct destroy, sacrifice, bounce, tuck and mill callers: Boseiju, Chaos Warp, Coercive Portal, Echo of Eons (and Game Plan and Temporal Cascade, which share its helper), Aetherspouts, Terminus and Trial of a Time Lord (these three share `tuck/each-owner-orders`), Guff Rewrites History, Horses of the Bruinen, Intuition's reveal-pick helper (`then/shuffle`), Lich-Knights' Conquest, Megatron, Midnight Clock, Prophesied End, Reality Scramble, Serene Remembrance, Shatter the Oath, Soothing of Sméagol, Sorin, Lord of Innistrad, Star Athlete, Stay Hidden, Stay Silent, Sylvan Library, Synth Eradicator, The Falcon, This Is How It Ends, Tibalt's Trickery, Fateful Tempest, Twisted Fates, Valakut Exploration, Volcanic Offering and Zoyowa's Justice. Serene Remembrance and Teferi, Temporal Pilgrim share `then/shuffle-each-carried`. The sacrificed-one runs (`RegisterSacrificedOneRun`) put the run's carry, its one number and the asking item on a `sacrificed-one/<run key>` tail.
+- The callers' own closures:
+  - Sauron, the Necromancer: the card and Sauron's object ride the tail. The copy's template is read once the card has moved, which does not change its copiable values (CR 707.2).
+  - The Scarab God and Ardyn, the Usurper.
+  - Scavenging Ooze and Lion Sash.
+  - Locke, Treasure Hunter's per-seat mill: the seats are the Carry and the index is N.
+  - The Key to the Vault: its pick is now a registered `choose_cards` continuation too.
+  - Something Worth Saving's mill and Doomsday Excruciator's per-player chain.
+  - The impulse exiles: Cait Sith, Bonehoard Dracosaur and the budgeted `ExileTopWithPermission`.
+  - Hostage Taker and the Oblivion Ring family, through `ExileUntil`.
+
+**Still a closure** (the frame is counted, as before), with the reason:
+
+- Sweep batch 01's files, which another builder has open (#4340):
+  - `chain_of_vapor.go` and `diviner_of_victory.go`: `BounceToHand.Then`.
+  - `culling_ritual.go`, `deadly_tempest.go` and `elesh_norn_the_argent_etchings.go`: `DestroyAllMatching.Then`.
+  - `disturbing_mirth.go` and `emergent_ultimatum.go`: direct closure doors.
+  - `cling_to_dust.go` and `deluge_of_the_dead.go`: `ExileThenIfItWas.Then`. `Keyed` is ready.
+  - `coin_of_fate.go`: `PutIntoLibrary.Then`. `ThenTail` is ready.
+  - `dredge.go`: dredge's `done`.
+  - `each_player_in_turn.go`: the chain behind Consuming Aberration and Tasha's Hideous Laughter, and the chain's closure callers in `batch14_helpers.go`, `batch27_helpers.go` and `ExileTopWithPermission.ApplyThen`.
+- `braids_arisen_nightmare.go`: sweep batch 00 (#4339) rewrites the function.
+- `resolution_choice.go` (`SacrificeChoice`): slice 10b's prompt primitives.
+- A sacrifice or bounce inside a pick that is itself a closure: Shadow, Mysterious Assassin, The Gitrog, Ravenous Ride, and Teferi, Temporal Pilgrim's pick (its bounce and tuck are keyed). The pick has to be keyed first.
+- `permanents_pick_keyed.go`'s `Sacrifice: true`: its continuation reads the run's `RunDone` (each seat's landed list), which a tail does not carry.
+- `RegisterSacrificedOneRun` keeps the closure door for a run with more than one number. No card has one.
+- `ExileUntil` with a `Then` (Abdel Adrian) or an event "until" (Palace Jailer): neither the event's condition nor the clause is on a tail.
+- The `choose_cards` picks after a mill (`takeOneIntoYourHand`, `rfSpellBMayTakeFromMilled`): the mill's tail is keyed, but the pick it queues is not.
+- The closure doors themselves, which the callers above and the tests still use.
+
+**Compatibility.** Schema v9 gains `keyedTail.permission` (everywhere a keyed tail is written), the mill window's `millPlayer`, `millCount` and `millTail`, and `zoneRoute.exchange`, recorded with `-update-shape`. No fixture is edited. 85 lines are appended to the ledger, never renamed or reused: 82 `tail`, 2 `resume` (`replacement-resume/mill`, `replacement-resume/move-exchange`) and 1 `choose` (`choose-cards/the-key-to-the-vault`). No closure route is added: the permission, the mill tail and the exchange entry are data. No ceiling moves.
+
+**Tests** (`effects/mass_route_restore_test.go`). Each takes a strict restore at an open ordering prompt and answers it on the restored table:
+
+- Fumigate at its second creature's destruction: 2 life after.
+- Sunfall mid-sweep: the Incubator follows.
+- `ReturnAllToHand`, `BounceToHand` and `SacrificePermanent` with a keyed "then", each told what went.
+- Chaos Warp at the tuck: the owner shuffles, reveals the Needle and puts it back onto the battlefield.
+- Terminus at its second tuck: the owner's bottom-order prompt over both cards opens.
+- Oblivion Ring at its exile: destroying the Ring brings the card back, so the record came off the disk.
+- Airbend at its exile: the owner holds the permission.
+- Goblin Welder's exchange at its exit (`replacement-resume/move-exchange`): the returning artifact lands.
+- Two mill-amount replacements over a keyed mill of one (`replacement-resume/mill`): three cards are milled and the tail is told them.
+
+`game/replacement_resume_keyed_test.go` covers the classification changes above.
+
+**Back-outs**, each restored:
+
+- Not restoring the exchange's entry (`restoreExchangeEntry`) fails `TestAnExchangeIsARestorePointAtItsExit`: the returning artifact never lands.
+- Not restoring the mill window's tail (`restoreMillTail`) fails `TestAMillAmountWindowIsARestorePoint`: the keyed "then" never runs.
+- Not restoring a keyed tail's permission (`restoreKeyedTail`) fails `TestAirbendsGrantSurvivesARestoreAtTheExile`: there is no permission over the exiled card.

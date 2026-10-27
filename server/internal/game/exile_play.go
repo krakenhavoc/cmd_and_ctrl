@@ -107,6 +107,43 @@ func (g *Game) ExileTopWithPermissionThenForEffect(fromPlayer, grantTo uuid.UUID
 	})
 }
 
+// ExileTopWithPermissionKeyedForEffect is ExileTopWithPermissionThenForEffect
+// with the continuation as data (#4253 slice 10a): the grant is an engine
+// tail (engine/impulse-exile-granted) carrying the permission and its
+// holder, and `then` runs after it as that tail's Next, told the cards that
+// landed. A zero `then` is "no continuation". A leg's prompt is a restore
+// point.
+//
+// Caller must hold g.mu (write).
+func (g *Game) ExileTopWithPermissionKeyedForEffect(fromPlayer, grantTo uuid.UUID, n int, perm CastPermission, then KeyedTail) error {
+	grant := KeyedTail{Ref: impulseExileGranted, Player: grantTo, Permission: &perm}
+	if !then.IsZero() {
+		next := copyKeyedTail(then)
+		grant.Next = &next
+	}
+	plan, err := g.impulseExilePlanLocked(fromPlayer, grantTo, n)
+	if err != nil {
+		return err
+	}
+	if len(plan) == 0 {
+		return grant.Run(g, nil)
+	}
+	return g.routeAllKeyedLocked(zoneRoute{Dst: ZoneExile, Actor: grantTo}, plan, grant)
+}
+
+// impulseExileGranted stamps an impulse exile's permission over the cards
+// that landed, then runs the caller's tail (Next) with them. An on-disk
+// key.
+var impulseExileGranted = RegisterTail("engine/impulse-exile-granted", func(g *Game, o TailOutcome) error {
+	if o.Tail.Permission != nil {
+		g.grantImpulseExilePermissionLocked(*o.Tail.Permission, o.Tail.Player, o.IDs)
+	}
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return g.runKeyedTailLocked(*o.Tail.Next, o.IDs, 0)
+})
+
 // ExileTopUntilAnotherForEffect is "exile the top card of your library.
 // You may play it until you exile another card with this <permanent>"
 // (ADR 0066 amendment 2026-10-08, #2539): Unstable Amulet, Furious Rise,

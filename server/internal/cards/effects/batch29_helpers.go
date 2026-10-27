@@ -249,23 +249,27 @@ func b29ExileAttackersThenTheyFetchBasics(ctx *Context, player uuid.UUID) error 
 		Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
 			return c.Controller == player && c.IsCreature() && c.AttackingTarget != uuid.Nil
 		},
-		Then: func(ctx *Context, _ []game.Card, exiled int) error {
-			if exiled <= 0 {
-				return nil
-			}
-			return SearchLibrary{
-				Player:        player,
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         exiled,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Optional:      true,
-				Reason:        "Settle the Wreckage — basic land cards, onto the battlefield tapped",
-			}.Apply(ctx)
-		},
+		ThenTail: withCarry(ctx.ItemTail(b29TheyFetchBasics), player),
 	}.Apply(ctx)
 }
+
+// b29TheyFetchBasics is the sweep's "that player may search for that many
+// basic land cards", keyed (#4253 slice 10a): the player is Carry[0].
+var b29TheyFetchBasics = MassTailOf("mass/settle-the-wreckage-fetch-basics", func(ctx *Context, _ []game.Card, exiled int, t game.KeyedTail) error {
+	if exiled <= 0 || len(t.Carry) == 0 {
+		return nil
+	}
+	return SearchLibrary{
+		Player:        t.Carry[0],
+		Predicate:     IsBasicLand,
+		Dest:          game.ZoneBattlefield,
+		Limit:         exiled,
+		Shuffle:       true,
+		TappedOnEntry: true,
+		Optional:      true,
+		Reason:        "Settle the Wreckage — basic land cards, onto the battlefield tapped",
+	}.Apply(ctx)
+})
 
 // b29ReturnZombieCardsTappedThenDestroyHumans is Zombie Apocalypse:
 // every Zombie creature card in the controller's graveyard, read

@@ -32,6 +32,14 @@ func MassTail(key string, body func(ctx *Context, swept []game.Card, moved int) 
 	})
 }
 
+// MassTailOf is MassTail for a body that also reads the tail's own data
+// (its N, Carry or Word): what the closure form captured as a local.
+func MassTailOf(key string, body func(ctx *Context, swept []game.Card, moved int, t game.KeyedTail) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		return body(ctx, ctx.Game.SimultaneousExitCardsForEffect(o.IDs), len(o.IDs), o.Tail)
+	})
+}
+
 // --- manifest dread ----------------------------------------------------------
 
 // ManifestDreadTail registers a manifest dread's "then", told what the

@@ -177,10 +177,14 @@ func teferiPilgrimReturnThenShuffle(g *game.Game, opp uuid.UUID, picked []uuid.U
 	if c, ok := g.LookupCardForEffect(picked[0]); !ok || c.Controller != opp {
 		return teferiPilgrimShuffleNonland(g, opp)
 	}
-	return g.BounceToHandThenForEffect(picked[0], func(g *game.Game, _ bool) error {
-		return teferiPilgrimShuffleNonland(g, opp)
-	})
+	return g.BounceCardsToHandKeyedForEffect(picked[0:1], game.KeyedTail{Ref: teferiPilgrimBounced, Carry: []uuid.UUID{opp}})
 }
+
+// teferiPilgrimBounced is the shuffle-away after the return, keyed (#4253
+// slice 10a): the opponent is Carry[0].
+var teferiPilgrimBounced = game.RegisterTail("then/teferi-temporal-pilgrim-shuffle-nonland", func(g *game.Game, o game.TailOutcome) error {
+	return teferiPilgrimShuffleNonland(g, tailCarry0(o))
+})
 
 // teferiPilgrimShuffleNonland puts every nonland permanent `opp`
 // controls into its owner's library as one move, then shuffles each
@@ -196,15 +200,12 @@ func teferiPilgrimShuffleNonland(g *game.Game, opp uuid.UUID) error {
 			owners[c.Owner] = true
 		}
 	}
-	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		for _, p := range g.Seats {
-			if p == nil || !owners[p.ID] {
-				continue
-			}
-			if err := g.ShuffleLibraryForEffect(p.ID); err != nil {
-				return err
-			}
+	// Keyed (#4253 slice 10a): the owners, in seat order, shuffle after.
+	var order []uuid.UUID
+	for _, p := range g.Seats {
+		if p != nil && owners[p.ID] {
+			order = append(order, p.ID)
 		}
-		return nil
-	})
+	}
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffleEachCarried, Carry: order})
 }
