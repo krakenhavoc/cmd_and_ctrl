@@ -102,14 +102,11 @@ func zackFairMoveEquipment(ctx *Context, zack game.PermanentInfo, target uuid.UU
 		}
 		candidates = append(candidates, id)
 	}
-	attach := func(g *game.Game, id uuid.UUID) error {
-		return g.AttachForEffect(id, game.TargetRef{Kind: game.TargetCard, ID: target})
-	}
 	switch len(candidates) {
 	case 0:
 		return nil
 	case 1:
-		return attach(g, candidates[0])
+		return zackFairAttach(g, candidates[0], target)
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
@@ -118,13 +115,24 @@ func zackFairMoveEquipment(ctx *Context, zack game.PermanentInfo, target uuid.UU
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) != 1 {
-				return nil
-			}
-			return attach(g, picked[0])
-		},
+		ThenKey:  zackFairAttached,
+		LiveZone: game.ZoneBattlefield,
+		Carry:    []uuid.UUID{target},
 	})
 	return nil
 }
+
+// zackFairAttach attaches the Equipment to the target creature.
+func zackFairAttach(g *game.Game, equipment, target uuid.UUID) error {
+	return g.AttachForEffect(equipment, game.TargetRef{Kind: game.TargetCard, ID: target})
+}
+
+// zackFairAttached is the choice of which Equipment moves, keyed (#4253):
+// the target creature rides the prompt as its carry.
+var zackFairAttached = game.RegisterChooseCardsThen("choose-cards/zack-fair-move-equipment",
+	func(g *game.Game, r game.CardsChosen) error {
+		if len(r.Picked) != 1 || len(r.Carry) == 0 {
+			return nil
+		}
+		return zackFairAttach(g, r.Picked[0], r.Carry[0])
+	})

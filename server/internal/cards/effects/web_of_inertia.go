@@ -53,17 +53,26 @@ func webOfInertiaCombat(g *game.Game, item *game.StackItem) error {
 		Cards:      cards,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				webOfInertiaRestrict(g, item, opponent)
-				return nil
-			}
-			return ExileTarget{Target: picked[0]}.Apply(NewContext(g, item))
-		},
+		ThenKey:    webOfInertiaPicked,
+		LiveZone:   game.ZoneGraveyard,
+		Carry:      []uuid.UUID{opponent},
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// webOfInertiaPicked is the opponent's answer, keyed (#4253): the card they
+// exile, or the restriction when they exile none. The opponent rides the
+// prompt as the first of its carry, and the item as data.
+var webOfInertiaPicked = askedPick("choose-cards/web-of-inertia-exile-or-restrict", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		if len(r.Carry) > 0 {
+			webOfInertiaRestrict(ctx.Game, ctx.Item, r.Carry[0])
+		}
+		return nil
+	}
+	return ExileTarget{Target: r.Picked[0]}.Apply(ctx)
+})
 
 // webOfInertiaRestrict is "creatures they control can't attack you this
 // turn". Caller holds g.mu.

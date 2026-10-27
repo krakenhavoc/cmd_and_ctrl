@@ -51,15 +51,19 @@ func underTheSkinOffer(g *game.Game, me, source uuid.UUID) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.ReturnFromGraveyardUnderControlForEffect(id, game.ZoneHand, uuid.Nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:  underTheSkinReturned,
+		LiveZone: game.ZoneGraveyard,
 	})
 	return nil
 }
+
+// underTheSkinReturned is the optional return to hand, keyed (#4253).
+var underTheSkinReturned = game.RegisterChooseCardsThen("choose-cards/under-the-skin-return",
+	func(g *game.Game, r game.CardsChosen) error {
+		for _, id := range r.Picked {
+			if err := g.ReturnFromGraveyardUnderControlForEffect(id, game.ZoneHand, uuid.Nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

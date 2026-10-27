@@ -48,34 +48,41 @@ func init() {
 // one."
 func valakutAwakeningPutThenDraw(ctx *Context, player uuid.UUID) error {
 	hand := allHandCardIDs(ctx.Game, player)
-	source := ctx.Source()
 	if len(hand) == 0 {
 		return ctx.Game.DrawNForEffect(player, 1)
 	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
-		Source:   source,
+		Source:   ctx.Source(),
 		Question: "Valakut Awakening — put any number of cards from your hand on the bottom of your library",
 		Cards:    hand,
 		Min:      0,
 		Max:      len(hand),
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return g.DrawNForEffect(player, 1)
-			}
-			return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-				Chooser:   player,
-				Source:    source,
-				Cards:     picked,
-				From:      game.ZoneHand,
-				Placement: game.LibraryPlaceBottom,
-				Reason:    "Valakut Awakening — order the cards on the bottom of your library",
-				Then: func(g *game.Game) error {
-					return g.DrawNForEffect(player, len(picked)+1)
-				},
-			})
-		},
+		ThenKey:  valakutAwakeningPicked,
+		LiveZone: game.ZoneHand,
 	})
 	return nil
 }
+
+// valakutAwakeningPicked is the any-number put-back, keyed (#4253): the
+// player is the chooser and the card the source, so the prompt carries
+// nothing else. The order prompt it opens for two or more cards is
+// PutInLibrarySpec's, whose own "then" is still a closure (slice 10b).
+var valakutAwakeningPicked = game.RegisterChooseCardsThen("choose-cards/valakut-awakening-put-back",
+	func(g *game.Game, r game.CardsChosen) error {
+		player, picked := r.Chooser, r.Picked
+		if len(picked) == 0 {
+			return g.DrawNForEffect(player, 1)
+		}
+		return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+			Chooser:   player,
+			Source:    r.Source,
+			Cards:     picked,
+			From:      game.ZoneHand,
+			Placement: game.LibraryPlaceBottom,
+			Reason:    "Valakut Awakening — order the cards on the bottom of your library",
+			Then: func(g *game.Game) error {
+				return g.DrawNForEffect(player, len(picked)+1)
+			},
+		})
+	})
