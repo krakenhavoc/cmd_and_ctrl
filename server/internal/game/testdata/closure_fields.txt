@@ -95,7 +95,7 @@ Game.pausedModeWalk                          keyed                              
 Game.pausedResolutionTail                    keyed                              # Game.pausedResolutionTail
 Game.pausedStepWalk                          keyed                              # Game.pausedStepWalk
 Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
-Game.resolving                               census:ChoiceResumeFrames          # Game.resolving
+Game.resolving                               keyed                              # Game.resolving
 Game.scopedEffectMemo                        rebuilt                            # Game.scopedEffectMemo
 Game.simultaneousExit                        transient                          # Game.simultaneousExit
 Game.testReplacements                        test-only                          # Game.testReplacements
@@ -226,8 +226,8 @@ promptRun.then                               census:ChoiceResumeFrames          
 replacementResumeFrame.applicable            census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.applicable
 replacementResumeFrame.ev                    census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev
 resolutionTail.item                          keyed                              # Game.pausedResolutionTail.item
-resolvingItem.card                           census:ChoiceResumeFrames          # Game.resolving.card
-resolvingItem.item                           census:ChoiceResumeFrames          # Game.resolving.item
+resolvingItem.card                           census:IntrinsicAbilityCards       # Game.resolving.card
+resolvingItem.item                           keyed                              # Game.resolving.item
 scopedEffectAdapterMemo.effects              rebuilt                            # Game.scopedEffectMemo.effects
 searchResumeFrame.spec                       census:ChoiceResumeFrames          # Game.PendingChoices.searchResume.spec
 settledCreation.Chosen                       rebuilt                            # Game.PendingChoices.AttackSplit.settled.Chosen

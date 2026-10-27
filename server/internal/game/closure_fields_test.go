@@ -135,7 +135,11 @@ var closureClassCeilings = map[string]int{
 	// ProliferateChoosingForEffect and the earthbend closure branch),
 	// - counterTail.then and so ReplacementEvent.counterTail (gone with
 	// AddCounterByThenForEffect and the proliferate walk's closures).
-	"census:ChoiceResumeFrames": 116,
+	//
+	// 113 (2026-10-27, #4361 S2): Game.resolving and resolvingItem.item
+	// to keyed (carried since #4270, counted like modeWalk.item);
+	// resolvingItem.card moved to census:IntrinsicAbilityCards (P11).
+	"census:ChoiceResumeFrames": 113,
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
@@ -163,7 +167,12 @@ var closureClassCeilings = map[string]int{
 	// counted like Player.Sideboard: the census walks both (the
 	// snapshot's card walk and the ability-ref lookup include them), and
 	// neither is a new kind of blocker.
-	"census:IntrinsicAbilityCards": 53,
+	//
+	// 54 (2026-10-27, #4361 S2, ADR 0041 P11): + resolvingItem.card,
+	// moved from census:ChoiceResumeFrames. snapshotResolving counts the
+	// card of an open resolution as snapshotCard does, like
+	// lastKnownSpell.card; not a new route.
+	"census:IntrinsicAbilityCards": 54,
 	"transient":                    1,
 }
 
