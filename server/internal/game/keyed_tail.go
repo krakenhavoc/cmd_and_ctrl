@@ -70,6 +70,11 @@ type KeyedTail struct {
 	// and remaining asks) and the names it walks (the counter kinds).
 	Nums  []int
 	Words []string
+
+	// paid is an answered pay-unless whose "yes" waits for its payment
+	// (#4361 S8, pay_action_keyed.go): the engine's payUnlessPaidTail
+	// rebuilds the prompt from it. Nil on every card's tail.
+	paid *payUnlessPaid
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -212,6 +217,7 @@ func copyKeyedTail(t KeyedTail) KeyedTail {
 		t.Next = &n
 	}
 	t.Permission = copyCastPermissionPtr(t.Permission)
+	t.paid = copyPayUnlessPaid(t.paid)
 	return t
 }
 
@@ -240,6 +246,9 @@ type keyedTailSnapshot struct {
 	// Nums and Words (#4253 slice 10b).
 	Nums  []int    `json:"nums,omitempty"`
 	Words []string `json:"words,omitempty"`
+	// Paid (#4361 S8): an answered pay-unless whose "yes" waits for its
+	// payment. Additive within v9.
+	Paid *payUnlessPaid `json:"paid,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -252,6 +261,7 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
 		Permission: copyCastPermissionPtr(t.Permission),
 		Nums:       copyInts(t.Nums), Words: copyStrings(t.Words),
+		Paid: copyPayUnlessPaid(t.paid),
 	}
 }
 
@@ -272,6 +282,7 @@ func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
 		Permission: copyCastPermissionPtr(s.Permission),
 		Nums:       copyInts(s.Nums), Words: copyStrings(s.Words),
+		paid: copyPayUnlessPaid(s.Paid),
 	}
 	if s.Next != nil {
 		n := restoreKeyedTail(s.Next)
@@ -297,6 +308,7 @@ func unknownKeyedTail(s *keyedTailSnapshot) []string {
 	if check != nil {
 		out = append(out, check(s.Word, s.Words)...)
 	}
+	out = append(out, unknownPayUnlessPaid(s)...)
 	return append(out, unknownKeyedTail(s.Next)...)
 }
 

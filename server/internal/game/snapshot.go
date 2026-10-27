@@ -2544,7 +2544,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// carried, so a restart rewinds to before the damage; #4253: a keyed
 	// one (damage_keyed.go) is written. The owed follow-ups themselves
 	// are data (PreventionFollowUps).
-	s.FollowUpParks = snapshotFollowUpParks(g.followUpParks, cen)
+	s.FollowUpParks = snapshotFollowUpParks(g.followUpParks)
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)

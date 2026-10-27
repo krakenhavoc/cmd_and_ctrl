@@ -602,11 +602,10 @@ func (g *Game) PayLifeForEffect(source, playerID uuid.UUID, amount int) error {
 // and reading the life total back on the next line reads it before the
 // prompt is answered (#807).
 func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount int) error {
-	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{}, nil)
+	return g.dealDamageToPlayerLocked(source, nil, playerID, amount, DamageMarks{})
 }
 
-// dealDamageToPlayerLocked is the closure-continuation body of damage to a
-// player,
+// dealDamageToPlayerLocked is damage to a player with no continuation,
 // with the source OBJECT when the caller knows it (#1396,
 // DealDamageFromObjectForEffect). obj only changes where the tail reads
 // the source's lifelink from; see effectDamageTailLocked.
@@ -615,16 +614,15 @@ func (g *Game) DealDamageToPlayerForEffect(source, playerID uuid.UUID, amount in
 // DamageInstanceForEffect scope's instance, or a new one this event ends.
 // An Each walk's legs, which join the walk's instance, go through
 // dealDamageToPlayerTailLocked (damage_each_keyed.go).
-func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPlayerTailLocked(source, obj, playerID, amount, marks, 0, damageThen{fn: then})
+func (g *Game) dealDamageToPlayerLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks) error {
+	return g.dealDamageToPlayerTailLocked(source, obj, playerID, amount, marks, 0, damageThen{})
 }
 
 // dealDamageToPlayerTailLocked is dealDamageToPlayerLocked with the
-// caller's continuation in any of its forms (damageThen): a closure, a
-// registered tail (damageTail.keyed, #4253) or the rest of a keyed Each
-// walk (damageTail.each). A keyed tail is told the player as
-// TailOutcome.IDs and the damage dealt as its Amount, on every terminal
-// outcome the closure is told.
+// caller's continuation in either of its forms (damageThen): a registered
+// tail (damageTail.keyed, #4253) or the rest of a keyed Each walk
+// (damageTail.each). A keyed tail is told the player as TailOutcome.IDs and
+// the damage dealt as its Amount, on every terminal outcome.
 func (g *Game) dealDamageToPlayerTailLocked(source uuid.UUID, obj *ObjectRef, playerID uuid.UUID, amount int, marks DamageMarks, inst DamageInstance, then damageThen) error {
 	nothingDealt := func() error { return g.runDamageThenNowLocked(then, playerID, 0) }
 	if amount <= 0 {
@@ -720,14 +718,14 @@ func (g *Game) dealDamageToPlayerTailLocked(source uuid.UUID, obj *ObjectRef, pl
 // The FIRE-AND-FORGET form. Use DealDamageToCreatureKeyedForEffect when
 // the card goes on to say something about how much was dealt (#807).
 func (g *Game) DealDamageToCreatureForEffect(source, cardID uuid.UUID, amount int) error {
-	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, DamageMarks{}, nil)
+	return g.dealDamageToPermanentLocked(source, nil, cardID, amount, DamageMarks{})
 }
 
 // dealDamageToPermanentLocked is damage to a battlefield permanent, with
 // the source OBJECT when the caller knows it (#1396). The sibling of
 // dealDamageToPlayerLocked: its own instruction.
-func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, marks DamageMarks, then func(g *Game, dealt int) error) error {
-	return g.dealDamageToPermanentTailLocked(source, obj, cardID, amount, marks, 0, damageThen{fn: then})
+func (g *Game) dealDamageToPermanentLocked(source uuid.UUID, obj *ObjectRef, cardID uuid.UUID, amount int, marks DamageMarks) error {
+	return g.dealDamageToPermanentTailLocked(source, obj, cardID, amount, marks, 0, damageThen{})
 }
 
 // dealDamageToPermanentTailLocked is dealDamageToPermanentLocked with the
@@ -790,10 +788,10 @@ func (g *Game) dealDamageToPermanentTailLocked(source uuid.UUID, obj *ObjectRef,
 // Caller must hold g.mu in write mode.
 func (g *Game) DealDamageFromObjectForEffect(source ObjectRef, target uuid.UUID, amount int) error {
 	if g.playerByIDLocked(target) != nil {
-		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
+		return g.dealDamageToPlayerLocked(source.ID, &source, target, amount, DamageMarks{})
 	}
 	if findBattlefieldCard(g, target) != nil {
-		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, DamageMarks{}, nil)
+		return g.dealDamageToPermanentLocked(source.ID, &source, target, amount, DamageMarks{})
 	}
 	return nil
 }
@@ -817,10 +815,10 @@ func (g *Game) DealMarkedDamageForEffect(source uuid.UUID, obj *ObjectRef, targe
 		source = obj.ID
 	}
 	if g.playerByIDLocked(target) != nil {
-		return g.dealDamageToPlayerLocked(source, obj, target, amount, marks, nil)
+		return g.dealDamageToPlayerLocked(source, obj, target, amount, marks)
 	}
 	if findBattlefieldCard(g, target) != nil {
-		return g.dealDamageToPermanentLocked(source, obj, target, amount, marks, nil)
+		return g.dealDamageToPermanentLocked(source, obj, target, amount, marks)
 	}
 	return nil
 }

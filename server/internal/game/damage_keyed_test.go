@@ -59,8 +59,8 @@ var parkProbe = RegisterTail(testEffectKeyPrefix+"damage-park-probe", func(g *Ga
 })
 
 // A keyed park is written, restored with its instance counted, and runs
-// its tail told the target and the damage dealt; a closure park is counted
-// by the census and not written.
+// its tail told the target and the damage dealt. (The closure park is gone,
+// #4361 S8.)
 func TestAKeyedFollowUpParkIsARestorePoint(t *testing.T) {
 	g := newActiveGame(t)
 	opp := g.Seats[1]
@@ -99,12 +99,5 @@ func TestAKeyedFollowUpParkIsARestorePoint(t *testing.T) {
 	})
 	if got := r.Seats[1].Life; got != 104 {
 		t.Errorf("the park's tail left the player at %d, want 104 (told 3 dealt, N 1)", got)
-	}
-
-	g.WithWriteLock(func() {
-		g.parkFollowUpContinuationLocked(8, func(*Game) error { return nil })
-	})
-	if g.CaptureSnapshot().Restorable() {
-		t.Error("a closure park is a restore point")
 	}
 }

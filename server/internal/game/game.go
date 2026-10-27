@@ -555,9 +555,8 @@ type Game struct {
 
 	// followUpParks is the rest of each damage instruction parked behind
 	// a prompt its instance's follow-up asked (#2040,
-	// prevention_then_pause.go), oldest first. Closures: a table holding
-	// one is not a restore point (ContinuationCensus counts them). Copy
-	// on write.
+	// prevention_then_pause.go), oldest first. Data (keyed tails, written
+	// as GameSnapshot.FollowUpParks; #4253, #4361 S8). Copy on write.
 	followUpParks []followUpPark
 
 	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108
