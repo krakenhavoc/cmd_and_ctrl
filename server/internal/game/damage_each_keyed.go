@@ -23,22 +23,20 @@ import "github.com/google/uuid"
 // DealDamageToCreatureKeyedForEffect is the permanent-target sibling of
 // DealDamageToPlayerKeyedForEffect (damage_keyed.go).
 
-// damageThen is the caller's half of one damage event's tail, in any of its
-// forms: a closure (damageTail.then), a registered tail (damageTail.keyed)
-// or the rest of a keyed Each walk (damageTail.each). At most one is set.
+// damageThen is the caller's half of one damage event's tail, in either of
+// its forms: a registered tail (damageTail.keyed) or the rest of a keyed
+// Each walk (damageTail.each). At most one is set. The closure form
+// (damageTail.then) is gone (#4361 S8): its one caller, a damage payment's
+// "yes", is a keyed tail (pay_action_keyed.go).
 type damageThen struct {
-	fn    func(g *Game, dealt int) error
 	keyed KeyedTail
 	each  *damageEachRun
 }
 
 // onto writes the continuation onto a damage event's tail.
 func (t damageThen) onto(tail *damageTail) {
-	tail.then = t.fn
-	if t.fn == nil {
-		tail.keyed = t.keyed
-		tail.each = t.each
-	}
+	tail.keyed = t.keyed
+	tail.each = t.each
 }
 
 // runDamageThenNowLocked runs a continuation whose damage never became an
@@ -47,10 +45,7 @@ func (t damageThen) onto(tail *damageTail) {
 //
 // Caller must hold g.mu (write).
 func (g *Game) runDamageThenNowLocked(t damageThen, target uuid.UUID, dealt int) error {
-	switch {
-	case t.fn != nil:
-		return t.fn(g, dealt)
-	case t.each != nil:
+	if t.each != nil {
 		return g.damageEachLegSettledLocked(t.each, target, dealt)
 	}
 	return g.runKeyedTailLocked(t.keyed, []uuid.UUID{target}, dealt)

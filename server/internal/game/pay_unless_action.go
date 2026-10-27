@@ -361,8 +361,12 @@ func (g *Game) validatePayActionLocked(chooser uuid.UUID, a *PayAction, picked [
 // pause on a CR 903.9 prompt for a commander; `then` runs once the whole
 // batch has landed, which is when the cost has been paid.
 //
+// `then` is data (#4361 S8, pay_action_keyed.go): a registered tail, so a
+// payment paused on a prompt leaves a table that is a restore point. The
+// zero tail is no continuation.
+//
 // Caller must hold g.mu in write mode and must have validated `picked`.
-func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked []uuid.UUID, then func(g *Game) error) error {
+func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked []uuid.UUID, then KeyedTail) error {
 	switch a.Kind {
 	case PayActionEither:
 		// Never paid whole: the chosen branch is paid, as its own
@@ -372,12 +376,7 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		return g.discardCardsLocked(chooser, picked, discardOptions{
 			cause:  DiscardCauseCost,
 			source: source,
-			then: func(g *Game, _ []uuid.UUID) error {
-				if then == nil {
-					return nil
-				}
-				return then(g)
-			},
+			keyed:  then,
 		})
 	case PayActionExileFromGraveyard:
 		// ADR 0187 §3: one batch through the exit primitive, a leg at
@@ -388,17 +387,12 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		// command zone by the CR 903.9a state-based action. Not
 		// MustSettleNow and not payExileCardsCostLocked: this payment
 		// is made while something resolves, not during a cast.
-		return g.routeAllThenLocked(zoneRoute{
+		return g.routeAllKeyedLocked(zoneRoute{
 			Dst:    ZoneExile,
 			Actor:  chooser,
 			Source: source,
 			Cause:  MoveCause{Kind: MoveCauseCost, Controller: chooser},
-		}, picked, func(g *Game, _ []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			return then(g)
-		})
+		}, picked, then)
 	case PayActionSacrifice:
 		if err := g.payCostSacrificesLocked(picked, nil); err != nil {
 			return err
@@ -424,17 +418,9 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		// path, so prevention and replacement apply. The payment has
 		// been made once the damage event has settled, however much
 		// of it landed.
-		return g.dealDamageToPlayerLocked(source, nil, chooser, a.Count, DamageMarks{}, func(g *Game, _ int) error {
-			if then == nil {
-				return nil
-			}
-			return then(g)
-		})
+		return g.dealDamageToPlayerTailLocked(source, nil, chooser, a.Count, DamageMarks{}, 0, damageThen{keyed: then})
 	}
-	if then == nil {
-		return nil
-	}
-	return then(g)
+	return g.runKeyedTailLocked(then, nil, 0)
 }
 
 // PayAction is the non-mana payment of a PendingChoicePayUnless —

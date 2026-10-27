@@ -571,7 +571,8 @@ func (g *Game) dealRedirectedDamageLocked(ev *ReplacementEvent) {
 		}
 		tail := *t
 		tail.kind = kind
-		tail.then = nil
+		tail.keyed = KeyedTail{}
+		tail.each = nil
 		tail.endsInstance = false
 		tail.released = true
 		tail.redirected = nil

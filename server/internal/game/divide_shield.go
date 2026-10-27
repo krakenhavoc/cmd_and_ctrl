@@ -382,7 +382,7 @@ func (g *Game) openDamageStageLocked(inst DamageInstance, all, scope bool) (prev
 func (g *Game) stageDamageEventLocked(ev *ReplacementEvent) bool {
 	st := g.damageStage
 	t := ev.damageTail
-	if st == nil || t == nil || t.released || t.then != nil || !t.keyed.IsZero() || t.each != nil || t.endsInstance {
+	if st == nil || t == nil || t.released || !t.keyed.IsZero() || t.each != nil || t.endsInstance {
 		return false
 	}
 	if ev.DamageInstance == 0 || ev.DamageInstance != st.inst || ev.DamageAmount <= 0 {

@@ -400,11 +400,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			}}
 		},
 		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
-		// #4253: a damage event whose tail is not data.
-		"a damage tail's closure": func(c *PendingChoice) {
-			c.replacementResume.ev = damageFrameEvent()
-			c.replacementResume.ev.damageTail.then = func(*Game, int) error { return nil }
-		},
 		"combat damage": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()
 			c.replacementResume.ev.IsCombatDamage, c.replacementResume.ev.damageTail.combat = true, true

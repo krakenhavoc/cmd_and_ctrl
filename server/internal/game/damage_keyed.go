@@ -16,8 +16,8 @@ import "github.com/google/uuid"
 //
 // Now a non-combat damage event to a player or a permanent is written with
 // its frame (replacementEventSnapshot's damage fields and DamageTail, under
-// ReplacementResumeDamage) when its tail is data: no closure `then`, no
-// redirected parts, not released from a shield division, and no division
+// ReplacementResumeDamage) when its tail is data (since #4361 S8 every
+// tail's continuation is): no redirected parts, not released from a shield division, and no division
 // or redirection order held for its instance (neither is written to a
 // restore point). The caller's continuation is damageTail.keyed, a
 // registered tail told the target and the damage dealt, or damageTail.each,
@@ -27,7 +27,8 @@ import "github.com/google/uuid"
 // When the event ends its instance and a prevention follow-up of that
 // instance asks a question (#2040), the keyed continuation is parked as
 // data too (followUpPark.keyed, GameSnapshot.FollowUpParks), so that
-// question is a restore point when its own prompt is keyed.
+// question is a restore point when its own prompt is keyed. The closure
+// park (followUpPark.run) is gone with damageTail.then (#4361 S8).
 
 // ReplacementResumeDamage is the frame key of a damage event (#4253): its
 // own key, as no binary before it keyed a damage event at all.
@@ -75,7 +76,7 @@ func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amou
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
 	t := ev.damageTail
-	if t == nil || t.then != nil || t.combat || t.combatStep != "" || ev.IsCombatDamage ||
+	if t == nil || t.combat || t.combatStep != "" || ev.IsCombatDamage ||
 		t.released || len(t.redirected) > 0 {
 		return false
 	}
@@ -96,8 +97,8 @@ func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
 }
 
 // damageTailSnapshot is a damageTail's data half: present exactly when the
-// event had a tail. A tail with a closure, combat damage, redirected parts
-// or a release is never written.
+// event had a tail. A tail of combat damage, with redirected parts or a
+// release is never written.
 type damageTailSnapshot struct {
 	Kind                damageTailKind     `json:"kind"`
 	Actor               *uuid.UUID         `json:"actor,omitempty"`
@@ -159,9 +160,10 @@ func restoreDamageEvent(s *replacementEventSnapshot, ev *ReplacementEvent) {
 
 // --- the parked continuation ---------------------------------------------
 
-// parkFollowUpKeyedLocked is parkFollowUpContinuationLocked with the rest of
-// the instruction as data: a damage event's keyed tail, told the target and
-// the damage dealt when the park resumes.
+// parkFollowUpKeyedLocked parks the rest of a damage instruction behind its
+// instance's follow-up prompt (prevention_then_pause.go, decision 3), as
+// data: a damage event's keyed tail, told the target and the damage dealt
+// when the park resumes.
 //
 // Caller must hold g.mu (write).
 func (g *Game) parkFollowUpKeyedLocked(inst DamageInstance, then KeyedTail, target uuid.UUID, dealt int) {
@@ -184,21 +186,18 @@ func cloneFollowUpParks(in []followUpPark) []followUpPark {
 //
 // Caller must hold g.mu (write).
 func (g *Game) runFollowUpParkLocked(p followUpPark) error {
-	if p.run != nil {
-		return p.run(g)
+	if p.keyed == nil {
+		return nil
 	}
-	if p.keyed != nil {
-		// A keyed Each walk's total names no one recipient.
-		var ids []uuid.UUID
-		if p.target != uuid.Nil {
-			ids = []uuid.UUID{p.target}
-		}
-		return g.runKeyedTailLocked(*p.keyed, ids, p.dealt)
+	// A keyed Each walk's total names no one recipient.
+	var ids []uuid.UUID
+	if p.target != uuid.Nil {
+		ids = []uuid.UUID{p.target}
 	}
-	return nil
+	return g.runKeyedTailLocked(*p.keyed, ids, p.dealt)
 }
 
-// followUpParkSnapshot is a keyed followUpPark on disk.
+// followUpParkSnapshot is a followUpPark on disk.
 type followUpParkSnapshot struct {
 	Instance DamageInstance     `json:"instance"`
 	Then     *keyedTailSnapshot `json:"then"`
@@ -206,21 +205,15 @@ type followUpParkSnapshot struct {
 	Dealt    int                `json:"dealt,omitempty"`
 }
 
-// snapshotFollowUpParks writes the keyed parks and counts the closures: a
-// table holding one is not a restore point.
-func snapshotFollowUpParks(parks []followUpPark, cen *ContinuationCensus) []followUpParkSnapshot {
+// snapshotFollowUpParks writes the parks. Every park is data (#4361 S8),
+// so a table holding one is a restore point when the prompt it waits on is.
+func snapshotFollowUpParks(parks []followUpPark) []followUpParkSnapshot {
 	var out []followUpParkSnapshot
-	closures := 0
 	for _, p := range parks {
-		if p.run != nil || p.keyed == nil {
-			closures++
+		if p.keyed == nil {
 			continue
 		}
 		out = append(out, followUpParkSnapshot{Instance: p.inst, Then: snapshotKeyedTail(*p.keyed), Target: p.target, Dealt: p.dealt})
-	}
-	if closures > 0 {
-		cen.ChoiceResumeFrames += closures
-		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", closures)
 	}
 	return out
 }

@@ -91,7 +91,6 @@ Game.Seats                                   census:IntrinsicAbilityCards       
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:IntrinsicAbilityCards       # Game.StackMeta
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
-Game.followUpParks                           census:ChoiceResumeFrames          # Game.followUpParks
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
@@ -141,7 +140,6 @@ ReplacementEffect.CopySelector               census:ChoiceResumeFrames          
 ReplacementEffect.EntryCardChoice            census:ChoiceResumeFrames          # Game.BuiltinReplacements.EntryCardChoice
 ReplacementEffect.Replace                    census:ChoiceResumeFrames          # Game.BuiltinReplacements.Replace
 ReplacementEvent.TokenGroups                 census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.TokenGroups
-ReplacementEvent.damageTail                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail
 ReplacementEvent.entryTail                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail
 ReplacementEvent.keywordAction               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction
 ReplacementEvent.stackItem                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.stackItem
@@ -179,13 +177,11 @@ copyFrame.item                               census:ChoiceResumeFrames          
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
 copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
 costCommanderFrame.announce                  census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume.announce
-damageTail.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail.then
 entryBatch.members                           census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members
 entryBatch.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.then
 entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out
 entryTail.batch                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch
 entryTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.then
-followUpPark.run                             census:ChoiceResumeFrames          # Game.followUpParks.run
 keywordActionTail.armyToken                  census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.keywordAction.armyToken
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
 lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item

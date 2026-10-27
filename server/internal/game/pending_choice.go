@@ -4590,10 +4590,10 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 			g.runStateChecksLocked()
 			return
 		}
-		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
-			runBranch(frame.onPay)
-			return nil
-		}); err != nil {
+		// #4361 S8: the "yes" waits for the payment as data, the
+		// answered prompt's own (payUnlessPaidTail runs its onPay as
+		// runBranch would).
+		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, payUnlessPaidTailOf(choice)); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
 		}
 		g.runStateChecksLocked()
