@@ -173,7 +173,7 @@ type TokenCreation struct {
 }
 
 // tokenTail is the CREATION event's answer to lifeTail, damageTail
-// and zoneRoute.then: the rest of whatever asked for the creation,
+// and a route's keyed batch run: the rest of whatever asked for the creation,
 // run with the IDs of the tokens that actually landed, once both
 // pipelines have settled. The per-token ENTRY leg does not need one —
 // it rides #478's entryTail, the tail every other effect-side entry

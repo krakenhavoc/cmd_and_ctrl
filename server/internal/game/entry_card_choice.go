@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/google/uuid"
@@ -57,13 +58,13 @@ import (
 //     (CR 701.9a; Library of Leng's 2004-10-04 ruling: its replacement
 //     applies "any time a spell or ability has you discard as part of
 //     its effect"). So RepEventDiscard opens and EventDiscardCard fires.
-//   - Sacrifice goes through SacrificeAllThenForEffect: one simultaneous
+//   - Sacrifice goes through SacrificeAllKeyedForEffect: one simultaneous
 //     exit, EventSacrifice for each permanent.
 //
 // A discard or a sacrifice can PAUSE — Library of Leng's "may", an
 // ordering between two discard replacements, CR 903.9 on a commander.
 // The paused ENTRY is carried across that pause in a frozen copy
-// (frozenEntryChoice), cloned again each time the continuation runs,
+// (freezeEntryChoiceLocked), cloned again each time the continuation runs,
 // so an undo into the inner prompt replays the entry rather than
 // sharing it with the live game (ADR 0098 Decision 3).
 
@@ -593,19 +594,11 @@ func (g *Game) ResolveEntryCardChoice(choiceID, chooserID uuid.UUID, picks []uui
 	case len(picks) == 0:
 		g.runEntryChoiceDeclineLocked(ev, chosen)
 	case spec != nil && spec.Action == EntryCardDiscard:
-		frozen := frozenEntryChoice(ev, chosen)
-		return g.discardCardsLocked(chooserID, append([]uuid.UUID(nil), picks...), discardOptions{
-			cause:  DiscardCauseEffect,
-			source: source,
-			then: func(g *Game, landed []uuid.UUID) error {
-				return g.resumeEntryAfterActionLocked(frozen, len(landed) == len(picks), landed)
-			},
-		})
+		g.freezeEntryChoiceLocked(ev, chosen)
+		return g.discardCardsKeyedLocked(chooserID, append([]uuid.UUID(nil), picks...), DiscardCauseEffect, source, entryChoiceActedTail(ev, picks))
 	case spec != nil && spec.Action == EntryCardSacrifice:
-		frozen := frozenEntryChoice(ev, chosen)
-		return g.SacrificeAllThenForEffect(source, append([]uuid.UUID(nil), picks...), func(g *Game, sacrificed []uuid.UUID) error {
-			return g.resumeEntryAfterActionLocked(frozen, len(sacrificed) == len(picks), sacrificed)
-		})
+		g.freezeEntryChoiceLocked(ev, chosen)
+		return g.SacrificeAllKeyedForEffect(source, append([]uuid.UUID(nil), picks...), entryChoiceActedTail(ev, picks))
 	case spec != nil && spec.Action == EntryCardChoose:
 		// ADR 0170: nothing happens to the named permanents except what
 		// Then does to them, inline, before the entry resumes.
@@ -628,23 +621,128 @@ func (g *Game) ResolveEntryCardChoice(choiceID, chooserID uuid.UUID, picks []uui
 	return g.continueEntryAfterChoiceLocked(ev)
 }
 
-// frozenEntryChoice takes an immutable copy of a paused entry and the
-// effect that paused it, for a continuation that runs after an action
-// that can itself pause (a discard, a sacrifice).
+// freezeEntryChoiceLocked takes an immutable copy of a paused entry and
+// the effect that paused it, for a continuation that runs after an
+// action that can itself pause (a discard, a sacrifice), and holds it on
+// Game.frozenEntries under the event's ID until that action's keyed tail
+// (entryChoiceActed) takes it back.
 //
 // The copy is made with cloneReplacementResume, the clone every undo
 // snapshot gives a resume frame, and it is cloned AGAIN each time the
 // continuation runs (thaw). So the continuation never shares a mutable
 // event with the game it is running in: an undo into Library of Leng's
 // prompt re-answers against a fresh copy, which is the undo contract
-// every continuation in the engine keeps (ADR 0098 Decision 3). It adds
-// no field anywhere — the closure rides the discard's or sacrifice's
-// existing route continuation.
-func frozenEntryChoice(ev *ReplacementEvent, chosen activeReplacement) *replacementResumeFrame {
-	return cloneReplacementResume(&replacementResumeFrame{
+// every continuation in the engine keeps (ADR 0098 Decision 3).
+//
+// #4361 S17 (owner decision D4): the frame is data. Its event is written
+// through the replacement-event mirror and its effect by
+// ReplacementEffectID (GameSnapshot.FrozenEntries), so a table paused on
+// the action is a restore point; before this the frame rode the action's
+// closure continuation and was not.
+//
+// Caller must hold g.mu.
+func (g *Game) freezeEntryChoiceLocked(ev *ReplacementEvent, chosen activeReplacement) {
+	f := cloneReplacementResume(&replacementResumeFrame{
 		ev:         ev,
 		applicable: []activeReplacement{chosen},
 	})
+	next := make([]*replacementResumeFrame, 0, len(g.frozenEntries)+1)
+	for _, old := range g.frozenEntries {
+		if old.ev.ID != ev.ID {
+			next = append(next, old)
+		}
+	}
+	g.frozenEntries = append(next, f)
+}
+
+// takeFrozenEntryLocked removes and returns the entry frozen under id, or
+// nil when there is none. Copy on write: an undo snapshot sharing the
+// slice keeps its own.
+//
+// Caller must hold g.mu.
+func (g *Game) takeFrozenEntryLocked(id ReplacementEventID) *replacementResumeFrame {
+	var found *replacementResumeFrame
+	next := make([]*replacementResumeFrame, 0, len(g.frozenEntries))
+	for _, f := range g.frozenEntries {
+		if found == nil && f.ev.ID == id {
+			found = f
+			continue
+		}
+		next = append(next, f)
+	}
+	if found == nil {
+		return nil
+	}
+	if len(next) == 0 {
+		next = nil
+	}
+	g.frozenEntries = next
+	return found
+}
+
+// entryChoiceActedTail is the discard's or the sacrifice's continuation:
+// the frozen entry's event ID (N) and the cards named (Carry), so "if you
+// do" is every named card really leaving.
+func entryChoiceActedTail(ev *ReplacementEvent, picks []uuid.UUID) KeyedTail {
+	return KeyedTail{Ref: entryChoiceActed, N: int(ev.ID), Carry: copyUUIDs(picks)}
+}
+
+// entryChoiceActed resumes the entry frozen under the event ID N once its
+// discard or sacrifice has settled, told the cards that really moved.
+var entryChoiceActed = RegisterTail("engine/entry-choice-acted", func(g *Game, o TailOutcome) error {
+	frozen := g.takeFrozenEntryLocked(ReplacementEventID(o.Tail.N))
+	if frozen == nil {
+		return nil
+	}
+	return g.resumeEntryAfterActionLocked(frozen, len(o.IDs) == len(o.Tail.Carry), o.IDs)
+})
+
+// frozenEntryKeyable reports whether a frozen entry is data: its event
+// is (replacementEventKeyable) and its effect can be gathered again.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) frozenEntryKeyable(f *replacementResumeFrame) bool {
+	return f != nil && f.ev != nil && len(f.applicable) == 1 &&
+		applicableRegathered(f.applicable) && g.replacementEventKeyable(f.ev)
+}
+
+// snapshotFrozenEntriesLocked writes Game.frozenEntries. One that is not
+// data is counted instead.
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) snapshotFrozenEntriesLocked(cen *ContinuationCensus) []replacementResumeSnapshot {
+	var out []replacementResumeSnapshot
+	for _, f := range g.frozenEntries {
+		if !g.frozenEntryKeyable(f) {
+			cen.ChoiceResumeFrames++
+			cen.note("an entry frozen behind its discard or sacrifice is not data")
+			continue
+		}
+		out = append(out, *g.snapshotReplacementResume(f, cen))
+	}
+	return out
+}
+
+// rebuildFrozenEntryLocked is snapshotFrozenEntriesLocked's inverse for
+// one frame. The effect that asked has already applied to the event (CR
+// 614.5), and a gather skips an applied effect, so it is gathered with
+// that mark lifted and the mark is put back.
+//
+// Caller must hold g.mu (write).
+func (g *Game) rebuildFrozenEntryLocked(s *replacementResumeSnapshot) *replacementResumeFrame {
+	open := *s
+	open.Applied = nil
+	for _, id := range s.Applied {
+		if !slices.Contains(s.Applicable, id) {
+			open.Applied = append(open.Applied, id)
+		}
+	}
+	f := g.rebuildReplacementResumeLocked(&open)
+	marks := g.replacementsAppliedThisEvent[f.ev.ID]
+	for _, id := range s.Applied {
+		marks[id] = true
+	}
+	return f
 }
 
 // thawEntryChoiceLocked returns a fresh copy of a frozen entry and its

@@ -9,12 +9,12 @@ import (
 // discard_keyed.go — #4253 slice 9: a discard batch with the rest of the
 // batch as data.
 //
-// discardBatchLocked discards one card at a time, each from the previous
+// A discard batch discards one card at a time, each from the previous
 // leg's route continuation, so a leg paused on a CR 616 prompt (madness's
 // "you may exile it instead", Library of Leng's "you may put it on top",
 // an ordering prompt between them) holds the rest of the discard behind
-// it. The keyed form carries the same state the closure captured as data
-// on the leg's route (zoneRoute.discardLegs): the cards still to discard,
+// it. The batch carries that state as data on the leg's route
+// (zoneRoute.discardLegs): the cards still to discard,
 // the ones discarded this way, the legs a replacement put on top of the
 // library with the object epoch each landed with, the event-log mark the
 // leg began at, and the caller's continuation as a registered tail.
@@ -22,6 +22,9 @@ import (
 // A discard is its own replacement event kind (RepEventDiscard, #650), so
 // its frame is keyed under its own resume key
 // (ReplacementResumeDiscard); before this slice no discard frame was.
+// #4361 S17 deleted the closure batch (discardBatchLocked) once its last
+// caller, an entry choice's discard, was keyed: every discard is this
+// batch.
 
 // discardBatchRun is the rest of a keyed discard batch, riding the route
 // of the leg now moving (Leg). Never written after it is built, so an undo
@@ -102,8 +105,7 @@ func (g *Game) discardCardsAnsweredKeyedLocked(playerID uuid.UUID, cards []uuid.
 }
 
 // discardBatchKeyedLocked discards the head of run.Rest with the rest of
-// the batch riding its route, or finishes the batch: discardBatchLocked's
-// keyed twin, which it must not drift from.
+// the batch riding its route, or finishes the batch.
 //
 // Caller must hold g.mu.
 func (g *Game) discardBatchKeyedLocked(run *discardBatchRun) error {
@@ -141,8 +143,8 @@ func (g *Game) discardBatchKeyedLocked(run *discardBatchRun) error {
 	}
 	then := restoreKeyedTail(run.Then)
 	// ADR 0088 amendment 2026-10-14 (#2949), #3541: the cards a
-	// replacement put on top of the library are ordered by their owner,
-	// as discardBatchLocked does; the rest of the effect waits for it.
+	// replacement put on top of the library are ordered by their owner;
+	// the rest of the effect waits for it.
 	if top, displaced := g.discardBatchTopPlacementsLocked(run.Player, discardTopsOf(run.Tops)); len(top) >= 2 || (len(top) == 1 && displaced) {
 		var after KeyedTail
 		if !then.IsZero() {
@@ -172,7 +174,7 @@ var discardOrderPlaced = RegisterTail("engine/discard-order-placed", func(g *Gam
 })
 
 // runDiscardBatchLegLocked counts the leg that just settled and discards
-// the next card: the keyed form of discardBatchLocked's leg closure.
+// the next card.
 //
 // Caller must hold g.mu.
 func (g *Game) runDiscardBatchLegLocked(run *discardBatchRun) error {

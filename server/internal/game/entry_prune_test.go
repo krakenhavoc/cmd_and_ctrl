@@ -206,7 +206,10 @@ func stalableGraveyardExit(t *testing.T, g *Game, owner *Player, cardID uuid.UUI
 		CardID: cardID,
 		Dst:    ZoneExile,
 		Actor:  owner.ID,
-		then:   func(*Game) error { ran++; return nil },
+		batchLegs: &routeBatchRun{Leg: cardID, Then: snapshotKeyedTail(hookTail(func(*Game, TailOutcome) error {
+			ran++
+			return nil
+		}))},
 	})
 	g.mu.Unlock()
 	if err != nil {

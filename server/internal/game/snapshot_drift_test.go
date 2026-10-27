@@ -217,6 +217,9 @@ var gameFields = plan(
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"pausedModeWalk", carried, "",
+	// #4361 S17: an entry frozen behind its discard or sacrifice, as
+	// FrozenEntries; one that is not data is counted instead.
+	"frozenEntries", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
 	// #4163: what an earlier step handed a later one.
@@ -1255,7 +1258,6 @@ var pendingChoiceFields = plan(
 	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",
 	"nameThen", carried, "#4253 slice 10c: a resolution-time card-name prompt's keyed then, as NameThen (its key rides PickThen)",
 	"sourceShield", carried, "#4253 slice 10c: a choose_source prompt's shield, redirection or multiplier, as SourceShield (its continuation's key rides PickThen)",
-	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
 	"libraryOrderKeyed", carried, "#4301: an ordering prompt's keyed then, as LibraryOrder (its key rides PickThen)",
 	"dice", carried, "#4307: a paused dice roll, as DiceRoll (its prompt's key rides PickThen)",
 	"midResolution", carried, "",

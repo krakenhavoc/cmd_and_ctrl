@@ -33,8 +33,13 @@ func TestCloneThatASpellPutsOntoTheBattlefieldCopies(t *testing.T) {
 	me, clone, bears := ebCloneInHand(g)
 	var entered uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.PutFromHandOntoBattlefieldThenForEffect(clone, game.HandEntryOptions{Controller: me.ID},
-			func(_ *game.Game, id uuid.UUID) error { entered = id; return nil }); err != nil {
+		if err := g.PutFromHandOntoBattlefieldKeyedForEffect(clone, game.HandEntryOptions{Controller: me.ID},
+			hookTail(func(_ *game.Game, o game.TailOutcome) error {
+				if len(o.IDs) > 0 {
+					entered = o.IDs[0]
+				}
+				return nil
+			})); err != nil {
 			t.Fatalf("put: %v", err)
 		}
 	})
@@ -79,8 +84,8 @@ func TestACloneEntryCancelledAfterItsCopyStillFinishesTheBatch(t *testing.T) {
 			},
 			Label: "test: cancel the Clone's entry once it has chosen",
 		})
-		if err := g.PutFromHandOntoBattlefieldThenForEffect(clone, game.HandEntryOptions{Controller: me.ID},
-			func(_ *game.Game, _ uuid.UUID) error { thenRan++; return nil }); err != nil {
+		if err := g.PutFromHandOntoBattlefieldKeyedForEffect(clone, game.HandEntryOptions{Controller: me.ID},
+			hookTail(func(*game.Game, game.TailOutcome) error { thenRan++; return nil })); err != nil {
 			t.Fatalf("put: %v", err)
 		}
 	})

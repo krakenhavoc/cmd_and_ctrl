@@ -553,14 +553,23 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	if eventCarriesDataTail(ev) {
 		key = replacementResumeTailedKeyOf(ev)
 	}
-	for _, a := range f.applicable {
+	if !applicableRegathered(f.applicable) {
+		return ""
+	}
+	return key
+}
+
+// applicableRegathered reports whether a restored binary could gather
+// every effect of a frame again by its ID.
+func applicableRegathered(applicable []activeReplacement) bool {
+	for _, a := range applicable {
 		if a.id >= testReplacementIDBase && a.id < builtinReplacementIDBase {
 			// A test-injected effect is not in the restore point, so the
 			// restored binary could not gather it again.
-			return ""
+			return false
 		}
 	}
-	return key
+	return true
 }
 
 // replacementEventKeyable reports whether an event, its tail included,
@@ -598,11 +607,9 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	if t := ev.tokenTail; t != nil && t.then != nil {
 		return false
 	}
-	if t := ev.lifeTail; t != nil && t.move != nil {
-		// #4361 S9: the rest of a replaced move's life changes (ADR
-		// 0178). Its route rides the event, and neither is written.
-		return false
-	}
+	// #4361 S17: the rest of a replaced move's life changes (ADR 0178,
+	// lifeTail.move) is written with the life tail, and its route rides
+	// the event's zoneRoute, checked below like any other.
 	if ev.Kind == RepEventDamage && !g.damageEventIsData(ev) {
 		return false
 	}
@@ -615,10 +622,10 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 	}
 	if r := ev.zoneRoute; r != nil {
 		// #4253 slice 10a: an exchange's settled entry is data
-		// (settledExchangeEntry), written beside the route.
-		if r.then != nil {
-			return false
-		}
+		// (settledExchangeEntry), written beside the route. #4361 S17: a
+		// route's continuation is always data now (zoneRoute.then is
+		// gone).
+		//
 		// #4253 slice 9: a keyed batch's last-known copies are written
 		// beside its run, through the card mirror; any other route with
 		// them, or copies the mirror cannot write whole, stays a closure.
@@ -867,6 +874,39 @@ type counterTailSnapshot struct {
 type lifeTailSnapshot struct {
 	Then *keyedTailSnapshot `json:"then,omitempty"`
 	Each *lifeEachRun       `json:"each,omitempty"`
+	// Move is the rest of a replaced move's declared life changes (ADR
+	// 0178, lifeTail.move, #4361 S17); the move's route rides the event's
+	// ZoneRoute. Additive within v9.
+	Move *moveLifeRestSnapshot `json:"move,omitempty"`
+}
+
+// moveLifeRestSnapshot is a moveLifeRest.
+type moveLifeRestSnapshot struct {
+	Remaining     []moveLifeSnapshot `json:"remaining,omitempty"`
+	HasRoute      bool               `json:"hasRoute,omitempty"`
+	MustSettleNow bool               `json:"mustSettleNow,omitempty"`
+}
+
+func snapshotMoveLifeRest(r *moveLifeRest) *moveLifeRestSnapshot {
+	if r == nil {
+		return nil
+	}
+	out := &moveLifeRestSnapshot{HasRoute: r.hasRoute, MustSettleNow: r.mustSettleNow}
+	for _, l := range r.remaining {
+		out.Remaining = append(out.Remaining, moveLifeSnapshot{Source: uuidPtrOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	return out
+}
+
+func restoreMoveLifeRest(s *moveLifeRestSnapshot) *moveLifeRest {
+	if s == nil {
+		return nil
+	}
+	out := &moveLifeRest{hasRoute: s.HasRoute, mustSettleNow: s.MustSettleNow}
+	for _, l := range s.Remaining {
+		out.remaining = append(out.remaining, lifeInstruction{Source: uuidOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	return out
 }
 
 // tokenGroupSnapshot is a TokenGroup: its template through the card
@@ -1124,7 +1164,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		out.CounterTail = &counterTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
 	}
 	if t := ev.lifeTail; t != nil {
-		out.LifeTail = &lifeTailSnapshot{Then: snapshotKeyedTail(t.keyed), Each: cloneLifeEachRun(t.each)}
+		out.LifeTail = &lifeTailSnapshot{Then: snapshotKeyedTail(t.keyed), Each: cloneLifeEachRun(t.each), Move: snapshotMoveLifeRest(t.move)}
 	}
 	out.MillPlayer = uuidPtrOrNil(ev.MillPlayer)
 	out.MillCount = ev.MillCount
@@ -1285,7 +1325,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.counterTail = &counterTail{keyed: restoreKeyedTail(t.Then)}
 	}
 	if t := s.LifeTail; t != nil {
-		ev.lifeTail = &lifeTail{keyed: restoreKeyedTail(t.Then), each: cloneLifeEachRun(t.Each)}
+		ev.lifeTail = &lifeTail{keyed: restoreKeyedTail(t.Then), each: cloneLifeEachRun(t.Each), move: restoreMoveLifeRest(t.Move)}
 	}
 	ev.MillPlayer = uuidOrNil(s.MillPlayer)
 	ev.MillCount = s.MillCount

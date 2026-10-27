@@ -216,7 +216,7 @@ func exiledCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
 // The candidates are read from the graveyard as it is WHEN THIS RUNS,
 // so a card that arrived earlier in the same resolution is on offer.
 // That is the point of it: put it in the continuation of whatever came
-// first (a sacrifice run's `then`, a SacrificeAllThenForEffect), and
+// first (a sacrifice run's `then`, a SacrificeAllKeyedForEffect), and
 // the creature just sacrificed is one of the cards that can come back.
 // It is not a target, so nothing is announced at cast and opponents
 // have no pick to respond to.

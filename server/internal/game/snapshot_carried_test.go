@@ -563,6 +563,10 @@ var carriedNotRoundTrippable = map[string]string{
 	"PendingChoice.DivideShield": "#4361 S16: written only on a divide_shield prompt, whose PickThen it takes " +
 		"for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round trip is " +
 		"pinned by TestDivideShieldMirrorsCarryEveryField and the strict restores in divide_shield_restore_test.go.",
+	"Game.frozenEntries": "#4361 S17: written only beside the prompt that pauses the frozen entry's discard or " +
+		"sacrifice, and rebuilt by gathering the event's effect again by ID, which a generated frame names " +
+		"nothing for (its effect is a func the probe cannot compare). Its round trip is pinned by the strict " +
+		"restores in census_s17_restore_test.go (effects): Lotus Vale, Mox Diamond under Library of Leng.",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.

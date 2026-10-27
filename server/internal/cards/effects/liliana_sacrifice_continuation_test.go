@@ -146,11 +146,11 @@ func TestSacrificeAllContinuationWaitsForReplacementOrder(t *testing.T) {
 		if len(picks.Cards()) == 0 {
 			return nil
 		}
-		return g.SacrificeAllThenForEffect(uuid.Nil, picks.Cards(), func(_ *game.Game, ids []uuid.UUID) error {
+		return g.SacrificeAllKeyedForEffect(uuid.Nil, picks.Cards(), hookTail(func(_ *game.Game, o game.TailOutcome) error {
 			tailCalls++
-			sacrificed = append([]uuid.UUID(nil), ids...)
+			sacrificed = append([]uuid.UUID(nil), o.IDs...)
 			return nil
-		})
+		}))
 	})
 	g.WithWriteLock(func() {
 		if err := g.ChoosePermanentsInOrderKeyedForEffect([]game.ChooseCardsPrompt{{

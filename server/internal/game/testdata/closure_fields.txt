@@ -52,6 +52,7 @@
 # 2026-10-27 (#4361 S14b): the trigger target walk written by catalog row (pendingChoices[].targetWalk) and its "which opponent chooses" pick keyed; 15 lines keyed, optionPickFrame.thenSeat and PendingChoice.optionPickResume deleted, pickTargetFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
 # 2026-10-27 (#4361 S11c): no line moves; the surveil, search-take, counter (Hinder) and hand-size discard writers keyed. entryBatch.then and libraryOrderResume wait on the entry-choice discard's frozen frame (S17).
 # 2026-10-27 (#4361 S13): ChoiceResumeFrames 52 → 50, a parked cast or activation written as data (owner decision D7); PendingChoice.costCommanderResume and costCommanderFrame.announce deleted.
+# 2026-10-27 (#4361 S17): ChoiceResumeFrames 50 → 47, owner decision D4: the entry-choice frame is written as data (Game.frozenEntries, keyed: GameSnapshot.FrozenEntries, its effect by ReplacementEffectID) and the discard and sacrifice it waits on are keyed; zoneRoute.then, entryBatch.then and PendingChoice.libraryOrderResume deleted with their last writers.
 
 AbilityCost.DiscardCards                     census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.DiscardCards
 AbilityCost.ExileCards                       census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities.Cost.ExileCards
@@ -92,6 +93,7 @@ Game.Seats                                   census:IntrinsicAbilityCards       
 Game.Stack                                   census:IntrinsicAbilityCards       # Game.Stack
 Game.StackMeta                               census:IntrinsicAbilityCards       # Game.StackMeta
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
+Game.frozenEntries                           keyed                              # Game.frozenEntries
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
 Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
@@ -118,7 +120,6 @@ ModeOption.Targets                           census:ChoiceResumeFrames          
 ModeSpec.Options                             census:ChoiceResumeFrames          # Game.StackMeta.modeSpec.Options
 PendingChoice.AttackSplit                    rebuilt                            # Game.PendingChoices.AttackSplit
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
-PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
 PendingChoice.modePickResume                 keyed                              # Game.PendingChoices.modePickResume
 PendingChoice.pickTargetResume               keyed                              # Game.PendingChoices.pickTargetResume
 PendingChoice.replacementResume              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume
@@ -174,7 +175,6 @@ copyFrame.item                               census:ChoiceResumeFrames          
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
 copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
 entryBatch.members                           census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members
-entryBatch.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.then
 entryBatchMember.out                         census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch.members.out
 entryTail.batch                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.batch
 entryTail.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.entryTail.then
@@ -203,4 +203,3 @@ tokenTail.then                               census:ChoiceResumeFrames          
 triggerResumeFrame.ability                   keyed                              # Game.PendingChoices.triggerResume.ability
 triggerResumeFrame.source                    census:IntrinsicAbilityCards       # Game.PendingChoices.triggerResume.source
 zoneRoute.simultaneousExit                   census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute.simultaneousExit
-zoneRoute.then                               census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.zoneRoute.then

@@ -334,6 +334,13 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev = damageFrameEvent()
 			c.replacementResume.ev.damageTail.kind = damageTailPermanent
 		},
+		// #4361 S17: the rest of a replaced move's life changes (ADR 0178)
+		// is written with the life tail.
+		"a replaced move's life sequence": func(c *PendingChoice) {
+			c.replacementResume.ev.Kind = RepEventLife
+			c.replacementResume.ev.lifeTail = &lifeTail{move: &moveLifeRest{hasRoute: true}}
+			c.replacementResume.ev.zoneRoute = &zoneRoute{Dst: ZoneExile, batchLegs: &routeBatchRun{}}
+		},
 		"a staged token's entry with its batch as data": func(c *PendingChoice) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			c.replacementResume.ev.entryTail = &entryTail{tokens: &tokenEntryRun{}}
@@ -348,14 +355,8 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		g.enteringTokens = nil
 	}
 	for name, mut := range map[string]func(c *PendingChoice){
-		"a route's then": func(c *PendingChoice) {
-			c.replacementResume.ev.zoneRoute = &zoneRoute{then: func(*Game) error { return nil }}
-		},
 		"an entry tail's then": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
-		},
-		"an entry batch with a closure": func(c *PendingChoice) {
-			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{then: func(*Game, []uuid.UUID) error { return nil }}}
 		},
 		"an entry batch that has failed": func(c *PendingChoice) {
 			b := &entryBatch{}
@@ -370,7 +371,7 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		},
 		"an entry batch whose settled member holds a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{
-				out: &ReplacementEvent{Kind: RepEventMove, zoneRoute: &zoneRoute{then: func(*Game) error { return nil }}},
+				out: &ReplacementEvent{Kind: RepEventMove, entryTail: &entryTail{then: func(*Game, uuid.UUID) error { return nil }}},
 			}}}}
 		},
 		"a token creation with a closure": func(c *PendingChoice) {
@@ -387,12 +388,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev.OldZone, c.replacementResume.ev.NewZone = "", ZoneBattlefield
 			c.replacementResume.ev.entryTail = &entryTail{then: func(*Game, uuid.UUID) error { return nil }}
 			g.enteringTokens = []Card{{InstanceID: c.replacementResume.ev.CardID}}
-		},
-		// #4361 S9: the life tail's closure is gone; what still gates is
-		// the rest of a replaced move's life changes (ADR 0178).
-		"a replaced move's life sequence": func(c *PendingChoice) {
-			c.replacementResume.ev.Kind = RepEventLife
-			c.replacementResume.ev.lifeTail = &lifeTail{move: &moveLifeRest{}}
 		},
 		"an amass's Army the mirror cannot write": func(c *PendingChoice) {
 			c.replacementResume.ev.keywordAction = &keywordActionTail{armyToken: Card{
@@ -420,14 +415,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 		"a keyed batch whose last-known copies hold a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.zoneRoute = &zoneRoute{batchLegs: &routeBatchRun{},
 				simultaneousExit: []Card{{Name: "Odd", ActivatedAbilities: []ActivatedAbilityShape{{}}}}}
-		},
-		"a discard's closure": func(c *PendingChoice) {
-			c.replacementResume.ev.Kind = RepEventDiscard
-			c.replacementResume.ev.zoneRoute = &zoneRoute{Discard: true, then: func(*Game) error { return nil }}
-		},
-		"an exchange whose exit has a closure": func(c *PendingChoice) {
-			c.replacementResume.ev.zoneRoute = &zoneRoute{simultaneousEntry: &settledExchangeEntry{CardID: uuid.New()},
-				then: func(*Game) error { return nil }}
 		},
 		"a test replacement": func(c *PendingChoice) {
 			c.replacementResume.applicable = []activeReplacement{{id: testReplacementIDBase}}

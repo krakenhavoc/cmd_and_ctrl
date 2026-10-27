@@ -6117,7 +6117,7 @@ func (g *Game) sweepEliminatedChoicesLocked() {
 //
 // #865: so does a MOVE, for the same reason and with the same
 // consequence — a multi-card discard and a sequenced wipe both carry
-// the rest of the batch on zoneRoute.then. That one is
+// the rest of the batch on the route (a keyed batch run). That one is
 // abandonZoneRouteLocked (zone_route.go), the exit's terminal outcome
 // for a prompt taken away rather than answered, shared with the two
 // prune paths.
@@ -6227,55 +6227,34 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 // engine doesn't carry a stale reference. Caller must hold g.mu.
 //
 // The FIRE-AND-FORGET form. A caller that has to know what the exit
-// actually did — "for each creature destroyed this way" — uses
-// routeBattlefieldExitThenLocked and reads the board from the
+// actually did — "for each creature destroyed this way" — uses a keyed
+// route batch (DestroyPermanentsKeyedForEffect) and reads the board from the
 // continuation, because an exit can pause on a replacement's prompt
 // (a commander's CR 903.9b offer for a bounce or a tuck; a death is
 // no longer one, ADR 0115) (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
-	return g.routeBattlefieldExitThenLocked(cardID, nil)
+	return g.routeBattlefieldExitInBatchLocked(cardID, battlefieldExitRoute, nil)
 }
 
-// routeBattlefieldExitThenLocked is the same exit with a CONTINUATION:
-// `then` runs once the move has reached a TERMINAL outcome — landed
-// (wherever the window settled it), cancelled, or refused. A pause is
-// not terminal; the resume reaches it later, through
-// applyResolvedReplacementEventLocked.
-//
-// It is the destroy / sacrifice / SBA route's half of the idiom
-// lifeTail, damageTail and zoneRoute.then already share (ADR 0013 §5b,
-// §5c, §5g). The continuation is carried on a zoneRoute like every
-// other exit's, flagged ViaBattlefieldLeave so the resume still
-// finishes the move through executeBattlefieldLeaveLocked: this route
-// is not folded into the shared exit primitive (see zone_route.go),
-// only its "then" is.
-//
-// `then` deliberately takes no outcome argument. What it wants to know
-// is where the permanent ended up, and it reads that off the live
-// board — the undo-safety contract every continuation in the engine
-// follows, and the only reading that is still true after a rewind into
-// the open prompt.
-//
-// Caller must hold g.mu.
-func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
-	return g.routeBattlefieldExitInBatchThenLocked(cardID, battlefieldExitRoute, nil, then)
-}
-
-// routeBattlefieldExitInBatchThenLocked is the batched form used by a
-// sequenced simultaneous destruction. `batch` rides the route across a
-// replacement prompt so finishBattlefieldLeaveLocked can publish it around
-// the resumed move itself, before the continuation starts the next leg.
+// routeBattlefieldExitInBatchLocked is the destroy / sacrifice / SBA
+// exit, and the batched form used by a sequenced simultaneous
+// destruction. `batch` rides the route across a replacement prompt so
+// finishBattlefieldLeaveLocked can publish it around the resumed move
+// itself, before the continuation (the route's keyed batch run, #4253
+// slice 9; the closure `then` went in #4361 S17) starts the next leg.
+// A pause is not terminal; the resume reaches the continuation later,
+// through applyResolvedReplacementEventLocked.
 //
 // `r` is the route TEMPLATE the verb chose — destroyRoute for a
 // destruction, battlefieldExitRoute for a sacrifice or a zero-counter
 // state-based action. It is what tells the CR 701.19 regeneration
 // built-in whether this exit is a destruction at all, and whether the
-// destroying effect said it can't be regenerated (#667). Its CardID,
-// simultaneousExit and then are filled in here, exactly as
-// routeLegLocked fills them in for every other exit.
+// destroying effect said it can't be regenerated (#667). Its CardID
+// and simultaneousExit are filled in here, exactly as routeLegLocked
+// fills them in for every other exit.
 //
 // Caller must hold g.mu.
-func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRoute, batch []Card, then func(g *Game) error) error {
+func (g *Game) routeBattlefieldExitInBatchLocked(cardID uuid.UUID, r zoneRoute, batch []Card) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -6322,11 +6301,10 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// CR 903.9 answer, given before the payment.
 		commanderAnswer: r.commanderAnswer,
 	}
-	if then != nil || r.batchLegs != nil {
+	if r.batchLegs != nil {
 		r.CardID = cardID
 		r.ViaBattlefieldLeave = true
 		r.simultaneousExit = batch
-		r.then = then
 		ev.zoneRoute = &r
 	}
 	out, err := g.applyReplacementsLocked(ev)

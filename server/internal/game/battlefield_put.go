@@ -498,29 +498,3 @@ func (g *Game) PutCardsFromHandOntoBattlefieldKeyedForEffect(ids []uuid.UUID, op
 func (g *Game) PutFromHandOntoBattlefieldKeyedForEffect(cardID uuid.UUID, opts HandEntryOptions, then KeyedTail) error {
 	return g.startPreparedEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, &entryBatch{keyed: then, opts: opts})
 }
-
-// PutFromHandOntoBattlefieldThenForEffect is the hand door with a
-// continuation, told the entering permanent's ID (uuid.Nil when nothing
-// entered) once the entry is complete. See
-// PutCardsFromLibraryOntoBattlefieldKeyedForEffect for when it runs.
-//
-// Its one production caller is a closure discard batch's leg that a
-// replacement settled on the battlefield (discardOntoBattlefieldLocked),
-// and it is the one writer left of entryBatch.then; it goes with that
-// batch's closure route (#4361).
-//
-// Caller must hold g.mu.
-func (g *Game) PutFromHandOntoBattlefieldThenForEffect(cardID uuid.UUID, opts HandEntryOptions, then func(g *Game, entered uuid.UUID) error) error {
-	if then == nil {
-		// No continuation, so none on the batch: a paused entry is a
-		// restore point (#4253 slice 3).
-		return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, nil)
-	}
-	return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, func(g *Game, in []uuid.UUID) error {
-		entered := uuid.Nil
-		if len(in) > 0 {
-			entered = in[0]
-		}
-		return then(g, entered)
-	})
-}

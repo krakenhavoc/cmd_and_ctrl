@@ -24,7 +24,7 @@ import "github.com/google/uuid"
 //
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) entryBatchKeyable(b *entryBatch) bool {
-	if b == nil || b.then != nil || b.firstErr.set || b.attraction != nil || b.report != nil || b.done {
+	if b == nil || b.firstErr.set || b.attraction != nil || b.report != nil || b.done {
 		return false
 	}
 	for _, m := range b.members {

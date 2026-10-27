@@ -560,6 +560,9 @@ func (g *Game) cloneLocked() *Game {
 	out.resolutionOpen = g.resolutionOpen
 	// #2789: the bullets parked behind that paused prompt.
 	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
+	// #4361 S17: the entries frozen behind that paused prompt's action.
+	// Copy on write, so the slice is shared.
+	out.frozenEntries = g.frozenEntries
 	// #4012: the effect steps parked behind that paused prompt.
 	out.pausedStepWalk = cloneStepWalk(g.pausedStepWalk)
 	// #4163: what an earlier step handed a later one.
@@ -1387,6 +1390,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolving = src.resolving
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
+	g.frozenEntries = src.frozenEntries
 	g.pausedStepWalk = src.pausedStepWalk
 	g.stepRecords = src.stepRecords
 	g.pausedResolutionTail = src.pausedResolutionTail

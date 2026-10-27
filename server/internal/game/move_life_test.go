@@ -192,10 +192,11 @@ func TestMoveLifeOnACostSettlesWithoutAsking(t *testing.T) {
 	life := me.Life
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.routeBattlefieldExitInBatchThenLocked(bear, zoneRoute{Sacrifice: true, MustSettleNow: true}, nil, func(*Game) error {
-			ran++
-			return nil
-		})
+		err := g.routeBattlefieldExitInBatchLocked(bear, zoneRoute{Sacrifice: true, MustSettleNow: true,
+			batchLegs: &routeBatchRun{Leg: bear, Then: snapshotKeyedTail(hookTail(func(*Game, TailOutcome) error {
+				ran++
+				return nil
+			}))}}, nil)
 		if err != nil {
 			t.Fatalf("sacrifice as a cost: %v", err)
 		}

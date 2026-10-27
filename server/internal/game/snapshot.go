@@ -538,6 +538,14 @@ type GameSnapshot struct {
 	// them. Additive within the version.
 	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
 
+	// FrozenEntries is Game.frozenEntries (#4361 S17, owner decision D4,
+	// entry_card_choice.go): an entry whose "as this enters, discard or
+	// sacrifice" choice was answered and whose action has paused, with
+	// the effect that asked, by ReplacementEffectID. The action's keyed
+	// tail names the entry by event ID. A frame that is not data is
+	// counted, not written. Additive within v9.
+	FrozenEntries []replacementResumeSnapshot `json:"frozenEntries,omitempty"`
+
 	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
 	// multi-seat instructions in flight whose continuation is a
 	// registered key, each with its outstanding count, ask order, what
@@ -2551,12 +2559,23 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			s.PendingChoices = append(s.PendingChoices, pc)
 		}
+		// #4361 S17: the entries frozen behind a discard or a sacrifice
+		// one of these prompts is pausing.
+		if s.FrozenEntries = g.snapshotFrozenEntriesLocked(cen); len(s.FrozenEntries) > 0 {
+			keyedFrames = true
+		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
 			for _, c := range g.enteringTokens {
 				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
 			}
 		}
+	} else if len(g.frozenEntries) > 0 {
+		// #4361 S17: a frozen entry with no prompt open has lost the
+		// action that would resume it. Never expected; counted, so a
+		// restart rewinds rather than guessing.
+		cen.ChoiceResumeFrames++
+		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
 	// damage-assignment prompts. Not carried: the table is not a
@@ -3371,9 +3390,6 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
 		"copyResume":       c.copyResume != nil,
 		"triggerResume":    c.triggerResume != nil && tf == nil,
-		// ADR 0088's ordered placement: handed the answer, then
-		// places the pile and runs the rest of the card.
-		"libraryOrderResume": c.libraryOrderResume != nil,
 		// #4361 S7b: the card-set pick's closure frame is gone. Every
 		// choose_cards pick is keyed, a run's reveal or permanent pick
 		// settles from its own fields, and an entry card choice's zone is
@@ -3804,6 +3820,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		g.PendingChoices[i].PickThen = ""
 		g.PendingChoices[i].replacementResume = g.rebuildReplacementResumeLocked(rs)
+	}
+	for i := range s.FrozenEntries {
+		// #4361 S17: after the serials, like the frames.
+		g.frozenEntries = append(g.frozenEntries, g.rebuildFrozenEntryLocked(&s.FrozenEntries[i]))
 	}
 	return g
 }

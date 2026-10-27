@@ -1245,17 +1245,13 @@ type PendingChoice struct {
 	// continuation's key riding PickThen. Nil on every other prompt.
 	sourceShield *SourceShield
 
-	// libraryOrderResume is a PendingChoicePutInLibrary's
-	// continuation: it is handed the validated answer (both lanes
-	// top-first) and places the cards, then runs the rest of the
-	// effect. Captures only IDs and scalars. Not serialised; counted
-	// in the snapshot census. See library_order.go.
-	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
-
-	// libraryOrderKeyed is libraryOrderResume as data (#4301): how the
-	// cards move and the registered tail that is the rest of the effect.
-	// Written to a restore point (pendingChoiceSnapshot.LibraryOrder), its
-	// key riding PickThen. Set one of the two or neither.
+	// libraryOrderKeyed is a PendingChoicePutInLibrary's continuation as
+	// data (#4301): how the cards move and the registered tail that is the
+	// rest of the effect. Handed the validated answer (both lanes
+	// top-first), it places the cards, then runs that tail. Written to a
+	// restore point (pendingChoiceSnapshot.LibraryOrder), its key riding
+	// PickThen. (#4361 S17 deleted the closure form, libraryOrderResume.)
+	// See library_order.go.
 	libraryOrderKeyed *libraryOrderKeyed
 
 	// dice is a paused dice roll (#4307, dice_roll.go): the roll, the
@@ -5720,7 +5716,7 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 // the keyword itself.
 //
 // #931: the graveyard leg goes through the shared exit primitive
-// (routeAllThenLocked with millRoute, the template it shares with an
+// (a route batch with millRoute, the template it shares with an
 // ordinary library → graveyard move) rather than pushing the cards
 // into the pile by hand. So the CR 614 window opens on each of them —
 // "if a card would be put into a graveyard from anywhere, exile it
