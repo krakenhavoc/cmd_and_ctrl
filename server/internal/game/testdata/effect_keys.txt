@@ -1713,3 +1713,5 @@ tail engine/foretold-exiled
 tail engine/paid-cast-or-else-exiled
 tail engine/plot-exiled
 tail engine/suspend-exiled
+tail engine/rad-life-lost
+tail engine/rad-milled
