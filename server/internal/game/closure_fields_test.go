@@ -242,7 +242,7 @@ var closureClassCeilings = map[string]int{
 	// by Ian): + TapPermanentsCost.Spec, moved from
 	// census:ChoiceResumeFrames when payUnlessFrame.tap went; its other
 	// route is AbilityCost.Waterbend. Not a new route.
-	"transient":                    1,
+	"transient": 1,
 }
 
 // isCeilingedClass reports whether a class is one closureClassCeilings
