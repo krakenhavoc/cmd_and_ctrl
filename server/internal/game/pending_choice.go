@@ -610,7 +610,10 @@ type PendingChoice struct {
 	// PendingChoicePickTarget: the captured event / source / LKI,
 	// the Build closure, and the spec the pick is validated against
 	// (and stamped onto the item for the resolution re-check).
-	// Added in S20 sub-PR 2.
+	// Added in S20 sub-PR 2. Written to a restore point as data since
+	// #4361 S14b (pendingChoices[].targetWalk, trigger_frame_keyed.go):
+	// the ability by its catalog row, its clauses re-derived from the
+	// row, and the walk's answers and bound amounts carried.
 	pickTargetResume *pickTargetFrame
 
 	// PickTargetFor is, on a pick_target an opponent answers for an "of
@@ -1175,16 +1178,11 @@ type PendingChoice struct {
 	// option_pick.go.
 	PickOptions []ChoiceOption
 
-	// optionPickResume is the server-only continuation for a
-	// PendingChoiceOptionPick: what the chosen index means. Not
-	// serialised. See option_pick.go.
-	optionPickResume *optionPickFrame
-
 	// OptionCarry is the plain data a KEYED option pick's continuation
 	// is handed with the answer (#2854, option_pick_keyed.go); the key
-	// itself is PickThen. Written to a restore point, which is the
-	// point: a prompt with a key and no optionPickResume carries no
-	// closure. Empty on every other prompt.
+	// itself is PickThen. Written to a restore point. Since #4361 S14b
+	// every option pick is keyed, so none holds a closure. Empty on
+	// every other prompt.
 	OptionCarry []uuid.UUID
 
 	// PayCauseController and PayCauseItem are the cause (#4279) a
@@ -3924,38 +3922,56 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 // queueTriggerOpponentLocked asks a trigger's controller which opponent
 // chooses the open step's targets (#2055). The answer continues the
 // walk on a copy of the frame, with that opponent named. The option
-// pick carries the frame as pickTargetResume too, as a MARKER: it is
-// part of the trigger's announcement, so the drain holds the batch
-// behind it (triggerAnnouncementOpenLocked), an ended turn drops it with
-// the walk, and it belongs to no resolution. Its answer is the option
-// pick's own continuation; ResolvePickTargets never sees it (its kind
-// is option_pick).
+// pick carries the frame as pickTargetResume too: it is part of the
+// trigger's announcement, so the drain holds the batch behind it
+// (triggerAnnouncementOpenLocked), an ended turn drops it with the
+// walk, and it belongs to no resolution. Its answer is the keyed
+// triggerOpponentChooserThen (#4361 S14b), which reads the walk back
+// off the prompt (OptionPicked.walk): the prompt holds no closure, and
+// a restore point writes it with the walk as data. ResolvePickTargets
+// never sees it (its kind is option_pick).
 //
 // Caller must hold g.mu.
 func (g *Game) queueTriggerOpponentLocked(f *pickTargetFrame, eligible []uuid.UUID) {
 	step := f.steps[f.step]
-	frame := f
 	g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  f.source.Controller,
 		Source:   f.source.InstanceID,
 		Question: f.source.Name + ": choose an opponent to choose " + clauseLabel(&step.Clause),
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		walk:     frame,
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				// Dropped unanswered: the controller has left, and the
-				// trigger is not put on the stack (CR 800.4d).
-				return nil
-			}
-			next := clonePickTargetFrame(frame)
-			next.choosers = append(next.choosers, TargetChooser{Mode: step.Mode, Slot: step.Slot, Player: chosen})
-			g.queuePickTargetStepLocked(next)
-			if !g.triggerAnnouncementOpenLocked() {
-				g.runStateChecksLocked()
-			}
-			return nil
-		},
+		walk:     f,
+		ThenKey:  triggerOpponentChooserThen,
 	})
+}
+
+// triggerOpponentChooserThen is the controller's answer to "which
+// opponent chooses" in a trigger's walk (#2055; keyed by #4361 S14b):
+// the walk goes on, on a copy of the frame, with that opponent named
+// for the open step. The walk is the prompt's own pickTargetResume, so
+// the key captures nothing. A dropped prompt (the controller has left)
+// does nothing: the trigger is not put on the stack (CR 800.4d). An
+// on-disk key: never renamed, never reused.
+var triggerOpponentChooserThen OptionPickThen
+
+// Registered from init: the continuation reaches code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	triggerOpponentChooserThen = RegisterOptionPickThen("option-pick/trigger-opponent-chooser", triggerOpponentChooserAnswered)
+}
+
+func triggerOpponentChooserAnswered(g *Game, r OptionPicked) error {
+	chosen, frame := chosenSeat(r), r.walk
+	if chosen == uuid.Nil || frame == nil || frame.currentClause() == nil {
+		return nil
+	}
+	step := frame.steps[frame.step]
+	next := clonePickTargetFrame(frame)
+	next.choosers = append(next.choosers, TargetChooser{Mode: step.Mode, Slot: step.Slot, Player: chosen})
+	g.queuePickTargetStepLocked(next)
+	if !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
+	return nil
 }
 
 // finishPickTargetLocked runs Build with every step answered and

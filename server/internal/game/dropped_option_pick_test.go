@@ -312,9 +312,8 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 // wiring of its own — and this asserts that rather than assuming it,
 // because the two landed a day apart.
 //
-// The continuation is a SEAT one (thenSeat, #994), so "nobody chose"
-// is spelled uuid.Nil rather than as an index. Same absence, same one
-// function (runWithNoChoice).
+// The continuation reads a SEAT (#994), so "nobody chose" reaches it as
+// no seat rather than as an index (chosenSeat).
 func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, leaver := g.Seats[0], g.Seats[1]
@@ -368,18 +367,21 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 	}
 }
 
-// uuid.Nil means "nobody chose" only because an ANSWER can never carry
-// it: ResolveOptionPick refuses an option that names no seat before the
-// frame runs, so a seat continuation cannot be handed the absence by a
-// client. Without this the two meanings would collide on one value.
+// No seat means "nobody chose" only because an ANSWER can never carry
+// it: ResolveOptionPick refuses an option that names no seat on a
+// trigger walk's "which opponent chooses" before the continuation runs,
+// so the walk cannot be handed the absence by a client. Without this
+// the two meanings would collide on one value.
 func TestASeatContinuationRefusesAnOptionThatNamesNoSeat(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, chooser := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 
-	ran := 0
+	ran, got := 0, 0
 	var id uuid.UUID
 	g.WithWriteLock(func() {
+		droppedPickRan, droppedPickGot = &ran, &got
+		t.Cleanup(func() { droppedPickRan, droppedPickGot = nil, nil })
 		id = g.QueueOptionPickForEffect(OptionPickPrompt{
 			Chooser:  chooser.ID,
 			Source:   source,
@@ -388,7 +390,8 @@ func TestASeatContinuationRefusesAnOptionThatNamesNoSeat(t *testing.T) {
 				{Label: "Seat with an id", Player: g.Seats[2].ID},
 				{Label: "Seat with none"},
 			},
-			ThenSeat: func(_ *Game, _ uuid.UUID) error { ran++; return nil },
+			walk:    &pickTargetFrame{},
+			ThenKey: droppedPickRecorder,
 		})
 	})
 	if id == uuid.Nil {

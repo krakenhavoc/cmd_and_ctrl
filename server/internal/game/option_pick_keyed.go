@@ -11,8 +11,8 @@ import (
 // rather than a closure (#2854), so a table waiting on the answer is
 // still a restore point.
 //
-// An ordinary option pick holds its continuation as a closure
-// (optionPickFrame), and a func cannot be written to a restore point:
+// An option pick used to hold its continuation as a closure (the
+// optionPickFrame #4361 S14b deleted), and a func cannot be written to a restore point:
 // while one is open, the census counts it (ChoiceResumeFrames) and the
 // server keeps the last restore point from before the question. That
 // is the right trade for a pile split, which is over in one answer.
@@ -63,6 +63,10 @@ type OptionPicked struct {
 	// opponent_target.go; keyed by #4361 slice 6): the prompt's own
 	// opponentTargetResume, nil on every other prompt.
 	parked *opponentTargetFrame
+	// walk is the trigger's CR 603.3d target walk behind the same
+	// question asked in a trigger's announcement (keyed by #4361 S14b):
+	// the prompt's own pickTargetResume, nil on every other prompt.
+	walk *pickTargetFrame
 	// Asked is a copy of the asking item when the card put it on the
 	// prompt (OptionPickPrompt.Asked, #4253 slice 8); nil otherwise.
 	Asked *StackItem

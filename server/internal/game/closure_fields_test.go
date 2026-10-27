@@ -143,7 +143,7 @@ var closureClassCeilings = map[string]int{
 	// mayCastFrame.{onAccept,onDecline}, gone with QueueMayCastForEffect
 	// and MayCastPrompt's branches; a may_cast's answer is a registered
 	// key (may_cast_keyed.go).
-	"census:ChoiceResumeFrames": 82,
+	"census:ChoiceResumeFrames": 64,
 	//
 	// 91 (2026-10-27, #4361 S14a): PendingChoice.triggerResume,
 	// PendingChoice.modePickResume, triggerResumeFrame.ability and
@@ -153,6 +153,17 @@ var closureClassCeilings = map[string]int{
 	// ChoiceResumeFrames counter, owner decision D5);
 	// triggerResumeFrame.source and modePickFrame.source moved to
 	// census:IntrinsicAbilityCards (owner decision D1).
+	//
+	// 64 (2026-10-27, #4361 S14b): PendingChoice.pickTargetResume,
+	// pickTargetFrame.{ability,modeSpec,spec,steps},
+	// TriggerOptionalPrompt.Chooser and the nine TriggeredAbility func
+	// lines to keyed (the target walk is written with its ability as a
+	// catalog row ref and its clauses re-derived from the row; a row with
+	// no catalog ref, or whose TargetsFrom reads the board, is still
+	// counted by the runtime ChoiceResumeFrames counter); -
+	// PendingChoice.optionPickResume and optionPickFrame.thenSeat (the
+	// walk's "which opponent chooses" is keyed); pickTargetFrame.source
+	// moved to census:IntrinsicAbilityCards (owner decision D1).
 	// 109 (#4361 S1, 2026-10-27): - CoinFlipSpec.Then, PendingChoice.coinFlipResume
 	// and coinFlipFrame.spec (every flip is keyed); - PendingChoice.chooseValueResume
 	// and chooseValueFrame.then (ChooseNumber.Then and PayEnergyAmount.Then gone,
@@ -217,7 +228,11 @@ var closureClassCeilings = map[string]int{
 	// triggerResumeFrame.source and modePickFrame.source. A written
 	// trigger frame's source goes through snapshotCard, which counts a
 	// card whose instance abilities can't be re-derived here.
-	"census:IntrinsicAbilityCards": 56,
+	//
+	// 57 (2026-10-27, #4361 S14b, owner decision D1, the same approved
+	// raise): + pickTargetFrame.source, a written target walk's source,
+	// through snapshotCard like the two above.
+	"census:IntrinsicAbilityCards": 57,
 	"transient":                    1,
 }
 
