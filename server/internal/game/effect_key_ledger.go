@@ -113,6 +113,9 @@ func ledgerLineResolves(line string) bool {
 		return KnownPayUnlessElse(fields[1])
 	case "confirm":
 		return KnownConfirmThen(fields[1])
+	case "maycast":
+		// #4361: a keyed may_cast's answer (RegisterMayCastThen).
+		return KnownMayCastThen(fields[1])
 	case "anyplayer":
 		return KnownAnyPlayerPays(fields[1])
 	case "number":

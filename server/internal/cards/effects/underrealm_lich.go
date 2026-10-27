@@ -86,7 +86,7 @@ func underrealmLichLook(g *game.Game, drawer, source uuid.UUID, done game.DrawDo
 	if prompt == nil {
 		return underrealmLichTake(g, source, drawer, take.Cards, answer, done)
 	}
-	prompt.Validate, prompt.Zone = nil, ""
+	prompt.Zone = ""
 	prompt.LiveZone = game.ZoneLibrary
 	prompt.ThenKey = underrealmLichPick
 	prompt.Carry = append([]uuid.UUID{done.Park(g)}, take.Cards...)

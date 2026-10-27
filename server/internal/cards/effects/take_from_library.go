@@ -128,29 +128,27 @@ type TakeFromLibraryToHand struct {
 	// the engine's reveals of library cards happen.
 	Reveal bool
 
-	// Validate is the clause's rule about the picked SET, as opposed
-	// to Match's rule about each card — "any number of cards with
-	// different names", "up to two cards with total mana value 4 or
-	// less". Nil means the bounds and Match are the whole rule,
-	// which is every card in the catalog that prints this sentence
-	// today.
-	//
-	// It is game.ChooseCardsPrompt.Validate forwarded verbatim, with
-	// that field's whole contract, and it is the same field
-	// PutFromLibraryOntoBattlefield carries — see there for the long
-	// version, including why it switches off the forced-answer
-	// shortcut below and why All ignores it.
-	Validate func([]game.Card) bool
-
 	// Label is the prompt header, "<card> — <the printed clause>".
 	Label string
 
 	// Key is the take as a REGISTERED definition (RegisterTake,
 	// take_keyed.go, #4290): its reveal, set rule and Then live in the
 	// registration, so the prompt holds no closure and a table waiting on
-	// the pick is a restore point. Required; with it Slots, Validate and
-	// Reveal must be unset.
+	// the pick is a restore point. Required; with it Slots and Reveal must
+	// be unset.
+	//
+	// The set rule (TakeDef.Validate) is the clause's rule about the
+	// picked SET, as opposed to Match's rule about each card — "any
+	// number of cards with different names", "up to two cards with total
+	// mana value 4 or less". It is looked up by the pick's key each time
+	// an answer is checked (#4361: the prompt never carries it as a
+	// closure), and it switches off the forced-answer shortcut below, as
+	// PutFromLibraryOntoBattlefield.Rule does; All ignores it.
 	Key TakeThen
+
+	// ruled is whether the registration has a set rule, read by ask for
+	// the forced-answer shortcut. Set by applyKeyed from the registration.
+	ruled bool
 }
 
 // TakeFromLibraryResult is what Then is told about the take.
@@ -218,7 +216,7 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 	if p.Optional {
 		lo = 0
 	}
-	if lo == len(candidates) && p.Validate == nil {
+	if lo == len(candidates) && !p.ruled {
 		// The only legal answer is every candidate. Not so with a
 		// set rule: it is the rule, not the count, that decides
 		// which subsets are answers, and taking the shortcut would
@@ -232,10 +230,8 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 	if question == "" {
 		question = p.defaultQuestion()
 	}
-	validate := p.Validate
-	if slots != nil {
-		validate = slots.validate(p.Validate)
-	}
+	// The set rule, the slots' and the registration's own, is the
+	// registered pick's (takeRule): the prompt carries no closure.
 	return &game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   source,
@@ -245,8 +241,7 @@ func (p TakeFromLibraryToHand) ask(g *game.Game, player, source uuid.UUID) (*gam
 		Max:      hi,
 		// Re-checked on submit: every pick must still be in a library
 		// when the answer arrives.
-		Zone:     game.ZoneLibrary,
-		Validate: validate,
+		Zone: game.ZoneLibrary,
 	}, nil
 }
 
@@ -638,7 +633,7 @@ type EachPlayerTakesFromLibrary struct {
 	N int
 
 	// Take is one player's clause — Match or Slots, Max, Optional,
-	// Reveal, Validate, Label. Take.Player and Take.Cards are filled in per player;
+	// Reveal, Label. Take.Player and Take.Cards are filled in per player;
 	// whatever they hold here is ignored.
 	Take TakeFromLibraryToHand
 
@@ -648,7 +643,7 @@ type EachPlayerTakesFromLibrary struct {
 	// life", run once with one result per player in Players order), live
 	// in the registration, so no prompt holds a closure and a table
 	// waiting on any player's pick is a restore point. Required; with it
-	// Take.Slots, Take.Validate and Take.Reveal must be unset.
+	// Take.Slots and Take.Reveal must be unset.
 	Keyed EachTakeThen
 }
 

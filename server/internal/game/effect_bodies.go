@@ -250,6 +250,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := coinFlipThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a coin-flip continuation", kind, key))
 	}
+	// #4361: and a keyed may_cast's answer.
+	if _, dup := mayCastThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a may-cast answer", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -490,6 +494,8 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredSearchRuleKeysLocked()...)
 	// #4253 slice 10b: a keyed coin flip's continuation.
 	out = append(out, registeredCoinFlipKeysLocked()...)
+	// #4361: a keyed may_cast's answer.
+	out = append(out, registeredMayCastKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

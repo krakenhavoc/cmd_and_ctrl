@@ -3299,7 +3299,6 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		"copyResume":           c.copyResume != nil,
 		"triggerResume":        c.triggerResume != nil,
 		"payUnlessResume":      c.payUnlessResume != nil,
-		"mayCastResume":        c.mayCastResume != nil,
 		// #4253 slice 5: a search prompt with no closure set rule or
 		// continuation is written (pendingChoices[].searchPrompt).
 		"searchResume": c.searchResume != nil && !searchPromptIsData(c),

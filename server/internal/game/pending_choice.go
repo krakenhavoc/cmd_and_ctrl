@@ -1006,10 +1006,8 @@ type PendingChoice struct {
 	// do. Wire-serialised.
 	MayCastKeyword string
 
-	// mayCastResume is the server-only continuation for a
-	// PendingChoiceMayCast: what to do on each answer. Not
-	// serialised. Added in S28.
-	mayCastResume *mayCastFrame
+	// A PendingChoiceMayCast's answer is a registered key on PickThen
+	// (may_cast_keyed.go, #4361), with OptionCarry its data.
 
 	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
 	// PendingChoiceLoopShortcut's question (#804, CR 732).
@@ -1372,20 +1370,6 @@ func (c *PendingChoice) PayTapCost() *TapPermanentsCost {
 		return tapCostOf(c.PayTap)
 	}
 	return c.payUnlessResume.tap
-}
-
-// mayCastFrame carries the two branches of a PendingChoiceMayCast.
-// Both receive the live *Game rather than a captured one, on the same
-// undo-safety contract payUnlessFrame and StackItem.Effect follow.
-//
-// onDecline is not optional in practice: cascade's "no" branch still
-// has to bottom the pile, and an offer whose refusal does nothing at
-// all would not need a prompt. It is nil-checked anyway, because a
-// future caller with a genuinely inert "no" shouldn't have to write
-// an empty closure.
-type mayCastFrame struct {
-	onAccept  func(g *Game) error
-	onDecline func(g *Game) error
 }
 
 // pickTargetFrame is the continuation for a targeted trigger's
@@ -4407,46 +4391,10 @@ func (g *Game) QueueMayPayElseForEffect(
 		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
 }
 
-// QueueMayCastForEffect queues a "you may cast <card> without paying
-// its mana cost" prompt for `chooser`, asked from inside a resolving
-// ability (cascade). `source` attributes the prompt to the card whose
-// text is asking; `question` is the dialog header.
-//
-// A chooser who is no longer seated / is eliminated is not asked and
-// `onDecline` runs instead — the same default pay-unless takes, and
-// right for the same reason: the consequence attached to the answer
-// that can no longer be given is the one that happens.
-//
-// Caller must hold g.mu. Added in S28.
-func (g *Game) QueueMayCastForEffect(
-	chooser, source, cardID uuid.UUID,
-	question string,
-	onAccept, onDecline func(g *Game) error,
-) error {
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceMayCast,
-		Chooser:     chooser,
-		Count:       1,
-		Source:      source,
-		Reason:      question,
-		MayCastCard: cardID,
-		mayCastResume: &mayCastFrame{
-			onAccept:  onAccept,
-			onDecline: onDecline,
-		},
-	})
-	return nil
-}
-
-// MayCastPrompt is QueueMayCastForEffect's question with its words:
-// the rule it is asked under and the names of its two branches (ADR
-// 0099 §3). Every field but the card and the two branches is optional.
+// MayCastPrompt is a may_cast's question with its words: the rule it is
+// asked under and the names of its two branches (ADR 0099 §3). Every
+// field but the chooser and the card is optional. The answer is a
+// registered key (QueueMayCastKeyedForEffect, #4361).
 type MayCastPrompt struct {
 	Chooser, Source, Card uuid.UUID
 	// Question is the dialog header.
@@ -4456,44 +4404,11 @@ type MayCastPrompt struct {
 	// AcceptLabel / DeclineLabel name the two buttons. Empty renders
 	// the client's defaults.
 	AcceptLabel, DeclineLabel string
-	OnAccept, OnDecline       func(g *Game) error
 	// Private marks a prompt whose words name a card only the chooser
 	// has looked at (a "look at the top card" offer, #3801): the wire
 	// strips the question, the labels and the card from every other
 	// viewer (PendingChoice.PrivateText).
 	Private bool
-}
-
-// QueueMayCastPromptForEffect is QueueMayCastForEffect with the
-// prompt's words. The same kind, the same frame and the same answer;
-// only what the client shows differs. A chooser who has left gets the
-// decline, exactly as QueueMayCastForEffect does.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
-	if pl := g.playerByIDLocked(p.Chooser); pl == nil || pl.Eliminated {
-		if p.OnDecline != nil {
-			return p.OnDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:           PendingChoiceMayCast,
-		Chooser:        p.Chooser,
-		Count:          1,
-		Source:         p.Source,
-		Reason:         p.Question,
-		MayCastCard:    p.Card,
-		MayCastKeyword: p.Keyword,
-		AcceptLabel:    p.AcceptLabel,
-		DeclineLabel:   p.DeclineLabel,
-		mayCastResume: &mayCastFrame{
-			onAccept:  p.OnAccept,
-			onDecline: p.OnDecline,
-		},
-		private: p.Private,
-	})
-	return nil
 }
 
 // ResolveMayCast processes the chooser's answer to a
@@ -4528,15 +4443,8 @@ func (g *Game) ResolveMayCast(choiceID, chooserID uuid.UUID, apply bool) error {
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	frame := choice.mayCastResume
+	branch := mayCastBranchOf(choice, apply)
 	g.dequeueChoiceLocked(idx)
-	if frame == nil {
-		return nil
-	}
-	branch := frame.onDecline
-	if apply {
-		branch = frame.onAccept
-	}
 	if branch != nil {
 		if err := branch(g); err != nil {
 			g.EmitEvent(Event{

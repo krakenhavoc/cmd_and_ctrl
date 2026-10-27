@@ -122,7 +122,6 @@ PendingChoice.confirmResume                  census:ChoiceResumeFrames          
 PendingChoice.copyResume                     census:ChoiceResumeFrames          # Game.PendingChoices.copyResume
 PendingChoice.costCommanderResume            census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume
 PendingChoice.libraryOrderResume             census:ChoiceResumeFrames          # Game.PendingChoices.libraryOrderResume
-PendingChoice.mayCastResume                  census:ChoiceResumeFrames          # Game.PendingChoices.mayCastResume
 PendingChoice.modePickResume                 census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume
 PendingChoice.optionPickResume               census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume
 PendingChoice.payUnlessResume                census:ChoiceResumeFrames          # Game.PendingChoices.payUnlessResume
@@ -205,8 +204,6 @@ keywordActionTail.armyToken                  census:ChoiceResumeFrames          
 lastKnownSpell.card                          census:IntrinsicAbilityCards       # Game.lastKnownStack.card
 lastKnownSpell.item                          keyed                              # Game.lastKnownStack.item
 lifeTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.lifeTail.then
-mayCastFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.mayCastResume.onAccept
-mayCastFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.mayCastResume.onDecline
 millTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.mill.then
 modePickFrame.ability                        census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.source

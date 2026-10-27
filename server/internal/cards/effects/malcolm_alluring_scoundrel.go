@@ -127,28 +127,38 @@ func malcolmOfferFreeCast(g *game.Game, controller, source uuid.UUID, discarded 
 	if c, found := g.LookupCardForEffect(card); found {
 		name = c.Name
 	}
-	return g.QueueMayCastForEffect(controller, source, card,
-		"Malcolm, Alluring Scoundrel — cast "+name+" without paying its mana cost?",
-		func(g *game.Game) error {
-			g.GrantCastPermissionOverCardForEffect(card, game.CastPermission{
-				Player: controller,
-				// Named explicitly rather than filled in from wherever
-				// the card landed: a card a replacement sent somewhere
-				// else is not "the discarded card" in the graveyard,
-				// and the grant should be refused rather than follow
-				// it.
-				Zone: game.ZoneGraveyard,
-				// "{0}", not empty: an empty Cost means "pay the
-				// printed cost", which is the opposite of what this
-				// clause grants.
-				Cost:     "{0}",
-				CastOnly: true,
-				Timing:   game.TimingFlash,
-				Label:    "Malcolm, Alluring Scoundrel — cast it without paying its mana cost",
-			})
-			return nil
-		}, nil)
+	return g.QueueMayCastKeyedForEffect(game.MayCastPrompt{
+		Chooser:  controller,
+		Source:   source,
+		Card:     card,
+		Question: "Malcolm, Alluring Scoundrel — cast " + name + " without paying its mana cost?",
+	}, malcolmFreeCast, nil)
 }
+
+// malcolmFreeCast is the offer's answer (#4361): accepting grants the free
+// cast over the discarded card, and declining does nothing. The controller
+// and the card are the prompt's chooser and card. An on-disk key: never
+// renamed, never reused.
+var malcolmFreeCast = game.RegisterMayCastThen("may-cast/malcolm-free-cast", func(g *game.Game, r game.MayCastAnswer) error {
+	if !r.Accepted {
+		return nil
+	}
+	g.GrantCastPermissionOverCardForEffect(r.Card, game.CastPermission{
+		Player: r.Chooser,
+		// Named explicitly rather than filled in from wherever the card
+		// landed: a card a replacement sent somewhere else is not "the
+		// discarded card" in the graveyard, and the grant should be
+		// refused rather than follow it.
+		Zone: game.ZoneGraveyard,
+		// "{0}", not empty: an empty Cost means "pay the printed cost",
+		// which is the opposite of what this clause grants.
+		Cost:     "{0}",
+		CastOnly: true,
+		Timing:   game.TimingFlash,
+		Label:    "Malcolm, Alluring Scoundrel — cast it without paying its mana cost",
+	})
+	return nil
+})
 
 // malcolmDiscardThen is the continuation of the trigger's draw: the
 // discard, and the free-cast offer hung off it, open only once the

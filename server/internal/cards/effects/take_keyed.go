@@ -32,7 +32,7 @@ type TakeDef struct {
 	Label  string
 
 	// Slots and Validate are the rule over the picked SET (TakeSlot,
-	// TakeFromLibraryToHand.Validate). Both are read with no *Game: a
+	// TakeFromLibraryToHand.Key). Both are read with no *Game: a
 	// slot's Match must judge a card by its own characteristics, and
 	// Validate is a function of the cards alone, because the rule runs
 	// under the enumerator's read lock on whichever table it is handed.
@@ -130,10 +130,10 @@ func (p TakeFromLibraryToHand) applyKeyed(ctx *Context, player, source uuid.UUID
 	if !ok {
 		return fmt.Errorf("%w: take %q", game.ErrUnknownEffectKey, p.Key.key)
 	}
-	if p.Validate != nil || len(p.Slots) > 0 || p.Reveal {
-		return fmt.Errorf("%w: keyed take %q also sets a closure or a rule the registration owns", game.ErrInvalidParam, p.Key.key)
+	if len(p.Slots) > 0 || p.Reveal {
+		return fmt.Errorf("%w: keyed take %q also sets a rule the registration owns", game.ErrInvalidParam, p.Key.key)
 	}
-	p.Slots, p.Validate, p.Reveal = e.def.Slots, e.def.Validate, e.def.Reveal
+	p.Slots, p.ruled, p.Reveal = e.def.Slots, e.def.Validate != nil, e.def.Reveal
 	label := e.def.Label
 	if label == "" {
 		label = p.Label
@@ -144,7 +144,7 @@ func (p TakeFromLibraryToHand) applyKeyed(ctx *Context, player, source uuid.UUID
 	}
 	// The registered continuation re-checks nothing but the live zone, and
 	// holds the set rule: the prompt carries the looked-at cards.
-	prompt.Validate, prompt.Zone = nil, ""
+	prompt.Zone = ""
 	prompt.LiveZone = game.ZoneLibrary
 	prompt.ThenKey = e.pick
 	prompt.Carry = append([]uuid.UUID(nil), p.Cards...)
@@ -199,8 +199,8 @@ func (e EachPlayerTakesFromLibrary) applyKeyed(ctx *Context) error {
 	if players == nil {
 		players = apnapPlayers(g)
 	}
-	if e.Take.Validate != nil || len(e.Take.Slots) > 0 || e.Take.Reveal {
-		return fmt.Errorf("%w: keyed fan-out of takes also sets a closure or a rule the registration owns", game.ErrInvalidParam)
+	if len(e.Take.Slots) > 0 || e.Take.Reveal {
+		return fmt.Errorf("%w: keyed fan-out of takes also sets a rule the registration owns", game.ErrInvalidParam)
 	}
 	def := e.Keyed.def
 	lists := [][]uuid.UUID{players}
@@ -211,14 +211,14 @@ func (e EachPlayerTakesFromLibrary) applyKeyed(ctx *Context) error {
 		t := e.Take
 		t.Player = player
 		t.Cards = g.LookAtTopOfLibraryForEffect(player, e.N)
-		t.Slots, t.Validate, t.Reveal = def.Slots, def.Validate, def.Reveal
+		t.Slots, t.ruled, t.Reveal = def.Slots, def.Validate != nil, def.Reveal
 		looked[i] = t.Cards
 		prompt, answer := t.ask(g, player, source)
 		if prompt == nil {
 			autos = append(autos, append([]uuid.UUID{player}, answer...))
 			continue
 		}
-		prompt.Validate, prompt.Zone = nil, ""
+		prompt.Zone = ""
 		prompt.LiveZone = game.ZoneLibrary
 		prompt.ThenKey = e.Keyed.leg
 		legs = append(legs, *prompt)

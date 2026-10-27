@@ -93,7 +93,7 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 		if !o.Land || !g.CanPlayLandDuringResolutionForEffect(o.Player, id) {
 			return g.putLibraryCardIntoHandLocked(o, id)
 		}
-		return g.QueueMayCastPromptForEffect(MayCastPrompt{
+		return g.QueueMayCastKeyedForEffect(MayCastPrompt{
 			Chooser:      o.Player,
 			Source:       o.Source,
 			Card:         id,
@@ -102,20 +102,7 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 			AcceptLabel:  "Play it",
 			DeclineLabel: "Put it into your hand",
 			Private:      !o.Reveal,
-			OnAccept: func(g *Game) error {
-				played, err := g.PlayLandDuringResolutionForEffect(o.Player, id)
-				if err != nil {
-					return err
-				}
-				if !played {
-					return g.putLibraryCardIntoHandLocked(o, id)
-				}
-				return nil
-			},
-			OnDecline: func(g *Game) error {
-				return g.putLibraryCardIntoHandLocked(o, id)
-			},
-		})
+		}, freePlayLandOrHand, nil)
 	}
 	mv, readable := g.ManaValueForEffect(c)
 	if !readable || mv > o.MaxManaValue || !g.playerInGameLocked(o.Player) {
@@ -139,6 +126,25 @@ func (g *Game) OfferFreePlayFromTopOrHandForEffect(o FreePlayFromTop) error {
 	})
 	return nil
 }
+
+// freePlayLandOrHand is the land offer's answer (#4361): accepting plays
+// the land from the top of the library, and declining, or a play the
+// rules end up ignoring, puts it into its owner's hand. Everything it
+// reads is on the prompt: the player (the chooser), the source and the
+// card. An on-disk key: never renamed, never reused.
+var freePlayLandOrHand = RegisterMayCastThen("may-cast/free-play-land-or-hand", func(g *Game, r MayCastAnswer) error {
+	o := FreePlayFromTop{Player: r.Chooser, Source: r.Source}
+	if r.Accepted {
+		played, err := g.PlayLandDuringResolutionForEffect(r.Chooser, r.Card)
+		if err != nil {
+			return err
+		}
+		if played {
+			return nil
+		}
+	}
+	return g.putLibraryCardIntoHandLocked(o, r.Card)
+})
 
 // grantFreeCastFromTopLocked stamps the free cast over the card where
 // it sits in the library. Reports false when it has left the library
