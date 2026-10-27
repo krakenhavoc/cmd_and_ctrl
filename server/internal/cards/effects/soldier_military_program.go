@@ -66,18 +66,26 @@ func soldierMilitaryProgramCounters(item *game.StackItem, ctx *Context, _ int) e
 		Cards:    soldiers,
 		Min:      0,
 		Max:      2,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if c, ok := g.LookupCardForEffect(id); !ok || !g.Battlefield.Contains(id) || c.Controller != controller || !c.HasSubtype(soldier) {
-					continue
-				}
-				if err := g.AddCounterForEffect(id, "+1/+1", 1); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  soldierMilitaryProgramPick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// soldierMilitaryProgramPick is a +1/+1 counter on each Soldier chosen,
+// keyed (#4253 sweep): the asking item rides the prompt as data, so
+// "Soldier" is read from the source object text again (CR 612.2).
+var soldierMilitaryProgramPick = askedPick("choose-cards/soldier-military-program-counters", func(ctx *Context, r game.CardsChosen) error {
+	g, controller := ctx.Game, ctx.Controller()
+	soldier := ctx.TextSubtype("Soldier")
+	for _, id := range r.Picked {
+		if c, ok := g.LookupCardForEffect(id); !ok || !g.Battlefield.Contains(id) || c.Controller != controller || !c.HasSubtype(soldier) {
+			continue
+		}
+		if err := g.AddCounterForEffect(id, "+1/+1", 1); err != nil {
+			return err
+		}
+	}
+	return nil
+})

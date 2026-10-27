@@ -72,14 +72,26 @@ func shahAskOpponents(ctx *Context, opps []uuid.UUID, chosen []int) error {
 		Player:   who,
 		Question: "Shah of Naar Isle — you may draw up to three cards",
 		Options:  shahDrawOptions[:ceiling+1],
-		Then: func(ctx *Context, index int) error {
-			if index < 0 {
-				index = 0
-			}
-			next := append(append([]int(nil), chosen...), index)
-			return shahAskOpponents(ctx, opps, next)
-		},
+		ThenKey:  shahAnswer,
+		Carry:    packIDLists(opps, intsToCarry(chosen)),
 	}.Apply(ctx)
+}
+
+// shahAnswer is one opponent's answer, keyed (#4253 sweep): the opponents in
+// order and the answers so far ride the prompt as IDs (intsToCarry).
+// Registered in init, because the body asks the next opponent with it.
+var shahAnswer game.OptionPickThen
+
+func init() {
+	shahAnswer = OptionPickThen("option-pick/shah-of-naar-isle-draw", func(ctx *Context, r game.OptionPicked) error {
+		opps, answers := unpackIDPair(r.Carry)
+		index := r.Index
+		if index < 0 {
+			index = 0
+		}
+		next := append(carryToInts(answers), index)
+		return shahAskOpponents(ctx, opps, next)
+	})
 }
 
 // opponentsInTurnOrderAfter is `player`'s opponents in turn order,

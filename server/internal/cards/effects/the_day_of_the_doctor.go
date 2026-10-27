@@ -86,13 +86,18 @@ func dayOfTheDoctorFinale(g *game.Game, item *game.StackItem) error {
 		Cards:    doctors,
 		Min:      0,
 		Max:      3,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return dayOfTheDoctorMayExileOthers(g, item, picked)
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  dayOfTheDoctorPick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// dayOfTheDoctorPick is the Doctors chosen to be spared, keyed (#4253
+// sweep): the asking item rides the prompt as data.
+var dayOfTheDoctorPick = askedPick("choose-cards/the-day-of-the-doctor-spare", func(ctx *Context, r game.CardsChosen) error {
+	return dayOfTheDoctorMayExileOthers(ctx.Game, ctx.Item, r.Picked)
+})
 
 // dayOfTheDoctorMayExileOthers is "You may exile all other creatures. If
 // you do, this Saga deals 13 damage to you." The damage follows the

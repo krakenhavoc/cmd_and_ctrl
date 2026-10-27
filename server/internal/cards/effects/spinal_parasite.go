@@ -2,6 +2,7 @@ package effects
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -69,16 +70,34 @@ func removeACounterOfYourChoice(ctx *Context, target uuid.UUID) error {
 	}
 	options := make([]game.ChoiceOption, len(kinds))
 	for i, kind := range kinds {
-		options[i] = game.ChoiceOption{Label: "Remove a " + kind + " counter"}
+		options[i] = game.ChoiceOption{Label: removeACounterPrefix + kind + removeACounterSuffix}
 	}
 	return PickOption{
 		Question: "Remove which counter from " + c.Name + "?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(kinds) {
-				return nil
-			}
-			return AddCounter{Target: target, Kind: kinds[index], N: -1}.Apply(ctx)
-		},
+		ThenKey:  removeACounterAnswer,
+		Carry:    []uuid.UUID{target},
 	}.Apply(ctx)
 }
+
+// removeACounterPrefix and removeACounterSuffix wrap the counter kind in each
+// option label, so the answer names the kind it was shown.
+const (
+	removeACounterPrefix = "Remove a "
+	removeACounterSuffix = " counter"
+)
+
+// removeACounterAnswer is the counter kind chosen to be removed, keyed
+// (#4253 sweep): the permanent is the carry, and the kind is read back off the
+// chosen option's label.
+var removeACounterAnswer = OptionPickThen("option-pick/remove-a-counter-of-your-choice", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || len(r.Carry) == 0 {
+		return nil
+	}
+	kind, ok := strings.CutPrefix(r.Option.Label, removeACounterPrefix)
+	if !ok {
+		return nil
+	}
+	kind = strings.TrimSuffix(kind, removeACounterSuffix)
+	return AddCounter{Target: r.Carry[0], Kind: kind, N: -1}.Apply(ctx)
+})
