@@ -155,6 +155,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			// #4361 S16: a written divide_shield prompt names its landing
 			// step's marker, and a walk's tails.
 			unknown = append(unknown, unknownDivideShieldKeys(&c)...)
+		case c.Kind == PendingChoiceDamageAssignment:
+			// #4362: a held combat damage step's prompt names the hold,
+			// which is written beside it.
+			unknown = append(unknown, unknownHeldCombatDamageKeys(&c, s.HeldCombatDamage)...)
 		case c.PickThen == "":
 		case keyedReplacementPromptKind(c.Kind):
 			// #4253: a keyed CR 616 frame's tail, and the bodies and stack
@@ -297,6 +301,8 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	unknown = append(unknown, unknownParkedDrawKeys(s.ParkedDraws)...)
 	// #4253: a keyed damage park's tail is a key too.
 	unknown = append(unknown, unknownFollowUpParkKeys(s.FollowUpParks)...)
+	// #4362: a held combat damage step's answers carry their frames.
+	unknown = append(unknown, unknownHeldAnswerFrames(s.HeldCombatDamage)...)
 	// #4361 S17: a frozen entry's event names its bodies and tails too.
 	for i := range s.FrozenEntries {
 		unknown = append(unknown, unknownReplacementEventKeys(&s.FrozenEntries[i].Event)...)

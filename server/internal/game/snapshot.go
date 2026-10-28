@@ -498,6 +498,12 @@ type GameSnapshot struct {
 	// and a lookup that finds no record reads the live total, as before.
 	DamageInstanceLives []damageInstanceLifeSnapshot `json:"damageInstanceLives,omitempty"`
 
+	// HeldCombatDamage is Game.heldCombatDamage (#4362,
+	// combat_damage_keyed.go): a combat damage step's damage held behind
+	// its damage_assignment prompts, every one of which names it in
+	// PickThen (HeldCombatDamageKey). Additive within v9.
+	HeldCombatDamage *heldCombatDamageSnapshot `json:"heldCombatDamage,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -2570,6 +2576,11 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4307: a paused dice roll.
 				pc.DiceRoll = snapshotDiceRollPause(d)
 			}
+			if c.Kind == PendingChoiceDamageAssignment && g.heldCombatDamage != nil {
+				// #4362: a prompt of a held combat damage step, whose
+				// held damage is written below.
+				pc.PickThen = HeldCombatDamageKey
+			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
 				pc.ReplacementResume = g.snapshotReplacementResume(c.replacementResume, cen)
@@ -2611,12 +2622,18 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
-	// damage-assignment prompts. Not carried: the table is not a
-	// restore point while it waits, so a restart rewinds to before the
-	// step rather than dealing half of it.
+	// damage-assignment prompts. #4362: written as data, and each open
+	// prompt of the step names it (HeldCombatDamageKey). A hold with no
+	// prompt open is settled by the next state check and never seen at a
+	// capture; one would have no prompt to carry the key an older binary
+	// refuses, so it is counted rather than written.
 	if g.heldCombatDamage != nil {
-		cen.ChoiceResumeFrames++
-		cen.note("combat damage step holds its damage behind damage_assignment prompts")
+		if g.damageAssignmentPendingLocked() {
+			s.HeldCombatDamage = snapshotHeldCombatDamage(g.heldCombatDamage)
+		} else {
+			cen.ChoiceResumeFrames++
+			cen.note("combat damage step holds its damage with no damage_assignment prompt open")
+		}
 	}
 	// #2040: the rest of a damage instruction parked behind a prompt
 	// its instance's prevention follow-up asked. A closure is not
@@ -3595,6 +3612,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.shieldDivisions = snapshotShieldDivisions(s.ShieldDivisions)
 	g.redirectOrders = restoreRedirectOrders(s.RedirectOrders)
 	g.damageInstanceLives = restoreDamageInstanceLives(s.DamageInstanceLives)
+	g.heldCombatDamage = restoreHeldCombatDamage(s.HeldCombatDamage)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
@@ -3821,6 +3839,11 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.PendingChoices[i].DivideShield = restoreDivideShield(d)
 			g.PendingChoices[i].PickThen = ""
 			g.damageInstanceSeq = max(g.damageInstanceSeq, maxDivideShieldInstance(d))
+		}
+		if s.PendingChoices[i].Kind == PendingChoiceDamageAssignment && s.PendingChoices[i].PickThen == HeldCombatDamageKey {
+			// #4362: the marker of a held step's prompt; the hold itself
+			// is restored with the rest of the game.
+			g.PendingChoices[i].PickThen = ""
 		}
 		if t := s.PendingChoices[i].NameThen; t != nil && carriesValueThen(s.PendingChoices[i].Kind) {
 			g.PendingChoices[i].nameThen = restoreKeyedTail(t)

@@ -1743,3 +1743,4 @@ tail engine/face-down-permitted-granted
 tail engine/spell-copy-token-control
 number number/master-of-the-wild-hunt-divide-return-damage
 steps then-steps/master-of-the-wild-hunt-damage
+resume replacement-resume/combat-damage

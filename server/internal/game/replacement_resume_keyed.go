@@ -155,6 +155,9 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeMoveExchange: RepEventMove,
 
 	ReplacementResumeDamage: RepEventDamage,
+
+	// #4362: combat damage (combat_damage_keyed.go).
+	ReplacementResumeCombatDamage: RepEventDamage,
 }
 
 // replacementResumeBaseKeys is the key a frame of each kind is written
@@ -491,14 +494,15 @@ var replacementEventFields = map[string]replacementEventField{
 	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
 
 	// A damage event (#4253, damage_keyed.go). Its tail's data half is
-	// carried; combat damage or redirected parts gate (damageEventIsData).
+	// carried; redirected parts gate (damageEventIsData). Combat damage is
+	// carried since #4362, under a key of its own (combat_damage_keyed.go).
 	"DamageSource":   repFieldCarried,
 	"DamageTarget":   repFieldCarried,
 	"DamageAmount":   repFieldCarried,
 	"DamageInstance": repFieldCarried,
 	"SourceLKI":      repFieldCarried,
 	"damageTail":     repFieldCarried, // its data half; see damageEventIsData
-	"IsCombatDamage": repFieldGate,
+	"IsCombatDamage": repFieldCarried,
 
 	// The event kinds this file does not key.
 	"ManaPlayer":         repFieldGate,
@@ -556,6 +560,11 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	}
 	if eventCarriesDataTail(ev) {
 		key = replacementResumeTailedKeyOf(ev)
+	}
+	if ev.Kind == RepEventDamage && damageEventIsCombat(ev) {
+		// #4362: combat damage has a key of its own, so a binary that
+		// would resume it as noncombat damage refuses the file.
+		key = ReplacementResumeCombatDamage
 	}
 	if !applicableRegathered(f.applicable) {
 		return ""
@@ -775,6 +784,8 @@ type replacementEventSnapshot struct {
 	DamageInstance DamageInstance      `json:"damageInstance,omitempty"`
 	SourceLKI      *Characteristic     `json:"sourceLki,omitempty"`
 	DamageTail     *damageTailSnapshot `json:"damageTail,omitempty"`
+	// #4362: combat damage, written under ReplacementResumeCombatDamage.
+	IsCombatDamage bool `json:"isCombatDamage,omitempty"`
 }
 
 // millTailSnapshot is a millTail's data half, present exactly when the
@@ -1413,7 +1424,14 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
 	case f.Event.Kind != kind:
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
-	case snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
+	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) != (c.PickThen == ReplacementResumeCombatDamage):
+		// #4362: combat damage is written under its own key, and only
+		// combat damage is.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over a damage event of the other kind")
+	case c.PickThen == ReplacementResumeCombatDamage && snapshotCarriesDataTail(&f.Event):
+		// #4362: combat damage owes its caller nothing.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
+	case c.PickThen != ReplacementResumeCombatDamage && snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
 		// #4253 slice 3: a tail written as data under the key a binary
 		// that drops it would accept.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
