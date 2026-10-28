@@ -1746,3 +1746,5 @@ steps then-steps/master-of-the-wild-hunt-damage
 resume replacement-resume/combat-damage
 resume replacement-resume/combat-damage-redirected
 resume replacement-resume/damage-redirected
+resume replacement-resume/move-attraction-open
+resume replacement-resume/move-token-batch

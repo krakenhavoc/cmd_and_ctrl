@@ -551,6 +551,13 @@ type GameSnapshot struct {
 	// them. Additive within the version.
 	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
 
+	// AttractionEntering is Game.attractionEntering (#4404): the
+	// Attraction an open is putting onto the battlefield, which the card
+	// index sees only through it. Written only beside a keyed frame, whose
+	// paused open (entryBatchSnapshot.Attraction) needs it. Additive within
+	// the version.
+	AttractionEntering *uuid.UUID `json:"attractionEntering,omitempty"`
+
 	// FrozenEntries is Game.frozenEntries (#4361 S17, owner decision D4,
 	// entry_card_choice.go): an entry whose "as this enters, discard or
 	// sacrifice" choice was answered and whose action has paused, with
@@ -2613,6 +2620,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			for _, c := range g.enteringTokens {
 				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
 			}
+			// #4404: an Attraction's open is set only by its entry, and
+			// a paused one holds a frame like any other entry, keyed or
+			// counted.
+			s.AttractionEntering = uuidPtrOrNil(g.attractionEntering)
 		}
 	} else if len(g.frozenEntries) > 0 {
 		// #4361 S17: a frozen entry with no prompt open has lost the
@@ -3884,6 +3895,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 		// token's entry off them.
 		g.enteringTokens = append(g.enteringTokens, restoreCard(&s.EnteringTokens[i]))
 	}
+	// #4404: likewise the Attraction an open is putting onto the
+	// battlefield, which the gather reads through the card index.
+	g.attractionEntering = uuidOrNil(s.AttractionEntering)
 	for i := range s.PendingChoices {
 		rs := s.PendingChoices[i].ReplacementResume
 		if rs == nil || !keyedReplacementPromptKind(s.PendingChoices[i].Kind) {

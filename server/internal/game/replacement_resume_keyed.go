@@ -163,6 +163,11 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	// (damage_redirected_keyed.go).
 	ReplacementResumeDamageRedirected:       RepEventDamage,
 	ReplacementResumeCombatDamageRedirected: RepEventDamage,
+
+	// #4404: a simultaneous entry of created tokens, and an Attraction's
+	// open (entry_batch_keyed.go).
+	ReplacementResumeMoveTokenBatch:     RepEventMove,
+	ReplacementResumeMoveAttractionOpen: RepEventMove,
 }
 
 // replacementResumeBaseKeys is the key a frame of each kind is written
@@ -220,6 +225,11 @@ func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
 	if ev.Kind == RepEventMove && ev.entryTail != nil && ev.entryTail.batch != nil && ev.entryTail.batch.discard != nil {
 		return ReplacementResumeDiscardEntry
 	}
+	if ev.Kind == RepEventMove && ev.entryTail != nil {
+		if key := entryBatchOwnKey(ev.entryTail.batch); key != "" {
+			return key
+		}
+	}
 	if ev.Kind == RepEventMove && ev.zoneRoute != nil && ev.zoneRoute.batchLegs != nil {
 		return ReplacementResumeMoveBatch
 	}
@@ -236,6 +246,11 @@ func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
 func snapshotTailedKeyOf(ev *replacementEventSnapshot, kind ReplacementEventKind) string {
 	if kind == RepEventMove && ev.EntryTail != nil && ev.EntryTail.Batch != nil && ev.EntryTail.Batch.Discard != nil {
 		return ReplacementResumeDiscardEntry
+	}
+	if kind == RepEventMove && ev.EntryTail != nil {
+		if key := snapshotEntryBatchOwnKey(ev.EntryTail.Batch); key != "" {
+			return key
+		}
 	}
 	if kind == RepEventMove && ev.ZoneRoute != nil && ev.ZoneRoute.BatchLegs != nil {
 		return ReplacementResumeMoveBatch
@@ -601,6 +616,16 @@ func applicableRegathered(applicable []activeReplacement) bool {
 //
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
+	return g.replacementEventKeyableAs(ev, false)
+}
+
+// replacementEventKeyableAs is replacementEventKeyable for an event that
+// may be a settled member of a batch of created tokens (#4404): its token
+// is staged, and the batch, not the event, carries the rest of the entry
+// (entryBatchKeyable checks the staged tokens).
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) replacementEventKeyableAs(ev *ReplacementEvent, batchToken bool) bool {
 	if !replacementEventGatesClear(ev) {
 		return false
 	}
@@ -614,14 +639,16 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 			return false
 		}
 	}
-	if ev.CardID != uuid.Nil {
+	if ev.CardID != uuid.Nil && !batchToken {
 		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
 			// A created token's entry: the token is in no zone, only in
 			// Game.enteringTokens. #4253 slice 3: that is written with a
 			// keyed frame (GameSnapshot.EnteringTokens), so the entry is
-			// data when the rest of its batch is (entryTail.tokens) and
-			// every staged token is written whole.
-			if ev.entryTail == nil || ev.entryTail.tokens == nil || !g.stagedTokensAreData() {
+			// data when the rest of its batch is (entryTail.tokens, or
+			// since #4404 a simultaneous entry, entryTail.batch, checked
+			// below) and every staged token is written whole.
+			t := ev.entryTail
+			if t == nil || (t.tokens == nil && t.batch == nil) || !g.stagedTokensAreData() {
 				return false
 			}
 		}
