@@ -6415,7 +6415,7 @@ Replacements: []game.ReplacementEffect{
 Both are in [enters_only_if.go](../server/internal/cards/effects/enters_only_if.go).
 The discard is an effect's (`DiscardCauseEffect`: Library of Leng and
 every discard payoff see it) and the sacrifice goes through
-`SacrificeAllThenForEffect`; either may pause, and the engine carries
+`SacrificeAllKeyedForEffect`; either may pause, and the engine carries
 the paused entry across. "If you do" means the card really left. The
 permanent never enters on a decline — nothing that watches an entry
 triggers — and a later replacement applies to the move it became (Rest
@@ -7704,8 +7704,8 @@ ctx.ItemTail(ref)}` (Ponder) and `LookAtLibraryThenPlace{ThenTail: tail}` /
 `CardTail("<card>/<name>", func(ctx *Context, o game.TailOutcome) error {...})` and
 what the body reads rides the tail (`Carry`, `N`, the asking item). A pick over
 cards is `game.RegisterChooseCardsThen` with `ThenKey` (Sylvan Library, Lazav),
-and `LiveZone` keeps a hand re-check. A search prompt (`searchResume`) is not keyed
-yet, so a card that asks one is still not a restore point at that prompt.
+and `LiveZone` keeps a hand re-check. A search prompt is written as data too (`SearchPromptKey`, with a `ThenTail`
+for the rest of the card; #4361 S4), so a table waiting on a search is a restore point.
 
 **A pick whose rest reads the asking item** (#4253's sweep): register it with
 `askedPick("choose-cards/<card>-<what>", func(ctx *Context, r game.CardsChosen) error {...})`
