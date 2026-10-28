@@ -74,7 +74,8 @@ export type SoundName =
   | "sig_blasphemous_act"
   | "sig_toxic_deluge"
   | "sig_bitter_triumph"
-  | "sig_nicol_bolas";
+  | "sig_nicol_bolas"
+  | "sig_dragons_approach";
 
 // The volume buses a sound can belong to. The music bus is music.ts's.
 export type SoundCategory = "interface" | "cards" | "combat" | "effects" | "voice";
@@ -119,6 +120,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   sig_toxic_deluge: "effects",
   sig_bitter_triumph: "effects",
   sig_nicol_bolas: "effects",
+  sig_dragons_approach: "effects",
 };
 
 // Each event has two takes. pickVariant() chooses uniformly at
@@ -154,6 +156,10 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3", "/sounds/sig_toxic_deluge-2.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],
   sig_nicol_bolas: ["/sounds/sig_nicol_bolas-1.mp3", "/sounds/sig_nicol_bolas-2.mp3"],
+  sig_dragons_approach: [
+    "/sounds/sig_dragons_approach-1.mp3",
+    "/sounds/sig_dragons_approach-2.mp3",
+  ],
 };
 
 // What a sound plays when none of its own files exist. Only the cues that
@@ -168,6 +174,7 @@ export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   sig_toxic_deluge: "board_wipe",
   sig_bitter_triumph: "destroy",
   sig_nicol_bolas: "pw_enter",
+  sig_dragons_approach: "board_wipe",
 };
 
 // Sounds preloadAll leaves alone: a signature's files are fetched the

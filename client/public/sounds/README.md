@@ -79,12 +79,13 @@ cue's. Until its files land each falls back to that generic cue. These are
 fetched the first time the card appears in a game, not at the first
 gesture. Two takes each, at most 2.5 s, and original or CC0.
 
-| Entry                 | Files                                                    | When it plays                                                       | Until the files exist | Make it sound like                               |
-| --------------------- | -------------------------------------------------------- | ------------------------------------------------------------------- | --------------------- | ------------------------------------------------ |
-| `sig_blasphemous_act` | `sig_blasphemous_act-1.mp3`, `sig_blasphemous_act-2.mp3` | Blasphemous Act resolves: fireballs crash down and the ground burns | `board_wipe`          | a roar of fire, impacts, a crackling burn        |
-| `sig_toxic_deluge`    | `sig_toxic_deluge-1.mp3`, `sig_toxic_deluge-2.mp3`       | Toxic Deluge resolves: a tar pit wells up and takes the creatures   | `board_wipe`          | thick bubbling, a deep sucking swallow           |
-| `sig_bitter_triumph`  | `sig_bitter_triumph-1.mp3`, `sig_bitter_triumph-2.mp3`   | Bitter Triumph resolves: a spear drives through the card            | `destroy`             | a thrust, a tearing punch, a short ring          |
-| `sig_nicol_bolas`     | `sig_nicol_bolas-1.mp3`, `sig_nicol_bolas-2.mp3`         | Nicol Bolas is cast or enters: his shadow passes, he swoops, lands  | `pw_enter`            | great wingbeats, a passing roar, a heavy landing |
+| Entry                  | Files                                                      | When it plays                                                       | Until the files exist | Make it sound like                               |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | --------------------- | ------------------------------------------------ |
+| `sig_blasphemous_act`  | `sig_blasphemous_act-1.mp3`, `sig_blasphemous_act-2.mp3`   | Blasphemous Act resolves: fireballs crash down and the ground burns | `board_wipe`          | a roar of fire, impacts, a crackling burn        |
+| `sig_toxic_deluge`     | `sig_toxic_deluge-1.mp3`, `sig_toxic_deluge-2.mp3`         | Toxic Deluge resolves: a tar pit wells up and takes the creatures   | `board_wipe`          | thick bubbling, a deep sucking swallow           |
+| `sig_bitter_triumph`   | `sig_bitter_triumph-1.mp3`, `sig_bitter_triumph-2.mp3`     | Bitter Triumph resolves: a spear drives through the card            | `destroy`             | a thrust, a tearing punch, a short ring          |
+| `sig_nicol_bolas`      | `sig_nicol_bolas-1.mp3`, `sig_nicol_bolas-2.mp3`           | Nicol Bolas is cast or enters: his shadow passes, he swoops, lands  | `pw_enter`            | great wingbeats, a passing roar, a heavy landing |
+| `sig_dragons_approach` | `sig_dragons_approach-1.mp3`, `sig_dragons_approach-2.mp3` | Dragon's Approach resolves: a dragon's shadow passes over the board | `board_wipe`          | a slow wingbeat, a low roar rolling past         |
 
 The first time the browser fails to load one it remembers that for the
 session and stops asking. One take is enough: with `-1` present and `-2`
@@ -96,13 +97,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                 |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                       |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                          |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`                                                                                                                                          |
-| `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas` |
-| `voice`     | planeswalker lines to come                                                                                                                                                             |
+| Category    | Sounds                                                                                                                                                                                                         |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                               |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                  |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`                                                                                                                                                                  |
+| `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                     |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.
