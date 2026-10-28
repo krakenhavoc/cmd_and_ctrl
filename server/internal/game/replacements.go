@@ -547,6 +547,16 @@ type ReplacementEvent struct {
 	// the route (sbaDestroyRoute in simultaneous.go).
 	StateBasedDestruction bool
 
+	// LeaveCause is why this battlefield exit is happening, the verb the
+	// route was built for (leave_cause.go, #4395): a destroy, a
+	// sacrifice, a state-based action. Declared from the route
+	// template like Destruction, and for the same reason: nothing about
+	// the event says which of them it is, and it has to survive a CR 903.9
+	// pause. Stamped onto the exit's EventZoneMove. Only meaningful on a
+	// RepEventMove whose OldZone is the battlefield and which takes
+	// executeBattlefieldLeaveLocked.
+	LeaveCause LeaveCause
+
 	// EntersTapped is mutated by enters-tapped replacements
 	// (Kismet). Only meaningful when NewZone == ZoneBattlefield.
 	// The battlefield-entry path reads this and sets Card.Tapped

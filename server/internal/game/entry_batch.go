@@ -441,7 +441,7 @@ func (g *Game) landEntryBatchLocked(b *entryBatch) error {
 		// needs the exit's landing/announcement split for the paired entry.
 		r.ViaBattlefieldLeave = false
 		r.Dst = ZoneGraveyard
-		if err := g.announceSacrificeLocked(b.exchangeSacrifice, b.exchangeSource); err != nil {
+		if err := g.announceSacrificeLocked(b.exchangeSacrifice, b.exchangeSource, MoveCause{}); err != nil {
 			return err
 		}
 		if len(b.members) == 1 && b.members[0].out != nil {

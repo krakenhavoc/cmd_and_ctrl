@@ -1854,6 +1854,21 @@ type Event struct {
 	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
 	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
 
+	// LeaveCause and LeaveSource say WHY a permanent left the battlefield
+	// and which card was behind it, on the EventZoneMove of that exit
+	// (#4395, ADR 0209 §3, leave_cause.go): a destroy, a state-based
+	// action, a sacrifice, an exile, a bounce or something else. Separate
+	// from Cause above, which says what KIND of thing moved a card (a
+	// resolving item, a cost, a rule); this says which verb, and it is
+	// set by the two movers that perform every battlefield exit, never
+	// per card. LeaveSource is the card whose resolution is behind the
+	// batch, and is a field of its own because Event.Source on a zone
+	// move means something else to the trigger harvester and is left
+	// alone. Empty on every other event, and on a zone move that is not
+	// a battlefield exit. Additive within the snapshot version.
+	LeaveCause  LeaveCause `json:"leave_cause,omitempty"`
+	LeaveSource uuid.UUID  `json:"leave_source,omitempty"`
+
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that
 	// has since ceased to exist (#3609, public_names.go). Only tokens

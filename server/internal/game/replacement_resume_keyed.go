@@ -417,6 +417,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"Destruction":               repFieldCarried,
 	"CantBeRegenerated":         repFieldCarried,
 	"StateBasedDestruction":     repFieldCarried,
+	"LeaveCause":                repFieldCarried,
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
@@ -709,6 +710,7 @@ type replacementEventSnapshot struct {
 	Destruction               bool                `json:"destruction,omitempty"`
 	CantBeRegenerated         bool                `json:"cantBeRegenerated,omitempty"`
 	StateBasedDestruction     bool                `json:"stateBasedDestruction,omitempty"`
+	LeaveCause                LeaveCause          `json:"leaveCause,omitempty"`
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
@@ -1119,6 +1121,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		Destruction:               ev.Destruction,
 		CantBeRegenerated:         ev.CantBeRegenerated,
 		StateBasedDestruction:     ev.StateBasedDestruction,
+		LeaveCause:                ev.LeaveCause,
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
@@ -1280,6 +1283,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		Destruction:               s.Destruction,
 		CantBeRegenerated:         s.CantBeRegenerated,
 		StateBasedDestruction:     s.StateBasedDestruction,
+		LeaveCause:                s.LeaveCause,
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,

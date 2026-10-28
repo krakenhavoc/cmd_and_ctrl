@@ -91,18 +91,26 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 // window then does with the destination — a sacrifice whose card an
 // "exile it instead" replacement takes is still a sacrifice.
 //
+// `cause` says whether the sacrifice is a cost; it only decides whether
+// the event names the resolving card as its LeaveSource (#4395).
+//
 // Caller must hold g.mu.
-func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID) error {
+func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID, cause MoveCause) error {
 	controller := g.controllerOfBattlefieldCardLocked(cardID)
 	if controller == uuid.Nil {
 		return ErrCardNotFound
 	}
-	g.EmitEvent(Event{
+	// #4395: the card behind the batch, for the public log to group a
+	// sacrifice wipe by. A cost names none (CR 602.2b): a sacrifice a
+	// player pays is not that batch's resolution.
+	ev := Event{
 		Kind:   EventSacrifice,
 		Actor:  controller,
 		Source: source,
 		CardID: cardID,
-	})
+	}
+	ev.LeaveSource = g.leaveSourceLocked(cause)
+	g.EmitEvent(ev)
 	return nil
 }
 

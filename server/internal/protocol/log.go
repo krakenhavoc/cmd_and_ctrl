@@ -45,6 +45,7 @@ package protocol
 // Introduced in S31 sub-PR 0.
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strconv"
@@ -683,6 +684,16 @@ type LogEvent struct {
 	// step on every line carries it forward, rather than the wire
 	// repeating a 14-character string 200 times per frame.
 	Step string `json:"step,omitempty"`
+	// Batch is the engine's event batch the entry's event was emitted in
+	// (game.Event.Batch, CR 603.2c, #4395): two entries with the same
+	// Batch happened at the same time as far as the rules are concerned,
+	// which is how a client groups a board wipe, a mass bounce or a
+	// combat damage step. Monotonic across a game and never reused; the
+	// absolute value means nothing, only equality does. An entry that
+	// collapses several events (a run of draws, mills or identical
+	// triggers) carries the batch of the FIRST of them. Absent only on an
+	// entry projected from an event emitted before batches existed.
+	Batch uint64 `json:"batch,omitempty"`
 	// Seat is the seat index of the player responsible: the caster,
 	// the controller of the attacking creature, the player whose life
 	// changed. NoSeat when the event has no single actor.
@@ -705,6 +716,16 @@ type LogEvent struct {
 	// Target is the CARD the entry acts on: a counterspell's victim,
 	// a blocker's attacker. Player targets ride TargetSeat instead.
 	Target string `json:"target,omitempty"`
+	// Source is, on a LogZone entry for a permanent leaving the
+	// battlefield and on a LogSacrifice entry, the card behind it: the
+	// spell or ability whose resolution the entry's Batch is (game.Event.
+	// LeaveSource, #4395). Every death of one Damnation, Blasphemous Act
+	// or Toxic Deluge shares one Batch and one Source, and "three or more
+	// permanents left in one Batch from one Source" is a board wipe.
+	// Empty when nothing resolving is behind the exit (combat damage, a
+	// cost, a sandbox move). Redacted for a viewer who may not identify
+	// the card, exactly as CardID is: the Batch still groups.
+	Source string `json:"source,omitempty"`
 	// Amount is the signed or counting payload: life delta, damage
 	// dealt, cards drawn. On a LogEliminated entry it is 1 when the
 	// player conceded and 0 when they lost — kept beside Cause for
@@ -714,8 +735,15 @@ type LogEvent struct {
 	// "poison", "commander_damage", "effect", "concede" — the engine's
 	// game.LossCause) or how a LogGameOver game ended
 	// ("last_standing", "effect", "all_lost"). ADR 0057 Decision 7.
-	// Empty on every other kind, and on an elimination recorded
-	// before the engine named its cause.
+	// On a LogZone entry for a permanent leaving the battlefield it is
+	// why it left (game.LeaveCause, #4395, ADR 0209 §3): "destroy" (an
+	// effect), "sba" (a state-based action: lethal damage, deathtouch,
+	// zero toughness, the legend rule), "exile_effect", "bounce" or
+	// "other". A sacrifice is its own LogSacrifice line, whose kind says
+	// so, and the zone move after it is not repeated. The cause is the
+	// instruction, not the destination: read OldZone and NewZone for
+	// where the card went. Empty on every other kind, and on an
+	// elimination recorded before the engine named its cause.
 	Cause string `json:"cause,omitempty"`
 	// LookedAt is the SIZE of a LogScry / LogSurveil entry's keyword
 	// action — the "2" in "scry 2" — where Amount is how many cards
@@ -831,6 +859,9 @@ type LogEvent struct {
 	// targetName / targetKnowers are the same for Target.
 	targetName    string
 	targetKnowers map[string]bool
+	// sourceKnowers is the same for Source (#4395): redactLogForViewer
+	// drops Source from a viewer who is not one of them.
+	sourceKnowers map[string]bool
 	// actorName / targetSeatName are player display names — public,
 	// never redacted, and not on the wire because the seat index plus
 	// GameView.Seats already carries them.
@@ -1301,13 +1332,19 @@ func (f *logFold) entries() []LogEvent {
 // decision, not an oversight: the engine emits far more than a table
 // log should show.
 //
-// game.Event.Batch (#829) is deliberately NOT forwarded: it is the
-// engine's "these happened at the same time" identity for
-// OncePerBatch, and the log already collapses adjacent lines by the
-// rules the table cares about (LogReveal's RevealSeq, the
-// draw / step runs in projectEvents). A second grouping key on the
-// wire would be a second thing to keep consistent for no rendering
-// gain. RevealSeq stays the one grouping the client reads.
+// game.Event.Batch (#829) is forwarded as LogEvent.Batch (#4395). It
+// used to be left off on purpose: the log already collapsed adjacent
+// lines by the rules the table cares about (LogReveal's RevealSeq, the
+// draw / step runs in projectEvents), so a second grouping key was a
+// second thing to keep consistent for no rendering gain. That reason
+// stopped holding when the client began to play a cue for a board wipe
+// (ADR 0209 §3): "which permanents left at the same time" is not
+// derivable from adjacency (a sweep and the trigger it causes are
+// adjacent, and so are two separate removal spells), and the engine's
+// batch is the one definition of "at once" the rules use (CR 603.2c).
+// RevealSeq and the collapsed runs are unchanged; Batch is the
+// grouping for everything else, and an entry that folds several events
+// carries the first one's.
 // publicNameFor reads an event's captured public name for a log ID.
 func publicNameFor(names map[uuid.UUID]string, id string) string {
 	if id == "" {
@@ -1321,7 +1358,7 @@ func publicNameFor(names map[uuid.UUID]string, id string) string {
 }
 
 func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *string, sacrificed *uuid.UUID) (LogEvent, bool) {
-	base := LogEvent{Seq: ev.Seq, Seat: seatOf(ev.Actor)}
+	base := LogEvent{Seq: ev.Seq, Batch: ev.Batch, Seat: seatOf(ev.Actor)}
 	// Anything but the zone move that follows a sacrifice clears the
 	// pending marker — the suppression is only ever for the adjacent
 	// pair.
@@ -1481,12 +1518,19 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.OldZone = string(ev.OldZone)
 		base.NewZone = string(ev.NewZone)
+		// #4395: a battlefield exit says why it happened and whose
+		// resolution it was part of.
+		base.Cause = string(ev.LeaveCause)
+		base.Source = uuidStringOrEmpty(ev.LeaveSource)
 		return base, true
 
 	case game.EventSacrifice:
 		*sacrificed = ev.CardID
 		base.Kind = LogSacrifice
 		base.CardID = uuidStringOrEmpty(ev.CardID)
+		// The card that asked for the sacrifice when the engine knew it,
+		// else the card behind the batch (#4395).
+		base.Source = uuidStringOrEmpty(cmp.Or(ev.Source, ev.LeaveSource))
 		return base, true
 
 	case game.EventExert:
@@ -2332,6 +2376,9 @@ func addLogWanted(wanted map[string]bool, e *LogEvent) {
 	if e.Target != "" {
 		wanted[e.Target] = true
 	}
+	if e.Source != "" {
+		wanted[e.Source] = true
+	}
 	for i, id := range e.revealIDs {
 		if i >= logRevealNamesMax {
 			break
@@ -2405,6 +2452,10 @@ func (r *logNameResolver) resolve(e *LogEvent) {
 	} else if e.targetHint != "" {
 		e.targetName, e.targetKnowers = e.targetHint, allSeatKnowers(r.v)
 	}
+	// #4395: only the knower set of the source; it is never named in text.
+	if c, ok := r.cards[e.Source]; ok {
+		e.sourceKnowers = c.knowers
+	}
 	// Revealed cards are looked up in every zone, hands and
 	// libraries included, without a knower check: see
 	// revealEntry. A card that has since left every tracked zone
@@ -2463,6 +2514,7 @@ func sameLogResolution(a, b *LogEvent) bool {
 		sameKnowers(a.cardKnowers, b.cardKnowers) &&
 		a.targetName == b.targetName &&
 		sameKnowers(a.targetKnowers, b.targetKnowers) &&
+		sameKnowers(a.sourceKnowers, b.sourceKnowers) &&
 		slices.Equal(a.revealNames, b.revealNames) &&
 		slices.Equal(a.revealIDs, b.revealIDs)
 }
@@ -2641,7 +2693,12 @@ func redactLogForViewer(src []LogEvent, isKnower func(CardView) bool) []LogEvent
 		if e.Target != "" && !isKnower(CardView{knowers: e.targetKnowers}) {
 			targetName = ""
 		}
-		e.cardKnowers, e.targetKnowers = nil, nil
+		// #4395: a source the viewer may not identify is dropped, as the
+		// card it is would be. The batch is a number and stays.
+		if e.Source != "" && !isKnower(CardView{knowers: e.sourceKnowers}) {
+			e.Source = ""
+		}
+		e.cardKnowers, e.targetKnowers, e.sourceKnowers = nil, nil, nil
 		if cardName != e.cardName || targetName != e.targetName {
 			e.cardName, e.targetName = cardName, targetName
 			// The chosen value goes with the name it identifies. The
