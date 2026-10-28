@@ -56,7 +56,17 @@ export type SoundName =
   | "your_turn"
   | "priority"
   | "prompt"
-  | "timer_warning";
+  | "timer_warning"
+  // ADR 0209 §3 generic effect cues (#4396), all in the effects category.
+  // Files are Ian's to make; until they land each is silent.
+  | "destroy"
+  | "exile"
+  | "sacrifice"
+  | "bounce"
+  | "counter"
+  | "board_wipe"
+  | "pw_enter"
+  | "pw_leave";
 
 // The volume buses a sound can belong to. The music bus is music.ts's.
 export type SoundCategory = "interface" | "cards" | "combat" | "effects" | "voice";
@@ -89,6 +99,14 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   priority: "interface",
   prompt: "interface",
   timer_warning: "interface",
+  destroy: "effects",
+  exile: "effects",
+  sacrifice: "effects",
+  bounce: "effects",
+  counter: "effects",
+  board_wipe: "effects",
+  pw_enter: "effects",
+  pw_leave: "effects",
 };
 
 // Each event has two takes. pickVariant() chooses uniformly at
@@ -112,6 +130,14 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   priority: ["/sounds/priority-1.mp3", "/sounds/priority-2.mp3"],
   prompt: ["/sounds/prompt-1.mp3", "/sounds/prompt-2.mp3"],
   timer_warning: ["/sounds/timer_warning-1.mp3", "/sounds/timer_warning-2.mp3"],
+  destroy: ["/sounds/destroy-1.mp3", "/sounds/destroy-2.mp3"],
+  exile: ["/sounds/exile-1.mp3", "/sounds/exile-2.mp3"],
+  sacrifice: ["/sounds/sacrifice-1.mp3", "/sounds/sacrifice-2.mp3"],
+  bounce: ["/sounds/bounce-1.mp3", "/sounds/bounce-2.mp3"],
+  counter: ["/sounds/counter-1.mp3", "/sounds/counter-2.mp3"],
+  board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],
+  pw_enter: ["/sounds/pw_enter-1.mp3", "/sounds/pw_enter-2.mp3"],
+  pw_leave: ["/sounds/pw_leave-1.mp3", "/sounds/pw_leave-2.mp3"],
 };
 
 // What a sound plays when none of its own files exist. Only the cues that

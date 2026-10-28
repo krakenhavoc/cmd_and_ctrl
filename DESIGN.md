@@ -236,9 +236,10 @@ and the seat panels' soft drop (`.seat-panel`).
 
 **Layers.** The table's z-index ladder (ADR 0111 §3, checked in code): game log
 drawer 30, top bar and strip 40, vote panel 50, action dock and its sheets 55,
-hints 58, mana menus 60 and 70, full-screen dialogs 200, hover zoom 300, card
-context menu 3000. The site header is sticky at 30. Put a new layer on this
-ladder and say where in a comment.
+table effects 57 (`board/TableEffects.svelte`, ADR 0209), hints 58, mana menus
+60 and 70, full-screen dialogs 200, hover zoom 300, card context menu 3000. The
+site header is sticky at 30. Put a new layer on this ladder and say where in a
+comment.
 
 **Motion.** One easing, `--ease: cubic-bezier(0.2, 0.7, 0.1, 1)`. Hover and
 state transitions are 120ms; dialogs fade in 160ms and rise in 220ms
@@ -254,6 +255,9 @@ game animations; and components with their own keyframes add an
 `@media (prefers-reduced-motion: reduce)` block. Information that motion
 carries must still arrive without it (ADR 0119 §3: the outcome badge shows; the
 flight does not).
+The table's effect cues (ADR 0209) follow it: with any of the three signals, or
+`animations.effects` Off, a cue draws a still badge where the permanent was and
+no motion, and a click or Escape skips a cue that is playing.
 
 ## 5. Layout and screens
 

@@ -9,6 +9,7 @@ import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane"
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
 import { normalizeSeen } from "./hints/seen";
+import { DEFAULT_EFFECTS_MODE, isEffectsMode, type EffectsMode } from "./tableEffects";
 import { DEFAULT_PLAYMATS_MODE, isPlaymatsMode, type PlaymatsMode } from "./playmatMode";
 
 // Settings is the client-wide preferences schema. Every toggle the
@@ -82,6 +83,13 @@ export interface Settings {
     // (or the master switch off, or reduced motion) the card still
     // appears and the arrows still draw; only the trace goes.
     stackArrival: boolean;
+    // ADR 0209 §1, #4396: the generic table effects (destroy, exile,
+    // sacrifice, bounce, counterspell, planeswalker, board wipe). Full
+    // plays each cue (at most 1.5 s, scaled by animations.speed); Short
+    // cuts each to 0.8 s; Off plays no motion. In every mode the sound
+    // still plays, and with Off (or the master switch off, or reduced
+    // motion) a still outcome badge says what happened.
+    effects: EffectsMode;
   };
 
   display: {
@@ -388,7 +396,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 29;
+export const SETTINGS_VERSION = 30;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -503,6 +511,7 @@ export function defaultSettings(): Settings {
       dice: true,
       combat: true,
       stackArrival: true,
+      effects: DEFAULT_EFFECTS_MODE,
     },
     display: {
       theme: DEFAULT_SKIN,
@@ -672,6 +681,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     dice: "synced",
     combat: "synced",
     stackArrival: "synced",
+    effects: "synced",
   },
   display: {
     theme: "synced",
@@ -1276,6 +1286,14 @@ function migrate(raw: unknown): Settings {
     merged.audio.combatVolume = legacyVolume;
     merged.audio.voiceVolume = legacyVolume;
   }
+  // v29 → v30 (ADR 0209 §1, #4396): animations.effects. The shallow merge
+  // fills the default ("full") for every stored blob, so the effects play
+  // for a player who touched nothing, as the new cues are the point of the
+  // release. Anything but a known mode is the default, which also cleans an
+  // account copy from a newer client.
+  if (!isEffectsMode(merged.animations.effects)) {
+    merged.animations.effects = DEFAULT_EFFECTS_MODE;
+  }
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
   // boolean is the default.
@@ -1528,6 +1546,7 @@ settings.subscribe((s) => {
     dice: s.animations.dice,
     combat: s.animations.combat,
     stackArrival: s.animations.stackArrival,
+    effects: s.animations.effects,
   });
 });
 

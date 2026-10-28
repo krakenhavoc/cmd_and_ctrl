@@ -24,6 +24,7 @@ import { backOut, cubicIn, cubicOut } from "svelte/easing";
 import { EASE, backOut as backOutCss, cancelAnimations, canAnimate, run } from "./motion";
 import type { TransitionConfig } from "svelte/transition";
 import type { Action } from "svelte/action";
+import type { EffectsMode } from "./tableEffects";
 
 // Per-effect gating, settable from the S11.5 settings panel via
 // setAnimationConfig. Each animation function checks the relevant
@@ -53,6 +54,9 @@ type AnimationConfig = {
   // (StackArrival.svelte reads the setting itself; kept here so the
   // whole group is mirrored).
   stackArrival: boolean;
+  // ADR 0209 §1: the generic table effects (destroy, exile, board wipe ...).
+  // "off" plays none of their motion; their outcome badge still shows.
+  effects: EffectsMode;
 };
 const cfg: AnimationConfig = {
   enabled: true,
@@ -67,6 +71,7 @@ const cfg: AnimationConfig = {
   dice: true,
   combat: true,
   stackArrival: true,
+  effects: "full",
 };
 export function setAnimationConfig(next: Partial<AnimationConfig>): void {
   Object.assign(cfg, next);
@@ -339,6 +344,13 @@ function strikeAllowed(): boolean {
   return cfg.enabled && cfg.combat;
 }
 
+// effectsAllowed gates the generic table effects (ADR 0209): the master
+// switch and animations.effects. Reduced motion is the caller's, as for
+// combat (accessibility.reduceMotion is never pushed in here).
+export function effectsAllowed(): boolean {
+  return cfg.enabled && cfg.effects !== "off";
+}
+
 // lunge flies a strike copy `to` (board pixels, relative to where it is
 // drawn) and back: out with power2.in, a contact hold, back with
 // power3.out. `flash` is for an attacker its blocker hit back in the
@@ -448,9 +460,16 @@ export interface CrumbleShardMotion {
 // hidden under them (the `crumbling` class). The shards are made here,
 // inside the copy, and go when the copy does. Resolves when they are
 // gone.
-export function crumble(face: HTMLElement, shards: readonly CrumbleShardMotion[]): Promise<void> {
-  if (!strikeAllowed()) return Promise.resolve();
-  const total = STRIKE_CRUMBLE_MS * strikeSpeed();
+export function crumble(
+  face: HTMLElement,
+  shards: readonly CrumbleShardMotion[],
+  // The table effects (ADR 0209 §3) reuse the crumble for a death by
+  // state-based action: they are gated by animations.effects, not
+  // animations.combat, and pass their own (capped, scaled) length.
+  opts: { gate?: "combat" | "effects"; ms?: number } = {},
+): Promise<void> {
+  if (!(opts.gate === "effects" ? effectsAllowed() : strikeAllowed())) return Promise.resolve();
+  const total = opts.ms ?? STRIKE_CRUMBLE_MS * strikeSpeed();
   const src = face.querySelector("img")?.getAttribute("src") ?? null;
   const made: HTMLElement[] = [];
   for (const sh of shards) {
