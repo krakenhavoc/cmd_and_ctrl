@@ -580,8 +580,9 @@ type Game struct {
 	// damageInstanceLives is every seat's life total as each of the
 	// newest damage instances began (ADR 0108 §10, damage_as_though.go):
 	// Phyrexian Unlife's "as long as you have 0 or less life" is read
-	// against it, once per instance. Transient like the stamp it is keyed
-	// on, cloned with the game, never captured. Copy on write.
+	// against it, once per instance. Cloned with the game and written to
+	// the snapshot (#4389), since a paused event carries its instance
+	// through a restore. Copy on write.
 	damageInstanceLives []damageInstanceLife
 
 	// shieldDivisions are the CR 615.7 divisions protected players have

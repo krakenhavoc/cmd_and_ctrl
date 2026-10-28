@@ -206,7 +206,9 @@ var gameFields = plan(
 	"combatDamageInstance", rebuilt, "a transient stamp (ADR 0108 owner decision 4): the next combat damage event of a restored game takes a new instance; a step restored half dealt gives its rest a new one, and only a source whose damage straddles the restore could tell",
 	"combatDamageInstanceBatch", rebuilt, "the event batch combatDamageInstance belongs to; retaken with it",
 	// ADR 0108 §10: the life totals each damage instance began with.
-	"damageInstanceLives", rebuilt, "keyed on the transient instance stamp, which no restored event carries: every instance of a restored game is new and records its own life totals as it begins, and a lookup that finds no record reads the live total (damage_as_though.go)",
+	// #4389: written, since a keyed damage frame, a follow-up park or a
+	// held division carries its instance through a restore.
+	"damageInstanceLives", carried, "",
 	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
 	// #4361 S16: written, so a CR 616 prompt over divided or redirected
 	// damage, and the next shield's divide_shield prompt, are restore points.

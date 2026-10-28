@@ -491,6 +491,13 @@ type GameSnapshot struct {
 	ShieldDivisions []ShieldDivision        `json:"shieldDivisions,omitempty"`
 	RedirectOrders  []redirectOrderSnapshot `json:"redirectOrders,omitempty"`
 
+	// DamageInstanceLives is Game.damageInstanceLives (#4389,
+	// damage_as_though.go): every seat's life total as each of the newest
+	// damage instances began, which Phyrexian Unlife reads once per
+	// instance. Additive within v9: a file without them restores none,
+	// and a lookup that finds no record reads the live total, as before.
+	DamageInstanceLives []damageInstanceLifeSnapshot `json:"damageInstanceLives,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -2578,6 +2585,20 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
+			// #4389: staged tokens are written only here, and none is
+			// staged without a frame. A token is staged only by a
+			// creation's entry walk (enterCreatedTokensKeyedLocked,
+			// enterCreatedTokensTogetherLocked) and leaves the staging
+			// area as it lands (landEntryLocked's takeEnteringTokenLocked)
+			// or is dropped (dropEnteringTokenLocked: a step that ran, a
+			// batch that stopped, an entry replaced away). The walk is
+			// synchronous, so a token is still staged after the action
+			// only when an entry stopped on errReplacementPending, and
+			// every prompt that bail queues holds a replacementResume
+			// frame (or, for a discard or sacrifice, a frozen entry): a
+			// keyed one sets keyedFrames, and any other is counted above
+			// (snapshotPendingChoiceFrame), so that table is no restore
+			// point.
 			for _, c := range g.enteringTokens {
 				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
 			}
@@ -2607,6 +2628,8 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	// instance whose damage waits on a prompt.
 	s.ShieldDivisions = snapshotShieldDivisions(g.shieldDivisions)
 	s.RedirectOrders = snapshotRedirectOrders(g.redirectOrders)
+	// #4389: the life totals those instances began with.
+	s.DamageInstanceLives = snapshotDamageInstanceLives(g.damageInstanceLives)
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
@@ -3571,6 +3594,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.followUpParks = restoreFollowUpParks(s.FollowUpParks)
 	g.shieldDivisions = snapshotShieldDivisions(s.ShieldDivisions)
 	g.redirectOrders = restoreRedirectOrders(s.RedirectOrders)
+	g.damageInstanceLives = restoreDamageInstanceLives(s.DamageInstanceLives)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
@@ -3664,6 +3688,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// #4361 S16: and every instance a division or a redirection order
 	// names (a divide_shield prompt's are taken as it is restored).
 	g.damageInstanceSeq = max(g.damageInstanceSeq, maxHeldDivisionInstance(g.shieldDivisions, g.redirectOrders))
+	// #4389: and every instance a life record names, so a new instance
+	// never takes a number an old record answers for.
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxRecordedLifeInstance(g.damageInstanceLives))
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
