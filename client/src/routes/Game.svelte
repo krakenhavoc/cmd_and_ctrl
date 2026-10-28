@@ -201,6 +201,8 @@
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { createCueTracker, turnBeginCue } from "../lib/interfaceCues";
+  import { createVoiceCueTracker } from "../lib/fx/voiceCues";
+  import { speakCue } from "../lib/fx/voiceWiring";
   import { openSettings, settings } from "../lib/settings";
   import {
     autopassSuspended,
@@ -1409,6 +1411,13 @@
     })) {
       play(cue);
     }
+  });
+
+  // ADR 0209 §5 planeswalker voice lines, read off the game log. The
+  // manifest ships empty, so this is a no-op until lines are added.
+  const voiceTracker = createVoiceCueTracker();
+  $effect(() => {
+    for (const cue of voiceTracker.observe(view)) void speakCue(cue);
   });
 
   // Win / loss cue on the state→ended transition. Spectators (no
