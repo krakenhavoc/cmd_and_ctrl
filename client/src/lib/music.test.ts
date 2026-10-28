@@ -81,6 +81,28 @@ describe("music", () => {
     expect(a.play).toHaveBeenCalledTimes(1);
   });
 
+  // ADR 0209 §2: an interface cue turns the music down while it plays.
+  it("ducks a playing track and restores it", async () => {
+    const m = await load();
+    m.setMusicVolumeMultiplier(0.5);
+    m.armMusicOnFirstGesture();
+    gesture();
+    const a = FakeAudio.instances[0];
+    m.setMusicDuck(0.5);
+    expect(a.volume).toBe(0.25);
+    m.setMusicDuck(1);
+    expect(a.volume).toBe(0.5);
+  });
+
+  it("starts a track that is created while ducked at the ducked volume", async () => {
+    const m = await load();
+    m.setMusicVolumeMultiplier(0.5);
+    m.setMusicDuck(0.5);
+    m.armMusicOnFirstGesture();
+    gesture();
+    expect(FakeAudio.instances[0].volume).toBe(0.25);
+  });
+
   it("creates the track on unmute after arming, then plays", async () => {
     const m = await load();
     m.setMusicVolumeMultiplier(0.5);

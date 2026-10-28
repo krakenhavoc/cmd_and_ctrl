@@ -156,7 +156,7 @@ describe("settings", () => {
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION, applySyncedCopy } =
       await freshModule();
-    expect(SETTINGS_VERSION).toBe(28);
+    expect(SETTINGS_VERSION).toBe(29);
     expect(defaultSettings().animations.stackArrival).toBe(true);
     const s = get(settings);
     expect(s.animations.stackArrival).toBe(true);
@@ -184,10 +184,10 @@ describe("settings", () => {
       JSON.stringify({ __version: 27, gameplay: { strictMana: false } }),
     );
     const { settings, defaultSettings, SYNCED_FIELDS, SETTINGS_VERSION } = await freshModule();
-    expect(SETTINGS_VERSION).toBe(28);
+    expect(SETTINGS_VERSION).toBe(29);
     expect(defaultSettings().gameplay.attackDefault).toBe("ask");
     const s = get(settings);
-    expect(s.__version).toBe(28);
+    expect(s.__version).toBe(29);
     expect(s.gameplay.attackDefault).toBe("ask");
     expect(s.gameplay.strictMana).toBe(false);
     expect(SYNCED_FIELDS.gameplay.attackDefault).toBe("synced");
@@ -204,6 +204,67 @@ describe("settings", () => {
       JSON.stringify({ __version: 28, gameplay: { attackDefault: "everyone" } }),
     );
     expect(get((await freshModule()).settings).gameplay.attackDefault).toBe("ask");
+  });
+
+  // ADR 0209 §2 (#4394): v28 → v29 gives each sound category a volume.
+  // The old effectsVolume was the one volume for every sound, so it is
+  // copied into the new buses and a returning player hears no change.
+  it("migrates v28 to v29: effectsVolume carries into every sound category", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 28,
+        audio: { muted: false, masterVolume: 70, effectsVolume: 35, musicVolume: 20 },
+      }),
+    );
+    const { settings, SYNCED_FIELDS } = await freshModule();
+    const a = get(settings).audio;
+    expect(get(settings).__version).toBe(29);
+    expect(a.cardsVolume).toBe(35);
+    expect(a.combatVolume).toBe(35);
+    expect(a.interfaceVolume).toBe(35);
+    expect(a.voiceVolume).toBe(35);
+    expect(a.effectsVolume).toBe(35);
+    expect(a.masterVolume).toBe(70);
+    expect(a.musicVolume).toBe(20);
+    for (const k of ["interfaceVolume", "cardsVolume", "combatVolume", "voiceVolume"] as const) {
+      expect(SYNCED_FIELDS.audio[k]).toBe("device");
+    }
+  });
+
+  it("migrates a blob with no audio to full category volumes", async () => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify({ __version: 20 }));
+    const a = get((await freshModule()).settings).audio;
+    expect([
+      a.interfaceVolume,
+      a.cardsVolume,
+      a.combatVolume,
+      a.effectsVolume,
+      a.voiceVolume,
+    ]).toEqual([100, 100, 100, 100, 100]);
+  });
+
+  it("keeps a v29 blob's own category volumes, and defaults a junk one", async () => {
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({
+        __version: 29,
+        audio: {
+          masterVolume: 80,
+          interfaceVolume: 10,
+          cardsVolume: 20,
+          combatVolume: "loud",
+          effectsVolume: 40,
+          voiceVolume: 500,
+        },
+      }),
+    );
+    const a = get((await freshModule()).settings).audio;
+    expect(a.interfaceVolume).toBe(10);
+    expect(a.cardsVolume).toBe(20);
+    expect(a.combatVolume).toBe(100);
+    expect(a.effectsVolume).toBe(40);
+    expect(a.voiceVolume).toBe(100);
   });
 
   it("absorbs the legacy cmdctrl.muted=1 key on first load", async () => {

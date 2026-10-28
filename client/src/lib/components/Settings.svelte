@@ -525,7 +525,7 @@
             <p class="help">Toggle with <kbd>M</kbd> from anywhere in the game.</p>
 
             <label class="slider-row">
-              <span>Master volume</span>
+              <span>{L.volumeMaster}</span>
               <input
                 type="range"
                 min="0"
@@ -538,7 +538,46 @@
             </label>
 
             <label class="slider-row">
-              <span>Effects volume</span>
+              <span>{L.volumeInterface}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={$settings.audio.interfaceVolume}
+                oninput={(e) => change("audio", "interfaceVolume", Number(e.currentTarget.value))}
+              />
+              <span class="value">{$settings.audio.interfaceVolume}</span>
+              {#if isFresh("audio.interfaceVolume")}<span class="saved">✓</span>{/if}
+            </label>
+
+            <label class="slider-row">
+              <span>{L.volumeCards}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={$settings.audio.cardsVolume}
+                oninput={(e) => change("audio", "cardsVolume", Number(e.currentTarget.value))}
+              />
+              <span class="value">{$settings.audio.cardsVolume}</span>
+              {#if isFresh("audio.cardsVolume")}<span class="saved">✓</span>{/if}
+            </label>
+
+            <label class="slider-row">
+              <span>{L.volumeCombat}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={$settings.audio.combatVolume}
+                oninput={(e) => change("audio", "combatVolume", Number(e.currentTarget.value))}
+              />
+              <span class="value">{$settings.audio.combatVolume}</span>
+              {#if isFresh("audio.combatVolume")}<span class="saved">✓</span>{/if}
+            </label>
+
+            <label class="slider-row">
+              <span>{L.volumeEffects}</span>
               <input
                 type="range"
                 min="0"
@@ -550,8 +589,21 @@
               {#if isFresh("audio.effectsVolume")}<span class="saved">✓</span>{/if}
             </label>
 
-            <label class="slider-row disabled" title="No music track ships yet">
-              <span>Music volume</span>
+            <label class="slider-row" title="No voice lines ship yet">
+              <span>{L.volumeVoice}</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={$settings.audio.voiceVolume}
+                oninput={(e) => change("audio", "voiceVolume", Number(e.currentTarget.value))}
+              />
+              <span class="value">{$settings.audio.voiceVolume}</span>
+              {#if isFresh("audio.voiceVolume")}<span class="saved">✓</span>{/if}
+            </label>
+
+            <label class="slider-row">
+              <span>{L.volumeMusic}</span>
               <input
                 type="range"
                 min="0"
@@ -560,8 +612,13 @@
                 oninput={(e) => change("audio", "musicVolume", Number(e.currentTarget.value))}
               />
               <span class="value">{$settings.audio.musicVolume}</span>
+              {#if isFresh("audio.musicVolume")}<span class="saved">✓</span>{/if}
             </label>
-            <p class="help">Music slider is scaffolded — no music track ships yet.</p>
+
+            <p class="help">
+              Master sits over every slider. An interface cue (your turn, priority, a prompt) turns
+              the rest down a little while it plays.
+            </p>
           {:else if activeTab === "animations"}
             <h3>Animations</h3>
             <label>
@@ -1705,9 +1762,6 @@
     font-family: var(--font-mono);
     font-size: 12px;
     color: var(--fg-muted);
-  }
-  label.disabled {
-    opacity: 0.5;
   }
   /* Switch: the native checkbox with appearance:none. */
   input[type="checkbox"] {

@@ -1,7 +1,7 @@
 import { get, type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
-import { setMuted, setVolumeMultiplier } from "./sounds";
-import { setMusicMuted, setMusicVolumeMultiplier } from "./music";
+import { onDuck, setCategoryVolume, setMasterVolume, setMuted } from "./sounds";
+import { setMusicDuck, setMusicMuted, setMusicVolumeMultiplier } from "./music";
 import { setAnimationConfig } from "./animations";
 import { STEP_IDS, NO_PRIORITY_STEPS, hasOwnStop, type StepID } from "./turn";
 import { sanitizeOverrides } from "./shortcuts";
@@ -38,8 +38,15 @@ export interface Settings {
     muted: boolean;
     // 0..100 linear; sounds.ts applies as multiplier on HTMLAudioElement.volume.
     masterVolume: number;
-    // 0..100, applied to the effects bus (draw, tap, damage, etc).
+    // ADR 0209 §2: one 0..100 volume per sound category, under the master
+    // volume and the mute. `effectsVolume` is the effects bus (the generic
+    // cues and signature effects); before settings v29 it was the one
+    // volume for every sound, and v29 copies it into the others.
+    interfaceVolume: number;
+    cardsVolume: number;
+    combatVolume: number;
     effectsVolume: number;
+    voiceVolume: number;
     // Music is scaffolded for a future music track; no-op until then.
     musicVolume: number;
   };
@@ -381,7 +388,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 28;
+export const SETTINGS_VERSION = 29;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -470,7 +477,11 @@ export function defaultSettings(): Settings {
     audio: {
       muted: false,
       masterVolume: 80,
+      interfaceVolume: 100,
+      cardsVolume: 100,
+      combatVolume: 100,
       effectsVolume: 100,
+      voiceVolume: 100,
       // Music is off for a new visitor (#3344). Sound effects stay on:
       // they follow `muted`, which is left alone. A returning visitor's
       // stored musicVolume is merged over this default, so it stays.
@@ -640,7 +651,11 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
   audio: {
     muted: "device",
     masterVolume: "device",
+    interfaceVolume: "device",
+    cardsVolume: "device",
+    combatVolume: "device",
     effectsVolume: "device",
+    voiceVolume: "device",
     musicVolume: "device",
   },
   animations: {
@@ -1242,6 +1257,25 @@ function migrate(raw: unknown): Settings {
   if (!isAttackDefaultMode(merged.gameplay.attackDefault)) {
     merged.gameplay.attackDefault = DEFAULT_ATTACK_DEFAULT;
   }
+  // v28 → v29 (ADR 0209 §2, #4394): a volume for each sound category.
+  // Until now `effectsVolume` was the one volume for every sound, so a
+  // blob from before v29 copies it into the interface, cards, combat and
+  // voice volumes: a player who turned effects down or off hears no change,
+  // and the sounds that are new to them start at the level they chose.
+  // `effectsVolume` itself stays, as the effects bus. A blob at v29 or
+  // later keeps what it stored. Anything that is not 0..100 is the default.
+  const storedAudio = (s.audio ?? {}) as Record<string, unknown>;
+  const legacyVolume = volumeOr(storedAudio.effectsVolume, d.audio.effectsVolume);
+  const volumes = merged.audio as unknown as Record<string, number>;
+  for (const key of CATEGORY_VOLUME_KEYS) {
+    volumes[key] = volumeOr(storedAudio[key], d.audio[key]);
+  }
+  if (storedVersion < 29) {
+    merged.audio.interfaceVolume = legacyVolume;
+    merged.audio.cardsVolume = legacyVolume;
+    merged.audio.combatVolume = legacyVolume;
+    merged.audio.voiceVolume = legacyVolume;
+  }
   // ADR 0179: display.shopLinks fills from the default (shown) through
   // the shallow merge, so SETTINGS_VERSION stands. Anything but a
   // boolean is the default.
@@ -1249,6 +1283,23 @@ function migrate(raw: unknown): Settings {
     merged.display.shopLinks = true;
   }
   return absorbLegacy(merged);
+}
+
+// The audio volumes that are one per sound category (ADR 0209 §2).
+const CATEGORY_VOLUME_KEYS = [
+  "interfaceVolume",
+  "cardsVolume",
+  "combatVolume",
+  "effectsVolume",
+  "voiceVolume",
+] as const;
+
+// volumeOr is a stored volume when it is a number from 0 to 100, else the
+// fallback. Rounded: the sliders step by whole numbers.
+function volumeOr(v: unknown, fallback: number): number {
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100
+    ? Math.round(v)
+    : fallback;
 }
 
 // ---- ADR 0143 §2.1: the one Auto-pass choice ----------------------------
@@ -1423,21 +1474,30 @@ settings.subscribe((s) => saveSettings(s));
 // changes — including the migration-time absorption of the legacy
 // cmdctrl.muted key.
 let lastMuted: boolean | null = null;
-let lastVolume: number | null = null;
 let lastMusicVolume: number | null = null;
+let duckWired = false;
 settings.subscribe((s) => {
+  // An interface cue ducks the music bus while it plays (ADR 0209 §2).
+  // Wired here, not at import, like the rest of the bridge: a test that
+  // replaces ./sounds with a stub must not fail on loading settings.
+  if (!duckWired) {
+    duckWired = true;
+    onDuck(setMusicDuck);
+  }
   if (s.audio.muted !== lastMuted) {
     lastMuted = s.audio.muted;
     setMuted(s.audio.muted);
     setMusicMuted(s.audio.muted);
   }
-  // Master × effects, both 0..100, normalised to a 0..1
-  // multiplier. sounds.play() folds this into per-event volume.
-  const vol = (s.audio.masterVolume / 100) * (s.audio.effectsVolume / 100);
-  if (vol !== lastVolume) {
-    lastVolume = vol;
-    setVolumeMultiplier(vol);
-  }
+  // The master volume and one volume per category (ADR 0209 §2), each
+  // 0..100, normalised to 0..1. sounds.play() multiplies master × the
+  // sound's category into the per-event volume.
+  setMasterVolume(s.audio.masterVolume / 100);
+  setCategoryVolume("interface", s.audio.interfaceVolume / 100);
+  setCategoryVolume("cards", s.audio.cardsVolume / 100);
+  setCategoryVolume("combat", s.audio.combatVolume / 100);
+  setCategoryVolume("effects", s.audio.effectsVolume / 100);
+  setCategoryVolume("voice", s.audio.voiceVolume / 100);
   // Same shape for music: master × music feeds the ambient track's
   // HTMLAudioElement.volume. music.ts pauses the element when the
   // product is 0, so "master=0" or "music=0" stops decoding rather
