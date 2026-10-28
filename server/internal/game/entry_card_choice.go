@@ -703,7 +703,13 @@ var entryChoiceActed = RegisterTail("engine/entry-choice-acted", func(g *Game, o
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) frozenEntryKeyable(f *replacementResumeFrame) bool {
 	return f != nil && f.ev != nil && len(f.applicable) == 1 &&
-		applicableRegathered(f.applicable) && g.replacementEventKeyable(f.ev)
+		applicableRegathered(f.applicable) && g.replacementEventKeyable(f.ev) &&
+		// #4404: a frozen entry is named by its action's tail, not by a
+		// resume key, so a batch whose kind has a key of its own (created
+		// tokens, an Attraction's open) is not written frozen: a binary
+		// that knows frozen entries but not those batches would restore
+		// it wrong. It stays counted.
+		(f.ev.entryTail == nil || entryBatchOwnKey(f.ev.entryTail.batch) == "")
 }
 
 // snapshotFrozenEntriesLocked writes Game.frozenEntries. One that is not

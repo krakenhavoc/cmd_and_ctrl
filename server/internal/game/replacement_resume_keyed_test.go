@@ -364,12 +364,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			b.firstErr.record(ErrInvalidParam)
 			c.replacementResume.ev.entryTail = &entryTail{batch: b}
 		},
-		"an Attraction's open": func(c *PendingChoice) {
-			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{attraction: &attractionOpenRun{}}}
-		},
-		"an entry batch of tokens": func(c *PendingChoice) {
-			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{token: true}}}}
-		},
 		"an entry batch whose settled member holds a closure": func(c *PendingChoice) {
 			c.replacementResume.ev.entryTail = &entryTail{batch: &entryBatch{members: []entryBatchMember{{
 				// #4361 S12: entryTail.then is gone; a resolving item with

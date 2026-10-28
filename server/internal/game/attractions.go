@@ -204,14 +204,15 @@ func (g *Game) OpenAttractionsForEffect(player, source uuid.UUID, n int) error {
 // attractionOpenRun is an "open N Attractions" in progress: who opens,
 // what opens them, how many opens are left and the card now entering.
 // It rides the open's entry batch (entryBatch.attraction) and is never
-// written after it is built, so an undo snapshot may share it.
+// written after it is built, so an undo snapshot may share it. Plain data,
+// written with a paused open's frame (#4404, entryBatchSnapshot.Attraction).
 type attractionOpenRun struct {
-	Player uuid.UUID
-	Source uuid.UUID
-	N      int
+	Player uuid.UUID `json:"player"`
+	Source uuid.UUID `json:"source"`
+	N      int       `json:"n"`
 	// Card is the Attraction this open is putting onto the battlefield
 	// (Game.attractionEntering while it does).
-	Card uuid.UUID
+	Card uuid.UUID `json:"card"`
 }
 
 func (g *Game) openAttractionsLocked(r *attractionOpenRun) error {
