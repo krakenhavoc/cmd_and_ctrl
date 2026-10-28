@@ -1,14 +1,30 @@
 # Sound assets
 
-Audio cues for in-game events (S09 sound pass). Each event ships
-two takes so `play()` can pick a variant at random and avoid the
+Audio cues for in-game events (S09 sound pass, ADR 0209). Most events
+ship two takes so `play()` can pick a variant at random and avoid the
 "machine-gun loop" effect on rapid-fire events (e.g. drawing an
 opening hand of seven).
 
 ## Source / license
 
-Suno-generated for this project. Personal / hobby use only — not
-licensed for redistribution outside this repo.
+Two sets, by when they were made:
+
+- **The S09 table sounds** (`draw` through `loss` in the first table
+  below) and `ambient_bronze_thunder.mp3`: Suno-generated for this
+  project. Personal / hobby use only, not licensed for redistribution
+  outside this repo.
+- **The ADR 0209 cues** (interface, effects and signatures): a mix,
+  recorded per file in the source column of the tables below.
+  - _Synthesised_: original, synthesised in code for this game.
+  - _ElevenLabs_: ElevenLabs Sound Effects from the owner's Creator plan,
+    which allows commercial use.
+  - _ElevenLabs edit_: an original edit layered from ElevenLabs takes and
+    stems.
+  - _TangoFlux_: one take, `pw_enter-2.mp3`, generated with TangoFlux. Its
+    model licence is non-commercial. That is fine for C2, which is free and
+    never charges (PLAN.md §3), but replace the take if that ever changes.
+
+None comes from Wizards.
 
 ## File layout
 
@@ -32,41 +48,34 @@ array there.
 | Mulligan / shuffle        | `shuffle-1.mp3`, `shuffle-2.mp3`               |
 | Game over (win)           | `win-1.mp3`, `win-2.mp3`                       |
 | Game over (loss)          | `loss-1.mp3`, `loss-2.mp3`                     |
-| Your turn begins          | `your_turn-1.mp3`, `your_turn-2.mp3`           |
-| You have priority         | `priority-1.mp3`, `priority-2.mp3`             |
-| A prompt is waiting       | `prompt-1.mp3`, `prompt-2.mp3`                 |
-| Timer warning             | `timer_warning-1.mp3`, `timer_warning-2.mp3`   |
 
-### Files not made yet
+A manifest entry lists exactly the takes that exist. One with a single
+take plays it every time.
 
-These four manifest entries ship before their files do (ADR 0209 §6).
-Drop the files in this folder under exactly these names and they play;
-until then a missing file is never an error:
+### Interface cues (ADR 0209 §2)
 
-| Entry           | Files                                        | Until the files exist                |
-| --------------- | -------------------------------------------- | ------------------------------------ |
-| `your_turn`     | `your_turn-1.mp3`, `your_turn-2.mp3`         | plays `turn_change` on your own turn |
-| `priority`      | `priority-1.mp3`, `priority-2.mp3`           | silent                               |
-| `prompt`        | `prompt-1.mp3`, `prompt-2.mp3`               | silent                               |
-| `timer_warning` | `timer_warning-1.mp3`, `timer_warning-2.mp3` | silent (no turn clock exists yet)    |
+| Entry           | Files                                        | When it plays                                            | Source      |
+| --------------- | -------------------------------------------- | -------------------------------------------------------- | ----------- |
+| `your_turn`     | `your_turn-1.mp3`                            | Your turn begins                                         | Synthesised |
+| `priority`      | `priority-1.mp3`                             | You have a real decision to make (never on auto-pass)    | Synthesised |
+| `prompt`        | `prompt-1.mp3`, `prompt-2.mp3`               | A prompt is waiting for you                              | Synthesised |
+| `timer_warning` | `timer_warning-1.mp3`, `timer_warning-2.mp3` | The turn timer runs low (nothing plays it yet: no clock) | Synthesised |
 
 ### Generic effect cues (#4396)
 
-The table's effect cues (ADR 0209 §3) are in the `effects` category. Each
-entry is in the manifest and plays when its file lands; until then it is
-silent. Two takes each, at most 1.5 s, and original or CC0.
+The table's effect cues (ADR 0209 §3), in the `effects` category.
 
-| Entry             | Files                                            | When it plays                                                                                 | Make it sound like       |
-| ----------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------ |
-| `destroy`         | `destroy-1.mp3`, `destroy-2.mp3`                 | A permanent is destroyed (the card shatters from its centre outward)                          | a raven's caw            |
-| `exile`           | `exile-1.mp3`, `exile-2.mp3`                     | A permanent is exiled, including a destroy turned into exile (the white void)                 | a cold, distinct chime   |
-| `sacrifice`       | `sacrifice-1.mp3`, `sacrifice-2.mp3`             | A permanent is sacrificed: plays as the altar appears                                         | a low thud               |
-| `sacrifice_knife` | `sacrifice_knife-1.mp3`, `sacrifice_knife-2.mp3` | A sacrifice's knife stabs the card, just before it shatters                                   | a blade driven home      |
-| `bounce`          | `bounce-1.mp3`, `bounce-2.mp3`                   | A permanent returns to a hand                                                                 | a lift and a soft whoosh |
-| `counter`         | `counter-1.mp3`, `counter-2.mp3`                 | A spell or ability is countered (a palm stops it, and it cracks)                              | glass breaking           |
-| `board_wipe`      | `board_wipe-1.mp3`, `board_wipe-2.mp3`           | Three or more permanents leave in one batch from one source; it plays once, as the sweep runs | a low rumble             |
-| `pw_enter`        | `pw_enter-1.mp3`, `pw_enter-2.mp3`               | A planeswalker enters the battlefield                                                         | a short sting            |
-| `pw_leave`        | `pw_leave-1.mp3`, `pw_leave-2.mp3`               | A planeswalker dies (it cracks, then leaves the plane)                                        | a crack                  |
+| Entry             | Files                                            | When it plays                                                                                   | Source                            |
+| ----------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------- | --------------------------------- |
+| `destroy`         | `destroy-1.mp3`, `destroy-2.mp3`                 | A permanent is destroyed (the card shatters from its centre outward): a raven's caw, then blood | ElevenLabs edit                   |
+| `exile`           | `exile-1.mp3`                                    | A permanent is exiled, including a destroy turned into exile (the white void)                   | ElevenLabs edit                   |
+| `sacrifice`       | `sacrifice-1.mp3`, `sacrifice-2.mp3`             | A permanent is sacrificed: plays as the altar rises                                             | ElevenLabs                        |
+| `sacrifice_knife` | `sacrifice_knife-1.mp3`, `sacrifice_knife-2.mp3` | The sacrifice's knife lands, about 0.5 s in, ending on the stone altar                          | -1 ElevenLabs edit, -2 ElevenLabs |
+| `bounce`          | `bounce-1.mp3`, `bounce-2.mp3`                   | A permanent flies back to its owner's hand                                                      | ElevenLabs                        |
+| `counter`         | `counter-1.mp3`, `counter-2.mp3`                 | A spell or ability is countered: a palm slap, a glass crack, a shatter                          | -1 ElevenLabs edit, -2 ElevenLabs |
+| `board_wipe`      | `board_wipe-1.mp3`, `board_wipe-2.mp3`           | Three or more permanents leave in one batch from one source; it plays once, as the sweep runs   | ElevenLabs                        |
+| `pw_enter`        | `pw_enter-1.mp3`, `pw_enter-2.mp3`               | A planeswalker enters the battlefield                                                           | -1 ElevenLabs, -2 TangoFlux       |
+| `pw_leave`        | `pw_leave-1.mp3`                                 | A planeswalker dies (it cracks, then leaves through a rift)                                     | ElevenLabs                        |
 
 A death by state-based action (lethal damage, zero toughness) has no new
 sound: it is the existing crumble. Inside a board wipe each per-card sound
@@ -76,21 +85,21 @@ plays at less than half volume, and one sound plays once per batch.
 
 A named card's own scene (ADR 0209 §4, `src/lib/fx/signatures.ts`) plays
 one sound for its batch, in the `effects` category, in place of the generic
-cue's. Until its files land each falls back to that generic cue. These are
-fetched the first time the card appears in a game, not at the first
-gesture. Two takes each, at most 2.5 s, and original or CC0.
+cue's. These are fetched the first time the card appears in a game, not at
+the first gesture. If its files fail to load, a signature falls back to the
+generic cue it replaces (`SOUND_FALLBACK`).
 
-| Entry                  | Files                                                      | When it plays                                                       | Until the files exist | Make it sound like                               |
-| ---------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | --------------------- | ------------------------------------------------ |
-| `sig_blasphemous_act`  | `sig_blasphemous_act-1.mp3`, `sig_blasphemous_act-2.mp3`   | Blasphemous Act resolves: fireballs crash down and the ground burns | `board_wipe`          | a roar of fire, impacts, a crackling burn        |
-| `sig_toxic_deluge`     | `sig_toxic_deluge-1.mp3`, `sig_toxic_deluge-2.mp3`         | Toxic Deluge resolves: a tar pit wells up and takes the creatures   | `board_wipe`          | thick bubbling, a deep sucking swallow           |
-| `sig_bitter_triumph`   | `sig_bitter_triumph-1.mp3`, `sig_bitter_triumph-2.mp3`     | Bitter Triumph resolves: a spear drives through the card            | `destroy`             | a thrust, a tearing punch, a short ring          |
-| `sig_nicol_bolas`      | `sig_nicol_bolas-1.mp3`, `sig_nicol_bolas-2.mp3`           | Nicol Bolas is cast or enters: his shadow passes, he swoops, lands  | `pw_enter`            | great wingbeats, a passing roar, a heavy landing |
-| `sig_dragons_approach` | `sig_dragons_approach-1.mp3`, `sig_dragons_approach-2.mp3` | Dragon's Approach resolves: a dragon's shadow passes over the board | `board_wipe`          | a slow wingbeat, a low roar rolling past         |
+| Entry                  | Files                                                      | When it plays                                                       | Falls back to | Source                            |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- | ------------- | --------------------------------- |
+| `sig_blasphemous_act`  | `sig_blasphemous_act-1.mp3`, `sig_blasphemous_act-2.mp3`   | Blasphemous Act resolves: fireballs crash down and the ground burns | `board_wipe`  | -1 ElevenLabs edit, -2 ElevenLabs |
+| `sig_toxic_deluge`     | `sig_toxic_deluge-1.mp3`                                   | Toxic Deluge resolves: a tar pit wells up and takes the creatures   | `board_wipe`  | ElevenLabs                        |
+| `sig_bitter_triumph`   | `sig_bitter_triumph-1.mp3`, `sig_bitter_triumph-2.mp3`     | Bitter Triumph resolves: a spear drives through the card            | `destroy`     | ElevenLabs edit                   |
+| `sig_nicol_bolas`      | `sig_nicol_bolas-1.mp3`, `sig_nicol_bolas-2.mp3`           | Nicol Bolas enters: he swoops, breathes fire, lands                 | `pw_enter`    | -1 ElevenLabs edit, -2 ElevenLabs |
+| `sig_dragons_approach` | `sig_dragons_approach-1.mp3`, `sig_dragons_approach-2.mp3` | Dragon's Approach resolves: a dragon's shadow passes over the board | `board_wipe`  | -1 ElevenLabs, -2 ElevenLabs edit |
 
-The first time the browser fails to load one it remembers that for the
-session and stops asking. One take is enough: with `-1` present and `-2`
-absent only `-1` plays.
+A missing file is never an error (ADR 0209 §6): the first time the browser
+fails to load one it remembers that for the session and plays the entry's
+other takes, then its fallback, then nothing.
 
 ## Categories and ducking
 
@@ -111,15 +120,16 @@ while it plays. A sound passed an event `batch` plays once per batch.
 
 ## Asset spec (ADR 0209 §6)
 
-Ian makes the files. Every file is original or CC0; none comes from
-Wizards.
+Ian makes the files, and the source of each new one goes in its table
+above. None comes from Wizards.
 
 - **Names:** the manifest key plus a take number: `destroy-1.mp3`,
   `your_turn-2.mp3`.
 - **Format:** MP3, 44.1 kHz.
 - **Loudness:** about -16 LUFS integrated, true peak under -1 dBTP.
-- **Length:** a generic cue at most 1.5 s, a signature effect at most
-  2.5 s, a voice line at most 3 s. Interface cues are generic cues: keep
+- **Length:** no longer than its animation: a generic cue under 2 s
+  (`src/lib/effectCueMotion.ts`), a signature effect at most 3.5 s
+  (`SIGNATURE_CAP_MS`), a voice line at most 3 s. Interface cues are generic cues: keep
   them short, because they duck everything else.
 
 ## Ambient music

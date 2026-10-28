@@ -51,14 +51,13 @@ export type SoundName =
   | "shuffle"
   | "win"
   | "loss"
-  // ADR 0209 §2 interface cues. Files are Ian's to make; until they land
-  // each falls back (SOUND_FALLBACK) or stays silent.
+  // ADR 0209 §2 interface cues. If its files fail to load, your_turn falls
+  // back (SOUND_FALLBACK) and the others stay silent.
   | "your_turn"
   | "priority"
   | "prompt"
   | "timer_warning"
   // ADR 0209 §3 generic effect cues (#4396), all in the effects category.
-  // Files are Ian's to make; until they land each is silent.
   | "destroy"
   | "exile"
   | "sacrifice"
@@ -68,9 +67,9 @@ export type SoundName =
   | "board_wipe"
   | "pw_enter"
   | "pw_leave"
-  // ADR 0209 §4 signature effects (#4397), in the effects category. Files
-  // are Ian's to make; until they land each falls back to the generic
-  // cue it replaces (SOUND_FALLBACK). Loaded lazily: the first time the
+  // ADR 0209 §4 signature effects (#4397), in the effects category. If its
+  // files fail to load, each falls back to the generic cue it replaces
+  // (SOUND_FALLBACK). Loaded lazily: the first time the
   // card appears in a game (fx/signatures.ts), never by preloadAll.
   | "sig_blasphemous_act"
   | "sig_toxic_deluge"
@@ -142,21 +141,21 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   shuffle: ["/sounds/shuffle-1.mp3", "/sounds/shuffle-2.mp3"],
   win: ["/sounds/win-1.mp3", "/sounds/win-2.mp3"],
   loss: ["/sounds/loss-1.mp3", "/sounds/loss-2.mp3"],
-  your_turn: ["/sounds/your_turn-1.mp3", "/sounds/your_turn-2.mp3"],
-  priority: ["/sounds/priority-1.mp3", "/sounds/priority-2.mp3"],
+  your_turn: ["/sounds/your_turn-1.mp3"],
+  priority: ["/sounds/priority-1.mp3"],
   prompt: ["/sounds/prompt-1.mp3", "/sounds/prompt-2.mp3"],
   timer_warning: ["/sounds/timer_warning-1.mp3", "/sounds/timer_warning-2.mp3"],
   destroy: ["/sounds/destroy-1.mp3", "/sounds/destroy-2.mp3"],
-  exile: ["/sounds/exile-1.mp3", "/sounds/exile-2.mp3"],
+  exile: ["/sounds/exile-1.mp3"],
   sacrifice: ["/sounds/sacrifice-1.mp3", "/sounds/sacrifice-2.mp3"],
   sacrifice_knife: ["/sounds/sacrifice_knife-1.mp3", "/sounds/sacrifice_knife-2.mp3"],
   bounce: ["/sounds/bounce-1.mp3", "/sounds/bounce-2.mp3"],
   counter: ["/sounds/counter-1.mp3", "/sounds/counter-2.mp3"],
   board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],
   pw_enter: ["/sounds/pw_enter-1.mp3", "/sounds/pw_enter-2.mp3"],
-  pw_leave: ["/sounds/pw_leave-1.mp3", "/sounds/pw_leave-2.mp3"],
+  pw_leave: ["/sounds/pw_leave-1.mp3"],
   sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
-  sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3", "/sounds/sig_toxic_deluge-2.mp3"],
+  sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3"],
   sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],
   sig_nicol_bolas: ["/sounds/sig_nicol_bolas-1.mp3", "/sounds/sig_nicol_bolas-2.mp3"],
   sig_dragons_approach: [
@@ -166,8 +165,8 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
 };
 
 // What a sound plays when none of its own files exist. Only the cues that
-// replace an old one name a fallback: your_turn is turn_change until its
-// files land. The others stay silent, because a placeholder ping on every
+// replace an old one name a fallback: your_turn plays turn_change if its
+// file fails to load. The others stay silent, because a placeholder ping on every
 // priority would be noise.
 // A signature (#4397) falls back to the generic cue it replaces, so a card
 // with a signature never sounds quieter than one without.
