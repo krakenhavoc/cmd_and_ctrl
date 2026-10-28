@@ -267,8 +267,9 @@ function sacrifice(node: HTMLElement, f: CueMotion): void {
       [
         { offset: 0, opacity: 0, translate: "0px 14px", scale: "0.92" },
         { offset: 0.12, opacity: 1, translate: "0px 0px", scale: "1" },
-        { offset: breakAt + 0.18, opacity: 1, translate: "0px 0px", scale: "1" },
-        { offset: breakAt + 0.42, opacity: 0, translate: "0px 6px", scale: "1" },
+        // Held until the knife has gone, then sinks away (Ian, round 3).
+        { offset: breakAt + 0.4, opacity: 1, translate: "0px 0px", scale: "1" },
+        { offset: breakAt + 0.6, opacity: 0, translate: "0px 6px", scale: "1" },
         { offset: 1, opacity: 0, translate: "0px 6px", scale: "1" },
       ],
       span(f, 0, 1, EASE.power2Out),
@@ -520,8 +521,9 @@ function bounce(node: HTMLElement, f: CueMotion): void {
     run(
       flip,
       [
-        { transform: "perspective(700px) rotateY(0deg)" },
-        { transform: "perspective(700px) rotateY(360deg)" },
+        // End over end, along the card's long axis.
+        { transform: "perspective(700px) rotateX(0deg)" },
+        { transform: "perspective(700px) rotateX(360deg)" },
       ],
       span(f, 0.03, 0.4, EASE.power2InOut),
     );
