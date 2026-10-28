@@ -179,6 +179,12 @@ export function setCategoryVolume(category: SoundCategory, v: number): void {
   categoryGain[category] = clamp01(v);
 }
 
+// busGain is master x one bus's volume, for a caller that plays its own
+// files on a bus (fx/voices.ts, ADR 0209 §5).
+export function busGain(category: SoundCategory): number {
+  return masterGain * categoryGain[category];
+}
+
 // soundGain is the product play() applies before the caller's hint:
 // master x the sound's category.
 export function soundGain(name: SoundName): number {
