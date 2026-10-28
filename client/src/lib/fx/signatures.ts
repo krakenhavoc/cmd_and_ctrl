@@ -45,7 +45,12 @@ import type { SceneModule } from "./scenes/kit";
 // ---- The catalog ----
 
 /** A scene, which one or more cards share. */
-export type SceneID = "blasphemous_act" | "toxic_deluge" | "bitter_triumph" | "nicol_bolas";
+export type SceneID =
+  | "blasphemous_act"
+  | "toxic_deluge"
+  | "bitter_triumph"
+  | "nicol_bolas"
+  | "dragons_approach";
 
 export interface SignatureDef {
   /** The card's printed name, each face's when it has more than one. */
@@ -65,6 +70,11 @@ export const SIGNATURES: Readonly<Record<string, SignatureDef>> = {
   "afaef788-34d1-460b-b884-9d7ae6ddeb18": { names: ["Toxic Deluge"], scene: "toxic_deluge" },
   // Bitter Triumph (bitter_triumph.go)
   "776341cb-d2ec-423f-9250-92dc8bd8d503": { names: ["Bitter Triumph"], scene: "bitter_triumph" },
+  // Dragon's Approach (dragons_approach.go)
+  "47e191f7-6314-4875-b5ee-57e5daf089c4": {
+    names: ["Dragon's Approach"],
+    scene: "dragons_approach",
+  },
   // Every catalog printing named Nicol Bolas shares one scene. Today that
   // is Nicol Bolas, God-Pharaoh (nicol_bolas_god_pharaoh.go) alone.
   "cb33e07b-9599-4979-991f-df0c43ddac31": {
@@ -127,6 +137,15 @@ export const SCENES: Readonly<Record<SceneID, SceneSpec>> = {
     cardsAtMs: 0,
     needsCards: false,
     load: () => import("./scenes/nicol_bolas"),
+  },
+  dragons_approach: {
+    trigger: "resolve",
+    sound: "sig_dragons_approach",
+    ms: 1900,
+    firstBeatMs: 800,
+    cardsAtMs: 0,
+    needsCards: false,
+    load: () => import("./scenes/dragons_approach"),
   },
 };
 

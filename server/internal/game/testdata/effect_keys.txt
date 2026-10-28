@@ -1748,3 +1748,5 @@ resume replacement-resume/combat-damage-redirected
 resume replacement-resume/damage-redirected
 resume replacement-resume/move-attraction-open
 resume replacement-resume/move-token-batch
+confirm confirm/dragons-approach-exile
+tail then/dragons-approach-search

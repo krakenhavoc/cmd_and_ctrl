@@ -239,4 +239,14 @@ describe("the scenes", () => {
       expect(c.layer.querySelector('[data-scene-part="dragon"]')).toBeNull();
     }
   });
+
+  it("Dragon's Approach sends two shadows over the board, one in Short", async () => {
+    const mod = await SCENES.dragons_approach.load();
+    const full = context("dragons_approach", false);
+    mod.play(full);
+    expect(full.layer.querySelectorAll('[data-scene-part="shadow"]')).toHaveLength(2);
+    const short = context("dragons_approach", true);
+    mod.play(short);
+    expect(short.layer.querySelectorAll('[data-scene-part="shadow"]')).toHaveLength(1);
+  });
 });
