@@ -17,7 +17,8 @@ import "github.com/google/uuid"
 // Now a non-combat damage event to a player or a permanent is written with
 // its frame (replacementEventSnapshot's damage fields and DamageTail, under
 // ReplacementResumeDamage) when its tail is data (since #4361 S8 every
-// tail's continuation is) and it has no redirected parts. A division or a
+// tail's continuation is). Since #4404 an event with redirected parts is
+// written too, under a key of its own (damage_redirected_keyed.go). A division or a
 // redirection order held for its instance, and its release from a
 // division, are written beside it since #4361 S16 (divide_shield_keyed.go),
 // so none of them keeps the frame off the disk. The caller's continuation
@@ -78,8 +79,10 @@ func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amou
 //
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
+	// #4404: redirected parts (damageTail.redirected) are data, written
+	// with the tail under a key of their own (damage_redirected_keyed.go).
 	t := ev.damageTail
-	if t == nil || len(t.redirected) > 0 {
+	if t == nil {
 		return false
 	}
 	if damageEventIsCombat(ev) && (!t.keyed.IsZero() || t.each != nil) {
@@ -91,7 +94,7 @@ func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
 }
 
 // damageTailSnapshot is a damageTail's data half: present exactly when the
-// event had a tail. A tail with redirected parts is never written.
+// event had a tail.
 type damageTailSnapshot struct {
 	Kind damageTailKind `json:"kind"`
 	// Combat and CombatStep are combat damage's flag and its step tag
@@ -118,6 +121,12 @@ type damageTailSnapshot struct {
 	// Each is the rest of a keyed Each walk the event is a leg of
 	// (damage_each_keyed.go). Additive within v9.
 	Each *damageEachRun `json:"each,omitempty"`
+	// Redirected are the parts charged redirections split off the event,
+	// dealt as it ends (#4404, damage_redirected_keyed.go). Additive within
+	// v9: a frame that carries them is written under
+	// ReplacementResumeDamageRedirected or
+	// ReplacementResumeCombatDamageRedirected.
+	Redirected []redirectedDamageSnapshot `json:"redirected,omitempty"`
 }
 
 // snapshotDamageEvent writes a damage event's fields onto its mirror.
@@ -138,6 +147,7 @@ func snapshotDamageEvent(ev *ReplacementEvent, out *replacementEventSnapshot) {
 		Result: t.result, Controller: uuidPtrOrNil(t.controller), Marks: t.marks,
 		SourceUnpreventable: t.sourceUnpreventable, SourceChecked: t.sourceChecked, EndsInstance: t.endsInstance,
 		Released: t.released, Then: snapshotKeyedTail(t.keyed), Each: cloneDamageEachRun(t.each),
+		Redirected: snapshotRedirectedDamage(t.redirected),
 	}
 }
 
@@ -159,6 +169,7 @@ func restoreDamageEvent(s *replacementEventSnapshot, ev *ReplacementEvent) {
 		result: t.Result, controller: uuidOrNil(t.Controller), marks: t.Marks,
 		sourceUnpreventable: t.SourceUnpreventable, sourceChecked: t.SourceChecked, endsInstance: t.EndsInstance,
 		released: t.Released, keyed: restoreKeyedTail(t.Then), each: cloneDamageEachRun(t.Each),
+		redirected: restoreRedirectedDamage(t.Redirected),
 	}
 }
 
