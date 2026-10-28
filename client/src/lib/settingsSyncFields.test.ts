@@ -62,7 +62,11 @@ describe("SYNCED_FIELDS", () => {
         // Volumes and mute: speakers versus headphones.
         "audio.muted",
         "audio.masterVolume",
+        "audio.interfaceVolume",
+        "audio.cardsVolume",
+        "audio.combatVolume",
         "audio.effectsVolume",
+        "audio.voiceVolume",
         "audio.musicVolume",
         // Screen-shaped (#956).
         "display.cardSize",

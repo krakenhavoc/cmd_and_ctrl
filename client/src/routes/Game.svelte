@@ -200,6 +200,7 @@
   import { attackersDefendedBy } from "../lib/attackTargets";
   import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
+  import { createCueTracker, turnBeginCue } from "../lib/interfaceCues";
   import { openSettings, settings } from "../lib/settings";
   import {
     autopassSuspended,
@@ -1372,7 +1373,10 @@
     const step = turn.step;
     if (prevStep !== null && step !== prevStep) {
       if (step === "untap") {
-        play("turn_change");
+        // ADR 0209 §2: your own turn has its own cue, which stands in
+        // for turn_change until its files land (SOUND_FALLBACK).
+        const begin = turnBeginCue(prevStep, step, viewerIsActive);
+        if (begin) play(begin);
         play("untap_all");
       } else if (step === "first_strike_damage" || step === "combat_damage") {
         // Both combat damage steps get the cue (CR 510.4): a combat
@@ -1385,6 +1389,26 @@
       }
     }
     prevStep = step;
+  });
+
+  // ADR 0209 §2 interface cues: "you have priority" when the table is
+  // really stopped on the viewer (never on an auto-pass or a timed bluff),
+  // and "a prompt is waiting" for each new choice. The first frame is the
+  // baseline, so reloading into a waiting game is silent.
+  const cueTracker = createCueTracker();
+  $effect(() => {
+    const gates = autopassGates;
+    const mine = new Set([autopassSeatID, sessionSeatID]);
+    for (const cue of cueTracker.observe({
+      playing: !!view && view.state === "active" && !gameEnded,
+      hasPriority: gates.viewerHasPriority,
+      tableBusy: gates.tableBusy,
+      hasPendingChoice: gates.hasPendingChoice,
+      verdict: autopassVerdict,
+      promptIDs: (view?.pending_choices ?? []).filter((c) => mine.has(c.chooser)).map((c) => c.id),
+    })) {
+      play(cue);
+    }
   });
 
   // Win / loss cue on the state→ended transition. Spectators (no

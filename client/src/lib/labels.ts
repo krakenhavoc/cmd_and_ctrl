@@ -1427,6 +1427,57 @@ export const LABEL_SPECS = {
     doc: "the ⋯ menu's entry that forgets every trigger order you asked to reuse this game (#3016); shown while you have one",
   }),
 
+  // -- Settings → Audio: a volume for each sound category (ADR 0209 §2, #4394) --
+  volumeMaster: label({
+    name: "Master volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider in Settings → Audio that sits over every category and the music",
+  }),
+  volumeInterface: label({
+    name: "Interface volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for your-turn, priority, prompt and timer cues (ADR 0209 §2); an interface cue ducks the other buses while it plays",
+  }),
+  volumeCards: label({
+    name: "Cards volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for draw, play, tap, untap and shuffle sounds (what Effects volume was before settings v29)",
+  }),
+  volumeCombat: label({
+    name: "Combat volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for attack, block and combat damage sounds",
+  }),
+  volumeEffects: label({
+    name: "Effects volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for the generic effect cues and signature card effects (ADR 0209 §3, §4)",
+  }),
+  volumeVoice: label({
+    name: "Voice volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for planeswalker voice lines (ADR 0209 §5); none ship yet",
+  }),
+  volumeMusic: label({
+    name: "Music volume",
+    kind: "text",
+    role: "generic",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "the slider for the ambient music bed",
+  }),
+
   // -- Combat damage assignment (#2956, ADR 0147) --
   damageAutoAssigned: label({
     name: "combat damage assigned",
