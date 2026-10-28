@@ -252,6 +252,7 @@ func TestARedirectOrderPromptWithAnOrderHeldIsARestorePoint(t *testing.T) {
 	}
 	r := strictRestore(t, g)
 	if len(r.redirectOrders) != 1 || r.redirectOrders[0].instance != g.redirectOrders[0].instance ||
+		r.redirectOrders[0].chooser != p1.ID ||
 		!slices.Equal(r.redirectOrders[0].order, g.redirectOrders[0].order) {
 		t.Fatalf("restored orders %+v, want %+v", r.redirectOrders, g.redirectOrders)
 	}

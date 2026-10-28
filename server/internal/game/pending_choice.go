@@ -2730,7 +2730,7 @@ func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, orde
 		applicableByID[a.id] = a
 	}
 	ev := frame.ev
-	g.rememberRedirectOrderLocked(ev, frame.applicable, ordered)
+	g.rememberRedirectOrderLocked(ev, frame.applicable, chooserID, ordered)
 	if g.replacementsAppliedThisEvent == nil {
 		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
 	}
@@ -4650,8 +4650,25 @@ func (g *Game) runPayUnlessBranchLocked(choice *PendingChoice, chooserID uuid.UU
 //     QueueChoiceForEffect refuses an eliminated chooser (#864). A
 //     prompt it queues to a SURVIVOR is fine and stays queued;
 //   - it is only reached for a prompt whose object a survivor still
-//     controls (departedChoiceObjectLocked), so the branch is written
-//     against material CR 800.4a has not just taken off the table.
+//     controls, so the branch is written against material CR 800.4a has
+//     not just taken off the table. #4389 audited that for every caller
+//     of runChoiceDropActionLocked, the only way here:
+//     the departure sweep (dropChoicesForPlayerLocked) asks
+//     departedChoiceActionAllowedLocked, which for pay_unless is
+//     departedChoiceObjectLocked, read again for each prompt just before
+//     its action runs; and dropChoiceLocked, the other caller, is never
+//     handed a pay_unless (every withdrawal site names its kinds: trigger
+//     announcements, loop notices, mode, sacrifice, card-set, option and
+//     target picks, and a paused exit's replacement prompt, and none of
+//     those carries a pay_unless frame). What the gate asks is that the
+//     prompt's Source card is still in some zone, controlled (else owned)
+//     by a seated player who is not the chooser, and that the prompt is
+//     not about the chooser's own pool. It does not ask for the stack or
+//     the battlefield, and must not: the ability, not its source, is
+//     the object that requires the payment (CR 113.7a), so Rhystic Study
+//     destroyed in response still draws on a decline (CR 800.4f).
+//     A new withdrawal site that can reach a pay_unless has to pass the
+//     same gate first.
 //
 // A may-pay frame ("you may pay {2}. If you do, ...") carries no decline
 // branch and nothing happens, which is the right reading of "if you do"
