@@ -1377,6 +1377,25 @@
     background: #2a2630;
     box-shadow: none;
   }
+  /* Inside a board wipe the shatter is white and black, like the cuts
+     (Ian, round 3): no warm flare, white sparks and black grit. */
+  .fx[data-effect-light] .flare {
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(230, 234, 242, 0.75) 26%,
+      rgba(20, 20, 24, 0.35) 52%,
+      rgba(0, 0, 0, 0) 72%
+    );
+  }
+  .fx[data-effect-light] .mote {
+    background: #f4f5f8;
+    box-shadow: 0 0 3px 1px rgba(0, 0, 0, 0.6);
+  }
+  .fx[data-effect-light] .mote:nth-of-type(odd) {
+    background: #111114;
+    box-shadow: 0 0 3px rgba(255, 255, 255, 0.5);
+  }
 
   /* D3, exile: a white void the card spins into, specks of light drawn
      in on spirals, and a last pinpoint as it closes. */
@@ -1508,7 +1527,7 @@
     backface-visibility: hidden;
   }
   .face.back {
-    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg)) rotateY(180deg);
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg)) rotateX(180deg);
     background:
       url("/card-back-small.jpg") center / cover no-repeat,
       radial-gradient(ellipse at 50% 50%, #5a3a22 0%, #2b1a10 60%, #160d08 100%);
@@ -1723,7 +1742,9 @@
 
   /* D10: the wind cuts. Each crosses the board on its own line: a
      bright blade with a dark edge, a faint gust behind it, and the slice
-     it leaves on the battlefield for a moment. */
+     it leaves on the battlefield for a moment. White and black only: the
+     scars alternate, a white slash edged in black, then a black one
+     edged in white. */
   .cut {
     position: absolute;
     left: 0;
@@ -1739,20 +1760,20 @@
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 220, 220, 0.5) 30%,
+      rgba(235, 238, 245, 0.5) 30%,
       #ffffff 72%,
       rgba(255, 255, 255, 0) 100%
     );
     box-shadow:
-      0 0 6px 1px rgba(255, 90, 90, 0.75),
-      0 0 18px 4px rgba(40, 6, 16, 0.65);
+      0 0 6px 1px rgba(255, 255, 255, 0.7),
+      0 0 18px 4px rgba(0, 0, 0, 0.7);
     opacity: 0;
   }
   .cut[data-dir="-1"] .blade {
     background: linear-gradient(
       270deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 220, 220, 0.5) 30%,
+      rgba(235, 238, 245, 0.5) 30%,
       #ffffff 72%,
       rgba(255, 255, 255, 0) 100%
     );
@@ -1780,13 +1801,24 @@
     height: 1px;
     background: linear-gradient(
       90deg,
-      rgba(255, 120, 120, 0) 0%,
-      rgba(255, 150, 150, 0.7) 20%,
-      rgba(255, 150, 150, 0.7) 80%,
-      rgba(255, 120, 120, 0) 100%
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.85) 20%,
+      rgba(255, 255, 255, 0.85) 80%,
+      rgba(255, 255, 255, 0) 100%
     );
-    box-shadow: 0 0 4px rgba(255, 70, 70, 0.6);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75);
     opacity: 0;
+  }
+  .cut:nth-of-type(even) .scar {
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.9) 20%,
+      rgba(0, 0, 0, 0.9) 80%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.55);
   }
 
   /* D11: the swirl the board turns into, the blur that bends it, and the
