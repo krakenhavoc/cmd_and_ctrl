@@ -49,6 +49,27 @@ const STATIC_PRECACHE = [
   "/fonts/jetbrains-mono-latin.woff2",
 ];
 
+// Signature scenes (ADR 0209 §4, #4397) load the first time their card
+// appears in a game, not when the app starts, so they are kept out of the
+// precache. Their chunks are named with this prefix by chunkFileName (a
+// chunk is a scene's when every module in it is under src/lib/fx/scenes/),
+// which vite.config.ts sets as Rollup's chunkFileNames. A scene fetched on
+// demand is then cached like any other hashed asset.
+export const LAZY_CHUNK_PREFIX = "assets/sig-";
+
+export function chunkFileName(chunk: { moduleIds: readonly string[] }): string {
+  const scene =
+    chunk.moduleIds.length > 0 &&
+    chunk.moduleIds.every((id) => id.replace(/\\/g, "/").includes("/src/lib/fx/scenes/"));
+  return scene ? `${LAZY_CHUNK_PREFIX}[name]-[hash].js` : "assets/[name]-[hash].js";
+}
+
+/** precached says whether a file of the bundle goes in the worker's precache. */
+export function precached(name: string): boolean {
+  if (name.startsWith(LAZY_CHUNK_PREFIX)) return false;
+  return /\.(js|css)$/.test(name) || name === "index.html";
+}
+
 function sha256(data: string | Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
@@ -82,7 +103,7 @@ export function serviceWorkerPlugin(): Plugin {
 
       // 1. Hashed build output, straight from the bundle.
       const emitted = Object.keys(bundle)
-        .filter((name) => /\.(js|css)$/.test(name) || name === "index.html")
+        .filter(precached)
         .map((name) => "/" + name)
         .sort();
 

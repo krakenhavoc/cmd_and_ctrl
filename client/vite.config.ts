@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { serviceWorkerPlugin } from "./vite-plugin-sw";
+import { chunkFileName, serviceWorkerPlugin } from "./vite-plugin-sw";
 
 // The Go server's port and this dev server's own. They default to
 // `make server-dev`'s 8080 and Vite's 5173, so `make client-dev` is
@@ -25,6 +25,13 @@ export default defineConfig({
   // content-derived build id into src/sw/service-worker.js and emits /sw.js.
   // Nothing registers a worker in dev (see src/lib/pwa.ts).
   plugins: [svelte(), serviceWorkerPlugin()],
+  build: {
+    rollupOptions: {
+      // Signature scenes get their own chunk names, so the service worker
+      // can leave them out of its precache (ADR 0209 §4, vite-plugin-sw.ts).
+      output: { chunkFileNames: chunkFileName },
+    },
+  },
   server: {
     port: clientPort,
     strictPort: true,

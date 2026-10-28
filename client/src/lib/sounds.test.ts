@@ -226,6 +226,27 @@ describe("sounds", () => {
       expect(m.isMissing(m.SOUND_MANIFEST.timer_warning[1])).toBe(false);
     });
 
+    it("leaves signature sounds out of the first-gesture preload, for preloadSound to fetch", async () => {
+      const m = await load();
+      m.armAudioOnFirstGesture();
+      (window as unknown as EventTarget).dispatchEvent(new Event("pointerdown"));
+      const fetched = () => new Set(FakeAudio.instances.map((a) => a.src));
+      expect(fetched().has(m.SOUND_MANIFEST.destroy[0])).toBe(true);
+      expect(fetched().has(m.SOUND_MANIFEST.sig_toxic_deluge[0])).toBe(false);
+      m.preloadSound("sig_toxic_deluge");
+      expect(fetched().has(m.SOUND_MANIFEST.sig_toxic_deluge[0])).toBe(true);
+      expect(fetched().has(m.SOUND_MANIFEST.sig_nicol_bolas[0])).toBe(false);
+    });
+
+    it("plays the generic cue a signature replaces until the signature's files land", async () => {
+      const m = await load();
+      for (const u of m.SOUND_MANIFEST.sig_blasphemous_act) FakeAudio.broken.add(u);
+      m.play("sig_blasphemous_act");
+      await settle();
+      await settle();
+      expect(played().at(-1)?.src).toBe(m.SOUND_MANIFEST.board_wipe[0]);
+    });
+
     it("never resolves a fallback loop", async () => {
       const m = await load();
       for (const urls of Object.values(m.SOUND_MANIFEST))
