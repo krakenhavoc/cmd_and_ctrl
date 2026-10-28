@@ -126,6 +126,7 @@ type stagedDamageSnapshot struct {
 // redirectOrderSnapshot is a redirectOrder on disk.
 type redirectOrderSnapshot struct {
 	Instance DamageInstance        `json:"instance"`
+	Chooser  uuid.UUID             `json:"chooser,omitempty"`
 	Order    []ReplacementEffectID `json:"order"`
 }
 
@@ -244,7 +245,7 @@ func snapshotShieldDivisions(in []ShieldDivision) []ShieldDivision {
 func snapshotRedirectOrders(in []redirectOrder) []redirectOrderSnapshot {
 	var out []redirectOrderSnapshot
 	for _, r := range in {
-		out = append(out, redirectOrderSnapshot{Instance: r.instance, Order: slices.Clone(r.order)})
+		out = append(out, redirectOrderSnapshot{Instance: r.instance, Chooser: r.chooser, Order: slices.Clone(r.order)})
 	}
 	return out
 }
@@ -253,7 +254,7 @@ func snapshotRedirectOrders(in []redirectOrder) []redirectOrderSnapshot {
 func restoreRedirectOrders(in []redirectOrderSnapshot) []redirectOrder {
 	var out []redirectOrder
 	for _, r := range in {
-		out = append(out, redirectOrder{instance: r.Instance, order: slices.Clone(r.Order)})
+		out = append(out, redirectOrder{instance: r.Instance, chooser: r.Chooser, order: slices.Clone(r.Order)})
 	}
 	return out
 }

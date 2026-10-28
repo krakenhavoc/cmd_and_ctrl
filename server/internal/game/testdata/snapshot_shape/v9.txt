@@ -43778,6 +43778,7 @@ promptRuns[].seats[]	custom(uuid.UUID)
 promptRuns[].source	custom(uuid.UUID)
 redirectOrders	array
 redirectOrders[]	object
+redirectOrders[].chooser	custom(uuid.UUID)
 redirectOrders[].instance	number:uint64
 redirectOrders[].order	array
 redirectOrders[].order[]	number:uint64

@@ -19,6 +19,10 @@ import (
 // applicable effects are all redirections the answer ordered takes that
 // order without asking.
 //
+// "The player" is the affected player or the affected object's controller
+// (CR 616.1), so the answer is kept per chooser too: an instance that
+// reaches creatures of two seats asks each of them (#4389).
+//
 // Only a window made entirely of redirections is remembered or replayed.
 // A prevention shield or a doubler beside them is an ordering question the
 // rulings say nothing about, and it is still asked per event.
@@ -27,8 +31,16 @@ import (
 // redirections that applied to one damage instance. Plain data, copy on
 // write, never captured (a restore starts with none: the instance stamp is
 // transient, see snapshot_drift_test.go).
+//
+// chooser is the player who gave it. CR 616.1 gives the choice to the
+// affected object's controller or the affected player, and one instance can
+// reach recipients of two of them, each in a window of the same
+// redirections, so each keeps an order of their own (#4389). The nil chooser
+// is a record written before the field existed (a restored game): it stands
+// for whoever asks, until that chooser answers.
 type redirectOrder struct {
 	instance DamageInstance
+	chooser  uuid.UUID
 	order    []ReplacementEffectID
 }
 
@@ -42,36 +54,40 @@ func onlyRedirections(applicable []activeReplacement) bool {
 	return len(applicable) > 0
 }
 
-// rememberRedirectOrderLocked keeps the order the player gave a window of
+// rememberRedirectOrderLocked keeps the order `chooser` gave a window of
 // redirections for the instance of ev. A window with anything else in it,
-// or an event with no instance, is not remembered.
+// or an event with no instance, is not remembered. An earlier answer of the
+// same chooser for the instance is replaced; another chooser's stands.
 //
 // Caller must hold g.mu (write).
-func (g *Game) rememberRedirectOrderLocked(ev *ReplacementEvent, applicable []activeReplacement, ordered []ReplacementEffectID) {
+func (g *Game) rememberRedirectOrderLocked(ev *ReplacementEvent, applicable []activeReplacement, chooser uuid.UUID, ordered []ReplacementEffectID) {
 	if ev == nil || ev.Kind != RepEventDamage || ev.DamageInstance == 0 || !onlyRedirections(applicable) {
 		return
 	}
 	next := make([]redirectOrder, 0, len(g.redirectOrders)+1)
 	for _, r := range g.redirectOrders {
-		if r.instance != ev.DamageInstance {
+		if r.instance != ev.DamageInstance || (r.chooser != chooser && r.chooser != uuid.Nil) {
 			next = append(next, r)
 		}
 	}
-	g.redirectOrders = append(next, redirectOrder{instance: ev.DamageInstance, order: slices.Clone(ordered)})
+	g.redirectOrders = append(next, redirectOrder{instance: ev.DamageInstance, chooser: chooser, order: slices.Clone(ordered)})
 }
 
 // rememberedRedirectOrderLocked reorders a window of redirections into the
-// order already chosen for ev's instance, and reports false when there is
-// none or it does not cover every effect in the window (a redirection that
-// is new to the instance is a fresh question).
+// order already chosen for ev's instance by the player who would be asked
+// (ev's affected player, CR 616.1), and reports false when there is none or
+// it does not cover every effect in the window (a redirection that is new
+// to the instance is a fresh question, and so is one whose affected player
+// has not answered yet).
 //
 // Caller must hold g.mu.
 func (g *Game) rememberedRedirectOrderLocked(ev *ReplacementEvent, applicable []activeReplacement) ([]activeReplacement, bool) {
 	if ev.Kind != RepEventDamage || ev.DamageInstance == 0 || !onlyRedirections(applicable) {
 		return nil, false
 	}
+	chooser := affectedPlayerForEvent(ev, applicable, g)
 	for _, r := range g.redirectOrders {
-		if r.instance != ev.DamageInstance {
+		if r.instance != ev.DamageInstance || (r.chooser != chooser && r.chooser != uuid.Nil) {
 			continue
 		}
 		rank := func(a activeReplacement) int { return slices.Index(r.order, a.id) }
