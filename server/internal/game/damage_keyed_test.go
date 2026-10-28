@@ -46,9 +46,10 @@ func TestADamageFrameWithAHeldDivisionOrRedirectOrderIsKeyed(t *testing.T) {
 	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamage {
 		t.Errorf("a frame released from a division is keyed %q", key)
 	}
+	// #4404: redirected parts are written too, under a key of their own.
 	ev.damageTail.redirected = []redirectedDamage{{}}
-	if key := g.replacementFrameKeyable(c); key != "" {
-		t.Errorf("a frame with redirected parts is keyed %q", key)
+	if key := g.replacementFrameKeyable(c); key != ReplacementResumeDamageRedirected {
+		t.Errorf("a frame with redirected parts is keyed %q, want %q", key, ReplacementResumeDamageRedirected)
 	}
 }
 

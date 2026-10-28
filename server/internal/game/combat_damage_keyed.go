@@ -46,7 +46,8 @@ import (
 // (ADR 0108 owner decision 4): a held step is dealt after its restore
 // under one new instance, as all of it is dealt at once; a paused CR 616
 // event carries its own instance on the event. A combat damage event
-// with redirected parts still keeps its frame off the disk.
+// with redirected parts is written since #4404, under
+// ReplacementResumeCombatDamageRedirected (damage_redirected_keyed.go).
 //
 // A prevention follow-up that asks during the step (#2040) needed
 // nothing new: it is owed as data (PreventionFollowUps) and a combat

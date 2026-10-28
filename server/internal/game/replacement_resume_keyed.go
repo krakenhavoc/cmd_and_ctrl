@@ -158,6 +158,11 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 
 	// #4362: combat damage (combat_damage_keyed.go).
 	ReplacementResumeCombatDamage: RepEventDamage,
+
+	// #4404: a damage event with redirected parts
+	// (damage_redirected_keyed.go).
+	ReplacementResumeDamageRedirected:       RepEventDamage,
+	ReplacementResumeCombatDamageRedirected: RepEventDamage,
 }
 
 // replacementResumeBaseKeys is the key a frame of each kind is written
@@ -495,8 +500,9 @@ var replacementEventFields = map[string]replacementEventField{
 	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
 
 	// A damage event (#4253, damage_keyed.go). Its tail's data half is
-	// carried; redirected parts gate (damageEventIsData). Combat damage is
-	// carried since #4362, under a key of its own (combat_damage_keyed.go).
+	// carried. Combat damage is carried since #4362, under a key of its own
+	// (combat_damage_keyed.go), and redirected parts since #4404
+	// (damage_redirected_keyed.go).
 	"DamageSource":   repFieldCarried,
 	"DamageTarget":   repFieldCarried,
 	"DamageAmount":   repFieldCarried,
@@ -562,10 +568,12 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	if eventCarriesDataTail(ev) {
 		key = replacementResumeTailedKeyOf(ev)
 	}
-	if ev.Kind == RepEventDamage && damageEventIsCombat(ev) {
+	if ev.Kind == RepEventDamage {
 		// #4362: combat damage has a key of its own, so a binary that
-		// would resume it as noncombat damage refuses the file.
-		key = ReplacementResumeCombatDamage
+		// would resume it as noncombat damage refuses the file. #4404: so
+		// does an event with redirected parts, which a binary from before
+		// them would drop.
+		key = damageEventResumeKey(ev)
 	}
 	if !applicableRegathered(f.applicable) {
 		return ""
@@ -1428,14 +1436,15 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
 	case f.Event.Kind != kind:
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
-	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) != (c.PickThen == ReplacementResumeCombatDamage):
+	case kind == RepEventDamage && c.PickThen != snapshotDamageResumeKey(&f.Event):
 		// #4362: combat damage is written under its own key, and only
-		// combat damage is.
+		// combat damage is. #4404: likewise an event with redirected
+		// parts.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a damage event of the other kind")
-	case c.PickThen == ReplacementResumeCombatDamage && snapshotCarriesDataTail(&f.Event):
+	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) && snapshotCarriesDataTail(&f.Event):
 		// #4362: combat damage owes its caller nothing.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
-	case c.PickThen != ReplacementResumeCombatDamage && snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
+	case kind != RepEventDamage && snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
 		// #4253 slice 3: a tail written as data under the key a binary
 		// that drops it would accept.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")

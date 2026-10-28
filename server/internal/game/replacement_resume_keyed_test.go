@@ -183,6 +183,8 @@ func keyedFrameSample() *ReplacementEvent {
 				Source: id("des"), Rest: []uuid.UUID{id("der")}, Amount: 3, Dealt: 2, Instance: 5, Owned: true,
 				Then: &keyedTailSnapshot{Key: "det", Carry: []uuid.UUID{id("detc")}, N: 4},
 			},
+			// #4404: a charged redirection's split-off part.
+			redirected: []redirectedDamage{{to: id("drt"), amount: 2, applied: []ReplacementEffectID{7, 9}}},
 		},
 	}
 }
@@ -209,9 +211,9 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"report": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
-		// #4253: redirected parts gate the frame (damageEventIsData);
-		// #4361 S16 carries a release, #4362 combat damage.
-		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"redirected": true}},
+		// #4361 S16 carries a release, #4362 combat damage, #4404
+		// redirected parts.
+		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -400,10 +402,6 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			c.replacementResume.ev = damageFrameEvent()
 			c.replacementResume.ev.IsCombatDamage, c.replacementResume.ev.damageTail.combat = true, true
 			c.replacementResume.ev.damageTail.keyed = KeyedTail{Ref: TailRef{key: "k"}}
-		},
-		"damage with redirected parts": func(c *PendingChoice) {
-			c.replacementResume.ev = damageFrameEvent()
-			c.replacementResume.ev.damageTail.redirected = []redirectedDamage{{to: uuid.New(), amount: 1}}
 		},
 		"a sandbox damage mark": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()

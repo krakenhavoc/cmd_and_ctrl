@@ -3856,6 +3856,12 @@ frozenEntries[].event.damageTail.lifelinkTo	custom(uuid.UUID)
 frozenEntries[].event.damageTail.marks	object
 frozenEntries[].event.damageTail.marks.CantBePrevented	bool
 frozenEntries[].event.damageTail.marks.CantBeRedirected	bool
+frozenEntries[].event.damageTail.redirected	array
+frozenEntries[].event.damageTail.redirected[]	object
+frozenEntries[].event.damageTail.redirected[].amount	number:int
+frozenEntries[].event.damageTail.redirected[].applied	array
+frozenEntries[].event.damageTail.redirected[].applied[]	number:uint64
+frozenEntries[].event.damageTail.redirected[].to	custom(uuid.UUID)
 frozenEntries[].event.damageTail.released	bool
 frozenEntries[].event.damageTail.result	object
 frozenEntries[].event.damageTail.result.Infect	bool
@@ -27694,6 +27700,12 @@ pendingChoices[].replacementResume.event.damageTail.lifelinkTo	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.marks	object
 pendingChoices[].replacementResume.event.damageTail.marks.CantBePrevented	bool
 pendingChoices[].replacementResume.event.damageTail.marks.CantBeRedirected	bool
+pendingChoices[].replacementResume.event.damageTail.redirected	array
+pendingChoices[].replacementResume.event.damageTail.redirected[]	object
+pendingChoices[].replacementResume.event.damageTail.redirected[].amount	number:int
+pendingChoices[].replacementResume.event.damageTail.redirected[].applied	array
+pendingChoices[].replacementResume.event.damageTail.redirected[].applied[]	number:uint64
+pendingChoices[].replacementResume.event.damageTail.redirected[].to	custom(uuid.UUID)
 pendingChoices[].replacementResume.event.damageTail.released	bool
 pendingChoices[].replacementResume.event.damageTail.result	object
 pendingChoices[].replacementResume.event.damageTail.result.Infect	bool
