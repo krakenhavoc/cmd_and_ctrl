@@ -454,6 +454,17 @@ func ArtifactEnteredUnderYourControl(ev game.Event, source *game.Card, _ game.Ch
 	return ok && c.IsArtifact()
 }
 
+// CreatureActionByYou is an event whose actor is you and whose card is
+// a creature: sacrificing a creature and exerting a creature share this
+// condition. The row declares which action it watches.
+func CreatureActionByYou(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Actor != source.Controller {
+		return false
+	}
+	c, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && c.IsCreature()
+}
+
 // ACreatureYouControlDied — a creature you controlled went to the
 // graveyard, the source included (Zulaport Cutthroat).
 func ACreatureYouControlDied(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
