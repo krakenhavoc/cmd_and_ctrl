@@ -66,7 +66,15 @@ export type SoundName =
   | "counter"
   | "board_wipe"
   | "pw_enter"
-  | "pw_leave";
+  | "pw_leave"
+  // ADR 0209 §4 signature effects (#4397), in the effects category. Files
+  // are Ian's to make; until they land each falls back to the generic
+  // cue it replaces (SOUND_FALLBACK). Loaded lazily: the first time the
+  // card appears in a game (fx/signatures.ts), never by preloadAll.
+  | "sig_blasphemous_act"
+  | "sig_toxic_deluge"
+  | "sig_bitter_triumph"
+  | "sig_nicol_bolas";
 
 // The volume buses a sound can belong to. The music bus is music.ts's.
 export type SoundCategory = "interface" | "cards" | "combat" | "effects" | "voice";
@@ -107,6 +115,10 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   board_wipe: "effects",
   pw_enter: "effects",
   pw_leave: "effects",
+  sig_blasphemous_act: "effects",
+  sig_toxic_deluge: "effects",
+  sig_bitter_triumph: "effects",
+  sig_nicol_bolas: "effects",
 };
 
 // Each event has two takes. pickVariant() chooses uniformly at
@@ -138,15 +150,31 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],
   pw_enter: ["/sounds/pw_enter-1.mp3", "/sounds/pw_enter-2.mp3"],
   pw_leave: ["/sounds/pw_leave-1.mp3", "/sounds/pw_leave-2.mp3"],
+  sig_blasphemous_act: ["/sounds/sig_blasphemous_act-1.mp3", "/sounds/sig_blasphemous_act-2.mp3"],
+  sig_toxic_deluge: ["/sounds/sig_toxic_deluge-1.mp3", "/sounds/sig_toxic_deluge-2.mp3"],
+  sig_bitter_triumph: ["/sounds/sig_bitter_triumph-1.mp3", "/sounds/sig_bitter_triumph-2.mp3"],
+  sig_nicol_bolas: ["/sounds/sig_nicol_bolas-1.mp3", "/sounds/sig_nicol_bolas-2.mp3"],
 };
 
 // What a sound plays when none of its own files exist. Only the cues that
 // replace an old one name a fallback: your_turn is turn_change until its
 // files land. The others stay silent, because a placeholder ping on every
 // priority would be noise.
+// A signature (#4397) falls back to the generic cue it replaces, so a card
+// with a signature never sounds quieter than one without.
 export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   your_turn: "turn_change",
+  sig_blasphemous_act: "board_wipe",
+  sig_toxic_deluge: "board_wipe",
+  sig_bitter_triumph: "destroy",
+  sig_nicol_bolas: "pw_enter",
 };
+
+// Sounds preloadAll leaves alone: a signature's files are fetched the
+// first time its card appears in a game (preloadSound), not at start.
+export function isLazySound(name: SoundName): boolean {
+  return name.startsWith("sig_");
+}
 
 // A ducking interface cue lowers every other bus by this much: 10^(-6/20),
 // about 6 dB.
@@ -280,23 +308,35 @@ function pickVariant(name: SoundName, seen: SoundName[] = []): string | null {
   return pickVariant(next, [...seen, name]);
 }
 
+function preloadURLs(variants: readonly string[]): void {
+  for (const url of variants) {
+    if (pool.has(url)) continue;
+    const a = new Audio(url);
+    a.preload = "auto";
+    // A file that is not there yet (ADR 0209 §6) fails to load; note
+    // it so play() skips it instead of trying on every fire.
+    a.addEventListener?.("error", () => markMissing(url));
+    // Touching .load() nudges the browser to actually start
+    // fetching + decoding immediately instead of lazily on first
+    // play.
+    a.load();
+    pool.set(url, a);
+  }
+}
+
 function preloadAll(): void {
   if (!hasWindow()) return;
-  for (const variants of Object.values(SOUND_MANIFEST)) {
-    for (const url of variants) {
-      if (pool.has(url)) continue;
-      const a = new Audio(url);
-      a.preload = "auto";
-      // A file that is not there yet (ADR 0209 §6) fails to load; note
-      // it so play() skips it instead of trying on every fire.
-      a.addEventListener?.("error", () => markMissing(url));
-      // Touching .load() nudges the browser to actually start
-      // fetching + decoding immediately instead of lazily on first
-      // play.
-      a.load();
-      pool.set(url, a);
-    }
+  for (const [name, variants] of Object.entries(SOUND_MANIFEST)) {
+    if (isLazySound(name as SoundName)) continue;
+    preloadURLs(variants);
   }
+}
+
+// preloadSound fetches one sound's takes ahead of its first play: a
+// signature's, the first time its card appears in a game (#4397).
+export function preloadSound(name: SoundName): void {
+  if (!hasWindow()) return;
+  preloadURLs(SOUND_MANIFEST[name] ?? []);
 }
 
 // armAudioOnFirstGesture attaches a one-shot pointerdown + keydown

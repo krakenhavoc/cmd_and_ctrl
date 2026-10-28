@@ -81,6 +81,15 @@ The scene kit is a small set of reusable parts: a full-board overlay layer, part
 
 The first batch is the cards Ian named: Blasphemous Act, Toxic Deluge, Bitter Triumph, Dragon's Approach and Nicol Bolas (each printing named Nicol Bolas that is in the catalog, sharing one scene).
 
+Amendment 2026-10-28 (#4397): the scene kit and the first signatures are built (`client/src/lib/fx/signatures.ts`, `fx/scenes/`). What the build settled:
+
+- **Which cards.** Blasphemous Act, Toxic Deluge, Bitter Triumph and Nicol Bolas, God-Pharaoh, the one printing named Nicol Bolas in the catalog. Dragon's Approach is not in the catalog, so it has no signature yet; the kit's shadow pass is ready for it. A later card is a tier-1 job: [adding-a-signature.md](../adding-a-signature.md).
+- **Matching.** The wire carries no `oracle_id`, so a card on the table is matched by its printed name. `SIGNATURES` is still keyed by `oracle_id`, and a test holds each key and name to the server's catalog Spec and oracle fixture.
+- **Triggers.** A `resolve` scene runs on its spell's `resolve` entry, and its batch is every battlefield exit whose `source` is that spell: it replaces the board-wipe sweep and sound, and each card keeps its own cue, lighter, staggered from the moment the scene hands over, all inside the 2.5 s cap. A one-card batch plays the signature's sound alone. An `arrive` scene runs on a cast (landing on the stack item) or on entering the battlefield uncast (landing on the tile, in place of the planeswalker ring), once per arrival.
+- **Short and still.** Short plays the first beat, 0.8 s at most, with the cards' cues compressed into it. Off and reduced motion play no scene; the generic still cues show, and the signature's sound replaces the batch's.
+- **Lazy loading.** Each scene is its own chunk, imported the first time a card that has it appears in any zone the player can see. Until it has loaded the generic cues play. The scene chunks (`assets/sig-*`) are left out of the service worker's precache, and their sounds out of the first-gesture preload.
+- **Sounds.** `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, in the `effects` category, each falling back to the generic cue it replaces until Ian's files land.
+
 ### 5. Voice lines (wired, not shipped)
 
 `client/src/lib/fx/voices.ts` maps a planeswalker's `oracle_id` to lines for each moment: `enter`, `leave`, `ultimate`. Each moment has one or more takes, with the files under `client/public/voices/`. Lines play in the `voice` category.

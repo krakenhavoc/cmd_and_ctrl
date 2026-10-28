@@ -29,6 +29,13 @@
   // player's alone (nothing is sent), and the layer takes no pointer
   // events, so the click also reaches the board under it.
   //
+  // Signatures (ADR 0209 §4, #4397): a named card's scene (fx/signatures.ts,
+  // drawn from fx/scenes/) replaces the generic cue for the batch it names,
+  // once its scene has loaded; until then, and whenever the cues are still,
+  // the generic cues play. The cards its batch took keep their own cue,
+  // lighter, on the signature's clock. Scenes load the first time a card
+  // that has one appears in any zone this player can see.
+  //
   // z 57 on DESIGN.md §4's ladder: above the action dock (55), below the
   // hints (58). aria-hidden: the log and the board carry the news.
 
@@ -70,6 +77,19 @@
     type WipeTone,
   } from "../../tableEffects";
   import { L } from "../../labels";
+  import {
+    SCENES,
+    planSignatures,
+    sceneForCard,
+    signatureCueTiming,
+    signatureScenes,
+    signatureTiming,
+    withSignatures,
+    type SceneID,
+    type SignatureCue,
+    type SignatureLoader,
+  } from "../../fx/signatures";
+  import type { SceneCard } from "../../fx/scenes/kit";
 
   interface Props {
     view: GameView;
@@ -78,11 +98,13 @@
     // already on the wire is cued (Game.svelte's beatsPrimeKey: a
     // reconnect, a replay toggle).
     beatsPrimeKey?: string;
+    // Where signature scenes come from (tests pass their own).
+    signatures?: SignatureLoader;
   }
 
-  const { view, boardEl, beatsPrimeKey = "" }: Props = $props();
+  const { view, boardEl, beatsPrimeKey = "", signatures = signatureScenes }: Props = $props();
 
-  type FxKind = EffectKind | "wipe";
+  type FxKind = EffectKind | "wipe" | "signature";
 
   interface Fx {
     key: string;
@@ -108,6 +130,12 @@
     seed: string;
     count: number;
     badge: string;
+    // A signature: its scene, the cards its batch took, where it lands,
+    // and the factor from the scene's ms to real ms.
+    scene?: SceneID;
+    sceneCards?: SceneCard[];
+    landing?: SceneCard | null;
+    k?: number;
   }
 
   let fx = $state<Fx[]>([]);
@@ -124,6 +152,36 @@
 
   let tracker = emptyBeatTracker();
   let reprimeNext = false;
+
+  // Every card this player can see, by instance ID, as of this frame and
+  // the one before (a spell that resolved into a hidden zone, a permanent
+  // that left): what a signature knows a card by. And the cards whose
+  // arrival scene played on their cast, until they enter.
+  type Seen = Pick<CardView, "name" | "is_token" | "token_copy">;
+  let seenNow = new Map<string, Seen>();
+  let seenBefore = new Map<string, Seen>();
+  const arrivedOnCast = new Set<string>();
+
+  function visibleCards(v: GameView): CardView[] {
+    const out: CardView[] = [
+      ...(v.battlefield?.cards ?? []),
+      ...(v.stack?.cards ?? []),
+      ...(v.exile?.cards ?? []),
+    ];
+    for (const s of v.seats ?? []) {
+      out.push(
+        ...(s.hand?.cards ?? []),
+        ...(s.graveyard?.cards ?? []),
+        ...(s.command?.cards ?? []),
+      );
+    }
+    return out;
+  }
+
+  function sceneOfCard(id: string): SceneID | null {
+    const c = seenNow.get(id) ?? seenBefore.get(id);
+    return c ? sceneForCard(c) : null;
+  }
 
   function later(fn: () => void, ms: number): void {
     const t = setTimeout(() => {
@@ -375,6 +433,15 @@
     tracker = r.tracker;
     // A reconnect or a replay move: forget what was playing.
     if (r.primed) clearAll();
+
+    // What this frame shows, and any scene among it, which starts loading
+    // now: the first time a card with a signature appears in the game.
+    seenBefore = seenNow;
+    seenNow = new Map();
+    const shown = visibleCards(view);
+    for (const c of shown) seenNow.set(c.instance_id, c);
+    signatures.notice(shown);
+
     if (r.fresh.length === 0) return;
 
     const s = get(settings);
@@ -394,8 +461,20 @@
       }),
       visibility,
     );
-    const plan = planEffects(r.fresh, log, { isPlaneswalker: isPW, combatMotion: strikes });
-    if (plan.cues.length === 0 && plan.wipes.length === 0) return;
+    const generic = planEffects(r.fresh, log, { isPlaneswalker: isPW, combatMotion: strikes });
+    // Signatures take the batches they name, once their scene has loaded.
+    const found = planSignatures(r.fresh, {
+      sceneOf: sceneOfCard,
+      arrived: (id) => arrivedOnCast.has(id),
+    });
+    for (const e of r.fresh) {
+      if (e.kind === "zone" && e.new_zone === "battlefield" && e.card_id) {
+        arrivedOnCast.delete(e.card_id);
+      }
+    }
+    const sp = withSignatures(generic, found, (s) => signatures.ready(s) !== null, motion);
+    const plan = sp.plan;
+    if (plan.cues.length === 0 && plan.wipes.length === 0 && sp.sigs.length === 0) return;
 
     const at = Date.now();
     const speed = s.animations.speed;
@@ -420,8 +499,13 @@
         }, delay);
     };
 
+    for (const sig of sp.sigs) {
+      sound(SCENES[sig.scene].sound, 0, 1, sig.batch);
+      if (sig.lands === "stack") arrivedOnCast.add(sig.cardID);
+    }
+
     for (const w of plan.wipes) {
-      sound("board_wipe", 0, 1, w.batch);
+      if (!sp.silencedWipes.has(w.batch)) sound("board_wipe", 0, 1, w.batch);
       if (!b) continue;
       const t = wipeTiming(motion, speed);
       add({
@@ -441,15 +525,109 @@
 
     let drawn = 0;
     for (const cue of plan.cues) {
-      const t = cueTiming(cue, motion, speed);
+      const t =
+        (sp.inScene.has(cue.id) ? signatureCueTiming(cue, motion, speed) : null) ??
+        cueTiming(cue, motion, speed);
       const snd = cueSound(cue);
-      if (snd) sound(snd.name, t.delayMs, snd.volume, cue.batch);
+      if (snd && !sp.silencedCues.has(cue.id)) sound(snd.name, t.delayMs, snd.volume, cue.batch);
       if (!b) continue;
       // A wipe says it once (its badge); its cards add nothing still.
       if (motion === "still" && cue.weight === "light") continue;
       if (++drawn > EFFECT_CUE_CAP) continue;
       drawCue(cue, motion, t, b);
     }
+
+    // Drawn last, so a scene is over the cards it takes.
+    if (b) for (const sig of sp.sigs) drawSignature(sig, motion, speed, b);
+  }
+
+  // ---- Signatures ----
+
+  function sceneCard(id: string, b: { rect: DOMRect; size: { w: number; h: number } }) {
+    const where = cardTile(id, b);
+    if (!where) return null;
+    return {
+      id,
+      x: where.box.x,
+      y: where.box.y,
+      width: where.width,
+      height: where.height,
+      rot: where.rot,
+      src: imageFor(id),
+    } satisfies SceneCard;
+  }
+
+  // Where an arrival lands: its stack item (a cast) or its tile, measured
+  // once their entrance has settled, as a planeswalker's ring is.
+  function landingEl(sig: SignatureCue): HTMLElement | null {
+    if (!boardEl) return null;
+    if (sig.lands === "battlefield") {
+      return findCardAnchor(boardEl, sig.cardID, { accept: hasSize });
+    }
+    for (const el of boardEl.querySelectorAll<HTMLElement>("[data-stack-item-id]")) {
+      if (el.dataset.stackItemId === sig.cardID && hasSize(el)) return el;
+    }
+    return null;
+  }
+
+  function landingOf(el: HTMLElement, sig: SignatureCue, b: { rect: DOMRect }): SceneCard {
+    const t = tileOf(el, b.rect, { w: b.rect.width, h: b.rect.height });
+    const src =
+      el.querySelector<HTMLImageElement>("img")?.getAttribute("src") ??
+      (sig.lands === "battlefield" ? imageFor(sig.cardID) : null);
+    return {
+      id: sig.cardID,
+      x: t.box.x,
+      y: t.box.y,
+      width: t.width,
+      height: t.height,
+      rot: t.rot,
+      src,
+    };
+  }
+
+  function drawSignature(
+    sig: SignatureCue,
+    motion: EffectMotion,
+    speed: number,
+    b: { rect: DOMRect; size: { w: number; h: number } },
+  ): void {
+    const spec = SCENES[sig.scene];
+    const t = signatureTiming(spec, motion, speed);
+    if (!t) return;
+    const cards = sig.took.map((id) => sceneCard(id, b)).filter((c) => c !== null);
+    if (spec.needsCards && cards.length === 0) return;
+    const f: Omit<Fx, "key"> = {
+      ...blank,
+      kind: "signature",
+      motion,
+      light: false,
+      delay: 0,
+      ms: t.ms,
+      board: b.size,
+      seed: sig.id,
+      cardID: sig.cardID,
+      scene: sig.scene,
+      sceneCards: cards,
+      landing: null,
+      k: t.k,
+    };
+    if (!sig.lands) {
+      add(f);
+      return;
+    }
+    const el = landingEl(sig);
+    if (!el) {
+      // Nowhere to land: the scene plays what it can without (a shadow).
+      add(f);
+      return;
+    }
+    void settled(el).then(() => {
+      if (destroyed) return;
+      const now = boardSize();
+      if (!now) return;
+      add({ ...f, board: now.size, landing: landingOf(el, sig, now) });
+    });
   }
 
   // The first frame primes; a prime-key change primes the next one. The
@@ -848,6 +1026,29 @@
     return { destroy: () => cancelTree(node) };
   }
 
+  // A signature's scene, started when it mounts: the kit's parts draw into
+  // this node, and unmounting it (the cue's end, a skip) cancels them all.
+  function sceneOf(node: HTMLElement, f: Fx) {
+    const mod = f.scene ? signatures.ready(f.scene) : null;
+    if (mod && f.motion !== "still") {
+      const k = f.k ?? 1;
+      try {
+        mod.play({
+          layer: node,
+          board: f.board,
+          seed: f.seed,
+          short: f.motion === "short",
+          t: (ms) => ms * k,
+          cards: f.sceneCards ?? [],
+          landing: f.landing ?? null,
+        });
+      } catch {
+        // A scene that fails draws nothing; the cards' own cues still play.
+      }
+    }
+    return { destroy: () => cancelTree(node) };
+  }
+
   // The jagged cracks of a counterspell's shatter, and the glass.
   function burstOf(f: Fx) {
     return counterBurst(f.seed, f.width, f.height);
@@ -875,6 +1076,15 @@
           <div class="sweep m"></div>
         {/if}
       </div>
+    {:else if f.kind === "signature"}
+      <!-- A signature's scene (fx/scenes/): never still, so never a badge. -->
+      <div
+        class="sig m"
+        data-effect="signature"
+        data-signature={f.scene}
+        data-effect-motion={f.motion}
+        use:sceneOf={f}
+      ></div>
     {:else if f.motion === "still"}
       {#if f.badge}
         <span
@@ -1250,6 +1460,14 @@
   /* The still form's tint is on, not animated: the badge is the message. */
   .tint.still-tint {
     opacity: 1;
+  }
+
+  /* A signature's scene: a board-sized layer its parts draw into
+     (fx/scenes/kit.ts styles each part inline). */
+  .sig {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
   }
 
   /* The outcome badge, still: the information a cue's motion carries. */

@@ -13,6 +13,9 @@ automatically at the right stack boundary. Each card is one `init()` in its
 own file — one-file-per-card keeps `git blame` clean and the merge-conflict
 surface tiny.
 
+A card's own table effect (a signature scene, ADR 0209 §4) is client work
+with no engine change: see [adding-a-signature.md](adding-a-signature.md).
+
 ## Index of subsections
 
 Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points here.
