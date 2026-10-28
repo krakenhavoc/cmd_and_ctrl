@@ -866,6 +866,7 @@
           "turn": 1,
           "round": 1,
           "step": "untap",
+          "batch": 1,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
@@ -875,6 +876,7 @@
           "turn": 1,
           "round": 1,
           "step": "upkeep",
+          "batch": 2,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
@@ -884,6 +886,7 @@
           "turn": 1,
           "round": 1,
           "step": "draw",
+          "batch": 3,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
@@ -893,6 +896,7 @@
           "turn": 1,
           "round": 1,
           "step": "precombat_main",
+          "batch": 4,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         }
@@ -1242,6 +1246,7 @@
           "turn": 1,
           "round": 1,
           "step": "untap",
+          "batch": 1,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
@@ -1251,6 +1256,7 @@
           "turn": 1,
           "round": 1,
           "step": "upkeep",
+          "batch": 2,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
@@ -1260,6 +1266,7 @@
           "turn": 1,
           "round": 1,
           "step": "draw",
+          "batch": 3,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
@@ -1269,6 +1276,7 @@
           "turn": 1,
           "round": 1,
           "step": "precombat_main",
+          "batch": 4,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         }
@@ -1548,6 +1556,7 @@
           "turn": 1,
           "round": 1,
           "step": "untap",
+          "batch": 1,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
@@ -1557,6 +1566,7 @@
           "turn": 1,
           "round": 1,
           "step": "upkeep",
+          "batch": 2,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
@@ -1566,6 +1576,7 @@
           "turn": 1,
           "round": 1,
           "step": "draw",
+          "batch": 3,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
@@ -1575,6 +1586,7 @@
           "turn": 1,
           "round": 1,
           "step": "precombat_main",
+          "batch": 4,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         },
@@ -1584,6 +1596,7 @@
           "turn": 1,
           "round": 1,
           "step": "begin_combat",
+          "batch": 5,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · begin combat"
         },
@@ -1593,6 +1606,7 @@
           "turn": 1,
           "round": 1,
           "step": "declare_attackers",
+          "batch": 6,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · declare attackers"
         }
@@ -1928,6 +1942,7 @@
           "turn": 1,
           "round": 1,
           "step": "untap",
+          "batch": 1,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
@@ -1937,6 +1952,7 @@
           "turn": 1,
           "round": 1,
           "step": "upkeep",
+          "batch": 2,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
@@ -1946,6 +1962,7 @@
           "turn": 1,
           "round": 1,
           "step": "draw",
+          "batch": 3,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
@@ -1955,6 +1972,7 @@
           "turn": 1,
           "round": 1,
           "step": "precombat_main",
+          "batch": 4,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         },
@@ -1964,6 +1982,7 @@
           "turn": 1,
           "round": 1,
           "step": "begin_combat",
+          "batch": 5,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · begin combat"
         },
@@ -1973,6 +1992,7 @@
           "turn": 1,
           "round": 1,
           "step": "declare_attackers",
+          "batch": 6,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · declare attackers"
         },
@@ -1980,6 +2000,7 @@
           "seq": 9,
           "kind": "attack",
           "turn": 1,
+          "batch": 6,
           "seat": 0,
           "target_seat": 1,
           "card_id": "0000002d-0000-4000-8000-000000000000",
@@ -1991,6 +2012,7 @@
           "turn": 1,
           "round": 1,
           "step": "declare_blockers",
+          "batch": 7,
           "seat": 0,
           "text": "Turn 1 (round 1) — Seat 1 · declare blockers"
         }

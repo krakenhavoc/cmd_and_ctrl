@@ -6292,6 +6292,9 @@ func (g *Game) routeBattlefieldExitInBatchLocked(cardID uuid.UUID, r zoneRoute, 
 		Destruction:           r.Destruction,
 		CantBeRegenerated:     r.CantBeRegenerated,
 		StateBasedDestruction: r.StateBased,
+		// #4395: and why, as a verb the client can tell apart
+		// (leave_cause.go).
+		LeaveCause: leaveCauseOfExit(r),
 		// A sacrifice paid as a cost is an indivisible CR 602.2b
 		// payment. Carry the route's posture onto the replacement
 		// event just as routeCardToZoneLocked does for non-battlefield
@@ -6353,7 +6356,14 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter)
+	// A sacrifice paid as a cost is an indivisible CR 602.2b payment
+	// (mustSettleNow), nobody's resolution, so it names no source.
+	var moveCause MoveCause
+	if ev.mustSettleNow {
+		moveCause = MoveCause{Kind: MoveCauseCost}
+	}
+	mark := leaveMark{cause: ev.LeaveCause, source: g.leaveSourceLocked(moveCause)}
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
 	// ADR 0178: a replacement's declared life change ("instead exile it
 	// and you gain 2 life") lands after the move and before the route's
 	// continuation, which waits for it if it pauses.
@@ -6394,8 +6404,12 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // stamps nothing. exileCounter is ReplacementEvent.ExileCounter, carried and
 // stamped the same way (Dauthi Voidwalker's void counter).
 //
+// mark is why the permanent left and which card was behind it
+// (leave_cause.go, #4395), stamped onto the EventZoneMove. A caller with
+// no verb of its own passes leaveMark{cause: LeaveCauseOther}.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -6485,13 +6499,15 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
-	g.EmitEvent(Event{
+	move := Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
 		CardID:  cardID,
 		OldZone: ZoneBattlefield,
 		NewZone: dest,
-	})
+	}
+	mark.stamp(&move)
+	g.EmitEvent(move)
 	ltb := Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest}
 	lki.stamp(&ltb)
 	g.EmitEvent(ltb)
@@ -6501,10 +6517,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// commander.
 	if moved.IsMelded() {
 		if dest == ZoneCommand {
-			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor)
+			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor, mark)
 		} else {
 			g.landMeldPassengersLocked(moved, ZoneBattlefield, destZone, actor, false, 0,
-				!(shuffleAfter && dest == ZoneLibrary))
+				!(shuffleAfter && dest == ZoneLibrary), mark)
 		}
 	}
 	// A permanent leaving the battlefield is the one event that can
@@ -7396,12 +7412,17 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		g.runAsEntersOthersForMoveLocked(cardID)
 	}
 
-	g.EmitEvent(Event{
+	sandboxMove := Event{
 		Kind:    EventZoneMove,
 		CardID:  cardID,
 		OldZone: srcZone.Kind,
 		NewZone: dstZone.Kind,
-	})
+	}
+	if srcZone.Kind == ZoneBattlefield {
+		// #4395: nobody's spell or ability moved it.
+		leaveMark{cause: LeaveCauseOther}.stamp(&sandboxMove)
+	}
+	g.EmitEvent(sandboxMove)
 	if srcZone.Kind == ZoneBattlefield {
 		ltb := Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind}
 		lki.stamp(&ltb)

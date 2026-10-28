@@ -61,6 +61,8 @@ Bursts are capped. One logical sound plays at most once per `Batch`, so twelve c
 
 Some events may not say whether a move was a destroy, an SBA or a sacrifice. If so, the server adds an additive `cause` field to the `zone_move` event (for example `destroy`, `sba`, `sacrifice`, `exile_effect`). It does not add a new event kind. This is the only engine change in this ADR.
 
+Amendment 2026-10-27 (#4395): the engine did not say. A destroy, a lethal-damage death, a sacrifice, an exile and a bounce all emitted the same `zone_move`, and the wire log dropped `Batch` on purpose, on the argument that adjacency was enough. Now every battlefield exit carries `leave_cause` (`destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce`, `other`) and `leave_source` on the engine event, set at the two movers (`executeBattlefieldLeaveLocked`, `executeZoneRouteLocked`) from the route the verb chose, and the public log forwards `batch`, `cause` and `source`. The cause is the instruction, not the destination: read `new_zone` for the exile look. Lethal damage and deathtouch are `sba`, although CR 701.8b calls them a destruction, because the cue for them is the death one. A board wipe is three or more `zone` entries with one `batch` and one `source`; a sacrifice wipe is the same over `sacrifice` entries. Wire format: [protocol.md](../protocol.md), "Batch, cause and source".
+
 ### 4. Signature effects for named cards
 
 `client/src/lib/fx/signatures.ts` maps a card's `oracle_id` to a signature: a short scene plus its sound, in the `effects` category. The scene runs when that card's spell resolves, or when its ability produces the batch the scene names. A card with no signature uses the generic cues in §3.

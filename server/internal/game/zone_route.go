@@ -805,9 +805,13 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 
 	fromBattlefield := src.Kind == ZoneBattlefield
 	var lki exitLKI
+	// #4395: why, and by whose resolution, for a battlefield exit
+	// (leave_cause.go). Zero for a move from anywhere else.
+	var leave leaveMark
 	if fromBattlefield {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go.
 		lki = g.battlefieldExitLocked(ev.CardID)
+		leave = leaveMark{cause: leaveCauseOfRoute(r), source: g.leaveSourceLocked(r.Cause)}
 	}
 	// The pre-move card, for CR 708.9 below: MoveCard clears the
 	// face-down state on the way through (CR 400.7), so "was this a
@@ -974,6 +978,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			NewZone: dstZone.Kind,
 		}
 		r.Cause.stampCause(&out)
+		leave.stamp(&out)
 		g.EmitEvent(out)
 	}
 	if fromBattlefield {
@@ -1007,11 +1012,11 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if moved.IsMelded() {
 		landed := dstZone
 		if redirected && dstZone.Kind == ZoneCommand {
-			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor)
+			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor, leave)
 		} else {
 			g.landMeldPassengersLocked(moved, src.Kind, landed, actor,
 				r.ToBottom && !redirected, depthIf(!redirected, r.Depth),
-				!(ev.ShuffleDestinationLibrary && landed.Kind == ZoneLibrary))
+				!(ev.ShuffleDestinationLibrary && landed.Kind == ZoneLibrary), leave)
 		}
 	}
 	// #1045: and any choose-cards prompt that still OFFERS this card

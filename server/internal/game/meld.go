@@ -247,12 +247,15 @@ func meldPassengers(moved Card) []uuid.UUID {
 // It gets no leaves-the-battlefield event: one permanent left, and the
 // carrier's event is that one.
 //
+// mark is the carrier's leave cause and source (leave_cause.go), which
+// the passenger's own zone-move event carries too.
+//
 // askOrder puts CR 712.21a's question to the owner when the two landed
 // together in their graveyard or library: the caller passes false for
 // a library that is about to be shuffled, where no order survives.
 //
 // Caller must hold g.mu.
-func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, actor uuid.UUID, toBottom bool, depth int, askOrder bool) {
+func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, actor uuid.UUID, toBottom bool, depth int, askOrder bool, mark leaveMark) {
 	defer func() {
 		if askOrder {
 			g.queueMeldOrderLocked(moved, dst)
@@ -281,13 +284,17 @@ func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, act
 		} else {
 			g.markCardKnownInZoneLocked(dst, id)
 		}
-		g.EmitEvent(Event{
+		move := Event{
 			Kind:    EventZoneMove,
 			Actor:   actor,
 			CardID:  id,
 			OldZone: src,
 			NewZone: dst.Kind,
-		})
+		}
+		// #4395: the passenger left the battlefield for the same reason
+		// as its carrier. A zero mark (a move from elsewhere) stamps nothing.
+		mark.stamp(&move)
+		g.EmitEvent(move)
 	}
 }
 
@@ -300,7 +307,7 @@ func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, act
 // move that was not a melded permanent's.
 //
 // Caller must hold g.mu.
-func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKind, actor uuid.UUID) {
+func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKind, actor uuid.UUID, mark leaveMark) {
 	if command == nil || command.Kind != ZoneCommand {
 		return
 	}
@@ -327,7 +334,7 @@ func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKin
 			continue
 		}
 		passenger := Card{MeldedFrom: []Card{{}, card}}
-		g.landMeldPassengersLocked(passenger, ZoneBattlefield, to, actor, false, 0, false)
+		g.landMeldPassengersLocked(passenger, ZoneBattlefield, to, actor, false, 0, false, mark)
 	}
 }
 

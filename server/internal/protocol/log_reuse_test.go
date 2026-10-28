@@ -232,6 +232,7 @@ func TestLogResolutionFieldsAreAllCompared(t *testing.T) {
 		"cardKnowers":    func(e *LogEvent) { e.cardKnowers = map[string]bool{"x": true} },
 		"targetName":     func(e *LogEvent) { e.targetName = "x" },
 		"targetKnowers":  func(e *LogEvent) { e.targetKnowers = map[string]bool{"x": true} },
+		"sourceKnowers":  func(e *LogEvent) { e.sourceKnowers = map[string]bool{"x": true} },
 		"actorName":      func(e *LogEvent) { e.actorName = "x" },
 		"targetSeatName": func(e *LogEvent) { e.targetSeatName = "x" },
 		"seatNames":      func(e *LogEvent) { e.seatNames = []string{"x"} },
