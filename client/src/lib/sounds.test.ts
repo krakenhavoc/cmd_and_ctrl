@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // sounds.ts keeps module-level state (gains, the missing set, the burst
@@ -180,6 +182,14 @@ describe("sounds", () => {
   });
 
   describe("missing files", () => {
+    it("lists only takes that exist in public/sounds", async () => {
+      const m = await load();
+      const absent = Object.values(m.SOUND_MANIFEST)
+        .flat()
+        .filter((u) => !existsSync(fileURLToPath(new URL(`../../public${u}`, import.meta.url))));
+      expect(absent).toEqual([]);
+    });
+
     it("falls back to an existing sound when every take of a cue is missing", async () => {
       const m = await load();
       for (const u of m.SOUND_MANIFEST.your_turn) FakeAudio.broken.add(u);
