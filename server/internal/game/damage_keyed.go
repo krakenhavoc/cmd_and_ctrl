@@ -23,8 +23,9 @@ import "github.com/google/uuid"
 // so none of them keeps the frame off the disk. The caller's continuation
 // is damageTail.keyed, a registered tail told the target and the damage
 // dealt, or damageTail.each, the rest of a keyed Each walk
-// (damage_each_keyed.go). Combat damage stays a closure frame: the step it
-// belongs to is not data.
+// (damage_each_keyed.go). Since #4362 combat damage is written too, with
+// its combat flag and step tag, under a key of its own
+// (ReplacementResumeCombatDamage, combat_damage_keyed.go).
 //
 // When the event ends its instance and a prevention follow-up of that
 // instance asks a question (#2040), the keyed continuation is parked as
@@ -78,17 +79,26 @@ func (g *Game) DealDamageToPlayerKeyedForEffect(source, playerID uuid.UUID, amou
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) damageEventIsData(ev *ReplacementEvent) bool {
 	t := ev.damageTail
-	if t == nil || t.combat || t.combatStep != "" || ev.IsCombatDamage || len(t.redirected) > 0 {
+	if t == nil || len(t.redirected) > 0 {
+		return false
+	}
+	if damageEventIsCombat(ev) && (!t.keyed.IsZero() || t.each != nil) {
+		// #4362: combat damage owes its caller nothing, so a combat event
+		// with a continuation is not one the engine builds.
 		return false
 	}
 	return t.kind == damageTailPlayer || t.kind == damageTailPermanent
 }
 
 // damageTailSnapshot is a damageTail's data half: present exactly when the
-// event had a tail. A tail of combat damage or with redirected parts is
-// never written.
+// event had a tail. A tail with redirected parts is never written.
 type damageTailSnapshot struct {
-	Kind                damageTailKind     `json:"kind"`
+	Kind damageTailKind `json:"kind"`
+	// Combat and CombatStep are combat damage's flag and its step tag
+	// (#4362, combat_damage_keyed.go). Additive within v9: a frame that
+	// carries them is written under ReplacementResumeCombatDamage.
+	Combat              bool               `json:"combat,omitempty"`
+	CombatStep          string             `json:"combatStep,omitempty"`
 	Actor               *uuid.UUID         `json:"actor,omitempty"`
 	SourceLKI           *Characteristic    `json:"sourceLki,omitempty"`
 	Deathtouch          bool               `json:"deathtouch,omitempty"`
@@ -117,12 +127,13 @@ func snapshotDamageEvent(ev *ReplacementEvent, out *replacementEventSnapshot) {
 	out.DamageAmount = ev.DamageAmount
 	out.DamageInstance = ev.DamageInstance
 	out.SourceLKI = copyCharacteristic(ev.SourceLKI)
+	out.IsCombatDamage = ev.IsCombatDamage
 	t := ev.damageTail
 	if t == nil {
 		return
 	}
 	out.DamageTail = &damageTailSnapshot{
-		Kind: t.kind, Actor: uuidPtrOrNil(t.actor), SourceLKI: copyCharacteristic(t.sourceLKI),
+		Kind: t.kind, Combat: t.combat, CombatStep: t.combatStep, Actor: uuidPtrOrNil(t.actor), SourceLKI: copyCharacteristic(t.sourceLKI),
 		Deathtouch: t.deathtouch, LifelinkTo: uuidPtrOrNil(t.lifelinkTo), CommanderSource: uuidPtrOrNil(t.commanderSource),
 		Result: t.result, Controller: uuidPtrOrNil(t.controller), Marks: t.marks,
 		SourceUnpreventable: t.sourceUnpreventable, SourceChecked: t.sourceChecked, EndsInstance: t.endsInstance,
@@ -137,12 +148,13 @@ func restoreDamageEvent(s *replacementEventSnapshot, ev *ReplacementEvent) {
 	ev.DamageAmount = s.DamageAmount
 	ev.DamageInstance = s.DamageInstance
 	ev.SourceLKI = copyCharacteristic(s.SourceLKI)
+	ev.IsCombatDamage = s.IsCombatDamage
 	t := s.DamageTail
 	if t == nil {
 		return
 	}
 	ev.damageTail = &damageTail{
-		kind: t.Kind, actor: uuidOrNil(t.Actor), sourceLKI: copyCharacteristic(t.SourceLKI),
+		kind: t.Kind, combat: t.Combat, combatStep: t.CombatStep, actor: uuidOrNil(t.Actor), sourceLKI: copyCharacteristic(t.SourceLKI),
 		deathtouch: t.Deathtouch, lifelinkTo: uuidOrNil(t.LifelinkTo), commanderSource: uuidOrNil(t.CommanderSource),
 		result: t.Result, controller: uuidOrNil(t.Controller), marks: t.Marks,
 		sourceUnpreventable: t.SourceUnpreventable, sourceChecked: t.SourceChecked, endsInstance: t.EndsInstance,

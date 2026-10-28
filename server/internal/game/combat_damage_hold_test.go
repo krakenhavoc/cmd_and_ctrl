@@ -173,10 +173,10 @@ func TestHeldCombatDamageTrampleCountsDamageAssignedThisStep(t *testing.T) {
 	}
 }
 
-// TestHeldCombatDamageIsNotARestorePoint: the hold is not carried by
-// the persisted snapshot, so a table waiting on it is not a restore
-// point; undo carries it.
-func TestHeldCombatDamageIsNotARestorePoint(t *testing.T) {
+// TestHeldCombatDamageIsCarriedByClone: undo carries the hold. The
+// persisted snapshot carries it too since #4362
+// (combat_damage_keyed_test.go).
+func TestHeldCombatDamageIsCarriedByClone(t *testing.T) {
 	g := newActiveGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	atk := pushCombatant(t, g, me, "Atk", 2, 2)
@@ -189,9 +189,6 @@ func TestHeldCombatDamageIsNotARestorePoint(t *testing.T) {
 	advanceIntoStep(t, g, StepCombatDamage)
 	if g.heldCombatDamage == nil {
 		t.Fatal("no damage held behind the prompt")
-	}
-	if snap := g.CaptureSnapshot(); snap.Restorable() {
-		t.Error("a table holding combat damage behind its prompts was written as a restore point")
 	}
 	clone := g.Clone()
 	if clone.heldCombatDamage != g.heldCombatDamage {

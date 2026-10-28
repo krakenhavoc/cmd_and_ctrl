@@ -170,8 +170,10 @@ func keyedFrameSample() *ReplacementEvent {
 		// #4253: a damage event's fields and its tail's data half.
 		DamageSource: id("dmg-src"), DamageTarget: id("dmg-tgt"), DamageAmount: 3, DamageInstance: 12,
 		SourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
+		// #4362: combat damage's flag, and its tail's flag and step tag.
+		IsCombatDamage: true,
 		damageTail: &damageTail{
-			kind: damageTailPlayer, actor: id("dta"), sourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
+			kind: damageTailPlayer, combat: true, combatStep: CombatStepFirstStrike, actor: id("dta"), sourceLKI: &Characteristic{Name: "Nemesis", Colors: []string{"R"}},
 			deathtouch: true, lifelinkTo: id("dtl"), commanderSource: id("dtc"),
 			result:     DamageResultSource{Infect: true, Wither: true, ToxicTotal: 2},
 			controller: id("dtctl"), marks: DamageMarks{CantBePrevented: true, CantBeRedirected: true},
@@ -207,9 +209,9 @@ func TestReplacementEventMirrorRoundTrips(t *testing.T) {
 		{reflect.ValueOf(ev.mill).Elem(), map[string]bool{"report": true}},
 		{reflect.ValueOf(ev.entryTail).Elem(), map[string]bool{"then": true, "batch": true}},
 		{reflect.ValueOf(ev.keywordAction).Elem(), map[string]bool{"then": true, "amassed": true, "armyToken": true}},
-		// #4253: combat damage and redirected parts gate the frame
-		// (damageEventIsData); #4361 S16 carries a release.
-		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"combat": true, "combatStep": true, "redirected": true}},
+		// #4253: redirected parts gate the frame (damageEventIsData);
+		// #4361 S16 carries a release, #4362 combat damage.
+		{reflect.ValueOf(ev.damageTail).Elem(), map[string]bool{"redirected": true}},
 	} {
 		for i := 0; i < sub.val.NumField(); i++ {
 			name := sub.val.Type().Field(i).Name
@@ -392,9 +394,12 @@ func TestAFrameHoldingAClosureIsNotKeyed(t *testing.T) {
 			}}
 		},
 		"a damage event": func(c *PendingChoice) { c.replacementResume.ev.Kind = RepEventDamage },
-		"combat damage": func(c *PendingChoice) {
+		// #4362: combat damage is keyed (combat_damage_keyed_test.go);
+		// one with a continuation is not an event the engine builds.
+		"combat damage with a continuation": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()
 			c.replacementResume.ev.IsCombatDamage, c.replacementResume.ev.damageTail.combat = true, true
+			c.replacementResume.ev.damageTail.keyed = KeyedTail{Ref: TailRef{key: "k"}}
 		},
 		"damage with redirected parts": func(c *PendingChoice) {
 			c.replacementResume.ev = damageFrameEvent()
