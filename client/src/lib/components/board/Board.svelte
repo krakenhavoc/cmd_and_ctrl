@@ -80,6 +80,7 @@
   import { attentionStrip, pileFallsBack, stripContentBottom } from "../../stackPile";
   import CombatArrows from "./CombatArrows.svelte";
   import CombatStrikes from "./CombatStrikes.svelte";
+  import TableEffects from "./TableEffects.svelte";
   import DiceLayer from "./DiceLayer.svelte";
   import StackTargetRings from "./StackTargetRings.svelte";
   import TargetingArrows from "./TargetingArrows.svelte";
@@ -4046,6 +4047,11 @@
   <!-- ADR 0134: attackers lunge and hits land. Art-only copies at z 37,
        aria-hidden, no pointer events, on the same beat clock. -->
   <CombatStrikes {view} {boardEl} cues={combatCues} />
+  <!-- ADR 0209 §3: the generic effect cues (destroy, exile, sacrifice,
+       bounce, counterspell, planeswalker, board wipe) over the table.
+       z 57, aria-hidden, no pointer events; a click or Escape skips what
+       is playing, for this player only. -->
+  <TableEffects {view} {boardEl} {beatsPrimeKey} />
   <!-- ADR 0121 §7: every die a card rolls and every coin it flips
        tumbles at the roller's seat, z 41, aria-hidden, no pointer
        events. -->

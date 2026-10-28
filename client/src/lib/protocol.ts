@@ -1400,8 +1400,24 @@ export interface LogEvent {
   // is: both price or characterise the card the line no longer names.
   label?: string;
   // ADR 0057: why an `eliminated` player left, or how a `game_over`
-  // game ended. Absent on every other kind.
+  // game ended. Absent on every other kind. On a `zone` entry that leaves
+  // the battlefield (#4395, ADR 0209 §3) it is why the permanent left:
+  // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
+  // It is the instruction, not the destination: a destruction replaced by
+  // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
   cause?: string;
+  // #4395, ADR 0209 §3: the run of events the rules treat as one
+  // occurrence (CR 603.2c). Two entries with equal `batch` happened at
+  // once; only equality means anything, and it never repeats within a
+  // game. Absent on an entry from an event that predates batches.
+  batch?: number;
+  // #4395: on a battlefield-leaving `zone` entry and on a `sacrifice`
+  // entry, the card behind the exit (the spell or ability whose
+  // resolution the `batch` is). Empty when nothing resolving is behind
+  // it (combat damage, a cost, a sandbox move), and absent for a viewer
+  // who may not identify the card. Three or more exits in one `batch`
+  // from one `source` are a board wipe.
+  source?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
   // rather than the projection — the host is a room property, so the

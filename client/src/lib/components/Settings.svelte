@@ -21,6 +21,7 @@
   import { currentTablePace } from "../tableSettings";
   import type { StackStyle } from "../stackLane";
   import type { TableLayout } from "../tableLayout";
+  import type { EffectsMode } from "../tableEffects";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
     SHORTCUTS,
@@ -648,6 +649,28 @@
               </select>
               {#if isFresh("animations.speed")}<span class="saved">✓</span>{/if}
             </label>
+
+            <!-- ADR 0209 §1. Off, the cues draw no motion: a badge says what
+                 happened. The sound plays in every mode. -->
+            <label class="slider-row">
+              <span>{L.effectsSetting}</span>
+              <select
+                disabled={!$settings.animations.enabled}
+                value={$settings.animations.effects}
+                onchange={(e) =>
+                  change("animations", "effects", e.currentTarget.value as EffectsMode)}
+              >
+                <option value="full">Full (default)</option>
+                <option value="short">Short</option>
+                <option value="off">Off</option>
+              </select>
+              {#if isFresh("animations.effects")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              Destroy, exile, sacrifice, bounce, counterspell, planeswalker and board-wipe cues.
+              Short cuts each to under a second. Off shows a small label instead of motion. A click
+              or Escape skips one that is playing.
+            </p>
 
             <fieldset disabled={!$settings.animations.enabled}>
               <legend>Per-effect toggles</legend>

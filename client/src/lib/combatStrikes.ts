@@ -374,7 +374,7 @@ export const CRUMBLE_MAX_DELAY = 0.3;
 
 // A small deterministic generator (mulberry32 over an FNV-1a hash of
 // the seed), so a card always crumbles the same way.
-function seeded(seed: string): () => number {
+export function seeded(seed: string): () => number {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);
