@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 //
-// ADR 0209 §4 (#4397): the scene kit's geometry, and every scene held to
-// its caps. A scene is drawn with motion.run recorded, and no animation
-// it starts may run past its scene's length (2.5 s at most) in Full, or
-// past its first beat (0.8 s at most) in Short.
+// ADR 0209 §4 (#4397, #4416): the scene kit's geometry, and every scene
+// held to its caps. A scene is drawn with motion.run recorded, and no
+// animation it starts (a canvas part's clock included) may run past its
+// scene's length (SIGNATURE_CAP_MS at most) in Full, or past its first
+// beat (0.8 s at most) in Short. jsdom has no 2D canvas, so a canvas part
+// plans and times itself but paints nothing here; the preview harness is
+// where it is looked at.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,18 +19,31 @@ vi.mock("../../motion", async (importOriginal) => {
 });
 
 import { run } from "../../motion";
-import { SCENES, signatureTiming, type SceneID } from "../signatures";
+import { SCENES, SIGNATURE_CAP_MS, signatureTiming, type SceneID } from "../signatures";
 import {
   DRAGON_PATH,
+  aimSeat,
+  breathWindow,
+  fireballPlan,
+  flight,
+  flightAt,
   headingDeg,
+  mouthAt,
+  oozeSprings,
   rainDrops,
+  roughBladePath,
   screenBox,
+  springRadius,
   swoopPath,
   tearPath,
   wavePath,
   type SceneCard,
   type SceneContext,
+  type SceneSeat,
 } from "./kit";
+
+// jsdom logs "not implemented" for a 2D context; the kit treats null as no canvas.
+HTMLCanvasElement.prototype.getContext = (() => null) as never;
 
 const board = { w: 1200, h: 800 };
 
@@ -61,12 +77,126 @@ describe("rainDrops", () => {
     for (const d of drops.slice(0, 2)) expect(d.at).toBeLessThanOrEqual(0.36);
   });
 
+  it("a fireball trails flame all the way down, and the ground burns until the fire dies", () => {
+    const plan = fireballPlan("s", board, {
+      count: 4,
+      start: 100,
+      dur: 900,
+      impact: true,
+      burnUntil: 2800,
+      targets: [{ x: 300, y: 400 }],
+    });
+    expect(plan).toHaveLength(5);
+    for (const b of plan) {
+      expect(b.hit).toBeGreaterThan(100);
+      expect(b.hit).toBeLessThanOrEqual(1000);
+      // A flame shed every few ms of its fall: a tail, not a dot.
+      expect(b.trail).toBeGreaterThan(20);
+      expect(b.flames).toBeGreaterThan(10);
+      expect(b.lastFlameEnd).toBeLessThanOrEqual(2800);
+    }
+    // No impact, no fire on the ground.
+    for (const b of fireballPlan("s", board, { count: 2, start: 0, dur: 600 })) {
+      expect(b.flames).toBe(0);
+    }
+  });
+
   it("ash drifts down from the top edge, slowly", () => {
     for (const d of rainDrops("s", 12, board, "ash")) {
       expect(d.fromY).toBeLessThan(0);
       expect(d.fall).toBeGreaterThanOrEqual(0.55);
       expect(d.at + d.fall).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("ooze", () => {
+  const cards = [card("a", 300), card("b", 700)];
+  const timing = { start: 60, rise: 1200, drain: 2400, end: 3300 };
+
+  it("wells up from springs across the whole board, and under each card first", () => {
+    const springs = oozeSprings("s", board, cards, timing);
+    expect(oozeSprings("s", board, cards, timing)).toEqual(springs);
+    const under = springs.filter((s) => s.card);
+    expect(under.map((s) => ({ x: s.x, y: s.y }))).toEqual([
+      { x: 300, y: 400 },
+      { x: 700, y: 400 },
+    ]);
+    const field = springs.filter((s) => !s.card);
+    // Across the board, not along an edge: every quarter has a spring.
+    for (const [qx, qy] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ]) {
+      expect(
+        field.some(
+          (s) =>
+            s.x >= (qx * board.w) / 2 &&
+            s.x < ((qx + 1) * board.w) / 2 &&
+            s.y >= (qy * board.h) / 2 &&
+            s.y < ((qy + 1) * board.h) / 2,
+        ),
+      ).toBe(true);
+    }
+    for (const s of springs) {
+      expect(s.at).toBeGreaterThanOrEqual(timing.start);
+      expect(s.full).toBeGreaterThan(s.at);
+      expect(s.drain).toBeGreaterThan(s.full);
+      expect(s.gone).toBeGreaterThan(s.drain);
+      expect(s.gone).toBeLessThanOrEqual(timing.end);
+    }
+    // The cards' springs are full before the board's.
+    const firstFull = Math.min(...field.map((s) => s.full));
+    for (const s of under) expect(s.full).toBeLessThanOrEqual(firstFull + 1);
+  });
+
+  it("a spring rises, holds and drains back into the ground", () => {
+    const [s] = oozeSprings("s", board, cards, timing);
+    expect(springRadius(s, s.at)).toBe(0);
+    expect(springRadius(s, (s.full + s.drain) / 2)).toBeGreaterThan(s.r * 0.9);
+    expect(springRadius(s, s.gone)).toBe(0);
+    expect(springRadius(s, s.gone + 100)).toBe(0);
+  });
+});
+
+describe("the dragon's breath", () => {
+  const to = card("bolas", 800);
+  const f = flight({ seed: "s", board }, { to, start: 900, dur: 2400 });
+  const foe: SceneSeat = { id: "opp", x: 600, y: 60, r: 26, foe: true };
+
+  it("reads back where the dragon is along its swoop", () => {
+    expect(flightAt(f, f.start)).toMatchObject({ x: f.path[0].x, y: f.path[0].y });
+    const end = flightAt(f, f.land);
+    expect(end.x).toBeCloseTo(to.x);
+    expect(end.y).toBeCloseTo(to.y);
+    // The mouth is ahead of the body, the way it flies.
+    const mid = (f.start + f.land) / 2;
+    const p = flightAt(f, mid);
+    const m = mouthAt(f, mid);
+    expect(Math.hypot(m.x - p.x, m.y - p.y)).toBeCloseTo(f.span * 0.47);
+  });
+
+  it("breathes while it loops, facing the seat, well before it lands", () => {
+    const w = breathWindow(f, foe, 560)!;
+    expect(w).toBeTruthy();
+    expect(w.start).toBeGreaterThanOrEqual(f.start);
+    expect(w.start + w.dur).toBeLessThan(f.land - 200);
+    const mid = w.start + w.dur / 2;
+    const p = flightAt(f, mid);
+    const m = mouthAt(f, mid);
+    const a = (p.rot * Math.PI) / 180;
+    const facing = Math.cos(a) * (foe.x - m.x) + Math.sin(a) * (foe.y - m.y);
+    expect(facing).toBeGreaterThan(0);
+  });
+
+  it("aims at a foe of the card's controller, else at any seat", () => {
+    const me: SceneSeat = { id: "me", x: 600, y: 760, r: 26, foe: false };
+    const ctx = (seats: SceneSeat[]) => ({ seed: "s", seats });
+    expect(aimSeat(ctx([me, foe]))).toBe(foe);
+    expect(aimSeat(ctx([me]))).toBe(me);
+    expect(aimSeat(ctx([]))).toBeNull();
   });
 });
 
@@ -82,6 +212,21 @@ describe("the shapes", () => {
     expect(d.startsWith("M")).toBe(true);
     expect(d.endsWith("Z")).toBe(true);
     expect(d.split(" L")).toHaveLength(18);
+  });
+
+  it("the spear's blade is a closed, rough leaf, the same every time", () => {
+    const d = roughBladePath("s");
+    expect(d.startsWith("M20 0")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    expect(roughBladePath("s")).toBe(d);
+    expect(roughBladePath("t")).not.toBe(d);
+    // Hammered rough: the edge does not run smooth, it chips in and out.
+    const xs = [...d.matchAll(/L([\d.]+) /g)].map((m) => Number(m[1])).filter((x) => x > 20);
+    let turns = 0;
+    for (let i = 2; i < xs.length; i++) {
+      if (Math.sign(xs[i] - xs[i - 1]) !== Math.sign(xs[i - 1] - xs[i - 2])) turns++;
+    }
+    expect(turns).toBeGreaterThanOrEqual(4);
   });
 
   it("the dragon is our own path", () => {
@@ -114,15 +259,17 @@ describe("the shapes", () => {
 
 // ---- every scene, against its caps ----
 
-const card = (id: string, x: number): SceneCard => ({
-  id,
-  x,
-  y: 400,
-  width: 80,
-  height: 112,
-  rot: 0,
-  src: `/${id}.jpg`,
-});
+function card(id: string, x: number): SceneCard {
+  return {
+    id,
+    x,
+    y: 400,
+    width: 80,
+    height: 112,
+    rot: 0,
+    src: `/${id}.jpg`,
+  };
+}
 
 function context(scene: SceneID, short: boolean, speed = 1): SceneContext {
   const layer = document.createElement("div");
@@ -136,6 +283,10 @@ function context(scene: SceneID, short: boolean, speed = 1): SceneContext {
     t: (ms) => ms * t.k,
     cards: [card("a", 300), card("b", 500), card("c", 700)],
     landing: card("bolas", 600),
+    seats: [
+      { id: "opp", x: 600, y: 60, r: 26, foe: true },
+      { id: "me", x: 600, y: 760, r: 26, foe: false },
+    ],
   };
 }
 
@@ -166,7 +317,7 @@ describe("the scenes", () => {
     expect(ctx.layer.querySelectorAll("[data-scene-part]").length).toBeGreaterThan(0);
     const t = signatureTiming(SCENES[id], "full", 1)!;
     expect(lastEnd()).toBeLessThanOrEqual(t.ms + 0.001);
-    expect(lastEnd()).toBeLessThanOrEqual(2500.001);
+    expect(lastEnd()).toBeLessThanOrEqual(SIGNATURE_CAP_MS + 0.001);
     // Every part waits unseen and ends gone, never left on the board.
     for (const [, , opts] of vi.mocked(run).mock.calls) {
       expect((opts as KeyframeAnimationOptions).fill).toBe("both");
@@ -184,28 +335,36 @@ describe("the scenes", () => {
   it.each(IDS)("%s scales with animations.speed", async (id) => {
     const mod = await SCENES[id].load();
     mod.play(context(id, false, 2));
-    expect(lastEnd()).toBeLessThanOrEqual(2 * 2500.001);
-    expect(lastEnd()).toBeGreaterThan(2500 * 0.5);
+    expect(lastEnd()).toBeLessThanOrEqual(2 * SIGNATURE_CAP_MS + 0.001);
+    expect(lastEnd()).toBeGreaterThan(SCENES[id].ms);
   });
 
-  it("Blasphemous Act sends a fireball at each creature it takes, and burns the ground", async () => {
+  it("Blasphemous Act rains fire in two volleys, then ash", async () => {
     const mod = await SCENES.blasphemous_act.load();
     const ctx = context("blasphemous_act", false);
     mod.play(ctx);
-    expect(
-      ctx.layer.querySelectorAll('[data-scene-part="fireball"]').length,
-    ).toBeGreaterThanOrEqual(3);
-    expect(ctx.layer.querySelectorAll('[data-scene-part="scorch"]').length).toBeGreaterThan(0);
-    expect(ctx.layer.querySelectorAll('[data-scene-part="ash"]').length).toBeGreaterThan(0);
+    expect(ctx.layer.querySelectorAll('canvas[data-scene-part="fire"]')).toHaveLength(2);
+    expect(ctx.layer.querySelectorAll('canvas[data-scene-part="ash"]')).toHaveLength(1);
   });
 
-  it("Toxic Deluge fills the board and closes over each creature", async () => {
+  it("Toxic Deluge wells up across the board and sinks each creature it takes", async () => {
     const mod = await SCENES.toxic_deluge.load();
-    const ctx = context("toxic_deluge", false);
-    mod.play(ctx);
-    // The board's pit, and one over each of the three cards.
-    expect(ctx.layer.querySelectorAll('[data-scene-part="fill"]')).toHaveLength(4);
-    expect(ctx.layer.querySelectorAll('[data-scene-part="bubble"]').length).toBeGreaterThan(0);
+    for (const short of [false, true]) {
+      const ctx = context("toxic_deluge", short);
+      mod.play(ctx);
+      expect(ctx.layer.querySelectorAll('canvas[data-scene-part="ooze"]')).toHaveLength(1);
+      // Each card it took, drawn where it stood, over the pool, going down.
+      const sinking = [...ctx.layer.querySelectorAll<HTMLElement>('[data-scene-part="sink"]')];
+      expect(sinking.map((el) => el.querySelector("img")?.getAttribute("src"))).toEqual([
+        "/a.jpg",
+        "/b.jpg",
+        "/c.jpg",
+      ]);
+      const ooze = ctx.layer.querySelector('[data-scene-part="ooze"]')!;
+      for (const el of sinking) {
+        expect(ooze.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    }
   });
 
   it("Bitter Triumph tears the card and drives the point out of it", async () => {
@@ -213,7 +372,11 @@ describe("the scenes", () => {
     const ctx = context("bitter_triumph", false);
     mod.play(ctx);
     expect(ctx.layer.querySelector('[data-scene-part="tear"]')).toBeTruthy();
-    expect(ctx.layer.querySelector('[data-scene-part="spear"]')).toBeTruthy();
+    const spear = ctx.layer.querySelector('[data-scene-part="spear"]')!;
+    // A black shaft under a rough iron point.
+    expect(spear.innerHTML).toContain("c2-spear-shaft");
+    expect(spear.innerHTML).toContain(roughBladePath(ctx.seed));
+    expect(ctx.layer.querySelector('canvas[data-scene-part="strike-spray"]')).toBeTruthy();
     // With no card it draws nothing (the generic cues stand).
     vi.mocked(run).mockClear();
     const none = { ...context("bitter_triumph", false), cards: [] };
@@ -221,14 +384,20 @@ describe("the scenes", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
-  it("Nicol Bolas casts his shadow, then swoops and lands as the card", async () => {
+  it("Nicol Bolas casts his shadow, swoops, breathes fire on a seat and lands as the card", async () => {
     const mod = await SCENES.nicol_bolas.load();
     const ctx = context("nicol_bolas", false);
     mod.play(ctx);
     expect(ctx.layer.querySelector('[data-scene-part="shadow"]')).toBeTruthy();
     expect(ctx.layer.querySelector('[data-scene-part="dragon"]')).toBeTruthy();
+    expect(ctx.layer.querySelector('canvas[data-scene-part="breath"]')).toBeTruthy();
     const landed = ctx.layer.querySelector<HTMLElement>('[data-scene-part="landing-card"] img');
     expect(landed?.getAttribute("src")).toBe("/bolas.jpg");
+    // No seat on the board: he flies and lands without breathing.
+    const quiet = { ...context("nicol_bolas", false), seats: [] };
+    mod.play(quiet);
+    expect(quiet.layer.querySelector('[data-scene-part="dragon"]')).toBeTruthy();
+    expect(quiet.layer.querySelector('[data-scene-part="breath"]')).toBeNull();
     // Short, or nowhere to land: the shadow alone.
     for (const c of [
       context("nicol_bolas", true),
@@ -237,7 +406,17 @@ describe("the scenes", () => {
       mod.play(c);
       expect(c.layer.querySelector('[data-scene-part="shadow"]')).toBeTruthy();
       expect(c.layer.querySelector('[data-scene-part="dragon"]')).toBeNull();
+      expect(c.layer.querySelector('[data-scene-part="breath"]')).toBeNull();
     }
+  });
+
+  it("the landing ring waits unseen until he lands", async () => {
+    const mod = await SCENES.nicol_bolas.load();
+    const ctx = context("nicol_bolas", false);
+    mod.play(ctx);
+    const ring = ctx.layer.querySelector('[data-scene-part="landing-ring"]')!;
+    const call = vi.mocked(run).mock.calls.find(([el]) => el === ring)!;
+    expect((call[1] as Keyframe[])[0].opacity).toBe(0);
   });
 
   it("Dragon's Approach sends two shadows over the board, one in Short", async () => {

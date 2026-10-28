@@ -1,9 +1,10 @@
-// Bitter Triumph (ADR 0209 §4, #4397): a spear stabs through the back of
-// the target card and out of its face.
+// Bitter Triumph (ADR 0209 §4, #4397, #4416): a spear stabs through the
+// back of the target card and out of its face: a rough, dark iron point
+// on a black shaft, with a spray of blood and grit.
 //
-//   beat 1 (0-650 ms)     the face tears and the point bursts out toward
-//                         you, with a red flash (the card goes at 550)
-//   beat 2 (650-1500 ms)  the spear holds and is drawn back
+//   beat 1 (0-700 ms)      the face tears and the point bursts out toward
+//                          you, with a red flash (the card goes at 650)
+//   beat 2 (700-1900 ms)   the spear holds and is drawn back
 //
 // Timings are SCENES.bitter_triumph's (fx/signatures.ts). The scene needs
 // a card: a Bitter Triumph whose target did not die plays the generic cues.
@@ -15,7 +16,7 @@ const VIGNETTE = "radial-gradient(ellipse at center, rgba(60,0,10,0) 40%, rgba(6
 export function play(ctx: SceneContext): void {
   const target = ctx.cards[0];
   if (!target) return;
-  const dur = ctx.short ? 650 : 1500;
+  const dur = ctx.short ? 700 : 1900;
   overlay(ctx, { background: VIGNETTE, start: 0, dur, fade: 0.25 });
   strike(ctx, { card: target, start: 0, dur });
 }

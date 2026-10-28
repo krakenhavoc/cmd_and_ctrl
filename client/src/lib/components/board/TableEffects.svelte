@@ -34,7 +34,9 @@
   // once its scene has loaded; until then, and whenever the cues are still,
   // the generic cues play. The cards its batch took keep their own cue,
   // lighter, on the signature's clock. Scenes load the first time a card
-  // that has one appears in any zone this player can see.
+  // that has one appears in any zone this player can see. A scene with a
+  // tint (Toxic Deluge, #4416) marks the creatures its batch left standing
+  // until the turn number changes (fx/tints.ts; FxTint.svelte draws it).
   //
   // z 57 on DESIGN.md §4's ladder: above the action dock (55), below the
   // hints (58). aria-hidden: the log and the board carry the news.
@@ -47,7 +49,7 @@
   import { boardExpandLayout } from "../../boardExpand";
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
-  import { isPlaneswalker } from "../../cardTypes";
+  import { isCreature, isPlaneswalker } from "../../cardTypes";
   import { crumble } from "../../animations";
   import { EASE, cancelAnimations, run, settled } from "../../motion";
   import { play } from "../../sounds";
@@ -89,7 +91,8 @@
     type SignatureCue,
     type SignatureLoader,
   } from "../../fx/signatures";
-  import type { SceneCard } from "../../fx/scenes/kit";
+  import type { SceneCard, SceneSeat } from "../../fx/scenes/kit";
+  import { syncTableTints, tintSurvivors } from "../../fx/tints";
 
   interface Props {
     view: GameView;
@@ -135,6 +138,7 @@
     scene?: SceneID;
     sceneCards?: SceneCard[];
     landing?: SceneCard | null;
+    seats?: SceneSeat[];
     k?: number;
   }
 
@@ -155,12 +159,10 @@
 
   // Every card this player can see, by instance ID, as of this frame and
   // the one before (a spell that resolved into a hidden zone, a permanent
-  // that left): what a signature knows a card by. And the cards whose
-  // arrival scene played on their cast, until they enter.
+  // that left): what a signature knows a card by.
   type Seen = Pick<CardView, "name" | "is_token" | "token_copy">;
   let seenNow = new Map<string, Seen>();
   let seenBefore = new Map<string, Seen>();
-  const arrivedOnCast = new Set<string>();
 
   function visibleCards(v: GameView): CardView[] {
     const out: CardView[] = [
@@ -441,6 +443,8 @@
     const shown = visibleCards(view);
     for (const c of shown) seenNow.set(c.instance_id, c);
     signatures.notice(shown);
+    // A signature's tint lasts until the turn ends (fx/tints.ts).
+    syncTableTints(view.id, view.turn?.number ?? 0);
 
     if (r.fresh.length === 0) return;
 
@@ -463,14 +467,16 @@
     );
     const generic = planEffects(r.fresh, log, { isPlaneswalker: isPW, combatMotion: strikes });
     // Signatures take the batches they name, once their scene has loaded.
-    const found = planSignatures(r.fresh, {
-      sceneOf: sceneOfCard,
-      arrived: (id) => arrivedOnCast.has(id),
-    });
-    for (const e of r.fresh) {
-      if (e.kind === "zone" && e.new_zone === "battlefield" && e.card_id) {
-        arrivedOnCast.delete(e.card_id);
-      }
+    const found = planSignatures(r.fresh, { sceneOf: sceneOfCard });
+    // The creatures a tinting scene left standing keep its stain this
+    // turn, whatever the motion: it is a mark, not an animation.
+    for (const sig of found) {
+      const tint = SCENES[sig.scene].tint;
+      if (!tint) continue;
+      const survivors = view.battlefield.cards
+        .filter((c) => isCreature(c) && !sig.took.includes(c.instance_id))
+        .map((c) => c.instance_id);
+      tintSurvivors(survivors, tint, view.id, view.turn?.number ?? 0);
     }
     const sp = withSignatures(generic, found, (s) => signatures.ready(s) !== null, motion);
     const plan = sp.plan;
@@ -499,10 +505,7 @@
         }, delay);
     };
 
-    for (const sig of sp.sigs) {
-      sound(SCENES[sig.scene].sound, 0, 1, sig.batch);
-      if (sig.lands === "stack") arrivedOnCast.add(sig.cardID);
-    }
+    for (const sig of sp.sigs) sound(SCENES[sig.scene].sound, 0, 1, sig.batch);
 
     for (const w of plan.wipes) {
       if (!sp.silencedWipes.has(w.batch)) sound("board_wipe", 0, 1, w.batch);
@@ -557,24 +560,38 @@
     } satisfies SceneCard;
   }
 
-  // Where an arrival lands: its stack item (a cast) or its tile, measured
-  // once their entrance has settled, as a planeswalker's ring is.
+  // Where an entering card lands: its tile, measured once its entrance
+  // has settled, as a planeswalker's ring is.
   function landingEl(sig: SignatureCue): HTMLElement | null {
     if (!boardEl) return null;
-    if (sig.lands === "battlefield") {
-      return findCardAnchor(boardEl, sig.cardID, { accept: hasSize });
+    return findCardAnchor(boardEl, sig.cardID, { accept: hasSize });
+  }
+
+  // The players' seats (their avatar circles), each marked a foe or not of
+  // the card's controller: a scene may aim at one (Bolas breathes fire).
+  function sceneSeats(cardID: string, b: { rect: DOMRect }): SceneSeat[] {
+    if (!boardEl) return [];
+    const controller = view.battlefield.cards.find((c) => c.instance_id === cardID)?.controller;
+    const out: SceneSeat[] = [];
+    for (const el of boardEl.querySelectorAll<HTMLElement>("[data-seat-id]")) {
+      const id = el.dataset.seatId;
+      if (!id || !hasSize(el) || out.some((s) => s.id === id)) continue;
+      const r = el.getBoundingClientRect();
+      out.push({
+        id,
+        x: r.left + r.width / 2 - b.rect.left,
+        y: r.top + r.height / 2 - b.rect.top,
+        r: Math.min(r.width, r.height) / 2,
+        foe: !!controller && id !== controller,
+      });
     }
-    for (const el of boardEl.querySelectorAll<HTMLElement>("[data-stack-item-id]")) {
-      if (el.dataset.stackItemId === sig.cardID && hasSize(el)) return el;
-    }
-    return null;
+    return out;
   }
 
   function landingOf(el: HTMLElement, sig: SignatureCue, b: { rect: DOMRect }): SceneCard {
     const t = tileOf(el, b.rect, { w: b.rect.width, h: b.rect.height });
     const src =
-      el.querySelector<HTMLImageElement>("img")?.getAttribute("src") ??
-      (sig.lands === "battlefield" ? imageFor(sig.cardID) : null);
+      el.querySelector<HTMLImageElement>("img")?.getAttribute("src") ?? imageFor(sig.cardID);
     return {
       id: sig.cardID,
       x: t.box.x,
@@ -626,7 +643,12 @@
       if (destroyed) return;
       const now = boardSize();
       if (!now) return;
-      add({ ...f, board: now.size, landing: landingOf(el, sig, now) });
+      add({
+        ...f,
+        board: now.size,
+        landing: landingOf(el, sig, now),
+        seats: sceneSeats(sig.cardID, now),
+      });
     });
   }
 
@@ -1041,6 +1063,7 @@
           t: (ms) => ms * k,
           cards: f.sceneCards ?? [],
           landing: f.landing ?? null,
+          seats: f.seats ?? [],
         });
       } catch {
         // A scene that fails draws nothing; the cards' own cues still play.

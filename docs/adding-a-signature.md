@@ -10,13 +10,15 @@ scene kit exists, a new signature built from its parts is `tier:1-mechanical`.
 | File | What it holds |
 |---|---|
 | `client/src/lib/fx/signatures.ts` | `SIGNATURES` (oracle_id to scene), `SCENES` (each scene's trigger, sound, length, first beat and loader), and every rule: matching, caps, Short, still, lazy loading |
-| `client/src/lib/fx/scenes/kit.ts` | The parts: `overlay`, `rain` (fire, ash), `fill` (tar, water), `shadowPass`, `strike`, `flyLand` |
+| `client/src/lib/fx/scenes/kit.ts` | The parts: `overlay`, `canvasPart` (a particle canvas), `rain` (fire, ash), `fill` (tar, water), `ooze` (sludge welling up across the board), `sink` (a card going down into it), `shadowPass`, `strike`, `flyLand`, `breath` (fire from the flying dragon onto a seat) |
+| `client/src/lib/fx/tints.ts` | The tints a scene leaves on its survivors until the turn ends, by instance ID; `components/board/FxTint.svelte` draws one on a tile |
 | `client/src/lib/fx/scenes/<scene>.ts` | One scene each, exporting `play(ctx)` |
 | `client/src/lib/components/board/TableEffects.svelte` | Draws the scene at z 57 and folds it into the generic cues |
 | `client/src/lib/sounds.ts` | The `sig_<scene>` sound, in the `effects` category |
 
-The scenes so far: `blasphemous_act`, `toxic_deluge`, `bitter_triumph`, and
-`nicol_bolas` (shared by every catalog printing named Nicol Bolas).
+The scenes so far: `blasphemous_act`, `toxic_deluge`, `bitter_triumph`,
+`dragons_approach`, and `nicol_bolas` (shared by every catalog printing named
+Nicol Bolas).
 
 ## Recipe
 
@@ -30,11 +32,17 @@ The scenes so far: `blasphemous_act`, `toxic_deluge`, `bitter_triumph`, and
      replaces that batch's board-wipe sweep; each card still shows its own cue,
      lighter, from `cardsAtMs`. Set `needsCards: true` when the scene draws on
      a card and has nothing to show without one (a spear needs a target).
-   - `arrive`: the card was cast (it lands on the stack), or entered the
-     battlefield without being cast (it lands on its tile, in place of the
-     planeswalker ring). It plays once per arrival.
+     Set `ownsCards: true` when the scene draws the cards' exits itself (Toxic
+     Deluge sinks them): their generic cues are then left out while it plays.
+     Set `tint` when the creatures the spell did not take should keep a mark
+     until the turn ends (Toxic Deluge's `deluge`; add a kind to `TintKind`
+     and its look to `FxTint.svelte`).
+   - `enter`: the card entered the battlefield, its spell resolving or not.
+     It lands on its tile, in place of the planeswalker ring, and gets the
+     players' seats (`ctx.seats`, each marked a foe or not). Casting the card
+     plays nothing.
 3. **Add the scene's spec** to `SCENES` in `signatures.ts`: its `sound`
-   (`sig_<scene>`), `ms` (at most 2500), `firstBeatMs` (what Short plays, at
+   (`sig_<scene>`), `ms` (at most 3500), `firstBeatMs` (what Short plays, at
    most 800), `cardsAtMs`, and `load: () => import("./scenes/<scene>")`.
    Add the scene's ID to the `SceneID` union.
 4. **Map the card** in `SIGNATURES`: `"<oracle_id>": { names: ["<Name>"], scene: "<scene>" }`.
@@ -61,12 +69,16 @@ The scenes so far: `blasphemous_act`, `toxic_deluge`, `bitter_triumph`, and
 
 ## Rules
 
-- Every shape is drawn for C2 (CSS, inline SVG). No Wizards art, and no card
-  art beyond the card's own image, which the board already shows.
+- Every shape is drawn for C2 (CSS, inline SVG, canvas). No Wizards art, and
+  no card art beyond the card's own image, which the board already shows.
 - A signature never delays the game: the state has already changed under it,
   a click or Escape skips it, and a scene that has not loaded yet leaves the
   generic cues to play.
 - Off, reduced motion (the setting, `animations.enabled` off or the OS signal)
   play no scene: the generic still cues show, with the signature's sound.
 - Keep it light: a few dozen animated elements, transforms and opacity, and at
-  most one blur per scene.
+  most one blur per scene. Many small things (fire, sludge, sparks) go on a
+  `canvasPart`, planned up front from the seed and painted from scratch each
+  frame, rather than as DOM nodes.
+- Look at it in a browser, in Full and in Short, before the PR: the tests
+  hold the timing, not the look.

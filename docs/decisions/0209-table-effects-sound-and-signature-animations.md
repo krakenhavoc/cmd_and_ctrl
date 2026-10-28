@@ -90,6 +90,15 @@ Amendment 2026-10-28 (#4397): the scene kit and the first signatures are built (
 - **Lazy loading.** Each scene is its own chunk, imported the first time a card that has it appears in any zone the player can see. Until it has loaded the generic cues play. The scene chunks (`assets/sig-*`) are left out of the service worker's precache, and their sounds out of the first-gesture preload.
 - **Sounds.** `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, in the `effects` category, each falling back to the generic cue it replaces until Ian's files land.
 
+Amendment 2026-10-28 (#4416, Ian's first round of feedback on the signatures):
+
+- **The cap is 3.5 s.** Ian asked for every effect to run about 1.25 to 1.5 times as long, so it can be seen. A signature may now run 3.5 s at most (§1 said 2.5 s), before `animations.speed`. The scenes run 1.9 to 3.4 s. Short stays at 0.8 s.
+- **Nicol Bolas plays only when he enters.** Casting him plays nothing. The trigger is now `enter`: the scene runs when the card enters the battlefield, from the stack or from anywhere else, and lands on its tile in place of the planeswalker ring. As he loops the table he breathes fire on an opponent's seat (its avatar circle), chosen by the scene's seed from the seats that are not his controller's.
+- **Particles on a canvas.** Fire, sludge and breath are drawn as particles on a board-sized canvas (`canvasPart` in the kit). Its clock is a Web Animation on the canvas, so a skip stops it and the caps hold it like every other part. The particles are planned up front from the scene's seed and painted from scratch each frame.
+- **A scene may draw its cards' exits.** Toxic Deluge sinks the creatures it kills into the sludge itself (`ownsCards`). With motion their generic death cues are left out; still keeps them.
+- **A scene may leave a tint.** The creatures Toxic Deluge does not kill keep a faint dark-green stain until the turn ends, because its -X/-X lasts that long (`tint`). The client remembers the survivors' instance IDs with the game and the turn number, and forgets them when either changes (`fx/tints.ts`). `FxTint.svelte` draws the stain on the permanent's tile, over its image and under its badges. It is a static mark, so it shows in every motion mode, Off and reduced motion included; only its fade-in is motion. It is presentation only: nothing goes on the wire or into the snapshot, and a reconnect mid-turn may forget it.
+- **The looks.** Blasphemous Act: round, white-hot balls of fire trailing flame and smoke, bursting where they land and leaving the ground burning. Toxic Deluge: near-black green sludge wells up from springs across the battlefield and runs together over parts of the cards, and the dying creatures sink into it. Bitter Triumph: the spear is a black shaft with a rough, dark iron point.
+
 ### 5. Voice lines (wired, not shipped)
 
 `client/src/lib/fx/voices.ts` maps a planeswalker's `oracle_id` to lines for each moment: `enter`, `leave`, `ultimate`. Each moment has one or more takes, with the files under `client/public/voices/`. Lines play in the `voice` category.
