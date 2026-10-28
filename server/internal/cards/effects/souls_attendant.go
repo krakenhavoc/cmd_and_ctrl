@@ -19,13 +19,7 @@ func init() {
 		Name:         "Soul's Attendant",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.CardID == source.InstanceID {
-					return false
-				}
-				c, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && c.IsCreature()
-			}, "Soul's Attendant — gain 1 life", Do(GainLife{Amount: 1})), "Soul's Attendant — gain 1 life?"),
+			Optional(On(game.EventETB, AnotherCreatureEntered, "Soul's Attendant — gain 1 life", Do(GainLife{Amount: 1})), "Soul's Attendant — gain 1 life?"),
 		},
 	})
 }
