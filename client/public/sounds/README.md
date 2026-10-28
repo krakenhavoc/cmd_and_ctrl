@@ -56,16 +56,17 @@ The table's effect cues (ADR 0209 §3) are in the `effects` category. Each
 entry is in the manifest and plays when its file lands; until then it is
 silent. Two takes each, at most 1.5 s, and original or CC0.
 
-| Entry        | Files                                  | When it plays                                                                                 | Make it sound like       |
-| ------------ | -------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------ |
-| `destroy`    | `destroy-1.mp3`, `destroy-2.mp3`       | A permanent is destroyed (the dark slash)                                                     | a raven's caw            |
-| `exile`      | `exile-1.mp3`, `exile-2.mp3`           | A permanent is exiled, including a destroy turned into exile (the portal)                     | a cold, distinct chime   |
-| `sacrifice`  | `sacrifice-1.mp3`, `sacrifice-2.mp3`   | A permanent is sacrificed                                                                     | a low thud               |
-| `bounce`     | `bounce-1.mp3`, `bounce-2.mp3`         | A permanent returns to a hand                                                                 | a lift and a soft whoosh |
-| `counter`    | `counter-1.mp3`, `counter-2.mp3`       | A spell or ability is countered (the stack item shatters)                                     | glass breaking           |
-| `board_wipe` | `board_wipe-1.mp3`, `board_wipe-2.mp3` | Three or more permanents leave in one batch from one source; it plays once, as the sweep runs | a low rumble             |
-| `pw_enter`   | `pw_enter-1.mp3`, `pw_enter-2.mp3`     | A planeswalker enters the battlefield                                                         | a short sting            |
-| `pw_leave`   | `pw_leave-1.mp3`, `pw_leave-2.mp3`     | A planeswalker dies                                                                           | a crack                  |
+| Entry             | Files                                            | When it plays                                                                                 | Make it sound like       |
+| ----------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------ |
+| `destroy`         | `destroy-1.mp3`, `destroy-2.mp3`                 | A permanent is destroyed (the card shatters from its centre outward)                          | a raven's caw            |
+| `exile`           | `exile-1.mp3`, `exile-2.mp3`                     | A permanent is exiled, including a destroy turned into exile (the white void)                 | a cold, distinct chime   |
+| `sacrifice`       | `sacrifice-1.mp3`, `sacrifice-2.mp3`             | A permanent is sacrificed: plays as the altar appears                                         | a low thud               |
+| `sacrifice_knife` | `sacrifice_knife-1.mp3`, `sacrifice_knife-2.mp3` | A sacrifice's knife stabs the card, just before it shatters                                   | a blade driven home      |
+| `bounce`          | `bounce-1.mp3`, `bounce-2.mp3`                   | A permanent returns to a hand                                                                 | a lift and a soft whoosh |
+| `counter`         | `counter-1.mp3`, `counter-2.mp3`                 | A spell or ability is countered (a palm stops it, and it cracks)                              | glass breaking           |
+| `board_wipe`      | `board_wipe-1.mp3`, `board_wipe-2.mp3`           | Three or more permanents leave in one batch from one source; it plays once, as the sweep runs | a low rumble             |
+| `pw_enter`        | `pw_enter-1.mp3`, `pw_enter-2.mp3`               | A planeswalker enters the battlefield                                                         | a short sting            |
+| `pw_leave`        | `pw_leave-1.mp3`, `pw_leave-2.mp3`               | A planeswalker dies (it cracks, then leaves the plane)                                        | a crack                  |
 
 A death by state-based action (lethal damage, zero toughness) has no new
 sound: it is the existing crumble. Inside a board wipe each per-card sound
@@ -97,13 +98,13 @@ Every `SoundName` belongs to one category (`SOUND_CATEGORY` in
 [../src/lib/sounds.ts](../src/lib/sounds.ts)); Settings has a volume for
 each, and `play()` multiplies master x category x the caller's hint.
 
-| Category    | Sounds                                                                                                                                                                                                         |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                               |
-| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                  |
-| `combat`    | `attack`, `block`, `combat_resolve`, `damage`                                                                                                                                                                  |
-| `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
-| `voice`     | planeswalker lines to come                                                                                                                                                                                     |
+| Category    | Sounds                                                                                                                                                                                                                            |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface` | `turn_change`, `win`, `loss`, `your_turn`, `priority`, `prompt`, `timer_warning`                                                                                                                                                  |
+| `cards`     | `draw`, `play`, `tap`, `untap_all`, `shuffle`                                                                                                                                                                                     |
+| `combat`    | `attack`, `block`, `combat_resolve`, `damage`                                                                                                                                                                                     |
+| `effects`   | `heal`, `destroy`, `exile`, `sacrifice`, `sacrifice_knife`, `bounce`, `counter`, `board_wipe`, `pw_enter`, `pw_leave`, `sig_blasphemous_act`, `sig_toxic_deluge`, `sig_bitter_triumph`, `sig_nicol_bolas`, `sig_dragons_approach` |
+| `voice`     | planeswalker lines to come                                                                                                                                                                                                        |
 
 An `interface` sound ducks the other buses, music included, by about 6 dB
 while it plays. A sound passed an event `batch` plays once per batch.

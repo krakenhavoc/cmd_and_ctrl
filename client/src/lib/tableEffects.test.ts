@@ -1,5 +1,6 @@
-// ADR 0209 §1 and §3 (#4396): which cue a log entry is, what a board wipe
-// is, the three motion gates and the length caps. The rendered half is in
+// ADR 0209 §1 and §3 (#4396, #4416): which cue a log entry is, what a
+// board wipe is, the three motion gates, the length caps, a busy table and
+// the shapes the cues draw. The rendered half is in
 // tableEffects.render.test.ts.
 
 import { readFileSync } from "node:fs";
@@ -8,6 +9,9 @@ import { describe, expect, it } from "vitest";
 import {
   BURST_CRACKS,
   BURST_SHARDS,
+  BUSY_MIN,
+  BUSY_WINDOW_MS,
+  BusyClock,
   EFFECT_BASE_MS,
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
@@ -18,6 +22,10 @@ import {
   WIPE_MIN,
   WIPE_SWEEP_MS,
   WIPE_TOTAL_MS,
+  WIPE_VORTEX_MS,
+  SACRIFICE_KNIFE_SOUND,
+  SHATTER_BREAK,
+  busyScale,
   counterBurst,
   cueMs,
   cueSound,
@@ -26,10 +34,16 @@ import {
   effectMotion,
   effectsScheduled,
   exitKind,
+  headlines,
   isEffectsMode,
   planEffects,
-  slashGeometry,
+  sacrificeBeats,
+  shatterPlan,
   soundBatch,
+  spiralPath,
+  swirlArms,
+  voidMotes,
+  windCuts,
   wipeTiming,
   type EffectKind,
   type EffectMotion,
@@ -106,6 +120,13 @@ describe("cue selection", () => {
     // And a sacrifice that was exiled instead is still the exile.
     const s = [sacrifice("b"), zone("b", "exile", { cause: "sacrifice" })];
     expect(kinds(s)).toEqual(["exile"]);
+  });
+
+  it("marks a destroy replaced by exile, so it crumbles a little as it goes (D4)", () => {
+    const [replaced] = plan([zone("a", "exile", { cause: "destroy" })]).cues;
+    expect(replaced.fromDestroy).toBe(true);
+    const [plain] = plan([zone("b", "exile", { cause: "exile_effect" })]).cues;
+    expect(plain.fromDestroy).toBeUndefined();
   });
 
   it("a sacrifice entry is a sacrifice, once", () => {
@@ -272,6 +293,9 @@ describe("the sound", () => {
       expect(SOUND_MANIFEST[name].length).toBeGreaterThan(0);
     }
     expect(SOUND_CATEGORY.board_wipe).toBe("effects");
+    // A sacrifice's knife (#4416) is one too.
+    expect(SOUND_CATEGORY[SACRIFICE_KNIFE_SOUND]).toBe("effects");
+    expect(SOUND_MANIFEST[SACRIFICE_KNIFE_SOUND].length).toBeGreaterThan(0);
   });
 
   it("a wipe's per-card sound is quieter", () => {
@@ -332,10 +356,38 @@ describe("length caps", () => {
   const modes: EffectMotion[] = ["full", "short"];
   const allKinds = Object.keys(EFFECT_BASE_MS) as EffectKind[];
 
-  it("no base cue is longer than the 1.5 s cap", () => {
+  it("no base cue is longer than the 2 s cap", () => {
+    expect(EFFECT_CAP_MS).toBe(2000);
+    expect(EFFECT_SHORT_CAP_MS).toBe(1000);
     for (const k of allKinds) expect(EFFECT_BASE_MS[k]).toBeLessThanOrEqual(EFFECT_CAP_MS);
     expect(WIPE_SWEEP_MS).toBeLessThanOrEqual(EFFECT_CAP_MS);
     expect(WIPE_TOTAL_MS).toBeLessThanOrEqual(EFFECT_CAP_MS);
+    expect(WIPE_VORTEX_MS).toBeLessThanOrEqual(EFFECT_CAP_MS);
+  });
+
+  it("every cue is about 1.25 to 1.5 times the first build's length (#4416)", () => {
+    // The first build's lengths. A sacrifice gained an altar and a knife
+    // and a counterspell holds its cracks for the stack linger, so they
+    // may run longer; none may run shorter.
+    const first: Record<EffectKind, number> = {
+      destroy: 900,
+      exile: 1100,
+      dies: 420,
+      sacrifice: 800,
+      bounce: 900,
+      counter: 900,
+      pw_enter: 900,
+      pw_leave: 900,
+    };
+    for (const k of allKinds) {
+      const r = EFFECT_BASE_MS[k] / first[k];
+      expect(r).toBeGreaterThanOrEqual(1.25);
+      if (k !== "sacrifice" && k !== "counter" && k !== "pw_leave") {
+        expect(r).toBeLessThanOrEqual(1.5);
+      }
+    }
+    expect(WIPE_SWEEP_MS / 700).toBeGreaterThanOrEqual(1.25);
+    expect(WIPE_TOTAL_MS / 1350).toBeGreaterThanOrEqual(1.25);
   });
 
   it("every cue, in every mode and speed, ends within the cap scaled by speed", () => {
@@ -355,6 +407,7 @@ describe("length caps", () => {
           expect(light.delayMs + light.ms).toBeLessThanOrEqual(cap + 1e-6);
         }
         expect(wipeTiming(mode, speed).ms).toBeLessThanOrEqual(cap);
+        expect(wipeTiming(mode, speed, "cold").ms).toBeLessThanOrEqual(cap);
       }
     }
   });
@@ -366,9 +419,15 @@ describe("length caps", () => {
     expect(cueMs(900, "full", Number.NaN)).toBe(900);
   });
 
-  it("Short cuts a long cue to 0.8 s and leaves a shorter one alone", () => {
-    expect(cueMs(1100, "short", 1)).toBe(EFFECT_SHORT_CAP_MS);
-    expect(cueMs(420, "short", 1)).toBe(420);
+  it("Short cuts a long cue to 1 s and leaves a shorter one alone", () => {
+    expect(cueMs(1500, "short", 1)).toBe(EFFECT_SHORT_CAP_MS);
+    expect(cueMs(560, "short", 1)).toBe(560);
+  });
+
+  it("an exile wipe's vortex stays open for the whole wipe; a destroy's cuts are quicker", () => {
+    expect(wipeTiming("full", 1, "cold").ms).toBe(WIPE_VORTEX_MS);
+    expect(wipeTiming("full", 1, "dark").ms).toBe(WIPE_SWEEP_MS);
+    expect(WIPE_VORTEX_MS).toBeGreaterThan(WIPE_TOTAL_MS);
   });
 
   it("a still cue is the badge's fixed reading time, which speed does not scale", () => {
@@ -381,11 +440,148 @@ describe("length caps", () => {
   });
 });
 
+describe("a busy table (#4416)", () => {
+  it("plays one cue in full and compresses as more land close together", () => {
+    expect(busyScale(1)).toBe(1);
+    expect(busyScale(0)).toBe(1);
+    let last = 1;
+    for (let n = 2; n <= 10; n++) {
+      const k = busyScale(n);
+      expect(k).toBeLessThanOrEqual(last);
+      expect(k).toBeGreaterThanOrEqual(BUSY_MIN);
+      last = k;
+    }
+    // Four at once play about as long as the first build's cues did.
+    expect(busyScale(4)).toBeCloseTo(1 / 1.54, 2);
+    expect(busyScale(20)).toBe(BUSY_MIN);
+  });
+
+  it("counts the cues of the last two seconds, and forgets the older ones", () => {
+    const c = new BusyClock();
+    expect(c.frame(1, 0)).toBe(1);
+    expect(c.frame(1, 500)).toBe(busyScale(2));
+    expect(c.frame(2, 900)).toBe(busyScale(4));
+    // Past the window, the first three have gone.
+    expect(c.frame(1, 900 + BUSY_WINDOW_MS)).toBe(1);
+    // A frame with no cues is not compressed and adds nothing.
+    expect(c.frame(0, 900 + BUSY_WINDOW_MS)).toBe(1);
+    c.reset();
+    expect(c.frame(1, 1000 + BUSY_WINDOW_MS)).toBe(1);
+  });
+
+  it("counts a board wipe once, not each card it took", () => {
+    const p = plan(
+      Array.from({ length: 6 }, (_, i) =>
+        zone(`w${i}`, "graveyard", { cause: "destroy", batch: 3, source: "wipe" }),
+      ),
+    );
+    expect(headlines(p)).toBe(1);
+    expect(headlines(p, 1)).toBe(2);
+    expect(headlines(plan([zone("a", "graveyard", { cause: "destroy" })]))).toBe(1);
+  });
+});
+
 describe("shapes", () => {
-  it("the slash runs along the card's diagonal, a little longer than it", () => {
-    const s = slashGeometry(80, 112);
-    expect(s.length).toBeGreaterThan(Math.hypot(80, 112));
-    expect(s.angle).toBeCloseTo((Math.atan2(112, 80) * 180) / Math.PI, 1);
+  it("the shatter breaks from an impact near the centre, inner pieces first (D1)", () => {
+    const s = shatterPlan("card-1", 80, 112);
+    expect(s).toEqual(shatterPlan("card-1", 80, 112));
+    expect(s).not.toEqual(shatterPlan("card-2", 80, 112));
+    expect(Math.abs(s.ix - 40)).toBeLessThan(80 * 0.07);
+    expect(Math.abs(s.iy - 56)).toBeLessThan(112 * 0.07);
+    expect(s.spokes.length).toBeGreaterThan(6);
+    expect(s.rings.length).toBeGreaterThan(0);
+    const byRing = new Map<number, number[]>();
+    for (const sh of s.shards) {
+      expect(sh.clip.startsWith("polygon(")).toBe(true);
+      expect(sh.at).toBeGreaterThanOrEqual(SHATTER_BREAK);
+      expect(sh.at).toBeLessThan(1);
+      byRing.set(sh.ring, [...(byRing.get(sh.ring) ?? []), sh.at]);
+    }
+    // Ring by ring outward: every inner piece lets go before the outer ring's last.
+    const rings = [...byRing.keys()].sort();
+    for (let k = 1; k < rings.length; k++) {
+      expect(Math.min(...byRing.get(rings[k - 1])!)).toBeLessThan(
+        Math.min(...byRing.get(rings[k])!),
+      );
+    }
+    // A wipe's lighter shatter has fewer pieces.
+    expect(shatterPlan("card-1", 80, 112, { light: true }).shards.length).toBeLessThan(
+      s.shards.length,
+    );
+  });
+
+  it("the shatter's pieces cover the whole card, corners included", () => {
+    const s = shatterPlan("card-3", 80, 112);
+    const pts = s.shards.flatMap((sh) =>
+      sh.clip
+        .slice("polygon(".length, -1)
+        .split(", ")
+        .map((p) => p.split(" ").map((v) => Number.parseFloat(v))),
+    );
+    for (const [cx, cy] of [
+      [0, 0],
+      [100, 0],
+      [100, 100],
+      [0, 100],
+    ]) {
+      expect(pts.some(([x, y]) => x === cx && y === cy)).toBe(true);
+    }
+  });
+
+  it("a tapped card's pieces still fall down the screen", () => {
+    const upright = shatterPlan("card-4", 80, 112);
+    const tapped = shatterPlan("card-4", 80, 112, { rot: 90 });
+    // On screen, (dx, dy) in the card's frame turned 90 degrees is (-dy, dx).
+    const fall = (p: typeof upright, rot: number) =>
+      p.shards.reduce((t, sh) => {
+        const a = (rot * Math.PI) / 180;
+        return t + sh.dx * Math.sin(a) + sh.dy * Math.cos(a);
+      }, 0);
+    expect(fall(upright, 0)).toBeGreaterThan(0);
+    expect(fall(tapped, 90)).toBeGreaterThan(0);
+  });
+
+  it("an exile's specks start outside the card and spiral in (D3)", () => {
+    const m = voidMotes("e1", 80, 112);
+    expect(m).toEqual(voidMotes("e1", 80, 112));
+    for (const o of m) {
+      expect(o.r).toBeGreaterThan(Math.hypot(80, 112) / 2);
+      expect(o.spin).toBeGreaterThan(180);
+    }
+  });
+
+  it("a vortex's spiral starts where the card stood and ends at the centre (D11)", () => {
+    const from = { x: 100, y: 40 };
+    const to = { x: 400, y: 240 };
+    const p = spiralPath(from, to);
+    expect(p[0]).toEqual({ x: 0, y: 0 });
+    expect(p.at(-1)!.x).toBeCloseTo(300, 0);
+    expect(p.at(-1)!.y).toBeCloseTo(200, 0);
+    // It closes on the centre as it goes.
+    const dist = p.map((q) => Math.hypot(q.x + from.x - to.x, q.y + from.y - to.y));
+    for (let i = 1; i < dist.length; i++) expect(dist[i]).toBeLessThan(dist[i - 1]);
+    expect(swirlArms(5)).toHaveLength(5);
+  });
+
+  it("a destroy wipe's cuts cross the whole board at spread-out heights (D10)", () => {
+    const c = windCuts("wipe-9", 7);
+    expect(c).toHaveLength(7);
+    expect(c).toEqual(windCuts("wipe-9", 7));
+    for (const cut of c) {
+      expect(cut.y).toBeGreaterThan(0);
+      expect(cut.y).toBeLessThan(100);
+      expect(cut.at + cut.len).toBeLessThanOrEqual(1);
+    }
+    expect(new Set(c.map((x) => Math.round(x.y / 10))).size).toBeGreaterThan(4);
+  });
+
+  it("a sacrifice's knife lands before the card shatters, sooner inside a wipe (D5)", () => {
+    for (const light of [false, true]) {
+      const b = sacrificeBeats(light);
+      expect(b.stab).toBeLessThan(b.shatter);
+      expect(b.shatter).toBeLessThan(0.5);
+    }
+    expect(sacrificeBeats(true).stab).toBeLessThan(sacrificeBeats(false).stab);
   });
 
   it("the counterspell burst is deterministic by seed, and made of cracks and shards", () => {

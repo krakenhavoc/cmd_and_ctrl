@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 //
-// ADR 0209 §1 and §3 (#4396), the rendered half: a battlefield exit, a
-// counterspell, a planeswalker and a board wipe each draw their cue over the
-// board and play their sound; reduced motion (all three signals) and the
+// ADR 0209 §1 and §3 (#4396, #4416), the rendered half: a battlefield
+// exit, a counterspell, a planeswalker and a board wipe each draw their cue
+// over the board and play their sound; a busy frame plays its cues shorter; reduced motion (all three signals) and the
 // Off setting draw a badge and no motion; a click or Escape skips what is
 // playing; and the first frame cues nothing. The rules are pinned in
 // tableEffects.test.ts.
@@ -32,7 +32,14 @@ import { L } from "./labels";
 import { resetSettings, updateSettings } from "./settings";
 import { dockTestView } from "./test/dockView";
 import { cleanup, render } from "./test/render.svelte";
-import { EFFECT_CAP_MS, EFFECT_STILL_HOLD_MS } from "./tableEffects";
+import {
+  EFFECT_BASE_MS,
+  EFFECT_CAP_MS,
+  EFFECT_SHORT_CAP_MS,
+  EFFECT_STILL_HOLD_MS,
+  busyScale,
+  shatterPlan,
+} from "./tableEffects";
 
 // ---- the table ----------------------------------------------------------
 
@@ -121,6 +128,9 @@ const effects = (kind?: string) => [
   ...layer().querySelectorAll<HTMLElement>(kind ? `[data-effect="${kind}"]` : "[data-effect]"),
 ];
 const badges = () => [...layer().querySelectorAll<HTMLElement>("[data-effect-badge]")];
+// When each animation started ends: its delay plus its length.
+const runEnds = () =>
+  vi.mocked(run).mock.calls.map((c) => ((c[2].delay as number) ?? 0) + (c[2].duration as number));
 
 const IDS = ["a", "b", "c", "d"];
 const cardsAll = IDS.map((id) => permanent(id, "opp"));
@@ -203,12 +213,19 @@ describe("the effects layer", () => {
     expect(cue.style.left).toBe("240px");
     expect(cue.style.top).toBe("356px");
     expect(cue.querySelector("img")?.getAttribute("src")).toBe("/b.jpg");
-    expect(cue.querySelector(".slash")).toBeTruthy();
+    // D1: it shatters from its centre outward, every piece its own art.
+    const shards = cue.querySelectorAll(".shatter .shard");
+    expect(shards.length).toBeGreaterThan(10);
+    for (const sh of shards) expect(sh.querySelector("img")?.getAttribute("src")).toBe("/b.jpg");
+    expect(cue.querySelectorAll(".crk path").length).toBeGreaterThan(0);
+    expect(cue.querySelector(".slash")).toBeNull();
     expect(playSound).toHaveBeenCalledWith("destroy", { volume: 1, batch: "g1:4" });
-    // Its motion was started, and no longer than the 1.5 s cap.
-    const lengths = vi.mocked(run).mock.calls.map((c) => c[2].duration as number);
-    expect(lengths.length).toBeGreaterThan(0);
-    for (const ms of lengths) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS);
+    // Its motion was started, and every part of it ends inside the 2 s cap.
+    const ends = vi
+      .mocked(run)
+      .mock.calls.map((c) => ((c[2].delay as number) ?? 0) + (c[2].duration as number));
+    expect(ends.length).toBeGreaterThan(0);
+    for (const ms of ends) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS + 1e-6);
     // And it goes by itself.
     advance(EFFECT_CAP_MS + 200);
     expect(effects()).toHaveLength(0);
@@ -218,7 +235,11 @@ describe("the effects layer", () => {
     deliver([zone("a", "exile", { cause: "destroy", batch: 5 })], ["a"]);
     expect(effects("destroy")).toHaveLength(0);
     expect(effects("exile")).toHaveLength(1);
-    expect(effects("exile")[0].querySelector(".portal")).toBeTruthy();
+    const [cue] = effects("exile");
+    // D3's white void, and D4's slight crumble: it is drawn in pieces.
+    expect(cue.querySelector(".void")).toBeTruthy();
+    expect(cue.hasAttribute("data-effect-from-destroy")).toBe(true);
+    expect(cue.querySelectorAll(".shatter .shard").length).toBeGreaterThan(0);
     expect(playSound).toHaveBeenCalledWith("exile", expect.anything());
     expect(playSound).not.toHaveBeenCalledWith("destroy", expect.anything());
   });
@@ -243,17 +264,29 @@ describe("the effects layer", () => {
     };
     deliver([sac, zone("b", "hand", { cause: "bounce", batch: 3 })], ["a", "b"]);
     expect(effects("sacrifice")).toHaveLength(1);
-    expect(effects("sacrifice")[0].querySelector(".well")).toBeTruthy();
+    // D5: an altar, a knife, and the destroy's shatter after it.
+    const [sacCue] = effects("sacrifice");
+    expect(sacCue.querySelector(".altar")).toBeTruthy();
+    expect(sacCue.querySelector(".knife")).toBeTruthy();
+    expect(sacCue.querySelectorAll(".shatter .shard").length).toBeGreaterThan(0);
     expect(effects("bounce")).toHaveLength(1);
     expect(playSound).toHaveBeenCalledWith("sacrifice", expect.anything());
     expect(playSound).toHaveBeenCalledWith("bounce", expect.anything());
-    // The copy's flight ends at the avatar of seat "opp" (centre 590, 50)
-    // from b's centre (240, 356).
+    // The knife's own sound plays as it lands, not at once.
+    expect(playSound).not.toHaveBeenCalledWith("sacrifice_knife", expect.anything());
+    advance(EFFECT_CAP_MS / 2);
+    expect(playSound).toHaveBeenCalledWith("sacrifice_knife", expect.anything());
+    // D6: it turns over (its back is the card back) and goes home face up.
+    const [bounceCue] = effects("bounce");
+    expect(bounceCue.querySelector(".flip .face.back")).toBeTruthy();
+    expect(bounceCue.querySelector(".flip .face:not(.back) img")).toBeTruthy();
+    // The copy's flight (and its after-images') ends at the avatar of seat
+    // "opp" (centre 590, 50) from b's centre (240, 356).
     const flights = vi.mocked(run).mock.calls.filter((c) => {
       const last = c[1][c[1].length - 1] as Record<string, unknown>;
       return last.translate === "350px -306px";
     });
-    expect(flights.length).toBe(1);
+    expect(flights.length).toBeGreaterThanOrEqual(1);
   });
 
   it("a counterspell shatters over the stack item's last box, with the counter sound", () => {
@@ -273,6 +306,8 @@ describe("the effects layer", () => {
     expect(cue.style.top).toBe("305px");
     expect(cue.querySelectorAll(".cracks path").length).toBeGreaterThan(0);
     expect(cue.querySelectorAll(".glass").length).toBeGreaterThan(0);
+    // D7: a palm stopped it.
+    expect(cue.querySelector(".palm")).toBeTruthy();
     expect(playSound).toHaveBeenCalledWith("counter", { volume: 1, batch: "g1:8" });
   });
 
@@ -301,6 +336,8 @@ describe("the effects layer", () => {
     flushSync();
     expect(effects("pw_leave")).toHaveLength(1);
     expect(effects("pw_leave")[0].querySelector(".crack")).toBeTruthy();
+    // D9: and it leaves the plane through a rift.
+    expect(effects("pw_leave")[0].querySelector(".rift")).toBeTruthy();
     expect(playSound).toHaveBeenCalledWith("pw_leave", expect.anything());
   });
 
@@ -310,13 +347,16 @@ describe("the effects layer", () => {
     );
     deliver(wipe, IDS);
     expect(effects("board_wipe")).toHaveLength(1);
-    expect(effects("board_wipe")[0].querySelector(".sweep")).toBeTruthy();
+    // D10: quick cuts slice across the board.
+    expect(effects("board_wipe")[0].querySelectorAll(".cut .blade").length).toBeGreaterThan(3);
     const cards = effects("destroy");
     expect(cards).toHaveLength(4);
     for (const c of cards) {
       expect(c.hasAttribute("data-effect-light")).toBe(true);
-      // The light cue has no slash.
-      expect(c.querySelector(".slash")).toBeNull();
+      // Every card plays the destroy's shatter, in fewer pieces.
+      const pieces = c.querySelectorAll(".shatter .shard").length;
+      expect(pieces).toBeGreaterThan(0);
+      expect(pieces).toBeLessThan(shatterPlan("x", 80, 112).shards.length);
     }
     const wipes = vi.mocked(playSound).mock.calls.filter((c) => c[0] === "board_wipe");
     expect(wipes).toHaveLength(1);
@@ -331,16 +371,52 @@ describe("the effects layer", () => {
   it("scales a cue's length by animations.speed, inside the cap times the speed", () => {
     updateSettings("animations", "speed", 2);
     deliver([zone("b", "graveyard", { cause: "destroy" })], ["b"]);
-    const lengths = vi.mocked(run).mock.calls.map((c) => c[2].duration as number);
-    expect(Math.max(...lengths)).toBe(1800);
-    for (const ms of lengths) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS * 2);
+    const ends = runEnds();
+    expect(Math.max(...ends)).toBeCloseTo(EFFECT_BASE_MS.destroy * 2, 6);
+    for (const ms of ends) expect(ms).toBeLessThanOrEqual(EFFECT_CAP_MS * 2 + 1e-6);
   });
 
-  it("Short cuts a cue to 0.8 s", () => {
+  it("Short cuts a cue to 1 s", () => {
     updateSettings("animations", "effects", "short");
     deliver([zone("a", "exile", { cause: "exile_effect" })], ["a"]);
-    const lengths = vi.mocked(run).mock.calls.map((c) => c[2].duration as number);
-    expect(Math.max(...lengths)).toBe(800);
+    expect(Math.max(...runEnds())).toBeCloseTo(EFFECT_SHORT_CAP_MS, 6);
+  });
+
+  it("a busy frame plays its cues shorter, and a lone one in full", () => {
+    deliver([zone("a", "graveyard", { cause: "destroy", batch: 1 })], ["a"]);
+    const lone = Math.max(...runEnds());
+    expect(lone).toBeCloseTo(EFFECT_BASE_MS.destroy, 6);
+    cleanup();
+    document.body.innerHTML = "";
+    vi.mocked(run).mockClear();
+    // Four destroys from four sources at once: none is a wipe, but the
+    // table is busy, so each plays shorter.
+    deliver(
+      IDS.map((id, i) => zone(id, "graveyard", { cause: "destroy", batch: 20 + i })),
+      IDS,
+    );
+    expect(effects("destroy")).toHaveLength(4);
+    const busy = Math.max(...runEnds());
+    expect(busy).toBeCloseTo(EFFECT_BASE_MS.destroy * busyScale(4), 6);
+    expect(busy).toBeLessThan(lone);
+  });
+
+  it("an exile wipe swirls into one white void, and its cards are drawn into it", () => {
+    const wipe = IDS.slice(0, 4).map((id) =>
+      zone(id, "exile", { cause: "exile_effect", batch: 9, source: "farewell" }),
+    );
+    deliver(wipe, IDS);
+    const [w] = effects("board_wipe");
+    expect(w.getAttribute("data-tone")).toBe("cold");
+    expect(w.querySelector(".swirl path")).toBeTruthy();
+    expect(w.querySelector(".whitevoid")).toBeTruthy();
+    expect(w.querySelector(".core")).toBeTruthy();
+    const cards = effects("exile");
+    expect(cards).toHaveLength(4);
+    // Each card goes into the board's one void, not a void of its own.
+    for (const c of cards) expect(c.querySelector(".void")).toBeNull();
+    advance(EFFECT_CAP_MS + 200);
+    expect(effects()).toHaveLength(0);
   });
 });
 
