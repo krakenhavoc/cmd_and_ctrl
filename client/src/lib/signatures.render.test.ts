@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 //
-// ADR 0209 §4 (#4397), the rendered half of signatures: a named card's
-// scene replaces the generic cue for its batch once it has loaded, the
-// cards it took still show their own (lighter) cues, it loads the first
-// time the card appears, it is capped (2.5 s, Short 0.8 s), Off and reduced
-// motion keep the generic still cues, and a skip clears it. The rules are
-// pinned in fx/signatures.test.ts, the scenes in fx/scenes/kit.test.ts.
+// ADR 0209 §4 (#4397, #4416), the rendered half of signatures: a named
+// card's scene replaces the generic cue for its batch once it has loaded,
+// the cards it took still show their own (lighter) cues unless the scene
+// draws them itself, it loads the first time the card appears, it is
+// capped (its length, at most 3.5 s; Short 0.8 s), Off and reduced motion
+// keep the generic still cues, a skip clears it, and Toxic Deluge leaves
+// its survivors tinted until the turn ends. The rules are pinned in
+// fx/signatures.test.ts, the scenes in fx/scenes/kit.test.ts.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushSync } from "svelte";
@@ -29,8 +31,10 @@ import type { CardView, GameView, LogEvent } from "./protocol";
 import { resetSettings, updateSettings } from "./settings";
 import { dockTestView } from "./test/dockView";
 import { cleanup, render } from "./test/render.svelte";
-import { SignatureLoader, type SceneID } from "./fx/signatures";
+import { get } from "svelte/store";
+import { SCENES, SignatureLoader, type SceneID } from "./fx/signatures";
 import type { SceneContext, SceneModule } from "./fx/scenes/kit";
+import { clearTableTints, tableTints } from "./fx/tints";
 
 // ---- the table ----------------------------------------------------------
 
@@ -50,6 +54,7 @@ const IDS = ["a", "b", "c", "d"];
 const creatures = IDS.map((id) => card(id, `Ogre ${id}`));
 const ACT = card("act", "Blasphemous Act", { type_line: "Sorcery" });
 const TRIUMPH = card("bt", "Bitter Triumph", { type_line: "Instant" });
+const DELUGE = card("td", "Toxic Deluge", { type_line: "Sorcery" });
 const BOLAS = card("bolas", "Nicol Bolas, God-Pharaoh", {
   type_line: "Legendary Planeswalker — Bolas",
 });
@@ -61,8 +66,9 @@ interface Zones {
   hand?: CardView[];
 }
 
-function viewWith(log: LogEvent[], z: Zones): GameView {
+function viewWith(log: LogEvent[], z: Zones, turn = 3): GameView {
   const v = dockTestView({ log } as Partial<GameView>);
+  v.turn = { ...v.turn, number: turn };
   const zone = (kind: string, cards: CardView[]) =>
     ({ kind, count: cards.length, cards }) as unknown as GameView["battlefield"];
   v.battlefield = zone("battlefield", z.battlefield ?? []);
@@ -143,7 +149,9 @@ const sounds = () => vi.mocked(playSound).mock.calls.map((c) => c[0]);
 
 // A loader whose scenes resolve at once, recording what they are asked to draw.
 const played: { scene: SceneID; ctx: SceneContext }[] = [];
-function loader(ready: SceneID[] = ["blasphemous_act", "bitter_triumph", "nicol_bolas"]) {
+function loader(
+  ready: SceneID[] = ["blasphemous_act", "bitter_triumph", "nicol_bolas", "toxic_deluge"],
+) {
   const load = vi.fn(
     (scene: SceneID): Promise<SceneModule> =>
       Promise.resolve({ play: (ctx: SceneContext) => void played.push({ scene, ctx }) }),
@@ -197,6 +205,7 @@ beforeEach(() => {
   vi.setSystemTime(1_000_000);
   seq = 100;
   played.length = 0;
+  clearTableTints();
   resetSettings();
   updateSettings("animations", "enabled", true);
   updateSettings("animations", "effects", "full");
@@ -285,16 +294,17 @@ describe("a signature", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("is gone by its 2.5 s cap", async () => {
+  it("is gone by its own length, inside the cap", async () => {
     const { l } = loader();
     await deliver(l, { battlefield: creatures, stack: [ACT] }, wipe(), {
       battlefield: [creatures[3]],
       graveyard: [ACT],
     });
+    const len = SCENES.blasphemous_act.ms;
     expect(signature()).toBeTruthy();
-    advance(2300);
+    advance(len - 200);
     expect(signature()).toBeTruthy();
-    advance(2500 + 100 - 2300);
+    advance(300);
     expect(signature()).toBeNull();
   });
 
@@ -411,58 +421,105 @@ describe("a signature", () => {
   });
 });
 
+describe("Toxic Deluge", () => {
+  const deluge = () => [
+    entry("resolve", { card_id: "td", batch: 40 }),
+    died("a", "td", 40),
+    died("b", "td", 40),
+    died("c", "td", 40),
+  ];
+  const ring = card("ring", "Sol Ring", { type_line: "Artifact" });
+  const after = { battlefield: [creatures[3], ring], graveyard: [DELUGE] };
+
+  it("sinks the creatures it takes itself: their death cues do not play over it", async () => {
+    const { l } = loader();
+    await deliver(l, { battlefield: [...creatures, ring], stack: [DELUGE] }, deluge(), after);
+    expect(signature()?.dataset.signature).toBe("toxic_deluge");
+    expect(effects("dies")).toHaveLength(0);
+    expect(effects("board_wipe")).toHaveLength(0);
+    expect(played[0].ctx.cards.map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(sounds()).toContain("sig_toxic_deluge");
+  });
+
+  it("tints the creatures it left standing, not the rest, until the turn ends", async () => {
+    const { l } = loader();
+    const log = deluge();
+    const r = await deliver(l, { battlefield: [...creatures, ring], stack: [DELUGE] }, log, after);
+    expect(get(tableTints)).toEqual(new Map([["d", "deluge"]]));
+    // Still the same turn: it stays.
+    const later = [...log, entry("draw")];
+    r.setProps({ view: viewWith(later, after) } as never);
+    flushSync();
+    expect(get(tableTints).size).toBe(1);
+    // The next turn: gone.
+    r.setProps({ view: viewWith([...later, entry("draw")], after, 4) } as never);
+    flushSync();
+    expect(get(tableTints).size).toBe(0);
+  });
+
+  it.each([
+    ["Off", () => updateSettings("animations", "effects", "off")],
+    ["reduced motion", () => updateSettings("accessibility", "reduceMotion", true)],
+  ])("%s plays no scene but still leaves the tint", async (_name, set) => {
+    set();
+    const { l } = loader();
+    await deliver(l, { battlefield: [...creatures, ring], stack: [DELUGE] }, deluge(), after);
+    expect(signature()).toBeNull();
+    expect(get(tableTints)).toEqual(new Map([["d", "deluge"]]));
+  });
+
+  it("tints even before its scene has loaded", async () => {
+    const load = vi.fn(() => new Promise<SceneModule>(() => {}));
+    const l = new SignatureLoader({ load });
+    await deliver(l, { battlefield: [...creatures, ring], stack: [DELUGE] }, deluge(), after);
+    expect(signature()).toBeNull();
+    expect(get(tableTints)).toEqual(new Map([["d", "deluge"]]));
+  });
+});
+
 describe("Nicol Bolas", () => {
-  it("lands on the stack when cast, and not again when he resolves", async () => {
+  it("plays nothing when cast (#4416: only when he enters)", async () => {
     const { l } = loader();
     const board = makeBoard(IDS, ["bolas"]);
-    const r = await deliver(
+    await deliver(
       l,
       { battlefield: creatures, hand: [BOLAS] },
       [entry("cast", { card_id: "bolas", batch: 20 })],
       { battlefield: creatures, stack: [BOLAS] },
       board,
     );
-    expect(signature()?.dataset.signature).toBe("nicol_bolas");
-    expect(played[0].ctx.landing).toMatchObject({
-      id: "bolas",
-      x: 115,
-      y: 305,
-      src: "/bolas-stack.jpg",
-    });
-    expect(sounds()).toContain("sig_nicol_bolas");
-    advance(3000);
     expect(signature()).toBeNull();
+    expect(played).toHaveLength(0);
+    expect(sounds()).not.toContain("sig_nicol_bolas");
+  });
 
-    // He resolves: the generic arrival ring, no second swoop.
-    const tile = rectEl("data-instance-id", "bolas", {
-      left: 600,
-      top: 500,
-      width: 80,
-      height: 112,
-    });
-    board.appendChild(tile);
-    vi.mocked(playSound).mockClear();
-    r.setProps({
-      view: viewWith(
-        [
-          entry("cast", { card_id: "bolas", batch: 20 }),
-          entry("resolve", { card_id: "bolas", batch: 21 }),
-          entry("zone", {
-            card_id: "bolas",
-            old_zone: "stack",
-            new_zone: "battlefield",
-            batch: 21,
-          }),
-        ],
-        { battlefield: [...creatures, BOLAS] },
-      ),
-    } as never);
-    flushSync();
-    await settle();
-    expect(signature()).toBeNull();
+  it("resolving, he swoops and lands on his tile in place of the ring, aiming at a foe's seat", async () => {
+    const { l } = loader();
+    const board = makeBoard([...IDS, "bolas"], ["bolas"]);
+    board.appendChild(rectEl("data-seat-id", "opp", { left: 560, top: 20, width: 60, height: 60 }));
+    board.appendChild(rectEl("data-seat-id", "me", { left: 560, top: 720, width: 60, height: 60 }));
+    await deliver(
+      l,
+      { battlefield: creatures, stack: [BOLAS] },
+      [
+        entry("cast", { card_id: "bolas", batch: 20 }),
+        entry("resolve", { card_id: "bolas", batch: 21 }),
+        entry("zone", { card_id: "bolas", old_zone: "stack", new_zone: "battlefield", batch: 21 }),
+      ],
+      { battlefield: [...creatures, BOLAS] },
+      board,
+    );
+    expect(signature()?.dataset.signature).toBe("nicol_bolas");
+    expect(effects("pw_enter")).toHaveLength(0);
     expect(played).toHaveLength(1);
-    expect(effects("pw_enter")).toHaveLength(1);
-    expect(sounds()).toContain("pw_enter");
+    expect(played[0].ctx.landing).toMatchObject({ id: "bolas", x: 540, y: 356, src: "/bolas.jpg" });
+    // He is the opponent's: the viewer's seat is the foe.
+    expect(played[0].ctx.seats).toEqual([
+      { id: "opp", x: 590, y: 50, r: 30, foe: false },
+      { id: "me", x: 590, y: 750, r: 30, foe: true },
+    ]);
+    expect(sounds()).toContain("sig_nicol_bolas");
+    expect(sounds()).not.toContain("pw_enter");
   });
 
   it("entering uncast, he swoops and lands on his tile in place of the ring", async () => {

@@ -74,6 +74,7 @@
   import { manaRowNeedsPicker } from "../../manaSource";
   import { openManaSourcePicker } from "../../manaSourcePicker";
   import CounterPips from "./CounterPips.svelte";
+  import FxTint from "./FxTint.svelte";
   import StickerBadge from "./StickerBadge.svelte";
   import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
@@ -1022,6 +1023,8 @@
       fetchpriority={priority ? "high" : undefined}
       use:cardArt={imgSrc}
     />
+    <!-- ADR 0209 §4 (#4416): a signature's stain until end of turn. -->
+    <FxTint id={card.instance_id} />
     {#if artTile}
       <!-- #2209: the art crop has no title bar. Hidden from assistive
            tech because the card's own accessible name already is it. -->

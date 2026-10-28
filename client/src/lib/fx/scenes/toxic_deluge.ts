@@ -1,69 +1,36 @@
-// Toxic Deluge (ADR 0209 §4, #4397): poison wells up from the bottom of
-// the table like a tar pit, bubbling, rises over the creatures it takes,
-// and drains away.
+// Toxic Deluge (ADR 0209 §4, #4397, #4416): a near-black green sludge
+// wells up out of the ground all across the battlefield, the pools
+// spreading and running together until the board is a tar pit lapping
+// over the cards. The creatures it kills sink into it and are gone; the
+// pit bubbles and fumes, then drains back into the ground. The creatures
+// that survive keep a faint stain until the turn ends (fx/tints.ts, drawn
+// on their tiles, not here).
 //
-//   beat 1 (0-800 ms)     a green-black tar wells up along the bottom edge
-//   beat 2 (800-2400 ms)  it rises over the board; tar closes over each
-//                         creature (they go at 900); it drains
+//   beat 1 (0-800 ms)      the ground darkens; sludge wells up under each
+//                          creature it takes and from springs across the
+//                          board
+//   beat 2 (800-3400 ms)   the pools merge and cover the board; the dying
+//                          sink (gone by about 2 s); it bubbles; it drains
 //
+// The scene draws the cards' exits itself (SCENES.toxic_deluge.ownsCards):
+// each one sinks, so the generic death cue does not play over it.
 // Timings are SCENES.toxic_deluge's (fx/signatures.ts).
 
-import { fill, overlay, screenBox, type SceneContext } from "./kit";
+import { ooze, overlay, sink, type SceneContext } from "./kit";
 
-const TAR = {
-  surface: "rgba(96,140,34,0.92)",
-  top: "rgba(40,62,16,0.94)",
-  bottom: "rgba(8,12,4,0.97)",
-  bubble: "rgba(170,230,80,0.85)",
-};
 const MIASMA =
-  "linear-gradient(to top, rgba(90,140,20,0.3) 0%, rgba(50,80,10,0.18) 40%, rgba(20,30,0,0) 80%)";
+  "radial-gradient(ellipse at 50% 55%, rgba(16,34,12,0.16) 0%, rgba(8,18,6,0.3) 70%, rgba(4,10,4,0.45) 100%)";
 
 export function play(ctx: SceneContext): void {
-  const board = { x: 0, y: 0, w: ctx.board.w, h: ctx.board.h };
+  const cards = ctx.cards.slice(0, 16);
   if (ctx.short) {
     overlay(ctx, { background: MIASMA, start: 0, dur: 800, fade: 0.3 });
-    fill(ctx, {
-      box: board,
-      levels: [
-        { at: 0, level: 0 },
-        { at: 450, level: 0.26 },
-        { at: 800, level: 0 },
-      ],
-      ...TAR,
-      bubbles: 10,
-    });
+    ooze(ctx, { cards, start: 0, rise: 330, drain: 520, end: 800, cover: 0.32, bubbles: 10 });
+    cards.forEach((c, i) => sink(ctx, { card: c, start: 120 + i * 20, dur: 560 - i * 20 }));
     return;
   }
-  overlay(ctx, { background: MIASMA, start: 0, dur: 2400, fade: 0.2 });
-  fill(ctx, {
-    box: board,
-    levels: [
-      { at: 0, level: 0 },
-      { at: 800, level: 0.26 },
-      { at: 1500, level: 0.58 },
-      { at: 1850, level: 0.6 },
-      { at: 2400, level: 0 },
-    ],
-    ...TAR,
-    bubbles: 26,
-  });
-  // The pit takes each creature: tar closes over its card.
-  ctx.cards.slice(0, 12).forEach((c, i) => {
-    const b = screenBox(c);
-    const pad = 6;
-    const at = 650 + i * 40;
-    fill(ctx, {
-      box: { x: c.x - b.w / 2 - pad, y: c.y - b.h / 2 - pad, w: b.w + pad * 2, h: b.h + pad * 2 },
-      levels: [
-        { at, level: 0 },
-        { at: at + 450, level: 1.05 },
-        { at: 1900, level: 1.05 },
-        { at: 2350, level: 0 },
-      ],
-      ...TAR,
-      bubbles: 3,
-      seed: `${ctx.seed}:${c.id}`,
-    });
-  });
+  overlay(ctx, { background: MIASMA, start: 0, dur: 3400, fade: 0.16 });
+  ooze(ctx, { cards, start: 60, rise: 1250, drain: 2450, end: 3350, cover: 0.5, bubbles: 34 });
+  // Each card it takes sinks into the pool that wells up under it.
+  cards.forEach((c, i) => sink(ctx, { card: c, start: 480 + i * 70, dur: 1300 }));
 }

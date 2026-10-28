@@ -7,10 +7,14 @@
 //            left the battlefield with the spell as their `source` (a
 //            board wipe's sweep is replaced; each card's own cue still
 //            plays, lighter, once the scene hands over).
-//   arrive   the card was cast, or entered the battlefield without having
-//            been cast (reanimated, flickered, put onto it). One scene per
-//            arrival: a card whose cast played it does not play it again
-//            when it resolves. It replaces the planeswalker's arrival cue.
+//   enter    the card entered the battlefield, whether its spell resolved
+//            or it was put there (reanimated, flickered). Casting it plays
+//            nothing (#4416: Ian kept only the entering version). It
+//            replaces the planeswalker's arrival cue.
+//
+// A resolve scene may draw its cards' exits itself (ownsCards: Toxic
+// Deluge sinks them), and may mark the creatures that survived its batch
+// with a tint until the turn ends (tint: fx/tints.ts).
 //
 // This file is the eager half: which oracle_id has which scene, how long
 // each scene is, and every rule (identification, caps, Short, still,
@@ -41,6 +45,7 @@ import {
   type EffectPlan,
 } from "../tableEffects";
 import type { SceneModule } from "./scenes/kit";
+import type { TintKind } from "./tints";
 
 // ---- The catalog ----
 
@@ -83,7 +88,7 @@ export const SIGNATURES: Readonly<Record<string, SignatureDef>> = {
   },
 };
 
-export type SignatureTrigger = "resolve" | "arrive";
+export type SignatureTrigger = "resolve" | "enter";
 
 export interface SceneSpec {
   trigger: SignatureTrigger;
@@ -97,6 +102,17 @@ export interface SceneSpec {
   cardsAtMs: number;
   /** A resolve scene with nothing to draw on when its batch took no card (a spear needs a target). */
   needsCards: boolean;
+  /**
+   * A resolve scene that draws its cards' exits itself (Toxic Deluge sinks
+   * them): with motion, their generic cues are left out. Still keeps them.
+   */
+  ownsCards?: boolean;
+  /**
+   * A resolve scene whose survivors keep a tint until the turn ends (the
+   * creatures on the battlefield that its batch did not take). Drawn in
+   * every motion mode: it is a static mark, not motion.
+   */
+  tint?: TintKind;
   /** The scene's code, imported on demand. */
   load: () => Promise<SceneModule>;
 }
@@ -105,34 +121,36 @@ export const SCENES: Readonly<Record<SceneID, SceneSpec>> = {
   blasphemous_act: {
     trigger: "resolve",
     sound: "sig_blasphemous_act",
-    ms: 2400,
+    ms: 3200,
     firstBeatMs: 800,
-    cardsAtMs: 650,
+    cardsAtMs: 850,
     needsCards: false,
     load: () => import("./scenes/blasphemous_act"),
   },
   toxic_deluge: {
     trigger: "resolve",
     sound: "sig_toxic_deluge",
-    ms: 2400,
+    ms: 3400,
     firstBeatMs: 800,
-    cardsAtMs: 900,
+    cardsAtMs: 0,
     needsCards: false,
+    ownsCards: true,
+    tint: "deluge",
     load: () => import("./scenes/toxic_deluge"),
   },
   bitter_triumph: {
     trigger: "resolve",
     sound: "sig_bitter_triumph",
-    ms: 1500,
-    firstBeatMs: 650,
-    cardsAtMs: 550,
+    ms: 1900,
+    firstBeatMs: 700,
+    cardsAtMs: 650,
     needsCards: true,
     load: () => import("./scenes/bitter_triumph"),
   },
   nicol_bolas: {
-    trigger: "arrive",
+    trigger: "enter",
     sound: "sig_nicol_bolas",
-    ms: 2450,
+    ms: 3300,
     firstBeatMs: 800,
     cardsAtMs: 0,
     needsCards: false,
@@ -179,8 +197,12 @@ export function sceneForCard(card: {
 
 // ---- Caps ----
 
-/** The longest a signature plays, before animations.speed (ADR 0209 §1). */
-export const SIGNATURE_CAP_MS = 2500;
+/**
+ * The longest a signature plays, before animations.speed: ADR 0209 §1's
+ * 2.5 s, raised to 3.5 s by its #4416 amendment (Ian asked for every
+ * effect to run about 1.25-1.5 times as long, so it can be seen).
+ */
+export const SIGNATURE_CAP_MS = 3500;
 /** The longest Short plays: the first beat only. */
 export const SIGNATURE_SHORT_CAP_MS = EFFECT_SHORT_CAP_MS;
 
@@ -235,26 +257,21 @@ export interface SignatureCue {
   id: string;
   seq: number;
   scene: SceneID;
-  /** The card behind it: the spell that resolved, or the card that arrived. */
+  /** The card behind it: the spell that resolved, or the card that entered. */
   cardID: string;
   /** The batch its sound is capped on. */
   batch: number | null;
-  /** Where an arrival lands: on the stack (a cast) or on the battlefield. */
-  lands: "stack" | "battlefield" | null;
+  /** Where an entering card lands (its tile), or null for a resolve scene. */
+  lands: "battlefield" | null;
   /** The permanents its batch took, in log order (resolve). */
   took: string[];
-  /** The planeswalker arrival cue it replaces (arrive), by cue id. */
+  /** The planeswalker arrival cue it replaces (enter), by cue id. */
   replacesCue: string | null;
 }
 
 export interface SignatureContext {
   /** The scene the card with this instance ID has, or null. */
   sceneOf(cardID: string): SceneID | null;
-  /**
-   * Whether this card's arrival scene played on its cast, and it has not
-   * entered the battlefield since (the caller forgets it once it does).
-   */
-  arrived(cardID: string): boolean;
 }
 
 function isExit(e: LogEvent): boolean {
@@ -268,12 +285,6 @@ function isExit(e: LogEvent): boolean {
  */
 export function planSignatures(fresh: readonly LogEvent[], ctx: SignatureContext): SignatureCue[] {
   const out: SignatureCue[] = [];
-  const entering = new Set<string>();
-  for (const e of fresh) {
-    if (e.kind === "zone" && e.new_zone === "battlefield" && e.old_zone !== "battlefield") {
-      if (e.card_id) entering.add(e.card_id);
-    }
-  }
   for (const e of fresh) {
     const id = e.card_id;
     if (!id) continue;
@@ -301,33 +312,22 @@ export function planSignatures(fresh: readonly LogEvent[], ctx: SignatureContext
       });
       continue;
     }
-    // arrive
-    if (e.kind === "cast") {
-      // Cast and resolved in one frame: it lands once, on the battlefield.
-      if (entering.has(id)) continue;
-      out.push(arrival(e, scene, "stack"));
-      continue;
-    }
+    // enter: the card arrived on the battlefield, from the stack or not.
+    // Its cast is not an arrival.
     if (e.kind === "zone" && e.new_zone === "battlefield" && e.old_zone !== "battlefield") {
-      // A permanent spell whose cast already played the scene.
-      if (e.old_zone === "stack" && ctx.arrived(id)) continue;
-      out.push(arrival(e, scene, "battlefield"));
+      out.push({
+        id: `sig-${e.seq}`,
+        seq: e.seq,
+        scene,
+        cardID: id,
+        batch: e.batch ?? null,
+        lands: "battlefield",
+        took: [],
+        replacesCue: String(e.seq),
+      });
     }
   }
   return out;
-}
-
-function arrival(e: LogEvent, scene: SceneID, lands: "stack" | "battlefield"): SignatureCue {
-  return {
-    id: `sig-${e.seq}`,
-    seq: e.seq,
-    scene,
-    cardID: e.card_id ?? "",
-    batch: e.batch ?? null,
-    lands,
-    took: [],
-    replacesCue: lands === "battlefield" ? String(e.seq) : null,
-  };
 }
 
 export interface SignaturePlan {
@@ -351,7 +351,8 @@ export interface SignaturePlan {
  * board wipe's, the planeswalker's arrival), in every motion mode. With
  * motion, it also replaces the batch's generic picture (the sweep, the
  * arrival ring), and the cards its batch took keep their own cue, lighter,
- * staggered from the moment the scene hands over. Still (Off, reduced
+ * staggered from the moment the scene hands over, unless the scene draws
+ * their exits itself (ownsCards), when theirs are left out. Still (Off, reduced
  * motion) leaves the generic still cues as they are. A signature whose
  * scene has not loaded yet changes nothing: the generic cues play.
  */
@@ -390,7 +391,9 @@ export function withSignatures(
         if (c.cardID !== cardID || c.kind === "counter" || c.kind === "pw_enter") continue;
         // One card is one sound: the signature's own speaks for it.
         if (n === 1) silencedCues.add(c.id);
-        if (motion !== "still") retimed.set(c.id, { delayMs: spec.cardsAtMs + i * stagger });
+        if (motion === "still") continue;
+        if (spec.ownsCards) dropped.add(c.id);
+        else retimed.set(c.id, { delayMs: spec.cardsAtMs + i * stagger });
       }
     });
   }

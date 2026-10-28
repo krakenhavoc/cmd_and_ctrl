@@ -1,4 +1,4 @@
-// ADR 0209 §4 (#4397): the signature rules. Which card has which scene
+// ADR 0209 §4 (#4397, #4416): the signature rules. Which card has which scene
 // (held to the server's catalog, so an oracle_id is never guessed), the
 // caps and Short, what a signature takes from the generic plan, and the
 // lazy loader. The rendered half is in signatures.render.test.ts; the
@@ -115,7 +115,8 @@ describe("the signature catalog", () => {
 describe("the caps", () => {
   const long = { ms: 4000, firstBeatMs: 1600 };
 
-  it("Full plays the whole scene, cut to 2.5 s", () => {
+  it("Full plays the whole scene, cut to 3.5 s (the #4416 amendment)", () => {
+    expect(SIGNATURE_CAP_MS).toBe(3500);
     expect(signatureTiming({ ms: 2000, firstBeatMs: 600 }, "full", 1)).toEqual({ ms: 2000, k: 1 });
     const t = signatureTiming(long, "full", 1)!;
     expect(t.ms).toBe(SIGNATURE_CAP_MS);
@@ -180,9 +181,8 @@ const scenes: Record<string, SceneID> = {
   triumph: "bitter_triumph",
   bolas: "nicol_bolas",
 };
-const ctx = (arrived: string[] = []) => ({
+const ctx = () => ({
   sceneOf: (id: string) => scenes[id] ?? null,
-  arrived: (id: string) => arrived.includes(id),
 });
 
 describe("planSignatures", () => {
@@ -221,24 +221,22 @@ describe("planSignatures", () => {
     expect(planSignatures([entry("resolve", { card_id: "act" })], ctx())).toHaveLength(1);
   });
 
-  it("an arrival lands on the stack when cast, on the battlefield when it enters uncast", () => {
-    const [cast] = planSignatures([entry("cast", { card_id: "bolas" })], ctx());
-    expect(cast).toMatchObject({ lands: "stack", replacesCue: null });
-    const enter = entry("zone", {
-      card_id: "bolas",
-      old_zone: "graveyard",
-      new_zone: "battlefield",
-    });
-    const [up] = planSignatures([enter], ctx());
-    expect(up).toMatchObject({ lands: "battlefield", replacesCue: String(enter.seq) });
+  it("casting an enter scene's card plays nothing (#4416: only the entering version)", () => {
+    expect(planSignatures([entry("cast", { card_id: "bolas" })], ctx())).toEqual([]);
   });
 
-  it("one scene per arrival: not again when the cast spell resolves", () => {
-    const resolve = entry("zone", { card_id: "bolas", old_zone: "stack", new_zone: "battlefield" });
-    expect(planSignatures([resolve], ctx(["bolas"]))).toEqual([]);
-    // Never cast (or its cast was before this client joined): it plays now.
-    expect(planSignatures([resolve], ctx())).toHaveLength(1);
-    // Cast and resolved in one frame: it lands once, on the battlefield.
+  it("an enter scene plays when the card enters the battlefield, cast or not", () => {
+    for (const from of ["stack", "graveyard", "exile", "hand"]) {
+      const enter = entry("zone", { card_id: "bolas", old_zone: from, new_zone: "battlefield" });
+      const [up, ...rest] = planSignatures([enter], ctx());
+      expect(rest).toEqual([]);
+      expect(up).toMatchObject({
+        scene: "nicol_bolas",
+        lands: "battlefield",
+        replacesCue: String(enter.seq),
+      });
+    }
+    // Cast and resolved in one frame: once, on the battlefield.
     const both = planSignatures(
       [
         entry("cast", { card_id: "bolas" }),
@@ -247,6 +245,13 @@ describe("planSignatures", () => {
       ctx(),
     );
     expect(both.map((s) => s.lands)).toEqual(["battlefield"]);
+    // Moving about the battlefield is not entering it.
+    expect(
+      planSignatures(
+        [entry("zone", { card_id: "bolas", old_zone: "battlefield", new_zone: "battlefield" })],
+        ctx(),
+      ),
+    ).toEqual([]);
   });
 
   it("a card with no signature, or an entry with no card, is no signature", () => {
@@ -305,6 +310,29 @@ describe("withSignatures", () => {
     expect(sp.plan).toBe(plan);
     expect(sp.inScene.size).toBe(0);
     expect(sp.silencedWipes).toEqual(new Set([7]));
+  });
+
+  it("a scene that draws its cards' exits (Toxic Deluge) leaves their cues out, with motion", () => {
+    expect(SCENES.toxic_deluge.ownsCards).toBe(true);
+    const deluge = planSignatures(
+      [entry("resolve", { card_id: "deluge", batch: 7 }), dies("a", "deluge"), dies("b", "deluge")],
+      ctx(),
+    );
+    const plan2: EffectPlan = { ...plan, wipes: [{ ...plan.wipes[0], source: "deluge" }] };
+    const sp = withSignatures(plan2, deluge, () => true, "full");
+    expect(sp.plan.cues.map((c) => c.id)).toEqual(["9"]);
+    expect(sp.plan.wipes).toEqual([]);
+    expect(sp.inScene.size).toBe(0);
+    // Still keeps every still cue: the badge says what happened.
+    const still = withSignatures(plan2, deluge, () => true, "still");
+    expect(still.plan.cues.map((c) => c.id)).toEqual(["2", "3", "9"]);
+  });
+
+  it("only Toxic Deluge leaves a tint on what it did not kill", () => {
+    const tinted = Object.entries(SCENES)
+      .filter(([, spec]) => spec.tint)
+      .map(([id, spec]) => [id, spec.tint]);
+    expect(tinted).toEqual([["toxic_deluge", "deluge"]]);
   });
 
   it("a one-card batch is one sound: the signature's", () => {
