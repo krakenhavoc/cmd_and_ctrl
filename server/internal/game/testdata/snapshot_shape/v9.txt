@@ -433,6 +433,13 @@ continuations.turnScopedReplacements	number:int
 continuations.turnScopedStatics	number:int
 continuations.unpersistableRng	bool
 createdAt	custom(time.Time)
+damageInstanceLives	array
+damageInstanceLives[]	object
+damageInstanceLives[].instance	number:uint64
+damageInstanceLives[].lives	array
+damageInstanceLives[].lives[]	object
+damageInstanceLives[].lives[].life	number:int
+damageInstanceLives[].lives[].player	custom(uuid.UUID)
 dayNight	object
 dayNight.designation	string
 dayNight.prevTurnAllKnown	bool

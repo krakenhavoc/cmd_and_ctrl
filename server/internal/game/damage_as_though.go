@@ -128,7 +128,8 @@ func (g *Game) damageResultAsThoughLocked(ev *ReplacementEvent, t *damageTail) D
 // kept. An instance's events all land while it is among the newest few:
 // a combat damage step has no explicit end, and a paused event resumes
 // before anything else can deal damage. A record that has aged out reads
-// the live total, which is what a restored game does too.
+// the live total. The records are written to the snapshot (#4389), so a
+// restore keeps them.
 const maxDamageInstanceLives = 16
 
 // damageInstanceLife is every seat's life total as a damage instance
@@ -167,8 +168,8 @@ func (g *Game) recordDamageInstanceLifeLocked(inst DamageInstance) {
 
 // atOrBelowZeroLifeAsInstanceBeganLocked reports whether `player` had 0
 // or less life as `inst` began, or has now when the instance is zero or
-// its record is gone (a restored game: the record is transient, like the
-// stamp it is keyed on). A player who is not seated has no life total and
+// its record has aged out (a game restored from a file written before
+// #4389 carries none). A player who is not seated has no life total and
 // answers false.
 //
 // Caller must hold g.mu.
@@ -189,4 +190,61 @@ func (g *Game) atOrBelowZeroLifeAsInstanceBeganLocked(inst DamageInstance, playe
 	}
 	p := g.playerByIDLocked(player)
 	return p != nil && p.Life <= 0
+}
+
+// damageInstanceLifeSnapshot is a damageInstanceLife on disk (#4389).
+// A restored event can still name its instance (a keyed damage frame, a
+// follow-up park, a held division), so the life totals that instance
+// began with are carried too: without them a paused instance's later
+// events would read the live total instead.
+type damageInstanceLifeSnapshot struct {
+	Instance DamageInstance     `json:"instance"`
+	Lives    []seatLifeSnapshot `json:"lives,omitempty"`
+}
+
+// seatLifeSnapshot is a seatLife on disk.
+type seatLifeSnapshot struct {
+	Player uuid.UUID `json:"player"`
+	Life   int       `json:"life"`
+}
+
+// snapshotDamageInstanceLives writes Game.damageInstanceLives.
+func snapshotDamageInstanceLives(in []damageInstanceLife) []damageInstanceLifeSnapshot {
+	var out []damageInstanceLifeSnapshot
+	for _, rec := range in {
+		s := damageInstanceLifeSnapshot{Instance: rec.inst}
+		for _, sl := range rec.lives {
+			s.Lives = append(s.Lives, seatLifeSnapshot{Player: sl.player, Life: sl.life})
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// restoreDamageInstanceLives is snapshotDamageInstanceLives' inverse. It
+// keeps at most the newest maxDamageInstanceLives records, as recording
+// does.
+func restoreDamageInstanceLives(in []damageInstanceLifeSnapshot) []damageInstanceLife {
+	if len(in) > maxDamageInstanceLives {
+		in = in[len(in)-maxDamageInstanceLives:]
+	}
+	var out []damageInstanceLife
+	for _, s := range in {
+		rec := damageInstanceLife{inst: s.Instance, lives: make([]seatLife, 0, len(s.Lives))}
+		for _, sl := range s.Lives {
+			rec.lives = append(rec.lives, seatLife{player: sl.Player, life: sl.Life})
+		}
+		out = append(out, rec)
+	}
+	return out
+}
+
+// maxRecordedLifeInstance is the largest instance a restored life record
+// names.
+func maxRecordedLifeInstance(in []damageInstanceLife) uint64 {
+	var n uint64
+	for _, rec := range in {
+		n = max(n, uint64(rec.inst))
+	}
+	return n
 }

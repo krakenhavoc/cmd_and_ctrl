@@ -109,6 +109,15 @@ type RevealedPick struct {
 	// exactly once, from wherever it finishes (inline, or from the Then
 	// of something it paused on). For every other continuation it is
 	// nil, because the cards have already moved.
+	//
+	// #4389: Done is never parked across a snapshot. A RevealedPick is a
+	// value handed to the continuation by settleRevealedPickLocked and
+	// stored on nothing the Game reaches (a field holding one would be a
+	// new closure route, which the ratchet in closure_fields.txt
+	// refuses), so Done lives only for that call. A continuation that finishes after a pause hands on
+	// DoneTail instead: the only RegisterRevealedPickFirst continuation,
+	// Talara's Bane's (cards/effects/talaras_bane.go), calls Done inline
+	// and passes DoneTail to the keyed life change it may pause on.
 	Done func(g *Game) error
 	// DoneTail is Done as data (#4253 slice 10b): a registered tail that
 	// moves the chosen cards, for a continuation that finishes from the
@@ -193,7 +202,9 @@ func RegisterRevealedPickThen(key string, fn RevealedPickFunc) RevealedPickThen 
 // RegisterRevealedPickFirst registers a continuation printed BEFORE the
 // move: Talara's Bane's "You gain life equal to that creature card's
 // toughness, then that player discards that card" (CR 608.2c). It is
-// handed RevealedPick.Done and must call it exactly once.
+// handed RevealedPick.Done and must call it exactly once. One that
+// pauses before the move hands on RevealedPick.DoneTail instead, and
+// never keeps Done past its own call (#4389).
 func RegisterRevealedPickFirst(key string, fn RevealedPickFunc) RevealedPickThen {
 	return registerRevealedPick(key, fn, true)
 }
