@@ -51,7 +51,7 @@
   import { showsCardBack } from "../../cardBack";
   import { isCreature, isPlaneswalker } from "../../cardTypes";
   import { crumble } from "../../animations";
-  import { EASE, cancelAnimations, run, settled } from "../../motion";
+  import { cancelAnimations, settled } from "../../motion";
   import { play } from "../../sounds";
   import { emptyBeatTracker, track } from "../../combatBeats";
   import {
@@ -62,22 +62,31 @@
     type CachedTile,
   } from "../../combatStrikes";
   import {
+    BusyClock,
     EFFECT_CUE_CAP,
+    SACRIFICE_KNIFE_SOUND,
     counterBurst,
     cueSound,
     cueTiming,
     effectLate,
     effectMotion,
     effectsScheduled,
+    headlines,
     planEffects,
-    slashGeometry,
+    sacrificeBeats,
+    shatterPlan,
     soundBatch,
+    spiralPath,
+    swirlArms,
+    voidMotes,
+    windCuts,
     wipeTiming,
     type EffectCue,
     type EffectKind,
     type EffectMotion,
     type WipeTone,
   } from "../../tableEffects";
+  import { cueMotion } from "../../effectCueMotion";
   import { L } from "../../labels";
   import {
     SCENES,
@@ -133,6 +142,10 @@
     seed: string;
     count: number;
     badge: string;
+    // An exile that was a destruction (it crumbles a little as it goes),
+    // and an exile drawn into a board wipe's vortex (its spiral path).
+    fromDestroy?: boolean;
+    pull?: { x: number; y: number }[] | null;
     // A signature: its scene, the cards its batch took, where it lands,
     // and the factor from the scene's ms to real ms.
     scene?: SceneID;
@@ -156,6 +169,8 @@
 
   let tracker = emptyBeatTracker();
   let reprimeNext = false;
+  // How many cues started lately: a busy table plays them shorter (#4416).
+  const busy = new BusyClock();
 
   // Every card this player can see, by instance ID, as of this frame and
   // the one before (a spell that resolved into a hidden zone, a permanent
@@ -330,6 +345,7 @@
     for (const t of timers) clearTimeout(t);
     timers.clear();
     fx = [];
+    busy.reset();
   }
 
   const blank = {
@@ -352,6 +368,7 @@
     motion: EffectMotion,
     t: { delayMs: number; ms: number },
     b: { rect: DOMRect; size: { w: number; h: number } },
+    vortex = false,
   ): void {
     const base = {
       ...blank,
@@ -363,6 +380,7 @@
       board: b.size,
       seed: cue.id,
       cardID: cue.cardID ?? "",
+      fromDestroy: cue.fromDestroy === true,
     };
     if (cue.kind === "counter") {
       // The stack linger's badge says "Countered"; only the motion is ours.
@@ -388,7 +406,7 @@
       });
       return;
     }
-    place(cue, base, motion, b);
+    place(cue, base, motion, b, vortex);
   }
 
   // place measures the card behind a cue and mounts it, when it can be found.
@@ -397,6 +415,7 @@
     base: Omit<Fx, "key">,
     motion: EffectMotion,
     b: { rect: DOMRect; size: { w: number; h: number } },
+    vortex = false,
   ): void {
     const cardID = cue.cardID ?? "";
     const where = cardTile(cardID, b, cue.kind === "pw_enter");
@@ -424,6 +443,9 @@
       } else {
         f.fly = { x: 0, y: -Math.max(40, where.height * 0.6) };
       }
+    }
+    if (vortex && motion !== "still") {
+      f.pull = spiralPath({ x: where.box.x, y: where.box.y }, { x: b.size.w / 2, y: b.size.h / 2 });
     }
     add(f);
   }
@@ -483,7 +505,9 @@
     if (plan.cues.length === 0 && plan.wipes.length === 0 && sp.sigs.length === 0) return;
 
     const at = Date.now();
-    const speed = s.animations.speed;
+    // animations.speed, compressed on a busy table: many cues close
+    // together each play shorter (tableEffects.ts busyScale).
+    const speed = s.animations.speed * busy.frame(headlines(plan, sp.sigs.length), at);
     const gameID = view.id;
     // Sounds always play (a hidden tab included); motion only when the
     // page is showing and the board can be measured.
@@ -507,10 +531,12 @@
 
     for (const sig of sp.sigs) sound(SCENES[sig.scene].sound, 0, 1, sig.batch);
 
+    // An exile wipe's cards are drawn into one vortex at the board's centre.
+    const vortexBatches = new Set(plan.wipes.filter((w) => w.tone === "cold").map((w) => w.batch));
     for (const w of plan.wipes) {
       if (!sp.silencedWipes.has(w.batch)) sound("board_wipe", 0, 1, w.batch);
       if (!b) continue;
-      const t = wipeTiming(motion, speed);
+      const t = wipeTiming(motion, speed, w.tone);
       add({
         ...blank,
         kind: "wipe",
@@ -532,12 +558,26 @@
         (sp.inScene.has(cue.id) ? signatureCueTiming(cue, motion, speed) : null) ??
         cueTiming(cue, motion, speed);
       const snd = cueSound(cue);
-      if (snd && !sp.silencedCues.has(cue.id)) sound(snd.name, t.delayMs, snd.volume, cue.batch);
+      if (snd && !sp.silencedCues.has(cue.id)) {
+        sound(snd.name, t.delayMs, snd.volume, cue.batch);
+        // A sacrifice's knife has a sound of its own, as it lands.
+        if (cue.kind === "sacrifice") {
+          const knife =
+            motion === "still" ? 0 : t.delayMs + sacrificeBeats(cue.weight === "light").stab * t.ms;
+          sound(SACRIFICE_KNIFE_SOUND, knife, snd.volume, cue.batch);
+        }
+      }
       if (!b) continue;
       // A wipe says it once (its badge); its cards add nothing still.
       if (motion === "still" && cue.weight === "light") continue;
       if (++drawn > EFFECT_CUE_CAP) continue;
-      drawCue(cue, motion, t, b);
+      const vortex =
+        cue.kind === "exile" &&
+        cue.weight === "light" &&
+        cue.batch !== null &&
+        vortexBatches.has(cue.batch) &&
+        !sp.inScene.has(cue.id);
+      drawCue(cue, motion, t, b, vortex);
     }
 
     // Drawn last, so a scene is over the cards it takes.
@@ -726,324 +766,23 @@
     for (const el of node.querySelectorAll("*")) cancelAnimations(el);
   }
 
-  function timing(f: Fx, easing: string = EASE.power2Out): Parameters<typeof run>[2] {
-    // fill both: a wipe's per-card copy holds its first frame until its
-    // turn, and a finished cue stays gone until its owner removes it.
-    return { duration: f.ms, delay: f.delay, easing, fill: "both" };
-  }
-
-  // One cue's motion, started when it mounts. Its removal is on a timer
-  // (add), so the tween is presentation only. A still cue starts none.
+  // One cue's motion, started when it mounts (lib/effectCueMotion.ts).
+  // Its removal is on a timer (add), so the tween is presentation only.
+  // A still cue starts none.
   function motionOf(node: HTMLElement, f: Fx) {
     if (f.motion === "still") return {};
-    const copy = node.querySelector<HTMLElement>(".copy");
-    const face = node.querySelector<HTMLElement>(".face");
-    const q = (sel: string) => node.querySelector<HTMLElement>(sel);
-    switch (f.kind) {
-      case "destroy": {
-        if (copy) {
-          run(
-            copy,
-            [
-              { offset: 0, translate: "0px 0px", scale: "1", opacity: 1 },
-              { offset: 0.3, translate: "0px 0px", scale: "1", opacity: 1 },
-              { offset: 0.45, translate: "0px 2px", scale: "1", opacity: 1 },
-              { offset: 1, translate: "0px 12px", scale: "0.96", opacity: 0 },
-            ],
-            timing(f),
-          );
-        }
-        if (face) {
-          run(
-            face,
-            [
-              { offset: 0, filter: "brightness(1)" },
-              { offset: 0.28, filter: "brightness(1.7)" },
-              { offset: 0.42, filter: "brightness(0.3) saturate(0.3)" },
-              { offset: 1, filter: "brightness(0.2) saturate(0.2)" },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        const bar = q(".slash .bar");
-        if (bar) {
-          run(
-            bar,
-            [
-              { offset: 0, scale: "0 1", opacity: 1 },
-              { offset: 0.28, scale: "1 1", opacity: 1 },
-              { offset: 0.6, scale: "1 1", opacity: 1 },
-              { offset: 1, scale: "1 1", opacity: 0 },
-            ],
-            timing(f, EASE.power2In),
-          );
-        }
-        break;
+    if (f.kind === "dies") {
+      // The existing crumble (ADR 0134), gated by animations.effects.
+      const face = node.querySelector<HTMLElement>(".face");
+      if (face) {
+        void crumble(face, crumbleShards(f.cardID || f.seed, f.width, f.height, f.rot), {
+          gate: "effects",
+          ms: f.ms,
+          delay: f.delay,
+        });
       }
-      case "exile": {
-        if (copy) {
-          run(
-            copy,
-            [
-              { offset: 0, scale: "1", rotate: "0deg", translate: "0px 0px", opacity: 1 },
-              { offset: 0.25, scale: "1.04", rotate: "-2deg", translate: "0px 0px", opacity: 1 },
-              { offset: 1, scale: "0.04", rotate: "-50deg", translate: "0px -6px", opacity: 0 },
-            ],
-            timing(f, EASE.power2In),
-          );
-        }
-        if (face) {
-          run(
-            face,
-            [
-              { offset: 0, filter: "grayscale(0) brightness(1)" },
-              { offset: 0.3, filter: "grayscale(0.8) brightness(1.5) hue-rotate(160deg)" },
-              { offset: 1, filter: "grayscale(1) brightness(2.4) hue-rotate(180deg)" },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        const portal = q(".portal");
-        if (portal) {
-          run(
-            portal,
-            [
-              { offset: 0, scale: "0.1", opacity: 0 },
-              { offset: 0.3, scale: "0.9", opacity: 1 },
-              { offset: 0.7, scale: "1.15", opacity: 0.7 },
-              { offset: 1, scale: "0.3", opacity: 0 },
-            ],
-            timing(f, EASE.sineInOut),
-          );
-        }
-        break;
-      }
-      case "sacrifice": {
-        if (copy) {
-          run(
-            copy,
-            [
-              { offset: 0, translate: "0px 0px", scale: "1 1", opacity: 1 },
-              { offset: 0.15, translate: "0px -4px", scale: "1.03 1.03", opacity: 1 },
-              { offset: 1, translate: "0px 30px", scale: "0.9 0.5", opacity: 0 },
-            ],
-            timing(f, EASE.power2In),
-          );
-        }
-        if (face) {
-          run(
-            face,
-            [
-              { offset: 0, filter: "brightness(1)" },
-              { offset: 1, filter: "brightness(0.25) saturate(1.6) hue-rotate(-25deg)" },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        const well = q(".well");
-        if (well) {
-          run(
-            well,
-            [
-              { offset: 0, scale: "0.2", opacity: 0 },
-              { offset: 0.4, scale: "1", opacity: 0.75 },
-              { offset: 1, scale: "1.1", opacity: 0 },
-            ],
-            timing(f, EASE.sineInOut),
-          );
-        }
-        break;
-      }
-      case "bounce": {
-        if (copy) {
-          run(
-            copy,
-            [
-              { offset: 0, translate: "0px 0px", scale: "1", opacity: 1, easing: EASE.power2Out },
-              {
-                offset: 0.25,
-                translate: "0px -12px",
-                scale: "1.07",
-                opacity: 1,
-                easing: EASE.power2InOut,
-              },
-              { offset: 1, translate: `${f.fly.x}px ${f.fly.y}px`, scale: "0.3", opacity: 0 },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        if (face) {
-          run(
-            face,
-            [
-              { offset: 0, filter: "brightness(1)" },
-              { offset: 0.25, filter: "brightness(1.3)" },
-              { offset: 1, filter: "brightness(1.1)" },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        break;
-      }
-      case "dies": {
-        // The existing crumble (ADR 0134), gated by animations.effects.
-        if (face) {
-          void crumble(face, crumbleShards(f.cardID || f.seed, f.width, f.height, f.rot), {
-            gate: "effects",
-            ms: f.ms,
-          });
-        }
-        break;
-      }
-      case "pw_leave": {
-        if (copy) {
-          run(
-            copy,
-            [
-              { offset: 0, translate: "0px 0px", scale: "1", opacity: 1 },
-              { offset: 0.2, translate: "-3px 0px", scale: "1", opacity: 1 },
-              { offset: 0.3, translate: "3px 0px", scale: "1", opacity: 1 },
-              { offset: 0.4, translate: "-2px 0px", scale: "1", opacity: 1 },
-              { offset: 0.5, translate: "0px 0px", scale: "1", opacity: 1 },
-              { offset: 1, translate: "0px 6px", scale: "1.06", opacity: 0 },
-            ],
-            timing(f, EASE.power2In),
-          );
-        }
-        if (face) {
-          run(
-            face,
-            [
-              { offset: 0, filter: "brightness(1)" },
-              { offset: 0.3, filter: "brightness(2)" },
-              { offset: 0.5, filter: "brightness(1.2)" },
-              { offset: 1, filter: "brightness(0.5)" },
-            ],
-            timing(f, EASE.linear),
-          );
-        }
-        const crack = q(".crack");
-        if (crack) {
-          run(
-            crack,
-            [{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }],
-            timing(f, EASE.linear),
-          );
-          for (const p of crack.querySelectorAll("path")) {
-            run(
-              p,
-              [
-                { strokeDashoffset: 1 },
-                { strokeDashoffset: 0, offset: 0.3 },
-                { strokeDashoffset: 0 },
-              ],
-              timing(f, EASE.power2Out),
-            );
-          }
-        }
-        break;
-      }
-      case "pw_enter": {
-        const ring = q(".ring");
-        if (ring) {
-          run(
-            ring,
-            [
-              { offset: 0, scale: "0.85", opacity: 0 },
-              { offset: 0.3, scale: "1", opacity: 1 },
-              { offset: 1, scale: "1.18", opacity: 0 },
-            ],
-            timing(f, EASE.power2Out),
-          );
-        }
-        const glow = q(".glow");
-        if (glow) {
-          run(
-            glow,
-            [
-              { offset: 0, scale: "0.6", opacity: 0 },
-              { offset: 0.35, scale: "1", opacity: 0.9 },
-              { offset: 1, scale: "1.4", opacity: 0 },
-            ],
-            timing(f, EASE.power2Out),
-          );
-        }
-        break;
-      }
-      case "counter": {
-        const flash = q(".flash");
-        if (flash) {
-          run(
-            flash,
-            [
-              { offset: 0, scale: "0.4", opacity: 0.9 },
-              { offset: 0.25, scale: "1.1", opacity: 0.6 },
-              { offset: 1, scale: "1.4", opacity: 0 },
-            ],
-            timing(f, EASE.power2Out),
-          );
-        }
-        const cracks = q(".cracks");
-        if (cracks) {
-          run(
-            cracks,
-            [{ opacity: 1 }, { opacity: 1, offset: 0.55 }, { opacity: 0 }],
-            timing(f, EASE.linear),
-          );
-          for (const p of cracks.querySelectorAll("path")) {
-            run(
-              p,
-              [
-                { strokeDashoffset: 1 },
-                { strokeDashoffset: 0, offset: 0.35 },
-                { strokeDashoffset: 0 },
-              ],
-              timing(f, EASE.power2Out),
-            );
-          }
-        }
-        for (const el of node.querySelectorAll<HTMLElement>(".glass")) {
-          const dx = Number(el.dataset.dx);
-          const dy = Number(el.dataset.dy);
-          const rot = Number(el.dataset.rot);
-          run(
-            el,
-            [
-              { offset: 0, translate: "0px 0px", rotate: "0deg", opacity: 0 },
-              { offset: 0.2, translate: "0px 0px", rotate: "0deg", opacity: 1 },
-              { offset: 1, translate: `${dx}px ${dy}px`, rotate: `${rot}deg`, opacity: 0 },
-            ],
-            timing(f, EASE.power2Out),
-          );
-        }
-        break;
-      }
-      case "wipe": {
-        const band = q(".sweep");
-        if (band) {
-          const bandW = Math.max(120, f.board.w * 0.34);
-          band.style.width = `${bandW}px`;
-          run(
-            band,
-            [
-              { offset: 0, translate: `${-bandW}px 0px`, opacity: 0 },
-              { offset: 0.1, translate: `${-bandW * 0.7}px 0px`, opacity: 1 },
-              { offset: 0.9, translate: `${f.board.w - bandW * 0.3}px 0px`, opacity: 1 },
-              { offset: 1, translate: `${f.board.w}px 0px`, opacity: 0 },
-            ],
-            timing(f, EASE.power1Out),
-          );
-        }
-        const tint = q(".tint");
-        if (tint) {
-          run(
-            tint,
-            [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }],
-            timing(f, EASE.linear),
-          );
-        }
-        break;
-      }
+    } else {
+      cueMotion(node, f);
     }
     return { destroy: () => cancelTree(node) };
   }
@@ -1078,6 +817,37 @@
   }
   // The crack across a planeswalker that dies (a fixed, readable shape).
   const PW_CRACK = "M50 0 L44 22 L56 40 L42 62 L54 80 L48 100";
+
+  // A card that breaks (a destroy, a sacrifice's end, a destroy turned to
+  // exile), the specks an exile's void pulls in, and a wipe's wind cuts.
+  function shatterOf(f: Fx) {
+    return shatterPlan(f.cardID || f.seed, f.width, f.height, {
+      rot: f.rot,
+      light: f.light || f.kind === "exile",
+    });
+  }
+  function motesOf(f: Fx) {
+    return voidMotes(f.seed, f.width, f.height, f.light);
+  }
+  function cutsOf(f: Fx) {
+    return windCuts(f.seed, Math.max(5, Math.min(8, 4 + f.count)));
+  }
+  // A shard that breaks has these; an exile's crumble moves them a little.
+  const breaks = (k: FxKind) => k === "destroy" || k === "sacrifice";
+  // The arms of an exile wipe's vortex.
+  const SWIRL = swirlArms();
+
+  // The open palm that stops a countered spell (a 0..100 box): its palm,
+  // four fingers and a thumb (drawn as round-capped strokes), and a crease.
+  const PALM_BODY = "M31 52 Q31 45 38 45 L64 45 Q71 45 71 52 L71 74 Q71 93 51 94 Q32 94 31 76 Z";
+  const PALM_DIGITS = [
+    "M38 50 L36.5 17",
+    "M49 48 L49 10",
+    "M60 50 L62 15",
+    "M69.5 56 L73.5 28",
+    "M34 72 Q25 63 17 52",
+  ];
+  const PALM_CREASE = "M37 68 Q50 61 65 66";
 </script>
 
 <div class="fx-layer" aria-hidden="true" data-table-effects>
@@ -1094,6 +864,69 @@
           <!-- Reduced motion (ADR 0209 §1): a brief static tint and the badge. -->
           <div class="tint still-tint"></div>
           <span class="badge" data-effect-badge style:left="50%" style:top="50%">{f.badge}</span>
+        {:else if f.tone === "cold"}
+          <!-- D11: the board swirls into a white void with a small darkness at its heart. -->
+          {@const side = Math.hypot(f.board.w, f.board.h) * 1.1}
+          {@const voidSide = Math.min(f.board.w, f.board.h) * 0.62}
+          <div class="tint m"></div>
+          <div class="haze m"></div>
+          <svg
+            class="swirl m"
+            viewBox="-100 -100 200 200"
+            style:width={`${side}px`}
+            style:height={`${side}px`}
+            style:left={`${f.board.w / 2 - side / 2}px`}
+            style:top={`${f.board.h / 2 - side / 2}px`}
+          >
+            <defs>
+              <radialGradient
+                id={`swirl-${f.key}`}
+                cx="0"
+                cy="0"
+                r="100"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.95" />
+                <stop offset="0.45" stop-color="#d8ecff" stop-opacity="0.6" />
+                <stop offset="1" stop-color="#7fb0ff" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            {#each SWIRL as d, i (i)}
+              <path {d} fill={`url(#swirl-${f.key})`} />
+            {/each}
+          </svg>
+          <div
+            class="whitevoid m"
+            style:width={`${voidSide}px`}
+            style:height={`${voidSide}px`}
+            style:left={`${f.board.w / 2}px`}
+            style:top={`${f.board.h / 2}px`}
+          ></div>
+          <div
+            class="core m"
+            style:width={`${voidSide * 0.16}px`}
+            style:height={`${voidSide * 0.16}px`}
+            style:left={`${f.board.w / 2}px`}
+            style:top={`${f.board.h / 2}px`}
+          ></div>
+        {:else if f.tone === "dark"}
+          <!-- D10: quick cuts slicing across the battlefield, like horizontal winds. -->
+          <div class="tint m"></div>
+          {#each cutsOf(f) as c, i (i)}
+            <div
+              class="cut m"
+              data-at={c.at}
+              data-len={c.len}
+              data-dir={c.dir}
+              style:top={`${c.y}%`}
+              style:rotate={`${c.tilt}deg`}
+              style:--cut-thick={`${c.thick}px`}
+            >
+              <div class="scar" style:transform-origin={c.dir > 0 ? "0 50%" : "100% 50%"}></div>
+              <div class="gust" style:width={`${Math.max(220, f.board.w * 0.6)}px`}></div>
+              <div class="blade" style:width={`${Math.max(160, f.board.w * 0.42)}px`}></div>
+            </div>
+          {/each}
         {:else}
           <div class="tint m"></div>
           <div class="sweep m"></div>
@@ -1120,6 +953,7 @@
         >
       {/if}
     {:else if f.kind === "counter"}
+      <!-- D7: a palm stops the spell, and the spell cracks. -->
       {@const burst = burstOf(f)}
       <div
         class="fx m"
@@ -1148,6 +982,16 @@
               style:height={`${s.size}px`}
             ></div>
           {/each}
+          <div class="shock"></div>
+          <svg class="palm" viewBox="0 0 100 100">
+            <g opacity="0.9">
+              <path class="palm-body" d={PALM_BODY} />
+              {#each PALM_DIGITS as d, i (i)}
+                <path class="palm-digit" {d} />
+              {/each}
+            </g>
+            <path class="palm-crease" d={PALM_CREASE} />
+          </svg>
         </div>
       </div>
     {:else if f.kind === "pw_enter"}
@@ -1171,50 +1015,209 @@
         ></div>
       </div>
     {:else}
-      {@const slash = slashGeometry(f.width, f.height)}
+      {@const broken = breaks(f.kind) || (f.kind === "exile" && f.fromDestroy)}
+      {@const sh = broken ? shatterOf(f) : null}
+      {@const reach = Math.max(f.width, f.height)}
       <div
         class="fx m"
         data-effect={f.kind}
         data-effect-motion={f.motion}
         data-effect-light={f.light ? "" : undefined}
         data-effect-card={f.cardID}
+        data-effect-from-destroy={f.fromDestroy ? "" : undefined}
         style:left={`${f.x}px`}
         style:top={`${f.y}px`}
         use:motionOf={f}
       >
-        {#if f.kind === "exile"}
-          <div class="portal" style:width={`${Math.max(f.width, f.height) * 1.6}px`}></div>
-        {:else if f.kind === "sacrifice"}
+        {#if f.kind === "exile" && !f.pull}
+          <!-- D3: a white void the card spins into. -->
+          <div class="void" style:width={`${reach * 1.6}px`}></div>
+          <div class="vring" style:width={`${reach * 1.25}px`}></div>
+          {#each motesOf(f) as o, i (i)}
+            <div class="orbit" data-at={o.at} data-angle={o.angle} data-spin={o.spin} data-r={o.r}>
+              <i class="speck" style:width={`${o.size}px`} style:height={`${o.size}px`}></i>
+            </div>
+          {/each}
+        {:else if f.kind === "sacrifice" && !f.light}
+          <!-- D5: a quick altar the card is laid on. -->
+          <svg
+            class="altar"
+            viewBox="0 0 140 64"
+            style:width={`${f.width * 1.7}px`}
+            style:left={`${-f.width * 0.85}px`}
+            style:top={`${f.height * 0.12}px`}
+          >
+            <defs>
+              <linearGradient id={`altar-top-${f.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#6c6472" />
+                <stop offset="1" stop-color="#4a4350" />
+              </linearGradient>
+              <linearGradient id={`altar-front-${f.key}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#2d2733" />
+                <stop offset="1" stop-color="#17131b" />
+              </linearGradient>
+            </defs>
+            <ellipse class="altar-glow" cx="70" cy="30" rx="70" ry="22" />
+            <path d="M16 12 L124 12 L138 28 L2 28 Z" fill={`url(#altar-top-${f.key})`} />
+            <rect x="2" y="28" width="136" height="24" fill={`url(#altar-front-${f.key})`} />
+            <path class="altar-edge" d="M2 28 L138 28" />
+            <rect x="12" y="52" width="116" height="8" rx="1" fill="#120f15" />
+            {#each [14, 126] as cx (cx)}
+              <rect x={cx - 3} y="2" width="6" height="12" rx="1" fill="#d9cdb4" />
+              <ellipse class="flame" {cx} cy="-2" rx="2.6" ry="5" />
+            {/each}
+          </svg>
+        {:else if f.kind === "pw_leave"}
+          <!-- D9: a rift the walker leaves the plane through. -->
           <div
-            class="well"
-            style:width={`${f.width * 1.3}px`}
-            style:height={`${f.height * 0.5}px`}
+            class="rift"
+            style:width={`${f.width * 0.9}px`}
+            style:height={`${f.height * 1.5}px`}
           ></div>
         {/if}
+        {#if f.kind === "bounce"}
+          {#each [0, 1] as g (g)}
+            <div class="copy ghost">
+              <div
+                class="face"
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+                style:--fx-rot={`${f.rot}deg`}
+              >
+                {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+            </div>
+          {/each}
+        {/if}
         <div class="copy">
-          <div
-            class="face"
-            style:width={`${f.width}px`}
-            style:height={`${f.height}px`}
-            style:--fx-rot={`${f.rot}deg`}
-          >
-            {#if f.src}
-              <img src={f.src} alt="" decoding="async" draggable="false" />
+          {#if f.kind === "bounce"}
+            <!-- D6: turned over and shown to the table on the way home. -->
+            <div
+              class="halo"
+              style:width={`${f.width + 12}px`}
+              style:height={`${f.height + 12}px`}
+              style:--fx-rot={`${f.rot}deg`}
+            ></div>
+            <div class="flip">
+              <div
+                class="face"
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+                style:--fx-rot={`${f.rot}deg`}
+              >
+                {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+              </div>
+              <div
+                class="face back"
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+                style:--fx-rot={`${f.rot}deg`}
+              ></div>
+            </div>
+          {:else}
+            {#if !(f.kind === "exile" && f.fromDestroy)}
+              <div
+                class="face"
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+                style:--fx-rot={`${f.rot}deg`}
+              >
+                {#if f.src}
+                  <img src={f.src} alt="" decoding="async" draggable="false" />
+                {/if}
+                {#if f.kind === "pw_leave"}
+                  <svg class="crack" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d={PW_CRACK} pathLength="1" />
+                  </svg>
+                {/if}
+              </div>
             {/if}
-            {#if f.kind === "pw_leave"}
-              <svg class="crack" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <path d={PW_CRACK} pathLength="1" />
-              </svg>
+            {#if sh}
+              <!-- D1: the card breaks from the impact at its centre outward. -->
+              <div
+                class="shatter"
+                style:width={`${f.width}px`}
+                style:height={`${f.height}px`}
+                style:--fx-rot={`${f.rot}deg`}
+              >
+                {#each sh.shards as s, i (i)}
+                  <div
+                    class="shard"
+                    data-at={s.at}
+                    data-dx={s.dx}
+                    data-dy={s.dy}
+                    data-rot={s.rot}
+                    style:clip-path={s.clip}
+                    style:transform-origin={`${s.ox}px ${s.oy}px`}
+                  >
+                    {#if f.src}<img src={f.src} alt="" decoding="async" draggable="false" />{/if}
+                  </div>
+                {/each}
+                <svg
+                  class="crk"
+                  viewBox={`0 0 ${f.width} ${f.height}`}
+                  width={f.width}
+                  height={f.height}
+                >
+                  {#each sh.spokes as d, i (i)}
+                    <path class="spoke under" {d} pathLength="1" />
+                    <path class="spoke over" {d} pathLength="1" />
+                  {/each}
+                  {#each sh.rings as d, i (i)}
+                    <path class="rim under" {d} pathLength="1" />
+                    <path class="rim over" {d} pathLength="1" />
+                  {/each}
+                </svg>
+                <div class="flare" style:left={`${sh.ix}px`} style:top={`${sh.iy}px`}></div>
+                {#each sh.motes as m, i (i)}
+                  <i
+                    class="mote"
+                    data-at={m.at}
+                    data-dx={m.dx}
+                    data-dy={m.dy}
+                    style:left={`${sh.ix}px`}
+                    style:top={`${sh.iy}px`}
+                    style:width={`${m.size}px`}
+                    style:height={`${m.size}px`}
+                  ></i>
+                {/each}
+              </div>
             {/if}
-          </div>
+          {/if}
         </div>
-        {#if f.kind === "destroy" && !f.light}
+        {#if f.kind === "exile" && !f.pull}
+          <div class="pinch"></div>
+        {:else if f.kind === "sacrifice"}
+          <!-- D5: the knife that stabs the card. -->
+          {@const kh = f.height * 0.95}
+          {@const kw = kh * 0.24}
           <div
-            class="slash"
-            style:--slash-angle={`${slash.angle}deg`}
-            style:--slash-len={`${slash.length}px`}
+            class="knife"
+            style:width={`${kw}px`}
+            style:height={`${kh}px`}
+            style:left={`${-kw / 2}px`}
+            style:top={`${-kh}px`}
           >
-            <div class="bar"></div>
+            <svg viewBox="0 0 24 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id={`blade-${f.key}`} x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0" stop-color="#f6f8fc" />
+                  <stop offset="0.5" stop-color="#c9cfdb" />
+                  <stop offset="1" stop-color="#7d8597" />
+                </linearGradient>
+              </defs>
+              <path d="M8 40 L16 40 L15.2 72 L12 100 L8.8 72 Z" fill={`url(#blade-${f.key})`} />
+              <path d="M12 43 L12 86" stroke="rgba(255,255,255,0.55)" stroke-width="0.8" />
+              <rect x="1.5" y="35" width="21" height="5" rx="2.2" fill="#8a6a34" />
+              <rect x="1.5" y="35" width="21" height="1.6" rx="0.8" fill="#d6b56a" />
+              <rect x="9" y="13" width="6" height="22" rx="2" fill="#3a2418" />
+              {#each [17, 22, 27, 32] as y (y)}
+                <path d={`M9 ${y} L15 ${y - 2}`} stroke="#5e3b26" stroke-width="1" />
+              {/each}
+              <circle cx="12" cy="8.5" r="5" fill="#8a6a34" />
+              <circle cx="12" cy="8.5" r="2.1" fill="#b3122e" />
+            </svg>
+            <div class="glint"></div>
           </div>
         {/if}
       </div>
@@ -1290,39 +1293,94 @@
     display: block;
   }
 
-  /* Destroy: a dark slash along the card's diagonal. The outer box is
-     turned about the card's centre; the bar scales out from its start. */
-  .slash {
+  /* D1, the shatter: the pieces of the card, each a full-size copy of
+     its art clipped to its outline, turned with the card about its
+     centre. The face shows until the first piece lets go. */
+  .shatter {
     position: absolute;
     left: 0;
     top: 0;
-    width: 0;
-    height: 0;
-    rotate: var(--slash-angle, 0deg);
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg));
   }
-  .slash .bar {
+  .shard {
     position: absolute;
-    left: calc(var(--slash-len, 0px) / -2);
-    top: -2px;
-    width: var(--slash-len, 0px);
-    height: 4px;
-    border-radius: 2px;
-    transform-origin: 0 50%;
-    background: linear-gradient(
-      90deg,
-      rgba(8, 6, 14, 0) 0%,
-      rgba(8, 6, 14, 0.95) 12%,
-      #fff 50%,
-      rgba(8, 6, 14, 0.95) 88%,
-      rgba(8, 6, 14, 0) 100%
+    inset: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0d1220;
+  }
+  .shard img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .crk {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+  .crk path {
+    fill: none;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  /* A dark rift with a white-hot core, glowing ember at its edge. */
+  .crk path.under {
+    stroke: rgba(12, 4, 10, 0.88);
+    stroke-width: 2.6;
+  }
+  .crk path.over {
+    stroke: #fff1dc;
+    stroke-width: 1.1;
+    filter: drop-shadow(0 0 2.5px rgba(255, 96, 40, 0.95));
+  }
+  .crk path.rim.over {
+    stroke-width: 0.9;
+  }
+  .flare {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 196, 140, 0.85) 22%,
+      rgba(255, 80, 40, 0.35) 48%,
+      rgba(255, 60, 30, 0) 70%
     );
-    box-shadow:
-      0 0 10px 2px rgba(120, 10, 30, 0.8),
-      0 0 2px 0 rgba(255, 255, 255, 0.9);
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .fx[data-effect="sacrifice"] .flare {
+    background: radial-gradient(
+      circle,
+      rgba(255, 240, 240, 1) 0%,
+      rgba(255, 90, 110, 0.85) 24%,
+      rgba(170, 10, 40, 0.4) 50%,
+      rgba(120, 0, 30, 0) 72%
+    );
+  }
+  .mote {
+    position: absolute;
+    margin: -1px 0 0 -1px;
+    border-radius: 50%;
+    background: #ffb27a;
+    box-shadow: 0 0 4px 1px rgba(255, 110, 50, 0.8);
+    opacity: 0;
+  }
+  .fx[data-effect="exile"] .mote {
+    background: #2a2630;
+    box-shadow: none;
   }
 
-  /* Exile: a cold portal the card is drawn into. */
-  .portal {
+  /* D3, exile: a white void the card spins into, specks of light drawn
+     in on spirals, and a last pinpoint as it closes. */
+  .void {
     position: absolute;
     left: 0;
     top: 0;
@@ -1331,27 +1389,162 @@
     border-radius: 50%;
     background: radial-gradient(
       circle,
-      rgba(230, 248, 255, 0.95) 0%,
-      rgba(120, 195, 255, 0.55) 34%,
-      rgba(60, 110, 255, 0) 70%
+      #ffffff 0%,
+      rgba(255, 255, 255, 0.96) 18%,
+      rgba(232, 244, 255, 0.7) 34%,
+      rgba(190, 220, 255, 0.28) 52%,
+      rgba(160, 200, 255, 0) 70%
     );
-    mix-blend-mode: screen;
+    opacity: 0;
   }
-
-  /* Sacrifice: a dark well under the card as it is pulled down. */
-  .well {
+  .vring {
     position: absolute;
     left: 0;
     top: 0;
-    translate: -50% 0%;
-    margin-top: 10%;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.95);
+    box-shadow:
+      0 0 14px 2px rgba(200, 230, 255, 0.8),
+      inset 0 0 12px 1px rgba(200, 230, 255, 0.6);
+    opacity: 0;
+  }
+  .orbit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+  }
+  .speck {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px 2px rgba(210, 235, 255, 0.95);
+    opacity: 0;
+  }
+  .pinch {
+    position: absolute;
+    left: -30px;
+    top: -30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background:
+      linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.95) 50%,
+          rgba(255, 255, 255, 0) 100%
+        )
+        center / 100% 2px no-repeat,
+      radial-gradient(circle, #fff 0%, rgba(220, 240, 255, 0.8) 18%, rgba(220, 240, 255, 0) 45%);
+    opacity: 0;
+  }
+
+  /* D5, sacrifice: a stone altar, and the knife. */
+  .altar {
+    position: absolute;
+    overflow: visible;
+    opacity: 0;
+  }
+  .altar-glow {
+    fill: rgba(150, 10, 40, 0.38);
+    filter: blur(6px);
+  }
+  .altar-edge {
+    stroke: rgba(210, 40, 60, 0.75);
+    stroke-width: 1.2;
+  }
+  .flame {
+    fill: #ffd27a;
+    filter: drop-shadow(0 0 3px rgba(255, 170, 60, 0.95));
+  }
+  .knife {
+    position: absolute;
+    opacity: 0;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+    z-index: 2;
+  }
+  .knife svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .glint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 40%;
+    bottom: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0) 30%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 255, 255, 0) 70%
+    );
+    clip-path: polygon(33% 0, 67% 0, 63% 53%, 50% 100%, 37% 53%);
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+
+  /* D6, bounce: turned over in 3D (the back is the card back), a cool
+     halo while it is held up to the table, and two after-images. */
+  .flip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+  }
+  .flip .face {
+    backface-visibility: hidden;
+  }
+  .face.back {
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg)) rotateY(180deg);
+    background:
+      url("/card-back-small.jpg") center / cover no-repeat,
+      radial-gradient(ellipse at 50% 50%, #5a3a22 0%, #2b1a10 60%, #160d08 100%);
+  }
+  .halo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 12px;
+    transform: translate(-50%, -50%) rotate(var(--fx-rot, 0deg));
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--block, #91c3ff) 85%, #fff),
+      0 0 26px 6px color-mix(in srgb, var(--block, #91c3ff) 70%, transparent);
+    opacity: 0;
+  }
+  .ghost .face {
+    box-shadow: none;
+    opacity: 0;
+  }
+
+  /* D9: the rift a planeswalker leaves the plane through. */
+  .rift {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
     border-radius: 50%;
     background: radial-gradient(
       ellipse,
-      rgba(0, 0, 0, 0.9) 0%,
-      rgba(40, 6, 30, 0.6) 50%,
-      rgba(0, 0, 0, 0) 75%
+      rgba(255, 255, 255, 0.95) 0%,
+      color-mix(in srgb, var(--magenta, #b08aff) 80%, #fff) 26%,
+      color-mix(in srgb, var(--magenta, #b08aff) 45%, transparent) 50%,
+      transparent 72%
     );
+    mix-blend-mode: screen;
+    opacity: 0;
   }
 
   /* A planeswalker that dies: a crack runs down the card. */
@@ -1483,6 +1676,159 @@
   /* The still form's tint is on, not animated: the badge is the message. */
   .tint.still-tint {
     opacity: 1;
+  }
+
+  /* D7: the palm that stops the spell, in the cracks' own cold light,
+     and the ring it sends out. */
+  .palm {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 92%;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    overflow: visible;
+    filter: drop-shadow(0 0 6px rgba(150, 200, 255, 0.95))
+      drop-shadow(0 0 16px rgba(120, 180, 255, 0.6));
+    opacity: 0;
+  }
+  .palm-body {
+    fill: #eef6ff;
+  }
+  .palm-digit {
+    fill: none;
+    stroke: #eef6ff;
+    stroke-width: 10.5;
+    stroke-linecap: round;
+  }
+  .palm-crease {
+    fill: none;
+    stroke: rgba(120, 170, 235, 0.75);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  .shock {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 150%;
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 2px solid rgba(235, 245, 255, 0.95);
+    box-shadow: 0 0 18px 3px rgba(150, 200, 255, 0.7);
+    opacity: 0;
+  }
+
+  /* D10: the wind cuts. Each crosses the board on its own line: a
+     bright blade with a dark edge, a faint gust behind it, and the slice
+     it leaves on the battlefield for a moment. */
+  .cut {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+  }
+  .blade {
+    position: absolute;
+    left: 0;
+    top: calc(var(--cut-thick, 2px) / -2);
+    height: var(--cut-thick, 2px);
+    border-radius: 50%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 220, 220, 0.5) 30%,
+      #ffffff 72%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    box-shadow:
+      0 0 6px 1px rgba(255, 90, 90, 0.75),
+      0 0 18px 4px rgba(40, 6, 16, 0.65);
+    opacity: 0;
+  }
+  .cut[data-dir="-1"] .blade {
+    background: linear-gradient(
+      270deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 220, 220, 0.5) 30%,
+      #ffffff 72%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+  .gust {
+    position: absolute;
+    left: 0;
+    top: -9px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(
+      90deg,
+      rgba(220, 225, 240, 0) 0%,
+      rgba(225, 230, 245, 0.32) 50%,
+      rgba(220, 225, 240, 0) 100%
+    );
+    filter: blur(3px);
+    opacity: 0;
+  }
+  .scar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -0.5px;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 120, 120, 0) 0%,
+      rgba(255, 150, 150, 0.7) 20%,
+      rgba(255, 150, 150, 0.7) 80%,
+      rgba(255, 120, 120, 0) 100%
+    );
+    box-shadow: 0 0 4px rgba(255, 70, 70, 0.6);
+    opacity: 0;
+  }
+
+  /* D11: the swirl the board turns into, the blur that bends it, and the
+     white void at its centre with a small darkness at its heart. */
+  .swirl {
+    position: absolute;
+    overflow: visible;
+    filter: blur(5px);
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .haze {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(2.5px) saturate(0.6) brightness(1.08);
+    -webkit-backdrop-filter: blur(2.5px) saturate(0.6) brightness(1.08);
+    mask-image: radial-gradient(ellipse at 50% 50%, #000 0%, #000 35%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 0%, #000 35%, transparent 75%);
+    opacity: 0;
+  }
+  .whitevoid {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      #ffffff 0%,
+      rgba(255, 255, 255, 0.95) 24%,
+      rgba(225, 240, 255, 0.55) 46%,
+      rgba(200, 225, 255, 0) 70%
+    );
+    z-index: 2;
+    opacity: 0;
+  }
+  .core {
+    position: absolute;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #000 0%, #04060c 55%, rgba(4, 6, 12, 0) 72%);
+    box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.9);
+    z-index: 3;
+    opacity: 0;
   }
 
   /* A signature's scene: a board-sized layer its parts draw into

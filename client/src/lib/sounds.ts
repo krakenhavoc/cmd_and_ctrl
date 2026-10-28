@@ -62,6 +62,7 @@ export type SoundName =
   | "destroy"
   | "exile"
   | "sacrifice"
+  | "sacrifice_knife"
   | "bounce"
   | "counter"
   | "board_wipe"
@@ -111,6 +112,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   destroy: "effects",
   exile: "effects",
   sacrifice: "effects",
+  sacrifice_knife: "effects",
   bounce: "effects",
   counter: "effects",
   board_wipe: "effects",
@@ -147,6 +149,7 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   destroy: ["/sounds/destroy-1.mp3", "/sounds/destroy-2.mp3"],
   exile: ["/sounds/exile-1.mp3", "/sounds/exile-2.mp3"],
   sacrifice: ["/sounds/sacrifice-1.mp3", "/sounds/sacrifice-2.mp3"],
+  sacrifice_knife: ["/sounds/sacrifice_knife-1.mp3", "/sounds/sacrifice_knife-2.mp3"],
   bounce: ["/sounds/bounce-1.mp3", "/sounds/bounce-2.mp3"],
   counter: ["/sounds/counter-1.mp3", "/sounds/counter-2.mp3"],
   board_wipe: ["/sounds/board_wipe-1.mp3", "/sounds/board_wipe-2.mp3"],

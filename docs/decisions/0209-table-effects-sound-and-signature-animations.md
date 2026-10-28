@@ -29,6 +29,13 @@ The server already gives the client what it needs to group events. Every event c
 - **A setting,** `animations.effects`: Full, Short or Off. Short plays only the first beat of a signature, up to 0.8 s. Off uses the generic cues in §3 for every card.
 - **Reduced motion.** With reduced motion on, or `animations.enabled` off, a signature or board effect becomes a brief tint and the generic cue becomes the existing outcome badge. The sound still plays unless its category is muted. This follows DESIGN.md §4 and ADR 0119 §3.
 
+Amendment 2026-10-28 (#4416, timing): Ian found the first build too quick to see, and asked for every cue at about 1.25 to 1.5 times its length, and for the cues to speed back up when a lot happens at once.
+
+- **Lengths.** Each generic cue's base length is about 1.35 times the first build's: destroy 1.25 s (was 0.9), exile 1.5 s (1.1), a death by state-based action 0.56 s (0.42), bounce 1.3 s (0.9), a planeswalker entering 1.2 s (0.9). A sacrifice (1.75 s, was 0.8), a counterspell (1.6 s, was 0.9) and a planeswalker dying (1.5 s, was 0.9) gained beats of their own (§3's amendment for #4416). A board wipe's sweep is 0.95 s (0.7), each card's cue in it 0.8 s (0.6), and the whole wipe 1.7 s (1.35); an exile wipe's vortex stays open 1.85 s.
+- **Caps.** A generic cue runs at most **2 s** (was 1.5 s) and Short cuts one to at most **1 s** (was 0.8 s). Short's cap is shared with signatures (§4: `SIGNATURE_SHORT_CAP_MS` is the same constant), so a signature's first beat may also run to 1 s: this supersedes "Short stays at 0.8 s" in §4's amendment for the signatures half of #4416. The signature cap is 3.5 s, as that amendment set it. All of them still scale with `animations.speed`.
+- **A busy table.** Each frame counts the cues that started in the last 2 s, its own included: each cue of its own, each board wipe and each signature (a wipe's per-card cues are inside the wipe already). With `n` of them a cue plays at `max(0.55, 1 / (1 + 0.18 (n − 1)))` of its length: one in full, two at 0.85, four at about 0.65 (the first build's lengths), six or more at 0.55. It multiplies like a faster `animations.speed`, so every cap still holds. A skip or a re-prime clears the count. The rule is `busyScale` in `client/src/lib/tableEffects.ts`.
+- **Nothing waits.** The cues are still presentation over a state that has already changed; the longer lengths and the compression change only how long the layer draws.
+
 ### 2. Sound categories
 
 `audio` gains one volume (0–100) per category. The master volume and mute stay on top of them.
@@ -70,6 +77,19 @@ Amendment 2026-10-28 (#4396): the generic cues are built (`client/src/lib/tableE
 - **Combat.** A death by state-based action in a combat damage step is not drawn here while the strike layer is playing (it crumbles those creatures, ADR 0134); with combat motion off this layer draws it.
 - **Skip.** A click anywhere or Escape clears the cues playing, for the local player only. The layer takes no pointer events, so the click also reaches the board.
 - **Sound.** One logical sound per `batch` and game, as §2 says. A wipe plays `board_wipe` once and each per-card sound once at under half volume.
+
+Amendment 2026-10-28 (#4416, looks): Ian's first round of feedback from the preview. Each cue is drawn from seeded shapes in `tableEffects.ts` (`shatterPlan`, `voidMotes`, `spiralPath`, `swirlArms`, `windCuts`) and moved by the Web Animations API in `client/src/lib/effectCueMotion.ts`; the "Looks" bullet above is replaced by this one.
+
+- **Destroy (D1).** A shatter-crumble from the centre out, in place of the slash: a flash at an impact near the card's centre, cracks racing from it to the edges and rings across them, the card darkening, then its pieces letting go ring by ring, inner first, flying out and falling as they shrink, with sparks thrown off. A tapped card's pieces still fall down the screen.
+- **Exile (D3).** Pulled into a white void: the void opens behind the card, a ring of light closes on it and specks spiral in, and the card winds up and spins (about two turns) as it shrinks, turning to white light, until the void closes to a pinpoint and nothing is left.
+- **Destroy turned into exile (D4).** The exile, with a slight crumble: the card cracks at once and its pieces drift a little apart as the void takes it. The cue says so with `fromDestroy`, read from `cause` `destroy` on an exile.
+- **Sacrifice (D5).** A quick altar rises under the card, a knife is raised over it and stabs it at 30% of the cue, and then the destroy's shatter plays from the stab. Inside a wipe there is no altar and the knife comes at once. The knife has its own sound, `sacrifice_knife` (effects category, silent until its file lands), as it lands; `sacrifice` plays as the altar appears.
+- **Bounce (D6).** The lift stays, with a 3D flip (the card back shows as it turns), then the card is held up to the table, face up with a cool halo, before it flies to its owner's seat still face up, two after-images trailing it. Its identity is public now, so everyone sees it go.
+- **Counterspell (D7).** The cracks stay, and an open palm in the cracks' cold light slams onto the spell first, with a ring of force; the cracks then stay on the spell while the stack linger shows it (1.5 s) and go with it.
+- **Planeswalker enters (D8).** Unchanged but for its length.
+- **Planeswalker dies (D9).** The crack and shake stay, and the walker then withdraws: it lifts, brightens and shrinks away into a violet rift, leaving the plane rather than dying.
+- **Board wipe, destroy (D10).** Quick cuts slice across the whole battlefield like horizontal winds, at spread-out heights, most of them left to right, each leaving a brief slice line; every card it took then plays the destroy's shatter, lighter and staggered. A sacrifice wipe looks the same; a bounce wipe keeps the single cool sweep.
+- **Board wipe, exile (D11).** The board distorts into a spinning swirl, blurred, with a white void opening at its centre and a small darkness at the void's heart; every card it took spirals into it, turning white, and the void closes last.
 
 ### 4. Signature effects for named cards
 
