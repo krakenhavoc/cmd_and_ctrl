@@ -37,6 +37,7 @@ import {
   EFFECT_CAP_MS,
   EFFECT_SHORT_CAP_MS,
   EFFECT_STILL_HOLD_MS,
+  WIPE_FIRST_CARD_MS,
   busyScale,
   shatterPlan,
 } from "./tableEffects";
@@ -399,6 +400,41 @@ describe("the effects layer", () => {
     const busy = Math.max(...runEnds());
     expect(busy).toBeCloseTo(EFFECT_BASE_MS.destroy * busyScale(4), 6);
     expect(busy).toBeLessThan(lone);
+  });
+
+  it("a wipe's cards stay whole and still from the frame until their own cue starts", () => {
+    // A death wipe (Blasphemous Act without its scene): each card's
+    // crumble waits for its stagger, so it is still there when its turn
+    // (or a fireball) comes, instead of crumbling as the frame lands.
+    const deaths = IDS.map((id) =>
+      zone(id, "graveyard", { cause: "sba", batch: 11, source: "act" }),
+    );
+    deliver(deaths, IDS);
+    expect(effects("dies")).toHaveLength(4);
+    const waits = vi.mocked(crumble).mock.calls.map((c) => c[2]?.delay ?? 0);
+    expect(waits).toHaveLength(4);
+    expect(waits[0]).toBeCloseTo(WIPE_FIRST_CARD_MS, 6);
+    for (let i = 1; i < waits.length; i++) expect(waits[i]).toBeGreaterThan(waits[i - 1]);
+    cleanup();
+    document.body.innerHTML = "";
+    vi.mocked(run).mockClear();
+    // A destroy wipe: every card's copy is mounted at once, and each of
+    // its animations waits for the card's turn, holding its first frame
+    // (the card at rest) until then.
+    const destroys = IDS.map((id) =>
+      zone(id, "graveyard", { cause: "destroy", batch: 12, source: "damnation" }),
+    );
+    deliver(destroys, IDS);
+    expect(effects("destroy")).toHaveLength(4);
+    for (const c of effects("destroy")) expect(c.querySelector(".face img")).toBeTruthy();
+    const onCards = vi
+      .mocked(run)
+      .mock.calls.filter((c) => (c[0] as Element).closest('[data-effect="destroy"]'));
+    expect(onCards.length).toBeGreaterThan(0);
+    for (const c of onCards) {
+      expect(c[2].fill).toBe("both");
+      expect(c[2].delay as number).toBeGreaterThanOrEqual(WIPE_FIRST_CARD_MS - 1e-6);
+    }
   });
 
   it("an exile wipe swirls into one white void, and its cards are drawn into it", () => {

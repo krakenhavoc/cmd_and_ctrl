@@ -778,6 +778,7 @@
         void crumble(face, crumbleShards(f.cardID || f.seed, f.width, f.height, f.rot), {
           gate: "effects",
           ms: f.ms,
+          delay: f.delay,
         });
       }
     } else {

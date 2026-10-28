@@ -465,11 +465,14 @@ export function crumble(
   shards: readonly CrumbleShardMotion[],
   // The table effects (ADR 0209 §3) reuse the crumble for a death by
   // state-based action: they are gated by animations.effects, not
-  // animations.combat, and pass their own (capped, scaled) length.
-  opts: { gate?: "combat" | "effects"; ms?: number } = {},
+  // animations.combat, and pass their own (capped, scaled) length, and
+  // their delay: a card in a board wipe or a signature's batch holds whole
+  // and still until its own turn comes (#4416).
+  opts: { gate?: "combat" | "effects"; ms?: number; delay?: number } = {},
 ): Promise<void> {
   if (!(opts.gate === "effects" ? effectsAllowed() : strikeAllowed())) return Promise.resolve();
   const total = opts.ms ?? STRIKE_CRUMBLE_MS * strikeSpeed();
+  const wait = Math.max(0, opts.delay ?? 0);
   const src = face.querySelector("img")?.getAttribute("src") ?? null;
   const made: HTMLElement[] = [];
   for (const sh of shards) {
@@ -501,7 +504,7 @@ export function crumble(
           { translate: `${sh.dx}px ${sh.dy}px`, rotate: `${sh.rot}deg`, opacity: 0 },
         ],
         {
-          delay: at,
+          delay: wait + at,
           duration: Math.max(1, total - at),
           easing: EASE.power2In,
           fill: "forwards",
