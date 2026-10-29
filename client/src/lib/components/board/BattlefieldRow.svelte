@@ -863,25 +863,29 @@
     inset: 0;
     pointer-events: none;
   }
+  /* The card's own face, a shade darker per layer, with an edge lifted
+     enough to read against the board. Each ghost steps 6px further up and
+     left (the row's padding holds it); a tapped fan turns with the card,
+     so the steps stay up and left, inside the tapped room above it. */
   .ghost {
     z-index: -1;
-    border-radius: 6px;
-    background: color-mix(in srgb, var(--surface, #0b0a09) 70%, var(--fg-dim, #8a8378));
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
-    transform: rotate(var(--fan-tap, 0deg)) translate(var(--fx), var(--fy)) rotate(var(--fr));
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: #0a0f1c;
+    border: 1px solid color-mix(in srgb, var(--fg-dim, #5d7187) 70%, #0a0e1a);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+    transform: translate(var(--fx), var(--fy)) rotate(var(--fan-tap, 0deg));
     transition: transform 180ms var(--ease);
   }
   .ghost.g2 {
-    --fx: -3px;
-    --fy: -2px;
-    --fr: -2.5deg;
+    --fx: -4px;
+    --fy: -6px;
   }
   .ghost.g3 {
-    --fx: -6px;
-    --fy: -3px;
-    --fr: -5deg;
+    --fx: -8px;
+    --fy: -12px;
     z-index: -2;
+    background: #080c17;
   }
   .fan.tapped {
     --fan-tap: 90deg;
