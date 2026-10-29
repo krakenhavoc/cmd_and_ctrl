@@ -6191,6 +6191,13 @@ A search's set rule is a registered rule (#4253 slice 5; the closure
 `SearchLibrary{Rule: searchRuleDifferentNames}` or
 `searchRuleTotalManaValueAtMost.WithN(6)` (`effects/search_rules.go`, or
 `game.RegisterSearchRule` for a new clause, ledgered `searchrule <key>`).
+Subtype and color words in a set rule use `Card.HasSubtypeWord` /
+`HasColorWord`, just like the candidate predicate. `SearchLibrary` captures
+the resolving spell or ability's text lens for the rule, including a
+sacrificed source's last-known words; the prompt persists it as plain data
+(#4382). A captured-word prompt uses a distinct on-disk marker so older
+readers refuse it instead of discarding its words. Engine callers use
+`rule.ThroughTextOf(g.TextReaderForEffect(item))`.
 With the "then" a `ThenTail`, the only continuation a search takes, the
 open prompt is a restore point. The per-card `Predicate` may stay a closure: it lists the
 candidates when the search starts and the prompt carries that list, so it

@@ -2573,7 +2573,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			if sp := snapshotSearchPrompt(c); sp != nil {
 				// #4253 slice 5: the search prompt's frame, as data.
-				pc.SearchPrompt, pc.PickThen = sp, SearchPromptKey
+				pc.SearchPrompt, pc.PickThen = sp, searchPromptKey(sp)
 			}
 			if d := snapshotDivideShield(c.DivideShield); d != nil && c.Kind == PendingChoiceDivideShield {
 				// #4361 S16: the divide_shield prompt and its landing step.
