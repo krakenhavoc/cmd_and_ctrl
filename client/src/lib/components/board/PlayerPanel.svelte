@@ -214,6 +214,7 @@
     // Undefined hides the list's attack buttons; "Use this one" still
     // selects a single attacker the two-click way.
     onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
+    onUnstageAttackers?: (attackerIDs: string[]) => void;
     // ADR 0105 (#1789): the frame's legal-action lookup, already
     // "nothing" while highlights are off or autopass is about to pass
     // (Game.svelte). Handed to the cast surfaces for their ready rings
@@ -279,6 +280,7 @@
     spectator = false,
     considering = false,
     onDeclareAttackers,
+    onUnstageAttackers,
     legal = NO_LEGAL_ACTIONS,
     legalGate = NO_LEGAL_ACTIONS,
     expanded = false,
@@ -1389,6 +1391,8 @@
     onTarget={onTargetCard}
     {onTapToggle}
     onAttack={isSelf ? onDeclareAttackers : undefined}
+    onUnstage={isSelf ? onUnstageAttackers : undefined}
+    {stagedAttackers}
     onBlock={isSelf ? declareGroupBlockers : undefined}
     onClose={() => (openGroupKey = null)}
     legalGate={rowGate}

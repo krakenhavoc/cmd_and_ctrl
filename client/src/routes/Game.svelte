@@ -60,8 +60,10 @@
     pruneStage,
     soleTarget,
     stageAt,
+    stageMany,
     stagedParams,
     unstage,
+    unstageMany,
     type StagedAttack,
   } from "../lib/attackStage";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
@@ -2199,7 +2201,16 @@
     }
     const params = attackAllParams(attackPlan, defenderSeatID, { only: attackerIDs });
     if (!params) return;
-    sendBulkAttack(defenderSeatID, params);
+    // #4423: a group's attack is staged, like a click on one creature,
+    // and joins whatever else is staged. Sending it here as its own
+    // declaration emptied the stage, dropping the creatures the player
+    // had already chosen, and left no way to change the count.
+    combatSelection = null;
+    attackStage = stageMany(attackStage, params.attackers);
+  }
+  // #4423: take a group's picked members back out of the staged set.
+  function unstageGroupAttackers(attackerIDs: string[]): void {
+    attackStage = unstageMany(attackStage, attackerIDs);
   }
   function cancelAttackPicker(): void {
     attackPickerDefenderID = null;
@@ -3252,6 +3263,7 @@
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
           onDeclareAttackers={declareGroupAttackers}
+          onUnstageAttackers={unstageGroupAttackers}
           docked={dockShown}
           coached={coachShown}
           {beatsPrimeKey}

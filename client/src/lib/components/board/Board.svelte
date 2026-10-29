@@ -282,6 +282,8 @@
     // #1724: a token group's "Attack <seat> with N" — forwarded to the
     // viewer's own PlayerPanel. See PlayerPanel's prop of the same name.
     onDeclareAttackers?: (attackerIDs: string[], defenderSeatID: string) => void;
+    // #4423: a group's picked members taken back out of the staged attack.
+    onUnstageAttackers?: (attackerIDs: string[]) => void;
     // #519: connectionBanner.ts's actionsDisabled(status), computed by
     // Game.svelte and handed down rather than recomputed here — Board
     // has no socket of its own to ask. Dims the table and turns every
@@ -332,6 +334,7 @@
     onDeclareAttack,
     onDeclareBlock,
     onDeclareAttackers,
+    onUnstageAttackers,
     disabled = false,
     docked = false,
     coached = false,
@@ -3897,6 +3900,7 @@
       onManaAbilityCost={handleManaAbilityCost}
       considering={seat.id === consideringSeatID}
       onDeclareAttackers={pos === "self" && !disabled ? onDeclareAttackers : undefined}
+      onUnstageAttackers={pos === "self" && !disabled ? onUnstageAttackers : undefined}
       {legal}
       {legalGate}
     />
