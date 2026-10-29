@@ -19,11 +19,15 @@ import (
 //   - a card in the graveyard is found, and a graveyard-only take does
 //     not shuffle the library or fire EventSearchLibrary;
 //   - a library take shuffles, and fires the event;
-//   - "and/or" lets the searcher choose their zones, so a graveyard match
-//     does not take away the right to find nothing (the rulings on Ajani's
-//     Aid and Finale of Devastation); finding nothing shuffles only when
-//     the searcher says they searched the library (#4516);
-//   - the prompt offers both zones, and says which is which.
+//   - "and/or" lets the searcher choose their zones, and asks them FIRST
+//     (#4519): a graveyard match does not take away the right to find
+//     nothing (the rulings on Ajani's Aid and Finale of Devastation), and
+//     the library is shuffled if and only if the searcher chose it;
+//   - the prompt offers the chosen zones, and says which is which.
+//
+// The helpers that answer a search (answerSearchByID and the others)
+// choose every zone on offer; a test about a graveyard-only search answers
+// the zone question itself (answerSearchZones) first.
 
 const (
 	lgTowerWinderOracle = "c1aecc8a-db3a-4158-b1f1-bfe06d782482"
@@ -62,6 +66,7 @@ func TestTowerWinderFindsATowerInTheGraveyard(t *testing.T) {
 	tower := pushGraveyardCardWithTypeLineID(me, "Command Tower", "Land")
 
 	lgCastTowerWinder(t, g)
+	answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 	answerSearchByID(t, g, me.ID, tower)
 	passPriorityAroundTable(t, g)
 
@@ -108,9 +113,10 @@ func TestTowerWinderLibraryOnlyShufflesAndMayFailToFind(t *testing.T) {
 }
 
 // Neither zone has one: the search finds nothing. "If you search your
-// library this way, shuffle" (#4516): a player who looked in the library
-// shuffles it and the event fires; one who looked only in the graveyard
-// does not.
+// library this way, shuffle" (#4516, #4519): a player who chose the
+// library shuffles it and the event fires; one who chose only the
+// graveyard does not. The question is asked, and the empty pick after it,
+// either way.
 func TestTowerWinderWithNoTowerAnywhere(t *testing.T) {
 	setup := func(t *testing.T) (*game.Game, *game.Player) {
 		g := newCatalogGame(t)
@@ -125,15 +131,16 @@ func TestTowerWinderWithNoTowerAnywhere(t *testing.T) {
 		if c == nil || len(c.SearchCards) != 0 {
 			t.Fatalf("nothing matches, so the prompt (#4140) has no candidates: %+v", c)
 		}
-		if !c.SearchAsksLibraryZone() {
-			t.Fatal("an \"and/or graveyard\" prompt must ask which zones were searched")
+		if !c.SearchZonesPending() {
+			t.Fatal("an \"and/or graveyard\" prompt must ask which zones are searched")
 		}
 		return g, me
 	}
 
 	t.Run("the library was searched, so it shuffles", func(t *testing.T) {
 		g, me := setup(t)
-		answerSearchFailToFindInLibrary(t, g, me.ID)
+		answerSearchZones(t, g, me.ID, game.SearchZoneLibrary)
+		answerSearchFailToFind(t, g, me.ID)
 		if searchEventCount(g) != 1 {
 			t.Errorf("EventSearchLibrary fired %d times, want 1", searchEventCount(g))
 		}
@@ -144,6 +151,7 @@ func TestTowerWinderWithNoTowerAnywhere(t *testing.T) {
 
 	t.Run("only the graveyard was searched, so it does not", func(t *testing.T) {
 		g, me := setup(t)
+		answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 		answerSearchFailToFind(t, g, me.ID)
 		if searchEventCount(g) != 0 {
 			t.Errorf("EventSearchLibrary fired %d times, want 0", searchEventCount(g))
@@ -154,11 +162,10 @@ func TestTowerWinderWithNoTowerAnywhere(t *testing.T) {
 	})
 }
 
-// Both zones hold a Tower. The prompt offers both and marks the
-// graveyard one; the searcher may still find nothing ("and/or" lets them
-// search only the library). Taking the library one shuffles; taking the
-// graveyard one, or nothing, does not unless the searcher says they
-// searched the library (#4516).
+// Both zones hold a Tower. Once both zones are chosen the prompt offers
+// both and marks the graveyard one; the searcher may still find nothing
+// ("and/or" lets them search only the library). The library is shuffled
+// if and only if it was chosen (#4516, #4519), whatever is taken.
 func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 	setup := func(t *testing.T) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
 		g := newCatalogGame(t)
@@ -177,6 +184,7 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 		if c == nil {
 			t.Fatal("two matches should prompt")
 		}
+		answerSearchZones(t, g, me.ID, game.SearchZoneLibrary, game.SearchZoneGraveyard)
 		if len(c.SearchCards) != 2 || c.SearchMax != 1 || c.SearchMin != 0 {
 			t.Fatalf("candidates/max/min = %d/%d/%d, want 2/1/0", len(c.SearchCards), c.SearchMax, c.SearchMin)
 		}
@@ -194,7 +202,8 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 
 	t.Run("finding nothing is allowed with a graveyard match present, and shuffles when the library was searched", func(t *testing.T) {
 		g, me, libTower, gyTower := setup(t)
-		answerSearchFailToFindInLibrary(t, g, me.ID)
+		answerSearchZones(t, g, me.ID, game.SearchZoneLibrary)
+		answerSearchFailToFind(t, g, me.ID)
 		passPriorityAroundTable(t, g)
 		if me.Hand.Contains(libTower) || me.Hand.Contains(gyTower) {
 			t.Fatal("nothing should have been taken")
@@ -210,6 +219,7 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 
 	t.Run("finding nothing in the graveyard alone does not shuffle", func(t *testing.T) {
 		g, me, libTower, gyTower := setup(t)
+		answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 		answerSearchFailToFind(t, g, me.ID)
 		passPriorityAroundTable(t, g)
 		if me.Hand.Contains(libTower) || me.Hand.Contains(gyTower) {
@@ -217,6 +227,19 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 		}
 		if searchEventCount(g) != 0 || libraryKnownTo(me, me.ID) != 2 {
 			t.Errorf("events=%d known=%d: \"if you search your library this way\"",
+				searchEventCount(g), libraryKnownTo(me, me.ID))
+		}
+	})
+
+	t.Run("taking the graveyard Tower after searching both zones shuffles", func(t *testing.T) {
+		g, me, _, gyTower := setup(t)
+		answerSearchByID(t, g, me.ID, gyTower)
+		passPriorityAroundTable(t, g)
+		if !me.Hand.Contains(gyTower) {
+			t.Fatal("graveyard Tower not in hand")
+		}
+		if searchEventCount(g) != 1 || libraryKnownTo(me, me.ID) != 0 {
+			t.Errorf("events=%d known=%d: the library was searched, so it shuffles",
 				searchEventCount(g), libraryKnownTo(me, me.ID))
 		}
 	})
@@ -234,9 +257,10 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 		}
 	})
 
-	t.Run("taking the graveyard Tower does not", func(t *testing.T) {
+	t.Run("taking the graveyard Tower from the graveyard alone does not", func(t *testing.T) {
 		g, me, _, gyTower := setup(t)
 		known := libraryKnownTo(me, me.ID)
+		answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 		answerSearchByID(t, g, me.ID, gyTower)
 		passPriorityAroundTable(t, g)
 		if !me.Hand.Contains(gyTower) {
@@ -265,6 +289,7 @@ func TestTowerWinderLibraryCandidateMilledMidPromptIsRefused(t *testing.T) {
 	if c == nil {
 		t.Fatal("expected a prompt")
 	}
+	answerSearchZones(t, g, me.ID, game.SearchZoneLibrary, game.SearchZoneGraveyard)
 	g.WithWriteLock(func() {
 		card, err := me.Library.Remove(libTower)
 		if err != nil {
@@ -292,6 +317,7 @@ func TestFinaleOfDevastationFindsACreatureInTheGraveyard(t *testing.T) {
 
 	castXSpell(t, g, "Finale of Devastation", "Sorcery", lgFinaleOracle, "{X}{G}{G}", 10, nil)
 	passPriorityAroundTable(t, g)
+	answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 	answerSearchByID(t, g, me.ID, gyCreature)
 
 	if !g.Battlefield.Contains(gyCreature) {
@@ -357,7 +383,8 @@ func TestFinaleOfDevastationGraveyardTooBigLeavesFailToFindLegal(t *testing.T) {
 	if c == nil || c.SearchMin != 0 || len(c.SearchGraveyardCards) != 0 {
 		t.Fatalf("want a prompt with no graveyard half and a floor of 0, got %+v", c)
 	}
-	answerSearchFailToFindInLibrary(t, g, me.ID)
+	answerSearchZones(t, g, me.ID, game.SearchZoneLibrary)
+	answerSearchFailToFind(t, g, me.ID)
 	if libraryKnownTo(me, me.ID) != 0 {
 		t.Error("failing to find in the library still shuffles it")
 	}
@@ -381,6 +408,7 @@ func TestAjanisAidFindsAjaniInTheGraveyard(t *testing.T) {
 	t.Run("yes", func(t *testing.T) {
 		g, me, ajani := cast(t)
 		answerMayChoice(t, g, me.ID, true)
+		answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 		answerSearchByID(t, g, me.ID, ajani)
 		passPriorityAroundTable(t, g)
 		if !me.Hand.Contains(ajani) {
@@ -421,6 +449,7 @@ func TestDeliveryMoogleTakesAnArtifactFromTheGraveyard(t *testing.T) {
 	castCatalogSpell(t, g, "Delivery Moogle", "Creature — Moogle", lgMoogleOracle, nil)
 	passPriorityAroundTable(t, g)
 	passPriorityAroundTable(t, g)
+	answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 	c := searchChoiceFor(g, me.ID)
 	if c == nil || len(c.SearchCards) != 1 || c.SearchCards[0] != cheap {
 		t.Fatalf("only the cheap artifact is a candidate, got %+v", c)
@@ -459,6 +488,7 @@ func TestNamedPlaneswalkerCreaturesFetchFromEitherZone(t *testing.T) {
 			passPriorityAroundTable(t, g)
 			passPriorityAroundTable(t, g)
 			answerMayChoice(t, g, me.ID, true)
+			answerSearchZones(t, g, me.ID, game.SearchZoneGraveyard)
 			answerSearchByID(t, g, me.ID, pw)
 			passPriorityAroundTable(t, g)
 			if !me.Hand.Contains(pw) {

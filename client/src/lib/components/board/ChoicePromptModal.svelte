@@ -252,11 +252,6 @@
   // keyed trigger_order prompt. Off by default, and on when the batch
   // already has a remembered order (a prompt asked by hand).
   let rememberOrder = $state(false);
-  // #4516: "I searched my library too" on a "library and/or graveyard"
-  // search. Off each time a prompt appears: the player looked in the
-  // graveyard alone until they say otherwise.
-  let librarySearched = $state(false);
-
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
   let lastChoiceID: string | null = null;
@@ -264,7 +259,11 @@
     // #4134: an undecided search is the same prompt id as the search it
     // becomes once the searcher says yes, but it is a fresh question to
     // the selection: the candidates only arrive then.
-    const nextID = active ? active.id + (active.search_undecided ? "?" : "") : null;
+    // #4519: and so is the zone question of an and/or search, before the
+    // zones are chosen and the candidates of the chosen zones arrive.
+    const nextID = active
+      ? active.id + (active.search_undecided ? "?" : "") + (active.search_zones_pending ? "#" : "")
+      : null;
     if (nextID !== lastChoiceID) {
       // #826: an untap prompt whose ceiling is "all of them" is a board
       // of nothing but "you may choose NOT to untap" permanents, and
@@ -306,7 +305,6 @@
       remember = false;
       rememberRefusal = null;
       rememberOrder = active?.kind === "trigger_order" && active.trigger_order_remembered === true;
-      librarySearched = false;
       submission = null;
       lastChoiceID = nextID;
       inlineRefusal.set(null);
@@ -638,7 +636,7 @@
     // Ulamog's free cast, Wish's play): Board opens the sideboard tab,
     // where every granted card carries its cast button.
     if (isOutsideCastPick(active) && selected.size > 0) outsideCastRequest.set(true);
-    answer({ card_ids: Array.from(selected), ...librarySearchedParam() });
+    answer({ card_ids: Array.from(selected) });
   }
 
   // #3053 (CR 701.23b): a search for a card with a stated quality may
@@ -658,26 +656,28 @@
     answer({ apply: true });
   }
 
-  // #4516 (CR 701.23): a "search your library and/or graveyard" prompt
-  // asks which zones were searched. A library card in the pick is a
-  // library search, so the toggle reads on and cannot be turned off;
-  // otherwise it is the player's word. The server shuffles only for a
-  // library search.
-  const searchAsksLibrary = $derived(
-    isSearch && active?.search_library_optional === true && !searchUndecided,
-  );
-  const pickedLibraryCard = $derived(
-    searchAsksLibrary &&
-      Array.from(selected).some((id) => !searchGraveyardIDs.has(id) && !searchHandIDs.has(id)),
-  );
-  const librarySearchedNow = $derived(pickedLibraryCard || librarySearched);
-  function librarySearchedParam(): Record<string, unknown> {
-    return searchAsksLibrary && librarySearchedNow ? { library_searched: true } : {};
+  // #4519 (CR 701.23): "search your library and/or graveyard" and "search
+  // your hand and/or library" ask which zones are searched BEFORE any card
+  // is shown, because looking through the library is searching it (CR
+  // 701.23a): the library's cards appear, and it is shuffled afterwards,
+  // only if the library is chosen. The server withholds the list until
+  // then (search_zones_pending).
+  const searchZonesPending = $derived(isSearch && active?.search_zones_pending === true);
+  const searchOtherZone = $derived(active?.search_other_zone === "hand" ? "hand" : "graveyard");
+  // An and/or search whose library is not searched: nothing of it is
+  // shown, it is not shuffled, and no search is announced.
+  const searchLibrarySkipped = $derived(isSearch && active?.search_library_skipped === true);
+  // Any and/or search, asked or answered.
+  const searchAsksZones = $derived(isSearch && !!active?.search_other_zone);
+
+  function chooseZones(zones: string[]): void {
+    if (!active || !viewerID || !searchZonesPending) return;
+    answer({ search_zones: zones });
   }
 
   function findNothing(): void {
     if (!active || !viewerID || !isSearch || pickMin > 0) return;
-    answer({ card_ids: [], ...librarySearchedParam() });
+    answer({ card_ids: [] });
   }
 
   // Options come redacted for non-knowers; filter to cards the
@@ -2188,7 +2188,9 @@
                                   ? "Choose nothing"
                                   : "Confirm";
     const clearable =
-      isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
+      (isSearch && !searchZonesPending) ||
+      isCopyTarget ||
+      ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
       label,
       src,
@@ -2203,16 +2205,39 @@
       // declining is one click either way and never a deselect-then-
       // find-the-button hunt; it is absent when the rules make the
       // searcher find (search_min).
+      // #4519: an and/or search's zone question is the sheet's primary:
+      // Enter searches every zone on offer (the default, and what nearly
+      // every player means); the single zones are secondaries.
       primary: searchUndecided
         ? confirmAction("Search", beginSearch, { enter: true })
-        : isSearch && none && pickMin === 0
-          ? null
-          : confirmAction(verb, submit, {
-              disabled: !canSubmit,
-              enter: !(none && pickMin === 0),
-            }),
+        : searchZonesPending
+          ? confirmAction(
+              searchOtherZone === "hand" ? L.searchLibraryAndHand : L.searchLibraryAndGraveyard,
+              () => chooseZones(["library", searchOtherZone]),
+              { enter: true },
+            )
+          : isSearch && none && pickMin === 0
+            ? null
+            : confirmAction(verb, submit, {
+                disabled: !canSubmit,
+                enter: !(none && pickMin === 0),
+              }),
       secondary: [
-        ...(isSearch && pickMin === 0 && !searchUndecided
+        ...(searchZonesPending
+          ? [
+              {
+                id: "zones-library",
+                label: L.searchLibraryOnly,
+                onPress: () => chooseZones(["library"]),
+              },
+              {
+                id: "zones-other",
+                label: searchOtherZone === "hand" ? L.searchHandOnly : L.searchGraveyardOnly,
+                onPress: () => chooseZones([searchOtherZone]),
+              },
+            ]
+          : []),
+        ...(isSearch && pickMin === 0 && !searchUndecided && !searchZonesPending
           ? [{ id: "fail", label: "Find nothing", onPress: findNothing }]
           : []),
         ...(searchOptional
@@ -2975,9 +3000,16 @@
           You may search your library. Looking through it is searching: choose Search and you'll see
           the matches and your library is shuffled afterwards; choose Don't search and it isn't
           looked at or shuffled.
-        {:else if isSearch && optionCards.length === 0 && searchAsksLibrary}
-          Nothing in your library or graveyard matches. Find nothing to carry on; your library is
-          shuffled only if you say you searched it.
+        {:else if searchZonesPending}
+          Where do you search? Looking through your library is searching it: choose the library and
+          you'll see its matches, and it is shuffled afterwards whatever you take. Choose only your {searchOtherZone}
+          and your library isn't looked at or shuffled.
+        {:else if isSearch && optionCards.length === 0 && searchLibrarySkipped}
+          Nothing in your {searchOtherZone} matches. Find nothing to carry on; your library wasn't searched,
+          so it isn't shuffled.
+        {:else if isSearch && optionCards.length === 0 && searchAsksZones}
+          Nothing you searched matches. Find nothing to carry on: you searched your library, so it
+          is shuffled all the same.
         {:else if isSearch && optionCards.length === 0}
           Nothing in the library matches. Find nothing to carry on: your library is shuffled all the
           same.
@@ -2993,10 +3025,15 @@
           {#if active?.search_all_zones}
             You're searching their graveyard, hand and library. Cards marked Graveyard or Hand are
             there, the rest are in the library, and the library is shuffled either way.
-          {:else if searchAsksLibrary}
-            Cards marked Graveyard are public. You may search either zone or both: your library is
-            shuffled if you take a library card, or if you say you searched it; searching only your
-            graveyard doesn't shuffle it.
+          {:else if searchLibrarySkipped}
+            You're searching only your {searchOtherZone}: your library isn't shown, and it isn't
+            shuffled.
+          {:else if searchAsksZones}
+            You chose to search your library, so it is shuffled afterwards, whatever you take. Only
+            you can see its cards; the ones marked {searchOtherZone === "hand"
+              ? "Hand"
+              : "Graveyard"}
+            come from your {searchOtherZone}.
           {:else}
             Only you can see them, and your library is shuffled either way.
           {/if}
@@ -3171,22 +3208,6 @@
           them all.
         {/if}
       </p>
-      {#if searchAsksLibrary}
-        <!-- #4516: "If you search your library this way, shuffle." -->
-        <div class="remember-order">
-          <button
-            type="button"
-            class="remember-toggle"
-            class:on={librarySearchedNow}
-            aria-pressed={librarySearchedNow}
-            disabled={pickedLibraryCard}
-            onclick={() => (librarySearched = !librarySearched)}
-          >
-            <span class="remember-box" aria-hidden="true">{librarySearchedNow ? "✓" : ""}</span>
-            {L.searchedMyLibrary}
-          </button>
-        </div>
-      {/if}
       {#if isEachLeg}
         <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
              earlier players chose (CR 101.4b), and the running price. -->

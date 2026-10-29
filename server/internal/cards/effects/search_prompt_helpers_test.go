@@ -45,12 +45,36 @@ func takeSearchPrompts(t *testing.T, g *game.Game) {
 // is still asking (#4134): candidates are shown, and a pick accepted,
 // only once the searcher has begun. A prompt that is not asking is left
 // alone, so the helpers that answer searches use it unconditionally.
+//
+// An "and/or" search (#4519) also asks which zones it searches before it
+// shows anything; this answers that with every zone on offer, the way a
+// seat that wants the most candidates would. A test that cares which zones
+// were searched answers the question itself (answerSearchZones) first.
 func beginSearchIfAsked(t *testing.T, g *game.Game, c *game.PendingChoice) {
 	t.Helper()
-	if c == nil || !c.SearchIsUndecided() {
+	if c == nil {
 		return
 	}
-	if err := g.BeginSearchLibrary(c.ID, c.Chooser); err != nil {
-		t.Fatalf("BeginSearchLibrary: %v", err)
+	if c.SearchIsUndecided() {
+		if err := g.BeginSearchLibrary(c.ID, c.Chooser); err != nil {
+			t.Fatalf("BeginSearchLibrary: %v", err)
+		}
+	}
+	if c.SearchZonesPending() {
+		answerSearchZones(t, g, c.Chooser, game.SearchZoneLibrary, c.SearchOtherZone())
+	}
+}
+
+// answerSearchZones answers a player's open "and/or" search's zone question
+// (#4519, CR 701.23): which zones they search. The library is shuffled, and
+// the search announced, if and only if it is among them.
+func answerSearchZones(t *testing.T, g *game.Game, chooser uuid.UUID, zones ...string) {
+	t.Helper()
+	c := searchChoiceFor(g, chooser)
+	if c == nil || !c.SearchZonesPending() {
+		t.Fatalf("no zone question open for %s: %+v", chooser, c)
+	}
+	if err := g.ChooseSearchZones(c.ID, chooser, zones); err != nil {
+		t.Fatalf("ChooseSearchZones(%v): %v", zones, err)
 	}
 }

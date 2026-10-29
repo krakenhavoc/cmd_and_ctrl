@@ -21,13 +21,12 @@ import (
 // creature cards from the library and the graveyard together, marked
 // by zone. "And/or" lets the player choose their zones, so the search
 // may still find nothing even with a creature in the graveyard (it is a
-// search for a stated quality, CR 701.23b). A card taken from the
-// graveyard means the library was never searched, so "If you search your
-// library this way, shuffle" does not shuffle it; taking a library card
-// shuffles. A player who took a graveyard card, or nothing, says whether
-// they searched the library too (#4516), and only then is it shuffled.
-// Whichever zone it comes from, the pump below still runs. See ADR
-// 0015's 2026-10-13 amendment.
+// search for a stated quality, CR 701.23b). The zones are asked first
+// (#4519): a player who chose the graveyard alone is never shown the
+// library, which "If you search your library this way, shuffle" leaves
+// unshuffled; one who chose the library sees its creatures and shuffles it
+// whatever they take (#4516). Whichever zone it comes from, the pump below
+// still runs. See ADR 0015's 2026-10-13 and 2026-10-29 amendments.
 //
 // # The pump is unconditional on X, not on the search succeeding
 //

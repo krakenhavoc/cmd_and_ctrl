@@ -12,10 +12,10 @@ import (
 // it, and put it into your hand. If you search your library this way,
 // shuffle.") is a dozen creatures with one shape, so the trigger is
 // built here and each card names only its keywords and its planeswalker.
-// The zone behaviour is the engine's: a named card already in the
-// graveyard may be taken or left, a card taken from the library shuffles,
-// and a card taken from the graveyard (or nothing found) shuffles only
-// when the player says they searched the library too (#4516).
+// The zone behaviour is the engine's: the player is asked which zones they
+// search before anything is shown (#4519), a named card already in the
+// graveyard may be taken or left, and the library is shown and shuffled
+// only if they chose to search it (#4516).
 
 // mayFetchNamedFromLibraryOrGraveyard is the "you may search your
 // library and/or graveyard for a card named X, reveal it, and put it

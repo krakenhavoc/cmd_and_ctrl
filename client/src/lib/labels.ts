@@ -1525,12 +1525,40 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ChoicePromptModal.svelte`],
     doc: "the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart",
   }),
-  searchedMyLibrary: label({
-    name: "I searched my library too",
+  searchLibraryAndGraveyard: label({
+    name: "Library and graveyard",
     kind: "text",
     role: "button",
     owners: [`${BOARD}ChoicePromptModal.svelte`],
-    doc: 'the toggle under a "search your library and/or graveyard" prompt (#4516, CR 701.23); on, the library was searched as well as the graveyard, so it is shuffled whatever is taken. Reads on, and is disabled, while a library card is picked',
+    doc: 'the primary of the question a "search your library and/or graveyard" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards',
+  }),
+  searchLibraryAndHand: label({
+    name: "Library and hand",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the primary of the question a "search your hand and/or library" prompt asks before it shows anything (#4519, CR 701.23): search both zones. The library is shuffled afterwards',
+  }),
+  searchLibraryOnly: label({
+    name: "Library only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: "an and/or search's zone question (#4519): search the library alone; it is shuffled afterwards",
+  }),
+  searchGraveyardOnly: label({
+    name: "Graveyard only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'a "search your library and/or graveyard" prompt zone question (#4519): search the graveyard alone; the library is never shown or shuffled',
+  }),
+  searchHandOnly: label({
+    name: "Hand only",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'a "search your hand and/or library" prompt zone question (#4519): search the hand alone; the library is never shown or shuffled',
   }),
   forgetTriggerOrders: dynamicLabel({
     stem: "Forget remembered trigger orders",

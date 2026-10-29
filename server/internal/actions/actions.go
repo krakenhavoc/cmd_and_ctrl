@@ -2044,13 +2044,14 @@ func dispatch(g *game.Game, a Action) error {
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`
-			// LibrarySearched rides a search_library answer for "search
-			// your library and/or graveyard" (#4516, CR 701.23): true says
-			// the library was searched as well as the graveyard, so an
-			// answer with no library card shuffles it. Absent or false
-			// with no library card is a search of the graveyard alone. A
-			// library card in card_ids is a library search either way.
-			LibrarySearched bool `json:"library_searched,omitempty"`
+			// SearchZones answers the zone question of an and/or search
+			// (#4519, CR 701.23): "search your library and/or graveyard",
+			// "search your hand and/or library". A non-empty subset of
+			// "library" and the prompt's other zone ("graveyard" or
+			// "hand"), asked before any card is shown. The library is
+			// shuffled, and the search announced, if and only if "library"
+			// is in it. Routed by presence.
+			SearchZones []string `json:"search_zones"`
 			// TapIDs rides a PendingChoicePayUnless "pay" answer whose
 			// cost is a waterbend cost (#1311, "Ward—Waterbend {4}"):
 			// the untapped artifacts and creatures the chooser taps,
@@ -2371,6 +2372,14 @@ func dispatch(g *game.Game, a Action) error {
 			}
 			return g.ResolvePickTargetsDivided(choiceID, a.Player, refs, dist)
 		}
+		if p.SearchZones != nil {
+			// #4519: an and/or search's zone question, asked before the
+			// candidates are shown. Only a search_library prompt has one.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); !ok || kind != game.PendingChoiceSearchLibrary {
+				return game.ErrInvalidParam
+			}
+			return g.ChooseSearchZones(choiceID, a.Player, p.SearchZones)
+		}
 		if p.OptionalApply != nil {
 			// Five yes/no kinds share the {apply: bool} payload
 			// shape: PendingChoiceOptionalReplacement (S17),
@@ -2543,7 +2552,7 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
-				return g.ResolveSearchLibraryZones(choiceID, a.Player, ids, p.LibrarySearched)
+				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
 			case game.PendingChoiceChooseCards:
 				// The chained-choice card-set pick. Like search, its
 				// floor can be zero, so an EMPTY list is a real answer

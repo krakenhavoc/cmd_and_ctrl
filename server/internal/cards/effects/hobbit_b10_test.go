@@ -1252,10 +1252,18 @@ func TestHobB10LastLightSixthCounterSacrificesAndSearchesHandAndLibrary(t *testi
 
 func TestHobB10LastLightTakingTheDragonFromYourHandLeavesTheLibraryAlone(t *testing.T) {
 	g, me, _, libDragon, handDragon, before := hobB10SixthMountain(t, 5)
+	// #4519: the zones come first; the hand alone is not a library search.
+	answerSearchZones(t, g, me.ID, game.SearchZoneHand)
+	if c := searchChoiceFor(g, me.ID); hasID(c.SearchCards, libDragon.InstanceID) {
+		t.Fatal("the library's Dragon is offered to a hand-only search")
+	}
 	answerSearchByID(t, g, me.ID, handDragon.InstanceID)
 	passPriorityAroundTable(t, g)
 	if battlefieldCountNamed(g, me.ID, "Hand Dragon") != 1 {
 		t.Fatal("the Dragon from hand did not enter")
+	}
+	if searchEventCount(g) != 0 {
+		t.Errorf("EventSearchLibrary fired %d times for a hand-only search", searchEventCount(g))
 	}
 	if !me.Library.Contains(libDragon.InstanceID) {
 		t.Fatal("the library Dragon left the library")
@@ -1322,6 +1330,32 @@ func TestHobB10LastLightMayFindNothingAndStillShuffles(t *testing.T) {
 	}
 	if same {
 		t.Error("the library was not shuffled after an empty search")
+	}
+}
+
+// #4519: "search your hand and/or library" asks the zones first. A search of
+// the hand alone that finds nothing never looks at the library, so it is not
+// shuffled and no search is announced; the sacrifice trigger has still
+// resolved.
+func TestHobB10LastLightHandOnlyFindingNothingDoesNotShuffle(t *testing.T) {
+	g, me, _, libDragon, handDragon, before := hobB10SixthMountain(t, 5)
+	c := searchChoiceFor(g, me.ID)
+	if c == nil || !c.SearchZonesPending() || c.SearchOtherZone() != game.SearchZoneHand {
+		t.Fatalf("Last Light must ask the zones first: %+v", c)
+	}
+	answerSearchZones(t, g, me.ID, game.SearchZoneHand)
+	answerSearchFailToFind(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !me.Library.Contains(libDragon.InstanceID) || !me.Hand.Contains(handDragon.InstanceID) {
+		t.Error("a Dragon left its zone")
+	}
+	for i, card := range me.Library.Cards {
+		if card.InstanceID != before[i] {
+			t.Fatal("a hand-only search that found nothing shuffled the library")
+		}
+	}
+	if searchEventCount(g) != 0 {
+		t.Errorf("EventSearchLibrary fired %d times for a hand-only search", searchEventCount(g))
 	}
 }
 
@@ -1432,7 +1466,12 @@ func TestHobB10LastLightSearchSurvivesARestoreMidPrompt(t *testing.T) {
 	if choice == nil {
 		t.Fatal("the restored table lost the search prompt")
 	}
-	if !hasID(choice.SearchCards, libDragon.InstanceID) || !hasID(choice.SearchHandCards, handDragon.InstanceID) {
+	if !choice.SearchZonesPending() || choice.SearchOtherZone() != game.SearchZoneHand {
+		t.Fatalf("the restored prompt lost its zone question: %+v", choice)
+	}
+	answerSearchZones(t, g, rme.ID, game.SearchZoneHand)
+	choice = searchChoiceFor(g, rme.ID)
+	if !hasID(choice.SearchHandCards, handDragon.InstanceID) || hasID(choice.SearchCards, libDragon.InstanceID) {
 		t.Fatalf("restored candidates %v / hand %v lost a Dragon", choice.SearchCards, choice.SearchHandCards)
 	}
 	answerSearchByID(t, g, rme.ID, handDragon.InstanceID)

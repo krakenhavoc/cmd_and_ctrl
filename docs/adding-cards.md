@@ -5541,20 +5541,26 @@ SearchLibrary{Player: p, Predicate: …, Dest: game.ZoneHand, Limit: 1,
     Reveal: true, Shuffle: true, AlsoGraveyard: true}   // Tower Winder, Delivery Moogle
 ```
 
-The prompt offers the matches from both zones, marked by zone. "And/or"
-lets the searcher choose which zones to look in, so the floor is the
-ordinary library-search floor: a stated quality may find nothing even
-with a match in the graveyard, and an unconditional search must find
-`min(limit, cards in both zones)`. A take that comes wholly out of the
-graveyard does not search the library, so the engine skips the shuffle
-and `EventSearchLibrary`; any library card taken shuffles. A graveyard
-card or nothing taken shuffles only if the searcher says they searched
-the library too (#4516: the sheet's "I searched my library too",
-`library_searched` on the wire). That is the engine's, not the card's:
-set `Shuffle` as printed and the card is Full. You do not model it, and
-you do not write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
-combine it with `LibraryOwner`, and the destination is hand, battlefield
-or exile. A search of ONLY a public zone ("search your graveyard") is
+The prompt asks which zones are searched FIRST (#4519, CR 701.23a:
+looking through the library is searching it): "library and graveyard",
+"library only" or "graveyard only", and shows no library card until the
+library is chosen. It then offers the matches of the chosen zones, marked by
+zone. "And/or" lets the searcher choose which zones to look in, so the
+floor is the ordinary library-search floor over the zones chosen: a stated
+quality may find nothing even with a match in the graveyard, and an
+unconditional search must find `min(limit, cards in the chosen zones)`. The
+library is shuffled, and `EventSearchLibrary` fires, if and only if the
+searcher chose it, whatever they take; a graveyard-only search never shows,
+shuffles or announces it. That is the engine's, not the card's: set
+`Shuffle` as printed and the card is Full. You do not model it, and you do
+not write a second search for the graveyard half. The graveyard searched is
+the library owner's, so do not combine it with `LibraryOwner`, and the
+destination is hand, battlefield or exile. **`AlsoHand: true`** is the same
+for "search your hand and/or library" (Last Light of Durin's Day): the hand
+is the other zone, and a hand-only search does not shuffle. A test that
+answers these searches with the helpers (`answerSearchByID` and the others in
+`cards/effects`) searches every zone on offer; one that cares which zones
+were searched answers the question first with `answerSearchZones`. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
 its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
 Prodigy) also reads the hand and is not covered.
