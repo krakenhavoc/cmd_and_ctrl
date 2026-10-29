@@ -69,6 +69,14 @@ CD is gated `if: env.IS_DEV != 'true'`; do not work around that by hand.
    written. The server's "community" step writes the role and
    `CMDCTRL_DISCORD_MOD_LOG_CHANNEL_ID` to `/etc/cmd_and_ctrl/env` too.
 
+   Ban sync adds two more, the same way (#3325, ADR 0156 amendment
+   2026-10-29): `CMDCTRL_DISCORD_BAN_SYNC` (`1` on; empty or `0` off) and
+   `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` (the server's variable of that
+   name). The step refuses any other flag value, a guild that is not a
+   Discord id, or `1` without the guild and the player role. Switch on the
+   **Server Members intent** in the Developer Portal before setting `1`;
+   [docs/discord-bot.md](../docs/discord-bot.md) has the order.
+
    `CMDCTRL_SERVER_BASE_URL` and `CMDCTRL_CLIENT_BASE_URL` are left to
    their defaults, which are production's values. The step skips while
    the secret is unset, or while the `cmdctrl-bot` group does not exist.

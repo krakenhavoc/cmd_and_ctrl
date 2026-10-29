@@ -106,6 +106,20 @@ type Config struct {
 	// The bot adds a line there when a mod approves or declines an access
 	// request. Empty: it adds nothing.
 	ModLogChannelID string
+
+	// BanSync is CMDCTRL_DISCORD_BAN_SYNC=1 (ADR 0156's 2026-10-29
+	// amendment, #3325): when the community server bans a member, takes
+	// the player role away or sees them leave, the bot asks the server to
+	// end that person's sessions at once. Off by default, because it needs
+	// the privileged Server Members intent, and asking for that before it
+	// is switched on in the Developer Portal makes Discord close the
+	// connection (4014). Needs CommunityGuildID and PlayerRoleID.
+	BanSync bool
+
+	// CommunityGuildID is the C2 server, the same
+	// CMDCTRL_DISCORD_COMMUNITY_GUILD_ID the server's sign-up gate reads.
+	// Ban sync acts only on its events.
+	CommunityGuildID string
 }
 
 // ConfigFromEnv reads the CMDCTRL_* env vars. Missing optional
@@ -126,7 +140,56 @@ func ConfigFromEnv() Config {
 		AccessRequestChannelID: strings.TrimSpace(os.Getenv(AccessRequestChannelEnv)),
 		PlayerRoleID:           strings.TrimSpace(os.Getenv(PlayerRoleEnv)),
 		ModLogChannelID:        strings.TrimSpace(os.Getenv(ModLogChannelEnv)),
+
+		BanSync:          strings.TrimSpace(os.Getenv(BanSyncEnv)) == "1",
+		CommunityGuildID: strings.TrimSpace(os.Getenv(CommunityGuildEnv)),
 	}
+}
+
+// BanSyncEnv turns ban sync on with "1". CommunityGuildEnv is the
+// server's variable of the same name.
+const (
+	BanSyncEnv        = "CMDCTRL_DISCORD_BAN_SYNC"
+	CommunityGuildEnv = "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID"
+)
+
+// BanSyncEnabled reports whether the bot listens for bans, role
+// removals and leaves in the community server.
+func (c Config) BanSyncEnabled() bool {
+	return c.BanSync && c.CommunityGuildID != "" && c.PlayerRoleID != ""
+}
+
+// Intents is what the bot asks Discord for when it connects. Each
+// feature adds only what it needs, so a feature that is off never asks
+// for a privileged intent the Developer Portal has not switched on: an
+// intent asked for and not enabled makes Discord refuse the connection
+// (close code 4014), and the whole bot with it.
+func (c Config) Intents() discordgo.Intent {
+	// IntentsGuilds lets us observe GuildCreate so the bot can
+	// register (or explicitly refuse to register) commands on a
+	// guild that was added while the process was running. Not
+	// privileged; no portal approval required.
+	intents := discordgo.IntentsGuilds
+	// The [[Card Name]] watcher (#3324) reads message text, which needs the
+	// privileged Message Content intent, switched on in the Developer
+	// Portal. Ask for it only when card channels are configured.
+	if len(c.CardChannelIDs) > 0 {
+		intents |= discordgo.IntentsGuildMessages | discordgo.IntentsMessageContent
+	}
+	// Access requests (ADR 0156's 2026-10-16 amendment, #3325) need to
+	// see who posts in #account-requests, which is the unprivileged
+	// Guild Messages intent; they never read the text.
+	if c.AccessRequestsEnabled() {
+		intents |= discordgo.IntentsGuildMessages
+	}
+	// Ban sync (ADR 0156's 2026-10-29 amendment): GUILD_BAN_ADD comes
+	// with the unprivileged Guild Moderation intent; GUILD_MEMBER_UPDATE
+	// and GUILD_MEMBER_REMOVE need the privileged Server Members intent.
+	// OpenGateway drops the latter, and keeps bans, if Discord refuses it.
+	if c.BanSyncEnabled() {
+		intents |= discordgo.IntentGuildModeration | discordgo.IntentGuildMembers
+	}
+	return intents
 }
 
 // The variables behind the access requests and the mod log (ADR 0156's
@@ -176,6 +239,7 @@ func (c Config) Validate() error {
 		{AccessRequestChannelEnv, c.AccessRequestChannelID},
 		{PlayerRoleEnv, c.PlayerRoleID},
 		{ModLogChannelEnv, c.ModLogChannelID},
+		{CommunityGuildEnv, c.CommunityGuildID},
 	} {
 		if v.value != "" && !isSnowflake(v.value) {
 			return fmt.Errorf("%s is not a Discord id (digits only, at most 20)", v.name)
@@ -183,6 +247,9 @@ func (c Config) Validate() error {
 	}
 	if c.AccessRequestChannelID != "" && c.PlayerRoleID == "" {
 		return fmt.Errorf("%s is set but %s is not: Approve grants that role, so name it", AccessRequestChannelEnv, PlayerRoleEnv)
+	}
+	if c.BanSync && (c.CommunityGuildID == "" || c.PlayerRoleID == "") {
+		return fmt.Errorf("%s=1 needs %s and %s: ban sync acts on that server's events and that role", BanSyncEnv, CommunityGuildEnv, PlayerRoleEnv)
 	}
 	return nil
 }
@@ -217,6 +284,8 @@ func (c Config) Redacted() map[string]any {
 		"access_request_channel_id": c.AccessRequestChannelID,
 		"player_role_id":            c.PlayerRoleID,
 		"mod_log_channel_id":        c.ModLogChannelID,
+		"ban_sync":                  c.BanSync,
+		"community_guild_id":        c.CommunityGuildID,
 	}
 }
 

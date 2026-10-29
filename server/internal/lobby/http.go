@@ -437,6 +437,7 @@ type GameEvictor interface {
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
+//	POST /admin/discord-members/{discord_id}/revoke-sessions — admin: ban sync, the same by Discord id when the C2 server drops a member (ADR 0156)
 //	GET  /admin/users       — admin: every account (ADR 0124 §3.1)
 //	GET  /admin/users/{id}  — admin: one account, its games, decks and deck requests
 //	GET  /admin/games       — admin: tables, newest first, filtered and paginated
@@ -970,6 +971,10 @@ func Handler(c Config) http.Handler {
 	// matcher, because Caddy's /logout matches that path exactly.
 	mux.Handle("POST /logout/everywhere", auth.Middleware(c.Auth)(handlerFunc(c, logoutEverywhere)))
 	mux.Handle("POST /admin/users/{id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminRevokeUserSessions)))
+	// Ban sync (ADR 0156, amendment 2026-10-29, #3325, ban_sync.go): the
+	// Discord bot reports a ban, a role taken away or a leave on the C2
+	// server, by Discord id, and the account's sessions end at once.
+	mux.Handle("POST /admin/discord-members/{discord_id}/revoke-sessions", requireAdmin(c, handlerFunc(c, adminBanSync)))
 	// Moderation for a playmat on a shared table (ADR 0128 section 9).
 	mux.Handle("DELETE /admin/users/{id}/playmat", requireAdmin(c, handlerFunc(c, adminRemovePlaymat)))
 	mux.Handle("DELETE /admin/users/{id}/playmats/{slot}", requireAdmin(c, handlerFunc(c, adminRemovePlaymatSlot)))
