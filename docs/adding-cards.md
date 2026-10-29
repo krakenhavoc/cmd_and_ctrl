@@ -3037,6 +3037,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"cipher"` | Cipher (CR 702.99) — #3867, a SPELL's keyword read as it RESOLVES: once every prompt the spell's own text opened is answered, the engine asks its controller to exile it encoded on a creature they control (`game/cipher.go`, a keyed option pick). The creature then has a granted "whenever this creature deals combat damage to a player" trigger, one per encoded card, that offers its controller a free copy of the card; the copy runs the card's OnResolve again with new targets. Declare `PrintedKeywords: []string{game.KeywordCipher}` on the instant or sorcery and write only the rest of its text: never exile the card yourself. ([ADR 0093's 2026-10-16 amendment](decisions/0093-abilities-granted-to-other-permanents.md)) |
 | `"paradigm"` | Paradigm (CR 702.192) — #1866, a SPELL's keyword read as it RESOLVES: `spellHasParadigm` (`game/paradigm.go`) exiles the resolved spell, and the first resolution of a name by a player schedules the delayed trigger `paradigm/copy`, which fires at each of that player's precombat main phases for the rest of the game and offers a free cast of a copy of the exiled card (`CopyCardsAndOfferCastsForEffect`, #3258). Declare it on an instant or sorcery; the card file writes only the rest of its text (Decorum Dissertation) |
 | `"ascend"` | Ascend (CR 702.131) — #2696, read by the engine, never by a card file: a permanent with ascend gives its controller the city's blessing as soon as they control ten permanents, and an instant or sorcery with ascend gives it as the spell resolves (`game/citys_blessing.go`). Declare it as `game.KeywordAscend`; the card reads the designation, not the keyword. See "Ascend and the city's blessing" below ([ADR 0096 amendment 2026-10-08](decisions/0096-the-monarch-from-a-card-effect.md)) |
+| `"storied"` | Storied (CR 702.195) — #4475, read by the engine, never by a card file: a permanent with storied gives its controller an enduring story as soon as they control three or more permanents that are artifacts, Sagas and/or legendary (`game/enduring_story.go`, the city's blessing's sweep in `game/earned_designations.go`). Declare it as `game.KeywordStoried`; the card reads the designation, not the keyword. See "Storied, the enduring story, and recruit" below ([ADR 0096 amendment 2026-10-29](decisions/0096-the-monarch-from-a-card-effect.md)) |
 | `"start your engines!"` | Start your engines! (CR 702.179) — #2122, the state-based action that gives a player with no speed a speed of 1 while they control a permanent with it (`game/speed.go`, CR 704.5aa). Declare it as `game.KeywordStartYourEngines`. The deck importer stamps it from Scryfall, so a speed card with no catalog entry still sets its controller's speed; its "Max speed —" ability still needs one. "Max speed — …" is NOT a keyword token: it is the `effects.MaxSpeed…` wrappers. See "Speed" below ([ADR 0138](decisions/0138-speed.md)) |
 
 **A keyword counter needs no grant** (CR 122.1b, [ADR 0101](decisions/0101-keyword-counters.md)).
@@ -10618,6 +10619,41 @@ real, put an ascend permanent and nine others on the battlefield and call
 `g.RunStateChecksForTest()`. "Can't attack unless you have the city's
 blessing" is `CantAttackUnlessYouHaveTheCitysBlessing()` plus
 `CantBlockUnlessYouHaveTheCitysBlessing()` (Wayward Swordtooth).
+
+### Storied, the enduring story, and recruit (ADR 0096 amendment 2026-10-29, #4475, CR 702.195 / 701.70)
+
+The enduring story is the city's blessing with a different count: a
+**player** designation (`Player.EnduringStory`, `game/enduring_story.go`)
+that a permanent with storied gives its controller once they control three
+or more permanents that are artifacts, Sagas and/or legendary, each
+counted once. Both are rows of one sweep (`game/earned_designations.go`),
+so never write a second one, and never approximate either with a live
+count. A card declares the keyword and reads the designation with the
+vocabulary in
+[enduring_story.go](../server/internal/cards/effects/enduring_story.go),
+the blessing's words with the name changed:
+
+```go
+PrintedKeywords: []string{game.KeywordStoried},                          // the badge; the engine reads it
+Static: []game.StaticAbility{SelfPumpWhileEnduringStory(1, 0),           // Ori: +1/+0 as long as you have one
+    SelfKeywordWhileEnduringStory("vigilance")},                         //      and vigilance
+AppliesTo: WhileEnduringStory(CreaturesYouControl),                      // "as long as you have an enduring story, creatures you control …"
+UntapStepRestrictions: []game.UntapStepRestriction{DoesntUntapUnlessEnduringStory()}, // Bombur
+if YouHaveAnEnduringStory(g, item.Controller) { … }                      // "if you have an enduring story" as it resolves
+```
+
+The shared bodies (`whileYouHave`, `selfCreature`, `pumpBy`) live in
+`citys_blessing.go`; a third designation of the kind is a row in
+`earnedDesignations` plus these few lines. In a test, put a storied
+permanent and three artifacts on the battlefield and run the state checks.
+
+**Recruit** (CR 701.70a) is `Recruit{}` (`recruit.go`), usable wherever an
+effect runs: `Do(Recruit{})` in a trigger, a spell's clause, a Saga
+chapter. It draws, then opens a keyed discard (`choose-cards/recruit-discarded`,
+a restore point), and a nonland card discarded makes a 1/1 white Human
+Soldier for the recruiter. It is the last instruction of every card that
+has it; anything after it would have to ride the discard's continuation,
+as connive's chain does.
 
 ### Speed: start your engines! and max speed (ADR 0138, #2122, CR 702.178 / 702.179)
 

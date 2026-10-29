@@ -310,6 +310,12 @@ var canonicalKeywords = map[string]bool{
 	// or sorcery), both in citys_blessing.go, and both read it with
 	// HasKeyword, so a deck-imported card works with no catalog entry.
 	KeywordAscend: true,
+	// storied (CR 702.195) joins with #4475 (ADR 0096's 2026-10-29
+	// amendment), in the same change that teaches the engine to honour
+	// it. Its consumer is earnedDesignationsSweepLocked
+	// (earned_designations.go), which reads it with HasKeyword, so a
+	// deck-imported card works with no catalog entry.
+	KeywordStoried: true,
 	// sunburst (CR 702.44) joins with #1552 (ADR 0109 §11 decision 2),
 	// in the same change that teaches the engine to honour it as a
 	// keyword. Its consumer is applySunburstLocked (entry_counters.go),

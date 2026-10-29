@@ -1767,3 +1767,5 @@ tail mirkwood-nurturer/counter
 tail then/orcrist-type-chosen
 tail then/the-black-arrow-destroy-dragon
 tail troop-of-ponies/basic-land-to-hand
+choose choose-cards/recruit-discarded
+tail then/celebrate-the-mountain-king-exiled-one

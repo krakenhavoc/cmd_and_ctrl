@@ -155,6 +155,11 @@ export const ICONS = {
   diamond: [p("M12 3l8 9-8 9-8-9z")],
   cycle: [p("M20 12a8 8 0 1 1-2.5-5.8"), p("M20 4v5h-5")],
   flag: [p("M5 21V4h12l-2 4 2 4H5")],
+  // #4475: an enduring story (CR 702.195b) — an open book.
+  book: [
+    p("M12 7a4 4 0 0 0-4-2H3v14h5a4 4 0 0 1 4 2"),
+    p("M12 7a4 4 0 0 1 4-2h5v14h-5a4 4 0 0 0-4 2z"),
+  ],
   // ADR 0203: a dungeon (CR 309) — an arched door with a ring pull.
   door: [p("M6 21V9a6 6 0 0 1 12 0v12"), p("M4 21h16"), c(14.5, 14.5, 1, true)],
   // ADR 0120 §4: the expanded board's pin toggle — a push pin.

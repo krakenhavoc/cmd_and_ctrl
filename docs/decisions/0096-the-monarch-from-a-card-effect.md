@@ -316,3 +316,57 @@ Golden City, Slippery Scoundrel and Golden Demise. **Still open:** eleven ascend
 yet ([#2706](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2706)); Timestream Navigator also waits
 on a "put this on the bottom of its owner's library" cost, and Tilonalli's Summoner on a "may pay
 {X}{R}" as its trigger resolves.
+
+## Amendment (2026-10-29, [#4475](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4475)): storied and the enduring story, one sweep with the blessing
+
+The Hobbit's storied (CR 702.195, September 25, 2026 edition) is ascend's static with a different
+count: "Any time you control three or more permanents that are artifacts, Sagas, and/or legendary and
+you don't have an enduring story, you have an enduring story for the rest of the game" (702.195a). The
+enduring story is a designation with no rules meaning of its own that any number of players may have
+(702.195b), and the continuous effects are reapplied before triggers are checked once a player gets it
+(702.195c). Those are CR 702.131b, c and d word for word. No new ADR: this amendment's 2026-10-08
+predecessor already owns the per-player designation, and the right model is the same one.
+
+**One sweep, not two.** `citysBlessingSweepLocked` becomes `earnedDesignationsSweepLocked`
+(`game/earned_designations.go`), which walks a fixed table of rows: the keyword, the threshold, which
+permanents count, the player's flag, and the one write that sets it. Ascend's row counts every permanent
+(ten); storied's counts a permanent that is an artifact, legendary or a Saga after continuous effects,
+once however many of the three it is (three). The table is package-level, never a field of `Game`, so the
+closure census does not move. The call site in `stateBasedActionsLocked`, the recompute after a grant, the
+zero-allocation tallies and the "walk nothing once everybody has it" exit are the blessing's, unchanged.
+The blessing's spell half (`ascendSpellLocked`) stays where it was: storied appears only on permanents.
+
+**The designation.** `Player.EnduringStory`, written only by `grantEnduringStoryLocked`
+(`game/enduring_story.go`), which emits `EventEnduringStory` on a real change only. Nothing clears it.
+It rides `Clone` and undo, the snapshot (`seats[].enduringStory`, additive under schema 9, recorded in
+`testdata/snapshot_shape/v9.txt`; an older file restores with no story, which only makes a card weaker)
+and the wire (`PlayerView.enduring_story`, public and identical for every viewer). The layer pass bumps
+on the event (702.195c) and the log narrates it (`LogEnduringStory`, "Pat has an enduring story").
+`storied` is a canonical keyword (`game.KeywordStoried`), so a deck-imported card works with no catalog
+entry.
+
+**Authoring.** `cards/effects/enduring_story.go` is the blessing's vocabulary renamed:
+`YouHaveAnEnduringStory`, `WhileEnduringStory`, `SelfWhileEnduringStory`,
+`SelfPumpWhileEnduringStory`, `SelfKeywordWhileEnduringStory`, and `DoesntUntapUnlessEnduringStory`
+(Bombur's CR 502.3 restriction, read at each untap step). The bodies they share with the blessing's
+helpers (`whileYouHave`, `selfCreature`, `pumpBy`) moved into `citys_blessing.go`, so the two sets cannot drift.
+
+**Recruit.** CR 701.70a, "Draw a card, then discard a card. If you discarded a nonland card this way,
+create a 1/1 white Human Soldier creature token", is connive's shape with a token for the counter, and
+is built the same way (`effects.Recruit`, `cards/effects/recruit.go`): draw, then the player-chosen
+discard with a registered continuation (`choose-cards/recruit-discarded`, #4253), so a table waiting on
+the discard is a restore point and nothing is captured. The recruiter is the effect's controller, which
+is "you recruit" on an opponent's turn too.
+
+**Client.** `PlayerIdentity` shows a read-only marker (the `book` icon, `L.enduringStory`) beside the
+city's blessing on every seat that has it.
+
+**No new prompt, cost or activation** for the designation; recruit's prompt is the shared discard the
+enumerator already answers.
+
+**Back-outs.** Dropping storied's row from `earnedDesignations` fails
+`TestStoriedGivesAnEnduringStoryAtThreeArtifactsSagasOrLegendaries`, `TestEachStoriedPermanentCountsOnce` and
+`TestALegendaryStoriedPermanentCountsItself`; counting every permanent for storied fails the first two;
+making the recruit continuation ignore the land check fails `TestRecruitDiscardingALandMakesNoToken` and
+`TestRecruitTheDiscardIsTheRecruitersChoice`. The layer bump on `EventEnduringStory` is pinned by the
+storied cards' tests, which land with the cards.

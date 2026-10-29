@@ -215,6 +215,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}PlayerIdentity.svelte`],
     doc: "a seat's ticket counters ({TK}, ADR 0208, CR 107.17) in its marker column, drawn only while it has one; a count, no stepper",
   }),
+  enduringStory: label({
+    name: "an enduring story",
+    kind: "aria",
+    role: "status",
+    owners: [`${BOARD}PlayerIdentity.svelte`],
+    doc: "a seat's enduring story (CR 702.195b, #4475) in its marker column, drawn only once storied has given it; read-only, there is no toggle",
+  }),
   stickerSheets: label({
     name: "sticker sheets",
     kind: "aria",
