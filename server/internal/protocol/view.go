@@ -831,18 +831,30 @@ type PendingChoiceView struct {
 	// and library" prompt: every zone is searched, so the library is
 	// shuffled whatever is taken. Chooser-only.
 	SearchAllZones bool `json:"search_all_zones,omitempty"`
-	// SearchLibraryOptional (#4516) marks a "search your library and/or
-	// graveyard" prompt: the searcher chooses the zones, so an answer
-	// with no library card says whether the library was searched too,
-	// sent as {card_ids, library_searched}. Without it the library is
-	// shuffled and the search announced only for a library pick. Absent
-	// for every other search. Chooser-only.
-	SearchLibraryOptional bool `json:"search_library_optional,omitempty"`
+	// SearchZonesPending (#4519) marks the question an and/or search
+	// ("search your library and/or graveyard", "search your hand and/or
+	// library") asks before it looks: which zones the searcher searches.
+	// options[] is withheld (looking through the library is searching it,
+	// CR 701.23a), and the answer is {choice_id, search_zones: [...]}, any
+	// non-empty subset of "library" and search_other_zone. The same prompt
+	// then reappears with the candidates of the chosen zones, without this
+	// flag. The library is shuffled, and the search announced, if and only
+	// if "library" was chosen. Chooser-only.
+	SearchZonesPending bool `json:"search_zones_pending,omitempty"`
+	// SearchOtherZone (#4519) is the zone an and/or search offers beside
+	// the library, "graveyard" or "hand". Present on every such prompt,
+	// asked or answered; absent for any other search. Chooser-only.
+	SearchOtherZone string `json:"search_other_zone,omitempty"`
+	// SearchLibrarySkipped (#4519) marks an and/or search answered with the
+	// other zone alone: the library is not searched, so options[] holds
+	// none of its cards and it is neither shuffled nor announced.
+	// Chooser-only.
+	SearchLibrarySkipped bool `json:"search_library_skipped,omitempty"`
 	// SearchOptional (#4134) marks a "you may search" prompt on which
 	// "don't search" is a legal answer right now: the client offers a
 	// "Don't search" button, sent as {choice_id, apply: false}. It is
 	// present only while the prompt is undecided: looking at the list is
-	// searching (CR 701.19), so once the searcher has begun there is no
+	// searching (CR 701.23a), so once the searcher has begun there is no
 	// decline. Declining is not finding nothing: a declined search never
 	// happens, so the library is neither shuffled nor announced. Absent
 	// for a mandatory search. Chooser-only.
@@ -9596,20 +9608,30 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// that nobody else is entitled to.
 		if c.Kind == game.PendingChoiceSearchLibrary {
 			v.SearchMax = c.SearchMax
-			v.SearchMin = c.SearchMin
-			for _, id := range c.SearchGraveyardCards {
-				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
-			}
-			for _, id := range c.SearchHandCards {
-				v.SearchHand = append(v.SearchHand, id.String())
+			// #4519: an and/or search that has not said which zones it
+			// searches has looked at nothing yet. The floor would count the
+			// library's matches (an unconditional search), and the lists
+			// name no secret but are the answer's to come.
+			zonesPending := c.SearchZonesPending()
+			v.SearchOtherZone = c.SearchOtherZone()
+			v.SearchLibrarySkipped = c.SearchLibrarySkipped()
+			if zonesPending {
+				v.SearchZonesPending = true
+			} else {
+				v.SearchMin = c.SearchMin
+				for _, id := range c.SearchGraveyardCards {
+					v.SearchGraveyard = append(v.SearchGraveyard, id.String())
+				}
+				for _, id := range c.SearchHandCards {
+					v.SearchHand = append(v.SearchHand, id.String())
+				}
 			}
 			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
-			v.SearchLibraryOptional = c.SearchAsksLibraryZone()
 			v.SearchOptional = g.SearchDeclineLegalLocked(c)
 			v.SearchUndecided = c.SearchIsUndecided()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
-				if v.SearchUndecided {
+				if v.SearchUndecided || zonesPending {
 					// Not searching yet: nothing has been looked at.
 					break
 				}
@@ -11115,7 +11137,9 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchGraveyard = nil
 			out[i].SearchHand = nil
 			out[i].SearchAllZones = false
-			out[i].SearchLibraryOptional = false
+			out[i].SearchZonesPending = false
+			out[i].SearchOtherZone = ""
+			out[i].SearchLibrarySkipped = false
 			out[i].SearchOptional = false
 			out[i].SearchUndecided = false
 			continue

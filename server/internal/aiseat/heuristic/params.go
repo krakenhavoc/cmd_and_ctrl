@@ -167,6 +167,9 @@ type choiceParams struct {
 	// CardNames answers an outside_collection prompt (ADR 0198): the
 	// cards taken from the database, by name.
 	CardNames []string `json:"card_names"`
+	// SearchZones answers an and/or search's zone question (#4519): the
+	// zones searched, asked before any candidate is shown.
+	SearchZones []string `json:"search_zones"`
 }
 
 type mulliganParams struct {

@@ -454,82 +454,112 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
-  describe("search: which zones were searched (#4516)", () => {
-    const andOr = () =>
+  describe("search: which zones are searched, asked first (#4519)", () => {
+    // The zone question: the server withholds every candidate until the
+    // library is chosen, so the sheet shows no card and no Find nothing.
+    const asking = (other: "graveyard" | "hand" = "graveyard") =>
+      snap({
+        kind: "search_library",
+        reason:
+          other === "graveyard"
+            ? "Tower Winder — a card named Command Tower"
+            : "Last Light of Durin's Day — a Dragon card",
+        search_max: 1,
+        search_zones_pending: true,
+        search_other_zone: other,
+        options: [],
+      });
+    // The same prompt once the zones are chosen: the chosen zones' cards.
+    const answered = (skipped: boolean) =>
       snap({
         kind: "search_library",
         reason: "Tower Winder — a card named Command Tower",
         search_max: 1,
-        options: [card("lib", "Command Tower"), card("gy", "Command Tower")],
+        search_other_zone: "graveyard",
+        ...(skipped ? { search_library_skipped: true } : {}),
+        options: skipped
+          ? [card("gy", "Command Tower")]
+          : [card("lib", "Command Tower"), card("gy", "Command Tower")],
         search_graveyard: ["gy"],
-        search_library_optional: true,
       });
-    const toggle = () =>
-      inSheet("button.remember-toggle").find((b) =>
-        b.textContent?.includes(L.searchedMyLibrary),
-      ) as HTMLButtonElement | undefined;
 
-    it("a graveyard pick says nothing about the library until the toggle is on", () => {
-      const { sent } = mount(andOr());
-      const t = toggle();
-      expect(t).toBeDefined();
-      expect(t!.getAttribute("aria-pressed")).toBe("false");
-      click(inSheet("button.card-pick")[1]);
-      expect(t!.disabled).toBe(false);
+    const sheetText = () => (sheetPanel()!.textContent ?? "").replace(/\s+/g, " ");
+
+    it("asks before it shows anything: no cards, no Find nothing, Enter searches both", () => {
+      const { sent } = mount(asking());
+      expectSheet("Tower Winder — a card named Command Tower");
+      expect(inSheet("button.card-pick")).toHaveLength(0);
+      expect(barButton("Find nothing")).toBeNull();
+      expect(barButton("Clear")).toBeNull();
+      expect(nameOf(barPrimary()!)).toBe(L.searchLibraryAndGraveyard);
+      expect(barSecondaries()).toContain(barButton(L.searchLibraryOnly)!);
+      expect(barSecondaries()).toContain(barButton(L.searchGraveyardOnly)!);
+      expect(sheetPanel()!.textContent).toContain("Where do you search?");
+      keyFromBody("Enter");
+      expect(sent).toEqual([
+        {
+          type: "resolve_choice",
+          params: { choice_id: "choice-1", search_zones: ["library", "graveyard"] },
+        },
+      ]);
+    });
+
+    it("the single zones are one click each", () => {
+      const first = mount(asking());
+      click(barButton(L.searchLibraryOnly)!);
+      expect(first.sent).toEqual([
+        { type: "resolve_choice", params: { choice_id: "choice-1", search_zones: ["library"] } },
+      ]);
+      cleanup();
+
+      const second = mount(asking());
+      click(barButton(L.searchGraveyardOnly)!);
+      expect(second.sent).toEqual([
+        { type: "resolve_choice", params: { choice_id: "choice-1", search_zones: ["graveyard"] } },
+      ]);
+    });
+
+    it("a hand and/or library search asks the same question about the hand", () => {
+      const { sent } = mount(asking("hand"));
+      expect(nameOf(barPrimary()!)).toBe(L.searchLibraryAndHand);
+      expect(barButton(L.searchGraveyardOnly)).toBeNull();
+      expect(sheetText()).toContain("only your hand");
+      click(barButton(L.searchHandOnly)!);
+      expect(sent).toEqual([
+        { type: "resolve_choice", params: { choice_id: "choice-1", search_zones: ["hand"] } },
+      ]);
+    });
+
+    it("once the zones are chosen the chosen zones' cards are tiles and a pick is a plain card_ids answer", () => {
+      const { sent } = mount(answered(false));
+      const tiles = inSheet("button.card-pick");
+      expect(tiles).toHaveLength(2);
+      expect(tiles[0].textContent).not.toContain("Graveyard");
+      expect(tiles[1].textContent).toContain("Graveyard");
+      expect(barButton("Find nothing")).not.toBeNull();
+      expect(barButton(L.searchLibraryOnly)).toBeNull();
+      expect(sheetText()).toContain("You chose to search your library");
+      click(tiles[1]);
       keyFromBody("Enter");
       expect(sent).toEqual([
         { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["gy"] } },
       ]);
     });
 
-    it("the toggle sends library_searched with a graveyard pick", () => {
-      const { sent } = mount(andOr());
-      click(inSheet("button.card-pick")[1]);
-      click(toggle()!);
-      expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
-      keyFromBody("Enter");
-      expect(sent).toEqual([
-        {
-          type: "resolve_choice",
-          params: { choice_id: "choice-1", card_ids: ["gy"], library_searched: true },
-        },
-      ]);
-    });
-
-    it("a library pick is a library search: the toggle reads on and cannot be turned off", () => {
-      const { sent } = mount(andOr());
-      click(inSheet("button.card-pick")[0]);
-      expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
-      expect(toggle()!.disabled).toBe(true);
-      keyFromBody("Enter");
-      expect(sent).toEqual([
-        {
-          type: "resolve_choice",
-          params: { choice_id: "choice-1", card_ids: ["lib"], library_searched: true },
-        },
-      ]);
-    });
-
-    it("Find nothing is a graveyard-only search unless the toggle is on", () => {
-      const first = mount(andOr());
+    it("a graveyard-only search shows no library card and says the library is not shuffled", () => {
+      const { sent } = mount(answered(true));
+      const tiles = inSheet("button.card-pick");
+      expect(tiles).toHaveLength(1);
+      expect(tiles[0].textContent).toContain("Graveyard");
+      expect(sheetText()).toContain("only your graveyard");
+      expect(sheetText()).toContain("it isn't shuffled");
       click(barButton("Find nothing")!);
-      expect(first.sent).toEqual([
+      expect(sent).toEqual([
         { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: [] } },
       ]);
-      cleanup();
-
-      const second = mount(andOr());
-      click(toggle()!);
-      click(barButton("Find nothing")!);
-      expect(second.sent).toEqual([
-        {
-          type: "resolve_choice",
-          params: { choice_id: "choice-1", card_ids: [], library_searched: true },
-        },
-      ]);
     });
 
-    it("a search without the flag has no toggle", () => {
+    it("a search without the question has no zone buttons", () => {
       mount(
         snap({
           kind: "search_library",
@@ -538,7 +568,8 @@ describe("a card grid is a sheet", () => {
           options: [card("a", "Island"), card("b", "Swamp")],
         }),
       );
-      expect(toggle()).toBeUndefined();
+      expect(barButton(L.searchLibraryOnly)).toBeNull();
+      expect(barButton(L.searchLibraryAndGraveyard)).toBeNull();
     });
   });
 

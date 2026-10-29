@@ -98,21 +98,6 @@ func answerSearchFailToFind(t *testing.T, g *game.Game, chooser uuid.UUID) {
 	}
 }
 
-// answerSearchFailToFindInLibrary is answerSearchFailToFind for an
-// "and/or graveyard" search whose player says they looked in the library
-// (#4516): a library search that found nothing, so it shuffles.
-func answerSearchFailToFindInLibrary(t *testing.T, g *game.Game, chooser uuid.UUID) {
-	t.Helper()
-	c := searchChoiceFor(g, chooser)
-	if c == nil {
-		t.Fatalf("no search prompt for %s", chooser)
-	}
-	beginSearchIfAsked(t, g, c)
-	if err := g.ResolveSearchLibraryZones(c.ID, chooser, nil, true); err != nil {
-		t.Fatalf("ResolveSearchLibraryZones (fail to find): %v", err)
-	}
-}
-
 // seedSearchLibrary replaces a player's library with exactly the
 // named cards, bottom-first. Returns their instance IDs in the same
 // order.

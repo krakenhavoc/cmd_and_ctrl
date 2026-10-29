@@ -2023,11 +2023,21 @@ export interface PendingChoiceView {
   // every zone is searched, so the library is shuffled whatever is taken.
   search_hand?: string[];
   search_all_zones?: boolean;
-  // #4516: a "search your library and/or graveyard" prompt. The searcher
-  // chooses the zones, so an answer with no library card says whether the
-  // library was searched too: `{card_ids, library_searched: true}`. The
-  // library is shuffled only for a library pick or that flag.
-  search_library_optional?: boolean;
+  // #4519: an and/or search ("search your library and/or graveyard",
+  // "search your hand and/or library") asks which zones are searched
+  // BEFORE it shows anything (looking through the library is searching it,
+  // CR 701.23a). `options` is withheld while `search_zones_pending` is set;
+  // the answer is `{choice_id, search_zones: ["library", "graveyard"]}`, any
+  // non-empty subset of "library" and `search_other_zone`. The same prompt
+  // then reappears with the chosen zones' candidates. The library is
+  // shuffled if and only if "library" was chosen.
+  search_zones_pending?: boolean;
+  // The zone an and/or search offers beside the library: "graveyard" or
+  // "hand". On every such prompt, asked or answered.
+  search_other_zone?: "graveyard" | "hand";
+  // An and/or search answered with the other zone alone: the library is not
+  // searched, shown or shuffled.
+  search_library_skipped?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.

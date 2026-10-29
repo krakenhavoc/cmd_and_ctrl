@@ -1155,11 +1155,10 @@ type SearchLibrary struct {
 	// offers matches from both zones, marked by zone. "And/or" lets the
 	// searcher choose their zones, so the floor is unchanged: a stated
 	// quality may still find nothing even with a match in the graveyard.
-	// A take that came wholly from the graveyard does not search the
-	// library, so it does not shuffle — "If you search your library this
-	// way, shuffle." Taking nothing, or only a graveyard card, shuffles
-	// only if the searcher says they searched the library too (#4516);
-	// see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle as the card
+	// The searcher is asked which zones they search before any card is
+	// shown (#4519), and the library is shuffled — "If you search your
+	// library this way, shuffle" — if and only if they chose it; see
+	// game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle as the card
 	// prints it; the answer decides whether the library was searched.
 	AlsoGraveyard bool
 	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
@@ -1171,8 +1170,9 @@ type SearchLibrary struct {
 	AlsoGraveyardAndHand bool
 	// AlsoHand is "search your hand and/or library" (Last Light of Durin's
 	// Day): your hand is searched beside the library in one prompt, marked
-	// by zone, and a take that comes wholly out of the hand does not shuffle.
-	// See game.SearchLibrarySpec.AlsoHand.
+	// by zone, and asks the zones first as AlsoGraveyard does (#4519): a
+	// search of the hand alone does not shuffle. See
+	// game.SearchLibrarySpec.AlsoHand.
 	AlsoHand bool
 	// TakeAll is "search … for ALL cards with the same name" on an
 	// AlsoGraveyardAndHand search (#4033, Eradicate and the rest of the

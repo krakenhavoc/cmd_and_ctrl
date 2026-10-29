@@ -315,6 +315,13 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			}
 			return -searchTakeBonus, "search: decline (nothing to gain by skipping)"
 		}
+		// #4519: the zone question of an and/or search, asked before any
+		// candidate is shown. The seat cannot see what is where, and a
+		// missed zone is a missed card, so it searches every zone offered:
+		// the library's shuffle costs it nothing. One zone scores below.
+		if len(cp.SearchZones) > 0 {
+			return searchTakeBonus * float64(len(cp.SearchZones)), "search: every zone on offer"
+		}
 		var v float64
 		for _, id := range cp.CardIDs {
 			v += st.searchValue(p.cfg, lookup(id))

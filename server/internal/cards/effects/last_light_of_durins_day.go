@@ -17,10 +17,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolution check), then Ajani's Last Stand's "sacrifice it, and only if
 // you do" (SacrificeThisThen). The search is SearchLibrary{AlsoHand}: your
 // hand is searched beside your library in one prompt, "and/or" letting you
-// look in either, so a Dragon may be found in hand without touching the
-// library, and a take wholly from the hand does not shuffle. A search that
-// finds nothing is a library search, as AlsoGraveyard documents. The
-// Dragon enters through the ordinary entry pipeline.
+// look in either: the prompt asks the zones FIRST (#4519), shows no library
+// card until the library is chosen, and shuffles the library if and only if
+// it was. A Dragon found in hand alone never touches the library. The Dragon
+// enters through the ordinary entry pipeline.
 //
 // No simplification.
 func init() {

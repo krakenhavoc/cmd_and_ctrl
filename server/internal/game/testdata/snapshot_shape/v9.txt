@@ -41881,6 +41881,7 @@ pendingChoices[].searchPrompt.spec.toTop	bool
 pendingChoices[].searchPrompt.spec.unbounded	bool
 pendingChoices[].searchPrompt.spec.upTo	bool
 pendingChoices[].searchPrompt.undecided	bool
+pendingChoices[].searchPrompt.zones	string
 pendingChoices[].secondName	bool
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].sourceShield	object
