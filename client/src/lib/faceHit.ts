@@ -21,6 +21,11 @@
 //     the moment the loss shows, the same split combat_resolve has
 //     between the step change and the strike layer.
 //
+// combat_resolve is a long war cry in the same category, so on a beat that
+// hits a player it follows the hit(s) by WAR_CRY_AFTER_HIT_MS at a lower
+// volume on both surfaces (warCryPlan, #4560); a creature-only beat keeps it
+// at contact.
+//
 // Commander damage is combat damage, so it is covered here and gets a
 // tier like any other blow. Non-combat life loss (a drain, life paid,
 // noncombat damage) is not a combat hit and keeps `damage` from the popup.
@@ -34,6 +39,67 @@ import type { SoundName } from "./sounds";
 // players. sounds.ts drops a repeat of a name inside its 40 ms rate limit,
 // so simultaneous plays of one tier would collapse into one.
 export const FACE_HIT_STAGGER_MS = 90;
+
+// WAR_CRY_AFTER_HIT_MS (#4560): combat_resolve is a 5-7 s war cry in the
+// same category as the face hits, so played together it buries them. When a
+// beat hits a player the war cry starts this long after the LAST face hit
+// (warCryPlan), at WAR_CRY_AFTER_HIT_VOLUME of its normal level.
+export const WAR_CRY_AFTER_HIT_MS = 300;
+export const WAR_CRY_AFTER_HIT_VOLUME = 0.6;
+
+/**
+ * When combat_resolve plays, as ms after first contact, and at what caller
+ * volume hint. A beat that hits no player plays it at contact, at full
+ * volume. One that hits `hitCount` players plays it WAR_CRY_AFTER_HIT_MS
+ * after the last of the (FACE_HIT_STAGGER_MS apart) hits, quieter.
+ */
+export function warCryPlan(hitCount: number): { delayMs: number; volume: number } {
+  if (hitCount <= 0) return { delayMs: 0, volume: 1 };
+  return {
+    delayMs: (hitCount - 1) * FACE_HIT_STAGGER_MS + WAR_CRY_AFTER_HIT_MS,
+    volume: WAR_CRY_AFTER_HIT_VOLUME,
+  };
+}
+
+/**
+ * The players the newest step of `log` hit with combat damage: the entries
+ * after the last `step` entry. For the step-change fallback, which has no
+ * cue to read.
+ */
+export function stepFaceHits(log: readonly LogEvent[] | undefined): FaceHit[] {
+  const all = log ?? [];
+  let from = 0;
+  for (let i = all.length - 1; i >= 0; i--) {
+    if (all[i].kind === "step") {
+      from = i + 1;
+      break;
+    }
+  }
+  return faceHits(all.slice(from));
+}
+
+/**
+ * The step-change fallback's combat_resolve (motion off, reduced motion,
+ * a hidden tab): plays it now when the step hit no player, else after the
+ * hit(s) the life popup plays as the loss shows, quieter. Returns the
+ * timer of a delayed cry, for the caller to clear on teardown.
+ */
+export function playStepWarCry(
+  log: readonly LogEvent[] | undefined,
+  play: (name: "combat_resolve", opts?: { volume: number }) => void,
+  onFired?: (t: ReturnType<typeof setTimeout>) => void,
+): ReturnType<typeof setTimeout> | null {
+  const cry = warCryPlan(stepFaceHits(log).length);
+  if (cry.delayMs === 0) {
+    play("combat_resolve");
+    return null;
+  }
+  const t = setTimeout(() => {
+    onFired?.(t);
+    play("combat_resolve", { volume: cry.volume });
+  }, cry.delayMs);
+  return t;
+}
 
 /** The three sounds a combat hit on a player can make. */
 export type FaceHitSound = Extract<

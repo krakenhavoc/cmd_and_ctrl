@@ -140,6 +140,7 @@
   import { requestHandSort, requestNextHandSort } from "../lib/handOrder";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
+  import { playStepWarCry } from "../lib/faceHit";
   import {
     attackRowRequest,
     blockGroupRequest,
@@ -1369,6 +1370,11 @@
   // seen step and only fire on a real change; the initial snapshot (or
   // a reconnect rebuild) sets the baseline silently.
   let prevStep: string | null = null;
+  const warCryTimers = new Set<ReturnType<typeof setTimeout>>();
+  onDestroy(() => {
+    for (const t of warCryTimers) clearTimeout(t);
+    warCryTimers.clear();
+  });
   // Whether the step change plays combat_resolve itself, or leaves it to
   // the strike layer: the same gate the cue clock plans the frame with.
   function combatSoundOnStepChange(): boolean {
@@ -1399,7 +1405,12 @@
         // contact of each beat instead (ADR 0134 §7). Only when no
         // strike is scheduled (motion off, reduced motion, a hidden
         // tab) does it stay on the step change.
-        if (combatSoundOnStepChange()) play("combat_resolve");
+        // #4560: when the step hit a player, the popup plays the face hit
+        // now, so the war cry follows it, quieter.
+        if (combatSoundOnStepChange()) {
+          const t = playStepWarCry(view?.log, play, (fired) => warCryTimers.delete(fired));
+          if (t) warCryTimers.add(t);
+        }
       }
     }
     prevStep = step;
