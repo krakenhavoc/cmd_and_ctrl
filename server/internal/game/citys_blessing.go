@@ -33,7 +33,9 @@ import "github.com/google/uuid"
 //
 //   - A PERMANENT with ascend (702.131b) is a static ability that has
 //     been true "any time" the controller has ten permanents. The
-//     engine settles it in citysBlessingSweepLocked, run from the same
+//     engine settles it in earnedDesignationsSweepLocked
+//     (earned_designations.go, shared with storied's enduring story,
+//     CR 702.195), run from the same
 //     pass as the state-based actions: it is not one (704 does not list
 //     it), but that pass is the one place that runs after every action
 //     with the board settled and before any player receives priority,
@@ -109,62 +111,11 @@ func (g *Game) permanentsControlledLocked(id uuid.UUID) int {
 	return n
 }
 
-// citysBlessingSweepLocked is CR 702.131b: any player who controls an
-// ascend permanent and ten or more permanents gets the city's blessing.
-// It reports whether anyone did, so the caller can refresh the layer
-// pass the new designation feeds (the grant also bumps layerVersion,
-// through the event, so the refresh is a no-op for a caller that does
-// not care).
-//
-// One walk over the battlefield, and none at all once every living
-// player has the blessing, which is where a long game spends its time.
-//
-// Caller must hold g.mu in write mode.
-func (g *Game) citysBlessingSweepLocked() bool {
-	if g.Battlefield == nil {
-		return false
-	}
-	// Per-seat tallies in arrays indexed by seat position, so the common
-	// pass (nobody close to ten, or everybody already blessed) allocates
-	// nothing: this runs after every action in every game, bots included.
-	var (
-		counts   [MaxPlayers]int
-		ascender [MaxPlayers]uuid.UUID
-		waiting  [MaxPlayers]bool
-		someone  bool
-	)
-	for i, p := range g.Seats {
-		if i < MaxPlayers && p != nil && !p.Eliminated && !p.CitysBlessing {
-			waiting[i], someone = true, true
-		}
-	}
-	if !someone {
-		return false
-	}
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		for s, p := range g.Seats {
-			if s >= MaxPlayers || !waiting[s] || p.ID != c.Controller {
-				continue
-			}
-			counts[s]++
-			if ascender[s] == uuid.Nil && HasKeyword(c, KeywordAscend) {
-				ascender[s] = c.InstanceID
-			}
-			break
-		}
-	}
-	granted := false
-	for s, p := range g.Seats {
-		if s >= MaxPlayers || !waiting[s] || ascender[s] == uuid.Nil || counts[s] < CitysBlessingThreshold {
-			continue
-		}
-		if g.grantCitysBlessingLocked(p, ascender[s]) {
-			granted = true
-		}
-	}
-	return granted
-}
+// citysBlessingCounts is every permanent: ascend counts "ten or more
+// permanents" (CR 702.131b), whatever they are.
+func citysBlessingCounts(*Card) bool { return true }
+
+func hasCitysBlessing(p *Player) bool { return p.CitysBlessing }
 
 // ascendSpellLocked is CR 702.131a for the spell that is resolving: an
 // instant or sorcery with ascend checks the controller's permanents

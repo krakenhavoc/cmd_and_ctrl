@@ -523,6 +523,14 @@ type Player struct {
 	// public on the wire.
 	CitysBlessing bool
 
+	// EnduringStory is the enduring story (CR 702.195b): a player
+	// designation, earned by storied and kept for the rest of the game,
+	// exactly as the city's blessing above is. Written only by
+	// grantEnduringStoryLocked (enduring_story.go, ADR 0096's 2026-10-29
+	// amendment, #4475). Carried by Clone, the snapshot and undo, and
+	// public on the wire.
+	EnduringStory bool
+
 	// Dungeon is the dungeon card this player owns in the command zone
 	// and the room their venture marker is in (CR 309.4), nil when they
 	// own none. Written only by dungeon.go (enterDungeonLocked,

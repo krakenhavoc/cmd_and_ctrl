@@ -774,6 +774,7 @@ func clonePlayer(p *Player) *Player {
 		Agent:             p.Agent,
 		AgentClient:       p.AgentClient,
 		CitysBlessing:     p.CitysBlessing,
+		EnduringStory:     p.EnduringStory,
 		HasSideboard:      p.HasSideboard,
 		Dungeon:           cloneDungeonState(p.Dungeon),
 		CompletedDungeons: append([]string(nil), p.CompletedDungeons...),

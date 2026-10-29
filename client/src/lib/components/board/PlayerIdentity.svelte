@@ -551,6 +551,16 @@
           aria-label="the city's blessing"><Icon name="flag" size={12} /></span
         >
       {/if}
+      <!-- An enduring story (CR 702.195b, #4475): storied's designation,
+           kept for the rest of the game like the blessing, so read-only
+           and on every seat. -->
+      {#if seat.enduring_story}
+        <span
+          class="marker enduring-story active"
+          title={L.enduringStory}
+          aria-label={L.enduringStory}><Icon name="book" size={12} /></span
+        >
+      {/if}
       {#if isSelf}
         <div class="crown-row">
           <button
@@ -1202,6 +1212,12 @@
     border-color: color-mix(in srgb, var(--accent) 70%, transparent);
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .marker.active.enduring-story {
+    color: var(--mint);
+    border-color: color-mix(in srgb, var(--mint) 70%, transparent);
+    background: color-mix(in srgb, var(--mint) 18%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--mint) 35%, transparent);
   }
   .marker.poison {
     color: var(--mint);

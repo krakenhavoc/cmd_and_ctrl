@@ -70,7 +70,7 @@ var stepsAskApply = setOf(
 	"ChooseNumber", "ChoosePlayer", "ChoosePermanents", "PickOption", "PileSplit", "MayChoice", "MayPay",
 	"MayPayX", "MayPayEnergy", "SacrificeChoice", "EachPlayerSacrifices", "Vote", "RevealPick",
 	"ChooseFromRevealedHand", "PutFromHandOntoBattlefield", "PutFromLibraryOntoBattlefield",
-	"PutInLibraryInAnyOrder", "PutFromHandOnTopInAnyOrder", "Manifest", "ManifestDread", "ManifestDreadTimes",
+	"PutInLibraryInAnyOrder", "PutFromHandOnTopInAnyOrder", "Recruit", "Manifest", "ManifestDread", "ManifestDreadTimes",
 	"OfferGraveyardCast", "CopyAndCast", "Earthbend", "RevealUntilThenPutOntoBattlefield", "PayUnless",
 	"AnyPlayerPays", "AnyPlayerPaysForEach", "ReflexiveTrigger", "FaceVillainousChoice", "VentureIntoTheDungeon",
 	"EachPlayerTakesFromLibrary", "TakeFromOutside", "TakeFromExileOrOutside", "PutIntoLibraryAtDepthOrBottom",

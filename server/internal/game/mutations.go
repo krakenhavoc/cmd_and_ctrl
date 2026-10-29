@@ -5183,14 +5183,16 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 
 	// #2696, CR 702.131b: ascend on a permanent is a static ability
 	// that gives its controller the city's blessing any time they
-	// control ten permanents. Not a state-based action, so it does not
+	// control ten permanents; #4475, CR 702.195a: storied does the same
+	// for an enduring story at three artifacts, Sagas and/or legendary
+	// permanents (earned_designations.go). Not a state-based action, so it does not
 	// count toward `fired`; this pass is simply the one place that runs
 	// after every action with the board settled and before a player
 	// receives priority. After the recompute so a keyword granted by a
 	// layer-6 effect is seen, and followed by another recompute so the
 	// statics that read the new designation are in place before the
 	// toughness checks below.
-	if g.citysBlessingSweepLocked() {
+	if g.earnedDesignationsSweepLocked() {
 		g.RecomputeLayersIfStaleLocked()
 	}
 

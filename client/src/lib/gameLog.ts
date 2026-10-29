@@ -213,6 +213,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // The blessing is a designation earned off the board, toned with the
   // other board-state lines.
   citys_blessing: "tone-zone",
+  // An enduring story is the same kind of designation (#4475).
+  enduring_story: "tone-zone",
   // ADR 0203: a venture marker moving and a dungeon completed are facts
   // about a player's command zone, toned with the other board-state lines.
   venture: "tone-zone",

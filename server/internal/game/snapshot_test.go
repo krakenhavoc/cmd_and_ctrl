@@ -277,6 +277,7 @@ func enrich(t *testing.T, g *Game) {
 		}
 		g.Monarch = p0.ID
 		p1.CitysBlessing = true // CR 702.131c, #2696
+		p0.EnduringStory = true // CR 702.195b, #4475
 		g.Initiative = p1.ID
 		g.DayNight = DayNightState{Designation: DesignationNight, PrevTurnSpells: 2, PrevTurnKnown: true,
 			PrevTurnAllSpells: 3, PrevTurnMostSpells: 2, PrevTurnAllKnown: true} // #4071
