@@ -465,6 +465,7 @@
                 {@const aPips = readyPips(legal, a, "battlefield")}
                 <div class="attachment">
                   <Card
+                    flourishes
                     artOnly={$settings.display.battlefieldArt}
                     card={a}
                     ready={ringFor(a, aPips)}
@@ -504,6 +505,7 @@
                   </span>
                 {/if}
                 <Card
+                  flourishes
                   artOnly={$settings.display.battlefieldArt}
                   card={c}
                   ready={ringFor(c, cPips) || cTarget || anyIn(combat.candidates, c, memberIDs)}

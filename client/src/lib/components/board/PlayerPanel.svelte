@@ -1990,6 +1990,14 @@
        overlay, which is never flipped, reads upright. */
     .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row-cards) {
       transform: rotate(180deg);
+      /* #4556: the keyword flourishes (Card.svelte) are drawn in screen
+         terms, so a card needs to know it is drawn turned. A flier's lift
+         and shadow flip with it; the strike blades stay on its top edge,
+         which is the one facing the table's centre when it is turned.
+         "Facing me" (#4555) turns each pile back upright and sets
+         --card-turn: 1 and --blade-turn: -1 on it (below): an upright
+         top-row card faces the centre with its bottom edge. */
+      --card-turn: -1;
     }
     /* #4555: "Facing me" (settings.display.opponentCardFacing) draws the
        cards upright for the viewer. Only the drawing changes: the lists
@@ -2020,6 +2028,10 @@
          later one tucks under it, leaving the left of every card (its
          name) in view. A hovered pile still comes to the front. */
       z-index: calc(100 - var(--pi, 0));
+      /* #4556: upright to the viewer, so the keyword flourishes lift up
+         the screen, and the blades go to the edge facing the centre. */
+      --card-turn: 1;
+      --blade-turn: -1;
     }
     .panel.opponent.flipped.faces-viewer :is(.grid-creatures, .grid-middle) :global(.pile:hover) {
       z-index: 120;

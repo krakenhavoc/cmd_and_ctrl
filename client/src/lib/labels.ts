@@ -1389,6 +1389,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/Settings.svelte"],
     doc: "Settings → Display: whether a top-row opponent's cards face them (turned 180°, the default) or the viewer, display.opponentCardFacing (#4555)",
   }),
+  keywordFlourishesToggle: label({
+    name: "Show keyword flourishes on battlefield cards",
+    kind: "text",
+    role: "checkbox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Display: the quiet per-keyword cues on battlefield cards (flying hover, reach lean, deathtouch edge, strike blades, lifelink glow), display.keywordFlourishes (#4556)",
+  }),
   effectsSetting: label({
     name: "Table effects",
     kind: "text",

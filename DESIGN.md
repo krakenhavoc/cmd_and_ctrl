@@ -322,6 +322,7 @@ no motion, and a click or Escape skips a cue that is playing.
 | A keyboard hint | `.kbd` | Mono key cap. Dock buttons also carry `aria-keyshortcuts`. |
 | An AI seat | the bot chip (dashed, seat-tinted, robot glyph) or `AgentChip.svelte` (solid violet, spark glyph) | Never swap their looks (ADR 0122 §7). |
 | Not production | `EnvBadge.svelte` | Not dismissible, click-through. |
+| A keyword's atmosphere on a battlefield card | the flourishes in `board/Card.svelte` (`lib/keywordFlourishes.ts`) | Flying lifts and sways, reach draws a bow, deathtouch has a dark inner edge, first and double strike carry one or two blades, lifelink glows blood red. They are decoration, not signals: the chip row is the fact, and the signal colours keep their meanings. They read effective keywords, sit under every badge and ring, and use `translate`, `rotate` and the resting `box-shadow` only. Reduced motion stops the sway and leaves the rest; Settings → Display turns them off. |
 
 Before writing new CSS for a site page, check `app.css`'s shared primitives
 (ADR 0156 §3 item 2): a page keeps its own CSS only for what is truly its own.
