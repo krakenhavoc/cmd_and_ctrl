@@ -134,6 +134,7 @@ var reviewedNotAWipe = map[string]string{
 	"Opposition Agent":                         "exiles the cards an opponent finds while searching, not permanents (#3998)",
 	"Rest in Peace":                            "exiles graveyards",
 	"Scavenger Grounds":                        "exiles graveyards",
+	"Shadow of the Enemy":                      "exiles the creature cards of one graveyard, no permanents",
 	"Soul-Guide Lantern":                       "exiles graveyards",
 	"Soulblast":                                "sacrifices only its caster's creatures, as a cost (#2097); the heuristic declines the cast",
 	"Sundial of the Infinite":                  "ends the turn",
