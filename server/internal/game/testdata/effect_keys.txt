@@ -1757,3 +1757,5 @@ payunless pay-unless/chain-lightning-offer-copy
 tail then/chain-lightning-offer-red-payment
 searchrule search/corpse-harvester-zombie-and-swamp
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
+choose choose-cards/minas-tirith-garrison-tap-humans
+tail azog/amass-goblins-and-draw

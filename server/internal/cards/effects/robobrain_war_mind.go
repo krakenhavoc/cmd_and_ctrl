@@ -23,21 +23,7 @@ func init() {
 		OracleID:     "6f9390ec-08b5-4761-8cb1-5d60190b9661",
 		Name:         "Robobrain War Mind",
 		Completeness: CompletenessFull,
-		Static: []game.StaticAbility{{
-			Layer:             game.Layer7PT,
-			SubLayer:          game.SubLayer7A_CDA,
-			DependsOnHandSize: true,
-			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
-				return target.InstanceID == source.InstanceID
-			},
-			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				n := 0
-				if p := g.PlayerByIDForEffect(source.Controller); p != nil && p.Hand != nil {
-					n = p.Hand.Size()
-				}
-				c.Power = n
-			},
-		}},
+		Static:       []game.StaticAbility{powerIsCardsInYourHand()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Robobrain War Mind — you get {E} for each artifact creature you control",
 				func(g *game.Game, item *game.StackItem) error {
