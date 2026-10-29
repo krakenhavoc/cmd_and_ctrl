@@ -493,6 +493,15 @@
                 </div>
               {/each}
               <div class="host">
+                {#if p.group && p.group.members.length > 1}
+                  <!-- #4431: paint-only ghost copies behind the group's card, so a
+                       stack reads as a stack. Absolutely placed inside the host's
+                       own box: they take no layout width, so fitRow never re-fits. -->
+                  <span class="fan" class:tapped={!!c.tapped} aria-hidden="true">
+                    <span class="ghost g2"></span>
+                    {#if p.group.members.length > 2}<span class="ghost g3"></span>{/if}
+                  </span>
+                {/if}
                 <Card
                   artOnly={$settings.display.battlefieldArt}
                   card={c}
@@ -844,6 +853,48 @@
      measures the card that stands for it. */
   .host {
     position: relative;
+    /* #4431: the fan's ghosts sit at z-index -1, behind the card but
+       inside this box's stacking context. */
+    isolation: isolate;
+  }
+  .fan,
+  .ghost {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* The card's own face, a shade darker per layer, with an edge lifted
+     enough to read against the board. Each ghost steps 6px further up and
+     left (the row's padding holds it); a tapped fan turns with the card,
+     so the steps stay up and left, inside the tapped room above it. */
+  .ghost {
+    z-index: -1;
+    border-radius: 8px;
+    box-sizing: border-box;
+    background: #0a0f1c;
+    border: 1px solid color-mix(in srgb, var(--fg-dim, #5d7187) 70%, #0a0e1a);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.5);
+    transform: translate(var(--fx), var(--fy)) rotate(var(--fan-tap, 0deg));
+    transition: transform 180ms var(--ease);
+  }
+  .ghost.g2 {
+    --fx: -4px;
+    --fy: -6px;
+  }
+  .ghost.g3 {
+    --fx: -8px;
+    --fy: -12px;
+    z-index: -2;
+    background: #080c17;
+  }
+  .fan.tapped {
+    --fan-tap: 90deg;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ghost,
+    .group-count {
+      transition: none;
+    }
   }
   .member-anchor {
     position: absolute;
@@ -873,6 +924,13 @@
     background: var(--surface, #0b0a09);
     border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
     pointer-events: none;
+    transition: top 180ms var(--ease);
+  }
+  /* #4431: a tapped pile turns its card about the box's centre, so the card's
+     top-right corner is (h - w) / 2 down the pile. The badge follows it and
+     stays upright; only its offset moves, never the pile's width. */
+  .row:not(.strip) .pile.tapped .group-count {
+    top: calc((var(--card-h, 123px) - var(--card-w, 88px)) / 2 - 8px);
   }
   /* #2209: the count badge overhangs the top-left corner, where an art
      tile's name strip starts, so the strip's text starts clear of it. */
