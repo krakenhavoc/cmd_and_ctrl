@@ -138,6 +138,18 @@ describe("a token group on the board (#1724)", () => {
     expect(badges(container)).toEqual(["×3"]);
   });
 
+  it("#4431: fans one ghost behind a pair and two behind three or more, never behind a lone card", () => {
+    const ghosts = (c: HTMLElement) => c.querySelectorAll(".fan .ghost").length;
+    expect(ghosts(mountRow([soldier("s1"), soldier("s2")]).container)).toBe(1);
+    cleanup();
+    expect(ghosts(mountRow([1, 2, 3, 4, 5].map((n) => soldier(`s${n}`))).container)).toBe(2);
+    cleanup();
+    const tapped = mountRow([1, 2, 3].map((n) => soldier(`s${n}`, { tapped: true })));
+    expect(tapped.container.querySelector(".fan")?.classList.contains("tapped")).toBe(true);
+    cleanup();
+    expect(ghosts(mountRow([soldier("s1"), bear("b2")]).container)).toBe(0);
+  });
+
   it("does not group a single token, or printed cards that differ", () => {
     const { container } = mountRow([
       soldier("s1"),
