@@ -10,6 +10,17 @@ import (
 // batch (#4455). Every name carries the mshB2 prefix because the other
 // Marvel batches land beside this one.
 
+// plusOneCounterOnSourceIfSameObject is "put a +1/+1 counter on this
+// creature" as a step of a larger trigger (heroic, Favored Hoplite; Colleen
+// Wing): nothing for a source that has left or come back as a new object
+// (CR 400.7).
+func plusOneCounterOnSourceIfSameObject(ctx *Context) error {
+	if sourceIsNewObject(ctx.Game, ctx.Item) || !onBattlefield(ctx.Game, ctx.Source()) {
+		return nil
+	}
+	return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+}
+
 // mshB2AnotherVillainEntered is the condition of "whenever another Villain
 // you control enters" (Baron Strucker, Crossbones): a permanent under the
 // source controller's control, not the source, with the Villain subtype as

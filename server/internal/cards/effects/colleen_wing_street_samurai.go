@@ -43,12 +43,7 @@ func init() {
 				}
 				return false
 			}, "Colleen Wing, Street Samurai — a +1/+1 counter on her, then scry 1", Do(
-				Instruction(func(ctx *Context) error {
-					if sourceIsNewObject(ctx.Game, ctx.Item) || !onBattlefield(ctx.Game, ctx.Source()) {
-						return nil
-					}
-					return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-				}),
+				Instruction(plusOneCounterOnSourceIfSameObject),
 				Scry{N: 1},
 			)),
 		},
