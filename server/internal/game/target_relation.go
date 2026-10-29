@@ -20,6 +20,11 @@ const (
 	// player (Ravager of the Fells). An anchor that has left the
 	// battlefield answers with its last-known controller (CR 608.2h).
 	TargetControlledBySameController TargetRelationKind = "same_controller"
+	// TargetSharesCardType is "that shares a card type with it", where it
+	// is the earlier target permanent (Burglar's Plot's "two target nonland
+	// permanents that share a card type"): both are on the battlefield and
+	// have at least one card type in common after the layers (CR 205.2a).
+	TargetSharesCardType TargetRelationKind = "shares_card_type"
 )
 
 // TargetRelationMatchesForEffect judges the relationship using the current
@@ -60,6 +65,10 @@ func (g *Game) TargetRelationMatchesForEffect(clause *TargetClause, ref TargetRe
 	case TargetControlledBySameController:
 		controller, ok := g.relationAnchorControllerLocked(anchor)
 		return ok && z.Kind == ZoneBattlefield && c.Controller == controller
+	case TargetSharesCardType:
+		a := findBattlefieldCard(g, anchor.ID)
+		return anchor.Kind == TargetCard && a != nil && z.Kind == ZoneBattlefield &&
+			len(SharedCardTypes([]Card{*a, *c})) > 0
 	}
 	return false
 }

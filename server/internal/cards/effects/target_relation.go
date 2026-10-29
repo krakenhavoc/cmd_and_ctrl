@@ -24,3 +24,13 @@ func ControlledByTargetsController(spec *game.TargetSpec, slot int) *game.Target
 	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetControlledBySameController}
 	return spec
 }
+
+// SharesACardTypeWithTarget is "that shares a card type with it", where slot
+// names the earlier target permanent (Burglar's Plot's "two target nonland
+// permanents that share a card type"). It is judged as the spell is cast
+// (CR 601.2c) and again as it resolves (CR 608.2b), on the permanents' types
+// after the layers.
+func SharesACardTypeWithTarget(spec *game.TargetSpec, slot int) *game.TargetSpec {
+	spec.Relation = &game.TargetRelation{Slot: slot, Kind: game.TargetSharesCardType}
+	return spec
+}

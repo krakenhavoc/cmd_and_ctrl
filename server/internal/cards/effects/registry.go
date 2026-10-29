@@ -1731,7 +1731,7 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
 			}
 			switch r.Kind {
-			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController:
+			case game.TargetInControllersGraveyard, game.TargetAttachedTo, game.TargetControlledBySameController, game.TargetSharesCardType:
 			default:
 				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
 			}

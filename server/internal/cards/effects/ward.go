@@ -98,6 +98,12 @@ type WardCost struct {
 	// on the payer's random stream instead of asking. Meaningful only
 	// with Discard.
 	DiscardAtRandom bool
+	// DiscardKind narrows the discard to cards of a kind ("ward—discard an
+	// enchantment, instant, or sorcery card", Saruman of Many Colors): the
+	// payer must hold at least that many such cards, and the discard is
+	// refused unless every card chosen is one. Nil is any card. Build it
+	// with WardDiscardKind.Cost.
+	DiscardKind *WardDiscardKind
 }
 
 // WardSacrificeCost is the "sacrifice a <thing>" half of a ward cost:
@@ -173,6 +179,53 @@ func WardDiscard(n int) WardCost { return WardCost{Discard: n} }
 // Alpharael, Stonechosen). The payer chooses only whether to pay.
 func WardDiscardAtRandom(n int) WardCost { return WardCost{Discard: n, DiscardAtRandom: true} }
 
+// WardDiscardKind is a kind of card a ward asks to be discarded: "an
+// enchantment, instant, or sorcery card". It is registered once, from a
+// package-level var, so the discard prompt it queues is a restore point (the
+// set rule is registered with the key). The key is an on-disk identity, never
+// renamed and never reused.
+type WardDiscardKind struct {
+	key   string
+	label string
+	match func(game.Card) bool
+	then  game.DiscardThen
+}
+
+var (
+	wardDiscardKindsMu sync.Mutex
+	wardDiscardKinds   = map[string]*WardDiscardKind{}
+)
+
+// NewWardDiscardKind registers a kind of card a ward may ask for. `match` is
+// a function of the card alone: it runs under the discard prompt's set rule,
+// on the submit path and in the bot enumerator, and must capture no state.
+// `label` is the printed noun phrase, "an enchantment, instant, or sorcery
+// card". It panics on a duplicate key.
+func NewWardDiscardKind(key, label string, match func(game.Card) bool) *WardDiscardKind {
+	k := &WardDiscardKind{key: key, label: label, match: match}
+	k.then = game.RegisterDiscardThenRule("choose-cards/ward-discard-"+key,
+		func(picked []game.Card) bool {
+			for _, c := range picked {
+				if !match(c) {
+					return false
+				}
+			}
+			return true
+		},
+		func(*game.Game, game.DiscardsDone) error { return nil })
+	wardDiscardKindsMu.Lock()
+	defer wardDiscardKindsMu.Unlock()
+	if _, dup := wardDiscardKinds[key]; dup {
+		panic("effects: duplicate ward discard kind " + key)
+	}
+	wardDiscardKinds[key] = k
+	return k
+}
+
+// Cost is "ward—discard a <kind> card": one card of the kind, the payer's
+// choice (CR 701.9a).
+func (k *WardDiscardKind) Cost() WardCost { return WardCost{Discard: 1, DiscardKind: k} }
+
 // validate panics on an empty cost or an unsupported mixture. It runs
 // from Ward() at catalog init, so a malformed card fails at boot rather
 // than charging the first component it happens to check.
@@ -199,6 +252,9 @@ func (c WardCost) validate() {
 	compound := n == 2 && c.Mana != "" && c.Life > 0
 	if (n != 1 && !compound) || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
 		panic(fmt.Sprintf("effects: a ward cost needs one component, or Mana plus Life: %+v", c))
+	}
+	if c.DiscardKind != nil && (c.Discard < 1 || c.DiscardAtRandom) {
+		panic("effects: a ward discard kind needs a chosen discard of at least one card")
 	}
 	if c.Sacrifice != nil {
 		// Register the cost's two keyed legs at boot (#4291).
@@ -368,7 +424,7 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem)
 	case cost.Discard > 0:
-		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost.Discard, cost.DiscardAtRandom, targetingItem)
+		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost, targetingItem)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with
@@ -619,16 +675,23 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 }
 
 // wardDiscardWord is a discard ward's Word: the count, then "random" for a
-// discard at random.
-func wardDiscardWord(n int, atRandom bool) string {
-	if atRandom {
+// discard at random, or "kind:<key>" for a discard of a kind of card.
+func wardDiscardWord(n int, atRandom bool, kind *WardDiscardKind) string {
+	switch {
+	case kind != nil:
+		return strconv.Itoa(n) + " kind:" + kind.key
+	case atRandom:
 		return strconv.Itoa(n) + " random"
 	}
 	return strconv.Itoa(n)
 }
 
-// wardDiscardLabel is the printed "a card" / "N cards" / "... at random".
-func wardDiscardLabel(n int, atRandom bool) string {
+// wardDiscardLabel is the printed "a card" / "N cards" / "... at random" /
+// "an enchantment, instant, or sorcery card".
+func wardDiscardLabel(n int, atRandom bool, kind *WardDiscardKind) string {
+	if kind != nil {
+		return kind.label
+	}
 	label := "a card"
 	if n > 1 {
 		label = fmt.Sprintf("%d cards", n)
@@ -653,26 +716,48 @@ var wardDiscardAnswer = game.RegisterConfirmThen("confirm/ward-discard", func(g 
 	count, rest, _ := strings.Cut(r.Word, " ")
 	n, _ := strconv.Atoi(count)
 	atRandom := rest == "random"
-	if wardHandSize(g, r.Chooser) < n {
+	var kind *WardDiscardKind
+	if key, ok := strings.CutPrefix(rest, "kind:"); ok {
+		wardDiscardKindsMu.Lock()
+		kind = wardDiscardKinds[key]
+		wardDiscardKindsMu.Unlock()
+	}
+	if wardDiscardCardsInHand(g, r.Chooser, kind) < n {
 		return wardCounter(g, targetingItem)
+	}
+	prompt := game.DiscardPrompt{
+		Player:   r.Chooser,
+		Source:   r.Source,
+		N:        n,
+		Question: "Ward — discard " + wardDiscardLabel(n, false, kind),
+	}
+	if kind != nil {
+		return g.PlayerDiscardsThenKeyedForEffect(prompt, kind.then, nil)
 	}
 	if atRandom {
 		return g.DiscardRandomForEffect(r.Chooser, n)
 	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-		Player:   r.Chooser,
-		Source:   r.Source,
-		N:        n,
-		Question: "Ward — discard " + wardDiscardLabel(n, false),
-	})
+	g.QueueDiscardChoiceForEffect(prompt)
 	return nil
 })
 
-func wardHandSize(g *game.Game, payer uuid.UUID) int {
-	if p := g.PlayerByIDForEffect(payer); p != nil && p.Hand != nil {
+// wardDiscardCardsInHand is how many cards in the payer's hand can pay a
+// discard of `kind`: any card for a nil kind.
+func wardDiscardCardsInHand(g *game.Game, payer uuid.UUID, kind *WardDiscardKind) int {
+	p := g.PlayerByIDForEffect(payer)
+	if p == nil || p.Hand == nil {
+		return 0
+	}
+	if kind == nil {
 		return p.Hand.Size()
 	}
-	return 0
+	n := 0
+	for _, c := range p.Hand.Cards {
+		if kind.match(c) {
+			n++
+		}
+	}
+	return n
 }
 
 // wardDiscardOrCounter is "counter it unless that player discards <N
@@ -689,18 +774,19 @@ func wardHandSize(g *game.Game, payer uuid.UUID) int {
 // A cost is not an instruction to a player, so nothing here targets:
 // hexproof and protection are irrelevant, and the cards are the
 // payer's own.
-func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, atRandom bool, targetingItem uuid.UUID) error {
-	if wardHandSize(g, payer) < n {
+func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, cost WardCost, targetingItem uuid.UUID) error {
+	n, atRandom, kind := cost.Discard, cost.DiscardAtRandom, cost.DiscardKind
+	if wardDiscardCardsInHand(g, payer, kind) < n {
 		return wardCounter(g, targetingItem)
 	}
-	label := wardDiscardLabel(n, atRandom)
+	label := wardDiscardLabel(n, atRandom, kind)
 	_, err := g.QueueConfirmKeyedForEffect(game.ConfirmPrompt{
 		Chooser:      payer,
 		Source:       source,
 		Question:     "Ward — discard " + label + ", or it is countered",
 		AcceptLabel:  "Discard " + label,
 		DeclineLabel: "Let it be countered",
-		Word:         wardDiscardWord(n, atRandom),
+		Word:         wardDiscardWord(n, atRandom, kind),
 	}, wardDiscardAnswer, []uuid.UUID{targetingItem})
 	return err
 }
