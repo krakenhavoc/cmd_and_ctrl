@@ -1771,3 +1771,4 @@ choose choose-cards/recruit-discarded
 tail then/celebrate-the-mountain-king-exiled-one
 tail through-the-forest-gate/shuffle-and-gain-8
 tail cantankerous-keepers/after-mill
+choose choose-cards/vow-to-erebor-attach
