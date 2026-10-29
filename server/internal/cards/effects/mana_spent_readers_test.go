@@ -25,7 +25,7 @@ import (
 // noneCastWithManaInBatch), the sunburst keyword and converge, and
 // expend, whose tally is mana spent on spells. A new accessor joins the
 // pattern in the change that adds it.
-var manaSpentReaderVocabulary = regexp.MustCompile(`Spent|Sunburst|Converge|PerManaFrom|WheneverYouExpend|CastWithManaIn`)
+var manaSpentReaderVocabulary = regexp.MustCompile(`Spent|Sunburst|Converge|PerManaFrom|WheneverYouExpend|CastWithManaIn|spellPaidWithTreasureMana`)
 
 func TestManaSpentReadersDeclareIt(t *testing.T) {
 	files, err := filepath.Glob("*.go")
