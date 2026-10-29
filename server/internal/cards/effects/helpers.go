@@ -1579,9 +1579,16 @@ func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason strin
 // opponent still in the game, in seat order. The controller is not
 // dealt any — Pyrohemia's "each player" is the sibling that is.
 func damageEachCreatureAndEachOpponent(ctx *Context, n int) error {
+	return damageEachMatchingAndEachOpponent(ctx, Creature(), n)
+}
+
+// damageEachMatchingAndEachOpponent is damageEachCreatureAndEachOpponent
+// for a narrower creature set: "N damage to each non-Villain creature and
+// each opponent" (Avengers: Under Siege's chapter II).
+func damageEachMatchingAndEachOpponent(ctx *Context, match CardPredicate, n int) error {
 	controller := ctx.Controller()
 	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := damageEachMatching(ctx, Creature(), n); err != nil {
+		if err := damageEachMatching(ctx, match, n); err != nil {
 			return err
 		}
 		for _, p := range ctx.Game.Seats {
