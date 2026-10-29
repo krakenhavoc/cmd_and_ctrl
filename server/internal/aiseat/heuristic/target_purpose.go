@@ -181,7 +181,8 @@ func tapsNoneForDamage(c *protocol.CardView, cp castParams) bool {
 // targetsPriced). With PriceTargetPurposes off it is targetsValue.
 // Either way, what a removal's declared `returns` hand the target's
 // controller is taken off (NetRemoval, net_removal.go); a return alone
-// does not make the move purpose-priced.
+// does not make an opposing-target move purpose-priced. An own-target
+// return replaces the generic helpful-pick price and is purpose-priced.
 func (p *Policy) pricedTargetsValue(st *state, targets []targetRef, entryOf func(targetRef) *protocol.TargetPurposeView, self, source *protocol.CardView) (float64, bool) {
 	v, priced := p.pricedTargetsGross(st, targets, entryOf, self, source)
 	return v - p.removalReturnsValue(st, targets, entryOf), priced
@@ -200,6 +201,11 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	for _, t := range targets {
 		e := entryOf(t)
 		if t.Kind != "player" {
+			if v, ok := p.ownRemovalReturnValue(st, t, e); ok {
+				cards += v
+				priced = true
+				continue
+			}
 			if v, ok := p.reanimationValue(st, t.ID, e); ok {
 				cards += v
 				priced = true

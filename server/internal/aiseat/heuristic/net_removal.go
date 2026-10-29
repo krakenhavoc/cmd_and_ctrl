@@ -39,8 +39,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 //   - life equal to the target's power at what Strength counts it;
 //   - a land at ManaSource.
 //
-// Only a target an opponent controls is netted. With NetRemoval off,
-// both are priced as plain removal.
+// An own target with a declared return is priced as a loss, not a helpful
+// pick (#4319). Creature tokens can replace a creature's body; they do
+// not replace a land, mana rock, planeswalker or commander's role.
+// For those resources we conservatively give no credit for the token body.
+// With NetRemoval off the old target prices are retained.
 
 // commanderRemovalValue is what removing permanent c takes from its
 // controller, when c is an opposing commander that comes back: the tax
@@ -97,4 +100,26 @@ func (st *state) returnValue(c *protocol.CardView, r *protocol.TargetReturnView)
 	}
 	v += float64(r.Lands) * st.w.ManaSource
 	return v
+}
+
+// ownRemovalReturnValue replaces the generic own-target bonus with the
+// return minus the permanent lost. Reporting a priced target also removes
+// the spell's mana-value proxy, so spending a card must buy a real gain.
+func (p *Policy) ownRemovalReturnValue(st *state, t targetRef, e *protocol.TargetPurposeView) (float64, bool) {
+	if !p.cfg.NetRemoval || t.Kind == "player" || e == nil || e.Returns == nil {
+		return 0, false
+	}
+	c := st.bf[t.ID]
+	if c == nil || c.Controller != st.me {
+		return 0, false
+	}
+	loss := st.permanentValue(c)
+	if c.IsCommander && c.Owner == st.me {
+		loss = min(loss, 2*st.w.CommanderTax+p.cfg.DamageToOpponent*float64(max(c.Power, 0)))
+	}
+	r := *e.Returns
+	if !isCreature(c) || c.IsCommander {
+		r.CreatureTokens = 0
+	}
+	return st.returnValue(c, &r) - loss, true
 }
