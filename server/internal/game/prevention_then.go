@@ -100,9 +100,11 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 	followUp := g.preventionStaticLocked(ev, a)
 	measured := followUp || preventionMeasuredLocked(ev, a)
 	before, target := ev.DamageAmount, ev.DamageTarget
+	zoneBefore := ev.NewZone
 	if err := a.effect.Replace(ev, g, a.source); err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: err.Error()})
 	}
+	endDestructionOnRedirectLocked(ev, zoneBefore)
 	if !measured {
 		return
 	}
@@ -118,6 +120,30 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 	// prevented some of the damage is what "whenever damage is
 	// prevented" triggers on.
 	g.announcePreventionLocked(ev, a, target, prevented, before)
+}
+
+// endDestructionOnRedirectLocked is CR 616.1f's "the event as it now
+// stands" for a destruction (#4526): a replacement that sent the move
+// somewhere other than where it was headed ("exile it instead", Liesa,
+// Rest in Peace, Head of the Hunt, a shuffle-in) has replaced the
+// destruction (CR 701.8a: to destroy a permanent is to move it to its
+// owner's graveyard), so what is left is a plain zone change. The
+// replacements still waiting in the order are checked against that event:
+// a regeneration shield (CR 701.19a), a static regeneration, umbra armor
+// (CR 702.89a) and a shield counter (CR 122.1c) all replace a destruction
+// and read ev.Destruction, so clearing it here is what stops them
+// applying. A cancelled event is over and needs no mark.
+//
+// Done where the redirect is detected, not in each Replace, so a catalog
+// replacement written tomorrow gets it for free. The field is already
+// carried by the CR 616 resume snapshot, so a restore mid-order keeps it.
+func endDestructionOnRedirectLocked(ev *ReplacementEvent, zoneBefore ZoneKind) {
+	if ev == nil || ev.Kind != RepEventMove || !ev.Destruction || ev.Canceled {
+		return
+	}
+	if ev.NewZone != zoneBefore {
+		ev.Destruction = false
+	}
 }
 
 // preventionMeasuredLocked reports whether `a` is a prevention effect

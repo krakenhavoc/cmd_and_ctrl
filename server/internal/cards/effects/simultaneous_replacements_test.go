@@ -154,18 +154,17 @@ func TestLiesaAppliesOnlyWhileSheIsThereOutsideABatch(t *testing.T) {
 	}
 }
 
-// liesaWipeOrder casts the wipe over Liesa and an opponent's Needle, with
-// one Graveyard Order Probe of theirs on the battlefield, and returns the
-// Needle's CR 616 prompt: Liesa's departed effect against the probe. The
-// probe replaces the move with itself, so the Needle can be exiled only
-// by Liesa's effect.
+// liesaWipeOrder casts the wipe over Liesa and an opponent's Needle, which
+// carries a regeneration shield, and returns the Needle's CR 616 prompt:
+// Liesa's departed effect against the shield. Exiled by Liesa's effect
+// the Needle is gone for good; regenerated first, it stays (#4526). The
+// wipe must be one that lets the shield apply.
 func liesaWipeOrder(t *testing.T, wipe, oracle string) (*game.Game, *game.Player, uuid.UUID, uuid.UUID, *game.PendingChoice) {
 	t.Helper()
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	liesa := b12Push(g, me.ID, "Liesa, Forgotten Archangel", "Legendary Creature — Angel", b19LiesaOracle, 4, 5)
-	needle := b12Creature(g, opp.ID, "Needle", "Creature — Test", 1, 1)
-	seedReplacementPermanent(g, graveyardOrderProbeOracles[0], "Graveyard Order Probe A", opp.ID)
+	needle := shieldedBear(g, opp.ID)
 	castCatalogSpell(t, g, wipe, "Sorcery", oracle, nil)
 	passPriorityAroundTable(t, g)
 	if !me.Graveyard.Contains(liesa) {
@@ -173,17 +172,19 @@ func liesaWipeOrder(t *testing.T, wipe, oracle string) (*game.Game, *game.Player
 	}
 	order := b06ReplacementOrderFor(g, opp.ID)
 	if order == nil || len(order.ReplacementEffectIDs) != 2 {
-		t.Fatalf("want the Needle's controller asked to order Liesa and the probe (CR 616.1), got %+v", g.PendingChoices)
+		t.Fatalf("want the Needle's controller asked to order Liesa and the shield (CR 616.1), got %+v", g.PendingChoices)
 	}
 	return g, opp, liesa, needle, order
 }
 
 // The order is still the affected creature's controller's to choose
-// (CR 616.1), Liesa's departed effect is one of the choices, and it
-// exiles the Needle after the pause in either order.
+// (CR 616.1), Liesa's departed effect is one of the choices, and the
+// answer is honoured after the pause: Liesa first exiles the Needle and
+// the shield no longer applies to the exile (CR 616.1f), the shield first
+// regenerates it (tapped) and leaves nothing for Liesa to exile.
 func TestADepartedLiesaIsOrderedByTheAffectedCreaturesController(t *testing.T) {
 	for _, liesaFirst := range []bool{true, false} {
-		g, opp, liesa, needle, order := liesaWipeOrder(t, "Wrath of God", wrathOfGodOracle)
+		g, opp, liesa, needle, order := liesaWipeOrder(t, "Day of Judgment", dayOfJudgmentOracle)
 		first := liesaOptionID(t, g, order, liesa)
 		if !liesaFirst {
 			for _, id := range order.ReplacementEffectIDs {
@@ -196,8 +197,12 @@ func TestADepartedLiesaIsOrderedByTheAffectedCreaturesController(t *testing.T) {
 		if err := g.ResolveReplacementOrder(order.ID, opp.ID, orderWith(order, first)); err != nil {
 			t.Fatalf("ResolveReplacementOrder: %v", err)
 		}
-		if !g.Exile.Contains(needle) || opp.Graveyard.Contains(needle) {
-			t.Errorf("Liesa first = %v: the departed Liesa did not exile the Needle after the pause", liesaFirst)
+		if liesaFirst {
+			if !g.Exile.Contains(needle) || g.Battlefield.Contains(needle) || opp.Graveyard.Contains(needle) {
+				t.Error("Liesa first: the departed Liesa did not exile the Needle after the pause")
+			}
+		} else if !g.Battlefield.Contains(needle) || g.Exile.Contains(needle) || !isTapped(g, needle) {
+			t.Error("shield first: the Needle should have regenerated (tapped) and not been exiled")
 		}
 	}
 }
@@ -206,7 +211,7 @@ func TestADepartedLiesaIsOrderedByTheAffectedCreaturesController(t *testing.T) {
 // event does not carry the batch, so a restored table could not gather
 // Liesa again. The keyed form below is a restore point.
 func TestAFireAndForgetLegWithADepartedLiesaIsNotWritten(t *testing.T) {
-	g, _, _, _, _ := liesaWipeOrder(t, "Wrath of God", wrathOfGodOracle)
+	g, _, _, _, _ := liesaWipeOrder(t, "Day of Judgment", dayOfJudgmentOracle)
 	if g.CaptureSnapshot().Restorable() {
 		t.Error("the prompt holds an effect a restored table could not gather")
 	}
@@ -221,9 +226,8 @@ func TestFumigateWithLiesaIsARestorePointMidBatch(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	liesa := b12Push(g, me.ID, "Liesa, Forgotten Archangel", "Legendary Creature — Angel", b19LiesaOracle, 4, 5)
-	needle := b12Creature(g, opp.ID, "Needle", "Creature — Test", 1, 1)
+	needle := shieldedBear(g, opp.ID)
 	elf := b12Creature(g, opp.ID, "Elf", "Creature — Elf", 1, 1)
-	seedReplacementPermanent(g, graveyardOrderProbeOracles[0], "Graveyard Order Probe A", opp.ID)
 	life := me.Life
 	castCatalogSpell(t, g, "Fumigate", "Sorcery", fumigateOracle, nil)
 	passPriorityAroundTable(t, g)
