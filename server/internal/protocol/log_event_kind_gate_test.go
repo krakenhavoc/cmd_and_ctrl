@@ -63,6 +63,7 @@ const (
 // place instead of being invisible in the default arm of a switch. The
 // rows that remain are the ones whose silence survived being read.
 var silentEventKinds = map[string]string{
+	"EventFight": "fight participation is consumed by triggers; the resolving ability and resulting damage already have log entries",
 	// --- already told, by another line -------------------------------
 	"EventEchoPaid":        "the payment itself is the line: the mana spent, the discard or the sacrifice (ADR 0108 §5); the event exists for Shah of Naar Isle's trigger, whose own line follows",
 	"EventDamagePrevented": "prevented damage is the damage line that is not written; the event is the context a prevention follow-up body is handed (ADR 0107 §6) and what a CR 615.13 \"whenever damage is prevented\" trigger watches (#2047), whose LogTrigger line is what the table sees",
