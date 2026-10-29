@@ -41159,6 +41159,11 @@ pendingChoices[].searchPrompt.graveyardFinds[]	custom(uuid.UUID)
 pendingChoices[].searchPrompt.quality	bool
 pendingChoices[].searchPrompt.rule	string
 pendingChoices[].searchPrompt.ruleN	number:int
+pendingChoices[].searchPrompt.ruleWords	array
+pendingChoices[].searchPrompt.ruleWords[]	object
+pendingChoices[].searchPrompt.ruleWords[].from	string
+pendingChoices[].searchPrompt.ruleWords[].kind	string
+pendingChoices[].searchPrompt.ruleWords[].to	string
 pendingChoices[].searchPrompt.spec	object
 pendingChoices[].searchPrompt.spec.alsoGraveyard	bool
 pendingChoices[].searchPrompt.spec.alsoGraveyardAndHand	bool

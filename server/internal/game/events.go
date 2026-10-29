@@ -76,6 +76,14 @@ const (
 	// the life it cost is Event.DamageLifeLoss, not Amount (#2105).
 	EventDealDamage EventKind = "deal_damage"
 
+	// EventFight is one creature's participation in a successful fight.
+	// Actor is its controller, Source/CardID the fighter, Target its
+	// opponent. Both participants share BatchSeq (the first event's Seq),
+	// distinguishing separate fights even within one resolution. Emitted
+	// before damage, including zero or fully prevented damage; neither
+	// event is emitted when either required creature is absent.
+	EventFight EventKind = "fight"
+
 	// EventChangeLife — a player's life total changed by Amount
 	// (signed). Actor is who caused the change (uuid.Nil for admin
 	// / SBA paths that have no single actor).
@@ -1544,7 +1552,7 @@ type Event struct {
 
 	Kind EventKind `json:"kind"`
 
-	// BatchSeq groups per-die and per-coin events from one instruction. It is
+	// BatchSeq groups per-die, per-coin and per-fighter events from one instruction. It is
 	// the Seq of that instruction's first event.
 	BatchSeq uint64 `json:"batch_seq,omitempty"`
 

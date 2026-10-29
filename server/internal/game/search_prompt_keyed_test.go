@@ -243,3 +243,52 @@ func TestAMalformedSearchPromptIsRefused(t *testing.T) {
 		t.Errorf("an unknown tail on the frame: %v, want ErrUnknownEffectKey", err)
 	}
 }
+
+var testSearchRuleWords = RegisterSearchRule("test/search-source-words", func(picked []Card, n int) bool {
+	return len(picked) == n && picked[0].HasSubtypeWord("Swamp") && picked[0].HasColorWord("B")
+})
+
+func TestSearchRuleCapturesTextLensWithoutChangingPickedCards(t *testing.T) {
+	var words *TextWords
+	words = words.with(TextWordChange{Kind: TextWordBasicLandType, From: "Swamp", To: "Island"})
+	words = words.with(TextWordChange{Kind: TextWordColor, From: "B", To: "U"})
+	reader := &Card{TextWords: words}
+	rule := testSearchRuleWords.WithN(1).ThroughTextOf(reader)
+	// Changing the source after opening the search cannot change its clause.
+	reader.TextWords = nil
+	picked := []Card{{TypeLine: "Land — Island", Colors: []string{"U"}}}
+	if !(SearchLibrarySpec{Rule: rule}).setAllows(picked) {
+		t.Fatal("captured changed words did not reach the rule")
+	}
+	if picked[0].HasSubtypeWord("Swamp") || picked[0].HasColorWord("B") {
+		t.Fatal("validation leaked its text lens into the caller's cards")
+	}
+	if (SearchLibrarySpec{Rule: testSearchRuleWords.WithN(1)}).setAllows(picked) {
+		t.Fatal("capturing a rule changed the registered handle's printed words")
+	}
+}
+
+func TestSearchRuleWordsRequireTheirSnapshotMarker(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	searchLibraryOf(me, "Island")
+	var words *TextWords
+	words = words.with(TextWordChange{Kind: TextWordBasicLandType, From: "Swamp", To: "Island"})
+	runSearch(t, g, SearchLibrarySpec{Player: me.ID, Pred: isBasicNamed("Island"), Dest: ZoneHand,
+		Rule: testSearchRuleWords.WithN(1).ThroughTextOf(&Card{TextWords: words})})
+	snap := throughJSON(t, g.CaptureSnapshot())
+	c := &snap.PendingChoices[0]
+	if c.PickThen != SearchPromptWordsKey || len(c.SearchPrompt.RuleWords) != 1 {
+		t.Fatal("captured words lack the marker that makes older readers refuse them")
+	}
+	if KnownRevealedPickThen(SearchPromptWordsKey) || SearchPromptWordsKey == SearchPromptKey {
+		t.Fatal("older readers would accept the captured-word marker")
+	}
+	if _, err := snap.Restore(); err != nil {
+		t.Fatal(err)
+	}
+	c.PickThen = SearchPromptKey
+	if _, err := snap.Restore(); !errors.Is(err, ErrUnknownEffectKey) {
+		t.Fatalf("words with the old marker: %v", err)
+	}
+}

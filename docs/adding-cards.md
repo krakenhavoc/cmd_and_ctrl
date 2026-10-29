@@ -4168,6 +4168,19 @@ does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
+**Fights (#4384).** `b10Fight` delegates to `Game.FightForEffect`, which
+requires two current battlefield creature object references. It publishes
+`EventFight` for each participant before dealing damage, even when damage
+is zero or prevented. `Actor` is the fighter's controller, `CardID` /
+`Source` the fighter, `Target` the other creature, and `BatchSeq` groups
+one fight. Separate fights within one resolving effect have distinct
+`BatchSeq` values. Do not infer fights from damage events. Neyith's
+`WheneverYourCreaturesFightOrBecomeBlocked` uses that occurrence key for
+fights and the ordinary event batch for blocked attackers; controlling
+both fighters or having several attackers blocked draws only once for
+that occurrence. Target legality remains the calling effect's check.
+
+
 **Committing a crime (CR 700.13, ADR 0157).** Watch
 `game.EventBecomesTarget` and use `YouCommittedCrime(ev, source)`.
 The engine annotates one event with `CrimeCommitted` per qualifying cast, activation or triggered
@@ -6191,6 +6204,13 @@ A search's set rule is a registered rule (#4253 slice 5; the closure
 `SearchLibrary{Rule: searchRuleDifferentNames}` or
 `searchRuleTotalManaValueAtMost.WithN(6)` (`effects/search_rules.go`, or
 `game.RegisterSearchRule` for a new clause, ledgered `searchrule <key>`).
+Subtype and color words in a set rule use `Card.HasSubtypeWord` /
+`HasColorWord`, just like the candidate predicate. `SearchLibrary` captures
+the resolving spell or ability's text lens for the rule, including a
+sacrificed source's last-known words; the prompt persists it as plain data
+(#4382). A captured-word prompt uses a distinct on-disk marker so older
+readers refuse it instead of discarding its words. Engine callers use
+`rule.ThroughTextOf(g.TextReaderForEffect(item))`.
 With the "then" a `ThenTail`, the only continuation a search takes, the
 open prompt is a restore point. The per-card `Predicate` may stay a closure: it lists the
 candidates when the search starts and the prompt carries that list, so it
