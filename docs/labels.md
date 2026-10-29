@@ -27,6 +27,8 @@ registered, or when this file is stale.
 |---|---|---|---|---|---|
 | `yourBoard` | `your board` | region | aria | `lib/components/board/PlayerPanel.svelte` | the viewer's own board panel; scopes the tutorial's lands and creatures anchors |
 | `seatBoard` | `<name> board` (ends with ` board`) | region | aria | `lib/components/board/PlayerPanel.svelte`<br>`lib/components/board/SeatSummary.svelte` | another seat's board panel; the tutorial's attack step points at the bot's while it plays (the stem also ends other names, so anchor by the full name) |
+| `tombstoneRip` | `R. I. P.` | generic | text | `lib/components/board/Tombstone.svelte` | #4449: the epitaph on the tombstone that stays on an eliminated player's panel |
+| `tombstoneOf` | `<name> is out of the game` (ends with ` is out of the game`) | group | aria | `lib/components/board/Tombstone.svelte` | #4449: the tombstone on an eliminated player's panel; its text is the player's name, their commander and the epitaph |
 | `reflowNextUp` | `Next up` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the active player (drawn upper case) |
 | `reflowAfterYou` | `After you` | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card whose seat plays straight after the viewer (drawn upper case) |
 | `reflowAfter` | `After <name>` (starts with `After `) | generic | text | `lib/expansion.ts` | ADR 0077 (amended 2026-10-17, #4102): the chip on a reflow avatar card naming the opponent who plays right before it (drawn upper case) |

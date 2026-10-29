@@ -195,13 +195,47 @@ describe("sounds", () => {
       expect(absent).toEqual([]);
     });
 
-    it("plays damage when face_hit has no file", async () => {
+    // #4543: three hit sounds by how much combat damage lands, each its
+    // own cue with one take, each in the combat category, each falling back
+    // to damage.
+    const TIERS = ["face_hit_light", "face_hit_medium", "face_hit_heavy"] as const;
+
+    it.each(TIERS)("gives %s one take, in the combat category", async (tier) => {
       const m = await load();
-      expect(m.SOUND_MANIFEST.face_hit).toEqual([]);
-      m.play("face_hit");
+      expect(m.SOUND_MANIFEST[tier]).toEqual([`/sounds/${tier}-1.mp3`]);
+      expect(m.SOUND_CATEGORY[tier]).toBe("combat");
+      m.play(tier);
+      await settle();
+      expect(played().at(-1)?.src).toBe(`/sounds/${tier}-1.mp3`);
+    });
+
+    it.each(TIERS)("plays damage when the file for %s is missing", async (tier) => {
+      const m = await load();
+      expect(m.SOUND_FALLBACK[tier]).toBe("damage");
+      FakeAudio.broken.add(m.SOUND_MANIFEST[tier][0]);
+      m.play(tier);
+      await settle();
+      // The first try hit the missing file; the retry plays damage.
+      expect(played().at(0)?.src).toMatch(new RegExp(`${tier}-1`));
+      expect(played().at(-1)?.src).toMatch(/damage-/);
+      // Learned: the next fire goes straight to damage.
+      tick();
+      m.play(tier);
       await settle();
       expect(played().at(-1)?.src).toMatch(/damage-/);
-      expect(m.SOUND_CATEGORY.face_hit).toBe("combat");
+    });
+
+    it("has one take for player_eliminated, in the effects category (#4449)", async () => {
+      const m = await load();
+      expect(m.SOUND_MANIFEST.player_eliminated).toEqual(["/sounds/player_eliminated-1.mp3"]);
+      expect(m.SOUND_CATEGORY.player_eliminated).toBe("effects");
+      // No fallback: a missing file is silent, not a different sound.
+      expect(m.SOUND_FALLBACK.player_eliminated).toBeUndefined();
+    });
+
+    it("keeps no untiered face_hit cue", async () => {
+      const m = await load();
+      expect(Object.keys(m.SOUND_MANIFEST)).not.toContain("face_hit");
     });
 
     it("falls back to an existing sound when every take of a cue is missing", async () => {

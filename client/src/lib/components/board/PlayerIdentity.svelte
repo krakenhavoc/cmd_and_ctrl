@@ -250,12 +250,12 @@
     const causes = untrack(() => causesFor?.(seat.id, frame.popup!.deltas) ?? []);
     const view = lifePopupView(frame.popup, LIFE_POPUP_MAX_LINES, causes);
     popup = { key: frame.popup.key, view };
-    // #4432: a combat hit to this seat is face_hit, played by the strike
+    // #4432, #4543: a combat hit to this seat is a face_hit tier, played by the strike
     // layer at contact (or here, when no strike plays), never damage too.
     const st = get(settings);
     const sound = popupSound(
       view.sound,
-      untrack(() => combatHitFor?.(seat.id, frame.popup!.deltas) ?? false),
+      untrack(() => combatHitFor?.(seat.id, frame.popup!.deltas) ?? 0),
       strikesScheduled(
         combatMotion({
           enabled: st.animations.enabled,

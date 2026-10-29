@@ -92,6 +92,7 @@
   import IgnoreEffects from "./IgnoreEffects.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
+  import Tombstone from "./Tombstone.svelte";
   import Icon from "../Icon.svelte";
   import { seatColor } from "../../colors";
   import { settings } from "../../settings";
@@ -1125,6 +1126,9 @@
       {/if}
     </div>
   {/if}
+  <!-- #4449: a player who has left the game keeps a tombstone in the
+       middle of their panel for the rest of the game. -->
+  <Tombstone {seat} {view} />
   <div class="grid-creatures">
     <BattlefieldRow
       label={L.creatures}
