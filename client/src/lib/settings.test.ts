@@ -454,6 +454,23 @@ describe("settings", () => {
     expect(s.shortcuts.bindings).toEqual({ undo: "z" });
   });
 
+  // #4555: opponents' cards face them (as at a real table) until the
+  // viewer asks for them upright, and the choice survives a reload.
+  it("opponentCardFacing defaults to them, persists, and ignores a value it does not know", async () => {
+    let m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("them");
+    expect(m.defaultSettings().display.opponentCardFacing).toBe("them");
+    m.updateSettings("display", "opponentCardFacing", "me");
+    m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("me");
+    localStorage.setItem(
+      "cmdctrl.settings.v1",
+      JSON.stringify({ __version: 30, display: { opponentCardFacing: "sideways" } }),
+    );
+    m = await freshModule();
+    expect(get(m.settings).display.opponentCardFacing).toBe("them");
+  });
+
   // #2209: art tiles on the battlefield by default, full cards in the
   // hand, and each choice survives a reload.
   it("battlefieldArt defaults on, handArt off, and both persist once changed", async () => {

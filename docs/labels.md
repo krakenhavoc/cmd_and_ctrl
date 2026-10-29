@@ -181,6 +181,7 @@ registered, or when this file is stale.
 | `legalNotice` | `Legal notice` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982) |
 | `showTips` | `Show tips` | checkbox | text | `lib/components/Settings.svelte` | Settings → Advanced: on unless Hide tips was pressed on a tip |
 | `stackArrivalToggle` | `Stack: trace each spell or ability in from its source` | checkbox | text | `lib/components/Settings.svelte` | Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D) |
+| `opponentCardFacing` | `Opponents' cards` | combobox | text | `lib/components/Settings.svelte` | Settings → Display: whether a top-row opponent's cards face them (turned 180°, the default) or the viewer, display.opponentCardFacing (#4555) |
 | `effectsSetting` | `Table effects` | combobox | text | `lib/components/Settings.svelte` | Settings → Animations: Full, Short or Off for the generic table effects, animations.effects (ADR 0209 §1, #4396) |
 | `effectBadgeDestroyed` | `Destroyed` | status | text | `lib/components/board/TableEffects.svelte` | the still badge a destroyed permanent leaves where it was, when effect motion is off or reduced (ADR 0209 §1) |
 | `effectBadgeDied` | `Died` | status | text | `lib/components/board/TableEffects.svelte` | the still badge for a permanent that died to a state-based action (lethal damage, zero toughness) |

@@ -8,6 +8,11 @@ import { sanitizeOverrides } from "./shortcuts";
 import { DEFAULT_STACK_STYLE, isStackStyle, type StackStyle } from "./stackLane";
 import { DEFAULT_SKIN, isSkin, normalizeAccent, type Skin } from "./skins";
 import { DEFAULT_TABLE_LAYOUT, isTableLayout, type TableLayout } from "./tableLayout";
+import {
+  DEFAULT_OPPONENT_CARD_FACING,
+  isOpponentCardFacing,
+  type OpponentCardFacing,
+} from "./opponentCardFacing";
 import { normalizeSeen } from "./hints/seen";
 import { DEFAULT_EFFECTS_MODE, isEffectsMode, type EffectsMode } from "./tableEffects";
 import { DEFAULT_PLAYMATS_MODE, isPlaymatsMode, type PlaymatsMode } from "./playmatMode";
@@ -120,6 +125,14 @@ export interface Settings {
     // whatever opponentDetail and expandActivePlayer say, and you
     // hover or click an avatar to see a whole board. See tableLayout.ts.
     tableLayout: TableLayout;
+    // #4555: which way the cards on a top-row (flipped) opponent's panel
+    // face. "them" (the default, how the table has always looked) draws
+    // them turned 180°, facing their owner across the table as at a real
+    // one. "me" draws them upright, facing the viewer, so the art, text,
+    // P/T and counters read without tilting your head. It changes how the
+    // cards are drawn and nothing else: the rows, the piles, the identity
+    // and which seat sits where stay put. Synced: a taste, not a screen.
+    opponentCardFacing: OpponentCardFacing;
     // #1467, ADR 0119 §1: how the stack is drawn. "pile" (the default
     // since v17) is a pile of large, readable cards on the left of the
     // table; phones and short boards draw "compact" instead, without
@@ -521,6 +534,7 @@ export function defaultSettings(): Settings {
       // Row from #2433 (owner decision): opponents in one row along the
       // top, the viewer's board under them.
       tableLayout: DEFAULT_TABLE_LAYOUT,
+      opponentCardFacing: DEFAULT_OPPONENT_CARD_FACING,
       // v17 default: the pile (ADR 0119 §1, owner answer 1). It was
       // compact from v14, until the owner picked the pile.
       stackStyle: DEFAULT_STACK_STYLE,
@@ -689,6 +703,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     cardSize: "device",
     handLayout: "device",
     tableLayout: "device",
+    opponentCardFacing: "synced",
     stackStyle: "synced",
     opponentDetail: "device",
     expandActivePlayer: "device",
@@ -1077,6 +1092,12 @@ function migrate(raw: unknown): Settings {
   // board with no grid template.
   if (!isTableLayout(merged.display.tableLayout)) {
     merged.display.tableLayout = DEFAULT_TABLE_LAYOUT;
+  }
+  // #4555: display.opponentCardFacing is new. The shallow merge fills it
+  // with "them" (today's look) for any older blob, and a value that is
+  // not one of the two (a hand edit) falls back to it. No version bump.
+  if (!isOpponentCardFacing(merged.display.opponentCardFacing)) {
+    merged.display.opponentCardFacing = DEFAULT_OPPONENT_CARD_FACING;
   }
   // ADR 0128: display.playmats is new. The shallow merge fills it with
   // "all" for any older blob, and a value that is not one of the three
