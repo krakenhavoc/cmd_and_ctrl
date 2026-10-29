@@ -137,6 +137,14 @@ type ZoneEntryOptions struct {
 	// zero value is every other put, whose Auras choose their hosts as
 	// they enter (aura_host.go).
 	AttachedTo TargetRef
+
+	// EntersAs is the putting effect's "they are <types> with
+	// <ability>" (Supper for Spiders' Food artifacts, Tom, Bert, and
+	// William's artifact; ADR 0210). Seeded onto every card's entry
+	// event: each permanent is that type from the moment it lands, for
+	// as long as it is that object (entry_overwrite.go). Read-only, nil
+	// for every other caller.
+	EntersAs *EntersAs
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named

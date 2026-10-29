@@ -713,6 +713,12 @@ type ReplacementEvent struct {
 	// before the host is attached. A value field, like auraHost.
 	entersAsAura bool
 
+	// entersAs is the putting effect's "it's a <type> with <ability>"
+	// (ZoneEntryOptions.EntersAs, ADR 0210): registered on the permanent
+	// as it lands, and seen by the CR 614.12 look-ahead before that. A
+	// pointer the event never writes through, like FaceDownListed.
+	entersAs *EntersAs
+
 	// exchangeTextWith names the creature an "as this enters, you may
 	// exchange its text box and another creature's" choice picked (ADR
 	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
@@ -2449,7 +2455,11 @@ func (g *Game) stillAppliesLocked(ev *ReplacementEvent, a activeReplacement) boo
 	if !eventKindMatches(a.effect.Watches, ev.Kind) {
 		return false
 	}
-	return a.effect.AppliesTo == nil || a.effect.AppliesTo(ev, g, a.source)
+	if a.effect.AppliesTo == nil {
+		return true
+	}
+	defer g.entryOverwriteViewLocked(ev, false)()
+	return a.effect.AppliesTo(ev, g, a.source)
 }
 
 // clearReplacementEventLocked drops the per-event tracking map
@@ -2494,6 +2504,9 @@ func (g *Game) gatherReplacementsLocked(ev *ReplacementEvent, serials *replaceme
 	if ev == nil {
 		return nil
 	}
+	// ADR 0210, CR 614.12: an entry that carries an overwrite is judged
+	// as the permanent it would be.
+	defer g.entryOverwriteViewLocked(ev, serials.readOnly)()
 	applied := g.replacementsAppliedThisEvent[ev.ID]
 	var out []activeReplacement
 
