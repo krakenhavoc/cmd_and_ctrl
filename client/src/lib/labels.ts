@@ -1382,6 +1382,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/Settings.svelte"],
     doc: "Settings → Animations: the arrival trace, animations.stackArrival (ADR 0119 amendment 2026-10-16 §D)",
   }),
+  opponentCardFacing: label({
+    name: "Opponents' cards",
+    kind: "text",
+    role: "combobox",
+    owners: ["lib/components/Settings.svelte"],
+    doc: "Settings → Display: whether a top-row opponent's cards face them (turned 180°, the default) or the viewer, display.opponentCardFacing (#4555)",
+  }),
   effectsSetting: label({
     name: "Table effects",
     kind: "text",

@@ -428,7 +428,7 @@
     aria-label={label}
     use:fitRow={{ strip, spread, budget, hold: held, onDemand: (d) => (demand = d) }}
   >
-    {#each piles as p (p.key)}
+    {#each piles as p, pi (p.key)}
       {@const depths = pileDepths(p.cards.length)}
       <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -439,6 +439,7 @@
         class:deep={p.cards.length > STRIP_DEPTH}
         class:group={!!p.group}
         style:--pile-n={p.cards.length}
+        style:--pi={pi}
         onpointerenter={p.cards.length > 1 ? () => tutorialEmit("pile-hovered") : undefined}
         title={p.group
           ? `${p.group.members.length} × ${p.cards[0].name} — click to choose which`

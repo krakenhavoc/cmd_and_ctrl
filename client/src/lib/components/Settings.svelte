@@ -21,6 +21,7 @@
   import { currentTablePace } from "../tableSettings";
   import type { StackStyle } from "../stackLane";
   import type { TableLayout } from "../tableLayout";
+  import type { OpponentCardFacing } from "../opponentCardFacing";
   import type { EffectsMode } from "../tableEffects";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
   import {
@@ -878,6 +879,29 @@
               gives your board the bottom half and splits the top half between the opponents, each
               drawn as a summary; hover their avatar to see their whole board, or click it to keep
               it open.
+            </p>
+
+            <!-- #4555 -->
+            <label class="slider-row">
+              <span>{L.opponentCardFacing}</span>
+              <select
+                value={$settings.display.opponentCardFacing}
+                onchange={(e) =>
+                  change(
+                    "display",
+                    "opponentCardFacing",
+                    e.currentTarget.value as OpponentCardFacing,
+                  )}
+              >
+                <option value="them">Facing them, as at a real table (default)</option>
+                <option value="me">Facing me</option>
+              </select>
+              {#if isFresh("display.opponentCardFacing")}<span class="saved">✓</span>{/if}
+            </label>
+            <p class="help">
+              The cards on the opponents seated across the top are drawn upside down by default,
+              facing their owner. Facing me draws them upright so the art, text, power and
+              toughness, and counters read the way yours do. The board itself does not move.
             </p>
 
             <label class="slider-row">
