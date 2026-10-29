@@ -123,6 +123,7 @@ registered, or when this file is stale.
 | `rollD6` | `Roll a d6` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5); disabled for 2 s after the viewer's own roll |
 | `rollD20` | `Roll a d20` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
 | `flipCoin` | `Flip a coin` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
+| `powerUpUsed` | `already activated (power-up)` | generic | text | `lib/contextMenu.logic.ts` | the reason on a power-up ability row the server marked power_up_used (#4527, CR 702.193a: activate each power-up ability only once), in the card menu and the mana-ability popover |
 | `rulings` | `Rulings` | menuitem | text | `lib/components/board/CardContextMenu.svelte`<br>`lib/components/board/ManaAbilityMenu.svelte` | a card menu's link to the card's official rulings in a new tab (#3831); not offered for a hidden or face-down card or a token |
 | `adminViews` | `admin views` | navigation | aria | `routes/Admin.svelte` | the admin views' tabs: Live now, Games, Accounts |
 | `adminLiveNowTab` | `Live now` | link | text | `routes/Admin.svelte` | the admin views' first tab |

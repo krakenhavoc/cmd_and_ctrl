@@ -4630,6 +4630,14 @@ type ActivatedAbilityView struct {
 	// untap). The client greys the row the same way; the server
 	// refuses with ErrAbilityExhausted either way.
 	Exhausted bool `json:"exhausted,omitempty"`
+	// PowerUpUsed is true when this is a power-up ability (CR 702.193a,
+	// "Activate this ability only once") that this object has already
+	// activated (#4527). Its own flag rather than Exhausted, because the
+	// keyword is a different rule and the client names it. Like an
+	// exhaust, it never recovers until the permanent becomes a new
+	// object (CR 400.7). The server refuses with ErrPowerUpUsed either
+	// way, and the legal-move enumerator does not offer it.
+	PowerUpUsed bool `json:"power_up_used,omitempty"`
 	// BoastBlocked is why a boast ability (CR 702.142a, "Activate only
 	// if this creature attacked this turn and only once each turn")
 	// cannot be activated right now: "not_attacked" or "used". Absent
@@ -12842,6 +12850,9 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
 			v.Exhausted = true
 		}
+		// CR 702.193a (#4527): a power-up ability already activated,
+		// the reader ActivateCatalogAbility and internal/legal share.
+		v.PowerUpUsed = g.PowerUpUsed(c.InstanceID, a)
 		// ADR 0155 Decision 7: a once-each-turn lent row already used.
 		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true

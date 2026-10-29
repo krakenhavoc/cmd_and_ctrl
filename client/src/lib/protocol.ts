@@ -3611,6 +3611,12 @@ export interface ActivatedAbilityView {
   // the number of uses the server counts). Absent when the ability is not
   // a boast ability or nothing objects.
   boast_blocked?: "not_attacked" | "used";
+  // #4527, CR 702.193a: true when this is a power-up ability ("Activate
+  // each power-up ability only once") that this permanent has already
+  // activated. Absent otherwise. Only a new object (CR 400.7) clears it.
+  // charged_mana_cost already carries the keyword's reduction by the
+  // permanent's mana cost the turn it entered.
+  power_up_used?: boolean;
   // #1210: the printed clause of a board-wide "can't be activated"
   // static that refuses THIS ability right now ("Activated abilities
   // of creatures can't be activated", Cursed Totem). Absent, which is

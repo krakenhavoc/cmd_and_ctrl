@@ -1961,6 +1961,13 @@ type ActivatedAbility struct {
 	// Set it through the Boast constructor (boast.go), which also
 	// writes the label, so a card file never spells the keyword by hand.
 	Boast bool
+	// PowerUp marks a power-up ability — "Power-up — {4}{W}: … (Activate
+	// each power-up ability only once. Reduce the cost by its mana cost
+	// if it entered this turn.)" (CR 702.193a, #4527). One bit, no card
+	// logic: the engine reads the activation record and prices the
+	// reduction itself (game/power_up.go). Set it through the PowerUp
+	// constructor (power_up.go), which also writes the label.
+	PowerUp bool
 	// CostModifiers is the ability's OWN cost clause — "This ability
 	// costs {1} less to activate for each legendary creature you
 	// control" (the channel lands), "…for each color of the creature

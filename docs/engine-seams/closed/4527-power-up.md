@@ -1,0 +1,6 @@
+---
+title: "Power-up"
+date: 2026-10-29
+issues: [4527]
+---
+**Power-up** (#4527, [ADR 0020](decisions/0020-activated-abilities.md) amendment 2026-10-29, CR 702.193) — `ActivatedAbilityShape.PowerUp`, set by `effects.PowerUp`, is the keyword. "Activate this ability only once" is `Game.PowerUpUsed`, which reads the exhaust activation record (per object and label: a flicker refreshes it, a restore keeps it), so the activation path (`ErrPowerUpUsed`), the legal enumerator and the view (`power_up_used`) agree. "If this permanent entered this turn, this ability's cost is reduced by this permanent's mana cost" is taken in the CR 601.2f pass and reduces coloured symbols as CR 702.193b and 118.7 say (`reduceByManaCost`), the first reduction that is not generic only. `AbilityCostSubject.PowerUp` prices power-up abilities from the board (Hulk, Gamma Goliath), `game.CostZeroAlternative` is a "{0} rather than" alternative the engine takes for the player and never on an {X} cost (Advancing the Spirit, counted by `PlayerTurnTally.PowerUpActivations`), and `Event.PowerUp` is stamped at the announce. **Cards:** Brave Brawler, Hulk, Gamma Goliath and Advancing the Spirit (Full). **Left:** Wonder Man's extra activation, Kang's extra-turn ban and Quinjet Technician's power-up-only mana are small additions to the same gate and cost path.

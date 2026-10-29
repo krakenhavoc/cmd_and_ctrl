@@ -412,6 +412,14 @@ var (
 	ErrBoastNotAttacked = errors.New("game: this creature hasn't attacked this turn, so its boast ability can't be activated")
 	ErrBoastSpent       = errors.New("game: this boast ability has already been activated as many times as it can be this turn")
 
+	// ErrPowerUpUsed is returned by ActivateCatalogAbility when a
+	// power-up ability (CR 702.193a: "Activate this ability only once")
+	// has already been activated by this object (#4527). Its own error
+	// rather than ErrAbilityExhausted, because the two keywords are
+	// different rules and the client says which. Checked beside the
+	// exhaust gate, so nothing is paid.
+	ErrPowerUpUsed = errors.New("game: this power-up ability has already been activated")
+
 	// ErrStaleAbilityRef is returned by ActivateCatalogAbility and
 	// ActivateManaAbility when the announcement names an ability by a
 	// ref (ADR 0093 Decision 5) and the row at its index is no longer
