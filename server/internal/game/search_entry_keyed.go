@@ -45,6 +45,7 @@ type searchTailSpec struct {
 	Depth                int                `json:"depth,omitempty"`
 	AlsoGraveyard        bool               `json:"alsoGraveyard,omitempty"`
 	AlsoGraveyardAndHand bool               `json:"alsoGraveyardAndHand,omitempty"`
+	AlsoHand             bool               `json:"alsoHand,omitempty"`
 	TakeAll              bool               `json:"takeAll,omitempty"`
 	LibraryUntouched     bool               `json:"libraryUntouched,omitempty"`
 	ExileFoundFor        uuid.UUID          `json:"exileFoundFor"`
@@ -69,7 +70,7 @@ func searchTailSpecOf(spec SearchLibrarySpec) searchTailSpec {
 		EntersWithCounters: copyCounterMap(spec.EntersWithCounters), LinkTo: spec.LinkTo,
 		Optional: spec.Optional, UpTo: spec.UpTo, Reason: spec.Reason,
 		ThenTail: snapshotKeyedTail(spec.ThenTail), ToTop: spec.ToTop, Depth: spec.Depth,
-		AlsoGraveyard: spec.AlsoGraveyard, AlsoGraveyardAndHand: spec.AlsoGraveyardAndHand,
+		AlsoGraveyard: spec.AlsoGraveyard, AlsoGraveyardAndHand: spec.AlsoGraveyardAndHand, AlsoHand: spec.AlsoHand,
 		TakeAll: spec.TakeAll, LibraryUntouched: spec.libraryUntouched, ExileFoundFor: spec.exileFoundFor,
 	}
 	if spec.EntersAttachedTo != (TargetRef{}) {
@@ -88,7 +89,7 @@ func (s searchTailSpec) searchSpec() SearchLibrarySpec {
 		EntersWithCounters: copyCounterMap(s.EntersWithCounters), LinkTo: s.LinkTo,
 		Optional: s.Optional, UpTo: s.UpTo, Reason: s.Reason,
 		ThenTail: restoreKeyedTail(s.ThenTail), ToTop: s.ToTop, Depth: s.Depth,
-		AlsoGraveyard: s.AlsoGraveyard, AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		AlsoGraveyard: s.AlsoGraveyard, AlsoGraveyardAndHand: s.AlsoGraveyardAndHand, AlsoHand: s.AlsoHand,
 		TakeAll: s.TakeAll, libraryUntouched: s.LibraryUntouched, exileFoundFor: s.ExileFoundFor,
 	}
 	if s.EntersAttachedTo != nil {

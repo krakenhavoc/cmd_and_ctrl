@@ -1786,3 +1786,6 @@ body thorin-mountain-king/damage
 tail dain-ironfoot/axe-created
 body roads-go-ever-ever-on/pump-per-plains
 choose choose-cards/roads-go-ever-ever-on-put-in-hand
+choose choose-cards/gandalf-party-guest-cast
+tail then/last-light-of-durins-day-search
+tail then/the-misty-mountains-cold-dragon

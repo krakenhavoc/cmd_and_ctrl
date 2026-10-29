@@ -2389,6 +2389,24 @@ type SearchLibrarySpec struct {
 	// cards leave to.
 	AlsoGraveyardAndHand bool
 
+	// AlsoHand is "search your hand and/or library" (Last Light of Durin's
+	// Day): the searcher's own hand is searched beside the library, under
+	// the same predicate, in the same prompt (PendingChoice.SearchHandCards
+	// says which candidates are in the hand). It is AlsoGraveyard's twin for
+	// the hand, with no graveyard in it.
+	//
+	// "And/or" lets the searcher choose which zones to look in, so a search
+	// with a stated quality may find nothing whatever the hand holds (CR
+	// 701.23b), and "If you search your library this way, shuffle" is the
+	// card's Shuffle: a take that comes entirely out of the hand neither
+	// shuffles nor fires EventSearchLibrary. The same declared simplification
+	// as AlsoGraveyard applies: the engine does not ask which zones were
+	// searched, so a take of nothing is treated as a library search (shuffle
+	// and event), the common case; the difference is a no-op for play. The
+	// hand searched is the library owner's own, so combining this with
+	// LibraryOwner is not meaningful. Dest must be a zone the cards leave to.
+	AlsoHand bool
+
 	// TakeAll is "search … for ALL cards with the same name …" on an
 	// AlsoGraveyardAndHand search (#4033: Eradicate, Extirpate, Quash,
 	// Scour, Splinter, Sowing Salt). There is no count, so it implies
@@ -2445,6 +2463,13 @@ func (spec SearchLibrarySpec) statedQuality() bool {
 // "graveyard, hand, and library" (AlsoGraveyardAndHand).
 func (spec SearchLibrarySpec) searchesGraveyard() bool {
 	return spec.AlsoGraveyard || spec.AlsoGraveyardAndHand
+}
+
+// searchesHand reports whether the library owner's hand is searched beside
+// the library: "hand and/or library" (AlsoHand), or "graveyard, hand, and
+// library" (AlsoGraveyardAndHand).
+func (spec SearchLibrarySpec) searchesHand() bool {
+	return spec.AlsoHand || spec.AlsoGraveyardAndHand
 }
 
 // floor is the fewest cards the searcher may take when `matches` cards
@@ -2640,7 +2665,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 	// the graveyard's (PendingChoice.SearchHandCards), and the searcher
 	// looks at the whole hand as they search it.
 	var handMatches []uuid.UUID
-	if spec.AlsoGraveyardAndHand {
+	if spec.searchesHand() {
 		for i := range p.Hand.Cards {
 			c := p.Hand.Cards[i]
 			p.Hand.Cards[i].AddKnower(spec.Player)
@@ -2846,9 +2871,12 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 	// in the library, so it is not "searched" — no shuffle, no
 	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
 	// any library card, is a library search.
-	spec.libraryUntouched = spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand && len(ids) > 0
+	// "Hand and/or library" (Last Light of Durin's Day) is the same rule for
+	// the hand.
+	fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand
+	spec.libraryUntouched = (fromGraveyard || spec.AlsoHand) && len(ids) > 0
 	for _, id := range ids {
-		if !p.Graveyard.Contains(id) {
+		if !(fromGraveyard && p.Graveyard.Contains(id)) && !(spec.AlsoHand && p.Hand.Contains(id)) {
 			spec.libraryUntouched = false
 			break
 		}
@@ -2945,7 +2973,7 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 	// A card that is no longer in the library (or, for an "and/or
 	// graveyard" search, the graveyard) is skipped rather than fetched:
 	// it left while an earlier card's entry prompt was open.
-	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.searchesGraveyard() && p.Graveyard.Contains(ids[0])) && !(spec.AlsoGraveyardAndHand && p.Hand.Contains(ids[0])) {
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.searchesGraveyard() && p.Graveyard.Contains(ids[0])) && !(spec.searchesHand() && p.Hand.Contains(ids[0])) {
 		ids = ids[1:]
 	}
 	if len(ids) == 0 {
@@ -3017,7 +3045,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// event's OldZone to where the card actually is).
 		from, zone = ZoneGraveyard, p.Graveyard
 	}
-	if spec.AlsoGraveyardAndHand && p.Hand.Contains(id) {
+	if spec.searchesHand() && p.Hand.Contains(id) {
 		// #3988: out of the hand, likewise.
 		from, zone = ZoneHand, p.Hand
 	}

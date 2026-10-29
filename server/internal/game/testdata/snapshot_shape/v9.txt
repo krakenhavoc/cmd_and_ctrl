@@ -6338,6 +6338,7 @@ frozenEntries[].event.entryTail.search.rest[]	custom(uuid.UUID)
 frozenEntries[].event.entryTail.search.spec	object
 frozenEntries[].event.entryTail.search.spec.alsoGraveyard	bool
 frozenEntries[].event.entryTail.search.spec.alsoGraveyardAndHand	bool
+frozenEntries[].event.entryTail.search.spec.alsoHand	bool
 frozenEntries[].event.entryTail.search.spec.depth	number:int
 frozenEntries[].event.entryTail.search.spec.dest	string
 frozenEntries[].event.entryTail.search.spec.entersAttachedTo	object
@@ -14076,6 +14077,7 @@ frozenEntries[].event.zoneRoute.batchLegs.rest[]	custom(uuid.UUID)
 frozenEntries[].event.zoneRoute.batchLegs.search	object
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
+frozenEntries[].event.zoneRoute.batchLegs.search.alsoHand	bool
 frozenEntries[].event.zoneRoute.batchLegs.search.depth	number:int
 frozenEntries[].event.zoneRoute.batchLegs.search.dest	string
 frozenEntries[].event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -30245,6 +30247,7 @@ pendingChoices[].replacementResume.event.entryTail.search.rest[]	custom(uuid.UUI
 pendingChoices[].replacementResume.event.entryTail.search.spec	object
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.alsoGraveyardAndHand	bool
+pendingChoices[].replacementResume.event.entryTail.search.spec.alsoHand	bool
 pendingChoices[].replacementResume.event.entryTail.search.spec.depth	number:int
 pendingChoices[].replacementResume.event.entryTail.search.spec.dest	string
 pendingChoices[].replacementResume.event.entryTail.search.spec.entersAttachedTo	object
@@ -37983,6 +37986,7 @@ pendingChoices[].replacementResume.event.zoneRoute.batchLegs.rest[]	custom(uuid.
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search	object
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyard	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoGraveyardAndHand	bool
+pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.alsoHand	bool
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.depth	number:int
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.dest	string
 pendingChoices[].replacementResume.event.zoneRoute.batchLegs.search.entersAttachedTo	object
@@ -41248,6 +41252,7 @@ pendingChoices[].searchPrompt.ruleWords[].to	string
 pendingChoices[].searchPrompt.spec	object
 pendingChoices[].searchPrompt.spec.alsoGraveyard	bool
 pendingChoices[].searchPrompt.spec.alsoGraveyardAndHand	bool
+pendingChoices[].searchPrompt.spec.alsoHand	bool
 pendingChoices[].searchPrompt.spec.depth	number:int
 pendingChoices[].searchPrompt.spec.dest	string
 pendingChoices[].searchPrompt.spec.entersAttachedTo	object

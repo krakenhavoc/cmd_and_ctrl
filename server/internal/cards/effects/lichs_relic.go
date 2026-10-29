@@ -54,7 +54,7 @@ var lichsRelicDestroyBody = game.ReflexiveBody("lichs-relic/destroy", simpleBody
 // lichsRelicClause is "up to one target creature or planeswalker for
 // each opponent", one clause per opponent bound to that opponent.
 func lichsRelicClause(opponents int) *game.TargetSpec {
-	return perOpponentClauses(opponents, true, "creature or planeswalker", Or(Creature(), Planeswalker()))
+	return perOpponentClauses(opponents, "creature or planeswalker", Or(Creature(), Planeswalker()))
 }
 
 func lichsRelicMayPay(g *game.Game, item *game.StackItem) error {
