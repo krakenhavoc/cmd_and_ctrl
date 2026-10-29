@@ -21,9 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Saddle(1)},
 		Triggered: []game.TriggeredAbility{
-			AttacksWhileSaddled("Gila Courser — exile the top card of your library; you may play it until the end of your next turn", func(g *game.Game, item *game.StackItem) error {
-				return b20ExileTopUntilEndOfNextTurn(g, item, 1)
-			}),
+			AttacksWhileSaddled("Gila Courser — exile the top card of your library; you may play it until the end of your next turn", b20ExileTopUntilEndOfNextTurn),
 		},
 	})
 }
