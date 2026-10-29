@@ -35,7 +35,7 @@
 <Page
   eyebrow="About"
   title="What this is"
-  lede="A private-table Magic: The Gathering Commander sandbox for four players, built as a hobby. It is in beta: expect rough edges, and expect things to change."
+  lede="A private-table Magic: The Gathering Commander game for four players, where the rules engine enforces the rules. It is a hobby project. It is in beta: expect rough edges, and expect things to change."
   width="prose"
 >
   <div class="stack">

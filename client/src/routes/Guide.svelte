@@ -106,9 +106,9 @@
         </dd>
         <dt>Choose your deck</dt>
         <dd>
-          Pick a pre-built deck, one of your saved decks, or paste a Moxfield or Archidekt link or a
-          plain decklist. Every deck is checked against the Commander rules: 100 cards, singleton,
-          colour identity.
+          Pick a pre-built deck, one of your saved decks, or paste an Archidekt link or a plain
+          decklist. On Moxfield, open the deck, then Export and Copy plain text, and paste it here.
+          Every deck is checked against the Commander rules: 100 cards, singleton, colour identity.
         </dd>
         <dt>Start</dt>
         <dd>Once every seat has a deck, the host presses <strong>Start</strong>.</dd>
