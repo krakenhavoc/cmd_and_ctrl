@@ -1759,3 +1759,4 @@ searchrule search/corpse-harvester-zombie-and-swamp
 payunless pay-unless/neyith-of-the-dire-hunt-double-power
 choose choose-cards/minas-tirith-garrison-tap-humans
 tail azog/amass-goblins-and-draw
+tail goblin-plate-mail/attach
