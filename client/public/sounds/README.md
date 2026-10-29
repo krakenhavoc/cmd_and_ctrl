@@ -55,9 +55,10 @@ time.
 
 ### Files not made yet
 
-An entry here is in `SOUND_MANIFEST` and plays its fallback until the files
-land (ADR 0209 §6). `sounds.test.ts` keeps an explicit `NOT_MADE_YET` list
-of them; delete the entry from that list in the PR that adds the files.
+An entry here is in `SOUND_MANIFEST` with no takes, so nothing is fetched (a
+listed file that is absent logs a 404) and it plays its fallback until the
+files land (ADR 0209 §6). `sounds.test.ts` fails if a manifest take has no
+file. In the PR that adds the files, list the takes in the manifest.
 
 | Entry      | Files                              | Spec                                                                                                                                             | Falls back to |
 | ---------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
