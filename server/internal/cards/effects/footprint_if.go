@@ -159,6 +159,19 @@ func (c CondLifeLost) condition() (game.FootprintStep, bool) {
 	return condStep(game.FootprintCondLifeLost, max(c.AtLeast, 1)), true
 }
 
+// CondCardsDrawn is "if you've drawn [N or more] cards this turn": the
+// item's controller's tally of cards drawn this turn (Lake-town
+// Toymaker). AtLeast 0 means 1.
+type CondCardsDrawn struct{ AtLeast int }
+
+func (c CondCardsDrawn) Holds(ctx *Context) bool {
+	return ctx.Game.TurnTallyFor(ctx.Controller()).CardsDrawn >= max(c.AtLeast, 1)
+}
+
+func (c CondCardsDrawn) condition() (game.FootprintStep, bool) {
+	return condStep(game.FootprintCondCardsDrawn, max(c.AtLeast, 1)), true
+}
+
 // CondCreatureDied is "if a creature died under
 // your control this turn" (Faramir, Field Commander).
 type CondCreatureDied struct{}
