@@ -1809,3 +1809,5 @@ body ant-man-colony-commander/counter
 payunless pay-unless/ant-man-colony-commander-counter
 tail alien-invasion/grow
 confirm confirm/armor-wars-draw
+body claim-the-kingdom/indestructible
+tail daredevil-man-without-fear/hero-boost
