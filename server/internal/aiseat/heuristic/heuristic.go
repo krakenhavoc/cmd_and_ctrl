@@ -233,7 +233,9 @@ type Config struct {
 	// 903.9b). A target entry's declared `returns` (a creature token,
 	// life equal to the target's power, a land) is valued as its
 	// controller would value it and taken off the removal's price, on
-	// the removal's own scale. Off (the zero value) prices both as plain
+	// the removal's own scale. Own targets with returns pay for the
+	// permanent lost; token bodies replace noncommander creatures only (#4319).
+	// Off (the zero value) prices opposing targets as plain
 	// removal.
 	NetRemoval bool
 	// TutorWeight is a card searched out to hand or the top of the
