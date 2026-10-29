@@ -20,9 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Gundabad Opportunist — exile the top card of your library; you may play it until the end of your next turn",
-				func(g *game.Game, item *game.StackItem) error {
-					return b20ExileTopUntilEndOfNextTurn(g, item, 1)
-				}),
+				b20ExileTopUntilEndOfNextTurn),
 		},
 	})
 }

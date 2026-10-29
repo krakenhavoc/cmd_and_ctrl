@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -26,6 +27,8 @@ const (
 	hobA7NoriOracle              = "03253076-9add-4efb-9227-b0a062c86534"
 	hobA7CantankerousKeepersOrcl = "77c97dad-17cc-4a28-a48b-907c044d9034"
 	hobA7BejeweledWargOracle     = "051ff7e0-dd00-4467-8796-a5d1c21934ed"
+	hobA7ShortswordOracle        = "9cc52afb-9788-46f6-9f9b-347513f8a64f"
+	hobA7LonelyMountainOracle    = "3678c06f-8a33-4a6d-bf20-5b92d5c05a95"
 )
 
 func TestHobA7EveryCardIsRegisteredFull(t *testing.T) {
@@ -42,6 +45,8 @@ func TestHobA7EveryCardIsRegisteredFull(t *testing.T) {
 		hobA7NoriOracle:              "Nori, Teller of Tales",
 		hobA7CantankerousKeepersOrcl: "Cantankerous Keepers",
 		hobA7BejeweledWargOracle:     "Bejeweled Warg",
+		hobA7ShortswordOracle:        "Dwarven Shortsword",
+		hobA7LonelyMountainOracle:    "The Lonely Mountain",
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {
@@ -800,7 +805,8 @@ func TestHobA7BejeweledWargCreatesATreasure(t *testing.T) {
 	}
 }
 
-// A creature of mine that is not the Warg deals the damage: no trigger.
+// Another creature's combat damage and the Warg's own noncombat damage do
+// not trigger it.
 func TestHobA7BejeweledWargIgnoresOtherCreaturesAndNoncombatDamage(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
@@ -812,5 +818,176 @@ func TestHobA7BejeweledWargIgnoresOtherCreaturesAndNoncombatDamage(t *testing.T)
 	})
 	if latestChoiceOfKindFor(g, game.PendingChoiceModePick, me.ID) != nil {
 		t.Error("the Warg triggered off damage it did not deal in combat")
+	}
+}
+
+// --- Dwarven Shortsword ----------------------------------------------------
+
+// The Shortsword makes a 2/2 red Dwarf and attaches itself to it, so the
+// Dwarf is 3/4.
+func TestHobA7DwarvenShortswordMakesADwarfAndAttachesToIt(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	sword := castCatalogSpell(t, g, "Dwarven Shortsword", "Artifact — Equipment", hobA7ShortswordOracle, nil)
+	passPriorityAroundTable(t, g)
+
+	dwarf := findBattlefieldByName(g, "Dwarf")
+	if dwarf == uuid.Nil {
+		t.Fatal("no Dwarf token")
+	}
+	c := s58p6View(t, g, dwarf)
+	if c.Controller != me.ID || !c.IsToken() || !c.HasSubtype("Dwarf") || !c.HasColorWord("R") {
+		t.Errorf("the token is %+v, want a red Dwarf token under my control", c)
+	}
+	if c.CurrentPower() != 3 || c.CurrentToughness() != 4 {
+		t.Errorf("the Dwarf is %d/%d, want 3/4 (2/2 plus +1/+2)", c.CurrentPower(), c.CurrentToughness())
+	}
+	if s := findBattlefieldCardByID(g, sword); s == nil || !s.IsAttachedTo(dwarf) {
+		t.Error("the Shortsword should be attached to the Dwarf")
+	}
+}
+
+// Equip moves the Shortsword off the Dwarf and onto another creature.
+func TestHobA7DwarvenShortswordEquipMovesItToAnotherCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	sword := castCatalogSpell(t, g, "Dwarven Shortsword", "Artifact — Equipment", hobA7ShortswordOracle, nil)
+	passPriorityAroundTable(t, g)
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
+	equipTo(t, g, me.ID, sword, bear)
+
+	if c := s58p6View(t, g, bear); c.CurrentPower() != 3 || c.CurrentToughness() != 4 {
+		t.Errorf("the equipped Bear is %d/%d, want 3/4", c.CurrentPower(), c.CurrentToughness())
+	}
+	dwarf := findBattlefieldByName(g, "Dwarf")
+	if c := s58p6View(t, g, dwarf); c.CurrentPower() != 2 || c.CurrentToughness() != 2 {
+		t.Errorf("the Dwarf is %d/%d after the Sword moved, want 2/2", c.CurrentPower(), c.CurrentToughness())
+	}
+}
+
+// --- The Lonely Mountain ---------------------------------------------------
+
+func TestHobA7LonelyMountainEntersTappedWithoutAnEquipment(t *testing.T) {
+	g := newCatalogGame(t)
+	land := playLandFromHand(t, g, "The Lonely Mountain", hobA7LonelyMountainOracle)
+	if c := findBattlefieldCardByID(g, land); c == nil || !c.Tapped {
+		t.Error("the land should enter tapped with no Equipment")
+	}
+}
+
+func TestHobA7LonelyMountainEntersUntappedWithAnEquipment(t *testing.T) {
+	g := newCatalogGame(t)
+	pushPermanent(g, g.Seats[g.Turn.ActiveSeat].ID, game.Card{Name: "Test Sword", TypeLine: "Artifact — Equipment"})
+	land := playLandFromHand(t, g, "The Lonely Mountain", hobA7LonelyMountainOracle)
+	if c := findBattlefieldCardByID(g, land); c == nil || c.Tapped {
+		t.Error("the land should enter untapped with an Equipment")
+	}
+}
+
+// Someone else's Equipment does not count.
+func TestHobA7LonelyMountainIgnoresAnOpponentsEquipment(t *testing.T) {
+	g := newCatalogGame(t)
+	pushPermanent(g, g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID, game.Card{Name: "Their Sword", TypeLine: "Artifact — Equipment"})
+	land := playLandFromHand(t, g, "The Lonely Mountain", hobA7LonelyMountainOracle)
+	if c := findBattlefieldCardByID(g, land); c == nil || !c.Tapped {
+		t.Error("an opponent's Equipment must not untap the land")
+	}
+}
+
+func TestHobA7LonelyMountainTapsForRed(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	land := pushPermanent(g, me.ID, game.Card{Name: "The Lonely Mountain", TypeLine: "Land — Mountain", OracleID: hobA7LonelyMountainOracle})
+	if err := g.ActivateManaAbility(me.ID, land, 0, game.ManaAbilityParams{}); err != nil {
+		t.Fatalf("tap for mana: %v", err)
+	}
+	if got := me.ManaPool.Total(); got != 1 {
+		t.Errorf("pool = %d mana, want 1", got)
+	}
+}
+
+// hobA7MountainDwarf activates the Mountain's token ability with `mana`
+// floating and the payment enforced.
+func hobA7MountainDwarf(t *testing.T, g *game.Game, me *game.Player, land uuid.UUID, mana string) error {
+	t.Helper()
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, mana); err != nil {
+		t.Fatalf("AddManaForEffect(%s): %v", mana, err)
+	}
+	return g.ActivateCatalogAbility(me.ID, land, 0, game.ActivateAbilityParams{Strict: true})
+}
+
+func hobA7MountainTable(t *testing.T, equipment int) (*game.Game, *game.Player, uuid.UUID) {
+	t.Helper()
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	for i := 0; i < equipment; i++ {
+		pushPermanent(g, me.ID, game.Card{Name: "Test Sword", TypeLine: "Artifact — Equipment"})
+	}
+	land := pushPermanent(g, me.ID, game.Card{Name: "The Lonely Mountain", TypeLine: "Land — Mountain", OracleID: hobA7LonelyMountainOracle})
+	return g, me, land
+}
+
+func TestHobA7LonelyMountainMakesADwarfForFiveMana(t *testing.T) {
+	g, me, land := hobA7MountainTable(t, 0)
+	if err := hobA7MountainDwarf(t, g, me, land, "{R}{C}{C}{C}{C}"); err != nil {
+		t.Fatalf("activate with {4}{R}: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	dwarf := findBattlefieldByName(g, "Dwarf")
+	if dwarf == uuid.Nil {
+		t.Fatal("no Dwarf token")
+	}
+	if c := s58p6View(t, g, dwarf); c.CurrentPower() != 2 || c.CurrentToughness() != 2 || c.Controller != me.ID {
+		t.Errorf("the token is %d/%d under %s, want a 2/2 under me", c.CurrentPower(), c.CurrentToughness(), c.Controller)
+	}
+	if c := findBattlefieldCardByID(g, land); c == nil || !c.Tapped {
+		t.Error("the ability's cost taps the land")
+	}
+}
+
+func TestHobA7LonelyMountainRefusesFourMana(t *testing.T) {
+	g, me, land := hobA7MountainTable(t, 0)
+	err := hobA7MountainDwarf(t, g, me, land, "{R}{C}{C}{C}")
+	if !errors.Is(err, game.ErrInsufficientMana) {
+		t.Fatalf("activate with four mana: err = %v, want insufficient mana", err)
+	}
+}
+
+// {1} less for each Equipment you control, down to {R}.
+func TestHobA7LonelyMountainCostsOneLessForEachEquipment(t *testing.T) {
+	g, me, land := hobA7MountainTable(t, 2)
+	if err := hobA7MountainDwarf(t, g, me, land, "{R}{C}"); !errors.Is(err, game.ErrInsufficientMana) {
+		t.Fatalf("two Equipment make it {2}{R}; two mana: err = %v, want insufficient mana", err)
+	}
+	g, me, land = hobA7MountainTable(t, 2)
+	if err := hobA7MountainDwarf(t, g, me, land, "{R}{C}{C}"); err != nil {
+		t.Fatalf("activate with {2}{R} and two Equipment: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if findBattlefieldByName(g, "Dwarf") == uuid.Nil {
+		t.Error("no Dwarf token")
+	}
+}
+
+func TestHobA7LonelyMountainCostStopsAtRed(t *testing.T) {
+	g, me, land := hobA7MountainTable(t, 6)
+	if err := hobA7MountainDwarf(t, g, me, land, "{R}"); err != nil {
+		t.Fatalf("six Equipment make it {R}: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if findBattlefieldByName(g, "Dwarf") == uuid.Nil {
+		t.Error("no Dwarf token")
+	}
+}
+
+// Sorcery speed: not in the middle of combat.
+func TestHobA7LonelyMountainIsSorcerySpeed(t *testing.T) {
+	g, me, land := hobA7MountainTable(t, 0)
+	advanceTo(t, g, game.StepBeginCombat)
+	if err := hobA7MountainDwarf(t, g, me, land, "{R}{C}{C}{C}{C}"); err == nil {
+		t.Error("the ability activated outside a main phase")
 	}
 }
