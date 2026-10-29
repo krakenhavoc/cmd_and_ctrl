@@ -48,11 +48,14 @@ type searchResumeFrame struct {
 //
 // An empty `picks` is a legal answer, not a client bug — CR 701.23b
 // lets a player fail to find no matter what their library holds, when
-// the search names a quality. The search still happened, so
+// the search names a quality. A plain library search still happened, so
 // EventSearchLibrary still fires and the library is still shuffled.
 // That is NOT what declining a "you MAY search" means: choosing not to
 // search at all is DeclineSearchLibrary (#4134), which skips the
-// shuffle and the event. An empty `picks` is NOT legal for an unconditional search
+// shuffle and the event. An "and/or graveyard" search is different
+// (#4516): an empty answer is a search of the graveyard alone, so it
+// does not shuffle; ResolveSearchLibraryZones says the library was
+// searched too. An empty `picks` is NOT legal for an unconditional search
 // (CR 701.23d, #3053): choice.SearchMin is the floor, and a short
 // answer is refused with ErrInvalidParam like any other illegal set.
 //
@@ -63,6 +66,20 @@ type searchResumeFrame struct {
 //
 // Caller must NOT hold g.mu.
 func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.UUID) error {
+	return g.ResolveSearchLibraryZones(choiceID, chooserID, picks, false)
+}
+
+// ResolveSearchLibraryZones is ResolveSearchLibrary with the searcher's
+// word on the zones they searched (#4516, CR 701.23). `libraryToo` says
+// the library was searched as well as the graveyard, for a card that
+// prints "search your library and/or graveyard": it decides whether the
+// library is shuffled and the search announced when the searcher took
+// nothing, or took only graveyard cards. A pick from the library is a
+// library search whatever it says, and a search with no graveyard half
+// always searches the library, so for those it changes nothing.
+//
+// Caller must NOT hold g.mu.
+func (g *Game) ResolveSearchLibraryZones(choiceID, chooserID uuid.UUID, picks []uuid.UUID, libraryToo bool) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -108,7 +125,7 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 	// spec.ThenTail — because a battlefield destination is an ENTRY and an
 	// entry can pause on its own prompt (#478). Answering THIS prompt
 	// may therefore queue the next one rather than finishing the card.
-	err := g.executeSearchTakeLocked(spec, p, picks)
+	err := g.executeSearchTakeLocked(spec, p, picks, libraryToo)
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
@@ -262,6 +279,16 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 // the client says so rather than "and/or graveyard"'s hint.
 func (c *PendingChoice) SearchesGraveyardHandAndLibrary() bool {
 	return c != nil && c.searchResume != nil && c.searchResume.data.AlsoGraveyardAndHand
+}
+
+// SearchAsksLibraryZone reports whether a search prompt is "search your
+// library and/or graveyard" (#4516): the searcher chooses the zones, so
+// an answer with no library card also says whether the library was
+// searched (`library_searched` on the wire). The all-zones search names
+// the library, and a plain one has only the library.
+func (c *PendingChoice) SearchAsksLibraryZone() bool {
+	return c != nil && c.Kind == PendingChoiceSearchLibrary && c.searchResume != nil &&
+		c.searchResume.data.AlsoGraveyard && !c.searchResume.data.AlsoGraveyardAndHand
 }
 
 // SearchFloorLocked is searchFloorLocked for the enumerator: how few

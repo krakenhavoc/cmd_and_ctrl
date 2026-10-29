@@ -428,3 +428,70 @@ the server must refuse.
 `TestTakeAll*` (game) and the extraction family's card tests
 (`TestExtirpate*`, `TestEradicate*`, `TestScour*`, `TestSplinter*`,
 `TestSowingSalt*`, `TestQuash*`) fail without the shape.
+
+## Amendment 2026-10-29 — "and/or graveyard" records which zones were searched (#4516)
+
+The second amendment of 2026-10-13 declared one simplification: the
+engine did not ask which zones an "and/or graveyard" search looked in, so
+a search that found nothing was treated as a library search. The printed
+text shuffles only "if you search your library this way" (CR 701.23), so
+a player who searched the graveyard alone and found nothing was shuffled
+anyway, and the cards were stamped Full over it. This closes it.
+
+### The rule (CR 701.23)
+
+- "Library and/or graveyard" lets the searcher choose their zones. The
+  answer says whether the library was searched: **a pick from the library
+  is a library search**, and a player who took a graveyard card, or
+  nothing, **says whether they looked in the library too**. Unsaid, it is
+  the graveyard alone.
+- The library is shuffled, and `EventSearchLibrary` fires, only when it
+  was searched. A graveyard-only search that found nothing neither
+  shuffles nor announces; the instruction after the search still runs.
+- "Graveyard, hand, and library" names the library, so it is always
+  searched and the answer is not asked. A search with no graveyard half is
+  a library search whatever it finds.
+
+### The shape
+
+- **`Game.ResolveSearchLibraryZones(choice, chooser, picks, libraryToo)`**;
+  `ResolveSearchLibrary` is the `libraryToo = false` form. It reaches the
+  existing `libraryUntouched` flag through `executeSearchTakeLocked`, which
+  now sets it for an "and/or graveyard" search unless `libraryToo` is true
+  or a library card was taken. The flag is already written with the take's
+  continuation, so **no snapshot change**: a table restored while the
+  prompt is open answers through the same frame (`alsoGraveyard` is in
+  `pendingChoices[].searchPrompt`).
+- **Wire.** `resolve_choice` takes `library_searched` (bool, omitted is
+  false) beside `card_ids`; the prompt carries `search_library_optional`
+  (omitempty, chooser-only) on an "and/or graveyard" search, read through
+  `PendingChoice.SearchAsksLibraryZone`. Both are additive.
+- **Client.** The search sheet shows "I searched my library too" under the
+  hint. It reads on, and is disabled, while a library card is picked; it
+  is the player's word otherwise, off each time a prompt opens.
+- **Bots and the enumerator** are unchanged: their answers never say the
+  library was searched, so a bot's "and/or graveyard" search that takes
+  nothing, or a graveyard card, does not shuffle.
+- The unprompted take (an unconditional search that must find every
+  match) has no question to ask and keeps the old reading: library cards
+  taken mean a library search.
+
+### Cards
+
+Tower Winder, Delivery Moogle, Finale of Devastation, Ajani's Aid,
+Goldmane Griffin, Chandra's Firemaw, Teferi's Wavecaster and Yanling's
+Harbinger print "search your library and/or graveyard" and now match
+their text; each stays Full and its "declared simplification" comment is
+gone. "Search your hand and/or library" (Last Light of Durin's Day, #4515)
+is the same question for the hand and is left for a follow-up once that
+seam is on develop.
+
+### Back-out
+
+`TestGraveyardOnlySearchFindingNothingDoesNotShuffle`,
+`TestGraveyardPickShufflesOnlyIfTheLibraryWasSearched`,
+`TestLibraryPickShufflesWhateverTheAnswerSays` and
+`TestARestoredAndOrGraveyardSearchStillAsksWhichZones` (game) fail
+without the rule; the card tests are `TestTowerWinderWithNoTowerAnywhere`,
+`TestTowerWinderBothZonesOfferedMayFindNothing` and
+`TestFinaleOfDevastationGraveyardTooBigLeavesFailToFindLegal`.

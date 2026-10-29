@@ -148,10 +148,11 @@ func TestBothZonesAreOfferedMarkedByZone(t *testing.T) {
 	})
 }
 
-// Finding nothing with a graveyard match present is legal, and counts as
-// a library search: the event fires and the library is shuffled (the
-// declared simplification).
-func TestFindingNothingWithAGraveyardMatchIsAllowedAndShuffles(t *testing.T) {
+// Finding nothing with a graveyard match present is legal. The searcher
+// looked in the graveyard alone unless they say otherwise (#4516), so
+// the event does not fire and the library is not shuffled; saying they
+// searched the library too makes it a library search that found nothing.
+func TestFindingNothingWithAGraveyardMatchIsAllowed(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	searchLibraryOf(me, "Wanted")
@@ -170,8 +171,8 @@ func TestFindingNothingWithAGraveyardMatchIsAllowedAndShuffles(t *testing.T) {
 	if !me.Graveyard.Contains(gy) || me.Hand.Contains(gy) {
 		t.Error("nothing should have been taken")
 	}
-	if searchEvents(g) != 1 || libraryKnownTo(me, me.ID) != 0 {
-		t.Errorf("events=%d known=%d: finding nothing is treated as a library search",
+	if searchEvents(g) != 0 || libraryKnownTo(me, me.ID) != 1 {
+		t.Errorf("events=%d known=%d: finding nothing in the graveyard alone is not a library search",
 			searchEvents(g), libraryKnownTo(me, me.ID))
 	}
 }

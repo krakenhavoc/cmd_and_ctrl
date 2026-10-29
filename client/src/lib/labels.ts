@@ -1525,6 +1525,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ChoicePromptModal.svelte`],
     doc: "the toggle under the trigger-order list (#3016, ADR 0018's eighth amendment); on, the next batch of the same abilities is ordered the same way for you. Disabled on an order that splits one card's triggers apart",
   }),
+  searchedMyLibrary: label({
+    name: "I searched my library too",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: 'the toggle under a "search your library and/or graveyard" prompt (#4516, CR 701.23); on, the library was searched as well as the graveyard, so it is shuffled whatever is taken. Reads on, and is disabled, while a library card is picked',
+  }),
   forgetTriggerOrders: dynamicLabel({
     stem: "Forget remembered trigger orders",
     match: "prefix",

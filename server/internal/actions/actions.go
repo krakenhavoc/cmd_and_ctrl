@@ -2044,6 +2044,13 @@ func dispatch(g *game.Game, a Action) error {
 			// Pointer so we can disambiguate "absent" (nil) from
 			// "false" (&false) in the routing check.
 			OptionalApply *bool `json:"apply"`
+			// LibrarySearched rides a search_library answer for "search
+			// your library and/or graveyard" (#4516, CR 701.23): true says
+			// the library was searched as well as the graveyard, so an
+			// answer with no library card shuffles it. Absent or false
+			// with no library card is a search of the graveyard alone. A
+			// library card in card_ids is a library search either way.
+			LibrarySearched bool `json:"library_searched,omitempty"`
 			// TapIDs rides a PendingChoicePayUnless "pay" answer whose
 			// cost is a waterbend cost (#1311, "Ward—Waterbend {4}"):
 			// the untapped artifacts and creatures the chooser taps,
@@ -2536,7 +2543,7 @@ func dispatch(g *game.Game, a Action) error {
 				}
 				return g.ResolveSacrificeChoice(choiceID, a.Player, ids[0])
 			case game.PendingChoiceSearchLibrary:
-				return g.ResolveSearchLibrary(choiceID, a.Player, ids)
+				return g.ResolveSearchLibraryZones(choiceID, a.Player, ids, p.LibrarySearched)
 			case game.PendingChoiceChooseCards:
 				// The chained-choice card-set pick. Like search, its
 				// floor can be zero, so an EMPTY list is a real answer

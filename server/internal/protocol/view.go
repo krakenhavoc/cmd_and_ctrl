@@ -831,6 +831,13 @@ type PendingChoiceView struct {
 	// and library" prompt: every zone is searched, so the library is
 	// shuffled whatever is taken. Chooser-only.
 	SearchAllZones bool `json:"search_all_zones,omitempty"`
+	// SearchLibraryOptional (#4516) marks a "search your library and/or
+	// graveyard" prompt: the searcher chooses the zones, so an answer
+	// with no library card says whether the library was searched too,
+	// sent as {card_ids, library_searched}. Without it the library is
+	// shuffled and the search announced only for a library pick. Absent
+	// for every other search. Chooser-only.
+	SearchLibraryOptional bool `json:"search_library_optional,omitempty"`
 	// SearchOptional (#4134) marks a "you may search" prompt on which
 	// "don't search" is a legal answer right now: the client offers a
 	// "Don't search" button, sent as {choice_id, apply: false}. It is
@@ -9597,6 +9604,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.SearchHand = append(v.SearchHand, id.String())
 			}
 			v.SearchAllZones = c.SearchesGraveyardHandAndLibrary()
+			v.SearchLibraryOptional = c.SearchAsksLibraryZone()
 			v.SearchOptional = g.SearchDeclineLegalLocked(c)
 			v.SearchUndecided = c.SearchIsUndecided()
 			v.Options = make([]CardView, 0, len(c.SearchCards))
@@ -11107,6 +11115,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].SearchGraveyard = nil
 			out[i].SearchHand = nil
 			out[i].SearchAllZones = false
+			out[i].SearchLibraryOptional = false
 			out[i].SearchOptional = false
 			out[i].SearchUndecided = false
 			continue

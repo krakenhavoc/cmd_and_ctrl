@@ -57,8 +57,16 @@ func TestSearchPromptMarksTheGraveyardHalf(t *testing.T) {
 	if pc.SearchMin != 0 {
 		t.Errorf("search_min = %d, want 0: finding nothing stays legal", pc.SearchMin)
 	}
+	// #4516: the searcher chooses the zones, so the client is told to ask
+	// whether the library was searched; the opponent is not told.
+	if !pc.SearchLibraryOptional {
+		t.Error("search_library_optional is absent from an \"and/or graveyard\" prompt")
+	}
 
 	theirs := FilterViewFor(ViewOfGame(g), opponent.ID.String())
+	if theirs.PendingChoices[0].SearchLibraryOptional {
+		t.Error("the opponent is told which kind of search it is")
+	}
 	if len(theirs.PendingChoices[0].SearchGraveyard) != 0 || len(theirs.PendingChoices[0].Options) != 0 {
 		t.Errorf("the opponent sees the search: %+v", theirs.PendingChoices[0])
 	}

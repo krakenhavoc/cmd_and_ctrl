@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Not a "may", but it is a search for a stated quality, so it may find
 // nothing (CR 701.23b), and "and/or" lets the player choose their zones
-// (#3217). Taking a graveyard card skips the shuffle; taking a library
-// artifact, or none, shuffles (declared simplification: finding nothing
-// counts as a library search; a no-op in play).
+// (#3217). The shuffle follows the zones the player says they searched
+// (#4516): a library artifact shuffles; a graveyard card, or none found,
+// shuffles only when the player says they searched the library too.
 func init() {
 	Register(Spec{
 		OracleID:        "60043b87-6008-4cfa-9d8f-6ee6e3f70766",
