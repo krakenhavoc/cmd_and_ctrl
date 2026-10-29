@@ -1797,3 +1797,11 @@ payunless pay-unless/graveyard-return-this-card-to-hand
 tail tail/eagles-are-coming-birds
 body head-of-the-hunt/wolf
 resume replacement-resume/move-reflexive
+body bolg-of-the-north/damage
+body saruman-of-many-colors/exile-and-copy
+choose choose-cards/ward-discard-enchantment-instant-sorcery
+run prompt-run/bolg-of-the-north-sacrifice
+tail glamdring-foe-hammer/gleam-of-death-after-mill
+tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
+tail saruman-of-many-colors/after-mill
+tail saruman-of-many-colors/copy-exiled
