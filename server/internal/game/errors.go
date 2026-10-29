@@ -394,6 +394,13 @@ var (
 	// permanent this turn (ADR 0155 Decision 7).
 	ErrBorrowedAbilityUsed = errors.New("game: each of those abilities can be activated only once each turn")
 
+	// ErrAlternativeCostUnavailable is returned when an activation names
+	// an equip ability's {0} twin (equip_cost_alternative.go) while no
+	// alternative is open to the activator: no such permanent, its
+	// condition unmet, or an equip ability already activated this turn.
+	// Nothing is paid. #4475.
+	ErrAlternativeCostUnavailable = errors.New("game: that alternative cost isn't available right now")
+
 	// ErrBoastNotAttacked and ErrBoastSpent are the two halves of a
 	// boast ability's activation instruction (CR 702.142a, #2697):
 	// "Activate only if this creature attacked this turn" and "only once

@@ -3594,3 +3594,48 @@ wire `mana_abilities[i].mill_cost`, are withdrawn:
   The client reads it nowhere else, so an old or new client tolerates its absence. `docs/protocol.md` is updated.
 - **Snapshot impact:** none. A restore point stores a card's mana-ability count, never the shape
   (`cardSnapshot.ManaAbilityCount`; the shapes are rebuilt from the catalog), so no persisted field is removed.
+
+## Amendment 2026-10-29 ([#4475](https://github.com/krakenhavoc/cmd_and_ctrl/issues/4475)): "you may pay {0} rather than pay the equip cost", an alternative cost as a derived row
+
+Kíli the Resourceful prints "As long as you have an enduring story, you may pay {0} rather than pay the
+equip cost of the first equip ability you activate each turn." That is a CR 118.9 alternative cost on an
+activated ability. The S22 `AlternativeCost` machinery is a cast-time clause that only spells reach, and
+Heart of Kiran's "rather than pay its crew cost" was a second row on the card itself (#625). Kíli's
+alternative applies to other permanents' equip abilities, so it can be neither of those.
+
+**The choice is a derived row.** While the alternative is open to a player, each equip ability of a
+permanent they may activate it on has a *twin* row (`game/equip_cost_alternative.go`). The twin is the
+mirrored row with the alternative as its whole cost (CR 118.9: it replaces the cost, non-mana parts too)
+and a label that says so. Everything else is the mirrored row's: its target clause, timing, gates and
+origin. So "Equip legendary creature {3}" paid with {0} still equips only a legendary creature, and the
+player who wants to pay the printed cost still can. Increases and reductions still apply to the twin's
+cost (CR 601.2f through 602.2b), because its mana component is "{0}", not empty.
+
+**Addressing.** A twin's index is `AltEquipIndexBase` (1 << 20) plus the mirrored row's index, and its ref
+is `alt-equip:` plus the mirrored row's ref. Every reader that already sends a row's index and ref back
+(the client's menus, the legal enumerator, a bot's move) therefore sends a twin's back unchanged, and
+`activateCatalogAbilityLocked` decodes it before the ref check. A twin index with a plain ref, or a
+plain index with a twin ref, is refused as stale. A twin named while no alternative is open is refused
+with `ErrAlternativeCostUnavailable`, before anything is paid. A parked announcement (the CR 903.9 and
+opponent's-choice resumes) keeps the twin's index and ref, so the resume decodes the same twin. The stack
+item names the mirrored row (ADR 0041 P9). How the cost was paid is not part of the item.
+
+**"The first equip ability you activate each turn"** is `PlayerTurnTally.EquipActivations`, bumped at the
+announce of every equip activation, either row, whether or not it resolves. It is additive within schema
+9 and is emptied with the rest of the turn tally. Activating the printed row first spends the
+alternative for the turn.
+
+**Declaring it.** `effects.Spec.EquipCostAlternatives` / `game.CardDef.EquipCostAlternatives`, read
+through `CatalogEquipCostAlternatives` from the battlefield, as attack taxes are. Each entry has a
+`Label`, a `Cost`, `FirstEachTurn` and a `Condition` on its controller. Nothing is stored on the Game, so
+the closure census does not move.
+
+**Readers.** The view (`viewOfActivatedAbilities`) and the enumerator (`abilityMovesForSource`) both ask
+`Game.EquipTwinsLocked` and append the twins after the permanent's own rows. The client needs no change:
+a twin is an ordinary row with its own index, ref, label and `mana_cost`.
+
+**Back-outs.** Making `EquipCostAlternativeLocked` ignore `FirstEachTurn`, or dropping the
+`EquipActivations` bump, fails `TestHobKiliPaysZeroForTheFirstEquipEachTurn` and
+`TestHobKiliAPaidEquipFirstSpendsTheAlternative`; building the activated twin from another equip row than
+the one it mirrors fails `TestHobKiliTwinKeepsTheRowsTargets`; dropping the twins from the enumerator fails
+`TestHobKiliTwinIsOfferedToTheEnumerator`.

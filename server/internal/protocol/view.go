@@ -12711,16 +12711,33 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 	// permanent, or since #660 the hand card whose cycling ability
 	// this is — so the protection check has the source it needs.
 	abilitySrc := game.SourceObject(caster, &c)
+	// #4475: an equip ability's {0} twin (Kíli the Resourceful,
+	// game/equip_cost_alternative.go) is a row of its own after the
+	// permanent's rows, with its own index and ref; everything else is
+	// read off the mirrored row, whose origin it shares.
+	twins := g.EquipTwinsLocked(caster, c, raw, origins)
+	rows := raw
+	if len(twins) > 0 {
+		rows = append(append([]game.ActivatedAbilityShape(nil), raw...), make([]game.ActivatedAbilityShape, len(twins))...)
+		for k, tw := range twins {
+			rows[len(raw)+k] = tw.Shape
+		}
+	}
 	var out []ActivatedAbilityView
-	for i, a := range raw {
+	for k, a := range rows {
+		i, wireIndex, wireRef := k, k, origins.Ref(k)
+		if k >= len(raw) {
+			tw := twins[k-len(raw)]
+			i, wireIndex, wireRef = tw.Of, tw.Index, tw.Ref
+		}
 		if !game.AbilityFunctionsFromZone(a, zone) {
 			continue
 		}
 		v := ActivatedAbilityView{
-			Index: i,
+			Index: wireIndex,
 			// ADR 0093 Decision 5 / 8: the row's stable ref, and who
 			// granted it when another effect did.
-			Ref:       origins.Ref(i),
+			Ref:       wireRef,
 			GrantedBy: grantedByView(g, origins.At(i)),
 			// ADR 0155 Decision 10: the lender of a borrowed row, and
 			// its label with the lender's name read as this card's

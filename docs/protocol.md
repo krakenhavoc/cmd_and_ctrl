@@ -3406,7 +3406,14 @@ the recipient's summoning sickness. Three things reach the wire.
   - `borrow:<key>:<i>:<n>` — the `n`th lent instance of row `i` of a
     catalog list, on a permanent that "has all activated abilities of"
     another object (ADR 0155); `borrow:land:<colour>:<n>` for a lent
-    CR 305.6 land ability. Two identical lenders lend two instances.
+    CR 305.6 land ability. Two identical lenders lend two instances;
+  - `alt-equip:<ref>` — the twin of the equip row named `<ref>`, paid
+    with an alternative cost instead of its own ("you may pay {0} rather
+    than pay the equip cost of the first equip ability you activate each
+    turn", Kíli the Resourceful, #4475). Its `index` is `1048576` plus
+    the mirrored row's index, its `mana_cost` is the alternative, and its
+    label says so. It is present only while the alternative is open to
+    the viewer, and it comes after every other row.
 
   Granted rows always come AFTER the permanent's own and intrinsic rows,
   and borrowed rows after the granted ones, so a grant or a borrow
