@@ -312,11 +312,20 @@ func costCommanderMovesTo(to ZoneKind, ids ...uuid.UUID) []costCommanderMove {
 	return out
 }
 
+// maxCommanderAnswerHint caps withCommanderAnswer's size hint. It is
+// only a hint: a larger map still grows as it fills.
+const maxCommanderAnswerHint = 1 << 10
+
 // withCommanderAnswer returns a NEW map holding `answers` plus one
 // more. Never writes the map it was given: a parked frame and the
 // params of the announcement it re-runs can hold the same map.
+//
+// The size hint is bounded: since #4385 `answers` can be read back from
+// a snapshot, so its length is decoded data, and len+1 must not be able
+// to overflow the allocation (CodeQL go/allocation-size-overflow). No
+// real cost moves more than a handful of commanders.
 func withCommanderAnswer(answers map[uuid.UUID]bool, id uuid.UUID, apply bool) map[uuid.UUID]bool {
-	out := make(map[uuid.UUID]bool, len(answers)+1)
+	out := make(map[uuid.UUID]bool, min(len(answers), maxCommanderAnswerHint)+1)
 	for k, v := range answers {
 		out[k] = v
 	}
