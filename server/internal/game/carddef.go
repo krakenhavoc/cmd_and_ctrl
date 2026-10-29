@@ -173,6 +173,12 @@ type CardDef struct {
 	// (CR 508.1h, ADR 0080) — Propaganda, Ghostly Prison, Windborn
 	// Muse. Read from the battlefield through AttackTaxesForCard.
 	AttackTaxes []AttackTax
+	// EquipCostAlternatives are the "you may pay {0} rather than pay the
+	// equip cost of the first equip ability you activate each turn"
+	// clauses this permanent contributes to its controller (CR 118.9,
+	// #4475, Kíli the Resourceful). Read from the battlefield through
+	// Game.EquipCostAlternativeLocked.
+	EquipCostAlternatives []EquipCostAlternative
 	// TargetTaxes are the "spells <whom> cast that target <what> cost an
 	// additional N life" statics this permanent contributes (CR 601.2f,
 	// #3860) -- Terror of the Peaks. Read from the battlefield through
@@ -854,6 +860,12 @@ func init() {
 	CatalogAttackTaxes = func(key string) []AttackTax {
 		if d := catalogDef(key); d != nil {
 			return d.AttackTaxes
+		}
+		return nil
+	}
+	CatalogEquipCostAlternatives = func(key string) []EquipCostAlternative {
+		if d := catalogDef(key); d != nil {
+			return d.EquipCostAlternatives
 		}
 		return nil
 	}

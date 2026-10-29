@@ -74,6 +74,12 @@ type PlayerTurnTally struct {
 	// Change of Fortune's "for each card you've discarded this
 	// turn").
 	CardsDiscarded int `json:"cardsDiscarded,omitempty"`
+	// EquipActivations counts the equip abilities (CR 702.6) this player
+	// activated this turn, written at the announce whether or not the
+	// ability resolves: Kíli the Resourceful's "the first equip ability
+	// you activate each turn" (#4475, equip_cost_alternative.go).
+	// Additive within schema v9.
+	EquipActivations int `json:"equipActivations,omitempty"`
 	// ArtifactsOrCreaturesSacrificed counts the artifacts and creatures
 	// this player sacrificed (ADR 0100 §3) — Dargo, the Shipwrecker's
 	// "{2} less to cast for each other artifact or creature you've

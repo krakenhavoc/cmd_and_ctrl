@@ -865,6 +865,14 @@ type Spec struct {
 	// attack_tax.go. Nil for nearly every card.
 	AttackTaxes []game.AttackTax
 
+	// EquipCostAlternatives is "you may pay {0} rather than pay the equip
+	// cost of the first equip ability you activate each turn" (Kíli the
+	// Resourceful, #4475): a CR 118.9 alternative cost this permanent
+	// offers its controller for equip abilities, read from the
+	// battlefield. The engine derives a twin row for each equip ability
+	// (game/equip_cost_alternative.go). Nil for nearly every card.
+	EquipCostAlternatives []game.EquipCostAlternative
+
 	// TargetTaxes is a cost a permanent adds to spells that TARGET
 	// something: "Spells your opponents cast that target this creature
 	// cost an additional 3 life to cast" (Terror of the Peaks, #3860).
