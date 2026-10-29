@@ -30,6 +30,10 @@ package game
 // counted at resolution ("draw a card for each creature you control"),
 // does not declare it, because no number here would be true.
 type Purpose struct {
+	// EntryCounters describes reliable fixed and X own-entry clauses from
+	// catalog constructors. It excludes conditional/board-dependent amounts.
+	EntryCounters *EntryCounterAmounts
+
 	// LandEntry is projected from a land's own catalog replacements:
 	// "tapped" for an unconditional self-tap, "untapped" for no entry
 	// replacements, empty for unknown/conditional entry (#4317).
@@ -695,6 +699,20 @@ func CardPurposeOfPtr(c *Card) Purpose {
 	}
 	p := d.Purpose
 	p.FlashCleanupSacrifice = d.FlashWithCleanupSacrifice
+	var counters EntryCounterAmounts
+	for _, r := range d.Replacements {
+		if r.SelfEntryCounters != nil && r.ActiveWhen == (Designation{}) && r.SelfEntryCounters.Amount > 0 {
+			counters = append(counters, *r.SelfEntryCounters)
+		}
+	}
+	for _, r := range d.EntersWithCountersFromCast {
+		if r.CountIsX {
+			counters = append(counters, EntryCounterAmount{Kind: r.Kind, AmountIsX: true})
+		}
+	}
+	if len(counters) > 0 {
+		p.EntryCounters = &counters
+	}
 	if c.PrintedIsLand() {
 		if len(d.Replacements) == 0 {
 			p.LandEntry = "untapped"

@@ -145,6 +145,18 @@ func (c CastCounts) KickedWith(cost string) bool {
 	return false
 }
 
+// EntryCounterAmount describes an unconditional own-entry counter clause for
+// the view. Amount is fixed; AmountIsX reads the announced X instead. It does
+// not predict other replacements or counts depending on the board or payment.
+type EntryCounterAmount struct {
+	Kind      string
+	Amount    int
+	AmountIsX bool
+}
+
+// EntryCounterAmounts is behind a pointer so Purpose remains comparable.
+type EntryCounterAmounts []EntryCounterAmount
+
 // EntryCountersFromCast is one printed "this permanent enters with N
 // counters on it" clause whose N is read from the cast (CR 614.1c).
 //
@@ -158,6 +170,10 @@ type EntryCountersFromCast struct {
 	// same name AddCounterForEffect and ReplacementEvent.
 	// EntersWithCounters use.
 	Kind string
+
+	// CountIsX is descriptive metadata set only by the unconditional X
+	// constructor. The view never calls Count to discover the amount.
+	CountIsX bool
 
 	// Count is N. Pure arithmetic over the announcement: it is called
 	// once, during the entry, with no access to the game state,

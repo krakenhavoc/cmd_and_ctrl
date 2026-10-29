@@ -1406,6 +1406,9 @@ type ReplacementEffect struct {
 	// replacement, set by the shared constructor (#4317). Read by the
 	// card-purpose projection; never used to execute the replacement.
 	SelfEntersTapped bool
+	// SelfEntryCounters describes an unconditional fixed self-entry clause.
+	// Catalog projection only; replacement execution never reads it.
+	SelfEntryCounters *EntryCounterAmount
 
 	// ActiveWhen is ADR 0071's designation gate: the replacement exists
 	// only while the gate is satisfied by the permanent it is printed
