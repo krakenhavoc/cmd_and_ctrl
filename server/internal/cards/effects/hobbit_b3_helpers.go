@@ -22,10 +22,16 @@ func hobB3AttackingNontokenCreature() CardPredicate {
 }
 
 // hobB3PowerOrToughnessAtMost is "power or toughness N or less"
-// (Stern Scolding), read live: on the stack a creature spell has the
-// power and toughness it was printed with.
+// (Stern Scolding), read live. A creature SPELL is read with its own
+// characteristic-defining ability applied (CR 604.3, CR 113.6a: it works
+// on the stack), so a `*/*` spell such as Tarmogoyf counts what its text
+// says, not the importer's 0 stand-in (#4483); the same rule PowerGE
+// applies. Anything else reads its current power and toughness.
 func hobB3PowerOrToughnessAtMost(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if g != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+			return g.PowerAnywhereForEffect(c) <= n || g.ToughnessAnywhereForEffect(c) <= n
+		}
 		return c.CurrentPower() <= n || c.CurrentToughness() <= n
 	}
 }
