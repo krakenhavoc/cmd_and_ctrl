@@ -120,3 +120,56 @@ open, the paused event's once-per-event marks and the prompt's IDs then
 name the wrong card, so an applied replacement can apply again. This
 happens with any paused life event, not only this one, and is filed as
 its own bug (#3482).
+
+## Amendment (2026-10-29, #4517): a reflexive trigger after a replaced move
+
+Head of the Hunt: "If a creature an opponent controls would die, exile it
+instead. When you do, create a 2/2 green Wolf creature token." The second
+sentence is a reflexive triggered ability (CR 603.12), but its creator is a
+replacement, not a resolving spell or ability, so
+`QueueReflexiveTriggerForEffect`, which needs the resolving parent item,
+cannot create it. Triggering on the exile event instead was rejected in
+#4454: it would also fire when Rest in Peace, or any other effect, exiled
+the creature, which is stronger than printed.
+
+1. The replacement declares the trigger on the move it modifies, as it
+   declares a life change (this ADR) or an extra turn (ADR 0188 Decision 2):
+   `Game.QueueReflexiveTriggerAfterReplacedMoveForEffect(ev, src, rt)`,
+   called in `Replace` after the destination is rewritten. The instruction
+   (`reflexiveMoveInstruction`) is plain data: the replacement's source and
+   source object, its controller, the zone the replacement sent the card to,
+   and the trigger's label, `ReflexiveBody` key and params. The controller
+   is fixed when the replacement applies (CR 603.12 gives the trigger to the
+   creator's controller), so the source leaving afterwards changes nothing.
+   `Optional` and `Payload` are refused for now; no card needs them.
+2. The move's finisher (`runMoveTailLocked`) creates each declared trigger
+   only if the move was not cancelled and the card is now in the declared
+   zone ("when you do" means "when you exile it this way"). A later
+   replacement that sends the card elsewhere or cancels the move means this
+   replacement's action did not happen, so there is no trigger. A
+   controller who has left the game gets none (CR 800.4a). The trigger goes
+   through the same dispatch a resolving effect's reflexive trigger takes
+   (`dispatchReflexiveTriggerLocked`, factored out of
+   `QueueReflexiveTriggerForEffect`), onto `PendingTriggers`, so it goes on
+   the stack the next time a player would receive priority (CR 603.3).
+   Queuing it cannot pause, so it needs none of the life sequence's
+   continuation machinery.
+3. Each replaced move declares its own instruction, so a wipe that exiles
+   three creatures creates three triggers (CR 603.12a). When the affected
+   object's controller applies Rest in Peace first (CR 616.1), the creature
+   no longer "would die", Head of the Hunt never applies, and nothing is
+   declared.
+4. Snapshot: once created the trigger is an ordinary keyed triggered item.
+   A move event paused on a later CR 616 question with an instruction
+   declared writes it as `replacementResume.event.reflexiveAfterMove`
+   (additive in v9) under a resume key of its own,
+   `replacement-resume/move-reflexive`, which takes precedence over every
+   other move key so that a binary that would drop the instruction refuses
+   the file. Restore checks each instruction's body key. No new route from
+   `Game` to a func: the closure ratchet does not move.
+
+Not addressed: Kalitas, Traitor of Ghet's "instead exile that card and
+create a 2/2 black Zombie creature token" makes the token as part of the
+modified event, not as a trigger. That is a token-creation instruction
+after a replaced move, which can pause on its own CR 616 question, and
+needs the life sequence's continuation handling rather than this one.

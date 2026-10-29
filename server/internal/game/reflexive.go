@@ -149,9 +149,6 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	if parent == nil || rt.Body.key == "" || rt.Label == "" {
 		return false
 	}
-	source, lki := g.reflexiveSourceLocked(parent)
-	label, body, params := rt.Label, rt.Body.key, cloneEffectParams(rt.Params)
-	payload := append([]TargetRef(nil), rt.Payload...)
 	// CR 603.12: the reflexive trigger's source is the parent's, and
 	// so is the OBJECT (#1418) — the resolving parent already names
 	// it, and the card may have moved since. A move the parent itself
@@ -159,9 +156,39 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	// followedSourceObjectLocked): "return this to the battlefield.
 	// When you do, …" is about the permanent it returned.
 	sourceObject := g.followedSourceObjectLocked(parent)
+	// The event the dispatch carries into the resume frames and back
+	// into Build. A reflexive trigger has no triggering event — it
+	// was created by a resolution — so this describes that
+	// resolution. It is never emitted; Build ignores it. It exists
+	// because dispatchTriggerLocked's signature is the harvester's,
+	// and a zero Event in a stashed frame is harder to read in a
+	// debugger than an accurate one.
+	ev := Event{
+		Kind:   EventResolve,
+		Actor:  parent.Controller,
+		Source: parent.SourceCardID,
+		Label:  parent.Label,
+	}
+	g.dispatchReflexiveTriggerLocked(parent.SourceCardID, parent.Controller, sourceObject, rt, ev)
+	return true
+}
+
+// dispatchReflexiveTriggerLocked hands a reflexive trigger to the
+// harvester's dispatch, for a creator that is a resolving stack item
+// (QueueReflexiveTriggerForEffect) or a replacement that applied to a
+// move (#4517, queueReflexiveTriggersAfterMoveLocked). sourceCardID and
+// controller are the creator's, fixed by the rule rather than read off
+// the card now (triggerSourceLocked), and ev describes what created
+// it; it is never emitted.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) dispatchReflexiveTriggerLocked(sourceCardID, controller uuid.UUID, sourceObject ObjectRef, rt ReflexiveTrigger, ev Event) {
+	source, lki := g.triggerSourceLocked(sourceCardID, controller)
+	label, body, params := rt.Label, rt.Body.key, cloneEffectParams(rt.Params)
+	payload := append([]TargetRef(nil), rt.Payload...)
 	// ADR 0152 §3: a reflexive trigger is created now (CR 603.12), so
 	// its CR 701.27f reference point is the count now.
-	sourceTurnOvers := g.TurnOversForEffect(parent.SourceCardID)
+	sourceTurnOvers := g.TurnOversForEffect(sourceCardID)
 	// ADR 0041 P9 (#1497): the target clause, when this body has one,
 	// is re-derived from the registration rather than carried as a
 	// captured *TargetSpec — the same reason the item itself is data.
@@ -182,26 +209,12 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 			return item
 		},
 	}
-	// The event the dispatch carries into the resume frames and back
-	// into Build. A reflexive trigger has no triggering event — it
-	// was created by a resolution — so this describes that
-	// resolution. It is never emitted; Build ignores it. It exists
-	// because dispatchTriggerLocked's signature is the harvester's,
-	// and a zero Event in a stashed frame is harder to read in a
-	// debugger than an accurate one.
-	ev := Event{
-		Kind:   EventResolve,
-		Actor:  parent.Controller,
-		Source: parent.SourceCardID,
-		Label:  parent.Label,
-	}
 	g.dispatchTriggerLocked(ev, source, lki, ability)
-	return true
 }
 
-// reflexiveSourceLocked builds the source-card value the dispatch
-// works from: the parent ability's source card as it can still be
-// found, with the controller and instance ID forced to the parent's.
+// triggerSourceLocked builds the source-card value the dispatch works
+// from: the creator's source card as it can still be found, with the
+// controller and instance ID forced to the creator's.
 //
 // Forcing them is the rule, not a convenience. CR 603.12 gives the
 // reflexive trigger to the controller of the ability that created it,
@@ -215,16 +228,10 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 // just the two forced fields, which is all NewTriggeredItem and the
 // prompts need.
 //
-// Caller must hold g.mu.
-func (g *Game) reflexiveSourceLocked(parent *StackItem) (Card, Characteristic) {
-	return g.triggerSourceLocked(parent.SourceCardID, parent.Controller)
-}
-
-// triggerSourceLocked is that body, shared with the #663
-// event-conditioned delayed trigger, which needs exactly the same
-// thing for exactly the same reason: a source card that may be
-// anywhere or nowhere, and a controller the RULE fixes rather than the
-// card's current Controller field.
+// It is shared with the #663 event-conditioned delayed trigger, which
+// needs exactly the same thing for exactly the same reason: a source
+// card that may be anywhere or nowhere, and a controller the RULE fixes
+// rather than the card's current Controller field.
 //
 // Caller must hold g.mu.
 func (g *Game) triggerSourceLocked(sourceCardID, controller uuid.UUID) (Card, Characteristic) {

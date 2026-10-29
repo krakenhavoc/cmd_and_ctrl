@@ -122,6 +122,10 @@ func (g *Game) runMoveTailLocked(ev *ReplacementEvent) error {
 	// ADR 0188 Decision 2: a declared extra turn is queued first, before
 	// the life instructions, in printed order. It cannot pause.
 	g.queueExtraTurnsAfterMoveLocked(ev)
+	// #4517: and a declared reflexive trigger ("exile it instead. When
+	// you do, …") goes to PendingTriggers if the card landed where the
+	// replacement sent it. It cannot pause either.
+	g.queueReflexiveTriggersAfterMoveLocked(ev)
 	if len(ev.lifeAfterMove) == 0 {
 		return g.runRouteTailLocked(ev.zoneRoute)
 	}
