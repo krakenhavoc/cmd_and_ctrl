@@ -103,7 +103,10 @@ type Incubate struct {
 	Controller uuid.UUID
 	N          int
 	Times      int
-	Then       func(ctx *Context) error
+	// ThenTail is the rest of the sentence as a registered tail (CardTail;
+	// #4253 slice 6), run with the resolving item's copy after the last
+	// Incubator has entered. The registered body takes a Context.
+	ThenTail game.TailRef
 }
 
 func (i Incubate) Apply(ctx *Context) error {
@@ -115,7 +118,12 @@ func (i Incubate) Apply(ctx *Context) error {
 	if times < 1 {
 		times = 1
 	}
-	return incubateRounds(ctx.Game, ctx.Item, controller, i.N, times, i.Then)
+	var then *game.KeyedTail
+	if i.ThenTail.Key() != "" {
+		t := ctx.ItemTail(i.ThenTail)
+		then = &t
+	}
+	return incubateRounds(ctx.Game, ctx.Item, controller, i.N, times, then)
 }
 
 // incubateRounds creates one Incubator and, from the creation's
@@ -123,24 +131,56 @@ func (i Incubate) Apply(ctx *Context) error {
 // stack item rides the closure (and not a *Context or a *Card) for the
 // reason living weapon's does: the continuation resolves against
 // whichever game the creation finished in.
-func incubateRounds(g *game.Game, item *game.StackItem, controller uuid.UUID, n, left int, then func(ctx *Context) error) error {
+func incubateRounds(g *game.Game, item *game.StackItem, controller uuid.UUID, n, left int, then *game.KeyedTail) error {
 	opts := game.TokenEntryOptions{}
 	if n > 0 {
 		opts.Counters = map[string]int{"+1/+1": n}
 	}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	// #4253 slice 6: the next round is data, so a repetition held back by a
+	// CR 616 ordering prompt is a restore point. The counters and the
+	// rounds left ride the tail's N, the item rides it as data, and the
+	// sentence's own tail is its Next.
+	tail := game.KeyedTail{
+		Ref: incubateNextRound, Player: controller, Source: item.SourceCardID,
+		N: incubatePack(n, left), Asked: game.NewAskedItem(item), Next: then,
+	}
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: controller,
 		Groups:     []game.TokenGroup{{Template: ruleDefinedToken(IncubatorToken()), Count: 1, Entry: opts}},
-	}, func(g *game.Game, _ []uuid.UUID) error {
+	}, tail)
+}
+
+// incubatePack and incubateUnpack carry an incubate's counter count and the
+// rounds still to make in one tail number: the rounds in the high bits.
+func incubatePack(n, left int) int { return left<<20 | max(n, 0) }
+
+func incubateUnpack(packed int) (n, left int) { return packed & (1<<20 - 1), packed >> 20 }
+
+// incubateNextRound is what an incubate does once an Incubator has entered
+// (#4253 slice 6): make the next one, or, after the last, run the
+// sentence's own tail. An on-disk key.
+var incubateNextRound game.TailRef
+
+func init() {
+	// Registered here, not in the var, because the body makes the next
+	// Incubator, which names this tail.
+	incubateNextRound = CardTail("incubate/next-round", func(ctx *Context, o game.TailOutcome) error {
+		n, left := incubateUnpack(o.Tail.N)
 		if left > 1 {
-			return incubateRounds(g, item, controller, n, left-1, then)
+			return incubateRounds(ctx.Game, ctx.Item, o.Tail.Player, n, left-1, o.Tail.Next)
 		}
-		if then == nil {
+		if o.Tail.Next == nil {
 			return nil
 		}
-		return then(NewContext(g, item))
+		return o.Tail.Next.Run(ctx.Game, nil)
 	})
 }
+
+// transformAllIncubatorsTail is TransformAllIncubators as a keyed tail
+// (#4253 slice 6). An on-disk key.
+var transformAllIncubatorsTail = CardTail("incubate/transform-all-incubators", func(ctx *Context, _ game.TailOutcome) error {
+	return TransformAllIncubators(ctx)
+})
 
 // IsIncubator matches an Incubator token: a token whose face-up side is
 // the Incubator, "Token Artifact — Incubator". A turned-over one is a

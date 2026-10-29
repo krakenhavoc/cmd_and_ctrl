@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Primal Amulet // Primal Wellspring — Artifact {4} // Land (#3213, the
 // Kuja deck):
@@ -50,18 +54,23 @@ func primalAmuletCharge(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	source := item.SourceCardID
-	return g.AddCounterThenForEffect(source, game.CounterCharge, 1, func(g *game.Game, _ int) error {
-		if b39CountersOn(g, source, game.CounterCharge) < 4 {
-			return nil
-		}
-		return MayChoice{
-			Question: "Primal Amulet — remove its charge counters and transform it?",
-			YesLabel: "Transform",
-			NoLabel:  "Keep it",
-			Then:     primalAmuletAnswer,
-		}.Apply(NewContext(g, item))
-	})
+	return g.AddCounterByKeyedForEffect(uuid.Nil, source, game.CounterCharge, 1, NewContext(g, item).ItemTail(primalAmuletAsk))
 }
+
+// primalAmuletAsk is "at four, you may remove them and transform it", read
+// once the charge counter has landed. An on-disk key: never renamed, never
+// reused.
+var primalAmuletAsk = CardTail("primal-amulet/ask", func(ctx *Context, _ game.TailOutcome) error {
+	if b39CountersOn(ctx.Game, ctx.Item.SourceCardID, game.CounterCharge) < 4 {
+		return nil
+	}
+	return MayChoice{
+		Question: "Primal Amulet — remove its charge counters and transform it?",
+		YesLabel: "Transform",
+		NoLabel:  "Keep it",
+		Then:     primalAmuletAnswer,
+	}.Apply(ctx)
+})
 
 // primalAmuletAnswer is the "yes": remove the charge counters it holds now,
 // then transform. Keyed (#4291).
@@ -73,8 +82,11 @@ var primalAmuletAnswer = MayYes("confirm/primal-amulet-transform", func(ctx *Con
 	if n <= 0 {
 		return nil
 	}
-	return ctx.Game.AddCounterThenForEffect(source, game.CounterCharge, -n,
-		func(g *game.Game, _ int) error {
-			return TransformThis{}.Apply(NewContext(g, item))
-		})
+	return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, source, game.CounterCharge, -n, ctx.ItemTail(primalAmuletTransform))
+})
+
+// primalAmuletTransform is the transform behind the charge counters'
+// removal. An on-disk key: never renamed, never reused.
+var primalAmuletTransform = CardTail("primal-amulet/transform", func(ctx *Context, _ game.TailOutcome) error {
+	return TransformThis{}.Apply(ctx)
 })

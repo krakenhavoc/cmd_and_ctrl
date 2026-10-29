@@ -25,14 +25,19 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return DestroyAllMatching{
-				Match: And(Nonland(), ManaValueLE(2)),
-				Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-					if destroyed <= 0 {
-						return nil
-					}
-					return AddMana{Player: ctx.Controller(), Amount: ManaN(destroyed, "B", "G")}.Apply(ctx)
-				},
+				Match:    And(Nonland(), ManaValueLE(2)),
+				ThenTail: ctx.Tail(cullingRitualMana),
 			}.Apply(ctx)
 		},
 	})
 }
+
+// cullingRitualMana is "add {B} or {G} for each permanent destroyed this
+// way", keyed (#4253): a table waiting on a leg's prompt is a restore
+// point. An on-disk key: never renamed, never reused.
+var cullingRitualMana = MassTail("mass/culling-ritual-mana", func(ctx *Context, _ []game.Card, destroyed int) error {
+	if destroyed <= 0 {
+		return nil
+	}
+	return AddMana{Player: ctx.Controller(), Amount: ManaN(destroyed, "B", "G")}.Apply(ctx)
+})

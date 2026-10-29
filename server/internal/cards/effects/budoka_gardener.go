@@ -22,6 +22,12 @@ import (
 // (CR 710.1c).
 //
 // No simplification.
+// budokaGardenerFlip is "if you control ten or more lands, flip this
+// creature" as a keyed tail (#4253 slice 6). An on-disk key.
+var budokaGardenerFlip = PutFromHandTail("budoka-gardener/flip-with-ten-lands", func(ctx *Context, _ PutFromHandResult) error {
+	return flipThisWhen(ctx.Game, ctx.Item, controlsAtLeast(10, game.Card.IsLand))
+})
+
 const budokaGardenerOracleID = "cb952c81-c7bb-4670-938d-296d35551986"
 
 func init() {
@@ -35,9 +41,8 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				put := MayPutALandFromHand("Budoka Gardener")
-				put.Then = func(g *game.Game, _ PutFromHandResult) error {
-					return flipThisWhen(g, item, controlsAtLeast(10, game.Card.IsLand))
-				}
+				put.ThenTail = budokaGardenerFlip
+				put.ThenItem = true
 				return put.Apply(NewContext(g, item))
 			},
 		}},

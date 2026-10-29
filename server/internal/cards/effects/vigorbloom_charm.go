@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Vigorbloom Charm — Instant {G}{W} (Reality Fracture, tracker #2795):
 //
@@ -47,13 +51,24 @@ func init() {
 						return nil
 					}
 					theirs, hasTheirs := ModeClauseTarget(ctx, occ, 1)
-					return ctx.Game.AddCounterThenForEffect(mine.ID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-						if !hasTheirs {
-							return nil
-						}
-						return b10Fight(NewContext(g, item), mine.ID, theirs.ID)
-					})
+					then := ctx.ItemTail(vigorbloomCharmFight)
+					then.Carry = []uuid.UUID{mine.ID}
+					if hasTheirs {
+						then.Carry = append(then.Carry, theirs.ID)
+					}
+					return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, mine.ID, game.CounterPlusOne, 1, then)
 				}),
 		),
 	})
 }
+
+// vigorbloomCharmFight is "Then it fights target creature an opponent
+// controls" once the counter has landed; Carry is the creature you control,
+// then the other if there still is one. An on-disk key: never renamed, never
+// reused.
+var vigorbloomCharmFight = CardTail("vigorbloom-charm/fight", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	return b10Fight(ctx, o.Tail.Carry[0], o.Tail.Carry[1])
+})

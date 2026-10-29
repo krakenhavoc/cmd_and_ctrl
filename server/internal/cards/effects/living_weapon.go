@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -27,7 +25,7 @@ import (
 // the attach are never separated by a priority boundary.
 //
 // That is also why the attach rides
-// game.CreateTokensThenForEffect's continuation rather than the next
+// game.CreateTokensKeyedForEffect's continuation rather than the next
 // line of Go. Token creation goes through the CR 701.7b replacement
 // window, and a window with two different applicable effects in it
 // (a Doubling Season and an Academy Manufactor) pauses for a CR 616
@@ -81,17 +79,23 @@ func createTokenAndAttachSource(g *game.Game, item *game.StackItem, template str
 	if described {
 		tmpl = NewContext(g, item).TextToken(TokenCard(template))
 	}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups: []game.TokenGroup{{
 			Template: tmpl,
 			Count:    1,
 		}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		if len(created) == 0 {
-			return nil
-		}
-		return g.AttachSourceForEffect(item, game.TargetRef{Kind: game.TargetCard, ID: created[0]})
-	})
+	}, NewContext(g, item).ItemTail(attachSourceToCreated))
 }
+
+// attachSourceToCreated is "then attach this Equipment to it" as a keyed
+// tail (#4253 slice 6), shared by living weapon and job select and every
+// card that prints the sentence. The asking item rides the tail. An
+// on-disk key.
+var attachSourceToCreated = CardTail("token-and-attach-source/attach", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return ctx.Game.AttachSourceForEffect(ctx.Item, game.TargetRef{Kind: game.TargetCard, ID: o.IDs[0]})
+})

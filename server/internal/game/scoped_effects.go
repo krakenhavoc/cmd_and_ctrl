@@ -499,6 +499,14 @@ const (
 	// blocker's creature types are read live, so a changeling counts as a
 	// Wall and a creature that stops being one leaves the barred set.
 	ModCantBeBlockedBySubtypes ModKind = "cantBeBlockedBySubtypes"
+	// ModCantBeBlockedByObject is "target creature can't block <this
+	// creature> this turn" (a Wrinkly Monkey Shenanigans ability sticker,
+	// #4307, CR 509.1b). Reads Objects[0], the one blocker the rule bars
+	// as the object it is (ID and epoch, CR 400.7: the same card back from
+	// another zone is a new object and is not barred), and Text, the
+	// blocker's name as the refusal sentence reads it. The pinned
+	// attacker(s). Pure data.
+	ModCantBeBlockedByObject ModKind = "cantBeBlockedByObject"
 )
 
 // The hexproof kinds (#1651, ADR 0038's amendment of 2026-09-28). See
@@ -1095,6 +1103,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModMultiplyDamage: {reader: readerReplacement},
 	// ADR 0108 §9 (#1905): damage dealt to something else instead.
 	ModRedirectDamage: {reader: readerReplacement},
+	// #4307 (ADR 0208, 2026-10-26): a die added to the next roll, and a
+	// chooser for the roll to ignore.
+	ModRollExtraDieIgnoreOne: {reader: readerReplacement},
 	// ADR 0107 §5 (#1853, #1880): rules gates.
 	ModDamageCantBePrevented:  {reader: readerRule},
 	ModDamageCantBeRedirected: {reader: readerRule},
@@ -1129,6 +1140,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantBeBlockedByPower:     {reader: readerBlockRule},
 	ModCantBeBlockedByColor:     {reader: readerBlockRule},
 	ModCantBeBlockedBySubtypes:  {reader: readerBlockRule},
+	ModCantBeBlockedByObject:    {reader: readerBlockRule},
 	// #1651: "can't have" is a layer-6 record; the waiver is read by
 	// targeting.
 	ModCantHaveKeywords: {layer: Layer6Ability},
@@ -1405,7 +1417,7 @@ func blockRequirementModProblem(m Mod) string {
 		// here (attackPermanentModProblem checks it).
 		if len(m.Objects) != 0 && !isNextFromSourceKind(m.Kind) && m.Kind != ModMultiplyDamage && m.Kind != ModPreventFromSource &&
 			m.Kind != ModRedirectDamage && m.Kind != ModCantBeRegenerated && m.Kind != ModExileIfWouldDie &&
-			m.Kind != ModAttackPermanentIfAble {
+			m.Kind != ModAttackPermanentIfAble && m.Kind != ModCantBeBlockedByObject {
 			return fmt.Sprintf("mod %q names objects, which only a blocksAttacker requirement reads", m.Kind)
 		}
 		return ""

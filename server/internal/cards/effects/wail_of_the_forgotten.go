@@ -72,7 +72,7 @@ func wailOfTheForgottenLook(item *game.StackItem, ctx *Context, _ int) error {
 		Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 3),
 		Max:    1,
 		Label:  "Wail of the Forgotten — put one into your hand",
-		Then:   TakeRestIntoGraveyard,
+		Key:    takeRestGraveyard,
 	}.Apply(ctx)
 }
 

@@ -135,31 +135,49 @@ func orvarCopyOneOfThem(g *game.Game, item *game.StackItem) error {
 			objects = append(objects, ref.Object())
 		}
 	}
-	copyObject := func(ctx *Context, o game.ObjectRef) error {
-		tmpl, ok := ctx.Game.TokenCopyTemplateForObjectForEffect(o)
-		if !ok {
-			return nil
-		}
-		return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
-	}
 	switch len(objects) {
 	case 0:
 		return nil
 	case 1:
-		return copyObject(ctx, objects[0])
+		return orvarCopyObject(ctx, objects[0])
 	}
 	options := make([]game.ChoiceOption, len(objects))
+	carry := make([]uuid.UUID, len(objects))
+	epochs := make([]int, len(objects))
 	for i, o := range objects {
 		options[i] = game.ChoiceOption{Label: orvarOptionLabel(g, o)}
+		carry[i], epochs[i] = o.ID, o.Epoch
 	}
 	return PickOption{
 		Question: "Orvar, the All-Form — copy one of those permanents",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			return copyObject(ctx, objects[index])
-		},
+		ThenKey:  orvarCopyPicked,
+		WithItem: true,
+		Carry:    carry,
+		Nums:     epochs,
 	}.Apply(ctx)
 }
+
+// orvarCopyObject is the token copy of one recorded permanent, if its copiable
+// values can still be read.
+func orvarCopyObject(ctx *Context, o game.ObjectRef) error {
+	tmpl, ok := ctx.Game.TokenCopyTemplateForObjectForEffect(o)
+	if !ok {
+		return nil
+	}
+	return createTokenCopies(ctx, ctx.Controller(), tmpl, 1)
+}
+
+// orvarCopyPicked is the recorded permanent chosen to be copied, keyed
+// (#4253): the permanents ride the prompt as their IDs (the carry) and
+// their epochs (the numbers), in the order they were listed. An on-disk key:
+// never renamed, never reused.
+var orvarCopyPicked = OptionPickThen("option-pick/orvar-the-all-form-copy", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(r.Carry) || r.Index >= len(r.Nums) {
+		return nil
+	}
+	return orvarCopyObject(ctx, game.ObjectRef{ID: r.Carry[r.Index], Epoch: r.Nums[r.Index]})
+})
 
 // orvarOptionLabel names a recorded permanent for the pick: its name as
 // it last existed on the battlefield.

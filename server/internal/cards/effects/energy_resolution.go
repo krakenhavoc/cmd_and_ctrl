@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -253,22 +255,43 @@ func largestOpposingManaValue(ctx *Context) int {
 // putChosenCounterOn is "put your choice of a <kind>, <kind> or <kind>
 // counter on <permanent>": an option pick, then one counter of the
 // chosen kind, placed by `by`, on `target` if it is still on the
-// battlefield.
+// battlefield. The answer is a registered continuation (#4253), so the
+// pick is a restore point: the permanent and the placer ride the prompt
+// as its carry, and the kind is read off the option that was chosen.
 func putChosenCounterOn(ctx *Context, by, target uuid.UUID, question string, kinds []string) error {
 	options := make([]game.ChoiceOption, len(kinds))
 	for i, kind := range kinds {
-		options[i] = game.ChoiceOption{Label: "A " + kind + " counter"}
+		options[i] = game.ChoiceOption{Label: counterOptionLabel(kind)}
 	}
 	return PickOption{
 		Question: question,
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(kinds) || !onBattlefield(ctx.Game, target) {
-				return nil
-			}
-			return ctx.Game.AddCounterByForEffect(by, target, kinds[index], 1)
-		},
+		ThenKey:  energyChosenCounter,
+		Carry:    []uuid.UUID{target, by},
 	}.Apply(ctx)
+}
+
+// energyChosenCounter is the chosen counter placed, shared by every card
+// that says "your choice of a <kind>, <kind> or <kind> counter" (#4253).
+// Carry is the permanent, then the player who places the counter.
+var energyChosenCounter = OptionPickThen("option-pick/energy-chosen-counter", func(ctx *Context, r game.OptionPicked) error {
+	if r.Option == nil || len(r.Carry) < 2 {
+		return nil
+	}
+	target, by := r.Carry[0], r.Carry[1]
+	kind := counterKindOfOptionLabel(r.Option.Label)
+	if kind == "" || !onBattlefield(ctx.Game, target) {
+		return nil
+	}
+	return ctx.Game.AddCounterByForEffect(by, target, kind, 1)
+})
+
+// counterOptionLabel is the option that offers a counter of `kind`;
+// counterKindOfOptionLabel reads the kind back off the chosen option.
+func counterOptionLabel(kind string) string { return "A " + kind + " counter" }
+
+func counterKindOfOptionLabel(label string) string {
+	return strings.TrimSuffix(strings.TrimPrefix(label, "A "), " counter")
 }
 
 // destroyPayloadPermanents destroys each permanent a reflexive trigger

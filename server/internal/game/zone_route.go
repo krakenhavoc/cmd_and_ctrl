@@ -80,15 +80,16 @@ import (
 // #853 folded the DISCARD in — the last exit that still moved a card
 // with a raw MoveCard, and therefore the last one that never opened
 // the window. It brought the other half of a pausable move with it:
-// zoneRoute.then, the continuation a caller with more to do hands over
+// the route's continuation, which a caller with more to do hands over
 // instead of writing it on the next line. A multi-card discard
 // sequences itself through it rather than looping, and discard.go says
-// why.
+// why. (It was a closure, zoneRoute.then; since #4253 it is data on the
+// route, and #4361 S17 deleted the closure.)
 //
-// #866 made that sequencing ONE body (routeAllThenLocked,
-// simultaneous.go) shared by every batched exit, and #893 put the mill
-// on it too. The mill above is therefore both shapes at once, on one
-// implementation: MillToZoneThenForEffect sequences through the
+// #866 made that sequencing ONE body (now routeAllKeyedLocked,
+// route_batch_keyed.go) shared by every batched exit, and #893 put the
+// mill on it too. The mill above is therefore both shapes at once, on one
+// implementation: MillToZoneKeyedForEffect sequences through the
 // continuation, because a caller that reads what was milled cannot be
 // told while a commander's prompt is open, and the fire-and-forget
 // MillToZoneForEffect keeps the loop that proceeds AROUND a paused
@@ -282,7 +283,7 @@ type zoneRoute struct {
 	//
 	// Such a route carries no destination of its own (the event's
 	// NewZone is authoritative there, as it is everywhere else); it
-	// rides along for `then`, so a caller that has to know what the
+	// rides along for its continuation, so a caller that has to know what the
 	// destruction actually DID gets the same continuation every other
 	// exit already had. #815.
 	ViaBattlefieldLeave bool
@@ -335,38 +336,41 @@ type zoneRoute struct {
 	// the gather reads it. Zero — unasked — everywhere else.
 	commanderAnswer commanderZoneAnswer
 
-	// then is the rest of whatever asked for the move, run once this
-	// one has reached a TERMINAL outcome — landed, replaced away
-	// (CR 614.10), or asked for a move that was not one. A pause is
-	// not terminal: the resume reaches it later, through
-	// executeZoneRouteLocked.
+	// The route's continuation, as data. It is the rest of whatever asked
+	// for the move, run once this one has reached a TERMINAL outcome —
+	// landed, replaced away (CR 614.10), or asked for a move that was not
+	// one. A pause is not terminal: the resume reaches it later, through
+	// executeZoneRouteLocked. #853: it exists because a move can PAUSE,
+	// and a caller with more to do cannot just do it on the next line.
+	// Cleared THROUGH the pointer as it runs (runRouteTailLocked), which
+	// is why cloneReplacementResume gives an undo snapshot its own copy of
+	// the route. At most one is set. (#4361 S17 deleted the closure form,
+	// `then`, once its last writer, an entry choice's sacrifice, was
+	// keyed.)
 	//
-	// #853: it exists because a move can PAUSE, and a caller with more
-	// to do cannot just do it on the next line. A multi-card discard
-	// sequences itself through here — each card's continuation starts
-	// the next one and the last one runs the discard's own "then draw
-	// two" — so the batch is a value carried forward rather than a
-	// shared accumulator, which is what makes an undo across the
-	// prompt land where a clean run would. The same idiom lifeTail and
-	// damageTail use, and for the same reason.
-	//
-	// It takes the live *Game rather than capturing one, on the undo-
-	// safety contract every other continuation in the engine follows:
-	// an undo restores this game's fields in place, so a *Game
-	// argument is always the right game and a captured *Player would
-	// not be. It runs with g.mu held, so it may start the next move or
-	// queue the next prompt itself.
-	//
-	// Unexported engine plumbing — the catalog never sets one. Cleared
-	// THROUGH the pointer as it runs (runRouteTailLocked), which is
-	// why cloneReplacementResume gives an undo snapshot its own copy
-	// of the route.
-	then func(g *Game) error
-
-	// faceDownLegs is `then` as data for one leg of a face-down exile
-	// batch (#4253 slice 3, exile_face_down_keyed.go). Cleared through
-	// the pointer as it runs, as `then` is. Never set together with it.
+	// faceDownLegs is one leg of a face-down exile batch (#4253 slice 3,
+	// exile_face_down_keyed.go).
 	faceDownLegs *faceDownExileRun
+
+	// batchLegs is one leg of a route batch (#4253 slice 9,
+	// route_batch_keyed.go), and discardLegs one leg of a discard batch
+	// (discard_keyed.go).
+	batchLegs   *routeBatchRun
+	discardLegs *discardBatchRun
+}
+
+// hasTail reports whether the route carries a continuation.
+func (r *zoneRoute) hasTail() bool {
+	return r != nil && (r.faceDownLegs != nil || r.batchLegs != nil || r.discardLegs != nil)
+}
+
+// detachTail takes the continuation off the route and returns a route
+// value that still carries it, for a caller that runs it later (the ADR
+// 0178 life-after-move sequence, a discard that became an entry).
+func (r *zoneRoute) detachTail() zoneRoute {
+	out := *r
+	r.faceDownLegs, r.batchLegs, r.discardLegs = nil, nil, nil
+	return out
 }
 
 // runRouteTailLocked runs a settled route's continuation exactly once.
@@ -397,16 +401,19 @@ func (g *Game) runRouteTailLocked(r *zoneRoute) error {
 	if r == nil {
 		return nil
 	}
-	if legs := r.faceDownLegs; legs != nil && r.then == nil {
+	if legs := r.faceDownLegs; legs != nil {
 		r.faceDownLegs = nil
 		return g.runFaceDownExileStepLocked(legs)
 	}
-	if r.then == nil {
-		return nil
+	if legs := r.batchLegs; legs != nil {
+		r.batchLegs = nil
+		return g.runRouteBatchLegLocked(r, legs)
 	}
-	then := r.then
-	r.then = nil
-	return then(g)
+	if legs := r.discardLegs; legs != nil {
+		r.discardLegs = nil
+		return g.runDiscardBatchLegLocked(legs)
+	}
+	return nil
 }
 
 // abandonZoneRouteLocked is the terminal outcome a paused route reaches
@@ -480,6 +487,10 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 		// a cancelled one. Before this the continuation went out with
 		// the frame.
 		return g.abandonKeywordActionLocked(ev)
+	case RepEventRollDice:
+		// #4307: unreachable. A roll's window never pauses
+		// (mustSettleNow), so it has no prompt to drop or prune.
+		return nil
 	case RepEventMill:
 		// #569: an abandoned MILL has read no cards off the library —
 		// the plan is made after the amount settles — and the caller
@@ -547,8 +558,9 @@ func (g *Game) abandonZoneRouteLocked(frame *replacementResumeFrame) error {
 // returned rather than swallowed — ExileTopFaceDownForEffect in
 // particular has to know not to read the same top card again.
 //
-// A caller with something to do AFTER the move hands it over as
-// r.then rather than writing it on the next line, and then ignores the
+// A caller with something to do AFTER the move hands it over as the
+// route's continuation (a keyed batch run) rather than writing it on the
+// next line, and then ignores the
 // bool: the continuation runs from the landing either way, inline when
 // nothing paused and from the resume when something did. That is how
 // a multi-card discard sequences itself (#853).
@@ -793,9 +805,13 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 
 	fromBattlefield := src.Kind == ZoneBattlefield
 	var lki exitLKI
+	// #4395: why, and by whose resolution, for a battlefield exit
+	// (leave_cause.go). Zero for a move from anywhere else.
+	var leave leaveMark
 	if fromBattlefield {
 		// LKI, and the CR 400.7 forget — battlefield_exit.go.
 		lki = g.battlefieldExitLocked(ev.CardID)
+		leave = leaveMark{cause: leaveCauseOfRoute(r), source: g.leaveSourceLocked(r.Cause)}
 	}
 	// The pre-move card, for CR 708.9 below: MoveCard clears the
 	// face-down state on the way through (CR 400.7), so "was this a
@@ -962,6 +978,7 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 			NewZone: dstZone.Kind,
 		}
 		r.Cause.stampCause(&out)
+		leave.stamp(&out)
 		g.EmitEvent(out)
 	}
 	if fromBattlefield {
@@ -995,11 +1012,11 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if moved.IsMelded() {
 		landed := dstZone
 		if redirected && dstZone.Kind == ZoneCommand {
-			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor)
+			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor, leave)
 		} else {
 			g.landMeldPassengersLocked(moved, src.Kind, landed, actor,
 				r.ToBottom && !redirected, depthIf(!redirected, r.Depth),
-				!(ev.ShuffleDestinationLibrary && landed.Kind == ZoneLibrary))
+				!(ev.ShuffleDestinationLibrary && landed.Kind == ZoneLibrary), leave)
 		}
 	}
 	// #1045: and any choose-cards prompt that still OFFERS this card

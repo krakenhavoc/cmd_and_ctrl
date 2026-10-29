@@ -1,6 +1,9 @@
 package effects
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -85,7 +88,36 @@ func doomsdayExileFrom(g *game.Game, steps []doomsdayStep) error {
 		return nil
 	}
 	head, rest := steps[0], steps[1:]
-	return g.ExileTopFaceDownThenForEffect(head.player, head.n, func(g *game.Game, _ []uuid.UUID) error {
-		return doomsdayExileFrom(g, rest)
+	// Keyed (#4253 slice 10a): the rest of the steps ride the exile's
+	// tail, the players as its Carry and their counts as its Word.
+	tail := game.KeyedTail{Ref: doomsdayNextExile}
+	counts := make([]string, 0, len(rest))
+	for _, s := range rest {
+		tail.Carry = append(tail.Carry, s.player)
+		counts = append(counts, strconv.Itoa(s.n))
+	}
+	tail.Word = strings.Join(counts, ",")
+	return g.ExileTopFaceDownKeyedForEffect(head.player, head.n, tail)
+}
+
+// doomsdayNextExile starts the next player's exile. Set in init, because
+// that exile names it again.
+var doomsdayNextExile game.TailRef
+
+func init() {
+	doomsdayNextExile = game.RegisterTail("then/doomsday-excruciator-next-exile", func(g *game.Game, o game.TailOutcome) error {
+		counts := strings.Split(o.Tail.Word, ",")
+		var steps []doomsdayStep
+		for i, p := range o.Tail.Carry {
+			if i >= len(counts) {
+				break
+			}
+			n, err := strconv.Atoi(counts[i])
+			if err != nil {
+				continue
+			}
+			steps = append(steps, doomsdayStep{player: p, n: n})
+		}
+		return doomsdayExileFrom(g, steps)
 	})
 }

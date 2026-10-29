@@ -16,7 +16,7 @@ import (
 //
 // The mill resolves first and the creature is chosen AFTER it, as the
 // ability resolves (CR 608.2c), so a creature the mill just put into the
-// graveyard is a legal pick. The pick is queued from MillToZone.Then, not
+// graveyard is a legal pick. The pick is queued from MillToZone.ThenTail, not
 // the next line, so a replacement that stops the mill to ask something
 // (a commander's command-zone offer) finishes it first. The pick is mandatory ("return a creature
 // card"): with no creature card in the graveyard after the mill the
@@ -46,10 +46,10 @@ func init() {
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{3}{U}{B}{B}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
-				// The pick waits for the mill (MillToZone.Then): a replacement
+				// The pick waits for the mill (MillToZone.ThenTail): a replacement
 				// that stops to ask during it must not let the pick be built
 				// from a graveyard the mill has not finished filling.
-				return MillToZone{Player: item.Controller, N: 4, Then: portOfKarfellChoose}.Apply(NewContext(g, item))
+				return MillToZone{Player: item.Controller, N: 4, ThenTail: NewContext(g, item).ItemTail(portOfKarfellMilled)}.Apply(NewContext(g, item))
 			},
 		}},
 	})
@@ -94,4 +94,10 @@ var portOfKarfellReturn = game.RegisterChooseCardsThen("choose-cards/port-of-kar
 		}
 	}
 	return nil
+})
+
+// portOfKarfellMilled is the clause after the mill (#4253 slice 9).
+var portOfKarfellMilled = CardTail("port-of-karfell/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return portOfKarfellChoose(ctx, o.IDs)
 })

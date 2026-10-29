@@ -38,19 +38,25 @@ func init() {
 }
 
 // oneRingTemptThenMill is chapter I.
+// Keyed (#4253 slice 10b): the mill is the tempt's tail.
 func oneRingTemptThenMill(g *game.Game, item *game.StackItem) error {
-	return TheRingTemptsYou{Then: func(ctx *Context, _ uuid.UUID) error {
-		ctx.Game.RecomputeLayersIfStaleLocked()
-		n := 0
-		if rb := game.RingBearerOf(ctx.Game, ctx.Controller()); rb != uuid.Nil {
-			if c, ok := ctx.Game.LookupCardForEffect(rb); ok {
-				n = c.CurrentPower()
-			}
-		}
-		// One library at a time in APNAP order (#4266).
-		return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), nil)
-	}}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return TheRingTemptsYou{ThenTail: ctx.ItemTail(oneRingMillTail)}.Apply(ctx)
 }
+
+// oneRingMillTail is "Then each player mills cards equal to the power of
+// your Ring-bearer". An on-disk key: never renamed, never reused.
+var oneRingMillTail = RingTail("then/one-ring-to-rule-them-all-mill", func(ctx *Context, _ uuid.UUID) error {
+	ctx.Game.RecomputeLayersIfStaleLocked()
+	n := 0
+	if rb := game.RingBearerOf(ctx.Game, ctx.Controller()); rb != uuid.Nil {
+		if c, ok := ctx.Game.LookupCardForEffect(rb); ok {
+			n = c.CurrentPower()
+		}
+	}
+	// One library at a time in APNAP order (#4266).
+	return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(n), game.KeyedTail{})
+})
 
 // oneRingDrain is chapter III.
 func oneRingDrain(g *game.Game, item *game.StackItem) error {

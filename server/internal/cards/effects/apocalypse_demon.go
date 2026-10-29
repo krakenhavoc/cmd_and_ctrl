@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -45,17 +43,9 @@ func init() {
 
 func apocalypseDemonUpkeep(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	controller := item.Controller
 	source := item.SourceCardID
-	var others []uuid.UUID
-	for _, id := range permanentsControlledByMatching(g, controller, Creature()) {
-		if id != source {
-			others = append(others, id)
-		}
-	}
-	tap := func(ctx *Context) error { return TapTarget{Target: source}.Apply(ctx) }
-	if len(others) == 0 {
-		return tap(ctx)
+	if len(permanentsControlledByMatching(g, item.Controller, And(Creature(), NotSelf(source)))) == 0 {
+		return TapTarget{Target: source}.Apply(ctx)
 	}
 	return PickOption{
 		Question: "Apocalypse Demon — sacrifice another creature, or tap Apocalypse Demon",
@@ -63,15 +53,20 @@ func apocalypseDemonUpkeep(g *game.Game, item *game.StackItem) error {
 			{Label: "Tap Apocalypse Demon"},
 			{Label: "Sacrifice another creature"},
 		},
-		Then: func(ctx *Context, index int) error {
-			if index == 1 {
-				return SacrificeChoice{
-					Player:     controller,
-					Candidates: others,
-					Question:   "Apocalypse Demon — sacrifice another creature",
-				}.Apply(ctx)
-			}
-			return tap(ctx)
-		},
+		ThenKey: apocalypseDemonAnswer,
 	}.Apply(ctx)
 }
+
+// apocalypseDemonAnswer is the upkeep's choice answered, keyed (#4253): it
+// reads only the controller and the Demon, both on the prompt. The creature
+// to sacrifice is asked as the engine's own sacrifice prompt, plain data.
+var apocalypseDemonAnswer = OptionPickThen("option-pick/apocalypse-demon-sacrifice-or-tap", func(ctx *Context, r game.OptionPicked) error {
+	source := ctx.Source()
+	if r.Index == 1 {
+		ctx.Game.PlayerSacrificesForEffect(source, ctx.Controller(),
+			sacrificeSpec("another creature", Creature(), NotSelf(source)),
+			"Apocalypse Demon — sacrifice another creature")
+		return nil
+	}
+	return TapTarget{Target: source}.Apply(ctx)
+})

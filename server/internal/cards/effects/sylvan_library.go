@@ -169,9 +169,19 @@ func sylvanLibraryPutBack(ctx *Context, card uuid.UUID, rest []uuid.UUID) error 
 	// CR 903.9 destination, so putting a drawn commander back stops
 	// to ask its owner about the command zone, and the rest of the
 	// card must not run while that is open.
-	item := ctx.Item
-	return ctx.Game.TuckToLibraryThenForEffect(card, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return sylvanLibrarySettle(NewContext(g, item), rest)
+	// Keyed (#4253 slice 10a): the rest of the cards ride the tail.
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{card}, game.TuckOptions{},
+		withCarry(ctx.ItemTail(sylvanLibraryPutBackSettled), rest...))
+}
+
+// sylvanLibraryPutBackSettled asks about the next card once the put-back
+// has landed: the cards still to ask about are the Carry. Set in init,
+// because the next question names it again.
+var sylvanLibraryPutBackSettled game.TailRef
+
+func init() {
+	sylvanLibraryPutBackSettled = CardTail("then/sylvan-library-next-card", func(ctx *Context, o game.TailOutcome) error {
+		return sylvanLibrarySettle(ctx, o.Tail.Carry)
 	})
 }
 

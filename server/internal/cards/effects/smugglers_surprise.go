@@ -35,11 +35,11 @@ import (
 // stack item and rebuilds its Context from the game it is handed, so
 // an undo across a prompt resolves against the restored game.
 //
-// "From among the milled cards" is MillToZone.Then's list — the cards
+// "From among the milled cards" is MillToZone.ThenTail's list — the cards
 // that actually reached the graveyard — re-checked against the
 // graveyard when the prompt is built (mill_then_take.go's reasoning).
 // The two creature cards from hand enter as ONE simultaneous event
-// (PutOntoBattlefieldTogetherThenForEffect), so each sees the other
+// (PutOntoBattlefieldTogetherKeyedForEffect), so each sees the other
 // arrive (CR 603.6a).
 //
 // No simplification.
@@ -66,11 +66,9 @@ func smugglersSurpriseMill(g *game.Game, item *game.StackItem) error {
 		return smugglersSurprisePut(g, item)
 	}
 	return MillToZone{
-		Player: item.Controller,
-		N:      4,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return smugglersSurpriseTakeMilled(ctx.Game, ctx.Item, milled)
-		},
+		Player:   item.Controller,
+		N:        4,
+		ThenTail: ctx.ItemTail(smugglersSurpriseMilled),
 	}.Apply(ctx)
 }
 
@@ -101,16 +99,21 @@ func smugglersSurpriseTakeMilled(g *game.Game, item *game.StackItem, milled []uu
 		Cards:      candidates,
 		Min:        0,
 		Max:        2,
-		Zone:       game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if err := ReturnPickedToHand(item)(g, picked); err != nil {
-				return err
-			}
-			return smugglersSurprisePut(g, item)
-		},
+		LiveZone:   game.ZoneGraveyard,
+		ThenKey:    smugglersSurpriseTaken,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// smugglersSurpriseTaken is the milled cards put into the hand and then the
+// second bullet, keyed (#4253 sweep): the asking item rides the prompt as data.
+var smugglersSurpriseTaken = askedPick("choose-cards/smugglers-surprise-take-milled", func(ctx *Context, r game.CardsChosen) error {
+	if err := ReturnPickedToHandNow(ctx, r.Picked); err != nil {
+		return err
+	}
+	return smugglersSurprisePut(ctx.Game, ctx.Item)
+})
 
 // smugglersSurprisePut is the second bullet: up to two creature cards
 // from hand, entering together, then the third bullet.
@@ -131,23 +134,33 @@ func smugglersSurprisePut(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      2,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return smugglersSurpriseProtect(g, item)
-			}
-			entries := make([]game.BatchEntry, 0, len(picked))
-			for _, id := range picked {
-				entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneHand})
-			}
-			return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: player},
-				func(g *game.Game, _ []uuid.UUID) error {
-					return smugglersSurpriseProtect(g, item)
-				})
-		},
+		LiveZone: game.ZoneHand,
+		ThenKey:  smugglersSurpriseEntered,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// smugglersSurpriseEntered is the creature cards put onto the battlefield
+// together and then the third bullet, keyed (#4253 sweep).
+var smugglersSurpriseEntered = askedPick("choose-cards/smugglers-surprise-put-creatures", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return smugglersSurpriseProtect(ctx.Game, ctx.Item)
+	}
+	entries := make([]game.BatchEntry, 0, len(r.Picked))
+	for _, id := range r.Picked {
+		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneHand})
+	}
+	return ctx.Game.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: ctx.Controller()},
+		ctx.ItemTail(smugglersSurpriseProtectTail))
+})
+
+// smugglersSurpriseProtectTail is the third bullet, run once the second
+// has entered, as a keyed tail (#4253 slice 6): the spell's modes ride the
+// tail. An on-disk key.
+var smugglersSurpriseProtectTail = CardTail("smugglers-surprise/protect", func(ctx *Context, _ game.TailOutcome) error {
+	return smugglersSurpriseProtect(ctx.Game, ctx.Item)
+})
 
 // smugglersSurpriseProtect is the third bullet. The affected set is
 // the creatures you control with power 4 or greater NOW (CR 611.2c),
@@ -163,3 +176,10 @@ func smugglersSurpriseProtect(g *game.Game, item *game.StackItem) error {
 		Label:    "Smuggler's Surprise — hexproof and indestructible until end of turn",
 	}.Apply(ctx)
 }
+
+// smugglersSurpriseMilled is the clause after the mill (#4253 slice 9).
+var smugglersSurpriseMilled = CardTail("smugglers-surprise/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return smugglersSurpriseTakeMilled(ctx.Game, ctx.Item, milled)
+})

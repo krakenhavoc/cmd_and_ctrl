@@ -23,11 +23,15 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepAllPermanents, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseColorThen(game.ColorForHarm, ctx.Game, item.Controller, item.SourceCardID, "Wash Out — choose a color",
-				func(g *game.Game, color string) error {
-					return BounceAllMatching{Match: OfColor(color)}.Apply(NewContext(g, item))
-				})
+			ChooseColorTail(game.ColorForHarm, ctx.Game, item.Controller, item.SourceCardID, "Wash Out — choose a color",
+				ctx.ItemTail(washOutColorChosen))
 			return nil
 		},
 	})
 }
+
+// washOutColorChosen returns every permanent of the colour (the tail's Word)
+// to its owner's hand. An on-disk key.
+var washOutColorChosen = CardTail("then/wash-out-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	return BounceAllMatching{Match: OfColor(o.Tail.Word)}.Apply(ctx)
+})

@@ -126,16 +126,15 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 	// Other types in the package have a Cards field too. The check is
 	// syntactic, so they are listed here by function, with the type.
 	notZones := map[string]string{
-		"ChoosePermanentsInOrderThenForEffect":    "ChooseCardsPrompt.Cards: copied candidate UUIDs, no zone mutation (#2948)",
-		"collectPermanentChoicesLocked":           "ChooseCardsPrompt.Cards: live candidate UUIDs, no zone mutation (#2948)",
-		"permanentChoicePicksLocked":              "SeatCards.Cards: original-object receipt UUIDs, no zone mutation (#2948)",
-		"sacrificeTogetherLocked":                 "SeatCards.Cards: a seat's picks that were sacrificed, no zone mutation (#3664)",
+		"orderedPickLegFn":                        "orderedPick.Cards: a seat's chosen object refs, no zone mutation (#4290)",
+		"startOrderedPicksLocked":                 "orderedLeg.Cards: a seat's candidate object refs, no zone mutation (#4290)",
+		"orderedPicksSoFarLocked":                 "SeatCards.Cards: the picks still on the battlefield as the same objects, no zone mutation (#4290)",
 		"LegalTargetsForClauseForEffect":          "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"LegalTargetsForAnnouncedClauseForEffect": "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"queueRelatedRetargetLocked":              "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"auraHostCandidatesLocked":                "LegalTargets.Cards: candidate UUIDs, not zone cards (#3158)",
 		"snapshotZone":                            "zoneSnapshot.Cards",
-		"QueueReselectAttackForEffect":            "an option's Cards []uuid.UUID",
+		"reselectAttackOptionsLocked":             "an option's Cards []uuid.UUID",
 		"GrantCastPermissionToCardsForEffect":     "CastPermission.Cards",
 		"spendManaValueBudget":                    "CastPermission.Cards: the cast card struck from a budgeted permission's named objects (#2017)",
 		"cloneCastPermissions":                    "CastPermission.Cards",

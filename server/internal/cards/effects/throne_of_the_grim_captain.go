@@ -70,11 +70,15 @@ func grimCaptainAttacks(g *game.Game, item *game.StackItem) error {
 		ExceptController: true,
 		Match:            Nonland(),
 		Label:            "a nonland permanent",
-		Then: func(ctx *Context, _ game.PromptedSacrifices) error {
-			return grimCaptainMayPut(ctx)
-		},
+		Keyed:            grimCaptainEdicted,
 	}.Apply(NewContext(g, item))
 }
+
+// grimCaptainEdicted is the optional put once the edict has landed, keyed
+// (#4290).
+var grimCaptainEdicted = RegisterEdictThen("prompt-run/throne-of-the-grim-captain-put", func(ctx *Context, _ game.PromptedSacrifices) error {
+	return grimCaptainMayPut(ctx)
+})
 
 // grimCaptainMayPut offers a creature card among the Captain's
 // materials still in exile.
@@ -88,22 +92,28 @@ func grimCaptainMayPut(ctx *Context) error {
 	if len(creatures) == 0 {
 		return nil
 	}
-	item := ctx.Item
-	me := ctx.Controller()
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  me,
+		Chooser:  ctx.Controller(),
 		Source:   ctx.Source(),
 		Question: "The Grim Captain — you may put an exiled creature card used to craft it onto the battlefield tapped and attacking",
 		Cards:    creatures,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return putAttackingYourChoice(NewContext(g, item), picked[0], game.ZoneExile, "The Grim Captain")
-		},
+		ThenKey:  grimCaptainPut,
+		LiveZone: game.ZoneExile,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// grimCaptainPut is the optional put's answer, keyed (#4253 slice 8): the
+// creature card goes onto the battlefield tapped and attacking what its
+// controller picks.
+var grimCaptainPut = game.RegisterChooseCardsThen("choose-cards/the-grim-captain-put",
+	func(g *game.Game, r game.CardsChosen) error {
+		if !r.Answered || len(r.Picked) == 0 {
+			return nil
+		}
+		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		return putAttackingYourChoice(ctx, r.Picked[0], game.ZoneExile, "The Grim Captain")
+	})

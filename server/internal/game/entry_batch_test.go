@@ -77,9 +77,9 @@ func TestBatchEntryAsksEachCardInTurnAndLandsTogether(t *testing.T) {
 	g.mu.Lock()
 	ebPayLifeToUntap(g, a.InstanceID, me.ID, 2)
 	ebPayLifeToUntap(g, b.InstanceID, me.ID, 2)
-	err := g.PutCardsFromLibraryOntoBattlefieldThenForEffect(
+	err := g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(
 		[]uuid.UUID{a.InstanceID, b.InstanceID}, LibraryEntryOptions{Controller: me.ID},
-		func(_ *Game, in []uuid.UUID) error { thenRan++; entered = in; return nil })
+		hookTail(func(_ *Game, o TailOutcome) error { thenRan++; entered = o.IDs; return nil }))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -207,13 +207,14 @@ func TestBatchEntryTakesCardsFromAGraveyard(t *testing.T) {
 		Label: "test: board watcher",
 	})
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: mine.InstanceID, From: ZoneGraveyard},
 		{CardID: theirs.InstanceID, From: ZoneGraveyard},
-	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -244,8 +245,8 @@ func TestBatchEntryTakesCardsFromAGraveyard(t *testing.T) {
 		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
 	me.Graveyard.PushTop(token)
 	g.mu.Lock()
-	err = g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{{CardID: token.InstanceID, From: ZoneGraveyard}},
-		ZoneEntryOptions{}, nil)
+	err = g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{{CardID: token.InstanceID, From: ZoneGraveyard}},
+		ZoneEntryOptions{}, KeyedTail{})
 	g.mu.Unlock()
 	if !errors.Is(err, ErrInvalidParam) {
 		t.Errorf("a token in a graveyard: err = %v, want ErrInvalidParam (CR 111.8)", err)
@@ -285,13 +286,14 @@ func TestBatchEntryFromTwoZonesIsOneEntry(t *testing.T) {
 	})
 	before := len(g.Events)
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: creature.InstanceID, From: ZoneExile},
 		{CardID: land.InstanceID, From: ZoneLibrary},
-	}, ZoneEntryOptions{Controller: me.ID}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{Controller: me.ID}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -417,9 +419,9 @@ func TestBatchEntryPromptPrunedWhenItsCardLeaves(t *testing.T) {
 	var entered []uuid.UUID
 	g.mu.Lock()
 	ebPayLifeToUntap(g, a.InstanceID, me.ID, 2)
-	err := g.PutCardsFromLibraryOntoBattlefieldThenForEffect(
+	err := g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect(
 		[]uuid.UUID{a.InstanceID, b.InstanceID}, LibraryEntryOptions{Controller: me.ID},
-		func(_ *Game, in []uuid.UUID) error { thenRan++; entered = in; return nil })
+		hookTail(func(_ *Game, o TailOutcome) error { thenRan++; entered = o.IDs; return nil }))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -483,13 +485,14 @@ func TestBatchEntryFromExileEntersUnderEachCardsOwner(t *testing.T) {
 		Label: "test: entry controller watcher",
 	})
 	var entered []uuid.UUID
-	err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 		{CardID: mine.InstanceID, From: ZoneExile},
 		{CardID: theirs.InstanceID, From: ZoneExile},
-	}, ZoneEntryOptions{}, func(_ *Game, in []uuid.UUID) error {
+	}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("put: %v", err)
@@ -517,21 +520,17 @@ func TestExileReturnLeavesATokenInExile(t *testing.T) {
 	token := Card{InstanceID: uuid.New(), Name: "Soldier", TypeLine: "Token Creature — Soldier",
 		Power: 1, Toughness: 1, Owner: me.ID, Controller: me.ID}
 	g.Exile.PushTop(token)
-	called := false
+	resetProbes()
 	g.mu.Lock()
-	err := g.ReturnFromExileToBattlefieldThenForEffect(token.InstanceID, uuid.Nil, false, func(_ *Game, entered uuid.UUID) error {
-		called = true
-		if entered != uuid.Nil {
-			t.Errorf("entered = %v, want nothing", entered)
-		}
-		return nil
-	})
+	err := g.ReturnFromExileToBattlefieldKeyedForEffect(token.InstanceID, uuid.Nil, false, probeTail())
 	g.mu.Unlock()
 	if err != nil {
 		t.Fatalf("return: %v", err)
 	}
-	if !called {
+	if got := probeEntered(); len(got) != 1 {
 		t.Error("the continuation is told nothing entered")
+	} else if got[0] != uuid.Nil {
+		t.Errorf("entered = %v, want nothing", got[0])
 	}
 	if g.Battlefield.Size() != 0 {
 		t.Error("a token that left the battlefield came back (CR 111.8)")

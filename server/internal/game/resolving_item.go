@@ -156,13 +156,15 @@ func (g *Game) resolvingSpellLocked(spellID uuid.UUID) (Card, *StackItem, bool) 
 // reachable only through the slot, and a restore that dropped the slot
 // answered "yes" with nothing to copy.
 //
-// The slot is data, not behaviour. Every reader takes a field off the
-// item or the card (its controller, its targets, its label, its source
-// object, its catalog ref), so nothing here needs a closure, and the
-// item's Effect is not needed either: it ran before any prompt could
-// pause the resolution. restoreStackItem re-derives the Effect and the
-// target clause when the item names a catalog row and leaves them nil
-// when it does not, as it does for a spell in lastKnownStack.
+// The slot is data, not behaviour. Almost every reader takes a field off
+// the item or the card (its controller, its targets, its label, its
+// source object, its catalog ref). The exception is a copy of the
+// resolving ability itself (stackAbilityLocked), which carries its
+// Effect. restoreStackItem re-derives the Effect and the target clause
+// when the item names a catalog row and leaves them nil when it does
+// not, as it does for a spell in lastKnownStack, and snapshotResolving
+// counts an item it could not rebuild while the resolution is open
+// (#4361), so such a table is never a restore point.
 type resolvingSnapshot struct {
 	Item stackItemSnapshot `json:"item"`
 	// Card is the spell as the stack held it (CR 608.2n last-known
@@ -174,27 +176,47 @@ type resolvingSnapshot struct {
 	SourceEpoch int `json:"sourceEpoch"`
 }
 
-// snapshotResolving is the capture half; nil for an empty slot. The
-// slot is spent (the item's effect has run), so what a bare closure
-// would cost a restore point is not counted: a throwaway census takes
-// the item and the card, and the live one never sees them. Caller must
-// hold g.mu.
-func snapshotResolving(g *Game) *resolvingSnapshot {
+// snapshotResolving is the capture half; nil for an empty slot. Caller
+// must hold g.mu.
+//
+// What the item and the card would cost a restore point depends on
+// whether the resolution is still open (#4361):
+//
+//   - OPEN (resolutionOpen: a prompt paused inside it). The rest of the
+//     resolution can still read the item as an object, not just as data:
+//     copying the resolving ability (stackAbilityLocked, CR 707.10)
+//     carries its Effect, and copying the resolving spell carries the
+//     card's abilities. So the item and the card are counted in the live
+//     census exactly as a stack item and a last-known spell are: an
+//     unkeyed Effect, a clause restore cannot re-derive, or a card whose
+//     instance abilities cannot be re-derived is
+//     census:IntrinsicAbilityCards, and the table is not a restore point.
+//     Counting them in a scratch census instead let such a table restore
+//     with the Effect silently gone.
+//   - CLOSED. The slot is spent: the item's effect has run, nothing left
+//     reads more than its fields, and the slot is cleared at the next
+//     event batch. A scratch census takes the item and the card, so a
+//     table that has finished a resolution stays a restore point.
+func snapshotResolving(g *Game, cen *ContinuationCensus) *resolvingSnapshot {
 	r := g.resolving
 	if r == nil || r.item == nil {
 		return nil
 	}
 	var spent ContinuationCensus
+	count := &spent
+	if g.resolutionOpen {
+		count = cen
+	}
 	oracleID := oracleIDOfLocked(g, r.item.SourceCardID)
 	if r.hasCard {
 		oracleID = r.card.OracleID
 	}
 	out := &resolvingSnapshot{
-		Item:        snapshotStackItemAs(r.item, oracleID, &spent),
+		Item:        snapshotStackItemAs(r.item, oracleID, count),
 		SourceEpoch: r.sourceEpoch,
 	}
 	if r.hasCard {
-		c := snapshotCard(r.card, &spent)
+		c := snapshotCard(r.card, count)
 		out.Card = &c
 	}
 	return out

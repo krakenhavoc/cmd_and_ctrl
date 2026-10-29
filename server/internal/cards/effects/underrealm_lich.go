@@ -68,21 +68,66 @@ func init() {
 	})
 }
 
+const underrealmLichLabel = "Underrealm Lich — put one of the top three cards into your hand (the rest go to your graveyard)"
+
 // underrealmLichLook is the replacement's body: a look at three, a
 // mandatory pick for the hand, the rest into the graveyard, and then
-// the rest of the draw instruction.
-func underrealmLichLook(g *game.Game, drawer, source uuid.UUID, done func(*game.Game) error) error {
-	item := &game.StackItem{Controller: drawer, SourceCardID: source}
-	return TakeFromLibraryToHand{
+// the rest of the draw instruction. The pick is a keyed choose_cards
+// (#4253 slice 10c): its Carry is the parked draw's ID, then the cards
+// looked at, so the table is a restore point while the player picks.
+func underrealmLichLook(g *game.Game, drawer, source uuid.UUID, done game.DrawDone) error {
+	take := TakeFromLibraryToHand{
 		Player: drawer,
 		Cards:  g.LookAtTopOfLibraryForEffect(drawer, 3),
 		Max:    1,
-		Label:  "Underrealm Lich — put one of the top three cards into your hand (the rest go to your graveyard)",
-		Then: func(g *game.Game, res TakeFromLibraryResult) error {
-			if err := TakeRestIntoGraveyard(g, res); err != nil {
-				return err
-			}
-			return done(g)
-		},
-	}.Apply(NewContext(g, item))
+		Label:  underrealmLichLabel,
+	}
+	prompt, answer := take.ask(g, drawer, source)
+	if prompt == nil {
+		return underrealmLichTake(g, source, drawer, take.Cards, answer, done)
+	}
+	prompt.Zone = ""
+	prompt.LiveZone = game.ZoneLibrary
+	prompt.ThenKey = underrealmLichPick
+	prompt.Carry = append([]uuid.UUID{done.Park(g)}, take.Cards...)
+	g.QueueChooseCardsForEffect(*prompt)
+	return nil
 }
+
+// underrealmLichPick is the pick for the hand: the chosen card goes to
+// hand, the rest to the graveyard, and the parked draw is paid. An on-disk
+// key.
+var underrealmLichPick = game.RegisterChooseCardsThen("choose-cards/underrealm-lich-take", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	var picked []uuid.UUID
+	if r.Answered {
+		picked = r.Picked
+	}
+	return underrealmLichTake(g, r.Source, r.Chooser, r.Carry[1:], picked, game.DrawDoneByID(r.Carry[0]))
+})
+
+// underrealmLichTake moves what was picked to hand, puts the rest of the
+// look into the graveyard and then pays the rest of the replaced draw. The
+// move's rest is a registered tail (#4253), the parked draw and the look
+// riding its Carry, so a prompt the move pauses on is a restore point.
+func underrealmLichTake(g *game.Game, source, drawer uuid.UUID, looked, picked []uuid.UUID, done game.DrawDone) error {
+	tail := game.KeyedTail{Ref: underrealmLichTaken, Player: drawer, Source: source,
+		Carry: append([]uuid.UUID{done.Park(g)}, looked...)}
+	return finishTake(g, source, drawer, false, underrealmLichLabel, tail, picked)
+}
+
+// underrealmLichTaken is the rest once the pick has reached the hand: the
+// rest of the look (Carry[1:]) into the graveyard, then the parked draw
+// (Carry[0]) is paid. An on-disk key.
+var underrealmLichTaken = game.RegisterTail("underrealm-lich/taken", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	res := takeResult(g, o.Tail.Source, o.Tail.Player, o.Tail.Carry[1:], o.IDs)
+	if err := TakeRestIntoGraveyard(g, res); err != nil {
+		return takeThenErr(err)
+	}
+	return takeThenErr(game.DrawDoneByID(o.Tail.Carry[0]).Run(g))
+})

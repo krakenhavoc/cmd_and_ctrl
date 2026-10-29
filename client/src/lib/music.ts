@@ -31,6 +31,9 @@ let armed = false;
 // (settings.ts) pushes updates via setMusicVolumeMultiplier.
 let musicMultiplier = 0;
 let muted = false;
+// duck is 1, or about -6 dB while an interface cue plays (ADR 0209 §2).
+// sounds.ts reports it through onDuck, wired in settings.ts.
+let duck = 1;
 
 function hasWindow(): boolean {
   return typeof window !== "undefined";
@@ -58,13 +61,21 @@ function applyVolume(): void {
     return;
   }
   const a = ensureAudio();
-  a.volume = musicMultiplier;
+  a.volume = musicMultiplier * duck;
   if (a.paused) void a.play().catch(() => {});
 }
 
 export function setMusicVolumeMultiplier(v: number): void {
   musicMultiplier = Math.min(1, Math.max(0, v));
   applyVolume();
+}
+
+// setMusicDuck scales the music bus while an interface cue plays: 1 for
+// no change, 0.5 for about 6 dB down. Applies to a track that is playing
+// and to one that starts later.
+export function setMusicDuck(factor: number): void {
+  duck = Math.min(1, Math.max(0, factor));
+  if (audio && armed && !muted && musicMultiplier > 0) audio.volume = musicMultiplier * duck;
 }
 
 export function setMusicMuted(m: boolean): void {

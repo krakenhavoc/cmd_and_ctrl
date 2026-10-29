@@ -42,7 +42,7 @@ func init() {
 }
 
 func armoredSkyhunterLook(g *game.Game, item *game.StackItem) error {
-	controller, source := item.Controller, item.SourceCardID
+	controller := item.Controller
 	return PutFromLibraryOntoBattlefield{
 		Player:   controller,
 		Cards:    g.LookAtTopOfLibraryForEffect(controller, 6),
@@ -50,22 +50,29 @@ func armoredSkyhunterLook(g *game.Game, item *game.StackItem) error {
 		Max:      1,
 		Optional: true,
 		Label:    "Armored Skyhunter — you may put an Aura or Equipment card from among them onto the battlefield",
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
-				return err
-			}
-			if len(res.Entered) == 0 {
-				return nil
-			}
-			// "If an Equipment is put onto the battlefield this way".
-			if c, ok := g.LookupCardForEffect(res.Entered[0]); !ok || !c.HasSubtype("Equipment") {
-				return nil
-			}
-			return offerAttachToACreatureYouControl(g, source, controller, res.Entered[0],
-				"Armored Skyhunter — you may attach the Equipment to a creature you control")
-		},
+		ThenTail: armoredSkyhunterRest,
 	}.Apply(NewContext(g, item))
 }
+
+// armoredSkyhunterRest is the rider as a keyed tail (#4253 slice 6): the
+// rest to the bottom, then the offer to attach an Equipment that entered.
+// An on-disk key.
+var armoredSkyhunterRest = PutFromLibraryTail("armored-skyhunter/rest-then-offer-attach",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
+			return err
+		}
+		if len(res.Entered) == 0 {
+			return nil
+		}
+		// "If an Equipment is put onto the battlefield this way".
+		if c, ok := g.LookupCardForEffect(res.Entered[0]); !ok || !c.HasSubtype("Equipment") {
+			return nil
+		}
+		return offerAttachToACreatureYouControl(g, res.Source, res.Player, res.Entered[0],
+			"Armored Skyhunter — you may attach the Equipment to a creature you control")
+	})
 
 // offerAttachToACreatureYouControl is "you may attach it to a creature
 // you control", asked as part of a resolution: a choose_cards prompt
@@ -91,17 +98,22 @@ func offerAttachToACreatureYouControl(g *game.Game, source, controller, attachme
 		Cards:    creatures,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			host, ok := g.LookupCardForEffect(picked[0])
-			if !ok || host.Controller != controller {
-				return nil
-			}
-			return g.AttachForEffect(attachment, game.TargetRef{Kind: game.TargetCard, ID: picked[0]})
-		},
+		ThenKey:  armoredSkyhunterAttach,
+		LiveZone: game.ZoneBattlefield,
+		Carry:    []uuid.UUID{attachment},
 	})
 	return nil
 }
+
+// armoredSkyhunterAttach is the Equipment attaching to the creature chosen,
+// keyed (#4253): the Equipment is the carry and the controller the chooser.
+var armoredSkyhunterAttach = game.RegisterChooseCardsThen("choose-cards/armored-skyhunter-attach", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 {
+		return nil
+	}
+	host, ok := g.LookupCardForEffect(r.Picked[0])
+	if !ok || host.Controller != r.Chooser {
+		return nil
+	}
+	return g.AttachForEffect(r.Carry[0], game.TargetRef{Kind: game.TargetCard, ID: r.Picked[0]})
+})

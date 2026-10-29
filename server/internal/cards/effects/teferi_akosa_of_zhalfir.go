@@ -184,36 +184,51 @@ func teferiAkosaQueueDiscard(g *game.Game, item *game.StackItem) error {
 	if need <= 0 {
 		return nil
 	}
-	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	// A hand of one card is asked the one discard, whatever it is; a larger
+	// hand is asked for two or a creature card. The two are two registered
+	// keys because a registered set rule is a function of the picks alone
+	// and cannot read `need`.
+	then := teferiAkosaDiscardTwoOrCreature
+	if need == 1 {
+		then = teferiAkosaDiscardTheOne
+	}
+	return g.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   item.Controller,
 		Source:   item.SourceCardID,
 		N:        need,
 		Min:      1,
 		Question: "Teferi Akosa of Zhalfir — discard two cards, unless you discard a creature card",
-		Validate: teferiAkosaDiscardPaysTheClause(need),
-	})
-	return nil
+	}, then, nil)
 }
 
+// teferiAkosaDiscardTwoOrCreature is the discard of a hand of two or more,
+// keyed (#4253 sweep): the set rule below is registered with the key, so the
+// restored prompt still refuses a lone card that is not a creature card.
+var teferiAkosaDiscardTwoOrCreature = game.RegisterDiscardThenRule("choose-cards/teferi-akosa-discard-two-or-creature",
+	teferiAkosaDiscardPaysTheClause,
+	func(*game.Game, game.DiscardsDone) error { return nil })
+
+// teferiAkosaDiscardTheOne is the discard of a hand of one card, keyed
+// (#4253 sweep): the full count is one, so no set rule is needed.
+var teferiAkosaDiscardTheOne = game.RegisterDiscardThen("choose-cards/teferi-akosa-discard-the-one",
+	func(*game.Game, game.DiscardsDone) error { return nil })
+
 // teferiAkosaDiscardPaysTheClause is the set-level rule: a pick pays
-// the clause when it is the full count, or when it is one card and
+// the clause when it is the full count of two, or when it is one card and
 // that card is a creature card.
 //
-// A function of the picks and one captured int, with no *Game: it
-// runs on the submit path under the write lock AND inside
-// legal.EnumerateFor under the read lock, which is the contract
-// ChooseCardsPrompt.Validate sets out.
+// A function of the picks alone, with no *Game: it runs on the submit
+// path under the write lock AND inside legal.EnumerateFor under the read
+// lock, which is the contract a registered set rule sets out.
 //
 // "A creature card" is the card's own type in the hand, so a creature
 // card is one whether or not anything on the battlefield would have
 // animated it.
-func teferiAkosaDiscardPaysTheClause(need int) func([]game.Card) bool {
-	return func(picked []game.Card) bool {
-		if len(picked) == need {
-			return true
-		}
-		return len(picked) == 1 && picked[0].IsCreature()
+func teferiAkosaDiscardPaysTheClause(picked []game.Card) bool {
+	if len(picked) == 2 {
+		return true
 	}
+	return len(picked) == 1 && picked[0].IsCreature()
 }
 
 // --- −3 -----------------------------------------------------------
@@ -245,14 +260,19 @@ func teferiAkosaTapAnyNumber(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		// Max 0 means "all of them", which is what "any number" is.
-		Max:  0,
-		Zone: game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return teferiAkosaTapThenShuffle(g, item, picked)
-		},
+		Max:      0,
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  teferiAkosaTapPick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// teferiAkosaTapPick is the creatures chosen to be tapped, keyed (#4253
+// sweep): the asking item rides the prompt as data.
+var teferiAkosaTapPick = askedPick("choose-cards/teferi-akosa-tap-any-number", func(ctx *Context, r game.CardsChosen) error {
+	return teferiAkosaTapThenShuffle(ctx.Game, ctx.Item, r.Picked)
+})
 
 // teferiAkosaTapThenShuffle taps the picks and, if at least one
 // actually became tapped, creates the reflexive trigger.
@@ -331,9 +351,7 @@ func teferiAkosaShuffleIntoLibrary(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckToLibraryThenForEffect(t.ID, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{t.ID}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }
 
 // untappedCreaturesControlledBy returns the untapped creatures a

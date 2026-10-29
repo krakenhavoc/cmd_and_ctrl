@@ -19,8 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The search is one SearchLibrary: Dragon cards not named Tiamat, up
 // to five, revealed, to hand, then shuffle — with "each have
-// different names" as the Validate over the picked set
-// (b28DifferentNames, Myriad Landscape's shape), because no per-card
+// different names" as the set rule over the picked set
+// (searchRuleDifferentNames, Myriad Landscape's shape), because no per-card
 // predicate can say it. The searcher chooses (S22) and may fail to
 // find.
 //

@@ -54,12 +54,44 @@ func init() {
 
 // gluntchBestow opens the chain: the first player, then their own
 // pick of a creature.
+//
+// Every question is keyed (#4253 slice 10b): the players chosen so far are
+// recorded on the copy of the trigger each prompt carries, so a table waiting
+// on any of the four questions is a restore point and "a second player" still
+// reads the first.
 func gluntchBestow(g *game.Game, item *game.StackItem) error {
 	return ChoosePlayer{
 		Among:    Players,
 		Question: "Gluntch, the Bestower — choose a player to put two +1/+1 counters on a creature they control",
-		Then:     gluntchCounters,
+		ThenKey:  gluntchFirstChosen,
 	}.Apply(NewContext(g, item))
+}
+
+// The three answers, each an on-disk key: never renamed, never reused. They
+// are registered in init because the chain asks again from inside them.
+var (
+	gluntchFirstChosen  game.OptionPickThen
+	gluntchSecondChosen game.OptionPickThen
+	gluntchThirdChosen  game.OptionPickThen
+	gluntchCreature     game.ChooseCardsThen
+)
+
+func init() {
+	gluntchFirstChosen = ChoosePlayerThen("option-pick/gluntch-the-bestower-first", func(ctx *Context, _ uuid.UUID, _ []uuid.UUID) error {
+		return gluntchCounters(ctx)
+	})
+	gluntchSecondChosen = ChoosePlayerThen("option-pick/gluntch-the-bestower-second", func(ctx *Context, _ uuid.UUID, _ []uuid.UUID) error {
+		return gluntchDraw(ctx)
+	})
+	gluntchThirdChosen = ChoosePlayerThen("option-pick/gluntch-the-bestower-third", func(ctx *Context, _ uuid.UUID, _ []uuid.UUID) error {
+		return gluntchTreasure(ctx)
+	})
+	// The creature the first player picks: recorded for the counters' step,
+	// against the trigger the prompt carried (its players chosen included).
+	gluntchCreature = askedPick("choose-cards/gluntch-the-bestower-creature", func(ctx *Context, r game.CardsChosen) error {
+		ctx.RecordStep(gluntchPickedRecord, r.Picked)
+		return gluntchAfterPick.Run(ctx)
+	})
 }
 
 // gluntchCounters asks the chosen player which of their creatures
@@ -74,7 +106,6 @@ func gluntchCounters(ctx *Context) error {
 	if chosen == uuid.Nil || len(creatures) == 0 {
 		return gluntchSecondPlayer(ctx)
 	}
-	item := ctx.Item
 	queued := ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    chosen,
 		FromPlayer: chosen,
@@ -86,12 +117,9 @@ func gluntchCounters(ctx *Context) error {
 		// Re-checked against the live battlefield on submit: the
 		// prompt is asynchronous and a creature can leave between the
 		// question and the answer.
-		Zone: game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			next := NewContext(g, item)
-			next.RecordStep(gluntchPickedRecord, picked)
-			return gluntchAfterPick.Run(next)
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  gluntchCreature,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	if queued != uuid.Nil {
 		return nil
@@ -108,7 +136,7 @@ func gluntchSecondPlayer(ctx *Context) error {
 		Among:    Players,
 		Except:   ctx.ChosenPlayers(),
 		Question: "Gluntch, the Bestower — choose a second player to draw a card",
-		Then:     gluntchDraw,
+		ThenKey:  gluntchSecondChosen,
 	}.Apply(ctx)
 }
 
@@ -151,7 +179,7 @@ func init() {
 				Among:    Players,
 				Except:   ctx.ChosenPlayers(),
 				Question: "Gluntch, the Bestower — choose a third player to create two Treasure tokens",
-				Then:     gluntchTreasure,
+				ThenKey:  gluntchThirdChosen,
 			}.Apply(ctx)
 		}),
 	)

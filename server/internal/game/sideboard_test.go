@@ -403,17 +403,17 @@ func TestQueueOutsidePickAsksOnlyAboutMatchingCards(t *testing.T) {
 	g := newSideboardGame(t, sbCard("Burning Wish", "Sorcery"), sbCard("Lightning Bolt", "Instant"))
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		if g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Question: "a land", Match: func(c Card) bool { return c.IsLand() },
-		}) {
+		if g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID, Question: "a land",
+		}, "land", nil)) {
 			t.Error("a prompt went up with nothing to choose from")
 		}
 		if len(g.PendingChoices) != 0 {
 			t.Errorf("%d choices queued", len(g.PendingChoices))
 		}
-		if !g.QueueOutsidePickForEffect(OutsidePickPrompt{
-			Player: me.ID, Question: "an instant", Match: func(c Card) bool { return c.IsInstant() },
-		}) {
+		if !g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
+			Player: me.ID, Question: "an instant",
+		}, "instant", nil)) {
 			t.Fatal("no prompt for an instant")
 		}
 		c := g.PendingChoices[0]
@@ -434,14 +434,12 @@ func TestOutsidePickValidatesTheSet(t *testing.T) {
 	var got []uuid.UUID
 	var choiceID uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
+		g.QueueOutsidePickForEffect(outsideHookedTwoNames(OutsidePickPrompt{
 			Player: me.ID, Question: "two", Min: 0, Max: 2,
-			Validate: func(picked []Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				got = picked
-				return nil
-			},
-		})
+		}, func(_ *Game, picked []uuid.UUID) error {
+			got = picked
+			return nil
+		}))
 		choiceID = g.PendingChoices[0].ID
 	})
 	// Two cards with the same name: refused, prompt stays open.
@@ -507,13 +505,12 @@ func TestEmptyPickOfAnOutsidePromptRunsThenWithNothing(t *testing.T) {
 	ran := false
 	var choiceID uuid.UUID
 	g.WithWriteLock(func() {
-		g.QueueOutsidePickForEffect(OutsidePickPrompt{
+		g.QueueOutsidePickForEffect(outsideHooked(OutsidePickPrompt{
 			Player: me.ID, Question: "x",
-			Then: func(_ *Game, picked []uuid.UUID) error {
-				ran = len(picked) == 0
-				return nil
-			},
-		})
+		}, "", func(_ *Game, picked []uuid.UUID) error {
+			ran = len(picked) == 0
+			return nil
+		}))
 		choiceID = g.PendingChoices[0].ID
 	})
 	if err := g.ResolveChooseCards(choiceID, me.ID, nil); err != nil {

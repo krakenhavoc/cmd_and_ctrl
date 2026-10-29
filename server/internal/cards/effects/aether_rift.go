@@ -37,18 +37,7 @@ func init() {
 }
 
 func aetherRiftUpkeep(g *game.Game, item *game.StackItem) error {
-	return g.DiscardRandomThenForEffect(item.Controller, 1, func(g *game.Game, discarded []uuid.UUID) error {
-		if len(discarded) == 0 || !aetherRiftCreatureInGraveyard(g, discarded[0]) {
-			return nil
-		}
-		card := discarded[0]
-		return AnyPlayerPays{
-			Pay:      LifePayment(5),
-			Question: "Aether Rift — pay 5 life to stop the creature card returning?",
-			Then:     aetherRiftReturns,
-			Carry:    []uuid.UUID{card},
-		}.Apply(NewContext(g, item))
-	})
+	return g.DiscardRandomKeyedForEffect(item.Controller, 1, NewContext(g, item).ItemTail(aetherRiftDiscarded))
 }
 
 // aetherRiftCreatureInGraveyard reports whether the card is a creature
@@ -72,3 +61,19 @@ var aetherRiftReturns = AnyPlayerConsequences("any-player/aether-rift-return",
 		return ReturnFromGraveyard{Target: r.Carry[0], Dest: game.ZoneBattlefield}.Apply(ctx)
 	},
 	nil)
+
+// aetherRiftDiscarded is the pay-or-return offer after the random discard (#4253 slice 9).
+var aetherRiftDiscarded = CardTail("aether-rift/offer-return-of-discarded-creature", func(ctx *Context, o game.TailOutcome) error {
+	g, item, discarded := ctx.Game, ctx.Item, o.IDs
+
+	if len(discarded) == 0 || !aetherRiftCreatureInGraveyard(g, discarded[0]) {
+		return nil
+	}
+	card := discarded[0]
+	return AnyPlayerPays{
+		Pay:      LifePayment(5),
+		Question: "Aether Rift — pay 5 life to stop the creature card returning?",
+		Then:     aetherRiftReturns,
+		Carry:    []uuid.UUID{card},
+	}.Apply(NewContext(g, item))
+})

@@ -29,7 +29,7 @@ import "github.com/google/uuid"
 // they answer ChoosePlayerAsEnters' seat list. None of the options
 // names a seat or a card, so nothing prunes the list while it is open
 // and the INDEX the chooser sends is a stable answer (the #994 reason
-// the seat form needed ThenSeat does not arise).
+// the seat form reads the option's seat does not arise).
 //
 // # Who reads it
 //
@@ -74,9 +74,10 @@ const EventOptionChosen EventKind = "option_chosen"
 // chooser who has already left the game (QueueChoiceForEffect's CR
 // 800.4a guard). The answer lands on `source`'s Card.ChosenOption.
 //
-// `options` are the card's own words in printed order, and are copied:
-// the continuation reads the chosen word back out of this copy by the
-// index the chooser sent, never out of the caller's slice.
+// `options` are the card's own words in printed order, and are copied
+// onto the prompt: the keyed continuation reads the chosen word back out
+// of that copy by the index the chooser sent, never out of the caller's
+// slice.
 //
 // A prompt DROPPED unanswered (#1006 — its chooser left, which takes
 // the permanent with them) runs the continuation with NoChoiceIndex,
@@ -93,19 +94,38 @@ func (g *Game) QueueChooseOptionAsEntersForEffect(chooser, source uuid.UUID, que
 	for i, w := range words {
 		choices[i] = ChoiceOption{Label: w}
 	}
-	permanent, who := source, chooser
+	// Keyed (#4361 slice 6): the words and the permanent ride the prompt
+	// as data, so a table waiting on the answer is a restore point.
 	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
 		Options:  choices,
-		Then: func(g *Game, index int) error {
-			if index < 0 || index >= len(words) {
-				return nil
-			}
-			return g.setChosenOptionLocked(permanent, who, words[index])
-		},
+		ThenKey:  chooseOptionAsEntersThen,
+		Carry:    []uuid.UUID{source, chooser},
+		Words:    words,
 	})
+}
+
+// chooseOptionAsEntersThen is the answer to an as-enters "choose <A> or
+// <B>": Carry is the permanent and the seat first asked, Words the
+// card's words in printed order. None of the options costs mana, so the
+// index the chooser sent is an offset into Words. A dropped prompt
+// (NoChoiceIndex) stores nothing. An on-disk key: never renamed, never
+// reused.
+var chooseOptionAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	chooseOptionAsEntersThen = RegisterOptionPickThen("option-pick/choose-option-as-enters", chooseOptionAsEntersAnswered)
+}
+
+func chooseOptionAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) < 2 || r.Index < 0 || r.Index >= len(r.Words) {
+		return nil
+	}
+	return g.setChosenOptionLocked(r.Carry[0], r.Carry[1], r.Words[r.Index])
 }
 
 // setChosenOptionLocked stamps the CR 614.12 answer onto the permanent

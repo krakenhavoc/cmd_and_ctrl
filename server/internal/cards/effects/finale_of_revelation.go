@@ -35,12 +35,13 @@ import (
 // SetMaxHandSize.
 //
 // "Untap up to five lands" doesn't say "target" — the choice is made
-// as the spell resolves, not announced. UntapUpToLands is that
-// resolution-time choice: a prompt over every tapped land at the
-// table, any controller's. Everything printed after the untap — the
-// hand-size grant, and the self-exile every branch ends with — rides
-// its Then, so it runs after the prompt is answered rather than on
-// the line after a synchronous call that hasn't happened yet.
+// as the spell resolves, not announced. finaleUntapLands is that
+// resolution-time choice (UntapUpToLands, with the rest as a registered
+// continuation): a prompt over every tapped land at the table, any
+// controller's. Everything printed after the untap — the hand-size grant,
+// and the self-exile every branch ends with — runs after the prompt is
+// answered rather than on the line after a synchronous call that hasn't
+// happened yet.
 func init() {
 	Register(Spec{
 		OracleID:     "755bd5d8-67f1-4f24-a4e8-d98edf2f2e03",
@@ -62,20 +63,61 @@ func init() {
 				if ctx.X() < 10 {
 					return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
 				}
-				controller := ctx.Controller()
-				return UntapUpToLands{
-					N:        5,
-					Question: "Finale of Revelation — untap up to five lands",
-					Then: func(next *Context) error {
-						if err := next.Game.SetMaxHandSizeForEffect(controller, game.NoMaxHandSize); err != nil {
-							return err
-						}
-						return (ExileTarget{Target: next.Source()}).Apply(next)
-					},
-				}.Apply(ctx)
+				return finaleUntapLands(ctx)
 			}),
 		),
 	})
+}
+
+// finaleUntapLands is "untap up to five lands" with everything printed after
+// it as a registered continuation (#4253), so the pick is a restore point:
+// UntapUpToLands asks the same question with a closure. With no tapped land
+// nothing is asked and the rest follows at once.
+func finaleUntapLands(ctx *Context) error {
+	var tapped []uuid.UUID
+	for _, c := range ctx.Game.BattlefieldCardsForEffect() {
+		if c.IsLand() && c.Tapped {
+			tapped = append(tapped, c.InstanceID)
+		}
+	}
+	if len(tapped) == 0 {
+		return finaleAfterUntap(ctx)
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  ctx.Controller(),
+		Source:   ctx.Source(),
+		Question: "Finale of Revelation — untap up to five lands",
+		Cards:    tapped,
+		Min:      0,
+		Max:      5,
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  finaleLandsChosen,
+		Asked:    game.NewAskedItem(ctx.Item),
+	})
+	return nil
+}
+
+// finaleLandsChosen untaps each land picked that is still on the battlefield
+// and runs the rest, keyed (#4253).
+var finaleLandsChosen = itemChoice("choose-cards/finale-of-revelation-untap-lands", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if !onBattlefield(ctx.Game, id) {
+			continue
+		}
+		if err := (UntapTarget{Target: id}).Apply(ctx.asGroupMember()); err != nil {
+			return err
+		}
+	}
+	return finaleAfterUntap(ctx)
+})
+
+// finaleAfterUntap is everything printed after the untap: no maximum hand
+// size for the rest of the game, then the spell exiles itself.
+func finaleAfterUntap(ctx *Context) error {
+	if err := ctx.Game.SetMaxHandSizeForEffect(ctx.Controller(), game.NoMaxHandSize); err != nil {
+		return err
+	}
+	return (ExileTarget{Target: ctx.Source()}).Apply(ctx)
 }
 
 // finaleShuffleGraveyardIntoLibrary is "shuffle your graveyard into

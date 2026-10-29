@@ -104,19 +104,7 @@ func palantirMillAndBurn(ctx *Context, item *game.StackItem, opponent uuid.UUID)
 	if x <= 0 {
 		return nil
 	}
-	return ctx.Game.MillToZoneThenForEffect(item.Controller, x, game.ZoneGraveyard, nil,
-		func(g *game.Game, milled []uuid.UUID) error {
-			total := 0
-			for _, id := range milled {
-				if mc, ok := g.LookupCardForEffect(id); ok {
-					total += mc.ManaValue()
-				}
-			}
-			if total <= 0 {
-				return nil
-			}
-			return g.ChangePlayerLifeForEffect(item.SourceCardID, opponent, -total)
-		})
+	return ctx.Game.MillToZoneKeyedForEffect(item.Controller, x, game.ZoneGraveyard, game.MillUntil{}, withCarry(ctx.ItemTail(palantirOfOrthancMilled), opponent))
 }
 
 // palantirAnswer is the chosen opponent's answer: let the Palantír's
@@ -128,3 +116,19 @@ var palantirAnswer = MayYesNo("confirm/palantir-of-orthanc-draw-or-mill",
 	func(ctx *Context, r game.ConfirmAnswer) error {
 		return palantirMillAndBurn(ctx, ctx.Item, r.Chooser)
 	})
+
+// palantirOfOrthancMilled is the life loss after the mill (#4253 slice 9).
+var palantirOfOrthancMilled = CardTail("palantir-of-orthanc/opponent-loses-total-mana-value", func(ctx *Context, o game.TailOutcome) error {
+	g, item, milled, opponent := ctx.Game, ctx.Item, o.IDs, tailCarry0(o)
+
+	total := 0
+	for _, id := range milled {
+		if mc, ok := g.LookupCardForEffect(id); ok {
+			total += mc.ManaValue()
+		}
+	}
+	if total <= 0 {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(item.SourceCardID, opponent, -total)
+})

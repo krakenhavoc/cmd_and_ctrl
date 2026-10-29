@@ -29,17 +29,8 @@ func init() {
 		OracleID:     "640a7d2c-42c4-4ea7-bd5b-72f12a65785e",
 		Name:         "Synthetic Destiny",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return ExileAllMatching{
-				Match: And(Creature(), YouControl()),
-				Then: func(ctx *Context, _ []game.Card, exiled int) error {
-					return ScheduleDelayedTrigger{
-						Label:  "Synthetic Destiny — reveal until that many creature cards and put them onto the battlefield",
-						Body:   syntheticDestinyBody,
-						Params: game.EffectParams{Amount: exiled},
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return ExileAllMatching{Match: And(Creature(), YouControl()), ThenTail: ctx.ItemTail(syntheticDestinySchedule)}.Apply(ctx)
 		},
 	})
 }
@@ -72,12 +63,20 @@ func syntheticDestinyReveal(g *game.Game, item *game.StackItem, params game.Effe
 		})
 	}
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() },
-		All:    true,
-		Then: func(g *game.Game, _ PutFromLibraryResult) error {
-			return g.ShuffleLibraryForEffect(player)
-		},
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCreature() },
+		All:      true,
+		ThenTail: thenShuffle,
 	}.Apply(ctx)
 }
+
+// syntheticDestinySchedule is the sweep's delayed trigger, told how many
+// were exiled, keyed (#4253 slice 10a).
+var syntheticDestinySchedule = MassTail("mass/synthetic-destiny-schedule", func(ctx *Context, _ []game.Card, exiled int) error {
+	return ScheduleDelayedTrigger{
+		Label:  "Synthetic Destiny — reveal until that many creature cards and put them onto the battlefield",
+		Body:   syntheticDestinyBody,
+		Params: game.EffectParams{Amount: exiled},
+	}.Apply(ctx)
+})

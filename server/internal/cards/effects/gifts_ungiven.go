@@ -73,7 +73,7 @@ func giftsUngivenResolve(item *game.StackItem, ctx *Context) error {
 		// order it imposes.
 		ToTop:    true,
 		Reason:   "Gifts Ungiven — search your library for up to four cards with different names",
-		Validate: DifferentNames,
+		Rule:     searchRuleDifferentNames,
 		ThenTail: giftsUngivenTail(ctx, opp),
 	})
 }
@@ -102,17 +102,17 @@ var giftsUngivenChoose = CardTail("gifts-ungiven/choose", func(ctx *Context, o g
 		Cards:    found,
 		Min:      2,
 		Max:      2,
-		Then:     giftsUngivenSettle,
+		Keyed:    giftsUngivenSettle,
 	}.Apply(ctx)
 })
 
 // giftsUngivenSettle is Intuition's last sentence inverted: the CHOSEN
-// cards go to the graveyard.
+// cards go to the graveyard. An on-disk key.
 //
 // Caller holds g.mu.
-func giftsUngivenSettle(ctx *Context, picked, left []uuid.UUID) error {
+var giftsUngivenSettle = RegisterRevealPick("choose-cards/gifts-ungiven-settle", func(ctx *Context, picked, left []uuid.UUID, _ []int) error {
 	return revealPickSettle(ctx, picked, left, false)
-}
+})
 
 // DifferentNames is the set-level legality hook behind "cards with
 // different names" (CR 701.19c's reading of a search clause): no two

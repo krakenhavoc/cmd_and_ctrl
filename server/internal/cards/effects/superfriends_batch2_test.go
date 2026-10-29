@@ -560,16 +560,17 @@ func TestSaheeliArtifactInAdditionKeepsTheOtherTypes(t *testing.T) {
 	}
 }
 
+// The −7's "with different names" is the shared search rule (#4253 slice 5).
 func TestSaheeliDifferentNamesRejectsARepeat(t *testing.T) {
 	sol := game.Card{Name: "Sol Ring"}
 	mox := game.Card{Name: "Mox Diamond"}
-	if !saheeliDifferentNames([]game.Card{sol, mox}) {
+	if !DifferentNames([]game.Card{sol, mox}) {
 		t.Error("two different names were rejected")
 	}
-	if saheeliDifferentNames([]game.Card{sol, sol}) {
+	if DifferentNames([]game.Card{sol, sol}) {
 		t.Error("two copies of one name were accepted")
 	}
-	if !saheeliDifferentNames(nil) {
+	if !DifferentNames(nil) {
 		t.Error("failing to find was rejected")
 	}
 }

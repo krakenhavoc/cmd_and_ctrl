@@ -113,6 +113,13 @@ func ledgerLineResolves(line string) bool {
 		return KnownPayUnlessElse(fields[1])
 	case "confirm":
 		return KnownConfirmThen(fields[1])
+	case "maycast":
+		// #4361: a keyed may_cast's answer (RegisterMayCastThen).
+		return KnownMayCastThen(fields[1])
+	case "castfollowup":
+		// #4361 S13: a cast permission's FollowUp or IfNotCast body
+		// (RegisterCastFollowUp).
+		return KnownCastFollowUp(CastFollowUpKey(ledgerLineKey(line)))
 	case "anyplayer":
 		return KnownAnyPlayerPays(fields[1])
 	case "number":
@@ -130,6 +137,24 @@ func ledgerLineResolves(line string) bool {
 	case "tail":
 		// #4253 slice 3: a keyed event continuation (RegisterTail).
 		return KnownTail(ledgerLineKey(line))
+	case "searchrule":
+		// #4253 slice 5: a search prompt's set rule (RegisterSearchRule).
+		return KnownSearchRule(fields[1])
+	case "milluntil":
+		// #4253 slice 9: a keyed mill run's stop clause.
+		return KnownMillUntil(ledgerLineKey(line))
+	case "coinflip":
+		// #4253 slice 10b: a keyed coin flip's continuation.
+		return KnownCoinFlipThen(fields[1])
+	case "run":
+		// #4290: a keyed prompted run's continuation (RegisterPromptRunThen).
+		return KnownPromptRunThen(fields[1])
+	case "steps":
+		// A keyed continuation's recorded steps (RegisterThenStepsKey).
+		return KnownThenSteps(fields[1])
+	case "tapcost":
+		// #4264: a keyed pay-unless's waterbend clause kind.
+		return KnownTapCost(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

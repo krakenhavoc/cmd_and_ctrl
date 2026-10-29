@@ -76,17 +76,23 @@ func agathasSoulCauldronExile(g *game.Game, item *game.StackItem) error {
 			continue
 		}
 		id := t.ID
-		return ExileTarget{Target: id, Linked: true, Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			c, ok := ctx.Game.LookupCardForEffect(id)
-			if !ok || !c.IsCreature() {
-				return nil
-			}
-			return WhenYouDo("Agatha's Soul Cauldron — put a +1/+1 counter on target creature you control",
-				agathasSoulCauldronCounterBody).Apply(ctx)
-		}}.Apply(ctx)
+		return ExileTarget{Target: id, Linked: true, ThenTail: withCarry(ctx.ItemTail(agathasSoulCauldronExiled), id)}.Apply(ctx)
 	}
 	return nil
 }
+
+// agathasSoulCauldronExiled is the clause after the exile (#4253 slice 9).
+var agathasSoulCauldronExiled = CardTail("agathas-soul-cauldron/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	id := tailCarry0(o)
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(id)
+	if !ok || !c.IsCreature() {
+		return nil
+	}
+	return WhenYouDo("Agatha's Soul Cauldron — put a +1/+1 counter on target creature you control",
+		agathasSoulCauldronCounterBody).Apply(ctx)
+})

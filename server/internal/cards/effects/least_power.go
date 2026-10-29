@@ -34,15 +34,20 @@ func destroyCreatureWithLeastPower(g *game.Game, item *game.StackItem) error {
 		Cards:    tied,
 		Min:      1,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 || !onBattlefield(g, picked[0]) {
-				return nil
-			}
-			return DestroyTarget{Target: picked[0], CantBeRegenerated: true}.Apply(NewContext(g, item))
-		},
+		ThenKey:  leastPowerDestroyPick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// leastPowerDestroyPick is the chosen tied creature destroyed, keyed
+// (#4253): the asking item rides the prompt as data.
+var leastPowerDestroyPick = askedPick("choose-cards/least-power-destroy", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || !onBattlefield(ctx.Game, r.Picked[0]) {
+		return nil
+	}
+	return DestroyTarget{Target: r.Picked[0], CantBeRegenerated: true}.Apply(ctx)
+})
 
 // creaturesWithLeastPower lists the creatures on the battlefield tied
 // for the least current power, in battlefield order.

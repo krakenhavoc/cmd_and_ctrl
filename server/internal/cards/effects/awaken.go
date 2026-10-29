@@ -100,6 +100,13 @@ func AwakenIfPaid(ctx *Context, n int) error {
 	if !ctx.PaidAltCost(awakenKey) {
 		return nil
 	}
+	return awakenPaidClause(ctx, n)
+}
+
+// awakenPaidClause is AwakenIfPaid once awaken is known to have been paid.
+// Earthen Arms' tail carries that as data: the alternative cost the spell was
+// cast with is not part of the asking item a tail rebuilds (#4253 slice 7).
+func awakenPaidClause(ctx *Context, n int) error {
 	slot := -1
 	for _, t := range ctx.Targets() {
 		if t.Mode == 0 && t.Slot > slot {

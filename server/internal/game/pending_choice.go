@@ -183,7 +183,7 @@ const (
 	//
 	// Structurally scry with the bottom-of-library leg replaced by
 	// the graveyard, and it shares scry's plumbing: the looked-at
-	// cards ride in ScryCards, the continuation in scryResume, and
+	// cards ride in ScryCards, the continuation in scryThen, and
 	// the wire projects them through PendingChoiceView.Options with
 	// the same chooser-only redaction. Surveil is "look at", not
 	// "reveal".
@@ -499,18 +499,18 @@ type PendingChoice struct {
 	// DivideShield is the payload of a PendingChoiceDivideShield (ADR
 	// 0108 §7 decision 6, divide_shield.go): the charged shield, its
 	// charge and the damage events it meets. Wire-serialised via
-	// PendingChoiceView.DivideShield. Never captured: the prompt always
-	// carries a confirmResume frame.
+	// PendingChoiceView.DivideShield. Written with the prompt, with the
+	// shields after it and the damage it lands, as data (#4361 S16).
 	DivideShield *DivideShieldPrompt
 
 	// PayAmount is the payload of a PendingChoicePayAmount (ADR 0129 §3,
 	// energy_payment.go): the bounds of the answer, the card's own
 	// threshold and what each counter buys. Wire-serialised via
 	// PendingChoiceView.PayAmount. Plain data, written to a restore point
-	// (#4289, #4294) when the prompt holds no chooseValueResume frame: the
-	// keyed "choose X" of a MayPayX (MayPayX below), and a keyed number
-	// prompt (PickThen is a RegisterNumberThen key, number_then.go). A
-	// pay_amount that does carry a frame is not a restore point.
+	// (#4289, #4294): the keyed "choose X" of a MayPayX (MayPayX below), a
+	// keyed number prompt (PickThen is a RegisterNumberThen key,
+	// number_then.go), and since #4361 (which deleted the closure frame) a
+	// payment nothing follows.
 	PayAmount *PayAmountPrompt
 
 	// MayPayX makes a pay_amount the "choose X" half of a KEYED
@@ -610,7 +610,10 @@ type PendingChoice struct {
 	// PendingChoicePickTarget: the captured event / source / LKI,
 	// the Build closure, and the spec the pick is validated against
 	// (and stamped onto the item for the resolution re-check).
-	// Added in S20 sub-PR 2.
+	// Added in S20 sub-PR 2. Written to a restore point as data since
+	// #4361 S14b (pendingChoices[].targetWalk, trigger_frame_keyed.go):
+	// the ability by its catalog row, its clauses re-derived from the
+	// row, and the walk's answers and bound amounts carried.
 	pickTargetResume *pickTargetFrame
 
 	// PickTargetFor is, on a pick_target an opponent answers for an "of
@@ -679,7 +682,9 @@ type PendingChoice struct {
 	// choice enumerator) then needs no change at all to answer it.
 	// What differs is only what gets built on submit, which is what
 	// the frame decides. Exactly one of pickTargetResume and
-	// copyResume is set.
+	// copyResume is set. Written as data (#4361 S15,
+	// pendingChoices[].copyWalk, copy_walk_keyed.go) when its item can
+	// be written whole.
 	copyResume *copyFrame
 
 	// SacrificeOptions is the set of permanents a
@@ -756,8 +761,8 @@ type PendingChoice struct {
 	// ChooseLiveZone is the zone a KEYED choose_cards pick's candidates are
 	// re-checked against, on submit and by the sweep that withdraws a pick
 	// whose candidates have all left it (#4291, ChooseCardsPrompt.LiveZone).
-	// A closure pick keeps this on its frame (chooseCardsFrame.zone). Empty
-	// on every other prompt, which means no live re-check.
+	// An entry card choice and a permanent pick read theirs off their kind
+	// (liveZone). Empty on every other prompt, which means no live re-check.
 	ChooseLiveZone ZoneKind
 	// PickMeasures is RevealedHandDiscard.Measure's reading of each
 	// candidate, in DiscardOptions order, taken as the pick was raised.
@@ -797,6 +802,13 @@ type PendingChoice struct {
 	// the queue rewind together. Not serialised, like every other
 	// continuation link.
 	promptRun uuid.UUID
+
+	// ordered is the state of a KEYED ordered collection this prompt is one
+	// seat's turn of (ordered_picks_keyed.go, #4290, ADR 0175): the seats
+	// still to ask, the picks so far and the registered continuation. Plain
+	// data, written to a restore point (pendingChoices[].ordered) and
+	// cloned for an undo; nil on every other prompt.
+	ordered *orderedPicks
 
 	// CopyOptions is the set of permanents a PendingChoiceCopyTarget
 	// may be copied from — "any creature on the battlefield" for
@@ -897,26 +909,18 @@ type PendingChoice struct {
 	// stays on the effect's EntryLifeCost.
 	PayCost string
 
-	// payUnlessResume is the server-only continuation for a
-	// PendingChoicePayUnless entry: the parsed cost plus the
-	// "unless" consequence to run when the chooser declines or
-	// can't pay. Not serialised. Added in S19 sub-PR 6.
-	payUnlessResume *payUnlessFrame
-
-	// PayActionClause is a KEYED pay-unless's non-mana payment (#4264):
+	// PayActionClause is a pay-unless's non-mana payment (#4264):
 	// "discard a card", "sacrifice two lands", "tap an untapped
-	// creature". Plain data, written to a restore point, so a keyed
-	// prompt carries the payment without a frame (payUnlessFrameOf reads
-	// it back). Nil on every mana prompt and on a framed one, whose
-	// payment rides payUnlessFrame.action.
+	// creature". Plain data, written to a restore point, so the prompt
+	// carries the payment without a frame (payUnlessFrameOf reads it
+	// back). Nil on every mana prompt.
 	PayActionClause *PayAction
 
-	// PayTap is a KEYED pay-unless's waterbend clause (#4264): the kind of
-	// tap clause and the part of the cost its taps may cover, which
+	// PayTap is a pay-unless's waterbend clause (#4264): the kind of tap
+	// clause and the part of the cost its taps may cover, which
 	// RegisterTapCost's builder turns back into the clause
 	// (payUnlessFrameOf, PayTapCost). Plain data. Nil on every plain
-	// payment and on a framed prompt, whose clause rides
-	// payUnlessFrame.tap.
+	// payment.
 	PayTap *PayTapSpec
 
 	// OptionObjects are the objects, with the epoch each had, that a KEYED
@@ -979,10 +983,12 @@ type PendingChoice struct {
 	SearchMin int
 
 	// searchResume is the server-only continuation for a
-	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec, which
-	// carries the destination, the reveal / shuffle / tapped flags
-	// and the rest of the effect (Fabled Passage's "then untap that
-	// land", Gamble's random discard). Not serialised to the wire.
+	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec's data,
+	// which carries the destination, the reveal / shuffle / tapped
+	// flags and the rest of the effect as a keyed tail (Fabled
+	// Passage's "then untap that land", Gamble's random discard). Not
+	// serialised to the wire; written to a restore point
+	// (pendingChoices[].searchPrompt). Data only since #4361 S4.
 	searchResume *searchResumeFrame
 
 	// MayCastCard is the one card a PendingChoiceMayCast is offering
@@ -999,10 +1005,8 @@ type PendingChoice struct {
 	// do. Wire-serialised.
 	MayCastKeyword string
 
-	// mayCastResume is the server-only continuation for a
-	// PendingChoiceMayCast: what to do on each answer. Not
-	// serialised. Added in S28.
-	mayCastResume *mayCastFrame
+	// A PendingChoiceMayCast's answer is a registered key on PickThen
+	// (may_cast_keyed.go, #4361), with OptionCarry its data.
 
 	// LoopShortcutKey / LoopShortcutCount / LoopShortcutRepeat carry a
 	// PendingChoiceLoopShortcut's question (#804, CR 732).
@@ -1054,12 +1058,6 @@ type PendingChoice struct {
 	// accepts; it is a hint on the wire for a policy that would
 	// otherwise take every offer and ping-pong forever.
 	DeclineEndsLoop bool
-
-	// confirmResume is the server-only continuation pair for a
-	// PendingChoiceConfirm: one closure per branch. Not serialised.
-	// See chained_choice.go.
-	confirmResume  *confirmFrame
-	coinFlipResume *coinFlipFrame
 
 	// private marks a prompt whose WORDS name a card in a hidden zone
 	// (ADR 0133: the question an opening-hand action asks names the
@@ -1161,12 +1159,6 @@ type PendingChoice struct {
 	// reads it; the continuation is what moves the card.
 	ChooseDestination ChooseDestination
 
-	// chooseCardsResume is the server-only continuation for a
-	// PendingChoiceChooseCards: what the picks mean, plus the zone
-	// they are re-checked against. Not serialised. See
-	// chained_choice.go.
-	chooseCardsResume *chooseCardsFrame
-
 	// PickOptions are the branches of a PendingChoiceOptionPick — the
 	// card's own words for each, plus the cards it is about (a pile,
 	// or nothing). Wire-serialised via PendingChoiceView.PickOptions,
@@ -1175,16 +1167,11 @@ type PendingChoice struct {
 	// option_pick.go.
 	PickOptions []ChoiceOption
 
-	// optionPickResume is the server-only continuation for a
-	// PendingChoiceOptionPick: what the chosen index means. Not
-	// serialised. See option_pick.go.
-	optionPickResume *optionPickFrame
-
 	// OptionCarry is the plain data a KEYED option pick's continuation
 	// is handed with the answer (#2854, option_pick_keyed.go); the key
-	// itself is PickThen. Written to a restore point, which is the
-	// point: a prompt with a key and no optionPickResume carries no
-	// closure. Empty on every other prompt.
+	// itself is PickThen. Written to a restore point. Since #4361 S14b
+	// every option pick is keyed, so none holds a closure. Empty on
+	// every other prompt.
 	OptionCarry []uuid.UUID
 
 	// PayCauseController and PayCauseItem are the cause (#4279) a
@@ -1227,46 +1214,54 @@ type PendingChoice struct {
 	// every other prompt.
 	TurnSkipOrder *TurnSkipOrder
 
-	// chooseValueResume is the continuation for a resolution-time
-	// PendingChoiceColor (Wash Out's "return all permanents of the
-	// color of your choice"). nil for the stored form, whose answer is
-	// written onto the source permanent instead. Not serialised. See
-	// color_choice.go.
-	chooseValueResume *chooseValueFrame
-
-	// scryResume is the continuation for a PendingChoiceScry: the
-	// rest of the effect, which must not run until the player has
-	// finished the scry. Preordain's "Scry 2, THEN draw a card" is the
-	// case that forces it — the card you leave on top is the card you
-	// draw, so a draw that happens before the reorder is a different
-	// card. Not serialised to the wire.
-	// scryResume is the continuation for a PendingChoiceScry or a
-	// PendingChoiceSurveil: the rest of the effect, which must not
-	// run until the player has finished the look-at. Preordain's
-	// "Scry 2, THEN draw a card" is the case that forces it — the
-	// card you leave on top is the card you draw, so a draw that
-	// happens before the reorder is a different card. Not
-	// serialised to the wire.
-	scryResume func(g *Game) error
-
-	// scryThen is scryResume as data (#4253 slice 3): a registered tail
-	// run once the look-at is done, so a scry or surveil with a "then"
-	// (Preordain's draw) is a restore point while it waits. Written to a
+	// scryThen is the continuation for a PendingChoiceScry or a
+	// PendingChoiceSurveil (#4253 slice 3): a registered tail run once the
+	// look-at is done, which must not run until the player has finished
+	// it. Preordain's "Scry 2, THEN draw a card" is the case that forces
+	// it — the card you leave on top is the card you draw, so a draw that
+	// happens before the reorder is a different card. A scry or surveil
+	// with a "then" is a restore point while it waits. Written to a
 	// restore point (pendingChoiceSnapshot.ScryThen). Set one or neither.
 	scryThen KeyedTail
 
-	// libraryOrderResume is a PendingChoicePutInLibrary's
-	// continuation: it is handed the validated answer (both lanes
-	// top-first) and places the cards, then runs the rest of the
-	// effect. Captures only IDs and scalars. Not serialised; counted
-	// in the snapshot census. See library_order.go.
-	libraryOrderResume func(g *Game, top, bottom []uuid.UUID) error
+	// pickTail is a keyed choose_cards pick's registered tail as data
+	// (#4253 slice 8): the rest of a keyword action the pick is the middle
+	// of (amass's "choose an Army" hands CR 701.47c's clause on). Written
+	// to a restore point (pendingChoiceSnapshot.PickTail); it never touches
+	// PickThen, which is the pick's own key.
+	pickTail KeyedTail
+	// nameThen is a resolution-time card-name prompt's "then" as data
+	// (#4253 slice 10c): a registered tail told the chosen name as its
+	// Word. Written to a restore point (pendingChoiceSnapshot.NameThen), its
+	// key riding PickThen. The zero tail is the stored form (the name lands
+	// on the source). Since the sweep's second pass (#4253) a
+	// resolution-time colour or creature-type prompt carries one too
+	// (value_then_keyed.go); since #4361 always, valueChosenNothing when
+	// nothing follows the answer.
+	nameThen KeyedTail
 
-	// libraryOrderKeyed is libraryOrderResume as data (#4301): how the
-	// cards move and the registered tail that is the rest of the effect.
-	// Written to a restore point (pendingChoiceSnapshot.LibraryOrder), its
-	// key riding PickThen. Set one of the two or neither.
+	// sourceShield is a choose_source prompt's consequence when it is the
+	// engine's own (#4253 slice 10c, choose_source_keyed.go): the shield the
+	// card described, completed with the source once it is pinned. Written
+	// to a restore point (pendingChoiceSnapshot.SourceShield), its
+	// continuation's key riding PickThen. Nil on every other prompt.
+	sourceShield *SourceShield
+
+	// libraryOrderKeyed is a PendingChoicePutInLibrary's continuation as
+	// data (#4301): how the cards move and the registered tail that is the
+	// rest of the effect. Handed the validated answer (both lanes
+	// top-first), it places the cards, then runs that tail. Written to a
+	// restore point (pendingChoiceSnapshot.LibraryOrder), its key riding
+	// PickThen. (#4361 S17 deleted the closure form, libraryOrderResume.)
+	// See library_order.go.
 	libraryOrderKeyed *libraryOrderKeyed
+
+	// dice is a paused dice roll (#4307, dice_roll.go): the roll, the
+	// rolls still in play and the choosers still to answer, plain data
+	// beside the dice flow's keyed option pick. Written to a restore point
+	// (pendingChoiceSnapshot.DiceRoll). Never mutated once queued, so a
+	// clone shares it.
+	dice *diceRollPause
 
 	// midResolution says the prompt was queued while a stack item was
 	// resolving and is part of that resolution (#1289, CR 608.2 /
@@ -1297,6 +1292,11 @@ type PendingChoice struct {
 // consequence of each answer. Both callbacks receive the live *Game
 // (not a captured one) for the same undo-safety reason
 // StackItem.Effect does. Added in S19 sub-PR 6.
+//
+// No prompt holds one (#4361): payUnlessFrameOf builds it from the
+// prompt's data each time the prompt is read, its branches looked up by
+// the prompt's key, so a table waiting on any pay-unless is a restore
+// point.
 //
 // The two callbacks are the two shapes the same prompt serves:
 //
@@ -1342,25 +1342,8 @@ func (c *PendingChoice) PayTapCost() *TapPermanentsCost {
 	if c == nil {
 		return nil
 	}
-	if c.payUnlessResume == nil {
-		// A keyed prompt rebuilds its clause from PayTap (#4264).
-		return tapCostOf(c.PayTap)
-	}
-	return c.payUnlessResume.tap
-}
-
-// mayCastFrame carries the two branches of a PendingChoiceMayCast.
-// Both receive the live *Game rather than a captured one, on the same
-// undo-safety contract payUnlessFrame and StackItem.Effect follow.
-//
-// onDecline is not optional in practice: cascade's "no" branch still
-// has to bottom the pile, and an offer whose refusal does nothing at
-// all would not need a prompt. It is nil-checked anyway, because a
-// future caller with a genuinely inert "no" shouldn't have to write
-// an empty closure.
-type mayCastFrame struct {
-	onAccept  func(g *Game) error
-	onDecline func(g *Game) error
+	// The prompt rebuilds its clause from PayTap (#4264).
+	return tapCostOf(c.PayTap)
 }
 
 // pickTargetFrame is the continuation for a targeted trigger's
@@ -2525,6 +2508,11 @@ func affectedPlayerForEvent(ev *ReplacementEvent, applicable []activeReplacement
 	switch ev.Kind {
 	case RepEventDraw:
 		return ev.DrawPlayer
+	case RepEventRollDice:
+		// #4307. The player who would roll (CR 616.1). The window sets
+		// mustSettleNow, so this is never asked; the dice flow asks the
+		// roller the order of the choosers itself (dice_roll.go).
+		return ev.RollPlayer
 	case RepEventLife:
 		return ev.LifePlayer
 	case RepEventCounter:
@@ -2742,7 +2730,7 @@ func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, orde
 		applicableByID[a.id] = a
 	}
 	ev := frame.ev
-	g.rememberRedirectOrderLocked(ev, frame.applicable, ordered)
+	g.rememberRedirectOrderLocked(ev, frame.applicable, chooserID, ordered)
 	if g.replacementsAppliedThisEvent == nil {
 		g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
 	}
@@ -2897,6 +2885,11 @@ func (g *Game) applyResolvedReplacementEventLocked(ev *ReplacementEvent) error {
 		// rotation seam has no resume), so no event of this kind ever
 		// queues a prompt, and the turn it describes is begun or
 		// skipped by popExtraTurnLocked itself.
+		return nil
+	case RepEventRollDice:
+		// #4307: unreachable. The window sets mustSettleNow, so no roll
+		// queues a CR 616 prompt; the dice flow asks its own keyed
+		// questions after the window settles (dice_roll.go).
 		return nil
 	case RepEventProduceMana:
 		// #1222: unreachable, and that is the decision rather than an
@@ -3273,6 +3266,11 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// popExtraTurnLocked acts on that verdict itself, inline. The
 		// window never pauses, so nothing resumes into here.
 		return nil
+	case RepEventRollDice:
+		// #4307: RollDiceThenForEffect reads a cancelled roll inline (no
+		// dice, and the tail told so). The window never pauses, so
+		// nothing resumes into here.
+		return nil
 	case RepEventProduceMana:
 		// #1222: a production cannot even reach this function — it
 		// sets mustSettleNow, so it never pauses and nothing resumes
@@ -3344,7 +3342,7 @@ type RevealedHandDiscard struct {
 	// ExiledWith links a PickExile pick's exiled card to this source
 	// OBJECT (CR 607.2a, #3516): the card lands in exile with
 	// Card.ExiledWith naming it, through the one linked-exile route
-	// (ExileLinkedThenForEffect), so a standing cast permission filtered
+	// (ExileLinkedKeyedForEffect), so a standing cast permission filtered
 	// on PermissionFilter.ExiledWithSource finds it. The zero ObjectRef
 	// links nothing. Refused with any other Destination: a discard or a
 	// card left in the hand is not exiled with anything.
@@ -3911,38 +3909,56 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 // queueTriggerOpponentLocked asks a trigger's controller which opponent
 // chooses the open step's targets (#2055). The answer continues the
 // walk on a copy of the frame, with that opponent named. The option
-// pick carries the frame as pickTargetResume too, as a MARKER: it is
-// part of the trigger's announcement, so the drain holds the batch
-// behind it (triggerAnnouncementOpenLocked), an ended turn drops it with
-// the walk, and it belongs to no resolution. Its answer is the option
-// pick's own continuation; ResolvePickTargets never sees it (its kind
-// is option_pick).
+// pick carries the frame as pickTargetResume too: it is part of the
+// trigger's announcement, so the drain holds the batch behind it
+// (triggerAnnouncementOpenLocked), an ended turn drops it with the
+// walk, and it belongs to no resolution. Its answer is the keyed
+// triggerOpponentChooserThen (#4361 S14b), which reads the walk back
+// off the prompt (OptionPicked.walk): the prompt holds no closure, and
+// a restore point writes it with the walk as data. ResolvePickTargets
+// never sees it (its kind is option_pick).
 //
 // Caller must hold g.mu.
 func (g *Game) queueTriggerOpponentLocked(f *pickTargetFrame, eligible []uuid.UUID) {
 	step := f.steps[f.step]
-	frame := f
 	g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  f.source.Controller,
 		Source:   f.source.InstanceID,
 		Question: f.source.Name + ": choose an opponent to choose " + clauseLabel(&step.Clause),
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		walk:     frame,
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				// Dropped unanswered: the controller has left, and the
-				// trigger is not put on the stack (CR 800.4d).
-				return nil
-			}
-			next := clonePickTargetFrame(frame)
-			next.choosers = append(next.choosers, TargetChooser{Mode: step.Mode, Slot: step.Slot, Player: chosen})
-			g.queuePickTargetStepLocked(next)
-			if !g.triggerAnnouncementOpenLocked() {
-				g.runStateChecksLocked()
-			}
-			return nil
-		},
+		walk:     f,
+		ThenKey:  triggerOpponentChooserThen,
 	})
+}
+
+// triggerOpponentChooserThen is the controller's answer to "which
+// opponent chooses" in a trigger's walk (#2055; keyed by #4361 S14b):
+// the walk goes on, on a copy of the frame, with that opponent named
+// for the open step. The walk is the prompt's own pickTargetResume, so
+// the key captures nothing. A dropped prompt (the controller has left)
+// does nothing: the trigger is not put on the stack (CR 800.4d). An
+// on-disk key: never renamed, never reused.
+var triggerOpponentChooserThen OptionPickThen
+
+// Registered from init: the continuation reaches code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	triggerOpponentChooserThen = RegisterOptionPickThen("option-pick/trigger-opponent-chooser", triggerOpponentChooserAnswered)
+}
+
+func triggerOpponentChooserAnswered(g *Game, r OptionPicked) error {
+	chosen, frame := chosenSeat(r), r.walk
+	if chosen == uuid.Nil || frame == nil || frame.currentClause() == nil {
+		return nil
+	}
+	step := frame.steps[frame.step]
+	next := clonePickTargetFrame(frame)
+	next.choosers = append(next.choosers, TargetChooser{Mode: step.Mode, Slot: step.Slot, Player: chosen})
+	g.queuePickTargetStepLocked(next)
+	if !g.triggerAnnouncementOpenLocked() {
+		g.runStateChecksLocked()
+	}
+	return nil
 }
 
 // finishPickTargetLocked runs Build with every step answered and
@@ -4230,264 +4246,30 @@ func (g *Game) answerTriggerPromptLocked(idx int, choice *PendingChoice, apply, 
 	g.runStateChecksLocked()
 }
 
-// QueuePayUnlessForEffect queues an "unless that player pays
-// <cost>" prompt for `chooser`. Called from a triggered ability's
-// Effect at resolution (Rhystic Study: "you may draw a card unless
-// that player pays {1}") — the ability has resolved, and what's
-// left is the payer's decision. `question` is the dialog header;
-// `source` attributes the prompt to the card for the client.
-// onDecline runs when the chooser answers "no" OR answers "yes"
-// but cannot produce the mana (pool + auto-tap).
+// QueuePayUnlessForEffect queues an "unless that player pays <cost>"
+// prompt for `chooser` with nothing hanging off either answer: the
+// PayUnless primitive with no Else. `question` is the dialog header;
+// `source` attributes the prompt to the card for the client. A card
+// with a consequence names it as registered branches instead
+// (QueuePayUnlessKeyedForEffect, QueuePayUnlessPromptKeyedForEffect).
 //
-// A chooser who is no longer seated / is eliminated can't be
-// asked; the consequence runs immediately (the "unless" clause
-// fails when there is nobody to pay). An unparseable cost is a
-// programming error surfaced as EventEffectError, and the
-// consequence runs so the card still does something.
+// The prompt carries no closure (#4361): its key is the engine's own
+// payUnlessNothing, so a table waiting on it is a restore point. A
+// chooser who is no longer seated is not asked, and an unparseable cost
+// is surfaced as EventEffectError.
 //
 // Caller must hold g.mu. Added in S19 sub-PR 6.
-func (g *Game) QueuePayUnlessForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onDecline func(g *Game) error,
-) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline, TurnStep{}, uuid.Nil, nil)
-}
-
-// payUnlessExtras are the parts of a pay-unless only some callers have:
-// a branch for the "yes" (echo's EventEchoPaid) and a non-mana payment.
-type payUnlessExtras struct {
-	onPay    func(g *Game) error
-	action   *PayAction
-	lifeCost int
-	// offer makes the prompt one link of an any-player offer (ADR
-	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
-	offer *AnyPlayerOffer
-	// acceptLabel / declineLabel name the two answers when the card's
-	// words are not "Pay" and "Don't pay" (ADR 0150 §5: "Take 5
-	// damage", "Let them have it"): PendingChoice.AcceptLabel and
-	// DeclineLabel.
-	acceptLabel, declineLabel string
-}
-
-// queuePayUnlessLocked is the one body behind every pay-unless.
-//
-// `owed` is the step the prompt has to be answered in, or the zero
-// TurnStep for one the table may walk past (#997,
-// upkeep_pay_unless.go); `guards` is the stack object whose fate the
-// decline decides, or uuid.Nil for the detached Rhystic shape (#951,
-// counter_unless_paid.go). They are separate because they are facts
-// about different parts of the board — the cursor and the stack. Only
-// an any-player offer about a spell sets both (ADR 0150 decision 2).
-// Both are read LIVE by the gate, so neither can hold the table after
-// the thing it is about has gone.
-func (g *Game) queuePayUnlessLocked(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onDecline func(g *Game) error,
-	owed TurnStep,
-	guards uuid.UUID,
-	tap *TapPermanentsCost,
-	extras ...payUnlessExtras,
-) error {
-	var extra payUnlessExtras
-	if len(extras) > 0 {
-		extra = extras[0]
-	}
-	var parsed ParsedCost
-	var err error
-	if extra.action == nil {
-		parsed, err = ParseCost(cost)
-	} else if extra.action.Kind == PayActionEither && !validEither(extra.action) {
-		// ADR 0187 §5: an either payment needs two or more branches,
-		// none of them an either. A programming error, surfaced once; the
-		// consequence still runs so the card does something.
-		err = ErrInvalidParam
-	}
-	if err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Source:   source,
-			ErrorMsg: "pay-unless: unparseable cost " + cost + ": " + err.Error(),
-		})
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:            PendingChoicePayUnless,
-		Chooser:         chooser,
-		Count:           1,
-		Source:          source,
-		Reason:          question,
-		PayCost:         cost,
-		LifeCost:        extra.lifeCost,
-		OwedInStep:      owed,
-		GuardsStackItem: guards,
-		AnyPlayerOffer:  extra.offer,
-		AcceptLabel:     extra.acceptLabel,
-		DeclineLabel:    extra.declineLabel,
-		payUnlessResume: &payUnlessFrame{
-			cost:      parsed,
-			onDecline: onDecline,
-			onPay:     extra.onPay,
-			tap:       tap,
-			action:    extra.action,
-		},
+func (g *Game) QueuePayUnlessForEffect(chooser, source uuid.UUID, cost, question string) error {
+	return g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{
+		Chooser: chooser, Source: source, Cost: cost, Question: question,
+		Then: payUnlessNothing,
 	})
-	return nil
 }
 
-// QueueMayPayForEffect queues a "you may pay <cost>. If you do,
-// ..." prompt for `chooser` — the same dialog QueuePayUnlessForEffect
-// raises, with the consequence hanging off the other answer.
-// Hashaton, Scarab's Fist ("whenever you discard a creature card,
-// you may pay {2}{U}. If you do, create a token that's a copy of
-// that card") is the shape it was written for.
-//
-// onPay runs only when the chooser answers "Pay" AND the mana
-// actually materialises (pool + auto-tap). A "yes" the chooser can't
-// fund degrades to a decline exactly as it does for pay-unless, and
-// with no onDecline that simply means nothing happens — which is the
-// right reading of "if you do".
-//
-// A chooser who is no longer seated / is eliminated is not asked and
-// onPay does not run. Note this is the OPPOSITE default from
-// pay-unless, and correct for both: the consequence is attached to
-// the answer that can no longer be given.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-) error {
-	return g.queueMayPayLocked(chooser, source, cost, question, onPay, TurnStep{})
-}
-
-// QueueMayPayInThisStepForEffect is QueueMayPayForEffect for a "you may
-// pay. If you do, …" whose consequence is about the step or phase in
-// progress: Hellkite Charger's "untap all attacking creatures and after
-// this phase, there is an additional combat phase". The prompt is
-// anchored to the current step (PendingChoice.OwedInStep, #997's
-// anchor), so the table cannot walk out of the combat before the
-// answer — an answer given in the next phase would add the combat after
-// the wrong one.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayInThisStepForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-) error {
-	return g.queueMayPayLocked(chooser, source, cost, question, onPay, g.currentTurnStepLocked())
-}
-
-// queueMayPayLocked is the one body behind both may-pay doors. `owed`
-// is the step the prompt must be answered in, or the zero TurnStep.
-func (g *Game) queueMayPayLocked(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay func(g *Game) error,
-	owed TurnStep,
-) error {
-	parsed, err := ParseCost(cost)
-	if err != nil {
-		g.EmitEvent(Event{
-			Kind:     EventEffectError,
-			Source:   source,
-			ErrorMsg: "may-pay: unparseable cost " + cost + ": " + err.Error(),
-		})
-		return nil
-	}
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:       PendingChoicePayUnless,
-		Chooser:    chooser,
-		Count:      1,
-		Source:     source,
-		Reason:     question,
-		PayCost:    cost,
-		OwedInStep: owed,
-		payUnlessResume: &payUnlessFrame{
-			cost:  parsed,
-			onPay: onPay,
-		},
-	})
-	return nil
-}
-
-// QueueMayPayElseForEffect is QueueMayPayForEffect with a consequence on
-// BOTH answers: "you may pay <cost>. If you do, <onPay>. If you don't,
-// <onDecline>" — Springheart Nantuko's "if you didn't create a token
-// this way, create a 1/1 green Insect". It is the one pay-unless body
-// with the echo-style onPay beside the decline (payUnlessExtras), so
-// the dialog, the auto-tap and the "a yes you can't fund is a no" rule
-// are pay-unless's own.
-//
-// A chooser who is no longer seated is not asked and onDecline runs,
-// pay-unless's default: the answer that can no longer be given is the
-// payment.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayPayElseForEffect(
-	chooser, source uuid.UUID,
-	cost, question string,
-	onPay, onDecline func(g *Game) error,
-) error {
-	return g.queuePayUnlessLocked(chooser, source, cost, question, onDecline,
-		TurnStep{}, uuid.Nil, nil, payUnlessExtras{onPay: onPay})
-}
-
-// QueueMayCastForEffect queues a "you may cast <card> without paying
-// its mana cost" prompt for `chooser`, asked from inside a resolving
-// ability (cascade). `source` attributes the prompt to the card whose
-// text is asking; `question` is the dialog header.
-//
-// A chooser who is no longer seated / is eliminated is not asked and
-// `onDecline` runs instead — the same default pay-unless takes, and
-// right for the same reason: the consequence attached to the answer
-// that can no longer be given is the one that happens.
-//
-// Caller must hold g.mu. Added in S28.
-func (g *Game) QueueMayCastForEffect(
-	chooser, source, cardID uuid.UUID,
-	question string,
-	onAccept, onDecline func(g *Game) error,
-) error {
-	if p := g.playerByIDLocked(chooser); p == nil || p.Eliminated {
-		if onDecline != nil {
-			return onDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceMayCast,
-		Chooser:     chooser,
-		Count:       1,
-		Source:      source,
-		Reason:      question,
-		MayCastCard: cardID,
-		mayCastResume: &mayCastFrame{
-			onAccept:  onAccept,
-			onDecline: onDecline,
-		},
-	})
-	return nil
-}
-
-// MayCastPrompt is QueueMayCastForEffect's question with its words:
-// the rule it is asked under and the names of its two branches (ADR
-// 0099 §3). Every field but the card and the two branches is optional.
+// MayCastPrompt is a may_cast's question with its words: the rule it is
+// asked under and the names of its two branches (ADR 0099 §3). Every
+// field but the chooser and the card is optional. The answer is a
+// registered key (QueueMayCastKeyedForEffect, #4361).
 type MayCastPrompt struct {
 	Chooser, Source, Card uuid.UUID
 	// Question is the dialog header.
@@ -4497,44 +4279,11 @@ type MayCastPrompt struct {
 	// AcceptLabel / DeclineLabel name the two buttons. Empty renders
 	// the client's defaults.
 	AcceptLabel, DeclineLabel string
-	OnAccept, OnDecline       func(g *Game) error
 	// Private marks a prompt whose words name a card only the chooser
 	// has looked at (a "look at the top card" offer, #3801): the wire
 	// strips the question, the labels and the card from every other
 	// viewer (PendingChoice.PrivateText).
 	Private bool
-}
-
-// QueueMayCastPromptForEffect is QueueMayCastForEffect with the
-// prompt's words. The same kind, the same frame and the same answer;
-// only what the client shows differs. A chooser who has left gets the
-// decline, exactly as QueueMayCastForEffect does.
-//
-// Caller must hold g.mu.
-func (g *Game) QueueMayCastPromptForEffect(p MayCastPrompt) error {
-	if pl := g.playerByIDLocked(p.Chooser); pl == nil || pl.Eliminated {
-		if p.OnDecline != nil {
-			return p.OnDecline(g)
-		}
-		return nil
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:           PendingChoiceMayCast,
-		Chooser:        p.Chooser,
-		Count:          1,
-		Source:         p.Source,
-		Reason:         p.Question,
-		MayCastCard:    p.Card,
-		MayCastKeyword: p.Keyword,
-		AcceptLabel:    p.AcceptLabel,
-		DeclineLabel:   p.DeclineLabel,
-		mayCastResume: &mayCastFrame{
-			onAccept:  p.OnAccept,
-			onDecline: p.OnDecline,
-		},
-		private: p.Private,
-	})
-	return nil
 }
 
 // ResolveMayCast processes the chooser's answer to a
@@ -4569,15 +4318,8 @@ func (g *Game) ResolveMayCast(choiceID, chooserID uuid.UUID, apply bool) error {
 	if choice.Chooser != chooserID {
 		return ErrNotTheChooser
 	}
-	frame := choice.mayCastResume
+	branch := mayCastBranchOf(choice, apply)
 	g.dequeueChoiceLocked(idx)
-	if frame == nil {
-		return nil
-	}
-	branch := frame.onDecline
-	if apply {
-		branch = frame.onAccept
-	}
 	if branch != nil {
 		if err := branch(g); err != nil {
 			g.EmitEvent(Event{
@@ -4841,10 +4583,10 @@ func (g *Game) answerPayUnlessLocked(idx int, choice *PendingChoice, chooserID u
 			g.runStateChecksLocked()
 			return
 		}
-		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, func(g *Game) error {
-			runBranch(frame.onPay)
-			return nil
-		}); err != nil {
+		// #4361 S8: the "yes" waits for the payment as data, the
+		// answered prompt's own (payUnlessPaidTail runs its onPay as
+		// runBranch would).
+		if err := g.payActionLocked(chooserID, choice.Source, action, cardIDs, payUnlessPaidTailOf(choice)); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: choice.Source, ErrorMsg: err.Error()})
 		}
 		g.runStateChecksLocked()
@@ -4908,12 +4650,29 @@ func (g *Game) runPayUnlessBranchLocked(choice *PendingChoice, chooserID uuid.UU
 //     QueueChoiceForEffect refuses an eliminated chooser (#864). A
 //     prompt it queues to a SURVIVOR is fine and stays queued;
 //   - it is only reached for a prompt whose object a survivor still
-//     controls (departedChoiceObjectLocked), so the branch is written
-//     against material CR 800.4a has not just taken off the table.
+//     controls, so the branch is written against material CR 800.4a has
+//     not just taken off the table. #4389 audited that for every caller
+//     of runChoiceDropActionLocked, the only way here:
+//     the departure sweep (dropChoicesForPlayerLocked) asks
+//     departedChoiceActionAllowedLocked, which for pay_unless is
+//     departedChoiceObjectLocked, read again for each prompt just before
+//     its action runs; and dropChoiceLocked, the other caller, is never
+//     handed a pay_unless (every withdrawal site names its kinds: trigger
+//     announcements, loop notices, mode, sacrifice, card-set, option and
+//     target picks, and a paused exit's replacement prompt, and none of
+//     those carries a pay_unless frame). What the gate asks is that the
+//     prompt's Source card is still in some zone, controlled (else owned)
+//     by a seated player who is not the chooser, and that the prompt is
+//     not about the chooser's own pool. It does not ask for the stack or
+//     the battlefield, and must not: the ability, not its source, is
+//     the object that requires the payment (CR 113.7a), so Rhystic Study
+//     destroyed in response still draws on a decline (CR 800.4f).
+//     A new withdrawal site that can reach a pay_unless has to pass the
+//     same gate first.
 //
-// A may-pay frame (QueueMayPayForEffect: "you may pay {2}. If you do,
-// ...") carries no decline branch and nothing happens, which is the
-// right reading of "if you do" for a player who no longer can.
+// A may-pay frame ("you may pay {2}. If you do, ...") carries no decline
+// branch and nothing happens, which is the right reading of "if you do"
+// for a player who no longer can.
 //
 // Caller must hold g.mu.
 func (g *Game) declineDepartedChoiceLocked(c *PendingChoice) {
@@ -5235,12 +4994,8 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	// no source for a prompted sacrifice today, and giving the leg a
 	// continuation must change the sequencing and nothing else.
 	if err := g.withCarriedCauseLocked(cause, func() error {
-		return g.SacrificeThenForEffect(uuid.Nil, cardID, func(g *Game, sacrificed bool) error {
-			var landed []uuid.UUID
-			if sacrificed {
-				landed = []uuid.UUID{cardID}
-			}
-			return g.settleRunLegLocked(run, seat, landed)
+		return g.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{cardID}, KeyedTail{
+			Ref: sacrificeLegSettled, Player: seat, Carry: []uuid.UUID{run},
 		})
 	}); err != nil {
 		return err
@@ -5248,6 +5003,17 @@ func (g *Game) ResolveSacrificeChoice(choiceID, chooserID, cardID uuid.UUID) err
 	g.runStateChecksLocked()
 	return nil
 }
+
+// sacrificeLegSettled settles a sacrifice prompt's leg of its run (#4253):
+// the leg's seat (Player) and run (Carry), told the permanent that really
+// left the battlefield (nothing when it did not). An on-disk key: never
+// renamed, never reused.
+var sacrificeLegSettled = RegisterTail("engine/sacrifice-leg-settled", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.settleRunLegLocked(o.Tail.Carry[0], o.Tail.Player, o.IDs)
+})
 
 // pruneSacrificeChoicesLocked drops any queued sacrifice choice whose
 // chooser has run out of legal permanents, and trims option lists to
@@ -5290,7 +5056,7 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // pick is one over somebody else's hand, a graveyard pick names a
 // GRAVEYARD and a reveal-and-take names a LIBRARY — and the question
 // "is this candidate still there" has exactly one answer for all of
-// them, `chooseCardsFrame.zone`. Writing a pruneDiscardChoicesLocked
+// them, the prompt's live zone (liveZone). Writing a pruneDiscardChoicesLocked
 // beside a pruneGraveyardChoicesLocked would be three copies of one
 // rule, which is the shape the catalog's clone gate exists to refuse.
 //
@@ -5304,8 +5070,8 @@ func (g *Game) pruneSacrificeChoicesLocked() {
 // the whole table behind it (#791's gate) and, since #1027, a run leg
 // that never settles either.
 //
-// A prompt with no zone on its frame is left alone. Zero means "no
-// live re-check" (see chooseCardsFrame.zone): the continuation owns
+// A prompt with no live zone is left alone. Zero means "no live
+// re-check" (see liveZone): the continuation owns
 // what a pick means, the resolver refuses nothing, and there is
 // nothing for this to be right about.
 //
@@ -5437,13 +5203,17 @@ func (g *Game) pruneCardSetChoicesLocked() {
 }
 
 // liveZone is the zone a card-set pick's candidates are re-checked against:
-// its frame's, or, for a keyed pick, the one it was queued with
-// (ChooseLiveZone, #4291). Empty means no live re-check.
+// for an entry card choice and a permanent pick, the zone its kind names
+// (#4361 S7b: the closure frame that held it is gone); for a keyed pick, the
+// one it was queued with (ChooseLiveZone, #4291). Empty means no live
+// re-check.
 func (c *PendingChoice) liveZone() ZoneKind {
-	if c.chooseCardsResume != nil {
-		return c.chooseCardsResume.zone
-	}
-	if isKeyedChooseCards(c) {
+	switch {
+	case isEntryCardChoiceKind(c.Kind):
+		return entryCardChoiceZone(c.Kind)
+	case isPermanentPickKind(c.Kind):
+		return ZoneBattlefield
+	case isKeyedChooseCards(c):
 		return c.ChooseLiveZone
 	}
 	return ""
@@ -5778,23 +5548,19 @@ func (g *Game) ResolveScry(choiceID, chooserID uuid.UUID, bottom, topOrder []uui
 	// The rest of the effect, now that the library is in the order the
 	// player chose. Preordain's draw happens here, which is what makes
 	// "then" mean what it says.
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen)
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
 
-// runScryAfterLocked runs a look-at's continuation, the closure or the
-// keyed tail (#4253 slice 3), reporting a failure as an effect error.
+// runScryAfterLocked runs a look-at's keyed tail (#4253 slice 3), reporting
+// a failure as an effect error. The tail is told how many cards went back
+// on top (TailOutcome.Amount): "for each card you put on top of your
+// library" (Starving Revenant). Zero when nothing was looked at.
 //
 // Caller must hold g.mu.
-func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, resume func(*Game) error, keyed KeyedTail) {
-	var err error
-	if resume != nil {
-		err = resume(g)
-	} else {
-		err = g.runKeyedTailLocked(keyed, nil, 0)
-	}
-	if err != nil {
+func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, keyed KeyedTail, kept int) {
+	if err := g.runKeyedTailLocked(keyed, nil, kept); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Actor:    chooser,
@@ -5803,6 +5569,34 @@ func (g *Game) runScryAfterLocked(chooser, source uuid.UUID, resume func(*Game) 
 		})
 	}
 }
+
+// surveilRouted is a surveil's continuation once every card the player
+// put into the graveyard has settled (#4361 S11c): the EventSurveil, then
+// the rest of the effect (Next) with how many cards stayed on top. Player
+// is the surveilling player, N the size of the surveil (the whole
+// looked-at set, which does not move with a replacement) and Nums[0] the
+// number kept on top. The IDs are what the route really put in the
+// graveyard: a leg a Rest in Peace exiled instead is not in them. An
+// on-disk key: never renamed, never reused.
+var surveilRouted = RegisterTail("engine/surveil-routed", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	g.EmitEvent(Event{
+		Kind:     EventSurveil,
+		Actor:    t.Player,
+		Source:   t.Source,
+		Amount:   len(o.IDs),
+		LookedAt: t.N,
+	})
+	kept := 0
+	if len(t.Nums) > 0 {
+		kept = t.Nums[0]
+	}
+	// The rest of the effect, now that the library is in the order the
+	// player chose and every card that was going to a graveyard has
+	// settled.
+	g.runScryAfterLocked(t.Player, t.Source, nextTailValue(t.Next), kept)
+	return nil
+})
 
 // IsLookAtTopKind reports whether a choice kind belongs to the scry
 // family: the prompts that show their chooser a set of cards and ask
@@ -5886,7 +5680,7 @@ func (g *Game) ResolveLookAtTop(choiceID, chooserID uuid.UUID, topOrder []uuid.U
 	for i := len(topOrder) - 1; i >= 0; i-- {
 		p.Library.PushTop(pulled[topOrder[i]])
 	}
-	g.runScryAfterLocked(chooserID, choice.Source, choice.scryResume, choice.scryThen)
+	g.runScryAfterLocked(chooserID, choice.Source, choice.scryThen, len(topOrder))
 	g.runStateChecksLocked()
 	return nil
 }
@@ -5941,7 +5735,7 @@ func partitionLookedAtCards(p *Player, lookedAt, away, topOrder []uuid.UUID) (ma
 // the keyword itself.
 //
 // #931: the graveyard leg goes through the shared exit primitive
-// (routeAllThenLocked with millRoute, the template it shares with an
+// (a route batch with millRoute, the template it shares with an
 // ordinary library → graveyard move) rather than pushing the cards
 // into the pile by hand. So the CR 614 window opens on each of them —
 // "if a card would be put into a graveyard from anywhere, exile it
@@ -5999,7 +5793,7 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 	// Read off the choice before it goes out of scope: the
 	// continuation below may run an action later, from the resume of a
 	// CR 903.9 prompt, and must not close over a dequeued frame.
-	resume, keyed := choice.scryResume, choice.scryThen
+	keyed := choice.scryThen
 	// The size of the surveil, read off the frame for the same reason
 	// the resume is: the continuation below runs later, possibly from
 	// the resume of a CR 903.9 prompt, with the frame dequeued.
@@ -6032,25 +5826,14 @@ func (g *Game) ResolveSurveil(choiceID, chooserID uuid.UUID, graveyard, topOrder
 	// library-to-graveyard zone move (#2809).
 	r.Mill = false
 	r.Source = choice.Source
-	source := choice.Source
-	err = g.routeAllThenLocked(r, graveyard, func(g *Game, milled []uuid.UUID) error {
-		g.EmitEvent(Event{
-			Kind:   EventSurveil,
-			Actor:  chooserID,
-			Source: source,
-			Amount: len(milled),
-			// `milled` is what the route actually put in the
-			// graveyard — a leg a Rest in Peace exiled instead is not
-			// in it — while the size of the surveil is the whole
-			// looked-at set and does not move with the replacement.
-			LookedAt: lookedAt,
-		})
-		// The rest of the effect, now that the library is in the order
-		// the player chose and every card that was going to a graveyard
-		// has settled.
-		g.runScryAfterLocked(chooserID, source, resume, keyed)
-		return nil
-	})
+	// #4361 S11c: the rest of the surveil is data (surveilRouted), so a
+	// leg paused on a CR 616 prompt is a restore point.
+	after := KeyedTail{Ref: surveilRouted, Player: chooserID, Source: choice.Source, N: lookedAt, Nums: []int{len(topOrder)}}
+	if !keyed.IsZero() {
+		next := copyKeyedTail(keyed)
+		after.Next = &next
+	}
+	err = g.routeAllKeyedLocked(r, graveyard, after)
 	if err != nil {
 		return err
 	}

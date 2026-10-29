@@ -63,12 +63,16 @@ func rottenmouthViperTrigger(g *game.Game, item *game.StackItem) error {
 	if perm.Left {
 		return rottenmouthViper.start(ctx, perm.Counters[rottenmouthBlight])
 	}
-	return g.AddCounterByThenForEffect(item.Controller, item.SourceCardID, rottenmouthBlight, 1, func(g *game.Game, _ int) error {
-		ctx := NewContext(g, item)
-		perm, ok := ctx.SourcePermanent()
-		if !ok {
-			return nil
-		}
-		return rottenmouthViper.start(ctx, perm.Counters[rottenmouthBlight])
-	})
+	return g.AddCounterByKeyedForEffect(item.Controller, item.SourceCardID, rottenmouthBlight, 1, ctx.ItemTail(rottenmouthViperPunish))
 }
+
+// rottenmouthViperPunish is "each opponent loses 4 life for each blight
+// counter unless they sacrifice or discard", read once the counter has
+// landed. An on-disk key: never renamed, never reused.
+var rottenmouthViperPunish = CardTail("rottenmouth-viper/punish", func(ctx *Context, _ game.TailOutcome) error {
+	perm, ok := ctx.SourcePermanent()
+	if !ok {
+		return nil
+	}
+	return rottenmouthViper.start(ctx, perm.Counters[rottenmouthBlight])
+})

@@ -23,10 +23,8 @@ func init() {
 		// and the draw follows it.
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			return Proliferate{Then: func(g *game.Game) error {
-				return g.DrawNForEffect(controller, 1)
-			}}.Apply(ctx)
+			// Keyed (#4253 slice 10b): the draw is the proliferate's tail.
+			return Proliferate{ThenTail: ctx.TailN(thenDrawCards, 1)}.Apply(ctx)
 		},
 	})
 }

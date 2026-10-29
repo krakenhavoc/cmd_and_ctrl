@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Back: Land, pay 3 life or enter tapped (mdfc_lands.go).
 //
 // The put-from-among-them primitive (Armored Skyhunter's shape), with the
-// counters decided by the card picked: CountersFor reads its mana value in
-// the library and seeds three +1/+1 counters onto the entry (CR 122.6,
+// counters decided by the card picked: Counters, gated on its mana value in
+// the library (data, so the pick is a restore point, #4253), seeds three
+// +1/+1 counters onto the entry (CR 122.6,
 // 614.1c), so they are there as it enters and go through any counter
 // replacement. A creature card with mana value 4 or more enters plain. The
 // rest go to the bottom in a random order whether or not a card was put.
@@ -33,13 +34,8 @@ func init() {
 				Max:      1,
 				Optional: true,
 				Label:    "Turntimber Symbiosis — you may put a creature card from among them onto the battlefield",
-				CountersFor: func(g *game.Game, c game.Card) map[string]int {
-					if mv, ok := g.ManaValueForEffect(c); ok && mv <= 3 {
-						return map[string]int{game.CounterPlusOne: 3}
-					}
-					return nil
-				},
-				Then: PutRestOnBottomInRandomOrder,
+				Counters: PutCounters{Kind: game.CounterPlusOne, N: 3, IfManaValueAtMost: true, ManaValueAtMost: 3},
+				ThenTail: PutRestOnBottomInRandomOrderTail,
 			}.Apply(ctx)
 		},
 	})

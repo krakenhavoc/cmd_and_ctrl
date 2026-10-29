@@ -65,44 +65,40 @@ func factOrFictionReveal(ctx *Context) error {
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Fact or Fiction — choose an opponent to separate these cards into two piles",
-		Then:     factOrFictionSplit(revealed),
+		ThenKey:  factOrFictionSplit,
+		Carry:    revealed,
 	}.Apply(ctx)
 }
 
 // factOrFictionSplit hands the revealed cards to the chosen opponent.
-//
-// A package-level function closing over a FROZEN slice of IDs and
-// nothing else — the StackItem.Effect contract, so an undo across
-// either prompt resolves it against the restored game.
-func factOrFictionSplit(revealed []uuid.UUID) func(ctx *Context) error {
-	return func(ctx *Context) error {
-		splitter := ctx.ChosenPlayer()
-		if splitter == uuid.Nil {
-			// Nobody left to separate them (CR 800.4a). The cards
-			// were revealed and the spell still resolves; everything
-			// is one pile and the controller takes it, which is the
-			// only outcome left.
-			return factOrFictionSettle(ctx.Game, revealed, nil)
-		}
-		return PileSplit{
-			Splitter:      splitter,
-			Chooser:       ctx.Controller(),
-			Owner:         ctx.Controller(),
-			SplitQuestion: "Fact or Fiction — separate these five cards into two piles",
-			PickQuestion:  "Fact or Fiction — take one pile into your hand; the other goes to your graveyard",
-			Cards:         revealed,
-			Then:          factOrFictionTake,
-		}.Apply(ctx)
+// Keyed (#4253): the revealed cards ride the prompt as its Carry, so a
+// table waiting on the choice of opponent is a restore point. An on-disk
+// key: never renamed, never reused.
+var factOrFictionSplit = ChoosePlayerThen("option-pick/fact-or-fiction-splitter", func(ctx *Context, splitter uuid.UUID, revealed []uuid.UUID) error {
+	if splitter == uuid.Nil {
+		// Nobody left to separate them (CR 800.4a). The cards were
+		// revealed and the spell still resolves; everything is one pile
+		// and the controller takes it, which is the only outcome left.
+		return factOrFictionSettle(ctx.Game, revealed, nil)
 	}
-}
+	return PileSplit{
+		Splitter:      splitter,
+		Chooser:       ctx.Controller(),
+		Owner:         ctx.Controller(),
+		SplitQuestion: "Fact or Fiction — separate these five cards into two piles",
+		PickQuestion:  "Fact or Fiction — take one pile into your hand; the other goes to your graveyard",
+		Cards:         revealed,
+		// Keyed (#4253 slice 10b): both prompts carry the tail.
+		ThenTail: ctx.Tail(factOrFictionTake),
+	}.Apply(ctx)
+})
 
 // factOrFictionTake is the continuation both prompts lead to: the
-// chosen pile goes to hand, the other to the graveyard.
-//
-// Caller holds g.mu.
-func factOrFictionTake(ctx *Context, taken, left []uuid.UUID) error {
+// chosen pile goes to hand, the other to the graveyard. An on-disk key:
+// never renamed, never reused.
+var factOrFictionTake = PileTail("then/fact-or-fiction-take", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
 	return factOrFictionSettle(ctx.Game, taken, left)
-}
+})
 
 // factOrFictionSettle moves the two piles. A card that is no longer
 // where the split found it is skipped rather than erroring — the

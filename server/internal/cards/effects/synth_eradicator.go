@@ -49,26 +49,34 @@ func synthEradicatorAttack(g *game.Game, item *game.StackItem) error {
 	if p == nil {
 		return nil
 	}
-	ask := func(g *game.Game, exiled uuid.UUID) error {
-		return MayChoice{
-			Question: "Synth Eradicator — get {E}{E}? If you don't, you may play the exiled card this turn.",
-			YesLabel: "Get {E}{E}",
-			NoLabel:  "Play the exiled card this turn",
-			Then:     synthEradicatorAnswer,
-			Carry:    []uuid.UUID{exiled},
-		}.Apply(NewContext(g, item))
-	}
+	ctx := NewContext(g, item)
 	if p.Library == nil || len(p.Library.Cards) == 0 {
-		return ask(g, uuid.Nil)
+		return synthEradicatorAsk(ctx, uuid.Nil)
 	}
 	top := p.Library.Cards[len(p.Library.Cards)-1].InstanceID
-	return g.ExileCardThenForEffect(top, func(g *game.Game, landed bool) error {
-		if !landed {
-			return ask(g, uuid.Nil)
-		}
-		return ask(g, top)
-	})
+	return g.ExileCardKeyedForEffect(top, ctx.ItemTail(synthEradicatorExiled))
 }
+
+// synthEradicatorAsk is the choice over the card exiled, if any.
+func synthEradicatorAsk(ctx *Context, exiled uuid.UUID) error {
+	return MayChoice{
+		Question: "Synth Eradicator — get {E}{E}? If you don't, you may play the exiled card this turn.",
+		YesLabel: "Get {E}{E}",
+		NoLabel:  "Play the exiled card this turn",
+		Then:     synthEradicatorAnswer,
+		Carry:    []uuid.UUID{exiled},
+	}.Apply(ctx)
+}
+
+// synthEradicatorExiled asks once the exile has settled, told the card
+// when it reached exile, keyed (#4253 slice 10a).
+var synthEradicatorExiled = CardTail("then/synth-eradicator-ask", func(ctx *Context, o game.TailOutcome) error {
+	exiled := uuid.Nil
+	if oneWentThisWay(o) {
+		exiled = o.IDs[0]
+	}
+	return synthEradicatorAsk(ctx, exiled)
+})
 
 // synthEradicatorAnswer is the choice after the exile: get {E}{E}, or the
 // exiled card (the carried ID, if any) may be played this turn. Keyed

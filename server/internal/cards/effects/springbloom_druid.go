@@ -27,7 +27,7 @@ import (
 // basics would have entered BEFORE the sacrifice, and the prompt would
 // have offered them as the land to sacrifice. #1019 gave the prompt a
 // continuation, so the search is the run's continuation
-// (PlayerSacrificesThenForEffect, ADR 0013 §5x) and the ordering falls
+// (PlayerSacrificesThenKeyedForEffect, ADR 0013 §5x) and the ordering falls
 // out. Planar Engineering is the same "sacrifice, THEN search" shape
 // and was migrated with the mechanic.
 //

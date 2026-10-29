@@ -134,15 +134,20 @@ func gideonBlackbladePlusOne(g *game.Game, item *game.StackItem) error {
 	return PickOption{
 		Question: "Gideon Blackblade — the creature gains your choice of vigilance, lifelink, or indestructible until end of turn",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(gideonBlackbladeKeywords) {
-				return nil
-			}
-			return GrantKeywordUntilEOT{
-				Target:   target,
-				Keywords: []string{gideonBlackbladeKeywords[index]},
-				Label:    "Gideon Blackblade — gains " + gideonBlackbladeKeywords[index] + " until end of turn",
-			}.Apply(ctx)
-		},
+		ThenKey:  gideonBlackbladeChosen,
+		Carry:    []uuid.UUID{target},
 	}.Apply(ctx)
 }
+
+// gideonBlackbladeChosen is the chosen keyword granted to the target until
+// end of turn, keyed (#4253): the target rides the prompt as its carry.
+var gideonBlackbladeChosen = OptionPickThen("option-pick/gideon-blackblade-keyword", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(gideonBlackbladeKeywords) || len(r.Carry) == 0 {
+		return nil
+	}
+	return GrantKeywordUntilEOT{
+		Target:   r.Carry[0],
+		Keywords: []string{gideonBlackbladeKeywords[r.Index]},
+		Label:    "Gideon Blackblade — gains " + gideonBlackbladeKeywords[r.Index] + " until end of turn",
+	}.Apply(ctx)
+})

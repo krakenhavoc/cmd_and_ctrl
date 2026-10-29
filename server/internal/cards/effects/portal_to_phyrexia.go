@@ -17,7 +17,7 @@ import (
 // The entry trigger is Ember Swallower's edict with opponents only:
 // each opponent names three creatures, one opponent at a time in APNAP
 // order, and every named creature is sacrificed together once the last
-// has chosen (game.PlayersSacrificeThenForEffect, CR 101.4, #3664). A
+// has chosen (game.PlayersSacrificeThenKeyedForEffect, CR 101.4, #3664). A
 // player with fewer than three creatures sacrifices what they have (CR
 // 701.21a). Not targeted, so a hexproof creature is as sacrificeable as
 // any other.
@@ -61,8 +61,9 @@ func portalToPhyrexiaEdict(g *game.Game, item *game.StackItem) error {
 			asks = append(asks, p.ID, p.ID, p.ID)
 		}
 	}
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, asks,
-		sacrificeSpec("a creature", Creature()), "Sacrifice a creature", nil)
+	g.PlayersSacrificeForEffect(item.SourceCardID, asks,
+		sacrificeSpec("a creature", Creature()), "Sacrifice a creature")
+	return nil
 }
 
 // portalToPhyrexiaReanimate is the upkeep trigger's body.
@@ -78,15 +79,22 @@ func portalToPhyrexiaReanimate(g *game.Game, item *game.StackItem) error {
 	if target == uuid.Nil {
 		return nil
 	}
-	return g.PutOntoBattlefieldTogetherThenForEffect(
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(
 		[]game.BatchEntry{{CardID: target, From: game.ZoneGraveyard}},
 		game.ZoneEntryOptions{Controller: item.Controller},
-		func(g *game.Game, entered []uuid.UUID) error {
-			if len(entered) == 0 {
-				return nil
-			}
-			return (ScopedEffectFor{Target: entered[0], Mods: []game.Mod{game.AddSubtypesMod(g.TextReaderForEffect(item).TextSubtypes("Phyrexian")...)},
-				Duration: g.PinnedTo(game.IndefiniteDuration(), entered[0]),
-				Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(NewContext(g, item))
-		})
+		ctx.ItemTail(portalToPhyrexiaPhyrexian))
 }
+
+// portalToPhyrexiaPhyrexian is "it's a Phyrexian in addition to its other
+// types" as a keyed tail (#4253 slice 6): "Phyrexian" is a word of the
+// Portal's text, which the asking item that rides the tail gives back. An
+// on-disk key.
+var portalToPhyrexiaPhyrexian = CardTail("portal-to-phyrexia/phyrexian", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	g := ctx.Game
+	return (ScopedEffectFor{Target: o.IDs[0], Mods: []game.Mod{game.AddSubtypesMod(g.TextReaderForEffect(ctx.Item).TextSubtypes("Phyrexian")...)},
+		Duration: g.PinnedTo(game.IndefiniteDuration(), o.IDs[0]),
+		Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(ctx)
+})

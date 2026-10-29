@@ -56,9 +56,15 @@ func (r ReturnOneYouControl) Apply(ctx *Context) error {
 			}
 			return out, 1, 1
 		},
-		Then: bouncePickedToHand,
+		Keyed: bouncedChosen,
 	}.Apply(ctx)
 }
+
+// bouncedChosen is the chosen permanent returning to its owner's hand,
+// keyed (#4290): ReturnOneYouControl's and Cloudstone Curio's.
+var bouncedChosen = RegisterPermanentsPick("prompt-run/return-chosen-permanent-to-hand", PermanentsDef{
+	Then: bouncePickedToHand,
+})
 
 // bouncePickedToHand is a ChoosePermanents.Then that returns every
 // picked permanent to its owner's hand — the continuation

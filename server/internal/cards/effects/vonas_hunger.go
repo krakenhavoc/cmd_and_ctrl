@@ -50,7 +50,7 @@ func init() {
 					Player:     p.ID,
 					Question:   vonasHungerQuestion(half),
 					Candidates: vonasHungerCandidates(half),
-					Sacrifice:  true,
+					Keyed:      vonasHungerSacrificed,
 				}).Apply(ctx); err != nil {
 					return err
 				}
@@ -59,6 +59,9 @@ func init() {
 		},
 	})
 }
+
+// vonasHungerSacrificed is the chosen creatures sacrificed, keyed (#4290).
+var vonasHungerSacrificed = RegisterPermanentsPick("prompt-run/vonas-hunger-sacrifice", PermanentsDef{Sacrifice: true})
 
 func vonasHungerQuestion(half bool) string {
 	if half {

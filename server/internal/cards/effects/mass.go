@@ -57,31 +57,22 @@ type massEffect struct {
 	// nothing else. Applied before the move, so an indestructible
 	// permanent is neither swept nor counted. A permanent the CR 614
 	// window saves LATER — indestructible granted mid-window, "it
-	// isn't destroyed instead" — is dropped by moveThen's landed list
-	// instead (#815). Optional; nil means the verb moves everything it
-	// matched.
+	// isn't destroyed instead" — is dropped by the keyed batch's landed
+	// list instead (#815). Optional; nil means the verb moves everything
+	// it matched.
 	narrow func(g *game.Game, ids []uuid.UUID) []uuid.UUID
-	// move performs the batched zone change and returns how many
-	// cards actually moved. Set by a verb whose `then` is nil, or
-	// whose move cannot pause; moveThen is the alternative.
+	// move performs the batched zone change, fire-and-forget: nothing is
+	// waiting on what moved, so a replacement's prompt lands its own card
+	// later without holding the rest of the board up.
 	move func(g *game.Game, ids []uuid.UUID) int
-	// moveThen is move for a verb that owes its `then` a CONTINUATION
-	// rather than a return value, because a leg of the batch can pause
-	// on a player prompt and the number is not knowable until it is
-	// answered. It reports the cards that actually LANDED, not just how
-	// many, so `swept` can be narrowed to them (#815, #866).
-	//
-	// Every verb whose `then` is set uses this form; the fire-and-
-	// forget `move` is what a verb with nothing waiting on the count
-	// keeps.
-	//
-	// Exactly one of move / moveThen is set.
-	moveThen func(g *game.Game, ids []uuid.UUID, then func(g *game.Game, moved []uuid.UUID) error) error
-	// then is the card's "…for each permanent destroyed this way"
-	// clause. Receives the pre-move copies and the count that actually
-	// moved — of everything that was swept under `move`, and of
-	// exactly what LANDED under `moveThen`, which knows.
-	then func(ctx *Context, swept []game.Card, moved int) error
+	// moveKeyed is the keyed door (#4253 slice 10a): the verb's batch
+	// with its "for each permanent <moved> this way" clause as a
+	// registered tail (MassTail), told the cards that actually LANDED
+	// (#815, #866), because a leg of the batch can pause on a player
+	// prompt and the set is not knowable until it is answered. Set, with
+	// tail, when the verb's ThenTail is; otherwise move is used.
+	moveKeyed func(g *game.Game, ids []uuid.UUID, tail game.KeyedTail) error
+	tail      game.KeyedTail
 }
 
 func (m massEffect) apply(ctx *Context) error {
@@ -92,45 +83,15 @@ func (m massEffect) apply(ctx *Context) error {
 	}
 	if m.narrow != nil {
 		ids = m.narrow(ctx.Game, ids)
-		swept = keepCards(swept, ids)
 	}
-	if m.moveThen != nil {
-		// The context is rebuilt inside the continuation from the live
-		// *Game, the contract every continuation in the engine follows
-		// — an undo restores this game's fields in place, so a captured
-		// *Game would be the wrong one.
-		item := ctx.Item
-		return m.moveThen(ctx.Game, ids, func(g *game.Game, moved []uuid.UUID) error {
-			if m.then == nil {
-				return nil
-			}
-			// `swept` narrows to what actually moved, so the clause that
-			// reads the CARDS and the clause that reads the COUNT agree
-			// — a survivor must not be paid out for either way.
-			return m.then(NewContext(g, item), keepCards(swept, moved), len(moved))
-		})
+	if m.moveKeyed != nil {
+		// #4253 slice 10a: the clause is data on the batch, so a leg's
+		// prompt is a restore point. The tail reads the batch's
+		// pre-move copies itself (MassTail).
+		return m.moveKeyed(ctx.Game, ids, m.tail)
 	}
-	moved := m.move(ctx.Game, ids)
-	if m.then == nil {
-		return nil
-	}
-	return m.then(ctx, swept, moved)
-}
-
-// keepCards narrows a swept set to the cards named in `keep`,
-// preserving the swept order.
-func keepCards(swept []game.Card, keep []uuid.UUID) []game.Card {
-	want := make(map[uuid.UUID]bool, len(keep))
-	for _, id := range keep {
-		want[id] = true
-	}
-	kept := swept[:0:0]
-	for _, c := range swept {
-		if want[c.InstanceID] {
-			kept = append(kept, c)
-		}
-	}
-	return kept
+	m.move(ctx.Game, ids)
+	return nil
 }
 
 // MatchingBattlefield resolves a predicate against the battlefield
@@ -199,17 +160,17 @@ type DestroyAllMatching struct {
 	// a forgotten field.
 	Match CardPredicate
 
-	// Then is the "for each permanent destroyed this way" clause.
-	// `swept` holds the pre-move copies of the permanents that were
-	// actually DESTROYED and `destroyed` is how many of them there
-	// were, so the two always describe the same set. Optional.
+	// ThenTail is the "for each permanent destroyed this way" clause, a
+	// registered tail (MassTail, #4253 slice 10a) told the pre-move
+	// copies of the permanents that were actually DESTROYED, so a table
+	// waiting on a leg's prompt is a restore point. Optional.
 	//
 	// #815: it runs from a CONTINUATION, which means it may run an
 	// action later than the sweep — a commander caught in the wipe
 	// stops to answer a replacement's prompt, and the number is not
-	// knowable until they do. Write it as a clause that acts on what it is given, not
-	// as the next line of the card.
-	Then func(ctx *Context, swept []game.Card, destroyed int) error
+	// knowable until they do. Write it as a clause that acts on what it
+	// is given, not as the next line of the card.
+	ThenTail game.KeyedTail
 
 	// CantBeRegenerated is the clause Damnation, Damn, Day of
 	// Judgment, Decree of Pain, Winds of Rath and Shatterstorm print:
@@ -223,20 +184,16 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 	m := massEffect{
 		match:  d.Match,
 		narrow: (*game.Game).DestructibleForEffect,
-		then:   d.Then,
 	}
-	if d.Then == nil {
-		// Nothing is waiting on the count, so the sweep stays
-		// fire-and-forget: every leg is destroyed on this line, and a
-		// replacement's prompt lands its own card later without
-		// holding the rest of the board up.
-		m.move = func(g *game.Game, ids []uuid.UUID) int {
-			return g.DestroyPermanentsForEffect(ids, opts)
+	if !d.ThenTail.IsZero() {
+		m.moveKeyed = func(g *game.Game, ids []uuid.UUID, tail game.KeyedTail) error {
+			return g.DestroyPermanentsKeyedForEffect(ids, tail, opts)
 		}
-	} else {
-		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
-			return g.DestroyPermanentsThenForEffect(ids, then, opts)
-		}
+		m.tail = d.ThenTail
+		return m.apply(ctx)
+	}
+	m.move = func(g *game.Game, ids []uuid.UUID) int {
+		return g.DestroyPermanentsForEffect(ids, opts)
 	}
 	return m.apply(ctx)
 }
@@ -255,32 +212,26 @@ func (d DestroyAllMatching) Apply(ctx *Context) error {
 type ExileAllMatching struct {
 	Match CardPredicate
 
-	// Then is the "for each card exiled this way" clause. `swept` holds
-	// the pre-move copies of the cards that actually reached EXILE and
-	// `exiled` is how many of them there were, so the two always
-	// describe the same set. Optional.
+	// ThenTail is the "for each card exiled this way" clause, a
+	// registered tail (MassTail, #4253 slice 10a) told the pre-move
+	// copies of the cards that actually reached EXILE. Optional.
 	//
 	// #866: it runs from a CONTINUATION, exactly as
 	// DestroyAllMatching's does — a leg that stops to answer a
 	// replacement's prompt makes the number unknowable until it does.
 	// A commander is in it: it is exiled first and CR 903.9a asks its
 	// owner afterwards (ADR 0115).
-	Then func(ctx *Context, swept []game.Card, exiled int) error
+	ThenTail game.KeyedTail
 }
 
 func (e ExileAllMatching) Apply(ctx *Context) error {
-	m := massEffect{match: e.Match, then: e.Then}
-	if e.Then == nil {
-		// Nothing is waiting on the count, so the sweep stays
-		// fire-and-forget: every leg is exiled on this line, and a
-		// replacement's prompt lands its own card later without
-		// holding the rest of the board up.
-		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.ExileCardsForEffect(ids) }
-	} else {
-		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
-			return g.ExileCardsThenForEffect(ids, then)
-		}
+	m := massEffect{match: e.Match}
+	if !e.ThenTail.IsZero() {
+		m.moveKeyed = (*game.Game).ExileCardsKeyedForEffect
+		m.tail = e.ThenTail
+		return m.apply(ctx)
 	}
+	m.move = func(g *game.Game, ids []uuid.UUID) int { return g.ExileCardsForEffect(ids) }
 	return m.apply(ctx)
 }
 
@@ -295,21 +246,21 @@ func (e ExileAllMatching) Apply(ctx *Context) error {
 type BounceAllMatching struct {
 	Match CardPredicate
 
-	// Then is the "for each permanent returned this way" clause, with
-	// the same continuation shape and the same CR 400.7 reading as
-	// ExileAllMatching's. Optional.
-	Then func(ctx *Context, swept []game.Card, bounced int) error
+	// ThenTail is the "for each permanent returned this way" clause, a
+	// registered tail (MassTail, #4253 slice 10a) told the permanents
+	// returned this way, with the same continuation shape and the same
+	// CR 400.7 reading as ExileAllMatching's. Optional.
+	ThenTail game.KeyedTail
 }
 
 func (b BounceAllMatching) Apply(ctx *Context) error {
-	m := massEffect{match: b.Match, then: b.Then}
-	if b.Then == nil {
-		m.move = func(g *game.Game, ids []uuid.UUID) int { return g.BounceCardsToHandForEffect(ids) }
-	} else {
-		m.moveThen = func(g *game.Game, ids []uuid.UUID, then func(*game.Game, []uuid.UUID) error) error {
-			return g.BounceCardsToHandThenForEffect(ids, then)
-		}
+	m := massEffect{match: b.Match}
+	if !b.ThenTail.IsZero() {
+		m.moveKeyed = (*game.Game).BounceCardsToHandKeyedForEffect
+		m.tail = b.ThenTail
+		return m.apply(ctx)
 	}
+	m.move = func(g *game.Game, ids []uuid.UUID) int { return g.BounceCardsToHandForEffect(ids) }
 	return m.apply(ctx)
 }
 
@@ -327,23 +278,19 @@ type ReturnAllToHand struct {
 	// processed. IDs that are not on the battlefield are skipped.
 	Cards []uuid.UUID
 
-	// Then is the "for each permanent returned this way" clause, run
-	// from the bounce's continuation for the reason
-	// BounceAllMatching.Then is (#866). Optional.
-	Then func(ctx *Context, bounced int) error
+	// ThenTail is the "for each permanent returned this way" clause, a
+	// registered tail (#4253 slice 10a) told the cards returned this way
+	// as TailOutcome.IDs, run from the bounce's continuation for the
+	// reason BounceAllMatching.ThenTail is (#866). Optional.
+	ThenTail game.KeyedTail
 }
 
 func (r ReturnAllToHand) Apply(ctx *Context) error {
-	if r.Then == nil {
-		ctx.Game.BounceCardsToHandForEffect(r.Cards)
-		return nil
+	if !r.ThenTail.IsZero() {
+		return ctx.Game.BounceCardsToHandKeyedForEffect(r.Cards, r.ThenTail)
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains.
-	item := ctx.Item
-	return ctx.Game.BounceCardsToHandThenForEffect(r.Cards, func(g *game.Game, bounced []uuid.UUID) error {
-		return r.Then(NewContext(g, item), len(bounced))
-	})
+	ctx.Game.BounceCardsToHandForEffect(r.Cards)
+	return nil
 }
 
 // --- helpers the mass cards share --------------------------------

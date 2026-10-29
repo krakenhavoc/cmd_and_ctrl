@@ -11,10 +11,10 @@ import (
 // legs and whose consequence are plain data and a KEY rather than closures
 // (#4264), so a table waiting on any seat's leg is a restore point.
 //
-// The closure form (any_player_pays_each.go) collects the seats' picks
-// with ADR 0175's ordered collector, whose every leg's continuation is a
+// The closure form (gone since #4361 S7b) collected the seats' picks with
+// ADR 0175's ordered collector, whose every leg's continuation was a
 // closure over the legs still to come, the picks so far, the objects'
-// epochs and the card's OnUnsaved. All of that is data a leg can carry:
+// epochs and the card's consequence. All of that is data a leg can carry:
 //
 //   - the objects, each with the epoch it had when the offer was made, and
 //     the picks of the seats already asked, ride the offer
@@ -237,9 +237,14 @@ func (g *Game) queueNextAnyPlayerEachLegLocked(st eachOfferState, offer *AnyPlay
 			ChooseMax:       hi,
 			ChooseSuggested: g.suggestUnchosenOwnLocked(who, cards, hi, earlier),
 			AnyPlayerOffer:  leg,
-			PickThen:        st.key,
-			OptionCarry:     copyUUIDs(st.carry),
-			Asked:           copyAskedItem(st.asked),
+			// #4361 S7b: re-checked against the battlefield, each object
+			// as the object it was (pickStillInPickZoneLocked), and pruned
+			// off the open leg as the board moves, as the closure
+			// collector's leg was.
+			ChooseLiveZone: ZoneBattlefield,
+			PickThen:       st.key,
+			OptionCarry:    copyUUIDs(st.carry),
+			Asked:          copyAskedItem(st.asked),
 		})
 		return nil
 	}

@@ -33,24 +33,29 @@ func init() {
 				return GainLife{Amount: ctx.X()}.Apply(ctx)
 			}),
 			Instruction(func(ctx *Context) error {
-				item, x := ctx.Item, ctx.X()
-				return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
-					Controller: item.Controller,
+				x := ctx.X()
+				return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
+					Controller: ctx.Item.Controller,
 					Source:     ctx.Source(),
 					Groups:     []game.TokenGroup{{Template: ctx.TextToken(PhyrexianMiteToken()), Count: x}},
-				}, func(g *game.Game, created []uuid.UUID) error {
-					if x < 5 {
-						return nil
-					}
-					spared := make(map[uuid.UUID]bool, len(created))
-					for _, id := range created {
-						spared[id] = true
-					}
-					return DestroyAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-						return c.IsCreature() && !spared[c.InstanceID]
-					}}.Apply(NewContext(g, item))
-				})
+				}, ctx.TailN(whiteSunsTwilightSweep, x))
 			}),
 		),
 	})
 }
+
+// whiteSunsTwilightSweep is "if X is 5 or more, destroy all other creatures"
+// as a keyed tail (#4253 slice 6): X is the tail's N, the Mites that were
+// created are the ones spared. An on-disk key.
+var whiteSunsTwilightSweep = CardTail("white-suns-twilight/destroy-all-other-creatures", func(ctx *Context, o game.TailOutcome) error {
+	if o.Tail.N < 5 {
+		return nil
+	}
+	spared := make(map[uuid.UUID]bool, len(o.IDs))
+	for _, id := range o.IDs {
+		spared[id] = true
+	}
+	return DestroyAllMatching{Match: func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
+		return c.IsCreature() && !spared[c.InstanceID]
+	}}.Apply(ctx)
+})

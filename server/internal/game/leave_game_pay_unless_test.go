@@ -28,7 +28,7 @@ import (
 func queueDepartureTax(t *testing.T, g *Game, chooser, source uuid.UUID, then func(*Game) error) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(chooser, source, "{1}",
+		if err := queuePayUnlessHooked(g, chooser, source, "{1}",
 			"Rhystic Study — pay {1}?", then); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
@@ -90,10 +90,11 @@ func TestDroppedPayUnlessOnTheirOwnObjectRunsNothing(t *testing.T) {
 			Source:   sourceID,
 			Cost:     "{1}",
 			Question: "Mystic Remora — cumulative upkeep {1}",
-			OnDecline: func(*Game) error {
+			Then:     testPayUnlessHook,
+			Carry: payUnlessHookCarry(nil, func(*Game) error {
 				ran = true
 				return nil
-			},
+			}),
 		}); err != nil {
 			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}
@@ -120,12 +121,12 @@ func TestTheDeclineConsequenceNeverQueuesToTheDepartedSeat(t *testing.T) {
 	sourceID := departureTestSource(g, taxer.ID, "Rhystic Study")
 
 	queueDepartureTax(t, g, leaver.ID, sourceID, func(g *Game) error {
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser: leaver.ID, Source: sourceID, Question: "asked of the seat that left",
-		})
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		}, nil, nil)
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser: survivor.ID, Source: sourceID, Question: "asked of a seat still here",
-		})
+		}, nil, nil)
 		return nil
 	})
 	if err := g.Concede(leaver.ID); err != nil {
@@ -199,13 +200,13 @@ func TestCrossTableConfirmIsReassignedWhenItsAskerSurvives(t *testing.T) {
 
 	var own, cross uuid.UUID
 	g.WithWriteLock(func() {
-		own = g.QueueConfirmForEffect(ConfirmPrompt{
+		own = queueConfirmHooked(g, ConfirmPrompt{
 			Chooser: leaver.ID, Source: sourceID, Question: "a question about your own cards",
-		})
-		cross = g.QueueConfirmForEffect(ConfirmPrompt{
+		}, nil, nil)
+		cross = queueConfirmHooked(g, ConfirmPrompt{
 			Chooser: leaver.ID, FromPlayer: asker.ID, Source: sourceID,
 			Question: "a question about the asker's cards",
-		})
+		}, nil, nil)
 	})
 	if c := findChoice(g, own); c == nil || c.FromPlayer != leaver.ID {
 		t.Fatalf("setup: a defaulted FromPlayer must be the chooser: %+v", c)

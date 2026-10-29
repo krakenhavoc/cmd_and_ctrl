@@ -69,10 +69,9 @@ func init() {
 						Cards:    creatures,
 						Min:      0,
 						Max:      2,
-						Zone:     game.ZoneBattlefield,
-						Then: func(g *game.Game, keep []uuid.UUID) error {
-							return b10DestroyAllCreaturesExcept(NewContext(g, item), keep)
-						},
+						LiveZone: game.ZoneBattlefield,
+						ThenKey:  mountDoomKeep,
+						Asked:    game.NewAskedItem(item),
 					})
 					return nil
 				},
@@ -80,3 +79,9 @@ func init() {
 		},
 	})
 }
+
+// mountDoomKeep is the creatures kept, keyed (#4253): the asking item rides
+// the prompt as data, and everything else is destroyed.
+var mountDoomKeep = askedPick("choose-cards/mount-doom-keep", func(ctx *Context, r game.CardsChosen) error {
+	return b10DestroyAllCreaturesExcept(ctx, r.Picked)
+})

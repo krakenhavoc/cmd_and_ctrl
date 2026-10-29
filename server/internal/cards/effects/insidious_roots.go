@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -43,26 +41,28 @@ func init() {
 
 // insidiousRootsGrow is the trigger's resolution.
 func insidiousRootsGrow(g *game.Game, item *game.StackItem) error {
-	controller := item.Controller
-	// "Plant" is a word of the source's text, read as the trigger
-	// resolves (CR 612.2, #3984).
-	plant := g.TextReaderForEffect(item).TextSubtype("Plant")
-	return g.CreateTokensThenForEffect(game.TokenCreation{
-		Controller: controller,
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
+		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups:     []game.TokenGroup{{Template: g.TextReaderForEffect(item).TokenThroughText(TokenCard("0/1 green Plant")), Count: 1}},
-	}, func(g *game.Game, _ []uuid.UUID) error {
-		// asGroupMember (#1463): "each Plant you control" is a set read
-		// off the board, not "this permanent".
-		ctx := NewContext(g, item).asGroupMember()
-		for _, c := range g.BattlefieldCardsForEffect() {
-			if c.Controller != controller || !c.HasSubtype(plant) {
-				continue
-			}
-			if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}, NewContext(g, item).ItemTail(insidiousRootsCounters))
 }
+
+// insidiousRootsCounters is "then put a +1/+1 counter on each Plant you
+// control" as a keyed tail (#4253 slice 6): "Plant" is a word of the
+// source's text, which the asking item that rides the tail gives back. An
+// on-disk key.
+var insidiousRootsCounters = CardTail("insidious-roots/counter-on-each-plant", func(ctx *Context, _ game.TailOutcome) error {
+	g, controller := ctx.Game, ctx.Controller()
+	plant := g.TextReaderForEffect(ctx.Item).TextSubtype("Plant")
+	member := ctx.asGroupMember()
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller != controller || !c.HasSubtype(plant) {
+			continue
+		}
+		if err := (AddCounter{Target: c.InstanceID, Kind: game.CounterPlusOne, N: 1}).Apply(member); err != nil {
+			return err
+		}
+	}
+	return nil
+})

@@ -72,7 +72,8 @@ func kozilekTargetPlayers(ctx *Context) []uuid.UUID {
 }
 
 // kozilekDrawPerManifest is "for each card manifested this way, you
-// draw a card".
-func kozilekDrawPerManifest(ctx *Context, manifested []uuid.UUID) error {
-	return DrawCards{N: len(manifested)}.Apply(ctx)
-}
+// draw a card", keyed (#4290).
+var kozilekDrawPerManifest = RegisterManifestThen("prompt-run/kozilek-the-broken-reality-draw",
+	func(ctx *Context, manifested []uuid.UUID) error {
+		return DrawCards{N: len(manifested)}.Apply(ctx)
+	})

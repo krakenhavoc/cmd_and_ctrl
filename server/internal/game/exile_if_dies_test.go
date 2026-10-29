@@ -302,23 +302,17 @@ func TestDealDamageEachEachTellsEachRecipient(t *testing.T) {
 	b := pushScopedTestCreature(g, g.Seats[1].ID, 2, 4)
 	gone := uuid.New()
 	victim := g.Seats[0].ID
-	got := map[uuid.UUID]int{}
-	total := -1
+	testEachRecipientHeard = map[uuid.UUID]int{}
+	testEachTotalHeard = -1
 	g.WithWriteLock(func() {
 		g.PreventNextDamageThisTurnForEffect(uuid.Nil, b, 2, false, "shield")
-		err := g.DealDamageEachEachThenForEffect(uuid.New(), []uuid.UUID{a, gone, b, victim}, 3,
-			func(_ *Game, target uuid.UUID, dealt int) error {
-				got[target] = dealt
-				return nil
-			},
-			func(_ *Game, n int) error {
-				total = n
-				return nil
-			})
+		err := g.DealDamageEachEachKeyedForEffect(uuid.New(), []uuid.UUID{a, gone, b, victim}, 3,
+			KeyedTail{Ref: testEachRecipient}, KeyedTail{Ref: testEachTotal})
 		if err != nil {
 			t.Fatalf("deal: %v", err)
 		}
 	})
+	got, total := testEachRecipientHeard, testEachTotalHeard
 	if got[a] != 3 || got[b] != 1 || got[victim] != 3 {
 		t.Errorf("per recipient %v, want a=3 b=1 victim=3", got)
 	}
@@ -329,3 +323,22 @@ func TestDealDamageEachEachTellsEachRecipient(t *testing.T) {
 		t.Errorf("total %d, want 7", total)
 	}
 }
+
+// testEachRecipientHeard and testEachTotalHeard are what the per-recipient
+// and total tails of TestDealDamageEachEachTellsEachRecipient were told.
+var (
+	testEachRecipientHeard map[uuid.UUID]int
+	testEachTotalHeard     int
+)
+
+var testEachRecipient = RegisterTail("test/4253-damage-each-recipient", func(_ *Game, o TailOutcome) error {
+	if len(o.IDs) == 1 {
+		testEachRecipientHeard[o.IDs[0]] = o.Amount
+	}
+	return nil
+})
+
+var testEachTotal = RegisterTail("test/4253-damage-each-total", func(_ *Game, o TailOutcome) error {
+	testEachTotalHeard = o.Amount
+	return nil
+})

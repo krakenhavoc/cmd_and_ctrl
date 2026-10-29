@@ -126,7 +126,7 @@ func TestDispatchStillTakesTheAnswerAndTheUnstickVerbs(t *testing.T) {
 func TestDispatchDoesNotGateOnAPayUnlessPrompt(t *testing.T) {
 	g := newGame(t)
 	g.WithWriteLock(func() {
-		if err := g.QueuePayUnlessForEffect(g.Seats[1].ID, uuid.New(), "{1}", "tax", nil); err != nil {
+		if err := g.QueuePayUnlessForEffect(g.Seats[1].ID, uuid.New(), "{1}", "tax"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

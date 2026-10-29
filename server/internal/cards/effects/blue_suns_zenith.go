@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Blue Sun's Zenith — Instant {X}{U}{U}{U}:
 //
@@ -41,9 +45,7 @@ func init() {
 					return nil
 				}
 				owner := ctx.Item.Owner
-				return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-					return g.ShuffleLibraryForEffect(owner)
-				})
+				return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 			}),
 		),
 	})

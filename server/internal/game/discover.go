@@ -260,31 +260,38 @@ func (g *Game) grantDiscoverCastLocked(player, source, cardID uuid.UUID, n int) 
 
 // putDiscoveredIntoHandLocked routes the discovered card from exile to
 // its owner's hand through the one exit primitive, then announces the
-// completed discover and runs `after`. A card that is no longer in
-// exile is not moved; the discover still completes.
+// completed discover. A card that is no longer in exile is not moved;
+// the discover still completes.
+//
+// The announcement is a registered tail (#4361 S11b), so a CR 616 prompt
+// on the trip to hand is a restore point.
 //
 // Caller must hold g.mu.
-func (g *Game) putDiscoveredIntoHandLocked(player, source uuid.UUID, n int, cardID uuid.UUID, after func(g *Game) error) error {
-	done := func(g *Game) error {
+func (g *Game) putDiscoveredIntoHandLocked(player, source uuid.UUID, n int, cardID uuid.UUID) error {
+	if _, ok := g.cardInZoneLocked(g.Exile, cardID); !ok {
 		g.emitDiscoverLocked(player, source, n, cardID)
-		if after != nil {
-			return after(g)
-		}
 		return nil
 	}
-	if _, ok := g.cardInZoneLocked(g.Exile, cardID); !ok {
-		return done(g)
-	}
-	_, err := g.routeCardToZoneLocked(zoneRoute{
+	return g.routeCardKeyedLocked(zoneRoute{
 		CardID:   cardID,
 		Dst:      ZoneHand,
 		DstOwner: player,
 		Actor:    player,
 		Source:   source,
-		then:     done,
-	})
-	return err
+	}, KeyedTail{Ref: discoveredToHandTail, Player: player, Source: source, N: n, Carry: []uuid.UUID{cardID}})
 }
+
+// discoveredToHandTail announces a discover whose card went to its
+// owner's hand (CR 701.57b). Player is the discoverer, Source the card
+// whose effect discovered, N the discover number and Carry the
+// discovered card. An on-disk key: never renamed, never reused.
+var discoveredToHandTail = RegisterTail("engine/discovered-to-hand", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	g.emitDiscoverLocked(o.Tail.Player, o.Tail.Source, o.Tail.N, o.Tail.Carry[0])
+	return nil
+})
 
 // emitDiscoverLocked announces a completed discover (CR 701.57b).
 //
@@ -398,7 +405,7 @@ func (g *Game) lapseCastPermissionCollectingLocked(holder uuid.UUID, perm CastPe
 				continue
 			}
 			if perm.Discover != nil {
-				_ = g.putDiscoveredIntoHandLocked(holder, source, n, ref.ID, nil)
+				_ = g.putDiscoveredIntoHandLocked(holder, source, n, ref.ID)
 				continue
 			}
 			_ = g.BounceToHandForEffect(ref.ID)

@@ -39,22 +39,27 @@ func init() {
 }
 
 func serendibDjinnUpkeep(g *game.Game, item *game.StackItem) error {
-	return g.PlayerSacrificesThenForEffect(item.SourceCardID, item.Controller,
-		sacrificeSpec("a land", Land()), "Serendib Djinn — sacrifice a land", 1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			// "Island" is a word of the Djinn's text (CR 612.2, #3984).
-			island := g.TextReaderForEffect(item).TextSubtype("Island")
-			for _, id := range sacrificed.By(item.Controller) {
-				ref, ok := g.PermanentRefForEffect(id)
-				if !ok {
-					continue
-				}
-				info, ok := g.PermanentForEffect(ref)
-				if !ok || !slices.ContainsFunc(info.Characteristic.Subtypes, func(s string) bool { return strings.EqualFold(s, island) }) {
-					continue
-				}
-				return DealDamage{Source: item.SourceCardID, Target: item.Controller, Amount: 3}.Apply(NewContext(g, item))
-			}
-			return nil
-		})
+	return NewContext(g, item).SacrificeThen(item.Controller,
+		sacrificeSpec("a land", Land()), "Serendib Djinn — sacrifice a land", 1, serendibDjinnSacrificed)
 }
+
+// serendibDjinnSacrificed is "if you sacrifice an Island this way, this
+// creature deals 3 damage to you", keyed (#4290): the upkeep trigger's item
+// rides the run as data, so the Djinn's words are read from the same
+// object as it was (CR 612.2, #3984).
+var serendibDjinnSacrificed = RunThen("prompt-run/serendib-djinn-sacrificed", func(ctx *Context, r game.RunDone) error {
+	g, item := ctx.Game, ctx.Item
+	island := g.TextReaderForEffect(item).TextSubtype("Island")
+	for _, id := range r.Sacrifices().By(item.Controller) {
+		ref, ok := g.PermanentRefForEffect(id)
+		if !ok {
+			continue
+		}
+		info, ok := g.PermanentForEffect(ref)
+		if !ok || !slices.ContainsFunc(info.Characteristic.Subtypes, func(s string) bool { return strings.EqualFold(s, island) }) {
+			continue
+		}
+		return DealDamage{Source: item.SourceCardID, Target: item.Controller, Amount: 3}.Apply(ctx)
+	}
+	return nil
+})

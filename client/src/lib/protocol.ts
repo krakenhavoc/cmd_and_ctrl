@@ -1400,8 +1400,24 @@ export interface LogEvent {
   // is: both price or characterise the card the line no longer names.
   label?: string;
   // ADR 0057: why an `eliminated` player left, or how a `game_over`
-  // game ended. Absent on every other kind.
+  // game ended. Absent on every other kind. On a `zone` entry that leaves
+  // the battlefield (#4395, ADR 0209 §3) it is why the permanent left:
+  // `destroy`, `sba`, `sacrifice`, `exile_effect`, `bounce` or `other`.
+  // It is the instruction, not the destination: a destruction replaced by
+  // exile is `destroy` with `new_zone: "exile"`, so read `new_zone` first.
   cause?: string;
+  // #4395, ADR 0209 §3: the run of events the rules treat as one
+  // occurrence (CR 603.2c). Two entries with equal `batch` happened at
+  // once; only equality means anything, and it never repeats within a
+  // game. Absent on an entry from an event that predates batches.
+  batch?: number;
+  // #4395: on a battlefield-leaving `zone` entry and on a `sacrifice`
+  // entry, the card behind the exit (the spell or ability whose
+  // resolution the `batch` is). Empty when nothing resolving is behind
+  // it (combat damage, a cost, a sandbox move), and absent for a viewer
+  // who may not identify the card. Three or more exits in one `batch`
+  // from one `source` are a board wipe.
+  source?: string;
   // ADR 0075 §2.4: the actor held the table when they took this
   // action. Set only on `spawn` entries, and stamped by the room
   // rather than the projection — the host is a room property, so the
@@ -3871,6 +3887,8 @@ export interface ActivatedAbilityView {
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
+  // #4321: either reconfigure half; the attach row names a target.
+  reconfigure?: boolean;
   // #2500: a row whose whole effect is untapping its own source
   // (Basalt Monolith). Bot data; the client does not read it.
   untap_self?: boolean;
@@ -3884,6 +3902,9 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  // #4317: own catalog entry only; conditional entries remain absent.
+  land_entry?: "tapped" | "untapped";
+  returns_land_on_entry?: boolean;
   // #3309: on an Aura card, what it does to the permanent it enchants.
   aura?: "benefit" | "harm" | string;
   // #3712: the card may be cast as though it had flash and is sacrificed
@@ -5104,7 +5125,9 @@ export interface ProtectionView {
   // Which characteristic of a source the quality is compared
   // against: "color", "card_type", "subtype", "everything",
   // "player", "mana_value_at_most" (value = the bound N, #2181),
-  // "ring_bearer" (#2145) or "opponents" (#2745).
+  // "ring_bearer" (#2145), "opponents" (#2745), "mana_value_odd",
+  // "mana_value_even", "multityped_creatures" or "noncreature_permanents"
+  // (#4307).
   kind: string;
   // What the rules compare — the wire colour ("R"), the lowercase
   // card type ("artifact"), the canonical singular subtype

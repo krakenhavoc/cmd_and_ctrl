@@ -41,8 +41,8 @@ func ringBearer(g *game.Game, seat uuid.UUID) uuid.UUID {
 func temptForBot(t *testing.T, g *game.Game, seat uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
-		if err := g.RingTemptsForEffect(seat, uuid.Nil, nil); err != nil {
-			t.Fatalf("RingTemptsForEffect: %v", err)
+		if err := g.RingTemptsKeyedForEffect(seat, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("RingTemptsKeyedForEffect: %v", err)
 		}
 	})
 	if !owesChoice(g, seat) {

@@ -21,8 +21,8 @@ import (
 // basic-land search while the same question was still on the table.
 //
 // The shared answer is the continuation the exile already has: the
-// batch for Living Death (ExileCardsThenForEffect, which reports the
-// cards that really reached exile — CR 400.7), ExileTarget.Then for
+// batch for Living Death (ExileCardsKeyedForEffect, which reports the
+// cards that really reached exile — CR 400.7), ExileTarget.ThenTail for
 // the single-card cases.
 //
 // ADR 0115 removed the pause these tests were written against: a

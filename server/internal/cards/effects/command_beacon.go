@@ -95,15 +95,20 @@ func putCommanderIntoHand(g *game.Game, item *game.StackItem, name string, comma
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneCommand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.BounceToHandForEffect(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:    commandBeaconPicked,
+		LiveZone:   game.ZoneCommand,
 	})
 	return nil
 }
+
+// commandBeaconPicked is the keyed answer to "put which commander into your
+// hand" (#4253). Shared by Command Beacon and Road of Return. An on-disk
+// key: never renamed, never reused.
+var commandBeaconPicked = game.RegisterChooseCardsThen("choose-cards/commander-into-hand", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.BounceToHandForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
+})

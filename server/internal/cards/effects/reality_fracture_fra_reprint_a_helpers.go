@@ -136,12 +136,10 @@ func rfReprintAMassPolymorphReveal(ctx *Context, want int) error {
 		})
 	}
 	return PutFromLibraryOntoBattlefield{
-		Player: player,
-		Cards:  run,
-		Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit[c.InstanceID] },
-		All:    true,
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			return g.ShuffleLibraryForEffect(res.Player)
-		},
+		Player:   player,
+		Cards:    run,
+		Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit[c.InstanceID] },
+		All:      true,
+		ThenTail: thenShuffle,
 	}.Apply(ctx)
 }

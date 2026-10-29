@@ -23,7 +23,7 @@ import (
 // The dies trigger reads the creature's power as it last existed on the
 // battlefield (CR 608.2h), which includes this Aura's own bonus — it
 // was still attached when the creature died. A negative power mills 0
-// (CR 107.1b). "Milled this way" is MillToZone.Then's list: only cards
+// (CR 107.1b). "Milled this way" is MillToZone.ThenTail's list: only cards
 // that actually reached the graveyard. The creature card is picked as
 // the ability resolves (not targeted); "up to one" lets the controller
 // pick none.
@@ -69,7 +69,7 @@ func avatarDestinyMillAndReturn(g *game.Game, item *game.StackItem) error {
 	if info, ok := ctx.TriggeringPermanent(); ok && info.Power > 0 {
 		n = info.Power
 	}
-	return MillToZone{N: n, Then: avatarDestinyChooseMilledCreature}.Apply(ctx)
+	return MillToZone{N: n, ThenTail: ctx.ItemTail(avatarDestinyMilled)}.Apply(ctx)
 }
 
 // avatarDestinyChooseMilledCreature asks for up to one creature card
@@ -95,17 +95,23 @@ func avatarDestinyChooseMilledCreature(ctx *Context, milled []uuid.UUID) error {
 		Cards:    creatures,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			pick := uuid.Nil
-			if len(picked) > 0 {
-				pick = picked[0]
-			}
-			return avatarDestinyReturn(NewContext(g, item), pick)
-		},
+		ThenKey:  avatarDestinyPick,
+		LiveZone: game.ZoneGraveyard,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// avatarDestinyPick is the milled creature card chosen, keyed (#4253): the
+// asking item rides the prompt as data, so the Aura's "still the card that
+// fell off" check reads the object it came from.
+var avatarDestinyPick = askedPick("choose-cards/avatar-destiny-milled-creature", func(ctx *Context, r game.CardsChosen) error {
+	pick := uuid.Nil
+	if len(r.Picked) > 0 {
+		pick = r.Picked[0]
+	}
+	return avatarDestinyReturn(ctx, pick)
+})
 
 // avatarDestinyReturn puts this card into its owner's hand (if it is
 // still the Aura that fell off) and then `creature`, if any, onto the
@@ -121,3 +127,9 @@ func avatarDestinyReturn(ctx *Context, creature uuid.UUID) error {
 	}
 	return ReturnFromGraveyard{Target: creature, Dest: game.ZoneBattlefield, Controller: ctx.Controller()}.Apply(ctx)
 }
+
+// avatarDestinyMilled is the clause after the mill (#4253 slice 9).
+var avatarDestinyMilled = CardTail("avatar-destiny/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return avatarDestinyChooseMilledCreature(ctx, o.IDs)
+})

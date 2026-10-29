@@ -158,7 +158,7 @@ func b21TargetAnyNonDragon() *game.TargetSpec {
 // "LIFE LOST THIS WAY" IS NOT N × OPPONENTS. It is what each opponent
 // really lost, which is the same number only while nothing is replacing
 // anybody's life loss. #793: the gain therefore rides
-// LoseLifeEachThenForEffect's continuation, which reports the true
+// LoseLifeEachKeyedForEffect's continuation, which reports the true
 // total once every opponent's own CR 614 window has settled — including
 // the ones that paused on a CR 616 ordering prompt, where reading the
 // life totals back on the next line saw nothing at all and gained zero.
@@ -267,14 +267,9 @@ func b21RevealUntilBasicLandToHand(ctx *Context, player uuid.UUID) error {
 	// runs the continuation for it — the basic land on top of the
 	// library is the whole of that case.
 	return MillToZone{
-		Player: player,
-		N:      above,
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			if land == uuid.Nil {
-				return nil
-			}
-			return BounceToHand{Target: land}.Apply(ctx)
-		},
+		Player:   player,
+		N:        above,
+		ThenTail: withCarry(ctx.ItemTail(batch21HelpersMilled), land),
 	}.Apply(ctx)
 }
 
@@ -301,33 +296,15 @@ func b21ExileTopFourThenTakeTheirLands(g *game.Game, item *game.StackItem) error
 		// the four cards are not all in it yet on the line after the
 		// exile — a replacement's prompt may stop a leg, and a card it
 		// sends elsewhere never reaches exile at all.
-		Then: func(ctx *Context, _ []uuid.UUID) error {
-			// CR 406.3a: a card exiled face down (a foretold card) has
-			// no characteristics, so it is not a land card and is not
-			// offered.
-			lands := exiledCardIDs(ctx, func(c game.Card) bool {
-				return c.Owner == victim && !c.FaceDown && c.IsLand()
-			})
-			if len(lands) == 0 {
-				return nil
-			}
-			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:    item.Controller,
-				FromPlayer: victim,
-				Source:     item.SourceCardID,
-				Question:   "Oblivion Sower — put any number of these land cards onto the battlefield under your control",
-				Cards:      lands,
-				Min:        0,
-				Max:        len(lands),
-				Zone:       game.ZoneExile,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					return ReturnFromExileTogether{Targets: picked, Controller: item.Controller}.Apply(NewContext(g, item))
-				},
-			})
-			return nil
-		},
+		ThenTail: ctx.ItemTail(batch21HelpersMilled2),
 	}.Apply(ctx)
 }
+
+// oblivionSowerLands is the chosen land cards entering together, keyed
+// (#4253): the asking item rides the prompt as data.
+var oblivionSowerLands = askedPick("choose-cards/oblivion-sower-lands", func(ctx *Context, r game.CardsChosen) error {
+	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
+})
 
 // b21ReturnAllArtifactAndEnchantmentCards is Brilliant Restoration's
 // body: every artifact and enchantment card in `player`'s graveyard
@@ -342,3 +319,42 @@ func b21ReturnAllArtifactAndEnchantmentCards(ctx *Context, player uuid.UUID) err
 		}),
 	}.Apply(ctx)
 }
+
+// batch21HelpersMilled is the clause after the mill (#4253 slice 9).
+var batch21HelpersMilled = CardTail("batch21-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	land := tailCarry0(o)
+
+	if land == uuid.Nil {
+		return nil
+	}
+	return BounceToHand{Target: land}.Apply(ctx)
+})
+
+// batch21HelpersMilled2 is the clause after the mill (#4253 slice 9).
+var batch21HelpersMilled2 = CardTail("batch21-helpers/after-mill-2", func(ctx *Context, o game.TailOutcome) error {
+	item := ctx.Item
+	victim := item.Targets[0].ID
+
+	// CR 406.3a: a card exiled face down (a foretold card) has
+	// no characteristics, so it is not a land card and is not
+	// offered.
+	lands := exiledCardIDs(ctx, func(c game.Card) bool {
+		return c.Owner == victim && !c.FaceDown && c.IsLand()
+	})
+	if len(lands) == 0 {
+		return nil
+	}
+	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: victim,
+		Source:     item.SourceCardID,
+		Question:   "Oblivion Sower — put any number of these land cards onto the battlefield under your control",
+		Cards:      lands,
+		Min:        0,
+		Max:        len(lands),
+		ThenKey:    oblivionSowerLands,
+		LiveZone:   game.ZoneExile,
+		Asked:      game.NewAskedItem(item),
+	})
+	return nil
+})

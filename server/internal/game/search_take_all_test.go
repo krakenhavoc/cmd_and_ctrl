@@ -31,7 +31,7 @@ func TestTakeAllFindsEveryGraveyardMatch(t *testing.T) {
 	hand := extractionHandCard(them, "Wanted")
 	var then []uuid.UUID
 	spec := takeAllSpec(me.ID, them.ID)
-	spec.Then = func(_ *Game, found []uuid.UUID) error { then = found; return nil }
+	spec.ThenTail = searchHook(func(_ *Game, found []uuid.UUID) error { then = found; return nil })
 	runSearch(t, g, spec)
 
 	c := openSearch(g, me.ID)

@@ -27,18 +27,12 @@ func init() {
 		Name:         "Sauron's Ransom",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			// Keyed (#4253 slice 10b): the opponent named, the split and the
+			// pick are each a restore point.
 			return ChoosePlayer{
 				Among:    Opponents,
 				Question: "Sauron's Ransom — choose an opponent to separate the top four cards of your library",
-				Then: func(ctx *Context) error {
-					splitter := ctx.ChosenPlayer()
-					if splitter == uuid.Nil {
-						// Nobody to separate them: no piles move, the
-						// rest of the sentence still happens.
-						return TheRingTemptsYou{}.Apply(ctx)
-					}
-					return opponentSeparatesFaceDownPiles(ctx, "Sauron's Ransom", 4, splitter, sauronsRansomTake)
-				},
+				ThenKey:  sauronsRansomSplitter,
 			}.Apply(ctx)
 		},
 	})
@@ -46,6 +40,23 @@ func init() {
 
 // sauronsRansomTake settles the piles and then tempts. A package-level
 // function so the continuation survives an undo.
+// sauronsRansomSplitter is the opponent named. An on-disk key: never
+// renamed, never reused.
+var sauronsRansomSplitter = ChoosePlayerThen("option-pick/saurons-ransom-splitter", func(ctx *Context, splitter uuid.UUID, _ []uuid.UUID) error {
+	if splitter == uuid.Nil {
+		// Nobody to separate them: no piles move, the rest of the sentence
+		// still happens.
+		return TheRingTemptsYou{}.Apply(ctx)
+	}
+	return opponentSeparatesFaceDownPiles(ctx, "Sauron's Ransom", 4, splitter, sauronsRansomTakeTail)
+})
+
+// sauronsRansomTakeTail is sauronsRansomTake as the split's keyed rest. An
+// on-disk key: never renamed, never reused.
+var sauronsRansomTakeTail = PileTail("then/saurons-ransom-take", func(ctx *Context, taken, left []uuid.UUID, _ game.TailOutcome) error {
+	return sauronsRansomTake(ctx, taken, left)
+})
+
 func sauronsRansomTake(ctx *Context, taken, left []uuid.UUID) error {
 	if err := faceDownPilesToHand(ctx, taken, left); err != nil {
 		return err

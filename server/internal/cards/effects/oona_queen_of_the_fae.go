@@ -60,37 +60,50 @@ func init() {
 				if victim == uuid.Nil {
 					return nil
 				}
-				x := ctx.X()
-				ChooseColorThen(game.ColorForFilter, g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
-					func(g *game.Game, color string) error {
-						return oonaExileAndMakeFaeries(NewContext(g, item), victim, x, color)
-					})
+				ChooseColorTail(game.ColorForFilter, g, item.Controller, item.SourceCardID, "Oona, Queen of the Fae — choose a color",
+					withCarry(withN(ctx.ItemTail(oonaColorChosen), ctx.X()), victim))
 				return nil
 			},
 		}},
 	})
 }
 
+// oonaColorChosen is the rest of the ability once the colour (the tail's
+// Word) is known: the opponent (its one carried ID) exiles the top X (its N).
+// An on-disk key.
+var oonaColorChosen = CardTail("then/oona-queen-of-the-fae-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return oonaExileAndMakeFaeries(ctx, o.Tail.Carry[0], o.Tail.N, o.Tail.Word)
+})
+
 func oonaExileAndMakeFaeries(ctx *Context, victim uuid.UUID, x int, color string) error {
 	return MillToZone{
-		Player: victim,
-		N:      x,
-		To:     game.ZoneExile,
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			n := 0
-			for _, id := range exiled {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
-					n++
-				}
-			}
-			if n == 0 {
-				return nil
-			}
-			return CreateToken{
-				Controller: ctx.Controller(),
-				Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
-				N:          n,
-			}.Apply(ctx)
-		},
+		Player:   victim,
+		N:        x,
+		To:       game.ZoneExile,
+		ThenTail: withWord(ctx.ItemTail(oonaQueenOfTheFaeMilled), color),
 	}.Apply(ctx)
 }
+
+// oonaQueenOfTheFaeMilled is the clause after the mill (#4253 slice 9).
+var oonaQueenOfTheFaeMilled = CardTail("oona-queen-of-the-fae/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	color := o.Tail.Word
+	exiled := o.IDs
+
+	n := 0
+	for _, id := range exiled {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.HasColor(color) {
+			n++
+		}
+	}
+	if n == 0 {
+		return nil
+	}
+	return CreateToken{
+		Controller: ctx.Controller(),
+		Template:   TokenCard("1/1 blue and black Faerie Rogue with flying"),
+		N:          n,
+	}.Apply(ctx)
+})

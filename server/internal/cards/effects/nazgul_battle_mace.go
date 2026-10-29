@@ -65,23 +65,31 @@ func nazgulBattleMaceTakeIt(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	ev := ctx.Trigger().Event
 	victim, card, controller := ev.Actor, ev.CardID, item.Controller
-	take := func(ctx *Context) error { return putSacrificedCardOntoBattlefield(ctx, card, controller) }
 	p := g.PlayerByIDForEffect(victim)
 	if p == nil || p.Eliminated || p.Life < 3 {
-		return take(ctx)
+		return putSacrificedCardOntoBattlefield(ctx, card, controller)
 	}
 	return PickOption{
 		Player:   victim,
 		Question: "Nazgûl Battle-Mace — pay 3 life, or they put the card you sacrificed onto the battlefield?",
 		Options:  []game.ChoiceOption{{Label: "Pay 3 life", LifeCost: 3}, {Label: "Don't pay"}},
-		Then: func(ctx *Context, index int) error {
-			if index == 0 {
-				return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -3)
-			}
-			return take(ctx)
-		},
+		ThenKey:  nazgulBattleMaceAnswer,
+		Carry:    []uuid.UUID{card},
 	}.Apply(ctx)
 }
+
+// nazgulBattleMaceAnswer is the sacrificing player's answer, keyed (#4253):
+// the sacrificed card rides the prompt as data, the Mace's controller and
+// the Mace are the Context's, and the player is the chooser.
+var nazgulBattleMaceAnswer = OptionPickThen("option-pick/nazgul-battle-mace-pay-or-take", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index == 0 {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), r.Chooser, -3)
+	}
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return putSacrificedCardOntoBattlefield(ctx, r.Carry[0], ctx.Controller())
+})
 
 // putSacrificedCardOntoBattlefield is "put that card onto the battlefield
 // under your control" for a card an opponent just sacrificed, from
@@ -106,7 +114,7 @@ func putSacrificedCardOntoBattlefield(ctx *Context, card, controller uuid.UUID) 
 	case game.ZoneExile:
 		return ReturnFromExile{Target: card, Controller: controller}.Apply(ctx)
 	case game.ZoneLibrary, game.ZoneCommand, game.ZoneHand:
-		return putCardsFromZoneTogether(ctx, z.Kind, []uuid.UUID{card}, controller, false, nil)
+		return putCardsFromZoneTogether(ctx, z.Kind, []uuid.UUID{card}, controller, false)
 	}
 	return nil
 }

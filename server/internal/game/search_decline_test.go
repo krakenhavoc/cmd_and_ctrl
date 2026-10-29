@@ -40,7 +40,7 @@ func optionalSwampSearch(me *Player, then func(*Game, []uuid.UUID) error) Search
 		Limit:    1,
 		Shuffle:  true,
 		Optional: true,
-		Then:     then,
+		ThenTail: searchHook(then),
 	}
 }
 

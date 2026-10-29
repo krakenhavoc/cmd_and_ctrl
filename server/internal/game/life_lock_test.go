@@ -100,9 +100,9 @@ func TestLockedLifeChangeEmitsNoEventAndTellsTheContinuationZero(t *testing.T) {
 	before := len(g.Events)
 	applied := -1
 	g.WithWriteLock(func() {
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, me.ID, -4,
-			func(_ *Game, n int) error { applied = n; return nil }); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, me.ID, -4,
+			lifeHook(func(_ *Game, n int) error { applied = n; return nil })); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if applied != 0 {
@@ -116,7 +116,7 @@ func TestLockedLifeChangeEmitsNoEventAndTellsTheContinuationZero(t *testing.T) {
 }
 
 // TestLockedSeatContributesNothingToADrainTotal is the composition
-// case LoseLifeEachThenForEffect exists for: three opponents, one of
+// case LoseLifeEachKeyedForEffect exists for: three opponents, one of
 // them locked, and the caster gains exactly what the OTHER two lost.
 func TestLockedSeatContributesNothingToADrainTotal(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
@@ -125,9 +125,12 @@ func TestLockedSeatContributesNothingToADrainTotal(t *testing.T) {
 
 	total := -1
 	g.WithWriteLock(func() {
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a.ID, b.ID, c.ID}, 3,
-			func(_ *Game, lost int) error { total = lost; return nil }); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a.ID, b.ID, c.ID}, 3,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				total = o.Amount
+				return nil
+			})); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if total != 6 {

@@ -38,7 +38,7 @@ package game
 // "EVOLVES" (CR 702.100b). The counter goes through the ordinary CR 614
 // counter window, so Hardened Scales, Doubling Season and "can't have
 // counters" all apply, and it is sequenced behind the placement
-// (AddCounterByThenForEffect): EventEvolved is emitted only when at
+// (AddCounterByKeyedForEffect): EventEvolved is emitted only when at
 // least one counter actually landed, which is what "whenever this
 // creature evolves" (Renegade Krasis, Watchful Radstag) watches.
 //

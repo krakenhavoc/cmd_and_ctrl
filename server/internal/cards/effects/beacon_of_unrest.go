@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Beacon of Unrest — Sorcery {3}{B}{B}:
 //
@@ -11,7 +15,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The reanimation family's body (reanimateSingleTarget) over any
 // graveyard, then Beacon of Immortality's tail: the spell tucks itself
 // into its owner's library and that library is shuffled, instead of
-// going to the graveyard (TuckToLibraryThenForEffect). With its one
+// going to the graveyard (TuckCardsToLibraryKeyedForEffect). With its one
 // target gone the spell does nothing at all (CR 608.2b), so it is not
 // shuffled away either.
 //
@@ -27,9 +31,7 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			reanimateSingleTarget(ctx, ctx.Controller())
 			owner := item.Owner
-			return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				return g.ShuffleLibraryForEffect(owner)
-			})
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 		},
 	})
 }

@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Hunter's Axe — Artifact — Equipment {G} (Reality Fracture):
 //
@@ -54,15 +58,20 @@ func huntersAxeChoose(g *game.Game, item *game.StackItem) error {
 	return PickOption{
 		Question: "Hunter's Axe — the creature gains your choice of trample or deathtouch until end of turn",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(huntersAxeKeywords) {
-				return nil
-			}
-			return GrantKeywordUntilEOT{
-				Target:   creature,
-				Keywords: []string{huntersAxeKeywords[index]},
-				Label:    "Hunter's Axe — gains " + huntersAxeKeywords[index] + " until end of turn",
-			}.Apply(ctx)
-		},
+		ThenKey:  huntersAxeAnswer,
+		Carry:    []uuid.UUID{creature},
 	}.Apply(ctx)
 }
+
+// huntersAxeAnswer is the keyword chosen, granted to the equipped creature
+// (the one carried ID) until end of turn. Keyed (#4253).
+var huntersAxeAnswer = OptionPickThen("option-pick/hunters-axe-keyword", func(ctx *Context, r game.OptionPicked) error {
+	if r.Index < 0 || r.Index >= len(huntersAxeKeywords) || len(r.Carry) == 0 {
+		return nil
+	}
+	return GrantKeywordUntilEOT{
+		Target:   r.Carry[0],
+		Keywords: []string{huntersAxeKeywords[r.Index]},
+		Label:    "Hunter's Axe — gains " + huntersAxeKeywords[r.Index] + " until end of turn",
+	}.Apply(ctx)
+})

@@ -110,33 +110,6 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	return err
 }
 
-// ApplyThen is Apply for a caller that acts on what was exiled, or that
-// chains another exile behind this one (#4266, exileTopEachPlayerInTurn):
-// `then` runs once the exile has settled, with the cards that reached exile,
-// at once on a clean run and from the answer when a CR 616.1 prompt paused
-// it. Face up and unbudgeted only, which is every caller that chains; the
-// face-down and budgeted forms have no continuation yet and are refused
-// rather than run without one.
-func (e ExileTopWithPermission) ApplyThen(ctx *Context, then func(ctx *Context, landed []uuid.UUID) error) error {
-	if e.FaceDown || e.TotalManaValueAtMost != nil || e.EachManaValueAtMost != nil {
-		return fmt.Errorf("ExileTopWithPermission.ApplyThen: the face-down and budgeted forms have no continuation")
-	}
-	n := e.N
-	if n <= 0 {
-		n = 1
-	}
-	// The context is rebuilt inside the continuation from the live *Game,
-	// as MillToZone.Apply does: an undo restores the game in place.
-	item := ctx.Item
-	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, e.grantee(), n, e.permission(),
-		func(g *game.Game, landed []uuid.UUID) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), landed)
-		})
-}
-
 // grantee is who may play the cards: the library's owner for GrantToOwner,
 // otherwise GrantTo.
 func (e ExileTopWithPermission) grantee() uuid.UUID {
@@ -216,12 +189,17 @@ func (e ExileTopWithPermission) applyBudgeted(ctx *Context, n int) error {
 	// cast during the resolution (CR 608.2g), each cast its own answer to
 	// the resolution_cast prompt over the cards that landed, until the
 	// player declines or none is left.
-	grantTo, source, name := e.grantee(), ctx.Source(), perm.SourceName
-	return ctx.Game.ExileTopWithPermissionThenForEffect(e.From, grantTo, n, perm, func(g *game.Game, landed []uuid.UUID) error {
-		offerResolutionCastOver(g, grantTo, source, name, game.MayCastKeywordFreeCast, declineLeaveInExile, landed...)
-		return nil
-	})
+	// Keyed (#4253 slice 10a): the offer is the grant's Next, its holder,
+	// source and heading as data.
+	return ctx.Game.ExileTopWithPermissionKeyedForEffect(e.From, e.grantee(), n, perm,
+		game.KeyedTail{Ref: impulseExileOfferCasts, Player: e.grantee(), Source: ctx.Source(), Word: perm.SourceName})
 }
+
+// impulseExileOfferCasts offers the free casts over the cards that landed.
+var impulseExileOfferCasts = game.RegisterTail("impulse-exile/offer-free-casts", func(g *game.Game, o game.TailOutcome) error {
+	offerResolutionCastOver(g, o.Tail.Player, o.Tail.Source, o.Tail.Word, game.MayCastKeywordFreeCast, declineLeaveInExile, o.IDs...)
+	return nil
+})
 
 // ExileTopNUntilYourNextTurn exiles the top n cards of the resolving
 // effect's controller and lets them play it until the end of their
@@ -265,10 +243,10 @@ func ExileTopNUntilYourNextEndStep(ctx *Context, n int) error {
 //
 // The libraries are exiled from one at a time in APNAP order (CR 101.4,
 // #4268, exileTopEachPlayerInTurn), so at most one CR 616.1 ordering prompt is
-// open. `done` runs once after the last player's exile, from the answer when a
-// prompt paused it; it is where Memory Vessel's "and they can't play cards from
-// their hand" goes. It may be nil.
-func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done func(ctx *Context) error) error {
+// open. `done`, a registered tail, runs once after the last player's exile,
+// from the answer when a prompt paused it; it is where Memory Vessel's "and
+// they can't play cards from their hand" goes. Zero is none.
+func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done game.KeyedTail) error {
 	var seats []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p != nil {
@@ -276,13 +254,7 @@ func EachPlayerExilesTopAndMayPlay(ctx *Context, n int, d game.Duration, done fu
 		}
 	}
 	return exileTopEachPlayerInTurn(ctx, seats,
-		ExileTopWithPermission{GrantToOwner: true, N: n, Window: &d},
-		func(ctx *Context, _ []PlayerCards) error {
-			if done == nil {
-				return nil
-			}
-			return done(ctx)
-		})
+		ExileTopWithPermission{GrantToOwner: true, N: n, Window: &d}, done)
 }
 
 // damagedOpponent returns the opponent a combat-damage event hit,

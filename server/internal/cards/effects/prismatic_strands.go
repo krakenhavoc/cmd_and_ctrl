@@ -32,14 +32,9 @@ func init() {
 			FlashbackTap(1, "an untapped white creature you control", OfColor("W"), Creature()),
 		},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseColorThen(game.ColorForProtection, ctx.Game, item.Controller, item.SourceCardID,
+			ChooseColorTail(game.ColorForProtection, ctx.Game, item.Controller, item.SourceCardID,
 				"Prismatic Strands — choose a color of sources to prevent damage from",
-				func(g *game.Game, color string) error {
-					if color == "" {
-						return nil
-					}
-					return PreventDamageFromSource{Protect: ShieldAnything, Queries: []game.PermanentQuery{QueryColors(color)}, ChosenQueries: true}.Apply(NewContext(g, item))
-				})
+				ctx.ItemTail(preventDamageFromChosenColor))
 			return nil
 		},
 	})

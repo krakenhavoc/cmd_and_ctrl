@@ -167,37 +167,55 @@ func controlsAnyCard(g *game.Game, controller uuid.UUID, pred CardPredicate) boo
 
 // SacrificeThisThen is "sacrifice it. If you do, <then>": the state
 // trigger's sacrifice of its own source, with the follow-up run only when
-// the permanent really left (SacrificePermanent.Then). A source that is
-// no longer on the battlefield, or is a new object (CR 400.7), is not
+// the permanent really left (SacrificePermanent.ThenTail). A source that
+// is no longer on the battlefield, or is a new object (CR 400.7), is not
 // sacrificed, and `then` does not run.
-func SacrificeThisThen(then func(ctx *Context) error) Effect {
+//
+// #4253 slice 10a: `then` is registered under key as a tail (ledgered
+// "tail <key>", an on-disk identity), which runs against the asking item,
+// so a table waiting on the sacrifice's prompt is a restore point. Call it
+// once, from a package-level var or a Spec literal built in init: never
+// from a resolution.
+func SacrificeThisThen(key string, then func(ctx *Context) error) Effect {
+	ref := ifItWentTail(key, then)
 	return func(g *game.Game, item *game.StackItem) error {
 		if !onBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return SacrificePermanent{Target: item.SourceCardID, Then: func(ctx *Context, sacrificed bool) error {
-			if !sacrificed || then == nil {
-				return nil
-			}
-			return then(ctx)
-		}}.Apply(NewContext(g, item))
+		ctx := NewContext(g, item)
+		return SacrificePermanent{Target: item.SourceCardID, ThenTail: ctx.ItemTail(ref)}.Apply(ctx)
 	}
 }
 
 // ExileThisThen is "exile it. If you do, <then>" for a state trigger's
-// own source (Mazemind Tome); a plain "exile it" passes nil.
-func ExileThisThen(then func(ctx *Context) error) Effect {
+// own source (Mazemind Tome); a plain "exile it" passes "" and nil. Keyed
+// as SacrificeThisThen is (#4253 slice 10a).
+func ExileThisThen(key string, then func(ctx *Context) error) Effect {
+	var ref game.TailRef
+	if key != "" && then != nil {
+		ref = ifItWentTail(key, then)
+	}
 	return func(g *game.Game, item *game.StackItem) error {
 		if !onBattlefield(g, item.SourceCardID) {
 			return nil
 		}
-		return ExileTarget{Target: item.SourceCardID, Then: func(ctx *Context, exiled bool) error {
-			if !exiled || then == nil {
-				return nil
-			}
-			return then(ctx)
-		}}.Apply(NewContext(g, item))
+		ctx := NewContext(g, item)
+		if ref.Key() == "" {
+			return ExileTarget{Target: item.SourceCardID}.Apply(ctx)
+		}
+		return ExileTarget{Target: item.SourceCardID, ThenTail: ctx.ItemTail(ref)}.Apply(ctx)
 	}
+}
+
+// ifItWentTail registers "if you do, <then>" after a single-card door:
+// `then` runs only when the card went this way (oneWentThisWay).
+func ifItWentTail(key string, then func(ctx *Context) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if !oneWentThisWay(o) || then == nil {
+			return nil
+		}
+		return then(ctx)
+	})
 }
 
 // checkStateTrigger is Register's part of the contract: a state trigger

@@ -11,20 +11,19 @@ func init() {
 		Name:         "Hoarding Ogre",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Hoarding Ogre — roll a d20 and create Treasures", func(g *game.Game, item *game.StackItem) error {
-				results, err := rollDice(NewContext(g, item), 20, 1)
-				if err != nil || len(results) == 0 {
-					return err
-				}
-				n := 1
-				if results[0] >= 10 {
-					n = 2
-				}
-				if results[0] == 20 {
-					n = 3
-				}
-				return treasureTokens(g, item.Controller, n)
-			}),
+			WheneverThisAttacks("Hoarding Ogre — roll a d20 and create Treasures", Do(RollDice{Sides: 20, N: 1, Then: hoardingOgreTreasures})),
 		},
 	})
 }
+
+// hoardingOgreTreasures is the results table, after the d20 (#4307).
+var hoardingOgreTreasures = DiceTail("dice/hoarding-ogre-treasures", func(ctx *Context, rolls []int) error {
+	n := 1
+	if rolls[0] >= 10 {
+		n = 2
+	}
+	if rolls[0] == 20 {
+		n = 3
+	}
+	return treasureTokens(ctx.Game, ctx.Controller(), n)
+})

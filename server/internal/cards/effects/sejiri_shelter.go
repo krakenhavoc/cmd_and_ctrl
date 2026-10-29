@@ -24,19 +24,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			ChooseColorThen(game.ColorForProtection, ctx.Game, item.Controller, item.SourceCardID,
-				"Sejiri Shelter — choose a color",
-				func(g *game.Game, color string) error {
-					token := game.ProtectionFromColor(color)
-					if token == "" {
-						return nil
-					}
-					return GrantKeywordUntilEOT{
-						Target:   id,
-						Keywords: []string{token},
-						Label:    "Sejiri Shelter — " + token,
-					}.Apply(NewContext(g, item))
-				})
+			chooseProtectionColorFor(ctx, item.Controller, id, "Sejiri Shelter", "Sejiri Shelter — choose a color")
 			return nil
 		},
 	})

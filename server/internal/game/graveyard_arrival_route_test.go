@@ -36,12 +36,12 @@ func searchToGraveyard(t *testing.T, g *Game, p *Player, name string, dest ZoneK
 	ran := 0
 	g.WithWriteLock(func() {
 		err := g.SearchLibraryThenForEffect(SearchLibrarySpec{
-			Player:  p.ID,
-			Pred:    func(c Card) bool { return c.Name == name },
-			Dest:    dest,
-			Limit:   1,
-			Shuffle: true,
-			Then:    func(_ *Game, ids []uuid.UUID) error { ran++; found = ids; return nil },
+			Player:   p.ID,
+			Pred:     func(c Card) bool { return c.Name == name },
+			Dest:     dest,
+			Limit:    1,
+			Shuffle:  true,
+			ThenTail: searchHook(func(_ *Game, ids []uuid.UUID) error { ran++; found = ids; return nil }),
 		})
 		if err != nil {
 			t.Fatalf("SearchLibraryThenForEffect: %v", err)
@@ -244,8 +244,12 @@ func TestUndoAcrossAPausedSearchLegReplays(t *testing.T) {
 // openSurveil queues a surveil of n and returns the prompt.
 func openSurveil(t *testing.T, g *Game, p *Player, n int, after func(g *Game) error) *PendingChoice {
 	t.Helper()
+	then := KeyedTail{}
+	if after != nil {
+		then = hookTail(func(g *Game, _ TailOutcome) error { return after(g) })
+	}
 	g.WithWriteLock(func() {
-		g.SurveilThenForEffect(p.ID, uuid.Nil, n, after)
+		g.SurveilKeyedForEffect(p.ID, uuid.Nil, n, then)
 	})
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Kind == PendingChoiceSurveil && c.Chooser == p.ID {

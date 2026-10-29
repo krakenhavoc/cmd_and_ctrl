@@ -256,7 +256,7 @@ func b12TargetOpponentOrTheirCreatureOrPlaneswalker() *game.TargetSpec {
 // of the item's controller mills n.
 func b12EachOpponentMills(g *game.Game, item *game.StackItem, n int) error {
 	ctx := NewContext(g, item)
-	return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), nil)
+	return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(n), game.KeyedTail{})
 }
 
 // b12ImpulseExileForTurn is "exile the top N cards of your library.
@@ -279,8 +279,12 @@ func b12ImpulseExileForTurn(g *game.Game, item *game.StackItem, n int) ([]uuid.U
 // final landed list once every one of them has reached a terminal
 // outcome — the shape a rider that reads the exiled cards needs, and
 // the fire-and-forget form above cannot give it (#1587).
-func b12ImpulseExileForTurnThen(g *game.Game, item *game.StackItem, n int, then func(g *game.Game, exiled []uuid.UUID) error) error {
-	return g.ExileTopWithPermissionThenForEffect(item.Controller, item.Controller, n, game.CastPermission{}, then)
+//
+// #4253 slice 10a: `then` is a registered tail, run against the asking item
+// (ItemTail), told the cards that landed.
+func b12ImpulseExileForTurnThen(g *game.Game, item *game.StackItem, n int, then game.TailRef) error {
+	return g.ExileTopWithPermissionKeyedForEffect(item.Controller, item.Controller, n, game.CastPermission{},
+		NewContext(g, item).ItemTail(then))
 }
 
 // b12Victim pairs a permanent Terastodon is about to destroy with

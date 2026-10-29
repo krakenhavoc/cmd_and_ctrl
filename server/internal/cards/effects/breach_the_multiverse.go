@@ -35,7 +35,7 @@ func init() {
 			// prompt one asks is the only one open (#4266); the picks are
 			// parked behind the last of them.
 			Instruction(func(ctx *Context) error {
-				return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(10), nil)
+				return millEachPlayerInTurn(ctx, apnapPlayers(ctx.Game), constantMill(10), game.KeyedTail{})
 			}),
 			Instruction(func(ctx *Context) error {
 				return breachAskNext(ctx.Game, ctx.Item, apnapPlayers(ctx.Game), nil)
@@ -67,20 +67,39 @@ func breachAskNext(g *game.Game, item *game.StackItem, order, chosen []uuid.UUID
 			Cards:      candidates,
 			Min:        1,
 			Max:        1,
-			Zone:       game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				next := append(append([]uuid.UUID(nil), chosen...), picked...)
-				return breachAskNext(g, item, rest, next)
-			},
+			ThenKey:    breachPick,
+			LiveZone:   game.ZoneGraveyard,
+			// The players still to ask and the cards chosen so far are the
+			// carry (#4253).
+			Carry: packIDLists(rest, chosen),
+			Asked: game.NewAskedItem(item),
 		})
 		return nil
 	}
 	return ReturnFromGraveyardTogether{
 		Targets:    chosen,
 		Controller: item.Controller,
-		Then:       breachPhyrexians,
+		ThenTail:   breachPhyrexiansTail,
 	}.Apply(ctx)
 }
+
+// breachPick is one graveyard's pick answered, keyed (#4253): the next
+// graveyard is asked, or the chosen cards enter together. Registered in init
+// because it asks the next graveyard, which names the key again.
+var breachPick game.ChooseCardsThen
+
+func init() {
+	breachPick = askedPick("choose-cards/breach-the-multiverse-graveyard", func(ctx *Context, r game.CardsChosen) error {
+		rest, chosen := unpackIDPair(r.Carry)
+		next := append(append([]uuid.UUID(nil), chosen...), r.Picked...)
+		return breachAskNext(ctx.Game, ctx.Item, rest, next)
+	})
+}
+
+// breachPhyrexiansTail is breachPhyrexians as a keyed tail (#4253 slice 6).
+// An on-disk key.
+var breachPhyrexiansTail = TogetherTail("breach-the-multiverse/phyrexians",
+	func(ctx *Context, entered []uuid.UUID, _ int) error { return breachPhyrexians(ctx, entered) })
 
 // breachPhyrexians makes each creature the caster controls a Phyrexian
 // in addition to its other types.

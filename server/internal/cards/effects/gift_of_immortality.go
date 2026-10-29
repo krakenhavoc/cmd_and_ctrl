@@ -95,8 +95,8 @@ func giftOfImmortalityReturnAura(g *game.Game, item *game.StackItem, p game.Effe
 	// It ENTERS attached to the creature (#3158): the effect names the
 	// host, so CR 303.4f asks nothing, and the CR 704.5m check never
 	// sees the Aura unattached.
-	return g.PutOntoBattlefieldTogetherThenForEffect(
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(
 		[]game.BatchEntry{{CardID: aura, From: z.Kind}},
 		game.ZoneEntryOptions{AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: p.Object.ID}},
-		nil)
+		game.KeyedTail{})
 }

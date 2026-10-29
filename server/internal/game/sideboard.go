@@ -123,24 +123,16 @@ type OutsidePickPrompt struct {
 	Source uuid.UUID
 	// Question is the prompt's header, written the way the card is.
 	Question string
-	// Match narrows the candidates ("a sorcery card"); nil offers every
-	// card in the sideboard.
-	Match func(Card) bool
 	// Min / Max bound the pick, clamped to the candidates. Zero Max
 	// means one.
 	Min, Max int
-	// Validate is a legality check on the picked SET, with
-	// ChooseCardsPrompt.Validate's shape and rules (never called for an
-	// empty pick, never handed a *Game). "Exactly two cards with
-	// different names" is Min 0, Max 2 and a Validate that wants two.
-	Validate func(picked []Card) bool
-	// Then receives the picks, in the order the chooser submitted them,
-	// and runs with g.mu held. It may queue further choices.
-	Then func(g *Game, picked []uuid.UUID) error
-	// Keyed is the pick as a registered filter and continuation
-	// (RegisterOutsidePick, outside_pick_keyed.go, #4256): a prompt
-	// queued with one holds no closure, so a table waiting on it is a
-	// restore point. With it Match, Validate and Then must be nil.
+	// Keyed is the pick as a registered filter ("a sorcery card"), set
+	// rule ("exactly two cards with different names") and continuation
+	// (RegisterOutsidePick / RegisterOutsidePickRule,
+	// outside_pick_keyed.go, #4256), so a table waiting on the prompt is
+	// a restore point. The zero value is outsidePickPlain: every card,
+	// and nothing after the pick. The closure form (Match, Validate,
+	// Then) is gone since #4361 S4.
 	Keyed OutsidePick
 	// MatchArg is the one word a keyed filter is handed with each card
 	// (Spawnsire of Ulamog's subtype, which a text-changing effect may
@@ -188,11 +180,14 @@ func (p OutsidePickPrompt) outsideDestination() ChooseDestination {
 // A player whose deck seated no sideboard chooses from the card
 // database instead (ADR 0198): the same filter, bounds, set rule and
 // continuation, asked as a PendingChoiceOutsideCollection whose answer
-// mints the named cards into the container before Then runs. The pool
-// is closed the same way for both.
+// mints the named cards into the container before the continuation
+// runs. The pool is closed the same way for both.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
+	if p.Keyed.Key() == "" {
+		p.Keyed = outsidePickPlain
+	}
 	match, err := outsidePickMatch(p)
 	if err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, Actor: p.Player, Source: p.Source, ErrorMsg: err.Error()})
@@ -212,23 +207,10 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 	if max <= 0 {
 		max = 1
 	}
-	if p.Keyed.Key() != "" {
-		// #4256: the keyed pick. The filter has done its work (the
-		// candidates); the continuation re-checks where the picks are.
-		g.QueueChooseCardsForEffect(ChooseCardsPrompt{
-			Chooser:     p.Player,
-			FromPlayer:  p.Player,
-			Source:      p.Source,
-			Question:    p.Question,
-			Cards:       cands,
-			Min:         p.Min,
-			Max:         max,
-			Destination: p.outsideDestination(),
-			ThenKey:     p.Keyed.then,
-			Carry:       p.Carry,
-		})
-		return true
-	}
+	// #4256: the keyed pick. The filter has done its work (the
+	// candidates). #4361 S4: the picks are re-checked against the
+	// container, as the closure form's were, so a card that left under
+	// the open prompt is pruned from it and refused in an answer.
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:     p.Player,
 		FromPlayer:  p.Player,
@@ -237,10 +219,10 @@ func (g *Game) QueueOutsidePickForEffect(p OutsidePickPrompt) bool {
 		Cards:       cands,
 		Min:         p.Min,
 		Max:         max,
-		Zone:        ZoneOutside,
-		Validate:    p.Validate,
-		Then:        p.Then,
 		Destination: p.outsideDestination(),
+		ThenKey:     p.Keyed.then,
+		Carry:       p.Carry,
+		LiveZone:    ZoneOutside,
 	})
 	return true
 }

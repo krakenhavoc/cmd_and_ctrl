@@ -25,10 +25,14 @@ func init() {
 				ExceptController: true,
 				Match:            Creature(),
 				Label:            "a creature",
-				Then: func(ctx *Context, sacrificed game.PromptedSacrifices) error {
-					return CreateToken{Template: TokenCard("2/2 black Zombie"), N: sacrificed.Count()}.Apply(ctx)
-				},
+				Keyed:            syphonFleshEdicted,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// syphonFleshEdicted is a Zombie for each creature sacrificed this way,
+// keyed (#4290).
+var syphonFleshEdicted = RegisterEdictThen("prompt-run/syphon-flesh-zombies", func(ctx *Context, sacrificed game.PromptedSacrifices) error {
+	return CreateToken{Template: TokenCard("2/2 black Zombie"), N: sacrificed.Count()}.Apply(ctx)
+})

@@ -733,8 +733,7 @@ func TestPutFromLibraryThenRunsWhenABatchCardLeavesMidEntry(t *testing.T) {
 	forest := plTop(me, "Forest", "Basic Land — Forest", "")
 	size := me.Library.Size()
 
-	var ran bool
-	var res PutFromLibraryResult
+	batchLeavesRan, batchLeavesRes = false, PutFromLibraryResult{}
 	var err error
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(game.ReplacementEffect{
@@ -749,15 +748,13 @@ func TestPutFromLibraryThenRunsWhenABatchCardLeavesMidEntry(t *testing.T) {
 			Label: "Test: the Bear leaves the library mid-entry",
 		})
 		err = PutFromLibraryOntoBattlefield{
-			Player: me.ID,
-			Cards:  []uuid.UUID{forest, bear, rite},
-			All:    true,
-			Then: func(g *game.Game, r PutFromLibraryResult) error {
-				ran, res = true, r
-				return PutRestOnBottomInRandomOrder(g, r)
-			},
+			Player:   me.ID,
+			Cards:    []uuid.UUID{forest, bear, rite},
+			All:      true,
+			ThenTail: batchLeavesThen,
 		}.Apply(NewContext(g, nil))
 	})
+	ran, res := batchLeavesRan, batchLeavesRes
 
 	if err != nil {
 		t.Errorf("err = %v; a card that left its zone is not part of the entry, not a failure", err)
@@ -834,3 +831,18 @@ func TestLurkingPredatorsLeavesACardThatLeftTheLibrary(t *testing.T) {
 		t.Error("a card that left the library was pulled back to its bottom")
 	}
 }
+
+// batchLeavesRan and batchLeavesRes are what the probe rider below saw: a
+// registered tail holds no closure, so the test reads them off package
+// variables (the tests of this package do not run in parallel).
+var (
+	batchLeavesRan bool
+	batchLeavesRes PutFromLibraryResult
+)
+
+// batchLeavesThen records what it was told, then puts the rest on the
+// bottom of the library.
+var batchLeavesThen = PutFromLibraryTail("test/put-from-library-batch-leaves-then", func(ctx *Context, r PutFromLibraryResult) error {
+	batchLeavesRan, batchLeavesRes = true, r
+	return PutRestOnBottomInRandomOrder(ctx.Game, r)
+})

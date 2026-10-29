@@ -19,7 +19,7 @@ import (
 //  1. "Sacrifice any number" is one own-permanents pick over your
 //     artifacts, enchantments and tokens with a floor of zero
 //     (ChoosePermanents, Scapeshift's shape), and the chosen ones are
-//     sacrificed together (SacrificeAllThenForEffect).
+//     sacrificed together (SacrificeAllKeyedForEffect).
 //  2. "That many" is how many really left the battlefield, read off
 //     the sacrifice's answer rather than off the clicks (#1019's
 //     rule), so a permanent that could not be sacrificed buys nothing.
@@ -40,35 +40,43 @@ func init() {
 		OracleID:     "b0e533dd-baf2-482a-b9e1-872eb5e47439",
 		Name:         "Lich-Knights' Conquest",
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ChoosePermanents{
 				Question:   "Lich-Knights' Conquest — sacrifice any number of artifacts, enchantments, and/or tokens",
 				Candidates: lichKnightsFodder,
-				// Sacrificed here rather than with Sacrifice: true,
-				// because "that many" is what LEFT, not what was
-				// clicked.
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					if picked.Count() == 0 {
-						return nil
-					}
-					return ctx.Game.SacrificeAllThenForEffect(ctx.Source(), picked.Cards(),
-						func(g *game.Game, sacrificed []uuid.UUID) error {
-							n := len(sacrificed)
-							if n == 0 {
-								return nil
-							}
-							return ReturnChosenFromGraveyard{
-								Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
-								Match:    game.Card.IsCreature,
-								Min:      n,
-								Max:      n,
-							}.Apply(NewContext(g, item))
-						})
-				},
+				Keyed:      lichKnightsChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// lichKnightsChosen is the chosen permanents sacrificed and that many
+// creature cards returned, keyed (#4290). Sacrificed in the body rather
+// than with Sacrifice: true, because "that many" is what LEFT, not what was
+// clicked.
+var lichKnightsChosen = RegisterPermanentsPick("prompt-run/lich-knights-conquest-sacrifice", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		if picked.Count() == 0 {
+			return nil
+		}
+		return ctx.Game.SacrificeAllKeyedForEffect(ctx.Source(), picked.Cards(), ctx.ItemTail(lichKnightsReturn))
+	},
+})
+
+// lichKnightsReturn is "return that many creature cards", told what was
+// really sacrificed, keyed (#4253 slice 10a).
+var lichKnightsReturn = CardTail("then/lich-knights-conquest-return", func(ctx *Context, o game.TailOutcome) error {
+	n := len(o.IDs)
+	if n == 0 {
+		return nil
+	}
+	return ReturnChosenFromGraveyard{
+		Question: "Lich-Knights' Conquest — return that many creature cards from your graveyard to the battlefield",
+		Match:    game.Card.IsCreature,
+		Min:      n,
+		Max:      n,
+	}.Apply(ctx)
+})
 
 // lichKnightsFodder is every artifact, enchantment and token the
 // chooser controls, with a floor of zero and no ceiling but the board —

@@ -14,23 +14,20 @@ import (
 // player may pay <Cost>. If no one does, <effect>" (ADR 0150, #1903):
 // the payment is offered to every player still in the game, in APNAP
 // order from the active player, the controller included, until one
-// pays (game.QueueAnyPlayerPaysForEffect). The offer blocks the step
+// pays (game.QueueAnyPlayerPaysKeyedForEffect). The offer blocks the step
 // it was made in and takes no standing answer.
 //
-// Both branches are bound to the resolving stack item the way
-// PayUnless's are, so OnNobody reads the item's targets and X when it
-// finally runs (Wild Might's creature, Soul Strings' cards).
+// The consequences are registered (Then) and run against the resolving
+// stack item carried as data, so "if no one does" reads the item's
+// targets and X when it finally runs (Wild Might's creature, Soul
+// Strings' cards).
 type AnyPlayerPays struct {
 	// Cost is the payment ("{2}"), with any X already worked out.
 	Cost string
 	// Question is the prompt header each player sees.
 	Question string
-	// OnNobody is the effect that happens when nobody pays.
-	OnNobody func(ctx *Context) error
-	// OnPaid is "If a player does, …", handed the payer. Optional.
-	OnPaid func(ctx *Context, payer uuid.UUID) error
 	// HelpsController marks a payment the controller wants made (Icy
-	// Prison's upkeep): game.AnyPlayerPays.HelpsController.
+	// Prison's upkeep): game.AnyPlayerPaysKeyed.HelpsController.
 	HelpsController bool
 
 	// The fields below are ADR 0150 PR 2's (§3): payments other than
@@ -42,10 +39,6 @@ type AnyPlayerPays struct {
 	// when it is set; the offer's words are the payment's, lower-cased
 	// ("sacrifice a land", "5 life").
 	Pay UpkeepPayment
-	// PerPayer works the payment out for each player as they are
-	// asked (Temporal Extortion's half their life, rounded up). It
-	// replaces Pay and Cost for that player.
-	PerPayer func(g *game.Game, payer uuid.UUID) (game.PayAction, string)
 	// Opponents is "any opponent may" (Innocent Traveler, Distant
 	// Memories): the controller is not asked.
 	Opponents bool
@@ -57,11 +50,12 @@ type AnyPlayerPays struct {
 	// "Don't pay" read wrong.
 	AcceptLabel, DeclineLabel string
 
-	// Then is OnPaid, OnNobody and PerPayer as REGISTERED consequences
-	// (AnyPlayerConsequences, #4264), and Carry the plain data they are
-	// handed: every link of an offer queued with one holds no closure, so
-	// a table waiting on any player's answer is a restore point. Set Then
-	// or the closures, not both.
+	// Then is the offer's REGISTERED consequences (AnyPlayerConsequences,
+	// #4264): "if a player does", "if no one does" and the payment worked
+	// out per player (Temporal Extortion's half their life, rounded up).
+	// Carry is the plain data they are handed. Every link of the offer
+	// holds no closure, so a table waiting on any player's answer is a
+	// restore point. Required (#4253 retired the closure form).
 	Then  game.AnyPlayerThen
 	Carry []uuid.UUID
 }
@@ -188,19 +182,8 @@ func HalfTheirLifeRoundedUp(g *game.Game, payer uuid.UUID) (game.PayAction, stri
 }
 
 func (a AnyPlayerPays) Apply(ctx *Context) error {
-	if a.Then.Key() != "" {
-		if a.OnPaid != nil || a.OnNobody != nil || a.PerPayer != nil {
-			return fmt.Errorf("%w: AnyPlayerPays %q sets both Then and a closure", game.ErrInvalidParam, a.Then.Key())
-		}
-		return a.applyKeyed(ctx)
-	}
-	item := ctx.Item
-	var onPaid func(*game.Game, uuid.UUID) error
-	if a.OnPaid != nil {
-		paid := a.OnPaid
-		onPaid = func(g *game.Game, payer uuid.UUID) error {
-			return paid(NewContext(g, item), payer)
-		}
+	if a.Then.Key() == "" {
+		return fmt.Errorf("%w: AnyPlayerPays with no registered consequences (AnyPlayerConsequences)", game.ErrInvalidParam)
 	}
 	var guards uuid.UUID
 	if a.GuardsSource {
@@ -210,38 +193,6 @@ func (a AnyPlayerPays) Apply(ctx *Context) error {
 	if action != nil {
 		// "Sacrifice a land" is the upkeep prompt's words; in an
 		// offer it follows "any player may" (ADR 0150 §5).
-		cost = a.Pay.Words
-		if cost != "" {
-			cost = strings.ToLower(cost[:1]) + cost[1:]
-		}
-	}
-	return ctx.Game.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
-		Source:       ctx.Source(),
-		Controller:   ctx.Controller(),
-		Cost:         cost,
-		Action:       action,
-		PerPayer:     a.PerPayer,
-		Question:     a.Question,
-		Opponents:    a.Opponents,
-		OnPaid:       onPaid,
-		OnNobody:     declineAgainstTheSameItem(item, a.OnNobody),
-		Guards:       guards,
-		AcceptLabel:  a.AcceptLabel,
-		DeclineLabel: a.DeclineLabel,
-
-		HelpsController: a.HelpsController,
-	})
-}
-
-// applyKeyed is Apply for an offer whose consequences are a registered
-// key (#4264).
-func (a AnyPlayerPays) applyKeyed(ctx *Context) error {
-	var guards uuid.UUID
-	if a.GuardsSource {
-		guards = ctx.Source()
-	}
-	cost, action := a.Cost, a.Pay.Action
-	if action != nil {
 		cost = a.Pay.Words
 		if cost != "" {
 			cost = strings.ToLower(cost[:1]) + cost[1:]
@@ -353,12 +304,12 @@ func anyPlayerMaySacrificeALandToTuckThis(name string) game.TriggeredAbility {
 // APNAP order from the active player chooses which objects they will pay
 // for, knowing what the earlier players chose, then every payment is
 // made, one life payment per object chosen. An object anyone paid for is
-// saved; OnUnsaved gets the rest (game.QueueAnyPlayerPaysForEachForEffect).
+// saved; Then gets the rest (game.QueueAnyPlayerPaysForEachForEffect).
 //
 // Unlike AnyPlayerPays the first payer does not end it: two players may
 // pay for the same object, and each pays. Bound to the resolving stack
-// item the way AnyPlayerPays is, so OnUnsaved reads the item's targets
-// and X when it finally runs.
+// item the way AnyPlayerPays is, so Then reads the item's targets and X
+// when it finally runs.
 type AnyPlayerPaysForEach struct {
 	// Objects are the battlefield objects, worked out as the effect
 	// is applied (CR 608.2h).
@@ -369,15 +320,11 @@ type AnyPlayerPaysForEach struct {
 	Noun string
 	// Question is the prompt header each player sees. Optional.
 	Question string
-	// OnUnsaved is the effect on the objects nobody paid for. It is
-	// handed only objects that are still the same objects.
-	OnUnsaved func(ctx *Context, unsaved []uuid.UUID) error
-
-	// Then is OnUnsaved as a REGISTERED consequence
-	// (AnyPlayerEachConsequence, #4264), and Carry the plain data it is
-	// handed: every leg of an offer queued with one holds no closure, so a
-	// table waiting on any seat's pick is a restore point. Set Then or
-	// OnUnsaved, not both.
+	// Then is the effect on the objects nobody paid for, a REGISTERED
+	// consequence (AnyPlayerEachConsequence, #4264), handed only objects
+	// that are still the same objects; Carry is the plain data it is
+	// handed. Every leg of the offer holds no closure, so a table waiting
+	// on any seat's pick is a restore point. Required.
 	Then  game.AnyPlayerEachThen
 	Carry []uuid.UUID
 }
@@ -398,20 +345,13 @@ func AnyPlayerEachConsequence(key string, onUnsaved func(ctx *Context, r game.An
 }
 
 func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
-	if a.Then.Key() != "" && a.OnUnsaved != nil {
-		return fmt.Errorf("%w: AnyPlayerPaysForEach %q sets both Then and OnUnsaved", game.ErrInvalidParam, a.Then.Key())
+	if a.Then.Key() == "" {
+		return fmt.Errorf("%w: AnyPlayerPaysForEach with no registered consequence (AnyPlayerEachConsequence)", game.ErrInvalidParam)
 	}
 	item := ctx.Item
 	var objects []uuid.UUID
 	if a.Objects != nil {
 		objects = a.Objects(ctx)
-	}
-	var onUnsaved func(*game.Game, []uuid.UUID) error
-	if a.OnUnsaved != nil {
-		unsaved := a.OnUnsaved
-		onUnsaved = func(g *game.Game, ids []uuid.UUID) error {
-			return unsaved(NewContext(g, item), ids)
-		}
 	}
 	return ctx.Game.QueueAnyPlayerPaysForEachForEffect(game.AnyPlayerPaysForEach{
 		Source:     ctx.Source(),
@@ -420,7 +360,6 @@ func (a AnyPlayerPaysForEach) Apply(ctx *Context) error {
 		EachLife:   a.EachLife,
 		Noun:       a.Noun,
 		Question:   a.Question,
-		OnUnsaved:  onUnsaved,
 		Then:       a.Then,
 		Carry:      a.Carry,
 		Asked:      game.NewAskedItem(item),

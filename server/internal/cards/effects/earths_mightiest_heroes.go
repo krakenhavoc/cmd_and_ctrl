@@ -38,7 +38,7 @@ func init() {
 				Max:      max,
 				Optional: true,
 				Label:    "Earth's Mightiest Heroes — put a creature card onto the battlefield",
-				Then:     PutRestIntoGraveyard,
+				ThenTail: PutRestIntoGraveyardTail,
 			}.Apply(ctx)
 		},
 	})

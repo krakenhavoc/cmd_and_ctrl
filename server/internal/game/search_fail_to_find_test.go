@@ -52,8 +52,8 @@ func TestSpecFloorReadsTheSpec(t *testing.T) {
 	if got := (SearchLibrarySpec{Pred: isLand, Limit: 1}).floor(1); got != 0 {
 		t.Errorf("a predicate is a stated quality: floor = %d, want 0", got)
 	}
-	if got := (SearchLibrarySpec{Validate: func([]Card) bool { return true }, Limit: 2}).floor(2); got != 0 {
-		t.Errorf("a Validate hook is a stated quality: floor = %d, want 0", got)
+	if got := (SearchLibrarySpec{Rule: testSearchRuleAtMost.WithN(2), Limit: 2}).floor(2); got != 0 {
+		t.Errorf("a set rule is a stated quality: floor = %d, want 0", got)
 	}
 	if got := (SearchLibrarySpec{Limit: 1}).floor(5); got != 1 {
 		t.Errorf("no predicate is an unconditional search: floor = %d, want 1", got)
@@ -139,12 +139,12 @@ func TestOneMatchForAStatedQualityOffersFailToFind(t *testing.T) {
 	thenRan, thenFound := 0, -1
 
 	runSearch(t, g, SearchLibrarySpec{
-		Player:  me.ID,
-		Pred:    func(c Card) bool { return c.Name == "Swamp" },
-		Dest:    ZoneHand,
-		Limit:   1,
-		Shuffle: true,
-		Then:    func(_ *Game, found []uuid.UUID) error { thenRan++; thenFound = len(found); return nil },
+		Player:   me.ID,
+		Pred:     func(c Card) bool { return c.Name == "Swamp" },
+		Dest:     ZoneHand,
+		Limit:    1,
+		Shuffle:  true,
+		ThenTail: searchHook(func(_ *Game, found []uuid.UUID) error { thenRan++; thenFound = len(found); return nil }),
 	})
 
 	c := openSearch(g, me.ID)
@@ -280,7 +280,7 @@ func TestAnUnconditionalSearchMustFind(t *testing.T) {
 		thenFound := -1
 		runSearch(t, g, SearchLibrarySpec{
 			Player: me.ID, Dest: ZoneHand, Limit: 1, Shuffle: true,
-			Then: func(_ *Game, found []uuid.UUID) error { thenFound = len(found); return nil },
+			ThenTail: searchHook(func(_ *Game, found []uuid.UUID) error { thenFound = len(found); return nil }),
 		})
 		c := openSearch(g, me.ID)
 		if c == nil {

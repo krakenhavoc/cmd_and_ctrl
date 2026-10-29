@@ -55,35 +55,43 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	tmpl, ok := TokenCopyTemplate(g, ids[0])
-	if !ok {
+	if _, ok := TokenCopyTemplate(g, ids[0]); !ok {
 		return nil
 	}
-	sauronWraithExceptionFor(ctx.textReader())(&tmpl)
-	prefer := triggerAttackTarget(item)
 	sauron := game.ObjectRef{ID: item.SourceCardID, Epoch: -1}
 	if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
 		sauron.Epoch = c.ObjectEpoch
 	}
-	return ExileTarget{
-		Target: ids[0],
-		Then: func(ctx *Context, _ bool) error {
-			item := ctx.Item
-			return CreateTokensAttackingYourChoice{
-				Controller: item.Controller,
-				Template:   tmpl,
-				Copy:       true,
-				N:          1,
-				Tapped:     true,
-				Prefer:     prefer,
-				Label:      "Sauron, the Necromancer",
-				// The object Sauron was when the trigger resolved (CR 400.7)
-				// rides the tail as data: its ID and its epoch.
-				Tail: game.KeyedTail{Ref: sauronNecromancerExile, Carry: []uuid.UUID{sauron.ID}, N: sauron.Epoch},
-			}.Apply(NewContext(ctx.Game, item))
-		},
-	}.Apply(ctx)
+	// #4253 slice 10a: the Wraith is the exile's keyed tail. The card and
+	// the object Sauron was when the trigger resolved (CR 400.7) ride it as
+	// data; the copy's template is read from the card once it has moved,
+	// whose copiable values a move does not change (CR 707.2).
+	return ExileTarget{Target: ids[0], ThenTail: withN(withCarry(ctx.ItemTail(sauronNecromancerWraith), ids[0], sauron.ID), sauron.Epoch)}.Apply(ctx)
 }
+
+// sauronNecromancerWraith is "create a tapped and attacking token that's a
+// copy of that card, except it's a 3/3 black Wraith with menace", whether
+// or not the card was exiled: Carry is [the card, Sauron], N Sauron's epoch.
+var sauronNecromancerWraith = CardTail("then/sauron-the-necromancer-wraith", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	tmpl, ok := TokenCopyTemplate(ctx.Game, o.Tail.Carry[0])
+	if !ok {
+		return nil
+	}
+	sauronWraithExceptionFor(ctx.textReader())(&tmpl)
+	return CreateTokensAttackingYourChoice{
+		Controller: ctx.Controller(),
+		Template:   tmpl,
+		Copy:       true,
+		N:          1,
+		Tapped:     true,
+		Prefer:     triggerAttackTarget(ctx.Item),
+		Label:      "Sauron, the Necromancer",
+		Tail:       game.KeyedTail{Ref: sauronNecromancerExile, Carry: []uuid.UUID{o.Tail.Carry[1]}, N: o.Tail.N},
+	}.Apply(ctx)
+})
 
 // sauronNecromancerExile is the Wraith's tail, keyed (#4294): the end step
 // trigger that exiles it unless Sauron is your Ring-bearer, for the Sauron

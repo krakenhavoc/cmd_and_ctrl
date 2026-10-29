@@ -16,26 +16,32 @@ import (
 func init() {
 	Register(Spec{
 		OracleID: "928bf0d9-89be-462d-aeb7-74a65e95535c", Name: "Reckless Endeavor", Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			rolls, err := rollDice(ctx, 12, 2)
-			if err != nil {
-				return err
-			}
-			controller, source := item.Controller, item.SourceCardID
-			if rolls[0] == rolls[1] {
-				return recklessEndeavorApply(ctx.Game, source, controller, rolls[0], rolls[1])
-			}
-			// Keyed (#4298): the two rolls ride the prompt as its word.
-			return MayChoice{
-				Question: "Reckless Endeavor — choose the damage result",
-				YesLabel: fmt.Sprintf("%d damage, %d Treasures", rolls[0], rolls[1]),
-				NoLabel:  fmt.Sprintf("%d damage, %d Treasures", rolls[1], rolls[0]),
-				Then:     recklessEndeavorChoice,
-				Word:     strconv.Itoa(rolls[0]) + " " + strconv.Itoa(rolls[1]),
-			}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return RollDice{Sides: 12, N: 2, Then: recklessEndeavorRolled}.Apply(ctx)
 		},
 	})
 }
+
+// recklessEndeavorRolled is "choose one result", after the two d12 (#4307:
+// a replaced roll waits for its chooser first).
+var recklessEndeavorRolled = DiceTail("dice/reckless-endeavor-rolled", func(ctx *Context, rolls []int) error {
+	if len(rolls) < 2 {
+		return nil
+	}
+	item := ctx.Item
+	controller, source := item.Controller, item.SourceCardID
+	if rolls[0] == rolls[1] {
+		return recklessEndeavorApply(ctx.Game, source, controller, rolls[0], rolls[1])
+	}
+	// Keyed (#4298): the two rolls ride the prompt as its word.
+	return MayChoice{
+		Question: "Reckless Endeavor — choose the damage result",
+		YesLabel: fmt.Sprintf("%d damage, %d Treasures", rolls[0], rolls[1]),
+		NoLabel:  fmt.Sprintf("%d damage, %d Treasures", rolls[1], rolls[0]),
+		Then:     recklessEndeavorChoice,
+		Word:     strconv.Itoa(rolls[0]) + " " + strconv.Itoa(rolls[1]),
+	}.Apply(ctx)
+})
 
 // recklessEndeavorChoice is "choose one result": a yes is the first roll as
 // the damage and the second as the Treasures, a no the other way round.
@@ -61,5 +67,12 @@ func recklessEndeavorApply(g *game.Game, source, controller uuid.UUID, damage, t
 			targets = append(targets, c.InstanceID)
 		}
 	}
-	return g.DealDamageEachThenForEffect(source, targets, damage, func(g *game.Game, _ int) error { return treasureTokens(g, controller, treasures) })
+	return g.DealDamageEachKeyedForEffect(source, targets, damage, game.KeyedTail{Ref: recklessEndeavorTreasures, Player: controller, Source: source, N: treasures})
 }
+
+// recklessEndeavorTreasures is "then create a number of Treasure tokens
+// equal to the other result" once the damage has settled: the result is
+// the tail's N (#4253). An on-disk key.
+var recklessEndeavorTreasures = game.RegisterTail("then/reckless-endeavor-treasures", func(g *game.Game, o game.TailOutcome) error {
+	return treasureTokens(g, o.Tail.Player, o.Tail.N)
+})

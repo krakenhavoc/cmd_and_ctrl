@@ -174,7 +174,7 @@ var openingHandOfferAnswer = RegisterConfirmThen("confirm/opening-hand-offer", f
 	if act == nil {
 		return nil
 	}
-	return g.takeOpeningHandActionLocked(r.Chooser, r.Source, act)
+	return g.takeOpeningHandActionLocked(r.Chooser, r.Source)
 })
 
 // takeOpeningHandActionLocked puts the card onto the battlefield from
@@ -183,30 +183,49 @@ var openingHandOfferAnswer = RegisterConfirmThen("confirm/opening-hand-offer", f
 // (a departed seat's, a rider that exiled it) does nothing rather than
 // conjure a card.
 //
-// The entry is the ordinary hand door (PutFromHandOntoBattlefieldThen
+// The entry is the ordinary keyed hand door (PutFromHandOntoBattlefieldKeyed
 // ForEffect), so the CR 614 window, the layer timestamp and the card's
 // own enters hooks are the same as any other arrival, and a card that is
 // not a permanent card is refused there (CR 110.4) rather than here.
 //
 // Caller must hold g.mu.
-func (g *Game) takeOpeningHandActionLocked(seat, cardID uuid.UUID, act *OpeningHandAction) error {
+func (g *Game) takeOpeningHandActionLocked(seat, cardID uuid.UUID) error {
 	p := g.playerByIDLocked(seat)
 	if p == nil || p.Hand == nil || !p.Hand.Contains(cardID) {
 		return nil
 	}
-	return g.PutFromHandOntoBattlefieldThenForEffect(cardID, HandEntryOptions{}, func(g *Game, entered uuid.UUID) error {
-		if entered == uuid.Nil {
-			return nil
-		}
-		for name, n := range act.EntersWithCounters {
-			// #3942: the player taking the opening-hand action.
-			if err := g.AddCounterByForEffect(seat, entered, name, n); err != nil {
-				return err
-			}
-		}
-		return g.queueOpeningHandExileLocked(seat, entered, act.ExileFromHand)
-	})
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(cardID, HandEntryOptions{},
+		KeyedTail{Ref: openingHandEnteredRef, Player: seat, Source: cardID})
 }
+
+// openingHandEnteredRef is the rest of an opening-hand action as a
+// registered tail (#4253 slice 6): the counters it enters with and the
+// card its owner then exiles from their hand. The action is read from the
+// catalog again by the entered card's key (the prompt carries the card's
+// identity, and the catalog is the one place its action is declared), the
+// seat and the card are the tail's Player and Source. An on-disk key: never
+// renamed, never reused.
+var openingHandEnteredRef = RegisterTail("engine/opening-hand-entered", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) == 0 || CatalogOpeningHand == nil {
+		return nil
+	}
+	entered, seat := o.IDs[0], o.Tail.Player
+	c := findBattlefieldCard(g, entered)
+	if c == nil {
+		return nil
+	}
+	act := CatalogOpeningHand(catalogKeyOf(c))
+	if act == nil {
+		return nil
+	}
+	for name, n := range act.EntersWithCounters {
+		// #3942: the player taking the opening-hand action.
+		if err := g.AddCounterByForEffect(seat, entered, name, n); err != nil {
+			return err
+		}
+	}
+	return g.queueOpeningHandExileLocked(seat, entered, act.ExileFromHand)
+})
 
 // queueOpeningHandExileLocked is "exile a card from your hand": its
 // owner picks `n` of what is left in their hand, and those cards go to
@@ -237,15 +256,21 @@ func (g *Game) queueOpeningHandExileLocked(seat, source uuid.UUID, n int) error 
 		Cards:    ids,
 		Min:      n,
 		Max:      n,
-		Zone:     ZoneHand,
-		Then: func(g *Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.ExileCardForEffect(id); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: ZoneHand,
+		// #4361 S7a: a registered continuation, so a table waiting on
+		// the exile is a restore point.
+		ThenKey: openingHandExileThen,
 	})
 	return nil
 }
+
+// openingHandExileThen exiles the cards picked from the hand. An on-disk
+// key: never renamed, never reused.
+var openingHandExileThen = RegisterChooseCardsThen("choose-cards/opening-hand-exile", func(g *Game, r CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.ExileCardForEffect(id); err != nil {
+			return err
+		}
+	}
+	return nil
+})

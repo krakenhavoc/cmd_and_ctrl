@@ -23,7 +23,7 @@ import (
 // is the same predicate Elspeth, Sun's Champion's emblem uses.
 //
 // THE −6 destroys the (up to three) targets as one simultaneous event
-// (DestroyPermanentsThenForEffect), then returns every one that really
+// (DestroyPermanentsKeyedForEffect), then returns every one that really
 // reached a graveyard — read off the landed outcome, so an indestructible
 // target (never destroyed), a token (it ceases to exist, CR 111.7) and a
 // permanent a replacement sent elsewhere are not returned, as printed.
@@ -96,10 +96,11 @@ func sorinLordDestroyAndTake(g *game.Game, item *game.StackItem) error {
 	if len(doomed) == 0 {
 		return nil
 	}
-	you := item.Controller
-	return g.DestroyPermanentsThenForEffect(doomed, func(g *game.Game, destroyed []uuid.UUID) error {
-		// The continuation re-reads the live game, the contract every
-		// resumable Then follows: an undo restores this game in place.
-		return ReturnFromGraveyardTogether{Targets: destroyed, Controller: you}.Apply(NewContext(g, item))
-	})
+	return g.DestroyPermanentsKeyedForEffect(doomed, ctx.ItemTail(sorinLordReturn))
 }
+
+// sorinLordReturn returns the permanents destroyed this way, together and
+// under the activator's control, keyed (#4253 slice 10a).
+var sorinLordReturn = CardTail("then/sorin-lord-of-innistrad-return", func(ctx *Context, o game.TailOutcome) error {
+	return ReturnFromGraveyardTogether{Targets: o.IDs, Controller: ctx.Controller()}.Apply(ctx)
+})

@@ -300,37 +300,18 @@ func b10ReturnAllLandCardsFromGraveyardTapped(ctx *Context, player uuid.UUID) er
 	}.Apply(ctx)
 }
 
-// b10Fight is CR 701.14: each creature deals damage equal to its
-// power to the other. Both amounts are read before either is dealt,
-// so a first blow cannot change the second (the two are simultaneous
-// in the rules), and a creature that has left the battlefield fights
-// nothing. Damage goes through DealDamageToCreatureForEffect, so a
-// prevention shield or a damage doubler sees it; lethal damage is the
-// SBA's business at the next check, as for every other effect.
+// b10Fight delegates the simultaneous fight to the engine, retaining the
+// resolving ability's source-object check before naming either fighter.
 func b10Fight(ctx *Context, a, b uuid.UUID) error {
-	// #1432, CR 701.12b: a fighter that is no longer on the
-	// battlefield — including a source that left and came back as a
-	// new object — means no damage is dealt at all.
 	if ctx.isNewSourceObjectAsThis(a) || ctx.isNewSourceObjectAsThis(b) {
 		return nil
 	}
-	ctx.Game.RecomputeLayersIfStaleLocked()
-	ca, okA := ctx.Game.LookupCardForEffect(a)
-	cb, okB := ctx.Game.LookupCardForEffect(b)
+	ra, okA := ctx.Game.PermanentRefForEffect(a)
+	rb, okB := ctx.Game.PermanentRefForEffect(b)
 	if !okA || !okB {
 		return nil
 	}
-	za, zb := ctx.Game.FindCardZoneForEffect(a), ctx.Game.FindCardZoneForEffect(b)
-	if za == nil || zb == nil || za.Kind != game.ZoneBattlefield || zb.Kind != game.ZoneBattlefield {
-		return nil
-	}
-	pa, pb := ca.CurrentPower(), cb.CurrentPower()
-	return ctx.Game.DamageInstanceForEffect(func() error {
-		if err := (DealDamage{Source: a, Target: b, Amount: pa}).Apply(ctx); err != nil {
-			return err
-		}
-		return DealDamage{Source: b, Target: a, Amount: pb}.Apply(ctx)
-	})
+	return ctx.Game.FightForEffect(ra, rb)
 }
 
 // b10DestroyAllCreaturesExcept is Mount Doom's "choose up to two

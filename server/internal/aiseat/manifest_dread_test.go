@@ -33,11 +33,13 @@ func TestBotsAnswerManifestDread(t *testing.T) {
 
 			var got game.ManifestDreadResult
 			g.WithWriteLock(func() {
-				if err := g.ManifestDreadThenForEffect(seat.ID, uuid.Nil, func(_ *game.Game, res game.ManifestDreadResult) error {
-					got = res
+				tail := hookTail(func(_ *game.Game, o game.TailOutcome) error {
+					got = game.ManifestDreadOutcome(o)
 					return nil
-				}); err != nil {
-					t.Fatalf("ManifestDreadThenForEffect: %v", err)
+				})
+				tail.Player = seat.ID
+				if err := g.ManifestDreadKeyedForEffect(seat.ID, uuid.Nil, tail); err != nil {
+					t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 				}
 			})
 
@@ -71,8 +73,8 @@ func TestHeuristicManifestsTheCreatureCard(t *testing.T) {
 	g.WithWriteLock(func() {
 		seat.Library.PushTop(bear)
 		seat.Library.PushTop(rock)
-		if err := g.ManifestDreadThenForEffect(seat.ID, uuid.Nil, func(*game.Game, game.ManifestDreadResult) error { return nil }); err != nil {
-			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		if err := g.ManifestDreadKeyedForEffect(seat.ID, uuid.Nil, hookTail(func(*game.Game, game.TailOutcome) error { return nil })); err != nil {
+			t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 		}
 	})
 	driveChoices(t, g, heuristic.New(), seat.ID, 4)

@@ -114,12 +114,7 @@ func sorinGrimNemesisReveal(g *game.Game, item *game.StackItem) error {
 	// bounce's continuation ignores `bounced` and pays the value read
 	// before the move. It runs after any CR 903.9 question about the
 	// card has been answered, which keeps the drain from landing first.
-	return BounceToHand{Target: revealed[0], Then: func(ctx *Context, _ bool) error {
-		if mv <= 0 {
-			return nil
-		}
-		return eachOpponentLosesLife(ctx.Game, ctx.Item, mv)
-	}}.Apply(ctx)
+	return BounceToHand{Target: revealed[0], ThenTail: withN(ctx.ItemTail(thenEachOpponentLosesN), mv)}.Apply(ctx)
 }
 
 // sorinGrimNemesisArmy is the −9.

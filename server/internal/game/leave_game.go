@@ -261,7 +261,7 @@ func (g *Game) exileStillControlledLocked(playerID uuid.UUID) {
 		}
 	}
 	for _, id := range stuck {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, ""); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "leaving the game: exile of a still-controlled permanent failed: " + err.Error(),
@@ -305,7 +305,7 @@ func (g *Game) exileGhostControlledLocked() int {
 		ghosts = append(ghosts, c.InstanceID)
 	}
 	for _, id := range ghosts {
-		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, ""); err != nil {
+		if err := g.executeBattlefieldLeaveLocked(id, ZoneExile, uuid.Nil, nil, false, exileLink{}, "", leaveMark{cause: LeaveCauseOther}); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				ErrorMsg: "CR 800.4c: exile of a permanent left to a departed controller failed: " + err.Error(),
@@ -519,8 +519,8 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// Since #1225 the action IS a statement about the kind, and the
 	// row is the plain one it looks like. A choose_cards that is no
 	// run's leg still has no run to settle, but it does have the other
-	// thing a paused resolution leaves behind — a chooseCardsFrame
-	// holding the rest of the card — and the drop runs it with nothing
+	// thing a paused resolution leaves behind — its keyed continuation,
+	// the rest of the card (#4361 S7b) — and the drop runs it with nothing
 	// picked, which is what the empty-candidate path at QUEUE time has
 	// always done for the same closure. defaultDroppedChoiceLocked
 	// still branches on the PROMPT rather than on the kind (#1027's
@@ -607,8 +607,8 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	PendingChoicePayUnless: {onDrop: dropDecline},
 	// pay_amount (ADR 0129 §3) is the same CR 800.4f cost, never
 	// reassigned: nobody else pays a departed player's energy. The drop
-	// runs the rest of the card with nothing paid, through the
-	// chooseValueResume frame's "no choice" (dropDefault), which is what
+	// runs the rest of the card with nothing paid, through the value
+	// frame's "no choice" (dropDefault, chooseValueFrameOf), which is what
 	// "the amount of {E} paid this way" is when none was.
 	PendingChoicePayAmount: {onDrop: dropDefault},
 	// entry_pay_life is 800.4f too, and its "unless" branch — the

@@ -108,30 +108,32 @@ import (
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EarthbendForEffect(actor, source, land uuid.UUID, n int) error {
-	return g.EarthbendThenForEffect(actor, source, land, n, nil)
+	return g.earthbendLocked(actor, source, land, n, KeyedTail{})
 }
 
-// EarthbendThenForEffect is EarthbendForEffect with the rest of the
-// sentence: Earthshape's "Earthbend 3. Then each creature you control
-// with power less than or equal to that land's power gains hexproof".
-//
-// `then` runs once the earthbend has actually finished — after the
-// counters have LANDED, which on a board with two different counter
-// replacements (a Doubling Season beside a Hardened Scales) is when
-// the CR 616 ordering prompt is answered, not when this returns
-// (#1282). It also runs when the earthbend did nothing (replaced away,
-// or its land has left): the sentence after "then" is not conditional
-// on the keyword action having happened.
-//
-// A nil land is a no-op that still runs `then`, for the same reason.
+// EarthbendKeyedForEffect is EarthbendForEffect with the rest of the
+// sentence as data (#4253 slice 7): Earthshape's "Earthbend 3. Then each
+// creature you control with power less than or equal to that land's power
+// gains hexproof". `then` is a registered tail (RegisterTail), run once the
+// earthbend has actually finished — after the counters have LANDED (#1282)
+// — and told nothing. It also runs when the earthbend did nothing (replaced
+// away, or its land has left, or a nil land): the sentence after "then" is
+// not conditional on the keyword action having happened. (The closure form,
+// EarthbendThenForEffect, was deleted in #4253's cleanup.) An
+// earthbend whose counters stop on a CR 616 ordering prompt (a Doubling
+// Season beside a Hardened Scales) is then a restore point.
 //
 // Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
+func (g *Game) EarthbendKeyedForEffect(actor, source, land uuid.UUID, n int, then KeyedTail) error {
+	return g.earthbendLocked(actor, source, land, n, then)
+}
+
+// earthbendLocked is the one body of the two earthbend doors.
+//
+// Caller must hold g.mu.
+func (g *Game) earthbendLocked(actor, source, land uuid.UUID, n int, keyed KeyedTail) error {
 	if land == uuid.Nil {
-		if then != nil {
-			return then(g)
-		}
-		return nil
+		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	_, err := g.runKeywordActionLocked(&ReplacementEvent{
 		Kind:               RepEventKeywordAction,
@@ -139,7 +141,7 @@ func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then
 		Source:             source,
 		KeywordAction:      KeywordActionEarthbend,
 		KeywordActionCount: n,
-		keywordAction:      &keywordActionTail{land: land, then: then},
+		keywordAction:      &keywordActionTail{land: land, keyed: keyed},
 	})
 	return err
 }
@@ -168,12 +170,9 @@ func (g *Game) EarthbendThenForEffect(actor, source, land uuid.UUID, n int, then
 // cannot die before the counters land.
 //
 // Caller must hold g.mu.
-func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then func(g *Game) error) error {
+func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, keyed KeyedTail) error {
 	rest := func(g *Game) error {
-		if then == nil {
-			return nil
-		}
-		return then(g)
+		return g.runKeyedTailLocked(keyed, nil, 0)
 	}
 	c, ok := g.battlefieldCardLocked(land)
 	if !ok {
@@ -202,10 +201,25 @@ func (g *Game) applyEarthbendLocked(actor, source, land uuid.UUID, n int, then f
 	// real-card proof test). The recompute is a no-op when nothing is
 	// stale.
 	g.RecomputeLayersIfStaleLocked()
-	return g.AddCounterByThenForEffect(actor, land, CounterPlusOne, n, func(g *Game, _ int) error {
-		return rest(g)
-	})
+	// #4253 slice 7: what follows the counters is data. The counters' tail
+	// is the engine's earthbendCountersTail, which hands the card's own tail
+	// on as Next.
+	placed := KeyedTail{Ref: earthbendCountersTail}
+	if !keyed.IsZero() {
+		placed.Next = &keyed
+	}
+	return g.AddCounterByKeyedForEffect(actor, land, CounterPlusOne, n, placed)
 }
+
+// earthbendCountersTail runs the rest of the sentence once an earthbend's
+// counters have settled (#4253 slice 7): the card's own tail, its Next. An
+// on-disk key: never renamed, never reused.
+var earthbendCountersTail = RegisterTail("engine/earthbend-counters-placed", func(g *Game, o TailOutcome) error {
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return g.runKeyedTailLocked(*o.Tail.Next, nil, 0)
+})
 
 // earthbendLabel is the attribution the continuous effect and
 // the delayed trigger share. One string so a stall dump, the layer

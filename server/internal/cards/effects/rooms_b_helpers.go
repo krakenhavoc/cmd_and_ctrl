@@ -61,9 +61,7 @@ func roomsBEachOpponentLosesLifePerCardTypeMilled(g *game.Game, item *game.Stack
 // The pick is mandatory; with one candidate there is nothing to choose.
 func roomsBMillThenReturnAChosenCreatureCard(n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		return MillToZone{N: n, Then: func(ctx *Context, _ []uuid.UUID) error {
-			return roomsBReturnAChosenCreatureCard(ctx)
-		}}.Apply(NewContext(g, item))
+		return MillToZone{N: n, ThenTail: NewContext(g, item).ItemTail(roomsBHelpersMilled)}.Apply(NewContext(g, item))
 	}
 }
 
@@ -84,7 +82,6 @@ func roomsBReturnAChosenCreatureCard(ctx *Context) error {
 	case 1:
 		return ReturnFromGraveyard{Target: candidates[0], Dest: game.ZoneBattlefield}.Apply(ctx)
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
 		Source:   ctx.Source(),
@@ -92,13 +89,24 @@ func roomsBReturnAChosenCreatureCard(ctx *Context) error {
 		Cards:    candidates,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))
-		},
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  roomsBChosenCreatureReturn,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// roomsBChosenCreatureReturn is the creature card chosen returning to the
+// battlefield, keyed (#4253): the asking item rides the prompt as data.
+var roomsBChosenCreatureReturn = askedPick("choose-cards/rooms-b-return-chosen-creature", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneBattlefield}.Apply(ctx)
+})
+
+// roomsBHelpersMilled is the clause after the mill (#4253 slice 9).
+var roomsBHelpersMilled = CardTail("rooms-b-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	return roomsBReturnAChosenCreatureCard(ctx)
+})

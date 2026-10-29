@@ -1069,6 +1069,12 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.Cost != "" {
 		out.ManaCost = p.Cost
 	}
+	if p.AltCostKey == AltCostKeyStickerGraveyard {
+		// An ability sticker's "by paying N life in addition to paying its
+		// other costs" (#4307): the printed cost and the life, the life
+		// read off the sticker rather than stored on the permission.
+		out.Life = stickerGraveyardLifeOf(card)
+	}
 	if p.AltCostKey == AltCostKeyMadness {
 		// "Madness—{2}{B}, Pay 8 life": the life is printed on the card,
 		// not on the grant, so it is read from the catalog here rather
@@ -1634,6 +1640,10 @@ func (g *Game) castPermissionLocked(playerID uuid.UUID, card Card, zone ZoneKind
 		}
 		out := perm
 		return &out
+	}
+	// A permission an ability sticker on the card gives it (#4307).
+	if zone == ZoneGraveyard {
+		return g.stickerGraveyardPermissionLocked(playerID, card)
 	}
 	return nil
 }
@@ -2209,6 +2219,10 @@ func (g *Game) AnyCastPermissionsForEffect() bool {
 	// ADR 0090: a prepared permanent grants a cast of its CR 722.3c
 	// copy out of exile, derived rather than stored.
 	if g.anyPreparedPermanentLocked() {
+		return true
+	}
+	// #4307: and a graveyard card whose ability sticker lets it be cast.
+	if g.anyStickerGraveyardCastLocked() {
 		return true
 	}
 	if g.Battlefield == nil {

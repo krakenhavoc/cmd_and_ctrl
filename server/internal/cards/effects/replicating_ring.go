@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Replicating Ring — Snow Artifact {3} (EDHREC rank 1605):
 //
@@ -39,24 +43,28 @@ func init() {
 					return nil
 				}
 				// #1290: the payout check reads the count AFTER the
-				// counter LANDS, via AddCounterThenForEffect's
+				// counter LANDS, via AddCounterByKeyedForEffect's
 				// continuation, not on the next line — a Doubling
 				// Season / Hardened Scales board pauses the placement
 				// on a CR 616 prompt, and reading before it resumes
 				// would see the pre-placement count.
-				return g.AddCounterThenForEffect(ring, "night", 1, func(g *game.Game, _ int) error {
-					c, ok := g.LookupCardForEffect(ring)
-					if !ok || c.Counters["night"] < 8 {
-						return nil
-					}
-					// The tokens wait for a prompt the removal asks
-					// (#4162, CR 608.2c).
-					return replicatingRingReplicate.Run(NewContext(g, item))
-				})
+				return g.AddCounterByKeyedForEffect(uuid.Nil, ring, "night", 1, NewContext(g, item).ItemTail(replicatingRingCheck))
 			}),
 		},
 	})
 }
+
+// replicatingRingCheck is "if it has eight or more night counters on it,
+// remove all of them and create eight tokens", read once the counter has
+// landed. An on-disk key: never renamed, never reused.
+var replicatingRingCheck = CardTail("replicating-ring/check", func(ctx *Context, _ game.TailOutcome) error {
+	c, ok := ctx.Game.LookupCardForEffect(ctx.Item.SourceCardID)
+	if !ok || c.Counters["night"] < 8 {
+		return nil
+	}
+	// The tokens wait for a prompt the removal asks (#4162, CR 608.2c).
+	return replicatingRingReplicate.Run(ctx)
+})
 
 // replicatingRingReplicate is "If there are eight or more night counters
 // on it, remove them and create eight colorless artifact tokens named

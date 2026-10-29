@@ -126,10 +126,16 @@ func exilePermanentThenExtract(card string) func(*game.StackItem, *Context) erro
 		}
 		victim, names := c.Controller, extractionNames(c)
 		return ExileTarget{
-			Target: target,
-			Then: func(ctx *Context, _ bool) error {
-				return extractionSearch(ctx, card, victim, names, true)
-			},
+			Target:   target,
+			ThenTail: withWord(withCarry(ctx.ItemTail(extractionFamilyExiled), victim), strings.Join(append([]string{card}, names...), "\n")),
 		}.Apply(ctx)
 	}
 }
+
+// extractionFamilyExiled is the clause after the exile (#4253 slice 9).
+var extractionFamilyExiled = CardTail("extraction-family/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	parts := strings.Split(o.Tail.Word, "\n")
+	card, names, victim := parts[0], parts[1:], tailCarry0(o)
+
+	return extractionSearch(ctx, card, victim, names, true)
+})

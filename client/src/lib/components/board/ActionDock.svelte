@@ -79,6 +79,7 @@
   import { passHint, primaryKind, primaryTitles, type PrimaryKind } from "../../dockHint";
   import { L } from "../../labels";
   import LoopControl from "./LoopControl.svelte";
+  import HandoffChip from "./HandoffChip.svelte";
   import type { LoopDockProps } from "../../loopShortcut";
   import type { OutsideDock } from "../../outsideRight";
 
@@ -137,6 +138,10 @@
     // ADR 0206 (#4211): the seat looking, so the attack-direction line can
     // name who it may attack. Null or absent for a spectator.
     viewerID?: string | null;
+    // #4434: the next decision is owed on the other board of a turn the
+    // viewer plays for another seat. Drawn as a small chip over the dock's
+    // top edge; absent or null, none. Game.svelte builds it.
+    handoff?: { whose: string; onJump: () => void } | null;
   }
 
   const {
@@ -163,6 +168,7 @@
     loop,
     outside,
     viewerID = null,
+    handoff = null,
   }: Props = $props();
 
   // ADR 0121 §6: while the opening roll is open there is no turn yet.
@@ -674,6 +680,7 @@
       class={cls}
       class:emphasis={a.emphasis}
       class:align-end={a.alignEnd}
+      class:clip={a.clip}
       disabled={a.disabled}
       aria-pressed={a.pressed}
       aria-label={a.ariaLabel}
@@ -684,7 +691,7 @@
     >
       {#if a.icon}<Icon name={a.icon} size={12} />{/if}
       {#if a.seatColor}<span class="seat-dot" style="background:{a.seatColor}"></span>{/if}
-      {a.label}
+      {#if a.clip}<span class="clip-text">{a.label}</span>{:else}{a.label}{/if}
       {#if a.note}<span class="note">{a.note}</span>{/if}
       {#if a.cap}<kbd class="cap" aria-hidden="true">{a.cap}</kbd>{/if}
     </button>
@@ -899,6 +906,10 @@
         {primaryLabel}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
       </button>
     </div>
+  {/if}
+  <!-- #4434: not over an open sheet, which grows up from the same edge. -->
+  {#if handoff && !(sheetOpen && !minimised)}
+    <HandoffChip whose={handoff.whose} onJump={handoff.onJump} />
   {/if}
 </section>
 
@@ -1309,6 +1320,18 @@
   }
   .dock-btn.align-end {
     margin-left: auto;
+  }
+  /* #4435: a player's name is clipped, not wrapped, so four legal players
+     take two short lines of the targeting request, not four tall ones. */
+  .dock-btn.clip {
+    min-width: 0;
+    max-width: 8.5rem;
+  }
+  .dock-btn.clip .clip-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .dock-btn[aria-pressed="true"] {
     border-color: var(--accent);

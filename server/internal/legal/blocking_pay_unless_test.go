@@ -36,15 +36,13 @@ func TestPayUnlessBlocksTheTableOnlyWhenTheContractSaysSo(t *testing.T) {
 				var err error
 				if tc.blocking {
 					err = g.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
-						Chooser:   payer.ID,
-						Source:    payer.ID,
-						Cost:      "{1}",
-						Question:  "pay {1}?",
-						OnDecline: func(*game.Game) error { return nil },
+						Chooser:  payer.ID,
+						Source:   payer.ID,
+						Cost:     "{1}",
+						Question: "pay {1}?",
 					})
 				} else {
-					err = g.QueuePayUnlessForEffect(payer.ID, payer.ID, "{1}", "pay {1}?",
-						func(*game.Game) error { return nil })
+					err = g.QueuePayUnlessForEffect(payer.ID, payer.ID, "{1}", "pay {1}?")
 				}
 				if err != nil {
 					t.Fatalf("queue: %v", err)
@@ -119,11 +117,10 @@ func queueUpkeepTaxFor(t *testing.T, g *game.Game, chooser uuid.UUID) {
 	t.Helper()
 	g.WithWriteLock(func() {
 		if err := g.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
-			Chooser:   chooser,
-			Source:    chooser,
-			Cost:      "{1}",
-			Question:  "pay {1} or sacrifice it",
-			OnDecline: func(*game.Game) error { return nil },
+			Chooser:  chooser,
+			Source:   chooser,
+			Cost:     "{1}",
+			Question: "pay {1} or sacrifice it",
 		}); err != nil {
 			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}

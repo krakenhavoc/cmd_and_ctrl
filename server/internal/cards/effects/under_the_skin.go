@@ -27,13 +27,15 @@ func init() {
 		Name:         "Under the Skin",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			me, source := ctx.Controller(), ctx.Source()
-			return ManifestDread{Then: func(g *game.Game, _ game.ManifestDreadResult) error {
-				return underTheSkinOffer(g, me, source)
-			}}.Apply(ctx)
+			return ManifestDread{ThenTail: ctx.Tail(underTheSkinThen)}.Apply(ctx)
 		},
 	})
 }
+
+// underTheSkinThen is the offer after the manifest dread (#4253 slice 9).
+var underTheSkinThen = ManifestDreadTail("under-the-skin/offer-return", func(ctx *Context, _ game.ManifestDreadResult, o game.TailOutcome) error {
+	return underTheSkinOffer(ctx.Game, o.Tail.Player, o.Tail.Source)
+})
 
 // underTheSkinOffer asks `me` which permanent card in their graveyard
 // to take, if any, and returns it to their hand.
@@ -49,15 +51,19 @@ func underTheSkinOffer(g *game.Game, me, source uuid.UUID) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.ReturnFromGraveyardUnderControlForEffect(id, game.ZoneHand, uuid.Nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:  underTheSkinReturned,
+		LiveZone: game.ZoneGraveyard,
 	})
 	return nil
 }
+
+// underTheSkinReturned is the optional return to hand, keyed (#4253).
+var underTheSkinReturned = game.RegisterChooseCardsThen("choose-cards/under-the-skin-return",
+	func(g *game.Game, r game.CardsChosen) error {
+		for _, id := range r.Picked {
+			if err := g.ReturnFromGraveyardUnderControlForEffect(id, game.ZoneHand, uuid.Nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})

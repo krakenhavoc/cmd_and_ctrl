@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Krenko, Tin Street Kingpin — 1/2 Legendary Creature — Goblin for
 // {2}{R}:
@@ -51,18 +55,23 @@ func init() {
 						N:          max(krenko.Power, 0),
 					}.Apply(ctx)
 				}
-				return g.AddCounterThenForEffect(item.SourceCardID, game.CounterPlusOne, 1, func(g *game.Game, _ int) error {
-					krenko, ok := g.LookupCardForEffect(item.SourceCardID)
-					if !ok {
-						return nil
-					}
-					return CreateToken{
-						Controller: item.Controller,
-						Template:   RedGoblinToken(),
-						N:          krenko.CurrentPower(),
-					}.Apply(NewContext(g, item))
-				})
+				return g.AddCounterByKeyedForEffect(uuid.Nil, item.SourceCardID, game.CounterPlusOne, 1, ctx.ItemTail(krenkoGoblins))
 			}),
 		},
 	})
 }
+
+// krenkoGoblins is "create a number of 1/1 red Goblin creature tokens equal to
+// Krenko's power", read once the counter has landed. An on-disk key: never
+// renamed, never reused.
+var krenkoGoblins = CardTail("krenko-tin-street-kingpin/goblins", func(ctx *Context, _ game.TailOutcome) error {
+	krenko, ok := ctx.Game.LookupCardForEffect(ctx.Item.SourceCardID)
+	if !ok {
+		return nil
+	}
+	return CreateToken{
+		Controller: ctx.Controller(),
+		Template:   RedGoblinToken(),
+		N:          krenko.CurrentPower(),
+	}.Apply(ctx)
+})

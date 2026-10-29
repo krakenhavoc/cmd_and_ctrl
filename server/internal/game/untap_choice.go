@@ -57,7 +57,8 @@ import "github.com/google/uuid"
 // untap.
 //
 // It carries a choose-cards prompt's payload ({card_ids}), bounds
-// (ChooseMin / ChooseMax) and continuation (chooseCardsResume), and is
+// (ChooseMin / ChooseMax) and continuation (a keyed one since #4361:
+// PickThen, with the plan in OptionCarry and PickNums), and is
 // validated by the same checkChooseCardsPicksLocked. It is a separate
 // KIND from PendingChoiceChooseCards for three reasons, of which the
 // third decides it:
@@ -464,7 +465,7 @@ func (g *Game) untapChoicePlanLocked(activePlayer uuid.UUID, set []uuid.UUID) *u
 // Caller must hold g.mu in write mode.
 func (g *Game) queueUntapChoiceLocked(activePlayer uuid.UUID, plan *untapChoicePlan) {
 	min, max := plan.bounds()
-	settled := append([]uuid.UUID(nil), plan.settled...)
+	carry, nums := plan.carried()
 	id := g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:  activePlayer,
 		Question: "Untap step — choose which permanents untap",
@@ -476,24 +477,118 @@ func (g *Game) queueUntapChoiceLocked(activePlayer uuid.UUID, plan *untapChoiceP
 		// arrives (nothing can respond during the untap step, but an
 		// admin move or a concession can happen while the prompt is
 		// open).
-		Zone: ZoneBattlefield,
-		Validate: func(picked []Card) bool {
-			set := make(map[uuid.UUID]bool, len(picked))
-			for _, c := range picked {
-				set[c.InstanceID] = true
-			}
-			return plan.legal(set)
-		},
-		Then: func(g *Game, picks []uuid.UUID) error {
-			g.finishUntapStepLocked(append(settled, picks...))
-			return nil
-		},
+		LiveZone: ZoneBattlefield,
+		// #4361 S7a: the rest of the step is a registered continuation
+		// and the plan rides the prompt as data (untapChoicePlanOf), so
+		// a paused untap step is a restore point. The set rule is read
+		// off the same data (untapChoiceRule).
+		ThenKey:   untapChoiceThen,
+		Carry:     carry,
+		CarryNums: nums,
 	})
 	// The kind is stamped after the queue rather than threaded through
 	// ChooseCardsPrompt: the prompt struct describes the QUESTION, and
 	// every field of it is the same for both kinds.
 	if _, c := g.findChoiceLocked(id); c != nil {
 		c.Kind = PendingChoiceUntapChoice
+	}
+}
+
+// untapChoiceThen is the rest of a paused untap step (#4361 S7a): the
+// permanents that were never in question (the head of the carried IDs)
+// and the ones picked untap together, and the step ends. An on-disk key:
+// never renamed, never reused. Registered from init: the step's exit
+// re-enters the step machinery that asks this question, so a var
+// initialised with the function would be an initialization cycle.
+var untapChoiceThen ChooseCardsThen
+
+func init() {
+	untapChoiceThen = RegisterChooseCardsThen("choose-cards/untap-choice", untapChoiceAnswered)
+}
+
+func untapChoiceAnswered(g *Game, r CardsChosen) error {
+	var settled []uuid.UUID
+	if plan := untapChoicePlanOf(r.Carry, r.Nums); plan != nil {
+		settled = plan.settled
+	}
+	g.finishUntapStepLocked(append(settled, r.Picked...))
+	return nil
+}
+
+// carried is the plan as the prompt's plain data. The IDs are the settled
+// permanents and then the candidates; the numbers are
+//
+//	len(settled), len(capMax), capMax..., then for each candidate i:
+//	optional[i], members[0][i], ..., members[len(capMax)-1][i]
+//
+// with a bool written as 0 or 1. untapChoicePlanOf reads it back.
+func (p *untapChoicePlan) carried() ([]uuid.UUID, []int) {
+	ids := make([]uuid.UUID, 0, len(p.settled)+len(p.candidates))
+	ids = append(append(ids, p.settled...), p.candidates...)
+	nums := make([]int, 0, 2+len(p.capMax)+len(p.candidates)*(1+len(p.capMax)))
+	nums = append(nums, len(p.settled), len(p.capMax))
+	nums = append(nums, p.capMax...)
+	bit := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
+	for i := range p.candidates {
+		nums = append(nums, bit(p.optional[i]))
+		for c := range p.capMax {
+			nums = append(nums, bit(p.members[c][i]))
+		}
+	}
+	return ids, nums
+}
+
+// untapChoicePlanOf is the plan an untap_choice prompt carries
+// (untapChoicePlan.carried), or nil when the data does not spell one.
+func untapChoicePlanOf(ids []uuid.UUID, nums []int) *untapChoicePlan {
+	if len(nums) < 2 {
+		return nil
+	}
+	nSettled, nCaps := nums[0], nums[1]
+	if nSettled < 0 || nSettled > len(ids) || nCaps < 0 || len(nums) < 2+nCaps {
+		return nil
+	}
+	nCand := len(ids) - nSettled
+	if len(nums) != 2+nCaps+nCand*(1+nCaps) {
+		return nil
+	}
+	p := &untapChoicePlan{
+		settled:    append([]uuid.UUID(nil), ids[:nSettled]...),
+		candidates: append([]uuid.UUID(nil), ids[nSettled:]...),
+		capMax:     append([]int(nil), nums[2:2+nCaps]...),
+		members:    make([][]bool, nCaps),
+	}
+	rest := nums[2+nCaps:]
+	for i := 0; i < nCand; i++ {
+		row := rest[i*(1+nCaps) : (i+1)*(1+nCaps)]
+		p.optional = append(p.optional, row[0] != 0)
+		for c := 0; c < nCaps; c++ {
+			p.members[c] = append(p.members[c], row[1+c] != 0)
+		}
+	}
+	return p
+}
+
+// untapChoiceRule is a keyed untap_choice prompt's set rule: legal() of
+// the plan it carries. A prompt whose data spells no plan accepts no
+// non-empty set. Built per check from the prompt's data, so nothing is
+// stored on the prompt but data.
+func untapChoiceRule(c *PendingChoice) func([]Card) bool {
+	plan := untapChoicePlanOf(c.OptionCarry, c.PickNums)
+	return func(picked []Card) bool {
+		if plan == nil {
+			return false
+		}
+		set := make(map[uuid.UUID]bool, len(picked))
+		for _, card := range picked {
+			set[card.InstanceID] = true
+		}
+		return plan.legal(set)
 	}
 }
 

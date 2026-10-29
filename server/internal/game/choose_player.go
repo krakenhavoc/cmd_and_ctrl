@@ -76,11 +76,11 @@ import (
 // target player". The caller computes it; this function drops the
 // seats that have left the game (CR 800.4a) and orders what is left.
 //
-// Item is the stack item the answer is recorded on, and may be nil for
-// a caller that reads the answer out of Then instead. Nothing in the
-// engine re-checks a recorded player against the board — it is a
-// record of a choice, not a target — so an effect that cares whether
-// that seat is still seated asks.
+// The answer is recorded on the asking item by the keyed continuation
+// (effects.ChoosePlayerThen records it on the copy rebuilt from Asked).
+// Nothing in the engine re-checks a recorded player against the board —
+// it is a record of a choice, not a target — so an effect that cares
+// whether that seat is still seated asks.
 type ChoosePlayerPrompt struct {
 	// Chooser answers the prompt. Required, and frequently NOT the
 	// player the options are about.
@@ -95,23 +95,24 @@ type ChoosePlayerPrompt struct {
 	// Question is the prompt's header — the card's own sentence.
 	Question string
 
-	// Item is the stack item the chosen player is recorded on. Nil
-	// records nothing.
-	Item *StackItem
-
-	// Then receives the chosen player, or uuid.Nil when nobody was
-	// chosen — no eligible seat at queue time, or a prompt dropped
-	// before it was answered (#1006). Runs with g.mu held; may queue
-	// further choices, which is how a chain continues.
-	Then func(g *Game, chosen uuid.UUID) error
-
-	// ThenKey is Then as a REGISTERED option-pick continuation, with
-	// Carry the plain data it is handed (#2040, option_pick_keyed.go): a
-	// table waiting on the answer stays a restore point. The chosen seat
-	// is the continuation's Option.Player; Option is nil when nobody was
-	// chosen. With a key, Then and Item are ignored.
+	// ThenKey is the rest of the card, a REGISTERED option-pick
+	// continuation, with Carry the plain data it is handed (#2040,
+	// option_pick_keyed.go): a table waiting on the answer stays a restore
+	// point. The chosen seat is the continuation's Option.Player; Option
+	// is nil when nobody was chosen — no eligible seat at queue time, or a
+	// prompt dropped before it was answered (#1006). It runs with g.mu
+	// held and may queue further choices, which is how a chain continues.
+	// Required: #4253 retired the closure Then and the Item it recorded
+	// the answer on (the card side records it on the asked item,
+	// effects.ChoosePlayerThen).
 	ThenKey OptionPickThen
 	Carry   []uuid.UUID
+	// Asked is the asking stack item as data (NewAskedItem, #4253 slice
+	// 10b), handed to the keyed continuation as OptionPicked.Asked: the
+	// card side records the answer on it (effects.ChoosePlayerThen), so a
+	// chain of choices reads the players chosen before it after a restore.
+	// Ignored without ThenKey.
+	Asked *AskedItem
 }
 
 // QueueChoosePlayerForEffect queues a "choose a player" and returns
@@ -119,73 +120,35 @@ type ChoosePlayerPrompt struct {
 // chooser who has left the game (QueueChoiceForEffect's CR 800.4a
 // guard).
 //
-// When it queues nothing it records the ABSENCE of a choice on the
-// item, so a later ChosenPlayerOn on the same item reads "nobody was
-// chosen" rather than the PREVIOUS clause's answer. A card that asks
-// twice and gets an answer only the first time would otherwise apply
-// the second clause to the first clause's player, which is the one
-// way this shape can be silently wrong.
-//
 // A caller with more of the effect to run must check the return the
 // way QueueOptionPickForEffect's callers do: nothing queued means
-// nothing will call Then.
+// nothing will call ThenKey, and the caller runs it itself with nobody
+// chosen (effects.ChoosePlayer does, through RunOptionPickThenForEffect),
+// which records the ABSENCE of a choice on the item. A later
+// ChosenPlayerOn on the same item then reads "nobody was chosen" rather
+// than the PREVIOUS clause's answer. A prompt with no ThenKey queues
+// nothing (#4253 retired the closure form).
 //
 // Caller must hold g.mu.
 func (g *Game) QueueChoosePlayerForEffect(p ChoosePlayerPrompt) uuid.UUID {
 	eligible := g.eligibleChosenPlayersLocked(p.Among)
-	if len(eligible) == 0 {
-		recordChosenPlayer(p.Item, uuid.Nil)
+	if len(eligible) == 0 || p.ThenKey.key == "" {
 		return uuid.Nil
 	}
-	options := g.seatChoiceOptionsLocked(eligible)
-	if p.ThenKey.key != "" {
-		return g.QueueOptionPickForEffect(OptionPickPrompt{
-			Chooser:  p.Chooser,
-			Source:   p.Source,
-			Question: p.Question,
-			Options:  options,
-			ThenKey:  p.ThenKey,
-			Carry:    p.Carry,
-		})
-	}
-	item := p.Item
-	then := p.Then
-	queued := g.QueueOptionPickForEffect(OptionPickPrompt{
+	// The answer is read off the chosen option's own seat, never an index
+	// into a slice captured here (#994): a seat that leaves the game is
+	// pruned off this prompt while it is open (CR 800.4a,
+	// pruneDepartedSeatOptionsLocked), which renumbers every option after
+	// it.
+	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  p.Chooser,
 		Source:   p.Source,
 		Question: p.Question,
-		Options:  options,
-		// ThenSeat, not Then: the answer is the option's own seat and
-		// never an index into a slice captured here (#994). A seat that
-		// leaves the game is pruned off this prompt while it is open
-		// (CR 800.4a, pruneDepartedSeatOptionsLocked), which renumbers
-		// every option after it — so a captured candidate list would
-		// record the player one seat along from the one the chooser
-		// clicked. Only a detached item pointer is closed over, which
-		// is the StackItem.Effect contract: the branch resolves against
-		// whichever *Game an undo restores.
-		//
-		// uuid.Nil is NOBODY WAS CHOSEN, not an error: the prompt was
-		// dropped rather than answered (#1006), and the absence is
-		// recorded on the item exactly as it is when there was no
-		// eligible seat to ask about in the first place, so a card that
-		// asks twice does not read this clause's answer off the last
-		// one. An ANSWER can never arrive with a zero seat —
-		// ResolveOptionPick refuses a seat-less option before the frame
-		// runs — which is what leaves this value free to mean the
-		// absence.
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			recordChosenPlayer(item, chosen)
-			if then == nil {
-				return nil
-			}
-			return then(g, chosen)
-		},
+		Options:  g.seatChoiceOptionsLocked(eligible),
+		ThenKey:  p.ThenKey,
+		Carry:    p.Carry,
+		Asked:    p.Asked,
 	})
-	if queued == uuid.Nil {
-		recordChosenPlayer(p.Item, uuid.Nil)
-	}
-	return queued
 }
 
 // EventPlayerChosen records a CR 614.12 "as this enters, choose a
@@ -240,19 +203,44 @@ func (g *Game) QueueChoosePlayerAsEntersForEffect(chooser, source uuid.UUID, que
 	if len(eligible) == 0 {
 		return uuid.Nil
 	}
-	permanent := source
+	// Keyed (#4361 slice 6), and the answer is the option's own seat
+	// (OptionPicked.Option.Player), so a prune cannot renumber it (#994).
 	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question,
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		// ThenSeat for the same reason the resolution-time form uses
-		// it: the answer is the option's own seat, so a prune cannot
-		// renumber it (#994).
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			return g.setChosenPlayerLocked(permanent, chosen)
-		},
+		ThenKey:  choosePlayerAsEntersThen,
+		Carry:    []uuid.UUID{source},
 	})
+}
+
+// chosenSeat is the seat a keyed seat prompt was answered with, or
+// uuid.Nil when it ended unanswered (a dropped prompt hands no Option).
+func chosenSeat(r OptionPicked) uuid.UUID {
+	if r.Option == nil {
+		return uuid.Nil
+	}
+	return r.Option.Player
+}
+
+// choosePlayerAsEntersThen stores an as-enters "choose a player" answer
+// on the permanent, Carry's one ID. A dropped prompt stores uuid.Nil,
+// "protected from nobody", as the closure form did. An on-disk key:
+// never renamed, never reused.
+var choosePlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	choosePlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-player-as-enters", choosePlayerAsEntersAnswered)
+}
+
+func choosePlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return g.setChosenPlayerLocked(r.Carry[0], chosenSeat(r))
 }
 
 // setChosenPlayerLocked stamps the CR 614.12 answer onto the permanent.
@@ -314,32 +302,77 @@ func (g *Game) QueueChooseTwoPlayersAsEntersForEffect(chooser, source uuid.UUID,
 	if len(eligible) == 0 {
 		return uuid.Nil
 	}
-	permanent := source
+	// Keyed (#4361 slice 6): the first prompt carries the permanent, the
+	// seat asked and the candidates; the second only the permanent.
 	return g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  chooser,
 		Source:   source,
 		Question: question + " (first)",
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		ThenSeat: func(g *Game, first uuid.UUID) error {
-			if err := g.setChosenPlayerLocked(permanent, first); err != nil {
-				return err
-			}
-			rest := g.eligibleChosenPlayersLocked(without(eligible, first))
-			if len(rest) == 0 {
-				return nil
-			}
-			g.QueueOptionPickForEffect(OptionPickPrompt{
-				Chooser:  chooser,
-				Source:   source,
-				Question: question + " (second)",
-				Options:  g.seatChoiceOptionsLocked(rest),
-				ThenSeat: func(g *Game, second uuid.UUID) error {
-					return g.setChosenSecondPlayerLocked(permanent, second)
-				},
-			})
-			return nil
-		},
+		ThenKey:  chooseFirstPlayerAsEntersThen,
+		Carry:    append([]uuid.UUID{source, chooser}, eligible...),
+		Words:    []string{question},
 	})
+}
+
+// chooseFirstPlayerAsEntersThen stores the first answer of a two-player
+// as-enters choice and asks the second of the candidates left. Carry is
+// the permanent, the seat asked and then the candidates; Words[0] is the
+// question. A dropped first prompt stores uuid.Nil and still asks the
+// second, as the closure form did. An on-disk key: never renamed, never
+// reused.
+var chooseFirstPlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	chooseFirstPlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-first-player-as-enters", chooseFirstPlayerAsEntersAnswered)
+}
+
+func chooseFirstPlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	permanent, chooser, eligible := r.Carry[0], r.Carry[1], r.Carry[2:]
+	first := chosenSeat(r)
+	if err := g.setChosenPlayerLocked(permanent, first); err != nil {
+		return err
+	}
+	rest := g.eligibleChosenPlayersLocked(without(eligible, first))
+	if len(rest) == 0 {
+		return nil
+	}
+	question := ""
+	if len(r.Words) > 0 {
+		question = r.Words[0]
+	}
+	g.QueueOptionPickForEffect(OptionPickPrompt{
+		Chooser:  chooser,
+		Source:   permanent,
+		Question: question + " (second)",
+		Options:  g.seatChoiceOptionsLocked(rest),
+		ThenKey:  chooseSecondPlayerAsEntersThen,
+		Carry:    []uuid.UUID{permanent},
+	})
+	return nil
+}
+
+// chooseSecondPlayerAsEntersThen stores the second answer on the
+// permanent, Carry's one ID. An on-disk key: never renamed, never
+// reused.
+var chooseSecondPlayerAsEntersThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	chooseSecondPlayerAsEntersThen = RegisterOptionPickThen("option-pick/choose-second-player-as-enters", chooseSecondPlayerAsEntersAnswered)
+}
+
+func chooseSecondPlayerAsEntersAnswered(g *Game, r OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	return g.setChosenSecondPlayerLocked(r.Carry[0], chosenSeat(r))
 }
 
 // without is ids with every occurrence of drop removed.
@@ -495,6 +528,16 @@ func recordChosenPlayer(item *StackItem, chosen uuid.UUID) {
 		return
 	}
 	item.Payload = append(item.Payload, TargetRef{Kind: TargetPlayer, ID: chosen})
+}
+
+// RecordChosenPlayerForEffect records a resolution-time choice of a player on
+// `item` (uuid.Nil records that nobody was chosen), as the closure form of
+// QueueChoosePlayerForEffect does when its prompt is answered. A keyed
+// continuation calls it on the copy of the asking item it runs against
+// (#4253 slice 10b), so ChosenPlayerOn and ChosenPlayersOn read the answer,
+// and the item a later question carries holds every answer before it.
+func RecordChosenPlayerForEffect(item *StackItem, chosen uuid.UUID) {
+	recordChosenPlayer(item, chosen)
 }
 
 // ChosenPlayerOn is the player most recently chosen for this item, or

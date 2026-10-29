@@ -21,7 +21,7 @@ import (
 // player first and the rest in turn order (CR 101.4). The choices come
 // first and the damage after: once the last player has answered, the
 // Hex deals 1 damage to each player who did not pay, as one instance of
-// damage (DealDamageEachThenForEffect), so the damage is dealt at once
+// damage (DealDamageEachKeyedForEffect), so the damage is dealt at once
 // rather than between questions.
 //
 // The continuation is a registered key (OptionPickThen), so a table
@@ -77,7 +77,7 @@ func limDulsHexAsk(ctx *Context, toAsk, declined []uuid.UUID) error {
 	if len(declined) == 0 {
 		return nil
 	}
-	return ctx.Game.DealDamageEachThenForEffect(ctx.Source(), declined, 1, nil)
+	return ctx.Game.DealDamageEachKeyedForEffect(ctx.Source(), declined, 1, game.KeyedTail{})
 }
 
 // limDulsHexAnswered records Carry[0]'s answer and asks the next

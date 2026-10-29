@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -65,7 +67,7 @@ func emergentUltimatumSearch(ctx *Context) error {
 		Limit:    3,
 		Reveal:   true,
 		Reason:   "Emergent Ultimatum — up to three monocolored cards with different names, to exile",
-		Validate: DifferentNames,
+		Rule:     searchRuleDifferentNames,
 		ThenTail: ctx.ItemTail(emergentUltimatumChooseTail),
 	})
 }
@@ -77,6 +79,7 @@ var emergentUltimatumChooseTail = CardTail("emergent-ultimatum/choose", func(ctx
 })
 
 // emergentUltimatumChoose has an opponent pick one of the exiled cards.
+// Keyed (#4253): the found cards ride the prompts as data.
 func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {
 	if len(found) == 0 {
 		return emergentUltimatumExileSelf(ctx)
@@ -84,42 +87,76 @@ func emergentUltimatumChoose(ctx *Context, found []uuid.UUID) error {
 	return ChoosePlayer{
 		Among:    Opponents,
 		Question: "Emergent Ultimatum — choose an opponent to pick one of the exiled cards",
-		Then: func(ctx *Context) error {
-			opp := ctx.ChosenPlayer()
-			if opp == uuid.Nil {
-				return emergentUltimatumExileSelf(ctx)
-			}
-			return RevealPick{
-				Player:   opp,
-				Owner:    ctx.Controller(),
-				Question: "Emergent Ultimatum — choose one of these cards; it is shuffled into their library and they may cast the others for free",
-				Cards:    found,
-				Min:      1,
-				Max:      1,
-				Then:     emergentUltimatumSettle,
-			}.Apply(ctx)
-		},
+		ThenKey:  emergentUltimatumOpponent,
+		Carry:    found,
 	}.Apply(ctx)
 }
 
-// emergentUltimatumSettle shuffles the chosen card into its owner's
-// library, then offers the other cards, then exiles the spell.
-func emergentUltimatumSettle(ctx *Context, picked, left []uuid.UUID) error {
-	item := ctx.Item
-	controller, source := ctx.Controller(), ctx.Source()
-	finish := func(g *game.Game, _ bool) error {
-		grantFreeCasts(g, controller, source, emergentUltimatumName, game.TimingFlash, game.LapseStaysInExile, left)
-		return emergentUltimatumExileSelf(NewContext(g, item))
+// emergentUltimatumOpponent is the answer to "choose an opponent": that
+// opponent picks one of the found cards. Nobody to name leaves the spell
+// to exile itself. An on-disk key: never renamed, never reused. #4253 slice
+// 10b: the one keyed ChoosePlayer form (ChoosePlayerThen), the same key.
+var emergentUltimatumOpponent = ChoosePlayerThen("option-pick/emergent-ultimatum-opponent", func(ctx *Context, chosen uuid.UUID, found []uuid.UUID) error {
+	if chosen == uuid.Nil {
+		return emergentUltimatumExileSelf(ctx)
 	}
-	if len(picked) == 0 {
-		return finish(ctx.Game, false)
-	}
-	return ctx.Game.TuckToLibraryThenForEffect(picked[0], game.TuckOptions{}, func(g *game.Game, ok bool) error {
-		if err := g.ShuffleLibraryForEffect(controller); err != nil {
-			return err
-		}
-		return finish(g, ok)
+	queued, err := ctx.Game.RevealPickThenForEffect(game.RevealPickPrompt{
+		Chooser:  chosen,
+		Owner:    ctx.Controller(),
+		Source:   ctx.Source(),
+		Question: "Emergent Ultimatum — choose one of these cards; it is shuffled into their library and they may cast the others for free",
+		Cards:    found,
+		Min:      1,
+		Max:      1,
+		ThenKey:  emergentUltimatumPicked,
 	})
+	if err != nil || queued > 0 {
+		return err
+	}
+	// Nobody could be asked: nothing is picked and every card is left.
+	return emergentUltimatumSettle(ctx, nil, found)
+})
+
+// emergentUltimatumPicked is the answer to the opponent's pick: the cards
+// they did not choose are the ones the caster may cast. An on-disk key:
+// never renamed, never reused.
+var emergentUltimatumPicked = game.RegisterChooseCardsThen("choose-cards/emergent-ultimatum-picked", func(g *game.Game, r game.CardsChosen) error {
+	var left []uuid.UUID
+	for _, id := range r.Candidates {
+		if !slices.Contains(r.Picked, id) {
+			left = append(left, id)
+		}
+	}
+	return emergentUltimatumSettle(keyedContext(g, r.From, r.Source), r.Picked, left)
+})
+
+// emergentUltimatumSettle shuffles the chosen card into its owner's
+// library, then offers the other cards, then exiles the spell. The tuck's
+// "then" is a registered tail (#4253), the cards left riding its Carry, so
+// a CR 614 / 616 / 903.9 prompt the tuck pauses on is a restore point.
+func emergentUltimatumSettle(ctx *Context, picked, left []uuid.UUID) error {
+	controller, source := ctx.Controller(), ctx.Source()
+	if len(picked) == 0 {
+		return emergentUltimatumFinish(ctx.Game, controller, source, left)
+	}
+	tail := game.KeyedTail{Ref: emergentUltimatumTucked, Player: controller, Source: source, Carry: append([]uuid.UUID(nil), left...)}
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect(picked[:1], game.TuckOptions{}, tail)
+}
+
+// emergentUltimatumTucked is the rest of the spell once the chosen card's
+// tuck has settled: shuffle Player's library, then offer the cards left (the
+// Carry) and exile the spell (Source). An on-disk key.
+var emergentUltimatumTucked = game.RegisterTail("emergent-ultimatum/tucked", func(g *game.Game, o game.TailOutcome) error {
+	if err := g.ShuffleLibraryForEffect(o.Tail.Player); err != nil {
+		return err
+	}
+	return emergentUltimatumFinish(g, o.Tail.Player, o.Tail.Source, o.Tail.Carry)
+})
+
+// emergentUltimatumFinish offers the cards left and exiles the spell.
+func emergentUltimatumFinish(g *game.Game, controller, source uuid.UUID, left []uuid.UUID) error {
+	grantFreeCasts(g, controller, source, emergentUltimatumName, game.TimingFlash, game.LapseStaysInExile, left)
+	return g.ExileCardForEffect(source)
 }
 
 // emergentUltimatumExileSelf is "Exile Emergent Ultimatum."

@@ -87,6 +87,13 @@ func blockRuleModProblem(m Mod) string {
 		if m.Text == "" || len(m.Subtypes) == 0 {
 			return "a cantBeBlockedBySubtypes rule needs Subtypes and Text, the clause the refusal sentence reads"
 		}
+	case ModCantBeBlockedByObject:
+		if len(m.Objects) != 1 || m.Objects[0].ID == uuid.Nil {
+			return "a cantBeBlockedByObject rule needs exactly one blocker object"
+		}
+		if m.Text == "" {
+			return "a cantBeBlockedByObject rule needs Text, the blocker's name as the refusal sentence reads it"
+		}
 	case ModLimitBlockersPerDefender:
 		if m.Amount < 1 {
 			return fmt.Sprintf("a limitBlockersPerDefender rule needs an amount of at least 1, got %d", m.Amount)
@@ -145,6 +152,15 @@ func CantBeBlockedByColorMod(color string) Mod {
 // reads it ("Walls").
 func CantBeBlockedBySubtypesMod(subtypes []string, text string) Mod {
 	return Mod{Kind: ModCantBeBlockedBySubtypes, Subtypes: copyStrings(subtypes), Text: text}
+}
+
+// CantBeBlockedByObjectMod is "<creature> can't be blocked by <that
+// creature> this turn", the pairwise form: "target creature can't block
+// this creature this turn" (a Wrinkly Monkey Shenanigans ability sticker,
+// #4307). `blocker` names the barred creature as the object it is now;
+// `text` is its name as the refusal sentence reads it.
+func CantBeBlockedByObjectMod(blocker ObjectRef, text string) Mod {
+	return Mod{Kind: ModCantBeBlockedByObject, Objects: []ObjectRef{blocker}, Text: text}
 }
 
 // ---------------------------------------------------------------
@@ -230,6 +246,20 @@ func blockRuleFromScopedMod(e ScopedEffect, m Mod) BlockRule {
 			Label:  m.Text,
 			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
 				return barred(blocker) && affected(attacker, g, nil)
+			},
+		}
+	case ModCantBeBlockedByObject:
+		affected := affectedPredicate(e.Affected)
+		var barred ObjectRef
+		if len(m.Objects) > 0 {
+			barred = m.Objects[0]
+		}
+		return BlockRule{
+			Reason: BlockReasonCantBeBlockedBy,
+			Label:  m.Text,
+			Pair: func(g *Game, attacker, blocker, _ *Card) bool {
+				return blocker != nil && barred.ID != uuid.Nil && blocker.InstanceID == barred.ID &&
+					blocker.ObjectEpoch == barred.Epoch && affected(attacker, g, nil)
 			},
 		}
 	case ModLimitBlockersPerDefender:

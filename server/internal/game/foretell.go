@@ -84,55 +84,63 @@ const AltCostKeyForetell = "foretell"
 func (g *Game) foretellLocked(p *Player, cardID uuid.UUID, sa SpecialAction) error {
 	owner := p.ID
 	notBefore := g.Turn.Seq + 1
-	return g.routeAllThenLocked(zoneRoute{
+	return g.routeAllKeyedLocked(zoneRoute{
 		Dst:      ZoneExile,
 		Actor:    owner,
 		FaceDown: FaceDownForetold,
 		// #1320: a special action (CR 116.2h), not a spell or ability.
 		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
-	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if len(landed) != 1 {
-			return nil
-		}
-		exiled := exiledCardByIDLocked(g, landed[0])
-		if exiled == nil {
-			return nil
-		}
-		// #1319: the per-turn tally Ranar's "the first card you
-		// foretell each turn" reads. Bumped here, once the card has
-		// actually LANDED in exile, rather than at the top of
-		// foretellLocked — a leg that only paused (a replacement
-		// window) has not foretold anything yet, and a special action
-		// that never lands must not count as one.
-		if g.ForetoldThisTurn == nil {
-			g.ForetoldThisTurn = make(map[uuid.UUID]int)
-		}
-		g.ForetoldThisTurn[owner]++
-		// CR 702.143a: "Cast it on a LATER turn for its foretell
-		// cost." NotBeforeSeq is a FLOOR and composes with the
-		// Duration rather than replacing it (#945), which is exactly
-		// the pair warp already needs — the window opens next turn
-		// and stays open for as long as the card remains exiled, with
-		// CR 400.7 enforced by the object epoch rather than by a
-		// sweep.
-		//
-		// CastOnly, because CR 702.143a says "cast it": a land with
-		// foretell would not become a land drop out of exile. No
-		// printed card is one; the flag is the rule rather than a
-		// guard against a card.
-		g.GrantCastPermissionToCardsForEffect(CastPermission{
-			Player:       owner,
-			Zone:         ZoneExile,
-			AltCostKey:   AltCostKeyForetell,
-			Cost:         sa.CastCost,
-			NotBeforeSeq: notBefore,
-			Duration:     WhileInZoneDuration(),
-			CastOnly:     true,
-			Label:        "Foretell",
-		}, []Card{*exiled})
-		return nil
-	})
+	}, []uuid.UUID{cardID}, KeyedTail{Ref: foretoldExiled, Player: owner, N: notBefore, Word: sa.CastCost})
 }
+
+// foretoldExiled is the foretell exile's continuation as data (#4361
+// S11a), so a CR 616 prompt on the exile is a restore point. Player is the
+// owner, N the first turn the card may be cast on (the turn after the one
+// it was foretold on, read when the special action was taken) and Word the
+// foretell cost. An on-disk key.
+var foretoldExiled = RegisterTail("engine/foretold-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) != 1 {
+		return nil
+	}
+	exiled := exiledCardByIDLocked(g, o.IDs[0])
+	if exiled == nil {
+		return nil
+	}
+	owner := o.Tail.Player
+	// #1319: the per-turn tally Ranar's "the first card you
+	// foretell each turn" reads. Bumped here, once the card has
+	// actually LANDED in exile, rather than at the top of
+	// foretellLocked — a leg that only paused (a replacement
+	// window) has not foretold anything yet, and a special action
+	// that never lands must not count as one.
+	if g.ForetoldThisTurn == nil {
+		g.ForetoldThisTurn = make(map[uuid.UUID]int)
+	}
+	g.ForetoldThisTurn[owner]++
+	// CR 702.143a: "Cast it on a LATER turn for its foretell
+	// cost." NotBeforeSeq is a FLOOR and composes with the
+	// Duration rather than replacing it (#945), which is exactly
+	// the pair warp already needs — the window opens next turn
+	// and stays open for as long as the card remains exiled, with
+	// CR 400.7 enforced by the object epoch rather than by a
+	// sweep.
+	//
+	// CastOnly, because CR 702.143a says "cast it": a land with
+	// foretell would not become a land drop out of exile. No
+	// printed card is one; the flag is the rule rather than a
+	// guard against a card.
+	g.GrantCastPermissionToCardsForEffect(CastPermission{
+		Player:       owner,
+		Zone:         ZoneExile,
+		AltCostKey:   AltCostKeyForetell,
+		Cost:         o.Tail.Word,
+		NotBeforeSeq: o.Tail.N,
+		Duration:     WhileInZoneDuration(),
+		CastOnly:     true,
+		Label:        "Foretell",
+	}, []Card{*exiled})
+	return nil
+})
 
 // exiledCardByIDLocked returns a pointer to the live copy of a card in
 // the shared exile zone, or nil.

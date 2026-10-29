@@ -37,7 +37,7 @@ func init() {
 					Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, 4),
 					Max:    1,
 					Label:  "Prophetic Titan — put one into your hand",
-					Then:   TakeRestOnBottomInRandomOrder,
+					Key:    takeRestBottomRandom,
 				}.Apply(ctx)
 			}),
 	).InsteadIf(2, DeliriumForModes)

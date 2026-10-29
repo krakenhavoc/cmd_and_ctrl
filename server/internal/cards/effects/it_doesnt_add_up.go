@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -15,7 +13,7 @@ import (
 // "It" is the NEW object (CR 400.7), so the suspect is aimed at the id
 // the return reports, not at the card's old one.
 //
-// The suspect is the entry's tail (ReturnFromGraveyardToBattlefieldThenForEffect, ADR 0154),
+// The suspect is the entry's tail (ReturnFromGraveyardToBattlefieldKeyedForEffect, ADR 0154),
 // so it runs inline when the creature simply enters and from the
 // player's answer when the entry first asks something — a returned
 // Clone's copy pick, a returned shockland's payment — and it lands on
@@ -33,12 +31,7 @@ func init() {
 			}
 			// CR 608.2b: a creature that left the graveyard in response is
 			// told to the tail as uuid.Nil, and nothing is suspected.
-			return ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(target, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error {
-				if entered != uuid.Nil {
-					g.SuspectForEffect(entered)
-				}
-				return nil
-			})
+			return ctx.Game.ReturnFromGraveyardToBattlefieldKeyedForEffect(target, ctx.Controller(), false, ctx.Tail(thenSuspectEach))
 		},
 	})
 }

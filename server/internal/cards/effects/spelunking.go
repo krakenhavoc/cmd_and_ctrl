@@ -81,22 +81,27 @@ func init() {
 // "If you put a CAVE onto the battlefield this way, you gain 4 life"
 // — read off the permanent that actually entered, so a decline pays
 // nothing and a Cave a replacement kept off the battlefield pays
-// nothing either. Package-level rather than a closure so it captures
-// nothing: the continuation outlives the trigger's resolution frame.
+// nothing either. A keyed tail, so it captures nothing: the continuation
+// outlives the trigger's resolution frame.
 func spelunkingLandDrop() PutFromHandOntoBattlefield {
 	p := MayPutALandFromHand("Spelunking")
-	p.Then = func(g *game.Game, res PutFromHandResult) error {
-		if res.Entered == uuid.Nil {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(res.Entered)
-		if !ok || !c.HasSubtype("Cave") {
-			return nil
-		}
-		return g.ChangePlayerLifeForEffect(res.Source, res.Player, spelunkingCaveLife)
-	}
+	p.ThenTail = spelunkingCave
 	return p
 }
+
+// spelunkingCave is the rider as a keyed tail (#4253 slice 6). An on-disk
+// key.
+var spelunkingCave = PutFromHandTail("spelunking/gain-life-for-a-cave", func(ctx *Context, res PutFromHandResult) error {
+	if res.Entered == uuid.Nil {
+		return nil
+	}
+	g := ctx.Game
+	c, ok := g.LookupCardForEffect(res.Entered)
+	if !ok || !c.HasSubtype("Cave") {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(res.Source, res.Player, spelunkingCaveLife)
+})
 
 // spelunkingCaveLife is the printed 4.
 const spelunkingCaveLife = 4

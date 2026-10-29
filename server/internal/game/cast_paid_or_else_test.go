@@ -17,7 +17,7 @@ var (
 	paidOrElseRuns = map[uuid.UUID]int{}
 )
 
-var paidOrElseCount = RegisterCastFollowUp("test-paid-or-else-count", func(_ *Game, f CastFollowUp) error {
+var paidOrElseCount = RegisterCastFollowUp(testEffectKeyPrefix+"paid-or-else-count", func(_ *Game, f CastFollowUp) error {
 	paidOrElseMu.Lock()
 	paidOrElseRuns[f.Source]++
 	paidOrElseMu.Unlock()

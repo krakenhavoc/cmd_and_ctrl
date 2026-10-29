@@ -13,14 +13,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // # The surveil
 //
 // "For each card you put on top" is a count of the cards the surveil
-// kept, and Surveil.Then is told no such count. The count is derived
-// from two facts the engine does hand over: how many cards the player
-// looked at (SurveilThenForEffect returns it, after any CR 614
-// keyword-action replacement has rewritten it) and how many left the
-// library. Every card that does not go back on top goes to the
-// graveyard (CR 701.25a), and nothing else moves a card out of this
-// library while the prompt is open, so kept = looked - the fall in
-// library size. The draw and the life loss ride Then, as Scry's
+// kept: a keyed surveil's tail is told it (TailOutcome.Amount, #4253
+// slice 10b). The draw and the life loss ride the tail, as Scry's
 // warning says they must.
 //
 // Each kept card is its own pair: draw one, then lose 3. A draw from an
@@ -61,30 +55,29 @@ func init() {
 }
 
 // starvingRevenantSurveil is the enters trigger: surveil 2, then a
-// draw and 3 life lost per card put back on top.
+// draw and 3 life lost per card put back on top. The rest is a keyed tail
+// (#4253 slice 10b), told how many cards went back on top, so the surveil
+// prompt is a restore point.
 func starvingRevenantSurveil(g *game.Game, item *game.StackItem) error {
 	me := item.Controller
-	p := g.PlayerByIDForEffect(me)
-	if p == nil {
+	if g.PlayerByIDForEffect(me) == nil {
 		return nil
 	}
-	before := len(p.Library.Cards)
-	var looked int
-	looked = g.SurveilThenForEffect(me, item.SourceCardID, 2, func(g *game.Game) error {
-		q := g.PlayerByIDForEffect(me)
-		if q == nil {
-			return nil
-		}
-		kept := looked - (before - len(q.Library.Cards))
-		if kept <= 0 {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		ctx.RecordStep(starvingRevenantRecord, nil, kept)
-		return starvingRevenantCard.Run(ctx)
-	})
+	ctx := NewContext(g, item)
+	g.SurveilKeyedForEffect(me, item.SourceCardID, 2, ctx.ItemTail(starvingRevenantKept))
 	return nil
 }
+
+// starvingRevenantKept is the surveil's "then": for each card kept on top
+// (the outcome's Amount), a draw and 3 life lost. An on-disk key: never
+// renamed, never reused.
+var starvingRevenantKept = CardTail("then/starving-revenant-kept", func(ctx *Context, o game.TailOutcome) error {
+	if ctx.Game.PlayerByIDForEffect(ctx.Controller()) == nil || o.Amount <= 0 {
+		return nil
+	}
+	ctx.RecordStep(starvingRevenantRecord, nil, o.Amount)
+	return starvingRevenantCard.Run(ctx)
+})
 
 // starvingRevenantRecord is how many cards are still to be drawn.
 const starvingRevenantRecord = "starving-revenant/kept"

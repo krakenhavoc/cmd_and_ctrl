@@ -13,7 +13,7 @@ import (
 //	 cards from your graveyard on top of your library in any order."
 //
 // The mill runs first and the library is checked once it has landed
-// (MillToZone.Then, so a commander's CR 903.9 question is answered
+// (MillToZone.ThenTail, so a commander's CR 903.9 question is answered
 // before the count). The check is not an intervening "if" (CR 603.4):
 // the trigger always goes on the stack, and the condition is read on
 // resolution after the mill.
@@ -40,15 +40,7 @@ func init() {
 const stillnessInMotionReturned = 5
 
 func stillnessInMotionUpkeep(g *game.Game, item *game.StackItem) error {
-	return MillToZone{N: 3, Then: func(ctx *Context, _ []uuid.UUID) error {
-		p := ctx.PlayerByID(ctx.Controller())
-		if p == nil || (p.Library != nil && p.Library.Size() > 0) {
-			return nil
-		}
-		return ExileTarget{Target: ctx.Item.SourceCardID, Then: func(ctx *Context, _ bool) error {
-			return stillnessInMotionRestack(ctx)
-		}}.Apply(ctx)
-	}}.Apply(NewContext(g, item))
+	return MillToZone{N: 3, ThenTail: NewContext(g, item).ItemTail(stillnessInMotionMilled)}.Apply(NewContext(g, item))
 }
 
 // stillnessInMotionRestack is "put five cards from your graveyard on top
@@ -59,29 +51,54 @@ func stillnessInMotionRestack(ctx *Context) error {
 	if len(yard) == 0 {
 		return nil
 	}
-	label := "Stillness in Motion — put five cards from your graveyard on top of your library"
-	order := func(g *game.Game, picked []uuid.UUID) error {
-		return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
-			Chooser:   player,
-			Source:    source,
-			Cards:     picked,
-			From:      game.ZoneGraveyard,
-			Placement: game.LibraryPlaceTop,
-			Reason:    label + " — in what order? (the first is on top)",
-		})
-	}
 	if len(yard) <= stillnessInMotionReturned {
-		return order(ctx.Game, yard)
+		return stillnessInMotionOrder(ctx.Game, player, source, yard)
 	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  player,
 		Source:   source,
-		Question: label,
+		Question: stillnessInMotionLabel,
 		Cards:    yard,
 		Min:      stillnessInMotionReturned,
 		Max:      stillnessInMotionReturned,
-		Zone:     game.ZoneGraveyard,
-		Then:     order,
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  stillnessInMotionPick,
 	})
 	return nil
+}
+
+// stillnessInMotionMilled is the clause after the mill (#4253 slice 9).
+var stillnessInMotionMilled = CardTail("stillness-in-motion/after-mill", func(ctx *Context, o game.TailOutcome) error {
+
+	p := ctx.PlayerByID(ctx.Controller())
+	if p == nil || (p.Library != nil && p.Library.Size() > 0) {
+		return nil
+	}
+	return ExileTarget{Target: ctx.Item.SourceCardID, ThenTail: ctx.ItemTail(stillnessInMotionExiled)}.Apply(ctx)
+})
+
+// stillnessInMotionExiled is the clause after the exile (#4253 slice 9).
+var stillnessInMotionExiled = CardTail("stillness-in-motion/after-exile", func(ctx *Context, o game.TailOutcome) error {
+
+	return stillnessInMotionRestack(ctx)
+})
+
+const stillnessInMotionLabel = "Stillness in Motion — put five cards from your graveyard on top of your library"
+
+// stillnessInMotionPick is the five cards chosen, keyed (#4253 sweep): the
+// chooser and the source card are the prompt, and the order is asked next.
+var stillnessInMotionPick = game.RegisterChooseCardsThen("choose-cards/stillness-in-motion-restack", func(g *game.Game, r game.CardsChosen) error {
+	return stillnessInMotionOrder(g, r.Chooser, r.Source, r.Picked)
+})
+
+// stillnessInMotionOrder asks the order the cards go on top of the library.
+func stillnessInMotionOrder(g *game.Game, player, source uuid.UUID, picked []uuid.UUID) error {
+	return g.PutInLibraryInChosenOrderThenForEffect(game.PutInLibrarySpec{
+		Chooser:   player,
+		Source:    source,
+		Cards:     picked,
+		From:      game.ZoneGraveyard,
+		Placement: game.LibraryPlaceTop,
+		Reason:    stillnessInMotionLabel + " — in what order? (the first is on top)",
+	})
 }

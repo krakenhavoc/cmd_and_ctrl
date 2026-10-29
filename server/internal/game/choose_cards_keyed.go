@@ -29,8 +29,7 @@ import (
 // closure frame. A continuation that cares where a pick is now checks it
 // itself, as Immortal Coil's does.
 //
-// A set rule (ChooseCardsPrompt.Validate, "exactly two cards with
-// different names") is registered under the same key as the
+// A set rule ("exactly two cards with different names") is registered under the same key as the
 // continuation (RegisterChooseCardsThenRule, #4264) and looked up by it
 // each time an answer is checked, so a keyed pick keeps its set rule and
 // still carries no closure. And one word of the card's text, which a
@@ -60,6 +59,9 @@ type CardsChosen struct {
 	// Word is the one word of the card's text the queuing card put on
 	// the prompt (ChooseCardsPrompt.CarryWord, #4264). Empty when none.
 	Word string
+	// Nums are the numbers the queuing card put on the prompt
+	// (ChooseCardsPrompt.CarryNums, #4294). Nil when none.
+	Nums []int
 	// Key is the continuation's own key, as it rode the prompt.
 	Key string
 	// Offer and Asked are the any-player offer and the asking item a leg
@@ -67,12 +69,21 @@ type CardsChosen struct {
 	// pick.
 	Offer *AnyPlayerOffer
 	Asked *StackItem
+	// Tail is the registered tail the queuing code put on the prompt
+	// (ChooseCardsPrompt.Tail, #4253 slice 8); the zero tail when none.
+	Tail KeyedTail
 	// Run is the prompted run this pick is one leg of
 	// (PendingChoice.promptRun, #4290), or uuid.Nil. A leg settles its
 	// run (settleRunLegLocked) rather than running the rest of the card
 	// itself: the run's own continuation does that, once, after the last
 	// leg.
 	Run uuid.UUID
+	// ordered is the keyed ordered collection this pick is one seat's turn
+	// of (ordered_picks_keyed.go, #4290); nil on every other pick.
+	ordered *orderedPicks
+	// shield is the engine's own consequence of a choose_source prompt
+	// (choose_source_keyed.go); nil on every other pick.
+	shield *SourceShield
 }
 
 // SetRuleFunc is a registered set rule: is `picked`, the live cards in
@@ -162,8 +173,25 @@ func registeredChooseCardsKeysLocked() []string {
 // isKeyedChooseCards reports whether c is a choose_cards pick, or a
 // reveal pick (#4264, resolution_pick.go), with a registered continuation.
 func isKeyedChooseCards(c *PendingChoice) bool {
-	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick) &&
-		c.PickThen != "" && c.chooseCardsResume == nil
+	return c != nil && (c.Kind == PendingChoiceChooseCards || c.Kind == PendingChoiceRevealPick || c.Kind == PendingChoiceChooseSource ||
+		// #4253 slice 10b: a keyed proliferate or Ring-bearer choice.
+		c.Kind == PendingChoiceProliferate || c.Kind == PendingChoiceRingBearer ||
+		// #4361 S7a: CR 502.3's untap determination.
+		c.Kind == PendingChoiceUntapChoice) &&
+		c.PickThen != ""
+}
+
+// carriesPickTail reports whether a prompt kind can carry a keyed pick's
+// tail (PendingChoice.pickTail): a choose_cards pick (#4253 slice 8), and
+// since slice 10b a reveal pick (a pile split's split), a proliferate or
+// Ring-bearer choice, and an option pick (a pile split's pick).
+func carriesPickTail(k PendingChoiceKind) bool {
+	switch k {
+	case PendingChoiceChooseCards, PendingChoiceRevealPick, PendingChoiceProliferate,
+		PendingChoiceRingBearer, PendingChoiceOptionPick:
+		return true
+	}
+	return false
 }
 
 // runKeyedChooseCardsLocked runs c's continuation with `picked`
@@ -187,10 +215,14 @@ func (g *Game) runKeyedChooseCardsLocked(c *PendingChoice, picked []uuid.UUID, a
 			Carry:      copyUUIDs(c.OptionCarry),
 			Question:   c.Reason,
 			Word:       c.PickMatchArg,
+			Nums:       copyInts(c.PickNums),
 			Key:        c.PickThen,
 			Offer:      cloneAnyPlayerOffer(c.AnyPlayerOffer),
 			Asked:      c.Asked.StackItem(),
+			Tail:       copyKeyedTail(c.pickTail),
 			Run:        c.promptRun,
+			ordered:    cloneOrderedPicks(c.ordered),
+			shield:     cloneSourceShield(c.sourceShield),
 		})
 	})
 }

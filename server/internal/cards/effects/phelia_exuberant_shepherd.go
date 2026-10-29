@@ -83,17 +83,7 @@ func pheliaExile(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			At:    game.StepEnd,
-			Label: "Phelia, Exuberant Shepherd — return the exiled card",
-			Cards: exiled,
-			Body:  pheliaReturnBody,
-		}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(pheliaScheduleReturn))
 }
 
 // pheliaReturn is the delayed trigger: return the card under its
@@ -102,26 +92,13 @@ func pheliaExile(g *game.Game, item *game.StackItem) error {
 // delayed trigger shares nothing with a snapshot but this code.
 func pheliaReturn(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	you, phelia := item.Controller, item.SourceCardID
 	for _, t := range item.Targets {
 		if t.Kind != game.TargetCard || t.ID == uuid.Nil {
 			continue
 		}
 		err := ReturnFromExile{
-			Target: t.ID,
-			Then: func(g *game.Game, entered uuid.UUID) error {
-				if entered == uuid.Nil {
-					return nil
-				}
-				c, ok := g.LookupCardForEffect(entered)
-				if !ok || c.Controller != you {
-					return nil
-				}
-				if z := g.FindCardZoneForEffect(phelia); z == nil || z.Kind != game.ZoneBattlefield {
-					return nil
-				}
-				return g.AddCounterForEffect(phelia, "+1/+1", 1)
-			},
+			Target:   t.ID,
+			ThenTail: ctx.Tail(pheliaGrow),
 		}.Apply(ctx)
 		if err != nil {
 			return err
@@ -129,3 +106,37 @@ func pheliaReturn(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// pheliaGrow is "if it entered under your control, put a +1/+1 counter on
+// Phelia" as a keyed tail (#4253 slice 6): the trigger's controller is the
+// tail's Player and Phelia its Source. An on-disk key.
+var pheliaGrow = EnteredTail("phelia-exuberant-shepherd/counter-if-yours", func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error {
+	if entered == uuid.Nil {
+		return nil
+	}
+	g := ctx.Game
+	you, phelia := o.Tail.Player, o.Tail.Source
+	c, ok := g.LookupCardForEffect(entered)
+	if !ok || c.Controller != you {
+		return nil
+	}
+	if z := g.FindCardZoneForEffect(phelia); z == nil || z.Kind != game.ZoneBattlefield {
+		return nil
+	}
+	return g.AddCounterForEffect(phelia, "+1/+1", 1)
+})
+
+// pheliaScheduleReturn schedules the end-step return of what reached exile (#4253 slice 9).
+var pheliaScheduleReturn = CardTail("phelia-exuberant-shepherd/schedule-return", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		At:    game.StepEnd,
+		Label: "Phelia, Exuberant Shepherd — return the exiled card",
+		Cards: exiled,
+		Body:  pheliaReturnBody,
+	}.Apply(NewContext(g, item))
+})

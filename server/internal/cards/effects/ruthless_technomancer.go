@@ -56,15 +56,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Ruthless Technomancer — sacrifice another creature, Treasures equal to its power", func(g *game.Game, item *game.StackItem) error {
-				controller := item.Controller
-				return maySacrificeOne(g, item, "Ruthless Technomancer — sacrifice another creature for Treasures equal to its power?", Creature(), true,
-					func(ctx *Context, sacrificed uuid.UUID) error {
-						power := departedCreaturePower(ctx.Game, sacrificed)
-						if power <= 0 {
-							return nil
-						}
-						return CreateToken{Controller: controller, Template: TreasureToken(), N: power}.Apply(ctx)
-					})
+				return maySacrificeOne(g, item, "Ruthless Technomancer — sacrifice another creature for Treasures equal to its power?", Creature(), true, ruthlessTechnomancerTreasures)
 			}),
 		},
 		Activated: []ActivatedAbility{{
@@ -76,3 +68,13 @@ func init() {
 		}},
 	})
 }
+
+// ruthlessTechnomancerTreasures is the Treasures once the creature has
+// really gone, keyed (#4290): as many as its last-known power.
+var ruthlessTechnomancerTreasures = RegisterSacrificedOne("prompt-run/ruthless-technomancer-treasures", func(ctx *Context, sacrificed uuid.UUID) error {
+	power := departedCreaturePower(ctx.Game, sacrificed)
+	if power <= 0 {
+		return nil
+	}
+	return CreateToken{Controller: ctx.Controller(), Template: TreasureToken(), N: power}.Apply(ctx)
+})

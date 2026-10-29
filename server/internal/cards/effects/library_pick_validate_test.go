@@ -24,6 +24,19 @@ import (
 // that the forced-answer shortcut steps aside for a set rule. The bot's
 // half is in legal/choose_cards_library_validate_test.go.
 
+// testPutBudget4 is the put's total-mana-value-4 set rule, registered
+// (#4253: the put's pick is keyed, its set rule a registered rule).
+var testPutBudget4 = RegisterPutRule("test/4253-put-total-mana-value-4", b23TotalManaValueAtMost(4))
+
+// testPutBudgetRule is the registered rule for a budget of `limit`.
+func testPutBudgetRule(t *testing.T, limit int) PutRule {
+	t.Helper()
+	if limit != 4 {
+		t.Fatalf("no registered put rule for a budget of %d", limit)
+	}
+	return testPutBudget4
+}
+
 // queueLibraryPutWithSetRule applies the primitive with a total-mana-
 // value rule over the top `n` cards of the chooser's library.
 func queueLibraryPutWithSetRule(t *testing.T, g *game.Game, player uuid.UUID, n, limit int, optional bool, max int) {
@@ -36,9 +49,9 @@ func queueLibraryPutWithSetRule(t *testing.T, g *game.Game, player uuid.UUID, n,
 			Match:    Nonland(),
 			Max:      max,
 			Optional: optional,
-			Validate: b23TotalManaValueAtMost(limit),
+			Rule:     testPutBudgetRule(t, limit),
 			Label:    "test — total mana value " + string(rune('0'+limit)) + " or less",
-			Then:     PutRestOnBottomInRandomOrder,
+			ThenTail: PutRestOnBottomInRandomOrderTail,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)
@@ -146,6 +159,13 @@ func TestLibraryPutSetRulePromptsEvenWhenTheCountWouldForceTheAnswer(t *testing.
 	}
 }
 
+// testBudgetTake is the take-to-hand set rule below as a registered take
+// (#4253 retired the unkeyed take, whose pick held a closure).
+var testBudgetTake = RegisterTake("test/4253-take-total-mana-value-4", TakeDef{
+	Validate: b23TotalManaValueAtMost(4),
+	Then:     TakeRestOnBottomInRandomOrder,
+})
+
 // The same field on the take-to-hand twin, so the two primitives stay
 // clause for clause (#952).
 func TestLibraryTakeSetRuleRefusesOverBudgetAndKeepsAsking(t *testing.T) {
@@ -163,9 +183,8 @@ func TestLibraryTakeSetRuleRefusesOverBudgetAndKeepsAsking(t *testing.T) {
 			Cards:    g.LookAtTopOfLibraryForEffect(me.ID, 3),
 			Max:      0,
 			Optional: true,
-			Validate: b23TotalManaValueAtMost(4),
 			Label:    "test — take any number with total mana value 4 or less",
-			Then:     TakeRestOnBottomInRandomOrder,
+			Key:      testBudgetTake,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

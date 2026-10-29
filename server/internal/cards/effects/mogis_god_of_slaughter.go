@@ -64,25 +64,33 @@ func mogisUpkeepPunisher(g *game.Game, item *game.StackItem) error {
 			{Label: "Take 2 damage"},
 			{Label: "Sacrifice a creature"},
 		},
-		Then: mogisAnswered(victim),
+		ThenKey:  mogisAnswered,
+		Carry:    []uuid.UUID{victim},
+		WithItem: true,
 	}.Apply(ctx)
 }
 
-func mogisAnswered(victim uuid.UUID) func(ctx *Context, index int) error {
-	return func(ctx *Context, index int) error {
-		if index == mogisBranchSacrifice {
-			creatures := creaturesControlledByPlayer(ctx.Game, victim)
-			if len(creatures) > 0 {
-				return SacrificeChoice{
-					Player:     victim,
-					Candidates: creatures,
-					Question:   "Mogis, God of Slaughter — sacrifice a creature",
-				}.Apply(ctx)
-			}
-		}
-		return mogisDamage(ctx, victim)
+// mogisAnswered is the opponent's answer, keyed (#4253): the victim rides
+// the prompt as its one carried ID and the trigger as its asking item, so
+// a table waiting on the answer is a restore point. An on-disk key: never
+// renamed, never reused.
+var mogisAnswered = OptionPickThen("option-pick/mogis-god-of-slaughter-damage-or-sacrifice", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
 	}
-}
+	victim := r.Carry[0]
+	if r.Index == mogisBranchSacrifice {
+		creatures := creaturesControlledByPlayer(ctx.Game, victim)
+		if len(creatures) > 0 {
+			return SacrificeChoice{
+				Player:     victim,
+				Candidates: creatures,
+				Question:   "Mogis, God of Slaughter — sacrifice a creature",
+			}.Apply(ctx)
+		}
+	}
+	return mogisDamage(ctx, victim)
+})
 
 func mogisDamage(ctx *Context, victim uuid.UUID) error {
 	return DealDamage{Source: ctx.Source(), Target: victim, Amount: 2}.Apply(ctx)

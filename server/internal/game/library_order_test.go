@@ -87,7 +87,7 @@ func TestPutInLibraryBottomIsTopFirstAndAReorder(t *testing.T) {
 	ran := 0
 	loQueue(t, g, PutInLibrarySpec{
 		Chooser: me.ID, Cards: ids, From: ZoneLibrary, Placement: LibraryPlaceBottom,
-		Then: func(*Game) error { ran++; return nil },
+		ThenTail: hookTail(func(*Game, TailOutcome) error { ran++; return nil }),
 	})
 	c := loPrompt(t, g)
 	if c.LibraryPlacement != LibraryPlaceBottom || len(c.ScryCards) != 3 {
@@ -190,13 +190,13 @@ func TestPutInLibraryAsksOnlyWhenThereIsAChoice(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	ran := 0
-	then := func(*Game) error { ran++; return nil }
-	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: nil, Placement: LibraryPlaceBottom, Then: then})
+	then := hookTail(func(*Game, TailOutcome) error { ran++; return nil })
+	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: nil, Placement: LibraryPlaceBottom, ThenTail: then})
 	if ran != 1 || len(g.PendingChoices) != 0 {
 		t.Fatal("an empty pile runs Then and asks nothing")
 	}
 	one := loSeed(me.Hand, me.ID, "Solo")[0]
-	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: []uuid.UUID{one}, From: ZoneHand, Placement: LibraryPlaceBottom, Then: then})
+	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: []uuid.UUID{one}, From: ZoneHand, Placement: LibraryPlaceBottom, ThenTail: then})
 	if len(g.PendingChoices) != 0 || ran != 2 {
 		t.Fatal("a pile of one has no order")
 	}
@@ -271,7 +271,7 @@ func TestPutInLibraryCommanderLegKeepsThePileOrder(t *testing.T) {
 	ran := 0
 	loQueue(t, g, PutInLibrarySpec{
 		Chooser: me.ID, Cards: []uuid.UUID{plain, cmd}, From: ZoneBattlefield, Placement: LibraryPlaceTop,
-		Then: func(*Game) error { ran++; return nil },
+		ThenTail: hookTail(func(*Game, TailOutcome) error { ran++; return nil }),
 	})
 	c := loPrompt(t, g)
 	// Answer [plain, cmd]: the top lane runs last-first, so cmd's leg
@@ -322,38 +322,5 @@ func TestPutInLibraryReplaysAfterUndo(t *testing.T) {
 	}
 	if got := loTop(me.Library, 2); !loEqual(got, first) || !loEqual(got, answer) {
 		t.Errorf("replay landed %v, first run %v, want %v", got, first, answer)
-	}
-}
-
-// The snapshot carries the placement and counts the continuation.
-func TestPutInLibraryIsNotARestorePoint(t *testing.T) {
-	g := newActiveGame(t)
-	me := g.Seats[0]
-	ids := loSeed(me.Hand, me.ID, "X", "Y")
-	loQueue(t, g, PutInLibrarySpec{Chooser: me.ID, Cards: ids, From: ZoneHand, Placement: LibraryPlaceTop})
-	snap := g.CaptureSnapshot()
-	if snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
-		t.Errorf("an open put_in_library is not a restore point: %#v", snap.Continuations)
-	}
-	found := false
-	for _, c := range snap.PendingChoices {
-		if c.Kind == PendingChoicePutInLibrary {
-			found = true
-			if c.LibraryPlacement != LibraryPlaceTop {
-				t.Errorf("placement %q not carried", c.LibraryPlacement)
-			}
-			hasFrame := false
-			for _, f := range c.ResumeFrames {
-				if f == "libraryOrderResume" {
-					hasFrame = true
-				}
-			}
-			if !hasFrame {
-				t.Error("the continuation is not counted in the census")
-			}
-		}
-	}
-	if !found {
-		t.Fatal("the prompt is not in the snapshot")
 	}
 }

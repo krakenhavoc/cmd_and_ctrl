@@ -137,28 +137,38 @@ func rfCreatureCJhoiraEffect(g *game.Game, item *game.StackItem) error {
 	run, hit := revealUntil(ctx, opp, func(c game.Card) bool {
 		return isPermanentCard(c) && b09IsHistoric(c)
 	}, "Jhoira, Weatherlight Corsair — revealed until a historic permanent card")
-	bottom := func(g *game.Game) error {
-		return g.PutOnBottomInRandomOrderForEffect(opp, game.ZoneLibrary, cardsStillInALibrary(g, run))
-	}
+	// The opponent rides the tail first, then the revealed cards (the rest).
+	tail := ctx.Tail(rfCreatureCJhoiraRest)
+	tail.Carry = append([]uuid.UUID{opp}, run...)
 	if hit == uuid.Nil {
-		return bottom(g)
+		return tail.Run(g, nil)
 	}
-	controller, source := item.Controller, ctx.Source()
-	return g.PutCardsFromLibraryOntoBattlefieldThenForEffect([]uuid.UUID{hit},
-		game.LibraryEntryOptions{Controller: controller},
-		func(g *game.Game, entered []uuid.UUID) error {
-			if len(entered) > 0 {
-				if c, ok := g.LookupCardForEffect(entered[0]); ok {
-					if mv := c.ManaValue(); mv > 0 {
-						if err := g.ChangePlayerLifeForEffect(source, controller, -mv); err != nil {
-							return err
-						}
-					}
+	return g.PutCardsFromLibraryOntoBattlefieldKeyedForEffect([]uuid.UUID{hit},
+		game.LibraryEntryOptions{Controller: item.Controller}, tail)
+}
+
+// rfCreatureCJhoiraRest is the rest of Jhoira's reveal as a keyed tail
+// (#4253 slice 6): the controller loses life equal to the mana value of the
+// card that entered, then the opponent puts the rest on the bottom of their
+// library in a random order. The opponent and the revealed cards ride the
+// tail as its Carry. An on-disk key.
+var rfCreatureCJhoiraRest = CardTail("jhoira-weatherlight-corsair/lose-life-then-bottom", func(ctx *Context, o game.TailOutcome) error {
+	g := ctx.Game
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	opp, run := o.Tail.Carry[0], o.Tail.Carry[1:]
+	if len(o.IDs) > 0 {
+		if c, ok := g.LookupCardForEffect(o.IDs[0]); ok {
+			if mv := c.ManaValue(); mv > 0 {
+				if err := g.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, -mv); err != nil {
+					return err
 				}
 			}
-			return bottom(g)
-		})
-}
+		}
+	}
+	return g.PutOnBottomInRandomOrderForEffect(opp, game.ZoneLibrary, cardsStillInALibrary(g, run))
+})
 
 // rfCreatureCAttacksAPlayerAlone is "whenever a creature you control
 // attacks a player alone": one declared attacker, aimed at a player

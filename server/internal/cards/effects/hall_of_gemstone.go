@@ -44,12 +44,17 @@ func hallOfGemstoneUpkeep(g *game.Game, item *game.StackItem) error {
 	if player == uuid.Nil || g.PlayerByIDForEffect(player) == nil {
 		return nil
 	}
-	source := item.SourceCardID
-	ChooseColorThen(game.ColorForMana, g, player, source, "Hall of Gemstone — choose a color; lands tapped for mana produce it this turn",
-		func(g *game.Game, color string) error {
-			g.LandsTappedProduceColorThisTurnForEffect(source, player, color,
-				"Hall of Gemstone — lands tapped for mana produce "+game.ColorName(color)+" mana this turn")
-			return nil
-		})
+	then := NewContext(g, item).Tail(hallOfGemstoneColorChosen)
+	then.Player = player
+	ChooseColorTail(game.ColorForMana, g, player, item.SourceCardID, "Hall of Gemstone — choose a color; lands tapped for mana produce it this turn", then)
 	return nil
 }
+
+// hallOfGemstoneColorChosen is the rest of the trigger once the player who
+// chose (the tail's Player) has named the colour (its Word). An on-disk key.
+var hallOfGemstoneColorChosen = game.RegisterTail("then/hall-of-gemstone-color-chosen", func(g *game.Game, o game.TailOutcome) error {
+	color := o.Tail.Word
+	g.LandsTappedProduceColorThisTurnForEffect(o.Tail.Source, o.Tail.Player, color,
+		"Hall of Gemstone — lands tapped for mana produce "+game.ColorName(color)+" mana this turn")
+	return nil
+})

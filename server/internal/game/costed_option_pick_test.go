@@ -24,11 +24,34 @@ func costedOptions() []ChoiceOption {
 	}
 }
 
+// costedPickGot is where costedPrinted records the PRINTED index of the
+// option chosen: the option's offset in costedOptions(), read off the
+// option itself, or NoChoiceIndex when none was.
+var (
+	costedPickGot *int
+	costedPrinted = RegisterOptionPickThen(testEffectKeyPrefix+"costed-printed", func(_ *Game, r OptionPicked) error {
+		idx := NoChoiceIndex
+		if r.Option != nil {
+			for i, o := range costedOptions() {
+				if o.Label == r.Option.Label {
+					idx = i
+				}
+			}
+		}
+		if costedPickGot != nil {
+			*costedPickGot = idx
+		}
+		return nil
+	})
+)
+
 // queueCostedPick queues the three-way question for chooser and records
-// the index Then is handed in *got (-2 until it runs).
+// the printed index of the option chosen in *got (-2 until it runs).
 func queueCostedPick(t *testing.T, g *Game, chooser uuid.UUID, got *int) *PendingChoice {
 	t.Helper()
 	*got = -2
+	costedPickGot = got
+	t.Cleanup(func() { costedPickGot = nil })
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueOptionPickForEffect(OptionPickPrompt{
@@ -36,10 +59,7 @@ func queueCostedPick(t *testing.T, g *Game, chooser uuid.UUID, got *int) *Pendin
 			Source:   uuid.New(),
 			Question: "Pay {1} or {2}?",
 			Options:  costedOptions(),
-			Then: func(_ *Game, index int) error {
-				*got = index
-				return nil
-			},
+			ThenKey:  costedPrinted,
 		})
 	})
 	if id == uuid.Nil {
@@ -116,7 +136,7 @@ func TestCostedOptionPickHidesTheOptionThePayerCannotAfford(t *testing.T) {
 		t.Fatalf("ResolveOptionPick: %v", err)
 	}
 	// The card printed {1} at index 1; the offered list is shorter but
-	// Then still hears the printed index.
+	// the continuation reads the option itself, so it hears the printed one.
 	if got != 1 {
 		t.Errorf("Then got %d, want 1 (the printed {1} option)", got)
 	}
@@ -188,7 +208,7 @@ func TestCostedOptionPickRefusesACostOnTheFirstOption(t *testing.T) {
 			Chooser: payer.ID,
 			Source:  uuid.New(),
 			Options: []ChoiceOption{{Label: "Pay {1}", ManaCost: "{1}"}, {Label: "Pay nothing"}},
-			Then:    func(*Game, int) error { return nil },
+			ThenKey: costedPrinted,
 		})
 	})
 	if id != uuid.Nil {

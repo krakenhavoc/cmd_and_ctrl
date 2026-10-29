@@ -133,15 +133,15 @@ func TestOpenAnAttractionPutsTheTopCardOntoTheBattlefield(t *testing.T) {
 	top := me.AttractionDeck.Cards[len(me.AttractionDeck.Cards)-1].InstanceID
 	second := me.AttractionDeck.Cards[len(me.AttractionDeck.Cards)-2].InstanceID
 	before := len(g.Events)
-	var opened []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 2, func(_ *Game, got []uuid.UUID) error {
-			opened = got
-			return nil
-		}); err != nil {
+		if err := g.OpenAttractionsForEffect(me.ID, uuid.Nil, 2); err != nil {
 			t.Fatal(err)
 		}
 	})
+	var opened []uuid.UUID
+	for _, ev := range attrEvents(g, before, EventAttractionOpened) {
+		opened = append(opened, ev.CardID)
+	}
 	if !slices.Equal(opened, []uuid.UUID{top, second}) {
 		t.Fatalf("opened %v, want %v then %v", opened, top, second)
 	}
@@ -167,23 +167,16 @@ func TestOpenAnAttractionPutsTheTopCardOntoTheBattlefield(t *testing.T) {
 }
 
 // CR 701.51a: a player with no Attraction deck, or an empty one, opens
-// nothing, and the continuation still runs.
+// nothing, and that is not an error.
 func TestOpenAnAttractionWithNoDeckOpensNothing(t *testing.T) {
 	g := newAttractionGame(t, 1)
 	opp := g.Seats[1]
-	ran := false
 	before := len(g.Events)
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(opp.ID, uuid.Nil, 1, func(_ *Game, got []uuid.UUID) error {
-			ran = len(got) == 0
-			return nil
-		}); err != nil {
+		if err := g.OpenAttractionsForEffect(opp.ID, uuid.Nil, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
-	if !ran {
-		t.Error("the continuation did not run with nothing opened")
-	}
 	if evs := attrEvents(g, before, EventAttractionOpened); len(evs) != 0 {
 		t.Errorf("opened %d with no deck", len(evs))
 	}
@@ -198,14 +191,16 @@ func TestRollToVisitVisitsTheAttractionsLitForTheResult(t *testing.T) {
 	high := putAttraction(g, me.ID, "High", 4, 5, 6)
 	theirs := putAttraction(g, opp.ID, "Theirs", 1, 2, 3, 4, 5, 6)
 	before := len(g.Events)
-	var result int
 	g.WithWriteLock(func() {
-		var err error
-		if result, err = g.RollToVisitForEffect(me.ID, uuid.Nil); err != nil {
+		if err := g.RollToVisitForEffect(me.ID, uuid.Nil); err != nil {
 			t.Fatal(err)
 		}
 	})
 	rolls := attrEvents(g, before, EventRollDie)
+	result := 0
+	if len(rolls) == 1 {
+		result = rolls[0].Amount
+	}
 	if len(rolls) != 1 || rolls[0].Sides != 6 || rolls[0].Amount != result || rolls[0].Actor != me.ID {
 		t.Fatalf("die rolls %+v for result %d", rolls, result)
 	}
@@ -338,7 +333,7 @@ func TestAttractionsSurviveARestore(t *testing.T) {
 	g := newAttractionGame(t, 3, attrDeck(10)...)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 2, nil); err != nil {
+		if err := g.OpenAttractionsForEffect(me.ID, uuid.Nil, 2); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -365,7 +360,7 @@ func TestAttractionsSurviveARestore(t *testing.T) {
 	}
 	top := rme.AttractionDeck.Cards[len(rme.AttractionDeck.Cards)-1].InstanceID
 	restored.WithWriteLock(func() {
-		if err := restored.OpenAttractionsThenForEffect(rme.ID, uuid.Nil, 1, nil); err != nil {
+		if err := restored.OpenAttractionsForEffect(rme.ID, uuid.Nil, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -375,7 +370,7 @@ func TestAttractionsSurviveARestore(t *testing.T) {
 	// And an undo across an open puts the card back on top.
 	snap := g.Clone()
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 1, nil); err != nil {
+		if err := g.OpenAttractionsForEffect(me.ID, uuid.Nil, 1); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -394,7 +389,7 @@ func TestARestartRebuildsTheAttractionDeck(t *testing.T) {
 	g := newAttractionGame(t, 5, attrDeck(10)...)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(me.ID, uuid.Nil, 2, nil); err != nil {
+		if err := g.OpenAttractionsForEffect(me.ID, uuid.Nil, 2); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -469,7 +464,7 @@ func TestALeavingPlayerTakesTheirAttractionPiles(t *testing.T) {
 	}
 	leaver := g.Seats[1]
 	g.WithWriteLock(func() {
-		if err := g.OpenAttractionsThenForEffect(leaver.ID, uuid.Nil, 2, nil); err != nil {
+		if err := g.OpenAttractionsForEffect(leaver.ID, uuid.Nil, 2); err != nil {
 			t.Fatal(err)
 		}
 	})

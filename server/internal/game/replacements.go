@@ -38,6 +38,7 @@ import (
 //   - popExtraTurnLocked → RepEventExtraTurn (#2529, extra_turns.go)
 //   - the effect counter verbs (CounterTargetForEffect and its two
 //     siblings) → RepEventCounterSpell (#4056, counter_spell.go)
+//   - RollDiceThenForEffect → RepEventRollDice (#4307, dice_roll.go)
 //
 // The six *ForEffect helpers in effect_api.go route through the same
 // pipeline so catalog-driven mutations fire replacements too.
@@ -65,6 +66,7 @@ import (
 //	"step"         — RepEventStepTransition — StepTransitionStep, StepTransitionSeat
 //	"extra_turn"   — RepEventExtraTurn — ExtraTurnSeat, ExtraTurnRef (CR 500.7 / 614.10)
 //	"counter_spell"— RepEventCounterSpell — CounterSpellID, CounterBy, CounterBySource (CR 701.6a / 614.1a)
+//	"roll_dice"    — RepEventRollDice — RollPlayer, RollSides, RollCount (CR 706.1)
 type ReplacementEventKind string
 
 const (
@@ -221,6 +223,16 @@ const (
 	// has moved while the prompt is open, and the resume finishes
 	// exactly as the unpaused path does (finishCounterSpellLocked).
 	RepEventCounterSpell ReplacementEventKind = "counter_spell"
+
+	// RepEventRollDice is one instruction to roll one or more dice (CR
+	// 706.1), opened before any die is rolled (#4307, dice_roll.go).
+	// Squid Fire Knight's sticker replaces it ("instead they roll that
+	// many dice plus one, then you choose one of those rolls to ignore").
+	// The window settles inline (mustSettleNow): the only replacements of
+	// this kind add a die and a chooser, so a CR 616.1 order among them
+	// is only the order of the choosers, which the dice flow asks the
+	// roller itself (diceOrderKey). The affected player is the roller.
+	RepEventRollDice ReplacementEventKind = "roll_dice"
 )
 
 // isExitMove reports whether a kind is a routed move OUT of a zone — an
@@ -534,6 +546,16 @@ type ReplacementEvent struct {
 	// "as the result of an effect", so it reads this (#2000). Set from
 	// the route (sbaDestroyRoute in simultaneous.go).
 	StateBasedDestruction bool
+
+	// LeaveCause is why this battlefield exit is happening, the verb the
+	// route was built for (leave_cause.go, #4395): a destroy, a
+	// sacrifice, a state-based action. Declared from the route
+	// template like Destruction, and for the same reason: nothing about
+	// the event says which of them it is, and it has to survive a CR 903.9
+	// pause. Stamped onto the exit's EventZoneMove. Only meaningful on a
+	// RepEventMove whose OldZone is the battlefield and which takes
+	// executeBattlefieldLeaveLocked.
+	LeaveCause LeaveCause
 
 	// EntersTapped is mutated by enters-tapped replacements
 	// (Kismet). Only meaningful when NewZone == ZoneBattlefield.
@@ -937,7 +959,7 @@ type ReplacementEvent struct {
 	// tokenTail is the token half's answer to lifeTail and damageTail:
 	// the rest of the effect that asked for the creation, run with the
 	// IDs of the tokens that were actually made once the pipeline
-	// settles. Set by CreateTokensThenForEffect and read only by
+	// settles. Set by CreateTokensKeyedForEffect and read only by
 	// runTokenTailLocked, which both the inline path and the CR 616
 	// resume reach.
 	//
@@ -1059,7 +1081,7 @@ type ReplacementEvent struct {
 	// counterTail is the counter half's answer to lifeTail and
 	// tokenTail: the rest of the effect that asked for the placement,
 	// run with the delta the window settled on once the counters land.
-	// Set by AddCounterByThenForEffect and read only by
+	// Set by AddCounterByKeyedForEffect and read only by
 	// runCounterTailLocked, which both the inline path and the CR 616
 	// resume reach.
 	//
@@ -1256,6 +1278,20 @@ type ReplacementEvent struct {
 	// plain data, so a copy for an undo snapshot is a struct copy.
 	counterInstead *counterInstead
 
+	// --- RepEventRollDice fields (#4307, dice_roll.go) ---
+
+	// RollPlayer is the player who would roll, RollSides the kind of die
+	// and RollCount how many (CR 706.1). A replacement that adds dice
+	// raises RollCount; one that also has a player choose a roll to
+	// ignore (Squid Fire Knight's sticker) appends to rollShields.
+	RollPlayer uuid.UUID
+	RollSides  int
+	RollCount  int
+	// rollShields are the "then you choose one of those rolls to ignore"
+	// riders the applied replacements added, in the order they applied.
+	// Plain data; a replacement appends to a fresh slice.
+	rollShields []diceShield
+
 	// mustSettleNow marks an event that CANNOT pause: the pipeline
 	// must reach a settled answer before applyReplacementsLocked
 	// returns, because the caller has no resume and no way to be
@@ -1352,6 +1388,11 @@ func (ev *ReplacementEvent) AddCounterAtETB(name string, n int) {
 // tracking + CR 616 order-choose prompt are all enforced centrally;
 // cards stay declarative.
 type ReplacementEffect struct {
+	// SelfEntersTapped is printed metadata for an unconditional self
+	// replacement, set by the shared constructor (#4317). Read by the
+	// card-purpose projection; never used to execute the replacement.
+	SelfEntersTapped bool
+
 	// ActiveWhen is ADR 0071's designation gate: the replacement exists
 	// only while the gate is satisfied by the permanent it is printed
 	// on. Its zero value is "no gate", which is every replacement in the
@@ -2899,6 +2940,11 @@ func eventKindMatches(watches []EventKind, kind ReplacementEventKind) bool {
 		// countered" in a TriggeredAbility.Watches, and no code reads
 		// one as the other. #4056.
 		want = EventCounterSpell
+	case RepEventRollDice:
+		// CR 706.1. EventRollDie is the post-event twin, one per kept die
+		// after the roll; this window opens once per instruction, before
+		// any die is rolled. The same reuse as RepEventMill's.
+		want = EventRollDie
 	case RepEventExtraTurn:
 		// CR 500.7 / 614.10. EventExtraTurnAdded is the twin of QUEUING
 		// the turn, which happens long before this window and under a

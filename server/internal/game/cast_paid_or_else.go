@@ -62,13 +62,54 @@ func (g *Game) ExileTopThenPaidCastOrElseForEffect(o PaidCastOrElse) error {
 	if len(plan) == 0 {
 		return g.paidCastNotMadeLocked(o, uuid.Nil)
 	}
-	return g.routeAllThenLocked(zoneRoute{Dst: ZoneExile, Actor: o.Player, Source: o.Source}, plan,
-		func(g *Game, landed []uuid.UUID) error {
-			if len(landed) == 0 {
-				return g.paidCastNotMadeLocked(o, uuid.Nil)
-			}
-			return g.OfferPaidCastFromExileForEffect(o, landed[0])
-		})
+	return g.routeAllKeyedLocked(zoneRoute{Dst: ZoneExile, Actor: o.Player, Source: o.Source}, plan, paidCastOrElseTail(o))
+}
+
+// paidCastOrElseExiled is ExileTopThenPaidCastOrElseForEffect's
+// continuation as data (#4361 S11a), so a CR 616 prompt on the exile is a
+// restore point: the offer over the card that landed, or "if you don't"
+// when none did. The offer rides the tail (paidCastOrElseTail). An on-disk
+// key.
+var paidCastOrElseExiled = RegisterTail("engine/paid-cast-or-else-exiled", func(g *Game, o TailOutcome) error {
+	offer := paidCastOrElseOf(o.Tail)
+	if len(o.IDs) == 0 {
+		return g.paidCastNotMadeLocked(offer, uuid.Nil)
+	}
+	return g.OfferPaidCastFromExileForEffect(offer, o.IDs[0])
+})
+
+func init() {
+	// IfNotCast is the tail's first word (#4361 S11b): a binary that does
+	// not register that "if you don't" body refuses the restore point
+	// (checkEffectKeys) rather than restoring an offer whose decline does
+	// nothing.
+	registerTailWordKeys(paidCastOrElseExiled, func(_ string, words []string) []string {
+		if len(words) == 0 || words[0] == "" || KnownCastFollowUp(CastFollowUpKey(words[0])) {
+			return nil
+		}
+		return []string{"cast follow-up " + words[0]}
+	})
+}
+
+// paidCastOrElseTail writes the offer onto the tail: Player and Source as
+// themselves, SourceName as Word, and IfNotCast and DeclineLabel as Words.
+func paidCastOrElseTail(o PaidCastOrElse) KeyedTail {
+	return KeyedTail{
+		Ref: paidCastOrElseExiled, Player: o.Player, Source: o.Source, Word: o.SourceName,
+		Words: []string{string(o.IfNotCast), o.DeclineLabel},
+	}
+}
+
+// paidCastOrElseOf reads the offer back off its tail.
+func paidCastOrElseOf(t KeyedTail) PaidCastOrElse {
+	o := PaidCastOrElse{Player: t.Player, Source: t.Source, SourceName: t.Word}
+	if len(t.Words) > 0 {
+		o.IfNotCast = CastFollowUpKey(t.Words[0])
+	}
+	if len(t.Words) > 1 {
+		o.DeclineLabel = t.Words[1]
+	}
+	return o
 }
 
 // OfferPaidCastFromExileForEffect is the offer over a card already in

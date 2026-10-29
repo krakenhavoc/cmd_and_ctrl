@@ -21,17 +21,11 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					controller := item.Controller
 					g.FlipCoinForEffect(game.CoinFlipSpec{
 						Flipper:  item.Controller,
 						Source:   item.SourceCardID,
 						Question: "The Gold Saucer — call the coin flip",
-						Then: func(g *game.Game, result game.CoinFlipResult) error {
-							if len(result.Won) > 0 && result.Won[0] {
-								return treasureTokens(g, controller, 1)
-							}
-							return nil
-						},
+						ThenKey:  goldSaucerFlipped,
 					})
 					return nil
 				},
@@ -47,3 +41,13 @@ func init() {
 		},
 	})
 }
+
+// goldSaucerFlipped is the settled call: a won flip makes a Treasure for
+// the flipper, the ability's controller (#4253 slice 10b). An on-disk key:
+// never renamed, never reused.
+var goldSaucerFlipped = game.RegisterCoinFlipThen("coin-flip/the-gold-saucer-treasure", func(g *game.Game, r game.CoinFlipped) error {
+	if wonFirstFlip(r) {
+		return treasureTokens(g, r.Flipper, 1)
+	}
+	return nil
+})

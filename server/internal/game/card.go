@@ -1634,7 +1634,7 @@ type Card struct {
 	// for alignment.
 
 	// RingBearer is the CR 701.54b Ring-bearer designation (ADR 0114
-	// §3). Set by the Ring's temptation (RingTemptsForEffect) and by
+	// §3). Set by the Ring's temptation (RingTemptsKeyedForEffect) and by
 	// nothing else; the one write site first clears every other
 	// permanent the chooser controls, which keeps one Ring-bearer per
 	// player. Cleared when the permanent leaves the battlefield (CR
@@ -1862,6 +1862,11 @@ type Card struct {
 	// Cleared at both CR 400.7 sites on every zone change, so a card that
 	// dies as an Aura comes back as the creature card it prints. Not a
 	// copiable value (CR 707.2). Carried by clone and the snapshot.
+	//
+	// Also set on a permanent that "becomes an Aura with enchant
+	// creature" while it is on the battlefield (BecomeAuraForEffect,
+	// Last Voyage of the _____): the same Aura form, the same clause
+	// lookup, ended by the same zone change.
 	ReturnedAura bool
 
 	// AttachedPinned says AttachedEpoch was recorded for this link, so a

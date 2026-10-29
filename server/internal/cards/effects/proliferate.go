@@ -19,7 +19,7 @@ import (
 // needs to know nothing about.
 //
 // THE CHOICE IS THE PLAYER'S (#2525). Proliferate{} with no lists asks
-// game.ProliferateChoosingForEffect, which queues a
+// game.ProliferateChoosingKeyedForEffect, which queues a
 // PendingChoiceProliferate once the window has settled: a multi-select
 // over every permanent and player that has a counter, with the
 // engine's beneficial pick suggested (game.ProliferateSuggestionForEffect
@@ -56,11 +56,12 @@ type Proliferate struct {
 	Cards   []uuid.UUID
 	Players []uuid.UUID
 
-	// Then is the rest of the sentence after "proliferate". It runs
-	// with the game lock held, once the proliferate is finished.
-	// Capture scalars only (the controller's ID), never a *Context or
-	// a *Game: an undone game resolves it against the restored one.
-	Then func(g *game.Game) error
+	// ThenTail is the rest of the sentence after "proliferate", a
+	// registered tail (#4253 slice 10b). It runs with the game lock held,
+	// once the proliferate is finished. A proliferate the player chooses
+	// is keyed from the prompt to the last counter, so a table waiting on
+	// the choice is a restore point.
+	ThenTail game.KeyedTail
 }
 
 func (p Proliferate) Apply(ctx *Context) error {
@@ -69,15 +70,38 @@ func (p Proliferate) Apply(ctx *Context) error {
 		controller = ctx.Controller()
 	}
 	if p.Cards == nil && p.Players == nil {
-		return ctx.Game.ProliferateChoosingForEffect(controller, ctx.Source(), p.Then)
+		return ctx.Game.ProliferateChoosingKeyedForEffect(controller, ctx.Source(), p.ThenTail)
 	}
 	if err := ctx.Game.ProliferateForEffect(controller, ctx.Source(), p.Cards, p.Players); err != nil {
 		return err
 	}
-	if p.Then != nil {
-		return p.Then(ctx.Game)
+	return p.ThenTail.Run(ctx.Game, nil)
+}
+
+// thenProliferateAgain is "proliferate N more times", each asked once the
+// one before it is answered (Tam, Mindful First-Year; Tromell, Seymour's
+// Butler): Tail.N is how many are still owed, Tail.Player proliferates and
+// Tail.Source is the card. An on-disk key: never renamed, never reused.
+// Registered from init: the body names its own key again.
+var thenProliferateAgain game.TailRef
+
+func init() {
+	thenProliferateAgain = game.RegisterTail("then/proliferate-again", func(g *game.Game, o game.TailOutcome) error {
+		return proliferateTimesKeyed(g, o.Tail.Player, o.Tail.Source, o.Tail.N)
+	})
+}
+
+// proliferateTimesKeyed proliferates n times in a row for `player`, each one
+// asked once the one before it is answered, with the rest as data.
+func proliferateTimesKeyed(g *game.Game, player, source uuid.UUID, n int) error {
+	if n <= 0 {
+		return nil
 	}
-	return nil
+	var rest game.KeyedTail
+	if n > 1 {
+		rest = game.KeyedTail{Ref: thenProliferateAgain, Player: player, Source: source, N: n - 1}
+	}
+	return g.ProliferateChoosingKeyedForEffect(player, source, rest)
 }
 
 // BeneficialProliferateChoice is the pick a proliferate suggests on

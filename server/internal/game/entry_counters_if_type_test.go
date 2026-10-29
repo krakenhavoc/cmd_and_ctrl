@@ -18,13 +18,14 @@ func putFromGraveyardTogetherForTest(t *testing.T, g *Game, opts ZoneEntryOption
 	}
 	var entered []uuid.UUID
 	g.mu.Lock()
-	err := g.PutOntoBattlefieldTogetherThenForEffect(entries, opts, func(_ *Game, in []uuid.UUID) error {
+	err := g.PutOntoBattlefieldTogetherKeyedForEffect(entries, opts, hookTail(func(_ *Game, o TailOutcome) error {
+		in := o.IDs
 		entered = in
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("PutOntoBattlefieldTogetherThenForEffect: %v", err)
+		t.Fatalf("PutOntoBattlefieldTogetherKeyedForEffect: %v", err)
 	}
 	return entered
 }

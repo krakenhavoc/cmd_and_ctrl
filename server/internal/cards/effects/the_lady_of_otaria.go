@@ -66,7 +66,7 @@ func init() {
 						Match:    HasSubtype("Dwarf"),
 						Optional: true,
 						Label:    "The Lady of Otaria — you may put any number of Dwarf cards into your hand",
-						Then:     TakeRestOnBottomInRandomOrder,
+						Key:      takeRestBottomRandom,
 					}.Apply(ctx)
 				}),
 		},

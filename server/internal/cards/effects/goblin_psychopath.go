@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Goblin Psychopath — Creature — Goblin Mutant {3}{R}, 5/5:
 //
@@ -38,26 +42,40 @@ func goblinPsychopathFlip(g *game.Game, item *game.StackItem) error {
 	if ok {
 		ref, zone, ok = g.DamageSourceRefLocked(source)
 	}
+	okNum := 0
+	if ok {
+		okNum = 1
+	}
 	g.FlipCoinForEffect(game.CoinFlipSpec{
 		Flipper:  controller,
 		Source:   source,
 		Question: "Goblin Psychopath — call the coin flip",
-		Then: func(g *game.Game, result game.CoinFlipResult) error {
-			if !ok || (len(result.Won) > 0 && result.Won[0]) {
-				return nil
-			}
-			g.RedirectDamageThisTurnForEffect(game.DamageRedirection{
-				EffectSource: source,
-				Controller:   controller,
-				Source:       ref,
-				SourceZone:   zone,
-				CombatOnly:   true,
-				Next:         true,
-				To:           controller,
-				Label:        "Goblin Psychopath — its next combat damage is dealt to you",
-			})
-			return nil
-		},
+		// Keyed (#4253 slice 10b): the creature as it was pinned now
+		// (CR 400.7) rides the call.
+		ThenKey: goblinPsychopathFlipped,
+		Carry:   []uuid.UUID{ref.ID},
+		Nums:    []int{okNum, ref.Epoch},
+		Words:   []string{string(zone)},
 	})
 	return nil
 }
+
+// goblinPsychopathFlipped is the settled call: a lost flip redirects the
+// creature's next combat damage to the flipper, its controller. An on-disk
+// key: never renamed, never reused.
+var goblinPsychopathFlipped = game.RegisterCoinFlipThen("coin-flip/goblin-psychopath", func(g *game.Game, r game.CoinFlipped) error {
+	if carriedNum(r.Nums, 0) == 0 || wonFirstFlip(r) {
+		return nil
+	}
+	g.RedirectDamageThisTurnForEffect(game.DamageRedirection{
+		EffectSource: r.Source,
+		Controller:   r.Flipper,
+		Source:       game.ObjectRef{ID: carriedID(r.Carry, 0), Epoch: carriedNum(r.Nums, 1)},
+		SourceZone:   game.ZoneKind(carriedWord(r.Words, 0)),
+		CombatOnly:   true,
+		Next:         true,
+		To:           r.Flipper,
+		Label:        "Goblin Psychopath — its next combat damage is dealt to you",
+	})
+	return nil
+})

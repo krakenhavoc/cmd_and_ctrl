@@ -13,15 +13,47 @@ func randomDraw(ctx *Context) game.RandomDraw {
 	return game.RandomDraw{Player: ctx.Controller(), Source: ctx.Source()}
 }
 
-func rollDice(ctx *Context, sides, n int) ([]int, error) {
-	return ctx.Game.RollDiceForEffect(randomDraw(ctx), sides, n)
+// RollDice is "roll N dSides" with the rest of the effect after it: every
+// card's roll goes through the engine's one dice door
+// (game.RollDiceThenForEffect, #4307), so a replacement of the roll
+// (Squid Fire Knight's sticker: one more die, then its controller chooses
+// one to ignore) applies, and the rest of the effect waits for that
+// answer. Then is a registered tail (DiceTail), told the kept rolls in
+// the order rolled; it runs against the resolving item, carried as data,
+// so a table waiting on the dice question is a restore point.
+// IgnoreLowest is the card's own "ignore the lowest" (CR 706.6,
+// Berserker's Frenzy), applied after any roll a player chose to ignore.
+type RollDice struct {
+	Sides, N, IgnoreLowest int
+	Then                   game.TailRef
+	// TailN is a number read as the effect resolves that the tail reads
+	// (TailOutcome.Tail.N): Diviner's Portent's X.
+	TailN int
 }
 
-// rollDiceIgnoringLowest is "roll n dice and ignore the lowest `ignore`
-// rolls" (CR 706.6, Berserker's Frenzy): the ignored rolls never happen,
-// so only the kept ones are returned and announced.
-func rollDiceIgnoringLowest(ctx *Context, sides, n, ignore int) ([]int, error) {
-	return ctx.Game.RollDiceIgnoringLowestForEffect(randomDraw(ctx), sides, n, ignore)
+// Apply rolls the dice for the effect's controller.
+func (r RollDice) Apply(ctx *Context) error {
+	var then game.KeyedTail
+	if r.Then.Key() != "" {
+		then = withN(ctx.ItemTail(r.Then), r.TailN)
+	}
+	d := randomDraw(ctx)
+	return ctx.Game.RollDiceThenForEffect(game.DiceRoll{
+		Player: d.Player, Source: d.Source, Sides: r.Sides, N: r.N, IgnoreLowest: r.IgnoreLowest, Then: then,
+	})
+}
+
+// DiceTail registers the rest of a dice-rolling effect, told the kept
+// rolls (never empty when a die was rolled). The key is an on-disk
+// identity (ledgered "tail <key>"): never renamed, never reused. Call it
+// once, from a package-level var.
+func DiceTail(key string, body func(ctx *Context, rolls []int) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if len(o.Rolls) == 0 {
+			return nil
+		}
+		return body(ctx, o.Rolls)
+	})
 }
 
 func randomPick(ctx *Context, ids []uuid.UUID, n int) []uuid.UUID {

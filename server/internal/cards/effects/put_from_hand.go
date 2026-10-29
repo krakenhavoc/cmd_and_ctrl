@@ -89,20 +89,25 @@ type PutFromHandOntoBattlefield struct {
 	// the card's sentence rather than a description of the mechanic.
 	Label string
 
-	// Validate is a rule on the picked SET, for a clause no per-card
-	// Match can say: Yuna's Decision's "a creature card and/or a land
-	// card" (at most one of each). Nil accepts any set within Max.
-	Validate func(picked []game.Card) bool
+	// Rule is a rule on the picked SET, for a clause no per-card Match
+	// can say: Yuna's Decision's "a creature card and/or a land card" (at
+	// most one of each), registered with the put's own continuation by
+	// PutFromHandRule. Zero accepts any set within Max. (The closure form,
+	// Validate, is gone: #4361 S7b.)
+	Rule PutFromHandPick
 
-	// Then, when set, runs after the answer. It is the only correct
-	// place for a rider on the result ("if you put a Cave onto the
-	// battlefield this way…"), because everything sequenced after
-	// this primitive has already run by the time it is called.
-	//
-	// Same contract as any other continuation: it runs with g.mu
-	// held, may queue further prompts, and must capture only scalars
-	// — never a *Card or a pointer into a zone.
-	Then func(g *game.Game, res PutFromHandResult) error
+	// ThenTail, when set, runs after the answer, as a registered tail
+	// (PutFromHandTail; #4253 slice 6): a key plus plain data, so a table
+	// waiting on a put card's entry question is a restore point. It is
+	// the only correct place for a rider on the result ("if you put a
+	// Cave onto the battlefield this way…"), because everything
+	// sequenced after this primitive has already run by the time it is
+	// called. It runs with g.mu held and may queue further prompts.
+	// ThenN is a number the tail reads and ThenItem carries the
+	// resolving item as data.
+	ThenTail game.TailRef
+	ThenN    int
+	ThenItem bool
 }
 
 // PutFromHandResult is what Then is told about the put: everything
@@ -126,6 +131,9 @@ type PutFromHandResult struct {
 	// EnteredAll is every permanent that arrived, in the order
 	// picked: one entry for a single put, up to Max for a batch.
 	EnteredAll []uuid.UUID
+
+	// N is the number the keyed tail carried (PutFromHandOntoBattlefield.ThenN).
+	N int
 }
 
 func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
@@ -133,14 +141,17 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	then := p.Then
 	source := ctx.Source()
+	var keyed game.KeyedTail
+	if p.ThenTail.Key() != "" {
+		keyed = game.KeyedTail{Ref: p.ThenTail, Player: player, Source: source, N: p.ThenN}
+		if p.ThenItem {
+			keyed.Asked = game.NewAskedItem(ctx.Item)
+		}
+	}
 	candidates := handCardsMatching(ctx.Game, player, p.Match)
 	if len(candidates) == 0 {
-		if then != nil {
-			return then(ctx.Game, PutFromHandResult{Source: source, Player: player})
-		}
-		return nil
+		return keyed.Run(ctx.Game, nil)
 	}
 	max := p.Max
 	if max < 1 {
@@ -164,7 +175,7 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 	if tapped {
 		dest = game.ChooseOntoBattlefieldTapped
 	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+	prompt := game.ChooseCardsPrompt{
 		Destination: dest,
 		Chooser:     player,
 		Source:      source,
@@ -172,52 +183,88 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		Cards:       candidates,
 		Min:         floor,
 		Max:         max,
-		Validate:    p.Validate,
-		// Re-checked on submit: the pick must still be in that
-		// player's hand when the answer arrives.
-		Zone: game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			report := func(g *game.Game, entered uuid.UUID) error {
-				if then != nil {
-					res := PutFromHandResult{Source: source, Player: player, Entered: entered}
-					if entered != uuid.Nil {
-						res.EnteredAll = []uuid.UUID{entered}
-					}
-					return then(g, res)
-				}
-				return nil
-			}
-			if len(picked) == 0 {
-				return report(g, uuid.Nil)
-			}
-			if len(picked) > 1 {
-				// One simultaneous entry (entry_batch.go), told what
-				// entered when the last card's window has settled.
-				return g.PutCardsFromHandOntoBattlefieldThenForEffect(picked, game.HandEntryOptions{
-					Controller: player,
-					Tapped:     tapped,
-				}, func(g *game.Game, in []uuid.UUID) error {
-					if then == nil {
-						return nil
-					}
-					res := PutFromHandResult{Source: source, Player: player, EnteredAll: in}
-					if len(in) > 0 {
-						res.Entered = in[0]
-					}
-					return then(g, res)
-				})
-			}
-			// Through the Then door (#1322): the land may stop to ask
-			// its own question (a shockland's life), and a rider on
-			// the result (Spelunking's Cave) has to wait for the
-			// answer rather than read an entry that has not happened.
-			return g.PutFromHandOntoBattlefieldThenForEffect(picked[0], game.HandEntryOptions{
-				Controller: player,
-				Tapped:     tapped,
-			}, report)
-		},
-	})
+	}
+	// The pick is data (#4253, #4361 S7b): the "tapped" rider rides the
+	// prompt as a number, the rider on the result as its keyed tail, and a
+	// set rule as the registered continuation it was registered with, so
+	// the table stays a restore point. Re-checked on submit: the pick must
+	// still be in that player's hand when the answer arrives.
+	prompt.ThenKey = putFromHandPick
+	if p.Rule.then.Key() != "" {
+		prompt.ThenKey = p.Rule.then
+	}
+	prompt.LiveZone = game.ZoneHand
+	prompt.Tail = keyed
+	if tapped {
+		prompt.CarryNums = []int{1}
+	}
+	ctx.Game.QueueChooseCardsForEffect(prompt)
 	return nil
+}
+
+// putFromHandPicked puts the cards picked from the hand onto the battlefield
+// and runs the keyed tail, if any, with what entered.
+func putFromHandPicked(g *game.Game, player uuid.UUID, picked []uuid.UUID, tapped bool, keyed game.KeyedTail) error {
+	if len(picked) == 0 {
+		return keyed.Run(g, nil)
+	}
+	if len(picked) > 1 {
+		// One simultaneous entry (entry_batch.go), told what
+		// entered when the last card's window has settled.
+		return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(picked, game.HandEntryOptions{
+			Controller: player,
+			Tapped:     tapped,
+		}, keyed)
+	}
+	// Through the keyed door (#1322, #4253 slice 6): the land may
+	// stop to ask its own question (a shockland's life), and a
+	// rider on the result (Spelunking's Cave) has to wait for the
+	// answer rather than read an entry that has not happened.
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(picked[0], game.HandEntryOptions{
+		Controller: player,
+		Tapped:     tapped,
+	}, keyed)
+}
+
+// putFromHandPick is a PutFromHandOntoBattlefield pick with no set rule,
+// keyed (#4253): the chooser is the player, the one carried number says
+// whether the cards enter tapped, and the pick's tail (#4361 S7b) is the
+// rider on the result.
+var putFromHandPick = game.RegisterChooseCardsThen("choose-cards/put-from-hand-onto-battlefield", putFromHandChosen)
+
+// putFromHandChosen is every PutFromHandOntoBattlefield pick's continuation.
+func putFromHandChosen(g *game.Game, r game.CardsChosen) error {
+	return putFromHandPicked(g, r.Chooser, r.Picked, len(r.Nums) > 0 && r.Nums[0] == 1, r.Tail)
+}
+
+// PutFromHandPick is a PutFromHandOntoBattlefield pick's continuation
+// registered with a set rule (PutFromHandRule).
+type PutFromHandPick struct{ then game.ChooseCardsThen }
+
+// PutFromHandRule registers a PutFromHandOntoBattlefield pick whose picked
+// SET must satisfy `rule` (#4361 S7b): the put's own continuation under
+// `key`, with the rule beside it, so a restored prompt still refuses a set
+// the rule refuses. The rule is never called for an empty pick, is a
+// function of the cards alone, and must capture nothing. The key is an
+// on-disk identity (ledgered "choose <key>"): never renamed, never reused.
+// Call it once, from a package-level var.
+func PutFromHandRule(key string, rule game.SetRuleFunc) PutFromHandPick {
+	return PutFromHandPick{then: game.RegisterChooseCardsThenRule(key, rule, putFromHandChosen)}
+}
+
+// PutFromHandTail registers a PutFromHandOntoBattlefield rider as a keyed
+// tail (#4253 slice 6): the body is handed what the rider is told, with a
+// Context rebuilt from the tail. The key is an on-disk identity
+// (ledgered "tail <key>"): never renamed, never reused. Call it once,
+// from a package-level var.
+func PutFromHandTail(key string, body func(ctx *Context, res PutFromHandResult) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		res := PutFromHandResult{Source: o.Tail.Source, Player: o.Tail.Player, EnteredAll: o.IDs, N: o.Tail.N}
+		if len(o.IDs) > 0 {
+			res.Entered = o.IDs[0]
+		}
+		return body(ctx, res)
+	})
 }
 
 // MayPutALandFromHand is the printed clause five catalog cards share

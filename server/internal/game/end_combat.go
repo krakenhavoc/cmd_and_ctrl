@@ -172,7 +172,7 @@ func (g *Game) exileStackObjectLocked(id uuid.UUID) {
 		}
 	}
 	if item != nil && g.StackMeta[id] != nil {
-		_ = g.exitSpellFromStackLocked(id, nil, ZoneExile, false, nil)
+		_ = g.exitSpellFromStackLocked(id, nil, ZoneExile, false)
 		return
 	}
 	// The resolving spell, or a card on the stack with no record at

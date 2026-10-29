@@ -136,24 +136,24 @@ func TestColorChoiceResolutionFormRunsThenAndStoresNothing(t *testing.T) {
 	g := newActiveGame(t)
 	seat := g.Seats[0].ID
 	src := pushTypedTestCard(g, Card{Name: "Oona", TypeLine: "Legendary Creature — Faerie Wizard", Owner: seat, Controller: seat})
-	got := ""
+	resetProbes()
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueColorChoiceThenForEffect(ColorPrompt{
 			Chooser: seat, Source: src, Question: "Oona — choose a color",
-			Then: func(_ *Game, color string) error { got = color; return nil },
+			ThenTail: probeTail(),
 		})
 	})
-	// While open it holds a continuation, so the game is not a
-	// restore point.
-	if snap := g.CaptureSnapshot(); snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
-		t.Errorf("census = %+v, want the chooseValueResume frame counted", snap.Continuations)
+	// While open it holds a keyed continuation, so the game is a restore
+	// point (#4253 retired the closure Then that kept it off the disk).
+	if snap := g.CaptureSnapshot(); !snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 0 {
+		t.Errorf("census = %+v, want a restore point with no resume frame counted", snap.Continuations)
 	}
 	if err := g.ResolveColorChoice(id, seat, "B"); err != nil {
 		t.Fatalf("ResolveColorChoice: %v", err)
 	}
-	if got != "B" {
-		t.Errorf("continuation received %q, want B", got)
+	if len(testProbeHeard) != 1 || testProbeHeard[0].Word != "B" {
+		t.Errorf("continuation was told %+v, want B once", testProbeHeard)
 	}
 	if c := layeredBattlefieldCard(t, g, src).ChosenColor; c != "" {
 		t.Errorf("the resolution form stored %q on the source; it stores nothing", c)
@@ -165,19 +165,12 @@ func TestColorChoiceResolutionFormRunsThenAndStoresNothing(t *testing.T) {
 func TestColorChoiceResolutionFormChains(t *testing.T) {
 	g := newActiveGame(t)
 	a, b := g.Seats[0].ID, g.Seats[1].ID
-	var picks []string
+	resetProbes()
 	var first uuid.UUID
 	g.WithWriteLock(func() {
 		first = g.QueueColorChoiceThenForEffect(ColorPrompt{
-			Chooser: a,
-			Then: func(g *Game, color string) error {
-				picks = append(picks, color)
-				g.QueueColorChoiceThenForEffect(ColorPrompt{
-					Chooser: b,
-					Then:    func(_ *Game, color string) error { picks = append(picks, color); return nil },
-				})
-				return nil
-			},
+			Chooser:  a,
+			ThenTail: KeyedTail{Ref: testColorChainTail, Player: b},
 		})
 	})
 	if err := g.ResolveColorChoice(first, a, "W"); err != nil {
@@ -190,10 +183,23 @@ func TestColorChoiceResolutionFormChains(t *testing.T) {
 	if err := g.ResolveColorChoice(next.ID, b, "U"); err != nil {
 		t.Fatalf("second answer: %v", err)
 	}
+	var picks []string
+	for _, h := range testProbeHeard {
+		picks = append(picks, h.Word)
+	}
 	if !reflect.DeepEqual(picks, []string{"W", "U"}) {
 		t.Errorf("picks = %v, want [W U]", picks)
 	}
 }
+
+// testColorChainTail is the first link of TestColorChoiceResolutionFormChains:
+// it records the answer through testProbeTail and asks the tail's Player
+// next, whose answer testProbeTail records too.
+var testColorChainTail = RegisterTail("test/4253-color-chain", func(g *Game, o TailOutcome) error {
+	testProbeHeard = append(testProbeHeard, tailHeard{Word: o.Tail.Word})
+	g.QueueColorChoiceThenForEffect(ColorPrompt{Chooser: o.Tail.Player, ThenTail: probeTail()})
+	return nil
+})
 
 func TestChosenColorClearsOnBattlefieldLeave(t *testing.T) {
 	g := newActiveGame(t)

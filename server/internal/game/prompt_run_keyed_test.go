@@ -139,32 +139,36 @@ func TestAKeyedDiscardRunIsARestorePointWithALegAnswered(t *testing.T) {
 	}
 }
 
-// TestAClosureRunIsStillCountedOnce: the closure form is not a restore
-// point, and the census counts the run once rather than once per leg.
-func TestAClosureRunIsStillCountedOnce(t *testing.T) {
+// TestAOneSeatSacrificeRunOfThreeRestoresMidRun (#4361): the closure form
+// of a counted one-seat sacrifice (PlayerSacrificesThenForEffect) is gone,
+// and its keyed sibling's three legs are one written run. A strict restore
+// with two legs open keeps the run, and the restored table finishes it
+// once.
+func TestAOneSeatSacrificeRunOfThreeRestoresMidRun(t *testing.T) {
+	resetKeyedRunCall()
 	g := newFourPlayerActiveGame(t)
-	source := departureTestSource(g, g.Seats[3].ID, "Syphon Mind")
-	for _, p := range g.Seats[:3] {
-		oneCardHand(t, g, p, "Pitch")
-	}
-	eachPlayerDiscardsThen(t, g, source, g.Seats[3].ID, 1)
-	snap := g.CaptureSnapshot()
-	if snap.Restorable() {
-		t.Fatal("a closure run is a restore point")
-	}
-	if len(snap.PromptRuns) != 0 {
-		t.Errorf("a closure run was written: %+v", snap.PromptRuns)
-	}
-	// The legs are closure prompts too (each its own frame), so count
-	// the run's share alone: one note naming the run.
-	runs := 0
-	for _, l := range snap.Continuations.Labels {
-		if l == "a prompted run waits on 3 prompt(s) with a continuation closure" {
-			runs++
+	me := g.Seats[0]
+	source := departureTestSource(g, g.Seats[3].ID, "Doomgape")
+	var bears []uuid.UUID
+	g.WithWriteLock(func() {
+		for i := 0; i < 3; i++ {
+			bears = append(bears, pushBear(g, me.ID))
 		}
+		err := g.PlayerSacrificesThenKeyedForEffect(source, me.ID, nil, "sacrifice a creature", 3, testKeyedRun, nil)
+		if err != nil {
+			t.Fatalf("PlayerSacrificesThenKeyedForEffect: %v", err)
+		}
+	})
+	answerSacrifice(t, g, me.ID, bears[0])
+	g = strictRestore(t, g)
+	me = g.Seats[0]
+	if len(g.promptRuns) != 1 || keyedRunCall.ran != 0 {
+		t.Fatalf("restored %d runs, continuation ran %d times; want one open run", len(g.promptRuns), keyedRunCall.ran)
 	}
-	if runs != 1 {
-		t.Errorf("the census names the run %d times, want once: %v", runs, snap.Continuations.Labels)
+	answerSacrifice(t, g, me.ID, bears[1])
+	answerSacrifice(t, g, me.ID, bears[2])
+	if keyedRunCall.ran != 1 || keyedRunCall.got.Sacrifices().Count() != 3 {
+		t.Fatalf("the restored run ran %d times with %v, want once with all three", keyedRunCall.ran, keyedRunCall.got.Landed)
 	}
 }
 
@@ -390,8 +394,8 @@ func TestAnnihilatorSacrificeChoiceIsARestorePoint(t *testing.T) {
 	}
 	g = strictRestore(t, g)
 	c := pendingChoiceOfKind(g, PendingChoiceOwnPermanents)
-	if c == nil || c.chooseCardsResume == nil || c.chooseCardsResume.zone != ZoneBattlefield {
-		t.Fatalf("the restored prompt is %+v, want its battlefield frame rebuilt", c)
+	if c == nil || c.liveZone() != ZoneBattlefield {
+		t.Fatalf("the restored prompt is %+v, want its battlefield re-check", c)
 	}
 	if err := g.ResolveOwnPermanents(c.ID, opp.ID, fodder[:2]); err != nil {
 		t.Fatalf("ResolveOwnPermanents: %v", err)
@@ -429,7 +433,7 @@ func TestAKeyedPermanentPickRunIsARestorePointWithALegAnswered(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, testKeyedRun, []uuid.UUID{opp.ID}); err != nil {
+		}, testKeyedRun, RunData{Carry: []uuid.UUID{opp.ID}}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
@@ -460,22 +464,6 @@ func TestAKeyedPermanentPickRunIsARestorePointWithALegAnswered(t *testing.T) {
 	}
 }
 
-// TestAKeyedPermanentPickWithAValidateIsRefused: a set rule is a
-// closure, so the keyed form will not take one.
-func TestAKeyedPermanentPickWithAValidateIsRefused(t *testing.T) {
-	g := newActiveGame(t)
-	me := g.Seats[0]
-	g.WithWriteLock(func() {
-		_, err := g.PermanentsPickedThenKeyedForEffect(PermanentPickPrompt{
-			Chooser: me.ID, Of: []uuid.UUID{me.ID},
-			Validate: func([]Card) bool { return true },
-		}, testKeyedRun, nil)
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("err = %v, want ErrInvalidParam", err)
-		}
-	})
-}
-
 // TestAKeyedPermanentPickLegWithAnUnknownKeyIsRefused: the leg names its
 // run's key, so a binary without it refuses the file at the leg.
 func TestAKeyedPermanentPickLegWithAnUnknownKeyIsRefused(t *testing.T) {
@@ -488,7 +476,7 @@ func TestAKeyedPermanentPickLegWithAnUnknownKeyIsRefused(t *testing.T) {
 			Chooser: victim.ID, Question: "sacrifice one",
 			Of:         []uuid.UUID{victim.ID},
 			Candidates: annihilatorCandidates(1),
-		}, testKeyedRun, nil); err != nil {
+		}, testKeyedRun, RunData{}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
@@ -516,7 +504,7 @@ func TestAChooserLeavingSettlesTheirKeyedPermanentPick(t *testing.T) {
 			Chooser: leaver.ID, Source: source, Question: "sacrifice one",
 			Of:         []uuid.UUID{leaver.ID},
 			Candidates: annihilatorCandidates(1),
-		}, testKeyedRun, nil); err != nil {
+		}, testKeyedRun, RunData{}); err != nil {
 			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})

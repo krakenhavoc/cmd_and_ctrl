@@ -17,7 +17,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The sacrifice is part of the EFFECT, not a cost (#2863, ADR 0013
 // amendment of 2026-10-09). It is a one-seat sacrifice run
-// (PlayerSacrificesThenForEffect, ADR 0013 §5x): the caster picks a
+// (PlayerSacrificesThenKeyedForEffect, ADR 0013 §5x): the caster picks a
 // creature as the spell resolves, and "if you do" is the run's answer
 // for the caster, read once the creature has really left the
 // battlefield. So the spell can be cast with no creature at all (it
@@ -36,22 +36,22 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("two target creature cards in your graveyard",
 			Creature(), YouOwn()).WithCount(2, 2),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controller := ctx.Controller()
-			return ctx.Game.PlayerSacrificesThenForEffect(
-				ctx.Source(), controller,
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return ctx.SacrificeThen(ctx.Controller(),
 				sacrificeSpec("a creature", Creature()),
 				"Victimize — sacrifice a creature",
-				1,
-				func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-					if !sacrificed.Sacrificed(controller) {
-						return nil
-					}
-					// A fresh Context on the live *Game (resumeClause's
-					// contract), and the targets re-checked now.
-					ctx := NewContext(g, item)
-					return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx), Tapped: true}.Apply(ctx)
-				})
+				1, victimizeReturn, ctx.Controller())
 		},
 	})
 }
+
+// victimizeReturn is "if you do, return the two targeted creature cards to
+// the battlefield tapped" once the creature has really been sacrificed,
+// keyed (#4290): the item's targets ride the run as the asking item, and
+// are re-checked now.
+var victimizeReturn = RunThen("prompt-run/victimize-return", func(ctx *Context, r game.RunDone) error {
+	if len(r.Carry) == 0 || !r.Sacrifices().Sacrificed(r.Carry[0]) {
+		return nil
+	}
+	return ReturnFromGraveyardTogether{Targets: legalTargetCardIDs(ctx), Tapped: true}.Apply(ctx)
+})

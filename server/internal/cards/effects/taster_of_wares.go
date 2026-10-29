@@ -71,35 +71,11 @@ func tasterOfWaresEnters(g *game.Game, item *game.StackItem) error {
 	if x <= 0 || len(hand) == 0 {
 		return nil
 	}
-	revealAndPick := func(g *game.Game, revealed []uuid.UUID) error {
-		if len(revealed) == 0 {
-			return nil
-		}
-		g.RevealForEffect(game.RevealSpec{
-			Player: opp,
-			Source: item.SourceCardID,
-			Reason: "Taster of Wares — reveal cards from your hand",
-			Cards:  revealed,
-		})
-		_, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
-			Chooser:  controller,
-			Owner:    opp,
-			Source:   item.SourceCardID,
-			Question: "Taster of Wares — choose one of those cards; that player exiles it",
-			Cards:    revealed,
-			Min:      1,
-			Max:      1,
-		}, func(g *game.Game, picked, _ []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return tasterOfWaresExile(g, item, picked[0])
-		})
-		return err
-	}
 	if x >= len(hand) {
-		return revealAndPick(g, hand)
+		return tasterOfWaresRevealAndPick(ctx, controller, opp, hand)
 	}
+	// Keyed (#4253): both prompts carry the trigger as data, so a table
+	// waiting on either is a restore point.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    opp,
 		FromPlayer: opp,
@@ -108,41 +84,94 @@ func tasterOfWaresEnters(g *game.Game, item *game.StackItem) error {
 		Cards:      hand,
 		Min:        x,
 		Max:        x,
-		Zone:       game.ZoneHand,
-		Then:       revealAndPick,
+		LiveZone:   game.ZoneHand,
+		ThenKey:    tasterOfWaresRevealed,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
 
+// tasterOfWaresRevealed is the opponent's X cards chosen: they are revealed
+// and the Taster's controller picks one. An on-disk key: never renamed,
+// never reused.
+var tasterOfWaresRevealed = askedPick("choose-cards/taster-of-wares-reveal", func(ctx *Context, r game.CardsChosen) error {
+	return tasterOfWaresRevealAndPick(ctx, ctx.Controller(), r.Chooser, r.Picked)
+})
+
+// tasterOfWaresRevealAndPick reveals the cards and asks the Taster's
+// controller to choose one of them.
+func tasterOfWaresRevealAndPick(ctx *Context, controller, opp uuid.UUID, revealed []uuid.UUID) error {
+	if len(revealed) == 0 {
+		return nil
+	}
+	g := ctx.Game
+	g.RevealForEffect(game.RevealSpec{
+		Player: opp,
+		Source: ctx.Source(),
+		Reason: "Taster of Wares — reveal cards from your hand",
+		Cards:  revealed,
+	})
+	_, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
+		Chooser:  controller,
+		Owner:    opp,
+		Source:   ctx.Source(),
+		Question: "Taster of Wares — choose one of those cards; that player exiles it",
+		Cards:    revealed,
+		Min:      1,
+		Max:      1,
+		ThenKey:  tasterOfWaresChosen,
+		Asked:    game.NewAskedItem(ctx.Item),
+	})
+	return err
+}
+
+// tasterOfWaresChosen is the controller's pick: its owner exiles it. An
+// on-disk key: never renamed, never reused.
+var tasterOfWaresChosen = askedPick("choose-cards/taster-of-wares-exile", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return tasterOfWaresExile(ctx.Game, ctx.Item, r.Picked[0])
+})
+
 // tasterOfWaresExile is "that player exiles it", and the cast permission
 // when an instant or sorcery card lands in exile.
 func tasterOfWaresExile(g *game.Game, item *game.StackItem, id uuid.UUID) error {
-	card, ok := g.LookupCardForEffect(id)
-	if !ok {
+	if _, ok := g.LookupCardForEffect(id); !ok {
 		return nil
 	}
-	spell := card.IsInstant() || card.IsSorcery()
-	return g.ExileCardsThenForEffect([]uuid.UUID{id}, func(g *game.Game, exiled []uuid.UUID) error {
-		if !spell {
-			return nil
-		}
-		for _, eid := range exiled {
-			c, ok := g.LookupCardForEffect(eid)
-			if !ok {
-				continue
-			}
-			g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-				Player:     item.Controller,
-				Zone:       game.ZoneExile,
-				CastOnly:   true,
-				AnyColor:   true,
-				AnyType:    true,
-				Duration:   forAsLongAsYouControlThisWindow(g, item),
-				Source:     item.SourceCardID,
-				SourceName: "Taster of Wares",
-				Label:      "You may cast it for as long as you control Taster of Wares",
-			}, []game.Card{c})
-		}
-		return nil
-	})
+	return g.ExileCardsKeyedForEffect([]uuid.UUID{id}, NewContext(g, item).ItemTail(tasterOfWaresGrant))
 }
+
+// tasterOfWaresGrant grants the cast of the instant or sorcery card that reached exile (#4253 slice 9).
+var tasterOfWaresGrant = CardTail("taster-of-wares/grant-cast-of-exiled-spell", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	spell := false
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok && (c.IsInstant() || c.IsSorcery()) {
+			spell = true
+		}
+	}
+
+	if !spell {
+		return nil
+	}
+	for _, eid := range exiled {
+		c, ok := g.LookupCardForEffect(eid)
+		if !ok {
+			continue
+		}
+		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+			Player:     item.Controller,
+			Zone:       game.ZoneExile,
+			CastOnly:   true,
+			AnyColor:   true,
+			AnyType:    true,
+			Duration:   forAsLongAsYouControlThisWindow(g, item),
+			Source:     item.SourceCardID,
+			SourceName: "Taster of Wares",
+			Label:      "You may cast it for as long as you control Taster of Wares",
+		}, []game.Card{c})
+	}
+	return nil
+})

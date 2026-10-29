@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -23,7 +21,7 @@ import (
 // zone instead — it left the graveyard, but it was not "exiled this
 // way" (CR 400.7), so it must not be paid for. The prompt also pauses
 // the resolution, so the number is not knowable on the line after the
-// sweep. ExileCardsThenForEffect sequences the pause and hands back
+// sweep. ExileCardsKeyedForEffect sequences the pause and hands back
 // exactly the cards that reached exile, which is the set the second
 // sentence counts.
 //
@@ -48,14 +46,16 @@ func init() {
 			if len(ids) == 0 {
 				return nil
 			}
-			you := ctx.Controller()
-			source := ctx.Source()
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				if len(exiled) == 0 {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(source, you, 3*len(exiled))
-			})
+			return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.Tail(cryptIncursionGain))
 		},
 	})
 }
+
+// cryptIncursionGain is "you gain 3 life for each card exiled this way"
+// (#4253 slice 9).
+var cryptIncursionGain = CardTail("crypt-incursion/gain-3-per-exiled", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), ctx.Controller(), 3*len(o.IDs))
+})

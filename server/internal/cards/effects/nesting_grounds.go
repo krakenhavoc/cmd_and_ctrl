@@ -3,6 +3,8 @@ package effects
 import (
 	"sort"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -47,6 +49,16 @@ func init() {
 	})
 }
 
+// nestingGroundsRemove takes the moved counter off the first permanent, if it
+// landed on the second (the outcome's Amount); Carry is the first permanent
+// and Word the counter kind. An on-disk key: never renamed, never reused.
+var nestingGroundsRemove = game.RegisterTail("nesting-grounds/remove", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.AddCounterForEffect(o.Tail.Carry[0], o.Tail.Word, -1)
+})
+
 func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	from, ok := ctx.ClauseTarget(0)
@@ -61,30 +73,12 @@ func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	var kinds []string
-	for kind, n := range src.Counters {
-		if n > 0 {
-			kinds = append(kinds, kind)
-		}
-	}
-	sort.Strings(kinds)
-	move := func(kind string) error {
-		fromID, toID := from.ID, to.ID
-		if _, ok := g.LookupCardForEffect(toID); !ok {
-			return nil
-		}
-		return g.AddCounterByThenForEffect(item.Controller, toID, kind, 1, func(g *game.Game, placed int) error {
-			if placed <= 0 {
-				return nil
-			}
-			return g.AddCounterForEffect(fromID, kind, -1)
-		})
-	}
+	kinds := nestingGroundsKinds(src)
 	switch len(kinds) {
 	case 0:
 		return nil
 	case 1:
-		return move(kinds[0])
+		return nestingGroundsMoveKind(ctx, from.ID, to.ID, kinds[0])
 	}
 	options := make([]game.ChoiceOption, len(kinds))
 	for i, kind := range kinds {
@@ -93,11 +87,51 @@ func nestingGroundsMove(g *game.Game, item *game.StackItem) error {
 	return PickOption{
 		Question: "Nesting Grounds — which kind of counter do you move?",
 		Options:  options,
-		Then: func(_ *Context, index int) error {
-			if index < 0 || index >= len(kinds) {
-				return nil
-			}
-			return move(kinds[index])
-		},
+		ThenKey:  nestingGroundsKind,
+		Carry:    []uuid.UUID{from.ID, to.ID},
 	}.Apply(ctx)
 }
+
+// nestingGroundsKinds lists the counter kinds on the permanent, in the order
+// the options are offered. Nothing can change a counter while the question
+// is open, so the answer rebuilds the same list.
+func nestingGroundsKinds(src game.Card) []string {
+	var kinds []string
+	for kind, n := range src.Counters {
+		if n > 0 {
+			kinds = append(kinds, kind)
+		}
+	}
+	sort.Strings(kinds)
+	return kinds
+}
+
+// nestingGroundsMoveKind puts a counter of `kind` on the second permanent and
+// takes it off the first once it has landed.
+func nestingGroundsMoveKind(ctx *Context, fromID, toID uuid.UUID, kind string) error {
+	g := ctx.Game
+	if _, ok := g.LookupCardForEffect(toID); !ok {
+		return nil
+	}
+	then := ctx.Tail(nestingGroundsRemove)
+	then.Carry = []uuid.UUID{fromID}
+	then.Word = kind
+	return g.AddCounterByKeyedForEffect(ctx.Controller(), toID, kind, 1, then)
+}
+
+// nestingGroundsKind is the counter kind chosen, keyed (#4253): the two
+// permanents ride the prompt as data.
+var nestingGroundsKind = OptionPickThen("option-pick/nesting-grounds-counter-kind", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	src, ok := ctx.Game.LookupCardForEffect(r.Carry[0])
+	if !ok {
+		return nil
+	}
+	kinds := nestingGroundsKinds(src)
+	if r.Index < 0 || r.Index >= len(kinds) {
+		return nil
+	}
+	return nestingGroundsMoveKind(ctx, r.Carry[0], r.Carry[1], kinds[r.Index])
+})

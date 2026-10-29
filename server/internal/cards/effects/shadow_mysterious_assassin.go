@@ -53,27 +53,37 @@ func shadowThrow(g *game.Game, item *game.StackItem) error {
 		Cards:      candidates,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			mv := 0
-			if c, ok := g.LookupCardForEffect(picked[0]); ok {
-				mv = c.ManaValue()
-			}
-			return g.SacrificeThenForEffect(uuid.Nil, picked[0], func(g *game.Game, sacrificed bool) error {
-				if !sacrificed {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				ctx.RecordStep(shadowMysteriousAssassinRecord, nil, mv)
-				return shadowDrainSteps.Run(ctx)
-			})
-		},
+		LiveZone:   game.ZoneBattlefield,
+		ThenKey:    shadowThrowPick,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// shadowThrowPick is the permanent chosen to sacrifice, keyed (#4253): the
+// asking item rides the prompt as data, and the sacrifice's continuation is
+// a keyed tail (shadowSacrificed) carrying the item and the mana value.
+var shadowThrowPick = askedPick("choose-cards/shadow-mysterious-assassin-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	picked := r.Picked
+	if len(picked) == 0 {
+		return nil
+	}
+	mv := 0
+	if c, ok := ctx.Game.LookupCardForEffect(picked[0]); ok {
+		mv = c.ManaValue()
+	}
+	return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, picked[:1], withN(ctx.ItemTail(shadowSacrificed), mv))
+})
+
+// shadowSacrificed is "if you do": the sacrificed permanent's mana value is
+// the tail's N. An on-disk key: never renamed, never reused.
+var shadowSacrificed = CardTail("then/shadow-mysterious-assassin-sacrificed", func(ctx *Context, o game.TailOutcome) error {
+	if !oneWentThisWay(o) {
+		return nil
+	}
+	ctx.RecordStep(shadowMysteriousAssassinRecord, nil, o.Tail.N)
+	return shadowDrainSteps.Run(ctx)
+})
 
 // shadowMysteriousAssassinRecord is the sacrificed permanent's mana value.
 const shadowMysteriousAssassinRecord = "shadow-mysterious-assassin/mana-value"

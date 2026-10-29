@@ -49,12 +49,10 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			you := item.Controller
 			return MillToZone{
-				Player: you,
-				N:      8,
-				To:     game.ZoneExile,
-				Then: func(ctx *Context, exiled []uuid.UUID) error {
-					return aminatousAuguryPayoff(ctx.Game, item, you, exiled)
-				},
+				Player:   you,
+				N:        8,
+				To:       game.ZoneExile,
+				ThenTail: ctx.ItemTail(aminatousAuguryMilled),
 			}.Apply(ctx)
 		},
 	})
@@ -100,13 +98,26 @@ func aminatousAuguryPayoff(g *game.Game, item *game.StackItem, you uuid.UUID, ex
 		Cards:      lands,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneExile,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromExileTogether{Targets: picked, Controller: you}.Apply(NewContext(g, item))
-		},
+		ThenKey:    aminatousAuguryLand,
+		LiveZone:   game.ZoneExile,
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// aminatousAuguryLand is the land card put onto the battlefield, keyed
+// (#4253): the asking item rides the prompt as data.
+var aminatousAuguryLand = askedPick("choose-cards/aminatous-augury-land", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromExileTogether{Targets: r.Picked, Controller: ctx.Controller()}.Apply(ctx)
+})
+
+// aminatousAuguryMilled is the clause after the mill (#4253 slice 9).
+var aminatousAuguryMilled = CardTail("aminatous-augury/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	item, you := ctx.Item, ctx.Controller()
+	exiled := o.IDs
+
+	return aminatousAuguryPayoff(ctx.Game, item, you, exiled)
+})

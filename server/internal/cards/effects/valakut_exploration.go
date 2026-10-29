@@ -41,15 +41,15 @@ import (
 //     "while it's exiled" grant, applied to the OTHER half of the
 //     exile-with-permission pair (ExileTopWithPermissionForEffect,
 //     the library-facing shape impulse draw already uses);
-//   - the exile → graveyard move — PutCardsIntoGraveyardThenForEffect
+//   - the exile → graveyard move — PutCardsIntoGraveyardKeyedForEffect
 //     (simultaneous.go), the one addition this card needed: a
 //     continuation sibling of PutIntoGraveyardForEffect
 //     (random_bottom.go's Genesis Wave primitive: "not a mill, not a
 //     discard"), because "that much damage" has to count what
 //     actually LANDED in the graveyard, not what was asked for before
 //     the CR 903.9 window had a chance to redirect a leg — the same
-//     lesson #911 already taught ExileCardsThenForEffect and
-//     DestroyPermanentsThenForEffect.
+//     lesson #911 already taught ExileCardsKeyedForEffect and
+//     DestroyPermanentsKeyedForEffect.
 //
 // So the fix for the row this card sat on (docs/engine-seams.md,
 // "Post-departure LKI / 'exiled with this' record") is The Ozolith's
@@ -143,7 +143,7 @@ func valakutExplorationRecordExiled(_ game.Event, source *game.Card, _ game.Char
 // landed there.
 //
 // The damage total is read from the continuation's `landed` list, not
-// counted before the move — PutCardsIntoGraveyardThenForEffect's own
+// counted before the move — PutCardsIntoGraveyardKeyedForEffect's own
 // doc explains why: a leg can pause mid-move (CR 903.9), and reading
 // a pre-move tally would pay out for a move the window has not
 // answered yet (#1218, ADR 0013 §5t).
@@ -157,18 +157,22 @@ func valakutExplorationSweep(g *game.Game, item *game.StackItem) error {
 	if len(stillExiled) == 0 {
 		return nil
 	}
-	return g.PutCardsIntoGraveyardThenForEffect(stillExiled, func(g *game.Game, landed []uuid.UUID) error {
-		if len(landed) == 0 {
-			return nil
-		}
-		ctx := NewContext(g, item)
-		return ctx.Game.DamageInstanceForEffect(func() error {
-			for _, opp := range ctx.Opponents() {
-				if err := g.DealDamageToPlayerForEffect(item.SourceCardID, opp, len(landed)); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	})
+	return g.PutCardsIntoGraveyardKeyedForEffect(stillExiled, NewContext(g, item).ItemTail(valakutExplorationDamage))
 }
+
+// valakutExplorationDamage deals each opponent damage equal to the number
+// of cards put into the graveyard this way, keyed (#4253 slice 10a).
+var valakutExplorationDamage = CardTail("then/valakut-exploration-damage", func(ctx *Context, o game.TailOutcome) error {
+	landed := len(o.IDs)
+	if landed == 0 {
+		return nil
+	}
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		for _, opp := range ctx.Opponents() {
+			if err := ctx.Game.DealDamageToPlayerForEffect(ctx.Source(), opp, landed); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+})

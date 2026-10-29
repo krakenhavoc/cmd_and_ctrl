@@ -30,7 +30,7 @@ package game
 //   - StackItem.Effect — what an ability does when it resolves
 //   - StackItem.targetSpec — the clause its targets were legal under
 //   - DelayedTrigger.Effect — "at the beginning of the next end step"
-//   - PendingChoice's six resume frames + scryResume — a paused
+//   - PendingChoice's six resume frames — a paused
 //     game literally holds the rest of the effect as a continuation
 //   - (RETIRED by ADR 0041 phase 3 tier 3b: Gingerbrute's and Fog's
 //     block rules and replacements are both ScopedEffect records now)
@@ -476,6 +476,34 @@ type GameSnapshot struct {
 	// (ErrUnknownEffectKey).
 	PreventionFollowUps []PreventionFollowUp `json:"preventionFollowUps,omitempty"`
 
+	// FollowUpParks is Game.followUpParks' keyed entries (#4253,
+	// damage_keyed.go): the rest of a damage instruction parked behind a
+	// prompt its instance's follow-up asked, as a registered tail told
+	// the damage's target and amount. A closure park is not written (the
+	// census counts it). Additive within v9.
+	FollowUpParks []followUpParkSnapshot `json:"followUpParks,omitempty"`
+
+	// ShieldDivisions is Game.shieldDivisions and RedirectOrders is
+	// Game.redirectOrders (#4361 S16, divide_shield_keyed.go): the CR 615.7
+	// divisions made for a damage instance whose events have not all
+	// landed, and the CR 616 order chosen for its redirections. Additive
+	// within v9: a file without them restores none, as before.
+	ShieldDivisions []ShieldDivision        `json:"shieldDivisions,omitempty"`
+	RedirectOrders  []redirectOrderSnapshot `json:"redirectOrders,omitempty"`
+
+	// DamageInstanceLives is Game.damageInstanceLives (#4389,
+	// damage_as_though.go): every seat's life total as each of the newest
+	// damage instances began, which Phyrexian Unlife reads once per
+	// instance. Additive within v9: a file without them restores none,
+	// and a lookup that finds no record reads the live total, as before.
+	DamageInstanceLives []damageInstanceLifeSnapshot `json:"damageInstanceLives,omitempty"`
+
+	// HeldCombatDamage is Game.heldCombatDamage (#4362,
+	// combat_damage_keyed.go): a combat damage step's damage held behind
+	// its damage_assignment prompts, every one of which names it in
+	// PickThen (HeldCombatDamageKey). Additive within v9.
+	HeldCombatDamage *heldCombatDamageSnapshot `json:"heldCombatDamage,omitempty"`
+
 	// ResolutionOpen is Game.resolutionOpen (#1289,
 	// resolution_pause.go): a resolution has begun and the CR 704.3
 	// boundary after it has not run. Read with each choice's
@@ -523,6 +551,21 @@ type GameSnapshot struct {
 	// them. Additive within the version.
 	EnteringTokens []cardSnapshot `json:"enteringTokens,omitempty"`
 
+	// AttractionEntering is Game.attractionEntering (#4404): the
+	// Attraction an open is putting onto the battlefield, which the card
+	// index sees only through it. Written only beside a keyed frame, whose
+	// paused open (entryBatchSnapshot.Attraction) needs it. Additive within
+	// the version.
+	AttractionEntering *uuid.UUID `json:"attractionEntering,omitempty"`
+
+	// FrozenEntries is Game.frozenEntries (#4361 S17, owner decision D4,
+	// entry_card_choice.go): an entry whose "as this enters, discard or
+	// sacrifice" choice was answered and whose action has paused, with
+	// the effect that asked, by ReplacementEffectID. The action's keyed
+	// tail names the entry by event ID. A frame that is not data is
+	// counted, not written. Additive within v9.
+	FrozenEntries []replacementResumeSnapshot `json:"frozenEntries,omitempty"`
+
 	// PromptRuns is Game.promptRuns (#4290, prompt_run_keyed.go): the
 	// multi-seat instructions in flight whose continuation is a
 	// registered key, each with its outstanding count, ask order, what
@@ -531,6 +574,12 @@ type GameSnapshot struct {
 	// written. A file written before it restores none, which is the old
 	// behaviour (no keyed run existed). Additive within the version.
 	PromptRuns []promptRunSnapshot `json:"promptRuns,omitempty"`
+
+	// ParkedDraws is Game.parkedDraws (#4253 slice 10c, draw_done.go): the
+	// tails of draws a draw-instead body handed to a prompt, by the ID that
+	// prompt carries. Plain data, never counted. A file written before it
+	// restores none. Additive within the version.
+	ParkedDraws []parkedDrawSnapshot `json:"parkedDraws,omitempty"`
 
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
@@ -1780,6 +1829,11 @@ type pendingChoiceSnapshot struct {
 	PickTargetCards      []uuid.UUID            `json:"pickTargetCards,omitempty"`
 	PickTargetMin        int                    `json:"pickTargetMin"`
 	PickTargetMax        int                    `json:"pickTargetMax"`
+	// PickTargetFor and PickTargetHarmful are the pick_target's wire
+	// fields (#2055, #4249), carried since a trigger's target walk is
+	// written (#4361 S14b). Additive within the version.
+	PickTargetFor     uuid.UUID `json:"pickTargetFor,omitempty"`
+	PickTargetHarmful bool      `json:"pickTargetHarmful,omitempty"`
 	// #1196's CR 115.7 retarget prompt. Carried rather than counted
 	// as a continuation because it IS the prompt: the item whose
 	// targets are being changed, the printed sentence being applied,
@@ -1990,10 +2044,35 @@ type pendingChoiceSnapshot struct {
 	// prompt without the rest of its card. Additive within the version.
 	ScryThen *keyedTailSnapshot `json:"scryThen,omitempty"`
 
+	// PickTail is PendingChoice.pickTail (#4253 slice 8): a keyed
+	// choose_cards pick's registered tail. Unlike ScryThen its key does not
+	// ride PickThen, which is the pick's own; the keys it names are checked
+	// on restore all the same. Additive within the version.
+	PickTail *keyedTailSnapshot `json:"pickTail,omitempty"`
+	// NameThen is PendingChoice.nameThen (#4253 slice 10c): a
+	// resolution-time card-name prompt's keyed "then". Its key also rides
+	// PickThen, so a binary from before it refuses the file instead of
+	// restoring the prompt with a name that lands nowhere. Additive within
+	// the version. Since the sweep's second pass (#4253) a resolution-time
+	// colour or creature-type prompt carries one too (value_then_keyed.go),
+	// told the colour or the type as its Word.
+	NameThen *keyedTailSnapshot `json:"nameThen,omitempty"`
+
+	// SourceShield is PendingChoice.sourceShield (#4253 slice 10c): a
+	// choose_source prompt's shield, redirection or multiplier, as data.
+	// Its continuation's key rides PickThen. Additive within the version.
+	SourceShield *sourceShieldSnapshot `json:"sourceShield,omitempty"`
+
 	// PromptRun is PendingChoice.promptRun (#4290): the run this prompt
 	// is one leg of, by its ID in PromptRuns. Additive: a file without it
 	// is a prompt that is no run's leg.
 	PromptRun uuid.UUID `json:"promptRun,omitempty"`
+
+	// Ordered is PendingChoice.ordered (#4290, ADR 0175): a keyed ordered
+	// collection's state (the seats still to ask, the picks so far, the
+	// registered continuation and its data). Additive: a file without it
+	// is a prompt that is no collection's turn.
+	Ordered *orderedPicks `json:"ordered,omitempty"`
 
 	// LibraryOrder is PendingChoice.libraryOrderKeyed (#4301): a put_in_library
 	// prompt's way of moving the cards and its keyed "then". The tail's key
@@ -2001,6 +2080,57 @@ type pendingChoiceSnapshot struct {
 	// instead of restoring the prompt without the rest of its card.
 	// Additive within the version.
 	LibraryOrder *libraryOrderSnapshot `json:"libraryOrder,omitempty"`
+
+	// SearchPrompt is a library-search prompt's frame written as data
+	// (#4253 slice 5, search_prompt_keyed.go): the spec's data half, its
+	// set rule by key, the undecided flag and a TakeAll search's graveyard
+	// finds. Written only for a spec with no closure set rule and no
+	// closure continuation. PickThen says SearchPromptKey, so a binary
+	// from before it refuses the file. Additive within the version.
+	SearchPrompt *searchPromptSnapshot `json:"searchPrompt,omitempty"`
+	// DiceRoll is PendingChoice.dice (#4307, dice_roll.go): the paused
+	// dice roll a dice/... option pick belongs to. Additive within the
+	// version; its keys ride PickThen, so a binary from before it refuses
+	// the file.
+	DiceRoll *diceRollPauseSnapshot `json:"diceRoll,omitempty"`
+	// TriggerFrame is a trigger_prompt's or a mode_pick's trigger frame
+	// written as data (#4361 S14a, trigger_frame_keyed.go): the event,
+	// the source, its LKI, the doubler and the ability by its catalog
+	// row. Written only for an ability with a catalog row (catalogTriggerRowRef).
+	// PickThen says TriggerFrameKey, so a binary from before it refuses
+	// the file. Additive within the version.
+	TriggerFrame *triggerFrameSnapshot `json:"triggerFrame,omitempty"`
+	// TargetWalk is a trigger's CR 603.3d target walk written as data
+	// (#4361 S14b, trigger_frame_keyed.go), on its pick_target or on the
+	// option pick asking which opponent chooses a step: the five things
+	// of TriggerFrame, the modes, the cursor, the picks, the division,
+	// the named opponents and the fixed divided amounts. A pick_target's
+	// PickThen says TargetWalkKey and an option pick's names its keyed
+	// answer, so a binary from before it refuses the file. Additive
+	// within the version.
+	TargetWalk *targetWalkSnapshot `json:"targetWalk,omitempty"`
+	// DivideShield is a divide_shield prompt's payload (#4361 S16,
+	// divide_shield_keyed.go): the shield, its entries, the shields after
+	// it and the damage it lands, as data. PickThen says
+	// DivideShieldLandKey, so a binary from before it refuses the file.
+	// Additive within the version.
+	DivideShield *divideShieldSnapshot `json:"divideShield,omitempty"`
+	// Parked is a cast or activation parked on this prompt before
+	// anything was paid, written as data (#4361 S13, owner decision D7,
+	// parked_announcement.go): a CR 903.9b question's frame on an
+	// optional_replacement, an "of an opponent's choice" frame on the
+	// controller's option pick or the opponent's pick_target. PickThen
+	// names it (CostCommanderAnnounceKey, OpponentTargetAnnounceKey, or
+	// the option pick's own key), so a binary from before it refuses the
+	// file. Additive within the version.
+	Parked *parkedAnnouncementSnapshot `json:"parked,omitempty"`
+	// CopyWalk is a copy's CR 707.10c "choose new targets" walk written
+	// as data (#4361 S15, copy_walk_keyed.go): the copied item through
+	// the stack-item mirror, the object its targets are judged from, the
+	// controller, the steps' identities, the targets and the cursor. Its
+	// pick_target's PickThen says CopyWalkKey, so a binary from before it
+	// refuses the file. Additive within the version.
+	CopyWalk *copyWalkSnapshot `json:"copyWalk,omitempty"`
 
 	// ResumeFrames names the continuation slots that were populated.
 	// Diagnostic only — nothing rebuilds them in this schema.
@@ -2099,7 +2229,12 @@ type ContinuationCensus struct {
 	// end step" instructions.
 	DelayedTriggerEffects int `json:"delayedTriggerEffects,omitempty"`
 
-	// ChoiceResumeFrames is paused prompts holding a continuation.
+	// ChoiceResumeFrames is paused prompts holding a continuation that
+	// is not written. Since #4361 no such continuation is a closure (the
+	// ratchet's census:ChoiceResumeFrames class has no lines); the
+	// counter stays for a pause that is data but not yet written (combat
+	// damage, a trigger with no catalog row, a CR 616 event of a gated
+	// kind), owner decision D8. See docs/snapshots.md.
 	ChoiceResumeFrames int `json:"choiceResumeFrames,omitempty"`
 
 	// ScopedStatics counted floating continuous effects held as
@@ -2421,10 +2556,37 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 				// #4253 slice 3: the look-at's keyed "then".
 				pc.ScryThen, pc.PickThen = t, t.Key
 			}
+			if t := snapshotKeyedTail(c.pickTail); t != nil && carriesPickTail(c.Kind) {
+				// #4253 slice 8: a keyed choose_cards pick's tail.
+				pc.PickTail = t
+			}
+			pc.SourceShield = snapshotSourceShield(c.sourceShield)
+			if t := snapshotKeyedTail(c.nameThen); t != nil && carriesValueThen(c.Kind) {
+				// #4253 slice 10c: the card-name prompt's keyed "then"; since
+				// the sweep's second pass, a colour or creature-type prompt's too.
+				pc.NameThen, pc.PickThen = t, t.Key
+			}
 			if k := c.libraryOrderKeyed; k != nil && c.Kind == PendingChoicePutInLibrary {
 				// #4301: the ordering prompt's keyed "then".
 				pc.LibraryOrder = snapshotLibraryOrder(k)
 				pc.PickThen = k.then.Ref.key
+			}
+			if sp := snapshotSearchPrompt(c); sp != nil {
+				// #4253 slice 5: the search prompt's frame, as data.
+				pc.SearchPrompt, pc.PickThen = sp, searchPromptKey(sp)
+			}
+			if d := snapshotDivideShield(c.DivideShield); d != nil && c.Kind == PendingChoiceDivideShield {
+				// #4361 S16: the divide_shield prompt and its landing step.
+				pc.DivideShield, pc.PickThen = d, DivideShieldLandKey
+			}
+			if d := c.dice; d != nil && c.Kind == PendingChoiceOptionPick {
+				// #4307: a paused dice roll.
+				pc.DiceRoll = snapshotDiceRollPause(d)
+			}
+			if c.Kind == PendingChoiceDamageAssignment && g.heldCombatDamage != nil {
+				// #4362: a prompt of a held combat damage step, whose
+				// held damage is written below.
+				pc.PickThen = HeldCombatDamageKey
 			}
 			if key != "" {
 				// #4253: the frame is data; it is written, not counted.
@@ -2434,30 +2596,68 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 			}
 			s.PendingChoices = append(s.PendingChoices, pc)
 		}
+		// #4361 S17: the entries frozen behind a discard or a sacrifice
+		// one of these prompts is pausing.
+		if s.FrozenEntries = g.snapshotFrozenEntriesLocked(cen); len(s.FrozenEntries) > 0 {
+			keyedFrames = true
+		}
 		if keyedFrames {
 			s.ReplacementSerials, s.NextReplacementSerial = g.snapshotReplacementSerials()
+			// #4389: staged tokens are written only here, and none is
+			// staged without a frame. A token is staged only by a
+			// creation's entry walk (enterCreatedTokensKeyedLocked,
+			// enterCreatedTokensTogetherLocked) and leaves the staging
+			// area as it lands (landEntryLocked's takeEnteringTokenLocked)
+			// or is dropped (dropEnteringTokenLocked: a step that ran, a
+			// batch that stopped, an entry replaced away). The walk is
+			// synchronous, so a token is still staged after the action
+			// only when an entry stopped on errReplacementPending, and
+			// every prompt that bail queues holds a replacementResume
+			// frame (or, for a discard or sacrifice, a frozen entry): a
+			// keyed one sets keyedFrames, and any other is counted above
+			// (snapshotPendingChoiceFrame), so that table is no restore
+			// point.
 			for _, c := range g.enteringTokens {
 				s.EnteringTokens = append(s.EnteringTokens, snapshotCard(c, cen))
 			}
+			// #4404: an Attraction's open is set only by its entry, and
+			// a paused one holds a frame like any other entry, keyed or
+			// counted.
+			s.AttractionEntering = uuidPtrOrNil(g.attractionEntering)
 		}
+	} else if len(g.frozenEntries) > 0 {
+		// #4361 S17: a frozen entry with no prompt open has lost the
+		// action that would resume it. Never expected; counted, so a
+		// restart rewinds rather than guessing.
+		cen.ChoiceResumeFrames++
+		cen.note("an entry frozen behind its discard or sacrifice with no prompt open")
 	}
 	// #3665: a combat damage step's damage held behind its
-	// damage-assignment prompts. Not carried: the table is not a
-	// restore point while it waits, so a restart rewinds to before the
-	// step rather than dealing half of it.
+	// damage-assignment prompts. #4362: written as data, and each open
+	// prompt of the step names it (HeldCombatDamageKey). A hold with no
+	// prompt open is settled by the next state check and never seen at a
+	// capture; one would have no prompt to carry the key an older binary
+	// refuses, so it is counted rather than written.
 	if g.heldCombatDamage != nil {
-		cen.ChoiceResumeFrames++
-		cen.note("combat damage step holds its damage behind damage_assignment prompts")
+		if g.damageAssignmentPendingLocked() {
+			s.HeldCombatDamage = snapshotHeldCombatDamage(g.heldCombatDamage)
+		} else {
+			cen.ChoiceResumeFrames++
+			cen.note("combat damage step holds its damage with no damage_assignment prompt open")
+		}
 	}
 	// #2040: the rest of a damage instruction parked behind a prompt
-	// its instance's prevention follow-up asked. A closure, as the
-	// CR 616 resume beside it is: not carried, so a restart rewinds to
-	// before the damage. The owed follow-ups themselves are data
-	// (PreventionFollowUps).
-	if n := len(g.followUpParks); n > 0 {
-		cen.ChoiceResumeFrames += n
-		cen.note("%d damage instruction(s) wait behind a prevention follow-up's prompt", n)
-	}
+	// its instance's prevention follow-up asked. A closure is not
+	// carried, so a restart rewinds to before the damage; #4253: a keyed
+	// one (damage_keyed.go) is written. The owed follow-ups themselves
+	// are data (PreventionFollowUps).
+	s.FollowUpParks = snapshotFollowUpParks(g.followUpParks)
+	// #4361 S16: the divisions and redirection orders held for an
+	// instance whose damage waits on a prompt.
+	s.ShieldDivisions = snapshotShieldDivisions(g.shieldDivisions)
+	s.RedirectOrders = snapshotRedirectOrders(g.redirectOrders)
+	// #4389: the life totals those instances began with.
+	s.DamageInstanceLives = snapshotDamageInstanceLives(g.damageInstanceLives)
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
@@ -2468,9 +2668,10 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	s.StepRecords = cloneStepRecords(g.stepRecords)
 	// #3613: the end of the resolution parked behind those prompts.
 	s.PausedResolutionTail = snapshotResolutionTail(g, g.pausedResolutionTail, cen)
-	// #4290: the prompted runs in flight. A keyed run is written; a run
-	// whose continuation is a closure is counted.
-	s.PromptRuns = snapshotPromptRuns(g.promptRuns, cen)
+	// #4290: the prompted runs in flight, every one keyed and written
+	// (the closure form is gone, #4361).
+	s.PromptRuns = snapshotPromptRuns(g.promptRuns)
+	s.ParkedDraws = snapshotParkedDraws(g.parkedDraws)
 
 	switch n := len(g.Events); {
 	case n == 0:
@@ -2501,7 +2702,7 @@ func (g *Game) captureSnapshotEventsLocked(copyEvents bool) *GameSnapshot {
 	}
 	s.LastKnownPermanents = cloneLastKnownPermanents(g.lastKnownPermanents)
 	s.LastKnownStack = snapshotLastKnownStack(g.lastKnownStack, cen)
-	s.Resolving = snapshotResolving(g)
+	s.Resolving = snapshotResolving(g, cen)
 
 	// The turn-scoped block-rule registry retired with ADR 0041 tier
 	// 3b, alongside its replacement twin: a Gingerbrute is a
@@ -3117,6 +3318,8 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		PickTargetCards:       copyUUIDs(c.PickTargetCards),
 		PickTargetMin:         c.PickTargetMin,
 		PickTargetMax:         c.PickTargetMax,
+		PickTargetFor:         c.PickTargetFor,
+		PickTargetHarmful:     c.PickTargetHarmful,
 		RetargetItem:          c.RetargetItem,
 		RetargetPolicy:        c.RetargetPolicy,
 		RetargetOptional:      c.RetargetOptional,
@@ -3207,6 +3410,31 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 		AutoAnswerPrompt:      c.AutoAnswerPrompt,
 		AskedByHand:           c.AskedByHand,
 		PromptRun:             c.promptRun,
+		Ordered:               cloneOrderedPicks(c.ordered),
+	}
+	// #4361 S14a: a trigger paused in its announcement, written by its
+	// catalog row. nil for an ability that cannot be named (owner
+	// decision D5): its frame is counted below, as a closure.
+	tf := snapshotTriggerFrameOf(c, cen)
+	if tf != nil {
+		out.TriggerFrame, out.PickThen = tf, TriggerFrameKey
+	}
+	// #4361 S14b: a trigger's target walk, likewise. nil for an ability
+	// that cannot be named (D5) or whose statement reads the board.
+	tw := snapshotTargetWalkOf(c, cen)
+	if tw != nil {
+		out.TargetWalk = tw
+		out.PickThen = targetWalkMarker(c.Kind)
+	}
+	// #4361 S13: a parked cast or activation, written as data. A prompt
+	// carries at most one of it and (S15) a copy's new-targets walk; the
+	// walk is nil when its item cannot be written whole.
+	parked, parkedKey := snapshotParkedAnnouncement(c)
+	var cw *copyWalkSnapshot
+	if parked != nil {
+		out.Parked, out.PickThen = parked, parkedKey
+	} else if cw = snapshotCopyWalkOf(c, cen); cw != nil {
+		out.CopyWalk, out.PickThen = cw, CopyWalkKey
 	}
 	if c.DamageAssignment != nil {
 		// Pure data (see the type), so a value copy with its own
@@ -3220,44 +3448,37 @@ func snapshotPendingChoiceFrame(c *PendingChoice, cen *ContinuationCensus, keyed
 	for name, present := range map[string]bool{
 		"replacementResume": c.replacementResume != nil && !keyedFrame,
 		// #1397: a parked cost announcement waiting on a commander's
-		// owner. Dropping it drops the announcement, not half of it —
-		// nothing was paid — but the census still says so.
-		"costCommanderResume": c.costCommanderResume != nil,
-		// #2055: a parked cast or activation waiting on an opponent's
-		// target (or the controller's choice of opponent). Plain data,
-		// but not written with the prompt, so the census says so.
-		"opponentTargetResume": c.opponentTargetResume != nil,
-		"pickTargetResume":     c.pickTargetResume != nil,
-		"copyResume":           c.copyResume != nil,
-		"triggerResume":        c.triggerResume != nil,
-		"payUnlessResume":      c.payUnlessResume != nil,
-		"mayCastResume":        c.mayCastResume != nil,
-		"searchResume":         c.searchResume != nil,
-		"scryResume":           c.scryResume != nil,
-		// ADR 0088's ordered placement: handed the answer, then
-		// places the pile and runs the rest of the card.
-		"libraryOrderResume": c.libraryOrderResume != nil,
-		// The two chained-choice frames. A chain link is a
-		// continuation like any other, and an entry missing here
-		// would let the server write a restore point that silently
-		// drops the rest of the card. See chained_choice.go.
-		"confirmResume": c.confirmResume != nil,
-		// #4253 slice 2: a keyed entry card choice's zone frame is
-		// rebuilt from its prompt kind (entryCardChoiceFrameIsData).
-		"chooseCardsResume": c.chooseCardsResume != nil && !(keyedFrame && isEntryCardChoiceKind(c.Kind)) &&
-			// #4290: a keyed permanent-pick run's leg frame is rebuilt
-			// from the prompt (permanentPickLegIsData).
-			!permanentPickLegIsData(c),
+		// owner, and #2055: a parked cast or activation waiting on an
+		// opponent's target (or the controller's choice of opponent).
+		// Written as data since #4361 S13 (out.Parked); counted only
+		// when it could not be (a cast already carrying an assist answer).
+		"costCommanderResume":  c.costCommanderResume != nil && parked == nil,
+		"opponentTargetResume": c.opponentTargetResume != nil && parked == nil,
+		// #4361 S14b: written as data (targetWalk) when it can be named;
+		// S15: a copy's walk (copyWalk) when its item can be written.
+		"pickTargetResume": c.pickTargetResume != nil && tw == nil,
+		"copyResume":       c.copyResume != nil && cw == nil,
+		"triggerResume":    c.triggerResume != nil && tf == nil,
+		// #4361 S7b: the card-set pick's closure frame is gone. Every
+		// choose_cards pick is keyed, a run's reveal or permanent pick
+		// settles from its own fields, and an entry card choice's zone is
+		// its kind's.
+		// The chained-choice frame. A chain link is a continuation
+		// like any other, and an entry missing here would let the
+		// server write a restore point that silently drops the rest
+		// of the card. See chained_choice.go. (The confirm frame is
+		// built from its key when answered; #4361 S16 deleted the
+		// last stored one, the divide_shield prompt's.)
 		// #742's resolution-time "choose a color".
 		// #568's option pick, for the same reason.
-		"optionPickResume":  c.optionPickResume != nil,
-		"chooseValueResume": c.chooseValueResume != nil,
-		"modePickResume":    c.modePickResume != nil,
-		"coinFlipResume":    c.coinFlipResume != nil,
+		// #4361: the colour, creature-type and number prompts' and the coin
+		// call's frames are gone; every one is data. S14b deleted the
+		// option pick's last closure frame (optionPickResume).
+		"modePickResume": c.modePickResume != nil && tf == nil,
 		// #1019's / #1027's prompted run is not counted here since
 		// #4290: the link (promptRun) is carried, and the run itself is
-		// counted once, on the Game, when its continuation is a closure
-		// (snapshotPromptRuns).
+		// written on the Game (snapshotPromptRuns); since #4361 no run
+		// holds a closure.
 	} {
 		if present {
 			out.ResumeFrames = append(out.ResumeFrames, name)
@@ -3395,8 +3616,14 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.stepRecords = cloneStepRecords(s.StepRecords)
 	g.pausedResolutionTail = restoreResolutionTail(s.PausedResolutionTail)
 	g.promptRuns = restorePromptRuns(s.PromptRuns)
+	g.parkedDraws = restoreParkedDraws(s.ParkedDraws)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
+	g.followUpParks = restoreFollowUpParks(s.FollowUpParks)
+	g.shieldDivisions = snapshotShieldDivisions(s.ShieldDivisions)
+	g.redirectOrders = restoreRedirectOrders(s.RedirectOrders)
+	g.damageInstanceLives = restoreDamageInstanceLives(s.DamageInstanceLives)
+	g.heldCombatDamage = restoreHeldCombatDamage(s.HeldCombatDamage)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
 	g.blockedAttackers = copyBoolMap(s.BlockedAttackers)
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
@@ -3484,6 +3711,15 @@ func (s *GameSnapshot) restoreGame() *Game {
 	// ADR 0108 PR 0: the damage-instance counter resumes past every
 	// instance a restored record names.
 	g.damageInstanceSeq = maxNamedDamageInstance(g.ScopedEffects, g.preventionFollowUps)
+	// #4253: and every instance a keyed park names (a keyed damage
+	// frame's is taken as the frame is rebuilt).
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxParkedDamageInstance(g.followUpParks))
+	// #4361 S16: and every instance a division or a redirection order
+	// names (a divide_shield prompt's are taken as it is restored).
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxHeldDivisionInstance(g.shieldDivisions, g.redirectOrders))
+	// #4389: and every instance a life record names, so a new instance
+	// never takes a number an old record answers for.
+	g.damageInstanceSeq = max(g.damageInstanceSeq, maxRecordedLifeInstance(g.damageInstanceLives))
 	if len(s.DelayedTriggers) > 0 {
 		g.DelayedTriggers = make([]*DelayedTrigger, len(s.DelayedTriggers))
 		for i := range s.DelayedTriggers {
@@ -3603,9 +3839,54 @@ func (s *GameSnapshot) restoreGame() *Game {
 			g.PendingChoices[i].scryThen = restoreKeyedTail(t)
 			g.PendingChoices[i].PickThen = ""
 		}
+		if t := s.PendingChoices[i].PickTail; t != nil && carriesPickTail(s.PendingChoices[i].Kind) {
+			g.PendingChoices[i].pickTail = restoreKeyedTail(t)
+		}
+		if sh := s.PendingChoices[i].SourceShield; sh != nil && s.PendingChoices[i].Kind == PendingChoiceChooseSource {
+			g.PendingChoices[i].sourceShield = restoreSourceShield(sh)
+		}
+		if d := s.PendingChoices[i].DivideShield; d != nil && s.PendingChoices[i].Kind == PendingChoiceDivideShield {
+			// #4361 S16: the divide_shield prompt and its landing step.
+			g.PendingChoices[i].DivideShield = restoreDivideShield(d)
+			g.PendingChoices[i].PickThen = ""
+			g.damageInstanceSeq = max(g.damageInstanceSeq, maxDivideShieldInstance(d))
+		}
+		if s.PendingChoices[i].Kind == PendingChoiceDamageAssignment && s.PendingChoices[i].PickThen == HeldCombatDamageKey {
+			// #4362: the marker of a held step's prompt; the hold itself
+			// is restored with the rest of the game.
+			g.PendingChoices[i].PickThen = ""
+		}
+		if t := s.PendingChoices[i].NameThen; t != nil && carriesValueThen(s.PendingChoices[i].Kind) {
+			g.PendingChoices[i].nameThen = restoreKeyedTail(t)
+			g.PendingChoices[i].PickThen = ""
+		}
 		if k := s.PendingChoices[i].LibraryOrder; k != nil && s.PendingChoices[i].Kind == PendingChoicePutInLibrary {
 			g.PendingChoices[i].libraryOrderKeyed = restoreLibraryOrder(k)
 			g.PendingChoices[i].PickThen = ""
+		}
+		if sp := s.PendingChoices[i].SearchPrompt; sp != nil && s.PendingChoices[i].Kind == PendingChoiceSearchLibrary {
+			// #4253 slice 5: a search prompt's frame, its marker on PickThen.
+			g.PendingChoices[i].searchResume = restoreSearchPrompt(sp)
+			g.PendingChoices[i].PickThen = ""
+		}
+		if d := s.PendingChoices[i].DiceRoll; d != nil && s.PendingChoices[i].Kind == PendingChoiceOptionPick {
+			// #4307: a paused dice roll.
+			g.PendingChoices[i].dice = restoreDiceRollPause(d)
+		}
+		if f := s.PendingChoices[i].TriggerFrame; f != nil && carriesTriggerFrame(s.PendingChoices[i].Kind) {
+			// #4361 S14a: a trigger paused in its announcement.
+			g.restoreTriggerFrameLocked(g.PendingChoices[i], f)
+		}
+		if w := s.PendingChoices[i].TargetWalk; w != nil && carriesTargetWalk(s.PendingChoices[i].Kind) {
+			// #4361 S14b: a trigger's target walk.
+			g.restoreTargetWalkLocked(g.PendingChoices[i], w)
+		}
+		if pa := s.PendingChoices[i].Parked; pa != nil {
+			// #4361 S13: a parked cast or activation.
+			restoreParkedAnnouncement(g.PendingChoices[i], pa)
+		} else if w := s.PendingChoices[i].CopyWalk; w != nil && s.PendingChoices[i].Kind == PendingChoicePickTarget {
+			// #4361 S15: a copy's new-targets walk.
+			g.restoreCopyWalkLocked(g.PendingChoices[i], w)
 		}
 	}
 	g.restoreReplacementSerials(s.ReplacementSerials, s.NextReplacementSerial)
@@ -3614,6 +3895,9 @@ func (s *GameSnapshot) restoreGame() *Game {
 		// token's entry off them.
 		g.enteringTokens = append(g.enteringTokens, restoreCard(&s.EnteringTokens[i]))
 	}
+	// #4404: likewise the Attraction an open is putting onto the
+	// battlefield, which the gather reads through the card index.
+	g.attractionEntering = uuidOrNil(s.AttractionEntering)
 	for i := range s.PendingChoices {
 		rs := s.PendingChoices[i].ReplacementResume
 		if rs == nil || !keyedReplacementPromptKind(s.PendingChoices[i].Kind) {
@@ -3621,11 +3905,10 @@ func (s *GameSnapshot) restoreGame() *Game {
 		}
 		g.PendingChoices[i].PickThen = ""
 		g.PendingChoices[i].replacementResume = g.rebuildReplacementResumeLocked(rs)
-		if kind := s.PendingChoices[i].Kind; isEntryCardChoiceKind(kind) {
-			// The live-zone re-check's frame, which for these kinds is
-			// the zone and nothing else.
-			g.PendingChoices[i].chooseCardsResume = &chooseCardsFrame{zone: entryCardChoiceZone(kind)}
-		}
+	}
+	for i := range s.FrozenEntries {
+		// #4361 S17: after the serials, like the frames.
+		g.frozenEntries = append(g.frozenEntries, g.rebuildFrozenEntryLocked(&s.FrozenEntries[i]))
 	}
 	return g
 }
@@ -4116,6 +4399,8 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickTargetCards:       copyUUIDs(c.PickTargetCards),
 		PickTargetMin:         c.PickTargetMin,
 		PickTargetMax:         c.PickTargetMax,
+		PickTargetFor:         c.PickTargetFor,
+		PickTargetHarmful:     c.PickTargetHarmful,
 		RetargetItem:          c.RetargetItem,
 		RetargetPolicy:        c.RetargetPolicy,
 		RetargetOptional:      c.RetargetOptional,
@@ -4207,13 +4492,11 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		AskedByHand:           c.AskedByHand,
 		// #4290: the run this prompt is one leg of (PromptRuns).
 		promptRun: c.PromptRun,
+		ordered:   cloneOrderedPicks(c.Ordered),
 		// Every resume frame stays nil. This is the phase-1 line in
 		// the sand, and the census is how it is enforced rather than
 		// hoped for.
 	}
-	// #4290: except a keyed permanent-pick leg's, which is a function
-	// of the prompt's own fields.
-	restorePermanentPickLeg(out)
 	if c.DamageAssignment != nil {
 		da := *c.DamageAssignment
 		da.BlockerIDs = copyUUIDs(c.DamageAssignment.BlockerIDs)

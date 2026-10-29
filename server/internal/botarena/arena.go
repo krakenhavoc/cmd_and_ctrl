@@ -129,9 +129,34 @@ const VariantNoGrants = "nogrants"
 // NoGrantsContestant is VariantNoGrants's contestant name.
 const NoGrantsContestant = string(tiers.Heuristic) + "-" + VariantNoGrants
 
+// VariantNoIdleAnswers disables only the #4318 defensive-row prices.
+const VariantNoIdleAnswers = "noidleanswers"
+
+// NoIdleAnswersContestant is an arena name only.
+const NoIdleAnswersContestant = string(tiers.Heuristic) + "-" + VariantNoIdleAnswers
+
+// VariantNoReconfigure disables only #4321's reconfigure pricing.
+const VariantNoReconfigure = "noreconfigure"
+
+// NoReconfigureContestant is an arena name only.
+const NoReconfigureContestant = string(tiers.Heuristic) + "-" + VariantNoReconfigure
+
+// VariantNoOutnumber disables only #4316's late-attacker loss pricing.
+const VariantNoOutnumber = "nooutnumber"
+
+// NoOutnumberContestant is an arena name only.
+const NoOutnumberContestant = string(tiers.Heuristic) + "-" + VariantNoOutnumber
+
+// VariantNoLandOrder disables only #4317's land-drop ordering.
+const VariantNoLandOrder = "nolandorder"
+
+// NoLandOrderContestant is an arena name only.
+const NoLandOrderContestant = string(tiers.Heuristic) + "-" + VariantNoLandOrder
+
 // ParseContestant reads one `--seats` entry: a tier,
 // `heuristic-baseline`, `heuristic-noexert`, `heuristic-noplan`,
-// `heuristic-notemporary` or `heuristic-nogrants`.
+// `heuristic-notemporary`, `heuristic-nogrants`, `heuristic-noidleanswers`,
+// `heuristic-noreconfigure`, `heuristic-nooutnumber` or `heuristic-nolandorder`.
 func ParseContestant(s string) (SeatSpec, error) {
 	switch s {
 	case BaselineContestant:
@@ -142,12 +167,20 @@ func ParseContestant(s string) (SeatSpec, error) {
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoPlan}, nil
 	case NoTemporaryContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoTemporary}, nil
+	case NoIdleAnswersContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoIdleAnswers}, nil
+	case NoReconfigureContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoReconfigure}, nil
+	case NoLandOrderContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoLandOrder}, nil
+	case NoOutnumberContestant:
+		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoOutnumber}, nil
 	case NoGrantsContestant:
 		return SeatSpec{Tier: tiers.Heuristic, Variant: VariantNoGrants}, nil
 	}
 	t, err := tiers.Parse(s)
 	if err != nil {
-		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant)
+		return SeatSpec{}, fmt.Errorf("%w, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q, or %q", err, BaselineContestant, NoExertContestant, NoPlanContestant, NoTemporaryContestant, NoGrantsContestant, NoIdleAnswersContestant, NoReconfigureContestant, NoOutnumberContestant, NoLandOrderContestant)
 	}
 	return SeatSpec{Tier: t}, nil
 }
@@ -336,7 +369,7 @@ func (c Config) Validate() error {
 // variants.
 func knownVariant(v string) bool {
 	switch v {
-	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants:
+	case VariantBaseline, VariantNoExert, VariantNoPlan, VariantNoTemporary, VariantNoGrants, VariantNoIdleAnswers, VariantNoReconfigure, VariantNoOutnumber, VariantNoLandOrder:
 		return true
 	}
 	return false
@@ -792,6 +825,22 @@ func newSeat(cfg Config, spec SeatSpec, seed uint64, pos int) (aiseat.Policy, se
 	case VariantNoTemporary:
 		h := heuristic.DefaultConfig()
 		h.PriceTemporaryEffects = false
+		opt.Heuristic = &h
+	case VariantNoIdleAnswers:
+		h := heuristic.DefaultConfig()
+		h.PriceAnswerOnlyRows = false
+		opt.Heuristic = &h
+	case VariantNoReconfigure:
+		h := heuristic.DefaultConfig()
+		h.PriceReconfigure = false
+		opt.Heuristic = &h
+	case VariantNoLandOrder:
+		h := heuristic.DefaultConfig()
+		h.OrderLandDrops = false
+		opt.Heuristic = &h
+	case VariantNoOutnumber:
+		h := heuristic.DefaultConfig()
+		h.PriceOutnumberLoss = false
 		opt.Heuristic = &h
 	case VariantNoGrants:
 		h := heuristic.DefaultConfig()

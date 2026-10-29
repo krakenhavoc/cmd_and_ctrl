@@ -86,12 +86,47 @@ func elrondAskFellowship(ctx *Context, voters []uuid.UUID, owed map[uuid.UUID]in
 				k := min(n, len(ids))
 				return ids, k, k
 			},
-			Then: func(ctx *Context, picked game.PromptedPicks) error {
-				return elrondAskFellowship(ctx, rest, owed, append(so, picked.Cards()...), aid)
-			},
+			Keyed: elrondChosen,
+			Carry: packIDLists(rest, so),
+			Nums:  elrondNums(aid, rest, owed),
 		}.Apply(ctx)
 	}
 	return elrondTakeAndAid(ctx, chosen, aid)
+}
+
+// elrondNums is the run's numbers: the aid counters, then how many each
+// voter still to ask owes, in their order.
+func elrondNums(aid int, rest []uuid.UUID, owed map[uuid.UUID]int) []int {
+	out := []int{aid}
+	for _, v := range rest {
+		out = append(out, owed[v])
+	}
+	return out
+}
+
+// elrondChosen is one fellowship voter's pick, then the next voter's,
+// keyed (#4290). The carry is the voters still to ask, then the creatures
+// chosen so far; the numbers are elrondNums. Registered in init because the
+// answer asks the next voter, which names the key again.
+var elrondChosen PermanentsThen
+
+func init() {
+	elrondChosen = RegisterPermanentsPick("prompt-run/elrond-of-the-white-council-fellowship", PermanentsDef{
+		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+			rest, so := unpackIDPair(r.Carry)
+			aid := 0
+			owed := map[uuid.UUID]int{}
+			if len(r.Nums) > 0 {
+				aid = r.Nums[0]
+				for i, v := range rest {
+					if i+1 < len(r.Nums) {
+						owed[v] = r.Nums[i+1]
+					}
+				}
+			}
+			return elrondAskFellowship(ctx, rest, owed, append(so, picked.Cards()...), aid)
+		},
+	})
 }
 
 // elrondTakeAndAid gains control of each chosen creature still on the

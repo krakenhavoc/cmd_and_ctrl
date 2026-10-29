@@ -60,12 +60,14 @@ var coercivePortalVoted = VoteResultThen("vote/coercive-portal", func(ctx *Conte
 	if !r.MoreVotes(0, 1) {
 		return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
 	}
-	item := ctx.Item
-	destroy := func(g *game.Game, _ []uuid.UUID) error {
-		return DestroyAllMatching{Match: Nonland()}.Apply(NewContext(g, item))
-	}
 	if len(r.Carry) == 0 || !onBattlefield(ctx.Game, r.Carry[0]) {
-		return destroy(ctx.Game, nil)
+		return DestroyAllMatching{Match: Nonland()}.Apply(ctx)
 	}
-	return ctx.Game.SacrificeAllThenForEffect(r.Source, r.Carry[:1], destroy)
+	return ctx.Game.SacrificeAllKeyedForEffect(r.Source, r.Carry[:1], ctx.ItemTail(coercivePortalCarnage))
+})
+
+// coercivePortalCarnage is carnage's "then destroy all nonland permanents",
+// after the sacrifice, keyed (#4253 slice 10a).
+var coercivePortalCarnage = CardTail("then/coercive-portal-carnage", func(ctx *Context, _ game.TailOutcome) error {
+	return DestroyAllMatching{Match: Nonland()}.Apply(ctx)
 })

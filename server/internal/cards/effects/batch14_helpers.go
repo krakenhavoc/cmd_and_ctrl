@@ -233,8 +233,9 @@ func b14HandSize(g *game.Game, player uuid.UUID) int {
 // shield that ate some of it shrinks the gain and a damage doubler
 // grows it, as printed.
 //
-// #807: the total comes from DealDamageEachThenForEffect's
-// continuation, which reports what really landed. This used to read
+// #807: the total comes from DealDamageEachKeyedForEffect's
+// continuation, which reports what really landed (a keyed tail, #4253, so
+// a CR 616 prompt over one opponent's damage is a restore point). This used to read
 // each opponent's life total back on the line after damaging them, and
 // a damage event runs the CR 614 window — so two DIFFERENT damage
 // replacements on one opponent pause it on a CR 616 ordering prompt,
@@ -246,14 +247,20 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 		return nil
 	}
 	ctx := NewContext(g, item)
-	controller, source := item.Controller, ctx.Source()
-	return g.DealDamageEachThenForEffect(source, ctx.Opponents(), n, func(g *game.Game, totalDealt int) error {
-		if totalDealt <= 0 {
-			return nil
-		}
-		return g.ChangePlayerLifeForEffect(source, controller, totalDealt)
-	})
+	return g.DealDamageEachKeyedForEffect(ctx.Source(), ctx.Opponents(), n, ctx.Tail(gainLifeEqualToDamageDealt))
 }
+
+// gainLifeEqualToDamageDealt is "you gain life equal to the damage dealt
+// this way", told the damage dealt as its Amount: the tail's Player gains
+// it, from its Source. Shared by every "deals N damage …, you gain life
+// equal to the damage dealt this way" (Creeping Bloodsucker, Rite of
+// Consumption). An on-disk key.
+var gainLifeEqualToDamageDealt = game.RegisterTail("then/gain-life-equal-to-damage-dealt", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 {
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, o.Amount)
+})
 
 // b14EachOpponentMillsUntilLand is Consuming Aberration's rider:
 // every opponent reveals cards from the top of their library until
@@ -266,11 +273,18 @@ func b14DamageEachOpponentGainThatMuch(g *game.Game, item *game.StackItem, n int
 func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	// One opponent at a time in APNAP order (CR 101.4, #4268): each run starts
-	// from the previous one's continuation, so at most one prompt is open.
-	return eachPlayerInTurn(g, ctx.Opponents(),
-		func(g *game.Game, opp uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
-			return b14MillUntilLandThen(NewContext(g, item), opp, next)
-		}, nil)
+	// from the previous one's continuation, so at most one prompt is open. The
+	// chain is keyed (#4253).
+	return eachPlayerInTurn(g, ctx.ItemTail(b14MillUntilLandStep), ctx.Opponents(), nil, game.KeyedTail{}, b14MillUntilLandAct)
+}
+
+// b14MillUntilLandStep is one opponent's step of Consuming Aberration's
+// chain. An on-disk key.
+var b14MillUntilLandStep = registerEachPlayerStep("each-player/mill-until-land-step", b14MillUntilLandAct)
+
+// b14MillUntilLandAct is one opponent's reveal-and-mill.
+func b14MillUntilLandAct(ctx *Context, opp uuid.UUID, _ int, step game.KeyedTail) error {
+	return b14MillUntilLandThen(ctx, opp, step)
 }
 
 // b14MillUntilLand reveals cards off the top of one player's library
@@ -303,13 +317,13 @@ func b14EachOpponentMillsUntilLand(g *game.Game, item *game.StackItem) error {
 // pre-move copies — the same cards the reveal above named — so no
 // pass re-reads anything, and the run ends where the card says it ends.
 func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
-	return b14MillUntilLandThen(ctx, player, nil)
+	return b14MillUntilLandThen(ctx, player, game.KeyedTail{})
 }
 
 // b14MillUntilLandThen is b14MillUntilLand for a caller that chains: `then`
 // runs once the run has settled, with the cards that reached the graveyard, at
 // once on a clean run and from the answer when a prompt paused it. It may be nil.
-func b14MillUntilLandThen(ctx *Context, player uuid.UUID, then func(g *game.Game, milled []uuid.UUID) error) error {
+func b14MillUntilLandThen(ctx *Context, player uuid.UUID, then game.KeyedTail) error {
 	if p := ctx.PlayerByID(player); p != nil && p.Library != nil {
 		run := make([]uuid.UUID, 0, 8)
 		for i := len(p.Library.Cards) - 1; i >= 0; i-- {
@@ -342,10 +356,12 @@ func b14MillUntilLandThen(ctx *Context, player uuid.UUID, then func(g *game.Game
 	// arrive beside a second card.
 	mill := MillToZone{
 		Player: player,
-		Until:  UntilCard(func(c game.Card) bool { return c.IsLand() }),
+		Until:  UntilLand,
 	}
-	if then != nil {
-		mill.Then = func(ctx *Context, milled []uuid.UUID) error { return then(ctx.Game, milled) }
+	if !then.IsZero() {
+		// A chained caller (eachPlayerInTurn) hands a registered tail:
+		// the keyed run (#4253 slice 9).
+		return ctx.Game.MillToZoneKeyedForEffect(player, 0, game.ZoneGraveyard, mill.Until, then)
 	}
 	return mill.Apply(ctx)
 }

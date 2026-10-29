@@ -46,13 +46,17 @@ func lionSashExile(g *game.Game, item *game.StackItem) error {
 		return ExileThenIfItWas{
 			Target: t.ID,
 			Was:    func(c game.Card) bool { return c.IsPermanent() },
-			Then: func(ctx *Context) error {
-				if !onBattlefield(ctx.Game, ctx.Source()) {
-					return nil
-				}
-				return AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}.Apply(ctx)
-			},
+			Keyed:  lionSashIfPermanent,
 		}.Apply(ctx)
 	}
 	return nil
 }
+
+// lionSashIfPermanent is the exile's keyed "if it was a permanent card,
+// put a +1/+1 counter on Lion Sash" (#4253 slice 10a).
+var lionSashIfPermanent = IfItWasTail("if-it-was/lion-sash-counter", func(ctx *Context) error {
+	if !onBattlefield(ctx.Game, ctx.Source()) {
+		return nil
+	}
+	return AddCounter{Target: ctx.Source(), Kind: "+1/+1", N: 1}.Apply(ctx)
+}, nil)

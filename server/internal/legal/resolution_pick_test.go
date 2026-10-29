@@ -36,13 +36,13 @@ func queueOwnPick(t *testing.T, g *game.Game, seat uuid.UUID, lo, hi int) uuid.U
 	t.Helper()
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 			Chooser:    seat,
 			Question:   "test — choose your own",
 			Of:         []uuid.UUID{seat},
 			Candidates: pickCandidates(lo, hi),
-		}, func(*game.Game, game.PromptedPicks) error { return nil }); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		}, testRunHookThen, runHook(func(_ *game.Game, r game.RunDone) error { return nil })); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 		for _, c := range g.PendingChoices {
 			if c != nil && c.Kind == game.PendingChoiceOwnPermanents {
@@ -58,13 +58,13 @@ func queueTheirPick(t *testing.T, g *game.Game, seat, of uuid.UUID, lo, hi int) 
 	t.Helper()
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		if _, err := g.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 			Chooser:    seat,
 			Question:   "test — choose theirs",
 			Of:         []uuid.UUID{of},
 			Candidates: pickCandidates(lo, hi),
-		}, func(*game.Game, game.PromptedPicks) error { return nil }); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		}, testRunHookThen, runHook(func(_ *game.Game, r game.RunDone) error { return nil })); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 		for _, c := range g.PendingChoices {
 			if c != nil && c.Kind == game.PendingChoiceTheirPermanents {
@@ -142,7 +142,7 @@ func TestResolutionPicksAreEnumeratedAndAnswerable(t *testing.T) {
 				Cards:    revealed,
 				Min:      1,
 				Max:      1,
-			}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+			}); err != nil {
 				t.Fatalf("RevealPickThenForEffect: %v", err)
 			}
 		})

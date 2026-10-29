@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -53,16 +51,21 @@ func barrowinReturn(g *game.Game, item *game.StackItem) error {
 		Cards:       cands,
 		Min:         0,
 		Max:         1,
-		Zone:        game.ZoneGraveyard,
+		LiveZone:    game.ZoneGraveyard,
 		Destination: game.ChooseOntoBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		ThenKey:     barrowinReturnPick,
+		Asked:       game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// barrowinReturnPick is the chosen creature card returning to the
+// battlefield, keyed (#4253): the asking item rides the prompt as data.
+var barrowinReturnPick = askedPick("choose-cards/barrowin-of-clan-undurr-return", func(ctx *Context, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

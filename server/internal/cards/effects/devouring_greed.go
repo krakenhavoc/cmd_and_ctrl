@@ -13,7 +13,7 @@ import (
 // The variable sacrifice (ADR 0100 §3), read back from the announcement
 // (ctx.Sacrificed). "That much" is the life actually lost, so the gain
 // waits for the loss to settle through the CR 614 window
-// (ChangePlayerLifeThenForEffect, #793): a player whose life total
+// (ChangePlayerLifeKeyedForEffect, #793): a player whose life total
 // can't change loses nothing, and you gain nothing.
 //
 // Arcane matters only to splice, which reads the type line.
@@ -33,12 +33,8 @@ func init() {
 			}
 			src, me := ctx.Source(), item.Controller
 			loss := 2 + 2*ctx.Sacrificed()
-			return ctx.Game.ChangePlayerLifeThenForEffect(src, legal[0].ID, -loss, func(g *game.Game, applied int) error {
-				if applied >= 0 {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(src, me, -applied)
-			})
+			return ctx.Game.ChangePlayerLifeKeyedForEffect(src, legal[0].ID, -loss,
+				game.KeyedTail{Ref: thenGainLifeEqualToLost, Player: me, Source: src})
 		},
 	})
 }

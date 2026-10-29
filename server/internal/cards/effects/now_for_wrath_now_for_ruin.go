@@ -27,18 +27,24 @@ func init() {
 			for _, c := range MatchingBattlefield(ctx, And(Creature(), YouControl())) {
 				ids = append(ids, c.InstanceID)
 			}
-			return b13PutCounterOnEachThen(ctx, ids, func(g *game.Game) error {
-				ctx := NewContext(g, item)
-				for _, id := range ids {
-					if !onBattlefield(g, id) {
-						continue
-					}
-					if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"vigilance"}, Label: "Now for Wrath, Now for Ruin! — vigilance"}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return TheRingTemptsYou{}.Apply(ctx)
-			})
+			then := ctx.ItemTail(nowForWrathVigilanceAndTemptation)
+			then.Carry = append([]uuid.UUID(nil), ids...)
+			return b13PutCounterOnEachThen(ctx, ids, then)
 		},
 	})
 }
+
+// nowForWrathVigilanceAndTemptation is "they gain vigilance until end of turn.
+// The Ring tempts you", once the counters have landed; the tail's Carry is the
+// creatures that were chosen. An on-disk key: never renamed, never reused.
+var nowForWrathVigilanceAndTemptation = CardTail("now-for-wrath/vigilance-and-temptation", func(ctx *Context, o game.TailOutcome) error {
+	for _, id := range o.Tail.Carry {
+		if !onBattlefield(ctx.Game, id) {
+			continue
+		}
+		if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"vigilance"}, Label: "Now for Wrath, Now for Ruin! — vigilance"}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return TheRingTemptsYou{}.Apply(ctx)
+})

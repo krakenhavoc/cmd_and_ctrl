@@ -66,7 +66,7 @@ func TestGraveyardOnlyMatchIsFoundWithoutSearchingTheLibrary(t *testing.T) {
 	var then []uuid.UUID
 	runSearch(t, g, SearchLibrarySpec{
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true,
-		AlsoGraveyard: true, Then: func(_ *Game, found []uuid.UUID) error { then = found; return nil },
+		AlsoGraveyard: true, ThenTail: searchHook(func(_ *Game, found []uuid.UUID) error { then = found; return nil }),
 	})
 	if c := openSearch(g, me.ID); c == nil || c.SearchMin != 0 {
 		t.Fatalf("a stated-quality search asks and may find nothing: %+v", c)

@@ -225,12 +225,12 @@ func (r Regenerate) Apply(ctx *Context) error {
 type SacrificePermanent struct {
 	Target uuid.UUID
 
-	// Then is the "if you do" / "for each permanent sacrificed this
+	// ThenTail is the "if you do" / "for each permanent sacrificed this
 	// way" clause for ONE permanent, and `sacrificed` is whether it
-	// really left the battlefield. Optional; leave it nil for a plain
+	// really left the battlefield. Optional; leave it zero for a plain
 	// sacrifice with nothing hanging off it.
 	//
-	// #993, and the same shape as ExileTarget.Then (#870). A sacrifice
+	// #993, and the same shape as ExileTarget.ThenTail (#870). A sacrifice
 	// is not itself replaceable (CR 701.17a), but the MOVE it makes is
 	// an ordinary zone change, so a replacement's window opens and the
 	// permanent is still on the battlefield while its question is open
@@ -246,35 +246,34 @@ type SacrificePermanent struct {
 	// replacement took — only where it went was replaced. Write the
 	// clause as something that acts on what it is told, not as the next
 	// line of the card.
-	Then func(ctx *Context, sacrificed bool) error
+	//
+	// It is a registered tail (#4253 slice 10a), told the permanent as
+	// TailOutcome.IDs when it was sacrificed and nothing when it was not
+	// (oneWentThisWay reads it), so a table waiting on the sacrifice's
+	// prompt is a restore point.
+	ThenTail game.KeyedTail
 }
+
+// oneWentThisWay is a single-card door's `sacrificed`, `bounced`,
+// `tucked` or `exiled` read off its keyed tail (SacrificePermanent.ThenTail,
+// BounceToHand.ThenTail): whether the one card went this way (CR 400.7).
+func oneWentThisWay(o game.TailOutcome) bool { return len(o.IDs) == 1 }
 
 func (s SacrificePermanent) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	// "If you do" is told no: nothing was sacrificed.
 	if ctx.isNewSourceObject(s.Target) {
-		if s.Then != nil {
-			return s.Then(ctx, false)
-		}
-		return nil
+		return s.ThenTail.Run(ctx.Game, nil)
 	}
-	if s.Then == nil {
-		return nothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
+	if !s.ThenTail.IsZero() {
+		// The source is uuid.Nil for the reason the fire-and-forget form
+		// passes none: SacrificePermanentForEffect stamps no source on
+		// EventSacrifice, and adding a tail must change the sequencing and
+		// nothing else.
+		return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{s.Target}, s.ThenTail)
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	//
-	// The source is uuid.Nil for the reason the fire-and-forget form
-	// passes none: SacrificePermanentForEffect stamps no source on
-	// EventSacrifice, and adding a Then must change the sequencing and
-	// nothing else.
-	item := ctx.Item
-	return ctx.Game.SacrificeThenForEffect(uuid.Nil, s.Target, func(g *game.Game, sacrificed bool) error {
-		return s.Then(NewContext(g, item), sacrificed)
-	})
+	return nothingIfGone(ctx.Game.SacrificePermanentForEffect(s.Target))
 }
 
 // ExileTarget moves a card from whichever zone it's in to the
@@ -297,7 +296,11 @@ type ExileTarget struct {
 	// asks its owner afterwards (ADR 0115). Write the clause as
 	// something that acts on what it is told, not as the next line of
 	// the card.
-	Then func(ctx *Context, exiled bool) error
+	//
+	// #4253 slice 9: it is a registered tail (CardTail), told the card as
+	// TailOutcome.IDs when it reached exile and nothing when it did not,
+	// so a table waiting on the exile's prompt is a restore point.
+	ThenTail game.KeyedTail
 
 	// Linked stamps CR 607.2a's "exiled with this" link on the card as
 	// it lands in exile (Card.ExiledWith, ADR 0155 §8): the resolving
@@ -313,34 +316,22 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	// object; see source_object_guard.go.
 	// Flicker and ExileThenIfItWas route through here.
 	if ctx.isNewSourceObject(e.Target) {
-		if e.Then != nil {
-			return e.Then(ctx, false)
-		}
-		return nil
+		return e.ThenTail.Run(ctx.Game, nil)
 	}
 	var link game.ObjectRef
 	if e.Linked {
 		link, _ = ctx.SourceRef()
 	}
-	if e.Then == nil {
+	if e.ThenTail.IsZero() {
 		if e.Linked {
 			return nothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
 		}
 		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
 	if e.Linked {
-		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, func(g *game.Game, exiled []uuid.UUID) error {
-			return e.Then(NewContext(g, item), len(exiled) == 1)
-		})
+		return ctx.Game.ExileLinkedKeyedForEffect(link, []uuid.UUID{e.Target}, e.ThenTail)
 	}
-	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
-		return e.Then(NewContext(g, item), exiled)
-	})
+	return ctx.Game.ExileCardKeyedForEffect(e.Target, e.ThenTail)
 }
 
 // ExileFirstTarget is "exile target <whatever>" with no trailing
@@ -374,7 +365,7 @@ func ExileFirstTarget(g *game.Game, item *game.StackItem) error {
 // replacement sent the card somewhere else, and when the move merely
 // PAUSED on a replacement's prompt. All three paid out
 // anyway — life, a +1/+1 counter, a Zombie — for a card that was still
-// sitting in its graveyard. So the clause hangs off `ExileTarget.Then`
+// sitting in its graveyard. So the clause hangs off `ExileTarget.ThenTail`
 // and is gated on `exiled`, CR 400.7's reading: the card that ARRIVED
 // in exile is the one the effect exiled.
 //
@@ -407,14 +398,34 @@ type ExileThenIfItWas struct {
 	// WasCreatureCard is the printed phrase all three cards use.
 	Was func(c game.Card) bool
 
-	// Then is the clause. It runs only when the card actually reached
-	// exile AND Was said yes.
-	Then func(ctx *Context) error
+	// Keyed is the clause and Cling to Dust's "Otherwise, you draw a
+	// card" (the same conditional's other branch) as one registered tail
+	// (IfItWasTail, #4253 slice 10a), so a table waiting on the exile's
+	// prompt is a restore point. The clause runs only when the card
+	// actually reached exile AND Was said yes; the other branch only when
+	// it reached exile and Was said no. Zero is a plain exile.
+	Keyed game.TailRef
+}
 
-	// Otherwise is Cling to Dust's "Otherwise, you draw a card": the
-	// same conditional's other branch, so it runs only when the card
-	// reached exile and Was said no. Optional.
-	Otherwise func(ctx *Context) error
+// IfItWasTail registers ExileThenIfItWas's two branches as one keyed tail
+// under key (ledgered "tail <key>", an on-disk identity): `then` runs when
+// the card reached exile and was what Was asked, `otherwise` (optional)
+// when it reached exile and was not. Call it once, from a package-level
+// var.
+func IfItWasTail(key string, then, otherwise func(ctx *Context) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if !oneWentThisWay(o) {
+			return nil
+		}
+		clause := then
+		if o.Tail.N == 0 {
+			clause = otherwise
+		}
+		if clause == nil {
+			return nil
+		}
+		return clause(ctx)
+	})
 }
 
 // WasCreatureCard is the predicate behind the printed phrase "if it
@@ -423,28 +434,16 @@ type ExileThenIfItWas struct {
 func WasCreatureCard(c game.Card) bool { return c.IsCreature() }
 
 func (e ExileThenIfItWas) Apply(ctx *Context) error {
-	was := false
-	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok {
-		was = e.Was == nil || e.Was(c)
+	if e.Keyed.Key() == "" {
+		// No clause hangs off the exile: a plain exile.
+		return ExileTarget{Target: e.Target}.Apply(ctx)
 	}
-	return ExileTarget{
-		Target: e.Target,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				// Nothing was exiled, so there is no "it" for the
-				// clause to be about. Neither branch.
-				return nil
-			}
-			clause := e.Then
-			if !was {
-				clause = e.Otherwise
-			}
-			if clause == nil {
-				return nil
-			}
-			return clause(ctx)
-		},
-	}.Apply(ctx)
+	// The answer to Was, read before the move, rides the tail as its N.
+	n := 0
+	if c, ok := ctx.Game.LookupCardForEffect(e.Target); ok && (e.Was == nil || e.Was(c)) {
+		n = 1
+	}
+	return ExileTarget{Target: e.Target, ThenTail: withN(ctx.ItemTail(e.Keyed), n)}.Apply(ctx)
 }
 
 // ReturnFromExile puts a card that is currently in exile back onto
@@ -477,16 +476,18 @@ type ReturnFromExile struct {
 	// counter replacement sees them and an enters trigger finds them.
 	Counters map[string]int
 
-	// Then is the rest of the sentence about the permanent that
+	// ThenTail is the rest of the sentence about the permanent that
 	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
-	// under your control, put a +1/+1 counter on Phelia". `entered` is
-	// the NEW object's ID (CR 400.7), uuid.Nil when nothing entered.
-	// It runs once the entry is complete, which is one action later
-	// when the entry stopped to ask something (a returning Clone, a
-	// blinked shockland), so never read the result on the next line.
-	// Not run when the card is no longer in exile, which is "nothing to
-	// return". Capture only scalars.
-	Then func(g *game.Game, entered uuid.UUID) error
+	// under your control, put a +1/+1 counter on Phelia" — as a
+	// registered tail (EnteredTail; #4253 slice 6), built with ctx.Tail,
+	// ctx.TailN or ctx.ItemTail: a key plus plain data, told the NEW
+	// object's ID (CR 400.7), empty when nothing entered. It runs once
+	// the entry is complete, which is one action later when the entry
+	// stopped to ask something (a returning Clone, a blinked shockland),
+	// so never read the result on the next line, and a table waiting on
+	// that question is a restore point. Not run when the card is no
+	// longer in exile, which is "nothing to return".
+	ThenTail game.KeyedTail
 }
 
 func (r ReturnFromExile) Apply(ctx *Context) error {
@@ -495,10 +496,10 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 		return nil
 	}
 	if len(r.Counters) > 0 {
-		return ctx.Game.ReturnFromExileWithCountersThenForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.Then)
+		return ctx.Game.ReturnFromExileWithCountersKeyedForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.ThenTail)
 	}
-	if r.Then != nil {
-		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)
+	if !r.ThenTail.IsZero() {
+		return ctx.Game.ReturnFromExileToBattlefieldKeyedForEffect(r.Target, r.Controller, r.Tapped, r.ThenTail)
 	}
 	_, err := ctx.Game.ReturnFromExileToBattlefieldForEffect(r.Target, r.Controller, r.Tapped)
 	return err
@@ -530,14 +531,13 @@ type Flicker struct {
 }
 
 func (f Flicker) Apply(ctx *Context) error {
+	tapped := 0
+	if f.Tapped {
+		tapped = 1
+	}
 	return ExileTarget{
-		Target: f.Target,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
-		},
+		Target:   f.Target,
+		ThenTail: withN(withCarry(ctx.ItemTail(flickerReturnExiled), f.Target, f.Controller), tapped),
 	}.Apply(ctx)
 }
 
@@ -654,11 +654,11 @@ func (s ScheduleDelayedTrigger) Apply(ctx *Context) error {
 type BounceToHand struct {
 	Target uuid.UUID
 
-	// Then is the "then …" / "if you do" clause for ONE card, and
+	// ThenTail is the "then …" / "if you do" clause for ONE card, and
 	// `bounced` is whether the card actually reached a hand. Optional;
-	// leave it nil for a plain bounce with nothing hanging off it.
+	// leave it zero for a plain bounce with nothing hanging off it.
 	//
-	// #993, and the same shape as ExileTarget.Then (#870). A hand is a
+	// #993, and the same shape as ExileTarget.ThenTail (#870). A hand is a
 	// CR 903.9 destination, so every bounce can pause: a commander
 	// returned to its owner's hand stops to ask them about the command
 	// zone, and a clause written on the next line runs with the
@@ -673,29 +673,23 @@ type BounceToHand struct {
 	// a bounce: "then that permanent's controller may …" is a sentence
 	// about a player) simply ignores the argument and gets the ordering
 	// for free.
-	Then func(ctx *Context, bounced bool) error
+	//
+	// It is a registered tail (#4253 slice 10a), told the card as
+	// TailOutcome.IDs when it reached a hand and nothing when it did not
+	// (oneWentThisWay reads it).
+	ThenTail game.KeyedTail
 }
 
 func (b BounceToHand) Apply(ctx *Context) error {
 	// #1432: "this permanent" after a flicker in response is a new
 	// object; see source_object_guard.go.
 	if ctx.isNewSourceObject(b.Target) {
-		if b.Then != nil {
-			return b.Then(ctx, false)
-		}
-		return nil
+		return b.ThenTail.Run(ctx.Game, nil)
 	}
-	if b.Then == nil {
-		return nothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))
+	if !b.ThenTail.IsZero() {
+		return ctx.Game.BounceCardsToHandKeyedForEffect([]uuid.UUID{b.Target}, b.ThenTail)
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
-	return ctx.Game.BounceToHandThenForEffect(b.Target, func(g *game.Game, bounced bool) error {
-		return b.Then(NewContext(g, item), bounced)
-	})
+	return nothingIfGone(ctx.Game.BounceToHandForEffect(b.Target))
 }
 
 // TapTarget taps a battlefield card. No effect if the card is not
@@ -816,26 +810,21 @@ func (r ReturnSpellToHand) Apply(ctx *Context) error {
 // the same, nothing keyed to "countered" fires, and the spell's stack
 // record goes with it.
 //
-// Then, if set, is told whether the spell actually reached exile, once
-// the move has settled — a commander spell's owner may send it to the
-// command zone instead (CR 903.9), and "it becomes plotted" (Aven
-// Interrupter) has nothing to plot then. A spell that already left the
-// stack in response is not an error; Then hears false.
+// ThenTail, if set, is told whether the spell actually reached exile,
+// once the move has settled — a commander spell's owner may send it to
+// the command zone instead (CR 903.9), and "it becomes plotted" (Aven
+// Interrupter) has nothing to plot then. It is a registered tail (#4253,
+// CardTail), told the spell as TailOutcome.IDs when it reached exile and
+// nothing when it did not (a spell that already left the stack in
+// response is not an error), so a prompt the exit pauses on is a restore
+// point. A zero ThenTail is no continuation.
 type ExileTargetSpell struct {
-	StackID uuid.UUID
-	Then    func(ctx *Context, exiled bool) error
+	StackID  uuid.UUID
+	ThenTail game.KeyedTail
 }
 
 func (e ExileTargetSpell) Apply(ctx *Context) error {
-	if e.Then == nil {
-		return ctx.Game.ExileSpellThenForEffect(e.StackID, nil)
-	}
-	// Rebuilt from the live *Game inside the continuation — the
-	// contract massEffect.apply explains.
-	item := ctx.Item
-	return ctx.Game.ExileSpellThenForEffect(e.StackID, func(g *game.Game, exiled bool) error {
-		return e.Then(NewContext(g, item), exiled)
-	})
+	return ctx.Game.ExileSpellKeyedForEffect(e.StackID, e.ThenTail)
 }
 
 // PlotExiled makes a card already in exile plotted (CR 702.170c/d):
@@ -1117,21 +1106,21 @@ type SearchLibrary struct {
 	UpTo bool
 	// Reason is the prompt banner. Name the card.
 	Reason string
-	// Validate is a legality check on the picked SET, for clauses no
+	// Rule is a legality check on the picked SET, for clauses no
 	// per-card predicate can express — Myriad Landscape's "two basic
-	// land cards that share a land type".
-	Validate func([]game.Card) bool
-	// Then is the rest of the effect, receiving the cards actually
-	// found. Runs inline when no prompt was needed and from the
-	// resolve path when one was.
-	Then func(g *game.Game, found []uuid.UUID) error
-	// ThenTail is Then as data (#4253 slice 4): a registered tail
-	// (CardTail, or game.RegisterTail), told the cards found as
-	// TailOutcome.IDs, with the effect's controller and source card filled
-	// in where the card left Player and Source zero. A battlefield search
-	// whose fetched permanent stops for an entry question (a fetchland's
-	// shockland) is then a restore point while it waits. Set Then or
-	// ThenTail, not both; Then wins.
+	// land cards that share a land type" — as data (#4253 slice 5): a
+	// registered set rule (search_rules.go, or game.RegisterSearchRule)
+	// and the number it reads, so a table waiting on the search prompt is
+	// a restore point.
+	Rule game.SearchRule
+	// ThenTail is the rest of the effect (#4253 slice 4): a registered
+	// tail (CardTail, or game.RegisterTail), told the cards actually found
+	// as TailOutcome.IDs, with the effect's controller and source card
+	// filled in where the card left Player and Source zero. It runs inline
+	// when no prompt was needed and from the resolve path when one was. A
+	// battlefield search whose fetched permanent stops for an entry
+	// question (a fetchland's shockland) is then a restore point while it
+	// waits.
 	ThenTail game.KeyedTail
 	// Source is the card that caused the search — prompt context.
 	Source uuid.UUID
@@ -1200,9 +1189,9 @@ type SearchLibrary struct {
 }
 
 // thenTail is ThenTail with the effect's controller and source card filled
-// in where the card left them zero. Dropped when Then is set (Then wins).
+// in where the card left them zero.
 func (s SearchLibrary) thenTail(source uuid.UUID) game.KeyedTail {
-	if s.Then != nil || s.ThenTail.IsZero() {
+	if s.ThenTail.IsZero() {
 		return game.KeyedTail{}
 	}
 	t := s.ThenTail
@@ -1225,7 +1214,8 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 	// text now says it (CR 612.2) when the predicate asks through
 	// HasSubtypeWord / HasColorWord.
 	pred := s.Predicate
-	if reader := ctx.textReader(); reader != nil && pred != nil {
+	reader := ctx.textReader()
+	if reader != nil && pred != nil {
 		printed := pred
 		pred = func(c game.Card) bool { return printed(game.ThroughTextOf(reader, c)) }
 	}
@@ -1242,8 +1232,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Optional:             s.Optional,
 		UpTo:                 s.UpTo,
 		Reason:               s.Reason,
-		Validate:             s.Validate,
-		Then:                 s.Then,
+		Rule:                 s.Rule.ThroughTextOf(reader),
 		ThenTail:             s.thenTail(source),
 		ToTop:                s.ToTop,
 		Depth:                s.Depth,
@@ -1262,22 +1251,21 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 // prompt for Chooser. The calling effect has already resolved;
 // what remains is the payer's decision, which arrives later via
 // resolve_choice. On "no" — or "yes" without the mana in pool +
-// untapped sources — OnDecline runs against a fresh Context bound
-// to the same stack item, so it can read Controller / Source the
-// way the outer effect did. Used by Rhystic Study, Smothering
-// Tithe, Esper Sentinel. Added in S19 sub-PR 6.
+// untapped sources — Else runs against a Context rebuilt from the
+// asking item, so it can read Controller / Source the way the outer
+// effect did. Used by Rhystic Study, Smothering Tithe, Esper Sentinel.
+// Added in S19 sub-PR 6.
 //
-// Else is OnDecline as a REGISTERED decline (PayUnlessElse, #4256), and
-// Carry the plain data it is handed: a prompt queued with one holds no
-// closure, so a table waiting on the payer is a restore point. Set Else
-// or OnDecline, not both.
+// Else is a REGISTERED decline (PayUnlessElse, #4256), and Carry the
+// plain data it is handed: the prompt holds no closure, so a table
+// waiting on the payer is a restore point. Zero is a decline that does
+// nothing.
 type PayUnless struct {
-	Chooser   uuid.UUID
-	Cost      string
-	Question  string
-	OnDecline func(ctx *Context) error
-	Else      game.PayUnlessElse
-	Carry     []uuid.UUID
+	Chooser  uuid.UUID
+	Cost     string
+	Question string
+	Else     game.PayUnlessElse
+	Carry    []uuid.UUID
 }
 
 // PayUnlessElse registers a keyed pay-unless decline under `key`, an
@@ -1335,37 +1323,15 @@ func payUnlessBranch(body func(ctx *Context, r game.PayUnlessAnswer) error) game
 // and Pact of Negation did exactly that.
 
 func (p PayUnless) Apply(ctx *Context) error {
-	if p.Else.Key() != "" {
-		if p.OnDecline != nil {
-			return fmt.Errorf("%w: PayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
-		}
-		return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
-			Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
-			Then: p.Else, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
-			Asked: game.NewAskedItem(ctx.Item),
-		})
+	if p.Else.Key() == "" {
+		// Nothing hangs off the answer.
+		return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question)
 	}
-	return ctx.Game.QueuePayUnlessForEffect(p.Chooser, ctx.Source(), p.Cost, p.Question,
-		declineAgainstTheSameItem(ctx.Item, p.OnDecline))
-}
-
-// declineAgainstTheSameItem adapts a card-side "or else" (a *Context
-// branch) to the engine-side one (a *game.Game branch) for the two
-// pay-unless primitives that take one.
-//
-// The Context is built FRESH when the branch runs, against whichever
-// *Game it is handed and bound to the same stack item: an undo
-// restores a clone, so the game the answer arrives at is not the one
-// that asked (StackItem.Effect's contract, which every resume frame
-// in the engine keeps). `item` is a detached pointer and the closure
-// captures nothing else.
-func declineAgainstTheSameItem(item *game.StackItem, decline func(ctx *Context) error) func(*game.Game) error {
-	return func(g *game.Game) error {
-		if decline == nil {
-			return nil
-		}
-		return decline(NewContext(g, item))
-	}
+	return ctx.Game.QueuePayUnlessPromptKeyedForEffect(game.PayUnlessKeyedPrompt{
+		Chooser: p.Chooser, Source: ctx.Source(), Cost: p.Cost, Question: p.Question,
+		Then: p.Else, Carry: append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		Asked: game.NewAskedItem(ctx.Item),
+	})
 }
 
 // UpkeepPayUnless is "at the beginning of your upkeep, pay <Cost> or
@@ -1402,50 +1368,29 @@ type UpkeepPayUnless struct {
 	// Question is the prompt header.
 	Question string
 
-	// OnDecline is the "or else": sacrifice the permanent, lose the
-	// game. It runs on "no" and on a "yes" the chooser cannot fund,
-	// exactly as PayUnless's does.
-	OnDecline func(ctx *Context) error
-
-	// OnPay runs once the payment has been made (echo's "echo cost is
-	// paid" event). Optional.
-	OnPay func(ctx *Context) error
-
-	// Else is OnDecline (and OnPay) as REGISTERED branches
-	// (PayUnlessBranches, #4264), and Carry the plain data they are
-	// handed: a prompt queued with one holds no closure, so a table
-	// waiting on the payer is a restore point, and it holds its step as
-	// ever. Set Else or OnDecline/OnPay, not both.
+	// Else is the "or else" (sacrifice the permanent, lose the game) and
+	// what runs once the payment has been made (echo's "echo cost is
+	// paid" event) as REGISTERED branches (PayUnlessBranches, #4264). The
+	// decline runs on "no" and on a "yes" the chooser cannot fund,
+	// exactly as PayUnless's does. Carry is the plain data they are
+	// handed: the prompt holds no closure, so a table waiting on the payer
+	// is a restore point, and it holds its step as ever.
 	Else  game.PayUnlessElse
 	Carry []uuid.UUID
 }
 
 func (p UpkeepPayUnless) Apply(ctx *Context) error {
-	if p.Else.Key() != "" {
-		if p.OnDecline != nil || p.OnPay != nil {
-			return fmt.Errorf("%w: UpkeepPayUnless %q sets both Else and a closure", game.ErrInvalidParam, p.Else.Key())
-		}
-		return ctx.Game.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
-			Chooser:  p.Chooser,
-			Source:   ctx.Source(),
-			Cost:     p.Cost,
-			Action:   p.Action,
-			Question: p.Question,
-			Then:     p.Else,
-			Carry:    append([]uuid.UUID{ctx.Controller()}, p.Carry...),
-			Asked:    game.NewAskedItem(ctx.Item),
-		})
-	}
 	prompt := game.UpkeepPayUnlessPrompt{
-		Chooser:   p.Chooser,
-		Source:    ctx.Source(),
-		Cost:      p.Cost,
-		Action:    p.Action,
-		Question:  p.Question,
-		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+		Chooser:  p.Chooser,
+		Source:   ctx.Source(),
+		Cost:     p.Cost,
+		Action:   p.Action,
+		Question: p.Question,
 	}
-	if p.OnPay != nil {
-		prompt.OnPay = declineAgainstTheSameItem(ctx.Item, p.OnPay)
+	if p.Else.Key() != "" {
+		prompt.Then = p.Else
+		prompt.Carry = append([]uuid.UUID{ctx.Controller()}, p.Carry...)
+		prompt.Asked = game.NewAskedItem(ctx.Item)
 	}
 	return ctx.Game.QueueUpkeepPayUnlessForEffect(prompt)
 }
@@ -1485,52 +1430,34 @@ type CounterUnlessPaid struct {
 	// the targeting event fired.
 	Chooser uuid.UUID
 
-	// OnPaid is the clause printed after "If they do" — Assimilate
-	// Essence's "you incubate 2" (#3591). It runs only after the cost
-	// was actually paid, against a context bound to the resolving
-	// spell, so Controller() is the caster and not the payer. A payer
-	// who says "Pay" and cannot fund it has declined: the object is
-	// countered and this does not run. Nil for every card whose payment
-	// simply lets the object resolve.
-	OnPaid func(ctx *Context) error
-
-	// Then is OnPaid as REGISTERED branches (PayUnlessBranches, #4264),
-	// and Carry the plain data it is handed: a prompt queued with one
+	// Then is the clause printed after "If they do" — Assimilate
+	// Essence's "you incubate 2" (#3591) — as REGISTERED branches
+	// (PayUnlessBranches, #4264). It runs only after the cost was
+	// actually paid, against a context bound to the resolving spell, so
+	// Controller() is the caster and not the payer. A payer who says
+	// "Pay" and cannot fund it has declined: the object is countered and
+	// this does not run. Carry is the plain data it is handed: the prompt
 	// holds no closure, so a table waiting on the payer is a restore
-	// point. Set Then or OnPaid, not both. A CounterUnlessPaid with
-	// neither is keyed by the engine itself.
+	// point. Zero for every card whose payment simply lets the object
+	// resolve; the engine keys that one itself.
 	Then  game.PayUnlessElse
 	Carry []uuid.UUID
 }
 
 func (c CounterUnlessPaid) Apply(ctx *Context) error {
-	if c.Then.Key() != "" {
-		if c.OnPaid != nil {
-			return fmt.Errorf("%w: CounterUnlessPaid %q sets both Then and OnPaid", game.ErrInvalidParam, c.Then.Key())
-		}
-		return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
-			StackItem: c.StackID,
-			Chooser:   c.Chooser,
-			Source:    ctx.Source(),
-			Cost:      c.Cost,
-			Question:  c.Question,
-			Then:      c.Then,
-			Carry:     append([]uuid.UUID{ctx.Controller()}, c.Carry...),
-			Asked:     game.NewAskedItem(ctx.Item),
-		})
-	}
-	var onPaid func(*game.Game) error
-	if c.OnPaid != nil {
-		onPaid = declineAgainstTheSameItem(ctx.Item, c.OnPaid)
-	}
-	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
+	prompt := game.CounterUnlessPaidPrompt{
 		StackItem: c.StackID,
 		Chooser:   c.Chooser,
 		Source:    ctx.Source(),
 		Cost:      c.Cost,
 		Question:  c.Question,
-		OnPaid:    onPaid,
-	})
+	}
+	if c.Then.Key() != "" {
+		prompt.Then = c.Then
+		prompt.Carry = append([]uuid.UUID{ctx.Controller()}, c.Carry...)
+		prompt.Asked = game.NewAskedItem(ctx.Item)
+	}
+	return ctx.Game.QueueCounterUnlessPaidForEffect(prompt)
 }
 
 // GuardedPayUnless is "<do something to> <StackID> unless its
@@ -1542,12 +1469,12 @@ func (c CounterUnlessPaid) Apply(ctx *Context) error {
 // everything that makes that primitive right: the payer's answer
 // comes before anything else resolves (the engine halts the table
 // while StackID is on the stack), an object that has already left
-// the stack raises no prompt, and OnDecline re-checks before it runs.
+// the stack raises no prompt, and Else re-checks before it runs.
 // A plain PayUnless with the same decline lets the targeted spell
 // resolve while the question is open, so the "or else" lands on a
 // spell that has already done its work.
 //
-// OnDecline runs against a context bound to the same stack item, with
+// Else runs against a context bound to the same stack item, with
 // Controller() being the resolving spell's controller — Divert's
 // controller, who picks the new target.
 type GuardedPayUnless struct {
@@ -1558,34 +1485,18 @@ type GuardedPayUnless struct {
 	// Chooser overrides "its controller", as CounterUnlessPaid's does.
 	Chooser uuid.UUID
 
-	// OnDecline is the consequence. Required (unless Else is set): with
-	// none this is a CounterUnlessPaid and should be written as one.
-	OnDecline func(ctx *Context) error
-
-	// Else is OnDecline as REGISTERED branches (PayUnlessBranches,
+	// Else is the consequence as REGISTERED branches (PayUnlessBranches,
 	// #4264), and Carry the plain data it is handed (the guarded object
-	// rides game.PayUnlessAnswer.Guards): a prompt queued with one holds
-	// no closure, so a table waiting on the payer is a restore point. Set
-	// Else or OnDecline, not both.
+	// rides game.PayUnlessAnswer.Guards): the prompt holds no closure, so
+	// a table waiting on the payer is a restore point. Required: with none
+	// this is a CounterUnlessPaid and should be written as one.
 	Else  game.PayUnlessElse
 	Carry []uuid.UUID
 }
 
 func (p GuardedPayUnless) Apply(ctx *Context) error {
-	if p.Else.Key() != "" {
-		if p.OnDecline != nil {
-			return fmt.Errorf("%w: GuardedPayUnless %q sets both Else and OnDecline", game.ErrInvalidParam, p.Else.Key())
-		}
-		return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
-			StackItem: p.StackID,
-			Chooser:   p.Chooser,
-			Source:    ctx.Source(),
-			Cost:      p.Cost,
-			Question:  p.Question,
-			Then:      p.Else,
-			Carry:     append([]uuid.UUID{ctx.Controller()}, p.Carry...),
-			Asked:     game.NewAskedItem(ctx.Item),
-		})
+	if p.Else.Key() == "" {
+		return fmt.Errorf("%w: GuardedPayUnless with no registered consequence (PayUnlessBranches)", game.ErrInvalidParam)
 	}
 	return ctx.Game.QueueCounterUnlessPaidForEffect(game.CounterUnlessPaidPrompt{
 		StackItem: p.StackID,
@@ -1593,7 +1504,9 @@ func (p GuardedPayUnless) Apply(ctx *Context) error {
 		Source:    ctx.Source(),
 		Cost:      p.Cost,
 		Question:  p.Question,
-		OnDecline: declineAgainstTheSameItem(ctx.Item, p.OnDecline),
+		Then:      p.Else,
+		Carry:     append([]uuid.UUID{ctx.Controller()}, p.Carry...),
+		Asked:     game.NewAskedItem(ctx.Item),
 	})
 }
 
@@ -1628,10 +1541,10 @@ type EachPlayerSacrifices struct {
 	// Label is the picker's banner copy: "a creature".
 	Label string
 
-	// Then is the clause printed after the edict — "if you sacrificed
-	// a creature this way, …", "then you draw a card". Optional; leave
-	// it nil for an edict with nothing hanging off it, which is most
-	// of them.
+	// Keyed is the clause printed after the edict — "if you sacrificed
+	// a creature this way, …", "then you draw a card" — as a REGISTERED
+	// continuation (RegisterEdictThen, #4290). Optional; leave it unset for
+	// an edict with nothing hanging off it, which is most of them.
 	//
 	// #1019, and the same shape as SacrificePermanent.Then (#993). The
 	// prompts are a QUESTION per seat and return how many seats were
@@ -1645,7 +1558,10 @@ type EachPlayerSacrifices struct {
 	// (game.PromptedSacrifices). A commander that took the command
 	// zone is in it; a leg the CR 614 window cancelled is not. Write
 	// the clause as something that acts on what it is told.
-	Then func(ctx *Context, sacrificed game.PromptedSacrifices) error
+	//
+	// The collection holds no closure (ADR 0175 amendment of 2026-10-26),
+	// so a table waiting on any seat's choice is a restore point.
+	Keyed EdictThen
 }
 
 func (e EachPlayerSacrifices) Apply(ctx *Context) error {
@@ -1661,19 +1577,11 @@ func (e EachPlayerSacrifices) Apply(ctx *Context) error {
 	if label == "" {
 		label = "a permanent"
 	}
-	if e.Then == nil {
+	if !e.Keyed.run.Valid() {
 		ctx.Game.EachPlayerSacrificesForEffect(ctx.Source(), except, spec, "Sacrifice "+label)
 		return nil
 	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
-	return ctx.Game.EachPlayerSacrificesThenForEffect(ctx.Source(), except, spec, "Sacrifice "+label,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			return e.Then(NewContext(g, item), sacrificed)
-		})
+	return ctx.Game.EachPlayerSacrificesThenKeyedForEffect(ctx.Source(), except, spec, "Sacrifice "+label, e.Keyed.run, ctx.RunData(nil))
 }
 
 // Scry is "scry N" (CR 701.22) — look at the top N cards of your
@@ -1691,7 +1599,7 @@ type Scry struct {
 	Player uuid.UUID
 	N      int
 
-	// Then is the rest of the effect, for a card whose text says
+	// ThenTail is the rest of the effect, for a card whose text says
 	// "Scry N, THEN ..." (Preordain: "Scry 2, then draw a card"). It
 	// runs once the player has put the cards back, so the card left on
 	// top is the card drawn.
@@ -1702,11 +1610,9 @@ type Scry struct {
 	// chosen — a different card, and it also leaves the prompt
 	// unanswerable, because the drawn card is no longer in the library
 	// for the reorder to put back.
-	Then func(g *game.Game) error
-
-	// ThenTail is Then as data (#4253 slice 3): a registered tail
-	// (game.RegisterTail), so the scry prompt is a restore point. Set
-	// Then or ThenTail, not both; Then wins.
+	//
+	// It is a registered tail (#4253 slice 3, game.RegisterTail), so the
+	// scry prompt is a restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -1732,11 +1638,7 @@ func (s Scry) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if s.Then == nil && !s.ThenTail.IsZero() {
-		ctx.Game.ScryKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
-		return nil
-	}
-	ctx.Game.ScryThenForEffect(player, ctx.Source(), s.N, s.Then)
+	ctx.Game.ScryKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
 	return nil
 }
 
@@ -1760,20 +1662,17 @@ type Surveil struct {
 	Player uuid.UUID
 	N      int
 
-	// Then is the rest of the effect, for a card whose text says
-	// "Surveil N, THEN ...". It runs once the player has put the
-	// cards back, so it sees the library and graveyard the player
-	// chose.
+	// ThenTail is the rest of the effect, for a card whose text says
+	// "Surveil N, THEN ...", a registered tail as Scry.ThenTail is. It
+	// runs once the player has put the cards back, so it sees the
+	// library and graveyard the player chose.
 	//
-	// The same warning as Scry.Then applies, for the same reason:
+	// The same warning as Scry.ThenTail applies, for the same reason:
 	// anything after "then" MUST go here rather than after this
 	// primitive returns. Apply only queues the prompt, so a draw
 	// written as the next statement happens BEFORE the player has
 	// chosen — and also leaves the prompt unanswerable, because the
 	// drawn card is no longer in the library to put back.
-	Then func(g *game.Game) error
-
-	// ThenTail is Then as data, as Scry.ThenTail.
 	ThenTail game.KeyedTail
 }
 
@@ -1787,11 +1686,7 @@ func (s Surveil) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if s.Then == nil && !s.ThenTail.IsZero() {
-		ctx.Game.SurveilKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
-		return nil
-	}
-	ctx.Game.SurveilThenForEffect(player, ctx.Source(), s.N, s.Then)
+	ctx.Game.SurveilKeyedForEffect(player, ctx.Source(), s.N, s.lookAtTail(player, ctx.Source()))
 	return nil
 }
 
@@ -1817,16 +1712,12 @@ type LookAtTop struct {
 	Player uuid.UUID
 	N      int
 
-	// Then is the rest of the effect, for "... then draw a card"
-	// (Ponder). Same warning as Scry.Then: it MUST go here, not on
+	// ThenTail is the rest of the effect, for "... then draw a card"
+	// (Ponder). Same warning as Scry.ThenTail: it MUST go here, not on
 	// the line after Apply, or the draw happens before the player has
 	// decided which card is on top — which is the entire point of
-	// the card.
-	Then func(g *game.Game) error
-
-	// ThenTail is Then as data (#4301): a registered tail
-	// (game.RegisterTail, Context.Tail), so the look-at prompt is a restore
-	// point. Set Then or ThenTail, not both; Then wins.
+	// the card. It is a registered tail (#4301; game.RegisterTail,
+	// Context.Tail), so the look-at prompt is a restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -1835,11 +1726,7 @@ func (l LookAtTop) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if l.Then == nil && !l.ThenTail.IsZero() {
-		ctx.Game.LookAtTopKeyedForEffect(player, ctx.Source(), l.N, tailDefaults(l.ThenTail, player, ctx.Source()))
-		return nil
-	}
-	ctx.Game.LookAtTopThenForEffect(player, ctx.Source(), l.N, l.Then)
+	ctx.Game.LookAtTopKeyedForEffect(player, ctx.Source(), l.N, tailDefaults(l.ThenTail, player, ctx.Source()))
 	return nil
 }
 
@@ -1939,9 +1826,15 @@ type MillToZone struct {
 	// accumulator over successive calls: the engine may ask it again
 	// for the same prefix when an undo replays the answer to a CR
 	// 903.9 prompt, and a closure counting as it goes would be wrong
-	// the second time. UntilCard and UntilTotalManaValue below are the
-	// two shapes the catalog needs; reach for them first.
-	Until func(landed []game.Card) bool
+	// the second time.
+	//
+	// #4253 slice 9: the clause is a registered stop clause
+	// (game.RegisterMillUntil) and the number it reads, so a run is data
+	// and a table waiting on one of its legs is a restore point.
+	// UntilNonland, UntilLand, UntilLegendary, UntilTotalManaValueOf and
+	// UntilCreatureOrCount (route_batch_tails.go) are the shapes the
+	// catalog needs.
+	Until game.MillUntil
 
 	// Then is the "for each card milled this way" clause, and `milled`
 	// holds the instance IDs that actually reached To, in library
@@ -1949,7 +1842,7 @@ type MillToZone struct {
 	// nothing hanging off it.
 	//
 	// #893: it runs from a CONTINUATION, for the reason
-	// ExileTarget.Then and DestroyAllMatching.Then do — a mill opens
+	// ExileTarget.ThenTail and DestroyAllMatching.Then do — a mill opens
 	// the CR 614 window per card, so a replacement may stop to ask
 	// and what was milled is not knowable on the next line. `milled`
 	// is CR 400.7's reading: a card a replacement sent somewhere else
@@ -1957,19 +1850,20 @@ type MillToZone struct {
 	// anywhere, exile it instead") is not in it, however thoroughly it left the
 	// library. Write the clause as something that acts on what it is
 	// told, not as the next line of the card.
-	Then func(ctx *Context, milled []uuid.UUID) error
+	//
+	// #4253 slice 9: it is a registered tail (CardTail), told the cards
+	// milled this way as TailOutcome.IDs, so a table waiting on a milled
+	// card's prompt is a restore point.
+	ThenTail game.KeyedTail
 }
 
 func (m MillToZone) Apply(ctx *Context) error {
-	if m.N <= 0 && m.Until == nil {
-		if m.Then == nil {
-			return nil
-		}
+	if m.N <= 0 && m.Until.IsZero() {
 		// A mill of nothing is still an answer. A caller sequencing
 		// several mills through the continuation has to be told, or it
 		// waits forever — the rule runRouteTailLocked follows for every
 		// terminal outcome of a routed move.
-		return m.Then(ctx, nil)
+		return m.ThenTail.Run(ctx.Game, nil)
 	}
 	dest := m.To
 	if dest == "" {
@@ -1979,7 +1873,7 @@ func (m MillToZone) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if m.Then == nil && m.Until == nil {
+	if m.ThenTail.IsZero() && m.Until.IsZero() {
 		// Nothing is waiting on the list and nothing is watching what
 		// lands, so the mill stays fire-and-forget: every card is
 		// routed on this line and a replacement's prompt lands its own
@@ -1987,102 +1881,10 @@ func (m MillToZone) Apply(ctx *Context) error {
 		_, err := ctx.Game.MillToZoneForEffect(player, m.N, dest)
 		return err
 	}
-	if m.Then == nil {
-		// An Until with nothing hanging off it still SEQUENCES (#1161):
-		// the clause is answered about cards that have arrived, and
-		// only the continuation form waits for them. The returned list
-		// this form gives up was discarded on the line above anyway.
-		return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until, nil)
-	}
-	// The context is rebuilt inside the continuation from the live
-	// *Game, the contract massEffect.apply explains: an undo restores
-	// this game's fields in place, so a captured *Game would be the
-	// wrong one.
-	item := ctx.Item
-	return ctx.Game.MillToZoneThenForEffect(player, m.N, dest, m.Until,
-		func(g *game.Game, milled []uuid.UUID) error {
-			return m.Then(NewContext(g, item), milled)
-		})
-}
-
-// UntilCard is MillToZone.Until for the common clause: the run ends on
-// the card that arrived, judged on its own — "until a creature card is
-// put into their graveyard", "until they reveal a land card".
-//
-// Pure by construction: it reads only the last entry of the list it is
-// handed, so replaying it over the same prefix gives the same answer.
-// See MillToZone.Until for why that matters.
-func UntilCard(pred func(c game.Card) bool) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		return len(landed) > 0 && pred(landed[len(landed)-1])
-	}
-}
-
-// UntilCount is MillToZone.Until for the COUNT clause: the run ends
-// once `n` cards have landed — Helm of Obedience's "or X cards have
-// been put into their graveyard this way".
-//
-// #1161, and the reason it is a clause rather than MillToZone.N. N is
-// the mill AMOUNT: CR 701.17b counts the cards the instruction moves,
-// so a card a replacement diverts on the way to the graveyard (a
-// commander taking the command zone, Rest in Peace's "exile it
-// instead") spends one of it without ever arriving — and it is the
-// number a mill-amount replacement doubles. This bound counts
-// ARRIVALS, exactly as the rest of the same sentence does, which is
-// what makes Helm mill a whole library under Rest in Peace and what
-// makes a diverted card cost it nothing.
-//
-// Pure: it reads the length of the list it is handed and nothing else,
-// so replaying it over the same prefix gives the same answer.
-//
-// n <= 0 never ends the run. A card that prints a bound of zero prints
-// no run at all, and "stop before you start" is better expressed by
-// not milling.
-func UntilCount(n int) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		return n > 0 && len(landed) >= n
-	}
-}
-
-// UntilAny is "whichever comes first": the run ends as soon as ANY of
-// the clauses accepts the landed list.
-//
-// Helm of Obedience is the card — "until a creature card OR X cards
-// have been put into their graveyard this way, whichever comes first"
-// is two stop conditions on one list, and the engine takes ONE
-// predicate, so the card composes them here rather than the mill
-// growing a second clause field (#1161).
-//
-// Pure as long as its parts are, which is the property MillToZone.Until
-// requires of all of them.
-func UntilAny(clauses ...func([]game.Card) bool) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		for _, clause := range clauses {
-			if clause != nil && clause(landed) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-// UntilTotalManaValue is MillToZone.Until for the running-total
-// clause: the run ends once the cards that LANDED total `threshold`
-// mana value or more — "until you exile cards with total mana value 4
-// or greater" (Improvisation Capstone, Echocasting Symposium).
-//
-// The total is recomputed from the whole landed list every time rather
-// than accumulated across calls, which is what makes it pure and what
-// makes a card the CR 614 window diverted contribute nothing: it never
-// arrived, so it is not in the list (#1159).
-func UntilTotalManaValue(threshold int) func([]game.Card) bool {
-	return func(landed []game.Card) bool {
-		total := 0
-		for _, c := range landed {
-			total += c.ManaValue()
-		}
-		return total >= threshold
-	}
+	// An Until with nothing hanging off it still SEQUENCES (#1161): the
+	// clause is answered about cards that have arrived, and only the
+	// continuation form waits for them.
+	return ctx.Game.MillToZoneKeyedForEffect(player, m.N, dest, m.Until, m.ThenTail)
 }
 
 // ExileTopFaceDown is "exile the top N cards of your library face
@@ -2108,7 +1910,7 @@ type ExileTopFaceDown struct {
 	// N is how many cards come off the top.
 	N int
 
-	// Then, when non-nil, is the clause that acts on the cards that left
+	// ThenTail, when set, is the clause that acts on the cards that left
 	// ("Put that card into your hand at the beginning of your next end
 	// step", Necropotence). It runs once the whole batch is done with the
 	// instance IDs that landed in exile, top card first, and runs from the
@@ -2122,12 +1924,10 @@ type ExileTopFaceDown struct {
 	// return of its card. Diffing the exile zone afterwards would be wrong
 	// the moment anything else exiled a card during the same resolution, so
 	// the cards come from the batch, not the zone.
-	Then func(ctx *Context, exiled []uuid.UUID) error
-
-	// ThenTail is Then as data (#4253 slice 3): a registered tail
-	// (ExileTopFaceDownThen), told the cards that landed as
-	// TailOutcome.IDs. A leg's prompt is then a restore point. Set Then
-	// or ThenTail, not both; Then wins.
+	//
+	// It is a registered tail (#4253 slice 3, ExileTopFaceDownThen), told
+	// the cards that landed as TailOutcome.IDs, so a leg's prompt is a
+	// restore point.
 	ThenTail game.KeyedTail
 }
 
@@ -2161,28 +1961,13 @@ func (e ExileTopFaceDown) thenTail(ctx *Context) game.KeyedTail {
 
 func (e ExileTopFaceDown) Apply(ctx *Context) error {
 	if e.N <= 0 {
-		if e.Then != nil {
-			return e.Then(ctx, nil)
-		}
-		if !e.ThenTail.IsZero() {
-			return e.thenTail(ctx).Run(ctx.Game, nil)
-		}
-		return nil
+		return e.thenTail(ctx).Run(ctx.Game, nil)
 	}
 	player := e.Player
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	if e.Then == nil {
-		return ctx.Game.ExileTopFaceDownKeyedForEffect(player, e.N, e.thenTail(ctx))
-	}
-	// The context is rebuilt inside the continuation from the live *Game,
-	// the contract massEffect.apply explains: an undo restores this game's
-	// fields in place, so a captured *Game would be the wrong one.
-	item := ctx.Item
-	return ctx.Game.ExileTopFaceDownThenForEffect(player, e.N, func(g *game.Game, exiled []uuid.UUID) error {
-		return e.Then(NewContext(g, item), exiled)
-	})
+	return ctx.Game.ExileTopFaceDownKeyedForEffect(player, e.N, e.thenTail(ctx))
 }
 
 // RevealCards is "reveal" (CR 701.20): show the named cards to every
@@ -2300,3 +2085,16 @@ func SacrificeThisIfStillOnBattlefield(g *game.Game, item *game.StackItem) error
 	}
 	return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))
 }
+
+// flickerReturnExiled is a flicker's return of the card that reached exile
+// (#4253 slice 9): the card and the controller it returns under ride the
+// carry, and N is 1 for "tapped".
+var flickerReturnExiled = CardTail("flicker/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+	exiled := len(o.IDs) == 1
+	f := Flicker{Target: o.Tail.Carry[0], Controller: o.Tail.Carry[1], Tapped: o.Tail.N == 1}
+
+	if !exiled {
+		return nil
+	}
+	return ReturnFromExile{Target: f.Target, Controller: f.Controller, Tapped: f.Tapped}.Apply(ctx)
+})

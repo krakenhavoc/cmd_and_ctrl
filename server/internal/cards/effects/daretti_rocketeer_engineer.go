@@ -81,29 +81,30 @@ func darettiSacrificeToReturn(g *game.Game, item *game.StackItem) error {
 }
 
 func darettiSacrificeThenReturn(ctx *Context) error {
-	item := ctx.Item
-	return ctx.Game.PlayerSacrificesThenForEffect(
-		item.SourceCardID, item.Controller,
+	return ctx.SacrificeThen(ctx.Controller(),
 		sacrificeSpec("an artifact", Artifact()),
 		"Daretti — sacrifice an artifact",
-		1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			if sacrificed.Count() == 0 {
-				return nil
-			}
-			c := NewContext(g, item)
-			for _, t := range c.LegalTargets() {
-				if t.Kind != game.TargetCard {
-					continue
-				}
-				if z := g.FindCardZoneForEffect(t.ID); z == nil || z.Kind != game.ZoneGraveyard {
-					return nil
-				}
-				return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(c)
-			}
-			return nil
-		})
+		1, darettiReturn)
 }
+
+// darettiReturn is "if you do, return the chosen card to the battlefield"
+// once the artifact has really been sacrificed, keyed (#4290): the item's
+// target rides the run as the asking item.
+var darettiReturn = RunThen("prompt-run/daretti-return", func(ctx *Context, r game.RunDone) error {
+	if r.Sacrifices().Count() == 0 {
+		return nil
+	}
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if z := ctx.Game.FindCardZoneForEffect(t.ID); z == nil || z.Kind != game.ZoneGraveyard {
+			return nil
+		}
+		return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield}.Apply(ctx)
+	}
+	return nil
+})
 
 // darettiAnswer is the "yes": sacrifice an artifact, then return the chosen
 // card. Keyed (#4291).

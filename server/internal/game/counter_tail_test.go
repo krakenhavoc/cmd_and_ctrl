@@ -64,13 +64,13 @@ type tailRecord struct {
 	seen   int // counters on the target at the moment the tail ran
 }
 
-func (r *tailRecord) then(target uuid.UUID, name string) func(g *Game, placed int) error {
-	return func(g *Game, placed int) error {
+func (r *tailRecord) tail(target uuid.UUID, name string) KeyedTail {
+	return hookTail(func(g *Game, o TailOutcome) error {
 		r.runs++
-		r.placed = placed
+		r.placed = o.Amount
 		r.seen = counterOn(g, target, name)
 		return nil
-	}
+	})
 }
 
 // TestAddCounterThenWaitsForTheOrderPrompt is the issue: the rest of
@@ -83,8 +83,8 @@ func TestAddCounterThenWaitsForTheOrderPrompt(t *testing.T) {
 
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 	})
 	if rec.runs != 0 {
@@ -117,8 +117,8 @@ func TestAddCounterThenRunsInlineWithoutAPause(t *testing.T) {
 
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 		if rec.runs != 1 || rec.placed != 4 || rec.seen != 4 {
 			t.Errorf("inline continuation: runs=%d placed=%d seen=%d, want 1/4/4", rec.runs, rec.placed, rec.seen)
@@ -148,8 +148,8 @@ func TestACancelledCounterPlacementStillRunsTheTail(t *testing.T) {
 	})
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 	})
 	if rec.runs != 1 || rec.placed != 0 {
@@ -164,8 +164,8 @@ func TestAZeroCounterPlacementRunsTheTailWithZero(t *testing.T) {
 	bear := pushBear(g, g.Seats[0].ID)
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 0, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 0, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 	})
 	if rec.runs != 1 || rec.placed != 0 {
@@ -185,8 +185,8 @@ func TestTheCounterTailIsToldZeroWhenTheTargetLeavesMidPrompt(t *testing.T) {
 
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 		// Out of the game entirely — not a graveyard, where a counter
 		// could still land (CR 122.1 allows counters in any zone).
@@ -210,8 +210,8 @@ func TestUndoAcrossAPausedCounterPlacementReplaysTheTail(t *testing.T) {
 
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 	})
 	snapshot := g.Clone()
@@ -255,8 +255,8 @@ func TestAPausedPlacementCancelledByTheAnswerStillRunsTheTail(t *testing.T) {
 	})
 	var rec tailRecord
 	g.WithWriteLock(func() {
-		if err := g.AddCounterThenForEffect(bear, CounterPlusOne, 2, rec.then(bear, CounterPlusOne)); err != nil {
-			t.Fatalf("AddCounterThenForEffect: %v", err)
+		if err := g.AddCounterByKeyedForEffect(uuid.Nil, bear, CounterPlusOne, 2, rec.tail(bear, CounterPlusOne)); err != nil {
+			t.Fatalf("AddCounterByKeyedForEffect: %v", err)
 		}
 	})
 	if rec.runs != 0 {
@@ -283,27 +283,20 @@ func TestEarthbendThenReadsTheLandAfterAPausedPlacement(t *testing.T) {
 	land := earthbendTestLand(t, g, me, "Forest")
 	registerPausingCounterBoard(g, CounterPlusOne)
 
-	runs, power := 0, -1
+	testEarthbendPower, testEarthbendRuns = -1, 0
 	g.WithWriteLock(func() {
-		err := g.EarthbendThenForEffect(me.ID, uuid.Nil, land, 3, func(g *Game) error {
-			runs++
-			g.RecomputeLayersIfStaleLocked()
-			if c, ok := g.battlefieldCardLocked(land); ok {
-				power = c.CurrentPower()
-			}
-			return nil
-		})
+		err := g.EarthbendKeyedForEffect(me.ID, uuid.Nil, land, 3, KeyedTail{Ref: testEarthbendTail, Carry: []uuid.UUID{land}})
 		if err != nil {
-			t.Fatalf("EarthbendThenForEffect: %v", err)
+			t.Fatalf("EarthbendKeyedForEffect: %v", err)
 		}
 	})
-	if runs != 0 {
-		t.Fatalf("the rest of the sentence ran with the counters still owed (read power %d)", power)
+	if testEarthbendRuns != 0 {
+		t.Fatalf("the rest of the sentence ran with the counters still owed (read power %d)", testEarthbendPower)
 	}
 	answerCounterOrder(t, g)
 	// ×2 then +1: 3 → 6 → 7, on a 0/0 body.
-	if runs != 1 || power != 7 {
-		t.Errorf("after the answer: runs=%d, that land's power=%d; want 1 and 7", runs, power)
+	if testEarthbendRuns != 1 || testEarthbendPower != 7 {
+		t.Errorf("after the answer: runs=%d, that land's power=%d; want 1 and 7", testEarthbendRuns, testEarthbendPower)
 	}
 }
 
@@ -312,17 +305,14 @@ func TestEarthbendThenReadsTheLandAfterAPausedPlacement(t *testing.T) {
 func TestEarthbendThenRunsWhenTheLandHasLeft(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
-	runs := 0
+	testEarthbendPower, testEarthbendRuns = -1, 0
 	g.WithWriteLock(func() {
-		if err := g.EarthbendThenForEffect(me.ID, uuid.Nil, uuid.New(), 3, func(*Game) error {
-			runs++
-			return nil
-		}); err != nil {
-			t.Fatalf("EarthbendThenForEffect: %v", err)
+		if err := g.EarthbendKeyedForEffect(me.ID, uuid.Nil, uuid.New(), 3, KeyedTail{Ref: testEarthbendTail}); err != nil {
+			t.Fatalf("EarthbendKeyedForEffect: %v", err)
 		}
 	})
-	if runs != 1 {
-		t.Errorf("continuation ran %d times, want 1", runs)
+	if testEarthbendRuns != 1 {
+		t.Errorf("continuation ran %d times, want 1", testEarthbendRuns)
 	}
 }
 
@@ -337,16 +327,17 @@ func TestTheArmyYouAmassedIsReadAfterAPausedPlacement(t *testing.T) {
 
 	runs, power := 0, -1
 	g.WithWriteLock(func() {
-		err := g.AmassForEffect(me.ID, uuid.Nil, amassTestToken("Orc"), "Orc", 2, func(g *Game, chosen uuid.UUID) error {
+		err := g.AmassKeyedForEffect(me.ID, uuid.Nil, amassTestToken("Orc"), "Orc", 2, hookTail(func(g *Game, o TailOutcome) error {
+			chosen := tailFirstID(o)
 			runs++
 			g.RecomputeLayersIfStaleLocked()
 			if c, ok := g.battlefieldCardLocked(chosen); ok {
 				power = c.CurrentPower()
 			}
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("AmassForEffect: %v", err)
+			t.Fatalf("AmassKeyedForEffect: %v", err)
 		}
 	})
 	if runs != 0 {

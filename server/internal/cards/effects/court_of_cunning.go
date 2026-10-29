@@ -48,5 +48,5 @@ func courtOfCunningUpkeep(g *game.Game, item *game.StackItem) error {
 		}
 	}
 	// Each chosen player mills in APNAP order, one prompt at a time (CR 101.4).
-	return millEachPlayerInTurn(ctx, players, constantMill(n), nil)
+	return millEachPlayerInTurn(ctx, players, constantMill(n), game.KeyedTail{})
 }

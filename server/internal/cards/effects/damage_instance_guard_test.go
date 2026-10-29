@@ -17,7 +17,7 @@ import (
 // engine calls the catalog makes to deal it.
 //
 // The engine stamps each DealDamage…ForEffect call (and each
-// DealDamageEachThenForEffect walk) with a DamageInstance of its own, which
+// DealDamageEachKeyedForEffect walk) with a DamageInstance of its own, which
 // is right for "it deals 2 damage to you. Then it deals 2 damage to you"
 // (CR 608.2c: two instructions, two instances). But most of the catalog
 // writes "deals 2 damage to each creature" as a loop over DealDamage, and
@@ -73,7 +73,7 @@ Wrap the loop — and anything else the same sentence deals — in
 
 	ctx.Game.DamageInstanceForEffect(func() error { … })
 
-or deal it with DealDamageEachThenForEffect.`, strings.Join(findings, "\n  "))
+or deal it with DealDamageEachKeyedForEffect.`, strings.Join(findings, "\n  "))
 	}
 }
 

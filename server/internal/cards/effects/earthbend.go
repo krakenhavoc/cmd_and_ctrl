@@ -66,22 +66,18 @@ type Earthbend struct {
 	// LANDED (#1282): on a board with two different counter
 	// replacements that is after the CR 616 ordering prompt is
 	// answered, not when Apply returns, which is why it is a field and
-	// not the next statement. It is handed a fresh Context over the
-	// live game, on the continuation contract every other *Then
-	// primitive follows. Nil means nothing follows.
-	Then func(ctx *Context) error
+	// not the next statement. It is a registered tail (#4253 slice 7:
+	// game.RegisterTail, CardTail), so a table waiting on that prompt is a
+	// restore point; build it with ctx.Tail or ctx.ItemTail. The zero value
+	// means nothing follows.
+	Then game.KeyedTail
 }
 
 func (e Earthbend) Apply(ctx *Context) error {
 	if e.Target == uuid.Nil || ctx.isNewSourceObject(e.Target) { // #1432
 		return nil
 	}
-	var then func(g *game.Game) error
-	if e.Then != nil {
-		rest, item := e.Then, ctx.Item
-		then = func(g *game.Game) error { return rest(NewContext(g, item)) }
-	}
-	return ctx.Game.EarthbendThenForEffect(ctx.Controller(), ctx.Source(), e.Target, e.N, then)
+	return ctx.Game.EarthbendKeyedForEffect(ctx.Controller(), ctx.Source(), e.Target, e.N, e.Then)
 }
 
 // EarthbendFirstTarget is the whole body of a card whose only sentence

@@ -29,21 +29,20 @@ func TestChooseCardsOverLibraryCardsIsAnswerable(t *testing.T) {
 	}
 	g.WithWriteLock(func() {
 		ids := g.LookAtTopOfLibraryForEffect(me.ID, 3)
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Question: "Ureni — you may put a card from among them onto the battlefield",
 			Cards:    ids,
 			Min:      0,
 			Max:      1,
 			Zone:     game.ZoneLibrary,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				if len(picked) == 0 {
-					return nil
-				}
-				_, err := g.PutFromLibraryOntoBattlefieldForEffect(picked[0], game.LibraryEntryOptions{})
-				return err
-			},
-		})
+		}, func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			_, err := g.PutFromLibraryOntoBattlefieldForEffect(picked[0], game.LibraryEntryOptions{})
+			return err
+		}, nil))
 	})
 
 	moves := legal.EnumerateFor(g, me.ID)

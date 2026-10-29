@@ -1451,19 +1451,7 @@ func protectionFromAChosenColorForTheTarget(name string) func(item *game.StackIt
 		if target.Kind != game.TargetCard {
 			return nil
 		}
-		ChooseColorThen(game.ColorForProtection, ctx.Game, item.Controller, item.SourceCardID,
-			name+" — choose a color",
-			func(g *game.Game, color string) error {
-				token := game.ProtectionFromColor(color)
-				if token == "" {
-					return nil
-				}
-				return GrantKeywordUntilEOT{
-					Target:   target.ID,
-					Keywords: []string{token},
-					Label:    name + " — " + token,
-				}.Apply(NewContext(g, item))
-			})
+		chooseProtectionColorFor(ctx, item.Controller, target.ID, name, name+" — choose a color")
 		return nil
 	}
 }

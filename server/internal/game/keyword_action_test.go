@@ -300,7 +300,7 @@ func TestSurveilPlusOneQueuesTheBiggerPrompt(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionSurveil, plusOneForTest, "surveil one more"))
-		g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 {
 		t.Fatalf("pending choices = %d, want the surveil prompt", len(g.PendingChoices))
@@ -319,7 +319,7 @@ func TestScryReplacementDoesNotTouchSurveil(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "scry one more"))
-		g.SurveilThenForEffect(me.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].ScryCards) != 1 {
 		t.Fatalf("a scry replacement changed a surveil: %+v", g.PendingChoices)
@@ -335,7 +335,7 @@ func TestLookAtTopIsNotAKeywordAction(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "scry one more"))
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionSurveil, plusOneForTest, "surveil one more"))
-		g.LookAtTopThenForEffect(me.ID, uuid.Nil, 2, nil)
+		g.LookAtTopKeyedForEffect(me.ID, uuid.Nil, 2, KeyedTail{})
 	})
 	if len(g.PendingChoices) != 1 || len(g.PendingChoices[0].ScryCards) != 2 {
 		t.Fatalf("a keyword-action replacement reached look-at-top: %+v", g.PendingChoices)
@@ -352,10 +352,10 @@ func TestCancelledScryQueuesNothingAndStillRunsThen(t *testing.T) {
 	ran := 0
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCancelReplacement(KeywordActionScry))
-		g.ScryThenForEffect(me.ID, uuid.Nil, 2, func(*Game) error {
+		g.ScryKeyedForEffect(me.ID, uuid.Nil, 2, hookTail(func(*Game, TailOutcome) error {
 			ran++
 			return nil
-		})
+		}))
 	})
 	if len(g.PendingChoices) != 0 {
 		t.Errorf("a cancelled scry queued %d prompts, want none", len(g.PendingChoices))
@@ -377,10 +377,10 @@ func TestPausedScryQueuesItsPromptFromTheResume(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, plusOneForTest, "one more"))
 		g.RegisterReplacementForTest(keywordCountReplacement(KeywordActionScry, timesTwoForTest, "twice"))
-		looked = g.ScryThenForEffect(me.ID, uuid.Nil, 1, func(*Game) error {
+		looked = g.ScryKeyedForEffect(me.ID, uuid.Nil, 1, hookTail(func(*Game, TailOutcome) error {
 			ran++
 			return nil
-		})
+		}))
 	})
 	if looked != 0 {
 		t.Errorf("a paused scry reported %d cards looked at, want 0", looked)

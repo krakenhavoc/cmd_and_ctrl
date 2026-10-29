@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Soothing of Sméagol — Instant {1}{U}:
 //
@@ -22,11 +18,9 @@ func init() {
 		Name:         "Soothing of Sméagol",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target nontoken creature", Not(IsTokenPredicate())),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			tempt := ringTemptsYouNext(item)
-			return ctx.Game.BounceCardsToHandThenForEffect(legalTargetIDs(ctx), func(g *game.Game, _ []uuid.UUID) error {
-				return tempt(g)
-			})
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			// Keyed (#4253 slice 10a).
+			return ctx.Game.BounceCardsToHandKeyedForEffect(legalTargetIDs(ctx), ctx.ItemTail(ringTemptsYouTail))
 		},
 	})
 }

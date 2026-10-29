@@ -89,8 +89,13 @@ func scarabGodZombieCount(g *game.Game, controller uuid.UUID, zombie string) int
 }
 
 func scarabGodReanimateAsZombie(g *game.Game, item *game.StackItem) error {
-	return ExileTargetThenTokenCopy(g, item, scarabGodZombieExceptionFor(g.TextReaderForEffect(item)))
+	return ExileTargetThenTokenCopy(g, item, scarabGodZombieCopy)
 }
+
+// scarabGodZombieCopy is the exile's keyed "then" (#4253 slice 10a).
+var scarabGodZombieCopy = ExileThenTokenCopyTail("exile-then-token-copy/the-scarab-god", func(ctx *Context) func(t *game.Card) {
+	return scarabGodZombieExceptionFor(ctx.Game.TextReaderForEffect(ctx.Item))
+})
 
 // scarabGodZombieException is "except it's a 4/4 black Zombie" —
 // REPLACES the copy's creature types (CR 707.9a), same as Hashaton's

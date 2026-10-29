@@ -43,9 +43,7 @@ func init() {
 			if !ok {
 				return nil
 			}
-			return ExileTarget{Target: id, Then: func(ctx *Context, _ bool) error {
-				return blessedReincarnationReveal(ctx, player)
-			}}.Apply(ctx)
+			return ExileTarget{Target: id, ThenTail: withCarry(ctx.ItemTail(blessedReincarnationExiled), id, player)}.Apply(ctx)
 		},
 	})
 }
@@ -63,13 +61,18 @@ func blessedReincarnationReveal(ctx *Context, player uuid.UUID) error {
 	// 110.2a), which Arboria reads.
 	return ctx.Game.PutByEnteringPlayerForEffect(func() error {
 		return PutFromLibraryOntoBattlefield{
-			Player: player,
-			Cards:  run,
-			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-			All:    true,
-			Then: func(g *game.Game, _ PutFromLibraryResult) error {
-				return g.ShuffleLibraryForEffect(player)
-			},
+			Player:   player,
+			Cards:    run,
+			Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:      true,
+			ThenTail: thenShuffle,
 		}.Apply(ctx)
 	})
 }
+
+// blessedReincarnationExiled is the clause after the exile (#4253 slice 9).
+var blessedReincarnationExiled = CardTail("blessed-reincarnation/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	player := o.Tail.Carry[1]
+
+	return blessedReincarnationReveal(ctx, player)
+})

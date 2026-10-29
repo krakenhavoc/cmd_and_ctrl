@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Living Library — Artifact Creature — Book Illusion {2}, 0/4 (Reality
 // Fracture):
@@ -32,9 +36,7 @@ func init() {
 					return nil
 				}
 				owner := c.Owner
-				return g.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-					return g.ShuffleLibraryForEffect(owner)
-				})
+				return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 			},
 		}},
 	})

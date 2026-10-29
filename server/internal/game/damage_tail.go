@@ -56,9 +56,11 @@ import (
 //
 // THE SECOND HALF OF THE TAIL: WHAT THE EVENT OWES ITS CALLER (#807).
 // Everything above is what the ENGINE still owes a settled damage
-// event. `damageTail.then` is the other half, and it is the same idea
-// life_tail.go's lifeTail carries: the rest of the EFFECT that asked
-// for the damage, run with the amount that actually landed.
+// event. `damageTail.keyed` (and a keyed Each walk's `each`) is the
+// other half, and it is the same idea life_tail.go's lifeTail carries:
+// the rest of the EFFECT that asked for the damage, run with the amount
+// that actually landed. It is data (#4253, #4361 S8): the closure form,
+// `damageTail.then`, is gone.
 //
 // "This creature deals 1 damage to each opponent. You gain life equal
 // to the damage dealt this way" (Creeping Bloodsucker) used to read
@@ -71,9 +73,9 @@ import (
 // DealDamageToPlayerForEffect in place of ChangePlayerLifeForEffect.
 //
 // So damage gets the same public continuation life got:
-// DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect
-// for one target, DealDamageEachThenForEffect for the batch, and
-// runDamageTailLocked is the one place `then` runs. Card authors learn
+// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect
+// for one target, DealDamageEachKeyedForEffect for the batch, and
+// runDamageTailLocked is the one place the continuation runs. Card authors learn
 // `...ThenForEffect` once and it means the same thing on both sides.
 
 // damageTailKind selects which shape of tail a settled damage event
@@ -210,7 +212,7 @@ type damageTail struct {
 	// took an instance of its own. runDamageTailLocked ends it, before the
 	// caller's continuation, so the follow-ups owed for it run first
 	// (CR 615.5) and anything the continuation deals is a new instance.
-	// Cleared through the pointer as it runs, like `then`.
+	// Cleared through the pointer as it runs, like `keyed`.
 	endsInstance bool
 
 	// released marks an event rebuilt from a staged one (divide_shield.go,
@@ -224,34 +226,37 @@ type damageTail struct {
 	// dealt to the destination as their own event when this one ends,
 	// with what was already applied to it (CR 614.5). Set inside the
 	// CR 614 window, so an event is never staged with any; cleared
-	// through the pointer as the parts are dealt, like `then`.
+	// through the pointer as the parts are dealt, like `keyed`.
 	redirected []redirectedDamage
 
-	// then is the CALLER's half of the tail (#807): the rest of the
-	// effect that asked for the damage, run with the amount that
-	// ACTUALLY landed once the CR 614 window has settled it. The exact
-	// sibling of lifeTail.then, and set by the same kind of entry
-	// point — the catalog never builds a damageTail, it hands a `then`
-	// to one of the ...ThenForEffect forms.
+	// keyed is the CALLER's half of the tail (#807, #4253,
+	// damage_keyed.go): the rest of the effect that asked for the damage,
+	// a registered tail told the target as TailOutcome.IDs and the
+	// damage that ACTUALLY landed as its Amount, once the CR 614 window
+	// has settled it. The exact sibling of lifeTail's, and set by the
+	// same kind of entry point: the catalog never builds a damageTail,
+	// it hands a tail to one of the ...KeyedForEffect forms.
 	//
-	// `dealt` is the post-replacement amount, always non-negative on
-	// the two rules paths, and 0 when nothing landed: fully prevented,
-	// replaced away under CR 614.10, or the target gone between the
-	// prompt and the answer. The continuation is told either way,
-	// because a batch adding up "the damage dealt this way" must not
+	// The amount is non-negative, and 0 when nothing landed: fully
+	// prevented, replaced away under CR 614.10, or the target gone
+	// between the prompt and the answer. The continuation is told either
+	// way, because a batch adding up "the damage dealt this way" must not
 	// stall on the leg that dealt nothing.
 	//
-	// It takes the live *Game rather than capturing one, on the same
-	// undo-safety contract confirmFrame, StackItem.Effect and
-	// lifeTail.then follow — an undo restores this game's fields in
-	// place, so a *Game argument is always the right game. It runs
-	// with g.mu held, so it may start the next damage event or queue
-	// the next prompt itself.
-	//
-	// Nil on every engine-internal path: combat damage, the manual
+	// Zero on every engine-internal path: combat damage, the manual
 	// sandbox mark and every fire-and-forget catalog deal owe their
-	// caller nothing.
-	then func(g *Game, dealt int) error
+	// caller nothing. Cleared through the pointer as it runs, so a
+	// continuation that re-enters the pipeline on the same event cannot
+	// run itself twice. The closure form, `then`, is gone (#4361 S8).
+	keyed KeyedTail
+
+	// each is the rest of a keyed Each walk this event is one leg of
+	// (#4253, damage_each_keyed.go): the recipients still to be dealt
+	// damage, the running total and the walk's own tail, as data. Never
+	// set together with `keyed`. Cleared through the pointer as it runs,
+	// as `keyed` is; the run itself is never written after it is built,
+	// so an undo copy of the tail may share it.
+	each *damageEachRun
 }
 
 // combatDamageTailLocked snapshots a live battlefield source into a
@@ -701,18 +706,24 @@ func (g *Game) runDamageTailLocked(ev *ReplacementEvent, dealt int) error {
 		ev.damageTail.endsInstance = false
 		paused = g.endDamageInstanceLocked(ev.DamageInstance)
 	}
-	if ev.damageTail.then == nil {
+	if each := ev.damageTail.each; each != nil {
+		// A leg of a keyed Each walk joins the walk's instance and never
+		// ends it, so it is never parked: the walk goes on.
+		ev.damageTail.each = nil
+		return g.damageEachLegSettledLocked(each, ev.DamageTarget, dealt)
+	}
+	keyed := ev.damageTail.keyed
+	if keyed.IsZero() {
 		return nil
 	}
-	then := ev.damageTail.then
-	ev.damageTail.then = nil
+	ev.damageTail.keyed = KeyedTail{}
 	if paused {
 		// #2040: a follow-up of this instance is asking; the rest of the
-		// instruction waits for the answer.
-		g.parkFollowUpContinuationLocked(ev.DamageInstance, func(g *Game) error { return then(g, dealt) })
+		// instruction waits for the answer, as data (followUpPark).
+		g.parkFollowUpKeyedLocked(ev.DamageInstance, keyed, ev.DamageTarget, dealt)
 		return nil
 	}
-	return then(g, dealt)
+	return g.runKeyedTailLocked(keyed, []uuid.UUID{ev.DamageTarget}, dealt)
 }
 
 // applyManualDamageMarkLocked is the sandbox MarkDamage verb's tail: a

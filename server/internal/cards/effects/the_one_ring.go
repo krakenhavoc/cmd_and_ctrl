@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // The One Ring — Legendary Artifact {4}:
 //
@@ -115,7 +119,7 @@ func theOneRingUpkeepBurden(g *game.Game, item *game.StackItem) error {
 // activation.
 //
 // #1290: the draw reads the count AFTER the counter LANDS, via
-// AddCounterThenForEffect's continuation, not on the next line — a
+// AddCounterByKeyedForEffect's continuation, not on the next line — a
 // Doubling Season / Hardened Scales board pauses the placement on a
 // CR 616 prompt, and reading before it resumes would draw for the
 // pre-placement count.
@@ -123,11 +127,8 @@ func theOneRingTapDraw(g *game.Game, item *game.StackItem) error {
 	if !onBattlefield(g, item.SourceCardID) || sourceIsNewObject(g, item) { // #1432
 		return nil
 	}
-	return g.AddCounterThenForEffect(item.SourceCardID, theOneRingBurden, 1, func(g *game.Game, _ int) error {
-		c, ok := g.LookupCardForEffect(item.SourceCardID)
-		if !ok {
-			return nil
-		}
-		return DrawCards{Player: item.Controller, N: c.Counters[theOneRingBurden]}.Apply(NewContext(g, item))
-	})
+	then := NewContext(g, item).ItemTail(thenDrawPerCounter)
+	then.Carry = []uuid.UUID{item.SourceCardID}
+	then.Word = theOneRingBurden
+	return g.AddCounterByKeyedForEffect(uuid.Nil, item.SourceCardID, theOneRingBurden, 1, then)
 }

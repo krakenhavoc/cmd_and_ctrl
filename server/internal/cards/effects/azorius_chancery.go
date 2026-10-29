@@ -40,6 +40,7 @@ func init() {
 			Produced: "{W}{U}",
 			Label:    "Add {W}{U}",
 		}},
+		Purpose:      game.Purpose{ReturnsLandOnEntry: true},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Azorius Chancery — return a land you control", Do(ReturnOneYouControl{

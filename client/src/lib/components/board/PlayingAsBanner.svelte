@@ -3,9 +3,10 @@
   // plays for another (ADR 0167 §9, Emrakul, the Promised End).
   //
   //   - The controller: "Playing as Bob" with View my board, or
-  //     "Viewing your board, Bob's turn is yours" with Play as Bob, and
-  //     "Switch to Bob" / "Switch to you" when the other seat owes the
-  //     next decision.
+  //     "Viewing your board, Bob's turn is yours" with Play as Bob. The
+  //     board never switches by itself after the turn begins; the jump
+  //     to the other seat's decision is HandoffChip's, by the dock
+  //     (#4434).
   //   - The controlled player: "Alice controls you this turn", and
   //     "Alice is choosing for you" while she answers a prompt of his.
   //   - Everyone else, spectators included, and a control still waiting
@@ -24,7 +25,7 @@
   interface Props {
     line: PlayingAsBannerModel;
     seats: PlayerView[];
-    // The toggle and the handoff offer. Absent: no buttons.
+    // The toggle. Absent: no button.
     onToggle?: () => void;
   }
   const { line, seats, onToggle }: Props = $props();
@@ -63,9 +64,7 @@
     {#if line.source}<span class="src">· {line.source}</span>{/if}
     {#if line.note}<span class="note">{line.note}</span>{/if}
   </span>
-  {#if onToggle && line.switchTo}
-    <button type="button" class="primary btn" onclick={onToggle}>{line.switchTo.label}</button>
-  {:else if onToggle && line.toggle}
+  {#if onToggle && line.toggle}
     <button type="button" class="btn" onclick={onToggle}>{line.toggle.label}</button>
   {/if}
 </div>

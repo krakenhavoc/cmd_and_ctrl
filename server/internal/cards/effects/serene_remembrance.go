@@ -46,14 +46,8 @@ func init() {
 					owners = append(owners, card.Owner)
 				}
 			}
-			return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-				for _, owner := range owners {
-					if err := g.ShuffleLibraryForEffect(owner); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{},
+				game.KeyedTail{Ref: thenShuffleEachCarried, Player: item.Controller, Source: item.SourceCardID, Carry: owners})
 		},
 	})
 }

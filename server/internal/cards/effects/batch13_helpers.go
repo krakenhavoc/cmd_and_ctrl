@@ -195,7 +195,7 @@ func b13AttackingCreaturesYouControl(g *game.Game, controller uuid.UUID) []uuid.
 // b13PutCounterOnEach puts one +1/+1 counter on every listed
 // permanent still on the battlefield, in the given order.
 func b13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
-	return b13PutCounterOnEachThen(ctx, ids, nil)
+	return b13PutCounterOnEachThen(ctx, ids, game.KeyedTail{})
 }
 
 // b13PutCounterOnEachThen is b13PutCounterOnEach with a continuation
@@ -208,20 +208,41 @@ func b13PutCounterOnEach(ctx *Context, ids []uuid.UUID) error {
 // attempted from inside the previous one's own continuation — so
 // `then` cannot run until the whole list, not just the first
 // placement, has landed. Nil `then` is b13PutCounterOnEach.
-func b13PutCounterOnEachThen(ctx *Context, ids []uuid.UUID, then func(g *game.Game) error) error {
-	if len(ids) == 0 {
-		if then == nil {
-			return nil
+//
+// #4253 slice 7: `then` is a registered tail and the rest of the list rides
+// each placement's tail as data, so a CR 616 prompt over any one of them is
+// a restore point.
+func b13PutCounterOnEachThen(ctx *Context, ids []uuid.UUID, then game.KeyedTail) error {
+	for len(ids) > 0 {
+		if z := ctx.Game.FindCardZoneForEffect(ids[0]); z != nil && z.Kind == game.ZoneBattlefield {
+			break
 		}
-		return then(ctx.Game)
+		ids = ids[1:]
 	}
-	id, rest := ids[0], ids[1:]
-	item := ctx.Item
-	if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-		return b13PutCounterOnEachThen(ctx, rest, then)
+	if len(ids) == 0 {
+		return then.Run(ctx.Game, nil)
 	}
-	return ctx.Game.AddCounterThenForEffect(id, "+1/+1", 1, func(g *game.Game, _ int) error {
-		return b13PutCounterOnEachThen(NewContext(g, item), rest, then)
+	next := ctx.ItemTail(b13PutCounterOnEachNext)
+	next.Carry = append([]uuid.UUID(nil), ids[1:]...)
+	if !then.IsZero() {
+		next.Next = &then
+	}
+	return ctx.Game.AddCounterByKeyedForEffect(uuid.Nil, ids[0], "+1/+1", 1, next)
+}
+
+// b13PutCounterOnEachNext is the rest of a b13PutCounterOnEachThen list
+// behind a settled placement: the tail's Carry is the permanents still owed
+// and its Next the caller's own tail. An on-disk key: never renamed, never
+// reused.
+var b13PutCounterOnEachNext game.TailRef
+
+func init() {
+	b13PutCounterOnEachNext = CardTail("counter/put-on-each-next", func(ctx *Context, o game.TailOutcome) error {
+		var then game.KeyedTail
+		if o.Tail.Next != nil {
+			then = *o.Tail.Next
+		}
+		return b13PutCounterOnEachThen(ctx, o.Tail.Carry, then)
 	})
 }
 

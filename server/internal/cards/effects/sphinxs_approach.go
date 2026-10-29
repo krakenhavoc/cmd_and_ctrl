@@ -49,36 +49,42 @@ func init() {
 				Cards:    copies,
 				Min:      0,
 				Max:      4,
-				Zone:     game.ZoneGraveyard,
-				Validate: func(picked []game.Card) bool { return len(picked) == 4 },
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) != 4 {
-						return nil
-					}
-					c := NewContext(g, ctx.Item)
-					for _, id := range picked {
-						if err := (ExileTarget{Target: id}).Apply(c); err != nil {
-							return err
-						}
-					}
-					if !sourceIsNewObject(g, ctx.Item) {
-						if err := g.ExileCardForEffect(ctx.Item.SourceCardID); err != nil {
-							return err
-						}
-					}
-					return SearchLibrary{
-						Player: ctx.Item.Controller,
-						// SearchLibrary lends the spell's text (CR 612.2, #3984).
-						Predicate: func(card game.Card) bool { return card.IsCreature() && card.HasSubtypeWord("Sphinx") },
-						Dest:      game.ZoneBattlefield,
-						Limit:     1,
-						Shuffle:   true,
-						Reason:    "Sphinx's Approach — a Sphinx creature card",
-						Source:    ctx.Item.SourceCardID,
-					}.Apply(c)
-				},
+				LiveZone: game.ZoneGraveyard,
+				ThenKey:  sphinxsApproachExile,
+				Asked:    game.NewAskedItem(ctx.Item),
 			})
 			return nil
 		})),
 	})
 }
+
+// sphinxsApproachExile is the four copies exiled with this spell and then the
+// Sphinx search, keyed (#4253 sweep). "Exactly four, or none" is a registered
+// set rule, so the restored prompt still refuses any other count.
+var sphinxsApproachExile = askedPickRule("choose-cards/sphinxs-approach-exile-four",
+	func(picked []game.Card) bool { return len(picked) == 4 },
+	func(ctx *Context, r game.CardsChosen) error {
+		if len(r.Picked) != 4 {
+			return nil
+		}
+		for _, id := range r.Picked {
+			if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		if !sourceIsNewObject(ctx.Game, ctx.Item) {
+			if err := ctx.Game.ExileCardForEffect(ctx.Item.SourceCardID); err != nil {
+				return err
+			}
+		}
+		return SearchLibrary{
+			Player: ctx.Item.Controller,
+			// SearchLibrary lends the spell text (CR 612.2, #3984).
+			Predicate: func(card game.Card) bool { return card.IsCreature() && card.HasSubtypeWord("Sphinx") },
+			Dest:      game.ZoneBattlefield,
+			Limit:     1,
+			Shuffle:   true,
+			Reason:    "Sphinx's Approach — a Sphinx creature card",
+			Source:    ctx.Item.SourceCardID,
+		}.Apply(ctx)
+	})

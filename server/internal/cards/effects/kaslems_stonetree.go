@@ -45,6 +45,6 @@ func kaslemsStonetreeLook(g *game.Game, item *game.StackItem) error {
 		Optional: true,
 		Tapped:   true,
 		Label:    "Kaslem's Stonetree — you may put a land card from among them onto the battlefield tapped",
-		Then:     PutRestOnBottomInRandomOrder,
+		ThenTail: PutRestOnBottomInRandomOrderTail,
 	}.Apply(NewContext(g, item))
 }

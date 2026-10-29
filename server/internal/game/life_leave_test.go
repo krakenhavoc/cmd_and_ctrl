@@ -24,6 +24,15 @@ func recordTotals(into *[]int) func(*Game, int) error {
 	}
 }
 
+// recordTotalsTail is recordTotals as a keyed tail, told the total as its
+// Amount.
+func recordTotalsTail(into *[]int) KeyedTail {
+	return hookTail(func(_ *Game, o TailOutcome) error {
+		*into = append(*into, o.Amount)
+		return nil
+	})
+}
+
 // --- (1) the paused leg's player concedes ----------------------------
 
 // TestConcedeDuringLifeOrderingPromptFinishesTheDrain — the regression.
@@ -38,8 +47,8 @@ func TestConcedeDuringLifeOrderingPromptFinishesTheDrain(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(a))
 		g.RegisterReplacementForTest(doubleLifeReplacement(a))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != a {
@@ -77,8 +86,8 @@ func TestConcedeDuringLastLegPromptStillReportsTheTotal(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(b))
 		g.RegisterReplacementForTest(doubleLifeReplacement(b))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 0 {
@@ -106,8 +115,8 @@ func TestLoseLifeEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T) 
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(a))
 		g.RegisterReplacementForTest(doubleLifeReplacement(a))
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(b); err != nil {
@@ -133,8 +142,8 @@ func TestLoseLifeEachSkipsAPlayerEliminatedBeforeTheDrain(t *testing.T) {
 	}
 	var total []int
 	g.WithWriteLock(func() {
-		if err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b, c}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+		if err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b, c}, 2, recordTotalsTail(&total)); err != nil {
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 1 || total[0] != 4 {
@@ -156,8 +165,8 @@ func TestLifeChangeForAnEliminatedPlayerIsANoOpWithZero(t *testing.T) {
 	}
 	var got []int
 	g.WithWriteLock(func() {
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, gone, 5, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, gone, 5, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 1 || got[0] != 0 {
@@ -180,8 +189,8 @@ func TestAnsweredPromptForAnEliminatedPlayersLifeLandsNothing(t *testing.T) {
 	var got []int
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(optionalLifeReplacementControlledBy(c))
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, a, -3, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, a, -3, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Chooser != c {
@@ -215,8 +224,8 @@ func TestConcedingChooserOfAMayOnSomeoneElsesLifeChangeLetsItLand(t *testing.T) 
 	var got []int
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(optionalLifeReplacementControlledBy(c))
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, a, -3, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, a, -3, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(c); err != nil {
@@ -257,12 +266,12 @@ func optionalLifeReplacementControlledBy(controller uuid.UUID) ReplacementEffect
 func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(a))
 		g.RegisterReplacementForTest(doubleDamageTo(a))
-		if err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, recordTotals(&total)); err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+		if err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 2, probeTail()); err != nil {
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 {
@@ -271,8 +280,8 @@ func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 	if err := g.Concede(a); err != nil {
 		t.Fatalf("Concede: %v", err)
 	}
-	if len(total) != 1 || total[0] != 2 {
-		t.Fatalf("batch total = %v, want [2]", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 2 {
+		t.Fatalf("batch total = %v, want [2]", heardAmounts())
 	}
 	if g.Seats[2].Life != StartingLife-2 {
 		t.Errorf("B life = %d, want %d", g.Seats[2].Life, StartingLife-2)
@@ -284,12 +293,12 @@ func TestConcedeDuringDamageOrderingPromptFinishesTheBatch(t *testing.T) {
 func TestDealDamageEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T) {
 	g := newActiveGameWithSeats(t, 4)
 	a, b := g.Seats[1].ID, g.Seats[2].ID
-	var total []int
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(preventOneDamageTo(a))
 		g.RegisterReplacementForTest(doubleDamageTo(a))
-		if err := g.DealDamageEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, recordTotals(&total)); err != nil {
-			t.Fatalf("DealDamageEachThenForEffect: %v", err)
+		if err := g.DealDamageEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3, probeTail()); err != nil {
+			t.Fatalf("DealDamageEachKeyedForEffect: %v", err)
 		}
 	})
 	if err := g.Concede(b); err != nil {
@@ -297,8 +306,8 @@ func TestDealDamageEachSkipsAPlayerWhoConcededDuringAnEarlierPrompt(t *testing.T
 	}
 	answerOnlyPrompt(t, g)
 	// Gather order: prevent 1 (2), then double (4).
-	if len(total) != 1 || total[0] != 4 {
-		t.Fatalf("batch total = %v, want [4] — A only", total)
+	if len(heardAmounts()) != 1 || heardAmounts()[0] != 4 {
+		t.Fatalf("batch total = %v, want [4] — A only", heardAmounts())
 	}
 	if g.Seats[2].Life != StartingLife {
 		t.Errorf("eliminated B life = %d, want %d", g.Seats[2].Life, StartingLife)
@@ -323,8 +332,8 @@ func TestUndoIntoAnOpenPromptDoesNotReapplyAnEarlierEffect(t *testing.T) {
 		// so they prompt once the first has applied.
 		g.RegisterReplacementForTest(gatedLifeReplacement(-4, "double at 4+", func(d int) int { return d * 2 }))
 		g.RegisterReplacementForTest(gatedLifeReplacement(-4, "one more at 4+", func(d int) int { return d - 1 }))
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, a, -3, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, a, -3, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 {
@@ -518,8 +527,8 @@ func TestOrderingResumeAtTheIterationCapStillLandsAndRunsTheTail(t *testing.T) {
 		g.RegisterReplacementForTest(doubleLifeReplacement(uuid.Nil))
 		// (3+1)*2 = 8 after the answer; the chain starts there.
 		lossChain(g, -8, maxReplacementIters+8)
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, me, -3, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, me, -3, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	answerOnlyPrompt(t, g)
@@ -550,8 +559,8 @@ func TestOptionalResumeAtTheIterationCapStillLandsAndRunsTheTail(t *testing.T) {
 			Label: "you may make it five more",
 		})
 		lossChain(g, -8, maxReplacementIters+8)
-		if err := g.ChangePlayerLifeThenForEffect(uuid.Nil, me, -3, recordTotals(&got)); err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+		if err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, me, -3, lifeHook(recordTotals(&got))); err != nil {
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceOptionalReplacement {

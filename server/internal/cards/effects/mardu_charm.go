@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -44,17 +42,9 @@ func init() {
 // marduCharmWarriors is the second bullet: two Warriors, then first
 // strike until end of turn for the ones that were made.
 func marduCharmWarriors(item *game.StackItem, ctx *Context, _ int) error {
-	return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+	return ctx.Game.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
 		Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 white Warrior")), Count: 2}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		next := NewContext(g, item)
-		for _, id := range created {
-			if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"first strike"}, Label: "Mardu Charm"}).Apply(next); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}, withWord(NewContext(ctx.Game, item).ItemTail(thenCreatedGainKeywordUntilEOT), "first strike"))
 }

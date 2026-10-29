@@ -66,28 +66,19 @@ type entryTail struct {
 	// built, so an undo snapshot's copy of the tail may share it.
 	craftedWith []ObjectRef
 
-	// then is the rest of whatever asked for the entry, run once the
-	// entry reaches a TERMINAL outcome — it entered, the window
-	// cancelled or redirected it, it was refused, or its prompt was
-	// taken away. A PAUSE is not terminal: the resume reaches the tail
-	// later, through executeEntryToBattlefieldLocked.
-	//
-	// `entered` is the permanent's ID on the battlefield — the NEW one
-	// when newObject minted it — and uuid.Nil when nothing entered. A
-	// caller sequencing a batch through here has to be told even when
-	// the answer is "nothing happened", or it waits forever; the same
-	// contract runRouteTailLocked, runLifeTailLocked and
-	// runDamageTailLocked hold.
-	//
-	// It takes the live *Game rather than capturing one, on the undo-
-	// safety contract every continuation in the engine follows. It runs
-	// with g.mu held, so it may start the next entry or queue the next
-	// prompt itself.
-	//
-	// Cleared THROUGH the pointer as it runs (runEntryTailLocked),
-	// which is why cloneReplacementResume gives an undo snapshot its
-	// own copy of the tail.
-	then func(g *Game, entered uuid.UUID) error
+	// Every continuation below is data, run once the entry reaches a
+	// TERMINAL outcome: it entered, the window cancelled or redirected
+	// it, it was refused, or its prompt was taken away. A PAUSE is not
+	// terminal: the resume reaches the tail later, through
+	// executeEntryToBattlefieldLocked. The permanent entered is told as
+	// the NEW ID when newObject minted it, and as nothing when nothing
+	// entered: a caller sequencing a batch through here has to be told
+	// even when the answer is "nothing happened", or it waits forever.
+	// Each is cleared THROUGH the pointer as it runs
+	// (runEntryTailLocked), which is why cloneReplacementResume gives an
+	// undo snapshot its own copy of the tail. #4361 S12 deleted the
+	// closure form, `then`, whose last writer was the one-token-at-a-time
+	// closure batch of a token creation.
 
 	// batch is the simultaneous entry this event is one card of
 	// (entry_batch.go, #1322), and batchIndex the card's place in it.
@@ -99,21 +90,55 @@ type entryTail struct {
 	// the event back; cloneReplacementResume gives an undo snapshot its
 	// own copy of the batch.
 	//
-	// Never set together with `then`: a batch's continuation is the
-	// batch's own, run once for the whole entry.
+	// Never set together with another continuation: a batch's
+	// continuation is the batch's own, run once for the whole entry.
 	batch      *entryBatch
 	batchIndex int
 
 	// search is a library search's remaining work as data (#4253 slice
-	// 3): `then`'s closure-free twin for a battlefield search, run by
-	// runSearchEntryStepLocked. Cleared through the pointer as it runs,
-	// as `then` is. Never set together with `then` or `batch`.
+	// 3) for a battlefield search, run by runSearchEntryStepLocked.
+	// Cleared through the pointer as it runs. Never set together with
+	// `batch`.
 	search *searchEntryRun
 
 	// tokens is a token batch's remaining entries as data (#4253 slice
 	// 3), run by runTokenEntryStepLocked. Cleared through the pointer
-	// as it runs, as `then` is.
+	// as it runs.
 	tokens *tokenEntryRun
+
+	// keyed is the caller's "then" as data (#4253 slice 6): a registered
+	// tail (RegisterTail) told the entering permanent as TailOutcome.IDs
+	// (empty when nothing entered), for the graveyard, exile and hand
+	// returns of a single permanent. Cleared through the pointer as it
+	// runs.
+	keyed KeyedTail
+}
+
+// entryThen is the continuation a single-permanent entry door takes: a
+// registered tail (#4253 slice 6). Its closure form, which no door set,
+// was deleted in #4361 S10.
+type entryThen struct {
+	keyed KeyedTail
+}
+
+// isZero reports whether no continuation is recorded.
+func (t entryThen) isZero() bool { return t.keyed.IsZero() }
+
+// run runs the continuation at once, told the permanent that entered
+// (uuid.Nil for none): for a door whose entry never began.
+//
+// Caller must hold g.mu.
+func (t entryThen) run(g *Game, entered uuid.UUID) error {
+	return g.runKeyedTailLocked(t.keyed, entryTailIDs(entered), 0)
+}
+
+// entryTailIDs is the outcome a single-permanent entry tells a keyed
+// tail: the permanent that entered, or nothing.
+func entryTailIDs(entered uuid.UUID) []uuid.UUID {
+	if entered == uuid.Nil {
+		return nil
+	}
+	return []uuid.UUID{entered}
 }
 
 // runEntryTailLocked runs a settled entry's continuation exactly once.
@@ -143,12 +168,11 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 		ev.entryTail.tokens = nil
 		return g.runTokenEntryStepLocked(r, entered)
 	}
-	if ev.entryTail.then == nil {
-		return nil
+	if k := ev.entryTail.keyed; !k.IsZero() {
+		ev.entryTail.keyed = KeyedTail{}
+		return g.runKeyedTailLocked(k, entryTailIDs(entered), 0)
 	}
-	then := ev.entryTail.then
-	ev.entryTail.then = nil
-	return then(g, entered)
+	return nil
 }
 
 // enterBattlefieldThroughPipelineLocked is the ONE effect-side entry
@@ -163,8 +187,8 @@ func (g *Game) runEntryTailLocked(ev *ReplacementEvent, entered uuid.UUID) error
 //     card is still in its old zone, no event has been emitted, and the
 //     entry completes from applyResolvedReplacementEventLocked when the
 //     player answers. `entered` is uuid.Nil until then.
-//   - A caller with something to do AFTER the entry hands it over as
-//     ev.entryTail.then rather than writing it on the next line: the
+//   - A caller with something to do AFTER the entry hands it over on
+//     ev.entryTail (a keyed tail) rather than writing it on the next line: the
 //     continuation runs from the landing either way, inline when
 //     nothing paused and from the resume when something did.
 //   - Every exit of this function but the PAUSE is terminal for the

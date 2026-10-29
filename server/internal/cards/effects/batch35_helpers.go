@@ -280,14 +280,9 @@ func b35TutelageMillPass(ctx *Context, victim uuid.UUID, guard int) error {
 		return nil
 	}
 	return MillToZone{
-		Player: victim,
-		N:      2,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
-				return nil
-			}
-			return b35TutelageMillPass(ctx, victim, guard+1)
-		},
+		Player:   victim,
+		N:        2,
+		ThenTail: withN(withCarry(ctx.ItemTail(batch35HelpersMilled), victim), guard),
 	}.Apply(ctx)
 }
 
@@ -307,20 +302,25 @@ func b35LootOne(g *game.Game, item *game.StackItem) error {
 // the counters go on once the entry has finished.
 func b35ReturnChosenToBattlefieldWithCounter(g *game.Game, item *game.StackItem) error {
 	return ReturnFromGraveyardTogether{
-		Targets: legalTargetCardIDs(NewContext(g, item)),
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			for _, id := range entered {
-				if !onBattlefield(ctx.Game, id) {
-					continue
-				}
-				if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Targets:  legalTargetCardIDs(NewContext(g, item)),
+		ThenTail: smileAtDeathCounters,
 	}.Apply(NewContext(g, item))
 }
+
+// smileAtDeathCounters is "put a +1/+1 counter on each of them" as a keyed
+// tail (#4253 slice 6). An on-disk key.
+var smileAtDeathCounters = TogetherTail("smile-at-death/plus-one-counters",
+	func(ctx *Context, entered []uuid.UUID, _ int) error {
+		for _, id := range entered {
+			if !onBattlefield(ctx.Game, id) {
+				continue
+			}
+			if err := (AddCounter{Target: id, Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 // b35NecrobloomLandfall is The Necrobloom's landfall body: a 0/1
 // green Plant, or a 2/2 black Zombie instead when the controller
@@ -358,34 +358,38 @@ func b35DrawIfAttackingElsePingOpponents(attacking bool) func(g *game.Game, item
 // #893: "each creature card put into a graveyard this way" is what LANDED in
 // a graveyard (CR 400.7), so the tally is read from each mill's results, not
 // from the line after the mill. millEachPlayerInTurn carries them forward by
-// value, which is what makes an undo across a CR 616.1 prompt replay
-// identically rather than counting the first run's creatures twice.
-func b35EachPlayerMillsXThenZombiesPerCreature(item *game.StackItem, ctx *Context) error {
+// value on its keyed chain (#4253), which is what makes an undo across a CR
+// 616.1 prompt replay identically rather than counting the first run's
+// creatures twice, and a restore at that prompt finish with the same count.
+func b35EachPlayerMillsXThenZombiesPerCreature(_ *game.StackItem, ctx *Context) error {
 	var seats []uuid.UUID
 	for _, p := range ctx.Game.Seats {
 		if p != nil {
 			seats = append(seats, p.ID)
 		}
 	}
-	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), func(ctx *Context, results []PlayerCards) error {
-		creatures := 0
-		for _, r := range results {
-			for _, cardID := range r.Cards {
-				if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
-					creatures++
-				}
-			}
-		}
-		if creatures == 0 {
-			return nil
-		}
-		return CreateTokenAdvanced{
-			Controller: item.Controller,
-			Spec:       Token(BlackZombieToken()).EntersTapped(),
-			N:          creatures,
-		}.Apply(ctx)
-	})
+	return millEachPlayerInTurn(ctx, seats, constantMill(ctx.X()), ctx.ItemTail(dreadSummonsZombies))
 }
+
+// dreadSummonsZombies is Dread Summons's tail, told every card the mills
+// put into a graveyard: one tapped 2/2 black Zombie for each creature card
+// among them, for the spell's controller. An on-disk key.
+var dreadSummonsZombies = CardTail("dread-summons/zombie-per-creature-milled", func(ctx *Context, o game.TailOutcome) error {
+	creatures := 0
+	for _, cardID := range o.IDs {
+		if c, ok := ctx.Game.LookupCardForEffect(cardID); ok && c.IsCreature() {
+			creatures++
+		}
+	}
+	if creatures == 0 {
+		return nil
+	}
+	return CreateTokenAdvanced{
+		Controller: ctx.Controller(),
+		Spec:       Token(BlackZombieToken()).EntersTapped(),
+		N:          creatures,
+	}.Apply(ctx)
+})
 
 // b35RedirectDamageToChosen is Screaming Nemesis's body: the Nemesis
 // deals the event's amount, stamped onto item.Params.Amount by a
@@ -408,18 +412,27 @@ func b35RedirectDamageToChosen(g *game.Game, item *game.StackItem) error {
 	// damaged through the continuation form, so the grant is written
 	// only when damage was actually dealt — none if it was prevented —
 	// and it is stored on the game, outliving the Nemesis (CR 611.2a).
+	// The continuation is a keyed tail (#4253), the player its Carry, so
+	// a prompt the damage pauses on is a restore point.
 	if ts[0].Kind == game.TargetPlayer {
-		player := ts[0].ID
-		return g.DealDamageToPlayerThenForEffect(item.SourceCardID, player, amount, func(g *game.Game, dealt int) error {
-			if dealt > 0 {
-				g.PlayerCantGainLifeForEffect(item.SourceCardID, player, game.IndefiniteDuration(),
-					"Screaming Nemesis — can't gain life for the rest of the game")
-			}
-			return nil
-		})
+		t := ctx.Tail(b35NemesisCantGainLife)
+		t.Carry = []uuid.UUID{ts[0].ID}
+		return g.DealDamageToPlayerKeyedForEffect(item.SourceCardID, ts[0].ID, amount, t)
 	}
 	return DealDamage{Source: item.SourceCardID, Target: ts[0].ID, Amount: amount}.Apply(ctx)
 }
+
+// b35NemesisCantGainLife is "if a player is dealt damage this way, they
+// can't gain life for the rest of the game", told the damage dealt; the
+// player is the tail's Carry. An on-disk key.
+var b35NemesisCantGainLife = game.RegisterTail("then/screaming-nemesis-cant-gain-life", func(g *game.Game, o game.TailOutcome) error {
+	if o.Amount <= 0 || len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	g.PlayerCantGainLifeForEffect(o.Tail.Source, o.Tail.Carry[0], game.IndefiniteDuration(),
+		"Screaming Nemesis — can't gain life for the rest of the game")
+	return nil
+})
 
 // b35PutCounterOnSelf is Wildwood Scourge's body: one +1/+1 counter
 // on the Scourge, if it is still on the battlefield.
@@ -521,13 +534,8 @@ func b35ExileSelfFromGraveyardThenReturnChosen(g *game.Game, item *game.StackIte
 		return nil
 	}
 	return ExileTarget{
-		Target: item.SourceCardID,
-		Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return b34ReturnChosenGraveyardCardToHand(ctx)
-		},
+		Target:   item.SourceCardID,
+		ThenTail: ctx.ItemTail(batch35HelpersExiled),
 	}.Apply(ctx)
 }
 
@@ -539,4 +547,29 @@ var b35TenDamageToEachOpponentIfThirtyCounters = Do(If{
 		return b35CountersOnArtifactsAndCreaturesYouControl(ctx.Game, ctx.Controller()) >= 30
 	}},
 	Then: []Applier{DamageEachOpponent{N: 10}},
+})
+
+// batch35HelpersMilled is the clause after the mill (#4253 slice 9).
+var batch35HelpersMilled game.TailRef
+
+func init() {
+	batch35HelpersMilled = CardTail("batch35-helpers/after-mill", func(ctx *Context, o game.TailOutcome) error {
+		victim, guard := tailCarry0(o), o.Tail.N
+		milled := o.IDs
+
+		if !b35TwoNonlandCardsShareAColor(ctx.Game, milled) {
+			return nil
+		}
+		return b35TutelageMillPass(ctx, victim, guard+1)
+	})
+}
+
+// batch35HelpersExiled is the clause after the exile (#4253 slice 9).
+var batch35HelpersExiled = CardTail("batch35-helpers/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	exiled := len(o.IDs) == 1
+
+	if !exiled {
+		return nil
+	}
+	return b34ReturnChosenGraveyardCardToHand(ctx)
 })

@@ -52,6 +52,6 @@ func shigekiDig(g *game.Game, item *game.StackItem) error {
 		Optional: true,
 		Tapped:   true,
 		Label:    "Shigeki, Jukai Visionary — put a land card onto the battlefield tapped",
-		Then:     PutRestIntoGraveyard,
+		ThenTail: PutRestIntoGraveyardTail,
 	}.Apply(ctx)
 }

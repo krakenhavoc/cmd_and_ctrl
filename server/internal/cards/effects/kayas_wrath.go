@@ -32,16 +32,14 @@ func init() {
 		Name:         "Kaya's Wrath",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{
-				Match: Creature(),
-				Then: func(ctx *Context, swept []game.Card, _ int) error {
-					return GainLife{
-						Player: item.Controller,
-						Amount: controllersOf(swept)[item.Controller],
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			return DestroyAllMatching{Match: Creature(), ThenTail: ctx.Tail(kayasWrathLife)}.Apply(ctx)
 		},
 	})
 }
+
+// kayasWrathLife is "you gain life equal to the number of creatures you
+// controlled that were destroyed this way", keyed (#4253 slice 10a).
+var kayasWrathLife = MassTail("mass/kayas-wrath-life", func(ctx *Context, swept []game.Card, _ int) error {
+	return GainLife{Player: ctx.Controller(), Amount: controllersOf(swept)[ctx.Controller()]}.Apply(ctx)
+})

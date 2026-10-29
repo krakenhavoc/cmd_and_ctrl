@@ -40,12 +40,13 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{
-				Match: And(Creature(), PowerGE(3)),
-				Then: func(ctx *Context, swept []game.Card, _ int) error {
-					return b17FoodPerCreatureYouControl(ctx, swept)
-				},
-			}.Apply(ctx)
+			return DestroyAllMatching{Match: And(Creature(), PowerGE(3)), ThenTail: ctx.ItemTail(battleOfBywaterFood)}.Apply(ctx)
 		},
 	})
 }
+
+// battleOfBywaterFood is "then create a Food token for each creature you
+// control", read after the sweep, keyed (#4253 slice 10a).
+var battleOfBywaterFood = MassTail("mass/the-battle-of-bywater-food", func(ctx *Context, swept []game.Card, _ int) error {
+	return b17FoodPerCreatureYouControl(ctx, swept)
+})

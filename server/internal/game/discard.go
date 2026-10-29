@@ -84,25 +84,26 @@ type discardOptions struct {
 	// source card (the cleanup step's hand-size discard).
 	source uuid.UUID
 
-	// then is the rest of whatever asked for the discard, run once the
-	// WHOLE batch has landed: the prompt's own "then draw two"
-	// (#797), the cleanup step's hand-size bookkeeping, a prompted
-	// discard run's leg settle (#1027). Optional.
-	//
-	// `landed` is the cards of this batch that were really discarded
-	// — discardedThisWayLocked's answer, in batch order. #1027 gave it
-	// the argument, because "you draw a card for each card discarded
-	// this way" (Syphon Mind) cannot be read back off the hand on the
-	// next line: the batch may have paused on a CR 903.9 prompt, a
-	// madness card went to exile rather than to a graveyard, and the
-	// CR 614 window may have cancelled a leg outright.
-	then func(g *Game, landed []uuid.UUID) error
-
 	// commanderAnswers are the CR 903.9 answers a COST discard's
 	// commanders' owners gave before the payment (#1397,
 	// cost_commander_choice.go), keyed by card. Only a cost discard
 	// sets it: every other discard can pause, and asks at the move.
 	commanderAnswers map[uuid.UUID]bool
+
+	// keyed is the rest of whatever asked for the discard (#4253 slice 9,
+	// discard_keyed.go), run once the WHOLE batch has landed: the
+	// prompt's own "then draw two" (#797), the cleanup step's hand-size
+	// bookkeeping, a prompted discard run's leg settle (#1027). A
+	// registered tail, told the cards of this batch that were really
+	// discarded — discardedThisWayLocked's answer, in batch order —
+	// because "you draw a card for each card discarded this way" (Syphon
+	// Mind) cannot be read back off the hand on the next line: the batch
+	// may have paused on a CR 903.9 prompt, a madness card went to exile
+	// rather than to a graveyard, and the CR 614 window may have
+	// cancelled a leg outright. The zero tail is "nothing follows". Every
+	// batch is the keyed batch (#4361 S17 deleted the closure `then`), so
+	// a leg's prompt is a restore point.
+	keyed KeyedTail
 }
 
 // discardedThisWayLocked reports whether a settled discard of cardID
@@ -170,15 +171,16 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 // later. The cards after it in the batch therefore cannot be discarded
 // on the next line: they are the route's continuation, and each one
 // starts the next from the point the previous one lands. The batch is
-// a value carried forward — the `cards` slice, one card shorter each
-// time — rather than a shared accumulator, which is what makes an undo
+// data carried forward on the leg's route (discardBatchRun,
+// discard_keyed.go), one card shorter each time, rather than a shared
+// accumulator, which is what makes an undo
 // across the prompt land where a clean run would. Same idiom as
-// LoseLifeEachThenForEffect.
+// LoseLifeEachKeyedForEffect.
 //
 // Two consequences worth stating, because they are what a caller sees:
 //
-//   - opts.then runs when the WHOLE batch has landed, not when this
-//     function returns, and is handed the cards that were really
+//   - opts.keyed runs when the WHOLE batch has landed, not when this
+//     function returns, and is told the cards that were really
 //     discarded (discardedThisWayLocked). A Mind Rot on a commander
 //     returns nil with one card discarded, one prompt open and "then
 //     draw a card" still owed.
@@ -208,118 +210,7 @@ func (g *Game) discardedThisWayLocked(playerID, cardID uuid.UUID) bool {
 //
 // Caller must hold g.mu.
 func (g *Game) discardCardsLocked(playerID uuid.UUID, cards []uuid.UUID, opts discardOptions) error {
-	return g.discardBatchLocked(playerID, cards, nil, nil, opts)
-}
-
-// discardBatchLocked is discardCardsLocked with the LANDED list it has
-// accumulated so far — the value the batch carries forward alongside
-// the shrinking `cards` slice, and for the same reason: a fresh slice
-// per leg rather than a shared accumulator, so an undo across the
-// CR 903.9 prompt has nothing half-written to put back and a replayed
-// answer builds the same list a clean run would. #1027.
-//
-// `tops` is carried the same way (#3541): the legs a replacement put
-// on TOP of the discarding player's library (Library of Leng), each
-// with the object epoch it landed with, in landing order. It records
-// the placement as it settled, not where the card is by the end of the
-// batch, because a later leg can shuffle the library under it.
-//
-// Caller must hold g.mu.
-func (g *Game) discardBatchLocked(playerID uuid.UUID, cards, landed []uuid.UUID, tops []discardTopPlacement, opts discardOptions) error {
-	p := g.playerByIDLocked(playerID)
-	for len(cards) > 0 {
-		next, rest := cards[0], cards[1:]
-		// #2178: an opponent's spell or ability can't make this
-		// player discard. Never a cost (DiscardCauseCost) or the
-		// cleanup step (DiscardCauseCleanup).
-		if (opts.cause == DiscardCauseEffect || opts.cause == "") && g.effectDiscardBlockedLocked(playerID) {
-			cards = nil
-			break
-		}
-		if p == nil || !p.Hand.Contains(next) {
-			cards = rest
-			continue
-		}
-		// #3541: the event log's position before this leg, so its
-		// continuation can read how the leg settled (a top placement or
-		// a shuffle-in) off the events it emitted. A scalar, so an undo
-		// that rewinds the log rewinds the mark with it.
-		mark := g.eventSeq
-		// Paused or not, the rest of the batch belongs to the route's
-		// continuation from here: it runs inline the moment this card
-		// lands, or from the CR 903.9 resume when its owner answers.
-		_, err := g.routeCardToZoneLocked(zoneRoute{
-			CardID: next,
-			Dst:    ZoneGraveyard,
-			// The discarding player's graveyard, named rather than
-			// inferred: CR 701.9a moves the card to the hand owner's
-			// graveyard, and every hand in this engine holds only its
-			// owner's cards.
-			DstOwner:      playerID,
-			Actor:         playerID,
-			Discard:       true,
-			DiscardCause:  opts.cause,
-			Source:        opts.source,
-			Cause:         discardMoveCause(opts.cause, playerID),
-			MustSettleNow: opts.cause == DiscardCauseCost,
-			// #1397: a cost discard's CR 903.9 answer, asked before
-			// the payment (cost_commander_choice.go). Nil everywhere
-			// else, which is "unasked".
-			commanderAnswer: commanderAnswerFor(opts.commanderAnswers, next),
-			then: func(g *Game) error {
-				// Asked once this leg has reached a TERMINAL outcome,
-				// which is the only moment the answer is stable: the
-				// card has landed wherever the window sent it, or the
-				// window cancelled the move and it is still in hand.
-				grown := landed
-				if g.discardedThisWayLocked(playerID, next) {
-					grown = make([]uuid.UUID, 0, len(landed)+1)
-					grown = append(append(grown, landed...), next)
-				}
-				placed := tops
-				if g.discardLegPutOnTopLocked(playerID, next, mark) {
-					placed = make([]discardTopPlacement, 0, len(tops)+1)
-					placed = append(append(placed, tops...), discardTopPlacement{
-						id: next, epoch: g.cardObjectEpochLocked(next),
-					})
-				}
-				return g.discardBatchLocked(playerID, rest, grown, placed, opts)
-			},
-		})
-		return err
-	}
-	// ADR 0088 amendment 2026-10-14 (#2949): CR 401.4 — the cards of
-	// one discard that a replacement put on top of the library (Library
-	// of Leng) were put there at the same time, so their owner arranges
-	// them. The rest of the effect waits for that order.
-	//
-	// #3541: CR 701.24g — when the same discard also shuffled a card
-	// into that library (Blightsteel Colossus), the library is shuffled
-	// and THEN the top cards are put on top. The legs run one after
-	// another, so a later leg's shuffle may already have scattered the
-	// earlier top placements; they are put back on top here, through
-	// the same prompt (or at once, when there is one card).
-	if top, displaced := g.discardBatchTopPlacementsLocked(playerID, tops); len(top) >= 2 || (len(top) == 1 && displaced) {
-		then := opts.then
-		return g.PutInLibraryInChosenOrderThenForEffect(PutInLibrarySpec{
-			Chooser:   playerID,
-			Source:    opts.source,
-			Cards:     top,
-			From:      ZoneLibrary,
-			Placement: LibraryPlaceTop,
-			Reason:    "Put the discarded cards on top of your library in any order",
-			Then: func(g *Game) error {
-				if then == nil {
-					return nil
-				}
-				return then(g, landed)
-			},
-		})
-	}
-	if opts.then == nil {
-		return nil
-	}
-	return opts.then(g, landed)
+	return g.discardCardsAnsweredKeyedLocked(playerID, cards, opts.cause, opts.source, opts.commanderAnswers, opts.keyed)
 }
 
 // discardTopPlacement is one leg of a discard batch that a replacement

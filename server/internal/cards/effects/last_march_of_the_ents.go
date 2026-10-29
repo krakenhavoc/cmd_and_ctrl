@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Last March of the Ents — Sorcery {6}{G}{G}:
 //
@@ -59,20 +55,26 @@ func lastMarchPutCreatures(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      len(candidates),
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			entries := make([]game.BatchEntry, 0, len(picked))
-			for _, id := range picked {
-				if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneHand {
-					continue
-				}
-				entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneHand})
-			}
-			if len(entries) == 0 {
-				return nil
-			}
-			return g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{Controller: player}, nil)
-		},
+		ThenKey:  lastMarchPutPick,
+		LiveZone: game.ZoneHand,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// lastMarchPutPick is the picked creature cards put onto the battlefield
+// together, keyed (#4253): the asking item rides the prompt as data.
+var lastMarchPutPick = askedPick("choose-cards/last-march-of-the-ents-put", func(ctx *Context, r game.CardsChosen) error {
+	g, player := ctx.Game, ctx.Controller()
+	entries := make([]game.BatchEntry, 0, len(r.Picked))
+	for _, id := range r.Picked {
+		if z := g.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneHand {
+			continue
+		}
+		entries = append(entries, game.BatchEntry{CardID: id, From: game.ZoneHand})
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(entries, game.ZoneEntryOptions{Controller: player}, game.KeyedTail{})
+})

@@ -5042,6 +5042,9 @@ type ActivatedAbilityView struct {
 	// other "target creature you control" row without it. Public with
 	// the row; the client does not read it.
 	Equip bool `json:"equip,omitempty"`
+	// Reconfigure marks either half of a reconfigure ability (#4321).
+	// The attach half names a target; the unattach half names none.
+	Reconfigure bool `json:"reconfigure,omitempty"`
 	// UntapSelf marks a row whose whole effect is untapping its own
 	// source (game.ActivatedAbility.UntapSelf, #2500): Basalt and Grim
 	// Monolith. Absent on every other row. Bot data: with the source's
@@ -7495,7 +7498,9 @@ type ProtectionView struct {
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
 	// "everything", "player", "mana_value_at_most" (Value is the
-	// bound N, #2181), "ring_bearer" (#2145) or "opponents" (#2745).
+	// bound N, #2181), "ring_bearer" (#2145), "opponents" (#2745),
+	// "mana_value_odd", "mana_value_even", "multityped_creatures" or
+	// "noncreature_permanents" (#4307).
 	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
@@ -12735,6 +12740,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			OwnerOnly:     a.OwnerOnly,
 			GrantorOnly:   a.GrantorOnly,
 			Equip:         a.Equip,
+			Reconfigure:   a.Reconfigure,
 			UntapSelf:     a.UntapSelf,
 		}
 		// ADR 0106 §1 amendment 2026-10-09: the one player a granted

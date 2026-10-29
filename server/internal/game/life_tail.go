@@ -202,30 +202,24 @@ func (g *Game) applyResolvedLifeChangeLocked(ev *ReplacementEvent) error {
 // place the change lands.
 //
 // Unexported engine plumbing. The catalog never builds one; it hands a
-// `then` to ChangePlayerLifeThenForEffect or LoseLifeEachThenForEffect
+// registered tail to ChangePlayerLifeKeyedForEffect or LoseLifeEachKeyedForEffect
 // and the entry point fills this in before the pipeline runs, for the
 // same reason damageTail goes on first: a CR 616 prompt returns without
 // landing anything, and the resume has nothing else to go on.
 type lifeTail struct {
-	// then runs once the change has settled, with the amount that
-	// ACTUALLY moved: the post-replacement delta, signed the way the
-	// event is (negative for a loss), and zero for a change that was
-	// replaced away (CR 614.10) or whose player has left the game.
+	// keyed is the continuation as data (#4253 slice 3): a registered
+	// tail, told the amount that ACTUALLY moved as TailOutcome.Amount —
+	// the post-replacement delta, signed the way the event is (negative
+	// for a loss), and zero for a change that was replaced away (CR
+	// 614.10) or whose player has left the game. each is a batch's
+	// remaining life changes as data (LoseLifeEachKeyedForEffect). move
+	// is the rest of a replaced move's declared life changes (ADR 0178,
+	// move_life.go). Set at most one of the three.
 	//
-	// It takes the live *Game rather than capturing one, on the same
-	// undo-safety contract confirmFrame and StackItem.Effect follow —
-	// an undo restores this game's fields in place, so a *Game argument
-	// is always the right game and a captured *Player would not be. It
-	// runs with g.mu held, so it may start the next life change or
-	// queue the next prompt itself.
-	then func(g *Game, applied int) error
-
-	// keyed is `then` as data (#4253 slice 3): a registered tail, told
-	// the amount that moved as TailOutcome.Amount. each is a batch's
-	// remaining life changes as data (LoseLifeEachKeyedForEffect). Set
-	// at most one of the three.
+	// #4361 S9 deleted the closure form (`then`): no caller passes one.
 	keyed KeyedTail
 	each  *lifeEachRun
+	move  *moveLifeRest
 }
 
 // runLifeTailLocked runs a settled life event's continuation exactly
@@ -247,10 +241,10 @@ func (g *Game) runLifeTailLocked(ev *ReplacementEvent, applied int) error {
 	tail := ev.lifeTail
 	ev.lifeTail = nil
 	switch {
-	case tail.then != nil:
-		return tail.then(g, applied)
 	case tail.each != nil:
 		return g.runLifeEachStepLocked(tail.each, applied)
+	case tail.move != nil:
+		return g.continueMoveLifeLocked(tail.move.sequence(ev))
 	}
 	return g.runKeyedTailLocked(tail.keyed, nil, applied)
 }

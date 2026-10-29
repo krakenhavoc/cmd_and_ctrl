@@ -51,7 +51,7 @@ func brainstealerDragonExile(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	// One opponent's library at a time in APNAP order (#4266).
 	return exileTopEachPlayerInTurn(ctx, ctx.Opponents(),
-		ExileTopWithPermission{GrantTo: item.Controller, N: 1, AnyColor: true, WhileExiled: true}, nil)
+		ExileTopWithPermission{GrantTo: item.Controller, N: 1, AnyColor: true, WhileExiled: true}, game.KeyedTail{})
 }
 
 func brainstealerDragonOpponentsPermanentEnters(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

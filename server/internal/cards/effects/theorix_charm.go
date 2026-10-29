@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -29,10 +27,15 @@ func init() {
 				TargetCreature("target creature"), BoostTheModesTarget(-2, -2, "Theorix Charm — -2/-2")), ForTargets(HarmUntilEOT(0, -2, -2))),
 			ModeDoing("Mill three cards, then draw a card.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
-					return MillToZone{N: 3, Then: func(c *Context, _ []uuid.UUID) error {
-						return DrawCards{Player: c.Controller(), N: 1}.Apply(c)
-					}}.Apply(ctx)
+					return MillToZone{N: 3, ThenTail: ctx.ItemTail(theorixCharmMilled)}.Apply(ctx)
 				}),
 		),
 	})
 }
+
+// theorixCharmMilled is the clause after the mill (#4253 slice 9).
+var theorixCharmMilled = CardTail("theorix-charm/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	c := ctx
+
+	return DrawCards{Player: c.Controller(), N: 1}.Apply(c)
+})

@@ -1435,7 +1435,7 @@ func TestDispatchResolveChoiceRoutesSurveilNotScry(t *testing.T) {
 	libBefore := p.Library.Size()
 	topID := p.Library.Cards[libBefore-1].InstanceID
 	g.WithWriteLock(func() {
-		g.SurveilThenForEffect(p.ID, uuid.Nil, 1, nil)
+		g.SurveilKeyedForEffect(p.ID, uuid.Nil, 1, game.KeyedTail{})
 	})
 	choice := pendingChoiceOfKind(g, game.PendingChoiceSurveil)
 	if choice == nil {
@@ -1480,11 +1480,11 @@ func TestDispatchResolveChoiceStillRoutesScry(t *testing.T) {
 	libBefore := p.Library.Size()
 	topID := p.Library.Cards[libBefore-1].InstanceID
 	g.WithWriteLock(func() {
-		g.ScryThenForEffect(p.ID, uuid.Nil, 1, nil)
+		g.ScryForEffect(p.ID, uuid.Nil, 1)
 	})
 	choice := pendingChoiceOfKind(g, game.PendingChoiceScry)
 	if choice == nil {
-		t.Fatal("ScryThenForEffect queued no prompt")
+		t.Fatal("ScryForEffect queued no prompt")
 	}
 
 	a, err := Decode(string(TypeResolveChoice), p.ID.String(), params(t, map[string]any{

@@ -53,12 +53,11 @@ func lastChoice(g *Game) *PendingChoice {
 func queueTestTax(t *testing.T, g *Game, payer, drawer uuid.UUID, drew *bool) *PendingChoice {
 	t.Helper()
 	resolvingTestRow(g, func() {
-		err := g.QueuePayUnlessForEffect(payer, uuid.Nil, "{1}", "Test Study — pay {1}?", func(g *Game) error {
-			g.QueueConfirmForEffect(ConfirmPrompt{
+		err := queuePayUnlessHooked(g, payer, uuid.Nil, "{1}", "Test Study — pay {1}?", func(g *Game) error {
+			queueConfirmHooked(g, ConfirmPrompt{
 				Chooser:  drawer,
 				Question: "Test Study — draw a card?",
-				OnAccept: func(*Game) error { *drew = true; return nil },
-			})
+			}, func(*Game) error { *drew = true; return nil }, nil)
 			return nil
 		})
 		if err != nil {
@@ -103,8 +102,8 @@ func TestAutoAnswerKeysFollowTheRowAndTheBranch(t *testing.T) {
 	// Two prompts of one kind in one resolution are #1 and #2.
 	var second *PendingChoice
 	resolvingTestRow(g, func() {
-		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{1}", "a", nil)
-		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{2}", "b", nil)
+		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{1}", "a")
+		_ = g.QueuePayUnlessForEffect(payer.ID, uuid.Nil, "{2}", "b")
 		second = lastChoice(g)
 	})
 	if !strings.HasSuffix(second.AutoAnswerKey, "|pay_unless#2") {
@@ -118,30 +117,31 @@ func TestAutoAnswerNeverCoversABoardDependentPrompt(t *testing.T) {
 	resolvingTestRow(g, func() {
 		cases := map[string]func(){
 			"guards a spell": func() {
-				_ = g.queuePayUnlessLocked(me, uuid.Nil, "{1}", "ward", nil, TurnStep{}, uuid.New(), nil)
+				_ = g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{Chooser: me, Cost: "{1}", Question: "ward",
+					Then: payUnlessNothing, Guards: uuid.New()})
 			},
 			"owed in this step": func() {
 				_ = g.QueueUpkeepPayUnlessForEffect(UpkeepPayUnlessPrompt{Chooser: me, Cost: "{1}", Question: "upkeep"})
 			},
 			"a non-mana payment": func() {
-				_ = g.queuePayUnlessLocked(me, uuid.Nil, "discard a card", "echo", nil, TurnStep{}, uuid.Nil, nil,
-					payUnlessExtras{action: &PayAction{Kind: PayActionDiscard, Count: 1}})
+				_ = g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{Chooser: me, Cost: "discard a card", Question: "echo",
+					Then: payUnlessNothing, Action: &PayAction{Kind: PayActionDiscard, Count: 1}})
 			},
 			"a waterbend payment": func() {
-				_ = g.queuePayUnlessLocked(me, uuid.Nil, "{4}", "waterbend", nil, TurnStep{}, uuid.Nil,
-					&TapPermanentsCost{Key: "waterbend", Spec: &TargetSpec{}})
+				_ = g.QueuePayUnlessPromptKeyedForEffect(PayUnlessKeyedPrompt{Chooser: me, Cost: "{4}", Question: "waterbend",
+					Then: payUnlessNothing, Tap: &PayTapSpec{Kind: WaterbendKey, Extra: "{4}"}})
 			},
 			"an X cost": func() {
-				_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{X}", "x", nil)
+				_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{X}", "x")
 			},
 			"a Phyrexian cost": func() {
-				_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{W/P}", "phyrexian", nil)
+				_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{W/P}", "phyrexian")
 			},
 			"a confirm with named branches": func() {
-				g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me, AcceptLabel: "Exile it", DeclineLabel: "Keep it"})
+				queueConfirmHooked(g, ConfirmPrompt{Chooser: me, AcceptLabel: "Exile it", DeclineLabel: "Keep it"}, nil, nil)
 			},
 			"a confirm that costs life": func() {
-				g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me, LifeCost: 4})
+				queueConfirmHooked(g, ConfirmPrompt{Chooser: me, LifeCost: 4}, nil, nil)
 			},
 		}
 		for name, queue := range cases {
@@ -158,7 +158,7 @@ func TestAutoAnswerNeverCoversABoardDependentPrompt(t *testing.T) {
 	})
 	// Outside any resolution or branch there is no row to name.
 	g.WithWriteLock(func() {
-		_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{1}", "loose", nil)
+		_ = g.QueuePayUnlessForEffect(me, uuid.Nil, "{1}", "loose")
 	})
 	if c := lastChoice(g); c.AutoAnswerKey != "" {
 		t.Errorf("a prompt outside a resolution keyed %q", c.AutoAnswerKey)
@@ -167,7 +167,7 @@ func TestAutoAnswerNeverCoversABoardDependentPrompt(t *testing.T) {
 	hidden := Card{InstanceID: uuid.New(), Name: "Secret", FaceDown: true, Owner: me, Controller: me}
 	g.Battlefield.PushTop(hidden)
 	resolvingTestRow(g, func() {
-		_ = g.QueuePayUnlessForEffect(me, hidden.InstanceID, "{1}", "hidden", nil)
+		_ = g.QueuePayUnlessForEffect(me, hidden.InstanceID, "{1}", "hidden")
 	})
 	if c := lastChoice(g); c.AutoAnswerKey != "" {
 		t.Errorf("a face-down source's prompt keyed %q", c.AutoAnswerKey)

@@ -83,13 +83,17 @@ func init() {
 						Question:   "The Eternal Wanderer — choose the creature that player keeps",
 						Of:         seatsFromActive(g),
 						Candidates: eternalWandererCandidates,
-						Then:       eternalWandererSacrificeTheRest,
+						Keyed:      eternalWandererChosen,
 					}.Apply(NewContext(g, item))
 				},
 			},
 		},
 	})
 }
+
+// eternalWandererChosen is every other creature sacrificed, keyed (#4290).
+var eternalWandererChosen = RegisterPermanentsPick("prompt-run/the-eternal-wanderer-sacrifice-the-rest",
+	PermanentsDef{Then: eternalWandererSacrificeTheRest})
 
 // eternalWandererCandidates is one player's creatures, exactly one to
 // be chosen. A player with none is skipped.
@@ -124,5 +128,5 @@ func eternalWandererSacrificeTheRest(ctx *Context, picked game.PromptedPicks) er
 	if len(doomed) == 0 {
 		return nil
 	}
-	return g.SacrificeAllThenForEffect(ctx.Source(), doomed, nil)
+	return g.SacrificeAllKeyedForEffect(ctx.Source(), doomed, game.KeyedTail{})
 }

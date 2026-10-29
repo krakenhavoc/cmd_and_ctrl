@@ -109,13 +109,18 @@ func offerAutumnTailHosts(g *game.Game, item *game.StackItem, auraID uuid.UUID) 
 		Cards:    hosts,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.AttachForEffect(auraID, game.TargetRef{Kind: game.TargetCard, ID: picked[0]})
-		},
+		ThenKey:  autumnTailAttachPick,
+		LiveZone: game.ZoneBattlefield,
+		Carry:    []uuid.UUID{auraID},
 	})
 	return nil
 }
+
+// autumnTailAttachPick is the Aura (the one carried ID) attached to the
+// creature picked, keyed (#4253).
+var autumnTailAttachPick = game.RegisterChooseCardsThen("choose-cards/autumn-tail-kitsune-sage-attach", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 {
+		return nil
+	}
+	return g.AttachForEffect(r.Carry[0], game.TargetRef{Kind: game.TargetCard, ID: r.Picked[0]})
+})

@@ -56,7 +56,7 @@ func radMill(t *testing.T, g *game.Game, p *game.Player, n int) {
 // graveyard.
 func radSurveilAll(t *testing.T, g *game.Game, p *game.Player, n int) {
 	t.Helper()
-	g.WithWriteLock(func() { g.SurveilThenForEffect(p.ID, uuid.Nil, n, nil) })
+	g.WithWriteLock(func() { g.SurveilKeyedForEffect(p.ID, uuid.Nil, n, game.KeyedTail{}) })
 	c := surveilChoiceFor(g, p.ID)
 	if c == nil {
 		t.Fatal("no surveil prompt")

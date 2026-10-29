@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return opponentSeparatesFaceDownPiles(ctx, "Fortune's Favor", 4, opponentTarget(ctx), faceDownPilesToHand)
+			return opponentSeparatesFaceDownPiles(ctx, "Fortune's Favor", 4, opponentTarget(ctx), faceDownPilesToHandTail)
 		},
 	})
 }

@@ -56,21 +56,40 @@ func TestEitherPaymentRefusesABranchItCannotHold(t *testing.T) {
 	}
 }
 
+// testAnyPlayerProbe is an any-player offer's two consequences as a
+// registered key (#4253 retired the OnPaid / OnNobody closures): it counts
+// what ran, and who paid, in the package-level probe below.
+var (
+	testAnyPlayerPaid, testAnyPlayerNobody int
+	testAnyPlayerPayer                     uuid.UUID
+	testAnyPlayerProbe                     = AnyPlayerConsequences("test/4253-any-player-probe",
+		func(_ *Context, r game.AnyPlayerAnswer) error {
+			testAnyPlayerPaid++
+			testAnyPlayerPayer = r.Payer
+			return nil
+		},
+		func(*Context, game.AnyPlayerAnswer) error { testAnyPlayerNobody++; return nil },
+		nil)
+)
+
+// resetAnyPlayerProbe zeroes testAnyPlayerProbe's counts.
+func resetAnyPlayerProbe() {
+	testAnyPlayerPaid, testAnyPlayerNobody, testAnyPlayerPayer = 0, 0, uuid.Nil
+}
+
 // Through the card's own AnyPlayerPays: the prompt carries the whole
 // offer's words, a player short of lands takes the damage branch, and the
 // first payer ends the offer.
 func TestEitherPaymentOfferAsksOnceAndTheAnswerNamesTheBranch(t *testing.T) {
 	g := newCatalogGame(t)
 	first := g.Seats[0]
-	paid, nobody := 0, 0
-	var payer uuid.UUID
+	resetAnyPlayerProbe()
 	item := &game.StackItem{Controller: g.Seats[2].ID, SourceCardID: uuid.New()}
 	g.WithWriteLock(func() {
 		err := AnyPlayerPays{
 			Pay:      wormsEither(),
 			Question: "Worms — sacrifice two lands or take 5 damage?",
-			OnPaid:   func(_ *Context, p uuid.UUID) error { paid++; payer = p; return nil },
-			OnNobody: func(*Context) error { nobody++; return nil },
+			Then:     testAnyPlayerProbe,
 		}.Apply(NewContext(g, item))
 		if err != nil {
 			t.Fatalf("Apply: %v", err)
@@ -93,6 +112,7 @@ func TestEitherPaymentOfferAsksOnceAndTheAnswerNamesTheBranch(t *testing.T) {
 	if first.Life != 35 {
 		t.Errorf("life %d, want 40 - 5", first.Life)
 	}
+	paid, nobody, payer := testAnyPlayerPaid, testAnyPlayerNobody, testAnyPlayerPayer
 	if paid != 1 || nobody != 0 || payer != first.ID || appOpenLink(g) != nil {
 		t.Errorf("paid %d by %v, nobody %d, open link %v; want one payer, the first seat, and no more questions", paid, payer, nobody, appOpenLink(g))
 	}

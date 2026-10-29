@@ -69,3 +69,41 @@ func TestSearchMissReturnsNothing(t *testing.T) {
 		t.Errorf("got %v, want none", names(got))
 	}
 }
+
+// A double-faced or split card is filed under its full name and under
+// each face's name (Put), and a query that matches several of those keys
+// used to return the SAME card once per key. The dev spawner keys its
+// result list by card id, so the repeat threw Svelte's each_key_duplicate
+// and took the table's UI down with it (#4424).
+func TestSearchReturnsEachCardOnce(t *testing.T) {
+	idx := NewIndex()
+	dfc := Card{
+		ID: uuid.New(), Name: "Aang, Swift Savior // Aang and La, Ocean's Fury", TypeLine: "Legendary Creature",
+		CardFaces: []CardFace{
+			{Name: "Aang, Swift Savior", TypeLine: "Legendary Creature"},
+			{Name: "Aang and La, Ocean's Fury", TypeLine: "Legendary Creature"},
+		},
+	}
+	other := Card{ID: uuid.New(), Name: "Aang's Journey", TypeLine: "Kindred Enchantment"}
+	idx.Put(dfc)
+	idx.Put(other)
+
+	for _, q := range []string{"aang", "swift savior", "ocean's fury", "aang and la"} {
+		seen := map[uuid.UUID]bool{}
+		for _, c := range idx.Search(q, 40) {
+			if seen[c.ID] {
+				t.Errorf("Search(%q) returned %q more than once", q, c.Name)
+			}
+			seen[c.ID] = true
+		}
+		if !seen[dfc.ID] {
+			t.Errorf("Search(%q) lost the double-faced card", q)
+		}
+	}
+
+	// The repeat must not eat the limit either: with limit 2 both cards
+	// still come back for "aang".
+	if got := idx.Search("aang", 2); len(got) != 2 {
+		t.Errorf("Search(aang, 2) = %v, want both cards", names(got))
+	}
+}

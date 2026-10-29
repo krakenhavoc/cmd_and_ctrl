@@ -33,7 +33,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorLeft, "Experimental Lab — manifest dread, then put two +1/+1 counters and a trample counter on that creature",
-				Do(ManifestDread{Then: PutCountersOnManifested(
+				Do(ManifestDread{ThenTail: PutCountersOnManifested(
 					CounterAmount{Kind: game.CounterPlusOne, N: 2},
 					CounterAmount{Kind: game.CounterTrample, N: 1},
 				)})),

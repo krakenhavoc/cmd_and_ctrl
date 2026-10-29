@@ -20,14 +20,15 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, Partial: true}},
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Raise the Palisade — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return BounceAllMatching{Match: notOfCreatureType(t)}.Apply(NewContext(g, item))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Raise the Palisade — choose a creature type",
+				ctx.ItemTail(raiseThePalisadeTypeChosen))
 			return nil
 		},
 	})
 }
+
+// raiseThePalisadeTypeChosen returns every creature not of the chosen type to
+// its owner's hand. An on-disk key.
+var raiseThePalisadeTypeChosen = creatureTypeChosen("then/raise-the-palisade-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	return BounceAllMatching{Match: notOfCreatureType(t)}.Apply(ctx)
+})

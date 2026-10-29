@@ -3,8 +3,6 @@ package effects
 import (
 	"strings"
 
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -51,24 +49,30 @@ func nexusOfBecomingBody(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			if err := g.ExileCardForEffect(picked[0]); err != nil {
-				return err
-			}
-			return CreateTokenCopy{
-				Controller: player,
-				Copy:       picked[0],
-				N:          1,
-				Except:     nexusGolemExceptionFor(g.TextReaderForEffect(item)),
-			}.Apply(NewContext(g, item))
-		},
+		LiveZone: game.ZoneHand,
+		ThenKey:  nexusOfBecomingPick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// nexusOfBecomingPick is the card chosen to exile, keyed (#4253): the trigger
+// item rides the prompt as data. The token copy is made once the card is gone.
+var nexusOfBecomingPick = askedPick("choose-cards/nexus-of-becoming-exile", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	g := ctx.Game
+	if err := g.ExileCardForEffect(r.Picked[0]); err != nil {
+		return err
+	}
+	return CreateTokenCopy{
+		Controller: r.Chooser,
+		Copy:       r.Picked[0],
+		N:          1,
+		Except:     nexusGolemExceptionFor(g.TextReaderForEffect(ctx.Item)),
+	}.Apply(ctx)
+})
 
 // nexusGolemExceptionFor is "except it's a 3/3 Golem artifact creature
 // in addition to its other types", with "Golem" read through

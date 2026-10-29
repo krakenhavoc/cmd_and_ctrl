@@ -48,9 +48,8 @@ func init() {
 					Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return b09IsHistoric(c) },
 					Max:      1,
 					Optional: true,
-					Reveal:   true,
 					Label:    "Monumental Henge — you may reveal a historic card and put it into your hand",
-					Then:     TakeRestOnBottomInRandomOrder,
+					Key:      takeRevealRestBottomRandom,
 				}.Apply(NewContext(g, item))
 			},
 		}},

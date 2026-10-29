@@ -9,6 +9,247 @@ The commands and the whole-game test gates for the bot seat. The seat itself is 
 - `boteval suite render --pos path/to/position.json [--deck ID]` — prints the exact prompt a model would see for one position and the move list with `<- accept / reject / heuristic / model@capture` markers. This is the labelling screen. See [docs/bot.md](bot.md#position-suite).
 - `boteval arena --seats a,b,c,d [--decks …] --games N --rotate --out DIR [--think] [--max-tokens N]` — headless bot-vs-bot games with the report block ADR 0052 asks every bot PR to carry: win rate with a **Wilson 95% interval** against the table's null rate (1/seats), per policy and per policy-and-deck, ADR 0126's Cards section (each card's offers and uses, the `never` list, the A2/A3 canaries), the funnel's layer/escalation/timeout counters, and decision + model-call latency tails. Rotation seats contestant `k` at position `(k+i)%n` in game `i`, so turn order cancels. `heuristic-baseline` seats the heuristic frozen before S66 (`heuristic.BaselineConfig`, an arena name only). A model tier with **no endpoint is refused, not downgraded** (an `assisted` seat with no client plays the heuristic under a model tier's name). A stall is **reported, not fatal**. Artifacts land in `<out>/<RFC3339 start>/`: `summary.md`, `summary.json`, `games.jsonl` (streamed per game), `decisions/`, `replays/`. Wall clock: ~0.2 s per two-seat heuristic game, ~3.5 s per four-seat curated-deck game, 5–15 min per game with one local-model seat. See [docs/bot.md](bot.md#arena).
 
+## Land-drop sequencing (#4317, S75)
+
+`heuristic-nolandorder` is today's heuristic with `OrderLandDrops` off.
+The fixed policy ranks a bounce land behind alternatives on an empty
+board and favours a known untapped land over a known tapped one when
+it unlocks an ordinary printed mana cost. Entry facts come from
+structured catalog metadata, not names or oracle text. Unknown entries
+and competing untapped lands alone do not justify a bonus. The real
+engine regression plays Mountain before Path of Ancestry and casts
+Firebrand Archer that turn.
+
+The 2026-10-27 UTC comparison used develop `bb785912a` plus #4317,
+the std pool (mono-red-aggro, simic-ramp, esper-control and
+mono-black-aristocrats), seeds 1000–1047, rotation and lockstep.
+All four seats used either `heuristic` or `heuristic-nolandorder`
+(48 games each). All 96 games ended with a winner without stalls or
+dropped decision records. The back-out control is reused from the
+initial comparison: its disabled policy did not change when the
+active rule was narrowed. The labelled suite remained 42/42.
+
+The local scanner checks ordinary printed mana costs with coloured
+repeatable sources. It excludes X and additional costs, and skips
+windows with filter/restricted/conditional mana it cannot model. It is a
+sequencing estimate, not proof of future legal casts under all targets,
+taxes, discounts or entry replacements. Applied land drops and the
+offered alternatives come from the seat's decision window.
+
+| Measurement | Back-out | Fixed |
+|---|---:|---:|
+| Applied land drops | 1462 | 1437 |
+| Empty-board bounce drops, all | 13 | 7 |
+| Empty-board bounce with a non-bounce alternative | 6 | 0 |
+| Tapped drops with a known untapped alternative | 87 | 68 |
+| Ordinary mana windows audited | 80 | 57 |
+| Tapped choice strands an ordinary mana cost | 30 | 2 |
+| Complex mana windows skipped | 7 | 11 |
+
+The seven remaining fixed empty-board bounces had no non-bounce land
+alternative. Ordering keeps the only land playable; one-land bounce
+hands remain a mulligan-policy issue. Mulligans were unchanged at 53.
+Opening missed drops (own turns 2–4) fell overall from **59/576 to
+58/576**, with no deck's count increasing. These changed games are not
+independent per-decision trials.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) | Back-out missed drops | Fixed missed drops |
+|---|---|---|---:|---:|
+| esper-control | 8/48, 16.7% (8.7–29.6%) | 10/48, 20.8% (11.7–34.3%) | 11/144 | 11/144 |
+| mono-black-aristocrats | 8/48, 16.7% (8.7–29.6%) | 11/48, 22.9% (13.3–36.5%) | 23/144 | 22/144 |
+| mono-red-aggro | 24/48, 50.0% (36.4–63.6%) | 17/48, 35.4% (23.4–49.6%) | 14/144 | 14/144 |
+| simic-ramp | 8/48, 16.7% (8.7–29.6%) | 10/48, 20.8% (11.7–34.3%) | 11/144 | 11/144 |
+
+The four-seat null is 25%. Aggro's point estimate fell when all seats
+used the fix, prompting the mixed-policy comparison below. The wide
+intervals do not establish a strength gain or rule out a deck-specific
+regression.
+
+### Mixed-table strength check
+
+An additional 96 games used the same decks and seeds with two fixed
+seats and two back-out seats. The first 48 used
+`heuristic,heuristic-nolandorder,heuristic,heuristic-nolandorder`;
+the second 48 swapped both policies across every deck. Rotation and
+lockstep remained on, giving each policy 48 games on each deck.
+All 96 ended with a winner without stalls.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) |
+|---|---|---|
+| esper-control | 11/48, 22.9% (13.3–36.5%) | 9/48, 18.8% (10.2–31.9%) |
+| mono-black-aristocrats | 9/48, 18.8% (10.2–31.9%) | 12/48, 25.0% (14.9–38.8%) |
+| mono-red-aggro | 17/48, 35.4% (23.4–49.6%) | 19/48, 39.6% (27.0–53.7%) |
+| simic-ramp | 11/48, 22.9% (13.3–36.5%) | 8/48, 16.7% (8.7–29.6%) |
+
+Both policies won 48 tables, or 25.0% of seat-games (Wilson 95%
+19.4–31.6%), against the 25% four-seat null. Aggro's mixed-table count
+rose 17 → 19, while simic-ramp and esper-control fell. This supports
+the targeted behavior fix without establishing a strength gain or
+proving noninferiority for every deck.
+
+The narrower scope is deliberate: a preliminary rule also reordered
+unknown entries and competing untapped lands and lost 42–54 in mixed
+tables. It is not shipped. Its reports remain under `data/arena-4317/`;
+the final reports, scanner and compressed decision logs are under
+`data/arena-4317/final/` (gitignored). Full decision logs remain private.
+
+## Late attackers and optional blocks (#4316, S75)
+
+`heuristic-nooutnumber` is today's heuristic with `PriceOutnumberLoss`
+off. It restores the old free-damage price for a late attacker even when
+a legal single blocker kills it without dying. The fixed policy retains
+the usual best-block loss price in that case. Exact lethal pushes, race
+and attrition plans still take their existing swings.
+
+The 2026-10-26 comparison used develop `7f87ca32c` plus #4316, the
+four pool2 decks, seeds 2000–2047, rotation and lockstep. All four seats
+used either `heuristic` or `heuristic-nooutnumber` (48 games each).
+All 96 games ended with a winner and none stalled. The labelled suite
+retained 42/42 agreement without errors or timeouts.
+
+Applied declarations of named, non-token attackers were joined to the
+next matching public attack event. Deaths count battlefield-to-graveyard
+moves in either combat damage step; a combat without a kill is one in
+which no declared blocker died. Bounces, exile and removal before damage
+are not counted as combat deaths. Public log sequences were deduplicated
+across seat views. All declarations matched an attack event. Final
+combats without a subsequent step in the decision logs are censored,
+including lethal attacks: 181 back-out and 182 fixed declarations.
+The table uses only the observed, completed combats; those censored
+attacks are not silently counted as survivors.
+
+| Attack reason | Back-out observed | Died | Without a kill | Fixed observed | Died | Without a kill |
+|---|---:|---:|---:|---:|---:|---:|
+| undefended | 295 | 0 | 0 | 318 | 0 | 0 |
+| blockers can't profit | 188 | 14 | 6 | 205 | 16 | 7 |
+| attrition | 240 | 22 | 1 | 222 | 21 | 0 |
+| two-turn race | 280 | 50 | 9 | 281 | 53 | 9 |
+| all-in for the kill | 285 | 31 | 31 | 300 | 30 | 26 |
+| outnumbers their blockers | 101 | 48 | 34 | 50 | 10 | 0 |
+| blocked at a loss | 44 | 18 | 2 | 45 | 20 | 3 |
+| gang-blocked at a loss | 6 | 2 | 0 | 6 | 1 | 0 |
+| lethal, unblockable | 1 | 0 | 0 | 1 | 0 | 0 |
+
+For the targeted outnumber attacks, deaths fell from **48/101 (47.5%)
+to 10/50 (20.0%)**, and deaths in a combat without a kill from **34 to
+0**. Across all observed reasons, deaths without a kill fell from 83
+to 45. These counts measure the behavior fix; changed attacks produce
+different later positions, so they are not independent per-creature trials.
+
+| Deck | Back-out wins / 48 (Wilson 95%) | Fixed wins / 48 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 9, 18.8% (10.2–31.9%) | 12, 25.0% (14.9–38.8%) |
+| mono-white-weenie | 27, 56.2% (42.3–69.3%) | 26, 54.2% (40.3–67.4%) |
+| mono-green-stompy | 6, 12.5% (5.9–24.7%) | 6, 12.5% (5.9–24.7%) |
+| wubrg-dragons | 6, 12.5% (5.9–24.7%) | 4, 8.3% (3.3–19.6%) |
+
+The four-seat null is 25%. The intervals overlap broadly; this does not
+establish a strength gain or rule out a deck-specific regression. The
+lower dragons win count prompted the additional mixed-table comparison
+below. Full Cards reports, the scanner and compressed decision logs stay
+local under `data/arena-4316/` (gitignored).
+
+### Mixed-table strength check
+
+An additional 96 games used the same pool2 decks and seeds, with two
+fixed seats and two back-out seats at each table. The first 48 used
+`heuristic,heuristic-nooutnumber,heuristic,heuristic-nooutnumber`;
+the second 48 swapped both policies across the four decks. Rotation
+and lockstep remained on, giving each policy 48 games on each deck.
+All 96 games ended with a winner without stalls. No decision logs were
+needed for this strength check; the behavioral audit above is separate.
+
+| Deck | Back-out wins (Wilson 95%) | Fixed wins (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 7/48, 14.6% (7.2–27.2%) | 13/48, 27.1% (16.6–41.0%) |
+| mono-green-stompy | 7/48, 14.6% (7.2–27.2%) | 5/48, 10.4% (4.5–22.2%) |
+| mono-white-weenie | 25/48, 52.1% (38.3–65.5%) | 29/48, 60.4% (46.3–73.0%) |
+| wubrg-dragons | 5/48, 10.4% (4.5–22.2%) | 5/48, 10.4% (4.5–22.2%) |
+
+The fixed seats won 52 tables and the back-out seats 44. Per seat,
+that is 27.1% (Wilson 95% 21.3–33.8%) versus 22.9% (17.5–29.4%),
+against the 25% four-seat null. Dragons' point estimate did not fall
+in this mixed check, and voltron improved. These wide, overlapping
+intervals still do not establish a strength gain or prove noninferiority.
+The mixed results support shipping the behavior fix while retaining
+the arena back-out for broader measurements.
+
+## Defensive answers with nothing to answer (#4318, S75)
+
+`heuristic-noidleanswers` is today's heuristic with `PriceAnswerOnlyRows`
+off. It restores only the previous prices of answer-only defensive rows,
+while retaining response saves and value-activation pricing. Compare it
+with `heuristic` on the same seeds and rotated chairs; the pool2 decks
+include Selfless Spirit and Ranger-Captain of Eos. Count their activations
+with an empty stack from decision logs, and check the Cards table for
+responses still taken. The whole-engine tests keep both creatures through
+an idle postcombat main phase and sacrifice Selfless Spirit to save two
+creatures from a real Wrath of God.
+
+The 2026-10-26 comparison used develop `587c02cdf` plus #4318, the
+four pool2 decks, seeds 2000–2047, rotation and lockstep. All four seats
+used either `heuristic` or `heuristic-noidleanswers` (48 games each).
+All 96 games ended with a winner and none stalled. Empty-stack
+sacrifices fell from **14 to 0**: Selfless Spirit 8 → 0 and Ranger-Captain
+6 → 0. Thirteen old sacrifices were in postcombat main and one was in
+another empty-stack window. Activations with a nonempty stack fell from
+4 to 0; those counts alone do not say whether an answer was useful.
+The separate whole-engine Wrath regression confirms a useful response
+still works. The labelled suite retained 42/42 agreement with no errors
+or timeouts.
+
+The Cards table's activation-use games, among games where offered:
+
+| Deck / card | Back-out | Fixed |
+|---|---:|---:|
+| boros-voltron / Selfless Spirit | 6 / 7 | 0 / 7 |
+| mono-white-weenie / Selfless Spirit | 5 / 6 | 0 / 6 |
+| mono-white-weenie / Ranger-Captain of Eos | 7 / 9 | 0 / 9 |
+
+| Deck | Back-out wins / 48 (Wilson 95%) | Fixed wins / 48 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 9, 18.8% (10.2–31.9%) | 10, 20.8% (11.7–34.3%) |
+| mono-white-weenie | 27, 56.2% (42.3–69.3%) | 26, 54.2% (40.3–67.4%) |
+| mono-green-stompy | 7, 14.6% (7.2–27.2%) | 6, 12.5% (5.9–24.7%) |
+| wubrg-dragons | 5, 10.4% (4.5–22.2%) | 6, 12.5% (5.9–24.7%) |
+
+The four-seat null is 25%. These wide intervals do not establish a
+strength gain. Reports, the streaming counter and compressed decision
+logs are local under `data/arena-4318/` (gitignored).
+
+## Reconfigure comparison (#4321, S75)
+
+`heuristic-noreconfigure` is today's heuristic with `PriceReconfigure`
+turned off. Compare it with `heuristic` using the same seeds and rotated
+chairs. The curated `boros-voltron` and `mono-white-weenie` decks include
+Rabbit Battery and Lion Sash; synthetic battle decks do not exercise this
+change. Decision logs expose the row's `reconfigure` flag and the source's
+`attached_to` relation, so activations onto the current host can be counted
+without guessing from labels. The position tests cover better and worse
+hosts, first attachment and the back-out. The ungated whole-engine test
+plays Rabbit Battery's turn through the real enumerator and policy.
+
+The 2026-10-26 evaluation used base `01645dea7` plus #4321, the four
+decks listed below, seeds 2000–2047, rotation and lockstep, with all four seats
+using either `heuristic` or `heuristic-noreconfigure` (48 games each).
+All 96 games ended with a winner and none stalled. Attachments onto the
+current host fell from **27 to 0** (Rabbit Battery 21 → 0, Lion Sash
+6 → 0); first attachments remained in use (8 → 10). Neither run chose
+an unattach. The 42-position labelled suite retained 100% agreement,
+with no errors, timeouts or rejected choices.
+
+| Deck | Back-out wins / 48 (Wilson 95%) | Fixed wins / 48 (Wilson 95%) |
+|---|---|---|
+| boros-voltron | 9, 18.8% (10.2–31.9%) | 7, 14.6% (7.2–27.2%) |
+| mono-white-weenie | 27, 56.2% (42.3–69.3%) | 28, 58.3% (44.3–71.2%) |
+| mono-green-stompy | 7, 14.6% (7.2–27.2%) | 7, 14.6% (7.2–27.2%) |
+| wubrg-dragons | 5, 10.4% (4.5–22.2%) | 6, 12.5% (5.9–24.7%) |
+
+The four-seat null rate is 25%. These runs establish that the repeated
+attachment stops; their wide intervals do not establish a strength gain.
+Local reports, the streaming counter and decision logs are under
+`data/arena-4321/` (gitignored). Full decision logs stay local.
+
 ## Test knobs
 
 - **The whole-game tests are gated off by default** and the package owns the longest tests in the tree (CI runs `go test` with a 30m timeout because of them; `server-test` is sharded across five runners by `scripts/ci-test-shard.sh`, the same flags on each, and `aiseat` is in the `rest` shard, #2766):

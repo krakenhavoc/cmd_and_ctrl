@@ -412,13 +412,8 @@ func rfExileTargetThenRevealCreatureOrPlaneswalker(g *game.Game, item *game.Stac
 		return nil
 	}
 	return ExileTarget{
-		Target: id,
-		Then: func(next *Context, _ bool) error {
-			return RevealUntilThenPutOntoBattlefield{
-				Match:  func(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() },
-				Reason: "revealed until a creature or planeswalker card",
-			}.Apply(next)
-		},
+		Target:   id,
+		ThenTail: ctx.ItemTail(realityFractureHelpersExiled),
 	}.Apply(ctx)
 }
 
@@ -439,18 +434,22 @@ func rfPutCardFromHandOnBottom(ctx *Context, question string) error {
 		Cards:    hand,
 		Min:      1,
 		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				if err := g.TuckToLibraryThenForEffect(id, game.TuckOptions{ToBottom: true}, nil); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		LiveZone: game.ZoneHand,
+		ThenKey:  rfHandCardOnBottom,
 	})
 	return nil
 }
+
+// rfHandCardOnBottom is the card chosen from the hand tucked on the bottom
+// of the library, keyed (#4253).
+var rfHandCardOnBottom = game.RegisterChooseCardsThen("choose-cards/reality-fracture-hand-card-on-bottom", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		if err := g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{ToBottom: true}, game.KeyedTail{}); err != nil {
+			return err
+		}
+	}
+	return nil
+})
 
 // rfRemoveUpToCounters is "remove up to N counters from <permanent>":
 // the chooser removes them one at a time, naming the kind each time,
@@ -488,17 +487,37 @@ func rfRemoveUpToCounters(g *game.Game, chooser, source, target uuid.UUID, n int
 		Source:   source,
 		Question: question,
 		Options:  options,
-		Then: func(g *game.Game, index int) error {
-			if index <= 0 || index > len(kinds) {
-				return nil
-			}
-			if err := g.AddCounterForEffect(target, kinds[index-1], -1); err != nil {
-				return err
-			}
-			return rfRemoveUpToCounters(g, chooser, source, target, n-1, question)
-		},
+		ThenKey:  rfRemovedCounter,
+		Carry:    []uuid.UUID{target},
+		// The question, then the kinds offered after the first option, in
+		// the order they were listed; how many more may be removed.
+		Words: append([]string{question}, kinds...),
+		Nums:  []int{n},
 	})
 	return nil
+}
+
+// rfRemovedCounter is the answer to "remove a counter (up to N)", keyed
+// (#4253): the permanent is the prompt's carry, the question and the kinds
+// offered its words, and how many may still be removed its number. An
+// on-disk key: never renamed, never reused. Registered in init because the
+// walk asks again from inside it.
+var rfRemovedCounter game.OptionPickThen
+
+func init() {
+	rfRemovedCounter = game.RegisterOptionPickThen("option-pick/reality-fracture-remove-up-to-counters", func(g *game.Game, r game.OptionPicked) error {
+		if len(r.Carry) == 0 || len(r.Nums) == 0 || len(r.Words) == 0 {
+			return nil
+		}
+		target, n, question, kinds := r.Carry[0], r.Nums[0], r.Words[0], r.Words[1:]
+		if r.Index <= 0 || r.Index > len(kinds) {
+			return nil
+		}
+		if err := g.AddCounterForEffect(target, kinds[r.Index-1], -1); err != nil {
+			return err
+		}
+		return rfRemoveUpToCounters(g, r.Chooser, r.Source, target, n-1, question)
+	})
 }
 
 // rfOpponentCreatureWouldDie is the AppliesTo of "if a creature an
@@ -526,3 +545,13 @@ func rfDamageFirstLegalTarget(amount int) Effect {
 		return DealDamage{Source: item.SourceCardID, Target: legal[0].ID, Amount: amount}.Apply(ctx)
 	}
 }
+
+// realityFractureHelpersExiled is the clause after the exile (#4253 slice 9).
+var realityFractureHelpersExiled = CardTail("reality-fracture-helpers/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	next := ctx
+
+	return RevealUntilThenPutOntoBattlefield{
+		Match:  func(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() },
+		Reason: "revealed until a creature or planeswalker card",
+	}.Apply(next)
+})

@@ -36,7 +36,11 @@ func init() {
 // carnivalOfSoulsLoseLifeAddMana loses the life, then adds the mana
 // once the change has settled.
 func carnivalOfSoulsLoseLifeAddMana(g *game.Game, item *game.StackItem) error {
-	return g.ChangePlayerLifeThenForEffect(item.SourceCardID, item.Controller, -1, func(g *game.Game, _ int) error {
-		return AddMana{Player: item.Controller, Produced: "{B}"}.Apply(NewContext(g, item))
-	})
+	return g.ChangePlayerLifeKeyedForEffect(item.SourceCardID, item.Controller, -1, NewContext(g, item).ItemTail(carnivalOfSoulsAddMana))
 }
+
+// carnivalOfSoulsAddMana is "and add {B}", once the life loss has settled. An
+// on-disk key: never renamed, never reused.
+var carnivalOfSoulsAddMana = CardTail("carnival-of-souls/add-mana", func(ctx *Context, _ game.TailOutcome) error {
+	return AddMana{Player: ctx.Controller(), Produced: "{B}"}.Apply(ctx)
+})

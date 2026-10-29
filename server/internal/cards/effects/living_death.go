@@ -18,9 +18,9 @@ import (
 // order across the whole table:
 //
 //  1. every seat's graveyard creature cards → exile, as one batch
-//     (ExileCardsThenForEffect);
+//     (ExileCardsKeyedForEffect);
 //  2. every creature on the battlefield → sacrificed, as one batch
-//     (SacrificeAllThenForEffect) — a sacrifice, not a destroy, so
+//     (SacrificeAllKeyedForEffect) — a sacrifice, not a destroy, so
 //     indestructible doesn't save it and "whenever you sacrifice"
 //     payoffs fire;
 //  3. the cards exiled in step 1 → the battlefield under their
@@ -96,21 +96,31 @@ func init() {
 			// live *Game, the contract every continuation in the engine
 			// follows: an undo restores this game's fields in place, so
 			// a captured *Game would be the wrong one.
-			return ctx.Game.ExileCardsThenForEffect(dead, func(g *game.Game, exiled []uuid.UUID) error {
-				// A creature that left while the exile was paused is
-				// skipped by the batch rather than routed: the list was
-				// taken before the first move, and a leg with nothing
-				// to do must not open a window for a move that cannot
-				// happen.
-				return g.SacrificeAllThenForEffect(item.SourceCardID, doomed, func(g *game.Game, _ []uuid.UUID) error {
-					// #1997: "each player … puts all cards they exiled"
-					// — put by the player each enters under (CR
-					// 110.2a), which Arboria reads.
-					return g.PutByEnteringPlayerForEffect(func() error {
-						return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
-					})
-				})
-			})
+			// #4253 slice 9: each step's rest is a registered tail; the
+			// creatures to sacrifice ride the first one's carry.
+			t := ctx.ItemTail(livingDeathSacrifice)
+			t.Carry = doomed
+			return ctx.Game.ExileCardsKeyedForEffect(dead, t)
 		},
 	})
 }
+
+// livingDeathSacrifice and livingDeathReturn are the rest of Living Death
+// after the graveyards' exile (#4253 slice 9). A creature that left while
+// the exile was paused is skipped by the sacrifice batch rather than
+// routed: the list (Carry) was taken before the first move.
+var (
+	livingDeathSacrifice = CardTail("living-death/sacrifice-creatures", func(ctx *Context, o game.TailOutcome) error {
+		t := ctx.ItemTail(livingDeathReturn)
+		t.Carry = o.IDs
+		return ctx.Game.SacrificeAllKeyedForEffect(ctx.Source(), o.Tail.Carry, t)
+	})
+	// #1997: "each player … puts all cards they exiled" — put by the
+	// player each enters under (CR 110.2a), which Arboria reads.
+	livingDeathReturn = CardTail("living-death/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+		exiled := o.Tail.Carry
+		return ctx.Game.PutByEnteringPlayerForEffect(func() error {
+			return ReturnFromExileTogether{Targets: exiled}.Apply(ctx)
+		})
+	})
+)

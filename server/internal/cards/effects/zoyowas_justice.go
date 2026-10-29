@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Zoyowa's Justice — Instant {1}{R}:
 //
@@ -32,14 +36,23 @@ func init() {
 			if !ok {
 				return nil
 			}
-			owner := c.Owner
 			x, _ := ctx.Game.ManaValueForEffect(c)
-			return ctx.Game.TuckToLibraryThenForEffect(id, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-				if err := g.ShuffleLibraryForEffect(owner); err != nil {
-					return err
-				}
-				return Discover{Player: owner, N: x}.Apply(NewContext(g, item))
-			})
+			// Keyed (#4253 slice 10a): the owner and X ride the tail.
+			return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{id}, game.TuckOptions{},
+				withN(withCarry(ctx.ItemTail(zoyowasJusticeDiscover), c.Owner), x))
 		},
 	})
 }
+
+// zoyowasJusticeDiscover is "its owner shuffles, then discovers X", after
+// the tuck: Carry[0] is the owner, N is X.
+var zoyowasJusticeDiscover = CardTail("then/zoyowas-justice-shuffle-discover", func(ctx *Context, o game.TailOutcome) error {
+	owner := tailCarry0(o)
+	if owner == uuid.Nil {
+		return nil
+	}
+	if err := ctx.Game.ShuffleLibraryForEffect(owner); err != nil {
+		return err
+	}
+	return Discover{Player: owner, N: o.Tail.N}.Apply(ctx)
+})

@@ -52,6 +52,10 @@ import (
 // Config tunes the policy on top of the evaluation Weights. The zero
 // value is not usable; DefaultConfig is, and New uses it.
 type Config struct {
+	// OrderLandDrops prefers a land that unlocks a printed mana cost,
+	// and puts a bounce land last when no other land can return (#4317).
+	OrderLandDrops bool
+
 	Weights Weights
 
 	// PassThreshold is how much better than passing a move has to
@@ -146,6 +150,10 @@ type Config struct {
 	// A's value-only rule for the tier (rules.Options). Off (the zero
 	// value) is the heuristic before ADR 0142.
 	PriceAnswers bool
+	// PriceAnswerOnlyRows holds purely defensive rows with nothing on
+	// the stack to answer, and charges their self-sacrifice in response
+	// (#4318). Needs PriceAnswers. Off preserves the pre-fix prices.
+	PriceAnswerOnlyRows bool
 	// PriceRepeatedPumps prices a declared `pump` row that needs more
 	// than one activation to keep a creature alive (#2939 gap 2,
 	// answers.go): Evernight Shade's {B}: +1/+1 against a Bolt for 3.
@@ -278,6 +286,10 @@ type Config struct {
 	// face_up_pump.go) by the attack it enables this turn, so a flip for
 	// lethal is taken. Off (the baseline) prices the flip without it.
 	PriceFaceUpPump bool
+	// PriceReconfigure applies the equip host comparison to reconfigure
+	// attaches and holds unattach rows whose benefit is not modelled (#4321).
+	// Off preserves the flat activation price for arena comparisons.
+	PriceReconfigure bool
 	// PriceTemporaryEffects prices a pick whose declared target entry
 	// says the change ends with the turn (TargetPurpose.UntilEndOfTurn,
 	// #4302, temporary_effect.go): a benefit aimed at an opponent's
@@ -667,6 +679,11 @@ type Config struct {
 	// rather than Weights.Power per point. Off (the zero value) checks
 	// single blocks only and prices a given-up attack by power.
 	GangAwareAttacks bool
+	// PriceOutnumberLoss keeps the best single-block loss price for a
+	// late attacker that a blocker kills without dying (#4316), even
+	// when earlier declarations outnumber blockers. The exact lethal
+	// push still overrides that price. Off restores the free-damage price.
+	PriceOutnumberLoss bool
 	// RaceEndsSoonest changes which swing the two-turn race and the
 	// attrition horizon send among the ones that qualify (#2400). Off
 	// (the zero value) sends the smallest: the shortest prefix of the
@@ -797,7 +814,8 @@ type Config struct {
 // DefaultConfig is the shipped tuning.
 func DefaultConfig() Config {
 	return Config{
-		Weights: DefaultWeights(),
+		OrderLandDrops: true,
+		Weights:        DefaultWeights(),
 
 		PassThreshold:    0.25,
 		InstantThreshold: 1.50,
@@ -839,6 +857,7 @@ func DefaultConfig() Config {
 		PriceFaceUpPump:      true,
 		// #4302: a change until end of turn, priced by what it does now.
 		PriceTemporaryEffects: true,
+		PriceReconfigure:      true,
 		CombatGrant:           0.50,
 		// #4312: a grant that saves a permanent, and evasion before
 		// blockers.
@@ -913,16 +932,18 @@ func DefaultConfig() Config {
 		SacrificeDyingAnyway: true,
 		DeathPayoff:          0.60,
 
-		PriceAnswers:       true,
-		PriceRepeatedPumps: true,
-		PriceSaveOthers:    true,
+		PriceAnswers:        true,
+		PriceAnswerOnlyRows: true,
+		PriceRepeatedPumps:  true,
+		PriceSaveOthers:     true,
 
-		DamageToOpponent: 0.30,
-		DesperateDamage:  2.00,
-		FocusBonus:       1.00,
-		FocusNeedsValue:  true,
-		GangAwareAttacks: true,
-		RaceEndsSoonest:  true,
+		DamageToOpponent:   0.30,
+		DesperateDamage:    2.00,
+		FocusBonus:         1.00,
+		FocusNeedsValue:    true,
+		GangAwareAttacks:   true,
+		PriceOutnumberLoss: true,
+		RaceEndsSoonest:    true,
 		// #2400: trample overflow and the recast chump measured no
 		// better under RaceEndsSoonest, so they stay off.
 		FreeCommanderNeedsTax: true,
@@ -973,6 +994,7 @@ func DefaultConfig() Config {
 // whatever DefaultConfig becomes.
 func BaselineConfig() Config {
 	c := DefaultConfig()
+	c.OrderLandDrops = false
 	// §2, mana sources (PR 3).
 	c.Weights.ManaPerExtra = 0
 	c.RampPerMana = 0
@@ -1005,6 +1027,7 @@ func BaselineConfig() Config {
 	c.PriceFaceUpPump = false
 	// #4302: a change until end of turn priced as an ordinary target.
 	c.PriceTemporaryEffects = false
+	c.PriceReconfigure = false
 	c.CombatGrant = 0
 	c.PriceGrantSaves = false
 	c.PriceEvasionGrants = false
@@ -1034,6 +1057,7 @@ func BaselineConfig() Config {
 	c.DeathPayoff = 0
 	// ADR 0142 decision 6: declared answers.
 	c.PriceAnswers = false
+	c.PriceAnswerOnlyRows = false
 	// #2939 gap 2: a pump that takes several activations.
 	c.PriceRepeatedPumps = false
 	// #2939 gap 3: a row that saves the bot's other permanents.
@@ -1052,9 +1076,10 @@ func BaselineConfig() Config {
 	c.PriceMillCost = false
 	// #3966: a library exile cost, read as free before it.
 	c.PriceLibraryExileCost = false
-	// #2675, #2690, #2676: combat priced by what combat does.
+	// #2675, #2690, #2676, #4316: combat priced by what combat does.
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
+	c.PriceOutnumberLoss = false
 	c.Weights.BlockOnlyBody = 0
 	// #2400: the race and the attrition horizon sent the smallest swing
 	// that qualifies, and counted the free answer the #2310 way.
@@ -1178,10 +1203,13 @@ func (p *Policy) Reset() {
 // under a millisecond on a four-player board, which is what keeps
 // the policy inside MaxThink with room to spare.
 type state struct {
-	w     Weights
-	me    string
-	view  *protocol.GameView
-	evals map[string]*SeatEval
+	// landChoices are the legal drops whose sequencing can differ (#4317).
+	landChoices []legal.Move
+	landUnlocks map[string]bool
+	w           Weights
+	me          string
+	view        *protocol.GameView
+	evals       map[string]*SeatEval
 	// order is the seat-order list of player IDs: the deterministic
 	// iteration order for anything a decision depends on.
 	order []string
@@ -1242,15 +1270,16 @@ type state struct {
 func (p *Policy) newState(in aiseat.Input) *state {
 	v := &in.View
 	st := &state{
-		w:         p.cfg.Weights,
-		me:        in.Seat.String(),
-		view:      v,
-		bf:        make(map[string]*protocol.CardView, len(v.Battlefield.Cards)),
-		mine:      map[string]*protocol.CardView{},
-		stack:     make(map[string]*protocol.CardView, len(v.Stack.Cards)),
-		graveyard: map[string]*protocol.CardView{},
-		turn:      v.Turn.Seq,
-		step:      v.Turn.Step,
+		landChoices: in.Moves,
+		w:           p.cfg.Weights,
+		me:          in.Seat.String(),
+		view:        v,
+		bf:          make(map[string]*protocol.CardView, len(v.Battlefield.Cards)),
+		mine:        map[string]*protocol.CardView{},
+		stack:       make(map[string]*protocol.CardView, len(v.Stack.Cards)),
+		graveyard:   map[string]*protocol.CardView{},
+		turn:        v.Turn.Seq,
+		step:        v.Turn.Step,
 	}
 	st.evals = st.w.Evaluate(*v)
 	st.attach = newAttachIndex(v.Battlefield.Cards)

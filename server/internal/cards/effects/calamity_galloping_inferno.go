@@ -69,44 +69,77 @@ func calamityRound(g *game.Game, item *game.StackItem, left int) error {
 	if len(candidates) == 0 {
 		return nil
 	}
+	// #4294: the pick is a registered continuation handed the trigger's item
+	// and the rounds left as data, so a table waiting on it is a restore
+	// point. LiveZone keeps the closure form's battlefield re-check.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  item.Controller,
-		Source:   item.SourceCardID,
-		Question: "Calamity, Galloping Inferno — choose a nonlegendary creature that saddled it",
-		Cards:    candidates,
-		Min:      1,
-		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			next := func(g *game.Game) error { return calamityRound(g, item, left-1) }
-			tmpl, ok := TokenCopyTemplate(g, picked[0])
-			if !ok {
-				return next(g)
-			}
-			return CreateTokensAttackingYourChoice{
-				Template: tmpl,
-				Copy:     true,
-				N:        1,
-				Tapped:   true,
-				Prefer:   triggerAttackTarget(item),
-				Label:    "Calamity, Galloping Inferno",
-				Then: func(ctx *Context, created []uuid.UUID) error {
-					if len(created) > 0 {
-						if err := (ScheduleDelayedTrigger{
-							Label: "Calamity, Galloping Inferno — sacrifice the token",
-							Cards: created,
-							Body:  sacrificeListedCardsBody,
-						}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return next(ctx.Game)
-				},
-			}.Apply(NewContext(g, item))
-		},
+		Chooser:   item.Controller,
+		Source:    item.SourceCardID,
+		Question:  "Calamity, Galloping Inferno — choose a nonlegendary creature that saddled it",
+		Cards:     candidates,
+		Min:       1,
+		Max:       1,
+		ThenKey:   calamityPick,
+		LiveZone:  game.ZoneBattlefield,
+		CarryNums: []int{left},
+		Asked:     game.NewAskedItem(item),
 	})
 	return nil
+}
+
+// calamityPickBody is the continuation of the pick: a tapped and attacking
+// copy of the chosen saddler, whose controller chooses what it attacks,
+// then the rest of the round (calamityNextRound).
+func calamityPickBody(g *game.Game, r game.CardsChosen) error {
+	item := r.Asked
+	if item == nil || len(r.Nums) == 0 || len(r.Picked) == 0 {
+		return nil
+	}
+	left := r.Nums[0]
+	tmpl, ok := TokenCopyTemplate(g, r.Picked[0])
+	if !ok {
+		return calamityRound(g, item, left-1)
+	}
+	ctx := NewContext(g, item)
+	return CreateTokensAttackingYourChoice{
+		Template: tmpl,
+		Copy:     true,
+		N:        1,
+		Tapped:   true,
+		Prefer:   triggerAttackTarget(item),
+		Label:    "Calamity, Galloping Inferno",
+		Tail:     withN(ctx.ItemTail(calamityNextRound), left-1),
+	}.Apply(ctx)
+}
+
+// calamityNextRound is "sacrifice the token at the next end step", then the
+// next copy, as a registered tail (#4253 slice 6): the rounds left are the
+// tail's N and the asking item rides it as data. An on-disk key.
+var (
+	calamityNextRound game.TailRef
+	// calamityPick is the pick before the split (#4294). An on-disk key.
+	calamityPick game.ChooseCardsThen
+)
+
+func init() {
+	calamityPick = game.RegisterChooseCardsThen("choose-cards/calamity-galloping-inferno-copy", calamityPickBody)
+	// Registered here, not in the var, because the body starts the next
+	// round, which names this tail.
+	calamityNextRound = AttackingTokensThen("attacking-tokens/calamity-sacrifice-then-next-round",
+		func(ctx *Context, created []uuid.UUID, tail game.KeyedTail) error {
+			item := tail.Asked.StackItem()
+			if item == nil {
+				return nil
+			}
+			if len(created) > 0 {
+				if err := (ScheduleDelayedTrigger{
+					Label: "Calamity, Galloping Inferno — sacrifice the token",
+					Cards: created,
+					Body:  sacrificeListedCardsBody,
+				}).Apply(NewContext(ctx.Game, item)); err != nil {
+					return err
+				}
+			}
+			return calamityRound(ctx.Game, item, tail.N)
+		})
 }

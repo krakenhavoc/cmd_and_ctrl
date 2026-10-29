@@ -10,8 +10,9 @@ import (
 // is a KEY rather than a closure (#4256), so a table waiting on the
 // discard is a restore point.
 //
-// PlayerDiscardsThenForEffect keeps the rest of the card in a prompted
-// run (prompt_run.go): a closure on Game.promptRuns, linked from the
+// The closure form (PlayerDiscardsThenForEffect, PlayersDiscardThenForEffect
+// and EachPlayerDiscardsThenForEffect, all deleted in #4253) kept the rest of the
+// card in a prompted run (prompt_run.go): a closure on Game.promptRuns, linked from the
 // prompt by a run id, and the prompt's own continuation is a closure
 // too. Neither is written to a restore point, so a table waiting on
 // learn's "you may discard a card" could be undone but not saved and
@@ -27,10 +28,9 @@ import (
 // the card put there (Carry). The key shares the effect-key namespace
 // and is ledgered as a choose-cards continuation ("choose <key>").
 //
-// What it gives up is the closure form's per-prompt extra, the leg's own
-// Then, a closure. The set rule (DiscardPrompt.Validate, "exactly two or
-// none") is registered with the continuation instead
-// (RegisterDiscardThenRule, #4264). A pick that has left the hand by the
+// The set rule ("exactly two or none") is registered with the
+// continuation (RegisterDiscardThenRule, #4264); the closure form's
+// per-prompt Then and Validate are gone (#4361 S7b). A pick that has left the hand by the
 // time the answer comes in is skipped by the discard itself, as every
 // discard skips a card no longer in hand.
 // A discard the CR 903.9 commander prompt pauses part-way is still a
@@ -47,6 +47,9 @@ type DiscardsDone struct {
 	Discarded PromptedDiscards
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// Item is the asking stack item, rebuilt from the data the prompt
+	// carried (DiscardPrompt.Asked), nil when the card put none.
+	Item *StackItem
 }
 
 // DiscardThenFunc is a registered discard-then continuation. It runs
@@ -80,31 +83,31 @@ func RegisterDiscardThenRule(key string, rule SetRuleFunc, fn DiscardThenFunc) D
 	if fn == nil {
 		panic(fmt.Sprintf("game: discard-then continuation %q has no function", key))
 	}
+	discardThenMu.Lock()
+	discardThenFns[key] = fn
+	discardThenMu.Unlock()
 	then := RegisterChooseCardsThenRule(key, rule, func(g *Game, r CardsChosen) error {
-		done := func(g *Game, landed []uuid.UUID) error {
-			return fn(g, DiscardsDone{
-				Player:    r.Chooser,
-				Source:    r.Source,
-				Discarded: PromptedDiscards{{Seat: r.Chooser, Cards: landed}},
-				Carry:     r.Carry,
-			})
-		}
+		// #4253 slice 9: the rest of the card after the discard is a
+		// registered tail naming this continuation, so a discard leg's
+		// prompt is a restore point.
+		done := KeyedTail{Ref: discardThenDone, Player: r.Chooser, Source: r.Source, Carry: copyUUIDs(r.Carry), Word: key, Asked: NewAskedItem(r.Asked)}
 		if !r.Answered {
 			// The chooser left with the prompt open: they discarded
 			// nothing, and the rest of the card still runs, as the run's
 			// withdrawn leg does (settleRunLegLocked).
-			return done(g, nil)
+			return done.Run(g, nil)
 		}
 		return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
 			cause:  DiscardCauseEffect,
 			source: r.Source,
-			then:   done,
+			keyed:  done,
 		})
 	})
 	return DiscardThen{then: then, fn: fn}
 }
 
-// PlayerDiscardsThenKeyedForEffect is PlayerDiscardsThenForEffect with
+// PlayerDiscardsThenKeyedForEffect is one seat's discard (the closure
+// form, PlayerDiscardsThenForEffect, deleted in #4253's last part) with
 // the rest of the card as a registered continuation and `carry` the
 // plain data it is handed: learn's "you may discard a card. If you do,
 // draw a card", Abandon Attachments' "you may discard a card. If you do,
@@ -123,15 +126,12 @@ func (g *Game) PlayerDiscardsThenKeyedForEffect(p DiscardPrompt, then DiscardThe
 	if then.then.key == "" || then.fn == nil {
 		return fmt.Errorf("%w: keyed discard-then with no continuation", ErrInvalidParam)
 	}
-	if p.Then != nil || p.Validate != nil {
-		return fmt.Errorf("%w: keyed discard-then %q also sets a closure", ErrInvalidParam, then.then.key)
-	}
 	p.keyed = then.then
 	p.carry = copyUUIDs(carry)
 	if g.queueDiscardPromptLocked(p, uuid.Nil) != uuid.Nil {
 		return nil
 	}
-	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry)})
+	return then.fn(g, DiscardsDone{Player: p.Player, Source: p.Source, Carry: copyUUIDs(carry), Item: p.Asked.StackItem()})
 }
 
 // discardLegThen is the engine's own continuation for a keyed discard
@@ -150,19 +150,21 @@ var discardLegThen = RegisterChooseCardsThen("choose-cards/discard-leg", func(g 
 	if !r.Answered {
 		return g.settleRunLegLocked(r.Run, r.Chooser, nil)
 	}
+	keyed := discardLegSettledTail(r.Run, r.Chooser, r.Source)
+	if r.Run == uuid.Nil {
+		// #4361 S7b: a leg no run waits on (the fire-and-forget prompt)
+		// has no per-seat tail to run, which N 1 says, as the closure
+		// leg it replaces wrote it (snapshot fixtures carry that form).
+		keyed = withTailN(keyed, 1)
+	}
 	return g.discardCardsLocked(r.Chooser, r.Picked, discardOptions{
 		cause:  DiscardCauseEffect,
 		source: r.Source,
-		then: func(g *Game, landed []uuid.UUID) error {
-			if run := g.promptRuns[r.Run]; run != nil {
-				g.runLegTailLocked(run.thenKey, r.Chooser, r.Source, landed, run.carry)
-			}
-			return g.settleRunLegLocked(r.Run, r.Chooser, landed)
-		},
+		keyed:  keyed,
 	})
 })
 
-// EachPlayerDiscardsThenKeyedForEffect is EachPlayerDiscardsThenForEffect
+// EachPlayerDiscardsThenKeyedForEffect is EachPlayerDiscardsForEffect
 // with the rest of the card as a registered run continuation
 // (RegisterPromptRunThen) and `carry` the plain data it is handed: "each
 // opponent discards a card. You draw a card for each card discarded this
@@ -180,7 +182,7 @@ func (g *Game) EachPlayerDiscardsThenKeyedForEffect(except uuid.UUID, p DiscardP
 	return g.discardRunKeyedLocked(g.discardFanOutSeatsLocked(except), p, then, carry)
 }
 
-// PlayersDiscardThenKeyedForEffect is PlayersDiscardThenForEffect with
+// PlayersDiscardThenKeyedForEffect is PlayersDiscardForEffect with
 // the rest of the card as a registered run continuation; the seats are
 // `players`, in the order given. See EachPlayerDiscardsThenKeyedForEffect.
 //
@@ -197,13 +199,12 @@ func (g *Game) discardRunKeyedLocked(asks []uuid.UUID, p DiscardPrompt, then Pro
 	if then.key == "" {
 		return fmt.Errorf("%w: keyed discard run with no continuation", ErrInvalidParam)
 	}
-	if p.Then != nil || p.Validate != nil || p.keyed.key != "" {
-		return fmt.Errorf("%w: keyed discard run %q also sets a closure", ErrInvalidParam, then.key)
+	if p.keyed.key != "" {
+		return fmt.Errorf("%w: keyed discard run %q also sets a discard-then", ErrInvalidParam, then.key)
 	}
-	p.keyedLeg = true
 	p.runThen = then.key
 	p.carry = copyUUIDs(carry)
-	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, carry, func(seat, run uuid.UUID) bool {
+	_, err := g.runPromptsKeyedLocked(asks, then, p.Source, RunData{Carry: carry}, func(seat, run uuid.UUID) bool {
 		leg := p
 		leg.Player = seat
 		return g.queueDiscardPromptLocked(leg, run) != uuid.Nil

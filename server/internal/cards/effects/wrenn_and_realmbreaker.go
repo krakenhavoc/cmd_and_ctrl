@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -124,10 +122,15 @@ func wrennPlusOne(g *game.Game, item *game.StackItem) error {
 // from among the milled cards into your hand."
 func wrennMinusTwo(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		N: 3,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return mayTakeOneFromAmongThem(ctx, milled, Permanent(),
-				"Wrenn and Realmbreaker — put a permanent card from among the milled cards into your hand")
-		},
+		N:        3,
+		ThenTail: NewContext(g, item).ItemTail(wrennAndRealmbreakerMilled),
 	}.Apply(NewContext(g, item))
 }
+
+// wrennAndRealmbreakerMilled is the clause after the mill (#4253 slice 9).
+var wrennAndRealmbreakerMilled = CardTail("wrenn-and-realmbreaker/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return mayTakeOneFromAmongThem(ctx, milled, Permanent(),
+		"Wrenn and Realmbreaker — put a permanent card from among the milled cards into your hand")
+})

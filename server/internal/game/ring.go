@@ -173,7 +173,7 @@ func ringEmblemOf(p *Player) *Card {
 	return nil
 }
 
-// RingTemptsForEffect is the keyword action: the Ring tempts `player`
+// RingTemptsKeyedForEffect is the keyword action: the Ring tempts `player`
 // (CR 701.54a and 701.54c, in the reminder card's order).
 //
 //  1. If the player has no Ring emblem, they get one.
@@ -196,8 +196,53 @@ func ringEmblemOf(p *Player) *Card {
 // `then` still runs, with nothing chosen, so the rest of the card is
 // never stranded (#544).
 //
-// Caller must hold g.mu in write mode (it is an effect-time helper).
-func (g *Game) RingTemptsForEffect(player, source uuid.UUID, then func(g *Game, ringBearer uuid.UUID) error) error {
+// `then` is the rest of the sentence as a registered tail (#4253 slice
+// 10b), told the Ring-bearer chosen as its one ID (none when no creature
+// could be chosen). The ring_bearer prompt is then a keyed pick
+// (ringBearerPicked) carrying the tail, so a table waiting on it is a
+// restore point. A zero tail is "nothing more". (The closure form,
+// RingTemptsForEffect, was deleted in #4253's last part once only tests
+// called it.)
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) RingTemptsKeyedForEffect(player, source uuid.UUID, then KeyedTail) error {
+	return g.ringTemptsLocked(player, source, ringTailThen(then), then)
+}
+
+// ringTailThen runs a keyed tail as a tempt's synchronous "then", told the
+// Ring-bearer. Nil for the zero tail.
+func ringTailThen(t KeyedTail) func(g *Game, ringBearer uuid.UUID) error {
+	if t.IsZero() {
+		return nil
+	}
+	t = copyKeyedTail(t)
+	return func(g *Game, ringBearer uuid.UUID) error {
+		var ids []uuid.UUID
+		if ringBearer != uuid.Nil {
+			ids = []uuid.UUID{ringBearer}
+		}
+		return t.Run(g, ids)
+	}
+}
+
+// ringBearerPicked is the keyed answer to "choose a creature you control"
+// as your Ring-bearer (#4253 slice 10b): steps 4 to 6 with the prompt's
+// tail as the rest. An empty pick is the drop path. An on-disk key: never
+// renamed, never reused.
+var ringBearerPicked = RegisterChooseCardsThen("choose-cards/ring-bearer", func(g *Game, r CardsChosen) error {
+	chosen := uuid.Nil
+	if len(r.Picked) == 1 {
+		chosen = r.Picked[0]
+	}
+	return g.finishRingTemptLocked(r.From, r.Source, chosen, false, ringTailThen(r.Tail))
+})
+
+// ringTemptsLocked is the tempt's body: `then` (the keyed tail as a
+// synchronous call, ringTailThen) runs when nothing is asked, and the
+// prompt, if one is asked, carries `tail` as data.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) ringTemptsLocked(player, source uuid.UUID, then func(g *Game, ringBearer uuid.UUID) error, tail KeyedTail) error {
 	p := g.playerByIDLocked(player)
 	if p == nil || p.Eliminated {
 		if then == nil {
@@ -242,22 +287,18 @@ func (g *Game) RingTemptsForEffect(player, source uuid.UUID, then func(g *Game, 
 		return g.finishRingTemptLocked(player, source, cands[0], true, then)
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceRingBearer,
-		Chooser:     player,
-		FromPlayer:  player,
-		Count:       1,
-		Source:      source,
-		Reason:      ringBearerQuestion,
-		ChooseCards: cands,
-		ChooseMin:   1,
-		ChooseMax:   1,
-		chooseCardsResume: &chooseCardsFrame{
-			// Re-checked against the live battlefield on submit, and
-			// pruned off the open prompt as the board moves: a
-			// creature can leave between the question and the answer.
-			zone: ZoneBattlefield,
-			then: ringBearerThen(player, source, then),
-		},
+		Kind:           PendingChoiceRingBearer,
+		Chooser:        player,
+		FromPlayer:     player,
+		Count:          1,
+		Source:         source,
+		Reason:         ringBearerQuestion,
+		ChooseCards:    cands,
+		ChooseMin:      1,
+		ChooseMax:      1,
+		PickThen:       ringBearerPicked.key,
+		ChooseLiveZone: ZoneBattlefield,
+		pickTail:       copyKeyedTail(tail),
 	})
 	return nil
 }
@@ -280,24 +321,6 @@ func (g *Game) ringBearerCandidatesLocked(player uuid.UUID) []uuid.UUID {
 		}
 	}
 	return out
-}
-
-// ringBearerThen is the prompt's continuation. A package-level
-// constructor closing over scalars and the card's own continuation,
-// the StackItem.Effect contract: it resolves against whichever *Game
-// it is handed, which after an undo is the restored one.
-//
-// An empty pick is the drop path (the chooser left, CR 800.4a, or every
-// candidate left the battlefield): the tempt still completes with
-// nothing chosen (CR 701.54d).
-func ringBearerThen(player, source uuid.UUID, then func(*Game, uuid.UUID) error) func(*Game, []uuid.UUID) error {
-	return func(g *Game, picked []uuid.UUID) error {
-		chosen := uuid.Nil
-		if len(picked) == 1 {
-			chosen = picked[0]
-		}
-		return g.finishRingTemptLocked(player, source, chosen, false, then)
-	}
 }
 
 // finishRingTemptLocked is steps 4 to 6: the designation, the event and

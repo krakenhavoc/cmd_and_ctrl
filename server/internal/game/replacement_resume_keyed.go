@@ -25,10 +25,13 @@ import (
 //     own continuation is either data already (a draw's drawTail and
 //     drawThen, a replaced draw's or learn's registered body, an expanded
 //     draw's pending siblings) or is engine code chosen by the event's
-//     kind (finishSettledReplacementLocked). A field that holds a Go
+//     kind (finishSettledReplacementLocked). A field that held a Go
 //     closure — a route's `then`, an entry batch, a token, life, counter,
-//     damage or mill tail — keeps the frame off the disk: such a frame is
-//     still counted by the census, exactly as before.
+//     damage or mill tail — kept the frame off the disk, counted by the
+//     census. #4361 deleted the last of them (S18 reclassified the
+//     frame's closure-ledger lines keyed and rebuilt): what still keeps
+//     a frame off the disk is an event kind this file does not key, a
+//     gate field, or a card or stack item the mirrors cannot write whole.
 //   - The pending replacement set: the IDs of the gathered effects, in
 //     gathered order. The effects themselves are rebuilt by the running
 //     binary, by gathering the restored event again and picking those
@@ -58,13 +61,14 @@ import (
 // ordering prompt between Hardened Scales and Doubling Season, or
 // between two life-gain replacements).
 //
-// Not keyed (the frame stays a closure, counted by the census): a
-// discard, a token creation, damage, a mill, a step transition, a
-// countered spell, and a keyword action, move, entry, counter placement
-// or life change whose tail holds a closure (a route's `then`, a
-// simultaneous exit or exchange, an entry batch or an entry tail's
-// `then`, a counter or life tail, a keyword action's `then` or amass's
-// Army), and the entry of a staged token.
+// Not keyed when this was written (the frame stayed a closure, counted
+// by the census): a discard, a token creation, damage, a mill, a step
+// transition, a countered spell, and a keyword action, move, entry,
+// counter placement or life change whose tail held a closure, and the
+// entry of a staged token. #4253 and #4361 keyed most of those, and no
+// tail holds a closure any more; replacementEventFields' gates (a step
+// transition, a countered spell, mana, an extra turn, dice, combat
+// damage) and replacementEventKeyable say what is still counted.
 //
 // # Prompt kinds
 //
@@ -74,9 +78,9 @@ import (
 // and the entry questions that pause through the same frame: copy_target,
 // entry_controller, the four entry card choices (reveal, discard,
 // sacrifice, choose permanents), aura_host, entry_read_ahead and
-// entry_pay_life (#4253 slice 2). An entry card choice also holds a
-// chooseCardsFrame, which for these kinds is the zone its prompt kind
-// names and nothing else: restore rebuilds it from the kind.
+// entry_pay_life (#4253 slice 2). An entry card choice's live zone is the
+// one its prompt kind names (liveZone), so it needs nothing more (#4361
+// S7b: the zone-only chooseCardsFrame it held is gone).
 
 // The registered tails, one per keyed event kind. On-disk identities:
 // never renamed, never reused. Ledgered as "resume <key>".
@@ -98,6 +102,32 @@ const (
 	ReplacementResumeCounterTail       = "replacement-resume/counter-tail"
 	ReplacementResumeLifeTail          = "replacement-resume/life-tail"
 	ReplacementResumeKeywordActionTail = "replacement-resume/keyword-action-tail"
+
+	// #4253 slice 6: a move whose single-permanent entry carries the
+	// caller's "then" as a registered tail (entryTail.keyed). Its own key
+	// again: a binary from before it knows the move-tail key but drops the
+	// field, and would restore the prompt without the rest of its card.
+	ReplacementResumeMoveEntryTail = "replacement-resume/move-entry-tail"
+
+	// #4253 slice 9: a move that is one leg of a keyed route batch
+	// (zoneRoute.batchLegs, with the batch's last-known copies), a
+	// discard (RepEventDiscard, which no key covered before; its legs
+	// ride zoneRoute.discardLegs), and an entry that a keyed discard leg
+	// became (Obstinate Baloth, entryBatch.discard). Keys of their own:
+	// a binary from before them knows the move-tail key and would drop
+	// the fields it does not know.
+	ReplacementResumeMoveBatch    = "replacement-resume/move-batch"
+	ReplacementResumeDiscard      = "replacement-resume/discard"
+	ReplacementResumeDiscardEntry = "replacement-resume/discard-entry"
+
+	// #4253 slice 10a: a mill instruction's amount window (RepEventMill,
+	// which no key covered before; its tail is millTail's data half), and
+	// a sacrifice that is one half of an exchange (zoneRoute's settled
+	// entry, Goblin Welder). Keys of their own: a binary from before them
+	// does not key a mill at all, and knows the move key but would drop
+	// the exchange's entry.
+	ReplacementResumeMill         = "replacement-resume/mill"
+	ReplacementResumeMoveExchange = "replacement-resume/move-exchange"
 )
 
 // replacementResumeTails maps each tail key to the event kind it
@@ -112,9 +142,32 @@ var replacementResumeTails = map[string]ReplacementEventKind{
 	ReplacementResumeCreateTokens:  RepEventCreateTokens,
 
 	ReplacementResumeMoveTail:          RepEventMove,
+	ReplacementResumeMoveEntryTail:     RepEventMove,
 	ReplacementResumeCounterTail:       RepEventCounter,
 	ReplacementResumeLifeTail:          RepEventLife,
 	ReplacementResumeKeywordActionTail: RepEventKeywordAction,
+
+	ReplacementResumeMoveBatch:    RepEventMove,
+	ReplacementResumeDiscard:      RepEventDiscard,
+	ReplacementResumeDiscardEntry: RepEventMove,
+
+	ReplacementResumeMill:         RepEventMill,
+	ReplacementResumeMoveExchange: RepEventMove,
+
+	ReplacementResumeDamage: RepEventDamage,
+
+	// #4362: combat damage (combat_damage_keyed.go).
+	ReplacementResumeCombatDamage: RepEventDamage,
+
+	// #4404: a damage event with redirected parts
+	// (damage_redirected_keyed.go).
+	ReplacementResumeDamageRedirected:       RepEventDamage,
+	ReplacementResumeCombatDamageRedirected: RepEventDamage,
+
+	// #4404: a simultaneous entry of created tokens, and an Attraction's
+	// open (entry_batch_keyed.go).
+	ReplacementResumeMoveTokenBatch:     RepEventMove,
+	ReplacementResumeMoveAttractionOpen: RepEventMove,
 }
 
 // replacementResumeBaseKeys is the key a frame of each kind is written
@@ -128,44 +181,104 @@ var (
 		RepEventCounter:       ReplacementResumeCounter,
 		RepEventLife:          ReplacementResumeLife,
 		RepEventCreateTokens:  ReplacementResumeCreateTokens,
+		RepEventDiscard:       ReplacementResumeDiscard,
+		RepEventMill:          ReplacementResumeMill,
+		RepEventDamage:        ReplacementResumeDamage,
 	}
 	replacementResumeTailedKeys = map[ReplacementEventKind]string{
 		RepEventMove:          ReplacementResumeMoveTail,
 		RepEventCounter:       ReplacementResumeCounterTail,
 		RepEventLife:          ReplacementResumeLifeTail,
 		RepEventKeywordAction: ReplacementResumeKeywordActionTail,
-		// A token creation's key is new with its tail.
+		// A token creation's key is new with its tail, and so is a
+		// discard's.
 		RepEventCreateTokens: ReplacementResumeCreateTokens,
+		RepEventDiscard:      ReplacementResumeDiscard,
+		RepEventMill:         ReplacementResumeMill,
+		// #4253: a damage event's key is new with its frame.
+		RepEventDamage: ReplacementResumeDamage,
 	}
 )
 
 // eventCarriesDataTail reports whether a keyable event carries a tail
 // written as data (#4253 slice 3), so its frame takes the tailed key.
 func eventCarriesDataTail(ev *ReplacementEvent) bool {
-	if t := ev.entryTail; t != nil && (t.search != nil || t.batch != nil || t.tokens != nil) {
+	if t := ev.entryTail; t != nil && (t.search != nil || t.batch != nil || t.tokens != nil || !t.keyed.IsZero()) {
 		return true
 	}
-	if r := ev.zoneRoute; r != nil && r.faceDownLegs != nil {
+	if r := ev.zoneRoute; r != nil && (r.faceDownLegs != nil || r.batchLegs != nil || r.discardLegs != nil || r.simultaneousEntry != nil) {
 		return true
 	}
 	if t := ev.keywordAction; t != nil && !t.keyed.IsZero() {
 		return true
 	}
-	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil
+	if t := ev.damageTail; t != nil && (!t.keyed.IsZero() || t.each != nil) {
+		return true
+	}
+	return ev.counterTail != nil || ev.lifeTail != nil || ev.tokenTail != nil || ev.mill != nil
+}
+
+// replacementResumeTailedKeyOf is the key a keyable event is written under
+// when it carries a data tail: its kind's tailed key, or the move-entry-tail
+// key when the tail is a single permanent's entry tail (#4253 slice 6).
+func replacementResumeTailedKeyOf(ev *ReplacementEvent) string {
+	if ev.Kind == RepEventMove && ev.entryTail != nil && ev.entryTail.batch != nil && ev.entryTail.batch.discard != nil {
+		return ReplacementResumeDiscardEntry
+	}
+	if ev.Kind == RepEventMove && ev.entryTail != nil {
+		if key := entryBatchOwnKey(ev.entryTail.batch); key != "" {
+			return key
+		}
+	}
+	if ev.Kind == RepEventMove && ev.zoneRoute != nil && ev.zoneRoute.batchLegs != nil {
+		return ReplacementResumeMoveBatch
+	}
+	if ev.Kind == RepEventMove && ev.zoneRoute != nil && ev.zoneRoute.simultaneousEntry != nil {
+		return ReplacementResumeMoveExchange
+	}
+	if ev.Kind == RepEventMove && ev.entryTail != nil && !ev.entryTail.keyed.IsZero() {
+		return ReplacementResumeMoveEntryTail
+	}
+	return replacementResumeTailedKeys[ev.Kind]
+}
+
+// snapshotTailedKeyOf is replacementResumeTailedKeyOf over the mirror.
+func snapshotTailedKeyOf(ev *replacementEventSnapshot, kind ReplacementEventKind) string {
+	if kind == RepEventMove && ev.EntryTail != nil && ev.EntryTail.Batch != nil && ev.EntryTail.Batch.Discard != nil {
+		return ReplacementResumeDiscardEntry
+	}
+	if kind == RepEventMove && ev.EntryTail != nil {
+		if key := snapshotEntryBatchOwnKey(ev.EntryTail.Batch); key != "" {
+			return key
+		}
+	}
+	if kind == RepEventMove && ev.ZoneRoute != nil && ev.ZoneRoute.BatchLegs != nil {
+		return ReplacementResumeMoveBatch
+	}
+	if kind == RepEventMove && ev.ZoneRoute != nil && ev.ZoneRoute.Exchange != nil {
+		return ReplacementResumeMoveExchange
+	}
+	if kind == RepEventMove && ev.EntryTail != nil && ev.EntryTail.Keyed != nil {
+		return ReplacementResumeMoveEntryTail
+	}
+	return replacementResumeTailedKeys[kind]
 }
 
 // snapshotCarriesDataTail is eventCarriesDataTail over the mirror.
 func snapshotCarriesDataTail(ev *replacementEventSnapshot) bool {
-	if t := ev.EntryTail; t != nil && (t.Search != nil || t.Batch != nil || t.Tokens != nil) {
+	if t := ev.EntryTail; t != nil && (t.Search != nil || t.Batch != nil || t.Tokens != nil || t.Keyed != nil) {
 		return true
 	}
-	if r := ev.ZoneRoute; r != nil && r.FaceDownLegs != nil {
+	if r := ev.ZoneRoute; r != nil && (r.FaceDownLegs != nil || r.BatchLegs != nil || r.DiscardLegs != nil || r.Exchange != nil) {
 		return true
 	}
 	if t := ev.KeywordActionTail; t != nil && t.Then != nil {
 		return true
 	}
-	return ev.CounterTail != nil || ev.LifeTail != nil || ev.TokenTail != nil
+	if t := ev.DamageTail; t != nil && (t.Then != nil || t.Each != nil) {
+		return true
+	}
+	return ev.CounterTail != nil || ev.LifeTail != nil || ev.TokenTail != nil || ev.MillTail != nil
 }
 
 // KnownReplacementResume reports whether key names a registered tail.
@@ -214,16 +327,6 @@ func entryCardChoiceZone(k PendingChoiceKind) ZoneKind {
 	return ZoneHand
 }
 
-// entryCardChoiceFrameIsData reports whether an entry card choice's
-// chooseCardsFrame is the one queueEntryCardChoicePromptLocked builds:
-// the zone its kind names and nothing else, so restore can rebuild it
-// from the kind. Anything more keeps the frame off the disk.
-func entryCardChoiceFrameIsData(c *PendingChoice) bool {
-	f := c.chooseCardsResume
-	return f != nil && f.then == nil && f.validate == nil && f.earlierPermanentChoices == nil &&
-		f.permanentEpochs == nil && f.zone == entryCardChoiceZone(c.Kind)
-}
-
 // registeredReplacementResumeKeys lists the ledger lines for the tails
 // and for the three body registries a keyed event can name: "resume
 // <key>", "drawinstead <key>", "drawthen <key>", "keywordinstead <key>".
@@ -248,6 +351,7 @@ func registeredReplacementResumeKeys() []string {
 	}
 	keywordInsteadMu.RUnlock()
 	out = append(out, registeredTailKeys()...)
+	out = append(out, registeredMillUntilKeys()...)
 	sort.Strings(out)
 	return out
 }
@@ -315,8 +419,8 @@ var replacementEventFields = map[string]replacementEventField{
 
 	// A keyword action. Its tail's data half (a proliferate's lists or
 	// its "ask", a scry's or surveil's prompt kind, an earthbend's land)
-	// is carried; a tail with a "then", an amass's Army or its "the Army
-	// you amassed" keeps the frame off the disk (replacementFrameKeyable).
+	// is carried; a tail with a closure "then" keeps the frame off the
+	// disk (replacementFrameKeyable).
 	// Learn has no tail at all.
 	"KeywordAction":      repFieldCarried,
 	"KeywordActionCount": repFieldCarried,
@@ -333,6 +437,7 @@ var replacementEventFields = map[string]replacementEventField{
 	"Destruction":               repFieldCarried,
 	"CantBeRegenerated":         repFieldCarried,
 	"StateBasedDestruction":     repFieldCarried,
+	"LeaveCause":                repFieldCarried,
 	"EntersTapped":              repFieldCarried,
 	"EntersPrepared":            repFieldCarried,
 	"EntersDevoured":            repFieldCarried,
@@ -397,32 +502,48 @@ var replacementEventFields = map[string]replacementEventField{
 	"TokenAttackChoicesLabel": repFieldCarried,
 	"tokenTail":               repFieldCarried, // its data half; see replacementEventKeyable
 
+	// A discard (#4253 slice 9). Its continuation is the route's
+	// discardLegs, carried with the route.
+	"DiscardPlayer":          repFieldCarried,
+	"DiscardCause":           repFieldCarried,
+	"DiscardCauseController": repFieldCarried,
+
+	// A mill instruction's amount window (#4253 slice 10a). Its tail is
+	// data (#4361 S9 deleted the closure `then`).
+	"MillPlayer": repFieldCarried,
+	"MillCount":  repFieldCarried,
+	"mill":       repFieldCarried, // its data half; see replacementEventKeyable
+
+	// A damage event (#4253, damage_keyed.go). Its tail's data half is
+	// carried. Combat damage is carried since #4362, under a key of its own
+	// (combat_damage_keyed.go), and redirected parts since #4404
+	// (damage_redirected_keyed.go).
+	"DamageSource":   repFieldCarried,
+	"DamageTarget":   repFieldCarried,
+	"DamageAmount":   repFieldCarried,
+	"DamageInstance": repFieldCarried,
+	"SourceLKI":      repFieldCarried,
+	"damageTail":     repFieldCarried, // its data half; see damageEventIsData
+	"IsCombatDamage": repFieldCarried,
+
 	// The event kinds this file does not key.
-	"ManaPlayer":             repFieldGate,
-	"ManaSource":             repFieldGate,
-	"ManaColors":             repFieldGate,
-	"ManaFromTap":            repFieldGate,
-	"DiscardPlayer":          repFieldGate,
-	"DiscardCause":           repFieldGate,
-	"DiscardCauseController": repFieldGate,
-	"MillPlayer":             repFieldGate,
-	"MillCount":              repFieldGate,
-	"mill":                   repFieldGate,
-	"DamageSource":           repFieldGate,
-	"DamageTarget":           repFieldGate,
-	"DamageAmount":           repFieldGate,
-	"IsCombatDamage":         repFieldGate,
-	"DamageInstance":         repFieldGate,
-	"SourceLKI":              repFieldGate,
-	"damageTail":             repFieldGate,
-	"StepTransitionStep":     repFieldGate,
-	"StepTransitionSeat":     repFieldGate,
-	"ExtraTurnSeat":          repFieldGate,
-	"ExtraTurnRef":           repFieldGate,
-	"CounterSpellID":         repFieldGate,
-	"CounterBy":              repFieldGate,
-	"CounterBySource":        repFieldGate,
-	"counterInstead":         repFieldGate,
+	"ManaPlayer":         repFieldGate,
+	"ManaSource":         repFieldGate,
+	"ManaColors":         repFieldGate,
+	"ManaFromTap":        repFieldGate,
+	"StepTransitionStep": repFieldGate,
+	"StepTransitionSeat": repFieldGate,
+	"ExtraTurnSeat":      repFieldGate,
+	"ExtraTurnRef":       repFieldGate,
+	"CounterSpellID":     repFieldGate,
+	"CounterBy":          repFieldGate,
+	"CounterBySource":    repFieldGate,
+	"counterInstead":     repFieldGate,
+	// #4307: a dice roll's window never pauses (mustSettleNow).
+	"RollPlayer":  repFieldGate,
+	"RollSides":   repFieldGate,
+	"RollCount":   repFieldGate,
+	"rollShields": repFieldGate,
 }
 
 // replacementEventGatesClear reports whether every gate field of ev is
@@ -454,25 +575,38 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 	if f == nil || f.ev == nil || (len(f.applicable) == 0 && keyedPromptNeedsApplicable(c.Kind)) {
 		return ""
 	}
-	if isEntryCardChoiceKind(c.Kind) && !entryCardChoiceFrameIsData(c) {
-		return ""
-	}
 	ev := f.ev
 	key := replacementResumeKeyFor(ev.Kind)
 	if key == "" || !g.replacementEventKeyable(ev) {
 		return ""
 	}
 	if eventCarriesDataTail(ev) {
-		key = replacementResumeTailedKeys[ev.Kind]
+		key = replacementResumeTailedKeyOf(ev)
 	}
-	for _, a := range f.applicable {
+	if ev.Kind == RepEventDamage {
+		// #4362: combat damage has a key of its own, so a binary that
+		// would resume it as noncombat damage refuses the file. #4404: so
+		// does an event with redirected parts, which a binary from before
+		// them would drop.
+		key = damageEventResumeKey(ev)
+	}
+	if !applicableRegathered(f.applicable) {
+		return ""
+	}
+	return key
+}
+
+// applicableRegathered reports whether a restored binary could gather
+// every effect of a frame again by its ID.
+func applicableRegathered(applicable []activeReplacement) bool {
+	for _, a := range applicable {
 		if a.id >= testReplacementIDBase && a.id < builtinReplacementIDBase {
 			// A test-injected effect is not in the restore point, so the
 			// restored binary could not gather it again.
-			return ""
+			return false
 		}
 	}
-	return key
+	return true
 }
 
 // replacementEventKeyable reports whether an event, its tail included,
@@ -482,32 +616,47 @@ func (g *Game) replacementFrameKeyable(c *PendingChoice) string {
 //
 // Caller must hold g.mu (a read lock is enough).
 func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
+	return g.replacementEventKeyableAs(ev, false)
+}
+
+// replacementEventKeyableAs is replacementEventKeyable for an event that
+// may be a settled member of a batch of created tokens (#4404): its token
+// is staged, and the batch, not the event, carries the rest of the entry
+// (entryBatchKeyable checks the staged tokens).
+//
+// Caller must hold g.mu (a read lock is enough).
+func (g *Game) replacementEventKeyableAs(ev *ReplacementEvent, batchToken bool) bool {
 	if !replacementEventGatesClear(ev) {
 		return false
 	}
-	if t := ev.keywordAction; t != nil && (t.then != nil || t.amassed != nil || t.armySubtype != "" ||
-		!reflect.ValueOf(t.armyToken).IsZero()) {
-		return false
+	if t := ev.keywordAction; t != nil && !reflect.ValueOf(t.armyToken).IsZero() {
+		// #4253 slice 10b: an amass's Army token template is written
+		// through the card mirror, as a token group's is; one the mirror
+		// cannot carry whole keeps the frame off the disk.
+		var scratch ContinuationCensus
+		_ = snapshotCard(t.armyToken, &scratch)
+		if !scratch.Empty() {
+			return false
+		}
 	}
-	if ev.CardID != uuid.Nil {
+	if ev.CardID != uuid.Nil && !batchToken {
 		if _, staged := g.enteringTokenLocked(ev.CardID); staged {
 			// A created token's entry: the token is in no zone, only in
 			// Game.enteringTokens. #4253 slice 3: that is written with a
 			// keyed frame (GameSnapshot.EnteringTokens), so the entry is
-			// data when the rest of its batch is (entryTail.tokens) and
-			// every staged token is written whole.
-			if ev.entryTail == nil || ev.entryTail.tokens == nil || !g.stagedTokensAreData() {
+			// data when the rest of its batch is (entryTail.tokens, or
+			// since #4404 a simultaneous entry, entryTail.batch, checked
+			// below) and every staged token is written whole.
+			t := ev.entryTail
+			if t == nil || (t.tokens == nil && t.batch == nil) || !g.stagedTokensAreData() {
 				return false
 			}
 		}
 	}
-	if t := ev.tokenTail; t != nil && t.then != nil {
-		return false
-	}
-	if t := ev.counterTail; t != nil && t.then != nil {
-		return false
-	}
-	if t := ev.lifeTail; t != nil && t.then != nil {
+	// #4361 S17: the rest of a replaced move's life changes (ADR 0178,
+	// lifeTail.move) is written with the life tail, and its route rides
+	// the event's zoneRoute, checked below like any other.
+	if ev.Kind == RepEventDamage && !g.damageEventIsData(ev) {
 		return false
 	}
 	for _, grp := range ev.TokenGroups {
@@ -517,13 +666,20 @@ func (g *Game) replacementEventKeyable(ev *ReplacementEvent) bool {
 			return false
 		}
 	}
-	if r := ev.zoneRoute; r != nil && (r.then != nil || len(r.simultaneousExit) > 0 || r.simultaneousEntry != nil) {
-		return false
-	}
-	if t := ev.entryTail; t != nil {
-		if t.then != nil {
+	if r := ev.zoneRoute; r != nil {
+		// #4253 slice 10a: an exchange's settled entry is data
+		// (settledExchangeEntry), written beside the route. #4361 S17: a
+		// route's continuation is always data now (zoneRoute.then is
+		// gone).
+		//
+		// #4253 slice 9: a keyed batch's last-known copies are written
+		// beside its run, through the card mirror; any other route with
+		// them, or copies the mirror cannot write whole, stays a closure.
+		if len(r.simultaneousExit) > 0 && (r.batchLegs == nil || !routeBatchLKIIsData(r.simultaneousExit)) {
 			return false
 		}
+	}
+	if t := ev.entryTail; t != nil {
 		if t.batch != nil && !g.entryBatchKeyable(t.batch) {
 			// #4253 slice 3: a simultaneous entry is data when its
 			// continuation is and its settled members are.
@@ -589,6 +745,7 @@ type replacementEventSnapshot struct {
 	Destruction               bool                `json:"destruction,omitempty"`
 	CantBeRegenerated         bool                `json:"cantBeRegenerated,omitempty"`
 	StateBasedDestruction     bool                `json:"stateBasedDestruction,omitempty"`
+	LeaveCause                LeaveCause          `json:"leaveCause,omitempty"`
 	EntersTapped              bool                `json:"entersTapped,omitempty"`
 	EntersPrepared            bool                `json:"entersPrepared,omitempty"`
 	EntersDevoured            int                 `json:"entersDevoured,omitempty"`
@@ -636,6 +793,10 @@ type replacementEventSnapshot struct {
 	LifePlayer                 *uuid.UUID                 `json:"lifePlayer,omitempty"`
 	LifeDelta                  int                        `json:"lifeDelta,omitempty"`
 	LifeFromRadiation          bool                       `json:"lifeFromRadiation,omitempty"`
+	// #4253 slice 9: a discard.
+	DiscardPlayer          *uuid.UUID   `json:"discardPlayer,omitempty"`
+	DiscardCause           DiscardCause `json:"discardCause,omitempty"`
+	DiscardCauseController *uuid.UUID   `json:"discardCauseController,omitempty"`
 
 	// #4253 slice 3: a token creation instruction.
 	TokenController         *uuid.UUID           `json:"tokenController,omitempty"`
@@ -647,6 +808,105 @@ type replacementEventSnapshot struct {
 	// A counter placement's and a life change's tail, as data.
 	CounterTail *counterTailSnapshot `json:"counterTail,omitempty"`
 	LifeTail    *lifeTailSnapshot    `json:"lifeTail,omitempty"`
+
+	// #4253 slice 10a: a mill instruction's amount window.
+	MillPlayer *uuid.UUID        `json:"millPlayer,omitempty"`
+	MillCount  int               `json:"millCount,omitempty"`
+	MillTail   *millTailSnapshot `json:"millTail,omitempty"`
+
+	// #4253: a damage event (damage_keyed.go).
+	DamageSource   *uuid.UUID          `json:"damageSource,omitempty"`
+	DamageTarget   *uuid.UUID          `json:"damageTarget,omitempty"`
+	DamageAmount   int                 `json:"damageAmount,omitempty"`
+	DamageInstance DamageInstance      `json:"damageInstance,omitempty"`
+	SourceLKI      *Characteristic     `json:"sourceLki,omitempty"`
+	DamageTail     *damageTailSnapshot `json:"damageTail,omitempty"`
+	// #4362: combat damage, written under ReplacementResumeCombatDamage.
+	IsCombatDamage bool `json:"isCombatDamage,omitempty"`
+}
+
+// millTailSnapshot is a millTail's data half, present exactly when the
+// event had a tail: a tail with a closure `then` is never written.
+// Sequenced is whether the keyed door asked for one (millTail.keyed set,
+// even to the zero tail), which sequences the mill.
+type millTailSnapshot struct {
+	Dest      ZoneKind           `json:"dest"`
+	AllMoved  bool               `json:"allMoved,omitempty"`
+	Sequenced bool               `json:"sequenced,omitempty"`
+	Then      *keyedTailSnapshot `json:"then,omitempty"`
+	Run       *millUntilRun      `json:"run,omitempty"`
+}
+
+// exchangeEntrySnapshot is a settledExchangeEntry on disk (#4253 slice
+// 10a): the settled half of an exchange, landed when the exit settles.
+type exchangeEntrySnapshot struct {
+	CardID             uuid.UUID        `json:"cardId"`
+	Actor              *uuid.UUID       `json:"actor,omitempty"`
+	NewZoneOwner       *uuid.UUID       `json:"newZoneOwner,omitempty"`
+	Attacking          *uuid.UUID       `json:"attacking,omitempty"`
+	CopySource         *uuid.UUID       `json:"copySource,omitempty"`
+	OldZone            ZoneKind         `json:"oldZone,omitempty"`
+	NewZone            ZoneKind         `json:"newZone,omitempty"`
+	Tapped             bool             `json:"tapped,omitempty"`
+	Prepared           bool             `json:"prepared,omitempty"`
+	Haste              bool             `json:"haste,omitempty"`
+	CopyUntilEndOfTurn bool             `json:"copyUntilEndOfTurn,omitempty"`
+	Devoured           int              `json:"devoured,omitempty"`
+	Counters           map[string]int   `json:"counters,omitempty"`
+	Copy               *PrintedValues   `json:"copy,omitempty"`
+	Unlocked           DoorMask         `json:"unlocked,omitempty"`
+	FaceDown           FaceDownKind     `json:"faceDown,omitempty"`
+	Listed             *FaceDownListing `json:"listed,omitempty"`
+}
+
+func snapshotExchangeEntry(e *settledExchangeEntry) *exchangeEntrySnapshot {
+	if e == nil {
+		return nil
+	}
+	return &exchangeEntrySnapshot{
+		CardID: e.CardID, Actor: uuidPtrOrNil(e.Actor), NewZoneOwner: uuidPtrOrNil(e.NewZoneOwner),
+		Attacking: uuidPtrOrNil(e.Attacking), CopySource: uuidPtrOrNil(e.CopySource),
+		OldZone: e.OldZone, NewZone: e.NewZone, Tapped: e.Tapped, Prepared: e.Prepared, Haste: e.Haste,
+		CopyUntilEndOfTurn: e.CopyUntilEndOfTurn, Devoured: e.Devoured, Counters: copyStringIntMap(e.Counters),
+		Copy: copyPrintedValues(e.Copy), Unlocked: e.Unlocked, FaceDown: e.FaceDown, Listed: copyFaceDownListing(e.Listed),
+	}
+}
+
+func restoreExchangeEntry(s *exchangeEntrySnapshot) *settledExchangeEntry {
+	if s == nil {
+		return nil
+	}
+	return &settledExchangeEntry{
+		CardID: s.CardID, Actor: uuidOrNil(s.Actor), NewZoneOwner: uuidOrNil(s.NewZoneOwner),
+		Attacking: uuidOrNil(s.Attacking), CopySource: uuidOrNil(s.CopySource),
+		OldZone: s.OldZone, NewZone: s.NewZone, Tapped: s.Tapped, Prepared: s.Prepared, Haste: s.Haste,
+		CopyUntilEndOfTurn: s.CopyUntilEndOfTurn, Devoured: s.Devoured, Counters: copyStringIntMap(s.Counters),
+		Copy: copyPrintedValues(s.Copy), Unlocked: s.Unlocked, FaceDown: s.FaceDown, Listed: copyFaceDownListing(s.Listed),
+	}
+}
+
+func snapshotMillTail(t *millTail) *millTailSnapshot {
+	if t == nil {
+		return nil
+	}
+	out := &millTailSnapshot{Dest: t.dest, AllMoved: t.allMoved, Run: cloneMillUntilRun(t.run)}
+	if t.keyed != nil {
+		out.Sequenced = true
+		out.Then = snapshotKeyedTail(*t.keyed)
+	}
+	return out
+}
+
+func restoreMillTail(s *millTailSnapshot) *millTail {
+	if s == nil {
+		return nil
+	}
+	out := &millTail{dest: s.Dest, allMoved: s.AllMoved, run: cloneMillUntilRun(s.Run)}
+	if s.Sequenced {
+		k := restoreKeyedTail(s.Then)
+		out.keyed = &k
+	}
+	return out
 }
 
 // counterTailSnapshot is a counterTail's data half, present exactly when
@@ -660,6 +920,39 @@ type counterTailSnapshot struct {
 type lifeTailSnapshot struct {
 	Then *keyedTailSnapshot `json:"then,omitempty"`
 	Each *lifeEachRun       `json:"each,omitempty"`
+	// Move is the rest of a replaced move's declared life changes (ADR
+	// 0178, lifeTail.move, #4361 S17); the move's route rides the event's
+	// ZoneRoute. Additive within v9.
+	Move *moveLifeRestSnapshot `json:"move,omitempty"`
+}
+
+// moveLifeRestSnapshot is a moveLifeRest.
+type moveLifeRestSnapshot struct {
+	Remaining     []moveLifeSnapshot `json:"remaining,omitempty"`
+	HasRoute      bool               `json:"hasRoute,omitempty"`
+	MustSettleNow bool               `json:"mustSettleNow,omitempty"`
+}
+
+func snapshotMoveLifeRest(r *moveLifeRest) *moveLifeRestSnapshot {
+	if r == nil {
+		return nil
+	}
+	out := &moveLifeRestSnapshot{HasRoute: r.hasRoute, MustSettleNow: r.mustSettleNow}
+	for _, l := range r.remaining {
+		out.Remaining = append(out.Remaining, moveLifeSnapshot{Source: uuidPtrOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	return out
+}
+
+func restoreMoveLifeRest(s *moveLifeRestSnapshot) *moveLifeRest {
+	if s == nil {
+		return nil
+	}
+	out := &moveLifeRest{hasRoute: s.HasRoute, mustSettleNow: s.MustSettleNow}
+	for _, l := range s.Remaining {
+		out.remaining = append(out.remaining, lifeInstruction{Source: uuidOrNil(l.Source), Player: l.Player, Delta: l.Delta})
+	}
+	return out
 }
 
 // tokenGroupSnapshot is a TokenGroup: its template through the card
@@ -692,6 +985,11 @@ type keywordActionTailSnapshot struct {
 	Land    *uuid.UUID        `json:"land,omitempty"`
 	// #4253 slice 3: a keyed "then" (Preordain's draw).
 	Then *keyedTailSnapshot `json:"then,omitempty"`
+	// #4253 slice 10b: an amass's two printed parameters (CR 701.47a),
+	// the Army token template through the card mirror and the creature
+	// type.
+	ArmyToken   *cardSnapshot `json:"armyToken,omitempty"`
+	ArmySubtype string        `json:"armySubtype,omitempty"`
 }
 
 // pendingDrawSnapshot is a pendingDraw: an expanded draw's sibling.
@@ -728,6 +1026,9 @@ type entryTailSnapshot struct {
 	Search *searchEntryRun     `json:"search,omitempty"`
 	Batch  *entryBatchSnapshot `json:"batch,omitempty"`
 	Tokens *tokenEntryRun      `json:"tokens,omitempty"`
+	// #4253 slice 6: the caller's "then" of a single permanent's return,
+	// as a registered tail.
+	Keyed *keyedTailSnapshot `json:"keyed,omitempty"`
 }
 
 // zoneRouteSnapshot is a zoneRoute's data half: a route with a `then`,
@@ -761,6 +1062,14 @@ type zoneRouteSnapshot struct {
 	CommanderAnswer     commanderZoneAnswer `json:"commanderAnswer,omitempty"`
 	// #4253 slice 3: one leg of a face-down exile batch.
 	FaceDownLegs *faceDownExileRun `json:"faceDownLegs,omitempty"`
+	// #4253 slice 9: one leg of a keyed route batch with the batch's
+	// last-known copies (CR 603.10), and one leg of a discard batch.
+	BatchLegs        *routeBatchRun   `json:"batchLegs,omitempty"`
+	SimultaneousExit []cardSnapshot   `json:"simultaneousExit,omitempty"`
+	DiscardLegs      *discardBatchRun `json:"discardLegs,omitempty"`
+	// #4253 slice 10a: the settled entry an exchange's exit lands with
+	// (zoneRoute.simultaneousEntry, Goblin Welder).
+	Exchange *exchangeEntrySnapshot `json:"exchange,omitempty"`
 }
 
 // moveLifeSnapshot is a lifeInstruction (ADR 0178).
@@ -847,6 +1156,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		Destruction:               ev.Destruction,
 		CantBeRegenerated:         ev.CantBeRegenerated,
 		StateBasedDestruction:     ev.StateBasedDestruction,
+		LeaveCause:                ev.LeaveCause,
 		EntersTapped:              ev.EntersTapped,
 		EntersPrepared:            ev.EntersPrepared,
 		EntersDevoured:            ev.EntersDevoured,
@@ -884,19 +1194,16 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		LifePlayer:                 uuidPtrOrNil(ev.LifePlayer),
 		LifeDelta:                  ev.LifeDelta,
 		LifeFromRadiation:          ev.LifeFromRadiation,
+		DiscardPlayer:              uuidPtrOrNil(ev.DiscardPlayer),
+		DiscardCause:               ev.DiscardCause,
+		DiscardCauseController:     uuidPtrOrNil(ev.DiscardCauseController),
 
 		TokenController:         uuidPtrOrNil(ev.TokenController),
 		TokenAttacking:          uuidPtrOrNil(ev.TokenAttacking),
 		TokenTogether:           ev.TokenTogether,
 		TokenAttackChoicesLabel: ev.TokenAttackChoicesLabel,
 	}
-	for _, grp := range ev.TokenGroups {
-		out.TokenGroups = append(out.TokenGroups, tokenGroupSnapshot{
-			Template: snapshotCard(grp.Template, cen), Count: grp.Count, Entry: snapshotTokenEntry(grp.Entry),
-			Attacking: uuidPtrOrNil(grp.Attacking), AttackOpponent: uuidPtrOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking),
-		})
-	}
+	out.TokenGroups = snapshotTokenGroups(ev.TokenGroups, cen)
 	if t := ev.tokenTail; t != nil {
 		out.TokenTail = &tokenTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
 	}
@@ -904,12 +1211,20 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		out.CounterTail = &counterTailSnapshot{Then: snapshotKeyedTail(t.keyed)}
 	}
 	if t := ev.lifeTail; t != nil {
-		out.LifeTail = &lifeTailSnapshot{Then: snapshotKeyedTail(t.keyed), Each: cloneLifeEachRun(t.each)}
+		out.LifeTail = &lifeTailSnapshot{Then: snapshotKeyedTail(t.keyed), Each: cloneLifeEachRun(t.each), Move: snapshotMoveLifeRest(t.move)}
 	}
+	out.MillPlayer = uuidPtrOrNil(ev.MillPlayer)
+	out.MillCount = ev.MillCount
+	out.MillTail = snapshotMillTail(ev.mill)
 	if t := ev.keywordAction; t != nil {
 		out.KeywordActionTail = &keywordActionTailSnapshot{
 			Cards: copyUUIDs(t.cards), Players: copyUUIDs(t.players), Ask: t.ask, Choice: t.choice,
 			Land: uuidPtrOrNil(t.land), Then: snapshotKeyedTail(t.keyed),
+			ArmySubtype: t.armySubtype,
+		}
+		if !reflect.ValueOf(t.armyToken).IsZero() {
+			army := snapshotCard(t.armyToken, cen)
+			out.KeywordActionTail.ArmyToken = &army
 		}
 	}
 	for _, p := range ev.drawPending {
@@ -940,6 +1255,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 		out.EntryTail = &entryTailSnapshot{
 			NewObject: t.newObject, CraftedWith: append([]ObjectRef(nil), t.craftedWith...), BatchIndex: t.batchIndex,
 			Search: cloneSearchEntryRun(t.search), Tokens: cloneTokenEntryRun(t.tokens),
+			Keyed: snapshotKeyedTail(t.keyed),
 		}
 		if t.batch != nil {
 			out.EntryTail.Batch = g.snapshotEntryBatch(t.batch, cen)
@@ -956,6 +1272,11 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
 			CommanderAnswer: r.commanderAnswer, FaceDownLegs: cloneFaceDownExileRun(r.faceDownLegs),
+			BatchLegs: cloneRouteBatchRun(r.batchLegs), DiscardLegs: cloneDiscardBatchRun(r.discardLegs),
+			Exchange: snapshotExchangeEntry(r.simultaneousEntry),
+		}
+		for _, c := range r.simultaneousExit {
+			out.ZoneRoute.SimultaneousExit = append(out.ZoneRoute.SimultaneousExit, snapshotCard(c, cen))
 		}
 		if r.ExiledWithAbility != (AbilityRef{}) {
 			a := r.ExiledWithAbility
@@ -968,6 +1289,7 @@ func (g *Game) snapshotReplacementEvent(ev *ReplacementEvent, cen *ContinuationC
 	for _, x := range ev.extraTurnsAfterMove {
 		out.ExtraTurnsAfterMove = append(out.ExtraTurnsAfterMove, moveTurnSnapshot{Source: uuidPtrOrNil(x.Source), Player: x.Player})
 	}
+	snapshotDamageEvent(ev, &out)
 	return out
 }
 
@@ -996,6 +1318,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		Destruction:               s.Destruction,
 		CantBeRegenerated:         s.CantBeRegenerated,
 		StateBasedDestruction:     s.StateBasedDestruction,
+		LeaveCause:                s.LeaveCause,
 		EntersTapped:              s.EntersTapped,
 		EntersPrepared:            s.EntersPrepared,
 		EntersDevoured:            s.EntersDevoured,
@@ -1033,20 +1356,16 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		LifePlayer:                 uuidOrNil(s.LifePlayer),
 		LifeDelta:                  s.LifeDelta,
 		LifeFromRadiation:          s.LifeFromRadiation,
+		DiscardPlayer:              uuidOrNil(s.DiscardPlayer),
+		DiscardCause:               s.DiscardCause,
+		DiscardCauseController:     uuidOrNil(s.DiscardCauseController),
 
 		TokenController:         uuidOrNil(s.TokenController),
 		TokenAttacking:          uuidOrNil(s.TokenAttacking),
 		TokenTogether:           s.TokenTogether,
 		TokenAttackChoicesLabel: s.TokenAttackChoicesLabel,
 	}
-	for i := range s.TokenGroups {
-		grp := &s.TokenGroups[i]
-		ev.TokenGroups = append(ev.TokenGroups, TokenGroup{
-			Template: restoreCard(&grp.Template), Count: grp.Count, Entry: grp.Entry.options(),
-			Attacking: uuidOrNil(grp.Attacking), AttackOpponent: uuidOrNil(grp.AttackOpponent),
-			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking),
-		})
-	}
+	ev.TokenGroups = restoreTokenGroups(s.TokenGroups)
 	if t := s.TokenTail; t != nil {
 		ev.tokenTail = &tokenTail{keyed: restoreKeyedTail(t.Then)}
 	}
@@ -1054,12 +1373,18 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.counterTail = &counterTail{keyed: restoreKeyedTail(t.Then)}
 	}
 	if t := s.LifeTail; t != nil {
-		ev.lifeTail = &lifeTail{keyed: restoreKeyedTail(t.Then), each: cloneLifeEachRun(t.Each)}
+		ev.lifeTail = &lifeTail{keyed: restoreKeyedTail(t.Then), each: cloneLifeEachRun(t.Each), move: restoreMoveLifeRest(t.Move)}
 	}
+	ev.MillPlayer = uuidOrNil(s.MillPlayer)
+	ev.MillCount = s.MillCount
+	ev.mill = restoreMillTail(s.MillTail)
 	if t := s.KeywordActionTail; t != nil {
 		ev.keywordAction = &keywordActionTail{
 			cards: copyUUIDs(t.Cards), players: copyUUIDs(t.Players), ask: t.Ask, choice: t.Choice,
-			land: uuidOrNil(t.Land), keyed: restoreKeyedTail(t.Then),
+			land: uuidOrNil(t.Land), keyed: restoreKeyedTail(t.Then), armySubtype: t.ArmySubtype,
+		}
+		if t.ArmyToken != nil {
+			ev.keywordAction.armyToken = restoreCard(t.ArmyToken)
 		}
 	}
 	for _, p := range s.DrawPending {
@@ -1091,6 +1416,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 		ev.entryTail = &entryTail{
 			newObject: t.NewObject, craftedWith: append([]ObjectRef(nil), t.CraftedWith...), batchIndex: t.BatchIndex,
 			search: cloneSearchEntryRun(t.Search), batch: restoreEntryBatch(t.Batch), tokens: cloneTokenEntryRun(t.Tokens),
+			keyed: restoreKeyedTail(t.Keyed),
 		}
 	}
 	if r := s.ZoneRoute; r != nil {
@@ -1104,6 +1430,11 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 			Sacrifice: r.Sacrifice, ViaBattlefieldLeave: r.ViaBattlefieldLeave, Destruction: r.Destruction,
 			CantBeRegenerated: r.CantBeRegenerated, StateBased: r.StateBased, AsCommander: r.AsCommander,
 			commanderAnswer: r.CommanderAnswer, faceDownLegs: cloneFaceDownExileRun(r.FaceDownLegs),
+			batchLegs: cloneRouteBatchRun(r.BatchLegs), discardLegs: cloneDiscardBatchRun(r.DiscardLegs),
+			simultaneousEntry: restoreExchangeEntry(r.Exchange),
+		}
+		for i := range r.SimultaneousExit {
+			ev.zoneRoute.simultaneousExit = append(ev.zoneRoute.simultaneousExit, restoreCard(&r.SimultaneousExit[i]))
 		}
 		if r.ExiledWithAbility != nil {
 			ev.zoneRoute.ExiledWithAbility = *r.ExiledWithAbility
@@ -1115,6 +1446,7 @@ func restoreReplacementEvent(s *replacementEventSnapshot) *ReplacementEvent {
 	for _, x := range s.ExtraTurnsAfterMove {
 		ev.extraTurnsAfterMove = append(ev.extraTurnsAfterMove, extraTurnInstruction{Source: uuidOrNil(x.Source), Player: x.Player})
 	}
+	restoreDamageEvent(s, ev)
 	return ev
 }
 
@@ -1131,7 +1463,15 @@ func unknownReplacementResumeKeys(c *pendingChoiceSnapshot) []string {
 		unknown = append(unknown, "replacement resume "+c.PickThen+" with no frame")
 	case f.Event.Kind != kind:
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over a "+string(f.Event.Kind)+" event")
-	case snapshotCarriesDataTail(&f.Event) && c.PickThen != replacementResumeTailedKeys[kind]:
+	case kind == RepEventDamage && c.PickThen != snapshotDamageResumeKey(&f.Event):
+		// #4362: combat damage is written under its own key, and only
+		// combat damage is. #4404: likewise an event with redirected
+		// parts.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over a damage event of the other kind")
+	case kind == RepEventDamage && snapshotDamageIsCombat(&f.Event) && snapshotCarriesDataTail(&f.Event):
+		// #4362: combat damage owes its caller nothing.
+		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
+	case kind != RepEventDamage && snapshotCarriesDataTail(&f.Event) && c.PickThen != snapshotTailedKeyOf(&f.Event, kind):
 		// #4253 slice 3: a tail written as data under the key a binary
 		// that drops it would accept.
 		unknown = append(unknown, "replacement resume "+c.PickThen+" over an event with a data tail")
@@ -1156,12 +1496,15 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 		unknown = append(unknown, unknownSearchEntryKeys(t.Search)...)
 		unknown = append(unknown, unknownEntryBatchKeys(t.Batch)...)
 		unknown = append(unknown, unknownTokenEntryKeys(t.Tokens)...)
+		unknown = append(unknown, unknownKeyedTail(t.Keyed)...)
 	}
 	if t := ev.TokenTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
 	}
 	if r := ev.ZoneRoute; r != nil {
 		unknown = append(unknown, unknownFaceDownExileKeys(r.FaceDownLegs)...)
+		unknown = append(unknown, unknownRouteBatchKeys(r.BatchLegs)...)
+		unknown = append(unknown, unknownDiscardBatchKeys(r.DiscardLegs)...)
 	}
 	if t := ev.CounterTail; t != nil {
 		unknown = append(unknown, unknownKeyedTail(t.Then)...)
@@ -1171,6 +1514,14 @@ func unknownReplacementEventKeys(ev *replacementEventSnapshot) []string {
 		if t.Each != nil {
 			unknown = append(unknown, unknownKeyedTail(t.Each.Then)...)
 		}
+	}
+	if t := ev.MillTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+		unknown = append(unknown, unknownMillUntilKeys(t.Run)...)
+	}
+	if t := ev.DamageTail; t != nil {
+		unknown = append(unknown, unknownKeyedTail(t.Then)...)
+		unknown = append(unknown, unknownDamageEachKeys(t.Each)...)
 	}
 	if d := ev.DrawThen; d != nil && !KnownDrawThen(d.Key) {
 		unknown = append(unknown, "draw-then body "+d.Key)
@@ -1238,6 +1589,9 @@ func (g *Game) rebuildReplacementResumeLocked(s *replacementResumeSnapshot) *rep
 	if uint64(ev.ID) > g.nextReplacementEventID.Load() {
 		g.nextReplacementEventID.Store(uint64(ev.ID))
 	}
+	// #4253: a damage event's instance is one a later instance must not
+	// reuse.
+	g.damageInstanceSeq = max(g.damageInstanceSeq, uint64(ev.DamageInstance))
 	gathered := g.gatherActiveReplacementsLocked(ev)
 	byID := make(map[ReplacementEffectID]activeReplacement, len(gathered))
 	for _, a := range gathered {

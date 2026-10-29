@@ -1892,21 +1892,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		parked := params
 		parked.Targets = ownTargets
 		return g.parkForOpponentTargetLocked(&opponentTargetFrame{
-			controller: playerID,
-			cardID:     cardID,
-			name:       card.Name,
-			cast:       parked,
+			parkedAnnouncement: castAnnouncement(playerID, cardID, card.Name, parked),
 		}, castSrc, oppTargets)
 	}
-	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
-		func(g *Game, answers map[uuid.UUID]bool) error {
-			again := params
-			again.commanderAnswers = answers
-			// The payload's own picks: the opponents' answers ride
-			// opponentPicks and are merged in again (#2055).
-			again.Targets = ownTargets
-			return g.castSpellLocked(playerID, cardID, again)
-		})
+	// The announcement a CR 903.9b answer makes again (#4361 S13: as
+	// data). The payload's own picks: the opponents' answers ride
+	// opponentPicks and are merged in again (#2055). The commander
+	// answers are the frame's, attached when it is answered.
+	again := params
+	again.Targets = ownTargets
+	again.commanderAnswers = nil
+	asked, answers := g.askCostCommanderLocked(asking, params.commanderAnswers, card.Name,
+		castAnnouncement(playerID, cardID, card.Name, again))
 	if asked {
 		return nil
 	}
@@ -2394,6 +2391,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// #3781, CR 601.2i: "as you cast this spell" values are fixed here,
 	// with every cost paid and nobody yet holding priority.
 	g.stampCastTimeValuesLocked(card, g.StackMeta[cardID])
+	// CR 702.33h (#4307): a paid sticker kicker gives its ticket and its
+	// sticker question now, as the additional cost it is.
+	g.payStickerKickerLocked(playerID, card)
 	castEv := Event{
 		Kind:    EventCast,
 		Actor:   playerID,
@@ -4659,11 +4659,14 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
 	}
+	// What follows the move, as a registered tail (#4361 S11b): the
+	// paradigm trigger, rebound's, the counter, the Adventure's grant.
+	var then KeyedTail
 	if resolved && spellHasParadigm(c, item) {
 		// CR 702.192a: the spell exiles itself as part of its own
 		// resolution, so nothing is left for flashback, rebound,
 		// buyback or the Adventure to replace (paradigm.go).
-		paradigmRouteLocked(c, item, &r)
+		then = paradigmRouteLocked(c, item, &r)
 	} else if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if !resolved && exilesInsteadOfGraveyard(item) {
@@ -4678,14 +4681,13 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// controller; the card waits on the stack for the answer.
 		exits := resolutionExitsLocked(c, item)
 		if len(exits) > 1 {
-			return g.chooseResolutionExitLocked(c, item, r, exits)
+			return g.chooseResolutionExitLocked(c, item, exits)
 		}
 		if len(exits) == 1 {
-			exits[0].apply(&r)
+			then = exits[0].apply(&r)
 		}
 	}
-	_, err := g.routeCardToZoneLocked(r)
-	return err
+	return g.routeCardKeyedLocked(r, then)
 }
 
 // AbilityParams carries the announce-time choices that flow into an
@@ -6115,7 +6117,7 @@ func (g *Game) sweepEliminatedChoicesLocked() {
 //
 // #865: so does a MOVE, for the same reason and with the same
 // consequence — a multi-card discard and a sequenced wipe both carry
-// the rest of the batch on zoneRoute.then. That one is
+// the rest of the batch on the route (a keyed batch run). That one is
 // abandonZoneRouteLocked (zone_route.go), the exit's terminal outcome
 // for a prompt taken away rather than answered, shared with the two
 // prune paths.
@@ -6225,55 +6227,34 @@ func (g *Game) finishDroppedReplacementLocked(gone uuid.UUID, frame *replacement
 // engine doesn't carry a stale reference. Caller must hold g.mu.
 //
 // The FIRE-AND-FORGET form. A caller that has to know what the exit
-// actually did — "for each creature destroyed this way" — uses
-// routeBattlefieldExitThenLocked and reads the board from the
+// actually did — "for each creature destroyed this way" — uses a keyed
+// route batch (DestroyPermanentsKeyedForEffect) and reads the board from the
 // continuation, because an exit can pause on a replacement's prompt
 // (a commander's CR 903.9b offer for a bounce or a tuck; a death is
 // no longer one, ADR 0115) (#815).
 func (g *Game) routeBattlefieldCardToOwnerGraveyardLocked(cardID uuid.UUID) error {
-	return g.routeBattlefieldExitThenLocked(cardID, nil)
+	return g.routeBattlefieldExitInBatchLocked(cardID, battlefieldExitRoute, nil)
 }
 
-// routeBattlefieldExitThenLocked is the same exit with a CONTINUATION:
-// `then` runs once the move has reached a TERMINAL outcome — landed
-// (wherever the window settled it), cancelled, or refused. A pause is
-// not terminal; the resume reaches it later, through
-// applyResolvedReplacementEventLocked.
-//
-// It is the destroy / sacrifice / SBA route's half of the idiom
-// lifeTail, damageTail and zoneRoute.then already share (ADR 0013 §5b,
-// §5c, §5g). The continuation is carried on a zoneRoute like every
-// other exit's, flagged ViaBattlefieldLeave so the resume still
-// finishes the move through executeBattlefieldLeaveLocked: this route
-// is not folded into the shared exit primitive (see zone_route.go),
-// only its "then" is.
-//
-// `then` deliberately takes no outcome argument. What it wants to know
-// is where the permanent ended up, and it reads that off the live
-// board — the undo-safety contract every continuation in the engine
-// follows, and the only reading that is still true after a rewind into
-// the open prompt.
-//
-// Caller must hold g.mu.
-func (g *Game) routeBattlefieldExitThenLocked(cardID uuid.UUID, then func(g *Game) error) error {
-	return g.routeBattlefieldExitInBatchThenLocked(cardID, battlefieldExitRoute, nil, then)
-}
-
-// routeBattlefieldExitInBatchThenLocked is the batched form used by a
-// sequenced simultaneous destruction. `batch` rides the route across a
-// replacement prompt so finishBattlefieldLeaveLocked can publish it around
-// the resumed move itself, before the continuation starts the next leg.
+// routeBattlefieldExitInBatchLocked is the destroy / sacrifice / SBA
+// exit, and the batched form used by a sequenced simultaneous
+// destruction. `batch` rides the route across a replacement prompt so
+// finishBattlefieldLeaveLocked can publish it around the resumed move
+// itself, before the continuation (the route's keyed batch run, #4253
+// slice 9; the closure `then` went in #4361 S17) starts the next leg.
+// A pause is not terminal; the resume reaches the continuation later,
+// through applyResolvedReplacementEventLocked.
 //
 // `r` is the route TEMPLATE the verb chose — destroyRoute for a
 // destruction, battlefieldExitRoute for a sacrifice or a zero-counter
 // state-based action. It is what tells the CR 701.19 regeneration
 // built-in whether this exit is a destruction at all, and whether the
-// destroying effect said it can't be regenerated (#667). Its CardID,
-// simultaneousExit and then are filled in here, exactly as
-// routeLegLocked fills them in for every other exit.
+// destroying effect said it can't be regenerated (#667). Its CardID
+// and simultaneousExit are filled in here, exactly as routeLegLocked
+// fills them in for every other exit.
 //
 // Caller must hold g.mu.
-func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRoute, batch []Card, then func(g *Game) error) error {
+func (g *Game) routeBattlefieldExitInBatchLocked(cardID uuid.UUID, r zoneRoute, batch []Card) error {
 	var owner *Player
 	for i := range g.Battlefield.Cards {
 		if g.Battlefield.Cards[i].InstanceID == cardID {
@@ -6311,6 +6292,9 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		Destruction:           r.Destruction,
 		CantBeRegenerated:     r.CantBeRegenerated,
 		StateBasedDestruction: r.StateBased,
+		// #4395: and why, as a verb the client can tell apart
+		// (leave_cause.go).
+		LeaveCause: leaveCauseOfExit(r),
 		// A sacrifice paid as a cost is an indivisible CR 602.2b
 		// payment. Carry the route's posture onto the replacement
 		// event just as routeCardToZoneLocked does for non-battlefield
@@ -6320,11 +6304,10 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// CR 903.9 answer, given before the payment.
 		commanderAnswer: r.commanderAnswer,
 	}
-	if then != nil {
+	if r.batchLegs != nil {
 		r.CardID = cardID
 		r.ViaBattlefieldLeave = true
 		r.simultaneousExit = batch
-		r.then = then
 		ev.zoneRoute = &r
 	}
 	out, err := g.applyReplacementsLocked(ev)
@@ -6373,7 +6356,14 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter)
+	// A sacrifice paid as a cost is an indivisible CR 602.2b payment
+	// (mustSettleNow), nobody's resolution, so it names no source.
+	var moveCause MoveCause
+	if ev.mustSettleNow {
+		moveCause = MoveCause{Kind: MoveCauseCost}
+	}
+	mark := leaveMark{cause: ev.LeaveCause, source: g.leaveSourceLocked(moveCause)}
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, exileLink{ref: ev.ExiledWith, ability: ev.exiledWithAbility()}, ev.ExileCounter, mark)
 	// ADR 0178: a replacement's declared life change ("instead exile it
 	// and you gain 2 life") lands after the move and before the route's
 	// continuation, which waits for it if it pauses.
@@ -6414,8 +6404,12 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // stamps nothing. exileCounter is ReplacementEvent.ExileCounter, carried and
 // stamped the same way (Dauthi Voidwalker's void counter).
 //
+// mark is why the permanent left and which card was behind it
+// (leave_cause.go, #4395), stamped onto the EventZoneMove. A caller with
+// no verb of its own passes leaveMark{cause: LeaveCauseOther}.
+//
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith exileLink, exileCounter string, mark leaveMark) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -6505,13 +6499,15 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith.ref, exiledWith.ability)
 	stampExileCounterLocked(destZone, cardID, exileCounter)
-	g.EmitEvent(Event{
+	move := Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,
 		CardID:  cardID,
 		OldZone: ZoneBattlefield,
 		NewZone: dest,
-	})
+	}
+	mark.stamp(&move)
+	g.EmitEvent(move)
 	ltb := Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest}
 	lki.stamp(&ltb)
 	g.EmitEvent(ltb)
@@ -6521,10 +6517,10 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// commander.
 	if moved.IsMelded() {
 		if dest == ZoneCommand {
-			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor)
+			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor, mark)
 		} else {
 			g.landMeldPassengersLocked(moved, ZoneBattlefield, destZone, actor, false, 0,
-				!(shuffleAfter && dest == ZoneLibrary))
+				!(shuffleAfter && dest == ZoneLibrary), mark)
 		}
 	}
 	// A permanent leaving the battlefield is the one event that can
@@ -7067,28 +7063,33 @@ func (g *Game) DiscardSelection(playerID uuid.UUID, cardIDs []uuid.UUID) error {
 	// batch has landed.
 	return g.discardCardsLocked(playerID, cardIDs, discardOptions{
 		cause: DiscardCauseCleanup,
-		then: func(g *Game, _ []uuid.UUID) error {
-			delete(g.DiscardPending, playerID)
-			if len(g.DiscardPending) == 0 {
-				g.DiscardPending = nil
-			}
-			// The cleanup step's turn-based actions are finished now
-			// that the discard has landed, so take the one cleanup
-			// exit (cleanup.go): with the pending map empty it runs
-			// the CR 514.3a check and then either ends the turn or
-			// gives the active player priority here. This is where a
-			// trigger watching the hand-size discard gets onto the
-			// stack in the turn it belongs to (#661) — before, this
-			// re-fired the whole step entry, which advanced straight
-			// out of the turn and left the trigger waiting for the
-			// next player's upkeep.
-			if g.Turn.Step == StepCleanup {
-				g.exitCleanupStepOnAnswerLocked()
-			}
-			return nil
-		},
+		// #4361 S11c: the bookkeeping is data (cleanupDiscarded), so a
+		// leg paused on a CR 616 prompt is a restore point.
+		keyed: KeyedTail{Ref: cleanupDiscarded, Player: playerID},
 	})
 }
+
+// cleanupDiscarded is the hand-size discard's bookkeeping once the whole
+// batch has landed (Player is the discarding player). An on-disk key:
+// never renamed, never reused.
+var cleanupDiscarded = RegisterTail("engine/cleanup-discarded", func(g *Game, o TailOutcome) error {
+	delete(g.DiscardPending, o.Tail.Player)
+	if len(g.DiscardPending) == 0 {
+		g.DiscardPending = nil
+	}
+	// The cleanup step's turn-based actions are finished now that the
+	// discard has landed, so take the one cleanup exit (cleanup.go):
+	// with the pending map empty it runs the CR 514.3a check and then
+	// either ends the turn or gives the active player priority here.
+	// This is where a trigger watching the hand-size discard gets onto
+	// the stack in the turn it belongs to (#661) — before, this re-fired
+	// the whole step entry, which advanced straight out of the turn and
+	// left the trigger waiting for the next player's upkeep.
+	if g.Turn.Step == StepCleanup {
+		g.exitCleanupStepOnAnswerLocked()
+	}
+	return nil
+})
 
 // SetMaxHandSize updates the named player's per-player hand-size
 // cap. Sandbox-only — used by the S14+ effect catalog for
@@ -7411,12 +7412,17 @@ func (g *Game) moveCardByRefLocked(src, dst ZoneRef, cardID uuid.UUID, asCommand
 		g.runAsEntersOthersForMoveLocked(cardID)
 	}
 
-	g.EmitEvent(Event{
+	sandboxMove := Event{
 		Kind:    EventZoneMove,
 		CardID:  cardID,
 		OldZone: srcZone.Kind,
 		NewZone: dstZone.Kind,
-	})
+	}
+	if srcZone.Kind == ZoneBattlefield {
+		// #4395: nobody's spell or ability moved it.
+		leaveMark{cause: LeaveCauseOther}.stamp(&sandboxMove)
+	}
+	g.EmitEvent(sandboxMove)
 	if srcZone.Kind == ZoneBattlefield {
 		ltb := Event{Kind: EventLTB, CardID: cardID, NewZone: dstZone.Kind}
 		lki.stamp(&ltb)

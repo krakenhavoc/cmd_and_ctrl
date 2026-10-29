@@ -75,7 +75,12 @@ func kaervekExileAndCopy(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return CopyAndCast{Cards: exiled, FollowUp: kaervekLosesTwo}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(kaervekCopyExiled))
 }
+
+// kaervekCopyExiled copies what reached exile (#4253 slice 9).
+var kaervekCopyExiled = CardTail("kaervek-the-punisher/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return CopyAndCast{Cards: exiled, FollowUp: kaervekLosesTwo}.Apply(NewContext(g, item))
+})

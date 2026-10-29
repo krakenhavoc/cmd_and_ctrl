@@ -42,12 +42,12 @@ func smeagolTakesALand(g *game.Game, item *game.StackItem) error {
 	for _, t := range ctx.LegalTargets() {
 		run, hit := revealUntil(ctx, t.ID, game.Card.IsLand, "Sméagol, Helpful Guide — revealed until a land card")
 		return PutFromLibraryOntoBattlefield{
-			Player: ctx.Controller(),
-			Cards:  run,
-			Match:  func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
-			All:    true,
-			Tapped: true,
-			Then:   PutRestIntoGraveyard,
+			Player:   ctx.Controller(),
+			Cards:    run,
+			Match:    func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return hit != uuid.Nil && c.InstanceID == hit },
+			All:      true,
+			Tapped:   true,
+			ThenTail: PutRestIntoGraveyardTail,
 		}.Apply(ctx)
 	}
 	return nil

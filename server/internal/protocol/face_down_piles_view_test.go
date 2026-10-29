@@ -29,7 +29,7 @@ func seedFaceDownSplit(t *testing.T, g *game.Game) (looked []uuid.UUID, splitID 
 			PickQuestion:  "test — take a pile",
 			Cards:         looked,
 			FaceDown:      true,
-			Then:          func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil },
+			ThenTail:      game.KeyedTail{Ref: testProtocolNoopTail},
 		})
 		for _, c := range g.PendingChoices {
 			if c != nil && c.Kind == game.PendingChoiceRevealPick {
@@ -172,7 +172,7 @@ func TestFaceDownPickOverTheCastersCardsHidesThemFromAnOpponentChooser(t *testin
 			Splitter: caster.ID, Chooser: chooser.ID, Owner: caster.ID,
 			SplitQuestion: "test — face-down pile", PickQuestion: "test — choose",
 			Cards: looked, FaceDown: true,
-			Then: func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil },
+			ThenTail: game.KeyedTail{Ref: testProtocolNoopTail},
 		})
 		for _, c := range g.PendingChoices {
 			if c != nil && c.Kind == game.PendingChoiceRevealPick {

@@ -17,7 +17,7 @@ import (
 //
 // "That graveyard" is the owner of the card that was targeted, read
 // before the exile; the emptiness is judged once the exile has settled
-// (ExileTarget.Then). If the target is gone as the ability resolves it
+// (ExileTarget.ThenTail). If the target is gone as the ability resolves it
 // does nothing at all, so it cannot flip. Nighteyes reanimates from any
 // graveyard under the activator's control, and is black and {1}{B}
 // (CR 710.1c).
@@ -46,13 +46,8 @@ func init() {
 				}
 				graveyardOwner := card.Owner
 				return ExileTarget{
-					Target: id,
-					Then: func(ctx *Context, _ bool) error {
-						return flipThisWhen(ctx.Game, item, func(g *game.Game, _ uuid.UUID) bool {
-							p := g.PlayerByIDForEffect(graveyardOwner)
-							return p != nil && p.Graveyard != nil && p.Graveyard.Size() == 0
-						})
-					},
+					Target:   id,
+					ThenTail: withCarry(ctx.ItemTail(nezumiGraverobberExiled), graveyardOwner),
 				}.Apply(ctx)
 			},
 		}},
@@ -75,3 +70,13 @@ func init() {
 		}},
 	})
 }
+
+// nezumiGraverobberExiled is the clause after the exile (#4253 slice 9).
+var nezumiGraverobberExiled = CardTail("nezumi-graverobber/after-exile", func(ctx *Context, o game.TailOutcome) error {
+	item, graveyardOwner := ctx.Item, tailCarry0(o)
+
+	return flipThisWhen(ctx.Game, item, func(g *game.Game, _ uuid.UUID) bool {
+		p := g.PlayerByIDForEffect(graveyardOwner)
+		return p != nil && p.Graveyard != nil && p.Graveyard.Size() == 0
+	})
+})

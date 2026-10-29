@@ -35,10 +35,10 @@ type ExileUntil struct {
 	// ThisLeaves is "until this permanent leaves the battlefield".
 	ThisLeaves bool
 
-	// On, Condition and CondParams are "until <an event>".
-	On         []game.EventKind
-	Condition  game.ConditionRef
-	CondParams game.EffectParams
+	// On and Condition are "until <an event>": the events watched and a
+	// registered condition over them (one that reads no parameters).
+	On        []game.EventKind
+	Condition game.ConditionRef
 
 	// Label names the held card on the table ("Ossification — the
 	// exiled card returns when it leaves the battlefield").
@@ -50,12 +50,15 @@ type ExileUntil struct {
 	// filled in.
 	Grant *game.CastPermission
 
-	// Then, when set, runs once the exile has settled with whether the
-	// card was exiled: "for each permanent exiled this way" (Abdel
-	// Adrian, Gorion's Ward) counts the trues. It runs after the return
+	// ThenTail is the rest of the effect (#4253): a registered tail
+	// (CardTail), told the card as TailOutcome.IDs when it was exiled and
+	// nothing when it was not — "for each permanent exiled this way"
+	// (Abdel Adrian, Gorion's Ward) counts them. It runs after the return
 	// is recorded, and not at all when the "until" event had already
-	// happened (nothing was exiled this way).
-	Then func(ctx *Context, exiled bool) error
+	// happened (nothing was exiled this way). On the "until this leaves
+	// the battlefield" form it rides the keyed exile as the record's
+	// Next, so a prompt the exile pauses on is a restore point.
+	ThenTail game.KeyedTail
 }
 
 // Apply is CR 610.3a/b first — an "until" whose event has already
@@ -78,7 +81,6 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		Label:        e.Label,
 		On:           e.On,
 		Condition:    e.Condition,
-		CondParams:   e.CondParams,
 	}
 	record := true
 	if e.ThisLeaves {
@@ -93,27 +95,134 @@ func (e ExileUntil) Apply(ctx *Context) error {
 		return nil
 	}
 	target := e.Target
-	then := e.Then
-	return ExileTarget{Target: target, Then: func(ctx *Context, exiled bool) error {
-		if !exiled {
-			if then != nil {
-				return then(ctx, false)
-			}
-			return nil
-		}
+	if e.ThisLeaves && len(e.On) == 0 && e.Condition.Key() == "" {
+		// #4253 slice 10a: "until this leaves the battlefield" with no
+		// clause of its own (the Oblivion Ring family, Hostage Taker) is
+		// a keyed tail: the record and the grant ride it as data.
+		t := game.KeyedTail{Ref: exileUntilRecorded, Player: u.Controller, Source: u.SourceCardID, Word: e.Label}
 		if e.Grant != nil {
-			perm := *e.Grant
-			perm.Zone = game.ZoneExile
-			ctx.Game.GrantCastPermissionOverCardForEffect(target, perm)
+			grant := *e.Grant
+			t.Permission = &grant
 		}
 		if record {
-			ctx.Game.ScheduleUntilReturnForEffect(target, u)
+			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
 		}
-		if then != nil {
-			return then(ctx, true)
+		if !e.ThenTail.IsZero() {
+			next := e.ThenTail
+			t.Next = &next
 		}
-		return nil
-	}}.Apply(ctx)
+		return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
+	}
+	// An event-conditioned "until" (Palace Jailer's monarch, #4253): the
+	// record's condition key and the events it watches ride the tail's
+	// Words, the "leaves" object (when there is one) its Carry and N, so a
+	// CR 616 or CR 903.9 prompt the exile pauses on is a restore point.
+	t := game.KeyedTail{Ref: exileUntilEventRecorded, Player: u.Controller, Source: u.SourceCardID, Word: e.Label}
+	if e.Grant != nil {
+		grant := *e.Grant
+		t.Permission = &grant
+	}
+	if record {
+		t.Words = append([]string{e.Condition.Key()}, eventKindWords(e.On)...)
+		if u.Leaves.ID != uuid.Nil {
+			t.Carry, t.N = []uuid.UUID{u.Leaves.ID}, u.Leaves.Epoch
+		}
+	}
+	if !e.ThenTail.IsZero() {
+		next := e.ThenTail
+		t.Next = &next
+	}
+	return ExileTarget{Target: target, ThenTail: t}.Apply(ctx)
+}
+
+// eventKindWords spells event kinds as a tail's words.
+func eventKindWords(kinds []game.EventKind) []string {
+	out := make([]string, len(kinds))
+	for i, k := range kinds {
+		out[i] = string(k)
+	}
+	return out
+}
+
+// exileUntilEventRecorded is the event-conditioned ExileUntil's keyed tail
+// (#4253), told the card when it reached exile: the grant (Permission), and
+// the return's record "until <Words[1:]> satisfies the condition Words[0]"
+// (and, with a Carry, "until <Carry[0] at epoch N> leaves"), labelled with
+// Word, for the effect of Player and Source. No Words is no record. Next,
+// when set, is the caller's ExileUntil.ThenTail, told the same IDs. An
+// on-disk key.
+var exileUntilEventRecorded = game.RegisterTail("exile-until/record-event-return", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) == 1 {
+		exileUntilEventRecord(g, o)
+	}
+	if next := o.Tail.Next; next != nil {
+		return next.Run(g, o.IDs)
+	}
+	return nil
+})
+
+// exileUntilEventRecord is exileUntilEventRecorded's grant and record.
+func exileUntilEventRecord(g *game.Game, o game.TailOutcome) {
+	target := o.IDs[0]
+	if p := o.Tail.Permission; p != nil {
+		perm := *p
+		perm.Zone = game.ZoneExile
+		g.GrantCastPermissionOverCardForEffect(target, perm)
+	}
+	if len(o.Tail.Words) == 0 {
+		return
+	}
+	u := game.UntilReturn{Controller: o.Tail.Player, SourceCardID: o.Tail.Source, Label: o.Tail.Word}
+	if key := o.Tail.Words[0]; key != "" {
+		cond, ok := game.ConditionRefByKey(key)
+		if !ok {
+			return
+		}
+		u.Condition = cond
+	}
+	for _, k := range o.Tail.Words[1:] {
+		u.On = append(u.On, game.EventKind(k))
+	}
+	if len(o.Tail.Carry) > 0 {
+		u.Leaves = game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N}
+	}
+	g.ScheduleUntilReturnForEffect(target, u)
+}
+
+// exileUntilRecorded is ExileUntil's keyed tail (#4253 slice 10a), told
+// the card when it reached exile: the grant (the tail's Permission) and the
+// return's record, "until <Carry[0] at epoch N> leaves the battlefield",
+// labelled with the tail's Word, for the effect of Player and Source. A
+// tail with no Carry exiles with no record (an item that names no source
+// object). The tail's Next, when set, is the caller's ExileUntil.ThenTail,
+// told the same IDs once the record is written. An on-disk key.
+var exileUntilRecorded = game.RegisterTail("exile-until/record-return", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) == 1 {
+		exileUntilRecord(g, o)
+	}
+	if next := o.Tail.Next; next != nil {
+		return next.Run(g, o.IDs)
+	}
+	return nil
+})
+
+// exileUntilRecord is exileUntilRecorded's grant and record, over the card
+// that reached exile.
+func exileUntilRecord(g *game.Game, o game.TailOutcome) {
+	target := o.IDs[0]
+	if p := o.Tail.Permission; p != nil {
+		perm := *p
+		perm.Zone = game.ZoneExile
+		g.GrantCastPermissionOverCardForEffect(target, perm)
+	}
+	if len(o.Tail.Carry) > 0 {
+		g.ScheduleUntilReturnForEffect(target, game.UntilReturn{
+			Controller:   o.Tail.Player,
+			SourceCardID: o.Tail.Source,
+			Label:        o.Tail.Word,
+			Leaves:       game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N},
+		})
+	}
 }
 
 // exileChosenTargetUntilThisLeaves is the Oblivion Ring family's entry

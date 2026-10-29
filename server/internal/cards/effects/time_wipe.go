@@ -52,15 +52,21 @@ func init() {
 					}
 					return out, 1, 1
 				},
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					for _, id := range picked.Cards() {
-						if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-							return err
-						}
-					}
-					return DestroyAllMatching{Match: Creature()}.Apply(ctx)
-				},
+				Keyed: timeWipeChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// timeWipeChosen is the chosen creature returning to its owner's hand and
+// then the wipe, keyed (#4290).
+var timeWipeChosen = RegisterPermanentsPick("prompt-run/time-wipe-return-and-destroy", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+	},
+})

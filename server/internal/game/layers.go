@@ -856,6 +856,7 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			if !eff.AppliesTo(target, g) {
 				continue
 			}
+			nGrants := len(target.effective.GrantedAbilities)
 			if typeChange {
 				applyTypeChange(eff, target.effective, target, g)
 			} else {
@@ -866,6 +867,8 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			}
 			if grants != nil {
 				st.noteGrants(target, grants, grantor, eff.Timestamp())
+			} else if len(target.effective.GrantedAbilities) > nGrants {
+				st.noteAppendedGrants(target, nGrants, eff.Timestamp())
 			}
 		}
 		return
@@ -909,6 +912,7 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 				st.recordRemovalTimestamp(target, eff.Timestamp())
 			}
 		}
+		nGrants := len(target.effective.GrantedAbilities)
 		if typeChange {
 			applyTypeChange(eff, target.effective, target, g)
 		} else {
@@ -919,6 +923,8 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 		}
 		if grants != nil {
 			st.noteGrants(target, grants, grantor, eff.Timestamp())
+		} else if len(target.effective.GrantedAbilities) > nGrants {
+			st.noteAppendedGrants(target, nGrants, eff.Timestamp())
 		}
 		st.recordApplied(src, target, bucketIndex)
 	}

@@ -1,6 +1,10 @@
 package game
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // prevention_then_pause.go — a prevention effect's additional effect
 // that asks a question is answered AT ONCE (#2040, ADR 0108 amendment
@@ -46,8 +50,8 @@ import "slices"
 //     spell damages Khârn, "an opponent of your choice" is asked of the
 //     player who controls it after the first answer.
 //  3. The instruction whose instance asked parks its continuation
-//     (followUpParks): runDamageTailLocked's `then` and an Each walk's
-//     total. When the last prompt is answered, the boundary's hold check
+//     (followUpParks): runDamageTailLocked's keyed tail and an Each
+//     walk's total, as data (parkFollowUpKeyedLocked). When the last prompt is answered, the boundary's hold check
 //     (holdForOpenResolutionLocked) first runs the instance's remaining
 //     follow-ups, then the parked continuation — before a modal spell's
 //     next bullet, because the continuation is the earlier instruction.
@@ -60,10 +64,9 @@ import "slices"
 // stamp are all plain data the snapshot already carries, and a follow-up
 // that asks with a KEYED prompt (an option pick or a card-set pick with
 // a registered continuation) leaves a table that is still a restore
-// point. A parked continuation is a closure, counted by the census like
-// the CR 616 resume it sits beside, so a table holding one keeps the
-// restore point from before the damage — exactly what a damage event
-// paused on a CR 616 ordering prompt does.
+// point. A parked continuation is data too (followUpPark.keyed,
+// GameSnapshot.FollowUpParks; #4253, and since #4361 S8 the only form),
+// so the park itself never keeps a table from being a restore point.
 //
 // A catalog effect written as a plain sequence of steps
 // (Do(DealDamage{…}, DrawCards{…})) waits too since #4012: the steps
@@ -77,7 +80,13 @@ import "slices"
 // prompt its instance's follow-up asked.
 type followUpPark struct {
 	inst DamageInstance
-	run  func(g *Game) error
+
+	// keyed is the rest of the instruction as data (#4253,
+	// damage_keyed.go): a damage event's registered tail, told target and
+	// dealt. The closure form (`run`) is gone (#4361 S8).
+	keyed  *KeyedTail
+	target uuid.UUID
+	dealt  int
 }
 
 // followUpsHeldLocked reports whether a follow-up must wait: the
@@ -140,17 +149,6 @@ func (g *Game) runOwedFollowUpsLocked(due func(PreventionFollowUp) bool) bool {
 	return false
 }
 
-// parkFollowUpContinuationLocked parks the rest of a damage instruction
-// behind its instance's follow-up prompt (decision 3).
-//
-// Caller must hold g.mu (write).
-func (g *Game) parkFollowUpContinuationLocked(inst DamageInstance, run func(g *Game) error) {
-	if run == nil {
-		return
-	}
-	g.followUpParks = append(slices.Clone(g.followUpParks), followUpPark{inst: inst, run: run})
-}
-
 // resumeFollowUpParksLocked runs what the follow-up prompts held, now
 // that none is open: each parked instruction's remaining follow-ups,
 // then the instruction's continuation, oldest first. Reports whether it
@@ -176,7 +174,7 @@ func (g *Game) resumeFollowUpParksLocked() bool {
 		if len(g.followUpParks) == 0 {
 			g.followUpParks = nil
 		}
-		if err := p.run(g); err != nil {
+		if err := g.runFollowUpParkLocked(p); err != nil {
 			g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: "damage continuation failed: " + err.Error()})
 		}
 		if g.pausedResolutionChoiceLocked() != nil {

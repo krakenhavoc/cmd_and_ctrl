@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"slices"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -52,7 +54,5 @@ func init() {
 // entered. An on-disk key.
 var greenSunsZenithTuck = game.RegisterTail("green-suns-zenith/shuffle-into-library", func(g *game.Game, o game.TailOutcome) error {
 	owner := o.Tail.Player
-	return g.TuckToLibraryThenForEffect(o.Tail.Source, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{o.Tail.Source}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 })

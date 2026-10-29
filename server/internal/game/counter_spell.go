@@ -24,7 +24,7 @@ import (
 // # Where it opens
 //
 // In the three effect counter verbs (CounterTargetForEffect,
-// CounterTargetToZoneForEffect, CounterSpellToLibraryThenForEffect), the
+// CounterTargetToZoneForEffect, CounterSpellToLibraryKeyedForEffect), the
 // ones a resolving spell or ability reaches, so a hard counter, a
 // "counter unless pays" that was declined, a ward and the destination
 // counters (Remand, Memory Lapse, Hinder) all pass through it. It opens
@@ -158,8 +158,12 @@ func (g *Game) FreeCastFromExilePermission(player, source uuid.UUID, sourceName 
 // window on the counter, and then either that route or what a
 // replacement made of it. `dst` and `at` are the destination override
 // and library position of the destination counters; `then` is the
-// caller's continuation, run once the spell has reached a terminal
-// outcome (routed, exiled instead, or left on the stack).
+// caller's continuation, a registered tail run once the spell has reached
+// a terminal outcome (routed, exiled instead, or left on the stack) and
+// told the spell when it landed where the route asked. It rides the route
+// as a one-leg route batch (zoneRoute.batchLegs, #4361 S11c), as
+// ExileSpellKeyedForEffect's does, so a move paused on a CR 616 prompt is
+// a restore point. A zero tail is "no continuation".
 //
 // With nothing resolving (the sandbox's counter action reaches
 // counterSpellLocked directly, but a test or a future caller may not) no
@@ -167,10 +171,13 @@ func (g *Game) FreeCastFromExilePermission(player, source uuid.UUID, sourceName 
 // as it always did.
 //
 // Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) counterSpellByEffectLocked(spellID uuid.UUID, dst *ZoneRef, at TuckOptions, then func(*Game) error) error {
-	r, err := g.spellExitRouteLocked(spellID, dst, ZoneGraveyard, true, at, then)
+func (g *Game) counterSpellByEffectLocked(spellID uuid.UUID, dst *ZoneRef, at TuckOptions, then KeyedTail) error {
+	r, err := g.spellExitRouteLocked(spellID, dst, ZoneGraveyard, true, at)
 	if err != nil {
 		return err
+	}
+	if !then.IsZero() {
+		r.batchLegs = &routeBatchRun{Leg: spellID, Then: snapshotKeyedTail(then)}
 	}
 	cause := g.resolutionCauseLocked()
 	if cause.Controller == uuid.Nil {
@@ -224,12 +231,9 @@ func (g *Game) finishCounterSpellLocked(ev *ReplacementEvent) error {
 	// The continuation moves off the event's route, so an abandoned or
 	// re-entered event cannot run it a second time. (A copy of the
 	// event for an undo snapshot carries its own copy of the route.)
-	orig := route.then
-	route.then = nil
+	r := route.detachTail()
 	in := ev.counterInstead
 	if in == nil {
-		r := *route
-		r.then = orig
 		_, err := g.routeCardToZoneLocked(r)
 		return err
 	}
@@ -239,36 +243,57 @@ func (g *Game) finishCounterSpellLocked(ev *ReplacementEvent) error {
 		// The spell left the stack while the ordering prompt was open
 		// (it cannot, with the table blocked, but a restore can): there
 		// is nothing to exile, and the caller is still owed its answer.
-		if orig == nil {
-			return nil
-		}
-		return orig(g)
+		return g.runRouteTailLocked(&r)
 	}
-	plan := *in
-	return g.exitSpellFromStackLocked(spellID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, func(g *Game) error {
-		if plan.mayPlayFreeBy != uuid.Nil && g.landedInZoneLocked(spellID, ZoneExile, uuid.Nil) {
-			if c, ok := g.cardInZoneLocked(g.Exile, spellID); ok {
-				perm := g.FreeCastFromExilePermission(plan.mayPlayFreeBy, plan.source, plan.sourceName)
-				// #4286, CR 608.2g: the play is made during the
-				// resolution of the countering spell or ability.
-				asked := g.OfferResolutionCastForEffect(ResolutionCastOffer{
-					Chooser:      plan.mayPlayFreeBy,
-					Source:       plan.source,
-					Reason:       plan.sourceName,
-					Cards:        []uuid.UUID{spellID},
-					Permission:   &perm,
-					Keyword:      MayCastKeywordFreeCast,
-					AcceptLabel:  "Cast it free",
-					DeclineLabel: "Leave it in exile",
-				})
-				if !asked {
-					g.GrantCastPermissionToCardsForEffect(perm, []Card{c})
-				}
+	// #4361 S11c: the exile and the free cast that follows it are data
+	// (counterExiledInstead), with the counter's own continuation as its
+	// Next, so the exile paused on a CR 616 prompt is a restore point.
+	after := KeyedTail{
+		Ref: counterExiledInstead, Player: in.mayPlayFreeBy, Source: in.source, Word: in.sourceName,
+	}
+	if legs := r.batchLegs; legs != nil && legs.Then != nil {
+		next := restoreKeyedTail(legs.Then)
+		after.Next = &next
+	}
+	exile, err := g.spellExitRouteLocked(spellID, &ZoneRef{Kind: ZoneExile}, ZoneExile, false, TuckOptions{})
+	if err != nil {
+		return err
+	}
+	exile.batchLegs = &routeBatchRun{Leg: spellID, Then: snapshotKeyedTail(after)}
+	_, err = g.routeCardToZoneLocked(exile)
+	return err
+}
+
+// counterExiledInstead finishes a counter a replacement turned into an
+// exile (ExileCounteredSpellInsteadForEffect, Guile): the countering
+// player (Player; uuid.Nil for none) may cast the spell free once it is in
+// exile (IDs), during the countering spell's resolution (#4286, CR
+// 608.2g), and then the counter's own continuation (Next) is told the
+// spell did not land where the counter would have put it. Source and Word
+// are the replacement's source and its name. An on-disk key: never
+// renamed, never reused.
+var counterExiledInstead = RegisterTail("engine/counter-exiled-instead", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if t.Player != uuid.Nil && len(o.IDs) == 1 {
+		spellID := o.IDs[0]
+		if c, ok := g.cardInZoneLocked(g.Exile, spellID); ok {
+			perm := g.FreeCastFromExilePermission(t.Player, t.Source, t.Word)
+			// #4286, CR 608.2g: the play is made during the
+			// resolution of the countering spell or ability.
+			asked := g.OfferResolutionCastForEffect(ResolutionCastOffer{
+				Chooser:      t.Player,
+				Source:       t.Source,
+				Reason:       t.Word,
+				Cards:        []uuid.UUID{spellID},
+				Permission:   &perm,
+				Keyword:      MayCastKeywordFreeCast,
+				AcceptLabel:  "Cast it free",
+				DeclineLabel: "Leave it in exile",
+			})
+			if !asked {
+				g.GrantCastPermissionToCardsForEffect(perm, []Card{c})
 			}
 		}
-		if orig == nil {
-			return nil
-		}
-		return orig(g)
-	})
-}
+	}
+	return g.runKeyedTailLocked(nextTailValue(t.Next), nil, 0)
+})

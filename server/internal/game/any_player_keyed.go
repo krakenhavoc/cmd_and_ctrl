@@ -119,8 +119,9 @@ func registeredAnyPlayerKeysLocked() []string {
 	return out
 }
 
-// AnyPlayerPaysKeyed is the whole of a keyed any-player offer:
-// AnyPlayerPays with the closures replaced by Then and Carry.
+// AnyPlayerPaysKeyed is the whole of a keyed any-player offer: what it
+// asks, of whom, and its consequences as a registered key (Then) handed
+// the plain data the card put there (Carry, Asked).
 type AnyPlayerPaysKeyed struct {
 	// Source is the card whose effect asks; Controller is that effect's
 	// controller.
@@ -135,7 +136,11 @@ type AnyPlayerPaysKeyed struct {
 	AcceptLabel, DeclineLabel, Question string
 	// Opponents narrows the offer to the controller's opponents.
 	Opponents bool
-	// HelpsController is AnyPlayerPays.HelpsController.
+	// HelpsController marks an offer whose payment is what the controller
+	// wants: Icy Prison's "sacrifice this unless any player pays {3}",
+	// where paying keeps their permanent. False is the rest of the family,
+	// where paying stops the controller's effect. Plain data for the view's
+	// words and the bot's answer.
 	HelpsController bool
 	// Guards is the stack object the outcome decides, held on the stack
 	// while the offer is open, or uuid.Nil.
@@ -150,10 +155,14 @@ type AnyPlayerPaysKeyed struct {
 	Asked *AskedItem
 }
 
-// QueueAnyPlayerPaysKeyedForEffect is QueueAnyPlayerPaysForEffect with
-// the consequences as a registered key. Every link is a prompt that
-// carries no closure, so a table waiting on any of them is a restore
-// point. With nobody to ask, the "if no one does" branch runs at once.
+// QueueAnyPlayerPaysKeyedForEffect offers p's payment to every player
+// still in the game in APNAP order from the active player, one pay-unless
+// at a time, and runs the registered "if a player does" consequence for
+// the first who pays or the "if no one does" one when all decline. Every
+// link is a prompt that carries no closure, so a table waiting on any of
+// them is a restore point. With nobody to ask (every player gone, or no
+// opponent left for an Opponents offer), the "if no one does" branch runs
+// at once.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueAnyPlayerPaysKeyedForEffect(p AnyPlayerPaysKeyed) error {
@@ -166,6 +175,19 @@ func (g *Game) QueueAnyPlayerPaysKeyedForEffect(p AnyPlayerPaysKeyed) error {
 	}
 	p.Action = copyPayAction(p.Action)
 	p.Carry = copyUUIDs(p.Carry)
+	if p.Action != nil && p.Action.Kind == PayActionEither && !validEither(p.Action) {
+		// ADR 0187 §5: an either payment needs two or more branches, none
+		// of them an either. A programming error, surfaced once; the "if no
+		// one does" consequence still runs so the card does something, as
+		// the deleted closure form did (#4253's last
+		// part moved its test here).
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   p.Source,
+			ErrorMsg: "any player pays: malformed either payment " + p.Cost + ": " + ErrInvalidParam.Error(),
+		})
+		return g.runAnyPlayerNobodyLocked(p)
+	}
 	if p.Action == nil && entry.perPayer == nil {
 		if _, err := ParseCost(p.Cost); err != nil {
 			// A programming error, surfaced once rather than once per

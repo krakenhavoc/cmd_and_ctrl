@@ -56,12 +56,12 @@ func destroyRecordingLife(t *testing.T, g *Game, me *Player, ids []uuid.UUID) *[
 	t.Helper()
 	var seen []int
 	g.WithWriteLock(func() {
-		err := g.DestroyPermanentsThenForEffect(ids, func(_ *Game, _ []uuid.UUID) error {
+		err := g.DestroyPermanentsKeyedForEffect(ids, hookTail(func(_ *Game, o TailOutcome) error {
 			seen = append(seen, me.Life)
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("DestroyPermanentsThenForEffect: %v", err)
+			t.Fatalf("DestroyPermanentsKeyedForEffect: %v", err)
 		}
 	})
 	return &seen
@@ -192,10 +192,11 @@ func TestMoveLifeOnACostSettlesWithoutAsking(t *testing.T) {
 	life := me.Life
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.routeBattlefieldExitInBatchThenLocked(bear, zoneRoute{Sacrifice: true, MustSettleNow: true}, nil, func(*Game) error {
-			ran++
-			return nil
-		})
+		err := g.routeBattlefieldExitInBatchLocked(bear, zoneRoute{Sacrifice: true, MustSettleNow: true,
+			batchLegs: &routeBatchRun{Leg: bear, Then: snapshotKeyedTail(hookTail(func(*Game, TailOutcome) error {
+				ran++
+				return nil
+			}))}}, nil)
 		if err != nil {
 			t.Fatalf("sacrifice as a cost: %v", err)
 		}

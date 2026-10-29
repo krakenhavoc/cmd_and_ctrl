@@ -19,18 +19,17 @@ func TestManifestFromHandsPutsEachCardUnderItsOwner(t *testing.T) {
 	mine := handCardFor(a, "Bear", "Creature — Bear")
 	theirs := handCardFor(b, "Ancestral Recall", "Instant")
 
-	calls := 0
-	var got []uuid.UUID
+	resetProbes()
 	g.WithWriteLock(func() {
-		err := g.ManifestFromHandsThenForEffect([]uuid.UUID{mine, theirs}, func(_ *Game, in []uuid.UUID) error {
-			calls++
-			got = in
-			return nil
-		})
-		if err != nil {
+		if err := g.ManifestFromHandsKeyedForEffect([]uuid.UUID{mine, theirs}, probeTail()); err != nil {
 			t.Fatalf("manifest: %v", err)
 		}
 	})
+	calls := len(testProbeHeard)
+	var got []uuid.UUID
+	if calls > 0 {
+		got = testProbeHeard[0].IDs
+	}
 	if calls != 1 || len(got) != 2 {
 		t.Fatalf("then ran %d times with %d permanents, want once with 2", calls, len(got))
 	}
@@ -76,17 +75,15 @@ func TestManifestFromHandsRefusesAStaleIDAndMovesNothing(t *testing.T) {
 	})
 	stale := g.Battlefield.Cards[len(g.Battlefield.Cards)-1].InstanceID
 
-	calls := 0
+	resetProbes()
 	var err error
 	g.WithWriteLock(func() {
-		err = g.ManifestFromHandsThenForEffect([]uuid.UUID{inHand, stale}, func(_ *Game, in []uuid.UUID) error {
-			calls++
-			if len(in) != 0 {
-				t.Errorf("then was told %d permanents after a refusal", len(in))
-			}
-			return nil
-		})
+		err = g.ManifestFromHandsKeyedForEffect([]uuid.UUID{inHand, stale}, probeTail())
 	})
+	calls := len(testProbeHeard)
+	if calls > 0 && len(testProbeHeard[0].IDs) != 0 {
+		t.Errorf("then was told %d permanents after a refusal", len(testProbeHeard[0].IDs))
+	}
 	if !errors.Is(err, ErrCardNotFound) {
 		t.Fatalf("err = %v, want ErrCardNotFound", err)
 	}

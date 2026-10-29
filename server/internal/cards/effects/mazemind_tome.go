@@ -38,7 +38,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisHasAtLeast(page, 4, "Mazemind Tome — exile it and gain 4 life",
-				ExileThisThen(func(ctx *Context) error {
+				ExileThisThen("then/mazemind-tome-gain-life", func(ctx *Context) error {
 					return GainLife{Amount: 4}.Apply(ctx)
 				})),
 		},

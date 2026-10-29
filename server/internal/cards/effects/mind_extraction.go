@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strings"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Mind Extraction — Sorcery {2}{B}:
 //
@@ -40,38 +44,86 @@ func init() {
 			if !ok || len(info.Characteristic.Colors) == 0 {
 				return nil
 			}
-			matches := func(c game.Card) bool {
-				for _, col := range info.Characteristic.Colors {
-					if c.HasColor(col) {
-						return true
-					}
-				}
-				return false
+			letters := mindExtractionLetters(info.Characteristic.Colors)
+			then, ok := mindExtractionDiscards[letters]
+			if !ok {
+				return nil
 			}
 			n := 0
 			for _, c := range p.Hand.Cards {
-				if matches(c) {
+				if mindExtractionMatches(letters, c) {
 					n++
 				}
 			}
 			if n == 0 {
 				return nil
 			}
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 				Player:   player,
 				Source:   item.SourceCardID,
 				N:        n,
 				Question: "Mind Extraction — discard every card that shares a color with the sacrificed creature",
-				Validate: func(picked []game.Card) bool {
-					for _, c := range picked {
-						if !matches(c) {
-							return false
-						}
-					}
-					return true
-				},
-			})
-			return nil
+			}, then, nil)
 		},
 	})
+}
+
+// mindExtractionColorOrder is the five colors in the order a key spells them.
+const mindExtractionColorOrder = "WUBRG"
+
+// mindExtractionLetters spells a set of colors in WUBRG order: "" for none.
+func mindExtractionLetters(colors []string) string {
+	var out []byte
+	for i := 0; i < len(mindExtractionColorOrder); i++ {
+		letter := mindExtractionColorOrder[i : i+1]
+		for _, col := range colors {
+			if col == letter {
+				out = append(out, letter[0])
+				break
+			}
+		}
+	}
+	return string(out)
+}
+
+// mindExtractionMatches reports whether a card shares a color with the set
+// spelled by letters.
+func mindExtractionMatches(letters string, c game.Card) bool {
+	for i := 0; i < len(letters); i++ {
+		if c.HasColor(letters[i : i+1]) {
+			return true
+		}
+	}
+	return false
+}
+
+// mindExtractionDiscards is the keyed discard for each set of colors a
+// sacrificed creature can have (#4253): "discards all cards of each of the
+// sacrificed creature's colors" is a rule about the SET picked, and a set
+// rule is a registered function of the cards alone, so there is one for each
+// of the 31 non-empty color sets, under "choose-cards/mind-extraction-discard-"
+// plus its letters in wubrg order, lowercase. On-disk keys: never renamed, never reused.
+// The rule is the whole effect: the discard has nothing after it.
+var mindExtractionDiscards = map[string]game.DiscardThen{}
+
+func init() {
+	for mask := 1; mask < 1<<len(mindExtractionColorOrder); mask++ {
+		var letters string
+		for i := 0; i < len(mindExtractionColorOrder); i++ {
+			if mask&(1<<i) != 0 {
+				letters += mindExtractionColorOrder[i : i+1]
+			}
+		}
+		set := letters
+		mindExtractionDiscards[set] = game.RegisterDiscardThenRule("choose-cards/mind-extraction-discard-"+strings.ToLower(set),
+			func(picked []game.Card) bool {
+				for _, c := range picked {
+					if !mindExtractionMatches(set, c) {
+						return false
+					}
+				}
+				return true
+			},
+			func(*game.Game, game.DiscardsDone) error { return nil })
+	}
 }

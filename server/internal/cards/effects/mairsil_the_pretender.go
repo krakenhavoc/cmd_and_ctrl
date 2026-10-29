@@ -81,18 +81,23 @@ func mairsilCage(g *game.Game, item *game.StackItem) error {
 		Cards:    pool,
 		Min:      0,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			// Still where it was offered from: a card that moved since
-			// is a new object the trigger does not know (CR 400.7).
-			z := g.FindCardZoneForEffect(picked[0])
-			if z == nil || z.Owner != you || (z.Kind != game.ZoneHand && z.Kind != game.ZoneGraveyard) {
-				return nil
-			}
-			return exileCardWithCounter(NewContext(g, item), picked[0], mairsilCageCounter)
-		},
+		ThenKey:  mairsilCagePick,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// mairsilCagePick is the card chosen to cage, keyed (#4253): the asking item
+// rides the prompt as data.
+var mairsilCagePick = askedPick("choose-cards/mairsil-cage", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	// Still where it was offered from: a card that moved since
+	// is a new object the trigger does not know (CR 400.7).
+	z := ctx.Game.FindCardZoneForEffect(r.Picked[0])
+	if z == nil || z.Owner != ctx.Controller() || (z.Kind != game.ZoneHand && z.Kind != game.ZoneGraveyard) {
+		return nil
+	}
+	return exileCardWithCounter(ctx, r.Picked[0], mairsilCageCounter)
+})

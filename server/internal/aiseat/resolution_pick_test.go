@@ -59,17 +59,17 @@ func TestHeuristicAnswersEveryResolutionPickAndTheTableAdvances(t *testing.T) {
 						Reason: "test — reveal the hand",
 						Cards:  revealed,
 					})
-					if _, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
+					if _, err := g.RevealPickThenForEffect(revealPickHooked(game.RevealPickPrompt{
 						Chooser:  other.ID,
 						Owner:    seat.ID,
 						Question: "test — choose two of those cards",
 						Cards:    revealed,
 						Min:      2,
 						Max:      2,
-					}, func(*game.Game, []uuid.UUID, []uuid.UUID) error {
+					}, func(*game.Game, game.CardsChosen) error {
 						*answers++
 						return nil
-					}); err != nil {
+					})); err != nil {
 						t.Fatalf("RevealPickThenForEffect: %v", err)
 					}
 				})
@@ -83,16 +83,16 @@ func TestHeuristicAnswersEveryResolutionPickAndTheTableAdvances(t *testing.T) {
 				t.Helper()
 				botPickTestBoard(g, other.ID, 3)
 				g.WithWriteLock(func() {
-					if _, err := g.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+					if _, err := g.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 						Chooser:    seat.ID,
 						Question:   "test — choose a permanent that player controls",
 						Of:         []uuid.UUID{other.ID},
 						Candidates: botPickCandidates(1, 1),
-					}, func(*game.Game, game.PromptedPicks) error {
+					}, testRunHookThen, runHook(func(_ *game.Game, r game.RunDone) error {
 						*answers++
 						return nil
-					}); err != nil {
-						t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+					})); err != nil {
+						t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 					}
 				})
 			},
@@ -105,16 +105,16 @@ func TestHeuristicAnswersEveryResolutionPickAndTheTableAdvances(t *testing.T) {
 				t.Helper()
 				botPickTestBoard(g, seat.ID, 3)
 				g.WithWriteLock(func() {
-					if _, err := g.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+					if _, err := g.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 						Chooser:    seat.ID,
 						Question:   "test — sacrifice any number of permanents",
 						Of:         []uuid.UUID{seat.ID},
 						Candidates: botPickCandidates(0, 0),
-					}, func(*game.Game, game.PromptedPicks) error {
+					}, testRunHookThen, runHook(func(_ *game.Game, r game.RunDone) error {
 						*answers++
 						return nil
-					}); err != nil {
-						t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+					})); err != nil {
+						t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 					}
 				})
 			},

@@ -23,7 +23,7 @@ import (
 // creature's own attack. The (up to one) card is targeted as the trigger
 // goes on the stack, from the graveyard of the player being attacked.
 //
-// "If you do" is the card that REALLY reached exile (ExileCardsThenForEffect
+// "If you do" is the card that REALLY reached exile (ExileCardsKeyedForEffect
 // hands the continuation exactly those), so a card a replacement sent
 // elsewhere, or one that left the graveyard in response, is not copied. The
 // copy is a card copy (CR 707.12): it lives in exile, is offered to the
@@ -90,7 +90,12 @@ func blueMagesCaneExileAndCopy(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(blueMagesCaneCopy))
 }
+
+// blueMagesCaneCopy copies the card that reached exile (#4253 slice 9).
+var blueMagesCaneCopy = CardTail("blue-mages-cane/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return CopyAndCast{Cards: exiled, Cost: "{3}"}.Apply(NewContext(g, item))
+})

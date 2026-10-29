@@ -36,7 +36,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisHasNo(ice, "Dark Depths — sacrifice it and create Marit Lage",
-				SacrificeThisThen(func(ctx *Context) error {
+				SacrificeThisThen("then/dark-depths-marit-lage", func(ctx *Context) error {
 					return CreateToken{Template: TokenCard("20/20 black Marit Lage"), N: 1}.Apply(ctx)
 				})),
 		},

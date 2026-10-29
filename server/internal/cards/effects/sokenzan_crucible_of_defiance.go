@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -44,17 +42,10 @@ func init() {
 }
 
 func sokenzanChannel(g *game.Game, item *game.StackItem) error {
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	ctx := NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: NewContext(g, item).TextToken(TokenCard("1/1 colorless Spirit")), Count: 2}},
-	}, func(g *game.Game, created []uuid.UUID) error {
-		next := NewContext(g, item)
-		for _, id := range created {
-			if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{"haste"}, Label: "Sokenzan, Crucible of Defiance"}).Apply(next); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("1/1 colorless Spirit")), Count: 2}},
+	}, withWord(ctx.ItemTail(thenCreatedGainKeywordUntilEOT), "haste"))
 }

@@ -46,7 +46,7 @@ func init() {
 						ids = append(ids, t.ID)
 					}
 					// Both at once, as one sentence: one destroy leg.
-					return ctx.Game.DestroyPermanentsThenForEffect(ids, func(*game.Game, []uuid.UUID) error { return nil })
+					return ctx.Game.DestroyPermanentsKeyedForEffect(ids, game.KeyedTail{})
 				}),
 		),
 	})

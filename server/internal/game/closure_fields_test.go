@@ -59,9 +59,15 @@ import (
 //     it lets it fall to the next one — usually the resume frames. That
 //     is not a new route, and it is the one way a ceiling goes up.
 //
-// Owner decision 4 (2026-09-24): ChoiceResumeFrames is the one census
-// counter that stays allowed after tier 4 — resume frames are out of
-// scope for this sprint. Its lines are charged to it deliberately.
+// Owner decision 4 (2026-09-24) kept ChoiceResumeFrames as the one
+// census counter allowed after tier 4, with resume frames out of scope.
+// #4361 (2026-10-27) took it to no lines: every resume frame is written
+// to the restore point and rebuilt on restore. Owner decision D8: the
+// class has no closureClassCeilings entry, so a new line charged to it
+// fails (TestNoClosureFrameIsChargedToChoiceResumeFrames), while the
+// runtime counter of that name stays, for paused frames that hold only
+// data but are not written (combat damage held behind its prompts, a
+// trigger with no catalog row).
 //
 // To regenerate after a deliberate change:
 //
@@ -99,7 +105,8 @@ var retiredCensusCounters = map[string]string{
 // and the PR lists the lines and the new ceiling. A field reachable by
 // several routes carries the most restrictive class among them, so
 // deleting the route that set its class drops it to the next one —
-// usually a paused prompt's resume frame. Tier 4-1 moved eleven lines
+// until #4361, usually a paused prompt's resume frame; since, usually
+// census:IntrinsicAbilityCards. Tier 4-1 moved eleven lines
 // that way and tier 3b-1 nine (ReplacementEffect.*, CopySelector.*,
 // EntryHandReveal.*): ChoiceResumeFrames 98 → 118. Tier 3b-2 deleted
 // census:TurnScopedBlockRules outright rather than moving its lines:
@@ -108,24 +115,56 @@ var retiredCensusCounters = map[string]string{
 // resume frame the way replacement ordering can — so all four lines
 // are simply gone, and the ceiling with them.
 var closureClassCeilings = map[string]int{
-	// 98 + the 11 census:StackTargetSpecs lines tier 4's first slice
-	// moved here under ADR 0041 P11 (ModeOption.Effect,
-	// ModeOption.Targets, ModeSpec.Options, StackItem.modeSpec,
-	// StackItem.targetSpec, TargetDifference.Key and
-	// TargetSpec.{AbilityOK, CardOK, Different, PlayerOK, Rest}) + the 9
-	// census:TurnScopedReplacements lines tier 3b-1 moved
-	// (ReplacementEffect.*, CopySelector.*, EntryHandReveal.*) + the
-	// one census:StackEffects line tier 4-final moved here
-	// (StackItem.Effect, through resolving.item).
+	// census:ChoiceResumeFrames has no entry: a ceiling of zero (owner
+	// decision D8, #4361 S18, 2026-10-27). A resume frame charged to it
+	// fails; write the frame to the restore point instead. The runtime
+	// counter of that name stays, for paused frames that hold only data
+	// but are not written (combat damage, a trigger with no catalog row,
+	// a TargetsFromReadsBoard row, a CR 616 event of a gated kind).
 	//
-	// 121 (#2040): + Game.followUpParks and followUpPark.run, the rest
-	// of a damage instruction parked behind a prompt its prevention
-	// follow-up asked (prevention_then_pause.go). Not a new kind of
-	// blocker: it is the same damageTail.then a CR 616 ordering prompt
-	// already holds (ReplacementEvent.damageTail, damageTail.then),
-	// waiting on a different prompt, and owner decision 4 keeps resume
-	// frames in scope for this counter. The prompts themselves are keyed.
-	"census:ChoiceResumeFrames": 121,
+	// How it got there. 98, + the 11 census:StackTargetSpecs lines tier
+	// 4-1 moved here (P11), + the 9 census:TurnScopedReplacements lines
+	// tier 3b-1 moved, + StackItem.Effect from tier 4-final: 119. #2040
+	// added Game.followUpParks and followUpPark.run (121). #4253 deleted
+	// keywordActionTail.amassed, PendingChoice.scryResume,
+	// keywordActionTail.then, counterTail.then and
+	// ReplacementEvent.counterTail (116). #4361's slices then took it to
+	// zero, each one written in its own PR:
+	//
+	//   - S1 (109): the dead coin-flip, choose-value and prompt-run
+	//     closure doors deleted.
+	//   - S2: Game.resolving and resolvingItem.item keyed;
+	//     resolvingItem.card to census:IntrinsicAbilityCards (P11).
+	//   - S3: the pay-unless frame gone (every pay-unless is keyed);
+	//     TapPermanentsCost.Spec to census:IntrinsicAbilityCards (P11).
+	//   - S4: the search frame holds only data.
+	//   - S5: the may-cast frame gone (may_cast_keyed.go).
+	//   - S6: the engine's option picks keyed.
+	//   - S7b: every choose_cards pick keyed.
+	//   - S8: a non-mana payment's "yes" keyed; damageTail.then and
+	//     Game.followUpParks gone.
+	//   - S9: the life and mill tails' closures gone.
+	//   - S10: entryBatch.firstErr held as data.
+	//   - S12 (owner decision D6): a stolen permanent-spell copy's
+	//     control records ride its token tail; tokenTail.then gone.
+	//   - S13 (D7): a parked cast or activation written as data.
+	//   - S14a, S14b: the trigger frames and the target walk written by
+	//     catalog row (D5 for a row with none); their sources to
+	//     census:IntrinsicAbilityCards (D1).
+	//   - S15: the copy new-targets walk written; copyFrame.src to
+	//     census:IntrinsicAbilityCards (D1).
+	//   - S16 (D3): the divide_shield prompt, its divisions and redirect
+	//     orders written; the confirm frame gone.
+	//   - S17 (D4): the frozen entry-choice frame written
+	//     (Game.frozenEntries); zoneRoute.then, entryBatch.then and
+	//     PendingChoice.libraryOrderResume gone.
+	//   - S18 (39 → 0): no closure is left under the CR 616 frame, so the
+	//     frame and its tails are keyed (written by
+	//     replacementFrameKeyable, rebuilt by
+	//     rebuildReplacementResumeLocked), its gathered effects and the
+	//     token templates rebuilt, and the last card edges and stack
+	//     clauses moved to census:IntrinsicAbilityCards (below).
+	//
 	// 45 + the four census:StackEffects lines tier 4-final moved here
 	// under ADR 0041 P11, the counter an unkeyed stack item is folded
 	// into (owner decision, 2026-09-25): Game.StackMeta,
@@ -153,7 +192,42 @@ var closureClassCeilings = map[string]int{
 	// counted like Player.Sideboard: the census walks both (the
 	// snapshot's card walk and the ability-ref lookup include them), and
 	// neither is a new kind of blocker.
-	"census:IntrinsicAbilityCards": 53,
+	//
+	// 54 (2026-10-27, #4361 S2, ADR 0041 P11): + resolvingItem.card,
+	// moved from census:ChoiceResumeFrames. snapshotResolving counts the
+	// card of an open resolution as snapshotCard does, like
+	// lastKnownSpell.card; not a new route.
+	//
+	// 56 (2026-10-27, #4361 S14a, owner decision D1, the raise Ian
+	// approved for #4361's card-valued frame edges): +
+	// triggerResumeFrame.source and modePickFrame.source. A written
+	// trigger frame's source goes through snapshotCard, which counts a
+	// card whose instance abilities can't be re-derived here.
+	//
+	// 57 (2026-10-27, #4361 S14b, owner decision D1, the same approved
+	// raise): + pickTargetFrame.source, a written target walk's source,
+	// through snapshotCard like the two above.
+	//
+	// 55 (2026-10-27, #4361 S3, ADR 0041 P11, owner decision D2 approved
+	// by Ian): + TapPermanentsCost.Spec, moved from
+	// census:ChoiceResumeFrames when payUnlessFrame.tap went; its other
+	// route is AbilityCost.Waterbend. Not a new route.
+	//
+	// 59 (2026-10-27, #4361 S15, owner decision D1, the same approved
+	// raise): + copyFrame.src, a written copy walk's source object,
+	// through snapshotCard like the three trigger-frame sources above.
+	//
+	// 74 (2026-10-27, #4361 S18, the raise Ian approved for #4361 only):
+	// + 3 card-valued frame edges (owner decision D1):
+	// activeReplacement.source, zoneRoute.simultaneousExit and
+	// Game.enteringTokens, each written through snapshotCard; + the 12
+	// stack-clause lines (ADR 0041 P11, owner decision D2):
+	// StackItem.{Effect,modeSpec,targetSpec}, ModeSpec.Options,
+	// ModeOption.{Effect,Targets}, TargetDifference.Key and
+	// TargetSpec.{AbilityOK,CardOK,Different,PlayerOK,Rest}. Their last
+	// frame route (ReplacementEvent.stackItem) is keyed, so they fall to
+	// their remaining route, Game.StackMeta. Neither is a new route.
+	"census:IntrinsicAbilityCards": 74,
 	"transient":                    1,
 }
 
@@ -482,11 +556,11 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 #   test-only          a test injection slot production has no path to
 #
 # A line is one edge, <Type>.<Field>. Where Game reaches the SAME type
-# by several routes the edges into it differ (Game.BuiltinReplacements
-# is rebuilt, a paused prompt's replacementResume is a blocker), and the lines
-# for that type's own fields carry the most restrictive class of every
-# route in: ReplacementEffect.Replace is charged to the blocker until
-# the tier that retires it. The trailing comment is the shortest route.
+# by several routes the edges into it differ (Game.StackMeta is a
+# blocker, a paused target walk's pickTargetFrame.spec is keyed), and the
+# lines for that type's own fields carry the most restrictive class of
+# every route in: TargetSpec.CardOK is charged to the blocker until the
+# tier that retires it. The trailing comment is the shortest route.
 #
 # Tier PRs DELETE lines, and lower closureClassCeilings in
 # closure_fields_test.go to match: every census: and transient class is
@@ -509,9 +583,27 @@ const closureFieldsHeader = `# closure_fields.txt — ADR 0041 phase 3's ratchet
 # counter an unkeyed stack item is folded into; and lastKnownSpell.item
 # to keyed (a countered spell's clauses come back by oracle ID).
 #
-# Owner decision 4 (2026-09-24): census:ChoiceResumeFrames is the one
-# counter that stays allowed after tier 4 — resume frames are out of
-# scope for this sprint.
+# Owner decision 4 (2026-09-24) kept census:ChoiceResumeFrames as the
+# one counter allowed after tier 4: resume frames were out of scope.
+# #4361 (2026-10-27) brought it to no lines. Every resume frame is now
+# written to the restore point and rebuilt on restore, so the class has
+# no closureClassCeilings entry, and a missing entry is a ceiling of
+# zero: a new frame charged to it fails (owner decision D8). The runtime
+# ContinuationCensus.ChoiceResumeFrames counter stays. It counts a
+# paused frame that holds only data but is not written: combat damage
+# held behind its prompts (#4362), a trigger with no catalog row (D5), a
+# TargetsFromReadsBoard row, a CR 616 event of a gated kind, a parked
+# cast already carrying an assist answer.
+#
+# 2026-10-27 (#4361 S1): ChoiceResumeFrames 116 → 109, the dead coin-flip, choose-value and prompt-run closure doors deleted.
+# 2026-10-27 (#4361 S14a): the "you may" and mode-pick trigger frames written by catalog row; 4 lines keyed, triggerResumeFrame.source and modePickFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S14b): the trigger target walk written by catalog row (pendingChoices[].targetWalk) and its "which opponent chooses" pick keyed; 15 lines keyed, optionPickFrame.thenSeat and PendingChoice.optionPickResume deleted, pickTargetFrame.source to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S11c): no line moves; the surveil, search-take, counter (Hinder) and hand-size discard writers keyed. entryBatch.then and libraryOrderResume wait on the entry-choice discard's frozen frame (S17).
+# 2026-10-27 (#4361 S13): ChoiceResumeFrames 52 → 50, a parked cast or activation written as data (owner decision D7); PendingChoice.costCommanderResume and costCommanderFrame.announce deleted.
+# 2026-10-27 (#4361 S17): ChoiceResumeFrames 50 → 47, owner decision D4: the entry-choice frame is written as data (Game.frozenEntries, keyed: GameSnapshot.FrozenEntries, its effect by ReplacementEffectID) and the discard and sacrifice it waits on are keyed; zoneRoute.then, entryBatch.then and PendingChoice.libraryOrderResume deleted with their last writers.
+# 2026-10-27 (#4361 S12): a permanent-spell copy's control records ride its token tail as data (owner decision D6); tokenTail.then, ReplacementEvent.tokenTail and entryTail.then deleted with the closure token door.
+# 2026-10-27 (#4361 S15): the copy new-targets walk written as data (pendingChoices[].copyWalk); 4 lines keyed, copyFrame.src to census:IntrinsicAbilityCards (owner decision D1, the approved raise).
+# 2026-10-27 (#4361 S18): ChoiceResumeFrames 39 → 0 and its ceiling entry deleted (owner decision D8). The CR 616 frame and the tails under it to keyed (10 lines: replacementFrameKeyable writes them, rebuildReplacementResumeLocked rebuilds them); the gathered effects to rebuilt (11 lines, gathered again by ReplacementEffectID) and the token templates to rebuilt (3 lines, D1); activeReplacement.source, zoneRoute.simultaneousExit and Game.enteringTokens to census:IntrinsicAbilityCards (D1), and the 12 stack-clause lines too (P11, D2: their other route is Game.StackMeta). census:IntrinsicAbilityCards 59 → 74, the raise Ian approved for #4361 only.
 #
 # Regenerate (keeps classifications, marks new routes unclassified):
 #   go test ./internal/game -run TestClosureFieldsReachableFromGame -args -update-closure-fields

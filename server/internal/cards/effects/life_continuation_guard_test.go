@@ -26,10 +26,11 @@ import (
 // it passes every test played on a table with fewer than two matching
 // replacements, and it is wrong.
 //
-// The right shape is the continuation: ChangePlayerLifeThenForEffect /
-// LoseLifeEachThenForEffect on the life side, and
-// DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect /
-// DealDamageEachThenForEffect on the damage side. The engine runs
+// The right shape is the continuation: ChangePlayerLifeKeyedForEffect /
+// LoseLifeEachKeyedForEffect on the life side, and
+// DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect /
+// DealDamageEachKeyedForEffect on the damage side (registered tails,
+// #4253). The engine runs
 // `then` with the amount that ACTUALLY moved, whether that is
 // immediately or after the prompt.
 //
@@ -89,7 +90,7 @@ var lifeReadBacks = readBackPattern{
 	primitives: map[string]bool{"GainLife": true},
 	reads:      map[string]bool{"Life": true},
 	allowlist:  map[string]string{},
-	advice: "Use ChangePlayerLifeThenForEffect (one player) or LoseLifeEachThenForEffect (several) " +
+	advice: "Use ChangePlayerLifeKeyedForEffect (one player) or LoseLifeEachKeyedForEffect (several) " +
 		"and take the amount from the continuation",
 }
 
@@ -109,8 +110,8 @@ var damageReadBacks = readBackPattern{
 	primitives: map[string]bool{"DealDamage": true},
 	reads:      map[string]bool{"Life": true, "DamageMarked": true},
 	allowlist:  map[string]string{},
-	advice: "Use DealDamageToPlayerThenForEffect / DealDamageToCreatureThenForEffect (one target) " +
-		"or DealDamageEachThenForEffect (several) and take the amount from the continuation",
+	advice: "Use DealDamageToPlayerKeyedForEffect / DealDamageToCreatureKeyedForEffect (one target) " +
+		"or DealDamageEachKeyedForEffect (several) and take the amount from the keyed tail",
 }
 
 func TestNoReadBackWithoutAContinuation(t *testing.T) {
@@ -278,10 +279,8 @@ func drain(ctx *Context, opp uuid.UUID, x int) error {
 	const lifeAfter = `package effects
 
 func drain(ctx *Context, opp uuid.UUID, x int) error {
-	return ctx.Game.ChangePlayerLifeThenForEffect(ctx.Source(), opp, -x,
-		func(g *game.Game, applied int) error {
-			return GainLife{Player: ctx.Controller(), Amount: -applied}.Apply(ctx)
-		})
+	return ctx.Game.ChangePlayerLifeKeyedForEffect(ctx.Source(), opp, -x,
+		ctx.ItemTail(drainGainTheLoss))
 }
 `
 	const damageBefore = `package effects
@@ -309,10 +308,8 @@ func fight(ctx *Context, target uuid.UUID, n int) error {
 	const damageAfter = `package effects
 
 func bloodsucker(ctx *Context, opps []uuid.UUID, n int) error {
-	return ctx.Game.DealDamageEachThenForEffect(ctx.Source(), opps, n,
-		func(g *game.Game, dealt int) error {
-			return GainLife{Player: ctx.Controller(), Amount: dealt}.Apply(ctx)
-		})
+	return ctx.Game.DealDamageEachKeyedForEffect(ctx.Source(), opps, n,
+		ctx.Tail(gainLifeEqualToDamageDealt))
 }
 `
 	for _, tc := range []struct {

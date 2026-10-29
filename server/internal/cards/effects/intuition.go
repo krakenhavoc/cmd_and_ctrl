@@ -107,19 +107,19 @@ var intuitionChoose = CardTail("intuition/choose", func(ctx *Context, o game.Tai
 		Cards:    found,
 		Min:      1,
 		Max:      1,
-		Then:     intuitionSettle,
+		Keyed:    intuitionSettle,
 	}.Apply(ctx)
 })
 
 // intuitionSettle moves the chosen card to hand, the rest to the
 // graveyard, and shuffles. A card that is no longer where the search
 // left it is skipped rather than erroring — the prompt is
-// asynchronous and the library can move under it.
+// asynchronous and the library can move under it. An on-disk key.
 //
 // Caller holds g.mu.
-func intuitionSettle(ctx *Context, picked, left []uuid.UUID) error {
+var intuitionSettle = RegisterRevealPick("choose-cards/intuition-settle", func(ctx *Context, picked, left []uuid.UUID, _ []int) error {
 	return revealPickSettle(ctx, picked, left, true)
-}
+})
 
 // revealPickSettle is the body Intuition and Gifts Ungiven share: one
 // half to hand, the other to the graveyard, then shuffle. `toHandFirst`
@@ -152,16 +152,8 @@ func revealPickSettle(ctx *Context, picked, left []uuid.UUID, toHandFirst bool) 
 			return err
 		}
 	}
-	return ctx.Game.BounceCardsToHandThenForEffect(liveCards(ctx.Game, toHand), revealPickShuffle(ctx.Item))
-}
-
-// revealPickShuffle is the "then shuffle" both cards print last. A
-// package-level constructor closing over the item alone, so it
-// resolves against whichever *Game it is handed.
-func revealPickShuffle(item *game.StackItem) func(g *game.Game, _ []uuid.UUID) error {
-	return func(g *game.Game, _ []uuid.UUID) error {
-		return g.ShuffleLibraryForEffect(NewContext(g, item).Controller())
-	}
+	// The shuffle is the move's keyed tail (#4253 slice 10a).
+	return ctx.Game.BounceCardsToHandKeyedForEffect(liveCards(ctx.Game, toHand), ctx.Tail(thenShuffle))
 }
 
 // liveCards drops the IDs that are no longer in any zone, so a batch

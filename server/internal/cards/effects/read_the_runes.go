@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Read the Runes — Instant {X}{U}:
 //
@@ -74,14 +70,6 @@ func init() {
 	})
 }
 
-// The two branch keys. Plain strings rather than closures so the
-// option list and the branch list cannot drift: the index the chooser
-// answers with indexes both.
-const (
-	readTheRunesDiscard   = "discard"
-	readTheRunesSacrifice = "sacrifice"
-)
-
 // readTheRunesRecord is how many cards the draw puts in the hand, the number
 // of questions owed.
 const readTheRunesRecord = "read-the-runes/drawn"
@@ -104,71 +92,93 @@ func readTheRunesDraw(ctx *Context) error {
 	return DrawCards{N: x}.Apply(ctx)
 }
 
-// readTheRunesStep asks the question owed for one drawn card and
-// hands the remaining count to its answer.
-//
-// A package-level function over an int: no *Game and no player
-// pointer is captured, so an undo that replays an answer resolves it
-// against the restored game.
+// readTheRunesLeft is how many questions are still owed, the one being asked
+// included. It is filed before each question, so the answer (which runs
+// after a restore, from a registered body) reads how many follow it.
+const readTheRunesLeft = "read-the-runes/left"
+
+// readTheRunesStep asks the question owed for one drawn card; its answer asks
+// the next, so the count is filed with the resolution (readTheRunesLeft).
 //
 // Caller holds g.mu.
 func readTheRunesStep(ctx *Context, remaining int) error {
 	if remaining <= 0 {
 		return nil
 	}
+	ctx.RecordStep(readTheRunesLeft, nil, remaining)
 	options := []game.ChoiceOption{{Label: "Discard a card"}}
-	branches := []string{readTheRunesDiscard}
 	if len(PermanentsControlledBy(ctx.Game, ctx.Controller())) > 0 {
 		options = append(options, game.ChoiceOption{Label: "Sacrifice a permanent"})
-		branches = append(branches, readTheRunesSacrifice)
 	}
 	return PickOption{
 		Question: "Read the Runes — discard a card unless you sacrifice a permanent",
 		Options:  options,
-		Then:     readTheRunesAnswered(branches, remaining-1),
+		ThenKey:  readTheRunesAnswered,
+		WithItem: true,
 	}.Apply(ctx)
 }
 
-// readTheRunesAnswered runs the chosen branch and then asks the next
-// question. Everything it captures is a scalar or a frozen slice.
-func readTheRunesAnswered(branches []string, rest int) func(ctx *Context, index int) error {
-	return func(ctx *Context, index int) error {
-		next := func(ctx *Context) error { return readTheRunesStep(ctx, rest) }
-		if index >= 0 && index < len(branches) && branches[index] == readTheRunesSacrifice {
-			ask := SacrificeChoice{
-				Player:     ctx.Controller(),
-				Candidates: PermanentsControlledBy(ctx.Game, ctx.Controller()),
-				Question:   "Read the Runes — sacrifice a permanent",
-				Then:       next,
-			}
-			return ask.Apply(ctx)
-		}
-		// The discard, and the "no question could be asked" case,
-		// which is the same outcome: an index the branch list does
-		// not have means the chooser left between the question being
-		// built and it being queued, and the rest of the run still
-		// happens.
-		return readTheRunesDiscardCard(ctx, rest)
+// readTheRunesAfter asks the next question once this one is settled.
+func readTheRunesAfter(ctx *Context) error {
+	return readTheRunesStep(ctx, ctx.StepRecord(readTheRunesLeft).N()-1)
+}
+
+// The three registered continuations of the chain (#4253), each an on-disk
+// key (never renamed, never reused) registered in init because the chain asks
+// again from inside them.
+var (
+	// readTheRunesAnswered is the answer to a question: index 1 is the
+	// sacrifice, offered only when there is a permanent to sacrifice.
+	readTheRunesAnswered game.OptionPickThen
+	// readTheRunesSacrificed is the sacrifice gone, and the next question.
+	readTheRunesSacrificed game.TailRef
+	// readTheRunesDiscarded is the discard made, and the next question.
+	readTheRunesDiscarded game.DiscardThen
+)
+
+func init() {
+	readTheRunesAnswered = OptionPickThen("option-pick/read-the-runes-answer", func(ctx *Context, r game.OptionPicked) error {
+		return readTheRunesBranch(ctx, r.Index == 1)
+	})
+	readTheRunesSacrificed = CardTail("read-the-runes/sacrificed", func(ctx *Context, _ game.TailOutcome) error {
+		return readTheRunesAfter(ctx)
+	})
+	readTheRunesDiscarded = game.RegisterDiscardThen("choose-cards/read-the-runes-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		ctx, _ := askedContext(g, r.Item, r.Player, r.Source, nil)
+		return readTheRunesAfter(ctx)
+	})
+}
+
+// readTheRunesBranch is the answer's branch: the sacrifice when it was taken,
+// otherwise the discard, which is also the "no question could be asked" case:
+// an index the option list does not have means the chooser left between the
+// question being built and it being queued, and the rest of the run still
+// happens.
+func readTheRunesBranch(ctx *Context, sacrifice bool) error {
+	if !sacrifice {
+		return readTheRunesDiscardCard(ctx)
 	}
+	return SacrificeChoice{
+		Player:     ctx.Controller(),
+		Candidates: PermanentsControlledBy(ctx.Game, ctx.Controller()),
+		Question:   "Read the Runes — sacrifice a permanent",
+		ThenTail:   ctx.ItemTail(readTheRunesSacrificed),
+	}.Apply(ctx)
 }
 
 // readTheRunesDiscardCard is the discard branch: the prompt, or the next
 // question at once when the hand is empty. The branches are exclusive, so it
 // is a function of its own rather than the tail of the sacrifice's `if`.
-func readTheRunesDiscardCard(ctx *Context, rest int) error {
+func readTheRunesDiscardCard(ctx *Context) error {
 	player := ctx.Controller()
 	if p := ctx.PlayerByID(player); p == nil || p.Hand == nil || p.Hand.Size() == 0 {
-		return readTheRunesStep(ctx, rest)
+		return readTheRunesAfter(ctx)
 	}
-	item := ctx.Item
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player:   player,
 		Source:   ctx.Source(),
 		N:        1,
 		Question: "Read the Runes — discard a card",
-		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-			return readTheRunesStep(NewContext(g, item), rest)
-		},
-	})
-	return nil
+		Asked:    game.NewAskedItem(ctx.Item),
+	}, readTheRunesDiscarded, nil)
 }

@@ -36,15 +36,18 @@ func init() {
 			AtYourEndStep("Dreadfeast Demon — sacrifice a non-Demon creature, then copy this creature",
 				func(g *game.Game, item *game.StackItem) error {
 					return mustSacrificeOne(g, item, "Dreadfeast Demon — sacrifice a non-Demon creature",
-						And(Creature(), Not(Subtype("Demon"))),
-						func(ctx *Context, _ uuid.UUID) error {
-							return CreateTokenCopy{
-								Controller: ctx.Item.Controller,
-								Copy:       ctx.Item.SourceCardID,
-								N:          1,
-							}.Apply(ctx)
-						})
+						And(Creature(), Not(Subtype("Demon"))), dreadfeastDemonCopy)
 				}),
 		},
 	})
 }
+
+// dreadfeastDemonCopy is the copy once the creature has really gone, keyed
+// (#4290).
+var dreadfeastDemonCopy = RegisterSacrificedOne("prompt-run/dreadfeast-demon-copy", func(ctx *Context, _ uuid.UUID) error {
+	return CreateTokenCopy{
+		Controller: ctx.Item.Controller,
+		Copy:       ctx.Item.SourceCardID,
+		N:          1,
+	}.Apply(ctx)
+})

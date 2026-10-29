@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -22,7 +20,7 @@ import (
 // trigger (see Jackdaw), so nothing is put on the stack between the two
 // halves. "That many" is the number of cards that REALLY reached a
 // graveyard, read off the discard's own continuation
-// (DiscardRandomThenForEffect hands it the cards discarded), not the
+// (DiscardRandomKeyedForEffect hands it the cards discarded), not the
 // size of the hand beforehand: a discard that was blocked, or a card a
 // replacement kept in hand, is not counted, and a discard that pauses
 // for a prompt (madness, a commander's CR 903.9a offer) draws only once
@@ -55,7 +53,12 @@ func forgottenCreationWheel(g *game.Game, item *game.StackItem) error {
 	if p == nil {
 		return nil
 	}
-	return g.DiscardRandomThenForEffect(item.Controller, p.Hand.Size(), func(g *game.Game, discarded []uuid.UUID) error {
-		return DrawCards{Player: item.Controller, N: len(discarded)}.Apply(NewContext(g, item))
-	})
+	return g.DiscardRandomKeyedForEffect(item.Controller, p.Hand.Size(), NewContext(g, item).ItemTail(forgottenCreationDraw))
 }
+
+// forgottenCreationDraw draws a card per card discarded (#4253 slice 9).
+var forgottenCreationDraw = CardTail("forgotten-creation/draw-per-discarded", func(ctx *Context, o game.TailOutcome) error {
+	g, item, discarded := ctx.Game, ctx.Item, o.IDs
+
+	return DrawCards{Player: item.Controller, N: len(discarded)}.Apply(NewContext(g, item))
+})

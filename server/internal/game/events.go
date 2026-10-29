@@ -76,6 +76,14 @@ const (
 	// the life it cost is Event.DamageLifeLoss, not Amount (#2105).
 	EventDealDamage EventKind = "deal_damage"
 
+	// EventFight is one creature's participation in a successful fight.
+	// Actor is its controller, Source/CardID the fighter, Target its
+	// opponent. Both participants share BatchSeq (the first event's Seq),
+	// distinguishing separate fights even within one resolution. Emitted
+	// before damage, including zero or fully prevented damage; neither
+	// event is emitted when either required creature is absent.
+	EventFight EventKind = "fight"
+
 	// EventChangeLife — a player's life total changed by Amount
 	// (signed). Actor is who caused the change (uuid.Nil for admin
 	// / SBA paths that have no single actor).
@@ -1544,7 +1552,7 @@ type Event struct {
 
 	Kind EventKind `json:"kind"`
 
-	// BatchSeq groups per-die and per-coin events from one instruction. It is
+	// BatchSeq groups per-die, per-coin and per-fighter events from one instruction. It is
 	// the Seq of that instruction's first event.
 	BatchSeq uint64 `json:"batch_seq,omitempty"`
 
@@ -1722,6 +1730,15 @@ type Event struct {
 	// what each ballot was for. Empty on every other kind.
 	VoteOptions []string `json:"vote_options,omitempty"`
 
+	// Words are, on EventStickerPlaced, the words of every name sticker on
+	// the object once this one went on, oldest first (ADR 0208). A trigger
+	// that counts letters on the object's name stickers ("tap up to X
+	// target creatures, X the number of u's in name stickers on this
+	// enchantment") reads them from its trigger context, so the clause it
+	// announces under is the same on a restored table. Empty on every
+	// other kind.
+	Words []string `json:"words,omitempty"`
+
 	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
 	// game's tableRollNext after the roll, so 1 for the first table
 	// roll of a game. It survives the re-emission an undo makes, where
@@ -1844,6 +1861,21 @@ type Event struct {
 	// by a spell's effect, which has no catalog row of its own.
 	CauseSource  *ObjectRef  `json:"cause_source,omitempty"`
 	CauseAbility *AbilityRef `json:"cause_ability,omitempty"`
+
+	// LeaveCause and LeaveSource say WHY a permanent left the battlefield
+	// and which card was behind it, on the EventZoneMove of that exit
+	// (#4395, ADR 0209 §3, leave_cause.go): a destroy, a state-based
+	// action, a sacrifice, an exile, a bounce or something else. Separate
+	// from Cause above, which says what KIND of thing moved a card (a
+	// resolving item, a cost, a rule); this says which verb, and it is
+	// set by the two movers that perform every battlefield exit, never
+	// per card. LeaveSource is the card whose resolution is behind the
+	// batch, and is a field of its own because Event.Source on a zone
+	// move means something else to the trigger harvester and is left
+	// alone. Empty on every other event, and on a zone move that is not
+	// a battlefield exit. Additive within the snapshot version.
+	LeaveCause  LeaveCause `json:"leave_cause,omitempty"`
+	LeaveSource uuid.UUID  `json:"leave_source,omitempty"`
 
 	// PublicNames maps a referenced token's ID to its name, captured
 	// when the event was emitted so the log can still name a token that

@@ -210,7 +210,21 @@ var carriedFixture = map[string]any{
 			if c.CouncilVote != nil {
 				c.CouncilVote.Then = carriedTestVoteKey.Key()
 			}
+			// #4290: and a keyed ordered collection's.
+			if c.ordered != nil {
+				c.ordered.Key = carriedTestPromptRunKey
+			}
 		}
+		return out
+	},
+	// #4290: a keyed ordered collection names its run continuation.
+	"PendingChoice.ordered": func(*Game) any {
+		v, err := generateNonZero(reflect.TypeOf(&orderedPicks{}), "PendingChoice.ordered", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().(*orderedPicks)
+		out.Key = carriedTestPromptRunKey
 		return out
 	},
 	"PendingChoice.CouncilVote": func(*Game) any {
@@ -444,6 +458,9 @@ var carriedFixture = map[string]any{
 			thenKey:     carriedTestPromptRunKey,
 			carry:       []uuid.UUID{b},
 			source:      card,
+			nums:        []int{3, 5},
+			asked: &AskedItem{ID: id, Kind: StackItemTriggered, Controller: a, Owner: a, SourceCardID: card,
+				Label: "drift-Game.promptRuns", Targets: []TargetRef{{Kind: TargetPlayer, ID: b}}, XValue: 2},
 		}}
 	},
 	// The zone a spell was cast from (CR 400.7g / ADR 0066).
@@ -515,10 +532,45 @@ var carriedNotRoundTrippable = map[string]string{
 	"PendingChoice.libraryOrderKeyed": "#4301: written only on a put_in_library prompt, whose PickThen it " +
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestPortentLookIsARestorePoint (effects).",
+	"PendingChoice.searchResume": "#4361 S4: written only on a search_library prompt, whose PickThen it " +
+		"takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestASearchPromptKeepsTheQualityAndDropsThePredicate and the other strict restores " +
+		"in search_prompt_keyed_test.go.",
+	"PendingChoice.dice": "#4307: written only on an option pick, and this probe's prompt is a discard. Its " +
+		"round trip is pinned by TestSquidFireKnightComponentPouchWaitsAndRestores (effects), a strict restore " +
+		"while the dice question is open whose answer runs the restored roll's tail.",
+	"PendingChoice.pickTail": "#4253 slice 8: written only on a keyed choose_cards prompt that hands a tail on " +
+		"(amass's army pick), and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestAnAmassArmyPickIsARestorePoint (effects).",
+	"PendingChoice.nameThen": "#4253 slice 10c: written only on a card-name prompt, whose PickThen it takes " +
+		"for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round trip is " +
+		"pinned by TestDemonicConsultationNamePromptIsARestorePoint and TestTamiyoNamePromptIsARestorePoint (effects).",
+	"PendingChoice.sourceShield": "#4253 slice 10c: written only on a choose_source prompt, and this probe's " +
+		"prompt is a discard. Its round trip is pinned by TestChooseSourceShieldsSurviveARestore and " +
+		"TestSourceShieldWireRoundTrips.",
+	"PendingChoice.costCommanderResume": "#4361 S13: written only on an optional_replacement, whose PickThen " +
+		"it takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
+		"trip is pinned by TestANinjutsuCommanderQuestionIsARestorePoint and TestADazeCommanderQuestionIsARestorePoint " +
+		"(effects), strict restores whose answer makes the announcement on the restored table.",
+	"PendingChoice.opponentTargetResume": "#4361 S13: written only on an opponent's pick_target, whose PickThen it " +
+		"takes for its marker, or the controller's option pick, and this probe's prompt is a discard. Its round " +
+		"trip is pinned by TestANovaPentacleOpponentChoiceIsARestorePoint and TestAnEvangelizeOpponentPickIsARestorePoint " +
+		"(effects), and the params' unexported half by TestParkedAnnouncementParamsAreCarriedInFull.",
 	"PendingChoice.scryThen": "#4253 slice 3: written only on a scry, surveil or look-at-top prompt, whose PickThen it " +
 		"takes for its key, and this probe's prompt is a discard holding a revealed-pick key. Its round " +
 		"trip is pinned by TestAPreordainScryIsARestorePoint, TestAConsiderSurveilIsARestorePoint and the " +
 		"v9/preordain_scry.json corpus board (effects).",
+	"PendingChoice.DivideShield": "#4361 S16: written only on a divide_shield prompt, whose PickThen it takes " +
+		"for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round trip is " +
+		"pinned by TestDivideShieldMirrorsCarryEveryField and the strict restores in divide_shield_restore_test.go.",
+	"Game.frozenEntries": "#4361 S17: written only beside the prompt that pauses the frozen entry's discard or " +
+		"sacrifice, and rebuilt by gathering the event's effect again by ID, which a generated frame names " +
+		"nothing for (its effect is a func the probe cannot compare). Its round trip is pinned by the strict " +
+		"restores in census_s17_restore_test.go (effects): Lotus Vale, Mox Diamond under Library of Leng.",
+	"Game.heldCombatDamage": "#4362: written only beside the open damage_assignment prompts whose PickThen it " +
+		"takes for its marker, and this probe's prompt is a discard holding a revealed-pick key. Its round trip " +
+		"is pinned by the strict restores in combat_damage_keyed_test.go: TestAHeldCombatDamageStepIsARestorePoint " +
+		"checks the written marks and answers and deals the restored step.",
 }
 
 // TestEveryCarriedFieldSurvivesTheSnapshot is the enforcement.
@@ -712,6 +764,7 @@ var (
 	uuidType                = reflect.TypeOf(uuid.UUID{})
 	permissionConditionType = reflect.TypeOf(PermissionCondition{})
 	timeType                = reflect.TypeOf(time.Time{})
+	castFollowUpKeyType     = reflect.TypeOf(CastFollowUpKey(""))
 )
 
 // planFor is the drift plan for a domain type, or nil for a type that
@@ -760,6 +813,12 @@ func generateNonZero(rt reflect.Type, seed string, depth int) (reflect.Value, er
 			Trigger:    "drift-" + seed,
 			Production: uuid.NewSHA1(uuid.Nil, []byte(seed+"/production")), Applied: true,
 		}), nil
+	case castFollowUpKeyType:
+		// #4361 S13: restore refuses a cast permission whose FollowUp or
+		// IfNotCast names a body this binary never registered, so an
+		// invented key would fail the restore rather than test the
+		// carry. A registered test key instead.
+		return reflect.ValueOf(carriedTestFollowUpKey), nil
 	case permissionConditionType:
 		// #3192: restore refuses a cast-permission condition whose key
 		// this binary never registered, so an invented key would fail the
@@ -985,6 +1044,9 @@ func render(v reflect.Value) string {
 var (
 	carriedTestBodyKey      = testBody(func(*Game, *StackItem) error { return nil })
 	carriedTestConditionKey = testCondition(func(Event, *DelayedTrigger, *Game) bool { return false })
+	// #4361 S13: a cast permission's follow-up body.
+	carriedTestFollowUpKey = RegisterCastFollowUp(testEffectKeyPrefix+"carried-follow-up",
+		func(*Game, CastFollowUp) error { return nil })
 	// #2115: a revealed-hand pick's continuation key.
 	carriedTestPickKey = RegisterRevealedPickThen(testEffectKeyPrefix+"carried-pick",
 		func(*Game, RevealedPick) error { return nil })

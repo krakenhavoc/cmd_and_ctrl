@@ -172,9 +172,9 @@ func TestNetherTraitorSeesLaterExitFromPublishedBatchContinuation(t *testing.T) 
 	registerForTest(t, Spec{
 		OracleID: oracle, Name: "Exit, then destroy", Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ctx.Game.DestroyPermanentsThenForEffect([]uuid.UUID{traitor, other}, func(g *game.Game, _ []uuid.UUID) error {
+			return ctx.Game.DestroyPermanentsKeyedForEffect([]uuid.UUID{traitor, other}, hookTail(func(g *game.Game, o game.TailOutcome) error {
 				return g.DestroyPermanentForEffect(later)
-			})
+			}))
 		},
 	})
 

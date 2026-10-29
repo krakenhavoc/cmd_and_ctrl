@@ -30,13 +30,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Ancient Silver Dragon — roll a d20 and draw that many cards", Do(
 				// The hand-size grant waits for a prompt the draw asks (CR 608.2c, #4155).
-				Instruction(func(ctx *Context) error {
-					results, err := rollDice(ctx, 20, 1)
-					if err != nil || len(results) == 0 {
-						return err
-					}
-					return DrawCards{N: results[0]}.Apply(ctx)
-				}),
+				RollDice{Sides: 20, N: 1, Then: ancientSilverDragonDraw},
 				Instruction(func(ctx *Context) error {
 					return ctx.Game.SetMaxHandSizeForEffect(ctx.Controller(), game.NoMaxHandSize)
 				}),
@@ -44,3 +38,9 @@ func init() {
 		},
 	})
 }
+
+// ancientSilverDragonDraw is "draw cards equal to the result", after the
+// d20 (#4307: a replaced roll waits for its chooser).
+var ancientSilverDragonDraw = DiceTail("dice/ancient-silver-dragon-draw", func(ctx *Context, rolls []int) error {
+	return DrawCards{N: rolls[0]}.Apply(ctx)
+})

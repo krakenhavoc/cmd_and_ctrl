@@ -40,7 +40,16 @@ func init() {
 		},
 	})
 	acererakThen = OptionPickThen("option-pick/acererak-the-archlich-zombie-or-sacrifice", acererakAnswered)
+	acererakSacrificed = RunThen("prompt-run/acererak-the-archlich-sacrificed", func(ctx *Context, r game.RunDone) error {
+		return acererakStep(ctx, r.Carry)
+	})
 }
+
+// acererakSacrificed is the next opponent's question once an opponent's
+// sacrifice has landed, keyed (#4290): Carry is the opponents still to be
+// asked. Registered in init because it asks the next opponent, which names
+// the key again.
+var acererakSacrificed game.PromptRunThen
 
 // acererakThen is the attack trigger's keyed answer: Carry is the
 // opponents still to be asked, in turn order.
@@ -48,12 +57,8 @@ var acererakThen game.OptionPickThen
 
 // acererakReturn returns Acererak to its owner's hand and ventures.
 func acererakReturn(g *game.Game, item *game.StackItem) error {
-	return BounceToHand{
-		Target: item.SourceCardID,
-		Then: func(ctx *Context, _ bool) error {
-			return VentureIntoTheDungeon{}.Apply(ctx)
-		},
-	}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	return BounceToHand{Target: item.SourceCardID, ThenTail: ctx.ItemTail(thenVentureIntoTheDungeon)}.Apply(ctx)
 }
 
 // acererakAttack asks each opponent in turn order.
@@ -106,19 +111,16 @@ func acererakStep(ctx *Context, remaining []uuid.UUID) error {
 // Zombie.
 func acererakAnswered(ctx *Context, r game.OptionPicked) error {
 	opp, rest := r.Chooser, append([]uuid.UUID(nil), r.Carry...)
-	item := ctx.Item
-	next := func(g *game.Game) error { return acererakStep(NewContext(g, item), rest) }
 	if r.Index == 1 && len(ctx.Game.EffectSacrificeCandidatesForEffect(opp, acererakSacrificeSpec())) > 0 {
-		return ctx.Game.PlayerSacrificesThenForEffect(ctx.Source(), opp, acererakSacrificeSpec(),
-			"Acererak the Archlich — sacrifice a creature", 1,
-			func(g *game.Game, _ game.PromptedSacrifices) error { return next(g) })
+		return ctx.SacrificeThen(opp, acererakSacrificeSpec(),
+			"Acererak the Archlich — sacrifice a creature", 1, acererakSacrificed, rest...)
 	}
 	if r.Index >= 0 {
 		if err := acererakZombie(ctx); err != nil {
 			return err
 		}
 	}
-	return next(ctx.Game)
+	return acererakStep(ctx, rest)
 }
 
 // acererakZombie is "you create a 2/2 black Zombie creature token".

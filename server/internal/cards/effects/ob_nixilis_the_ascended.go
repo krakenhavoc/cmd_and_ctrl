@@ -27,13 +27,11 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Ob Nixilis, the Ascended — destroy all tapped creatures your opponents control", func(g *game.Game, item *game.StackItem) error {
-				controller := item.Controller
+				ctx := NewContext(g, item)
 				return DestroyAllMatching{
-					Match: And(Creature(), OpponentControls(), rfCreatureDTapped()),
-					Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-						return GainLife{Player: controller, Amount: destroyed}.Apply(ctx)
-					},
-				}.Apply(NewContext(g, item))
+					Match:    And(Creature(), OpponentControls(), rfCreatureDTapped()),
+					ThenTail: ctx.Tail(massGainLifeForEach),
+				}.Apply(ctx)
 			}),
 			On(game.EventBeginEndStep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b32EndStepAndYouGainedLifeThisTurnAtLeast(ev, source, g, 1)

@@ -17,7 +17,7 @@ import (
 //     among them, and neither is one the mill sent somewhere else —
 //     a commander that answered CR 903.9, or a card an "if it would
 //     be put into a graveyard, exile it instead" replacement caught.
-//     That is why the candidate list is built from MillToZone.Then's
+//     That is why the candidate list is built from MillToZone.ThenTail's
 //     `milled` and re-checked against the graveyard rather than
 //     re-derived from the pile.
 //   - "from YOUR GRAVEYARD" (Overlord of the Balemurk) offers the
@@ -32,7 +32,7 @@ import (
 // mayTakeOneFromAmongThem is "you may put a <match> card from among
 // them into your hand", asked of the resolving effect's controller.
 //
-// `milled` is MillToZone.Then's list, in library order. Candidates
+// `milled` is MillToZone.ThenTail's list, in library order. Candidates
 // are filtered to cards that both match and are still in the
 // controller's graveyard — the second half matters, because anything
 // could have moved a card out of the pile between the mill and this
@@ -80,11 +80,9 @@ func mayTakeOneFromYourGraveyard(ctx *Context, match CardPredicate, question str
 // is a click the player had no choice about and, on a card that mills
 // every combat, one per attack.
 //
-// The Then closure captures the stack item and rebuilds its Context
-// from the game the resolver hands back, the contract every queued
-// continuation follows: an undo restores a different *Game, and a
-// closure holding the old one would move a card in a game nobody is
-// looking at.
+// The pick is keyed (#4253): the asking item rides the prompt as data, so a
+// table waiting on it is a restore point and the continuation runs against a
+// Context rebuilt from that item.
 func mayTakeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string) error {
 	return takeOneIntoYourHand(ctx, candidates, question, 0)
 }
@@ -95,7 +93,6 @@ func takeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, 
 	if len(candidates) == 0 {
 		return nil
 	}
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:  ctx.Controller(),
 		Source:   ctx.Source(),
@@ -103,13 +100,19 @@ func takeOneIntoYourHand(ctx *Context, candidates []uuid.UUID, question string, 
 		Cards:    candidates,
 		Min:      min,
 		Max:      1,
-		Zone:     game.ZoneGraveyard,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return ReturnFromGraveyard{Target: picked[0], Dest: game.ZoneHand}.Apply(NewContext(g, item))
-		},
+		LiveZone: game.ZoneGraveyard,
+		ThenKey:  takeOneIntoHandPick,
+		Asked:    game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// takeOneIntoHandPick is the card chosen to return to hand, keyed (#4253),
+// shared by every "you may return a card from your graveyard to your hand"
+// pick that goes through takeOneIntoYourHand.
+var takeOneIntoHandPick = askedPick("choose-cards/take-one-from-graveyard-into-hand", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	return ReturnFromGraveyard{Target: r.Picked[0], Dest: game.ZoneHand}.Apply(ctx)
+})

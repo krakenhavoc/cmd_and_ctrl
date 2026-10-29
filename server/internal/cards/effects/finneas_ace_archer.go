@@ -65,13 +65,19 @@ func init() {
 				// ordering prompt (a Doubling Season / Hardened
 				// Scales board), and reading before it resumes would
 				// undercount.
-				return b13PutCounterOnEachThen(NewContext(g, item), ids, func(g *game.Game) error {
-					if b43TotalPowerControlled(g, item.Controller) < 10 {
-						return nil
-					}
-					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				})
+				ctx := NewContext(g, item)
+				return b13PutCounterOnEachThen(ctx, ids, ctx.ItemTail(finneasDrawOnPower))
 			}),
 		},
 	})
 }
+
+// finneasDrawOnPower is "then if creatures you control have total power 10 or
+// greater, draw a card", once every counter has landed. An on-disk key: never
+// renamed, never reused.
+var finneasDrawOnPower = CardTail("finneas-ace-archer/draw-on-power", func(ctx *Context, _ game.TailOutcome) error {
+	if b43TotalPowerControlled(ctx.Game, ctx.Controller()) < 10 {
+		return nil
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

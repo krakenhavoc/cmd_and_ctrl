@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Cyclonus, the Saboteur // Cyclonus, Cybertronian Fighter (#3195, ADR
 // 0152) — a More Than Meets the Eye card.
@@ -66,21 +62,24 @@ var cyclonusConnive = Do(
 	DrawCards{N: 1},
 	Instruction(func(ctx *Context) error {
 		item := ctx.Item
-		source := item.SourceCardID
-		ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		// Keyed (#4253): the rest of the connive is a registered discard
+		// continuation, so a table waiting on the discard is a restore point.
+		return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 			Player:   item.Controller,
-			Source:   source,
+			Source:   item.SourceCardID,
 			N:        1,
 			Question: "Cyclonus, the Saboteur — connive: discard a card",
-			Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
-				ctx := NewContext(g, item)
-				ctx.RecordStep(cyclonusConniveRecord, discarded)
-				return cyclonusConniveRest.Run(ctx)
-			},
-		})
-		return nil
+		}, cyclonusConniveDiscarded, nil)
 	}),
 )
+
+// cyclonusConniveDiscarded files what the connive discarded and runs the
+// counter and the conversion. An on-disk key: never renamed, never reused.
+var cyclonusConniveDiscarded = game.RegisterDiscardThen("choose-cards/cyclonus-connive-discarded", func(g *game.Game, r game.DiscardsDone) error {
+	ctx := keyedContext(g, r.Player, r.Source)
+	ctx.RecordStep(cyclonusConniveRecord, r.Discarded.By(r.Player))
+	return cyclonusConniveRest.Run(ctx)
+})
 
 // cyclonusConniveRecord files the cards the connive discarded.
 const cyclonusConniveRecord = "cyclonus/connive-discarded"

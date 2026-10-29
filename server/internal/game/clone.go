@@ -315,10 +315,13 @@ func (g *Game) cloneLocked() *Game {
 			// own Either list.
 			cloned.PayActionClause = copyPayAction(c.PayActionClause)
 			cloned.Asked = copyAskedItem(c.Asked)
+			cloned.pickTail = copyKeyedTail(c.pickTail)
 			cloned.PayTap = copyPayTapSpec(c.PayTap)
 			cloned.PayAmount = copyPayAmountPrompt(c.PayAmount)
 			cloned.MayPayX = copyMayPayXClause(c.MayPayX)
 			cloned.AttackSplit = cloneAttackSplit(c.AttackSplit)
+			cloned.nameThen = copyKeyedTail(c.nameThen)
+			cloned.sourceShield = cloneSourceShield(c.sourceShield)
 			cloned.PickWords = copyStrings(c.PickWords)
 			cloned.PickNums = copyInts(c.PickNums)
 			cloned.OptionObjects = cloneObjectRefs(c.OptionObjects)
@@ -326,6 +329,7 @@ func (g *Game) cloneLocked() *Game {
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			cloned.TurnSkipOrder = cloneTurnSkipOrder(c.TurnSkipOrder)
 			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
+			cloned.ordered = cloneOrderedPicks(c.ordered)
 			cloned.Assist = cloneAssistPrompt(c.Assist)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
@@ -342,10 +346,6 @@ func (g *Game) cloneLocked() *Game {
 			// other server-only frame on a PendingChoice: a resume
 			// reads it and never writes it.
 			cloned.replacementResume = cloneReplacementResume(c.replacementResume)
-			if c.coinFlipResume != nil {
-				frame := *c.coinFlipResume
-				cloned.coinFlipResume = &frame
-			}
 			// #1529: the CR 603.3d target walk. Answering a step
 			// MUTATES the frame (the cursor advances and the pick is
 			// appended), so a frame shared with the undo snapshot came
@@ -560,6 +560,9 @@ func (g *Game) cloneLocked() *Game {
 	out.resolutionOpen = g.resolutionOpen
 	// #2789: the bullets parked behind that paused prompt.
 	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
+	// #4361 S17: the entries frozen behind that paused prompt's action.
+	// Copy on write, so the slice is shared.
+	out.frozenEntries = g.frozenEntries
 	// #4012: the effect steps parked behind that paused prompt.
 	out.pausedStepWalk = cloneStepWalk(g.pausedStepWalk)
 	// #4163: what an earlier step handed a later one.
@@ -586,6 +589,8 @@ func (g *Game) cloneLocked() *Game {
 	// lists, shallow in the continuation closure — clonePromptRuns
 	// says why, and it is the same split cloneReplacementResume makes.
 	out.promptRuns = clonePromptRuns(g.promptRuns)
+	// #4253 slice 10c: the tails of draws parked behind a prompt.
+	out.parkedDraws = cloneParkedDraws(g.parkedDraws)
 	// S16 layer-engine version counters. Atomics can't be struct-
 	// copied; mirror via Load/Store so the clone's staleness state
 	// matches the original's at capture time.
@@ -1158,6 +1163,7 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// batch on, and an undone-then-redone answer would skip
 			// the rest of the entry.
 			tail.batch = cloneEntryBatch(f.ev.entryTail.batch)
+			tail.keyed = copyKeyedTail(f.ev.entryTail.keyed)
 			ev.entryTail = &tail
 		}
 		out.ev = &ev
@@ -1375,6 +1381,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// #1019, #1027: a half-answered prompted run rewinds with the
 	// prompts still owing it — see cloneLocked.
 	g.promptRuns = src.promptRuns
+	g.parkedDraws = src.parkedDraws
 	g.enteringTokens = src.enteringTokens
 	g.outsideEntering = src.outsideEntering
 	g.attractionEntering = src.attractionEntering
@@ -1383,6 +1390,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.resolving = src.resolving
 	g.resolutionOpen = src.resolutionOpen
 	g.pausedModeWalk = src.pausedModeWalk
+	g.frozenEntries = src.frozenEntries
 	g.pausedStepWalk = src.pausedStepWalk
 	g.stepRecords = src.stepRecords
 	g.pausedResolutionTail = src.pausedResolutionTail

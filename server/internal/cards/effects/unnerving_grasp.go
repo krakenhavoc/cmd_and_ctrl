@@ -20,15 +20,14 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("up to one target nonland permanent", Not(Land())).WithCount(0, 1),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			manifest := func(ctx *Context, _ bool) error { return ManifestDread{}.Apply(ctx) }
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind == game.TargetCard {
 					// The bounce can pause on a commander's CR 903.9
 					// question, so "Manifest dread" waits behind it.
-					return BounceToHand{Target: t.ID, Then: manifest}.Apply(ctx)
+					return BounceToHand{Target: t.ID, ThenTail: ctx.ItemTail(thenManifestDread)}.Apply(ctx)
 				}
 			}
-			return manifest(ctx, false)
+			return ManifestDread{}.Apply(ctx)
 		},
 	})
 }

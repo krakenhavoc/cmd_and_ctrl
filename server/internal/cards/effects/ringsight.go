@@ -28,7 +28,8 @@ func init() {
 		Name:         "Ringsight",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return TheRingTemptsYou{Then: ringsightSearch}.Apply(ctx)
+			// Keyed (#4253 slice 10b): the search is the tempt's tail.
+			return TheRingTemptsYou{ThenTail: ctx.ItemTail(ringsightSearchTail)}.Apply(ctx)
 		},
 	})
 }
@@ -36,6 +37,9 @@ func init() {
 // ringsightSearch is the sentence after the tempt. The legendary
 // creatures are read once, before the search, with the layers caught up
 // so the new Ring-bearer's legendary supertype is seen.
+// An on-disk key: never renamed, never reused.
+var ringsightSearchTail = RingTail("then/ringsight-search", ringsightSearch)
+
 func ringsightSearch(ctx *Context, _ uuid.UUID) error {
 	legends := legendaryCreaturesYouControl(ctx.Game, ctx.Controller())
 	return b06TutorToHand("Ringsight — a card that shares a color with a legendary creature you control", func(c game.Card) bool {

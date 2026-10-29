@@ -46,7 +46,7 @@ import (
 // replacement exiled instead of milling into a graveyard (Rest in Peace)
 // is still "those cards", and the permission covers it in exile. The mill
 // reports every card it took out of the library
-// (MillToZoneThenMovedForEffect), and the grant is one permission per
+// (MillToZoneKeyedMovedForEffect), and the grant is one permission per
 // zone those cards are in, sharing a single "a spell" (BudgetGroup).
 func init() {
 	Register(Spec{
@@ -67,29 +67,40 @@ func init() {
 func lockeMug(g *game.Game, item *game.StackItem) error {
 	// APNAP order (CR 101.4, #4268), not seat zero first.
 	seats := apnapPlayers(g)
-	var step func(g *game.Game, i int) error
-	step = func(g *game.Game, i int) error {
-		if i == len(seats) {
-			return lockeMugPayoff.Run(NewContext(g, item))
-		}
-		// The "moved" form: a card Rest in Peace exiled instead of milling
-		// is still one of "those cards" (CR 701.17c).
-		return g.MillToZoneThenMovedForEffect(seats[i], 1, game.ZoneGraveyard, func(g *game.Game, moved []uuid.UUID) error {
-			ctx := NewContext(g, item)
-			milled := slices.Clone(ctx.StepRecord(lockeMilledRecord).IDs)
-			for _, id := range moved {
-				// Graveyard or exile only: a commander its owner moved
-				// to the command zone is neither a land to count nor a
-				// card a stored permission can open.
-				if z := g.FindCardZoneForEffect(id); z != nil && (z.Kind == game.ZoneGraveyard || z.Kind == game.ZoneExile) {
-					milled = append(milled, id)
-				}
-			}
-			ctx.RecordStep(lockeMilledRecord, milled)
-			return step(g, i+1)
-		})
+	return lockeMugStep(NewContext(g, item), seats, 0)
+}
+
+// lockeMugStep mills seats[i]'s card, or pays off once every seat has.
+// Keyed (#4253 slice 10a): the seats ride the mill's tail as its Carry and
+// the index as its N; the cards milled so far are the step record.
+func lockeMugStep(ctx *Context, seats []uuid.UUID, i int) error {
+	if i >= len(seats) {
+		return lockeMugPayoff.Run(ctx)
 	}
-	return step(g, 0)
+	// The "moved" form: a card Rest in Peace exiled instead of milling is
+	// still one of "those cards" (CR 701.17c).
+	return ctx.Game.MillToZoneKeyedMovedForEffect(seats[i], 1, game.ZoneGraveyard,
+		withN(withCarry(ctx.ItemTail(lockeMugMilled), seats...), i))
+}
+
+// lockeMugMilled records what one seat's mill moved and mills the next.
+// Set in init, because the next mill names it again.
+var lockeMugMilled game.TailRef
+
+func init() {
+	lockeMugMilled = CardTail("then/locke-treasure-hunter-mug-step", func(ctx *Context, o game.TailOutcome) error {
+		milled := slices.Clone(ctx.StepRecord(lockeMilledRecord).IDs)
+		for _, id := range o.IDs {
+			// Graveyard or exile only: a commander its owner moved to the
+			// command zone is neither a land to count nor a card a stored
+			// permission can open.
+			if z := ctx.Game.FindCardZoneForEffect(id); z != nil && (z.Kind == game.ZoneGraveyard || z.Kind == game.ZoneExile) {
+				milled = append(milled, id)
+			}
+		}
+		ctx.RecordStep(lockeMilledRecord, milled)
+		return lockeMugStep(ctx, o.Tail.Carry, o.Tail.N+1)
+	})
 }
 
 // lockeMilledRecord is the cards milled so far, for the payoff (#4163).

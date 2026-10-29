@@ -159,7 +159,7 @@ type Player struct {
 	// Emblems is and for the same reason: every reader of Command.Cards
 	// means "commander card", no ZoneRef resolves to it and the card
 	// index does not cover it, so nothing but opening an Attraction
-	// (CR 701.51, OpenAttractionsThenForEffect) takes a card out. Nil
+	// (CR 701.51, OpenAttractionsForEffect) takes a card out. Nil
 	// for a deck with no Attractions; every reader asks
 	// AttractionDeckCards.
 	AttractionDeck *Zone

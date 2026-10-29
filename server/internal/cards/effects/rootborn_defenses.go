@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Rootborn Defenses — Instant {2}{W}:
 //
@@ -28,15 +24,18 @@ func init() {
 		Name:         "Rootborn Defenses",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return Populate{
-				Then: func(ctx *Context, _ []uuid.UUID) error {
-					return GrantKeywordUntilEOT{
-						Match:    And(Creature(), YouControl()),
-						Keywords: []string{"indestructible"},
-						Label:    "Rootborn Defenses — creatures you control gain indestructible",
-					}.Apply(ctx)
-				},
-			}.Apply(ctx)
+			return Populate{ThenTail: ctx.ItemTail(rootbornDefensesGrant)}.Apply(ctx)
 		},
 	})
 }
+
+// rootbornDefensesGrant is the indestructible grant that follows the
+// populate, keyed (#4253): the populate can open a prompt, and the grant
+// waits for it. An on-disk key: never renamed, never reused.
+var rootbornDefensesGrant = CardTail("rootborn-defenses/grant-indestructible", func(ctx *Context, _ game.TailOutcome) error {
+	return GrantKeywordUntilEOT{
+		Match:    And(Creature(), YouControl()),
+		Keywords: []string{"indestructible"},
+		Label:    "Rootborn Defenses — creatures you control gain indestructible",
+	}.Apply(ctx)
+})

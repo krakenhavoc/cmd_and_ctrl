@@ -59,15 +59,21 @@ func damageThenGainUpToWhatItWas(ctx *Context, item *game.StackItem, extraCap in
 		return nil
 	}
 	limit := min(extraCap, lifeGainCapBeforeDamage(ctx.Game, t))
-	controller, source := item.Controller, ctx.Source()
-	return DealDamageThen(ctx, t.ID, ctx.X(), func(g *game.Game, _ uuid.UUID, dealt int) error {
-		gain := min(dealt, limit)
-		if gain <= 0 {
-			return nil
-		}
-		return g.ChangePlayerLifeForEffect(source, controller, gain)
-	})
+	then := ctx.TailN(drainLifeGainUpTo, limit)
+	then.Player = item.Controller
+	return DealDamageThen(ctx, t.ID, ctx.X(), then)
 }
+
+// drainLifeGainUpTo is the Drain Life family's gain, told the damage the
+// recipient took: the tail's Player gains that much, from its Source, but
+// not more than its N, the cap read before the damage. An on-disk key.
+var drainLifeGainUpTo = recipientTail("recipient/drain-life-gain-up-to", func(ctx *Context, _ uuid.UUID, dealt int, o game.TailOutcome) error {
+	gain := min(dealt, o.Tail.N)
+	if gain <= 0 {
+		return nil
+	}
+	return ctx.Game.ChangePlayerLifeForEffect(o.Tail.Source, o.Tail.Player, gain)
+})
 
 // lifeGainCapBeforeDamage is "the player's life total before the damage
 // was dealt, the planeswalker's loyalty before the damage was dealt, or

@@ -39,8 +39,8 @@ import (
 // asks nothing. A library with no card in it does nothing and is not an
 // error (looking is not drawing, so no CR 704.5b loss either).
 //
-// The continuation captures only scalars and the object reference, so an
-// undo replays it against the restored game.
+// The pick is keyed and carries only the object reference, so an undo or
+// a restore replays it against the restored game.
 type ExileTopFaceDownLinked struct {
 	// Source is the permanent OBJECT whose ability this is.
 	Source game.PermissionCardRef
@@ -65,27 +65,43 @@ func exileTopFaceDownLinked(g *game.Game, player uuid.UUID, source game.Permissi
 	if len(looked) == 0 {
 		return nil
 	}
-	exile := func(g *game.Game, picked []uuid.UUID) error {
-		if len(picked) == 0 {
-			return nil
-		}
-		_, err := g.ExileHiddenLinkedForEffect(source, player, picked[0])
-		return err
-	}
 	if required {
-		return exile(g, looked)
+		return exileHiddenLinkedPick(g, source, player, looked)
 	}
+	// Keyed (#4253): the source object rides the prompt as its carried ID
+	// and epoch, so a table waiting on the answer is a restore point.
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  player,
-		Source:   source.ID,
-		Question: name + " — exile it face down?",
-		Cards:    looked,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneLibrary,
-		Then:     exile,
+		Chooser:   player,
+		Source:    source.ID,
+		Question:  name + " — exile it face down?",
+		Cards:     looked,
+		Min:       0,
+		Max:       1,
+		LiveZone:  game.ZoneLibrary,
+		ThenKey:   exileTopFaceDownLinkedPicked,
+		Carry:     []uuid.UUID{source.ID},
+		CarryNums: []int{source.Epoch},
 	})
 	return nil
+}
+
+// exileTopFaceDownLinkedPicked is the "you may exile it face down" answered.
+// An on-disk key: never renamed, never reused.
+var exileTopFaceDownLinkedPicked = game.RegisterChooseCardsThen("choose-cards/exile-top-face-down-linked", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 || len(r.Nums) == 0 {
+		return nil
+	}
+	return exileHiddenLinkedPick(g, game.PermissionCardRef{ID: r.Carry[0], Epoch: r.Nums[0]}, r.Chooser, r.Picked)
+})
+
+// exileHiddenLinkedPick exiles the first picked card face down, linked to
+// the source object; nothing picked exiles nothing.
+func exileHiddenLinkedPick(g *game.Game, source game.PermissionCardRef, player uuid.UUID, picked []uuid.UUID) error {
+	if len(picked) == 0 {
+		return nil
+	}
+	_, err := g.ExileHiddenLinkedForEffect(source, player, picked[0])
+	return err
 }
 
 // PlayCardsExiledWith is "until end of turn, you may play cards exiled

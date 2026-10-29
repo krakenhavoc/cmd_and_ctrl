@@ -32,7 +32,7 @@ package game
 //   - each damage INSTRUCTION takes the next ID from Game.damageInstanceSeq
 //     and stamps it on every damage event it opens
 //     (ReplacementEvent.DamageInstance). An instruction is one
-//     DealDamage…ForEffect call, the whole of a DealDamageEachThenForEffect
+//     DealDamage…ForEffect call, the whole of a DealDamageEachKeyedForEffect
 //     walk, or — for a printed instruction the catalog writes as a loop
 //     ("deals 2 damage to each creature", a fight, "4 damage to the first
 //     target and 3 to each other") — everything inside one
@@ -45,9 +45,8 @@ package game
 //
 // The stamp rides the event, so a CR 616 ordering prompt resumes with the
 // instance the event was opened in (cloneReplacementResume copies it with
-// the event). It is TRANSIENT: never captured. A table paused on such a
-// prompt is not a restore point anyway (ContinuationCensus counts the
-// frame).
+// the event). Since #4253 a keyed frame writes it with the event
+// (replacementEventSnapshot.DamageInstance), combat damage's since #4362.
 //
 // THE READERS. "The next time" is spent per instance
 // (Mod.SpentInstance, prevent_next_from_source.go), and a shield's
@@ -73,14 +72,15 @@ package game
 // PreventionFollowUp.Instance, both additive within v7. The counter is not
 // a key: Clone copies it, and restore sets it to the largest instance a
 // restored record names (maxNamedDamageInstance), as it does
-// scopedEffectSeq — which is all uniqueness needs, because no restored
-// event carries a stamp. The open scope and the combat step's instance
-// are not captured either: a game restored in the middle of a combat
-// damage step (a CR 510.1c assignment prompt is pure data, so that is a
-// restore point) gives the rest of the step a new instance. That can
-// only matter for a source whose damage in the step straddles the
-// restore, and a source's combat damage is all opened at once — directly,
-// or all of it from its one assignment prompt.
+// scopedEffectSeq, and past the stamp of every restored frame's event. The
+// open scope and the combat step's instance are not captured: a game
+// restored in the middle of a combat damage step (#4362: a held step or a
+// CR 616 prompt over combat damage, combat_damage_keyed.go) gives the rest
+// of the step a new instance. A held step has dealt nothing yet and is
+// dealt at once, and a paused event keeps its own stamp, so that can only
+// matter for a source whose damage in the step straddles the restore, and
+// a source's combat damage is all opened at once — directly, or all of it
+// from its one assignment prompt.
 
 // DamageInstance identifies one instance of damage: every damage event
 // opened by one damage instruction, or by one combat damage step. Zero is

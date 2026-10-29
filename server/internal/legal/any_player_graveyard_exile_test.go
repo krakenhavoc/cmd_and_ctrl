@@ -29,7 +29,7 @@ func graveyardExileOffer(t *testing.T, n, inGraveyard int, opts legal.Options) (
 	}
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Creature — Rat", Owner: controller.ID, Controller: controller.ID, KnownBy: known})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller.ID, Cost: "exile cards from their graveyard", Question: "Thing?",
 			Action: &game.PayAction{Kind: game.PayActionExileFromGraveyard, Count: n},
 		}); err != nil {

@@ -43,7 +43,7 @@ func seedRevealPick(t *testing.T, g *game.Game, chooser, owner *game.Player, n i
 			Cards:    ids,
 			Min:      1,
 			Max:      1,
-		}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+		}); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})
@@ -120,7 +120,7 @@ func TestPermanentPicksArePublicToEverySeat(t *testing.T) {
 	chooser, of := g.Seats[0], g.Seats[1]
 	g.WithWriteLock(func() {
 		pushPublicPermanent(g, of.ID, "View Bear", "Creature — Bear")
-		if _, err := g.PermanentsPickedThenForEffect(game.PermanentPickPrompt{
+		if _, err := g.PermanentsPickedThenKeyedForEffect(game.PermanentPickPrompt{
 			Chooser:  chooser.ID,
 			Question: "test — choose one of theirs",
 			Of:       []uuid.UUID{of.ID},
@@ -133,8 +133,8 @@ func TestPermanentPicksArePublicToEverySeat(t *testing.T) {
 				}
 				return out, 1, 1
 			},
-		}, func(*game.Game, game.PromptedPicks) error { return nil }); err != nil {
-			t.Fatalf("PermanentsPickedThenForEffect: %v", err)
+		}, testRunHookThen, runHook(func(_ *game.Game, r game.RunDone) error { return nil })); err != nil {
+			t.Fatalf("PermanentsPickedThenKeyedForEffect: %v", err)
 		}
 	})
 
@@ -174,7 +174,7 @@ func TestRevealPickAnswerIsNarrated(t *testing.T) {
 			Cards:   ids,
 			Min:     1,
 			Max:     1,
-		}, func(*game.Game, []uuid.UUID, []uuid.UUID) error { return nil }); err != nil {
+		}); err != nil {
 			t.Fatalf("RevealPickThenForEffect: %v", err)
 		}
 	})

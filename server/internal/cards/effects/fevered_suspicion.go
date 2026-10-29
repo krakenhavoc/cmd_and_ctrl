@@ -51,17 +51,10 @@ func feveredSuspicionExile(ctx *Context, opponents, hits []uuid.UUID) error {
 		return nil
 	}
 	return MillToZone{
-		Player: opponents[0],
-		To:     game.ZoneExile,
-		Until:  UntilCard(func(c game.Card) bool { return !c.IsLand() }),
-		Then: func(ctx *Context, exiled []uuid.UUID) error {
-			for _, id := range exiled {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
-					hits = append(hits, id)
-				}
-			}
-			return feveredSuspicionExile(ctx, opponents[1:], hits)
-		},
+		Player:   opponents[0],
+		To:       game.ZoneExile,
+		Until:    UntilNonland,
+		ThenTail: withN(withCarry(ctx.ItemTail(feveredSuspicionMilled), append(append([]uuid.UUID(nil), opponents[1:]...), hits...)...), len(opponents)-1),
 	}.Apply(ctx)
 }
 
@@ -95,4 +88,21 @@ func feveredSuspicionGrantCasts(ctx *Context, hits []uuid.UUID) {
 		}, []game.Card{c})
 		granted = append(granted, id)
 	}
+}
+
+// feveredSuspicionMilled is the clause after the mill (#4253 slice 9).
+var feveredSuspicionMilled game.TailRef
+
+func init() {
+	feveredSuspicionMilled = CardTail("fevered-suspicion/after-mill", func(ctx *Context, o game.TailOutcome) error {
+		rest, hits := o.Tail.Carry[:o.Tail.N], append([]uuid.UUID(nil), o.Tail.Carry[o.Tail.N:]...)
+		exiled := o.IDs
+
+		for _, id := range exiled {
+			if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
+				hits = append(hits, id)
+			}
+		}
+		return feveredSuspicionExile(ctx, rest, hits)
+	})
 }

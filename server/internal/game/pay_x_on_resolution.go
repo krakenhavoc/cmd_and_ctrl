@@ -80,7 +80,7 @@ type MayPayX struct {
 	// Unit is what each point of X buys (PayAmountDamage, …).
 	Unit string
 	// InThisStep holds the payment prompt in the current step
-	// (QueueMayPayInThisStepForEffect): set it when what X buys is
+	// (QueueMayPayKeyedForEffect's inThisStep): set it when what X buys is
 	// about the step in progress — tokens that enter attacking.
 	InThisStep bool
 	// Then is what the card does once the cost has been paid, as
@@ -279,18 +279,20 @@ func mayPayXFrameOf(c *PendingChoice) *chooseValueFrame {
 }
 
 // chooseValueFrameOf is the frame a resolution-time value prompt answers
-// through: its own, or, for a keyed MayPayX's "choose X" or a keyed number
-// prompt (number_then.go), a frame built from its data. Nil for a prompt
-// with none. Every reader of a
-// chooseValueResume goes through this for a pay_amount.
+// through, built from its data: a keyed MayPayX's "choose X", a keyed
+// number prompt (number_then.go), or a keyed colour or creature-type
+// prompt (value_then_keyed.go). Nil for a prompt with none: a stored
+// colour or type, or a pay_amount nothing follows. No prompt holds a frame
+// of its own since #4361.
 func chooseValueFrameOf(c *PendingChoice) *chooseValueFrame {
 	if c == nil {
 		return nil
 	}
-	if c.chooseValueResume != nil {
-		return c.chooseValueResume
-	}
 	if f := mayPayXFrameOf(c); f != nil {
+		return f
+	}
+	if f := valueTailFrameOf(c); f != nil {
+		// #4253: a keyed colour or creature-type prompt (value_then_keyed.go).
 		return f
 	}
 	return numberFrameOf(c)

@@ -25,20 +25,30 @@ import (
 //     left — dropChoiceLocked, which is the door every prune in the
 //     tree already goes through.
 
+// droppedPickRecorder counts its runs in *droppedPickRan and records the
+// index it was run with in *droppedPickGot.
+var (
+	droppedPickRan, droppedPickGot *int
+	droppedPickRecorder            = RegisterOptionPickThen(testEffectKeyPrefix+"4361-dropped-pick-recorder",
+		func(_ *Game, r OptionPicked) error {
+			if droppedPickRan != nil {
+				*droppedPickRan++
+				*droppedPickGot = r.Index
+			}
+			return nil
+		})
+)
+
 // optionPickWithAContinuation queues a two-branch option pick whose
 // continuation records the index it was run with. `ran` counts the
 // runs, `got` is the last index.
 func optionPickWithAContinuation(t *testing.T, g *Game, p OptionPickPrompt, ran *int, got *int) uuid.UUID {
 	t.Helper()
-	inner := p.Then
-	p.Then = func(g *Game, index int) error {
-		*ran++
-		*got = index
-		if inner != nil {
-			return inner(g, index)
-		}
-		return nil
-	}
+	// Keyed since #4361 slice 6 retired the closure Then: the recorder
+	// is a package-level key pointed at this test's counters.
+	droppedPickRan, droppedPickGot = ran, got
+	t.Cleanup(func() { droppedPickRan, droppedPickGot = nil, nil })
+	p.ThenKey = droppedPickRecorder
 	if len(p.Options) == 0 {
 		p.Options = []ChoiceOption{{Label: "Lose 3 life", LifeCost: 3}, {Label: "Discard a card"}}
 	}
@@ -210,7 +220,7 @@ func TestAClientCannotAnswerWithTheNoChoiceIndex(t *testing.T) {
 // continuation that moves them went with the prompt.
 //
 // The engine's own queue-time guards already take the first pile when
-// the chooser cannot be asked (queuePilePickLocked); this is the same
+// the chooser cannot be asked (queuePilePickKeyedLocked); this is the same
 // answer at the drop path, reached through the frame rather than by
 // repeating the rule.
 func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
@@ -219,16 +229,11 @@ func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
 	source := departureTestSource(g, owner.ID, "Steam Augury")
 	all := handCardOf(t, owner, 3)
 
-	var taken, left []uuid.UUID
-	ran := 0
+	resetProbes()
 	g.WithWriteLock(func() {
-		if err := g.queuePilePickLocked(chooser.ID, owner.ID, source, "Take a pile",
-			all, all[:1], func(_ *Game, tk, lf []uuid.UUID) error {
-				ran++
-				taken, left = tk, lf
-				return nil
-			}); err != nil {
-			t.Fatalf("queuePilePickLocked: %v", err)
+		if err := g.queuePilePickKeyedLocked(chooser.ID, owner.ID, source, "Take a pile",
+			all, all[:1], false, probeTail()); err != nil {
+			t.Fatalf("queuePilePickKeyedLocked: %v", err)
 		}
 	})
 	c := onlyPendingChoice(t, g)
@@ -237,6 +242,7 @@ func TestADroppedPileSplitStillPutsThePilesSomewhere(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() { g.dropChoiceLocked(0) })
+	taken, left, ran := probePiles()
 	if ran != 1 {
 		t.Fatalf("the pile split's continuation ran %d times, want 1", ran)
 	}
@@ -258,9 +264,9 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 	caster, chooser := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 	item := &StackItem{ID: uuid.New(), Controller: caster.ID, SourceCardID: source}
+	testChooseItem = item
+	resetProbes()
 
-	ran := 0
-	var chosen uuid.UUID
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
@@ -268,12 +274,7 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 			Among:    []uuid.UUID{g.Seats[2].ID, g.Seats[3].ID},
 			Source:   source,
 			Question: "Choose an opponent",
-			Item:     item,
-			Then: func(_ *Game, seat uuid.UUID) error {
-				ran++
-				chosen = seat
-				return nil
-			},
+			ThenKey:  testRecordChosenThen,
 		})
 	})
 	if id == uuid.Nil {
@@ -284,6 +285,11 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 		idx, _ := g.findChoiceLocked(id)
 		g.dropChoiceLocked(idx)
 	})
+	picked := probeChosen()
+	ran, chosen := len(picked), uuid.Nil
+	if ran == 1 {
+		chosen = picked[0]
+	}
 	if ran != 1 {
 		t.Fatalf("the continuation after the player choice ran %d times, want 1", ran)
 	}
@@ -306,17 +312,16 @@ func TestADroppedPlayerChoiceRecordsTheAbsenceAndRunsOn(t *testing.T) {
 // wiring of its own — and this asserts that rather than assuming it,
 // because the two landed a day apart.
 //
-// The continuation is a SEAT one (thenSeat, #994), so "nobody chose"
-// is spelled uuid.Nil rather than as an index. Same absence, same one
-// function (runWithNoChoice).
+// The continuation reads a SEAT (#994), so "nobody chose" reaches it as
+// no seat rather than as an index (chosenSeat).
 func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, leaver := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 	item := &StackItem{ID: uuid.New(), Controller: caster.ID, SourceCardID: source}
+	testChooseItem = item
+	resetProbes()
 
-	ran := 0
-	var chosen uuid.UUID
 	var id uuid.UUID
 	g.WithWriteLock(func() {
 		id = g.QueueChoosePlayerForEffect(ChoosePlayerPrompt{
@@ -327,12 +332,7 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 			Among:    []uuid.UUID{leaver.ID},
 			Source:   source,
 			Question: "Choose an opponent",
-			Item:     item,
-			Then: func(_ *Game, seat uuid.UUID) error {
-				ran++
-				chosen = seat
-				return nil
-			},
+			ThenKey:  testRecordChosenThen,
 		})
 	})
 	if id == uuid.Nil {
@@ -344,6 +344,11 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 	}
 	if findChoice(g, id) != nil {
 		t.Fatal("a prompt whose every option named the departed seat is still queued")
+	}
+	picked := probeChosen()
+	ran, chosen := len(picked), uuid.Nil
+	if ran == 1 {
+		chosen = picked[0]
 	}
 	if ran != 1 {
 		t.Fatalf("the continuation ran %d times, want 1 — the chooser is still at the table "+
@@ -362,18 +367,21 @@ func TestAnOptionPickEmptiedByASeatPruneStillRunsTheRestOfTheCard(t *testing.T) 
 	}
 }
 
-// uuid.Nil means "nobody chose" only because an ANSWER can never carry
-// it: ResolveOptionPick refuses an option that names no seat before the
-// frame runs, so a seat continuation cannot be handed the absence by a
-// client. Without this the two meanings would collide on one value.
+// No seat means "nobody chose" only because an ANSWER can never carry
+// it: ResolveOptionPick refuses an option that names no seat on a
+// trigger walk's "which opponent chooses" before the continuation runs,
+// so the walk cannot be handed the absence by a client. Without this
+// the two meanings would collide on one value.
 func TestASeatContinuationRefusesAnOptionThatNamesNoSeat(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	caster, chooser := g.Seats[0], g.Seats[1]
 	source := departureTestSource(g, caster.ID, "Skullwinder")
 
-	ran := 0
+	ran, got := 0, 0
 	var id uuid.UUID
 	g.WithWriteLock(func() {
+		droppedPickRan, droppedPickGot = &ran, &got
+		t.Cleanup(func() { droppedPickRan, droppedPickGot = nil, nil })
 		id = g.QueueOptionPickForEffect(OptionPickPrompt{
 			Chooser:  chooser.ID,
 			Source:   source,
@@ -382,7 +390,8 @@ func TestASeatContinuationRefusesAnOptionThatNamesNoSeat(t *testing.T) {
 				{Label: "Seat with an id", Player: g.Seats[2].ID},
 				{Label: "Seat with none"},
 			},
-			ThenSeat: func(_ *Game, _ uuid.UUID) error { ran++; return nil },
+			walk:    &pickTargetFrame{},
+			ThenKey: droppedPickRecorder,
 		})
 	})
 	if id == uuid.Nil {

@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The first bullet is a "discard, THEN count what was discarded"
 // wheel, same shape as Syphon Mind's fan-out (#1027,
-// PlayerDiscardsThenForEffect): the discard is a real up-to-X choice
+// PlayerDiscardsThenKeyedForEffect): the discard is a real up-to-X choice
 // by the targeted player, and the draw is the RUN's continuation, so
 // it happens once, after the discard has actually landed, and for
 // exactly as many cards as were really discarded (CR 701.9a) — never

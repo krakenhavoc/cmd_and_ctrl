@@ -110,30 +110,77 @@ func breechesSacrifice(spell uuid.UUID) func(ctx *Context) error {
 		if len(artifacts) == 0 {
 			return nil
 		}
-		return SacrificeChoice{
-			Player:     ctx.Controller(),
-			Candidates: artifacts,
+		// #3275, CR 101.2: a permanent that can't be sacrificed is not a
+		// legal choice, and with none left the flip follows at once.
+		var candidates []uuid.UUID
+		for _, id := range artifacts {
+			if !ctx.Game.CantBeSacrificedForEffect(id) {
+				candidates = append(candidates, id)
+			}
+		}
+		if len(candidates) == 0 {
+			return breechesFlip(spell)(ctx)
+		}
+		// The pick is a keyed choose_cards pick (#4253): the spell that
+		// triggered the ability is the carry and the asking item rides the
+		// prompt as data.
+		ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+			Chooser:    ctx.Controller(),
+			FromPlayer: ctx.Controller(),
+			Source:     ctx.Source(),
 			Question:   "Breeches, the Blastmaker — sacrifice an artifact",
-			Then:       breechesFlip(spell),
-		}.Apply(ctx)
-	}
-}
-
-// breechesFlip is "if you do, flip a coin".
-func breechesFlip(spell uuid.UUID) func(ctx *Context) error {
-	return func(ctx *Context) error {
-		item := ctx.Item
-		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
-			Flipper:  ctx.Controller(),
-			Source:   ctx.Source(),
-			Question: "Breeches, the Blastmaker — call the coin flip",
-			Then: func(g *game.Game, result game.CoinFlipResult) error {
-				return breechesFlipResult(g, item, spell, result)
-			},
+			Cards:      candidates,
+			Min:        1,
+			Max:        1,
+			LiveZone:   game.ZoneBattlefield,
+			ThenKey:    breechesSacrificed,
+			Carry:      []uuid.UUID{spell},
+			Asked:      game.NewAskedItem(ctx.Item),
 		})
 		return nil
 	}
 }
+
+// breechesSacrificed is the artifact chosen, keyed (#4253): it goes through
+// the sacrifice's own continuation, so the coin is flipped once the
+// permanent has gone. The spell that triggered the ability is the carry,
+// and rides the sacrifice's keyed tail with the trigger as its asked item.
+var breechesSacrificed = askedPick("choose-cards/breeches-the-blastmaker-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	t := ctx.ItemTail(breechesSacrificeDone)
+	t.Carry = []uuid.UUID{r.Carry[0]}
+	return ctx.Game.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, t)
+})
+
+// breechesSacrificeDone is the sacrifice settled: flip the coin. An on-disk
+// key: never renamed, never reused.
+var breechesSacrificeDone = CardTail("then/breeches-the-blastmaker-flip", func(ctx *Context, o game.TailOutcome) error {
+	return breechesFlip(carriedID(o.Tail.Carry, 0))(ctx)
+})
+
+// breechesFlip is "if you do, flip a coin". The call is keyed (#4253 slice
+// 10b): the spell rides it as its carry and the trigger as its asked item.
+func breechesFlip(spell uuid.UUID) func(ctx *Context) error {
+	return func(ctx *Context) error {
+		ctx.Game.FlipCoinForEffect(game.CoinFlipSpec{
+			Flipper:  ctx.Controller(),
+			Source:   ctx.Source(),
+			Question: "Breeches, the Blastmaker — call the coin flip",
+			ThenKey:  breechesFlipped,
+			Carry:    []uuid.UUID{spell},
+			Asked:    game.NewAskedItem(ctx.Item),
+		})
+		return nil
+	}
+}
+
+// breechesFlipped is the settled call. An on-disk key: never renamed, never
+// reused.
+var breechesFlipped = CoinFlipThen("coin-flip/breeches-the-blastmaker", func(ctx *Context, r game.CoinFlipped) error {
+	return breechesFlipResult(ctx.Game, ctx.Item, carriedID(r.Carry, 0), r.Result)
+})
 
 // breechesFlipResult creates whichever of the two reflexive triggers
 // the flip called for.

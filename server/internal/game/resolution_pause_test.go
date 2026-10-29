@@ -123,11 +123,12 @@ func TestAFreshArmySurvivesAPausedCounterPlacement(t *testing.T) {
 
 	var amassed uuid.UUID
 	pushAbilityItem(g, StackItemTriggered, me.ID, uuid.Nil, "amass Orcs 2", func(g *Game, it *StackItem) error {
-		return g.AmassForEffect(it.Controller, it.SourceCardID, amassTestToken("Orc"), "Orc", 2,
-			func(_ *Game, army uuid.UUID) error {
+		return g.AmassKeyedForEffect(it.Controller, it.SourceCardID, amassTestToken("Orc"), "Orc", 2,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				army := tailFirstID(o)
 				amassed = army
 				return nil
-			})
+			}))
 	})
 	resolveUntilPrompt(t, g)
 
@@ -162,7 +163,7 @@ func TestADoubledArmyCreationHoldsBothArmiesUntilTheCountersLand(t *testing.T) {
 	g.WithWriteLock(func() { g.RegisterReplacementForTest(tokenDoublerForPause(me.ID)) })
 
 	pushAbilityItem(g, StackItemTriggered, me.ID, uuid.Nil, "amass Orcs 2", func(g *Game, it *StackItem) error {
-		return g.AmassForEffect(it.Controller, it.SourceCardID, amassTestToken("Orc"), "Orc", 2, nil)
+		return g.AmassKeyedForEffect(it.Controller, it.SourceCardID, amassTestToken("Orc"), "Orc", 2, KeyedTail{})
 	})
 	resolveUntilPrompt(t, g)
 
@@ -211,16 +212,15 @@ func TestAResolutionWaitingOnAYesNoHoldsTheSweep(t *testing.T) {
 			bear := bearForPause(g, me.ID)
 			pushAbilityItem(g, StackItemTriggered, me.ID, uuid.Nil, "hurt, then maybe heal", func(g *Game, it *StackItem) error {
 				markLethal(g, bear)
-				g.QueueConfirmForEffect(ConfirmPrompt{
+				queueConfirmHooked(g, ConfirmPrompt{
 					Chooser:  it.Controller,
 					Question: "Remove the damage?",
-					OnAccept: func(g *Game) error {
-						if c, ok := g.battlefieldCardLocked(bear); ok {
-							c.DamageMarked = 0
-						}
-						return nil
-					},
-				})
+				}, func(g *Game) error {
+					if c, ok := g.battlefieldCardLocked(bear); ok {
+						c.DamageMarked = 0
+					}
+					return nil
+				}, nil)
 				return nil
 			})
 			resolveUntilPrompt(t, g)
@@ -279,7 +279,7 @@ func TestANonBlockingPromptDoesNotHoldTheSweep(t *testing.T) {
 	bear := bearForPause(g, me.ID)
 	pushAbilityItem(g, StackItemTriggered, me.ID, uuid.Nil, "hurt, then tax", func(g *Game, it *StackItem) error {
 		markLethal(g, bear)
-		return g.QueuePayUnlessForEffect(them.ID, uuid.Nil, "{1}", "Pay {1}?", nil)
+		return g.QueuePayUnlessForEffect(them.ID, uuid.Nil, "{1}", "Pay {1}?")
 	})
 	resolveUntilPrompt(t, g)
 
@@ -328,7 +328,7 @@ func TestAPromptQueuedOutsideAResolutionIsNotStamped(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(ConfirmPrompt{Chooser: me.ID, Question: "?"})
+		queueConfirmHooked(g, ConfirmPrompt{Chooser: me.ID, Question: "?"}, nil, nil)
 	})
 	if g.PendingChoices[0].midResolution {
 		t.Error("a prompt queued outside a resolution was stamped")

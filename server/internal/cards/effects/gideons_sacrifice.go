@@ -28,17 +28,23 @@ func init() {
 			return ChoosePermanents{
 				Question:   "Gideon's Sacrifice — choose a creature or planeswalker you control",
 				Candidates: creaturesOrPlaneswalkersOf,
-				Then: func(ctx *Context, picked game.PromptedPicks) error {
-					cards := picked.Cards()
-					if len(cards) != 1 {
-						return nil
-					}
-					return RedirectDamage{Protect: ShieldYouAndPermanentsYouControl, To: RedirectToObject(cards[0])}.Apply(ctx)
-				},
+				Keyed:      gideonsSacrificeChosen,
 			}.Apply(ctx)
 		},
 	})
 }
+
+// gideonsSacrificeChosen is the chosen permanent taking the redirected
+// damage, keyed (#4290).
+var gideonsSacrificeChosen = RegisterPermanentsPick("prompt-run/gideons-sacrifice-redirect", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		cards := picked.Cards()
+		if len(cards) != 1 {
+			return nil
+		}
+		return RedirectDamage{Protect: ShieldYouAndPermanentsYouControl, To: RedirectToObject(cards[0])}.Apply(ctx)
+	},
+})
 
 // creaturesOrPlaneswalkersOf offers one of the creatures and planeswalkers
 // `of` controls.

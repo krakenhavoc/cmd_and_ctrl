@@ -65,26 +65,30 @@ func quintoriusMinusSix(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	controller, source := item.Controller, item.SourceCardID
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		if len(exiled) == 0 {
-			return nil
-		}
-		if err := g.AddManaWithOptionsForEffect(controller, source, "", game.AddManaOptions{Amount: ManaN(len(exiled), "R")}); err != nil {
-			return err
-		}
-		var cards []game.Card
-		for _, id := range exiled {
-			if c, ok := g.LookupCardForEffect(id); ok {
-				cards = append(cards, c)
-			}
-		}
-		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-			Player: controller,
-			Zone:   game.ZoneExile,
-			Source: source,
-			Label:  "Quintorius Kand — you may play this card this turn",
-		}, cards)
-		return nil
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(quintoriusExiled))
 }
+
+// quintoriusExiled adds the mana and grants the casts over what reached exile (#4253 slice 9).
+var quintoriusExiled = CardTail("quintorius-kand/mana-and-cast-from-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, exiled, controller, source := ctx.Game, o.IDs, ctx.Controller(), ctx.Source()
+
+	if len(exiled) == 0 {
+		return nil
+	}
+	if err := g.AddManaWithOptionsForEffect(controller, source, "", game.AddManaOptions{Amount: ManaN(len(exiled), "R")}); err != nil {
+		return err
+	}
+	var cards []game.Card
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			cards = append(cards, c)
+		}
+	}
+	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+		Player: controller,
+		Zone:   game.ZoneExile,
+		Source: source,
+		Label:  "Quintorius Kand — you may play this card this turn",
+	}, cards)
+	return nil
+})

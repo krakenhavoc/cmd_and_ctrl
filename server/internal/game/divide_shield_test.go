@@ -193,12 +193,15 @@ func TestChargedSourceShieldIsDividedAmongAWalk(t *testing.T) {
 		}
 	})
 	start := lifeOf(g, me.ID)
-	total := -1
+	resetProbes()
+	total := func() int {
+		if a := heardAmounts(); len(a) > 0 {
+			return a[len(a)-1]
+		}
+		return -1
+	}
 	g.WithWriteLock(func() {
-		err := g.DealDamageEachThenForEffect(src, []uuid.UUID{me.ID, bear, wolf}, 2, func(_ *Game, n int) error {
-			total = n
-			return nil
-		})
+		err := g.DealDamageEachKeyedForEffect(src, []uuid.UUID{me.ID, bear, wolf}, 2, probeTail())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +210,7 @@ func TestChargedSourceShieldIsDividedAmongAWalk(t *testing.T) {
 	if c == nil || len(c.DivideShield.Entries) != 3 || c.Chooser != me.ID {
 		t.Fatalf("prompt %+v, want me dividing 2 among three events", c)
 	}
-	if total != -1 || damageOn(g, bear) != 0 {
+	if total() != -1 || damageOn(g, bear) != 0 {
 		t.Fatal("the walk dealt damage before the division")
 	}
 	if err := g.ResolveDivideShield(c.ID, me.ID, shareFor(c, map[uuid.UUID]int{bear: 2})); err != nil {
@@ -216,8 +219,8 @@ func TestChargedSourceShieldIsDividedAmongAWalk(t *testing.T) {
 	if got, b, w := lifeOf(g, me.ID), damageOn(g, bear), damageOn(g, wolf); got != start-2 || b != 0 || w != 2 {
 		t.Fatalf("life %d (want %d), bear %d (want 0), wolf %d (want 2)", got, start-2, b, w)
 	}
-	if total != 4 {
-		t.Errorf("walk continuation told %d, want 4 dealt", total)
+	if total() != 4 {
+		t.Errorf("walk continuation told %d, want 4 dealt", total())
 	}
 }
 
@@ -286,7 +289,7 @@ func TestUnpreventableDamageIsNotOfferedToADivision(t *testing.T) {
 	})
 	start := lifeOf(g, me.ID)
 	g.WithWriteLock(func() {
-		_ = g.DealDamageEachThenForEffect(src, []uuid.UUID{me.ID, bear}, 2, nil)
+		_ = g.DealDamageEachKeyedForEffect(src, []uuid.UUID{me.ID, bear}, 2, KeyedTail{})
 	})
 	if openDivideShield(g) != nil {
 		t.Fatal("offered an unpreventable event to the division")
@@ -338,7 +341,7 @@ func TestDivideShieldChooserLeaving(t *testing.T) {
 // Every field of damageTail but the continuation and the instance flag is
 // carried by a staged event, so staging an event cannot drop a rider.
 func TestStagedDamageCarriesTheWholeTail(t *testing.T) {
-	notStaged := map[string]bool{"then": true, "endsInstance": true, "released": true, "redirected": true}
+	notStaged := map[string]bool{"then": true, "keyed": true, "each": true, "endsInstance": true, "released": true, "redirected": true}
 	staged := map[string]bool{}
 	st := reflect.TypeOf(stagedDamage{})
 	for i := 0; i < st.NumField(); i++ {

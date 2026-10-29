@@ -19,10 +19,10 @@ func queueAnyPlayerOfferView(t *testing.T, g *game.Game, controller uuid.UUID) u
 	source := uuid.New()
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Rhystic Thing", TypeLine: "Enchantment", Owner: controller, Controller: controller})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller, Cost: "{2}", Question: "Rhystic Thing — pay {2}?",
 		}); err != nil {
-			t.Fatalf("QueueAnyPlayerPaysForEffect: %v", err)
+			t.Fatalf("queueAnyPlayerHooked: %v", err)
 		}
 	})
 	return source
@@ -111,7 +111,7 @@ func TestAnyPlayerPaymentKindsAreOnTheWire(t *testing.T) {
 		source := uuid.New()
 		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Enchantment", Owner: controller, Controller: controller})
 		g.WithWriteLock(func() {
-			if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+			if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 				Source: source, Controller: controller, Cost: "5", Question: "Thing?",
 				Action:      &game.PayAction{Kind: tc.kind, Count: 5},
 				AcceptLabel: "Take it", DeclineLabel: "Don't",

@@ -62,13 +62,7 @@ func init() {
 					if err := (ExileThenIfItWas{
 						Target: t.ID,
 						Was:    WasCreatureCard,
-						Then: func(ctx *Context) error {
-							return CreateToken{
-								Controller: item.Controller,
-								Template:   BlackZombieToken(),
-								N:          1,
-							}.Apply(ctx)
-						},
+						Keyed:  delugeOfTheDeadIfCreature,
 					}).Apply(ctx); err != nil {
 						return err
 					}
@@ -78,3 +72,15 @@ func init() {
 		}},
 	})
 }
+
+// delugeOfTheDeadIfCreature is the exile's keyed "if it was a creature
+// card, create a 2/2 black Zombie creature token" (#4253): the ability
+// rides the tail, so the token is its controller's. An on-disk key: never
+// renamed, never reused.
+var delugeOfTheDeadIfCreature = IfItWasTail("if-it-was/deluge-of-the-dead-zombie", func(ctx *Context) error {
+	return CreateToken{
+		Controller: ctx.Controller(),
+		Template:   BlackZombieToken(),
+		N:          1,
+	}.Apply(ctx)
+}, nil)

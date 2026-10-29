@@ -230,26 +230,37 @@ func retypedTypeLine(printed string, subtypes ...string) string {
 // graveyard. Create a token that's a copy of it, except …" (The Scarab
 // God, Ardyn, the Usurper): the first still-legal card target is exiled,
 // and only a card that really was exiled is copied, under the resolving
-// item's controller, with `except` applied to the copy.
-func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, except func(t *game.Card)) error {
+// item's controller, with the exception `then` was registered with
+// (ExileThenTokenCopyTail) applied to the copy.
+//
+// #4253 slice 10a: the copy is the exile's keyed tail, so a table waiting
+// on the exile's prompt is a restore point.
+func ExileTargetThenTokenCopy(g *game.Game, item *game.StackItem, then game.TailRef) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		id := t.ID
-		controller := item.Controller
-		return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return CreateTokenCopy{
-				Controller: controller,
-				Copy:       id,
-				N:          1,
-				Except:     except,
-			}.Apply(ctx)
-		}}.Apply(ctx)
+		return ExileTarget{Target: t.ID, ThenTail: ctx.ItemTail(then)}.Apply(ctx)
 	}
 	return nil
+}
+
+// ExileThenTokenCopyTail registers ExileTargetThenTokenCopy's "create a
+// token that's a copy of it, except …" under key (ledgered "tail <key>",
+// an on-disk identity): exceptFor builds the exception against the asking
+// item's context (its text, CR 612.2). Call it once, from a package-level
+// var.
+func ExileThenTokenCopyTail(key string, exceptFor func(ctx *Context) func(t *game.Card)) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		if !oneWentThisWay(o) {
+			return nil
+		}
+		return CreateTokenCopy{
+			Controller: ctx.Controller(),
+			Copy:       o.IDs[0],
+			N:          1,
+			Except:     exceptFor(ctx),
+		}.Apply(ctx)
+	})
 }

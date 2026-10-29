@@ -78,10 +78,14 @@ func GrantedStaticProblem(s StaticAbility) string {
 		return "a granted static cannot declare ActiveWhen — a designation is the host's"
 	case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "" || len(s.AffectsZones) > 0:
 		return "a granted static functions on the battlefield over permanents only"
-	case s.DependsOnHandSize || s.DependsOnLifeTotal || s.DependsOnAttackingStatus ||
+	case s.DependsOnLifeTotal || s.DependsOnAttackingStatus ||
 		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool || s.DependsOnLibraryTop ||
 		len(s.DependsOnEvents) > 0:
-		return "a granted static cannot declare an invalidation hint — the hints are read off the battlefield's own statics"
+		// DependsOnHandSize is the one hint a granted static may declare
+		// (hellbent, an ability sticker, ADR 0208): the hint walk reads the
+		// statics of the grants a permanent holds as well as its own
+		// (staticOnBattlefieldLocked). The others still wait for a card.
+		return "a granted static cannot declare this invalidation hint — only DependsOnHandSize is read off a permanent's grants"
 	}
 	return ""
 }
@@ -189,6 +193,25 @@ func (st *layerPassState) noteGrants(target *Card, keys []string, grantor uuid.U
 			continue
 		}
 		st.granted = append(st.granted, grantStamp{host: target, key: k, grantor: grantor, ts: ts})
+	}
+}
+
+// noteAppendedGrants is noteGrants for an effect that does not declare
+// its grants (StaticAbility.GrantAbilities) but wrote some while it
+// applied to `target`: an ability sticker (stickerEffect), or a static
+// that lends the abilities of ability stickers (effects.
+// HasAllAbilitiesOfAbilityStickers). `from` is the length of the host's
+// grant list before the effect applied, so the grants it appended are
+// the tail, each with the grantor it wrote (ADR 0208, #4307).
+func (st *layerPassState) noteAppendedGrants(target *Card, from int, ts int64) {
+	if st == nil || target == nil || target.effective == nil {
+		return
+	}
+	for _, ga := range target.effective.GrantedAbilities[from:] {
+		if len(bundleStatics(ga.Key)) == 0 {
+			continue
+		}
+		st.granted = append(st.granted, grantStamp{host: target, key: ga.Key, grantor: ga.Source, ts: ts})
 	}
 }
 

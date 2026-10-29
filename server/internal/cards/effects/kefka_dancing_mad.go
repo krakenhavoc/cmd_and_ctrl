@@ -99,35 +99,47 @@ func kefkaEndStep(g *game.Game, item *game.StackItem) error {
 		SourceName:  "Kefka, Dancing Mad",
 		Label:       "Kefka, Dancing Mad — cast it without paying its mana cost",
 	}
-	inline := g.ResolutionOpenForEffect()
-	if !inline {
+	inline := 0
+	if g.ResolutionOpenForEffect() {
+		inline = 1
+	} else {
 		perm.FollowUp = kefkaLifeLoss
 	}
-	return g.ExileCardsThenForEffect(picks, func(g *game.Game, exiled []uuid.UUID) error {
-		var landed []uuid.UUID
-		for _, id := range exiled {
-			grant := perm
-			grant.Zone = game.ZoneExile
-			if g.GrantCastPermissionOverCardForEffect(id, grant) {
-				landed = append(landed, id)
-			}
-		}
-		if inline {
-			g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
-				Chooser:      controller,
-				Source:       source,
-				Reason:       "Kefka, Dancing Mad",
-				Cards:        landed,
-				Keyword:      game.MayCastKeywordFreeCast,
-				AcceptLabel:  "Cast it free",
-				DeclineLabel: declineLeaveInExile,
-				Then:         kefkaAfterTheCasts,
-				Carry:        landed,
-			})
-		}
-		return nil
-	})
+	// Keyed (#4253 slice 10a): the permission rides the exile's tail as
+	// data, and N is whether the casts are offered inside the resolution.
+	return g.ExileCardsKeyedForEffect(picks, game.KeyedTail{Ref: kefkaExiled, Player: controller, Source: source,
+		N: inline, Permission: &perm})
 }
+
+// kefkaExiled grants the free cast over each card that reached exile and,
+// inside the resolution, offers the casts.
+var kefkaExiled = game.RegisterTail("exile/kefka-dancing-mad-grant", func(g *game.Game, o game.TailOutcome) error {
+	if o.Tail.Permission == nil {
+		return nil
+	}
+	var landed []uuid.UUID
+	for _, id := range o.IDs {
+		grant := *o.Tail.Permission
+		grant.Zone = game.ZoneExile
+		if g.GrantCastPermissionOverCardForEffect(id, grant) {
+			landed = append(landed, id)
+		}
+	}
+	if o.Tail.N == 1 {
+		g.OfferResolutionCastForEffect(game.ResolutionCastOffer{
+			Chooser:      o.Tail.Player,
+			Source:       o.Tail.Source,
+			Reason:       "Kefka, Dancing Mad",
+			Cards:        landed,
+			Keyword:      game.MayCastKeywordFreeCast,
+			AcceptLabel:  "Cast it free",
+			DeclineLabel: declineLeaveInExile,
+			Then:         kefkaAfterTheCasts,
+			Carry:        landed,
+		})
+	}
+	return nil
+})
 
 // kefkaAfterTheCasts is "Then each player who owns a spell you cast this
 // way loses life equal to its mana value", once the resolution_cast prompt

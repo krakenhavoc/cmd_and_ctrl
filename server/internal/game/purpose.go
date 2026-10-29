@@ -30,6 +30,15 @@ package game
 // counted at resolution ("draw a card for each creature you control"),
 // does not declare it, because no number here would be true.
 type Purpose struct {
+	// LandEntry is projected from a land's own catalog replacements:
+	// "tapped" for an unconditional self-tap, "untapped" for no entry
+	// replacements, empty for unknown/conditional entry (#4317).
+	// It is not a prediction of other permanents' replacement effects.
+	LandEntry string
+	// ReturnsLandOnEntry declares the printed mandatory return of a
+	// land its controller controls, on a bounce land's card purpose.
+	ReturnsLandOnEntry bool
+
 	// Draws is how many cards its controller draws ("you draw a
 	// card", CR 109.5: "you" is the player who cast or activated it).
 	// On an any-player row that is the activator (ADR 0106).
@@ -686,6 +695,16 @@ func CardPurposeOfPtr(c *Card) Purpose {
 	}
 	p := d.Purpose
 	p.FlashCleanupSacrifice = d.FlashWithCleanupSacrifice
+	if c.PrintedIsLand() {
+		if len(d.Replacements) == 0 {
+			p.LandEntry = "untapped"
+		}
+		for _, r := range d.Replacements {
+			if r.SelfEntersTapped {
+				p.LandEntry = "tapped"
+			}
+		}
+	}
 	return p
 }
 

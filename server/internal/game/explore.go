@@ -15,7 +15,7 @@ import "github.com/google/uuid"
 // RevealTopOfLibraryForEffect, the land's trip to hand and the nonland's
 // trip to the graveyard are routeCardToZoneLocked (so a commander in a
 // library still gets its CR 903.9 question), the counter is
-// AddCounterByThenForEffect (so Hardened Scales and friends settle
+// AddCounterByKeyedForEffect (so Hardened Scales and friends settle
 // before the question), and "may put it into your graveyard" is the
 // general confirm prompt. It is not surveil: a "whenever you surveil"
 // payoff must not fire on an explore, so the question is not a surveil
@@ -67,23 +67,58 @@ func (g *Game) ExploreForEffect(source uuid.UUID, explorer ObjectRef, controller
 		return done(g)
 	}
 	if top.IsLand() {
-		_, err := g.routeCardToZoneLocked(zoneRoute{
+		// #4361 S11b: the rest is a registered tail, so a CR 616 prompt
+		// on the land's trip to hand is a restore point.
+		return g.routeCardKeyedLocked(zoneRoute{
 			CardID:   top.InstanceID,
 			Dst:      ZoneHand,
 			DstOwner: controller,
 			Actor:    controller,
 			Source:   source,
-			then:     done,
-		})
-		return err
+		}, exploreDone(source, explorer.ID, controller))
 	}
-	ask := func(g *Game, _ int) error {
-		return g.queueExploreGraveyardQuestionLocked(source, controller, explorer.ID, top)
-	}
+	// #4253 slice 7: the question is the counter's keyed tail (the explorer
+	// and the revealed card ride it as data), so a CR 616 ordering prompt over
+	// the +1/+1 counter is a restore point.
+	ask := KeyedTail{Ref: exploreAskTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer.ID, top.InstanceID}}
 	if perm := findBattlefieldCard(g, explorer.ID); perm != nil && perm.ObjectEpoch == explorer.Epoch {
-		return g.AddCounterByThenForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
+		return g.AddCounterByKeyedForEffect(controller, explorer.ID, CounterPlusOne, 1, ask)
 	}
-	return ask(g, 0)
+	return ask.Run(g, nil)
+}
+
+// exploreAskTail is the half of an explore after its counter: ask whether
+// the revealed card goes into the graveyard. Carry is the explorer, then the
+// revealed card. An on-disk key: never renamed, never reused.
+var exploreAskTail = RegisterTail("engine/explore-ask", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	revealed := Card{InstanceID: o.Tail.Carry[1]}
+	if p := g.playerByIDLocked(o.Tail.Player); p != nil {
+		if c, ok := g.cardInZoneLocked(p.Library, revealed.InstanceID); ok {
+			revealed = c
+		}
+	}
+	return g.queueExploreGraveyardQuestionLocked(o.Tail.Source, o.Tail.Player, o.Tail.Carry[0], revealed)
+})
+
+// exploreDoneTail is CR 701.44b's "has explored" after a move of the
+// revealed card (to hand as a land, or to the graveyard on a yes), as a
+// registered tail (#4361 S11b), so a CR 616 prompt on that move is a
+// restore point. Source is the card whose effect told it to explore,
+// Player the controller and Carry the explorer. An on-disk key: never
+// renamed, never reused.
+var exploreDoneTail = RegisterTail("engine/explore-done", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	return g.finishExploreLocked(o.Tail.Source, o.Tail.Carry[0], o.Tail.Player)
+})
+
+// exploreDone is exploreDoneTail for one explore.
+func exploreDone(source, explorer, controller uuid.UUID) KeyedTail {
+	return KeyedTail{Ref: exploreDoneTail, Source: source, Player: controller, Carry: []uuid.UUID{explorer}}
 }
 
 // finishExploreLocked is CR 701.44b: the permanent has explored.
@@ -135,15 +170,13 @@ var exploreGraveyardAnswer = RegisterConfirmThen("confirm/explore-graveyard", fu
 	if p == nil || p.Library.Size() == 0 || p.Library.Cards[p.Library.Size()-1].InstanceID != revealed {
 		return done(g)
 	}
-	_, err := g.routeCardToZoneLocked(zoneRoute{
+	return g.routeCardKeyedLocked(zoneRoute{
 		CardID:   revealed,
 		Dst:      ZoneGraveyard,
 		DstOwner: controller,
 		Actor:    controller,
 		Source:   source,
-		then:     done,
-	})
-	return err
+	}, exploreDone(source, explorer, controller))
 })
 
 // exploreReason is the reveal banner: "<name> explores".

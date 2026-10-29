@@ -130,11 +130,11 @@ func TestCantBeSacrificedLeavesItWhereItIs(t *testing.T) {
 		if err := g.SacrificePermanentForEffect(kept); err != nil {
 			t.Fatalf("SacrificePermanentForEffect: %v, want nil (the instruction does nothing)", err)
 		}
-		if err := g.SacrificeAllThenForEffect(uuid.Nil, []uuid.UUID{kept, gone}, func(_ *Game, l []uuid.UUID) error {
-			landed = l
+		if err := g.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{kept, gone}, hookTail(func(_ *Game, o TailOutcome) error {
+			landed = o.IDs
 			return nil
-		}); err != nil {
-			t.Fatalf("SacrificeAllThenForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("SacrificeAllKeyedForEffect: %v", err)
 		}
 	})
 	if !g.Battlefield.Contains(kept) || hasEvent(g, EventSacrifice, kept) {

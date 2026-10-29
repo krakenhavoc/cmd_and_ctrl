@@ -80,12 +80,17 @@ func priestOfForgottenGodsEffect(g *game.Game, item *game.StackItem) error {
 	// {B}{B} and draw a card" is not gated on anybody sacrificing
 	// anything (ADR 0013 §5m item 5), and a table where nobody had a
 	// creature still pays.
-	return g.PlayersSacrificeThenForEffect(item.SourceCardID, players,
+	return ctx.PlayersSacrificeThen(players,
 		sacrificeSpec("a creature", Creature()), "Sacrifice a creature",
-		func(g *game.Game, _ game.PromptedSacrifices) error {
-			if err := g.AddManaForEffect(item.Controller, item.SourceCardID, "{B}{B}"); err != nil {
-				return err
-			}
-			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-		})
+		priestOfForgottenGodsPayout, ctx.RunData(nil))
 }
+
+// priestOfForgottenGodsPayout is {B}{B} and a card once every sacrifice has
+// landed, whoever sacrificed (nothing on this card is conditional), keyed
+// (#4290).
+var priestOfForgottenGodsPayout = RunThen("prompt-run/priest-of-forgotten-gods-payout", func(ctx *Context, _ game.RunDone) error {
+	if err := ctx.Game.AddManaForEffect(ctx.Controller(), ctx.Source(), "{B}{B}"); err != nil {
+		return err
+	}
+	return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+})

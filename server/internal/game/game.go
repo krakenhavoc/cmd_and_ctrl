@@ -555,9 +555,8 @@ type Game struct {
 
 	// followUpParks is the rest of each damage instruction parked behind
 	// a prompt its instance's follow-up asked (#2040,
-	// prevention_then_pause.go), oldest first. Closures: a table holding
-	// one is not a restore point (ContinuationCensus counts them). Copy
-	// on write.
+	// prevention_then_pause.go), oldest first. Data (keyed tails, written
+	// as GameSnapshot.FollowUpParks; #4253, #4361 S8). Copy on write.
 	followUpParks []followUpPark
 
 	// damageInstanceSeq is the last DamageInstance handed out (ADR 0108
@@ -581,8 +580,9 @@ type Game struct {
 	// damageInstanceLives is every seat's life total as each of the
 	// newest damage instances began (ADR 0108 §10, damage_as_though.go):
 	// Phyrexian Unlife's "as long as you have 0 or less life" is read
-	// against it, once per instance. Transient like the stamp it is keyed
-	// on, cloned with the game, never captured. Copy on write.
+	// against it, once per instance. Cloned with the game and written to
+	// the snapshot (#4389), since a paused event carries its instance
+	// through a restore. Copy on write.
 	damageInstanceLives []damageInstanceLife
 
 	// shieldDivisions are the CR 615.7 divisions protected players have
@@ -974,6 +974,14 @@ type Game struct {
 	// Clone and the persisted snapshot carry it. See mode_walk.go.
 	pausedModeWalk *modeWalk
 
+	// frozenEntries are the paused entries whose entry choice has been
+	// answered with a discard or a sacrifice that is still settling (#4361
+	// S17, owner decision D4, entry_card_choice.go): each frame's event
+	// and the effect that asked, by event ID, until the action's keyed
+	// tail resumes the entry. Copy on write, and a frame is never written
+	// after it is frozen. Clone and the persisted snapshot carry them.
+	frozenEntries []*replacementResumeFrame
+
 	// pausedStepWalk is the rest of the resolving item's effect steps,
 	// parked behind a prompt an earlier step queued (#4012, CR 608.2c).
 	// Non-nil only while a resolution is open and paused. Clone and the
@@ -1207,6 +1215,12 @@ type Game struct {
 	// against a counter that had already been decremented and pay out
 	// a seat early.
 	promptRuns map[uuid.UUID]*promptRun
+
+	// parkedDraws holds the tails of draws a draw-instead body handed to a
+	// prompt (draw_done.go, #4253 slice 10c): what the replaced draw still
+	// owes, as plain data, by the ID the prompt carries. Cloned by undo,
+	// written to a restore point as GameSnapshot.ParkedDraws.
+	parkedDraws map[uuid.UUID]*parkedDraw
 
 	mu sync.RWMutex
 }

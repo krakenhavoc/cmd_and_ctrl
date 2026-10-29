@@ -48,9 +48,8 @@ func init() {
 						Cards:    g.LookAtTopOfLibraryForEffect(player, 1),
 						Max:      1,
 						Optional: true,
-						Reveal:   true,
 						Label:    "Sorin the Mirthless — reveal that card and put it into your hand",
-						Then:     sorinMirthlessPayForTheCard,
+						Key:      sorinMirthlessTake,
 					}.Apply(ctx)
 				},
 			},

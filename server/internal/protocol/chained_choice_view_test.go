@@ -39,12 +39,12 @@ func TestConfirmPromptCarriesItsBranchLabels(t *testing.T) {
 	g := newTwoSeatGame(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(game.ConfirmPrompt{
+		queueConfirmHooked(g, game.ConfirmPrompt{
 			Chooser:      me.ID,
 			Question:     "Sylvan Library — pay 4 life to keep it?",
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
-		})
+		}, nil, nil)
 	})
 	v := FilterViewFor(ViewOfGame(g), me.ID.String())
 	if len(v.PendingChoices) != 1 {

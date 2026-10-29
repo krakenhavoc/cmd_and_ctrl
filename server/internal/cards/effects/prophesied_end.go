@@ -40,12 +40,13 @@ func init() {
 				// rides the destroy's continuation rather than the line
 				// after it: a replacement that pauses or redirects the
 				// destruction cannot make it draw early.
-				return ctx.Game.DestroyPermanentsThenForEffect([]uuid.UUID{t.ID}, func(g *game.Game, _ []uuid.UUID) error {
-					if wasAttacking {
-						return nil
-					}
-					return DrawCards{Player: owner, N: 1}.Apply(NewContext(g, item))
-				})
+				// Keyed (#4253 slice 10a): the controller's draw is the
+				// destroy's tail.
+				var draw game.KeyedTail
+				if !wasAttacking {
+					draw = game.KeyedTail{Ref: thenDrawCards, Player: owner, Source: item.SourceCardID, N: 1}
+				}
+				return ctx.Game.DestroyPermanentsKeyedForEffect([]uuid.UUID{t.ID}, draw)
 			}
 			return nil
 		},

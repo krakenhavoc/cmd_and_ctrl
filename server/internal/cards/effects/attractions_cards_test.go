@@ -99,11 +99,17 @@ func rollToVisit(t *testing.T, g *game.Game, player uuid.UUID) int {
 	t.Helper()
 	var result int
 	g.WithWriteLock(func() {
-		r, err := g.RollToVisitForEffect(player, uuid.Nil)
-		if err != nil {
+		if err := g.RollToVisitForEffect(player, uuid.Nil); err != nil {
 			t.Fatalf("roll to visit: %v", err)
 		}
-		result = r
+		// The result is the roll-to-visit event's (#4307: the visit is the
+		// roll's tail).
+		for i := len(g.Events) - 1; i >= 0; i-- {
+			if ev := g.Events[i]; ev.Kind == game.EventRollToVisit && ev.Actor == player {
+				result = ev.Amount
+				break
+			}
+		}
 	})
 	return result
 }

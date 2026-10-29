@@ -35,7 +35,7 @@ func init() {
 						Match:  Enchantment(),
 						All:    true,
 						Label:  "Marina Vendrell — enchantment cards into your hand",
-						Then:   TakeRestOnBottomInRandomOrder,
+						Key:    takeRestBottomRandom,
 					}.Apply(ctx)
 				}),
 		},

@@ -31,31 +31,42 @@ func init() {
 		Name:         "Patriarch's Bidding",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return patriarchsBiddingAsk(ctx.Game, item, seatsFromController(ctx.Game, item.Controller), nil)
+			return patriarchsBiddingAsk(ctx, seatsFromController(ctx.Game, item.Controller), nil)
 		},
 	})
 }
 
-// patriarchsBiddingAsk asks seats[0], then recurses on the rest with
+// patriarchsBiddingAsk asks seats[0], then carries on with the rest and
 // the answer appended. A seat that cannot be asked (queue refused) is
-// skipped without an answer.
-func patriarchsBiddingAsk(g *game.Game, item *game.StackItem, seats []uuid.UUID, chosen []string) error {
+// skipped without an answer. The seats still to ask ride the prompt's tail
+// as its Carry and the answers so far as its Words (#4253), so a table
+// waiting on any seat is a restore point.
+func patriarchsBiddingAsk(ctx *Context, seats []uuid.UUID, chosen []string) error {
 	if len(seats) == 0 {
-		return patriarchsBiddingReturn(NewContext(g, item), chosen)
+		return patriarchsBiddingReturn(ctx, chosen)
 	}
-	rest := seats[1:]
-	asked := ChooseCreatureTypeThen(g, seats[0], item.SourceCardID, "Patriarch's Bidding — choose a creature type",
-		func(g *game.Game, t string) error {
-			next := chosen
-			if t != "" {
-				next = append(append([]string(nil), chosen...), t)
-			}
-			return patriarchsBiddingAsk(g, item, rest, next)
-		})
-	if !asked {
-		return patriarchsBiddingAsk(g, item, rest, chosen)
+	then := ctx.ItemTail(patriarchsBiddingTypeChosen)
+	then.Carry = append([]uuid.UUID(nil), seats[1:]...)
+	then.Words = append([]string(nil), chosen...)
+	if !ChooseCreatureTypeTail(ctx.Game, seats[0], ctx.Source(), "Patriarch's Bidding — choose a creature type", then) {
+		return patriarchsBiddingAsk(ctx, seats[1:], chosen)
 	}
 	return nil
+}
+
+// patriarchsBiddingTypeChosen records one seat's type (the tail's Word, ""
+// when that seat left) and asks the next. An on-disk key, registered in
+// init because its body asks the next seat with it.
+var patriarchsBiddingTypeChosen game.TailRef
+
+func init() {
+	patriarchsBiddingTypeChosen = CardTail("then/patriarchs-bidding-type-chosen", func(ctx *Context, o game.TailOutcome) error {
+		chosen := append([]string(nil), o.Tail.Words...)
+		if o.Tail.Word != "" {
+			chosen = append(chosen, o.Tail.Word)
+		}
+		return patriarchsBiddingAsk(ctx, o.Tail.Carry, chosen)
+	})
 }
 
 func patriarchsBiddingReturn(ctx *Context, chosen []string) error {

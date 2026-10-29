@@ -145,7 +145,7 @@ func TestFootprintOfRowRefusesWhatItCannotRead(t *testing.T) {
 		{"a closure", game.TriggeredAbility{Effect: func(*game.Game, *game.StackItem) error { return nil }}},
 		{"an empty Do", game.TriggeredAbility{Effect: Do()}},
 		{"a step with no declaration", game.TriggeredAbility{Effect: Do(GainLife{Amount: 1}, DiscardCards{N: 1})}},
-		{"a scry with a Then", game.TriggeredAbility{Effect: Do(Scry{N: 1, Then: func(*game.Game) error { return nil }})}},
+		{"a scry with a ThenTail", game.TriggeredAbility{Effect: Do(Scry{N: 1, ThenTail: game.KeyedTail{Ref: thenDrawACard}})}},
 		{"a constant player", game.TriggeredAbility{Effect: Do(GainLife{Player: uuid.New(), Amount: 1})}},
 		{"an exile with no target clause", game.TriggeredAbility{Effect: Do(ExileChosenTarget{})}},
 	} {

@@ -53,18 +53,13 @@ func TestPutHallowedFountainAsksAndTheRestWaits(t *testing.T) {
 		Name: "Hallowed Fountain", TypeLine: "Land — Plains Island", OracleID: hallowedFountainOracle,
 	})
 
-	var res PutFromLibraryResult
-	thenRan := 0
+	fountainThenRan, fountainThenRes = 0, PutFromLibraryResult{}
 	g.WithWriteLock(func() {
 		err := PutFromLibraryOntoBattlefield{
-			Player: me.ID,
-			Cards:  []uuid.UUID{fountain, forest, chaff},
-			All:    true,
-			Then: func(g *game.Game, r PutFromLibraryResult) error {
-				thenRan++
-				res = r
-				return PutRestIntoGraveyard(g, r)
-			},
+			Player:   me.ID,
+			Cards:    []uuid.UUID{fountain, forest, chaff},
+			All:      true,
+			ThenTail: putFountainThen,
 		}.Apply(NewContext(g, nil))
 		if err != nil {
 			t.Fatalf("put: %v", err)
@@ -77,7 +72,7 @@ func TestPutHallowedFountainAsksAndTheRestWaits(t *testing.T) {
 	if g.Battlefield.Contains(fountain) || g.Battlefield.Contains(forest) {
 		t.Fatal("a card of the batch entered while the question was open")
 	}
-	if thenRan != 0 || me.Graveyard.Contains(chaff) {
+	if fountainThenRan != 0 || me.Graveyard.Contains(chaff) {
 		t.Fatal("the rest was put away while a card of the batch was still waiting to enter")
 	}
 
@@ -93,8 +88,9 @@ func TestPutHallowedFountainAsksAndTheRestWaits(t *testing.T) {
 	if me.Life != lifeBefore-2 {
 		t.Errorf("life = %d, want %d", me.Life, lifeBefore-2)
 	}
-	if thenRan != 1 || len(res.Entered) != 2 {
-		t.Fatalf("Then ran %d times with %v entered; want once with both", thenRan, res.Entered)
+	res := fountainThenRes
+	if fountainThenRan != 1 || len(res.Entered) != 2 {
+		t.Fatalf("Then ran %d times with %v entered; want once with both", fountainThenRan, res.Entered)
 	}
 	if len(res.Rest) != 1 || res.Rest[0] != chaff || !me.Graveyard.Contains(chaff) {
 		t.Errorf("rest %v; want the Opt, in the graveyard", res.Rest)
@@ -458,3 +454,19 @@ func TestPheliaWaitsForAPausedReturn(t *testing.T) {
 		t.Errorf("Phelia has %d counters after the paused return finished, want 1", got)
 	}
 }
+
+// fountainThenRan and fountainThenRes are what the probe rider below saw: a
+// registered tail holds no closure, so the test reads them off package
+// variables (the tests of this package do not run in parallel).
+var (
+	fountainThenRan int
+	fountainThenRes PutFromLibraryResult
+)
+
+// putFountainThen is the rider of TestPutHallowedFountainAsksAndTheRestWaits:
+// it records what it was told, then puts the rest into the graveyard.
+var putFountainThen = PutFromLibraryTail("test/put-hallowed-fountain-then", func(ctx *Context, r PutFromLibraryResult) error {
+	fountainThenRan++
+	fountainThenRes = r
+	return PutRestIntoGraveyard(ctx.Game, r)
+})

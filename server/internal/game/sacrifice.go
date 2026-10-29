@@ -32,7 +32,7 @@ import "github.com/google/uuid"
 // announcement, in the same order. It stays the FIRE-AND-FORGET form:
 // nil means "no error", never "it left the battlefield", because a
 // sacrificed commander's CR 903.9 prompt can still be open when this
-// returns. A caller that reads the outcome uses SacrificeThenForEffect.
+// returns. A caller that reads the outcome uses SacrificeAllKeyedForEffect.
 //
 // A permanent that is not on the battlefield is ErrCardNotFound and
 // nothing is announced, which is the contract every caller already
@@ -77,7 +77,7 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 	r := sacrificeRoute(uuid.Nil)
 	r.commanderAnswer = answer
 	r.MustSettleNow = mustSettleNow
-	return g.routeLegLocked(r, cardID, nil, nil)
+	return g.routeLegLocked(r, cardID, nil)
 }
 
 // announceSacrificeLocked emits EventSacrifice for the permanent's
@@ -91,18 +91,26 @@ func (g *Game) sacrificeWithAnswerLocked(cardID uuid.UUID, answer commanderZoneA
 // window then does with the destination — a sacrifice whose card an
 // "exile it instead" replacement takes is still a sacrifice.
 //
+// `cause` says whether the sacrifice is a cost; it only decides whether
+// the event names the resolving card as its LeaveSource (#4395).
+//
 // Caller must hold g.mu.
-func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID) error {
+func (g *Game) announceSacrificeLocked(cardID, source uuid.UUID, cause MoveCause) error {
 	controller := g.controllerOfBattlefieldCardLocked(cardID)
 	if controller == uuid.Nil {
 		return ErrCardNotFound
 	}
-	g.EmitEvent(Event{
+	// #4395: the card behind the batch, for the public log to group a
+	// sacrifice wipe by. A cost names none (CR 602.2b): a sacrifice a
+	// player pays is not that batch's resolution.
+	ev := Event{
 		Kind:   EventSacrifice,
 		Actor:  controller,
 		Source: source,
 		CardID: cardID,
-	})
+	}
+	ev.LeaveSource = g.leaveSourceLocked(cause)
+	g.EmitEvent(ev)
 	return nil
 }
 
@@ -156,19 +164,19 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // has left the battlefield when it returns, and a clause written on
 // the next line pays out for a sacrifice nobody has chosen yet. A
 // card with anything hanging off the answer uses
-// EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
+// EachPlayerSacrificesThenKeyedForEffect (#1019, sacrifice_run.go), which
 // is this with the rest of the card attached.
 //
 // The choices go through ADR 0175's ordered collector: one player is
 // asked at a time, in APNAP order, each seeing the earlier picks, and
 // nothing moves until the last player has chosen. Then every pick
-// leaves in one SacrificeAllThenForEffect, so a Blood Artist sees every
+// leaves in one SacrificeAllKeyedForEffect, so a Blood Artist sees every
 // death in one batch and no death trigger can resolve while a later
 // player is still choosing (sacrificeTogetherLocked, sacrifice_run.go).
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID, spec *TargetSpec, reason string) int {
-	asked, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason, nil)
+	asked, err := g.sacrificeTogetherLocked(source, g.apnapSeatsExceptLocked(except), spec, reason)
 	if err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
 	}
@@ -193,6 +201,22 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 	return seats
 }
 
+// PlayersSacrificeForEffect is "each of these players sacrifices N
+// permanents of their choice" with nothing waiting on the answer: the seats
+// are asked once each for min(owed, candidates) (a name listed N times owes
+// N), one at a time in APNAP order, each seeing the earlier choices, and
+// then everything chosen is sacrificed together (EachPlayerSacrificesForEffect
+// is this with the seats worked out). Returns how many seats will be asked.
+//
+// Caller must hold g.mu in write mode (resolution frame).
+func (g *Game) PlayersSacrificeForEffect(source uuid.UUID, players []uuid.UUID, spec *TargetSpec, reason string) int {
+	asked, err := g.sacrificeTogetherLocked(source, players, spec, reason)
+	if err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Source: source, ErrorMsg: err.Error()})
+	}
+	return asked
+}
+
 // PlayerSacrificesForEffect queues ONE sacrifice prompt, for one
 // player — "sacrifice another permanent" (Korvold), "sacrifice a
 // creature" as the rider on a resolving effect rather than as a
@@ -210,7 +234,7 @@ func (g *Game) apnapSeatsExceptLocked(except uuid.UUID) []uuid.UUID {
 // THE FIRE-AND-FORGET FORM. The 1 says a QUESTION went up, not that
 // anything was sacrificed — a caller with an "if you do" rider is
 // asking the wrong thing and wants
-// PlayerSacrificesThenForEffect (#1019, sacrifice_run.go).
+// PlayerSacrificesThenKeyedForEffect (#1019, #4290, sacrifice_run.go).
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) PlayerSacrificesForEffect(source, playerID uuid.UUID, spec *TargetSpec, reason string) int {

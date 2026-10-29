@@ -80,25 +80,33 @@ func darkstarAugurFlip(g *game.Game, item *game.StackItem) error {
 		// to put into hand and nothing to pay for.
 		return nil
 	}
-	life := 0
-	if c, ok := g.LookupCardForEffect(revealed[0]); ok {
-		life = c.ManaValue()
-	}
-	source := item.SourceCardID
 	return TakeFromLibraryToHand{
 		Player: player,
 		Cards:  revealed,
 		All:    true,
 		Label:  darkstarAugurFlipLabel,
-		Then: func(g *game.Game, _ TakeFromLibraryResult) error {
-			if life == 0 {
-				// A land, or a card with no mana cost. The clause
-				// still happened; it just cost nothing, and asking
-				// the engine for a life change of nothing would emit
-				// an event that a life-loss watcher would answer.
-				return nil
-			}
-			return g.ChangePlayerLifeForEffect(source, player, -life)
-		},
+		Key:    darkstarAugurTake,
 	}.Apply(ctx)
+}
+
+// darkstarAugurTake is the flip's take, keyed (#4253): the card goes to
+// hand, then its owner loses life equal to its mana value, read off the
+// card the take looked at rather than captured.
+var darkstarAugurTake = RegisterTake("choose-cards/darkstar-augur-take", TakeDef{Then: darkstarAugurPay})
+
+func darkstarAugurPay(g *game.Game, res TakeFromLibraryResult) error {
+	life := 0
+	if len(res.Looked) > 0 {
+		if c, ok := g.LookupCardForEffect(res.Looked[0]); ok {
+			life = c.ManaValue()
+		}
+	}
+	if life == 0 {
+		// A land, or a card with no mana cost. The clause
+		// still happened; it just cost nothing, and asking
+		// the engine for a life change of nothing would emit
+		// an event that a life-loss watcher would answer.
+		return nil
+	}
+	return g.ChangePlayerLifeForEffect(res.Source, res.Player, -life)
 }

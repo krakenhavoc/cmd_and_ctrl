@@ -39,7 +39,7 @@ func init() {
 						Was:    WasCreatureCard,
 						// The life gain waits for a prompt the counter
 						// asks (a CR 616 order; #4162, CR 608.2c).
-						Then: scavengingOozeGrow.Run,
+						Keyed: scavengingOozeIfCreature,
 					}).Apply(ctx); err != nil {
 						return err
 					}
@@ -49,6 +49,12 @@ func init() {
 		}},
 	})
 }
+
+// scavengingOozeIfCreature is the exile's keyed "if it was a creature
+// card" (#4253 slice 10a).
+var scavengingOozeIfCreature = IfItWasTail("if-it-was/scavenging-ooze-grow", func(ctx *Context) error {
+	return scavengingOozeGrow.Run(ctx)
+}, nil)
 
 // scavengingOozeGrow is "put a +1/+1 counter on this creature and you
 // gain 1 life".

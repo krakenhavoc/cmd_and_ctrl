@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Fateful Tempest — Sorcery {2}{R}:
 //
@@ -46,29 +42,35 @@ func init() {
 
 var fatefulTempestVoted = VoteResultThen("vote/fateful-tempest", func(ctx *Context, r game.VoteResult) error {
 	past, present := r.Votes(0), r.Votes(1)
-	item := ctx.Item
-	exile := func(g *game.Game) error {
-		if present <= 0 {
-			return nil
-		}
-		return ExileTopNUntilYourNextTurn(NewContext(g, item), present)
-	}
 	if past <= 0 {
-		return exile(ctx.Game)
+		return fatefulTempestPresent(ctx, present)
 	}
-	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), past, game.ZoneGraveyard, nil,
-		func(g *game.Game, milled []uuid.UUID) error {
-			total := 0
-			for _, id := range milled {
-				if c, ok := g.LookupCardForEffect(id); ok {
-					total += c.ManaValue()
-				}
-			}
-			if total > 0 {
-				if err := (DamageEachOpponent{N: total}).Apply(NewContext(g, item)); err != nil {
-					return err
-				}
-			}
-			return exile(g)
-		})
+	// Keyed (#4253 slice 10a): "present"'s vote count rides the tail.
+	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), past, game.ZoneGraveyard, game.MillUntil{},
+		withN(ctx.ItemTail(fatefulTempestMilled), present))
+})
+
+// fatefulTempestPresent is "present": exile the top N until your next turn.
+func fatefulTempestPresent(ctx *Context, present int) error {
+	if present <= 0 {
+		return nil
+	}
+	return ExileTopNUntilYourNextTurn(ctx, present)
+}
+
+// fatefulTempestMilled is "past"'s damage, told the cards milled, then
+// "present" (its count is N).
+var fatefulTempestMilled = CardTail("then/fateful-tempest-past-then-present", func(ctx *Context, o game.TailOutcome) error {
+	total := 0
+	for _, id := range o.IDs {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok {
+			total += c.ManaValue()
+		}
+	}
+	if total > 0 {
+		if err := (DamageEachOpponent{N: total}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return fatefulTempestPresent(ctx, o.Tail.N)
 })

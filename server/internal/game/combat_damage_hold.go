@@ -45,11 +45,11 @@ import (
 // rule for an attack target that left, and a mark whose source has gone
 // is dealt with its last-known information.
 //
-// SNAPSHOTS. The hold is plain data, but the persisted snapshot does
-// not carry it: a table holding one counts a continuation in
-// ContinuationCensus.ChoiceResumeFrames, so it is not a restore point,
-// and a restart rewinds to the last clean boundary before the step.
-// Clone carries it, so an undo across an answer re-holds it.
+// SNAPSHOTS. The hold is plain data, and since #4362 the persisted
+// snapshot carries it (GameSnapshot.HeldCombatDamage, written with a
+// marker on each open prompt: combat_damage_keyed.go), so a table
+// waiting on it is a restore point and a restored answer deals the whole
+// step. Clone carries it, so an undo across an answer re-holds it.
 //
 // A restore point written before this change can hold a prompt with no
 // hold behind it: its blockers' damage was dealt when the prompt was

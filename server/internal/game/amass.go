@@ -56,7 +56,7 @@ import (
 //  1. FIND-OR-CREATE is the part with no home. Every token-creation
 //     primitive always creates; none of them skips because a matching
 //     permanent is already out. `armiesControlledLocked` is the live
-//     board query and `CreateTokensThenForEffect` is the creation, so
+//     board query and `CreateTokensKeyedForEffect` is the creation, so
 //     the new thing is only the branch between them — and it goes
 //     through the ordinary token pipeline, so ADR 0061's CR 701.7b
 //     window still opens and Doubling Season still doubles.
@@ -141,7 +141,7 @@ func (g *Game) armiesControlledLocked(controller uuid.UUID) []uuid.UUID {
 	return out
 }
 
-// AmassForEffect takes the amass keyword action on behalf of `actor`:
+// AmassKeyedForEffect takes the amass keyword action on behalf of `actor`:
 // it opens the CR 614 window on the action and, once the window
 // settles, finds or creates an Army, has `actor` choose one if there
 // is more than one, puts the settled count of +1/+1 counters on it and
@@ -158,8 +158,14 @@ func (g *Game) armiesControlledLocked(controller uuid.UUID) []uuid.UUID {
 // this end only needs to know the type name for CR 701.47a's last
 // sentence.
 //
-// `then` is CR 701.47c's "the Army you amassed", run once the action
-// is over. It may be nil.
+// `then` is CR 701.47c's "the Army you amassed", run once the action is
+// over: a registered tail (RegisterTail), told the Army as TailOutcome.IDs
+// (empty when there was none to choose and none to make). A zero tail is
+// "nothing more". The action is data throughout (#4253 slices 6 and 8), so
+// an amass that stops on a CR 616 ordering prompt (a Doubling Season beside
+// an Academy Manufactor) or on its choice of Army is a restore point. (The
+// closure form, AmassForEffect, was deleted in #4253's last part once only
+// tests called it.)
 //
 // It can PAUSE — twice. A CR 614 window with two count replacements in
 // it queues the CR 616 ordering prompt and returns with NOTHING done;
@@ -168,7 +174,7 @@ func (g *Game) armiesControlledLocked(controller uuid.UUID) []uuid.UUID {
 // `finishAmassLocked` the unpaused path runs.
 //
 // Caller must hold g.mu (it is an effect-time helper).
-func (g *Game) AmassForEffect(actor, source uuid.UUID, token Card, subtype string, n int, then func(g *Game, army uuid.UUID) error) error {
+func (g *Game) AmassKeyedForEffect(actor, source uuid.UUID, token Card, subtype string, n int, then KeyedTail) error {
 	if subtype == "" {
 		// CR 701.47d: the War of the Spark cards printed "amass N"
 		// with no subtype and were errata'd to "amass Zombies N". A
@@ -184,7 +190,7 @@ func (g *Game) AmassForEffect(actor, source uuid.UUID, token Card, subtype strin
 		keywordAction: &keywordActionTail{
 			armyToken:   token,
 			armySubtype: subtype,
-			amassed:     then,
+			keyed:       then,
 		},
 	})
 	return err
@@ -224,21 +230,60 @@ func (g *Game) applyAmassLocked(ev *ReplacementEvent) error {
 	// Season really does make two Armies — at which point the choice
 	// below is a real one, which is the ruling.
 	//
-	// CreateTokensThenForEffect and not CreateTokensForEffect: the
+	// CreateTokensKeyedForEffect and not CreateTokensForEffect: the
 	// creation can pause on a CR 616 ordering prompt, and the returned
 	// slice is empty when it does. The rest of the amass is the
 	// continuation, not the next line.
-	return g.CreateTokensThenForEffect(TokenCreation{
+	spec := TokenCreation{
 		Controller: ev.Actor,
 		Groups:     []TokenGroup{{Template: tail.armyToken, Count: 1}},
-	}, func(g *Game, _ []uuid.UUID) error {
-		// Re-read the board rather than trusting the created IDs: a
-		// creation replaced away entirely leaves none, a doubled one
-		// leaves two, and "choose an Army creature you control" is a
-		// question about the board either way.
-		return g.chooseAmassArmyLocked(ev, g.armiesControlledLocked(ev.Actor))
-	})
+	}
+	// #4253 slice 6: the rest of the amass is data. The creation's tail is
+	// the engine's amassCreatedTail, which carries what the clause needs
+	// (the amassing player, the source card, the count, the creature type)
+	// and hands CR 701.47c's tail on as its Next. A creation that stops on
+	// a CR 616 ordering prompt is then a restore point.
+	next := tail.keyed
+	tail.keyed = KeyedTail{}
+	created := KeyedTail{Ref: amassCreatedTail, Player: ev.Actor, Source: ev.Source, N: ev.KeywordActionCount, Word: tail.armySubtype}
+	if !next.IsZero() {
+		created.Next = &next
+	}
+	return g.CreateTokensKeyedForEffect(spec, created)
 }
+
+// amassCreatedTail is the keyed form of the creation's continuation in
+// applyAmassLocked (#4253 slice 6): the Army has been made (or not), so
+// re-read the board and choose one, with the rest of the clause rebuilt
+// from the tail. An on-disk key: never renamed, never reused.
+var amassCreatedTail = RegisterTail("engine/amass-created", func(g *Game, o TailOutcome) error {
+	ev := &ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              o.Tail.Player,
+		Source:             o.Tail.Source,
+		KeywordAction:      KeywordActionAmass,
+		KeywordActionCount: o.Tail.N,
+		keywordAction:      &keywordActionTail{armySubtype: o.Tail.Word},
+	}
+	if o.Tail.Next != nil {
+		ev.keywordAction.keyed = copyKeyedTail(*o.Tail.Next)
+	}
+	// Re-read the board rather than trusting the created IDs: a creation
+	// replaced away entirely leaves none, a doubled one leaves two, and
+	// "choose an Army creature you control" is a question about the board
+	// either way.
+	return g.chooseAmassArmyLocked(ev, g.armiesControlledLocked(ev.Actor))
+})
+
+// amassCountersPlacedTail runs CR 701.47c's tail once the amass's
+// counters have settled, told the Army (its Carry) and no more (#4253
+// slice 6). An on-disk key: never renamed, never reused.
+var amassCountersPlacedTail = RegisterTail("engine/amass-counters-placed", func(g *Game, o TailOutcome) error {
+	if o.Tail.Next == nil {
+		return nil
+	}
+	return g.runKeyedTailLocked(*o.Tail.Next, o.Tail.Carry, 0)
+})
 
 // chooseAmassArmyLocked is CR 701.47a's "choose an Army creature you
 // control": nothing to choose, one forced answer, or a prompt.
@@ -262,6 +307,12 @@ func (g *Game) chooseAmassArmyLocked(ev *ReplacementEvent, armies []uuid.UUID) e
 	case 1:
 		return g.finishAmassLocked(ev, armies[0])
 	}
+	// #4253 slice 8: the pick is keyed. What the answer needs rides the
+	// prompt as data: the amassing player and the card are its chooser and
+	// source, the count is a number, the creature type a word, and CR
+	// 701.47c's tail the tail. LiveZone re-checks the answer against the
+	// live battlefield on submit: the prompt is asynchronous and an Army
+	// can die between the question and the answer.
 	g.QueueChooseCardsForEffect(ChooseCardsPrompt{
 		Chooser:    ev.Actor,
 		FromPlayer: ev.Actor,
@@ -270,19 +321,38 @@ func (g *Game) chooseAmassArmyLocked(ev *ReplacementEvent, armies []uuid.UUID) e
 		Cards:      armies,
 		Min:        1,
 		Max:        1,
-		// Re-checked against the live battlefield on submit: the
-		// prompt is asynchronous and an Army can die between the
-		// question and the answer.
-		Zone: ZoneBattlefield,
-		Then: func(g *Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return g.runAmassThenLocked(ev.keywordAction, uuid.Nil)
-			}
-			return g.finishAmassLocked(ev, picked[0])
-		},
+		ThenKey:    amassArmyPicked,
+		LiveZone:   ZoneBattlefield,
+		CarryNums:  []int{ev.KeywordActionCount},
+		CarryWord:  ev.keywordAction.armySubtype,
+		Tail:       ev.keywordAction.keyed,
 	})
 	return nil
 }
+
+// amassArmyPicked is the keyed answer to "choose an Army you control"
+// (#4253 slice 8): the action's event is rebuilt from the prompt's data and
+// the amass finishes as it does after any other choice. An unanswered
+// prompt (its chooser left) still runs CR 701.47c's clause, with no Army.
+// An on-disk key: never renamed, never reused.
+var amassArmyPicked = RegisterChooseCardsThen("choose-cards/amass-army", func(g *Game, r CardsChosen) error {
+	n := 0
+	if len(r.Nums) > 0 {
+		n = r.Nums[0]
+	}
+	ev := &ReplacementEvent{
+		Kind:               RepEventKeywordAction,
+		Actor:              r.Chooser,
+		Source:             r.Source,
+		KeywordAction:      KeywordActionAmass,
+		KeywordActionCount: n,
+		keywordAction:      &keywordActionTail{armySubtype: r.Word, keyed: copyKeyedTail(r.Tail)},
+	}
+	if !r.Answered || len(r.Picked) == 0 {
+		return g.runAmassThenLocked(ev.keywordAction, uuid.Nil)
+	}
+	return g.finishAmassLocked(ev, r.Picked[0])
+})
 
 // amassQuestion is the prompt's header, written the way the card is.
 func amassQuestion(n int, subtype string) string {
@@ -320,20 +390,17 @@ func amassQuestion(n int, subtype string) string {
 func (g *Game) finishAmassLocked(ev *ReplacementEvent, army uuid.UUID) error {
 	tail := ev.keywordAction
 	g.grantAmassSubtypeLocked(ev.Source, army, tail.armySubtype)
-	amassed := tail.amassed
-	tail.amassed = nil
-	rest := func(g *Game) error {
-		if amassed == nil {
-			return nil
-		}
-		return amassed(g, army)
+	// #4253 slice 6: the clause is data, so the counters' tail is too.
+	keyed := tail.keyed
+	tail.keyed = KeyedTail{}
+	placed := KeyedTail{Ref: amassCountersPlacedTail, Carry: []uuid.UUID{army}}
+	if !keyed.IsZero() {
+		placed.Next = &keyed
 	}
 	if n := ev.KeywordActionCount; n > 0 {
-		return g.AddCounterByThenForEffect(ev.Actor, army, CounterPlusOne, n, func(g *Game, _ int) error {
-			return rest(g)
-		})
+		return g.AddCounterByKeyedForEffect(ev.Actor, army, CounterPlusOne, n, placed)
 	}
-	return rest(g)
+	return g.runKeyedTailLocked(placed, nil, 0)
 }
 
 // grantAmassSubtypeLocked is CR 701.47a's last sentence: "If it isn't
@@ -401,10 +468,16 @@ func (g *Game) grantAmassSubtypeLocked(source, army uuid.UUID, subtype string) {
 //
 // Caller must hold g.mu.
 func (g *Game) runAmassThenLocked(tail *keywordActionTail, army uuid.UUID) error {
-	if tail == nil || tail.amassed == nil {
-		return nil
+	if tail != nil && !tail.keyed.IsZero() {
+		// #4253 slice 6: CR 701.47c's clause as a registered tail, told the
+		// Army (none when there was none to choose and none to make).
+		keyed := tail.keyed
+		tail.keyed = KeyedTail{}
+		var ids []uuid.UUID
+		if army != uuid.Nil {
+			ids = []uuid.UUID{army}
+		}
+		return g.runKeyedTailLocked(keyed, ids, 0)
 	}
-	fn := tail.amassed
-	tail.amassed = nil
-	return fn(g, army)
+	return nil
 }

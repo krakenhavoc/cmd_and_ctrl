@@ -247,12 +247,15 @@ func meldPassengers(moved Card) []uuid.UUID {
 // It gets no leaves-the-battlefield event: one permanent left, and the
 // carrier's event is that one.
 //
+// mark is the carrier's leave cause and source (leave_cause.go), which
+// the passenger's own zone-move event carries too.
+//
 // askOrder puts CR 712.21a's question to the owner when the two landed
 // together in their graveyard or library: the caller passes false for
 // a library that is about to be shuffled, where no order survives.
 //
 // Caller must hold g.mu.
-func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, actor uuid.UUID, toBottom bool, depth int, askOrder bool) {
+func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, actor uuid.UUID, toBottom bool, depth int, askOrder bool, mark leaveMark) {
 	defer func() {
 		if askOrder {
 			g.queueMeldOrderLocked(moved, dst)
@@ -281,13 +284,17 @@ func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, act
 		} else {
 			g.markCardKnownInZoneLocked(dst, id)
 		}
-		g.EmitEvent(Event{
+		move := Event{
 			Kind:    EventZoneMove,
 			Actor:   actor,
 			CardID:  id,
 			OldZone: src,
 			NewZone: dst.Kind,
-		})
+		}
+		// #4395: the passenger left the battlefield for the same reason
+		// as its carrier. A zero mark (a move from elsewhere) stamps nothing.
+		mark.stamp(&move)
+		g.EmitEvent(move)
 	}
 }
 
@@ -300,7 +307,7 @@ func (g *Game) landMeldPassengersLocked(moved Card, src ZoneKind, dst *Zone, act
 // move that was not a melded permanent's.
 //
 // Caller must hold g.mu.
-func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKind, actor uuid.UUID) {
+func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKind, actor uuid.UUID, mark leaveMark) {
 	if command == nil || command.Kind != ZoneCommand {
 		return
 	}
@@ -327,7 +334,7 @@ func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKin
 			continue
 		}
 		passenger := Card{MeldedFrom: []Card{{}, card}}
-		g.landMeldPassengersLocked(passenger, ZoneBattlefield, to, actor, false, 0, false)
+		g.landMeldPassengersLocked(passenger, ZoneBattlefield, to, actor, false, 0, false, mark)
 	}
 }
 
@@ -344,7 +351,7 @@ func (g *Game) sendMeldPassengersOnLocked(moved Card, command *Zone, dst ZoneKin
 // attacking). This verb is the rest:
 //
 //  1. Both permanents are exiled, as one simultaneous exit
-//     (ExileCardsThenForEffect), so a commander is offered the command
+//     (ExileCardsKeyedForEffect), so a commander is offered the command
 //     zone like any other exiled commander (CR 903.9a) and the rest
 //     waits for the answer.
 //  2. If both reached exile and form a meld pair (CanMeld), they are
@@ -367,39 +374,59 @@ func (g *Game) MeldForEffect(sourceID, partnerID, controller uuid.UUID) error {
 	if sourceID == partnerID || findBattlefieldCard(g, sourceID) == nil || findBattlefieldCard(g, partnerID) == nil {
 		return nil
 	}
-	return g.ExileCardsThenForEffect([]uuid.UUID{sourceID, partnerID}, func(g *Game, exiled []uuid.UUID) error {
-		if len(exiled) != 2 || g.Exile == nil {
-			return nil
-		}
-		a, okA := g.cardInZoneLocked(g.Exile, sourceID)
-		b, okB := g.cardInZoneLocked(g.Exile, partnerID)
-		if !okA || !okB || !CanMeld(a, b) {
-			return nil
-		}
-		m := meldedPermanentOf(a, b)
-		if err := g.meldInExileLocked(m); err != nil {
-			return err
-		}
-		names := m.MeldedFrom[0].Name + " and " + m.MeldedFrom[1].Name
-		return g.ReturnFromExileToBattlefieldThenForEffect(m.InstanceID, controller, false, func(g *Game, entered uuid.UUID) error {
-			if entered == uuid.Nil {
-				g.unmeldInExileLocked(m.InstanceID)
-				return nil
-			}
-			c := findBattlefieldCard(g, entered)
-			if c == nil {
-				return nil
-			}
-			g.EmitEvent(Event{
-				Kind:   EventMeld,
-				CardID: entered,
-				Actor:  c.Controller,
-				Label:  names,
-			})
-			return nil
-		})
-	})
+	return g.ExileCardsKeyedForEffect([]uuid.UUID{sourceID, partnerID},
+		KeyedTail{Ref: meldExiledTail, Player: controller, Carry: []uuid.UUID{sourceID, partnerID}})
 }
+
+// meldExiledTail is the rest of a meld once both permanents are exiled,
+// as a registered tail (#4361 S11b), so a CR 616 prompt on either exile is
+// a restore point: two cards that reached exile and form a meld pair enter
+// melded. Player is who it enters under (uuid.Nil: its owner) and Carry
+// the source permanent, then its partner. An on-disk key: never renamed,
+// never reused.
+var meldExiledTail = RegisterTail("engine/meld-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) != 2 || len(o.Tail.Carry) != 2 || g.Exile == nil {
+		return nil
+	}
+	a, okA := g.cardInZoneLocked(g.Exile, o.Tail.Carry[0])
+	b, okB := g.cardInZoneLocked(g.Exile, o.Tail.Carry[1])
+	if !okA || !okB || !CanMeld(a, b) {
+		return nil
+	}
+	m := meldedPermanentOf(a, b)
+	if err := g.meldInExileLocked(m); err != nil {
+		return err
+	}
+	return g.ReturnFromExileToBattlefieldKeyedForEffect(m.InstanceID, o.Tail.Player, false,
+		KeyedTail{Ref: meldEnteredRef, Carry: []uuid.UUID{m.InstanceID}})
+})
+
+// meldEnteredRef is the melded permanent's entry tail as a registered tail
+// (#4253 slice 6): an entry that fails puts the two cards back in exile as
+// two cards, and one that lands announces the meld, naming the two cards
+// the permanent is melded from. The melded object's exile ID is the tail's
+// Carry. An on-disk key: never renamed, never reused.
+var meldEnteredRef = RegisterTail("engine/meld-entered", func(g *Game, o TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	if len(o.IDs) == 0 {
+		g.unmeldInExileLocked(o.Tail.Carry[0])
+		return nil
+	}
+	entered := o.IDs[0]
+	c := findBattlefieldCard(g, entered)
+	if c == nil || len(c.MeldedFrom) < 2 {
+		return nil
+	}
+	g.EmitEvent(Event{
+		Kind:   EventMeld,
+		CardID: entered,
+		Actor:  c.Controller,
+		Label:  c.MeldedFrom[0].Name + " and " + c.MeldedFrom[1].Name,
+	})
+	return nil
+})
 
 // meldInExileLocked swaps the two exiled cards for the melded object
 // that is about to enter: the carrier's slot holds it, the other card

@@ -51,18 +51,29 @@ func disturbingMirthSacrifice(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					return nil
-				}
-				return g.DrawNForEffect(me, 2)
-			})
-		},
+		ThenKey:  disturbingMirthSacrificed,
+		LiveZone: game.ZoneBattlefield,
 	})
 	return nil
 }
+
+// disturbingMirthSacrificed is the keyed answer to "you may sacrifice another
+// enchantment or creature" (#4253): the chooser draws two cards once the
+// pick has really been sacrificed. An on-disk key: never renamed, never
+// reused.
+var disturbingMirthSacrificed = game.RegisterChooseCardsThen("choose-cards/disturbing-mirth-sacrifice", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	// The draw rides the sacrifice as a keyed tail (#4253).
+	return g.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, game.KeyedTail{Ref: disturbingMirthDraw, Player: r.Chooser, Source: r.Source})
+})
+
+// disturbingMirthDraw is "if you do, draw two cards", told what was really
+// sacrificed. An on-disk key: never renamed, never reused.
+var disturbingMirthDraw = game.RegisterTail("then/disturbing-mirth-draw-two", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return g.DrawNForEffect(o.Tail.Player, 2)
+})

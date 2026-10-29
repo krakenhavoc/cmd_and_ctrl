@@ -89,36 +89,67 @@ func courtOfAmbitionStep(ctx *Context, remaining []uuid.UUID, life, discard int)
 				{Label: "Lose " + strconv.Itoa(life) + " life", LifeCost: life},
 				{Label: "Discard " + cards},
 			},
-			Then: courtOfAmbitionAnswered(victim, rest, life, discard),
+			ThenKey: courtOfAmbitionPrices[life].answered,
+			Carry:   append([]uuid.UUID{victim}, rest...),
 		}.Apply(ctx)
 	}
 	return nil
 }
 
-// courtOfAmbitionAnswered runs the chosen branch and then the next
-// question.
-func courtOfAmbitionAnswered(victim uuid.UUID, rest []uuid.UUID, life, discard int) func(ctx *Context, index int) error {
-	return func(ctx *Context, index int) error {
-		switch index {
-		case 1:
-			item := ctx.Item
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
-				Player:   victim,
-				Source:   ctx.Source(),
-				N:        discard,
-				Question: "Court of Ambition — discard",
-				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-					return courtOfAmbitionStep(NewContext(g, item), rest, life, discard)
-				},
+// courtOfAmbitionPrice is the keyed continuations of one price of the card
+// (#4253): the life lost and, with it, the cards discarded instead (a third
+// of the life, 1 for 3 and 2 for 6). The price is part of the key, because
+// a registered body captures nothing and an option pick carries IDs only.
+type courtOfAmbitionPrice struct {
+	// answered is the opponent's choice between losing the life and
+	// discarding; its Carry is the opponent, then the opponents still owed
+	// a question.
+	answered game.OptionPickThen
+	// discarded is the discard behind the choice; its Carry is the
+	// effect's controller, then the opponents still owed a question.
+	discarded game.DiscardThen
+}
+
+// courtOfAmbitionPrices is registered in init, because each answer asks the
+// next opponent and so names itself. The keys are on-disk identities: never
+// renamed, never reused.
+var courtOfAmbitionPrices = map[int]courtOfAmbitionPrice{}
+
+func init() {
+	for _, life := range []int{3, 6} {
+		discard := life / 3
+		suffix := strconv.Itoa(life)
+		price := courtOfAmbitionPrice{}
+		price.discarded = game.RegisterDiscardThen("choose-cards/court-of-ambition-discarded-"+suffix,
+			func(g *game.Game, r game.DiscardsDone) error {
+				if len(r.Carry) == 0 {
+					return nil
+				}
+				return courtOfAmbitionStep(keyedContext(g, r.Carry[0], r.Source), r.Carry[1:], life, discard)
 			})
-			return nil
-		case 0:
-			return courtOfAmbitionLoseThenNext(ctx, victim, rest, life)
-		default:
-			// index -1: the player left before the question could be
-			// asked (CR 800.4a); the rest of the run still happens.
-			return courtOfAmbitionStep(ctx, rest, life, discard)
-		}
+		price.answered = OptionPickThen("option-pick/court-of-ambition-answer-"+suffix,
+			func(ctx *Context, r game.OptionPicked) error {
+				if len(r.Carry) == 0 {
+					return nil
+				}
+				victim, rest := r.Carry[0], r.Carry[1:]
+				switch r.Index {
+				case 1:
+					return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
+						Player:   victim,
+						Source:   ctx.Source(),
+						N:        discard,
+						Question: "Court of Ambition — discard",
+					}, courtOfAmbitionPrices[life].discarded, append([]uuid.UUID{ctx.Controller()}, rest...))
+				case 0:
+					return courtOfAmbitionLoseThenNext(ctx, victim, rest, life)
+				default:
+					// index -1: the player left before the question could be
+					// asked (CR 800.4a); the rest of the run still happens.
+					return courtOfAmbitionStep(ctx, rest, life, discard)
+				}
+			})
+		courtOfAmbitionPrices[life] = price
 	}
 }
 

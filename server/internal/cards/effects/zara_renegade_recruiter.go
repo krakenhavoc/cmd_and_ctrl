@@ -98,16 +98,25 @@ func zaraLookAndPut(g *game.Game, item *game.StackItem, defender uuid.UUID) erro
 		Cards:      creatures,
 		Min:        0,
 		Max:        1,
-		Zone:       game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			return zaraChooseAttackTarget(g, item, defender, picked[0])
-		},
+		ThenKey:    zaraPicked,
+		LiveZone:   game.ZoneHand,
+		Carry:      []uuid.UUID{defender},
+		Asked:      game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// zaraPicked is the optional put from their hand, keyed (#4253): the
+// defending player rides the prompt as its carry, and the trigger's item as
+// data. The "what does it attack?" question it can open is keyed too
+// (zaraAttackChosen).
+var zaraPicked = game.RegisterChooseCardsThen("choose-cards/zara-renegade-recruiter-put",
+	func(g *game.Game, r game.CardsChosen) error {
+		if len(r.Picked) == 0 || len(r.Carry) == 0 || r.Asked == nil {
+			return nil
+		}
+		return zaraChooseAttackTarget(g, r.Asked, r.Carry[0], r.Picked[0])
+	})
 
 // zaraChooseAttackTarget asks what the creature attacks when the
 // defending player controls a planeswalker, and puts it straight in
@@ -127,14 +136,27 @@ func zaraChooseAttackTarget(g *game.Game, item *game.StackItem, defender, card u
 	return PickOption{
 		Question: "Zara, Renegade Recruiter — what does it attack?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(targets) {
-				index = 0
-			}
-			return zaraPutAttacking(ctx.Game, item, card, targets[index])
-		},
+		ThenKey:  zaraAttackChosen,
+		WithItem: true,
+		// The card, then what it may attack, the defending player first.
+		Carry: append([]uuid.UUID{card}, targets...),
 	}.Apply(NewContext(g, item))
 }
+
+// zaraAttackChosen is what the creature attacks, keyed (#4253): the card and
+// the choices ride the prompt as its carry, the trigger's item as data. An
+// on-disk key: never renamed, never reused.
+var zaraAttackChosen = OptionPickThen("option-pick/zara-renegade-recruiter-attack", func(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) < 2 {
+		return nil
+	}
+	card, targets := r.Carry[0], r.Carry[1:]
+	index := r.Index
+	if index < 0 || index >= len(targets) {
+		index = 0
+	}
+	return zaraPutAttacking(ctx.Game, ctx.Item, card, targets[index])
+})
 
 // zaraPutAttacking puts the card onto the battlefield under Zara's
 // controller's control, tapped and attacking `attacking`, and
@@ -143,26 +165,30 @@ func zaraPutAttacking(g *game.Game, item *game.StackItem, card, attacking uuid.U
 	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != game.ZoneHand {
 		return nil
 	}
-	return g.PutFromHandOntoBattlefieldThenForEffect(card, game.HandEntryOptions{
+	return g.PutFromHandOntoBattlefieldKeyedForEffect(card, game.HandEntryOptions{
 		Controller: item.Controller,
 		Tapped:     true,
 		Attacking:  attacking,
-	}, func(g *game.Game, entered uuid.UUID) error {
-		if entered == uuid.Nil {
-			return nil
-		}
-		c, ok := g.LookupCardForEffect(entered)
-		if !ok {
-			return nil
-		}
-		return ScheduleDelayedTrigger{
-			Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
-			Cards:  []uuid.UUID{entered},
-			Body:   zaraReturnToHandBody,
-			Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
-		}.Apply(NewContext(g, item))
-	})
+	}, NewContext(g, item).ItemTail(zaraReturnTail))
 }
+
+// zaraReturnTail is "return that creature to its owner's hand at the next
+// end step" as a keyed tail (#4253 slice 6). An on-disk key.
+var zaraReturnTail = EnteredTail("zara-renegade-recruiter/return-at-end-step", func(ctx *Context, entered uuid.UUID, _ game.TailOutcome) error {
+	if entered == uuid.Nil {
+		return nil
+	}
+	c, ok := ctx.Game.LookupCardForEffect(entered)
+	if !ok {
+		return nil
+	}
+	return ScheduleDelayedTrigger{
+		Label:  "Zara, Renegade Recruiter — return that creature to its owner's hand",
+		Cards:  []uuid.UUID{entered},
+		Body:   zaraReturnToHandBody,
+		Params: game.EffectParams{Object: game.ObjectRef{ID: entered, Epoch: c.ObjectEpoch}},
+	}.Apply(ctx)
+})
 
 // zaraReturnToHand is the delayed trigger's body (zaraReturnToHandBody,
 // delayed_bodies.go): bounce the creature if it is still the object

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -57,6 +59,12 @@ func (c *Context) TailN(ref game.TailRef, n int) game.KeyedTail {
 	return t
 }
 
+// withN sets the number the tail's body reads.
+func withN(t game.KeyedTail, n int) game.KeyedTail {
+	t.N = n
+	return t
+}
+
 // ItemTail is Tail with the resolving item carried as data too, for a body
 // that reads more of it than its controller and source (its targets, its X,
 // the words of its text, the window its source object had).
@@ -65,6 +73,60 @@ func (c *Context) ItemTail(ref game.TailRef) game.KeyedTail {
 	t.Asked = game.NewAskedItem(c.Item)
 	return t
 }
+
+// EnteredTail registers the "then" of a single permanent's entry (a
+// return from exile or a graveyard, a card put onto the battlefield from
+// a hand) whose body is told the entering permanent: uuid.Nil when
+// nothing entered, since the tail runs on every outcome. The body runs
+// against the Context of CardTail and reads the tail's N and Carry off
+// the outcome. The key is an on-disk identity (ledgered "tail <key>"):
+// never renamed, never reused. Call it once, from a package-level var.
+// (#4253 slice 6.)
+func EnteredTail(key string, body func(ctx *Context, entered uuid.UUID, o game.TailOutcome) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		entered := uuid.Nil
+		if len(o.IDs) > 0 {
+			entered = o.IDs[0]
+		}
+		return body(ctx, entered, o)
+	})
+}
+
+// withWord sets the word the tail's body reads.
+func withWord(t game.KeyedTail, w string) game.KeyedTail {
+	t.Word = w
+	return t
+}
+
+// thenCreatedGainKeywordUntilEOT is "they gain <keyword> until end of turn"
+// over the tokens a creation made (Sokenzan, Crucible of Defiance's haste,
+// Mardu Charm's first strike): the keyword is the tail's Word and the
+// effect's label the source card's name. An on-disk key.
+var thenCreatedGainKeywordUntilEOT = CardTail("then/created-gain-keyword-until-eot", func(ctx *Context, o game.TailOutcome) error {
+	label := ""
+	if c, ok := ctx.Game.LookupCardForEffect(o.Tail.Source); ok {
+		label = c.Name
+	}
+	for _, id := range o.IDs {
+		if err := (GrantKeywordUntilEOT{Target: id, Keywords: []string{o.Tail.Word}, Label: label}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})
+
+// thenSuspectEach is "suspect it" over what the event settled with: each
+// permanent that entered or token that was created (Presumed Dead, It
+// Doesn't Add Up, Case of the Stashed Skeleton). The game mutator, not
+// the Suspect primitive, whose #1432 guard would read an ability whose
+// source IS the card that came back as the old object reaching the new
+// one. An on-disk key.
+var thenSuspectEach = game.RegisterTail("then/suspect-each", func(g *game.Game, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		g.SuspectForEffect(id)
+	}
+	return nil
+})
 
 // thenShuffle is "then shuffle", Tail.Player's library. An on-disk key.
 var thenShuffle = game.RegisterTail("then/shuffle", func(g *game.Game, o game.TailOutcome) error {

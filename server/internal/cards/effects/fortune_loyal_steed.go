@@ -67,13 +67,18 @@ func fortuneEndOfCombat(g *game.Game, item *game.StackItem) error {
 		Cards:    saddlers,
 		Min:      0,
 		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			return fortuneExileAndReturn(g, item, picked)
-		},
+		LiveZone: game.ZoneBattlefield,
+		ThenKey:  fortuneSaddlerChosen,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// fortuneSaddlerChosen is the chosen saddler exiled along with Fortune,
+// keyed (#4253): the delayed trigger's item rides the prompt as data.
+var fortuneSaddlerChosen = itemChoice("choose-cards/fortune-loyal-steed-saddler", func(ctx *Context, r game.CardsChosen) error {
+	return fortuneExileAndReturn(ctx.Game, ctx.Item, r.Picked)
+})
 
 // fortuneExileAndReturn exiles Fortune (if still the same object) and the
 // chosen creatures as one event, then returns what reached exile.
@@ -86,7 +91,12 @@ func fortuneExileAndReturn(g *game.Game, item *game.StackItem, chosen []uuid.UUI
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, NewContext(g, item).ItemTail(fortuneReturnTogether))
 }
+
+// fortuneReturnTogether returns what reached exile, together (#4253 slice 9).
+var fortuneReturnTogether = CardTail("fortune-loyal-steed/return-exiled-together", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+})

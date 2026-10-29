@@ -8,7 +8,7 @@ import (
 
 // attractions.go is the card vocabulary of Attractions (CR 717, 701.51,
 // 701.52, 702.159; ADR 0207). The engine runs the keyword actions
-// (game.OpenAttractionsThenForEffect, game.RollToVisitForEffect), the
+// (game.OpenAttractionsForEffect, game.RollToVisitForEffect), the
 // turn-based roll as each precombat main phase begins, the Attraction
 // deck and the junkyard; a card only has to say what it prints:
 //
@@ -37,7 +37,7 @@ func (o OpenAttractions) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	return ctx.Game.OpenAttractionsThenForEffect(player, ctx.Source(), max(o.N, 1), nil)
+	return ctx.Game.OpenAttractionsForEffect(player, ctx.Source(), max(o.N, 1))
 }
 
 // OpenAnAttraction is "open an Attraction" as a whole Effect, for a
@@ -70,8 +70,7 @@ func (r RollToVisitYourAttractions) Apply(ctx *Context) error {
 	if ctx.Game.PlayerByIDForEffect(player) == nil {
 		return nil
 	}
-	_, err := ctx.Game.RollToVisitForEffect(player, ctx.Source())
-	return err
+	return ctx.Game.RollToVisitForEffect(player, ctx.Source())
 }
 
 // thisAttractionVisited is the trigger condition of a visit ability (CR

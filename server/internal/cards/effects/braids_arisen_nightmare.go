@@ -34,7 +34,7 @@ import (
 //     candidate set is filtered to the five printed types — nothing
 //     lets Braids sacrifice a battle, the one permanent type the card
 //     predates and does not name.
-//  3. Once the sacrifice has actually happened (SacrificeAllThenForEffect's
+//  3. Once the sacrifice has actually happened (SacrificeAllKeyedForEffect's
 //     `sacrificed` list, not the pick itself — CR 701.17a's own
 //     "sacrifice is not replaceable" still opens a CR 903.9 window on
 //     the MOVE for a sacrificed commander), each opponent in turn
@@ -173,7 +173,6 @@ func braidsArisenNightmareResolve(g *game.Game, item *game.StackItem) error {
 // reuse — nothing else can act on the battlefield while this
 // resolution's own prompts are open).
 func braidsChoosePermanentToSacrifice(ctx *Context, controller uuid.UUID, candidates []uuid.UUID) error {
-	item := ctx.Item
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:    controller,
 		FromPlayer: controller,
@@ -182,32 +181,43 @@ func braidsChoosePermanentToSacrifice(ctx *Context, controller uuid.UUID, candid
 		Cards:      candidates,
 		Min:        1,
 		Max:        1,
-		Zone:       game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				// The chooser left the game between the offer and the
-				// pick (CR 800.4a) — nothing to sacrifice, so the "if
-				// you do" clause never fires.
-				return nil
-			}
-			var types braidsCardTypeFlags
-			if c, ok := g.LookupCardForEffect(picked[0]); ok {
-				types = braidsTypesOf(c)
-			}
-			return g.SacrificeAllThenForEffect(uuid.Nil, picked, func(g *game.Game, sacrificed []uuid.UUID) error {
-				if len(sacrificed) == 0 {
-					// The sacrifice did not land (a departed chooser
-					// mid-CR-903.9-window would be the only real way);
-					// "if you do" was not satisfied.
-					return nil
-				}
-				fresh := NewContext(g, item)
-				return braidsOpponentsStep(fresh, controller, types, fresh.Opponents())
-			})
-		},
+		LiveZone:   game.ZoneBattlefield,
+		ThenKey:    braidsSacrificePick,
+		Asked:      game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// braidsSacrificePick is the permanent chosen to sacrifice, keyed (#4253):
+// the asking item rides the prompt as data. Its card types are frozen
+// before it leaves, then each opponent is asked once it has gone.
+var braidsSacrificePick = askedPick("choose-cards/braids-arisen-nightmare-sacrifice", func(ctx *Context, r game.CardsChosen) error {
+	g := ctx.Game
+	if len(r.Picked) == 0 {
+		// The chooser left the game between the offer and the
+		// pick (CR 800.4a) — nothing to sacrifice, so the "if
+		// you do" clause never fires.
+		return nil
+	}
+	var types braidsCardTypeFlags
+	if c, ok := g.LookupCardForEffect(r.Picked[0]); ok {
+		types = braidsTypesOf(c)
+	}
+	return g.SacrificeAllKeyedForEffect(uuid.Nil, r.Picked, withN(ctx.ItemTail(braidsSacrificedAskOpponents), types.bits()))
+})
+
+// braidsSacrificedAskOpponents is "if you do", once the sacrifice has
+// settled, keyed (#4253): the tail is told what really left and N is the
+// frozen card types. An on-disk key: never renamed, never reused.
+var braidsSacrificedAskOpponents = CardTail("then/braids-arisen-nightmare-ask-opponents", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.IDs) == 0 {
+		// The sacrifice did not land (a departed chooser mid-CR-903.9
+		// window would be the only real way); "if you do" was not
+		// satisfied.
+		return nil
+	}
+	return braidsOpponentsStep(ctx, braidsFlagsFromBits(o.Tail.N), ctx.Opponents())
+})
 
 // braidsOpponentsStep asks the next opponent still owed a question,
 // one at a time, in the order Context.Opponents() returns — the same
@@ -220,7 +230,7 @@ func braidsChoosePermanentToSacrifice(ctx *Context, controller uuid.UUID, candid
 // An opponent with no permanent sharing a card type is never asked —
 // CR 608.2's "as much as possible" applied at build time — and simply
 // takes the consequence.
-func braidsOpponentsStep(ctx *Context, controller uuid.UUID, types braidsCardTypeFlags, remaining []uuid.UUID) error {
+func braidsOpponentsStep(ctx *Context, types braidsCardTypeFlags, remaining []uuid.UUID) error {
 	for len(remaining) > 0 {
 		victim := remaining[0]
 		rest := remaining[1:]
@@ -240,23 +250,51 @@ func braidsOpponentsStep(ctx *Context, controller uuid.UUID, types braidsCardTyp
 				{Label: "Don't sacrifice — lose 2 life; Braids's controller draws a card", LifeCost: 2},
 				{Label: "Sacrifice a permanent that shares a card type with it"},
 			},
-			Then: func(ctx *Context, index int) error {
-				if index == 1 {
-					return SacrificeChoice{
-						Player:     victim,
-						Candidates: matching,
-						Question:   "Braids, Arisen Nightmare — sacrifice a permanent that shares a card type with it",
-						Then: func(ctx *Context) error {
-							return braidsOpponentsStep(ctx, controller, types, rest)
-						},
-					}.Apply(ctx)
-				}
-				return braidsConsequenceThenNext(ctx, types, victim, rest)
-			},
+			ThenKey:  braidsOpponentAnswered,
+			WithItem: true,
+			Carry:    packIDLists(rest, matching),
+			Nums:     []int{types.bits()},
 		}.Apply(ctx)
 	}
 	return nil
 }
+
+// braidsOpponentAnswered is one opponent's answer, keyed (#4253): the
+// asking item rides the prompt, the opponents still to be asked and the
+// permanents offered ride its Carry (packIDLists), and the frozen card types
+// its Nums. Registered in init: the body asks the next opponent, which names
+// the key again.
+var braidsOpponentAnswered game.OptionPickThen
+
+func init() {
+	braidsOpponentAnswered = OptionPickThen("option-pick/braids-arisen-nightmare-sacrifice-or-lose-life", braidsOpponentAnswer)
+}
+
+func braidsOpponentAnswer(ctx *Context, r game.OptionPicked) error {
+	victim := r.Chooser
+	rest, matching := unpackIDPair(r.Carry)
+	bits := 0
+	if len(r.Nums) > 0 {
+		bits = r.Nums[0]
+	}
+	types := braidsFlagsFromBits(bits)
+	if r.Index == 1 {
+		return SacrificeChoice{
+			Player:     victim,
+			Candidates: matching,
+			Question:   "Braids, Arisen Nightmare — sacrifice a permanent that shares a card type with it",
+			ThenTail:   withN(withCarry(ctx.ItemTail(braidsSacrificedNext), rest...), bits),
+		}.Apply(ctx)
+	}
+	return braidsConsequenceThenNext(ctx, types, victim, rest)
+}
+
+// braidsSacrificedNext asks the next opponent once the sacrifice has gone,
+// keyed (#4253): Carry is the opponents still to be asked and N the frozen
+// card types. An on-disk key: never renamed, never reused.
+var braidsSacrificedNext = CardTail("then/braids-arisen-nightmare-next-opponent", func(ctx *Context, o game.TailOutcome) error {
+	return braidsOpponentsStep(ctx, braidsFlagsFromBits(o.Tail.N), append([]uuid.UUID(nil), o.Tail.Carry...))
+})
 
 // braidsConsequenceThenNext is "that player loses 2 life and you draw a
 // card" for one opponent who didn't sacrifice, then the next opponent's
@@ -293,7 +331,7 @@ func braidsConsequenceSteps() []Applier {
 			if len(r.IDs) == 0 {
 				return nil
 			}
-			return braidsOpponentsStep(ctx, ctx.Controller(), braidsFlagsFromBits(r.N()), r.IDs[1:])
+			return braidsOpponentsStep(ctx, braidsFlagsFromBits(r.N()), r.IDs[1:])
 		}),
 	}
 }

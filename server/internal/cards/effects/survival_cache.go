@@ -30,12 +30,17 @@ func init() {
 			// The comparison waits for the gain: a life change can pause
 			// on a CR 616 ordering prompt, and "then" reads the totals
 			// after it.
-			return ctx.Game.ChangePlayerLifeThenForEffect(ctx.Source(), me, 2, func(g *game.Game, _ int) error {
-				return survivalCacheDrawIfAhead(NewContext(g, item), me)
-			})
+			return ctx.Game.ChangePlayerLifeKeyedForEffect(ctx.Source(), me, 2, ctx.ItemTail(survivalCacheCompare))
 		},
 	})
 }
+
+// survivalCacheCompare is "Then if you have more life than an opponent, draw
+// a card", once the gain has settled. An on-disk key: never renamed, never
+// reused.
+var survivalCacheCompare = CardTail("survival-cache/compare", func(ctx *Context, _ game.TailOutcome) error {
+	return survivalCacheDrawIfAhead(ctx, ctx.Controller())
+})
 
 // survivalCacheDrawIfAhead is "if you have more life than an opponent,
 // draw a card": more than at least one opponent still in the game.

@@ -12,7 +12,7 @@ import (
 // confirm_closures_keyed_restore_test.go — #4298: the closure-form confirms
 // that were not "you may" callers of MayChoice (the opening-hand offer, the
 // explore question, The Creation of Avacyn's third chapter, and the cards
-// that queued QueueConfirmForEffect themselves) are keyed, so a table waiting
+// that queued QueueConfirmKeyedForEffect themselves) are keyed, so a table waiting
 // on one is a restore point. Each test takes a STRICT restore while the
 // prompt is open (restoreAtConfirm fails on a table that is not a restore
 // point), checks the restored prompt names its key and the data it carries,

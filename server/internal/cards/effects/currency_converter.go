@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Currency Converter — Artifact {1} (batch 25, #387):
 //
@@ -108,30 +104,43 @@ func currencyConverterPutAwayAnExiledCard(g *game.Game, item *game.StackItem) er
 		Source:   item.SourceCardID,
 		Question: "Currency Converter — put a card exiled with this artifact into its owner's graveyard",
 		Cards:    ids,
-		Zone:     game.ZoneExile,
 		Min:      0,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			chosen, ok := g.LookupCardForEffect(picked[0])
-			if !ok {
-				return nil
-			}
-			isLand := chosen.IsLand()
-			return g.PutIntoGraveyardThenForEffect(picked[0], func(g *game.Game, landed bool) error {
-				if !landed {
-					return nil
-				}
-				// One token, a Treasure or a Rogue: one instruction.
-				template := TokenCard("2/2 black Rogue")
-				if isLand {
-					template = TreasureToken()
-				}
-				return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(NewContext(g, item))
-			})
-		},
+		ThenKey:  currencyConverterPutAway,
+		LiveZone: game.ZoneExile,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// currencyConverterPutAway is the keyed answer to "which exiled card": it
+// goes to its owner's graveyard, and the matching token follows once it has
+// landed (#4253). The asking item rides the prompt as data. An on-disk key:
+// never renamed, never reused.
+var currencyConverterPutAway = game.RegisterChooseCardsThen("choose-cards/currency-converter-put-away", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || r.Asked == nil {
+		return nil
+	}
+	item := r.Asked
+	chosen, ok := g.LookupCardForEffect(r.Picked[0])
+	if !ok {
+		return nil
+	}
+	isLand := chosen.IsLand()
+	return g.PutCardsIntoGraveyardKeyedForEffect(r.Picked[:1], withN(NewContext(g, item).ItemTail(currencyConverterToken), boolToInt(isLand)))
+})
+
+// currencyConverterToken creates the Treasure or Rogue after the card reaches the graveyard (#4253 slice 9).
+var currencyConverterToken = CardTail("currency-converter/token-for-graveyarded-card", func(ctx *Context, o game.TailOutcome) error {
+	g, item, landed, isLand := ctx.Game, ctx.Item, len(o.IDs) == 1, o.Tail.N == 1
+
+	if !landed {
+		return nil
+	}
+	// One token, a Treasure or a Rogue: one instruction.
+	template := TokenCard("2/2 black Rogue")
+	if isLand {
+		template = TreasureToken()
+	}
+	return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(NewContext(g, item))
+})

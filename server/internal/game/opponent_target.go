@@ -47,7 +47,9 @@ import (
 // error.
 //
 // The frames are plain data: the closure ratchet (closure_fields.txt)
-// gains no route. The choose-an-opponent prompt rides the existing
+// gains no route, and since #4361 S13 the snapshot writes them
+// (parked_announcement.go), so a table waiting on either question is a
+// restore point. The choose-an-opponent prompt rides the existing
 // option-pick continuation; the pick rides opponentTargetFrame.
 //
 // # A trigger walks it
@@ -272,47 +274,30 @@ func (g *Game) opponentStepLegalLocked(src TargetSource, steps []AnnouncedClause
 // opponentTargetFrame is a parked announcement waiting on an
 // opponent's target: what to make again, and which clause is being
 // asked. Plain data and immutable once queued; the answer builds new
-// params rather than writing these.
+// params rather than writing these. Written into the snapshot since
+// #4361 S13 (parked_announcement.go).
 type opponentTargetFrame struct {
-	controller uuid.UUID
-	cardID     uuid.UUID
-	name       string
-	// activation says which announcement: an activated ability (index,
-	// activate) or a spell (cast).
-	activation bool
-	index      int
-	activate   ActivateAbilityParams
-	cast       CastSpellParams
+	parkedAnnouncement
 	// mode / slot are the clause this prompt asks.
 	mode, slot int
 }
 
 // picks is what the parked announcement already carries.
 func (f *opponentTargetFrame) picks() []opponentPick {
-	if f.activation {
-		return f.activate.opponentPicks
-	}
-	return f.cast.opponentPicks
+	return f.opponentPicks()
 }
 
 // rerun makes the announcement again with `picks` attached.
 //
 // Caller must hold g.mu.
 func (f *opponentTargetFrame) rerun(g *Game, picks []opponentPick) error {
-	if f.activation {
-		p := f.activate
-		p.opponentPicks = picks
-		return g.activateCatalogAbilityLocked(f.controller, f.cardID, f.index, p)
-	}
-	p := f.cast
-	p.opponentPicks = picks
-	return g.castSpellLocked(f.controller, f.cardID, p)
+	return f.withOpponentPicks(picks).run(g)
 }
 
 // sameAnnouncement reports whether two frames park the same
 // announcement: one source, one ability (or the spell itself).
 func (f *opponentTargetFrame) sameAnnouncement(o *opponentTargetFrame) bool {
-	return f != nil && o != nil && f.cardID == o.cardID && f.activation == o.activation && f.index == o.index
+	return f != nil && o != nil && f.sameAs(o.parkedAnnouncement)
 }
 
 // parkForOpponentTargetLocked parks a validated announcement on its
@@ -346,29 +331,45 @@ func (g *Game) parkForOpponentTargetLocked(f *opponentTargetFrame, src TargetSou
 	case 1:
 		return g.queueOpponentTargetPickLocked(f, src, opp, idx, eligible[0])
 	}
-	frame := f
 	id := g.QueueOptionPickForEffect(OptionPickPrompt{
 		Chooser:  f.controller,
 		Source:   f.cardID,
 		Question: f.name + ": choose an opponent to choose " + clauseLabel(&step.Clause),
 		Options:  g.seatChoiceOptionsLocked(eligible),
-		// A marker: a second announcement of the same thing is refused
-		// while this is open (OptionPickPrompt.parked).
-		parked: frame,
-		ThenSeat: func(g *Game, chosen uuid.UUID) error {
-			if chosen == uuid.Nil {
-				// Dropped unanswered: the controller has left, and the
-				// announcement they were making with them (CR 800.4a).
-				return nil
-			}
-			picks := withOpponentPick(frame.picks(), opponentPick{mode: frame.mode, slot: frame.slot, chooser: chosen})
-			g.rerunOpponentTargetLocked(frame, picks)
-			return nil
-		},
+		// The parked announcement: a second announcement of the same
+		// thing is refused while this is open, and the keyed answer
+		// reads it back (OptionPicked.parked).
+		parked:  f,
+		ThenKey: opponentTargetChooserThen,
 	})
 	if id == uuid.Nil {
 		return ErrIllegalTarget
 	}
+	return nil
+}
+
+// opponentTargetChooserThen is the controller's answer to "which
+// opponent chooses" (#4361 slice 6): the announcement is made again
+// with that opponent named for the clause. The parked announcement is
+// the prompt's own opponentTargetResume, so the key captures nothing.
+// A dropped prompt (the controller has left, and the announcement they
+// were making with them, CR 800.4a) does nothing. An on-disk key: never
+// renamed, never reused.
+var opponentTargetChooserThen OptionPickThen
+
+// Registered from init: the continuation can reach code that names the
+// key, which a package-level initializer cannot.
+func init() {
+	opponentTargetChooserThen = RegisterOptionPickThen("option-pick/opponent-target-chooser", opponentTargetChooserAnswered)
+}
+
+func opponentTargetChooserAnswered(g *Game, r OptionPicked) error {
+	chosen, frame := chosenSeat(r), r.parked
+	if chosen == uuid.Nil || frame == nil {
+		return nil
+	}
+	picks := withOpponentPick(frame.picks(), opponentPick{mode: frame.mode, slot: frame.slot, chooser: chosen})
+	g.rerunOpponentTargetLocked(frame, picks)
 	return nil
 }
 

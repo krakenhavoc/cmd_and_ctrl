@@ -255,7 +255,7 @@ func TestFrodoAdventurousHobbitTemptsAndDraws(t *testing.T) {
 	me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	frodo := b11Push(g, me.ID, "Frodo, Adventurous Hobbit", "Legendary Creature — Halfling Scout", pwFrodoOracle, 1, 3)
 	g.WithWriteLock(func() {
-		_ = g.RingTemptsForEffect(me.ID, uuid.Nil, nil)
+		_ = g.RingTemptsKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{})
 		_ = g.ChangePlayerLifeForEffect(uuid.Nil, me.ID, 3)
 	})
 	if game.RingTemptCount(g, me.ID) != 1 || game.RingBearerOf(g, me.ID) != frodo {

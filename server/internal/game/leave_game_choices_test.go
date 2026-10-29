@@ -207,7 +207,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 	sourceID := departureTestSource(g, caster.ID, "Fact or Fiction")
 	revealed := handCardOf(t, caster, 3)
 
-	var taken, left []uuid.UUID
+	resetProbes()
 	g.WithWriteLock(func() {
 		g.QueuePileSplitForEffect(PileSplitPrompt{
 			Splitter:      splitter.ID,
@@ -217,10 +217,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 			SplitQuestion: "Separate those cards into two piles",
 			PickQuestion:  "Take a pile",
 			Cards:         revealed,
-			Then: func(_ *Game, tk, lf []uuid.UUID) error {
-				taken, left = tk, lf
-				return nil
-			},
+			ThenTail:      probeTail(),
 		})
 	})
 	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Kind != PendingChoiceRevealPick {
@@ -260,7 +257,7 @@ func TestPileSplitIsReassignedWhenTheSplitterLeaves(t *testing.T) {
 	if err := g.ResolveOptionPick(pickID, caster.ID, 0); err != nil {
 		t.Fatalf("ResolveOptionPick: %v", err)
 	}
-	if len(taken) != 1 || len(left) != len(revealed)-1 {
+	if taken, left, _ := probePiles(); len(taken) != 1 || len(left) != len(revealed)-1 {
 		t.Errorf("the card's continuation saw piles %v / %v", taken, left)
 	}
 }
@@ -358,7 +355,7 @@ func TestOwnMaterialOptionPickIsDroppedNotReassigned(t *testing.T) {
 				{Label: "Lose 3 life", LifeCost: 3},
 				{Label: "Discard a card"},
 			},
-			Then: func(*Game, int) error { return nil },
+			ThenKey: testNoopOptionPick,
 		})
 	})
 	if id == uuid.Nil {
@@ -394,7 +391,7 @@ func TestPayUnlessIsNeverReassigned(t *testing.T) {
 
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(leaver.ID, sourceID, "{1}",
-			"Rhystic Study — pay {1}?", nil); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})
@@ -475,14 +472,13 @@ func TestReassignmentPrunesCandidatesLeavingWithTheChooser(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      append(append([]uuid.UUID{}, mine...), theirs...),
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatalf("setup: the prompt was not queued")
@@ -530,15 +526,14 @@ func TestPromptIsDroppedWhenEveryCandidateLeavesWithTheChooser(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      theirs,
 			Min:        1,
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if id == uuid.Nil {
 		t.Fatalf("setup: the prompt was not queued")
@@ -647,14 +642,13 @@ func TestReassignedChoiceSurvivesASnapshotRoundTrip(t *testing.T) {
 
 	var id uuid.UUID
 	g.WithWriteLock(func() {
-		id = g.QueueChooseCardsForEffect(ChooseCardsPrompt{
+		id = g.QueueChooseCardsForEffect(chooseCardsHooked(ChooseCardsPrompt{
 			Chooser:    leaver.ID,
 			FromPlayer: caster.ID,
 			Source:     sourceID,
 			Question:   "Separate those cards into two piles",
 			Cards:      append(append([]uuid.UUID{}, mine...), theirs...),
-			Then:       func(*Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*Game, []uuid.UUID) error { return nil }, nil))
 	})
 	if err := g.Concede(leaver.ID); err != nil {
 		t.Fatalf("Concede: %v", err)

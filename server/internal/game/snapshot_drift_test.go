@@ -206,15 +206,22 @@ var gameFields = plan(
 	"combatDamageInstance", rebuilt, "a transient stamp (ADR 0108 owner decision 4): the next combat damage event of a restored game takes a new instance; a step restored half dealt gives its rest a new one, and only a source whose damage straddles the restore could tell",
 	"combatDamageInstanceBatch", rebuilt, "the event batch combatDamageInstance belongs to; retaken with it",
 	// ADR 0108 §10: the life totals each damage instance began with.
-	"damageInstanceLives", rebuilt, "keyed on the transient instance stamp, which no restored event carries: every instance of a restored game is new and records its own life totals as it begins, and a lookup that finds no record reads the live total (damage_as_though.go)",
+	// #4389: written, since a keyed damage frame, a follow-up park or a
+	// held division carries its instance through a restore.
+	"damageInstanceLives", carried, "",
 	// ADR 0108 §7: the divide_shield machinery (divide_shield.go).
-	"shieldDivisions", dropped, "restores empty: a CR 615.7 division is written as its prompt is answered and spent by the events it divides, which land in that action or wait on a CR 616 prompt (not a restore point); an entry left after its events have landed names a finished instance, so a restore that starts with none changes nothing",
-	"redirectOrders", dropped, "restores empty: the order is written as its CR 616 prompt is answered and read by the later events of the same instance, keyed on the transient instance stamp, which no restored event carries (redirect_order.go, #2066)",
+	// #4361 S16: written, so a CR 616 prompt over divided or redirected
+	// damage, and the next shield's divide_shield prompt, are restore points.
+	"shieldDivisions", carried, "",
+	"redirectOrders", carried, "",
 	"damageStage", dropped, "not game state: an instance's events collected for a division, opened and closed inside one mutation, so it is nil between actions",
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
 	"pausedModeWalk", carried, "",
+	// #4361 S17: an entry frozen behind its discard or sacrifice, as
+	// FrozenEntries; one that is not data is counted instead.
+	"frozenEntries", carried, "",
 	// #4012: an effect's later steps, parked behind the same prompt.
 	"pausedStepWalk", carried, "",
 	// #4163: what an earlier step handed a later one.
@@ -273,8 +280,8 @@ var gameFields = plan(
 	// record would let every first-striker deal its damage again in
 	// the regular step.
 	"firstStrikeStepParticipants", carried, "",
-	"followUpParks", dropped, "#2040: the rest of a damage instruction parked behind a prompt its prevention follow-up asked; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding one is not a restore point; Clone shares it (copy on write) for undo",
-	"heldCombatDamage", dropped, "#3665: a combat damage step's damage held behind its damage_assignment prompts; counted in ContinuationCensus.ChoiceResumeFrames, so a table holding it is not a restore point; Clone shares it (copy on write) for undo",
+	"followUpParks", carried, "#2040: the rest of a damage instruction parked behind a prompt its prevention follow-up asked, as data (GameSnapshot.FollowUpParks, #4253; the closure park went in #4361 S8); Clone shares it (copy on write) for undo",
+	"heldCombatDamage", carried, "#3665: a combat damage step's damage held behind its damage_assignment prompts, as data (GameSnapshot.HeldCombatDamage, #4362); Clone shares it (copy on write) for undo",
 	"lastKnownBattlefield", carried, "",
 	"lastKnownTriggerIdentity", carried, "",
 	"lastKnownCounters", carried, "",
@@ -324,9 +331,10 @@ var gameFields = plan(
 	"replacementObjectSerials", dropped, "the object serials catalog and graveyard ReplacementEffectIDs pack (#3482); an ID outlives an action only inside a paused replacement event, so the map is written beside a keyed frame (#4253, replacementSerials) and is otherwise counted with its frame in ContinuationCensus.ChoiceResumeFrames, a restored game minting afresh; Clone copies it for undo",
 	"nextReplacementObjectSerial", dropped, "mints serials for the map above, which restores empty unless a keyed frame wrote it (#4253, nextReplacementSerial)",
 	"replacementSerialsCompactAt", dropped, "the map above's compaction threshold, which restores empty",
-	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, source) and restored; a run whose continuation is a closure is not written and is counted once in ContinuationCensus.ChoiceResumeFrames (snapshotPromptRuns); Clone deep-copies it for undo",
+	"parkedDraws", carried, "#4253 slice 10c: the tails of draws a draw-instead body handed to a prompt (draw_done.go), as GameSnapshot.ParkedDraws (the drawing player, the draws still owed, the instruction's then by key); plain data, never counted; Clone deep-copies it for undo",
+	"promptRuns", carried, "the prompted runs in flight (#1019, #1027, #1214): since #4290 a run whose continuation is a registered key is written as GameSnapshot.PromptRuns (outstanding, ask order, landed per seat, key, carry, numbers, source, asking item) and restored (the closure form is gone since #4361, so every run kept is written); Clone deep-copies it for undo",
 	"enteringTokens", dropped, "non-empty between actions only for a created token whose battlefield entry is paused on a replacement prompt, and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo (#762)",
-	"attractionEntering", dropped, "the one card of an Attraction deck the card index may see, for the span of its open's entry (ADR 0207 §4); non-empty between actions only while that entry is paused on a replacement prompt, whose resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
+	"attractionEntering", dropped, "the one card of an Attraction deck the card index may see, for the span of its open's entry (ADR 0207 §4); non-empty between actions only while that entry is paused on a replacement prompt: since #4404 written only beside a keyed frame (GameSnapshot.AttractionEntering, the open itself on entryBatchSnapshot.Attraction), as enteringTokens is, and otherwise its frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	"outsideEntering", dropped, "the one card of the outside-the-game container the card index may see, for the span of a land's play from there (#3955); non-empty between actions only while that land's entry is paused on a replacement prompt (a shockland's payment), and that prompt's resume frame is counted in ContinuationCensus.ChoiceResumeFrames; Clone copies it for undo",
 	// #4270: the CR 707.10 self-copy source (#920) and every other reader
 	// of the item whose resolution is in flight. Carried as plain data
@@ -1053,10 +1061,9 @@ var pendingChoiceFields = plan(
 	"ManaTapped", carried, "",
 	"ReplacementEffectIDs", carried, "",
 	"DamageAssignment", carried, "",
-	"DivideShield", dropped, "ADR 0108 §7: a divide_shield prompt always carries a confirmResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	// #4289: a pay_amount that carries a chooseValueResume frame is still
-	// not a restore point (ContinuationCensus.ChoiceResumeFrames); a keyed
-	// MayPayX's "choose X" holds none, so its bounds are written.
+	// #4289: a keyed MayPayX's "choose X" holds no frame, so its bounds are
+	// written; since #4361 no pay_amount holds one.
+	"DivideShield", carried, "#4361 S16: with the shields after it and the damage it lands (pendingChoiceSnapshot.DivideShield)",
 	"PayAmount", carried, "",
 	"MayPayX", carried, "",
 	"PickNumber", carried, "",
@@ -1239,33 +1246,30 @@ var pendingChoiceFields = plan(
 	"LoopShortcutRepeat", carried, "",
 
 	"replacementResume", dropped, "continuation frame: written as data when its event holds no closure (#4253, pendingChoices[].replacementResume, replacement_resume_keyed.go), otherwise counted in ContinuationCensus.ChoiceResumeFrames",
-	"costCommanderResume", dropped, "a parked cost announcement (#1397); counted in ContinuationCensus.ChoiceResumeFrames",
-	"opponentTargetResume", dropped, "#2055: a parked cast or activation waiting on an opponent's target; counted in ContinuationCensus.ChoiceResumeFrames",
-	"PickTargetFor", dropped, "#2055: rides only a pick_target that carries a pickTargetResume or opponentTargetResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	"PickTargetHarmful", dropped, "#4249: rides only a pick_target that carries a pickTargetResume frame (it is the frame's clause flag, read for the wire), so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
-	"modePickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"pickTargetResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"copyResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"triggerResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"payUnlessResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"mayCastResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"optionPickResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"searchResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"scryResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"costCommanderResume", carried, "a parked cost announcement (#1397), as Parked (#4361 S13, parked_announcement.go; its marker rides PickThen)",
+	"opponentTargetResume", carried, "#2055: a parked cast or activation waiting on an opponent's target, as Parked (#4361 S13, parked_announcement.go; a pick_target's marker rides PickThen, an option pick's key is its own)",
+	// #4361 S14b: carried since a trigger's target walk is written.
+	"PickTargetFor", carried, "",
+	"PickTargetHarmful", carried, "",
+	"modePickResume", dropped, "continuation frame: written as data with its ability as a catalog row ref (#4361 S14a, pendingChoices[].triggerFrame, trigger_frame_keyed.go); a trigger with no catalog row is counted in ContinuationCensus.ChoiceResumeFrames",
+	"pickTargetResume", dropped, "continuation frame: written as data with its ability as a catalog row ref and the walk's answers and fixed amounts (#4361 S14b, pendingChoices[].targetWalk, trigger_frame_keyed.go); a trigger with no catalog row, or whose TargetsFrom reads the board, is counted in ContinuationCensus.ChoiceResumeFrames",
+	"copyResume", dropped, "continuation frame: written as data with its item through the stack-item mirror and its steps listed again from the item (#4361 S15, pendingChoices[].copyWalk, copy_walk_keyed.go); an item the mirror cannot write whole is counted in ContinuationCensus.ChoiceResumeFrames",
+	"triggerResume", dropped, "continuation frame: written as data with its ability as a catalog row ref (#4361 S14a, pendingChoices[].triggerFrame, trigger_frame_keyed.go); a trigger with no catalog row is counted in ContinuationCensus.ChoiceResumeFrames",
+	"searchResume", carried, "#4253 slice 5: a library search's frame, as SearchPrompt (its marker rides PickThen); data only since #4361 S4, so never counted",
+	"pickTail", carried, "#4253 slice 8: a keyed choose_cards pick's tail, as PickTail",
 	"scryThen", carried, "#4253 slice 3: a look-at's keyed then, as ScryThen (its key rides PickThen)",
-	"libraryOrderResume", dropped, "continuation closure; counted in ContinuationCensus.ChoiceResumeFrames",
+	"nameThen", carried, "#4253 slice 10c: a resolution-time card-name prompt's keyed then, as NameThen (its key rides PickThen)",
+	"sourceShield", carried, "#4253 slice 10c: a choose_source prompt's shield, redirection or multiplier, as SourceShield (its continuation's key rides PickThen)",
 	"libraryOrderKeyed", carried, "#4301: an ordering prompt's keyed then, as LibraryOrder (its key rides PickThen)",
+	"dice", carried, "#4307: a paused dice roll, as DiceRoll (its prompt's key rides PickThen)",
 	"midResolution", carried, "",
 	"AutoAnswerKey", carried, "",
 	"AutoAnswerCard", carried, "",
 	"AutoAnswerPrompt", carried, "",
 	"AskedByHand", carried, "",
-	"confirmResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseValueResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"chooseCardsResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
-	"coinFlipResume", dropped, "continuation frame; counted in ContinuationCensus.ChoiceResumeFrames",
 	"private", carried, "ADR 0133, #4298: an opening-hand offer is keyed, so it is written to a restore point and must stay private to its chooser after it; as Private",
 	"promptRun", carried, "the id of the prompted run this prompt is one leg of — a sacrifice (#1019), a discard (#1027) or one of the three resolution-time picks (#1214); written as pendingChoices[].promptRun since #4290, so a leg of a keyed run settles the restored run",
+	"ordered", carried, "a keyed ordered collection's state (ADR 0175, #4290): the seats still to ask, the picks so far and the registered continuation with its data; written as pendingChoices[].ordered, so a table waiting on a seat of the collection is a restore point",
 )
 
 // driftPlans is every domain type the snapshot touches, paired with the

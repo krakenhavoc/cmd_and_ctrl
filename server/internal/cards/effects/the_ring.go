@@ -266,19 +266,21 @@ func registerRulesEmblem(key string, e EmblemSpec) {
 // (CR 701.54a): the emblem if the player has none, its count up by
 // one, a Ring-bearer chosen from the creatures they control (asked
 // only when there are two or more), and the event every "whenever the
-// Ring tempts you" ability watches. See game.RingTemptsForEffect.
+// Ring tempts you" ability watches. See game.RingTemptsKeyedForEffect.
 type TheRingTemptsYou struct {
 	// Player is who the Ring tempts. Zero means the effect's
 	// controller, which is what every printed Ring card says.
 	Player uuid.UUID
 
-	// Then is the rest of the sentence, run once the tempt is complete
-	// and handed the creature chosen as the Ring-bearer — uuid.Nil
-	// when the player controlled no creature (the tempt still happened,
-	// CR 701.54d). Ringsight's search and One Ring to Rule Them All's
-	// mill come after the tempt; nil for a card whose sentence ends
-	// there.
-	Then func(ctx *Context, ringBearer uuid.UUID) error
+	// ThenTail is the rest of the sentence, a registered tail (#4253
+	// slice 10b) run once the tempt is complete and told the creature
+	// chosen as the Ring-bearer as its one ID — none when the player
+	// controlled no creature (the tempt still happened, CR 701.54d).
+	// Ringsight's search and One Ring to Rule Them All's mill come after
+	// the tempt; zero for a card whose sentence ends there. The tempt is
+	// keyed, so a table waiting on the Ring-bearer choice is a restore
+	// point.
+	ThenTail game.KeyedTail
 }
 
 func (r TheRingTemptsYou) Apply(ctx *Context) error {
@@ -286,15 +288,22 @@ func (r TheRingTemptsYou) Apply(ctx *Context) error {
 	if player == uuid.Nil {
 		player = ctx.Controller()
 	}
-	item := ctx.Item
-	then := r.Then
-	var tail func(g *game.Game, ringBearer uuid.UUID) error
-	if then != nil {
-		tail = func(g *game.Game, ringBearer uuid.UUID) error {
-			return then(NewContext(g, item), ringBearer)
+	return ctx.Game.RingTemptsKeyedForEffect(player, ctx.Source(), r.ThenTail)
+}
+
+// RingTail registers a tempt's keyed "then" (TheRingTemptsYou.ThenTail),
+// told the Ring-bearer chosen (uuid.Nil when no creature could be). The
+// body runs against the Context of CardTail; pass Context.ItemTail(ref)
+// so it reads the resolving item. The key is an on-disk identity (ledgered
+// "tail <key>"): never renamed, never reused. (#4253 slice 10b.)
+func RingTail(key string, body func(ctx *Context, ringBearer uuid.UUID) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		rb := uuid.Nil
+		if len(o.IDs) > 0 {
+			rb = o.IDs[0]
 		}
-	}
-	return ctx.Game.RingTemptsForEffect(player, ctx.Source(), tail)
+		return body(ctx, rb)
+	})
 }
 
 // RingTempted is "whenever the Ring tempts you" as a trigger condition:

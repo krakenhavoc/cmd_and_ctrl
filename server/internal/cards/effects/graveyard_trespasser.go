@@ -63,16 +63,30 @@ func init() {
 // each opponent for 1: once if any creature card was exiled (perCard
 // false), once per creature card exiled (perCard true).
 func graveyardExileAndDrain(perCard bool) Effect {
+	then := graveyardExileDrainOnce
+	if perCard {
+		then = graveyardExileDrainPerCreature
+	}
 	return func(g *game.Game, item *game.StackItem) error {
-		return exileTargetCardsThen(NewContext(g, item), func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
-			n := creatureCardsAmong(exiled, wasCreature)
-			if n == 0 {
-				return nil
-			}
-			if !perCard {
-				n = 1
-			}
-			return b40DrainEachOpponent(n)(ctx.Game, ctx.Item)
-		})
+		return exileTargetCardsThen(NewContext(g, item), then)
 	}
 }
+
+// graveyardExileDrainOnce and graveyardExileDrainPerCreature are the drain
+// after the exile (#4253 slice 9): once if any creature card was exiled,
+// or once per creature card.
+var (
+	graveyardExileDrainOnce = GraveyardExileTail("graveyard-exile/drain-once-if-creature", func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
+		if creatureCardsAmong(exiled, wasCreature) == 0 {
+			return nil
+		}
+		return b40DrainEachOpponent(1)(ctx.Game, ctx.Item)
+	})
+	graveyardExileDrainPerCreature = GraveyardExileTail("graveyard-exile/drain-per-creature", func(ctx *Context, exiled []uuid.UUID, wasCreature map[uuid.UUID]bool) error {
+		n := creatureCardsAmong(exiled, wasCreature)
+		if n == 0 {
+			return nil
+		}
+		return b40DrainEachOpponent(n)(ctx.Game, ctx.Item)
+	})
+)

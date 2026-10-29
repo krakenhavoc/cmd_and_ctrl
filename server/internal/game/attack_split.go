@@ -47,14 +47,40 @@ type AttackSplit struct {
 	// Tail is what the card does once the tokens are made, told the tokens
 	// that landed (RegisterTail). The zero tail does nothing.
 	Tail KeyedTail
+
+	// settled, when set, makes this the split of a creation whose CR 701.7b
+	// window has already settled (myriad, CR 702.116a): the groups the
+	// replacements left, the one being split and the ones placed so far
+	// (token_attack_choices.go). Targets, Shares and Count are then the
+	// group being split's, and Template is unused.
+	settled *settledCreation
+}
+
+// settledCreation is a creation whose replacements have settled and whose
+// groups are still being sent to what they attack.
+type settledCreation struct {
+	// Groups are the settled groups; Index is the one being split and
+	// Chosen the groups placed so far, in order.
+	Groups []TokenGroup
+	Index  int
+	Chosen []TokenGroup
+	// Attacking and Together are the creation's own (TokenCreation).
+	Attacking uuid.UUID
+	Together  bool
 }
 
 // attackSplitKey is the split's number branch, an on-disk identity: never
 // renamed, never reused.
 const attackSplitKey = "token/attack-split"
 
+// settledSplitKey is the number branch of a split whose creation has
+// already settled (myriad). A separate key, so a binary from before it,
+// which would ask the question as a plain split and make the wrong
+// tokens, refuses the file (ErrUnknownEffectKey).
+const settledSplitKey = "token/settled-split"
+
 func init() {
-	RegisterNumberThen(attackSplitKey, func(g *Game, r NumberAnswer) error {
+	answer := func(g *Game, r NumberAnswer) error {
 		if r.split == nil {
 			return fmt.Errorf("%w: attack split with no state", ErrInvalidParam)
 		}
@@ -62,7 +88,9 @@ func init() {
 		left := s.Count - sumInts(s.Shares)
 		s.Shares = append(s.Shares, min(max(r.Number, 0), left))
 		return g.advanceAttackSplitLocked(s)
-	})
+	}
+	RegisterNumberThen(attackSplitKey, answer)
+	RegisterNumberThen(settledSplitKey, answer)
 }
 
 // StartAttackSplitForEffect makes the tokens `s` describes, asking the
@@ -90,11 +118,19 @@ func (g *Game) advanceAttackSplitLocked(s AttackSplit) error {
 		if i < max(len(s.Targets), 1) {
 			s.Shares = append(s.Shares, left)
 		}
+		if s.settled != nil {
+			return g.placeSettledGroupLocked(s)
+		}
 		return g.createAttackSplitLocked(s)
 	}
-	goal := 0
+	goal, noun, key := 0, "tokens", attackSplitKey
 	if i == 0 {
 		goal = left
+	}
+	if s.settled != nil {
+		// Each opponent's copies are asked about with the number left as
+		// the goal, a bot sending them all at the first thing.
+		goal, noun, key = left, "copies", settledSplitKey
 	}
 	return g.QueueChooseNumberForEffect(ChooseNumber{
 		Chooser:  s.Controller,
@@ -102,8 +138,8 @@ func (g *Game) advanceAttackSplitLocked(s AttackSplit) error {
 		Resource: PayResourceNone,
 		Max:      left,
 		Goal:     goal,
-		Question: s.Label + " — how many of the " + strconv.Itoa(left) + " tokens attack " + g.attackTargetNameLocked(s.Targets[i]) + "?",
-		Branch:   NumberBranch{Then: NumberThen{key: attackSplitKey}},
+		Question: s.Label + " — how many of the " + strconv.Itoa(left) + " " + noun + " attack " + g.attackTargetNameLocked(s.Targets[i]) + "?",
+		Branch:   NumberBranch{Then: NumberThen{key: key}},
 		split:    &s,
 	})
 }
@@ -160,6 +196,31 @@ func (s AttackSplit) clone() AttackSplit {
 	out.Targets = slices.Clone(s.Targets)
 	out.Shares = slices.Clone(s.Shares)
 	out.Tail = copyKeyedTail(s.Tail)
+	out.settled = s.settled.clone()
+	return out
+}
+
+// clone is a deep copy, nil for nil.
+func (c *settledCreation) clone() *settledCreation {
+	if c == nil {
+		return nil
+	}
+	out := *c
+	out.Groups = cloneTokenGroups(c.Groups)
+	out.Chosen = cloneTokenGroups(c.Chosen)
+	return &out
+}
+
+// cloneTokenGroups gives each group its own template.
+func cloneTokenGroups(groups []TokenGroup) []TokenGroup {
+	if groups == nil {
+		return nil
+	}
+	out := make([]TokenGroup, len(groups))
+	for i, grp := range groups {
+		out[i] = grp
+		out[i].Template = cloneCard(grp.Template)
+	}
 	return out
 }
 
@@ -175,28 +236,80 @@ type attackSplitSnapshot struct {
 	Shares     []int              `json:"shares,omitempty"`
 	Label      string             `json:"label,omitempty"`
 	Tail       *keyedTailSnapshot `json:"tail,omitempty"`
+	// Settled is a myriad split's creation (#4294): the groups the
+	// replacements left, the one being split and the ones placed.
+	Settled *settledCreationSnapshot `json:"settled,omitempty"`
+}
+
+// settledCreationSnapshot is a settledCreation on disk: each group's
+// template through the card mirror.
+type settledCreationSnapshot struct {
+	Groups    []tokenGroupSnapshot `json:"groups"`
+	Index     int                  `json:"index,omitempty"`
+	Chosen    []tokenGroupSnapshot `json:"chosen,omitempty"`
+	Attacking *uuid.UUID           `json:"attacking,omitempty"`
+	Together  bool                 `json:"together,omitempty"`
+}
+
+func snapshotTokenGroups(groups []TokenGroup, cen *ContinuationCensus) []tokenGroupSnapshot {
+	var out []tokenGroupSnapshot
+	for _, grp := range groups {
+		out = append(out, tokenGroupSnapshot{
+			Template: snapshotCard(grp.Template, cen), Count: grp.Count, Entry: snapshotTokenEntry(grp.Entry),
+			Attacking: uuidPtrOrNil(grp.Attacking), AttackOpponent: uuidPtrOrNil(grp.AttackOpponent),
+			CreatedWith: grp.CreatedWith, Blocking: uuidPtrOrNil(grp.Blocking),
+		})
+	}
+	return out
+}
+
+func restoreTokenGroups(snaps []tokenGroupSnapshot) []TokenGroup {
+	var out []TokenGroup
+	for i := range snaps {
+		grp := &snaps[i]
+		out = append(out, TokenGroup{
+			Template: restoreCard(&grp.Template), Count: grp.Count, Entry: grp.Entry.options(),
+			Attacking: uuidOrNil(grp.Attacking), AttackOpponent: uuidOrNil(grp.AttackOpponent),
+			CreatedWith: grp.CreatedWith, Blocking: uuidOrNil(grp.Blocking),
+		})
+	}
+	return out
 }
 
 func snapshotAttackSplit(s *AttackSplit, cen *ContinuationCensus) *attackSplitSnapshot {
 	if s == nil {
 		return nil
 	}
-	return &attackSplitSnapshot{
+	out := &attackSplitSnapshot{
 		Controller: s.Controller, Source: s.Source, Template: snapshotCard(s.Template, cen),
 		Count: s.Count, Tapped: s.Tapped, Targets: copyUUIDs(s.Targets), Shares: copyInts(s.Shares),
 		Label: s.Label, Tail: snapshotKeyedTail(s.Tail),
 	}
+	if c := s.settled; c != nil {
+		out.Settled = &settledCreationSnapshot{
+			Groups: snapshotTokenGroups(c.Groups, cen), Index: c.Index, Chosen: snapshotTokenGroups(c.Chosen, cen),
+			Attacking: uuidPtrOrNil(c.Attacking), Together: c.Together,
+		}
+	}
+	return out
 }
 
 func restoreAttackSplit(s *attackSplitSnapshot) *AttackSplit {
 	if s == nil {
 		return nil
 	}
-	return &AttackSplit{
+	out := &AttackSplit{
 		Controller: s.Controller, Source: s.Source, Template: restoreCard(&s.Template),
 		Count: s.Count, Tapped: s.Tapped, Targets: copyUUIDs(s.Targets), Shares: copyInts(s.Shares),
 		Label: s.Label, Tail: restoreKeyedTail(s.Tail),
 	}
+	if c := s.Settled; c != nil {
+		out.settled = &settledCreation{
+			Groups: restoreTokenGroups(c.Groups), Index: c.Index, Chosen: restoreTokenGroups(c.Chosen),
+			Attacking: uuidOrNil(c.Attacking), Together: c.Together,
+		}
+	}
+	return out
 }
 
 // cloneAttackSplit is a deep copy, nil for nil.

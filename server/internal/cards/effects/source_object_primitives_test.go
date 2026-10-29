@@ -188,14 +188,15 @@ func TestTheThenClauseOfASkippedSelfActHearsNo(t *testing.T) {
 	heard := map[string]bool{}
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, item)
-		_ = SacrificePermanent{Target: src, Then: func(_ *Context, ok bool) error { heard["sacrifice"] = ok; return nil }}.Apply(ctx)
-		_ = ExileTarget{Target: src, Then: func(_ *Context, ok bool) error { heard["exile"] = ok; return nil }}.Apply(ctx)
-		_ = BounceToHand{Target: src, Then: func(_ *Context, ok bool) error { heard["bounce"] = ok; return nil }}.Apply(ctx)
+		testHeardExile = heard
+		_ = SacrificePermanent{Target: src, ThenTail: withWord(ctx.Tail(testHeardThenTail), "sacrifice")}.Apply(ctx)
+		_ = ExileTarget{Target: src, ThenTail: ctx.Tail(testHeardExileTail)}.Apply(ctx)
+		_ = BounceToHand{Target: src, ThenTail: withWord(ctx.Tail(testHeardThenTail), "bounce")}.Apply(ctx)
 	})
 	for _, k := range []string{"sacrifice", "exile", "bounce"} {
 		ok, ran := heard[k]
 		if !ran || ok {
-			t.Errorf("%s's Then: ran=%v told=%v, want it told false", k, ran, ok)
+			t.Errorf("%s's tail: ran=%v told=%v, want it told false", k, ran, ok)
 		}
 	}
 	if !onTheBattlefield(g, src) {
@@ -461,16 +462,17 @@ func TestADiesTriggerStillActsOnTheCardInTheZoneItWentTo(t *testing.T) {
 // decides which.
 func TestEveryPrimitiveThatActsOnACardAsksAboutItsSource(t *testing.T) {
 	exempt := map[string]string{
-		"DealDamage":                  "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
-		"ReturnFromGraveyard":         "follows the card: the card is in a graveyard, never a permanent that left and came back",
-		"ReturnFromGraveyardTogether": "follows the cards: each is in a graveyard, never a permanent that left and came back",
-		"ReturnFromExile":             "follows the card: the card is in exile",
-		"ReturnFromExileTogether":     "follows the cards: each is in exile, never a permanent that left and came back",
-		"GrantFlashbackToCard":        "a card in a graveyard",
-		"GrantHarmonizeToCard":        "a card in a graveyard",
-		"OfferGraveyardCast":          "a card in a graveyard, refused unless it is still there",
-		"PlotExiled":                  "a card in exile",
-		"CreateTokenCopy":             "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
+		"DealDamage":                          "damage FROM the source reads last-known information (CR 608.2h); damage TO it is dealt by a mass-effect loop as often as by \"this\", and is not an act the source's text names as \"this\"",
+		"ReturnFromGraveyard":                 "follows the card: the card is in a graveyard, never a permanent that left and came back",
+		"ReturnFromGraveyardTogether":         "follows the cards: each is in a graveyard, never a permanent that left and came back",
+		"ReturnFromExile":                     "follows the card: the card is in exile",
+		"ReturnFromExileTogether":             "follows the cards: each is in exile, never a permanent that left and came back",
+		"GrantFlashbackToCard":                "a card in a graveyard",
+		"GrantHarmonizeToCard":                "a card in a graveyard",
+		"OfferGraveyardCast":                  "a card in a graveyard, refused unless it is still there",
+		"PlotExiled":                          "a card in exile",
+		"CastTargetFromYourGraveyardThisTurn": "a card in a graveyard, a permission over the card itself",
+		"CreateTokenCopy":                     "reads copiable values; last-known information is the answer for a source that left (CR 707.4)",
 	}
 	ps := scanPrimitives(t)
 	structs, applies, guarded := ps.structs, ps.applies, ps.guarded
@@ -621,10 +623,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	mutators := map[string]bool{
 		"AddCounterForEffect": true, "AddCounterThenForEffect": true,
 		"TapTargetForEffect": true, "UntapTargetForEffect": true,
-		"SacrificePermanentForEffect": true, "SacrificeThenForEffect": true,
-		"ExileCardForEffect": true, "ExileCardThenForEffect": true,
-		"BounceToHandForEffect": true, "BounceToHandThenForEffect": true,
-		"TuckToLibraryForEffect": true, "TuckToLibraryThenForEffect": true,
+		"SacrificePermanentForEffect": true, "ExileCardForEffect": true, "ExileCardKeyedForEffect": true,
+		"BounceToHandForEffect": true, "BounceToHandThenForEffect": true, "TuckToLibraryForEffect": true,
 		"DestroyPermanentForEffect": true, "RegenerateForEffect": true,
 		"TransformPermanentForEffect": true, "ExileAndReturnTransformedForEffect": true,
 		"SetClassLevelForEffect": true, "SolveCaseForEffect": true, "HarnessForEffect": true,
@@ -759,3 +759,19 @@ func exprString(e ast.Expr) string {
 	}
 	return ""
 }
+
+// testHeardExile and testHeardExileTail let a test hear ExileTarget's keyed
+// "then" (#4253 slice 9): the tail writes whether the card was exiled.
+// testHeardThenTail is the same for any single-card door, under the tail's
+// Word (#4253 retired SacrificePermanent's and BounceToHand's closure Then).
+var (
+	testHeardExile     map[string]bool
+	testHeardExileTail = CardTail("test/4253-heard-exile", func(_ *Context, o game.TailOutcome) error {
+		testHeardExile["exile"] = len(o.IDs) == 1
+		return nil
+	})
+	testHeardThenTail = CardTail("test/4253-heard-then", func(_ *Context, o game.TailOutcome) error {
+		testHeardExile[o.Tail.Word] = oneWentThisWay(o)
+		return nil
+	})
+)

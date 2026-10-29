@@ -35,7 +35,7 @@ func init() {
 			MaxSpeedTrigger(WheneverYouDraw("Aether Syphon — each opponent mills two cards",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
-					return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(2), nil)
+					return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(2), game.KeyedTail{})
 				})),
 		},
 	})

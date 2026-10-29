@@ -42,7 +42,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisHasAtLeast("plot", 5, "Deadly Designs — sacrifice it and destroy up to two target creatures",
-					SacrificeThisThen(func(ctx *Context) error { return destroyEachLegalTarget(ctx.Item, ctx) })),
+					SacrificeThisThen("then/deadly-designs-destroy", func(ctx *Context) error { return destroyEachLegalTarget(ctx.Item, ctx) })),
 				TargetCreature("up to two target creatures").WithCount(0, 2)),
 		},
 	})

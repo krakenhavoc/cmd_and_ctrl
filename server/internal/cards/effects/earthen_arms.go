@@ -32,8 +32,23 @@ func init() {
 			if !ok {
 				return AwakenIfPaid(ctx, 4)
 			}
-			return ctx.Game.AddCounterByThenForEffect(item.Controller, id, game.CounterPlusOne, 2,
-				func(g *game.Game, _ int) error { return AwakenIfPaid(NewContext(g, item), 4) })
+			// Whether awaken was paid rides the tail as its N: the cost the
+			// spell was cast with is not on the asking item it rebuilds.
+			then := ctx.ItemTail(earthenArmsAwaken)
+			if ctx.PaidAltCost(awakenKey) {
+				then.N = 1
+			}
+			return ctx.Game.AddCounterByKeyedForEffect(item.Controller, id, game.CounterPlusOne, 2, then)
 		},
 	})
 }
+
+// earthenArmsAwaken is the awaken, once the first two counters have landed; the
+// tail's N is 1 when awaken was paid.
+// An on-disk key: never renamed, never reused.
+var earthenArmsAwaken = CardTail("earthen-arms/awaken", func(ctx *Context, o game.TailOutcome) error {
+	if o.Tail.N == 0 {
+		return nil
+	}
+	return awakenPaidClause(ctx, 4)
+})

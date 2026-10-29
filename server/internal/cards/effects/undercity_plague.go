@@ -46,16 +46,18 @@ func undercityPlagueResolve(_ *game.StackItem, ctx *Context) error {
 	if err := (GainLife{Player: player, Amount: -1}).Apply(ctx); err != nil {
 		return err
 	}
-	source := ctx.Source()
-	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+	return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 		Player: player,
-		Source: source,
+		Source: ctx.Source(),
 		N:      1,
-		Then: func(g *game.Game, seat uuid.UUID, _ []uuid.UUID) error {
-			g.PlayerSacrificesNForEffect(source, seat, sacrificeSpec("a permanent"),
-				"Undercity Plague — sacrifice a permanent", 1)
-			return nil
-		},
-	})
-	return nil
+	}, undercityPlagueDiscarded, nil)
 }
+
+// undercityPlagueDiscarded is "then sacrifices a permanent" once the discard
+// has landed, keyed (#4253): the player who discarded is the one who
+// sacrifices.
+var undercityPlagueDiscarded = game.RegisterDiscardThen("choose-cards/undercity-plague-sacrifice", func(g *game.Game, r game.DiscardsDone) error {
+	g.PlayerSacrificesNForEffect(r.Source, r.Player, sacrificeSpec("a permanent"),
+		"Undercity Plague — sacrifice a permanent", 1)
+	return nil
+})

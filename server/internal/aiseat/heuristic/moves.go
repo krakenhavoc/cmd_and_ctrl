@@ -306,7 +306,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// It is priced above every ordinary cast so the bot plays its
 		// land BEFORE it spends the turn's mana, which is the one
 		// sequencing rule that matters at this level.
-		return p.cfg.LandValue, "land drop"
+		return p.landDropValue(st, m)
 
 	case legal.KindCast:
 		return p.valueOfCast(st, m)
@@ -361,8 +361,8 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// #2449: moving an Equipment between the bot's own creatures
 		// buys only what the new host gains (equip_move.go). Priced
 		// flat, a free equip beat passing from either side for ever.
-		if !across && src != nil && st.idleEquip(src, cp) {
-			return idleEquipMove, "re-equip for no gain"
+		if !across && src != nil && st.idleEquip(p.cfg, src, cp) {
+			return idleEquipMove, "equip or reconfigure for no proven gain"
 		}
 		// #2500: an untap of its own source that costs as much mana as
 		// the source makes nets nothing (untap_self.go).
@@ -408,6 +408,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			ps.add(rowPurpose(src, cp.AbilityIndex))
 			ps.targetsPriced = targetsPriced
 			row := rowAt(src, cp.AbilityIndex)
+			answerOnly := p.cfg.PriceAnswers && p.cfg.PriceAnswerOnlyRows && row != nil &&
+				len(cp.Targets) == 0 && defensiveAnswerOnly(row.Purpose)
+			if answerOnly && len(st.view.StackItems) == 0 {
+				return valueInResponse, "defensive answer: nothing on the stack to answer"
+			}
 			// #3146: a fetch land keeps the flat ActivateBase, and the
 			// lands it puts down add what the bot's landfall payoffs pay
 			// (landfall.go). Its declared lands are read nowhere else.
@@ -427,8 +432,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 			// #3027: a targeted row also pays for sacrificing its source.
 			// Its target value cannot justify treating the source as free:
 			// Strip Mine targeting itself would otherwise beat passing.
-			// Untargeted rows without a priced purpose retain their proxy.
-			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0) {
+			// #4318: purely defensive rows pay this cost in response too;
+			// other untargeted rows without a priced purpose retain their proxy.
+			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0 || answerOnly) {
 				v -= p.selfSacrificeCost(st, src)
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`

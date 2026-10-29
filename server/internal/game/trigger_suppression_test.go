@@ -383,10 +383,10 @@ func TestSuppressedMatchDoesNotSpendTheOncePerBatchSlot(t *testing.T) {
 	artifact := suppInHand(me, "Trinket", "Artifact", "")
 
 	g.WithWriteLock(func() {
-		err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+		err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 			{CardID: creature, From: ZoneHand},
 			{CardID: artifact, From: ZoneHand},
-		}, ZoneEntryOptions{}, func(*Game, []uuid.UUID) error { return nil })
+		}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error { return nil }))
 		if err != nil {
 			t.Fatalf("put together: %v", err)
 		}
@@ -410,10 +410,10 @@ func TestSuppressorEnteringWithTheCreatureApplies(t *testing.T) {
 	creature := suppInHand(me, "Mulldrifter", "Creature — Elemental", suppSelfETB)
 
 	g.WithWriteLock(func() {
-		err := g.PutOntoBattlefieldTogetherThenForEffect([]BatchEntry{
+		err := g.PutOntoBattlefieldTogetherKeyedForEffect([]BatchEntry{
 			{CardID: creature, From: ZoneHand},
 			{CardID: orb, From: ZoneHand},
-		}, ZoneEntryOptions{}, func(*Game, []uuid.UUID) error { return nil })
+		}, ZoneEntryOptions{}, hookTail(func(_ *Game, o TailOutcome) error { return nil }))
 		if err != nil {
 			t.Fatalf("put together: %v", err)
 		}

@@ -83,11 +83,8 @@ func tetzinDoubleFacedArtifactEntered(ev game.Event, source *game.Card, _ game.C
 // tetzinMill is the trigger's resolution.
 func tetzinMill(g *game.Game, item *game.StackItem) error {
 	return MillToZone{
-		N: 3,
-		Then: func(ctx *Context, milled []uuid.UUID) error {
-			return mayTakeOneFromAmongThem(ctx, milled, Artifact(),
-				"Tetzin, Gnome Champion — you may put an artifact card from among them into your hand")
-		},
+		N:        3,
+		ThenTail: NewContext(g, item).ItemTail(tetzinGnomeChampionMilled),
 	}.Apply(NewContext(g, item))
 }
 
@@ -104,3 +101,11 @@ func goldenGearColossus(g *game.Game, item *game.StackItem) error {
 	}
 	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Gnome artifact"), N: 2}.Apply(ctx)
 }
+
+// tetzinGnomeChampionMilled is the clause after the mill (#4253 slice 9).
+var tetzinGnomeChampionMilled = CardTail("tetzin-gnome-champion/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	return mayTakeOneFromAmongThem(ctx, milled, Artifact(),
+		"Tetzin, Gnome Champion — you may put an artifact card from among them into your hand")
+})

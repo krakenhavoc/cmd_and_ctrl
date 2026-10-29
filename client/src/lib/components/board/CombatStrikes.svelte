@@ -42,6 +42,7 @@
   import { crumble, impactShake, lunge, streak } from "../../animations";
   import { cancelAnimations } from "../../motion";
   import { play } from "../../sounds";
+  import { FACE_HIT_STAGGER_MS, faceHitSeats } from "../../faceHit";
   import { keepArrowCache, type ScheduledCue } from "../../combatBeats";
   import type { CombatCues } from "../../combatCues.svelte";
   import {
@@ -256,6 +257,14 @@
     // to this, so it plays even when the board cannot be measured and
     // no copy flies. A late beat plays neither: the board has moved on.
     later(() => play("combat_resolve"), tl.contactMs);
+    // #4432: the hit on a player's face is heard at the same contact, once
+    // per player this beat hit. The life popup stands down for it
+    // (lib/faceHit.ts), so the loss does not also play damage.
+    // A second player's hit is staggered a little: play() drops a repeat of
+    // one name inside its rate limit, and two blows read as two.
+    faceHitSeats(cue.entries).forEach((_seat, i) => {
+      later(() => play("face_hit"), tl.contactMs + i * FACE_HIT_STAGGER_MS);
+    });
 
     const b = boardEl ? boardSize() : null;
     if (!b) return;

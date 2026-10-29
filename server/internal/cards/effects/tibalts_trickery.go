@@ -19,7 +19,7 @@ import (
 // done TO and BY the countered spell's controller, who may be anyone
 // at the table. The number is drawn from the game's keyed random
 // stream (an undo or restore redraws the same one), the mill waits for
-// its CR 614 window through MillToZoneThenForEffect, and the walk is
+// its CR 614 window through MillToZoneKeyedForEffect, and the walk is
 // Game.ExileUntilCastFreeForEffect, which is cascade's body with the
 // hit test passed in: here a nonland card whose name differs from the
 // countered spell's, read BEFORE the counter so a spell that is gone
@@ -56,17 +56,28 @@ func init() {
 			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {
 				return err
 			}
-			source := item.SourceCardID
 			n := tibaltsTrickeryCount(ctx)
-			return ctx.Game.MillToZoneThenForEffect(victim, n, game.ZoneGraveyard, nil,
-				func(g *game.Game, _ []uuid.UUID) error {
-					return g.ExileUntilCastFreeForEffect(victim, source, func(c game.Card) bool {
-						return !c.IsLand() && c.Name != name
-					})
-				})
+			// Keyed (#4253 slice 10a): the victim and the countered
+			// spell's name ride the mill's tail.
+			return ctx.Game.MillToZoneKeyedForEffect(victim, n, game.ZoneGraveyard, game.MillUntil{},
+				game.KeyedTail{Ref: tibaltsTrickeryExile, Player: item.Controller, Source: item.SourceCardID,
+					Carry: []uuid.UUID{victim}, Word: name})
 		},
 	})
 }
+
+// tibaltsTrickeryExile is "then exiles cards until a nonland card with a
+// different name, and may cast it free": Carry[0] is the victim, Word the
+// countered spell's name.
+var tibaltsTrickeryExile = game.RegisterTail("then/tibalts-trickery-exile-until", func(g *game.Game, o game.TailOutcome) error {
+	victim, name := tailCarry0(o), o.Tail.Word
+	if victim == uuid.Nil {
+		return nil
+	}
+	return g.ExileUntilCastFreeForEffect(victim, o.Tail.Source, func(c game.Card) bool {
+		return !c.IsLand() && c.Name != name
+	})
+})
 
 // tibaltsTrickeryOptions are the three equally likely numbers, as fixed
 // IDs because the keyed random stream picks among IDs.

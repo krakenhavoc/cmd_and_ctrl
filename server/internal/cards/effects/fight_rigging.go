@@ -52,20 +52,32 @@ func init() {
 
 func fightRiggingResolve(g *game.Game, item *game.StackItem) error {
 	controller := item.Controller
-	ref := game.PermissionCardRef(item.Params.Object)
-	offer := func(g *game.Game, _ int) error {
-		if fightRiggingHasASevenPowerCreature(g, controller) {
-			grantHiddenPlay(g, controller, ref, "Fight Rigging — play the exiled card without paying its mana cost")
-		}
-		return nil
-	}
 	ctx := NewContext(g, item)
+	// The exiled card Hideaway hid rides the tail as data: its instance and
+	// the epoch of the object it was (CR 607.2a).
+	ref := game.PermissionCardRef(item.Params.Object)
+	offer := ctx.Tail(fightRiggingOffer)
+	offer.Carry = []uuid.UUID{ref.ID}
+	offer.N = ref.Epoch
 	id, ok := b16FirstLegalTargetCard(ctx)
 	if !ok {
-		return offer(g, 0)
+		return offer.Run(g, nil)
 	}
-	return g.AddCounterByThenForEffect(controller, id, game.CounterPlusOne, 1, offer)
+	return g.AddCounterByKeyedForEffect(controller, id, game.CounterPlusOne, 1, offer)
 }
+
+// fightRiggingOffer is "if you control a creature with power 7 or greater,
+// you may play the exiled card without paying its mana cost", checked once
+// the counter has landed; Carry is the exiled card and N its epoch. An
+// on-disk key: never renamed, never reused.
+var fightRiggingOffer = game.RegisterTail("fight-rigging/offer", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 || !fightRiggingHasASevenPowerCreature(g, o.Tail.Player) {
+		return nil
+	}
+	ref := game.PermissionCardRef(game.ObjectRef{ID: o.Tail.Carry[0], Epoch: o.Tail.N})
+	grantHiddenPlay(g, o.Tail.Player, ref, "Fight Rigging — play the exiled card without paying its mana cost")
+	return nil
+})
 
 func fightRiggingHasASevenPowerCreature(g *game.Game, controller uuid.UUID) bool {
 	for _, c := range g.BattlefieldCardsForEffect() {

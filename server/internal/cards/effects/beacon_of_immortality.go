@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Beacon of Immortality — Instant {5}{W}:
 //
@@ -38,9 +42,7 @@ func init() {
 			}),
 			Instruction(func(ctx *Context) error {
 				owner := ctx.Item.Owner
-				return ctx.Game.TuckToLibraryThenForEffect(ctx.Source(), game.TuckOptions{}, func(g *game.Game, _ bool) error {
-					return g.ShuffleLibraryForEffect(owner)
-				})
+				return ctx.Game.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{ctx.Source()}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 			}),
 		),
 	})

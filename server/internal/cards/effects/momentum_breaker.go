@@ -34,22 +34,7 @@ func init() {
 						ExceptController: true,
 						Match:            Or(Creature(), OfSubtype("Vehicle")),
 						Label:            "a creature or Vehicle",
-						Then: func(ctx *Context, sacrificed game.PromptedSacrifices) error {
-							var cantSacrifice []uuid.UUID
-							for _, opp := range ctx.Opponents() {
-								if !sacrificed.Sacrificed(opp) {
-									cantSacrifice = append(cantSacrifice, opp)
-								}
-							}
-							if len(cantSacrifice) == 0 {
-								return nil
-							}
-							return ctx.Game.PlayersDiscardThenForEffect(cantSacrifice, game.DiscardPrompt{
-								Source:   ctx.Source(),
-								N:        1,
-								Question: "Momentum Breaker — discard a card",
-							}, nil)
-						},
+						Keyed:            momentumBreakerEdicted,
 					}.Apply(NewContext(g, item))
 				})),
 		},
@@ -63,3 +48,23 @@ func init() {
 		}},
 	})
 }
+
+// momentumBreakerEdicted is the discard for each opponent who could not
+// sacrifice, keyed (#4290).
+var momentumBreakerEdicted = RegisterEdictThen("prompt-run/momentum-breaker-discard", func(ctx *Context, sacrificed game.PromptedSacrifices) error {
+	var cantSacrifice []uuid.UUID
+	for _, opp := range ctx.Opponents() {
+		if !sacrificed.Sacrificed(opp) {
+			cantSacrifice = append(cantSacrifice, opp)
+		}
+	}
+	if len(cantSacrifice) == 0 {
+		return nil
+	}
+	ctx.Game.PlayersDiscardForEffect(cantSacrifice, game.DiscardPrompt{
+		Source:   ctx.Source(),
+		N:        1,
+		Question: "Momentum Breaker — discard a card",
+	})
+	return nil
+})

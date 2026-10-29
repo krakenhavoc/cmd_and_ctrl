@@ -97,7 +97,7 @@ func init() {
 						Dest:      game.ZoneBattlefield,
 						Limit:     3,
 						Shuffle:   true,
-						Validate:  saheeliDifferentNames,
+						Rule:      searchRuleDifferentNames,
 						Reason:    "Saheeli Rai — up to three artifact cards with different names, onto the battlefield",
 					}.Apply(NewContext(g, item))
 				},
@@ -192,19 +192,4 @@ func saheeliArtifactInAddition(printed string) string {
 // not an artifact does not.
 func saheeliIsArtifactCard(c game.Card) bool {
 	return c.IsArtifact()
-}
-
-// saheeliDifferentNames is the −7's "with different names" clause,
-// checked against the whole picked set rather than per card — which
-// is what the Validate hook is for, and why Myriad Landscape needed
-// it first.
-func saheeliDifferentNames(chosen []game.Card) bool {
-	seen := make(map[string]bool, len(chosen))
-	for _, c := range chosen {
-		if seen[c.Name] {
-			return false
-		}
-		seen[c.Name] = true
-	}
-	return true
 }

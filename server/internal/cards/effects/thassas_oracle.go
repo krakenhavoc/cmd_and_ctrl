@@ -53,7 +53,9 @@ func init() {
 
 // thassasOracleResolve is the trigger's effect. It captures nothing:
 // the controller comes off the item, and X is fixed once, at the start
-// of the resolution, and carried into the continuation by value.
+// of the resolution, and carried into the continuation as data (the
+// pick's Nums; #4253 sweep), so a table waiting on the pick is a restore
+// point.
 func thassasOracleResolve(g *game.Game, item *game.StackItem) error {
 	me := item.Controller
 	x := devotionTo(g, me, NewContext(g, item).TextColor("U"))
@@ -65,15 +67,25 @@ func thassasOracleResolve(g *game.Game, item *game.StackItem) error {
 		Cards:    looked,
 		Min:      0,
 		Max:      1,
-		Then: func(ctx *Context, _, left []uuid.UUID) error {
-			if err := ctx.Game.PutOnBottomInRandomOrderForEffect(me, game.ZoneLibrary, left); err != nil {
-				return err
-			}
-			p := ctx.Game.PlayerByIDForEffect(me)
-			if p == nil || x < p.Library.Size() {
-				return nil
-			}
-			return WinTheGame{Player: me}.Apply(ctx)
-		},
+		Keyed:    thassasOracleArranged,
+		Nums:     []int{x},
 	}.Apply(NewContext(g, item))
 }
+
+// thassasOracleArranged puts the cards left on the bottom in a random
+// order, then wins if X (the pick's one number) is at least the library.
+// An on-disk key.
+var thassasOracleArranged = RegisterRevealPick("choose-cards/thassas-oracle-arranged", func(ctx *Context, _, left []uuid.UUID, nums []int) error {
+	if len(nums) == 0 {
+		return nil
+	}
+	me := ctx.Controller()
+	if err := ctx.Game.PutOnBottomInRandomOrderForEffect(me, game.ZoneLibrary, left); err != nil {
+		return err
+	}
+	p := ctx.Game.PlayerByIDForEffect(me)
+	if p == nil || nums[0] < p.Library.Size() {
+		return nil
+	}
+	return WinTheGame{Player: me}.Apply(ctx)
+})

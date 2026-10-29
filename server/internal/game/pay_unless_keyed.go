@@ -11,11 +11,13 @@ import (
 // whose branches are a KEY rather than closures (#4256, #4264), so a
 // table waiting on the payer is a restore point.
 //
-// QueuePayUnlessForEffect parks the decline on the prompt's
-// payUnlessFrame as a closure, with the parsed cost beside it, and a
-// prompt with a frame is not written to a restore point. A table waiting
-// on Rhystic Study's, Smothering Tithe's or Esper Sentinel's payer could
-// be undone but not saved and restored.
+// The closure form parked the decline on the prompt's payUnlessFrame,
+// with the parsed cost beside it, and a prompt with a frame is not
+// written to a restore point. A table waiting on Rhystic Study's,
+// Smothering Tithe's or Esper Sentinel's payer could be undone but not
+// saved and restored. #4361 deleted it: every pay-unless is keyed, and
+// one with nothing hanging off its answer names the engine's
+// payUnlessNothing.
 //
 // The keyed form carries no frame. What the answer needs is plain data
 // the prompt already has or that rides on it: the payer (Chooser), the
@@ -201,6 +203,31 @@ func lookupPayUnlessElse(key string) (payUnlessEntry, bool) {
 	return e, ok
 }
 
+// payUnlessNothing is the key of a pay-unless with nothing hanging off
+// either answer (#4361): the PayUnless primitive with no Else, or an
+// upkeep "pay" or an energy payment queued with no branches. Both
+// branches are nil, so the prompt is answered exactly as a frame with no
+// callbacks was, and it carries no closure, so a table waiting on it is
+// a restore point. The key is an on-disk identity: never renamed, never
+// reused.
+var payUnlessNothing = func() PayUnlessElse {
+	const key = "pay-unless/nothing"
+	effectRegistryMu.Lock()
+	defer effectRegistryMu.Unlock()
+	checkEffectKey("pay-unless branches", key)
+	payUnlessElses[key] = payUnlessEntry{}
+	return PayUnlessElse{key: key}
+}()
+
+// orNothing is e, or payUnlessNothing for a prompt queued with no
+// branches.
+func (e PayUnlessElse) orNothing() PayUnlessElse {
+	if e.key == "" {
+		return payUnlessNothing
+	}
+	return e
+}
+
 // KnownPayUnlessElse reports whether this binary has branches
 // registered under key.
 func KnownPayUnlessElse(key string) bool { _, ok := lookupPayUnlessElse(key); return ok }
@@ -381,12 +408,12 @@ func (g *Game) QueuePayUnlessPromptKeyedForEffect(p PayUnlessKeyedPrompt) error 
 	return nil
 }
 
-// QueuePayUnlessKeyedForEffect is QueuePayUnlessForEffect with the
-// decline as a registered key and `carry` the plain data it is handed:
-// "you may draw a card unless that player pays {1}" (Rhystic Study).
-// The prompt carries no closure, so a table waiting on it is a restore
-// point. Everything else is QueuePayUnlessForEffect's: an unparseable
-// cost or a payer who has left runs the decline at once.
+// QueuePayUnlessKeyedForEffect is "unless that player pays <cost>" with
+// the decline as a registered key and `carry` the plain data it is
+// handed: "you may draw a card unless that player pays {1}" (Rhystic
+// Study). The prompt carries no closure, so a table waiting on it is a
+// restore point. An unparseable cost or a payer who has left runs the
+// decline at once.
 //
 // Caller must hold g.mu.
 func (g *Game) QueuePayUnlessKeyedForEffect(
@@ -401,18 +428,15 @@ func (g *Game) QueuePayUnlessKeyedForEffect(
 	})
 }
 
-// payUnlessFrameOf is the frame a pay-unless prompt answers through:
-// its own, or, for a keyed one, a frame built from its data (the cost
-// re-parsed or the non-mana payment read off the prompt, the branches
-// looked up by their key when they run). Nil for any other prompt.
-// Every reader of a pay-unless frame goes through this, so a keyed
-// prompt is answered, auto-answered and dropped as a framed one is.
+// payUnlessFrameOf is the frame a pay-unless prompt answers through,
+// built from its data (the cost re-parsed or the non-mana payment read
+// off the prompt, the branches looked up by their key when they run).
+// Nil for any other prompt. Every reader of a pay-unless frame goes
+// through this, so a prompt is answered, auto-answered and dropped from
+// its data alone (#4361: no prompt holds a frame).
 func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 	if c == nil {
 		return nil
-	}
-	if c.payUnlessResume != nil {
-		return c.payUnlessResume
 	}
 	if c.Kind != PendingChoicePayUnless || c.PickThen == "" {
 		return nil
@@ -456,9 +480,12 @@ func payUnlessFrameOf(c *PendingChoice) *payUnlessFrame {
 	return f
 }
 
-// QueueMayPayKeyedForEffect is QueueMayPayForEffect (and, with
-// inThisStep, QueueMayPayInThisStepForEffect) with the payment's
-// consequence as a registered key (#4264): "you may pay {2}{U}. If you
+// QueueMayPayKeyedForEffect is "you may pay <cost>. If you do, ..." with
+// the payment's consequence as a registered key (#4264; the closure doors
+// QueueMayPayForEffect and QueueMayPayInThisStepForEffect were deleted in
+// #4253's cleanup). With inThisStep the prompt is anchored to the current
+// step (PendingChoice.OwedInStep), so the table cannot walk out of a combat
+// before the answer (Hellkite Charger): "you may pay {2}{U}. If you
 // do, ...". The key's pay branch runs only when the mana was really
 // paid; a payer who cannot be asked runs nothing. The prompt carries no
 // closure, so a table waiting on it is a restore point.
@@ -477,8 +504,8 @@ func (g *Game) QueueMayPayKeyedForEffect(
 	})
 }
 
-// QueueMayPayElseKeyedForEffect is QueueMayPayElseForEffect with both
-// consequences as one registered key: "you may pay {1}. If you do, ....
+// QueueMayPayElseKeyedForEffect is the may-pay with a consequence on
+// both answers, as one registered key: "you may pay {1}. If you do, ....
 // If you don't, ..." (Springheart Nantuko). A payer who cannot be asked
 // runs the decline, pay-unless's default.
 //

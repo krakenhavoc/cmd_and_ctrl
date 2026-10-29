@@ -23,7 +23,7 @@ import (
 // with control magic: a permanent you stole comes back to its owner. A
 // token exiled this way ceases to exist (CR 111.8). A commander among
 // the targets pauses on its owner's CR 903.9 question; the return waits
-// on ExileCardsThenForEffect's continuation for the cards that really
+// on ExileCardsKeyedForEffect's continuation for the cards that really
 // reached exile.
 //
 // No simplification. Roon deck request (#4128).
@@ -55,7 +55,12 @@ func bragoBlinkTargets(g *game.Game, item *game.StackItem) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(bragoReturn))
 }
+
+// bragoReturn returns the cards that reached exile, together (#4253 slice 9).
+var bragoReturn = CardTail("brago-king-eternal/return-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+
+	return ReturnFromExileTogether{Targets: exiled}.Apply(NewContext(g, item))
+})

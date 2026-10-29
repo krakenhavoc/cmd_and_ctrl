@@ -42,17 +42,31 @@ func queueCreatureTypeChoice(g *game.Game, chooser uuid.UUID) {
 	})
 }
 
+// testMayCastAnswers counts the answers the keyed may_cast below reaches,
+// by branch. A registered answer captures nothing, so the test reads
+// package state.
+var testMayCastAnswers struct{ accepted, declined int }
+
+var testMayCastFlags = game.RegisterMayCastThen("test/4361-legal-may-cast-flags", func(_ *game.Game, r game.MayCastAnswer) error {
+	if r.Accepted {
+		testMayCastAnswers.accepted++
+	} else {
+		testMayCastAnswers.declined++
+	}
+	return nil
+})
+
 func TestMayCastOffersBothAnswersAndDeclineIsTheWayOut(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
 	hit := handCard(me, creature("Cascade Hit", "{3}{G}", 3, 3))
-	var accepted, declined bool
+	testMayCastAnswers.accepted, testMayCastAnswers.declined = 0, 0
 	g.WithWriteLock(func() {
-		if err := g.QueueMayCastForEffect(me.ID, uuid.New(), hit, "Bloodbraid Elf — cast Cascade Hit for free?",
-			func(*game.Game) error { accepted = true; return nil },
-			func(*game.Game) error { declined = true; return nil },
-		); err != nil {
-			t.Fatalf("QueueMayCastForEffect: %v", err)
+		if err := g.QueueMayCastKeyedForEffect(game.MayCastPrompt{
+			Chooser: me.ID, Source: uuid.New(), Card: hit,
+			Question: "Bloodbraid Elf — cast Cascade Hit for free?",
+		}, testMayCastFlags, nil); err != nil {
+			t.Fatalf("QueueMayCastKeyedForEffect: %v", err)
 		}
 	})
 
@@ -77,18 +91,18 @@ func TestMayCastOffersBothAnswersAndDeclineIsTheWayOut(t *testing.T) {
 	if !sawDecline {
 		t.Errorf("no decline answer: %v", labels(moves))
 	}
-	if accepted || declined {
+	if testMayCastAnswers.accepted != 0 || testMayCastAnswers.declined != 0 {
 		t.Fatal("setup: a branch ran before any answer was dispatched")
 	}
 	dispatchAll(t, g, me.ID, moves)
 
-	// dispatchAll replays each answer on a clone, and a clone shares
-	// the prompt's branch closures. So both flags flipping proves each
+	// dispatchAll replays each answer on a clone, and every clone looks
+	// the answer up by the prompt's key. So both counts moving proves each
 	// answer reached its own branch, not merely that it was accepted.
-	if !accepted {
+	if testMayCastAnswers.accepted == 0 {
 		t.Error("the accept answer never reached the accept branch")
 	}
-	if !declined {
+	if testMayCastAnswers.declined == 0 {
 		t.Error("the decline answer never reached the decline branch")
 	}
 }

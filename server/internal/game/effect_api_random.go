@@ -6,7 +6,11 @@ import "github.com/google/uuid"
 type RandomDraw struct{ Player, Source uuid.UUID }
 
 // RollDiceForEffect rolls n natural d-sides results and emits one event per
-// die. Caller must hold g.mu.
+// die. It is the UNREPLACEABLE roll: no replacement sees it (#4307). A
+// card's instruction to roll goes through RollDiceThenForEffect
+// (dice_roll.go) instead, which a replacement of the roll can change and
+// pause; this door is the starting player's roll (opening_roll.go) and the
+// tests that pin the roll stream. Caller must hold g.mu.
 func (g *Game) RollDiceForEffect(d RandomDraw, sides, n int) ([]int, error) {
 	return g.RollDiceIgnoringLowestForEffect(d, sides, n, 0)
 }
@@ -116,7 +120,7 @@ func (g *Game) ChooseAtRandomForEffect(d RandomDraw, ids []uuid.UUID, k int) []u
 }
 
 // CoinFlipSpec describes a call-and-win/loss flip. Wins is carried through a
-// chain for the client and bot stop hint; Then may queue the next link.
+// chain for the client and bot stop hint; ThenKey may queue the next link.
 type CoinFlipSpec struct {
 	Flipper       uuid.UUID
 	Source        uuid.UUID
@@ -125,7 +129,17 @@ type CoinFlipSpec struct {
 	AllowStop     bool
 	MaxUsefulWins int
 	Wins          int
-	Then          func(*Game, CoinFlipResult) error
+
+	// ThenKey is the rest of the card as a registered continuation
+	// (RegisterCoinFlipThen, #4253 slice 10b), and Carry, Nums, Words and
+	// Asked the plain data it is handed (CoinFlipped). A call holds no
+	// closure, so a table waiting on it is a restore point. Zero is a flip
+	// with nothing hanging off it. The closure form is gone (#4361).
+	ThenKey CoinFlipThen
+	Carry   []uuid.UUID
+	Nums    []int
+	Words   []string
+	Asked   *AskedItem
 }
 
 type CoinFlipResult struct {
@@ -135,8 +149,6 @@ type CoinFlipResult struct {
 	Stopped bool
 }
 
-type coinFlipFrame struct{ spec CoinFlipSpec }
-
 // FlipCoinForEffect queues a coin-call choice. The result is intentionally
 // drawn only when answered, and as won/lost rather than as a face: changing a
 // call after undo changes the face but cannot turn a loss into a win.
@@ -145,12 +157,15 @@ func (g *Game) FlipCoinForEffect(spec CoinFlipSpec) uuid.UUID {
 	if spec.Coins <= 0 {
 		spec.Coins = 1
 	}
-	return g.QueueChoiceForEffect(PendingChoice{
+	c := PendingChoice{
 		Kind: PendingChoiceCoinCall, Chooser: spec.Flipper, FromPlayer: spec.Flipper,
 		Source: spec.Source, Reason: spec.Question, CoinAllowStop: spec.AllowStop,
 		CoinCount: spec.Coins, CoinMaxUsefulWins: spec.MaxUsefulWins, CoinWins: spec.Wins,
-		coinFlipResume: &coinFlipFrame{spec: spec},
-	})
+	}
+	// #4253 slice 10b: a keyed call, or one with nothing hanging off it, is
+	// data (coin_flip_keyed.go).
+	spec.keyedCoinFlip(&c)
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveCoinCall settles a coin-call prompt. call is heads, tails, or stop
@@ -177,9 +192,9 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 	if call == "stop" && !choice.CoinAllowStop {
 		return ErrInvalidParam
 	}
-	frame := choice.coinFlipResume
+	spec, ok := coinFlipSpecOf(choice)
 	g.dequeueChoiceLocked(idx)
-	if frame == nil {
+	if !ok {
 		return nil
 	}
 	result := CoinFlipResult{Call: call, Stopped: call == "stop"}
@@ -187,9 +202,9 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 		result.Call = ""
 	}
 	if !result.Stopped {
-		r := g.randForLocked(rngStream{kind: rngStreamFlip, player: frame.spec.Flipper, source: frame.spec.Source})
-		result.Faces = make([]bool, frame.spec.Coins)
-		result.Won = make([]bool, frame.spec.Coins)
+		r := g.randForLocked(rngStream{kind: rngStreamFlip, player: spec.Flipper, source: spec.Source})
+		result.Faces = make([]bool, spec.Coins)
+		result.Won = make([]bool, spec.Coins)
 		batch := g.eventSeq + 1
 		for i := range result.Faces {
 			won := r.IntN(2) == 0
@@ -200,13 +215,11 @@ func (g *Game) ResolveCoinCall(choiceID, chooserID uuid.UUID, call string) error
 			if head {
 				label = "heads"
 			}
-			g.EmitEvent(Event{Kind: EventFlipCoin, Actor: frame.spec.Flipper, Source: frame.spec.Source, Label: label, Call: call, Won: won, BatchSeq: batch})
+			g.EmitEvent(Event{Kind: EventFlipCoin, Actor: spec.Flipper, Source: spec.Source, Label: label, Call: call, Won: won, BatchSeq: batch})
 		}
 	}
-	if frame.spec.Then != nil {
-		if err := frame.spec.Then(g, result); err != nil {
-			g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: frame.spec.Source, ErrorMsg: err.Error()})
-		}
+	if err := g.runCoinFlipThen(spec, result); err != nil {
+		g.EmitEvent(Event{Kind: EventEffectError, Actor: chooserID, Source: spec.Source, ErrorMsg: err.Error()})
 	}
 	g.runStateChecksLocked()
 	return nil

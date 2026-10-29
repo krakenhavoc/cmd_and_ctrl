@@ -83,87 +83,46 @@ func (d PromptedDiscards) Cards() []uuid.UUID { return seatCardsFlat(d) }
 // Syphon Mind draws that many.
 func (d PromptedDiscards) Count() int { return seatCardsCount(d) }
 
-// PlayerDiscardsThenForEffect is QueueDiscardChoiceForEffect with the
-// rest of the card attached: "target opponent … discards a card, and
-// loses 3 life" (Archon of Cruelty), "discard two cards, then draw
-// three".
+// PlayersDiscardForEffect is the GENERAL fire-and-forget form: one prompt per
+// entry in `players`, in the order given, with NOTHING waiting on the
+// answer — "each of two target opponents discards a card", the seats being
+// a spell's targets rather than the whole table (Momentum Breaker's
+// opponents who could not sacrifice).
 //
-// `p.Player` is the seat asked. One prompt goes up, however many cards
-// the instruction asks for — a discard of N is one question over the
-// hand, not N questions — so this run has exactly one leg.
+// One prompt goes up per seat, however many cards the instruction asks
+// for: a discard of N is one question over the hand, not N questions.
+// `p.Player` is IGNORED; the seats come from `players`. Everything else on
+// the prompt (the count, the "up to", the question) is the template each
+// seat is asked with, which is what makes "each opponent discards TWO
+// cards" one call. A caller that names the same seat twice gets two
+// prompts.
 //
-// `then` runs once that leg has settled AND the cards it named have
-// finished moving, and it runs even when nothing was discarded,
-// including when the hand was empty and no prompt went up: a
-// continuation is the rest of a card that is paused mid-resolution
-// (#544, #1006), and one that is silently never called is a card that
-// stops halfway.
+// A card that reads what was discarded uses PlayersDiscardThenKeyedForEffect
+// (discard_run_keyed.go). The closure forms of this and of the fan-out,
+// PlayersDiscardThenForEffect and EachPlayerDiscardsThenForEffect, were
+// deleted in #4253 once only tests called them. Returns the number of
+// prompts queued, which is a count of QUESTIONS and not of discards: no
+// clause may be gated on it.
 //
-// Note what this does NOT replace: `p.Then` is this PROMPT's own
-// "then", the rest of its own sentence, and a card may set both — see
-// DiscardPrompt.Then. The prompt's runs first.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PlayerDiscardsThenForEffect(p DiscardPrompt, then func(g *Game, discarded PromptedDiscards) error) error {
-	_, err := g.discardRunLocked([]uuid.UUID{p.Player}, p, then)
-	return err
-}
-
-// PlayersDiscardThenForEffect is the GENERAL form: one prompt per
-// entry in `players`, in the order given, with one continuation over
-// the lot — the seats being a spell's targets rather than the whole
-// table.
-//
-// `p.Player` is IGNORED; the seats come from `players`. Everything
-// else on the prompt (the count, the "up to", the set-level Validate,
-// the per-leg Then, the question) is the template each seat is asked
-// with, which is what makes "each opponent discards TWO cards" one
-// call. A caller that names the same seat twice gets two prompts and
-// one entry in the answer.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) PlayersDiscardThenForEffect(
-	players []uuid.UUID,
-	p DiscardPrompt,
-	then func(g *Game, discarded PromptedDiscards) error,
-) error {
-	_, err := g.discardRunLocked(players, p, then)
-	return err
-}
-
-// EachPlayerDiscardsThenForEffect is the APNAP fan-out: "each player
-// discards a card", "each other player discards a card", "each
-// opponent discards a card. You draw a card for each card discarded
-// this way" (Syphon Mind).
-//
-// `except` is the player who does NOT discard ("each OTHER player" /
-// "each opponent"), or uuid.Nil when everyone does. Seats are walked
-// from the active player, which is the order their entries appear in
-// the answer. `p.Player` is ignored, as it is for the general form.
-//
-// Caller must hold g.mu in write mode (resolution frame).
-func (g *Game) EachPlayerDiscardsThenForEffect(
-	except uuid.UUID,
-	p DiscardPrompt,
-	then func(g *Game, discarded PromptedDiscards) error,
-) error {
-	_, err := g.discardRunLocked(g.discardFanOutSeatsLocked(except), p, then)
-	return err
+// Caller must hold g.mu.
+func (g *Game) PlayersDiscardForEffect(players []uuid.UUID, p DiscardPrompt) int {
+	queued, _ := g.discardRunLocked(players, p)
+	return queued
 }
 
 // EachPlayerDiscardsForEffect is the fan-out with NOTHING waiting on
 // it — Liliana of the Veil's "+1: each player discards a card",
 // Burglar Rat's "each opponent discards a card".
 //
-// EachPlayerDiscardsThenForEffect without the continuation, and the
-// loop five catalog callers used to write out. Returns the number of
+// the APNAP walk (discardFanOutSeatsLocked) and the loop five catalog
+// callers used to write out. Returns the number of
 // prompts queued, which is a count of QUESTIONS and not of discards:
 // no clause may be gated on it (the payout lint's `discardPromptVerb`
 // row says so).
 //
 // Caller must hold g.mu.
 func (g *Game) EachPlayerDiscardsForEffect(except uuid.UUID, p DiscardPrompt) int {
-	queued, _ := g.discardRunLocked(g.discardFanOutSeatsLocked(except), p, nil)
+	queued, _ := g.discardRunLocked(g.discardFanOutSeatsLocked(except), p)
 	return queued
 }
 
@@ -192,29 +151,20 @@ func (g *Game) discardFanOutSeatsLocked(except uuid.UUID) []uuid.UUID {
 
 // discardRunLocked is the discard verb's half of a prompted run: the
 // shared body (runPromptsLocked) with the discard prompt as its queue
-// step and PromptedDiscards as the name its continuation reads the
-// answer under.
+// step. Nothing waits on it: a run that does is the keyed form
+// (discardRunKeyedLocked).
 //
 // Caller must hold g.mu.
 func (g *Game) discardRunLocked(
 	asks []uuid.UUID,
 	p DiscardPrompt,
-	then func(g *Game, discarded PromptedDiscards) error,
 ) (int, error) {
-	var landedThen func(*Game, []SeatCards) error
-	if then != nil {
-		landedThen = func(g *Game, landed []SeatCards) error {
-			return then(g, PromptedDiscards(landed))
-		}
-	} else if p.Then == nil && p.Validate == nil && p.keyed.key == "" {
-		// #4290: nothing waits on the run and nothing rides the leg, so
-		// each leg is a keyed prompt and holds no closure — Tasigur's
-		// Cruelty, the voting helper's "each opponent discards", and
-		// Momentum Breaker's discard for the seats that could not
-		// sacrifice are restore points while they wait.
-		p.keyedLeg = true
-	}
-	return g.runPromptsLocked(asks, landedThen, func(seat, run uuid.UUID) bool {
+	// #4290: nothing waits on the run, so each leg is a keyed prompt and
+	// holds no closure — Tasigur's Cruelty, the voting helper's "each
+	// opponent discards", and Momentum Breaker's discard for the seats
+	// that could not sacrifice are restore points while they wait. Since
+	// #4361 S7b no leg can carry a closure (queueDiscardPromptLocked).
+	return g.runPromptsLocked(asks, func(seat, run uuid.UUID) bool {
 		// CR 701.9a's "as many as you can": a seat with an empty hand
 		// is asked nothing and gets no leg, and a seat that has left
 		// the game can never answer. Both are

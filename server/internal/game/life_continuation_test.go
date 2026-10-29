@@ -87,13 +87,13 @@ func TestLifeContinuationRunsWithTheReplacedAmount(t *testing.T) {
 	var got []int
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(doubleLifeReplacement(uuid.Nil))
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, 3,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, 3,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 1 || got[0] != 6 {
@@ -116,13 +116,13 @@ func TestLifeContinuationRunsAfterACR616Pause(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(plusOneLifeReplacement(uuid.Nil))
 		g.RegisterReplacementForTest(doubleLifeReplacement(uuid.Nil))
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, 3,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, 3,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 0 {
@@ -162,13 +162,13 @@ func TestLifeContinuationRunsWithZeroWhenTheChangeIsReplacedAway(t *testing.T) {
 			},
 			Label: "your life total can't change",
 		})
-		err := g.ChangePlayerLifeThenForEffect(uuid.Nil, g.Seats[0].ID, -4,
-			func(_ *Game, applied int) error {
+		err := g.ChangePlayerLifeKeyedForEffect(uuid.Nil, g.Seats[0].ID, -4,
+			lifeHook(func(_ *Game, applied int) error {
 				got = append(got, applied)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("ChangePlayerLifeThenForEffect: %v", err)
+			t.Fatalf("ChangePlayerLifeKeyedForEffect: %v", err)
 		}
 	})
 	if len(got) != 1 || got[0] != 0 {
@@ -190,13 +190,14 @@ func TestLoseLifeEachThenSumsTheAppliedAmounts(t *testing.T) {
 	var total []int
 	g.WithWriteLock(func() {
 		g.RegisterReplacementForTest(doubleLifeReplacement(b))
-		err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 2,
-			func(_ *Game, lost int) error {
+		err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 2,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				lost := o.Amount
 				total = append(total, lost)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 1 || total[0] != 6 {
@@ -224,13 +225,14 @@ func TestLoseLifeEachThenWaitsForAPausedLeg(t *testing.T) {
 		// Two different replacements on `a` only: that one prompts.
 		g.RegisterReplacementForTest(plusOneLifeReplacement(a))
 		g.RegisterReplacementForTest(doubleLifeReplacement(a))
-		err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3,
-			func(_ *Game, lost int) error {
+		err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				lost := o.Amount
 				total = append(total, lost)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 0 {
@@ -258,13 +260,14 @@ func TestLoseLifeEachThenSkipsPlayersWhoAreGone(t *testing.T) {
 	gone := uuid.New()
 	var total []int
 	g.WithWriteLock(func() {
-		err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{gone, g.Seats[1].ID, gone}, 2,
-			func(_ *Game, lost int) error {
+		err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{gone, g.Seats[1].ID, gone}, 2,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				lost := o.Amount
 				total = append(total, lost)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	})
 	if len(total) != 1 || total[0] != 2 {
@@ -419,13 +422,14 @@ func TestUndoAcrossALifePauseReplaysTheSameWay(t *testing.T) {
 	a, b := g.Seats[1].ID, g.Seats[2].ID
 	var total []int
 	drain := func() {
-		err := g.LoseLifeEachThenForEffect(uuid.Nil, []uuid.UUID{a, b}, 3,
-			func(_ *Game, lost int) error {
+		err := g.LoseLifeEachKeyedForEffect(uuid.Nil, []uuid.UUID{a, b}, 3,
+			hookTail(func(_ *Game, o TailOutcome) error {
+				lost := o.Amount
 				total = append(total, lost)
 				return nil
-			})
+			}))
 		if err != nil {
-			t.Fatalf("LoseLifeEachThenForEffect: %v", err)
+			t.Fatalf("LoseLifeEachKeyedForEffect: %v", err)
 		}
 	}
 

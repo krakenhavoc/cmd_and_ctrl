@@ -38,8 +38,27 @@ type RunDone struct {
 	// Landed is one entry per seat the run ASKED, in ask order, with
 	// what that seat really moved (SeatCards). Nil when nobody was asked.
 	Landed []SeatCards
-	// Carry is the plain data the queuing card put on the run.
+	// Carry and Nums are the plain data the queuing card put on the run.
 	Carry []uuid.UUID
+	Nums  []int
+	// Asked is the stack item that asked, as data (NewAskedItem), or nil
+	// when the card put none there. Item rebuilds it.
+	Asked *AskedItem
+}
+
+// Item is the stack item the run's continuation runs against: a copy
+// rebuilt from the data the run carried (AskedItem.StackItem), nil when
+// the card put none there. A new copy each call.
+func (r RunDone) Item() *StackItem { return r.Asked.StackItem() }
+
+// RunData is the plain data a keyed run hands its continuation beside the
+// answer: IDs and numbers the card put there, and the stack item that asked
+// (NewAskedItem). A run holds no closure, so everything the rest of the
+// card read from the frame of its Go function travels here.
+type RunData struct {
+	Carry []uuid.UUID
+	Nums  []int
+	Asked *AskedItem
 }
 
 // Discards reads the answer as a discard run's (PromptedDiscards).
@@ -77,12 +96,17 @@ type PromptRunThen struct{ key string }
 // Key is the continuation's on-disk key.
 func (r PromptRunThen) Key() string { return r.key }
 
+// Valid reports whether this names a registered continuation: false for
+// the zero value.
+func (r PromptRunThen) Valid() bool { return r.key != "" }
+
 // promptRunThens and promptRunLegs are guarded by effectRegistryMu, with
 // the other effect keys, because the keys share one namespace and one
 // ledger. A leg tail shares its run's key and needs no ledger line.
 var (
 	promptRunThens = map[string]PromptRunFunc{}
 	promptRunLegs  = map[string]PromptRunLegFunc{}
+	promptRunRules = map[string]SetRuleFunc{}
 )
 
 // RegisterPromptRunThen registers a keyed run continuation. Call it
@@ -97,7 +121,7 @@ func RegisterPromptRunThen(key string, fn PromptRunFunc) PromptRunThen {
 // whose seats each have the rest of their own sentence (Vicious
 // Rumors' "then mills a card"). `leg` runs for each seat as its discard
 // lands, and for a seat asked nothing because its hand was empty (CR
-// 701.9a), exactly as DiscardPrompt.Then does for the closure form.
+// 701.9a), as a discard's "then" always has (#797).
 func RegisterPromptRunThenLeg(key string, leg PromptRunLegFunc, fn PromptRunFunc) PromptRunThen {
 	effectRegistryMu.Lock()
 	defer effectRegistryMu.Unlock()
@@ -110,6 +134,32 @@ func RegisterPromptRunThenLeg(key string, leg PromptRunLegFunc, fn PromptRunFunc
 		promptRunLegs[key] = leg
 	}
 	return PromptRunThen{key: key}
+}
+
+// RegisterPromptRunThenRule is RegisterPromptRunThen for a run whose legs
+// are permanent picks with a set rule (Tragic Arrogance's "an artifact, a
+// creature, an enchantment and a planeswalker"): every answer to a leg,
+// and every answer the enumerator offers, is checked against `rule` (nil
+// allows every set the bounds allow). The rule shares the run's key, so a
+// binary that does not know the key refuses the file and one that knows it
+// has the rule. It is never called for an empty pick and is a function of
+// the cards alone, so it must capture nothing.
+func RegisterPromptRunThenRule(key string, rule SetRuleFunc, fn PromptRunFunc) PromptRunThen {
+	then := RegisterPromptRunThen(key, fn)
+	if rule != nil {
+		effectRegistryMu.Lock()
+		promptRunRules[key] = rule
+		effectRegistryMu.Unlock()
+	}
+	return then
+}
+
+// lookupPromptRunRule is the set rule registered with a run, nil when it
+// has none.
+func lookupPromptRunRule(key string) SetRuleFunc {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	return promptRunRules[key]
 }
 
 func lookupPromptRunThen(key string) (PromptRunFunc, bool) {
@@ -172,6 +222,10 @@ type promptRunSnapshot struct {
 	Key    string                 `json:"key"`
 	Carry  []uuid.UUID            `json:"carry,omitempty"`
 	Source uuid.UUID              `json:"source,omitempty"`
+	// Nums and Asked are RunData's other two fields. Additive within the
+	// version: a file without them restores a run that reads none.
+	Nums  []int      `json:"nums,omitempty"`
+	Asked *AskedItem `json:"asked,omitempty"`
 }
 
 // promptRunSeatLanding is one seat's landed list on disk.
@@ -181,10 +235,9 @@ type promptRunSeatLanding struct {
 }
 
 // snapshotPromptRuns writes the keyed runs in flight, ordered by ID so
-// two captures of one table are byte-identical, and counts every run
-// whose continuation is a closure: a leg of it is no restore point, and
-// the census says so once per run.
-func snapshotPromptRuns(runs map[uuid.UUID]*promptRun, cen *ContinuationCensus) []promptRunSnapshot {
+// two captures of one table are byte-identical. Every run kept is keyed:
+// the closure form, which the census counted here, is gone (#4361).
+func snapshotPromptRuns(runs map[uuid.UUID]*promptRun) []promptRunSnapshot {
 	if len(runs) == 0 {
 		return nil
 	}
@@ -199,9 +252,9 @@ func snapshotPromptRuns(runs map[uuid.UUID]*promptRun, cen *ContinuationCensus) 
 		if run == nil {
 			continue
 		}
-		if run.then != nil || run.thenKey == "" {
-			cen.ChoiceResumeFrames++
-			cen.note("a prompted run waits on %d prompt(s) with a continuation closure", run.outstanding)
+		if run.thenKey == "" {
+			// Never kept (startRunLocked): a run nobody waits on has no
+			// link. The closure form is gone (#4361).
 			continue
 		}
 		rs := promptRunSnapshot{
@@ -211,6 +264,8 @@ func snapshotPromptRuns(runs map[uuid.UUID]*promptRun, cen *ContinuationCensus) 
 			Key:         run.thenKey,
 			Carry:       copyUUIDs(run.carry),
 			Source:      run.source,
+			Nums:        copyInts(run.nums),
+			Asked:       copyAskedItem(run.asked),
 		}
 		for _, seat := range run.seats {
 			if cards := run.landed[seat]; len(cards) > 0 {
@@ -240,6 +295,8 @@ func restorePromptRuns(in []promptRunSnapshot) map[uuid.UUID]*promptRun {
 			thenKey:     rs.Key,
 			carry:       copyUUIDs(rs.Carry),
 			source:      rs.Source,
+			nums:        copyInts(rs.Nums),
+			asked:       copyAskedItem(rs.Asked),
 		}
 		for _, l := range rs.Landed {
 			run.landed[l.Seat] = copyUUIDs(l.Cards)

@@ -72,11 +72,15 @@ func witchKingEdict(g *game.Game, item *game.StackItem) error {
 		ExceptController: true,
 		Match:            And(Creature(), dealtCombatDamageToPlayerThisTurn(you)),
 		Label:            "a creature that dealt combat damage to you this turn",
-		Then: func(ctx *Context, _ game.PromptedSacrifices) error {
-			return TheRingTemptsYou{Player: you}.Apply(ctx)
-		},
+		Keyed:            witchKingEdicted,
 	}.Apply(ctx)
 }
+
+// witchKingEdicted is the Ring tempting you once the edict has landed,
+// keyed (#4290).
+var witchKingEdicted = RegisterEdictThen("prompt-run/witch-king-of-angmar-ring", func(ctx *Context, _ game.PromptedSacrifices) error {
+	return TheRingTemptsYou{Player: ctx.Controller()}.Apply(ctx)
+})
 
 func witchKingShield(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)

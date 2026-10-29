@@ -51,10 +51,10 @@ func TestDarknessCrystalDestroyContinuationWaitsForTheGain(t *testing.T) {
 	draws := 0
 
 	g.WithWriteLock(func() {
-		err := g.DestroyPermanentsThenForEffect([]uuid.UUID{bear}, func(g *game.Game, _ []uuid.UUID) error {
+		err := g.DestroyPermanentsKeyedForEffect([]uuid.UUID{bear}, hookTail(func(g *game.Game, o game.TailOutcome) error {
 			draws++
 			return g.DrawNForEffect(me.ID, 1)
-		})
+		}))
 		if err != nil {
 			t.Fatalf("destroy: %v", err)
 		}

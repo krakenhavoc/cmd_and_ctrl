@@ -78,25 +78,30 @@ func dauthiVoidwalkerPlay(g *game.Game, item *game.StackItem) error {
 		Cards:    ids,
 		Min:      1,
 		Max:      1,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			for _, id := range picked {
-				z := g.FindCardZoneForEffect(id)
-				c, ok := g.LookupCardForEffect(id)
-				if !ok || z == nil || z.Kind != game.ZoneExile {
-					continue
-				}
-				g.GrantCastPermissionToCardsForEffect(game.CastPermission{
-					Player:     you,
-					Zone:       game.ZoneExile,
-					Duration:   g.UntilEndOfTurnDuration(),
-					Cost:       "{0}",
-					Source:     item.SourceCardID,
-					SourceName: "Dauthi Voidwalker",
-					Label:      "Dauthi Voidwalker — play it without paying its mana cost",
-				}, []game.Card{c})
-			}
-			return nil
-		},
+		ThenKey:  dauthiVoidwalkerPlayChosen,
 	})
 	return nil
 }
+
+// dauthiVoidwalkerPlayChosen is the keyed answer to "which exiled card": the
+// chooser may play it this turn without paying its mana cost (#4253). An
+// on-disk key: never renamed, never reused.
+var dauthiVoidwalkerPlayChosen = game.RegisterChooseCardsThen("choose-cards/dauthi-voidwalker-play", func(g *game.Game, r game.CardsChosen) error {
+	for _, id := range r.Picked {
+		z := g.FindCardZoneForEffect(id)
+		c, ok := g.LookupCardForEffect(id)
+		if !ok || z == nil || z.Kind != game.ZoneExile {
+			continue
+		}
+		g.GrantCastPermissionToCardsForEffect(game.CastPermission{
+			Player:     r.Chooser,
+			Zone:       game.ZoneExile,
+			Duration:   g.UntilEndOfTurnDuration(),
+			Cost:       "{0}",
+			Source:     r.Source,
+			SourceName: "Dauthi Voidwalker",
+			Label:      "Dauthi Voidwalker — play it without paying its mana cost",
+		}, []game.Card{c})
+	}
+	return nil
+})

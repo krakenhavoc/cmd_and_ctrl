@@ -83,13 +83,19 @@ var expropriateVoted = VoteResultThen("vote/expropriate", func(ctx *Context, r g
 			n := owed[voter]
 			return ids, n, n
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (GainControl{Target: id, Duration: game.IndefiniteDuration(), Label: "Expropriate — gain control"}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Keyed: expropriateChosen,
 	}.Apply(ctx)
+})
+
+// expropriateChosen is gaining control of each permanent chosen, keyed
+// (#4290).
+var expropriateChosen = RegisterPermanentsPick("prompt-run/expropriate-gain-control", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if err := (GainControl{Target: id, Duration: game.IndefiniteDuration(), Label: "Expropriate — gain control"}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
 })

@@ -66,7 +66,7 @@ func TestAPickFromTheSideboardIsEnumeratedAndEveryMoveIsAccepted(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Burning Wish — reveal a sorcery card", Max: 1,
-			Match: func(c game.Card) bool { return c.IsSorcery() },
+			Keyed: testLegalSorceryPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))
@@ -121,9 +121,11 @@ func TestAPairPickOffersOnlyPairsWithDifferentNames(t *testing.T) {
 		sideCard("Twin", "Sorcery"), sideCard("Twin", "Sorcery"), sideCard("Other", "Instant"))
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
+		// #4361 S7b: a pick over a sideboard is keyed, its set rule
+		// registered with its continuation.
 		g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
 			Player: me.ID, Question: "Extrapolate the Impossible", Min: 0, Max: 2,
-			Validate: func(picked []game.Card) bool { return len(picked) == 2 && picked[0].Name != picked[1].Name },
+			Keyed: testLegalTwoNamesPick,
 		})
 	})
 	moves := outsideChoiceMoves(legal.EnumerateFor(g, me.ID))
@@ -149,7 +151,7 @@ func TestTheOpponentsPickAmongRevealedCardsIsEnumerated(t *testing.T) {
 		g.RevealOutsideForEffect(game.RevealSpec{Player: me.ID, Reason: "reveal", Cards: ids})
 		if _, err := g.RevealPickThenForEffect(game.RevealPickPrompt{
 			Chooser: opp.ID, Owner: me.ID, Question: "choose one", Min: 1, Max: 1, Cards: ids,
-		}, nil); err != nil {
+		}); err != nil {
 			t.Fatal(err)
 		}
 	})

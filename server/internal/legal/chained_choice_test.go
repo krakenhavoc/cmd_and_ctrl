@@ -37,14 +37,12 @@ func TestConfirmEnumeratesBothBranches(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(game.ConfirmPrompt{
+		queueConfirmHooked(g, game.ConfirmPrompt{
 			Chooser:      me.ID,
 			Question:     "Sylvan Library — pay 4 life to keep it?",
 			AcceptLabel:  "Pay 4 life",
 			DeclineLabel: "Put it on top",
-			OnAccept:     func(*game.Game) error { return nil },
-			OnDecline:    func(*game.Game) error { return nil },
-		})
+		}, func(*game.Game) error { return nil }, func(*game.Game) error { return nil })
 	})
 
 	moves := legal.EnumerateFor(g, me.ID)
@@ -73,7 +71,7 @@ func TestConfirmIsTheOnlyThingOnOffer(t *testing.T) {
 		t.Fatal("setup: the active seat should have moves in its main phase")
 	}
 	g.WithWriteLock(func() {
-		g.QueueConfirmForEffect(game.ConfirmPrompt{Chooser: me.ID, Question: "?"})
+		queueConfirmHooked(g, game.ConfirmPrompt{Chooser: me.ID, Question: "?"}, nil, nil)
 	})
 	moves := legal.EnumerateFor(g, me.ID)
 	for _, m := range moves {
@@ -100,15 +98,14 @@ func TestChooseCardsEnumeratesExactlyTheLegalSets(t *testing.T) {
 		t.Fatalf("setup: wanted 3 cards in hand, got %d", len(cards))
 	}
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Question: "Sylvan Library — choose two cards drawn this turn",
 			Cards:    cards,
 			Min:      2,
 			Max:      2,
 			Zone:     game.ZoneHand,
-			Then:     func(*game.Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*game.Game, []uuid.UUID) error { return nil }, nil))
 	})
 
 	moves := legal.EnumerateFor(g, me.ID)
@@ -132,14 +129,13 @@ func TestChooseCardsOffersTheEmptyAnswerWhenItsFloorIsZero(t *testing.T) {
 	me := g.Seats[0]
 	cards := handOf(me, 2)
 	g.WithWriteLock(func() {
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  me.ID,
 			Question: "Put back",
 			Cards:    cards,
 			Min:      0,
 			Zone:     game.ZoneHand,
-			Then:     func(*game.Game, []uuid.UUID) error { return nil },
-		})
+		}, func(*game.Game, []uuid.UUID) error { return nil }, nil))
 	})
 	moves := legal.EnumerateFor(g, me.ID)
 	if len(moves) == 0 {

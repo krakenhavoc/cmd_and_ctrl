@@ -37,19 +37,25 @@ func init() {
 			if victim == uuid.Nil {
 				return nil
 			}
-			chooser, source := ctx.Controller(), ctx.Source()
-			ChooseColorThen(game.ColorForFilter, ctx.Game, chooser, source, "Addle — choose a color",
-				func(g *game.Game, color string) error {
-					next := NewContext(g, &game.StackItem{
-						Kind: game.StackItemSpell, Controller: chooser, Owner: chooser, SourceCardID: source,
-					})
-					return ChooseFromRevealedHand{
-						Player: victim,
-						Filter: OfColor(color),
-						Label:  game.ColorName(color) + " card",
-					}.Apply(next)
-				})
+			ChooseColorTail(game.ColorForFilter, ctx.Game, ctx.Controller(), ctx.Source(), "Addle — choose a color",
+				withCarry(ctx.ItemTail(addleColorChosen), victim))
 			return nil
 		},
 	})
 }
+
+// addleColorChosen is the rest of the spell once the colour (the tail's
+// Word) is known: the target player, its one carried ID, reveals their hand
+// and the caster chooses a card of that colour. Run against the asking spell.
+// An on-disk key.
+var addleColorChosen = CardTail("then/addle-color-chosen", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Carry) == 0 {
+		return nil
+	}
+	color := o.Tail.Word
+	return ChooseFromRevealedHand{
+		Player: o.Tail.Carry[0],
+		Filter: OfColor(color),
+		Label:  game.ColorName(color) + " card",
+	}.Apply(ctx)
+})

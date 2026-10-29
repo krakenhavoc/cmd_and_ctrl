@@ -27,12 +27,19 @@ func init() {
 		Name:         "Tasha's Hideous Laughter",
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			// One opponent at a time in APNAP order (CR 101.4, #4268).
-			item := ctx.Item
-			return eachPlayerInTurn(ctx.Game, ctx.Opponents(),
-				func(g *game.Game, opp uuid.UUID, next func(g *game.Game, cards []uuid.UUID) error) error {
-					return b27ExileTopUntilTotalManaValueThen(NewContext(g, item), opp, 20, next)
-				}, nil)
+			// One opponent at a time in APNAP order (CR 101.4, #4268), on
+			// a keyed chain (#4253).
+			return eachPlayerInTurn(ctx.Game, ctx.ItemTail(tashasExileStep), ctx.Opponents(), nil, game.KeyedTail{}, tashasExileAct)
 		},
 	})
+}
+
+// tashasExileStep is one opponent's step of Tasha's Hideous Laughter's
+// chain. An on-disk key.
+var tashasExileStep = registerEachPlayerStep("tashas-hideous-laughter/exile-step", tashasExileAct)
+
+// tashasExileAct is one opponent's run: exile until the total mana value
+// reaches 20.
+func tashasExileAct(ctx *Context, opp uuid.UUID, _ int, step game.KeyedTail) error {
+	return b27ExileTopUntilTotalManaValueThen(ctx, opp, 20, step)
 }

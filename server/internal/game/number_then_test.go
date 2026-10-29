@@ -57,7 +57,7 @@ func TestKeyedChooseNumberSurvivesARestore(t *testing.T) {
 			Unit: PayAmountCounters, Question: "how many?", Branch: numberProbeBranch(item),
 		})
 		c := payAmountChoice(g)
-		if c == nil || c.PickThen != numberProbe.Key() || c.chooseValueResume != nil {
+		if c == nil || c.PickThen != numberProbe.Key() {
 			t.Fatalf("%s: prompt = %+v, want the probe's key and no frame", resource, c)
 		}
 
@@ -167,27 +167,12 @@ func TestKeyedNumberRunsOnceWhenNothingIsAskedAndOnDeparture(t *testing.T) {
 	}
 }
 
-// A prompt that names a branch and also holds a closure is refused, and a
-// branch no binary registered is an error rather than a silent no-op.
-func TestKeyedNumberRefusesAClosureAndAnUnknownKey(t *testing.T) {
+// A branch no binary registered is an error rather than a silent no-op.
+// (The closure form a branch could be set beside is gone: #4361.)
+func TestKeyedNumberRefusesAnUnknownKey(t *testing.T) {
 	g := newActiveGame(t)
-	me := g.Seats[0]
 	g.WithWriteLock(func() {
-		err := g.QueueChooseNumberForEffect(ChooseNumber{
-			Chooser: me.ID, Source: uuid.New(), Max: 3, Branch: numberProbeBranch(nil),
-			Then: func(*Game, int) error { return nil },
-		})
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("a closure beside a branch: err = %v, want ErrInvalidParam", err)
-		}
-		err = g.QueuePayEnergyAmountForEffect(PayEnergyAmount{
-			Chooser: me.ID, Source: uuid.New(), Branch: numberProbeBranch(nil),
-			Then: func(*Game, int) error { return nil },
-		})
-		if !errors.Is(err, ErrInvalidParam) {
-			t.Errorf("a closure beside an energy branch: err = %v, want ErrInvalidParam", err)
-		}
-		err = g.runNumberBranch(testEffectKeyPrefix+"never-registered", NumberAnswer{}, carriedCause{})
+		err := g.runNumberBranch(testEffectKeyPrefix+"never-registered", NumberAnswer{}, carriedCause{})
 		if !errors.Is(err, ErrUnknownEffectKey) {
 			t.Errorf("an unknown branch: err = %v, want ErrUnknownEffectKey", err)
 		}
@@ -264,8 +249,8 @@ func TestAssistPromptSurvivesARestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := assistPrompt(t, g)
-	if before.PickThen != assistHelpKey || before.chooseValueResume != nil {
-		t.Fatalf("assist prompt names %q and holds a frame %v, want the engine's branch and none", before.PickThen, before.chooseValueResume != nil)
+	if before.PickThen != assistHelpKey {
+		t.Fatalf("assist prompt names %q, want the engine's branch", before.PickThen)
 	}
 
 	g = restoreStrictForTest(t, g)

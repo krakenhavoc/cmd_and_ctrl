@@ -108,26 +108,31 @@ func (g *Game) suspendLocked(p *Player, cardID uuid.UUID, sa SpecialAction) erro
 		return ErrSpecialActionNotOffered
 	}
 	owner := p.ID
-	return g.routeAllThenLocked(zoneRoute{
+	return g.routeAllKeyedLocked(zoneRoute{
 		Dst:   ZoneExile,
 		Actor: owner,
 		// #1320: a special action (CR 116.2f), not a spell or ability.
 		Cause: MoveCause{Kind: MoveCauseSpecialAction, Controller: owner},
-	}, []uuid.UUID{cardID}, func(g *Game, landed []uuid.UUID) error {
-		if len(landed) != 1 {
-			// A commander took CR 903.9's offer: it left the hand but
-			// not to exile, so it was never suspended.
-			return nil
-		}
-		// Face UP (CR 702.62b says nothing about hiding it), and the
-		// counters are the suspended state. Through the counter
-		// primitive so the placement is one event the log and any
-		// future counter payoff can see.
-		// #3942: named, because a commander's CR 903.9 answer can run
-		// this after the special action has returned.
-		return g.AddCounterByForEffect(owner, landed[0], CounterTime, n)
-	})
+	}, []uuid.UUID{cardID}, KeyedTail{Ref: suspendExiled, Player: owner, N: n})
 }
+
+// suspendExiled is the suspend exile's continuation as data (#4361 S11a),
+// so a CR 616 prompt on the exile is a restore point. Player is the owner
+// and N the number of time counters. An on-disk key.
+var suspendExiled = RegisterTail("engine/suspend-exiled", func(g *Game, o TailOutcome) error {
+	if len(o.IDs) != 1 {
+		// A commander took CR 903.9's offer: it left the hand but
+		// not to exile, so it was never suspended.
+		return nil
+	}
+	// Face UP (CR 702.62b says nothing about hiding it), and the
+	// counters are the suspended state. Through the counter
+	// primitive so the placement is one event the log and any
+	// future counter payoff can see.
+	// #3942: named, because a commander's CR 903.9 answer can run
+	// this after the special action has returned.
+	return g.AddCounterByForEffect(o.Tail.Player, o.IDs[0], CounterTime, o.Tail.N)
+})
 
 // CardIsSuspended reports whether this card object is suspended
 // (CR 702.62b): it is in exile with one or more time counters on it.

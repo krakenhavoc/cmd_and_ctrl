@@ -22,14 +22,17 @@ import "github.com/google/uuid"
 // life pipeline, and only after the last one has settled runs the
 // move's own continuation (runMoveTailLocked).
 //
-// The rest of the move rides each life change's ordinary tail
-// (lifeTail.then) as a closure over an immutable VALUE: the instructions
-// not yet run and a copy of the route, never the parent event or a
-// route pointer. Each run copies the route again before running it, so
-// an undo snapshot that shares the closure (cloneReplacementResume
-// copies the tail pointer) replays the same continuation rather than
-// finding it consumed by the live game. No new field reaches a closure
-// from Game (closure_fields.txt, ADR 0041 P3).
+// The rest of the move rides each life change's ordinary tail as data
+// (lifeTail.move, #4361 S9): the instructions not yet run, and a copy of
+// the move's route on the life event's own zoneRoute, never the parent
+// event or a route pointer. Each run copies the route again before
+// running it, and an undo snapshot has its own copy of the event's route
+// (cloneReplacementResume), so a replayed answer finds the continuation
+// intact rather than consumed by the live game. No new field reaches a
+// closure from Game (closure_fields.txt, ADR 0041 P3): the route rides an
+// edge the event already has. Since #4361 S17 both are written to a
+// restore point (lifeTailSnapshot.Move beside the event's route), so a
+// life change paused with one is a restore point.
 
 // lifeInstruction is one declared life change: who changes, by how much
 // (signed, negative for a loss), and the source the log credits. All
@@ -50,6 +53,27 @@ type moveLifeSequence struct {
 	route         zoneRoute
 	hasRoute      bool
 	mustSettleNow bool
+}
+
+// moveLifeRest is a moveLifeSequence riding a life event's tail
+// (lifeTail.move): everything but the route, which rides the life
+// event's zoneRoute. A value, never written after it is built.
+type moveLifeRest struct {
+	remaining     []lifeInstruction
+	hasRoute      bool
+	mustSettleNow bool
+}
+
+// sequence is the rest of the move again, with the route taken off the
+// life event that carried it. The event's route is cleared, so it cannot
+// run twice.
+func (r *moveLifeRest) sequence(ev *ReplacementEvent) moveLifeSequence {
+	seq := moveLifeSequence{remaining: r.remaining, hasRoute: r.hasRoute, mustSettleNow: r.mustSettleNow}
+	if r.hasRoute && ev != nil && ev.zoneRoute != nil {
+		seq.route = *ev.zoneRoute
+		ev.zoneRoute = nil
+	}
+	return seq
 }
 
 // ChangeLifeAfterReplacedMoveForEffect declares, from a replacement's
@@ -104,11 +128,13 @@ func (g *Game) runMoveTailLocked(ev *ReplacementEvent) error {
 	seq := moveLifeSequence{remaining: ev.lifeAfterMove, mustSettleNow: ev.mustSettleNow}
 	ev.lifeAfterMove = nil
 	if r := ev.zoneRoute; r != nil {
-		if r.then != nil {
-			seq.route = *r
+		if r.hasTail() {
+			// #4253 slice 9: a keyed batch's or face-down leg's run is a
+			// continuation too, and waits for the life change as `then`
+			// does.
+			seq.route = r.detachTail()
 			seq.route.simultaneousEntry = nil
 			seq.hasRoute = true
-			r.then = nil
 		}
 		if err := g.runRouteTailLocked(r); err != nil {
 			return err
@@ -130,7 +156,6 @@ func (g *Game) continueMoveLifeLocked(seq moveLifeSequence) error {
 		if p := g.playerByIDLocked(in.Player); p == nil || p.Eliminated {
 			continue
 		}
-		next := seq
 		ev := &ReplacementEvent{
 			Kind:       RepEventLife,
 			Source:     in.Source,
@@ -139,9 +164,18 @@ func (g *Game) continueMoveLifeLocked(seq moveLifeSequence) error {
 			// ADR 0178 §5: a move paid as a cost cannot pause, and
 			// neither can the life change that is part of it.
 			mustSettleNow: seq.mustSettleNow,
-			lifeTail: &lifeTail{then: func(g *Game, _ int) error {
-				return g.continueMoveLifeLocked(next)
+			lifeTail: &lifeTail{move: &moveLifeRest{
+				remaining:     seq.remaining,
+				hasRoute:      seq.hasRoute,
+				mustSettleNow: seq.mustSettleNow,
 			}},
+		}
+		if seq.hasRoute {
+			route := seq.route
+			if len(route.simultaneousExit) > 0 {
+				route.simultaneousExit = append([]Card(nil), route.simultaneousExit...)
+			}
+			ev.zoneRoute = &route
 		}
 		paused, err := g.changeLifeThroughReplacementsLocked(ev)
 		if !paused && ev.lifeTail != nil {
@@ -161,7 +195,7 @@ func (g *Game) continueMoveLifeLocked(seq moveLifeSequence) error {
 // route carries, as finishBattlefieldLeaveLocked does for an ordinary
 // exit. It runs a fresh copy of the route each time, because the tail
 // is cleared through the pointer as it runs and an undo replay of the
-// same closure must find it intact.
+// same answer must find it intact.
 //
 // Caller must hold g.mu.
 func (g *Game) finishMoveLifeSequenceLocked(seq moveLifeSequence) error {

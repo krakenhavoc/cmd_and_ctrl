@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Slithermuse — "When this creature leaves the battlefield, choose
 // an opponent. If that player has more cards in hand than you, draw
@@ -41,7 +45,7 @@ func init() {
 				return ChoosePlayer{
 					Among:    Opponents,
 					Question: "Slithermuse — choose an opponent",
-					Then:     slithermuseDraw,
+					ThenKey:  slithermuseDraw,
 				}.Apply(NewContext(g, item))
 			}),
 		},
@@ -52,11 +56,11 @@ func init() {
 // you, draw cards equal to the difference" half, run once the
 // controller has named the opponent.
 //
-// A package-level function reading only the Context it is handed —
-// the StackItem.Effect contract — so an undo across the prompt
-// resolves it against the restored game.
-func slithermuseDraw(ctx *Context) error {
-	opp := ctx.PlayerByID(ctx.ChosenPlayer())
+// Keyed (#4253): it reads only the Context it is handed, rebuilt from
+// the asking trigger, so a restore across the prompt resolves it against
+// the restored game. An on-disk key: never renamed, never reused.
+var slithermuseDraw = ChoosePlayerThen("option-pick/slithermuse-opponent", func(ctx *Context, chosen uuid.UUID, _ []uuid.UUID) error {
+	opp := ctx.PlayerByID(chosen)
 	me := ctx.PlayerByID(ctx.Controller())
 	if opp == nil || me == nil {
 		return nil
@@ -66,4 +70,4 @@ func slithermuseDraw(ctx *Context) error {
 		return nil
 	}
 	return DrawCards{Player: ctx.Controller(), N: diff}.Apply(ctx)
-}
+})

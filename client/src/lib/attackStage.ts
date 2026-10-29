@@ -13,8 +13,9 @@
 // on the first click (every duel without a planeswalker or battle);
 // otherwise the click selects it and a click on a player, planeswalker
 // or battle stages it there, as the old two-click flow declared it.
-// "Attack all", token piles and the attackers picker still declare at
-// once; they replace whatever was staged.
+// "Attack all" and the attackers picker still declare at once; they
+// replace whatever was staged. A token pile's "Attack Bob with N" is
+// staged like any other click (#4423), so it joins the set.
 //
 // All pure: Game.svelte owns the state.
 
@@ -53,6 +54,30 @@ export function stageAt(
       ? { attacker: sel.cardID, target, exert: true }
       : { attacker: sel.cardID, target };
   return [...unstage(stage, sel.cardID), entry];
+}
+
+/**
+ * stageMany puts several creatures in the staged set at once, as a
+ * token group's "Attack Bob with 3" does (#4423). Each replaces any
+ * earlier aim of its own; every other staged creature stays exactly
+ * as it was, which is the point: a group's attack must add to what
+ * the player already staged, not send it alone and drop the rest.
+ */
+export function stageMany(
+  stage: readonly StagedAttack[],
+  entries: readonly StagedAttack[],
+): StagedAttack[] {
+  const ids = new Set(entries.map((e) => e.attacker));
+  return [...stage.filter((s) => !ids.has(s.attacker)), ...entries.map((e) => ({ ...e }))];
+}
+
+/** unstageMany takes several creatures out of the staged set. */
+export function unstageMany(
+  stage: readonly StagedAttack[],
+  ids: readonly string[],
+): StagedAttack[] {
+  const out = new Set(ids);
+  return stage.filter((s) => !out.has(s.attacker));
 }
 
 /**

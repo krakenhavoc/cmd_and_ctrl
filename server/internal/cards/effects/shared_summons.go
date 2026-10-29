@@ -44,7 +44,7 @@ func init() {
 				Limit:     2,
 				Reveal:    true,
 				Shuffle:   true,
-				Validate:  b28DifferentNames,
+				Rule:      searchRuleDifferentNames,
 				Reason:    "Shared Summons — up to two creature cards with different names, revealed, to hand",
 			}.Apply(ctx)
 		},

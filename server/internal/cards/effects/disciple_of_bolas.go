@@ -42,21 +42,24 @@ func init() {
 //
 // Caller holds g.mu (resolution frame).
 func discipleOfBolasSacrificeThenPayout(g *game.Game, item *game.StackItem) error {
-	return g.PlayerSacrificesThenForEffect(item.SourceCardID, item.Controller,
+	return NewContext(g, item).SacrificeThen(item.Controller,
 		sacrificeSpec("another creature", Creature(), NotSelf(item.SourceCardID)),
-		"Disciple of Bolas — sacrifice another creature", 1,
-		func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-			ids := sacrificed.By(item.Controller)
-			if len(ids) == 0 {
-				// No other creature to sacrifice — the ability does
-				// as much as it can, which is nothing.
-				return nil
-			}
-			ctx := NewContext(g, item)
-			ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(g, ids[0]))
-			return gainThenDrawSacrificedPower.Run(ctx)
-		})
+		"Disciple of Bolas — sacrifice another creature", 1, discipleOfBolasPayout)
 }
+
+// discipleOfBolasPayout is the life gain and the draw once the creature has
+// really been sacrificed, keyed (#4290): the item rides the run as data, so
+// the creature's power is filed as the step record under the same item.
+var discipleOfBolasPayout = RunThen("prompt-run/disciple-of-bolas-payout", func(ctx *Context, r game.RunDone) error {
+	ids := r.Sacrifices().By(ctx.Controller())
+	if len(ids) == 0 {
+		// No other creature to sacrifice — the ability does
+		// as much as it can, which is nothing.
+		return nil
+	}
+	ctx.RecordStep(sacrificedPowerRecord, nil, departedCreaturePower(ctx.Game, ids[0]))
+	return gainThenDrawSacrificedPower.Run(ctx)
+})
 
 // sacrificedPowerRecord is the sacrificed creature's last-known power,
 // handed from a sacrifice's continuation to the steps after it.

@@ -54,12 +54,13 @@ func TestIxidronLeavesACreatureEnteringWithItFaceUp(t *testing.T) {
 		Power: 2, Toughness: 2, Owner: me.ID, Controller: me.ID})
 	var entered []uuid.UUID
 	g.WithWriteLock(func() {
-		if err := g.PutOntoBattlefieldTogetherThenForEffect(
+		if err := g.PutOntoBattlefieldTogetherKeyedForEffect(
 			[]game.BatchEntry{{CardID: ixidron, From: game.ZoneHand}, {CardID: bearID, From: game.ZoneHand}},
-			game.ZoneEntryOptions{}, func(_ *game.Game, ids []uuid.UUID) error {
+			game.ZoneEntryOptions{}, hookTail(func(_ *game.Game, o game.TailOutcome) error {
+				ids := o.IDs
 				entered = ids
 				return nil
-			}); err != nil {
+			})); err != nil {
 			t.Fatalf("enter together: %v", err)
 		}
 	})

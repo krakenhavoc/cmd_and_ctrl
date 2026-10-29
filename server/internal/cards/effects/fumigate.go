@@ -43,13 +43,5 @@ func init() {
 // life for each creature destroyed this way." — Fumigate's body, and
 // Avenge's.
 func destroyAllCreaturesGainLifeForEach(_ *game.StackItem, ctx *Context) error {
-	return DestroyAllMatching{
-		Match: Creature(),
-		Then: func(ctx *Context, _ []game.Card, destroyed int) error {
-			if destroyed <= 0 {
-				return nil
-			}
-			return GainLife{Player: ctx.Controller(), Amount: destroyed}.Apply(ctx)
-		},
-	}.Apply(ctx)
+	return DestroyAllMatching{Match: Creature(), ThenTail: ctx.Tail(massGainLifeForEach)}.Apply(ctx)
 }

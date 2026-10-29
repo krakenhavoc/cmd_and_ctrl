@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Midnight Clock — Artifact {2}{U}:
 //
@@ -86,10 +82,13 @@ func midnightClockTwelfthHour(ev game.Event, source *game.Card, _ game.Character
 func midnightClockPayoff(g *game.Game, item *game.StackItem) error {
 	player := item.Controller
 	ids := append(allHandCardIDs(g, player), echoOfEonsGraveyardCardIDs(g, player)...)
-	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		return midnightClockAfterTuck.Run(NewContext(g, item))
-	})
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, NewContext(g, item).ItemTail(midnightClockTucked))
 }
+
+// midnightClockTucked runs the steps after the tuck, keyed (#4253 slice 10a).
+var midnightClockTucked = CardTail("then/midnight-clock-after-tuck", func(ctx *Context, _ game.TailOutcome) error {
+	return midnightClockAfterTuck.Run(ctx)
+})
 
 // midnightClockAfterTuck is "then draw seven cards. Exile Midnight Clock."
 var midnightClockAfterTuck = RegisterThenSteps("then-steps/midnight-clock-draw-then-exile",

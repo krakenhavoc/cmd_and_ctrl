@@ -174,9 +174,7 @@ func rfCreatureBFblthpImpossiblyLostResolve(g *game.Game, item *game.StackItem) 
 		return nil
 	}
 	owner := c.Owner
-	return g.TuckToLibraryThenForEffect(item.SourceCardID, game.TuckOptions{}, func(g *game.Game, _ bool) error {
-		return g.ShuffleLibraryForEffect(owner)
-	})
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{item.SourceCardID}, game.TuckOptions{}, game.KeyedTail{Ref: thenShuffle, Player: owner})
 }
 
 // rfCreatureBFinalityCounter is the counter kind of a finality counter
@@ -199,19 +197,6 @@ func rfCreatureBAnOpponentWasDealtNoncombatDamage(g *game.Game, controller uuid.
 		}
 	}
 	return false
-}
-
-// rfCreatureBDistinctNames is the Validate for "cards with different
-// names": no two picked cards share a name.
-func rfCreatureBDistinctNames(picked []game.Card) bool {
-	seen := make(map[string]bool, len(picked))
-	for _, c := range picked {
-		if seen[c.Name] {
-			return false
-		}
-		seen[c.Name] = true
-	}
-	return true
 }
 
 // rfCreatureBModeTargetDoes lifts "do <f> to the chosen target" into a

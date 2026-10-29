@@ -8,7 +8,7 @@ import (
 
 // paused_tuck_continuation_test.go — #783. A library is a CR 903.9b
 // destination, so every tuck can PAUSE; this file pins the engine half
-// of the answer, the continuation TuckToLibraryThenForEffect hands over
+// of the answer, the continuation TuckCardsToLibraryKeyedForEffect hands over
 // instead of letting its caller write the next line.
 //
 // The contract is the one the exile batch signs (ADR 0013 §5k, §5n):
@@ -22,17 +22,17 @@ func tuckThen(t *testing.T, g *Game, cardID uuid.UUID, opts TuckOptions) (runs *
 	t.Helper()
 	runs, sawTucked, sawZone = new(int), new(bool), new(ZoneKind)
 	g.mu.Lock()
-	err := g.TuckToLibraryThenForEffect(cardID, opts, func(g *Game, tucked bool) error {
+	err := g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{cardID}, opts, hookTail(func(g *Game, o TailOutcome) error {
 		*runs++
-		*sawTucked = tucked
+		*sawTucked = len(o.IDs) == 1
 		if z := g.findCardZoneLocked(cardID); z != nil {
 			*sawZone = z.Kind
 		}
 		return nil
-	})
+	}))
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("TuckToLibraryThenForEffect: %v", err)
+		t.Fatalf("TuckCardsToLibraryKeyedForEffect: %v", err)
 	}
 	return runs, sawTucked, sawZone
 }
@@ -178,29 +178,24 @@ func TestTuckBatchReportsOnlyTheLegsThatLanded(t *testing.T) {
 		Power: 2, Toughness: 2, Owner: owner.ID, Controller: owner.ID,
 	})
 
-	var landed []uuid.UUID
-	runs := 0
 	g.mu.Lock()
-	err := g.TuckCardsToLibraryThenForEffect([]uuid.UUID{cmdID, plain}, TuckOptions{}, func(_ *Game, tucked []uuid.UUID) error {
-		runs++
-		landed = tucked
-		return nil
-	})
+	err := g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{cmdID, plain}, TuckOptions{}, KeyedTail{Ref: toldProbe})
 	g.mu.Unlock()
 	if err != nil {
-		t.Fatalf("TuckCardsToLibraryThenForEffect: %v", err)
+		t.Fatalf("TuckCardsToLibraryKeyedForEffect: %v", err)
 	}
-	if runs != 0 {
+	if runs := len(toldOf(g)); runs != 0 {
 		t.Fatal("the batch finished while the first leg's prompt was open")
 	}
 	prompt := expectCommanderPrompt(t, g, owner)
 	if err := g.ResolveOptionalReplacement(prompt.ID, owner.ID, true); err != nil {
 		t.Fatalf("ResolveOptionalReplacement: %v", err)
 	}
-	if runs != 1 {
-		t.Fatalf("continuation ran %d times, want exactly 1", runs)
+	seen := toldOf(g)
+	if len(seen) != 1 {
+		t.Fatalf("continuation ran %d times, want exactly 1", len(seen))
 	}
-	if len(landed) != 1 || landed[0] != plain {
+	if landed := seen[0]; len(landed) != 1 || landed[0] != plain {
 		t.Errorf("landed = %v, want only the non-commander leg", landed)
 	}
 }

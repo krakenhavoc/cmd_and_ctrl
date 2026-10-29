@@ -50,7 +50,7 @@ func Dredge(n int) game.ReplacementEffect {
 			return p != nil && p.Library != nil && p.Library.Size() >= n
 		},
 		DrawInstead: game.RegisterDrawInstead(fmt.Sprintf("dredge-%d", n),
-			func(g *game.Game, drawer, card uuid.UUID, done func(*game.Game) error) error {
+			func(g *game.Game, drawer, card uuid.UUID, done game.DrawDone) error {
 				return dredgeBody(g, drawer, card, n, done)
 			}),
 		Controller: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) uuid.UUID {
@@ -65,17 +65,31 @@ func Dredge(n int) game.ReplacementEffect {
 // mill first (it can pause on a replacement's prompt), then the return.
 // The card is still read from the graveyard when the mill is done, so a
 // card something else removed in between is simply not returned.
-func dredgeBody(g *game.Game, drawer, card uuid.UUID, n int, done func(*game.Game) error) error {
-	return g.MillToZoneThenForEffect(drawer, n, game.ZoneGraveyard, nil,
-		func(g *game.Game, _ []uuid.UUID) error {
-			if z := g.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneGraveyard {
-				if err := g.ReturnFromGraveyardForEffect(card, game.ZoneHand); err != nil {
-					return err
-				}
-			}
-			return done(g)
-		})
+//
+// The return rides the mill as data (#4253): the card and the parked draw
+// (DrawDone.Park) are the keyed tail's Carry, so a CR 616 prompt the mill
+// pauses on is a restore point.
+func dredgeBody(g *game.Game, drawer, card uuid.UUID, n int, done game.DrawDone) error {
+	then := game.KeyedTail{Ref: dredgeReturn, Player: drawer, Carry: []uuid.UUID{card, done.Park(g)}}
+	return g.MillToZoneKeyedForEffect(drawer, n, game.ZoneGraveyard, game.MillUntil{}, then)
 }
+
+// dredgeReturn is the end of a dredge's mill: the card (Carry[0]) returns
+// from the graveyard to its owner's hand if it is still there, then the
+// rest of the draw (the parked DrawDone, Carry[1]) is paid. An on-disk
+// key.
+var dredgeReturn = game.RegisterTail("dredge/return-then-draw", func(g *game.Game, o game.TailOutcome) error {
+	if len(o.Tail.Carry) < 2 {
+		return nil
+	}
+	card := o.Tail.Carry[0]
+	if z := g.FindCardZoneForEffect(card); z != nil && z.Kind == game.ZoneGraveyard {
+		if err := g.ReturnFromGraveyardForEffect(card, game.ZoneHand); err != nil {
+			return err
+		}
+	}
+	return game.DrawDoneByID(o.Tail.Carry[1]).Run(g)
+})
 
 // gyCardIDs lists the cards in a player's graveyard, oldest
 // first, optionally filtered.
@@ -98,12 +112,16 @@ func gyCardIDs(g *game.Game, player uuid.UUID, match func(game.Card) bool) []uui
 // mandatory pick, then the return, then the rest of the draw
 // instruction. With no candidate it calls `none` — Forbidden Crypt's
 // "if you can't, you lose the game" — and does NOT call done.
+//
+// The rest of the draw rides the prompt as data (#4253 slice 10c): `done`
+// is parked on the game and its ID is the prompt's Carry, so the table is a
+// restore point while the player picks.
 func ChooseFromGraveyardToHandInstead(question string, none func(g *game.Game, drawer, source uuid.UUID) error) game.DrawInsteadFunc {
-	return func(g *game.Game, drawer, source uuid.UUID, done func(*game.Game) error) error {
+	return func(g *game.Game, drawer, source uuid.UUID, done game.DrawDone) error {
 		cards := gyCardIDs(g, drawer, nil)
 		if len(cards) == 0 {
 			if none == nil {
-				return done(g)
+				return done.Run(g)
 			}
 			return none(g, drawer, source)
 		}
@@ -114,16 +132,26 @@ func ChooseFromGraveyardToHandInstead(question string, none func(g *game.Game, d
 			Cards:    cards,
 			Min:      1,
 			Max:      1,
-			Zone:     game.ZoneGraveyard,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				for _, id := range picked {
-					if err := g.ReturnFromGraveyardForEffect(id, game.ZoneHand); err != nil {
-						return err
-					}
-				}
-				return done(g)
-			},
+			LiveZone: game.ZoneGraveyard,
+			ThenKey:  drawInsteadGraveyardReturn,
+			Carry:    []uuid.UUID{done.Park(g)},
 		})
 		return nil
 	}
 }
+
+// drawInsteadGraveyardReturn is the pick of ChooseFromGraveyardToHandInstead:
+// the chosen card returns to hand, then the rest of the draw is paid. The
+// carried ID is the parked draw. An on-disk key.
+var drawInsteadGraveyardReturn = game.RegisterChooseCardsThen("choose-cards/draw-instead-graveyard-return", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	done := game.DrawDoneByID(r.Carry[0])
+	for _, id := range r.Picked {
+		if err := g.ReturnFromGraveyardForEffect(id, game.ZoneHand); err != nil {
+			return err
+		}
+	}
+	return done.Run(g)
+})

@@ -67,20 +67,16 @@ func TestMillEachPlayerInTurnOpensOnePromptAtATimeInApnapOrderAndFinishesWithAll
 
 		// The caller lists the players the other way round: the helper, not the
 		// caller, puts them in APNAP order.
-		var results []PlayerCards
-		var finished int
+		testMillEachHeard = nil
 		g.WithWriteLock(func() {
 			ctx := NewContext(g, &game.StackItem{Controller: g.Seats[1].ID})
 			err := millEachPlayerInTurn(ctx, []uuid.UUID{second.ID, first.ID}, constantMill(1),
-				func(_ *Context, r []PlayerCards) error {
-					finished++
-					results = r
-					return nil
-				})
+				game.KeyedTail{Ref: testMillEachDone})
 			if err != nil {
 				t.Fatalf("millEachPlayerInTurn: %v", err)
 			}
 		})
+		finished := func() int { return len(testMillEachHeard) }
 
 		expectOnePrompt(t, g, "after starting")
 		if g.PendingChoices[0].Chooser != first.ID {
@@ -89,7 +85,7 @@ func TestMillEachPlayerInTurnOpensOnePromptAtATimeInApnapOrderAndFinishesWithAll
 		if !stillInLibraryOf(first, firstCard) || !stillInLibraryOf(second, secondCard) {
 			t.Fatal("a card left its library while the first prompt was open")
 		}
-		if finished != 0 {
+		if finished() != 0 {
 			t.Fatal("the final continuation ran before either player milled")
 		}
 		answerExileOrder(t, g)
@@ -104,39 +100,41 @@ func TestMillEachPlayerInTurnOpensOnePromptAtATimeInApnapOrderAndFinishesWithAll
 		if !stillInLibraryOf(second, secondCard) {
 			t.Fatal("the second library was milled before its prompt was answered")
 		}
-		if finished != 0 {
+		if finished() != 0 {
 			t.Fatal("the final continuation ran with the second player still to mill")
 		}
 		answerExileOrder(t, g)
 
-		if finished != 1 {
-			t.Fatalf("the final continuation ran %d times, want once", finished)
+		if finished() != 1 {
+			t.Fatalf("the final continuation ran %d times, want once", finished())
 		}
 		if !milledInto(second, secondCard) {
 			t.Fatal("the second player's card is not milled")
 		}
-		want := []PlayerCards{
-			{Player: first.ID, Cards: []uuid.UUID{firstCard}},
-			{Player: second.ID, Cards: []uuid.UUID{secondCard}},
-		}
-		if len(results) != 2 {
-			t.Fatalf("results %+v, want %+v", results, want)
-		}
-		for i := range want {
-			if results[i].Player != want[i].Player || len(results[i].Cards) != 1 || results[i].Cards[0] != want[i].Cards[0] {
-				t.Errorf("result %d is %+v, want %+v", i, results[i], want[i])
-			}
+		// Every card milled, library by library in APNAP order.
+		if got := testMillEachHeard[0]; len(got) != 2 || got[0] != firstCard || got[1] != secondCard {
+			t.Errorf("told %v, want the first player's card then the second's", got)
 		}
 	}
 }
 
+// testMillEachHeard is what each run of testMillEachDone was told.
+var testMillEachHeard [][]uuid.UUID
+
+// testMillEachDone records the cards a millEachPlayerInTurn chain milled.
+var testMillEachDone = game.RegisterTail("test/4253-mill-each-done", func(_ *game.Game, o game.TailOutcome) error {
+	testMillEachHeard = append(testMillEachHeard, append([]uuid.UUID(nil), o.IDs...))
+	return nil
+})
+
 // A clean run (nobody asks anything) finishes on the same call, and a player
-// whose count is zero is a result with no cards.
+// whose count is zero mills nothing.
 func TestMillEachPlayerInTurnFinishesAtOnceWhenNothingAsks(t *testing.T) {
 	g := newCatalogGame(t)
-	var results []PlayerCards
-	ran := false
+	testMillEachHeard = nil
 	before := g.Seats[1].Library.Size()
+	top := g.Seats[0].Library.Cards
+	want := []uuid.UUID{top[len(top)-1].InstanceID, top[len(top)-2].InstanceID}
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: g.Seats[0].ID})
 		err := millEachPlayerInTurn(ctx, []uuid.UUID{g.Seats[0].ID, g.Seats[1].ID},
@@ -146,20 +144,16 @@ func TestMillEachPlayerInTurnFinishesAtOnceWhenNothingAsks(t *testing.T) {
 				}
 				return 2
 			},
-			func(_ *Context, r []PlayerCards) error {
-				ran = true
-				results = r
-				return nil
-			})
+			game.KeyedTail{Ref: testMillEachDone})
 		if err != nil {
 			t.Fatalf("millEachPlayerInTurn: %v", err)
 		}
 	})
-	if !ran || len(results) != 2 {
-		t.Fatalf("ran=%v results=%+v, want both players", ran, results)
+	if len(testMillEachHeard) != 1 {
+		t.Fatalf("the continuation ran %d times, want once", len(testMillEachHeard))
 	}
-	if len(results[0].Cards) != 2 || len(results[1].Cards) != 0 {
-		t.Errorf("milled %d and %d cards, want 2 and 0", len(results[0].Cards), len(results[1].Cards))
+	if got := testMillEachHeard[0]; len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("told %v, want the first player's two cards %v", got, want)
 	}
 	if g.Seats[1].Library.Size() != before {
 		t.Error("a player whose count is zero milled")
@@ -173,17 +167,12 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	myCard := promptingTop(g, me, false)
 	otherCard := promptingTop(g, other, false)
 
-	var results []PlayerCards
-	finished := 0
+	testExileTopEachHeard = nil
 	g.WithWriteLock(func() {
 		ctx := NewContext(g, &game.StackItem{Controller: me.ID})
 		err := exileTopEachPlayerInTurn(ctx, []uuid.UUID{other.ID, me.ID},
 			ExileTopWithPermission{GrantTo: me.ID, N: 1, AnyColor: true},
-			func(_ *Context, r []PlayerCards) error {
-				finished++
-				results = r
-				return nil
-			})
+			game.KeyedTail{Ref: testExileTopEachDone})
 		if err != nil {
 			t.Fatalf("exileTopEachPlayerInTurn: %v", err)
 		}
@@ -194,15 +183,15 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	}
 	answerExileOrder(t, g)
 	expectOnePrompt(t, g, "after the first answer")
-	if !stillInLibraryOf(other, otherCard) || finished != 0 {
+	if !stillInLibraryOf(other, otherCard) || len(testExileTopEachHeard) != 0 {
 		t.Fatal("the second library was exiled from, or the continuation ran, before the second answer")
 	}
 	answerExileOrder(t, g)
-	if finished != 1 || len(results) != 2 {
-		t.Fatalf("finished %d times with results %+v", finished, results)
+	if len(testExileTopEachHeard) != 1 || len(testExileTopEachHeard[0]) != 2 {
+		t.Fatalf("the continuation was told %v, want one run with two cards", testExileTopEachHeard)
 	}
-	if results[0].Player != me.ID || results[0].Cards[0] != myCard || results[1].Player != other.ID || results[1].Cards[0] != otherCard {
-		t.Errorf("results %+v are not the active player's card, then the other's", results)
+	if got := testExileTopEachHeard[0]; got[0] != myCard || got[1] != otherCard {
+		t.Errorf("told %v, not the active player's card, then the other's", got)
 	}
 	for _, id := range []uuid.UUID{myCard, otherCard} {
 		if _, ok := findInZone(g.Exile, id); !ok {
@@ -211,7 +200,17 @@ func TestExileTopEachPlayerInTurnOpensOnePromptAtATime(t *testing.T) {
 	}
 }
 
-func TestExileTopWithPermissionApplyThenRefusesTheFormsWithoutAContinuation(t *testing.T) {
+// testExileTopEachHeard is what each run of testExileTopEachDone was told.
+var testExileTopEachHeard [][]uuid.UUID
+
+// testExileTopEachDone records the cards an exileTopEachPlayerInTurn chain
+// exiled.
+var testExileTopEachDone = game.RegisterTail("test/4253-exile-top-each-done", func(_ *game.Game, o game.TailOutcome) error {
+	testExileTopEachHeard = append(testExileTopEachHeard, append([]uuid.UUID(nil), o.IDs...))
+	return nil
+})
+
+func TestExileTopEachPlayerInTurnRefusesTheFormsWithoutAContinuation(t *testing.T) {
 	g := newCatalogGame(t)
 	budget := 3
 	for _, e := range []ExileTopWithPermission{
@@ -220,7 +219,8 @@ func TestExileTopWithPermissionApplyThenRefusesTheFormsWithoutAContinuation(t *t
 		{GrantTo: g.Seats[0].ID, EachManaValueAtMost: &budget},
 	} {
 		g.WithWriteLock(func() {
-			if err := e.ApplyThen(NewContext(g, &game.StackItem{Controller: g.Seats[0].ID}), nil); err == nil {
+			ctx := NewContext(g, &game.StackItem{Controller: g.Seats[0].ID})
+			if err := exileTopEachPlayerInTurn(ctx, []uuid.UUID{g.Seats[0].ID}, e, game.KeyedTail{}); err == nil {
 				t.Errorf("%+v: want an error, got none", e)
 			}
 		})

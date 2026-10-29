@@ -30,12 +30,13 @@ func queueUpkeepTax(t *testing.T, g *Game, chooser, source uuid.UUID, declined *
 			Source:   source,
 			Cost:     "{U}",
 			Question: "Stasis — pay {U} or sacrifice Stasis?",
-			OnDecline: func(*Game) error {
+			Then:     testPayUnlessHook,
+			Carry: payUnlessHookCarry(nil, func(*Game) error {
 				if declined != nil {
 					*declined++
 				}
 				return nil
-			},
+			}),
 		}); err != nil {
 			t.Fatalf("QueueUpkeepPayUnlessForEffect: %v", err)
 		}
@@ -106,7 +107,7 @@ func TestARhysticTaxRaisedInAnUpkeepStillLetsTheTablePlayOn(t *testing.T) {
 	payer := g.Seats[1]
 	g.WithWriteLock(func() {
 		if err := g.QueuePayUnlessForEffect(payer.ID, uuid.New(), "{1}",
-			"Rhystic Study — pay {1}?", func(*Game) error { return nil }); err != nil {
+			"Rhystic Study — pay {1}?"); err != nil {
 			t.Fatalf("QueuePayUnlessForEffect: %v", err)
 		}
 	})

@@ -192,10 +192,8 @@ var emptyColorOptionsOnce sync.Once
 // rest of the card). `then` receives the chosen colour or canonical
 // creature type and runs with g.mu held, so it may queue a further
 // prompt (Selective Obliteration's next player, Patriarch's Bidding's
-// next seat). Counted in ContinuationCensus like every other frame,
-// which is what makes a snapshot taken while the prompt is open report
-// itself unrestorable rather than silently dropping the rest of the
-// card.
+// next seat). Never stored on a prompt since #4361: chooseValueFrameOf
+// builds one from the prompt's data when the answer comes in.
 type chooseValueFrame struct {
 	then func(g *Game, value string) error
 }
@@ -245,27 +243,32 @@ type ColorPrompt struct {
 	// in practice: the catalog guard fails a prompt that leaves it
 	// empty, and an empty one falls back to the mana-fixing rule.
 	Purpose ColorPurpose
-	// Then receives the answer. Runs with g.mu held; may queue further
-	// choices.
-	Then func(g *Game, color string) error
+	// ThenTail receives the answer (#4253): a registered tail
+	// (RegisterTail) told the colour as its Word. It runs with g.mu held
+	// and may queue further choices. The prompt holds no closure, so a
+	// table waiting on it is a restore point. Zero asks and does nothing
+	// with the answer.
+	ThenTail KeyedTail
 }
 
 // QueueColorChoiceThenForEffect queues the AT-RESOLUTION form: the
-// answer is handed to p.Then and stored nowhere.
+// answer is handed to p.ThenTail and stored nowhere.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueColorChoiceThenForEffect(p ColorPrompt) uuid.UUID {
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoiceColor,
-		Chooser:           p.Chooser,
-		FromPlayer:        p.Chooser,
-		Count:             1,
-		Source:            p.Source,
-		Reason:            p.Question,
-		ColorOptions:      normaliseColorOptions(p.Options),
-		ColorPurpose:      p.Purpose,
-		chooseValueResume: &chooseValueFrame{then: p.Then},
-	})
+	c := PendingChoice{
+		Kind:         PendingChoiceColor,
+		Chooser:      p.Chooser,
+		FromPlayer:   p.Chooser,
+		Count:        1,
+		Source:       p.Source,
+		Reason:       p.Question,
+		ColorOptions: normaliseColorOptions(p.Options),
+		ColorPurpose: p.Purpose,
+	}
+	// #4361: keyed even when nothing follows, so the prompt is data.
+	g.keyValueThenOrNothingLocked(&c, p.ThenTail)
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveColorChoice answers a PendingChoiceColor.
@@ -314,7 +317,7 @@ func (g *Game) ResolveColorChoice(choiceID, chooserID uuid.UUID, color string) e
 	if !legal {
 		return ErrInvalidParam
 	}
-	frame := choice.chooseValueResume
+	frame := chooseValueFrameOf(choice)
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
 

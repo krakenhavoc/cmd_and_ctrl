@@ -109,7 +109,50 @@ type RevealedPick struct {
 	// exactly once, from wherever it finishes (inline, or from the Then
 	// of something it paused on). For every other continuation it is
 	// nil, because the cards have already moved.
+	//
+	// #4389: Done is never parked across a snapshot. A RevealedPick is a
+	// value handed to the continuation by settleRevealedPickLocked and
+	// stored on nothing the Game reaches (a field holding one would be a
+	// new closure route, which the ratchet in closure_fields.txt
+	// refuses), so Done lives only for that call. A continuation that finishes after a pause hands on
+	// DoneTail instead: the only RegisterRevealedPickFirst continuation,
+	// Talara's Bane's (cards/effects/talaras_bane.go), calls Done inline
+	// and passes DoneTail to the keyed life change it may pause on.
 	Done func(g *Game) error
+	// DoneTail is Done as data (#4253 slice 10b): a registered tail that
+	// moves the chosen cards, for a continuation that finishes from the
+	// keyed "then" of something it paused on (a keyed life change), so the
+	// pause holds no closure. Set exactly when Done is; run one of the two,
+	// once.
+	DoneTail KeyedTail
+}
+
+// revealedPickDoneTail is RevealedPick.DoneTail's body: the chosen cards
+// move to the pick's destination, rebuilt from the tail. Player is the
+// chooser and Source the card that asked; Carry is the revealing player,
+// the exiled-with object's ID and then the chosen cards; N is that
+// object's epoch and Word the destination. An on-disk key: never renamed,
+// never reused.
+var revealedPickDoneTail = RegisterTail("engine/revealed-pick-done", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) < 2 {
+		return nil
+	}
+	s := revealedPickSettle{
+		chooser: t.Player, from: t.Carry[0], source: t.Source,
+		destination: PickDestination(t.Word),
+		exiledWith:  PermissionCardRef{ID: t.Carry[1], Epoch: t.N},
+	}
+	return g.moveRevealedPickLocked(s, copyUUIDs(t.Carry[2:]), KeyedTail{})
+})
+
+// doneTail is the keyed move of a settled pick's cards.
+func (s revealedPickSettle) doneTail(ids []uuid.UUID) KeyedTail {
+	return KeyedTail{
+		Ref: revealedPickDoneTail, Player: s.chooser, Source: s.source,
+		Carry: append([]uuid.UUID{s.from, s.exiledWith.ID}, ids...),
+		N:     s.exiledWith.Epoch, Word: string(s.destination),
+	}
 }
 
 // ChosenIDs is the chosen cards' instance IDs, in the order chosen.
@@ -159,7 +202,9 @@ func RegisterRevealedPickThen(key string, fn RevealedPickFunc) RevealedPickThen 
 // RegisterRevealedPickFirst registers a continuation printed BEFORE the
 // move: Talara's Bane's "You gain life equal to that creature card's
 // toughness, then that player discards that card" (CR 608.2c). It is
-// handed RevealedPick.Done and must call it exactly once.
+// handed RevealedPick.Done and must call it exactly once. One that
+// pauses before the move hands on RevealedPick.DoneTail instead, and
+// never keeps Done past its own call (#4389).
 func RegisterRevealedPickFirst(key string, fn RevealedPickFunc) RevealedPickThen {
 	return registerRevealedPick(key, fn, true)
 }
@@ -452,23 +497,78 @@ func (g *Game) settleRevealedPickLocked(s revealedPickSettle, chosen []Card, mea
 	}
 	r := RevealedPick{Chooser: s.chooser, FromPlayer: s.from, Source: s.source, Chosen: chosen, Measures: measures}
 	ids := r.ChosenIDs()
-	move := func(g *Game, after func(g *Game) error) error {
-		return g.moveRevealedPickLocked(s, ids, after)
-	}
 	switch {
 	case entry.fn == nil:
-		return move(g, nil)
+		return g.moveRevealedPickLocked(s, ids, KeyedTail{})
 	case entry.first:
-		r.Done = func(g *Game) error { return move(g, nil) }
+		r.Done = func(g *Game) error { return g.moveRevealedPickLocked(s, ids, KeyedTail{}) }
+		r.DoneTail = s.doneTail(ids)
 		return entry.fn(g, r)
 	default:
-		return move(g, func(g *Game) error { return entry.fn(g, r) })
+		return g.moveRevealedPickLocked(s, ids, s.thenTail(ids, measures))
+	}
+}
+
+// revealedPickThenTail runs a RegisterRevealedPickThen continuation once
+// the chosen cards have moved, as a registered tail (#4361 S11b), so a CR
+// 616 prompt on the move (an exile's, a discard's) is a restore point.
+// Player is the chooser and Source the card that asked; Carry is the
+// revealing player and then the chosen cards; Nums is their measures, in
+// the same order; Word is the continuation's key. The continuation is told
+// the chosen cards as they are now, looked up by ID (a card that is in no
+// zone is told by its ID alone): a pick's candidates are cards in a hand
+// or a graveyard, whose characteristics a move to a graveyard or exile
+// does not change. An on-disk key: never renamed, never reused.
+var revealedPickThenTail = RegisterTail("engine/revealed-pick-then", func(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) < 1 {
+		return nil
+	}
+	e, ok := lookupRevealedPick(t.Word)
+	if !ok || e.fn == nil {
+		return fmt.Errorf("%w: revealed-hand pick continuation %q", ErrUnknownEffectKey, t.Word)
+	}
+	ids := t.Carry[1:]
+	chosen := make([]Card, len(ids))
+	for i, id := range ids {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			chosen[i] = c
+		} else {
+			chosen[i] = Card{InstanceID: id}
+		}
+	}
+	return e.fn(g, RevealedPick{
+		Chooser: t.Player, FromPlayer: t.Carry[0], Source: t.Source,
+		Chosen: chosen, Measures: copyInts(t.Nums),
+	})
+})
+
+func init() {
+	// The continuation's key is the tail's Word: a binary that does not
+	// register it refuses the restore point (checkEffectKeys), as it does
+	// a prompt's PickThen.
+	registerTailWordKeys(revealedPickThenTail, func(word string, _ []string) []string {
+		if KnownRevealedPickThen(word) {
+			return nil
+		}
+		return []string{"pick " + word}
+	})
+}
+
+// thenTail is the keyed RegisterRevealedPickThen continuation of a settled
+// pick's cards.
+func (s revealedPickSettle) thenTail(ids []uuid.UUID, measures []int) KeyedTail {
+	return KeyedTail{
+		Ref: revealedPickThenTail, Player: s.chooser, Source: s.source,
+		Carry: append([]uuid.UUID{s.from}, ids...),
+		Nums:  copyInts(measures), Word: s.then,
 	}
 }
 
 // moveRevealedPickLocked sends the chosen cards to the pick's
-// destination as one batch, then runs `after` (which may be nil) once
-// the batch has finished.
+// destination as one batch, then runs `after` (a registered tail, zero
+// for none) once the batch has finished. Every move is a keyed batch
+// (#4361 S11b), so a CR 616 prompt on any leg is a restore point.
 //
 // A discard goes through the one discard path, so madness, discard
 // triggers and discard replacements all apply. It does not happen when
@@ -477,34 +577,28 @@ func (g *Game) settleRevealedPickLocked(s revealedPickSettle, chosen []Card, mea
 // through the one exile route, and is not a discard.
 //
 // Caller must hold g.mu.
-func (g *Game) moveRevealedPickLocked(s revealedPickSettle, ids []uuid.UUID, after func(g *Game) error) error {
-	next := func(g *Game, _ []uuid.UUID) error {
-		if after == nil {
-			return nil
-		}
-		return after(g)
-	}
+func (g *Game) moveRevealedPickLocked(s revealedPickSettle, ids []uuid.UUID, after KeyedTail) error {
 	if len(ids) == 0 {
-		return next(g, nil)
+		return after.Run(g, nil)
 	}
 	switch s.destination {
 	case PickExile:
 		if s.exiledWith.ID != uuid.Nil {
 			// CR 607.2a (#3516): the card is "exiled with" the source, so
 			// a standing permission can name it (Null Summoner).
-			return g.ExileLinkedThenForEffect(ObjectRef(s.exiledWith), ids, next)
+			return g.ExileLinkedKeyedForEffect(ObjectRef(s.exiledWith), ids, after)
 		}
-		return g.ExileCardsThenForEffect(ids, next)
+		return g.ExileCardsKeyedForEffect(ids, after)
 	case PickKeep:
-		return next(g, nil)
+		return after.Run(g, nil)
 	default:
 		if g.opponentEffectBlockedByLocked(s.chooser, s.from, true) {
-			return next(g, nil)
+			return after.Run(g, nil)
 		}
 		return g.discardCardsLocked(s.from, ids, discardOptions{
 			cause:  DiscardCauseEffect,
 			source: s.source,
-			then:   next,
+			keyed:  after,
 		})
 	}
 }

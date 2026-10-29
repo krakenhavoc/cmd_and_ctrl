@@ -40,7 +40,7 @@ func init() {
 				Cards:  ctx.Game.LookAtTopOfLibraryForEffect(player, x),
 				Max:    2,
 				Label:  "Memory Deluge — put two of them into your hand",
-				Then:   TakeRestOnBottomInRandomOrder,
+				Key:    takeRestBottomRandom,
 			}.Apply(ctx)
 		},
 	})

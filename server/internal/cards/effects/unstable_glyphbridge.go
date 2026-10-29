@@ -79,9 +79,14 @@ func unstableGlyphbridgeEnters(g *game.Game, item *game.StackItem) error {
 		Question:   "Unstable Glyphbridge — choose the creature with power 2 or less that player keeps",
 		Of:         seatsFromActive(g),
 		Candidates: unstableGlyphbridgeCandidates,
-		Then:       destroyCreaturesNotChosen,
+		Keyed:      unstableGlyphbridgeChosen,
 	}.Apply(NewContext(g, item))
 }
+
+// unstableGlyphbridgeChosen is every creature not chosen destroyed, keyed
+// (#4290).
+var unstableGlyphbridgeChosen = RegisterPermanentsPick("prompt-run/unstable-glyphbridge-destroy",
+	PermanentsDef{Then: destroyCreaturesNotChosen})
 
 // unstableGlyphbridgeCandidates is one player's creatures with power 2
 // or less, exactly one to be chosen. A player with none is skipped.

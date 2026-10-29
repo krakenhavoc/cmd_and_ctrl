@@ -66,6 +66,17 @@ func fandanielNontokenCreatures(g *game.Game, opponent uuid.UUID) []uuid.UUID {
 	return out
 }
 
+// fandanielLoseLife is "loses 2 life for each instant and sorcery card in
+// its controller's graveyard", counted when it applies.
+func fandanielLoseLife(ctx *Context, controller, victim uuid.UUID) error {
+	if loss := 2 * fandanielInstantsAndSorceries(ctx.Game, controller); loss > 0 {
+		return ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -loss)
+	}
+	return nil
+}
+
+// fandanielOpponentsStep asks the first opponent of `remaining` and hands
+// the rest on. Carry is the opponents still to be asked, in turn order.
 func fandanielOpponentsStep(ctx *Context, controller uuid.UUID, remaining []uuid.UUID) error {
 	for len(remaining) > 0 {
 		victim := remaining[0]
@@ -75,13 +86,10 @@ func fandanielOpponentsStep(ctx *Context, controller uuid.UUID, remaining []uuid
 			remaining = rest
 			continue
 		}
-		loss := 2 * fandanielInstantsAndSorceries(ctx.Game, controller)
 		candidates := fandanielNontokenCreatures(ctx.Game, victim)
 		if len(candidates) == 0 {
-			if loss > 0 {
-				if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -loss); err != nil {
-					return err
-				}
+			if err := fandanielLoseLife(ctx, controller, victim); err != nil {
+				return err
 			}
 			remaining = rest
 			continue
@@ -90,28 +98,49 @@ func fandanielOpponentsStep(ctx *Context, controller uuid.UUID, remaining []uuid
 			Player:   victim,
 			Question: "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature, or lose 2 life for each instant and sorcery card in its controller's graveyard?",
 			Options: []game.ChoiceOption{
-				{Label: "Don't sacrifice — lose life", LifeCost: loss},
+				{Label: "Don't sacrifice — lose life", LifeCost: 2 * fandanielInstantsAndSorceries(ctx.Game, controller)},
 				{Label: "Sacrifice a nontoken creature"},
 			},
-			Then: func(ctx *Context, index int) error {
-				if index == 1 {
-					return SacrificeChoice{
-						Player:     victim,
-						Candidates: candidates,
-						Question:   "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature",
-						Then: func(ctx *Context) error {
-							return fandanielOpponentsStep(ctx, controller, rest)
-						},
-					}.Apply(ctx)
-				}
-				if l := 2 * fandanielInstantsAndSorceries(ctx.Game, controller); l > 0 {
-					if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -l); err != nil {
-						return err
-					}
-				}
-				return fandanielOpponentsStep(ctx, controller, rest)
-			},
+			ThenKey: fandanielChosen,
+			Carry:   rest,
 		}.Apply(ctx)
 	}
 	return nil
 }
+
+// fandanielChosen applies one opponent's answer and asks the next, keyed
+// (#4253): Carry is the opponents still to be asked. The sacrifice they
+// choose is SacrificeChoice, whose continuation is the keyed tail
+// fandanielSacrificedNext.
+var fandanielChosen game.OptionPickThen
+
+// Registered in init: the body asks the next opponent, which names the key
+// again, and a package-level initialiser would be an initialisation cycle.
+func init() {
+	fandanielChosen = OptionPickThen("option-pick/fandaniel-telophoroi-ascian-sacrifice-or-lose-life", fandanielAnswered)
+}
+
+func fandanielAnswered(ctx *Context, r game.OptionPicked) error {
+	victim, rest := r.Chooser, append([]uuid.UUID(nil), r.Carry...)
+	controller := ctx.Controller()
+	if r.Index == 1 {
+		return SacrificeChoice{
+			Player:     victim,
+			Candidates: fandanielNontokenCreatures(ctx.Game, victim),
+			Question:   "Fandaniel, Telophoroi Ascian — sacrifice a nontoken creature",
+			ThenTail:   withCarry(ctx.Tail(fandanielSacrificedNext), rest...),
+		}.Apply(ctx)
+	}
+	if err := fandanielLoseLife(ctx, controller, victim); err != nil {
+		return err
+	}
+	return fandanielOpponentsStep(ctx, controller, rest)
+}
+
+// fandanielSacrificedNext asks the next opponent once the sacrifice has
+// gone, keyed (#4253): Carry is the opponents still to be asked, and the
+// tail's Player is Fandaniel's controller. An on-disk key: never renamed,
+// never reused.
+var fandanielSacrificedNext = CardTail("then/fandaniel-telophoroi-ascian-next-opponent", func(ctx *Context, o game.TailOutcome) error {
+	return fandanielOpponentsStep(ctx, ctx.Controller(), append([]uuid.UUID(nil), o.Tail.Carry...))
+})

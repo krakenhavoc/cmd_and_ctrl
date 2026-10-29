@@ -11,8 +11,8 @@ import (
 // rather than a closure (#2854), so a table waiting on the answer is
 // still a restore point.
 //
-// An ordinary option pick holds its continuation as a closure
-// (optionPickFrame), and a func cannot be written to a restore point:
+// An option pick used to hold its continuation as a closure (the
+// optionPickFrame #4361 S14b deleted), and a func cannot be written to a restore point:
 // while one is open, the census counts it (ChoiceResumeFrames) and the
 // server keeps the last restore point from before the question. That
 // is the right trade for a pile split, which is over in one answer.
@@ -55,6 +55,28 @@ type OptionPicked struct {
 	Option *ChoiceOption
 	// Carry is the plain data the queuing card put on the prompt.
 	Carry []uuid.UUID
+	// dice is a paused dice roll's state (#4307, dice_roll.go), set only
+	// on the dice flow's own prompts.
+	dice *diceRollPause
+	// parked is the parked cast or activation behind an "of an
+	// opponent's choice" clause's "which opponent" question (#2055,
+	// opponent_target.go; keyed by #4361 slice 6): the prompt's own
+	// opponentTargetResume, nil on every other prompt.
+	parked *opponentTargetFrame
+	// walk is the trigger's CR 603.3d target walk behind the same
+	// question asked in a trigger's announcement (keyed by #4361 S14b):
+	// the prompt's own pickTargetResume, nil on every other prompt.
+	walk *pickTargetFrame
+	// Asked is a copy of the asking item when the card put it on the
+	// prompt (OptionPickPrompt.Asked, #4253 slice 8); nil otherwise.
+	Asked *StackItem
+	// Words and Nums are the words and numbers the card put there too
+	// (#4253 slice 10c): a walk over several lands keeps its place in them.
+	// Tail is the registered tail the card put on the prompt
+	// (OptionPickPrompt.Tail; #4253 slice 10b).
+	Words []string
+	Nums  []int
+	Tail  KeyedTail
 }
 
 // OptionPickFunc is a registered continuation. It runs with g.mu held,

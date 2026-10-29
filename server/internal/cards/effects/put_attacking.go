@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -23,37 +25,70 @@ import (
 // attacks" does not trigger and neither does anyone else's "whenever a
 // creature attacks".
 func putAttackingYourChoice(ctx *Context, card uuid.UUID, from game.ZoneKind, name string) error {
+	then, ok := putAttackingThens[from]
+	if !ok {
+		return fmt.Errorf("%w: putAttackingYourChoice from %q", game.ErrInvalidParam, from)
+	}
 	me := ctx.Controller()
 	refs := ctx.Game.AttackTargetsForEffect(me)
 	if len(refs) == 0 {
 		return nil
 	}
-	put := func(g *game.Game, target uuid.UUID) error {
-		if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != from {
-			return nil
-		}
-		return g.PutOntoBattlefieldTogetherThenForEffect(
-			[]game.BatchEntry{{CardID: card, From: from}},
-			game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target}, nil)
-	}
 	if len(refs) == 1 {
-		return put(ctx.Game, refs[0].ID)
+		return putAttacking(ctx.Game, me, card, from, refs[0].ID)
 	}
 	options := make([]game.ChoiceOption, len(refs))
+	carry := []uuid.UUID{card}
 	for i, r := range refs {
 		options[i] = game.ChoiceOption{Label: "Attack " + attackTargetName(ctx.Game, r.ID)}
 		if r.Kind != game.AttackTargetPlayer {
 			options[i].Cards = []uuid.UUID{r.ID}
 		}
+		carry = append(carry, r.ID)
 	}
 	return PickOption{
 		Question: name + " — what does it attack?",
 		Options:  options,
-		Then: func(ctx *Context, index int) error {
-			if index < 0 || index >= len(refs) {
-				index = 0
-			}
-			return put(ctx.Game, refs[index].ID)
-		},
+		ThenKey:  then,
+		Carry:    carry,
 	}.Apply(ctx)
+}
+
+// putAttacking is the entry itself: the card, if it is still where the
+// instruction found it, tapped and attacking `target`.
+func putAttacking(g *game.Game, me, card uuid.UUID, from game.ZoneKind, target uuid.UUID) error {
+	if z := g.FindCardZoneForEffect(card); z == nil || z.Kind != from {
+		return nil
+	}
+	return g.PutOntoBattlefieldTogetherKeyedForEffect(
+		[]game.BatchEntry{{CardID: card, From: from}},
+		game.ZoneEntryOptions{Controller: me, Tapped: true, Attacking: target}, game.KeyedTail{})
+}
+
+// putAttackingThens are the keyed answers to "what does it attack?", one
+// per zone the card comes from (#4253 slice 8). The prompt's Carry is the
+// card and then the attack targets in the order the options list them, so
+// the answer's index names one; the zone is the registration's.
+var putAttackingThens = map[game.ZoneKind]game.OptionPickThen{
+	game.ZoneExile:     putAttackingFromExile,
+	game.ZoneGraveyard: putAttackingFromGraveyard,
+}
+
+var (
+	putAttackingFromExile     = OptionPickThen("option-pick/put-attacking-from-exile", putAttackingAnswer(game.ZoneExile))
+	putAttackingFromGraveyard = OptionPickThen("option-pick/put-attacking-from-graveyard", putAttackingAnswer(game.ZoneGraveyard))
+)
+
+func putAttackingAnswer(from game.ZoneKind) func(ctx *Context, r game.OptionPicked) error {
+	return func(ctx *Context, r game.OptionPicked) error {
+		if len(r.Carry) < 2 {
+			return nil
+		}
+		card, targets := r.Carry[0], r.Carry[1:]
+		index := r.Index
+		if index < 0 || index >= len(targets) {
+			index = 0
+		}
+		return putAttacking(ctx.Game, ctx.Controller(), card, from, targets[index])
+	}
 }

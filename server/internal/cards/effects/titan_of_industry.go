@@ -64,7 +64,7 @@ func init() {
 						}
 						return ids, 1, 1
 					},
-					Then: titanOfIndustryShield,
+					Keyed: titanOfIndustryChosen,
 				}.Apply(ctx)
 			}),
 	)
@@ -76,6 +76,10 @@ func init() {
 		Triggered:       []game.TriggeredAbility{enters},
 	})
 }
+
+// titanOfIndustryChosen is the shield counter on the chosen creature,
+// keyed (#4290).
+var titanOfIndustryChosen = RegisterPermanentsPick("prompt-run/titan-of-industry-shield", PermanentsDef{Then: titanOfIndustryShield})
 
 // titanOfIndustryDestroy is the first bullet: destroy the target artifact
 // or enchantment, if it is still a legal target (CR 608.2b).

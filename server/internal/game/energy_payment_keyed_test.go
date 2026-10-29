@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -43,8 +42,8 @@ func TestKeyedEnergyPaymentIsAPlainDataPrompt(t *testing.T) {
 			Then: energyKeyedBranches, InThisStep: true,
 		})
 		c := g.PendingChoices[0]
-		if c.payUnlessResume != nil || c.PickThen != energyKeyedBranches.Key() {
-			t.Fatalf("%s: the prompt holds a frame (%v) or the wrong key %q", tc.name, c.payUnlessResume != nil, c.PickThen)
+		if c.PickThen != energyKeyedBranches.Key() {
+			t.Fatalf("%s: the prompt has the wrong key %q", tc.name, c.PickThen)
 		}
 		if a := c.PayAction(); a == nil || a.Kind != PayActionEnergy || a.Count != 2 {
 			t.Fatalf("%s: PayAction = %+v, want energy x2", tc.name, a)
@@ -64,26 +63,5 @@ func TestKeyedEnergyPaymentIsAPlainDataPrompt(t *testing.T) {
 		if PlayerEnergy(me) != tc.wantEnergy {
 			t.Errorf("%s: energy = %d, want %d", tc.name, PlayerEnergy(me), tc.wantEnergy)
 		}
-	}
-}
-
-// A keyed payment that also sets a closure is a programming error and
-// queues nothing: a restore would drop the closure.
-func TestKeyedEnergyPaymentRefusesAClosure(t *testing.T) {
-	g := newActiveGame(t)
-	me := g.Seats[0]
-	setEnergyForTest(t, g, me, 3)
-	var err error
-	g.WithWriteLock(func() {
-		err = g.QueueEnergyPaymentForEffect(EnergyPayment{
-			Chooser: me.ID, Source: uuid.New(), N: 1, Then: energyKeyedBranches,
-			OnPay: func(*Game) error { return nil },
-		})
-	})
-	if !errors.Is(err, ErrInvalidParam) {
-		t.Fatalf("err = %v, want ErrInvalidParam", err)
-	}
-	if len(g.PendingChoices) != 0 {
-		t.Errorf("%d prompts queued, want none", len(g.PendingChoices))
 	}
 }

@@ -47,7 +47,7 @@ func hiddenStringsMayTapOrUntap(ctx *Context, ids []uuid.UUID) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	target, rest := ids[0], ids[1:]
+	target := ids[0]
 	name := cardNameFor(ctx.Game, target)
 	return PickOption{
 		Question: "Hidden Strings — you may tap or untap " + name,
@@ -56,18 +56,39 @@ func hiddenStringsMayTapOrUntap(ctx *Context, ids []uuid.UUID) error {
 			{Label: "Untap it", Cards: []uuid.UUID{target}},
 			{Label: "Leave it as it is", Cards: []uuid.UUID{target}},
 		},
-		Then: func(ctx *Context, index int) error {
-			var err error
-			switch index {
-			case 0:
-				err = TapTarget{Target: target}.Apply(ctx)
-			case 1:
-				err = UntapTarget{Target: target}.Apply(ctx)
-			}
-			if err != nil {
-				return err
-			}
-			return hiddenStringsMayTapOrUntap(ctx, rest)
-		},
+		ThenKey: hiddenStringsAnswer,
+		Carry:   ids,
 	}.Apply(ctx)
+}
+
+// hiddenStringsAnswer is the answer about the first target, then the next
+// question about the rest, keyed (#4253): the targets still to be asked about
+// ride the prompt as Carry, the one in question first. Its key is an on-disk
+// identity: never renamed, never reused.
+//
+// Assigned in init, not in the declaration: the continuation asks the next
+// question, which names this key, and a package-level initializer may not
+// refer to itself (an initialization cycle).
+var hiddenStringsAnswer game.OptionPickThen
+
+func init() {
+	hiddenStringsAnswer = OptionPickThen("option-pick/hidden-strings-tap-or-untap", hiddenStringsAnswered)
+}
+
+func hiddenStringsAnswered(ctx *Context, r game.OptionPicked) error {
+	if len(r.Carry) == 0 {
+		return nil
+	}
+	target, rest := r.Carry[0], r.Carry[1:]
+	var err error
+	switch r.Index {
+	case 0:
+		err = TapTarget{Target: target}.Apply(ctx)
+	case 1:
+		err = UntapTarget{Target: target}.Apply(ctx)
+	}
+	if err != nil {
+		return err
+	}
+	return hiddenStringsMayTapOrUntap(ctx, rest)
 }

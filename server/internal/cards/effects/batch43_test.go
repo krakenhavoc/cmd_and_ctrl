@@ -996,7 +996,7 @@ func TestB43FinneasGrowsTokensAndRabbitsThenDrawsOnTenPower(t *testing.T) {
 // ordering prompt, and "total power 10 or greater" has to be read
 // AFTER the placement lands — not while it is still owed to the
 // prompt, which is where b13PutCounterOnEach used to leave it before
-// the fix chained the batch through AddCounterThenForEffect.
+// the fix chained the batch through AddCounterByKeyedForEffect.
 func TestB43FinneasDrawsAfterAPausedPlacement(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

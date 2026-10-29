@@ -931,68 +931,75 @@ type ChooseSourcePrompt struct {
 	// for a card that has no controller — one in the command zone, a
 	// graveyard or exile — its owner (CR 108.4a). uuid.Nil is anyone's.
 	Controller uuid.UUID
-	// Then is handed the chosen source, or the zero ref when nothing
-	// could be chosen (no legal source, or a chooser who has left).
-	// Runs with g.mu held.
-	Then func(g *Game, source ObjectRef, zone ZoneKind) error
+	// Then is the registered continuation (RegisterChooseSourceThen),
+	// handed the chosen source, or the zero ref when nothing could be
+	// chosen (no legal source, or a chooser who has left), with Carry,
+	// Word, Nums and Asked as the card put them (#4253 slice 10c). The
+	// prompt holds no closure, so a table waiting on it is a restore point.
+	Then  ChooseSourceThen
+	Carry []uuid.UUID
+	Word  string
+	Nums  []int
+	Asked *AskedItem
+	// Shield names the engine's own continuation instead: the shield,
+	// redirection or multiplier the card described, completed with the
+	// pinned source. Set it or Then, not both.
+	Shield *SourceShield
 }
 
 // ChooseDamageSourceThenForEffect asks the chooser to choose a source and
-// runs Then with it. Then runs even when no prompt could go up — no
-// legal source, or a chooser who has left the game — with the zero ref,
-// so the rest of the card is never stranded (#544). Reports whether a
-// prompt was queued.
+// runs the continuation with it. The continuation runs even when no prompt
+// could go up — no legal source, or a chooser who has left the game — with
+// the zero ref, so the rest of the card is never stranded (#544). Reports
+// whether a prompt was queued.
 //
 // Caller must hold g.mu in write mode (resolution frame).
 func (g *Game) ChooseDamageSourceThenForEffect(p ChooseSourcePrompt) (bool, error) {
+	key := p.Then.Key()
+	switch {
+	case p.Shield != nil && key != "":
+		return false, fmt.Errorf("%w: a choose_source names a continuation or a shield, not both", ErrInvalidParam)
+	case p.Shield != nil:
+		key = chooseSourceShieldThen.Key()
+	case key == "":
+		return false, fmt.Errorf("%w: a choose_source needs a continuation or a shield", ErrInvalidParam)
+	}
 	cands := g.damageSourceCandidatesLocked(p.Queries, p.Controller)
-	then := p.Then
 	if who := g.playerByIDLocked(p.Chooser); who == nil || who.Eliminated || len(cands) == 0 {
-		if then == nil {
-			return false, nil
+		effectRegistryMu.RLock()
+		fn := chooseSourceFns[key]
+		effectRegistryMu.RUnlock()
+		if fn == nil {
+			return false, fmt.Errorf("%w: choose-source continuation %q", ErrUnknownEffectKey, key)
 		}
-		return false, then(g, ObjectRef{}, "")
+		return false, fn(g, ChosenSource{
+			Chooser: p.Chooser, Source: p.Source,
+			Carry: copyUUIDs(p.Carry), Word: p.Word, Nums: copyInts(p.Nums), Item: p.Asked.StackItem(),
+			shield: cloneSourceShield(p.Shield),
+		})
 	}
 	question := p.Question
 	if question == "" {
 		question = "Choose a source of damage"
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:        PendingChoiceChooseSource,
-		Chooser:     p.Chooser,
-		FromPlayer:  p.Chooser,
-		Count:       1,
-		Source:      p.Source,
-		Reason:      question,
-		ChooseCards: cands,
-		ChooseMin:   1,
-		ChooseMax:   1,
-		chooseCardsResume: &chooseCardsFrame{
-			then: chooseSourceThen(p.Chooser, p.Source, then),
-		},
+		Kind:         PendingChoiceChooseSource,
+		Chooser:      p.Chooser,
+		FromPlayer:   p.Chooser,
+		Count:        1,
+		Source:       p.Source,
+		Reason:       question,
+		ChooseCards:  cands,
+		ChooseMin:    1,
+		ChooseMax:    1,
+		PickThen:     key,
+		OptionCarry:  copyUUIDs(p.Carry),
+		PickMatchArg: p.Word,
+		PickNums:     copyInts(p.Nums),
+		Asked:        copyAskedItem(p.Asked),
+		sourceShield: cloneSourceShield(p.Shield),
 	})
 	return true, nil
-}
-
-// chooseSourceThen pins the answer as it arrives — the source is the
-// object it is NOW (CR 609.7a: "chosen when the effect is created") —
-// and hands it on. A package-level constructor capturing scalars and the
-// card's own continuation, the StackItem.Effect contract.
-func chooseSourceThen(chooser, source uuid.UUID, then func(*Game, ObjectRef, ZoneKind) error) func(*Game, []uuid.UUID) error {
-	return func(g *Game, picked []uuid.UUID) error {
-		g.emitCardsChosenLocked(chooser, source, picked)
-		var ref ObjectRef
-		var zone ZoneKind
-		if len(picked) == 1 {
-			if r, z, ok := g.DamageSourceRefLocked(picked[0]); ok {
-				ref, zone = r, z
-			}
-		}
-		if then == nil {
-			return nil
-		}
-		return then(g, ref, zone)
-	}
 }
 
 // ResolveChooseSource answers a PendingChoiceChooseSource.

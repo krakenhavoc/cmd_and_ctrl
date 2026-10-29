@@ -38,30 +38,38 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      targetsCountedByX(TargetCreature("X target creatures")),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			controllers := map[uuid.UUID]uuid.UUID{}
 			var ids []uuid.UUID
 			for _, t := range ctx.LegalTargets() {
 				if t.Kind != game.TargetCard {
 					continue
 				}
-				controller, ok := controllerOfTarget(ctx, t.ID)
+				_, ok := controllerOfTarget(ctx, t.ID)
 				if !ok {
 					continue
 				}
 				ids = append(ids, t.ID)
-				controllers[t.ID] = controller
 			}
 			// The context is rebuilt inside the continuation from the
 			// live *Game, the contract massEffect.apply explains.
-			return ctx.Game.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-				ctx := NewContext(g, item)
-				for _, id := range exiled {
-					if err := (CreateToken{Controller: controllers[id], Template: TokenCard("2/2 green Boar"), N: 1}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
+			return ctx.Game.ExileCardsKeyedForEffect(ids, ctx.ItemTail(curseOfTheSwineBoars))
 		},
 	})
 }
+
+// curseOfTheSwineBoars gives each exiled creature's controller a Boar (#4253 slice 9).
+var curseOfTheSwineBoars = CardTail("curse-of-the-swine/boar-per-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	// Each creature's controller as it left (CR 603.10).
+	controllers := map[uuid.UUID]uuid.UUID{}
+	for _, c := range g.SimultaneousExitCardsForEffect(exiled) {
+		controllers[c.InstanceID] = c.Controller
+	}
+
+	ctx = NewContext(g, item)
+	for _, id := range exiled {
+		if err := (CreateToken{Controller: controllers[id], Template: TokenCard("2/2 green Boar"), N: 1}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+})

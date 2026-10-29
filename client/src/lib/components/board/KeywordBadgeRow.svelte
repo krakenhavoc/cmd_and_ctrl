@@ -161,6 +161,13 @@
     // information (#2181). A designation, not a characteristic (#2145).
     if (p.kind === "mana_value_at_most") return `MV≤${p.value ?? ""}`;
     if (p.kind === "ring_bearer") return "RNG";
+    // Four qualities that name a count or a class, not a word: the first
+    // three letters of "creatures with two or more creature types" and
+    // "noncreature permanents" would say CRE and NON (#4307).
+    if (p.kind === "mana_value_odd") return "MV odd";
+    if (p.kind === "mana_value_even") return "MV even";
+    if (p.kind === "multityped_creatures") return "2+T";
+    if (p.kind === "noncreature_permanents") return "NCP";
     return fallbackShort(p.printed);
   }
 </script>

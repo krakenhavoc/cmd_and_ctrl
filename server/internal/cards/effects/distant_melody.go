@@ -19,14 +19,16 @@ func init() {
 		Name:         "Distant Melody",
 		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Distant Melody — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return DrawCards{Player: item.Controller, N: permanentsOfTypeYouControl(g, item.Controller, t)}.Apply(NewContext(g, item))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Distant Melody — choose a creature type",
+				ctx.ItemTail(distantMelodyTypeChosen))
 			return nil
 		},
 	})
 }
+
+// distantMelodyTypeChosen draws a card for each permanent of the chosen type
+// the caster controls. An on-disk key.
+var distantMelodyTypeChosen = creatureTypeChosen("then/distant-melody-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	controller := ctx.Controller()
+	return DrawCards{Player: controller, N: permanentsOfTypeYouControl(ctx.Game, controller, t)}.Apply(ctx)
+})

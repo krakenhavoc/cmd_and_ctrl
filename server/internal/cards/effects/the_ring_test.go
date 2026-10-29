@@ -32,11 +32,12 @@ func ringTempt(t *testing.T, g *game.Game, player uuid.UUID) *uuid.UUID {
 	got := new(uuid.UUID)
 	*got = uuid.Max
 	g.WithWriteLock(func() {
-		if err := g.RingTemptsForEffect(player, uuid.Nil, func(_ *game.Game, rb uuid.UUID) error {
+		if err := g.RingTemptsKeyedForEffect(player, uuid.Nil, hookTail(func(_ *game.Game, o game.TailOutcome) error {
+			rb := tailFirstID(o)
 			*got = rb
 			return nil
-		}); err != nil {
-			t.Fatalf("RingTemptsForEffect: %v", err)
+		})); err != nil {
+			t.Fatalf("RingTemptsKeyedForEffect: %v", err)
 		}
 	})
 	return got
@@ -777,11 +778,13 @@ func TestTheRingSurvivesARestore(t *testing.T) {
 	}
 }
 
-// A table sitting on an open ring_bearer prompt holds a Go continuation,
-// so it is not a restore point for that moment (ADR 0114 §4: the
-// existing posture for every resolution-time pick, counted under
-// ChoiceResumeFrames). An undo snapshot (Clone) carries the prompt and
-// answers it on the clone; once answered, the table restores.
+// A table sitting on an open ring_bearer prompt is a restore point: the
+// pick is keyed (ringBearerPicked, #4253 slice 10b) and the rest of the
+// sentence rides it as a registered tail, so no resume frame is counted.
+// (Before #4253's last part deleted RingTemptsForEffect's closure form,
+// ADR 0114 §4's posture held and this moment was not one.) An undo
+// snapshot (Clone) carries the prompt and answers it on the clone; once
+// answered, the table restores.
 func TestTheRingMidTemptPrompt(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -790,8 +793,8 @@ func TestTheRingMidTemptPrompt(t *testing.T) {
 	ringTempt(t, g, me.ID)
 
 	snap := g.CaptureSnapshot()
-	if snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 1 {
-		t.Fatalf("mid-tempt capture: restorable %v, census %+v — want it counted as one resume frame", snap.Restorable(), snap.Continuations)
+	if !snap.Restorable() || snap.Continuations.ChoiceResumeFrames != 0 {
+		t.Fatalf("mid-tempt capture: restorable %v, census %+v — want a restore point with no resume frame", snap.Restorable(), snap.Continuations)
 	}
 
 	// The undo path: a clone answers its own copy of the prompt.

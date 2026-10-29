@@ -26,7 +26,7 @@ import (
 // resolution (CR 608.2b), so one that changed hands is skipped.
 //
 // THE SHUFFLE. Every still-legal target goes to its owner's library at
-// once (TuckCardsToLibraryThenForEffect, one simultaneous move; a
+// once (TuckCardsToLibraryKeyedForEffect, one simultaneous move; a
 // commander may take CR 903.9's offer instead), then each owner of one
 // shuffles. The players who controlled one are read before the move.
 //
@@ -84,24 +84,47 @@ func guffRewritesHistoryResolve(item *game.StackItem, ctx *Context) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	source := item.SourceCardID
-	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		order := apnapPlayers(g)
-		for _, p := range order {
-			if owners[p] {
-				if err := g.ShuffleLibraryForEffect(p); err != nil {
-					return err
-				}
-			}
-		}
-		for _, p := range order {
-			if !controlled[p] {
-				continue
-			}
-			if err := g.ExileUntilCastFreeKeepingForEffect(p, source, func(c game.Card) bool { return !c.IsLand() }); err != nil {
+	// Keyed (#4253 slice 10a): Carry is the owners, then the controllers;
+	// N is how many owners there are.
+	var carry []uuid.UUID
+	for p := range owners {
+		carry = append(carry, p)
+	}
+	n := len(carry)
+	for p := range controlled {
+		carry = append(carry, p)
+	}
+	tail := game.KeyedTail{Ref: guffShuffleThenExile, Player: item.Controller, Source: item.SourceCardID, Carry: carry, N: n}
+	return ctx.Game.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{}, tail)
+}
+
+// guffShuffleThenExile is the tuck's "then each owner shuffles, then each
+// controller exiles cards until a nonland card and may cast it", in APNAP
+// order (#4253 slice 10a).
+var guffShuffleThenExile = game.RegisterTail("then/guff-rewrites-history-shuffle-exile", func(g *game.Game, o game.TailOutcome) error {
+	n := min(max(o.Tail.N, 0), len(o.Tail.Carry))
+	owners, controlled := map[uuid.UUID]bool{}, map[uuid.UUID]bool{}
+	for _, p := range o.Tail.Carry[:n] {
+		owners[p] = true
+	}
+	for _, p := range o.Tail.Carry[n:] {
+		controlled[p] = true
+	}
+	order := apnapPlayers(g)
+	for _, p := range order {
+		if owners[p] {
+			if err := g.ShuffleLibraryForEffect(p); err != nil {
 				return err
 			}
 		}
-		return nil
-	})
-}
+	}
+	for _, p := range order {
+		if !controlled[p] {
+			continue
+		}
+		if err := g.ExileUntilCastFreeKeepingForEffect(p, o.Tail.Source, func(c game.Card) bool { return !c.IsLand() }); err != nil {
+			return err
+		}
+	}
+	return nil
+})

@@ -15,12 +15,11 @@ import (
 // on "yes".
 func pauseOnConfirm(chooser uuid.UUID, then func(*Game) error) func(*Game, *StackItem) error {
 	return func(g *Game, item *StackItem) error {
-		g.QueueConfirmForEffect(ConfirmPrompt{
+		queueConfirmHooked(g, ConfirmPrompt{
 			Chooser:  chooser,
 			Source:   item.SourceCardID,
 			Question: "test — pause here",
-			OnAccept: then,
-		})
+		}, then, nil)
 		return nil
 	}
 }

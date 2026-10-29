@@ -11,10 +11,10 @@ import (
 // a pair of closures (#4264), so a table waiting on it is a restore
 // point.
 //
-// QueueConfirmForEffect holds the two branches in a confirmFrame, and a
-// prompt with a frame is not written to a restore point: a table waiting
-// on Rhystic Study's "draw a card?" could be undone but not saved and
-// restored.
+// The closure form (QueueConfirmForEffect, deleted in #4253's last part)
+// held the two branches in a confirmFrame, and a prompt with a frame is not
+// written to a restore point: a table waiting on Rhystic Study's "draw a
+// card?" could be undone but not saved and restored.
 //
 // The keyed form has no frame. The answer is a package-level function
 // registered under an on-disk key (RegisterConfirmThen), handed the
@@ -132,19 +132,14 @@ func (g *Game) RunConfirmThenForEffect(then ConfirmThen, r ConfirmAnswer) error 
 	return keyedConfirmBranch(then.key, r, carriedCause{})(g)
 }
 
-// QueueConfirmKeyedForEffect is QueueConfirmForEffect with the answer as
-// a registered key and `carry` the plain data it is handed. The prompt
-// carries no closure, so a table waiting on it is a restore point. The
-// prompt's OnAccept and OnDecline must be nil: they are closures, and a
-// restore would drop them (ErrInvalidParam).
+// QueueConfirmKeyedForEffect queues a two-way prompt and returns its ID: the
+// answer is a registered key and `carry` the plain data it is handed. The
+// prompt carries no closure, so a table waiting on it is a restore point.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueConfirmKeyedForEffect(p ConfirmPrompt, then ConfirmThen, carry []uuid.UUID) (uuid.UUID, error) {
 	if then.key == "" {
 		return uuid.Nil, fmt.Errorf("%w: keyed confirm with no answer", ErrInvalidParam)
-	}
-	if p.OnAccept != nil || p.OnDecline != nil {
-		return uuid.Nil, fmt.Errorf("%w: keyed confirm %q also sets a closure", ErrInvalidParam, then.key)
 	}
 	from := p.FromPlayer
 	if from == uuid.Nil {
@@ -177,9 +172,6 @@ func (g *Game) QueueConfirmKeyedForEffect(p ConfirmPrompt, then ConfirmThen, car
 func confirmFrameOf(c *PendingChoice) *confirmFrame {
 	if c == nil {
 		return nil
-	}
-	if c.confirmResume != nil {
-		return c.confirmResume
 	}
 	if c.Kind != PendingChoiceConfirm || c.PickThen == "" {
 		return nil

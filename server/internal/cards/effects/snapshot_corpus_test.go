@@ -668,7 +668,125 @@ func corpusBoards() []corpusBoard {
 		{"cultivate_fetch", corpusCultivateFetch},
 		{"hour_of_promise_fetch", corpusHourOfPromiseFetch},
 		{"eye_of_jace_surveil", corpusEyeOfJaceSurveil},
+		// #4253 slice 6: a single permanent's return keeps its tail on the
+		// entry (entryTail.keyed), and an amass's token creation carries the
+		// keyword action's data and the card's own tail (keyed tail word and
+		// next).
+		{"it_doesnt_add_up_clone", corpusItDoesntAddUpClone},
+		{"amass_army_order", corpusAmassArmyOrder},
+		// #4253 slice 5: the library-search prompt itself, written as data
+		// (pendingChoices[].searchPrompt, its marker on pickThen). Myriad
+		// Landscape's, whose set rule is registered (searchPrompt.rule);
+		// and Assassin's Trophy's "you may search", asked before it begins
+		// (searchPrompt.undecided).
+		{"myriad_landscape_search", corpusMyriadLandscapeSearch},
+		{"trophy_search_undecided", corpusTrophySearchUndecided},
+		// #4253 slice 9: a route batch paused on its second card with the
+		// rest of the batch as data (zoneRoute.batchLegs), a discard leg
+		// (zoneRoute.discardLegs, the discard's own event fields), and a
+		// discard a replacement turned into an entry (entryTail.batch.discard).
+		{"crypt_incursion_exile_leg", corpusCryptIncursionExileLeg},
+		{"mind_rot_discard_leg", corpusMindRotDiscardLeg},
+		{"obstinate_baloth_discard_entry", corpusObstinateBalothDiscardEntry},
 	}
+}
+
+// corpusCryptIncursionExileLeg is Crypt Incursion's exile of two creature
+// cards paused on the second's ordering prompt (#4253 slice 9).
+func corpusCryptIncursionExileLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	for _, name := range []string{"First", "Needle"} {
+		opp.Graveyard.PushTop(game.Card{InstanceID: uuid.New(), Name: name, TypeLine: "Creature — Test", Owner: opp.ID, Controller: opp.ID})
+	}
+	seedExileOrderProbes(g, opp.ID)
+	castCatalogSpell(t, g, "Crypt Incursion", "Instant", b42CryptIncursionOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the Needle's exile did not ask for an order")
+	}
+	return g
+}
+
+// corpusHandCard files a card in p's hand, known to p.
+func corpusHandCard(g *game.Game, p *game.Player, name, typeLine, oracle string) uuid.UUID {
+	c := game.Card{InstanceID: uuid.New(), Name: name, TypeLine: typeLine, OracleID: oracle, Owner: p.ID, Controller: p.ID, Power: 4, Toughness: 4}
+	c.AddKnower(p.ID)
+	g.WithWriteLock(func() { p.Hand.PushTop(c) })
+	return c.InstanceID
+}
+
+// corpusMindRotDiscard casts an opponent's Mind Rot at the other seat and
+// discards a filler and `second`, which asks.
+func corpusMindRotDiscard(t *testing.T, g *game.Game, victim *game.Player, second uuid.UUID, filler uuid.UUID) {
+	t.Helper()
+	castCatalogSpell(t, g, "Mind Rot", "Sorcery", mindRotOracleID, []game.TargetRef{{Kind: game.TargetPlayer, ID: victim.ID}})
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, victim.ID, filler, second)
+	if pendingOfKind(g, game.PendingChoiceReplacementOrder) == nil {
+		t.Fatal("setup: the second discarded card did not ask for an order")
+	}
+}
+
+// corpusMindRotDiscardLeg is an opponent's Mind Rot over a filler and a
+// Needle, paused on the Needle's discard order (#4253 slice 9).
+func corpusMindRotDiscardLeg(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	filler := corpusHandCard(g, victim, "Filler", "Sorcery", "")
+	needle := corpusHandCard(g, victim, "Needle", "Sorcery", "")
+	seedOrderProbes(g, victim.ID, graveyardOrderProbeOracles, "Graveyard Order Probe")
+	corpusMindRotDiscard(t, g, victim, needle, filler)
+	return g
+}
+
+// corpusObstinateBalothDiscardEntry is an opponent's Mind Rot over a filler
+// and an Obstinate Baloth whose entry asks for an order, the rest of the
+// discard on the entry (#4253 slice 9).
+func corpusObstinateBalothDiscardEntry(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	filler := corpusHandCard(g, victim, "Filler", "Sorcery", "")
+	baloth := corpusHandCard(g, victim, "Obstinate Baloth", "Creature — Beast", obstinateBalothOracle)
+	seedOrderProbes(g, victim.ID, entryOrderProbeOracles, "Entry Order Probe")
+	corpusMindRotDiscard(t, g, victim, baloth, filler)
+	return g
+}
+
+// corpusItDoesntAddUpClone is It Doesn't Add Up returning a Clone, paused on
+// its "copy a creature?" question with the suspect on the entry's tail as
+// data (#4253 slice 6).
+func corpusItDoesntAddUpClone(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[0]
+	seedCopyableCreature(g, me.ID, "Grizzly Bears", "Creature — Bear", 2, 2)
+	clone := uuid.New()
+	me.Graveyard.PushTop(game.Card{
+		InstanceID: clone, Name: "Clone", TypeLine: "Creature — Shapeshifter", OracleID: oracleClone,
+		ManaCost: "{3}{U}", Owner: me.ID, Controller: me.ID,
+	})
+	castCatalogSpell(t, g, "It Doesn't Add Up", "Instant", sbItDoesntAddUp, dgCardRef(clone))
+	passPriorityAroundTable(t, g)
+	if copyPrompt(g) == nil {
+		t.Fatal("setup: the returning Clone did not ask")
+	}
+	return g
+}
+
+// corpusAmassArmyOrder is Widespread Brutality's amass with the Army's
+// creation held on the CR 616 order prompt, the amass's data and the
+// card's sweep on the creation's tail (#4253 slice 6).
+func corpusAmassArmyOrder(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	tokenOrderBoard(g, me.ID)
+	castCatalogSpell(t, g, "Widespread Brutality", "Sorcery", widespreadBrutalityOracl, nil)
+	passPriorityAroundTable(t, g)
+	if !orderPromptOpen(g) {
+		t.Fatal("setup: the Army's creation did not ask for an order")
+	}
+	return g
 }
 
 // corpusFetchedShockland is Polluted Delta cracked for Watery Grave,
@@ -857,6 +975,47 @@ func corpusHourOfPromiseFetch(t *testing.T) *game.Game {
 	answerSearchByID(t, g, me.ID, ids[0], ids[1])
 	if pendingOfKind(g, game.PendingChoiceEntryPayLife) == nil {
 		t.Fatal("setup: the fetched Blood Crypt did not ask")
+	}
+	return g
+}
+
+// corpusMyriadLandscapeSearch is Myriad Landscape's search prompt open: two
+// basic lands that share a land type, the set rule registered (#4253
+// slice 5).
+func corpusMyriadLandscapeSearch(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	landscape := pushCatalogPermanent(g, me.ID, "Myriad Landscape", "Land", myriadLandscapeOracle, false)
+	seedSearchLibrary(me,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"},
+		game.Card{Name: "Plains", TypeLine: "Basic Land — Plains"},
+	)
+	if err := g.ActivateCatalogAbility(me.ID, landscape, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+	if pendingOfKind(g, game.PendingChoiceSearchLibrary) == nil {
+		t.Fatal("setup: Myriad Landscape did not search")
+	}
+	return g
+}
+
+// corpusTrophySearchUndecided is Assassin's Trophy's victim asked whether
+// they search, before the search begins (#4253 slice 5).
+func corpusTrophySearchUndecided(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	victim := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	target := seedPermanentFor(g, victim.ID, "Gaea's Cradle", "Legendary Land")
+	seedSearchLibrary(victim,
+		game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"},
+		game.Card{Name: "Bear", TypeLine: "Creature — Bear"},
+	)
+	castCatalogSpell(t, g, "Assassin's Trophy", "Instant", assassinsTrophyOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: target}})
+	passPriorityAroundTable(t, g)
+	if c := pendingOfKind(g, game.PendingChoiceSearchLibrary); c == nil || !c.SearchIsUndecided() || c.Chooser != victim.ID {
+		t.Fatal("setup: the victim was not asked whether they search")
 	}
 	return g
 }
@@ -1446,8 +1605,8 @@ func corpusTheRing(t *testing.T) *game.Game {
 	theirs := pushBattlefieldCardWithTimestamp(g, corpusCreature(opp, "Balduvian Bears", 2, 2))
 	var err error
 	g.WithWriteLock(func() {
-		if err = g.RingTemptsForEffect(me, uuid.Nil, nil); err == nil {
-			err = g.RingTemptsForEffect(opp, uuid.Nil, nil)
+		if err = g.RingTemptsKeyedForEffect(me, uuid.Nil, game.KeyedTail{}); err == nil {
+			err = g.RingTemptsKeyedForEffect(opp, uuid.Nil, game.KeyedTail{})
 		}
 	})
 	if err != nil {
@@ -1484,10 +1643,10 @@ func corpusTheRingLevel4(t *testing.T) *game.Game {
 	var err error
 	g.WithWriteLock(func() {
 		for i := 0; i < 4 && err == nil; i++ {
-			err = g.RingTemptsForEffect(me.ID, uuid.Nil, nil)
+			err = g.RingTemptsKeyedForEffect(me.ID, uuid.Nil, game.KeyedTail{})
 		}
 		if err == nil {
-			err = g.RingTemptsForEffect(opp.ID, uuid.Nil, nil)
+			err = g.RingTemptsKeyedForEffect(opp.ID, uuid.Nil, game.KeyedTail{})
 		}
 		if err != nil {
 			return
@@ -2789,7 +2948,7 @@ func corpusAmass(t *testing.T) *game.Game {
 	me := g.Seats[0].ID
 	g.WithWriteLock(func() {
 		for _, subtype := range []string{"Zombie", "Orc"} {
-			if err := g.AmassForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, nil); err != nil {
+			if err := g.AmassKeyedForEffect(me, uuid.Nil, ArmyToken("Zombie"), subtype, 1, game.KeyedTail{}); err != nil {
 				t.Fatalf("amass %s: %v", subtype, err)
 			}
 		}

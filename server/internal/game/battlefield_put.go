@@ -269,7 +269,7 @@ func (g *Game) PutFromCommandZoneOntoBattlefieldForEffect(cardID uuid.UUID, opts
 // settles (CR 614.12a: the choice is made before the permanent
 // enters). This door then returns nil with a nil error, and a caller
 // that needs to know what entered uses
-// PutCardsFromLibraryOntoBattlefieldThenForEffect. See entry_batch.go.
+// PutCardsFromLibraryOntoBattlefieldKeyedForEffect. See entry_batch.go.
 //
 // # The declared simplification that remains
 //
@@ -322,7 +322,7 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldForEffect(ids []uuid.UUID, opts
 // and the CR 708.9 reveal — and manifest, manifest dread (ManifestDread,
 // manifest_dread.go) and cloak build on it. The turn-face-up special
 // action (CR 116.2g) and the face-down CAST (CR 708.4) live in
-// face_down.go. Manifesting from a HAND is ManifestFromHandsThenForEffect.
+// face_down.go. Manifesting from a HAND is ManifestFromHandsKeyedForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
@@ -348,42 +348,30 @@ func (g *Game) ManifestForEffect(playerID uuid.UUID) (uuid.UUID, error) {
 	return entered[0], nil
 }
 
-// ManifestFromHandsThenForEffect is "<player> manifests <cards> from
+// ManifestFromHandsKeyedForEffect is "<player> manifests <cards> from
 // their hand" (CR 701.40a; Kozilek, the Broken Reality, Scroll of Fate,
 // ADR 0189 decision 3): every card in `ids` is turned face down and put
 // onto the battlefield as a 2/2 creature under its OWNER's control, and
-// `then` is told which permanents entered once the entry is complete.
+// `then` (a registered tail, #4253 slice 6) is told the permanents that
+// entered as TailOutcome.IDs once the entry is complete. (The closure form,
+// ManifestFromHandsThenForEffect, was deleted in #4253's cleanup.)
 //
-// # One entry, not a series
+// CR 701.40e's "one at a time" covers only a LIBRARY. Cards named from a
+// hand are chosen up front and enter together, as Selvala's Stampede's do:
+// one PutCardsFromHandOntoBattlefieldKeyedForEffect batch with FaceDown
+// set, so every CR 614 window sees the board as it stood before any card
+// arrived. Controller is left unset, so each card enters under its owner;
+// the ids may belong to different players' hands (Kozilek's two targets).
 //
-// CR 701.40e's "one at a time" covers only a LIBRARY ("manifest
-// multiple cards from their library"), where each card is the new top.
-// Cards named from a hand are chosen up front and enter together, as
-// Selvala's Stampede's do: this is one PutCardsFromHandOntoBattlefield
-// ThenForEffect batch with FaceDown set, so every CR 614 window sees
-// the board as it stood before any card arrived, and a card whose
-// window stops to ask a question waits for the answer. Asking one card
-// at a time would hand a later card a different board than an earlier
-// one, which no rule asks for.
-//
-// # Whose control
-//
-// Controller is left unset, so each card enters under its owner — the
-// player who manifests it. The ids may belong to different players'
-// hands (Kozilek's two targets).
-//
-// # Refusals
-//
-// Every ID must be in its owner's hand, or the whole call is refused
-// with ErrCardNotFound and nothing moves (the batch's own validation).
-// `then` runs exactly once even then. A nonpermanent card is legal:
-// the object that arrives is a 2/2 creature whatever the card says
-// (CR 701.40a, CR 708.2), and CR 701.40g keeps an instant or sorcery
-// face down when it is turned up.
+// Every ID must be in its owner's hand, or the whole call is refused with
+// ErrCardNotFound and nothing moves (the batch's own validation). A
+// nonpermanent card is legal: the object that arrives is a 2/2 creature
+// whatever the card says (CR 701.40a, CR 708.2), and CR 701.40g keeps an
+// instant or sorcery face down when it is turned up.
 //
 // Caller must hold g.mu.
-func (g *Game) ManifestFromHandsThenForEffect(ids []uuid.UUID, then func(g *Game, manifested []uuid.UUID) error) error {
-	return g.PutCardsFromHandOntoBattlefieldThenForEffect(ids, HandEntryOptions{FaceDown: FaceDownManifested}, then)
+func (g *Game) ManifestFromHandsKeyedForEffect(ids []uuid.UUID, then KeyedTail) error {
+	return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(ids, HandEntryOptions{FaceDown: FaceDownManifested}, then)
 }
 
 // putOntoBattlefieldFromZoneLocked is the shared body of the hand and
@@ -394,10 +382,10 @@ func (g *Game) ManifestFromHandsThenForEffect(ids []uuid.UUID, then func(g *Game
 // When a card's window asks a question (#1322) the batch waits for the
 // answer, so this returns (nil, nil) and the cards land when it
 // arrives. A caller with something to do with the entered permanents
-// uses a Then door instead —
-// PutCardsFromLibraryOntoBattlefieldThenForEffect,
-// PutFromHandOntoBattlefieldThenForEffect or
-// PutOntoBattlefieldTogetherThenForEffect.
+// uses a keyed door instead —
+// PutCardsFromLibraryOntoBattlefieldKeyedForEffect,
+// PutFromHandOntoBattlefieldKeyedForEffect or
+// PutOntoBattlefieldTogetherKeyedForEffect.
 //
 // Caller must hold g.mu.
 func (g *Game) putOntoBattlefieldFromZoneLocked(ids []uuid.UUID, from ZoneKind, opts ZoneEntryOptions) ([]uuid.UUID, error) {
@@ -422,73 +410,91 @@ func batchEntriesFrom(ids []uuid.UUID, from ZoneKind) []BatchEntry {
 	return out
 }
 
-// PutCardsFromLibraryOntoBattlefieldThenForEffect is
-// PutCardsFromLibraryOntoBattlefieldForEffect with the rest of the
-// effect as a continuation: `then` is told the permanents that entered
-// once the entry is complete — at once when no card's window asked a
-// question, and from the last answer when one did (#1322). It runs
-// exactly once, including when the batch is refused, which is what lets
-// a caller put "the rest" of a library pile away without ever doing it
-// while a card of the pile is still waiting to enter.
-//
-// Caller must hold g.mu.
-func (g *Game) PutCardsFromLibraryOntoBattlefieldThenForEffect(ids []uuid.UUID, opts LibraryEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
-	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), opts, then)
-}
-
 // PutCardsFromLibraryOntoBattlefieldKeyedForEffect is
-// PutCardsFromLibraryOntoBattlefieldThenForEffect with the continuation
-// as data (#4253 slice 3): `then` is a registered tail (RegisterTail),
-// told the permanents that entered as TailOutcome.IDs. A card's question
-// asked on the way (a shockland's) is then a restore point.
+// PutCardsFromLibraryOntoBattlefieldForEffect with the rest of the
+// effect as a continuation, as data (#4253 slice 3): `then` is a
+// registered tail (RegisterTail), told the permanents that entered as
+// TailOutcome.IDs once the entry is complete — at once when no card's
+// window asked a question, and from the last answer when one did
+// (#1322). It runs exactly once, including when the batch is refused,
+// which is what lets a caller put "the rest" of a library pile away
+// without ever doing it while a card of the pile is still waiting to
+// enter. A card's question asked on the way (a shockland's) is a
+// restore point. (The closure form,
+// PutCardsFromLibraryOntoBattlefieldThenForEffect, was deleted in
+// #4361 S10 once only tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) PutCardsFromLibraryOntoBattlefieldKeyedForEffect(ids []uuid.UUID, opts LibraryEntryOptions, then KeyedTail) error {
 	return g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), &entryBatch{keyed: then, opts: opts})
 }
 
-// PutOntoBattlefieldTogetherKeyedForEffect is
-// PutOntoBattlefieldTogetherThenForEffect with the continuation as data
-// (#4253 slice 3), as PutCardsFromLibraryOntoBattlefieldKeyedForEffect.
+// PutOntoBattlefieldTogetherKeyedForEffect puts every named card onto the
+// battlefield as ONE simultaneous entry, from whichever zones they are
+// in, and then runs `then`, a registered tail (#4253 slice 3), told the
+// permanents that entered as TailOutcome.IDs — Sword of
+// Hearth and Home's "exile up to one target creature you own, then
+// search your library for a basic land card. Put both cards onto the
+// battlefield under your control" (#1324).
+//
+// It is the batch the hand and library "put" doors already were, with
+// the source zone per card rather than per call. Two entries one after
+// the other are observably different from this one: CR 603.6a checks
+// every permanent on the battlefield, newcomers included, against the
+// event that put them there, so with the creature and the land entering
+// together a landfall creature sees the land and an intervening-if
+// ("if an opponent controls more lands than you") reads the board with
+// both of them on it.
+//
+// Every card's CR 614 window can ask its question (a shockland's life,
+// a Clone's copy, a reveal-land's reveal), one card at a time, before
+// anything moves; see the file comment. `then` runs exactly once, on
+// every outcome but a pause — immediately when nothing asked, and from
+// the answer to the last question when something did. It is told
+// uuid.Nil-free IDs in the order given, with an exiled card's NEW ID.
+// Like every continuation, it takes the live *Game.
+//
+// Every entry is validated before anything happens, as the single-zone
+// batch does: a card not in the zone it is named from
+// (ErrCardNotFound), a zone this door does not put from, a nonpermanent
+// card or a token (ErrInvalidParam) refuses the whole batch, and `then`
+// is still told nothing entered. A repeated ID is taken once.
+//
+// Every question is a restore point: the continuation is data. (The
+// closure form, PutOntoBattlefieldTogetherThenForEffect, was deleted in
+// #4253's last part once only tests called it.)
 //
 // Caller must hold g.mu.
 func (g *Game) PutOntoBattlefieldTogetherKeyedForEffect(cards []BatchEntry, opts ZoneEntryOptions, then KeyedTail) error {
 	return g.startPreparedEntryBatchLocked(cards, &entryBatch{keyed: then, opts: opts})
 }
 
-// PutCardsFromHandOntoBattlefieldThenForEffect puts every card in `ids`
+// PutCardsFromHandOntoBattlefieldKeyedForEffect puts every card in `ids`
 // from its owner's hand onto the battlefield as ONE simultaneous entry
 // ("put up to N permanent cards from your hand onto the battlefield",
-// Selvala's Stampede; ADR 0146 amendment 2026-10-13), and tells `then`
-// which permanents entered once the entry is complete. The hand twin of
-// PutCardsFromLibraryOntoBattlefieldThenForEffect, on the same batch
+// Selvala's Stampede; ADR 0146 amendment 2026-10-13), and tells `then`,
+// a registered tail (#4253 slice 6), which permanents entered once the
+// entry is complete, as TailOutcome.IDs. The hand twin of
+// PutCardsFromLibraryOntoBattlefieldKeyedForEffect, on the same batch
 // (entry_batch.go): every CR 614 window is evaluated against the board
 // as it stood before any card entered, every ETB fires after all have
 // landed, and a card whose window stops to ask a question waits for the
-// answer. `then` runs exactly once, including when the batch is refused.
+// answer, which is a restore point. `then` runs exactly once, including
+// when the batch is refused. (The closure form,
+// PutCardsFromHandOntoBattlefieldThenForEffect, was deleted in #4361
+// S10 once only tests called it.)
 //
 // Caller must hold g.mu.
-func (g *Game) PutCardsFromHandOntoBattlefieldThenForEffect(ids []uuid.UUID, opts HandEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
-	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), opts, then)
+func (g *Game) PutCardsFromHandOntoBattlefieldKeyedForEffect(ids []uuid.UUID, opts HandEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), &entryBatch{keyed: then, opts: opts})
 }
 
-// PutFromHandOntoBattlefieldThenForEffect is the hand door with a
-// continuation, told the entering permanent's ID (uuid.Nil when nothing
-// entered) once the entry is complete. See
-// PutCardsFromLibraryOntoBattlefieldThenForEffect for when it runs.
+// PutFromHandOntoBattlefieldKeyedForEffect is the single-card hand door
+// with the continuation as data (#4253 slice 6): `then` is told the
+// entering permanent as TailOutcome.IDs, which is empty when nothing
+// entered.
 //
 // Caller must hold g.mu.
-func (g *Game) PutFromHandOntoBattlefieldThenForEffect(cardID uuid.UUID, opts HandEntryOptions, then func(g *Game, entered uuid.UUID) error) error {
-	if then == nil {
-		// No continuation, so none on the batch: a paused entry is a
-		// restore point (#4253 slice 3).
-		return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, nil)
-	}
-	return g.startEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, opts, func(g *Game, in []uuid.UUID) error {
-		entered := uuid.Nil
-		if len(in) > 0 {
-			entered = in[0]
-		}
-		return then(g, entered)
-	})
+func (g *Game) PutFromHandOntoBattlefieldKeyedForEffect(cardID uuid.UUID, opts HandEntryOptions, then KeyedTail) error {
+	return g.startPreparedEntryBatchLocked([]BatchEntry{{CardID: cardID, From: ZoneHand}}, &entryBatch{keyed: then, opts: opts})
 }

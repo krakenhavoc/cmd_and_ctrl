@@ -59,7 +59,7 @@ func TestOutsideCardSearchAnswersTheChooserWithMatchingCards(t *testing.T) {
 	}
 	g.WithWriteLock(func() {
 		if !g.QueueOutsidePickForEffect(game.OutsidePickPrompt{
-			Player: f.alice, Question: "Burning Wish", Match: func(c game.Card) bool { return c.IsSorcery() },
+			Player: f.alice, Question: "Burning Wish", Keyed: testLobbySorceryPick,
 		}) {
 			t.Fatal("no collection pick for a seat with no sideboard")
 		}

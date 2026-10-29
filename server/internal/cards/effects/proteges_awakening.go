@@ -19,9 +19,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Draws: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return EmpowerJace{N: 6, Then: func(ctx *Context) error {
-				return DrawCards{N: 1}.Apply(ctx)
-			}}.Apply(ctx)
+			return EmpowerJace{N: 6, Then: protegesAwakeningDraw}.Apply(ctx)
 		},
 	})
 }
+
+// protegesAwakeningDraw is "draw a card" once the counters are on, keyed
+// (#4290).
+var protegesAwakeningDraw = RegisterEmpowerThen("prompt-run/proteges-awakening-empower", func(ctx *Context) error {
+	return DrawCards{N: 1}.Apply(ctx)
+})

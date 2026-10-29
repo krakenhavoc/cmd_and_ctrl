@@ -37,7 +37,7 @@ import (
 // collects them at the three places an instance of several events is
 // opened:
 //
-//   - an Each walk (DealDamageEachThenForEffect and its per-recipient
+//   - an Each walk (DealDamageEachKeyedForEffect and its per-recipient
 //     sibling) knows its recipients before its first leg: the walk is
 //     asked about up front (walkDivisionEventsLocked) and starts once the
 //     division is made;
@@ -98,16 +98,16 @@ func chargedShieldCharge(m Mod) (int, bool) {
 
 // ShieldDivision is one share of a divided shield: the most the shield
 // (Seq, Mod) may prevent of the damage Source deals Target in Instance.
-// Plain data, never captured: the events it divides land in the action
-// that answered the prompt, or wait on a CR 616 prompt, which is not a
-// restore point either.
+// Plain data, written to a restore point (GameSnapshot.ShieldDivisions,
+// #4361 S16): the events it divides may wait on a CR 616 prompt, or on
+// the next shield's divide_shield prompt, and both are restore points.
 type ShieldDivision struct {
-	Seq      int64
-	Mod      int
-	Instance DamageInstance
-	Source   uuid.UUID
-	Target   uuid.UUID
-	Amount   int
+	Seq      int64          `json:"seq"`
+	Mod      int            `json:"mod"`
+	Instance DamageInstance `json:"instance"`
+	Source   uuid.UUID      `json:"source"`
+	Target   uuid.UUID      `json:"target"`
+	Amount   int            `json:"amount"`
 }
 
 // divisionDecidedLocked reports whether shield (seq, mod) has been divided
@@ -373,15 +373,16 @@ func (g *Game) openDamageStageLocked(inst DamageInstance, all, scope bool) (prev
 }
 
 // stageDamageEventLocked stages `ev` when an open group collects it: an
-// event of the group's instance, with no continuation, that a charged
-// shield could meet — or any such event, for a combat group. Reports
+// event of the group's instance, with no continuation (a closure or, #4253,
+// a keyed tail or a keyed walk's rest), that a charged shield could meet — or any such event, for
+// a combat group. Reports
 // whether it was staged; the caller then treats it as paused.
 //
 // Caller must hold g.mu (write).
 func (g *Game) stageDamageEventLocked(ev *ReplacementEvent) bool {
 	st := g.damageStage
 	t := ev.damageTail
-	if st == nil || t == nil || t.released || t.then != nil || t.endsInstance {
+	if st == nil || t == nil || t.released || !t.keyed.IsZero() || t.each != nil || t.endsInstance {
 		return false
 	}
 	if ev.DamageInstance == 0 || ev.DamageInstance != st.inst || ev.DamageAmount <= 0 {
@@ -427,38 +428,16 @@ func (g *Game) closeDamageStageLocked(prev *damageStage) {
 	if st == nil || len(st.events) == 0 {
 		return
 	}
-	records := slices.Clone(st.events)
-	var end DamageInstance
+	land := divideShieldLand{staged: slices.Clone(st.events)}
 	if st.scope {
-		end = st.inst
+		land.end = st.inst
 	}
-	evs := make([]*ReplacementEvent, len(records))
-	for i, r := range records {
+	evs := make([]*ReplacementEvent, len(land.staged))
+	for i, r := range land.staged {
 		evs[i] = r.event()
 	}
-	land := landStagedDamage(records, end)
 	if err := g.askShieldDivisionsLocked(g.shieldDivisionNeedsLocked(evs), land); err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, ErrorMsg: "staged damage: " + err.Error()})
-	}
-}
-
-// landStagedDamage deals staged events in the order they were opened,
-// each through the CR 614 pipeline and its own tail. A package-level
-// constructor capturing plain data: each run rebuilds the events, so an
-// undo across the prompt and a second answer deal them again, once.
-// `end`, when set, is a scope's instance, ended once its events have
-// landed (CR 615.5).
-func landStagedDamage(records []stagedDamage, end DamageInstance) func(*Game) error {
-	return func(g *Game) error {
-		for _, r := range records {
-			// A target that has gone deals nothing (the resume's rule);
-			// the instruction that opened it has returned already.
-			_, _ = g.damageThroughReplacementsLocked(r.event())
-		}
-		if end != 0 {
-			g.endDamageInstanceLocked(end)
-		}
-		return nil
 	}
 }
 
@@ -670,38 +649,49 @@ type DivideShieldPrompt struct {
 	seq  int64
 	mod  int
 	inst DamageInstance
+
+	// rest and land are what the answer leads to, as data (#4361 S16):
+	// the next shields to divide, then the damage. Never mutated, so a
+	// Clone shares them.
+	rest []divideNeed
+	land divideShieldLand
 }
 
-// DivideShieldEntry is one event a divided shield meets.
+// DivideShieldEntry is one event a divided shield meets. Written to a
+// restore point with its prompt (#4361 S16).
 type DivideShieldEntry struct {
 	// ID keys the answer's distribution.
-	ID uuid.UUID
+	ID uuid.UUID `json:"id"`
 	// Source deals Amount to Target (a player when TargetIsPlayer);
 	// SourceName and TargetName are what the table calls them.
-	Source         uuid.UUID
-	SourceName     string
-	Target         uuid.UUID
-	TargetName     string
-	TargetIsPlayer bool
-	Amount         int
-	Combat         bool
+	Source         uuid.UUID `json:"source"`
+	SourceName     string    `json:"sourceName,omitempty"`
+	Target         uuid.UUID `json:"target"`
+	TargetName     string    `json:"targetName,omitempty"`
+	TargetIsPlayer bool      `json:"targetIsPlayer,omitempty"`
+	Amount         int       `json:"amount"`
+	Combat         bool      `json:"combat,omitempty"`
 }
 
 // askShieldDivisionsLocked asks the first need's protected player to
-// divide it, and so on down the list, then runs `land`. With no need
-// left, `land` runs at once. A chooser who cannot be asked (gone from the
+// divide it, and so on down the list, then lands `land`. With no need
+// left, `land` lands at once. A chooser who cannot be asked (gone from the
 // game) gets the engine's order (DefaultShieldDivision), so the damage
-// still lands.
+// still lands. The prompt carries the needs after it and `land` as data
+// (#4361 S16), so a table waiting on it is a restore point.
 //
 // Caller must hold g.mu (write).
-func (g *Game) askShieldDivisionsLocked(needs []divideNeed, land func(*Game) error) error {
+func (g *Game) askShieldDivisionsLocked(needs []divideNeed, land divideShieldLand) error {
 	for len(needs) > 0 {
 		n, rest := needs[0], needs[1:]
 		if _, ok := g.scopedEffectIndexBySeqLocked(n.seq); !ok {
 			needs = rest
 			continue
 		}
-		prompt := &DivideShieldPrompt{Label: n.label, Charge: n.charge, Entries: n.entries, seq: n.seq, mod: n.mod, inst: n.inst}
+		prompt := &DivideShieldPrompt{
+			Label: n.label, Charge: n.charge, Entries: n.entries, seq: n.seq, mod: n.mod, inst: n.inst,
+			rest: rest, land: land,
+		}
 		if who := g.playerByIDLocked(n.chooser); who == nil || who.Eliminated {
 			g.writeShieldDivisionLocked(prompt, DefaultShieldDivision(prompt))
 			needs = rest
@@ -714,32 +704,10 @@ func (g *Game) askShieldDivisionsLocked(needs []divideNeed, land func(*Game) err
 			Source:       n.source,
 			Reason:       fmt.Sprintf("%s — divide %d %s among the damage", n.label, n.charge, n.verb),
 			DivideShield: prompt,
-			confirmResume: &confirmFrame{
-				onAccept:  continueShieldDivisions(rest, land),
-				onDecline: defaultShieldDivisionThen(prompt, rest, land),
-			},
 		})
 		return nil
 	}
-	if land == nil {
-		return nil
-	}
-	return land(g)
-}
-
-// continueShieldDivisions is the answered prompt's continuation: the next
-// need, or the damage.
-func continueShieldDivisions(rest []divideNeed, land func(*Game) error) func(*Game) error {
-	return func(g *Game) error { return g.askShieldDivisionsLocked(rest, land) }
-}
-
-// defaultShieldDivisionThen is the dropped prompt's continuation: the
-// engine's order for this shield, then on as an answer would go.
-func defaultShieldDivisionThen(p *DivideShieldPrompt, rest []divideNeed, land func(*Game) error) func(*Game) error {
-	return func(g *Game) error {
-		g.writeShieldDivisionLocked(p, DefaultShieldDivision(p))
-		return g.askShieldDivisionsLocked(rest, land)
-	}
+	return g.landDivisionLocked(land)
 }
 
 // DefaultShieldDivision is the engine's order: each event in the order it
@@ -820,14 +788,13 @@ func (g *Game) ResolveDivideShield(choiceID, chooserID uuid.UUID, dist map[uuid.
 	if err := CheckShieldDivision(choice.DivideShield, dist); err != nil {
 		return err
 	}
-	frame := choice.confirmResume
+	p := choice.DivideShield
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
-	g.writeShieldDivisionLocked(choice.DivideShield, dist)
-	if frame != nil && frame.onAccept != nil {
-		if err := frame.onAccept(g); err != nil {
-			g.emitChoiceEffectErrorLocked(chooserID, source, err)
-		}
+	g.writeShieldDivisionLocked(p, dist)
+	// The answered prompt's continuation: the next need, or the damage.
+	if err := g.askShieldDivisionsLocked(p.rest, p.land); err != nil {
+		g.emitChoiceEffectErrorLocked(chooserID, source, err)
 	}
 	g.runStateChecksLocked()
 	return nil
@@ -839,10 +806,12 @@ func (g *Game) ResolveDivideShield(choiceID, chooserID uuid.UUID, dist map[uuid.
 //
 // Caller must hold g.mu (write).
 func (g *Game) settleDroppedDivideShieldLocked(c *PendingChoice) {
-	if c == nil || c.confirmResume == nil || c.confirmResume.onDecline == nil {
+	if c == nil || c.DivideShield == nil {
 		return
 	}
-	if err := c.confirmResume.onDecline(g); err != nil {
+	p := c.DivideShield
+	g.writeShieldDivisionLocked(p, DefaultShieldDivision(p))
+	if err := g.askShieldDivisionsLocked(p.rest, p.land); err != nil {
 		g.emitChoiceEffectErrorLocked(c.Chooser, c.Source, err)
 	}
 }

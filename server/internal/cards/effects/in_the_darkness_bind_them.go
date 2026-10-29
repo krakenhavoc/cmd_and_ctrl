@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -42,12 +40,12 @@ func init() {
 
 // inTheDarknessWraith is chapters I to III.
 func inTheDarknessWraith(g *game.Game, item *game.StackItem) error {
-	tempt := ringTemptsYouNext(item)
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	ctx := NewContext(g, item)
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller,
 		Source:     item.SourceCardID,
-		Groups:     []game.TokenGroup{{Template: NewContext(g, item).TextToken(TokenCard("3/3 black Wraith with menace")), Count: 1}},
-	}, func(g *game.Game, _ []uuid.UUID) error { return tempt(g) })
+		Groups:     []game.TokenGroup{{Template: ctx.TextToken(TokenCard("3/3 black Wraith with menace")), Count: 1}},
+	}, ctx.ItemTail(ringTemptsYouTail))
 }
 
 // inTheDarknessSteal is chapter IV: each still-legal pick is taken

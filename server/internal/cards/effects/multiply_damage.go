@@ -137,31 +137,48 @@ func (f NextTimeFlip) queue(g *game.Game, by nextTimeFlipBy) {
 	if question == "" {
 		question = name + " — call the coin flip"
 	}
+	combat := 0
+	if f.CombatOnly {
+		combat = 1
+	}
 	g.FlipCoinForEffect(game.CoinFlipSpec{
 		Flipper:  controller,
 		Source:   source,
 		Question: question,
-		Then: func(g *game.Game, result game.CoinFlipResult) error {
-			if f.Source.ID == uuid.Nil {
-				return nil
-			}
-			c := NewContext(g, &game.StackItem{
-				ID: by.self, Kind: by.kind,
-				Controller: controller, Owner: controller, SourceCardID: source,
-			})
-			if len(result.Won) > 0 && result.Won[0] {
-				return MultiplyDamage{Factor: 2, FromRef: f.Source, FromZone: f.SourceZone,
-					CombatOnly: f.CombatOnly, Next: true, Label: name + " — double the next damage"}.Apply(c)
-			}
-			g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
-				EffectSource: source,
-				Controller:   controller,
-				Source:       f.Source,
-				SourceZone:   f.SourceZone,
-				CombatOnly:   f.CombatOnly,
-				Label:        name + " — prevent the next damage",
-			})
-			return nil
-		},
+		// Keyed (#4253 slice 10b): the resolving item and the pinned
+		// source ride the call as values.
+		ThenKey: nextTimeFlipped,
+		Carry:   []uuid.UUID{by.self, f.Source.ID},
+		Nums:    []int{f.Source.Epoch, combat},
+		Words:   []string{name, string(f.SourceZone), string(by.kind)},
 	})
 }
+
+// nextTimeFlipped is a NextTimeFlip's settled call: a won flip doubles the
+// source's next damage, a lost one prevents it. An on-disk key: never
+// renamed, never reused.
+var nextTimeFlipped = game.RegisterCoinFlipThen("coin-flip/next-time-double-or-prevent", func(g *game.Game, r game.CoinFlipped) error {
+	src := game.ObjectRef{ID: carriedID(r.Carry, 1), Epoch: carriedNum(r.Nums, 0)}
+	if src.ID == uuid.Nil {
+		return nil
+	}
+	name, zone, combat := carriedWord(r.Words, 0), game.ZoneKind(carriedWord(r.Words, 1)), carriedNum(r.Nums, 1) == 1
+	controller, source := r.Flipper, r.Source
+	c := NewContext(g, &game.StackItem{
+		ID: carriedID(r.Carry, 0), Kind: game.StackItemKind(carriedWord(r.Words, 2)),
+		Controller: controller, Owner: controller, SourceCardID: source,
+	})
+	if wonFirstFlip(r) {
+		return MultiplyDamage{Factor: 2, FromRef: src, FromZone: zone,
+			CombatOnly: combat, Next: true, Label: name + " — double the next damage"}.Apply(c)
+	}
+	g.PreventNextDamageFromSourceForEffect(game.NextDamageShield{
+		EffectSource: source,
+		Controller:   controller,
+		Source:       src,
+		SourceZone:   zone,
+		CombatOnly:   combat,
+		Label:        name + " — prevent the next damage",
+	})
+	return nil
+})

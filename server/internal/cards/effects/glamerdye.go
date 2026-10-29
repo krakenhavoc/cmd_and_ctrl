@@ -22,6 +22,6 @@ func init() {
 		Targets:          TargetSpellOrPermanent("target spell or permanent", nil, nil),
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{1}{U}")},
-		OnResolve:        changeTextOfTarget(textColorWords, false, nil),
+		OnResolve:        changeTextOfTarget(textColorWords, false, nothingAfterTheChange),
 	})
 }

@@ -106,10 +106,8 @@ func init() {
 							SplitQuestion: "Liliana of the Veil — separate these permanents into two piles",
 							PickQuestion:  "Liliana of the Veil — choose a pile; you sacrifice every permanent in it",
 							Cards:         permanentsControlledByPlayer(g, t.ID),
-							Then: func(ctx *Context, sacrificed, _ []uuid.UUID) error {
-								ctx.Game.SacrificeAllForEffect(ctx.Source(), sacrificed)
-								return nil
-							},
+							// Keyed (#4253 slice 10b): both prompts carry the tail.
+							ThenTail: ctx.Tail(lilianaSacrificePile),
 						}.Apply(ctx)
 					}
 					return nil
@@ -118,6 +116,13 @@ func init() {
 		},
 	})
 }
+
+// lilianaSacrificePile is "that player sacrifices all permanents in the
+// pile of their choice". An on-disk key: never renamed, never reused.
+var lilianaSacrificePile = PileTail("then/liliana-of-the-veil-sacrifice-pile", func(ctx *Context, sacrificed, _ []uuid.UUID, _ game.TailOutcome) error {
+	ctx.Game.SacrificeAllForEffect(ctx.Source(), sacrificed)
+	return nil
+})
 
 // permanentsControlledByPlayer is every permanent on the battlefield
 // the player controls, in battlefield order.

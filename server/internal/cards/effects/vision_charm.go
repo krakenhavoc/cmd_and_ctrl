@@ -40,16 +40,7 @@ func init() {
 				visionCharmMill),
 			ModeDoing("Choose a land type and a basic land type. Each land of the first chosen type becomes the second chosen type until end of turn.", nil,
 				func(_ *game.StackItem, ctx *Context, _ int) error {
-					return ChooseBasicLandTypeThen(ctx, "Vision Charm — choose a land type", game.LandTypes, func(ctx *Context, from string) error {
-						return ChooseBasicLandTypeThen(ctx, "Vision Charm — choose a basic land type", nil, func(ctx *Context, to string) error {
-							return LandBecomes{
-								Match:    And(Land(), HasSubtype(from)),
-								Types:    []string{to},
-								Duration: DurationUntilEndOfTurn(ctx),
-								Label:    "Vision Charm — each " + from + " is " + landTypeArticle(to),
-							}.Apply(ctx)
-						})
-					})
+					return ChooseBasicLandTypeTail(ctx, "Vision Charm — choose a land type", game.LandTypes, ctx.ItemTail(visionCharmLandTypeChosen))
 				}),
 			ModeDoing("Target artifact phases out. (While it's phased out, it's treated as though it doesn't exist. It phases in before its controller untaps during their next untap step.)",
 				TargetPermanent("target artifact", Artifact()),
@@ -76,3 +67,27 @@ func visionCharmPhaseOut(_ *game.StackItem, ctx *Context, occ int) error {
 	}
 	return PhaseOut{Targets: []uuid.UUID{t.ID}}.Apply(ctx)
 }
+
+// visionCharmLandTypeChosen is the first type chosen (the tail's Word); it
+// asks the second. An on-disk key.
+var visionCharmLandTypeChosen = CardTail("then/vision-charm-land-type-chosen", func(ctx *Context, o game.TailOutcome) error {
+	then := ctx.ItemTail(visionCharmBasicTypeChosen)
+	then.Words = []string{o.Tail.Word}
+	return ChooseBasicLandTypeTail(ctx, "Vision Charm — choose a basic land type", nil, then)
+})
+
+// visionCharmBasicTypeChosen is the second type chosen (the tail's Word):
+// each land of the first (its first Word) becomes it until end of turn. An
+// on-disk key.
+var visionCharmBasicTypeChosen = CardTail("then/vision-charm-basic-type-chosen", func(ctx *Context, o game.TailOutcome) error {
+	if len(o.Tail.Words) == 0 {
+		return nil
+	}
+	from, to := o.Tail.Words[0], o.Tail.Word
+	return LandBecomes{
+		Match:    And(Land(), HasSubtype(from)),
+		Types:    []string{to},
+		Duration: DurationUntilEndOfTurn(ctx),
+		Label:    "Vision Charm — each " + from + " is " + landTypeArticle(to),
+	}.Apply(ctx)
+})

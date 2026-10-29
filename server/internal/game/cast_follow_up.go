@@ -1,6 +1,7 @@
 package game
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
@@ -62,6 +63,15 @@ func RegisterCastFollowUp(key string, body CastFollowUpFunc) CastFollowUpKey {
 	return CastFollowUpKey(key)
 }
 
+// KnownCastFollowUp reports whether a follow-up body is registered under
+// key.
+func KnownCastFollowUp(key CastFollowUpKey) bool {
+	castFollowUpMu.RLock()
+	defer castFollowUpMu.RUnlock()
+	_, ok := castFollowUpBodies[string(key)]
+	return ok
+}
+
 // runCastFollowUpLocked runs a registered follow-up. An unknown key (a
 // snapshot from a build that registered more) is a no-op, never a
 // panic.
@@ -78,4 +88,36 @@ func (g *Game) runCastFollowUpLocked(key CastFollowUpKey, f CastFollowUp) error 
 		return nil
 	}
 	return body(g, f)
+}
+
+// unknownCastFollowUps is checkEffectKeys' line for each follow-up key a
+// stored cast permission names that this binary does not register
+// (#4361 S13): FollowUp and IfNotCast. runCastFollowUpLocked runs an
+// unknown key as nothing, so a restore that kept one would grant the cast
+// without its "if you do" or "if you don't"; the file is refused instead.
+func unknownCastFollowUps(p *CastPermission) []string {
+	if p == nil {
+		return nil
+	}
+	var out []string
+	for _, k := range []CastFollowUpKey{p.FollowUp, p.IfNotCast} {
+		if k != "" && !KnownCastFollowUp(k) {
+			out = append(out, "cast follow-up "+string(k))
+		}
+	}
+	return out
+}
+
+// registeredCastFollowUpKeys lists the ledger lines, "castfollowup <key>"
+// (#4361 S13): a stored cast permission names its follow-ups by key, so
+// they are on-disk identities.
+func registeredCastFollowUpKeys() []string {
+	castFollowUpMu.RLock()
+	defer castFollowUpMu.RUnlock()
+	out := make([]string, 0, len(castFollowUpBodies))
+	for k := range castFollowUpBodies {
+		out = append(out, "castfollowup "+k)
+	}
+	sort.Strings(out)
+	return out
 }

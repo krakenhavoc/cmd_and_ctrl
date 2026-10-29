@@ -58,9 +58,7 @@ func init() {
 		// follows the exile even when a commander card among the targets
 		// pauses it on its owner's CR 903.9 choice (CR 608.2c: in order).
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return exileTargetCardsThen(ctx, func(ctx *Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
-				return ceaseGainAndDraw.Run(ctx)
-			})
+			return exileTargetCardsThen(ctx, ceaseAfterExile)
 		},
 	})
 	Register(Spec{
@@ -73,3 +71,8 @@ func init() {
 		},
 	})
 }
+
+// ceaseAfterExile is Cease's second sentence after the exile (#4253 slice 9).
+var ceaseAfterExile = GraveyardExileTail("cease/gain-and-draw", func(ctx *Context, _ []uuid.UUID, _ map[uuid.UUID]bool) error {
+	return ceaseGainAndDraw.Run(ctx)
+})

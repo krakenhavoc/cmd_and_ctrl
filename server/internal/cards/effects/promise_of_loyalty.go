@@ -61,10 +61,24 @@ func promiseOfLoyaltyAsk(ctx *Context, players, chosen []uuid.UUID) error {
 			}
 			return ids, 1, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
+		Keyed: promiseOfLoyaltyChosen,
+		Carry: packIDLists(rest, so),
+	}.Apply(ctx)
+}
+
+// promiseOfLoyaltyChosen is one player's pick, then the next player's,
+// keyed (#4290). The carry is the players still to ask, then the
+// creatures chosen so far. Registered in init because the answer asks the
+// next player, which names the key again.
+var promiseOfLoyaltyChosen PermanentsThen
+
+func init() {
+	promiseOfLoyaltyChosen = RegisterPermanentsPick("prompt-run/promise-of-loyalty-keep", PermanentsDef{
+		ThenRun: func(ctx *Context, picked game.PromptedPicks, r game.RunDone) error {
+			rest, so := unpackIDPair(r.Carry)
 			return promiseOfLoyaltyAsk(ctx, rest, append(so, picked.Cards()...))
 		},
-	}.Apply(ctx)
+	})
 }
 
 // promiseOfLoyaltyCreatures is the creatures `player` controls.
@@ -107,5 +121,5 @@ func promiseOfLoyaltyApply(ctx *Context, chosen []uuid.UUID) error {
 	if len(doomed) == 0 {
 		return nil
 	}
-	return g.SacrificeAllThenForEffect(ctx.Source(), doomed, nil)
+	return g.SacrificeAllKeyedForEffect(ctx.Source(), doomed, game.KeyedTail{})
 }

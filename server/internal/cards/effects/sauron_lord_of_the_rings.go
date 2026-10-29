@@ -66,10 +66,15 @@ const sauronLordOfTheRingsCastLabel = "Sauron, Lord of the Rings — amass Orcs 
 // sauronLordOfTheRingsCast is the cast trigger's body, in printed order:
 // the amass, then the mill, then the return.
 func sauronLordOfTheRingsCast(g *game.Game, item *game.StackItem) error {
-	return Amass{Subtype: "Orc", N: 5, Then: func(ctx *Context, _ uuid.UUID) error {
-		return roomsBMillThenReturnAChosenCreatureCard(5)(ctx.Game, ctx.Item)
-	}}.Apply(NewContext(g, item))
+	return Amass{Subtype: "Orc", N: 5, ThenTail: sauronLordOfTheRingsMill}.Apply(NewContext(g, item))
 }
+
+// sauronLordOfTheRingsMill is "then mill five cards, then return a creature
+// card from your graveyard to the battlefield" as a keyed tail (#4253 slice
+// 6). An on-disk key.
+var sauronLordOfTheRingsMill = AmassTail("sauron-lord-of-the-rings/mill-then-return", func(ctx *Context, _ uuid.UUID) error {
+	return roomsBMillThenReturnAChosenCreatureCard(5)(ctx.Game, ctx.Item)
+})
 
 // aCommanderAnOpponentControlsDied is "whenever a commander an opponent
 // controls dies": a commander went from the battlefield to a graveyard

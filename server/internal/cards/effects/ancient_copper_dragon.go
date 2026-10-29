@@ -12,14 +12,12 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisDealsCombatDamageToAPlayer("Ancient Copper Dragon — roll a d20 and create Treasures", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				results, err := rollDice(ctx, 20, 1)
-				if err != nil || len(results) == 0 {
-					return err
-				}
-				return treasureTokens(g, item.Controller, results[0])
-			}),
+			WheneverThisDealsCombatDamageToAPlayer("Ancient Copper Dragon — roll a d20 and create Treasures", Do(RollDice{Sides: 20, N: 1, Then: ancientCopperDragonTreasures})),
 		},
 	})
 }
+
+// ancientCopperDragonTreasures is the Treasures, after the d20 (#4307).
+var ancientCopperDragonTreasures = DiceTail("dice/ancient-copper-dragon-treasures", func(ctx *Context, rolls []int) error {
+	return treasureTokens(ctx.Game, ctx.Controller(), rolls[0])
+})

@@ -279,7 +279,7 @@ func (g *Game) annihilatorSacrificeLocked(item *StackItem, recorded uuid.UUID, n
 		Question:   item.Label + " — choose " + permanentsPhrase(n) + " to sacrifice",
 		Of:         []uuid.UUID{defender},
 		Candidates: annihilatorCandidates(n),
-	}, annihilatorSacrificed, nil)
+	}, annihilatorSacrificed, RunData{})
 	return err
 }
 
@@ -317,6 +317,6 @@ func annihilatorSacrificeThen(source uuid.UUID) func(g *Game, picked PromptedPic
 		if len(ids) == 0 {
 			return nil
 		}
-		return g.SacrificeAllThenForEffect(source, ids, nil)
+		return g.SacrificeAllKeyedForEffect(source, ids, KeyedTail{})
 	}
 }

@@ -35,11 +35,12 @@ import (
 // the effect's own "to the battlefield tapped", riding each card's
 // entry event.
 //
-// Then, when set, is the rest of the effect, and it runs exactly once
+// ThenTail, when set, is the rest of the effect, and it runs exactly once
 // with the IDs that entered (a graveyard card keeps its ID) — after
 // the last entry question has been answered when one was asked, so it
-// must not be written on the line after Apply. Its context is rebuilt
-// from the live *Game, the contract every continuation follows.
+// must not be written on the line after Apply. It is a registered tail
+// (TogetherTail; #4253 slice 6): a key plus plain data, so a table waiting
+// on an entering card's question is a restore point.
 type ReturnFromGraveyardTogether struct {
 	Targets    []uuid.UUID
 	Controller uuid.UUID
@@ -49,12 +50,29 @@ type ReturnFromGraveyardTogether struct {
 	// return that names no host, whose Auras choose theirs as they enter
 	// (CR 303.4f).
 	AttachedTo game.TargetRef
-	Then       func(ctx *Context, entered []uuid.UUID) error
+
+	// The resolving item rides the tail as data (its targets, its modes,
+	// the words of its text), and ThenN is a number it reads.
+	ThenTail game.TailRef
+	ThenN    int
 }
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
 	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
-		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo}, r.Then)
+		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo}, r.ThenTail, r.ThenN)
+}
+
+// TogetherTail registers the rest of a ReturnFromGraveyardTogether or
+// ReturnFromExileTogether as a keyed tail (#4253 slice 6). The body runs
+// against the resolving item's copy (the asking item rides the tail), told
+// the IDs that entered (a graveyard card keeps its ID, an exiled one has a
+// new one) and the tail's N. The key is an on-disk identity (ledgered
+// "tail <key>"): never renamed, never reused. Call it once, from a
+// package-level var.
+func TogetherTail(key string, body func(ctx *Context, entered []uuid.UUID, n int) error) game.TailRef {
+	return CardTail(key, func(ctx *Context, o game.TailOutcome) error {
+		return body(ctx, o.IDs, o.Tail.N)
+	})
 }
 
 // legalTargetCardIDs is the spell's or ability's still-legal card
@@ -109,13 +127,13 @@ func allGraveyardsCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID 
 // before the second moves.
 //
 // Each card returns as a NEW OBJECT (CR 400.7), as ReturnFromExile's
-// does, so the IDs Then is told are the new ones, not the ones in
+// does, so the IDs ThenTail is told are the new ones, not the ones in
 // Targets.
 //
 // A card no longer in exile is skipped: a delayed return does not
 // follow a card that has moved on (CR 603.7c). So is a token, which
 // cannot come back to the battlefield (CR 111.8), and a nonpermanent
-// card. Controller, Tapped and Then mean what they mean on
+// card. Controller, Tapped and ThenTail mean what they mean on
 // ReturnFromGraveyardTogether: zero Controller is "under its owner's
 // control" (CR 610.3c for an "until" return).
 //
@@ -128,7 +146,9 @@ type ReturnFromExileTogether struct {
 	Controller     uuid.UUID
 	Tapped         bool
 	CountersIfType []game.EntryCountersIfType
-	Then           func(ctx *Context, entered []uuid.UUID) error
+	// ThenTail and ThenN are ReturnFromGraveyardTogether's.
+	ThenTail game.TailRef
+	ThenN    int
 }
 
 func (r ReturnFromExileTogether) Apply(ctx *Context) error {
@@ -136,22 +156,21 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 		Controller:               r.Controller,
 		Tapped:                   r.Tapped,
 		EntersWithCountersIfType: r.CountersIfType,
-	}, r.Then)
+	}, r.ThenTail, r.ThenN)
 }
 
 // putCardsFromZoneTogether is the body of ReturnFromGraveyardTogether
 // and ReturnFromExileTogether: keep the targets still in a zone of kind
 // `from` that can enter (not a token, a permanent card), and put them
 // onto the battlefield as one entry through the engine's batch door.
-func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool,
-	then func(ctx *Context, entered []uuid.UUID) error) error {
-	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, then)
+func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool) error {
+	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, game.TailRef{}, 0)
 }
 
 // putCardsFromZoneTogetherWith is putCardsFromZoneTogether with the whole
 // set of entry options.
 func putCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uuid.UUID, opts game.ZoneEntryOptions,
-	then func(ctx *Context, entered []uuid.UUID) error) error {
+	tail game.TailRef, tailN int) error {
 	entries := make([]game.BatchEntry, 0, len(targets))
 	for _, id := range targets {
 		z := ctx.Game.FindCardZoneForEffect(id)
@@ -164,14 +183,11 @@ func putCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uu
 		}
 		entries = append(entries, game.BatchEntry{CardID: id, From: from})
 	}
-	var next func(*game.Game, []uuid.UUID) error
-	if then != nil {
-		item := ctx.Item
-		next = func(g *game.Game, entered []uuid.UUID) error {
-			return then(NewContext(g, item), entered)
-		}
+	var then game.KeyedTail
+	if tail.Key() != "" {
+		then = withN(ctx.ItemTail(tail), tailN)
 	}
-	return ctx.Game.PutOntoBattlefieldTogetherThenForEffect(entries, opts, next)
+	return ctx.Game.PutOntoBattlefieldTogetherKeyedForEffect(entries, opts, then)
 }
 
 // exiledCardIDs is the cards in exile that match, read once before
@@ -200,7 +216,7 @@ func exiledCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
 // The candidates are read from the graveyard as it is WHEN THIS RUNS,
 // so a card that arrived earlier in the same resolution is on offer.
 // That is the point of it: put it in the continuation of whatever came
-// first (a sacrifice run's `then`, a SacrificeAllThenForEffect), and
+// first (a sacrifice run's `then`, a SacrificeAllKeyedForEffect), and
 // the creature just sacrificed is one of the cards that can come back.
 // It is not a target, so nothing is announced at cast and opponents
 // have no pick to respond to.
@@ -252,10 +268,12 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 	if r.Tapped {
 		dest = game.ChooseOntoBattlefieldTapped
 	}
-	item, tapped, toHand := ctx.Item, r.Tapped, r.ToHand
+	toHand := r.ToHand
 	if toHand {
 		dest = ""
 	}
+	// The pick is keyed (#4253 slice 8): the rest of the card is a registered
+	// continuation, and the two flags it needs are numbers on the prompt.
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     player,
 		FromPlayer:  player,
@@ -264,23 +282,34 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 		Cards:       candidates,
 		Min:         r.Min,
 		Max:         r.Max,
-		Zone:        game.ZoneGraveyard,
 		Destination: dest,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			if toHand {
-				hctx := NewContext(g, item)
-				for _, id := range picked {
-					if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(hctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-			return ReturnFromGraveyardTogether{Targets: picked, Tapped: tapped}.Apply(NewContext(g, item))
-		},
+		ThenKey:     returnChosenFromGraveyardThen,
+		LiveZone:    game.ZoneGraveyard,
+		CarryNums:   []int{boolToInt(r.Tapped), boolToInt(toHand)},
+		Asked:       game.NewAskedItem(ctx.Item),
 	})
 	return nil
 }
+
+// returnChosenFromGraveyardThen is ReturnChosenFromGraveyard's answer:
+// the chosen cards come back together, or go to hand one by one. Its
+// numbers are Tapped and ToHand. A card that left the graveyard while the
+// question was open is skipped by the entry itself, and a prompt whose
+// candidates all left is withdrawn with nothing picked.
+var returnChosenFromGraveyardThen = game.RegisterChooseCardsThen("choose-cards/return-chosen-from-graveyard",
+	func(g *game.Game, r game.CardsChosen) error {
+		if !r.Answered || len(r.Picked) == 0 {
+			return nil
+		}
+		ctx, _ := askedContext(g, r.Asked, r.Chooser, r.Source, nil)
+		tapped, toHand := len(r.Nums) > 0 && r.Nums[0] != 0, len(r.Nums) > 1 && r.Nums[1] != 0
+		if toHand {
+			for _, id := range r.Picked {
+				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		return ReturnFromGraveyardTogether{Targets: r.Picked, Tapped: tapped}.Apply(ctx)
+	})

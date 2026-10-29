@@ -36,8 +36,7 @@ func TestTapPaymentOffersAMovePerUntappedCreature(t *testing.T) {
 	g.WithWriteLock(func() {
 		if err := g.QueueUpkeepPayUnlessForEffect(game.UpkeepPayUnlessPrompt{
 			Chooser: seat.ID, Source: source, Cost: "Tap an untapped creature you control", Question: "Koskun Falls?",
-			Action:    &game.PayAction{Kind: game.PayActionTap, Count: 1, Of: game.PermanentQuery{Types: []string{"creature"}}},
-			OnDecline: func(*game.Game) error { return nil },
+			Action: &game.PayAction{Kind: game.PayActionTap, Count: 1, Of: game.PermanentQuery{Types: []string{"creature"}}},
 		}); err != nil {
 			t.Fatalf("queue: %v", err)
 		}

@@ -74,16 +74,22 @@ func winterMaySacrifice(g *game.Game, item *game.StackItem) error {
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			return permanentsControlledByMatching(g, of, Or(Creature(), Planeswalker())), 0, 1
 		},
-		Sacrifice: true,
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			if picked.Count() == 0 {
-				return nil
-			}
-			return ReflexiveTrigger{
-				Label: "Winter, Tormented Loner — each opponent sacrifices a creature of their choice",
-				Cards: picked.Cards(),
-				Body:  winterEdictBody,
-			}.Apply(ctx)
-		},
+		Keyed: winterSacrificed,
 	}.Apply(NewContext(g, item))
 }
+
+// winterSacrificed is the chosen creature or planeswalker sacrificed and
+// the reflexive edict raised, keyed (#4290).
+var winterSacrificed = RegisterPermanentsPick("prompt-run/winter-tormented-loner-sacrifice", PermanentsDef{
+	Sacrifice: true,
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		if picked.Count() == 0 {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: "Winter, Tormented Loner — each opponent sacrifices a creature of their choice",
+			Cards: picked.Cards(),
+			Body:  winterEdictBody,
+		}.Apply(ctx)
+	},
+})

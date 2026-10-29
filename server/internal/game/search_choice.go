@@ -12,13 +12,26 @@ import "github.com/google/uuid"
 // effect_api.go next to SearchLibraryThenForEffect.
 
 // searchResumeFrame is the continuation for a search prompt. It
-// holds the whole SearchLibrarySpec rather than a handful of copied
-// fields so the resolve path and the no-prompt path run through
-// exactly the same code with exactly the same settings — a fetched
-// land must not enter differently depending on whether the searcher
-// happened to be offered a choice.
+// holds the whole SearchLibrarySpec's data (spec() rebuilds it) rather
+// than a handful of copied fields so the resolve path and the no-prompt
+// path run through exactly the same code with exactly the same
+// settings — a fetched land must not enter differently depending on
+// whether the searcher happened to be offered a choice.
+//
+// #4361 S4: data only, the very fields a restore point writes
+// (searchPromptSnapshot), so the live table and a restored one answer
+// through the same frame. The predicate is not held: it listed the
+// candidates and is not read again (search_prompt_keyed.go).
 type searchResumeFrame struct {
-	spec SearchLibrarySpec
+	// data is the spec's data half, its continuation included.
+	data searchTailSpec
+	// quality is SearchLibrarySpec.statedQuality, read before the
+	// predicate was dropped (CR 701.23b, the floor).
+	quality bool
+	// rule is the spec's registered set rule.
+	rule SearchRule
+	// graveyardFinds is a TakeAll search's graveyard matches (#4033).
+	graveyardFinds []uuid.UUID
 
 	// undecided is set on a "you may search" prompt (#4134): the
 	// searcher has not yet said whether they search, so the candidates
@@ -75,7 +88,7 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 	if choice.searchResume == nil {
 		return ErrInvalidParam
 	}
-	spec := choice.searchResume.spec
+	spec := choice.searchResume.spec()
 	// #1230: the library read here is the SEARCHED one, not necessarily
 	// the chooser's own — Bribery's caster picks, but the pile is
 	// target opponent's. chooserID is still who must be answering
@@ -92,7 +105,7 @@ func (g *Game) ResolveSearchLibrary(choiceID, chooserID uuid.UUID, picks []uuid.
 	g.dequeueChoiceLocked(idx)
 
 	// The take finishes the search itself — including the shuffle and
-	// spec.Then — because a battlefield destination is an ENTRY and an
+	// spec.ThenTail — because a battlefield destination is an ENTRY and an
 	// entry can pause on its own prompt (#478). Answering THIS prompt
 	// may therefore queue the next one rather than finishing the card.
 	err := g.executeSearchTakeLocked(spec, p, picks)
@@ -187,8 +200,10 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 		}
 		chosen = append(chosen, card)
 	}
-	spec := choice.searchResume.spec
-	if spec.Validate != nil && len(chosen) > 0 && !spec.Validate(chosen) {
+	// The registered set rule (#4253 slice 5). The per-card predicate is
+	// not read here: it listed the candidates, and the picks were checked
+	// against that list above.
+	if len(chosen) > 0 && !choice.searchResume.spec().setAllows(chosen) {
 		return ErrInvalidParam
 	}
 	return nil
@@ -228,7 +243,7 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 				inLibrary++
 			}
 		}
-		return choice.searchResume.spec.floorZones(inLibrary, inGraveyard)
+		return choice.searchResume.spec().floorZones(inLibrary, inGraveyard)
 	}
 	if choice.SearchMin <= 0 {
 		return 0
@@ -246,7 +261,7 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 // zones are searched, so the library is shuffled whatever is taken, and
 // the client says so rather than "and/or graveyard"'s hint.
 func (c *PendingChoice) SearchesGraveyardHandAndLibrary() bool {
-	return c != nil && c.searchResume != nil && c.searchResume.spec.AlsoGraveyardAndHand
+	return c != nil && c.searchResume != nil && c.searchResume.data.AlsoGraveyardAndHand
 }
 
 // SearchFloorLocked is searchFloorLocked for the enumerator: how few
@@ -258,7 +273,7 @@ func (g *Game) SearchFloorLocked(choice *PendingChoice) int {
 	if choice == nil || choice.searchResume == nil {
 		return 0
 	}
-	p := g.playerByIDLocked(choice.searchResume.spec.libraryOwnerID())
+	p := g.playerByIDLocked(choice.searchResume.spec().libraryOwnerID())
 	if p == nil {
 		return 0
 	}
@@ -267,11 +282,10 @@ func (g *Game) SearchFloorLocked(choice *PendingChoice) int {
 
 // SearchPickLegalLocked reports whether `picks` is an answer
 // ResolveSearchLibrary would accept for `choice` right now. It is
-// the enumerator's read-only window onto the search's Validate hook,
+// the enumerator's read-only window onto the search's set rule,
 // which rides on the unexported continuation frame and must stay
-// there: the hook is a closure over the effect, not wire state, and
-// handing internal/legal the frame itself would make every future
-// continuation field part of the enumerator's contract.
+// there: handing internal/legal the frame itself would make every
+// future continuation field part of the enumerator's contract.
 //
 // An empty `picks` is legal for a search for a stated quality — CR
 // 701.23b lets a player fail to find — which is what gives a stuck seat
@@ -288,7 +302,7 @@ func (g *Game) SearchPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) b
 	// Same read as ResolveSearchLibrary: the library checked is the
 	// spec's, which for a foreign search (Bribery) is not the
 	// chooser's own.
-	p := g.playerByIDLocked(choice.searchResume.spec.libraryOwnerID())
+	p := g.playerByIDLocked(choice.searchResume.spec().libraryOwnerID())
 	if p == nil {
 		return false
 	}
@@ -300,7 +314,7 @@ func (g *Game) SearchPickLegalLocked(choice *PendingChoice, picks []uuid.UUID) b
 // the same answer as finding nothing.
 func (c *PendingChoice) SearchIsOptional() bool {
 	return c != nil && c.Kind == PendingChoiceSearchLibrary && c.searchResume != nil &&
-		c.searchResume.spec.Optional
+		c.searchResume.data.Optional
 }
 
 // SearchIsUndecided reports whether the prompt is still asking "do you
@@ -322,14 +336,14 @@ func (c *PendingChoice) SearchIsUndecided() bool {
 //
 // Caller must hold g's lock (read or write).
 func (g *Game) SearchDeclineLegalLocked(choice *PendingChoice) bool {
-	return choice.SearchIsUndecided() && choice.searchResume.spec.Optional
+	return choice.SearchIsUndecided() && choice.searchResume.data.Optional
 }
 
 // DeclineSearchLibrary answers a "you may search" prompt with "I don't
 // search" (#4134, CR 701.19). The search never happens: the library is
 // not looked at and not shuffled, no EventSearchLibrary fires (so an
 // Archivist of Oghma stays quiet), and an Opposition Agent never gets
-// control. Only the rest of the effect runs (spec.Then, with no cards),
+// control. Only the rest of the effect runs (spec.ThenTail, with no cards),
 // the way every declined "if you do" lead-in leaves the instructions
 // after it standing: Volatile Fault's Treasure is created either way.
 //
@@ -359,9 +373,9 @@ func (g *Game) DeclineSearchLibrary(choiceID, chooserID uuid.UUID) error {
 	if !g.SearchDeclineLegalLocked(choice) {
 		return ErrInvalidParam
 	}
-	spec := choice.searchResume.spec
+	spec := choice.searchResume.spec()
 	g.dequeueChoiceLocked(idx)
-	if spec.Then != nil || !spec.ThenTail.IsZero() {
+	if !spec.ThenTail.IsZero() {
 		if err := g.runSearchThenLocked(spec, nil); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
@@ -402,13 +416,15 @@ func (g *Game) BeginSearchLibrary(choiceID, chooserID uuid.UUID) error {
 	if !choice.searchResume.undecided {
 		return ErrInvalidParam
 	}
-	spec := choice.searchResume.spec
+	spec := choice.searchResume.spec()
 	p := g.playerByIDLocked(spec.libraryOwnerID())
 	if p == nil {
 		return ErrPlayerNotFound
 	}
 	g.markSearchCandidatesKnownLocked(spec.Player, p, choice.SearchCards)
-	choice.searchResume = &searchResumeFrame{spec: spec}
+	begun := *choice.searchResume
+	begun.undecided = false
+	choice.searchResume = &begun
 	if spec.libraryOwnerID() == spec.Player {
 		g.beginSearchControlsLocked(spec.Player, choice.ID)
 	}

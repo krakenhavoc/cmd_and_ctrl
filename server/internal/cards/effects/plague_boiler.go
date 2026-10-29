@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Plague Boiler — put a plague counter", putACounterOnThis(plague)),
 			TriggerWithPurpose(WhenThisHasAtLeast(plague, 3, "Plague Boiler — sacrifice it and destroy all nonland permanents",
-				SacrificeThisThen(func(ctx *Context) error {
+				SacrificeThisThen("then/plague-boiler-destroy", func(ctx *Context) error {
 					return DestroyAllMatching{Match: Nonland()}.Apply(ctx)
 				})), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}}),
 		},
@@ -52,17 +52,21 @@ func init() {
 				return PickOption{
 					Question: "Plague Boiler — put a plague counter on it or remove one?",
 					Options:  options,
-					Then: func(ctx *Context, index int) error {
-						switch index {
-						case 0:
-							return putACounterOnThis(plague)(ctx.Game, ctx.Item)
-						case 1:
-							return removeACounterFromThis(plague)(ctx.Game, ctx.Item)
-						}
-						return nil
-					},
+					ThenKey:  plagueBoilerAnswer,
 				}.Apply(NewContext(g, item))
 			},
 		}},
 	})
 }
+
+// plagueBoilerAnswer is the activator's put-or-remove choice answered, keyed
+// (#4253): it reads only the controller and the Boiler, both on the prompt.
+var plagueBoilerAnswer = OptionPickThen("option-pick/plague-boiler-put-or-remove", func(ctx *Context, r game.OptionPicked) error {
+	switch r.Index {
+	case 0:
+		return putACounterOnThis("plague")(ctx.Game, ctx.Item)
+	case 1:
+		return removeACounterFromThis("plague")(ctx.Game, ctx.Item)
+	}
+	return nil
+})

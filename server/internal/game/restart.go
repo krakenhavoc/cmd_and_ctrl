@@ -440,7 +440,7 @@ func (g *Game) runRestartTailLocked() bool {
 		// Under its owner's control instead (ZoneEntryOptions).
 		ctrl = uuid.Nil
 	}
-	if err := g.PutOntoBattlefieldTogetherThenForEffect(entries, ZoneEntryOptions{Controller: ctrl}, restartTailEntered); err != nil {
+	if err := g.PutOntoBattlefieldTogetherKeyedForEffect(entries, ZoneEntryOptions{Controller: ctrl}, KeyedTail{Ref: restartEnteredRef}); err != nil {
 		g.EmitEvent(Event{Kind: EventEffectError, Actor: tail.Restarter, ErrorMsg: err.Error()})
 		if g.RestartTail == tail && g.blockingChoiceLocked() == nil {
 			// The entry refused without reaching its continuation;
@@ -450,6 +450,14 @@ func (g *Game) runRestartTailLocked() bool {
 	}
 	return true
 }
+
+// restartEnteredRef is restartTailEntered as a registered tail (#4253
+// slice 6), so a restart's entry that stops on a question (a Clone's copy,
+// a shockland's life) is a restore point. An on-disk key: never renamed,
+// never reused.
+var restartEnteredRef = RegisterTail("engine/restart-entered", func(g *Game, o TailOutcome) error {
+	return restartTailEntered(g, o.IDs)
+})
 
 // restartTailEntered ends the restart and begins the first turn. A
 // package-level func so a paused entry captures nothing.

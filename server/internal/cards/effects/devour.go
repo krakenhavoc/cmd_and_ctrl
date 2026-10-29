@@ -15,7 +15,7 @@ import (
 // (AnyNumber). Four properties follow from that and are the point:
 //
 //   - The sacrifice happens as the creature enters, not off a trigger:
-//     SacrificeAllThenForEffect runs before the creature is on the
+//     SacrificeAllKeyedForEffect runs before the creature is on the
 //     battlefield, so EventSacrifice and the dies triggers of the
 //     devoured creatures fire, and nothing can respond in between.
 //   - The counters ride the entry event (ev.AddCounterAtETB), so

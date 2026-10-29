@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -30,18 +28,23 @@ func init() {
 			}, "Loafing Giant — mill a card; if it's a land, prevent its combat damage this turn",
 				func(g *game.Game, item *game.StackItem) error {
 					return MillToZone{
-						Player: item.Controller,
-						N:      1,
-						Then: func(ctx *Context, milled []uuid.UUID) error {
-							for _, id := range milled {
-								if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.IsLand() {
-									return shieldAgainstThisCombatDamage(ctx)
-								}
-							}
-							return nil
-						},
+						Player:   item.Controller,
+						N:        1,
+						ThenTail: NewContext(g, item).ItemTail(loafingGiantMilled),
 					}.Apply(NewContext(g, item))
 				}),
 		},
 	})
 }
+
+// loafingGiantMilled is the clause after the mill (#4253 slice 9).
+var loafingGiantMilled = CardTail("loafing-giant/after-mill", func(ctx *Context, o game.TailOutcome) error {
+	milled := o.IDs
+
+	for _, id := range milled {
+		if c, ok := ctx.Game.LookupCardForEffect(id); ok && c.IsLand() {
+			return shieldAgainstThisCombatDamage(ctx)
+		}
+	}
+	return nil
+})

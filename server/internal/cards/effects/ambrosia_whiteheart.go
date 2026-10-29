@@ -61,16 +61,22 @@ func ambrosiaReturnAnother(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, 1
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if !onBattlefield(ctx.Game, id) {
-					continue
-				}
-				if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Keyed: ambrosiaReturned,
 	}.Apply(NewContext(g, item))
 }
+
+// ambrosiaReturned is the chosen permanent returning to its owner's hand,
+// keyed (#4290).
+var ambrosiaReturned = RegisterPermanentsPick("prompt-run/ambrosia-whiteheart-return", PermanentsDef{
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		for _, id := range picked.Cards() {
+			if !onBattlefield(ctx.Game, id) {
+				continue
+			}
+			if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+})

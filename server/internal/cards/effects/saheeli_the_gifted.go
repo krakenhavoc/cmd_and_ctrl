@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -73,20 +71,23 @@ func saheeliGiftedCopyArtifacts(g *game.Game, item *game.StackItem) error {
 			}
 		}
 	}
-	return g.CreateTokensThenForEffect(game.TokenCreation{
+	return g.CreateTokensKeyedForEffect(game.TokenCreation{
 		Controller: item.Controller, Source: item.SourceCardID, Groups: groups, Together: true,
-	}, func(g *game.Game, made []uuid.UUID) error {
-		ctx := NewContext(g, item)
-		for _, id := range made {
-			if err := (ScopedEffectFor{Target: id, Mods: []game.Mod{game.AddKeywordsMod("haste")},
-				Duration: game.IndefiniteDuration(), Label: "Saheeli, the Gifted — haste"}).Apply(ctx); err != nil {
-				return err
-			}
-		}
-		if len(made) == 0 {
-			return nil
-		}
-		return (ScheduleDelayedTrigger{At: game.StepEnd, Controller: item.Controller,
-			Label: "Saheeli, the Gifted — exile the copies", Cards: made, Body: exileListedCardsBody}).Apply(ctx)
-	})
+	}, NewContext(g, item).ItemTail(saheeliGiftedCopiesRest))
 }
+
+// saheeliGiftedCopiesRest is "they gain haste. Exile them at the beginning
+// of the next end step" as a keyed tail (#4253 slice 6). An on-disk key.
+var saheeliGiftedCopiesRest = CardTail("saheeli-the-gifted/haste-and-exile-copies", func(ctx *Context, o game.TailOutcome) error {
+	for _, id := range o.IDs {
+		if err := (ScopedEffectFor{Target: id, Mods: []game.Mod{game.AddKeywordsMod("haste")},
+			Duration: game.IndefiniteDuration(), Label: "Saheeli, the Gifted — haste"}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	if len(o.IDs) == 0 {
+		return nil
+	}
+	return (ScheduleDelayedTrigger{At: game.StepEnd, Controller: ctx.Item.Controller,
+		Label: "Saheeli, the Gifted — exile the copies", Cards: o.IDs, Body: exileListedCardsBody}).Apply(ctx)
+})

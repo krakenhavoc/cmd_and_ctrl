@@ -21,12 +21,13 @@ func init() {
 		Completeness: CompletenessFull,
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepExile}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return ExileAllMatching{
-				Match: Creature(),
-				Then: func(ctx *Context, _ []game.Card, exiled int) error {
-					return EmpowerJace{N: exiled}.Apply(ctx)
-				},
-			}.Apply(ctx)
+			return ExileAllMatching{Match: Creature(), ThenTail: ctx.ItemTail(overwriteTheMultiverseEmpower)}.Apply(ctx)
 		},
 	})
 }
+
+// overwriteTheMultiverseEmpower is the sweep's "for each creature exiled
+// this way", keyed (#4253 slice 10a).
+var overwriteTheMultiverseEmpower = MassTail("mass/overwrite-the-multiverse-empower", func(ctx *Context, _ []game.Card, exiled int) error {
+	return EmpowerJace{N: exiled}.Apply(ctx)
+})

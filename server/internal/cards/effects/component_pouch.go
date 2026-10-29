@@ -36,21 +36,20 @@ func init() {
 			Label:   "{T}: Roll a d20.",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    TapCost(),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				rolls, err := rollDice(ctx, 20, 1)
-				if err != nil || len(rolls) == 0 {
-					return err
-				}
-				if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) {
-					return nil
-				}
-				n := 1
-				if rolls[0] >= 10 {
-					n = 2
-				}
-				return g.AddCounterForEffect(item.SourceCardID, "component", n)
-			},
+			Effect:  Do(RollDice{Sides: 20, N: 1, Then: componentPouchCounters}),
 		}},
 	})
 }
+
+// componentPouchCounters is the results table, after the d20 (#4307).
+var componentPouchCounters = DiceTail("dice/component-pouch-counters", func(ctx *Context, rolls []int) error {
+	g, item := ctx.Game, ctx.Item
+	if zone := g.FindCardZoneForEffect(item.SourceCardID); zone == nil || zone.Kind != game.ZoneBattlefield || sourceIsNewObject(g, item) {
+		return nil
+	}
+	n := 1
+	if rolls[0] >= 10 {
+		n = 2
+	}
+	return g.AddCounterForEffect(item.SourceCardID, "component", n)
+})

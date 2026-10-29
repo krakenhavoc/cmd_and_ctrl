@@ -41,17 +41,24 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		Gift:         GiftACard(),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			promised := ctx.GiftPromised()
-			return DestroyAllMatching{Match: Creature(), Then: func(ctx *Context, swept []game.Card, _ int) error {
-				if !promised {
-					return nil
-				}
-				return starfallReturnOne(ctx, item, swept)
-			}}.Apply(ctx)
+		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+			promised := 0
+			if ctx.GiftPromised() {
+				promised = 1
+			}
+			return DestroyAllMatching{Match: Creature(), ThenTail: withN(ctx.ItemTail(starfallReturn), promised)}.Apply(ctx)
 		},
 	})
 }
+
+// starfallReturn is the sweep's "if the gift was promised, return …",
+// keyed (#4253 slice 10a): N is 1 when the gift was promised.
+var starfallReturn = MassTailOf("mass/starfall-invocation-return", func(ctx *Context, swept []game.Card, _ int, t game.KeyedTail) error {
+	if t.N == 0 {
+		return nil
+	}
+	return starfallReturnOne(ctx, ctx.Item, swept)
+})
 
 // starfallReturnOne is "return a creature card put into your graveyard
 // this way to the battlefield under your control": the destroyed

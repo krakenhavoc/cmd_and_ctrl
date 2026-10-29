@@ -16,7 +16,7 @@ import (
 // Timetwister at the table, on Wheel of Fortune's two-phase shape:
 // every player's hand and graveyard go into their own library FIRST —
 // one simultaneous exit per player, through the same
-// TuckCardsToLibraryThenForEffect batch Jace, the Mind Sculptor's
+// TuckCardsToLibraryKeyedForEffect batch Jace, the Mind Sculptor's
 // ultimate already chains exile→tuck→shuffle through — and only once
 // EVERY player's shuffle has landed does anyone draw. #539's "the
 // commander replacement holds 'from anywhere'" generalization is what makes the graveyard
@@ -67,9 +67,27 @@ func echoOfEonsShuffleEach(g *game.Game, remaining, all []uuid.UUID) error {
 	}
 	id, rest := remaining[0], remaining[1:]
 	ids := append(allHandCardIDs(g, id), echoOfEonsGraveyardCardIDs(g, id)...)
-	return g.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{}, func(g *game.Game, _ []uuid.UUID) error {
-		if err := g.ShuffleLibraryForEffect(id); err != nil {
+	// Keyed (#4253 slice 10a): Player is the seat that shuffles next,
+	// Carry the full roster then the seats still to go, N the roster's
+	// length.
+	carry := append(append([]uuid.UUID(nil), all...), rest...)
+	return g.TuckCardsToLibraryKeyedForEffect(ids, game.TuckOptions{},
+		game.KeyedTail{Ref: echoOfEonsShuffleNext, Player: id, Carry: carry, N: len(all)})
+}
+
+// echoOfEonsShuffleNext is one seat's shuffle and the next seat's tuck.
+// Set in init, because its body names itself through the next tuck.
+var echoOfEonsShuffleNext game.TailRef
+
+func init() {
+	echoOfEonsShuffleNext = game.RegisterTail("then/echo-of-eons-shuffle-next", func(g *game.Game, o game.TailOutcome) error {
+		if err := g.ShuffleLibraryForEffect(o.Tail.Player); err != nil {
 			return err
+		}
+		n := min(max(o.Tail.N, 0), len(o.Tail.Carry))
+		all, rest := o.Tail.Carry[:n], o.Tail.Carry[n:]
+		if n == 0 {
+			all = nil
 		}
 		return echoOfEonsShuffleEach(g, rest, all)
 	})

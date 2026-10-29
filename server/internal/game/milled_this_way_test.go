@@ -64,13 +64,13 @@ func millThen(t *testing.T, g *Game, p *Player, n int, dest ZoneKind) (*[]uuid.U
 	var got []uuid.UUID
 	ran := 0
 	g.WithWriteLock(func() {
-		err := g.MillToZoneThenForEffect(p.ID, n, dest, nil, func(_ *Game, milled []uuid.UUID) error {
+		err := g.MillToZoneKeyedForEffect(p.ID, n, dest, MillUntil{}, millHook(func(_ *Game, milled []uuid.UUID) error {
 			ran++
 			got = milled
 			return nil
-		})
+		}))
 		if err != nil {
-			t.Fatalf("MillToZoneThenForEffect: %v", err)
+			t.Fatalf("MillToZoneKeyedForEffect: %v", err)
 		}
 	})
 	return &got, &ran
@@ -187,8 +187,8 @@ func TestAPausedMillLegIsCountedOnlyWhenItLandsInTheGraveyard(t *testing.T) {
 }
 
 // TestUndoAcrossAPausedMillLegReplays is the undo contract the
-// continuation signs, the one DestroyPermanentsThenForEffect and
-// ExileCardsThenForEffect already sign: rewinding into the open
+// continuation signs, the one DestroyPermanentsKeyedForEffect and
+// ExileCardsKeyedForEffect already sign: rewinding into the open
 // "may" prompt and answering again mills the same cards and reports
 // the same list, because the landed list is carried forward by value.
 func TestUndoAcrossAPausedMillLegReplays(t *testing.T) {

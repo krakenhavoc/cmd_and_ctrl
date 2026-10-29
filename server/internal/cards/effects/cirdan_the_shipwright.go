@@ -95,6 +95,22 @@ var cirdanDrawThenAsk = RegisterThenSteps("then-steps/cirdan-the-shipwright-draw
 	}),
 )
 
+// cirdanPut is the keyed answer to one player's "put a permanent card from
+// your hand onto the battlefield" (#4253): the players still to ask and the
+// cards chosen so far ride the prompt as its Carry, and the next player is
+// asked from here. An on-disk key: never renamed, never reused.
+//
+// Registered in init, not at package level: the answer asks the next
+// player, so it refers to itself.
+var cirdanPut game.ChooseCardsThen
+
+func init() {
+	cirdanPut = game.RegisterChooseCardsThen("choose-cards/cirdan-the-shipwright-put", func(g *game.Game, r game.CardsChosen) error {
+		rest, so := unpackIDPair(r.Carry)
+		return cirdanAskToPut(g, r.Source, rest, append(so, r.Picked...))
+	})
+}
+
 // cirdanAskToPut asks the first player in `players` which permanent card
 // from their hand they will put onto the battlefield, if any, and the
 // rest after them; once everyone has answered, every chosen card enters
@@ -118,10 +134,9 @@ func cirdanAskToPut(g *game.Game, source uuid.UUID, players, chosen []uuid.UUID)
 			Cards:       cards,
 			Min:         0,
 			Max:         1,
-			Zone:        game.ZoneHand,
-			Then: func(g *game.Game, picked []uuid.UUID) error {
-				return cirdanAskToPut(g, source, rest, append(so, picked...))
-			},
+			ThenKey:     cirdanPut,
+			LiveZone:    game.ZoneHand,
+			Carry:       packIDLists(rest, so),
 		})
 		return nil
 	}
@@ -136,5 +151,5 @@ func cirdanAskToPut(g *game.Game, source uuid.UUID, players, chosen []uuid.UUID)
 	if len(still) == 0 {
 		return nil
 	}
-	return g.PutCardsFromHandOntoBattlefieldThenForEffect(still, game.HandEntryOptions{}, nil)
+	return g.PutCardsFromHandOntoBattlefieldKeyedForEffect(still, game.HandEntryOptions{}, game.KeyedTail{})
 }

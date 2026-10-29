@@ -34,11 +34,16 @@ func init() {
 							ids = append(ids, c.InstanceID)
 						}
 					}
-					controller := item.Controller
-					return b13PutCounterOnEachThen(NewContext(g, item), ids, func(g *game.Game) error {
-						return GainLife{Player: controller, Amount: len(ids)}.Apply(NewContext(g, item))
-					})
+					ctx := NewContext(g, item)
+					return b13PutCounterOnEachThen(ctx, ids, ctx.TailN(boundingFelidarGainLife, len(ids)))
 				}),
 		},
 	})
 }
+
+// boundingFelidarGainLife is "gain 1 life for each" creature that got a
+// counter, once they have landed; the tail's N is how many. An on-disk key:
+// never renamed, never reused.
+var boundingFelidarGainLife = CardTail("bounding-felidar/gain-life", func(ctx *Context, o game.TailOutcome) error {
+	return GainLife{Player: ctx.Controller(), Amount: o.Tail.N}.Apply(ctx)
+})

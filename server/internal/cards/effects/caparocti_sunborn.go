@@ -45,31 +45,38 @@ func caparoctiTapTwo(g *game.Game, item *game.StackItem) error {
 		Cards:    candidates,
 		Min:      0,
 		Max:      2,
-		Zone:     game.ZoneBattlefield,
-		Validate: func(picked []game.Card) bool { return len(picked) == 2 },
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) != 2 {
-				return nil
-			}
-			still := caparoctiUntappedArtifactsOrCreatures(g, controller)
-			tapped := 0
-			for _, id := range picked {
-				if !slices.Contains(still, id) {
-					continue
-				}
-				if err := g.TapTargetForEffect(id); err != nil {
-					return err
-				}
-				tapped++
-			}
-			if tapped != 2 {
-				return nil
-			}
-			return Discover{N: 3}.Apply(NewContext(g, item))
-		},
+		ThenKey:  caparoctiTap,
+		LiveZone: game.ZoneBattlefield,
+		Asked:    game.NewAskedItem(item),
 	})
 	return nil
 }
+
+// caparoctiTap is the two permanents being tapped, then the discover, keyed
+// (#4253): the asking item rides the prompt as data, and "exactly two" is a
+// registered set rule rather than a closure.
+var caparoctiTap = askedPickRule("choose-cards/caparocti-sunborn-tap-two",
+	func(picked []game.Card) bool { return len(picked) == 2 },
+	func(ctx *Context, r game.CardsChosen) error {
+		if len(r.Picked) != 2 {
+			return nil
+		}
+		still := caparoctiUntappedArtifactsOrCreatures(ctx.Game, ctx.Controller())
+		tapped := 0
+		for _, id := range r.Picked {
+			if !slices.Contains(still, id) {
+				continue
+			}
+			if err := ctx.Game.TapTargetForEffect(id); err != nil {
+				return err
+			}
+			tapped++
+		}
+		if tapped != 2 {
+			return nil
+		}
+		return Discover{N: 3}.Apply(ctx)
+	})
 
 // caparoctiUntappedArtifactsOrCreatures is every untapped artifact or
 // creature `controller` controls.

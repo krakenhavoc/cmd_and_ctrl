@@ -18,8 +18,10 @@ import { render, cleanup, click, flushSync } from "./test/render.svelte";
 // The component reaches for the network on mount (the token list) and
 // on every keystroke (the card search). Neither is what these tests
 // are about.
+const searchDevCardsMock = vi.hoisted(() => vi.fn(async (): Promise<unknown[]> => []));
+
 vi.mock("./api", () => ({
-  searchDevCards: vi.fn(async () => []),
+  searchDevCards: searchDevCardsMock,
   searchSpawnCards: vi.fn(async () => []),
   spawnDevCard: vi.fn(async () => ({ spawned: [], name: "", zone: "", count: 0 })),
   spawnOnTable: vi.fn(async () => ({ spawned: [], name: "", zone: "", count: 0 })),
@@ -111,5 +113,39 @@ describe("the spawner in managed mode", () => {
   it("gives the dev tool no such promise — the dev route logs nothing", () => {
     const { container } = mount(false);
     expect(container.textContent).not.toMatch(/named in the game log/i);
+  });
+});
+
+// #4424: a double-faced card matched on more than one of its names used to
+// come back from the search more than once. The result list is keyed by
+// card id, so the repeat threw each_key_duplicate and the table went blank.
+describe("the card search", () => {
+  it("lists a card once even if the server sends it twice", async () => {
+    vi.useFakeTimers();
+    try {
+      const row = {
+        id: "c1",
+        name: "Aang, Swift Savior // Aang and La, Ocean's Fury",
+        type_line: "Legendary Creature",
+        mana_cost: "{1}{W}{U}",
+        set: "tla",
+      };
+      searchDevCardsMock.mockResolvedValueOnce([
+        row,
+        row,
+        { ...row, id: "c2", name: "Aang's Journey" },
+      ]);
+      const { container } = mount(false);
+      const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+      input.value = "aang";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      flushSync();
+      await vi.advanceTimersByTimeAsync(250);
+      flushSync();
+      const names = [...container.querySelectorAll(".result .name")].map((n) => n.textContent);
+      expect(names).toEqual([row.name, "Aang's Journey"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

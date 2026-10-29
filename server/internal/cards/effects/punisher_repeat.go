@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -72,6 +73,10 @@ func (p punisherRepeat) start(ctx *Context, times int) error {
 //
 // Caller holds g.mu.
 func (p punisherRepeat) step(ctx *Context, remaining []uuid.UUID) error {
+	keys, ok := punisherKeysOf[p.Name]
+	if !ok {
+		return fmt.Errorf("%w: punisherRepeat %q has no registered answers", game.ErrInvalidParam, p.Name)
+	}
 	for len(remaining) > 0 {
 		victim := remaining[0]
 		rest := remaining[1:]
@@ -82,83 +87,108 @@ func (p punisherRepeat) step(ctx *Context, remaining []uuid.UUID) error {
 			remaining = rest
 			continue
 		}
-		options, branches := p.options(ctx, victim)
 		queued := PickOption{
 			Player:   victim,
 			Question: p.Name + " — lose " + strconv.Itoa(p.Life) + " life, or...",
-			Options:  options,
-			Then:     p.answered(victim, branches, rest),
+			Options:  p.options(ctx, victim),
+			// The opponents (and repetitions) still to ask are the carry
+			// (#4253); the branch is the option chosen, read by its label.
+			ThenKey: keys.answer,
+			Carry:   rest,
 		}
 		return queued.Apply(ctx)
 	}
 	return nil
 }
 
-// options builds this player's option list and the matching branch
-// keys. The keys are plain strings rather than closures so the two
-// lists cannot drift: the index the chooser answers with indexes both.
+// options builds this player's option list. The branch an answer took is
+// read off the option it names (the label), so the list and the branches
+// cannot drift.
 //
 // Caller holds g.mu.
-func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) ([]game.ChoiceOption, []string) {
+func (p punisherRepeat) options(ctx *Context, victim uuid.UUID) []game.ChoiceOption {
 	options := []game.ChoiceOption{{
 		Label:    "Lose " + strconv.Itoa(p.Life) + " life",
 		LifeCost: p.Life,
 	}}
-	branches := []string{punisherBranchLife}
-
 	if len(NonlandPermanentsControlledBy(ctx.Game, victim)) > 0 {
-		options = append(options, game.ChoiceOption{Label: "Sacrifice a nonland permanent"})
-		branches = append(branches, punisherBranchSacrifice)
+		options = append(options, game.ChoiceOption{Label: punisherSacrificeLabel})
 	}
 	if pl := ctx.Game.PlayerByIDForEffect(victim); pl != nil && pl.Hand != nil && pl.Hand.Size() > 0 {
-		options = append(options, game.ChoiceOption{Label: "Discard a card"})
-		branches = append(branches, punisherBranchDiscard)
+		options = append(options, game.ChoiceOption{Label: punisherDiscardLabel})
 	}
-	return options, branches
+	return options
 }
 
-// The three branch keys.
+// The two branch labels; the first option is the life, always.
 const (
-	punisherBranchLife      = "life"
-	punisherBranchSacrifice = "sacrifice"
-	punisherBranchDiscard   = "discard"
+	punisherSacrificeLabel = "Sacrifice a nonland permanent"
+	punisherDiscardLabel   = "Discard a card"
 )
 
-// answered runs the chosen branch and then the next question.
-// Everything it captures is a scalar or a frozen slice.
-func (p punisherRepeat) answered(victim uuid.UUID, branches []string, rest []uuid.UUID) func(ctx *Context, index int) error {
-	return func(ctx *Context, index int) error {
-		next := func(ctx *Context) error { return p.step(ctx, rest) }
-		if index < 0 || index >= len(branches) {
-			// Nothing could be asked — the player left between the
-			// question being built and it being queued. The rest of
-			// the run still happens.
-			return next(ctx)
+// punisherKeys are one card's two registered continuations (#4253): the
+// answer to the three-way question and the discard. A card has its own
+// because the name and the life ride the body, not the prompt.
+type punisherKeys struct {
+	answer    game.OptionPickThen
+	discard   game.DiscardThen
+	sacrifice game.TailRef
+}
+
+// punisherKeysOf is each punisher's keys by its card name, filled by init.
+var punisherKeysOf = map[string]punisherKeys{}
+
+func init() {
+	registerPunisher(tormentOfHailfire, "torment-of-hailfire")
+	registerPunisher(rottenmouthViper, "rottenmouth-viper")
+}
+
+// registerPunisher registers a punisher's continuations under keys that
+// name its card ("option-pick/<slug>-punisher" and
+// "choose-cards/<slug>-punisher-discarded"): on-disk identities, never
+// renamed, never reused. The rest of the queue is the carry of each, and the
+// body is run against a Context whose controller is the asking effect's.
+func registerPunisher(p punisherRepeat, slug string) {
+	next := func(ctx *Context, rest []uuid.UUID) error { return p.step(ctx, rest) }
+	keys := punisherKeys{}
+	keys.discard = game.RegisterDiscardThen("choose-cards/"+slug+"-punisher-discarded", func(g *game.Game, r game.DiscardsDone) error {
+		return next(keyedContext(g, r.Carry[0], r.Source), r.Carry[1:])
+	})
+	// The sacrifice's rest is a keyed tail (SacrificeChoice.ThenTail): the
+	// rest of the queue is its carry, the asking effect's controller and
+	// source the tail's own.
+	keys.sacrifice = CardTail("then/"+slug+"-punisher-sacrificed", func(ctx *Context, o game.TailOutcome) error {
+		return next(ctx, o.Tail.Carry)
+	})
+	keys.answer = OptionPickThen("option-pick/"+slug+"-punisher", func(ctx *Context, r game.OptionPicked) error {
+		victim, rest := r.Chooser, r.Carry
+		if r.Option == nil {
+			// Nothing could be asked: the player left between the question
+			// being built and it being queued. The rest of the run still
+			// happens.
+			return next(ctx, rest)
 		}
-		switch branches[index] {
-		case punisherBranchSacrifice:
+		switch r.Option.Label {
+		case punisherSacrificeLabel:
 			return SacrificeChoice{
 				Player:     victim,
 				Candidates: NonlandPermanentsControlledBy(ctx.Game, victim),
 				Question:   p.Name + " — sacrifice a nonland permanent",
-				Then:       next,
+				ThenTail:   withCarry(ctx.Tail(keys.sacrifice), rest...),
 			}.Apply(ctx)
-		case punisherBranchDiscard:
-			ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		case punisherDiscardLabel:
+			return ctx.Game.PlayerDiscardsThenKeyedForEffect(game.DiscardPrompt{
 				Player:   victim,
 				Source:   ctx.Source(),
 				N:        1,
 				Question: p.Name + " — discard a card",
-				Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
-					return p.step(NewContext(g, ctx.Item), rest)
-				},
-			})
-			return nil
+			}, keys.discard, append([]uuid.UUID{ctx.Controller()}, rest...))
 		default:
 			if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), victim, -p.Life); err != nil {
 				return err
 			}
-			return next(ctx)
+			return next(ctx, rest)
 		}
-	}
+	})
+	punisherKeysOf[p.Name] = keys
 }

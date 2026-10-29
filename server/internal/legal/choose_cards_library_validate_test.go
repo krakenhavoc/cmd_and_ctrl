@@ -40,6 +40,16 @@ func libraryTopPermanents(t *testing.T, p *game.Player, costs ...string) []uuid.
 	return out
 }
 
+// testLibraryPutBudget4 is "total mana value 4 or less" as a registered
+// put rule (#4253: the put's pick is keyed).
+var testLibraryPutBudget4 = effects.RegisterPutRule("test/4253-legal-put-total-mana-value-4", func(picked []game.Card) bool {
+	total := 0
+	for _, c := range picked {
+		total += c.ManaValue()
+	}
+	return total <= 4
+})
+
 func TestChooseCardsOverLibraryCardsHonoursASetRule(t *testing.T) {
 	g := newTable(t)
 	me := g.Seats[0]
@@ -53,15 +63,9 @@ func TestChooseCardsOverLibraryCardsHonoursASetRule(t *testing.T) {
 			Cards:    g.LookAtTopOfLibraryForEffect(me.ID, 3),
 			Max:      0,
 			Optional: true,
-			Validate: func(picked []game.Card) bool {
-				total := 0
-				for _, c := range picked {
-					total += c.ManaValue()
-				}
-				return total <= 4
-			},
-			Label: "test — put any number with total mana value 4 or less onto the battlefield",
-			Then:  effects.PutRestOnBottomInRandomOrder,
+			Rule:     testLibraryPutBudget4,
+			Label:    "test — put any number with total mana value 4 or less onto the battlefield",
+			ThenTail: effects.PutRestOnBottomInRandomOrderTail,
 		}.Apply(ctx)
 		if err != nil {
 			t.Fatalf("Apply: %v", err)

@@ -28,21 +28,19 @@ func TestDispatchResolveChoiceChooseCardsRejectsASetTheRuleRefuses(t *testing.T)
 		p.Hand.Cards[0].TypeLine = "Land"
 		p.Hand.Cards[1].TypeLine = "Creature — Bear"
 		land, bear = p.Hand.Cards[0].InstanceID, p.Hand.Cards[1].InstanceID
-		g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		g.QueueChooseCardsForEffect(chooseCardsHooked(game.ChooseCardsPrompt{
 			Chooser:  p.ID,
 			Question: "Discard two cards unless you discard a creature card",
 			Cards:    []uuid.UUID{land, bear},
 			Min:      1,
 			Max:      2,
 			Zone:     game.ZoneHand,
-			Validate: func(picked []game.Card) bool {
-				return len(picked) == 2 || picked[0].IsCreature()
-			},
-			Then: func(*game.Game, []uuid.UUID) error {
-				ran = true
-				return nil
-			},
-		})
+		}, func(*game.Game, []uuid.UUID) error {
+			ran = true
+			return nil
+		}, func(picked []game.Card) bool {
+			return len(picked) == 2 || picked[0].IsCreature()
+		}))
 	})
 	choice := pendingChoiceOfKind(g, game.PendingChoiceChooseCards)
 	if choice == nil {

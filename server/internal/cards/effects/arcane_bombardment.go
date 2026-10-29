@@ -80,9 +80,7 @@ func arcaneBombardmentResolve(g *game.Game, item *game.StackItem) error {
 	if len(pick) == 0 {
 		return arcaneBombardmentCopy(ctx)
 	}
-	return g.ExileCardThenForEffect(pick[0], func(g *game.Game, _ bool) error {
-		return arcaneBombardmentCopy(NewContext(g, item))
-	})
+	return g.ExileCardKeyedForEffect(pick[0], ctx.ItemTail(arcaneBombardmentExiled))
 }
 
 // arcaneBombardmentCopy is "copy each card exiled with this enchantment.
@@ -92,3 +90,10 @@ func arcaneBombardmentCopy(ctx *Context) error {
 	set = append(set, b27ExiledWith(ctx.Game, ctx.Source(), arcaneBombardmentLabel)...)
 	return CopyAndCast{Cards: set, Free: true}.Apply(ctx)
 }
+
+// arcaneBombardmentExiled is "then copy the exiled cards" after the exile (#4253 slice 9).
+var arcaneBombardmentExiled = CardTail("arcane-bombardment/copy-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item := ctx.Game, ctx.Item
+
+	return arcaneBombardmentCopy(NewContext(g, item))
+})

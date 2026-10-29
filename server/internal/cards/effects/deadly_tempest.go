@@ -37,25 +37,27 @@ func init() {
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{
-				Match: Creature(),
-				Then: func(ctx *Context, swept []game.Card, _ int) error {
-					tally := controllersOf(swept)
-					// Seat order, not map order: the life losses are
-					// simultaneous in the rules but sequential in the
-					// event log, and a log whose order changes run to
-					// run is a replay that does not reproduce.
-					for _, p := range ctx.Game.Seats {
-						if p == nil || tally[p.ID] <= 0 {
-							continue
-						}
-						if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), p.ID, -tally[p.ID]); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
-			}.Apply(ctx)
+			return DestroyAllMatching{Match: Creature(), ThenTail: ctx.Tail(deadlyTempestLoss)}.Apply(ctx)
 		},
 	})
 }
+
+// deadlyTempestLoss is each player losing life equal to the number of
+// creatures they controlled that were destroyed this way, keyed (#4253): a
+// table waiting on a leg's prompt is a restore point. An on-disk key: never
+// renamed, never reused.
+var deadlyTempestLoss = MassTail("mass/deadly-tempest-loss", func(ctx *Context, swept []game.Card, _ int) error {
+	tally := controllersOf(swept)
+	// Seat order, not map order: the life losses are simultaneous in the
+	// rules but sequential in the event log, and a log whose order changes
+	// run to run is a replay that does not reproduce.
+	for _, p := range ctx.Game.Seats {
+		if p == nil || tally[p.ID] <= 0 {
+			continue
+		}
+		if err := ctx.Game.ChangePlayerLifeForEffect(ctx.Source(), p.ID, -tally[p.ID]); err != nil {
+			return err
+		}
+	}
+	return nil
+})

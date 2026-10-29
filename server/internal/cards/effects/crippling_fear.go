@@ -29,14 +29,15 @@ func init() {
 		// Creatures of the chosen type stay out of it (Partial).
 		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 3, Partial: true}},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			ChooseCreatureTypeThen(ctx.Game, item.Controller, item.SourceCardID, "Crippling Fear — choose a creature type",
-				func(g *game.Game, t string) error {
-					if t == "" {
-						return nil
-					}
-					return BoostUntilEOT{Match: notOfCreatureType(t), Power: -3, Toughness: -3, Label: "Crippling Fear — -3/-3"}.Apply(NewContext(g, item))
-				})
+			ChooseCreatureTypeTail(ctx.Game, item.Controller, item.SourceCardID, "Crippling Fear — choose a creature type",
+				ctx.ItemTail(cripplingFearTypeChosen))
 			return nil
 		},
 	})
 }
+
+// cripplingFearTypeChosen gives every creature not of the chosen type -3/-3
+// until end of turn. An on-disk key.
+var cripplingFearTypeChosen = creatureTypeChosen("then/crippling-fear-type-chosen", func(ctx *Context, t string, _ game.TailOutcome) error {
+	return BoostUntilEOT{Match: notOfCreatureType(t), Power: -3, Toughness: -3, Label: "Crippling Fear — -3/-3"}.Apply(ctx)
+})

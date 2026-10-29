@@ -47,7 +47,7 @@ func init() {
 					self = uuid.Nil
 				}
 				other := func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.InstanceID != self }
-				return damageEachMatchingAndEachPlayerThen(ctx, And(Creature(), WithoutKeyword("flying"), other), x, nil)
+				return damageEachMatchingAndEachPlayerThen(ctx, And(Creature(), WithoutKeyword("flying"), other), x, RecipientThen{})
 			}),
 			ExertedGets("Themberchaud — he gains flying until end of turn", 0, 0, "flying"),
 		},

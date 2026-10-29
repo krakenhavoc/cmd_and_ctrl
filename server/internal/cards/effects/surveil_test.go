@@ -246,9 +246,9 @@ func TestSurveilThenRunsAfterTheAnswer(t *testing.T) {
 	handBefore := me.Hand.Size()
 
 	g.WithWriteLock(func() {
-		g.SurveilThenForEffect(me.ID, uuid.Nil, 1, func(gg *game.Game) error {
+		g.SurveilKeyedForEffect(me.ID, uuid.Nil, 1, hookTail(func(gg *game.Game, o game.TailOutcome) error {
 			return gg.DrawNForEffect(me.ID, 1)
-		})
+		}))
 	})
 
 	c := surveilChoiceFor(g, me.ID)

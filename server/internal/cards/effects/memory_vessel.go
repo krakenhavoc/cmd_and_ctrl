@@ -58,11 +58,18 @@ const memoryVesselName = "Memory Vessel"
 // the activator's next turn.
 func memoryVesselResolve(g *game.Game, item *game.StackItem) error {
 	until := g.UntilYourNextTurnDuration(item.Controller)
-	return EachPlayerExilesTopAndMayPlay(NewContext(g, item), 7, until, func(ctx *Context) error {
-		// After the last library: the ban is part of the same instruction and
-		// waits for any ordering prompt a library asked.
-		ctx.Game.CantPlayFromHandForEffect(item.SourceCardID, uuid.Nil, until,
-			memoryVesselName+" — players can't play cards from their hand until its controller's next turn")
-		return nil
-	})
+	// After the last library: the ban is part of the same instruction and
+	// waits for any ordering prompt a library asked (#4253: a registered
+	// tail, the window's turn count its N).
+	ban := game.KeyedTail{Ref: memoryVesselBanHands, Player: item.Controller, Source: item.SourceCardID, N: until.ExpiresAtTurnsBegun}
+	return EachPlayerExilesTopAndMayPlay(NewContext(g, item), 7, until, ban)
 }
+
+// memoryVesselBanHands is "and they can't play cards from their hand" until
+// Player's next turn, the turn count it expires at being N. An on-disk key.
+var memoryVesselBanHands = game.RegisterTail("memory-vessel/ban-hands", func(g *game.Game, o game.TailOutcome) error {
+	until := game.Duration{Kind: game.UntilYourNextTurn, Player: o.Tail.Player, ExpiresAtTurnsBegun: o.Tail.N}
+	g.CantPlayFromHandForEffect(o.Tail.Source, uuid.Nil, until,
+		memoryVesselName+" — players can't play cards from their hand until its controller's next turn")
+	return nil
+})

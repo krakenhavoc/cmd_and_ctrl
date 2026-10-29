@@ -20,12 +20,7 @@ func plotASpell(t *testing.T, g *Game, owner *Player, typeLine, manaCost string)
 	c.Controller = owner.ID
 	pushStackSpell(t, g, c)
 	g.WithWriteLock(func() {
-		err := g.ExileSpellThenForEffect(c.InstanceID, func(g *Game, exiled bool) error {
-			if exiled {
-				g.PlotExiledCardForEffect(c.InstanceID, uuid.Nil)
-			}
-			return nil
-		})
+		err := g.ExileSpellKeyedForEffect(c.InstanceID, KeyedTail{Ref: testPlotIfExiled})
 		if err != nil {
 			t.Fatalf("exile: %v", err)
 		}

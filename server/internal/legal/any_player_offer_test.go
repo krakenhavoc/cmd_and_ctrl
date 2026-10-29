@@ -38,7 +38,7 @@ func TestAnyPlayerLifeAndDamageLinksNameTheirPayment(t *testing.T) {
 		}
 		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Enchantment", Owner: controller.ID, Controller: controller.ID, KnownBy: known})
 		g.WithWriteLock(func() {
-			if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+			if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 				Source: source, Controller: controller.ID, Cost: tc.words, Question: "Thing?",
 				Action: &game.PayAction{Kind: tc.kind, Count: 5},
 			}); err != nil {
@@ -83,7 +83,7 @@ func TestAnyPlayerLinkIsOfferedToItsChooserOnly(t *testing.T) {
 	}
 	g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Rhystic Thing", TypeLine: "Enchantment", Owner: controller.ID, Controller: controller.ID, KnownBy: known})
 	g.WithWriteLock(func() {
-		if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+		if err := queueAnyPlayerHooked(g, anyPlayerTestOffer{
 			Source: source, Controller: controller.ID, Cost: "{0}", Question: "Rhystic Thing — pay {0}?",
 		}); err != nil {
 			t.Fatalf("queue: %v", err)

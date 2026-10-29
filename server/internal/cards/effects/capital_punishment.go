@@ -43,10 +43,6 @@ func init() {
 
 var capitalPunishmentVoted = VoteResultThen("vote/capital-punishment", func(ctx *Context, r game.VoteResult) error {
 	death, taxes := r.Votes(0), r.Votes(1)
-	discard := func(g *game.Game, _ game.PromptedSacrifices) error {
-		eachOpponentDiscards(NewContext(g, ctx.Item), taxes)
-		return nil
-	}
 	var seats []uuid.UUID
 	for _, opp := range ctx.Opponents() {
 		for i := 0; i < death; i++ {
@@ -54,8 +50,21 @@ var capitalPunishmentVoted = VoteResultThen("vote/capital-punishment", func(ctx 
 		}
 	}
 	if len(seats) == 0 {
-		return discard(ctx.Game, nil)
+		eachOpponentDiscards(ctx, taxes)
+		return nil
 	}
-	return ctx.Game.PlayersSacrificeThenForEffect(ctx.Source(), seats,
-		sacrificeSpec("a creature", Creature()), "Capital Punishment — sacrifice a creature", discard)
+	// Keyed (#4290): the discard count rides the run as its number.
+	return ctx.PlayersSacrificeThen(seats,
+		sacrificeSpec("a creature", Creature()), "Capital Punishment — sacrifice a creature",
+		capitalPunishmentDiscards, ctx.RunData(nil, taxes))
+})
+
+// capitalPunishmentDiscards is each opponent discarding a card per taxes
+// vote once the sacrifices have landed, keyed (#4290).
+var capitalPunishmentDiscards = RunThen("prompt-run/capital-punishment-discards", func(ctx *Context, r game.RunDone) error {
+	if len(r.Nums) == 0 {
+		return nil
+	}
+	eachOpponentDiscards(ctx, r.Nums[0])
+	return nil
 })

@@ -86,23 +86,28 @@ func swordOfHearthAndHomeResolve(g *game.Game, item *game.StackItem) error {
 			targets = append(targets, t.ID)
 		}
 	}
-	return g.ExileCardsThenForEffect(targets, func(g *game.Game, exiled []uuid.UUID) error {
-		return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-			Player: you,
-			Source: source,
-			Pred:   IsBasicLand,
-			Dest:   game.ZoneLibrary,
-			Limit:  1,
-			// ToTop with no shuffle: the search reports what it found
-			// and leaves it in the library for the put. The shuffle is
-			// printed after the put, and runs from its continuation.
-			ToTop:  true,
-			Reason: "Sword of Hearth and Home — search for a basic land card",
-			// #4253 slice 4: the exiled card rides the tail.
-			ThenTail: game.KeyedTail{Ref: swordOfHearthAndHomePutBothTail, Player: you, Source: source, Carry: exiled},
-		})
-	})
+	return g.ExileCardsKeyedForEffect(targets, game.KeyedTail{Ref: swordOfHearthAndHomeSearch, Player: you, Source: source})
 }
+
+// swordOfHearthAndHomeSearch is the basic-land search after the exile
+// (#4253 slice 9): the exiled creatures ride the search's tail.
+var swordOfHearthAndHomeSearch = game.RegisterTail("sword-of-hearth-and-home/search-basic", func(g *game.Game, o game.TailOutcome) error {
+	you, source, exiled := o.Tail.Player, o.Tail.Source, o.IDs
+	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+		Player: you,
+		Source: source,
+		Pred:   IsBasicLand,
+		Dest:   game.ZoneLibrary,
+		Limit:  1,
+		// ToTop with no shuffle: the search reports what it found
+		// and leaves it in the library for the put. The shuffle is
+		// printed after the put, and runs from its continuation.
+		ToTop:  true,
+		Reason: "Sword of Hearth and Home — search for a basic land card",
+		// #4253 slice 4: the exiled card rides the tail.
+		ThenTail: game.KeyedTail{Ref: swordOfHearthAndHomePutBothTail, Player: you, Source: source, Carry: exiled},
+	})
+})
 
 // swordOfHearthAndHomePutBothTail runs swordOfHearthAndHomePutBoth: the
 // exiled cards ride Tail.Carry and the found land is the outcome. An

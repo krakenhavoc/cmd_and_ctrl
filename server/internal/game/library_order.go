@@ -1,6 +1,8 @@
 package game
 
 import (
+	"sort"
+
 	"github.com/google/uuid"
 )
 
@@ -9,7 +11,7 @@ import (
 //
 // The placement half of the library-top row. The LOOK half already had
 // a prompt family (scry, surveil, look_at_top, all on
-// lookAtTopForEffect); what it did not have was a way to order a pile
+// lookAtTopWithTailLocked); what it did not have was a way to order a pile
 // headed to the bottom, to order cards put on top from somewhere other
 // than the top of the library (Brainstorm's hand), or to let a player
 // choose top OR bottom without borrowing scry (Aetherspouts). One
@@ -103,15 +105,13 @@ type PutInLibrarySpec struct {
 	// Reason is the prompt banner — "<card> — <the printed clause>".
 	Reason string
 
-	// Then is the rest of the effect. It runs once every card has been
-	// placed (or skipped), including immediately when there was nothing
-	// to ask. Runs with g.mu held; must capture only scalars.
-	Then func(g *Game) error
-
-	// ThenTail is Then as data (#4301): a registered tail (RegisterTail)
-	// run in the same places, so the ordering prompt carries no closure
-	// and a table waiting on it is a restore point. Set Then or ThenTail,
-	// not both; Then wins.
+	// ThenTail is the rest of the effect (#4301): a registered tail
+	// (RegisterTail) run once every card has been placed (or skipped),
+	// including immediately when there was nothing to ask, so the
+	// ordering prompt carries no closure and a table waiting on it is a
+	// restore point. The zero tail is "nothing follows". (#4361 S17
+	// deleted the closure form, Then, with its last writer, the closure
+	// discard batch.)
 	ThenTail KeyedTail
 }
 
@@ -173,15 +173,9 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 	}
 	how := libraryOrderHow{from: spec.From, depth: spec.TopDepth, counter: spec.Counter}
 	cards := g.libraryOrderLiveCardsLocked(how, spec.Cards)
-	then, tail := spec.Then, spec.ThenTail
-	finish := func(g *Game) error {
-		if then == nil {
-			return g.runKeyedTailLocked(tail, nil, 0)
-		}
-		return then(g)
-	}
+	tail := spec.ThenTail
 	if len(cards) == 0 {
-		return finish(g)
+		return g.runKeyedTailLocked(tail, nil, 0)
 	}
 	chooser, placement, topCount := spec.Chooser, spec.Placement, spec.TopCount
 	if topCount > 0 && topCount >= len(cards) {
@@ -196,7 +190,7 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		} else {
 			bottom = cards
 		}
-		return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
+		return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, tail)
 	}
 	for _, id := range cards {
 		if c := g.findCardByIDLocked(id); c != nil {
@@ -219,19 +213,14 @@ func (g *Game) PutInLibraryInChosenOrderThenForEffect(spec PutInLibrarySpec) err
 		LibraryTopCount:  topCount,
 		LibraryTopDepth:  spec.TopDepth,
 	}
-	if then == nil && !tail.IsZero() {
-		// #4301: the continuation as data, so the prompt is a restore point.
-		prompt.libraryOrderKeyed = &libraryOrderKeyed{how: how, then: copyKeyedTail(tail)}
-	} else {
-		prompt.libraryOrderResume = func(g *Game, top, bottom []uuid.UUID) error {
-			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, finish)
-		}
-	}
+	// #4301: the continuation as data, so the prompt is a restore point.
+	// #4361: an ordering nothing follows (a zero tail) is data too.
+	prompt.libraryOrderKeyed = &libraryOrderKeyed{how: how, then: copyKeyedTail(tail)}
 	id := g.QueueChoiceForEffect(prompt)
 	if id == uuid.Nil {
 		// The chooser is not seated (#864). Nobody can answer, so
 		// nothing is placed — but the rest of the effect still runs.
-		return finish(g)
+		return g.runKeyedTailLocked(tail, nil, 0)
 	}
 	return nil
 }
@@ -332,22 +321,13 @@ func (g *Game) ResolvePutInLibrary(choiceID, chooserID uuid.UUID, bottom, topOrd
 		return err
 	}
 	g.dequeueChoiceLocked(idx)
-	resume := choice.libraryOrderResume
-	if k := choice.libraryOrderKeyed; resume == nil && k != nil {
-		// #4301: the keyed form, rebuilt from its data.
-		chooser, how, tail := choice.Chooser, k.how, k.then
-		resume = func(g *Game, top, bottom []uuid.UUID) error {
-			return g.placeInLibraryInOrderLocked(chooser, how, top, bottom, func(g *Game) error {
-				return g.runKeyedTailLocked(tail, nil, 0)
-			})
-		}
-	}
-	if resume != nil {
-		// Copies, so a replay of the same continuation after an undo
-		// never sees this call's slices.
+	if k := choice.libraryOrderKeyed; k != nil {
+		// #4301: the keyed form, rebuilt from its data. Copies, so a
+		// replay of the same continuation after an undo never sees this
+		// call's slices.
 		top := append([]uuid.UUID(nil), topOrder...)
 		under := append([]uuid.UUID(nil), bottom...)
-		if err := resume(g, top, under); err != nil {
+		if err := g.placeInLibraryInOrderLocked(choice.Chooser, k.how, top, under, k.then); err != nil {
 			g.EmitEvent(Event{
 				Kind:     EventEffectError,
 				Actor:    chooserID,
@@ -415,7 +395,7 @@ type libraryOrderLeg struct {
 
 // placeInLibraryInOrderLocked puts `top` on top of their owners'
 // libraries — or `how.depth` down from it — and `bottom` under them,
-// each lane top-first, then runs `then`.
+// each lane top-first, then runs `tail`.
 //
 // The legs go in PILE ORDER so the positions come out right: the
 // bottom lane first card first (each PushBottom goes under the one
@@ -426,13 +406,13 @@ type libraryOrderLeg struct {
 // A card already in its owner's library is lifted and re-inserted — a
 // reorder, not a zone change, so no window opens and no event fires. A
 // card anywhere else goes through the tuck route, or — for a counter —
-// the stack exit as a counter (CounterSpellToLibraryThenForEffect), so
+// the stack exit as a counter (CounterSpellToLibraryKeyedForEffect), so
 // the CR 614 window opens and a commander is offered the command zone
 // (CR 903.9); the next leg runs from that leg's continuation, so a
 // paused leg pauses the pile rather than letting the rest overtake it.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHow, top, bottom []uuid.UUID, then func(g *Game) error) error {
+func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHow, top, bottom []uuid.UUID, tail KeyedTail) error {
 	legs := make([]libraryOrderLeg, 0, len(top)+len(bottom))
 	for _, id := range bottom {
 		legs = append(legs, libraryOrderLeg{id: id, toBottom: true, laneSize: len(bottom)})
@@ -440,27 +420,31 @@ func (g *Game) placeInLibraryInOrderLocked(chooser uuid.UUID, how libraryOrderHo
 	for i := len(top) - 1; i >= 0; i-- {
 		legs = append(legs, libraryOrderLeg{id: top[i], depth: how.depth, laneSize: len(top)})
 	}
-	return g.placeLibraryOrderLegsLocked(chooser, how, legs, then)
+	return g.placeLibraryOrderLegsLocked(chooser, how, legs, tail)
 }
 
 // placeLibraryOrderLegsLocked places the head of `legs` and continues
-// with the tail from that leg's continuation. The empty list is the
-// base case.
+// with the tail from that leg's continuation. The empty list is the base
+// case, which runs the keyed tail.
+//
+// The pile walks as data (#4253): each tuck leg is a keyed route whose
+// tail carries the rest of the pile (libraryOrderLegLanded), so a leg
+// paused on a commander's CR 903.9 prompt is a restore point. Since
+// #4361 S11c a Hinder counter's legs do too
+// (CounterSpellToLibraryKeyedForEffect), and since S17 every pile does:
+// the closure form (PutInLibrarySpec.Then) is gone.
 //
 // Caller must hold g.mu in write mode.
-func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, then func(g *Game) error) error {
+func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHow, legs []libraryOrderLeg, tail KeyedTail) error {
 	for len(legs) > 0 && !g.libraryOrderCardLiveLocked(how, legs[0].id) {
 		legs = legs[1:]
 	}
 	if len(legs) == 0 {
-		if then == nil {
-			return nil
-		}
-		return then(g)
+		return g.runKeyedTailLocked(tail, nil, 0)
 	}
 	leg, rest := legs[0], legs[1:]
 	next := func(g *Game) error {
-		return g.placeLibraryOrderLegsLocked(chooser, how, rest, then)
+		return g.placeLibraryOrderLegsLocked(chooser, how, rest, tail)
 	}
 	src := g.findCardZoneLocked(leg.id)
 	card, ok := g.cardInZoneLocked(src, leg.id)
@@ -482,19 +466,94 @@ func (g *Game) placeLibraryOrderLegsLocked(chooser uuid.UUID, how libraryOrderHo
 		}
 		return next(g)
 	}
-	landed := func(g *Game, placed bool) error {
-		if placed {
-			if c := g.findCardByIDLocked(leg.id); c != nil {
-				c.KnownBy = copyKnowers(knowers)
-			}
+	landed := libraryOrderLegLandedTail(chooser, how, leg.id, knowers, rest, tail)
+	if how.counter {
+		// #4361 S11c: Hinder's leg is a keyed counter route too.
+		return g.CounterSpellToLibraryKeyedForEffect(leg.id, at, landed)
+	}
+	return g.TuckCardsToLibraryKeyedForEffect([]uuid.UUID{leg.id}, at, landed)
+}
+
+// libraryOrderLegLandedTail is a pile's tuck leg's tail (#4253): what the
+// leg owes once it has settled, as data. Player is the chooser, Word and N
+// the zone the cards must still be in and the top lane's depth (how); Carry
+// is the leg's card, who knows it once it is placed, and then the cards of
+// the legs still to place; Nums is how many of those are knowers and then,
+// for each leg still to place, whether it goes on the bottom, its depth and
+// its lane's size; Next is the pile's own continuation.
+func libraryOrderLegLandedTail(chooser uuid.UUID, how libraryOrderHow, id uuid.UUID, knowers map[uuid.UUID]bool, rest []libraryOrderLeg, tail KeyedTail) KeyedTail {
+	var who []uuid.UUID
+	for k, known := range knowers {
+		if known {
+			who = append(who, k)
 		}
-		return next(g)
+	}
+	// A stable order, so the tail is the same every time it is written.
+	sort.Slice(who, func(i, j int) bool { return who[i].String() < who[j].String() })
+	t := KeyedTail{
+		Ref: libraryOrderLegLanded, Player: chooser, Word: string(how.from), N: how.depth,
+		Carry: append([]uuid.UUID{id}, who...), Nums: []int{len(who)},
 	}
 	if how.counter {
-		return g.CounterSpellToLibraryThenForEffect(leg.id, at, landed)
+		// #4361 S11c: a Hinder pile's legs are counters (Words).
+		t.Words = []string{libraryOrderCounterWord}
 	}
-	return g.TuckToLibraryThenForEffect(leg.id, at, landed)
+	for _, leg := range rest {
+		t.Carry = append(t.Carry, leg.id)
+		bottom := 0
+		if leg.toBottom {
+			bottom = 1
+		}
+		t.Nums = append(t.Nums, bottom, leg.depth, leg.laneSize)
+	}
+	if !tail.IsZero() {
+		next := copyKeyedTail(tail)
+		t.Next = &next
+	}
+	return t
 }
+
+// libraryOrderLegLanded finishes a pile's tuck leg: the card, if it reached
+// a library, is known to who the pile says; then the rest of the pile goes
+// on. An on-disk key: never renamed, never reused. Registered from init: the
+// walk names this tail, which names the walk.
+var libraryOrderLegLanded TailRef
+
+func init() {
+	libraryOrderLegLanded = RegisterTail("engine/library-order-leg-landed", libraryOrderLegLandedBody)
+}
+
+func libraryOrderLegLandedBody(g *Game, o TailOutcome) error {
+	t := o.Tail
+	if len(t.Carry) == 0 || len(t.Nums) == 0 {
+		return nil
+	}
+	nWho := t.Nums[0]
+	if nWho < 0 || len(t.Carry) < 1+nWho || (len(t.Nums)-1)%3 != 0 || len(t.Carry)-1-nWho != (len(t.Nums)-1)/3 {
+		return nil
+	}
+	if len(o.IDs) == 1 {
+		if c := g.findCardByIDLocked(t.Carry[0]); c != nil {
+			knowers := make(map[uuid.UUID]bool, nWho)
+			for _, k := range t.Carry[1 : 1+nWho] {
+				knowers[k] = true
+			}
+			c.KnownBy = knowers
+		}
+	}
+	var legs []libraryOrderLeg
+	for i, id := range t.Carry[1+nWho:] {
+		legs = append(legs, libraryOrderLeg{
+			id: id, toBottom: t.Nums[1+3*i] == 1, depth: t.Nums[2+3*i], laneSize: t.Nums[3+3*i],
+		})
+	}
+	how := libraryOrderHow{from: ZoneKind(t.Word), depth: t.N, counter: len(t.Words) > 0 && t.Words[0] == libraryOrderCounterWord}
+	return g.placeLibraryOrderLegsLocked(t.Player, how, legs, nextTailValue(t.Next))
+}
+
+// libraryOrderCounterWord marks a pile leg tail whose legs are counters
+// (libraryOrderHow.counter): Hinder's, Spell Crumple's. On disk.
+const libraryOrderCounterWord = "counter"
 
 // publicKnowersOfLocked is everyone who can see a card in `z` by virtue
 // of where it is: every seat for a public zone (CR 400.2 — the
@@ -537,16 +596,6 @@ func libraryOrderKnowers(c Card, public []uuid.UUID, chooser uuid.UUID, laneSize
 	}
 	if chooser != uuid.Nil {
 		out[chooser] = true
-	}
-	return out
-}
-
-// copyKnowers gives a knower set its own map, so two cards (or a card
-// and the continuation that set it) never share one.
-func copyKnowers(in map[uuid.UUID]bool) map[uuid.UUID]bool {
-	out := make(map[uuid.UUID]bool, len(in))
-	for id, v := range in {
-		out[id] = v
 	}
 	return out
 }

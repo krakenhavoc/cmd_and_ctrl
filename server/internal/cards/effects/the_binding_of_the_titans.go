@@ -51,34 +51,42 @@ func init() {
 
 func titansMillAll(g *game.Game, item *game.StackItem) error {
 	// One library at a time in APNAP order (#4266).
-	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(3), nil)
+	return millEachPlayerInTurn(NewContext(g, item), apnapPlayers(g), constantMill(3), game.KeyedTail{})
 }
 
 func titansExileFromGraveyards(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	wasCreature := map[uuid.UUID]bool{}
 	var ids []uuid.UUID
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard {
 			continue
 		}
-		card, ok := g.LookupCardForEffect(t.ID)
-		if !ok {
+		if _, ok := g.LookupCardForEffect(t.ID); !ok {
 			continue
 		}
 		ids = append(ids, t.ID)
-		wasCreature[t.ID] = card.IsCreature()
 	}
-	return g.ExileCardsThenForEffect(ids, func(g *game.Game, exiled []uuid.UUID) error {
-		creatures := 0
-		for _, id := range exiled {
-			if wasCreature[id] {
-				creatures++
-			}
-		}
-		if creatures == 0 {
-			return nil
-		}
-		return GainLife{Player: item.Controller, Amount: creatures}.Apply(NewContext(g, item))
-	})
+	return g.ExileCardsKeyedForEffect(ids, ctx.ItemTail(bindingOfTheTitansGain))
 }
+
+// bindingOfTheTitansGain is "gain 1 life for each creature card exiled this way" (#4253 slice 9).
+var bindingOfTheTitansGain = CardTail("the-binding-of-the-titans/gain-per-creature-exiled", func(ctx *Context, o game.TailOutcome) error {
+	g, item, exiled := ctx.Game, ctx.Item, o.IDs
+	wasCreature := map[uuid.UUID]bool{}
+	for _, id := range exiled {
+		if c, ok := g.LookupCardForEffect(id); ok {
+			wasCreature[id] = c.IsCreature()
+		}
+	}
+
+	creatures := 0
+	for _, id := range exiled {
+		if wasCreature[id] {
+			creatures++
+		}
+	}
+	if creatures == 0 {
+		return nil
+	}
+	return GainLife{Player: item.Controller, Amount: creatures}.Apply(NewContext(g, item))
+})

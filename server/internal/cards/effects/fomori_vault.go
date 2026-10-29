@@ -44,7 +44,7 @@ func init() {
 					Cards:  g.LookAtTopOfLibraryForEffect(player, x),
 					Max:    1,
 					Label:  "Fomori Vault — put one of those cards into your hand",
-					Then:   TakeRestOnBottomInRandomOrder,
+					Key:    takeRestBottomRandom,
 				}.Apply(NewContext(g, item))
 			},
 		}},

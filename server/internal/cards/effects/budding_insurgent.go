@@ -46,13 +46,18 @@ func init() {
 				wasLegendaryEnchantment := c.IsLegendary() && c.IsEnchantment()
 				// The draw runs in the destroy's continuation, so a
 				// paused replacement window (CR 614) lands first.
-				return g.DestroyPermanentsThenForEffect([]uuid.UUID{t.ID}, func(*game.Game, []uuid.UUID) error {
-					if !wasLegendaryEnchantment {
-						return nil
-					}
-					return DrawCards{N: 1}.Apply(ctx)
-				})
+				return g.DestroyPermanentsKeyedForEffect([]uuid.UUID{t.ID}, withN(ctx.ItemTail(buddingInsurgentDestroyed), boolToInt(wasLegendaryEnchantment)))
 			},
 		}},
 	})
 }
+
+// buddingInsurgentDestroyed draws if a legendary enchantment was the target (#4253 slice 9).
+var buddingInsurgentDestroyed = CardTail("budding-insurgent/draw-if-legendary-enchantment", func(ctx *Context, o game.TailOutcome) error {
+	wasLegendaryEnchantment := o.Tail.N == 1
+
+	if !wasLegendaryEnchantment {
+		return nil
+	}
+	return DrawCards{N: 1}.Apply(ctx)
+})

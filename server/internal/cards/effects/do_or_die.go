@@ -51,7 +51,7 @@ func init() {
 					SplitQuestion: "Do or Die — separate these creatures into two piles",
 					PickQuestion:  "Do or Die — choose a pile; every creature in it is destroyed and can't be regenerated",
 					Cards:         creaturesControlledByPlayer(ctx.Game, t.ID),
-					Then:          doOrDieDestroyPile,
+					ThenTail:      ctx.Tail(doOrDieDestroyPile),
 				}.Apply(ctx)
 			}
 			return nil
@@ -60,11 +60,13 @@ func init() {
 }
 
 // doOrDieDestroyPile destroys the pile the target player chose ("taken"
-// is the pile the chooser picked) and leaves the other alone.
-func doOrDieDestroyPile(ctx *Context, destroyed, _ []uuid.UUID) error {
+// is the pile the chooser picked) and leaves the other alone. Keyed
+// (#4253): both prompts carry it, so a table waiting on either is a
+// restore point. An on-disk key: never renamed, never reused.
+var doOrDieDestroyPile = PileTail("then/do-or-die-destroy-pile", func(ctx *Context, destroyed, _ []uuid.UUID, _ game.TailOutcome) error {
 	if len(destroyed) == 0 {
 		return nil
 	}
 	ctx.Game.DestroyPermanentsForEffect(destroyed, game.DestroyOptions{CantBeRegenerated: true})
 	return nil
-}
+})

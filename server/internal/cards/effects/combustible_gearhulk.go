@@ -93,11 +93,7 @@ func combustibleGearhulkDrawThree(ctx *Context) error {
 //
 // Caller holds g.mu.
 func combustibleGearhulkMillThenBurn(ctx *Context) error {
-	item := ctx.Item
-	return ctx.Game.MillToZoneThenForEffect(ctx.Controller(), 3, game.ZoneGraveyard, nil,
-		func(g *game.Game, milled []uuid.UUID) error {
-			return combustibleGearhulkBurn(NewContext(g, item), milled)
-		})
+	return ctx.Game.MillToZoneKeyedForEffect(ctx.Controller(), 3, game.ZoneGraveyard, game.MillUntil{}, ctx.ItemTail(combustibleGearhulkMilled))
 }
 
 // combustibleGearhulkBurn is the second half, run with the cards that
@@ -130,3 +126,10 @@ func combustibleGearhulkBurn(ctx *Context, milled []uuid.UUID) error {
 var combustibleGearhulkAnswer = MayYesNo("confirm/combustible-gearhulk-draw-or-mill",
 	func(ctx *Context, _ game.ConfirmAnswer) error { return combustibleGearhulkDrawThree(ctx) },
 	func(ctx *Context, _ game.ConfirmAnswer) error { return combustibleGearhulkMillThenBurn(ctx) })
+
+// combustibleGearhulkMilled is the damage after the mill (#4253 slice 9).
+var combustibleGearhulkMilled = CardTail("combustible-gearhulk/burn-total-mana-value", func(ctx *Context, o game.TailOutcome) error {
+	g, item, milled := ctx.Game, ctx.Item, o.IDs
+
+	return combustibleGearhulkBurn(NewContext(g, item), milled)
+})

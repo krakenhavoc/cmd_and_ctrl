@@ -182,8 +182,8 @@ func TestParanormalAnalystIgnoresAnOpponentsManifestDread(t *testing.T) {
 	handBefore := me.Hand.Size()
 	_, oppSecond := dreadPair(opp)
 	g.WithWriteLock(func() {
-		if err := g.ManifestDreadThenForEffect(opp.ID, uuid.Nil, nil); err != nil {
-			t.Fatalf("ManifestDreadThenForEffect: %v", err)
+		if err := g.ManifestDreadKeyedForEffect(opp.ID, uuid.Nil, game.KeyedTail{}); err != nil {
+			t.Fatalf("ManifestDreadKeyedForEffect: %v", err)
 		}
 	})
 	answerChooseCards(t, g, opp.ID, oppSecond)
@@ -625,7 +625,7 @@ func TestDisturbingMirthSacrificesForCardsAndManifestsWhenItself(t *testing.T) {
 		g, me, top, second := dreadTable(t)
 		mirth := pushPermanentForTest(g, me.ID, "Disturbing Mirth", mdMirthOracle, "Enchantment")
 		g.WithWriteLock(func() {
-			if err := g.SacrificeAllThenForEffect(uuid.Nil, []uuid.UUID{mirth}, nil); err != nil {
+			if err := g.SacrificeAllKeyedForEffect(uuid.Nil, []uuid.UUID{mirth}, game.KeyedTail{}); err != nil {
 				t.Fatal(err)
 			}
 		})

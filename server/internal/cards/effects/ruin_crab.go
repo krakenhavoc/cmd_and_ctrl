@@ -23,7 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Landfall("Ruin Crab — each opponent mills three (landfall)", func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
-				return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(3), nil)
+				return millEachPlayerInTurn(ctx, ctx.Opponents(), constantMill(3), game.KeyedTail{})
 			}),
 		},
 	})

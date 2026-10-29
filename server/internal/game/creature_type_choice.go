@@ -65,11 +65,10 @@ func (g *Game) QueueCreatureTypeChoiceForEffect(chooser, source uuid.UUID, reaso
 	})
 }
 
-// A resolution-time creature-type prompt carries its continuation in
-// the same chooseValueFrame a resolution-time colour prompt does
-// (color_choice.go): both are "a string answer, then the rest of the
-// card", and one frame keeps the ContinuationCensus and the closure
-// ratchet at one line per route rather than one more per prompt kind.
+// A resolution-time creature-type prompt answers through the same
+// chooseValueFrame a resolution-time colour prompt does (color_choice.go):
+// both are "a string answer, then the rest of the card", the frame built
+// from the prompt's keyed tail (value_then_keyed.go).
 
 // CreatureTypePrompt is the queue-side description of a
 // resolution-time "choose a creature type" (Distant Melody, Kindred
@@ -84,12 +83,14 @@ type CreatureTypePrompt struct {
 	Source uuid.UUID
 	// Question is the prompt's header.
 	Question string
-	// Then receives the canonical chosen type. Runs with g.mu held;
+	// ThenTail receives the canonical chosen type (#4253): a registered
+	// tail (RegisterTail) told it as its Word. It runs with g.mu held and
 	// may queue further choices. A prompt dropped because its chooser
-	// left the game calls it with "" (nobody chose), so a chain that
-	// asks several seats finishes (#1006's rule); an answer is never
-	// empty.
-	Then func(g *Game, creatureType string) error
+	// left the game tells it "" (nobody chose), so a chain that asks
+	// several seats finishes (#1006's rule); an answer is never empty.
+	// The prompt holds no closure, so a table waiting on it is a restore
+	// point.
+	ThenTail KeyedTail
 	// Except names types the answer may not be (ADR 0160's 2026-10-15
 	// amendment): Artificial Evolution's "can't be Wall". Any spelling;
 	// stored canonical on PendingChoice.ExcludedTypes.
@@ -109,20 +110,22 @@ func canonicalCreatureTypes(in []string) []string {
 }
 
 // QueueCreatureTypeChoiceThenForEffect queues the AT-RESOLUTION form:
-// the answer is handed to p.Then and stored nowhere. Returns the
+// the answer is handed to p.ThenTail and stored nowhere. Returns the
 // choice ID, or uuid.Nil when the chooser has left the game.
 //
 // Caller must hold g.mu.
 func (g *Game) QueueCreatureTypeChoiceThenForEffect(p CreatureTypePrompt) uuid.UUID {
-	return g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoiceCreatureType,
-		Chooser:           p.Chooser,
-		Count:             1,
-		Source:            p.Source,
-		Reason:            p.Question,
-		ExcludedTypes:     canonicalCreatureTypes(p.Except),
-		chooseValueResume: &chooseValueFrame{then: p.Then},
-	})
+	c := PendingChoice{
+		Kind:          PendingChoiceCreatureType,
+		Chooser:       p.Chooser,
+		Count:         1,
+		Source:        p.Source,
+		Reason:        p.Question,
+		ExcludedTypes: canonicalCreatureTypes(p.Except),
+	}
+	// #4361: keyed even when nothing follows, so the prompt is data.
+	g.keyValueThenOrNothingLocked(&c, p.ThenTail)
+	return g.QueueChoiceForEffect(c)
 }
 
 // ResolveCreatureTypeChoice processes a resolve_choice action for a
@@ -169,7 +172,7 @@ func (g *Game) ResolveCreatureTypeChoice(choiceID, chooserID uuid.UUID, creature
 	if !ok || slices.Contains(choice.ExcludedTypes, canonical) {
 		return ErrInvalidParam
 	}
-	frame := choice.chooseValueResume
+	frame := chooseValueFrameOf(choice)
 	g.dequeueChoiceLocked(idx)
 
 	if frame != nil {

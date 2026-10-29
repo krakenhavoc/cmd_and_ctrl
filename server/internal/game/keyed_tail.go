@@ -22,8 +22,10 @@ import (
 // reads. The engine's own sequencers (a library search's remaining
 // takes and its shuffle, a token batch's remaining tokens) are data of
 // their own on the tail (searchEntryRun, tokenEntryRun). A caller whose
-// continuation is a card closure still passes the closure, and that
-// frame is still counted by the census exactly as before.
+// continuation is a card closure still passes the closure where its
+// event keeps one, and that frame is still counted by the census
+// exactly as before. A token creation's closure form is gone (#4361
+// S12).
 
 // TailRef names a registered TailFunc. The key is unexported, so a func
 // never reaches an event and a ref is only made by RegisterTail.
@@ -53,6 +55,36 @@ type KeyedTail struct {
 	// the way a keyed pay-unless answer does. Nil when the card put none
 	// there.
 	Asked *AskedItem
+	// Word is a word the body reads (#4253 slice 6): a creature type, a
+	// name. Empty when the body reads none.
+	Word string
+	// Next is the tail to run after this one, as data (#4253 slice 6): an
+	// engine tail that finishes a keyword action (amass) and then hands
+	// the card's own tail what it produced. Nil when there is none.
+	Next *KeyedTail
+	// Permission is a cast permission the body grants, as data (#4253
+	// slice 10a): an exile's "you may cast it" (airbend, impulse exile,
+	// the free-cast grants, the Oblivion Ring family's return record).
+	// Nil when the body grants none.
+	Permission *CastPermission
+	// Nums and Words are more numbers and words the body reads (#4253
+	// slice 10b): a run's position (proliferate's permanent, counter kind
+	// and remaining asks) and the names it walks (the counter kinds).
+	Nums  []int
+	Words []string
+
+	// paid is an answered pay-unless whose "yes" waits for its payment
+	// (#4361 S8, pay_action_keyed.go): the engine's payUnlessPaidTail
+	// rebuilds the prompt from it. Nil on every card's tail.
+	paid *payUnlessPaid
+	// Records are continuous-effect records the body registers, as data
+	// (#4361 S12, owner decision D6): a copy of a permanent spell whose
+	// control changed on the stack keeps that change on the token it
+	// becomes (ADR 0104, CR 400.7a), and the copy's object is gone
+	// before the token exists, so the records ride the creation's tail
+	// until the body re-pins them. Value copies, never the registry's.
+	// Nil when the body registers none.
+	Records []ScopedEffect
 }
 
 // IsZero reports whether no continuation is recorded.
@@ -66,6 +98,9 @@ type TailOutcome struct {
 	Tail   KeyedTail
 	IDs    []uuid.UUID
 	Amount int
+	// Rolls is a dice roll's kept results, in the order rolled (#4307,
+	// dice_roll.go): the rolls an ignored one was dropped from.
+	Rolls []int
 }
 
 // TailFunc is the body of a keyed continuation. It runs with g.mu held,
@@ -90,6 +125,16 @@ func RegisterTail(key string, body TailFunc) TailRef {
 	tailBodies[key] = body
 	tailMu.Unlock()
 	return TailRef{key: key}
+}
+
+// TailRefByKey is the ref for a registered key, for a continuation that
+// carries its tail as a word on a prompt (#4253 slice 10c). False when this
+// binary registers no such body.
+func TailRefByKey(key string) (TailRef, bool) {
+	if !KnownTail(key) {
+		return TailRef{}, false
+	}
+	return TailRef{key: key}, true
 }
 
 // KnownTail reports whether a body is registered under key.
@@ -129,6 +174,23 @@ func (g *Game) runKeyedTailLocked(t KeyedTail, ids []uuid.UUID, amount int) erro
 	return body(g, TailOutcome{Tail: copyKeyedTail(t), IDs: copyUUIDs(ids), Amount: amount})
 }
 
+// runKeyedRollTailLocked runs a dice roll's recorded continuation, told
+// the kept rolls (#4307).
+//
+// Caller must hold g.mu.
+func (g *Game) runKeyedRollTailLocked(t KeyedTail, rolls []int) error {
+	if t.IsZero() {
+		return nil
+	}
+	tailMu.RLock()
+	body := tailBodies[t.Ref.key]
+	tailMu.RUnlock()
+	if body == nil {
+		return nil
+	}
+	return body(g, TailOutcome{Tail: copyKeyedTail(t), Amount: len(rolls), Rolls: append([]int(nil), rolls...)})
+}
+
 // Run runs the tail at once, told ids: for a caller whose event never
 // happened (nothing to exile, nothing to place) but whose continuation is
 // still owed.
@@ -136,6 +198,15 @@ func (g *Game) runKeyedTailLocked(t KeyedTail, ids []uuid.UUID, amount int) erro
 // Caller must hold g.mu.
 func (t KeyedTail) Run(g *Game, ids []uuid.UUID) error {
 	return g.runKeyedTailLocked(t, ids, 0)
+}
+
+// RunTold is Run with the amount the event settled with (the counters placed,
+// the life that moved), for a tail that hands what it was told on to the next
+// one (#4253 slice 7).
+//
+// Caller must hold g.mu.
+func (t KeyedTail) RunTold(g *Game, ids []uuid.UUID, amount int) error {
+	return g.runKeyedTailLocked(t, ids, amount)
 }
 
 // carriesLookAtThen reports whether a prompt kind can carry a keyed look-at
@@ -149,7 +220,25 @@ func carriesLookAtThen(k PendingChoiceKind) bool {
 func copyKeyedTail(t KeyedTail) KeyedTail {
 	t.Carry = copyUUIDs(t.Carry)
 	t.Asked = copyAskedItem(t.Asked)
+	t.Nums = copyInts(t.Nums)
+	t.Words = copyStrings(t.Words)
+	if t.Next != nil {
+		n := copyKeyedTail(*t.Next)
+		t.Next = &n
+	}
+	t.Permission = copyCastPermissionPtr(t.Permission)
+	t.paid = copyPayUnlessPaid(t.paid)
+	t.Records = deepCopyScopedEffects(t.Records)
 	return t
+}
+
+// copyCastPermissionPtr deep-copies a tail's permission.
+func copyCastPermissionPtr(p *CastPermission) *CastPermission {
+	if p == nil {
+		return nil
+	}
+	out := cloneCastPermissions([]CastPermission{*p})[0]
+	return &out
 }
 
 // keyedTailSnapshot is a KeyedTail on disk.
@@ -160,6 +249,21 @@ type keyedTailSnapshot struct {
 	Carry  []uuid.UUID `json:"carry,omitempty"`
 	N      int         `json:"n,omitempty"`
 	Asked  *AskedItem  `json:"asked,omitempty"`
+	// Word and Next (#4253 slice 6).
+	Word string             `json:"word,omitempty"`
+	Next *keyedTailSnapshot `json:"next,omitempty"`
+	// Permission (#4253 slice 10a): a cast permission the body grants.
+	Permission *CastPermission `json:"permission,omitempty"`
+	// Nums and Words (#4253 slice 10b).
+	Nums  []int    `json:"nums,omitempty"`
+	Words []string `json:"words,omitempty"`
+	// Paid (#4361 S8): an answered pay-unless whose "yes" waits for its
+	// payment. Additive within v9.
+	Paid *payUnlessPaid `json:"paid,omitempty"`
+	// Records (#4361 S12): the continuous-effect records the body
+	// registers, held to the vocabulary checkEffectKeys holds the live
+	// registry to (unknownKeyedTail).
+	Records []ScopedEffect `json:"records,omitempty"`
 }
 
 func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
@@ -169,24 +273,84 @@ func snapshotKeyedTail(t KeyedTail) *keyedTailSnapshot {
 	return &keyedTailSnapshot{
 		Key: t.Ref.key, Player: uuidPtrOrNil(t.Player), Source: uuidPtrOrNil(t.Source),
 		Carry: copyUUIDs(t.Carry), N: t.N, Asked: copyAskedItem(t.Asked),
+		Word: t.Word, Next: snapshotKeyedTail(nextTailValue(t.Next)),
+		Permission: copyCastPermissionPtr(t.Permission),
+		Nums:       copyInts(t.Nums), Words: copyStrings(t.Words),
+		Paid:    copyPayUnlessPaid(t.paid),
+		Records: deepCopyScopedEffects(t.Records),
 	}
+}
+
+// nextTailValue is the tail a Next points at, or the zero tail.
+func nextTailValue(n *KeyedTail) KeyedTail {
+	if n == nil {
+		return KeyedTail{}
+	}
+	return *n
 }
 
 func restoreKeyedTail(s *keyedTailSnapshot) KeyedTail {
 	if s == nil {
 		return KeyedTail{}
 	}
-	return KeyedTail{
+	out := KeyedTail{
 		Ref: TailRef{key: s.Key}, Player: uuidOrNil(s.Player), Source: uuidOrNil(s.Source),
-		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked),
+		Carry: copyUUIDs(s.Carry), N: s.N, Asked: copyAskedItem(s.Asked), Word: s.Word,
+		Permission: copyCastPermissionPtr(s.Permission),
+		Nums:       copyInts(s.Nums), Words: copyStrings(s.Words),
+		paid:    copyPayUnlessPaid(s.Paid),
+		Records: deepCopyScopedEffects(s.Records),
 	}
+	if s.Next != nil {
+		n := restoreKeyedTail(s.Next)
+		out.Next = &n
+	}
+	return out
 }
 
 // unknownKeyedTail is checkEffectKeys' line for a tail the running
-// binary does not register.
+// binary does not register, and for any key the tail holds as a word that
+// it does not register either (registerTailWordKeys).
 func unknownKeyedTail(s *keyedTailSnapshot) []string {
-	if s == nil || KnownTail(s.Key) {
+	if s == nil {
 		return nil
 	}
-	return []string{"tail " + s.Key}
+	var out []string
+	if !KnownTail(s.Key) {
+		out = append(out, "tail "+s.Key)
+	}
+	tailMu.RLock()
+	check := tailWordKeys[s.Key]
+	tailMu.RUnlock()
+	if check != nil {
+		out = append(out, check(s.Word, s.Words)...)
+	}
+	out = append(out, unknownPayUnlessPaid(s)...)
+	// #4361 S13: a cast permission the tail grants names its follow-ups
+	// by key.
+	out = append(out, unknownCastFollowUps(s.Permission)...)
+	// #4361 S12: records the body registers are records like the live
+	// registry's, so they are held to the same vocabulary.
+	out = append(out, unknownScopedEffectRecordKeys(s.Records)...)
+	return append(out, unknownKeyedTail(s.Next)...)
+}
+
+// tailWordKeys holds, per tail key, the check for the keys that tail
+// holds as plain words (#4361 S11b): another registry's key (a
+// revealed-hand pick's continuation, a paid cast's "if you don't" body),
+// written as Word or Words because a tail has no field of that kind. The
+// check returns checkEffectKeys' line for each word this binary does not
+// register, so a restore refuses the file rather than running a
+// continuation that does nothing. Guarded by tailMu.
+var tailWordKeys = map[string]func(word string, words []string) []string{}
+
+// registerTailWordKeys records ref's word-key check. Call it once, from an
+// init, for a tail that holds another registry's key as a word.
+func registerTailWordKeys(ref TailRef, check func(word string, words []string) []string) {
+	if ref.key == "" || check == nil {
+		panic("game.registerTailWordKeys: a registered tail and a check are required")
+	}
+	tailMu.Lock()
+	tailWordKeys[ref.key] = check
+	tailMu.Unlock()
 }

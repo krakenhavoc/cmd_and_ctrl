@@ -421,13 +421,13 @@ func TestAFlickeredMeldedPermanentReturnsBothCards(t *testing.T) {
 	}
 	m := meldedUrza(t, g)
 	g.WithWriteLock(func() {
-		if err := g.ExileCardThenForEffect(m.InstanceID, func(g *game.Game, exiled bool) error {
-			if !exiled {
+		if err := g.ExileCardKeyedForEffect(m.InstanceID, hookTail(func(g *game.Game, o game.TailOutcome) error {
+			if len(o.IDs) != 1 {
 				t.Fatal("not exiled")
 			}
 			_, err := g.ReturnFromExileToBattlefieldForEffect(m.InstanceID, me.ID, false)
 			return err
-		}); err != nil {
+		})); err != nil {
 			t.Fatalf("flicker: %v", err)
 		}
 	})

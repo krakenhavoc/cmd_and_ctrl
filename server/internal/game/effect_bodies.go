@@ -246,6 +246,14 @@ func checkEffectKey(kind, key string) {
 	if _, dup := promptRunThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already a prompted-run continuation", kind, key))
 	}
+	// #4253 slice 10b: and a keyed coin flip's continuation.
+	if _, dup := coinFlipThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a coin-flip continuation", kind, key))
+	}
+	// #4361: and a keyed may_cast's answer.
+	if _, dup := mayCastThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a may-cast answer", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -320,6 +328,19 @@ func DelayedCondition(key string, fn ConditionFunc) ConditionRef {
 	}
 	effectConditions[key] = fn
 	return ConditionRef{key: key}
+}
+
+// ConditionRefByKey is the ref for a registered event condition, for a
+// keyed tail that names one in its data (#4253: ExileUntil's "until an
+// opponent becomes the monarch" record, written once the card reached
+// exile). False when no condition is registered under key.
+func ConditionRefByKey(key string) (ConditionRef, bool) {
+	effectRegistryMu.RLock()
+	defer effectRegistryMu.RUnlock()
+	if _, ok := effectConditions[key]; !ok {
+		return ConditionRef{}, false
+	}
+	return ConditionRef{key: key}, true
 }
 
 // EachConditionFunc is an each-condition's match: the objects a watched
@@ -469,6 +490,14 @@ func RegisteredEffectKeys() []string {
 	out = append(out, registeredTapCostKeysLocked()...)
 	// #4290: a keyed prompted run's continuation.
 	out = append(out, registeredPromptRunKeysLocked()...)
+	// #4253 slice 5: a search prompt's set rule.
+	out = append(out, registeredSearchRuleKeysLocked()...)
+	// #4253 slice 10b: a keyed coin flip's continuation.
+	out = append(out, registeredCoinFlipKeysLocked()...)
+	// #4361: a keyed may_cast's answer.
+	out = append(out, registeredMayCastKeysLocked()...)
+	// #4361 S13: a stored cast permission's follow-up bodies.
+	out = append(out, registeredCastFollowUpKeys()...)
 	sort.Strings(out)
 	return out
 }

@@ -54,21 +54,29 @@ func gilgameshLookAndPut(g *game.Game, item *game.StackItem) error {
 		Max:      0,
 		Optional: true,
 		Label:    "Gilgamesh — put any number of Equipment cards from among them onto the battlefield",
-		Then: func(g *game.Game, res PutFromLibraryResult) error {
-			if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
-				return err
-			}
-			if len(res.Entered) == 0 {
-				return nil
-			}
-			return ReflexiveTrigger{
-				Label: "Gilgamesh, Master-at-Arms — you may attach one of the Equipment to a Samurai you control",
-				Cards: res.Entered,
-				Body:  gilgameshAttachBody,
-			}.Apply(NewContext(g, item))
-		},
+		ThenTail: gilgameshRest,
+		ThenItem: true,
 	}.Apply(ctx)
 }
+
+// gilgameshRest is the rider as a keyed tail (#4253 slice 6): the rest to
+// the bottom, then the reflexive attach trigger over the Equipment that
+// entered. The asking item rides the tail. An on-disk key.
+var gilgameshRest = PutFromLibraryTail("gilgamesh-master-at-arms/rest-then-attach-trigger",
+	func(ctx *Context, res PutFromLibraryResult) error {
+		g := ctx.Game
+		if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
+			return err
+		}
+		if len(res.Entered) == 0 {
+			return nil
+		}
+		return ReflexiveTrigger{
+			Label: "Gilgamesh, Master-at-Arms — you may attach one of the Equipment to a Samurai you control",
+			Cards: res.Entered,
+			Body:  gilgameshAttachBody,
+		}.Apply(ctx)
+	})
 
 // gilgameshAttach is the reflexive half: pick one of the Equipment that
 // entered (a floor of zero is the "may"), then the Samurai it goes on.
@@ -86,46 +94,57 @@ func gilgameshAttach(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   item.SourceCardID,
-		Question: "Gilgamesh — attach one of the Equipment to a Samurai you control?",
-		Cards:    equipment,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneBattlefield,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			attachment := picked[0]
-			samurai := gilgameshSamurai(g, controller, word)
-			if len(samurai) == 0 {
-				return nil
-			}
-			g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:  controller,
-				Source:   item.SourceCardID,
-				Question: "Gilgamesh — attach it to which Samurai you control?",
-				Cards:    samurai,
-				Min:      1,
-				Max:      1,
-				Zone:     game.ZoneBattlefield,
-				Then: func(g *game.Game, hosts []uuid.UUID) error {
-					if len(hosts) == 0 || !g.Battlefield.Contains(attachment) {
-						return nil
-					}
-					host, ok := g.LookupCardForEffect(hosts[0])
-					if !ok || host.Controller != controller || !host.HasSubtype(word) {
-						return nil
-					}
-					return g.AttachForEffect(attachment, game.TargetRef{Kind: game.TargetCard, ID: hosts[0]})
-				},
-			})
-			return nil
-		},
+		Chooser:   controller,
+		Source:    item.SourceCardID,
+		Question:  "Gilgamesh — attach one of the Equipment to a Samurai you control?",
+		Cards:     equipment,
+		Min:       0,
+		Max:       1,
+		LiveZone:  game.ZoneBattlefield,
+		ThenKey:   gilgameshEquipmentChosen,
+		CarryWord: word,
 	})
 	return nil
 }
+
+// gilgameshEquipmentChosen is the Equipment picked, and the question of the
+// Samurai it goes on, keyed (#4253). The Samurai type, a word of the
+// source's text, rides the prompt as its word.
+var gilgameshEquipmentChosen = game.RegisterChooseCardsThen("choose-cards/gilgamesh-master-at-arms-equipment", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 {
+		return nil
+	}
+	samurai := gilgameshSamurai(g, r.Chooser, r.Word)
+	if len(samurai) == 0 {
+		return nil
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:   r.Chooser,
+		Source:    r.Source,
+		Question:  "Gilgamesh — attach it to which Samurai you control?",
+		Cards:     samurai,
+		Min:       1,
+		Max:       1,
+		LiveZone:  game.ZoneBattlefield,
+		ThenKey:   gilgameshHostChosen,
+		Carry:     []uuid.UUID{r.Picked[0]},
+		CarryWord: r.Word,
+	})
+	return nil
+})
+
+// gilgameshHostChosen attaches the Equipment (the carry) to the Samurai
+// chosen, if both are still what they were, keyed (#4253).
+var gilgameshHostChosen = game.RegisterChooseCardsThen("choose-cards/gilgamesh-master-at-arms-samurai", func(g *game.Game, r game.CardsChosen) error {
+	if len(r.Picked) == 0 || len(r.Carry) == 0 || !g.Battlefield.Contains(r.Carry[0]) {
+		return nil
+	}
+	host, ok := g.LookupCardForEffect(r.Picked[0])
+	if !ok || host.Controller != r.Chooser || !host.HasSubtype(r.Word) {
+		return nil
+	}
+	return g.AttachForEffect(r.Carry[0], game.TargetRef{Kind: game.TargetCard, ID: r.Picked[0]})
+})
 
 // gilgameshSamurai lists the Samurai creatures a player controls,
 // `samurai` being the creature type as the source's text reads it.

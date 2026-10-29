@@ -58,20 +58,19 @@ import (
 //
 // # Undo safety
 //
-// The branches capture no *Game and no pointer into a zone. They
-// receive the live game through a fresh Context bound to the same
-// stack item, exactly as PayUnless.OnDecline does, so a branch run
-// after an undo resolves against the restored game. The stack item
-// itself is already detached from the stack by the time an effect
-// resolves, and carries only Controller / SourceCardID / Targets.
+// The answer is a registered body (MayAnswer) and captures nothing. It
+// receives the live game through a fresh Context bound to a copy of the
+// asking item rebuilt from data the prompt carries (game.AskedItem), so
+// an answer given after an undo or a restore resolves against the
+// restored game.
 
 // MayChoice asks Player "you may <Question>" during resolution and
-// runs OnYes or OnNo when they answer.
+// runs the registered answer Then when they answer.
 //
 // The calling effect has already done everything before the "you may";
 // what remains is the answer, which arrives later via resolve_choice.
 // Anything printed AFTER the decision — "If you do, ..." — goes in
-// OnYes, not after this primitive returns, for the reason Scry.Then
+// Then, not after this primitive returns, for the reason Scry.ThenTail
 // exists: Apply only queues the prompt.
 type MayChoice struct {
 	// Player is asked. Zero means the resolving effect's controller,
@@ -101,24 +100,21 @@ type MayChoice struct {
 	// that many cards, for Drawer. A player a draw limit stops drawing
 	// that many can't choose to (CR 121.2b, CR 121.3), and neither can
 	// anyone choosing for them (CR 121.3a, Combustible Gearhulk's
-	// opponent), so nothing is asked and OnNo runs at once (#4016).
+	// opponent), so nothing is asked and Then runs at once as a "no"
+	// (#4016).
 	Draws int
 
 	// Drawer is who draws on a "yes". Zero means the player asked,
 	// which is what "you may draw" and "each player may draw" mean.
 	Drawer uuid.UUID
 
-	// OnYes / OnNo are the two branches. Either may be nil — a "you
-	// may" whose decline does nothing should not have to write an
-	// empty closure to say so. Both run with g.mu held and may queue
-	// further choices, which is how a chain continues.
-	OnYes, OnNo func(ctx *Context) error
-
-	// Then is the answer as a REGISTERED one (MayAnswer, #4264) and Carry
-	// the plain data it is handed: a prompt queued with one holds no
-	// closure, so a table waiting on it is a restore point. Set Then or
-	// OnYes/OnNo, not both. When a draw limit means nothing is asked
-	// (Draws), Then runs at once as a "no".
+	// Then is the answer, a REGISTERED one (MayAnswer, MayYes, MayYesNo,
+	// #4264), and Carry the plain data it is handed: the prompt holds no
+	// closure, so a table waiting on it is a restore point. It runs with
+	// g.mu held and may queue further choices, which is how a chain
+	// continues. When a draw limit means nothing is asked (Draws), Then
+	// runs at once as a "no". Required (#4253 retired the closure
+	// branches).
 	Then  game.ConfirmThen
 	Carry []uuid.UUID
 
@@ -189,10 +185,13 @@ func wordInt(r game.ConfirmAnswer) int {
 	return n
 }
 
-// applyKeyed is Apply for a MayChoice whose answer is a registered key.
-func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
-	if m.OnYes != nil || m.OnNo != nil {
-		return fmt.Errorf("%w: MayChoice %q sets both Then and a branch", game.ErrInvalidParam, m.Then.Key())
+func (m MayChoice) Apply(ctx *Context) error {
+	chooser := m.Player
+	if chooser == uuid.Nil {
+		chooser = ctx.Controller()
+	}
+	if m.Then.Key() == "" {
+		return fmt.Errorf("%w: MayChoice with no registered answer (MayAnswer)", game.ErrInvalidParam)
 	}
 	carry := append([]uuid.UUID{ctx.Controller()}, m.Carry...)
 	asked := game.NewAskedItem(ctx.Item)
@@ -221,58 +220,4 @@ func (m MayChoice) applyKeyed(ctx *Context, chooser uuid.UUID) error {
 		Objects:         m.Objects,
 	}, m.Then, carry)
 	return err
-}
-
-func (m MayChoice) Apply(ctx *Context) error {
-	chooser := m.Player
-	if chooser == uuid.Nil {
-		chooser = ctx.Controller()
-	}
-	if m.Then.Key() != "" {
-		return m.applyKeyed(ctx, chooser)
-	}
-	item := ctx.Item
-	onYes, onNo := m.OnYes, m.OnNo
-	if m.Draws > 0 {
-		drawer := m.Drawer
-		if drawer == uuid.Nil {
-			drawer = chooser
-		}
-		if !ctx.Game.CanChooseToDrawForEffect(drawer, m.Draws) {
-			if onNo == nil {
-				return nil
-			}
-			return onNo(ctx)
-		}
-	}
-	ctx.Game.QueueConfirmForEffect(game.ConfirmPrompt{
-		Chooser:      chooser,
-		Source:       ctx.Source(),
-		Question:     m.Question,
-		AcceptLabel:  m.YesLabel,
-		DeclineLabel: m.NoLabel,
-		LifeCost:     m.LifeCost,
-		OnAccept:     mayChoiceBranch(onYes, item),
-		OnDecline:    mayChoiceBranch(onNo, item),
-	})
-	return nil
-}
-
-// mayChoiceBranch adapts a ctx-taking branch to the engine's
-// `func(*game.Game) error` continuation contract, binding a FRESH
-// Context to the game the resolver hands back rather than to the one
-// that queued the prompt. That is the whole undo story: after an undo
-// the restored game is a different object, and a branch closed over
-// the old one would mutate a game nobody is looking at.
-//
-// A nil branch stays nil, so the engine's own "this branch does
-// nothing" fast path is preserved rather than being buried under a
-// closure that returns nil.
-func mayChoiceBranch(branch func(ctx *Context) error, item *game.StackItem) func(g *game.Game) error {
-	if branch == nil {
-		return nil
-	}
-	return func(g *game.Game) error {
-		return branch(NewContext(g, item))
-	}
 }

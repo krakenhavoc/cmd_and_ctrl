@@ -43,11 +43,10 @@ func init() {
 	})
 }
 
-func plungeIntoDarknessSacrifice(item *game.StackItem, ctx *Context, _ int) error {
-	controller := item.Controller
+func plungeIntoDarknessSacrifice(_ *game.StackItem, ctx *Context, _ int) error {
 	return ChoosePermanents{
-		Question:  "Plunge into Darkness — sacrifice any number of creatures (you gain 3 life for each)",
-		Sacrifice: true,
+		Question: "Plunge into Darkness — sacrifice any number of creatures (you gain 3 life for each)",
+		Keyed:    plungeIntoDarknessSacrificed,
 		Candidates: func(g *game.Game, of uuid.UUID) ([]uuid.UUID, int, int) {
 			var out []uuid.UUID
 			for _, c := range g.BattlefieldCardsForEffect() {
@@ -57,11 +56,17 @@ func plungeIntoDarknessSacrifice(item *game.StackItem, ctx *Context, _ int) erro
 			}
 			return out, 0, 0 // "any number": no floor, no ceiling
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			return GainLife{Player: controller, Amount: 3 * picked.Count()}.Apply(ctx)
-		},
 	}.Apply(ctx)
 }
+
+// plungeIntoDarknessSacrificed is the chosen creatures sacrificed and 3
+// life gained for each that really left, keyed (#4290, #4294).
+var plungeIntoDarknessSacrificed = RegisterPermanentsPick("prompt-run/plunge-into-darkness-sacrifice", PermanentsDef{
+	Sacrifice: true,
+	Then: func(ctx *Context, picked game.PromptedPicks) error {
+		return GainLife{Player: ctx.Controller(), Amount: 3 * picked.Count()}.Apply(ctx)
+	},
+})
 
 func plungeIntoDarknessLook(_ *game.StackItem, ctx *Context, _ int) error {
 	return PayLifeAmount{
@@ -84,9 +89,14 @@ var plungeIntoDarknessLooks = NumberThen("number/plunge-into-darkness-look-at-th
 			Cards:  ctx.Game.LookAtTopOfLibraryForEffect(controller, r.Number),
 			Max:    1,
 			Label:  "Plunge into Darkness — put one of those cards into your hand (the rest are exiled)",
-			Then:   plungeIntoDarknessExileRest,
+			Key:    plungeIntoDarknessTake,
 		}.Apply(ctx)
 	})
+
+// plungeIntoDarknessTake is the look's pick, keyed (#4294): one of the
+// cards into your hand and the rest exiled.
+var plungeIntoDarknessTake = RegisterTake("choose-cards/plunge-into-darkness-take",
+	TakeDef{Then: plungeIntoDarknessExileRest})
 
 // plungeIntoDarknessExileRest is "and exile the rest": every looked-at
 // card still in the library, exiled together.

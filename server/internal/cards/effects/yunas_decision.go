@@ -33,18 +33,9 @@ func init() {
 		Modes: ChooseOne(
 			ModeDoing("Continue the Pilgrimage — Sacrifice a creature. If you do, draw a card, then you may put a creature card and/or a land card from your hand onto the battlefield.", nil,
 				func(item *game.StackItem, ctx *Context, _ int) error {
-					controller := item.Controller
-					source := item.SourceCardID
-					return ctx.Game.PlayersSacrificeThenForEffect(source, []uuid.UUID{controller},
+					return ctx.PlayersSacrificeThen([]uuid.UUID{item.Controller},
 						sacrificeSpec("a creature", Creature()), "Yuna's Decision — sacrifice a creature",
-						func(g *game.Game, sacrificed game.PromptedSacrifices) error {
-							if len(sacrificed.Cards()) == 0 {
-								return nil
-							}
-							return g.DrawNThenForEffect(controller, 1, game.DrawThen{
-								Ref: yunasDecisionPutRef, Player: controller, Source: source,
-							})
-						})
+						yunasDecisionSacrificed, ctx.RunData(nil))
 				}),
 			ModeDoing("Find Another Way — Return one or two target permanent cards from your graveyard to your hand.",
 				TargetCardInGraveyard("one or two target permanent cards from your graveyard", Permanent(), YouOwn()).WithCount(1, 2),
@@ -71,10 +62,14 @@ var yunasDecisionPutRef = game.RegisterDrawThen("yunas-decision/put", func(g *ga
 		Match:    Or(Creature(), Land()),
 		Optional: true,
 		Max:      2,
-		Validate: aCreatureAndALand,
+		Rule:     yunasDecisionPick,
 		Label:    "Yuna's Decision — you may put a creature card and/or a land card from your hand onto the battlefield",
 	}.Apply(NewContext(g, &game.StackItem{Controller: d.Player, SourceCardID: d.Source}))
 })
+
+// yunasDecisionPick is the put's continuation with its set rule, keyed
+// (#4361 S7b).
+var yunasDecisionPick = PutFromHandRule("choose-cards/yunas-decision-put", aCreatureAndALand)
 
 // aCreatureAndALand is the set rule for "a creature card and/or a land
 // card": at most one of each, a card that is both filling either slot.
@@ -90,3 +85,14 @@ func aCreatureAndALand(picked []game.Card) bool {
 	}
 	return false
 }
+
+// yunasDecisionSacrificed is the card drawn once the creature has really
+// been sacrificed, keyed (#4290).
+var yunasDecisionSacrificed = RunThen("prompt-run/yunas-decision-sacrificed", func(ctx *Context, r game.RunDone) error {
+	if len(r.Sacrifices().Cards()) == 0 {
+		return nil
+	}
+	return ctx.Game.DrawNThenForEffect(ctx.Controller(), 1, game.DrawThen{
+		Ref: yunasDecisionPutRef, Player: ctx.Controller(), Source: ctx.Source(),
+	})
+})
