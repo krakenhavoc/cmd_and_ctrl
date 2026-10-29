@@ -25,6 +25,10 @@ import CombatStrikes from "./components/board/CombatStrikes.svelte";
 import CombatCuesCard from "./test/CombatCuesCard.svelte";
 import { crumble, impactShake, lunge, streak } from "./animations";
 import { play as playSound } from "./sounds";
+
+// How many times the mocked play() was asked for `name`.
+const soundCalls = (name: string) =>
+  vi.mocked(playSound).mock.calls.filter(([n]) => n === name).length;
 import { CombatCues } from "./combatCues.svelte";
 import type { CardView, GameView, LogEvent } from "./protocol";
 import { resetSettings, settings, updateSettings } from "./settings";
@@ -236,10 +240,49 @@ describe("the strike layer", () => {
     advance(179);
     expect(playSound).not.toHaveBeenCalled();
     advance(1);
-    expect(playSound).toHaveBeenCalledTimes(1);
-    expect(playSound).toHaveBeenCalledWith("combat_resolve");
+    expect(soundCalls("combat_resolve")).toBe(1);
     advance(2000);
-    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
+  });
+
+  it("plays face_hit once, at the same contact, when the beat hits a player (#4432)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", 1),
+      hit(122, 0, "ogre", 1),
+    ];
+    play(before, next, [ogre], [ogre]);
+    advance(179);
+    expect(soundCalls("face_hit")).toBe(0);
+    advance(1);
+    expect(soundCalls("face_hit")).toBe(1);
+    advance(2000);
+    expect(soundCalls("face_hit")).toBe(1);
+  });
+
+  it("plays face_hit once per player a beat hits, a little apart (#4432)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [
+      ...before,
+      stepE(120, "combat_damage"),
+      hit(121, 0, "ogre", 1),
+      hit(122, 0, "bear", 2),
+    ];
+    play(before, next, [ogre, bear], [ogre, bear]);
+    advance(180);
+    expect(soundCalls("face_hit")).toBe(1);
+    advance(2000);
+    expect(soundCalls("face_hit")).toBe(2);
+  });
+
+  it("plays no face_hit when the beat only hits creatures (#4432)", () => {
+    const before = [stepE(100, "declare_attackers"), stepE(110, "declare_blockers")];
+    const next = [...before, stepE(120, "combat_damage"), hit(121, 0, "ogre", "bear")];
+    play(before, next, [ogre, bear], [ogre, bear]);
+    advance(2000);
+    expect(soundCalls("face_hit")).toBe(0);
   });
 
   it("plays it once per beat: a first strike beat, then the regular beat", () => {
@@ -253,12 +296,12 @@ describe("the strike layer", () => {
     ];
     play(before, next, [ogre, bear], [ogre, bear]);
     advance(180);
-    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
     // The regular beat starts one beat pause (560 ms) after the first.
     advance(559);
-    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
     advance(181);
-    expect(playSound).toHaveBeenCalledTimes(2);
+    expect(soundCalls("combat_resolve")).toBe(2);
   });
 
   it("scales the contact time with the animation speed", () => {
@@ -269,7 +312,7 @@ describe("the strike layer", () => {
     advance(359);
     expect(playSound).not.toHaveBeenCalled();
     advance(1);
-    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
   });
 
   it("still plays at contact when the board cannot be measured", () => {
@@ -283,7 +326,8 @@ describe("the strike layer", () => {
     r.setProps({ view: viewWith(next, [ogre]) } as never);
     cues.frame(next, get(settings));
     advance(180);
-    expect(playSound).toHaveBeenCalledTimes(1);
+    expect(soundCalls("combat_resolve")).toBe(1);
+    expect(soundCalls("face_hit")).toBe(1);
   });
 
   it("plays nothing on a priming frame (a reconnect, a replay jump)", () => {

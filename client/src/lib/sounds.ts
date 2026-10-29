@@ -43,6 +43,8 @@ export type SoundName =
   | "tap"
   | "untap_all"
   | "damage"
+  // #4432: combat damage hitting a player; plays damage until its files land.
+  | "face_hit"
   | "heal"
   | "attack"
   | "block"
@@ -97,6 +99,7 @@ export const SOUND_CATEGORY: Record<SoundName, SoundCategory> = {
   untap_all: "cards",
   shuffle: "cards",
   damage: "combat",
+  face_hit: "combat",
   attack: "combat",
   block: "combat",
   combat_resolve: "combat",
@@ -133,6 +136,8 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
   tap: ["/sounds/tap-1.mp3", "/sounds/tap-2.mp3"],
   untap_all: ["/sounds/untap_all-1.mp3", "/sounds/untap_all-2.mp3"],
   damage: ["/sounds/damage-1.mp3", "/sounds/damage-2.mp3"],
+  // #4432: files not made yet (ADR 0209 §6); plays damage until they land.
+  face_hit: ["/sounds/face_hit-1.mp3", "/sounds/face_hit-2.mp3"],
   heal: ["/sounds/heal-1.mp3", "/sounds/heal-2.mp3"],
   attack: ["/sounds/attack-1.mp3", "/sounds/attack-2.mp3"],
   block: ["/sounds/block-1.mp3", "/sounds/block-2.mp3"],
@@ -166,12 +171,13 @@ export const SOUND_MANIFEST: Record<SoundName, string[]> = {
 
 // What a sound plays when none of its own files exist. Only the cues that
 // replace an old one name a fallback: your_turn plays turn_change if its
-// file fails to load. The others stay silent, because a placeholder ping on every
+// file fails to load, and face_hit plays damage. The others stay silent, because a placeholder ping on every
 // priority would be noise.
 // A signature (#4397) falls back to the generic cue it replaces, so a card
 // with a signature never sounds quieter than one without.
 export const SOUND_FALLBACK: Partial<Record<SoundName, SoundName>> = {
   your_turn: "turn_change",
+  face_hit: "damage",
   sig_blasphemous_act: "board_wipe",
   sig_toxic_deluge: "board_wipe",
   sig_bitter_triumph: "destroy",
