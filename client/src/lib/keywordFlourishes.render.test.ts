@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import Card from "./components/board/Card.svelte";
+import panel from "./components/board/PlayerPanel.svelte?raw";
 import type { CardView } from "./protocol";
 import { flourishesFor, swayDelay } from "./keywordFlourishes";
 import { defaultSettings, resetSettings, updateSettings } from "./settings";
@@ -205,5 +206,22 @@ describe("the setting and reduced motion", () => {
     const { el } = mount(creature(["flying"]));
     expect(el().classList.contains("kw-sway")).toBe(false);
     expect(el().classList.contains("kw-fly")).toBe(true);
+  });
+});
+
+// The facing is CSS: PlayerPanel says how each seat's cards are drawn, and
+// Card reads --card-turn (lift and shadow) and --blade-turn (which edge
+// carries the blades). A source check, since jsdom has no layout.
+describe("how a seat's cards are drawn, for the flourishes", () => {
+  it("marks a top-row opponent's turned rows, whose top edge faces the centre", () => {
+    expect(panel).toMatch(
+      /\.row-cards\) \{\s*transform: rotate\(180deg\);[\s\S]*?--card-turn: -1;\s*\}/,
+    );
+  });
+
+  it("flips the blade edge where #4555 turns those cards back upright", () => {
+    expect(panel).toMatch(
+      /faces-viewer :is\(\.grid-creatures, \.grid-middle\) :global\(\.pile\) \{[^}]*--card-turn: 1;\s*--blade-turn: -1;/,
+    );
   });
 });
