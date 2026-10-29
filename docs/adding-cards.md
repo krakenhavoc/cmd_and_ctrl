@@ -11519,6 +11519,17 @@ Both pay through the one discard helper with cause COST, so every
 discard payoff sees them and none of them can pause (CR 601.2h /
 602.2b).
 
+A clause that has to read the board ("Discard a legendary card with the
+same name as a legendary permanent you control", Key to the Side-Door,
+#4487) cannot be a `Match` predicate: `Match` is `func(Card) bool` and has
+no `*Game`. Do not add a second func beside it (a new route from `Game` to
+a func raises the closure ledger). `DiscardCost.SameNameAsLegendaryPermanent`
+is the declarative half, read by the engine in `discardClauseAcceptsLocked`
+for both the options the view and the enumerator offer and the activation's
+validation; `effects.DiscardLegendaryNamedLikeYourPermanent()` builds the
+printed clause. A new board question of this kind is a new bool there, with
+the same two readers.
+
 "The discarded card" of an activated ability (Land's Edge's "if the
 discarded card was a land card", Volrath's "the discarded card's mana
 value") is `ctx.DiscardedCard()` / `ctx.DiscardedManaValue()` (ADR 0109
