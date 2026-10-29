@@ -25,6 +25,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // PurposeView is game.Purpose on the wire. Every field is omitted when
 // zero, and a purpose with nothing declared is not sent at all.
 type PurposeView struct {
+	// EntryCounters describes fixed or X own-entry clauses. Other
+	// replacements and conditional/board-dependent counts are not predicted.
+	EntryCounters *[]EntryCounterView `json:"entry_counters,omitempty"`
+
 	// LandEntry describes the land's own unconditional entry, not other
 	// permanents' replacements. Empty for unknown/conditional entry.
 	LandEntry          string `json:"land_entry,omitempty"`
@@ -342,6 +346,13 @@ type SweepView struct {
 	Partial bool `json:"partial,omitempty"`
 }
 
+// EntryCounterView is one reliable own-entry counter amount.
+type EntryCounterView struct {
+	Kind      string `json:"kind"`
+	Amount    int    `json:"amount,omitempty"`
+	AmountIsX bool   `json:"amount_is_x,omitempty"`
+}
+
 // viewOfPurpose projects a declared purpose, nil when none is declared.
 func viewOfPurpose(p game.Purpose) *PurposeView {
 	if p.IsZero() {
@@ -378,6 +389,13 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		Impulse:                   p.Impulse,
 		Aura:                      string(p.Aura),
 		FlashCleanupSacrifice:     p.FlashCleanupSacrifice,
+	}
+	if p.EntryCounters != nil {
+		entries := make([]EntryCounterView, 0, len(*p.EntryCounters))
+		for _, e := range *p.EntryCounters {
+			entries = append(entries, EntryCounterView{Kind: e.Kind, Amount: e.Amount, AmountIsX: e.AmountIsX})
+		}
+		v.EntryCounters = &entries
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...), CantBeBlocked: pm.CantBeBlocked}

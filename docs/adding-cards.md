@@ -1506,6 +1506,16 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   than declared: `SelfEntersTapped` and `SelfEntersTappedWithCounters`
   carry an unconditional self-tap marker. Conditional entries leave it
   absent; do not set that marker on a conditional replacement.
+- **Entry counters** are projected as `purpose.entry_counters` from
+  `b10EntersWithCounters`, `SelfEntersTappedWithCounters` (fixed counts),
+  and `XCounters` (announced X), without executing replacement functions
+  (#4322). Their descriptive markers belong only on unconditional own-entry
+  clauses. A wrapper that adds a condition must clear the marker. Counted,
+  kicked, delved and other payment-dependent constructors declare no amount.
+  The bot prices +1/+1 and -1/-1 counters on the prospective creature body;
+  other counter kinds (including +1/+0), external doublers and other
+  replacements are not predicted. Krasis's X
+  entry clause does not describe or price its separate half-X cast payout.
 - **The Spec's own `Purpose`** is the spell's resolution, or a
   permanent's enters effect (Mulldrifter's `{Draws: 2}`, Wood Elves'
   `{Lands: 1}`). A modal spell declares per bullet, an overload on its

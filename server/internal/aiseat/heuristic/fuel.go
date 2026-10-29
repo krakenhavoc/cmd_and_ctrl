@@ -200,7 +200,31 @@ func (p *Policy) resolvedValueFor(st *state, c *protocol.CardView, x int, ps pur
 		// arrives summoning-sick and untapped; permanentValue reads
 		// SummoningSick off the hand card, which is false there, so
 		// discount a creature explicitly.
-		pv := st.w.permanentValue(c)
+		body := c
+		if p.cfg.PriceEntryCounters && isCreature(c) && c.Purpose != nil && c.Purpose.EntryCounters != nil {
+			// Price a private copy: the view and on-board evaluation retain
+			// their actual P/T. Never execute catalog replacement functions.
+			projected := *c
+			for _, e := range *c.Purpose.EntryCounters {
+				n := e.Amount
+				if e.AmountIsX {
+					n = x
+				}
+				if n <= 0 {
+					continue
+				}
+				switch e.Kind {
+				case "+1/+1":
+					projected.Power += n
+					projected.Toughness += n
+				case "-1/-1":
+					projected.Power -= n
+					projected.Toughness -= n
+				}
+			}
+			body = &projected
+		}
+		pv := st.w.permanentValue(body)
 		if isCreature(c) {
 			pv *= st.w.SickCreature
 		}

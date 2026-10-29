@@ -40,8 +40,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // one.
 func XCounters(kind string) game.EntryCountersFromCast {
 	return game.EntryCountersFromCast{
-		Kind:  kind,
-		Count: func(cast game.CastCounts) int { return cast.X },
+		CountIsX: true,
+		Kind:     kind,
+		Count:    func(cast game.CastCounts) int { return cast.X },
 	}
 }
 

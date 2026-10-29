@@ -3909,6 +3909,8 @@ export interface ActivatedAbilityView {
 // docs/protocol.md "Declared purpose"). Bot data; the client does not
 // read it. Every field is absent when zero.
 export interface PurposeView {
+  /** Reliable fixed/X own-entry clauses; other replacements are not predicted. */
+  entry_counters?: { kind: string; amount?: number; amount_is_x?: boolean }[];
   // #4317: own catalog entry only; conditional entries remain absent.
   land_entry?: "tapped" | "untapped";
   returns_land_on_entry?: boolean;
