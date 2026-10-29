@@ -674,6 +674,7 @@
       class={cls}
       class:emphasis={a.emphasis}
       class:align-end={a.alignEnd}
+      class:clip={a.clip}
       disabled={a.disabled}
       aria-pressed={a.pressed}
       aria-label={a.ariaLabel}
@@ -684,7 +685,7 @@
     >
       {#if a.icon}<Icon name={a.icon} size={12} />{/if}
       {#if a.seatColor}<span class="seat-dot" style="background:{a.seatColor}"></span>{/if}
-      {a.label}
+      {#if a.clip}<span class="clip-text">{a.label}</span>{:else}{a.label}{/if}
       {#if a.note}<span class="note">{a.note}</span>{/if}
       {#if a.cap}<kbd class="cap" aria-hidden="true">{a.cap}</kbd>{/if}
     </button>
@@ -1309,6 +1310,18 @@
   }
   .dock-btn.align-end {
     margin-left: auto;
+  }
+  /* #4435: a player's name is clipped, not wrapped, so four legal players
+     take two short lines of the targeting request, not four tall ones. */
+  .dock-btn.clip {
+    min-width: 0;
+    max-width: 8.5rem;
+  }
+  .dock-btn.clip .clip-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .dock-btn[aria-pressed="true"] {
     border-color: var(--accent);

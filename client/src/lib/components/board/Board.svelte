@@ -191,6 +191,7 @@
     togglePick,
     canConfirm,
     setConfirmHandler,
+    setPlayerPickHandler,
     needsDivision,
     withDivision,
     distributionOf,
@@ -1922,6 +1923,12 @@
   $effect(() => {
     setConfirmHandler(confirmTargets);
     return () => setConfirmHandler(null);
+  });
+  // #4435: the dock's row of legal players picks through the same path
+  // as a click on an avatar, and refuses a player who is not legal.
+  $effect(() => {
+    setPlayerPickHandler(handleTargetPlayer);
+    return () => setPlayerPickHandler(null);
   });
 
   // #3264: a step with one legal target is answered for the player, as

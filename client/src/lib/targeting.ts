@@ -1048,6 +1048,19 @@ export function confirm(): void {
   confirmHandler?.();
 }
 
+// pickPlayer picks a player for the open prompt, as a click on their
+// avatar does (#4435). The dock's row of legal players calls it, so a
+// player the board hides behind a dialog, a sheet or the hand is still
+// reachable; Board registers the handler that does the pick, the same
+// as it does for confirm().
+let playerPickHandler: ((playerID: string) => void) | null = null;
+export function setPlayerPickHandler(fn: ((playerID: string) => void) | null): void {
+  playerPickHandler = fn;
+}
+export function pickPlayer(playerID: string): void {
+  playerPickHandler?.(playerID);
+}
+
 // beginForMode enters a targeting prompt for the targeted option of
 // a modal spell: the legal set and banner clause come from the
 // option, not the card. `modes` is the full chosen set (the targeted

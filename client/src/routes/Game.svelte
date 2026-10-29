@@ -193,6 +193,7 @@
   import {
     cancel as cancelTargeting,
     confirm as confirmTargeting,
+    pickPlayer as pickTargetPlayer,
     cardRepeats,
     repeatsOf,
     shareTargetScope,
@@ -318,6 +319,7 @@
   import { L } from "../lib/labels";
   import { provideDiceQueue } from "../lib/diceQueue.svelte";
   import { BOARD_ACTION_SELECTOR, sheetCoversBoardAction, type Box } from "../lib/sheetCover";
+  import { coveredPlayerTargets } from "../lib/targetReach";
 
   interface Props {
     gameID: string;
@@ -1813,6 +1815,50 @@
       if (frame) cancelAnimationFrame(frame);
     };
   });
+  // #4435: whether a legal player is under something. The targeting
+  // request lists the legal players as buttons once any avatar a prompt
+  // may take is covered at its centre (lib/targetReach.ts says why it is
+  // not always there), by the dock, a sheet, the hand or a popover.
+  // Latched for the prompt: the row makes the dock taller, which moves
+  // what is covered, and a row that came and went would flicker. Measured
+  // at most once a frame, only while a prompt is open.
+  let playerRowOn = $state(false);
+  $effect(() => {
+    const root = sectionEl;
+    if (!root || !$targeting) {
+      playerRowOn = false;
+      return;
+    }
+    if (untrack(() => playerRowOn)) return;
+    let frame = 0;
+    const check = (): void => {
+      frame = 0;
+      if (typeof document.elementFromPoint !== "function") return;
+      const hit = (x: number, y: number) => document.elementFromPoint(x, y);
+      if (coveredPlayerTargets(root, hit).length === 0) return;
+      playerRowOn = true;
+      stop();
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+    const mo = new MutationObserver(schedule);
+    function stop(): void {
+      mo.disconnect();
+      window.removeEventListener("resize", schedule);
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    }
+    mo.observe(root, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class", "style"],
+    });
+    window.addEventListener("resize", schedule);
+    schedule();
+    return stop;
+  });
   // ADR 0105 §7: how many of the viewer's cards wear a highlight, for
   // the dock header's "N actions available".
   const readyActions = $derived(actingID ? actionableCount(legalHighlights, view, actingID) : 0);
@@ -2690,6 +2736,9 @@
       ? targetingRequest($targeting, view, {
           onDone: confirmTargeting,
           onCancel: cancelTargeting,
+          // #4435: the legal players as buttons, for a player the board
+          // hides behind a dialog or the hand.
+          onPlayer: playerRowOn ? pickTargetPlayer : undefined,
           // #2394: the board pick's list fallback. Board leaves the
           // targeting flow once the choice is no longer board-answered,
           // and ChoicePromptModal opens it.
