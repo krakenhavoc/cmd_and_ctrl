@@ -98,5 +98,11 @@ The dies trigger reads "if they were a creature" from the last-known `Types` it 
 
 ## Out of scope
 
-- **The Enduring cycle** (`glimmer_return.go`) still registers its `RemoveTypesMod` after the return, so "whenever a creature enters" sees a returning Glimmer. Moving it to `EntersAs{Types: ["Enchantment"]}` is a follow-up.
+- **The Enduring cycle** (`glimmer_return.go`) still registers its `RemoveTypesMod` after the return, so "whenever a creature enters" sees a returning Glimmer. Moving it to `EntersAs{Types: ["Enchantment"]}` is a follow-up. (Done 2026-10-29, #4512: see the amendment below.)
 - **"Can't enter" checks** (CR 614.17d) are unchanged. They are not part of the replacement gather.
+
+## Amendment 2026-10-29 — the Enduring cycle (#4512)
+
+`glimmer_return.go` now returns the card with `ReturnFromGraveyardTogether{EntersAs: &game.EntersAs{Types: ["Enchantment"]}}` and registers nothing afterwards. Enduring Curiosity, Tenacity, Vitality and Innocence (every card that uses the helper) are an Enchantment from the moment they land: Soul Warden does not trigger and an opponent's Authority of the Consuls neither taps them nor gains life.
+
+No extension of `EntersAs` was needed. Each of the four is an Enchantment Creature, so setting the card type to Enchantment is the same as removing Creature, and the creature subtypes (Cat, Glimmer, ...) go either way: CR 205.1a drops the subtypes of a removed card type, and the layer pass already did so for `RemoveTypesMod` (#2041). A card with a second noncreature type would need a "remove these types" option; none exists in the cycle, so none was added. The return now also checks `sameGraveyardObject`, as Tom, Bert, and William does: a card that left the graveyard and came back is a new object the trigger does not name (CR 400.7). `RemoveTypesMod` stays; Weeping Angel and others still use it.

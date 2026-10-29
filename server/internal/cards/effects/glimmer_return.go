@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // glimmer_return.go — the Duskmourn Enduring cycle's shared dies
 // trigger:
@@ -21,15 +25,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // card's own answer, and what keeps the cycle from being an
 // unkillable loop.
 //
-// "It's an enchantment. (It's not a creature.)" is a CR 613.3 type
-// change with no stated duration (CR 611.2a): it follows the
-// permanent that came back and ends with it. That is an indefinite
-// duration PINNED to the returned object (ADR 0041 phase 3's data
-// record, #1497) — not a "for as long as" duration, which CR 702.26f
-// would end the moment the permanent phases out; the pin survives a
-// phase cycle (CR 702.26d) and is swept only when the object is gone.
-// Only "Creature" leaves the type list; the creature subtypes stay,
-// as on any noncreature permanent with leftover creature types.
+// "It's an enchantment. (It's not a creature.)" is ADR 0210's entry
+// overwrite (EntersAs{Types: ["Enchantment"]}, #4512): the card is an
+// enchantment from the moment it lands (CR 614.1c), so it is never a
+// creature on the battlefield. "Whenever a creature enters" (Soul
+// Warden) does not see it, and "creatures your opponents control enter
+// tapped" (Authority of the Consuls) does not apply to it (CR 614.12).
+// The type is SET (CR 205.1a): every card in the cycle is an Enchantment
+// Creature, so it becomes a plain Enchantment, and the creature types
+// (Cat, Glimmer) go with the card type (CR 205.1a, #2041). The record is
+// pinned to the returned object and swept with it, with no stated
+// duration (CR 611.2a). The card keeps its own abilities.
+//
+// Before #4512 this registered RemoveTypesMod("Creature") AFTER the card
+// had landed, so EventETB went out while it was still a creature.
 
 // WhenThisDiesReturnItAsAnEnchantment is the whole printed trigger for
 // the card named `name`.
@@ -49,32 +58,21 @@ func WhenThisDiesReturnItAsAnEnchantment(name string) game.TriggeredAbility {
 // game/duration.go).
 func returnItAsAnEnchantment(name string) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
-		ctx := NewContext(g, item)
-		id := item.SourceCardID
-		if zone := g.FindCardZoneForEffect(id); zone == nil || zone.Kind != game.ZoneGraveyard {
+		z := g.FindCardZoneForEffect(item.SourceCardID)
+		if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
 			// CR 608.2b: something moved the card out of the graveyard
 			// in response, and the trigger has nothing left to bring
-			// back.
+			// back. Anything that came back since is a new object the
+			// trigger does not name (CR 400.7).
 			return nil
 		}
-		if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-			return err
-		}
-		affected := ctx.Game.PinnedObjectsLocked(id)
-		if len(affected) == 0 {
-			// It didn't take the battlefield — a replacement or a
-			// state-based action swept it away as it entered — so there
-			// is nothing left to keep from being a creature.
-			return nil
-		}
-		// Registered straight onto the game, not through
-		// ScopedEffectFor: the permanent IS this trigger's source,
-		// returned as a new object, which ScopedEffectFor's "this"
-		// guard (#1432) would rightly refuse to call "this".
-		ctx.Game.RegisterScopedEffectForEffect(ctx.Source(), affected,
-			[]game.Mod{game.RemoveTypesMod("Creature")},
-			ctx.Game.PinnedTo(game.IndefiniteDuration(), id),
-			name+" — it's an enchantment (it's not a creature)")
-		return nil
+		// Controller zero: under its owner's control.
+		return ReturnFromGraveyardTogether{
+			Targets: []uuid.UUID{item.SourceCardID},
+			EntersAs: &game.EntersAs{
+				Types: []string{"Enchantment"},
+				Label: name + " — it's an enchantment (it's not a creature)",
+			},
+		}.Apply(NewContext(g, item))
 	}
 }

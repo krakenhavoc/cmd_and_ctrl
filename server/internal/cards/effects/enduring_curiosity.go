@@ -29,25 +29,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The dies half is shared with Enduring Tenacity and lives in
 // glimmer_return.go (WhenThisDiesReturnItAsAnEnchantment).
 //
-// "It's an enchantment. (It's not a creature.)" is a CR 613.3 type
-// change with no stated duration (CR 611.2a): it is about THIS
-// RETURN, so it follows the permanent that came back and ends with
-// it. That is an indefinite duration PINNED to the returned object
-// (ADR 0041 phase 3's data record, #1497) — not a "for as long as"
-// duration, which CR 702.26f would end the moment the permanent phases
-// out; the pin survives a phase cycle (CR 702.26d) and is swept only
-// when the object is gone. Pinned to the returned permanent's own
-// instance and entry stamp, so it cannot leak onto some other Enduring
-// Curiosity at the table or onto a fresh hard-cast of this one.
-//
-// The effect removes ONLY "Creature" from Types and leaves Subtypes
-// untouched — the printed text doesn't say "loses all other types"
-// (contrast Song of the Dryads' SetsBasicLandType, which does), so Cat
-// and Glimmer stay on the type line same as any noncreature
-// permanent's leftover creature types. If it dies again later, it
-// dies as an enchantment: `lki.Types` no longer has "Creature", the
-// intervening-if is false, and the ability simply doesn't trigger a
-// second time — which is also the printed card's own answer.
+// "It's an enchantment. (It's not a creature.)" is ADR 0210's entry
+// overwrite (#4512): the card is an Enchantment from the moment it
+// lands, so "whenever a creature enters" never sees it (see
+// glimmer_return.go). The record is pinned to the returned permanent's
+// own object and swept with it, so it cannot leak onto some other
+// Enduring Curiosity at the table or onto a fresh hard-cast of this
+// one. The card type is set, so Cat and Glimmer go with Creature
+// (CR 205.1a). If it dies again later, it dies as an enchantment:
+// `lki.Types` no longer has "Creature", the intervening-if is false,
+// and the ability simply doesn't trigger a second time — which is also
+// the printed card's own answer.
 //
 // Closes #321: the card was never in the catalog (the bug's own
 // triage comment confirms this — "no file in
