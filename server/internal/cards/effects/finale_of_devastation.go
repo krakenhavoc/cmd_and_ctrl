@@ -24,11 +24,10 @@ import (
 // search for a stated quality, CR 701.23b). A card taken from the
 // graveyard means the library was never searched, so "If you search your
 // library this way, shuffle" does not shuffle it; taking a library card
-// shuffles. Declared simplification: finding nothing counts as a library
-// search (shuffle), the common case; a player who looked only in the
-// graveyard and found nothing would not have shuffled, which changes
-// nothing in play. Whichever zone it comes from, the pump below still
-// runs. See ADR 0015's 2026-10-13 amendment.
+// shuffles. A player who took a graveyard card, or nothing, says whether
+// they searched the library too (#4516), and only then is it shuffled.
+// Whichever zone it comes from, the pump below still runs. See ADR
+// 0015's 2026-10-13 amendment.
 //
 // # The pump is unconditional on X, not on the search succeeding
 //

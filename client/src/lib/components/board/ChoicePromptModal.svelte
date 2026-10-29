@@ -252,6 +252,10 @@
   // keyed trigger_order prompt. Off by default, and on when the batch
   // already has a remembered order (a prompt asked by hand).
   let rememberOrder = $state(false);
+  // #4516: "I searched my library too" on a "library and/or graveyard"
+  // search. Off each time a prompt appears: the player looked in the
+  // graveyard alone until they say otherwise.
+  let librarySearched = $state(false);
 
   // Reset selection whenever the modal opens fresh (active changes
   // from null → non-null, or the choice ID changes).
@@ -302,6 +306,7 @@
       remember = false;
       rememberRefusal = null;
       rememberOrder = active?.kind === "trigger_order" && active.trigger_order_remembered === true;
+      librarySearched = false;
       submission = null;
       lastChoiceID = nextID;
       inlineRefusal.set(null);
@@ -633,7 +638,7 @@
     // Ulamog's free cast, Wish's play): Board opens the sideboard tab,
     // where every granted card carries its cast button.
     if (isOutsideCastPick(active) && selected.size > 0) outsideCastRequest.set(true);
-    answer({ card_ids: Array.from(selected) });
+    answer({ card_ids: Array.from(selected), ...librarySearchedParam() });
   }
 
   // #3053 (CR 701.23b): a search for a card with a stated quality may
@@ -653,9 +658,26 @@
     answer({ apply: true });
   }
 
+  // #4516 (CR 701.23): a "search your library and/or graveyard" prompt
+  // asks which zones were searched. A library card in the pick is a
+  // library search, so the toggle reads on and cannot be turned off;
+  // otherwise it is the player's word. The server shuffles only for a
+  // library search.
+  const searchAsksLibrary = $derived(
+    isSearch && active?.search_library_optional === true && !searchUndecided,
+  );
+  const pickedLibraryCard = $derived(
+    searchAsksLibrary &&
+      Array.from(selected).some((id) => !searchGraveyardIDs.has(id) && !searchHandIDs.has(id)),
+  );
+  const librarySearchedNow = $derived(pickedLibraryCard || librarySearched);
+  function librarySearchedParam(): Record<string, unknown> {
+    return searchAsksLibrary && librarySearchedNow ? { library_searched: true } : {};
+  }
+
   function findNothing(): void {
     if (!active || !viewerID || !isSearch || pickMin > 0) return;
-    answer({ card_ids: [] });
+    answer({ card_ids: [], ...librarySearchedParam() });
   }
 
   // Options come redacted for non-knowers; filter to cards the
@@ -2953,6 +2975,9 @@
           You may search your library. Looking through it is searching: choose Search and you'll see
           the matches and your library is shuffled afterwards; choose Don't search and it isn't
           looked at or shuffled.
+        {:else if isSearch && optionCards.length === 0 && searchAsksLibrary}
+          Nothing in your library or graveyard matches. Find nothing to carry on; your library is
+          shuffled only if you say you searched it.
         {:else if isSearch && optionCards.length === 0}
           Nothing in the library matches. Find nothing to carry on: your library is shuffled all the
           same.
@@ -2968,9 +2993,10 @@
           {#if active?.search_all_zones}
             You're searching their graveyard, hand and library. Cards marked Graveyard or Hand are
             there, the rest are in the library, and the library is shuffled either way.
-          {:else if searchGraveyardIDs.size > 0}
-            Cards marked Graveyard are public. Taking one means you never looked in your library, so
-            it isn't shuffled; taking a library card, or nothing, shuffles it.
+          {:else if searchAsksLibrary}
+            Cards marked Graveyard are public. You may search either zone or both: your library is
+            shuffled if you take a library card, or if you say you searched it; searching only your
+            graveyard doesn't shuffle it.
           {:else}
             Only you can see them, and your library is shuffled either way.
           {/if}
@@ -3145,6 +3171,22 @@
           them all.
         {/if}
       </p>
+      {#if searchAsksLibrary}
+        <!-- #4516: "If you search your library this way, shuffle." -->
+        <div class="remember-order">
+          <button
+            type="button"
+            class="remember-toggle"
+            class:on={librarySearchedNow}
+            aria-pressed={librarySearchedNow}
+            disabled={pickedLibraryCard}
+            onclick={() => (librarySearched = !librarySearched)}
+          >
+            <span class="remember-box" aria-hidden="true">{librarySearchedNow ? "✓" : ""}</span>
+            {L.searchedMyLibrary}
+          </button>
+        </div>
+      {/if}
       {#if isEachLeg}
         <!-- ADR 0187 §8: whose effect, the rule, who is next, what the
              earlier players chose (CR 101.4b), and the running price. -->

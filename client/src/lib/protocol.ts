@@ -2023,6 +2023,11 @@ export interface PendingChoiceView {
   // every zone is searched, so the library is shuffled whatever is taken.
   search_hand?: string[];
   search_all_zones?: boolean;
+  // #4516: a "search your library and/or graveyard" prompt. The searcher
+  // chooses the zones, so an answer with no library card says whether the
+  // library was searched too: `{card_ids, library_searched: true}`. The
+  // library is shuffled only for a library pick or that flag.
+  search_library_optional?: boolean;
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.

@@ -2359,12 +2359,15 @@ type SearchLibrarySpec struct {
 	// this way, shuffle"): a take that comes entirely from the graveyard
 	// neither shuffles nor fires EventSearchLibrary.
 	//
-	// Declared simplification: the engine does not ask which zones were
-	// searched. A take of nothing is treated as a library search (shuffle
-	// and event), the common case; a player who looked only in the
-	// graveyard and found nothing would not have shuffled. The
-	// difference is a no-op for play. The graveyard searched is the
-	// library owner's, so
+	// Which zones were searched is the searcher's answer (#4516, CR
+	// 701.23): a pick from the library is a library search, and a
+	// player who took a graveyard card or nothing says whether they
+	// looked in the library too (ResolveSearchLibraryZones, the wire's
+	// library_searched). The library is shuffled, and
+	// EventSearchLibrary fires, only when it was searched: a take from
+	// the graveyard alone, or a search that found nothing, is
+	// "graveyard only" unless the player says otherwise. The graveyard
+	// searched is the library owner's, so
 	// combining this with LibraryOwner is not meaningful. Dest must be a
 	// zone the cards leave to (hand, battlefield, exile); ZoneLibrary
 	// with ToTop is not supported.
@@ -2429,8 +2432,10 @@ type SearchLibrarySpec struct {
 	graveyardFinds []uuid.UUID
 
 	// libraryUntouched is set by executeSearchTakeLocked, on the copy it
-	// carries into the finish, when every card taken came out of the
-	// graveyard. Never set by a card.
+	// carries into the finish, when an "and/or graveyard" search did not
+	// search the library: every card taken came out of the graveyard (or
+	// none was taken) and the searcher did not say they looked in the
+	// library (#4516). Never set by a card.
 	libraryUntouched bool
 
 	// exileFoundFor is set by executeSearchTakeLocked, on the copy it
@@ -2682,7 +2687,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		if len(spec.graveyardFinds) > 0 {
 			// #4033: nothing to choose, but the graveyard's matches
 			// are found all the same.
-			return g.executeSearchTakeLocked(spec, p, nil)
+			return g.executeSearchTakeLocked(spec, p, nil, false)
 		}
 		// Nothing matches (#4140). It is still asked: the searcher
 		// answers a prompt with no candidates, "find nothing" (a search
@@ -2714,7 +2719,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// search itself (#478): a battlefield destination is an entry
 		// and an entry can pause, so "then shuffle" is the last link of
 		// a chain rather than the line after the loop.
-		return g.executeSearchTakeLocked(spec, p, matches)
+		return g.executeSearchTakeLocked(spec, p, matches, false)
 	}
 	g.queueSearchChoiceLocked(spec, p, matches, gyMatches, handMatches)
 	return nil
@@ -2839,7 +2844,11 @@ func (g *Game) markSearchCandidatesKnownLocked(searcher uuid.UUID, p *Player, ma
 // continuation. finishSearchLocked is the single place it ends.
 //
 // Caller must hold g.mu.
-func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+//
+// libraryToo is the searcher's word that they looked in the library as
+// well as the graveyard (#4516). It matters only to an "and/or
+// graveyard" search whose take is wholly from the graveyard, or empty.
+func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID, libraryToo bool) error {
 	// #4033: "all cards" — the graveyard's matches are found with the
 	// searcher's picks, in one take. One that left the graveyard while
 	// the prompt was open is not there to find.
@@ -2867,14 +2876,16 @@ func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []
 			spec.FaceDown = FaceDownNone
 		}
 	}
-	// #3217: a take that came wholly out of the graveyard never looked
-	// in the library, so it is not "searched" — no shuffle, no
-	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
-	// any library card, is a library search.
-	// "Hand and/or library" (Last Light of Durin's Day) is the same rule for
-	// the hand.
+	// #3217, #4516: "and/or graveyard" lets the searcher look in the
+	// graveyard alone. A take wholly out of the graveyard, or a search
+	// that found nothing, did not search the library unless the searcher
+	// says it did (libraryToo): no shuffle and no EventSearchLibrary
+	// (finishSearchLocked). Any library card taken is a library search.
+	// "Hand and/or library" (Last Light of Durin's Day) applies the same
+	// rule to a take wholly out of the hand; it doesn't ask the zones yet
+	// (#4519), so a take of nothing there is still a library search.
 	fromGraveyard := spec.AlsoGraveyard && !spec.AlsoGraveyardAndHand
-	spec.libraryUntouched = (fromGraveyard || spec.AlsoHand) && len(ids) > 0
+	spec.libraryUntouched = !libraryToo && (fromGraveyard || (spec.AlsoHand && len(ids) > 0))
 	for _, id := range ids {
 		if !(fromGraveyard && p.Graveyard.Contains(id)) && !(spec.AlsoHand && p.Hand.Contains(id)) {
 			spec.libraryUntouched = false

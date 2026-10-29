@@ -1157,10 +1157,10 @@ type SearchLibrary struct {
 	// quality may still find nothing even with a match in the graveyard.
 	// A take that came wholly from the graveyard does not search the
 	// library, so it does not shuffle — "If you search your library this
-	// way, shuffle." Taking nothing counts as a library search (shuffle
-	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
-	// as the card prints it; the engine decides whether the library was
-	// searched.
+	// way, shuffle." Taking nothing, or only a graveyard card, shuffles
+	// only if the searcher says they searched the library too (#4516);
+	// see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle as the card
+	// prints it; the answer decides whether the library was searched.
 	AlsoGraveyard bool
 	// AlsoGraveyardAndHand is "search that player's GRAVEYARD, HAND, AND
 	// library" (#3988, Kotose, the Silent Spider): the library owner's

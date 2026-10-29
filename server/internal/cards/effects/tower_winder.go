@@ -22,12 +22,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The search reads the library AND the graveyard (#3217,
 // SearchLibrary.AlsoGraveyard): a Command Tower in the graveyard is a
 // public match, but "and/or" lets the player choose their zones, so
-// they may still find nothing; a Tower taken from the graveyard skips
-// the shuffle ("If you search your library this way"), and one taken
-// from the library, or none found, shuffles (declared simplification:
-// finding nothing counts as a library search; a player who looked only
-// in the graveyard and found nothing would not have shuffled, a no-op
-// in play).
+// they may still find nothing. The shuffle follows the zones the player
+// says they searched (#4516, "If you search your library this way"): a
+// Tower taken from the library shuffles; one taken from the graveyard,
+// or none found, shuffles only when the player says they searched the
+// library too.
 func init() {
 	Register(Spec{
 		OracleID:        "c1aecc8a-db3a-4158-b1f1-bfe06d782482",

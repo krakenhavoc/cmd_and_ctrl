@@ -21,8 +21,8 @@ import (
 //   - a library take shuffles, and fires the event;
 //   - "and/or" lets the searcher choose their zones, so a graveyard match
 //     does not take away the right to find nothing (the rulings on Ajani's
-//     Aid and Finale of Devastation); finding nothing counts as a library
-//     search and shuffles;
+//     Aid and Finale of Devastation); finding nothing shuffles only when
+//     the searcher says they searched the library (#4516);
 //   - the prompt offers both zones, and says which is which.
 
 const (
@@ -107,34 +107,58 @@ func TestTowerWinderLibraryOnlyShufflesAndMayFailToFind(t *testing.T) {
 	}
 }
 
-// Neither zone has one: the search finds nothing, and since the library
-// was searched it is shuffled and the event fires.
-func TestTowerWinderWithNoTowerAnywhereStillShuffles(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	seedSearchLibrary(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
-	lgKnowLibrary(me)
-	pushGraveyardCardWithTypeLineID(me, "Island", "Basic Land — Island")
+// Neither zone has one: the search finds nothing. "If you search your
+// library this way, shuffle" (#4516): a player who looked in the library
+// shuffles it and the event fires; one who looked only in the graveyard
+// does not.
+func TestTowerWinderWithNoTowerAnywhere(t *testing.T) {
+	setup := func(t *testing.T) (*game.Game, *game.Player) {
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		seedSearchLibrary(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+		lgKnowLibrary(me)
+		pushGraveyardCardWithTypeLineID(me, "Island", "Basic Land — Island")
 
-	lgCastTowerWinder(t, g)
+		lgCastTowerWinder(t, g)
 
-	c := searchChoiceFor(g, me.ID)
-	if c == nil || len(c.SearchCards) != 0 {
-		t.Fatalf("nothing matches, so the prompt (#4140) has no candidates: %+v", c)
+		c := searchChoiceFor(g, me.ID)
+		if c == nil || len(c.SearchCards) != 0 {
+			t.Fatalf("nothing matches, so the prompt (#4140) has no candidates: %+v", c)
+		}
+		if !c.SearchAsksLibraryZone() {
+			t.Fatal("an \"and/or graveyard\" prompt must ask which zones were searched")
+		}
+		return g, me
 	}
-	answerSearchFailToFind(t, g, me.ID)
-	if searchEventCount(g) != 1 {
-		t.Errorf("EventSearchLibrary fired %d times, want 1", searchEventCount(g))
-	}
-	if libraryKnownTo(me, me.ID) != 0 {
-		t.Error("an empty library search must still shuffle")
-	}
+
+	t.Run("the library was searched, so it shuffles", func(t *testing.T) {
+		g, me := setup(t)
+		answerSearchFailToFindInLibrary(t, g, me.ID)
+		if searchEventCount(g) != 1 {
+			t.Errorf("EventSearchLibrary fired %d times, want 1", searchEventCount(g))
+		}
+		if libraryKnownTo(me, me.ID) != 0 {
+			t.Error("an empty library search must still shuffle")
+		}
+	})
+
+	t.Run("only the graveyard was searched, so it does not", func(t *testing.T) {
+		g, me := setup(t)
+		answerSearchFailToFind(t, g, me.ID)
+		if searchEventCount(g) != 0 {
+			t.Errorf("EventSearchLibrary fired %d times, want 0", searchEventCount(g))
+		}
+		if libraryKnownTo(me, me.ID) != 1 {
+			t.Error("a graveyard-only search must not shuffle the library")
+		}
+	})
 }
 
 // Both zones hold a Tower. The prompt offers both and marks the
 // graveyard one; the searcher may still find nothing ("and/or" lets them
-// search only the library), which counts as a library search. Taking the
-// library one shuffles; taking the graveyard one does not.
+// search only the library). Taking the library one shuffles; taking the
+// graveyard one, or nothing, does not unless the searcher says they
+// searched the library (#4516).
 func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 	setup := func(t *testing.T) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
 		g := newCatalogGame(t)
@@ -168,9 +192,9 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 		}
 	})
 
-	t.Run("finding nothing is allowed with a graveyard match present, and shuffles", func(t *testing.T) {
+	t.Run("finding nothing is allowed with a graveyard match present, and shuffles when the library was searched", func(t *testing.T) {
 		g, me, libTower, gyTower := setup(t)
-		answerSearchFailToFind(t, g, me.ID)
+		answerSearchFailToFindInLibrary(t, g, me.ID)
 		passPriorityAroundTable(t, g)
 		if me.Hand.Contains(libTower) || me.Hand.Contains(gyTower) {
 			t.Fatal("nothing should have been taken")
@@ -178,10 +202,21 @@ func TestTowerWinderBothZonesOfferedMayFindNothing(t *testing.T) {
 		if !me.Graveyard.Contains(gyTower) {
 			t.Error("the graveyard Tower should be untouched")
 		}
-		// Treated as a library search: the event fires and the library
-		// is shuffled (the declared simplification).
 		if searchEventCount(g) != 1 || libraryKnownTo(me, me.ID) != 0 {
-			t.Errorf("events=%d known=%d: finding nothing counts as a library search",
+			t.Errorf("events=%d known=%d: a library search that found nothing shuffles",
+				searchEventCount(g), libraryKnownTo(me, me.ID))
+		}
+	})
+
+	t.Run("finding nothing in the graveyard alone does not shuffle", func(t *testing.T) {
+		g, me, libTower, gyTower := setup(t)
+		answerSearchFailToFind(t, g, me.ID)
+		passPriorityAroundTable(t, g)
+		if me.Hand.Contains(libTower) || me.Hand.Contains(gyTower) {
+			t.Fatal("nothing should have been taken")
+		}
+		if searchEventCount(g) != 0 || libraryKnownTo(me, me.ID) != 2 {
+			t.Errorf("events=%d known=%d: \"if you search your library this way\"",
 				searchEventCount(g), libraryKnownTo(me, me.ID))
 		}
 	})
@@ -322,7 +357,7 @@ func TestFinaleOfDevastationGraveyardTooBigLeavesFailToFindLegal(t *testing.T) {
 	if c == nil || c.SearchMin != 0 || len(c.SearchGraveyardCards) != 0 {
 		t.Fatalf("want a prompt with no graveyard half and a floor of 0, got %+v", c)
 	}
-	answerSearchFailToFind(t, g, me.ID)
+	answerSearchFailToFindInLibrary(t, g, me.ID)
 	if libraryKnownTo(me, me.ID) != 0 {
 		t.Error("failing to find in the library still shuffles it")
 	}

@@ -5514,10 +5514,12 @@ ordinary library-search floor: a stated quality may find nothing even
 with a match in the graveyard, and an unconditional search must find
 `min(limit, cards in both zones)`. A take that comes wholly out of the
 graveyard does not search the library, so the engine skips the shuffle
-and `EventSearchLibrary`; any library card taken, or nothing found,
-shuffles (finding nothing counts as a library search: a declared
-simplification, a no-op in play). You do not model that, and you do not
-write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
+and `EventSearchLibrary`; any library card taken shuffles. A graveyard
+card or nothing taken shuffles only if the searcher says they searched
+the library too (#4516: the sheet's "I searched my library too",
+`library_searched` on the wire). That is the engine's, not the card's:
+set `Shuffle` as printed and the card is Full. You do not model it, and
+you do not write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
 combine it with `LibraryOwner`, and the destination is hand, battlefield
 or exile. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is

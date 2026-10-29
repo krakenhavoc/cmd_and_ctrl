@@ -454,6 +454,94 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  describe("search: which zones were searched (#4516)", () => {
+    const andOr = () =>
+      snap({
+        kind: "search_library",
+        reason: "Tower Winder — a card named Command Tower",
+        search_max: 1,
+        options: [card("lib", "Command Tower"), card("gy", "Command Tower")],
+        search_graveyard: ["gy"],
+        search_library_optional: true,
+      });
+    const toggle = () =>
+      inSheet("button.remember-toggle").find((b) =>
+        b.textContent?.includes(L.searchedMyLibrary),
+      ) as HTMLButtonElement | undefined;
+
+    it("a graveyard pick says nothing about the library until the toggle is on", () => {
+      const { sent } = mount(andOr());
+      const t = toggle();
+      expect(t).toBeDefined();
+      expect(t!.getAttribute("aria-pressed")).toBe("false");
+      click(inSheet("button.card-pick")[1]);
+      expect(t!.disabled).toBe(false);
+      keyFromBody("Enter");
+      expect(sent).toEqual([
+        { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["gy"] } },
+      ]);
+    });
+
+    it("the toggle sends library_searched with a graveyard pick", () => {
+      const { sent } = mount(andOr());
+      click(inSheet("button.card-pick")[1]);
+      click(toggle()!);
+      expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
+      keyFromBody("Enter");
+      expect(sent).toEqual([
+        {
+          type: "resolve_choice",
+          params: { choice_id: "choice-1", card_ids: ["gy"], library_searched: true },
+        },
+      ]);
+    });
+
+    it("a library pick is a library search: the toggle reads on and cannot be turned off", () => {
+      const { sent } = mount(andOr());
+      click(inSheet("button.card-pick")[0]);
+      expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
+      expect(toggle()!.disabled).toBe(true);
+      keyFromBody("Enter");
+      expect(sent).toEqual([
+        {
+          type: "resolve_choice",
+          params: { choice_id: "choice-1", card_ids: ["lib"], library_searched: true },
+        },
+      ]);
+    });
+
+    it("Find nothing is a graveyard-only search unless the toggle is on", () => {
+      const first = mount(andOr());
+      click(barButton("Find nothing")!);
+      expect(first.sent).toEqual([
+        { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: [] } },
+      ]);
+      cleanup();
+
+      const second = mount(andOr());
+      click(toggle()!);
+      click(barButton("Find nothing")!);
+      expect(second.sent).toEqual([
+        {
+          type: "resolve_choice",
+          params: { choice_id: "choice-1", card_ids: [], library_searched: true },
+        },
+      ]);
+    });
+
+    it("a search without the flag has no toggle", () => {
+      mount(
+        snap({
+          kind: "search_library",
+          reason: "Fetchland — choose a land",
+          search_max: 1,
+          options: [card("a", "Island"), card("b", "Swamp")],
+        }),
+      );
+      expect(toggle()).toBeUndefined();
+    });
+  });
+
   it("search: graveyard, hand and library copies are three tiles, each marked (#3988)", () => {
     const { sent } = mount(
       snap({
