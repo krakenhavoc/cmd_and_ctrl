@@ -657,6 +657,21 @@ func DiscardCardsMatching(n int, label string, match func(game.Card) bool) game.
 	return game.AbilityCost{DiscardCards: &game.DiscardCost{N: n, Label: label, Match: match}}
 }
 
+// DiscardLegendaryNamedLikeYourPermanent is "Discard a legendary card
+// with the same name as a legendary permanent you control" — Key to the
+// Side-Door's cost (#4487). The "legendary card" half is the predicate;
+// the "same name as a legendary permanent you control" half is the
+// engine's board read (game.DiscardCost.SameNameAsLegendaryPermanent),
+// so the clause costs no new func on the game.
+func DiscardLegendaryNamedLikeYourPermanent() game.AbilityCost {
+	return game.AbilityCost{DiscardCards: &game.DiscardCost{
+		N:                            1,
+		Label:                        "a legendary card with the same name as a legendary permanent you control",
+		Match:                        func(c game.Card) bool { return c.IsLegendary() },
+		SameNameAsLegendaryPermanent: true,
+	}}
+}
+
 // DiscardN is "Discard N cards" with no restriction on which —
 // DiscardN(2, "two cards").
 func DiscardN(n int, label string) game.AbilityCost {
