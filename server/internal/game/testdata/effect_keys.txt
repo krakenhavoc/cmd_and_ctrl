@@ -1805,3 +1805,6 @@ tail glamdring-foe-hammer/gleam-of-death-after-mill
 tail sacrificed-one/prompt-run/bolg-of-the-north-sacrifice
 tail saruman-of-many-colors/after-mill
 tail saruman-of-many-colors/copy-exiled
+body ant-man-colony-commander/counter
+payunless pay-unless/ant-man-colony-commander-counter
+tail alien-invasion/grow
