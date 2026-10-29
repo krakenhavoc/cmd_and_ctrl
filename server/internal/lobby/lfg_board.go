@@ -367,11 +367,11 @@ func lfgHTTPError(err error) error {
 		return errLFGOffHTTP
 	case errors.Is(err, ErrLFGUnavailable):
 		return httpError(http.StatusConflict,
-			"only a table waiting in the lobby can be posted to #lfg: this one is a practice table, has started or ended, or is archived")
+			"only a table waiting in the lobby can be posted to #looking-for-game: this one is a practice table, has started or ended, or is archived")
 	case errors.Is(err, ErrLFGFull):
 		return httpError(http.StatusConflict, "every seat at this table is taken")
 	case errors.Is(err, ErrLFGGuestHost):
-		return httpError(http.StatusConflict, "sign in with Discord to post to #lfg: the post names the host")
+		return httpError(http.StatusConflict, "sign in with Discord to post to #looking-for-game: the post names the host")
 	case errors.Is(err, ErrInviteTokenUnavailable):
 		return httpError(http.StatusConflict,
 			"this server no longer holds this table's invite link (it was lost to a restart), and the post is a copy of it; "+
@@ -385,5 +385,5 @@ func lfgHTTPError(err error) error {
 // errLFGOffHTTP is the 503 the route answers on a server without a
 // board, naming what turns it on (ADR 0161 §7).
 var errLFGOffHTTP = httpError(http.StatusServiceUnavailable,
-	"the #lfg board is off on this server: "+discord.LFGChannelEnv+", "+
+	"the #looking-for-game board is off on this server: "+discord.LFGChannelEnv+", "+
 		discord.CommunityGuildEnv+" and "+discord.BotTokenEnv+" must all be set")

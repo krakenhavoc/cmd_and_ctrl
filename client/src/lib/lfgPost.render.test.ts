@@ -50,14 +50,14 @@ describe("LfgPost", () => {
     const b = box(container)!;
     expect(b.checked).toBe(false);
     expect(b.disabled).toBe(false);
-    expect(container.textContent).toContain("Post to the CMD & CTRL Discord (#lfg)");
+    expect(container.textContent).toContain("Post to the CMD & CTRL Discord (#looking-for-game)");
     b.click();
     expect(ontoggle).toHaveBeenCalledWith(true);
   });
 
   it("shows the post's status, and withdraws on an untick", () => {
     const { container, ontoggle } = mount(table({ lfg: true, lfg_status: "posted" }));
-    expect(text(container, "lfg-status")).toMatch(/^Posted in #lfg/);
+    expect(text(container, "lfg-status")).toMatch(/^Posted in #looking-for-game/);
     const b = box(container)!;
     expect(b.checked).toBe(true);
     b.click();

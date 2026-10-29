@@ -168,11 +168,11 @@
           <dd>Brewing, swapping lists, asking what works.</dd>
           <dt>#account-requests</dt>
           <dd>Ask for the Elder Dragon Highlander role.</dd>
-          <dt>#bugs-and-ideas</dt>
+          <dt>#bug-reports (forum)</dt>
           <dd>
-            Report a bug or suggest something. The bug button (<strong>{L.reportABug}</strong>), in
-            a game's toolbar or, signed in, at the top of every other page, files it on GitHub,
-            where what you write is public.
+            Open a post in the #bug-reports forum to report a bug or suggest something. The bug
+            button (<strong>{L.reportABug}</strong>), in a game's toolbar or, signed in, at the top
+            of every other page, files it on GitHub, where what you write is public.
           </dd>
         </dl>
         <p class="para">The C2 bot's slash commands:</p>
