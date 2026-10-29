@@ -3059,6 +3059,15 @@ flying counters are one flying. "Hexproof from" counters are not read
 yet, because that keyword is not enforced: a card that places one ships
 with a caveat.
 
+**A hone counter needs no static either** (CR 122.1j, #4500). "Put a hone
+counter on each Equipment you control" is `AddCounter{Target: id, Kind:
+game.CounterHone, N: 1}`; the engine gives the creature an Equipment is
+attached to +1/+0 for each hone counter on it, as a layer 7c effect
+(`game/hone_counters.go`), so the bonus follows the Equipment when it is
+re-equipped, ends when it is unattached, and adds up across Equipment.
+Never write a `PumpAttached` that counts the counters. Sting, Bilbo's
+Sword and Dwalin, Weaponmaster are the cards.
+
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
