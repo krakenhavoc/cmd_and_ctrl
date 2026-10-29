@@ -1169,6 +1169,11 @@ type SearchLibrary struct {
 	// searched and shuffled; the searcher looks at the whole hand. See
 	// game.SearchLibrarySpec.AlsoGraveyardAndHand.
 	AlsoGraveyardAndHand bool
+	// AlsoHand is "search your hand and/or library" (Last Light of Durin's
+	// Day): your hand is searched beside the library in one prompt, marked
+	// by zone, and a take that comes wholly out of the hand does not shuffle.
+	// See game.SearchLibrarySpec.AlsoHand.
+	AlsoHand bool
 	// TakeAll is "search … for ALL cards with the same name" on an
 	// AlsoGraveyardAndHand search (#4033, Eradicate and the rest of the
 	// extraction family): every graveyard match is found, a public zone
@@ -1241,6 +1246,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		FaceDown:             s.FaceDown,
 		AlsoGraveyard:        s.AlsoGraveyard,
 		AlsoGraveyardAndHand: s.AlsoGraveyardAndHand,
+		AlsoHand:             s.AlsoHand,
 		TakeAll:              s.TakeAll,
 		EntersAttachedTo:     s.EntersAttachedTo,
 		LinkTo:               s.LinkTo,

@@ -42,7 +42,7 @@ func init() {
 			}
 			return celebrateExileNext(ctx, picks)
 		})
-	exile.Targets = perOpponentClauses(game.MaxPlayers-1, true, "nonland permanent", Nonland())
+	exile.Targets = perOpponentClauses(game.MaxPlayers-1, "nonland permanent", Nonland())
 	Register(Spec{
 		OracleID:     "d51136fa-3c13-48a5-83fd-51fe00010a4b",
 		Name:         "Celebrate the Mountain-king",
